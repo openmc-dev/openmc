@@ -13,8 +13,6 @@ module state_point
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5
-
   use bank_header,        only: Bank
   use cmfd_header
   use constants
@@ -45,6 +43,13 @@ module state_point
       integer(C_INT64_T), intent(in) :: work_index(*)
       type(Bank), intent(in) :: bank_(*)
     end subroutine write_source_bank
+
+    subroutine read_source_bank(group_id, work_index, bank_) bind(C)
+      import HID_T, C_INT64_T, Bank
+      integer(HID_T), value :: group_id
+      integer(C_INT64_T), intent(in) :: work_index(*)
+      type(Bank), intent(out) :: bank_(*)
+    end subroutine read_source_bank
   end interface
 
 contains
@@ -832,7 +837,7 @@ contains
       end if
 
       ! Write out source
-      call read_source_bank(file_id)
+      call read_source_bank(file_id, work_index, source_bank)
 
     end if
 
@@ -840,67 +845,5 @@ contains
     call file_close(file_id)
 
   end subroutine load_state_point
-
-!===============================================================================
-! READ_SOURCE_BANK reads OpenMC source_bank data
-!===============================================================================
-
-  subroutine read_source_bank(group_id)
-    integer(HID_T), intent(in) :: group_id
-
-    integer :: hdf5_err
-    integer(HID_T) :: dset     ! data set handle
-    integer(HID_T) :: dspace   ! data space handle
-    integer(HID_T) :: memspace ! memory space handle
-    integer(HSIZE_T) :: dims(1)     ! dimensions on one processor
-    integer(HSIZE_T) :: dims_all(1) ! overall dimensions
-    integer(HSIZE_T) :: maxdims(1)  ! maximum dimensions
-    integer(HSIZE_T) :: offset(1) ! offset of data
-    type(c_ptr) :: f_ptr
-#ifdef PHDF5
-    integer(HID_T) :: plist    ! property list
-#endif
-
-    ! Open the dataset
-    call h5dopen_f(group_id, "source_bank", dset, hdf5_err)
-
-    ! Create another data space but for each proc individually
-    dims(1) = work
-    call h5screate_simple_f(1, dims, memspace, hdf5_err)
-
-    ! Make sure source bank is big enough
-    call h5dget_space_f(dset, dspace, hdf5_err)
-    call h5sget_simple_extent_dims_f(dspace, dims_all, maxdims, hdf5_err)
-    if (size(source_bank, KIND=HSIZE_T) > dims_all(1)) then
-      call fatal_error("Number of source sites in source file is less than &
-           &number of source particles per generation.")
-    end if
-
-    ! Select hyperslab for each process
-    offset(1) = work_index(rank)
-    call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, offset, dims, hdf5_err)
-
-    ! Set up pointer to data
-    f_ptr = c_loc(source_bank)
-
-#ifdef PHDF5
-    ! Read data in parallel
-    call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
-    call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_COLLECTIVE_F, hdf5_err)
-    call h5dread_f(dset, hdf5_bank_t, f_ptr, hdf5_err, &
-         file_space_id=dspace, mem_space_id=memspace, &
-         xfer_prp=plist)
-    call h5pclose_f(plist, hdf5_err)
-#else
-    call h5dread_f(dset, hdf5_bank_t, f_ptr, hdf5_err, &
-         file_space_id=dspace, mem_space_id=memspace)
-#endif
-
-    ! Close all ids
-    call h5sclose_f(dspace, hdf5_err)
-    call h5sclose_f(memspace, hdf5_err)
-    call h5dclose_f(dset, hdf5_err)
-
-  end subroutine read_source_bank
 
 end module state_point

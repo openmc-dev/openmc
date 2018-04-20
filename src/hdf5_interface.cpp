@@ -174,6 +174,11 @@ file_open(const char* filename, char mode, bool parallel)
   } else {
     file_id = H5Fopen(filename, flags, plist);
   }
+  if (file_id < 0) {
+    std::stringstream msg;
+    msg << "Failed to open HDF5 file with mode '" << mode << "': " << filename;
+    fatal_error(msg);
+  }
 
 #ifdef PHDF5
   // Close the property list
@@ -451,7 +456,7 @@ write_dataset(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
   if (using_mpio_device(group_id)) {
 #ifdef PHDF5
     // Set up collective vs independent I/O
-    auto data_xfer_mode {indep ? H5FD_MPIO_INDEPENDENT : H5FD_MPIO_COLLECTIVE};
+    auto data_xfer_mode = indep ? H5FD_MPIO_INDEPENDENT : H5FD_MPIO_COLLECTIVE;
 
     // Create dataset transfer property list
     hid_t plist = H5Pcreate(H5P_DATASET_XFER);

@@ -549,6 +549,8 @@ contains
               else
                 call fatal_error("beta must be provided as a 1D or 2D array")
               end if
+
+              call close_dataset(xsdata)
             else
               temp_beta = ZERO
             end if
@@ -679,6 +681,8 @@ contains
                 call fatal_error("nu-fission must be provided as a 1D or 2D &
                      &array")
               end if
+
+              call close_dataset(xsdata)
             end if
 
             ! If chi-prompt provided, set chi-prompt
@@ -782,6 +786,8 @@ contains
                 call fatal_error("chi-delayed must be provided as a 1D or 2D &
                      &array")
               end if
+
+              call close_dataset(xsdata)
             end if
 
             ! If prompt-nu-fission present, set prompt-nu-fission
@@ -838,6 +844,8 @@ contains
                 call fatal_error("prompt-nu-fission must be provided as a 1D &
                      &or 2D array")
               end if
+
+              call close_dataset(xsdata)
             end if
 
             ! If delayed-nu-fission provided, set delayed-nu-fission. If
@@ -963,6 +971,8 @@ contains
                 call fatal_error("delayed-nu-fission must be provided as a &
                      &1D, 2D, or 3D array")
               end if
+
+              call close_dataset(xsdata)
             end if
 
             ! Deallocate temporary beta array
@@ -1346,6 +1356,8 @@ contains
               else
                 call fatal_error("beta must be provided as a 3D or 4D array")
               end if
+
+              call close_dataset(xsdata)
             else
               temp_beta = ZERO
             end if
@@ -1517,6 +1529,8 @@ contains
                 call fatal_error("nu-fission must be provided as a 3D or &
                      &4D array")
               end if
+
+              call close_dataset(xsdata)
             end if
 
             ! If chi-prompt provided, set chi-prompt
@@ -1651,6 +1665,8 @@ contains
                 call fatal_error("chi-delayed must be provided as a 3D or 4D &
                      &array")
               end if
+
+              call close_dataset(xsdata)
             end if
 
             ! If prompt-nu-fission present, set prompt-nu-fission
@@ -1720,6 +1736,8 @@ contains
                 call fatal_error("prompt-nu-fission must be provided as a 3D &
                      &or 4D array")
               end if
+
+              call close_dataset(xsdata)
             end if
 
             ! If delayed-nu-fission provided, set delayed-nu-fission. If
@@ -1868,6 +1886,8 @@ contains
                 call fatal_error("delayed-nu-fission must be provided as a &
                      &3D, 4D, or 5D array")
               end if
+
+              call close_dataset(xsdata)
             end if
 
             ! Deallocate temporary beta array

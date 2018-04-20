@@ -138,7 +138,7 @@ module hdf5_interface
       integer(HID_T), value :: obj_id
       type(C_PTR), value :: name
       real(C_DOUBLE), intent(out) :: buffer(*)
-      logical(C_BOOL), intent(in) :: indep
+      logical(C_BOOL), value :: indep
     end subroutine read_double_c
 
     subroutine read_attr_int_c(obj_id, name, buffer) &
@@ -172,7 +172,7 @@ module hdf5_interface
       integer(HID_T), value :: obj_id
       type(C_PTR), value :: name
       integer(C_INT), intent(out) :: buffer(*)
-      logical(C_BOOL), intent(in) :: indep
+      logical(C_BOOL), value :: indep
     end subroutine read_int_c
 
     subroutine read_llong_c(obj_id, name, buffer, indep) &
@@ -181,7 +181,7 @@ module hdf5_interface
       integer(HID_T), value :: obj_id
       type(C_PTR), value :: name
       integer(C_LONG_LONG), intent(out) :: buffer(*)
-      logical(C_BOOL), intent(in) :: indep
+      logical(C_BOOL), value :: indep
     end subroutine read_llong_c
 
     subroutine read_string_c(obj_id, name, slen, buffer, indep) &
@@ -191,7 +191,7 @@ module hdf5_interface
       type(C_PTR), value :: name
       integer(C_SIZE_T), value :: slen
       character(kind=C_CHAR), intent(out) :: buffer(*)
-      logical(C_BOOL), intent(in) :: indep
+      logical(C_BOOL), value :: indep
     end subroutine read_string_c
 
     subroutine read_complex_c(obj_id, name, buffer, indep) &
@@ -200,7 +200,7 @@ module hdf5_interface
       integer(HID_T), value :: obj_id
       type(C_PTR), value :: name
       complex(C_DOUBLE_COMPLEX), intent(out) :: buffer(*)
-      logical(C_BOOL), intent(in) :: indep
+      logical(C_BOOL), value :: indep
     end subroutine read_complex_c
 
     subroutine write_attr_double_c(obj_id, ndim, dims, name, buffer) &
@@ -239,7 +239,7 @@ module hdf5_interface
       integer(HSIZE_T), intent(in) :: dims(*)
       character(kind=C_CHAR), intent(in) :: name(*)
       real(C_DOUBLE), intent(in) :: buffer(*)
-      logical(C_BOOL), intent(in) :: indep
+      logical(C_BOOL), value :: indep
     end subroutine write_double_c
 
     subroutine write_int_c(group_id, ndim, dims, name, buffer, indep) &
@@ -250,7 +250,7 @@ module hdf5_interface
       integer(HSIZE_T), intent(in) :: dims(*)
       character(kind=C_CHAR), intent(in) :: name(*)
       integer(C_INT), intent(in) :: buffer(*)
-      logical(C_BOOL), intent(in) :: indep
+      logical(C_BOOL), value :: indep
     end subroutine write_int_c
 
     subroutine write_llong_c(group_id, ndim, dims, name, buffer, indep) &
@@ -261,7 +261,7 @@ module hdf5_interface
       integer(HSIZE_T), intent(in) :: dims(*)
       character(kind=C_CHAR), intent(in) :: name(*)
       integer(C_LONG_LONG), intent(in) :: buffer(*)
-      logical(C_BOOL), intent(in) :: indep
+      logical(C_BOOL), value :: indep
     end subroutine write_llong_c
 
     subroutine write_string_c(group_id, ndim, dims, slen, name, buffer, indep) &
@@ -273,7 +273,7 @@ module hdf5_interface
       integer(C_SIZE_T), value :: slen
       character(kind=C_CHAR), intent(in) :: name(*)
       character(kind=C_CHAR), intent(in) :: buffer(*)
-      logical(C_BOOL), intent(in) :: indep
+      logical(C_BOOL), value :: indep
     end subroutine write_string_c
   end interface
 

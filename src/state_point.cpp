@@ -4,14 +4,14 @@
 #include <vector>
 
 #include "mpi.h"
+#include "error.h"
 #include "message_passing.h"
 #include "openmc.h"
 
 namespace openmc {
 
-void
-write_source_bank(hid_t group_id, int64_t* work_index, const Bank* source_bank)
-{
+
+hid_t h5banktype() {
   // Create type for array of 3 reals
   hsize_t dims[] {3};
   hid_t triplet = H5Tarray_create(H5T_NATIVE_DOUBLE, 1, dims);
@@ -24,31 +24,41 @@ write_source_bank(hid_t group_id, int64_t* work_index, const Bank* source_bank)
   H5Tinsert(banktype, "E", HOFFSET(Bank, E), H5T_NATIVE_DOUBLE);
   H5Tinsert(banktype, "delayed_group", HOFFSET(Bank, delayed_group), H5T_NATIVE_INT);
 
+  H5Tclose(triplet);
+  return banktype;
+}
+
+
+void
+write_source_bank(hid_t group_id, int64_t* work_index, const Bank* source_bank)
+{
+  hid_t banktype = h5banktype();
+
 #ifdef PHDF5
   // Set size of total dataspace for all procs and rank
-  dims[0] = n_particles;
+  hsize_t dims[] {static_cast<hsize_t>(n_particles)};
   hid_t dspace = H5Screate_simple(1, dims, H5P_DEFAULT);
   hid_t dset = H5Dcreate(group_id, "source_bank", banktype, dspace,
                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
   // Create another data space but for each proc individually
-  hsize_t count[] {openmc_work};
+  hsize_t count[] {static_cast<hsize_t>(openmc_work)};
   hid_t memspace = H5Screate_simple(1, count, H5P_DEFAULT);
 
   // Select hyperslab for this dataspace
-  hsize_t start[] {work_index[openmc::mpi::rank]};
+  hsize_t start[] {static_cast<hsize_t>(work_index[openmc::mpi::rank])};
   H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
   // Set up the property list for parallel writing
   hid_t plist = H5Pcreate(H5P_DATASET_XFER);
-  H5Pset_dxpl_mpio_f(plist, H5FD_MPIO_COLLECTIVE);
+  H5Pset_dxpl_mpio(plist, H5FD_MPIO_COLLECTIVE);
 
   // Write data to file in parallel
-  H5Dwrite(dset, banktype, memspace, dspace, memspace, plist, source_bank);
+  H5Dwrite(dset, banktype, memspace, dspace, plist, source_bank);
 
   // Free resources
   H5Sclose(dspace);
-  h5sclose(memspace);
+  H5Sclose(memspace);
   H5Dclose(dset);
   H5Pclose(plist);
 
@@ -106,7 +116,48 @@ write_source_bank(hid_t group_id, int64_t* work_index, const Bank* source_bank)
 #endif
 
   H5Tclose(banktype);
-  H5Tclose(triplet);
+}
+
+
+void read_source_bank(hid_t group_id, int64_t* work_index, struct Bank* source_bank)
+{
+  hid_t banktype = h5banktype();
+
+  // Open the dataset
+  hid_t dset = H5Dopen(group_id, "source_bank", H5P_DEFAULT);
+
+  // Create another data space but for each proc individually
+  hsize_t dims[] {static_cast<hsize_t>(openmc_work)};
+  hid_t memspace = H5Screate_simple(1, dims, H5P_DEFAULT);
+
+  // Make sure source bank is big enough
+  hid_t dspace = H5Dget_space(dset);
+  hsize_t dims_all[1];
+  H5Sget_simple_extent_dims(dspace, dims_all, nullptr);
+  if (work_index[openmc::mpi::n_procs] > dims_all[0]) {
+    fatal_error("Number of source sites in source file is less "
+                "than number of source particles per generation.");
+  }
+
+  // Select hyperslab for each process
+  hsize_t start[] {static_cast<hsize_t>(work_index[openmc::mpi::rank])};
+  H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, dims, nullptr);
+
+#ifdef PHDF5
+    // Read data in parallel
+  hid_t plist = H5Pcreate(H5P_DATASET_XFER);
+  H5Pset_dxpl_mpio(plist, H5FD_MPIO_COLLECTIVE);
+  H5Dread(dset, banktype, memspace, dspace, plist, source_bank);
+  H5Pclose(plist);
+#else
+  H5Dread(dset, banktype, memspace, dspace, H5P_DEFAULT, source_bank);
+#endif
+
+  // Close all ids
+  H5Sclose(dspace);
+  H5Sclose(memspace);
+  H5Dclose(dset);
+  H5Tclose(banktype);
 }
 
 } // namespace openmc

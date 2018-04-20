@@ -1,17 +1,27 @@
-#include "openmc.h"
+#include "initialize.h"
+
+#include <cstddef>
 
 #include "message_passing.h"
+#include "openmc.h"
 
 
 int openmc_init(const void* intracomm)
 {
 #ifdef OPENMC_MPI
+  // Check if intracomm was passed
+  MPI_Comm comm;
+  if (intracomm) {
+    comm = *static_cast<const MPI_Comm *>(intracomm);
+  } else {
+    comm = MPI_COMM_WORLD;
+  }
+
   // Initialize MPI for C++
-  MPI_Comm intracomm = *static_cast<const MPI_Comm *>(intracomm);
-  initialize_mpi(intracomm);
+  openmc::initialize_mpi(comm);
 
   // Continue with rest of initialization
-  MPI_Fint fcomm = MPI_Comm_c2f(openmc::mpi::intracomm);
+  MPI_Fint fcomm = MPI_Comm_c2f(comm);
   openmc_init_f(&fcomm);
 #else
   openmc_init_f(nullptr);
@@ -19,6 +29,7 @@ int openmc_init(const void* intracomm)
   return 0;
 }
 
+namespace openmc {
 
 #ifdef OPENMC_MPI
 void initialize_mpi(MPI_Comm intracomm)
@@ -30,8 +41,8 @@ void initialize_mpi(MPI_Comm intracomm)
   if (!MPI_Initialized(&flag)) MPI_Init(nullptr, nullptr);
 
   // Determine number of processes and rank for each
-  MPI_Comm_size(intracomm, openmc::mpi::n_procs);
-  MPI_Comm_rank(intracomm, openmc::mpi::rank);
+  MPI_Comm_size(intracomm, &openmc::mpi::n_procs);
+  MPI_Comm_rank(intracomm, &openmc::mpi::rank);
 
   // Set variable for Fortran side
   openmc_n_procs = openmc::mpi::n_procs;
@@ -40,15 +51,18 @@ void initialize_mpi(MPI_Comm intracomm)
 
   // Create bank datatype
   Bank b;
-  MPI_Aint disp[5];
-  disp[0] = &b.wgt - &b;
-  disp[1] = &b.xyz - &b;
-  disp[2] = &b.uvw - &b;
-  disp[3] = &b.E - &b;
-  disp[4] = &b.delayed_group - &b;
+  MPI_Aint disp[] {
+    offsetof(Bank, wgt),
+    offsetof(Bank, xyz),
+    offsetof(Bank, uvw),
+    offsetof(Bank, E),
+    offsetof(Bank, delayed_group)
+  };
   int blocks[] {1, 3, 3, 1, 1};
   MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT};
   MPI_Type_create_struct(5, blocks, disp, types, &openmc::mpi::bank);
   MPI_Type_commit(&openmc::mpi::bank);
 }
-#endif
+
+#endif // OPENMC_MPI
+} // namespace openmc

@@ -63,7 +63,7 @@ contains
       end if
 
       ! Read in the source bank
-      call read_source_bank(file_id)
+      call read_source_bank(file_id, work_index, source_bank)
 
       ! Close file
       call file_close(file_id)

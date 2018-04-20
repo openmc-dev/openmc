@@ -438,6 +438,7 @@ set(LIBOPENMC_CXX_SRC
   src/message_passing.cpp
   src/random_lcg.cpp
   src/simulation.cpp
+  src/state_point.cpp
   src/surface.cpp
   src/xml_interface.cpp
   src/pugixml/pugixml.cpp)

@@ -1,6 +1,8 @@
 #ifndef MESSAGE_PASSING_H
 #define MESSAGE_PASSING_H
 
+#include "mpi.h"
+
 namespace openmc {
 namespace mpi {
 

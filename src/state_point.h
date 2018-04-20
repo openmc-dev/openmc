@@ -9,7 +9,9 @@
 namespace openmc {
 
 extern "C" void write_source_bank(hid_t group_id, int64_t* work_index,
-                                  const struct Bank* bank);
+                                  const struct Bank* source_bank);
+extern "C" void read_source_bank(hid_t group_id, int64_t* work_index,
+                                 struct Bank* source_bank);
 
 } // namespace openmc
 #endif // STATE_POINT_H

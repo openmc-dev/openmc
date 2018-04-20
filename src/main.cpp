@@ -1,4 +1,8 @@
+#ifdef OPENMC_MPI
+#include "mpi.h"
+#endif
 #include "openmc.h"
+
 
 int main(int argc, char** argv) {
   int err;

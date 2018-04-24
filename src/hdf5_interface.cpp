@@ -36,26 +36,6 @@ attribute_typesize(hid_t obj_id, const char* name)
 }
 
 
-bool
-using_mpio_device(hid_t obj_id)
-{
-  // Determine file that this object is part of
-  hid_t file_id = H5Iget_file_id(obj_id);
-
-  // Get file access property list
-  hid_t fapl_id = H5Fget_access_plist(file_id);
-
-  // Get low-level driver identifier
-  hid_t driver = H5Pget_driver(fapl_id);
-
-  // Free resources
-  H5Pclose(fapl_id);
-  H5Fclose(file_id);
-
-  return driver == H5FD_MPIO;
-}
-
-
 void
 get_shape(hid_t obj_id, hsize_t* dims)
 {
@@ -198,6 +178,113 @@ void file_close(hid_t file_id)
 {
   H5Fclose(file_id);
 }
+
+
+void
+get_name(hid_t obj_id, char* name)
+{
+  size_t size = 1 + H5Iget_name(obj_id, nullptr, 0);
+  H5Iget_name(obj_id, name, size);
+}
+
+
+int get_num_datasets(hid_t group_id)
+{
+  // Determine number of links in the group
+  H5G_info_t info;
+  H5Gget_info(group_id, &info);
+
+  // Iterate over links to get number of groups
+  H5O_info_t oinfo;
+  int ndatasets = 0;
+  for (hsize_t i = 0; i < info.nlinks; ++i) {
+    // Determine type of object (and skip non-group)
+    H5Oget_info_by_idx(group_id, ".", H5_INDEX_NAME, H5_ITER_INC, i, &oinfo,
+                       H5P_DEFAULT);
+    if (oinfo.type == H5O_TYPE_DATASET) ndatasets += 1;
+  }
+
+  return ndatasets;
+}
+
+
+int get_num_groups(hid_t group_id)
+{
+  // Determine number of links in the group
+  H5G_info_t info;
+  H5Gget_info(group_id, &info);
+
+  // Iterate over links to get number of groups
+  H5O_info_t oinfo;
+  int ngroups = 0;
+  for (hsize_t i = 0; i < info.nlinks; ++i) {
+    // Determine type of object (and skip non-group)
+    H5Oget_info_by_idx(group_id, ".", H5_INDEX_NAME, H5_ITER_INC, i, &oinfo,
+                       H5P_DEFAULT);
+    if (oinfo.type == H5O_TYPE_GROUP) ngroups += 1;
+  }
+
+  return ngroups;
+}
+
+
+void
+get_datasets(hid_t group_id, char* name[])
+{
+  // Determine number of links in the group
+  H5G_info_t info;
+  H5Gget_info(group_id, &info);
+
+  // Iterate over links to get names
+  H5O_info_t oinfo;
+  hsize_t count = 0;
+  size_t size;
+  for (hsize_t i = 0; i < info.nlinks; ++i) {
+    // Determine type of object (and skip non-group)
+    H5Oget_info_by_idx(group_id, ".", H5_INDEX_NAME, H5_ITER_INC, i, &oinfo,
+                       H5P_DEFAULT);
+    if (oinfo.type != H5O_TYPE_DATASET) continue;
+
+    // Get size of name
+    size = 1 + H5Lget_name_by_idx(group_id, ".", H5_INDEX_NAME, H5_ITER_INC,
+                                  i, nullptr, 0, H5P_DEFAULT);
+
+    // Read name
+    H5Lget_name_by_idx(group_id, ".", H5_INDEX_NAME, H5_ITER_INC, i,
+                       name[count], size, H5P_DEFAULT);
+    count += 1;
+  }
+}
+
+
+void
+get_groups(hid_t group_id, char* name[])
+{
+  // Determine number of links in the group
+  H5G_info_t info;
+  H5Gget_info(group_id, &info);
+
+  // Iterate over links to get names
+  H5O_info_t oinfo;
+  hsize_t count = 0;
+  size_t size;
+  for (hsize_t i = 0; i < info.nlinks; ++i) {
+    // Determine type of object (and skip non-group)
+    H5Oget_info_by_idx(group_id, ".", H5_INDEX_NAME, H5_ITER_INC, i, &oinfo,
+                       H5P_DEFAULT);
+    if (oinfo.type != H5O_TYPE_GROUP) continue;
+
+    // Get size of name
+    size = 1 + H5Lget_name_by_idx(group_id, ".", H5_INDEX_NAME, H5_ITER_INC,
+                                  i, nullptr, 0, H5P_DEFAULT);
+
+    // Read name
+    H5Lget_name_by_idx(group_id, ".", H5_INDEX_NAME, H5_ITER_INC, i,
+                       name[count], size, H5P_DEFAULT);
+    count += 1;
+  }
+}
+
 
 bool
 object_exists(hid_t object_id, const char* name)
@@ -546,6 +633,26 @@ write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score, const dou
   H5Dclose(dset);
   H5Sclose(memspace);
   H5Sclose(dspace);
+}
+
+
+bool
+using_mpio_device(hid_t obj_id)
+{
+  // Determine file that this object is part of
+  hid_t file_id = H5Iget_file_id(obj_id);
+
+  // Get file access property list
+  hid_t fapl_id = H5Fget_access_plist(file_id);
+
+  // Get low-level driver identifier
+  hid_t driver = H5Pget_driver(fapl_id);
+
+  // Free resources
+  H5Pclose(fapl_id);
+  H5Fclose(file_id);
+
+  return driver == H5FD_MPIO;
 }
 
 } // namespace openmc

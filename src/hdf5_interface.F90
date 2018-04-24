@@ -13,13 +13,12 @@ module hdf5_interface
   use, intrinsic :: ISO_C_BINDING
 
   use hdf5
-  use h5lt
 
   use error, only: fatal_error
 #ifdef PHDF5
   use message_passing, only: mpi_intracomm, MPI_INFO_NULL
 #endif
-  use string, only: to_c_string
+  use string, only: to_c_string, to_f_string
 
   implicit none
   private
@@ -316,31 +315,37 @@ contains
     integer(HID_T), intent(in)  :: object_id
     character(len=150), allocatable, intent(out) :: names(:)
 
-    integer :: n_members, i, group_count, type
-    integer :: hdf5_err
-    character(len=150) :: name
+    integer :: i
+    integer(C_INT) :: n
+    character(len=150,kind=C_CHAR), target, allocatable :: names_(:)
+    type(C_PTR), allocatable :: name_ptrs(:)
 
-    ! Get number of members in this location
-    call h5gn_members_f(object_id, './', n_members, hdf5_err)
+    interface
+      function get_num_groups(group_id) result(n) bind(C)
+        import HID_T, C_INT
+        integer(HID_T), value :: group_id
+        integer(C_INT) :: n
+      end function get_num_groups
+      subroutine get_groups_c(group_id, name) bind(C, name='get_groups')
+        import HID_T, C_PTR
+        integer(HID_T), value :: group_id
+        type(C_PTR) :: name(*)
+      end subroutine get_groups_c
+    end interface
 
-    ! Get the number of groups
-    group_count = 0
-    do i = 0, n_members - 1
-      call h5gget_obj_info_idx_f(object_id, "./", i, name, type, hdf5_err)
-      if (type == H5G_GROUP_F) then
-        group_count = group_count + 1
-      end if
+    ! Determine number of groups and allocate
+    n = get_num_groups(object_id)
+    allocate(names(n), names_(n), name_ptrs(n))
+
+    ! Set C pointers to beginning of each string
+    do i = 1, size(names)
+      name_ptrs(i) = c_loc(names_(i))
     end do
 
-    ! Now we can allocate the storage for the ids
-    allocate(names(group_count))
-    group_count = 0
-    do i = 0, n_members - 1
-      call h5gget_obj_info_idx_f(object_id, "./", i, name, type, hdf5_err)
-      if (type == H5G_GROUP_F) then
-        group_count = group_count + 1
-        names(group_count) = trim(name)
-      end if
+    ! Get names of groups and copy to Fortran strings
+    call get_groups_c(object_id, name_ptrs)
+    do i = 1, size(names)
+      names(i) = to_f_string(names_(i))
     end do
 
   end subroutine get_groups
@@ -398,32 +403,37 @@ contains
     integer(HID_T), intent(in)  :: object_id
     character(len=150), allocatable, intent(out) :: names(:)
 
-    integer :: n_members, i, dset_count, type
-    integer :: hdf5_err
-    character(len=150) :: name
+    integer :: i
+    integer(C_INT) :: n
+    character(len=150,kind=C_CHAR), target, allocatable :: names_(:)
+    type(C_PTR), allocatable :: name_ptrs(:)
 
+    interface
+      function get_num_datasets(group_id) result(n) bind(C)
+        import HID_T, C_INT
+        integer(HID_T), value :: group_id
+        integer(C_INT) :: n
+      end function get_num_datasets
+      subroutine get_datasets_c(group_id, name) bind(C, name='get_datasets')
+        import HID_T, C_PTR
+        integer(HID_T), value :: group_id
+        type(C_PTR) :: name(*)
+      end subroutine get_datasets_c
+    end interface
 
-    ! Get number of members in this location
-    call h5gn_members_f(object_id, './', n_members, hdf5_err)
+    ! Determine number of datasets and allocate
+    n = get_num_datasets(object_id)
+    allocate(names(n), names_(n), name_ptrs(n))
 
-    ! Get the number of datasets
-    dset_count = 0
-    do i = 0, n_members - 1
-      call h5gget_obj_info_idx_f(object_id, "./", i, name, type, hdf5_err)
-      if (type == H5G_DATASET_F ) then
-        dset_count = dset_count + 1
-      end if
+    ! Set C pointers to beginning of each string
+    do i = 1, size(names)
+      name_ptrs(i) = c_loc(names_(i))
     end do
 
-    ! Now we can allocate the storage for the ids
-    allocate(names(dset_count))
-    dset_count = 0
-    do i = 0, n_members - 1
-      call h5gget_obj_info_idx_f(object_id, "./", i, name, type, hdf5_err)
-      if (type == H5G_DATASET_F ) then
-        dset_count = dset_count + 1
-        names(dset_count) = trim(name)
-      end if
+    ! Get names of datasets and copy to Fortran strings
+    call get_datasets_c(object_id, name_ptrs)
+    do i = 1, size(names)
+      names(i) = to_f_string(names_(i))
     end do
 
   end subroutine get_datasets
@@ -432,21 +442,22 @@ contains
 ! GET_NAME Obtains the name of the current group in group_id
 !===============================================================================
 
-  function get_name(group_id, name_len_) result(name)
-    integer(HID_T),            intent(in) :: group_id
+  function get_name(object_id, name_len_) result(name)
+    integer(HID_T),            intent(in) :: object_id
     integer(SIZE_T), optional, intent(in) :: name_len_
 
-    character(len=150) :: name ! name of group
-    integer(SIZE_T) :: name_len, name_file_len
-    integer :: hdf5_err ! HDF5 error code
+    character(150) :: name  ! name of object
+    character(kind=C_CHAR) :: name_(150)
+    interface
+      subroutine get_name_c(obj_id, name) bind(C, name='get_name')
+        import HID_T, C_CHAR
+        integer(HID_T), value :: obj_id
+        character(kind=C_CHAR), intent(out) :: name(*)
+      end subroutine get_name_c
+    end interface
 
-    if (present(name_len_)) then
-      name_len = name_len_
-    else
-      name_len = 150
-    end if
-
-    call h5iget_name_f(group_id, name, name_len, name_file_len, hdf5_err)
+    call get_name_c(object_id, name_)
+    name = to_f_string(name_)
   end function get_name
 
 !===============================================================================

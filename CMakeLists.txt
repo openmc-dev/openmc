@@ -443,7 +443,9 @@ set(LIBOPENMC_CXX_SRC
   src/xml_interface.cpp
   src/pugixml/pugixml.cpp)
 add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC} ${LIBOPENMC_CXX_SRC})
-set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
+set_target_properties(libopenmc PROPERTIES
+  OUTPUT_NAME openmc
+  PUBLIC_HEADER include/openmc.h)
 add_executable(${program} src/main.cpp)
 
 #===============================================================================
@@ -501,7 +503,9 @@ add_custom_command(TARGET libopenmc POST_BUILD
 install(TARGETS ${program} libopenmc
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib)
+  ARCHIVE DESTINATION lib
+  PUBLIC_HEADER DESTINATION include
+  )
 install(DIRECTORY src/relaxng DESTINATION share/openmc)
 install(FILES man/man1/openmc.1 DESTINATION share/man/man1)
 install(FILES LICENSE DESTINATION "share/doc/${program}" RENAME copyright)

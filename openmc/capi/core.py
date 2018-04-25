@@ -20,32 +20,41 @@ class _Bank(Structure):
                 ('delayed_group', c_int)]
 
 
-_dll.openmc_calculate_volumes.restype = None
-_dll.openmc_finalize.restype = None
+_dll.openmc_calculate_volumes.restype = c_int
+_dll.openmc_calculate_volumes.errcheck = _error_handler
+_dll.openmc_finalize.restype = c_int
+_dll.openmc_finalize.errcheck = _error_handler
 _dll.openmc_find.argtypes = [POINTER(c_double*3), c_int, POINTER(c_int32),
                              POINTER(c_int32)]
 _dll.openmc_find.restype = c_int
 _dll.openmc_find.errcheck = _error_handler
-_dll.openmc_hard_reset.restype = None
+_dll.openmc_hard_reset.restype = c_int
+_dll.openmc_hard_reset.errcheck = _error_handler
 _dll.openmc_init.argtypes = [c_int, POINTER(c_char_p), c_void_p]
-_dll.openmc_init.restype = None
+_dll.openmc_init.restype = c_int
+_dll.openmc_init.errcheck = _error_handler
 _dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
 _dll.openmc_get_keff.restype = c_int
 _dll.openmc_get_keff.errcheck = _error_handler
 _dll.openmc_next_batch.argtypes = [POINTER(c_int)]
 _dll.openmc_next_batch.restype = c_int
 _dll.openmc_next_batch.errcheck = _error_handler
-_dll.openmc_plot_geometry.restype = None
+_dll.openmc_plot_geometry.restype = c_int
+_dll.openmc_plot_geometry.restype = _error_handler
 _dll.openmc_run.restype = c_int
 _dll.openmc_run.errcheck = _error_handler
-_dll.openmc_reset.restype = None
+_dll.openmc_reset.restype = c_int
+_dll.openmc_reset.errcheck = _error_handler
 _dll.openmc_source_bank.argtypes = [POINTER(POINTER(_Bank)), POINTER(c_int64)]
 _dll.openmc_source_bank.restype = c_int
 _dll.openmc_source_bank.errcheck = _error_handler
-_dll.openmc_simulation_init.restype = None
-_dll.openmc_simulation_finalize.restype = None
+_dll.openmc_simulation_init.restype = c_int
+_dll.openmc_simulation_init.errcheck = _error_handler
+_dll.openmc_simulation_finalize.restype = c_int
+_dll.openmc_simulation_finalize.errcheck = _error_handler
 _dll.openmc_statepoint_write.argtypes = [POINTER(c_char_p)]
-_dll.openmc_statepoint_write.restype = None
+_dll.openmc_statepoint_write.restype = c_int
+_dll.openmc_statepoint_write.errcheck = _error_handler
 
 
 def calculate_volumes():

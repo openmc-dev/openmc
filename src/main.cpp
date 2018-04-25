@@ -29,13 +29,13 @@ int main(int argc, char* argv[]) {
     err = openmc_run();
     break;
   case RUN_MODE_PLOTTING:
-    openmc_plot_geometry();
+    err = openmc_plot_geometry();
     break;
   case RUN_MODE_PARTICLE:
     if (openmc_master) err = openmc_particle_restart();
     break;
   case RUN_MODE_VOLUME:
-    openmc_calculate_volumes();
+    err = openmc_calculate_volumes();
     break;
   }
 

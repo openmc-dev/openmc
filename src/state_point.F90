@@ -58,8 +58,9 @@ contains
 ! OPENMC_STATEPOINT_WRITE writes an HDF5 statepoint file to disk
 !===============================================================================
 
-  subroutine openmc_statepoint_write(filename) bind(C)
+  function openmc_statepoint_write(filename) result(err) bind(C)
     type(C_PTR), intent(in), optional :: filename
+    integer(C_INT) :: err
 
     integer :: i, j, k
     integer :: i_xs
@@ -70,12 +71,12 @@ contains
     integer(HID_T) :: cmfd_group, tallies_group, tally_group, meshes_group, &
                       filters_group, filter_group, derivs_group, &
                       deriv_group, runtime_group
-    integer(C_INT) :: err
     real(C_DOUBLE) :: k_combined(2)
     character(MAX_WORD_LEN), allocatable :: str_array(:)
     character(C_CHAR), pointer :: string(:)
     character(len=:, kind=C_CHAR), allocatable :: filename_
 
+    err = 0
     if (present(filename)) then
       call c_f_pointer(filename, string, [MAX_FILE_LEN])
       filename_ = to_f_string(string)
@@ -458,7 +459,7 @@ contains
 
       call file_close(file_id)
     end if
-  end subroutine openmc_statepoint_write
+  end function openmc_statepoint_write
 
 !===============================================================================
 ! WRITE_SOURCE_POINT

@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -17,7 +16,7 @@ extern "C" {
     int delayed_group;
   };
 
-  void openmc_calculate_volumes();
+  int openmc_calculate_volumes();
   int openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n);
   int openmc_cell_get_id(int32_t index, int32_t* id);
   int openmc_cell_set_fill(int32_t index, int type, int32_t n, const int32_t* indices);
@@ -35,7 +34,7 @@ extern "C" {
   int openmc_filter_get_type(int32_t index, const char** type);
   int openmc_filter_set_id(int32_t index, int32_t id);
   int openmc_filter_set_type(int32_t index, const char* type);
-  void openmc_finalize();
+  int openmc_finalize();
   int openmc_find(double* xyz, int rtype, int32_t* id, int32_t* instance);
   int openmc_get_cell_index(int32_t id, int32_t* index);
   int openmc_get_filter_index(int32_t id, int32_t* index);
@@ -46,7 +45,7 @@ extern "C" {
   int openmc_get_nuclide_index(const char name[], int* index);
   int64_t openmc_get_seed();
   int openmc_get_tally_index(int32_t id, int32_t* index);
-  void openmc_hard_reset();
+  int openmc_hard_reset();
   int openmc_init(int argc, char* argv[], const void* intracomm);
   int openmc_init_f(const int* intracomm);
   int openmc_legendre_filter_get_order(int32_t index, int* order);
@@ -73,12 +72,12 @@ extern "C" {
   int openmc_next_batch(int* status);
   int openmc_nuclide_name(int index, char** name);
   int openmc_particle_restart();
-  void openmc_plot_geometry();
-  void openmc_reset();
+  int openmc_plot_geometry();
+  int openmc_reset();
   int openmc_run();
   void openmc_set_seed(int64_t new_seed);
-  void openmc_simulation_finalize();
-  void openmc_simulation_init();
+  int openmc_simulation_finalize();
+  int openmc_simulation_init();
   int openmc_source_bank(struct Bank** ptr, int64_t* n);
   int openmc_source_set_strength(int32_t index, double strength);
   int openmc_spatial_legendre_filter_get_order(int32_t index, int* order);
@@ -90,7 +89,7 @@ extern "C" {
   int openmc_sphharm_filter_get_cosine(int32_t index, char cosine[]);
   int openmc_sphharm_filter_set_order(int32_t index, int order);
   int openmc_sphharm_filter_set_cosine(int32_t index, const char cosine[]);
-  void openmc_statepoint_write(const char filename[]);
+  int openmc_statepoint_write(const char filename[]);
   int openmc_tally_get_active(int32_t index, bool* active);
   int openmc_tally_get_id(int32_t index, int32_t* id);
   int openmc_tally_get_filters(int32_t index, int32_t** indices, int* n);

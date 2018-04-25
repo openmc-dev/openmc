@@ -102,14 +102,11 @@ contains
 ! variables
 !===============================================================================
 
-  subroutine openmc_finalize() bind(C)
-
-#ifdef OPENMC_MPI
-    integer :: err
-#endif
+  function openmc_finalize() result(err) bind(C)
+    integer(C_INT) :: err
 
     ! Clear results
-    call openmc_reset()
+    err = openmc_reset()
 
     ! Reset global variables
     assume_separate = .false.
@@ -169,12 +166,13 @@ contains
     ! Deallocate arrays
     call free_memory()
 
+    err = 0
 #ifdef OPENMC_MPI
     ! Free all MPI types
     call MPI_TYPE_FREE(MPI_BANK, err)
 #endif
 
-  end subroutine openmc_finalize
+  end function openmc_finalize
 
 !===============================================================================
 ! OPENMC_FIND determines the ID or a cell or material at a given point in space
@@ -225,9 +223,11 @@ contains
 ! generator state
 !===============================================================================
 
-  subroutine openmc_hard_reset() bind(C)
+  function openmc_hard_reset() result(err) bind(C)
+    integer(C_INT) :: err
+
     ! Reset all tallies and timers
-    call openmc_reset()
+    err = openmc_reset()
 
     ! Reset total generations and keff guess
     keff = ONE
@@ -235,13 +235,15 @@ contains
 
     ! Reset the random number generator state
     call openmc_set_seed(DEFAULT_SEED)
-  end subroutine openmc_hard_reset
+  end function openmc_hard_reset
 
 !===============================================================================
 ! OPENMC_RESET resets tallies and timers
 !===============================================================================
 
-  subroutine openmc_reset() bind(C)
+  function openmc_reset() result(err) bind(C)
+    integer(C_INT) :: err
+
     integer :: i
 
     if (allocated(tallies)) then
@@ -289,7 +291,8 @@ contains
     call time_transport % reset()
     call time_finalize % reset()
 
-  end subroutine openmc_reset
+    err = 0
+  end function openmc_reset
 
 !===============================================================================
 ! FREE_MEMORY deallocates and clears  all global allocatable arrays in the

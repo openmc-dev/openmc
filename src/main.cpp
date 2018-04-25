@@ -1,19 +1,26 @@
+#include "error.h"
 #ifdef OPENMC_MPI
 #include "mpi.h"
 #endif
 #include "openmc.h"
 
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[]) {
   int err;
 
   // Initialize run -- when run with MPI, pass communicator
 #ifdef OPENMC_MPI
   MPI_Comm world {MPI_COMM_WORLD};
-  openmc_init(&world);
+  err = openmc_init(argc, argv, &world);
 #else
-  openmc_init(nullptr);
+  err = openmc_init(argc, argv, nullptr);
 #endif
+  if (err == -1) {
+    // This happens for the -h and -v flags
+    return 0;
+  } else if (err) {
+     openmc::fatal_error(openmc_err_msg);
+  }
 
   // start problem based on mode
   switch (openmc_run_mode) {

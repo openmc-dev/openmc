@@ -27,7 +27,7 @@ _dll.openmc_find.argtypes = [POINTER(c_double*3), c_int, POINTER(c_int32),
 _dll.openmc_find.restype = c_int
 _dll.openmc_find.errcheck = _error_handler
 _dll.openmc_hard_reset.restype = None
-_dll.openmc_init.argtypes = [c_void_p]
+_dll.openmc_init.argtypes = [c_int, POINTER(c_char_p), c_void_p]
 _dll.openmc_init.restype = None
 _dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
 _dll.openmc_get_keff.restype = c_int
@@ -126,7 +126,7 @@ def init(intracomm=None):
             address = MPI._addressof(intracomm)
             intracomm = c_void_p(address)
 
-    _dll.openmc_init(intracomm)
+    _dll.openmc_init(0, None, intracomm)
 
 
 def iter_batches():

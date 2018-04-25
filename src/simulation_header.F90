@@ -58,7 +58,7 @@ module simulation_header
   ! PARALLEL PROCESSING VARIABLES
 
 #ifdef _OPENMP
-  integer :: n_threads = NONE      ! number of OpenMP threads
+  integer(C_INT), bind(C, name='openmc_n_threads') :: n_threads = NONE      ! number of OpenMP threads
   integer :: thread_id             ! ID of a given thread
 #endif
 

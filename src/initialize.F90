@@ -1,6 +1,6 @@
 module initialize
 
-  use, intrinsic :: ISO_C_BINDING, only: c_loc
+  use, intrinsic :: ISO_C_BINDING
 
 #ifdef _OPENMP
   use omp_lib
@@ -8,27 +8,19 @@ module initialize
 
   use bank_header,     only: Bank
   use constants
-  use set_header,      only: SetInt
-  use error,           only: fatal_error, warning, write_message
-  use geometry_header, only: Cell, Universe, Lattice, RectLattice, HexLattice,&
-                             root_universe
-  use hdf5_interface,  only: file_open, read_attribute, file_close, HID_T
   use input_xml,       only: read_input_xml
-  use material_header, only: Material
   use message_passing
-  use mgxs_data,       only: read_mgxs, create_macro_xs
-  use output,          only: print_version, print_usage
   use random_lcg,      only: openmc_set_seed
   use settings
-#ifdef _OPENMP
-  use simulation_header, only: n_threads
-#endif
-  use string,          only: to_str, starts_with, ends_with, str_to_int
-  use tally_header,    only: TallyObject
-  use tally_filter
+  use string,          only: ends_with, to_f_string
   use timer_header
 
   implicit none
+
+  type(C_PTR), bind(C) :: openmc_path_input
+  type(C_PTR), bind(C) :: openmc_path_statepoint
+  type(C_PTR), bind(C) :: openmc_path_sourcepoint
+  type(C_PTR), bind(C) :: openmc_path_particle_restart
 
 contains
 
@@ -43,7 +35,6 @@ contains
     integer, intent(in), optional :: intracomm  ! MPI intracommunicator
     integer(C_INT) :: err
 
-    integer :: hdf5_err
 #ifdef _OPENMP
     character(MAX_WORD_LEN) :: envvar
 #endif
@@ -161,162 +152,41 @@ contains
 !===============================================================================
 
   subroutine read_command_line()
+    ! Arguments were already read on C++ side (initialize.cpp). Here we just
+    ! convert the C-style strings to Fortran style
 
-    integer :: i         ! loop index
-    integer :: argc      ! number of command line arguments
-    integer :: last_flag ! index of last flag
-    character(MAX_WORD_LEN) :: filetype
-    integer(HID_T) :: file_id
-    character(MAX_WORD_LEN), allocatable :: argv(:) ! command line arguments
+    character(kind=C_CHAR), pointer :: string(:)
+    interface
+      function is_null(ptr) result(x) bind(C)
+        import C_PTR, C_BOOL
+        type(C_PTR), value :: ptr
+        logical(C_BOOL) :: x
+      end function is_null
+    end interface
 
-    ! Check number of command line arguments and allocate argv
-    argc = COMMAND_ARGUMENT_COUNT()
-
-    ! Allocate and retrieve command arguments
-    allocate(argv(argc))
-    do i = 1, argc
-      call GET_COMMAND_ARGUMENT(i, argv(i))
-    end do
-
-    ! Process command arguments
-    last_flag = 0
-    i = 1
-    do while (i <= argc)
-      ! Check for flags
-      if (starts_with(argv(i), "-")) then
-        select case (argv(i))
-        case ('-p', '-plot', '--plot')
-          run_mode = MODE_PLOTTING
-          check_overlaps = .true.
-
-        case ('-n', '-particles', '--particles')
-          ! Read number of particles per cycle
-          i = i + 1
-          n_particles = str_to_int(argv(i))
-
-          ! Check that number specified was valid
-          if (n_particles == ERROR_INT) then
-            call fatal_error("Must specify integer after " // trim(argv(i-1)) &
-                 &// " command-line flag.")
-          end if
-        case ('-r', '-restart', '--restart')
-          ! Read path for state point/particle restart
-          i = i + 1
-
-          ! Check what type of file this is
-          file_id = file_open(argv(i), 'r', parallel=.true.)
-          call read_attribute(filetype, file_id, 'filetype')
-          call file_close(file_id)
-
-          ! Set path and flag for type of run
-          select case (trim(filetype))
-          case ('statepoint')
-            path_state_point = argv(i)
-            restart_run = .true.
-          case ('particle restart')
-            path_particle_restart = argv(i)
-            particle_restart_run = .true.
-          case default
-            call fatal_error("Unrecognized file after restart flag: " // filetype // ".")
-          end select
-
-          ! If its a restart run check for additional source file
-          if (restart_run .and. i + 1 <= argc) then
-
-            ! Increment arg
-            i = i + 1
-
-            ! Check if it has extension we can read
-            if (ends_with(argv(i), '.h5')) then
-
-              ! Check file type is a source file
-              file_id = file_open(argv(i), 'r', parallel=.true.)
-              call read_attribute(filetype, file_id, 'filetype')
-              call file_close(file_id)
-              if (filetype /= 'source') then
-                call fatal_error("Second file after restart flag must be a &
-                     &source file")
-              end if
-
-              ! It is a source file
-              path_source_point = argv(i)
-
-            else ! Different option is specified not a source file
-
-              ! Source is in statepoint file
-              path_source_point = path_state_point
-
-              ! Set argument back
-              i = i - 1
-
-            end if
-
-          else ! No command line arg after statepoint
-
-            ! Source is assumed to be in statepoint file
-            path_source_point = path_state_point
-
-          end if
-
-        case ('-g', '-geometry-debug', '--geometry-debug')
-          check_overlaps = .true.
-
-        case ('-c', '--volume')
-          run_mode = MODE_VOLUME
-
-        case ('-s', '--threads')
-          ! Read number of threads
-          i = i + 1
-
-#ifdef _OPENMP
-          ! Read and set number of OpenMP threads
-          n_threads = int(str_to_int(argv(i)), 4)
-          if (n_threads < 1) then
-            call fatal_error("Invalid number of threads specified on command &
-                 &line.")
-          end if
-          call omp_set_num_threads(n_threads)
-#else
-          if (master) call warning("Ignoring number of threads specified on &
-               &command line.")
-#endif
-
-        case ('-?', '-h', '-help', '--help')
-          call print_usage()
-          stop
-        case ('-v', '-version', '--version')
-          call print_version()
-          stop
-        case ('-t', '-track', '--track')
-          write_all_tracks = .true.
-        case default
-          call fatal_error("Unknown command line option: " // argv(i))
-        end select
-
-        last_flag = i
-      end if
-
-      ! Increment counter
-      i = i + 1
-    end do
-
-    ! Determine directory where XML input files are
-    if (argc > 0 .and. last_flag < argc) then
-      path_input = argv(last_flag + 1)
+    if (.not. is_null(openmc_path_input)) then
+      call c_f_pointer(openmc_path_input, string, [255])
+      path_input = to_f_string(string)
     else
       path_input = ''
     end if
-
-    ! Add slash at end of directory if it isn't there
-    if (.not. ends_with(path_input, "/") .and. len_trim(path_input) > 0) then
-      path_input = trim(path_input) // "/"
+    if (.not. is_null(openmc_path_statepoint)) then
+      call c_f_pointer(openmc_path_statepoint, string, [255])
+      path_state_point = to_f_string(string)
+    end if
+    if (.not. is_null(openmc_path_sourcepoint)) then
+      call c_f_pointer(openmc_path_sourcepoint, string, [255])
+      path_source_point = to_f_string(string)
+    end if
+    if (.not. is_null(openmc_path_particle_restart)) then
+      call c_f_pointer(openmc_path_particle_restart, string, [255])
+      path_particle_restart = to_f_string(string)
     end if
 
-    ! Free memory from argv
-    deallocate(argv)
-
-    ! TODO: Check that directory exists
-
+    ! Add slash at end of directory if it isn't there
+    if (len_trim(path_input) > 0 .and. .not. ends_with(path_input, "/")) then
+      path_input = trim(path_input) // "/"
+    end if
   end subroutine read_command_line
 
 end module initialize

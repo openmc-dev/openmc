@@ -104,7 +104,9 @@ contains
 
   subroutine openmc_finalize() bind(C)
 
+#ifdef OPENMC_MPI
     integer :: err
+#endif
 
     ! Clear results
     call openmc_reset()

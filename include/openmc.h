@@ -47,7 +47,7 @@ extern "C" {
   int64_t openmc_get_seed();
   int openmc_get_tally_index(int32_t id, int32_t* index);
   void openmc_hard_reset();
-  int openmc_init(const void* intracomm);
+  int openmc_init(int argc, char* argv[], const void* intracomm);
   int openmc_init_f(const int* intracomm);
   int openmc_legendre_filter_get_order(int32_t index, int* order);
   int openmc_legendre_filter_set_order(int32_t index, int order);
@@ -146,9 +146,11 @@ extern "C" {
   extern bool openmc_simulation_initialized;
   extern int openmc_verbosity;
 
-  // Variables that are shared by necessity (can be removed later)
+  // Variables that are shared by necessity (can be removed from public header
+  // later)
   extern bool openmc_master;
   extern int openmc_n_procs;
+  extern int openmc_n_threads;
   extern int openmc_rank;
   extern int64_t openmc_work;
 

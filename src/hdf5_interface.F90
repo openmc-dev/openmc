@@ -1105,7 +1105,7 @@ contains
 
     integer :: i
     integer(HSIZE_T) :: dims(1)
-    integer(C_SIZE_T) :: m
+    integer(C_SIZE_T) :: m, n
     logical(C_BOOL) :: indep_
     character(kind=C_CHAR), allocatable :: buffer_(:)
 
@@ -1118,7 +1118,8 @@ contains
     m = maxval(len_trim(buffer)) + 1
     allocate(buffer_(dims(1)*m))
     do i = 0, dims(1) - 1
-      buffer_(i*m+1 : (i+1)*m) = to_c_string(buffer(i+1))
+      n = len_trim(buffer(i+1)) + 1
+      buffer_(i*m+1 : i*m+n) = to_c_string(buffer(i+1))
     end do
 
     call write_string_c(group_id, 1, dims, m, to_c_string(name), &

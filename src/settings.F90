@@ -78,13 +78,13 @@ module settings
   integer(C_INT), bind(C, name='openmc_run_mode') :: run_mode = NONE
 
   ! Restart run
-  logical :: restart_run = .false.
+  logical(C_BOOL), bind(C, name='openmc_restart_run') :: restart_run = .false.
 
   ! The verbosity controls how much information will be printed to the screen
   ! and in logs
   integer(C_INT), bind(C, name='openmc_verbosity') :: verbosity = 7
 
-  logical :: check_overlaps = .false.
+  logical(C_BOOL), bind(C, name='openmc_check_overlaps') :: check_overlaps = .false.
 
   ! Trace for single particle
   integer    :: trace_batch
@@ -92,11 +92,13 @@ module settings
   integer(8) :: trace_particle
 
   ! Particle tracks
-  logical :: write_all_tracks = .false.
+  logical(C_BOOL), bind(C, name='openmc_write_all_tracks') :: &
+       write_all_tracks = .false.
   integer, allocatable :: track_identifiers(:,:)
 
   ! Particle restart run
-  logical :: particle_restart_run = .false.
+  logical(C_BOOL), bind(C, name='openmc_particle_restart_run') :: &
+       particle_restart_run = .false.
 
   ! Write out initial source
   logical :: write_initial_source = .false.

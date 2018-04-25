@@ -515,7 +515,7 @@ contains
       call write_message("Creating source file " // trim(filename) // "...", 5)
       if (master .or. parallel) then
         file_id = file_open(filename, 'w', parallel=.true.)
-        call write_dataset(file_id, "filetype", 'source')
+        call write_attribute(file_id, "filetype", 'source')
       end if
 
       call write_source_bank(file_id, work_index, source_bank)
@@ -831,10 +831,6 @@ contains
 
         ! Open source file
         file_id = file_open(path_source_point, 'r', parallel=.true.)
-
-        ! Read file type
-        call read_dataset(int_array(1), file_id, "filetype")
-
       end if
 
       ! Write out source

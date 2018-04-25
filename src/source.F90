@@ -11,7 +11,7 @@ module source
   use distribution_multivariate, only: SpatialBox
   use error,            only: fatal_error
   use geometry,         only: find_cell
-  use hdf5_interface,   only: file_open, file_close, read_dataset, HID_T
+  use hdf5_interface
   use math
   use message_passing,  only: rank
   use mgxs_header,      only: rev_energy_bins, num_energy_groups
@@ -54,10 +54,10 @@ contains
       file_id = file_open(path_source, 'r', parallel=.true.)
 
       ! Read the file type
-      call read_dataset(filetype, file_id, "filetype")
+      call read_attribute(filetype, file_id, "filetype")
 
       ! Check to make sure this is a source file
-      if (filetype /= 'source') then
+      if (filetype /= 'source' .and. filetype /= 'statepoint') then
         call fatal_error("Specified starting source file not a source file &
              &type.")
       end if

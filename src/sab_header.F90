@@ -100,7 +100,6 @@ contains
     integer :: n_energy, n_energy_out, n_mu
     integer :: i_closest
     integer :: n_temperature
-    integer(SIZE_T) :: name_len
     integer(HID_T) :: T_group
     integer(HID_T) :: elastic_group
     integer(HID_T) :: inelastic_group
@@ -120,8 +119,7 @@ contains
     type(VectorInt) :: temps_to_read
 
     ! Get name of table from group
-    name_len = len(this % name)
-    this % name = get_name(group_id, name_len)
+    this % name = get_name(group_id)
 
     ! Get rid of leading '/'
     this % name = trim(this % name(2:))

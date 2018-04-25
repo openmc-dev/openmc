@@ -12,8 +12,6 @@ module hdf5_interface
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5
-
   use error, only: fatal_error
 #ifdef PHDF5
   use message_passing, only: mpi_intracomm, MPI_INFO_NULL
@@ -94,7 +92,9 @@ module hdf5_interface
   public :: get_groups
   public :: get_datasets
   public :: get_name
-  public :: HID_T, HSIZE_T, SIZE_T
+
+  integer, public, parameter :: HID_T = C_INT64_T
+  integer, public, parameter :: HSIZE_T = C_LONG_LONG
 
   interface
     function attribute_typesize(obj_id, name) result(sz) bind(C)
@@ -442,9 +442,8 @@ contains
 ! GET_NAME Obtains the name of the current group in group_id
 !===============================================================================
 
-  function get_name(object_id, name_len_) result(name)
-    integer(HID_T),            intent(in) :: object_id
-    integer(SIZE_T), optional, intent(in) :: name_len_
+  function get_name(object_id) result(name)
+    integer(HID_T), intent(in) :: object_id
 
     character(150) :: name  ! name of object
     character(kind=C_CHAR) :: name_(150)

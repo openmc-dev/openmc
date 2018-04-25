@@ -2,7 +2,6 @@ module initialize
 
   use, intrinsic :: ISO_C_BINDING, only: c_loc
 
-  use hdf5
 #ifdef _OPENMP
   use omp_lib
 #endif
@@ -13,7 +12,7 @@ module initialize
   use error,           only: fatal_error, warning, write_message
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, HexLattice,&
                              root_universe
-  use hdf5_interface,  only: file_open, read_attribute, file_close
+  use hdf5_interface,  only: file_open, read_attribute, file_close, HID_T
   use input_xml,       only: read_input_xml
   use material_header, only: Material
   use message_passing
@@ -86,9 +85,6 @@ contains
       call omp_set_schedule(omp_sched_static, 0)
     end if
 #endif
-
-    ! Initialize HDF5 Fortran interface.
-    call h5open_f(hdf5_err)
 
     ! Read command line arguments
     call read_command_line()

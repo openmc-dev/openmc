@@ -30,7 +30,8 @@ contains
 ! RUN_PLOT controls the logic for making one or many plots
 !===============================================================================
 
-  subroutine openmc_plot_geometry() bind(C)
+  function openmc_plot_geometry() result(err) bind(C)
+    integer(C_INT) :: err
 
     integer :: i ! loop index for plots
 
@@ -50,7 +51,8 @@ contains
       end associate
     end do
 
-  end subroutine openmc_plot_geometry
+    err = 0
+  end function openmc_plot_geometry
 
 !===============================================================================
 ! POSITION_RGB computes the red/green/blue values for a given plot with the

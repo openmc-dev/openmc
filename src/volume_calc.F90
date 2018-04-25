@@ -36,9 +36,10 @@ contains
 ! the user has specified and writes results to HDF5 files
 !===============================================================================
 
-  subroutine openmc_calculate_volumes() bind(C)
+  function openmc_calculate_volumes() result(err) bind(C)
     integer :: i, j
     integer :: n
+    integer(C_INT) :: err
     real(8), allocatable :: volume(:,:)  ! volume mean/stdev in each domain
     character(10) :: domain_type
     character(MAX_FILE_LEN) :: filename  ! filename for HDF5 file
@@ -99,7 +100,8 @@ contains
       call write_message("Elapsed time: " // trim(to_str(time_volume % &
            get_value())) // " s", 6)
     end if
-  end subroutine openmc_calculate_volumes
+    err = 0
+  end function openmc_calculate_volumes
 
 !===============================================================================
 ! GET_VOLUME stochastically determines the volume of a set of domains along with

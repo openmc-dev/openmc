@@ -312,6 +312,7 @@ contains
 
   subroutine finalize_batch()
 
+    integer(C_INT) :: err
 #ifdef OPENMC_MPI
     integer :: mpi_err ! MPI error code
 #endif
@@ -347,7 +348,7 @@ contains
 
     ! Write out state point if it's been specified for this batch
     if (statepoint_batch % contains(current_batch)) then
-      call openmc_statepoint_write()
+      err = openmc_statepoint_write()
     end if
 
     ! Write out source point if it's been specified for this batch
@@ -396,8 +397,12 @@ contains
 ! INITIALIZE_SIMULATION
 !===============================================================================
 
-  subroutine openmc_simulation_init() bind(C)
+  function openmc_simulation_init() result(err) bind(C)
+    integer(C_INT) :: err
+
     integer :: i
+
+    err = 0
 
     ! Skip if simulation has already been initialized
     if (simulation_initialized) return
@@ -456,14 +461,15 @@ contains
     ! Set flag indicating initialization is done
     simulation_initialized = .true.
 
-  end subroutine openmc_simulation_init
+  end function openmc_simulation_init
 
 !===============================================================================
 ! FINALIZE_SIMULATION calculates tally statistics, writes tallies, and displays
 ! execution time and results
 !===============================================================================
 
-  subroutine openmc_simulation_finalize() bind(C)
+  function openmc_simulation_finalize() result(err) bind(C)
+    integer(C_INT) :: err
 
     integer    :: i       ! loop index
 #ifdef OPENMC_MPI
@@ -478,6 +484,8 @@ contains
     integer :: result_block
 #endif
 #endif
+
+    err = 0
 
     ! Skip if simulation was never run
     if (.not. simulation_initialized) return
@@ -553,7 +561,7 @@ contains
     need_depletion_rx = .false.
     simulation_initialized = .false.
 
-  end subroutine openmc_simulation_finalize
+  end function openmc_simulation_finalize
 
 !===============================================================================
 ! CALCULATE_WORK determines how many particles each processor should simulate

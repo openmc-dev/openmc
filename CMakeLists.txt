@@ -70,7 +70,7 @@ if(NOT DEFINED HDF5_PREFER_PARALLEL)
   endif()
 endif()
 
-find_package(HDF5 COMPONENTS Fortran_HL)
+find_package(HDF5 COMPONENTS HL)
 if(NOT HDF5_FOUND)
   message(FATAL_ERROR "Could not find HDF5")
 endif()

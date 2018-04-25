@@ -246,7 +246,6 @@ contains
       type(VectorInt), intent(out)   :: temps_to_read ! Temperatures to read
       integer, intent(out)           :: order_dim     ! Scattering data order size
 
-      integer(SIZE_T) :: name_len
       integer(HID_T) :: kT_group
       character(MAX_WORD_LEN), allocatable :: dset_names(:)
       real(8), allocatable :: temps_available(:) ! temperatures available
@@ -257,8 +256,7 @@ contains
       integer :: ipol, iazi
 
       ! Get name of dataset from group
-      name_len = len(this % name)
-      this % name = get_name(xs_id, name_len)
+      this % name = get_name(xs_id)
 
       ! Get rid of leading '/'
       this % name = trim(this % name(2:))

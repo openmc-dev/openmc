@@ -2,8 +2,6 @@ module openmc_api
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5, only: h5close_f
-
   use bank_header,     only: openmc_source_bank
   use constants,       only: K_BOLTZMANN
   use eigenvalue,      only: k_sum, openmc_get_keff
@@ -168,9 +166,6 @@ contains
 
     ! Deallocate arrays
     call free_memory()
-
-    ! Close FORTRAN interface.
-    call h5close_f(err)
 
 #ifdef OPENMC_MPI
     ! Free all MPI types

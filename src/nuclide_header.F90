@@ -290,7 +290,6 @@ contains
     integer(HID_T) :: total_nu
     integer(HID_T) :: fer_group                 ! fission_energy_release group
     integer(HID_T) :: fer_dset
-    integer(SIZE_T) :: name_len
     integer(HSIZE_T) :: j
     integer(HSIZE_T) :: dims(1)
     character(MAX_WORD_LEN) :: temp_str
@@ -304,8 +303,7 @@ contains
     type(VectorInt) :: index_inelastic_scatter
 
     ! Get name of nuclide from group
-    name_len = len(this % name)
-    this % name = get_name(group_id, name_len)
+    this % name = get_name(group_id)
 
     ! Get rid of leading '/'
     this % name = trim(this % name(2:))

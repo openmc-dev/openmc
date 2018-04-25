@@ -5,7 +5,6 @@ project(openmc Fortran C CXX)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/include)
 
 # Set module path
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
@@ -456,10 +455,7 @@ add_executable(${program} src/main.cpp)
 set_property(TARGET ${program} libopenmc pugixml_fortran
   PROPERTY LINKER_LANGUAGE Fortran)
 
-target_include_directories(libopenmc
-  PUBLIC include ${HDF5_INCLUDE_DIRS}
-  PRIVATE ${CMAKE_BINARY_DIR}/include
-  )
+target_include_directories(libopenmc PUBLIC include ${HDF5_INCLUDE_DIRS})
 
 # The executable and the faddeeva package use only one language.  They can be
 # set via target_compile_options which accepts a list.

@@ -270,13 +270,15 @@ Functions
 
    Reset tallies, timers, and pseudo-random number generator state
 
-.. c:function:: void openmc_init(const int* intracomm)
+.. c:function:: void openmc_init(int argc, char** argv, const void* intracomm)
 
    Initialize OpenMC
 
+   :param int argc: Number of command-line arguments (including command)
+   :param char** argv: Command-line arguments
    :param intracomm: MPI intracommunicator. If MPI is not being used, a null
                      pointer should be passed.
-   :type intracomm: const int*
+   :type intracomm: const void*
 
 .. c:function:: int openmc_load_nuclide(char name[])
 

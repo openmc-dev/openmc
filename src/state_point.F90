@@ -493,7 +493,7 @@ contains
         ! Create separate source file
         if (master .or. parallel) then
           file_id = file_open(filename, 'w', parallel=.true.)
-          call write_dataset(file_id, "filetype", 'source')
+          call write_attribute(file_id, "filetype", 'source')
         end if
       else
         filename = trim(path_output) // 'statepoint.' // &

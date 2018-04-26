@@ -17,11 +17,16 @@ from .mesh import Mesh
 __all__ = ['Filter', 'AzimuthalFilter', 'CellFilter',
            'CellbornFilter', 'CellfromFilter', 'DistribcellFilter',
            'DelayedGroupFilter', 'EnergyFilter', 'EnergyoutFilter',
-           'EnergyFunctionFilter', 'MaterialFilter', 'MeshFilter',
-           'MeshSurfaceFilter', 'MuFilter', 'PolarFilter', 'SurfaceFilter',
-           'UniverseFilter', 'filters']
+           'EnergyFunctionFilter', 'LegendreFilter', 'MaterialFilter', 'MeshFilter',
+           'MeshSurfaceFilter', 'MuFilter', 'PolarFilter', 'SphericalHarmonicsFilter',
+           'SpatialLegendreFilter', 'SurfaceFilter',
+           'UniverseFilter', 'ZernikeFilter', 'filters']
 
 # Tally functions
+_dll.openmc_cell_filter_get_bins.argtypes = [
+    c_int32, POINTER(POINTER(c_int32)), POINTER(c_int32)]
+_dll.openmc_cell_filter_get_bins.restype = c_int
+_dll.openmc_cell_filter_get_bins.errcheck = _error_handler
 _dll.openmc_energy_filter_get_bins.argtypes = [
     c_int32, POINTER(POINTER(c_double)), POINTER(c_int32)]
 _dll.openmc_energy_filter_get_bins.restype = c_int
@@ -47,6 +52,12 @@ _dll.openmc_filter_set_type.errcheck = _error_handler
 _dll.openmc_get_filter_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_filter_index.restype = c_int
 _dll.openmc_get_filter_index.errcheck = _error_handler
+_dll.openmc_legendre_filter_get_order.argtypes = [c_int32, POINTER(c_int)]
+_dll.openmc_legendre_filter_get_order.restype = c_int
+_dll.openmc_legendre_filter_get_order.errcheck = _error_handler
+_dll.openmc_legendre_filter_set_order.argtypes = [c_int32, c_int]
+_dll.openmc_legendre_filter_set_order.restype = c_int
+_dll.openmc_legendre_filter_set_order.errcheck = _error_handler
 _dll.openmc_material_filter_get_bins.argtypes = [
     c_int32, POINTER(POINTER(c_int32)), POINTER(c_int32)]
 _dll.openmc_material_filter_get_bins.restype = c_int
@@ -66,7 +77,24 @@ _dll.openmc_meshsurface_filter_get_mesh.errcheck = _error_handler
 _dll.openmc_meshsurface_filter_set_mesh.argtypes = [c_int32, c_int32]
 _dll.openmc_meshsurface_filter_set_mesh.restype = c_int
 _dll.openmc_meshsurface_filter_set_mesh.errcheck = _error_handler
-
+_dll.openmc_spatial_legendre_filter_get_order.argtypes = [c_int32, POINTER(c_int)]
+_dll.openmc_spatial_legendre_filter_get_order.restype = c_int
+_dll.openmc_spatial_legendre_filter_get_order.errcheck = _error_handler
+_dll.openmc_spatial_legendre_filter_set_order.argtypes = [c_int32, c_int]
+_dll.openmc_spatial_legendre_filter_set_order.restype = c_int
+_dll.openmc_spatial_legendre_filter_set_order.errcheck = _error_handler
+_dll.openmc_sphharm_filter_get_order.argtypes = [c_int32, POINTER(c_int)]
+_dll.openmc_sphharm_filter_get_order.restype = c_int
+_dll.openmc_sphharm_filter_get_order.errcheck = _error_handler
+_dll.openmc_sphharm_filter_set_order.argtypes = [c_int32, c_int]
+_dll.openmc_sphharm_filter_set_order.restype = c_int
+_dll.openmc_sphharm_filter_set_order.errcheck = _error_handler
+_dll.openmc_zernike_filter_get_order.argtypes = [c_int32, POINTER(c_int)]
+_dll.openmc_zernike_filter_get_order.restype = c_int
+_dll.openmc_zernike_filter_get_order.errcheck = _error_handler
+_dll.openmc_zernike_filter_set_order.argtypes = [c_int32, c_int]
+_dll.openmc_zernike_filter_set_order.restype = c_int
+_dll.openmc_zernike_filter_set_order.errcheck = _error_handler
 
 class Filter(_FortranObjectWithID):
     __instances = WeakValueDictionary()
@@ -150,6 +178,13 @@ class AzimuthalFilter(Filter):
 class CellFilter(Filter):
     filter_type = 'cell'
 
+    @property
+    def bins(self):
+        cells = POINTER(c_int32)()
+        n = c_int32()
+        _dll.openmc_cell_filter_get_bins(self._index, cells, n)
+        return as_array(cells, (n.value,))
+
 
 class CellbornFilter(Filter):
     filter_type = 'cellborn'
@@ -169,6 +204,20 @@ class DistribcellFilter(Filter):
 
 class EnergyFunctionFilter(Filter):
     filter_type = 'energyfunction'
+
+
+class LegendreFilter(Filter):
+    filter_type = 'legendre'
+
+    @property
+    def order(self):
+        temp_order = c_int()
+        _dll.openmc_legendre_filter_get_order(self._index, temp_order)
+        return temp_order.value
+
+    @order.setter
+    def order(self, order):
+        _dll.openmc_legendre_filter_set_order(self._index, order)
 
 
 class MaterialFilter(Filter):
@@ -241,12 +290,54 @@ class PolarFilter(Filter):
     filter_type = 'polar'
 
 
+class SphericalHarmonicsFilter(Filter):
+    filter_type = 'sphericalharmonics'
+
+    @property
+    def order(self):
+        temp_order = c_int()
+        _dll.openmc_sphharm_filter_get_order(self._index, temp_order)
+        return temp_order.value
+
+    @order.setter
+    def order(self, order):
+        _dll.openmc_sphharm_filter_set_order(self._index, order)
+
+
+class SpatialLegendreFilter(Filter):
+    filter_type = 'spatiallegendre'
+
+    @property
+    def order(self):
+        temp_order = c_int()
+        _dll.openmc_spatial_legendre_filter_get_order(self._index, temp_order)
+        return temp_order.value
+
+    @order.setter
+    def order(self, order):
+        _dll.openmc_spatial_legendre_filter_set_order(self._index, order)
+
+
 class SurfaceFilter(Filter):
     filter_type = 'surface'
 
 
 class UniverseFilter(Filter):
     filter_type = 'universe'
+
+
+class ZernikeFilter(Filter):
+    filter_type = 'zernike'
+
+    @property
+    def order(self):
+        temp_order = c_int()
+        _dll.openmc_zernike_filter_get_order(self._index, temp_order)
+        return temp_order.value
+
+    @order.setter
+    def order(self, order):
+        _dll.openmc_zernike_filter_set_order(self._index, order)
 
 
 _FILTER_TYPE_MAP = {
@@ -259,13 +350,17 @@ _FILTER_TYPE_MAP = {
     'energy': EnergyFilter,
     'energyout': EnergyoutFilter,
     'energyfunction': EnergyFunctionFilter,
+    'legendre': LegendreFilter,
     'material': MaterialFilter,
     'mesh': MeshFilter,
     'meshsurface': MeshSurfaceFilter,
     'mu': MuFilter,
     'polar': PolarFilter,
+    'sphericalharmoics': SphericalHarmonicsFilter,
+    'spatiallegendre': SpatialLegendreFilter,
     'surface': SurfaceFilter,
     'universe': UniverseFilter,
+    'zernike': ZernikeFilter
 }
 
 

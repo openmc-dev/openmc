@@ -379,6 +379,143 @@ contains
   end subroutine atomic_relaxation
 
 !===============================================================================
+! PAIR_PRODUCTION samples the kinetic energy and direction of the electron and
+! positron created when a photon is absorbed near an atomic nucleus. The
+! simulation procedure follows the semiempirical model outlined in F. Salvat, J.
+! M. Fernández-Varea, and J. Sempau, "PENELOPE-2011: A Code System for Monte
+! Carlo Simulation of Electron and Photon Transport," OECD-NEA,
+! Issy-les-Moulineaux, France (2011).
+!===============================================================================
+
+  subroutine pair_production(elm, alpha, E_electron, E_positron, uvw_electron, &
+       uvw_positron)
+    type(PhotonInteraction), intent(in) :: elm
+    real(8), intent(in)  :: alpha
+    real(8), intent(out) :: E_electron
+    real(8), intent(out) :: E_positron
+    real(8), intent(out) :: uvw_electron(3)
+    real(8), intent(out) :: uvw_positron(3)
+
+    integer :: i
+    real(8) :: f
+    real(8) :: a
+    real(8) :: b
+    real(8) :: r
+    real(8) :: rn
+    real(8) :: beta
+    real(8) :: mu
+    real(8) :: phi
+    real(8) :: e, e_min, e_max
+    real(8) :: t1, t2, t3, t4
+    real(8) :: u1, u2
+    real(8) :: phi1, phi2
+    real(8) :: phi1_max, phi2_max
+    real(8) :: c(4)
+
+    ! Compute the minimum and maximum values of the electron reduced energy,
+    ! i.e. the fraction of the photon energy that is given to the electron
+    e_min = ONE/alpha
+    e_max = ONE - ONE/alpha
+
+    ! The reduced screening radius r is the ratio of the screening radius to
+    ! the Compton wavelength of the electron, where the screening radius is
+    ! obtained under the assumption that the Coulomb field of the nucleus is
+    ! exponentially screened by atomic electrons. This allows us to use a
+    ! simplified atomic form factor and analytical approximations of the
+    ! screening functions in the pair production DCS instead of computing the
+    ! screening functions numerically.
+    r = elm % reduced_screening_radius
+
+    ! The analytical approximation of the DCS underestimates the cross section
+    ! at low energies. The correction factor f compensates for this.
+    a = sqrt(TWO/alpha)
+    c = elm % correction_factor_coeffs
+    f = c(1)*a + c(2)*a**2 + c(3)*a**3 + c(4)*a**4
+
+    ! Calculate phi_1(1/2) and phi_2(1/2). The unnormalized PDF for the reduced
+    ! energy is given by p = 2*(1/2 - e)^2*phi_1(e) + phi_2(e), where phi_1 and
+    ! phi_2 are non-negative and maximum at e = 1/2.
+    b = TWO*r/alpha
+    t1 = TWO*log(ONE + b**2)
+    t2 = b*atan(ONE/b)
+    t3 = b**2*(FOUR - FOUR*t2 - THREE*log(ONE + ONE/b**2))
+    t4 = FOUR*log(r) - FOUR*elm % coulomb_correction + f
+    phi1_max = 7.0_8/THREE - t1 - 6.0_8*t2 - t3 + t4
+    phi2_max = 11.0_8/6.0_8 - t1 - THREE*t2 + HALF*t3 + t4
+
+    ! To aid sampling, the unnormalized PDF can be expressed as
+    ! p = u_1*U_1(e)*pi_1(e) + u_2*U_2(e)*pi_2(e), where pi_1 and pi_2 are
+    ! normalized PDFs on the interval (e_min, e_max) from which values of e can
+    ! be sampled using the inverse transform method, and
+    ! U_1 = phi_1(e)/phi_1(1/2) and U_2 = phi_2(e)/phi_2(1/2) are valid
+    ! rejection functions. The reduced energy can now be sampled using a
+    ! combination of the composition and rejection methods.
+    u1 = TWO/THREE*(HALF - ONE/alpha)**2*phi1_max
+    u2 = phi2_max
+    do
+      rn = prn()
+
+      ! Sample the index i in (1, 2) using the point probabilities
+      ! p(1) = u_1/(u_1 + u_2) and p(2) = u_2/(u_1 + u_2)
+      if (prn() < u1/(u1 + u2)) then
+        i = 1
+
+        ! Sample e from pi_1 using the inverse transform method
+        if (rn >= HALF) then
+          e = HALF + (HALF - ONE/alpha)*(TWO*rn - ONE)**(ONE/THREE)
+        else
+          e = HALF - (HALF - ONE/alpha)*(ONE - TWO*rn)**(ONE/THREE)
+        end if
+      else
+        i = 2
+
+        ! Sample e from pi_2 using the inverse transform method
+        e = ONE/alpha + (HALF - ONE/alpha)*TWO*rn
+      end if
+
+      ! Calculate phi_i(e) and deliver e if rn <= U_i(e)
+      b = r/(TWO*alpha*e*(ONE - e))
+      t1 = TWO*log(ONE + b**2)
+      t2 = b*atan(ONE/b)
+      t3 = b**2*(FOUR - FOUR*t2 - THREE*log(ONE + ONE/b**2))
+      if (i == 1) then
+        phi1 = 7.0_8/THREE - t1 - 6.0_8*t2 - t3 + t4
+        if (prn() <= phi1/phi1_max) exit
+      else
+        phi2 = 11.0_8/6.0_8 - t1 - THREE*t2 + HALF*t3 + t4
+        if (prn() <= phi2/phi2_max) exit
+      end if
+    end do
+
+    ! Compute the kinetic energy of the electron and the positron
+    E_electron = (alpha*e - ONE)*MASS_ELECTRON
+    E_positron = (alpha*(ONE - e) - ONE)*MASS_ELECTRON
+
+    ! Sample the direction of the electron. The cosine of the polar angle of
+    ! the direction relative to the incident photon is sampled from
+    ! p(mu) = C/(1 - beta*mu)^2 using the inverse transform method.
+    beta = sqrt(E_electron*(E_electron + TWO*MASS_ELECTRON)) &
+         / (E_electron + MASS_ELECTRON)
+    rn = TWO*prn() - ONE
+    mu = (rn + beta)/(rn*beta + ONE)
+    phi = TWO*PI*prn()
+    uvw_electron(1) = mu
+    uvw_electron(2) = sqrt(ONE - mu*mu)*cos(phi)
+    uvw_electron(3) = sqrt(ONE - mu*mu)*sin(phi)
+
+    ! Sample the direction of the positron
+    beta = sqrt(E_positron*(E_positron + TWO*MASS_ELECTRON)) &
+         / (E_positron + MASS_ELECTRON)
+    rn = TWO*prn() - ONE
+    mu = (rn + beta)/(rn*beta + ONE)
+    phi = TWO*PI*prn()
+    uvw_positron(1) = mu
+    uvw_positron(2) = sqrt(ONE - mu*mu)*cos(phi)
+    uvw_positron(3) = sqrt(ONE - mu*mu)*sin(phi)
+
+  end subroutine pair_production
+
+!===============================================================================
 ! THICK_TARGET_BREMSSTRAHLUNG
 !===============================================================================
 

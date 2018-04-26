@@ -12,7 +12,7 @@ module physics
   use particle_header,        only: Particle
   use photon_header
   use photon_physics,         only: rayleigh_scatter, compton_scatter, &
-                                    atomic_relaxation, &
+                                    atomic_relaxation, pair_production, &
                                     thick_target_bremsstrahlung
   use physics_common
   use random_lcg,             only: prn, advance_prn_seed, prn_set_stream
@@ -172,10 +172,15 @@ contains
     real(8) :: alpha        ! photon energy divided by electron rest mass
     real(8) :: alpha_out    ! outgoing photon energy over electron rest mass
     real(8) :: mu           ! scattering cosine
+    real(8) :: mu_electron  ! electron scattering cosine
+    real(8) :: mu_positron  ! positron scattering cosine
     real(8) :: phi          ! azimuthal angle
-    real(8) :: E_electron   ! electron energy
     real(8) :: uvw(3)       ! new direction
     real(8) :: rel_vel      ! relative velocity of electron
+    real(8) :: E_electron   ! electron energy
+    real(8) :: E_positron   ! positron energy
+    real(8) :: uvw_electron(3) ! new electron direction
+    real(8) :: uvw_positron(3) ! new positron direction
 
     ! Kill photon if below energy cutoff -- an extra check is made here because
     ! photons with energy below the cutoff may have been produced by neutrons
@@ -273,28 +278,25 @@ contains
         end do
       end if
       prob = prob_after
+
+      ! Pair production
+      prob = prob + micro_photon_xs(i_element) % pair_production
+      if (prob > cutoff) then
+
+        call pair_production(elm, alpha, E_electron, E_positron, uvw_electron, &
+             uvw_positron)
+
+        ! Create secondary electron
+        call p % create_secondary(uvw_electron, E_electron, ELECTRON, .true.)
+
+        ! Create secondary positron
+        call p % create_secondary(uvw_positron, E_positron, POSITRON, .true.)
+
+        p % event_MT = PAIR_PROD
+        p % alive = .false.
+        p % E = ZERO
+      end if
     end associate
-
-    ! Pair production
-    prob = prob + micro_photon_xs(i_element) % pair_production
-    if (prob > cutoff) then
-      ! Sample angle isotropically
-      mu = TWO*prn() - ONE
-      phi = TWO*PI*prn()
-      uvw(1) = mu
-      uvw(2) = sqrt(ONE - mu*mu)*cos(phi)
-      uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
-
-      ! Compute the kinetic energy of each particle
-      E_electron = HALF * (p % E - 2 * MASS_ELECTRON)
-
-      ! Create electron-positron pair traveling in opposite directions
-      call p % create_secondary( uvw, E_electron, ELECTRON, .true.)
-      call p % create_secondary(-uvw, E_electron, POSITRON, .true.)
-      p % event_MT = PAIR_PROD
-      p % alive = .false.
-      p % E = ZERO
-    end if
 
   end subroutine sample_photon_reaction
 

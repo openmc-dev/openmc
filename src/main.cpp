@@ -44,6 +44,6 @@ int main(int argc, char* argv[]) {
 
   // If MPI is in use and enabled, terminate it
 #ifdef MPI
-  err = MPI_Finalize();
+  MPI_Finalize();
 #endif
 }

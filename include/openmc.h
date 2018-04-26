@@ -17,6 +17,7 @@ extern "C" {
   };
 
   int openmc_calculate_volumes();
+  int openmc_cell_filter_get_bins(int32_t index, int32_t** cells, int32_t* n);
   int openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n);
   int openmc_cell_get_id(int32_t index, int32_t* id);
   int openmc_cell_set_fill(int32_t index, int type, int32_t n, const int32_t* indices);

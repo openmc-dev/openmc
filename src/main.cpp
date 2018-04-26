@@ -38,12 +38,14 @@ int main(int argc, char* argv[]) {
     err = openmc_calculate_volumes();
     break;
   }
+  if (err) openmc::fatal_error(openmc_err_msg);
 
   // Finalize and free up memory
-  openmc_finalize();
+  err = openmc_finalize();
+  if (err) openmc::fatal_error(openmc_err_msg);
 
   // If MPI is in use and enabled, terminate it
-#ifdef MPI
+#ifdef OPENMC_MPI
   MPI_Finalize();
 #endif
 }

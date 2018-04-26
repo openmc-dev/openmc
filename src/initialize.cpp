@@ -71,7 +71,8 @@ void initialize_mpi(MPI_Comm intracomm)
 
   // Initialize MPI
   int flag;
-  if (!MPI_Initialized(&flag)) MPI_Init(nullptr, nullptr);
+  MPI_Initialized(&flag);
+  if (!flag) MPI_Init(nullptr, nullptr);
 
   // Determine number of processes and rank for each
   MPI_Comm_size(intracomm, &openmc::mpi::n_procs);

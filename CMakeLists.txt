@@ -433,6 +433,7 @@ set(LIBOPENMC_FORTRAN_SRC
 )
 set(LIBOPENMC_CXX_SRC
   src/initialize.cpp
+  src/finalize.cpp
   src/hdf5_interface.cpp
   src/message_passing.cpp
   src/plot.cpp

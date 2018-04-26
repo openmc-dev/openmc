@@ -105,6 +105,11 @@ contains
   function openmc_finalize() result(err) bind(C)
     integer(C_INT) :: err
 
+    interface
+      subroutine openmc_free_bank() bind(C)
+      end subroutine openmc_free_bank
+    end interface
+
     ! Clear results
     err = openmc_reset()
 
@@ -170,6 +175,7 @@ contains
 #ifdef OPENMC_MPI
     ! Free all MPI types
     call MPI_TYPE_FREE(MPI_BANK, err)
+    call openmc_free_bank()
 #endif
 
   end function openmc_finalize

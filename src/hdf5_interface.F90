@@ -1103,7 +1103,7 @@ contains
     character(*), intent(in), target   :: buffer(:)  ! read data to here
     logical,      intent(in), optional :: indep ! independent I/O
 
-    integer :: i
+    integer(HSIZE_T) :: i
     integer(HSIZE_T) :: dims(1)
     integer(C_SIZE_T) :: m, n
     logical(C_BOOL) :: indep_

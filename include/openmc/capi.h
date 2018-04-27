@@ -48,6 +48,7 @@ extern "C" {
   int64_t openmc_get_seed();
   int openmc_get_tally_index(int32_t id, int32_t* index);
   void openmc_get_tally_next_id(int32_t* id);
+  int openmc_global_tallies(double** ptr);
   int openmc_hard_reset();
   int openmc_init(int argc, char* argv[], const void* intracomm);
   int openmc_init_f(const int* intracomm);

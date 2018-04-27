@@ -50,14 +50,19 @@ extern "C" int thread_id;  //!< ID of a given thread
 // Functions
 //==============================================================================
 
+//! Determine number of particles to transport per process
+void calculate_work();
+
 //! Initialize simulation
 extern "C" void openmc_simulation_init_c();
 
 //! Determine overall generation number
 extern "C" int overall_generation();
 
-//! Determine number of particles to transport per process
-void calculate_work();
+#ifdef OPENMC_MPI
+extern "C" void broadcast_results();
+extern "C" void broadcast_triggers();
+#endif
 
 } // namespace openmc
 

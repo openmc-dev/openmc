@@ -330,6 +330,11 @@ contains
 #endif
     character(MAX_FILE_LEN) :: filename
 
+    interface
+      subroutine broadcast_triggers() bind(C)
+      end subroutine broadcast_triggers
+    end interface
+
     ! Reduce tallies onto master process and accumulate
     call time_tallies % start()
     call accumulate_tallies()
@@ -351,8 +356,7 @@ contains
     ! Check_triggers
     if (master) call check_triggers()
 #ifdef OPENMC_MPI
-    call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, &
-         mpi_intracomm, mpi_err)
+    call broadcast_triggers()
 #endif
     if (satisfy_triggers .or. &
          (trigger_on .and. current_batch == n_max_batches)) then
@@ -488,6 +492,9 @@ contains
     interface
       subroutine print_overlap_check() bind(C)
       end subroutine print_overlap_check
+
+      subroutine broadcast_results() bind(C)
+      end subroutine broadcast_results
     end interface
 
     err = 0
@@ -515,37 +522,7 @@ contains
     total_gen = total_gen + current_batch*gen_per_batch
 
 #ifdef OPENMC_MPI
-    ! Broadcast tally results so that each process has access to results
-    if (allocated(tallies)) then
-      do i = 1, size(tallies)
-        associate (results => tallies(i) % obj % results)
-          ! Create a new datatype that consists of all values for a given filter
-          ! bin and then use that to broadcast. This is done to minimize the
-          ! chance of the 'count' argument of MPI_BCAST exceeding 2**31
-          n = size(results, 3)
-          count_per_filter = size(results, 1) * size(results, 2)
-          call MPI_TYPE_CONTIGUOUS(count_per_filter, MPI_DOUBLE, &
-               result_block, mpi_err)
-          call MPI_TYPE_COMMIT(result_block, mpi_err)
-          call MPI_BCAST(results, n, result_block, 0, mpi_intracomm, mpi_err)
-          call MPI_TYPE_FREE(result_block, mpi_err)
-        end associate
-      end do
-    end if
-
-    ! Also broadcast global tally results
-    n = size(global_tallies)
-    call MPI_BCAST(global_tallies, n, MPI_DOUBLE, 0, mpi_intracomm, mpi_err)
-
-    ! These guys are needed so that non-master processes can calculate the
-    ! combined estimate of k-effective
-    tempr(1) = k_col_abs
-    tempr(2) = k_col_tra
-    tempr(3) = k_abs_tra
-    call MPI_BCAST(tempr, 3, MPI_REAL8, 0, mpi_intracomm, mpi_err)
-    k_col_abs = tempr(1)
-    k_col_tra = tempr(2)
-    k_abs_tra = tempr(3)
+    call broadcast_results()
 #endif
 
     ! Write tally results to tallies.out

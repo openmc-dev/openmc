@@ -182,41 +182,6 @@ class Mesh(IDManagerMixin):
 
         return mesh
 
-    def cell_generator(self):
-        """Generator function to traverse through every [i,j,k] index of the
-        mesh
-
-        For example the following code:
-
-        .. code-block:: python
-
-            for mesh_index in mymesh.cell_generator():
-                print(mesh_index)
-
-        will produce the following output for a 3-D 2x2x2 mesh in mymesh::
-
-            [1, 1, 1]
-            [2, 1, 1]
-            [1, 2, 1]
-            [2, 2, 1]
-            ...
-
-
-        """
-
-        if len(self.dimension) == 1:
-            for x in range(self.dimension[0]):
-                    yield [x + 1, 1, 1]
-        elif len(self.dimension) == 2:
-            for y in range(self.dimension[1]):
-                for x in range(self.dimension[0]):
-                    yield [x + 1, y + 1, 1]
-        else:
-            for z in range(self.dimension[2]):
-                for y in range(self.dimension[1]):
-                    for x in range(self.dimension[0]):
-                        yield [x + 1, y + 1, z + 1]
-
     def to_xml_element(self):
         """Return XML representation of the mesh
 
@@ -280,12 +245,14 @@ class Mesh(IDManagerMixin):
             cv.check_value('bc', entry, ['transmission', 'vacuum',
                                          'reflective', 'periodic'])
 
+        n_dim = len(self.dimension)
+
         # Build the cell which will contain the lattice
         xplanes = [openmc.XPlane(x0=self.lower_left[0],
                                  boundary_type=bc[0]),
                    openmc.XPlane(x0=self.upper_right[0],
                                  boundary_type=bc[1])]
-        if len(self.dimension) == 1:
+        if n_dim == 1:
             yplanes = [openmc.YPlane(y0=-1e10, boundary_type='reflective'),
                        openmc.YPlane(y0=1e10, boundary_type='reflective')]
         else:
@@ -294,7 +261,7 @@ class Mesh(IDManagerMixin):
                        openmc.YPlane(y0=self.upper_right[1],
                                      boundary_type=bc[3])]
 
-        if len(self.dimension) <= 2:
+        if n_dim <= 2:
             # Would prefer to have the z ranges be the max supported float, but
             # these values are apparently different between python and Fortran.
             # Choosing a safe and sane default.
@@ -314,12 +281,12 @@ class Mesh(IDManagerMixin):
                             (+yplanes[0] & -yplanes[1]) &
                             (+zplanes[0] & -zplanes[1]))
 
-        # Build the universes which will be used for each of the [i,j,k]
+        # Build the universes which will be used for each of the (i,j,k)
         # locations within the mesh.
         # We will concurrently build cells to assign to these universes
         cells = []
         universes = []
-        for [i, j, k] in self.cell_generator():
+        for index in self.indices:
             cells.append(openmc.Cell())
             universes.append(openmc.Universe())
             universes[-1].add_cell(cells[-1])
@@ -329,7 +296,24 @@ class Mesh(IDManagerMixin):
 
         # Assign the universe and rotate to match the indexing expected for
         # the lattice
-        lattice.universes = np.rot90(np.reshape(universes, self.dimension))
+        if n_dim == 1:
+            universe_array = np.array([universes])
+        elif n_dim == 2:
+            universe_array = np.empty(self.dimension, dtype=openmc.Universe)
+            i = 0
+            for y in range(self.dimension[1] - 1, -1, -1):
+                for x in range(self.dimension[0]):
+                    universe_array[y][x] = universes[i]
+                    i += 1
+        else:
+            universe_array = np.empty(self.dimension, dtype=openmc.Universe)
+            i = 0
+            for z in range(self.dimension[2]):
+                for y in range(self.dimension[1] - 1, -1, -1):
+                    for x in range(self.dimension[0]):
+                        universe_array[z][y][x] = universes[i]
+                        i += 1
+        lattice.universes = universe_array
 
         if self.width is not None:
             lattice.pitch = self.width
@@ -337,9 +321,9 @@ class Mesh(IDManagerMixin):
             dx = ((self.upper_right[0] - self.lower_left[0]) /
                   self.dimension[0])
 
-            if len(self.dimension) == 1:
+            if n_dim == 1:
                 lattice.pitch = [dx]
-            elif len(self.dimension) == 2:
+            elif n_dim == 2:
                 dy = ((self.upper_right[1] - self.lower_left[1]) /
                       self.dimension[1])
                 lattice.pitch = [dx, dy]

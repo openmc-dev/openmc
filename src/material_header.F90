@@ -911,10 +911,6 @@ contains
     end do
     close(17)
 
-    open(unit=14, file="yield.txt", action="write")
-    write(14,*) this % yield
-    close(14)
-
     ! Set small non-zero value at lowest energy
     this % yield(1) = 1.0e-6_8 * this % yield(2)
 

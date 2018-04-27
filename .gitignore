@@ -100,3 +100,6 @@ examples/jupyter/plots
 .python-version
 .coverage
 htmlcov
+
+# Test data
+tests/xsdir

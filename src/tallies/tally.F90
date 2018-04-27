@@ -84,7 +84,6 @@ contains
     integer :: i                    ! loop index for scoring bins
     integer :: l                    ! loop index for nuclides in material
     integer :: m                    ! loop index for reactions
-    integer :: q                    ! loop index for scoring bins
     integer :: i_temp               ! temperature index
     integer :: i_nuc                ! index in nuclides array (from material)
     integer :: i_energy             ! index in nuclide energy grid
@@ -104,9 +103,7 @@ contains
     ! Pre-collision energy of particle
     E = p % last_E
 
-    i = 0
-    SCORE_LOOP: do q = 1, t % n_user_score_bins
-      i = i + 1
+    SCORE_LOOP: do i = 1, t % n_score_bins
 
       ! determine what type of score bin
       score_bin = t % score_bins(i)
@@ -120,7 +117,7 @@ contains
       select case(score_bin)
 
 
-      case (SCORE_FLUX, SCORE_FLUX_YN)
+      case (SCORE_FLUX)
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! All events score to a flux bin. We actually use a collision
           ! estimator in place of an analog one since there is no way to count
@@ -140,7 +137,7 @@ contains
         end if
 
 
-      case (SCORE_TOTAL, SCORE_TOTAL_YN)
+      case (SCORE_TOTAL)
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! All events will score to the total reaction rate. We can just
           ! use the weight of the particle entering the collision as the
@@ -187,7 +184,7 @@ contains
         end if
 
 
-      case (SCORE_SCATTER, SCORE_SCATTER_N)
+      case (SCORE_SCATTER)
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! Skip any event where the particle didn't scatter
           if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
@@ -197,7 +194,6 @@ contains
           score = p % last_wgt * flux
 
         else
-          ! Note SCORE_SCATTER_N not available for tracklength/collision.
           if (i_nuclide > 0) then
             score = (micro_xs(i_nuclide) % total &
                  - micro_xs(i_nuclide) % absorption) * atom_density * flux
@@ -207,33 +203,7 @@ contains
         end if
 
 
-      case (SCORE_SCATTER_PN)
-        ! Only analog estimators are available.
-        ! Skip any event where the particle didn't scatter
-        if (p % event /= EVENT_SCATTER) then
-          i = i + t % moment_order(i)
-          cycle SCORE_LOOP
-        end if
-        ! Since only scattering events make it here, again we can use
-        ! the weight entering the collision as the estimator for the
-        ! reaction rate
-        score = p % last_wgt * flux
-
-
-      case (SCORE_SCATTER_YN)
-        ! Only analog estimators are available.
-        ! Skip any event where the particle didn't scatter
-        if (p % event /= EVENT_SCATTER) then
-          i = i + (t % moment_order(i) + 1)**2 - 1
-          cycle SCORE_LOOP
-        end if
-        ! Since only scattering events make it here, again we can use
-        ! the weight entering the collision as the estimator for the
-        ! reaction rate
-        score = p % last_wgt * flux
-
-
-      case (SCORE_NU_SCATTER, SCORE_NU_SCATTER_N)
+      case (SCORE_NU_SCATTER)
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
@@ -250,58 +220,6 @@ contains
 
           ! Get yield and apply to score
           associate (rxn => nuclides(p % event_nuclide) % reactions(m))
-            score = p % last_wgt * flux &
-                 * rxn % products(1) % yield % evaluate(E)
-          end associate
-        end if
-
-
-      case (SCORE_NU_SCATTER_PN)
-        ! Only analog estimators are available.
-        ! Skip any event where the particle didn't scatter
-        if (p % event /= EVENT_SCATTER) then
-          i = i + t % moment_order(i)
-          cycle SCORE_LOOP
-        end if
-        ! For scattering production, we need to use the pre-collision
-        ! weight times the yield as the estimate for the number of
-        ! neutrons exiting a reaction with neutrons in the exit channel
-        if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
-             (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
-          ! Don't waste time on very common reactions we know have
-          ! multiplicities of one.
-          score = p % last_wgt * flux
-        else
-          m = nuclides(p % event_nuclide) % reaction_index(p % event_MT)
-
-          ! Get yield and apply to score
-          associate (rxn => nuclides(p % event_nuclide) % reactions(m))
-            score = p % last_wgt * flux &
-                 * rxn % products(1) % yield % evaluate(E)
-          end associate
-        end if
-
-
-      case (SCORE_NU_SCATTER_YN)
-        ! Only analog estimators are available.
-        ! Skip any event where the particle didn't scatter
-        if (p % event /= EVENT_SCATTER) then
-          i = i + (t % moment_order(i) + 1)**2 - 1
-          cycle SCORE_LOOP
-        end if
-        ! For scattering production, we need to use the pre-collision
-        ! weight times the yield as the estimate for the number of
-        ! neutrons exiting a reaction with neutrons in the exit channel
-        if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
-             (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
-          ! Don't waste time on very common reactions we know have
-          ! multiplicities of one.
-          score = p % last_wgt * flux
-        else
-          m = nuclides(p % event_nuclide) % reaction_index(p % event_MT)
-
-          ! Get yield and apply to score
-          associate (rxn => nuclides(p%event_nuclide)%reactions(m))
             score = p % last_wgt * flux &
                  * rxn % products(1) % yield % evaluate(E)
           end associate
@@ -1359,7 +1277,7 @@ contains
     end if
 
     i = 0
-    SCORE_LOOP: do q = 1, t % n_user_score_bins
+    SCORE_LOOP: do q = 1, t % n_score_bins
       i = i + 1
 
       ! determine what type of score bin
@@ -1374,7 +1292,7 @@ contains
       select case(score_bin)
 
 
-      case (SCORE_FLUX, SCORE_FLUX_YN)
+      case (SCORE_FLUX)
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! All events score to a flux bin. We actually use a collision
           ! estimator in place of an analog one since there is no way to count
@@ -1395,7 +1313,7 @@ contains
         end if
 
 
-      case (SCORE_TOTAL, SCORE_TOTAL_YN)
+      case (SCORE_TOTAL)
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! All events will score to the total reaction rate. We can just
           ! use the weight of the particle entering the collision as the
@@ -1456,15 +1374,10 @@ contains
         end if
 
 
-      case (SCORE_SCATTER, SCORE_SCATTER_N, SCORE_SCATTER_PN, SCORE_SCATTER_YN)
+      case (SCORE_SCATTER)
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! Skip any event where the particle didn't scatter
           if (p % event /= EVENT_SCATTER) then
-            if (score_bin == SCORE_SCATTER_PN) then
-              i = i + t % moment_order(i)
-            else if (score_bin == SCORE_SCATTER_YN) then
-              i = i + (t % moment_order(i) + 1)**2 - 1
-            end if
             cycle SCORE_LOOP
           end if
 
@@ -1485,7 +1398,6 @@ contains
           end if
 
         else
-          ! Note SCORE_SCATTER_*N not available for tracklength/collision.
           if (i_nuclide > 0) then
             score = atom_density * flux * &
                  nucxs % get_xs('scatter/mult', p_g, UVW=p_uvw)
@@ -1498,16 +1410,10 @@ contains
         end if
 
 
-      case (SCORE_NU_SCATTER, SCORE_NU_SCATTER_N, SCORE_NU_SCATTER_PN, &
-            SCORE_NU_SCATTER_YN)
+      case (SCORE_NU_SCATTER)
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! Skip any event where the particle didn't scatter
           if (p % event /= EVENT_SCATTER) then
-            if (score_bin == SCORE_NU_SCATTER_PN) then
-              i = i + t % moment_order(i)
-            else if (score_bin == SCORE_NU_SCATTER_YN) then
-              i = i + (t % moment_order(i) + 1)**2 - 1
-            end if
             cycle SCORE_LOOP
           end if
 
@@ -1528,7 +1434,6 @@ contains
           end if
 
         else
-          ! Note SCORE_NU_SCATTER_*N not available for tracklength/collision.
           if (i_nuclide > 0) then
               score = nucxs % get_xs('scatter', p_g, UVW=p_uvw) * &
                    atom_density * flux
@@ -2101,97 +2006,9 @@ contains
     real(8),           intent(inout) :: score        ! data to score
     integer,           intent(inout) :: i            ! Working index
 
-    integer :: num_nm ! Number of N,M orders in harmonic
-    integer :: n      ! Moment loop index
-    real(8) :: uvw(3)
-
-    select case(score_bin)
-    case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
-      ! Find the scattering order for a singly requested moment, and
-      ! store its moment contribution.
-      if (t % moment_order(i) == 1) then
-        score = score * p % mu ! avoid function call overhead
-      else
-        score = score * calc_pn(t % moment_order(i), p % mu)
-      endif
 !$omp atomic
       t % results(RESULT_VALUE, score_index, filter_index) = &
            t % results(RESULT_VALUE, score_index, filter_index) + score
-
-
-    case(SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN)
-      score_index = score_index - 1
-      num_nm = 1
-      ! Find the order for a collection of requested moments
-      ! and store the moment contribution of each
-      do n = 0, t % moment_order(i)
-        ! determine scoring bin index
-        score_index = score_index + num_nm
-        ! Update number of total n,m bins for this n (m = [-n: n])
-        num_nm = 2 * n + 1
-
-        ! multiply score by the angular flux moments and store
-!$omp critical (score_general_scatt_yn)
-        t % results(RESULT_VALUE, score_index: score_index + num_nm - 1, &
-             filter_index) = t % results(RESULT_VALUE, &
-             score_index: score_index + num_nm - 1, filter_index) &
-             + score * calc_pn(n, p % mu) * calc_rn(n, p % last_uvw)
-!$omp end critical (score_general_scatt_yn)
-      end do
-      i = i + (t % moment_order(i) + 1)**2 - 1
-
-
-    case(SCORE_FLUX_YN, SCORE_TOTAL_YN)
-      score_index = score_index - 1
-      num_nm = 1
-      if (t % estimator == ESTIMATOR_ANALOG .or. &
-           t % estimator == ESTIMATOR_COLLISION) then
-        uvw = p % last_uvw
-      else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-        uvw = p % coord(1) % uvw
-      end if
-      ! Find the order for a collection of requested moments
-      ! and store the moment contribution of each
-      do n = 0, t % moment_order(i)
-        ! determine scoring bin index
-        score_index = score_index + num_nm
-        ! Update number of total n,m bins for this n (m = [-n: n])
-        num_nm = 2 * n + 1
-
-        ! multiply score by the angular flux moments and store
-!$omp critical (score_general_flux_tot_yn)
-        t % results(RESULT_VALUE, score_index: score_index + num_nm - 1, &
-             filter_index) = t % results(RESULT_VALUE, &
-             score_index: score_index + num_nm - 1, filter_index) &
-             + score * calc_rn(n, uvw)
-!$omp end critical (score_general_flux_tot_yn)
-      end do
-      i = i + (t % moment_order(i) + 1)**2 - 1
-
-
-    case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
-      score_index = score_index - 1
-      ! Find the scattering order for a collection of requested moments
-      ! and store the moment contribution of each
-      do n = 0, t % moment_order(i)
-        ! determine scoring bin index
-        score_index = score_index + 1
-
-        ! get the score and tally it
-!$omp atomic
-        t % results(RESULT_VALUE, score_index, filter_index) = &
-             t % results(RESULT_VALUE, score_index, filter_index) &
-             + score * calc_pn(n, p % mu)
-      end do
-      i = i + t % moment_order(i)
-
-
-    case default
-!$omp atomic
-      t % results(RESULT_VALUE, score_index, filter_index) = &
-           t % results(RESULT_VALUE, score_index, filter_index) + score
-
-    end select
 
   end subroutine expand_and_score
 
@@ -3134,7 +2951,7 @@ contains
 
         ! Currently only one score type
         k = 0
-        SCORE_LOOP: do q = 1, t % n_user_score_bins
+        SCORE_LOOP: do q = 1, t % n_score_bins
           k = k + 1
 
           ! determine what type of score bin

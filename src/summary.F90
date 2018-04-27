@@ -77,34 +77,81 @@ contains
   subroutine write_nuclides(file_id)
     integer(HID_T), intent(in) :: file_id
     integer(HID_T) :: nuclide_group
+    integer(HID_T) :: macro_group
     integer :: i
-    character(12), allocatable :: nucnames(:)
+    character(12), allocatable :: nuc_names(:)
+    character(12), allocatable :: macro_names(:)
     real(8), allocatable :: awrs(:)
+    integer :: num_nuclides
+    integer :: num_macros
+    integer :: j
+    integer :: k
 
-    ! Write useful data from nuclide objects
-    nuclide_group = create_group(file_id, "nuclides")
-    call write_attribute(nuclide_group, "n_nuclides", n_nuclides)
+    ! Find how many of these nuclides are macroscopic objects
+    if (run_CE) then
+      ! Then none are macroscopic
+      num_nuclides = n_nuclides
+      num_macros = 0
+    else
+      num_nuclides = 0
+      num_macros = 0
+      do i = 1, n_nuclides
+        if (nuclides_MG(i) % obj % awr /= MACROSCOPIC_AWR) then
+          num_nuclides = num_nuclides + 1
+        else
+          num_macros = num_macros + 1
+        end if
+      end do
+    end if
 
-    ! Build array of nuclide names and awrs
-    allocate(nucnames(n_nuclides))
-    allocate(awrs(n_nuclides))
+    ! Build array of nuclide names and awrs while only sorting nuclides from
+    ! macroscopics
+    if (num_nuclides > 0) then
+      allocate(nuc_names(num_nuclides))
+      allocate(awrs(num_nuclides))
+    end if
+    if (num_macros > 0) then
+      allocate(macro_names(num_macros))
+    end if
+
+    j = 1
+    k = 1
     do i = 1, n_nuclides
       if (run_CE) then
-        nucnames(i) = nuclides(i) % name
+        nuc_names(i) = nuclides(i) % name
         awrs(i)     = nuclides(i) % awr
       else
-        nucnames(i) = nuclides_MG(i) % obj % name
-        awrs(i)     = nuclides_MG(i) % obj % awr
+        if (nuclides_MG(i) % obj % awr /= MACROSCOPIC_AWR) then
+          nuc_names(j) = nuclides_MG(i) % obj % name
+          awrs(j)     = nuclides_MG(i) % obj % awr
+          j = j + 1
+        else
+          macro_names(k) = nuclides_MG(i) % obj % name
+          k = k + 1
+        end if
       end if
     end do
 
+    nuclide_group = create_group(file_id, "nuclides")
+    call write_attribute(nuclide_group, "n_nuclides", num_nuclides)
+    macro_group = create_group(file_id, "macroscopics")
+    call write_attribute(macro_group, "n_macroscopics", num_macros)
     ! Write nuclide names and awrs
-    call write_dataset(nuclide_group, "names", nucnames)
-    call write_dataset(nuclide_group, "awrs", awrs)
-
+    if (num_nuclides > 0) then
+      ! Write useful data from nuclide objects
+      call write_dataset(nuclide_group, "names", nuc_names)
+      call write_dataset(nuclide_group, "awrs", awrs)
+    end if
+    if (num_macros > 0) then
+      ! Write useful data from macroscopic objects
+      call write_dataset(macro_group, "names", macro_names)
+    end if
     call close_group(nuclide_group)
+    call close_group(macro_group)
 
-    deallocate(nucnames, awrs)
+
+    if (allocated(nuc_names)) deallocate(nuc_names, awrs)
+    if (allocated(macro_names)) deallocate(macro_names)
 
   end subroutine write_nuclides
 
@@ -371,7 +418,13 @@ contains
 
     integer :: i
     integer :: j
-    character(20), allocatable :: nucnames(:)
+    integer :: k
+    integer :: n
+    character(20), allocatable :: nuc_names(:)
+    character(20), allocatable :: macro_names(:)
+    real(8), allocatable :: nuc_densities(:)
+    integer :: num_nuclides
+    integer :: num_macros
     integer(HID_T) :: materials_group
     integer(HID_T) :: material_group
     type(Material), pointer :: m
@@ -399,24 +452,69 @@ contains
       ! Write atom density with units
       call write_dataset(material_group, "atom_density", m % density)
 
-      ! Copy ZAID for each nuclide to temporary array
-      allocate(nucnames(m%n_nuclides))
-      do j = 1, m%n_nuclides
-        if (run_CE) then
-          nucnames(j) = nuclides(m%nuclide(j))%name
-        else
-          nucnames(j) = nuclides_MG(m%nuclide(j))%obj%name
+      if (run_CE) then
+        num_nuclides = m % n_nuclides
+        num_macros = 0
+      else
+        ! Find the number of macroscopic and nuclide data in this material
+        num_nuclides  = 0
+        num_macros = 0
+        k = 1
+        n = 1
+        do j = 1, m % n_nuclides
+          if (nuclides_MG(m % nuclide(j)) % obj % awr /= MACROSCOPIC_AWR) then
+            num_nuclides = num_nuclides + 1
+          else
+            num_macros = num_macros + 1
+          end if
+        end do
+      end if
+
+      ! Copy ZAID or macro name for each nuclide to temporary array
+      if (num_nuclides > 0) then
+        allocate(nuc_names(num_nuclides))
+        allocate(nuc_densities(num_nuclides))
+      end if
+      if (run_CE) then
+        do j = 1, m % n_nuclides
+          nuc_names(j) = nuclides(m%nuclide(j))%name
+          nuc_densities(j) = m % atom_density(j)
+        end do
+      else
+        if (num_macros > 0) then
+          allocate(macro_names(num_macros))
         end if
-      end do
+
+        k = 1
+        n = 1
+        do j = 1, m % n_nuclides
+          if (nuclides_MG(m % nuclide(j)) % obj % awr /= MACROSCOPIC_AWR) then
+            nuc_names(k) = nuclides_MG(m % nuclide(j)) % obj % name
+            nuc_densities(k) = m % atom_density(j)
+            k = k + 1
+          else
+            macro_names(n) = nuclides_MG(m % nuclide(j)) % obj % name
+            n = n + 1
+          end if
+        end do
+      end if
 
       ! Write temporary array to 'nuclides'
-      call write_dataset(material_group, "nuclides", nucnames)
+      if (num_nuclides > 0) then
+        call write_dataset(material_group, "nuclides", nuc_names)
+        ! Deallocate temporary array
+        deallocate(nuc_names)
+        ! Write atom densities
+        call write_dataset(material_group, "nuclide_densities", nuc_densities)
+        deallocate(nuc_densities)
+      end if
 
-      ! Deallocate temporary array
-      deallocate(nucnames)
-
-      ! Write atom densities
-      call write_dataset(material_group, "nuclide_densities", m%atom_density)
+      ! Write temporary array to 'macroscopics'
+      if (num_macros > 0) then
+        call write_dataset(material_group, "macroscopics", macro_names)
+        ! Deallocate temporary array
+        deallocate(macro_names)
+      end if
 
       if (m%n_sab > 0) then
         call write_dataset(material_group, "sab_names", m%sab_names)

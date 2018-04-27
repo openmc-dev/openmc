@@ -10,9 +10,16 @@ from . import Filter
 
 class ExpansionFilter(Filter):
     """Abstract filter class for functional expansions."""
+
     def __init__(self, order, filter_id=None):
         self.order = order
         self.id = filter_id
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        else:
+            return self.bins == other.bins
 
     @property
     def order(self):

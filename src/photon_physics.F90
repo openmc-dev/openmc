@@ -4,7 +4,7 @@ module photon_physics
   use constants
   use particle_header, only: Particle
   use photon_header,   only: PhotonInteraction, Bremsstrahlung, &
-                             compton_profile_pz, ttb_e_grid, ttb_k_grid, ttb
+                             compton_profile_pz, ttb_e_grid, ttb
   use random_lcg,      only: prn
   use settings
 
@@ -542,7 +542,9 @@ contains
 
     !if (p % E < energy_cutoff(PHOTON)) return
     if (p % E < energy_cutoff(PHOTON)) then
+      open(unit=13, file="energies.txt", action="write", position="append")
       write(13,*) p % E, 0
+      close(13)
       return
     end if
 
@@ -577,7 +579,9 @@ contains
     E_lost = ZERO
     !if (n == 0) return
     if (n == 0) then
+      open(unit=13, file="energies.txt", action="write", position="append")
       write(13,*) p % E, n
+      close(13)
       return
     end if
 

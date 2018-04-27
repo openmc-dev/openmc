@@ -469,7 +469,6 @@ contains
 
     ! Clear TTB-related arrays
     if (allocated(ttb_e_grid)) deallocate(ttb_e_grid)
-    if (allocated(ttb_k_grid)) deallocate(ttb_k_grid)
     if (allocated(ttb)) deallocate(ttb)
   end subroutine free_memory_photon
 

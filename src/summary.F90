@@ -148,9 +148,6 @@ contains
 
       call c % to_hdf5(cell_group)
 
-      ! Write universe for this cell
-      call write_dataset(cell_group, "universe", universes(c%universe())%id)
-
       ! Write information on what fills this cell
       select case (c%type)
       case (FILL_MATERIAL)

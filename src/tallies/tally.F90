@@ -46,6 +46,9 @@ module tally
     end subroutine score_analog_tally_
   end interface
 
+  real(C_DOUBLE) :: rn(2 * MAX_ANG_ORDER + 1)
+!$omp threadprivate(rn)
+
 contains
 
 !===============================================================================
@@ -2131,11 +2134,12 @@ contains
         num_nm = 2 * n + 1
 
         ! multiply score by the angular flux moments and store
+        call calc_rn(n, p % last_uvw, rn(1:num_nm))
 !$omp critical (score_general_scatt_yn)
         t % results(RESULT_VALUE, score_index: score_index + num_nm - 1, &
              filter_index) = t % results(RESULT_VALUE, &
              score_index: score_index + num_nm - 1, filter_index) &
-             + score * calc_pn(n, p % mu) * calc_rn(n, p % last_uvw)
+             + score * calc_pn(n, p % mu) * rn(1:num_nm)
 !$omp end critical (score_general_scatt_yn)
       end do
       i = i + (t % moment_order(i) + 1)**2 - 1
@@ -2159,11 +2163,12 @@ contains
         num_nm = 2 * n + 1
 
         ! multiply score by the angular flux moments and store
+        call calc_rn(n, uvw, rn(1:num_nm))
 !$omp critical (score_general_flux_tot_yn)
         t % results(RESULT_VALUE, score_index: score_index + num_nm - 1, &
              filter_index) = t % results(RESULT_VALUE, &
              score_index: score_index + num_nm - 1, filter_index) &
-             + score * calc_rn(n, uvw)
+             + score * rn(1:num_nm)
 !$omp end critical (score_general_flux_tot_yn)
       end do
       i = i + (t % moment_order(i) + 1)**2 - 1

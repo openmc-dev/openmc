@@ -495,7 +495,8 @@ contains
     ! Rotate neutron velocity vector to new angle -- note that the speed of the
     ! neutron in CM does not change in elastic scattering. However, the speed
     ! will change when we convert back to LAB
-    v_n = vel * rotate_angle(uvw_cm, mu_cm)
+    call rotate_angle(uvw_cm, mu_cm, v_n)
+    v_n = vel * v_n
 
     ! Transform back to LAB frame
     v_n = v_n + v_cm
@@ -785,7 +786,7 @@ contains
     if (abs(mu) > ONE) mu = sign(ONE,mu)
 
     ! change direction of particle
-    uvw = rotate_angle(uvw, mu)
+    call rotate_angle(uvw, mu, uvw)
 
   end subroutine sab_scatter
 
@@ -976,7 +977,8 @@ contains
             if (abs(mu) < ONE) then
               ! set and accept target velocity
               E_t = E_t / awr
-              v_target = sqrt(E_t) * rotate_angle(uvw, mu)
+              call rotate_angle(uvw, mu, v_target)
+              v_target = sqrt(E_t) * v_target
               exit ARES_REJECT_LOOP
             end if
           end do ARES_REJECT_LOOP
@@ -1056,7 +1058,8 @@ contains
 
     ! Determine velocity vector of target nucleus based on neutron's velocity
     ! and the sampled angle between them
-    v_target = vt * rotate_angle(uvw, mu)
+    call rotate_angle(uvw, mu, v_target)
+    v_target = vt * v_target
 
   end subroutine sample_cxs_target_velocity
 
@@ -1327,7 +1330,7 @@ contains
     p % mu = mu
 
     ! change direction of particle
-    p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu)
+    call rotate_angle(p % coord(1) % uvw, mu, p % coord(1) % uvw)
 
     ! evaluate yield
     yield = rxn % products(1) % yield % evaluate(E_in)

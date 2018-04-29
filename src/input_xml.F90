@@ -49,6 +49,11 @@ module input_xml
   save
 
   interface
+    subroutine adjust_indices_c() bind(C)
+      use ISO_C_BINDING
+      implicit none
+    end subroutine adjust_indices_c
+
     subroutine read_surfaces(node_ptr) bind(C)
       use ISO_C_BINDING
       implicit none
@@ -4263,18 +4268,10 @@ contains
     integer :: id                     ! user-specified id
     class(Lattice),    pointer :: lat => null()
 
-    do i = 1, n_cells
-      ! =======================================================================
-      ! ADJUST UNIVERSE INDEX FOR EACH CELL
-      associate (c => cells(i))
+    call adjust_indices_c()
 
-      id = c % universe()
-      if (universe_dict % has(id)) then
-        call c % set_universe(universe_dict % get(id))
-      else
-        call fatal_error("Could not find universe " // trim(to_str(id)) &
-             &// " specified on cell " // trim(to_str(c % id())))
-      end if
+    do i = 1, n_cells
+      associate (c => cells(i))
 
       ! =======================================================================
       ! ADJUST MATERIAL/FILL POINTERS FOR EACH CELL

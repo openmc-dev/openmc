@@ -73,7 +73,8 @@ public:
   //! Simple cells can be evaluated with short circuit evaluation, i.e., as soon
   //! as we know that one half-space is not satisfied, we can exit. This
   //! provides a performance benefit for the common case. In
-  //! contains_complex, we evaluate the RPN expression using a stack, similar to  //! how a RPN calculator would work.
+  //! contains_complex, we evaluate the RPN expression using a stack, similar to
+  //! how a RPN calculator would work.
   //! @param xyz[3] The 3D Cartesian coordinate to check.
   //! @param uvw[3] A direction used to "break ties" the coordinates are very
   //!   close to a surface.

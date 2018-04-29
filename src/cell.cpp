@@ -294,8 +294,8 @@ Cell::to_hdf5(hid_t cell_group) const
     write_string(cell_group, "name", name);
   }
 
-  //TODO: Lookup universe id in universe_dict
-  //write_int(cell_group, "universe", universe);
+  //TODO: Fix the off-by-one indexing.
+  write_int(cell_group, "universe", universes_c[universe-1]->id);
 
   // Write the region specification.
   if (!region.empty()) {
@@ -424,6 +424,24 @@ read_cells(pugi::xml_node *node)
       universe_dict[uid] = universes_c.size() - 1;
     } else {
       universes_c[it->second]->cells.push_back(c);
+    }
+  }
+}
+
+extern "C" void
+adjust_indices_c()
+{
+  // Change cell.universe values from IDs to indices.
+  for (Cell *c : cells_c) {
+    auto it = universe_dict.find(c->universe);
+    if (it != universe_dict.end()) {
+      //TODO: Remove this off-by-one indexing.
+      c->universe = it->second + 1;
+    } else {
+      std::stringstream err_msg;
+      err_msg << "Could not find universe " << c->universe
+              << " specified on cell " << c->id;
+      fatal_error(err_msg);
     }
   }
 }

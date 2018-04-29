@@ -151,7 +151,7 @@ contains
     p % E = energy_bin_avg(p % g)
 
     ! Convert change in angle (mu) to new direction
-    p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, p % mu)
+    call rotate_angle(p % coord(1) % uvw, p % mu, p % coord(1) % uvw)
 
     ! Set event component
     p % event = EVENT_SCATTER

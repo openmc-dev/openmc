@@ -91,7 +91,7 @@ contains
 
       ! Calculate n-th order spherical harmonics for (u,v,w)
       num_nm = 2*n + 1
-      rn(1:num_nm) = calc_rn(n, p % last_uvw)
+      call calc_rn(n, p % last_uvw, rn(1:num_nm))
 
       ! Append matching (bin,weight) for each moment
       do i = 1, num_nm

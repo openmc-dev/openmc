@@ -12,6 +12,7 @@ module openmc_api
   use geometry_header
   use hdf5_interface
   use material_header
+  use math
   use mesh_header
   use message_passing
   use nuclide_header
@@ -97,6 +98,18 @@ module openmc_api
   public :: openmc_tally_set_nuclides
   public :: openmc_tally_set_scores
   public :: openmc_tally_set_type
+  public :: normal_percentile
+  public :: t_percentile
+  public :: calc_pn
+  public :: calc_rn
+  public :: calc_zn
+  public :: evaluate_legendre
+  public :: rotate_angle
+  public :: maxwell_spectrum
+  public :: watt_spectrum
+  public :: faddeeva
+  public :: w_derivative
+  public :: broaden_wmp_polynomials
 
 contains
 

@@ -6,6 +6,19 @@ module math
   use random_lcg, only: prn
 
   implicit none
+  private
+  public :: normal_percentile
+  public :: t_percentile
+  public :: calc_pn
+  public :: calc_rn
+  public :: calc_zn
+  public :: evaluate_legendre
+  public :: rotate_angle
+  public :: maxwell_spectrum
+  public :: watt_spectrum
+  public :: faddeeva
+  public :: w_derivative
+  public :: broaden_wmp_polynomials
 
 !===============================================================================
 ! FADDEEVA_W evaluates the scaled complementary error function.  This
@@ -29,24 +42,24 @@ contains
 ! distribution with a specified probability level
 !===============================================================================
 
-  elemental function normal_percentile(p) result(z)
+  pure function normal_percentile(p) result(z) bind(C)
 
-    real(8), intent(in) :: p ! probability level
-    real(8)             :: z ! corresponding z-value
+    real(C_DOUBLE), intent(in) :: p ! probability level
+    real(C_DOUBLE)             :: z ! corresponding z-value
 
-    real(8)            :: q
-    real(8)            :: r
-    real(8), parameter :: p_low  = 0.02425_8
-    real(8), parameter :: a(6) = (/ &
+    real(C_DOUBLE)            :: q
+    real(C_DOUBLE)            :: r
+    real(C_DOUBLE), parameter :: p_low  = 0.02425_8
+    real(C_DOUBLE), parameter :: a(6) = (/ &
          -3.969683028665376e1_8, 2.209460984245205e2_8, -2.759285104469687e2_8, &
          1.383577518672690e2_8, -3.066479806614716e1_8, 2.506628277459239e0_8 /)
-    real(8), parameter :: b(5) = (/ &
+    real(C_DOUBLE), parameter :: b(5) = (/ &
          -5.447609879822406e1_8, 1.615858368580409e2_8, -1.556989798598866e2_8, &
          6.680131188771972e1_8, -1.328068155288572e1_8 /)
-    real(8), parameter :: c(6) = (/ &
+    real(C_DOUBLE), parameter :: c(6) = (/ &
          -7.784894002430293e-3_8, -3.223964580411365e-1_8, -2.400758277161838_8, &
          -2.549732539343734_8, 4.374664141464968_8, 2.938163982698783_8 /)
-    real(8), parameter :: d(4) = (/ &
+    real(C_DOUBLE), parameter :: d(4) = (/ &
          7.784695709041462e-3_8, 3.224671290700398e-1_8, &
          2.445134137142996_8,    3.754408661907416_8 /)
 
@@ -88,16 +101,16 @@ contains
 ! specified probability level and number of degrees of freedom
 !===============================================================================
 
-  elemental function t_percentile(p, df) result(t)
+  pure function t_percentile(p, df) result(t) bind(C)
 
-    real(8), intent(in) :: p  ! probability level
-    integer, intent(in) :: df ! degrees of freedom
-    real(8)             :: t  ! corresponding t-value
+    real(C_DOUBLE), intent(in)  :: p  ! probability level
+    integer(C_INT), intent(in)  :: df ! degrees of freedom
+    real(C_DOUBLE)              :: t  ! corresponding t-value
 
-    real(8)            :: n  ! degrees of freedom as a real(8)
-    real(8)            :: k  ! n - 2
-    real(8)            :: z  ! percentile of normal distribution
-    real(8)            :: z2 ! z * z
+    real(C_DOUBLE)             :: n  ! degrees of freedom as a real(8)
+    real(C_DOUBLE)             :: k  ! n - 2
+    real(C_DOUBLE)             :: z  ! percentile of normal distribution
+    real(C_DOUBLE)             :: z2 ! z * z
 
     if (df == 1) then
       ! For one degree of freedom, the t-distribution becomes a Cauchy
@@ -140,12 +153,14 @@ contains
 ! the return value will be 1.0.
 !===============================================================================
 
-  elemental function calc_pn(n,x) result(pnx)
+  pure function calc_pn(n,x) result(pnx) bind(C)
 
-    integer, intent(in) :: n   ! Legendre order requested
-    real(8), intent(in) :: x   ! Independent variable the Legendre is to be
-                               ! evaluated at; x must be in the domain [-1,1]
-    real(8)             :: pnx ! The Legendre poly of order n evaluated at x
+    integer(C_INT), intent(in) :: n   ! Legendre order requested
+    real(C_DOUBLE), intent(in) :: x   ! Independent variable the Legendre is to
+                                      ! be evaluated at; x must be in the
+                                      ! domain [-1,1]
+    real(C_DOUBLE)             :: pnx ! The Legendre poly of order n evaluated
+                                      ! at x
 
     select case(n)
     case(1)
@@ -185,14 +200,16 @@ contains
 ! (in terms of (u,v,w)).  All Rn,m values are provided (where -n<=m<=n)
 !===============================================================================
 
-  pure function calc_rn(n,uvw) result(rn)
+  subroutine calc_rn(n, uvw, rn) bind(C)
 
-    integer, intent(in) :: n      ! Order requested
-    real(8), intent(in) :: uvw(3) ! Direction of travel, assumed to be on unit sphere
-    real(8)             :: rn(2*n + 1)     ! The resultant R_n(uvw)
+    integer(C_INT), intent(in) :: n      ! Order requested
+    real(C_DOUBLE), intent(in) :: uvw(3) ! Direction of travel;
+                                         ! assumed to be on unit sphere
+    real(C_DOUBLE)             :: rn(2*n + 1) ! The resultant R_n(uvw)
 
-    real(8) :: phi, w ! Azimuthal and Cosine of Polar angles (from uvw)
-    real(8) :: w2m1   ! (w^2 - 1), frequently used in these
+
+    real(C_DOUBLE) :: phi, w ! Azimuthal and Cosine of Polar angles (from uvw)
+    real(C_DOUBLE) :: w2m1   ! (w^2 - 1), frequently used in these
 
     w = uvw(3) ! z = cos(polar)
     if (uvw(1) == ZERO) then
@@ -572,7 +589,7 @@ contains
       rn = ONE
     end select
 
-  end function calc_rn
+  end subroutine calc_rn
 
 !===============================================================================
 ! CALC_ZN calculates the n-th order modified Zernike polynomial moment for a
@@ -581,31 +598,31 @@ contains
 ! exactly pi
 !===============================================================================
 
-  subroutine calc_zn(n, rho, phi, zn)
+  subroutine calc_zn(n, rho, phi, zn) bind(C)
     ! This procedure uses the modified Kintner's method for calculating Zernike
     ! polynomials as outlined in Chong, C. W., Raveendran, P., & Mukundan,
     ! R. (2003). A comparative analysis of algorithms for fast computation of
     ! Zernike moments. Pattern Recognition, 36(3), 731-742.
 
-    integer, intent(in) :: n           ! Maximum order
-    real(8), intent(in) :: rho         ! Radial location in the unit disk
-    real(8), intent(in) :: phi         ! Theta (radians) location in the unit disk
-    real(8), intent(out) :: zn(:)      ! The resulting list of coefficients
+    integer(C_INT), intent(in) :: n      ! Maximum order
+    real(C_DOUBLE), intent(in) :: rho    ! Radial location in the unit disk
+    real(C_DOUBLE), intent(in) :: phi    ! Theta (radians) location in the unit disk
+    real(C_DOUBLE), intent(out) :: zn(:) ! The resulting list of coefficients
 
-    real(8) :: sin_phi, cos_phi        ! Sine and Cosine of phi
-    real(8) :: sin_phi_vec(n+1)        ! Contains sin(n*phi)
-    real(8) :: cos_phi_vec(n+1)        ! Contains cos(n*phi)
-    real(8) :: zn_mat(n+1, n+1)        ! Matrix form of the coefficients which is
-                                       ! easier to work with
-    real(8) :: k1, k2, k3, k4          ! Variables for R_m_n calculation
-    real(8) :: sqrt_norm               ! normalization for radial moments
-    integer :: i,p,q                   ! Loop counters
+    real(C_DOUBLE) :: sin_phi, cos_phi   ! Sine and Cosine of phi
+    real(C_DOUBLE) :: sin_phi_vec(n+1)   ! Contains sin(n*phi)
+    real(C_DOUBLE) :: cos_phi_vec(n+1)   ! Contains cos(n*phi)
+    real(C_DOUBLE) :: zn_mat(n+1, n+1)   ! Matrix form of the coefficients which is
+                                         ! easier to work with
+    real(C_DOUBLE) :: k1, k2, k3, k4     ! Variables for R_m_n calculation
+    real(C_DOUBLE) :: sqrt_norm          ! normalization for radial moments
+    integer(C_INT) :: i,p,q              ! Loop counters
 
-    real(8), parameter :: SQRT_N_1(0:10) = [&
+    real(C_DOUBLE), parameter :: SQRT_N_1(0:10) = [&
          sqrt(1.0_8), sqrt(2.0_8), sqrt(3.0_8), sqrt(4.0_8), &
          sqrt(5.0_8), sqrt(6.0_8), sqrt(7.0_8), sqrt(8.0_8), &
          sqrt(9.0_8), sqrt(10.0_8), sqrt(11.0_8)]
-    real(8), parameter :: SQRT_2N_2(0:10) = SQRT_N_1*sqrt(2.0_8)
+    real(C_DOUBLE), parameter :: SQRT_2N_2(0:10) = SQRT_N_1*sqrt(2.0_8)
 
     ! n == radial degree
     ! m == azimuthal frequency
@@ -682,40 +699,16 @@ contains
   end subroutine calc_zn
 
 !===============================================================================
-! EXPAND_HARMONIC expands a given series of real spherical harmonics
-!===============================================================================
-
-  pure function expand_harmonic(data, order, uvw) result(val)
-    real(8), intent(in) :: data(:)
-    integer, intent(in) :: order
-    real(8), intent(in) :: uvw(3)
-    real(8)             :: val
-
-    integer :: l, lm_lo, lm_hi
-
-    val = data(1)
-    lm_lo = 2
-    lm_hi = 4
-    do l = 1, order - 1
-      val = val + sqrt(TWO * real(l,8) + ONE) * &
-           dot_product(calc_rn(l,uvw), data(lm_lo:lm_hi))
-      lm_lo = lm_hi + 1
-      lm_hi = lm_lo + 2 * (l + 1)
-    end do
-
-  end function expand_harmonic
-
-!===============================================================================
 ! EVALUATE_LEGENDRE Find the value of f(x) given a set of Legendre coefficients
 ! and the value of x
 !===============================================================================
 
-  pure function evaluate_legendre(data, x) result(val)
-    real(8), intent(in) :: data(:)
-    real(8), intent(in) :: x
-    real(8)             :: val
+  pure function evaluate_legendre(data, x) result(val) bind(C)
+    real(C_DOUBLE), intent(in) :: data(:)
+    real(C_DOUBLE), intent(in) :: x
+    real(C_DOUBLE)             :: val
 
-    integer :: l
+    integer(C_INT) :: l
 
     val =  HALF * data(1)
     do l = 1, size(data) - 1
@@ -730,20 +723,20 @@ contains
 ! with direct sampling rather than rejection as is done in MCNP and SERPENT.
 !===============================================================================
 
-  function rotate_angle(uvw0, mu, phi) result(uvw)
-    real(8), intent(in) :: uvw0(3) ! directional cosine
-    real(8), intent(in) :: mu      ! cosine of angle in lab or CM
-    real(8), optional   :: phi     ! azimuthal angle
-    real(8)             :: uvw(3)  ! rotated directional cosine
+  subroutine rotate_angle(uvw0, mu, uvw, phi) bind(C)
+    real(C_DOUBLE), intent(in)  :: uvw0(3) ! directional cosine
+    real(C_DOUBLE), intent(in)  :: mu      ! cosine of angle in lab or CM
+    real(C_DOUBLE), intent(out) :: uvw(3)  ! rotated directional cosine
+    real(C_DOUBLE), optional    :: phi     ! azimuthal angle
 
-    real(8) :: phi_   ! azimuthal angle
-    real(8) :: sinphi ! sine of azimuthal angle
-    real(8) :: cosphi ! cosine of azimuthal angle
-    real(8) :: a      ! sqrt(1 - mu^2)
-    real(8) :: b      ! sqrt(1 - w^2)
-    real(8) :: u0     ! original cosine in x direction
-    real(8) :: v0     ! original cosine in y direction
-    real(8) :: w0     ! original cosine in z direction
+    real(C_DOUBLE) :: phi_   ! azimuthal angle
+    real(C_DOUBLE) :: sinphi ! sine of azimuthal angle
+    real(C_DOUBLE) :: cosphi ! cosine of azimuthal angle
+    real(C_DOUBLE) :: a      ! sqrt(1 - mu^2)
+    real(C_DOUBLE) :: b      ! sqrt(1 - w^2)
+    real(C_DOUBLE) :: u0     ! original cosine in x direction
+    real(C_DOUBLE) :: v0     ! original cosine in y direction
+    real(C_DOUBLE) :: w0     ! original cosine in z direction
 
     ! Copy original directional cosines
     u0 = uvw0(1)
@@ -776,7 +769,7 @@ contains
       uvw(3) = mu*w0 + a*(v0*w0*cosphi - u0*sinphi)/b
     end if
 
-  end function rotate_angle
+  end subroutine rotate_angle
 
 !===============================================================================
 ! MAXWELL_SPECTRUM samples an energy from the Maxwell fission distribution based
@@ -785,13 +778,13 @@ contains
 ! be sampled using rule C64 in the Monte Carlo Sampler LA-9721-MS.
 !===============================================================================
 
-  function maxwell_spectrum(T) result(E_out)
+  function maxwell_spectrum(T) result(E_out) bind(C)
 
-    real(8), intent(in)  :: T     ! tabulated function of incoming E
-    real(8)              :: E_out ! sampled energy
+    real(C_DOUBLE), intent(in)  :: T     ! tabulated function of incoming E
+    real(C_DOUBLE)              :: E_out ! sampled energy
 
-    real(8) :: r1, r2, r3  ! random numbers
-    real(8) :: c           ! cosine of pi/2*r3
+    real(C_DOUBLE) :: r1, r2, r3  ! random numbers
+    real(C_DOUBLE) :: c           ! cosine of pi/2*r3
 
     r1 = prn()
     r2 = prn()
@@ -813,13 +806,13 @@ contains
 ! original Watt spectrum derivation (See F. Brown's MC lectures).
 !===============================================================================
 
-  function watt_spectrum(a, b) result(E_out)
+  function watt_spectrum(a, b) result(E_out) bind(C)
 
-    real(8), intent(in) :: a     ! Watt parameter a
-    real(8), intent(in) :: b     ! Watt parameter b
-    real(8)             :: E_out ! energy of emitted neutron
+    real(C_DOUBLE), intent(in) :: a     ! Watt parameter a
+    real(C_DOUBLE), intent(in) :: b     ! Watt parameter b
+    real(C_DOUBLE)             :: E_out ! energy of emitted neutron
 
-    real(8) :: w ! sampled from Maxwellian
+    real(C_DOUBLE) :: w ! sampled from Maxwellian
 
     w     = maxwell_spectrum(a)
     E_out = w + a*a*b/4. + (TWO*prn() - ONE)*sqrt(a*a*b*w)
@@ -830,9 +823,9 @@ contains
 ! FADDEEVA the Faddeeva function, using Stephen Johnson's implementation
 !===============================================================================
 
-  function faddeeva(z) result(wv)
-    complex(C_DOUBLE_COMPLEX), intent(in) :: z ! The point to evaluate Z at
-    complex(8)     :: wv     ! The resulting w(z) value
+  function faddeeva(z) result(wv) bind(C)
+    complex(C_DOUBLE_COMPLEX), intent(in) :: z  ! The point to evaluate Z at
+    complex(C_DOUBLE_COMPLEX)             :: wv ! The resulting w(z) value
     real(C_DOUBLE) :: relerr ! Target relative error in inner loop of MIT
                              !  Faddeeva
 
@@ -860,10 +853,10 @@ contains
 
   end function faddeeva
 
-  recursive function w_derivative(z, order) result(wv)
+  recursive function w_derivative(z, order) result(wv) bind(C)
     complex(C_DOUBLE_COMPLEX), intent(in) :: z ! The point to evaluate Z at
-    integer,                   intent(in) :: order
-    complex(8)     :: wv     ! The resulting w(z) value
+    integer(C_INT),            intent(in) :: order
+    complex(C_DOUBLE_COMPLEX)     :: wv     ! The resulting w(z) value
 
     select case(order)
     case (0)
@@ -882,12 +875,12 @@ contains
 ! a/E + b/sqrt(E) + c + d sqrt(E) ...
 !===============================================================================
 
-  subroutine broaden_wmp_polynomials(E, dopp, n, factors)
-    real(8), intent(in) :: E          ! Energy to evaluate at
-    real(8), intent(in) :: dopp       ! sqrt(atomic weight ratio / kT),
+  subroutine broaden_wmp_polynomials(E, dopp, n, factors) bind(C)
+    real(C_DOUBLE), intent(in) :: E          ! Energy to evaluate at
+    real(C_DOUBLE), intent(in) :: dopp       ! sqrt(atomic weight ratio / kT),
                                       !  kT given in eV.
-    integer, intent(in) :: n          ! number of components to polynomial
-    real(8), intent(out):: factors(n) ! output leading coefficient
+    integer(C_INT), intent(in) :: n          ! number of components to polynomial
+    real(C_DOUBLE), intent(out):: factors(n) ! output leading coefficient
 
     integer :: i
 

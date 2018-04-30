@@ -98,7 +98,6 @@ module openmc_api
   public :: openmc_tally_set_nuclides
   public :: openmc_tally_set_scores
   public :: openmc_tally_set_type
-  public :: normal_percentile
   public :: t_percentile
   public :: calc_pn
   public :: calc_rn

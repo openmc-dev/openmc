@@ -5,8 +5,8 @@ from numpy.ctypeslib import ndpointer
 
 from . import _dll
 
-_dll.normal_percentile.restype = c_double
-_dll.normal_percentile.argtypes = [POINTER(c_double)]
+# _dll.normal_percentile.restype = c_double
+# _dll.normal_percentile.argtypes = [POINTER(c_double)]
 _dll.t_percentile.restype = c_double
 _dll.t_percentile.argtypes = [POINTER(c_double), POINTER(c_int)]
 _dll.calc_pn.restype = c_double

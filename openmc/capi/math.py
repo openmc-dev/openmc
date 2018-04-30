@@ -1,4 +1,4 @@
-from ctypes import (c_int, c_double, POINTER, c_void_p)
+from ctypes import (c_int, c_double, POINTER)
 
 import numpy as np
 from numpy.ctypeslib import ndpointer

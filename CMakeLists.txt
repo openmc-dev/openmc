@@ -438,6 +438,8 @@ set(LIBOPENMC_FORTRAN_SRC
 set(LIBOPENMC_CXX_SRC
   src/error.h
   src/hdf5_interface.h
+  src/math_functions.h
+  src/math_functions.cpp
   src/random_lcg.cpp
   src/random_lcg.h
   src/surface.cpp

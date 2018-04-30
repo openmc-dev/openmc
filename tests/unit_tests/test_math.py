@@ -51,6 +51,25 @@ def test_calc_pn():
     assert np.allclose(ref_vals, test_vals)
 
 
+def test_evaluate_legendre():
+    max_order = 10
+    # Coefficients are set to 1, but will incorporate the (2l+1)/2 norm factor
+    # for the reference solution
+    test_coeffs = [0.5 * (2. * l + 1.) for l in range(max_order + 1)]
+    test_xs = np.linspace(-1., 1., num=5, endpoint=True)
+
+    ref_vals = np.polynomial.legendre.legval(test_xs, test_coeffs)
+
+    # Set the coefficients back to 1s for the test values since
+    # evaluate legendre includes the (2l+1)/2 term
+    test_coeffs = [1. for l in range(max_order + 1)]
+
+    test_vals = np.array([openmc.capi.math.evaluate_legendre(test_coeffs, x)
+                          for x in test_xs])
+
+    assert np.allclose(ref_vals, test_vals)
+
+
 def test_calc_rn():
     max_order = 10
     test_ns = np.array([i for i in range(0, max_order + 1)])
@@ -97,23 +116,6 @@ def test_calc_rn():
 
 def test_calc_zn():
     pass
-
-
-def test_evaluate_legendre():
-    max_order = 10
-    # Coefficients are set to 1, but will incorporate the (2l+1)/2 norm factor
-    # for the reference solution
-    test_coeffs = [0.5 * (2. * l + 1.) for l in range(max_order + 1)]
-    test_xs = np.linspace(-1., 1., num=5, endpoint=True)
-
-    ref_vals = np.polynomial.legendre.legval(test_xs, test_coeffs)
-
-    # Set the coefficients back to 1s for the test values
-    test_coeffs = [1. for l in range(max_order + 1)]
-    test_vals = np.array([openmc.capi.math.evaluate_legendre(test_coeffs, x)
-                          for x in test_xs])
-
-    assert np.allclose(ref_vals, test_vals)
 
 
 def test_rotate_angle():

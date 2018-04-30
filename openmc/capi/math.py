@@ -98,6 +98,30 @@ def calc_pn(n, x):
     return _dll.calc_pn(c_int(n), c_double(x))
 
 
+def evaluate_legendre(data, x):
+    """ Finds the value of f(x) given a set of Legendre coefficients
+    and the value of x.
+
+    Parameters
+    ----------
+    data : iterable of float
+        Legendre coefficients
+    x : float
+        Independent variable to evaluate the Legendre at
+
+    Returns
+    -------
+    float
+        Corresponding Legendre expansion result
+
+    """
+
+    data_arr = np.array(data, dtype=np.float64)
+    return _dll.evaluate_legendre(c_int(len(data)),
+                                  data_arr.ctypes.data_as(POINTER(c_double)),
+                                  c_double(x))
+
+
 def calc_rn(n, uvw):
     """ Calculate the n-th order real Spherical Harmonics for a given angle;
     all Rn,m values are provided (where -n <= m <= n).
@@ -149,30 +173,6 @@ def calc_zn(n, rho, phi):
     zn = np.zeros(num_bins, dtype=np.float64)
     _dll.calc_zn(c_int(n), c_double(rho), c_double(phi), zn)
     return zn
-
-
-def evaluate_legendre(data, x):
-    """ Finds the value of f(x) given a set of Legendre coefficients
-    and the value of x.
-
-    Parameters
-    ----------
-    data : iterable of float
-        Legendre coefficients
-    x : float
-        Independent variable to evaluate the Legendre at
-
-    Returns
-    -------
-    float
-        Corresponding Legendre expansion result
-
-    """
-
-    data_arr = np.array(data, dtype=np.float64)
-    return _dll.evaluate_legendre(c_int(len(data)),
-                                  data_arr.ctypes.data_as(POINTER(c_double)),
-                                  c_double(x))
 
 
 def rotate_angle(uvw0, mu, phi=None):

@@ -162,6 +162,22 @@ double __attribute__ ((const)) calc_pn_c(int n, double x) {
 }
 
 //==============================================================================
+// EVALUATE_LEGENDRE Find the value of f(x) given a set of Legendre coefficients
+// and the value of x
+//==============================================================================
+
+double __attribute__ ((const)) evaluate_legendre_c(int n, double data[],
+                                                   double x) {
+  double val;
+
+  val = 0.5 * data[0];
+  for (int l = 1; l < n; l++) {
+    val += (static_cast<double>(l) + 0.5) * data[l] * calc_pn_c(l, x);
+  }
+  return val;
+}
+
+//==============================================================================
 // CALC_RN calculates the n-th order spherical harmonics for a given angle
 // (in terms of (u,v,w)).  All Rn,m values are provided (where -n<=m<=n)
 //==============================================================================
@@ -561,21 +577,6 @@ void calc_rn_c(int n, double uvw[3], double rn[]){
   }
 }
 
-//==============================================================================
-// EVALUATE_LEGENDRE Find the value of f(x) given a set of Legendre coefficients
-// and the value of x
-//==============================================================================
-
-double __attribute__ ((const)) evaluate_legendre_c(int n, double data[],
-                                                   double x) {
-  double val;
-
-  val = 0.5 * data[0];
-  for (int l = 1; l < n; l++) {
-    val += (static_cast<double>(l) + 0.5) * data[l] * calc_pn_c(l, x);
-  }
-
-}
 
 //==============================================================================
 // ROTATE_ANGLE rotates direction std::cosines through a polar angle whose

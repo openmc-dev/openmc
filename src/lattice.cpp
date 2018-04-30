@@ -4,6 +4,8 @@
 #include <sstream>
 #include <vector>
 
+#include "cell.h"
+#include "constants.h"
 #include "error.h"
 #include "hdf5_interface.h"
 #include "xml_interface.h"
@@ -124,6 +126,36 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
         int indx1 = nx*ny*iz + nx*(ny-iy-1) + ix;
         int indx2 = nx*ny*iz + nx*iy + ix;
         universes[indx1] = stoi(univ_words[indx2]);
+      }
+    }
+  }
+}
+
+//==============================================================================
+
+int32_t&
+RectLattice::operator[](const int i_xyz[3])
+{
+  int nx = n_cells[0];
+  int ny = n_cells[1];
+  int nz = n_cells[2];
+  int indx = nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0];
+  return universes[indx];
+}
+
+//==============================================================================
+
+void
+RectLattice::adjust_indices()
+{
+  int nx = n_cells[0];
+  int ny = n_cells[1];
+  int nz = n_cells[2];
+  for (int iz = 0; iz < nz; iz++) {
+    for (int iy = 0; iy < ny; iy++) {
+      for (int ix = 0; ix < nx; ix++) {
+        int indx = nx*ny*iz + nx*iy + ix;
+        universes[indx] = universe_dict[universes[indx]];
       }
     }
   }
@@ -380,6 +412,37 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
       // Return lattice index to start of current row.
       i_x -= 2*(n_rings - k - 1);
       i_a += n_rings - k - 1;
+    }
+  }
+}
+
+//==============================================================================
+
+int32_t&
+HexLattice::operator[](const int i_xyz[3])
+{
+  int indx = (2*n_rings-1)*(2*n_rings-1) * i_xyz[2]
+              + (2*n_rings-1) * i_xyz[1]
+              + i_xyz[0];
+  return universes[indx];
+}
+
+//==============================================================================
+
+void
+HexLattice::adjust_indices()
+{
+  for (int iz = 0; iz < n_axial; iz++) {
+    for (int ia = 0; ia < 2*n_rings-1; ia++) {
+      for (int ix = 0; ix < 2*n_rings-1; ix++) {
+        int i_xyz[3] {ix+1, ia+1, iz+1};
+        if (are_valid_indices(i_xyz)) {
+          int indx = (2*n_rings-1)*(2*n_rings-1) * iz
+                      + (2*n_rings-1) * ia
+                      + ix;
+          universes[indx] = universe_dict[universes[indx]];
+        }
+      }
     }
   }
 }
@@ -655,6 +718,9 @@ extern "C" {
   }
 
   void lattice_to_hdf5(Lattice *lat, hid_t group) {lat->to_hdf5(group);}
+
+  int32_t lattice_universe(Lattice *lat, const int i_xyz[3])
+  {return (*lat)[i_xyz];}
 }
 
 } // namespace openmc

@@ -254,7 +254,7 @@ contains
             if (lat % are_valid_indices(i_xyz)) then
               ! Particle is inside the lattice.
               p % coord(j + 1) % universe = &
-                   lat % universes(i_xyz(1), i_xyz(2), i_xyz(3))
+                   lat % get([i_xyz(1)-1, i_xyz(2)-1, i_xyz(3)-1]) + 1
 
             else
               ! Particle is outside the lattice.
@@ -331,7 +331,8 @@ contains
     else OUTSIDE_LAT
 
       ! Find cell in next lattice element
-      p % coord(j) % universe = lat % universes(i_xyz(1), i_xyz(2), i_xyz(3))
+      p % coord(j) % universe = &
+           lat % get([i_xyz(1)-1, i_xyz(2)-1, i_xyz(3)-1]) + 1
 
       call find_cell(p, found)
       if (.not. found) then
@@ -591,7 +592,7 @@ contains
             do k = 1, lat % n_cells(2)
               do m = 1, lat % n_cells(3)
                 lat % offset(map, j, k, m) = offset
-                next_univ => universes(lat % universes(j, k, m))
+                next_univ => universes(lat % get([j-1, k-1, m-1]) + 1)
                 offset = offset + &
                      count_target(next_univ, counts, found, univ_id, map)
               end do
@@ -612,7 +613,7 @@ contains
                   cycle
                 else
                   lat % offset(map, j, k, m) = offset
-                  next_univ => universes(lat % universes(j, k, m))
+                  next_univ => universes(lat % get([j-1, k-1, m-1]) + 1)
                   offset = offset + &
                        count_target(next_univ, counts, found, univ_id, map)
                 end if
@@ -707,7 +708,7 @@ contains
           do j = 1, lat % n_cells(1)
             do k = 1, lat % n_cells(2)
               do m = 1, lat % n_cells(3)
-                next_univ => universes(lat % universes(j, k, m))
+                next_univ => universes(lat % get([j-1, k-1, m-1]) + 1)
 
                 ! Found target - stop since target cannot contain itself
                 if (next_univ % id == univ_id) then
@@ -735,7 +736,7 @@ contains
                   else if (j + k > 3*lat % n_rings - 1) then
                     cycle
                   else
-                    next_univ => universes(lat % universes(j, k, m))
+                    next_univ => universes(lat % get([j-1, k-1, m-1]) + 1)
 
                     ! Found target - stop since target cannot contain itself
                     if (next_univ % id == univ_id) then
@@ -799,7 +800,7 @@ contains
               do j = 1, lat % n_cells(1)
                 do k = 1, lat % n_cells(2)
                   do m = 1, lat % n_cells(3)
-                    call count_instance(universes(lat % universes(j, k, m)))
+                    call count_instance(universes(lat % get([j-1, k-1, m-1])+1))
                   end do
                 end do
               end do
@@ -817,7 +818,8 @@ contains
                     else if (j + k > 3*lat % n_rings - 1) then
                       cycle
                     else
-                      call count_instance(universes(lat % universes(j, k, m)))
+                      call count_instance(universes(lat % get([j-1, k-1, m-1]) &
+                                                    + 1))
                     end if
                   end do
                 end do
@@ -874,7 +876,7 @@ contains
           do j = 1, lat % n_cells(1)
             do k = 1, lat % n_cells(2)
               do m = 1, lat % n_cells(3)
-                next_univ => universes(lat % universes(j, k, m))
+                next_univ => universes(lat % get([j-1, k-1, m-1]) + 1)
                 levels_below = max(levels_below, maximum_levels(next_univ))
               end do
             end do
@@ -893,7 +895,7 @@ contains
                 else if (j + k > 3*lat % n_rings - 1) then
                   cycle
                 else
-                  next_univ => universes(lat % universes(j, k, m))
+                  next_univ => universes(lat % get([j-1, k-1, m-1]) + 1)
                   levels_below = max(levels_below, maximum_levels(next_univ))
                 end if
               end do

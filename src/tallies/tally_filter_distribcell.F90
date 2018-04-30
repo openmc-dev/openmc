@@ -289,7 +289,7 @@ contains
                       ! This is last lattice cell, so target must be here
                       lat_offset = lat % offset(map, k, l, m)
                       offset = offset + lat_offset
-                      next_univ => universes(lat % universes(k, l, m))
+                      next_univ => universes(lat % get([k-1, l-1, m-1])+1)
                       if (lat % is_3d) then
                         path = trim(path) // "(" // trim(to_str(k-1)) // &
                              "," // trim(to_str(l-1)) // "," // &
@@ -310,7 +310,7 @@ contains
                     ! Target is at this lattice position
                     lat_offset = lat % offset(map, old_k, old_l, old_m)
                     offset = offset + lat_offset
-                    next_univ => universes(lat % universes(old_k, old_l, old_m))
+                    next_univ => universes(lat % get([old_k-1, old_l-1, old_m-1])+1)
                     if (lat % is_3d) then
                       path = trim(path) // "(" // trim(to_str(old_k-1)) // &
                            "," // trim(to_str(old_l-1)) // "," // &
@@ -359,7 +359,7 @@ contains
                       ! This is last lattice cell, so target must be here
                       lat_offset = lat % offset(map, k, l, m)
                       offset = offset + lat_offset
-                      next_univ => universes(lat % universes(k, l, m))
+                      next_univ => universes(lat % get([k-1, l-1, m-1])+1)
                       if (lat % is_3d) then
                         path = trim(path) // "(" // &
                              trim(to_str(k - lat % n_rings)) // "," // &
@@ -382,7 +382,7 @@ contains
                     ! Target is at this lattice position
                     lat_offset = lat % offset(map, old_k, old_l, old_m)
                     offset = offset + lat_offset
-                    next_univ => universes(lat % universes(old_k, old_l, old_m))
+                    next_univ => universes(lat % get([old_k-1, old_l-1, old_m-1])+1)
                     if (lat % is_3d) then
                       path = trim(path) // "(" // &
                            trim(to_str(old_k - lat % n_rings)) // "," // &

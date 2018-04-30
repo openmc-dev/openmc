@@ -15,15 +15,7 @@
 namespace openmc {
 
 //==============================================================================
-// Constants that should eventually be moved out of this file
-//==============================================================================
-
-extern "C" double FP_PRECISION;
-constexpr double INFTY{std::numeric_limits<double>::max()};
-constexpr int C_NONE {-1};
-
-//==============================================================================
-// Constants
+// Module constants
 //==============================================================================
 
 constexpr int32_t NO_OUTER_UNIVERSE{-1};
@@ -57,6 +49,11 @@ public:
   explicit Lattice(pugi::xml_node lat_node);
 
   virtual ~Lattice() {}
+
+  virtual int32_t& operator[](const int i_xyz[3]) = 0;
+
+  //! Convert internal universe values from IDs to indices using universe_dict.
+  virtual void adjust_indices() = 0;
 
   //! Check lattice indices.
   //! @param i_xyz[3] The indices for a lattice tile.
@@ -104,6 +101,10 @@ public:
 
   virtual ~RectLattice() {}
 
+  int32_t& operator[](const int i_xyz[3]);
+
+  void adjust_indices();
+
   bool are_valid_indices(const int i_xyz[3]) const;
 
   std::pair<double, std::array<int, 3>>
@@ -126,6 +127,10 @@ public:
   explicit HexLattice(pugi::xml_node lat_node);
 
   virtual ~HexLattice() {}
+
+  int32_t& operator[](const int i_xyz[3]);
+
+  void adjust_indices();
 
   bool are_valid_indices(const int i_xyz[3]) const;
 

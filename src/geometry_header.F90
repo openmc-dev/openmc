@@ -179,7 +179,6 @@ module geometry_header
   type, abstract :: Lattice
     type(C_PTR) :: ptr
 
-    real(8), allocatable :: pitch(:)         ! Pitch along each axis
     integer              :: outside          ! Material to fill area outside
     integer              :: outer            ! universe to tile outside the lat
     logical              :: is_3d            ! Lattice has cells on z axis

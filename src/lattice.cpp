@@ -55,6 +55,8 @@ Lattice::to_hdf5(hid_t lat_group) const
   if (!name.empty()) {
     write_string(lat_group, "name", name);
   }
+
+  to_hdf5_inner(lat_group);
 }
 
 //==============================================================================
@@ -263,6 +265,19 @@ RectLattice::get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const
     local_xyz[2] = global_xyz[2];
   }
   return local_xyz;
+}
+
+//==============================================================================
+
+void
+RectLattice::to_hdf5_inner(hid_t lat_group) const
+{
+  if (is_3d) {
+    write_double_1D(lat_group, "pitch", pitch);
+  } else {
+    std::array<double, 2> out {{pitch[0], pitch[1]}};
+    write_double_1D(lat_group, "pitch", out);
+  }
 }
 
 //==============================================================================
@@ -648,6 +663,19 @@ HexLattice::get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const
   }
 
   return local_xyz;
+}
+
+//==============================================================================
+
+void
+HexLattice::to_hdf5_inner(hid_t lat_group) const
+{
+  if (is_3d) {
+    write_double_1D(lat_group, "pitch", pitch);
+  } else {
+    std::array<double, 1> out {{pitch[0]}};
+    write_double_1D(lat_group, "pitch", out);
+  }
 }
 
 //==============================================================================

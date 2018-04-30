@@ -260,7 +260,6 @@ contains
       call lat % to_hdf5(lattice_group)
 
       ! Write name, pitch, and outer universe
-      call write_dataset(lattice_group, "pitch", lat%pitch)
       if (lat % outer > 0) then
         call write_dataset(lattice_group, "outer", universes(lat % outer) % id)
       else

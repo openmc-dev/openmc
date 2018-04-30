@@ -605,13 +605,7 @@ contains
           do m = 1, lat % n_axial
             do k = 1, 2*lat % n_rings - 1
               do j = 1, 2*lat % n_rings - 1
-                ! This array location is never used
-                if (j + k < lat % n_rings + 1) then
-                  cycle
-                ! This array location is never used
-                else if (j + k > 3*lat % n_rings - 1) then
-                  cycle
-                else
+                if (lat % are_valid_indices([j, k, m])) then
                   lat % offset(map, j, k, m) = offset
                   next_univ => universes(lat % get([j-1, k-1, m-1]) + 1)
                   offset = offset + &
@@ -729,13 +723,7 @@ contains
             do m = 1, lat % n_axial
               do k = 1, 2*lat % n_rings - 1
                 do j = 1, 2*lat % n_rings - 1
-                  ! This array location is never used
-                  if (j + k < lat % n_rings + 1) then
-                    cycle
-                  ! This array location is never used
-                  else if (j + k > 3*lat % n_rings - 1) then
-                    cycle
-                  else
+                  if (lat % are_valid_indices([j, k, m])) then
                     next_univ => universes(lat % get([j-1, k-1, m-1]) + 1)
 
                     ! Found target - stop since target cannot contain itself
@@ -811,13 +799,7 @@ contains
               do m = 1, lat % n_axial
                 do k = 1, 2*lat % n_rings - 1
                   do j = 1, 2*lat % n_rings - 1
-                    ! This array location is never used
-                    if (j + k < lat % n_rings + 1) then
-                      cycle
-                      ! This array location is never used
-                    else if (j + k > 3*lat % n_rings - 1) then
-                      cycle
-                    else
+                    if (lat % are_valid_indices([j, k, m])) then
                       call count_instance(universes(lat % get([j-1, k-1, m-1]) &
                                                     + 1))
                     end if
@@ -844,6 +826,7 @@ contains
     integer :: levels                   ! maximum number of levels for this universe
 
     integer :: i                          ! index over cells
+    integer :: nx, ny, nz                 ! lattice shape
     integer :: j, k, m                    ! indices in lattice
     integer :: levels_below               ! max levels below this universe
     type(Cell),     pointer :: c          ! pointer to current cell
@@ -871,38 +854,28 @@ contains
         select type (lat)
 
         type is (RectLattice)
-
-          ! Loop over lattice coordinates
-          do j = 1, lat % n_cells(1)
-            do k = 1, lat % n_cells(2)
-              do m = 1, lat % n_cells(3)
-                next_univ => universes(lat % get([j-1, k-1, m-1]) + 1)
-                levels_below = max(levels_below, maximum_levels(next_univ))
-              end do
-            end do
-          end do
+          nx = lat % n_cells(1)
+          ny = lat % n_cells(2)
+          nz = lat % n_cells(3)
 
         type is (HexLattice)
-
-          ! Loop over lattice coordinates
-          do m = 1, lat % n_axial
-            do k = 1, 2*lat % n_rings - 1
-              do j = 1, 2*lat % n_rings - 1
-                ! This array location is never used
-                if (j + k < lat % n_rings + 1) then
-                  cycle
-                ! This array location is never used
-                else if (j + k > 3*lat % n_rings - 1) then
-                  cycle
-                else
-                  next_univ => universes(lat % get([j-1, k-1, m-1]) + 1)
-                  levels_below = max(levels_below, maximum_levels(next_univ))
-                end if
-              end do
-            end do
-          end do
+          nx = 2 * lat % n_rings - 1
+          ny = 2 * lat % n_rings - 1
+          nz = lat % n_axial
 
         end select
+
+        ! Loop over lattice coordinates
+        do j = 1, nx
+          do k = 1, ny
+            do m = 1, nz
+              if (lat % are_valid_indices([j, k, m])) then
+                next_univ => universes(lat % get([j-1, k-1, m-1]) + 1)
+                levels_below = max(levels_below, maximum_levels(next_univ))
+              end if
+            end do
+          end do
+        end do
 
       end if
     end do

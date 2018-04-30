@@ -931,12 +931,11 @@ contains
 
   subroutine read_geometry_xml()
 
-    integer :: i, j, k, m, i_x, i_a, input_index
+    integer :: i, j, k, m
     integer :: n, n_mats, n_x, n_y, n_z, n_rings, n_rlats, n_hlats
     integer :: id
     integer :: univ_id
     integer :: n_cells_in_univ
-    integer, allocatable :: temp_int_array(:)
     real(8) :: phi, theta, psi
     logical :: file_exists
     logical :: boundary_exists
@@ -1295,31 +1294,6 @@ contains
       allocate(lat % lower_left(n))
       call get_node_array(node_lat, "lower_left", lat % lower_left)
 
-      ! Read lattice pitches.
-      ! TODO: Remove this deprecation warning in a future release.
-      if (check_for_node(node_lat, "width")) then
-        call warning("The use of 'width' is deprecated and will be disallowed &
-             &in a future release.  Use 'pitch' instead.  The utility openmc/&
-             &src/utils/update_inputs.py can be used to automatically update &
-             &geometry.xml files.")
-        if (node_word_count(node_lat, "width") /= n) then
-          call fatal_error("Number of entries on <pitch> must be the same as &
-               &the number of entries on <dimension>.")
-        end if
-
-      else if (node_word_count(node_lat, "pitch") /= n) then
-        call fatal_error("Number of entries on <pitch> must be the same as &
-             &the number of entries on <dimension>.")
-      end if
-
-      allocate(lat % pitch(n))
-      ! TODO: Remove the 'width' code in a future release.
-      if (check_for_node(node_lat, "width")) then
-        call get_node_array(node_lat, "width", lat % pitch)
-      else
-        call get_node_array(node_lat, "pitch", lat % pitch)
-      end if
-
       ! TODO: Remove deprecation warning in a future release.
       if (check_for_node(node_lat, "type")) then
         call warning("The use of 'type' is no longer needed.  The utility &
@@ -1405,19 +1379,6 @@ contains
       allocate(lat % center(n))
       call get_node_array(node_lat, "center", lat % center)
 
-      ! Read lattice pitches
-      n = node_word_count(node_lat, "pitch")
-      if (lat % is_3d .and. n /= 2) then
-        call fatal_error("A hexagonal lattice with <n_axial> must have <pitch> &
-              &specified by 2 numbers.")
-      else if ((.not. lat % is_3d) .and. n /= 1) then
-        call fatal_error("A hexagonal lattice without <n_axial> must have &
-             &<pitch> specified by 1 number.")
-      end if
-
-      allocate(lat % pitch(n))
-      call get_node_array(node_lat, "pitch", lat % pitch)
-
       ! Copy number of dimensions
       n_rings = lat % n_rings
       n_z = lat % n_axial
@@ -1428,9 +1389,6 @@ contains
         call fatal_error("Number of universes on <universes> does not match &
              &size of lattice " // trim(to_str(lat % id())) // ".")
       end if
-
-      allocate(temp_int_array(n))
-      call get_node_array(node_lat, "universes", temp_int_array)
 
       ! Read universes
       do m = 0, n_z-1
@@ -4179,8 +4137,6 @@ contains
 
     integer :: i                      ! index for various purposes
     integer :: j                      ! index for various purposes
-    integer :: k                      ! loop index for lattices
-    integer :: m                      ! loop index for lattices
     integer :: lid                    ! lattice IDs
     integer :: id                     ! user-specified id
     class(Lattice),    pointer :: lat => null()

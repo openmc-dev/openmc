@@ -89,6 +89,8 @@ public:
 
 protected:
   bool is_3d;  //! Has divisions along the z-axis
+
+  virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
 
 //==============================================================================
@@ -114,6 +116,8 @@ public:
 
   std::array<double, 3>
   get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const;
+
+  void to_hdf5_inner(hid_t group_id) const;
 
 protected:
   std::array<int, 3> n_cells;        //! Number of cells along each axis
@@ -141,6 +145,8 @@ public:
 
   std::array<double, 3>
   get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const;
+
+  void to_hdf5_inner(hid_t group_id) const;
 
 protected:
   int n_rings;                   //! Number of radial tile positions

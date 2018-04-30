@@ -75,7 +75,7 @@ write_int(hid_t group_id, char const *name, int32_t buffer)
 
 template<std::size_t array_len> inline void
 write_double_1D(hid_t group_id, char const *name,
-                std::array<double, array_len> &buffer)
+                const std::array<double, array_len> &buffer)
 {
   hsize_t dims[1]{array_len};
   hid_t dataspace = H5Screate_simple(1, dims, NULL);

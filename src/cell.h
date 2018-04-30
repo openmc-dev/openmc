@@ -16,16 +16,15 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-// Braces force n_cells to be defined here, not just declared.
-extern "C" {int32_t n_cells {0};}
+extern "C" int32_t n_cells;
 
 class Cell;
-std::vector<Cell*> cells_c;
-std::map<int32_t, int32_t> cell_dict;
+extern std::vector<Cell*> cells_c;
+extern std::map<int32_t, int32_t> cell_dict;
 
 class Universe;
-std::vector<Universe*> universes_c;
-std::map<int32_t, int32_t> universe_dict;
+extern std::vector<Universe*> universes_c;
+extern std::map<int32_t, int32_t> universe_dict;
 
 //==============================================================================
 //! A geometry primitive that fills all space and contains cells.

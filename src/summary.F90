@@ -288,7 +288,7 @@ contains
           do k = 0, lat%n_cells(2) - 1
             do m = 1, lat%n_cells(3)
               lattice_universes(j, k+1, m) = &
-                   universes(lat%universes(j, lat%n_cells(2) - k, m))%id
+                   universes(lat%get([j-1, lat%n_cells(2)-k-1, m-1])+1)%id
             end do
           end do
         end do
@@ -319,7 +319,7 @@ contains
                 lattice_universes(j,k,m) = -1
                 cycle
               end if
-              lattice_universes(j,k,m) = universes(lat%universes(j,k,m))%id
+              lattice_universes(j,k,m) = universes(lat%get([j-1,k-1,m-1])+1)%id
             end do
           end do
         end do

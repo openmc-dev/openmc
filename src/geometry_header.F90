@@ -148,6 +148,15 @@ module geometry_header
       implicit none
       integer(C_INT32_T), intent(in), value :: n
     end subroutine extend_cells_c
+
+    function lattice_universe_c(lat_ptr, i_xyz) &
+         bind(C, name='lattice_universe') result(univ)
+      use ISO_C_BINDING
+      implicit none
+      type(C_PTR),    intent(in), value :: lat_ptr
+      integer(C_INT), intent(in)        :: i_xyz(3)
+      integer(C_INT32_T)                :: univ
+    end function lattice_universe_c
   end interface
 
 !===============================================================================
@@ -170,9 +179,7 @@ module geometry_header
   type, abstract :: Lattice
     type(C_PTR) :: ptr
 
-    !integer              :: id               ! Universe number for lattice
     real(8), allocatable :: pitch(:)         ! Pitch along each axis
-    integer, allocatable :: universes(:,:,:) ! Specified universes
     integer              :: outside          ! Material to fill area outside
     integer              :: outer            ! universe to tile outside the lat
     logical              :: is_3d            ! Lattice has cells on z axis
@@ -182,6 +189,7 @@ module geometry_header
     procedure :: id => lattice_id
     procedure :: are_valid_indices => lattice_are_valid_indices
     procedure :: distance => lattice_distance
+    procedure :: get => lattice_get
     procedure :: get_indices => lattice_get_indices
     procedure :: get_local_xyz => lattice_get_local_xyz
     procedure :: to_hdf5 => lattice_to_hdf5
@@ -296,6 +304,13 @@ contains
     integer(C_INT), intent(out) :: lattice_trans(3)
     call lattice_distance_c(this % ptr, xyz, uvw, i_xyz, d, lattice_trans)
   end subroutine lattice_distance
+
+  function lattice_get(this, i_xyz) result(univ)
+    class(Lattice), intent(in)  :: this
+    integer(C_INT), intent(in)  :: i_xyz(3)
+    integer(C_INT32_T)          :: univ
+    univ = lattice_universe_c(this % ptr, i_xyz)
+  end function lattice_get
 
   function lattice_get_indices(this, xyz) result(i_xyz)
     class(Lattice), intent(in)  :: this

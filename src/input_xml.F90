@@ -1331,7 +1331,6 @@ contains
       n_x = lat % n_cells(1)
       n_y = lat % n_cells(2)
       n_z = lat % n_cells(3)
-      allocate(lat % universes(n_x, n_y, n_z))
 
       ! Check that number of universes matches size
       n = node_word_count(node_lat, "universes")
@@ -1340,21 +1339,16 @@ contains
              &size of lattice " // trim(to_str(lat % id())) // ".")
       end if
 
-      allocate(temp_int_array(n))
-      call get_node_array(node_lat, "universes", temp_int_array)
-
       ! Read universes
-      do m = 1, n_z
+      do m = 0, n_z-1
         do k = 0, n_y - 1
-          do j = 1, n_x
-            lat % universes(j, n_y - k, m) = &
-                 temp_int_array(j + n_x*k + n_x*n_y*(m-1))
-            if (find(fill_univ_ids, lat % universes(j, n_y - k, m)) == -1) &
-                 call fill_univ_ids % push_back(lat % universes(j, n_y - k, m))
+          do j = 0, n_x - 1
+            univ_id = lat % get([j, k, m])
+            if (find(fill_univ_ids, univ_id) == -1) &
+                 call fill_univ_ids % push_back(univ_id)
           end do
         end do
       end do
-      deallocate(temp_int_array)
 
       ! Read outer universe for area outside lattice.
       lat % outer = NO_OUTER_UNIVERSE
@@ -1427,7 +1421,6 @@ contains
       ! Copy number of dimensions
       n_rings = lat % n_rings
       n_z = lat % n_axial
-      allocate(lat % universes(2*n_rings - 1, 2*n_rings - 1, n_z))
 
       ! Check that number of universes matches size
       n = node_word_count(node_lat, "universes")
@@ -1440,91 +1433,15 @@ contains
       call get_node_array(node_lat, "universes", temp_int_array)
 
       ! Read universes
-      ! Universes in hexagonal lattices are stored in a manner that represents
-      ! a skewed coordinate system: (x, alpha) rather than (x, y).  There is
-      ! no obvious, direct relationship between the order of universes in the
-      ! input and the order that they will be stored in the skewed array so
-      ! the following code walks a set of index values across the skewed array
-      ! in a manner that matches the input order.  Note that i_x = 0, i_a = 0
-      ! corresponds to the center of the hexagonal lattice.
-
-      input_index = 1
-      do m = 1, n_z
-        ! Initialize lattice indecies.
-        i_x = 1
-        i_a = n_rings - 1
-
-        ! Map upper triangular region of hexagonal lattice.
-        do k = 1, n_rings-1
-          ! Walk index to lower-left neighbor of last row start.
-          i_x = i_x - 1
-          do j = 1, k
-            ! Place universe in array.
-            lat % universes(i_x + n_rings, i_a + n_rings, m) = &
-                 temp_int_array(input_index)
-            if (find(fill_univ_ids, temp_int_array(input_index)) == -1) &
-                 call fill_univ_ids % push_back(temp_int_array(input_index))
-            ! Walk index to closest non-adjacent right neighbor.
-            i_x = i_x + 2
-            i_a = i_a - 1
-            ! Increment XML array index.
-            input_index = input_index + 1
+      do m = 0, n_z-1
+        do k = 0, 2*n_rings-2
+          do j = 0, 2*n_rings-2
+            univ_id = lat % get([j, k, m])
+            if (find(fill_univ_ids, univ_id) == -1) &
+                 call fill_univ_ids % push_back(univ_id)
           end do
-          ! Return lattice index to start of current row.
-          i_x = i_x - 2*k
-          i_a = i_a + k
-        end do
-
-        ! Map middle square region of hexagonal lattice.
-        do k = 1, 2*n_rings - 1
-          if (mod(k, 2) == 1) then
-            ! Walk index to lower-left neighbor of last row start.
-            i_x = i_x - 1
-          else
-            ! Walk index to lower-right neighbor of last row start
-            i_x = i_x + 1
-            i_a = i_a - 1
-          end if
-          do j = 1, n_rings - mod(k-1, 2)
-            ! Place universe in array.
-            lat % universes(i_x + n_rings, i_a + n_rings, m) = &
-                 temp_int_array(input_index)
-            if (find(fill_univ_ids, temp_int_array(input_index)) == -1) &
-                 call fill_univ_ids % push_back(temp_int_array(input_index))
-            ! Walk index to closest non-adjacent right neighbor.
-            i_x = i_x + 2
-            i_a = i_a - 1
-            ! Increment XML array index.
-            input_index = input_index + 1
-          end do
-          ! Return lattice index to start of current row.
-          i_x = i_x - 2*(n_rings - mod(k-1, 2))
-          i_a = i_a + n_rings - mod(k-1, 2)
-        end do
-
-        ! Map lower triangular region of hexagonal lattice.
-        do k = 1, n_rings-1
-          ! Walk index to lower-right neighbor of last row start.
-          i_x = i_x + 1
-          i_a = i_a - 1
-          do j = 1, n_rings - k
-            ! Place universe in array.
-            lat % universes(i_x + n_rings, i_a + n_rings, m) = &
-                 temp_int_array(input_index)
-            if (find(fill_univ_ids, temp_int_array(input_index)) == -1) &
-                 call fill_univ_ids % push_back(temp_int_array(input_index))
-            ! Walk index to closest non-adjacent right neighbor.
-            i_x = i_x + 2
-            i_a = i_a - 1
-            ! Increment XML array index.
-            input_index = input_index + 1
-          end do
-          ! Return lattice index to start of current row.
-          i_x = i_x - 2*(n_rings - k)
-          i_a = i_a + n_rings - k
         end do
       end do
-      deallocate(temp_int_array)
 
       ! Read outer universe for area outside lattice.
       lat % outer = NO_OUTER_UNIVERSE
@@ -4312,46 +4229,6 @@ contains
 
     do i = 1, n_lattices
       lat => lattices(i) % obj
-      select type (lat)
-
-      type is (RectLattice)
-        do m = 1, lat % n_cells(3)
-          do k = 1, lat % n_cells(2)
-            do j = 1, lat % n_cells(1)
-              id = lat % universes(j,k,m)
-              if (universe_dict % has(id)) then
-                lat % universes(j,k,m) = universe_dict % get(id)
-              else
-                call fatal_error("Invalid universe number " &
-                     &// trim(to_str(id)) // " specified on lattice " &
-                     &// trim(to_str(lat % id())))
-              end if
-            end do
-          end do
-        end do
-
-      type is (HexLattice)
-        do m = 1, lat % n_axial
-          do k = 1, 2*lat % n_rings - 1
-            do j = 1, 2*lat % n_rings - 1
-              if (j + k < lat % n_rings + 1) then
-                cycle
-              else if (j + k > 3*lat % n_rings - 1) then
-                cycle
-              end if
-              id = lat % universes(j, k, m)
-              if (universe_dict % has(id)) then
-                lat % universes(j, k, m) = universe_dict % get(id)
-              else
-                call fatal_error("Invalid universe number " &
-                     &// trim(to_str(id)) // " specified on lattice " &
-                     &// trim(to_str(lat % id())))
-              end if
-            end do
-          end do
-        end do
-
-      end select
 
       if (lat % outer /= NO_OUTER_UNIVERSE) then
         if (universe_dict % has(lat % outer)) then

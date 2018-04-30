@@ -8,6 +8,7 @@
 #include "constants.h"
 #include "error.h"
 #include "hdf5_interface.h"
+#include "lattice.h"
 #include "surface.h"
 #include "xml_interface.h"
 
@@ -28,6 +29,19 @@ constexpr int32_t OP_INTERSECTION {std::numeric_limits<int32_t>::max() - 3};
 constexpr int32_t OP_UNION        {std::numeric_limits<int32_t>::max() - 4};
 
 extern "C" double FP_PRECISION;
+
+//==============================================================================
+// Global variables
+//==============================================================================
+
+// Braces force n_cells to be defined here, not just declared.
+extern "C" {int32_t n_cells {0};}
+
+std::vector<Cell*> cells_c;
+std::map<int32_t, int32_t> cell_dict;
+
+std::vector<Universe*> universes_c;
+std::map<int32_t, int32_t> universe_dict;
 
 //==============================================================================
 //! Convert region specification string to integer tokens.
@@ -443,6 +457,11 @@ adjust_indices_c()
               << " specified on cell " << c->id;
       fatal_error(err_msg);
     }
+  }
+
+  // Change all lattice universe values from IDs to indices.
+  for (Lattice *l : lattices_c) {
+    l->adjust_indices();
   }
 }
 

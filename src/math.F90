@@ -7,7 +7,6 @@ module math
 
   implicit none
   private
-  public :: normal_percentile
   public :: t_percentile
   public :: calc_pn
   public :: calc_rn
@@ -125,65 +124,6 @@ module math
 contains
 
 !===============================================================================
-! NORMAL_PERCENTILE calculates the percentile of the standard normal
-! distribution with a specified probability level
-!===============================================================================
-
-  pure function normal_percentile(p) result(z) bind(C)
-
-    real(C_DOUBLE), intent(in) :: p ! probability level
-    real(C_DOUBLE)             :: z ! corresponding z-value
-
-    real(C_DOUBLE)            :: q
-    real(C_DOUBLE)            :: r
-    real(C_DOUBLE), parameter :: p_low  = 0.02425_8
-    real(C_DOUBLE), parameter :: a(6) = (/ &
-         -3.969683028665376e1_8, 2.209460984245205e2_8, -2.759285104469687e2_8, &
-         1.383577518672690e2_8, -3.066479806614716e1_8, 2.506628277459239e0_8 /)
-    real(C_DOUBLE), parameter :: b(5) = (/ &
-         -5.447609879822406e1_8, 1.615858368580409e2_8, -1.556989798598866e2_8, &
-         6.680131188771972e1_8, -1.328068155288572e1_8 /)
-    real(C_DOUBLE), parameter :: c(6) = (/ &
-         -7.784894002430293e-3_8, -3.223964580411365e-1_8, -2.400758277161838_8, &
-         -2.549732539343734_8, 4.374664141464968_8, 2.938163982698783_8 /)
-    real(C_DOUBLE), parameter :: d(4) = (/ &
-         7.784695709041462e-3_8, 3.224671290700398e-1_8, &
-         2.445134137142996_8,    3.754408661907416_8 /)
-
-    ! The rational approximation used here is from an unpublished work at
-    ! http://home.online.no/~pjacklam/notes/invnorm/
-
-    if (p < p_low) then
-      ! Rational approximation for lower region.
-
-      q = sqrt(-TWO*log(p))
-      z = (((((c(1)*q + c(2))*q + c(3))*q + c(4))*q + c(5))*q + c(6)) / &
-           ((((d(1)*q + d(2))*q + d(3))*q + d(4))*q + ONE)
-
-    elseif (p <= ONE - p_low) then
-      ! Rational approximation for central region
-
-      q = p - HALF
-      r = q*q
-      z = (((((a(1)*r + a(2))*r + a(3))*r + a(4))*r + a(5))*r + a(6))*q / &
-           (((((b(1)*r + b(2))*r + b(3))*r + b(4))*r + b(5))*r + ONE)
-
-    else
-      ! Rational approximation for upper region
-
-      q = sqrt(-TWO*log(ONE - p))
-      z = -(((((c(1)*q + c(2))*q + c(3))*q + c(4))*q + c(5))*q + c(6)) / &
-           ((((d(1)*q + d(2))*q + d(3))*q + d(4))*q + ONE)
-    endif
-
-    ! Refinement based on Newton's method
-#ifndef NO_F2008
-    z = z - (HALF * erfc(-z/sqrt(TWO)) - p) * sqrt(TWO*PI) * exp(HALF*z*z)
-#endif
-
-  end function normal_percentile
-
-!===============================================================================
 ! T_PERCENTILE calculates the percentile of the Student's t distribution with a
 ! specified probability level and number of degrees of freedom
 !===============================================================================
@@ -194,39 +134,7 @@ contains
     integer(C_INT), intent(in)  :: df ! degrees of freedom
     real(C_DOUBLE)              :: t  ! corresponding t-value
 
-    real(C_DOUBLE)             :: n  ! degrees of freedom as a real(8)
-    real(C_DOUBLE)             :: k  ! n - 2
-    real(C_DOUBLE)             :: z  ! percentile of normal distribution
-    real(C_DOUBLE)             :: z2 ! z * z
-
-    if (df == 1) then
-      ! For one degree of freedom, the t-distribution becomes a Cauchy
-      ! distribution whose cdf we can invert directly
-
-      t = tan(PI*(p - HALF))
-
-    elseif (df == 2) then
-      ! For two degrees of freedom, the cdf is given by 1/2 + x/(2*sqrt(x^2 +
-      ! 2)). This can be directly inverted to yield the solution below
-
-      t = TWO*sqrt(TWO)*(p - HALF)/sqrt(ONE - FOUR*(p - HALF)**2)
-
-    else
-
-      ! This approximation is from E. Olusegun George and Meenakshi Sivaram, "A
-      ! modification of the Fisher-Cornish approximation for the student t
-      ! percentiles," Communication in Statistics - Simulation and Computation,
-      ! 16 (4), pp. 1123-1132 (1987).
-
-      n = real(df,8)
-      k = ONE/(n - TWO)
-      z = normal_percentile(p)
-      z2 = z * z
-      t = sqrt(n*k) * (z + (z2 - THREE)*z*k/FOUR + ((5._8*z2 - 56._8)*z2 + &
-           75._8)*z*k*k/96._8 + (((z2 - 27._8)*THREE*z2 + 417._8)*z2 - 315._8) &
-           *z*k*k*k/384._8)
-
-    end if
+    t = t_percentile_cc(p, df)
 
   end function t_percentile
 

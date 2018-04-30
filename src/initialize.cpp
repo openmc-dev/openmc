@@ -102,8 +102,8 @@ void initialize_mpi(MPI_Comm intracomm)
 
 inline bool ends_with(std::string const& value, std::string const& ending)
 {
-    if (ending.size() > value.size()) return false;
-    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+  if (ending.size() > value.size()) return false;
+  return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
 }
 
 
@@ -194,6 +194,9 @@ parse_command_line(int argc, char* argv[])
           return OPENMC_E_INVALID_ARGUMENT;
         }
         omp_set_num_threads(openmc_n_threads);
+#else
+        if (openmc_master)
+          warning("Ignoring number of threads specified on command line.");
 #endif
 
       } else if (arg == "-?" || arg == "-h" || arg == "--help") {

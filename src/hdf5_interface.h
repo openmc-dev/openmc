@@ -35,24 +35,6 @@ extern "C" hid_t open_dataset(hid_t group_id, const char* name);
 extern "C" hid_t open_group(hid_t group_id, const char* name);
 bool using_mpio_device(hid_t obj_id);
 
-
-template<std::size_t array_len> void
-write_double_1D(hid_t group_id, char const *name,
-                std::array<double, array_len> &buffer)
-{
-  hsize_t dims[1]{array_len};
-  hid_t dataspace = H5Screate_simple(1, dims, NULL);
-
-  hid_t dataset = H5Dcreate(group_id, name, H5T_NATIVE_DOUBLE, dataspace,
-                            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
-  H5Dwrite(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-           &buffer[0]);
-
-  H5Sclose(dataspace);
-  H5Dclose(dataset);
-}
-
 void read_attr(hid_t obj_id, const char* name, hid_t mem_type_id,
                const void* buffer);
 extern "C" void read_attr_double(hid_t obj_id, const char* name, double* buffer);
@@ -101,6 +83,15 @@ void write_string(hid_t group_id, const char* name, const std::string& buffer, b
 
 extern "C" void write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
                                     const double* results);
+
+template<std::size_t array_len> void
+write_double_1D(hid_t group_id, char const *name,
+                std::array<double, array_len> &buffer)
+{
+  hsize_t dims[1] {array_len};
+  write_dataset(group_id, 1, dims, name, H5T_NATIVE_DOUBLE,
+                buffer.data(), false);
+}
 
 } // namespace openmc
 #endif //HDF5_INTERFACE_H

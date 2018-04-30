@@ -19,24 +19,24 @@ int main(int argc, char* argv[]) {
     // This happens for the -h and -v flags
     return 0;
   } else if (err) {
-     openmc::fatal_error(openmc_err_msg);
+    openmc::fatal_error(openmc_err_msg);
   }
 
   // start problem based on mode
   switch (openmc_run_mode) {
-  case RUN_MODE_FIXEDSOURCE:
-  case RUN_MODE_EIGENVALUE:
-    err = openmc_run();
-    break;
-  case RUN_MODE_PLOTTING:
-    err = openmc_plot_geometry();
-    break;
-  case RUN_MODE_PARTICLE:
-    if (openmc_master) err = openmc_particle_restart();
-    break;
-  case RUN_MODE_VOLUME:
-    err = openmc_calculate_volumes();
-    break;
+    case RUN_MODE_FIXEDSOURCE:
+    case RUN_MODE_EIGENVALUE:
+      err = openmc_run();
+      break;
+    case RUN_MODE_PLOTTING:
+      err = openmc_plot_geometry();
+      break;
+    case RUN_MODE_PARTICLE:
+      if (openmc_master) err = openmc_particle_restart();
+      break;
+    case RUN_MODE_VOLUME:
+      err = openmc_calculate_volumes();
+      break;
   }
   if (err) openmc::fatal_error(openmc_err_msg);
 

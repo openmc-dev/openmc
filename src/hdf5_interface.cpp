@@ -122,20 +122,20 @@ file_open(const char* filename, char mode, bool parallel)
   bool create;
   unsigned int flags;
   switch (mode) {
-  case 'r':
-  case 'a':
-    create = false;
-    flags = (mode == 'r' ? H5F_ACC_RDONLY : H5F_ACC_RDWR);
-    break;
-  case 'w':
-  case 'x':
-    create = true;
-    flags = (mode == 'x' ? H5F_ACC_EXCL : H5F_ACC_TRUNC);
-    break;
-  default:
-    std::stringstream err_msg;
-    err_msg <<  "Invalid file mode: " << mode;
-    fatal_error(err_msg);
+    case 'r':
+    case 'a':
+      create = false;
+      flags = (mode == 'r' ? H5F_ACC_RDONLY : H5F_ACC_RDWR);
+      break;
+    case 'w':
+    case 'x':
+      create = true;
+      flags = (mode == 'x' ? H5F_ACC_EXCL : H5F_ACC_TRUNC);
+      break;
+    default:
+      std::stringstream err_msg;
+      err_msg <<  "Invalid file mode: " << mode;
+      fatal_error(err_msg);
   }
 
   hid_t plist = H5P_DEFAULT;

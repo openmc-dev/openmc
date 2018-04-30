@@ -33,19 +33,19 @@ extern "C" double t_percentile_c(double p, int df) __attribute__ ((const));
 extern "C" double calc_pn_c(int n, double x) __attribute__ ((const));
 
 //==============================================================================
-// CALC_RN calculates the n-th order spherical harmonics for a given angle
-// (in terms of (u,v,w)).  All Rn,m values are provided (where -n<=m<=n)
-//==============================================================================
-
-extern "C" void calc_rn_c(int n, double uvw[3], double rn[]);
-
-//==============================================================================
 // EVALUATE_LEGENDRE Find the value of f(x) given a set of Legendre coefficients
 // and the value of x
 //==============================================================================
 
 extern "C" double evaluate_legendre_c(int n, double data[], double x)
      __attribute__ ((const));
+
+//==============================================================================
+// CALC_RN calculates the n-th order spherical harmonics for a given angle
+// (in terms of (u,v,w)).  All Rn,m values are provided (where -n<=m<=n)
+//==============================================================================
+
+extern "C" void calc_rn_c(int n, double uvw[3], double rn[]);
 
 //==============================================================================
 // ROTATE_ANGLE rotates direction cosines through a polar angle whose cosine is

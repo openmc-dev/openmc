@@ -1,4 +1,4 @@
-from ctypes import (c_int, c_double, POINTER)
+from ctypes import (c_int, c_double, POINTER, c_void_p)
 
 import numpy as np
 from numpy.ctypeslib import ndpointer
@@ -18,7 +18,8 @@ _dll.calc_zn.restype = None
 _dll.calc_zn.argtypes = [POINTER(c_int), POINTER(c_double), POINTER(c_double),
                          ndpointer(c_double)]
 _dll.evaluate_legendre.restype = c_double
-_dll.evaluate_legendre.argtypes = [ndpointer(c_double), POINTER(c_double)]
+_dll.evaluate_legendre.argtypes = [POINTER(c_int), POINTER(c_double),
+                                   POINTER(c_double)]
 _dll.rotate_angle.restype = None
 _dll.rotate_angle.argtypes = [ndpointer(c_double), POINTER(c_double),
                               ndpointer(c_double), POINTER(c_double)]
@@ -169,7 +170,9 @@ def evaluate_legendre(data, x):
     """
 
     data_arr = np.array(data, dtype=np.float64)
-    return _dll.evaluate_legendre(data_arr, c_double(x))
+    return _dll.evaluate_legendre(c_int(len(data)),
+                                  data_arr.ctypes.data_as(POINTER(c_double)),
+                                  c_double(x))
 
 
 def rotate_angle(uvw0, mu, phi=None):
@@ -194,7 +197,9 @@ def rotate_angle(uvw0, mu, phi=None):
 
     uvw = np.zeros(3, dtype=np.float64)
     uvw0_arr = np.array(uvw0, dtype=np.float64)
-    _dll.rotate_angle(uvw0_arr, c_double(mu), uvw, c_double(phi))
+
+    _dll.rotate_angle(uvw0_arr, c_double(mu),
+                      uvw, c_double(phi))
     return uvw
 
 

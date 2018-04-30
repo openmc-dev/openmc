@@ -703,16 +703,17 @@ contains
 ! and the value of x
 !===============================================================================
 
-  pure function evaluate_legendre(data, x) result(val) bind(C)
-    real(C_DOUBLE), intent(in) :: data(:)
+  pure function evaluate_legendre(n, data, x) result(val) bind(C)
+    integer(C_INT), intent(in) :: n
+    real(C_DOUBLE), intent(in) :: data(n)
     real(C_DOUBLE), intent(in) :: x
     real(C_DOUBLE)             :: val
 
     integer(C_INT) :: l
 
     val =  HALF * data(1)
-    do l = 1, size(data) - 1
-      val = val + (real(l,8) +  HALF) * data(l + 1) * calc_pn(l,x)
+    do l = 1, n - 1
+      val = val + (real(l, 8) +  HALF) * data(l + 1) * calc_pn(l,x)
     end do
 
   end function evaluate_legendre

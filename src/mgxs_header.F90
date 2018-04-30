@@ -1097,7 +1097,9 @@ contains
                   end if
 
                   scatt_coeffs(gin) % data(imu, gout) = &
-                       evaluate_legendre(input_scatt(gin) % data(:, gout), mu)
+                       evaluate_legendre( &
+                       size(input_scatt(gin) % data, dim=1), &
+                       input_scatt(gin) % data(:, gout), mu)
 
                   ! Ensure positivity of distribution
                   if (scatt_coeffs(gin) % data(imu, gout) < ZERO) &
@@ -2079,6 +2081,7 @@ contains
 
                       scatt_coeffs(gin, iazi, ipol) % data(imu, gout) = &
                            evaluate_legendre(&
+                           size(input_scatt(gin, iazi, ipol) % data, dim=1), &
                            input_scatt(gin, iazi, ipol) % data(:, gout), mu)
 
                       ! Ensure positivity of distribution

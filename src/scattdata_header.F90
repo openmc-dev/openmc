@@ -445,7 +445,8 @@ contains
       if (gout < this % gmin(gin) .or. gout > this % gmax(gin)) then
         f = ZERO
       else
-        f = evaluate_legendre(this % dist(gin) % data(:, gout), mu)
+        f = evaluate_legendre(size(this % dist(gin) % data, dim=1), &
+                              this % dist(gin) % data(:, gout), mu)
       end if
 
     end function scattdatalegendre_calc_f

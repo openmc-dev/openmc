@@ -1925,7 +1925,7 @@ class MGXS(metaclass=ABCMeta):
 
         # Add the Legendre bin to the column if it exists
         if 'legendre' in df:
-            columns += ['legendre']
+            columns.append('legendre')
 
         # If user requested micro cross sections, divide out the atom densities
         if xs_type == 'micro':

@@ -459,8 +459,6 @@ contains
         ! Find the number of macroscopic and nuclide data in this material
         num_nuclides  = 0
         num_macros = 0
-        k = 1
-        n = 1
         do j = 1, m % n_nuclides
           if (nuclides_MG(m % nuclide(j)) % obj % awr /= MACROSCOPIC_AWR) then
             num_nuclides = num_nuclides + 1

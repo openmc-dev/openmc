@@ -391,8 +391,7 @@ class Tally(IDManagerMixin):
                                    'nu-scatter-p', 'scatter-y', 'nu-scatter-y',
                                     'flux-y', 'total-y']:
                     if score.startswith(deprecated):
-                        msg = score.strip() + ' is deprecated and should no ' \
-                            'longer be used.'
+                        msg = score.strip() + ' is no longer supported.'
                         raise ValueError(msg)
                 scores[i] = score.strip()
 

@@ -24,7 +24,7 @@ function (:math:`f` in the above equation) should be used. The regions of phase
 space are generally called *filters* and the scoring functions are simply
 called *scores*.
 
-The only cases when *filters* do not correspond directly with the regions of
+The only cases when filters do not correspond directly with the regions of
 phase space are when expansion functions are applied in the integrand, such as
 for Legendre expansions of the scattering kernel.
 

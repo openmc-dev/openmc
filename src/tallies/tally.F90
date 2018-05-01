@@ -1199,8 +1199,9 @@ contains
 
       !#########################################################################
       ! Expand score if necessary and add to tally results.
-      call expand_and_score(p, t, score_index, filter_index, score_bin, &
-                            score, i)
+!$omp atomic
+      t % results(RESULT_VALUE, score_index, filter_index) = &
+           t % results(RESULT_VALUE, score_index, filter_index) + score
 
     end do SCORE_LOOP
   end subroutine score_general_ce
@@ -1982,35 +1983,14 @@ contains
 
       !#########################################################################
       ! Expand score if necessary and add to tally results.
-      call expand_and_score(p, t, score_index, filter_index, score_bin, &
-                            score, i)
+!$omp atomic
+      t % results(RESULT_VALUE, score_index, filter_index) = &
+           t % results(RESULT_VALUE, score_index, filter_index) + score
 
     end do SCORE_LOOP
 
     nullify(matxs, nucxs)
   end subroutine score_general_mg
-
-!===============================================================================
-! EXPAND_AND_SCORE takes a previously determined score value and adjusts it
-! if necessary (for functional expansion weighting), and then adds the resultant
-! value to the tally results array.
-!===============================================================================
-
-  subroutine expand_and_score(p, t, score_index, filter_index, score_bin, &
-                              score, i)
-    type(Particle),    intent(in)    :: p
-    type(TallyObject), intent(inout) :: t
-    integer,           intent(inout) :: score_index
-    integer,           intent(in)    :: filter_index ! for % results
-    integer,           intent(in)    :: score_bin    ! score of concern
-    real(8),           intent(inout) :: score        ! data to score
-    integer,           intent(inout) :: i            ! Working index
-
-!$omp atomic
-      t % results(RESULT_VALUE, score_index, filter_index) = &
-           t % results(RESULT_VALUE, score_index, filter_index) + score
-
-  end subroutine expand_and_score
 
 !===============================================================================
 ! SCORE_ALL_NUCLIDES tallies individual nuclide reaction rates specifically when
@@ -2961,8 +2941,10 @@ contains
           score_index = q
 
           ! Expand score if necessary and add to tally results.
-          call expand_and_score(p, t, score_index, filter_index, score_bin, &
-               score, k)
+!$omp atomic
+          t % results(RESULT_VALUE, score_index, filter_index) = &
+               t % results(RESULT_VALUE, score_index, filter_index) + score
+
         end do SCORE_LOOP
 
         ! ======================================================================

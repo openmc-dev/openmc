@@ -1,6 +1,6 @@
 from contextlib import contextmanager
-from ctypes import (CDLL, c_int, c_int32, c_int64, c_double, c_char_p,
-                    POINTER, Structure, c_void_p)
+from ctypes import (CDLL, c_int, c_int32, c_int64, c_double, c_char_p, c_char,
+                    POINTER, Structure, c_void_p, create_string_buffer)
 from warnings import warn
 
 import numpy as np
@@ -30,7 +30,7 @@ _dll.openmc_find.restype = c_int
 _dll.openmc_find.errcheck = _error_handler
 _dll.openmc_hard_reset.restype = c_int
 _dll.openmc_hard_reset.errcheck = _error_handler
-_dll.openmc_init.argtypes = [c_int, POINTER(c_char_p), c_void_p]
+_dll.openmc_init.argtypes = [c_int, POINTER(POINTER(c_char)), c_void_p]
 _dll.openmc_init.restype = c_int
 _dll.openmc_init.errcheck = _error_handler
 _dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
@@ -115,15 +115,29 @@ def hard_reset():
     _dll.openmc_hard_reset()
 
 
-def init(intracomm=None):
+def init(args=None, intracomm=None):
     """Initialize OpenMC
 
     Parameters
     ----------
+    args : list of str
+        Command-line arguments
     intracomm : mpi4py.MPI.Intracomm or None
         MPI intracommunicator
 
     """
+    if args is not None:
+        args = ['openmc'] + list(args)
+        argc = len(args)
+
+        # Create the argv array. Note that it is actually expected to be of
+        # length argc + 1 with the final item being a null pointer.
+        argv = (POINTER(c_char) * (argc + 1))()
+        for i, arg in enumerate(args):
+            argv[i] = create_string_buffer(arg.encode())
+    else:
+        argc = 0
+
     if intracomm is not None:
         # If an mpi4py communicator was passed, convert it to void* to be passed
         # to openmc_init
@@ -135,7 +149,7 @@ def init(intracomm=None):
             address = MPI._addressof(intracomm)
             intracomm = c_void_p(address)
 
-    _dll.openmc_init(0, None, intracomm)
+    _dll.openmc_init(argc, argv, intracomm)
 
 
 def iter_batches():

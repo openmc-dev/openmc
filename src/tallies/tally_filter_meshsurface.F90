@@ -2,8 +2,6 @@ module tally_filter_meshsurface
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5
-
   use constants
   use dict_header,         only: EMPTY
   use error

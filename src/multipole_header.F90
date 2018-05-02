@@ -1,7 +1,5 @@
 module multipole_header
 
-  use hdf5
-
   use constants
   use dict_header,      only: DictIntInt
   use error,            only: fatal_error

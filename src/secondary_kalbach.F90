@@ -1,12 +1,9 @@
 module secondary_kalbach
 
-  use hdf5, only: HID_T, HSIZE_T
-
   use algorithm, only: binary_search
   use angleenergy_header, only: AngleEnergy
   use constants, only: ZERO, HALF, ONE, TWO, HISTOGRAM, LINEAR_LINEAR
-  use hdf5_interface, only: read_attribute, read_dataset, open_dataset, &
-       close_dataset, get_shape
+  use hdf5_interface
   use random_lcg, only: prn
 
 !===============================================================================

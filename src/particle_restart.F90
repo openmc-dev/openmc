@@ -5,7 +5,7 @@ module particle_restart
   use bank_header,      only: Bank
   use constants
   use error,            only: write_message
-  use hdf5_interface,   only: file_open, file_close, read_dataset
+  use hdf5_interface,   only: file_open, file_close, read_dataset, HID_T
   use mgxs_header,      only: energy_bin_avg
   use nuclide_header,   only: micro_xs, n_nuclides
   use output,           only: print_particle
@@ -16,23 +16,24 @@ module particle_restart
   use tally_header,     only: n_tallies
   use tracking,         only: transport
 
-  use hdf5, only: HID_T
-
   implicit none
   private
-  public ::  run_particle_restart
+  public ::  openmc_particle_restart
 
 contains
 
 !===============================================================================
-! RUN_PARTICLE_RESTART is the main routine that runs the particle restart
+! OPENMC_PARTICLE_RESTART is the main routine that runs the particle restart
 !===============================================================================
 
-  subroutine run_particle_restart()
+  function openmc_particle_restart() result(err) bind(C)
+    integer(C_INT) :: err
 
     integer(8) :: particle_seed
     integer :: previous_run_mode
     type(Particle) :: p
+
+    err = 0
 
     ! Set verbosity high
     verbosity = 10
@@ -66,7 +67,7 @@ contains
 
     deallocate(micro_xs)
 
-  end subroutine run_particle_restart
+  end function openmc_particle_restart
 
 !===============================================================================
 ! READ_PARTICLE_RESTART reads the particle restart file

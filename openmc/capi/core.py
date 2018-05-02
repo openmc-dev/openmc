@@ -137,6 +137,7 @@ def init(args=None, intracomm=None):
             argv[i] = create_string_buffer(arg.encode())
     else:
         argc = 0
+        argv = None
 
     if intracomm is not None:
         # If an mpi4py communicator was passed, convert it to void* to be passed

@@ -268,7 +268,7 @@ class Operator(TransportOperator):
 
         # Initialize OpenMC library
         comm.barrier()
-        openmc.capi.init(comm)
+        openmc.capi.init(intracomm=comm)
 
         # Generate tallies in memory
         self._generate_tallies()

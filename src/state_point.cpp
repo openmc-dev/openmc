@@ -39,13 +39,13 @@ write_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
 #ifdef PHDF5
   // Set size of total dataspace for all procs and rank
   hsize_t dims[] {static_cast<hsize_t>(n_particles)};
-  hid_t dspace = H5Screate_simple(1, dims, H5P_DEFAULT);
+  hid_t dspace = H5Screate_simple(1, dims, nullptr);
   hid_t dset = H5Dcreate(group_id, "source_bank", banktype, dspace,
                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
   // Create another data space but for each proc individually
   hsize_t count[] {static_cast<hsize_t>(openmc_work)};
-  hid_t memspace = H5Screate_simple(1, count, H5P_DEFAULT);
+  hid_t memspace = H5Screate_simple(1, count, nullptr);
 
   // Select hyperslab for this dataspace
   hsize_t start[] {static_cast<hsize_t>(work_index[openmc::mpi::rank])};
@@ -69,7 +69,7 @@ write_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
   if (openmc_master) {
     // Create dataset big enough to hold all source sites
     hsize_t dims[] {static_cast<hsize_t>(n_particles)};
-    hid_t dspace = H5Screate_simple(1, dims, H5P_DEFAULT);
+    hid_t dspace = H5Screate_simple(1, dims, nullptr);
     hid_t dset = H5Dcreate(group_id, "source_bank", banktype, dspace,
                            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
@@ -81,7 +81,7 @@ write_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
     for (int i = 0; i < openmc::mpi::n_procs; ++i) {
       // Create memory space
       hsize_t count[] {static_cast<hsize_t>(work_index[i+1] - work_index[i])};
-      hid_t memspace = H5Screate_simple(1, count, H5P_DEFAULT);
+      hid_t memspace = H5Screate_simple(1, count, nullptr);
 
 #ifdef OPENMC_MPI
       // Receive source sites from other processes
@@ -130,7 +130,7 @@ void read_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
 
   // Create another data space but for each proc individually
   hsize_t dims[] {static_cast<hsize_t>(openmc_work)};
-  hid_t memspace = H5Screate_simple(1, dims, H5P_DEFAULT);
+  hid_t memspace = H5Screate_simple(1, dims, nullptr);
 
   // Make sure source bank is big enough
   hid_t dspace = H5Dget_space(dset);

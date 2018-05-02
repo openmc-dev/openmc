@@ -104,10 +104,8 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
             return False
         elif len(self.bins) != len(other.bins):
             return False
-        elif not np.allclose(self.bins, other.bins):
-            return False
         else:
-            return True
+            return np.allclose(self.bins, other.bins)
 
     def __ne__(self, other):
         return not self == other

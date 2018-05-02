@@ -278,8 +278,8 @@ class Material(IDManagerMixin):
 
         name = group['name'].value.decode() if 'name' in group else ''
         density = group['atom_density'].value
-        nuc_densities = group['nuclide_densities'][...]
-        nuclides = group['nuclides'].value
+        if 'nuclide_densities' in group:
+            nuc_densities = group['nuclide_densities'][...]
 
         # Create the Material
         material = cls(mat_id, name)
@@ -295,10 +295,18 @@ class Material(IDManagerMixin):
         # Set the Material's density to atom/b-cm as used by OpenMC
         material.set_density(density=density, units='atom/b-cm')
 
-        # Add all nuclides to the Material
-        for fullname, density in zip(nuclides, nuc_densities):
-            name = fullname.decode().strip()
-            material.add_nuclide(name, percent=density, percent_type='ao')
+        if 'nuclides' in group:
+            nuclides = group['nuclides'].value
+            # Add all nuclides to the Material
+            for fullname, density in zip(nuclides, nuc_densities):
+                name = fullname.decode().strip()
+                material.add_nuclide(name, percent=density, percent_type='ao')
+        if 'macroscopics' in group:
+            macroscopics = group['macroscopics'].value
+            # Add all macroscopics to the Material
+            for fullname in macroscopics:
+                name = fullname.decode().strip()
+                material.add_macroscopic(name)
 
         return material
 

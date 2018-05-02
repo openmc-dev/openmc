@@ -2,8 +2,6 @@ module tally_filter_delayedgroup
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5
-
   use constants,          only: ONE, MAX_LINE_LEN, MAX_DELAYED_GROUPS
   use error,              only: fatal_error
   use hdf5_interface

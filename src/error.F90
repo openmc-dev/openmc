@@ -111,6 +111,14 @@ contains
 
   end subroutine warning
 
+  subroutine warning_from_c(message, message_len) bind(C)
+    integer(C_INT),         intent(in), value :: message_len
+    character(kind=C_CHAR), intent(in)        :: message(message_len)
+    character(message_len+1)                  :: message_out
+    write(message_out, *) message
+    call warning(message_out)
+  end subroutine
+
 !===============================================================================
 ! FATAL_ERROR alerts the user that an error has been encountered and displays a
 ! message about the particular problem. Errors are considered 'fatal' and hence

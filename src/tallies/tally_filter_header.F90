@@ -5,12 +5,11 @@ module tally_filter_header
   use constants,       only: MAX_LINE_LEN
   use dict_header,     only: DictIntInt
   use error
+  use hdf5_interface,  only: HID_T
   use particle_header, only: Particle
   use stl_vector,      only: VectorInt, VectorReal
   use string,          only: to_str
   use xml_interface,   only: XMLNode
-
-  use hdf5
 
   implicit none
   private

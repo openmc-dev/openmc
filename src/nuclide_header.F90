@@ -3,8 +3,6 @@ module nuclide_header
   use, intrinsic :: ISO_FORTRAN_ENV
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5,                   only: HID_T, HSIZE_T, SIZE_T
-
   use algorithm,              only: sort, find, binary_search
   use constants
   use dict_header,            only: DictIntInt, DictCharInt
@@ -277,7 +275,7 @@ contains
     integer,          intent(inout) :: method
     real(8),          intent(in)    :: tolerance
     real(8),          intent(in)    :: minmax(2)  ! range of temperatures
-    logical,          intent(in)    :: master     ! if this is the master proc
+    logical(C_BOOL),  intent(in)    :: master     ! if this is the master proc
     integer,          intent(in)    :: i_nuclide  ! Nuclide index in nuclides
 
     integer :: i
@@ -292,7 +290,6 @@ contains
     integer(HID_T) :: total_nu
     integer(HID_T) :: fer_group                 ! fission_energy_release group
     integer(HID_T) :: fer_dset
-    integer(SIZE_T) :: name_len
     integer(HSIZE_T) :: j
     integer(HSIZE_T) :: dims(1)
     character(MAX_WORD_LEN) :: temp_str
@@ -306,8 +303,7 @@ contains
     type(VectorInt) :: index_inelastic_scatter
 
     ! Get name of nuclide from group
-    name_len = len(this % name)
-    this % name = get_name(group_id, name_len)
+    this % name = get_name(group_id)
 
     ! Get rid of leading '/'
     this % name = trim(this % name(2:))

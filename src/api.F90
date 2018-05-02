@@ -2,8 +2,6 @@ module openmc_api
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5, only: HID_T, h5tclose_f, h5close_f
-
   use bank_header,     only: openmc_source_bank
   use constants,       only: K_BOLTZMANN
   use eigenvalue,      only: k_sum, openmc_get_keff
@@ -15,7 +13,7 @@ module openmc_api
   use mesh_header
   use message_passing
   use nuclide_header
-  use initialize,      only: openmc_init
+  use initialize,      only: openmc_init_f
   use particle_header, only: Particle
   use plot,            only: openmc_plot_geometry
   use random_lcg,      only: openmc_get_seed, openmc_set_seed
@@ -64,7 +62,7 @@ module openmc_api
   public :: openmc_get_tally_index
   public :: openmc_global_tallies
   public :: openmc_hard_reset
-  public :: openmc_init
+  public :: openmc_init_f
   public :: openmc_load_nuclide
   public :: openmc_material_add_nuclide
   public :: openmc_material_get_id
@@ -80,7 +78,6 @@ module openmc_api
   public :: openmc_nuclide_name
   public :: openmc_plot_geometry
   public :: openmc_reset
-  public :: openmc_run
   public :: openmc_set_seed
   public :: openmc_simulation_finalize
   public :: openmc_simulation_init
@@ -105,12 +102,16 @@ contains
 ! variables
 !===============================================================================
 
-  subroutine openmc_finalize() bind(C)
+  function openmc_finalize() result(err) bind(C)
+    integer(C_INT) :: err
 
-    integer :: err
+    interface
+      subroutine openmc_free_bank() bind(C)
+      end subroutine openmc_free_bank
+    end interface
 
     ! Clear results
-    call openmc_reset()
+    err = openmc_reset()
 
     ! Reset global variables
     assume_separate = .false.
@@ -170,18 +171,14 @@ contains
     ! Deallocate arrays
     call free_memory()
 
-    ! Release compound datatypes
-    call h5tclose_f(hdf5_bank_t, err)
-
-    ! Close FORTRAN interface.
-    call h5close_f(err)
-
+    err = 0
 #ifdef OPENMC_MPI
     ! Free all MPI types
     call MPI_TYPE_FREE(MPI_BANK, err)
+    call openmc_free_bank()
 #endif
 
-  end subroutine openmc_finalize
+  end function openmc_finalize
 
 !===============================================================================
 ! OPENMC_FIND determines the ID or a cell or material at a given point in space
@@ -232,9 +229,11 @@ contains
 ! generator state
 !===============================================================================
 
-  subroutine openmc_hard_reset() bind(C)
+  function openmc_hard_reset() result(err) bind(C)
+    integer(C_INT) :: err
+
     ! Reset all tallies and timers
-    call openmc_reset()
+    err = openmc_reset()
 
     ! Reset total generations and keff guess
     keff = ONE
@@ -242,13 +241,15 @@ contains
 
     ! Reset the random number generator state
     call openmc_set_seed(DEFAULT_SEED)
-  end subroutine openmc_hard_reset
+  end function openmc_hard_reset
 
 !===============================================================================
 ! OPENMC_RESET resets tallies and timers
 !===============================================================================
 
-  subroutine openmc_reset() bind(C)
+  function openmc_reset() result(err) bind(C)
+    integer(C_INT) :: err
+
     integer :: i
 
     if (allocated(tallies)) then
@@ -296,7 +297,8 @@ contains
     call time_transport % reset()
     call time_finalize % reset()
 
-  end subroutine openmc_reset
+    err = 0
+  end function openmc_reset
 
 !===============================================================================
 ! FREE_MEMORY deallocates and clears  all global allocatable arrays in the

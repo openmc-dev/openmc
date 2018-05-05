@@ -2,12 +2,12 @@
 3         1         1          1   total  0.332466   0.026533
 2         1         1          2   total  0.000989   0.000482
 1         1         2          1   total  0.000925   0.000925
-0         1         2          2   total  0.396146   0.015511
+0         1         2          2   total  0.396146   0.015707
    material  group in  group out nuclide      mean  std. dev.
 3         1         1          1   total  0.332466   0.026533
 2         1         1          2   total  0.000989   0.000482
 1         1         2          1   total  0.000925   0.000925
-0         1         2          2   total  0.396146   0.015511
+0         1         2          2   total  0.396146   0.015707
    material  group in  group out nuclide      mean  std. dev.
 3         1         1          1   total  0.334690   0.037288
 2         1         1          2   total  0.000995   0.000489
@@ -39,15 +39,15 @@
 1         2         2          1   total  0.000000   0.000000
 0         2         2          2   total  0.306635   0.067497
    material  group in  group out nuclide      mean  std. dev.
-3         3         1          1   total  0.258652   0.022623
+3         3         1          1   total  0.258652   0.022596
 2         3         1          2   total  0.031368   0.001728
 1         3         2          1   total  0.000443   0.000445
-0         3         2          2   total  1.482300   0.232653
+0         3         2          2   total  1.482300   0.232582
    material  group in  group out nuclide      mean  std. dev.
-3         3         1          1   total  0.258652   0.022623
+3         3         1          1   total  0.258652   0.022596
 2         3         1          2   total  0.031368   0.001728
 1         3         2          1   total  0.000443   0.000445
-0         3         2          2   total  1.482300   0.232653
+0         3         2          2   total  1.482300   0.232582
    material  group in  group out nuclide      mean  std. dev.
 3         3         1          1   total  0.251610   0.041472
 2         3         1          2   total  0.031023   0.002232

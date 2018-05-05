@@ -74,13 +74,8 @@ module tally_header
     logical              :: all_nuclides = .false.
 
     ! Values to score, e.g. flux, absorption, etc.
-    ! scat_order is the scattering order for each score.
-    ! It is to be 0 if the scattering order is 0, or if the score is not a
-    ! scattering response.
     integer              :: n_score_bins = 0
     integer, allocatable :: score_bins(:)
-    integer, allocatable :: moment_order(:)
-    integer              :: n_user_score_bins = 0
 
     ! Results for each bin -- the first dimension of the array is for scores
     ! (e.g. flux, total reaction rate, fission reaction rate, etc.) and the
@@ -795,7 +790,6 @@ contains
       associate (t => tallies(index) % obj)
         if (allocated(t % score_bins)) deallocate(t % score_bins)
         allocate(t % score_bins(n))
-        t % n_user_score_bins = n
         t % n_score_bins = n
 
         do i = 1, n

@@ -1,5 +1,6 @@
 from openmc.filter import *
-from openmc import Mesh, Tally, Tallies
+from openmc.filter_expansion import *
+from openmc import Mesh, Tally
 
 from tests.testing_harness import HashedPyAPITestHarness
 
@@ -28,8 +29,8 @@ def test_tallies():
     azimuthal_tally2.estimator = 'analog'
 
     mesh_2x2 = Mesh(mesh_id=1)
-    mesh_2x2.lower_left  = [-182.07, -182.07]
-    mesh_2x2.upper_right = [182.07,  182.07]
+    mesh_2x2.lower_left = [-182.07, -182.07]
+    mesh_2x2.upper_right = [182.07, 182.07]
     mesh_2x2.dimension = [2, 2]
     mesh_filter = MeshFilter(mesh_2x2)
     azimuthal_tally3 = Tally()
@@ -75,6 +76,7 @@ def test_tallies():
     mu_tally1 = Tally()
     mu_tally1.filters = [mu_filter]
     mu_tally1.scores = ['scatter', 'nu-scatter']
+    print('mu_tally1', mu_tally1.id)
 
     mu_tally2 = Tally()
     mu_tally2.filters = [mu_filter, mesh_filter]
@@ -96,6 +98,29 @@ def test_tallies():
     polar_tally3.filters = [polar_filter, mesh_filter]
     polar_tally3.scores = ['flux']
     polar_tally3.estimator = 'tracklength'
+
+    legendre_filter = LegendreFilter(order=4)
+    legendre_tally = Tally()
+    legendre_tally.filters = [legendre_filter]
+    legendre_tally.scores = ['scatter', 'nu-scatter']
+    legendre_tally.estimatir = 'analog'
+    print('legendre_tally', mu_tally1.id)
+
+    harmonics_filter = SphericalHarmonicsFilter(order=4)
+    harmonics_tally = Tally()
+    harmonics_tally.filters = [harmonics_filter]
+    harmonics_tally.scores = ['scatter', 'nu-scatter', 'flux', 'total']
+    harmonics_tally.estimatir = 'analog'
+
+    harmonics_tally2 = Tally()
+    harmonics_tally2.filters = [harmonics_filter]
+    harmonics_tally2.scores = ['flux', 'total']
+    harmonics_tally2.estimatir = 'collision'
+
+    harmonics_tally3 = Tally()
+    harmonics_tally3.filters = [harmonics_filter]
+    harmonics_tally3.scores = ['flux', 'total']
+    harmonics_tally3.estimatir = 'tracklength'
 
     universe_tally = Tally()
     universe_tally.filters = [
@@ -120,37 +145,22 @@ def test_tallies():
     score_tallies[2].estimator = 'collision'
 
     cell_filter2 = CellFilter((21, 22, 23, 27, 28, 29, 60))
-    flux_tallies = [Tally() for i in range(4)]
+    flux_tallies = [Tally() for i in range(3)]
     for t in flux_tallies:
         t.filters = [cell_filter2]
-    flux_tallies[0].scores = ['flux']
-    for t in flux_tallies[1:]:
-        t.scores = ['flux-y5']
-    flux_tallies[1].estimator = 'tracklength'
-    flux_tallies[2].estimator = 'analog'
-    flux_tallies[3].estimator = 'collision'
+        t.scores = ['flux']
+    flux_tallies[0].estimator = 'tracklength'
+    flux_tallies[1].estimator = 'analog'
+    flux_tallies[2].estimator = 'collision'
 
-    scatter_tally1 = Tally()
-    scatter_tally1.filters = [cell_filter]
-    scatter_tally1.scores = ['scatter', 'scatter-1', 'scatter-2', 'scatter-3',
-                             'scatter-4', 'nu-scatter', 'nu-scatter-1',
-                             'nu-scatter-2', 'nu-scatter-3', 'nu-scatter-4']
-
-    scatter_tally2 = Tally()
-    scatter_tally2.filters = [cell_filter]
-    scatter_tally2.scores = ['scatter-p4', 'scatter-y4', 'nu-scatter-p4',
-                             'nu-scatter-y3']
-
-    total_tallies = [Tally() for i in range(4)]
+    total_tallies = [Tally() for i in range(3)]
     for t in total_tallies:
         t.filters = [cell_filter]
-    total_tallies[0].scores = ['total']
-    for t in total_tallies[1:]:
-        t.scores = ['total-y4']
+        t.scores = ['total']
         t.nuclides = ['U235', 'total']
-    total_tallies[1].estimator = 'tracklength'
-    total_tallies[2].estimator = 'analog'
-    total_tallies[3].estimator = 'collision'
+    total_tallies[0].estimator = 'tracklength'
+    total_tallies[1].estimator = 'analog'
+    total_tallies[2].estimator = 'collision'
 
     all_nuclide_tallies = [Tally() for i in range(4)]
     for t in all_nuclide_tallies:
@@ -167,10 +177,10 @@ def test_tallies():
         azimuthal_tally1, azimuthal_tally2, azimuthal_tally3,
         cellborn_tally, dg_tally, energy_tally, energyout_tally,
         transfer_tally, material_tally, mu_tally1, mu_tally2,
-        polar_tally1, polar_tally2, polar_tally3, universe_tally]
+        polar_tally1, polar_tally2, polar_tally3, legendre_tally,
+        harmonics_tally, harmonics_tally2, harmonics_tally3, universe_tally]
     model.tallies += score_tallies
     model.tallies += flux_tallies
-    model.tallies += (scatter_tally1, scatter_tally2)
     model.tallies += total_tallies
     model.tallies += all_nuclide_tallies
 

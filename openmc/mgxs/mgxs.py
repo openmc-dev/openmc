@@ -4505,7 +4505,7 @@ class ScatterMatrixXS(MatrixMGXS):
 
         # If the matrix is P0, remove the legendre column
         if self.scatter_format == 'legendre' and self.legendre_order == 0:
-            df = df.drop(columns=['legendre'])
+            df = df.drop(axis=1, labels=['legendre'])
 
         return df
 

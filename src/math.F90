@@ -598,7 +598,6 @@ contains
     real(8) :: zn_mat(n+1, n+1)        ! Matrix form of the coefficients which is
                                        ! easier to work with
     real(8) :: k1, k2, k3, k4          ! Variables for R_m_n calculation
-    real(8) :: sqrt_norm               ! normalization for radial moments
     integer :: i,p,q                   ! Loop counters
 
     real(8), parameter :: SQRT_N_1(0:10) = [&

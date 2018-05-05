@@ -59,10 +59,13 @@
   <filter id="7" type="energyout">
     <bins>0.0 0.625 20000000.0</bins>
   </filter>
-  <filter id="14" type="material">
+  <filter id="11" type="legendre">
+    <order>3</order>
+  </filter>
+  <filter id="15" type="material">
     <bins>2</bins>
   </filter>
-  <filter id="27" type="material">
+  <filter id="29" type="material">
     <bins>3</bins>
   </filter>
   <tally id="1">
@@ -108,9 +111,9 @@
     <estimator>analog</estimator>
   </tally>
   <tally id="8">
-    <filters>1 2 7</filters>
+    <filters>1 2 7 11</filters>
     <nuclides>total</nuclides>
-    <scores>nu-scatter-P3</scores>
+    <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="9">
@@ -126,121 +129,121 @@
     <estimator>analog</estimator>
   </tally>
   <tally id="11">
-    <filters>14 2</filters>
+    <filters>15 2</filters>
     <nuclides>total</nuclides>
     <scores>flux</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="12">
-    <filters>14 2</filters>
+    <filters>15 2</filters>
     <nuclides>total</nuclides>
     <scores>total</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="13">
-    <filters>14 2</filters>
+    <filters>15 2</filters>
     <nuclides>total</nuclides>
     <scores>flux</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="14">
-    <filters>14 2</filters>
+    <filters>15 2</filters>
     <nuclides>total</nuclides>
     <scores>absorption</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="15">
-    <filters>14 2</filters>
+    <filters>15 2</filters>
     <nuclides>total</nuclides>
     <scores>flux</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="16">
-    <filters>14 2 7</filters>
+    <filters>15 2 7</filters>
     <nuclides>total</nuclides>
     <scores>nu-fission</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="17">
-    <filters>14 2</filters>
+    <filters>15 2</filters>
     <nuclides>total</nuclides>
     <scores>flux</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="18">
-    <filters>14 2 7</filters>
+    <filters>15 2 7 11</filters>
     <nuclides>total</nuclides>
-    <scores>nu-scatter-P3</scores>
+    <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="19">
-    <filters>14 2 7</filters>
+    <filters>15 2 7</filters>
     <nuclides>total</nuclides>
     <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="20">
-    <filters>14 2 7</filters>
+    <filters>15 2 7</filters>
     <nuclides>total</nuclides>
     <scores>scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="21">
-    <filters>27 2</filters>
+    <filters>29 2</filters>
     <nuclides>total</nuclides>
     <scores>flux</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="22">
-    <filters>27 2</filters>
+    <filters>29 2</filters>
     <nuclides>total</nuclides>
     <scores>total</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="23">
-    <filters>27 2</filters>
+    <filters>29 2</filters>
     <nuclides>total</nuclides>
     <scores>flux</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="24">
-    <filters>27 2</filters>
+    <filters>29 2</filters>
     <nuclides>total</nuclides>
     <scores>absorption</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="25">
-    <filters>27 2</filters>
+    <filters>29 2</filters>
     <nuclides>total</nuclides>
     <scores>flux</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="26">
-    <filters>27 2 7</filters>
+    <filters>29 2 7</filters>
     <nuclides>total</nuclides>
     <scores>nu-fission</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="27">
-    <filters>27 2</filters>
+    <filters>29 2</filters>
     <nuclides>total</nuclides>
     <scores>flux</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="28">
-    <filters>27 2 7</filters>
+    <filters>29 2 7 11</filters>
     <nuclides>total</nuclides>
-    <scores>nu-scatter-P3</scores>
+    <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="29">
-    <filters>27 2 7</filters>
+    <filters>29 2 7</filters>
     <nuclides>total</nuclides>
     <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="30">
-    <filters>27 2 7</filters>
+    <filters>29 2 7</filters>
     <nuclides>total</nuclides>
     <scores>scatter</scores>
     <estimator>analog</estimator>

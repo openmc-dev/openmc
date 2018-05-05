@@ -4003,6 +4003,15 @@ class ScatterMatrixXS(MatrixMGXS):
                     correction.nuclides = scatter_p1.nuclides
                     self._xs_tally -= correction
 
+                # If the mu filter is before the group out filter swap them
+                if self.scatter_format == 'histogram':
+                    tally = self._xs_tally
+                    filt = tally.filters
+                    eout_filter = tally.find_filter(openmc.EnergyoutFilter)
+                    angle_filter = tally.find_filter(openmc.MuFilter)
+                    if filt.index(eout_filter) > filt.index(angle_filter):
+                        tally._swap_filters(eout_filter, angle_filter)
+
                 self._compute_xs()
 
         return self._xs_tally
@@ -4466,6 +4475,7 @@ class ScatterMatrixXS(MatrixMGXS):
 
         """
 
+        print(self.xs_tally.filters)
         df = super().get_pandas_dataframe(groups, nuclides, xs_type, paths)
 
         if self.scatter_format == 'legendre':

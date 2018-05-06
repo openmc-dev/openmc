@@ -56,7 +56,7 @@ double __attribute__ ((const)) normal_percentile_c(double p) {
 
   // Refinement based on Newton's method
 
-  z = z - (0.5 * std::erfc(-z / std::sqrt(2.0)) - p) * std::sqrt(2.0 * M_PI) *
+  z = z - (0.5 * std::erfc(-z / std::sqrt(2.0)) - p) * std::sqrt(2.0 * PI) *
        std::exp(0.5 * z * z);
 
   return z;
@@ -82,7 +82,7 @@ double __attribute__ ((const)) t_percentile_c(double p, int df){
     // For one degree of freedom, the t-distribution becomes a Cauchy
     // distribution whose cdf we can invert directly
 
-    t = std::tan(M_PI*(p - 0.5));
+    t = std::tan(PI*(p - 0.5));
   } else if (df == 2) {
      // For two degrees of freedom, the cdf is given by 1/2 + x/(2*sqrt(x^2 +
      // 2)). This can be directly inverted to yield the solution below
@@ -604,7 +604,7 @@ void rotate_angle_c(double uvw[3], double mu, double phi) {
   if (phi != -10.) {
     phi_ = phi;
   } else {
-    phi_ = 2. * M_PI * prn();
+    phi_ = 2. * PI * prn();
   }
 
   // Precompute factors to save flops
@@ -647,7 +647,7 @@ double maxwell_spectrum_c(double T) {
   r3 = prn();
 
   // determine cosine of pi/2*r
-  c = std::cos(M_PI / 2. * r3);
+  c = std::cos(PI / 2. * r3);
 
   // determine outgoing energy
   E_out = -T * (std::log(r1) + std::log(r2) * c * c);
@@ -710,7 +710,7 @@ double watt_spectrum_c(double a, double b) {
 // std::complex<double> w_derivative_c(std::complex<double> z, int order){
 //   std::complex<double> wv; // The resultant w(z) value
 
-//   const std::complex<double> twoi_sqrtpi(0.0, 2.0 / std::sqrt(M_PI));
+//   const std::complex<double> twoi_sqrtpi(0.0, 2.0 / std::sqrt(PI));
 
 //   switch(order) {
 //     case 0:
@@ -764,7 +764,7 @@ void broaden_wmp_polynomials_c(double E, double dopp, int n, double factors[]) {
   factors[0] = erf_beta / E;
   factors[1] = 1. / sqrtE;
   factors[2] = factors[0] * (half_inv_dopp2 + E) + exp_m_beta2 /
-       (beta * std::sqrt(M_PI));
+       (beta * std::sqrt(PI));
 
   // Perform recursive broadening of high order components
   for (i = 0; i < n - 3; i++) {

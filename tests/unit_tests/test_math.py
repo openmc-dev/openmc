@@ -147,8 +147,8 @@ def test_maxwell_spectrum():
     T = 0.5
     ref_val = 0.6129982175261098
     test_val = openmc.capi.math.maxwell_spectrum(T)
-    print(test_val)
-    assert np.isclose(ref_val, test_val)
+
+    assert ref_val == test_val
 
 
 def test_watt_spectrum():
@@ -158,8 +158,8 @@ def test_watt_spectrum():
     b = 0.75
     ref_val = 0.6247242713640233
     test_val = openmc.capi.math.watt_spectrum(a, b)
-    print(test_val)
-    assert np.isclose(ref_val, test_val)
+
+    assert ref_val == test_val
 
 
 def test_broaden_wmp_polynomials():

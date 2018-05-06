@@ -11,6 +11,10 @@
 
 namespace openmc {
 
+// TODO: cmath::M_PI has 3 more digits precision than the Fortran constant we
+// use so for now we will reuse the Fortran constant until we are OK with
+// modifying test results
+const double PI = 3.1415926535898;
 
 //==============================================================================
 // NORMAL_PERCENTILE calculates the percentile of the standard normal

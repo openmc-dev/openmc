@@ -162,7 +162,7 @@ contains
 ! information
 !===============================================================================
 
-  subroutine print_version()
+  subroutine print_version() bind(C)
 
     if (master) then
       write(UNIT=OUTPUT_UNIT, FMT='(1X,A,1X,I1,".",I2,".",I1)') &
@@ -182,7 +182,7 @@ contains
 ! PRINT_USAGE displays information about command line usage of OpenMC
 !===============================================================================
 
-  subroutine print_usage()
+  subroutine print_usage() bind(C)
 
     if (master) then
       write(OUTPUT_UNIT,*) 'Usage: openmc [options] [directory]'

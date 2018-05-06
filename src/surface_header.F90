@@ -1,9 +1,9 @@
 module surface_header
 
   use, intrinsic :: ISO_C_BINDING
-  use hdf5
 
   use dict_header, only: DictIntInt
+  use hdf5_interface
 
   implicit none
 
@@ -71,8 +71,7 @@ module surface_header
 
     subroutine surface_to_hdf5_c(surf_ptr, group) &
          bind(C, name='surface_to_hdf5')
-      use ISO_C_BINDING
-      use hdf5
+      import C_PTR, HID_T
       implicit none
       type(C_PTR),    intent(in), value :: surf_ptr
       integer(HID_T), intent(in), value :: group

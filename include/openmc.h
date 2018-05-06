@@ -16,7 +16,7 @@ extern "C" {
     int delayed_group;
   };
 
-  void openmc_calculate_volumes();
+  int openmc_calculate_volumes();
   int openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n);
   int openmc_cell_get_id(int32_t index, int32_t* id);
   int openmc_cell_set_fill(int32_t index, int type, int32_t n, const int32_t* indices);
@@ -34,7 +34,7 @@ extern "C" {
   int openmc_filter_get_type(int32_t index, const char** type);
   int openmc_filter_set_id(int32_t index, int32_t id);
   int openmc_filter_set_type(int32_t index, const char* type);
-  void openmc_finalize();
+  int openmc_finalize();
   int openmc_find(double* xyz, int rtype, int32_t* id, int32_t* instance);
   int openmc_get_cell_index(int32_t id, int32_t* index);
   int openmc_get_filter_index(int32_t id, int32_t* index);
@@ -45,8 +45,9 @@ extern "C" {
   int openmc_get_nuclide_index(const char name[], int* index);
   int64_t openmc_get_seed();
   int openmc_get_tally_index(int32_t id, int32_t* index);
-  void openmc_hard_reset();
-  void openmc_init(const int* intracomm);
+  int openmc_hard_reset();
+  int openmc_init(int argc, char* argv[], const void* intracomm);
+  int openmc_init_f(const int* intracomm);
   int openmc_legendre_filter_get_order(int32_t index, int* order);
   int openmc_legendre_filter_set_order(int32_t index, int order);
   int openmc_load_nuclide(char name[]);
@@ -70,12 +71,13 @@ extern "C" {
   int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
   int openmc_next_batch(int* status);
   int openmc_nuclide_name(int index, char** name);
-  void openmc_plot_geometry();
-  void openmc_reset();
+  int openmc_particle_restart();
+  int openmc_plot_geometry();
+  int openmc_reset();
   int openmc_run();
   void openmc_set_seed(int64_t new_seed);
-  void openmc_simulation_finalize();
-  void openmc_simulation_init();
+  int openmc_simulation_finalize();
+  int openmc_simulation_init();
   int openmc_source_bank(struct Bank** ptr, int64_t* n);
   int openmc_source_set_strength(int32_t index, double strength);
   int openmc_spatial_legendre_filter_get_order(int32_t index, int* order);
@@ -87,7 +89,7 @@ extern "C" {
   int openmc_sphharm_filter_get_cosine(int32_t index, char cosine[]);
   int openmc_sphharm_filter_set_order(int32_t index, int order);
   int openmc_sphharm_filter_set_cosine(int32_t index, const char cosine[]);
-  void openmc_statepoint_write(const char filename[]);
+  int openmc_statepoint_write(const char filename[]);
   int openmc_tally_get_active(int32_t index, bool* active);
   int openmc_tally_get_id(int32_t index, int32_t* id);
   int openmc_tally_get_filters(int32_t index, int32_t** indices, int* n);
@@ -122,8 +124,8 @@ extern "C" {
 
   // Global variables
   extern char openmc_err_msg[256];
-  extern double keff;
-  extern double keff_std;
+  extern double openmc_keff;
+  extern double openmc_keff_std;
   extern int32_t n_batches;
   extern int32_t n_cells;
   extern int32_t n_filters;
@@ -139,9 +141,24 @@ extern "C" {
   extern int32_t n_surfaces;
   extern int32_t n_tallies;
   extern int32_t n_universes;
-  extern int run_mode;
-  extern bool simulation_initialized;
-  extern int verbosity;
+  extern int openmc_run_mode;
+  extern bool openmc_simulation_initialized;
+  extern int openmc_verbosity;
+
+  // Variables that are shared by necessity (can be removed from public header
+  // later)
+  extern bool openmc_master;
+  extern int openmc_n_procs;
+  extern int openmc_n_threads;
+  extern int openmc_rank;
+  extern int64_t openmc_work;
+
+  // Run modes
+  constexpr int RUN_MODE_FIXEDSOURCE {1};
+  constexpr int RUN_MODE_EIGENVALUE {2};
+  constexpr int RUN_MODE_PLOTTING {3};
+  constexpr int RUN_MODE_PARTICLE {4};
+  constexpr int RUN_MODE_VOLUME {5};
 
 #ifdef __cplusplus
 }

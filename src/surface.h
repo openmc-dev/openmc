@@ -25,15 +25,14 @@ extern "C" const int BC_PERIODIC {3};
 //==============================================================================
 
 extern "C" double FP_COINCIDENT;
-constexpr double INFTY{std::numeric_limits<double>::max()};
+constexpr double INFTY {std::numeric_limits<double>::max()};
 constexpr int C_NONE {-1};
 
 //==============================================================================
 // Global variables
 //==============================================================================
 
-// Braces force n_surfaces to be defined here, not just declared.
-extern "C" {int32_t n_surfaces {0};}
+extern "C" int32_t n_surfaces;
 
 class Surface;
 Surface **surfaces_c;
@@ -384,44 +383,19 @@ public:
 // Fortran compatibility functions
 //==============================================================================
 
-extern "C" Surface* surface_pointer(int surf_ind) {return surfaces_c[surf_ind];}
-
-extern "C" int surface_id(Surface *surf) {return surf->id;}
-
-extern "C" int surface_bc(Surface *surf) {return surf->bc;}
-
-extern "C" bool surface_sense(Surface *surf, double xyz[3], double uvw[3])
-{return surf->sense(xyz, uvw);}
-
-extern "C" void surface_reflect(Surface *surf, double xyz[3], double uvw[3])
-{surf->reflect(xyz, uvw);}
-
-extern "C" double
-surface_distance(Surface *surf, double xyz[3], double uvw[3], bool coincident)
-{return surf->distance(xyz, uvw, coincident);}
-
-extern "C" void surface_normal(Surface *surf, double xyz[3], double uvw[3])
-{return surf->normal(xyz, uvw);}
-
-extern "C" void surface_to_hdf5(Surface *surf, hid_t group)
-{surf->to_hdf5(group);}
-
-extern "C" int surface_i_periodic(PeriodicSurface *surf)
-{return surf->i_periodic;}
-
-extern "C" bool
-surface_periodic(PeriodicSurface *surf, PeriodicSurface *other, double xyz[3],
-                 double uvw[3])
-{return surf->periodic_translate(other, xyz, uvw);}
-
-extern "C" void free_memory_surfaces_c()
-{
-  for (int i = 0; i < n_surfaces; i++) {delete surfaces_c[i];}
-  delete surfaces_c;
-  surfaces_c = nullptr;
-  n_surfaces = 0;
-  surface_dict.clear();
-}
+extern "C" Surface* surface_pointer(int surf_ind);
+extern "C" int surface_id(Surface *surf);
+extern "C" int surface_bc(Surface *surf);
+extern "C" bool surface_sense(Surface *surf, double xyz[3], double uvw[3]);
+extern "C" void surface_reflect(Surface *surf, double xyz[3], double uvw[3]);
+extern "C" double surface_distance(Surface *surf, double xyz[3], double uvw[3],
+                                   bool coincident);
+extern "C" void surface_normal(Surface *surf, double xyz[3], double uvw[3]);
+extern "C" void surface_to_hdf5(Surface *surf, hid_t group);
+extern "C" int surface_i_periodic(PeriodicSurface *surf);
+extern "C" bool surface_periodic(PeriodicSurface *surf, PeriodicSurface *other,
+                                 double xyz[3], double uvw[3]);
+extern "C" void free_memory_surfaces_c();
 
 } // namespace openmc
 #endif // SURFACE_H

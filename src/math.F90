@@ -216,7 +216,6 @@ contains
     real(C_DOUBLE) :: zn_mat(n+1, n+1)   ! Matrix form of the coefficients which is
                                          ! easier to work with
     real(C_DOUBLE) :: k1, k2, k3, k4     ! Variables for R_m_n calculation
-    real(C_DOUBLE) :: sqrt_norm          ! normalization for radial moments
     integer(C_INT) :: i,p,q              ! Loop counters
 
     real(C_DOUBLE), parameter :: SQRT_N_1(0:10) = [&

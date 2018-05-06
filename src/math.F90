@@ -364,18 +364,7 @@ contains
     real(C_DOUBLE), intent(in)  :: T     ! tabulated function of incoming E
     real(C_DOUBLE)              :: E_out ! sampled energy
 
-    real(C_DOUBLE) :: r1, r2, r3  ! random numbers
-    real(C_DOUBLE) :: c           ! cosine of pi/2*r3
-
-    r1 = prn()
-    r2 = prn()
-    r3 = prn()
-
-    ! determine cosine of pi/2*r
-    c = cos(PI/TWO*r3)
-
-    ! determine outgoing energy
-    E_out = -T*(log(r1) + log(r2)*c*c)
+    E_out = maxwell_spectrum_cc(T)
 
   end function maxwell_spectrum
 
@@ -393,10 +382,7 @@ contains
     real(C_DOUBLE), intent(in) :: b     ! Watt parameter b
     real(C_DOUBLE)             :: E_out ! energy of emitted neutron
 
-    real(C_DOUBLE) :: w ! sampled from Maxwellian
-
-    w     = maxwell_spectrum(a)
-    E_out = w + a*a*b/4. + (TWO*prn() - ONE)*sqrt(a*a*b*w)
+    E_out = watt_spectrum_cc(a, b)
 
   end function watt_spectrum
 

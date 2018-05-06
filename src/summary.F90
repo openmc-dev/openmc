@@ -1,7 +1,5 @@
 module summary
 
-  use hdf5
-
   use constants
   use endf,            only: reaction_name
   use error,           only: write_message
@@ -38,7 +36,7 @@ contains
     call write_message("Writing summary.h5 file...", 5)
 
     ! Create a new file using default properties.
-    file_id = file_create("summary.h5")
+    file_id = file_open("summary.h5", 'w')
 
     call write_header(file_id)
     call write_nuclides(file_id)

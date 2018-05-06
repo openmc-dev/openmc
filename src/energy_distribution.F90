@@ -1,7 +1,5 @@
 module energy_distribution
 
-  use hdf5
-
   use algorithm,     only: binary_search
   use constants,     only: ZERO, ONE, HALF, TWO, PI, HISTOGRAM, LINEAR_LINEAR
   use endf_header,   only: Tabulated1D

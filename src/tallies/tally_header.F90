@@ -2,11 +2,10 @@ module tally_header
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5
-
   use constants
   use error
   use dict_header,         only: DictIntInt
+  use hdf5_interface,      only: HID_T, HSIZE_T
   use message_passing,     only: n_procs
   use nuclide_header,      only: nuclide_dict
   use settings,            only: reduce_tallies, run_mode
@@ -200,67 +199,42 @@ contains
     class(TallyObject), intent(in) :: this
     integer(HID_T),     intent(in) :: group_id
 
-    integer :: hdf5_err
-    integer(HID_T) :: dset, dspace
-    integer(HID_T) :: memspace
-    integer(HSIZE_T) :: dims(3)
-    integer(HSIZE_T) :: dims_slab(3)
-    integer(HSIZE_T) :: offset(3) = [1,0,0]
+    integer(HSIZE_T) :: n_filter, n_score
+    interface
+      subroutine write_tally_results(group_id, n_filter, n_score, results) &
+           bind(C)
+        import HID_T, HSIZE_T, C_DOUBLE
+        integer(HID_T), value :: group_id
+        integer(HSIZE_T), value :: n_filter
+        integer(HSIZE_T), value :: n_score
+        real(C_DOUBLE), intent(in) :: results(*)
+      end subroutine write_tally_results
+    end interface
 
-    ! Create file dataspace
-    dims_slab(:) = shape(this % results)
-    dims_slab(1) = 2
-    call h5screate_simple_f(3, dims_slab, dspace, hdf5_err)
-
-    ! Create memory dataspace that contains only SUM and SUM_SQ values
-    dims(:) = shape(this % results)
-    call h5screate_simple_f(3, dims, memspace, hdf5_err)
-    call h5sselect_hyperslab_f(memspace, H5S_SELECT_SET_F, offset, dims_slab, &
-         hdf5_err)
-
-    ! Create and write to dataset
-    call h5dcreate_f(group_id, "results", H5T_NATIVE_DOUBLE, dspace, dset, &
-         hdf5_err)
-    call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, this % results, dims_slab, &
-         hdf5_err, mem_space_id=memspace)
-
-    ! Close identifiers
-    call h5dclose_f(dset, hdf5_err)
-    call h5sclose_f(memspace, hdf5_err)
-    call h5sclose_f(dspace, hdf5_err)
+    n_filter = size(this % results, 3)
+    n_score = size(this % results, 2)
+    call write_tally_results(group_id, n_filter, n_score, this % results)
   end subroutine tally_write_results_hdf5
 
   subroutine tally_read_results_hdf5(this, group_id)
     class(TallyObject), intent(inout) :: this
     integer(HID_T),     intent(in) :: group_id
 
-    integer :: hdf5_err
-    integer(HID_T) :: dset, dspace
-    integer(HID_T) :: memspace
-    integer(HSIZE_T) :: dims(3)
-    integer(HSIZE_T) :: dims_slab(3)
-    integer(HSIZE_T) :: offset(3) = [1,0,0]
+    integer(HSIZE_T) :: n_filter, n_score
+    interface
+      subroutine read_tally_results(group_id, n_filter, n_score, results) &
+           bind(C)
+        import HID_T, HSIZE_T, C_DOUBLE
+        integer(HID_T), value :: group_id
+        integer(HSIZE_T), value :: n_filter
+        integer(HSIZE_T), value :: n_score
+        real(C_DOUBLE), intent(out) :: results(*)
+      end subroutine read_tally_results
+    end interface
 
-    ! Create file dataspace
-    dims_slab(:) = shape(this % results)
-    dims_slab(1) = 2
-    call h5screate_simple_f(3, dims_slab, dspace, hdf5_err)
-
-    ! Create memory dataspace that contains only SUM and SUM_SQ values
-    dims(:) = shape(this % results)
-    call h5screate_simple_f(3, dims, memspace, hdf5_err)
-    call h5sselect_hyperslab_f(memspace, H5S_SELECT_SET_F, offset, dims_slab, &
-         hdf5_err)
-
-    ! Create and write to dataset
-    call h5dopen_f(group_id, "results", dset, hdf5_err)
-    call h5dread_f(dset, H5T_NATIVE_DOUBLE, this % results, dims_slab, &
-         hdf5_err, mem_space_id=memspace)
-
-    ! Close identifiers
-    call h5dclose_f(dset, hdf5_err)
-    call h5sclose_f(memspace, hdf5_err)
-    call h5sclose_f(dspace, hdf5_err)
+    n_filter = size(this % results, 3)
+    n_score = size(this % results, 2)
+    call read_tally_results(group_id, n_filter, n_score, this % results)
   end subroutine tally_read_results_hdf5
 
 !===============================================================================

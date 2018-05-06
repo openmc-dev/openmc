@@ -1,6 +1,6 @@
 module angleenergy_header
 
-  use hdf5, only: HID_T
+  use hdf5_interface, only: HID_T
 
 !===============================================================================
 ! ANGLEENERGY (abstract) defines a correlated or uncorrelated angle-energy

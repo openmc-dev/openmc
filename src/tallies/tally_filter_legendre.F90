@@ -2,8 +2,6 @@ module tally_filter_legendre
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5, only: HID_T
-
   use constants
   use error
   use hdf5_interface

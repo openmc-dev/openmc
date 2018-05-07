@@ -169,9 +169,10 @@ double __attribute__ ((const)) calc_pn_c(int n, double x) {
 double __attribute__ ((const)) evaluate_legendre_c(int n, double data[],
                                                    double x) {
   double val;
+  int l;
 
   val = 0.5 * data[0];
-  for (int l = 1; l < n; l++) {
+  for (l = 1; l < n; l++) {
     val += (static_cast<double>(l) + 0.5) * data[l] * calc_pn_c(l, x);
   }
   return val;
@@ -577,6 +578,122 @@ void calc_rn_c(int n, double uvw[3], double rn[]){
   }
 }
 
+//==============================================================================
+// CALC_ZN calculates the n-th order modified Zernike polynomial moment for a
+// given angle (rho, theta) location in the unit disk. The normalization of the
+// polynomials is such tha the integral of Z_pq*Z_pq over the unit disk is
+// exactly pi
+//==============================================================================
+
+void calc_zn_c(int n, double rho, double phi, double zn[]) {
+  // This procedure uses the modified Kintner's method for calculating Zernike
+  // polynomials as outlined in Chong, C. W., Raveendran, P., & Mukundan,
+  // R. (2003). A comparative analysis of algorithms for fast computation of
+  // Zernike moments. Pattern Recognition, 36(3), 731-742.
+  double sin_phi;              // Cosine of phi
+  double cos_phi;              // Sine of phi
+  double sin_phi_vec[n + 1];   // Sin[n * phi]
+  double cos_phi_vec[n + 1];   // Cos[n * phi]
+  double zn_mat[n + 1][n + 1]; // Matrix forms of the coefficients which are
+                               // easier to work with
+  // Variables for R_m_n calculation
+  double k1;
+  double k2;
+  double k3;
+  double k4;
+  // Loop counters
+  int i;
+  int p;
+  int q;
+
+  const double SQRT_N_1[11] =
+      {std::sqrt(1.), std::sqrt(2.), std::sqrt(3.), std::sqrt(4.),
+       std::sqrt(5.), std::sqrt(6.), std::sqrt(7.), std::sqrt(8.),
+       std::sqrt(9.), std::sqrt(10.), std::sqrt(11.)};
+
+  const double SQRT_2N_2[11] =
+      {std::sqrt(2.) * std::sqrt(1.), std::sqrt(2.) * std::sqrt(2.),
+       std::sqrt(2.) * std::sqrt(3.), std::sqrt(2.) * std::sqrt(4.),
+       std::sqrt(2.) * std::sqrt(5.), std::sqrt(2.) * std::sqrt(6.),
+       std::sqrt(2.) * std::sqrt(7.), std::sqrt(2.) * std::sqrt(8.),
+       std::sqrt(2.) * std::sqrt(9.), std::sqrt(2.) * std::sqrt(10.),
+       std::sqrt(2.) * std::sqrt(11.)};
+
+  // n == radial degree
+  // m == azimuthal frequency
+
+  // ===========================================================================
+  // Determine vector of sin(n*phi) and cos(n*phi). This takes advantage of the
+  // following recurrence relations so that only a single sin/cos have to be
+  // evaluated (http://mathworld.wolfram.com/Multiple-AngleFormulas.html)
+  //
+  // sin(nx) = 2 cos(x) sin((n-1)x) - sin((n-2)x)
+  // cos(nx) = 2 cos(x) cos((n-1)x) - cos((n-2)x)
+
+  sin_phi = std::sin(phi);
+  cos_phi = std::cos(phi);
+
+  sin_phi_vec[0] = 1.0;
+  cos_phi_vec[0] = 1.0;
+
+  sin_phi_vec[1] = 2.0 * cos_phi;
+  cos_phi_vec[1] = cos_phi;
+
+  for (i = 2; i <= n; i++) {
+    sin_phi_vec[i] = 2. * cos_phi * sin_phi_vec[i - 1] - sin_phi_vec[i - 2];
+    cos_phi_vec[i] = 2. * cos_phi * cos_phi_vec[i - 1] - cos_phi_vec[i - 2];
+  }
+
+  for (i = 0; i <= n; i++) {
+    sin_phi_vec[i] *=  sin_phi;
+  }
+
+  // ===========================================================================
+  // Calculate R_pq(rho)
+
+  // Fill the main diagonal first (Eq 3.9 in Chong)
+  for (p = 0; p <= n; p++) {
+    zn_mat[p][p] = std::pow(rho, p);
+  }
+
+  // Fill the 2nd diagonal (Eq 3.10 in Chong)
+  for (q = 0; q <= n - 2; q++) {
+    zn_mat[q][q+2] = (q + 2) * zn_mat[q+2][q+2] - (q + 1) * zn_mat[q][q];
+  }
+
+  // Fill in the rest of the values using the original results (Eq. 3.8 in Chong)
+  for (p = 4; p <= n; p++) {
+    k2 = static_cast<double> (2 * p * (p - 1) * (p - 2));
+    for (q = p - 4; q >= 0; q -= 2) {
+      k1 = static_cast<double>((p + q) * (p - q) * (p - 2)) / 2.;
+      k3 = static_cast<double>(-q * q * (p - 1) - p * (p - 1) * (p - 2));
+      k4 = static_cast<double>(-p * (p + q - 2) * (p - q - 2)) / 2.;
+      zn_mat[q][p] =
+        ((k2 * rho * rho + k3) * zn_mat[q][p-2] + k4 * zn_mat[q][p-4]) / k1;
+    }
+  }
+
+  // Roll into a single vector for easier computation later
+  // The vector is ordered (0,0), (1,-1), (1,1), (2,-2), (2,0),
+  // (2, 2), ....   in (n,m) indices
+  // Note that the cos and sin vectors are offset by one
+  // sin_phi_vec = [sin(x), sin(2x), sin(3x) ...]
+  // cos_phi_vec = [1.0, cos(x), cos(2x)... ]
+  i = 0;
+  for (p = 0; p <= n; p++) {
+    for (q = -p; q <= p; q += 2) {
+      if (q < 0) {
+        zn[i] = zn_mat[std::abs(q)][p] * sin_phi_vec[std::abs(q) - 1] * SQRT_2N_2[p];
+      } else if (q == 0) {
+        zn[i] = zn_mat[q][p] * SQRT_N_1[p];
+      } else {
+        zn[i] = zn_mat[q][p] * cos_phi_vec[q] * SQRT_2N_2[p];
+      }
+      i++;
+    }
+  }
+
+}
 
 //==============================================================================
 // ROTATE_ANGLE rotates direction std::cosines through a polar angle whose
@@ -678,8 +795,8 @@ double watt_spectrum_c(double a, double b) {
 // FADDEEVA the Faddeeva function, using Stephen Johnson's implementation
 //==============================================================================
 
-// std::complex<double> faddeeva_c(std::complex<double> z) {
-//   std::complex<double> wv; // The resultant w(z) value
+// double complex __attribute__ ((const)) faddeeva_c(double complex z) {
+//   double complex wv; // The resultant w(z) value
 //   double relerr;      // Target relative error in the inner loop of MIT Faddeeva
 
 //   // Technically, the value we want is given by the equation:
@@ -698,19 +815,19 @@ double watt_spectrum_c(double a, double b) {
 //   // Note that faddeeva_w will interpret zero as machine epsilon
 
 //   relerr = 0.;
-//   if (z.imag() > 0.) {
-//       wv = Faddeeva::w(z, relerr);
+//   if (cimag(z) > 0.) {
+//       wv = Faddeeva_w(z, relerr);
 //   } else {
-//     wv = -std::conj(Faddeeva::w(std::conj(z), relerr));
+//     wv = -conj(Faddeeva_w(conj(z), relerr));
 //   }
 
 //   return wv;
 // }
 
-// std::complex<double> w_derivative_c(std::complex<double> z, int order){
-//   std::complex<double> wv; // The resultant w(z) value
+// double complex w_derivative_c(double complex z, int order){
+//   double complex wv; // The resultant w(z) value
 
-//   const std::complex<double> twoi_sqrtpi(0.0, 2.0 / std::sqrt(PI));
+//   const double complex twoi_sqrtpi = 2.0 / std::sqrt(PI) * I;
 
 //   switch(order) {
 //     case 0:

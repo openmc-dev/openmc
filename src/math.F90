@@ -43,14 +43,6 @@ module math
       real(C_DOUBLE) :: pnx
     end function calc_pn_cc
 
-    subroutine calc_rn_cc(n, uvw, rn) bind(C, name='calc_rn_c')
-      use ISO_C_BINDING
-      implicit none
-      integer(C_INT), value, intent(in) :: n
-      real(C_DOUBLE), intent(in) :: uvw(3)
-      real(C_DOUBLE), intent(in) :: rn(2 * n + 1)
-    end subroutine calc_rn_cc
-
     pure function evaluate_legendre_cc(n, data, x) &
          bind(C, name='evaluate_legendre_c') result(val)
       use ISO_C_BINDING
@@ -60,6 +52,23 @@ module math
       real(C_DOUBLE), value, intent(in) :: x
       real(C_DOUBLE) :: val
     end function evaluate_legendre_cc
+
+    subroutine calc_rn_cc(n, uvw, rn) bind(C, name='calc_rn_c')
+      use ISO_C_BINDING
+      implicit none
+      integer(C_INT), value, intent(in) :: n
+      real(C_DOUBLE), intent(in)  :: uvw(3)
+      real(C_DOUBLE), intent(out) :: rn(2 * n + 1)
+    end subroutine calc_rn_cc
+
+    subroutine calc_zn_cc(n, rho, phi, zn) bind(C, name='calc_zn_c')
+      use ISO_C_BINDING
+      implicit none
+      integer(C_INT), value, intent(in) :: n
+      real(C_DOUBLE), value, intent(in) :: rho
+      real(C_DOUBLE), value, intent(in) :: phi
+      real(C_DOUBLE), intent(out) :: zn(((n + 1) * (n + 2)) / 2)
+    end subroutine calc_zn_cc
 
     subroutine rotate_angle_cc(uvw, mu, phi) bind(C, name='rotate_angle_c')
       use ISO_C_BINDING
@@ -200,102 +209,13 @@ contains
 !===============================================================================
 
   subroutine calc_zn(n, rho, phi, zn) bind(C)
-    ! This procedure uses the modified Kintner's method for calculating Zernike
-    ! polynomials as outlined in Chong, C. W., Raveendran, P., & Mukundan,
-    ! R. (2003). A comparative analysis of algorithms for fast computation of
-    ! Zernike moments. Pattern Recognition, 36(3), 731-742.
-
     integer(C_INT), intent(in) :: n      ! Maximum order
     real(C_DOUBLE), intent(in) :: rho    ! Radial location in the unit disk
     real(C_DOUBLE), intent(in) :: phi    ! Theta (radians) location in the unit disk
-    real(C_DOUBLE), intent(out) :: zn(:) ! The resulting list of coefficients
+    ! The resulting list of coefficients
+    real(C_DOUBLE), intent(out) :: zn(((n + 1) * (n + 2)) / 2)
 
-    real(C_DOUBLE) :: sin_phi, cos_phi   ! Sine and Cosine of phi
-    real(C_DOUBLE) :: sin_phi_vec(n+1)   ! Contains sin(n*phi)
-    real(C_DOUBLE) :: cos_phi_vec(n+1)   ! Contains cos(n*phi)
-    real(C_DOUBLE) :: zn_mat(n+1, n+1)   ! Matrix form of the coefficients which is
-                                         ! easier to work with
-    real(C_DOUBLE) :: k1, k2, k3, k4     ! Variables for R_m_n calculation
-    integer(C_INT) :: i,p,q              ! Loop counters
-
-    real(C_DOUBLE), parameter :: SQRT_N_1(0:10) = [&
-         sqrt(1.0_8), sqrt(2.0_8), sqrt(3.0_8), sqrt(4.0_8), &
-         sqrt(5.0_8), sqrt(6.0_8), sqrt(7.0_8), sqrt(8.0_8), &
-         sqrt(9.0_8), sqrt(10.0_8), sqrt(11.0_8)]
-    real(C_DOUBLE), parameter :: SQRT_2N_2(0:10) = SQRT_N_1*sqrt(2.0_8)
-
-    ! n == radial degree
-    ! m == azimuthal frequency
-
-    ! ==========================================================================
-    ! Determine vector of sin(n*phi) and cos(n*phi). This takes advantage of the
-    ! following recurrence relations so that only a single sin/cos have to be
-    ! evaluated (http://mathworld.wolfram.com/Multiple-AngleFormulas.html)
-    !
-    ! sin(nx) = 2 cos(x) sin((n-1)x) - sin((n-2)x)
-    ! cos(nx) = 2 cos(x) cos((n-1)x) - cos((n-2)x)
-
-    sin_phi = sin(phi)
-    cos_phi = cos(phi)
-
-    sin_phi_vec(1) = 1.0_8
-    cos_phi_vec(1) = 1.0_8
-
-    sin_phi_vec(2) = 2.0_8 * cos_phi
-    cos_phi_vec(2) = cos_phi
-
-    do i = 3, n+1
-      sin_phi_vec(i) = 2.0_8 * cos_phi * sin_phi_vec(i-1) - sin_phi_vec(i-2)
-      cos_phi_vec(i) = 2.0_8 * cos_phi * cos_phi_vec(i-1) - cos_phi_vec(i-2)
-    end do
-
-    do i = 1, n+1
-      sin_phi_vec(i) = sin_phi_vec(i) * sin_phi
-    end do
-
-    ! ==========================================================================
-    ! Calculate R_pq(rho)
-
-    ! Fill the main diagonal first (Eq. 3.9 in Chong)
-    do p = 0, n
-      zn_mat(p+1, p+1) = rho**p
-    end do
-
-    ! Fill in the second diagonal (Eq. 3.10 in Chong)
-    do q = 0, n-2
-      zn_mat(q+2+1, q+1) = (q+2) * zn_mat(q+2+1, q+2+1) - (q+1) * zn_mat(q+1, q+1)
-    end do
-
-    ! Fill in the rest of the values using the original results (Eq. 3.8 in Chong)
-    do p = 4, n
-      k2 = 2 * p * (p - 1) * (p - 2)
-      do q = p-4, 0, -2
-        k1 = (p + q) * (p - q) * (p - 2) / 2
-        k3 = -q**2*(p - 1) - p * (p - 1) * (p - 2)
-        k4 = -p * (p + q - 2) * (p - q - 2) / 2
-        zn_mat(p+1, q+1) = ((k2 * rho**2 + k3) * zn_mat(p-2+1, q+1) + k4 * zn_mat(p-4+1, q+1)) / k1
-      end do
-    end do
-
-    ! Roll into a single vector for easier computation later
-    ! The vector is ordered (0,0), (1,-1), (1,1), (2,-2), (2,0),
-    ! (2, 2), ....   in (n,m) indices
-    ! Note that the cos and sin vectors are offset by one
-    ! sin_phi_vec = [sin(x), sin(2x), sin(3x) ...]
-    ! cos_phi_vec = [1.0, cos(x), cos(2x)... ]
-    i = 1
-    do p = 0, n
-      do q = -p, p, 2
-        if (q < 0) then
-          zn(i) = zn_mat(p+1, abs(q)+1) * sin_phi_vec(abs(q)) * SQRT_2N_2(p)
-        else if (q == 0) then
-          zn(i) = zn_mat(p+1, q+1) * SQRT_N_1(p)
-        else
-          zn(i) = zn_mat(p+1, q+1) * cos_phi_vec(abs(q)+1) * SQRT_2N_2(p)
-        end if
-        i = i + 1
-      end do
-    end do
+    call calc_zn_cc(n, rho, phi, zn)
   end subroutine calc_zn
 
 !===============================================================================
@@ -310,44 +230,11 @@ contains
     real(C_DOUBLE), intent(out) :: uvw(3)  ! rotated directional cosine
     real(C_DOUBLE), optional    :: phi     ! azimuthal angle
 
-    real(C_DOUBLE) :: phi_   ! azimuthal angle
-    real(C_DOUBLE) :: sinphi ! sine of azimuthal angle
-    real(C_DOUBLE) :: cosphi ! cosine of azimuthal angle
-    real(C_DOUBLE) :: a      ! sqrt(1 - mu^2)
-    real(C_DOUBLE) :: b      ! sqrt(1 - w^2)
-    real(C_DOUBLE) :: u0     ! original cosine in x direction
-    real(C_DOUBLE) :: v0     ! original cosine in y direction
-    real(C_DOUBLE) :: w0     ! original cosine in z direction
-
-    ! Copy original directional cosines
-    u0 = uvw0(1)
-    v0 = uvw0(2)
-    w0 = uvw0(3)
-
-    ! Sample azimuthal angle in [0,2pi) if none provided
+    uvw = uvw0
     if (present(phi)) then
-      phi_ = phi
+      call rotate_angle_cc(uvw, mu, phi)
     else
-      phi_ = TWO * PI * prn()
-    end if
-
-    ! Precompute factors to save flops
-    sinphi = sin(phi_)
-    cosphi = cos(phi_)
-    a = sqrt(max(ZERO, ONE - mu*mu))
-    b = sqrt(max(ZERO, ONE - w0*w0))
-
-    ! Need to treat special case where sqrt(1 - w**2) is close to zero by
-    ! expanding about the v component rather than the w component
-    if (b > 1e-10) then
-      uvw(1) = mu*u0 + a*(u0*w0*cosphi - v0*sinphi)/b
-      uvw(2) = mu*v0 + a*(v0*w0*cosphi + u0*sinphi)/b
-      uvw(3) = mu*w0 - a*b*cosphi
-    else
-      b = sqrt(ONE - v0*v0)
-      uvw(1) = mu*u0 + a*(u0*v0*cosphi + w0*sinphi)/b
-      uvw(2) = mu*v0 - a*b*cosphi
-      uvw(3) = mu*w0 + a*(v0*w0*cosphi - u0*sinphi)/b
+      call rotate_angle_cc(uvw, mu, -10._8)
     end if
 
   end subroutine rotate_angle
@@ -492,6 +379,9 @@ contains
         factors(i+3) = factors(i+1)*(E + (ONE + TWO * i) * half_inv_dopp2)
       end if
     end do
+
+    ! call broaden_wmp_polynomials_cc(E, dopp, n, factors)
+
   end subroutine broaden_wmp_polynomials
 
 end module math

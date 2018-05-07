@@ -2,11 +2,11 @@
 #define MATH_FUNCTIONS_H
 
 #include <cmath>
-#include <complex>
+#include <complex.h>
 #include <iostream>
 
 #include "random_lcg.h"
-// #include "faddeeva/Faddeeva.hh"
+// #include "faddeeva/Faddeeva.h"
 
 
 namespace openmc {
@@ -52,6 +52,15 @@ extern "C" double evaluate_legendre_c(int n, double data[], double x)
 extern "C" void calc_rn_c(int n, double uvw[3], double rn[]);
 
 //==============================================================================
+// CALC_ZN calculates the n-th order modified Zernike polynomial moment for a
+// given angle (rho, theta) location in the unit disk. The normalization of the
+// polynomials is such tha the integral of Z_pq*Z_pq over the unit disk is
+// exactly pi
+//==============================================================================
+
+extern "C" void calc_zn_c(int n, double rho, double phi, double zn[]);
+
+//==============================================================================
 // ROTATE_ANGLE rotates direction cosines through a polar angle whose cosine is
 // mu and through an azimuthal angle sampled uniformly. Note that this is done
 // with direct sampling rather than rejection as is done in MCNP and SERPENT.
@@ -83,16 +92,17 @@ extern "C" double watt_spectrum_c(double a, double b);
 // FADDEEVA the Faddeeva function, using Stephen Johnson's implementation
 //==============================================================================
 
-// extern "C" std::complex<double> faddeeva_c(std::complex<double> z);
+// extern "C" double complex faddeeva_c(double complex z) __attribute__ ((const));
 
-// extern "C" std::complex<double> w_derivative_c(std::complex<double> z, int order);
+// extern "C" double complex w_derivative_c(double complex z, int order);
 
 //==============================================================================
 // BROADEN_WMP_POLYNOMIALS Doppler broadens the windowed multipole curvefit.
 // The curvefit is a polynomial of the form a/E + b/sqrt(E) + c + d sqrt(E) ...
 //==============================================================================
 
-extern "C" void broaden_wmp_polynomials_c(double E, double dopp, int n, double factors[]);
+extern "C" void broaden_wmp_polynomials_c(double E, double dopp, int n,
+                                          double factors[]);
 
 } // namespace openmc
 #endif // MATH_FUNCTIONS_H

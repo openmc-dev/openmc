@@ -11,15 +11,15 @@ _dll.t_percentile.restype = c_double
 _dll.t_percentile.argtypes = [POINTER(c_double), POINTER(c_int)]
 _dll.calc_pn.restype = c_double
 _dll.calc_pn.argtypes = [POINTER(c_int), POINTER(c_double)]
+_dll.evaluate_legendre.restype = c_double
+_dll.evaluate_legendre.argtypes = [POINTER(c_int), POINTER(c_double),
+                                   POINTER(c_double)]
 _dll.calc_rn.restype = None
 _dll.calc_rn.argtypes = [POINTER(c_int), ndpointer(c_double),
                          ndpointer(c_double)]
 _dll.calc_zn.restype = None
 _dll.calc_zn.argtypes = [POINTER(c_int), POINTER(c_double), POINTER(c_double),
                          ndpointer(c_double)]
-_dll.evaluate_legendre.restype = c_double
-_dll.evaluate_legendre.argtypes = [POINTER(c_int), POINTER(c_double),
-                                   POINTER(c_double)]
 _dll.rotate_angle.restype = None
 _dll.rotate_angle.argtypes = [ndpointer(c_double), POINTER(c_double),
                               ndpointer(c_double), POINTER(c_double)]
@@ -169,7 +169,7 @@ def calc_zn(n, rho, phi):
 
     """
 
-    num_bins = ((n + 1) * (n + 2)) / 2
+    num_bins = ((n + 1) * (n + 2)) // 2
     zn = np.zeros(num_bins, dtype=np.float64)
     _dll.calc_zn(c_int(n), c_double(rho), c_double(phi), zn)
     return zn

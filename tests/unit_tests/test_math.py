@@ -115,7 +115,38 @@ def test_calc_rn():
 
 
 def test_calc_zn():
-    pass
+    n = 10
+    rho = 0.5
+    phi = 0.5
+
+    # Reference solution from running the Fortran implementation
+    ref_vals = np.array(
+        [1.00000000e+00, 4.79425539e-01, 8.77582562e-01,
+         5.15293637e-01, -8.66025404e-01, 3.30866239e-01,
+         3.52667735e-01, -8.47512624e-01, -1.55136145e+00,
+         2.50093775e-02, 1.79715684e-01, -1.33048245e+00,
+         -2.79508497e-01, -8.54292956e-01, -8.22482403e-02,
+         6.47865100e-02, -1.18780200e+00, 5.18993370e-01,
+         9.50010991e-01, -8.42327938e-02, -8.67263404e-02,
+         8.25035501e-03, -7.44248626e-01, 1.52505281e+00,
+         1.15751620e+00, 9.79225149e-01, 3.40611006e-01,
+         -5.78783240e-02, -1.09619759e-02, -3.17938327e-01,
+         1.90147482e+00, 2.84658914e-01, 5.21064646e-01,
+         1.34842791e-01, 4.25607546e-01, -2.92642715e-02,
+         -1.25423479e-02, -4.67751162e-02, 1.50696182e+00,
+         -6.13603897e-01, -8.67187500e-01, -3.93990531e-01,
+         -6.89672461e-01, 3.28139254e-01, -1.08327149e-02,
+         -8.53837419e-03, 7.04712042e-02, 7.73660979e-01,
+         -1.63799891e+00, -8.12396290e-01, -1.48708143e+00,
+         -1.16158437e-01, -1.03565982e+00, 1.88131088e-01,
+         -1.84122553e-03, -4.39233743e-03, 9.01295675e-02,
+         1.32511582e-01, -1.83260987e+00, -7.93994967e-01,
+         -2.97978009e-01, -5.09818305e-01, 8.38707753e-01,
+         -9.29602211e-01, 7.78441102e-02, 1.29931014e-03])
+
+    test_vals = openmc.capi.math.calc_zn(n, rho, phi)
+
+    assert np.allclose(ref_vals, test_vals)
 
 
 def test_rotate_angle():
@@ -128,7 +159,7 @@ def test_rotate_angle():
 
     test_uvw = openmc.capi.math.rotate_angle(uvw0, mu, phi)
 
-    assert np.allclose(ref_uvw, test_uvw)
+    assert np.array_equal(ref_uvw, test_uvw)
 
     # Repeat for mu = 1 (no change)
     mu = 1.
@@ -136,7 +167,7 @@ def test_rotate_angle():
 
     test_uvw = openmc.capi.math.rotate_angle(uvw0, mu, phi)
 
-    assert np.allclose(ref_uvw, test_uvw)
+    assert np.array_equal(ref_uvw, test_uvw)
 
     # Need to test phi=None somehow...
 
@@ -180,3 +211,5 @@ def test_broaden_wmp_polynomials():
     test_val = openmc.capi.math.broaden_wmp_polynomials(test_E, test_dopp, n)
 
     assert np.allclose(ref_val, test_val)
+
+test_calc_zn()

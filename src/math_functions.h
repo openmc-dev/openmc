@@ -16,6 +16,8 @@ namespace openmc {
 // modifying test results
 const double PI = 3.1415926535898;
 
+const double SQRT_PI = std::sqrt(PI);
+
 //==============================================================================
 // NORMAL_PERCENTILE calculates the percentile of the standard normal
 // distribution with a specified probability level

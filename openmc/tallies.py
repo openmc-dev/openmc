@@ -65,9 +65,7 @@ class Tally(IDManagerMixin):
     triggers : list of openmc.Trigger
         List of tally triggers
     num_scores : int
-        Total number of scores, accounting for the fact that a single
-        user-specified score, e.g. scatter-P3 or flux-Y2,2, might have multiple
-        bins
+        Total number of scores
     num_filter_bins : int
         Total number of filter bins accounting for all filters
     num_bins : int
@@ -388,6 +386,13 @@ class Tally(IDManagerMixin):
 
             # If score is a string, strip whitespace
             if isinstance(score, str):
+                # Check to see if scores are deprecated before storing
+                for deprecated in ['scatter-', 'nu-scatter-', 'scatter-p',
+                                   'nu-scatter-p', 'scatter-y', 'nu-scatter-y',
+                                    'flux-y', 'total-y']:
+                    if score.startswith(deprecated):
+                        msg = score.strip() + ' is no longer supported.'
+                        raise ValueError(msg)
                 scores[i] = score.strip()
 
         self._scores = cv.CheckedList(_SCORE_CLASSES, 'tally scores', scores)
@@ -827,50 +832,7 @@ class Tally(IDManagerMixin):
         # Sparsify merged tally if both tallies are sparse
         merged_tally.sparse = self.sparse and other.sparse
 
-        # Consolidate scatter and flux Legendre moment scores
-        merged_tally._consolidate_moment_scores()
-
         return merged_tally
-
-    def _consolidate_moment_scores(self):
-        """Remove redundant scattering and flux moment scores from a Tally."""
-
-        # Define regex for scatter, nu-scatter and flux moment scores
-        regex = [(r'^((?!nu-)scatter-\d)', r'^((?!nu-)scatter-(P|p)\d)'),
-                 (r'nu-scatter-\d', r'nu-scatter-(P|p)\d'),
-                 (r'flux-\d', r'flux-(P|p)\d')]
-
-        # Find all non-scattering and non-flux moment scores
-        scores = [x for x in self.scores if
-                  re.search(r'^((?!scatter-).)*$', x)]
-        scores = [x for x in scores if
-                  re.search(r'^((?!flux-).)*$', x)]
-
-        for regex_n, regex_pn in regex:
-
-            # Use regex to find score-(P)n scores
-            score_n = [x for x in self.scores if re.search(regex_n, x)]
-            score_pn = [x for x in self.scores if re.search(regex_pn, x)]
-
-            # Consolidate moment scores
-            if len(score_pn) > 0:
-
-                # Only keep the highest score-PN score
-                high_pn = sorted([x.lower() for x in score_pn])[-1]
-                pn = int(high_pn.split('-')[-1].replace('p', ''))
-
-                # Only keep the score-N scores with N > PN
-                score_n = sorted([x.lower() for x in score_n])
-                score_n = [x for x in score_n if (int(x.split('-')[1]) > pn)]
-
-                # Append highest score-PN and any higher score-N scores
-                scores.extend([high_pn] + score_n)
-            else:
-                scores.extend(score_n)
-
-        # Override Tally's scores with consolidated list of scores
-        self.scores = scores
-
 
     def to_xml_element(self):
         """Return XML representation of the tally
@@ -1180,7 +1142,7 @@ class Tally(IDManagerMixin):
 
         # Determine the score indices from any of the requested scores
         if nuclides:
-            nuclide_indices = np.zeros(len(nuclides), dtype=np.int)
+            nuclide_indices = np.zeros(len(nuclides), dtype=int)
             for i, nuclide in enumerate(nuclides):
                 nuclide_indices[i] = self.get_nuclide_index(nuclide)
 
@@ -1219,7 +1181,7 @@ class Tally(IDManagerMixin):
 
         # Determine the score indices from any of the requested scores
         if scores:
-            score_indices = np.zeros(len(scores), dtype=np.int)
+            score_indices = np.zeros(len(scores), dtype=int)
             for i, score in enumerate(scores):
                 score_indices[i] = self.get_score_index(score)
 
@@ -1491,11 +1453,8 @@ class Tally(IDManagerMixin):
         data = self.get_values(value=value)
 
         # Build a new array shape with one dimension per filter
-        new_shape = ()
-        for self_filter in self.filters:
-            new_shape += (self_filter.num_bins, )
-        new_shape += (self.num_nuclides,)
-        new_shape += (self.num_scores,)
+        new_shape = tuple(f.num_bins for f in self.filters)
+        new_shape += (self.num_nuclides, self.num_scores)
 
         # Reshape the data with one dimension for each filter
         data = np.reshape(data, new_shape)
@@ -2772,7 +2731,7 @@ class Tally(IDManagerMixin):
 
             # Sum across the bins in the user-specified filter
             for i, self_filter in enumerate(self.filters):
-                if isinstance(self_filter, filter_type):
+                if type(self_filter) == filter_type:
                     shape = mean.shape
                     mean = np.take(mean, indices=bin_indices, axis=i)
                     std_dev = np.take(std_dev, indices=bin_indices, axis=i)
@@ -3012,7 +2971,7 @@ class Tally(IDManagerMixin):
         The data in the derived tally arrays is "diagonalized" along the bins in
         the new filter. This functionality is used by the openmc.mgxs module; to
         transport-correct scattering matrices by subtracting a 'scatter-P1'
-        reaction rate tally with an energy filter from an 'scatter' reaction
+        reaction rate tally with an energy filter from a 'scatter' reaction
         rate tally with both energy and energyout filters.
 
         Parameters
@@ -3031,7 +2990,7 @@ class Tally(IDManagerMixin):
 
         if new_filter in self.filters:
             msg = 'Unable to diagonalize Tally ID="{0}" which already ' \
-                  'contains a "{1}" filter'.format(self.id, new_filter.type)
+                  'contains a "{1}" filter'.format(self.id, type(new_filter))
             raise ValueError(msg)
 
         # Add the new filter to a copy of this Tally
@@ -3042,8 +3001,8 @@ class Tally(IDManagerMixin):
         # by which the "base" indices should be repeated to account for all
         # other filter bins in the diagonalized tally
         indices = np.arange(0, new_filter.num_bins**2, new_filter.num_bins+1)
-        diag_factor = int(self.num_filter_bins / new_filter.num_bins)
-        diag_indices = np.zeros(self.num_filter_bins, dtype=np.int)
+        diag_factor = self.num_filter_bins // new_filter.num_bins
+        diag_indices = np.zeros(self.num_filter_bins, dtype=int)
 
         # Determine the filter indices along the new "diagonal"
         for i in range(diag_factor):

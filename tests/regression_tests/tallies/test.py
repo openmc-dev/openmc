@@ -76,7 +76,6 @@ def test_tallies():
     mu_tally1 = Tally()
     mu_tally1.filters = [mu_filter]
     mu_tally1.scores = ['scatter', 'nu-scatter']
-    print('mu_tally1', mu_tally1.id)
 
     mu_tally2 = Tally()
     mu_tally2.filters = [mu_filter, mesh_filter]
@@ -104,7 +103,6 @@ def test_tallies():
     legendre_tally.filters = [legendre_filter]
     legendre_tally.scores = ['scatter', 'nu-scatter']
     legendre_tally.estimatir = 'analog'
-    print('legendre_tally', mu_tally1.id)
 
     harmonics_filter = SphericalHarmonicsFilter(order=4)
     harmonics_tally = Tally()

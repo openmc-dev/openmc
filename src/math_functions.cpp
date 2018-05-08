@@ -827,7 +827,7 @@ double watt_spectrum_c(double a, double b) {
 // double complex w_derivative_c(double complex z, int order){
 //   double complex wv; // The resultant w(z) value
 
-//   const double complex twoi_sqrtpi = 2.0 / std::sqrt(PI) * I;
+//   const double complex twoi_sqrtpi = 2.0 / SQRT_PI * I;
 
 //   switch(order) {
 //     case 0:
@@ -859,6 +859,7 @@ void broaden_wmp_polynomials_c(double E, double dopp, int n, double factors[]) {
   double erf_beta;            // error function of beta
   double exp_m_beta2;         // exp(-beta**2)
   int i;
+  double ip1_dbl;
 
   sqrtE = std::sqrt(E);
   beta = sqrtE * dopp;
@@ -881,17 +882,20 @@ void broaden_wmp_polynomials_c(double E, double dopp, int n, double factors[]) {
   factors[0] = erf_beta / E;
   factors[1] = 1. / sqrtE;
   factors[2] = factors[0] * (half_inv_dopp2 + E) + exp_m_beta2 /
-       (beta * std::sqrt(PI));
+       (beta * SQRT_PI);
 
   // Perform recursive broadening of high order components
   for (i = 0; i < n - 3; i++) {
+    ip1_dbl = static_cast<double>(i + 1);
     if (i != 0) {
-      factors[i + 3] = -factors[i - 1] * (i - 1.) * i * quarter_inv_dopp4 +
-           factors[i + 1] * (E + (1. + 2. * i) * half_inv_dopp2);
+      factors[i + 3] = -factors[i - 1] * (ip1_dbl - 1.) * ip1_dbl *
+           quarter_inv_dopp4 + factors[i + 1] *
+           (E + (1. + 2. * ip1_dbl) * half_inv_dopp2);
     } else {
       // Although it's mathematically identical, factors[0] will contain
       // nothing, and we don't want to have to worry about memory.
-      factors[i + 3] = factors[i + 1]*(E + (1. + 2. * i) * half_inv_dopp2);
+      factors[i + 3] = factors[i + 1] *
+           (E + (1. + 2. * ip1_dbl) * half_inv_dopp2);
     }
   }
 }

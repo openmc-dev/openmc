@@ -199,17 +199,16 @@ def test_broaden_wmp_polynomials():
     # First lets do beta > 6
     test_E = 0.5
     test_dopp = 100.  # approximately U235 at room temperature
-    n = 4
-    ref_val = [2., 1.41421356, 1.0001, 0.70731891]
+    n = 6
+
+    ref_val = [2., 1.41421356, 1.0001, 0.70731891, 0.50030001, 0.353907]
     test_val = openmc.capi.math.broaden_wmp_polynomials(test_E, test_dopp, n)
 
     assert np.allclose(ref_val, test_val)
 
     # now beta < 6
     test_dopp = 5.
-    ref_val = [1.99999885, 1.41421356, 1.04, 0.79195959]
+    ref_val = [1.99999885, 1.41421356, 1.04, 0.79195959, 0.6224, 0.50346003]
     test_val = openmc.capi.math.broaden_wmp_polynomials(test_E, test_dopp, n)
 
     assert np.allclose(ref_val, test_val)
-
-test_calc_zn()

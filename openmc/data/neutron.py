@@ -15,7 +15,7 @@ import h5py
 
 from . import HDF5_VERSION, HDF5_VERSION_MAJOR
 from .ace import Library, Table, get_table
-from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV
+from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV, gnd_name
 from .endf import Evaluation, SUM_RULES, get_head_record, get_tab1_record
 from .fission_energy import FissionEnergyRelease
 from .function import Tabulated1D, Sum, ResonancesWithBackground
@@ -93,9 +93,7 @@ def _get_metadata(zaid, metastable_scheme='nndc'):
 
     # Determine name
     element = ATOMIC_SYMBOL[Z]
-    name = '{}{}'.format(element, mass_number)
-    if metastable > 0:
-        name += '_m{}'.format(metastable)
+    name = gnd_name(Z, mass_number, metastable)
 
     return (name, element, Z, mass_number, metastable)
 

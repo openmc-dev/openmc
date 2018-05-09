@@ -2,8 +2,6 @@ module tally_filter_mu
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5
-
   use algorithm,          only: binary_search
   use constants,          only: ONE, TWO, MAX_LINE_LEN, NO_BIN_FOUND
   use error,              only: fatal_error

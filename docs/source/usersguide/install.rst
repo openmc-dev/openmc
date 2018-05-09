@@ -141,15 +141,9 @@ Prerequisites
       recommend that your HDF5 installation be built with parallel I/O
       features. An example of configuring HDF5_ is listed below::
 
-           FC=mpifort ./configure --enable-fortran --enable-parallel
+           FC=mpifort ./configure --enable-parallel
 
       You may omit ``--enable-parallel`` if you want to compile HDF5_ in serial.
-
-      .. important::
-
-          If you are building HDF5 version 1.8.x or earlier, you must include
-          ``--enable-fortran2003`` when configuring HDF5 or else OpenMC will not
-          be able to compile.
 
 .. admonition:: Optional
    :class: note
@@ -416,7 +410,9 @@ Prerequisites
 The Python API works with Python 3.4+. In addition to Python itself, the API
 relies on a number of third-party packages. All prerequisites can be installed
 using Conda_ (recommended), pip_, or through the package manager in most Linux
-distributions.
+distributions. To run simulations in parallel using MPI, it is recommended to
+build mpi4py, HDF5, h5py from source, in that order, using the same compilers
+as for OpenMC.
 
 .. admonition:: Required
    :class: error
@@ -451,6 +447,11 @@ distributions.
 
 .. admonition:: Optional
    :class: note
+
+   `mpi4py <http://mpi4py.scipy.org/>`_
+      mpi4py provides Python bindings to MPI for running distributed-memory
+      parallel runs. This package is needed if you plan on running depletion
+      simulations in parallel using MPI.
 
    `Cython <http://cython.org/>`_
       Cython is used for resonance reconstruction for ENDF data converted to

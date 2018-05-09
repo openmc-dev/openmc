@@ -2,8 +2,6 @@ module tally_filter_energy
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5, only: HID_T
-
   use algorithm,           only: binary_search
   use constants
   use error
@@ -204,24 +202,21 @@ contains
     integer(C_INT32_T), intent(out) :: n
     integer(C_INT) :: err
 
-    if (index >= 1 .and. index <= n_filters) then
-      if (allocated(filters(index) % obj)) then
-        select type (f => filters(index) % obj)
-        type is (EnergyFilter)
-          energies = C_LOC(f % bins)
-          n = size(f % bins)
-          err = 0
+    err = verify_filter(index)
+    if (err == 0) then
+      select type (f => filters(index) % obj)
+      type is (EnergyFilter)
+        energies = C_LOC(f % bins)
+        n = size(f % bins)
+        err = 0
+      type is (EnergyoutFilter)
+        energies = C_LOC(f % bins)
+        n = size(f % bins)
+        err = 0
         class default
-          err = E_INVALID_TYPE
-          call set_errmsg("Tried to get energy bins on a non-energy filter.")
-        end select
-      else
-        err = E_ALLOCATE
-        call set_errmsg("Filter type has not been set yet.")
-      end if
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in filters array out of bounds.")
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to get energy bins on a non-energy filter.")
+      end select
     end if
   end function openmc_energy_filter_get_bins
 
@@ -233,26 +228,23 @@ contains
     real(C_DOUBLE), intent(in) :: energies(n)
     integer(C_INT) :: err
 
-    err = 0
-    if (index >= 1 .and. index <= n_filters) then
-      if (allocated(filters(index) % obj)) then
-        select type (f => filters(index) % obj)
-        type is (EnergyFilter)
-          f % n_bins = n - 1
-          if (allocated(f % bins)) deallocate(f % bins)
-          allocate(f % bins(n))
-          f % bins(:) = energies
+    err = verify_filter(index)
+    if (err == 0) then
+      select type (f => filters(index) % obj)
+      type is (EnergyFilter)
+        f % n_bins = n - 1
+        if (allocated(f % bins)) deallocate(f % bins)
+        allocate(f % bins(n))
+        f % bins(:) = energies
+      type is (EnergyoutFilter)
+        f % n_bins = n - 1
+        if (allocated(f % bins)) deallocate(f % bins)
+        allocate(f % bins(n))
+        f % bins(:) = energies
         class default
-          err = E_INVALID_TYPE
-          call set_errmsg("Tried to get energy bins on a non-energy filter.")
-        end select
-      else
-        err = E_ALLOCATE
-        call set_errmsg("Filter type has not been set yet.")
-      end if
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in filters array out of bounds.")
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to get energy bins on a non-energy filter.")
+      end select
     end if
   end function openmc_energy_filter_set_bins
 

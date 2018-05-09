@@ -46,9 +46,12 @@ Type Definitions
 Functions
 ---------
 
-.. c:function:: void openmc_calculate_volumes()
+.. c:function:: int openmc_calculate_volumes()
 
    Run a stochastic volume calculation
+
+   :return: Return status (negative if an error occurred)
+   :rtype: int
 
 .. c:function:: int openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n)
 
@@ -192,11 +195,14 @@ Functions
    :return: Return status (negative if an error occurred)
    :rtype: int
 
-.. c:function:: void openmc_finalize()
+.. c:function:: int openmc_finalize()
 
    Finalize a simulation
 
-.. c:function:: void openmc_find(double* xyz, int rtype, int32_t* id, int32_t* instance)
+   :return: Return status (negative if an error occurs)
+   :rtype: int
+
+.. c:function:: int openmc_find(double* xyz, int rtype, int32_t* id, int32_t* instance)
 
    Determine the ID of the cell/material containing a given point
 
@@ -207,6 +213,8 @@ Functions
                        occurs, the ID is -1.
    :param int32_t* instance: If a cell is repeated in the geometry, the instance
                              of the cell that was found and zero otherwise.
+   :return: Return status (negative if an error occurs)
+   :rtype: int
 
 .. c:function:: int openmc_get_cell_index(int32_t id, int32_t* index)
 
@@ -247,11 +255,12 @@ Functions
    :return: Return status (negative if an error occurs)
    :rtype: int
 
-.. c:function:: int openmc_get_nuclide_index(char name[], int* index)
+.. c:function:: int openmc_get_nuclide_index(const char name[], int* index)
 
    Get the index in the nuclides array for a nuclide with a given name
 
-   :param char[] name: Name of the nuclide
+   :param name: Name of the nuclide
+   :type name: const char[]
    :param int* index: Index in the nuclides array
    :return: Return status (negative if an error occurs)
    :rtype: int
@@ -265,17 +274,24 @@ Functions
    :return: Return status (negative if an error occurs)
    :rtype: int
 
-.. c:function:: void openmc_hard_reset()
+.. c:function:: int openmc_hard_reset()
 
    Reset tallies, timers, and pseudo-random number generator state
 
-.. c:function:: void openmc_init(const int* intracomm)
+   :return: Return status (negative if an error occurs)
+   :rtype: int
+
+.. c:function:: int openmc_init(int argc, char** argv, const void* intracomm)
 
    Initialize OpenMC
 
+   :param int argc: Number of command-line arguments (including command)
+   :param char** argv: Command-line arguments
    :param intracomm: MPI intracommunicator. If MPI is not being used, a null
                      pointer should be passed.
-   :type intracomm: const int*
+   :type intracomm: const void*
+   :return: Return status (negative if an error occurs)
+   :rtype: int
 
 .. c:function:: int openmc_load_nuclide(char name[])
 
@@ -393,25 +409,40 @@ Functions
    :return: Return status (negative if an error occurs)
    :rtype: int
 
-.. c:function:: void openmc_plot_geometry()
+.. c:function:: int openmc_plot_geometry()
 
    Run plotting mode.
 
-.. c:function:: void openmc_reset()
+   :return: Return status (negative if an error occurs)
+   :rtype: int
+
+.. c:function:: int openmc_reset()
 
    Resets all tally scores
 
-.. c:function:: void openmc_run()
+   :return: Return status (negative if an error occurs)
+   :rtype: int
+
+.. c:function:: int openmc_run()
 
    Run a simulation
 
-.. c:function:: void openmc_simulation_finalize()
+   :return: Return status (negative if an error occurs)
+   :rtype: int
+
+.. c:function:: int openmc_simulation_finalize()
 
    Finalize a simulation.
 
-.. c:function:: void openmc_simulation_init()
+   :return: Return status (negative if an error occurs)
+   :rtype: int
+
+.. c:function:: int openmc_simulation_init()
 
    Initialize a simulation. Must be called after openmc_init().
+
+   :return: Return status (negative if an error occurs)
+   :rtype: int
 
 .. c:function:: int openmc_source_bank(struct Bank** ptr, int64_t* n)
 
@@ -432,13 +463,15 @@ Functions
    :return: Return status (negative if an error occurred)
    :rtype: int
 
-.. c:function:: void openmc_statepoint_write(const char filename[])
+.. c:function:: int openmc_statepoint_write(const char filename[])
 
    Write a statepoint file
 
    :param filename: Name of file to create. If a null pointer is passed, a
                     filename is assigned automatically.
    :type filename: const char[]
+   :return: Return status (negative if an error occurs)
+   :rtype: int
 
 .. c:function:: int openmc_tally_get_id(int32_t index, int32_t* id)
 

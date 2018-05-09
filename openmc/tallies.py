@@ -65,9 +65,7 @@ class Tally(IDManagerMixin):
     triggers : list of openmc.Trigger
         List of tally triggers
     num_scores : int
-        Total number of scores, accounting for the fact that a single
-        user-specified score, e.g. scatter-P3 or flux-Y2,2, might have multiple
-        bins
+        Total number of scores
     num_filter_bins : int
         Total number of filter bins accounting for all filters
     num_bins : int
@@ -218,10 +216,9 @@ class Tally(IDManagerMixin):
             f = h5py.File(self._sp_filename, 'r')
 
             # Extract Tally data from the file
-            data = f['tallies/tally {0}/results'.format(
-                self.id)].value
-            sum = data[:,:,0]
-            sum_sq = data[:,:,1]
+            data = f['tallies/tally {0}/results'.format(self.id)].value
+            sum = data[:, :, 0]
+            sum_sq = data[:, :, 1]
 
             # Reshape the results arrays
             sum = np.reshape(sum, self.shape)
@@ -273,8 +270,8 @@ class Tally(IDManagerMixin):
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
-                self._mean = \
-                    sps.lil_matrix(self._mean.flatten(), self._mean.shape)
+                self._mean = sps.lil_matrix(self._mean.flatten(),
+                                            self._mean.shape)
 
         if self.sparse:
             return np.reshape(self._mean.toarray(), self.shape)
@@ -295,8 +292,8 @@ class Tally(IDManagerMixin):
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
-                self._std_dev = \
-                    sps.lil_matrix(self._std_dev.flatten(), self._std_dev.shape)
+                self._std_dev = sps.lil_matrix(self._std_dev.flatten(),
+                                               self._std_dev.shape)
 
             self.with_batch_statistics = True
 
@@ -389,6 +386,13 @@ class Tally(IDManagerMixin):
 
             # If score is a string, strip whitespace
             if isinstance(score, str):
+                # Check to see if scores are deprecated before storing
+                for deprecated in ['scatter-', 'nu-scatter-', 'scatter-p',
+                                   'nu-scatter-p', 'scatter-y', 'nu-scatter-y',
+                                    'flux-y', 'total-y']:
+                    if score.startswith(deprecated):
+                        msg = score.strip() + ' is no longer supported.'
+                        raise ValueError(msg)
                 scores[i] = score.strip()
 
         self._scores = cv.CheckedList(_SCORE_CLASSES, 'tally scores', scores)
@@ -436,17 +440,16 @@ class Tally(IDManagerMixin):
         # Convert NumPy arrays to SciPy sparse LIL matrices
         if sparse and not self.sparse:
             if self._sum is not None:
-                self._sum = \
-                    sps.lil_matrix(self._sum.flatten(), self._sum.shape)
+                self._sum = sps.lil_matrix(self._sum.flatten(), self._sum.shape)
             if self._sum_sq is not None:
-                self._sum_sq = \
-                    sps.lil_matrix(self._sum_sq.flatten(), self._sum_sq.shape)
+                self._sum_sq = sps.lil_matrix(self._sum_sq.flatten(),
+                                              self._sum_sq.shape)
             if self._mean is not None:
-                self._mean = \
-                    sps.lil_matrix(self._mean.flatten(), self._mean.shape)
+                self._mean = sps.lil_matrix(self._mean.flatten(),
+                                            self._mean.shape)
             if self._std_dev is not None:
-                self._std_dev = \
-                    sps.lil_matrix(self._std_dev.flatten(), self._std_dev.shape)
+                self._std_dev = sps.lil_matrix(self._std_dev.flatten(),
+                                               self._std_dev.shape)
 
             self._sparse = True
 
@@ -776,11 +779,11 @@ class Tally(IDManagerMixin):
             other_sum = other_copy.get_reshaped_data(value='sum')
 
             if join_right:
-                merged_sum = \
-                    np.concatenate((self_sum, other_sum), axis=merge_axis)
+                merged_sum = np.concatenate((self_sum, other_sum),
+                                            axis=merge_axis)
             else:
-                merged_sum = \
-                    np.concatenate((other_sum, self_sum), axis=merge_axis)
+                merged_sum = np.concatenate((other_sum, self_sum),
+                                            axis=merge_axis)
 
             merged_tally._sum = np.reshape(merged_sum, merged_tally.shape)
 
@@ -790,11 +793,11 @@ class Tally(IDManagerMixin):
             other_sum_sq = other_copy.get_reshaped_data(value='sum_sq')
 
             if join_right:
-                merged_sum_sq = \
-                    np.concatenate((self_sum_sq, other_sum_sq), axis=merge_axis)
+                merged_sum_sq = np.concatenate((self_sum_sq, other_sum_sq),
+                                               axis=merge_axis)
             else:
-                merged_sum_sq = \
-                    np.concatenate((other_sum_sq, self_sum_sq), axis=merge_axis)
+                merged_sum_sq = np.concatenate((other_sum_sq, self_sum_sq),
+                                               axis=merge_axis)
 
             merged_tally._sum_sq = np.reshape(merged_sum_sq, merged_tally.shape)
 
@@ -804,11 +807,11 @@ class Tally(IDManagerMixin):
             other_mean = other_copy.get_reshaped_data(value='mean')
 
             if join_right:
-                merged_mean = \
-                    np.concatenate((self_mean, other_mean), axis=merge_axis)
+                merged_mean = np.concatenate((self_mean, other_mean),
+                                             axis=merge_axis)
             else:
-                merged_mean = \
-                    np.concatenate((other_mean, self_mean), axis=merge_axis)
+                merged_mean = np.concatenate((other_mean, self_mean),
+                                             axis=merge_axis)
 
             merged_tally._mean = np.reshape(merged_mean, merged_tally.shape)
 
@@ -818,61 +821,18 @@ class Tally(IDManagerMixin):
             other_std_dev = other_copy.get_reshaped_data(value='std_dev')
 
             if join_right:
-                merged_std_dev = \
-                    np.concatenate((self_std_dev, other_std_dev), axis=merge_axis)
+                merged_std_dev = np.concatenate((self_std_dev, other_std_dev),
+                                                axis=merge_axis)
             else:
-                merged_std_dev = \
-                    np.concatenate((other_std_dev, self_std_dev), axis=merge_axis)
+                merged_std_dev = np.concatenate((other_std_dev, self_std_dev),
+                                                axis=merge_axis)
 
             merged_tally._std_dev = np.reshape(merged_std_dev, merged_tally.shape)
 
         # Sparsify merged tally if both tallies are sparse
         merged_tally.sparse = self.sparse and other.sparse
 
-        # Consolidate scatter and flux Legendre moment scores
-        merged_tally._consolidate_moment_scores()
-
         return merged_tally
-
-    def _consolidate_moment_scores(self):
-        """Remove redundant scattering and flux moment scores from a Tally."""
-
-        # Define regex for scatter, nu-scatter and flux moment scores
-        regex = [(r'^((?!nu-)scatter-\d)', r'^((?!nu-)scatter-(P|p)\d)'),
-                 (r'nu-scatter-\d', r'nu-scatter-(P|p)\d'),
-                 (r'flux-\d', r'flux-(P|p)\d')]
-
-        # Find all non-scattering and non-flux moment scores
-        scores = [x for x in self.scores if
-                  re.search(r'^((?!scatter-).)*$', x)]
-        scores = [x for x in scores if
-                  re.search(r'^((?!flux-).)*$', x)]
-
-        for regex_n, regex_pn in regex:
-
-            # Use regex to find score-(P)n scores
-            score_n = [x for x in self.scores if re.search(regex_n, x)]
-            score_pn = [x for x in self.scores if re.search(regex_pn, x)]
-
-            # Consolidate moment scores
-            if len(score_pn) > 0:
-
-                # Only keep the highest score-PN score
-                high_pn = sorted([x.lower() for x in score_pn])[-1]
-                pn = int(high_pn.split('-')[-1].replace('p', ''))
-
-                # Only keep the score-N scores with N > PN
-                score_n = sorted([x.lower() for x in score_n])
-                score_n = [x for x in score_n if (int(x.split('-')[1]) > pn)]
-
-                # Append highest score-PN and any higher score-N scores
-                scores.extend([high_pn] + score_n)
-            else:
-                scores.extend(score_n)
-
-        # Override Tally's scores with consolidated list of scores
-        self.scores = scores
-
 
     def to_xml_element(self):
         """Return XML representation of the tally
@@ -1003,35 +963,6 @@ class Tally(IDManagerMixin):
 
         return filter_found
 
-    def get_filter_index(self, filter_type, filter_bin):
-        """Returns the index in the Tally's results array for a Filter bin
-
-        Parameters
-        ----------
-        filter_type : openmc.FilterMeta
-            Type of the filter, e.g. MeshFilter
-        filter_bin : int or tuple
-            The bin is an integer ID for 'material', 'surface', 'cell',
-            'cellborn', and 'universe' Filters. The bin is an integer for the
-            cell instance ID for 'distribcell' Filters. The bin is a 2-tuple of
-            floats for 'energy' and 'energyout' filters corresponding to the
-            energy boundaries of the bin of interest.  The bin is a (x,y,z)
-            3-tuple for 'mesh' filters corresponding to the mesh cell of
-            interest.
-
-        Returns
-        -------
-             The index in the Tally data array for this filter bin
-
-        """
-
-        # Find the equivalent Filter in this Tally's list of Filters
-        filter_found = self.find_filter(filter_type)
-
-        # Get the index for the requested bin from the Filter and return it
-        filter_index = filter_found.get_bin_index(filter_bin)
-        return filter_index
-
     def get_nuclide_index(self, nuclide):
         """Returns the index in the Tally's results array for a Nuclide bin
 
@@ -1151,50 +1082,28 @@ class Tally(IDManagerMixin):
 
             # Loop over all of the Tally's Filters
             for i, self_filter in enumerate(self.filters):
-                user_filter = False
-
                 # If a user-requested Filter, get the user-requested bins
                 for j, test_filter in enumerate(filters):
                     if type(self_filter) is test_filter:
                         bins = filter_bins[j]
-                        user_filter = True
                         break
+                else:
+                    # If not a user-requested Filter, get all bins
+                    if isinstance(self_filter, openmc.DistribcellFilter):
+                        # Create list of cell instance IDs for distribcell Filters
+                        bins = list(range(self_filter.num_bins))
 
-                # If not a user-requested Filter, get all bins
-                if not user_filter:
-                    # Create list of 2- or 3-tuples tuples for mesh cell bins
-                    if isinstance(self_filter, openmc.MeshFilter):
-                        dimension = self_filter.mesh.dimension
-                        xyz = [range(1, x+1) for x in dimension]
-                        bins = list(product(*xyz))
-
-                    # Create list of 2-tuples for energy boundary bins
-                    elif isinstance(self_filter, (openmc.EnergyFilter,
-                        openmc.EnergyoutFilter, openmc.MuFilter,
-                        openmc.PolarFilter, openmc.AzimuthalFilter)):
-                        bins = []
-                        for k in range(self_filter.num_bins):
-                            bins.append((self_filter.bins[k], self_filter.bins[k+1]))
-
-                    # Create list of cell instance IDs for distribcell Filters
-                    elif isinstance(self_filter, openmc.DistribcellFilter):
-                        bins = [b for b in range(self_filter.num_bins)]
-
-                    # EnergyFunctionFilters don't have bins so just add a None
                     elif isinstance(self_filter, openmc.EnergyFunctionFilter):
+                        # EnergyFunctionFilters don't have bins so just add a None
                         bins = [None]
 
-                    # Create list of IDs for bins for all other filter types
                     else:
+                        # Create list of IDs for bins for all other filter types
                         bins = self_filter.bins
 
-                # Initialize a NumPy array for the Filter bin indices
-                filter_indices.append(np.zeros(len(bins), dtype=np.int))
-
                 # Add indices for each bin in this Filter to the list
-                for j, bin in enumerate(bins):
-                    filter_index = self.get_filter_index(type(self_filter), bin)
-                    filter_indices[i][j] = filter_index
+                indices = np.array([self_filter.get_bin_index(b) for b in bins])
+                filter_indices.append(indices)
 
                 # Account for stride in each of the previous filters
                 for indices in filter_indices[:i]:
@@ -1233,7 +1142,7 @@ class Tally(IDManagerMixin):
 
         # Determine the score indices from any of the requested scores
         if nuclides:
-            nuclide_indices = np.zeros(len(nuclides), dtype=np.int)
+            nuclide_indices = np.zeros(len(nuclides), dtype=int)
             for i, nuclide in enumerate(nuclides):
                 nuclide_indices[i] = self.get_nuclide_index(nuclide)
 
@@ -1272,7 +1181,7 @@ class Tally(IDManagerMixin):
 
         # Determine the score indices from any of the requested scores
         if scores:
-            score_indices = np.zeros(len(scores), dtype=np.int)
+            score_indices = np.zeros(len(scores), dtype=int)
             for i, score in enumerate(scores):
                 score_indices[i] = self.get_score_index(score)
 
@@ -1544,11 +1453,8 @@ class Tally(IDManagerMixin):
         data = self.get_values(value=value)
 
         # Build a new array shape with one dimension per filter
-        new_shape = ()
-        for self_filter in self.filters:
-            new_shape += (self_filter.num_bins, )
-        new_shape += (self.num_nuclides,)
-        new_shape += (self.num_scores,)
+        new_shape = tuple(f.num_bins for f in self.filters)
+        new_shape += (self.num_nuclides, self.num_scores)
 
         # Reshape the data with one dimension for each filter
         data = np.reshape(data, new_shape)
@@ -1676,19 +1582,22 @@ class Tally(IDManagerMixin):
             new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 +
                                          data['other']['std. dev.']**2)
         elif binary_op == '*':
-            self_rel_err = data['self']['std. dev.'] / data['self']['mean']
-            other_rel_err = data['other']['std. dev.'] / data['other']['mean']
+            with np.errstate(divide='ignore', invalid='ignore'):
+                self_rel_err = data['self']['std. dev.'] / data['self']['mean']
+                other_rel_err = data['other']['std. dev.'] / data['other']['mean']
             new_tally._mean = data['self']['mean'] * data['other']['mean']
             new_tally._std_dev = np.abs(new_tally.mean) * \
                                  np.sqrt(self_rel_err**2 + other_rel_err**2)
         elif binary_op == '/':
-            self_rel_err = data['self']['std. dev.'] / data['self']['mean']
-            other_rel_err = data['other']['std. dev.'] / data['other']['mean']
-            new_tally._mean = data['self']['mean'] / data['other']['mean']
+            with np.errstate(divide='ignore', invalid='ignore'):
+                self_rel_err = data['self']['std. dev.'] / data['self']['mean']
+                other_rel_err = data['other']['std. dev.'] / data['other']['mean']
+                new_tally._mean = data['self']['mean'] / data['other']['mean']
             new_tally._std_dev = np.abs(new_tally.mean) * \
                                  np.sqrt(self_rel_err**2 + other_rel_err**2)
         elif binary_op == '^':
-            mean_ratio = data['other']['mean'] / data['self']['mean']
+            with np.errstate(divide='ignore', invalid='ignore'):
+                mean_ratio = data['other']['mean'] / data['self']['mean']
             first_term = mean_ratio * data['self']['std. dev.']
             second_term = \
                 np.log(data['self']['mean']) * data['other']['std. dev.']
@@ -1955,14 +1864,14 @@ class Tally(IDManagerMixin):
         elif isinstance(filter1, openmc.EnergyFunctionFilter):
             filter1_bins = [None]
         else:
-            filter1_bins = [filter1.get_bin(i) for i in range(filter1.num_bins)]
+            filter1_bins = filter1.bins
 
         if isinstance(filter2, openmc.DistribcellFilter):
             filter2_bins = [b for b in range(filter2.num_bins)]
         elif isinstance(filter2, openmc.EnergyFunctionFilter):
             filter2_bins = [None]
         else:
-            filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
+            filter2_bins = filter2.bins
 
         # Create variables to store views of data in the misaligned structure
         mean = {}
@@ -2603,7 +2512,8 @@ class Tally(IDManagerMixin):
         new_tally = self * -1
         return new_tally
 
-    def get_slice(self, scores=[], filters=[], filter_bins=[], nuclides=[]):
+    def get_slice(self, scores=[], filters=[], filter_bins=[], nuclides=[],
+                  squeeze=False):
         """Build a sliced tally for the specified filters, scores and nuclides.
 
         This method constructs a new tally to encapsulate a subset of the data
@@ -2614,26 +2524,26 @@ class Tally(IDManagerMixin):
         Parameters
         ----------
         scores : list of str
-            A list of one or more score strings
-            (e.g., ['absorption', 'nu-fission']; default is [])
+            A list of one or more score strings (e.g., ['absorption',
+            'nu-fission']
         filters : Iterable of openmc.FilterMeta
-            An iterable of filter types
-            (e.g., [MeshFilter, EnergyFilter]; default is [])
+            An iterable of filter types (e.g., [MeshFilter, EnergyFilter])
         filter_bins : list of Iterables
-            A list of tuples of filter bins corresponding to the filter_types
-            parameter (e.g., [(1,), ((0., 0.625e-6),)]; default is []). Each
-            tuple contains bins to slice for the corresponding filter type in
-            the filters parameter. Each bins is the integer ID for 'material',
+            A list of iterables of filter bins corresponding to the specified
+            filter types (e.g., [(1,), ((0., 0.625e-6),)]). Each iterable
+            contains bins to slice for the corresponding filter type in the
+            filters parameter. Each bin is the integer ID for 'material',
             'surface', 'cell', 'cellborn', and 'universe' Filters. Each bin is
             an integer for the cell instance ID for 'distribcell' Filters. Each
             bin is a 2-tuple of floats for 'energy' and 'energyout' filters
             corresponding to the energy boundaries of the bin of interest. The
             bin is an (x,y,z) 3-tuple for 'mesh' filters corresponding to the
             mesh cell of interest. The order of the bins in the list must
-            correspond to the filter_types parameter.
+            correspond to the `filters` argument.
         nuclides : list of str
-            A list of nuclide name strings
-            (e.g., ['U235', 'U238']; default is [])
+            A list of nuclide name strings (e.g., ['U235', 'U238'])
+        squeeze : bool
+            Whether to remove filters with only a single bin in the sliced tally
 
         Returns
         -------
@@ -2713,32 +2623,29 @@ class Tally(IDManagerMixin):
 
             # Determine the filter indices from any of the requested filters
             for i, filter_type in enumerate(filters):
-                find_filter = new_tally.find_filter(filter_type)
+                f = new_tally.find_filter(filter_type)
+
+                # Remove filters with only a single bin if requested
+                if squeeze:
+                    if len(filter_bins[i]) == 1:
+                        new_tally.filters.remove(f)
+                        continue
+                    else:
+                        raise RuntimeError('Cannot remove sliced filter with '
+                                           'more than one bin.')
 
                 # Remove and/or reorder filter bins to user specifications
-                bin_indices = []
+                bin_indices = [f.get_bin_index(b)
+                               for b in filter_bins[i]]
+                bin_indices = np.unique(bin_indices)
 
-                for filter_bin in filter_bins[i]:
-                    bin_index = find_filter.get_bin_index(filter_bin)
-                    if issubclass(filter_type, openmc.RealFilter):
-                        bin_indices.extend([bin_index, bin_index+1])
-                    else:
-                        bin_indices.append(bin_index)
-
-                # Set bins for mesh/distribcell filters apart from others
-                if filter_type is openmc.MeshFilter:
-                    bins = find_filter.mesh
-                elif filter_type is openmc.DistribcellFilter:
-                    bins = find_filter.bins
-                else:
-                    bins = np.unique(find_filter.bins[bin_indices])
-
-                # Create new filter
-                new_filter = filter_type(bins)
+                # Set bins for sliced filter
+                new_filter = copy.copy(f)
+                new_filter.bins = [f.bins[i] for i in bin_indices]
 
                 # Set number of bins manually for mesh/distribcell filters
-                if filter_type in (openmc.DistribcellFilter, openmc.MeshFilter):
-                    new_filter._num_bins = find_filter._num_bins
+                if filter_type is openmc.DistribcellFilter:
+                    new_filter._num_bins = f._num_bins
 
                 # Replace existing filter with new one
                 for j, test_filter in enumerate(new_tally.filters):
@@ -2815,9 +2722,7 @@ class Tally(IDManagerMixin):
                 elif isinstance(find_filter, openmc.EnergyFunctionFilter):
                     filter_bins = [None]
                 else:
-                    num_bins = find_filter.num_bins
-                    filter_bins = \
-                        [(find_filter.get_bin(i)) for i in range(num_bins)]
+                    filter_bins = find_filter.bins
 
             # Only sum across bins specified by the user
             else:
@@ -2826,7 +2731,7 @@ class Tally(IDManagerMixin):
 
             # Sum across the bins in the user-specified filter
             for i, self_filter in enumerate(self.filters):
-                if isinstance(self_filter, filter_type):
+                if type(self_filter) == filter_type:
                     shape = mean.shape
                     mean = np.take(mean, indices=bin_indices, axis=i)
                     std_dev = np.take(std_dev, indices=bin_indices, axis=i)
@@ -2969,9 +2874,7 @@ class Tally(IDManagerMixin):
                 elif isinstance(find_filter, openmc.EnergyFunctionFilter):
                     filter_bins = [None]
                 else:
-                    num_bins = find_filter.num_bins
-                    filter_bins = \
-                        [(find_filter.get_bin(i)) for i in range(num_bins)]
+                    filter_bins = find_filter.bins
 
             # Only average across bins specified by the user
             else:
@@ -3068,7 +2971,7 @@ class Tally(IDManagerMixin):
         The data in the derived tally arrays is "diagonalized" along the bins in
         the new filter. This functionality is used by the openmc.mgxs module; to
         transport-correct scattering matrices by subtracting a 'scatter-P1'
-        reaction rate tally with an energy filter from an 'scatter' reaction
+        reaction rate tally with an energy filter from a 'scatter' reaction
         rate tally with both energy and energyout filters.
 
         Parameters
@@ -3087,7 +2990,7 @@ class Tally(IDManagerMixin):
 
         if new_filter in self.filters:
             msg = 'Unable to diagonalize Tally ID="{0}" which already ' \
-                  'contains a "{1}" filter'.format(self.id, new_filter.type)
+                  'contains a "{1}" filter'.format(self.id, type(new_filter))
             raise ValueError(msg)
 
         # Add the new filter to a copy of this Tally
@@ -3098,8 +3001,8 @@ class Tally(IDManagerMixin):
         # by which the "base" indices should be repeated to account for all
         # other filter bins in the diagonalized tally
         indices = np.arange(0, new_filter.num_bins**2, new_filter.num_bins+1)
-        diag_factor = int(self.num_filter_bins / new_filter.num_bins)
-        diag_indices = np.zeros(self.num_filter_bins, dtype=np.int)
+        diag_factor = self.num_filter_bins // new_filter.num_bins
+        diag_indices = np.zeros(self.num_filter_bins, dtype=int)
 
         # Determine the filter indices along the new "diagonal"
         for i in range(diag_factor):

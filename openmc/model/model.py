@@ -1,7 +1,7 @@
 from collections.abc import Iterable
 
 import openmc
-from openmc.checkvalue import check_type
+from openmc.checkvalue import check_type, check_value
 
 
 class Model(object):
@@ -136,9 +136,49 @@ class Model(object):
             for plot in plots:
                 self._plots.append(plot)
 
-    def export_to_xml(self):
-        """Export model to XML files.
+    def deplete(self, timesteps, power, chain_file=None, method='cecm',
+                **kwargs):
+        """Deplete model using specified timesteps/power
+
+        Parameters
+        ----------
+        timesteps : iterable of float
+            Array of timesteps in units of [s]. Note that values are not
+            cumulative.
+        power : float or iterable of float
+            Power of the reactor in [W]. A single value indicates that the power
+            is constant over all timesteps. An iterable indicates potentially
+            different power levels for each timestep. For a 2D problem, the
+            power can be given in [W/cm] as long as the "volume" assigned to a
+            depletion material is actually an area in [cm^2].
+        chain_file : str, optional
+            Path to the depletion chain XML file.  Defaults to the
+            :envvar:`OPENMC_DEPLETE_CHAIN` environment variable if it exists.
+        method : {'cecm', 'predictor'}
+             Integration method used for depletion
+        **kwargs
+            Keyword arguments passed to integration function (e.g.,
+            :func:`openmc.deplete.integrator.cecm`)
+
         """
+        # Import the depletion module.  This is done here rather than the module
+        # header to delay importing openmc.capi (through openmc.deplete) which
+        # can be tough to install properly.
+        import openmc.deplete as dep
+
+        # Create OpenMC transport operator
+        op = dep.Operator(self.geometry, self.settings, chain_file)
+
+        # Perform depletion
+        if method == 'predictor':
+            dep.integrator.predictor(op, timesteps, power, **kwargs)
+        elif method == 'cecm':
+            dep.integrator.cecm(op, timesteps, power, **kwargs)
+        else:
+            check_value('method', method, ('cecm', 'predictor'))
+
+    def export_to_xml(self):
+        """Export model to XML files."""
 
         self.settings.export_to_xml()
         self.geometry.export_to_xml()
@@ -166,19 +206,17 @@ class Model(object):
         Parameters
         ----------
         **kwargs
-            All keyword arguments are passed to openmc.run
+            All keyword arguments are passed to :func:`openmc.run`
 
         Returns
         -------
-        2-tuple of float
+        uncertainties.UFloat
             Combined estimator of k-effective from the statepoint
 
         """
         self.export_to_xml()
 
-        return_code = openmc.run(**kwargs)
-
-        assert (return_code == 0), "OpenMC did not execute successfully"
+        openmc.run(**kwargs)
 
         n = self.settings.batches
         if self.settings.statepoint is not None:

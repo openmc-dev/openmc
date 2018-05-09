@@ -151,8 +151,8 @@ and `Volume II`_. You may also find it helpful to review the following terms:
 .. _git: http://git-scm.com/
 .. _git tutorials: http://git-scm.com/documentation
 .. _Reactor Concepts Manual: http://www.tayloredge.com/periodic/trivia/ReactorConcepts.pdf
-.. _Volume I: http://energy.gov/sites/prod/files/2013/06/f2/h1019v1.pdf
-.. _Volume II: http://energy.gov/sites/prod/files/2013/06/f2/h1019v2.pdf
+.. _Volume I: https://www.standards.doe.gov/standards-documents/1000/1019-bhdbk-1993-v1
+.. _Volume II: https://www.standards.doe.gov/standards-documents/1000/1019-bhdbk-1993-v2
 .. _OpenMC source code: https://github.com/mit-crpg/openmc
 .. _GitHub: https://github.com/
 .. _bug reports: https://github.com/mit-crpg/openmc/issues

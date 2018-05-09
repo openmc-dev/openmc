@@ -148,7 +148,7 @@
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
-  <material id="1" name="UOX fuel">
+  <material depletable="true" id="1" name="UOX fuel">
     <density units="g/cm3" value="10.062" />
     <nuclide ao="4.9476e-06" name="U234" />
     <nuclide ao="0.00048218" name="U235" />
@@ -327,10 +327,19 @@
   <filter id="1" type="mesh">
     <bins>1</bins>
   </filter>
+  <filter id="4" type="meshsurface">
+    <bins>1</bins>
+  </filter>
   <filter id="2" type="mesh">
     <bins>2</bins>
   </filter>
+  <filter id="5" type="meshsurface">
+    <bins>2</bins>
+  </filter>
   <filter id="3" type="mesh">
+    <bins>3</bins>
+  </filter>
+  <filter id="6" type="meshsurface">
     <bins>3</bins>
   </filter>
   <tally id="1" name="tally 1">
@@ -338,7 +347,7 @@
     <scores>total</scores>
   </tally>
   <tally id="2" name="tally 2">
-    <filters>1</filters>
+    <filters>4</filters>
     <scores>current</scores>
   </tally>
   <tally id="3" name="tally 3">
@@ -346,7 +355,7 @@
     <scores>total</scores>
   </tally>
   <tally id="4" name="tally 4">
-    <filters>2</filters>
+    <filters>5</filters>
     <scores>current</scores>
   </tally>
   <tally id="5" name="tally 5">
@@ -354,7 +363,7 @@
     <scores>total</scores>
   </tally>
   <tally id="6" name="tally 6">
-    <filters>3</filters>
+    <filters>6</filters>
     <scores>current</scores>
   </tally>
 </tallies>

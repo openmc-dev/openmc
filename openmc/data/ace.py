@@ -22,7 +22,7 @@ import sys
 import numpy as np
 
 from openmc.mixin import EqualityMixin
-from openmc.data.endf import ENDF_FLOAT_RE
+from openmc.data.endf import _ENDF_FLOAT_RE
 
 def ascii_to_binary(ascii_file, binary_file):
     """Convert an ACE file in ASCII format (type 1) to binary format (type 2).
@@ -349,7 +349,7 @@ class Library(EqualityMixin):
             # after it). If it's too short, then we apply the ENDF float regular
             # expression. We don't do this by default because it's expensive!
             if xss.size != nxs[1] + 1:
-                datastr = ENDF_FLOAT_RE.sub(r'\1e\2', datastr)
+                datastr = _ENDF_FLOAT_RE.sub(r'\1e\2', datastr)
                 xss = np.fromstring(datastr, sep=' ')
                 assert xss.size == nxs[1] + 1
 

@@ -1,6 +1,8 @@
 import itertools
+from math import sqrt
 import os
 import re
+from warnings import warn
 
 
 # Isotopic abundances from Meija J, Coplen T B, et al, "Isotopic compositions
@@ -133,23 +135,24 @@ ATOMIC_NUMBER = {value: key for key, value in ATOMIC_SYMBOL.items()}
 
 _ATOMIC_MASS = {}
 
+_GND_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
+
 
 def atomic_mass(isotope):
     """Return atomic mass of isotope in atomic mass units.
 
-    Atomic mass data comes from the Atomic Mass Evaluation 2012, published in
-    Chinese Physics C 36 (2012), 1287--1602.
+    Atomic mass data comes from the `Atomic Mass Evaluation 2012
+    <https://www-nds.iaea.org/amdc/ame2012/AME2012-1.pdf>`_.
 
     Parameters
     ----------
     isotope : str
-        Name of isotope, e.g. 'Pu239'
+        Name of isotope, e.g., 'Pu239'
 
     Returns
     -------
-    float or None
-        Atomic mass of isotope in atomic mass units. If the isotope listed does
-        not have a known atomic mass, None is returned.
+    float
+        Atomic mass of isotope in [amu]
 
     """
     if not _ATOMIC_MASS:
@@ -180,7 +183,7 @@ def atomic_mass(isotope):
     if '_' in isotope:
         isotope = isotope[:isotope.find('_')]
 
-    return _ATOMIC_MASS.get(isotope.lower())
+    return _ATOMIC_MASS[isotope.lower()]
 
 
 def atomic_weight(element):
@@ -196,16 +199,168 @@ def atomic_weight(element):
 
     Returns
     -------
-    float or None
-        Atomic weight of element in atomic mass units. If the element listed does
-        not exist, None is returned.
+    float
+        Atomic weight of element in [amu]
 
     """
     weight = 0.
     for nuclide, abundance in NATURAL_ABUNDANCE.items():
         if re.match(r'{}\d+'.format(element), nuclide):
             weight += atomic_mass(nuclide) * abundance
-    return None if weight == 0. else weight
+    if weight > 0.:
+        return weight
+    else:
+        raise ValueError("No naturally-occurring isotopes for element '{}'."
+                         .format(element))
+
+
+def water_density(temperature, pressure=0.1013):
+    """Return the density of liquid water at a given temperature and pressure.
+
+    The density is calculated from a polynomial fit using equations and values
+    from the 2012 version of the IAPWS-IF97 formulation.  Only the equations
+    for region 1 are implemented here.  Region 1 is limited to liquid water
+    below 100 [MPa] with a temperature above 273.15 [K], below 623.15 [K], and
+    below saturation.
+
+    Reference: International Association for the Properties of Water and Steam,
+    "Revised Release on the IAPWS Industrial Formulation 1997 for the
+    Thermodynamic Properties of Water and Steam", IAPWS R7-97(2012).
+
+    Parameters
+    ----------
+    temperature : float
+        Water temperature in units of [K]
+    pressure : float
+        Water pressure in units of [MPa]
+
+    Returns
+    -------
+    float
+        Water density in units of [g/cm^3]
+
+    """
+
+    # Make sure the temperature and pressure are inside the min/max region 1
+    # bounds.  (Relax the 273.15 bound to 273 in case a user wants 0 deg C data
+    # but they only use 3 digits for their conversion to K.)
+    if pressure > 100.0:
+        warn("Results are not valid for pressures above 100 MPa.")
+    if pressure < 0.0:
+        warn("Results are not valid for pressures below zero.")
+    if temperature < 273:
+        warn("Results are not valid for temperatures below 273.15 K.")
+    if temperature > 623.15:
+        warn("Results are not valid for temperatures above 623.15 K.")
+
+    # IAPWS region 4 parameters
+    n4 = [0.11670521452767e4, -0.72421316703206e6, -0.17073846940092e2,
+          0.12020824702470e5, -0.32325550322333e7, 0.14915108613530e2,
+          -0.48232657361591e4, 0.40511340542057e6, -0.23855557567849,
+          0.65017534844798e3]
+
+    # Compute the saturation temperature at the given pressure.
+    beta = pressure**(0.25)
+    E = beta**2 + n4[2] * beta + n4[5]
+    F = n4[0] * beta**2 + n4[3] * beta + n4[6]
+    G = n4[1] * beta**2 + n4[4] * beta + n4[7]
+    D = 2.0 * G / (-F - sqrt(F**2 - 4 * E * G))
+    T_sat = 0.5 * (n4[9] + D
+                   - sqrt((n4[9] + D)**2  - 4.0 * (n4[8] + n4[9] * D)))
+
+    # Make sure we aren't above saturation.  (Relax this bound by .2 degrees
+    # for deg C to K conversions.)
+    if temperature > T_sat + 0.2:
+        warn("Results are not valid for temperatures above saturation "
+             "(above the boiling point).")
+
+    # IAPWS region 1 parameters
+    R_GAS_CONSTANT = 0.461526  # kJ / kg / K
+    ref_p = 16.53  # MPa
+    ref_T = 1386  # K
+    n1f = [0.14632971213167, -0.84548187169114, -0.37563603672040e1,
+           0.33855169168385e1, -0.95791963387872, 0.15772038513228,
+           -0.16616417199501e-1, 0.81214629983568e-3, 0.28319080123804e-3,
+           -0.60706301565874e-3, -0.18990068218419e-1, -0.32529748770505e-1,
+           -0.21841717175414e-1, -0.52838357969930e-4, -0.47184321073267e-3,
+           -0.30001780793026e-3, 0.47661393906987e-4, -0.44141845330846e-5,
+           -0.72694996297594e-15, -0.31679644845054e-4, -0.28270797985312e-5,
+           -0.85205128120103e-9, -0.22425281908000e-5, -0.65171222895601e-6,
+           -0.14341729937924e-12, -0.40516996860117e-6, -0.12734301741641e-8,
+           -0.17424871230634e-9, -0.68762131295531e-18, 0.14478307828521e-19,
+           0.26335781662795e-22, -0.11947622640071e-22, 0.18228094581404e-23,
+           -0.93537087292458e-25]
+    I1f = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 4,
+           4, 4, 5, 8, 8, 21, 23, 29, 30, 31, 32]
+    J1f = [-2, -1, 0, 1, 2, 3, 4, 5, -9, -7, -1, 0, 1, 3, -3, 0, 1, 3, 17, -4,
+           0, 6, -5, -2, 10, -8, -11, -6, -29, -31, -38, -39, -40, -41]
+
+    # Nondimensionalize the pressure and temperature.
+    pi = pressure / ref_p
+    tau = ref_T / temperature
+
+    # Compute the derivative of gamma (dimensionless Gibbs free energy) with
+    # respect to pi.
+    gamma1_pi = 0.0
+    for n, I, J in zip(n1f, I1f, J1f):
+        gamma1_pi -= n * I * (7.1 - pi)**(I - 1) * (tau - 1.222)**J
+
+    # Compute the leading coefficient.  This sets the units at
+    #   1 [MPa] * [kg K / kJ] * [1 / K]
+    # = 1e6 [N / m^2] * 1e-3 [kg K / N / m] * [1 / K]
+    # = 1e3 [kg / m^3]
+    # = 1 [g / cm^3]
+    coeff = pressure / R_GAS_CONSTANT / temperature
+
+    # Compute and return the density.
+    return coeff / pi / gamma1_pi
+
+
+def gnd_name(Z, A, m=0):
+    """Return nuclide name using GND convention
+
+    Parameters
+    ----------
+    Z : int
+        Atomic number
+    A : int
+        Mass number
+    m : int, optional
+        Metastable state
+
+    Returns
+    -------
+    str
+        Nuclide name in GND convention, e.g., 'Am242_m1'
+
+    """
+    if m > 0:
+        return '{}{}_m{}'.format(ATOMIC_SYMBOL[Z], A, m)
+    else:
+        return '{}{}'.format(ATOMIC_SYMBOL[Z], A)
+
+
+def zam(name):
+    """Return tuple of (atomic number, mass number, metastable state)
+
+    Parameters
+    ----------
+    name : str
+        Name of nuclide using GND convention, e.g., 'Am242_m1'
+
+    Returns
+    -------
+    3-tuple of int
+        Atomic number, mass number, and metastable state
+
+    """
+    try:
+        symbol, A, state = _GND_NAME_RE.match(name).groups()
+    except AttributeError:
+        raise ValueError("'{}' does not appear to be a nuclide name in GND "
+                         "format.".format(name))
+    metastable = int(state[2:]) if state else 0
+    return (ATOMIC_NUMBER[symbol], int(A), metastable)
 
 
 # Values here are from the Committee on Data for Science and Technology
@@ -214,8 +369,9 @@ def atomic_weight(element):
 # The value of the Boltzman constant in units of eV / K
 K_BOLTZMANN = 8.6173303e-5
 
-# Used for converting units in ACE data
+# Unit conversions
 EV_PER_MEV = 1.0e6
+JOULE_PER_EV = 1.6021766208e-19
 
 # Avogadro's constant
 AVOGADRO = 6.022140857e23

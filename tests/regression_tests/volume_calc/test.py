@@ -64,8 +64,7 @@ class VolumeTest(PyAPITestHarness):
 
             # Write cell volumes and total # of atoms for each nuclide
             for uid, volume in sorted(volume_calc.volumes.items()):
-                outstr += 'Domain {0}: {1[0]:.4f} +/- {1[1]:.4f} cm^3\n'.format(
-                    uid, volume)
+                outstr += 'Domain {}: {} cm^3\n'.format(uid, volume)
             outstr += str(volume_calc.atoms_dataframe) + '\n'
 
         return outstr

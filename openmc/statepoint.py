@@ -1,3 +1,4 @@
+from datetime import datetime
 import re
 import os
 import warnings
@@ -5,6 +6,7 @@ import glob
 
 import numpy as np
 import h5py
+from uncertainties import ufloat
 
 import openmc
 import openmc.checkvalue as cv
@@ -47,8 +49,8 @@ class StatePoint(object):
         CMFD fission source distribution over all mesh cells and energy groups.
     current_batch : int
         Number of batches simulated
-    date_and_time : str
-        Date and time when simulation began
+    date_and_time : datetime.datetime
+        Date and time at which statepoint was written
     entropy : numpy.ndarray
         Shannon entropy of fission source at each batch
     filters : dict
@@ -59,8 +61,8 @@ class StatePoint(object):
     global_tallies : numpy.ndarray of compound datatype
         Global tallies for k-effective estimates and leakage. The compound
         datatype has fields 'name', 'sum', 'sum_sq', 'mean', and 'std_dev'.
-    k_combined : list
-        Combined estimator for k-effective and its uncertainty
+    k_combined : uncertainties.UFloat
+        Combined estimator for k-effective
     k_col_abs : float
         Cross-product of collision and absorption estimates of k-effective
     k_col_tra : float
@@ -148,6 +150,8 @@ class StatePoint(object):
 
     def __exit__(self, *exc):
         self._f.close()
+        if self._summary is not None:
+            self._summary._f.close()
 
     @property
     def cmfd_on(self):
@@ -187,7 +191,8 @@ class StatePoint(object):
 
     @property
     def date_and_time(self):
-        return self._f.attrs['date_and_time'].decode()
+        s = self._f.attrs['date_and_time'].decode()
+        return datetime.strptime(s, '%Y-%m-%d %H:%M:%S')
 
     @property
     def entropy(self):
@@ -255,7 +260,7 @@ class StatePoint(object):
     @property
     def k_combined(self):
         if self.run_mode == 'eigenvalue':
-            return self._f['k_combined'].value
+            return ufloat(*self._f['k_combined'].value)
         else:
             return None
 
@@ -402,16 +407,9 @@ class StatePoint(object):
                     scores = group['score_bins'].value
                     n_score_bins = group['n_score_bins'].value
 
-                    # Read scattering moment order strings (e.g., P3, Y1,2, etc.)
-                    moments = group['moment_orders'].value
-
                     # Add the scores to the Tally
                     for j, score in enumerate(scores):
                         score = score.decode()
-
-                        # If this is a moment, use generic moment order
-                        pattern = r'-n$|-pn$|-yn$'
-                        score = re.sub(pattern, '-' + moments[j].decode(), score)
 
                         tally.scores.append(score)
 
@@ -457,7 +455,7 @@ class StatePoint(object):
 
     @property
     def version(self):
-        return tuple(self._f.attrs['version'])
+        return tuple(self._f.attrs['openmc_version'])
 
     @property
     def summary(self):

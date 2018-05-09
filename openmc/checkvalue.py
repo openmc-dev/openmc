@@ -196,7 +196,7 @@ def check_less_than(name, value, maximum, equality=False):
     maximum : object
         Maximum value to check against
     equality : bool, optional
-        Whether equality is allowed. Defaluts to False.
+        Whether equality is allowed. Defaults to False.
 
     """
 
@@ -223,7 +223,7 @@ def check_greater_than(name, value, minimum, equality=False):
     minimum : object
         Minimum value to check against
     equality : bool, optional
-        Whether equality is allowed. Defaluts to False.
+        Whether equality is allowed. Defaults to False.
 
     """
 
@@ -246,9 +246,9 @@ def check_filetype_version(obj, expected_type, expected_version):
     ----------
     obj : h5py.File
         HDF5 file to check
-    expected_type
+    expected_type : str
         Expected file type, e.g. 'statepoint'
-    expected_version
+    expected_version : int
         Expected major version number.
 
     """

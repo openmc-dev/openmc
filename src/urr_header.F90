@@ -1,8 +1,7 @@
 module urr_header
 
-  use hdf5,           only: HID_T, HSIZE_T
   use hdf5_interface, only: read_attribute, open_dataset, read_dataset, &
-       close_dataset, get_shape
+       close_dataset, get_shape, HID_T, HSIZE_T
 
   implicit none
 

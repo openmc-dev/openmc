@@ -10,7 +10,7 @@ module input_xml
   use distribution_multivariate
   use distribution_univariate
   use endf,             only: reaction_name
-  use error,            only: fatal_error, warning, write_message
+  use error,            only: fatal_error, warning, write_message, openmc_err_msg
   use geometry,         only: calc_offsets, maximum_levels, count_instance, &
                               neighbor_lists
   use geometry_header
@@ -21,7 +21,6 @@ module input_xml
   use message_passing
   use mgxs_data,        only: create_macro_xs, read_mgxs
   use mgxs_header
-  use multipole,        only: multipole_read
   use nuclide_header
   use output,           only: title, header, print_plot
   use plot_header
@@ -2027,28 +2026,20 @@ contains
     integer :: i             ! loop over user-specified tallies
     integer :: j             ! loop over words
     integer :: k             ! another loop index
-    integer :: l             ! another loop index
     integer :: filter_id     ! user-specified identifier for filter
     integer :: i_filt        ! index in filters array
-    integer :: i_filter_mesh ! index of mesh filter
     integer :: i_elem        ! index of entry in dictionary
     integer :: n             ! size of arrays in mesh specification
     integer :: n_words       ! number of words read
     integer :: n_filter      ! number of filters
-    integer :: n_new         ! number of new scores to add based on Yn/Pn tally
-    integer :: n_scores      ! number of tot scores after adjusting for Yn/Pn tally
-    integer :: n_bins        ! total new bins for this score
+    integer :: n_scores      ! number of scores
     integer :: n_user_trig   ! number of user-specified tally triggers
     integer :: trig_ind      ! index of triggers array for each tally
     integer :: user_trig_ind ! index of user-specified triggers for each tally
     integer :: i_start, i_end
-    integer :: i_filt_start, i_filt_end
     integer(C_INT) :: err
     real(8) :: threshold     ! trigger convergence threshold
-    integer :: n_order       ! moment order requested
-    integer :: n_order_pos   ! oosition of Scattering order in score name string
     integer :: MT            ! user-specified MT for score
-    integer :: imomstr       ! Index of MOMENT_STRS & MOMENT_N_STRS
     logical :: file_exists   ! does tallies.xml file exist?
     integer, allocatable :: temp_filter(:) ! temporary filter indices
     character(MAX_LINE_LEN) :: filename
@@ -2191,13 +2182,13 @@ contains
            call get_node_value(node_filt, "type", temp_str)
       temp_str = to_lower(temp_str)
 
-      ! Determine number of bins
+      ! Make sure bins have been set
       select case(temp_str)
       case ("energy", "energyout", "mu", "polar", "azimuthal")
         if (.not. check_for_node(node_filt, "bins")) then
           call fatal_error("Bins not set in filter " // trim(to_str(filter_id)))
         end if
-      case ("mesh", "universe", "material", "cell", "distribcell", &
+      case ("mesh", "meshsurface", "universe", "material", "cell", "distribcell", &
             "cellborn", "cellfrom", "surface", "delayedgroup")
         if (.not. check_for_node(node_filt, "bins")) then
           call fatal_error("Bins not set in filter " // trim(to_str(filter_id)))
@@ -2206,6 +2197,7 @@ contains
 
       ! Allocate according to the filter type
       err = openmc_filter_set_type(i_start + i - 1, to_c_string(temp_str))
+      if (err /= 0) call fatal_error(to_f_string(openmc_err_msg))
 
       ! Read filter data from XML
       call f % obj % from_xml(node_filt)
@@ -2375,107 +2367,22 @@ contains
         allocate(sarray(n_words))
         call get_node_array(node_tal, "scores", sarray)
 
-        ! Before we can allocate storage for scores, we must determine the
-        ! number of additional scores required due to the moment scores
-        ! (i.e., scatter-p#, flux-y#)
-        n_new = 0
+        ! Append the score to the list of possible trigger scores
         do j = 1, n_words
           sarray(j) = to_lower(sarray(j))
-          ! Find if scores(j) is of the form 'moment-p' or 'moment-y' present in
-          ! MOMENT_STRS(:)
-          ! If so, check the order, store if OK, then reset the number to 'n'
           score_name = trim(sarray(j))
 
-          ! Append the score to the list of possible trigger scores
           if (trigger_on) call trigger_scores % set(trim(score_name), j)
 
-          do imomstr = 1, size(MOMENT_STRS)
-            if (starts_with(score_name,trim(MOMENT_STRS(imomstr)))) then
-              n_order_pos = scan(score_name,'0123456789')
-              n_order = int(str_to_int( &
-                   score_name(n_order_pos:(len_trim(score_name)))),4)
-              if (n_order > MAX_ANG_ORDER) then
-                ! User requested too many orders; throw a warning and set to the
-                ! maximum order.
-                ! The above scheme will essentially take the absolute value
-                if (master) call warning("Invalid scattering order of " &
-                     // trim(to_str(n_order)) // " requested. Setting to the &
-                     &maximum permissible value, " &
-                     // trim(to_str(MAX_ANG_ORDER)))
-                n_order = MAX_ANG_ORDER
-                sarray(j) = trim(MOMENT_STRS(imomstr)) &
-                     // trim(to_str(MAX_ANG_ORDER))
-              end if
-              ! Find total number of bins for this case
-              if (imomstr >= YN_LOC) then
-                n_bins = (n_order + 1)**2
-              else
-                n_bins = n_order + 1
-              end if
-              ! We subtract one since n_words already included
-              n_new = n_new + n_bins - 1
-              exit
-            end if
-          end do
         end do
-        n_scores = n_words + n_new
+        n_scores = n_words
 
         ! Allocate score storage accordingly
         allocate(t % score_bins(n_scores))
-        allocate(t % moment_order(n_scores))
-        t % moment_order = 0
-        j = 0
-        do l = 1, n_words
-          j = j + 1
-          ! Get the input string in scores(l) but if score is one of the moment
-          ! scores then strip off the n and store it as an integer to be used
-          ! later. Then perform the select case on this modified (number
-          ! removed) string
-          n_order = -1
-          score_name = sarray(l)
-          do imomstr = 1, size(MOMENT_STRS)
-            if (starts_with(score_name,trim(MOMENT_STRS(imomstr)))) then
-              n_order_pos = scan(score_name,'0123456789')
-              n_order = int(str_to_int( &
-                   score_name(n_order_pos:(len_trim(score_name)))),4)
-              if (n_order > MAX_ANG_ORDER) then
-                ! User requested too many orders; throw a warning and set to the
-                ! maximum order.
-                ! The above scheme will essentially take the absolute value
-                n_order = MAX_ANG_ORDER
-              end if
-              score_name = trim(MOMENT_STRS(imomstr)) // "n"
-              ! Find total number of bins for this case
-              if (imomstr >= YN_LOC) then
-                n_bins = (n_order + 1)**2
-              else
-                n_bins = n_order + 1
-              end if
-              exit
-            end if
-          end do
-          ! Now check the Moment_N_Strs, but only if we werent successful above
-          if (imomstr > size(MOMENT_STRS)) then
-            do imomstr = 1, size(MOMENT_N_STRS)
-              if (starts_with(score_name,trim(MOMENT_N_STRS(imomstr)))) then
-                n_order_pos = scan(score_name,'0123456789')
-                n_order = int(str_to_int( &
-                     score_name(n_order_pos:(len_trim(score_name)))),4)
-                if (n_order > MAX_ANG_ORDER) then
-                  ! User requested too many orders; throw a warning and set to the
-                  ! maximum order.
-                  ! The above scheme will essentially take the absolute value
-                  if (master) call warning("Invalid scattering order of " &
-                       // trim(to_str(n_order)) // " requested. Setting to &
-                       &the maximum permissible value, " &
-                       // trim(to_str(MAX_ANG_ORDER)))
-                  n_order = MAX_ANG_ORDER
-                end if
-                score_name = trim(MOMENT_N_STRS(imomstr)) // "n"
-                exit
-              end if
-            end do
-          end if
+
+        ! Check the validity of the scores and their filters
+        do j = 1, n_scores
+          score_name = sarray(j)
 
           ! Check if delayed group filter is used with any score besides
           ! delayed-nu-fission or decay-rate
@@ -2484,23 +2391,6 @@ contains
                t % find_filter(FILTER_DELAYEDGROUP) > 0) then
             call fatal_error("Cannot tally " // trim(score_name) // " with a &
                  &delayedgroup filter.")
-          end if
-
-          ! Check to see if the mu filter is applied and if that makes sense.
-          if ((.not. starts_with(score_name,'scatter')) .and. &
-               (.not. starts_with(score_name,'nu-scatter'))) then
-            if (t % find_filter(FILTER_MU) > 0) then
-              call fatal_error("Cannot tally " // trim(score_name) //" with a &
-                               &change of angle (mu) filter.")
-            end if
-          ! Also check to see if this is a legendre expansion or not.
-          ! If so, we can accept this score and filter combo for p0, but not
-          ! elsewhere.
-          else if (n_order > 0) then
-            if (t % find_filter(FILTER_MU) > 0) then
-              call fatal_error("Cannot tally " // trim(score_name) //" with a &
-                               &change of angle (mu) filter unless order is 0.")
-            end if
           end if
 
           select case (trim(score_name))
@@ -2517,22 +2407,6 @@ contains
                    &filter.")
             end if
 
-          case ('flux-yn')
-            ! Prohibit user from tallying flux for an individual nuclide
-            if (.not. (t % n_nuclide_bins == 1 .and. &
-                 t % nuclide_bins(1) == -1)) then
-              call fatal_error("Cannot tally flux for an individual nuclide.")
-            end if
-
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              call fatal_error("Cannot tally flux with an outgoing energy &
-                   &filter.")
-            end if
-
-            t % score_bins(j : j + n_bins - 1) = SCORE_FLUX_YN
-            t % moment_order(j : j + n_bins - 1) = n_order
-            j = j + n_bins  - 1
-
           case ('total', '(n,total)')
             t % score_bins(j) = SCORE_TOTAL
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
@@ -2540,18 +2414,13 @@ contains
                    &outgoing energy filter.")
             end if
 
-          case ('total-yn')
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              call fatal_error("Cannot tally total reaction rate with an &
-                   &outgoing energy filter.")
-            end if
-
-            t % score_bins(j : j + n_bins - 1) = SCORE_TOTAL_YN
-            t % moment_order(j : j + n_bins - 1) = n_order
-            j = j + n_bins - 1
-
           case ('scatter')
             t % score_bins(j) = SCORE_SCATTER
+            if (t % find_filter(FILTER_ENERGYOUT) > 0 .or. &
+                 t % find_filter(FILTER_LEGENDRE) > 0) then
+              ! Set tally estimator to analog
+              t % estimator = ESTIMATOR_ANALOG
+            end if
 
           case ('nu-scatter')
             t % score_bins(j) = SCORE_NU_SCATTER
@@ -2561,53 +2430,14 @@ contains
             ! necessary)
             if (run_CE) then
               t % estimator = ESTIMATOR_ANALOG
+            else
+              if (t % find_filter(FILTER_ENERGYOUT) > 0 .or. &
+                   t % find_filter(FILTER_LEGENDRE) > 0) then
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
+              end if
             end if
 
-          case ('scatter-n')
-            t % score_bins(j) = SCORE_SCATTER_N
-            t % moment_order(j) = n_order
-            t % estimator = ESTIMATOR_ANALOG
-
-          case ('nu-scatter-n')
-            t % score_bins(j) = SCORE_NU_SCATTER_N
-            t % moment_order(j) = n_order
-            t % estimator = ESTIMATOR_ANALOG
-
-          case ('scatter-pn')
-            t % estimator = ESTIMATOR_ANALOG
-            ! Setup P0:Pn
-            t % score_bins(j : j + n_bins - 1) = SCORE_SCATTER_PN
-            t % moment_order(j : j + n_bins - 1) = n_order
-            j = j + n_bins - 1
-
-          case ('nu-scatter-pn')
-            t % estimator = ESTIMATOR_ANALOG
-            ! Setup P0:Pn
-            t % score_bins(j : j + n_bins - 1) = SCORE_NU_SCATTER_PN
-            t % moment_order(j : j + n_bins - 1) = n_order
-            j = j + n_bins - 1
-
-          case ('scatter-yn')
-            t % estimator = ESTIMATOR_ANALOG
-            ! Setup P0:Pn
-            t % score_bins(j : j + n_bins - 1) = SCORE_SCATTER_YN
-            t % moment_order(j : j + n_bins - 1) = n_order
-            j = j + n_bins - 1
-
-          case ('nu-scatter-yn')
-            t % estimator = ESTIMATOR_ANALOG
-            ! Setup P0:Pn
-            t % score_bins(j : j + n_bins - 1) = SCORE_NU_SCATTER_YN
-            t % moment_order(j : j + n_bins - 1) = n_order
-            j = j + n_bins - 1
-
-          case('transport')
-            call fatal_error("Transport score no longer supported for tallies, &
-                 &please remove")
-
-          case ('n1n')
-            call fatal_error("n1n score no longer supported for tallies, &
-                 &please remove")
           case ('n2n', '(n,2n)')
             t % score_bins(j) = N_2N
             t % depletion_rx = .true.
@@ -2668,18 +2498,18 @@ contains
                  &t % find_filter(FILTER_CELL) > 0 .or. &
                  &t % find_filter(FILTER_CELLFROM) > 0) then
 
-              ! Check to make sure that mesh currents are not desired as well
-              if (t % find_filter(FILTER_MESH) > 0) then
-                call fatal_error("Cannot tally other mesh currents &
-                     &in the same tally as surface currents")
+              ! Check to make sure that mesh surface currents are not desired as well
+              if (t % find_filter(FILTER_MESHSURFACE) > 0) then
+                call fatal_error("Cannot tally mesh surface currents &
+                     &in the same tally as normal surface currents")
               end if
 
               t % type = TALLY_SURFACE
               t % score_bins(j) = SCORE_CURRENT
 
-            else if (t % find_filter(FILTER_MESH) > 0) then
+            else if (t % find_filter(FILTER_MESHSURFACE) > 0) then
               t % score_bins(j) = SCORE_CURRENT
-              t % type = TALLY_MESH_CURRENT
+              t % type = TALLY_MESH_SURFACE
 
               ! Check to make sure that current is the only desired response
               ! for this tally
@@ -2687,75 +2517,9 @@ contains
                 call fatal_error("Cannot tally other scores in the &
                      &same tally as surface currents")
               end if
-
-              ! Get index of mesh filter
-              i_filter_mesh = t % filter(t % find_filter(FILTER_MESH))
-
-              ! Check to make sure mesh filter was specified
-              if (i_filter_mesh == 0) then
-                call fatal_error("Cannot tally surface current without a mesh &
-                     &filter.")
-              end if
-
-              ! Get pointer to mesh
-              select type(filt => filters(i_filter_mesh) % obj)
-              type is (MeshFilter)
-                m => meshes(filt % mesh)
-              end select
-
-              ! Extend the filters array so we can add a surface filter and
-              ! mesh filter
-              err = openmc_extend_filters(2, i_filt_start, i_filt_end)
-
-              ! Duplicate the mesh filter since other tallies might use this
-              ! filter and we need to change the dimension
-              filters(i_filt_start) = filters(i_filter_mesh)
-
-              ! We need to increase the dimension by one since we also need
-              ! currents coming into and out of the boundary mesh cells.
-              filters(i_filt_start) % obj % n_bins = product(m % dimension + 1)
-
-              ! Set ID
-              call openmc_get_filter_next_id(filter_id)
-              err = openmc_filter_set_id(i_filt_start, filter_id)
-
-
-              ! Add surface filter
-              allocate(SurfaceFilter :: filters(i_filt_end) % obj)
-              select type (filt => filters(i_filt_end) % obj)
-              type is (SurfaceFilter)
-                filt % n_bins = 4 * m % n_dimension
-                allocate(filt % surfaces(4 * m % n_dimension))
-                if (m % n_dimension == 1) then
-                  filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT /)
-                elseif (m % n_dimension == 2) then
-                  filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT, &
-                       OUT_BACK, IN_BACK, OUT_FRONT, IN_FRONT /)
-                elseif (m % n_dimension == 3) then
-                  filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT, &
-                       OUT_BACK, IN_BACK, OUT_FRONT, IN_FRONT, OUT_BOTTOM, &
-                       IN_BOTTOM, OUT_TOP, IN_TOP /)
-                end if
-                filt % current = .true.
-
-                ! Set ID
-                call openmc_get_filter_next_id(filter_id)
-                err = openmc_filter_set_id(i_filt_end, filter_id)
-              end select
-
-              ! Copy filter indices to resized array
-              n_filter = size(t % filter)
-              allocate(temp_filter(n_filter + 1))
-              temp_filter(1:size(t % filter)) = t % filter
-              n_filter = n_filter + 1
-
-              ! Set mesh and surface filters
-              temp_filter(t % find_filter(FILTER_MESH)) = i_filt_start
-              temp_filter(n_filter) = i_filt_end
-
-              ! Set filters
-              err = openmc_tally_set_filters(i_start + i - 1, n_filter, temp_filter)
-              deallocate(temp_filter)
+            else
+                call fatal_error("Cannot tally currents without surface &
+                     &type filters")
             end if
 
           case ('events')
@@ -2837,6 +2601,14 @@ contains
             t % score_bins(j) = N_DA
 
           case default
+            ! First look for deprecated scores
+            if (starts_with(trim(score_name), 'scatter-') .or. &
+                 starts_with(trim(score_name), 'nu-scatter-') .or. &
+                 starts_with(trim(score_name), 'total-y') .or. &
+                 starts_with(trim(score_name), 'flux-y')) then
+              call fatal_error(trim(score_name) // " is no longer available.")
+            end if
+
             ! Assume that user has specified an MT number
             MT = int(str_to_int(score_name))
 
@@ -2845,14 +2617,12 @@ contains
               if (MT > 1) then
                 t % score_bins(j) = MT
               else
-                call fatal_error("Invalid MT on <scores>: " &
-                     // trim(sarray(l)))
+                call fatal_error("Invalid MT on <scores>: " // trim(score_name))
               end if
 
             else
               ! Specified score was not an integer
-              call fatal_error("Unknown scoring function: " &
-                   // trim(sarray(l)))
+              call fatal_error("Unknown scoring function: " // trim(score_name))
             end if
 
           end select
@@ -2867,35 +2637,19 @@ contains
         end do
 
         t % n_score_bins = n_scores
-        t % n_user_score_bins = n_words
 
         ! Deallocate temporary string array of scores
         deallocate(sarray)
 
         ! Check that no duplicate scores exist
-        j = 1
-        do while (j < n_scores)
-          ! Determine number of bins for scores with expansions
-          n_order = t % moment_order(j)
-          select case (t % score_bins(j))
-          case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
-            n_bins = n_order + 1
-          case (SCORE_FLUX_YN, SCORE_TOTAL_YN, SCORE_SCATTER_YN, &
-               SCORE_NU_SCATTER_YN)
-            n_bins = (n_order + 1)**2
-          case default
-            n_bins = 1
-          end select
-
-          do k = j + n_bins, n_scores
-            if (t % score_bins(j) == t % score_bins(k) .and. &
-                 t % moment_order(j) == t % moment_order(k)) then
+        do j = 1, n_scores - 1
+          do k = j + 1, n_scores
+            if (t % score_bins(j) == t % score_bins(k)) then
               call fatal_error("Duplicate score of type '" // trim(&
                    reaction_name(t % score_bins(j))) // "' found in tally " &
                    // trim(to_str(t % id)))
             end if
           end do
-          j = j + n_bins
         end do
       else
         call fatal_error("No <scores> specified on tally " &
@@ -3936,7 +3690,7 @@ contains
           group_id = open_group(file_id, name)
           call nuclides(i_nuclide) % from_hdf5(group_id, nuc_temps(i_nuclide), &
                temperature_method, temperature_tolerance, temperature_range, &
-               master)
+               master, i_nuclide)
           call close_group(group_id)
           call file_close(file_id)
 
@@ -4010,12 +3764,16 @@ contains
 
     ! Show which nuclide results in lowest energy for neutron transport
     do i = 1, size(nuclides)
-      if (nuclides(i) % grid(1) % energy(size(nuclides(i) % grid(1) % energy)) &
-           == energy_max_neutron) then
-        call write_message("Maximum neutron transport energy: " // &
-             trim(to_str(energy_max_neutron)) // " eV for " // &
-             trim(adjustl(nuclides(i) % name)), 7)
-        exit
+      ! If a nuclide is present in a material that's not used in the model, its
+      ! grid has not been allocated
+      if (size(nuclides(i) % grid) > 0) then
+        if (nuclides(i) % grid(1) % energy(size(nuclides(i) % grid(1) % energy)) &
+             == energy_max_neutron) then
+          call write_message("Maximum neutron transport energy: " // &
+               trim(to_str(energy_max_neutron)) // " eV for " // &
+               trim(adjustl(nuclides(i) % name)), 7)
+          exit
+        end if
       end if
     end do
 
@@ -4118,7 +3876,7 @@ contains
       allocate(nuc % multipole)
 
       ! Call the read routine
-      call multipole_read(filename, nuc % multipole, i_table)
+      call nuc % multipole % from_hdf5(filename)
       nuc % mp_present = .true.
 
     end associate

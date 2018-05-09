@@ -305,7 +305,7 @@ Cell::to_hdf5(hid_t cell_group) const
 //  hid_t surf_group = create_group(group_id, group_name);
 
   if (!name.empty()) {
-    write_string(cell_group, "name", name);
+    write_string(cell_group, "name", name, false);
   }
 
   //TODO: Fix the off-by-one indexing.
@@ -329,7 +329,7 @@ Cell::to_hdf5(hid_t cell_group) const
         region_spec << " " << copysign(surfaces_c[abs(token)-1]->id, token);
       }
     }
-    write_string(cell_group, "region", region_spec.str());
+    write_string(cell_group, "region", region_spec.str(), false);
   }
 
 //  close_group(cell_group);

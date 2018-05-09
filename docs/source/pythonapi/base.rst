@@ -109,6 +109,7 @@ Constructing Tallies
    openmc.CellbornFilter
    openmc.SurfaceFilter
    openmc.MeshFilter
+   openmc.MeshSurfaceFilter
    openmc.EnergyFilter
    openmc.EnergyoutFilter
    openmc.MuFilter
@@ -117,6 +118,10 @@ Constructing Tallies
    openmc.DistribcellFilter
    openmc.DelayedGroupFilter
    openmc.EnergyFunctionFilter
+   openmc.LegendreFilter
+   openmc.SpatialLegendreFilter
+   openmc.SphericalHarmonicsFilter
+   openmc.ZernikeFilter
    openmc.Mesh
    openmc.Trigger
    openmc.TallyDerivative

@@ -15,9 +15,9 @@ def test_nuclides(uo2):
     """Test adding/removing nuclides."""
     m = openmc.Material()
     m.add_nuclide('U235', 1.0)
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         m.add_nuclide('H1', '1.0')
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         m.add_nuclide(1.0, 'H1')
     with pytest.raises(ValueError):
         m.add_nuclide('H1', 1.0, 'oa')
@@ -121,6 +121,23 @@ def test_get_nuclide_atom_densities(uo2):
         assert density > 0
 
 
+def test_mass():
+    m = openmc.Material()
+    m.add_nuclide('Zr90', 1.0, 'wo')
+    m.add_nuclide('U235', 1.0, 'wo')
+    m.set_density('g/cm3', 2.0)
+    m.volume = 10.0
+
+    assert m.get_mass_density('Zr90') == pytest.approx(1.0)
+    assert m.get_mass_density('U235') == pytest.approx(1.0)
+    assert m.get_mass_density() == pytest.approx(2.0)
+
+    assert m.get_mass('Zr90') == pytest.approx(10.0)
+    assert m.get_mass('U235') == pytest.approx(10.0)
+    assert m.get_mass() == pytest.approx(20.0)
+    assert m.fissionable_mass == pytest.approx(10.0)
+
+
 def test_materials(run_in_tmpdir):
     m1 = openmc.Material()
     m1.add_nuclide('U235', 1.0, 'wo')
@@ -139,3 +156,29 @@ def test_materials(run_in_tmpdir):
     mats.cross_sections = '/some/fake/cross_sections.xml'
     mats.multipole_library = '/some/awesome/mp_lib/'
     mats.export_to_xml()
+
+
+def test_borated_water():
+    # Test against reference values from the BEAVRS benchmark.
+    m = openmc.model.borated_water(975, 566.5, 15.51, material_id=50)
+    assert m.density == pytest.approx(0.7405, 1e-3)
+    assert m.temperature == pytest.approx(566.5)
+    assert m._sab[0][0] == 'c_H_in_H2O'
+    ref_dens = {'B10':8.0023e-06, 'B11':3.2210e-05, 'H1':4.9458e-02,
+                'O16':2.4672e-02}
+    nuc_dens = m.get_nuclide_atom_densities()
+    for nuclide in ref_dens:
+        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+    assert m.id == 50
+
+    # Test the Celsius conversion.
+    m = openmc.model.borated_water(975, 293.35, 15.51, 'C')
+    assert m.density == pytest.approx(0.7405, 1e-3)
+
+    # Test Fahrenheit and psi conversions.
+    m = openmc.model.borated_water(975, 560.0, 2250.0, 'F', 'psi')
+    assert m.density == pytest.approx(0.7405, 1e-3)
+
+    # Test the density override
+    m = openmc.model.borated_water(975, 566.5, 15.51, density=0.9)
+    assert m.density == pytest.approx(0.9, 1e-3)

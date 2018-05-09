@@ -8,7 +8,7 @@
   </mesh>
 
   <filter id="1" type="mesh">
-    <bins>1</bins>
+    <bins>2</bins>
   </filter>
 
   <filter id="2" type="energy">

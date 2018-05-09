@@ -374,5 +374,25 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
 };
 
+//==============================================================================
+// Fortran compatibility functions
+//==============================================================================
+
+extern "C" {
+    Surface* surface_pointer(int surf_ind);
+    int surface_id(Surface *surf);
+    int surface_bc(Surface *surf);
+    bool surface_sense(Surface *surf, double xyz[3], double uvw[3]);
+    void surface_reflect(Surface *surf, double xyz[3], double uvw[3]);
+    double surface_distance(Surface *surf, double xyz[3], double uvw[3],
+                            bool coincident);
+    void surface_normal(Surface *surf, double xyz[3], double uvw[3]);
+    void surface_to_hdf5(Surface *surf, hid_t group);
+    int surface_i_periodic(PeriodicSurface *surf);
+    bool surface_periodic(PeriodicSurface *surf, PeriodicSurface *other,
+                          double xyz[3], double uvw[3]);
+    void free_memory_surfaces_c();
+}
+
 } // namespace openmc
 #endif // SURFACE_H

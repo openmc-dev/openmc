@@ -5,8 +5,6 @@
 
 module track_output
 
-  use hdf5
-
   use constants
   use hdf5_interface
   use particle_header, only: Particle
@@ -115,7 +113,7 @@ contains
     end do
 
 !$omp critical (FinalizeParticleTrack)
-    file_id = file_create(fname)
+    file_id = file_open(fname, 'w')
     call write_attribute(file_id, 'filetype', 'track')
     call write_attribute(file_id, 'version', VERSION_TRACK)
     call write_attribute(file_id, 'n_particles', n_particle_tracks)

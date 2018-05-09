@@ -2,8 +2,6 @@ module tally_filter_cellborn
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5
-
   use constants,          only: ONE, MAX_LINE_LEN
   use dict_header,        only: EMPTY
   use error,              only: fatal_error

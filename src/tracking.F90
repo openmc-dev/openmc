@@ -1,11 +1,11 @@
 module tracking
 
   use constants
-  use cross_section,      only: calculate_xs
   use error,              only: warning, write_message
   use geometry_header,    only: cells
   use geometry,           only: find_cell, distance_to_boundary, cross_lattice,&
                                 check_cell_overlap
+  use material_header,    only: materials, Material
   use message_passing
   use mgxs_header
   use nuclide_header
@@ -19,9 +19,9 @@ module tracking
   use surface_header
   use tally_header
   use tally,              only: score_analog_tally, score_tracklength_tally, &
-                                score_collision_tally, score_surface_current, &
-                                score_track_derivative, score_surface_tally, &
-                                score_collision_derivative, zero_flux_derivs
+                                score_collision_tally, score_surface_tally, &
+                                score_track_derivative, zero_flux_derivs, &
+                                score_collision_derivative
   use track_output,       only: initialize_particle_track, write_particle_track, &
                                 add_particle_track, finalize_particle_track
 
@@ -100,29 +100,30 @@ contains
       if (check_overlaps) call check_cell_overlap(p)
 
       ! Calculate microscopic and macroscopic cross sections
-      if (run_CE) then
-        ! If the material is the same as the last material and the temperature
-        ! hasn't changed, we don't need to lookup cross sections again.
-        if (p % material /= p % last_material .or. &
-             p % sqrtkT /= p % last_sqrtkT) call calculate_xs(p)
-      else
-        ! Since the MGXS can be angle dependent, this needs to be done
-        ! After every collision for the MGXS mode
-        if (p % material /= MATERIAL_VOID) then
-          ! Update the temperature index
-          call macro_xs(p % material) % obj % find_temperature(p % sqrtkT)
-          ! Get the data
-          call macro_xs(p % material) % obj % calculate_xs(p % g, &
-               p % coord(p % n_coord) % uvw, material_xs)
+      if (p % material /= MATERIAL_VOID) then
+        if (run_CE) then
+          if (p % material /= p % last_material .or. &
+               p % sqrtkT /= p % last_sqrtkT) then
+            ! If the material is the same as the last material and the
+            ! temperature hasn't changed, we don't need to lookup cross
+            ! sections again.
+            call materials(p % material) % calculate_xs(p % E, p % sqrtkT, &
+                 micro_xs, nuclides, material_xs)
+          end if
         else
-          material_xs % total      = ZERO
-          material_xs % absorption = ZERO
-          material_xs % nu_fission = ZERO
-        end if
+          ! Get the MG data
+          call macro_xs(p % material) % obj % calculate_xs(p % g, p % sqrtkT, &
+               p % coord(p % n_coord) % uvw, material_xs)
 
-        ! Finally, update the particle group while we have already checked for
-        ! if multi-group
-        p % last_g = p % g
+          ! Finally, update the particle group while we have already checked
+          ! for if multi-group
+          p % last_g = p % g
+        end if
+      else
+        material_xs % total      = ZERO
+        material_xs % absorption = ZERO
+        material_xs % fission    = ZERO
+        material_xs % nu_fission = ZERO
       end if
 
       ! Find the distance to the nearest boundary
@@ -184,7 +185,8 @@ contains
           p % event = EVENT_SURFACE
         end if
         ! Score cell to cell partial currents
-        if(active_surface_tallies % size() > 0) call score_surface_tally(p)
+        if(active_surface_tallies % size() > 0) &
+             call score_surface_tally(p, active_surface_tallies)
       else
         ! ====================================================================
         ! PARTICLE HAS COLLISION
@@ -199,7 +201,8 @@ contains
         ! since the direction of the particle will change and we need to use the
         ! pre-collision direction to figure out what mesh surfaces were crossed
 
-        if (active_current_tallies % size() > 0) call score_surface_current(p)
+        if (active_meshsurf_tallies % size() > 0) &
+             call score_surface_tally(p, active_meshsurf_tallies)
 
         ! Clear surface component
         p % surface = ERROR_INT
@@ -316,12 +319,12 @@ contains
       ! forward slightly so that if the mesh boundary is on the surface, it is
       ! still processed
 
-      if (active_current_tallies % size() > 0) then
+      if (active_meshsurf_tallies % size() > 0) then
         ! TODO: Find a better solution to score surface currents than
         ! physically moving the particle forward slightly
 
         p % coord(1) % xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
-        call score_surface_current(p)
+        call score_surface_tally(p, active_meshsurf_tallies)
       end if
 
       ! Score to global leakage tally
@@ -349,10 +352,10 @@ contains
       ! particle to change -- artificially move the particle slightly back in
       ! case the surface crossing is coincident with a mesh boundary
 
-      if (active_current_tallies % size() > 0) then
+      if (active_meshsurf_tallies % size() > 0) then
         xyz = p % coord(1) % xyz
         p % coord(1) % xyz = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
-        call score_surface_current(p)
+        call score_surface_tally(p, active_meshsurf_tallies)
         p % coord(1) % xyz = xyz
       end if
 
@@ -406,10 +409,10 @@ contains
       ! Score surface currents since reflection causes the direction of the
       ! particle to change -- artificially move the particle slightly back in
       ! case the surface crossing is coincident with a mesh boundary
-      if (active_current_tallies % size() > 0) then
+      if (active_meshsurf_tallies % size() > 0) then
         xyz = p % coord(1) % xyz
         p % coord(1) % xyz = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
-        call score_surface_current(p)
+        call score_surface_tally(p, active_meshsurf_tallies)
         p % coord(1) % xyz = xyz
       end if
 

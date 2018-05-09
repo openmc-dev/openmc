@@ -7,10 +7,7 @@ import re
 from warnings import warn
 
 import numpy as np
-try:
-    from uncertainties import ufloat, unumpy, UFloat
-except ImportError:
-    ufloat = UFloat = namedtuple('UFloat', ['nominal_value', 'std_dev'])
+from uncertainties import ufloat, unumpy, UFloat
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
@@ -457,6 +454,7 @@ class Decay(EqualityMixin):
             items, values = get_list_record(file_obj)
             self.nuclide['spin'] = items[0]
             self.nuclide['parity'] = items[1]
+            self.half_life = ufloat(float('inf'), float('inf'))
 
     @property
     def decay_constant(self):

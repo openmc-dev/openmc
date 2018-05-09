@@ -15,7 +15,6 @@ objects in the :mod:`openmc.capi` subpackage, for example:
 from ctypes import CDLL
 import os
 import sys
-from warnings import warn
 
 import pkg_resources
 
@@ -36,10 +35,7 @@ else:
     # available. Instead, we create a mock object so that when the modules
     # within the openmc.capi package try to configure arguments and return
     # values for symbols, no errors occur
-    try:
-        from unittest.mock import Mock
-    except ImportError:
-        from mock import Mock
+    from unittest.mock import Mock
     _dll = Mock()
 
 from .error import *
@@ -47,9 +43,7 @@ from .core import *
 from .nuclide import *
 from .material import *
 from .cell import *
+from .mesh import *
 from .filter import *
 from .tally import *
 from .settings import settings
-
-warn("The Python bindings to OpenMC's C API are still unstable "
-     "and may change substantially in future releases.", FutureWarning)

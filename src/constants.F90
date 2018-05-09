@@ -21,7 +21,7 @@ module constants
   integer, parameter :: VERSION_STATEPOINT(2)       = [17, 0]
   integer, parameter :: VERSION_PARTICLE_RESTART(2) = [2, 0]
   integer, parameter :: VERSION_TRACK(2)            = [2, 0]
-  integer, parameter :: VERSION_SUMMARY(2)          = [5, 0]
+  integer, parameter :: VERSION_SUMMARY(2)          = [6, 0]
   integer, parameter :: VERSION_VOLUME(2)           = [1, 0]
   integer, parameter :: VERSION_VOXEL(2)            = [1, 0]
   integer, parameter :: VERSION_MGXS_LIBRARY(2)     = [1, 0]
@@ -232,6 +232,10 @@ module constants
        MGXS_ISOTROPIC   = 1, & ! Isotropically Weighted Data
        MGXS_ANGLE       = 2    ! Data by Angular Bins
 
+  ! Flag to denote this was a macroscopic data object
+  real(8), parameter :: &
+       MACROSCOPIC_AWR = -TWO
+
   ! Fission neutron emission (nu) type
   integer, parameter ::   &
        NU_NONE       = 0, & ! No nu values (non-fissionable)
@@ -292,7 +296,7 @@ module constants
   ! Tally type
   integer, parameter :: &
        TALLY_VOLUME          = 1, &
-       TALLY_MESH_CURRENT    = 2, &
+       TALLY_MESH_SURFACE    = 2, &
        TALLY_SURFACE         = 3
 
   ! Tally estimator types
@@ -310,55 +314,33 @@ module constants
 
   ! Tally score type -- if you change these, make sure you also update the
   ! _SCORES dictionary in openmc/capi/tally.py
-  integer, parameter :: N_SCORE_TYPES = 24
+  integer, parameter :: N_SCORE_TYPES = 16
   integer, parameter :: &
        SCORE_FLUX               = -1,  & ! flux
        SCORE_TOTAL              = -2,  & ! total reaction rate
        SCORE_SCATTER            = -3,  & ! scattering rate
        SCORE_NU_SCATTER         = -4,  & ! scattering production rate
-       SCORE_SCATTER_N          = -5,  & ! arbitrary scattering moment
-       SCORE_SCATTER_PN         = -6,  & ! system for scoring 0th through nth moment
-       SCORE_NU_SCATTER_N       = -7,  & ! arbitrary nu-scattering moment
-       SCORE_NU_SCATTER_PN      = -8,  & ! system for scoring 0th through nth nu-scatter moment
-       SCORE_ABSORPTION         = -9,  & ! absorption rate
-       SCORE_FISSION            = -10, & ! fission rate
-       SCORE_NU_FISSION         = -11, & ! neutron production rate
-       SCORE_KAPPA_FISSION      = -12, & ! fission energy production rate
-       SCORE_CURRENT            = -13, & ! current
-       SCORE_FLUX_YN            = -14, & ! angular moment of flux
-       SCORE_TOTAL_YN           = -15, & ! angular moment of total reaction rate
-       SCORE_SCATTER_YN         = -16, & ! angular flux-weighted scattering moment (0:N)
-       SCORE_NU_SCATTER_YN      = -17, & ! angular flux-weighted nu-scattering moment (0:N)
-       SCORE_EVENTS             = -18, & ! number of events
-       SCORE_DELAYED_NU_FISSION = -19, & ! delayed neutron production rate
-       SCORE_PROMPT_NU_FISSION  = -20, & ! prompt neutron production rate
-       SCORE_INVERSE_VELOCITY   = -21, & ! flux-weighted inverse velocity
-       SCORE_FISS_Q_PROMPT      = -22, & ! prompt fission Q-value
-       SCORE_FISS_Q_RECOV       = -23, & ! recoverable fission Q-value
-       SCORE_DECAY_RATE         = -24    ! delayed neutron precursor decay rate
+       SCORE_ABSORPTION         = -5,  & ! absorption rate
+       SCORE_FISSION            = -6,  & ! fission rate
+       SCORE_NU_FISSION         = -7,  & ! neutron production rate
+       SCORE_KAPPA_FISSION      = -8,  & ! fission energy production rate
+       SCORE_CURRENT            = -9,  & ! current
+       SCORE_EVENTS             = -10, & ! number of events
+       SCORE_DELAYED_NU_FISSION = -11, & ! delayed neutron production rate
+       SCORE_PROMPT_NU_FISSION  = -12, & ! prompt neutron production rate
+       SCORE_INVERSE_VELOCITY   = -13, & ! flux-weighted inverse velocity
+       SCORE_FISS_Q_PROMPT      = -14, & ! prompt fission Q-value
+       SCORE_FISS_Q_RECOV       = -15, & ! recoverable fission Q-value
+       SCORE_DECAY_RATE         = -16    ! delayed neutron precursor decay rate
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10
-
-  ! Names of *-PN & *-YN scores (MOMENT_STRS) and *-N moment scores
-  character(*), parameter :: &
-       MOMENT_STRS(6)    = (/ "scatter-p   ",   &
-                              "nu-scatter-p",   &
-                              "flux-y      ",   &
-                              "total-y     ",   &
-                              "scatter-y   ",   &
-                              "nu-scatter-y"/), &
-       MOMENT_N_STRS(2)  = (/ "scatter-    ",   &
-                              "nu-scatter- "/)
-
-  ! Location in MOMENT_STRS where the YN data begins
-  integer, parameter :: YN_LOC = 3
 
   ! Tally map bin finding
   integer, parameter :: NO_BIN_FOUND = -1
 
   ! Tally filter and map types
-  integer, parameter :: N_FILTER_TYPES = 15
+  integer, parameter :: N_FILTER_TYPES = 20
   integer, parameter :: &
        FILTER_UNIVERSE       = 1,  &
        FILTER_MATERIAL       = 2,  &
@@ -374,7 +356,12 @@ module constants
        FILTER_AZIMUTHAL      = 12, &
        FILTER_DELAYEDGROUP   = 13, &
        FILTER_ENERGYFUNCTION = 14, &
-       FILTER_CELLFROM       = 15
+       FILTER_CELLFROM       = 15, &
+       FILTER_MESHSURFACE    = 16, &
+       FILTER_LEGENDRE       = 17, &
+       FILTER_SPH_HARMONICS  = 18, &
+       FILTER_SPTL_LEGENDRE  = 19, &
+       FILTER_ZERNIKE        = 20
 
   ! Mesh types
   integer, parameter :: &

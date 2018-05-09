@@ -1,12 +1,12 @@
 module geometry_header
 
   use, intrinsic :: ISO_C_BINDING
-  use hdf5
 
   use algorithm,       only: find
   use constants,       only: HALF, TWO, THREE, INFINITY, K_BOLTZMANN, &
                              MATERIAL_VOID, NONE
   use dict_header,     only: DictCharInt, DictIntInt
+  use hdf5_interface,  only: HID_T
   use material_header, only: Material, materials, material_dict, n_materials
   use nuclide_header
   use sab_header
@@ -17,21 +17,21 @@ module geometry_header
 
   interface
     function cell_pointer_c(cell_ind) bind(C, name='cell_pointer') result(ptr)
-      use ISO_C_BINDING
+      import C_PTR, C_INT32_T
       implicit none
       integer(C_INT32_T), intent(in), value :: cell_ind
       type(C_PTR)                           :: ptr
     end function cell_pointer_c
 
     function cell_id_c(cell_ptr) bind(C, name='cell_id') result(id)
-      use ISO_C_BINDING
+      import C_PTR, C_INT32_T
       implicit none
       type(C_PTR), intent(in), value :: cell_ptr
       integer(C_INT32_T)             :: id
     end function cell_id_c
 
     subroutine cell_set_id_c(cell_ptr, id) bind(C, name='cell_set_id')
-      use ISO_C_BINDING
+      import C_PTR, C_INT32_T
       implicit none
       type(C_PTR),        intent(in), value :: cell_ptr
       integer(C_INT32_T), intent(in), value :: id
@@ -39,7 +39,7 @@ module geometry_header
 
     function cell_universe_c(cell_ptr) bind(C, name='cell_universe') &
          result(universe)
-      use ISO_C_BINDING
+      import C_PTR, C_INT32_T
       implicit none
       type(C_PTR), intent(in), value :: cell_ptr
       integer(C_INT32_T)             :: universe
@@ -47,14 +47,14 @@ module geometry_header
 
     subroutine cell_set_universe_c(cell_ptr, universe) &
          bind(C, name='cell_set_universe')
-      use ISO_C_BINDING
+      import C_PTR, C_INT32_T
       implicit none
       type(C_PTR),        intent(in), value :: cell_ptr
       integer(C_INT32_T), intent(in), value :: universe
     end subroutine cell_set_universe_c
 
     function cell_simple_c(cell_ptr) bind(C, name='cell_simple') result(simple)
-      use ISO_C_BINDING
+      import C_PTR, C_BOOL
       implicit none
       type(C_PTR), intent(in), value :: cell_ptr
       logical(C_BOOL)                :: simple
@@ -62,7 +62,7 @@ module geometry_header
 
     subroutine cell_distance_c(cell_ptr, xyz, uvw, on_surface, min_dist, &
                                i_surf) bind(C, name="cell_distance")
-      use ISO_C_BINDING
+      import C_PTR, C_INT32_T, C_DOUBLE
       implicit none
       type(C_PTR),        intent(in), value :: cell_ptr
       real(C_DOUBLE),     intent(in)        :: xyz(3)
@@ -73,8 +73,7 @@ module geometry_header
     end subroutine cell_distance_c
 
     subroutine cell_to_hdf5_c(cell_ptr, group) bind(C, name='cell_to_hdf5')
-      use ISO_C_BINDING
-      use hdf5
+      import HID_T, C_PTR
       implicit none
       type(C_PTR),    intent(in), value :: cell_ptr
       integer(HID_T), intent(in), value :: group
@@ -82,14 +81,14 @@ module geometry_header
 
     function lattice_pointer_c(lat_ind) bind(C, name='lattice_pointer') &
          result(ptr)
-      use ISO_C_BINDING
+      import C_PTR, C_INT32_T
       implicit none
       integer(C_INT32_T), intent(in), value :: lat_ind
       type(C_PTR)                           :: ptr
     end function lattice_pointer_c
 
     function lattice_id_c(lat_ptr) bind(C, name='lattice_id') result(id)
-      use ISO_C_BINDING
+      import C_PTR, C_INT32_T
       implicit none
       type(C_PTR), intent(in), value :: lat_ptr
       integer(C_INT32_T)             :: id
@@ -97,7 +96,7 @@ module geometry_header
 
     function lattice_are_valid_indices_c(lat_ptr, i_xyz) &
          bind(C, name='lattice_are_valid_indices') result (is_valid)
-      use ISO_C_BINDING
+      import C_PTR, C_INT, C_BOOL
       implicit none
       type(C_PTR),    intent(in), value :: lat_ptr
       integer(C_INT), intent(in)        :: i_xyz(3)
@@ -106,7 +105,7 @@ module geometry_header
 
     subroutine lattice_distance_c(lat_ptr, xyz, uvw, i_xyz, d, lattice_trans) &
          bind(C, name='lattice_distance')
-      use ISO_C_BINDING
+      import C_PTR, C_INT, C_DOUBLE
       implicit none
       type(C_PTR),    intent(in), value :: lat_ptr
       real(C_DOUBLE), intent(in)        :: xyz(3)
@@ -118,7 +117,7 @@ module geometry_header
 
     subroutine lattice_get_indices_c(lat_ptr, xyz, i_xyz) &
          bind(C, name='lattice_get_indices')
-      use ISO_C_BINDING
+      import C_PTR, C_INT, C_DOUBLE
       implicit none
       type(C_PTR),    intent(in), value :: lat_ptr
       real(C_DOUBLE), intent(in)        :: xyz(3)
@@ -127,7 +126,7 @@ module geometry_header
 
     subroutine lattice_get_local_xyz_c(lat_ptr, global_xyz, i_xyz, local_xyz) &
          bind(C, name='lattice_get_local_xyz')
-      use ISO_C_BINDING
+      import C_PTR, C_INT, C_DOUBLE
       implicit none
       type(C_PTR),    intent(in), value :: lat_ptr
       real(C_DOUBLE), intent(in)        :: global_xyz(3)
@@ -136,22 +135,21 @@ module geometry_header
     end subroutine lattice_get_local_xyz_c
 
     subroutine lattice_to_hdf5_c(lat_ptr, group) bind(C, name='lattice_to_hdf5')
-      use ISO_C_BINDING
-      use hdf5
+      import HID_T, C_PTR
       implicit none
       type(C_PTR),    intent(in), value :: lat_ptr
       integer(HID_T), intent(in), value :: group
     end subroutine lattice_to_hdf5_c
 
     subroutine extend_cells_c(n) bind(C)
-      use ISO_C_BINDING
+      import C_INT32_t
       implicit none
       integer(C_INT32_T), intent(in), value :: n
     end subroutine extend_cells_c
 
     function lattice_universe_c(lat_ptr, i_xyz) &
          bind(C, name='lattice_universe') result(univ)
-      use ISO_C_BINDING
+      import C_PTR, C_INT32_t, C_INT
       implicit none
       type(C_PTR),    intent(in), value :: lat_ptr
       integer(C_INT), intent(in)        :: i_xyz(3)
@@ -590,16 +588,12 @@ contains
           c % type = FILL_MATERIAL
           do i = 1, n
             j = indices(i)
-            if (j == 0) then
-              c % material(i) = MATERIAL_VOID
+            if ((j >= 1 .and. j <= n_materials) .or. j == MATERIAL_VOID) then
+              c % material(i) = j
             else
-              if (j >= 1 .and. j <= n_materials) then
-                c % material(i) = j
-              else
-                err = E_OUT_OF_BOUNDS
-                call set_errmsg("Index " // trim(to_str(j)) // " in the &
-                     &materials array is out of bounds.")
-              end if
+              err = E_OUT_OF_BOUNDS
+              call set_errmsg("Index " // trim(to_str(j)) // " in the &
+                   &materials array is out of bounds.")
             end if
           end do
         case (FILL_UNIVERSE)

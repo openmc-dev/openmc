@@ -23,8 +23,13 @@ class DataLibrary(EqualityMixin):
     def __init__(self):
         self.libraries = []
 
-    def get_by_material(self, value):
+    def get_by_material(self, name):
         """Return the library dictionary containing a given material.
+
+        Parameters
+        ----------
+        name : str
+            Name of material, e.g. 'Am241'
 
         Returns
         -------
@@ -34,7 +39,7 @@ class DataLibrary(EqualityMixin):
 
         """
         for library in self.libraries:
-            if value in library['materials']:
+            if name in library['materials']:
                 return library
         return None
 

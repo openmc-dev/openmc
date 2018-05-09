@@ -1,13 +1,14 @@
 from contextlib import contextmanager
-from ctypes import (CDLL, c_int, c_int32, c_int64, c_double, c_char_p,
-                    POINTER, Structure)
+from ctypes import (CDLL, c_int, c_int32, c_int64, c_double, c_char_p, c_char,
+                    POINTER, Structure, c_void_p, create_string_buffer)
 from warnings import warn
 
 import numpy as np
 from numpy.ctypeslib import as_array
 
+from openmc.exceptions import AllocationError
 from . import _dll
-from .error import _error_handler, AllocationError
+from .error import _error_handler
 import openmc.capi
 
 
@@ -19,29 +20,41 @@ class _Bank(Structure):
                 ('delayed_group', c_int)]
 
 
-_dll.openmc_calculate_volumes.restype = None
-_dll.openmc_finalize.restype = None
+_dll.openmc_calculate_volumes.restype = c_int
+_dll.openmc_calculate_volumes.errcheck = _error_handler
+_dll.openmc_finalize.restype = c_int
+_dll.openmc_finalize.errcheck = _error_handler
 _dll.openmc_find.argtypes = [POINTER(c_double*3), c_int, POINTER(c_int32),
                              POINTER(c_int32)]
 _dll.openmc_find.restype = c_int
 _dll.openmc_find.errcheck = _error_handler
-_dll.openmc_hard_reset.restype = None
-_dll.openmc_init.argtypes = [POINTER(c_int)]
-_dll.openmc_init.restype = None
+_dll.openmc_hard_reset.restype = c_int
+_dll.openmc_hard_reset.errcheck = _error_handler
+_dll.openmc_init.argtypes = [c_int, POINTER(POINTER(c_char)), c_void_p]
+_dll.openmc_init.restype = c_int
+_dll.openmc_init.errcheck = _error_handler
 _dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
 _dll.openmc_get_keff.restype = c_int
 _dll.openmc_get_keff.errcheck = _error_handler
+_dll.openmc_next_batch.argtypes = [POINTER(c_int)]
 _dll.openmc_next_batch.restype = c_int
-_dll.openmc_plot_geometry.restype = None
-_dll.openmc_run.restype = None
-_dll.openmc_reset.restype = None
+_dll.openmc_next_batch.errcheck = _error_handler
+_dll.openmc_plot_geometry.restype = c_int
+_dll.openmc_plot_geometry.restype = _error_handler
+_dll.openmc_run.restype = c_int
+_dll.openmc_run.errcheck = _error_handler
+_dll.openmc_reset.restype = c_int
+_dll.openmc_reset.errcheck = _error_handler
 _dll.openmc_source_bank.argtypes = [POINTER(POINTER(_Bank)), POINTER(c_int64)]
 _dll.openmc_source_bank.restype = c_int
 _dll.openmc_source_bank.errcheck = _error_handler
-_dll.openmc_simulation_init.restype = None
-_dll.openmc_simulation_finalize.restype = None
+_dll.openmc_simulation_init.restype = c_int
+_dll.openmc_simulation_init.errcheck = _error_handler
+_dll.openmc_simulation_finalize.restype = c_int
+_dll.openmc_simulation_finalize.errcheck = _error_handler
 _dll.openmc_statepoint_write.argtypes = [POINTER(c_char_p)]
-_dll.openmc_statepoint_write.restype = None
+_dll.openmc_statepoint_write.restype = c_int
+_dll.openmc_statepoint_write.errcheck = _error_handler
 
 
 def calculate_volumes():
@@ -102,25 +115,42 @@ def hard_reset():
     _dll.openmc_hard_reset()
 
 
-def init(intracomm=None):
+def init(args=None, intracomm=None):
     """Initialize OpenMC
 
     Parameters
     ----------
+    args : list of str
+        Command-line arguments
     intracomm : mpi4py.MPI.Intracomm or None
         MPI intracommunicator
 
     """
-    if intracomm is not None:
-        # If an mpi4py communicator was passed, convert it to an integer to
-        # be passed to openmc_init
-        try:
-            intracomm = intracomm.py2f()
-        except AttributeError:
-            pass
-        _dll.openmc_init(c_int(intracomm))
+    if args is not None:
+        args = ['openmc'] + list(args)
+        argc = len(args)
+
+        # Create the argv array. Note that it is actually expected to be of
+        # length argc + 1 with the final item being a null pointer.
+        argv = (POINTER(c_char) * (argc + 1))()
+        for i, arg in enumerate(args):
+            argv[i] = create_string_buffer(arg.encode())
     else:
-        _dll.openmc_init(None)
+        argc = 0
+        argv = None
+
+    if intracomm is not None:
+        # If an mpi4py communicator was passed, convert it to void* to be passed
+        # to openmc_init
+        try:
+            from mpi4py import MPI
+        except ImportError:
+            intracomm = None
+        else:
+            address = MPI._addressof(intracomm)
+            intracomm = c_void_p(address)
+
+    _dll.openmc_init(argc, argv, intracomm)
 
 
 def iter_batches():
@@ -147,13 +177,13 @@ def iter_batches():
     """
     while True:
         # Run next batch
-        retval = next_batch()
+        status = next_batch()
 
         # Provide opportunity for user to perform action between batches
         yield
 
         # End the iteration
-        if retval < 0:
+        if status != 0:
             break
 
 
@@ -174,18 +204,25 @@ def keff():
         return tuple(k)
     else:
         # Otherwise, return the tracklength estimator
-        mean = c_double.in_dll(_dll, 'keff').value
-        std_dev = c_double.in_dll(_dll, 'keff_std').value if n > 1 else np.inf
+        mean = c_double.in_dll(_dll, 'openmc_keff').value
+        std_dev = c_double.in_dll(_dll, 'openmc_keff_std').value \
+                  if n > 1 else np.inf
         return (mean, std_dev)
 
 
 def next_batch():
-    """Run next batch."""
-    retval = _dll.openmc_next_batch()
-    if retval == -3:
-        raise AllocationError('Simulation has not been initialized. You must call '
-                              'openmc.capi.simulation_init() first.')
-    return retval
+    """Run next batch.
+
+    Returns
+    -------
+    int
+        Status after running a batch (0=normal, 1=reached maximum number of
+        batches, 2=tally triggers reached)
+
+    """
+    status = c_int()
+    _dll.openmc_next_batch(status)
+    return status.value
 
 
 def plot_geometry():

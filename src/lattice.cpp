@@ -53,7 +53,7 @@ void
 Lattice::to_hdf5(hid_t lat_group) const
 {
   if (!name.empty()) {
-    write_string(lat_group, "name", name);
+    write_string(lat_group, "name", name, false);
   }
 
   to_hdf5_inner(lat_group);

@@ -73,12 +73,11 @@ contains
     integer :: ital          ! tally object index
     integer :: ijk(3)        ! indices for mesh cell
     integer :: score_index   ! index to pull from tally object
-    integer :: i_filt        ! index in filters array
     integer :: i_filter_mesh ! index for mesh filter
     integer :: i_filter_ein  ! index for incoming energy filter
     integer :: i_filter_eout ! index for outgoing energy filter
-    integer :: i_filter_surf ! index for surface filter
-    integer :: stride_surf   ! stride for surface filter
+    integer :: i_filter_legendre ! index for Legendre filter
+    integer :: i_mesh        ! flattend index for mesh
     logical :: energy_filters! energy filters present
     real(8) :: flux          ! temp variable for flux
     type(RegularMesh), pointer :: m ! pointer for mesh object
@@ -95,10 +94,10 @@ contains
 
     ! Associate tallies and mesh
     associate (t => cmfd_tallies(1) % obj)
-      i_filt = t % filter(t % find_filter(FILTER_MESH))
+      i_filter_mesh = t % filter(t % find_filter(FILTER_MESH))
     end associate
 
-    select type(filt => filters(i_filt) % obj)
+    select type(filt => filters(i_filter_mesh) % obj)
     type is (MeshFilter)
       m => meshes(filt % mesh)
     end select
@@ -115,16 +114,19 @@ contains
 
       ! Associate tallies and mesh
       associate (t => cmfd_tallies(ital) % obj)
-      i_filt = t % filter(t % find_filter(FILTER_MESH))
-      select type(filt => filters(i_filt) % obj)
-      type is (MeshFilter)
-        m => meshes(filt % mesh)
-      end select
+
+      if (ital < 3) then
+        i_filter_mesh = t % filter(t % find_filter(FILTER_MESH))
+      else if (ital == 3) then
+        i_filter_mesh = t % filter(t % find_filter(FILTER_MESHSURFACE))
+      else if (ital == 4) then
+        i_filter_mesh = t % filter(t % find_filter(FILTER_MESH))
+        i_filter_legendre = t % filter(t % find_filter(FILTER_LEGENDRE))
+      end if
 
       ! Check for energy filters
       energy_filters = (t % find_filter(FILTER_ENERGYIN) > 0)
 
-      i_filter_mesh = t % filter(t % find_filter(FILTER_MESH))
       if (energy_filters) then
         i_filter_ein  = t % filter(t % find_filter(FILTER_ENERGYIN))
         i_filter_eout = t % filter(t % find_filter(FILTER_ENERGYOUT))
@@ -189,13 +191,6 @@ contains
                 ! Get total rr and convert to total xs
                 cmfd % totalxs(h,i,j,k) = t % results(RESULT_SUM,2,score_index) / flux
 
-                ! Get p1 scatter rr and convert to p1 scatter xs
-                cmfd % p1scattxs(h,i,j,k) = t % results(RESULT_SUM,3,score_index) / flux
-
-                ! Calculate diffusion coefficient
-                cmfd % diffcof(h,i,j,k) = ONE/(3.0_8*(cmfd % totalxs(h,i,j,k) - &
-                     cmfd % p1scattxs(h,i,j,k)))
-
               else if (ital == 2) then
 
                 ! Begin loop to get energy out tallies
@@ -247,65 +242,102 @@ contains
 
               else if (ital == 3) then
 
-                i_filter_surf = t % filter(t % find_filter(FILTER_SURFACE))
-                stride_surf = t % stride(t % find_filter(FILTER_SURFACE))
-
                 ! Initialize and filter for energy
                 do l = 1, size(t % filter)
                   call filter_matches(t % filter(l)) % bins % clear()
                   call filter_matches(t % filter(l)) % bins % push_back(1)
                 end do
+
+                ! Set the bin for this mesh cell
+                i_mesh = m % get_bin_from_indices([ i, j, k ])
+                filter_matches(i_filter_mesh) % bins % data(1) = 12*(i_mesh - 1) + 1
+
+                ! Set the energy bin if needed
                 if (energy_filters) then
                   filter_matches(i_filter_ein) % bins % data(1) = ng - h + 1
                 end if
 
-                ! Get the bin for this mesh cell
-                filter_matches(i_filter_mesh) % bins % data(1) = &
-                     m % get_bin_from_indices([ i, j, k ])
-
-                score_index = 1
+                score_index = 0
                 do l = 1, size(t % filter)
-                  if (t % filter(l) == i_filter_surf) cycle
                   score_index = score_index + (filter_matches(t % filter(l)) &
                        % bins % data(1) - 1) * t % stride(l)
                 end do
 
                 ! Left surface
                 cmfd % current(1,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + (OUT_LEFT - 1) * stride_surf)
+                     score_index + OUT_LEFT)
                 cmfd % current(2,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + (IN_LEFT - 1) * stride_surf)
+                     score_index + IN_LEFT)
 
                 ! Right surface
                 cmfd % current(3,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + (IN_RIGHT - 1) * stride_surf)
+                     score_index + IN_RIGHT)
                 cmfd % current(4,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + (OUT_RIGHT - 1) * stride_surf)
+                     score_index + OUT_RIGHT)
 
                 ! Back surface
                 cmfd % current(5,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + (OUT_BACK - 1) * stride_surf)
+                     score_index + OUT_BACK)
                 cmfd % current(6,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + (IN_BACK - 1) * stride_surf)
+                     score_index + IN_BACK)
 
                 ! Front surface
                 cmfd % current(7,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + (IN_FRONT - 1) * stride_surf)
+                     score_index + IN_FRONT)
                 cmfd % current(8,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + (OUT_FRONT - 1) * stride_surf)
+                     score_index + OUT_FRONT)
 
-                ! Bottom surface
+                ! Left surface
                 cmfd % current(9,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + (OUT_BOTTOM - 1) * stride_surf)
+                     score_index + OUT_BOTTOM)
                 cmfd % current(10,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + (IN_BOTTOM - 1) * stride_surf)
+                     score_index + IN_BOTTOM)
 
-                ! Top surface
+                ! Right surface
                 cmfd % current(11,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + (IN_TOP - 1) * stride_surf)
+                     score_index + IN_TOP)
                 cmfd % current(12,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + (OUT_TOP - 1) * stride_surf)
+                     score_index + OUT_TOP)
 
+              else if (ital == 4) then
+
+                ! Reset all bins to 1
+                do l = 1, size(t % filter)
+                  call filter_matches(t % filter(l)) % bins % clear()
+                  call filter_matches(t % filter(l)) % bins % push_back(1)
+                end do
+
+                ! Set ijk as mesh indices
+                ijk = (/ i, j, k /)
+
+                ! Get bin number for mesh indices
+                filter_matches(i_filter_mesh) % bins % data(1) = &
+                     m % get_bin_from_indices(ijk)
+
+                ! Apply energy in filter
+                if (energy_filters) then
+                  filter_matches(i_filter_ein) % bins % data(1) = ng - h + 1
+                end if
+
+                ! Apply Legendre filter
+                filter_matches(i_filter_legendre) % bins % data(1) = 2
+
+                ! Calculate score index from bins
+                score_index = 1
+                do l = 1, size(t % filter)
+                  score_index = score_index + (filter_matches(t % filter(l)) &
+                       % bins % data(1) - 1) * t % stride(l)
+                end do
+
+                ! Get p1 scatter rr and convert to p1 scatter xs
+                cmfd % p1scattxs(h,i,j,k) = &
+                     t % results(RESULT_SUM,1,score_index) / &
+                     cmfd % flux(h,i,j,k)
+
+                ! Calculate diffusion coefficient
+                cmfd % diffcof(h,i,j,k) = &
+                     ONE/(3.0_8*(cmfd % totalxs(h,i,j,k) - &
+                     cmfd % p1scattxs(h,i,j,k)))
               end if TALLY
 
             end do OUTGROUP

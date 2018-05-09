@@ -393,7 +393,7 @@
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
-  <material id="13">
+  <material depletable="true" id="13">
     <density units="g/cm3" value="10.5" />
     <nuclide ao="0.14154" name="U235" />
     <nuclide ao="0.85846" name="U238" />

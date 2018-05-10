@@ -1315,19 +1315,10 @@ contains
       end do
 
       ! Read outer universe for area outside lattice.
-      lat % outer = NO_OUTER_UNIVERSE
       if (check_for_node(node_lat, "outer")) then
-        call get_node_value(node_lat, "outer", lat % outer)
-        if (find(fill_univ_ids, lat % outer) == -1) &
-             call fill_univ_ids % push_back(lat % outer)
-      end if
-
-      ! Check for 'outside' nodes which are no longer supported.
-      if (check_for_node(node_lat, "outside")) then
-        call fatal_error("The use of 'outside' in lattices is no longer &
-             &supported.  Instead, use 'outer' which defines a universe rather &
-             &than a material.  The utility openmc/src/utils/update_inputs.py &
-             &can be used automatically replace 'outside' with 'outer'.")
+        call get_node_value(node_lat, "outer", univ_id)
+        if (find(fill_univ_ids, univ_id) == -1) &
+             call fill_univ_ids % push_back(univ_id)
       end if
 
       ! Add lattice to dictionary
@@ -1379,19 +1370,10 @@ contains
       end do
 
       ! Read outer universe for area outside lattice.
-      lat % outer = NO_OUTER_UNIVERSE
       if (check_for_node(node_lat, "outer")) then
-        call get_node_value(node_lat, "outer", lat % outer)
-        if (find(fill_univ_ids, lat % outer) == -1) &
-             call fill_univ_ids % push_back(lat % outer)
-      end if
-
-      ! Check for 'outside' nodes which are no longer supported.
-      if (check_for_node(node_lat, "outside")) then
-        call fatal_error("The use of 'outside' in lattices is no longer &
-             &supported.  Instead, use 'outer' which defines a universe rather &
-             &than a material.  The utility openmc/src/utils/update_inputs.py &
-             &can be used automatically replace 'outside' with 'outer'.")
+        call get_node_value(node_lat, "outer", univ_id)
+        if (find(fill_univ_ids, univ_id) == -1) &
+             call fill_univ_ids % push_back(univ_id)
       end if
 
       ! Add lattice to dictionary
@@ -3875,7 +3857,6 @@ contains
     integer :: j                      ! index for various purposes
     integer :: lid                    ! lattice IDs
     integer :: id                     ! user-specified id
-    class(Lattice),    pointer :: lat => null()
 
     call adjust_indices_c()
 
@@ -3914,24 +3895,6 @@ contains
         end do
       end if
       end associate
-    end do
-
-    ! ==========================================================================
-    ! ADJUST UNIVERSE INDICES FOR EACH LATTICE
-
-    do i = 1, n_lattices
-      lat => lattices(i) % obj
-
-      if (lat % outer /= NO_OUTER_UNIVERSE) then
-        if (universe_dict % has(lat % outer)) then
-          lat % outer = universe_dict % get(lat % outer)
-        else
-          call fatal_error("Invalid universe number " &
-               &// trim(to_str(lat % outer)) &
-               &// " specified on lattice " // trim(to_str(lat % id())))
-        end if
-      end if
-
     end do
 
   end subroutine adjust_indices

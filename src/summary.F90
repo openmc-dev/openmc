@@ -168,7 +168,7 @@ contains
     integer(HID_T) :: cells_group, cell_group
     integer(HID_T) :: surfaces_group
     integer(HID_T) :: universes_group, univ_group
-    integer(HID_T) :: lattices_group, lattice_group
+    integer(HID_T) :: lattices_group
     type(Cell),     pointer :: c
     class(Lattice), pointer :: lat
 
@@ -293,25 +293,12 @@ contains
     ! ==========================================================================
     ! WRITE INFORMATION ON LATTICES
 
-    ! Create lattices group (nothing directly written here) then close
     lattices_group = create_group(geom_group, "lattices")
 
-    ! Write information on each lattice
-    LATTICE_LOOP: do i = 1, n_lattices
+    do i = 1, n_lattices
       lat => lattices(i)%obj
-      lattice_group = create_group(lattices_group, "lattice " // trim(to_str(lat%id())))
-
-      call lat % to_hdf5(lattice_group)
-
-      ! Write name, pitch, and outer universe
-      if (lat % outer > 0) then
-        call write_dataset(lattice_group, "outer", universes(lat % outer) % id)
-      else
-        call write_dataset(lattice_group, "outer", lat % outer)
-      end if
-
-      call close_group(lattice_group)
-    end do LATTICE_LOOP
+      call lat % to_hdf5(lattices_group)
+    end do
 
     call close_group(lattices_group)
     call close_group(geom_group)

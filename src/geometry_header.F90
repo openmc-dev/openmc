@@ -141,11 +141,12 @@ module geometry_header
       integer(HID_T), intent(in), value :: group
     end subroutine lattice_to_hdf5_c
 
-    subroutine extend_cells_c(n) bind(C)
-      import C_INT32_t
-      implicit none
-      integer(C_INT32_T), intent(in), value :: n
-    end subroutine extend_cells_c
+    function lattice_outer_c(lat_ptr) bind(C, name='lattice_outer') &
+         result(outer)
+      import C_PTR, C_INT32_T
+      type(C_PTR), intent(in), value :: lat_ptr
+      integer(C_INT32_T)             :: outer
+    end function lattice_outer_c
 
     function lattice_universe_c(lat_ptr, i_xyz) &
          bind(C, name='lattice_universe') result(univ)
@@ -155,6 +156,12 @@ module geometry_header
       integer(C_INT), intent(in)        :: i_xyz(3)
       integer(C_INT32_T)                :: univ
     end function lattice_universe_c
+
+    subroutine extend_cells_c(n) bind(C)
+      import C_INT32_t
+      implicit none
+      integer(C_INT32_T), intent(in), value :: n
+    end subroutine extend_cells_c
   end interface
 
 !===============================================================================
@@ -177,8 +184,6 @@ module geometry_header
   type, abstract :: Lattice
     type(C_PTR) :: ptr
 
-    integer              :: outside          ! Material to fill area outside
-    integer              :: outer            ! universe to tile outside the lat
     logical              :: is_3d            ! Lattice has cells on z axis
     integer, allocatable :: offset(:,:,:,:)  ! Distribcell offsets
   contains
@@ -189,6 +194,7 @@ module geometry_header
     procedure :: get => lattice_get
     procedure :: get_indices => lattice_get_indices
     procedure :: get_local_xyz => lattice_get_local_xyz
+    procedure :: outer => lattice_outer
     procedure :: to_hdf5 => lattice_to_hdf5
   end type Lattice
 
@@ -322,6 +328,12 @@ contains
     real(C_DOUBLE)             :: local_xyz(3)
     call lattice_get_local_xyz_c(this % ptr, global_xyz, i_xyz, local_xyz)
   end function lattice_get_local_xyz
+
+  function lattice_outer(this) result(outer)
+    class(Lattice), intent(in) :: this
+    integer(C_INT32_T)         :: outer
+    outer = lattice_outer_c(this % ptr)
+  end function lattice_outer
 
   subroutine lattice_to_hdf5(this, group)
     class(Lattice), intent(in) :: this

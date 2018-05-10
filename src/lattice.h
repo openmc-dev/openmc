@@ -41,7 +41,6 @@ class Lattice
 public:
   int32_t id;                        //! Universe ID number
   std::string name;                  //! User-defined name
-  //std::vector<double> pitch;         //! Pitch along each basis
   std::vector<int32_t> universes;    //! Universes filling each lattice tile
   int32_t outer{NO_OUTER_UNIVERSE};  //! Universe tiled outside the lattice
   //std::vector<int32_t> offset;       //! Distribcell offsets

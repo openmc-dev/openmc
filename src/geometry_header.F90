@@ -198,7 +198,6 @@ module geometry_header
 
   type, extends(Lattice) :: RectLattice
     integer              :: n_cells(3)     ! Number of cells along each axis
-    real(8), allocatable :: lower_left(:)  ! Global lower-left corner of lat
   end type RectLattice
 
 !===============================================================================
@@ -208,7 +207,6 @@ module geometry_header
   type, extends(Lattice) :: HexLattice
     integer              :: n_rings   ! Number of radial ring cell positoins
     integer              :: n_axial   ! Number of axial cell positions
-    real(8), allocatable :: center(:) ! Global center of lattice
   end type HexLattice
 
 !===============================================================================

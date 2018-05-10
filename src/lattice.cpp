@@ -272,11 +272,57 @@ RectLattice::get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const
 void
 RectLattice::to_hdf5_inner(hid_t lat_group) const
 {
+  // Write basic lattice information.
+  write_string(lat_group, "type", "rectangular", false);
   if (is_3d) {
     write_double_1D(lat_group, "pitch", pitch);
+    write_double_1D(lat_group, "lower_left", lower_left);
+    write_int(lat_group, "dimension", n_cells, false);
   } else {
-    std::array<double, 2> out {{pitch[0], pitch[1]}};
-    write_double_1D(lat_group, "pitch", out);
+    std::array<double, 2> pitch_short {{pitch[0], pitch[1]}};
+    write_double_1D(lat_group, "pitch", pitch_short);
+    std::array<double, 2> ll_short {{lower_left[0], lower_left[1]}};
+    write_double_1D(lat_group, "lower_left", ll_short);
+    std::array<int, 2> nc_short {{n_cells[0], n_cells[1]}};
+    write_int(lat_group, "dimension", nc_short, false);
+  }
+
+  // Write the universe ids.  The convention here is to switch the ordering on
+  // the y-axis to match the way universes are input in a text file.
+  if (is_3d) {
+    hsize_t nx {static_cast<hsize_t>(n_cells[0])};
+    hsize_t ny {static_cast<hsize_t>(n_cells[1])};
+    hsize_t nz {static_cast<hsize_t>(n_cells[2])};
+    int out[nx*ny*nz];
+
+    for (int m = 0; m < nz; m++) {
+      for (int k = 0; k < ny; k++) {
+        for (int j = 0; j < nx; j++) {
+          int indx1 = nx*ny*m + nx*k + j;
+          int indx2 = nx*ny*m + nx*(ny-k-1) + j;
+          out[indx2] = universes_c[universes[indx1]]->id;
+        }
+      }
+    }
+
+    hsize_t dims[3] {nz, ny, nx};
+    write_int(lat_group, 3, dims, "universes", out, false);
+
+  } else {
+    hsize_t nx {static_cast<hsize_t>(n_cells[0])};
+    hsize_t ny {static_cast<hsize_t>(n_cells[1])};
+    int out[nx*ny];
+
+    for (int k = 0; k < ny; k++) {
+      for (int j = 0; j < nx; j++) {
+        int indx1 = nx*k + j;
+        int indx2 = nx*(ny-k-1) + j;
+        out[indx2] = universes_c[universes[indx1]]->id;
+      }
+    }
+
+    hsize_t dims[3] {1, ny, nx};
+    write_int(lat_group, 3, dims, "universes", out, false);
   }
 }
 
@@ -670,12 +716,45 @@ HexLattice::get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const
 void
 HexLattice::to_hdf5_inner(hid_t lat_group) const
 {
+  // Write basic lattice information.
+  write_string(lat_group, "type", "hexagonal", false);
+  write_int(lat_group, 0, nullptr, "n_rings", &n_rings, false);
+  write_int(lat_group, 0, nullptr, "n_axial", &n_axial, false);
   if (is_3d) {
     write_double_1D(lat_group, "pitch", pitch);
+    write_double_1D(lat_group, "center", center);
   } else {
-    std::array<double, 1> out {{pitch[0]}};
-    write_double_1D(lat_group, "pitch", out);
+    std::array<double, 1> pitch_short {{pitch[0]}};
+    write_double_1D(lat_group, "pitch", pitch_short);
+    std::array<double, 2> center_short {{center[0], center[1]}};
+    write_double_1D(lat_group, "center", center_short);
   }
+
+  // Write the universe ids.
+  hsize_t nx {static_cast<hsize_t>(2*n_rings - 1)};
+  hsize_t ny {static_cast<hsize_t>(2*n_rings - 1)};
+  hsize_t nz {static_cast<hsize_t>(n_axial)};
+  int out[nx*ny*nz];
+
+  for (int m = 0; m < nz; m++) {
+    for (int k = 0; k < ny; k++) {
+      for (int j = 0; j < nx; j++) {
+        int indx = nx*ny*m + nx*k + j;
+        if (j + k < n_rings - 1) {
+          // This array position is never used; put a -1 to indicate this.
+          out[indx] = -1;
+        } else if (j + k > 3*n_rings - 3) {
+          // This array position is never used; put a -1 to indicate this.
+          out[indx] = -1;
+        } else {
+          out[indx] = universes_c[universes[indx]]->id;
+        }
+      }
+    }
+  }
+
+  hsize_t dims[3] {nz, ny, nx};
+  write_int(lat_group, 3, dims, "universes", out, false);
 }
 
 //==============================================================================

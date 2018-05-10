@@ -1284,15 +1284,6 @@ contains
         call fatal_error("Rectangular lattice must be two or three dimensions.")
       end if
 
-      ! Read lattice lower-left location
-      if (node_word_count(node_lat, "lower_left") /= n) then
-        call fatal_error("Number of entries on <lower_left> must be the same &
-             &as the number of entries on <dimension>.")
-      end if
-
-      allocate(lat % lower_left(n))
-      call get_node_array(node_lat, "lower_left", lat % lower_left)
-
       ! TODO: Remove deprecation warning in a future release.
       if (check_for_node(node_lat, "type")) then
         call warning("The use of 'type' is no longer needed.  The utility &
@@ -1364,19 +1355,6 @@ contains
         lat % n_axial = 1
         lat % is_3d = .false.
       end if
-
-      ! Read lattice lower-left location
-      n = node_word_count(node_lat, "center")
-      if (lat % is_3d .and. n /= 3) then
-        call fatal_error("A hexagonal lattice with <n_axial> must have &
-             &<center> specified by 3 numbers.")
-      else if ((.not. lat % is_3d) .and. n /= 2) then
-        call fatal_error("A hexagonal lattice without <n_axial> must have &
-             &<center> specified by 2 numbers.")
-      end if
-
-      allocate(lat % center(n))
-      call get_node_array(node_lat, "center", lat % center)
 
       ! Copy number of dimensions
       n_rings = lat % n_rings

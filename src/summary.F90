@@ -160,8 +160,7 @@ contains
   subroutine write_geometry(file_id)
     integer(HID_T), intent(in) :: file_id
 
-    integer :: i, j, k, m
-    integer, allocatable :: lattice_universes(:,:,:)
+    integer :: i, j
     integer, allocatable :: cell_materials(:)
     integer, allocatable :: cell_ids(:)
     real(8), allocatable :: cell_temperatures(:)
@@ -310,68 +309,6 @@ contains
       else
         call write_dataset(lattice_group, "outer", lat % outer)
       end if
-
-      select type (lat)
-      type is (RectLattice)
-        ! Write lattice type.
-        call write_dataset(lattice_group, "type", "rectangular")
-
-        ! Write lattice dimensions, lower left corner, and pitch
-        if (lat % is_3d) then
-          call write_dataset(lattice_group, "dimension", lat % n_cells)
-          call write_dataset(lattice_group, "lower_left", lat % lower_left)
-        else
-          call write_dataset(lattice_group, "dimension", lat % n_cells(1:2))
-          call write_dataset(lattice_group, "lower_left", lat % lower_left)
-        end if
-
-        ! Write lattice universes.
-        allocate(lattice_universes(lat%n_cells(1), lat%n_cells(2), &
-             &lat%n_cells(3)))
-        do j = 1, lat%n_cells(1)
-          do k = 0, lat%n_cells(2) - 1
-            do m = 1, lat%n_cells(3)
-              lattice_universes(j, k+1, m) = &
-                   universes(lat%get([j-1, lat%n_cells(2)-k-1, m-1])+1)%id
-            end do
-          end do
-        end do
-
-      type is (HexLattice)
-        ! Write lattice type.
-        call write_dataset(lattice_group, "type", "hexagonal")
-
-        ! Write number of lattice cells.
-        call write_dataset(lattice_group, "n_rings", lat%n_rings)
-        call write_dataset(lattice_group, "n_axial", lat%n_axial)
-
-        ! Write lattice center
-        call write_dataset(lattice_group, "center", lat%center)
-
-        ! Write lattice universes.
-        allocate(lattice_universes(2*lat%n_rings - 1, 2*lat%n_rings - 1, &
-             &lat%n_axial))
-        do m = 1, lat%n_axial
-          do k = 1, 2*lat%n_rings - 1
-            do j = 1, 2*lat%n_rings - 1
-              if (j + k < lat%n_rings + 1) then
-                ! This array position is never used; put a -1 to indicate this
-                lattice_universes(j,k,m) = -1
-                cycle
-              else if (j + k > 3*lat%n_rings - 1) then
-                ! This array position is never used; put a -1 to indicate this
-                lattice_universes(j,k,m) = -1
-                cycle
-              end if
-              lattice_universes(j,k,m) = universes(lat%get([j-1,k-1,m-1])+1)%id
-            end do
-          end do
-        end do
-      end select
-
-      ! Write lattice universes
-      call write_dataset(lattice_group, "universes", lattice_universes)
-      deallocate(lattice_universes)
 
       call close_group(lattice_group)
     end do LATTICE_LOOP

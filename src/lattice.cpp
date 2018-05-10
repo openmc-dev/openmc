@@ -50,13 +50,29 @@ Lattice::Lattice(pugi::xml_node lat_node)
 }
 
 void
-Lattice::to_hdf5(hid_t lat_group) const
+Lattice::to_hdf5(hid_t lattices_group) const
 {
+  // Make a group for the lattice.
+  std::string group_name {"lattice "};
+  group_name += std::to_string(id);
+  hid_t lat_group = create_group(lattices_group, group_name);
+
+  // Write the name and outer universe.
   if (!name.empty()) {
     write_string(lat_group, "name", name, false);
   }
 
+  if (outer != NO_OUTER_UNIVERSE) {
+    int32_t outer_id = universes_c[outer]->id;
+    write_int(lat_group, 0, nullptr, "outer", &outer_id, false);
+  } else {
+    write_int(lat_group, 0, nullptr, "outer", &outer, false);
+  }
+
+  // Call subclass-overriden function to fill in other details.
   to_hdf5_inner(lat_group);
+
+  close_group(lat_group);
 }
 
 //==============================================================================
@@ -150,6 +166,7 @@ RectLattice::operator[](const int i_xyz[3])
 void
 RectLattice::adjust_indices()
 {
+  // Adjust the indices for the universes array.
   int nx = n_cells[0];
   int ny = n_cells[1];
   int nz = n_cells[2];
@@ -157,8 +174,30 @@ RectLattice::adjust_indices()
     for (int iy = 0; iy < ny; iy++) {
       for (int ix = 0; ix < nx; ix++) {
         int indx = nx*ny*iz + nx*iy + ix;
-        universes[indx] = universe_dict[universes[indx]];
+        int uid = universes[indx];
+        auto search = universe_dict.find(uid);
+        if (search != universe_dict.end()) {
+          universes[indx] = search->second;
+        } else {
+          std::stringstream err_msg;
+          err_msg << "Invalid universe number " << uid << " specified on "
+               "lattice " << id;
+          fatal_error(err_msg);
+        }
       }
+    }
+  }
+
+  // Adjust the index for the outer universe.
+  if (outer != NO_OUTER_UNIVERSE) {
+    auto search = universe_dict.find(outer);
+    if (search != universe_dict.end()) {
+      outer = search->second;
+    } else {
+      std::stringstream err_msg;
+      err_msg << "Invalid universe number " << outer << " specified on "
+           "lattice " << id;
+      fatal_error(err_msg);
     }
   }
 }
@@ -493,6 +532,7 @@ HexLattice::operator[](const int i_xyz[3])
 void
 HexLattice::adjust_indices()
 {
+  // Adjust the indices for the universes array.
   for (int iz = 0; iz < n_axial; iz++) {
     for (int ia = 0; ia < 2*n_rings-1; ia++) {
       for (int ix = 0; ix < 2*n_rings-1; ix++) {
@@ -501,9 +541,31 @@ HexLattice::adjust_indices()
           int indx = (2*n_rings-1)*(2*n_rings-1) * iz
                       + (2*n_rings-1) * ia
                       + ix;
-          universes[indx] = universe_dict[universes[indx]];
+          int uid = universes[indx];
+          auto search = universe_dict.find(uid);
+          if (search != universe_dict.end()) {
+            universes[indx] = search->second;
+          } else {
+            std::stringstream err_msg;
+            err_msg << "Invalid universe number " << uid << " specified on "
+                 "lattice " << id;
+            fatal_error(err_msg);
+          }
         }
       }
+    }
+  }
+
+  // Adjust the index for the outer universe.
+  if (outer != NO_OUTER_UNIVERSE) {
+    auto search = universe_dict.find(outer);
+    if (search != universe_dict.end()) {
+      outer = search->second;
+    } else {
+      std::stringstream err_msg;
+      err_msg << "Invalid universe number " << outer << " specified on "
+           "lattice " << id;
+      fatal_error(err_msg);
     }
   }
 }
@@ -823,6 +885,8 @@ extern "C" {
     local_xyz[1] = xyz[1];
     local_xyz[2] = xyz[2];
   }
+
+  int32_t lattice_outer(Lattice *lat) {return lat->outer;}
 
   void lattice_to_hdf5(Lattice *lat, hid_t group) {lat->to_hdf5(group);}
 

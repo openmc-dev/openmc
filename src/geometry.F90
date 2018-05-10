@@ -258,14 +258,14 @@ contains
 
             else
               ! Particle is outside the lattice.
-              if (lat % outer == NO_OUTER_UNIVERSE) then
+              if (lat % outer() == NO_OUTER_UNIVERSE) then
                 call warning("Particle " // trim(to_str(p %id)) &
                      // " is outside lattice " // trim(to_str(lat % id())) &
                      // " but the lattice has no defined outer universe.")
                 found = .false.
                 return
               else
-                p % coord(j + 1) % universe = lat % outer
+                p % coord(j + 1) % universe = lat % outer() + 1
               end if
             end if
           end associate

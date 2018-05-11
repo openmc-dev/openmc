@@ -167,24 +167,16 @@ void
 RectLattice::adjust_indices()
 {
   // Adjust the indices for the universes array.
-  int nx = n_cells[0];
-  int ny = n_cells[1];
-  int nz = n_cells[2];
-  for (int iz = 0; iz < nz; iz++) {
-    for (int iy = 0; iy < ny; iy++) {
-      for (int ix = 0; ix < nx; ix++) {
-        int indx = nx*ny*iz + nx*iy + ix;
-        int uid = universes[indx];
-        auto search = universe_dict.find(uid);
-        if (search != universe_dict.end()) {
-          universes[indx] = search->second;
-        } else {
-          std::stringstream err_msg;
-          err_msg << "Invalid universe number " << uid << " specified on "
-               "lattice " << id;
-          fatal_error(err_msg);
-        }
-      }
+  for (auto it = this->begin(); it != this->end(); ++it) {
+    int uid = *it;
+    auto search = universe_dict.find(uid);
+    if (search != universe_dict.end()) {
+      *it = search->second;
+    } else {
+      std::stringstream err_msg;
+      err_msg << "Invalid universe number " << uid << " specified on "
+           "lattice " << id;
+      fatal_error(err_msg);
     }
   }
 
@@ -529,30 +521,34 @@ HexLattice::operator[](const int i_xyz[3])
 
 //==============================================================================
 
+HexLatticeIter
+HexLattice::begin()
+{
+  return HexLatticeIter(*this, n_rings-1, 0, 0);
+}
+
+HexLatticeIter
+HexLattice::end()
+{
+  return HexLatticeIter(*this, n_rings, 2*n_rings-2, n_axial-1);
+}
+
+//==============================================================================
+
 void
 HexLattice::adjust_indices()
 {
   // Adjust the indices for the universes array.
-  for (int iz = 0; iz < n_axial; iz++) {
-    for (int ia = 0; ia < 2*n_rings-1; ia++) {
-      for (int ix = 0; ix < 2*n_rings-1; ix++) {
-        int i_xyz[3] {ix+1, ia+1, iz+1};
-        if (are_valid_indices(i_xyz)) {
-          int indx = (2*n_rings-1)*(2*n_rings-1) * iz
-                      + (2*n_rings-1) * ia
-                      + ix;
-          int uid = universes[indx];
-          auto search = universe_dict.find(uid);
-          if (search != universe_dict.end()) {
-            universes[indx] = search->second;
-          } else {
-            std::stringstream err_msg;
-            err_msg << "Invalid universe number " << uid << " specified on "
-                 "lattice " << id;
-            fatal_error(err_msg);
-          }
-        }
-      }
+  for (auto it = this->begin(); it != this->end(); ++it) {
+    int uid = *it;
+    auto search = universe_dict.find(uid);
+    if (search != universe_dict.end()) {
+      *it = search->second;
+    } else {
+      std::stringstream err_msg;
+      err_msg << "Invalid universe number " << uid << " specified on lattice "
+              << id;
+      fatal_error(err_msg);
     }
   }
 
@@ -817,6 +813,44 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
 
   hsize_t dims[3] {nz, ny, nx};
   write_int(lat_group, 3, dims, "universes", out, false);
+}
+
+//==============================================================================
+// HexLatticeIter implementation
+//==============================================================================
+
+HexLatticeIter&
+HexLatticeIter::operator++()
+{
+  while (iz < nz) {
+    if (iy >= ny) {
+      // This axial layer is finished.  Move to the next one.
+      ++iz;
+      iy = 0;
+      ix = n_rings - 2;
+    } else {
+      ++ix;
+      if (ix + iy < n_rings - 1) {
+        // We're in the lower-left dead zone.  Keep iterating ix.
+      } else if (ix >= nx) {
+        // End of this row.  Move to the next.
+        ix = -1;
+        ++iy;
+      } else if (ix + iy > 3*n_rings - 3) {
+        // We're in the upper-right dead zone.  Move to the next row.
+        ix = -1;
+        ++iy;
+      } else {
+        return *this;
+      }
+    }
+  }
+
+  // We've passed the end of the lattice.  Return an end iterator.
+  ix = n_rings;
+  iy = 2*n_rings-2;
+  iz = nz-1;
+  return *this;
 }
 
 //==============================================================================

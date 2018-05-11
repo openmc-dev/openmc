@@ -9,7 +9,7 @@ import openmc
 import openmc.checkvalue as cv
 from openmc.region import Region
 
-_VERSION_SUMMARY = 5
+_VERSION_SUMMARY = 6
 
 
 class Summary(object):
@@ -26,6 +26,8 @@ class Summary(object):
     nuclides : dict
         Dictionary whose keys are nuclide names and values are atomic weight
         ratios.
+    macroscopics : list
+        Names of macroscopic data sets
     version: tuple of int
         Version of OpenMC
 
@@ -44,13 +46,15 @@ class Summary(object):
         self._fast_materials = {}
         self._fast_surfaces = {}
         self._fast_cells = {}
-        self._fast_universes  = {}
+        self._fast_universes = {}
         self._fast_lattices = {}
 
         self._materials = openmc.Materials()
         self._nuclides = {}
+        self._macroscopics = []
 
         self._read_nuclides()
+        self._read_macroscopics()
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", openmc.IDWarning)
             self._read_geometry()
@@ -72,14 +76,25 @@ class Summary(object):
         return self._nuclides
 
     @property
+    def macroscopics(self):
+        return self._macroscopics
+
+    @property
     def version(self):
         return tuple(self._f.attrs['openmc_version'])
 
     def _read_nuclides(self):
-        names = self._f['nuclides/names'].value
-        awrs = self._f['nuclides/awrs'].value
-        for name, awr in zip(names, awrs):
-            self._nuclides[name.decode()] = awr
+        if 'nuclides/names' in self._f:
+            names = self._f['nuclides/names'].value
+            awrs = self._f['nuclides/awrs'].value
+            for name, awr in zip(names, awrs):
+                self._nuclides[name.decode()] = awr
+
+    def _read_macroscopics(self):
+        if 'macroscopics/names' in self._f:
+            names = self._f['macroscopics/names'].value
+            for name in names:
+                self._macroscopics = name.decode()
 
     def _read_geometry(self):
         # Read in and initialize the Materials and Geometry

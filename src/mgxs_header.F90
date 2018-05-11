@@ -4,7 +4,7 @@ module mgxs_header
   use, intrinsic :: ISO_C_BINDING
 
   use algorithm,       only: find, sort
-  use constants,       only: MAX_WORD_LEN, ZERO, ONE, TWO, PI
+  use constants,       only: MAX_WORD_LEN, ZERO, ONE, TWO, PI, MACROSCOPIC_AWR
   use error,           only: fatal_error
   use hdf5_interface
   use material_header, only: material
@@ -264,7 +264,7 @@ contains
       if (attribute_exists(xs_id, "atomic_weight_ratio")) then
         call read_attribute(this % awr, xs_id, "atomic_weight_ratio")
       else
-        this % awr = -ONE
+        this % awr = MACROSCOPIC_AWR
       end if
 
       ! Determine temperatures available
@@ -392,9 +392,9 @@ contains
 
       ! Store the dimensionality of the data in order_dim.
       ! For Legendre data, we usually refer to it as Pn where n is the order.
-      ! However Pn has n+1 sets of points (since you need to
-      ! the count the P0 moment).  Adjust for that.  Histogram and Tabular
-      ! formats dont need this adjustment.
+      ! However Pn has n+1 sets of points (since you need to count the P0
+      ! moment). Adjust for that. Histogram and Tabular formats dont need this
+      ! adjustment.
       if (this % scatter_format == ANGLE_LEGENDRE) then
         order_dim = order_dim + 1
       else

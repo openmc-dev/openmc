@@ -37,6 +37,20 @@ module geometry_header
       integer(C_INT32_T), intent(in), value :: id
     end subroutine cell_set_id_c
 
+    function cell_type_c(cell_ptr) bind(C, name='cell_type') result(type)
+      import C_PTR, C_INT
+      implicit none
+      type(C_PTR), intent(in), value :: cell_ptr
+      integer(C_INT)                 :: type
+    end function cell_type_c
+
+    subroutine cell_set_type_c(cell_ptr, type) bind(C, name='cell_set_type')
+      import C_PTR, C_INT
+      implicit none
+      type(C_PTR),    intent(in), value :: cell_ptr
+      integer(C_INT), intent(in), value :: type
+    end subroutine cell_set_type_c
+
     function cell_universe_c(cell_ptr) bind(C, name='cell_universe') &
          result(universe)
       import C_PTR, C_INT32_T
@@ -230,8 +244,6 @@ module geometry_header
   type Cell
     type(C_PTR) :: ptr
 
-    integer :: type                        ! Type of cell (normal, universe,
-                                           !  lattice)
     integer :: fill                        ! universe # filling this cell
     integer :: instances                   ! number of instances of this cell in
                                            !  the geom
@@ -257,6 +269,8 @@ module geometry_header
 
     procedure :: id => cell_id
     procedure :: set_id => cell_set_id
+    procedure :: type => cell_type
+    procedure :: set_type => cell_set_type
     procedure :: universe => cell_universe
     procedure :: set_universe => cell_set_universe
     procedure :: simple => cell_simple
@@ -354,6 +368,18 @@ contains
     integer(C_INT32_T), intent(in) :: id
     call cell_set_id_c(this % ptr, id)
   end subroutine cell_set_id
+
+  function cell_type(this) result(type)
+    class(Cell), intent(in) :: this
+    integer(C_INT)          :: type
+    type = cell_type_c(this % ptr)
+  end function cell_type
+
+  subroutine cell_set_type(this, type)
+    class(Cell),    intent(in) :: this
+    integer(C_INT), intent(in) :: type
+    call cell_set_type_c(this % ptr, type)
+  end subroutine cell_set_type
 
   function cell_universe(this) result(universe)
     class(Cell), intent(in) :: this
@@ -544,7 +570,7 @@ contains
     err = 0
     if (index >= 1 .and. index <= size(cells)) then
       associate (c => cells(index))
-        type = c % type
+        type = c % type()
         select case (type)
         case (FILL_MATERIAL)
           n = size(c % material)
@@ -595,7 +621,7 @@ contains
           if (allocated(c % material)) deallocate(c % material)
           allocate(c % material(n))
 
-          c % type = FILL_MATERIAL
+          call c % set_type(FILL_MATERIAL)
           do i = 1, n
             j = indices(i)
             if ((j >= 1 .and. j <= n_materials) .or. j == MATERIAL_VOID) then
@@ -607,9 +633,9 @@ contains
             end if
           end do
         case (FILL_UNIVERSE)
-          c % type = FILL_UNIVERSE
+          call c % set_type(FILL_UNIVERSE)
         case (FILL_LATTICE)
-          c % type = FILL_LATTICE
+          call c % set_type(FILL_LATTICE)
         end select
       end associate
     else

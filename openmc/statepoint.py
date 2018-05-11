@@ -407,16 +407,9 @@ class StatePoint(object):
                     scores = group['score_bins'].value
                     n_score_bins = group['n_score_bins'].value
 
-                    # Read scattering moment order strings (e.g., P3, Y1,2, etc.)
-                    moments = group['moment_orders'].value
-
                     # Add the scores to the Tally
                     for j, score in enumerate(scores):
                         score = score.decode()
-
-                        # If this is a moment, use generic moment order
-                        pattern = r'-n$|-pn$|-yn$'
-                        score = re.sub(pattern, '-' + moments[j].decode(), score)
 
                         tally.scores.append(score)
 

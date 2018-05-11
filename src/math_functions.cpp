@@ -606,19 +606,6 @@ void calc_zn_c(int n, double rho, double phi, double zn[]) {
   int p;
   int q;
 
-  const double SQRT_N_1[11] =
-      {std::sqrt(1.), std::sqrt(2.), std::sqrt(3.), std::sqrt(4.),
-       std::sqrt(5.), std::sqrt(6.), std::sqrt(7.), std::sqrt(8.),
-       std::sqrt(9.), std::sqrt(10.), std::sqrt(11.)};
-
-  const double SQRT_2N_2[11] =
-      {std::sqrt(2.) * std::sqrt(1.), std::sqrt(2.) * std::sqrt(2.),
-       std::sqrt(2.) * std::sqrt(3.), std::sqrt(2.) * std::sqrt(4.),
-       std::sqrt(2.) * std::sqrt(5.), std::sqrt(2.) * std::sqrt(6.),
-       std::sqrt(2.) * std::sqrt(7.), std::sqrt(2.) * std::sqrt(8.),
-       std::sqrt(2.) * std::sqrt(9.), std::sqrt(2.) * std::sqrt(10.),
-       std::sqrt(2.) * std::sqrt(11.)};
-
   // n == radial degree
   // m == azimuthal frequency
 
@@ -683,11 +670,11 @@ void calc_zn_c(int n, double rho, double phi, double zn[]) {
   for (p = 0; p <= n; p++) {
     for (q = -p; q <= p; q += 2) {
       if (q < 0) {
-        zn[i] = zn_mat[std::abs(q)][p] * sin_phi_vec[std::abs(q) - 1] * SQRT_2N_2[p];
+        zn[i] = zn_mat[std::abs(q)][p] * sin_phi_vec[std::abs(q) - 1];
       } else if (q == 0) {
-        zn[i] = zn_mat[q][p] * SQRT_N_1[p];
+        zn[i] = zn_mat[q][p];
       } else {
-        zn[i] = zn_mat[q][p] * cos_phi_vec[q] * SQRT_2N_2[p];
+        zn[i] = zn_mat[q][p] * cos_phi_vec[q];
       }
       i++;
     }

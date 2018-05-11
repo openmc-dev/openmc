@@ -49,27 +49,27 @@ module input_xml
 
   interface
     subroutine adjust_indices_c() bind(C)
-      use ISO_C_BINDING
-      implicit none
     end subroutine adjust_indices_c
 
     subroutine read_surfaces(node_ptr) bind(C)
-      use ISO_C_BINDING
-      implicit none
+      import C_PTR
       type(C_PTR) :: node_ptr
     end subroutine read_surfaces
 
     subroutine read_cells(node_ptr) bind(C)
-      use ISO_C_BINDING
-      implicit none
+      import C_PTR
       type(C_PTR) :: node_ptr
     end subroutine read_cells
 
     subroutine read_lattices(node_ptr) bind(C)
-      use ISO_C_BINDING
-      implicit none
+      import C_PTR
       type(C_PTR) :: node_ptr
     end subroutine read_lattices
+
+    function find_root_universe() bind(C) result(root)
+      import C_INT32_T
+      integer(C_INT32_T) :: root
+    end function find_root_universe
   end interface
 
 contains
@@ -930,8 +930,8 @@ contains
 
   subroutine read_geometry_xml()
 
-    integer :: i, j, k, m
-    integer :: n, n_mats, n_x, n_y, n_z, n_rings, n_rlats, n_hlats
+    integer :: i, j, k
+    integer :: n, n_mats, n_z, n_rings, n_rlats, n_hlats
     integer :: id
     integer :: univ_id
     integer :: n_cells_in_univ
@@ -951,7 +951,6 @@ contains
     type(XMLNode), allocatable :: node_rlat_list(:)
     type(XMLNode), allocatable :: node_hlat_list(:)
     type(VectorInt) :: tokens
-    type(VectorInt) :: fill_univ_ids ! List of fill universe IDs
     type(VectorInt) :: univ_ids      ! List of all universe IDs
     type(DictIntInt) :: cells_in_univ_dict ! Used to count how many cells each
                                            ! universe contains
@@ -1039,8 +1038,6 @@ contains
 
       if (check_for_node(node_cell, "fill")) then
         call get_node_value(node_cell, "fill", c % fill)
-        if (find(fill_univ_ids, c % fill) == -1) &
-             call fill_univ_ids % push_back(c % fill)
       else
         c % fill = NONE
       end if
@@ -1284,43 +1281,6 @@ contains
         call fatal_error("Rectangular lattice must be two or three dimensions.")
       end if
 
-      ! TODO: Remove deprecation warning in a future release.
-      if (check_for_node(node_lat, "type")) then
-        call warning("The use of 'type' is no longer needed.  The utility &
-             &openmc/src/utils/update_inputs.py can be used to automatically &
-             &update geometry.xml files.")
-      end if
-
-      ! Copy number of dimensions
-      n_x = lat % n_cells(1)
-      n_y = lat % n_cells(2)
-      n_z = lat % n_cells(3)
-
-      ! Check that number of universes matches size
-      n = node_word_count(node_lat, "universes")
-      if (n /= n_x*n_y*n_z) then
-        call fatal_error("Number of universes on <universes> does not match &
-             &size of lattice " // trim(to_str(lat % id())) // ".")
-      end if
-
-      ! Read universes
-      do m = 0, n_z-1
-        do k = 0, n_y - 1
-          do j = 0, n_x - 1
-            univ_id = lat % get([j, k, m])
-            if (find(fill_univ_ids, univ_id) == -1) &
-                 call fill_univ_ids % push_back(univ_id)
-          end do
-        end do
-      end do
-
-      ! Read outer universe for area outside lattice.
-      if (check_for_node(node_lat, "outer")) then
-        call get_node_value(node_lat, "outer", univ_id)
-        if (find(fill_univ_ids, univ_id) == -1) &
-             call fill_univ_ids % push_back(univ_id)
-      end if
-
       ! Add lattice to dictionary
       call lattice_dict % set(lat % id(), i)
 
@@ -1351,31 +1311,6 @@ contains
       n_rings = lat % n_rings
       n_z = lat % n_axial
 
-      ! Check that number of universes matches size
-      n = node_word_count(node_lat, "universes")
-      if (n /= (3*n_rings**2 - 3*n_rings + 1)*n_z) then
-        call fatal_error("Number of universes on <universes> does not match &
-             &size of lattice " // trim(to_str(lat % id())) // ".")
-      end if
-
-      ! Read universes
-      do m = 0, n_z-1
-        do k = 0, 2*n_rings-2
-          do j = 0, 2*n_rings-2
-            univ_id = lat % get([j, k, m])
-            if (find(fill_univ_ids, univ_id) == -1) &
-                 call fill_univ_ids % push_back(univ_id)
-          end do
-        end do
-      end do
-
-      ! Read outer universe for area outside lattice.
-      if (check_for_node(node_lat, "outer")) then
-        call get_node_value(node_lat, "outer", univ_id)
-        if (find(fill_univ_ids, univ_id) == -1) &
-             call fill_univ_ids % push_back(univ_id)
-      end if
-
       ! Add lattice to dictionary
       call lattice_dict % set(lat % id(), n_rlats + i)
 
@@ -1395,19 +1330,9 @@ contains
         n_cells_in_univ = cells_in_univ_dict % get(u % id)
         allocate(u % cells(n_cells_in_univ))
         u % cells(:) = 0
-
-        ! Check whether universe is a fill universe
-        if (find(fill_univ_ids, u % id) == -1) then
-          if (root_universe > 0) then
-            call fatal_error("Two or more universes are not used as fill &
-                 &universes, so it is not possible to distinguish which one &
-                 &is the root universe.")
-          else
-            root_universe = i
-          end if
-        end if
       end associate
     end do
+    root_universe = find_root_universe() + 1
 
     do i = 1, n_cells
       ! Get index in universes array

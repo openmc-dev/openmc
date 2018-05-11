@@ -193,7 +193,7 @@ contains
       call c % to_hdf5(cell_group)
 
       ! Write information on what fills this cell
-      select case (c%type)
+      select case (c%type())
       case (FILL_MATERIAL)
         call write_dataset(cell_group, "fill_type", "material")
 

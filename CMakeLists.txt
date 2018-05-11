@@ -435,6 +435,7 @@ set(LIBOPENMC_CXX_SRC
   src/cell.cpp
   src/initialize.cpp
   src/finalize.cpp
+  src/geometry_aux.cpp
   src/hdf5_interface.cpp
   src/lattice.cpp
   src/message_passing.cpp

@@ -13,6 +13,14 @@
 namespace openmc {
 
 //==============================================================================
+// Constants
+//==============================================================================
+
+extern "C" int FILL_MATERIAL;
+extern "C" int FILL_UNIVERSE;
+extern "C" int FILL_LATTICE;
+
+//==============================================================================
 // Global variables
 //==============================================================================
 
@@ -48,8 +56,13 @@ class Cell
 public:
   int32_t id;                //!< Unique ID
   std::string name{""};      //!< User-defined name
+  int type;                  //!< Material, universe, or lattice
   int32_t universe;          //!< Universe # this cell is in
   int32_t fill;              //!< Universe # filling this cell
+
+  //! Material within this cell.  May be multiple materials for distribcell.
+  //! C_NONE signifies a universe.
+  std::vector<int32_t> material;
 
   //! Definition of spatial region as Boolean expression of half-spaces
   std::vector<std::int32_t> region;

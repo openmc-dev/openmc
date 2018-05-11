@@ -104,6 +104,9 @@ public:
 
   int32_t& operator[](const int i_xyz[3]);
 
+  std::vector<int32_t>::iterator begin() {return universes.begin();}
+  std::vector<int32_t>::iterator end() {return universes.end();}
+
   void adjust_indices();
 
   bool are_valid_indices(const int i_xyz[3]) const;
@@ -124,6 +127,11 @@ protected:
   std::array<double, 3> pitch;       //! Lattice tile width along each axis
 };
 
+//==============================================================================
+//==============================================================================
+
+class HexLatticeIter;
+
 class HexLattice : public Lattice
 {
 public:
@@ -132,6 +140,9 @@ public:
   virtual ~HexLattice() {}
 
   int32_t& operator[](const int i_xyz[3]);
+
+  HexLatticeIter begin();
+  HexLatticeIter end();
 
   void adjust_indices();
 
@@ -152,6 +163,53 @@ protected:
   int n_axial;                   //! Number of axial tile positions
   std::array<double, 3> center;  //! Global center of lattice
   std::array<double, 2> pitch;   //! Lattice tile width and height
+
+  friend class HexLatticeIter;
+};
+
+class HexLatticeIter
+{
+public:
+  HexLatticeIter(HexLattice &lat_, int ix_, int iy_, int iz_)
+    : lat(lat_),
+      n_rings(lat_.n_rings),
+      nx(2*lat_.n_rings-1),
+      ny(2*lat_.n_rings-1),
+      nz(lat_.n_axial),
+      ix(ix_),
+      iy(iy_),
+      iz(iz_)
+  {}
+
+  bool operator==(const HexLatticeIter &rhs)
+  {
+    return (&lat == &rhs.lat) && (ix == rhs.ix) && (iy == rhs.iy)
+           && (iz == rhs.iz);
+  };
+
+  bool operator!=(const HexLatticeIter &rhs)
+  {
+    return !(*this == rhs);
+  };
+
+  int32_t& operator*()
+  {
+    int indx = nx*ny*iz + nx*iy + ix;
+    return lat.universes[indx];
+  }
+
+  HexLatticeIter& operator++();
+
+  HexLatticeIter operator++(int)
+  {
+    HexLatticeIter clone(*this);
+    ++(*this);
+    return clone;
+  }
+
+private:
+  HexLattice &lat;
+  int n_rings, nx, ny, nz, ix, iy, iz;
 };
 
 } //  namespace openmc

@@ -43,7 +43,7 @@ class Universe
 public:
   int32_t id;                  //! Unique ID
   int32_t type;
-  std::vector<Cell*> cells;    //! Cells within this universe
+  std::vector<int32_t> cells;  //! Cells within this universe
   double x0, y0, z0;           //! Translation coordinates.
 };
 
@@ -59,6 +59,7 @@ public:
   int type;                  //!< Material, universe, or lattice
   int32_t universe;          //!< Universe # this cell is in
   int32_t fill;              //!< Universe # filling this cell
+  int32_t n_instances{0};    //!< Number of instances of this cell
 
   //! Material within this cell.  May be multiple materials for distribcell.
   //! C_NONE signifies a universe.

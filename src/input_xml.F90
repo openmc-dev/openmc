@@ -11,8 +11,7 @@ module input_xml
   use distribution_univariate
   use endf,             only: reaction_name
   use error,            only: fatal_error, warning, write_message, openmc_err_msg
-  use geometry,         only: calc_offsets, maximum_levels, count_instance, &
-                              neighbor_lists
+  use geometry,         only: calc_offsets, maximum_levels, neighbor_lists
   use geometry_header
   use hdf5_interface
   use list_header,      only: ListChar, ListInt, ListReal
@@ -50,6 +49,11 @@ module input_xml
   interface
     subroutine adjust_indices_c() bind(C)
     end subroutine adjust_indices_c
+
+    subroutine count_instances_c(univ_indx) bind(C, name='count_instances')
+      import C_INT32_T
+      integer(C_INT32_T), intent(in), value :: univ_indx
+    end subroutine
 
     subroutine read_surfaces(node_ptr) bind(C)
       import C_PTR
@@ -139,7 +143,7 @@ contains
 
     ! Perform some final operations to set up the geometry
     call adjust_indices()
-    call count_instance(universes(root_universe))
+    call count_instances_c(root_universe-1)
 
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
@@ -1030,7 +1034,6 @@ contains
       c % ptr = cell_pointer_c(i - 1)
 
       ! Initialize distribcell instances and distribcell index
-      c % instances = 0
       c % distribcell_index = NONE
 
       ! Get pointer to i-th cell node
@@ -3861,19 +3864,19 @@ contains
     do i = 1, n_cells
       associate (c => cells(i))
         if (size(c % material) > 1) then
-          if (size(c % material) /= c % instances) then
+          if (size(c % material) /= c % n_instances()) then
             call fatal_error("Cell " // trim(to_str(c % id())) // " was &
                  &specified with " // trim(to_str(size(c % material))) &
-                 // " materials but has " // trim(to_str(c % instances)) &
+                 // " materials but has " // trim(to_str(c % n_instances())) &
                  // " distributed instances. The number of materials must &
                  &equal one or the number of instances.")
           end if
         end if
         if (size(c % sqrtkT) > 1) then
-          if (size(c % sqrtkT) /= c % instances) then
+          if (size(c % sqrtkT) /= c % n_instances()) then
             call fatal_error("Cell " // trim(to_str(c % id())) // " was &
                  &specified with " // trim(to_str(size(c % sqrtkT))) &
-                 // " temperatures but has " // trim(to_str(c % instances)) &
+                 // " temperatures but has " // trim(to_str(c % n_instances())) &
                  // " distributed instances. The number of temperatures must &
                  &equal one or the number of instances.")
           end if

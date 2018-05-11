@@ -102,7 +102,7 @@ contains
     val = cell_dict % get(id)
     if (val /= EMPTY) then
       this % cell = val
-      this % n_bins = cells(this % cell) % instances
+      this % n_bins = cells(this % cell) % n_instances()
     else
       call fatal_error("Could not find cell " // trim(to_str(id)) &
            &// " specified on tally filter.")

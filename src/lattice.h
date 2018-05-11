@@ -36,6 +36,8 @@ extern std::map<int32_t, int32_t> lattice_dict;
 //! Abstract type for ordered array of universes
 //==============================================================================
 
+class LatticeIter;
+
 class Lattice
 {
 public:
@@ -51,8 +53,11 @@ public:
 
   virtual int32_t& operator[](const int i_xyz[3]) = 0;
 
+  virtual LatticeIter begin();
+  LatticeIter end();
+
   //! Convert internal universe values from IDs to indices using universe_dict.
-  virtual void adjust_indices() = 0;
+  void adjust_indices();
 
   //! Check lattice indices.
   //! @param i_xyz[3] The indices for a lattice tile.
@@ -82,6 +87,15 @@ public:
   virtual std::array<double, 3>
   get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const = 0;
 
+  //! Check flattened lattice index.
+  //! @param indx The index for a lattice tile.
+  //! @return true if the given index fit within the lattice bounds.  False
+  //!   otherwise.
+  virtual bool is_valid_index(int indx) const
+  {
+    return (indx > 0) && (indx < universes.size());
+  }
+
   //! Write all information needed to reconstruct the lattice to an HDF5 group.
   //! @param group_id An HDF5 group id.
   void to_hdf5(hid_t group_id) const;
@@ -90,6 +104,44 @@ protected:
   bool is_3d;  //! Has divisions along the z-axis
 
   virtual void to_hdf5_inner(hid_t group_id) const = 0;
+};
+
+class LatticeIter
+{
+public:
+  LatticeIter(Lattice &lat_, int indx_)
+    : lat(lat_),
+      indx(indx_)
+  {}
+
+  bool operator==(const LatticeIter &rhs)
+  {
+    return (&lat == &rhs.lat) && (indx == rhs.indx);
+  }
+
+  bool operator!=(const LatticeIter &rhs)
+  {
+    return !(*this == rhs);
+  }
+
+  int32_t& operator*()
+  {
+    return lat.universes[indx];
+  }
+
+  LatticeIter& operator++()
+  {
+    while (indx < lat.universes.size()) {
+      ++indx;
+      if (lat.is_valid_index(indx)) return *this;
+    }
+    indx = lat.universes.size();
+    return *this;
+  }
+
+  int indx;
+private:
+  Lattice &lat;
 };
 
 //==============================================================================
@@ -103,11 +155,6 @@ public:
   virtual ~RectLattice() {}
 
   int32_t& operator[](const int i_xyz[3]);
-
-  std::vector<int32_t>::iterator begin() {return universes.begin();}
-  std::vector<int32_t>::iterator end() {return universes.end();}
-
-  void adjust_indices();
 
   bool are_valid_indices(const int i_xyz[3]) const;
 
@@ -130,8 +177,6 @@ protected:
 //==============================================================================
 //==============================================================================
 
-class HexLatticeIter;
-
 class HexLattice : public Lattice
 {
 public:
@@ -141,10 +186,7 @@ public:
 
   int32_t& operator[](const int i_xyz[3]);
 
-  HexLatticeIter begin();
-  HexLatticeIter end();
-
-  void adjust_indices();
+  LatticeIter begin();
 
   bool are_valid_indices(const int i_xyz[3]) const;
 
@@ -156,6 +198,8 @@ public:
   std::array<double, 3>
   get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const;
 
+  bool is_valid_index(int indx) const;
+
   void to_hdf5_inner(hid_t group_id) const;
 
 protected:
@@ -163,53 +207,6 @@ protected:
   int n_axial;                   //! Number of axial tile positions
   std::array<double, 3> center;  //! Global center of lattice
   std::array<double, 2> pitch;   //! Lattice tile width and height
-
-  friend class HexLatticeIter;
-};
-
-class HexLatticeIter
-{
-public:
-  HexLatticeIter(HexLattice &lat_, int ix_, int iy_, int iz_)
-    : lat(lat_),
-      n_rings(lat_.n_rings),
-      nx(2*lat_.n_rings-1),
-      ny(2*lat_.n_rings-1),
-      nz(lat_.n_axial),
-      ix(ix_),
-      iy(iy_),
-      iz(iz_)
-  {}
-
-  bool operator==(const HexLatticeIter &rhs)
-  {
-    return (&lat == &rhs.lat) && (ix == rhs.ix) && (iy == rhs.iy)
-           && (iz == rhs.iz);
-  };
-
-  bool operator!=(const HexLatticeIter &rhs)
-  {
-    return !(*this == rhs);
-  };
-
-  int32_t& operator*()
-  {
-    int indx = nx*ny*iz + nx*iy + ix;
-    return lat.universes[indx];
-  }
-
-  HexLatticeIter& operator++();
-
-  HexLatticeIter operator++(int)
-  {
-    HexLatticeIter clone(*this);
-    ++(*this);
-    return clone;
-  }
-
-private:
-  HexLattice &lat;
-  int n_rings, nx, ny, nz, ix, iy, iz;
 };
 
 } //  namespace openmc

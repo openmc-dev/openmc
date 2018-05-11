@@ -437,16 +437,16 @@ read_cells(pugi::xml_node *node)
   }
 
   // Populate the Universe vector and dictionary.
-  for (Cell *c : cells_c) {
-    int32_t uid = c->universe;
+  for (int i = 0; i < cells_c.size(); i++) {
+    int32_t uid = cells_c[i]->universe;
     auto it = universe_dict.find(uid);
     if (it == universe_dict.end()) {
       universes_c.push_back(new Universe());
       universes_c.back()->id = uid;
-      universes_c.back()->cells.push_back(c);
+      universes_c.back()->cells.push_back(i);
       universe_dict[uid] = universes_c.size() - 1;
     } else {
-      universes_c[it->second]->cells.push_back(c);
+      universes_c[it->second]->cells.push_back(i);
     }
   }
 }
@@ -469,6 +469,8 @@ extern "C" {
   int32_t cell_universe(Cell *c) {return c->universe;}
 
   void cell_set_universe(Cell *c, int32_t universe) {c->universe = universe;}
+
+  int32_t cell_n_instances(Cell *c) {return c->n_instances;}
 
   bool cell_simple(Cell *c) {return c->simple;}
 

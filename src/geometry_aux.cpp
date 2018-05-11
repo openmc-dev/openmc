@@ -11,49 +11,6 @@
 
 namespace openmc {
 
-extern "C" int32_t
-find_root_universe()
-{
-  // Find all the universes listed as a cell fill.
-  std::unordered_set<int32_t> fill_univ_ids;
-  for (Cell *c : cells_c) {
-    fill_univ_ids.insert(c->fill);
-  }
-
-  // Find all the universes contained in a lattice.
-  for (Lattice *lat : lattices_c) {
-    for (auto it = lat->begin(); it != lat->end(); ++it) {
-      fill_univ_ids.insert(*it);
-    }
-    if (lat->outer != NO_OUTER_UNIVERSE) {
-      fill_univ_ids.insert(lat->outer);
-    }
-  }
-
-  // Figure out which universe is not in the set.  This is the root universe.
-  bool root_found {false};
-  int32_t root_univ;
-  for (int32_t i = 0; i < universes_c.size(); i++) {
-    auto search = fill_univ_ids.find(universes_c[i]->id);
-    if (search == fill_univ_ids.end()) {
-      if (root_found) {
-        fatal_error("Two or more universes are not used as fill universes, so "
-                    "it is not possible to distinguish which one is the root "
-                    "universe.");
-      } else {
-        root_found = true;
-        root_univ = i;
-      }
-    }
-  }
-  if (!root_found) fatal_error("Could not find a root universe.  Make sure "
-       "there are no circular dependencies in the geometry.");
-
-  return root_univ;
-}
-
-//==============================================================================
-
 extern "C" void
 adjust_indices_c()
 {
@@ -98,6 +55,72 @@ adjust_indices_c()
   // Change all lattice universe values from IDs to indices.
   for (Lattice *l : lattices_c) {
     l->adjust_indices();
+  }
+}
+
+//==============================================================================
+
+extern "C" int32_t
+find_root_universe()
+{
+  // Find all the universes listed as a cell fill.
+  std::unordered_set<int32_t> fill_univ_ids;
+  for (Cell *c : cells_c) {
+    fill_univ_ids.insert(c->fill);
+  }
+
+  // Find all the universes contained in a lattice.
+  for (Lattice *lat : lattices_c) {
+    for (auto it = lat->begin(); it != lat->end(); ++it) {
+      fill_univ_ids.insert(*it);
+    }
+    if (lat->outer != NO_OUTER_UNIVERSE) {
+      fill_univ_ids.insert(lat->outer);
+    }
+  }
+
+  // Figure out which universe is not in the set.  This is the root universe.
+  bool root_found {false};
+  int32_t root_univ;
+  for (int32_t i = 0; i < universes_c.size(); i++) {
+    auto search = fill_univ_ids.find(universes_c[i]->id);
+    if (search == fill_univ_ids.end()) {
+      if (root_found) {
+        fatal_error("Two or more universes are not used as fill universes, so "
+                    "it is not possible to distinguish which one is the root "
+                    "universe.");
+      } else {
+        root_found = true;
+        root_univ = i;
+      }
+    }
+  }
+  if (!root_found) fatal_error("Could not find a root universe.  Make sure "
+       "there are no circular dependencies in the geometry.");
+
+  return root_univ;
+}
+
+//==============================================================================
+
+extern "C" void
+count_instances(int32_t univ_indx)
+{
+  for (int32_t cell_indx : universes_c[univ_indx]->cells) {
+    Cell &c {*cells_c[cell_indx]};
+    ++c.n_instances;
+
+    if (c.type == FILL_UNIVERSE) {
+      // This cell contains another universe.  Recurse into that universe.
+      count_instances(c.fill-1);  // TODO: off-by-one
+
+    } else if (c.type == FILL_LATTICE) {
+      // This cell contains a lattice.  Recurse into the lattice universes.
+      Lattice &lat {*lattices_c[c.fill-1]}; // TODO: off-by-one
+      for (auto it = lat.begin(); it != lat.end(); ++it) {
+        count_instances(*it);
+      }
+    }
   }
 }
 

@@ -67,6 +67,14 @@ module geometry_header
       integer(C_INT32_T), intent(in), value :: universe
     end subroutine cell_set_universe_c
 
+    function cell_n_instances_c(cell_ptr) bind(C, name='cell_n_instances') &
+        result(n_instances)
+      import C_PTR, C_INT32_T
+      implicit none
+      type(C_PTR), intent(in), value :: cell_ptr
+      integer(C_INT32_T)             :: n_instances
+    end function cell_n_instances_c
+
     function cell_simple_c(cell_ptr) bind(C, name='cell_simple') result(simple)
       import C_PTR, C_BOOL
       implicit none
@@ -245,8 +253,6 @@ module geometry_header
     type(C_PTR) :: ptr
 
     integer :: fill                        ! universe # filling this cell
-    integer :: instances                   ! number of instances of this cell in
-                                           !  the geom
     integer, allocatable :: material(:)    ! Material within cell.  Multiple
                                            !  materials for distribcell
                                            !  instances.  0 signifies a universe
@@ -273,6 +279,7 @@ module geometry_header
     procedure :: set_type => cell_set_type
     procedure :: universe => cell_universe
     procedure :: set_universe => cell_set_universe
+    procedure :: n_instances => cell_n_instances
     procedure :: simple => cell_simple
     procedure :: distance => cell_distance
     procedure :: to_hdf5 => cell_to_hdf5
@@ -392,6 +399,12 @@ contains
     integer(C_INT32_T), intent(in) :: universe
     call cell_set_universe_c(this % ptr, universe)
   end subroutine cell_set_universe
+
+  function cell_n_instances(this) result(n_instances)
+    class(Cell), intent(in) :: this
+    integer(C_INT32_T)      :: n_instances
+    n_instances = cell_n_instances_c(this % ptr)
+  end function cell_n_instances
 
   function cell_simple(this) result(simple)
     class(Cell), intent(in) :: this

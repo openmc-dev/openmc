@@ -2,8 +2,6 @@ module tally_filter_meshsurface
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5
-
   use constants
   use dict_header,         only: EMPTY
   use error
@@ -16,6 +14,7 @@ module tally_filter_meshsurface
 
   implicit none
   private
+  public :: openmc_meshsurface_filter_get_mesh
   public :: openmc_meshsurface_filter_set_mesh
 
 !===============================================================================
@@ -296,6 +295,25 @@ contains
 !                               C API FUNCTIONS
 !===============================================================================
 
+  function openmc_meshsurface_filter_get_mesh(index, index_mesh) result(err) bind(C)
+    ! Get the mesh for a mesh surface filter
+    integer(C_INT32_T), value, intent(in) :: index
+    integer(C_INT32_T), intent(out)       :: index_mesh
+    integer(C_INT) :: err
+
+    err = verify_filter(index)
+    if (err == 0) then
+      select type (f => filters(index) % obj)
+      type is (MeshSurfaceFilter)
+        index_mesh = f % mesh
+      class default
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to set mesh on a non-mesh filter.")
+      end select
+    end if
+  end function openmc_meshsurface_filter_get_mesh
+
+
   function openmc_meshsurface_filter_set_mesh(index, index_mesh) result(err) bind(C)
     ! Set the mesh for a mesh surface filter
     integer(C_INT32_T), value, intent(in) :: index
@@ -304,30 +322,22 @@ contains
 
     integer :: n_dim
 
-    err = 0
-    if (index >= 1 .and. index <= n_filters) then
-      if (allocated(filters(index) % obj)) then
-        select type (f => filters(index) % obj)
-        type is (MeshSurfaceFilter)
-          if (index_mesh >= 1 .and. index_mesh <= n_meshes) then
-            f % mesh = index_mesh
-            n_dim = meshes(index_mesh) % n_dimension
-            f % n_bins = 4*n_dim*product(meshes(index_mesh) % dimension)
-          else
-            err = E_OUT_OF_BOUNDS
-            call set_errmsg("Index in 'meshes' array is out of bounds.")
-          end if
-        class default
-          err = E_INVALID_TYPE
-          call set_errmsg("Tried to set mesh on a non-mesh filter.")
-        end select
-      else
-        err = E_ALLOCATE
-        call set_errmsg("Filter type has not been set yet.")
-      end if
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in filters array out of bounds.")
+    err = verify_filter(index)
+    if (err == 0) then
+      select type (f => filters(index) % obj)
+      type is (MeshSurfaceFilter)
+        if (index_mesh >= 1 .and. index_mesh <= n_meshes) then
+          f % mesh = index_mesh
+          n_dim = meshes(index_mesh) % n_dimension
+          f % n_bins = 4*n_dim*product(meshes(index_mesh) % dimension)
+        else
+          err = E_OUT_OF_BOUNDS
+          call set_errmsg("Index in 'meshes' array is out of bounds.")
+        end if
+      class default
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to set mesh on a non-mesh filter.")
+      end select
     end if
   end function openmc_meshsurface_filter_set_mesh
 

@@ -2,8 +2,6 @@ module tally_filter
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5, only: HID_T
-
   use error
   use string,              only: to_f_string
   use tally_filter_header

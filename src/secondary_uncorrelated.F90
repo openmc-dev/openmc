@@ -1,7 +1,5 @@
 module secondary_uncorrelated
 
-  use hdf5, only: HID_T
-
   use angle_distribution, only: AngleDistribution
   use angleenergy_header, only: AngleEnergy
   use constants, only: ONE, TWO, MAX_WORD_LEN
@@ -9,7 +7,7 @@ module secondary_uncorrelated
        ContinuousTabular, MaxwellEnergy, Evaporation, WattEnergy, DiscretePhoton
   use error, only: warning
   use hdf5_interface, only: read_attribute, open_group, close_group, &
-       object_exists
+       object_exists, HID_T
   use random_lcg, only: prn
 
 !===============================================================================

@@ -113,8 +113,7 @@ class _Domain(metaclass=ABCMeta):
         Length in x-, y-, and z- directions of each cell in mesh overlaid on
         domain.
     limits : list of float
-        Minimum and maximum position in x-, y-, and z-directions where particle
-        center can be placed.
+        Constraint on where particle center can be placed.
     volume : float
         Volume of the container.
 
@@ -158,8 +157,6 @@ class _Domain(metaclass=ABCMeta):
             raise ValueError('Unable to set domain center to {} since it must '
                              'be of length 3'.format(center))
         self._center = [float(x) for x in center]
-        self._limits = None
-        self._cell_length = None
 
     def mesh_cell(self, p):
         """Calculate the index of the cell in a mesh overlaid on the domain in
@@ -211,6 +208,26 @@ class _Domain(metaclass=ABCMeta):
         """
         pass
 
+    @abstractmethod
+    def repel_particles(self, p, q, d, d_new):
+        """Move particles p and q apart according to the following
+        transformation (accounting for boundary conditions on domain):
+
+            r_i^(n+1) = r_i^(n) + 1/2(d_out^(n+1) - d^(n))
+            r_j^(n+1) = r_j^(n) - 1/2(d_out^(n+1) - d^(n))
+
+        Parameters
+        ----------
+        p, q : numpy.ndarray
+            Cartesian coordinates of particle center.
+        d : float
+            distance between centers of particles i and j.
+        d_new : float
+            final distance between centers of particles i and j.
+
+        """
+        pass
+
 
 class _CubicDomain(_Domain):
     """Cubic container in which to pack particles.
@@ -238,7 +255,7 @@ class _CubicDomain(_Domain):
         Length in x-, y-, and z- directions of each cell in mesh overlaid on
         domain.
     limits : list of float
-        Minimum and maximum position in x-, y-, and z-directions where particle
+        Maximum distance from center in x-, y-, or z-direction where particle
         center can be placed.
     volume : float
         Volume of the container.
@@ -256,9 +273,7 @@ class _CubicDomain(_Domain):
     @property
     def limits(self):
         if self._limits is None:
-            xlim = self.length/2 - self.particle_radius
-            self._limits = [[x - xlim for x in self.center],
-                            [x + xlim for x in self.center]]
+            self._limits = [self.length/2 - self.particle_radius]
         return self._limits
 
     @property
@@ -284,9 +299,27 @@ class _CubicDomain(_Domain):
         self._limits = limits
 
     def random_point(self):
-        return [uniform(self.limits[0][0], self.limits[1][0]),
-                uniform(self.limits[0][1], self.limits[1][1]),
-                uniform(self.limits[0][2], self.limits[1][2])]
+        x_max = self.limits[0]
+        return [uniform(-x_max, x_max),
+                uniform(-x_max, x_max),
+                uniform(-x_max, x_max)]
+
+    def repel_particles(self, p, q, d, d_new):
+        # Moving each particle distance 's' away from the other along the line
+        # joining the particle centers will ensure their final distance is
+        # equal to the outer diameter
+        s = (d_new - d)/2
+
+        v = (p - q)/d
+        p += s*v
+        q -= s*v
+
+        # Enforce the rigid boundary by moving each particle back along the
+        # surface normal until it is completely within the container if it
+        # overlaps the surface
+        x_max = self.limits[0]
+        p[:] = np.clip(p, -x_max, x_max)
+        q[:] = np.clip(q, -x_max, x_max)
 
 
 class _CylindricalDomain(_Domain):
@@ -317,8 +350,8 @@ class _CylindricalDomain(_Domain):
         Length in x-, y-, and z- directions of each cell in mesh overlaid on
         domain.
     limits : list of float
-        Minimum and maximum position in x-, y-, and z-directions where particle
-        center can be placed.
+        Maximum radial distance and maximum distance from center in z-direction
+        where particle center can be placed.
     volume : float
         Volume of the container.
 
@@ -340,12 +373,8 @@ class _CylindricalDomain(_Domain):
     @property
     def limits(self):
         if self._limits is None:
-            xlim = self.length/2 - self.particle_radius
-            rlim = self.radius - self.particle_radius
-            self._limits = [[self.center[0] - rlim, self.center[1] - rlim,
-                             self.center[2] - xlim],
-                            [self.center[0] + rlim, self.center[1] + rlim,
-                             self.center[2] + xlim]]
+            self._limits = [self.radius - self.particle_radius,
+                            self.length/2 - self.particle_radius]
         return self._limits
 
     @property
@@ -377,10 +406,37 @@ class _CylindricalDomain(_Domain):
         self._limits = limits
 
     def random_point(self):
-        r = sqrt(uniform(0, (self.radius - self.particle_radius)**2))
+        r_max = self.limits[0]
+        z_max = self.limits[1]
+        r = sqrt(uniform(0, r_max**2))
         t = uniform(0, 2*pi)
-        return [r*cos(t) + self.center[0], r*sin(t) + self.center[1],
-                uniform(self.limits[0][2], self.limits[1][2])]
+        return [r*cos(t), r*sin(t), uniform(-z_max, z_max)]
+
+    def repel_particles(self, p, q, d, d_new):
+        # Moving each particle distance 's' away from the other along the line
+        # joining the particle centers will ensure their final distance is
+        # equal to the outer diameter
+        s = (d_new - d)/2
+
+        v = (p - q)/d
+        p += s*v
+        q -= s*v
+
+        # Enforce the rigid boundary by moving each particle back along the
+        # surface normal until it is completely within the container if it
+        # overlaps the surface
+        r_max = self.limits[0]
+        z_max = self.limits[1]
+
+        r = sqrt(p[0]**2 + p[1]**2)
+        if r > r_max:
+            p[0:2] *= r_max/r
+        p[2] = np.clip(p[2], -z_max, z_max)
+
+        r = sqrt(q[0]**2 + q[1]**2)
+        if r > r_max:
+            q[0:2] *= r_max/r
+        q[2] = np.clip(q[2], -z_max, z_max)
 
 
 class _SphericalDomain(_Domain):
@@ -407,8 +463,7 @@ class _SphericalDomain(_Domain):
         Length in x-, y-, and z- directions of each cell in mesh overlaid on
         domain.
     limits : list of float
-        Minimum and maximum position in x-, y-, and z-directions where particle
-        center can be placed.
+        Maximum radial distance where particle center can be placed.
     volume : float
         Volume of the container.
 
@@ -425,9 +480,7 @@ class _SphericalDomain(_Domain):
     @property
     def limits(self):
         if self._limits is None:
-            rlim = self.radius - self.particle_radius
-            self._limits = [[x - rlim for x in self.center],
-                            [x + rlim for x in self.center]]
+            self._limits = [self.radius - self.particle_radius]
         return self._limits
 
     @property
@@ -453,10 +506,33 @@ class _SphericalDomain(_Domain):
         self._limits = limits
 
     def random_point(self):
+        r_max = self.limits[0]
         x = (gauss(0, 1), gauss(0, 1), gauss(0, 1))
-        r = (uniform(0, (self.radius - self.particle_radius)**3)**(1/3) /
-             sqrt(x[0]**2 + x[1]**2 + x[2]**2))
-        return [r*x[i] + self.center[i] for i in range(3)]
+        r = (uniform(0, r_max**3)**(1/3) / sqrt(x[0]**2 + x[1]**2 + x[2]**2))
+        return [r*s for s in x]
+
+    def repel_particles(self, p, q, d, d_new):
+        # Moving each particle distance 's' away from the other along the line
+        # joining the particle centers will ensure their final distance is
+        # equal to the outer diameter
+        s = (d_new - d)/2
+
+        v = (p - q)/d
+        p += s*v
+        q -= s*v
+
+        # Enforce the rigid boundary by moving each particle back along the
+        # surface normal until it is completely within the container if it
+        # overlaps the surface
+        r_max = self.limits[0]
+
+        r = sqrt(p[0]**2 + p[1]**2 + p[2]**2)
+        if r > r_max:
+            p *= r_max/r
+
+        r = sqrt(q[0]**2 + q[1]**2 + q[2]**2)
+        if r > r_max:
+            q *= r_max/r
 
 
 def create_triso_lattice(trisos, lower_left, pitch, shape, background):
@@ -636,6 +712,7 @@ def _close_random_pack(domain, particles, contraction_rate):
                 del rods_map[i]
                 del rods_map[j]
                 return d, i, j
+        return None, None, None
 
     def create_rod_list():
         """Generate sorted list of rods (distances between particle centers).
@@ -660,8 +737,8 @@ def _close_random_pack(domain, particles, contraction_rate):
         # Find distance to nearest neighbor and index of nearest neighbor for
         # all particles
         d, n = tree.query(particles, k=2)
-        d = d[:,1]
-        n = n[:,1]
+        d = d[:, 1]
+        n = n[:, 1]
 
         # Array of particle indices, indices of nearest neighbors, and
         # distances to nearest neighbors
@@ -670,8 +747,8 @@ def _close_random_pack(domain, particles, contraction_rate):
         # Sort along second column and swap first and second columns to create
         # array of nearest neighbor indices, indices of particles they are
         # nearest neighbors of, and distances between them
-        b = a[a[:,1].argsort()]
-        b[:,[0, 1]] = b[:,[1, 0]]
+        b = a[a[:, 1].argsort()]
+        b[:, [0, 1]] = b[:, [1, 0]]
 
         # Find the intersection between 'a' and 'b': a list of particles who
         # are each other's nearest neighbors and the distance between them
@@ -685,12 +762,8 @@ def _close_random_pack(domain, particles, contraction_rate):
         del rods[:]
         rods_map.clear()
         for d, i, j in r:
-            add_rod(d, i, j)
-
-        # Inner diameter is set initially to the shortest center-to-center
-        # distance between any two particles
-        if rods:
-            inner_diameter[0] = rods[0][0]
+            if d < outer_diameter and not np.isclose(d, outer_diameter, atol=1.0e-14):
+                add_rod(d, i, j)
 
     def update_mesh(i):
         """Update which mesh cells the particle is in based on new particle
@@ -729,50 +802,19 @@ def _close_random_pack(domain, particles, contraction_rate):
 
             j = floor(-log10(pf_out - pf_in)).
 
+        Returns
+        -------
+        float
+            New outer diameter
+
         """
 
-        inner_pf = (4/3 * pi * (inner_diameter[0]/2)**3 * n_particles /
-                    domain.volume)
-        outer_pf = (4/3 * pi * (outer_diameter[0]/2)**3 * n_particles /
-                    domain.volume)
+        inner_pf = 4/3*pi*(inner_diameter/2)**3*n_particles/domain.volume
+        outer_pf = 4/3*pi*(outer_diameter/2)**3*n_particles/domain.volume
 
         j = floor(-log10(outer_pf - inner_pf))
-        outer_diameter[0] = (outer_diameter[0] - 0.5**j * contraction_rate *
-                             initial_outer_diameter / n_particles)
-
-
-    def repel_particles(i, j, d):
-        """Move particles p and q apart according to the following
-        transformation (accounting for reflective boundary conditions on
-        domain):
-
-            r_i^(n+1) = r_i^(n) + 1/2(d_out^(n+1) - d^(n))
-            r_j^(n+1) = r_j^(n) - 1/2(d_out^(n+1) - d^(n))
-
-        Parameters
-        ----------
-        i, j : int
-            Index of particles in particles array.
-        d : float
-            distance between centers of particles i and j.
-
-        """
-
-        # Moving each particle distance 'r' away from the other along the line
-        # joining the particle centers will ensure their final distance is equal
-        # to the outer diameter
-        r = (outer_diameter[0] - d)/2
-
-        v = (particles[i] - particles[j])/d
-        particles[i] += r*v
-        particles[j] -= r*v
-
-        # Apply reflective boundary conditions
-        particles[i] = particles[i].clip(domain.limits[0], domain.limits[1])
-        particles[j] = particles[j].clip(domain.limits[0], domain.limits[1])
-
-        update_mesh(i)
-        update_mesh(j)
+        return (outer_diameter - 0.5**j * contraction_rate *
+                initial_outer_diameter / n_particles)
 
     def nearest(i):
         """Find index of nearest neighbor of particle i.
@@ -803,14 +845,14 @@ def _close_random_pack(domain, particles, contraction_rate):
         else:
             return None, None
 
-    def update_rod_list(i, j):
-        """Update the rod list with the new nearest neighbors of particles i
-        and j since their overlap was eliminated.
+    def update_rod_list(i):
+        """Update the rod list with the new nearest neighbors of particle since
+        its overlap was eliminated.
 
         Parameters
         ----------
-        i, j : int
-            Index of particles in particles array.
+        i : int
+            Index of particle in particles array.
 
         """
 
@@ -818,18 +860,10 @@ def _close_random_pack(domain, particles, contraction_rate):
         # remove the rod currently containing k from the rod list and add rod
         # k-i, keeping the rod list sorted
         k, d_ik = nearest(i)
-        if k and nearest(k)[0] == i:
+        if (k and nearest(k)[0] == i and d_ik < outer_diameter
+            and not np.isclose(d, outer_diameter, atol=1.0e-14)):
             remove_rod(k)
             add_rod(d_ik, i, k)
-        l, d_jl = nearest(j)
-        if l and nearest(l)[0] == j:
-            remove_rod(l)
-            add_rod(d_jl, j, l)
-
-        # Set inner diameter to the shortest distance between two particle
-        # centers
-        if rods:
-            inner_diameter[0] = rods[0][0]
 
     n_particles = len(particles)
     diameter = 2*domain.particle_radius
@@ -841,36 +875,71 @@ def _close_random_pack(domain, particles, contraction_rate):
     initial_outer_diameter = 2*(domain.volume/(n_particles*4/3*pi))**(1/3)
 
     # Inner and outer diameter of particles will change during packing
-    outer_diameter = [initial_outer_diameter]
-    inner_diameter = [0]
+    outer_diameter = initial_outer_diameter
+    inner_diameter = 0.
 
+    # List of rods arranged in a heap and mapping of particle ids to rods
     rods = []
     rods_map = {}
+
+    # Initialize two-way dictionary that identifies which particles are near a
+    # given mesh cell and which mesh cells a particle is near
     mesh = defaultdict(set)
     mesh_map = defaultdict(set)
-
     for i in range(n_particles):
         for idx in domain.nearby_mesh_cells(particles[i]):
             mesh[idx].add(i)
             mesh_map[i].add(idx)
 
     while True:
+        # Rebuild the sorted list of rods according to the current particle
+        # configuration
         create_rod_list()
-        if inner_diameter[0] >= diameter:
+
+        # Set the inner diameter to the shortest center-to-center distance
+        # between any two particles
+        if rods:
+            inner_diameter = rods[0][0]
+
+        # Reached the desired particle radius
+        if inner_diameter >= diameter:
             break
+
+        # The algorithm converged before reaching the desired particle radius.
+        # This can happen when the desired packing fraction is close to the
+        # packing fraction limit. The packing fraction is a random variable
+        # that is determined by the particle locations and the contraction
+        # rate. A higher packing fraction can be achieved with a smaller
+        # contraction rate, though at the cost of a longer simulation time --
+        # the number of iterations needed to remove all overlaps is inversely
+        # proportional to the contraction rate.
+        if inner_diameter >= outer_diameter or not rods:
+            warnings.warn('Close random pack converged before reaching true '
+                          'particle radius; some particles may overlap. Try '
+                          'reducing contraction rate or packing fraction.')
+            break
+
         while True:
             d, i, j = pop_rod()
-            reduce_outer_diameter()
-            repel_particles(i, j, d)
-            update_rod_list(i, j)
-            if inner_diameter[0] >= diameter or not rods:
+            if not d:
+                break
+            outer_diameter = reduce_outer_diameter()
+            domain.repel_particles(particles[i], particles[j], d, outer_diameter)
+            update_mesh(i)
+            update_mesh(j)
+            update_rod_list(i)
+            update_rod_list(j)
+            if not rods:
+                break
+            inner_diameter = rods[0][0]
+            if inner_diameter >= diameter or inner_diameter >= outer_diameter:
                 break
 
 
 def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
                 domain_radius=None, domain_center=[0., 0., 0.],
                 n_particles=None, packing_fraction=None,
-                initial_packing_fraction=0.3, contraction_rate=1/400, seed=1):
+                initial_packing_fraction=0.3, contraction_rate=1.e-3, seed=1):
     """Generate a random, non-overlapping configuration of TRISO particles
     within a container.
 
@@ -933,7 +1002,7 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
     to speed up the nearest neighbor search by only searching for a particle's
     neighbors within that mesh cell.
 
-    In CRP, each particle is assigned two diameters, and inner and an outer,
+    In CRP, each particle is assigned two diameters, an inner and an outer,
     which approach each other during the simulation. The inner diameter,
     defined as the minimum center-to-center distance, is the true diameter of
     the particles and defines the pf. At each iteration the worst overlap
@@ -1008,8 +1077,7 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
     # Recalculate the limits for the initial random sequential packing using
     # the desired final particle radius to ensure particles are fully contained
     # within the domain during the close random pack
-    domain.limits = [[x - initial_radius + radius for x in domain.limits[0]],
-                     [x + initial_radius - radius for x in domain.limits[1]]]
+    domain.limits = [x + initial_radius - radius for x in domain.limits]
 
     # Generate non-overlapping particles for an initial inner radius using
     # random sequential packing algorithm
@@ -1024,5 +1092,5 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
 
     trisos = []
     for p in particles:
-        trisos.append(TRISO(radius, fill, p))
+        trisos.append(TRISO(radius, fill, [x + c for x, c in zip(p, domain.center)]))
     return trisos

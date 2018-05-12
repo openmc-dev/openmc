@@ -30,7 +30,7 @@
 
   <tally id="10">
     <filters>1 2 3</filters>
-    <scores>scatter-P3 nu-fission</scores>
+    <scores>scatter nu-fission</scores>
   </tally>
 
   <tally id="5">

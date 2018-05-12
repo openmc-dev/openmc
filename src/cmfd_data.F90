@@ -76,6 +76,7 @@ contains
     integer :: i_filter_mesh ! index for mesh filter
     integer :: i_filter_ein  ! index for incoming energy filter
     integer :: i_filter_eout ! index for outgoing energy filter
+    integer :: i_filter_legendre ! index for Legendre filter
     integer :: i_mesh        ! flattend index for mesh
     logical :: energy_filters! energy filters present
     real(8) :: flux          ! temp variable for flux
@@ -116,8 +117,11 @@ contains
 
       if (ital < 3) then
         i_filter_mesh = t % filter(t % find_filter(FILTER_MESH))
-      else
+      else if (ital == 3) then
         i_filter_mesh = t % filter(t % find_filter(FILTER_MESHSURFACE))
+      else if (ital == 4) then
+        i_filter_mesh = t % filter(t % find_filter(FILTER_MESH))
+        i_filter_legendre = t % filter(t % find_filter(FILTER_LEGENDRE))
       end if
 
       ! Check for energy filters
@@ -186,13 +190,6 @@ contains
 
                 ! Get total rr and convert to total xs
                 cmfd % totalxs(h,i,j,k) = t % results(RESULT_SUM,2,score_index) / flux
-
-                ! Get p1 scatter rr and convert to p1 scatter xs
-                cmfd % p1scattxs(h,i,j,k) = t % results(RESULT_SUM,3,score_index) / flux
-
-                ! Calculate diffusion coefficient
-                cmfd % diffcof(h,i,j,k) = ONE/(3.0_8*(cmfd % totalxs(h,i,j,k) - &
-                     cmfd % p1scattxs(h,i,j,k)))
 
               else if (ital == 2) then
 
@@ -301,6 +298,46 @@ contains
                      score_index + IN_TOP)
                 cmfd % current(12,h,i,j,k) = t % results(RESULT_SUM, 1, &
                      score_index + OUT_TOP)
+
+              else if (ital == 4) then
+
+                ! Reset all bins to 1
+                do l = 1, size(t % filter)
+                  call filter_matches(t % filter(l)) % bins % clear()
+                  call filter_matches(t % filter(l)) % bins % push_back(1)
+                end do
+
+                ! Set ijk as mesh indices
+                ijk = (/ i, j, k /)
+
+                ! Get bin number for mesh indices
+                filter_matches(i_filter_mesh) % bins % data(1) = &
+                     m % get_bin_from_indices(ijk)
+
+                ! Apply energy in filter
+                if (energy_filters) then
+                  filter_matches(i_filter_ein) % bins % data(1) = ng - h + 1
+                end if
+
+                ! Apply Legendre filter
+                filter_matches(i_filter_legendre) % bins % data(1) = 2
+
+                ! Calculate score index from bins
+                score_index = 1
+                do l = 1, size(t % filter)
+                  score_index = score_index + (filter_matches(t % filter(l)) &
+                       % bins % data(1) - 1) * t % stride(l)
+                end do
+
+                ! Get p1 scatter rr and convert to p1 scatter xs
+                cmfd % p1scattxs(h,i,j,k) = &
+                     t % results(RESULT_SUM,1,score_index) / &
+                     cmfd % flux(h,i,j,k)
+
+                ! Calculate diffusion coefficient
+                cmfd % diffcof(h,i,j,k) = &
+                     ONE/(3.0_8*(cmfd % totalxs(h,i,j,k) - &
+                     cmfd % p1scattxs(h,i,j,k)))
               end if TALLY
 
             end do OUTGROUP

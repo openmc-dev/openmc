@@ -2194,26 +2194,20 @@ contains
     integer :: i             ! loop over user-specified tallies
     integer :: j             ! loop over words
     integer :: k             ! another loop index
-    integer :: l             ! another loop index
     integer :: filter_id     ! user-specified identifier for filter
     integer :: i_filt        ! index in filters array
     integer :: i_elem        ! index of entry in dictionary
     integer :: n             ! size of arrays in mesh specification
     integer :: n_words       ! number of words read
     integer :: n_filter      ! number of filters
-    integer :: n_new         ! number of new scores to add based on Yn/Pn tally
-    integer :: n_scores      ! number of tot scores after adjusting for Yn/Pn tally
-    integer :: n_bins        ! total new bins for this score
+    integer :: n_scores      ! number of scores
     integer :: n_user_trig   ! number of user-specified tally triggers
     integer :: trig_ind      ! index of triggers array for each tally
     integer :: user_trig_ind ! index of user-specified triggers for each tally
     integer :: i_start, i_end
     integer(C_INT) :: err
     real(8) :: threshold     ! trigger convergence threshold
-    integer :: n_order       ! moment order requested
-    integer :: n_order_pos   ! oosition of Scattering order in score name string
     integer :: MT            ! user-specified MT for score
-    integer :: imomstr       ! Index of MOMENT_STRS & MOMENT_N_STRS
     logical :: file_exists   ! does tallies.xml file exist?
     integer, allocatable :: temp_filter(:) ! temporary filter indices
     character(MAX_LINE_LEN) :: filename
@@ -2541,107 +2535,22 @@ contains
         allocate(sarray(n_words))
         call get_node_array(node_tal, "scores", sarray)
 
-        ! Before we can allocate storage for scores, we must determine the
-        ! number of additional scores required due to the moment scores
-        ! (i.e., scatter-p#, flux-y#)
-        n_new = 0
+        ! Append the score to the list of possible trigger scores
         do j = 1, n_words
           sarray(j) = to_lower(sarray(j))
-          ! Find if scores(j) is of the form 'moment-p' or 'moment-y' present in
-          ! MOMENT_STRS(:)
-          ! If so, check the order, store if OK, then reset the number to 'n'
           score_name = trim(sarray(j))
 
-          ! Append the score to the list of possible trigger scores
           if (trigger_on) call trigger_scores % set(trim(score_name), j)
 
-          do imomstr = 1, size(MOMENT_STRS)
-            if (starts_with(score_name,trim(MOMENT_STRS(imomstr)))) then
-              n_order_pos = scan(score_name,'0123456789')
-              n_order = int(str_to_int( &
-                   score_name(n_order_pos:(len_trim(score_name)))),4)
-              if (n_order > MAX_ANG_ORDER) then
-                ! User requested too many orders; throw a warning and set to the
-                ! maximum order.
-                ! The above scheme will essentially take the absolute value
-                if (master) call warning("Invalid scattering order of " &
-                     // trim(to_str(n_order)) // " requested. Setting to the &
-                     &maximum permissible value, " &
-                     // trim(to_str(MAX_ANG_ORDER)))
-                n_order = MAX_ANG_ORDER
-                sarray(j) = trim(MOMENT_STRS(imomstr)) &
-                     // trim(to_str(MAX_ANG_ORDER))
-              end if
-              ! Find total number of bins for this case
-              if (imomstr >= YN_LOC) then
-                n_bins = (n_order + 1)**2
-              else
-                n_bins = n_order + 1
-              end if
-              ! We subtract one since n_words already included
-              n_new = n_new + n_bins - 1
-              exit
-            end if
-          end do
         end do
-        n_scores = n_words + n_new
+        n_scores = n_words
 
         ! Allocate score storage accordingly
         allocate(t % score_bins(n_scores))
-        allocate(t % moment_order(n_scores))
-        t % moment_order = 0
-        j = 0
-        do l = 1, n_words
-          j = j + 1
-          ! Get the input string in scores(l) but if score is one of the moment
-          ! scores then strip off the n and store it as an integer to be used
-          ! later. Then perform the select case on this modified (number
-          ! removed) string
-          n_order = -1
-          score_name = sarray(l)
-          do imomstr = 1, size(MOMENT_STRS)
-            if (starts_with(score_name,trim(MOMENT_STRS(imomstr)))) then
-              n_order_pos = scan(score_name,'0123456789')
-              n_order = int(str_to_int( &
-                   score_name(n_order_pos:(len_trim(score_name)))),4)
-              if (n_order > MAX_ANG_ORDER) then
-                ! User requested too many orders; throw a warning and set to the
-                ! maximum order.
-                ! The above scheme will essentially take the absolute value
-                n_order = MAX_ANG_ORDER
-              end if
-              score_name = trim(MOMENT_STRS(imomstr)) // "n"
-              ! Find total number of bins for this case
-              if (imomstr >= YN_LOC) then
-                n_bins = (n_order + 1)**2
-              else
-                n_bins = n_order + 1
-              end if
-              exit
-            end if
-          end do
-          ! Now check the Moment_N_Strs, but only if we werent successful above
-          if (imomstr > size(MOMENT_STRS)) then
-            do imomstr = 1, size(MOMENT_N_STRS)
-              if (starts_with(score_name,trim(MOMENT_N_STRS(imomstr)))) then
-                n_order_pos = scan(score_name,'0123456789')
-                n_order = int(str_to_int( &
-                     score_name(n_order_pos:(len_trim(score_name)))),4)
-                if (n_order > MAX_ANG_ORDER) then
-                  ! User requested too many orders; throw a warning and set to the
-                  ! maximum order.
-                  ! The above scheme will essentially take the absolute value
-                  if (master) call warning("Invalid scattering order of " &
-                       // trim(to_str(n_order)) // " requested. Setting to &
-                       &the maximum permissible value, " &
-                       // trim(to_str(MAX_ANG_ORDER)))
-                  n_order = MAX_ANG_ORDER
-                end if
-                score_name = trim(MOMENT_N_STRS(imomstr)) // "n"
-                exit
-              end if
-            end do
-          end if
+
+        ! Check the validity of the scores and their filters
+        do j = 1, n_scores
+          score_name = sarray(j)
 
           ! Check if delayed group filter is used with any score besides
           ! delayed-nu-fission or decay-rate
@@ -2650,23 +2559,6 @@ contains
                t % find_filter(FILTER_DELAYEDGROUP) > 0) then
             call fatal_error("Cannot tally " // trim(score_name) // " with a &
                  &delayedgroup filter.")
-          end if
-
-          ! Check to see if the mu filter is applied and if that makes sense.
-          if ((.not. starts_with(score_name,'scatter')) .and. &
-               (.not. starts_with(score_name,'nu-scatter'))) then
-            if (t % find_filter(FILTER_MU) > 0) then
-              call fatal_error("Cannot tally " // trim(score_name) //" with a &
-                               &change of angle (mu) filter.")
-            end if
-          ! Also check to see if this is a legendre expansion or not.
-          ! If so, we can accept this score and filter combo for p0, but not
-          ! elsewhere.
-          else if (n_order > 0) then
-            if (t % find_filter(FILTER_MU) > 0) then
-              call fatal_error("Cannot tally " // trim(score_name) //" with a &
-                               &change of angle (mu) filter unless order is 0.")
-            end if
           end if
 
           select case (trim(score_name))
@@ -2683,22 +2575,6 @@ contains
                    &filter.")
             end if
 
-          case ('flux-yn')
-            ! Prohibit user from tallying flux for an individual nuclide
-            if (.not. (t % n_nuclide_bins == 1 .and. &
-                 t % nuclide_bins(1) == -1)) then
-              call fatal_error("Cannot tally flux for an individual nuclide.")
-            end if
-
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              call fatal_error("Cannot tally flux with an outgoing energy &
-                   &filter.")
-            end if
-
-            t % score_bins(j : j + n_bins - 1) = SCORE_FLUX_YN
-            t % moment_order(j : j + n_bins - 1) = n_order
-            j = j + n_bins  - 1
-
           case ('total', '(n,total)')
             t % score_bins(j) = SCORE_TOTAL
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
@@ -2706,18 +2582,13 @@ contains
                    &outgoing energy filter.")
             end if
 
-          case ('total-yn')
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              call fatal_error("Cannot tally total reaction rate with an &
-                   &outgoing energy filter.")
-            end if
-
-            t % score_bins(j : j + n_bins - 1) = SCORE_TOTAL_YN
-            t % moment_order(j : j + n_bins - 1) = n_order
-            j = j + n_bins - 1
-
           case ('scatter')
             t % score_bins(j) = SCORE_SCATTER
+            if (t % find_filter(FILTER_ENERGYOUT) > 0 .or. &
+                 t % find_filter(FILTER_LEGENDRE) > 0) then
+              ! Set tally estimator to analog
+              t % estimator = ESTIMATOR_ANALOG
+            end if
 
           case ('nu-scatter')
             t % score_bins(j) = SCORE_NU_SCATTER
@@ -2727,53 +2598,14 @@ contains
             ! necessary)
             if (run_CE) then
               t % estimator = ESTIMATOR_ANALOG
+            else
+              if (t % find_filter(FILTER_ENERGYOUT) > 0 .or. &
+                   t % find_filter(FILTER_LEGENDRE) > 0) then
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
+              end if
             end if
 
-          case ('scatter-n')
-            t % score_bins(j) = SCORE_SCATTER_N
-            t % moment_order(j) = n_order
-            t % estimator = ESTIMATOR_ANALOG
-
-          case ('nu-scatter-n')
-            t % score_bins(j) = SCORE_NU_SCATTER_N
-            t % moment_order(j) = n_order
-            t % estimator = ESTIMATOR_ANALOG
-
-          case ('scatter-pn')
-            t % estimator = ESTIMATOR_ANALOG
-            ! Setup P0:Pn
-            t % score_bins(j : j + n_bins - 1) = SCORE_SCATTER_PN
-            t % moment_order(j : j + n_bins - 1) = n_order
-            j = j + n_bins - 1
-
-          case ('nu-scatter-pn')
-            t % estimator = ESTIMATOR_ANALOG
-            ! Setup P0:Pn
-            t % score_bins(j : j + n_bins - 1) = SCORE_NU_SCATTER_PN
-            t % moment_order(j : j + n_bins - 1) = n_order
-            j = j + n_bins - 1
-
-          case ('scatter-yn')
-            t % estimator = ESTIMATOR_ANALOG
-            ! Setup P0:Pn
-            t % score_bins(j : j + n_bins - 1) = SCORE_SCATTER_YN
-            t % moment_order(j : j + n_bins - 1) = n_order
-            j = j + n_bins - 1
-
-          case ('nu-scatter-yn')
-            t % estimator = ESTIMATOR_ANALOG
-            ! Setup P0:Pn
-            t % score_bins(j : j + n_bins - 1) = SCORE_NU_SCATTER_YN
-            t % moment_order(j : j + n_bins - 1) = n_order
-            j = j + n_bins - 1
-
-          case('transport')
-            call fatal_error("Transport score no longer supported for tallies, &
-                 &please remove")
-
-          case ('n1n')
-            call fatal_error("n1n score no longer supported for tallies, &
-                 &please remove")
           case ('n2n', '(n,2n)')
             t % score_bins(j) = N_2N
             t % depletion_rx = .true.
@@ -2937,6 +2769,14 @@ contains
             t % score_bins(j) = N_DA
 
           case default
+            ! First look for deprecated scores
+            if (starts_with(trim(score_name), 'scatter-') .or. &
+                 starts_with(trim(score_name), 'nu-scatter-') .or. &
+                 starts_with(trim(score_name), 'total-y') .or. &
+                 starts_with(trim(score_name), 'flux-y')) then
+              call fatal_error(trim(score_name) // " is no longer available.")
+            end if
+
             ! Assume that user has specified an MT number
             MT = int(str_to_int(score_name))
 
@@ -2945,14 +2785,12 @@ contains
               if (MT > 1) then
                 t % score_bins(j) = MT
               else
-                call fatal_error("Invalid MT on <scores>: " &
-                     // trim(sarray(l)))
+                call fatal_error("Invalid MT on <scores>: " // trim(score_name))
               end if
 
             else
               ! Specified score was not an integer
-              call fatal_error("Unknown scoring function: " &
-                   // trim(sarray(l)))
+              call fatal_error("Unknown scoring function: " // trim(score_name))
             end if
 
           end select
@@ -2967,35 +2805,19 @@ contains
         end do
 
         t % n_score_bins = n_scores
-        t % n_user_score_bins = n_words
 
         ! Deallocate temporary string array of scores
         deallocate(sarray)
 
         ! Check that no duplicate scores exist
-        j = 1
-        do while (j < n_scores)
-          ! Determine number of bins for scores with expansions
-          n_order = t % moment_order(j)
-          select case (t % score_bins(j))
-          case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
-            n_bins = n_order + 1
-          case (SCORE_FLUX_YN, SCORE_TOTAL_YN, SCORE_SCATTER_YN, &
-               SCORE_NU_SCATTER_YN)
-            n_bins = (n_order + 1)**2
-          case default
-            n_bins = 1
-          end select
-
-          do k = j + n_bins, n_scores
-            if (t % score_bins(j) == t % score_bins(k) .and. &
-                 t % moment_order(j) == t % moment_order(k)) then
+        do j = 1, n_scores - 1
+          do k = j + 1, n_scores
+            if (t % score_bins(j) == t % score_bins(k)) then
               call fatal_error("Duplicate score of type '" // trim(&
                    reaction_name(t % score_bins(j))) // "' found in tally " &
                    // trim(to_str(t % id)))
             end if
           end do
-          j = j + n_bins
         end do
       else
         call fatal_error("No <scores> specified on tally " &

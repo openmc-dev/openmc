@@ -598,14 +598,7 @@ contains
     real(8) :: zn_mat(n+1, n+1)        ! Matrix form of the coefficients which is
                                        ! easier to work with
     real(8) :: k1, k2, k3, k4          ! Variables for R_m_n calculation
-    real(8) :: sqrt_norm               ! normalization for radial moments
     integer :: i,p,q                   ! Loop counters
-
-    real(8), parameter :: SQRT_N_1(0:10) = [&
-         sqrt(1.0_8), sqrt(2.0_8), sqrt(3.0_8), sqrt(4.0_8), &
-         sqrt(5.0_8), sqrt(6.0_8), sqrt(7.0_8), sqrt(8.0_8), &
-         sqrt(9.0_8), sqrt(10.0_8), sqrt(11.0_8)]
-    real(8), parameter :: SQRT_2N_2(0:10) = SQRT_N_1*sqrt(2.0_8)
 
     ! n == radial degree
     ! m == azimuthal frequency
@@ -670,11 +663,11 @@ contains
     do p = 0, n
       do q = -p, p, 2
         if (q < 0) then
-          zn(i) = zn_mat(p+1, abs(q)+1) * sin_phi_vec(abs(q)) * SQRT_2N_2(p)
+          zn(i) = zn_mat(p+1, abs(q)+1) * sin_phi_vec(abs(q))
         else if (q == 0) then
-          zn(i) = zn_mat(p+1, q+1) * SQRT_N_1(p)
+          zn(i) = zn_mat(p+1, q+1)
         else
-          zn(i) = zn_mat(p+1, q+1) * cos_phi_vec(abs(q)+1) * SQRT_2N_2(p)
+          zn(i) = zn_mat(p+1, q+1) * cos_phi_vec(abs(q)+1)
         end if
         i = i + 1
       end do

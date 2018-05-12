@@ -50,7 +50,7 @@ module input_xml
     subroutine adjust_indices_c() bind(C)
     end subroutine adjust_indices_c
 
-    subroutine count_instances_c(univ_indx) bind(C, name='count_instances')
+    subroutine count_cell_instances(univ_indx) bind(C)
       import C_INT32_T
       integer(C_INT32_T), intent(in), value :: univ_indx
     end subroutine
@@ -143,7 +143,7 @@ contains
 
     ! Perform some final operations to set up the geometry
     call adjust_indices()
-    call count_instances_c(root_universe-1)
+    call count_cell_instances(root_universe-1)
 
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
@@ -3829,8 +3829,6 @@ contains
     integer :: i, j                ! Tally, filter loop counters
     logical :: distribcell_active  ! Does simulation use distribcell?
     integer, allocatable :: univ_list(:)              ! Target offsets
-    integer, allocatable :: counts(:,:)               ! Target count
-    logical, allocatable :: found(:,:)                ! Target found
 
     ! Assume distribcell is not needed until proven otherwise.
     distribcell_active = .false.
@@ -3885,12 +3883,12 @@ contains
     end do
 
     ! Allocate offset maps at each level in the geometry
-    call allocate_offsets(univ_list, counts, found)
+    call allocate_offsets(univ_list)
 
     ! Calculate offsets for each target distribcell
     do i = 1, n_maps
       do j = 1, n_universes
-        call calc_offsets(univ_list(i), i, universes(j), counts, found)
+        call calc_offsets(univ_list(i), i, universes(j))
       end do
     end do
 
@@ -3901,11 +3899,9 @@ contains
 ! memory for distribcell offset tables
 !===============================================================================
 
-  recursive subroutine allocate_offsets(univ_list, counts, found)
+  recursive subroutine allocate_offsets(univ_list)
 
     integer, intent(out), allocatable     :: univ_list(:) ! Target offsets
-    integer, intent(out), allocatable     :: counts(:,:)  ! Target count
-    logical, intent(out), allocatable     :: found(:,:)   ! Target found
 
     integer      :: i, j, k   ! Loop counters
     type(SetInt) :: cell_list ! distribells to track
@@ -3942,15 +3938,6 @@ contains
 
     ! Allocate the list of offset tables for each unique universe
     allocate(univ_list(n_maps))
-
-    ! Allocate list to accumulate target distribcell counts in each universe
-    allocate(counts(n_universes, n_maps))
-    counts(:,:) = 0
-
-    ! Allocate list to track if target distribcells are found in each universe
-    allocate(found(n_universes, n_maps))
-    found(:,:) = .false.
-
 
     ! Search through universes for distributed cells and assign each one a
     ! unique distribcell array index.

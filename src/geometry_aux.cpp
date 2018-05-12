@@ -1,3 +1,6 @@
+//! \file geometry_aux.cpp
+//! Auxilary functions for geometry initialization and general data handling.
+
 #include <sstream>
 #include <unordered_set>
 
@@ -10,6 +13,10 @@
 
 
 namespace openmc {
+
+//==============================================================================
+//! Replace Universe, Lattice, and Material IDs with indices.
+//==============================================================================
 
 extern "C" void
 adjust_indices_c()
@@ -59,6 +66,12 @@ adjust_indices_c()
 }
 
 //==============================================================================
+//! Figure out which Universe is the root universe.
+//!
+//! This function looks for a universe that is not listed in a Cell::fill or in
+//! a Lattice.
+//! @return The index of the root universe.
+//==============================================================================
 
 extern "C" int32_t
 find_root_universe()
@@ -102,9 +115,16 @@ find_root_universe()
 }
 
 //==============================================================================
+//! Recursively search through the geometry and count cell instances.
+//!
+//! This function will update the Cell::n_instances value for each cell in the
+//! geometry.
+//! @param univ_indx The index of the universe to begin searching from (probably
+//!   the root universe).
+//==============================================================================
 
 extern "C" void
-count_instances(int32_t univ_indx)
+count_cell_instances(int32_t univ_indx)
 {
   for (int32_t cell_indx : universes_c[univ_indx]->cells) {
     Cell &c {*cells_c[cell_indx]};
@@ -112,16 +132,51 @@ count_instances(int32_t univ_indx)
 
     if (c.type == FILL_UNIVERSE) {
       // This cell contains another universe.  Recurse into that universe.
-      count_instances(c.fill-1);  // TODO: off-by-one
+      count_cell_instances(c.fill-1);  // TODO: off-by-one
 
     } else if (c.type == FILL_LATTICE) {
       // This cell contains a lattice.  Recurse into the lattice universes.
       Lattice &lat {*lattices_c[c.fill-1]}; // TODO: off-by-one
       for (auto it = lat.begin(); it != lat.end(); ++it) {
-        count_instances(*it);
+        count_cell_instances(*it);
       }
     }
   }
+}
+
+//==============================================================================
+//! Recursively search through universes and count the number of instances of
+//! the target universe in the geometry tree.
+//! @param search_univ The index of the universe to begin searching from.
+//! @param target_univ_id The ID of the universe to be counted.
+//==============================================================================
+
+extern "C" int
+count_universe_instances(int32_t search_univ, int32_t target_univ_id)
+{
+  //  If this is the target, it can't contain itself.
+  if (universes_c[search_univ]->id == target_univ_id) {
+    return 1;
+  }
+
+  int count {0};
+  for (int32_t cell_indx : universes_c[search_univ]->cells) {
+    Cell &c {*cells_c[cell_indx]};
+
+    if (c.type == FILL_UNIVERSE) {
+      int32_t next_univ = c.fill - 1; // TODO: off-by-one
+      count += count_universe_instances(next_univ, target_univ_id);
+
+    } else if (c.type == FILL_LATTICE) {
+      Lattice &lat {*lattices_c[c.fill - 1]}; //TODO: off-by-one
+      for (auto it = lat.begin(); it != lat.end(); ++it) {
+        int32_t next_univ = *it;
+        count += count_universe_instances(next_univ, target_univ_id);
+      }
+    }
+  }
+
+  return count;
 }
 
 } // namespace openmc

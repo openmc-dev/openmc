@@ -17,14 +17,21 @@ module geometry
   interface
     function cell_contains_c(cell_ptr, xyz, uvw, on_surface) &
          bind(C, name="cell_contains") result(in_cell)
-      use ISO_C_BINDING
-      implicit none
+      import C_PTR, C_DOUBLE, C_INT32_T, C_BOOL
       type(C_PTR),        intent(in), value :: cell_ptr
       real(C_DOUBLE),     intent(in)        :: xyz(3)
       real(C_DOUBLE),     intent(in)        :: uvw(3)
       integer(C_INT32_T), intent(in), value :: on_surface
       logical(C_BOOL)                       :: in_cell
     end function cell_contains_c
+
+    function count_universe_instances(search_univ, target_univ_id) bind(C) &
+        result(count)
+      import C_INT32_T, C_INT
+      integer(C_INT32_T), intent(in), value :: search_univ
+      integer(C_INT32_T), intent(in), value :: target_univ_id
+      integer(C_INT)                        :: count
+    end function
   end interface
 
 contains
@@ -532,27 +539,22 @@ contains
 ! routine is called once upon initialization.
 !===============================================================================
 
-  subroutine calc_offsets(univ_id, map, univ, counts, found)
+  subroutine calc_offsets(univ_id, map, univ)
 
     integer, intent(in)        :: univ_id         ! target universe ID
     integer, intent(in)        :: map          ! map index in vector of maps
     type(Universe), intent(in) :: univ         ! universe searching in
-    integer, intent(inout)     :: counts(:,:)  ! target count
-    logical, intent(inout)     :: found(:,:)   ! target found
 
     integer :: i                          ! index over cells
     integer :: j, k, m                    ! indices in lattice
-    integer :: n                          ! number of cells to search
     integer :: offset                     ! total offset for a given cell
     integer :: cell_index                 ! index in cells array
     type(Cell),     pointer :: c          ! pointer to current cell
-    type(Universe), pointer :: next_univ  ! next universe to cycle through
     class(Lattice), pointer :: lat        ! pointer to current lattice
 
-    n = size(univ % cells)
     offset = 0
 
-    do i = 1, n
+    do i = 1, size(univ % cells)
 
       cell_index = univ % cells(i)
 
@@ -566,16 +568,8 @@ contains
       ! ====================================================================
       ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
       elseif (c % type() == FILL_UNIVERSE) then
-        ! Set offset for the cell on this level
         c % offset(map) = offset
-
-        ! Count contents of this cell
-        next_univ => universes(c % fill)
-        offset = offset + count_target(next_univ, counts, found, univ_id, map)
-
-        ! Move into the next universe
-        next_univ => universes(c % fill)
-        c => cells(cell_index)
+        offset = offset + count_universe_instances(c % fill - 1, univ_id)
 
       ! ====================================================================
       ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
@@ -587,30 +581,24 @@ contains
         select type (lat)
 
         type is (RectLattice)
-
-          ! Loop over lattice coordinates
           do j = 1, lat % n_cells(1)
             do k = 1, lat % n_cells(2)
               do m = 1, lat % n_cells(3)
                 lat % offset(map, j, k, m) = offset
-                next_univ => universes(lat % get([j-1, k-1, m-1]) + 1)
-                offset = offset + &
-                     count_target(next_univ, counts, found, univ_id, map)
+                offset = offset + count_universe_instances(&
+                     lat % get([j-1, k-1, m-1]), univ_id)
               end do
             end do
           end do
 
         type is (HexLattice)
-
-          ! Loop over lattice coordinates
           do m = 1, lat % n_axial
             do k = 1, 2*lat % n_rings - 1
               do j = 1, 2*lat % n_rings - 1
                 if (lat % are_valid_indices([j, k, m])) then
                   lat % offset(map, j, k, m) = offset
-                  next_univ => universes(lat % get([j-1, k-1, m-1]) + 1)
-                  offset = offset + &
-                       count_target(next_univ, counts, found, univ_id, map)
+                  offset = offset + count_universe_instances(&
+                       lat % get([j-1, k-1, m-1]), univ_id)
                 end if
               end do
             end do
@@ -621,134 +609,6 @@ contains
     end do
 
   end subroutine calc_offsets
-
-!===============================================================================
-! COUNT_TARGET recursively totals the numbers of occurances of a given
-! universe ID beginning with the universe given.
-!===============================================================================
-
-  recursive function count_target(univ, counts, found, univ_id, map) result(count)
-
-    type(Universe), intent(in) :: univ         ! universe to search through
-    integer, intent(inout)     :: counts(:,:)  ! target count
-    logical, intent(inout)     :: found(:,:)   ! target found
-    integer, intent(in)        :: univ_id         ! target universe ID
-    integer, intent(in)        :: map          ! current map
-
-    integer :: i                           ! index over cells
-    integer :: j, k, m                     ! indices in lattice
-    integer :: n                           ! number of cells to search
-    integer :: cell_index                  ! index in cells array
-    integer :: count                       ! number of times target located
-    type(Cell),     pointer :: c           ! pointer to current cell
-    type(Universe), pointer :: next_univ   ! next univ to loop through
-    class(Lattice), pointer :: lat         ! pointer to current lattice
-
-    ! Don't research places already checked
-    if (found(universe_dict % get(univ % id), map)) then
-      count = counts(universe_dict % get(univ % id), map)
-      return
-    end if
-
-    ! If this is the target, it can't contain itself.
-    ! Count = 1, then quit
-    if (univ % id == univ_id) then
-      count = 1
-      counts(universe_dict % get(univ % id), map) = 1
-      found(universe_dict % get(univ % id), map) = .true.
-      return
-    end if
-
-    count = 0
-    n = size(univ % cells)
-
-    do i = 1, n
-
-      cell_index = univ % cells(i)
-
-      ! get pointer to cell
-      c => cells(cell_index)
-
-      ! ====================================================================
-      ! AT LOWEST UNIVERSE, TERMINATE SEARCH
-      if (c % type() == FILL_MATERIAL) then
-
-      ! ====================================================================
-      ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
-      elseif (c % type() == FILL_UNIVERSE) then
-
-        next_univ => universes(c % fill)
-
-        ! Found target - stop since target cannot contain itself
-        if (next_univ % id == univ_id) then
-          count = count + 1
-          return
-        end if
-
-        count = count + count_target(next_univ, counts, found, univ_id, map)
-        c => cells(cell_index)
-
-      ! ====================================================================
-      ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
-      elseif (c % type() == FILL_LATTICE) then
-
-        ! Set current lattice
-        lat => lattices(c % fill) % obj
-
-        select type (lat)
-
-        type is (RectLattice)
-
-          ! Loop over lattice coordinates
-          do j = 1, lat % n_cells(1)
-            do k = 1, lat % n_cells(2)
-              do m = 1, lat % n_cells(3)
-                next_univ => universes(lat % get([j-1, k-1, m-1]) + 1)
-
-                ! Found target - stop since target cannot contain itself
-                if (next_univ % id == univ_id) then
-                  count = count + 1
-                  cycle
-                end if
-
-                count = count + &
-                     count_target(next_univ, counts, found, univ_id, map)
-
-              end do
-            end do
-          end do
-
-          type is (HexLattice)
-
-            ! Loop over lattice coordinates
-            do m = 1, lat % n_axial
-              do k = 1, 2*lat % n_rings - 1
-                do j = 1, 2*lat % n_rings - 1
-                  if (lat % are_valid_indices([j, k, m])) then
-                    next_univ => universes(lat % get([j-1, k-1, m-1]) + 1)
-
-                    ! Found target - stop since target cannot contain itself
-                    if (next_univ % id == univ_id) then
-                      count = count + 1
-                      cycle
-                    end if
-
-                    count = count + &
-                         count_target(next_univ, counts, found, univ_id, map)
-                  end if
-                end do
-              end do
-            end do
-
-          end select
-
-      end if
-    end do
-
-    counts(universe_dict % get(univ % id), map) = count
-    found(universe_dict % get(univ % id), map) = .true.
-
-  end function count_target
 
 !===============================================================================
 ! MAXIMUM_LEVELS determines the maximum number of nested coordinate levels in

@@ -74,30 +74,32 @@ contains
 
     integer :: i, j, n
     integer :: num_nm
-    real(8) :: wgt
-    real(8) :: rn(2*this % order + 1)
+    real(C_DOUBLE) :: wgt(this % order + 1)
+    real(C_DOUBLE) :: rn(this % n_bins)
 
-    ! TODO: Use recursive formula to calculate higher orders
+    ! Determine cosine term for scatter expansion if necessary
+    if (this % cosine == COSINE_SCATTER) then
+      call calc_pn(this % order, p % mu, wgt)
+    else
+      wgt = ONE
+    end if
+
+    ! Find the Rn,m values
+    call calc_rn(this % order, p % last_uvw, rn)
+
     j = 0
     do n = 0, this % order
-      ! Determine cosine term for scatter expansion if necessary
-      if (this % cosine == COSINE_SCATTER) then
-        wgt = calc_pn(n, p % mu)
-      else
-        wgt = ONE
-      end if
-
       ! Calculate n-th order spherical harmonics for (u,v,w)
       num_nm = 2*n + 1
-      call calc_rn(n, p % last_uvw, rn(1:num_nm))
 
       ! Append matching (bin,weight) for each moment
       do i = 1, num_nm
         j = j + 1
         call match % bins % push_back(j)
-        call match % weights % push_back(wgt * rn(i))
+        call match % weights % push_back(wgt(n + 1) * rn(j))
       end do
     end do
+
   end subroutine get_all_bins
 
   subroutine to_statepoint(this, filter_group)

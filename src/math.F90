@@ -26,24 +26,24 @@ module math
 
   interface
 
-    pure function t_percentile_cc(p, df) bind(C, name='t_percentile_c') &
+    pure function t_percentile_c_intfc(p, df) bind(C, name='t_percentile_c') &
          result(t)
       use ISO_C_BINDING
       implicit none
       real(C_DOUBLE), value, intent(in) :: p
       integer(C_INT), value, intent(in) :: df
       real(C_DOUBLE) :: t
-    end function t_percentile_cc
+    end function t_percentile_c_intfc
 
-    pure function calc_pn_cc(n, x) bind(C, name='calc_pn_c') result(pnx)
+    pure subroutine calc_pn_c_intfc(n, x, pnx) bind(C, name='calc_pn_c')
       use ISO_C_BINDING
       implicit none
       integer(C_INT), value, intent(in) :: n
       real(C_DOUBLE), value, intent(in) :: x
-      real(C_DOUBLE) :: pnx
-    end function calc_pn_cc
+      real(C_DOUBLE), intent(out) :: pnx(n + 1)
+    end subroutine calc_pn_c_intfc
 
-    pure function evaluate_legendre_cc(n, data, x) &
+    pure function evaluate_legendre_c_intfc(n, data, x) &
          bind(C, name='evaluate_legendre_c') result(val)
       use ISO_C_BINDING
       implicit none
@@ -51,67 +51,67 @@ module math
       real(C_DOUBLE), intent(in) :: data(n)
       real(C_DOUBLE), value, intent(in) :: x
       real(C_DOUBLE) :: val
-    end function evaluate_legendre_cc
+    end function evaluate_legendre_c_intfc
 
-    subroutine calc_rn_cc(n, uvw, rn) bind(C, name='calc_rn_c')
+    pure subroutine calc_rn_c_intfc(n, uvw, rn) bind(C, name='calc_rn_c')
       use ISO_C_BINDING
       implicit none
       integer(C_INT), value, intent(in) :: n
       real(C_DOUBLE), intent(in)  :: uvw(3)
       real(C_DOUBLE), intent(out) :: rn(2 * n + 1)
-    end subroutine calc_rn_cc
+    end subroutine calc_rn_c_intfc
 
-    subroutine calc_zn_cc(n, rho, phi, zn) bind(C, name='calc_zn_c')
+    pure subroutine calc_zn_c_intfc(n, rho, phi, zn) bind(C, name='calc_zn_c')
       use ISO_C_BINDING
       implicit none
       integer(C_INT), value, intent(in) :: n
       real(C_DOUBLE), value, intent(in) :: rho
       real(C_DOUBLE), value, intent(in) :: phi
       real(C_DOUBLE), intent(out) :: zn(((n + 1) * (n + 2)) / 2)
-    end subroutine calc_zn_cc
+    end subroutine calc_zn_c_intfc
 
-    subroutine rotate_angle_cc(uvw, mu, phi) bind(C, name='rotate_angle_c')
+    subroutine rotate_angle_c_intfc(uvw, mu, phi) bind(C, name='rotate_angle_c')
       use ISO_C_BINDING
       implicit none
       real(C_DOUBLE), intent(inout) :: uvw(3)
       real(C_DOUBLE), value, intent(in)    :: mu
       real(C_DOUBLE), value, intent(in) :: phi
-    end subroutine rotate_angle_cc
+    end subroutine rotate_angle_c_intfc
 
-    function maxwell_spectrum_cc(T) bind(C, name='maxwell_spectrum_c') &
+    function maxwell_spectrum_c_intfc(T) bind(C, name='maxwell_spectrum_c') &
          result(E_out)
       use ISO_C_BINDING
       implicit none
       real(C_DOUBLE), value, intent(in) :: T
       real(C_DOUBLE) :: E_out
-    end function maxwell_spectrum_cc
+    end function maxwell_spectrum_c_intfc
 
-    function watt_spectrum_cc(a, b) bind(C, name='watt_spectrum_c') &
+    function watt_spectrum_c_intfc(a, b) bind(C, name='watt_spectrum_c') &
          result(E_out)
       use ISO_C_BINDING
       implicit none
       real(C_DOUBLE), value, intent(in) :: a
       real(C_DOUBLE), value, intent(in) :: b
       real(C_DOUBLE) :: E_out
-    end function watt_spectrum_cc
+    end function watt_spectrum_c_intfc
 
-    function faddeeva_cc(z) bind(C, name='faddeeva_c') result(wv)
+    function faddeeva_c_intfc(z) bind(C, name='faddeeva_c') result(wv)
       use ISO_C_BINDING
       implicit none
       complex(C_DOUBLE_COMPLEX), value, intent(in) :: z
       complex(C_DOUBLE_COMPLEX) :: wv
-    end function faddeeva_cc
+    end function faddeeva_c_intfc
 
-    function w_derivative_cc(z, order) bind(C, name='w_derivative_c') &
+    function w_derivative_c_intfc(z, order) bind(C, name='w_derivative_c') &
            result(wv)
       use ISO_C_BINDING
       implicit none
       complex(C_DOUBLE_COMPLEX), value, intent(in) :: z
       integer(C_INT), value,            intent(in) :: order
       complex(C_DOUBLE_COMPLEX) :: wv
-    end function w_derivative_cc
+    end function w_derivative_c_intfc
 
-    subroutine broaden_wmp_polynomials_cc(E, dopp, n, factors) &
+    subroutine broaden_wmp_polynomials_c_intfc(E, dopp, n, factors) &
            bind(C, name='broaden_wmp_polynomials_c')
       use ISO_C_BINDING
       implicit none
@@ -119,7 +119,7 @@ module math
       real(C_DOUBLE), value, intent(in) :: dopp
       integer(C_INT), value, intent(in) :: n
       real(C_DOUBLE), intent(inout) :: factors(n)
-    end subroutine broaden_wmp_polynomials_cc
+    end subroutine broaden_wmp_polynomials_c_intfc
 
     function faddeeva_w(z, relerr) bind(C, name='Faddeeva_w') result(w)
       use ISO_C_BINDING
@@ -143,7 +143,7 @@ contains
     integer(C_INT), intent(in)  :: df ! degrees of freedom
     real(C_DOUBLE)              :: t  ! corresponding t-value
 
-    t = t_percentile_cc(p, df)
+    t = t_percentile_c_intfc(p, df)
 
   end function t_percentile
 
@@ -157,18 +157,18 @@ contains
 ! the return value will be 1.0.
 !===============================================================================
 
-  pure function calc_pn(n, x) result(pnx) bind(C)
+  pure subroutine calc_pn(n, x, pnx) bind(C)
 
     integer(C_INT), intent(in) :: n   ! Legendre order requested
     real(C_DOUBLE), intent(in) :: x   ! Independent variable the Legendre is to
                                       ! be evaluated at; x must be in the
                                       ! domain [-1,1]
-    real(C_DOUBLE)             :: pnx ! The Legendre poly of order n evaluated
-                                      ! at x
+    real(C_DOUBLE), intent(out) :: pnx(n + 1) ! The Legendre polys of order n
+                                              ! evaluated at x
 
-    pnx = calc_pn_cc(n, x)
+    call calc_pn_c_intfc(n, x, pnx)
 
-  end function calc_pn
+  end subroutine calc_pn
 
 !===============================================================================
 ! EVALUATE_LEGENDRE Find the value of f(x) given a set of Legendre coefficients
@@ -181,7 +181,7 @@ contains
     real(C_DOUBLE), intent(in) :: x
     real(C_DOUBLE)             :: val
 
-    val = evaluate_legendre_cc(size(data), data, x)
+    val = evaluate_legendre_c_intfc(size(data) - 1, data, x)
 
   end function evaluate_legendre
 
@@ -190,14 +190,14 @@ contains
 ! (in terms of (u,v,w)).  All Rn,m values are provided (where -n<=m<=n)
 !===============================================================================
 
-  subroutine calc_rn(n, uvw, rn) bind(C)
+  pure subroutine calc_rn(n, uvw, rn) bind(C)
 
     integer(C_INT), intent(in) :: n      ! Order requested
     real(C_DOUBLE), intent(in) :: uvw(3) ! Direction of travel;
                                          ! assumed to be on unit sphere
-    real(C_DOUBLE)             :: rn(2*n + 1) ! The resultant R_n(uvw)
+    real(C_DOUBLE), intent(out) :: rn(2*n + 1) ! The resultant R_n(uvw)
 
-    call calc_rn_cc(n, uvw, rn)
+    call calc_rn_c_intfc(n, uvw, rn)
 
   end subroutine calc_rn
 
@@ -208,14 +208,14 @@ contains
 ! exactly pi
 !===============================================================================
 
-  subroutine calc_zn(n, rho, phi, zn) bind(C)
+  pure subroutine calc_zn(n, rho, phi, zn) bind(C)
     integer(C_INT), intent(in) :: n      ! Maximum order
     real(C_DOUBLE), intent(in) :: rho    ! Radial location in the unit disk
     real(C_DOUBLE), intent(in) :: phi    ! Theta (radians) location in the unit disk
     ! The resulting list of coefficients
     real(C_DOUBLE), intent(out) :: zn(((n + 1) * (n + 2)) / 2)
 
-    call calc_zn_cc(n, rho, phi, zn)
+    call calc_zn_c_intfc(n, rho, phi, zn)
   end subroutine calc_zn
 
 !===============================================================================
@@ -232,9 +232,9 @@ contains
 
     uvw = uvw0
     if (present(phi)) then
-      call rotate_angle_cc(uvw, mu, phi)
+      call rotate_angle_c_intfc(uvw, mu, phi)
     else
-      call rotate_angle_cc(uvw, mu, -10._8)
+      call rotate_angle_c_intfc(uvw, mu, -10._8)
     end if
 
   end subroutine rotate_angle
@@ -251,7 +251,7 @@ contains
     real(C_DOUBLE), intent(in)  :: T     ! tabulated function of incoming E
     real(C_DOUBLE)              :: E_out ! sampled energy
 
-    E_out = maxwell_spectrum_cc(T)
+    E_out = maxwell_spectrum_c_intfc(T)
 
   end function maxwell_spectrum
 
@@ -269,7 +269,7 @@ contains
     real(C_DOUBLE), intent(in) :: b     ! Watt parameter b
     real(C_DOUBLE)             :: E_out ! energy of emitted neutron
 
-    E_out = watt_spectrum_cc(a, b)
+    E_out = watt_spectrum_c_intfc(a, b)
 
   end function watt_spectrum
 
@@ -336,7 +336,7 @@ contains
     integer(C_INT), intent(in) :: n          ! number of components to polynomial
     real(C_DOUBLE), intent(out):: factors(n) ! output leading coefficient
 
-    call broaden_wmp_polynomials_cc(E, dopp, n, factors)
+    call broaden_wmp_polynomials_c_intfc(E, dopp, n, factors)
 
   end subroutine broaden_wmp_polynomials
 

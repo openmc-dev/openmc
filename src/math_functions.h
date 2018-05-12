@@ -23,35 +23,37 @@ const double SQRT_PI = std::sqrt(PI);
 // distribution with a specified probability level
 //==============================================================================
 
-extern "C" double normal_percentile_c(double p) __attribute__ ((const));
+extern "C" double normal_percentile_c(const double p) __attribute__ ((const));
 
 //==============================================================================
 // T_PERCENTILE calculates the percentile of the Student's t distribution with
 // a specified probability level and number of degrees of freedom
 //==============================================================================
 
-extern "C" double t_percentile_c(double p, int df) __attribute__ ((const));
+extern "C" double t_percentile_c(const double p, const int df)
+     __attribute__ ((const));
 
 //==============================================================================
-// CALC_PN calculates the n-th order Legendre polynomial at the value of x.
+// CALC_PN calculates the n-th order Legendre polynomials at the value of x.
 //==============================================================================
 
-extern "C" double calc_pn_c(int n, double x) __attribute__ ((const));
+extern "C" void calc_pn_c(const int n, const double x, double pnx[]);
 
 //==============================================================================
 // EVALUATE_LEGENDRE Find the value of f(x) given a set of Legendre coefficients
 // and the value of x
 //==============================================================================
 
-extern "C" double evaluate_legendre_c(int n, double data[], double x)
-     __attribute__ ((const));
+extern "C" double evaluate_legendre_c(const int n, const double data[],
+                                      const double x) __attribute__ ((const));
 
 //==============================================================================
 // CALC_RN calculates the n-th order spherical harmonics for a given angle
-// (in terms of (u,v,w)).  All Rn,m values are provided (where -n<=m<=n)
+// (in terms of (u,v,w)).  All Rn,m values are provided (where -n<=m<=n) for n
+// all 0 <= n
 //==============================================================================
 
-extern "C" void calc_rn_c(int n, double uvw[3], double rn[]);
+extern "C" void calc_rn_c(const int n, const double uvw[3], double rn[]);
 
 //==============================================================================
 // CALC_ZN calculates the n-th order modified Zernike polynomial moment for a
@@ -60,7 +62,8 @@ extern "C" void calc_rn_c(int n, double uvw[3], double rn[]);
 // exactly pi
 //==============================================================================
 
-extern "C" void calc_zn_c(int n, double rho, double phi, double zn[]);
+extern "C" void calc_zn_c(const int n, const double rho, const double phi,
+                          double zn[]);
 
 //==============================================================================
 // ROTATE_ANGLE rotates direction cosines through a polar angle whose cosine is
@@ -68,7 +71,8 @@ extern "C" void calc_zn_c(int n, double rho, double phi, double zn[]);
 // with direct sampling rather than rejection as is done in MCNP and SERPENT.
 //==============================================================================
 
-extern "C" void rotate_angle_c(double uvw[3], double mu, double phi = -10.);
+extern "C" void rotate_angle_c(double uvw[3], const double mu,
+                               double phi = -10.);
 
 //==============================================================================
 // MAXWELL_SPECTRUM samples an energy from the Maxwell fission distribution
@@ -77,7 +81,7 @@ extern "C" void rotate_angle_c(double uvw[3], double mu, double phi = -10.);
 // This PDF can be sampled using rule C64 in the Monte Carlo Sampler LA-9721-MS.
 //==============================================================================
 
-extern "C" double maxwell_spectrum_c(double T);
+extern "C" double maxwell_spectrum_c(const double T);
 
 //==============================================================================
 // WATT_SPECTRUM samples the outgoing energy from a Watt energy-dependent
@@ -88,7 +92,7 @@ extern "C" double maxwell_spectrum_c(double T);
 // MC lectures).
 //==============================================================================
 
-extern "C" double watt_spectrum_c(double a, double b);
+extern "C" double watt_spectrum_c(const double a, const double b);
 
 //==============================================================================
 // FADDEEVA the Faddeeva function, using Stephen Johnson's implementation
@@ -103,8 +107,8 @@ extern "C" double watt_spectrum_c(double a, double b);
 // The curvefit is a polynomial of the form a/E + b/sqrt(E) + c + d sqrt(E) ...
 //==============================================================================
 
-extern "C" void broaden_wmp_polynomials_c(double E, double dopp, int n,
-                                          double factors[]);
+extern "C" void broaden_wmp_polynomials_c(const double E, const double dopp,
+                                          const int n, double factors[]);
 
 } // namespace openmc
 #endif // MATH_FUNCTIONS_H

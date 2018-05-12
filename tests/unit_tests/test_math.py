@@ -39,14 +39,17 @@ def test_t_percentile():
 
 def test_calc_pn():
     max_order = 10
-    test_ns = np.array([i for i in range(0, max_order + 1)])
     test_xs = np.linspace(-1., 1., num=5, endpoint=True)
 
     # Reference solutions from scipy
-    ref_vals = [sp.special.eval_legendre(n, test_xs) for n in test_ns]
+    ref_vals = np.array([sp.special.eval_legendre(n, test_xs)
+                         for n in range(0, max_order + 1)])
 
-    test_vals = [[openmc.capi.math.calc_pn(n, x) for x in test_xs]
-                 for n in test_ns]
+    test_vals = []
+    for x in test_xs:
+        test_vals.append(openmc.capi.math.calc_pn(max_order, x).tolist())
+
+    test_vals = np.swapaxes(np.array(test_vals), 0, 1)
 
     assert np.allclose(ref_vals, test_vals)
 
@@ -61,7 +64,7 @@ def test_evaluate_legendre():
     ref_vals = np.polynomial.legendre.legval(test_xs, test_coeffs)
 
     # Set the coefficients back to 1s for the test values since
-    # evaluate legendre includes the (2l+1)/2 term
+    # evaluate legendre incorporates the (2l+1)/2 term on its own
     test_coeffs = [1. for l in range(max_order + 1)]
 
     test_vals = np.array([openmc.capi.math.evaluate_legendre(test_coeffs, x)
@@ -107,9 +110,7 @@ def test_calc_rn():
             ref_vals.append(ylm)
 
     test_vals = []
-    for n in test_ns:
-        ylms = openmc.capi.math.calc_rn(n, test_uvw)
-        test_vals.extend(ylms.tolist())
+    test_vals = openmc.capi.math.calc_rn(max_order, test_uvw)
 
     assert np.allclose(ref_vals, test_vals)
 

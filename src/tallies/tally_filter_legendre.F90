@@ -51,13 +51,12 @@ contains
     type(TallyFilterMatch),   intent(inout) :: match
 
     integer :: i
-    real(8) :: wgt
+    real(C_DOUBLE) :: wgt(this % n_bins)
 
-    ! TODO: Use recursive formula to calculate higher orders
-    do i = 0, this % order
-      wgt = calc_pn(i, p % mu)
-      call match % bins % push_back(i + 1)
-      call match % weights % push_back(wgt)
+    call calc_pn(this % order, p % mu, wgt)
+    do i = 1, this % n_bins
+      call match % bins % push_back(i)
+      call match % weights % push_back(wgt(i))
     end do
   end subroutine get_all_bins
 

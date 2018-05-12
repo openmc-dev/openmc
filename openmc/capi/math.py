@@ -9,8 +9,9 @@ from . import _dll
 # _dll.normal_percentile.argtypes = [POINTER(c_double)]
 _dll.t_percentile.restype = c_double
 _dll.t_percentile.argtypes = [POINTER(c_double), POINTER(c_int)]
-_dll.calc_pn.restype = c_double
-_dll.calc_pn.argtypes = [POINTER(c_int), POINTER(c_double)]
+_dll.calc_pn.restype = None
+_dll.calc_pn.argtypes = [POINTER(c_int), POINTER(c_double),
+                         ndpointer(c_double)]
 _dll.evaluate_legendre.restype = c_double
 _dll.evaluate_legendre.argtypes = [POINTER(c_int), POINTER(c_double),
                                    POINTER(c_double)]
@@ -95,7 +96,9 @@ def calc_pn(n, x):
 
     """
 
-    return _dll.calc_pn(c_int(n), c_double(x))
+    pnx = np.empty(n + 1, dtype=np.float64)
+    _dll.calc_pn(c_int(n), c_double(x), pnx)
+    return pnx
 
 
 def evaluate_legendre(data, x):
@@ -124,7 +127,7 @@ def evaluate_legendre(data, x):
 
 def calc_rn(n, uvw):
     """ Calculate the n-th order real Spherical Harmonics for a given angle;
-    all Rn,m values are provided (where -n <= m <= n).
+    all Rn,m values are provided for all n (where -n <= m <= n).
 
     Parameters
     ----------
@@ -140,7 +143,7 @@ def calc_rn(n, uvw):
 
     """
 
-    num_nm = 2 * n + 1
+    num_nm = (n + 1) * (n + 1)
     rn = np.empty(num_nm, dtype=np.float64)
     uvw_arr = np.array(uvw, dtype=np.float64)
     _dll.calc_rn(c_int(n), uvw_arr, rn)

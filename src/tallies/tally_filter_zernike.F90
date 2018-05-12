@@ -61,7 +61,7 @@ contains
 
     integer :: i
     real(8) :: x, y, r, theta
-    real(8) :: zn(this % n_bins)
+    real(C_DOUBLE) :: zn(this % n_bins)
 
     ! Determine normalized (r,theta) positions
     x = p % coord(1) % xyz(1) - this % x

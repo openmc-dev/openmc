@@ -1,5 +1,7 @@
 module message_passing
 
+  use, intrinsic :: ISO_C_BINDING
+
 #ifdef OPENMC_MPI
 #ifdef OPENMC_MPIF08
   use mpi_f08
@@ -12,9 +14,9 @@ module message_passing
   ! mpi_enabled flag are for when MPI is not being used at all, i.e. a serial
   ! run. In this case, these variables are still used at times.
 
-  integer :: n_procs     = 1       ! number of processes
-  integer :: rank        = 0       ! rank of process
-  logical :: master      = .true.  ! master process?
+  integer(C_INT), bind(C, name='openmc_n_procs') :: n_procs = 1  ! number of processes
+  integer(C_INT), bind(C, name='openmc_rank')    :: rank    = 0  ! rank of process
+  logical(C_BOOL), bind(C, name='openmc_master') :: master  = .true. ! master process?
   logical :: mpi_enabled = .false. ! is MPI in use and initialized?
 #ifdef OPENMC_MPIF08
   type(MPI_Datatype) :: MPI_BANK   ! MPI datatype for fission bank

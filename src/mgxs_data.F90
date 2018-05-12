@@ -132,6 +132,8 @@ contains
           ! Add name to dictionary
           call already_read % add(name)
 
+          call close_group(xsdata_group)
+
         end if
       end do NUCLIDE_LOOP
     end do MATERIAL_LOOP
@@ -158,6 +160,8 @@ contains
 
       end do NUCLIDE_LOOP2
     end do MATERIAL_LOOP3
+
+    call file_close(file_id)
 
   end subroutine read_mgxs
 

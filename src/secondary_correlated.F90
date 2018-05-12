@@ -1,13 +1,10 @@
 module secondary_correlated
 
-  use hdf5, only: HID_T, HSIZE_T
-
   use algorithm, only: binary_search
   use angleenergy_header, only: AngleEnergy
   use constants, only: ZERO, ONE, HALF, TWO, HISTOGRAM, LINEAR_LINEAR
   use distribution_univariate, only: DistributionContainer, Tabular
-  use hdf5_interface, only: get_shape, read_attribute, open_dataset, &
-       read_dataset, close_dataset
+  use hdf5_interface
   use random_lcg, only: prn
 
 !===============================================================================

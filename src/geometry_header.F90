@@ -544,16 +544,12 @@ contains
           c % type = FILL_MATERIAL
           do i = 1, n
             j = indices(i)
-            if (j == 0) then
-              c % material(i) = MATERIAL_VOID
+            if ((j >= 1 .and. j <= n_materials) .or. j == MATERIAL_VOID) then
+              c % material(i) = j
             else
-              if (j >= 1 .and. j <= n_materials) then
-                c % material(i) = j
-              else
-                err = E_OUT_OF_BOUNDS
-                call set_errmsg("Index " // trim(to_str(j)) // " in the &
-                     &materials array is out of bounds.")
-              end if
+              err = E_OUT_OF_BOUNDS
+              call set_errmsg("Index " // trim(to_str(j)) // " in the &
+                   &materials array is out of bounds.")
             end if
           end do
         case (FILL_UNIVERSE)

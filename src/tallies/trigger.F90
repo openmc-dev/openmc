@@ -104,8 +104,6 @@ contains
     integer :: s              ! loop index for triggers
     integer :: filter_index   ! index in results array for filters
     integer :: score_index    ! scoring bin index
-    integer :: n_order        ! loop index for moment orders
-    integer :: nm_order       ! loop index for Ynm moment orders
     integer(C_INT) :: err
     real(8) :: uncertainty    ! trigger uncertainty
     real(8) :: std_dev = ZERO ! trigger standard deviation
@@ -187,70 +185,18 @@ contains
               ! Initialize score bin index
               NUCLIDE_LOOP: do n = 1, t % n_nuclide_bins
 
-                select case(t % score_bins(trigger % score_index))
+                call get_trigger_uncertainty(std_dev, rel_err, &
+                     score_index, filter_index, t)
 
-                case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
-
-                  score_index = score_index - 1
-
-                  do n_order = 0, t % moment_order(trigger % score_index)
-                    score_index = score_index + 1
-
-                    call get_trigger_uncertainty(std_dev, rel_err, &
-                         score_index, filter_index, t)
-
-                    if (trigger % variance < variance) then
-                      trigger % variance = std_dev ** 2
-                    end if
-                    if (trigger % std_dev < std_dev) then
-                      trigger % std_dev = std_dev
-                    end if
-                    if (trigger % rel_err < rel_err) then
-                      trigger % rel_err = rel_err
-                    end if
-
-                  end do
-
-                case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
-                     SCORE_TOTAL_YN)
-
-                  score_index = score_index - 1
-
-                  do n_order = 0, t % moment_order(trigger % score_index)
-                    do nm_order = -n_order, n_order
-                      score_index = score_index + 1
-
-                      call get_trigger_uncertainty(std_dev, rel_err, &
-                             score_index, filter_index, t)
-
-                      if (trigger % variance < variance) then
-                        trigger % variance = std_dev ** 2
-                      end if
-                      if (trigger % std_dev < std_dev) then
-                        trigger % std_dev = std_dev
-                      end if
-                      if (trigger % rel_err < rel_err) then
-                        trigger % rel_err = rel_err
-                      end if
-
-                    end do
-                  end do
-
-                case default
-                  call get_trigger_uncertainty(std_dev, rel_err, &
-                       score_index, filter_index, t)
-
-                  if (trigger % variance < variance) then
-                    trigger % variance = std_dev ** 2
-                  end if
-                  if (trigger % std_dev < std_dev) then
-                    trigger % std_dev = std_dev
-                  end if
-                  if (trigger % rel_err < rel_err) then
-                    trigger % rel_err = rel_err
-                  end if
-
-                end select
+                if (trigger % variance < variance) then
+                  trigger % variance = std_dev ** 2
+                end if
+                if (trigger % std_dev < std_dev) then
+                  trigger % std_dev = std_dev
+                end if
+                if (trigger % rel_err < rel_err) then
+                  trigger % rel_err = rel_err
+                end if
 
                 select case (t % triggers(s) % type)
                 case(VARIANCE)

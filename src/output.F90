@@ -162,7 +162,7 @@ contains
 ! information
 !===============================================================================
 
-  subroutine print_version()
+  subroutine print_version() bind(C)
 
     if (master) then
       write(UNIT=OUTPUT_UNIT, FMT='(1X,A,1X,I1,".",I2,".",I1)') &
@@ -182,7 +182,7 @@ contains
 ! PRINT_USAGE displays information about command line usage of OpenMC
 !===============================================================================
 
-  subroutine print_usage()
+  subroutine print_usage() bind(C)
 
     if (master) then
       write(OUTPUT_UNIT,*) 'Usage: openmc [options] [directory]'
@@ -665,14 +665,11 @@ contains
     integer :: j            ! level in tally hierarchy
     integer :: k            ! loop index for scoring bins
     integer :: n            ! loop index for nuclides
-    integer :: l            ! loop index for user scores
     integer :: h            ! loop index for tally filters
     integer :: indent       ! number of spaces to preceed output
     integer :: filter_index ! index in results array for filters
     integer :: score_index  ! scoring bin index
     integer :: i_nuclide    ! index in nuclides array
-    integer :: n_order      ! loop index for moment orders
-    integer :: nm_order     ! loop index for Ynm moment orders
     integer :: unit_tally   ! tallies.out file unit
     integer :: nr           ! number of realizations
     real(8) :: t_value      ! t-values for confidence intervals
@@ -699,14 +696,6 @@ contains
     score_names(abs(SCORE_NU_FISSION))         = "Nu-Fission Rate"
     score_names(abs(SCORE_KAPPA_FISSION))      = "Kappa-Fission Rate"
     score_names(abs(SCORE_EVENTS))             = "Events"
-    score_names(abs(SCORE_FLUX_YN))            = "Flux Moment"
-    score_names(abs(SCORE_TOTAL_YN))           = "Total Reaction Rate Moment"
-    score_names(abs(SCORE_SCATTER_N))          = "Scattering Rate Moment"
-    score_names(abs(SCORE_SCATTER_PN))         = "Scattering Rate Moment"
-    score_names(abs(SCORE_SCATTER_YN))         = "Scattering Rate Moment"
-    score_names(abs(SCORE_NU_SCATTER_N))       = "Scattering Prod. Rate Moment"
-    score_names(abs(SCORE_NU_SCATTER_PN))      = "Scattering Prod. Rate Moment"
-    score_names(abs(SCORE_NU_SCATTER_YN))      = "Scattering Prod. Rate Moment"
     score_names(abs(SCORE_DECAY_RATE))         = "Decay Rate"
     score_names(abs(SCORE_DELAYED_NU_FISSION)) = "Delayed-Nu-Fission Rate"
     score_names(abs(SCORE_PROMPT_NU_FISSION))  = "Prompt-Nu-Fission Rate"
@@ -860,60 +849,20 @@ contains
           end if
 
           indent = indent + 2
-          k = 0
-          do l = 1, t % n_user_score_bins
-            k = k + 1
+          do k = 1, t % n_score_bins
             score_index = score_index + 1
 
             associate(r => t % results(RESULT_SUM:RESULT_SUM_SQ, :, :))
 
-            select case(t % score_bins(k))
-            case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
-              score_name = 'P' // trim(to_str(t % moment_order(k))) // " " // &
-                   score_names(abs(t % score_bins(k)))
-              x(:) = mean_stdev(r(:, score_index, filter_index), nr)
-              write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                   repeat(" ", indent), score_name, to_str(x(1)), &
-                   trim(to_str(t_value * x(2)))
-            case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
-              score_index = score_index - 1
-              do n_order = 0, t % moment_order(k)
-                score_index = score_index + 1
-                score_name = 'P' // trim(to_str(n_order)) //  " " //&
-                     score_names(abs(t % score_bins(k)))
-                x(:) = mean_stdev(r(:, score_index, filter_index), nr)
-                write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                     repeat(" ", indent), score_name, &
-                     to_str(x(1)), trim(to_str(t_value * x(2)))
-              end do
-              k = k + t % moment_order(k)
-            case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
-                  SCORE_TOTAL_YN)
-              score_index = score_index - 1
-              do n_order = 0, t % moment_order(k)
-                do nm_order = -n_order, n_order
-                  score_index = score_index + 1
-                  score_name = 'Y' // trim(to_str(n_order)) // ',' // &
-                       trim(to_str(nm_order)) // " " &
-                       // score_names(abs(t % score_bins(k)))
-                  x(:) = mean_stdev(r(:, score_index, filter_index), nr)
-                  write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                       repeat(" ", indent), score_name, &
-                       to_str(x(1)), trim(to_str(t_value * x(2)))
-                end do
-              end do
-              k = k + (t % moment_order(k) + 1)**2 - 1
-            case default
-              if (t % score_bins(k) > 0) then
-                score_name = reaction_name(t % score_bins(k))
-              else
-                score_name = score_names(abs(t % score_bins(k)))
-              end if
-              x(:) = mean_stdev(r(:, score_index, filter_index), nr)
-              write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                   repeat(" ", indent), score_name, &
-                   to_str(x(1)), trim(to_str(t_value * x(2)))
-            end select
+            if (t % score_bins(k) > 0) then
+              score_name = reaction_name(t % score_bins(k))
+            else
+              score_name = score_names(abs(t % score_bins(k)))
+            end if
+            x(:) = mean_stdev(r(:, score_index, filter_index), nr)
+            write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
+                 repeat(" ", indent), score_name, &
+                 to_str(x(1)), trim(to_str(t_value * x(2)))
             end associate
           end do
           indent = indent - 2

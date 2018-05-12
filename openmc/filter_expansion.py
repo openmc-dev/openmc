@@ -10,9 +10,16 @@ from . import Filter
 
 class ExpansionFilter(Filter):
     """Abstract filter class for functional expansions."""
+
     def __init__(self, order, filter_id=None):
         self.order = order
         self.id = filter_id
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        else:
+            return self.bins == other.bins
 
     @property
     def order(self):
@@ -318,15 +325,15 @@ class ZernikeFilter(ExpansionFilter):
 
     This filter allows scores to be multiplied by Zernike polynomials of the
     particle's position normalized to a given unit circle, up to a
-    user-specified order. The Zernike polynomials follow the definition by `Noll
-    <https://doi.org/10.1364/JOSA.66.000207>`_ and are defined as
+    user-specified order. The standard Zernike polynomials follow the definition by
+    Born and Wolf, *Principles of Optics* and are defined as
 
     .. math::
-        Z_n^m(\rho, \theta) = \sqrt{2n + 2} R_n^m(\rho) \cos (m\theta), \quad m > 0
+        Z_n^m(\rho, \theta) = R_n^m(\rho) \cos (m\theta), \quad m > 0
 
-        Z_n^{m}(\rho, \theta) = \sqrt{2n + 2} R_n^{m}(\rho) \sin (m\theta), \quad m < 0
+        Z_n^{m}(\rho, \theta) = R_n^{m}(\rho) \sin (m\theta), \quad m < 0
 
-        Z_n^{m}(\rho, \theta) = \sqrt{n + 1} R_n^{m}(\rho), \quad m = 0
+        Z_n^{m}(\rho, \theta) = R_n^{m}(\rho), \quad m = 0
 
     where the radial polynomials are
 
@@ -335,7 +342,8 @@ class ZernikeFilter(ExpansionFilter):
         \frac{n+m}{2} - k)! (\frac{n-m}{2} - k)!} \rho^{n-2k}.
 
     With this definition, the integral of :math:`(Z_n^m)^2` over the unit disk
-    is exactly :math:`\pi` for each polynomial.
+    is :math:`\frac{\epsilon_m\pi}{2n+2}` for each polynomial where :math:`\epsilon_m` is
+    2 if :math:`m` equals 0 and 1 otherwise.
 
     Specifying a filter with order N tallies moments for all :math:`n` from 0 to
     N and each value of :math:`m`. The ordering of the Zernike polynomial

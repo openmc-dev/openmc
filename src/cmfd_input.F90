@@ -278,7 +278,7 @@ contains
     m % id = i_start
 
     ! Set mesh type to rectangular
-    m % type = LATTICE_RECT
+    m % type = MESH_REGULAR
 
     ! Get pointer to mesh XML node
     node_mesh = root % child("mesh")
@@ -373,7 +373,7 @@ contains
 
     ! Determine number of filters
     energy_filters = check_for_node(node_mesh, "energy")
-    n = merge(4, 2, energy_filters)
+    n = merge(5, 3, energy_filters)
 
     ! Extend filters array so we can add CMFD filters
     err = openmc_extend_filters(n, i_filt_start, i_filt_end)
@@ -414,6 +414,12 @@ contains
     err = openmc_filter_set_id(i_filt, filt_id)
     err = openmc_meshsurface_filter_set_mesh(i_filt, i_start)
 
+    ! Add in legendre filter for the P1 tally
+    i_filt = i_filt + 1
+    err = openmc_filter_set_type(i_filt, C_CHAR_'legendre' // C_NULL_CHAR)
+    call openmc_get_filter_next_id(filt_id)
+    err = openmc_filter_set_id(i_filt, filt_id)
+    err = openmc_legendre_filter_set_order(i_filt, 1)
 
     ! Initialize filters
     do i = i_filt_start, i_filt_end
@@ -421,7 +427,7 @@ contains
     end do
 
     ! Allocate tallies
-    err = openmc_extend_tallies(3, i_start, i_end)
+    err = openmc_extend_tallies(4, i_start, i_end)
     cmfd_tallies => tallies(i_start:i_end)
 
     ! Begin loop around tallies
@@ -455,7 +461,7 @@ contains
       if (i == 1) then
 
         ! Set name
-        t % name = "CMFD flux, total, scatter-1"
+        t % name = "CMFD flux, total"
 
         ! Set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
@@ -473,19 +479,12 @@ contains
         deallocate(filter_indices)
 
         ! Allocate scoring bins
-        allocate(t % score_bins(3))
-        t % n_score_bins = 3
-        t % n_user_score_bins = 3
-
-        ! Allocate scattering order data
-        allocate(t % moment_order(3))
-        t % moment_order = 0
+        allocate(t % score_bins(2))
+        t % n_score_bins = 2
 
         ! Set macro_bins
         t % score_bins(1)  = SCORE_FLUX
         t % score_bins(2)  = SCORE_TOTAL
-        t % score_bins(3)  = SCORE_SCATTER_N
-        t % moment_order(3) = 1
 
       else if (i == 2) then
 
@@ -517,11 +516,6 @@ contains
         ! Allocate macro reactions
         allocate(t % score_bins(2))
         t % n_score_bins = 2
-        t % n_user_score_bins = 2
-
-        ! Allocate scattering order data
-        allocate(t % moment_order(2))
-        t % moment_order = 0
 
         ! Set macro_bins
         t % score_bins(1) = SCORE_NU_SCATTER
@@ -537,7 +531,7 @@ contains
 
         ! Allocate and set filters
         allocate(filter_indices(n_filter))
-        filter_indices(1) = i_filt_end
+        filter_indices(1) = i_filt_end - 1
         if (energy_filters) then
           filter_indices(2) = i_filt_start + 1
         end if
@@ -547,15 +541,41 @@ contains
         ! Allocate macro reactions
         allocate(t % score_bins(1))
         t % n_score_bins = 1
-        t % n_user_score_bins = 1
-
-        ! Allocate scattering order data
-        allocate(t % moment_order(1))
-        t % moment_order = 0
 
         ! Set macro bins
         t % score_bins(1) = SCORE_CURRENT
         t % type = TALLY_MESH_SURFACE
+
+      else if (i == 4) then
+        ! Set name
+        t % name = "CMFD P1 scatter"
+
+        ! Set tally estimator to analog
+        t % estimator = ESTIMATOR_ANALOG
+
+        ! Set tally type to volume
+        t % type = TALLY_VOLUME
+
+        ! Allocate and set filters
+        n_filter = 2
+        if (energy_filters) then
+          n_filter = n_filter + 1
+        end if
+        allocate(filter_indices(n_filter))
+        filter_indices(1) = i_filt_start
+        filter_indices(2) = i_filt_end
+        if (energy_filters) then
+          filter_indices(3) = i_filt_start + 1
+        end if
+        err = openmc_tally_set_filters(i_start + i - 1, n_filter, filter_indices)
+        deallocate(filter_indices)
+
+        ! Allocate scoring bins
+        allocate(t % score_bins(1))
+        t % n_score_bins = 1
+
+        ! Set macro_bins
+        t % score_bins(1) = SCORE_SCATTER
       end if
 
       ! Make CMFD tallies active from the start

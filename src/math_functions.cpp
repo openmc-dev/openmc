@@ -659,7 +659,7 @@ void calc_zn_c(const int n, const double rho, const double phi, double zn[]) {
 // and SERPENT.
 //==============================================================================
 
-void rotate_angle_c(double uvw[3], const double mu, double phi) {
+void rotate_angle_c(double uvw[3], const double mu, double* phi) {
   double phi_;   // azimuthal angle
   double sinphi; // std::sine of azimuthal angle
   double cosphi; // cosine of azimuthal angle
@@ -675,8 +675,8 @@ void rotate_angle_c(double uvw[3], const double mu, double phi) {
   w0 = uvw[2];
 
   // Sample azimuthal angle in [0,2pi) if none provided
-  if (phi != -10.) {
-    phi_ = phi;
+  if (phi != NULL) {
+    phi_ = (*phi);
   } else {
     phi_ = 2. * PI * prn();
   }

@@ -1,4 +1,4 @@
-from ctypes import (c_int, c_double, POINTER)
+from ctypes import (c_int, c_double, POINTER, CFUNCTYPE)
 
 import numpy as np
 from numpy.ctypeslib import ndpointer
@@ -201,8 +201,11 @@ def rotate_angle(uvw0, mu, phi=None):
     uvw = np.zeros(3, dtype=np.float64)
     uvw0_arr = np.array(uvw0, dtype=np.float64)
 
-    _dll.rotate_angle(uvw0_arr, c_double(mu),
-                      uvw, c_double(phi))
+    if phi is None:
+        _dll.rotate_angle(uvw0_arr, c_double(mu), uvw, None)
+    else:
+        _dll.rotate_angle(uvw0_arr, c_double(mu), uvw, c_double(phi))
+
     return uvw
 
 

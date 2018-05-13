@@ -75,7 +75,7 @@ module math
       implicit none
       real(C_DOUBLE), intent(inout) :: uvw(3)
       real(C_DOUBLE), value, intent(in)    :: mu
-      real(C_DOUBLE), value, intent(in) :: phi
+      real(C_DOUBLE), optional, intent(in) :: phi
     end subroutine rotate_angle_c_intfc
 
     function maxwell_spectrum_c_intfc(T) bind(C, name='maxwell_spectrum_c') &
@@ -225,16 +225,19 @@ contains
 !===============================================================================
 
   subroutine rotate_angle(uvw0, mu, uvw, phi) bind(C)
-    real(C_DOUBLE), intent(in)  :: uvw0(3) ! directional cosine
-    real(C_DOUBLE), intent(in)  :: mu      ! cosine of angle in lab or CM
-    real(C_DOUBLE), intent(out) :: uvw(3)  ! rotated directional cosine
-    real(C_DOUBLE), optional    :: phi     ! azimuthal angle
+    real(C_DOUBLE), intent(in)       :: uvw0(3) ! directional cosine
+    real(C_DOUBLE), intent(in)       :: mu      ! cosine of angle in lab or CM
+    real(C_DOUBLE), intent(out)      :: uvw(3)  ! rotated directional cosine
+    real(C_DOUBLE), target, optional :: phi     ! azimuthal angle
+
+    real(C_DOUBLE), pointer :: phi_ptr
 
     uvw = uvw0
     if (present(phi)) then
-      call rotate_angle_c_intfc(uvw, mu, phi)
+      phi_ptr => phi
+      call rotate_angle_c_intfc(uvw, mu, phi_ptr)
     else
-      call rotate_angle_c_intfc(uvw, mu, -10._8)
+      call rotate_angle_c_intfc(uvw, mu)
     end if
 
   end subroutine rotate_angle

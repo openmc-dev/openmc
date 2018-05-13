@@ -170,7 +170,17 @@ def test_rotate_angle():
 
     assert np.array_equal(ref_uvw, test_uvw)
 
-    # Need to test phi=None somehow...
+    # Now to test phi is None
+    mu = 0.9
+    settings = openmc.capi.settings
+    settings.seed = 1
+
+    # When seed = 1, phi will be sampled as 1.9116495709698769
+    # The resultant reference is from hand-calculations given the above
+    ref_uvw = [0.9, 0.410813051297112, 0.1457142302040]
+    test_uvw = openmc.capi.math.rotate_angle(uvw0, mu)
+
+    assert np.allclose(ref_uvw, test_uvw)
 
 
 def test_maxwell_spectrum():

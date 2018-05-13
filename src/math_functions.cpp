@@ -2,6 +2,16 @@
 
 namespace openmc {
 
+//==============================================================================
+// Module constants.
+//==============================================================================
+
+// TODO: cmath::M_PI has 3 more digits precision than the Fortran constant we
+// use so for now we will reuse the Fortran constant until we are OK with
+// modifying test results
+extern "C" const double PI {3.1415926535898};
+
+extern "C" const double SQRT_PI {std::sqrt(PI)};
 
 //==============================================================================
 // NORMAL_PERCENTILE calculates the percentile of the standard normal
@@ -747,59 +757,6 @@ double watt_spectrum_c(const double a, const double b) {
 
   return E_out;
 }
-
-//==============================================================================
-// FADDEEVA the Faddeeva function, using Stephen Johnson's implementation
-//==============================================================================
-
-// double complex __attribute__ ((const)) faddeeva_c(double complex z) {
-//   double complex wv; // The resultant w(z) value
-//   double relerr;      // Target relative error in the inner loop of MIT Faddeeva
-
-//   // Technically, the value we want is given by the equation:
-//   // w(z) = I/Pi * Integrate[Exp[-t^2]/(z-t), {t, -Infinity, Infinity}]
-//   // as shown in Equation 63 from Hwang, R. N. "A rigorous pole
-//   // representation of multilevel cross sections and its practical
-//   // applications." Nuclear Science and Engineering 96.3 (1987): 192-209.
-//   //
-//   // The MIT Faddeeva function evaluates w(z) = exp(-z^2)erfc(-iz). These
-//   // two forms of the Faddeeva function are related by a transformation.
-//   //
-//   // If we call the integral form w_int, and the function form w_fun:
-//   // For imag(z) > 0, w_int(z) = w_fun(z)
-//   // For imag(z) < 0, w_int(z) = -conjg(w_fun(conjg(z)))
-
-//   // Note that faddeeva_w will interpret zero as machine epsilon
-
-//   relerr = 0.;
-//   if (cimag(z) > 0.) {
-//       wv = Faddeeva_w(z, relerr);
-//   } else {
-//     wv = -conj(Faddeeva_w(conj(z), relerr));
-//   }
-
-//   return wv;
-// }
-
-// double complex w_derivative_c(double complex z, int order){
-//   double complex wv; // The resultant w(z) value
-
-//   const double complex twoi_sqrtpi = 2.0 / SQRT_PI * I;
-
-//   switch(order) {
-//     case 0:
-//       wv = faddeeva_c(z);
-//       break;
-//     case 1:
-//       wv = -2. * z * faddeeva_c(z) + twoi_sqrtpi;
-//       break;
-//     default:
-//       wv = -2. * z * w_derivative_c(z, order - 1) - 2. * (order - 1) *
-//            w_derivative_c(z, order - 2);
-//   }
-
-//   return wv;
-// }
 
 //==============================================================================
 // BROADEN_WMP_POLYNOMIALS Doppler broadens the windowed multipole curvefit.

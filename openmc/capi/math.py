@@ -1,39 +1,38 @@
-from ctypes import (c_int, c_double, POINTER, CFUNCTYPE)
+from ctypes import (c_int, c_double, POINTER)
 
 import numpy as np
 from numpy.ctypeslib import ndpointer
 
 from . import _dll
 
-# _dll.normal_percentile.restype = c_double
-# _dll.normal_percentile.argtypes = [POINTER(c_double)]
 _dll.t_percentile.restype = c_double
 _dll.t_percentile.argtypes = [POINTER(c_double), POINTER(c_int)]
+
 _dll.calc_pn.restype = None
 _dll.calc_pn.argtypes = [POINTER(c_int), POINTER(c_double),
                          ndpointer(c_double)]
+
 _dll.evaluate_legendre.restype = c_double
 _dll.evaluate_legendre.argtypes = [POINTER(c_int), POINTER(c_double),
                                    POINTER(c_double)]
+
 _dll.calc_rn.restype = None
 _dll.calc_rn.argtypes = [POINTER(c_int), ndpointer(c_double),
                          ndpointer(c_double)]
+
 _dll.calc_zn.restype = None
 _dll.calc_zn.argtypes = [POINTER(c_int), POINTER(c_double), POINTER(c_double),
                          ndpointer(c_double)]
+
 _dll.rotate_angle.restype = None
 _dll.rotate_angle.argtypes = [ndpointer(c_double), POINTER(c_double),
                               ndpointer(c_double), POINTER(c_double)]
 _dll.maxwell_spectrum.restype = c_double
 _dll.maxwell_spectrum.argtypes = [POINTER(c_double)]
+
 _dll.watt_spectrum.restype = c_double
 _dll.watt_spectrum.argtypes = [POINTER(c_double), POINTER(c_double)]
-# COMPLEX DATA TYPES?
-# _dll.faddeeva.restype = c_double
-# _dll.faddeeva.argtypes = [POINTER(c_double)]
 
-# _dll.w_derivative.restype = c_double
-# _dll.w_derivative.argtypes = [POINTER(c_double)]
 _dll.broaden_wmp_polynomials.restype = None
 _dll.broaden_wmp_polynomials.argtypes = [POINTER(c_double), POINTER(c_double),
                                          POINTER(c_int), ndpointer(c_double)]

@@ -5,19 +5,6 @@ import openmc
 import openmc.capi
 
 
-# def test_normal_percentile():
-#     # normal_percentile has three branches to consider:
-#     # p < 0.02425; 0.02425 <= p <= 0.97575; and p > 0.97575
-#     test_ps = [0.02, 0.4, 0.5, 0.6, 0.98]
-
-#     # The reference solutions come from Scipy
-#     ref_zs = [sp.stats.norm.ppf(p) for p in test_ps]
-
-#     test_zs = [openmc.capi.math.normal_percentile(p) for p in test_ps]
-
-#     assert np.allclose(ref_zs, test_zs)
-
-
 def test_t_percentile():
     # Permutations include 1 DoF, 2 DoF, and > 2 DoF
     # We will test 5 p-values at 3-DoF values

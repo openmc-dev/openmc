@@ -2,21 +2,22 @@
 #define MATH_FUNCTIONS_H
 
 #include <cmath>
-#include <complex.h>
-#include <iostream>
 
 #include "random_lcg.h"
-// #include "faddeeva/Faddeeva.h"
 
 
 namespace openmc {
 
+//==============================================================================
+// Module constants.
+//==============================================================================
+
 // TODO: cmath::M_PI has 3 more digits precision than the Fortran constant we
 // use so for now we will reuse the Fortran constant until we are OK with
 // modifying test results
-const double PI = 3.1415926535898;
+extern "C" const double PI;
 
-const double SQRT_PI = std::sqrt(PI);
+extern "C" const double SQRT_PI;
 
 //==============================================================================
 // NORMAL_PERCENTILE calculates the percentile of the standard normal
@@ -93,14 +94,6 @@ extern "C" double maxwell_spectrum_c(const double T);
 //==============================================================================
 
 extern "C" double watt_spectrum_c(const double a, const double b);
-
-//==============================================================================
-// FADDEEVA the Faddeeva function, using Stephen Johnson's implementation
-//==============================================================================
-
-// extern "C" double complex faddeeva_c(double complex z) __attribute__ ((const));
-
-// extern "C" double complex w_derivative_c(double complex z, int order);
 
 //==============================================================================
 // BROADEN_WMP_POLYNOMIALS Doppler broadens the windowed multipole curvefit.

@@ -73,7 +73,7 @@ extern "C" void calc_zn_c(const int n, const double rho, const double phi,
 //==============================================================================
 
 extern "C" void rotate_angle_c(double uvw[3], const double mu,
-                               double* phi=NULL);
+                               double* phi=nullptr);
 
 //==============================================================================
 // MAXWELL_SPECTRUM samples an energy from the Maxwell fission distribution

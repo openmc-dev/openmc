@@ -685,7 +685,7 @@ void rotate_angle_c(double uvw[3], const double mu, double* phi) {
   w0 = uvw[2];
 
   // Sample azimuthal angle in [0,2pi) if none provided
-  if (phi != NULL) {
+  if (phi != nullptr) {
     phi_ = (*phi);
   } else {
     phi_ = 2. * PI * prn();
@@ -694,8 +694,8 @@ void rotate_angle_c(double uvw[3], const double mu, double* phi) {
   // Precompute factors to save flops
   sinphi = std::sin(phi_);
   cosphi = std::cos(phi_);
-  a = std::sqrt(std::max(0., 1. - mu * mu));
-  b = std::sqrt(std::max(0., 1. - w0 * w0));
+  a = std::sqrt(std::fmax(0., 1. - mu * mu));
+  b = std::sqrt(std::fmax(0., 1. - w0 * w0));
 
   // Need to treat special case where sqrt(1 - w**2) is close to zero by
   // expanding about the v component rather than the w component

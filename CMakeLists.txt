@@ -233,6 +233,7 @@ list(APPEND libopenmc_SOURCES
   src/string_utils.cpp
   src/summary.cpp
   src/surface.cpp
+<<<<<<< HEAD
   src/tallies/derivative.cpp
   src/tallies/filter.cpp
   src/tallies/filter_azimuthal.cpp
@@ -285,6 +286,16 @@ else()
   add_library(libopenmc SHARED ${libopenmc_SOURCES})
 endif()
 
+=======
+  src/surface.h
+  src/variance_reduction.cpp
+  src/variance_reduction.h
+  src/xml_interface.h
+  src/xml_interface.cpp
+  src/pugixml/pugixml.cpp
+  src/pugixml/pugixml.hpp)
+add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC} ${LIBOPENMC_CXX_SRC})
+>>>>>>> CPP XML read of variance reduction
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc)
 

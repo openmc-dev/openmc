@@ -8,6 +8,14 @@ namespace openmc {
 
 extern "C" void
 write_geometry(hid_t file_id) {
+
+#ifdef CAD
+  if (dagmc) {
+    return;
+  }
+#endif
+
+  
   auto geom_group = create_group(file_id, "geometry");
   write_attribute(geom_group, "n_cells", cells.size());
   write_attribute(geom_group, "n_surfaces", surfaces.size());

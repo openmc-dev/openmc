@@ -180,7 +180,7 @@ contains
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
     call neighbor_lists()
-
+    
     ! Assign temperatures to cells that don't have temperatures already assigned
     call assign_temperatures()
 
@@ -394,6 +394,73 @@ contains
        call load_cad_geometry()
        call allocate_surfaces()
        call allocate_cells()
+
+       ! setup universe data structs
+       do i = 1, n_cells
+          c => cells(i)
+          ! additional metadata spoofing
+          allocate(c % material(1))
+          c % material(1) = 40
+          c % fill = NONE
+          allocate(c % sqrtKT(1))
+          c % sqrtkT(1) = 293
+          c % sqrtkT(:) = sqrt(K_BOLTZMANN * c % sqrtkT(:))
+          univ_id = c % universe()
+          if (.not. allocated(c%region)) allocate(c%region(0))
+          
+          if (.not. cells_in_univ_dict % has(univ_id)) then
+             n_universes = n_universes + 1
+             n_cells_in_univ = 1
+             call universe_dict % set(univ_id, n_universes)
+             call univ_ids % push_back(univ_id)
+          else
+             n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
+          end if
+          call cells_in_univ_dict % set(univ_id, n_cells_in_univ)
+          
+       end do
+
+       ! ==========================================================================
+       ! SETUP UNIVERSES
+       
+       ! Allocate universes, universe cell arrays, and assign base universe
+       allocate(universes(n_universes))
+       do i = 1, n_universes
+          associate (u => universes(i))
+            u % id = univ_ids % data(i)
+
+            ! Allocate cell list
+            n_cells_in_univ = cells_in_univ_dict % get(u % id)
+            allocate(u % cells(n_cells_in_univ))
+            u % cells(:) = 0
+            
+            ! Check whether universe is a fill universe
+            if (find(fill_univ_ids, u % id) == -1) then
+               if (root_universe > 0) then
+                  call fatal_error("Two or more universes are not used as fill &
+                       &universes, so it is not possible to distinguish which one &
+                       &is the root universe.")
+               else
+                  root_universe = i
+               end if
+            end if
+          end associate
+       end do
+       
+       do i = 1, n_cells
+          ! Get index in universes array
+          j = universe_dict % get(cells(i) % universe())
+          
+          ! Set the first zero entry in the universe cells array to the index in the
+          ! global cells array
+          associate (u => universes(j))
+            u % cells(find(u % cells, 0)) = i
+          end associate
+       end do
+       
+       ! Clear dictionary
+       call cells_in_univ_dict%clear()
+       
        return
     end if
 #endif

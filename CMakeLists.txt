@@ -262,10 +262,16 @@ list(APPEND libopenmc_SOURCES
   src/thermal.cpp
   src/track_output.cpp
   src/urr.cpp
+  src/variance_reduction.cpp
   src/volume_calc.cpp
   src/wmp.cpp
   src/xml_interface.cpp
-  src/xsdata.cpp)
+  src/xsdata.cpp
+  src/xml_interface.h
+  src/xml_interface.cpp
+  src/pugixml/pugixml.cpp
+  src/pugixml/pugixml.hpp)
+)
 
 # For Visual Studio compilers
 if(MSVC)

@@ -95,22 +95,6 @@ module math
       real(C_DOUBLE) :: E_out
     end function watt_spectrum_c_intfc
 
-    function faddeeva_c_intfc(z) bind(C, name='faddeeva_c') result(wv)
-      use ISO_C_BINDING
-      implicit none
-      complex(C_DOUBLE_COMPLEX), value, intent(in) :: z
-      complex(C_DOUBLE_COMPLEX) :: wv
-    end function faddeeva_c_intfc
-
-    function w_derivative_c_intfc(z, order) bind(C, name='w_derivative_c') &
-           result(wv)
-      use ISO_C_BINDING
-      implicit none
-      complex(C_DOUBLE_COMPLEX), value, intent(in) :: z
-      integer(C_INT), value,            intent(in) :: order
-      complex(C_DOUBLE_COMPLEX) :: wv
-    end function w_derivative_c_intfc
-
     subroutine broaden_wmp_polynomials_c_intfc(E, dopp, n, factors) &
            bind(C, name='broaden_wmp_polynomials_c')
       use ISO_C_BINDING

@@ -3,40 +3,28 @@
 namespace openmc {
 
 //==============================================================================
-// Module constants.
+// Mathematical methods
 //==============================================================================
 
-// TODO: cmath::M_PI has 3 more digits precision than the Fortran constant we
-// use so for now we will reuse the Fortran constant until we are OK with
-// modifying test results
-extern "C" const double PI {3.1415926535898};
-
-extern "C" const double SQRT_PI {std::sqrt(PI)};
-
-//==============================================================================
-// NORMAL_PERCENTILE calculates the percentile of the standard normal
-// distribution with a specified probability level
-//==============================================================================
-
-double __attribute__ ((const)) normal_percentile_c(const double p) {
-  double z;
-  double q;
-  double r;
-  const double p_low = 0.02425;
-  const double a[6] = {-3.969683028665376e1, 2.209460984245205e2,
-                       -2.759285104469687e2, 1.383577518672690e2,
-                       -3.066479806614716e1, 2.506628277459239e0};
-  const double b[5] = {-5.447609879822406e1, 1.615858368580409e2,
-                       -1.556989798598866e2, 6.680131188771972e1,
-                       -1.328068155288572e1};
-  const double c[6] = {-7.784894002430293e-3, -3.223964580411365e-1,
-                       -2.400758277161838, -2.549732539343734,
-                       4.374664141464968, 2.938163982698783};
-  const double d[4] = {7.784695709041462e-3, 3.224671290700398e-1,
-                       2.445134137142996, 3.754408661907416};
+double normal_percentile_c(const double p) {
+  constexpr double p_low = 0.02425;
+  constexpr double a[6] = {-3.969683028665376e1, 2.209460984245205e2,
+                           -2.759285104469687e2, 1.383577518672690e2,
+                           -3.066479806614716e1, 2.506628277459239e0};
+  constexpr double b[5] = {-5.447609879822406e1, 1.615858368580409e2,
+                           -1.556989798598866e2, 6.680131188771972e1,
+                           -1.328068155288572e1};
+  constexpr double c[6] = {-7.784894002430293e-3, -3.223964580411365e-1,
+                           -2.400758277161838, -2.549732539343734,
+                           4.374664141464968, 2.938163982698783};
+  constexpr double d[4] = {7.784695709041462e-3, 3.224671290700398e-1,
+                           2.445134137142996, 3.754408661907416};
 
   // The rational approximation used here is from an unpublished work at
   // http://home.online.no/~pjacklam/notes/invnorm/
+
+  double z;
+  double q;
 
   if (p < p_low) {
     // Rational approximation for lower region.
@@ -47,7 +35,7 @@ double __attribute__ ((const)) normal_percentile_c(const double p) {
 
   } else if (p <= 1.0 - p_low) {
     // Rational approximation for central region
-
+    double r;
     q = p - 0.5;
     r = q * q;
     z = (((((a[0]*r + a[1])*r + a[2])*r + a[3])*r + a[4])*r + a[5])*q /
@@ -70,17 +58,9 @@ double __attribute__ ((const)) normal_percentile_c(const double p) {
 
 }
 
-//==============================================================================
-// T_PERCENTILE calculates the percentile of the Student's t distribution with
-// a specified probability level and number of degrees of freedom
-//==============================================================================
 
-double __attribute__ ((const)) t_percentile_c(const double p, const int df){
+double t_percentile_c(const double p, const int df){
   double t;
-  double n;
-  double k;
-  double z;
-  double z2;
 
   if (df == 1) {
     // For one degree of freedom, the t-distribution becomes a Cauchy
@@ -98,7 +78,10 @@ double __attribute__ ((const)) t_percentile_c(const double p, const int df){
     // modification of the Fisher-Cornish approximation for the student t
     // percentiles," Communication in Statistics - Simulation and Computation,
     // 16 (4), pp. 1123-1132 (1987).
-
+    double n;
+    double k;
+    double z;
+    double z2;
     n = static_cast<double>(df);
     k = 1. / (n - 2.);
     z = normal_percentile_c(p);
@@ -111,61 +94,42 @@ double __attribute__ ((const)) t_percentile_c(const double p, const int df){
   return t;
 }
 
-//==============================================================================
-// CALC_PN calculates the n-th order Legendre polynomials at the value of x.
-//==============================================================================
 
 void calc_pn_c(const int n, const double x, double pnx[]) {
-  int l;
-
   pnx[0] = 1.;
   if (n >= 1) {
     pnx[1] = x;
   }
 
   // Use recursion relation to build the higher orders
-  for (l = 1; l < n; l ++) {
+  for (int l = 1; l < n; l ++) {
     pnx[l + 1] = (static_cast<double>(2 * l + 1) * x * pnx[l] -
                   static_cast<double>(l) * pnx[l - 1]) /
          (static_cast<double>(l + 1));
   }
 }
 
-//==============================================================================
-// EVALUATE_LEGENDRE Find the value of f(x) given a set of Legendre coefficients
-// and the value of x
-//==============================================================================
 
-double __attribute__ ((const)) evaluate_legendre_c(const int n,
+double evaluate_legendre_c(const int n,
                                                    const double data[],
                                                    const double x) {
   double val;
-  int l;
-  double* pnx = new double[n + 1];
+  double pnx[n + 1];
 
   val = 0.0;
   calc_pn_c(n, x, pnx);
-  for (l = 0; l <= n; l++) {
+  for (int l = 0; l <= n; l++) {
     val += (static_cast<double>(l) + 0.5) * data[l] * pnx[l];
   }
-  delete[] pnx;
   return val;
 }
 
-//==============================================================================
-// CALC_RN calculates the n-th order spherical harmonics for a given angle
-// (in terms of (u,v,w)).  All Rn,m values are provided (where -n<=m<=n) for n
-// all 0 <= n
-//==============================================================================
 
 void calc_rn_c(const int n, const double uvw[3], double rn[]){
+  // rn[] is assumed to have already been allocated to the correct size
+
   double phi;
   double w;
-  double w2m1;
-  int i;
-  int l;
-
-  // rn[] is assumed to have already been allocated to the correct size
 
   // Store the cosine of the polar angle and the azimuthal angle
   w = uvw[2];
@@ -176,12 +140,14 @@ void calc_rn_c(const int n, const double uvw[3], double rn[]){
   }
 
   // Store the shorthand of 1-w * w
+  double w2m1;
   w2m1 = 1. - w * w;
 
   // Now evaluate the spherical harmonics function
   rn[0] = 1.;
+  int i;
   i = 0;
-  for (l = 1; l <= n; l++) {
+  for (int l = 1; l <= n; l++) {
     // Set the index to the start of this order
     i += 2 * (l - 1) + 1;
 
@@ -558,33 +524,12 @@ void calc_rn_c(const int n, const double uvw[3], double rn[]){
   }
 }
 
-//==============================================================================
-// CALC_ZN calculates the n-th order modified Zernike polynomial moment for a
-// given angle (rho, theta) location in the unit disk. The normalization of the
-// polynomials is such tha the integral of Z_pq*Z_pq over the unit disk is
-// exactly pi
-//==============================================================================
 
 void calc_zn_c(const int n, const double rho, const double phi, double zn[]) {
   // This procedure uses the modified Kintner's method for calculating Zernike
   // polynomials as outlined in Chong, C. W., Raveendran, P., & Mukundan,
   // R. (2003). A comparative analysis of algorithms for fast computation of
   // Zernike moments. Pattern Recognition, 36(3), 731-742.
-  double sin_phi;              // Cosine of phi
-  double cos_phi;              // Sine of phi
-  double sin_phi_vec[n + 1];   // Sin[n * phi]
-  double cos_phi_vec[n + 1];   // Cos[n * phi]
-  double zn_mat[n + 1][n + 1]; // Matrix forms of the coefficients which are
-                               // easier to work with
-  // Variables for R_m_n calculation
-  double k1;
-  double k2;
-  double k3;
-  double k4;
-  // Loop counters
-  int i;
-  int p;
-  int q;
 
   // n == radial degree
   // m == azimuthal frequency
@@ -597,41 +542,50 @@ void calc_zn_c(const int n, const double rho, const double phi, double zn[]) {
   // sin(nx) = 2 cos(x) sin((n-1)x) - sin((n-2)x)
   // cos(nx) = 2 cos(x) cos((n-1)x) - cos((n-2)x)
 
+  double sin_phi;
+  double cos_phi;
   sin_phi = std::sin(phi);
   cos_phi = std::cos(phi);
 
+  double sin_phi_vec[n + 1]; // Sin[n * phi]
+  double cos_phi_vec[n + 1]; // Cos[n * phi]
   sin_phi_vec[0] = 1.0;
   cos_phi_vec[0] = 1.0;
-
   sin_phi_vec[1] = 2.0 * cos_phi;
   cos_phi_vec[1] = cos_phi;
 
-  for (i = 2; i <= n; i++) {
+  for (int i = 2; i <= n; i++) {
     sin_phi_vec[i] = 2. * cos_phi * sin_phi_vec[i - 1] - sin_phi_vec[i - 2];
     cos_phi_vec[i] = 2. * cos_phi * cos_phi_vec[i - 1] - cos_phi_vec[i - 2];
   }
 
-  for (i = 0; i <= n; i++) {
+  for (int i = 0; i <= n; i++) {
     sin_phi_vec[i] *=  sin_phi;
   }
 
   // ===========================================================================
   // Calculate R_pq(rho)
+  double zn_mat[n + 1][n + 1]; // Matrix forms of the coefficients which are
+                               // easier to work with
 
   // Fill the main diagonal first (Eq 3.9 in Chong)
-  for (p = 0; p <= n; p++) {
+  for (int p = 0; p <= n; p++) {
     zn_mat[p][p] = std::pow(rho, p);
   }
 
   // Fill the 2nd diagonal (Eq 3.10 in Chong)
-  for (q = 0; q <= n - 2; q++) {
+  for (int q = 0; q <= n - 2; q++) {
     zn_mat[q][q+2] = (q + 2) * zn_mat[q+2][q+2] - (q + 1) * zn_mat[q][q];
   }
 
   // Fill in the rest of the values using the original results (Eq. 3.8 in Chong)
-  for (p = 4; p <= n; p++) {
+  double k1;
+  double k2;
+  double k3;
+  double k4;
+  for (int p = 4; p <= n; p++) {
     k2 = static_cast<double> (2 * p * (p - 1) * (p - 2));
-    for (q = p - 4; q >= 0; q -= 2) {
+    for (int q = p - 4; q >= 0; q -= 2) {
       k1 = static_cast<double>((p + q) * (p - q) * (p - 2)) / 2.;
       k3 = static_cast<double>(-q * q * (p - 1) - p * (p - 1) * (p - 2));
       k4 = static_cast<double>(-p * (p + q - 2) * (p - q - 2)) / 2.;
@@ -646,9 +600,10 @@ void calc_zn_c(const int n, const double rho, const double phi, double zn[]) {
   // Note that the cos and sin vectors are offset by one
   // sin_phi_vec = [sin(x), sin(2x), sin(3x) ...]
   // cos_phi_vec = [1.0, cos(x), cos(2x)... ]
+  int i;
   i = 0;
-  for (p = 0; p <= n; p++) {
-    for (q = -p; q <= p; q += 2) {
+  for (int p = 0; p <= n; p++) {
+    for (int q = -p; q <= p; q += 2) {
       if (q < 0) {
         zn[i] = zn_mat[std::abs(q)][p] * sin_phi_vec[std::abs(q) - 1];
       } else if (q == 0) {
@@ -662,29 +617,19 @@ void calc_zn_c(const int n, const double rho, const double phi, double zn[]) {
 
 }
 
-//==============================================================================
-// ROTATE_ANGLE rotates direction std::cosines through a polar angle whose
-// cosine is mu and through an azimuthal angle sampled uniformly. Note that
-// this is done with direct sampling rather than rejection as is done in MCNP
-// and SERPENT.
-//==============================================================================
 
 void rotate_angle_c(double uvw[3], const double mu, double* phi) {
-  double phi_;   // azimuthal angle
-  double sinphi; // std::sine of azimuthal angle
-  double cosphi; // cosine of azimuthal angle
-  double a;      // sqrt(1 - mu^2)
-  double b;      // sqrt(1 - w^2)
-  double u0;     // original std::cosine in x direction
-  double v0;     // original std::cosine in y direction
-  double w0;     // original std::cosine in z direction
+  // Copy original directional cosines
+  double u0;     // original cosine in x direction
+  double v0;     // original cosine in y direction
+  double w0;     // original cosine in z direction
 
-  // Copy original directional std::cosines
   u0 = uvw[0];
   v0 = uvw[1];
   w0 = uvw[2];
 
   // Sample azimuthal angle in [0,2pi) if none provided
+  double phi_;
   if (phi != nullptr) {
     phi_ = (*phi);
   } else {
@@ -692,6 +637,10 @@ void rotate_angle_c(double uvw[3], const double mu, double* phi) {
   }
 
   // Precompute factors to save flops
+  double sinphi; // sine of azimuthal angle
+  double cosphi; // cosine of azimuthal angle
+  double a;      // sqrt(1 - mu^2)
+  double b;      // sqrt(1 - w^2)
   sinphi = std::sin(phi_);
   cosphi = std::cos(phi_);
   a = std::sqrt(std::fmax(0., 1. - mu * mu));
@@ -711,42 +660,27 @@ void rotate_angle_c(double uvw[3], const double mu, double* phi) {
   }
 }
 
-//==============================================================================
-// MAXWELL_SPECTRUM samples an energy from the Maxwell fission distribution
-// based on a direct sampling scheme. The probability distribution function for
-// a Maxwellian is given as p(x) = 2/(T*sqrt(pi))*sqrt(x/T)*exp(-x/T).
-// This PDF can be sampled using rule C64 in the Monte Carlo Sampler LA-9721-MS.
-//==============================================================================
 
 double maxwell_spectrum_c(const double T) {
-  double E_out; // Sampled Energy
-
   double r1;
   double r2;
   double r3;  // random numbers
-  double c;   // cosine of pi/2*r3
 
   r1 = prn();
   r2 = prn();
   r3 = prn();
 
   // determine cosine of pi/2*r
+  double c;
   c = std::cos(PI / 2. * r3);
 
   // determine outgoing energy
+  double E_out; // Sampled Energy
   E_out = -T * (std::log(r1) + std::log(r2) * c * c);
 
   return E_out;
 }
 
-//==============================================================================
-// WATT_SPECTRUM samples the outgoing energy from a Watt energy-dependent
-// fission spectrum. Although fitted parameters exist for many nuclides,
-// generally the continuous tabular distributions (LAW 4) should be used in
-// lieu of the Watt spectrum. This direct sampling scheme is an unpublished
-// scheme based on the original Watt spectrum derivation (See F. Brown's
-// MC lectures).
-//==============================================================================
 
 double watt_spectrum_c(const double a, const double b) {
   double E_out; // Sampled Energy
@@ -758,10 +692,6 @@ double watt_spectrum_c(const double a, const double b) {
   return E_out;
 }
 
-//==============================================================================
-// BROADEN_WMP_POLYNOMIALS Doppler broadens the windowed multipole curvefit.
-// The curvefit is a polynomial of the form a/E + b/sqrt(E) + c + d sqrt(E) ...
-//==============================================================================
 
 void broaden_wmp_polynomials_c(const double E, const double dopp, const int n,
                                double factors[]) {
@@ -773,8 +703,6 @@ void broaden_wmp_polynomials_c(const double E, const double dopp, const int n,
   double quarter_inv_dopp4;   // 0.25 / dopp**4
   double erf_beta;            // error function of beta
   double exp_m_beta2;         // exp(-beta**2)
-  int i;
-  double ip1_dbl;
 
   sqrtE = std::sqrt(E);
   beta = sqrtE * dopp;
@@ -800,7 +728,8 @@ void broaden_wmp_polynomials_c(const double E, const double dopp, const int n,
        (beta * SQRT_PI);
 
   // Perform recursive broadening of high order components
-  for (i = 0; i < n - 3; i++) {
+  double ip1_dbl;
+  for (int i = 0; i < n - 3; i++) {
     ip1_dbl = static_cast<double>(i + 1);
     if (i != 0) {
       factors[i + 3] = -factors[i - 1] * (ip1_dbl - 1.) * ip1_dbl *

@@ -38,6 +38,7 @@ void load_cad_geometry_c()
       openmc::CADSurface* s = new openmc::CADSurface();
       s->id = DAGMC->id_by_index(2, i);
       s->dagmc_ptr = DAGMC;
+      s->bc = openmc::BC_TRANSMIT;
       openmc::surfaces_c[i] = s;
       openmc::surface_dict[s->id] = i;
     }

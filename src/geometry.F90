@@ -882,9 +882,9 @@ contains
         type is (RectLattice)
 
           ! Loop over lattice coordinates
-          do j = 1, lat % n_cells(1)
+          do m = 1, lat % n_cells(3)
             do k = 1, lat % n_cells(2)
-              do m = 1, lat % n_cells(3)
+              do j = 1, lat % n_cells(1)
                 lat % offset(map, j, k, m) = offset
                 next_univ => universes(lat % universes(j, k, m))
                 offset = offset + &
@@ -999,9 +999,9 @@ contains
         type is (RectLattice)
 
           ! Loop over lattice coordinates
-          do j = 1, lat % n_cells(1)
+          do m = 1, lat % n_cells(3)
             do k = 1, lat % n_cells(2)
-              do m = 1, lat % n_cells(3)
+              do j = 1, lat % n_cells(1)
                 next_univ => universes(lat % universes(j, k, m))
 
                 ! Found target - stop since target cannot contain itself
@@ -1091,9 +1091,9 @@ contains
             type is (RectLattice)
 
               ! Loop over lattice coordinates
-              do j = 1, lat % n_cells(1)
+              do m = 1, lat % n_cells(3)
                 do k = 1, lat % n_cells(2)
-                  do m = 1, lat % n_cells(3)
+                  do j = 1, lat % n_cells(1)
                     call count_instance(universes(lat % universes(j, k, m)))
                   end do
                 end do
@@ -1166,9 +1166,9 @@ contains
         type is (RectLattice)
 
           ! Loop over lattice coordinates
-          do j = 1, lat % n_cells(1)
+          do m = 1, lat % n_cells(3)
             do k = 1, lat % n_cells(2)
-              do m = 1, lat % n_cells(3)
+              do j = 1, lat % n_cells(1)
                 next_univ => universes(lat % universes(j, k, m))
                 levels_below = max(levels_below, maximum_levels(next_univ))
               end do

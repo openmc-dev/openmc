@@ -435,7 +435,7 @@ contains
             u % cells(:) = 0
           end associate
        end do
-       root_universe = find_root_universe() + 1
+       root_universe = 0 + 1
 
        do i = 1, n_cells
           ! Get index in universes array

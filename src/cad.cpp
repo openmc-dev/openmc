@@ -15,17 +15,32 @@ void load_cad_geometry_c()
   rval = DAGMC->init_OBBTree();
   MB_CHK_ERR_CONT(rval);
 
+  int32_t cad_univ_id = 0; // universe is always 0 for CAD
+  
   // initialize cell objects
   openmc::n_cells = DAGMC->num_entities(3);
   for(int i = 0; i < openmc::n_cells; i++)
     {
       // set cell ids using global IDs
-      openmc::CADCell c = openmc::CADCell();
-      c.id = DAGMC->id_by_index(3, i);
-      c.dagmc_ptr = DAGMC;
-      c.universe = 0; // set to zero for now
-      openmc::cells_c.push_back(&c);
-      openmc::cell_dict[c.id] = i;
+      openmc::CADCell* c = new openmc::CADCell();
+      c->id = DAGMC->id_by_index(3, i);
+      c->dagmc_ptr = DAGMC;
+      c->universe = cad_univ_id; // set to zero for now
+      c->material.push_back(40); // TEMPORARY
+      openmc::cells_c.push_back(c);
+      openmc::cell_dict[c->id] = i;
+
+      // Populate the Universe vector and dict
+      auto it = openmc::universe_dict.find(cad_univ_id);
+      if (it == openmc::universe_dict.end()) {
+	openmc::universes_c.push_back(new openmc::Universe());
+	openmc::universes_c.back()-> id = cad_univ_id;
+	openmc::universes_c.back()->cells.push_back(i);
+	openmc::universe_dict[cad_univ_id] = openmc::universes_c.size() - 1;
+      }
+      else {
+	openmc::universes_c[it->second]->cells.push_back(i);
+      }
     }
 
   // initialize surface objects

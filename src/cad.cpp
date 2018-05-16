@@ -24,7 +24,7 @@ void load_cad_geometry_c()
       c.id = DAGMC->id_by_index(3, i);
       c.dagmc_ptr = DAGMC;
       c.universe = 0; // set to zero for now
-      openmc::cells_c.push_back(c);
+      openmc::cells_c.push_back(&c);
       openmc::cell_dict[c.id] = i;
     }
 

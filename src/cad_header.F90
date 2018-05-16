@@ -1,7 +1,6 @@
 module cad_header
 
   use, intrinsic :: ISO_C_BINDING
-  use hdf5
 
   implicit none
 

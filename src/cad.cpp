@@ -23,12 +23,12 @@ void load_cad_geometry_c()
     {
       // set cell ids using global IDs
       openmc::CADCell* c = new openmc::CADCell();
-      c->id_ = DAGMC->id_by_index(3, i);
+      c->id_ = DAGMC->id_by_index(3, i+1);
       c->dagmc_ptr = DAGMC;
       c->universe_ = cad_univ_id; // set to zero for now
       c->material_.push_back(40); // TEMPORARY
       openmc::cells_c.push_back(c);
-      openmc::cell_dict[c->id_] = i;
+      openmc::cell_dict[c->id_] = c->id;
 
       // Populate the Universe vector and dict
       auto it = openmc::universe_dict.find(cad_univ_id);
@@ -51,11 +51,11 @@ void load_cad_geometry_c()
     {
       // set cell ids using global IDs
       openmc::CADSurface* s = new openmc::CADSurface();
-      s->id = DAGMC->id_by_index(2, i);
+      s->id = DAGMC->id_by_index(2, i+1);
       s->dagmc_ptr = DAGMC;
       s->bc = openmc::BC_TRANSMIT;
       openmc::surfaces_c[i] = s;
-      openmc::surface_dict[s->id] = i;
+      openmc::surface_dict[s->id] = s->id;
     }
 
   return;

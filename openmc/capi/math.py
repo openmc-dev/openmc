@@ -5,6 +5,7 @@ from numpy.ctypeslib import ndpointer
 
 from . import _dll
 
+
 _dll.t_percentile.restype = c_double
 _dll.t_percentile.argtypes = [POINTER(c_double), POINTER(c_int)]
 
@@ -36,25 +37,6 @@ _dll.watt_spectrum.argtypes = [POINTER(c_double), POINTER(c_double)]
 _dll.broaden_wmp_polynomials.restype = None
 _dll.broaden_wmp_polynomials.argtypes = [POINTER(c_double), POINTER(c_double),
                                          POINTER(c_int), ndpointer(c_double)]
-
-
-def normal_percentile(p):
-    """ Calculate the percentile of the standard normal distribution with a
-    specified probability level
-
-    Parameters
-    ----------
-    p : float
-        Probability level
-
-    Returns
-    -------
-    float
-        Corresponding z-value
-
-    """
-
-    return _dll.normal_percentile(c_double(p))
 
 
 def t_percentile(p, df):

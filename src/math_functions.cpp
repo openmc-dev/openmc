@@ -6,7 +6,7 @@ namespace openmc {
 // Mathematical methods
 //==============================================================================
 
-double normal_percentile_c(const double p) {
+double normal_percentile_c(double p) {
   constexpr double p_low = 0.02425;
   constexpr double a[6] = {-3.969683028665376e1, 2.209460984245205e2,
                            -2.759285104469687e2, 1.383577518672690e2,
@@ -35,9 +35,8 @@ double normal_percentile_c(const double p) {
 
   } else if (p <= 1.0 - p_low) {
     // Rational approximation for central region
-    double r;
     q = p - 0.5;
-    r = q * q;
+    double r = q * q;
     z = (((((a[0]*r + a[1])*r + a[2])*r + a[3])*r + a[4])*r + a[5])*q /
          (((((b[0]*r + b[1])*r + b[2])*r + b[3])*r + b[4])*r + 1.0);
 
@@ -59,7 +58,7 @@ double normal_percentile_c(const double p) {
 }
 
 
-double t_percentile_c(const double p, const int df){
+double t_percentile_c(double p, int df){
   double t;
 
   if (df == 1) {
@@ -78,14 +77,10 @@ double t_percentile_c(const double p, const int df){
     // modification of the Fisher-Cornish approximation for the student t
     // percentiles," Communication in Statistics - Simulation and Computation,
     // 16 (4), pp. 1123-1132 (1987).
-    double n;
-    double k;
-    double z;
-    double z2;
-    n = static_cast<double>(df);
-    k = 1. / (n - 2.);
-    z = normal_percentile_c(p);
-    z2 = z * z;
+    double n = df;
+    double k = 1. / (n - 2.);
+    double z = normal_percentile_c(p);
+    double z2 = z * z;
     t = std::sqrt(n * k) * (z + (z2 - 3.) * z * k / 4. + ((5. * z2 - 56.) * z2 +
          75.) * z * k * k / 96. + (((z2 - 27.) * 3. * z2 + 417.) * z2 - 315.) *
          z * k * k * k / 384.);
@@ -95,7 +90,7 @@ double t_percentile_c(const double p, const int df){
 }
 
 
-void calc_pn_c(const int n, const double x, double pnx[]) {
+void calc_pn_c(int n, double x, double pnx[]) {
   pnx[0] = 1.;
   if (n >= 1) {
     pnx[1] = x;
@@ -103,36 +98,28 @@ void calc_pn_c(const int n, const double x, double pnx[]) {
 
   // Use recursion relation to build the higher orders
   for (int l = 1; l < n; l ++) {
-    pnx[l + 1] = (static_cast<double>(2 * l + 1) * x * pnx[l] -
-                  static_cast<double>(l) * pnx[l - 1]) /
-         (static_cast<double>(l + 1));
+    pnx[l + 1] = ((2 * l + 1) * x * pnx[l] - l * pnx[l - 1]) / (l + 1);
   }
 }
 
 
-double evaluate_legendre_c(const int n,
-                                                   const double data[],
-                                                   const double x) {
-  double val;
+double evaluate_legendre_c(int n, const double data[], double x) {
   double pnx[n + 1];
-
-  val = 0.0;
+  double val = 0.0;
   calc_pn_c(n, x, pnx);
   for (int l = 0; l <= n; l++) {
-    val += (static_cast<double>(l) + 0.5) * data[l] * pnx[l];
+    val += (l + 0.5) * data[l] * pnx[l];
   }
   return val;
 }
 
 
-void calc_rn_c(const int n, const double uvw[3], double rn[]){
+void calc_rn_c(int n, const double uvw[3], double rn[]){
   // rn[] is assumed to have already been allocated to the correct size
 
-  double phi;
-  double w;
-
   // Store the cosine of the polar angle and the azimuthal angle
-  w = uvw[2];
+  double w = uvw[2];
+  double phi;
   if (uvw[0] == 0.) {
     phi = 0.;
   } else {
@@ -140,13 +127,11 @@ void calc_rn_c(const int n, const double uvw[3], double rn[]){
   }
 
   // Store the shorthand of 1-w * w
-  double w2m1;
-  w2m1 = 1. - w * w;
+  double w2m1 = 1. - w * w;
 
   // Now evaluate the spherical harmonics function
   rn[0] = 1.;
-  int i;
-  i = 0;
+  int i = 0;
   for (int l = 1; l <= n; l++) {
     // Set the index to the start of this order
     i += 2 * (l - 1) + 1;
@@ -525,15 +510,7 @@ void calc_rn_c(const int n, const double uvw[3], double rn[]){
 }
 
 
-void calc_zn_c(const int n, const double rho, const double phi, double zn[]) {
-  // This procedure uses the modified Kintner's method for calculating Zernike
-  // polynomials as outlined in Chong, C. W., Raveendran, P., & Mukundan,
-  // R. (2003). A comparative analysis of algorithms for fast computation of
-  // Zernike moments. Pattern Recognition, 36(3), 731-742.
-
-  // n == radial degree
-  // m == azimuthal frequency
-
+void calc_zn_c(int n, double rho, double phi, double zn[]) {
   // ===========================================================================
   // Determine vector of sin(n*phi) and cos(n*phi). This takes advantage of the
   // following recurrence relations so that only a single sin/cos have to be
@@ -542,10 +519,8 @@ void calc_zn_c(const int n, const double rho, const double phi, double zn[]) {
   // sin(nx) = 2 cos(x) sin((n-1)x) - sin((n-2)x)
   // cos(nx) = 2 cos(x) cos((n-1)x) - cos((n-2)x)
 
-  double sin_phi;
-  double cos_phi;
-  sin_phi = std::sin(phi);
-  cos_phi = std::cos(phi);
+  double sin_phi = std::sin(phi);
+  double cos_phi = std::cos(phi);
 
   double sin_phi_vec[n + 1]; // Sin[n * phi]
   double cos_phi_vec[n + 1]; // Cos[n * phi]
@@ -579,16 +554,12 @@ void calc_zn_c(const int n, const double rho, const double phi, double zn[]) {
   }
 
   // Fill in the rest of the values using the original results (Eq. 3.8 in Chong)
-  double k1;
-  double k2;
-  double k3;
-  double k4;
   for (int p = 4; p <= n; p++) {
-    k2 = static_cast<double> (2 * p * (p - 1) * (p - 2));
+    double k2 = 2 * p * (p - 1) * (p - 2);
     for (int q = p - 4; q >= 0; q -= 2) {
-      k1 = static_cast<double>((p + q) * (p - q) * (p - 2)) / 2.;
-      k3 = static_cast<double>(-q * q * (p - 1) - p * (p - 1) * (p - 2));
-      k4 = static_cast<double>(-p * (p + q - 2) * (p - q - 2)) / 2.;
+      double k1 = ((p + q) * (p - q) * (p - 2)) / 2.;
+      double k3 = -q * q * (p - 1) - p * (p - 1) * (p - 2);
+      double k4 = (-p * (p + q - 2) * (p - q - 2)) / 2.;
       zn_mat[q][p] =
         ((k2 * rho * rho + k3) * zn_mat[q][p-2] + k4 * zn_mat[q][p-4]) / k1;
     }
@@ -600,8 +571,7 @@ void calc_zn_c(const int n, const double rho, const double phi, double zn[]) {
   // Note that the cos and sin vectors are offset by one
   // sin_phi_vec = [sin(x), sin(2x), sin(3x) ...]
   // cos_phi_vec = [1.0, cos(x), cos(2x)... ]
-  int i;
-  i = 0;
+  int i = 0;
   for (int p = 0; p <= n; p++) {
     for (int q = -p; q <= p; q += 2) {
       if (q < 0) {
@@ -618,15 +588,11 @@ void calc_zn_c(const int n, const double rho, const double phi, double zn[]) {
 }
 
 
-void rotate_angle_c(double uvw[3], const double mu, double* phi) {
+void rotate_angle_c(double uvw[3], double mu, double* phi) {
   // Copy original directional cosines
-  double u0;     // original cosine in x direction
-  double v0;     // original cosine in y direction
-  double w0;     // original cosine in z direction
-
-  u0 = uvw[0];
-  v0 = uvw[1];
-  w0 = uvw[2];
+  double u0 = uvw[0]; // original cosine in x direction
+  double v0 = uvw[1]; // original cosine in y direction
+  double w0 = uvw[2]; // original cosine in z direction
 
   // Sample azimuthal angle in [0,2pi) if none provided
   double phi_;
@@ -637,14 +603,10 @@ void rotate_angle_c(double uvw[3], const double mu, double* phi) {
   }
 
   // Precompute factors to save flops
-  double sinphi; // sine of azimuthal angle
-  double cosphi; // cosine of azimuthal angle
-  double a;      // sqrt(1 - mu^2)
-  double b;      // sqrt(1 - w^2)
-  sinphi = std::sin(phi_);
-  cosphi = std::cos(phi_);
-  a = std::sqrt(std::fmax(0., 1. - mu * mu));
-  b = std::sqrt(std::fmax(0., 1. - w0 * w0));
+  double sinphi = std::sin(phi_);
+  double cosphi = std::cos(phi_);
+  double a = std::sqrt(std::fmax(0., 1. - mu * mu));
+  double b = std::sqrt(std::fmax(0., 1. - w0 * w0));
 
   // Need to treat special case where sqrt(1 - w**2) is close to zero by
   // expanding about the v component rather than the w component
@@ -661,54 +623,39 @@ void rotate_angle_c(double uvw[3], const double mu, double* phi) {
 }
 
 
-double maxwell_spectrum_c(const double T) {
-  double r1;
-  double r2;
-  double r3;  // random numbers
-
-  r1 = prn();
-  r2 = prn();
-  r3 = prn();
+double maxwell_spectrum_c(double T) {
+  // Set the random numbers
+  double r1 = prn();
+  double r2 = prn();
+  double r3 = prn();
 
   // determine cosine of pi/2*r
-  double c;
-  c = std::cos(PI / 2. * r3);
+  double c = std::cos(PI / 2. * r3);
 
-  // determine outgoing energy
-  double E_out; // Sampled Energy
-  E_out = -T * (std::log(r1) + std::log(r2) * c * c);
+  // Determine outgoing energy
+  double E_out = -T * (std::log(r1) + std::log(r2) * c * c);
 
   return E_out;
 }
 
 
-double watt_spectrum_c(const double a, const double b) {
-  double E_out; // Sampled Energy
-  double w;     // sampled from Maxwellian
-
-  w = maxwell_spectrum_c(a);
-  E_out = w + 0.25 * a * a * b + (2. * prn() - 1.) * std::sqrt(a * a * b * w);
+double watt_spectrum_c(double a, double b) {
+  double w = maxwell_spectrum_c(a);
+  double E_out = w + 0.25 * a * a * b + (2. * prn() - 1.) * std::sqrt(a * a * b * w);
 
   return E_out;
 }
 
 
-void broaden_wmp_polynomials_c(const double E, const double dopp, const int n,
-                               double factors[]) {
+void broaden_wmp_polynomials_c(double E, double dopp, int n, double factors[]) {
   // Factors is already pre-allocated
+  double sqrtE = std::sqrt(E);
+  double beta = sqrtE * dopp;
+  double half_inv_dopp2 = 0.5 / (dopp * dopp);
+  double quarter_inv_dopp4 = half_inv_dopp2 * half_inv_dopp2;
 
-  double sqrtE;               // sqrt(energy)
-  double beta;                // sqrt(atomic weight ratio * E / kT)
-  double half_inv_dopp2;      // 0.5 / dopp**2
-  double quarter_inv_dopp4;   // 0.25 / dopp**4
-  double erf_beta;            // error function of beta
-  double exp_m_beta2;         // exp(-beta**2)
-
-  sqrtE = std::sqrt(E);
-  beta = sqrtE * dopp;
-  half_inv_dopp2 = 0.5 / (dopp * dopp);
-  quarter_inv_dopp4 = half_inv_dopp2 * half_inv_dopp2;
-
+  double erf_beta;    // error function of beta
+  double exp_m_beta2; // exp(-beta**2)
   if (beta > 6.0) {
     // Save time, ERF(6) is 1 to machine precision.
     // beta/sqrtpi*exp(-beta**2) is also approximately 1 machine epsilon.
@@ -728,9 +675,8 @@ void broaden_wmp_polynomials_c(const double E, const double dopp, const int n,
        (beta * SQRT_PI);
 
   // Perform recursive broadening of high order components
-  double ip1_dbl;
   for (int i = 0; i < n - 3; i++) {
-    ip1_dbl = static_cast<double>(i + 1);
+    double ip1_dbl = i + 1;
     if (i != 0) {
       factors[i + 3] = -factors[i - 1] * (ip1_dbl - 1.) * ip1_dbl *
            quarter_inv_dopp4 + factors[i + 1] *

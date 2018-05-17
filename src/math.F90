@@ -217,12 +217,7 @@ contains
     real(C_DOUBLE), pointer :: phi_ptr
 
     uvw = uvw0
-    if (present(phi)) then
-      phi_ptr => phi
-      call rotate_angle_c_intfc(uvw, mu, phi_ptr)
-    else
-      call rotate_angle_c_intfc(uvw, mu)
-    end if
+    call rotate_angle_c_intfc(uvw, mu, phi)
 
   end subroutine rotate_angle
 

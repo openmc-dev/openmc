@@ -110,12 +110,49 @@ public:
 
   std::vector<int32_t> offset_;  //!< Distribcell offset table
 
-  Cell() {};
-
   explicit Cell(pugi::xml_node cell_node);
 
   explicit Cell();
+
+  //! Determine if a cell contains the particle at a given location.
+  //!
+  //! The bounds of the cell are detemined by a logical expression involving
+  //! surface half-spaces. At initialization, the expression was converted
+  //! to RPN notation.
+  //!
+  //! The function is split into two cases, one for simple cells (those
+  //! involving only the intersection of half-spaces) and one for complex cells.
+  //! Simple cells can be evaluated with short circuit evaluation, i.e., as soon
+  //! as we know that one half-space is not satisfied, we can exit. This
+  //! provides a performance benefit for the common case. In
+  //! contains_complex, we evaluate the RPN expression using a stack, similar to
+  //! how a RPN calculator would work.
+  //! @param xyz[3] The 3D Cartesian coordinate to check.
+  //! @param uvw[3] A direction used to "break ties" the coordinates are very
+  //!   close to a surface.
+  //! @param on_surface The signed index of a surface that the coordinate is
+  //!   known to be on.  This index takes precedence over surface sense
+  //!   calculations.
+  virtual bool
+  contains(const double xyz[3], const double uvw[3], int32_t on_surface) const = 0;
+
+  virtual std::pair<double, int32_t>
+  distance(const double xyz[3], const double uvw[3], int32_t on_surface) const = 0;
+
+  //! Write all information needed to reconstruct the cell to an HDF5 group.
+  //! @param group_id An HDF5 group id.
+  virtual void to_hdf5(hid_t group_id) const = 0;
+
+};
+ 
+class CSGCell : public Cell
+{
+public:
+
+  CSGCell();
   
+  explicit CSGCell(pugi::xml_node cell_node);
+
   //! \brief Determine if a cell contains the particle at a given location.  
   //! Determine if a cell contains the particle at a given location.
   //!
@@ -147,6 +184,7 @@ public:
   //! \param group_id An HDF5 group id.
   void to_hdf5(hid_t group_id) const;
 
+
 protected:
   bool contains_simple(Position r, Direction u, int32_t on_surface) const;
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
@@ -158,6 +196,12 @@ class CADCell : public Cell
  public:
   moab::DagMC *dagmc_ptr;
   explicit CADCell();
+
+  std::pair<double, int32_t> distance(const double xyz[3], const double uvw[3], int32_t on_surface) const;
+  bool contains(const double xyz[3], const double uvw[3], int32_t on_surface) const;
+
+  void to_hdf5(hid_t group_id) const;
+
 };
 #endif
  

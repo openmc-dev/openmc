@@ -127,7 +127,7 @@ extern "C" void
 count_cell_instances(int32_t univ_indx)
 {
   for (int32_t cell_indx : universes_c[univ_indx]->cells) {
-    Cell &c {*cells_c[cell_indx]};
+    Cell &c = *cells_c[cell_indx];
     ++c.n_instances;
 
     if (c.type == FILL_UNIVERSE) {
@@ -136,7 +136,7 @@ count_cell_instances(int32_t univ_indx)
 
     } else if (c.type == FILL_LATTICE) {
       // This cell contains a lattice.  Recurse into the lattice universes.
-      Lattice &lat {*lattices_c[c.fill-1]}; // TODO: off-by-one
+      Lattice &lat = *lattices_c[c.fill-1]; // TODO: off-by-one
       for (auto it = lat.begin(); it != lat.end(); ++it) {
         count_cell_instances(*it);
       }
@@ -161,14 +161,14 @@ count_universe_instances(int32_t search_univ, int32_t target_univ_id)
 
   int count {0};
   for (int32_t cell_indx : universes_c[search_univ]->cells) {
-    Cell &c {*cells_c[cell_indx]};
+    Cell &c = *cells_c[cell_indx];
 
     if (c.type == FILL_UNIVERSE) {
       int32_t next_univ = c.fill - 1; // TODO: off-by-one
       count += count_universe_instances(next_univ, target_univ_id);
 
     } else if (c.type == FILL_LATTICE) {
-      Lattice &lat {*lattices_c[c.fill - 1]}; //TODO: off-by-one
+      Lattice &lat = *lattices_c[c.fill - 1]; //TODO: off-by-one
       for (auto it = lat.begin(); it != lat.end(); ++it) {
         int32_t next_univ = *it;
         count += count_universe_instances(next_univ, target_univ_id);

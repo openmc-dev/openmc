@@ -18,7 +18,7 @@ namespace openmc {
 // modifying test results
 extern "C" constexpr double PI {3.1415926535898};
 
-extern "C" constexpr double SQRT_PI {std::sqrt(PI)};
+extern "C" const double SQRT_PI {std::sqrt(PI)};
 
 //==============================================================================
 //! Calculate the percentile of the standard normal distribution with a
@@ -28,7 +28,7 @@ extern "C" constexpr double SQRT_PI {std::sqrt(PI)};
 //! @return The requested percentile
 //==============================================================================
 
-extern "C" double normal_percentile_c(const double p);
+extern "C" double normal_percentile_c(double p);
 
 //==============================================================================
 //! Calculate the percentile of the Student's t distribution with a specified
@@ -39,7 +39,7 @@ extern "C" double normal_percentile_c(const double p);
 //! @return The requested percentile
 //==============================================================================
 
-extern "C" double t_percentile_c(const double p, const int df);
+extern "C" double t_percentile_c(double p, int df);
 
 //==============================================================================
 //! Calculate the n-th order Legendre polynomials at the value of x.
@@ -50,7 +50,7 @@ extern "C" double t_percentile_c(const double p, const int df);
 //!   evaluated at x.
 //==============================================================================
 
-extern "C" void calc_pn_c(const int n, const double x, double pnx[]);
+extern "C" void calc_pn_c(int n, double x, double pnx[]);
 
 //==============================================================================
 //! Find the value of f(x) given a set of Legendre coefficients and the value
@@ -64,8 +64,7 @@ extern "C" void calc_pn_c(const int n, const double x, double pnx[]);
 //!   evaluated at x
 //==============================================================================
 
-extern "C" double evaluate_legendre_c(const int n, const double data[],
-                                      const double x);
+extern "C" double evaluate_legendre_c(int n, const double data[], double x);
 
 //==============================================================================
 //! Calculate the n-th order real spherical harmonics for a given angle (in
@@ -77,14 +76,18 @@ extern "C" double evaluate_legendre_c(const int n, const double data[],
 //!   evaluated at uvw.
 //==============================================================================
 
-extern "C" void calc_rn_c(const int n, const double uvw[3], double rn[]);
+extern "C" void calc_rn_c(int n, const double uvw[3], double rn[]);
 
 //==============================================================================
 //! Calculate the n-th order modified Zernike polynomial moment for a given
 //! angle (rho, theta) location on the unit disk.
 //!
+//! This procedure uses the modified Kintner's method for calculating Zernike
+//! polynomials as outlined in Chong, C. W., Raveendran, P., & Mukundan,
+//! R. (2003). A comparative analysis of algorithms for fast computation of
+//! Zernike moments. Pattern Recognition, 36(3), 731-742.
 //! The normalization of the polynomials is such that the integral of Z_pq^2
-//! over the unit disk is exactly pi
+//! over the unit disk is exactly pi.
 //!
 //! @param n   The maximum order requested
 //! @param rho The radial parameter to specify location on the unit disk
@@ -93,8 +96,7 @@ extern "C" void calc_rn_c(const int n, const double uvw[3], double rn[]);
 //!   evaluated at rho and phi.
 //==============================================================================
 
-extern "C" void calc_zn_c(const int n, const double rho, const double phi,
-                          double zn[]);
+extern "C" void calc_zn_c(int n, double rho, double phi, double zn[]);
 
 //==============================================================================
 //! Rotate the direction cosines through a polar angle whose cosine is mu and
@@ -105,11 +107,11 @@ extern "C" void calc_zn_c(const int n, const double rho, const double phi,
 //!
 //! @param uvw[3] The initial, and final, direction vector
 //! @param mu     The cosine of angle in lab or CM
-//! @param phi    The azimuthal angle; defaults to a randomly chosen angle
+//! @param phi    The azimuthal angle; will randomly chosen angle if a nullptr
+//!   is passed
 //==============================================================================
 
-extern "C" void rotate_angle_c(double uvw[3], const double mu,
-                               double* phi=nullptr);
+extern "C" void rotate_angle_c(double uvw[3], double mu, double* phi);
 
 //==============================================================================
 //! Samples an energy from the Maxwell fission distribution based on a direct
@@ -123,7 +125,7 @@ extern "C" void rotate_angle_c(double uvw[3], const double mu,
 //! @result The sampled outgoing energy
 //==============================================================================
 
-extern "C" double maxwell_spectrum_c(const double T);
+extern "C" double maxwell_spectrum_c(double T);
 
 //==============================================================================
 //! Samples an energy from a Watt energy-dependent fission distribution.
@@ -138,7 +140,7 @@ extern "C" double maxwell_spectrum_c(const double T);
 //! @result The sampled outgoing energy
 //==============================================================================
 
-extern "C" double watt_spectrum_c(const double a, const double b);
+extern "C" double watt_spectrum_c(double a, double b);
 
 //==============================================================================
 //! Doppler broadens the windowed multipole curvefit.
@@ -151,8 +153,8 @@ extern "C" double watt_spectrum_c(const double a, const double b);
 //! @param factors The output leading coefficient
 //==============================================================================
 
-extern "C" void broaden_wmp_polynomials_c(const double E, const double dopp,
-                                          const int n, double factors[]);
+extern "C" void broaden_wmp_polynomials_c(double E, double dopp, int n,
+                                          double factors[]);
 
 } // namespace openmc
 #endif // MATH_FUNCTIONS_H

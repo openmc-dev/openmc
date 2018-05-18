@@ -95,17 +95,6 @@ module openmc_api
   public :: openmc_tally_set_nuclides
   public :: openmc_tally_set_scores
   public :: openmc_tally_set_type
-  public :: t_percentile
-  public :: calc_pn
-  public :: calc_rn
-  public :: calc_zn
-  public :: evaluate_legendre
-  public :: rotate_angle
-  public :: maxwell_spectrum
-  public :: watt_spectrum
-  public :: faddeeva
-  public :: w_derivative
-  public :: broaden_wmp_polynomials
 
 contains
 

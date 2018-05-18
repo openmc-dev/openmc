@@ -6,37 +6,33 @@ from numpy.ctypeslib import ndpointer
 from . import _dll
 
 
-_dll.t_percentile.restype = c_double
-_dll.t_percentile.argtypes = [POINTER(c_double), POINTER(c_int)]
+_dll.t_percentile_c.restype = c_double
+_dll.t_percentile_c.argtypes = [c_double, c_int]
 
-_dll.calc_pn.restype = None
-_dll.calc_pn.argtypes = [POINTER(c_int), POINTER(c_double),
-                         ndpointer(c_double)]
+_dll.calc_pn_c.restype = None
+_dll.calc_pn_c.argtypes = [c_int, c_double, ndpointer(c_double)]
 
-_dll.evaluate_legendre.restype = c_double
-_dll.evaluate_legendre.argtypes = [POINTER(c_int), POINTER(c_double),
-                                   POINTER(c_double)]
+_dll.evaluate_legendre_c.restype = c_double
+_dll.evaluate_legendre_c.argtypes = [c_int, POINTER(c_double), c_double]
 
-_dll.calc_rn.restype = None
-_dll.calc_rn.argtypes = [POINTER(c_int), ndpointer(c_double),
-                         ndpointer(c_double)]
+_dll.calc_rn_c.restype = None
+_dll.calc_rn_c.argtypes = [c_int, ndpointer(c_double), ndpointer(c_double)]
 
-_dll.calc_zn.restype = None
-_dll.calc_zn.argtypes = [POINTER(c_int), POINTER(c_double), POINTER(c_double),
-                         ndpointer(c_double)]
+_dll.calc_zn_c.restype = None
+_dll.calc_zn_c.argtypes = [c_int, c_double, c_double, ndpointer(c_double)]
 
-_dll.rotate_angle.restype = None
-_dll.rotate_angle.argtypes = [ndpointer(c_double), POINTER(c_double),
-                              ndpointer(c_double), POINTER(c_double)]
-_dll.maxwell_spectrum.restype = c_double
-_dll.maxwell_spectrum.argtypes = [POINTER(c_double)]
+_dll.rotate_angle_c.restype = None
+_dll.rotate_angle_c.argtypes = [ndpointer(c_double), c_double,
+                                POINTER(c_double)]
+_dll.maxwell_spectrum_c.restype = c_double
+_dll.maxwell_spectrum_c.argtypes = [c_double]
 
-_dll.watt_spectrum.restype = c_double
-_dll.watt_spectrum.argtypes = [POINTER(c_double), POINTER(c_double)]
+_dll.watt_spectrum_c.restype = c_double
+_dll.watt_spectrum_c.argtypes = [c_double, c_double]
 
-_dll.broaden_wmp_polynomials.restype = None
-_dll.broaden_wmp_polynomials.argtypes = [POINTER(c_double), POINTER(c_double),
-                                         POINTER(c_int), ndpointer(c_double)]
+_dll.broaden_wmp_polynomials_c.restype = None
+_dll.broaden_wmp_polynomials_c.argtypes = [c_double, c_double, c_int,
+                                           ndpointer(c_double)]
 
 
 def t_percentile(p, df):
@@ -57,7 +53,7 @@ def t_percentile(p, df):
 
     """
 
-    return _dll.t_percentile(c_double(p), c_int(df))
+    return _dll.t_percentile_c(p, df)
 
 
 def calc_pn(n, x):
@@ -78,7 +74,7 @@ def calc_pn(n, x):
     """
 
     pnx = np.empty(n + 1, dtype=np.float64)
-    _dll.calc_pn(c_int(n), c_double(x), pnx)
+    _dll.calc_pn_c(n, x, pnx)
     return pnx
 
 
@@ -101,9 +97,9 @@ def evaluate_legendre(data, x):
     """
 
     data_arr = np.array(data, dtype=np.float64)
-    return _dll.evaluate_legendre(c_int(len(data)),
-                                  data_arr.ctypes.data_as(POINTER(c_double)),
-                                  c_double(x))
+    return _dll.evaluate_legendre_c(len(data),
+                                    data_arr.ctypes.data_as(POINTER(c_double)),
+                                    x)
 
 
 def calc_rn(n, uvw):
@@ -127,7 +123,7 @@ def calc_rn(n, uvw):
     num_nm = (n + 1) * (n + 1)
     rn = np.empty(num_nm, dtype=np.float64)
     uvw_arr = np.array(uvw, dtype=np.float64)
-    _dll.calc_rn(c_int(n), uvw_arr, rn)
+    _dll.calc_rn_c(n, uvw_arr, rn)
     return rn
 
 
@@ -155,7 +151,7 @@ def calc_zn(n, rho, phi):
 
     num_bins = ((n + 1) * (n + 2)) // 2
     zn = np.zeros(num_bins, dtype=np.float64)
-    _dll.calc_zn(c_int(n), c_double(rho), c_double(phi), zn)
+    _dll.calc_zn_c(n, rho, phi, zn)
     return zn
 
 
@@ -179,13 +175,13 @@ def rotate_angle(uvw0, mu, phi=None):
 
     """
 
-    uvw = np.zeros(3, dtype=np.float64)
     uvw0_arr = np.array(uvw0, dtype=np.float64)
 
     if phi is None:
-        _dll.rotate_angle(uvw0_arr, c_double(mu), uvw, None)
+        _dll.rotate_angle_c(uvw0_arr, mu, None)
     else:
-        _dll.rotate_angle(uvw0_arr, c_double(mu), uvw, c_double(phi))
+        _dll.rotate_angle_c(uvw0_arr, mu, c_double(phi))
+    uvw = uvw0_arr
 
     return uvw
 
@@ -206,7 +202,7 @@ def maxwell_spectrum(T):
 
     """
 
-    return _dll.maxwell_spectrum(c_double(T))
+    return _dll.maxwell_spectrum_c(T)
 
 
 def watt_spectrum(a, b):
@@ -226,7 +222,7 @@ def watt_spectrum(a, b):
 
     """
 
-    return _dll.watt_spectrum(c_double(a), c_double(b))
+    return _dll.watt_spectrum_c(a, b)
 
 
 def broaden_wmp_polynomials(E, dopp, n):
@@ -250,6 +246,5 @@ def broaden_wmp_polynomials(E, dopp, n):
     """
 
     factors = np.zeros(n, dtype=np.float64)
-    _dll.broaden_wmp_polynomials(c_double(E), c_double(dopp), c_int(n),
-                                 factors)
+    _dll.broaden_wmp_polynomials_c(E, dopp, n, factors)
     return factors

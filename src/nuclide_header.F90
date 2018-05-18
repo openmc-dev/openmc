@@ -208,8 +208,8 @@ module nuclide_header
 !$omp threadprivate(micro_xs, material_xs)
 
   ! Minimum/maximum energies
-  real(8) :: energy_min_neutron = ZERO
-  real(8) :: energy_max_neutron = INFINITY
+  real(8) :: energy_min(2) = [ZERO, ZERO]
+  real(8) :: energy_max(2) = [INFINITY, INFINITY]
 
 contains
 
@@ -1702,8 +1702,8 @@ contains
         if (res_scat_on) call nuclides(n) % assign_0K_elastic_scattering()
 
         ! Initialize nuclide grid
-        call nuclides(n) % init_grid(energy_min_neutron, &
-             energy_max_neutron, n_log_bins)
+        call nuclides(n) % init_grid(energy_min(NEUTRON), &
+             energy_max(NEUTRON), n_log_bins)
       else
         err = E_DATA
         call set_errmsg("Nuclide '" // trim(name_) // "' is not present &

@@ -4073,8 +4073,8 @@ contains
     end do
 
     ! Get the minimum and maximum energies
-    energy_min_neutron = energy_bins(num_energy_groups + 1)
-    energy_max_neutron = energy_bins(1)
+    energy_min(NEUTRON) = energy_bins(num_energy_groups + 1)
+    energy_max(NEUTRON) = energy_bins(1)
 
     ! Get the datasets present in the library
     call get_groups(file_id, names)
@@ -4316,9 +4316,9 @@ contains
           ! Determine if minimum/maximum energy for this nuclide is greater/less
           ! than the previous
           if (size(nuclides(i_nuclide) % grid) >= 1) then
-            energy_min_neutron = max(energy_min_neutron, &
+            energy_min(NEUTRON) = max(energy_min(NEUTRON), &
                  nuclides(i_nuclide) % grid(1) % energy(1))
-            energy_max_neutron = min(energy_max_neutron, nuclides(i_nuclide) % &
+            energy_max(NEUTRON) = min(energy_max(NEUTRON), nuclides(i_nuclide) % &
                  grid(1) % energy(size(nuclides(i_nuclide) % grid(1) % energy)))
           end if
 
@@ -4344,6 +4344,16 @@ contains
               call elements(i_element) % from_hdf5(group_id)
               call close_group(group_id)
               call file_close(file_id)
+
+              ! Determine if minimum/maximum energy for this element is
+              ! greater/less than the previous
+              if (size(elements(i_element) % energy) >= 1) then
+                energy_min(PHOTON) = max(energy_min(PHOTON), &
+                     exp(elements(i_element) % energy(1)))
+                energy_max(PHOTON) = min(energy_max(PHOTON), &
+                     exp(elements(i_element) % energy(size(elements(i_element) &
+                     % energy))))
+              end if
 
               ! Add element to set
               call element_already_read % add(element)
@@ -4383,10 +4393,10 @@ contains
 
     ! Set up logarithmic grid for nuclides
     do i = 1, size(nuclides)
-      call nuclides(i) % init_grid(energy_min_neutron, &
-           energy_max_neutron, n_log_bins)
+      call nuclides(i) % init_grid(energy_min(NEUTRON), &
+           energy_max(NEUTRON), n_log_bins)
     end do
-    log_spacing = log(energy_max_neutron/energy_min_neutron) / n_log_bins
+    log_spacing = log(energy_max(NEUTRON)/energy_min(NEUTRON)) / n_log_bins
 
     do i = 1, size(materials)
       ! Skip materials with no S(a,b) tables
@@ -4429,9 +4439,9 @@ contains
       ! grid has not been allocated
       if (size(nuclides(i) % grid) > 0) then
         if (nuclides(i) % grid(1) % energy(size(nuclides(i) % grid(1) % energy)) &
-             == energy_max_neutron) then
+             == energy_max(NEUTRON)) then
           call write_message("Maximum neutron transport energy: " // &
-               trim(to_str(energy_max_neutron)) // " eV for " // &
+               trim(to_str(energy_max(NEUTRON))) // " eV for " // &
                trim(adjustl(nuclides(i) % name)), 7)
           exit
         end if

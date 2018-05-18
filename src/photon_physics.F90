@@ -79,11 +79,12 @@ contains
 ! COMPTON_SCATTER
 !===============================================================================
 
-  subroutine compton_scatter(el, alpha, alpha_out, mu, use_doppler)
+  subroutine compton_scatter(el, alpha, alpha_out, mu, i_shell, use_doppler)
     type(PhotonInteraction), intent(in) :: el
     real(8), intent(in)  :: alpha
     real(8), intent(out) :: alpha_out
     real(8), intent(out) :: mu
+    integer, intent(out) :: i_shell
     logical, intent(in), optional :: use_doppler
 
     real(8) :: x
@@ -118,8 +119,10 @@ contains
       ! Perform rejection on form factor
       if (prn() < form_factor_x / form_factor_xmax) then
         if (use_doppler_) then
-          call compton_doppler(el, alpha, mu, e_out)
+          call compton_doppler(el, alpha, mu, e_out, i_shell)
           alpha_out = e_out/MASS_ELECTRON
+        else
+          i_shell = 0
         end if
         exit
       end if
@@ -131,13 +134,14 @@ contains
 ! COMPTON_DOPPLER
 !===============================================================================
 
-  subroutine compton_doppler(el, alpha, mu, e_out)
+  subroutine compton_doppler(el, alpha, mu, e_out, i_shell)
     type(PhotonInteraction), intent(in) :: el
     real(8), intent(in)  :: alpha
     real(8), intent(in)  :: mu
     real(8), intent(out) :: e_out
+    integer, intent(out) :: i_shell
 
-    integer :: i, i_shell
+    integer :: i
     integer :: n
     real(8) :: rn, m
     real(8) :: c, c_l, c_max
@@ -335,9 +339,9 @@ contains
     ! Sample transition
     rn = prn()
     c = ZERO
-    do i_transition = 1, elm % shells(i_shell) % n_transitions - 1
+    do i_transition = 1, elm % shells(i_shell) % n_transitions
       c = c + elm % shells(i_shell) % &
-           transition_probability(i_transition + 1)
+           transition_probability(i_transition)
       if (rn < c) exit
     end do
 
@@ -387,14 +391,14 @@ contains
 ! Issy-les-Moulineaux, France (2011).
 !===============================================================================
 
-  subroutine pair_production(elm, alpha, E_electron, E_positron, uvw_electron, &
-       uvw_positron)
+  subroutine pair_production(elm, alpha, E_electron, E_positron, mu_electron, &
+       mu_positron)
     type(PhotonInteraction), intent(in) :: elm
     real(8), intent(in)  :: alpha
     real(8), intent(out) :: E_electron
     real(8), intent(out) :: E_positron
-    real(8), intent(out) :: uvw_electron(3)
-    real(8), intent(out) :: uvw_positron(3)
+    real(8), intent(out) :: mu_electron
+    real(8), intent(out) :: mu_positron
 
     integer :: i
     real(8) :: f
@@ -491,27 +495,19 @@ contains
     E_electron = (alpha*e - ONE)*MASS_ELECTRON
     E_positron = (alpha*(ONE - e) - ONE)*MASS_ELECTRON
 
-    ! Sample the direction of the electron. The cosine of the polar angle of
-    ! the direction relative to the incident photon is sampled from
+    ! Sample the scattering angle of the electron. The cosine of the polar
+    ! angle of the direction relative to the incident photon is sampled from
     ! p(mu) = C/(1 - beta*mu)^2 using the inverse transform method.
     beta = sqrt(E_electron*(E_electron + TWO*MASS_ELECTRON)) &
          / (E_electron + MASS_ELECTRON)
     rn = TWO*prn() - ONE
-    mu = (rn + beta)/(rn*beta + ONE)
-    phi = TWO*PI*prn()
-    uvw_electron(1) = mu
-    uvw_electron(2) = sqrt(ONE - mu*mu)*cos(phi)
-    uvw_electron(3) = sqrt(ONE - mu*mu)*sin(phi)
+    mu_electron = (rn + beta)/(rn*beta + ONE)
 
-    ! Sample the direction of the positron
+    ! Sample the scattering angle of the positron
     beta = sqrt(E_positron*(E_positron + TWO*MASS_ELECTRON)) &
          / (E_positron + MASS_ELECTRON)
     rn = TWO*prn() - ONE
-    mu = (rn + beta)/(rn*beta + ONE)
-    phi = TWO*PI*prn()
-    uvw_positron(1) = mu
-    uvw_positron(2) = sqrt(ONE - mu*mu)*cos(phi)
-    uvw_positron(3) = sqrt(ONE - mu*mu)*sin(phi)
+    mu_positron = (rn + beta)/(rn*beta + ONE)
 
   end subroutine pair_production
 

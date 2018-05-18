@@ -9,7 +9,7 @@ module source_header
   use error
   use geometry, only: find_cell
   use material_header, only: materials
-  use nuclide_header, only: energy_min_neutron, energy_max_neutron
+  use nuclide_header, only: energy_min, energy_max
   use particle_header, only: Particle
   use settings, only: photon_transport
   use string, only: to_lower
@@ -295,13 +295,13 @@ contains
     ! Sample angle
     site % uvw(:) = this % angle % sample()
 
-    ! Check for monoenergetic source above maximum neutron energy
+    ! Check for monoenergetic source above maximum particle energy
     select type (energy => this % energy)
     type is (Discrete)
-      if (any(energy % x > energy_max_neutron)) then
+      if (any(energy % x > energy_max(this % particle))) then
         call fatal_error("Source energy above range of energies of at least &
              &one cross section table")
-      else if (any(energy % x < energy_min_neutron)) then
+      else if (any(energy % x < energy_min(this % particle))) then
         call fatal_error("Source energy below range of energies of at least &
              &one cross section table")
       end if
@@ -311,8 +311,9 @@ contains
       ! Sample energy spectrum
       site % E = this % energy % sample()
 
-      ! Resample if energy falls outside minimum or maximum neutron energy
-      if (site % E < energy_max_neutron .and. site % E > energy_min_neutron) exit
+      ! Resample if energy falls outside minimum or maximum particle energy
+      if (site % E < energy_max(this % particle) .and. &
+           site % E > energy_min(this % particle)) exit
     end do
 
     ! Set delayed group

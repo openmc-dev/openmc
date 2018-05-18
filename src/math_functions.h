@@ -1,3 +1,6 @@
+//! \file math_functions.h
+//! A collection of elementary math functions.
+
 #ifndef MATH_FUNCTIONS_H
 #define MATH_FUNCTIONS_H
 

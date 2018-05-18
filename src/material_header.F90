@@ -299,7 +299,7 @@ contains
     logical :: check_sab     ! should we check for S(a,b) table?
 
     ! Find energy index on energy grid
-    i_grid = int(log(p % E/energy_min_neutron)/log_spacing)
+    i_grid = int(log(p % E/energy_min(NEUTRON))/log_spacing)
 
     ! Determine if this material has S(a,b) tables
     check_sab = (this % n_sab > 0)

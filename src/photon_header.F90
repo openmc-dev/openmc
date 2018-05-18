@@ -253,7 +253,8 @@ contains
 
           this % shells(i) % transition_subshells(:,:) = int(matrix(1:2, :), 4)
           this % shells(i) % transition_energy(:) = matrix(3, :)
-          this % shells(i) % transition_probability(:) = matrix(4, :)
+          this % shells(i) % transition_probability(:) = matrix(4, :) &
+               / sum(matrix(4, :))
           deallocate(matrix)
         end if
         call close_dataset(dset_id)
@@ -398,14 +399,16 @@ contains
 !===============================================================================
 
   subroutine photon_calculate_xs(this, E, xs)
-    class(PhotonInteraction), intent(in)    :: this ! index into nuclides array
+    class(PhotonInteraction), intent(in)    :: this ! index into elements array
     real(8),                  intent(in)    :: E ! energy
     type(ElementMicroXS),     intent(inout) :: xs
 
-    integer :: i_grid ! index on nuclide energy grid
-    integer :: n_grid ! number of grid points
-    real(8) :: f      ! interp factor on nuclide energy grid
-    real(8) :: log_E  ! logarithm of the energy
+    integer :: i_grid  ! index on element energy grid
+    integer :: i_shell ! index in subshells
+    integer :: i_start ! threshold index
+    integer :: n_grid  ! number of grid points
+    real(8) :: f       ! interp factor on element energy grid
+    real(8) :: log_E   ! logarithm of the energy
 
     ! Perform binary search on the element energy grid in order to determine
     ! which points to interpolate between
@@ -438,9 +441,18 @@ contains
          f*(this % incoherent(i_grid+1) - this % incoherent(i_grid)))
 
     ! Calculate microscopic photoelectric cross section
-    xs % photoelectric = exp(this % photoelectric_total(&
-         i_grid) + f*(this % photoelectric_total(i_grid+1) - &
-         this % photoelectric_total(i_grid)))
+    xs % photoelectric = ZERO
+    do i_shell = 1, size(this % shells)
+      ! Check threshold of reaction
+      i_start = this % shells(i_shell) % threshold
+      if (i_grid <= i_start) cycle
+
+      ! Evaluation subshell photoionization cross section
+      xs % photoelectric = xs % photoelectric + &
+           exp(this % shells(i_shell) % cross_section(i_grid-i_start) + &
+           f*(this % shells(i_shell) % cross_section(i_grid+1-i_start) - &
+           this % shells(i_shell) % cross_section(i_grid-i_start)))
+    end do
 
     ! Calculate microscopic pair production cross section
     xs % pair_production = exp(&

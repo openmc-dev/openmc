@@ -118,8 +118,8 @@ contains
     create_fission_neutrons = .true.
     electron_treatment = ELECTRON_LED
     energy_cutoff(:) = [ZERO, 1000.0_8, ZERO, ZERO]
-    energy_max_neutron = INFINITY
-    energy_min_neutron = ZERO
+    energy_max(:) = [INFINITY, INFINITY]
+    energy_min(:) = [ZERO, ZERO]
     entropy_on = .false.
     gen_per_batch = 1
     index_entropy_mesh = -1

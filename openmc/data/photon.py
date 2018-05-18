@@ -599,7 +599,7 @@ class IncidentPhoton(EqualityMixin):
                 for i in range(1, 101):
                     group = f['{:03}'.format(i)]
                     num_electrons = group['num_electrons'].value
-                    binding_energy = group['binding_energy'].value
+                    binding_energy = group['binding_energy'].value*EV_PER_MEV
                     J = group['J'].value
                     _COMPTON_PROFILES[i] = {'num_electrons': num_electrons,
                                             'binding_energy': binding_energy,

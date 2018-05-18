@@ -177,10 +177,9 @@ contains
     real(8) :: phi          ! azimuthal angle
     real(8) :: uvw(3)       ! new direction
     real(8) :: rel_vel      ! relative velocity of electron
+    real(8) :: e_b          ! binding energy of electron
     real(8) :: E_electron   ! electron energy
     real(8) :: E_positron   ! positron energy
-    real(8) :: uvw_electron(3) ! new electron direction
-    real(8) :: uvw_positron(3) ! new positron direction
 
     ! Kill photon if below energy cutoff -- an extra check is made here because
     ! photons with energy below the cutoff may have been produced by neutrons
@@ -216,9 +215,34 @@ contains
       ! Incoherent (Compton) scattering
       prob = prob + micro_photon_xs(i_element) % incoherent
       if (prob > cutoff) then
-        call compton_scatter(elm, alpha, alpha_out, mu, .true.)
+        call compton_scatter(elm, alpha, alpha_out, mu, i_shell, .true.)
+
+        ! Determine binding energy of shell. The binding energy is zero if
+        ! doppler broadening is not used.
+        if (i_shell == 0) then
+          e_b = ZERO
+        else
+          e_b = elm % binding_energy(i_shell)
+        end if
+
+        ! Create Compton electron
+        E_electron = (alpha - alpha_out)*MASS_ELECTRON - e_b
+        mu_electron = (alpha - alpha_out*mu) &
+             / sqrt(alpha**2 + alpha_out**2 - TWO*alpha*alpha_out*mu)
+        phi = TWO*PI*prn()
+        uvw = rotate_angle(p % coord(1) % uvw, mu_electron, phi)
+        call p % create_secondary(uvw, E_electron, ELECTRON, .true.)
+
+        ! TODO: Compton subshell data does not match atomic relaxation data
+        ! Allow electrons to fill orbital and produce auger electrons
+        ! and fluorescent photons
+        if (i_shell > 0) then
+          call atomic_relaxation(p, elm, i_shell)
+        end if
+
+        phi = phi + PI
         p % E = alpha_out*MASS_ELECTRON
-        p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu)
+        p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu, phi)
         p % event_MT = INCOHERENT
         return
       end if
@@ -282,20 +306,22 @@ contains
       ! Pair production
       prob = prob + micro_photon_xs(i_element) % pair_production
       if (prob > cutoff) then
-
-        call pair_production(elm, alpha, E_electron, E_positron, uvw_electron, &
-             uvw_positron)
+        call pair_production(elm, alpha, E_electron, E_positron, mu_electron, &
+             mu_positron)
 
         ! Create secondary electron
-        call p % create_secondary(uvw_electron, E_electron, ELECTRON, .true.)
+        uvw = rotate_angle(p % coord(1) % uvw, mu_electron)
+        call p % create_secondary(uvw, E_electron, ELECTRON, .true.)
 
         ! Create secondary positron
-        call p % create_secondary(uvw_positron, E_positron, POSITRON, .true.)
+        uvw = rotate_angle(p % coord(1) % uvw, mu_positron)
+        call p % create_secondary(uvw, E_positron, POSITRON, .true.)
 
         p % event_MT = PAIR_PROD
         p % alive = .false.
         p % E = ZERO
       end if
+
     end associate
 
   end subroutine sample_photon_reaction
@@ -1578,7 +1604,7 @@ contains
         call rxn % products(1 + group) % sample(E_in, site % E, mu)
 
         ! resample if energy is greater than maximum neutron energy
-        if (site % E < energy_max_neutron) exit
+        if (site % E < energy_max(NEUTRON)) exit
 
         ! check for large number of resamples
         n_sample = n_sample + 1
@@ -1602,7 +1628,7 @@ contains
         call rxn % products(1) % sample(E_in, site % E, mu)
 
         ! resample if energy is greater than maximum neutron energy
-        if (site % E < energy_max_neutron) exit
+        if (site % E < energy_max(NEUTRON)) exit
 
         ! check for large number of resamples
         n_sample = n_sample + 1

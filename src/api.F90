@@ -10,6 +10,7 @@ module openmc_api
   use geometry_header
   use hdf5_interface
   use material_header
+  use math
   use mesh_header
   use message_passing
   use nuclide_header

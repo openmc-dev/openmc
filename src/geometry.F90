@@ -581,9 +581,9 @@ contains
         select type (lat)
 
         type is (RectLattice)
-          do j = 1, lat % n_cells(1)
+          do m = 1, lat % n_cells(3)
             do k = 1, lat % n_cells(2)
-              do m = 1, lat % n_cells(3)
+              do j = 1, lat % n_cells(1)
                 lat % offset(map, j, k, m) = offset
                 offset = offset + count_universe_instances(&
                      lat % get([j-1, k-1, m-1]), univ_id)

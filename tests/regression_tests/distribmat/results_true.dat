@@ -3,7 +3,7 @@ k-combined:
 Cell
 	ID             =	11
 	Name           =	
-	Fill           =	[2, 3, None, 2]
+	Fill           =	[2, None, 3, 2]
 	Region         =	-9
 	Rotation       =	None
 	Translation    =	None

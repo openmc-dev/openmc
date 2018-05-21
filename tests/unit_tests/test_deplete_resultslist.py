@@ -22,8 +22,8 @@ def test_get_atoms(res):
     n_ref = [6.6747328233649218e+08, 3.5421791038348462e+14,
              3.6208592242443462e+14, 3.3799758969347038e+14]
 
-    np.testing.assert_array_equal(t, t_ref)
-    np.testing.assert_array_equal(n, n_ref)
+    np.testing.assert_allclose(t, t_ref)
+    np.testing.assert_allclose(n, n_ref)
 
 def test_get_reaction_rate(res):
     """Tests evaluating reaction rate."""
@@ -35,8 +35,8 @@ def test_get_reaction_rate(res):
     xs_ref = np.array([4.0594392323131994e-05, 3.9249546927524987e-05,
                        3.8394587728581798e-05, 4.1521845978371697e-05])
 
-    np.testing.assert_array_equal(t, t_ref)
-    np.testing.assert_array_equal(r, n_ref * xs_ref)
+    np.testing.assert_allclose(t, t_ref)
+    np.testing.assert_allclose(r, n_ref * xs_ref)
 
 
 def test_get_eigenvalue(res):
@@ -47,5 +47,5 @@ def test_get_eigenvalue(res):
     k_ref = [1.181281798790367, 1.1798750921988739, 1.1965943696058159,
              1.2207119847790813]
 
-    np.testing.assert_array_equal(t, t_ref)
-    np.testing.assert_array_equal(k, k_ref)
+    np.testing.assert_allclose(t, t_ref)
+    np.testing.assert_allclose(k, k_ref)

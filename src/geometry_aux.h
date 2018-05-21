@@ -62,5 +62,14 @@ count_universe_instances(int32_t search_univ, int32_t target_univ_id);
 
 extern "C" void fill_offset_tables(int32_t target_univ_id, int map);
 
+//==============================================================================
+//! Determine the maximum number of nested coordinate levels in the geometry.
+//! @param univ The index of the universe to begin seraching from (probably the
+//!   root universe).
+//! @return The number of coordinate levels.
+//==============================================================================
+
+extern "C" int maximum_levels(int32_t univ);
+
 } // namespace openmc
 #endif // GEOMETRY_AUX_H

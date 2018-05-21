@@ -26,6 +26,15 @@ def pincell_model():
     mat_tally.scores = ['total', 'elastic', '(n,gamma)']
     pincell.tallies.append(mat_tally)
 
+    # Add an expansion tally
+    zernike_tally = openmc.Tally()
+    filter3 = openmc.ZernikeFilter(5, r=.63)
+    cells = pincell.geometry.root_universe.cells
+    filter4 = openmc.CellFilter(list(cells.values()))
+    zernike_tally.filters = [filter3, filter4]
+    zernike_tally.scores = ['fission']
+    pincell.tallies.append(zernike_tally)
+
     # Write XML files in tmpdir
     with cdtemp():
         pincell.export_to_xml()
@@ -132,7 +141,7 @@ def test_settings(capi_init):
 def test_tally_mapping(capi_init):
     tallies = openmc.capi.tallies
     assert isinstance(tallies, Mapping)
-    assert len(tallies) == 1
+    assert len(tallies) == 2
     for tally_id, tally in tallies.items():
         assert isinstance(tally, openmc.capi.Tally)
         assert tally_id == tally.id
@@ -168,6 +177,16 @@ def test_tally(capi_init):
     t.active = True
     assert t.active
 
+    t2 = openmc.capi.tallies[2]
+    t2.id = 2
+    assert len(t2.filters) == 2
+    assert isinstance(t2.filters[0], openmc.capi.ZernikeFilter)
+    assert isinstance(t2.filters[1], openmc.capi.CellFilter)
+    assert len(t2.filters[1].bins) == 3
+    assert t2.filters[0].order == 5
+    t2.filters[0].order = 7
+    openmc.capi.simulation_init()
+
 
 def test_new_tally(capi_init):
     with pytest.raises(exc.AllocationError):
@@ -176,7 +195,7 @@ def test_new_tally(capi_init):
     new_tally.scores = ['flux']
     new_tally_with_id = openmc.capi.Tally(10)
     new_tally_with_id.scores = ['flux']
-    assert len(openmc.capi.tallies) == 3
+    assert len(openmc.capi.tallies) == 4
 
 
 def test_tally_results(capi_run):
@@ -186,6 +205,9 @@ def test_tally_results(capi_run):
     nonzero = (t.mean > 0.0)
     assert np.all(t.std_dev[nonzero] >= 0)
     assert np.all(t.ci_width()[nonzero] >= 1.95*t.std_dev[nonzero])
+
+    t2 = openmc.capi.tallies[2]
+    assert t2.mean.size == 108 # 36 coefficients for 7th order Zernike * 3 cells
 
 
 def test_global_tallies(capi_run):

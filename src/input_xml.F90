@@ -11,7 +11,7 @@ module input_xml
   use distribution_univariate
   use endf,             only: reaction_name
   use error,            only: fatal_error, warning, write_message, openmc_err_msg
-  use geometry,         only: calc_offsets, maximum_levels, neighbor_lists
+  use geometry,         only: maximum_levels, neighbor_lists
   use geometry_header
   use hdf5_interface
   use list_header,      only: ListChar, ListInt, ListReal
@@ -50,10 +50,21 @@ module input_xml
     subroutine adjust_indices_c() bind(C)
     end subroutine adjust_indices_c
 
+    subroutine allocate_offset_tables(n_maps) bind(C)
+      import C_INT
+      integer(C_INT), intent(in), value :: n_maps
+    end subroutine allocate_offset_tables
+
+    subroutine fill_offset_tables(target_univ_id, map) bind(C)
+      import C_INT32_T, C_INT
+      integer(C_INT32_T), intent(in), value :: target_univ_id
+      integer(C_INT),     intent(in), value :: map
+    end subroutine fill_offset_tables
+
     subroutine count_cell_instances(univ_indx) bind(C)
       import C_INT32_T
       integer(C_INT32_T), intent(in), value :: univ_indx
-    end subroutine
+    end subroutine count_cell_instances
 
     subroutine read_surfaces(node_ptr) bind(C)
       import C_PTR
@@ -3884,12 +3895,11 @@ contains
 
     ! Allocate offset maps at each level in the geometry
     call allocate_offsets(univ_list)
+    call allocate_offset_tables(n_maps)
 
     ! Calculate offsets for each target distribcell
     do i = 1, n_maps
-      do j = 1, n_universes
-        call calc_offsets(univ_list(i), i, universes(j))
-      end do
+      call fill_offset_tables(univ_list(i), i-1)
     end do
 
   end subroutine prepare_distribcell
@@ -3950,30 +3960,6 @@ contains
           k = k + 1
         end if
       end do
-    end do
-
-    ! Allocate the offset tables for lattices
-    do i = 1, n_lattices
-      associate(lat => lattices(i) % obj)
-        select type(lat)
-
-        type is (RectLattice)
-          allocate(lat % offset(n_maps, lat % n_cells(1), lat % n_cells(2), &
-                   lat % n_cells(3)))
-        type is (HexLattice)
-          allocate(lat % offset(n_maps, 2 * lat % n_rings - 1, &
-               2 * lat % n_rings - 1, lat % n_axial))
-        end select
-
-        lat % offset(:, :, :, :) = 0
-      end associate
-    end do
-
-    ! Allocate offset table for fill cells
-    do i = 1, n_cells
-      if (cells(i) % type() /= FILL_MATERIAL) then
-        allocate(cells(i) % offset(n_maps))
-      end if
     end do
 
     ! Free up memory

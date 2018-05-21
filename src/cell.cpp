@@ -485,6 +485,8 @@ extern "C" {
     i_surf = out.second;
   }
 
+  int32_t cell_offset(Cell *c, int map) {return c->offset[map];}
+
   void cell_to_hdf5(Cell *c, hid_t group) {c->to_hdf5(group);}
 
   void extend_cells_c(int32_t n)

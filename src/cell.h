@@ -71,6 +71,8 @@ public:
   std::vector<std::int32_t> rpn;
   bool simple;  //!< Does the region contain only intersections?
 
+  std::vector<int32_t> offset;  //!< Distribcell offset table
+
   Cell() {};
 
   explicit Cell(pugi::xml_node cell_node);

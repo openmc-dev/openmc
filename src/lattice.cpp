@@ -7,6 +7,7 @@
 #include "cell.h"
 #include "constants.h"
 #include "error.h"
+#include "geometry_aux.h"
 #include "hdf5_interface.h"
 #include "xml_interface.h"
 
@@ -94,6 +95,26 @@ Lattice::adjust_indices()
       fatal_error(err_msg);
     }
   }
+}
+
+//==============================================================================
+
+void
+Lattice::allocate_offset_table(int n_maps)
+{
+  offsets.resize(n_maps * universes.size(), C_NONE);
+}
+
+//==============================================================================
+
+int32_t
+Lattice::fill_offset_table(int32_t offset, int32_t target_univ_id, int map)
+{
+  for (auto it = begin(); it != end(); ++it) {
+    offsets[map * universes.size() + it.indx] = offset;
+    offset += count_universe_instances(*it, target_univ_id);
+  }
+  return offset;
 }
 
 //==============================================================================
@@ -312,6 +333,17 @@ RectLattice::get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const
     local_xyz[2] = global_xyz[2];
   }
   return local_xyz;
+}
+
+//==============================================================================
+
+int32_t&
+RectLattice::offset(int map, const int i_xyz[3])
+{
+  int nx = n_cells[0];
+  int ny = n_cells[1];
+  int nz = n_cells[2];
+  return offsets[nx*ny*nz*map + nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0]];
 }
 
 //==============================================================================
@@ -763,6 +795,17 @@ HexLattice::is_valid_index(int indx) const
 
 //==============================================================================
 
+int32_t&
+HexLattice::offset(int map, const int i_xyz[3])
+{
+  int nx = 2*n_rings - 1;
+  int ny = 2*n_rings - 1;
+  int nz = n_axial;
+  return offsets[nx*ny*nz*map + nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0]];
+}
+
+//==============================================================================
+
 void
 HexLattice::to_hdf5_inner(hid_t lat_group) const
 {
@@ -872,6 +915,11 @@ extern "C" {
     local_xyz[0] = xyz[0];
     local_xyz[1] = xyz[1];
     local_xyz[2] = xyz[2];
+  }
+
+  int32_t lattice_offset(Lattice *lat, int map, const int i_xyz[3])
+  {
+    return lat->offset(map, i_xyz);
   }
 
   int32_t lattice_outer(Lattice *lat) {return lat->outer;}

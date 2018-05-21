@@ -59,19 +59,19 @@ contains
       offset = 0
       do i = 1, p % n_coord
         if (cells(p % coord(i) % cell) % type() == FILL_UNIVERSE) then
-          offset = offset + cells(p % coord(i) % cell) % &
-               offset(distribcell_index)
+          offset = offset + cells(p % coord(i) % cell) &
+               % offset(distribcell_index-1)
         elseif (cells(p % coord(i) % cell) % type() == FILL_LATTICE) then
           if (lattices(p % coord(i + 1) % lattice) % obj &
                % are_valid_indices([&
                p % coord(i + 1) % lattice_x, &
                p % coord(i + 1) % lattice_y, &
                p % coord(i + 1) % lattice_z])) then
-            offset = offset + lattices(p % coord(i + 1) % lattice) % obj % &
-                 offset(distribcell_index, &
-                 p % coord(i + 1) % lattice_x, &
-                 p % coord(i + 1) % lattice_y, &
-                 p % coord(i + 1) % lattice_z)
+            offset = offset + lattices(p % coord(i + 1) % lattice) % obj &
+                 % offset(distribcell_index - 1, &
+                 [p % coord(i + 1) % lattice_x - 1, &
+                 p % coord(i + 1) % lattice_y - 1, &
+                 p % coord(i + 1) % lattice_z - 1])
           end if
         end if
         if (this % cell == p % coord(i) % cell) then
@@ -211,12 +211,12 @@ contains
 
           ! Two cases, lattice or fill cell
           if (c % type() == FILL_UNIVERSE) then
-            temp_offset = c % offset(map)
+            temp_offset = c % offset(map-1)
 
           ! Get the offset of the first lattice location
           else
             lat => lattices(c % fill) % obj
-            temp_offset = lat % offset(map, 1, 1, 1)
+            temp_offset = lat % offset(map-1, [0, 0, 0])
           end if
 
           ! If the final offset is in the range of offset - temp_offset+offset
@@ -248,7 +248,7 @@ contains
         if (c % type() == FILL_UNIVERSE) then
 
           ! Enter this cell to update the current offset
-          offset = c % offset(map) + offset
+          offset = c % offset(map-1) + offset
 
           next_univ => universes(c % fill)
           call find_offset(i_cell, next_univ, target_offset, offset, path)
@@ -282,10 +282,11 @@ contains
               do l = 1, n_y
                 do k = 1, n_x
 
-                  if (target_offset >= lat % offset(map, k, l, m) + offset) then
+                  if (target_offset >= lat % offset(map-1, [k-1, l-1, m-1]) &
+                                       + offset) then
                     if (k == n_x .and. l == n_y .and. m == n_z) then
                       ! This is last lattice cell, so target must be here
-                      lat_offset = lat % offset(map, k, l, m)
+                      lat_offset = lat % offset(map-1, [k-1, l-1, m-1])
                       offset = offset + lat_offset
                       next_univ => universes(lat % get([k-1, l-1, m-1])+1)
                       if (lat % is_3d) then
@@ -306,7 +307,7 @@ contains
                     end if
                   else
                     ! Target is at this lattice position
-                    lat_offset = lat % offset(map, old_k, old_l, old_m)
+                    lat_offset = lat % offset(map-1, [old_k-1, old_l-1, old_m-1])
                     offset = offset + lat_offset
                     next_univ => universes(lat % get([old_k-1, old_l-1, old_m-1])+1)
                     if (lat % is_3d) then
@@ -352,10 +353,11 @@ contains
                     cycle
                   end if
 
-                  if (target_offset >= lat % offset(map, k, l, m) + offset) then
+                  if (target_offset >= lat % offset(map-1, [k-1, l-1, m-1]) &
+                                       + offset) then
                     if (k == lat % n_rings .and. l == n_y .and. m == n_z) then
                       ! This is last lattice cell, so target must be here
-                      lat_offset = lat % offset(map, k, l, m)
+                      lat_offset = lat % offset(map-1, [k-1, l-1, m-1])
                       offset = offset + lat_offset
                       next_univ => universes(lat % get([k-1, l-1, m-1])+1)
                       if (lat % is_3d) then
@@ -378,7 +380,7 @@ contains
                     end if
                   else
                     ! Target is at this lattice position
-                    lat_offset = lat % offset(map, old_k, old_l, old_m)
+                    lat_offset = lat % offset(map-1, [old_k-1, old_l-1, old_m-1])
                     offset = offset + lat_offset
                     next_univ => universes(lat % get([old_k-1, old_l-1, old_m-1])+1)
                     if (lat % is_3d) then

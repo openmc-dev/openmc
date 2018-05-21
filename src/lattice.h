@@ -41,11 +41,11 @@ class LatticeIter;
 class Lattice
 {
 public:
-  int32_t id;                        //! Universe ID number
-  std::string name;                  //! User-defined name
-  std::vector<int32_t> universes;    //! Universes filling each lattice tile
-  int32_t outer{NO_OUTER_UNIVERSE};  //! Universe tiled outside the lattice
-  //std::vector<int32_t> offset;       //! Distribcell offsets
+  int32_t id;                        //!< Universe ID number
+  std::string name;                  //!< User-defined name
+  std::vector<int32_t> universes;    //!< Universes filling each lattice tile
+  int32_t outer{NO_OUTER_UNIVERSE};  //!< Universe tiled outside the lattice
+  std::vector<int32_t> offsets;      //!< Distribcell offset table
 
   explicit Lattice(pugi::xml_node lat_node);
 
@@ -58,6 +58,11 @@ public:
 
   //! Convert internal universe values from IDs to indices using universe_dict.
   void adjust_indices();
+
+  //! Allocate offset table for distribcell.
+  void allocate_offset_table(int n_maps);
+
+  int32_t fill_offset_table(int32_t offset, int32_t target_univ_id, int map);
 
   //! Check lattice indices.
   //! @param i_xyz[3] The indices for a lattice tile.
@@ -95,6 +100,13 @@ public:
   {
     return (indx > 0) && (indx < universes.size());
   }
+
+  //! Get the distribcell offset for a lattice tile.
+  //! @param The map index for the target cell.
+  //! @param i_xyz[3] The indices for a lattice tile.
+  //! @return Distribcell offset i.e. the largest instance number for the target
+  //!  cell found in the geometry tree under this lattice tile.
+  virtual int32_t& offset(int map, const int i_xyz[3]) = 0;
 
   //! Write all information needed to reconstruct the lattice to an HDF5 group.
   //! @param group_id An HDF5 group id.
@@ -166,12 +178,14 @@ public:
   std::array<double, 3>
   get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const;
 
+  int32_t& offset(int map, const int i_xyz[3]);
+
   void to_hdf5_inner(hid_t group_id) const;
 
 protected:
-  std::array<int, 3> n_cells;        //! Number of cells along each axis
-  std::array<double, 3> lower_left;  //! Global lower-left corner of the lattice
-  std::array<double, 3> pitch;       //! Lattice tile width along each axis
+  std::array<int, 3> n_cells;       //!< Number of cells along each axis
+  std::array<double, 3> lower_left; //!< Global lower-left corner of the lattice
+  std::array<double, 3> pitch;      //!< Lattice tile width along each axis
 };
 
 //==============================================================================
@@ -200,13 +214,15 @@ public:
 
   bool is_valid_index(int indx) const;
 
+  int32_t& offset(int map, const int i_xyz[3]);
+
   void to_hdf5_inner(hid_t group_id) const;
 
 protected:
-  int n_rings;                   //! Number of radial tile positions
-  int n_axial;                   //! Number of axial tile positions
-  std::array<double, 3> center;  //! Global center of lattice
-  std::array<double, 2> pitch;   //! Lattice tile width and height
+  int n_rings;                   //!< Number of radial tile positions
+  int n_axial;                   //!< Number of axial tile positions
+  std::array<double, 3> center;  //!< Global center of lattice
+  std::array<double, 2> pitch;   //!< Lattice tile width and height
 };
 
 } //  namespace openmc

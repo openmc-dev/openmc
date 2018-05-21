@@ -43,8 +43,8 @@ class ResultsList(list):
             Total number of atoms for specified nuclide
 
         """
-        time = np.empty_like(self)
-        concentration = np.empty_like(self)
+        time = np.empty_like(self, dtype=float)
+        concentration = np.empty_like(self, dtype=float)
 
         # Evaluate value in each region
         for i, result in enumerate(self):
@@ -73,8 +73,8 @@ class ResultsList(list):
             Array of reaction rates
 
         """
-        time = np.empty_like(self)
-        rate = np.empty_like(self)
+        time = np.empty_like(self, dtype=float)
+        rate = np.empty_like(self, dtype=float)
 
         # Evaluate value in each region
         for i, result in enumerate(self):
@@ -94,8 +94,8 @@ class ResultsList(list):
             k-eigenvalue at each time
 
         """
-        time = np.empty_like(self)
-        eigenvalue = np.empty_like(self)
+        time = np.empty_like(self, dtype=float)
+        eigenvalue = np.empty_like(self, dtype=float)
 
         # Get time/eigenvalue at each point
         for i, result in enumerate(self):

@@ -546,10 +546,15 @@ class RectLattice(Lattice):
         """
         if self.ndim == 2:
             nx, ny = self.shape
-            return np.broadcast(*np.ogrid[:nx, :ny])
+            for iy in range(ny):
+                for ix in range(nx):
+                    yield (ix, iy)
         else:
             nx, ny, nz = self.shape
-            return np.broadcast(*np.ogrid[:nx, :ny, :nz])
+            for iz in range(nz):
+                for iy in range(ny):
+                    for ix in range(nx):
+                        yield (ix, iy, iz)
 
     @property
     def lower_left(self):

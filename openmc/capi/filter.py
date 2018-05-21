@@ -356,7 +356,7 @@ _FILTER_TYPE_MAP = {
     'meshsurface': MeshSurfaceFilter,
     'mu': MuFilter,
     'polar': PolarFilter,
-    'sphericalharmoics': SphericalHarmonicsFilter,
+    'sphericalharmonics': SphericalHarmonicsFilter,
     'spatiallegendre': SpatialLegendreFilter,
     'surface': SurfaceFilter,
     'universe': UniverseFilter,

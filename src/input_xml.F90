@@ -11,7 +11,7 @@ module input_xml
   use distribution_univariate
   use endf,             only: reaction_name
   use error,            only: fatal_error, warning, write_message, openmc_err_msg
-  use geometry,         only: maximum_levels, neighbor_lists
+  use geometry,         only: neighbor_lists
   use geometry_header
   use hdf5_interface
   use list_header,      only: ListChar, ListInt, ListReal
@@ -85,6 +85,12 @@ module input_xml
       import C_INT32_T
       integer(C_INT32_T) :: root
     end function find_root_universe
+
+    function maximum_levels(univ) bind(C) result(n)
+      import C_INT32_T, C_INT
+      integer(C_INT32_T), intent(in), value :: univ
+      integer(C_INT)                        :: n
+    end function maximum_levels
   end interface
 
 contains
@@ -169,7 +175,7 @@ contains
     ! Check to make sure there are not too many nested coordinate levels in the
     ! geometry since the coordinate list is statically allocated for performance
     ! reasons
-    if (maximum_levels(universes(root_universe)) > MAX_COORD) then
+    if (maximum_levels(root_universe - 1) > MAX_COORD) then
       call fatal_error("Too many nested coordinate levels in the geometry. &
            &Try increasing the maximum number of coordinate levels by &
            &providing the CMake -Dmaxcoord= option.")

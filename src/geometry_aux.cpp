@@ -1,5 +1,6 @@
 #include "geometry_aux.h"
 
+#include <algorithm>  // for std::max
 #include <sstream>
 #include <unordered_set>
 
@@ -195,6 +196,31 @@ fill_offset_tables(int32_t target_univ_id, int map)
       }
     }
   }
+}
+
+//==============================================================================
+
+int
+maximum_levels(int32_t univ)
+{
+  int levels_below {0};
+
+  for (int32_t cell_indx : universes_c[univ]->cells) {
+    Cell &c = *cells_c[cell_indx];
+    if (c.type == FILL_UNIVERSE) {
+      int32_t next_univ = c.fill - 1; // TODO: off-by-one
+      levels_below = std::max(levels_below, maximum_levels(next_univ));
+    } else if (c.type == FILL_LATTICE) {
+      Lattice &lat = *lattices_c[c.fill - 1]; //TODO: off-by-one
+      for (auto it = lat.begin(); it != lat.end(); ++it) {
+        int32_t next_univ = *it;
+        levels_below = std::max(levels_below, maximum_levels(next_univ));
+      }
+    }
+  }
+
+  ++levels_below;
+  return levels_below;
 }
 
 } // namespace openmc

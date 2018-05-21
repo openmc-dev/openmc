@@ -68,7 +68,7 @@ module geometry_header
     end subroutine cell_set_universe_c
 
     function cell_n_instances_c(cell_ptr) bind(C, name='cell_n_instances') &
-        result(n_instances)
+         result(n_instances)
       import C_PTR, C_INT32_T
       implicit none
       type(C_PTR), intent(in), value :: cell_ptr
@@ -94,9 +94,16 @@ module geometry_header
       integer(C_INT32_T), intent(out)       :: i_surf
     end subroutine cell_distance_c
 
+    function cell_offset_c(cell_ptr, map) bind(C, name="cell_offset") &
+         result(offset)
+      import C_PTR, C_INT, C_INT32_T
+      type(C_PTR),    intent(in), value :: cell_ptr
+      integer(C_INT), intent(in), value :: map
+      integer(C_INT32_T)                :: offset
+    end function cell_offset_c
+
     subroutine cell_to_hdf5_c(cell_ptr, group) bind(C, name='cell_to_hdf5')
       import HID_T, C_PTR
-      implicit none
       type(C_PTR),    intent(in), value :: cell_ptr
       integer(HID_T), intent(in), value :: group
     end subroutine cell_to_hdf5_c
@@ -104,14 +111,12 @@ module geometry_header
     function lattice_pointer_c(lat_ind) bind(C, name='lattice_pointer') &
          result(ptr)
       import C_PTR, C_INT32_T
-      implicit none
       integer(C_INT32_T), intent(in), value :: lat_ind
       type(C_PTR)                           :: ptr
     end function lattice_pointer_c
 
     function lattice_id_c(lat_ptr) bind(C, name='lattice_id') result(id)
       import C_PTR, C_INT32_T
-      implicit none
       type(C_PTR), intent(in), value :: lat_ptr
       integer(C_INT32_T)             :: id
     end function lattice_id_c
@@ -119,7 +124,6 @@ module geometry_header
     function lattice_are_valid_indices_c(lat_ptr, i_xyz) &
          bind(C, name='lattice_are_valid_indices') result (is_valid)
       import C_PTR, C_INT, C_BOOL
-      implicit none
       type(C_PTR),    intent(in), value :: lat_ptr
       integer(C_INT), intent(in)        :: i_xyz(3)
       logical(C_BOOL)                   :: is_valid
@@ -128,7 +132,6 @@ module geometry_header
     subroutine lattice_distance_c(lat_ptr, xyz, uvw, i_xyz, d, lattice_trans) &
          bind(C, name='lattice_distance')
       import C_PTR, C_INT, C_DOUBLE
-      implicit none
       type(C_PTR),    intent(in), value :: lat_ptr
       real(C_DOUBLE), intent(in)        :: xyz(3)
       real(C_DOUBLE), intent(in)        :: uvw(3)
@@ -140,7 +143,6 @@ module geometry_header
     subroutine lattice_get_indices_c(lat_ptr, xyz, i_xyz) &
          bind(C, name='lattice_get_indices')
       import C_PTR, C_INT, C_DOUBLE
-      implicit none
       type(C_PTR),    intent(in), value :: lat_ptr
       real(C_DOUBLE), intent(in)        :: xyz(3)
       integer(C_INT), intent(out)       :: i_xyz(3)
@@ -149,7 +151,6 @@ module geometry_header
     subroutine lattice_get_local_xyz_c(lat_ptr, global_xyz, i_xyz, local_xyz) &
          bind(C, name='lattice_get_local_xyz')
       import C_PTR, C_INT, C_DOUBLE
-      implicit none
       type(C_PTR),    intent(in), value :: lat_ptr
       real(C_DOUBLE), intent(in)        :: global_xyz(3)
       integer(C_INT), intent(in)        :: i_xyz(3)
@@ -158,10 +159,18 @@ module geometry_header
 
     subroutine lattice_to_hdf5_c(lat_ptr, group) bind(C, name='lattice_to_hdf5')
       import HID_T, C_PTR
-      implicit none
       type(C_PTR),    intent(in), value :: lat_ptr
       integer(HID_T), intent(in), value :: group
     end subroutine lattice_to_hdf5_c
+
+    function lattice_offset_c(lat_ptr, map, i_xyz) &
+         bind(C, name='lattice_offset') result(offset)
+      import C_PTR, C_INT, C_INT32_T
+      type(C_PTR),    intent(in), value :: lat_ptr
+      integer(C_INT), intent(in), value :: map
+      integer(C_INT), intent(in)        :: i_xyz(3)
+      integer(C_INT32_T)                :: offset
+    end function lattice_offset_c
 
     function lattice_outer_c(lat_ptr) bind(C, name='lattice_outer') &
          result(outer)
@@ -173,7 +182,6 @@ module geometry_header
     function lattice_universe_c(lat_ptr, i_xyz) &
          bind(C, name='lattice_universe') result(univ)
       import C_PTR, C_INT32_t, C_INT
-      implicit none
       type(C_PTR),    intent(in), value :: lat_ptr
       integer(C_INT), intent(in)        :: i_xyz(3)
       integer(C_INT32_T)                :: univ
@@ -181,7 +189,6 @@ module geometry_header
 
     subroutine extend_cells_c(n) bind(C)
       import C_INT32_t
-      implicit none
       integer(C_INT32_T), intent(in), value :: n
     end subroutine extend_cells_c
   end interface
@@ -207,7 +214,6 @@ module geometry_header
     type(C_PTR) :: ptr
 
     logical              :: is_3d            ! Lattice has cells on z axis
-    integer, allocatable :: offset(:,:,:,:)  ! Distribcell offsets
   contains
 
     procedure :: id => lattice_id
@@ -216,6 +222,7 @@ module geometry_header
     procedure :: get => lattice_get
     procedure :: get_indices => lattice_get_indices
     procedure :: get_local_xyz => lattice_get_local_xyz
+    procedure :: offset => lattice_offset
     procedure :: outer => lattice_outer
     procedure :: to_hdf5 => lattice_to_hdf5
   end type Lattice
@@ -256,8 +263,6 @@ module geometry_header
     integer, allocatable :: material(:)    ! Material within cell.  Multiple
                                            !  materials for distribcell
                                            !  instances.  0 signifies a universe
-    integer, allocatable :: offset(:)      ! Distribcell offset for tally
-                                           !  counter
     integer, allocatable :: region(:)      ! Definition of spatial region as
                                            !  Boolean expression of half-spaces
     integer :: distribcell_index           ! Index corresponding to this cell in
@@ -282,6 +287,7 @@ module geometry_header
     procedure :: n_instances => cell_n_instances
     procedure :: simple => cell_simple
     procedure :: distance => cell_distance
+    procedure :: offset => cell_offset
     procedure :: to_hdf5 => cell_to_hdf5
 
   end type Cell
@@ -349,6 +355,14 @@ contains
     real(C_DOUBLE)             :: local_xyz(3)
     call lattice_get_local_xyz_c(this % ptr, global_xyz, i_xyz, local_xyz)
   end function lattice_get_local_xyz
+
+  function lattice_offset(this, map, i_xyz) result(offset)
+    class(Lattice), intent(in) :: this
+    integer(C_INT), intent(in) :: map
+    integer(C_INT), intent(in) :: i_xyz(3)
+    integer(C_INT32_T)         :: offset
+    offset = lattice_offset_c(this % ptr, map, i_xyz)
+  end function lattice_offset
 
   function lattice_outer(this) result(outer)
     class(Lattice), intent(in) :: this
@@ -421,6 +435,13 @@ contains
     integer(C_INT32_T), intent(out) :: i_surf
     call cell_distance_c(this % ptr, xyz, uvw, on_surface, min_dist, i_surf)
   end subroutine cell_distance
+
+  function cell_offset(this, map) result(offset)
+    class(Cell), intent(in)    :: this
+    integer(C_INT), intent(in) :: map
+    integer(C_INT32_T)         :: offset
+    offset = cell_offset_c(this % ptr, map)
+  end function cell_offset
 
   subroutine cell_to_hdf5(this, group)
     class(Cell),    intent(in) :: this

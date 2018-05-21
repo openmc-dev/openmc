@@ -26,7 +26,7 @@ module geometry
     end function cell_contains_c
 
     function count_universe_instances(search_univ, target_univ_id) bind(C) &
-        result(count)
+         result(count)
       import C_INT32_T, C_INT
       integer(C_INT32_T), intent(in), value :: search_univ
       integer(C_INT32_T), intent(in), value :: target_univ_id
@@ -174,19 +174,19 @@ contains
             offset = 0
             do k = 1, p % n_coord
               if (cells(p % coord(k) % cell) % type() == FILL_UNIVERSE) then
-                offset = offset + cells(p % coord(k) % cell) % &
-                     offset(distribcell_index)
+                offset = offset + cells(p % coord(k) % cell) &
+                     % offset(distribcell_index-1)
               elseif (cells(p % coord(k) % cell) % type() == FILL_LATTICE) then
                 if (lattices(p % coord(k + 1) % lattice) % obj &
                      % are_valid_indices([&
                      p % coord(k + 1) % lattice_x, &
                      p % coord(k + 1) % lattice_y, &
                      p % coord(k + 1) % lattice_z])) then
-                  offset = offset + lattices(p % coord(k + 1) % lattice) % obj % &
-                       offset(distribcell_index, &
-                       p % coord(k + 1) % lattice_x, &
-                       p % coord(k + 1) % lattice_y, &
-                       p % coord(k + 1) % lattice_z)
+                  offset = offset + lattices(p % coord(k + 1) % lattice) % obj &
+                       % offset(distribcell_index - 1, &
+                       [p % coord(k + 1) % lattice_x - 1, &
+                       p % coord(k + 1) % lattice_y - 1, &
+                       p % coord(k + 1) % lattice_z - 1])
                 end if
               end if
             end do
@@ -533,82 +533,6 @@ contains
     end do
 
   end subroutine neighbor_lists
-
-!===============================================================================
-! CALC_OFFSETS calculates and stores the offsets in all fill cells. This
-! routine is called once upon initialization.
-!===============================================================================
-
-  subroutine calc_offsets(univ_id, map, univ)
-
-    integer, intent(in)        :: univ_id         ! target universe ID
-    integer, intent(in)        :: map          ! map index in vector of maps
-    type(Universe), intent(in) :: univ         ! universe searching in
-
-    integer :: i                          ! index over cells
-    integer :: j, k, m                    ! indices in lattice
-    integer :: offset                     ! total offset for a given cell
-    integer :: cell_index                 ! index in cells array
-    type(Cell),     pointer :: c          ! pointer to current cell
-    class(Lattice), pointer :: lat        ! pointer to current lattice
-
-    offset = 0
-
-    do i = 1, size(univ % cells)
-
-      cell_index = univ % cells(i)
-
-      ! get pointer to cell
-      c => cells(cell_index)
-
-      ! ====================================================================
-      ! AT LOWEST UNIVERSE, TERMINATE SEARCH
-      if (c % type() == FILL_MATERIAL) then
-
-      ! ====================================================================
-      ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
-      elseif (c % type() == FILL_UNIVERSE) then
-        c % offset(map) = offset
-        offset = offset + count_universe_instances(c % fill - 1, univ_id)
-
-      ! ====================================================================
-      ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
-      elseif (c % type() == FILL_LATTICE) then
-
-        ! Set current lattice
-        lat => lattices(c % fill) % obj
-
-        select type (lat)
-
-        type is (RectLattice)
-          do m = 1, lat % n_cells(3)
-            do k = 1, lat % n_cells(2)
-              do j = 1, lat % n_cells(1)
-                lat % offset(map, j, k, m) = offset
-                offset = offset + count_universe_instances(&
-                     lat % get([j-1, k-1, m-1]), univ_id)
-              end do
-            end do
-          end do
-
-        type is (HexLattice)
-          do m = 1, lat % n_axial
-            do k = 1, 2*lat % n_rings - 1
-              do j = 1, 2*lat % n_rings - 1
-                if (lat % are_valid_indices([j, k, m])) then
-                  lat % offset(map, j, k, m) = offset
-                  offset = offset + count_universe_instances(&
-                       lat % get([j-1, k-1, m-1]), univ_id)
-                end if
-              end do
-            end do
-          end do
-        end select
-
-      end if
-    end do
-
-  end subroutine calc_offsets
 
 !===============================================================================
 ! MAXIMUM_LEVELS determines the maximum number of nested coordinate levels in

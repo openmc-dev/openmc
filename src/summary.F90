@@ -226,11 +226,6 @@ contains
       case (FILL_UNIVERSE)
         call write_dataset(cell_group, "fill_type", "universe")
         call write_dataset(cell_group, "fill", universes(c%fill)%id)
-        if (allocated(c%offset)) then
-          if (size(c%offset) > 0) then
-            call write_dataset(cell_group, "offset", c%offset)
-          end if
-        end if
 
         if (allocated(c%translation)) then
           call write_dataset(cell_group, "translation", c%translation)

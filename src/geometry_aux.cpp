@@ -1,5 +1,4 @@
-//! \file geometry_aux.cpp
-//! Auxilary functions for geometry initialization and general data handling.
+#include "geometry_aux.h"
 
 #include <sstream>
 #include <unordered_set>
@@ -15,10 +14,8 @@
 namespace openmc {
 
 //==============================================================================
-//! Replace Universe, Lattice, and Material IDs with indices.
-//==============================================================================
 
-extern "C" void
+void
 adjust_indices_c()
 {
   // Adjust material/fill idices.
@@ -66,14 +63,8 @@ adjust_indices_c()
 }
 
 //==============================================================================
-//! Figure out which Universe is the root universe.
-//!
-//! This function looks for a universe that is not listed in a Cell::fill or in
-//! a Lattice.
-//! @return The index of the root universe.
-//==============================================================================
 
-extern "C" int32_t
+int32_t
 find_root_universe()
 {
   // Find all the universes listed as a cell fill.
@@ -115,15 +106,24 @@ find_root_universe()
 }
 
 //==============================================================================
-//! Recursively search through the geometry and count cell instances.
-//!
-//! This function will update the Cell::n_instances value for each cell in the
-//! geometry.
-//! @param univ_indx The index of the universe to begin searching from (probably
-//!   the root universe).
+
+void
+allocate_offset_tables(int n_maps)
+{
+  for (Cell *c : cells_c) {
+    if (c->type != FILL_MATERIAL) {
+      c->offset.resize(n_maps, C_NONE);
+    }
+  }
+
+  for (Lattice *lat : lattices_c) {
+    lat->allocate_offset_table(n_maps);
+  }
+}
+
 //==============================================================================
 
-extern "C" void
+void
 count_cell_instances(int32_t univ_indx)
 {
   for (int32_t cell_indx : universes_c[univ_indx]->cells) {
@@ -145,13 +145,8 @@ count_cell_instances(int32_t univ_indx)
 }
 
 //==============================================================================
-//! Recursively search through universes and count the number of instances of
-//! the target universe in the geometry tree.
-//! @param search_univ The index of the universe to begin searching from.
-//! @param target_univ_id The ID of the universe to be counted.
-//==============================================================================
 
-extern "C" int
+int
 count_universe_instances(int32_t search_univ, int32_t target_univ_id)
 {
   //  If this is the target, it can't contain itself.
@@ -177,6 +172,29 @@ count_universe_instances(int32_t search_univ, int32_t target_univ_id)
   }
 
   return count;
+}
+
+//==============================================================================
+
+void
+fill_offset_tables(int32_t target_univ_id, int map)
+{
+  for (Universe *univ : universes_c) {
+    int32_t offset {0};  // TODO: is this a bug?  It matches F90 implementation.
+    for (int32_t cell_indx : univ->cells) {
+      Cell &c = *cells_c[cell_indx];
+
+      if (c.type == FILL_UNIVERSE) {
+        c.offset[map] = offset;
+        int32_t search_univ = c.fill - 1;  // TODO: off-by-one
+        offset += count_universe_instances(search_univ, target_univ_id);
+
+      } else if (c.type == FILL_LATTICE) {
+        Lattice &lat = *lattices_c[c.fill - 1];  // TODO: off-by-one
+        offset = lat.fill_offset_table(offset, target_univ_id, map);
+      }
+    }
+  }
 }
 
 } // namespace openmc

@@ -3837,39 +3837,29 @@ contains
 
   subroutine prepare_distribcell()
 
-    integer :: i, j                ! Tally, filter loop counters
-    logical :: distribcell_active  ! Does simulation use distribcell?
-    integer, allocatable :: univ_list(:)              ! Target offsets
+    integer :: i, j, k
+    type(SetInt)  :: cell_list  ! distribcells to track
+    type(ListInt) :: univ_list  ! universes containing distribcells
 
-    ! Assume distribcell is not needed until proven otherwise.
-    distribcell_active = .false.
-
-    ! We need distribcell if any tallies have distribcell filters.
+    ! Find all cells listed in a distribcell filter.
     do i = 1, n_tallies
       do j = 1, size(tallies(i) % obj % filter)
         select type(filt => filters(tallies(i) % obj % filter(j)) % obj)
         type is (DistribcellFilter)
-          distribcell_active = .true.
+          call cell_list % add(filt % cell)
         end select
       end do
     end do
 
-    ! We also need distribcell if any distributed materials or distributed
-    ! temperatues are present.
-    if (.not. distribcell_active) then
-      do i = 1, n_cells
-        if (size(cells(i) % material) > 1 .or. size(cells(i) % sqrtkT) > 1) then
-          distribcell_active = .true.
-          exit
-        end if
-      end do
-    end if
+    ! Find all cells with multiple (distributed) materials or temperatures.
+    do i = 1, n_cells
+      if (size(cells(i) % material) > 1 .or. size(cells(i) % sqrtkT) > 1) then
+        call cell_list % add(i)
+      end if
+    end do
 
-    ! If distribcell isn't used in this simulation then no more work left to do.
-    if (.not. distribcell_active) return
-
-    ! Make sure the number of materials and temperatures matches the number of
-    ! cell instances.
+    ! Make sure the number of distributed materials and temperatures matches the
+    ! number of respective cell instances.
     do i = 1, n_cells
       associate (c => cells(i))
         if (size(c % material) > 1) then
@@ -3885,69 +3875,13 @@ contains
           if (size(c % sqrtkT) /= c % n_instances()) then
             call fatal_error("Cell " // trim(to_str(c % id())) // " was &
                  &specified with " // trim(to_str(size(c % sqrtkT))) &
-                 // " temperatures but has " // trim(to_str(c % n_instances())) &
+                 // " temperatures but has " // trim(to_str(c % n_instances()))&
                  // " distributed instances. The number of temperatures must &
                  &equal one or the number of instances.")
           end if
         end if
       end associate
     end do
-
-    ! Allocate offset maps at each level in the geometry
-    call allocate_offsets(univ_list)
-    call allocate_offset_tables(n_maps)
-
-    ! Calculate offsets for each target distribcell
-    do i = 1, n_maps
-      call fill_offset_tables(univ_list(i), i-1)
-    end do
-
-  end subroutine prepare_distribcell
-
-!===============================================================================
-! ALLOCATE_OFFSETS determines the number of maps needed and allocates required
-! memory for distribcell offset tables
-!===============================================================================
-
-  recursive subroutine allocate_offsets(univ_list)
-
-    integer, intent(out), allocatable     :: univ_list(:) ! Target offsets
-
-    integer      :: i, j, k   ! Loop counters
-    type(SetInt) :: cell_list ! distribells to track
-
-    ! Begin gathering list of cells in distribcell tallies
-    n_maps = 0
-
-    ! List all cells referenced in distribcell filters.
-    do i = 1, n_tallies
-      do j = 1, size(tallies(i) % obj % filter)
-        select type(filt => filters(tallies(i) % obj % filter(j)) % obj)
-        type is (DistribcellFilter)
-          call cell_list % add(filt % cell)
-        end select
-      end do
-    end do
-
-    ! List all cells with multiple (distributed) materials or temperatures.
-    do i = 1, n_cells
-      if (size(cells(i) % material) > 1 .or. size(cells(i) % sqrtkT) > 1) then
-        call cell_list % add(i)
-      end if
-    end do
-
-    ! Compute the number of unique universes containing these distribcells
-    ! to determine the number of offset tables to allocate
-    do i = 1, n_universes
-      do j = 1, size(universes(i) % cells)
-        if (cell_list % contains(universes(i) % cells(j))) then
-          n_maps = n_maps + 1
-        end if
-      end do
-    end do
-
-    ! Allocate the list of offset tables for each unique universe
-    allocate(univ_list(n_maps))
 
     ! Search through universes for distributed cells and assign each one a
     ! unique distribcell array index.
@@ -3956,15 +3890,18 @@ contains
       do j = 1, size(universes(i) % cells)
         if (cell_list % contains(universes(i) % cells(j))) then
           cells(universes(i) % cells(j)) % distribcell_index = k
-          univ_list(k) = universes(i) % id
+          call univ_list % append(universes(i) % id)
           k = k + 1
         end if
       end do
     end do
 
-    ! Free up memory
-    call cell_list % clear()
+    ! Allocate and fill cell and lattice offset tables.
+    call allocate_offset_tables(univ_list % size())
+    do i = 1, univ_list % size()
+      call fill_offset_tables(univ_list % get_item(i), i-1)
+    end do
 
-  end subroutine allocate_offsets
+  end subroutine prepare_distribcell
 
 end module input_xml

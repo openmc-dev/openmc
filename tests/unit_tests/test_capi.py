@@ -184,8 +184,6 @@ def test_tally(capi_init):
     assert isinstance(t2.filters[1], openmc.capi.CellFilter)
     assert len(t2.filters[1].bins) == 3
     assert t2.filters[0].order == 5
-    t2.filters[0].order = 7
-    openmc.capi.simulation_init()
 
 
 def test_new_tally(capi_init):
@@ -207,7 +205,7 @@ def test_tally_results(capi_run):
     assert np.all(t.ci_width()[nonzero] >= 1.95*t.std_dev[nonzero])
 
     t2 = openmc.capi.tallies[2]
-    assert t2.mean.size == 108 # 36 coefficients for 7th order Zernike * 3 cells
+    assert t2.mean.size == 63 # 21 coefficients for 5th order Zernike * 3 cells
 
 
 def test_global_tallies(capi_run):

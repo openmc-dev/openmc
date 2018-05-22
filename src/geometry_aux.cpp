@@ -27,10 +27,10 @@ adjust_indices_c()
       auto search_lat = lattice_dict.find(id);
       if (search_univ != universe_dict.end()) {
         c->type = FILL_UNIVERSE;
-        c->fill = search_univ->second + 1;  //TODO: off-by-one
+        c->fill = search_univ->second;
       } else if (search_lat != lattice_dict.end()) {
         c->type = FILL_LATTICE;
-        c->fill = search_lat->second + 1;  //TODO: off-by-one
+        c->fill = search_lat->second;
       } else {
         std::stringstream err_msg;
         err_msg << "Specified fill " << id << " on cell " << c->id
@@ -133,11 +133,11 @@ count_cell_instances(int32_t univ_indx)
 
     if (c.type == FILL_UNIVERSE) {
       // This cell contains another universe.  Recurse into that universe.
-      count_cell_instances(c.fill-1);  // TODO: off-by-one
+      count_cell_instances(c.fill);
 
     } else if (c.type == FILL_LATTICE) {
       // This cell contains a lattice.  Recurse into the lattice universes.
-      Lattice &lat = *lattices_c[c.fill-1]; // TODO: off-by-one
+      Lattice &lat = *lattices_c[c.fill];
       for (auto it = lat.begin(); it != lat.end(); ++it) {
         count_cell_instances(*it);
       }
@@ -160,11 +160,11 @@ count_universe_instances(int32_t search_univ, int32_t target_univ_id)
     Cell &c = *cells_c[cell_indx];
 
     if (c.type == FILL_UNIVERSE) {
-      int32_t next_univ = c.fill - 1; // TODO: off-by-one
+      int32_t next_univ = c.fill;
       count += count_universe_instances(next_univ, target_univ_id);
 
     } else if (c.type == FILL_LATTICE) {
-      Lattice &lat = *lattices_c[c.fill - 1]; //TODO: off-by-one
+      Lattice &lat = *lattices_c[c.fill];
       for (auto it = lat.begin(); it != lat.end(); ++it) {
         int32_t next_univ = *it;
         count += count_universe_instances(next_univ, target_univ_id);
@@ -187,11 +187,11 @@ fill_offset_tables(int32_t target_univ_id, int map)
 
       if (c.type == FILL_UNIVERSE) {
         c.offset[map] = offset;
-        int32_t search_univ = c.fill - 1;  // TODO: off-by-one
+        int32_t search_univ = c.fill;
         offset += count_universe_instances(search_univ, target_univ_id);
 
       } else if (c.type == FILL_LATTICE) {
-        Lattice &lat = *lattices_c[c.fill - 1];  // TODO: off-by-one
+        Lattice &lat = *lattices_c[c.fill];
         offset = lat.fill_offset_table(offset, target_univ_id, map);
       }
     }
@@ -208,10 +208,10 @@ maximum_levels(int32_t univ)
   for (int32_t cell_indx : universes_c[univ]->cells) {
     Cell &c = *cells_c[cell_indx];
     if (c.type == FILL_UNIVERSE) {
-      int32_t next_univ = c.fill - 1; // TODO: off-by-one
+      int32_t next_univ = c.fill;
       levels_below = std::max(levels_below, maximum_levels(next_univ));
     } else if (c.type == FILL_LATTICE) {
-      Lattice &lat = *lattices_c[c.fill - 1]; //TODO: off-by-one
+      Lattice &lat = *lattices_c[c.fill];
       for (auto it = lat.begin(); it != lat.end(); ++it) {
         int32_t next_univ = *it;
         levels_below = std::max(levels_below, maximum_levels(next_univ));

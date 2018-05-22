@@ -1056,12 +1056,6 @@ contains
       ! Get pointer to i-th cell node
       node_cell = node_cell_list(i)
 
-      if (check_for_node(node_cell, "fill")) then
-        call get_node_value(node_cell, "fill", c % fill)
-      else
-        c % fill = NONE
-      end if
-
       ! Check to make sure 'id' hasn't been used
       if (cell_dict % has(c % id())) then
         call fatal_error("Two or more cells use the same unique ID: " &
@@ -1102,18 +1096,6 @@ contains
       else
         allocate(c % material(1))
         c % material(1) = NONE
-      end if
-
-      ! Check to make sure that either material or fill was specified
-      if (c % material(1) == NONE .and. c % fill == NONE) then
-        call fatal_error("Neither material nor fill was specified for cell " &
-             // trim(to_str(c % id())))
-      end if
-
-      ! Check to make sure that both material and fill haven't been
-      ! specified simultaneously
-      if (c % material(1) /= NONE .and. c % fill /= NONE) then
-        call fatal_error("Cannot specify material and fill simultaneously")
       end if
 
       ! Check for region specification (also under deprecated name surfaces)
@@ -1157,7 +1139,7 @@ contains
       if (check_for_node(node_cell, "rotation")) then
         ! Rotations can only be applied to cells that are being filled with
         ! another universe
-        if (c % fill == NONE) then
+        if (c % fill() == C_NONE) then
           call fatal_error("Cannot apply a rotation to cell " // trim(to_str(&
                &c % id())) // " because it is not filled with another universe")
         end if
@@ -1192,7 +1174,7 @@ contains
       if (check_for_node(node_cell, "translation")) then
         ! Translations can only be applied to cells that are being filled with
         ! another universe
-        if (c % fill == NONE) then
+        if (c % fill() == C_NONE) then
           call fatal_error("Cannot apply a translation to cell " &
                // trim(to_str(c % id())) // " because it is not filled with &
                &another universe")
@@ -3800,7 +3782,6 @@ contains
 
     integer :: i                      ! index for various purposes
     integer :: j                      ! index for various purposes
-    integer :: lid                    ! lattice IDs
     integer :: id                     ! user-specified id
 
     call adjust_indices_c()
@@ -3811,15 +3792,7 @@ contains
       ! =======================================================================
       ! ADJUST MATERIAL/FILL POINTERS FOR EACH CELL
 
-      if (c % material(1) == NONE) then
-        id = c % fill
-        if (universe_dict % has(id)) then
-          c % fill = universe_dict % get(id)
-        elseif (lattice_dict % has(id)) then
-          lid = lattice_dict % get(id)
-          c % fill = lid
-        end if
-      else
+      if (c % material(1) /= NONE) then
         do j = 1, size(c % material)
           id = c % material(j)
           if (id == MATERIAL_VOID) then

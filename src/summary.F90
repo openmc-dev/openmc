@@ -160,7 +160,7 @@ contains
   subroutine write_geometry(file_id)
     integer(HID_T), intent(in) :: file_id
 
-    integer :: i, j
+    integer :: i, j, cell_fill
     integer, allocatable :: cell_materials(:)
     integer, allocatable :: cell_ids(:)
     real(8), allocatable :: cell_temperatures(:)
@@ -225,7 +225,7 @@ contains
 
       case (FILL_UNIVERSE)
         call write_dataset(cell_group, "fill_type", "universe")
-        call write_dataset(cell_group, "fill", universes(c%fill)%id)
+        call write_dataset(cell_group, "fill", universes(c%fill()+1)%id)
 
         if (allocated(c%translation)) then
           call write_dataset(cell_group, "translation", c%translation)
@@ -236,7 +236,10 @@ contains
 
       case (FILL_LATTICE)
         call write_dataset(cell_group, "fill_type", "lattice")
-        call write_dataset(cell_group, "lattice", lattices(c%fill)%obj%id())
+        ! Do not access the 'lattices' array with 'c % fill() + 1' directly; it
+        ! causes a segfault in GCC 7.3.0
+        cell_fill = c % fill() + 1
+        call write_dataset(cell_group, "lattice", lattices(cell_fill)%obj%id())
       end select
 
       call close_group(cell_group)

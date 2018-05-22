@@ -215,7 +215,7 @@ contains
 
           ! Get the offset of the first lattice location
           else
-            lat => lattices(c % fill) % obj
+            lat => lattices(c % fill() + 1) % obj
             temp_offset = lat % offset(map-1, [0, 0, 0])
           end if
 
@@ -250,7 +250,7 @@ contains
           ! Enter this cell to update the current offset
           offset = c % offset(map-1) + offset
 
-          next_univ => universes(c % fill)
+          next_univ => universes(c % fill() + 1)
           call find_offset(i_cell, next_univ, target_offset, offset, path)
           return
 
@@ -259,7 +259,7 @@ contains
         elseif (c % type() == FILL_LATTICE) then
 
           ! Set current lattice
-          lat => lattices(c % fill) % obj
+          lat => lattices(c % fill() + 1) % obj
 
           select type (lat)
 

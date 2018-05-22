@@ -421,6 +421,7 @@ module constants
 
   ! indicates that an array index hasn't been set
   integer, parameter :: NONE = 0
+  integer, parameter :: C_NONE = -1
 
   ! Codes for read errors -- better hope these numbers are never used in an
   ! input file!

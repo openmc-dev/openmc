@@ -183,19 +183,19 @@ class Mesh(IDManagerMixin):
         return mesh
 
     @classmethod
-    def fromRectLattice(cls, lattice, division=1, mesh_id=None, name=''):
+    def from_rect_lattice(cls, lattice, division=1, mesh_id=None, name=''):
         """Create mesh from an existing rectangular lattice
 
         Parameters
         ----------
         lattice : openmc.RectLattice
             Rectangular lattice used as a template for this mesh
-        division : int, optional
+        division : int
             Number of mesh cells per lattice cell.
             If not specified, there will be 1 mesh cell per lattice cell.
-        mesh_id : int, optional
+        mesh_id : int
             Unique identifier for the mesh
-        name : str, optional
+        name : str
             Name of the mesh
 
         Returns

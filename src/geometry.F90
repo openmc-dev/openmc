@@ -222,7 +222,7 @@ contains
           ! Move particle to next level and set universe
           j = j + 1
           p % n_coord = j
-          p % coord(j) % universe = c % fill
+          p % coord(j) % universe = c % fill() + 1
 
           ! Apply translation
           if (allocated(c % translation)) then
@@ -243,7 +243,7 @@ contains
           ! ======================================================================
           ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
 
-          associate (lat => lattices(c % fill) % obj)
+          associate (lat => lattices(c % fill() + 1) % obj)
             ! Determine lattice indices
             i_xyz = lat % get_indices(p % coord(j) % xyz + TINY_BIT * p % coord(j) % uvw)
 
@@ -252,7 +252,7 @@ contains
             p % coord(j + 1) % uvw = p % coord(j) % uvw
 
             ! set particle lattice indices
-            p % coord(j + 1) % lattice   = c % fill
+            p % coord(j + 1) % lattice   = c % fill() + 1
             p % coord(j + 1) % lattice_x = i_xyz(1)
             p % coord(j + 1) % lattice_y = i_xyz(2)
             p % coord(j + 1) % lattice_z = i_xyz(3)

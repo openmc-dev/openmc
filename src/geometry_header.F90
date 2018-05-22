@@ -18,35 +18,30 @@ module geometry_header
   interface
     function cell_pointer_c(cell_ind) bind(C, name='cell_pointer') result(ptr)
       import C_PTR, C_INT32_T
-      implicit none
       integer(C_INT32_T), intent(in), value :: cell_ind
       type(C_PTR)                           :: ptr
     end function cell_pointer_c
 
     function cell_id_c(cell_ptr) bind(C, name='cell_id') result(id)
       import C_PTR, C_INT32_T
-      implicit none
       type(C_PTR), intent(in), value :: cell_ptr
       integer(C_INT32_T)             :: id
     end function cell_id_c
 
     subroutine cell_set_id_c(cell_ptr, id) bind(C, name='cell_set_id')
       import C_PTR, C_INT32_T
-      implicit none
       type(C_PTR),        intent(in), value :: cell_ptr
       integer(C_INT32_T), intent(in), value :: id
     end subroutine cell_set_id_c
 
     function cell_type_c(cell_ptr) bind(C, name='cell_type') result(type)
       import C_PTR, C_INT
-      implicit none
       type(C_PTR), intent(in), value :: cell_ptr
       integer(C_INT)                 :: type
     end function cell_type_c
 
     subroutine cell_set_type_c(cell_ptr, type) bind(C, name='cell_set_type')
       import C_PTR, C_INT
-      implicit none
       type(C_PTR),    intent(in), value :: cell_ptr
       integer(C_INT), intent(in), value :: type
     end subroutine cell_set_type_c
@@ -54,7 +49,6 @@ module geometry_header
     function cell_universe_c(cell_ptr) bind(C, name='cell_universe') &
          result(universe)
       import C_PTR, C_INT32_T
-      implicit none
       type(C_PTR), intent(in), value :: cell_ptr
       integer(C_INT32_T)             :: universe
     end function cell_universe_c
@@ -62,22 +56,31 @@ module geometry_header
     subroutine cell_set_universe_c(cell_ptr, universe) &
          bind(C, name='cell_set_universe')
       import C_PTR, C_INT32_T
-      implicit none
       type(C_PTR),        intent(in), value :: cell_ptr
       integer(C_INT32_T), intent(in), value :: universe
     end subroutine cell_set_universe_c
 
+    function cell_fill_c(cell_ptr) bind(C, name="cell_fill") result(fill)
+      import C_PTR, C_INT32_T
+      type(C_PTR), intent(in), value :: cell_ptr
+      integer(C_INT32_T)             :: fill
+    end function cell_fill_c
+
+    function cell_fill_ptr(cell_ptr) bind(C) result(fill_ptr)
+      import C_PTR
+      type(C_PTR), intent(in), value :: cell_ptr
+      type(C_PTR)                    :: fill_ptr
+    end function cell_fill_ptr
+
     function cell_n_instances_c(cell_ptr) bind(C, name='cell_n_instances') &
          result(n_instances)
       import C_PTR, C_INT32_T
-      implicit none
       type(C_PTR), intent(in), value :: cell_ptr
       integer(C_INT32_T)             :: n_instances
     end function cell_n_instances_c
 
     function cell_simple_c(cell_ptr) bind(C, name='cell_simple') result(simple)
       import C_PTR, C_BOOL
-      implicit none
       type(C_PTR), intent(in), value :: cell_ptr
       logical(C_BOOL)                :: simple
     end function cell_simple_c
@@ -85,7 +88,6 @@ module geometry_header
     subroutine cell_distance_c(cell_ptr, xyz, uvw, on_surface, min_dist, &
                                i_surf) bind(C, name="cell_distance")
       import C_PTR, C_INT32_T, C_DOUBLE
-      implicit none
       type(C_PTR),        intent(in), value :: cell_ptr
       real(C_DOUBLE),     intent(in)        :: xyz(3)
       real(C_DOUBLE),     intent(in)        :: uvw(3)
@@ -259,7 +261,6 @@ module geometry_header
   type Cell
     type(C_PTR) :: ptr
 
-    integer :: fill                        ! universe # filling this cell
     integer, allocatable :: material(:)    ! Material within cell.  Multiple
                                            !  materials for distribcell
                                            !  instances.  0 signifies a universe
@@ -284,6 +285,7 @@ module geometry_header
     procedure :: set_type => cell_set_type
     procedure :: universe => cell_universe
     procedure :: set_universe => cell_set_universe
+    procedure :: fill => cell_fill
     procedure :: n_instances => cell_n_instances
     procedure :: simple => cell_simple
     procedure :: distance => cell_distance
@@ -413,6 +415,12 @@ contains
     integer(C_INT32_T), intent(in) :: universe
     call cell_set_universe_c(this % ptr, universe)
   end subroutine cell_set_universe
+
+  function cell_fill(this) result(fill)
+    class(Cell), intent(in) :: this
+    integer(C_INT32_T)      :: fill
+    fill = cell_fill_c(this % ptr)
+  end function cell_fill
 
   function cell_n_instances(this) result(n_instances)
     class(Cell), intent(in) :: this
@@ -611,7 +619,7 @@ contains
           indices = C_LOC(c % material(1))
         case (FILL_UNIVERSE, FILL_LATTICE)
           n = 1
-          indices = C_LOC(c % fill)
+          indices = cell_fill_ptr(c % ptr)
         end select
       end associate
     else
@@ -723,7 +731,7 @@ contains
     if (index >= 1 .and. index <= size(cells)) then
 
       ! error if the cell is filled with another universe
-      if (cells(index) % fill /= NONE) then
+      if (cells(index) % fill() /= C_NONE) then
         err = E_GEOMETRY
         call set_errmsg("Cannot set temperature on a cell filled &
              &with a universe.")

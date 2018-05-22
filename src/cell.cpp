@@ -234,6 +234,21 @@ Cell::Cell(pugi::xml_node cell_node)
     material.shrink_to_fit();
   }
 
+  // Make sure that either material or fill was specified.
+  if ((material[0] == C_NONE) && (fill == C_NONE)) {
+    std::stringstream err_msg;
+    err_msg << "Neither material nor fill was specified for cell " << id;
+    fatal_error(err_msg);
+  }
+
+  // Make sure that material and fill haven't been specified simultaneously.
+  if ((material[0] != C_NONE) && (fill != C_NONE)) {
+    std::stringstream err_msg;
+    err_msg << "Cell " << id << " has both a material and a fill specified; "
+            << "only one can be specified per cell";
+    fatal_error(err_msg);
+  }
+
   std::string region_spec {""};
   if (check_for_node(cell_node, "region")) {
     region_spec = get_node_value(cell_node, "region");
@@ -469,6 +484,10 @@ extern "C" {
   int32_t cell_universe(Cell *c) {return c->universe;}
 
   void cell_set_universe(Cell *c, int32_t universe) {c->universe = universe;}
+
+  int32_t cell_fill(Cell *c) {return c->fill;}
+
+  int32_t* cell_fill_ptr(Cell *c) {return &c->fill;}
 
   int32_t cell_n_instances(Cell *c) {return c->n_instances;}
 

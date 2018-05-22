@@ -209,6 +209,11 @@ class EnergyFunctionFilter(Filter):
 class LegendreFilter(Filter):
     filter_type = 'legendre'
 
+    def __init__(self, order=None, uid=None, new=True, index=None):
+        super().__init__(uid, new, index)
+        if order is not None:
+            self.order = order
+
     @property
     def order(self):
         temp_order = c_int()
@@ -293,6 +298,11 @@ class PolarFilter(Filter):
 class SphericalHarmonicsFilter(Filter):
     filter_type = 'sphericalharmonics'
 
+    def __init__(self, order=None, uid=None, new=True, index=None):
+        super().__init__(uid, new, index)
+        if order is not None:
+            self.order = order
+
     @property
     def order(self):
         temp_order = c_int()
@@ -306,6 +316,11 @@ class SphericalHarmonicsFilter(Filter):
 
 class SpatialLegendreFilter(Filter):
     filter_type = 'spatiallegendre'
+
+    def __init__(self, order=None, uid=None, new=True, index=None):
+        super().__init__(uid, new, index)
+        if order is not None:
+            self.order = order
 
     @property
     def order(self):
@@ -328,6 +343,11 @@ class UniverseFilter(Filter):
 
 class ZernikeFilter(Filter):
     filter_type = 'zernike'
+
+    def __init__(self, order=None, uid=None, new=True, index=None):
+        super().__init__(uid, new, index)
+        if order is not None:
+            self.order = order
 
     @property
     def order(self):

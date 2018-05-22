@@ -205,7 +205,8 @@ def test_tally_results(capi_run):
     assert np.all(t.ci_width()[nonzero] >= 1.95*t.std_dev[nonzero])
 
     t2 = openmc.capi.tallies[2]
-    assert t2.mean.size == 63 # 21 coefficients for 5th order Zernike * 3 cells
+    n = 5
+    assert t2.mean.size == (n + 1) * (n + 2) // 2 * 3 # Number of Zernike coeffs * 3 cells
 
 
 def test_global_tallies(capi_run):

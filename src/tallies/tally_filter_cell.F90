@@ -14,13 +14,14 @@ module tally_filter_cell
 
   implicit none
   private
+  public :: openmc_cell_filter_get_bins
 
 !===============================================================================
 ! CELLFILTER specifies which geometric cells tally events reside in.
 !===============================================================================
 
   type, public, extends(TallyFilter) :: CellFilter
-    integer, allocatable :: cells(:)
+    integer(C_INT32_T), allocatable :: cells(:)
     type(DictIntInt)     :: map
   contains
     procedure :: from_xml
@@ -115,5 +116,29 @@ contains
 
     label = "Cell " // to_str(cells(this % cells(bin)) % id)
   end function text_label_cell
+
+!===============================================================================
+!                               C API FUNCTIONS
+!===============================================================================
+
+  function openmc_cell_filter_get_bins(index, cells, n) result(err) bind(C)
+    ! Return the cells associated with a cell filter
+    integer(C_INT32_T), value :: index
+    type(C_PTR), intent(out) :: cells
+    integer(C_INT32_T), intent(out) :: n
+    integer(C_INT) :: err
+
+    err = verify_filter(index)
+    if (err == 0) then
+       select type (f => filters(index) % obj)
+       type is (CellFilter)
+          cells = C_LOC(f % cells)
+          n = size(f % cells)
+       class default
+          err = E_INVALID_TYPE
+          call set_errmsg("Tried to get cells from a non-cell filter.")
+       end select
+    end if
+  end function openmc_cell_filter_get_bins
 
 end module tally_filter_cell

@@ -75,20 +75,19 @@ contains
     type(TallyFilterMatch),   intent(inout) :: match
 
     integer :: i
-    real(8) :: wgt
-    real(8) :: x       ! Position on specified axis
-    real(8) :: x_norm  ! Normalized position
+    real(C_DOUBLE) :: wgt(this % n_bins)
+    real(C_DOUBLE) :: x       ! Position on specified axis
+    real(C_DOUBLE) :: x_norm  ! Normalized position
 
     x = p % coord(1) % xyz(this % axis)
     if (this % min <= x .and. x <= this % max) then
       ! Calculate normalized position between min and max
       x_norm = TWO*(x - this % min)/(this % max - this % min) - ONE
 
-      ! TODO: Use recursive formula to calculate higher orders
-      do i = 0, this % order
-        wgt = calc_pn(i, x_norm)
-        call match % bins % push_back(i + 1)
-        call match % weights % push_back(wgt)
+      call calc_pn(this % order, x_norm, wgt)
+      do i = 1, this % n_bins
+        call match % bins % push_back(i)
+        call match % weights % push_back(wgt(i))
       end do
     end if
   end subroutine get_all_bins

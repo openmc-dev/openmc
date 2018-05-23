@@ -10,6 +10,7 @@ module openmc_api
   use geometry_header
   use hdf5_interface
   use material_header
+  use math
   use mesh_header
   use message_passing
   use nuclide_header
@@ -34,6 +35,7 @@ module openmc_api
 
   private
   public :: openmc_calculate_volumes
+  public :: openmc_cell_filter_get_bins
   public :: openmc_cell_get_id
   public :: openmc_cell_get_fill
   public :: openmc_cell_set_fill

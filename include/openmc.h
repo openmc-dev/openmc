@@ -17,6 +17,7 @@ extern "C" {
   };
 
   int openmc_calculate_volumes();
+  int openmc_cell_filter_get_bins(int32_t index, int32_t** cells, int32_t* n);
   int openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n);
   int openmc_cell_get_id(int32_t index, int32_t* id);
   int openmc_cell_set_fill(int32_t index, int type, int32_t n, const int32_t* indices);
@@ -31,7 +32,7 @@ extern "C" {
   int openmc_extend_sources(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_extend_tallies(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_filter_get_id(int32_t index, int32_t* id);
-  int openmc_filter_get_type(int32_t index, const char** type);
+  int openmc_filter_get_type(int32_t index, char* type);
   int openmc_filter_set_id(int32_t index, int32_t id);
   int openmc_filter_set_type(int32_t index, const char* type);
   int openmc_finalize();

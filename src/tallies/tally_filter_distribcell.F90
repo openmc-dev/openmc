@@ -278,9 +278,9 @@ contains
             old_k = 1
 
             ! Loop over lattice coordinates
-            do k = 1, n_x
+            do m = 1, n_z
               do l = 1, n_y
-                do m = 1, n_z
+                do k = 1, n_x
 
                   if (target_offset >= lat % offset(map, k, l, m) + offset) then
                     if (k == n_x .and. l == n_y .and. m == n_z) then

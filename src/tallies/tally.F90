@@ -7,7 +7,7 @@ module tally
   use dict_header,      only: EMPTY
   use error,            only: fatal_error
   use geometry_header
-  use math,             only: t_percentile, calc_pn, calc_rn
+  use math,             only: t_percentile
   use mesh_header,      only: RegularMesh, meshes
   use message_passing
   use mgxs_header

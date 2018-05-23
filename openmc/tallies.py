@@ -248,7 +248,7 @@ class Tally(IDManagerMixin):
 
     @property
     def sum_sq(self):
-        if not self._sp_filename:
+        if not self._sp_filename or self.derived:
             return None
 
         if not self._results_read:

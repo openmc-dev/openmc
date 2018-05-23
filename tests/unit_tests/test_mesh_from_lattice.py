@@ -86,31 +86,31 @@ def rlat3(pincell1, pincell2, uo2, water, zr):
     return lattice
 
 
-def test_mesh2d(rlat2d):
-    shape = np.array(rlat2d.shape)
-    width = shape*rlat2d.pitch
+def test_mesh2d(rlat2):
+    shape = np.array(rlat2.shape)
+    width = shape*rlat2.pitch
     
-    mesh1 = openmc.Mesh().from_rect_lattice(rlat2d)
+    mesh1 = openmc.Mesh().from_rect_lattice(rlat2)
     assert np.array_equal(mesh1.dimension, (3, 3))
-    assert np.array_equal(mesh1.lower_left, rlat2d.lower_left)
-    assert np.array_equal(mesh1.upper_right, rlat2d.lower_left + width)
+    assert np.array_equal(mesh1.lower_left, rlat2.lower_left)
+    assert np.array_equal(mesh1.upper_right, rlat2.lower_left + width)
     
-    mesh2 = openmc.Mesh().from_rect_lattice(rlat2d, division=3)
+    mesh2 = openmc.Mesh().from_rect_lattice(rlat2, division=3)
     assert np.array_equal(mesh2.dimension, (9, 9))
-    assert np.array_equal(mesh2.lower_left, rlat2d.lower_left)
-    assert np.array_equal(mesh2.upper_right, rlat2d.lower_left + width)
+    assert np.array_equal(mesh2.lower_left, rlat2.lower_left)
+    assert np.array_equal(mesh2.upper_right, rlat2.lower_left + width)
 
 
-def test_mesh3d(rlat3d):
-    shape = np.array(rlat3d.shape)
-    width = shape*rlat3d.pitch
+def test_mesh3d(rlat3):
+    shape = np.array(rlat3.shape)
+    width = shape*rlat3.pitch
 
-    mesh1 = openmc.Mesh().from_rect_lattice(rlat3d)
+    mesh1 = openmc.Mesh().from_rect_lattice(rlat3)
     assert np.array_equal(mesh1.dimension, (3, 3, 2))
-    assert np.array_equal(mesh1.lower_left, rlat3d.lower_left)
-    assert np.array_equal(mesh1.upper_right, rlat3d.lower_left + width)
+    assert np.array_equal(mesh1.lower_left, rlat3.lower_left)
+    assert np.array_equal(mesh1.upper_right, rlat3.lower_left + width)
 
-    mesh2 = openmc.Mesh().from_rect_lattice(rlat3d, division=3)
+    mesh2 = openmc.Mesh().from_rect_lattice(rlat3, division=3)
     assert np.array_equal(mesh2.dimension, (9, 9, 6))
-    assert np.array_equal(mesh2.lower_left, rlat3d.lower_left)
-    assert np.array_equal(mesh2.upper_right, rlat3d.lower_left + width)
+    assert np.array_equal(mesh2.lower_left, rlat3.lower_left)
+    assert np.array_equal(mesh2.upper_right, rlat3.lower_left + width)

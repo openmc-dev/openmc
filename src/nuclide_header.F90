@@ -980,9 +980,12 @@ contains
 
       ! Depletion-related reactions
       if (need_depletion_rx) then
-        do j = 1, 6
-          ! Initialize reaction xs to zero
-          micro_xs % reaction(j) = ZERO
+        ! Initialize entire array to zero in case we skip
+        ! any threshold reaction.
+        micro_xs % reaction(:) = ZERO
+        !looping from element 2 to element 6. 
+        !treating (n,gamma) differently because it is not a threshold reaction.
+        do j = 2, 6
 
           ! If reaction is present and energy is greater than threshold, set
           ! the reaction xs appropriately
@@ -993,12 +996,28 @@ contains
                 micro_xs % reaction(j) = (ONE - f) * &
                      xs % value(i_grid - xs % threshold + 1) + &
                      f * xs % value(i_grid - xs % threshold + 2)
+              ! Check if we are below the (n,2n) and/or (n,3n) reaction thresholds to
+              ! skip remaining depletion-xs construction.
+              else
+                 if (j >= 4) then
+                       exit
+                 end if
               end if
             end associate
           end if
         end do
+        !there shouldn't be a threshold check for (n,gamma).
+        !I know this is not very clean but I don't want to overload the loop
+        !with too many conditional statements for now.
+        i_rxn = this % reaction_index(DEPLETION_RX(1))
+        if (i_rxn > 0) then
+           associate (xs => this % reactions(i_rxn) % xs(i_temp))
+           micro_xs % reaction(1) = (ONE - f) * &
+           xs % value(i_grid - xs % threshold + 1) + &
+           f * xs % value(i_grid - xs % threshold + 2)
+           end associate
+        end if
       end if
-
     end if
 
     ! Initialize sab treatment to false

@@ -63,6 +63,37 @@ count_universe_instances(int32_t search_univ, int32_t target_univ_id);
 extern "C" void fill_offset_tables(int32_t target_univ_id, int map);
 
 //==============================================================================
+//! Find the length necessary for a string to contain a distribcell path.
+//! @param target_cell The index of the Cell in the global Cell array.
+//! @param map The index of the distribcell mapping corresponding to the target
+//!   cell.
+//! @param target_offset An instance number for a distributed cell.
+//! @param root_univ The index of the root Universe in the global Universe
+//!   array.
+//! @return The size of a character array needed to fit the distribcell path.
+//==============================================================================
+
+extern "C" int
+distribcell_path_len(int32_t target_cell, int32_t map, int32_t target_offset,
+                     int32_t root_univ);
+
+//==============================================================================
+//! Build a character array representing the path to a distribcell instance.
+//! @param target_cell The index of the Cell in the global Cell array.
+//! @param map The index of the distribcell mapping corresponding to the target
+//!   cell.
+//! @param target_offset An instance number for a distributed cell.
+//! @param root_univ The index of the root Universe in the global Universe
+//!   array.
+//! @param[out] path The unique traversal through the geometry tree that leads
+//!   to the desired instance of the target cell.
+//==============================================================================
+
+extern "C" void
+distribcell_path(int32_t target_cell, int32_t map, int32_t target_offset,
+                 int32_t root_univ, char *path);
+
+//==============================================================================
 //! Determine the maximum number of nested coordinate levels in the geometry.
 //! @param univ The index of the universe to begin seraching from (probably the
 //!   root universe).

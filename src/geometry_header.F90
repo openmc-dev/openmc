@@ -201,7 +201,6 @@ module geometry_header
 
   type Universe
     integer :: id                     ! Unique ID
-    integer :: type                   ! Type
     integer, allocatable :: cells(:)  ! List of cells within
     real(8) :: x0                     ! Translation in x-coordinate
     real(8) :: y0                     ! Translation in y-coordinate
@@ -214,10 +213,7 @@ module geometry_header
 
   type, abstract :: Lattice
     type(C_PTR) :: ptr
-
-    logical              :: is_3d            ! Lattice has cells on z axis
   contains
-
     procedure :: id => lattice_id
     procedure :: are_valid_indices => lattice_are_valid_indices
     procedure :: distance => lattice_distance
@@ -234,7 +230,6 @@ module geometry_header
 !===============================================================================
 
   type, extends(Lattice) :: RectLattice
-    integer              :: n_cells(3)     ! Number of cells along each axis
   end type RectLattice
 
 !===============================================================================
@@ -242,8 +237,6 @@ module geometry_header
 !===============================================================================
 
   type, extends(Lattice) :: HexLattice
-    integer              :: n_rings   ! Number of radial ring cell positoins
-    integer              :: n_axial   ! Number of axial cell positions
   end type HexLattice
 
 !===============================================================================

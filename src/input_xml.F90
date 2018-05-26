@@ -952,7 +952,7 @@ contains
   subroutine read_geometry_xml()
 
     integer :: i, j, k
-    integer :: n, n_mats, n_z, n_rings, n_rlats, n_hlats
+    integer :: n, n_mats, n_rlats, n_hlats
     integer :: id
     integer :: univ_id
     integer :: n_cells_in_univ
@@ -1270,19 +1270,6 @@ contains
       ! Get pointer to i-th lattice
       node_lat = node_rlat_list(i)
 
-      ! Read number of lattice cells in each dimension
-      n = node_word_count(node_lat, "dimension")
-      if (n == 2) then
-        call get_node_array(node_lat, "dimension", lat % n_cells(1:2))
-        lat % n_cells(3) = 1
-        lat % is_3d = .false.
-      else if (n == 3) then
-        call get_node_array(node_lat, "dimension", lat % n_cells)
-        lat % is_3d = .true.
-      else
-        call fatal_error("Rectangular lattice must be two or three dimensions.")
-      end if
-
       ! Add lattice to dictionary
       call lattice_dict % set(lat % id(), i)
 
@@ -1298,20 +1285,6 @@ contains
 
       ! Get pointer to i-th lattice
       node_lat = node_hlat_list(i)
-
-      ! Read number of lattice cells in each dimension
-      call get_node_value(node_lat, "n_rings", lat % n_rings)
-      if (check_for_node(node_lat, "n_axial")) then
-        call get_node_value(node_lat, "n_axial", lat % n_axial)
-        lat % is_3d = .true.
-      else
-        lat % n_axial = 1
-        lat % is_3d = .false.
-      end if
-
-      ! Copy number of dimensions
-      n_rings = lat % n_rings
-      n_z = lat % n_axial
 
       ! Add lattice to dictionary
       call lattice_dict % set(lat % id(), n_rlats + i)

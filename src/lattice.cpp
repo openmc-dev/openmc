@@ -246,9 +246,9 @@ RectLattice::operator[](const int i_xyz[3])
 bool
 RectLattice::are_valid_indices(const int i_xyz[3]) const
 {
-  return (   (i_xyz[0] > 0) && (i_xyz[0] <= n_cells[0])
-          && (i_xyz[1] > 0) && (i_xyz[1] <= n_cells[1])
-          && (i_xyz[2] > 0) && (i_xyz[2] <= n_cells[2]));
+  return (   (i_xyz[0] >= 0) && (i_xyz[0] < n_cells[0])
+          && (i_xyz[1] >= 0) && (i_xyz[1] < n_cells[1])
+          && (i_xyz[2] >= 0) && (i_xyz[2] < n_cells[2]));
 }
 
 //==============================================================================
@@ -318,13 +318,13 @@ RectLattice::distance(const double xyz[3], const double uvw[3],
 std::array<int, 3>
 RectLattice::get_indices(const double xyz[3]) const
 {
-  int ix {static_cast<int>(std::ceil((xyz[0] - lower_left[0]) / pitch[0]))};
-  int iy {static_cast<int>(std::ceil((xyz[1] - lower_left[1]) / pitch[1]))};
+  int ix {static_cast<int>(std::ceil((xyz[0] - lower_left[0]) / pitch[0]))-1};
+  int iy {static_cast<int>(std::ceil((xyz[1] - lower_left[1]) / pitch[1]))-1};
   int iz;
   if (is_3d) {
-    iz = static_cast<int>(std::ceil((xyz[2] - lower_left[2]) / pitch[2]));
+    iz = static_cast<int>(std::ceil((xyz[2] - lower_left[2]) / pitch[2]))-1;
   } else {
-    iz = 1;
+    iz = 0;
   }
   return {ix, iy, iz};
 }
@@ -335,10 +335,10 @@ std::array<double, 3>
 RectLattice::get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const
 {
   std::array<double, 3> local_xyz;
-  local_xyz[0] = global_xyz[0] - (lower_left[0] + (i_xyz[0] - 0.5)*pitch[0]);
-  local_xyz[1] = global_xyz[1] - (lower_left[1] + (i_xyz[1] - 0.5)*pitch[1]);
+  local_xyz[0] = global_xyz[0] - (lower_left[0] + (i_xyz[0] + 0.5)*pitch[0]);
+  local_xyz[1] = global_xyz[1] - (lower_left[1] + (i_xyz[1] + 0.5)*pitch[1]);
   if (is_3d) {
-    local_xyz[2] = global_xyz[2] - (lower_left[2] + (i_xyz[2] - 0.5)*pitch[2]);
+    local_xyz[2] = global_xyz[2] - (lower_left[2] + (i_xyz[2] + 0.5)*pitch[2]);
   } else {
     local_xyz[2] = global_xyz[2];
   }
@@ -618,11 +618,11 @@ HexLattice::rbegin()
 bool
 HexLattice::are_valid_indices(const int i_xyz[3]) const
 {
-  return ((i_xyz[0] > 0) && (i_xyz[1] > 0) && (i_xyz[2] > 0)
-          && (i_xyz[0] < 2*n_rings) && (i_xyz[1] < 2*n_rings)
-          && (i_xyz[0] + i_xyz[1] > n_rings)
-          && (i_xyz[0] + i_xyz[1] < 3*n_rings)
-          && (i_xyz[2] <= n_axial));
+  return ((i_xyz[0] >= 0) && (i_xyz[1] >= 0) && (i_xyz[2] >= 0)
+          && (i_xyz[0] < 2*n_rings-1) && (i_xyz[1] < 2*n_rings-1)
+          && (i_xyz[0] + i_xyz[1] > n_rings-2)
+          && (i_xyz[0] + i_xyz[1] < 3*n_rings-2)
+          && (i_xyz[2] < n_axial));
 }
 
 std::pair<double, std::array<int, 3>>
@@ -738,9 +738,9 @@ HexLattice::get_indices(const double xyz[3]) const
   // Index the z direction.
   std::array<int, 3> out;
   if (is_3d) {
-    out[2] = static_cast<int>(std::ceil(xyz_o[2] / pitch[1] + 0.5 * n_axial));
+    out[2] = static_cast<int>(std::ceil(xyz_o[2] / pitch[1] + 0.5 * n_axial))-1;
   } else {
-    out[2] = 1;
+    out[2] = 0;
   }
 
   // Convert coordinates into skewed bases.  The (x, alpha) basis is used to
@@ -751,9 +751,9 @@ HexLattice::get_indices(const double xyz[3]) const
   out[1] = static_cast<int>(std::floor(alpha / pitch[0]));
 
   // Add offset to indices (the center cell is (i_x, i_alpha) = (0, 0) but
-  // the array is offset so that the indices never go below 1).
-  out[0] += n_rings;
-  out[1] += n_rings;
+  // the array is offset so that the indices never go below 0).
+  out[0] += n_rings-1;
+  out[1] += n_rings-1;
 
   // Calculate the (squared) distance between the particle and the centers of
   // the four possible cells.  Regular hexagonal tiles form a Voronoi
@@ -801,14 +801,14 @@ HexLattice::get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const
 
   // x_l = x_g - (center + pitch_x*cos(30)*index_x)
   local_xyz[0] = global_xyz[0] - (center[0]
-       + std::sqrt(3.0)/2.0 * (i_xyz[0] - n_rings) * pitch[0]);
+       + std::sqrt(3.0)/2.0 * (i_xyz[0] - n_rings + 1) * pitch[0]);
   // y_l = y_g - (center + pitch_x*index_x + pitch_y*sin(30)*index_y)
   local_xyz[1] = global_xyz[1] - (center[1]
-       + (i_xyz[1] - n_rings) * pitch[0]
-       + (i_xyz[0] - n_rings) * pitch[0] / 2.0);
+       + (i_xyz[1] - n_rings + 1) * pitch[0]
+       + (i_xyz[0] - n_rings + 1) * pitch[0] / 2.0);
   if (is_3d) {
     local_xyz[2] = global_xyz[2] - center[2]
-         + (0.5 * n_axial - i_xyz[2] + 0.5) * pitch[1];
+         + (0.5 * n_axial - i_xyz[2] - 0.5) * pitch[1];
   } else {
     local_xyz[2] = global_xyz[2];
   }
@@ -827,7 +827,7 @@ HexLattice::is_valid_index(int indx) const
   int iz = indx / (nx * ny);
   int iy = (indx - nx*ny*iz) / nx;
   int ix = indx - nx*ny*iz - nx*iy;
-  int i_xyz[3] {ix+1, iy+1, iz+1};  // TODO: fix this off-by-one
+  int i_xyz[3] {ix, iy, iz};
   return are_valid_indices(i_xyz);
 }
 

@@ -221,8 +221,9 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
   // The target must be further down the geometry tree and contained in a fill
   // cell or lattice cell in this universe.  Find which cell contains the
   // target.
-  auto cell_it {search_univ.cells.rbegin()};
-  for (; cell_it != search_univ.cells.rend(); ++cell_it) {
+  std::vector<std::int32_t>::const_reverse_iterator cell_it
+       {search_univ.cells.crbegin()};
+  for (; cell_it != search_univ.cells.crend(); ++cell_it) {
     Cell &c = *cells_c[*cell_it];
 
     // Material cells don't contain other cells so ignore them.

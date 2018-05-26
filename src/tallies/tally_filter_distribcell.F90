@@ -14,7 +14,6 @@ module tally_filter_distribcell
 
   implicit none
   private
-  public :: find_offset
 
 !===============================================================================
 ! DISTRIBCELLFILTER specifies which distributed geometric cells tally events
@@ -114,13 +113,8 @@ contains
     integer,                  intent(in) :: bin
     character(MAX_LINE_LEN)              :: label
 
-    integer                 :: offset
-    type(Universe), pointer :: univ
-
-    univ => universes(root_universe)
-    offset = 0
     label = ''
-    call find_offset(this % cell, univ, bin-1, offset, label)
+    call find_offset(this % cell, bin-1, label)
     label = "Distributed Cell " // label
   end function text_label_distribcell
 
@@ -130,150 +124,47 @@ contains
 ! the target cell with the given offset
 !===============================================================================
 
-  recursive subroutine find_offset(i_cell, univ, target_offset, offset, path)
-
+  subroutine find_offset(i_cell, target_offset, path)
     integer, intent(in) :: i_cell         ! The target cell index
-    type(Universe), intent(in) :: univ  ! Universe to begin search
-    integer, intent(in) :: target_offset        ! Target offset
-    integer, intent(inout) :: offset    ! Current offset
-    character(*), intent(inout) :: path ! Path to offset
+    integer, intent(in) :: target_offset  ! Target offset
+    character(*), intent(inout) :: path   ! Path to offset
 
     integer :: map                  ! Index in maps vector
     integer :: i                    ! Index over cells
-    integer :: k, l, m              ! Indices in lattice
-    integer :: n_x, n_y, n_z        ! Lattice cell array dimensions
-    integer :: temp_offset          ! Looped sum of offsets
-    integer :: i_univ               ! index in universes array
-    type(Cell), pointer :: c           ! Pointer to current cell
-    type(Universe), pointer :: next_univ  ! Next universe to loop through
-    class(Lattice), pointer :: lat        ! Pointer to current lattice
+
+    integer(C_INT) :: path_len
+    character(kind=C_CHAR), allocatable, target :: path_c(:)
+
+    interface
+      function distribcell_path_len(target_cell, map, target_offset, root_univ)&
+           bind(C) result(len)
+        import C_INT32_T, C_INT
+        integer(C_INT32_T), intent(in), value :: target_cell, map, &
+                                                 target_offset, root_univ
+        integer(C_INT) :: len
+      end function distribcell_path_len
+
+      subroutine distribcell_path(target_cell, map, target_offset, root_univ, &
+                                  path) bind(C)
+        import C_INT32_T, C_CHAR
+        integer(C_INT32_T), intent(in), value :: target_cell, map, &
+                                                 target_offset, root_univ
+        character(kind=C_CHAR), intent(out)   :: path(*)
+      end subroutine distribcell_path
+    end interface
 
     ! Get the distribcell index for this cell
     map = cells(i_cell) % distribcell_index
 
-    ! Write to the geometry stack
-    i_univ = universe_dict % get(univ % id)
-    if (i_univ == root_universe) then
-      path = trim(path) // "u" // to_str(univ%id)
-    else
-      path = trim(path) // "->u" // to_str(univ%id)
-    end if
-
-    ! Look through all cells in this universe
-    do i = 1, size(univ % cells)
-      ! If the cell matches the goal and the offset matches final, write to the
-      ! geometry stack
-      if (univ % cells(i) == i_cell .and. offset == target_offset) then
-        c => cells(univ % cells(i))
-        path = trim(path) // "->c" // to_str(c % id())
-        return
-      end if
+    path_len = distribcell_path_len(i_cell-1, map-1, target_offset, &
+                                    root_universe-1)
+    allocate(path_c(path_len))
+    call distribcell_path(i_cell-1, map-1, target_offset, root_universe-1, &
+                          path_c)
+    do i = 1, min(path_len, MAX_LINE_LEN)
+      if (path_c(i) == C_NULL_CHAR) exit
+      path(i:i) = path_c(i)
     end do
-
-    ! Find the fill cell or lattice cell that contains the target offset.
-    do i = size(univ % cells), 2, -1
-      c => cells(univ % cells(i))
-
-      ! Material cells don't contain other cells so ignore them.
-      if (c % type() /= FILL_MATERIAL) then
-
-        if (c % type() == FILL_UNIVERSE) then
-          temp_offset = offset + c % offset(map-1)
-        else
-          ! Get the offset of the first lattice location
-          lat => lattices(c % fill() + 1) % obj
-          temp_offset = offset + lat % offset(map-1, [0, 0, 0])
-        end if
-
-        ! The desired cell is the first cell that gives an offset smaller or
-        ! equal to the target offset.
-        if (temp_offset <= target_offset) exit
-      end if
-    end do
-
-    ! Add the cell to the path string.
-    c => cells(univ % cells(i))
-    path = trim(path) // "->c" // to_str(c%id())
-
-    if (c % type() == FILL_UNIVERSE) then
-      ! Recurse into the fill cell.
-      offset = c % offset(map-1) + offset
-      next_univ => universes(c % fill() + 1)
-      call find_offset(i_cell, next_univ, target_offset, offset, path)
-
-    elseif (c % type() == FILL_LATTICE) then
-      ! Recurse into the lattice cell.
-      lat => lattices(c % fill() + 1) % obj
-      select type (lat)
-
-      type is (RectLattice)
-        path = trim(path) // "->l" // to_str(lat%id())
-
-        n_x = lat % n_cells(1)
-        n_y = lat % n_cells(2)
-        n_z = lat % n_cells(3)
-
-        do m = n_z, 1, -1
-          do l = n_y, 1, -1
-            do k = n_x, 1, -1
-              temp_offset = offset + lat % offset(map-1, [k-1, l-1, m-1])
-              if (temp_offset <= target_offset) then
-                next_univ => universes(lat % get([k-1, l-1, m-1])+1)
-                if (lat % is_3d) then
-                  path = trim(path) // "(" // trim(to_str(k-1)) // &
-                       "," // trim(to_str(l-1)) // "," // &
-                       trim(to_str(m-1)) // ")"
-                else
-                  path = trim(path) // "(" // trim(to_str(k-1)) // &
-                       "," // trim(to_str(l-1)) // ")"
-                end if
-                offset = temp_offset
-                call find_offset(i_cell, next_univ, target_offset, offset, path)
-                return
-              end if
-            end do
-          end do
-        end do
-
-      type is (HexLattice)
-        path = trim(path) // "->l" // to_str(lat%id())
-
-        n_z = lat % n_axial
-        n_y = 2 * lat % n_rings - 1
-        n_x = 2 * lat % n_rings - 1
-
-        do m = n_z, 1, -1
-          do l = n_y, 1, -1
-            do k = n_x, 1, -1
-              if (k + l < lat % n_rings + 1) then
-                cycle
-              else if (k + l > 3*lat % n_rings - 1) then
-                cycle
-              end if
-              temp_offset = offset + lat % offset(map-1, [k-1, l-1, m-1])
-              if (temp_offset <= target_offset) then
-                next_univ => universes(lat % get([k-1, l-1, m-1])+1)
-                if (lat % is_3d) then
-                  path = trim(path) // "(" // &
-                       trim(to_str(k - lat % n_rings)) // "," // &
-                       trim(to_str(l - lat % n_rings)) // "," // &
-                       trim(to_str(m - 1)) // ")"
-                else
-                  path = trim(path) // "(" // &
-                       trim(to_str(k - lat % n_rings)) // "," // &
-                       trim(to_str(l - lat % n_rings)) // ")"
-                end if
-                offset = temp_offset
-                call find_offset(i_cell, next_univ, target_offset, offset, path)
-                return
-              end if
-            end do
-          end do
-        end do
-
-      end select
-
-    end if
   end subroutine find_offset
 
 end module tally_filter_distribcell

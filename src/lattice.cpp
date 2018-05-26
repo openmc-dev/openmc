@@ -21,10 +21,6 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-// Braces force n_lattices to be defined here, not just declared.
-//extern "C" {int32_t n_lattices {0};}
-
-//Lattice **lattices_c;
 std::vector<Lattice*> lattices_c;
 
 std::map<int32_t, int32_t> lattice_dict;
@@ -62,6 +58,20 @@ LatticeIter
 Lattice::end()
 {
   return LatticeIter(*this, universes.size());
+}
+
+//==============================================================================
+
+ReverseLatticeIter
+Lattice::rbegin()
+{
+  return ReverseLatticeIter(*this, universes.size()-1);
+}
+
+ReverseLatticeIter
+Lattice::rend()
+{
+  return ReverseLatticeIter(*this, -1);
 }
 
 //==============================================================================
@@ -348,6 +358,26 @@ RectLattice::offset(int map, const int i_xyz[3])
 
 //==============================================================================
 
+std::string
+RectLattice::index_to_string(int indx) const
+{
+  int nx {n_cells[0]};
+  int ny {n_cells[1]};
+  int iz {indx / (nx * ny)};
+  int iy {(indx - nx * ny * iz) / nx};
+  int ix {indx - nx * ny * iz - nx * iy};
+  std::string out {std::to_string(ix)};
+  out += ',';
+  out += std::to_string(iy);
+  if (is_3d) {
+    out += ',';
+    out += std::to_string(iz);
+  }
+  return out;
+}
+
+//==============================================================================
+
 void
 RectLattice::to_hdf5_inner(hid_t lat_group) const
 {
@@ -577,6 +607,14 @@ HexLattice::begin()
 
 //==============================================================================
 
+ReverseLatticeIter
+HexLattice::rbegin()
+{
+  return ReverseLatticeIter(*this, universes.size()-n_rings);
+}
+
+//==============================================================================
+
 bool
 HexLattice::are_valid_indices(const int i_xyz[3]) const
 {
@@ -798,10 +836,30 @@ HexLattice::is_valid_index(int indx) const
 int32_t&
 HexLattice::offset(int map, const int i_xyz[3])
 {
-  int nx = 2*n_rings - 1;
-  int ny = 2*n_rings - 1;
-  int nz = n_axial;
+  int nx {2*n_rings - 1};
+  int ny {2*n_rings - 1};
+  int nz {n_axial};
   return offsets[nx*ny*nz*map + nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0]];
+}
+
+//==============================================================================
+
+std::string
+HexLattice::index_to_string(int indx) const
+{
+  int nx {2*n_rings - 1};
+  int ny {2*n_rings - 1};
+  int iz {indx / (nx * ny)};
+  int iy {(indx - nx * ny * iz) / nx};
+  int ix {indx - nx * ny * iz - nx * iy};
+  std::string out {std::to_string(ix - n_rings + 1)};
+  out += ',';
+  out += std::to_string(iy - n_rings + 1);
+  if (is_3d) {
+    out += ',';
+    out += std::to_string(iz);
+  }
+  return out;
 }
 
 //==============================================================================

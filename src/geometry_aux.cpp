@@ -200,6 +200,103 @@ fill_offset_tables(int32_t target_univ_id, int map)
 
 //==============================================================================
 
+std::string
+distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
+                       const Universe &search_univ, int32_t offset)
+{
+  std::stringstream path;
+
+  path << "u" << search_univ.id << "->";
+
+  // Check to see if this universe directly contains the target cell.  If so,
+  // write to the path and return.
+  for (int32_t cell_indx : search_univ.cells) {
+    if ((cell_indx == target_cell) && (offset == target_offset)) {
+      Cell &c = *cells_c[cell_indx];
+      path << "c" << c.id;
+      return path.str();
+    }
+  }
+
+  // The target must be further down the geometry tree and contained in a fill
+  // cell or lattice cell in this universe.  Find which cell contains the
+  // target.
+  auto cell_it {search_univ.cells.rbegin()};
+  for (; cell_it != search_univ.cells.rend(); ++cell_it) {
+    Cell &c = *cells_c[*cell_it];
+
+    // Material cells don't contain other cells so ignore them.
+    if (c.type != FILL_MATERIAL) {
+      int32_t temp_offset;
+      if (c.type == FILL_UNIVERSE) {
+        temp_offset = offset + c.offset[map];
+      } else {
+        Lattice &lat = *lattices_c[c.fill];
+        int32_t indx = lat.universes.size()*map + lat.begin().indx;
+        temp_offset = offset + lat.offsets[indx];
+      }
+
+      // The desired cell is the first cell that gives an offset smaller or
+      // equal to the target offset.
+      if (temp_offset <= target_offset) break;
+    }
+  }
+
+  // Add the cell to the path string.
+  Cell &c = *cells_c[*cell_it];
+  path << "c" << c.id << "->";
+
+  if (c.type == FILL_UNIVERSE) {
+    // Recurse into the fill cell.
+    offset += c.offset[map];
+    path << distribcell_path_inner(target_cell, map, target_offset,
+                                   *universes_c[c.fill], offset);
+    return path.str();
+  } else {
+    // Recurse into the lattice cell.
+    Lattice &lat = *lattices_c[c.fill];
+    path << "l" << lat.id;
+    for (ReverseLatticeIter it = lat.rbegin(); it != lat.rend(); ++it) {
+      int32_t indx = lat.universes.size()*map + it.indx;
+      int32_t temp_offset = offset + lat.offsets[indx];
+      if (temp_offset <= target_offset) {
+        offset = temp_offset;
+        path << "(" << lat.index_to_string(it.indx) << ")->";
+        path << distribcell_path_inner(target_cell, map, target_offset,
+                                       *universes_c[*it], offset);
+        return path.str();
+      }
+    }
+  }
+}
+
+//==============================================================================
+
+int
+distribcell_path_len(int32_t target_cell, int32_t map, int32_t target_offset,
+                     int32_t root_univ)
+{
+  Universe &root = *universes_c[root_univ];
+  std::string path_ {distribcell_path_inner(target_cell, map, target_offset,
+                                            root, 0)};
+  return path_.size() + 1;
+}
+
+//==============================================================================
+
+void
+distribcell_path(int32_t target_cell, int32_t map, int32_t target_offset,
+                 int32_t root_univ, char *path)
+{
+  Universe &root = *universes_c[root_univ];
+  std::string path_ {distribcell_path_inner(target_cell, map, target_offset,
+                                            root, 0)};
+  path_.copy(path, path_.size());
+  path[path_.size()] = '\0';
+}
+
+//==============================================================================
+
 int
 maximum_levels(int32_t univ)
 {

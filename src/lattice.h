@@ -33,10 +33,12 @@ extern std::vector<Lattice*> lattices_c;
 extern std::map<int32_t, int32_t> lattice_dict;
 
 //==============================================================================
-//! Abstract type for ordered array of universes
+//! Abstract type for ordered array of universes.
 //==============================================================================
 
 class LatticeIter;
+
+class ReverseLatticeIter;
 
 class Lattice
 {
@@ -55,6 +57,9 @@ public:
 
   virtual LatticeIter begin();
   LatticeIter end();
+
+  virtual ReverseLatticeIter rbegin();
+  ReverseLatticeIter rend();
 
   //! Convert internal universe values from IDs to indices using universe_dict.
   void adjust_indices();
@@ -98,7 +103,7 @@ public:
   //!   otherwise.
   virtual bool is_valid_index(int indx) const
   {
-    return (indx > 0) && (indx < universes.size());
+    return (indx >= 0) && (indx < universes.size());
   }
 
   //! Get the distribcell offset for a lattice tile.
@@ -107,6 +112,11 @@ public:
   //! @return Distribcell offset i.e. the largest instance number for the target
   //!  cell found in the geometry tree under this lattice tile.
   virtual int32_t& offset(int map, const int i_xyz[3]) = 0;
+
+  //! Convert an array index to a useful human-readable string.
+  //! @param indx The index for a lattice tile.
+  //! @return A string representing the lattice tile.
+  virtual std::string index_to_string(int indx) const = 0;
 
   //! Write all information needed to reconstruct the lattice to an HDF5 group.
   //! @param group_id An HDF5 group id.
@@ -118,9 +128,16 @@ protected:
   virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
 
+//==============================================================================
+//! An iterator over lattice universes.
+//==============================================================================
+
 class LatticeIter
 {
 public:
+
+  int indx;  //!< An index to a Lattice universes or offsets array.
+
   LatticeIter(Lattice &lat_, int indx_)
     : lat(lat_),
       indx(indx_)
@@ -128,7 +145,7 @@ public:
 
   bool operator==(const LatticeIter &rhs)
   {
-    return (&lat == &rhs.lat) && (indx == rhs.indx);
+    return (indx == rhs.indx);
   }
 
   bool operator!=(const LatticeIter &rhs)
@@ -151,9 +168,30 @@ public:
     return *this;
   }
 
-  int indx;
-private:
+protected:
   Lattice &lat;
+};
+
+//==============================================================================
+//! A reverse iterator over lattice universes.
+//==============================================================================
+
+class ReverseLatticeIter : public LatticeIter
+{
+public:
+  ReverseLatticeIter(Lattice &lat_, int indx_)
+    : LatticeIter {lat_, indx_}
+  {}
+
+  ReverseLatticeIter& operator++()
+  {
+    while (indx > -1) {
+      --indx;
+      if (lat.is_valid_index(indx)) return *this;
+    }
+    indx = -1;
+    return *this;
+  }
 };
 
 //==============================================================================
@@ -180,6 +218,8 @@ public:
 
   int32_t& offset(int map, const int i_xyz[3]);
 
+  std::string index_to_string(int indx) const;
+
   void to_hdf5_inner(hid_t group_id) const;
 
 protected:
@@ -202,6 +242,8 @@ public:
 
   LatticeIter begin();
 
+  ReverseLatticeIter rbegin();
+
   bool are_valid_indices(const int i_xyz[3]) const;
 
   std::pair<double, std::array<int, 3>>
@@ -215,6 +257,8 @@ public:
   bool is_valid_index(int indx) const;
 
   int32_t& offset(int map, const int i_xyz[3]);
+
+  std::string index_to_string(int indx) const;
 
   void to_hdf5_inner(hid_t group_id) const;
 

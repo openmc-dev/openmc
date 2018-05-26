@@ -15,7 +15,6 @@ module summary
   use surface_header
   use string,          only: to_str
   use tally_header,    only: TallyObject
-  use tally_filter_distribcell, only: find_offset
 
   implicit none
   private

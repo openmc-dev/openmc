@@ -68,9 +68,9 @@ contains
                p % coord(i + 1) % lattice_z])) then
             offset = offset + lattices(p % coord(i + 1) % lattice) % obj &
                  % offset(distribcell_index - 1, &
-                 [p % coord(i + 1) % lattice_x - 1, &
-                 p % coord(i + 1) % lattice_y - 1, &
-                 p % coord(i + 1) % lattice_z - 1])
+                 [p % coord(i + 1) % lattice_x, &
+                 p % coord(i + 1) % lattice_y, &
+                 p % coord(i + 1) % lattice_z])
           end if
         end if
         if (this % cell == p % coord(i) % cell) then

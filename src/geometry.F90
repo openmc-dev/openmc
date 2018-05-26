@@ -184,9 +184,9 @@ contains
                      p % coord(k + 1) % lattice_z])) then
                   offset = offset + lattices(p % coord(k + 1) % lattice) % obj &
                        % offset(distribcell_index - 1, &
-                       [p % coord(k + 1) % lattice_x - 1, &
-                       p % coord(k + 1) % lattice_y - 1, &
-                       p % coord(k + 1) % lattice_z - 1])
+                       [p % coord(k + 1) % lattice_x, &
+                       p % coord(k + 1) % lattice_y, &
+                       p % coord(k + 1) % lattice_z])
                 end if
               end if
             end do
@@ -261,7 +261,7 @@ contains
             if (lat % are_valid_indices(i_xyz)) then
               ! Particle is inside the lattice.
               p % coord(j + 1) % universe = &
-                   lat % get([i_xyz(1)-1, i_xyz(2)-1, i_xyz(3)-1]) + 1
+                   lat % get([i_xyz(1), i_xyz(2), i_xyz(3)]) + 1
 
             else
               ! Particle is outside the lattice.
@@ -340,7 +340,7 @@ contains
 
       ! Find cell in next lattice element
       p % coord(j) % universe = &
-           lat % get([i_xyz(1)-1, i_xyz(2)-1, i_xyz(3)-1]) + 1
+           lat % get([i_xyz(1), i_xyz(2), i_xyz(3)]) + 1
 
       call find_cell(p, found)
       if (.not. found) then

@@ -5,14 +5,10 @@
 #include <vector>
 
 #include "cell.h"
-#include "constants.h"
 #include "error.h"
 #include "geometry_aux.h"
 #include "hdf5_interface.h"
 #include "xml_interface.h"
-
-//TODO: remove this include
-#include <iostream>
 
 
 namespace openmc {
@@ -23,7 +19,7 @@ namespace openmc {
 
 std::vector<Lattice*> lattices_c;
 
-std::map<int32_t, int32_t> lattice_dict;
+std::unordered_map<int32_t, int32_t> lattice_dict;
 
 //==============================================================================
 // Lattice implementation
@@ -48,31 +44,17 @@ Lattice::Lattice(pugi::xml_node lat_node)
 
 //==============================================================================
 
-LatticeIter
-Lattice::begin()
-{
-  return LatticeIter(*this, 0);
-}
+LatticeIter Lattice::begin()
+{return LatticeIter(*this, 0);}
 
-LatticeIter
-Lattice::end()
-{
-  return LatticeIter(*this, universes.size());
-}
+LatticeIter Lattice::end()
+{return LatticeIter(*this, universes.size());}
 
-//==============================================================================
+ReverseLatticeIter Lattice::rbegin()
+{return ReverseLatticeIter(*this, universes.size()-1);}
 
-ReverseLatticeIter
-Lattice::rbegin()
-{
-  return ReverseLatticeIter(*this, universes.size()-1);
-}
-
-ReverseLatticeIter
-Lattice::rend()
-{
-  return ReverseLatticeIter(*this, -1);
-}
+ReverseLatticeIter Lattice::rend()
+{return ReverseLatticeIter(*this, -1);}
 
 //==============================================================================
 
@@ -80,7 +62,7 @@ void
 Lattice::adjust_indices()
 {
   // Adjust the indices for the universes array.
-  for (auto it = begin(); it != end(); ++it) {
+  for (LatticeIter it = begin(); it != end(); ++it) {
     int uid = *it;
     auto search = universe_dict.find(uid);
     if (search != universe_dict.end()) {
@@ -109,18 +91,10 @@ Lattice::adjust_indices()
 
 //==============================================================================
 
-void
-Lattice::allocate_offset_table(int n_maps)
-{
-  offsets.resize(n_maps * universes.size(), C_NONE);
-}
-
-//==============================================================================
-
 int32_t
 Lattice::fill_offset_table(int32_t offset, int32_t target_univ_id, int map)
 {
-  for (auto it = begin(); it != end(); ++it) {
+  for (LatticeIter it = begin(); it != end(); ++it) {
     offsets[map * universes.size() + it.indx] = offset;
     offset += count_universe_instances(*it, target_univ_id);
   }
@@ -202,9 +176,6 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
   if (is_3d) {pitch[2] = stod(pitch_words[2]);}
 
   // Read the universes and make sure the correct number was specified.
-  int nx = n_cells[0];
-  int ny = n_cells[1];
-  int nz = n_cells[2];
   std::string univ_str {get_node_value(lat_node, "universes")};
   std::vector<std::string> univ_words {split(univ_str)};
   if (univ_words.size() != nx*ny*nz) {
@@ -217,7 +188,7 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
   }
 
   // Parse the universes.
-  universes.resize(nx*ny*nz, -1);
+  universes.resize(nx*ny*nz, C_NONE);
   for (int iz = 0; iz < nz; iz++) {
     for (int iy = ny-1; iy > -1; iy--) {
       for (int ix = 0; ix < nx; ix++) {
@@ -234,9 +205,6 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
 int32_t&
 RectLattice::operator[](const int i_xyz[3])
 {
-  int nx = n_cells[0];
-  int ny = n_cells[1];
-  int nz = n_cells[2];
   int indx = nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0];
   return universes[indx];
 }
@@ -350,9 +318,6 @@ RectLattice::get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const
 int32_t&
 RectLattice::offset(int map, const int i_xyz[3])
 {
-  int nx = n_cells[0];
-  int ny = n_cells[1];
-  int nz = n_cells[2];
   return offsets[nx*ny*nz*map + nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0]];
 }
 
@@ -361,8 +326,6 @@ RectLattice::offset(int map, const int i_xyz[3])
 std::string
 RectLattice::index_to_string(int indx) const
 {
-  int nx {n_cells[0]};
-  int ny {n_cells[1]};
   int iz {indx / (nx * ny)};
   int iy {(indx - nx * ny * iz) / nx};
   int ix {indx - nx * ny * iz - nx * iy};
@@ -384,14 +347,14 @@ RectLattice::to_hdf5_inner(hid_t lat_group) const
   // Write basic lattice information.
   write_string(lat_group, "type", "rectangular", false);
   if (is_3d) {
-    write_double_1D(lat_group, "pitch", pitch);
-    write_double_1D(lat_group, "lower_left", lower_left);
+    write_double(lat_group, "pitch", pitch, false);
+    write_double(lat_group, "lower_left", lower_left, false);
     write_int(lat_group, "dimension", n_cells, false);
   } else {
     std::array<double, 2> pitch_short {{pitch[0], pitch[1]}};
-    write_double_1D(lat_group, "pitch", pitch_short);
+    write_double(lat_group, "pitch", pitch_short, false);
     std::array<double, 2> ll_short {{lower_left[0], lower_left[1]}};
-    write_double_1D(lat_group, "lower_left", ll_short);
+    write_double(lat_group, "lower_left", ll_short, false);
     std::array<int, 2> nc_short {{n_cells[0], n_cells[1]}};
     write_int(lat_group, "dimension", nc_short, false);
   }
@@ -480,7 +443,6 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
   if (is_3d) {pitch[1] = stod(pitch_words[1]);}
 
   // Read the universes and make sure the correct number was specified.
-  //int n_univ = (2*n_rings - 1) * (2*n_rings - 1) * n_axial;
   int n_univ = (3*n_rings*n_rings - 3*n_rings + 1) * n_axial;
   std::string univ_str {get_node_value(lat_node, "universes")};
   std::vector<std::string> univ_words {split(univ_str)};
@@ -502,7 +464,7 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
   // in a manner that matches the input order.  Note that i_x = 0, i_a = 0
   // corresponds to the center of the hexagonal lattice.
 
-  universes.resize((2*n_rings-1) * (2*n_rings-1) * n_axial, -1);
+  universes.resize((2*n_rings-1) * (2*n_rings-1) * n_axial, C_NONE);
   int input_index = 0;
   for (int m = 0; m < n_axial; m++) {
     // Initialize lattice indecies.
@@ -599,19 +561,11 @@ HexLattice::operator[](const int i_xyz[3])
 
 //==============================================================================
 
-LatticeIter
-HexLattice::begin()
-{
-  return LatticeIter(*this, n_rings-1);
-}
+LatticeIter HexLattice::begin()
+{return LatticeIter(*this, n_rings-1);}
 
-//==============================================================================
-
-ReverseLatticeIter
-HexLattice::rbegin()
-{
-  return ReverseLatticeIter(*this, universes.size()-n_rings);
-}
+ReverseLatticeIter HexLattice::rbegin()
+{return ReverseLatticeIter(*this, universes.size()-n_rings);}
 
 //==============================================================================
 
@@ -624,6 +578,8 @@ HexLattice::are_valid_indices(const int i_xyz[3]) const
           && (i_xyz[0] + i_xyz[1] < 3*n_rings-2)
           && (i_xyz[2] < n_axial));
 }
+
+//==============================================================================
 
 std::pair<double, std::array<int, 3>>
 HexLattice::distance(const double xyz[3], const double uvw[3],
@@ -872,13 +828,13 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
   write_int(lat_group, 0, nullptr, "n_rings", &n_rings, false);
   write_int(lat_group, 0, nullptr, "n_axial", &n_axial, false);
   if (is_3d) {
-    write_double_1D(lat_group, "pitch", pitch);
-    write_double_1D(lat_group, "center", center);
+    write_double(lat_group, "pitch", pitch, false);
+    write_double(lat_group, "center", center, false);
   } else {
     std::array<double, 1> pitch_short {{pitch[0]}};
-    write_double_1D(lat_group, "pitch", pitch_short);
+    write_double(lat_group, "pitch", pitch_short, false);
     std::array<double, 2> center_short {{center[0], center[1]}};
-    write_double_1D(lat_group, "center", center_short);
+    write_double(lat_group, "center", center_short, false);
   }
 
   // Write the universe ids.
@@ -976,9 +932,7 @@ extern "C" {
   }
 
   int32_t lattice_offset(Lattice *lat, int map, const int i_xyz[3])
-  {
-    return lat->offset(map, i_xyz);
-  }
+  {return lat->offset(map, i_xyz);}
 
   int32_t lattice_outer(Lattice *lat) {return lat->outer;}
 

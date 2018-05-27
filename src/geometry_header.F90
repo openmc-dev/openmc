@@ -292,7 +292,6 @@ module geometry_header
 
   integer(C_INT32_T), bind(C) :: n_cells     ! # of cells
   integer(C_INT32_T), bind(C) :: n_universes ! # of universes
-  integer(C_INT32_T), bind(C) :: n_lattices  ! # of lattices
 
   type(Cell),             allocatable, target :: cells(:)
   type(Universe),         allocatable, target :: universes(:)
@@ -520,7 +519,6 @@ contains
 
     n_cells = 0
     n_universes = 0
-    n_lattices = 0
 
     if (allocated(cells)) deallocate(cells)
     if (allocated(universes)) deallocate(universes)

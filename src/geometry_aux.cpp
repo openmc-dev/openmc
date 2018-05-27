@@ -321,4 +321,23 @@ maximum_levels(int32_t univ)
   return levels_below;
 }
 
+//==============================================================================
+
+void
+free_memory_geometry_c()
+{
+  for (Cell *c : cells_c) {delete c;}
+  cells_c.clear();
+  cell_dict.clear();
+  n_cells = 0;
+
+  for (Universe *u : universes_c) {delete u;}
+  universes_c.clear();
+  universe_dict.clear();
+
+  for (Lattice *lat : lattices_c) {delete lat;}
+  lattices_c.clear();
+  lattice_dict.clear();
+}
+
 } // namespace openmc

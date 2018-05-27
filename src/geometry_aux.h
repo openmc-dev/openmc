@@ -102,5 +102,11 @@ distribcell_path(int32_t target_cell, int32_t map, int32_t target_offset,
 
 extern "C" int maximum_levels(int32_t univ);
 
+//==============================================================================
+//! Deallocates global vectors and maps for cells, universes, and lattices.
+//==============================================================================
+
+extern "C" void free_memory_geometry_c();
+
 } // namespace openmc
 #endif // GEOMETRY_AUX_H

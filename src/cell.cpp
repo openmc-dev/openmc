@@ -520,12 +520,5 @@ extern "C" {
   }
 }
 
-//extern "C" void free_memory_cells_c()
-//{
-//  delete cells_c;
-//  cells_c = nullptr;
-//  n_cells = 0;
-//  cell_dict.clear();
-//}
 
 } // namespace openmc

@@ -8,9 +8,7 @@ fi
 
 # Run regression and unit tests
 if [[ $MPI == 'y' ]]; then
-    pytest --cov=openmc -v --mpi tests/regression_tests
-    pytest --cov=openmc -v --mpi tests/unit_tests
+    pytest --cov=openmc -v --mpi tests
 else
-    pytest --cov=openmc -v tests/regression_tests
-    pytest --cov=openmc -v tests/unit_tests
+    pytest --cov=openmc -v tests
 fi

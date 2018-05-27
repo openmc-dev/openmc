@@ -516,6 +516,12 @@ contains
 !===============================================================================
 
   subroutine free_memory_geometry()
+    interface
+      subroutine free_memory_geometry_c() bind(C)
+      end subroutine free_memory_geometry_c
+    end interface
+
+    call free_memory_geometry_c()
 
     n_cells = 0
     n_universes = 0

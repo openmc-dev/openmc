@@ -182,6 +182,40 @@ class Mesh(IDManagerMixin):
 
         return mesh
 
+    @classmethod
+    def from_rect_lattice(cls, lattice, division=1, mesh_id=None, name=''):
+        """Create mesh from an existing rectangular lattice
+
+        Parameters
+        ----------
+        lattice : openmc.RectLattice
+            Rectangular lattice used as a template for this mesh
+        division : int
+            Number of mesh cells per lattice cell.
+            If not specified, there will be 1 mesh cell per lattice cell.
+        mesh_id : int
+            Unique identifier for the mesh
+        name : str
+            Name of the mesh
+
+        Returns
+        -------
+        openmc.Mesh
+            Mesh instance
+
+        """
+        cv.check_type('rectangular lattice', lattice, openmc.RectLattice)
+
+        shape = np.array(lattice.shape)
+        width = lattice.pitch*shape
+        
+        mesh = cls(mesh_id, name)
+        mesh.lower_left = lattice.lower_left
+        mesh.upper_right = lattice.lower_left + width
+        mesh.dimension = shape*division
+        
+        return mesh
+
     def to_xml_element(self):
         """Return XML representation of the mesh
 

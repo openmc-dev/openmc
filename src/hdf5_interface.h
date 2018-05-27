@@ -84,20 +84,6 @@ void write_string(hid_t group_id, const char* name, const std::string& buffer, b
 extern "C" void write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
                                     const double* results);
 
-inline void
-write_int(hid_t group_id, char const *name, int32_t buffer)
-{
-  hid_t dataspace = H5Screate(H5S_SCALAR);
-
-  hid_t dataset = H5Dcreate(group_id, name, H5T_NATIVE_INT32, dataspace,
-                            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
-  H5Dwrite(dataset, H5T_NATIVE_INT32, H5S_ALL, H5S_ALL, H5P_DEFAULT, &buffer);
-
-  H5Sclose(dataspace);
-  H5Dclose(dataset);
-}
-
 template<std::size_t array_len> void
 write_int(hid_t group_id, char const *name,
           const std::array<int, array_len> &buffer, bool indep)
@@ -108,12 +94,12 @@ write_int(hid_t group_id, char const *name,
 
 
 template<std::size_t array_len> void
-write_double_1D(hid_t group_id, char const *name,
-                const std::array<double, array_len> &buffer)
+write_double(hid_t group_id, char const *name,
+             const std::array<double, array_len> &buffer, bool indep)
 {
   hsize_t dims[1] {array_len};
   write_dataset(group_id, 1, dims, name, H5T_NATIVE_DOUBLE,
-                buffer.data(), false);
+                buffer.data(), indep);
 }
 
 } // namespace openmc

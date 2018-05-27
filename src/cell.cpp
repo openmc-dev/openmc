@@ -12,9 +12,6 @@
 #include "surface.h"
 #include "xml_interface.h"
 
-//TODO: remove this include
-#include <iostream>
-
 
 namespace openmc {
 
@@ -34,14 +31,13 @@ extern "C" double FP_PRECISION;
 // Global variables
 //==============================================================================
 
-// Braces force n_cells to be defined here, not just declared.
-extern "C" {int32_t n_cells {0};}
+int32_t n_cells {0};
 
 std::vector<Cell*> cells_c;
-std::map<int32_t, int32_t> cell_dict;
+std::unordered_map<int32_t, int32_t> cell_dict;
 
 std::vector<Universe*> universes_c;
-std::map<int32_t, int32_t> universe_dict;
+std::unordered_map<int32_t, int32_t> universe_dict;
 
 //==============================================================================
 //! Convert region specification string to integer tokens.
@@ -249,6 +245,7 @@ Cell::Cell(pugi::xml_node cell_node)
     fatal_error(err_msg);
   }
 
+  // Read the region specification.
   std::string region_spec {""};
   if (check_for_node(cell_node, "region")) {
     region_spec = get_node_value(cell_node, "region");
@@ -280,6 +277,8 @@ Cell::Cell(pugi::xml_node cell_node)
   }
 }
 
+//==============================================================================
+
 bool
 Cell::contains(const double xyz[3], const double uvw[3],
                int32_t on_surface) const
@@ -290,6 +289,8 @@ Cell::contains(const double xyz[3], const double uvw[3],
     return contains_complex(xyz, uvw, on_surface);
   }
 }
+
+//==============================================================================
 
 std::pair<double, int32_t>
 Cell::distance(const double xyz[3], const double uvw[3],
@@ -306,7 +307,6 @@ Cell::distance(const double xyz[3], const double uvw[3],
     // Note the off-by-one indexing
     bool coincident {token == on_surface};
     double d {surfaces_c[abs(token)-1]->distance(xyz, uvw, coincident)};
-    //std::cout << token << " " << on_surface << " " << coincident << std::endl;
 
     // Check if this distance is the new minimum.
     if (d < min_dist) {
@@ -320,20 +320,18 @@ Cell::distance(const double xyz[3], const double uvw[3],
   return {min_dist, i_surf};
 }
 
+//==============================================================================
+
 void
 Cell::to_hdf5(hid_t cell_group) const
 {
-//  std::string group_name {"surface "};
-//  group_name += std::to_string(id);
-//
-//  hid_t surf_group = create_group(group_id, group_name);
-
   if (!name.empty()) {
     write_string(cell_group, "name", name, false);
   }
 
   //TODO: Fix the off-by-one indexing.
-  write_int(cell_group, "universe", universes_c[universe-1]->id);
+  write_int(cell_group, 0, nullptr, "universe", &universes_c[universe-1]->id,
+            false);
 
   // Write the region specification.
   if (!region.empty()) {
@@ -355,9 +353,9 @@ Cell::to_hdf5(hid_t cell_group) const
     }
     write_string(cell_group, "region", region_spec.str(), false);
   }
-
-//  close_group(cell_group);
 }
+
+//==============================================================================
 
 bool
 Cell::contains_simple(const double xyz[3], const double uvw[3],
@@ -381,6 +379,8 @@ Cell::contains_simple(const double xyz[3], const double uvw[3],
   }
   return true;
 }
+
+//==============================================================================
 
 bool
 Cell::contains_complex(const double xyz[3], const double uvw[3],
@@ -432,6 +432,8 @@ Cell::contains_complex(const double xyz[3], const double uvw[3],
   }
 }
 
+//==============================================================================
+// Non-method functions
 //==============================================================================
 
 extern "C" void

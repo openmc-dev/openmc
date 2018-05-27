@@ -318,7 +318,7 @@ void SurfaceXPlane::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-plane", false);
   std::array<double, 1> coeffs {{x0}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 bool SurfaceXPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
@@ -383,7 +383,7 @@ void SurfaceYPlane::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-plane", false);
   std::array<double, 1> coeffs {{y0}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 bool SurfaceYPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
@@ -449,7 +449,7 @@ void SurfaceZPlane::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-plane", false);
   std::array<double, 1> coeffs {{z0}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 bool SurfaceZPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
@@ -510,7 +510,7 @@ void SurfacePlane::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "plane", false);
   std::array<double, 4> coeffs {{A, B, C, D}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 bool SurfacePlane::periodic_translate(PeriodicSurface *other, double xyz[3],
@@ -642,7 +642,7 @@ void SurfaceXCylinder::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-cylinder", false);
   std::array<double, 3> coeffs {{y0, z0, r}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 //==============================================================================
@@ -676,7 +676,7 @@ void SurfaceYCylinder::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-cylinder", false);
   std::array<double, 3> coeffs {{x0, z0, r}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 //==============================================================================
@@ -710,7 +710,7 @@ void SurfaceZCylinder::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-cylinder", false);
   std::array<double, 3> coeffs {{x0, y0, r}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 //==============================================================================
@@ -781,7 +781,7 @@ void SurfaceSphere::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "sphere", false);
   std::array<double, 4> coeffs {{x0, y0, z0, r}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 //==============================================================================
@@ -898,7 +898,7 @@ void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-cone", false);
   std::array<double, 4> coeffs {{x0, y0, z0, r_sq}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 //==============================================================================
@@ -932,7 +932,7 @@ void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-cone", false);
   std::array<double, 4> coeffs {{x0, y0, z0, r_sq}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 //==============================================================================
@@ -966,7 +966,7 @@ void SurfaceZCone::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-cone", false);
   std::array<double, 4> coeffs {{x0, y0, z0, r_sq}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 //==============================================================================
@@ -1060,7 +1060,7 @@ void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "quadric", false);
   std::array<double, 10> coeffs {{A, B, C, D, E, F, G, H, J, K}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 //==============================================================================

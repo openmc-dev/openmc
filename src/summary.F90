@@ -176,7 +176,7 @@ contains
     call write_attribute(geom_group, "n_cells", n_cells)
     call write_attribute(geom_group, "n_surfaces", n_surfaces)
     call write_attribute(geom_group, "n_universes", n_universes)
-    call write_attribute(geom_group, "n_lattices", n_lattices)
+    call write_attribute(geom_group, "n_lattices", size(lattices))
 
     ! ==========================================================================
     ! WRITE INFORMATION ON CELLS
@@ -292,7 +292,7 @@ contains
 
     lattices_group = create_group(geom_group, "lattices")
 
-    do i = 1, n_lattices
+    do i = 1, size(lattices)
       lat => lattices(i)%obj
       call lat % to_hdf5(lattices_group)
     end do

@@ -1,9 +1,9 @@
 #ifndef CELL_H
 #define CELL_H
 
-#include <map>
 #include <cstdint>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "hdf5.h"
@@ -28,11 +28,11 @@ extern "C" int32_t n_cells;
 
 class Cell;
 extern std::vector<Cell*> cells_c;
-extern std::map<int32_t, int32_t> cell_dict;
+extern std::unordered_map<int32_t, int32_t> cell_dict;
 
 class Universe;
 extern std::vector<Universe*> universes_c;
-extern std::map<int32_t, int32_t> universe_dict;
+extern std::unordered_map<int32_t, int32_t> universe_dict;
 
 //==============================================================================
 //! A geometry primitive that fills all space and contains cells.
@@ -41,10 +41,9 @@ extern std::map<int32_t, int32_t> universe_dict;
 class Universe
 {
 public:
-  int32_t id;                  //! Unique ID
-  int32_t type;
-  std::vector<int32_t> cells;  //! Cells within this universe
-  double x0, y0, z0;           //! Translation coordinates.
+  int32_t id;                  //!< Unique ID
+  std::vector<int32_t> cells;  //!< Cells within this universe
+  //double x0, y0, z0;           //!< Translation coordinates.
 };
 
 //==============================================================================
@@ -61,8 +60,9 @@ public:
   int32_t fill;              //!< Universe # filling this cell
   int32_t n_instances{0};    //!< Number of instances of this cell
 
-  //! Material within this cell.  May be multiple materials for distribcell.
-  //! C_NONE signifies a universe.
+  //! \brief Material(s) within this cell.
+  //!
+  //! May be multiple materials for distribcell.  C_NONE signifies a universe.
   std::vector<int32_t> material;
 
   //! Definition of spatial region as Boolean expression of half-spaces
@@ -77,7 +77,7 @@ public:
 
   explicit Cell(pugi::xml_node cell_node);
 
-  //! Determine if a cell contains the particle at a given location.
+  //! \brief Determine if a cell contains the particle at a given location.
   //!
   //! The bounds of the cell are detemined by a logical expression involving
   //! surface half-spaces. At initialization, the expression was converted
@@ -99,10 +99,11 @@ public:
   bool
   contains(const double xyz[3], const double uvw[3], int32_t on_surface) const;
 
+  //! Find the oncoming boundary of this cell.
   std::pair<double, int32_t>
   distance(const double xyz[3], const double uvw[3], int32_t on_surface) const;
 
-  //! Write all information needed to reconstruct the cell to an HDF5 group.
+  //! \brief Write cell information to an HDF5 group.
   //! @param group_id An HDF5 group id.
   void to_hdf5(hid_t group_id) const;
 

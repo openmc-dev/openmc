@@ -1257,8 +1257,7 @@ contains
     ! Allocate lattices array
     n_rlats = size(node_rlat_list)
     n_hlats = size(node_hlat_list)
-    n_lattices = n_rlats + n_hlats
-    allocate(lattices(n_lattices))
+    allocate(lattices(n_rlats + n_hlats))
 
     RECT_LATTICES: do i = 1, n_rlats
       allocate(RectLattice::lattices(i) % obj)

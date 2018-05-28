@@ -49,7 +49,7 @@ borated_water.add_element('O', 2.4e-2)
 borated_water.add_s_alpha_beta('c_H_in_H2O')
 
 ###############################################################################
-#                 Exporting to OpenMC geometry.xml file
+#                             Create geometry
 ###############################################################################
 
 # Instantiate ZCylinder surfaces
@@ -94,7 +94,7 @@ root.add_cells([fuel, gap, clad, water])
 geometry = openmc.Geometry(root)
 
 ###############################################################################
-#                   Exporting to OpenMC materials.xml file
+#                     Volumes of depletable materials
 ###############################################################################
 
 # Compute cell areas
@@ -105,7 +105,7 @@ area[fuel] = np.pi * fuel_or.coefficients['R'] ** 2
 uo2.volume = area[fuel]
 
 ###############################################################################
-#                   Exporting to OpenMC settings.xml file
+#                  Transport calculation settings
 ###############################################################################
 
 # Instantiate a Settings object, set all runtime parameters, and export to XML

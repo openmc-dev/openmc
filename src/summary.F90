@@ -440,6 +440,7 @@ contains
 
       if (m % depletable) then
         call write_attribute(material_group, "depletable", 1)
+        call write_attribute(material_group, "volume", m % volume)
       else
         call write_attribute(material_group, "depletable", 0)
       end if
@@ -500,7 +501,7 @@ contains
         call write_dataset(material_group, "nuclides", nuc_names)
         ! Deallocate temporary array
         deallocate(nuc_names)
-        ! Write atom densities
+        ! Write nuclide atom densities
         call write_dataset(material_group, "nuclide_densities", nuc_densities)
         deallocate(nuc_densities)
       end if

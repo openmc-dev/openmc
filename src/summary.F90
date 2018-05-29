@@ -440,7 +440,6 @@ contains
 
       if (m % depletable) then
         call write_attribute(material_group, "depletable", 1)
-        call write_attribute(material_group, "volume", m % volume)
       else
         call write_attribute(material_group, "depletable", 0)
       end if

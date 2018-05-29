@@ -42,17 +42,44 @@ def predictor(operator, timesteps, power, print_out=True):
     # Generate initial conditions
     with operator as vec:
         chain = operator.chain
-        t = 0.0
-        for i, (dt, p) in enumerate(zip(timesteps, power)):
-            # Get beginning-of-timestep reaction rates
-            x = [copy.deepcopy(vec)]
-            op_results = [operator(x[0], p)]
 
-            # Create results, write to disk
-            Results.save(operator, x, op_results, [t, t + dt], i)
+        # Initialize time
+        if operator.prev_res == None:
+            t = 0.0
+        else:
+            t = operator.prev_res.get_eigenvalue()[0][-1]
+        print("Time", t/24/60/60)
+
+        # Initialize starting index for saving results
+        if operator.prev_res == None:
+            i_res = 0
+        else:
+            i_res = len(operator.prev_res.get_eigenvalue()[0])
+        print(i_res)
+
+        for i, (dt, p) in enumerate(zip(timesteps, power)):
+
+            # Avoid doing first run if already done in previous calculation
+            if i > 0 or operator.prev_res == None or p != p_end:
+                # Get beginning-of-timestep reaction rates
+                x = [copy.deepcopy(vec)]
+                op_results = [operator(x[0], p)]
+
+                # Create results, write to disk
+                Results.save(operator, x, op_results, [t, t + dt], i + i_res)
+
+            else:
+                x = [copy.deepcopy(vec)]
+                op_results = operator.prev_res[0]
+                print(op_results)
+                op_results = [operator(x[0], p)]
+                print(op_results)
 
             # Deplete for full timestep
+            #print(x[0], op_results[0])
             x_end = deplete(chain, x[0], op_results[0], dt, print_out)
+            print("Time", t/24/60/60)
+            print("Step", i + i_res)
 
             # Advance time, update vector
             t += dt
@@ -63,4 +90,4 @@ def predictor(operator, timesteps, power, print_out=True):
         op_results = [operator(x[0], power[-1])]
 
         # Create results, write to disk
-        Results.save(operator, x, op_results, [t, t], len(timesteps))
+        Results.save(operator, x, op_results, [t, t], len(timesteps) + i_res)

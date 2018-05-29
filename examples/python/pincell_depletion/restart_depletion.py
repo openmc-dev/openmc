@@ -1,6 +1,7 @@
 import openmc
 import openmc.deplete
 import numpy as np
+import matplotlib.pyplot as plt
 
 ###############################################################################
 #                      Simulation Input File Parameters
@@ -13,7 +14,7 @@ particles = 1000
 
 # Depletion simulation parameters
 time_step = 1*24*60*60 # s
-final_time = 15*24*60*60 # s
+final_time = 5*24*60*60 # s
 time_steps = np.full(final_time // time_step, time_step)
 
 chain_file = './chain_simple.xml'
@@ -28,14 +29,15 @@ statepoint = 'statepoint.100.h5'
 sp = openmc.StatePoint(statepoint)
 geometry = sp.summary.geometry
 
-# Load previous delpletion results
+# Close statepoint and summary files to be able to write over them
+sp.summary._f.close()
+sp._f.close()
+
+# Load previous depletion results
 previous_results = openmc.deplete.ResultsList("depletion_results.h5")
 
-# Reload volumes into geometry
-previous_results.transfer_volumes(geometry)
-
 ###############################################################################
-#                   Set transport calculation settings
+#                      Transport calculation settings
 ###############################################################################
 
 # Instantiate a Settings object, set all runtime parameters, and export to XML
@@ -59,7 +61,8 @@ settings_file.entropy_mesh = entropy_mesh
 #                   Initialize and run depletion calculation
 ###############################################################################
 
-op = openmc.deplete.Operator(geometry, settings_file, chain_file)
+op = openmc.deplete.Operator(geometry, settings_file, chain_file, \
+                                                  previous_results)
 
 # Perform simulation using the predictor algorithm
 openmc.deplete.integrator.predictor(op, time_steps, power)
@@ -73,6 +76,13 @@ results = openmc.deplete.ResultsList("depletion_results.h5")
 
 # Obtain K_eff as a function of time
 time, keff = results.get_eigenvalue()
+
+print(time/24/60/60)
+print(keff)
                                                                                                                                                                                                                                                                                                                                                                                                                                                         
-# Obtain U235 concentration as a function of time
-time, n_U235 = results.get_atoms('1', 'U235')
+# Plot eigenvalue as a function of time
+plt.figure()
+plt.plot(time/24/60/60, keff, label="K-effective")
+plt.xlabel("Time (day)")
+plt.ylabel("Keff")
+plt.show()

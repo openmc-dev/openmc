@@ -66,6 +66,8 @@ class Operator(TransportOperator):
     chain_file : str, optional
         Path to the depletion chain XML file.  Defaults to the
         :envvar:`OPENMC_DEPLETE_CHAIN` environment variable if it exists.
+    prev_results : ResultsList, optional
+        Results from the previous depletion calculation.  Defaults to None
 
     Attributes
     ----------
@@ -94,13 +96,24 @@ class Operator(TransportOperator):
         All burnable material IDs
     local_mats : list of str
         All burnable material IDs being managed by a single process
+    prev_res : ResultsList
+        Results from the previous depletion run
 
     """
-    def __init__(self, geometry, settings, chain_file=None):
+    def __init__(self, geometry, settings, chain_file=None, prev_results=None):
         super().__init__(chain_file)
         self.round_number = False
         self.settings = settings
         self.geometry = geometry
+
+        if prev_results != None:
+            # Reload volumes into geometry
+            prev_results.transfer_volumes(geometry)
+
+            # Store previous results in operator
+            self.prev_res = prev_results
+        else:
+            self.prev_res = None
 
         # Clear out OpenMC, create task lists, distribute
         openmc.reset_auto_ids()

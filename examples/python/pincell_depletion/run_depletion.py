@@ -13,7 +13,7 @@ particles = 1000
 
 # Depletion simulation parameters
 time_step = 1*24*60*60 # s
-final_time = 15*24*60*60 # s
+final_time = 5*24*60*60 # s
 time_steps = np.full(final_time // time_step, time_step)
 
 chain_file = './chain_simple.xml'
@@ -94,7 +94,7 @@ root.add_cells([fuel, gap, clad, water])
 geometry = openmc.Geometry(root)
 
 ###############################################################################
-#                     Volumes of depletable materials
+#                     Set volumes of depletable materials
 ###############################################################################
 
 # Compute cell areas
@@ -105,7 +105,7 @@ area[fuel] = np.pi * fuel_or.coefficients['R'] ** 2
 uo2.volume = area[fuel]
 
 ###############################################################################
-#                  Transport calculation settings
+#                     Transport calculation settings
 ###############################################################################
 
 # Instantiate a Settings object, set all runtime parameters, and export to XML
@@ -135,7 +135,7 @@ op = openmc.deplete.Operator(geometry, settings_file, chain_file)
 openmc.deplete.integrator.predictor(op, time_steps, power)
 
 ###############################################################################
-#                    Read depletion calculation results
+#                     Read depletion calculation results
 ###############################################################################
 
 # Open results file

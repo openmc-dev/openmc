@@ -48,35 +48,35 @@ def predictor(operator, timesteps, power, print_out=True):
             t = 0.0
         else:
             t = operator.prev_res.get_eigenvalue()[0][-1]
-        print("Time", t/24/60/60)
 
         # Initialize starting index for saving results
         if operator.prev_res == None:
             i_res = 0
         else:
             i_res = len(operator.prev_res.get_eigenvalue()[0])
-        print(i_res)
+
+        #TODO : Get last time step power from previous results, and run a 
+        # new calculation if different from power at the first time step
+        # If no TH coupling, just re-scale rates by ratio of power
 
         for i, (dt, p) in enumerate(zip(timesteps, power)):
 
-            # Avoid doing first run if already done in previous calculation
-            if i > 0 or operator.prev_res == None or p != p_end:
-                # Get beginning-of-timestep reaction rates
-                x = [copy.deepcopy(vec)]
-                op_results = [operator(x[0], p)]
+            # Get beginning-of-timestep concentrations
+            x = [copy.deepcopy(vec)]
 
-                # Create results, write to disk
-                Results.save(operator, x, op_results, [t, t + dt], i + i_res)
+            # Get beginning-of-timestep reaction rates
+            # Avoid doing first run if already done in previous calculation
+            if i > 0 or operator.prev_res == None:
+                op_results = [operator(x[0], p)]
 
             else:
-                x = [copy.deepcopy(vec)]
-                op_results = operator.prev_res[0]
-                print(op_results)
-                op_results = [operator(x[0], p)]
-                print(op_results)
+                op_results = [operator.prev_res[-1]]
+                op_results[0].rates = op_results[0].rates[0]
+
+            # Create results, write to disk
+            Results.save(operator, x, op_results, [t, t + dt], i + i_res)
 
             # Deplete for full timestep
-            #print(x[0], op_results[0])
             x_end = deplete(chain, x[0], op_results[0], dt, print_out)
             print("Time", t/24/60/60)
             print("Step", i + i_res)

@@ -319,7 +319,7 @@ class Operator(TransportOperator):
                             densities.append(val)
                         else:
                             # Only output warnings if values are significantly
-                            # negative.  CRAM does not guarantee positive values.
+                            # negative. CRAM does not guarantee positive values.
                             if val < -1.0e-21:
                                 print("WARNING: nuclide ", nuc, " in material ", mat,
                                       " is negative (density = ", val, " at/barn-cm)")

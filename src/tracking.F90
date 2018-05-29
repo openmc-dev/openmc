@@ -6,7 +6,10 @@ module tracking
   use error,              only: warning, write_message
   use geometry_header,    only: cells
   use geometry,           only: find_cell, distance_to_boundary, cross_lattice,&
-                                check_cell_overlap, next_cell, is_implicit_complement
+                                check_cell_overlap
+#ifdef CAD  
+  use geometry,           only: next_cell, is_implicit_complement
+#endif
   use material_header,    only: materials, Material
   use message_passing
   use mgxs_interface

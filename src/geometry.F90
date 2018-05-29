@@ -56,6 +56,8 @@ module geometry
     subroutine neighbor_lists() bind(C)
     end subroutine neighbor_lists
 
+#ifdef CAD
+    
     function next_cell_c(current_cell, surface_crossed) &
       bind(C, name="next_cell") result(new_cell)
       import C_PTR, C_INT32_T
@@ -63,17 +65,30 @@ module geometry
       type(C_PTR), intent(in), value :: surface_crossed
       integer(C_INT32_T)             :: new_cell
     end function next_cell_c
-
+    
     function is_implicit_complement_C(cell) &
          bind(C, name="is_implicit_complement") result(res)
       import C_PTR, C_BOOL
       type(C_PTR), intent(in), value :: cell
       logical(C_BOOL)                :: res
     end function is_implicit_complement_C
- end interface
 
+#endif
+
+ end interface
+ 
 contains
 
+  function cell_contains(c, p) result(in_cell)
+    type(Cell), intent(in) :: c
+    type(Particle), intent(in) :: p
+    logical :: in_cell
+    in_cell = cell_contains_c(c%ptr, p%coord(p%n_coord)%xyz, &
+                              p%coord(p%n_coord)%uvw, p%surface)
+  end function cell_contains
+
+#ifdef CAD
+  
   function next_cell(c, s) result(new_cell)
     type(Cell), intent(in) :: c
     type(Surface), intent(in) :: s
@@ -86,6 +101,8 @@ contains
     logical:: res
     res = is_implicit_complement_c(c%ptr)
   end function is_implicit_complement
+
+#endif
   
 !===============================================================================
 ! FIND_CELL determines what cell a source particle is in within a particular

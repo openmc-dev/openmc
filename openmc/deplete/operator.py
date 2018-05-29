@@ -274,11 +274,13 @@ class Operator(TransportOperator):
 
         for nuclide, density in mat.get_nuclide_atom_densities().values():
             number = density * 1.0e24
-            print(nuclide)
             self.number.set_atom_density(mat_id, nuclide, number)
 
     def _set_number_from_results(self, mat, prev_res):
-        """Extracts material and number densities from previous results
+        """Extracts material and number densities.
+
+        If the nuclide is in the chain, densities come from depletion results
+        Else, densities come from the geometry in the summary
 
         Parameters
         ----------
@@ -288,9 +290,23 @@ class Operator(TransportOperator):
         """
         mat_id = str(mat.id)
 
-        for nuclide, density in mat.get_nuclide_atom_densities().values():
-            number = density * 1.0e24
-            print(nuclide, number)
+        # Get nuclide lists from geometry and depletion results
+        depl_nuc = prev_res[-1].nuc_to_ind.keys()
+        geom_nuc_densities = mat.get_nuclide_atom_densities()
+        geom_nuc = [x[0] for x in list(geom_nuc_densities.values())]
+
+        # Merge lists of nuclides
+        nuc_set = list(depl_nuc) + [n for n in geom_nuc if n not in depl_nuc]
+
+        for nuclide in nuc_set:
+            if nuclide in depl_nuc:
+                concentration = prev_res.get_atoms(mat_id, nuclide)[1][-1]
+                volume = prev_res[-1].volume[mat_id]
+                number = concentration / volume
+            else:
+                density = geom_nuc_densities[nuclide][1]
+                number = density * 1.0e24
+
             self.number.set_atom_density(mat_id, nuclide, number)
 
     def initial_condition(self):

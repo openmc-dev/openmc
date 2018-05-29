@@ -77,8 +77,6 @@ def predictor(operator, timesteps, power, print_out=True):
 
             # Deplete for full timestep
             x_end = deplete(chain, x[0], op_results[0], dt, print_out)
-            print("Time", t/24/60/60)
-            print("Step", i + i_res)
 
             # Advance time, update vector
             t += dt

@@ -77,7 +77,7 @@ class Operator(TransportOperator):
         OpenMC settings object
     dilute_initial : float
         Initial atom density to add for nuclides that are zero in initial
-        condition to ensure they exist in the decay chain.  Only done for
+        condition to ensure they exist in the decay chain. Only done for
         nuclides with reaction rates. Defaults to 1.0e3.
     output_dir : pathlib.Path
         Path to output directory to save results.
@@ -112,6 +112,9 @@ class Operator(TransportOperator):
 
             # Store previous results in operator
             self.prev_res = prev_results
+
+            # Get number densities from previous results
+            #self.number = prev_results
         else:
             self.prev_res = None
 
@@ -125,8 +128,9 @@ class Operator(TransportOperator):
         self._burnable_nucs = [nuc for nuc in self.nuclides_with_data
                                if nuc in self.chain]
 
-        # Extract number densities from the geometry
-        self._extract_number(self.local_mats, volume, nuclides)
+        # Extract number densities from the geometry / previous depletion run
+        self._extract_number(self.local_mats, volume, nuclides, \
+                                                self.prev_res)
 
         # Create reaction rates array
         self.reaction_rates = ReactionRates(
@@ -225,7 +229,7 @@ class Operator(TransportOperator):
 
         return burnable_mats, volume, nuclides
 
-    def _extract_number(self, local_mats, volume, nuclides):
+    def _extract_number(self, local_mats, volume, nuclides, prev_res=None):
         """Construct AtomNumber using geometry
 
         Parameters
@@ -244,10 +248,18 @@ class Operator(TransportOperator):
             for nuc in self._burnable_nucs:
                 self.number.set_atom_density(np.s_[:], nuc, self.dilute_initial)
 
-        # Now extract the number densities and store
-        for mat in self.geometry.get_all_materials().values():
-            if str(mat.id) in local_mats:
-                self._set_number_from_mat(mat)
+        # Now extract and store the number densities
+        # From the geometry if no previous depletion results
+        if prev_res == None:
+            for mat in self.geometry.get_all_materials().values():
+                if str(mat.id) in local_mats:
+                    self._set_number_from_mat(mat)
+
+        # Else from previous depletion results
+        else:
+            for mat in self.geometry.get_all_materials().values():
+                if str(mat.id) in local_mats:
+                    self._set_number_from_results(mat, prev_res)
 
     def _set_number_from_mat(self, mat):
         """Extracts material and number densities from openmc.Material
@@ -262,6 +274,23 @@ class Operator(TransportOperator):
 
         for nuclide, density in mat.get_nuclide_atom_densities().values():
             number = density * 1.0e24
+            print(nuclide)
+            self.number.set_atom_density(mat_id, nuclide, number)
+
+    def _set_number_from_results(self, mat, prev_res):
+        """Extracts material and number densities from previous results
+
+        Parameters
+        ----------
+        mat : openmc.Material
+            The material to read from
+
+        """
+        mat_id = str(mat.id)
+
+        for nuclide, density in mat.get_nuclide_atom_densities().values():
+            number = density * 1.0e24
+            print(nuclide, number)
             self.number.set_atom_density(mat_id, nuclide, number)
 
     def initial_condition(self):
@@ -325,8 +354,12 @@ class Operator(TransportOperator):
                                       " is negative (density = ", val, " at/barn-cm)")
                             number_i[mat, nuc] = 0.0
 
+                # Update densities on C API side
                 mat_internal = openmc.capi.materials[int(mat)]
                 mat_internal.set_densities(nuclides, densities)
+
+                #TODO Update densities on the Python side, otherwise the
+                # summary.h5 file contains densities at the first time step
 
     def _generate_materials_xml(self):
         """Creates materials.xml from self.number.

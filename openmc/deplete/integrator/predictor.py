@@ -55,7 +55,7 @@ def predictor(operator, timesteps, power, print_out=True):
         else:
             i_res = len(operator.prev_res.get_eigenvalue()[0])
 
-        #TODO : Get last time step power from previous results, and run a 
+        #TODO : Get last time step power from previous results, and run a
         # new calculation if different from power at the first time step
         # If no TH coupling, just re-scale rates by ratio of power
 
@@ -68,7 +68,6 @@ def predictor(operator, timesteps, power, print_out=True):
             # Avoid doing first run if already done in previous calculation
             if i > 0 or operator.prev_res == None:
                 op_results = [operator(x[0], p)]
-
             else:
                 op_results = [operator.prev_res[-1]]
                 op_results[0].rates = op_results[0].rates[0]

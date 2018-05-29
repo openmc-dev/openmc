@@ -40,7 +40,7 @@ previous_results = openmc.deplete.ResultsList("depletion_results.h5")
 #                      Transport calculation settings
 ###############################################################################
 
-# Instantiate a Settings object, set all runtime parameters, and export to XML
+# Instantiate a Settings object, set all runtime parameters
 settings_file = openmc.Settings()
 settings_file.batches = batches
 settings_file.inactive = inactive

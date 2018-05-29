@@ -12,7 +12,53 @@ from .endf import get_head_record, get_cont_record, get_tab1_record, get_list_re
 import openmc.checkvalue as cv
 from .resonance import ResonanceRange
 
-def sample_resonance_parameters(nuclide, n_samples):
+def res_subset(nuclide, parameter_str, bounds):
+    """Produce a subset of resonance paramaters and the covariance matrix
+    to an IncidentNeutron objecti
+    
+    Parameters
+    ----------
+    nuclide: ResonanceCovariance object
+    parameter_str: paramater to be discriminated 
+                   (i.e. 'energy','captureWidth','fissionWidthA'...)
+    bounds: np.array [low numerical bound, high numerical bound]
+
+    Returns
+    -------
+    parameters_subset : Dataframe of a subset of parameters 
+                        (maintains indexing)
+    cov_subset: subset of covariance matrix (upper triangular)
+    
+    """
+    parameters = nuclide.parameters
+    cov = nuclide.covariance
+    mpar = nuclide.mpar
+    mask1 = parameters[parameter_str]>=bounds[0]
+    mask2 = parameters[parameter_str]<=bounds[1]
+    mask = mask1 & mask2
+    parameters_subset=parameters[mask] 
+    indices = parameters_subset.index.values
+    sub_cov_dim = len(indices)*mpar
+    oldvalues = []
+    for index1 in indices:
+        print("Current index:",index1)
+        for i in range(mpar):
+            print("i is:", i)
+            for index2 in indices:
+                for j in range(mpar):
+                    print("j is:", i)
+                    if index2*mpar+j >= index1*mpar+i:
+                        print(cov[index1*mpar+i,index2*mpar+j])
+                        oldvalues.append(cov[index1*mpar+i,index2*mpar+j])
+
+    cov_subset = np.zeros([sub_cov_dim,sub_cov_dim])
+    tri_indices = np.triu_indices(sub_cov_dim)
+    cov_subset[tri_indices] = oldvalues
+
+    nuclide.parameters_subset = parameters_subset
+    nuclide.cov_subset = cov_subset
+
+def sample_resonance_parameters(nuclide, n_samples, use_subset=False):
     """Return a IncidentNeutron object with n_samples of xs
 
     Parameters
@@ -25,11 +71,17 @@ def sample_resonance_parameters(nuclide, n_samples):
 
     """
     print('begin sampling')
-    nparams,params = nuclide.res_covariance.ranges[0].parameters.shape
-    cov = nuclide.res_covariance.ranges[0].covariance
+    if use_subset==False:
+        parameters = nuclide.parameters
+        cov = nuclide.covariance
+    else:
+        parameters = nuclide.parameters_subset
+        cov = nuclide.cov_subset
+    nparams,params = parameters.shape
     cov = cov + cov.T - np.diag(cov.diagonal()) #symmetrizing covariance matrix
     covsize = cov.shape[0]
-    formalism = nuclide.res_covariance.ranges[0].formalism
+    formalism = nuclide.formalism
+    mpar = nuclide.mpar
     samples = []
 
     print("nparams,params:",nparams, params)
@@ -38,11 +90,11 @@ def sample_resonance_parameters(nuclide, n_samples):
 
     ### Handling MLBW Sampling ###
     if formalism == 'mlbw' or formalism == 'slbw':
-        if covsize/nparams == 3:
+        if mpar == 3:
             param_list = ['energy','neutronWidth','captureWidth']
-            mean_array = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters[param_list])
-            spin = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters['J'])
-            gf = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters['fissionWidth'])
+            mean_array = pd.DataFrame.as_matrix(parameters[param_list])
+            spin = pd.DataFrame.as_matrix(parameters['J'])
+            gf = pd.DataFrame.as_matrix(parameters['fissionWidth'])
             mean = mean_array.flatten()
             for i in range(n_samples):
                 sample = np.random.multivariate_normal(mean,cov)
@@ -59,10 +111,10 @@ def sample_resonance_parameters(nuclide, n_samples):
                 sample_params = pd.DataFrame.from_records(records, columns=columns)
                 samples.append(sample_params)
 
-        elif covsize/nparams == 4:
+        elif mpar == 4:
             param_list = ['energy','neutronWidth','captureWidth','fissionWidth']
-            mean_array = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters[param_list])
-            spin = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters['J'])
+            mean_array = pd.DataFrame.as_matrix(parameters[param_list])
+            spin = pd.DataFrame.as_matrix(parameters['J'])
             mean = mean_array.flatten()
             for i in range(n_samples):
                 sample = np.random.multivariate_normal(mean,cov)
@@ -80,10 +132,10 @@ def sample_resonance_parameters(nuclide, n_samples):
                 sample_params = pd.DataFrame.from_records(records, columns=columns)
                 samples.append(sample_params)
 
-        elif covsize/nparams == 5:
+        elif mpar == 5:
             param_list = ['energy','neutronWidth','captureWidth','fissionWidth']
-            mean_array = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters[param_list])
-            spin = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters['J'])
+            mean_array = pd.DataFrame.as_matrix(parameters[param_list])
+            spin = pd.DataFrame.as_matrix(parameters['J'])
             mean = mean_array.flatten()
             for i in range(n_samples):
                 sample = np.random.multivariate_normal(mean,cov)
@@ -102,12 +154,12 @@ def sample_resonance_parameters(nuclide, n_samples):
                 samples.append(sample_params)
     ### Handling RM Sampling ###
     if formalism == 'rm':
-        if covsize/nparams == 3:
+        if mpar == 3:
             param_list = ['energy','neutronWidth','captureWidth']
-            mean_array = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters[param_list])
-            spin = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters['J'])
-            gfa = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters['fissionWidthA'])
-            gfb = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters['fissionWidthB'])
+            mean_array = pd.DataFrame.as_matrix(parameters[param_list])
+            spin = pd.DataFrame.as_matrix(parameters['J'])
+            gfa = pd.DataFrame.as_matrix(parameters['fissionWidthA'])
+            gfb = pd.DataFrame.as_matrix(parameters['fissionWidthB'])
             mean = mean_array.flatten()
             for i in range(n_samples):
                 sample = np.random.multivariate_normal(mean,cov)
@@ -123,10 +175,10 @@ def sample_resonance_parameters(nuclide, n_samples):
                 sample_params = pd.DataFrame.from_records(records, columns=columns)
                 samples.append(sample_params)
 
-        elif covsize/nparams == 5:
+        elif mpar == 5:
             param_list = ['energy','neutronWidth','captureWidth','fissionWidthA','fissionWidthB']
-            mean_array = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters[param_list])
-            spin = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters['J'])
+            mean_array = pd.DataFrame.as_matrix(parameters[param_list])
+            spin = pd.DataFrame.as_matrix(parameters['J'])
             mean = mean_array.flatten()
             for i in range(n_samples):
                 print("On sample",i)
@@ -145,7 +197,7 @@ def sample_resonance_parameters(nuclide, n_samples):
                 sample_params = pd.DataFrame.from_records(records, columns=columns)
                 samples.append(sample_params)
 
-    return samples
+    nuclide.samples = samples
 
 class ResonanceCovariance(object):
     """Resolved resonance covariance data
@@ -184,13 +236,14 @@ class ResonanceCovariance(object):
                                       ranges)
 
     @classmethod
-    def from_endf(cls, ev):
+    def from_endf(cls, ev, resonances):
         """Generate resonance covariance data from an ENDF evaluation.
 
         Parameters
         ----------
         ev : openmc.data.endf.Evaluation
             ENDF evaluation
+        resonances : Resonance object
 
         Returns
         -------
@@ -223,7 +276,7 @@ class ResonanceCovariance(object):
 
                 if resonance_flag in (0, 1):
                     # resolved resonance region
-                    erange = _FORMALISMS[formalism].from_endf(ev, file_obj, items)
+                    erange = _FORMALISMS[formalism].from_endf(ev, file_obj, items, resonances)
 
                 elif resonance_flag == 2:
                     warnings.warn('Unresolved resonance not supported.' 
@@ -256,7 +309,7 @@ class MultiLevelBreitWignerCovariance(ResonanceRange):
 
     Attributes
     ----------
-    cov_paramaters: list
+    cov_parameters: list
         The parameters that are included in the covariance matrix
     covariance_matrix : array
         The covariance matrix contained within the ENDF evaluation
@@ -272,7 +325,7 @@ class MultiLevelBreitWignerCovariance(ResonanceRange):
         self.formalism = 'mlbw'
 
     @classmethod
-    def from_endf(cls, ev, file_obj, items):
+    def from_endf(cls, ev, file_obj, items, resonances):
         """Create MLBW covariance data from an ENDF evaluation.
 
         Parameters
@@ -285,6 +338,7 @@ class MultiLevelBreitWignerCovariance(ResonanceRange):
         items : list
             Items from the CONT record at the start of the resonance range
             subsection
+        resonances : Resonance object
 
         Returns
         -------
@@ -347,10 +401,29 @@ class MultiLevelBreitWignerCovariance(ResonanceRange):
                        'captureWidth', 'fissionWidth']
             parameters = pd.DataFrame.from_records(records, columns=columns)
 
+            #Determine mpar (number of parameters for each resonance in
+            #covariance matrix)
+            nparams,params = parameters.shape
+            covsize = cov.shape[0]
+            mpar = int(covsize/nparams)
+
+            #Use l-values and competitiveWidth from File 2 data
+            #Resort File 2 by energy to match File 32
+            file2parameters=resonances.ranges[0].parameters.sort_values(by=['energy'])
+            file2parameters=file2parameters.reset_index(drop=True)
+            #Sort File 32 parameters by energy as well (maintaining index)
+            parameters_sort = parameters.sort_values(by=['energy'])
+            #Add in values (.values converts to array first to ignore index)
+            parameters_sort['L'] = file2parameters['L'].values
+            parameters_sort['competitiveWidth'] = file2parameters['competitiveWidth'].values
+            #Resort to File 32 order (essential for use with covariance!)
+            parameters = parameters_sort.sort_index()
+
             # Create instance of class
             mlbw = cls(energy_min, energy_max)
             mlbw.parameters = parameters
             mlbw.covariance = cov
+            mlbw.mpar  = mpar
             mlbw.lcomp = LCOMP
             mlbw.num_parameters = num_parameters
 
@@ -393,10 +466,30 @@ class MultiLevelBreitWignerCovariance(ResonanceRange):
                        'captureWidth', 'fissionWidth']
             parameters = pd.DataFrame.from_records(records, columns=columns)
 
+            #Determine mpar (number of parameters for each resonance in
+            #covariance matrix)
+            nparams,params = parameters.shape
+            covsize = cov.shape[0]
+            mpar = int(covsize/nparams)
+            
+            #Use l-values and competitiveWidth from File 2 data
+            #Resort File 2 by energy to match File 32
+            file2parameters=resonances.ranges[0].parameters.sort_values(by=['energy'])
+            file2parameters=file2parameters.reset_index(drop=True)
+            #Sort File 32 parameters by energy as well (maintaining index)
+            parameters_sort = parameters.sort_values(by=['energy'])
+            #Add in values (.values converts to array first to ignore index)
+            parameters_sort['L'] = file2parameters['L'].values
+            parameters_sort['competitiveWidth'] = file2parameters['competitiveWidth'].values
+            #Resort to File 32 order (essential for use with covariance!)
+            parameters = parameters_sort.sort_index()
+
+
             # Create instance of MultiLevelBreitWignerCovariance
             mlbw = cls(energy_min, energy_max)
             mlbw.parameters = parameters
             mlbw.covariance = cov
+            mlbw.mpar  = mpar
             mlbw.lcomp = LCOMP
 
             return mlbw
@@ -442,13 +535,40 @@ class MultiLevelBreitWignerCovariance(ResonanceRange):
                        'captureWidth', 'fissionWidth']
             parameters = pd.DataFrame.from_records(records, columns=columns)
 
+            #Determine mpar (number of parameters for each resonance in
+            #covariance matrix)
+            nparams,params = parameters.shape
+            covsize = cov.shape[0]
+            mpar = int(covsize/nparams)
+
+            #Use l-values and competitiveWidth from File 2 data
+            #Resort File 2 by energy to match File 32
+            file2parameters=resonances.ranges[0].parameters.sort_values(by=['energy'])
+            file2parameters=file2parameters.reset_index(drop=True)
+            #Sort File 32 parameters by energy as well (maintaining index)
+            parameters_sort = parameters.sort_values(by=['energy'])
+            #Add in values (.values converts to array first to ignore index)
+            parameters_sort['L'] = file2parameters['L'].values
+            parameters_sort['competitiveWidth'] = file2parameters['competitiveWidth'].values
+            #Resort to File 32 order (essential for use with covariance!)
+            parameters = parameters_sort.sort_index()
+
+
             # Create instance of class
             mlbw = cls(energy_min, energy_max)
             mlbw.parameters = parameters
             mlbw.covariance = cov
+            mlbw.mpar  = mpar
             mlbw.lcomp = LCOMP
 
             return mlbw
+
+    def subset(self, parameter_str, bounds):
+        res_subset(self, parameter_str, bounds)
+
+    def sample(self, n_samples, use_subset=False):
+        sample_resonance_parameters(self,n_samples,use_subset)
+
 
 class SingleLevelBreitWignerCovariance(MultiLevelBreitWignerCovariance):
     """Single-level Breit-Wigner resolved resonance formalism covariance data.
@@ -527,7 +647,7 @@ class ReichMooreCovariance(ResonanceRange):
     ----------
     num_parameters: list
         Number of parameters used in each subsection
-    cov_paramaters: list
+    cov_parameters: list
         The parameters that are included in the covariance matrix
     covariance_matrix : array
         The covariance matrix contained within the ENDF evaluation
@@ -539,11 +659,11 @@ class ReichMooreCovariance(ResonanceRange):
         self.num_parameters = None
         self.parameters = None
         self.covariance = None
-        self.num_paramaters = None
+        self.num_parameters = None
         self.formalism = 'rm'
 
     @classmethod
-    def from_endf(cls, ev, file_obj, items):
+    def from_endf(cls, ev, file_obj, items, resonances):
         """Create Reich-Moore resonance covariance data from an ENDF evaluation.
         Includes the resonance parameters contained separately in File 32.
 
@@ -557,6 +677,7 @@ class ReichMooreCovariance(ResonanceRange):
         items : list
             Items from the CONT record at the start of the resonance range
             subsection
+        resonances : Resonance object
 
         Returns
         -------
@@ -619,10 +740,28 @@ class ReichMooreCovariance(ResonanceRange):
                        'fissionWidthA', 'fissionWidthB']
             parameters = pd.DataFrame.from_records(records, columns=columns)
 
+            #Determine mpar (number of parameters for each resonance in
+            #covariance matrix)
+            nparams,params = parameters.shape
+            covsize = cov.shape[0]
+            mpar = int(covsize/nparams)
+
+            #Use l-values and competitiveWidth from File 2 data
+            #Resort File 2 by energy to match File 32
+            file2parameters=resonances.ranges[0].parameters.sort_values(by=['energy'])
+            file2parameters=file2parameters.reset_index(drop=True)
+            #Sort File 32 parameters by energy as well (maintaining index)
+            parameters_sort = parameters.sort_values(by=['energy'])
+            #Add in values (.values converts to array first to ignore index)
+            parameters_sort['L'] = file2parameters['L'].values
+            #Resort to File 32 order (essential for use with covariance!)
+            parameters = parameters_sort.sort_index()
+
             # Create instance of ReichMooreCovariance
             rmc = cls(energy_min, energy_max)
             rmc.parameters = parameters
             rmc.covariance = cov
+            rmc.mpar  = mpar
             rmc.lcomp = LCOMP
             rmc.num_parameters = num_parameters
 
@@ -635,8 +774,9 @@ class ReichMooreCovariance(ResonanceRange):
             energy = values[0::12]
             spin = values[1::12]
             gn = values[2::12]
-            gfa = values[3::12]
-            gfb = values[4::12]
+            gg = values[3::12]
+            gfa = values[4::12]
+            gfb = values[5::12]
             par_unc = []
             for i in range(num_res):
                 res_unc = values[i*12+6:i*12+12]
@@ -646,24 +786,48 @@ class ReichMooreCovariance(ResonanceRange):
 
             records = []
             for i, E in enumerate(energy):
-                records.append([energy[i], spin[i], gn[i],
+                records.append([energy[i], spin[i], gn[i], gg[i],
                                 gfa[i], gfb[i]])
 
             corr = get_intg_record(file_obj)
             cov = np.diag(par_unc).dot(corr).dot(np.diag(par_unc))
 
             # Create pandas DataFrame with resonacne data
-            columns = ['energy', 'J', 'neutronWidth', 
+            columns = ['energy', 'J', 'neutronWidth', 'captureWidth',
                        'fissionWidthA', 'fissionWidthB']
             parameters = pd.DataFrame.from_records(records, columns=columns)
+
+            #Determine mpar (number of parameters for each resonance in
+            #covariance matrix)
+            nparams,params = parameters.shape
+            covsize = cov.shape[0]
+            mpar = int(covsize/nparams)
+
+            #Use l-values and competitiveWidth from File 2 data
+            #Resort File 2 by energy to match File 32
+            file2parameters=resonances.ranges[0].parameters.sort_values(by=['energy'])
+            file2parameters=file2parameters.reset_index(drop=True)
+            #Sort File 32 parameters by energy as well (maintaining index)
+            parameters_sort = parameters.sort_values(by=['energy'])
+            #Add in values (.values converts to array first to ignore index)
+            parameters_sort['L'] = file2parameters['L'].values
+            #Resort to File 32 order (essential for use with covariance!)
+            parameters = parameters_sort.sort_index()
 
             # Create instance of ReichMooreCovariance
             rmc = cls(energy_min, energy_max)
             rmc.parameters = parameters
             rmc.covariance = cov
+            rmc.mpar  = mpar
             rmc.lcomp = LCOMP
 
             return rmc
+
+    def subset(self, parameter_str, bounds):
+        res_subset(self, parameter_str, bounds)
+
+    def sample(self, n_samples, use_subset=False):
+        sample_resonance_parameters(self,n_samples,use_subset)
 
 # _FORMALISMS = {0: ResonanceRange,
 #                1: SingleLevelBreitWigner,

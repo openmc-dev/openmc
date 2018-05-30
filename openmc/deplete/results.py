@@ -24,6 +24,8 @@ class Results(object):
         Eigenvalue for each substep.
     time : list of float
         Time at beginning, end of step, in seconds.
+    power : float
+        Power during time step, in Watts
     n_mat : int
         Number of mats.
     n_nuc : int
@@ -49,6 +51,7 @@ class Results(object):
     def __init__(self):
         self.k = None
         self.time = None
+        self.power = None
         self.rates = None
         self.volume = None
 
@@ -237,6 +240,9 @@ class Results(object):
 
         handle.create_dataset("time", (1, 2), maxshape=(None, 2), dtype='float64')
 
+        handle.create_dataset("power", (1, n_stages), maxshape=(None, n_stages),
+                              dtype='float64')
+
     def _to_hdf5(self, handle, index):
         """Converts results object into an hdf5 object.
 
@@ -259,6 +265,7 @@ class Results(object):
         rxn_dset = handle["/reaction rates"]
         eigenvalues_dset = handle["/eigenvalues"]
         time_dset = handle["/time"]
+        power_dset = handle["/power"]
 
         # Get number of results stored
         number_shape = list(number_dset.shape)
@@ -283,6 +290,10 @@ class Results(object):
             time_shape[0] = new_shape
             time_dset.resize(time_shape)
 
+            power_shape = list(power_dset.shape)
+            power_shape[0] = new_shape
+            power_dset.resize(power_shape)
+
         # If nothing to write, just return
         if len(self.mat_to_ind) == 0:
             return
@@ -300,6 +311,7 @@ class Results(object):
                 eigenvalues_dset[index, i] = self.k[i]
         if comm.rank == 0:
             time_dset[index, :] = self.time
+            power_dset[index, :] = self.power
 
     @classmethod
     def from_hdf5(cls, handle, step):
@@ -319,10 +331,12 @@ class Results(object):
         number_dset = handle["/number"]
         eigenvalues_dset = handle["/eigenvalues"]
         time_dset = handle["/time"]
+        power_dset = handle["/power"]
 
         results.data = number_dset[step, :, :, :]
         results.k = eigenvalues_dset[step, :]
         results.time = time_dset[step, :]
+        results.power = power_dset[step, :]
 
         # Reconstruct dictionaries
         results.volume = OrderedDict()
@@ -359,7 +373,7 @@ class Results(object):
         return results
 
     @staticmethod
-    def save(op, x, op_results, t, step_ind):
+    def save(op, x, op_results, t, power, step_ind):
         """Creates and writes depletion results to disk
 
         Parameters
@@ -372,6 +386,8 @@ class Results(object):
             Results of applying transport operator
         t : list of float
             Time indices.
+        power : float
+            Power during time step
         step_ind : int
             Step index.
 
@@ -393,5 +409,6 @@ class Results(object):
         results.k = [r.k for r in op_results]
         results.rates = [r.rates for r in op_results]
         results.time = t
+        results.power = power
 
         results.export_to_hdf5("depletion_results.h5", step_ind)

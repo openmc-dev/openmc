@@ -18,7 +18,7 @@ final_time = 5*24*60*60 # s
 time_steps = np.full(final_time // time_step, time_step)
 
 chain_file = './chain_simple.xml'
-power = 174 # W/cm, for 2D simulations only (use W for 3D)
+power = 180 # W/cm, for 2D simulations only (use W for 3D)
 
 ###############################################################################
 #                      Load previous simulation results
@@ -80,6 +80,6 @@ time, keff = results.get_eigenvalue()
 # Plot eigenvalue as a function of time
 plt.figure()
 plt.plot(time/24/60/60, keff, label="K-effective")
-plt.xlabel("Time (day)")
+plt.xlabel("Time (days)")
 plt.ylabel("Keff")
 plt.show()

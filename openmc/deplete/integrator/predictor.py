@@ -47,7 +47,7 @@ def predictor(operator, timesteps, power, print_out=True):
         if operator.prev_res == None:
             t = 0.0
         else:
-            t = operator.prev_res.get_eigenvalue()[0][-1]
+            t = operator.prev_res[-1].time[-1]
 
         # Initialize starting index for saving results
         if operator.prev_res == None:

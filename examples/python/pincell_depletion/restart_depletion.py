@@ -76,9 +76,6 @@ results = openmc.deplete.ResultsList("depletion_results.h5")
 
 # Obtain K_eff as a function of time
 time, keff = results.get_eigenvalue()
-
-print(time/24/60/60)
-print(keff)
                                                                                                                                                                                                                                                                                                                                                                                                                                                         
 # Plot eigenvalue as a function of time
 plt.figure()

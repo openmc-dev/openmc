@@ -53,7 +53,7 @@ def predictor(operator, timesteps, power, print_out=True):
         if operator.prev_res == None:
             i_res = 0
         else:
-            i_res = len(operator.prev_res.get_eigenvalue()[0])
+            i_res = len(operator.prev_res)
 
         #TODO : Get last time step power from previous results, and run a
         # new calculation if different from power at the first time step

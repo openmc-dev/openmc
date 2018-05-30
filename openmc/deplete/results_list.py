@@ -117,4 +117,4 @@ class ResultsList(list):
         for c in cells:
             material = next(iter(cells[c].get_all_materials().values()))
             if material.depletable == True:
-                material.volume = self[0].volume[str(material.id)]
+                material.volume = self[-1].volume[str(material.id)]

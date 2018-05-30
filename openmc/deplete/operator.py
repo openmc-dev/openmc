@@ -112,9 +112,6 @@ class Operator(TransportOperator):
 
             # Store previous results in operator
             self.prev_res = prev_results
-
-            # Get number densities from previous results
-            #self.number = prev_results
         else:
             self.prev_res = None
 

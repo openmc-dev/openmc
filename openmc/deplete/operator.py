@@ -274,10 +274,11 @@ class Operator(TransportOperator):
             self.number.set_atom_density(mat_id, nuclide, number)
 
     def _set_number_from_results(self, mat, prev_res):
-        """Extracts material and number densities.
+        """Extracts material nuclides and number densities.
 
-        If the nuclide is in the chain, densities come from depletion results
-        Else, densities come from the geometry in the summary
+        If the nuclide concentration's evolution is tracked, the densities come
+        from depletion results.
+        Else, densities are extracted from the geometry in the summary.
 
         Parameters
         ----------

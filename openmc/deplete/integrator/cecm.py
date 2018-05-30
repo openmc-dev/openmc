@@ -64,7 +64,7 @@ def cecm(operator, timesteps, power, print_out=True):
             x_end = deplete(chain, x[0], op_results[1], dt, print_out)
 
             # Create results, write to disk
-            Results.save(operator, x, op_results, [t, t + dt], i)
+            Results.save(operator, x, op_results, [t, t + dt], p, i)
 
             # Advance time, update vector
             t += dt
@@ -75,4 +75,4 @@ def cecm(operator, timesteps, power, print_out=True):
         op_results = [operator(x[0], power[-1])]
 
         # Create results, write to disk
-        Results.save(operator, x, op_results, [t, t], len(timesteps))
+        Results.save(operator, x, op_results, [t, t], p, len(timesteps))

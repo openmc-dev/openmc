@@ -67,7 +67,9 @@ class Operator(TransportOperator):
         Path to the depletion chain XML file.  Defaults to the
         :envvar:`OPENMC_DEPLETE_CHAIN` environment variable if it exists.
     prev_results : ResultsList, optional
-        Results from the previous depletion calculation.  Defaults to None
+        Results from a previous depletion calculation. If this argument is
+        specified, the depletion calculation will start from the latest state
+        in the previous results.
 
     Attributes
     ----------
@@ -97,7 +99,7 @@ class Operator(TransportOperator):
     local_mats : list of str
         All burnable material IDs being managed by a single process
     prev_res : ResultsList
-        Results from the previous depletion run
+        Results from a previous depletion calculation
 
     """
     def __init__(self, geometry, settings, chain_file=None, prev_results=None):
@@ -108,7 +110,7 @@ class Operator(TransportOperator):
 
         if prev_results != None:
             # Reload volumes into geometry
-            prev_results.transfer_volumes(geometry)
+            prev_results[-1].transfer_volumes(geometry)
 
             # Store previous results in operator
             self.prev_res = prev_results
@@ -126,8 +128,7 @@ class Operator(TransportOperator):
                                if nuc in self.chain]
 
         # Extract number densities from the geometry / previous depletion run
-        self._extract_number(self.local_mats, volume, nuclides, \
-                                                self.prev_res)
+        self._extract_number(self.local_mats, volume, nuclides, self.prev_res)
 
         # Create reaction rates array
         self.reaction_rates = ReactionRates(
@@ -237,6 +238,8 @@ class Operator(TransportOperator):
             Volumes for the above materials in [cm^3]
         nuclides : list of str
             Nuclides to be used in the simulation.
+        prev_res : ResultsList, optional
+            Results from a previous depletion calculation
 
         """
         self.number = AtomNumber(local_mats, nuclides, volume, len(self.chain))
@@ -247,7 +250,7 @@ class Operator(TransportOperator):
 
         # Now extract and store the number densities
         # From the geometry if no previous depletion results
-        if prev_res == None:
+        if prev_res is None:
             for mat in self.geometry.get_all_materials().values():
                 if str(mat.id) in local_mats:
                     self._set_number_from_mat(mat)
@@ -277,13 +280,15 @@ class Operator(TransportOperator):
         """Extracts material nuclides and number densities.
 
         If the nuclide concentration's evolution is tracked, the densities come
-        from depletion results.
-        Else, densities are extracted from the geometry in the summary.
+        from depletion results. Else, densities are extracted from the geometry
+        in the summary.
 
         Parameters
         ----------
         mat : openmc.Material
             The material to read from
+        prev_res : ResultsList
+            Results from a previous depletion calculation
 
         """
         mat_id = str(mat.id)
@@ -294,7 +299,7 @@ class Operator(TransportOperator):
         geom_nuc = [x[0] for x in list(geom_nuc_densities.values())]
 
         # Merge lists of nuclides
-        nuc_set = list(depl_nuc) + [n for n in geom_nuc if n not in depl_nuc]
+        nuc_set = set(depl_nuc) | set(geom_nuc)
 
         for nuclide in nuc_set:
             if nuclide in depl_nuc:

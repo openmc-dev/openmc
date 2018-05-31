@@ -103,18 +103,3 @@ class ResultsList(list):
             eigenvalue[i] = result.k[0]
 
         return time, eigenvalue
-
-    def transfer_volumes(self, geometry):
-        """Transfers volumes from depletion results to geometry
-
-        Parameters
-        ----------
-        geometry : OpenMC geometry to be used in a depletion restart
-            calculation
-
-        """
-        cells = geometry.get_all_material_cells()
-        for c in cells:
-            material = next(iter(cells[c].get_all_materials().values()))
-            if material.depletable == True:
-                material.volume = self[-1].volume[str(material.id)]

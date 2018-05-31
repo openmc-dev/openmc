@@ -30,7 +30,7 @@ sp = openmc.StatePoint(statepoint)
 geometry = sp.summary.geometry
 
 # Close statepoint and summary files to be able to write over them
-sp.exit()
+sp.close()
 
 # Load previous depletion results
 previous_results = openmc.deplete.ResultsList("depletion_results.h5")

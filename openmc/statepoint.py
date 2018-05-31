@@ -153,7 +153,7 @@ class StatePoint(object):
         if self._summary is not None:
             self._summary._f.close()
 
-    def exit(self):
+    def close(self):
         self.__exit__()
 
     @property

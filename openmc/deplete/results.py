@@ -412,3 +412,17 @@ class Results(object):
         results.power = power
 
         results.export_to_hdf5("depletion_results.h5", step_ind)
+
+    def transfer_volumes(self, geometry):
+        """Transfers volumes from depletion results to geometry
+
+        Parameters
+        ----------
+        geometry : OpenMC geometry to be used in a depletion restart
+            calculation
+
+        """
+        for cell in geometry.get_all_material_cells().values():
+            for material in cell.get_all_materials().values():
+                if material.depletable:
+                    material.volume = self.volume[str(material.id)]

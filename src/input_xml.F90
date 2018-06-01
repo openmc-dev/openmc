@@ -4388,6 +4388,13 @@ contains
         if (allocated(ttb_k_grid)) deallocate(ttb_k_grid)
       end do
 
+      ! Determine if minimum/maximum energy for bremsstrahlung is greater/less
+      ! than the current minimum/maximum
+      if (size(ttb_e_grid) >= 1) then
+        energy_min(PHOTON) = max(energy_min(PHOTON), ttb_e_grid(1))
+        energy_max(PHOTON) = min(energy_max(PHOTON), ttb_e_grid(size(ttb_e_grid)))
+      end if
+
       ! Take logarithm of energies since they are log-log interpolated
       ttb_e_grid = log(ttb_e_grid)
     end if

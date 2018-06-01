@@ -131,7 +131,11 @@ contains
     character(3), allocatable :: designators(:)
     real(8)          :: a
     real(8)          :: c
+    real(8)          :: f
+    real(8)          :: y
+    real(8), allocatable :: electron_energy(:)
     real(8), allocatable :: matrix(:,:)
+    real(8), allocatable :: dcs(:,:)
 
     ! Get name of nuclide from group
     name_len = len(this % name)
@@ -340,10 +344,8 @@ contains
       call close_dataset(dset_id)
 
       ! Get energy grids used for bremsstrahlung DCS and for stopping powers
-      if (.not. allocated(ttb_e_grid)) then
-        allocate(ttb_e_grid(n_e))
-        call read_dataset(ttb_e_grid, rgroup, 'electron_energy')
-      end if
+      allocate(electron_energy(n_e))
+      call read_dataset(electron_energy, rgroup, 'electron_energy')
       if (.not. allocated(ttb_k_grid)) then
         allocate(ttb_k_grid(n_k))
         call read_dataset(ttb_k_grid, rgroup, 'photon_energy')
@@ -359,6 +361,47 @@ contains
         call read_dataset(this % stopping_power_radiative, rgroup, 's_radiative')
         call read_attribute(this % I, rgroup, 'I')
         call close_group(rgroup)
+      end if
+
+      ! Truncate the bremsstrahlung data at the cutoff energy
+      if (energy_cutoff(PHOTON) > electron_energy(1)) then
+        i_grid = binary_search(electron_energy, n_e, energy_cutoff(PHOTON))
+
+        ! calculate interpolation factor
+        f = (log(energy_cutoff(PHOTON)) - log(electron_energy(i_grid))) / &
+             (log(electron_energy(i_grid+1)) - log(electron_energy(i_grid)))
+
+        ! Interpolate collision stopping power at the cutoff energy and
+        ! truncate
+        y = exp(log(this % stopping_power_collision(i_grid)) + &
+             f*(log(this % stopping_power_collision(i_grid+1)) - &
+             log(this % stopping_power_collision(i_grid))))
+        this % stopping_power_collision = &
+             [y, this % stopping_power_collision(i_grid+1:n_e)]
+
+        ! Interpolate radiative stopping power at the cutoff energy and
+        ! truncate
+        y = exp(log(this % stopping_power_radiative(i_grid)) + &
+             f*(log(this % stopping_power_radiative(i_grid+1)) - &
+             log(this % stopping_power_radiative(i_grid))))
+        this % stopping_power_radiative = &
+             [y, this % stopping_power_radiative(i_grid+1:n_e)]
+
+        ! Interpolate bremsstrahlung DCS at the cutoff energy and truncate
+        allocate(dcs(n_k, n_e-i_grid+1))
+        do i = 1, n_k
+          y = exp(log(this % dcs(i,i_grid)) + &
+               f*(log(this % dcs(i,i_grid+1)) - log(this % dcs(i,i_grid))))
+          dcs(i,:) = [y, this % dcs(i,i_grid+1:n_e)]
+        end do
+        call move_alloc(dcs, this % dcs)
+
+        electron_energy = [energy_cutoff(PHOTON), electron_energy(i_grid+1:n_e)]
+      end if
+
+      ! Set incident particle energy grid
+      if (.not. allocated(ttb_e_grid)) then
+        call move_alloc(electron_energy, ttb_e_grid)
       end if
     end if
 

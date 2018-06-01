@@ -872,7 +872,7 @@ contains
     do j = 2, n_e
       ! Set last element of PDF to small non-zero value to enable log-log
       ! interpolation
-      this % pdf(j,j) = 1.0e-6_8 * this % pdf(j-1,j)
+      this % pdf(j,j) = exp(-500.0_8)
 
       ! Loop over photon energies
       c = ZERO

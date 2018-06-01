@@ -536,13 +536,13 @@ contains
 
     !p % E = 100.0e6_8
 
-    !if (p % E < energy_cutoff(PHOTON)) return
-    if (p % E < energy_cutoff(PHOTON)) then
-      open(unit=13, file="energies.txt", action="write", position="append")
-      write(13,*) p % E, 0
-      close(13)
-      return
-    end if
+    if (p % E < energy_cutoff(PHOTON)) return
+    !if (p % E < energy_cutoff(PHOTON)) then
+    !  open(unit=13, file="energies.txt", action="write", position="append")
+    !  write(13,*) p % E, 0
+    !  close(13)
+    !  return
+    !end if
 
     ! Get bremsstrahlung data for this material
     mat => ttb(p % material)
@@ -573,13 +573,13 @@ contains
     n = int(y + prn())
 
     E_lost = ZERO
-    !if (n == 0) return
-    if (n == 0) then
-      open(unit=13, file="energies.txt", action="write", position="append")
-      write(13,*) p % E, n
-      close(13)
-      return
-    end if
+    if (n == 0) return
+    !if (n == 0) then
+    !  open(unit=13, file="energies.txt", action="write", position="append")
+    !  write(13,*) p % E, n
+    !  close(13)
+    !  return
+    !end if
 
     ! Sample index of the tabulated PDF in the energy grid, j or j+1
     if (prn() <= f .or. j == 1) then
@@ -628,9 +628,9 @@ contains
       end if
     end do
 
-    open(unit=13, file="energies.txt", action="write", position="append")
-    write(13,*) p % E, n, photon_energies(:n)
-    close(13)
+    !open(unit=13, file="energies.txt", action="write", position="append")
+    !write(13,*) p % E, n, photon_energies(:n)
+    !close(13)
 
   end subroutine thick_target_bremsstrahlung
 

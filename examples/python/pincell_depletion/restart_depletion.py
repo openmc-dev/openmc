@@ -26,11 +26,8 @@ power = 174 # W/cm, for 2D simulations only (use W for 3D)
 
 # Load geometry from statepoint
 statepoint = 'statepoint.100.h5'
-sp = openmc.StatePoint(statepoint)
-geometry = sp.summary.geometry
-
-# Close statepoint and summary files to be able to write over them
-sp.close()
+with openmc.StatePoint(statepoint) as sp:
+    geometry = sp.summary.geometry
 
 # Load previous depletion results
 previous_results = openmc.deplete.ResultsList("depletion_results.h5")
@@ -60,8 +57,8 @@ settings_file.entropy_mesh = entropy_mesh
 #                   Initialize and run depletion calculation
 ###############################################################################
 
-op = openmc.deplete.Operator(geometry, settings_file, chain_file, \
-                                                  previous_results)
+op = openmc.deplete.Operator(geometry, settings_file, chain_file,
+                             previous_results)
 
 # Perform simulation using the predictor algorithm
 openmc.deplete.integrator.predictor(op, time_steps, power)
@@ -78,7 +75,8 @@ time, keff = results.get_eigenvalue()
                                                                                                                                                                                                                                                                                                                                                                                                                                                         
 # Plot eigenvalue as a function of time
 plt.figure()
-plt.plot(time/24/60/60, keff, label="K-effective")
+plt.plot(time/(24*60*60), keff, label="K-effective")
 plt.xlabel("Time (days)")
 plt.ylabel("Keff")
 plt.show()
+plt.close()

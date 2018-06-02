@@ -38,6 +38,7 @@ def predictor(operator, timesteps, power, print_out=True):
     """
     if not isinstance(power, Iterable):
         power = [power]*len(timesteps)
+    print(power)
 
     # Generate initial conditions
     with operator as vec:
@@ -56,20 +57,18 @@ def predictor(operator, timesteps, power, print_out=True):
             i_res = len(operator.prev_res) - 1
 
         for i, (dt, p) in enumerate(zip(timesteps, power)):
-            # Get beginning-of-timestep concentrations
-            x = [copy.deepcopy(vec)]
-
-            # Get beginning-of-timestep reaction rates
+            # Get beginning-of-timestep concentrations and reaction rates
             # Avoid doing first transport run if already done in previous
             # calculation
             if i > 0 or operator.prev_res is None:
+                x = [copy.deepcopy(vec)]
                 op_results = [operator(x[0], p)]
 
                 # Create results, write to disk
                 Results.save(operator, x, op_results, [t, t + dt], p, i_res + i)
             else:
+                x = operator.prev_res[-1].data
                 power_res = operator.prev_res[-1].power
-                print(power_res)
                 ratio_power = p / power_res
 
                 op_results = [operator.prev_res[-1]]

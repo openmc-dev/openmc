@@ -61,16 +61,15 @@ def cecm(operator, timesteps, power, print_out=True):
             i_res = len(operator.prev_res)
 
         for i, (dt, p) in enumerate(zip(timesteps, power)):
-            # Get beginning-of-timestep concentrations
-            x = [copy.deepcopy(vec)]
-
-            # Get beginning-of-timestep reaction rates
+            # Get beginning-of-timestep concentrations and reaction rates
             # Avoid doing first transport run if already done in previous
             # calculation
             if i > 0 or operator.prev_res is None:
+                x = [copy.deepcopy(vec)]
                 op_results = [operator(x[0], p)]
 
             else:
+                x = [operator.prev_res[-1].data[0]]
                 power_res = operator.prev_res[-1].power
                 ratio_power = p / power_res
 

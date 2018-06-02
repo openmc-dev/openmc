@@ -134,6 +134,7 @@ class Operator(TransportOperator):
         self.reaction_rates = ReactionRates(
             self.local_mats, self._burnable_nucs, self.chain.reactions)
 
+
     def __call__(self, vec, power, print_out=True):
         """Runs a simulation.
 

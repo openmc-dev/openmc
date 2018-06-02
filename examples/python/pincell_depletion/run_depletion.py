@@ -132,7 +132,7 @@ settings_file.entropy_mesh = entropy_mesh
 op = openmc.deplete.Operator(geometry, settings_file, chain_file)
 
 # Perform simulation using the predictor algorithm
-openmc.deplete.integrator.predictor(op, time_steps, power)
+openmc.deplete.integrator.cecm(op, time_steps, power)
 
 ###############################################################################
 #                     Read depletion calculation results

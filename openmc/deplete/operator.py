@@ -296,10 +296,10 @@ class Operator(TransportOperator):
         # Get nuclide lists from geometry and depletion results
         depl_nuc = prev_res[-1].nuc_to_ind.keys()
         geom_nuc_densities = mat.get_nuclide_atom_densities()
-        geom_nuc = [x[0] for x in list(geom_nuc_densities.values())]
+        geom_nuc = {x[0] for x in geom_nuc_densities.values()}
 
         # Merge lists of nuclides
-        nuc_set = set(depl_nuc) | set(geom_nuc)
+        nuc_set = set(depl_nuc) | geom_nuc
 
         for nuclide in nuc_set:
             if nuclide in depl_nuc:

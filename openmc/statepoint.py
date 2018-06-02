@@ -153,9 +153,6 @@ class StatePoint(object):
         if self._summary is not None:
             self._summary._f.close()
 
-    def close(self):
-        self.__exit__()
-
     @property
     def cmfd_on(self):
         return self._f.attrs['cmfd_on'] > 0

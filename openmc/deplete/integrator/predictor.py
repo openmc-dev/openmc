@@ -66,13 +66,14 @@ def predictor(operator, timesteps, power, print_out=True):
                 op_results = [operator(x[0], p)]
 
                 # Create results, write to disk
-                Results.save(operator, x, op_results, [t, t + dt], p, i + i_res)
+                Results.save(operator, x, op_results, [t, t + dt], p, i_res + i)
             else:
                 power_res = operator.prev_res[-1].power
+                print(power_res)
                 ratio_power = p / power_res
 
                 op_results = [operator.prev_res[-1]]
-                op_results[0].rates = ratio_power * op_results[0].rates[0]
+                op_results[0].rates = ratio_power[0] * op_results[0].rates[0]
 
             # Deplete for full timestep
             x_end = deplete(chain, x[0], op_results[0], dt, print_out)
@@ -86,4 +87,4 @@ def predictor(operator, timesteps, power, print_out=True):
         op_results = [operator(x[0], power[-1])]
 
         # Create results, write to disk
-        Results.save(operator, x, op_results, [t, t], p, len(timesteps) + i_res)
+        Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps))

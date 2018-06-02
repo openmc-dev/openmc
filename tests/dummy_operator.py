@@ -19,7 +19,6 @@ class DummyOperator(TransportOperator):
     """
     def __init__(self):
         self.prev_res = None
-        pass
 
     def __call__(self, vec, power, print_out=False):
         """Evaluates F(y)

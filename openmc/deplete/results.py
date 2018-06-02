@@ -5,6 +5,7 @@ Contains results generation and saving capabilities.
 
 from collections import OrderedDict
 import copy
+from warnings import warn
 
 import numpy as np
 import h5py
@@ -395,8 +396,18 @@ class Results(object):
         # Get indexing terms
         vol_dict, nuc_list, burn_list, full_burn_list = op.get_results_info()
 
-        # Create results
+        # For a restart calculation, limit number of stages saved to meet the
+        # format of the hdf5 file
         stages = len(x)
+        offset = 0
+        if op.prev_res is not None and op.prev_res[0].n_stages < stages:
+            offset = stages - op.prev_res[0].n_stages
+            stages = min(stages, op.prev_res[0].n_stages)
+            warn("Number of restart integrator stages saved limited by initial"
+                 " depletion integrator choice to {}"
+                 .format(op.prev_res[0].n_stages))
+
+        # Create results
         results = Results()
         results.allocate(vol_dict, nuc_list, burn_list, full_burn_list, stages)
 
@@ -404,7 +415,7 @@ class Results(object):
 
         for i in range(stages):
             for mat_i in range(n_mat):
-                results[i, mat_i, :] = x[i][mat_i][:]
+                results[i, mat_i, :] = x[offset + i][mat_i][:]
 
         results.k = [r.k for r in op_results]
         results.rates = [r.rates for r in op_results]

@@ -60,6 +60,7 @@ def predictor(operator, timesteps, power, print_out=True):
             # Get beginning-of-timestep concentrations and reaction rates
             # Avoid doing first transport run if already done in previous
             # calculation
+            print("i", i, "sp i", i_res + i)
             if i > 0 or operator.prev_res is None:
                 x = [copy.deepcopy(vec)]
                 op_results = [operator(x[0], p)]
@@ -67,16 +68,62 @@ def predictor(operator, timesteps, power, print_out=True):
                 # Create results, write to disk
                 Results.save(operator, x, op_results, [t, t + dt], p, i_res + i)
             else:
-                x = operator.prev_res[-1].data
+                print("Data", operator.prev_res[-1].data)
+
+                # Get initial concentration
+                x = [operator.prev_res[-1].data[0]]
+                print(x)
+                x = [copy.deepcopy(vec)]
+                print(x)
+
+                # Get rates, indexed by mat_to_ind in previous results
+                op_results = [operator.prev_res[-1]]
+                nuc_to_ind_current = {nuc: i for i, nuc in \
+                                  enumerate(operator.number.burnable_nuclides)}
+                nuc_to_ind_res = [*operator.prev_res[-1].nuc_to_ind]
+                nuc_to_ind_res = {nuc: i for i, nuc in enumerate(nuc_to_ind_res)}
+
+                print(nuc_to_ind_current)
+                print(nuc_to_ind_current.keys())
+                print(nuc_to_ind_res)
+                print(operator.prev_res[-1].nuc_to_ind.keys())
+
+                match = [nuc_to_ind_res[nuc] for nuc in nuc_to_ind_current.keys()]
+                print(match)
+                match = [nuc_to_ind_current[nuc] for nuc in nuc_to_ind_res.keys()]
+                print(match)
+                match = [operator.prev_res[-1].nuc_to_ind[nuc] for nuc in nuc_to_ind_current.keys()]
+                print(match)
+                match = [nuc_to_ind_current[nuc] for nuc in operator.prev_res[-1].nuc_to_ind.keys()]
+                print(match)
+                match = range(9)
+                print(match)
+
+                sv = op_results[0].rates[0][0] ######
+                print("Index of nuclides in rr", sv.index_nuc)
+                print("Index of rxn in rr", sv.index_rx)
+                print("Index of mat in rr", sv.index_mat)
+                #x = [[operator.prev_res[-1].data[0][0][[nuc_to_ind_res[nuc] for nuc in nuc_to_ind_current.keys()]]]]
+
+                print(x)
+
+                # Scale reaction rates by ratio of powers
                 power_res = operator.prev_res[-1].power
                 ratio_power = p / power_res
+                op_results[0].rates[0] *= ratio_power[0]
 
-                op_results = [operator.prev_res[-1]]
-                op_results[0].rates = ratio_power[0] * op_results[0].rates[0]
+
+
+                op_results = [operator(x[0], p)]
+                print("old", sv)
+                print("new", op_results[0].rates)
+
+                print(operator.prev_res[-1].nuc_to_ind)
 
             # Deplete for full timestep
+            print("x[0]", x[0])
             x_end = deplete(chain, x[0], op_results[0], dt, print_out)
-
+            print("xend", x_end)
             # Advance time, update vector
             t += dt
             vec = copy.deepcopy(x_end)
@@ -84,6 +131,8 @@ def predictor(operator, timesteps, power, print_out=True):
         # Perform one last simulation
         x = [copy.deepcopy(vec)]
         op_results = [operator(x[0], power[-1])]
+        print("Final power", power[-1])
 
         # Create results, write to disk
+        print("i" , len(timesteps), "sp i" , i_res + len(timesteps))
         Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps))

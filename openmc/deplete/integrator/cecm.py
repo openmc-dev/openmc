@@ -76,6 +76,8 @@ def cecm(operator, timesteps, power, print_out=True):
                 op_results = [operator.prev_res[-1]]
                 op_results[0].rates = ratio_power[0] * op_results[0].rates[0]
                 op_results[0].k = op_results[0].k[0]
+            print(x)
+            print(op_results[0].rates)
 
             # Deplete for first half of timestep
             x_middle = deplete(chain, x[0], op_results[0], dt/2, print_out)

@@ -261,6 +261,8 @@ class Results(object):
 
         comm.barrier()
 
+        print(self.nuc_to_ind)
+
         # Grab handles
         number_dset = handle["/number"]
         rxn_dset = handle["/reaction rates"]
@@ -305,6 +307,7 @@ class Results(object):
         inds = [self.mat_to_hdf5_ind[mat] for mat in self.mat_to_ind]
         low = min(inds)
         high = max(inds)
+        print("indexes", inds)
         for i in range(n_stages):
             number_dset[index, i, low:high+1, :] = self.data[i, :, :]
             rxn_dset[index, i, low:high+1, :, :] = self.rates[i][:, :, :]

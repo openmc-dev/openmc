@@ -1,6 +1,7 @@
 import openmc
 import openmc.deplete
 import numpy as np
+import matplotlib.pyplot as plt
 
 ###############################################################################
 #                      Simulation Input File Parameters
@@ -13,7 +14,7 @@ particles = 1000
 
 # Depletion simulation parameters
 time_step = 1*24*60*60 # s
-final_time = 5*24*60*60 # s
+final_time = 4*24*60*60 # s
 time_steps = np.full(final_time // time_step, time_step)
 
 chain_file = './chain_simple.xml'
@@ -146,3 +147,13 @@ time, keff = results.get_eigenvalue()
                                                                                                                                                                                                                                                                                                                                                                                                                                                         
 # Obtain U235 concentration as a function of time
 time, n_U235 = results.get_atoms('1', 'U235')
+
+# Obtain Xe135 absorption as a function of time
+time, Xe_gam = results.get_reaction_rate('1', 'Xe135', '(n,gamma)')
+
+plt.figure()
+plt.plot(time/(24*60*60), Xe_gam, label="Xe135 absorption")
+plt.xlabel("Time (days)")
+plt.ylabel("RR (-)")
+plt.show()
+plt.close('all')

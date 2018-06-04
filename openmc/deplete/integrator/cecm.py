@@ -69,15 +69,20 @@ def cecm(operator, timesteps, power, print_out=True):
                 op_results = [operator(x[0], p)]
 
             else:
+                # Get initial concentration
                 x = [operator.prev_res[-1].data[0]]
+
+                # Get rates
+                op_results = [operator.prev_res[-1]]
+                op_results[0].rates = op_results[0].rates[0]
+
+                # Set first stage value of keff
+                op_results[0].k = op_results[0].k[0]
+
+                # Scale reaction rates by ratio of powers
                 power_res = operator.prev_res[-1].power
                 ratio_power = p / power_res
-
-                op_results = [operator.prev_res[-1]]
-                op_results[0].rates = ratio_power[0] * op_results[0].rates[0]
-                op_results[0].k = op_results[0].k[0]
-            print(x)
-            print(op_results[0].rates)
+                op_results[0].rates[0] *= ratio_power[0]
 
             # Deplete for first half of timestep
             x_middle = deplete(chain, x[0], op_results[0], dt/2, print_out)

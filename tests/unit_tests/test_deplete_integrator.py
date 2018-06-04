@@ -25,6 +25,9 @@ def test_results_save(run_in_tmpdir):
     # Mock geometry
     op = MagicMock()
 
+    # Avoid DummyOperator thinking it's doing a restart calculation
+    op.prev_res = None
+
     vol_dict = {}
     full_burn_list = []
 

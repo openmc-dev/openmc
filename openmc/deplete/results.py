@@ -165,6 +165,7 @@ class Results(object):
         else:
             kwargs = {}
 
+        # Write new file if first time step, else add to existing file
         kwargs['mode'] = "w" if step == 0 else "a"
 
         with h5py.File(filename, **kwargs) as handle:
@@ -261,8 +262,6 @@ class Results(object):
 
         comm.barrier()
 
-        print(self.nuc_to_ind)
-
         # Grab handles
         number_dset = handle["/number"]
         rxn_dset = handle["/reaction rates"]
@@ -307,7 +306,6 @@ class Results(object):
         inds = [self.mat_to_hdf5_ind[mat] for mat in self.mat_to_ind]
         low = min(inds)
         high = max(inds)
-        print("indexes", inds)
         for i in range(n_stages):
             number_dset[index, i, low:high+1, :] = self.data[i, :, :]
             rxn_dset[index, i, low:high+1, :, :] = self.rates[i][:, :, :]
@@ -369,7 +367,7 @@ class Results(object):
         results.rates = []
         # Reconstruct reactions
         for i in range(results.n_stages):
-            rate = ReactionRates(results.mat_to_ind, rxn_nuc_to_ind, rxn_to_ind)
+            rate = ReactionRates(results.mat_to_ind, rxn_nuc_to_ind, rxn_to_ind, True)
 
             rate[:] = handle["/reaction rates"][step, i, :, :, :]
             results.rates.append(rate)

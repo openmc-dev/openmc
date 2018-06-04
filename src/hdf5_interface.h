@@ -55,6 +55,35 @@ extern "C" void read_string(hid_t obj_id, const char* name, size_t slen,
 extern "C" void read_complex(hid_t obj_id, const char* name,
                              double _Complex* buffer, bool indep);
 
+void
+read_nd_vector(hid_t obj_id, const char* name, std::vector<double>& result,
+               bool must_have = false);
+
+void
+read_nd_vector(hid_t obj_id, const char* name,
+               std::vector<std::vector<double> >& result,
+               bool must_have = false);
+
+void
+read_nd_vector(hid_t obj_id, const char* name,
+               std::vector<std::vector<std::vector<double> > >& result,
+               bool must_have = false);
+
+void
+read_nd_vector(hid_t obj_id, const char* name,
+               std::vector<std::vector<std::vector<int> > >& result,
+               bool must_have = false);
+
+void
+read_nd_vector(hid_t obj_id, const char* name,
+               std::vector<std::vector<std::vector<std::vector<double> > > >& result,
+               bool must_have = false);
+
+void
+read_nd_vector(hid_t obj_id, const char* name,
+               std::vector<std::vector<std::vector<std::vector<std::vector<double> > > > >& result,
+               bool must_have = false);
+
 extern "C" void read_tally_results(hid_t group_id, hsize_t n_filter,
                                    hsize_t n_score, double* results);
 

@@ -124,8 +124,10 @@ class Operator(TransportOperator):
 
         # Determine which nuclides have incident neutron data
         self.nuclides_with_data = self._get_nuclides_with_data()
-        self._burnable_nucs = [nuc for nuc in self.nuclides_with_data
-                               if nuc in self.chain]
+
+        # Select nuclides with data that are also in the chain
+        self._burnable_nucs = [nuc.name for nuc in self.chain.nuclides
+                               if nuc.name in self.nuclides_with_data]
 
         # Extract number densities from the geometry / previous depletion run
         self._extract_number(self.local_mats, volume, nuclides, self.prev_res)
@@ -295,14 +297,13 @@ class Operator(TransportOperator):
         mat_id = str(mat.id)
 
         # Get nuclide lists from geometry and depletion results
-        depl_nuc = prev_res[-1].nuc_to_ind.keys()
+        depl_nuc = prev_res[-1].nuc_to_ind
         geom_nuc_densities = mat.get_nuclide_atom_densities()
-        geom_nuc = {x[0] for x in geom_nuc_densities.values()}
 
-        # Merge lists of nuclides
-        nuc_set = set(depl_nuc) | geom_nuc
+        # Merge lists of nuclides, with the same order for every calculation
+        geom_nuc_densities.update(depl_nuc)
 
-        for nuclide in nuc_set:
+        for nuclide in geom_nuc_densities.keys():
             if nuclide in depl_nuc:
                 concentration = prev_res.get_atoms(mat_id, nuclide)[1][-1]
                 volume = prev_res[-1].volume[mat_id]

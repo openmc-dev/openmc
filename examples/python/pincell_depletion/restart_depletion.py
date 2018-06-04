@@ -73,26 +73,27 @@ results = openmc.deplete.ResultsList("depletion_results.h5")
 # Obtain K_eff as a function of time
 time, keff = results.get_eigenvalue()
 
-# Plot eigenvalue as a function of time
+# Obtain U235 concentration as a function of time
+time, n_U235 = results.get_atoms('1', 'U235')
+
+# Obtain Xe135 absorption as a function of time
+time, Xe_gam = results.get_reaction_rate('1', 'Xe135', '(n,gamma)')
+
+###############################################################################
+#                            Generate plots
+###############################################################################
+
 plt.figure()
 plt.plot(time/(24*60*60), keff, label="K-effective")
 plt.xlabel("Time (days)")
 plt.ylabel("Keff")
 plt.show()
 
-# Obtain U235 concentration as a function of time
-time, n_U235 = results.get_atoms('1', 'U235')
-print(time/(24*60*60))
-print(n_U235)
-
 plt.figure()
 plt.plot(time/(24*60*60), n_U235, label="U 235")
 plt.xlabel("Time (days)")
 plt.ylabel("n U5 (-)")
 plt.show()
-
-# Obtain Xe135 absorption as a function of time
-time, Xe_gam = results.get_reaction_rate('1', 'Xe135', '(n,gamma)')
 
 plt.figure()
 plt.plot(time/(24*60*60), Xe_gam, label="Xe135 absorption")

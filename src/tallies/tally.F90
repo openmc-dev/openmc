@@ -1074,18 +1074,18 @@ contains
         else
           ! Determine index in NuclideMicroXS % reaction array
           select case (score_bin)
-          case (N_2N)
-            m = 4
-          case (N_3N)
-            m = 5
-          case (N_4N)
-            m = 6
           case (N_GAMMA)
             m = 1
           case (N_P)
             m = 2
           case (N_A)
             m = 3
+          case (N_2N)
+            m = 4
+          case (N_3N)
+            m = 5
+          case (N_4N)
+            m = 6
           end select
 
           if (i_nuclide > 0) then

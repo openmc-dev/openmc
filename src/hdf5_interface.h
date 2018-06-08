@@ -7,6 +7,7 @@
 #include <array>
 #include <string>
 #include <sstream>
+#include <vector>
 #include <complex.h>
 
 

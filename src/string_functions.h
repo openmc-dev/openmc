@@ -12,38 +12,25 @@
 
 namespace openmc {
 
-void strtrim(char* str)
+std::string& strtrim(std::string& s)
 {
-    int start = 0; // number of leading spaces
-    char* buffer = str;
-
-    while (*str && *str++ == ' ') ++start;
-
-    while (*str++); // move to end of string
-
-    // backup over trailing spaces
-    int end = str - buffer - 1;
-    while (end > 0 && buffer[end - 1] == ' ') --end;
-    buffer[end] = 0; // remove trailing spaces
-
-    // exit if no leading spaces or string is now empty
-    if (end <= start || start == 0) return;
-    str = buffer + start;
-
-    while ((*buffer++ = *str++));  // remove leading spaces: K&R
+  const char* t = " \t\n\r\f\v";
+  s.erase(s.find_last_not_of(t) + 1);
+  s.erase(0, s.find_first_not_of(t));
+  return s;
 }
 
-std::string strtrim(std::string in_str)
+
+char* strtrim(char* c_str)
 {
-  std::string str = in_str;
-  // perform the left trim
-  str.erase(str.begin(), std::find_if(str.begin(), str.end(),
-            std::not1(std::ptr_fun<int, int>(std::isspace))));
-  // perform the right trim
-  str.erase(std::find_if(str.rbegin(), str.rend(),
-            std::not1(std::ptr_fun<int, int>(std::isspace))).base(),
-                      str.end());
+  std::string std_str;
+  std_str.assign(c_str);
+  strtrim(std_str);
+  int length = std_str.copy(c_str, std_str.size());
+  c_str[length] = '\0';
+  return c_str;
 }
+
 
 void to_lower(std::string& str)
 {

@@ -6,11 +6,11 @@ namespace openmc {
 // Mgxs base-class methods
 //==============================================================================
 
-void Mgxs::init(const std::string& in_name, double in_awr,
-                double_1dvec& in_kTs, bool in_fissionable,
-                int in_scatter_format, int in_num_groups,
-                int in_num_delayed_groups, double_1dvec& in_polar,
-                double_1dvec& in_azimuthal)
+void Mgxs::init(const std::string& in_name, const double in_awr,
+     const double_1dvec& in_kTs, const bool in_fissionable,
+     const int in_scatter_format, const int in_num_groups,
+     const int in_num_delayed_groups, const double_1dvec& in_polar,
+     const double_1dvec& in_azimuthal)
 {
   name = in_name;
   awr = in_awr;
@@ -27,9 +27,10 @@ void Mgxs::init(const std::string& in_name, double in_awr,
 }
 
 
-void Mgxs::_metadata_from_hdf5(hid_t xs_id, int in_num_groups,
-     int in_num_delayed_groups, double_1dvec temperature, int& method,
-     double tolerance, double_1dvec& temps_to_read, int& order_dim)
+void Mgxs::_metadata_from_hdf5(const hid_t xs_id, const int in_num_groups,
+     const int in_num_delayed_groups, double_1dvec& temperature, int& method,
+     const double tolerance, int_1dvec& temps_to_read, int& order_dim,
+     bool& is_isotropic)
 {
   // get name
   char char_name[MAX_WORD_LEN];
@@ -49,7 +50,10 @@ void Mgxs::_metadata_from_hdf5(hid_t xs_id, int in_num_groups,
   // Determine the available temperatures
   hid_t kT_group = open_group(xs_id, "kTs");
   int num_temps = get_num_datasets(kT_group);
-  char** dset_names = new char*[num_temps];
+  char* dset_names[num_temps];
+  for (int i = 0; i < num_temps; i++) {
+    dset_names[i] = new char[151];
+  }
   get_datasets(kT_group, dset_names);
   double_1dvec available_temps(num_temps);
   for (int i = 0; i < num_temps; i++) {
@@ -82,11 +86,11 @@ void Mgxs::_metadata_from_hdf5(hid_t xs_id, int in_num_groups,
 
         if (std::abs(temp_actual - temperature[i]) < tolerance) {
           if (std::find(temps_to_read.begin(), temps_to_read.end(),
-                        std::round(temp_actual)) != temps_to_read.end()) {
+                        std::round(temp_actual)) == temps_to_read.end()) {
             temps_to_read.push_back(std::round(temp_actual));
           } else {
             fatal_error("MGXS Library does not contain cross section for " +
-                        name + " at or near " +
+                        in_name + " at or near " +
                         std::to_string(std::round(temperature[i])) + " K.");
           }
         }
@@ -100,20 +104,20 @@ void Mgxs::_metadata_from_hdf5(hid_t xs_id, int in_num_groups,
               (temperature[i] < available_temps[j + 1])) {
             if (std::find(temps_to_read.begin(),
                           temps_to_read.end(),
-                          std::round(available_temps[j])) != temps_to_read.end()) {
-              temps_to_read.push_back(std::round(available_temps[j]));
+                          std::round(available_temps[j])) == temps_to_read.end()) {
+              temps_to_read.push_back(std::round((int)available_temps[j]));
             }
 
             if (std::find(temps_to_read.begin(), temps_to_read.end(),
-                          std::round(available_temps[j + 1])) != temps_to_read.end()) {
-              temps_to_read.push_back(std::round(available_temps[j + 1]));
+                          std::round(available_temps[j + 1])) == temps_to_read.end()) {
+              temps_to_read.push_back(std::round((int) available_temps[j + 1]));
             }
             continue;
           }
         }
 
       fatal_error("MGXS Library does not contain cross sections for " +
-                  name + " at temperatures that bound " +
+                  in_name + " at temperatures that bound " +
                   std::to_string(std::round(temperature[i])));
       }
   }
@@ -135,13 +139,12 @@ void Mgxs::_metadata_from_hdf5(hid_t xs_id, int in_num_groups,
   if (attribute_exists(xs_id, "scatter_format")) {
     std::string temp_str(MAX_WORD_LEN, ' ');
     read_attr_string(xs_id, "scatter_format", MAX_WORD_LEN, &temp_str[0]);
-    strtrim(temp_str);
-    to_lower(temp_str);
-    if (temp_str == "legendre") {
+    to_lower(strtrim(temp_str));
+    if (temp_str.compare(0, 8, "legendre") == 0) {
       in_scatter_format = ANGLE_LEGENDRE;
-    } else if (temp_str == "histogram") {
+    } else if (temp_str.compare(0, 9, "histogram") == 0) {
       in_scatter_format = ANGLE_HISTOGRAM;
-    } else if (temp_str == "tabular") {
+    } else if (temp_str.compare(0, 7, "tabular") == 0) {
       in_scatter_format = ANGLE_TABULAR;
     } else {
       fatal_error("Invalid scatter_format option!");
@@ -153,9 +156,8 @@ void Mgxs::_metadata_from_hdf5(hid_t xs_id, int in_num_groups,
   if (attribute_exists(xs_id, "scatter_shape")) {
     std::string temp_str(MAX_WORD_LEN, ' ');
     read_attr_string(xs_id, "scatter_shape", MAX_WORD_LEN, &temp_str[0]);
-    strtrim(temp_str);
-    to_lower(temp_str);
-    if (temp_str != "[g][g\'][order]") {
+    to_lower(strtrim(temp_str));
+    if (temp_str.compare(0, 14, "[g][g\'][order]") != 0) {
       fatal_error("Invalid scatter_shape option!");
     }
   }
@@ -181,25 +183,24 @@ void Mgxs::_metadata_from_hdf5(hid_t xs_id, int in_num_groups,
   // However Pn has n+1 sets of points (since you need to count the P0
   // moment). Adjust for that. Histogram and Tabular formats dont need this
   // adjustment.
-  if (scatter_format == ANGLE_LEGENDRE) {
+  if (in_scatter_format == ANGLE_LEGENDRE) {
     order_dim = order_dim + 1;
   }
 
   // Get the angular information
-  bool is_angular = false;
+  is_isotropic = true;
   if (attribute_exists(xs_id, "representation")) {
     std::string temp_str(MAX_WORD_LEN, ' ');
     read_attr_string(xs_id, "representation", MAX_WORD_LEN, &temp_str[0]);
-    strtrim(temp_str);
-    to_lower(temp_str);
-    if (temp_str == "angle") {
-      is_angular =  true;
-    } else if (temp_str != "isotropic") {
+    to_lower(strtrim(temp_str));
+    if (temp_str.compare(0, 5, "angle") == 0) {
+      is_isotropic =  false;
+    } else if (temp_str.compare(0, 9, "isotropic") != 0) {
       fatal_error("Invalid Data Representation!");
     }
   }
 
-  if (is_angular) {
+  if (!is_isotropic) {
     if (attribute_exists(xs_id, "num_polar")) {
       read_attr_int(xs_id, "num_polar", &n_pol);
     } else {
@@ -228,31 +229,27 @@ void Mgxs::_metadata_from_hdf5(hid_t xs_id, int in_num_groups,
   }
 
   // Finally use this data to initialize the MGXS Object
-  init(in_name, in_awr, in_kTs, in_fissionable, in_scatter_format, in_num_groups,
-       in_num_delayed_groups, in_polar, in_azimuthal);
+  init(in_name, in_awr, in_kTs, in_fissionable, in_scatter_format,
+       in_num_groups, in_num_delayed_groups, in_polar, in_azimuthal);
 }
 
 
 void Mgxs::from_hdf5(hid_t xs_id, int energy_groups, int delayed_groups,
-                     double_1dvec temperature, int& method, double tolerance,
+                     double_1dvec& temperature, int& method, double tolerance,
                      int max_order, bool legendre_to_tabular,
                      int legendre_to_tabular_points)
 {
   // Call generic data gathering routine (will populate the metadata)
   int order_data;
-  double_1dvec temps_to_read;
+  int_1dvec temps_to_read;
+  bool is_isotropic;
   _metadata_from_hdf5(xs_id, energy_groups, delayed_groups, temperature,
-                      method, tolerance, temps_to_read, order_data);
+       method, tolerance, temps_to_read, order_data, is_isotropic);
 
   // Set number of energy and delayed groups
-  num_groups = energy_groups;
-  num_delayed_groups = delayed_groups;
-
-  int final_scatter_format;
-  if (scatter_format == ANGLE_LEGENDRE && legendre_to_tabular) {
-    final_scatter_format = ANGLE_TABULAR;
-  } else {
-    final_scatter_format = scatter_format;
+  int final_scatter_format = scatter_format;
+  if (legendre_to_tabular) {
+    if (scatter_format == ANGLE_LEGENDRE) final_scatter_format = ANGLE_TABULAR;
   }
 
   // Load the more specific XsData information
@@ -265,7 +262,7 @@ void Mgxs::from_hdf5(hid_t xs_id, int energy_groups, int delayed_groups,
 
     xs[t].from_hdf5(xsdata_grp, fissionable, scatter_format,
                     final_scatter_format, order_data, max_order,
-                    legendre_to_tabular_points);
+                    legendre_to_tabular_points, is_isotropic);
     close_group(xsdata_grp);
 
   } // end temperature loop
@@ -607,9 +604,9 @@ inline void Mgxs::set_angle_index(dir_arr& uvw)
 // Mgxs data loading methods
 //==============================================================================
 
-void read_mgxs_library(hid_t file_id, int n_nuclides, char** names,
-     int energy_groups, int delayed_groups, int n_temps, double temps[],
-     int& method, double tolerance, int max_order, bool legendre_to_tabular,
+void add_mgxs(hid_t file_id, char* name, int energy_groups,
+     int delayed_groups, int n_temps, double temps[], int& method,
+     double tolerance, int max_order, bool legendre_to_tabular,
      int legendre_to_tabular_points)
 {
   //!! mgxs_data.F90 will be modified to just create the list of names
@@ -617,28 +614,29 @@ void read_mgxs_library(hid_t file_id, int n_nuclides, char** names,
   // Convert temps to a vector for the from_hdf5 function
   double_1dvec temperature;
   temperature.assign(temps, temps + n_temps);
-  nuclides_MG.resize(n_nuclides);
-  for (int i = 0; i < n_nuclides; i++) {
-    // TODO: Replacement for write_message
-    // write_message("Loading " + std::string(names[i]) + " data...", 6);
 
-    // Check to make sure cross section set exists in the library
-    hid_t xs_grp;
-    if (object_exists(file_id, names[i])) {
-      xs_grp = open_group(file_id, names[i]);
-    } else {
-      fatal_error("Data for " + std::string(names[i]) + " does not exist in "
-                  + "provided MGXS Library");
-    }
+  // TODO: C++ replacement for write_message
+  // write_message("Loading " + std::string(names[i]) + " data...", 6);
 
-    nuclides_MG[i].from_hdf5(xs_grp, energy_groups, delayed_groups,
-         temperature, method, tolerance, max_order, legendre_to_tabular,
-         legendre_to_tabular_points);
+  // Check to make sure cross section set exists in the library
+  hid_t xs_grp;
+  if (object_exists(file_id, name)) {
+    xs_grp = open_group(file_id, name);
+  } else {
+    fatal_error("Data for " + std::string(name) + " does not exist in "
+                + "provided MGXS Library");
   }
+
+  Mgxs mg;
+  mg.from_hdf5(xs_grp, energy_groups, delayed_groups,
+       temperature, method, tolerance, max_order, legendre_to_tabular,
+       legendre_to_tabular_points);
+
+  nuclides_MG.push_back(mg);
 }
 
 
-bool query_fissionable(const int i_nuclides[], const int n_nuclides)
+bool query_fissionable(const int n_nuclides, const int i_nuclides[])
 {
   bool result = false;
   for (int i = 0; i < n_nuclides; i++) {

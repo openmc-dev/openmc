@@ -4370,9 +4370,10 @@ contains
         end if
       end do
 
-      ! Generate material bremsstrahlung data
+      ! Generate material bremsstrahlung data for electrons and positrons
       if (photon_transport .and. electron_treatment == ELECTRON_TTB) then
-        call bremsstrahlung_init(ttb(i), i)
+        call bremsstrahlung_init(ttb(i) % electron, i, ELECTRON)
+        call bremsstrahlung_init(ttb(i) % positron, i, POSITRON)
       end if
     end do
 

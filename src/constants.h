@@ -1,7 +1,10 @@
+//! \file constants.h
+//! A collection of constants
 
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+#include <cmath>
 #include <array>
 #include <vector>
 
@@ -53,6 +56,13 @@ constexpr int DEFAULT_NMU {33};
 // Temperature treatment method
 constexpr int TEMPERATURE_NEAREST {1};
 constexpr int TEMPERATURE_INTERPOLATION {2};
+
+// TODO: cmath::M_PI has 3 more digits precision than the Fortran constant we
+// use so for now we will reuse the Fortran constant until we are OK with
+// modifying test results
+constexpr double PI {3.1415926535898};
+
+const double SQRT_PI {std::sqrt(PI)};
 
 
 } // namespace openmc

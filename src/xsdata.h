@@ -11,6 +11,7 @@
 #include <string>
 #include <valarray>
 #include <vector>
+#include <iostream>
 
 #include "constants.h"
 #include "hdf5_interface.h"
@@ -31,7 +32,7 @@ class XsData {
          int energy_groups, int scatter_format, int final_scatter_format,
          int order_data, int max_order, int legendre_to_tabular_points);
     void _fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
-         int energy_groups, int delayed_groups);
+         int energy_groups, int delayed_groups, bool is_isotropic);
   public:
     // The following quantities have the following dimensions:
     // [phi][theta][incoming group]
@@ -59,10 +60,9 @@ class XsData {
     XsData() = default;
     XsData(int num_groups, int num_delayed_groups, bool fissionable,
            int scatter_format, int n_pol, int n_azi);
-    ~XsData();
     void from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
                    int final_scatter_format, int order_data, int max_order,
-                   int legendre_to_tabular_points);
+                   int legendre_to_tabular_points, bool is_isotropic);
     void combine(std::vector<XsData*> those_xs, double_1dvec& scalars);
     bool equiv(const XsData& that);
 };

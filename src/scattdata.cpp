@@ -3,12 +3,6 @@
 namespace openmc {
 
 //==============================================================================
-// Methods for use by all extended types
-//==============================================================================
-
-
-
-//==============================================================================
 // ScattData base-class methods
 //==============================================================================
 
@@ -128,7 +122,7 @@ void ScattDataLegendre::init(int_1dvec in_gmin, int_1dvec in_gmax,
   // coefficient in the variable matrix over all outgoing groups.
   scattxs.resize(groups);
   for (int gin = 0; gin < groups; gin++) {
-    int num_groups = gmax[gin] - gmin[gin] + 1;
+    int num_groups = in_gmax[gin] - in_gmin[gin] + 1;
     scattxs[gin] = 0.;
     for (int i_gout = 0; i_gout < num_groups; i_gout++) {
       scattxs[gin] = std::accumulate(matrix[gin][i_gout].begin(),
@@ -143,7 +137,7 @@ void ScattDataLegendre::init(int_1dvec in_gmin, int_1dvec in_gmax,
   double_2dvec in_energy;
   in_energy.resize(groups);
   for (int gin = 0; gin < groups; gin++) {
-    int num_groups = gmax[gin] - gmin[gin] + 1;
+    int num_groups = in_gmax[gin] - in_gmin[gin] + 1;
     in_energy[gin].resize(num_groups);
     for (int i_gout = 0; i_gout < num_groups; i_gout++) {
       double norm = matrix[gin][i_gout][0];
@@ -430,7 +424,7 @@ void ScattDataHistogram::init(int_1dvec in_gmin, int_1dvec in_gmax,
   double_2dvec in_energy;
   in_energy.resize(groups);
   for (int gin = 0; gin < groups; gin++) {
-    int num_groups = gmax[gin] - gmin[gin] + 1;
+    int num_groups = in_gmax[gin] - in_gmin[gin] + 1;
     in_energy[gin].resize(num_groups);
     for (int i_gout = 0; i_gout < num_groups; i_gout++) {
       double norm = std::accumulate(matrix[gin][i_gout].begin(),
@@ -572,6 +566,128 @@ double_3dvec ScattDataHistogram::get_matrix(int max_order)
   return matrix;
 }
 
+
+void ScattDataHistogram::combine(std::vector<ScattData*> those_scatts,
+                                double_1dvec& scalars)
+{
+  int groups = energy.size();
+  // Find the maximum order in the data set
+  int max_order = get_order();
+  for (int i = 0; i < those_scatts.size(); i++) {
+    // Lets also make sure these items are combineable
+    ScattDataHistogram* that = dynamic_cast<ScattDataHistogram*>(those_scatts[i]);
+    if (!equiv(*that)) {
+      fatal_error("Cannot combine the ScattData objects!");
+    }
+    int that_order = that->get_order();
+    if (that_order > max_order) max_order = that_order;
+  }
+  max_order++;  // Add one since this is a Legendre
+
+  // Now allocate and zero our storage spaces
+  double_3dvec this_matrix = get_matrix(max_order);
+  double_2dvec mult_numer(groups, double_1dvec(groups, 0.));
+  double_2dvec mult_denom(groups, double_1dvec(groups, 0.));
+
+  // Build the dense scattering and multiplicity matrices
+  // Get the multiplicity_matrix
+  // To combine from nuclidic data we need to use the final relationship
+  // mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
+  //              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
+  // Developed as follows:
+  // mult_{gg'} = nuScatt{g,g'} / Scatt{g,g'}
+  // mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) / sum(N_i*scatt_{i,g,g'})
+  // mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
+  //              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
+  // nuscatt_{i,g,g'} can be reconstructed from the energy and scattxs member
+  // variables
+  for (int i = 0; i < those_scatts.size(); i++) {
+    ScattDataHistogram* that = dynamic_cast<ScattDataHistogram*>(those_scatts[i]);
+
+    // Build the dense matrix for that object
+    double_3dvec that_matrix = that->get_matrix(max_order);
+
+    // Now add that to this for the scattering and multiplicity
+    for (int gin = 0; gin < groups; gin++) {
+      // Only spend time adding that's gmin to gmax data since the rest will
+      // be zeros
+      for (int gout = that->gmin[gin]; gout <= that->gmax[gin]; gout++) {
+        // Do the scattering matrix
+        for (int l = 0; l < max_order; l++) {
+          this_matrix[gin][gout][l] += scalars[i] * that_matrix[gin][gout][l];
+        }
+
+        // Incorporate that's contribution to the multiplicity matrix data
+        double nuscatt = that->scattxs[gin] * that->energy[gin][gout];
+        mult_numer[gin][gout] += scalars[i] * nuscatt;
+        if (that->mult[gin][gout] > 0.) {
+          mult_denom[gin][gout] += scalars[i] * nuscatt / that->mult[gin][gout];
+        } else {
+          mult_denom[gin][gout] += scalars[i];
+        }
+      }
+    }
+  }
+
+  // Combine mult_numer and mult_denom into the combined multiplicity matrix
+  double_2dvec this_mult(groups, double_1dvec(groups, 1.));
+  for (int gin = 0; gin < groups; gin++) {
+    for (int gout = 0; gout < groups; gout++) {
+      if (mult_denom[gin][gout] > 0.) {
+        this_mult[gin][gout] = mult_numer[gin][gout] / mult_denom[gin][gout];
+      }
+    }
+  }
+  mult_numer.clear();
+  mult_denom.clear();
+
+  // We have the data, now we need to convert to a jagged array and then use
+  // the initialize function to store it on the object.
+  int_1dvec in_gmin(groups);
+  int_1dvec in_gmax(groups);
+  double_3dvec sparse_scatter(groups);
+  double_2dvec sparse_mult(groups);
+  for (int gin = 0; gin < groups; gin++) {
+    // Find the minimum and maximum group boundaries
+    int gmin_;
+    for (gmin_ = 0; gmin_ < groups; gmin_++) {
+      bool non_zero = std::all_of(this_matrix[gin][gmin_].begin(),
+                                  this_matrix[gin][gmin_].end(),
+                                  [](double val){return val > 0.;});
+      if (non_zero) break;
+    }
+    int gmax_;
+    for (gmax_ = groups - 1; gmax_ >= 0; gmax_--) {
+      bool non_zero = std::all_of(this_matrix[gin][gmax_].begin(),
+                                  this_matrix[gin][gmax_].end(),
+                                  [](double val){return val > 0.;});
+      if (non_zero) break;
+    }
+
+    // treat the case of all values being 0
+    if (gmin_ > gmax_) {
+      gmin_ = gin;
+      gmax_ = gin;
+    }
+
+    // Store the group bounds
+    in_gmin[gin] = gmin_;
+    in_gmax[gin] = gmax_;
+
+    // Store the data in the compressed format
+    sparse_scatter[gin].resize(gmax_ - gmin_ + 1);
+    sparse_mult[gin].resize(gmax_ - gmin_ + 1);
+    int i_gout = 0;
+    for (int gout = gmin_; gout <= gmax_; gout++) {
+      sparse_scatter[gin][i_gout] = this_matrix[gin][gout];
+      sparse_mult[gin][i_gout] = this_mult[gin][gout];
+    }
+  }
+
+  // Got everything we need, store it.
+  init(in_gmin, in_gmax, sparse_mult, sparse_scatter);
+}
+
 //==============================================================================
 // ScattDataTabular methods
 //==============================================================================
@@ -611,7 +727,7 @@ void ScattDataTabular::init(int_1dvec in_gmin, int_1dvec in_gmax,
   double_2dvec in_energy;
   in_energy.resize(groups);
   for (int gin = 0; gin < groups; gin++) {
-    int num_groups = gmax[gin] - gmin[gin] + 1;
+    int num_groups = in_gmax[gin] - in_gmin[gin] + 1;
     in_energy[gin].resize(num_groups);
     for (int i_gout = 0; i_gout < num_groups; i_gout++) {
       double norm = 0.;
@@ -769,15 +885,132 @@ double_3dvec ScattDataTabular::get_matrix(int max_order)
   return matrix;
 }
 
+void ScattDataTabular::combine(std::vector<ScattData*> those_scatts,
+                               double_1dvec& scalars)
+{
+  int groups = energy.size();
+  // Find the maximum order in the data set
+  int max_order = get_order();
+  for (int i = 0; i < those_scatts.size(); i++) {
+    // Lets also make sure these items are combineable
+    ScattDataTabular* that = dynamic_cast<ScattDataTabular*>(those_scatts[i]);
+    if (!equiv(*that)) {
+      fatal_error("Cannot combine the ScattData objects!");
+    }
+    int that_order = that->get_order();
+    if (that_order > max_order) max_order = that_order;
+  }
+  max_order++;  // Add one since this is a Legendre
+
+  // Now allocate and zero our storage spaces
+  double_3dvec this_matrix = get_matrix(max_order);
+  double_2dvec mult_numer(groups, double_1dvec(groups, 0.));
+  double_2dvec mult_denom(groups, double_1dvec(groups, 0.));
+
+  // Build the dense scattering and multiplicity matrices
+  // Get the multiplicity_matrix
+  // To combine from nuclidic data we need to use the final relationship
+  // mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
+  //              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
+  // Developed as follows:
+  // mult_{gg'} = nuScatt{g,g'} / Scatt{g,g'}
+  // mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) / sum(N_i*scatt_{i,g,g'})
+  // mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
+  //              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
+  // nuscatt_{i,g,g'} can be reconstructed from the energy and scattxs member
+  // variables
+  for (int i = 0; i < those_scatts.size(); i++) {
+    ScattDataTabular* that = dynamic_cast<ScattDataTabular*>(those_scatts[i]);
+
+    // Build the dense matrix for that object
+    double_3dvec that_matrix = that->get_matrix(max_order);
+
+    // Now add that to this for the scattering and multiplicity
+    for (int gin = 0; gin < groups; gin++) {
+      // Only spend time adding that's gmin to gmax data since the rest will
+      // be zeros
+      for (int gout = that->gmin[gin]; gout <= that->gmax[gin]; gout++) {
+        // Do the scattering matrix
+        for (int l = 0; l < max_order; l++) {
+          this_matrix[gin][gout][l] += scalars[i] * that_matrix[gin][gout][l];
+        }
+
+        // Incorporate that's contribution to the multiplicity matrix data
+        double nuscatt = that->scattxs[gin] * that->energy[gin][gout];
+        mult_numer[gin][gout] += scalars[i] * nuscatt;
+        if (that->mult[gin][gout] > 0.) {
+          mult_denom[gin][gout] += scalars[i] * nuscatt / that->mult[gin][gout];
+        } else {
+          mult_denom[gin][gout] += scalars[i];
+        }
+      }
+    }
+  }
+
+  // Combine mult_numer and mult_denom into the combined multiplicity matrix
+  double_2dvec this_mult(groups, double_1dvec(groups, 1.));
+  for (int gin = 0; gin < groups; gin++) {
+    for (int gout = 0; gout < groups; gout++) {
+      if (mult_denom[gin][gout] > 0.) {
+        this_mult[gin][gout] = mult_numer[gin][gout] / mult_denom[gin][gout];
+      }
+    }
+  }
+  mult_numer.clear();
+  mult_denom.clear();
+
+  // We have the data, now we need to convert to a jagged array and then use
+  // the initialize function to store it on the object.
+  int_1dvec in_gmin(groups);
+  int_1dvec in_gmax(groups);
+  double_3dvec sparse_scatter(groups);
+  double_2dvec sparse_mult(groups);
+  for (int gin = 0; gin < groups; gin++) {
+    // Find the minimum and maximum group boundaries
+    int gmin_;
+    for (gmin_ = 0; gmin_ < groups; gmin_++) {
+      bool non_zero = std::all_of(this_matrix[gin][gmin_].begin(),
+                                  this_matrix[gin][gmin_].end(),
+                                  [](double val){return val > 0.;});
+      if (non_zero) break;
+    }
+    int gmax_;
+    for (gmax_ = groups - 1; gmax_ >= 0; gmax_--) {
+      bool non_zero = std::all_of(this_matrix[gin][gmax_].begin(),
+                                  this_matrix[gin][gmax_].end(),
+                                  [](double val){return val > 0.;});
+      if (non_zero) break;
+    }
+
+    // treat the case of all values being 0
+    if (gmin_ > gmax_) {
+      gmin_ = gin;
+      gmax_ = gin;
+    }
+
+    // Store the group bounds
+    in_gmin[gin] = gmin_;
+    in_gmax[gin] = gmax_;
+
+    // Store the data in the compressed format
+    sparse_scatter[gin].resize(gmax_ - gmin_ + 1);
+    sparse_mult[gin].resize(gmax_ - gmin_ + 1);
+    int i_gout = 0;
+    for (int gout = gmin_; gout <= gmax_; gout++) {
+      sparse_scatter[gin][i_gout] = this_matrix[gin][gout];
+      sparse_mult[gin][i_gout] = this_mult[gin][gout];
+    }
+  }
+
+  // Got everything we need, store it.
+  init(in_gmin, in_gmax, sparse_mult, sparse_scatter);
+}
+
 
 void convert_legendre_to_tabular(ScattDataLegendre& leg,
                                  ScattDataTabular& tab, int n_mu)
 {
-  // Copy the obvious data
-  tab.energy = leg.energy;
-  tab.mult = leg.mult;
-  tab.gmin = leg.gmin;
-  tab.gmax = leg.gmax;
+  tab.generic_init(n_mu, leg.gmin, leg.gmax, leg.energy, leg.mult);
 
   // Build mu and dmu
   tab.mu = double_1dvec(n_mu);
@@ -794,7 +1027,7 @@ void convert_legendre_to_tabular(ScattDataLegendre& leg,
   for (int gin = 0; gin < groups; gin++) {
     int num_groups = tab.gmax[gin] - tab.gmin[gin] + 1;
     tab.fmu[gin].resize(num_groups);
-    for (int i_gout = 0; i_gout < num_groups; i_gout) {
+    for (int i_gout = 0; i_gout < num_groups; i_gout++) {
       tab.fmu[gin][i_gout].resize(n_mu);
       for (int imu = 0; imu < n_mu; imu++) {
         tab.fmu[gin][i_gout][imu] =

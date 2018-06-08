@@ -215,10 +215,10 @@ module mgxs_header
   type(MgxsContainer), target, allocatable :: macro_xs(:)
 
   ! Number of energy groups
-  integer :: num_energy_groups
+  integer(C_INT) :: num_energy_groups
 
   ! Number of delayed groups
-  integer :: num_delayed_groups
+  integer(C_INT) :: num_delayed_groups
 
   ! Energy group structure with decreasing energy
   real(8), allocatable :: energy_bins(:)

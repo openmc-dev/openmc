@@ -41,7 +41,7 @@ XsData::XsData(int energy_groups, int num_delayed_groups, bool fissionable,
 
     // chi_prompt; [temperature][phi][theta][in group][delayed group]
     chi_prompt = double_4dvec(n_pol, double_3dvec(n_azi,
-         double_2dvec(energy_groups, double_1dvec(num_delayed_groups, 0.))));
+         double_2dvec(energy_groups, double_1dvec(energy_groups, 0.))));
 
     // chi_delayed; [temperature][phi][theta][in group][out group][delay group]
     chi_delayed = double_5dvec(n_pol, double_4dvec(n_azi,
@@ -64,19 +64,10 @@ XsData::XsData(int energy_groups, int num_delayed_groups, bool fissionable,
   }
 }
 
-XsData::~XsData()
-{
-  for (int p = 0; p < scatter.size(); p++) {
-    for (int a = 0; a < scatter[p].size(); a++) delete scatter[p][a];
-    scatter[p].clear();
-  }
-  scatter.clear();
-}
-
 
 void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
                        int final_scatter_format, int order_data, int max_order,
-                       int legendre_to_tabular_points)
+                       int legendre_to_tabular_points, bool is_isotropic)
 {
   // Reconstruct the dimension information so it doesn't need to be passed
   int n_pol = total.size();
@@ -87,7 +78,7 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
   // Set the fissionable-specific data
   if (fissionable) {
     _fissionable_from_hdf5(xsdata_grp, n_pol, n_azi, energy_groups,
-                           delayed_groups);
+                           delayed_groups, is_isotropic);
   }
   // Get the non-fission-specific data
   read_nd_vector(xsdata_grp, "decay_rate", decay_rate);
@@ -104,9 +95,7 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
   for (int p = 0; p < n_pol; p++) {
     for (int a = 0; a < n_azi; a++) {
       for (int gin = 0; gin < energy_groups; gin++) {
-        if (absorption[gin][p][a] == 0.) {
-          absorption[p][a][gin] = 1.e-10;
-        }
+        if (absorption[p][a][gin] == 0.) absorption[p][a][gin] = 1.e-10;
       }
     }
   }
@@ -138,7 +127,7 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
 
 
 void XsData::_fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
-     int energy_groups, int delayed_groups)
+     int energy_groups, int delayed_groups, bool is_isotropic)
 {
   double_4dvec temp_beta =
        double_4dvec(n_pol, double_3dvec(n_azi,
@@ -148,6 +137,8 @@ void XsData::_fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
   if (object_exists(xsdata_grp, "beta")) {
     hid_t xsdata = open_dataset(xsdata_grp, "beta");
     int ndims = dataset_ndims(xsdata);
+
+    if (is_isotropic) ndims += 2;
 
     if (ndims == 3) {
       // Beta is input as [delayed group]
@@ -171,7 +162,7 @@ void XsData::_fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
       // Beta is input as [in group][delayed group]
       read_nd_vector(xsdata_grp, "beta", temp_beta);
     } else {
-      fatal_error("beta must be provided as a 1D or 2D array!");
+      fatal_error("beta must be provided as a 3D or 4D array!");
     }
   }
 
@@ -181,12 +172,11 @@ void XsData::_fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
          double_1dvec(energy_groups)));
     read_nd_vector(xsdata_grp, "chi", temp_arr);
 
-    int temp_idx = 0;
     for (int p = 0; p < n_pol; p++) {
       for (int a = 0; a < n_azi; a++) {
         // First set the first group
         for (int gout = 0; gout < energy_groups; gout++) {
-          chi_prompt[p][a][0][gout] = temp_arr[p][a][temp_idx++];
+          chi_prompt[p][a][0][gout] = temp_arr[p][a][gout];
         }
 
         // Now normalize this data
@@ -224,6 +214,7 @@ void XsData::_fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
   if (object_exists(xsdata_grp, "nu-fission")) {
     hid_t xsdata = open_dataset(xsdata_grp, "nu-fission");
     int ndims = dataset_ndims(xsdata);
+    if (is_isotropic) ndims += 2;
 
     if (ndims == 3) {
       // nu-fission is a 3-d array
@@ -303,7 +294,7 @@ void XsData::_fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
         }
       }
     } else {
-      fatal_error("beta must be provided as a 3D or 4D array!");
+      fatal_error("nu-fission must be provided as a 3D or 4D array!");
     }
 
     close_dataset(xsdata);
@@ -341,6 +332,7 @@ void XsData::_fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
   if (object_exists(xsdata_grp, "chi-delayed")) {
     hid_t xsdata = open_dataset(xsdata_grp, "chi-delayed");
     int ndims = dataset_ndims(xsdata);
+    if (is_isotropic) ndims += 2;
     close_dataset(xsdata);
 
     if (ndims == 3) {
@@ -403,6 +395,7 @@ void XsData::_fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
   if (object_exists(xsdata_grp, "prompt-nu-fission")) {
     hid_t xsdata = open_dataset(xsdata_grp, "prompt-nu-fission");
     int ndims = dataset_ndims(xsdata);
+    if (is_isotropic) ndims += 2;
     close_dataset(xsdata);
 
     if (ndims == 3) {
@@ -449,6 +442,7 @@ void XsData::_fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
   if (object_exists(xsdata_grp, "delayed-nu-fission")) {
     hid_t xsdata = open_dataset(xsdata_grp, "delayed-nu-fission");
     int ndims = dataset_ndims(xsdata);
+    if (is_isotropic) ndims += 2;
 
     if (ndims == 3) {
       // delayed-nu-fission is a [in group] vector
@@ -473,29 +467,6 @@ void XsData::_fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
       }
 
     } else if (ndims == 4) {
-      // delayed nu fission is a [pol][azi][energy_group][delayed_group] matrix;
-      // matrix use this to set delayed-nu-fission separately for each
-      // delayed group
-      std::vector<hsize_t> dims(ndims);
-      get_shape(xsdata, &dims[0]);
-
-      if (dims[2] != delayed_groups) {
-        fatal_error("The delayed-nu-fission matrix was input with a 1st "
-                    "dimension not equal to the number of delayed groups");
-      }
-      if (dims[3] != energy_groups) {
-        fatal_error("The delayed-nu-fission matrix was input with a 2nd "
-                    "dimension not equal to the number of energy groups");
-      }
-      if (delayed_groups == energy_groups) {
-        warning("delayed-nu-fission was input as a dimension-4 matrix "
-                "with the same number of delayed groups and energy "
-                "groups. OpenMC assumes the dimensions in the matrix "
-                "are [delayed_groups][energy_groups].  Currently, "
-                "delayed-nu-fission cannot be set as a group-by-group "
-                "matrix");
-      }
-
       read_nd_vector(xsdata_grp, "delayed-nu-fission",
                     delayed_nu_fission);
 

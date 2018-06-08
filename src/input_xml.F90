@@ -19,7 +19,7 @@ module input_xml
   use material_header
   use mesh_header
   use message_passing
-  use mgxs_data,        only: create_macro_xs, read_mgxs
+  use mgxs_data,        only: create_macro_xs, read_mgxs, read_mgxs2
   use mgxs_header
   use nuclide_header
   use output,           only: title, header, print_plot
@@ -84,6 +84,7 @@ contains
       else
         ! Create material macroscopic data for MGXS
         call read_mgxs()
+        call read_mgxs2()
         call create_macro_xs()
       end if
       call time_read_xs % stop()

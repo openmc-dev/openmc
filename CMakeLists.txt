@@ -432,17 +432,21 @@ set(LIBOPENMC_FORTRAN_SRC
   src/tallies/trigger_header.F90
 )
 set(LIBOPENMC_CXX_SRC
+  src/constants.h
   src/initialize.cpp
   src/finalize.cpp
   src/hdf5_interface.cpp
   src/math_functions.cpp
   src/message_passing.cpp
+  src/mgxs.cpp
   src/plot.cpp
   src/random_lcg.cpp
+  src/scattdata.cpp
   src/simulation.cpp
   src/state_point.cpp
   src/surface.cpp
   src/xml_interface.cpp
+  src/xsdata.cpp
   src/pugixml/pugixml.cpp)
 add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC} ${LIBOPENMC_CXX_SRC})
 set_target_properties(libopenmc PROPERTIES

@@ -10,6 +10,7 @@
 #include <string>
 #include <valarray>
 #include <vector>
+#include <iostream>
 
 #include "constants.h"
 #include "hdf5_interface.h"
@@ -21,7 +22,6 @@
 
 
 namespace openmc {
-
 
 //==============================================================================
 // MGXS contains the mgxs data for a nuclide/material
@@ -45,26 +45,27 @@ class Mgxs {
     double_1dvec polar;
     double_1dvec azimuthal;
     dir_arr last_uvw;
-    void _metadata_from_hdf5(hid_t xs_id, int in_num_groups,
-         int in_num_delayed_groups, double_1dvec temperature, int& method,
-         double tolerance, double_1dvec& temps_to_read, int& order_dim);
+    void _metadata_from_hdf5(const hid_t xs_id, const int in_num_groups,
+         const int in_num_delayed_groups, double_1dvec& temperature,
+         int& method, const double tolerance, int_1dvec& temps_to_read,
+         int& order_dim, bool& is_isotropic);
 
   public:
     bool fissionable;   // Is this fissionable
-    void init(const std::string& in_name, double in_awr, double_1dvec& in_kTs,
-              bool in_fissionable, int in_scatter_format, int in_num_groups,
-              int in_num_delayed_groups, double_1dvec& in_polar,
-              double_1dvec& in_azimuthal);
+    void init(const std::string& in_name, const double in_awr,
+         const double_1dvec& in_kTs, const bool in_fissionable,
+         const int in_scatter_format, const int in_num_groups,
+         const int in_num_delayed_groups, const double_1dvec& in_polar,
+         const double_1dvec& in_azimuthal);
     void build_macro(const std::string& in_name, double_1dvec& mat_kTs,
                      std::vector<Mgxs>& micros, double_1dvec& atom_densities,
                      int& method, double tolerance);
     void combine(std::vector<Mgxs>& micros, double_1dvec& scalars,
                  int_1dvec& micro_ts, int this_t);
     void from_hdf5(hid_t xs_id, int energy_groups, int delayed_groups,
-                           double_1dvec temperature, int& method,
-                           double tolerance, int max_order,
-                           bool legendre_to_tabular,
-                           int legendre_to_tabular_points);
+         double_1dvec& temperature, int& method, double tolerance,
+         int max_order, bool legendre_to_tabular,
+         int legendre_to_tabular_points);
     double get_xs(const char* xstype, int gin, int* gout, double* mu,
                   int* dg);
     void sample_fission_energy(int gin, double nu_fission, int& dg, int& gout);
@@ -77,11 +78,11 @@ class Mgxs {
     inline void set_angle_index(dir_arr& uvw);
 };
 
-extern "C" void read_mgxs_library(hid_t file_id, int n_nuclides, char** names,
-     int energy_groups, int delayed_groups, int n_temps, double temps[],
-     int& method, double tolerance, int max_order, bool legendre_to_tabular,
+extern "C" void add_mgxs(hid_t file_id, char* name, int energy_groups,
+     int delayed_groups, int n_temps, double temps[], int& method,
+     double tolerance, int max_order, bool legendre_to_tabular,
      int legendre_to_tabular_points);
-extern "C" bool query_fissionable(const int i_nuclides[], const int n_nuclides);
+extern "C" bool query_fissionable(const int n_nuclides, const int i_nuclides[]);
 void create_macro_xs(int n_materials, double_2dvec& mat_kTs,
      std::vector<std::string>& mat_names, double_1dvec& atom_densities,
      int& method, double tolerance);

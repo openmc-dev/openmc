@@ -77,12 +77,15 @@ module photon_header
     procedure :: calculate_xs => photon_calculate_xs
   end type PhotonInteraction
 
-  type Bremsstrahlung
-    integer :: i_material ! Index in materials array
-
+  type BremsstrahlungData
     real(8), allocatable :: pdf(:,:) ! Bremsstrahlung energy PDF
     real(8), allocatable :: cdf(:,:) ! Bremsstrahlung energy CDF
     real(8), allocatable :: yield(:) ! Photon number yield
+  end type BremsstrahlungData
+
+  type Bremsstrahlung
+    type(BremsstrahlungData) :: electron
+    type(BremsstrahlungData) :: positron
   end type Bremsstrahlung
 
   type(PhotonInteraction), allocatable, target :: elements(:) ! Photon cross sections
@@ -90,7 +93,7 @@ module photon_header
 
   type(DictCharInt) :: element_dict
 
-  type(Bremsstrahlung), allocatable, target :: ttb(:) ! Bremsstrahlung cross sections
+  type(Bremsstrahlung), allocatable, target :: ttb(:) ! Bremsstrahlung data
 
 !===============================================================================
 ! ELEMENTMICROXS contains cached microscopic photon cross sections for a

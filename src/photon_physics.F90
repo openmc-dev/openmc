@@ -3,7 +3,7 @@ module photon_physics
   use algorithm,       only: binary_search
   use constants
   use particle_header, only: Particle
-  use photon_header,   only: PhotonInteraction, Bremsstrahlung, &
+  use photon_header,   only: PhotonInteraction, BremsstrahlungData, &
                              compton_profile_pz, ttb_e_grid, ttb
   use random_lcg,      only: prn
   use settings
@@ -530,9 +530,9 @@ contains
     real(8) :: w, w_l, w_r
     real(8) :: p_l, p_r
     real(8) :: c, c_l, c_max
-    type(Bremsstrahlung), pointer :: mat
+    type(BremsstrahlungData), pointer :: mat
 
-    real(8) :: photon_energies(100)
+    !real(8) :: photon_energies(100)
 
     !p % E = 100.0e6_8
 
@@ -544,8 +544,12 @@ contains
     !  return
     !end if
 
-    ! Get bremsstrahlung data for this material
-    mat => ttb(p % material)
+    ! Get bremsstrahlung data for this material and particle type
+    if (p % type == POSITRON) then
+      mat => ttb(p % material) % positron
+    else
+      mat => ttb(p % material) % electron
+    end if
 
     e = log(p % E)
     n_e = size(ttb_e_grid)
@@ -620,7 +624,7 @@ contains
         w = exp(w_l)*(a*(c - c_l)/(exp(w_l)*p_l) + ONE)**(ONE/a)
       end if
 
-      photon_energies(i) = w
+      !photon_energies(i) = w
       if (w > energy_cutoff(PHOTON)) then
         ! Create secondary photon
         call p % create_secondary(p % coord(1) % uvw, w, PHOTON, run_ce=.true.)

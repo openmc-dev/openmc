@@ -699,9 +699,10 @@ contains
 
   end function openmc_material_set_densities
 
-  subroutine bremsstrahlung_init(this, i_material)
-    class(Bremsstrahlung), intent(inout) :: this
+  subroutine bremsstrahlung_init(this, i_material, particle)
+    class(BremsstrahlungData), intent(inout) :: this
     integer, intent(in) :: i_material
+    integer, intent(in) :: particle
 
     integer                 :: i, j
     integer                 :: i_k
@@ -711,6 +712,8 @@ contains
     real(8)                 :: e, e_l, e_r
     real(8)                 :: w, w_l, w_r
     real(8)                 :: x, x_l, x_r
+    real(8)                 :: t
+    real(8)                 :: r
     real(8)                 :: awr
     real(8)                 :: density
     real(8)                 :: density_gpcc
@@ -720,33 +723,44 @@ contains
     real(8)                 :: mass_sum
     real(8), allocatable    :: atom_fraction(:)
     real(8), allocatable    :: mass_fraction(:)
+    real(8), allocatable    :: stopping_power_collision(:)
+    real(8), allocatable    :: stopping_power_radiative(:)
     real(8), allocatable    :: stopping_power(:)
     real(8), allocatable    :: dcs(:,:)
     real(8), allocatable    :: f(:)
     real(8), allocatable    :: z(:)
+    logical                 :: positron_
     type(Material), pointer :: mat
     type(PhotonInteraction), pointer :: elm
 
     ! Get pointer to this material
     mat => materials(i_material)
-    this % i_material = i_material
 
-    ! Allocate and initialize arrays
+    ! Determine whether we are generating electron or positron data
+    if (particle == POSITRON) then
+      positron_ = .true.
+    else
+      positron_ = .false.
+    end if
+
+    ! Get the size of the energy grids
     n_k = size(ttb_k_grid)
     n_e = size(ttb_e_grid)
-    allocate(this % pdf(n_e, n_e))
-    allocate(this % cdf(n_e, n_e))
+
+    ! Allocate arrays for TTB data
+    allocate(this % pdf(n_e, n_e), source=ZERO)
+    allocate(this % cdf(n_e, n_e), source=ZERO)
     allocate(this % yield(n_e))
+
+    ! Allocate temporary arrays
     allocate(atom_fraction(mat % n_nuclides))
     allocate(mass_fraction(mat % n_nuclides))
+    allocate(stopping_power_collision(n_e), source=ZERO)
+    allocate(stopping_power_radiative(n_e), source=ZERO)
     allocate(stopping_power(n_e))
-    allocate(dcs(n_k, n_e))
+    allocate(dcs(n_k, n_e), source=ZERO)
     allocate(f(n_e))
     allocate(z(n_e))
-    this % pdf(:,:) = ZERO
-    this % cdf(:,:) = ZERO
-    stopping_power(:) = ZERO
-    dcs(:,:) = ZERO
 
     ! Calculate the "equivalent" atomic number Zeq, the atomic fraction and the
     ! mass fraction of each element, and the material density in atom/b-cm and
@@ -768,6 +782,7 @@ contains
 
       Z_eq_sq = Z_eq_sq + atom_fraction(i) * nuclides(mat % nuclide(i)) % Z**2
     end do
+
     atom_sum = sum(atom_fraction)
     mass_sum = sum(mass_fraction)
 
@@ -800,15 +815,38 @@ contains
       ! Get pointer to current element
       elm => elements(mat % element(i))
 
-      ! TODO: for molecular DCS, atom_fraction should actually be the number of
-      ! atoms in the molecule.
       ! Accumulate material DCS
       dcs = dcs + atom_fraction(i) * elm % Z**2 / Z_eq_sq * elm % dcs
 
-      ! Accumulate material total stopping power
-      stopping_power = stopping_power + mass_fraction(i) * density_gpcc * &
-           (elm % stopping_power_collision + elm % stopping_power_radiative)
+      ! Accumulate material collision stopping power
+      stopping_power_collision = stopping_power_collision + &
+           mass_fraction(i) * density_gpcc * elm % stopping_power_collision
+
+      ! Accumulate material radiative stopping power
+      stopping_power_radiative = stopping_power_radiative + &
+           mass_fraction(i) * density_gpcc * elm % stopping_power_radiative
     end do
+
+    ! Calculate the positron DCS and radiative stopping power. These are
+    ! obtained by multiplying the electron DCS and radiative stopping powers by
+    ! a factor r, which is a numerical approximation of the ratio of the
+    ! radiative stopping powers for positrons and electrons. Source: F. Salvat,
+    ! J. M. Fernández-Varea, and J. Sempau, "PENELOPE-2011: A Code System for
+    ! Monte Carlo Simulation of Electron and Photon Transport," OECD-NEA,
+    ! Issy-les-Moulineaux, France (2011).
+    if (positron_) then
+      do i = 1, n_e
+        t = log(ONE + 1.0e6_8*ttb_e_grid(i)/(Z_eq_sq*MASS_ELECTRON))
+        r = ONE - exp(-1.2359e-1_8*t + 6.1274e-2_8*t**2 - 3.1516e-2_8*t**3 + &
+             7.7446e-3_8*t**4 - 1.0595e-3_8*t**5 + 7.0568e-5_8*t**6 - &
+             1.808e-6_8*t**7)
+        stopping_power_radiative(i) = r*stopping_power_radiative(i)
+        dcs(:,i) = r*dcs(:,i)
+      end do
+    end if
+
+    ! Total material stopping power
+    stopping_power = stopping_power_collision + stopping_power_radiative
 
     ! Loop over photon energies
     do i = 1, n_e - 1
@@ -923,7 +961,8 @@ contains
       this % yield = log(this % yield)
     end where
 
-    deallocate(atom_fraction, mass_fraction, stopping_power, dcs, f, z)
+    deallocate(atom_fraction, mass_fraction, stopping_power_collision, &
+         stopping_power_radiative, stopping_power, dcs, f, z)
 
   end subroutine bremsstrahlung_init
 

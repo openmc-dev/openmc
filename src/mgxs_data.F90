@@ -268,10 +268,10 @@ contains
 
         if (.not. already_read % contains(name)) then
           call add_mgxs_c(file_id, name, &
-             num_energy_groups, num_delayed_groups, &
-             temps(i_nuclide) % size(), temps(i_nuclide) % data, &
-             temperature_method, temperature_tolerance, max_order, &
-             logical(legendre_to_tabular, C_BOOL), legendre_to_tabular_points)
+               num_energy_groups, num_delayed_groups, &
+               temps(i_nuclide) % size(), temps(i_nuclide) % data, &
+               temperature_method, temperature_tolerance, max_order, &
+               logical(legendre_to_tabular, C_BOOL), legendre_to_tabular_points)
 
           call already_read % add(name)
         end if

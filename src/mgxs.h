@@ -58,9 +58,9 @@ class Mgxs {
          const int in_num_delayed_groups, const double_1dvec& in_polar,
          const double_1dvec& in_azimuthal);
     void build_macro(const std::string& in_name, double_1dvec& mat_kTs,
-                     std::vector<Mgxs>& micros, double_1dvec& atom_densities,
+                     std::vector<Mgxs*>& micros, double_1dvec& atom_densities,
                      int& method, double tolerance);
-    void combine(std::vector<Mgxs>& micros, double_1dvec& scalars,
+    void combine(std::vector<Mgxs*>& micros, double_1dvec& scalars,
                  int_1dvec& micro_ts, int this_t);
     void from_hdf5(hid_t xs_id, int energy_groups, int delayed_groups,
          double_1dvec& temperature, int& method, double tolerance,
@@ -82,10 +82,12 @@ extern "C" void add_mgxs(hid_t file_id, char* name, int energy_groups,
      int delayed_groups, int n_temps, double temps[], int& method,
      double tolerance, int max_order, bool legendre_to_tabular,
      int legendre_to_tabular_points);
+
 extern "C" bool query_fissionable(const int n_nuclides, const int i_nuclides[]);
-void create_macro_xs(int n_materials, double_2dvec& mat_kTs,
-     std::vector<std::string>& mat_names, double_1dvec& atom_densities,
-     int& method, double tolerance);
+
+extern "C" void create_macro_xs(char* mat_name, const int n_nuclides,
+     const int i_nuclides[], const int n_temps, const double temps[],
+     const double atom_densities[], int& method, const double tolerance);
 
 
 // Storage for the MGXS data

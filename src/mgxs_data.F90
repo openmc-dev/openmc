@@ -45,6 +45,20 @@ module mgxs_data
       integer(C_INT),        intent(in) :: i_nuclides(1:n_nuclides)
       logical(C_BOOL)                   :: result
     end function query_fissionable_c
+
+    subroutine create_macro_xs_c(name, n_nuclides, i_nuclides, n_temps, temps, &
+         atom_densities, method, tolerance) bind(C, name='create_macro_xs')
+      use ISO_C_BINDING
+      implicit none
+      character(kind=C_CHAR),intent(in) :: name(*)
+      integer(C_INT), value, intent(in) :: n_nuclides
+      integer(C_INT),        intent(in) :: i_nuclides(1:n_nuclides)
+      integer(C_INT), value, intent(in) :: n_temps
+      real(C_DOUBLE),        intent(in) :: temps(1:n_temps)
+      real(C_DOUBLE),        intent(in) :: atom_densities(1:n_nuclides)
+      integer(C_INT),     intent(inout) :: method
+      real(C_DOUBLE), value, intent(in) :: tolerance
+    end subroutine create_macro_xs_c
   end interface
 
 contains
@@ -315,6 +329,39 @@ contains
     end do
 
   end subroutine create_macro_xs
+
+
+  subroutine create_macro_xs2()
+    integer                       :: i_mat ! index in materials array
+    type(Material), pointer       :: mat   ! current material
+    type(VectorReal), allocatable :: kTs(:)
+    character(MAX_WORD_LEN)       :: name  ! name of material
+
+    ! Get temperatures to read for each material
+    call get_mat_kTs(kTs)
+
+    ! Force all nuclides in a material to be the same representation.
+    ! Therefore type(nuclides(mat % nuclide(1)) % obj) dictates type(macroxs).
+    ! At the same time, we will find the scattering type, as that will dictate
+    ! how we allocate the scatter object within macroxs.allocate(macro_xs(n_materials))
+    do i_mat = 1, n_materials
+
+      ! Get the material
+      mat => materials(i_mat)
+
+      name = trim(mat % name) // C_NULL_CHAR
+
+      ! Do not read materials which we do not actually use in the problem to
+      ! reduce storage
+      if (allocated(kTs(i_mat) % data)) then
+        call create_macro_xs_c(name, mat % n_nuclides, mat % nuclide, &
+             kTs(i_mat) % size(), kTs(i_mat) % data, mat % atom_density, &
+             temperature_method, temperature_tolerance)
+      end if
+    end do
+
+  end subroutine create_macro_xs2
+
 
 !===============================================================================
 ! GET_MAT_kTs returns a list of temperatures (in eV) that each

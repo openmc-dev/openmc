@@ -35,8 +35,8 @@ class ScattData {
     double_1dvec scattxs; // Isotropic Sigma_{s,g_{in}}
     virtual double calc_f(int gin, int gout, double mu) = 0;
     virtual void sample(int gin, int& gout, double& mu, double& wgt) = 0;
-    virtual void init(int_1dvec in_gmin, int_1dvec in_gmax,
-                      double_2dvec in_mult, double_3dvec coeffs) = 0;
+    virtual void init(int_1dvec& in_gmin, int_1dvec& in_gmax,
+                      double_2dvec& in_mult, double_3dvec& coeffs) = 0;
     void sample_energy(int gin, int& gout, int& i_gout);
     double get_xs(const char* xstype, int gin, int* gout, double* mu);
     void generic_init(int order, int_1dvec in_gmin, int_1dvec in_gmax,
@@ -54,12 +54,11 @@ class ScattDataLegendre: public ScattData {
     friend void convert_legendre_to_tabular(ScattDataLegendre& leg,
                                             ScattDataTabular& tab, int n_mu);
   public:
-    void init(int_1dvec in_gmin, int_1dvec in_gmax, double_2dvec in_mult,
-              double_3dvec coeffs);
+    void init(int_1dvec& in_gmin, int_1dvec& in_gmax, double_2dvec& in_mult,
+              double_3dvec& coeffs);
     void update_max_val();
     double calc_f(int gin, int gout, double mu);
     void sample(int gin, int& gout, double& mu, double& wgt);
-    bool equiv(const ScattDataLegendre& that);
     void combine(std::vector<ScattData*> those_scatts, double_1dvec& scalars);
     int get_order() {return dist[0][0].size() - 1;};
     double_3dvec get_matrix(int max_order);
@@ -71,12 +70,11 @@ class ScattDataHistogram: public ScattData {
     double dmu;
     double_3dvec fmu;
   public:
-    void init(int_1dvec in_gmin, int_1dvec in_gmax, double_2dvec in_mult,
-              double_3dvec coeffs);
+    void init(int_1dvec& in_gmin, int_1dvec& in_gmax, double_2dvec& in_mult,
+              double_3dvec& coeffs);
     double calc_f(int gin, int gout, double mu);
     void sample(int gin, int& gout, double& mu, double& wgt);
     void combine(std::vector<ScattData*> those_scatts, double_1dvec& scalars);
-    bool equiv(const ScattDataHistogram& that);
     int get_order() {return dist[0][0].size();};
     double_3dvec get_matrix(int max_order);
 };
@@ -89,12 +87,11 @@ class ScattDataTabular: public ScattData {
     friend void convert_legendre_to_tabular(ScattDataLegendre& leg,
                                             ScattDataTabular& tab, int n_mu);
   public:
-    void init(int_1dvec in_gmin, int_1dvec in_gmax, double_2dvec in_mult,
-              double_3dvec coeffs);
+    void init(int_1dvec& in_gmin, int_1dvec& in_gmax, double_2dvec& in_mult,
+              double_3dvec& coeffs);
     double calc_f(int gin, int gout, double mu);
     void sample(int gin, int& gout, double& mu, double& wgt);
     void combine(std::vector<ScattData*> those_scatts, double_1dvec& scalars);
-    bool equiv(const ScattDataTabular& that);
     int get_order() {return dist[0][0].size();};
     double_3dvec get_matrix(int max_order);
 };

@@ -666,26 +666,27 @@ void XsData::combine(std::vector<XsData*> those_xs, double_1dvec& scalars)
           absorption[p][a][gin] += scalar * that->absorption[p][a][gin];
           inverse_velocity[p][a][gin] +=
                  scalar * that->inverse_velocity[p][a][gin];
+          if (that->prompt_nu_fission.size() > 0) {
+            prompt_nu_fission[p][a][gin] +=
+                 scalar * that->prompt_nu_fission[p][a][gin];
+            kappa_fission[p][a][gin] +=
+                 scalar * that->kappa_fission[p][a][gin];
+            fission[p][a][gin] +=
+                 scalar * that->fission[p][a][gin];
 
-          prompt_nu_fission[p][a][gin] +=
-               scalar * that->prompt_nu_fission[p][a][gin];
-          kappa_fission[p][a][gin] +=
-               scalar * that->kappa_fission[p][a][gin];
-          fission[p][a][gin] +=
-               scalar * that->fission[p][a][gin];
+            for (int dg = 0; dg < delayed_nu_fission[p][a][gin].size(); dg++) {
+              delayed_nu_fission[p][a][gin][dg] +=
+                   scalar * that->delayed_nu_fission[p][a][gin][dg];
+            }
 
-          for (int dg = 0; dg < delayed_nu_fission[p][a][gin].size(); dg++) {
-            delayed_nu_fission[p][a][gin][dg] +=
-                 scalar * that->delayed_nu_fission[p][a][gin][dg];
-          }
+            for (int gout = 0; gout < chi_prompt[p][a][gin].size(); gout++) {
+              chi_prompt[p][a][gin][gout] +=
+                   scalar * that->chi_prompt[p][a][gin][gout];
 
-          for (int gout = 0; gout < chi_prompt[p][a][gin].size(); gout++) {
-            chi_prompt[p][a][gin][gout] +=
-                 scalar * that->chi_prompt[p][a][gin][gout];
-
-            for (int dg = 0; dg < chi_delayed[p][a][gin][gout].size(); dg++) {
-              chi_delayed[p][a][gin][gout][dg] +=
-                   scalar * that->chi_delayed[p][a][gin][gout][dg];
+              for (int dg = 0; dg < chi_delayed[p][a][gin][gout].size(); dg++) {
+                chi_delayed[p][a][gin][gout][dg] +=
+                     scalar * that->chi_delayed[p][a][gin][gout][dg];
+              }
             }
           }
         }
@@ -695,23 +696,25 @@ void XsData::combine(std::vector<XsData*> those_xs, double_1dvec& scalars)
         }
 
         // Normalize chi
-        for (int gin = 0; gin < chi_prompt[p][a].size(); gin++) {
-          double norm = std::accumulate(chi_prompt[p][a][gin].begin(),
-                                        chi_prompt[p][a][gin].end(), 0.);
-          if (norm > 0.) {
-            for (int gout = 0; gout < chi_prompt[p][a][gin].size(); gout++) {
-              chi_prompt[p][a][gin][gout] /= norm;
-            }
-          }
-
-          for (int dg = 0; dg < chi_delayed[p][a][gin][0].size(); dg++) {
-            norm = 0.;
-            for (int gout = 0; gout < chi_delayed[p][a][gin].size(); gout++) {
-              norm += chi_delayed[p][a][gin][gout][dg];
-            }
+        if (chi_prompt.size() > 0) {
+          for (int gin = 0; gin < chi_prompt[p][a].size(); gin++) {
+            double norm = std::accumulate(chi_prompt[p][a][gin].begin(),
+                                          chi_prompt[p][a][gin].end(), 0.);
             if (norm > 0.) {
+              for (int gout = 0; gout < chi_prompt[p][a][gin].size(); gout++) {
+                chi_prompt[p][a][gin][gout] /= norm;
+              }
+            }
+
+            for (int dg = 0; dg < chi_delayed[p][a][gin][0].size(); dg++) {
+              norm = 0.;
               for (int gout = 0; gout < chi_delayed[p][a][gin].size(); gout++) {
-                chi_delayed[p][a][gin][gout][dg] /= norm;
+                norm += chi_delayed[p][a][gin][gout][dg];
+              }
+              if (norm > 0.) {
+                for (int gout = 0; gout < chi_delayed[p][a][gin].size(); gout++) {
+                  chi_delayed[p][a][gin][gout][dg] /= norm;
+                }
               }
             }
           }

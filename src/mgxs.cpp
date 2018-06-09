@@ -266,11 +266,14 @@ void Mgxs::from_hdf5(hid_t xs_id, int energy_groups, int delayed_groups,
     close_group(xsdata_grp);
 
   } // end temperature loop
+
+  // Make sure the scattering format is updated to the final case
+  scatter_format = final_scatter_format;
 }
 
 
 void Mgxs::build_macro(const std::string& in_name, double_1dvec& mat_kTs,
-                       std::vector<Mgxs>& micros, double_1dvec& atom_densities,
+                       std::vector<Mgxs*>& micros, double_1dvec& atom_densities,
                        int& method, double tolerance)
 {
   // Get the minimum data needed to initialize:
@@ -279,21 +282,25 @@ void Mgxs::build_macro(const std::string& in_name, double_1dvec& mat_kTs,
   // start with the assumption it is not fissionable
   bool in_fissionable = false;
   for (int m = 0; m < micros.size(); m++) {
-    if (micros[m].fissionable) in_fissionable = true;
+    if (micros[m]->fissionable) in_fissionable = true;
   }
   // Force all of the following data to be the same; these will be verified
   // to be true later
-  int in_scatter_format = micros[0].scatter_format;
-  int in_num_groups = micros[0].num_groups;
-  int in_num_delayed_groups = micros[0].num_delayed_groups;
-  double_1dvec in_polar = micros[0].polar;
-  double_1dvec in_azimuthal = micros[0].azimuthal;
+  int in_scatter_format = micros[0]->scatter_format;
+  int in_num_groups = micros[0]->num_groups;
+  int in_num_delayed_groups = micros[0]->num_delayed_groups;
+  double_1dvec in_polar = micros[0]->polar;
+  double_1dvec in_azimuthal = micros[0]->azimuthal;
 
-  init(in_name, in_awr, mat_kTs, in_fissionable, in_scatter_format, in_num_groups,
-       in_num_delayed_groups, in_polar, in_azimuthal);
+  init(in_name, in_awr, mat_kTs, in_fissionable, in_scatter_format,
+       in_num_groups, in_num_delayed_groups, in_polar, in_azimuthal);
 
   // Create the xs data for each temperature
   for (int t = 0; t < mat_kTs.size(); t++) {
+    xs[t]= XsData(in_num_groups, in_num_delayed_groups, in_fissionable,
+       in_scatter_format, in_polar.size(), in_azimuthal.size());
+
+    // Find the right temperature index to use
     double temp_desired = mat_kTs[t];
 
     // Create the list of temperature indices and interpolation factors for
@@ -305,13 +312,13 @@ void Mgxs::build_macro(const std::string& in_name, double_1dvec& mat_kTs,
       case TEMPERATURE_NEAREST:
         {
           // Find the nearest temperature
-          std::valarray<double> temp_diff(micros[m].kTs.data(),
-                                          micros[m].kTs.size());
+          std::valarray<double> temp_diff(micros[m]->kTs.data(),
+                                          micros[m]->kTs.size());
           temp_diff = std::abs(temp_diff - temp_desired);
           micro_t[m] = std::min_element(std::begin(temp_diff),
                                         std::end(temp_diff)) -
                std::begin(temp_diff);
-          double temp_actual = micros[m].kTs[micro_t[m]];
+          double temp_actual = micros[m]->kTs[micro_t[m]];
 
           if (std::abs(temp_actual - temp_desired) >= K_BOLTZMANN * tolerance) {
             fatal_error("MGXS Library does not contain cross section for " +
@@ -324,13 +331,13 @@ void Mgxs::build_macro(const std::string& in_name, double_1dvec& mat_kTs,
       case TEMPERATURE_INTERPOLATION:
         // Get a list of bounding temperatures for each actual temperature
         // present in the model
-        for (int k = 0; k < micros[m].kTs.size() - 1; k++) {
-          if ((micros[m].kTs[k] <= temp_desired) &&
-              (temp_desired < micros[m].kTs[k + 1])) {
+        for (int k = 0; k < micros[m]->kTs.size() - 1; k++) {
+          if ((micros[m]->kTs[k] <= temp_desired) &&
+              (temp_desired < micros[m]->kTs[k + 1])) {
             micro_t[m] = k;
             if (k == 0) {
-              micro_t_interp[m] = (temp_desired - micros[m].kTs[k]) /
-                   (micros[m].kTs[k + 1] - micros[m].kTs[k]);
+              micro_t_interp[m] = (temp_desired - micros[m]->kTs[k]) /
+                   (micros[m]->kTs[k + 1] - micros[m]->kTs[k]);
             } else {
               micro_t_interp[m] = 1.;
             }
@@ -353,23 +360,23 @@ void Mgxs::build_macro(const std::string& in_name, double_1dvec& mat_kTs,
         interp[m] = (1. - micro_t_interp[m]) * atom_densities[m];
         temp_indices[m] = micro_t[m] + interp_point;
       }
+
       combine(micros, interp, micro_t, t);
     } // end loop to sum all micros across the temperatures
   } // end temperature (t) loop
-
 }
 
 
-void Mgxs::combine(std::vector<Mgxs>& micros, double_1dvec& scalars,
+void Mgxs::combine(std::vector<Mgxs*>& micros, double_1dvec& scalars,
                    int_1dvec& micro_ts, int this_t)
 {
   // Build the vector of pointers to the xs objects within micros
   std::vector<XsData*> those_xs(micros.size());
   for (int i = 0; i < micros.size(); i++) {
-    if (!xs[this_t].equiv(micros[i].xs[micro_ts[i]])) {
+    if (!xs[this_t].equiv(micros[i]->xs[micro_ts[i]])) {
       fatal_error("Cannot combine the Mgxs objects!");
     }
-    those_xs[i] = &(micros[i].xs[micro_ts[i]]);
+    those_xs[i] = &(micros[i]->xs[micro_ts[i]]);
   }
 
   xs[this_t].combine(those_xs, scalars);
@@ -646,24 +653,31 @@ bool query_fissionable(const int n_nuclides, const int i_nuclides[])
 }
 
 
-void create_macro_xs(int n_materials, double_2dvec& mat_kTs,
-                     std::vector<std::string>& mat_names,
-                     double_1dvec& atom_densities, int& method,
-                     double tolerance)
+void create_macro_xs(char* mat_name, const int n_nuclides,
+     const int i_nuclides[], const int n_temps, const double temps[],
+     const double atom_densities[], int& method, const double tolerance)
 {
-  // TODO mat_kTs needs to be converted from Fortran
-  // it is currently an array of type(VectorReal), a wrapper should convert to
-  // the vector.
-  macro_xs.resize(n_materials);
+  Mgxs macro;
+  if (n_temps > 0) {
+    // // Convert temps to a vector
+    double_1dvec temperature;
+    temperature.assign(temps, temps + n_temps);
 
-  for (int m = 0; m < n_materials; m++)
-  {
-    if (mat_kTs[m].size() > 0) {
-      macro_xs[m].build_macro(mat_names[m], mat_kTs[m], nuclides_MG,
-                              atom_densities, method, tolerance);
+    // Convert atom_densities to a vector
+    double_1dvec atom_densities_vec;
+    atom_densities_vec.assign(atom_densities, atom_densities + n_nuclides);
+
+    // Build array of pointers to nuclides_MG's Mgxs objects needed for this
+    // material
+    std::vector<Mgxs*> mgxs_ptr(n_nuclides);
+    for (int n = 0; n < n_nuclides; n++) {
+      mgxs_ptr[n] = &nuclides_MG[i_nuclides[n] - 1];
     }
-  }
-}
 
+    macro.build_macro(mat_name, temperature, mgxs_ptr, atom_densities_vec,
+         method, tolerance);
+  }
+  macro_xs.push_back(macro);
+}
 
 } // namespace openmc

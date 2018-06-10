@@ -646,8 +646,8 @@ void add_mgxs(hid_t file_id, char* name, int energy_groups,
 bool query_fissionable(const int n_nuclides, const int i_nuclides[])
 {
   bool result = false;
-  for (int i = 0; i < n_nuclides; i++) {
-    if (nuclides_MG[i_nuclides[i]].fissionable) result = true;
+  for (int n = 0; n < n_nuclides; n++) {
+    if (nuclides_MG[i_nuclides[n] - 1].fissionable) result = true;
   }
   return result;
 }

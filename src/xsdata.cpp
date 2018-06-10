@@ -35,9 +35,9 @@ XsData::XsData(int energy_groups, int num_delayed_groups, bool fissionable,
        double_1dvec(num_delayed_groups, 0.)));
 
   if (fissionable) {
-    // allocate delayed_nu_fission; [temperature][phi][theta][in group][out group]
+    // allocate delayed_nu_fission; [temperature][phi][theta][in group][delay group]
     delayed_nu_fission = double_4dvec(n_pol, double_3dvec(n_azi,
-         double_2dvec(energy_groups, double_1dvec(energy_groups, 0.))));
+         double_2dvec(energy_groups, double_1dvec(num_delayed_groups, 0.))));
 
     // chi_prompt; [temperature][phi][theta][in group][delayed group]
     chi_prompt = double_4dvec(n_pol, double_3dvec(n_azi,
@@ -129,11 +129,15 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
 void XsData::_fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
      int energy_groups, int delayed_groups, bool is_isotropic)
 {
+
+  // Get the fission and kappa_fission data xs; these are optional
+  read_nd_vector(xsdata_grp, "fission", fission);
+  read_nd_vector(xsdata_grp, "kappa-fission", kappa_fission);
+
+  // Set/get beta
   double_4dvec temp_beta =
        double_4dvec(n_pol, double_3dvec(n_azi,
        double_2dvec(energy_groups, double_1dvec(delayed_groups, 0.))));
-
-  // Set/get beta
   if (object_exists(xsdata_grp, "beta")) {
     hid_t xsdata = open_dataset(xsdata_grp, "beta");
     int ndims = dataset_ndims(xsdata);
@@ -442,6 +446,7 @@ void XsData::_fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
   if (object_exists(xsdata_grp, "delayed-nu-fission")) {
     hid_t xsdata = open_dataset(xsdata_grp, "delayed-nu-fission");
     int ndims = dataset_ndims(xsdata);
+    close_dataset(xsdata);
     if (is_isotropic) ndims += 2;
 
     if (ndims == 3) {
@@ -507,12 +512,8 @@ void XsData::_fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
       fatal_error("prompt-nu-fission must be provided as a 3D, 4D, or 5D "
                   "array!");
     }
-    close_dataset(xsdata);
   }
 
-  // Get the fission and kappa_fission data xs
-  read_nd_vector(xsdata_grp, "fission", fission);
-  read_nd_vector(xsdata_grp, "kappa-fission", kappa_fission);
 }
 
 

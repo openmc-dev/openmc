@@ -267,7 +267,8 @@ void ScattDataLegendre::combine(std::vector<ScattData*> those_scatts,
   int groups = dynamic_cast<ScattDataLegendre*>(those_scatts[0])->energy.size();
 
   // Now allocate and zero our storage spaces
-  double_3dvec this_matrix = get_matrix(max_order);
+  double_3dvec this_matrix = double_3dvec(groups, double_2dvec(groups,
+       double_1dvec(max_order, 0.)));
   double_2dvec mult_numer(groups, double_1dvec(groups, 0.));
   double_2dvec mult_denom(groups, double_1dvec(groups, 0.));
 
@@ -572,7 +573,8 @@ void ScattDataHistogram::combine(std::vector<ScattData*> those_scatts,
   int groups = dynamic_cast<ScattDataHistogram*>(those_scatts[0])->energy.size();
 
   // Now allocate and zero our storage spaces
-  double_3dvec this_matrix = get_matrix(max_order);
+  double_3dvec this_matrix = double_3dvec(groups, double_2dvec(groups,
+       double_1dvec(max_order, 0.)));
   double_2dvec mult_numer(groups, double_1dvec(groups, 0.));
   double_2dvec mult_denom(groups, double_1dvec(groups, 0.));
 

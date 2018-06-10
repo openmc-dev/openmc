@@ -44,7 +44,7 @@ class Mgxs {
     int index_azi;
     double_1dvec polar;
     double_1dvec azimuthal;
-    dir_arr last_uvw;
+    double last_uvw[3];
     void _metadata_from_hdf5(const hid_t xs_id, const int in_num_groups,
          const int in_num_delayed_groups, double_1dvec& temperature,
          int& method, const double tolerance, int_1dvec& temps_to_read,
@@ -66,16 +66,16 @@ class Mgxs {
          double_1dvec& temperature, int& method, double tolerance,
          int max_order, bool legendre_to_tabular,
          int legendre_to_tabular_points);
-    double get_xs(const char* xstype, int gin, int* gout, double* mu,
+    double get_xs(const char* xstype, const int gin, int* gout, double* mu,
                   int* dg);
-    void sample_fission_energy(int gin, double nu_fission, int& dg, int& gout);
-    void sample_scatter(dir_arr& uvw, int gin, int& gout, double& mu,
-                        double& wgt);
-    void calculate_xs(int gin, double sqrtkT, dir_arr& uvw, double& total_xs,
-                      double& abs_xs, double& nu_fiss_xs);
+    void sample_fission_energy(const int gin, const double nu_fission,
+         int& dg, int& gout);
+    void sample_scatter(const int gin, int& gout, double& mu, double& wgt);
+    void calculate_xs(const int gin, const double sqrtkT, const double uvw[3],
+         double& total_xs, double& abs_xs, double& nu_fiss_xs);
     bool equiv(const Mgxs& that);
-    inline void set_temperature_index(double sqrtkT);
-    inline void set_angle_index(dir_arr& uvw);
+    inline void set_temperature_index(const double sqrtkT);
+    inline void set_angle_index(const double uvw[3]);
 };
 
 extern "C" void add_mgxs(hid_t file_id, char* name, int energy_groups,
@@ -88,6 +88,13 @@ extern "C" bool query_fissionable(const int n_nuclides, const int i_nuclides[]);
 extern "C" void create_macro_xs(char* mat_name, const int n_nuclides,
      const int i_nuclides[], const int n_temps, const double temps[],
      const double atom_densities[], int& method, const double tolerance);
+
+extern "C" void calculate_xs(const int i_mat, const int gin,
+     const double sqrtkT, const double uvw[3], double& total_xs,
+     double& abs_xs, double& nu_fiss_xs);
+
+extern "C" void scatter(const int i_mat, const int gin, int& gout, double& mu,
+     double& wgt, double uvw[3]);
 
 
 // Storage for the MGXS data

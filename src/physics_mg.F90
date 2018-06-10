@@ -22,6 +22,20 @@ module physics_mg
 
   implicit none
 
+  interface
+    subroutine scatter_c(i_mat, gin, gout, mu, wgt, uvw) &
+         bind(C, name='scatter')
+      use ISO_C_BINDING
+      implicit none
+      integer(C_INT), value, intent(in) :: i_mat
+      integer(C_INT), value, intent(in) :: gin
+      integer(C_INT),     intent(inout) :: gout
+      real(C_DOUBLE),     intent(inout) :: mu
+      real(C_DOUBLE),     intent(inout) :: wgt
+      real(C_DOUBLE),     intent(inout) :: uvw(1:3)
+    end subroutine scatter_c
+  end interface
+
 contains
 
 !===============================================================================
@@ -143,15 +157,17 @@ contains
 
     type(Particle), intent(inout)  :: p
 
-    call macro_xs(p % material) % obj % sample_scatter(p % coord(1) % uvw, &
-                                                       p % last_g, p % g, &
-                                                       p % mu, p % wgt)
+    ! call macro_xs(p % material) % obj % sample_scatter(p % coord(1) % uvw, &
+    !      p % last_g, p % g, p % mu, p % wgt)
+
+    ! Convert change in angle (mu) to new direction
+    ! p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, p % mu)
+
+    call scatter_c(p % material, p % last_g, p % g, p % mu, p % wgt, &
+                   p % coord(1) % uvw)
 
     ! Update energy value for downstream compatability (in tallying)
     p % E = energy_bin_avg(p % g)
-
-    ! Convert change in angle (mu) to new direction
-    p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, p % mu)
 
     ! Set event component
     p % event = EVENT_SCATTER

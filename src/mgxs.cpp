@@ -24,6 +24,13 @@ void Mgxs::init(const std::string& in_name, const double in_awr,
   azimuthal = in_azimuthal;
   n_pol = polar.size();
   n_azi = azimuthal.size();
+  index_temp = 0;
+  last_sqrtkT = 0.;
+  index_pol = 0;
+  index_azi = 0;
+  last_uvw[0] = 1.;
+  last_uvw[1] = 0.;
+  last_uvw[2] = 0.;
 }
 
 
@@ -383,7 +390,8 @@ void Mgxs::combine(std::vector<Mgxs*>& micros, double_1dvec& scalars,
 }
 
 
-double Mgxs::get_xs(const char* xstype, int gin, int* gout, double* mu, int* dg)
+double Mgxs::get_xs(const char* xstype, const int gin, int* gout, double* mu,
+                    int* dg)
 {
   // This method assumes that the temperature and angle indices are set
   double val;
@@ -469,7 +477,8 @@ double Mgxs::get_xs(const char* xstype, int gin, int* gout, double* mu, int* dg)
 }
 
 
-void Mgxs::sample_fission_energy(int gin, double nu_fission, int& dg, int& gout)
+void Mgxs::sample_fission_energy(const int gin, const double nu_fission,
+                                 int& dg, int& gout)
 {
   // This method assumes that the temperature and angle indices are set
   // Find the probability of having a prompt neutron
@@ -525,8 +534,7 @@ void Mgxs::sample_fission_energy(int gin, double nu_fission, int& dg, int& gout)
 }
 
 
-void Mgxs::sample_scatter(dir_arr& uvw, int gin, int& gout, double& mu,
-                          double& wgt)
+void Mgxs::sample_scatter(const int gin, int& gout, double& mu, double& wgt)
 {
   // This method assumes that the temperature and angle indices are set
   // Sample the data
@@ -534,8 +542,8 @@ void Mgxs::sample_scatter(dir_arr& uvw, int gin, int& gout, double& mu,
 }
 
 
-void Mgxs::calculate_xs(int gin, double sqrtkT, dir_arr& uvw, double& total_xs,
-                        double& abs_xs, double& nu_fiss_xs)
+void Mgxs::calculate_xs(const int gin, const double sqrtkT, const double uvw[3],
+                        double& total_xs, double& abs_xs, double& nu_fiss_xs)
 {
   // Set our indices
   set_temperature_index(sqrtkT);
@@ -543,10 +551,14 @@ void Mgxs::calculate_xs(int gin, double sqrtkT, dir_arr& uvw, double& total_xs,
   total_xs = xs[index_temp].total[index_pol][index_azi][gin];
   abs_xs = xs[index_temp].absorption[index_pol][index_azi][gin];
 
-  // nu-fission is made up of the prompt and all the delayed nu_fission data
-  nu_fiss_xs = xs[index_temp].prompt_nu_fission[index_pol][index_azi][gin];
-  for (auto& val : xs[index_temp].delayed_nu_fission[index_pol][index_azi][gin]) {
-    nu_fiss_xs += val;
+  if (fissionable) {
+    // nu-fission is made up of the prompt and all the delayed nu_fission data
+    nu_fiss_xs = xs[index_temp].prompt_nu_fission[index_pol][index_azi][gin];
+    for (auto& val : xs[index_temp].delayed_nu_fission[index_pol][index_azi][gin]) {
+      nu_fiss_xs += val;
+    }
+  } else {
+    nu_fiss_xs = 0.;
   }
 }
 
@@ -568,7 +580,7 @@ bool Mgxs::equiv(const Mgxs& that)
 }
 
 
-inline void Mgxs::set_temperature_index(double sqrtkT)
+inline void Mgxs::set_temperature_index(const double sqrtkT)
 {
   // See if we need to find the new index
   if (sqrtkT != last_sqrtkT) {
@@ -588,27 +600,30 @@ inline void Mgxs::set_temperature_index(double sqrtkT)
 }
 
 
-inline void Mgxs::set_angle_index(dir_arr& uvw)
+inline void Mgxs::set_angle_index(const double uvw[3])
 {
   // See if we need to find the new index
-  if (uvw != last_uvw) {
+  if ((uvw[0] != last_uvw[0]) || (uvw[1] != last_uvw[1]) ||
+      (uvw[2] != last_uvw[2])) {
     // convert uvw to polar and azimuthal angles
     double my_pol = std::acos(uvw[2]);
     double my_azi = std::atan2(uvw[1], uvw[0]);
 
     // Find the location, assuming equal-bin angles
     double delta_angle = PI / n_pol;
-    index_pol = std::floor(my_pol / delta_angle + 1.);
-    delta_angle = PI / n_azi;
-    index_azi = std::floor((my_azi + PI) / delta_angle + 1.);
+    index_pol = std::floor(my_pol / delta_angle);
+    delta_angle = 2. * PI / n_azi;
+    index_azi = std::floor((my_azi + PI) / delta_angle);
 
     // store this direction as the last one used
-    last_uvw = uvw;
+    last_uvw[0] = uvw[0];
+    last_uvw[1] = uvw[1];
+    last_uvw[2] = uvw[2];
   }
 }
 
 //==============================================================================
-// Mgxs data loading methods
+// Mgxs data loading interface methods
 //==============================================================================
 
 void add_mgxs(hid_t file_id, char* name, int energy_groups,
@@ -678,6 +693,27 @@ void create_macro_xs(char* mat_name, const int n_nuclides,
          method, tolerance);
   }
   macro_xs.push_back(macro);
+}
+
+//==============================================================================
+// Mgxs tracking/transport/tallying interface methods
+//==============================================================================
+
+void calculate_xs(const int i_mat, const int gin, const double sqrtkT,
+     const double uvw[3], double& total_xs, double& abs_xs, double& nu_fiss_xs)
+{
+  macro_xs[i_mat - 1].calculate_xs(gin - 1, sqrtkT, uvw, total_xs, abs_xs,
+       nu_fiss_xs);
+}
+
+void scatter(const int i_mat, const int gin, int& gout, double& mu,
+             double& wgt, double uvw[3])
+{
+  int gout_c = gout - 1;
+  macro_xs[i_mat - 1].sample_scatter(gin - 1, gout_c, mu, wgt);
+  gout = gout_c + 1;
+
+  rotate_angle_c(uvw, mu, nullptr);
 }
 
 } // namespace openmc

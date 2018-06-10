@@ -44,7 +44,8 @@ void ScattData::sample_energy(int gin, int& gout, int& i_gout)
 {
   // Sample the outgoing group
   double xi = prn();
-  i_gout = 0; //TODO: + 1?
+
+  i_gout = 0;
   gout = gmin[gin];
   double prob = energy[gin][i_gout];
   while((prob < xi) && (gout < gmax[gin])) {
@@ -247,7 +248,7 @@ void ScattDataLegendre::sample(int gin, int& gout, double& mu, double& wgt)
 }
 
 
-void ScattDataLegendre::combine(std::vector<ScattData*> those_scatts,
+void ScattDataLegendre::combine(std::vector<ScattData*>& those_scatts,
                                 double_1dvec& scalars)
 {
   // Find the max order in the data set and make sure we can combine the sets
@@ -294,6 +295,7 @@ void ScattDataLegendre::combine(std::vector<ScattData*> those_scatts,
     for (int gin = 0; gin < groups; gin++) {
       // Only spend time adding that's gmin to gmax data since the rest will
       // be zeros
+      int i_gout = 0;
       for (int gout = that->gmin[gin]; gout <= that->gmax[gin]; gout++) {
         // Do the scattering matrix
         for (int l = 0; l < max_order; l++) {
@@ -301,13 +303,14 @@ void ScattDataLegendre::combine(std::vector<ScattData*> those_scatts,
         }
 
         // Incorporate that's contribution to the multiplicity matrix data
-        double nuscatt = that->scattxs[gin] * that->energy[gin][gout];
+        double nuscatt = that->scattxs[gin] * that->energy[gin][i_gout];
         mult_numer[gin][gout] += scalars[i] * nuscatt;
-        if (that->mult[gin][gout] > 0.) {
-          mult_denom[gin][gout] += scalars[i] * nuscatt / that->mult[gin][gout];
+        if (that->mult[gin][i_gout] > 0.) {
+          mult_denom[gin][gout] += scalars[i] * nuscatt / that->mult[gin][i_gout];
         } else {
           mult_denom[gin][gout] += scalars[i];
         }
+        i_gout++;
       }
     }
   }
@@ -336,14 +339,14 @@ void ScattDataLegendre::combine(std::vector<ScattData*> those_scatts,
     for (gmin_ = 0; gmin_ < groups; gmin_++) {
       bool non_zero = std::all_of(this_matrix[gin][gmin_].begin(),
                                   this_matrix[gin][gmin_].end(),
-                                  [](double val){return val > 0.;});
+                                  [](double val){return val != 0.;});
       if (non_zero) break;
     }
     int gmax_;
     for (gmax_ = groups - 1; gmax_ >= 0; gmax_--) {
       bool non_zero = std::all_of(this_matrix[gin][gmax_].begin(),
                                   this_matrix[gin][gmax_].end(),
-                                  [](double val){return val > 0.;});
+                                  [](double val){return val != 0.;});
       if (non_zero) break;
     }
 
@@ -425,6 +428,7 @@ void ScattDataHistogram::init(int_1dvec& in_gmin, int_1dvec& in_gmax,
     for (int i_gout = 0; i_gout < num_groups; i_gout++) {
       double norm = std::accumulate(matrix[gin][i_gout].begin(),
                                     matrix[gin][i_gout].end(), 0.);
+      in_energy[gin][i_gout] = norm;
       if (norm != 0.) {
         for (auto& n : matrix[gin][i_gout]) n /= norm;
       }
@@ -440,7 +444,7 @@ void ScattDataHistogram::init(int_1dvec& in_gmin, int_1dvec& in_gmax,
   dmu = 2. / order;
   mu[0] = -1.;
   for (int imu = 1; imu < order; imu++) {
-    mu[imu] = -1. + (imu - 1) * dmu;
+    mu[imu] = -1. + imu * dmu;
   }
 
   // Calculate f(mu) and integrate it so we can avoid rejection sampling
@@ -507,7 +511,7 @@ void ScattDataHistogram::sample(int gin, int& gout, double& mu, double& wgt)
 
   int imu;
   if (xi < dist[gin][i_gout][0]) {
-    imu = 1;
+    imu = 0;
   } else {
     // TODO lower_bound?  + 1?
     imu = std::upper_bound(dist[gin][i_gout].begin(),
@@ -551,7 +555,7 @@ double_3dvec ScattDataHistogram::get_matrix(int max_order)
 }
 
 
-void ScattDataHistogram::combine(std::vector<ScattData*> those_scatts,
+void ScattDataHistogram::combine(std::vector<ScattData*>& those_scatts,
                                 double_1dvec& scalars)
 {
   // Find the max order in the data set and make sure we can combine the sets
@@ -600,6 +604,7 @@ void ScattDataHistogram::combine(std::vector<ScattData*> those_scatts,
     for (int gin = 0; gin < groups; gin++) {
       // Only spend time adding that's gmin to gmax data since the rest will
       // be zeros
+      int i_gout = 0;
       for (int gout = that->gmin[gin]; gout <= that->gmax[gin]; gout++) {
         // Do the scattering matrix
         for (int l = 0; l < max_order; l++) {
@@ -607,13 +612,14 @@ void ScattDataHistogram::combine(std::vector<ScattData*> those_scatts,
         }
 
         // Incorporate that's contribution to the multiplicity matrix data
-        double nuscatt = that->scattxs[gin] * that->energy[gin][gout];
+        double nuscatt = that->scattxs[gin] * that->energy[gin][i_gout];
         mult_numer[gin][gout] += scalars[i] * nuscatt;
-        if (that->mult[gin][gout] > 0.) {
-          mult_denom[gin][gout] += scalars[i] * nuscatt / that->mult[gin][gout];
+        if (that->mult[gin][i_gout] > 0.) {
+          mult_denom[gin][gout] += scalars[i] * nuscatt / that->mult[gin][i_gout];
         } else {
           mult_denom[gin][gout] += scalars[i];
         }
+        i_gout++;
       }
     }
   }
@@ -642,14 +648,14 @@ void ScattDataHistogram::combine(std::vector<ScattData*> those_scatts,
     for (gmin_ = 0; gmin_ < groups; gmin_++) {
       bool non_zero = std::all_of(this_matrix[gin][gmin_].begin(),
                                   this_matrix[gin][gmin_].end(),
-                                  [](double val){return val > 0.;});
+                                  [](double val){return val != 0.;});
       if (non_zero) break;
     }
     int gmax_;
     for (gmax_ = groups - 1; gmax_ >= 0; gmax_--) {
       bool non_zero = std::all_of(this_matrix[gin][gmax_].begin(),
                                   this_matrix[gin][gmax_].end(),
-                                  [](double val){return val > 0.;});
+                                  [](double val){return val != 0.;});
       if (non_zero) break;
     }
 
@@ -695,7 +701,7 @@ void ScattDataTabular::init(int_1dvec& in_gmin, int_1dvec& in_gmax,
   dmu = 2. / (order - 1);
   mu[0] = -1.;
   for (int imu = 1; imu < order - 1; imu++) {
-    mu[imu] = -1. + (imu - 1) * dmu;
+    mu[imu] = -1. + imu * dmu;
   }
   mu[order - 1] = 1.;
 
@@ -724,9 +730,7 @@ void ScattDataTabular::init(int_1dvec& in_gmin, int_1dvec& in_gmax,
         norm += 0.5 * dmu * (matrix[gin][i_gout][imu - 1] +
                              matrix[gin][i_gout][imu]);
       }
-      if (norm != 0.) {
-        for (auto& n : matrix[gin][i_gout]) n /= norm;
-      }
+      in_energy[gin][i_gout] = norm;
     }
   }
 
@@ -806,14 +810,14 @@ void ScattDataTabular::sample(int gin, int& gout, double& mu, double& wgt)
 
   double c_k = dist[gin][i_gout][0];
   int k;
-  for (k = 0; k < NP - 2; k++) {
+  for (k = 0; k < NP - 1; k++) {
     double c_k1 = dist[gin][i_gout][k + 1];
     if (xi < c_k1) break;
     c_k = c_k1;
   }
 
   // Check to make sure k is <= NP - 1
-  k = std::min(k, NP - 1);
+  k = std::min(k, NP - 2);
 
   // Find the pdf values we want
   double p0 = fmu[gin][i_gout][k];
@@ -861,7 +865,7 @@ double_3dvec ScattDataTabular::get_matrix(int max_order)
   return matrix;
 }
 
-void ScattDataTabular::combine(std::vector<ScattData*> those_scatts,
+void ScattDataTabular::combine(std::vector<ScattData*>& those_scatts,
                                double_1dvec& scalars)
 {
   // Find the max order in the data set and make sure we can combine the sets
@@ -910,6 +914,7 @@ void ScattDataTabular::combine(std::vector<ScattData*> those_scatts,
     for (int gin = 0; gin < groups; gin++) {
       // Only spend time adding that's gmin to gmax data since the rest will
       // be zeros
+      int i_gout = 0;
       for (int gout = that->gmin[gin]; gout <= that->gmax[gin]; gout++) {
         // Do the scattering matrix
         for (int l = 0; l < max_order; l++) {
@@ -917,13 +922,14 @@ void ScattDataTabular::combine(std::vector<ScattData*> those_scatts,
         }
 
         // Incorporate that's contribution to the multiplicity matrix data
-        double nuscatt = that->scattxs[gin] * that->energy[gin][gout];
+        double nuscatt = that->scattxs[gin] * that->energy[gin][i_gout];
         mult_numer[gin][gout] += scalars[i] * nuscatt;
-        if (that->mult[gin][gout] > 0.) {
-          mult_denom[gin][gout] += scalars[i] * nuscatt / that->mult[gin][gout];
+        if (that->mult[gin][i_gout] > 0.) {
+          mult_denom[gin][gout] += scalars[i] * nuscatt / that->mult[gin][i_gout];
         } else {
           mult_denom[gin][gout] += scalars[i];
         }
+        i_gout++;
       }
     }
   }
@@ -952,14 +958,14 @@ void ScattDataTabular::combine(std::vector<ScattData*> those_scatts,
     for (gmin_ = 0; gmin_ < groups; gmin_++) {
       bool non_zero = std::all_of(this_matrix[gin][gmin_].begin(),
                                   this_matrix[gin][gmin_].end(),
-                                  [](double val){return val > 0.;});
+                                  [](double val){return val != 0.;});
       if (non_zero) break;
     }
     int gmax_;
     for (gmax_ = groups - 1; gmax_ >= 0; gmax_--) {
       bool non_zero = std::all_of(this_matrix[gin][gmax_].begin(),
                                   this_matrix[gin][gmax_].end(),
-                                  [](double val){return val > 0.;});
+                                  [](double val){return val != 0.;});
       if (non_zero) break;
     }
 

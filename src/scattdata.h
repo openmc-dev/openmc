@@ -41,7 +41,7 @@ class ScattData {
     double get_xs(const char* xstype, int gin, int* gout, double* mu);
     void generic_init(int order, int_1dvec in_gmin, int_1dvec in_gmax,
                       double_2dvec in_energy, double_2dvec in_mult);
-    virtual void combine(std::vector<ScattData*> those_scatts,
+    virtual void combine(std::vector<ScattData*>& those_scatts,
                          double_1dvec& scalars) = 0;
     virtual int get_order() = 0;
     virtual double_3dvec get_matrix(int max_order) = 0;
@@ -59,7 +59,7 @@ class ScattDataLegendre: public ScattData {
     void update_max_val();
     double calc_f(int gin, int gout, double mu);
     void sample(int gin, int& gout, double& mu, double& wgt);
-    void combine(std::vector<ScattData*> those_scatts, double_1dvec& scalars);
+    void combine(std::vector<ScattData*>& those_scatts, double_1dvec& scalars);
     int get_order() {return dist[0][0].size() - 1;};
     double_3dvec get_matrix(int max_order);
 };
@@ -74,7 +74,7 @@ class ScattDataHistogram: public ScattData {
               double_3dvec& coeffs);
     double calc_f(int gin, int gout, double mu);
     void sample(int gin, int& gout, double& mu, double& wgt);
-    void combine(std::vector<ScattData*> those_scatts, double_1dvec& scalars);
+    void combine(std::vector<ScattData*>& those_scatts, double_1dvec& scalars);
     int get_order() {return dist[0][0].size();};
     double_3dvec get_matrix(int max_order);
 };
@@ -91,7 +91,7 @@ class ScattDataTabular: public ScattData {
               double_3dvec& coeffs);
     double calc_f(int gin, int gout, double mu);
     void sample(int gin, int& gout, double& mu, double& wgt);
-    void combine(std::vector<ScattData*> those_scatts, double_1dvec& scalars);
+    void combine(std::vector<ScattData*>& those_scatts, double_1dvec& scalars);
     int get_order() {return dist[0][0].size();};
     double_3dvec get_matrix(int max_order);
 };

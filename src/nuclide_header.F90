@@ -166,10 +166,10 @@ module nuclide_header
 !===============================================================================
 
   type MaterialMacroXS
-    real(8) :: total         ! macroscopic total xs
-    real(8) :: absorption    ! macroscopic absorption xs
-    real(8) :: fission       ! macroscopic fission xs
-    real(8) :: nu_fission    ! macroscopic production xs
+    real(C_DOUBLE) :: total         ! macroscopic total xs
+    real(C_DOUBLE) :: absorption    ! macroscopic absorption xs
+    real(C_DOUBLE) :: fission       ! macroscopic fission xs
+    real(C_DOUBLE) :: nu_fission    ! macroscopic production xs
   end type MaterialMacroXS
 
 !===============================================================================

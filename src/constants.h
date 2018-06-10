@@ -10,7 +10,6 @@
 
 namespace openmc {
 
-typedef std::array<double, 3> dir_arr;
 typedef std::vector<double> double_1dvec;
 typedef std::vector<std::vector<double> > double_2dvec;
 typedef std::vector<std::vector<std::vector<double> > > double_3dvec;

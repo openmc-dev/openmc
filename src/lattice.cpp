@@ -8,6 +8,7 @@
 #include "error.h"
 #include "geometry_aux.h"
 #include "hdf5_interface.h"
+#include "string_utils.h"
 #include "xml_interface.h"
 
 
@@ -19,7 +20,7 @@ namespace openmc {
 
 std::vector<Lattice*> lattices_c;
 
-std::unordered_map<int32_t, int32_t> lattice_dict;
+std::unordered_map<int32_t, int32_t> lattice_map;
 
 //==============================================================================
 // Lattice implementation
@@ -64,8 +65,8 @@ Lattice::adjust_indices()
   // Adjust the indices for the universes array.
   for (LatticeIter it = begin(); it != end(); ++it) {
     int uid = *it;
-    auto search = universe_dict.find(uid);
-    if (search != universe_dict.end()) {
+    auto search = universe_map.find(uid);
+    if (search != universe_map.end()) {
       *it = search->second;
     } else {
       std::stringstream err_msg;
@@ -77,8 +78,8 @@ Lattice::adjust_indices()
 
   // Adjust the index for the outer universe.
   if (outer != NO_OUTER_UNIVERSE) {
-    auto search = universe_dict.find(outer);
-    if (search != universe_dict.end()) {
+    auto search = universe_map.find(outer);
+    if (search != universe_map.end()) {
       outer = search->second;
     } else {
       std::stringstream err_msg;
@@ -117,7 +118,7 @@ Lattice::to_hdf5(hid_t lattices_group) const
   }
 
   if (outer != NO_OUTER_UNIVERSE) {
-    int32_t outer_id = universes_c[outer]->id;
+    int32_t outer_id = global_universes[outer]->id;
     write_int(lat_group, 0, nullptr, "outer", &outer_id, false);
   } else {
     write_int(lat_group, 0, nullptr, "outer", &outer, false);
@@ -372,7 +373,7 @@ RectLattice::to_hdf5_inner(hid_t lat_group) const
         for (int j = 0; j < nx; j++) {
           int indx1 = nx*ny*m + nx*k + j;
           int indx2 = nx*ny*m + nx*(ny-k-1) + j;
-          out[indx2] = universes_c[universes[indx1]]->id;
+          out[indx2] = global_universes[universes[indx1]]->id;
         }
       }
     }
@@ -389,7 +390,7 @@ RectLattice::to_hdf5_inner(hid_t lat_group) const
       for (int j = 0; j < nx; j++) {
         int indx1 = nx*k + j;
         int indx2 = nx*(ny-k-1) + j;
-        out[indx2] = universes_c[universes[indx1]]->id;
+        out[indx2] = global_universes[universes[indx1]]->id;
       }
     }
 
@@ -854,7 +855,7 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
           // This array position is never used; put a -1 to indicate this.
           out[indx] = -1;
         } else {
-          out[indx] = universes_c[universes[indx]]->id;
+          out[indx] = global_universes[universes[indx]]->id;
         }
       }
     }
@@ -871,19 +872,19 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
 extern "C" void
 read_lattices(pugi::xml_node *node)
 {
-  for (pugi::xml_node lat_node: node->children("lattice")) {
+  for (pugi::xml_node lat_node : node->children("lattice")) {
     lattices_c.push_back(new RectLattice(lat_node));
   }
-  for (pugi::xml_node lat_node: node->children("hex_lattice")) {
+  for (pugi::xml_node lat_node : node->children("hex_lattice")) {
     lattices_c.push_back(new HexLattice(lat_node));
   }
 
-  // Fill the lattice dictionary.
+  // Fill the lattice map.
   for (int i_lat = 0; i_lat < lattices_c.size(); i_lat++) {
     int id = lattices_c[i_lat]->id;
-    auto in_dict = lattice_dict.find(id);
-    if (in_dict == lattice_dict.end()) {
-      lattice_dict[id] = i_lat;
+    auto in_map = lattice_map.find(id);
+    if (in_map == lattice_map.end()) {
+      lattice_map[id] = i_lat;
     } else {
       std::stringstream err_msg;
       err_msg << "Two or more lattices use the same unique ID: " << id;

@@ -28,7 +28,7 @@ int32_t n_surfaces;
 
 Surface **surfaces_c;
 
-std::map<int, int> surface_dict;
+std::map<int, int> surface_map;
 
 //==============================================================================
 // Helper functions for reading the "coeffs" node of an XML surface element
@@ -1129,12 +1129,12 @@ read_surfaces(pugi::xml_node *node)
     }
   }
 
-  // Fill the surface dictionary.
+  // Fill the surface map.
   for (int i_surf = 0; i_surf < n_surfaces; i_surf++) {
     int id = surfaces_c[i_surf]->id;
-    auto in_dict = surface_dict.find(id);
-    if (in_dict == surface_dict.end()) {
-      surface_dict[id] = i_surf;
+    auto in_map = surface_map.find(id);
+    if (in_map == surface_map.end()) {
+      surface_map[id] = i_surf;
     } else {
       std::stringstream err_msg;
       err_msg << "Two or more surfaces use the same unique ID: " << id;
@@ -1224,7 +1224,7 @@ read_surfaces(pugi::xml_node *node)
           }
         } else {
           // Convert the surface id to an index.
-          surf->i_periodic = surface_dict[surf->i_periodic];
+          surf->i_periodic = surface_map[surf->i_periodic];
         }
       } else {
         // This is a SurfacePlane.  We won't try to find it's partner if the
@@ -1236,7 +1236,7 @@ read_surfaces(pugi::xml_node *node)
           fatal_error(err_msg);
         } else {
           // Convert the surface id to an index.
-          surf->i_periodic = surface_dict[surf->i_periodic];
+          surf->i_periodic = surface_map[surf->i_periodic];
         }
       }
 
@@ -1283,7 +1283,7 @@ extern "C" {
     delete surfaces_c;
     surfaces_c = nullptr;
     n_surfaces = 0;
-    surface_dict.clear();
+    surface_map.clear();
   }
 }
 

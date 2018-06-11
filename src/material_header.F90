@@ -715,14 +715,11 @@ contains
     real(8)                 :: t
     real(8)                 :: r
     real(8)                 :: awr
-    real(8)                 :: density
-    real(8)                 :: density_gpcc
-    real(8)                 :: Z_eq_sq
     real(8)                 :: beta
-    real(8)                 :: atom_sum
-    real(8)                 :: mass_sum
-    real(8), allocatable    :: atom_fraction(:)
-    real(8), allocatable    :: mass_fraction(:)
+    real(8)                 :: Z_eq_sq
+    real(8)                 :: atom_density
+    real(8)                 :: mass_density
+    real(8)                 :: sum_density
     real(8), allocatable    :: stopping_power_collision(:)
     real(8), allocatable    :: stopping_power_radiative(:)
     real(8), allocatable    :: stopping_power(:)
@@ -753,8 +750,6 @@ contains
     allocate(this % yield(n_e))
 
     ! Allocate temporary arrays
-    allocate(atom_fraction(mat % n_nuclides))
-    allocate(mass_fraction(mat % n_nuclides))
     allocate(stopping_power_collision(n_e), source=ZERO)
     allocate(stopping_power_radiative(n_e), source=ZERO)
     allocate(stopping_power(n_e))
@@ -762,45 +757,8 @@ contains
     allocate(f(n_e))
     allocate(z(n_e))
 
-    ! Calculate the "equivalent" atomic number Zeq, the atomic fraction and the
-    ! mass fraction of each element, and the material density in atom/b-cm and
-    ! in g/cm^3
     Z_eq_sq = ZERO
-    do i = 1, mat % n_nuclides
-      awr = nuclides(mat % nuclide(i)) % awr
-
-      ! Given atom percent
-      if (mat % atom_density(1) > ZERO) then
-        atom_fraction(i) = mat % atom_density(i)
-        mass_fraction(i) = mat % atom_density(i) * awr
-
-      ! Given weight percent
-      else
-        atom_fraction(i) = -mat % atom_density(i) / awr
-        mass_fraction(i) = -mat % atom_density(i)
-      end if
-
-      Z_eq_sq = Z_eq_sq + atom_fraction(i) * nuclides(mat % nuclide(i)) % Z**2
-    end do
-
-    atom_sum = sum(atom_fraction)
-    mass_sum = sum(mass_fraction)
-
-    ! Given material density in g/cm^3
-    if (mat % density < ZERO) then
-      density = -mat % density * (atom_sum / mass_sum) * N_AVOGADRO / MASS_NEUTRON
-      density_gpcc = -mat % density
-
-    ! Given material density in atom/b-cm
-    else
-      density = mat % density
-      density_gpcc = mat % density * (mass_sum / atom_sum) * MASS_NEUTRON / &
-           N_AVOGADRO
-    end if
-
-    Z_eq_sq = Z_eq_sq / atom_sum
-    atom_fraction = atom_fraction / atom_sum
-    mass_fraction = mass_fraction / mass_sum
+    sum_density = ZERO
 
     ! Calculate the molecular DCS and the molecular total stopping power using
     ! Bragg's additivity rule. Note: the collision stopping power cannot be
@@ -815,17 +773,34 @@ contains
       ! Get pointer to current element
       elm => elements(mat % element(i))
 
+      awr = nuclides(mat % nuclide(i)) % awr
+
+      ! Get atomic density and mass density of nuclide given atom percent
+      if (mat % atom_density(1) > ZERO) then
+        atom_density = mat % atom_density(i)
+        mass_density = mat % atom_density(i) * awr
+      ! Given weight percent
+      else
+        atom_density = -mat % atom_density(i) / awr
+        mass_density = -mat % atom_density(i)
+      end if
+
+      ! Calculate the "equivalent" atomic number Zeq of the material
+      Z_eq_sq = Z_eq_sq + atom_density * elm % Z**2
+      sum_density = sum_density + atom_density
+
       ! Accumulate material DCS
-      dcs = dcs + atom_fraction(i) * elm % Z**2 / Z_eq_sq * elm % dcs
+      dcs = dcs + atom_density * elm % Z**2 * elm % dcs
 
       ! Accumulate material collision stopping power
-      stopping_power_collision = stopping_power_collision + &
-           mass_fraction(i) * density_gpcc * elm % stopping_power_collision
+      stopping_power_collision = stopping_power_collision + mass_density &
+           * MASS_NEUTRON / N_AVOGADRO * elm % stopping_power_collision
 
       ! Accumulate material radiative stopping power
-      stopping_power_radiative = stopping_power_radiative + &
-           mass_fraction(i) * density_gpcc * elm % stopping_power_radiative
+      stopping_power_radiative = stopping_power_radiative + mass_density &
+           * MASS_NEUTRON / N_AVOGADRO * elm % stopping_power_radiative
     end do
+    Z_eq_sq = Z_eq_sq / sum_density
 
     ! Calculate the positron DCS and radiative stopping power. These are
     ! obtained by multiplying the electron DCS and radiative stopping powers by
@@ -876,8 +851,7 @@ contains
         beta = sqrt(e*(e + TWO*MASS_ELECTRON)) / (e + MASS_ELECTRON)
 
         ! Compute the integrand of the PDF
-        f(j) = (density * 1.0e-3_8 * Z_eq_sq * x) / (beta**2 * &
-             stopping_power(j) * w)
+        f(j) = (1.0e-3_8 * x) / (beta**2 * stopping_power(j) * w)
       end do
 
       ! Number of points to integrate
@@ -949,9 +923,6 @@ contains
     end do
     close(17)
 
-    ! Set small non-zero value at lowest energy
-    this % yield(1) = 1.0e-6_8 * this % yield(2)
-
     open(unit=14, file="yield.txt", action="write")
     write(14,*) this % yield
     close(14)
@@ -959,10 +930,12 @@ contains
     ! Use logarithm of number yield since it is log-log interpolated
     where (this % yield > ZERO)
       this % yield = log(this % yield)
+    elsewhere
+      this % yield = -500.0_8
     end where
 
-    deallocate(atom_fraction, mass_fraction, stopping_power_collision, &
-         stopping_power_radiative, stopping_power, dcs, f, z)
+    deallocate(stopping_power_collision, stopping_power_radiative, &
+         stopping_power, dcs, f, z)
 
   end subroutine bremsstrahlung_init
 

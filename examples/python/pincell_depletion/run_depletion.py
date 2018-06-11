@@ -1,6 +1,7 @@
 import openmc
 import openmc.deplete
 import numpy as np
+import matplotlib.pyplot as plt
 
 ###############################################################################
 #                      Simulation Input File Parameters
@@ -13,7 +14,7 @@ particles = 1000
 
 # Depletion simulation parameters
 time_step = 1*24*60*60 # s
-final_time = 15*24*60*60 # s
+final_time = 5*24*60*60 # s
 time_steps = np.full(final_time // time_step, time_step)
 
 chain_file = './chain_simple.xml'
@@ -49,7 +50,7 @@ borated_water.add_element('O', 2.4e-2)
 borated_water.add_s_alpha_beta('c_H_in_H2O')
 
 ###############################################################################
-#                 Exporting to OpenMC geometry.xml file
+#                             Create geometry
 ###############################################################################
 
 # Instantiate ZCylinder surfaces
@@ -94,7 +95,7 @@ root.add_cells([fuel, gap, clad, water])
 geometry = openmc.Geometry(root)
 
 ###############################################################################
-#                   Exporting to OpenMC materials.xml file
+#                     Set volumes of depletable materials
 ###############################################################################
 
 # Compute cell areas
@@ -105,7 +106,7 @@ area[fuel] = np.pi * fuel_or.coefficients['R'] ** 2
 uo2.volume = area[fuel]
 
 ###############################################################################
-#                   Exporting to OpenMC settings.xml file
+#                     Transport calculation settings
 ###############################################################################
 
 # Instantiate a Settings object, set all runtime parameters, and export to XML
@@ -143,6 +144,32 @@ results = openmc.deplete.ResultsList("depletion_results.h5")
 
 # Obtain K_eff as a function of time
 time, keff = results.get_eigenvalue()
-                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+
 # Obtain U235 concentration as a function of time
 time, n_U235 = results.get_atoms('1', 'U235')
+
+# Obtain Xe135 absorption as a function of time
+time, Xe_gam = results.get_reaction_rate('1', 'Xe135', '(n,gamma)')
+
+###############################################################################
+#                            Generate plots
+###############################################################################
+
+plt.figure()
+plt.plot(time/(24*60*60), keff, label="K-effective")
+plt.xlabel("Time (days)")
+plt.ylabel("Keff")
+plt.show()
+
+plt.figure()
+plt.plot(time/(24*60*60), n_U235, label="U 235")
+plt.xlabel("Time (days)")
+plt.ylabel("n U5 (-)")
+plt.show()
+
+plt.figure()
+plt.plot(time/(24*60*60), Xe_gam, label="Xe135 absorption")
+plt.xlabel("Time (days)")
+plt.ylabel("RR (-)")
+plt.show()
+plt.close('all')

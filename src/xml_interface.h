@@ -17,7 +17,5 @@ check_for_node(pugi::xml_node node, const char *name)
 
 std::string get_node_value(pugi::xml_node node, const char *name);
 
-std::vector<std::string> split(const std::string in);
-
 } // namespace openmc
 #endif // XML_INTERFACE_H

@@ -31,7 +31,7 @@ extern "C" int32_t n_surfaces;
 class Surface;
 extern Surface **surfaces_c;
 
-extern std::map<int, int> surface_dict;
+extern std::map<int, int> surface_map;
 
 //==============================================================================
 //! Coordinates for an axis-aligned cube that bounds a geometric object.
@@ -58,7 +58,7 @@ public:
   //int neighbor_pos[],        //!< List of cells on positive side
   //    neighbor_neg[];        //!< List of cells on negative side
   int bc;                    //!< Boundary condition
-  std::string name{""};      //!< User-defined name
+  std::string name;          //!< User-defined name
 
   explicit Surface(pugi::xml_node surf_node);
 

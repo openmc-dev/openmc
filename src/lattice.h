@@ -27,7 +27,7 @@ constexpr int32_t NO_OUTER_UNIVERSE{-1};
 class Lattice;
 extern std::vector<Lattice*> lattices_c;
 
-extern std::unordered_map<int32_t, int32_t> lattice_dict;
+extern std::unordered_map<int32_t, int32_t> lattice_map;
 
 //==============================================================================
 //! \class Lattice
@@ -58,7 +58,7 @@ public:
   virtual ReverseLatticeIter rbegin();
   ReverseLatticeIter rend();
 
-  //! Convert internal universe values from IDs to indices using universe_dict.
+  //! Convert internal universe values from IDs to indices using universe_map.
   void adjust_indices();
 
   //! Allocate offset table for distribcell.

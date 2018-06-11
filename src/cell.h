@@ -27,12 +27,12 @@ extern "C" int FILL_LATTICE;
 extern "C" int32_t n_cells;
 
 class Cell;
-extern std::vector<Cell*> cells_c;
-extern std::unordered_map<int32_t, int32_t> cell_dict;
+extern std::vector<Cell*> global_cells;
+extern std::unordered_map<int32_t, int32_t> cell_map;
 
 class Universe;
-extern std::vector<Universe*> universes_c;
-extern std::unordered_map<int32_t, int32_t> universe_dict;
+extern std::vector<Universe*> global_universes;
+extern std::unordered_map<int32_t, int32_t> universe_map;
 
 //==============================================================================
 //! A geometry primitive that fills all space and contains cells.
@@ -54,7 +54,7 @@ class Cell
 {
 public:
   int32_t id;                //!< Unique ID
-  std::string name{""};      //!< User-defined name
+  std::string name;          //!< User-defined name
   int type;                  //!< Material, universe, or lattice
   int32_t universe;          //!< Universe # this cell is in
   int32_t fill;              //!< Universe # filling this cell

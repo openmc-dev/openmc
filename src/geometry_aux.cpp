@@ -9,8 +9,6 @@
 #include "error.h"
 #include "lattice.h"
 
-#include <iostream> //TODO: remove this
-
 
 namespace openmc {
 
@@ -20,15 +18,15 @@ void
 adjust_indices_c()
 {
   // Adjust material/fill idices.
-  for (Cell *c : cells_c) {
+  for (Cell *c : global_cells) {
     if (c->material[0] == C_NONE) {
       int32_t id = c->fill;
-      auto search_univ = universe_dict.find(id);
-      auto search_lat = lattice_dict.find(id);
-      if (search_univ != universe_dict.end()) {
+      auto search_univ = universe_map.find(id);
+      auto search_lat = lattice_map.find(id);
+      if (search_univ != universe_map.end()) {
         c->type = FILL_UNIVERSE;
         c->fill = search_univ->second;
-      } else if (search_lat != lattice_dict.end()) {
+      } else if (search_lat != lattice_map.end()) {
         c->type = FILL_LATTICE;
         c->fill = search_lat->second;
       } else {
@@ -44,9 +42,9 @@ adjust_indices_c()
   }
 
   // Change cell.universe values from IDs to indices.
-  for (Cell *c : cells_c) {
-    auto search = universe_dict.find(c->universe);
-    if (search != universe_dict.end()) {
+  for (Cell *c : global_cells) {
+    auto search = universe_map.find(c->universe);
+    if (search != universe_map.end()) {
       //TODO: Remove this off-by-one indexing.
       c->universe = search->second + 1;
     } else {
@@ -70,7 +68,7 @@ find_root_universe()
 {
   // Find all the universes listed as a cell fill.
   std::unordered_set<int32_t> fill_univ_ids;
-  for (Cell *c : cells_c) {
+  for (Cell *c : global_cells) {
     fill_univ_ids.insert(c->fill);
   }
 
@@ -87,8 +85,8 @@ find_root_universe()
   // Figure out which universe is not in the set.  This is the root universe.
   bool root_found {false};
   int32_t root_univ;
-  for (int32_t i = 0; i < universes_c.size(); i++) {
-    auto search = fill_univ_ids.find(universes_c[i]->id);
+  for (int32_t i = 0; i < global_universes.size(); i++) {
+    auto search = fill_univ_ids.find(global_universes[i]->id);
     if (search == fill_univ_ids.end()) {
       if (root_found) {
         fatal_error("Two or more universes are not used as fill universes, so "
@@ -111,7 +109,7 @@ find_root_universe()
 void
 allocate_offset_tables(int n_maps)
 {
-  for (Cell *c : cells_c) {
+  for (Cell *c : global_cells) {
     if (c->type != FILL_MATERIAL) {
       c->offset.resize(n_maps, C_NONE);
     }
@@ -127,8 +125,8 @@ allocate_offset_tables(int n_maps)
 void
 count_cell_instances(int32_t univ_indx)
 {
-  for (int32_t cell_indx : universes_c[univ_indx]->cells) {
-    Cell &c = *cells_c[cell_indx];
+  for (int32_t cell_indx : global_universes[univ_indx]->cells) {
+    Cell &c = *global_cells[cell_indx];
     ++c.n_instances;
 
     if (c.type == FILL_UNIVERSE) {
@@ -151,13 +149,13 @@ int
 count_universe_instances(int32_t search_univ, int32_t target_univ_id)
 {
   //  If this is the target, it can't contain itself.
-  if (universes_c[search_univ]->id == target_univ_id) {
+  if (global_universes[search_univ]->id == target_univ_id) {
     return 1;
   }
 
   int count {0};
-  for (int32_t cell_indx : universes_c[search_univ]->cells) {
-    Cell &c = *cells_c[cell_indx];
+  for (int32_t cell_indx : global_universes[search_univ]->cells) {
+    Cell &c = *global_cells[cell_indx];
 
     if (c.type == FILL_UNIVERSE) {
       int32_t next_univ = c.fill;
@@ -180,10 +178,10 @@ count_universe_instances(int32_t search_univ, int32_t target_univ_id)
 void
 fill_offset_tables(int32_t target_univ_id, int map)
 {
-  for (Universe *univ : universes_c) {
+  for (Universe *univ : global_universes) {
     int32_t offset {0};  // TODO: is this a bug?  It matches F90 implementation.
     for (int32_t cell_indx : univ->cells) {
-      Cell &c = *cells_c[cell_indx];
+      Cell &c = *global_cells[cell_indx];
 
       if (c.type == FILL_UNIVERSE) {
         c.offset[map] = offset;
@@ -212,7 +210,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
   // write to the path and return.
   for (int32_t cell_indx : search_univ.cells) {
     if ((cell_indx == target_cell) && (offset == target_offset)) {
-      Cell &c = *cells_c[cell_indx];
+      Cell &c = *global_cells[cell_indx];
       path << "c" << c.id;
       return path.str();
     }
@@ -224,7 +222,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
   std::vector<std::int32_t>::const_reverse_iterator cell_it
        {search_univ.cells.crbegin()};
   for (; cell_it != search_univ.cells.crend(); ++cell_it) {
-    Cell &c = *cells_c[*cell_it];
+    Cell &c = *global_cells[*cell_it];
 
     // Material cells don't contain other cells so ignore them.
     if (c.type != FILL_MATERIAL) {
@@ -244,14 +242,14 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
   }
 
   // Add the cell to the path string.
-  Cell &c = *cells_c[*cell_it];
+  Cell &c = *global_cells[*cell_it];
   path << "c" << c.id << "->";
 
   if (c.type == FILL_UNIVERSE) {
     // Recurse into the fill cell.
     offset += c.offset[map];
     path << distribcell_path_inner(target_cell, map, target_offset,
-                                   *universes_c[c.fill], offset);
+                                   *global_universes[c.fill], offset);
     return path.str();
   } else {
     // Recurse into the lattice cell.
@@ -264,7 +262,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
         offset = temp_offset;
         path << "(" << lat.index_to_string(it.indx) << ")->";
         path << distribcell_path_inner(target_cell, map, target_offset,
-                                       *universes_c[*it], offset);
+                                       *global_universes[*it], offset);
         return path.str();
       }
     }
@@ -277,7 +275,7 @@ int
 distribcell_path_len(int32_t target_cell, int32_t map, int32_t target_offset,
                      int32_t root_univ)
 {
-  Universe &root = *universes_c[root_univ];
+  Universe &root = *global_universes[root_univ];
   std::string path_ {distribcell_path_inner(target_cell, map, target_offset,
                                             root, 0)};
   return path_.size() + 1;
@@ -289,7 +287,7 @@ void
 distribcell_path(int32_t target_cell, int32_t map, int32_t target_offset,
                  int32_t root_univ, char *path)
 {
-  Universe &root = *universes_c[root_univ];
+  Universe &root = *global_universes[root_univ];
   std::string path_ {distribcell_path_inner(target_cell, map, target_offset,
                                             root, 0)};
   path_.copy(path, path_.size());
@@ -303,8 +301,8 @@ maximum_levels(int32_t univ)
 {
   int levels_below {0};
 
-  for (int32_t cell_indx : universes_c[univ]->cells) {
-    Cell &c = *cells_c[cell_indx];
+  for (int32_t cell_indx : global_universes[univ]->cells) {
+    Cell &c = *global_cells[cell_indx];
     if (c.type == FILL_UNIVERSE) {
       int32_t next_univ = c.fill;
       levels_below = std::max(levels_below, maximum_levels(next_univ));
@@ -326,18 +324,18 @@ maximum_levels(int32_t univ)
 void
 free_memory_geometry_c()
 {
-  for (Cell *c : cells_c) {delete c;}
-  cells_c.clear();
-  cell_dict.clear();
+  for (Cell *c : global_cells) {delete c;}
+  global_cells.clear();
+  cell_map.clear();
   n_cells = 0;
 
-  for (Universe *u : universes_c) {delete u;}
-  universes_c.clear();
-  universe_dict.clear();
+  for (Universe *u : global_universes) {delete u;}
+  global_universes.clear();
+  universe_map.clear();
 
   for (Lattice *lat : lattices_c) {delete lat;}
   lattices_c.clear();
-  lattice_dict.clear();
+  lattice_map.clear();
 }
 
 } // namespace openmc

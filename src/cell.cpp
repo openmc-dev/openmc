@@ -33,11 +33,11 @@ extern "C" double FP_PRECISION;
 
 int32_t n_cells {0};
 
-std::vector<Cell*> cells_c;
-std::unordered_map<int32_t, int32_t> cell_dict;
+std::vector<Cell*> global_cells;
+std::unordered_map<int32_t, int32_t> cell_map;
 
-std::vector<Universe*> universes_c;
-std::unordered_map<int32_t, int32_t> universe_dict;
+std::vector<Universe*> global_universes;
+std::unordered_map<int32_t, int32_t> universe_map;
 
 //==============================================================================
 //! Convert region specification string to integer tokens.
@@ -246,7 +246,7 @@ Cell::Cell(pugi::xml_node cell_node)
   }
 
   // Read the region specification.
-  std::string region_spec {""};
+  std::string region_spec;
   if (check_for_node(cell_node, "region")) {
     region_spec = get_node_value(cell_node, "region");
   }
@@ -256,10 +256,9 @@ Cell::Cell(pugi::xml_node cell_node)
   region.shrink_to_fit();
 
   // Convert user IDs to surface indices.
-  // Note that the index has 1 added to it in order to preserve the sign.
-  for (auto it = region.begin(); it != region.end(); it++) {
-    if (*it < OP_UNION) {
-      *it = copysign(surface_dict[abs(*it)]+1, *it);
+  for (auto &r : region) {
+    if (r < OP_UNION) {
+      r = copysign(surface_map[abs(r)] + 1, r);
     }
   }
 
@@ -330,8 +329,8 @@ Cell::to_hdf5(hid_t cell_group) const
   }
 
   //TODO: Fix the off-by-one indexing.
-  write_int(cell_group, 0, nullptr, "universe", &universes_c[universe-1]->id,
-            false);
+  write_int(cell_group, 0, nullptr, "universe",
+            &global_universes[universe-1]->id, false);
 
   // Write the region specification.
   if (!region.empty()) {
@@ -446,24 +445,24 @@ read_cells(pugi::xml_node *node)
   }
 
   // Allocate the vector of Cells.
-  cells_c.reserve(n_cells);
+  global_cells.reserve(n_cells);
 
   // Loop over XML cell elements and populate the array.
   for (pugi::xml_node cell_node: node->children("cell")) {
-    cells_c.push_back(new Cell(cell_node));
+    global_cells.push_back(new Cell(cell_node));
   }
 
-  // Populate the Universe vector and dictionary.
-  for (int i = 0; i < cells_c.size(); i++) {
-    int32_t uid = cells_c[i]->universe;
-    auto it = universe_dict.find(uid);
-    if (it == universe_dict.end()) {
-      universes_c.push_back(new Universe());
-      universes_c.back()->id = uid;
-      universes_c.back()->cells.push_back(i);
-      universe_dict[uid] = universes_c.size() - 1;
+  // Populate the Universe vector and map.
+  for (int i = 0; i < global_cells.size(); i++) {
+    int32_t uid = global_cells[i]->universe;
+    auto it = universe_map.find(uid);
+    if (it == universe_map.end()) {
+      global_universes.push_back(new Universe());
+      global_universes.back()->id = uid;
+      global_universes.back()->cells.push_back(i);
+      universe_map[uid] = global_universes.size() - 1;
     } else {
-      universes_c[it->second]->cells.push_back(i);
+      global_universes[it->second]->cells.push_back(i);
     }
   }
 }
@@ -473,7 +472,7 @@ read_cells(pugi::xml_node *node)
 //==============================================================================
 
 extern "C" {
-  Cell* cell_pointer(int32_t cell_ind) {return cells_c[cell_ind];}
+  Cell* cell_pointer(int32_t cell_ind) {return global_cells[cell_ind];}
 
   int32_t cell_id(Cell *c) {return c->id;}
 
@@ -499,11 +498,11 @@ extern "C" {
   {return c->contains(xyz, uvw, on_surface);}
 
   void cell_distance(Cell *c, double xyz[3], double uvw[3], int32_t on_surface,
-                     double &min_dist, int32_t &i_surf)
+                     double *min_dist, int32_t *i_surf)
   {
     std::pair<double, int32_t> out = c->distance(xyz, uvw, on_surface);
-    min_dist = out.first;
-    i_surf = out.second;
+    *min_dist = out.first;
+    *i_surf = out.second;
   }
 
   int32_t cell_offset(Cell *c, int map) {return c->offset[map];}
@@ -512,11 +511,11 @@ extern "C" {
 
   void extend_cells_c(int32_t n)
   {
-    cells_c.reserve(cells_c.size() + n);
+    global_cells.reserve(global_cells.size() + n);
     for (int32_t i = 0; i < n; i++) {
-      cells_c.push_back(new Cell());
+      global_cells.push_back(new Cell());
     }
-    n_cells = cells_c.size();
+    n_cells = global_cells.size();
   }
 }
 

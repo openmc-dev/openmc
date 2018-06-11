@@ -500,7 +500,7 @@ contains
         call write_dataset(material_group, "nuclides", nuc_names)
         ! Deallocate temporary array
         deallocate(nuc_names)
-        ! Write atom densities
+        ! Write nuclide atom densities
         call write_dataset(material_group, "nuclide_densities", nuc_densities)
         deallocate(nuc_densities)
       end if

@@ -38,6 +38,7 @@ class XsData {
     // [phi][theta][incoming group]
     double_3dvec total;
     double_3dvec absorption;
+    double_3dvec nu_fission;
     double_3dvec prompt_nu_fission;
     double_3dvec kappa_fission;
     double_3dvec fission;

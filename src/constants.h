@@ -63,6 +63,23 @@ constexpr double PI {3.1415926535898};
 
 const double SQRT_PI {std::sqrt(PI)};
 
+// Mgxs::get_xs enumerated types
+constexpr int MG_GET_XS_TOTAL              {0};
+constexpr int MG_GET_XS_ABSORPTION         {1};
+constexpr int MG_GET_XS_INVERSE_VELOCITY   {2};
+constexpr int MG_GET_XS_DECAY_RATE         {3};
+constexpr int MG_GET_XS_SCATTER            {4};
+constexpr int MG_GET_XS_SCATTER_MULT       {5};
+constexpr int MG_GET_XS_SCATTER_FMU_MULT   {6};
+constexpr int MG_GET_XS_SCATTER_FMU        {7};
+constexpr int MG_GET_XS_FISSION            {8};
+constexpr int MG_GET_XS_KAPPA_FISSION      {9};
+constexpr int MG_GET_XS_PROMPT_NU_FISSION  {10};
+constexpr int MG_GET_XS_DELAYED_NU_FISSION {11};
+constexpr int MG_GET_XS_NU_FISSION         {12};
+constexpr int MG_GET_XS_CHI_PROMPT         {13};
+constexpr int MG_GET_XS_CHI_DELAYED        {14};
+
 
 } // namespace openmc
 

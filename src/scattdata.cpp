@@ -56,35 +56,38 @@ void ScattData::sample_energy(int gin, int& gout, int& i_gout)
 }
 
 
-double ScattData::get_xs(const char* xstype, int gin, int* gout, double* mu)
+double ScattData::get_xs(const int xstype, int gin, int* gout, double* mu)
 {
   // Set the outgoing group offset index as needed
   int i_gout = 0;
   if (gout != nullptr) {
     // short circuit the function if gout is from a zero portion of the
     // scattering matrix
-    if ((*gout < gmin[gin]) || (*gout >= gmax[gin])) { // > gmax?
+    if ((*gout < gmin[gin]) || (*gout > gmax[gin])) { // > gmax?
       return 0.;
     }
     i_gout = *gout - gmin[gin];
   }
 
   double val = 0.;
-  if (std::strcmp(xstype, "scatter")) {
+  switch(xstype) {
+  case MG_GET_XS_SCATTER:
     if (gout != nullptr) {
       val = scattxs[gin] * energy[gin][i_gout];
     } else {
       val = scattxs[gin];
     }
-  } else if (std::strcmp(xstype, "scatter/mult")) {
+    break;
+  case MG_GET_XS_SCATTER_MULT:
     if (gout != nullptr) {
       val = scattxs[gin] * energy[gin][i_gout] / mult[gin][i_gout];
     } else {
-      val = scattxs[gin] / std::inner_product(mult[gin].begin(),
-                                              mult[gin].end(),
-                                              energy[gin].begin(), 0.0);
+      val = scattxs[gin] /
+           std::inner_product(mult[gin].begin(), mult[gin].end(),
+           energy[gin].begin(), 0.0);
     }
-  } else if (std::strcmp(xstype, "scatter*f_mu/mult")) {
+    break;
+  case MG_GET_XS_SCATTER_FMU_MULT:
     if ((gout != nullptr) && (mu != nullptr)) {
       val = scattxs[gin] * energy[gin][i_gout] * calc_f(gin, *gout, *mu);
     } else {
@@ -92,7 +95,8 @@ double ScattData::get_xs(const char* xstype, int gin, int* gout, double* mu)
       // group or mu is not useful
       fatal_error("Invalid call to get_xs");
     }
-  } else if (std::strcmp(xstype, "scatter*f_mu")) {
+    break;
+  case MG_GET_XS_SCATTER_FMU:
     if ((gout != nullptr) && (mu != nullptr)) {
       val = scattxs[gin] * energy[gin][i_gout] * calc_f(gin, *gout, *mu) /
            mult[gin][i_gout];
@@ -101,6 +105,7 @@ double ScattData::get_xs(const char* xstype, int gin, int* gout, double* mu)
       // group or mu is not useful
       fatal_error("Invalid call to get_xs");
     }
+    break;
   }
   return val;
 }
@@ -205,13 +210,11 @@ void ScattDataLegendre::update_max_val()
 
 double ScattDataLegendre::calc_f(int gin, int gout, double mu)
 {
-  // TODO: gout >= or gout >?
   double f;
-  if ((gout < gmin[gin]) || (gout >= gmax[gin])) {
+  if ((gout < gmin[gin]) || (gout > gmax[gin])) {
     f = 0.;
   } else {
-      // TODO: size() -1 or just size?
-    int i_gout = gout - gmin[gin]; //TODO: + 1?
+    int i_gout = gout - gmin[gin];
     f = evaluate_legendre_c(dist[gin][i_gout].size() - 1,
                             dist[gin][i_gout].data(), mu);
   }
@@ -479,19 +482,18 @@ void ScattDataHistogram::init(int_1dvec& in_gmin, int_1dvec& in_gmax,
 
 double ScattDataHistogram::calc_f(int gin, int gout, double mu)
 {
-  // TODO: gout >= or gout >?
   double f;
-  if ((gout < gmin[gin]) || (gout >= gmax[gin])) {
+  if ((gout < gmin[gin]) || (gout > gmax[gin])) {
     f = 0.;
   } else {
     // Find mu bin
-    int i_gout = gout - gmin[gin]; //TODO: + 1?
+    int i_gout = gout - gmin[gin];
     int imu;
     if (mu == 1.) {
       // use size -2 to have the index one before the end
       imu = this->mu.size() - 2;
     } else {
-      imu = std::floor((mu + 1.) / dmu + 1.);
+      imu = std::floor((mu + 1.) / dmu + 1.) - 1;
     }
 
     f = fmu[gin][i_gout][imu];
@@ -776,19 +778,18 @@ void ScattDataTabular::init(int_1dvec& in_gmin, int_1dvec& in_gmax,
 
 double ScattDataTabular::calc_f(int gin, int gout, double mu)
 {
-  // TODO: gout >= or gout >?
   double f;
-  if ((gout < gmin[gin]) || (gout >= gmax[gin])) {
+  if ((gout < gmin[gin]) || (gout > gmax[gin])) {
     f = 0.;
   } else {
     // Find mu bin
-    int i_gout = gout - gmin[gin]; //TODO: + 1?
+    int i_gout = gout - gmin[gin];
     int imu;
     if (mu == 1.) {
       // use size -2 to have the index one before the end
       imu = this->mu.size() - 2;
     } else {
-      imu = std::floor((mu + 1.) / dmu + 1.);
+      imu = std::floor((mu + 1.) / dmu + 1.) - 1;
     }
 
     double r = (mu - this->mu[imu]) / (this->mu[imu + 1] - this->mu[imu]);
@@ -1006,7 +1007,7 @@ void convert_legendre_to_tabular(ScattDataLegendre& leg,
   tab.dmu = 2. / (n_mu - 1);
   tab.mu[0] = -1.;
   for (int imu = 1; imu < n_mu - 1; imu++) {
-    tab.mu[imu] = -1. + (imu - 1) * tab.dmu;
+    tab.mu[imu] = -1. + imu  * tab.dmu;
   }
   tab.mu[n_mu - 1] = 1.;
 
@@ -1032,6 +1033,7 @@ void convert_legendre_to_tabular(ScattDataLegendre& leg,
       // Now re-normalize for numerical integration issues and to take care of
       // the above negative fix-up.  Also accrue the CDF
       double norm = 0.;
+      tab.dist[gin][i_gout][0] = 0.;
       for (int imu = 1; imu < n_mu; imu++) {
         norm += 0.5 * tab.dmu * (tab.fmu[gin][i_gout][imu - 1] +
                                  tab.fmu[gin][i_gout][imu]);

@@ -309,7 +309,6 @@ contains
   subroutine free_memory()
 
     use cmfd_header
-    use mgxs_header
     use plot_header
     use sab_header
     use settings
@@ -327,7 +326,6 @@ contains
     call free_memory_simulation()
     call free_memory_nuclide()
     call free_memory_settings()
-    call free_memory_mgxs()
     call free_memory_sab()
     call free_memory_source()
     call free_memory_mesh()

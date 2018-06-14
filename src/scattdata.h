@@ -38,7 +38,7 @@ class ScattData {
     virtual void init(int_1dvec& in_gmin, int_1dvec& in_gmax,
                       double_2dvec& in_mult, double_3dvec& coeffs) = 0;
     void sample_energy(int gin, int& gout, int& i_gout);
-    double get_xs(const char* xstype, int gin, int* gout, double* mu);
+    double get_xs(const int xstype, int gin, int* gout, double* mu);
     void generic_init(int order, int_1dvec in_gmin, int_1dvec in_gmax,
                       double_2dvec in_energy, double_2dvec in_mult);
     virtual void combine(std::vector<ScattData*>& those_scatts,

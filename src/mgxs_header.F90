@@ -11,7 +11,6 @@ module mgxs_header
   use math,            only: evaluate_legendre
   use nuclide_header,  only: MaterialMacroXS
   use random_lcg,      only: prn
-  use scattdata_header
   use string
   use stl_vector,      only: VectorInt, VectorReal
 

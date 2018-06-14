@@ -6,7 +6,7 @@ module tally_filter_energy
   use constants
   use error
   use hdf5_interface
-  use mgxs_header,         only: num_energy_groups, rev_energy_bins
+  use mgxs_interface,      only: num_energy_groups, rev_energy_bins
   use particle_header,     only: Particle
   use settings,            only: run_CE
   use string,              only: to_str

@@ -22,7 +22,7 @@ module state_point
   use hdf5_interface
   use mesh_header,        only: RegularMesh, meshes, n_meshes
   use message_passing
-  use mgxs_header,        only: nuclides_MG
+  use mgxs_interface
   use nuclide_header,     only: nuclides
   use output,             only: time_stamp
   use random_lcg,         only: openmc_get_seed, openmc_set_seed
@@ -73,6 +73,7 @@ contains
     character(MAX_WORD_LEN), allocatable :: str_array(:)
     character(C_CHAR), pointer :: string(:)
     character(len=:, kind=C_CHAR), allocatable :: filename_
+    character(MAX_WORD_LEN, kind=C_CHAR) :: temp_name
 
     err = 0
     if (present(filename)) then
@@ -307,11 +308,13 @@ contains
                   str_array(j) = nuclides(tally % nuclide_bins(j)) % name
                 end if
               else
-                i_xs = index(nuclides_MG(tally % nuclide_bins(j)) % obj % name, '.')
+                call get_name_c(tally % nuclide_bins(j), len(temp_name), &
+                                temp_name)
+                i_xs = index(temp_name, '.')
                 if (i_xs > 0) then
-                  str_array(j) = nuclides_MG(tally % nuclide_bins(j)) % obj % name(1 : i_xs-1)
+                  str_array(j) = trim(temp_name(1 : i_xs-1))
                 else
-                  str_array(j) = nuclides_MG(tally % nuclide_bins(j)) % obj % name
+                  str_array(j) = trim(temp_name)
                 end if
               end if
             else

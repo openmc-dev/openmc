@@ -24,6 +24,8 @@ XsData::XsData(int energy_groups, int num_delayed_groups, bool fissionable,
   if (fissionable) {
     fission = double_3dvec(n_pol, double_2dvec(n_azi,
          double_1dvec(energy_groups, 0.)));
+    nu_fission = double_3dvec(n_pol, double_2dvec(n_azi,
+         double_1dvec(energy_groups, 0.)));
     prompt_nu_fission = double_3dvec(n_pol, double_2dvec(n_azi,
          double_1dvec(energy_groups, 0.)));
     kappa_fission = double_3dvec(n_pol, double_2dvec(n_azi,
@@ -514,6 +516,17 @@ void XsData::_fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
     }
   }
 
+  // Combine prompt_nu_fission and delayed_nu_fission into nu_fission
+  for (int p = 0; p < n_pol; p++) {
+    for (int a = 0; a < n_azi; a++) {
+      for (int gin = 0; gin < energy_groups; gin++) {
+        nu_fission[p][a][gin] =
+             std::accumulate(delayed_nu_fission[p][a][gin].begin(),
+                             delayed_nu_fission[p][a][gin].end(),
+                             prompt_nu_fission[p][a][gin]);
+      }
+    }
+  }
 }
 
 
@@ -668,6 +681,8 @@ void XsData::combine(std::vector<XsData*> those_xs, double_1dvec& scalars)
           inverse_velocity[p][a][gin] +=
                  scalar * that->inverse_velocity[p][a][gin];
           if (that->prompt_nu_fission.size() > 0) {
+            nu_fission[p][a][gin] +=
+                 scalar * that->nu_fission[p][a][gin];
             prompt_nu_fission[p][a][gin] +=
                  scalar * that->prompt_nu_fission[p][a][gin];
             kappa_fission[p][a][gin] +=

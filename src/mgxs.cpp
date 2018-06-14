@@ -2,6 +2,11 @@
 
 namespace openmc {
 
+// Storage for the MGXS data
+std::vector<Mgxs> nuclides_MG;
+std::vector<Mgxs> macro_xs;
+
+
 //==============================================================================
 // Mgxs base-class methods
 //==============================================================================
@@ -390,112 +395,149 @@ void Mgxs::combine(std::vector<Mgxs*>& micros, double_1dvec& scalars,
 }
 
 
-double Mgxs::get_xs(const char* xstype, const int gin, int* gout, double* mu,
+double Mgxs::get_xs(const int xstype, const int gin, int* gout, double* mu,
                     int* dg)
 {
   // This method assumes that the temperature and angle indices are set
   double val;
-  if (std::strcmp(xstype, "total")) {
+  switch(xstype) {
+  case MG_GET_XS_TOTAL:
     val = xs[index_temp].total[index_pol][index_azi][gin];
-  } else if (std::strcmp(xstype, "absorption")) {
+    break;
+  case MG_GET_XS_ABSORPTION:
     val = xs[index_temp].absorption[index_pol][index_azi][gin];
-  } else if (std::strcmp(xstype, "inverse-velocity")) {
+    break;
+  case MG_GET_XS_INVERSE_VELOCITY:
     val = xs[index_temp].inverse_velocity[index_pol][index_azi][gin];
-  } else if (std::strcmp(xstype, "decay rate")) {
+    break;
+  case MG_GET_XS_DECAY_RATE:
     if (dg != nullptr) {
       val = xs[index_temp].decay_rate[index_pol][index_azi][*dg + 1];
     } else {
       val = xs[index_temp].decay_rate[index_pol][index_azi][0];
     }
-  } else if ((std::strcmp(xstype, "scatter")) ||
-             (std::strcmp(xstype, "scatter/mult")) ||
-             (std::strcmp(xstype, "scatter*f_mu/mult")) ||
-             (std::strcmp(xstype, "scatter*f_mu"))) {
+    break;
+  case MG_GET_XS_SCATTER:
+  case MG_GET_XS_SCATTER_MULT:
+  case MG_GET_XS_SCATTER_FMU_MULT:
+  case MG_GET_XS_SCATTER_FMU:
     val = xs[index_temp].scatter[index_pol]
                     [index_azi]->get_xs(xstype, gin, gout, mu);
-  } else if (fissionable && std::strcmp(xstype, "fission")) {
-    val = xs[index_temp].fission[index_pol][index_azi][gin];
-  } else if (fissionable && std::strcmp(xstype, "kappa-fission")) {
-    val = xs[index_temp].kappa_fission[index_pol][index_azi][gin];
-  } else if (fissionable && std::strcmp(xstype, "prompt-nu-fission")) {
-    val = xs[index_temp].prompt_nu_fission[index_pol][index_azi][gin];
-  } else if (fissionable && std::strcmp(xstype, "delayed-nu-fission")) {
-    if (dg != nullptr) {
-      val = xs[index_temp].delayed_nu_fission[index_pol][index_azi][gin][*dg];
+    break;
+  case MG_GET_XS_FISSION:
+    if (fissionable) {
+      val = xs[index_temp].fission[index_pol][index_azi][gin];
     } else {
       val = 0.;
-      for (auto& num : xs[index_temp].delayed_nu_fission[index_pol]
-                                            [index_azi][gin]) {
-        val += num;
-      }
     }
-  } else if (fissionable && std::strcmp(xstype, "nu-fission")) {
-    val = xs[index_temp].prompt_nu_fission[index_pol][index_azi][gin];
-    for (auto& num : xs[index_temp].delayed_nu_fission[index_pol]
-                                          [index_azi][gin]) {
-      val += num;
-    }
-  } else if (fissionable && std::strcmp(xstype, "chi-prompt")) {
-    if (gout != nullptr) {
-      val = xs[index_temp].chi_prompt[index_pol][index_azi][gin][*gout];
+    break;
+  case MG_GET_XS_KAPPA_FISSION:
+    if (fissionable) {
+      val = xs[index_temp].kappa_fission[index_pol][index_azi][gin];
     } else {
-      // provide an outgoing group-wise sum
       val = 0.;
-      for (auto& num : xs[index_temp].chi_prompt[index_pol][index_azi][gin]) {
-        val += num;
-      }
     }
-  } else if (fissionable && std::strcmp(xstype, "chi-delayed")) {
-    if (gout != nullptr) {
+    break;
+  case MG_GET_XS_PROMPT_NU_FISSION:
+    if (fissionable) {
+      val = xs[index_temp].prompt_nu_fission[index_pol][index_azi][gin];
+    } else {
+      val = 0.;
+    }
+    break;
+  case MG_GET_XS_DELAYED_NU_FISSION:
+    if (fissionable) {
       if (dg != nullptr) {
-        val = xs[index_temp].chi_delayed[index_pol][index_azi][gin][*gout][*dg];
+        val = xs[index_temp].delayed_nu_fission[index_pol][index_azi][gin][*dg];
       } else {
-        val = xs[index_temp].chi_delayed[index_pol][index_azi][gin][*gout][0];
+        val = 0.;
+        for (auto& num : xs[index_temp].delayed_nu_fission[index_pol]
+                                              [index_azi][gin]) {
+          val += num;
+        }
       }
     } else {
-      if (dg != nullptr) {
+      val = 0.;
+    }
+    break;
+  case MG_GET_XS_NU_FISSION:
+    if (fissionable) {
+      val = xs[index_temp].nu_fission[index_pol][index_azi][gin];
+    } else {
+      val = 0.;
+    }
+    break;
+  case MG_GET_XS_CHI_PROMPT:
+    if (fissionable) {
+      if (gout != nullptr) {
+        val = xs[index_temp].chi_prompt[index_pol][index_azi][gin][*gout];
+      } else {
+        // provide an outgoing group-wise sum
         val = 0.;
-        for (int i = 0; i < xs[index_temp].chi_delayed[index_pol]
-                                          [index_azi][gin].size(); i++) {
-          val += xs[index_temp].chi_delayed[index_pol][index_azi][gin][i][*dg];
+        for (auto& num : xs[index_temp].chi_prompt[index_pol][index_azi][gin]) {
+          val += num;
+        }
+      }
+    } else {
+      val = 0.;
+    }
+    break;
+  case MG_GET_XS_CHI_DELAYED:
+    if (fissionable) {
+      if (gout != nullptr) {
+        if (dg != nullptr) {
+          val = xs[index_temp].chi_delayed[index_pol][index_azi][gin][*gout][*dg];
+        } else {
+          val = xs[index_temp].chi_delayed[index_pol][index_azi][gin][*gout][0];
         }
       } else {
-        val = 0.;
-        for (int i = 0; i < xs[index_temp].chi_delayed[index_pol]
-                                          [index_azi][gin].size(); i++) {
-          for (auto& num : xs[index_temp].chi_delayed[index_pol]
-                                         [index_azi][gin][i]) {
-            val += num;
+        if (dg != nullptr) {
+          val = 0.;
+          for (int i = 0; i < xs[index_temp].chi_delayed[index_pol]
+                                            [index_azi][gin].size(); i++) {
+            val += xs[index_temp].chi_delayed[index_pol][index_azi][gin][i][*dg];
+          }
+        } else {
+          val = 0.;
+          for (int i = 0; i < xs[index_temp].chi_delayed[index_pol]
+                                            [index_azi][gin].size(); i++) {
+            for (auto& num : xs[index_temp].chi_delayed[index_pol]
+                                           [index_azi][gin][i]) {
+              val += num;
+            }
           }
         }
       }
+    } else {
+      val = 0.;
     }
-  } else {
+    break;
+  default:
     val = 0.;
   }
   return val;
 }
 
 
-void Mgxs::sample_fission_energy(const int gin, const double nu_fission,
-                                 int& dg, int& gout)
+void Mgxs::sample_fission_energy(const int gin, int& dg, int& gout)
 {
   // This method assumes that the temperature and angle indices are set
+  double nu_fission = xs[index_temp].nu_fission[index_pol][index_azi][gin];
+
   // Find the probability of having a prompt neutron
   double prob_prompt =
-       xs[index_temp].prompt_nu_fission[index_pol][index_azi][gin] /
-       nu_fission;
+       xs[index_temp].prompt_nu_fission[index_pol][index_azi][gin];
 
   // sample random numbers
-  double xi_pd = prn();
+  double xi_pd = prn() * nu_fission;
   double xi_gout = prn();
 
   // Select whether the neutron is prompt or delayed
   if (xi_pd <= prob_prompt) {
     // the neutron is prompt
 
-    // set the delayed group for the particle to be 0, indicating prompt
-    dg = 0;
+    // set the delayed group for the particle to be -1, indicating prompt
+    dg = -1;
 
     // sample the outgoing energy group
     gout = 0;
@@ -514,12 +556,11 @@ void Mgxs::sample_fission_energy(const int gin, const double nu_fission,
     while (xi_pd >= prob_prompt) {
       dg++;
       prob_prompt +=
-           xs[index_temp].delayed_nu_fission[index_pol][index_azi][gin][dg] /
-           nu_fission;
+           xs[index_temp].delayed_nu_fission[index_pol][index_azi][gin][dg];
     }
 
     // adjust dg in case of round-off error
-    dg = std::min(dg, num_delayed_groups);
+    dg = std::min(dg, num_delayed_groups - 1);
 
     // sample the outgoing energy group
     gout = 0;
@@ -552,11 +593,7 @@ void Mgxs::calculate_xs(const int gin, const double sqrtkT, const double uvw[3],
   abs_xs = xs[index_temp].absorption[index_pol][index_azi][gin];
 
   if (fissionable) {
-    // nu-fission is made up of the prompt and all the delayed nu_fission data
-    nu_fiss_xs = xs[index_temp].prompt_nu_fission[index_pol][index_azi][gin];
-    for (auto& val : xs[index_temp].delayed_nu_fission[index_pol][index_azi][gin]) {
-      nu_fiss_xs += val;
-    }
+    nu_fiss_xs = xs[index_temp].nu_fission[index_pol][index_azi][gin];
   } else {
     nu_fiss_xs = 0.;
   }
@@ -580,7 +617,7 @@ bool Mgxs::equiv(const Mgxs& that)
 }
 
 
-inline void Mgxs::set_temperature_index(const double sqrtkT)
+void Mgxs::set_temperature_index(const double sqrtkT)
 {
   // See if we need to find the new index
   if (sqrtkT != last_sqrtkT) {
@@ -600,7 +637,7 @@ inline void Mgxs::set_temperature_index(const double sqrtkT)
 }
 
 
-inline void Mgxs::set_angle_index(const double uvw[3])
+void Mgxs::set_angle_index(const double uvw[3])
 {
   // See if we need to find the new index
   if ((uvw[0] != last_uvw[0]) || (uvw[1] != last_uvw[1]) ||
@@ -620,100 +657,6 @@ inline void Mgxs::set_angle_index(const double uvw[3])
     last_uvw[1] = uvw[1];
     last_uvw[2] = uvw[2];
   }
-}
-
-//==============================================================================
-// Mgxs data loading interface methods
-//==============================================================================
-
-void add_mgxs(hid_t file_id, char* name, int energy_groups,
-     int delayed_groups, int n_temps, double temps[], int& method,
-     double tolerance, int max_order, bool legendre_to_tabular,
-     int legendre_to_tabular_points)
-{
-  //!! mgxs_data.F90 will be modified to just create the list of names
-  //!! in the order needed
-  // Convert temps to a vector for the from_hdf5 function
-  double_1dvec temperature;
-  temperature.assign(temps, temps + n_temps);
-
-  // TODO: C++ replacement for write_message
-  // write_message("Loading " + std::string(names[i]) + " data...", 6);
-
-  // Check to make sure cross section set exists in the library
-  hid_t xs_grp;
-  if (object_exists(file_id, name)) {
-    xs_grp = open_group(file_id, name);
-  } else {
-    fatal_error("Data for " + std::string(name) + " does not exist in "
-                + "provided MGXS Library");
-  }
-
-  Mgxs mg;
-  mg.from_hdf5(xs_grp, energy_groups, delayed_groups,
-       temperature, method, tolerance, max_order, legendre_to_tabular,
-       legendre_to_tabular_points);
-
-  nuclides_MG.push_back(mg);
-}
-
-
-bool query_fissionable(const int n_nuclides, const int i_nuclides[])
-{
-  bool result = false;
-  for (int n = 0; n < n_nuclides; n++) {
-    if (nuclides_MG[i_nuclides[n] - 1].fissionable) result = true;
-  }
-  return result;
-}
-
-
-void create_macro_xs(char* mat_name, const int n_nuclides,
-     const int i_nuclides[], const int n_temps, const double temps[],
-     const double atom_densities[], int& method, const double tolerance)
-{
-  Mgxs macro;
-  if (n_temps > 0) {
-    // // Convert temps to a vector
-    double_1dvec temperature;
-    temperature.assign(temps, temps + n_temps);
-
-    // Convert atom_densities to a vector
-    double_1dvec atom_densities_vec;
-    atom_densities_vec.assign(atom_densities, atom_densities + n_nuclides);
-
-    // Build array of pointers to nuclides_MG's Mgxs objects needed for this
-    // material
-    std::vector<Mgxs*> mgxs_ptr(n_nuclides);
-    for (int n = 0; n < n_nuclides; n++) {
-      mgxs_ptr[n] = &nuclides_MG[i_nuclides[n] - 1];
-    }
-
-    macro.build_macro(mat_name, temperature, mgxs_ptr, atom_densities_vec,
-         method, tolerance);
-  }
-  macro_xs.push_back(macro);
-}
-
-//==============================================================================
-// Mgxs tracking/transport/tallying interface methods
-//==============================================================================
-
-void calculate_xs(const int i_mat, const int gin, const double sqrtkT,
-     const double uvw[3], double& total_xs, double& abs_xs, double& nu_fiss_xs)
-{
-  macro_xs[i_mat - 1].calculate_xs(gin - 1, sqrtkT, uvw, total_xs, abs_xs,
-       nu_fiss_xs);
-}
-
-void scatter(const int i_mat, const int gin, int& gout, double& mu,
-             double& wgt, double uvw[3])
-{
-  int gout_c = gout - 1;
-  macro_xs[i_mat - 1].sample_scatter(gin - 1, gout_c, mu, wgt);
-  gout = gout_c + 1;
-
-  rotate_angle_c(uvw, mu, nullptr);
 }
 
 } // namespace openmc

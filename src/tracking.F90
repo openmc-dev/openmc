@@ -9,7 +9,7 @@ module tracking
                                 check_cell_overlap
   use material_header,    only: materials, Material
   use message_passing
-  use mgxs_header
+  use mgxs_interface
   use nuclide_header
   use particle_header,    only: LocalCoord, Particle
   use physics,            only: collision
@@ -28,21 +28,6 @@ module tracking
                                 add_particle_track, finalize_particle_track
 
   implicit none
-
-  interface
-    subroutine calculate_xs_c(i_mat, gin, sqrtkT, uvw, total_xs, abs_xs, &
-         nu_fiss_xs) bind(C, name='calculate_xs')
-      use ISO_C_BINDING
-      implicit none
-      integer(C_INT), value, intent(in) :: i_mat
-      integer(C_INT), value, intent(in) :: gin
-      real(C_DOUBLE), value, intent(in) :: sqrtkT
-      real(C_DOUBLE),        intent(in) :: uvw(1:3)
-      real(C_DOUBLE),     intent(inout) :: total_xs
-      real(C_DOUBLE),     intent(inout) :: abs_xs
-      real(C_DOUBLE),     intent(inout) :: nu_fiss_xs
-    end subroutine calculate_xs_c
-  end interface
 
 contains
 
@@ -129,10 +114,6 @@ contains
           end if
         else
           ! Get the MG data
-          !!TODO: Remove Fortran call - needed until I'm done replacing Fortran
-          !!with C++ code because it sets index_temp
-          call macro_xs(p % material) % obj % calculate_xs(p % g, p % sqrtkT, &
-               p % coord(p % n_coord) % uvw, material_xs)
           call calculate_xs_c(p % material, p % g, p % sqrtkT, &
                p % coord(p % n_coord) % uvw, material_xs % total, &
                material_xs % absorption, material_xs % nu_fission)

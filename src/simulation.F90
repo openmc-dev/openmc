@@ -20,7 +20,7 @@ module simulation
   use geometry_header, only: n_cells
   use material_header, only: n_materials, materials
   use message_passing
-  use mgxs_header,     only: energy_bins, energy_bin_avg
+  use mgxs_interface,  only: energy_bins, energy_bin_avg
   use nuclide_header,  only: micro_xs, n_nuclides
   use output,          only: header, print_columns, &
                              print_batch_keff, print_generation, print_runtime, &

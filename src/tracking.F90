@@ -2,6 +2,10 @@ module tracking
 
   use, intrinsic :: ISO_C_BINDING
 
+#ifdef _OPENMP
+  use omp_lib
+#endif
+
   use constants
   use error,              only: warning, write_message
   use geometry_header,    only: cells
@@ -48,6 +52,12 @@ contains
     real(8) :: d_collision            ! sampled distance to collision
     real(8) :: distance               ! distance particle travels
     logical :: found_cell             ! found cell which particle is in?
+    integer(C_INT) :: tid
+#ifdef _OPENMP
+    tid = OMP_GET_THREAD_NUM()
+#else
+    tid = 0
+#endif
 
     ! Display message if high verbosity or trace is on
     if (verbosity >= 9 .or. trace) then
@@ -114,7 +124,7 @@ contains
           end if
         else
           ! Get the MG data
-          call calculate_xs_c(p % material, p % g, p % sqrtkT, &
+          call calculate_xs_c(p % material, tid, p % g, p % sqrtkT, &
                p % coord(p % n_coord) % uvw, material_xs % total, &
                material_xs % absorption, material_xs % nu_fission)
 

@@ -234,7 +234,7 @@ void ScattDataLegendre::sample(int gin, int& gout, double& mu, double& wgt)
   int samples = 0;
 
   while(true) {
-    double mu = 2. * prn() - 1.;
+    mu = 2. * prn() - 1.;
     double f = calc_f(gin, gout, mu);
     if (f > 0.) {
       double u = prn() * M;
@@ -370,6 +370,7 @@ void ScattDataLegendre::combine(std::vector<ScattData*>& those_scatts,
     for (int gout = gmin_; gout <= gmax_; gout++) {
       sparse_scatter[gin][i_gout] = this_matrix[gin][gout];
       sparse_mult[gin][i_gout] = this_mult[gin][gout];
+      i_gout++;
     }
   }
 
@@ -442,7 +443,7 @@ void ScattDataHistogram::init(int_1dvec& in_gmin, int_1dvec& in_gmax,
   ScattData::generic_init(order, in_gmin, in_gmax, in_energy,
                                     in_mult);
 
-  // Build the angular distributio mu values
+  // Build the angular distribution mu values
   mu = double_1dvec(order);
   dmu = 2. / order;
   mu[0] = -1.;
@@ -678,6 +679,7 @@ void ScattDataHistogram::combine(std::vector<ScattData*>& those_scatts,
     for (int gout = gmin_; gout <= gmax_; gout++) {
       sparse_scatter[gin][i_gout] = this_matrix[gin][gout];
       sparse_mult[gin][i_gout] = this_mult[gin][gout];
+      i_gout++;
     }
   }
 

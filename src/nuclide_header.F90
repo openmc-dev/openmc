@@ -982,7 +982,7 @@ contains
       if (need_depletion_rx) then
         !Initialize entire array to zero in case we skip
         !any threshold reaction.
-        micro_xs % reaction(:) = ZERO 
+        micro_xs % reaction(:) = ZERO
         !there shouldn't be a threshold check for (n,gamma).
         i_rxn = this % reaction_index(DEPLETION_RX(1))
         if (i_rxn > 0) then
@@ -992,7 +992,7 @@ contains
                f * xs % value(i_grid - xs % threshold + 2)
           end associate
         end if
-        !looping from element 2 to element 6. 
+        !looping from element 2 to element 6.
         do j = 2, 6
           !If reaction is present and energy is greater than threshold, set
           !the reaction xs appropriately

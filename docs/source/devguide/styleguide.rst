@@ -219,8 +219,8 @@ Curly braces
 
 For a function definition, the opening and closing braces should each be on
 their own lines.  This helps distinguish function code from the argument list.
-If the entire function fits on one line, then the braces can be on the same
-line. e.g.:
+If the entire function fits on one or two lines, then the braces can be on the
+same line. e.g.:
 
 .. code-block:: C++
 
@@ -237,6 +237,9 @@ line. e.g.:
     }
 
     int return_one() {return 1;}
+
+    int return_one()
+    {return 1;}
 
 For a conditional, the opening brace should be on the same line as the end of
 the conditional statement. If there is a following ``else if`` or ``else``

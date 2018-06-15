@@ -10,7 +10,6 @@ module nuclide_header
   use endf_header,            only: Function1D, Polynomial, Tabulated1D
   use error
   use hdf5_interface
-  use list_header,            only: ListInt
   use math,                   only: faddeeva, w_derivative, &
                                     broaden_wmp_polynomials
   use multipole_header,       only: FORM_RM, FORM_MLBW, MP_EA, RM_RT, RM_RA, &

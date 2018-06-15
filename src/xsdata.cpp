@@ -602,7 +602,7 @@ void XsData::_scatter_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
   double_4dvec temp_mult = double_4dvec(n_pol, double_3dvec(n_azi,
        double_2dvec(energy_groups)));
   if (object_exists(scatt_grp, "multiplicity_matrix")) {
-    temp_arr.resize(length);
+    temp_arr.resize(length / order_data);
     read_nd_vector(scatt_grp, "multiplicity_matrix", temp_arr);
 
     // convert the flat temp_arr to a jagged array for passing to scatt data
@@ -630,6 +630,7 @@ void XsData::_scatter_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
       }
     }
   }
+  temp_arr.clear();
   close_group(scatt_grp);
 
   // Finally, convert the Legendre data to tabular, if needed

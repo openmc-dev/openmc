@@ -6,8 +6,8 @@ namespace openmc {
 // ScattData base-class methods
 //==============================================================================
 
-void ScattData::generic_init(int order, int_1dvec in_gmin,
-     int_1dvec in_gmax, double_2dvec in_energy, double_2dvec in_mult)
+void ScattData::generic_init(int order, int_1dvec& in_gmin,
+     int_1dvec& in_gmax, double_2dvec& in_energy, double_2dvec& in_mult)
 {
   int groups = in_energy.size();
 
@@ -18,17 +18,16 @@ void ScattData::generic_init(int order, int_1dvec in_gmin,
   dist.resize(groups);
 
   for (int gin = 0; gin < groups; gin++) {
-    // Make sure the energy is normalized
-    double norm = std::accumulate(in_energy[gin].begin(),
-                                  in_energy[gin].end(), 0.);
-
-    if (norm != 0.) {
-      for (auto& n : in_energy[gin]) n /= norm;
-    }
-
     // Store the inputted data
     energy[gin] = in_energy[gin];
     mult[gin] = in_mult[gin];
+
+    // Make sure the energy is normalized
+    double norm = std::accumulate(energy[gin].begin(), energy[gin].end(), 0.);
+
+    if (norm != 0.) {
+      for (auto& n : energy[gin]) n /= norm;
+    }
 
     // Initialize the distribution data
     dist[gin].resize(in_gmax[gin] - in_gmin[gin] + 1);
@@ -131,9 +130,7 @@ void ScattDataLegendre::init(int_1dvec& in_gmin, int_1dvec& in_gmax,
     int num_groups = in_gmax[gin] - in_gmin[gin] + 1;
     scattxs[gin] = 0.;
     for (int i_gout = 0; i_gout < num_groups; i_gout++) {
-      scattxs[gin] = std::accumulate(matrix[gin][i_gout].begin(),
-                                     matrix[gin][i_gout].end(),
-                                     scattxs[gin]);
+      scattxs[gin] += matrix[gin][i_gout][0];
     }
   }
 

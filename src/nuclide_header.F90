@@ -985,8 +985,6 @@ contains
         micro_xs % reaction(:) = ZERO
          
         !there shouldn't be a threshold check for (n,gamma).
-        !I know this is not very clean but I don't want to overload the loop
-        !with too many conditional statements for now.
         i_rxn = this % reaction_index(DEPLETION_RX(1))
         if (i_rxn > 0) then
           associate (xs => this % reactions(i_rxn) % xs(i_temp))
@@ -996,7 +994,7 @@ contains
           end associate
         end if
         !looping from element 2 to element 6. 
-        !treating (n,gamma) differently because it is not a threshold reaction.
+        
         do j = 2, 6
 
           ! If reaction is present and energy is greater than threshold, set

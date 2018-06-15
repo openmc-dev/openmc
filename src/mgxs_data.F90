@@ -2,6 +2,10 @@ module mgxs_data
 
   use, intrinsic :: ISO_C_BINDING
 
+#ifdef _OPENMP
+  use omp_lib
+#endif
+
   use constants
   use algorithm,       only: find
   use dict_header,     only: DictCharInt
@@ -36,6 +40,13 @@ contains
     type(VectorReal), allocatable, target :: temps(:)
     character(MAX_WORD_LEN) :: word
     integer, allocatable    :: array(:)
+    integer(C_INT) :: n_threads
+
+#ifdef _OPENMP
+    n_threads = OMP_GET_MAX_THREADS()
+#else
+    n_threads = 1
+#endif
 
     ! Check if MGXS Library exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
@@ -84,7 +95,8 @@ contains
                num_energy_groups, num_delayed_groups, &
                temps(i_nuclide) % size(), temps(i_nuclide) % data, &
                temperature_method, temperature_tolerance, max_order, &
-               logical(legendre_to_tabular, C_BOOL), legendre_to_tabular_points)
+               logical(legendre_to_tabular, C_BOOL), &
+               legendre_to_tabular_points, n_threads)
 
           call already_read % add(name)
         end if
@@ -110,6 +122,13 @@ contains
     type(Material), pointer       :: mat   ! current material
     type(VectorReal), allocatable :: kTs(:)
     character(MAX_WORD_LEN)       :: name  ! name of material
+    integer(C_INT) :: n_threads
+
+#ifdef _OPENMP
+    n_threads = OMP_GET_MAX_THREADS()
+#else
+    n_threads = 1
+#endif
 
     ! Get temperatures to read for each material
     call get_mat_kTs(kTs)
@@ -130,7 +149,7 @@ contains
       if (allocated(kTs(i_mat) % data)) then
         call create_macro_xs_c(name, mat % n_nuclides, mat % nuclide, &
              kTs(i_mat) % size(), kTs(i_mat) % data, mat % atom_density, &
-             temperature_method, temperature_tolerance)
+             temperature_method, temperature_tolerance, n_threads)
       end if
     end do
 

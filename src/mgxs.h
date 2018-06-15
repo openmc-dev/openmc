@@ -24,6 +24,18 @@
 namespace openmc {
 
 //==============================================================================
+// Cache contains the cached data for an MGXS object
+//==============================================================================
+
+struct CacheData {
+  double sqrtkT; // last temperature corresponding to t
+  int t; // temperature index
+  int p; // polar angle index
+  int a; // azimuthal angle index
+  double uvw[3]; // last angle that corresponds to p and a
+};
+
+//==============================================================================
 // MGXS contains the mgxs data for a nuclide/material
 //==============================================================================
 
@@ -33,7 +45,6 @@ class Mgxs {
     int scatter_format; // flag for if this is legendre, histogram, or tabular
     int num_delayed_groups; // number of delayed neutron groups
     int num_groups;     // number of energy groups
-    double last_sqrtkT; // cache of the temperature corresponding to index_temp
     std::vector<XsData> xs; // Cross section data
     int n_pol;
     int n_azi;
@@ -42,7 +53,7 @@ class Mgxs {
     void _metadata_from_hdf5(const hid_t xs_id, const int in_num_groups,
          const int in_num_delayed_groups, double_1dvec& temperature,
          int& method, const double tolerance, int_1dvec& temps_to_read,
-         int& order_dim, bool& is_isotropic);
+         int& order_dim, bool& is_isotropic, const int n_threads);
     bool equiv(const Mgxs& that);
 
   public:
@@ -50,32 +61,31 @@ class Mgxs {
     double awr;         // atomic weight ratio
     bool fissionable;   // Is this fissionable
     // TODO: The following attributes be private when Fortran is fully replaced
-    int index_pol; // cache for the angle indices
-    int index_azi;
-    double last_uvw[3]; // cache of the angle corresponding to the above indices
-    int index_temp;     // cache of temperature index
+    std::vector<CacheData> cache; // index and data cache
     void init(const std::string& in_name, const double in_awr,
          const double_1dvec& in_kTs, const bool in_fissionable,
          const int in_scatter_format, const int in_num_groups,
          const int in_num_delayed_groups, const double_1dvec& in_polar,
-         const double_1dvec& in_azimuthal);
+         const double_1dvec& in_azimuthal, const int n_threads);
     void build_macro(const std::string& in_name, double_1dvec& mat_kTs,
                      std::vector<Mgxs*>& micros, double_1dvec& atom_densities,
-                     int& method, double tolerance);
+                     int& method, const double tolerance, const int n_threads);
     void combine(std::vector<Mgxs*>& micros, double_1dvec& scalars,
                  int_1dvec& micro_ts, int this_t);
-    void from_hdf5(hid_t xs_id, int energy_groups, int delayed_groups,
-         double_1dvec& temperature, int& method, double tolerance,
-         int max_order, bool legendre_to_tabular,
-         int legendre_to_tabular_points);
-    double get_xs(const int xstype, const int gin, int* gout, double* mu,
-                  int* dg);
-    void sample_fission_energy(const int gin, int& dg, int& gout);
-    void sample_scatter(const int gin, int& gout, double& mu, double& wgt);
-    void calculate_xs(const int gin, const double sqrtkT, const double uvw[3],
-         double& total_xs, double& abs_xs, double& nu_fiss_xs);
-    void set_temperature_index(const double sqrtkT);
-    void set_angle_index(const double uvw[3]);
+    void from_hdf5(hid_t xs_id, const int energy_groups,
+         const int delayed_groups, double_1dvec& temperature, int& method,
+         const double tolerance, const int max_order,
+         const bool legendre_to_tabular, const int legendre_to_tabular_points,
+         const int n_threads);
+    double get_xs(const int tid, const int xstype, const int gin, int* gout,
+         double* mu, int* dg);
+    void sample_fission_energy(const int tid, const int gin, int& dg, int& gout);
+    void sample_scatter(const int tid, const int gin, int& gout, double& mu,
+         double& wgt);
+    void calculate_xs(const int tid, const int gin, const double sqrtkT,
+         const double uvw[3], double& total_xs, double& abs_xs, double& nu_fiss_xs);
+    void set_temperature_index(const int tid, const double sqrtkT);
+    void set_angle_index(const int tid, const double uvw[3]);
 };
 
 } // namespace openmc

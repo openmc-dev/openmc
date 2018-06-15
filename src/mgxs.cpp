@@ -15,7 +15,7 @@ void Mgxs::init(const std::string& in_name, const double in_awr,
      const double_1dvec& in_kTs, const bool in_fissionable,
      const int in_scatter_format, const int in_num_groups,
      const int in_num_delayed_groups, const double_1dvec& in_polar,
-     const double_1dvec& in_azimuthal)
+     const double_1dvec& in_azimuthal, const int n_threads)
 {
   name = in_name;
   awr = in_awr;
@@ -29,20 +29,23 @@ void Mgxs::init(const std::string& in_name, const double in_awr,
   azimuthal = in_azimuthal;
   n_pol = polar.size();
   n_azi = azimuthal.size();
-  index_temp = 0;
-  last_sqrtkT = 0.;
-  index_pol = 0;
-  index_azi = 0;
-  last_uvw[0] = 1.;
-  last_uvw[1] = 0.;
-  last_uvw[2] = 0.;
+  cache.resize(n_threads);
+  for (int thread = 0; thread < n_threads; thread++) {
+    cache[thread].sqrtkT = 0.;
+    cache[thread].t = 0;
+    cache[thread].p = 0;
+    cache[thread].a = 0;
+    cache[thread].uvw[0] = 1.;
+    cache[thread].uvw[1] = 0.;
+    cache[thread].uvw[2] = 0.;
+  }
 }
 
 
 void Mgxs::_metadata_from_hdf5(const hid_t xs_id, const int in_num_groups,
      const int in_num_delayed_groups, double_1dvec& temperature, int& method,
      const double tolerance, int_1dvec& temps_to_read, int& order_dim,
-     bool& is_isotropic)
+     bool& is_isotropic, const int n_threads)
 {
   // get name
   char char_name[MAX_WORD_LEN];
@@ -242,21 +245,23 @@ void Mgxs::_metadata_from_hdf5(const hid_t xs_id, const int in_num_groups,
 
   // Finally use this data to initialize the MGXS Object
   init(in_name, in_awr, in_kTs, in_fissionable, in_scatter_format,
-       in_num_groups, in_num_delayed_groups, in_polar, in_azimuthal);
+       in_num_groups, in_num_delayed_groups, in_polar, in_azimuthal,
+       n_threads);
 }
 
 
-void Mgxs::from_hdf5(hid_t xs_id, int energy_groups, int delayed_groups,
-                     double_1dvec& temperature, int& method, double tolerance,
-                     int max_order, bool legendre_to_tabular,
-                     int legendre_to_tabular_points)
+void Mgxs::from_hdf5(hid_t xs_id, const int energy_groups,
+     const int delayed_groups, double_1dvec& temperature, int& method,
+     const double tolerance, const int max_order,
+     const  bool legendre_to_tabular, const int legendre_to_tabular_points,
+     const int n_threads)
 {
   // Call generic data gathering routine (will populate the metadata)
   int order_data;
   int_1dvec temps_to_read;
   bool is_isotropic;
   _metadata_from_hdf5(xs_id, energy_groups, delayed_groups, temperature,
-       method, tolerance, temps_to_read, order_data, is_isotropic);
+       method, tolerance, temps_to_read, order_data, is_isotropic, n_threads);
 
   // Set number of energy and delayed groups
   int final_scatter_format = scatter_format;
@@ -285,8 +290,8 @@ void Mgxs::from_hdf5(hid_t xs_id, int energy_groups, int delayed_groups,
 
 
 void Mgxs::build_macro(const std::string& in_name, double_1dvec& mat_kTs,
-                       std::vector<Mgxs*>& micros, double_1dvec& atom_densities,
-                       int& method, double tolerance)
+     std::vector<Mgxs*>& micros, double_1dvec& atom_densities, int& method,
+     const double tolerance, const int n_threads)
 {
   // Get the minimum data needed to initialize:
   // Dont need awr, but lets just initialize it anyways
@@ -305,7 +310,8 @@ void Mgxs::build_macro(const std::string& in_name, double_1dvec& mat_kTs,
   double_1dvec in_azimuthal = micros[0]->azimuthal;
 
   init(in_name, in_awr, mat_kTs, in_fissionable, in_scatter_format,
-       in_num_groups, in_num_delayed_groups, in_polar, in_azimuthal);
+       in_num_groups, in_num_delayed_groups, in_polar, in_azimuthal,
+       n_threads);
 
   // Create the xs data for each temperature
   for (int t = 0; t < mat_kTs.size(); t++) {
@@ -395,52 +401,52 @@ void Mgxs::combine(std::vector<Mgxs*>& micros, double_1dvec& scalars,
 }
 
 
-double Mgxs::get_xs(const int xstype, const int gin, int* gout, double* mu,
-                    int* dg)
+double Mgxs::get_xs(const int tid, const int xstype, const int gin,
+                    int* gout, double* mu, int* dg)
 {
   // This method assumes that the temperature and angle indices are set
   double val;
   switch(xstype) {
   case MG_GET_XS_TOTAL:
-    val = xs[index_temp].total[index_pol][index_azi][gin];
+    val = xs[cache[tid].t].total[cache[tid].p][cache[tid].a][gin];
     break;
   case MG_GET_XS_ABSORPTION:
-    val = xs[index_temp].absorption[index_pol][index_azi][gin];
+    val = xs[cache[tid].t].absorption[cache[tid].p][cache[tid].a][gin];
     break;
   case MG_GET_XS_INVERSE_VELOCITY:
-    val = xs[index_temp].inverse_velocity[index_pol][index_azi][gin];
+    val = xs[cache[tid].t].inverse_velocity[cache[tid].p][cache[tid].a][gin];
     break;
   case MG_GET_XS_DECAY_RATE:
     if (dg != nullptr) {
-      val = xs[index_temp].decay_rate[index_pol][index_azi][*dg + 1];
+      val = xs[cache[tid].t].decay_rate[cache[tid].p][cache[tid].a][*dg + 1];
     } else {
-      val = xs[index_temp].decay_rate[index_pol][index_azi][0];
+      val = xs[cache[tid].t].decay_rate[cache[tid].p][cache[tid].a][0];
     }
     break;
   case MG_GET_XS_SCATTER:
   case MG_GET_XS_SCATTER_MULT:
   case MG_GET_XS_SCATTER_FMU_MULT:
   case MG_GET_XS_SCATTER_FMU:
-    val = xs[index_temp].scatter[index_pol]
-                    [index_azi]->get_xs(xstype, gin, gout, mu);
+    val = xs[cache[tid].t].scatter[cache[tid].p]
+                    [cache[tid].a]->get_xs(xstype, gin, gout, mu);
     break;
   case MG_GET_XS_FISSION:
     if (fissionable) {
-      val = xs[index_temp].fission[index_pol][index_azi][gin];
+      val = xs[cache[tid].t].fission[cache[tid].p][cache[tid].a][gin];
     } else {
       val = 0.;
     }
     break;
   case MG_GET_XS_KAPPA_FISSION:
     if (fissionable) {
-      val = xs[index_temp].kappa_fission[index_pol][index_azi][gin];
+      val = xs[cache[tid].t].kappa_fission[cache[tid].p][cache[tid].a][gin];
     } else {
       val = 0.;
     }
     break;
   case MG_GET_XS_PROMPT_NU_FISSION:
     if (fissionable) {
-      val = xs[index_temp].prompt_nu_fission[index_pol][index_azi][gin];
+      val = xs[cache[tid].t].prompt_nu_fission[cache[tid].p][cache[tid].a][gin];
     } else {
       val = 0.;
     }
@@ -448,11 +454,11 @@ double Mgxs::get_xs(const int xstype, const int gin, int* gout, double* mu,
   case MG_GET_XS_DELAYED_NU_FISSION:
     if (fissionable) {
       if (dg != nullptr) {
-        val = xs[index_temp].delayed_nu_fission[index_pol][index_azi][gin][*dg];
+        val = xs[cache[tid].t].delayed_nu_fission[cache[tid].p][cache[tid].a][gin][*dg];
       } else {
         val = 0.;
-        for (auto& num : xs[index_temp].delayed_nu_fission[index_pol]
-                                              [index_azi][gin]) {
+        for (auto& num : xs[cache[tid].t].delayed_nu_fission[cache[tid].p]
+             [cache[tid].a][gin]) {
           val += num;
         }
       }
@@ -462,7 +468,7 @@ double Mgxs::get_xs(const int xstype, const int gin, int* gout, double* mu,
     break;
   case MG_GET_XS_NU_FISSION:
     if (fissionable) {
-      val = xs[index_temp].nu_fission[index_pol][index_azi][gin];
+      val = xs[cache[tid].t].nu_fission[cache[tid].p][cache[tid].a][gin];
     } else {
       val = 0.;
     }
@@ -470,11 +476,11 @@ double Mgxs::get_xs(const int xstype, const int gin, int* gout, double* mu,
   case MG_GET_XS_CHI_PROMPT:
     if (fissionable) {
       if (gout != nullptr) {
-        val = xs[index_temp].chi_prompt[index_pol][index_azi][gin][*gout];
+        val = xs[cache[tid].t].chi_prompt[cache[tid].p][cache[tid].a][gin][*gout];
       } else {
         // provide an outgoing group-wise sum
         val = 0.;
-        for (auto& num : xs[index_temp].chi_prompt[index_pol][index_azi][gin]) {
+        for (auto& num : xs[cache[tid].t].chi_prompt[cache[tid].p][cache[tid].a][gin]) {
           val += num;
         }
       }
@@ -486,23 +492,23 @@ double Mgxs::get_xs(const int xstype, const int gin, int* gout, double* mu,
     if (fissionable) {
       if (gout != nullptr) {
         if (dg != nullptr) {
-          val = xs[index_temp].chi_delayed[index_pol][index_azi][gin][*gout][*dg];
+          val = xs[cache[tid].t].chi_delayed[cache[tid].p][cache[tid].a][gin][*gout][*dg];
         } else {
-          val = xs[index_temp].chi_delayed[index_pol][index_azi][gin][*gout][0];
+          val = xs[cache[tid].t].chi_delayed[cache[tid].p][cache[tid].a][gin][*gout][0];
         }
       } else {
         if (dg != nullptr) {
           val = 0.;
-          for (int i = 0; i < xs[index_temp].chi_delayed[index_pol]
-                                            [index_azi][gin].size(); i++) {
-            val += xs[index_temp].chi_delayed[index_pol][index_azi][gin][i][*dg];
+          for (int i = 0; i < xs[cache[tid].t].chi_delayed[cache[tid].p]
+               [cache[tid].a][gin].size(); i++) {
+            val += xs[cache[tid].t].chi_delayed[cache[tid].p][cache[tid].a][gin][i][*dg];
           }
         } else {
           val = 0.;
-          for (int i = 0; i < xs[index_temp].chi_delayed[index_pol]
-                                            [index_azi][gin].size(); i++) {
-            for (auto& num : xs[index_temp].chi_delayed[index_pol]
-                                           [index_azi][gin][i]) {
+          for (int i = 0; i < xs[cache[tid].t].chi_delayed[cache[tid].p]
+                                            [cache[tid].a][gin].size(); i++) {
+            for (auto& num : xs[cache[tid].t].chi_delayed[cache[tid].p]
+                                           [cache[tid].a][gin][i]) {
               val += num;
             }
           }
@@ -519,14 +525,15 @@ double Mgxs::get_xs(const int xstype, const int gin, int* gout, double* mu,
 }
 
 
-void Mgxs::sample_fission_energy(const int gin, int& dg, int& gout)
+void Mgxs::sample_fission_energy(const int tid, const int gin, int& dg,
+     int& gout)
 {
   // This method assumes that the temperature and angle indices are set
-  double nu_fission = xs[index_temp].nu_fission[index_pol][index_azi][gin];
+  double nu_fission = xs[cache[tid].t].nu_fission[cache[tid].p][cache[tid].a][gin];
 
   // Find the probability of having a prompt neutron
   double prob_prompt =
-       xs[index_temp].prompt_nu_fission[index_pol][index_azi][gin];
+       xs[cache[tid].t].prompt_nu_fission[cache[tid].p][cache[tid].a][gin];
 
   // sample random numbers
   double xi_pd = prn() * nu_fission;
@@ -542,10 +549,10 @@ void Mgxs::sample_fission_energy(const int gin, int& dg, int& gout)
     // sample the outgoing energy group
     gout = 0;
     double prob_gout =
-         xs[index_temp].chi_prompt[index_pol][index_azi][gin][gout];
+         xs[cache[tid].t].chi_prompt[cache[tid].p][cache[tid].a][gin][gout];
     while (prob_gout < xi_gout) {
       gout++;
-      prob_gout += xs[index_temp].chi_prompt[index_pol][index_azi][gin][gout];
+      prob_gout += xs[cache[tid].t].chi_prompt[cache[tid].p][cache[tid].a][gin][gout];
     }
 
   } else {
@@ -556,7 +563,7 @@ void Mgxs::sample_fission_energy(const int gin, int& dg, int& gout)
     while (xi_pd >= prob_prompt) {
       dg++;
       prob_prompt +=
-           xs[index_temp].delayed_nu_fission[index_pol][index_azi][gin][dg];
+           xs[cache[tid].t].delayed_nu_fission[cache[tid].p][cache[tid].a][gin][dg];
     }
 
     // adjust dg in case of round-off error
@@ -565,35 +572,36 @@ void Mgxs::sample_fission_energy(const int gin, int& dg, int& gout)
     // sample the outgoing energy group
     gout = 0;
     double prob_gout =
-         xs[index_temp].chi_delayed[index_pol][index_azi][gin][gout][dg];
+         xs[cache[tid].t].chi_delayed[cache[tid].p][cache[tid].a][gin][gout][dg];
     while (prob_gout < xi_gout) {
       gout++;
       prob_gout +=
-           xs[index_temp].chi_delayed[index_pol][index_azi][gin][gout][dg];
+           xs[cache[tid].t].chi_delayed[cache[tid].p][cache[tid].a][gin][gout][dg];
     }
   }
 }
 
 
-void Mgxs::sample_scatter(const int gin, int& gout, double& mu, double& wgt)
+void Mgxs::sample_scatter(const int tid, const int gin, int& gout, double& mu,
+     double& wgt)
 {
   // This method assumes that the temperature and angle indices are set
   // Sample the data
-  xs[index_temp].scatter[index_pol][index_azi]->sample(gin, gout, mu, wgt);
+  xs[cache[tid].t].scatter[cache[tid].p][cache[tid].a]->sample(gin, gout, mu, wgt);
 }
 
 
-void Mgxs::calculate_xs(const int gin, const double sqrtkT, const double uvw[3],
-                        double& total_xs, double& abs_xs, double& nu_fiss_xs)
+void Mgxs::calculate_xs(const int tid, const int gin, const double sqrtkT,
+     const double uvw[3], double& total_xs, double& abs_xs, double& nu_fiss_xs)
 {
   // Set our indices
-  set_temperature_index(sqrtkT);
-  set_angle_index(uvw);
-  total_xs = xs[index_temp].total[index_pol][index_azi][gin];
-  abs_xs = xs[index_temp].absorption[index_pol][index_azi][gin];
+  set_temperature_index(tid, sqrtkT);
+  set_angle_index(tid, uvw);
+  total_xs = xs[cache[tid].t].total[cache[tid].p][cache[tid].a][gin];
+  abs_xs = xs[cache[tid].t].absorption[cache[tid].p][cache[tid].a][gin];
 
   if (fissionable) {
-    nu_fiss_xs = xs[index_temp].nu_fission[index_pol][index_azi][gin];
+    nu_fiss_xs = xs[cache[tid].t].nu_fission[cache[tid].p][cache[tid].a][gin];
   } else {
     nu_fiss_xs = 0.;
   }
@@ -617,10 +625,10 @@ bool Mgxs::equiv(const Mgxs& that)
 }
 
 
-void Mgxs::set_temperature_index(const double sqrtkT)
+void Mgxs::set_temperature_index(const int tid, const double sqrtkT)
 {
   // See if we need to find the new index
-  if (sqrtkT != last_sqrtkT) {
+  if (sqrtkT != cache[tid].sqrtkT) {
     double kT = sqrtkT * sqrtkT;
 
     // initialize vector for storage of the differences
@@ -628,34 +636,34 @@ void Mgxs::set_temperature_index(const double sqrtkT)
 
     // Find the minimum difference of kT and kTs
     temp_diff = std::abs(temp_diff - kT);
-    index_temp = std::min_element(std::begin(temp_diff), std::end(temp_diff)) -
+    cache[tid].t = std::min_element(std::begin(temp_diff), std::end(temp_diff)) -
          std::begin(temp_diff);
 
     // store this temperature as the last one used
-    last_sqrtkT = sqrtkT;
+    cache[tid].sqrtkT = sqrtkT;
   }
 }
 
 
-void Mgxs::set_angle_index(const double uvw[3])
+void Mgxs::set_angle_index(const int tid, const double uvw[3])
 {
   // See if we need to find the new index
-  if ((uvw[0] != last_uvw[0]) || (uvw[1] != last_uvw[1]) ||
-      (uvw[2] != last_uvw[2])) {
+  if ((uvw[0] != cache[tid].uvw[0]) || (uvw[1] != cache[tid].uvw[1]) ||
+      (uvw[2] != cache[tid].uvw[2])) {
     // convert uvw to polar and azimuthal angles
     double my_pol = std::acos(uvw[2]);
     double my_azi = std::atan2(uvw[1], uvw[0]);
 
     // Find the location, assuming equal-bin angles
     double delta_angle = PI / n_pol;
-    index_pol = std::floor(my_pol / delta_angle);
+    cache[tid].p = std::floor(my_pol / delta_angle);
     delta_angle = 2. * PI / n_azi;
-    index_azi = std::floor((my_azi + PI) / delta_angle);
+    cache[tid].a = std::floor((my_azi + PI) / delta_angle);
 
     // store this direction as the last one used
-    last_uvw[0] = uvw[0];
-    last_uvw[1] = uvw[1];
-    last_uvw[2] = uvw[2];
+    cache[tid].uvw[0] = uvw[0];
+    cache[tid].uvw[1] = uvw[1];
+    cache[tid].uvw[2] = uvw[2];
   }
 }
 

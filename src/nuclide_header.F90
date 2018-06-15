@@ -978,27 +978,24 @@ contains
         end if
       end associate
 
-      ! Depletion-related reactions
+      !Depletion-related reactions
       if (need_depletion_rx) then
-        ! Initialize entire array to zero in case we skip
-        ! any threshold reaction.
-        micro_xs % reaction(:) = ZERO
-         
+        !Initialize entire array to zero in case we skip
+        !any threshold reaction.
+        micro_xs % reaction(:) = ZERO 
         !there shouldn't be a threshold check for (n,gamma).
         i_rxn = this % reaction_index(DEPLETION_RX(1))
         if (i_rxn > 0) then
           associate (xs => this % reactions(i_rxn) % xs(i_temp))
           micro_xs % reaction(1) = (ONE - f) * &
-          xs % value(i_grid - xs % threshold + 1) + &
-          f * xs % value(i_grid - xs % threshold + 2)
+               xs % value(i_grid - xs % threshold + 1) + &
+               f * xs % value(i_grid - xs % threshold + 2)
           end associate
         end if
         !looping from element 2 to element 6. 
-        
         do j = 2, 6
-
-          ! If reaction is present and energy is greater than threshold, set
-          ! the reaction xs appropriately
+          !If reaction is present and energy is greater than threshold, set
+          !the reaction xs appropriately
           i_rxn = this % reaction_index(DEPLETION_RX(j))
           if (i_rxn > 0) then
             associate (xs => this % reactions(i_rxn) % xs(i_temp))
@@ -1006,8 +1003,8 @@ contains
                 micro_xs % reaction(j) = (ONE - f) * &
                      xs % value(i_grid - xs % threshold + 1) + &
                      f * xs % value(i_grid - xs % threshold + 2)
-              ! Check if we are below the (n,2n) and/or (n,3n) reaction thresholds to
-              ! skip remaining depletion-xs construction.
+              !Check if we are below the (n,2n) and/or (n,3n) reaction thresholds to
+              !skip remaining depletion-xs construction.
               elseif (j >= 4) then
                 exit
               end if

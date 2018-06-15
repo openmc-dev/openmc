@@ -248,7 +248,7 @@ void XsData::_fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
 
     } else if (ndims == 4) {
       // nu-fission is a matrix
-      read_nd_vector(xsdata_grp, "nu_fission", chi_prompt);
+      read_nd_vector(xsdata_grp, "nu-fission", chi_prompt);
 
       // Normalize the chi info so the CDF is 1.
       for (int p = 0; p < n_pol; p++) {
@@ -256,6 +256,9 @@ void XsData::_fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
           for (int gin = 0; gin < energy_groups; gin++) {
             double chi_sum = std::accumulate(chi_prompt[p][a][gin].begin(),
                                              chi_prompt[p][a][gin].end(), 0.);
+            // Set the vector nu-fission from the matrix nu-fission
+            prompt_nu_fission[p][a][gin] = chi_sum;
+
             if (chi_sum >= 0.) {
               for (int gout = 0; gout < energy_groups; gout++) {
                 chi_prompt[p][a][gin][gout] /= chi_sum;
@@ -273,13 +276,6 @@ void XsData::_fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
                      chi_prompt[p][a][gin][gout];
               }
             }
-          }
-
-          // Set the vector nu-fission from the matrix nu-fission
-          for (int gin = 0; gin < energy_groups; gin++) {
-            double sum = std::accumulate(chi_prompt[p][a][gin].begin(),
-                                         chi_prompt[p][a][gin].end(), 0.);
-            prompt_nu_fission[p][a][gin] = sum;
           }
 
           // Set the delayed-nu-fission and correct prompt-nu-fission with beta

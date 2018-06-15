@@ -85,7 +85,7 @@ contains
       if (pl % color_by == PLOT_COLOR_MATS) then
         ! Assign color based on material
         associate (c => cells(p % coord(j) % cell))
-          if (c % type == FILL_UNIVERSE) then
+          if (c % type() == FILL_UNIVERSE) then
             ! If we stopped on a middle universe level, treat as if not found
             rgb = pl % not_found % rgb
             id = -1
@@ -101,7 +101,7 @@ contains
       else if (pl % color_by == PLOT_COLOR_CELLS) then
         ! Assign color based on cell
         rgb = pl % colors(p % coord(j) % cell) % rgb
-        id = cells(p % coord(j) % cell) % id
+        id = cells(p % coord(j) % cell) % id()
       else
         rgb = 0
         id = -1

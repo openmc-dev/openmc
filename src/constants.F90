@@ -113,6 +113,9 @@ module constants
        FILL_MATERIAL = 1, & ! Cell with a specified material
        FILL_UNIVERSE = 2, & ! Cell filled by a separate universe
        FILL_LATTICE  = 3    ! Cell filled with a lattice
+  integer(C_INT), bind(C, name='FILL_MATERIAL') :: FILL_MATERIAL_C = FILL_MATERIAL
+  integer(C_INT), bind(C, name='FILL_UNIVERSE') :: FILL_UNIVERSE_C = FILL_UNIVERSE
+  integer(C_INT), bind(C, name='FILL_LATTICE')  :: FILL_LATTICE_C  = FILL_LATTICE
 
   ! Void material
   integer, parameter :: MATERIAL_VOID = -1
@@ -418,6 +421,7 @@ module constants
 
   ! indicates that an array index hasn't been set
   integer, parameter :: NONE = 0
+  integer, parameter :: C_NONE = -1
 
   ! Codes for read errors -- better hope these numbers are never used in an
   ! input file!

@@ -2,6 +2,7 @@
 #define XML_INTERFACE_H
 
 #include <string>
+#include <vector>
 
 #include "pugixml/pugixml.hpp"
 

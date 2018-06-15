@@ -2,9 +2,7 @@
 
 #include <algorithm>  // for std::transform
 #include <sstream>
-#include <string>
 
-#include "pugixml/pugixml.hpp"
 #include "error.h"
 
 

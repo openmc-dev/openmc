@@ -67,6 +67,10 @@ read_nd_vector(hid_t obj_id, const char* name,
 
 void
 read_nd_vector(hid_t obj_id, const char* name,
+               std::vector<std::vector<int> >& result, bool must_have = false);
+
+void
+read_nd_vector(hid_t obj_id, const char* name,
                std::vector<std::vector<std::vector<double> > >& result,
                bool must_have = false);
 

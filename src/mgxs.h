@@ -29,9 +29,11 @@ namespace openmc {
 struct CacheData {
   double sqrtkT; // last temperature corresponding to t
   int t; // temperature index
-  int p; // polar angle index
-  int a; // azimuthal angle index
-  double uvw[3]; // last angle that corresponds to p and a
+  int a; // angle index
+  // last angle that corresponds to p and a
+  double u;
+  double v;
+  double w;
 };
 
 //==============================================================================
@@ -45,6 +47,8 @@ class Mgxs {
     int num_delayed_groups; // number of delayed neutron groups
     int num_groups;     // number of energy groups
     std::vector<XsData> xs; // Cross section data
+    // MGXS Incoming Flux Angular grid information
+    bool is_isotropic; // used to skip search for angle indices if isotropic
     int n_pol;
     int n_azi;
     double_1dvec polar;
@@ -52,7 +56,7 @@ class Mgxs {
     void _metadata_from_hdf5(const hid_t xs_id, const int in_num_groups,
          const int in_num_delayed_groups, double_1dvec& temperature,
          int& method, const double tolerance, int_1dvec& temps_to_read,
-         int& order_dim, bool& is_isotropic, const int n_threads);
+         int& order_dim, const int n_threads);
     bool equiv(const Mgxs& that);
 
   public:

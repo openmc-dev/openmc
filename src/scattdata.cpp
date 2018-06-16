@@ -876,9 +876,9 @@ convert_legendre_to_tabular(ScattDataLegendre& leg, ScattDataTabular& tab,
 {
   // See if the user wants us to figure out how many points to use
   if (n_mu == C_NONE) {
-    // then we will use 2 pts if its P0 or P1 (super fast), or the default if
-    // a higher order
-    if (leg.get_order() <= 1) {
+    // then we will use 2 pts if its P0, or the default if a higher order
+    // TODO use an error minimization algorithm that also picks n_mu
+    if (leg.get_order() == 0) {
       n_mu = 2;
     } else {
       n_mu = DEFAULT_NMU;

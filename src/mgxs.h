@@ -10,7 +10,6 @@
 #include <string>
 #include <valarray>
 #include <vector>
-#include <iostream>
 
 #include "constants.h"
 #include "hdf5_interface.h"

@@ -337,16 +337,24 @@ void ScattDataLegendre::combine(std::vector<ScattData*>& those_scatts,
     // Find the minimum and maximum group boundaries
     int gmin_;
     for (gmin_ = 0; gmin_ < groups; gmin_++) {
-      bool non_zero = std::all_of(this_matrix[gin][gmin_].begin(),
-                                  this_matrix[gin][gmin_].end(),
-                                  [](double val){return val != 0.;});
+      bool non_zero = false;
+      for (int l = 0; l < this_matrix[gin][gmin_].size(); l++) {
+        if (this_matrix[gin][gmin_][l] != 0.) {
+          non_zero = true;
+          break;
+        }
+      }
       if (non_zero) break;
     }
     int gmax_;
     for (gmax_ = groups - 1; gmax_ >= 0; gmax_--) {
-      bool non_zero = std::all_of(this_matrix[gin][gmax_].begin(),
-                                  this_matrix[gin][gmax_].end(),
-                                  [](double val){return val != 0.;});
+      bool non_zero = false;
+      for (int l = 0; l < this_matrix[gin][gmax_].size(); l++) {
+        if (this_matrix[gin][gmax_][l] != 0.) {
+          non_zero = true;
+          break;
+        }
+      }
       if (non_zero) break;
     }
 
@@ -646,16 +654,24 @@ void ScattDataHistogram::combine(std::vector<ScattData*>& those_scatts,
     // Find the minimum and maximum group boundaries
     int gmin_;
     for (gmin_ = 0; gmin_ < groups; gmin_++) {
-      bool non_zero = std::all_of(this_matrix[gin][gmin_].begin(),
-                                  this_matrix[gin][gmin_].end(),
-                                  [](double val){return val != 0.;});
+      bool non_zero = false;
+      for (int l = 0; l < this_matrix[gin][gmin_].size(); l++) {
+        if (this_matrix[gin][gmin_][l] != 0.) {
+          non_zero = true;
+          break;
+        }
+      }
       if (non_zero) break;
     }
     int gmax_;
     for (gmax_ = groups - 1; gmax_ >= 0; gmax_--) {
-      bool non_zero = std::all_of(this_matrix[gin][gmax_].begin(),
-                                  this_matrix[gin][gmax_].end(),
-                                  [](double val){return val != 0.;});
+      bool non_zero = false;
+      for (int l = 0; l < this_matrix[gin][gmax_].size(); l++) {
+        if (this_matrix[gin][gmax_][l] != 0.) {
+          non_zero = true;
+          break;
+        }
+      }
       if (non_zero) break;
     }
 
@@ -956,16 +972,24 @@ void ScattDataTabular::combine(std::vector<ScattData*>& those_scatts,
     // Find the minimum and maximum group boundaries
     int gmin_;
     for (gmin_ = 0; gmin_ < groups; gmin_++) {
-      bool non_zero = std::all_of(this_matrix[gin][gmin_].begin(),
-                                  this_matrix[gin][gmin_].end(),
-                                  [](double val){return val != 0.;});
+      bool non_zero = false;
+      for (int l = 0; l < this_matrix[gin][gmin_].size(); l++) {
+        if (this_matrix[gin][gmin_][l] != 0.) {
+          non_zero = true;
+          break;
+        }
+      }
       if (non_zero) break;
     }
     int gmax_;
     for (gmax_ = groups - 1; gmax_ >= 0; gmax_--) {
-      bool non_zero = std::all_of(this_matrix[gin][gmax_].begin(),
-                                  this_matrix[gin][gmax_].end(),
-                                  [](double val){return val != 0.;});
+      bool non_zero = false;
+      for (int l = 0; l < this_matrix[gin][gmax_].size(); l++) {
+        if (this_matrix[gin][gmax_][l] != 0.) {
+          non_zero = true;
+          break;
+        }
+      }
       if (non_zero) break;
     }
 

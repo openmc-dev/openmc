@@ -72,9 +72,6 @@ module simulation_header
 
   logical :: trace
 
-  ! Number of distribcell maps
-  integer :: n_maps
-
 !$omp threadprivate(trace, thread_id, current_work)
 
 contains

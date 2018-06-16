@@ -115,12 +115,21 @@ extern "C" void write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_
                                     const double* results);
 
 template<std::size_t array_len> void
-write_double_1D(hid_t group_id, char const *name,
-                std::array<double, array_len> &buffer)
+write_int(hid_t group_id, char const *name,
+          const std::array<int, array_len> &buffer, bool indep)
+{
+  hsize_t dims[1] {array_len};
+  write_dataset(group_id, 1, dims, name, H5T_NATIVE_INT, buffer.data(), indep);
+}
+
+
+template<std::size_t array_len> void
+write_double(hid_t group_id, char const *name,
+             const std::array<double, array_len> &buffer, bool indep)
 {
   hsize_t dims[1] {array_len};
   write_dataset(group_id, 1, dims, name, H5T_NATIVE_DOUBLE,
-                buffer.data(), false);
+                buffer.data(), indep);
 }
 
 } // namespace openmc

@@ -42,14 +42,41 @@ def predictor(operator, timesteps, power, print_out=True):
     # Generate initial conditions
     with operator as vec:
         chain = operator.chain
-        t = 0.0
-        for i, (dt, p) in enumerate(zip(timesteps, power)):
-            # Get beginning-of-timestep reaction rates
-            x = [copy.deepcopy(vec)]
-            op_results = [operator(x[0], p)]
 
-            # Create results, write to disk
-            Results.save(operator, x, op_results, [t, t + dt], i)
+        # Initialize time
+        if operator.prev_res is None:
+            t = 0.0
+        else:
+            t = operator.prev_res[-1].time[-1]
+
+        # Initialize starting index for saving results
+        if operator.prev_res is None:
+            i_res = 0
+        else:
+            i_res = len(operator.prev_res) - 1
+
+        for i, (dt, p) in enumerate(zip(timesteps, power)):
+            # Get beginning-of-timestep concentrations and reaction rates
+            # Avoid doing first transport run if already done in previous
+            # calculation
+            if i > 0 or operator.prev_res is None:
+                x = [copy.deepcopy(vec)]
+                op_results = [operator(x[0], p)]
+
+                # Create results, write to disk
+                Results.save(operator, x, op_results, [t, t + dt], p, i_res + i)
+            else:
+                # Get initial concentration
+                x = [operator.prev_res[-1].data[0]]
+
+                # Get rates
+                op_results = [operator.prev_res[-1]]
+                op_results[0].rates = op_results[0].rates[0]
+
+                # Scale reaction rates by ratio of powers
+                power_res = operator.prev_res[-1].power
+                ratio_power = p / power_res
+                op_results[0].rates[0] *= ratio_power[0]
 
             # Deplete for full timestep
             x_end = deplete(chain, x[0], op_results[0], dt, print_out)
@@ -63,4 +90,4 @@ def predictor(operator, timesteps, power, print_out=True):
         op_results = [operator(x[0], power[-1])]
 
         # Create results, write to disk
-        Results.save(operator, x, op_results, [t, t], len(timesteps))
+        Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps))

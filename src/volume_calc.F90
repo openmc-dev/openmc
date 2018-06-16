@@ -205,7 +205,8 @@ contains
       elseif (this % domain_type == FILTER_CELL) THEN
         do level = 1, p % n_coord
           do i_domain = 1, size(this % domain_id)
-            if (cells(p % coord(level) % cell) % id == this % domain_id(i_domain)) then
+            if (cells(p % coord(level) % cell) % id() &
+                 == this % domain_id(i_domain)) then
               i_material = p % material
               call check_hit(i_domain, i_material, indices, hits, n_mat)
             end if

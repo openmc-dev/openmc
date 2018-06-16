@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
   <cell id="1" material="1" universe="1" />
-  <cell id="11" material="2" region="-1" temperature="500 0 700 800" universe="11" />
+  <cell id="11" material="2" region="-1" temperature="500 700 0 800" universe="11" />
   <cell id="12" material="1" region="1" universe="11" />
   <cell fill="101" id="101" region="2 -3 4 -5" universe="0" />
   <lattice id="101">

@@ -431,10 +431,12 @@ set(LIBOPENMC_FORTRAN_SRC
   src/tallies/trigger_header.F90
 )
 set(LIBOPENMC_CXX_SRC
-  src/constants.h
+  src/cell.cpp
   src/initialize.cpp
   src/finalize.cpp
+  src/geometry_aux.cpp
   src/hdf5_interface.cpp
+  src/lattice.cpp
   src/math_functions.cpp
   src/message_passing.cpp
   src/mgxs.cpp

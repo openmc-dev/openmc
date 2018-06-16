@@ -6,6 +6,7 @@
 
 #include <cmath>
 #include <array>
+#include <limits>
 #include <vector>
 
 namespace openmc {
@@ -80,6 +81,10 @@ constexpr int MG_GET_XS_NU_FISSION         {12};
 constexpr int MG_GET_XS_CHI_PROMPT         {13};
 constexpr int MG_GET_XS_CHI_DELAYED        {14};
 
+extern "C" double FP_COINCIDENT;
+extern "C" double FP_PRECISION;
+constexpr double INFTY {std::numeric_limits<double>::max()};
+constexpr int C_NONE {-1};
 
 } // namespace openmc
 

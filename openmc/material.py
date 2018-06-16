@@ -467,7 +467,7 @@ class Material(IDManagerMixin):
             raise ValueError(msg)
 
         # Generally speaking, the density for a macroscopic object will
-        # be 1.0.  Therefore, lets set density to 1.0 so that the user
+        # be 1.0. Therefore, lets set density to 1.0 so that the user
         # doesnt need to set it unless its needed.
         # Of course, if the user has already set a value of density,
         # then we will not override it.

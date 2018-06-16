@@ -6,7 +6,8 @@ namespace openmc {
 // Mgxs data loading interface methods
 //==============================================================================
 
-void add_mgxs_c(hid_t file_id, char* name, const int energy_groups,
+void
+add_mgxs_c(hid_t file_id, char* name, const int energy_groups,
      const int delayed_groups, const int n_temps, double temps[], int& method,
      const double tolerance, const int max_order,
      const bool legendre_to_tabular, const int legendre_to_tabular_points,
@@ -38,8 +39,10 @@ void add_mgxs_c(hid_t file_id, char* name, const int energy_groups,
   nuclides_MG.push_back(mg);
 }
 
+//==============================================================================
 
-bool query_fissionable_c(const int n_nuclides, const int i_nuclides[])
+bool
+query_fissionable_c(const int n_nuclides, const int i_nuclides[])
 {
   bool result = false;
   for (int n = 0; n < n_nuclides; n++) {
@@ -48,8 +51,10 @@ bool query_fissionable_c(const int n_nuclides, const int i_nuclides[])
   return result;
 }
 
+//==============================================================================
 
-void create_macro_xs_c(char* mat_name, const int n_nuclides,
+void
+create_macro_xs_c(char* mat_name, const int n_nuclides,
      const int i_nuclides[], const int n_temps, const double temps[],
      const double atom_densities[], int& method, const double tolerance,
      const int n_threads)
@@ -81,7 +86,8 @@ void create_macro_xs_c(char* mat_name, const int n_nuclides,
 // Mgxs tracking/transport/tallying interface methods
 //==============================================================================
 
-void calculate_xs_c(const int i_mat, const int tid, const int gin,
+void
+calculate_xs_c(const int i_mat, const int tid, const int gin,
      const double sqrtkT, const double uvw[3], double& total_xs, double& abs_xs,
      double& nu_fiss_xs)
 {
@@ -89,8 +95,10 @@ void calculate_xs_c(const int i_mat, const int tid, const int gin,
        nu_fiss_xs);
 }
 
+//==============================================================================
 
-void sample_scatter_c(const int i_mat, const int tid, const int gin, int& gout,
+void
+sample_scatter_c(const int i_mat, const int tid, const int gin, int& gout,
      double& mu, double& wgt, double uvw[3])
 {
   int gout_c = gout - 1;
@@ -103,8 +111,10 @@ void sample_scatter_c(const int i_mat, const int tid, const int gin, int& gout,
   rotate_angle_c(uvw, mu, nullptr);
 }
 
+//==============================================================================
 
-void sample_fission_energy_c(const int i_mat, const int tid, const int gin,
+void
+sample_fission_energy_c(const int i_mat, const int tid, const int gin,
      int& dg, int& gout)
 {
   int dg_c = 0;
@@ -116,8 +126,10 @@ void sample_fission_energy_c(const int i_mat, const int tid, const int gin,
   gout = gout_c + 1;
 }
 
+//==============================================================================
 
-double get_nuclide_xs_c(const int index, const int tid, const int xstype,
+double
+get_nuclide_xs_c(const int index, const int tid, const int xstype,
      const int gin, int* gout, double* mu, int* dg)
 {
   int gout_c;
@@ -140,8 +152,10 @@ double get_nuclide_xs_c(const int index, const int tid, const int xstype,
                                        dg_c_p);
 }
 
+//==============================================================================
 
-double get_macro_xs_c(const int index, const int tid, const int xstype,
+double
+get_macro_xs_c(const int index, const int tid, const int xstype,
      const int gin, int* gout, double* mu, int* dg)
 {
   int gout_c;
@@ -164,36 +178,42 @@ double get_macro_xs_c(const int index, const int tid, const int xstype,
                                     dg_c_p);
 }
 
+//==============================================================================
 
-void set_nuclide_angle_index_c(const int index, const int tid,
+void
+set_nuclide_angle_index_c(const int index, const int tid,
      const double uvw[3])
 {
   // Update the values
   nuclides_MG[index - 1].set_angle_index(tid, uvw);
 }
 
+//==============================================================================
 
-void set_macro_angle_index_c(const int index, const int tid,
+void
+set_macro_angle_index_c(const int index, const int tid,
      const double uvw[3])
 {
   // Update the values
   macro_xs[index - 1].set_angle_index(tid, uvw);
 }
 
+//==============================================================================
 
-void set_nuclide_temperature_index_c(const int index, const int tid,
+void
+set_nuclide_temperature_index_c(const int index, const int tid,
      const double sqrtkT)
 {
   // Update the values
   nuclides_MG[index - 1].set_temperature_index(tid, sqrtkT);
 }
 
-
 //==============================================================================
-// Mgxs general methods
+// General Mgxs methods
 //==============================================================================
 
-void get_name_c(const int index, int name_len, char* name)
+void
+get_name_c(const int index, int name_len, char* name)
 {
   // First blank out our input string
   std::string str(name_len, ' ');
@@ -207,8 +227,10 @@ void get_name_c(const int index, int name_len, char* name)
   name[std::strlen(name)] = ' ';
 }
 
+//==============================================================================
 
-double get_awr_c(const int index)
+double
+get_awr_c(const int index)
 {
   return nuclides_MG[index - 1].awr;
 }

@@ -234,7 +234,7 @@ contains
       ! Print cell for this level
       if (p % coord(i) % cell /= NONE) then
         c => cells(p % coord(i) % cell)
-        write(ou,*) '    Cell             = ' // trim(to_str(c % id))
+        write(ou,*) '    Cell             = ' // trim(to_str(c % id()))
       end if
 
       ! Print universe for this level
@@ -246,7 +246,7 @@ contains
       ! Print information on lattice
       if (p % coord(i) % lattice /= NONE) then
         l => lattices(p % coord(i) % lattice) % obj
-        write(ou,*) '    Lattice          = ' // trim(to_str(l % id))
+        write(ou,*) '    Lattice          = ' // trim(to_str(l % id()))
         write(ou,*) '    Lattice position = (' // trim(to_str(&
              p % coord(i) % lattice_x)) // ',' // trim(to_str(&
              p % coord(i) % lattice_y)) // ')'
@@ -258,7 +258,7 @@ contains
     end do
 
     ! Print surface
-    if (p % surface /= NONE) then
+    if (p % surface /= ERROR_INT) then
       write(ou,*) '  Surface = ' // to_str(sign(surfaces(i)%id(), p % surface))
     end if
 
@@ -633,7 +633,7 @@ contains
     write(ou,100) 'Cell ID','No. Overlap Checks'
 
     do i = 1, n_cells
-      write(ou,101) cells(i) % id, overlap_check_cnt(i)
+      write(ou,101) cells(i) % id(), overlap_check_cnt(i)
       if (overlap_check_cnt(i) < 10) num_sparse = num_sparse + 1
     end do
     write(ou,*)
@@ -643,7 +643,7 @@ contains
     do i = 1, n_cells
       if (overlap_check_cnt(i) < 10) then
         j = j + 1
-        write(ou,'(1X,A8)', advance='no') trim(to_str(cells(i) % id))
+        write(ou,'(1X,A8)', advance='no') trim(to_str(cells(i) % id()))
         if (modulo(j,8) == 0) write(ou,*)
       end if
     end do

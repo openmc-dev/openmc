@@ -188,7 +188,7 @@ contains
         p % coord(p % n_coord) % cell = NONE
         if (any(lattice_translation /= 0)) then
           ! Particle crosses lattice boundary
-          p % surface = NONE
+          p % surface = ERROR_INT
           call cross_lattice(p, lattice_translation)
           p % event = EVENT_LATTICE
         else
@@ -219,7 +219,7 @@ contains
              call score_surface_tally(p, active_meshsurf_tallies)
 
         ! Clear surface component
-        p % surface = NONE
+        p % surface = ERROR_INT
 
         if (run_CE) then
           call collision(p)
@@ -489,7 +489,7 @@ contains
     ! COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
 
     ! Remove lower coordinate levels and assignment of surface
-    p % surface = NONE
+    p % surface = ERROR_INT
     p % n_coord = 1
     call find_cell(p, found)
 

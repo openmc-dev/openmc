@@ -11,7 +11,8 @@ std::vector<Mgxs> macro_xs;
 // Mgxs base-class methods
 //==============================================================================
 
-void Mgxs::init(const std::string& in_name, const double in_awr,
+void
+Mgxs::init(const std::string& in_name, const double in_awr,
      const double_1dvec& in_kTs, const bool in_fissionable,
      const int in_scatter_format, const int in_num_groups,
      const int in_num_delayed_groups, const double_1dvec& in_polar,
@@ -41,8 +42,10 @@ void Mgxs::init(const std::string& in_name, const double in_awr,
   }
 }
 
+//==============================================================================
 
-void Mgxs::_metadata_from_hdf5(const hid_t xs_id, const int in_num_groups,
+void
+Mgxs::_metadata_from_hdf5(const hid_t xs_id, const int in_num_groups,
      const int in_num_delayed_groups, double_1dvec& temperature, int& method,
      const double tolerance, int_1dvec& temps_to_read, int& order_dim,
      bool& is_isotropic, const int n_threads)
@@ -249,8 +252,10 @@ void Mgxs::_metadata_from_hdf5(const hid_t xs_id, const int in_num_groups,
        n_threads);
 }
 
+//==============================================================================
 
-void Mgxs::from_hdf5(hid_t xs_id, const int energy_groups,
+void
+Mgxs::from_hdf5(hid_t xs_id, const int energy_groups,
      const int delayed_groups, double_1dvec& temperature, int& method,
      const double tolerance, const int max_order,
      const  bool legendre_to_tabular, const int legendre_to_tabular_points,
@@ -288,8 +293,10 @@ void Mgxs::from_hdf5(hid_t xs_id, const int energy_groups,
   scatter_format = final_scatter_format;
 }
 
+//==============================================================================
 
-void Mgxs::build_macro(const std::string& in_name, double_1dvec& mat_kTs,
+void
+Mgxs::build_macro(const std::string& in_name, double_1dvec& mat_kTs,
      std::vector<Mgxs*>& micros, double_1dvec& atom_densities, int& method,
      const double tolerance, const int n_threads)
 {
@@ -384,9 +391,11 @@ void Mgxs::build_macro(const std::string& in_name, double_1dvec& mat_kTs,
   } // end temperature (t) loop
 }
 
+//==============================================================================
 
-void Mgxs::combine(std::vector<Mgxs*>& micros, double_1dvec& scalars,
-                   int_1dvec& micro_ts, int this_t)
+void
+Mgxs::combine(std::vector<Mgxs*>& micros, double_1dvec& scalars,
+              int_1dvec& micro_ts, int this_t)
 {
   // Build the vector of pointers to the xs objects within micros
   std::vector<XsData*> those_xs(micros.size());
@@ -400,9 +409,11 @@ void Mgxs::combine(std::vector<Mgxs*>& micros, double_1dvec& scalars,
   xs[this_t].combine(those_xs, scalars);
 }
 
+//==============================================================================
 
-double Mgxs::get_xs(const int tid, const int xstype, const int gin,
-                    int* gout, double* mu, int* dg)
+double
+Mgxs::get_xs(const int tid, const int xstype, const int gin, int* gout,
+             double* mu, int* dg)
 {
   // This method assumes that the temperature and angle indices are set
   double val;
@@ -524,9 +535,10 @@ double Mgxs::get_xs(const int tid, const int xstype, const int gin,
   return val;
 }
 
+//==============================================================================
 
-void Mgxs::sample_fission_energy(const int tid, const int gin, int& dg,
-     int& gout)
+void
+Mgxs::sample_fission_energy(const int tid, const int gin, int& dg, int& gout)
 {
   // This method assumes that the temperature and angle indices are set
   double nu_fission = xs[cache[tid].t].nu_fission[cache[tid].p][cache[tid].a][gin];
@@ -581,8 +593,10 @@ void Mgxs::sample_fission_energy(const int tid, const int gin, int& dg,
   }
 }
 
+//==============================================================================
 
-void Mgxs::sample_scatter(const int tid, const int gin, int& gout, double& mu,
+void
+Mgxs::sample_scatter(const int tid, const int gin, int& gout, double& mu,
      double& wgt)
 {
   // This method assumes that the temperature and angle indices are set
@@ -590,8 +604,10 @@ void Mgxs::sample_scatter(const int tid, const int gin, int& gout, double& mu,
   xs[cache[tid].t].scatter[cache[tid].p][cache[tid].a]->sample(gin, gout, mu, wgt);
 }
 
+//==============================================================================
 
-void Mgxs::calculate_xs(const int tid, const int gin, const double sqrtkT,
+void
+Mgxs::calculate_xs(const int tid, const int gin, const double sqrtkT,
      const double uvw[3], double& total_xs, double& abs_xs, double& nu_fiss_xs)
 {
   // Set our indices
@@ -607,8 +623,10 @@ void Mgxs::calculate_xs(const int tid, const int gin, const double sqrtkT,
   }
 }
 
+//==============================================================================
 
-bool Mgxs::equiv(const Mgxs& that)
+bool
+Mgxs::equiv(const Mgxs& that)
 {
   bool match = false;
 
@@ -624,8 +642,10 @@ bool Mgxs::equiv(const Mgxs& that)
   return match;
 }
 
+//==============================================================================
 
-void Mgxs::set_temperature_index(const int tid, const double sqrtkT)
+void
+Mgxs::set_temperature_index(const int tid, const double sqrtkT)
 {
   // See if we need to find the new index
   if (sqrtkT != cache[tid].sqrtkT) {
@@ -644,8 +664,10 @@ void Mgxs::set_temperature_index(const int tid, const double sqrtkT)
   }
 }
 
+//==============================================================================
 
-void Mgxs::set_angle_index(const int tid, const double uvw[3])
+void
+Mgxs::set_angle_index(const int tid, const double uvw[3])
 {
   // See if we need to find the new index
   if ((uvw[0] != cache[tid].uvw[0]) || (uvw[1] != cache[tid].uvw[1]) ||

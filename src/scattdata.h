@@ -47,6 +47,10 @@ class ScattData {
     virtual double_3dvec get_matrix(int max_order) = 0;
 };
 
+//==============================================================================
+// ScattDataLegendre represents the angular distributions as Legendre kernels
+//==============================================================================
+
 class ScattDataLegendre: public ScattData {
   protected:
     // Maximal value for rejection sampling from a rectangle
@@ -64,6 +68,11 @@ class ScattDataLegendre: public ScattData {
     double_3dvec get_matrix(int max_order);
 };
 
+//==============================================================================
+// ScattDataHistogram represents the angular distributions as a histogram, as it
+// would be if it came from a "mu" tally in OpenMC
+//==============================================================================
+
 class ScattDataHistogram: public ScattData {
   protected:
     double_1dvec mu;
@@ -78,6 +87,11 @@ class ScattDataHistogram: public ScattData {
     int get_order() {return dist[0][0].size();};
     double_3dvec get_matrix(int max_order);
 };
+
+//==============================================================================
+// ScattDataTabular represents the angular distributions as a table of mu and
+// f(mu)
+//==============================================================================
 
 class ScattDataTabular: public ScattData {
   protected:
@@ -96,8 +110,13 @@ class ScattDataTabular: public ScattData {
     double_3dvec get_matrix(int max_order);
 };
 
-void convert_legendre_to_tabular(ScattDataLegendre& leg,
-                                 ScattDataTabular& tab, int n_mu);
+//==============================================================================
+// Function to convert Legendre functions to tabular
+//==============================================================================
+
+void
+convert_legendre_to_tabular(ScattDataLegendre& leg, ScattDataTabular& tab,
+                            int n_mu);
 
 } // namespace openmc
 #endif // SCATTDATA_H

@@ -36,7 +36,7 @@ module settings
   logical :: legendre_to_tabular = .true.
 
   ! Number of points to use in the Legendre to tabular conversion
-  integer(C_INT) :: legendre_to_tabular_points = 33
+  integer(C_INT) :: legendre_to_tabular_points = C_NONE
 
   ! ============================================================================
   ! SIMULATION VARIABLES

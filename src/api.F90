@@ -129,7 +129,7 @@ contains
     index_ufs_mesh = -1
     keff = ONE
     legendre_to_tabular = .true.
-    legendre_to_tabular_points = 33
+    legendre_to_tabular_points = C_NONE
     n_batch_interval = 1
     n_lost_particles = 0
     n_particles = 0

@@ -24,9 +24,10 @@ namespace openmc {
 
 class XsData {
   private:
-    void _scatter_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
-         int energy_groups, int scatter_format, int final_scatter_format,
-         int order_data, int max_order, int legendre_to_tabular_points);
+    void _scatter_from_hdf5(const hid_t xsdata_grp, const int n_pol,
+         const int n_azi, const int energy_groups, int scatter_format,
+         const int final_scatter_format, const int order_data,
+         const int max_order, const int legendre_to_tabular_points);
     void _fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
          int energy_groups, int delayed_groups, bool is_isotropic);
   public:
@@ -55,12 +56,16 @@ class XsData {
     std::vector<std::vector<ScattData*> > scatter;
 
     XsData() = default;
-    XsData(int num_groups, int num_delayed_groups, bool fissionable,
-           int scatter_format, int n_pol, int n_azi);
-    void from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
-                   int final_scatter_format, int order_data, int max_order,
-                   int legendre_to_tabular_points, bool is_isotropic);
-    void combine(std::vector<XsData*> those_xs, double_1dvec& scalars);
+    XsData(const int num_groups, const int num_delayed_groups,
+           const bool fissionable, const int scatter_format, const int n_pol,
+           const int n_azi);
+    void from_hdf5(const hid_t xsdata_grp, const bool fissionable,
+                   const int scatter_format, const int final_scatter_format,
+                   const int order_data, const int max_order,
+                   const int legendre_to_tabular_points,
+                   const bool is_isotropic);
+    void combine(const std::vector<XsData*> those_xs,
+                 const double_1dvec& scalars);
     bool equiv(const XsData& that);
 };
 

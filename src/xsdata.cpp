@@ -6,8 +6,9 @@ namespace openmc {
 // XsData class methods
 //==============================================================================
 
-XsData::XsData(int energy_groups, int num_delayed_groups, bool fissionable,
-               int scatter_format, int n_pol, int n_azi)
+XsData::XsData(const int energy_groups, const int num_delayed_groups,
+               const bool fissionable, const int scatter_format,
+               const int n_pol, const int n_azi)
 {
   // check to make sure scatter format is OK before we allocate
   if (scatter_format != ANGLE_HISTOGRAM && scatter_format != ANGLE_TABULAR &&
@@ -69,9 +70,10 @@ XsData::XsData(int energy_groups, int num_delayed_groups, bool fissionable,
 //==============================================================================
 
 void
-XsData::from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
-                  int final_scatter_format, int order_data, int max_order,
-                  int legendre_to_tabular_points, bool is_isotropic)
+XsData::from_hdf5(const hid_t xsdata_grp, const bool fissionable,
+                  const int scatter_format, const int final_scatter_format,
+                  const int order_data, const int max_order,
+                  const int legendre_to_tabular_points, const bool is_isotropic)
 {
   // Reconstruct the dimension information so it doesn't need to be passed
   int n_pol = total.size();
@@ -132,8 +134,9 @@ XsData::from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
 //==============================================================================
 
 void
-XsData::_fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
-     int energy_groups, int delayed_groups, bool is_isotropic)
+XsData::_fissionable_from_hdf5(const hid_t xsdata_grp, const int n_pol,
+     const int n_azi, const int energy_groups, const int delayed_groups,
+     const bool is_isotropic)
 {
 
   // Get the fission and kappa_fission data xs; these are optional
@@ -532,9 +535,10 @@ XsData::_fissionable_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
 //==============================================================================
 
 void
-XsData::_scatter_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
-     int energy_groups, int scatter_format, int final_scatter_format,
-     int order_data, int max_order, int legendre_to_tabular_points)
+XsData::_scatter_from_hdf5(const hid_t xsdata_grp, const int n_pol,
+     const int n_azi, const int energy_groups, int scatter_format,
+     const int final_scatter_format, const int order_data, const int max_order,
+     const int legendre_to_tabular_points)
 {
   if (!object_exists(xsdata_grp, "scatter_data")) {
     fatal_error("Must provide scatter_data group!");
@@ -671,7 +675,8 @@ XsData::_scatter_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
 //==============================================================================
 
 void
-XsData::combine(std::vector<XsData*> those_xs, double_1dvec& scalars)
+XsData::combine(const std::vector<XsData*> those_xs,
+                const double_1dvec& scalars)
 {
   // Combine the non-scattering data
   for (int i = 0; i < those_xs.size(); i++) {

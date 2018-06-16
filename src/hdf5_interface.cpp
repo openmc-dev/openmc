@@ -483,6 +483,28 @@ read_nd_vector(hid_t obj_id, const char* name,
 
 void
 read_nd_vector(hid_t obj_id, const char* name,
+               std::vector<std::vector<int> >& result, bool must_have)
+{
+  if (object_exists(obj_id, name)) {
+    int dim1 = result.size();
+    int dim2 = result[0].size();
+    std::vector<int> temp_arr = std::vector<int>(dim1 * dim2);
+    read_int(obj_id, name, &temp_arr[0], true);
+
+    int temp_idx = 0;
+    for (int i = 0; i < dim1; i++) {
+      for (int j = 0; j < dim2; j++) {
+        result[i][j] = temp_arr[temp_idx++];
+      }
+    }
+  } else if (must_have) {
+    fatal_error(std::string("Must provide " + std::string(name) + "!"));
+  }
+}
+
+
+void
+read_nd_vector(hid_t obj_id, const char* name,
                std::vector<std::vector<std::vector<double> > >& result,
                bool must_have)
 {

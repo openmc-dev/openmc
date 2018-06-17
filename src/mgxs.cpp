@@ -414,31 +414,32 @@ Mgxs::get_xs(const int tid, const int xstype, const int gin, int* gout,
              double* mu, int* dg)
 {
   // This method assumes that the temperature and angle indices are set
+  XsData* xs_t = &xs[cache[tid].t];
   double val;
   switch(xstype) {
   case MG_GET_XS_TOTAL:
-    val = xs[cache[tid].t].total[cache[tid].a][gin];
+    val = xs_t->total[cache[tid].a][gin];
     break;
   case MG_GET_XS_NU_FISSION:
     if (fissionable) {
-      val = xs[cache[tid].t].nu_fission[cache[tid].a][gin];
+      val = xs_t->nu_fission[cache[tid].a][gin];
     } else {
       val = 0.;
     }
     break;
   case MG_GET_XS_ABSORPTION:
-    val = xs[cache[tid].t].absorption[cache[tid].a][gin];
+    val = xs_t->absorption[cache[tid].a][gin];
     break;
   case MG_GET_XS_FISSION:
     if (fissionable) {
-      val = xs[cache[tid].t].fission[cache[tid].a][gin];
+      val = xs_t->fission[cache[tid].a][gin];
     } else {
       val = 0.;
     }
     break;
   case MG_GET_XS_KAPPA_FISSION:
     if (fissionable) {
-      val = xs[cache[tid].t].kappa_fission[cache[tid].a][gin];
+      val = xs_t->kappa_fission[cache[tid].a][gin];
     } else {
       val = 0.;
     }
@@ -447,11 +448,11 @@ Mgxs::get_xs(const int tid, const int xstype, const int gin, int* gout,
   case MG_GET_XS_SCATTER_MULT:
   case MG_GET_XS_SCATTER_FMU_MULT:
   case MG_GET_XS_SCATTER_FMU:
-    val = xs[cache[tid].t].scatter[cache[tid].a]->get_xs(xstype, gin, gout, mu);
+    val = xs_t->scatter[cache[tid].a]->get_xs(xstype, gin, gout, mu);
     break;
   case MG_GET_XS_PROMPT_NU_FISSION:
     if (fissionable) {
-      val = xs[cache[tid].t].prompt_nu_fission[cache[tid].a][gin];
+      val = xs_t->prompt_nu_fission[cache[tid].a][gin];
     } else {
       val = 0.;
     }
@@ -459,11 +460,10 @@ Mgxs::get_xs(const int tid, const int xstype, const int gin, int* gout,
   case MG_GET_XS_DELAYED_NU_FISSION:
     if (fissionable) {
       if (dg != nullptr) {
-        val = xs[cache[tid].t].delayed_nu_fission[cache[tid].a][gin][*dg];
+        val = xs_t->delayed_nu_fission[cache[tid].a][gin][*dg];
       } else {
         val = 0.;
-        for (auto& num : xs[cache[tid].t].delayed_nu_fission
-             [cache[tid].a][gin]) {
+        for (auto& num : xs_t->delayed_nu_fission[cache[tid].a][gin]) {
           val += num;
         }
       }
@@ -474,11 +474,11 @@ Mgxs::get_xs(const int tid, const int xstype, const int gin, int* gout,
   case MG_GET_XS_CHI_PROMPT:
     if (fissionable) {
       if (gout != nullptr) {
-        val = xs[cache[tid].t].chi_prompt[cache[tid].a][gin][*gout];
+        val = xs_t->chi_prompt[cache[tid].a][gin][*gout];
       } else {
         // provide an outgoing group-wise sum
         val = 0.;
-        for (auto& num : xs[cache[tid].t].chi_prompt[cache[tid].a][gin]) {
+        for (auto& num : xs_t->chi_prompt[cache[tid].a][gin]) {
           val += num;
         }
       }
@@ -490,23 +490,20 @@ Mgxs::get_xs(const int tid, const int xstype, const int gin, int* gout,
     if (fissionable) {
       if (gout != nullptr) {
         if (dg != nullptr) {
-          val = xs[cache[tid].t].chi_delayed[cache[tid].a][gin][*gout][*dg];
+          val = xs_t->chi_delayed[cache[tid].a][gin][*gout][*dg];
         } else {
-          val = xs[cache[tid].t].chi_delayed[cache[tid].a][gin][*gout][0];
+          val = xs_t->chi_delayed[cache[tid].a][gin][*gout][0];
         }
       } else {
         if (dg != nullptr) {
           val = 0.;
-          for (int i = 0; i < xs[cache[tid].t].chi_delayed
-               [cache[tid].a][gin].size(); i++) {
-            val += xs[cache[tid].t].chi_delayed[cache[tid].a][gin][i][*dg];
+          for (int i = 0; i < xs_t->chi_delayed[cache[tid].a][gin].size(); i++) {
+            val += xs_t->chi_delayed[cache[tid].a][gin][i][*dg];
           }
         } else {
           val = 0.;
-          for (int i = 0; i < xs[cache[tid].t].chi_delayed
-                                            [cache[tid].a][gin].size(); i++) {
-            for (auto& num : xs[cache[tid].t].chi_delayed
-                                           [cache[tid].a][gin][i]) {
+          for (int i = 0; i < xs_t->chi_delayed[cache[tid].a][gin].size(); i++) {
+            for (auto& num : xs_t->chi_delayed[cache[tid].a][gin][i]) {
               val += num;
             }
           }
@@ -517,13 +514,13 @@ Mgxs::get_xs(const int tid, const int xstype, const int gin, int* gout,
     }
     break;
   case MG_GET_XS_INVERSE_VELOCITY:
-    val = xs[cache[tid].t].inverse_velocity[cache[tid].a][gin];
+    val = xs_t->inverse_velocity[cache[tid].a][gin];
     break;
   case MG_GET_XS_DECAY_RATE:
     if (dg != nullptr) {
-      val = xs[cache[tid].t].decay_rate[cache[tid].a][*dg + 1];
+      val = xs_t->decay_rate[cache[tid].a][*dg + 1];
     } else {
-      val = xs[cache[tid].t].decay_rate[cache[tid].a][0];
+      val = xs_t->decay_rate[cache[tid].a][0];
     }
     break;
   default:
@@ -538,11 +535,12 @@ void
 Mgxs::sample_fission_energy(const int tid, const int gin, int& dg, int& gout)
 {
   // This method assumes that the temperature and angle indices are set
-  double nu_fission = xs[cache[tid].t].nu_fission[cache[tid].a][gin];
+  XsData* xs_t = &xs[cache[tid].t];
+  double nu_fission = xs_t->nu_fission[cache[tid].a][gin];
 
   // Find the probability of having a prompt neutron
   double prob_prompt =
-       xs[cache[tid].t].prompt_nu_fission[cache[tid].a][gin];
+       xs_t->prompt_nu_fission[cache[tid].a][gin];
 
   // sample random numbers
   double xi_pd = prn() * nu_fission;
@@ -558,10 +556,10 @@ Mgxs::sample_fission_energy(const int tid, const int gin, int& dg, int& gout)
     // sample the outgoing energy group
     gout = 0;
     double prob_gout =
-         xs[cache[tid].t].chi_prompt[cache[tid].a][gin][gout];
+         xs_t->chi_prompt[cache[tid].a][gin][gout];
     while (prob_gout < xi_gout) {
       gout++;
-      prob_gout += xs[cache[tid].t].chi_prompt[cache[tid].a][gin][gout];
+      prob_gout += xs_t->chi_prompt[cache[tid].a][gin][gout];
     }
 
   } else {
@@ -572,7 +570,7 @@ Mgxs::sample_fission_energy(const int tid, const int gin, int& dg, int& gout)
     while (xi_pd >= prob_prompt) {
       dg++;
       prob_prompt +=
-           xs[cache[tid].t].delayed_nu_fission[cache[tid].a][gin][dg];
+           xs_t->delayed_nu_fission[cache[tid].a][gin][dg];
     }
 
     // adjust dg in case of round-off error
@@ -581,11 +579,11 @@ Mgxs::sample_fission_energy(const int tid, const int gin, int& dg, int& gout)
     // sample the outgoing energy group
     gout = 0;
     double prob_gout =
-         xs[cache[tid].t].chi_delayed[cache[tid].a][gin][gout][dg];
+         xs_t->chi_delayed[cache[tid].a][gin][gout][dg];
     while (prob_gout < xi_gout) {
       gout++;
       prob_gout +=
-           xs[cache[tid].t].chi_delayed[cache[tid].a][gin][gout][dg];
+           xs_t->chi_delayed[cache[tid].a][gin][gout][dg];
     }
   }
 }
@@ -610,11 +608,12 @@ Mgxs::calculate_xs(const int tid, const int gin, const double sqrtkT,
   // Set our indices
   set_temperature_index(tid, sqrtkT);
   set_angle_index(tid, uvw);
-  total_xs = xs[cache[tid].t].total[cache[tid].a][gin];
-  abs_xs = xs[cache[tid].t].absorption[cache[tid].a][gin];
+  XsData* xs_t = &xs[cache[tid].t];
+  total_xs = xs_t->total[cache[tid].a][gin];
+  abs_xs = xs_t->absorption[cache[tid].a][gin];
 
   if (fissionable) {
-    nu_fiss_xs = xs[cache[tid].t].nu_fission[cache[tid].a][gin];
+    nu_fiss_xs = xs_t->nu_fission[cache[tid].a][gin];
   } else {
     nu_fiss_xs = 0.;
   }

@@ -7,7 +7,7 @@ namespace openmc {
 //==============================================================================
 
 void
-ScattData::generic_init(int order, int_1dvec& in_gmin, int_1dvec& in_gmax,
+ScattData::base_init(int order, int_1dvec& in_gmin, int_1dvec& in_gmax,
                         double_2dvec& in_energy, double_2dvec& in_mult)
 {
   int groups = in_energy.size();
@@ -42,7 +42,7 @@ ScattData::generic_init(int order, int_1dvec& in_gmin, int_1dvec& in_gmax,
 //==============================================================================
 
 void
-ScattData::generic_combine(const int max_order,
+ScattData::base_combine(const int max_order,
      const std::vector<ScattData*>& those_scatts, const double_1dvec& scalars,
      int_1dvec& in_gmin, int_1dvec& in_gmax, double_2dvec& sparse_mult,
      double_3dvec& sparse_scatter)
@@ -277,7 +277,7 @@ ScattDataLegendre::init(int_1dvec& in_gmin, int_1dvec& in_gmax,
   }
 
   // Initialize the base class attributes
-  ScattData::generic_init(order, in_gmin, in_gmax, in_energy, in_mult);
+  ScattData::base_init(order, in_gmin, in_gmax, in_energy, in_mult);
 
   // Set the distribution (sdata.dist) values and initialize max_val
   max_val.resize(groups);
@@ -407,7 +407,7 @@ ScattDataLegendre::combine(const std::vector<ScattData*>& those_scatts,
   // The rest of the steps do not depend on the type of angular representation
   // so we use a base class method to sum up xs and create new energy and mult
   // matrices
-  ScattData::generic_combine(max_order, those_scatts, scalars, in_gmin, in_gmax,
+  ScattData::base_combine(max_order, those_scatts, scalars, in_gmin, in_gmax,
                              sparse_mult, sparse_scatter);
 
   // Got everything we need, store it.
@@ -479,7 +479,7 @@ ScattDataHistogram::init(int_1dvec& in_gmin, int_1dvec& in_gmax,
   }
 
   // Initialize the base class attributes
-  ScattData::generic_init(order, in_gmin, in_gmax, in_energy,
+  ScattData::base_init(order, in_gmin, in_gmax, in_energy,
                                     in_mult);
 
   // Build the angular distribution mu values
@@ -631,7 +631,7 @@ ScattDataHistogram::combine(const std::vector<ScattData*>& those_scatts,
   // The rest of the steps do not depend on the type of angular representation
   // so we use a base class method to sum up xs and create new energy and mult
   // matrices
-  ScattData::generic_combine(max_order, those_scatts, scalars, in_gmin, in_gmax,
+  ScattData::base_combine(max_order, those_scatts, scalars, in_gmin, in_gmax,
                              sparse_mult, sparse_scatter);
 
   // Got everything we need, store it.
@@ -691,7 +691,7 @@ ScattDataTabular::init(int_1dvec& in_gmin, int_1dvec& in_gmax,
   }
 
   // Initialize the base class attributes
-  ScattData::generic_init(order, in_gmin, in_gmax, in_energy, in_mult);
+  ScattData::base_init(order, in_gmin, in_gmax, in_energy, in_mult);
 
   // Calculate f(mu) and integrate it so we can avoid rejection sampling
   fmu.resize(groups);
@@ -855,7 +855,7 @@ ScattDataTabular::combine(const std::vector<ScattData*>& those_scatts,
   // The rest of the steps do not depend on the type of angular representation
   // so we use a base class method to sum up xs and create new energy and mult
   // matrices
-  ScattData::generic_combine(max_order, those_scatts, scalars, in_gmin, in_gmax,
+  ScattData::base_combine(max_order, those_scatts, scalars, in_gmin, in_gmax,
                              sparse_mult, sparse_scatter);
 
   // Got everything we need, store it.
@@ -881,7 +881,7 @@ convert_legendre_to_tabular(ScattDataLegendre& leg, ScattDataTabular& tab,
     }
   }
 
-  tab.generic_init(n_mu, leg.gmin, leg.gmax, leg.energy, leg.mult);
+  tab.base_init(n_mu, leg.gmin, leg.gmax, leg.energy, leg.mult);
   tab.scattxs = leg.scattxs;
 
   // Build mu and dmu

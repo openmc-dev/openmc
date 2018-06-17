@@ -15,8 +15,9 @@ void
 Mgxs::init(const std::string& in_name, const double in_awr,
      const double_1dvec& in_kTs, const bool in_fissionable,
      const int in_scatter_format, const int in_num_groups,
-     const int in_num_delayed_groups, const double_1dvec& in_polar,
-     const double_1dvec& in_azimuthal, const int n_threads)
+     const int in_num_delayed_groups, const bool in_is_isotropic,
+     const double_1dvec& in_polar, const double_1dvec& in_azimuthal,
+     const int n_threads)
 {
   name = in_name;
   awr = in_awr;
@@ -26,10 +27,11 @@ Mgxs::init(const std::string& in_name, const double in_awr,
   num_groups = in_num_groups;
   num_delayed_groups = in_num_delayed_groups;
   xs.resize(in_kTs.size());
+  is_isotropic = in_is_isotropic;
+  n_pol = in_polar.size();
+  n_azi = in_azimuthal.size();
   polar = in_polar;
   azimuthal = in_azimuthal;
-  n_pol = polar.size();
-  n_azi = azimuthal.size();
   cache.resize(n_threads);
   for (int thread = 0; thread < n_threads; thread++) {
     cache[thread].sqrtkT = 0.;
@@ -205,50 +207,52 @@ Mgxs::_metadata_from_hdf5(const hid_t xs_id, const int in_num_groups,
   }
 
   // Get the angular information
-  is_isotropic = true;
+  int in_n_pol;
+  int in_n_azi;
+  bool in_is_isotropic = true;
   if (attribute_exists(xs_id, "representation")) {
     std::string temp_str(MAX_WORD_LEN, ' ');
     read_attr_string(xs_id, "representation", MAX_WORD_LEN, &temp_str[0]);
     to_lower(strtrim(temp_str));
     if (temp_str.compare(0, 5, "angle") == 0) {
-      is_isotropic =  false;
+      in_is_isotropic =  false;
     } else if (temp_str.compare(0, 9, "isotropic") != 0) {
       fatal_error("Invalid Data Representation!");
     }
   }
 
-  if (!is_isotropic) {
+  if (!in_is_isotropic) {
     if (attribute_exists(xs_id, "num_polar")) {
-      read_attr_int(xs_id, "num_polar", &n_pol);
+      read_attr_int(xs_id, "num_polar", &in_n_pol);
     } else {
       fatal_error("num_polar must be provided!");
     }
     if (attribute_exists(xs_id, "num_azimuthal")) {
-      read_attr_int(xs_id, "num_azimuthal", &n_azi);
+      read_attr_int(xs_id, "num_azimuthal", &in_n_azi);
     } else {
       fatal_error("num_azimuthal must be provided!");
     }
   } else {
-    n_pol = 1;
-    n_azi = 1;
+    in_n_pol = 1;
+    in_n_azi = 1;
   }
 
   // Set the angular bins to use equally-spaced bins
-  double_1dvec in_polar(n_pol);
-  double dangle = PI / n_pol;
-  for (int p = 0; p < n_pol; p++) {
+  double_1dvec in_polar(in_n_pol);
+  double dangle = PI / in_n_pol;
+  for (int p = 0; p < in_n_pol; p++) {
     in_polar[p]  = (p + 0.5) * dangle;
   }
-  double_1dvec in_azimuthal(n_azi);
-  dangle = 2. * PI / n_azi;
-  for (int a = 0; a < n_azi; a++) {
+  double_1dvec in_azimuthal(in_n_azi);
+  dangle = 2. * PI / in_n_azi;
+  for (int a = 0; a < in_n_azi; a++) {
     in_azimuthal[a] = (a + 0.5) * dangle - PI;
   }
 
   // Finally use this data to initialize the MGXS Object
   init(in_name, in_awr, in_kTs, in_fissionable, in_scatter_format,
-       in_num_groups, in_num_delayed_groups, in_polar, in_azimuthal,
-       n_threads);
+       in_num_groups, in_num_delayed_groups, in_is_isotropic, in_polar,
+       in_azimuthal, n_threads);
 }
 
 //==============================================================================
@@ -311,12 +315,13 @@ Mgxs::build_macro(const std::string& in_name, double_1dvec& mat_kTs,
   int in_scatter_format = micros[0]->scatter_format;
   int in_num_groups = micros[0]->num_groups;
   int in_num_delayed_groups = micros[0]->num_delayed_groups;
+  bool in_is_isotropic = micros[0]->is_isotropic;
   double_1dvec in_polar = micros[0]->polar;
   double_1dvec in_azimuthal = micros[0]->azimuthal;
 
   init(in_name, in_awr, mat_kTs, in_fissionable, in_scatter_format,
-       in_num_groups, in_num_delayed_groups, in_polar, in_azimuthal,
-       n_threads);
+       in_num_groups, in_num_delayed_groups, in_is_isotropic, in_polar,
+       in_azimuthal, n_threads);
 
   // Create the xs data for each temperature
   for (int t = 0; t < mat_kTs.size(); t++) {

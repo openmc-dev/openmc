@@ -22,6 +22,9 @@ class ReactionRates(np.ndarray):
         Depletable nuclides
     reactions : list of str
         Transmutation reactions being tracked
+    from_results : boolean
+        If the reaction rates are loaded from results, indexing dictionnaries
+        need to be kept the same.
 
     Attributes
     ----------
@@ -47,16 +50,24 @@ class ReactionRates(np.ndarray):
     # the __array_finalize__ method (discussed here:
     # https://docs.scipy.org/doc/numpy/user/basics.subclassing.html)
 
-    def __new__(cls, local_mats, nuclides, reactions):
+    def __new__(cls, local_mats, nuclides, reactions, from_results=False):
         # Create appropriately-sized zeroed-out ndarray
         shape = (len(local_mats), len(nuclides), len(reactions))
         obj = super().__new__(cls, shape)
         obj[:] = 0.0
 
-        # Add mapping attributes
-        obj.index_mat = {mat: i for i, mat in enumerate(local_mats)}
-        obj.index_nuc = {nuc: i for i, nuc in enumerate(nuclides)}
-        obj.index_rx = {rx: i for i, rx in enumerate(reactions)}
+        # Add mapping attributes, keep same indexing if from depletion_results
+        if from_results:
+            obj.index_mat = local_mats
+            obj.index_nuc = nuclides
+            obj.index_rx = reactions
+        # Else, assumes that reaction rates are ordered the same way as
+        # the lists of local_mats, nuclides and reactions (or keys if these
+        # are dictionnaries)
+        else:
+            obj.index_mat = {mat: i for i, mat in enumerate(local_mats)}
+            obj.index_nuc = {nuc: i for i, nuc in enumerate(nuclides)}
+            obj.index_rx = {rx: i for i, rx in enumerate(reactions)}
 
         return obj
 

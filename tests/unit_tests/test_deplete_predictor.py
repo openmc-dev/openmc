@@ -10,7 +10,7 @@ from tests import dummy_operator
 
 
 def test_predictor(run_in_tmpdir):
-    """Integral regression test of integrator algorithm using predictor/corrector"""
+    """Integral regression test of integrator algorithm using predictor"""
 
     op = dummy_operator.DummyOperator()
     op.output_dir = "test_integrator_regression"

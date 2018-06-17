@@ -17,8 +17,8 @@ class DummyOperator(TransportOperator):
     y_2(1.5) ~ 3.1726475740397628
 
     """
-    def __init__(self):
-        pass
+    def __init__(self, previous_results=None):
+        self.prev_res = previous_results
 
     def __call__(self, vec, power, print_out=False):
         """Evaluates F(y)

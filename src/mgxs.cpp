@@ -46,7 +46,7 @@ Mgxs::init(const std::string& in_name, const double in_awr,
 //==============================================================================
 
 void
-Mgxs::_metadata_from_hdf5(const hid_t xs_id, const int in_num_groups,
+Mgxs::metadata_from_hdf5(const hid_t xs_id, const int in_num_groups,
      const int in_num_delayed_groups, double_1dvec& temperature, int& method,
      const double tolerance, int_1dvec& temps_to_read, int& order_dim,
      const int n_threads)
@@ -267,7 +267,7 @@ Mgxs::from_hdf5(hid_t xs_id, const int energy_groups,
   // Call generic data gathering routine (will populate the metadata)
   int order_data;
   int_1dvec temps_to_read;
-  _metadata_from_hdf5(xs_id, energy_groups, delayed_groups, temperature,
+  metadata_from_hdf5(xs_id, energy_groups, delayed_groups, temperature,
        method, tolerance, temps_to_read, order_data, n_threads);
 
   // Set number of energy and delayed groups

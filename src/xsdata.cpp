@@ -73,8 +73,8 @@ XsData::from_hdf5(const hid_t xsdata_grp, const bool fissionable,
 
   // Set the fissionable-specific data
   if (fissionable) {
-    _fissionable_from_hdf5(xsdata_grp, n_pol, n_azi, energy_groups,
-                           delayed_groups, is_isotropic);
+    fission_from_hdf5(xsdata_grp, n_pol, n_azi, energy_groups, delayed_groups,
+                      is_isotropic);
   }
   // Get the non-fission-specific data
   read_nd_vector(xsdata_grp, "decay_rate", decay_rate);
@@ -82,7 +82,7 @@ XsData::from_hdf5(const hid_t xsdata_grp, const bool fissionable,
   read_nd_vector(xsdata_grp, "inverse-velocity", inverse_velocity);
 
   // Get scattering data
-  _scatter_from_hdf5(xsdata_grp, n_pol, n_azi, energy_groups, scatter_format,
+  scatter_from_hdf5(xsdata_grp, n_pol, n_azi, energy_groups, scatter_format,
                      final_scatter_format, order_data, max_order,
                      legendre_to_tabular_points);
 
@@ -116,7 +116,7 @@ XsData::from_hdf5(const hid_t xsdata_grp, const bool fissionable,
 //==============================================================================
 
 void
-XsData::_fissionable_from_hdf5(const hid_t xsdata_grp, const int n_pol,
+XsData::fission_from_hdf5(const hid_t xsdata_grp, const int n_pol,
      const int n_azi, const int energy_groups, const int delayed_groups,
      const bool is_isotropic)
 {
@@ -485,7 +485,7 @@ XsData::_fissionable_from_hdf5(const hid_t xsdata_grp, const int n_pol,
 //==============================================================================
 
 void
-XsData::_scatter_from_hdf5(const hid_t xsdata_grp, const int n_pol,
+XsData::scatter_from_hdf5(const hid_t xsdata_grp, const int n_pol,
      const int n_azi, const int energy_groups, int scatter_format,
      const int final_scatter_format, const int order_data, const int max_order,
      const int legendre_to_tabular_points)

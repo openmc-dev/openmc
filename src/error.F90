@@ -265,4 +265,13 @@ contains
 
   end subroutine write_message
 
+  subroutine write_message_from_c(message, message_len, level) bind(C)
+    integer(C_INT),         intent(in), value :: message_len
+    character(kind=C_CHAR), intent(in)        :: message(message_len)
+    integer(C_INT),         intent(in), value :: level
+    character(message_len+1)                  :: message_out
+    write(message_out, *) message
+    call write_message(message_out, level)
+  end subroutine write_message_from_c
+
 end module error

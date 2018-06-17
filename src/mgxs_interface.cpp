@@ -19,8 +19,7 @@ add_mgxs_c(hid_t file_id, char* name, const int energy_groups,
   double_1dvec temperature;
   temperature.assign(temps, temps + n_temps);
 
-  // TODO: C++ replacement for write_message
-  // write_message("Loading " + std::string(names[i]) + " data...", 6);
+  write_message("Loading " + std::string(name) + " data...", 6);
 
   // Check to make sure cross section set exists in the library
   hid_t xs_grp;

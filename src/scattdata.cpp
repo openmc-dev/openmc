@@ -609,16 +609,14 @@ ScattDataHistogram::combine(const std::vector<ScattData*>& those_scatts,
                             const double_1dvec& scalars)
 {
   // Find the max order in the data set and make sure we can combine the sets
-  int max_order;
+  int max_order = those_scatts[0]->get_order();
   for (int i = 0; i < those_scatts.size(); i++) {
     // Lets also make sure these items are combineable
     ScattDataHistogram* that = dynamic_cast<ScattDataHistogram*>(those_scatts[i]);
     if (!that) {
       fatal_error("Cannot combine the ScattData objects!");
     }
-    if (i == 0) {
-      max_order = that->get_order();
-    } else if (max_order != that->get_order()) {
+    if (max_order != that->get_order()) {
       fatal_error("Cannot combine the ScattData objects!");
     }
   }
@@ -835,16 +833,14 @@ ScattDataTabular::combine(const std::vector<ScattData*>& those_scatts,
                           const double_1dvec& scalars)
 {
   // Find the max order in the data set and make sure we can combine the sets
-  int max_order;
+  int max_order = those_scatts[0]->get_order();
   for (int i = 0; i < those_scatts.size(); i++) {
     // Lets also make sure these items are combineable
     ScattDataTabular* that = dynamic_cast<ScattDataTabular*>(those_scatts[i]);
     if (!that) {
       fatal_error("Cannot combine the ScattData objects!");
     }
-    if (i == 0) {
-      max_order = that->get_order();
-    } else if (max_order != that->get_order()) {
+    if (max_order != that->get_order()) {
       fatal_error("Cannot combine the ScattData objects!");
     }
   }

@@ -15,7 +15,6 @@ module summary
   use surface_header
   use string,          only: to_str
   use tally_header,    only: TallyObject
-  use tally_filter_distribcell, only: find_offset
 
   implicit none
   private
@@ -160,8 +159,7 @@ contains
   subroutine write_geometry(file_id)
     integer(HID_T), intent(in) :: file_id
 
-    integer :: i, j, k, m
-    integer, allocatable :: lattice_universes(:,:,:)
+    integer :: i, j, cell_fill
     integer, allocatable :: cell_materials(:)
     integer, allocatable :: cell_ids(:)
     real(8), allocatable :: cell_temperatures(:)
@@ -169,8 +167,7 @@ contains
     integer(HID_T) :: cells_group, cell_group
     integer(HID_T) :: surfaces_group
     integer(HID_T) :: universes_group, univ_group
-    integer(HID_T) :: lattices_group, lattice_group
-    character(:), allocatable :: region_spec
+    integer(HID_T) :: lattices_group
     type(Cell),     pointer :: c
     class(Lattice), pointer :: lat
 
@@ -179,7 +176,7 @@ contains
     call write_attribute(geom_group, "n_cells", n_cells)
     call write_attribute(geom_group, "n_surfaces", n_surfaces)
     call write_attribute(geom_group, "n_universes", n_universes)
-    call write_attribute(geom_group, "n_lattices", n_lattices)
+    call write_attribute(geom_group, "n_lattices", size(lattices))
 
     ! ==========================================================================
     ! WRITE INFORMATION ON CELLS
@@ -190,16 +187,12 @@ contains
     ! Write information on each cell
     CELL_LOOP: do i = 1, n_cells
       c => cells(i)
-      cell_group = create_group(cells_group, "cell " // trim(to_str(c%id)))
+      cell_group = create_group(cells_group, "cell " // trim(to_str(c%id())))
 
-      ! Write name for this cell
-      call write_dataset(cell_group, "name", c%name)
-
-      ! Write universe for this cell
-      call write_dataset(cell_group, "universe", universes(c%universe)%id)
+      call c % to_hdf5(cell_group)
 
       ! Write information on what fills this cell
-      select case (c%type)
+      select case (c%type())
       case (FILL_MATERIAL)
         call write_dataset(cell_group, "fill_type", "material")
 
@@ -231,12 +224,7 @@ contains
 
       case (FILL_UNIVERSE)
         call write_dataset(cell_group, "fill_type", "universe")
-        call write_dataset(cell_group, "fill", universes(c%fill)%id)
-        if (allocated(c%offset)) then
-          if (size(c%offset) > 0) then
-            call write_dataset(cell_group, "offset", c%offset)
-          end if
-        end if
+        call write_dataset(cell_group, "fill", universes(c%fill()+1)%id)
 
         if (allocated(c%translation)) then
           call write_dataset(cell_group, "translation", c%translation)
@@ -247,29 +235,11 @@ contains
 
       case (FILL_LATTICE)
         call write_dataset(cell_group, "fill_type", "lattice")
-        call write_dataset(cell_group, "lattice", lattices(c%fill)%obj%id)
+        ! Do not access the 'lattices' array with 'c % fill() + 1' directly; it
+        ! causes a segfault in GCC 7.3.0
+        cell_fill = c % fill() + 1
+        call write_dataset(cell_group, "lattice", lattices(cell_fill)%obj%id())
       end select
-
-      ! Write list of bounding surfaces
-      region_spec = ""
-      do j = 1, size(c%region)
-        k = c%region(j)
-        select case(k)
-        case (OP_LEFT_PAREN)
-          region_spec = trim(region_spec) // " ("
-        case (OP_RIGHT_PAREN)
-          region_spec = trim(region_spec) // " )"
-        case (OP_COMPLEMENT)
-          region_spec = trim(region_spec) // " ~"
-        case (OP_INTERSECTION)
-        case (OP_UNION)
-          region_spec = trim(region_spec) // " |"
-        case default
-          region_spec = trim(region_spec) // " " // to_str(&
-               sign(surfaces(abs(k))%id(), k))
-        end select
-      end do
-      call write_dataset(cell_group, "region", adjustl(region_spec))
 
       call close_group(cell_group)
     end do CELL_LOOP
@@ -305,7 +275,7 @@ contains
         if (size(u % cells) > 0) then
           allocate(cell_ids(size(u % cells)))
           do j = 1, size(u % cells)
-            cell_ids(j) = cells(u % cells(j)) % id
+            cell_ids(j) = cells(u % cells(j)) % id()
           end do
           call write_dataset(univ_group, "cells", cell_ids)
           deallocate(cell_ids)
@@ -320,87 +290,12 @@ contains
     ! ==========================================================================
     ! WRITE INFORMATION ON LATTICES
 
-    ! Create lattices group (nothing directly written here) then close
     lattices_group = create_group(geom_group, "lattices")
 
-    ! Write information on each lattice
-    LATTICE_LOOP: do i = 1, n_lattices
+    do i = 1, size(lattices)
       lat => lattices(i)%obj
-      lattice_group = create_group(lattices_group, "lattice " // trim(to_str(lat%id)))
-
-      ! Write name, pitch, and outer universe
-      call write_dataset(lattice_group, "name", lat%name)
-      call write_dataset(lattice_group, "pitch", lat%pitch)
-      if (lat % outer > 0) then
-        call write_dataset(lattice_group, "outer", universes(lat % outer) % id)
-      else
-        call write_dataset(lattice_group, "outer", lat % outer)
-      end if
-
-      select type (lat)
-      type is (RectLattice)
-        ! Write lattice type.
-        call write_dataset(lattice_group, "type", "rectangular")
-
-        ! Write lattice dimensions, lower left corner, and pitch
-        if (lat % is_3d) then
-          call write_dataset(lattice_group, "dimension", lat % n_cells)
-          call write_dataset(lattice_group, "lower_left", lat % lower_left)
-        else
-          call write_dataset(lattice_group, "dimension", lat % n_cells(1:2))
-          call write_dataset(lattice_group, "lower_left", lat % lower_left)
-        end if
-
-        ! Write lattice universes.
-        allocate(lattice_universes(lat%n_cells(1), lat%n_cells(2), &
-             &lat%n_cells(3)))
-        do j = 1, lat%n_cells(1)
-          do k = 0, lat%n_cells(2) - 1
-            do m = 1, lat%n_cells(3)
-              lattice_universes(j, k+1, m) = &
-                   universes(lat%universes(j, lat%n_cells(2) - k, m))%id
-            end do
-          end do
-        end do
-
-      type is (HexLattice)
-        ! Write lattice type.
-        call write_dataset(lattice_group, "type", "hexagonal")
-
-        ! Write number of lattice cells.
-        call write_dataset(lattice_group, "n_rings", lat%n_rings)
-        call write_dataset(lattice_group, "n_axial", lat%n_axial)
-
-        ! Write lattice center
-        call write_dataset(lattice_group, "center", lat%center)
-
-        ! Write lattice universes.
-        allocate(lattice_universes(2*lat%n_rings - 1, 2*lat%n_rings - 1, &
-             &lat%n_axial))
-        do m = 1, lat%n_axial
-          do k = 1, 2*lat%n_rings - 1
-            do j = 1, 2*lat%n_rings - 1
-              if (j + k < lat%n_rings + 1) then
-                ! This array position is never used; put a -1 to indicate this
-                lattice_universes(j,k,m) = -1
-                cycle
-              else if (j + k > 3*lat%n_rings - 1) then
-                ! This array position is never used; put a -1 to indicate this
-                lattice_universes(j,k,m) = -1
-                cycle
-              end if
-              lattice_universes(j,k,m) = universes(lat%universes(j,k,m))%id
-            end do
-          end do
-        end do
-      end select
-
-      ! Write lattice universes
-      call write_dataset(lattice_group, "universes", lattice_universes)
-      deallocate(lattice_universes)
-
-      call close_group(lattice_group)
-    end do LATTICE_LOOP
+      call lat % to_hdf5(lattices_group)
+    end do
 
     call close_group(lattices_group)
     call close_group(geom_group)
@@ -500,7 +395,7 @@ contains
         call write_dataset(material_group, "nuclides", nuc_names)
         ! Deallocate temporary array
         deallocate(nuc_names)
-        ! Write atom densities
+        ! Write nuclide atom densities
         call write_dataset(material_group, "nuclide_densities", nuc_densities)
         deallocate(nuc_densities)
       end if

@@ -74,7 +74,7 @@ contains
     call write_dataset(filter_group, "n_bins", this % n_bins)
     allocate(cell_ids(size(this % cells)))
     do i = 1, size(this % cells)
-      cell_ids(i) = cells(this % cells(i)) % id
+      cell_ids(i) = cells(this % cells(i)) % id()
     end do
     call write_dataset(filter_group, "bins", cell_ids)
   end subroutine to_statepoint_cellborn
@@ -108,7 +108,7 @@ contains
     integer,               intent(in) :: bin
     character(MAX_LINE_LEN)           :: label
 
-    label = "Birth Cell " // to_str(cells(this % cells(bin)) % id)
+    label = "Birth Cell " // to_str(cells(this % cells(bin)) % id())
   end function text_label_cellborn
 
 end module tally_filter_cellborn

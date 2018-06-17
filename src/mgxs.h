@@ -30,7 +30,7 @@ struct CacheData {
   double sqrtkT; // last temperature corresponding to t
   int t; // temperature index
   int a; // angle index
-  // last angle that corresponds to p and a
+  // last angle that corresponds to a
   double u;
   double v;
   double w;
@@ -68,8 +68,9 @@ class Mgxs {
     void init(const std::string& in_name, const double in_awr,
          const double_1dvec& in_kTs, const bool in_fissionable,
          const int in_scatter_format, const int in_num_groups,
-         const int in_num_delayed_groups, const double_1dvec& in_polar,
-         const double_1dvec& in_azimuthal, const int n_threads);
+         const int in_num_delayed_groups, const bool in_is_isotropic,
+         const double_1dvec& in_polar, const double_1dvec& in_azimuthal,
+         const int n_threads);
     void build_macro(const std::string& in_name, double_1dvec& mat_kTs,
                      std::vector<Mgxs*>& micros, double_1dvec& atom_densities,
                      int& method, const double tolerance, const int n_threads);

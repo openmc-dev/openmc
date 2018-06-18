@@ -18,7 +18,7 @@
 //TODO: remove this include
 #include <iostream>
 
-extern "C" {int32_t n_cells {0};}
+//extern "C" {int32_t n_cells {0};}
 
 namespace openmc {
 
@@ -637,7 +637,7 @@ read_cells(pugi::xml_node* node)
   // Loop over XML cell elements and populate the array.
   cells.reserve(n_cells);
   for (pugi::xml_node cell_node: node->children("cell")) {
-    cells_c.push_back(new CSGCell(cell_node));
+    global_cells.push_back(new CSGCell(cell_node));
   }
 
   // Populate the Universe vector and map.
@@ -806,7 +806,7 @@ extern "C" {
   {
     cells.reserve(cells.size() + n);
     for (int32_t i = 0; i < n; i++) {
-      cells_c.push_back(new CSGCell());
+      global_cells.push_back(new CSGCell());
     }
     n_cells = cells.size();
   }

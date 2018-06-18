@@ -27,19 +27,19 @@ void load_cad_geometry_c()
       c->dagmc_ptr = DAGMC;
       c->universe_ = cad_univ_id; // set to zero for now
       c->material_.push_back(40); // TEMPORARY
-      openmc::cells_c.push_back(c);
-      openmc::cell_dict[c->id_] = c->id;
+      openmc::global_cells.push_back(c);
+      openmc::cell_map[c->id_] = c->id;
 
       // Populate the Universe vector and dict
-      auto it = openmc::universe_dict.find(cad_univ_id);
-      if (it == openmc::universe_dict.end()) {
-	openmc::universes_c.push_back(new openmc::Universe());
-	openmc::universes_c.back()-> id = cad_univ_id;
-	openmc::universes_c.back()->cells.push_back(i);
-	openmc::universe_dict[cad_univ_id] = openmc::universes_c.size() - 1;
+      auto it = openmc::universe_map.find(cad_univ_id);
+      if (it == openmc::universe_map.end()) {
+	openmc::global_universes.push_back(new openmc::Universe());
+	openmc::global_universes.back()-> id = cad_univ_id;
+	openmc::global_universes.back()->cells.push_back(i);
+	openmc::universe_map[cad_univ_id] = openmc::global_universes.size() - 1;
       }
       else {
-	openmc::universes_c[it->second]->cells.push_back(i);
+	openmc::global_universes[it->second]->cells.push_back(i);
       }
     }
 
@@ -55,7 +55,7 @@ void load_cad_geometry_c()
       s->dagmc_ptr = DAGMC;
       s->bc = openmc::BC_TRANSMIT;
       openmc::surfaces_c[i] = s;
-      openmc::surface_dict[s->id] = s->id;
+      openmc::surface_map[s->id] = s->id;
     }
 
   return;

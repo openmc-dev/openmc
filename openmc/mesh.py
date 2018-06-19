@@ -208,12 +208,12 @@ class Mesh(IDManagerMixin):
 
         shape = np.array(lattice.shape)
         width = lattice.pitch*shape
-        
+
         mesh = cls(mesh_id, name)
         mesh.lower_left = lattice.lower_left
         mesh.upper_right = lattice.lower_left + width
         mesh.dimension = shape*division
-        
+
         return mesh
 
     def to_xml_element(self):
@@ -333,14 +333,16 @@ class Mesh(IDManagerMixin):
         if n_dim == 1:
             universe_array = np.array([universes])
         elif n_dim == 2:
-            universe_array = np.empty(self.dimension, dtype=openmc.Universe)
+            universe_array = np.empty(self.dimension[::-1],
+                                      dtype=openmc.Universe)
             i = 0
             for y in range(self.dimension[1] - 1, -1, -1):
                 for x in range(self.dimension[0]):
                     universe_array[y][x] = universes[i]
                     i += 1
         else:
-            universe_array = np.empty(self.dimension, dtype=openmc.Universe)
+            universe_array = np.empty(self.dimension[::-1],
+                                      dtype=openmc.Universe)
             i = 0
             for z in range(self.dimension[2]):
                 for y in range(self.dimension[1] - 1, -1, -1):

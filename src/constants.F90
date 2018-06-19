@@ -424,17 +424,12 @@ module constants
   real(8), parameter :: ERROR_REAL = -huge(0.0_8) * 0.917826354_8
 
   ! Running modes
-  integer, parameter ::        &
+  integer, parameter ::      &
        MODE_FIXEDSOURCE = 1, & ! Fixed source mode
        MODE_EIGENVALUE  = 2, & ! K eigenvalue mode
        MODE_PLOTTING    = 3, & ! Plotting mode
        MODE_PARTICLE    = 4, & ! Particle restart mode
-#ifdef CAD
-       MODE_VOLUME      = 5, & ! Volume calculation mode
-       MODE_CAD         = 6    ! CAD-based Geometry mode
-#else
        MODE_VOLUME      = 5    ! Volume calculation mode
-#endif
 
   ! Electron treatments
   integer, parameter :: &

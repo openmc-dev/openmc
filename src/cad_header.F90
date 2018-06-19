@@ -5,11 +5,11 @@ module cad_header
   implicit none
 
   interface
-     subroutine load_cad_geometry_c() bind(C)
-     end subroutine load_cad_geometry_c
+    subroutine load_cad_geometry_c() bind(C)
+    end subroutine load_cad_geometry_c
 
-     subroutine free_memory_cad_c() bind(C)
-     end subroutine free_memory_cad_c
+    subroutine free_memory_cad_c() bind(C)
+    end subroutine free_memory_cad_c
 
   end interface
 

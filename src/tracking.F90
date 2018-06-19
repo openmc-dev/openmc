@@ -7,7 +7,7 @@ module tracking
   use geometry_header,    only: cells
   use geometry,           only: find_cell, distance_to_boundary, cross_lattice,&
                                 check_cell_overlap
-#ifdef CAD  
+#ifdef CAD
   use geometry,           only: next_cell, is_implicit_complement
 #endif
   use material_header,    only: materials, Material
@@ -317,29 +317,29 @@ contains
     logical :: found      ! particle found in universe?
     class(Surface), pointer :: surf
     class(Surface), pointer :: surf2 ! periodic partner surface
-    
+
 #ifdef CAD
     if (dagmc) then
-       i_cell = next_cell(cells(p % last_cell(1)), surfaces(ABS(p % surface)))
-       ! save material and temp
-       p % last_material = p % material
-       p % last_sqrtkT = p % sqrtKT
-       ! set new cell value
-       p % coord(1) % cell = i_cell
-       p % cell_instance = 1
-       p % material = cells(i_cell) % material(1)
-       p % sqrtKT = cells(i_cell) % sqrtKT(1)
+      i_cell = next_cell(cells(p % last_cell(1)), surfaces(ABS(p % surface)))
+      ! save material and temp
+      p % last_material = p % material
+      p % last_sqrtkT = p % sqrtKT
+      ! set new cell value
+      p % coord(1) % cell = i_cell
+      p % cell_instance = 1
+      p % material = cells(i_cell) % material(1)
+      p % sqrtKT = cells(i_cell) % sqrtKT(1)
 
-       if (is_implicit_complement(cells(i_cell))) then
-          p % alive = .false.
-       end if
-       
-       return
-       
+      if (is_implicit_complement(cells(i_cell))) then
+        p % alive = .false.
+      end if
+
+      return
+
     end if
 #endif
-    
-    
+
+
     i_surface = abs(p % surface)
     surf => surfaces(i_surface)
     if (verbosity >= 10 .or. trace) then

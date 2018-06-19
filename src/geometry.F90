@@ -57,15 +57,15 @@ module geometry
     end subroutine neighbor_lists
 
 #ifdef CAD
-    
+
     function next_cell_c(current_cell, surface_crossed) &
-      bind(C, name="next_cell") result(new_cell)
+         bind(C, name="next_cell") result(new_cell)
       import C_PTR, C_INT32_T
       type(C_PTR), intent(in), value :: current_cell
       type(C_PTR), intent(in), value :: surface_crossed
       integer(C_INT32_T)             :: new_cell
     end function next_cell_c
-    
+
     function is_implicit_complement_C(cell) &
          bind(C, name="is_implicit_complement") result(res)
       import C_PTR, C_BOOL
@@ -75,8 +75,8 @@ module geometry
 
 #endif
 
- end interface
- 
+  end interface
+
 contains
 
   function cell_contains(c, p) result(in_cell)
@@ -88,7 +88,7 @@ contains
   end function cell_contains
 
 #ifdef CAD
-  
+
   function next_cell(c, s) result(new_cell)
     type(Cell), intent(in) :: c
     type(Surface), intent(in) :: s
@@ -103,7 +103,7 @@ contains
   end function is_implicit_complement
 
 #endif
-  
+
 !===============================================================================
 ! FIND_CELL determines what cell a source particle is in within a particular
 ! universe. If the base universe is passed, the particle should be found as long

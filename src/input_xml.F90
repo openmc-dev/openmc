@@ -180,7 +180,7 @@ contains
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
     call neighbor_lists()
-    
+
     ! Assign temperatures to cells that don't have temperatures already assigned
     call assign_temperatures()
 
@@ -222,17 +222,217 @@ contains
     ! Check for use of CAD geometry
     if (check_for_node(root, "dagmc")) then
 #ifdef CAD
-       call get_node_value_bool(root, "dagmc", dagmc)
+      call get_node_value_bool(root, "dagmc", dagmc)
 #else
-       if (dagmc) then
-          call fatal_error("CAD mode unsupported for this build of OpenMC")
-       end if
+      if (dagmc) then
+        call fatal_error("CAD mode unsupported for this build of OpenMC")
+      end if
 #endif
     end if
 
     if (run_mode == MODE_EIGENVALUE) then
       ! Preallocate space for keff and entropy by generation
       call k_generation % reserve(n_max_batches*gen_per_batch)
+    end if
+
+    ! Check run mode if it hasn't been set from the command line
+    if (run_mode == NONE) then
+      if (check_for_node(root, "run_mode")) then
+        call get_node_value(root, "run_mode", temp_str)
+        select case (to_lower(temp_str))
+        case ("eigenvalue")
+          run_mode = MODE_EIGENVALUE
+        case ("fixed source")
+          run_mode = MODE_FIXEDSOURCE
+        case ("plot")
+          run_mode = MODE_PLOTTING
+        case ("particle restart")
+          run_mode = MODE_PARTICLE
+        case ("volume")
+          run_mode = MODE_VOLUME
+        case default
+          call fatal_error("Unrecognized run mode: " // &
+               trim(temp_str) // ".")
+        end select
+
+        ! Assume XML specifics <particles>, <batches>, etc. directly
+        node_mode = root
+      else
+        call warning("<run_mode> should be specified.")
+
+        ! Make sure that either eigenvalue or fixed source was specified
+        node_mode = root % child("eigenvalue")
+        if (node_mode % associated()) then
+          if (run_mode == NONE) run_mode = MODE_EIGENVALUE
+        else
+          node_mode = root % child("fixed_source")
+          if (node_mode % associated()) then
+            if (run_mode == NONE) run_mode = MODE_FIXEDSOURCE
+          else
+            call fatal_error("<eigenvalue> or <fixed_source> not specified.")
+          end if
+        end if
+      end if
+    end if
+
+    if (run_mode == MODE_EIGENVALUE .or. run_mode == MODE_FIXEDSOURCE) then
+      ! Read run parameters
+      call get_run_parameters(node_mode)
+
+      ! Check number of active batches, inactive batches, and particles
+      if (n_batches <= n_inactive) then
+        call fatal_error("Number of active batches must be greater than zero.")
+      elseif (n_inactive < 0) then
+        call fatal_error("Number of inactive batches must be non-negative.")
+      elseif (n_particles <= 0) then
+        call fatal_error("Number of particles must be greater than zero.")
+      end if
+    end if
+
+    ! Copy random number seed if specified
+    if (check_for_node(root, "seed")) then
+      call get_node_value(root, "seed", seed)
+      call openmc_set_seed(seed)
+    end if
+
+    ! Check for electron treatment
+    if (check_for_node(root, "electron_treatment")) then
+      call get_node_value(root, "electron_treatment", temp_str)
+      select case (to_lower(temp_str))
+      case ("led")
+        electron_treatment = ELECTRON_LED
+      case ("ttb")
+        electron_treatment = ELECTRON_TTB
+      case default
+        call fatal_error("Unrecognized electron treatment: " // &
+             trim(temp_str) // ".")
+      end select
+    end if
+
+    ! Check for photon transport
+    if (check_for_node(root, "photon_transport")) then
+      call get_node_value(root, "photon_transport", photon_transport)
+
+      if (.not. run_CE .and. photon_transport) then
+        call fatal_error("Photon transport is not currently supported &
+             &in Multi-group mode")
+      end if
+    end if
+
+    ! Number of bins for logarithmic grid
+    if (check_for_node(root, "log_grid_bins")) then
+      call get_node_value(root, "log_grid_bins", n_log_bins)
+      if (n_log_bins < 1) then
+        call fatal_error("Number of bins for logarithmic grid must be &
+             &greater than zero.")
+      end if
+    else
+      n_log_bins = 8000
+    end if
+
+    ! Number of OpenMP threads
+    if (check_for_node(root, "threads")) then
+#ifdef _OPENMP
+      if (n_threads == NONE) then
+        call get_node_value(root, "threads", n_threads)
+        if (n_threads < 1) then
+          call fatal_error("Invalid number of threads: " // to_str(n_threads))
+        end if
+        call omp_set_num_threads(n_threads)
+      end if
+#else
+      if (master) call warning("Ignoring number of threads.")
+#endif
+    end if
+
+    ! ==========================================================================
+    ! EXTERNAL SOURCE
+
+    ! Get point to list of <source> elements and make sure there is at least one
+    call get_node_list(root, "source", node_source_list)
+    n = size(node_source_list)
+
+    if (n == 0) then
+      ! Default source is isotropic point source at origin with Watt spectrum
+      allocate(external_source(1))
+      external_source % particle = NEUTRON
+      external_source % strength = ONE
+
+      allocate(SpatialPoint :: external_source(1) % space)
+      select type (space => external_source(1) % space)
+      type is (SpatialPoint)
+        space % xyz(:) = [ZERO, ZERO, ZERO]
+      end select
+
+      allocate(Isotropic :: external_source(1) % angle)
+      external_source(1) % angle % reference_uvw(:) = [ZERO, ZERO, ONE]
+
+      allocate(Watt :: external_source(1) % energy)
+      select type(energy => external_source(1) % energy)
+      type is (Watt)
+        energy % a = 0.988e6_8
+        energy % b = 2.249e-6_8
+      end select
+    else
+      ! Allocate array for sources
+      allocate(external_source(n))
+    end if
+
+    ! Check if we want to write out source
+    if (check_for_node(root, "write_initial_source")) then
+      call get_node_value(root, "write_initial_source", write_initial_source)
+    end if
+
+    ! Read each source
+    do i = 1, n
+      call external_source(i) % from_xml(node_source_list(i), path_source)
+    end do
+
+    ! Survival biasing
+    if (check_for_node(root, "survival_biasing")) then
+      call get_node_value(root, "survival_biasing", survival_biasing)
+    end if
+
+    ! Probability tables
+    if (check_for_node(root, "ptables")) then
+      call get_node_value(root, "ptables", urr_ptables_on)
+    end if
+
+    ! Cutoffs
+    if (check_for_node(root, "cutoff")) then
+      node_cutoff = root % child("cutoff")
+      if (check_for_node(node_cutoff, "weight")) then
+        call get_node_value(node_cutoff, "weight", weight_cutoff)
+      end if
+      if (check_for_node(node_cutoff, "weight_avg")) then
+        call get_node_value(node_cutoff, "weight_avg", weight_survive)
+      end if
+      if (check_for_node(node_cutoff, "energy_neutron")) then
+        call get_node_value(node_cutoff, "energy_neutron", energy_cutoff(1))
+      elseif (check_for_node(node_cutoff, "energy")) then
+        call warning("The use of an <energy> cutoff is deprecated and should &
+             &be replaced by <energy_neutron>.")
+        call get_node_value(node_cutoff, "energy", energy_cutoff(1))
+      end if
+      if (check_for_node(node_cutoff, "energy_photon")) then
+        call get_node_value(node_cutoff, "energy_photon", energy_cutoff(2))
+      end if
+      if (check_for_node(node_cutoff, "energy_electron")) then
+        call get_node_value(node_cutoff, "energy_electron", energy_cutoff(3))
+      end if
+      if (check_for_node(node_cutoff, "energy_positron")) then
+        call get_node_value(node_cutoff, "energy_positron", energy_cutoff(4))
+      end if
+    end if
+
+    ! Particle trace
+    if (check_for_node(root, "trace")) then
+      call get_node_array(root, "trace", temp_int_array3)
+      trace_batch    = temp_int_array3(1)
+      trace_gen      = temp_int_array3(2)
+      trace_particle = int(temp_int_array3(3), 8)
+>>>>>>> Updates to meet style guide.
+>>>>>>> Updates to meet style guide.
     end if
 
     ! Particle tracks
@@ -390,70 +590,68 @@ contains
                                            ! universe contains
 #ifdef CAD
     if (dagmc) then
-       call write_message("Reading CAD geometry...", 5)
-       call load_cad_geometry()
-       call allocate_surfaces()
-       call allocate_cells()
+      call write_message("Reading CAD geometry...", 5)
+      call load_cad_geometry()
+      call allocate_surfaces()
+      call allocate_cells()
 
        ! setup universe data structs
-       do i = 1, n_cells
-          c => cells(i)
-          ! additional metadata spoofing
-          allocate(c % material(1))
-          c % material(1) = 40
-          allocate(c % sqrtKT(1))
-          c % sqrtkT(1) = 293
-          c % sqrtkT(:) = sqrt(K_BOLTZMANN * c % sqrtkT(:))
-          univ_id = c % universe()
-          if (.not. allocated(c%region)) allocate(c%region(0))
-          
-          if (.not. cells_in_univ_dict % has(univ_id)) then
-             n_universes = n_universes + 1
-             n_cells_in_univ = 1
-             call universe_dict % set(univ_id, n_universes)
-             call univ_ids % push_back(univ_id)
-          else
-             n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
-          end if
-          call cells_in_univ_dict % set(univ_id, n_cells_in_univ)
-          
-       end do
+      do i = 1, n_cells
+        c => cells(i)
+        ! additional metadata spoofing
+        allocate(c % material(1))
+        c % material(1) = 40
+        allocate(c % sqrtKT(1))
+        c % sqrtkT(1) = 293
+        c % sqrtkT(:) = sqrt(K_BOLTZMANN * c % sqrtkT(:))
+        univ_id = c % universe()
+        if (.not. allocated(c%region)) allocate(c%region(0))
+
+        if (.not. cells_in_univ_dict % has(univ_id)) then
+          n_universes = n_universes + 1
+          n_cells_in_univ = 1
+          call universe_dict % set(univ_id, n_universes)
+          call univ_ids % push_back(univ_id)
+        else
+          n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
+        end if
+        call cells_in_univ_dict % set(univ_id, n_cells_in_univ)
+      end do
 
        ! ==========================================================================
        ! SETUP UNIVERSES
 
        ! Allocate universes, universe cell arrays, and assign base universe
-       allocate(universes(n_universes))
-       do i = 1, n_universes
-          associate (u => universes(i))
-            u % id = univ_ids % data(i)
+      allocate(universes(n_universes))
+      do i = 1, n_universes
+        associate (u => universes(i))
+          u % id = univ_ids % data(i)
+          ! Allocate cell list
+          n_cells_in_univ = cells_in_univ_dict % get(u % id)
+          allocate(u % cells(n_cells_in_univ))
+          u % cells(:) = 0
+        end associate
+      end do
 
-            ! Allocate cell list
-            n_cells_in_univ = cells_in_univ_dict % get(u % id)
-            allocate(u % cells(n_cells_in_univ))
-            u % cells(:) = 0
-          end associate
-       end do
-       root_universe = 0 + 1
+      root_universe = 0 + 1
 
-       do i = 1, n_cells
-          ! Get index in universes array
-          j = universe_dict % get(cells(i) % universe())
-          
-          ! Set the first zero entry in the universe cells array to the index in the
-          ! global cells array
-          associate (u => universes(j))
-            u % cells(find(u % cells, 0)) = i
-          end associate
-       end do
-       
-       ! Clear dictionary
-       call cells_in_univ_dict%clear()
-       
-       return
+      do i = 1, n_cells
+        ! Get index in universes array
+        j = universe_dict % get(cells(i) % universe())
+        ! Set the first zero entry in the universe cells array to the index in the
+        ! global cells array
+        associate (u => universes(j))
+          u % cells(find(u % cells, 0)) = i
+        end associate
+      end do
+
+      ! Clear dictionary
+      call cells_in_univ_dict%clear()
+
+      return
     end if
 #endif
-    
+
     ! Display output message
     call write_message("Reading geometry XML file...", 5)
 
@@ -485,8 +683,8 @@ contains
 
       if (surfaces(i) % bc() /= BC_TRANSMIT) boundary_exists = .true.
 
-       ! Add surface to dictionary
-       call surface_dict % set(surfaces(i) % id(), i)
+      ! Add surface to dictionary
+      call surface_dict % set(surfaces(i) % id(), i)
     end do
 
     ! Check to make sure a boundary condition was applied to at least one
@@ -524,6 +722,12 @@ contains
 
       c % ptr = cell_pointer(i - 1)
 
+<<<<<<< 25ab6776f10a1ea974b3aa15f74271aa80748913
+=======
+      ! Initialize distribcell instances and distribcell index
+      c % distribcell_index = NONE
+
+>>>>>>> Updates to meet style guide.
       ! Get pointer to i-th cell node
       node_cell = node_cell_list(i)
 
@@ -572,7 +776,7 @@ contains
       call cell_dict % set(c % id(), i)
 
       call cell_dict % set(c % id(), i)
-      
+
       ! For cells, we also need to check if there's a new universe --
       ! also for every cell add 1 to the count of cells for the
       ! specified universe
@@ -658,24 +862,20 @@ contains
   subroutine allocate_cells()
     integer :: i
     type(Cell), pointer :: c
-    
+
     ! Allocate cells array
     allocate(cells(n_cells))
-    
+
     do i = 1, n_cells
-       c => cells(i)
-       
-       c % ptr = cell_pointer_c(i - 1)
-
-       ! Check to make sure 'id' hasn't been used
-       if (cell_dict % has(c % id())) then
-          call fatal_error("Two or more cells use the same unique ID: " &
+      c => cells(i)
+      c % ptr = cell_pointer_c(i - 1)
+      ! Check to make sure 'id' hasn't been used
+      if (cell_dict % has(c % id())) then
+        call fatal_error("Two or more cells use the same unique ID: " &
                // to_str(c % id()))
-       end if
-       
-       ! Add cell to dictionary
-       call cell_dict % set(c % id(), i)
-
+      end if
+      ! Add cell to dictionary
+      call cell_dict % set(c % id(), i)
     end do
   end subroutine allocate_cells
 

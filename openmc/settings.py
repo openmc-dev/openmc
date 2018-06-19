@@ -92,8 +92,6 @@ class Settings(object):
         Indicate if coarse mesh finite difference acceleration is to be used
     run_mode : {'eigenvalue', 'fixed source', 'plot', 'volume', 'particle restart'}
         The type of calculation to perform (default is 'eigenvalue')
-    dagmc : bool
-        Enables CAD-based geometry through DAGMC (default False)
     seed : int
         Seed for the linear congruential pseudorandom number generator
     source : Iterable of openmc.Source
@@ -164,7 +162,6 @@ class Settings(object):
 
         # Run mode subelement (default is 'eigenvalue')
         self._run_mode = 'eigenvalue'
-        self._dagmc = False
         self._batches = None
         self._generations_per_batch = None
         self._inactive = None
@@ -231,10 +228,6 @@ class Settings(object):
     def run_mode(self):
         return self._run_mode
 
-    @property
-    def dagmc(self):
-        return self._dagmc
-    
     @property
     def batches(self):
         return self._batches
@@ -379,11 +372,6 @@ class Settings(object):
     def run_mode(self, run_mode):
         cv.check_value('run mode', run_mode, _RUN_MODES)
         self._run_mode = run_mode
-
-    @dagmc.setter
-    def dagmc(self, dagmc):
-        cv.check_type('dagmc', dagmc, bool)
-        self._dagmc = dagmc
 
     @batches.setter
     def batches(self, batches):
@@ -718,10 +706,6 @@ class Settings(object):
         elem = ET.SubElement(root, "run_mode")
         elem.text = self._run_mode
 
-    def _create_dagmc_subelement(self, root):
-        elem = ET.Subelement(root, "dagmc")
-        elem.text = str(self._dagmc).lower()
-        
     def _create_batches_subelement(self, run_mode_element):
         if self._batches is not None:
             element = ET.SubElement(run_mode_element, "batches")
@@ -975,7 +959,6 @@ class Settings(object):
         root_element = ET.Element("settings")
 
         self._create_run_mode_subelement(root_element)
-        self._create_dagmc_subelement(root_element)
         self._create_particles_subelement(root_element)
         self._create_batches_subelement(root_element)
         self._create_inactive_subelement(root_element)

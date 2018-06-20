@@ -251,19 +251,6 @@ message(STATUS "C++ flags: ${cxxflags}")
 message(STATUS "Linker flags: ${ldflags}")
 
 #===============================================================================
-# git SHA1 hash
-#===============================================================================
-
-execute_process(COMMAND git rev-parse HEAD
-                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                RESULT_VARIABLE GIT_SHA1_SUCCESS
-                OUTPUT_VARIABLE GIT_SHA1
-                ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
-if(GIT_SHA1_SUCCESS EQUAL 0)
-  add_definitions(-DGIT_SHA1="${GIT_SHA1}")
-endif()
-
-#===============================================================================
 # pugixml library
 #===============================================================================
 
@@ -466,6 +453,16 @@ if (MPI_ENABLED)
   if (mpif08)
     target_compile_definitions(libopenmc PRIVATE -DOPENMC_MPIF08)
   endif()
+endif()
+
+# Set git SHA1 hash as a compile definition
+execute_process(COMMAND git rev-parse HEAD
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                RESULT_VARIABLE GIT_SHA1_SUCCESS
+                OUTPUT_VARIABLE GIT_SHA1
+                ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+if(GIT_SHA1_SUCCESS EQUAL 0)
+  target_compile_definitions(libopenmc PRIVATE -DGIT_SHA1="${GIT_SHA1}")
 endif()
 
 # target_link_libraries treats any arguments starting with - but not -l as

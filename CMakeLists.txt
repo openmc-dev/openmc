@@ -284,9 +284,8 @@ endif()
 # pugixml library
 #===============================================================================
 
-add_library(pugixml src/pugixml/pugixml_c.cpp src/pugixml/pugixml.cpp)
-add_library(pugixml_fortran src/pugixml/pugixml_f.F90)
-target_link_libraries(pugixml_fortran pugixml)
+add_library(pugixml vendor/pugixml/pugixml.cpp)
+target_include_directories(pugixml PUBLIC vendor/pugixml/)
 
 #===============================================================================
 # RPATH information
@@ -377,6 +376,7 @@ set(LIBOPENMC_FORTRAN_SRC
   src/plot_header.F90
   src/product_header.F90
   src/progress_header.F90
+  src/pugixml/pugixml_f.F90
   src/random_lcg.F90
   src/reaction_header.F90
   src/relaxng
@@ -443,6 +443,7 @@ set(LIBOPENMC_CXX_SRC
   src/mgxs.cpp
   src/mgxs_interface.cpp
   src/plot.cpp
+  src/pugixml/pugixml_c.cpp
   src/random_lcg.cpp
   src/scattdata.cpp
   src/simulation.cpp
@@ -450,8 +451,7 @@ set(LIBOPENMC_CXX_SRC
   src/string_functions.cpp
   src/surface.cpp
   src/xml_interface.cpp
-  src/xsdata.cpp
-  src/pugixml/pugixml.cpp)
+  src/xsdata.cpp)
 add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC} ${LIBOPENMC_CXX_SRC})
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc
@@ -462,7 +462,7 @@ add_executable(${program} src/main.cpp)
 # Add compiler/linker flags
 #===============================================================================
 
-set_property(TARGET ${program} libopenmc pugixml_fortran
+set_property(TARGET ${program} libopenmc
   PROPERTY LINKER_LANGUAGE Fortran)
 
 target_include_directories(libopenmc PUBLIC include ${HDF5_INCLUDE_DIRS})
@@ -488,7 +488,7 @@ endforeach()
 
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
-target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml_fortran
+target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml
                       faddeeva)
 target_link_libraries(${program} ${ldflags} libopenmc)
 

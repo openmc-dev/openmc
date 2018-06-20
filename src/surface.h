@@ -6,7 +6,7 @@
 #include <string>
 
 #include "hdf5.h"
-#include "pugixml/pugixml.hpp"
+#include "pugixml.hpp"
 
 #include "constants.h"
 

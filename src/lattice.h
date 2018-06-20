@@ -9,7 +9,7 @@
 
 #include "constants.h"
 #include "hdf5.h"
-#include "pugixml/pugixml.hpp"
+#include "pugixml.hpp"
 
 
 namespace openmc {

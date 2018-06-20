@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "hdf5.h"
-#include "pugixml/pugixml.hpp"
+#include "pugixml.hpp"
 
 
 namespace openmc {
@@ -50,7 +50,7 @@ public:
 //! A geometry primitive that links surfaces, universes, and materials
 //==============================================================================
 
-class Cell 
+class Cell
 {
 public:
   int32_t id;                //!< Unique ID

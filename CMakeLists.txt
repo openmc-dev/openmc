@@ -320,7 +320,8 @@ endif()
 # Build faddeeva library
 #===============================================================================
 
-add_library(faddeeva STATIC src/faddeeva/Faddeeva.c)
+add_library(faddeeva STATIC vendor/faddeeva/Faddeeva.c)
+target_compile_options(faddeeva PRIVATE ${cflags})
 
 #===============================================================================
 # List source files.  Define the libopenmc and the OpenMC executable
@@ -469,7 +470,6 @@ target_include_directories(libopenmc PUBLIC include ${HDF5_INCLUDE_DIRS})
 # The executable and the faddeeva package use only one language.  They can be
 # set via target_compile_options which accepts a list.
 target_compile_options(${program} PUBLIC ${cxxflags})
-target_compile_options(faddeeva PRIVATE ${cflags})
 
 # The libopenmc library has both F90 and C++ so the compile flags must be set
 # file-by-file via set_source_file_properties.  The compile flags must first be

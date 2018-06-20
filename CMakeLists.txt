@@ -297,7 +297,6 @@ set(LIBOPENMC_FORTRAN_SRC
   src/dict_header.F90
   src/distribution_multivariate.F90
   src/distribution_univariate.F90
-  src/doppler.F90
   src/eigenvalue.F90
   src/endf.F90
   src/endf_header.F90

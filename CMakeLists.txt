@@ -171,7 +171,7 @@ endif()
 
 if(CMAKE_C_COMPILER_ID STREQUAL GNU)
   # GCC compiler options
-  list(APPEND cflags -std=c99 -O2)
+  list(APPEND cflags -O2)
   if(debug)
     list(REMOVE_ITEM cflags -O2)
     list(APPEND cflags -g -Wall -pedantic -fbounds-check)
@@ -189,7 +189,6 @@ if(CMAKE_C_COMPILER_ID STREQUAL GNU)
 
 elseif(CMAKE_C_COMPILER_ID STREQUAL Intel)
   # Intel compiler options
-  list(APPEND cflags -std=c99)
   if(debug)
     list(APPEND cflags -g -w3 -ftrapuv -fp-stack-check -O0)
   endif()
@@ -202,7 +201,6 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL Intel)
 
 elseif(CMAKE_C_COMPILER_ID MATCHES Clang)
   # Clang options
-  list(APPEND cflags -std=c99)
   if(debug)
     list(APPEND cflags -g -O0 -ftrapv)
   endif()
@@ -272,6 +270,9 @@ endif()
 
 add_library(faddeeva STATIC vendor/faddeeva/Faddeeva.c)
 target_compile_options(faddeeva PRIVATE ${cflags})
+set_target_properties(faddeeva PROPERTIES
+  C_STANDARD 99
+  C_STANDARD_REQUIRED ON)
 
 #===============================================================================
 # libopenmc

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
 project(openmc Fortran C CXX)
 
 # Setup output directories
@@ -68,11 +68,8 @@ endif()
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
-# Support for Fortran in FindOpenMP was added in CMake 3.1. To support lower
-# versions, we manually add the flags. However, at some point in time, the
-# manual logic can be removed in favor of the block below
-
 if(openmp)
+  # Requires CMake 3.1+
   find_package(OpenMP)
   if(OPENMP_FOUND)
     list(APPEND f90flags ${OpenMP_Fortran_FLAGS})
@@ -248,7 +245,7 @@ target_include_directories(pugixml PUBLIC vendor/pugixml/)
 # This block of code ensures that dynamic libraries can be found via the RPATH
 # whether the executable is the original one from the build directory or the
 # installed one in CMAKE_INSTALL_PREFIX. Ref:
-# https://cmake.org/Wiki/CMake_RPATH_handling#Always_full_RPATH
+# https://gitlab.kitware.com/cmake/community/wikis/doc/cmake/RPATH-handling
 
 # use, i.e. don't skip the full RPATH for the build tree
 set(CMAKE_SKIP_BUILD_RPATH  FALSE)
@@ -280,7 +277,7 @@ target_compile_options(faddeeva PRIVATE ${cflags})
 # libopenmc
 #===============================================================================
 
-set(LIBOPENMC_FORTRAN_SRC
+add_library(libopenmc SHARED
   src/algorithm.F90
   src/angle_distribution.F90
   src/angleenergy_header.F90
@@ -382,8 +379,6 @@ set(LIBOPENMC_FORTRAN_SRC
   src/tallies/tally_header.F90
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90
-)
-set(LIBOPENMC_CXX_SRC
   src/cell.cpp
   src/initialize.cpp
   src/finalize.cpp
@@ -404,7 +399,6 @@ set(LIBOPENMC_CXX_SRC
   src/surface.cpp
   src/xml_interface.cpp
   src/xsdata.cpp)
-add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC} ${LIBOPENMC_CXX_SRC})
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc
   PUBLIC_HEADER include/openmc.h
@@ -415,13 +409,11 @@ target_include_directories(libopenmc
   PRIVATE ${HDF5_INCLUDE_DIRS})
 
 # The libopenmc library has both F90 and C++ so the compile flags must be set
-# file-by-file via set_source_file_properties.
-set_property(
-  SOURCE ${LIBOPENMC_FORTRAN_SRC}
-  PROPERTY COMPILE_OPTIONS ${f90flags})
-set_property(
-  SOURCE ${LIBOPENMC_CXX_SRC}
-  PROPERTY COMPILE_OPTIONS ${cxxflags})
+# differently depending on the language. The $<COMPILE_LANGUAGE> generator
+# expression was added in CMake 3.3
+target_compile_options(libopenmc PRIVATE
+  $<$<COMPILE_LANGUAGE:Fortran>:${f90flags}>
+  $<$<COMPILE_LANGUAGE:CXX>:${cxxflags}>)
 
 target_compile_definitions(libopenmc PRIVATE -DMAX_COORD=${maxcoord})
 if (UNIX)

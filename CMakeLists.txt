@@ -10,14 +10,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
 #===============================================================================
-# Architecture specific definitions
-#===============================================================================
-
-if (${UNIX})
-  add_definitions(-DUNIX)
-endif()
-
-#===============================================================================
 # Command line options
 #===============================================================================
 
@@ -27,10 +19,7 @@ option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
 option(mpif08   "Use Fortran 2008 MPI interface"                 OFF)
-
-# Maximum number of nested coordinates levels
 set(maxcoord 10 CACHE STRING "Maximum number of nested coordinate levels")
-add_definitions(-DMAX_COORD=${maxcoord})
 
 #===============================================================================
 # MPI for distributed-memory parallelism
@@ -39,17 +28,12 @@ add_definitions(-DMAX_COORD=${maxcoord})
 set(MPI_ENABLED FALSE)
 if($ENV{FC} MATCHES "(mpi[^/]*|ftn)$")
   message("-- Detected MPI wrapper: $ENV{FC}")
-  add_definitions(-DOPENMC_MPI)
   set(MPI_ENABLED TRUE)
-
-  # Get directory containing MPI wrapper
-  get_filename_component(MPI_DIR $ENV{FC} DIRECTORY)
 endif()
 
 # Check for Fortran 2008 MPI interface
 if(MPI_ENABLED AND mpif08)
   message("-- Using Fortran 2008 MPI bindings")
-  add_definitions(-DOPENMC_MPIF08)
 endif()
 
 #===============================================================================
@@ -77,7 +61,6 @@ if(HDF5_IS_PARALLEL)
   if(NOT MPI_ENABLED)
     message(FATAL_ERROR "Parallel HDF5 must be used with MPI.")
   endif()
-  add_definitions(-DPHDF5)
   message("-- Using parallel HDF5")
 endif()
 
@@ -316,14 +299,14 @@ if("${isSystemDir}" STREQUAL "-1")
 endif()
 
 #===============================================================================
-# Build faddeeva library
+# faddeeva library
 #===============================================================================
 
 add_library(faddeeva STATIC vendor/faddeeva/Faddeeva.c)
 target_compile_options(faddeeva PRIVATE ${cflags})
 
 #===============================================================================
-# List source files.  Define the libopenmc and the OpenMC executable
+# libopenmc
 #===============================================================================
 
 set(LIBOPENMC_FORTRAN_SRC
@@ -457,11 +440,9 @@ set_target_properties(libopenmc PROPERTIES
   PUBLIC_HEADER include/openmc.h
   LINKER_LANGUAGE Fortran)
 
-#===============================================================================
-# Add compiler/linker flags
-#===============================================================================
-
-target_include_directories(libopenmc PUBLIC include ${HDF5_INCLUDE_DIRS})
+target_include_directories(libopenmc
+  PUBLIC include
+  PRIVATE ${HDF5_INCLUDE_DIRS})
 
 # The libopenmc library has both F90 and C++ so the compile flags must be set
 # file-by-file via set_source_file_properties.
@@ -472,10 +453,20 @@ set_property(
   SOURCE ${LIBOPENMC_CXX_SRC}
   PROPERTY COMPILE_OPTIONS ${cxxflags})
 
-# Add HDF5 library directories to link line with -L
-foreach(LIBDIR ${HDF5_LIBRARY_DIRS})
-  list(APPEND ldflags "-L${LIBDIR}")
-endforeach()
+target_compile_definitions(libopenmc PRIVATE -DMAX_COORD=${maxcoord})
+if (UNIX)
+  # Used in progress_header.F90 for calling check_isatty
+  target_compile_definitions(libopenmc PRIVATE -DUNIX)
+endif()
+if (HDF5_IS_PARALLEL)
+  target_compile_definitions(libopenmc PRIVATE -DPHDF5)
+endif()
+if (MPI_ENABLED)
+  target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
+  if (mpif08)
+    target_compile_definitions(libopenmc PRIVATE -DOPENMC_MPIF08)
+  endif()
+endif()
 
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
@@ -487,7 +478,7 @@ target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml
 #===============================================================================
 
 add_executable(openmc src/main.cpp)
-target_compile_options(openmc PUBLIC ${cxxflags})
+target_compile_options(openmc PRIVATE ${cxxflags})
 target_link_libraries(openmc libopenmc)
 set_property(TARGET libopenmc
   PROPERTY LINKER_LANGUAGE Fortran)

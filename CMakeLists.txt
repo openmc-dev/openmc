@@ -326,7 +326,6 @@ target_compile_options(faddeeva PRIVATE ${cflags})
 # List source files.  Define the libopenmc and the OpenMC executable
 #===============================================================================
 
-set(program "openmc")
 set(LIBOPENMC_FORTRAN_SRC
   src/algorithm.F90
   src/angle_distribution.F90
@@ -456,20 +455,20 @@ add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC} ${LIBOPENMC_CXX_SRC})
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc
   PUBLIC_HEADER include/openmc.h)
-add_executable(${program} src/main.cpp)
+add_executable(openmc src/main.cpp)
 
 #===============================================================================
 # Add compiler/linker flags
 #===============================================================================
 
-set_property(TARGET ${program} libopenmc
+set_property(TARGET openmc libopenmc
   PROPERTY LINKER_LANGUAGE Fortran)
 
 target_include_directories(libopenmc PUBLIC include ${HDF5_INCLUDE_DIRS})
 
 # The executable and the faddeeva package use only one language.  They can be
 # set via target_compile_options which accepts a list.
-target_compile_options(${program} PUBLIC ${cxxflags})
+target_compile_options(openmc PUBLIC ${cxxflags})
 
 # The libopenmc library has both F90 and C++ so the compile flags must be set
 # file-by-file via set_source_file_properties.  The compile flags must first be
@@ -490,7 +489,7 @@ endforeach()
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml
                       faddeeva)
-target_link_libraries(${program} ${ldflags} libopenmc)
+target_link_libraries(openmc ${ldflags} libopenmc)
 
 #===============================================================================
 # Python package
@@ -506,7 +505,7 @@ add_custom_command(TARGET libopenmc POST_BUILD
 # Install executable, scripts, manpage, license
 #===============================================================================
 
-install(TARGETS ${program} libopenmc
+install(TARGETS openmc libopenmc
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
@@ -514,4 +513,4 @@ install(TARGETS ${program} libopenmc
   )
 install(DIRECTORY src/relaxng DESTINATION share/openmc)
 install(FILES man/man1/openmc.1 DESTINATION share/man/man1)
-install(FILES LICENSE DESTINATION "share/doc/${program}" RENAME copyright)
+install(FILES LICENSE DESTINATION "share/doc/openmc" RENAME copyright)

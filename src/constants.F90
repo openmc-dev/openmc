@@ -219,7 +219,7 @@ module constants
        N_3HEC  = 799, N_A0    = 800, N_AC   = 849, N_2N0   = 875, N_2NC   = 891
 
   ! Depletion reactions
-  integer, parameter :: DEPLETION_RX(6) = [N_GAMMA, N_P, N_A,N_2N, N_3N,N_4N]
+  integer, parameter :: DEPLETION_RX(6) = [N_GAMMA, N_P, N_A, N_2N, N_3N, N_4N]
 
   ! ACE table types
   integer, parameter :: &

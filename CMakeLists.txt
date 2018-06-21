@@ -453,8 +453,6 @@ target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml
 add_executable(openmc src/main.cpp)
 target_compile_options(openmc PRIVATE ${cxxflags})
 target_link_libraries(openmc libopenmc)
-set_property(TARGET libopenmc
-  PROPERTY LINKER_LANGUAGE Fortran)
 
 #===============================================================================
 # Python package

@@ -41,14 +41,10 @@ def res_subset(nuclide, parameter_str, bounds):
     sub_cov_dim = len(indices)*mpar
     oldvalues = []
     for index1 in indices:
-        print("Current index:",index1)
         for i in range(mpar):
-            print("i is:", i)
             for index2 in indices:
                 for j in range(mpar):
-                    print("j is:", i)
                     if index2*mpar+j >= index1*mpar+i:
-                        print(cov[index1*mpar+i,index2*mpar+j])
                         oldvalues.append(cov[index1*mpar+i,index2*mpar+j])
 
     cov_subset = np.zeros([sub_cov_dim,sub_cov_dim])
@@ -70,7 +66,6 @@ def sample_resonance_parameters(nuclide, n_samples, use_subset=False):
     ev : openmc.data.endf.Evaluation
 
     """
-    print('begin sampling')
     if use_subset==False:
         parameters = nuclide.parameters
         cov = nuclide.covariance
@@ -84,9 +79,6 @@ def sample_resonance_parameters(nuclide, n_samples, use_subset=False):
     mpar = nuclide.mpar
     samples = []
 
-    print("nparams,params:",nparams, params)
-    print("covsize",covsize)
-    print("formalism:",formalism)
 
     ### Handling MLBW Sampling ###
     if formalism == 'mlbw' or formalism == 'slbw':
@@ -181,7 +173,6 @@ def sample_resonance_parameters(nuclide, n_samples, use_subset=False):
             spin = pd.DataFrame.as_matrix(parameters['J'])
             mean = mean_array.flatten()
             for i in range(n_samples):
-                print("On sample",i)
                 sample = np.random.multivariate_normal(mean,cov)
                 energy = sample[0::5]
                 gn = sample[1::5]

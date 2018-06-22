@@ -2,10 +2,6 @@ module physics_mg
   ! This module contains the multi-group specific physics routines so as to not
   ! hinder performance of the CE versions with multiple if-thens.
 
-#ifdef _OPENMP
-  use omp_lib
-#endif
-
   use bank_header
   use constants
   use error,                  only: fatal_error, warning, write_message
@@ -145,14 +141,8 @@ contains
   subroutine scatter(p)
 
     type(Particle), intent(inout)  :: p
-    integer(C_INT) :: tid
-#ifdef _OPENMP
-    tid = OMP_GET_THREAD_NUM()
-#else
-    tid = 0
-#endif
 
-    call sample_scatter_c(p % material, tid, p % last_g, p % g, p % mu, &
+    call sample_scatter_c(p % material, p % last_g, p % g, p % mu, &
          p % wgt, p % coord(1) % uvw)
 
     ! Update energy value for downstream compatability (in tallying)
@@ -183,12 +173,6 @@ contains
     real(8) :: mu                       ! fission neutron angular cosine
     real(8) :: phi                      ! fission neutron azimuthal angle
     real(8) :: weight                   ! weight adjustment for ufs method
-    integer(C_INT) :: tid
-#ifdef _OPENMP
-    tid = OMP_GET_THREAD_NUM()
-#else
-    tid = 0
-#endif
 
     ! TODO: Heat generation from fission
 
@@ -268,7 +252,7 @@ contains
 
       ! Sample secondary energy distribution for fission reaction and set energy
       ! in fission bank
-      call sample_fission_energy_c(p % material, tid, p % g, dg, gout)
+      call sample_fission_energy_c(p % material, p % g, dg, gout)
 
       bank_array(i) % E = real(gout, 8)
       bank_array(i) % delayed_group = dg

@@ -7,8 +7,9 @@ namespace openmc {
 //==============================================================================
 
 void
-ScattData::base_init(int order, int_1dvec& in_gmin, int_1dvec& in_gmax,
-                        double_2dvec& in_energy, double_2dvec& in_mult)
+ScattData::base_init(int order, const int_1dvec& in_gmin,
+     const int_1dvec& in_gmax, const double_2dvec& in_energy,
+     const double_2dvec& in_mult)
 {
   int groups = in_energy.size();
 
@@ -42,7 +43,7 @@ ScattData::base_init(int order, int_1dvec& in_gmin, int_1dvec& in_gmax,
 //==============================================================================
 
 void
-ScattData::base_combine(const int max_order,
+ScattData::base_combine(int max_order,
      const std::vector<ScattData*>& those_scatts, const double_1dvec& scalars,
      int_1dvec& in_gmin, int_1dvec& in_gmax, double_2dvec& sparse_mult,
      double_3dvec& sparse_scatter)
@@ -179,8 +180,7 @@ ScattData::sample_energy(int gin, int& gout, int& i_gout)
 //==============================================================================
 
 double
-ScattData::get_xs(const int xstype, const int gin, const int* gout,
-                  const double* mu)
+ScattData::get_xs(int xstype, int gin, const int* gout, const double* mu)
 {
   // Set the outgoing group offset index as needed
   int i_gout = 0;
@@ -239,8 +239,8 @@ ScattData::get_xs(const int xstype, const int gin, const int* gout,
 //==============================================================================
 
 void
-ScattDataLegendre::init(int_1dvec& in_gmin, int_1dvec& in_gmax,
-                        double_2dvec& in_mult, double_3dvec& coeffs)
+ScattDataLegendre::init(const int_1dvec& in_gmin, const int_1dvec& in_gmax,
+     const double_2dvec& in_mult, const double_3dvec& coeffs)
 {
   int groups = coeffs.size();
   int order = coeffs[0][0].size();
@@ -334,7 +334,7 @@ ScattDataLegendre::update_max_val()
 //==============================================================================
 
 double
-ScattDataLegendre::calc_f(const int gin, const int gout, const double mu)
+ScattDataLegendre::calc_f(int gin, int gout, double mu)
 {
   double f;
   if ((gout < gmin[gin]) || (gout > gmax[gin])) {
@@ -350,7 +350,7 @@ ScattDataLegendre::calc_f(const int gin, const int gout, const double mu)
 //==============================================================================
 
 void
-ScattDataLegendre::sample(const int gin, int& gout, double& mu, double& wgt)
+ScattDataLegendre::sample(int gin, int& gout, double& mu, double& wgt)
 {
   // Sample the outgoing energy using the base-class method
   int i_gout;
@@ -408,7 +408,7 @@ ScattDataLegendre::combine(const std::vector<ScattData*>& those_scatts,
   // so we use a base class method to sum up xs and create new energy and mult
   // matrices
   ScattData::base_combine(max_order, those_scatts, scalars, in_gmin, in_gmax,
-                             sparse_mult, sparse_scatter);
+                          sparse_mult, sparse_scatter);
 
   // Got everything we need, store it.
   init(in_gmin, in_gmax, sparse_mult, sparse_scatter);
@@ -417,7 +417,7 @@ ScattDataLegendre::combine(const std::vector<ScattData*>& those_scatts,
 //==============================================================================
 
 double_3dvec
-ScattDataLegendre::get_matrix(const int max_order)
+ScattDataLegendre::get_matrix(int max_order)
 {
   // Get the sizes and initialize the data to 0
   int groups = energy.size();
@@ -442,8 +442,8 @@ ScattDataLegendre::get_matrix(const int max_order)
 //==============================================================================
 
 void
-ScattDataHistogram::init(int_1dvec& in_gmin, int_1dvec& in_gmax,
-                         double_2dvec& in_mult, double_3dvec& coeffs)
+ScattDataHistogram::init(const int_1dvec& in_gmin, const int_1dvec& in_gmax,
+     const double_2dvec& in_mult, const double_3dvec& coeffs)
 {
   int groups = coeffs.size();
   int order = coeffs[0][0].size();
@@ -479,8 +479,7 @@ ScattDataHistogram::init(int_1dvec& in_gmin, int_1dvec& in_gmax,
   }
 
   // Initialize the base class attributes
-  ScattData::base_init(order, in_gmin, in_gmax, in_energy,
-                                    in_mult);
+  ScattData::base_init(order, in_gmin, in_gmax, in_energy, in_mult);
 
   // Build the angular distribution mu values
   mu = double_1dvec(order);
@@ -522,7 +521,7 @@ ScattDataHistogram::init(int_1dvec& in_gmin, int_1dvec& in_gmax,
 //==============================================================================
 
 double
-ScattDataHistogram::calc_f(const int gin, const int gout, const double mu)
+ScattDataHistogram::calc_f(int gin, int gout, double mu)
 {
   double f;
   if ((gout < gmin[gin]) || (gout > gmax[gin])) {
@@ -546,7 +545,7 @@ ScattDataHistogram::calc_f(const int gin, const int gout, const double mu)
 //==============================================================================
 
 void
-ScattDataHistogram::sample(const int gin, int& gout, double& mu, double& wgt)
+ScattDataHistogram::sample(int gin, int& gout, double& mu, double& wgt)
 {
   // Sample the outgoing energy using the base-class method
   int i_gout;
@@ -581,7 +580,7 @@ ScattDataHistogram::sample(const int gin, int& gout, double& mu, double& wgt)
 //==============================================================================
 
 double_3dvec
-ScattDataHistogram::get_matrix(const int max_order)
+ScattDataHistogram::get_matrix(int max_order)
 {
   // Get the sizes and initialize the data to 0
   int groups = energy.size();
@@ -643,8 +642,8 @@ ScattDataHistogram::combine(const std::vector<ScattData*>& those_scatts,
 //==============================================================================
 
 void
-ScattDataTabular::init(int_1dvec& in_gmin, int_1dvec& in_gmax,
-                       double_2dvec& in_mult, double_3dvec& coeffs)
+ScattDataTabular::init(const int_1dvec& in_gmin, const int_1dvec& in_gmax,
+     const double_2dvec& in_mult, const double_3dvec& coeffs)
 {
   int groups = coeffs.size();
   int order = coeffs[0][0].size();
@@ -732,7 +731,7 @@ ScattDataTabular::init(int_1dvec& in_gmin, int_1dvec& in_gmax,
 //==============================================================================
 
 double
-ScattDataTabular::calc_f(const int gin, const int gout, const double mu)
+ScattDataTabular::calc_f(int gin, int gout, double mu)
 {
   double f;
   if ((gout < gmin[gin]) || (gout > gmax[gin])) {
@@ -757,7 +756,7 @@ ScattDataTabular::calc_f(const int gin, const int gout, const double mu)
 //==============================================================================
 
 void
-ScattDataTabular::sample(const int gin, int& gout, double& mu, double& wgt)
+ScattDataTabular::sample(int gin, int& gout, double& mu, double& wgt)
 {
   // Sample the outgoing energy using the base-class method
   int i_gout;
@@ -805,7 +804,7 @@ ScattDataTabular::sample(const int gin, int& gout, double& mu, double& wgt)
 //==============================================================================
 
 double_3dvec
-ScattDataTabular::get_matrix(const int max_order)
+ScattDataTabular::get_matrix(int max_order)
 {
   // Get the sizes and initialize the data to 0
   int groups = energy.size();

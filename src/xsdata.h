@@ -27,19 +27,17 @@ class XsData {
   private:
     //! \brief Reads scattering data from the HDF5 file
     void
-    scatter_from_hdf5(const hid_t xsdata_grp, const int n_pol, const int n_azi,
-         const int energy_groups, int scatter_format,
-         const int final_scatter_format, const int order_data,
-         const int max_order, const int legendre_to_tabular_points);
+    scatter_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi, int energy_groups,
+         int scatter_format, int final_scatter_format, int order_data,
+         int max_order, int legendre_to_tabular_points);
 
     //! \brief Reads fission data from the HDF5 file
     void
-    fission_from_hdf5(const hid_t xsdata_grp, const int n_pol, const int n_azi,
-         const int energy_groups, const int delayed_groups,
-         const bool is_isotropic);
+    fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi, int energy_groups,
+         int delayed_groups, bool is_isotropic);
 
   public:
-    
+
     // The following quantities have the following dimensions:
     // [angle][incoming group]
     double_2dvec total;
@@ -75,9 +73,8 @@ class XsData {
     //! @param scatter_format The scattering representation of the file.
     //! @param n_pol Number of polar angles.
     //! @param n_azi Number of azimuthal angles.
-    XsData(const int num_groups, const int num_delayed_groups,
-           const bool fissionable, const int scatter_format, const int n_pol,
-           const int n_azi);
+    XsData(int num_groups, int num_delayed_groups, bool fissionable,
+           int scatter_format, int n_pol, int n_azi);
 
     //! \brief Loads the XsData object from the HDF5 file
     //!
@@ -99,11 +96,10 @@ class XsData {
     //! @param n_pol Number of polar angles.
     //! @param n_azi Number of azimuthal angles.
     void
-    from_hdf5(const hid_t xsdata_grp, const bool fissionable,
-         const int scatter_format, const int final_scatter_format,
-         const int order_data, const int max_order,
-         const int legendre_to_tabular_points, const bool is_isotropic,
-         const int n_pol, const int n_azi);
+    from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
+         int final_scatter_format, int order_data, int max_order,
+         int legendre_to_tabular_points, bool is_isotropic, int n_pol,
+         int n_azi);
 
     //! \brief Combines the microscopic data to a macroscopic object.
     //!

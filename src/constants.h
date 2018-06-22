@@ -21,7 +21,7 @@ typedef std::vector<int> int_1dvec;
 typedef std::vector<std::vector<int> > int_2dvec;
 typedef std::vector<std::vector<std::vector<int> > > int_3dvec;
 
-int constexpr MAX_SAMPLE {10000};
+constexpr int MAX_SAMPLE {10000};
 
 constexpr std::array<int, 3> VERSION {0, 10, 0};
 constexpr std::array<int, 2> VERSION_PARTICLE_RESTART {2, 0};

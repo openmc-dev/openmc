@@ -9,8 +9,8 @@ module mgxs_interface
   interface
 
     subroutine add_mgxs_c(file_id, name, energy_groups, delayed_groups, &
-         n_temps, temps, method, tolerance, max_order, legendre_to_tabular, &
-         legendre_to_tabular_points, n_threads) bind(C)
+         n_temps, temps, tolerance, max_order, legendre_to_tabular, &
+         legendre_to_tabular_points, method) bind(C)
       use ISO_C_BINDING
       import HID_T
       implicit none
@@ -20,12 +20,11 @@ module mgxs_interface
       integer(C_INT), value, intent(in) :: delayed_groups
       integer(C_INT), value, intent(in) :: n_temps
       real(C_DOUBLE),        intent(in) :: temps(1:n_temps)
-      integer(C_INT),     intent(inout) :: method
       real(C_DOUBLE), value, intent(in) :: tolerance
       integer(C_INT), value, intent(in) :: max_order
       logical(C_BOOL),value, intent(in) :: legendre_to_tabular
       integer(C_INT), value, intent(in) :: legendre_to_tabular_points
-      integer(C_INT), value, intent(in) :: n_threads
+      integer(C_INT),     intent(inout) :: method
     end subroutine add_mgxs_c
 
     function query_fissionable_c(n_nuclides, i_nuclides) result(result) bind(C)
@@ -37,7 +36,7 @@ module mgxs_interface
     end function query_fissionable_c
 
     subroutine create_macro_xs_c(name, n_nuclides, i_nuclides, n_temps, temps, &
-         atom_densities, method, tolerance, n_threads) bind(C)
+         atom_densities, tolerance, method) bind(C)
       use ISO_C_BINDING
       implicit none
       character(kind=C_CHAR),intent(in) :: name(*)
@@ -46,17 +45,15 @@ module mgxs_interface
       integer(C_INT), value, intent(in) :: n_temps
       real(C_DOUBLE),        intent(in) :: temps(1:n_temps)
       real(C_DOUBLE),        intent(in) :: atom_densities(1:n_nuclides)
-      integer(C_INT),     intent(inout) :: method
       real(C_DOUBLE), value, intent(in) :: tolerance
-      integer(C_INT), value, intent(in) :: n_threads
+      integer(C_INT),     intent(inout) :: method
     end subroutine create_macro_xs_c
 
-    subroutine calculate_xs_c(i_mat, tid, gin, sqrtkT, uvw, total_xs, abs_xs, &
+    subroutine calculate_xs_c(i_mat, gin, sqrtkT, uvw, total_xs, abs_xs, &
          nu_fiss_xs) bind(C)
       use ISO_C_BINDING
       implicit none
       integer(C_INT), value, intent(in) :: i_mat
-      integer(C_INT), value, intent(in) :: tid
       integer(C_INT), value, intent(in) :: gin
       real(C_DOUBLE), value, intent(in) :: sqrtkT
       real(C_DOUBLE),        intent(in) :: uvw(1:3)
@@ -65,11 +62,10 @@ module mgxs_interface
       real(C_DOUBLE),     intent(inout) :: nu_fiss_xs
     end subroutine calculate_xs_c
 
-    subroutine sample_scatter_c(i_mat, tid, gin, gout, mu, wgt, uvw) bind(C)
+    subroutine sample_scatter_c(i_mat, gin, gout, mu, wgt, uvw) bind(C)
       use ISO_C_BINDING
       implicit none
       integer(C_INT), value, intent(in) :: i_mat
-      integer(C_INT), value, intent(in) :: tid
       integer(C_INT), value, intent(in) :: gin
       integer(C_INT),     intent(inout) :: gout
       real(C_DOUBLE),     intent(inout) :: mu
@@ -77,11 +73,10 @@ module mgxs_interface
       real(C_DOUBLE),     intent(inout) :: uvw(1:3)
     end subroutine sample_scatter_c
 
-    subroutine sample_fission_energy_c(i_mat, tid, gin, dg, gout) bind(C)
+    subroutine sample_fission_energy_c(i_mat, gin, dg, gout) bind(C)
       use ISO_C_BINDING
       implicit none
       integer(C_INT), value, intent(in) :: i_mat
-      integer(C_INT), value, intent(in) :: tid
       integer(C_INT), value, intent(in) :: gin
       integer(C_INT),     intent(inout) :: dg
       integer(C_INT),     intent(inout) :: gout
@@ -102,12 +97,11 @@ module mgxs_interface
       real(C_DOUBLE)                    :: awr
     end function get_awr_c
 
-    function get_nuclide_xs_c(index, tid, xstype, gin, gout, mu, dg) result(val) &
+    function get_nuclide_xs_c(index, xstype, gin, gout, mu, dg) result(val) &
          bind(C)
       use ISO_C_BINDING
       implicit none
       integer(C_INT),  value,   intent(in) :: index
-      integer(C_INT),  value,   intent(in) :: tid
       integer(C_INT),  value,   intent(in) :: xstype
       integer(C_INT),  value,   intent(in) :: gin
       integer(C_INT), optional, intent(in) :: gout
@@ -116,12 +110,11 @@ module mgxs_interface
       real(C_DOUBLE)                       :: val
     end function get_nuclide_xs_c
 
-    function get_macro_xs_c(index, tid, xstype, gin, gout, mu, dg) result(val) &
+    function get_macro_xs_c(index, xstype, gin, gout, mu, dg) result(val) &
          bind(C)
       use ISO_C_BINDING
       implicit none
       integer(C_INT),  value,   intent(in) :: index
-      integer(C_INT),  value,   intent(in) :: tid
       integer(C_INT),  value,   intent(in) :: xstype
       integer(C_INT),  value,   intent(in) :: gin
       integer(C_INT), optional, intent(in) :: gout
@@ -130,27 +123,24 @@ module mgxs_interface
       real(C_DOUBLE)                       :: val
     end function get_macro_xs_c
 
-    subroutine set_nuclide_angle_index_c(index, tid, uvw) bind(C)
+    subroutine set_nuclide_angle_index_c(index, uvw) bind(C)
       use ISO_C_BINDING
       implicit none
       integer(C_INT), value, intent(in) :: index
-      integer(C_INT), value, intent(in) :: tid
       real(C_DOUBLE),        intent(in) :: uvw(1:3)
     end subroutine set_nuclide_angle_index_c
 
-    subroutine set_macro_angle_index_c(index, tid, uvw) bind(C)
+    subroutine set_macro_angle_index_c(index, uvw) bind(C)
       use ISO_C_BINDING
       implicit none
       integer(C_INT), value, intent(in) :: index
-      integer(C_INT), value, intent(in) :: tid
       real(C_DOUBLE),        intent(in) :: uvw(1:3)
     end subroutine set_macro_angle_index_c
 
-    subroutine set_nuclide_temperature_index_c(index, tid, sqrtkT) bind(C)
+    subroutine set_nuclide_temperature_index_c(index, sqrtkT) bind(C)
       use ISO_C_BINDING
       implicit none
       integer(C_INT), value, intent(in) :: index
-      integer(C_INT), value, intent(in) :: tid
       real(C_DOUBLE), value, intent(in) :: sqrtkT
     end subroutine set_nuclide_temperature_index_c
 

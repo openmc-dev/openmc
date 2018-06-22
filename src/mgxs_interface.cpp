@@ -7,11 +7,10 @@ namespace openmc {
 //==============================================================================
 
 void
-add_mgxs_c(hid_t file_id, char* name, const int energy_groups,
-     const int delayed_groups, const int n_temps, double temps[], int& method,
-     const double tolerance, const int max_order,
-     const bool legendre_to_tabular, const int legendre_to_tabular_points,
-     const int n_threads)
+add_mgxs_c(hid_t file_id, const char* name, int energy_groups,
+     int delayed_groups, int n_temps, const double temps[],  double tolerance,
+     int max_order, bool legendre_to_tabular, int legendre_to_tabular_points,
+     int& method)
 {
   //!! mgxs_data.F90 will be modified to just create the list of names
   //!! in the order needed
@@ -30,10 +29,8 @@ add_mgxs_c(hid_t file_id, char* name, const int energy_groups,
                 + "provided MGXS Library");
   }
 
-  Mgxs mg;
-  mg.from_hdf5(xs_grp, energy_groups, delayed_groups,
-       temperature, method, tolerance, max_order, legendre_to_tabular,
-       legendre_to_tabular_points, n_threads);
+  Mgxs mg(xs_grp, energy_groups, delayed_groups, temperature, tolerance,
+          max_order, legendre_to_tabular, legendre_to_tabular_points, method);
 
   nuclides_MG.push_back(mg);
 }
@@ -41,7 +38,7 @@ add_mgxs_c(hid_t file_id, char* name, const int energy_groups,
 //==============================================================================
 
 bool
-query_fissionable_c(const int n_nuclides, const int i_nuclides[])
+query_fissionable_c(int n_nuclides, const int i_nuclides[])
 {
   bool result = false;
   for (int n = 0; n < n_nuclides; n++) {
@@ -53,12 +50,10 @@ query_fissionable_c(const int n_nuclides, const int i_nuclides[])
 //==============================================================================
 
 void
-create_macro_xs_c(char* mat_name, const int n_nuclides,
-     const int i_nuclides[], const int n_temps, const double temps[],
-     const double atom_densities[], int& method, const double tolerance,
-     const int n_threads)
+create_macro_xs_c(const char* mat_name, int n_nuclides, const int i_nuclides[],
+     int n_temps, const double temps[], const double atom_densities[],
+     double tolerance, int& method)
 {
-  Mgxs macro;
   if (n_temps > 0) {
     // // Convert temps to a vector
     double_1dvec temperature;
@@ -75,10 +70,14 @@ create_macro_xs_c(char* mat_name, const int n_nuclides,
       mgxs_ptr[n] = &nuclides_MG[i_nuclides[n] - 1];
     }
 
-    macro.build_macro(mat_name, temperature, mgxs_ptr, atom_densities_vec,
-         method, tolerance, n_threads);
+    Mgxs macro(mat_name, temperature, mgxs_ptr, atom_densities_vec,
+         tolerance, method);
+    macro_xs.push_back(macro);
+  } else {
+    // Preserve the ordering of materials by including a blank entry
+    Mgxs macro;
+    macro_xs.push_back(macro);
   }
-  macro_xs.push_back(macro);
 }
 
 //==============================================================================
@@ -86,22 +85,21 @@ create_macro_xs_c(char* mat_name, const int n_nuclides,
 //==============================================================================
 
 void
-calculate_xs_c(const int i_mat, const int tid, const int gin,
-     const double sqrtkT, const double uvw[3], double& total_xs, double& abs_xs,
-     double& nu_fiss_xs)
+calculate_xs_c(int i_mat, int gin, double sqrtkT, const double uvw[3],
+     double& total_xs, double& abs_xs, double& nu_fiss_xs)
 {
-  macro_xs[i_mat - 1].calculate_xs(tid, gin - 1, sqrtkT, uvw, total_xs, abs_xs,
+  macro_xs[i_mat - 1].calculate_xs(gin - 1, sqrtkT, uvw, total_xs, abs_xs,
        nu_fiss_xs);
 }
 
 //==============================================================================
 
 void
-sample_scatter_c(const int i_mat, const int tid, const int gin, int& gout,
-     double& mu, double& wgt, double uvw[3])
+sample_scatter_c(int i_mat, int gin, int& gout, double& mu, double& wgt,
+                 double uvw[3])
 {
   int gout_c = gout - 1;
-  macro_xs[i_mat - 1].sample_scatter(tid, gin - 1, gout_c, mu, wgt);
+  macro_xs[i_mat - 1].sample_scatter(gin - 1, gout_c, mu, wgt);
 
   // adjust return value for fortran indexing
   gout = gout_c + 1;
@@ -113,12 +111,11 @@ sample_scatter_c(const int i_mat, const int tid, const int gin, int& gout,
 //==============================================================================
 
 void
-sample_fission_energy_c(const int i_mat, const int tid, const int gin,
-     int& dg, int& gout)
+sample_fission_energy_c(int i_mat, int gin, int& dg, int& gout)
 {
   int dg_c = 0;
   int gout_c = 0;
-  macro_xs[i_mat - 1].sample_fission_energy(tid, gin - 1, dg_c, gout_c);
+  macro_xs[i_mat - 1].sample_fission_energy(gin - 1, dg_c, gout_c);
 
   // adjust return values for fortran indexing
   dg = dg_c + 1;
@@ -128,8 +125,7 @@ sample_fission_energy_c(const int i_mat, const int tid, const int gin,
 //==============================================================================
 
 double
-get_nuclide_xs_c(const int index, const int tid, const int xstype,
-     const int gin, int* gout, double* mu, int* dg)
+get_nuclide_xs_c(int index, int xstype, int gin, int* gout, double* mu, int* dg)
 {
   int gout_c;
   int* gout_c_p;
@@ -147,15 +143,13 @@ get_nuclide_xs_c(const int index, const int tid, const int xstype,
   } else {
     dg_c_p = dg;
   }
-  return nuclides_MG[index - 1].get_xs(tid, xstype, gin - 1, gout_c_p, mu,
-                                       dg_c_p);
+  return nuclides_MG[index - 1].get_xs(xstype, gin - 1, gout_c_p, mu, dg_c_p);
 }
 
 //==============================================================================
 
 double
-get_macro_xs_c(const int index, const int tid, const int xstype,
-     const int gin, int* gout, double* mu, int* dg)
+get_macro_xs_c(int index, int xstype, int gin, int* gout, double* mu, int* dg)
 {
   int gout_c;
   int* gout_c_p;
@@ -173,38 +167,34 @@ get_macro_xs_c(const int index, const int tid, const int xstype,
   } else {
     dg_c_p = dg;
   }
-  return macro_xs[index - 1].get_xs(tid, xstype, gin - 1, gout_c_p, mu,
-                                    dg_c_p);
+  return macro_xs[index - 1].get_xs(xstype, gin - 1, gout_c_p, mu, dg_c_p);
 }
 
 //==============================================================================
 
 void
-set_nuclide_angle_index_c(const int index, const int tid,
-     const double uvw[3])
+set_nuclide_angle_index_c(int index, const double uvw[3])
 {
   // Update the values
-  nuclides_MG[index - 1].set_angle_index(tid, uvw);
+  nuclides_MG[index - 1].set_angle_index(uvw);
 }
 
 //==============================================================================
 
 void
-set_macro_angle_index_c(const int index, const int tid,
-     const double uvw[3])
+set_macro_angle_index_c(int index, const double uvw[3])
 {
   // Update the values
-  macro_xs[index - 1].set_angle_index(tid, uvw);
+  macro_xs[index - 1].set_angle_index(uvw);
 }
 
 //==============================================================================
 
 void
-set_nuclide_temperature_index_c(const int index, const int tid,
-     const double sqrtkT)
+set_nuclide_temperature_index_c(int index, double sqrtkT)
 {
   // Update the values
-  nuclides_MG[index - 1].set_temperature_index(tid, sqrtkT);
+  nuclides_MG[index - 1].set_temperature_index(sqrtkT);
 }
 
 //==============================================================================
@@ -212,7 +202,7 @@ set_nuclide_temperature_index_c(const int index, const int tid,
 //==============================================================================
 
 void
-get_name_c(const int index, int name_len, char* name)
+get_name_c(int index, int name_len, char* name)
 {
   // First blank out our input string
   std::string str(name_len, ' ');
@@ -229,7 +219,7 @@ get_name_c(const int index, int name_len, char* name)
 //==============================================================================
 
 double
-get_awr_c(const int index)
+get_awr_c(int index)
 {
   return nuclides_MG[index - 1].awr;
 }

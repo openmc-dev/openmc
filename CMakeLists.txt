@@ -110,12 +110,12 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
   endif()
 
   # GCC compiler options
-  list(APPEND f90flags -cpp -std=f2008ts -fbacktrace -O2 -fstack-arrays -g)
+  list(APPEND f90flags -cpp -std=f2008ts -fbacktrace -O2 -fstack-arrays)
   if(debug)
     list(REMOVE_ITEM f90flags -O2 -fstack-arrays)
     list(APPEND f90flags -g -Wall -Wno-unused-dummy-argument -pedantic
       -fbounds-check -ffpe-trap=invalid,overflow,underflow)
-    list(APPEND ldflags -g -v -da -Q)
+    list(APPEND ldflags -g)
   endif()
   if(profile)
     list(APPEND f90flags -pg)

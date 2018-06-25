@@ -402,24 +402,35 @@ contains
 
     integer :: i
     real(8) :: f
+    real(8) :: c
     real(8) :: a
     real(8) :: b
-    real(8) :: r
+    real(8) :: q
     real(8) :: rn
     real(8) :: beta
-    real(8) :: mu
-    real(8) :: phi
     real(8) :: e, e_min, e_max
     real(8) :: t1, t2, t3, t4
     real(8) :: u1, u2
     real(8) :: phi1, phi2
     real(8) :: phi1_max, phi2_max
-    real(8) :: c(4)
-
-    ! Compute the minimum and maximum values of the electron reduced energy,
-    ! i.e. the fraction of the photon energy that is given to the electron
-    e_min = ONE/alpha
-    e_max = ONE - ONE/alpha
+    real(8), parameter :: r(99) = (/ &
+         122.81_8, 73.167_8, 69.228_8, 67.301_8, 64.696_8, 61.228_8, &
+         57.524_8, 54.033_8, 50.787_8, 47.851_8, 46.373_8, 45.401_8, &
+         44.503_8, 43.815_8, 43.074_8, 42.321_8, 41.586_8, 40.953_8, &
+         40.524_8, 40.256_8, 39.756_8, 39.144_8, 38.462_8, 37.778_8, &
+         37.174_8, 36.663_8, 35.986_8, 35.317_8, 34.688_8, 34.197_8, &
+         33.786_8, 33.422_8, 33.068_8, 32.740_8, 32.438_8, 32.143_8, &
+         31.884_8, 31.622_8, 31.438_8, 31.142_8, 30.950_8, 30.758_8, &
+         30.561_8, 30.285_8, 30.097_8, 29.832_8, 29.581_8, 29.411_8, &
+         29.247_8, 29.085_8, 28.930_8, 28.721_8, 28.580_8, 28.442_8, &
+         28.312_8, 28.139_8, 27.973_8, 27.819_8, 27.675_8, 27.496_8, &
+         27.285_8, 27.093_8, 26.911_8, 26.705_8, 26.516_8, 26.304_8, &
+         26.108_8, 25.929_8, 25.730_8, 25.577_8, 25.403_8, 25.245_8, &
+         25.100_8, 24.941_8, 24.790_8, 24.655_8, 24.506_8, 24.391_8, &
+         24.262_8, 24.145_8, 24.039_8, 23.922_8, 23.813_8, 23.712_8, &
+         23.621_8, 23.523_8, 23.430_8, 23.331_8, 23.238_8, 23.139_8, &
+         23.048_8, 22.967_8, 22.833_8, 22.694_8, 22.624_8, 22.545_8, &
+         22.446_8, 22.358_8, 22.264_8 /)
 
     ! The reduced screening radius r is the ratio of the screening radius to
     ! the Compton wavelength of the electron, where the screening radius is
@@ -427,23 +438,37 @@ contains
     ! exponentially screened by atomic electrons. This allows us to use a
     ! simplified atomic form factor and analytical approximations of the
     ! screening functions in the pair production DCS instead of computing the
-    ! screening functions numerically.
-    r = elm % reduced_screening_radius
+    ! screening functions numerically. The reduced screening radii above for
+    ! Z = 1-99 come from F. Salvat, J. M. Fernández-Varea, and J. Sempau,
+    ! "PENELOPE-2011: A Code System for Monte Carlo Simulation of Electron and
+    ! Photon Transport," OECD-NEA, Issy-les-Moulineaux, France (2011).
+
+    ! Compute the minimum and maximum values of the electron reduced energy,
+    ! i.e. the fraction of the photon energy that is given to the electron
+    e_min = ONE/alpha
+    e_max = ONE - ONE/alpha
+
+    ! Compute the high-energy Coulomb correction
+    a = elm % Z / FINE_STRUCTURE
+    c = a**2*(ONE/(ONE + a**2) + 0.202059_8 - 0.03693_8*a**2 + 0.00835_8*a**4 &
+         - 0.00201_8*a**6 + 0.00049_8*a**8 - 0.00012_8*a**10 + 0.00003_8*a**12)
 
     ! The analytical approximation of the DCS underestimates the cross section
     ! at low energies. The correction factor f compensates for this.
-    a = sqrt(TWO/alpha)
-    c = elm % correction_factor_coeffs
-    f = c(1)*a + c(2)*a**2 + c(3)*a**3 + c(4)*a**4
+    q = sqrt(TWO/alpha)
+    f = q*(-0.1774_8 - 12.10_8*a + 11.18_8*a**2) &
+         + q**2*(8.523_8 + 73.26_8*a - 44.41_8*a**2) &
+         + q**3*(-13.52_8 - 121.1_8*a + 96.41_8*a**2) &
+         + q**4*(8.946_8 + 62.05_8*a - 63.41_8*a**2)
 
     ! Calculate phi_1(1/2) and phi_2(1/2). The unnormalized PDF for the reduced
     ! energy is given by p = 2*(1/2 - e)^2*phi_1(e) + phi_2(e), where phi_1 and
     ! phi_2 are non-negative and maximum at e = 1/2.
-    b = TWO*r/alpha
+    b = TWO*r(elm % Z)/alpha
     t1 = TWO*log(ONE + b**2)
     t2 = b*atan(ONE/b)
     t3 = b**2*(FOUR - FOUR*t2 - THREE*log(ONE + ONE/b**2))
-    t4 = FOUR*log(r) - FOUR*elm % coulomb_correction + f
+    t4 = FOUR*log(r(elm % Z)) - FOUR*c + f
     phi1_max = 7.0_8/THREE - t1 - 6.0_8*t2 - t3 + t4
     phi2_max = 11.0_8/6.0_8 - t1 - THREE*t2 + HALF*t3 + t4
 
@@ -478,7 +503,7 @@ contains
       end if
 
       ! Calculate phi_i(e) and deliver e if rn <= U_i(e)
-      b = r/(TWO*alpha*e*(ONE - e))
+      b = r(elm % Z)/(TWO*alpha*e*(ONE - e))
       t1 = TWO*log(ONE + b**2)
       t2 = b*atan(ONE/b)
       t3 = b**2*(FOUR - FOUR*t2 - THREE*log(ONE + ONE/b**2))
@@ -532,17 +557,7 @@ contains
     real(8) :: c, c_l, c_max
     type(BremsstrahlungData), pointer :: mat
 
-    !real(8) :: photon_energies(100)
-
-    !p % E = 100.0e6_8
-
     if (p % E < energy_cutoff(PHOTON)) return
-    !if (p % E < energy_cutoff(PHOTON)) then
-    !  open(unit=13, file="energies.txt", action="write", position="append")
-    !  write(13,*) p % E, 0
-    !  close(13)
-    !  return
-    !end if
 
     ! Get bremsstrahlung data for this material and particle type
     if (p % type == POSITRON) then
@@ -578,12 +593,6 @@ contains
 
     E_lost = ZERO
     if (n == 0) return
-    !if (n == 0) then
-    !  open(unit=13, file="energies.txt", action="write", position="append")
-    !  write(13,*) p % E, n
-    !  close(13)
-    !  return
-    !end if
 
     ! Sample index of the tabulated PDF in the energy grid, j or j+1
     if (prn() <= f .or. j == 1) then
@@ -617,24 +626,13 @@ contains
       p_r = mat % pdf(i_w+1, i_e)
       c_l = mat % cdf(i_w, i_e)
       a = log(p_r/p_l)/(w_r - w_l) + ONE
-      ! Temporary fix
-      if (i_w == i_e - 1) then
-        w = exp(w_l)
-      else
-        w = exp(w_l)*(a*(c - c_l)/(exp(w_l)*p_l) + ONE)**(ONE/a)
-      end if
 
-      !photon_energies(i) = w
       if (w > energy_cutoff(PHOTON)) then
         ! Create secondary photon
         call p % create_secondary(p % coord(1) % uvw, w, PHOTON, run_ce=.true.)
         E_lost = E_lost + w
       end if
     end do
-
-    !open(unit=13, file="energies.txt", action="write", position="append")
-    !write(13,*) p % E, n, photon_energies(:n)
-    !close(13)
 
   end subroutine thick_target_bremsstrahlung
 

@@ -369,7 +369,6 @@ contains
     ! TODO: create reaction types
 
     if (electron_treatment == ELECTRON_TTB) then
-      ! TODO: implement thick-target bremsstrahlung model for positrons
       call thick_target_bremsstrahlung(p, E_lost)
     end if
 

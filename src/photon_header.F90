@@ -53,11 +53,6 @@ module photon_header
                                    ! dictionary gives an index in shells(:)
     type(ElectronSubshell), allocatable :: shells(:)
 
-    ! Pair production data
-    real(8) :: reduced_screening_radius
-    real(8) :: coulomb_correction
-    real(8) :: correction_factor_coeffs(4)
-
     ! Compton profile data
     real(8), allocatable :: profile_pdf(:,:)
     real(8), allocatable :: profile_cdf(:,:)
@@ -132,7 +127,6 @@ contains
     integer          :: n_k
     integer          :: n_e
     character(3), allocatable :: designators(:)
-    real(8)          :: a
     real(8)          :: c
     real(8)          :: f
     real(8)          :: y
@@ -287,22 +281,6 @@ contains
     call close_dataset(dset_id)
     call read_dataset(this % binding_energy, rgroup, 'binding_energy')
     this % electron_pdf(:) = this % electron_pdf / sum(this % electron_pdf)
-
-    ! Get reduced screening radius
-    call read_attribute(this % reduced_screening_radius, group_id, &
-         'reduced_screening_radius')
-
-    ! Compute the high-energy Coulomb correction
-    a = this % Z / FINE_STRUCTURE
-    this % coulomb_correction = a**2*(ONE/(ONE + a**2) + 0.202059_8 &
-         - 0.03693_8*a**2 + 0.00835_8*a**4 - 0.00201_8*a**6 + 0.00049_8*a**8 &
-         - 0.00012_8*a**10 + 0.00003_8*a**12)
-
-    ! Compute the coefficients of the correction factor
-    this % correction_factor_coeffs(1) = -0.1774_8 - 12.10_8*a + 11.18_8*a**2
-    this % correction_factor_coeffs(2) = 8.523_8 + 73.26_8*a - 44.41_8*a**2
-    this % correction_factor_coeffs(3) = -13.52_8 - 121.1_8*a + 96.41_8*a**2
-    this % correction_factor_coeffs(4) = 8.946_8 + 62.05_8*a - 63.41_8*a**2
 
     ! Read Compton profiles
     dset_id = open_dataset(rgroup, 'J')

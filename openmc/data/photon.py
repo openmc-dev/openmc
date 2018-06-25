@@ -106,23 +106,6 @@ _STOPPING_POWERS = {}
 # for each element are in a 2D array with shape (n, k) stored on the key 'Z'.
 _BREMSSTRAHLUNG = {}
 
-# Reduced screening radii for Z = 1-99 from F. Salvat, J. M. Fernández-Varea,
-# and J. Sempau, "PENELOPE-2011: A Code System for Monte Carlo Simulation of
-# Electron and Photon Transport," OECD-NEA, Issy-les-Moulineaux, France (2011).
-_REDUCED_SCREENING_RADIUS = [
-    122.81, 73.167, 69.228, 67.301, 64.696, 61.228, 57.524, 54.033, 50.787,
-    47.851, 46.373, 45.401, 44.503, 43.815, 43.074, 42.321, 41.586, 40.953,
-    40.524, 40.256, 39.756, 39.144, 38.462, 37.778, 37.174, 36.663, 35.986,
-    35.317, 34.688, 34.197, 33.786, 33.422, 33.068, 32.740, 32.438, 32.143,
-    31.884, 31.622, 31.438, 31.142, 30.950, 30.758, 30.561, 30.285, 30.097,
-    29.832, 29.581, 29.411, 29.247, 29.085, 28.930, 28.721, 28.580, 28.442,
-    28.312, 28.139, 27.973, 27.819, 27.675, 27.496, 27.285, 27.093, 26.911,
-    26.705, 26.516, 26.304, 26.108, 25.929, 25.730, 25.577, 25.403, 25.245,
-    25.100, 24.941, 24.790, 24.655, 24.506, 24.391, 24.262, 24.145, 24.039,
-    23.922, 23.813, 23.712, 23.621, 23.523, 23.430, 23.331, 23.238, 23.139,
-    23.048, 22.967, 22.833, 22.694, 22.624, 22.545, 22.446, 22.358, 22.264
-]
-
 class AtomicRelaxation(EqualityMixin):
     """Atomic relaxation data.
 
@@ -384,11 +367,6 @@ class IncidentPhoton(EqualityMixin):
     reactions : collections.OrderedDict
         Contains the cross sections for each photon reaction. The keys are MT
         values and the values are instances of :class:`PhotonReaction`.
-    reduced_screening_radius : float
-        Reduced screening radius :math:`R m_e c/\hbar`, where R is the screening
-        radius for an atom of atomic number Z under the assumption that the
-        Coulomb field of the nucleus is exponentially screened by atomic electrons.
-        :math:`\hbar/m_e c` is the Compton wavelength of the electron.
     stopping_powers : dict
         Dictionary of stopping power data with keys 'energy' (in eV), 'density'
         (mass density in g/cm:sup:`3`), 'I' (mean excitation energy),
@@ -438,14 +416,6 @@ class IncidentPhoton(EqualityMixin):
     @property
     def name(self):
         return ATOMIC_SYMBOL[self.atomic_number]
-
-    @property
-    def reduced_screening_radius(self):
-        if self.atomic_number < 100:
-            return _REDUCED_SCREENING_RADIUS[self.atomic_number - 1]
-        else:
-            raise IndexError('No reduced screening radius for '
-                             'Z={}.'.format(self.atomic_number))
 
     @atomic_number.setter
     def atomic_number(self, atomic_number):
@@ -783,10 +753,6 @@ class IncidentPhoton(EqualityMixin):
                 sub_group['xs'].attrs['threshold_idx'] = idx
 
         shell_group.attrs['designators'] = np.array(designators, dtype='S')
-
-        # Write reduced screening radius
-        if Z < 100:
-            group.attrs['reduced_screening_radius'] = self.reduced_screening_radius
 
         # Write Compton profiles
         if self.compton_profiles:

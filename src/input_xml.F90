@@ -4370,9 +4370,10 @@ contains
         end if
       end do
 
-      ! Generate material bremsstrahlung data
+      ! Generate material bremsstrahlung data for electrons and positrons
       if (photon_transport .and. electron_treatment == ELECTRON_TTB) then
-        call bremsstrahlung_init(ttb(i), i)
+        call bremsstrahlung_init(ttb(i) % electron, i, ELECTRON)
+        call bremsstrahlung_init(ttb(i) % positron, i, POSITRON)
       end if
     end do
 
@@ -4385,9 +4386,17 @@ contains
         if (allocated(elements(i) % stopping_power_radiative)) &
              deallocate(elements(i) % stopping_power_radiative)
         if (allocated(elements(i) % dcs)) deallocate(elements(i) % dcs)
+        if (allocated(ttb_k_grid)) deallocate(ttb_k_grid)
       end do
 
-      ! Take logarithm of electron energies since they are log-log interpolated
+      ! Determine if minimum/maximum energy for bremsstrahlung is greater/less
+      ! than the current minimum/maximum
+      if (size(ttb_e_grid) >= 1) then
+        energy_min(PHOTON) = max(energy_min(PHOTON), ttb_e_grid(1))
+        energy_max(PHOTON) = min(energy_max(PHOTON), ttb_e_grid(size(ttb_e_grid)))
+      end if
+
+      ! Take logarithm of energies since they are log-log interpolated
       ttb_e_grid = log(ttb_e_grid)
     end if
 

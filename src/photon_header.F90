@@ -12,8 +12,8 @@ module photon_header
   use settings
 
   real(8), allocatable :: compton_profile_pz(:)
-  real(8), allocatable :: ttb_e_grid(:)  ! incident electron energy grid
-  real(8), allocatable :: ttb_k_grid(:)  ! reduced photon energy grid
+  real(8), allocatable :: ttb_e_grid(:) ! energy T of incident electron
+  real(8), allocatable :: ttb_k_grid(:) ! reduced energy W/T of emitted photon
 
   type ElectronSubshell
     integer :: index_subshell  ! index in SUBSHELLS
@@ -53,11 +53,6 @@ module photon_header
                                    ! dictionary gives an index in shells(:)
     type(ElectronSubshell), allocatable :: shells(:)
 
-    ! Pair production data
-    real(8) :: reduced_screening_radius
-    real(8) :: coulomb_correction
-    real(8) :: correction_factor_coeffs(4)
-
     ! Compton profile data
     real(8), allocatable :: profile_pdf(:,:)
     real(8), allocatable :: profile_cdf(:,:)
@@ -65,7 +60,7 @@ module photon_header
     real(8), allocatable :: electron_pdf(:)
 
     ! Stopping power data
-    real(8) :: density
+    real(8) :: I ! mean excitation energy
     real(8), allocatable :: stopping_power_collision(:)
     real(8), allocatable :: stopping_power_radiative(:)
 
@@ -77,12 +72,15 @@ module photon_header
     procedure :: calculate_xs => photon_calculate_xs
   end type PhotonInteraction
 
-  type Bremsstrahlung
-    integer :: i_material ! Index in materials array
-
-    real(8), allocatable :: yield(:) ! Photon number yield
-    real(8), allocatable :: dcs(:,:) ! Bremsstrahlung scaled DCS
+  type BremsstrahlungData
+    real(8), allocatable :: pdf(:,:) ! Bremsstrahlung energy PDF
     real(8), allocatable :: cdf(:,:) ! Bremsstrahlung energy CDF
+    real(8), allocatable :: yield(:) ! Photon number yield
+  end type BremsstrahlungData
+
+  type Bremsstrahlung
+    type(BremsstrahlungData) :: electron
+    type(BremsstrahlungData) :: positron
   end type Bremsstrahlung
 
   type(PhotonInteraction), allocatable, target :: elements(:) ! Photon cross sections
@@ -90,7 +88,7 @@ module photon_header
 
   type(DictCharInt) :: element_dict
 
-  type(Bremsstrahlung), allocatable, target :: ttb(:) ! Bremsstrahlung cross sections
+  type(Bremsstrahlung), allocatable, target :: ttb(:) ! Bremsstrahlung data
 
 !===============================================================================
 ! ELEMENTMICROXS contains cached microscopic photon cross sections for a
@@ -129,9 +127,12 @@ contains
     integer          :: n_k
     integer          :: n_e
     character(3), allocatable :: designators(:)
-    real(8)          :: a
     real(8)          :: c
+    real(8)          :: f
+    real(8)          :: y
+    real(8), allocatable :: electron_energy(:)
     real(8), allocatable :: matrix(:,:)
+    real(8), allocatable :: dcs(:,:)
 
     ! Get name of nuclide from group
     name_len = len(this % name)
@@ -281,22 +282,6 @@ contains
     call read_dataset(this % binding_energy, rgroup, 'binding_energy')
     this % electron_pdf(:) = this % electron_pdf / sum(this % electron_pdf)
 
-    ! Get reduced screening radius
-    call read_attribute(this % reduced_screening_radius, group_id, &
-         'reduced_screening_radius')
-
-    ! Compute the high-energy Coulomb correction
-    a = this % Z / FINE_STRUCTURE
-    this % coulomb_correction = a**2*(ONE/(ONE + a**2) + 0.202059_8 &
-         - 0.03693_8*a**2 + 0.00835_8*a**4 - 0.00201_8*a**6 + 0.00049_8*a**8 &
-         - 0.00012_8*a**10 + 0.00003_8*a**12)
-
-    ! Compute the coefficients of the correction factor
-    this % correction_factor_coeffs(1) = -0.1774_8 - 12.10_8*a + 11.18_8*a**2
-    this % correction_factor_coeffs(2) = 8.523_8 + 73.26_8*a - 44.41_8*a**2
-    this % correction_factor_coeffs(3) = -13.52_8 - 121.1_8*a + 96.41_8*a**2
-    this % correction_factor_coeffs(4) = 8.946_8 + 62.05_8*a - 63.41_8*a**2
-
     ! Read Compton profiles
     dset_id = open_dataset(rgroup, 'J')
     call get_shape(dset_id, dims2)
@@ -340,10 +325,8 @@ contains
       call close_dataset(dset_id)
 
       ! Get energy grids used for bremsstrahlung DCS and for stopping powers
-      if (.not. allocated(ttb_e_grid)) then
-        allocate(ttb_e_grid(n_e))
-        call read_dataset(ttb_e_grid, rgroup, 'electron_energy')
-      end if
+      allocate(electron_energy(n_e))
+      call read_dataset(electron_energy, rgroup, 'electron_energy')
       if (.not. allocated(ttb_k_grid)) then
         allocate(ttb_k_grid(n_k))
         call read_dataset(ttb_k_grid, rgroup, 'photon_energy')
@@ -357,8 +340,49 @@ contains
         allocate(this % stopping_power_radiative(n_e))
         call read_dataset(this % stopping_power_collision, rgroup, 's_collision')
         call read_dataset(this % stopping_power_radiative, rgroup, 's_radiative')
-        call read_attribute(this % density, rgroup, 'density')
+        call read_attribute(this % I, rgroup, 'I')
         call close_group(rgroup)
+      end if
+
+      ! Truncate the bremsstrahlung data at the cutoff energy
+      if (energy_cutoff(PHOTON) > electron_energy(1)) then
+        i_grid = binary_search(electron_energy, n_e, energy_cutoff(PHOTON))
+
+        ! calculate interpolation factor
+        f = (log(energy_cutoff(PHOTON)) - log(electron_energy(i_grid))) / &
+             (log(electron_energy(i_grid+1)) - log(electron_energy(i_grid)))
+
+        ! Interpolate collision stopping power at the cutoff energy and
+        ! truncate
+        y = exp(log(this % stopping_power_collision(i_grid)) + &
+             f*(log(this % stopping_power_collision(i_grid+1)) - &
+             log(this % stopping_power_collision(i_grid))))
+        this % stopping_power_collision = &
+             [y, this % stopping_power_collision(i_grid+1:n_e)]
+
+        ! Interpolate radiative stopping power at the cutoff energy and
+        ! truncate
+        y = exp(log(this % stopping_power_radiative(i_grid)) + &
+             f*(log(this % stopping_power_radiative(i_grid+1)) - &
+             log(this % stopping_power_radiative(i_grid))))
+        this % stopping_power_radiative = &
+             [y, this % stopping_power_radiative(i_grid+1:n_e)]
+
+        ! Interpolate bremsstrahlung DCS at the cutoff energy and truncate
+        allocate(dcs(n_k, n_e-i_grid+1))
+        do i = 1, n_k
+          y = exp(log(this % dcs(i,i_grid)) + &
+               f*(log(this % dcs(i,i_grid+1)) - log(this % dcs(i,i_grid))))
+          dcs(i,:) = [y, this % dcs(i,i_grid+1:n_e)]
+        end do
+        call move_alloc(dcs, this % dcs)
+
+        electron_energy = [energy_cutoff(PHOTON), electron_energy(i_grid+1:n_e)]
+      end if
+
+      ! Set incident particle energy grid
+      if (.not. allocated(ttb_e_grid)) then
+        call move_alloc(electron_energy, ttb_e_grid)
       end if
     end if
 
@@ -481,7 +505,6 @@ contains
 
     ! Clear TTB-related arrays
     if (allocated(ttb_e_grid)) deallocate(ttb_e_grid)
-    if (allocated(ttb_k_grid)) deallocate(ttb_k_grid)
     if (allocated(ttb)) deallocate(ttb)
   end subroutine free_memory_photon
 

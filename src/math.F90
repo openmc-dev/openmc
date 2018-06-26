@@ -925,7 +925,7 @@ contains
     integer :: i
     integer :: ia, ib
     real(8) :: h, r
-    real(8) :: a, b, c, d
+    real(8) :: b, c, d
 
     ! Find the lower bounding index in x of the lower limit of integration.
     if (xa < x(1)) then

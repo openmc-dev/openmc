@@ -12,7 +12,7 @@ struct Position {
 
   Position() = default;
   Position(double x_, double y_, double z_) : x{x_}, y{y_}, z{z_} { };
-  Position(double xyz[]) : x{xyz[0]}, y{xyz[1]}, z{xyz[2]} { };
+  Position(const double xyz[]) : x{xyz[0]}, y{xyz[1]}, z{xyz[2]} { };
 
   Position& operator+=(Position);
   Position& operator+=(double);
@@ -59,7 +59,7 @@ struct Angle : Position {
   double& w() { return z; }
   Angle() = default;
   Angle(double u, double v, double w) : Position{u, v, w} { };
-  Angle(double uvw[]) : Position{uvw} { };
+  Angle(const double uvw[]) : Position{uvw} { };
   Angle(Position r) : Position{r} { };
 };
 

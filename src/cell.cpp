@@ -279,33 +279,31 @@ Cell::Cell(pugi::xml_node cell_node)
 //==============================================================================
 
 bool
-Cell::contains(const double xyz[3], const double uvw[3],
-               int32_t on_surface) const
+Cell::contains(Position r, Angle a, int32_t on_surface) const
 {
   if (simple) {
-    return contains_simple(xyz, uvw, on_surface);
+    return contains_simple(r, a, on_surface);
   } else {
-    return contains_complex(xyz, uvw, on_surface);
+    return contains_complex(r, a, on_surface);
   }
 }
 
 //==============================================================================
 
 std::pair<double, int32_t>
-Cell::distance(const double xyz[3], const double uvw[3],
-               int32_t on_surface) const
+Cell::distance(Position r, Angle a, int32_t on_surface) const
 {
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
 
   for (int32_t token : rpn) {
     // Ignore this token if it corresponds to an operator rather than a region.
-    if (token >= OP_UNION) {continue;}
+    if (token >= OP_UNION) continue;
 
     // Calculate the distance to this surface.
     // Note the off-by-one indexing
     bool coincident {token == on_surface};
-    double d {surfaces_c[abs(token)-1]->distance(xyz, uvw, coincident)};
+    double d {surfaces_c[abs(token)-1]->distance(r, a, coincident)};
 
     // Check if this distance is the new minimum.
     if (d < min_dist) {
@@ -356,8 +354,7 @@ Cell::to_hdf5(hid_t cell_group) const
 //==============================================================================
 
 bool
-Cell::contains_simple(const double xyz[3], const double uvw[3],
-                      int32_t on_surface) const
+Cell::contains_simple(Position r, Angle a, int32_t on_surface) const
 {
   for (int32_t token : rpn) {
     if (token < OP_UNION) {
@@ -370,7 +367,7 @@ Cell::contains_simple(const double xyz[3], const double uvw[3],
         return false;
       } else {
         // Note the off-by-one indexing
-        bool sense = surfaces_c[abs(token)-1]->sense(xyz, uvw);
+        bool sense = surfaces_c[abs(token)-1]->sense(r, a);
         if (sense != (token > 0)) {return false;}
       }
     }
@@ -381,8 +378,7 @@ Cell::contains_simple(const double xyz[3], const double uvw[3],
 //==============================================================================
 
 bool
-Cell::contains_complex(const double xyz[3], const double uvw[3],
-                       int32_t on_surface) const
+Cell::contains_complex(Position r, Angle a, int32_t on_surface) const
 {
   // Make a stack of booleans.  We don't know how big it needs to be, but we do
   // know that rpn.size() is an upper-bound.
@@ -413,7 +409,7 @@ Cell::contains_complex(const double xyz[3], const double uvw[3],
         stack[i_stack] = false;
       } else {
         // Note the off-by-one indexing
-        bool sense = surfaces_c[abs(token)-1]->sense(xyz, uvw);;
+        bool sense = surfaces_c[abs(token)-1]->sense(r, a);;
         stack[i_stack] = (sense == (token > 0));
       }
     }
@@ -494,12 +490,18 @@ extern "C" {
   bool cell_simple(Cell *c) {return c->simple;}
 
   bool cell_contains(Cell *c, double xyz[3], double uvw[3], int32_t on_surface)
-  {return c->contains(xyz, uvw, on_surface);}
+  {
+    Position r {xyz};
+    Angle a {uvw};
+    return c->contains(r, a, on_surface);
+  }
 
   void cell_distance(Cell *c, double xyz[3], double uvw[3], int32_t on_surface,
                      double *min_dist, int32_t *i_surf)
   {
-    std::pair<double, int32_t> out = c->distance(xyz, uvw, on_surface);
+    Position r {xyz};
+    Angle a {uvw};
+    std::pair<double, int32_t> out = c->distance(r, a, on_surface);
     *min_dist = out.first;
     *i_surf = out.second;
   }

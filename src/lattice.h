@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "constants.h"
+#include "geometry.h"
 #include "hdf5.h"
 #include "pugixml.hpp"
 
@@ -75,26 +76,26 @@ public:
   virtual bool are_valid_indices(const int i_xyz[3]) const = 0;
 
   //! \brief Find the next lattice surface crossing
-  //! @param xyz[3] A 3D Cartesian coordinate.
-  //! @param uvw[3] A 3D Cartesian direction.
+  //! @param r A 3D Cartesian coordinate.
+  //! @param a A 3D Cartesian direction.
   //! @param i_xyz[3] The indices for a lattice tile.
   //! @return The distance to the next crossing and an array indicating how the
   //!   lattice indices would change after crossing that boundary.
   virtual std::pair<double, std::array<int, 3>>
-  distance(const double xyz[3], const double uvw[3], const int i_xyz[3]) const
+  distance(Position r, Angle a, const int i_xyz[3]) const
   = 0;
 
   //! \brief Find the lattice tile indices for a given point.
-  //! @param xyz[3] A 3D Cartesian coordinate.
+  //! @param r A 3D Cartesian coordinate.
   //! @return An array containing the indices of a lattice tile.
-  virtual std::array<int, 3> get_indices(const double xyz[3]) const = 0;
+  virtual std::array<int, 3> get_indices(Position r) const = 0;
 
   //! \brief Get coordinates local to a lattice tile.
-  //! @param global_xyz[3] A 3D Cartesian coordinate.
+  //! @param r A 3D Cartesian coordinate.
   //! @param i_xyz[3] The indices for a lattice tile.
   //! @return Local 3D Cartesian coordinates.
-  virtual std::array<double, 3>
-  get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const = 0;
+  virtual Position
+  get_local_position(Position r, const int i_xyz[3]) const = 0;
 
   //! \brief Check flattened lattice index.
   //! @param indx The index for a lattice tile.
@@ -193,12 +194,12 @@ public:
   bool are_valid_indices(const int i_xyz[3]) const;
 
   std::pair<double, std::array<int, 3>>
-  distance(const double xyz[3], const double uvw[3], const int i_xyz[3]) const;
+  distance(Position r, Angle a, const int i_xyz[3]) const;
 
-  std::array<int, 3> get_indices(const double xyz[3]) const;
+  std::array<int, 3> get_indices(Position r) const;
 
-  std::array<double, 3>
-  get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const;
+  Position
+  get_local_position(Position r, const int i_xyz[3]) const;
 
   int32_t& offset(int map, const int i_xyz[3]);
 
@@ -207,9 +208,9 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
 
 private:
-  std::array<int, 3> n_cells;       //!< Number of cells along each axis
-  std::array<double, 3> lower_left; //!< Global lower-left corner of the lattice
-  std::array<double, 3> pitch;      //!< Lattice tile width along each axis
+  std::array<int, 3> n_cells;    //!< Number of cells along each axis
+  Position lower_left;           //!< Global lower-left corner of the lattice
+  Position pitch;                //!< Lattice tile width along each axis
 
   // Convenience aliases
   int &nx {n_cells[0]};
@@ -233,12 +234,12 @@ public:
   bool are_valid_indices(const int i_xyz[3]) const;
 
   std::pair<double, std::array<int, 3>>
-  distance(const double xyz[3], const double uvw[3], const int i_xyz[3]) const;
+  distance(Position r, Angle a, const int i_xyz[3]) const;
 
-  std::array<int, 3> get_indices(const double xyz[3]) const;
+  std::array<int, 3> get_indices(Position r) const;
 
-  std::array<double, 3>
-  get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const;
+  Position
+  get_local_position(Position r, const int i_xyz[3]) const;
 
   bool is_valid_index(int indx) const;
 
@@ -251,7 +252,7 @@ public:
 private:
   int n_rings;                   //!< Number of radial tile positions
   int n_axial;                   //!< Number of axial tile positions
-  std::array<double, 3> center;  //!< Global center of lattice
+  Position center;               //!< Global center of lattice
   std::array<double, 2> pitch;   //!< Lattice tile width and height
 };
 

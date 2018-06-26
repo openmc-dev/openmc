@@ -94,9 +94,8 @@ _COMPTON_PROFILES = {}
 # Stopping powers are read from a pre-generated HDF5 file when they are first
 # needed. The dictionary stores an array of energy values at which the other
 # quantities are tabulated with the key 'energy' and for each element has the
-# mass density, the mean excitation energy, and arrays containing the collision
-# stopping powers, radiative stopping powers, and the density effect parameter
-# stored on the key 'Z'.
+# mean excitation energy and arrays containing the collision stopping powers
+# and radiative stopping powers stored on the key 'Z'.
 _STOPPING_POWERS = {}
 
 # Scaled bremsstrahlung DCSs are read from a data file provided by Selzter and
@@ -368,11 +367,10 @@ class IncidentPhoton(EqualityMixin):
         Contains the cross sections for each photon reaction. The keys are MT
         values and the values are instances of :class:`PhotonReaction`.
     stopping_powers : dict
-        Dictionary of stopping power data with keys 'energy' (in eV), 'density'
-        (mass density in g/cm:sup:`3`), 'I' (mean excitation energy),
-        's_collision' (collision stopping power in eV cm:sup:`2`/g),
-        's_radiative' (radiative stopping power in eV cm:sup:`2`/g), and
-        'density_effect' (density effect parameter).
+        Dictionary of stopping power data with keys 'energy' (in eV), 'I' (mean
+        excitation energy), 's_collision' (collision stopping power in
+        eV cm:sup:`2`/g), and 's_radiative' (radiative stopping power in
+        eV cm:sup:`2`/g)
     summed_reactions : collections.OrderedDict
         Contains summed cross sections. The keys are MT values and the values
         are instances of :class:`PhotonReaction`.
@@ -590,11 +588,9 @@ class IncidentPhoton(EqualityMixin):
                 _STOPPING_POWERS['energy'] = f['energy'].value*EV_PER_MEV
                 for i in range(1, 99):
                     group = f['{:03}'.format(i)]
-                    _STOPPING_POWERS[i] = {'density': group.attrs['density'],
-                                           'I': group.attrs['I'],
+                    _STOPPING_POWERS[i] = {'I': group.attrs['I'],
                                            's_collision': group['s_collision'].value,
-                                           's_radiative': group['s_radiative'].value,
-                                           'density_effect': group['density_effect'].value}
+                                           's_radiative': group['s_radiative'].value}
 
                     # Units are in MeV cm^2/g; convert to eV cm^2/g
                     _STOPPING_POWERS[i]['s_collision'] *= EV_PER_MEV
@@ -776,7 +772,7 @@ class IncidentPhoton(EqualityMixin):
             s_group = group.create_group('stopping_powers')
 
             for key, value in self.stopping_powers.items():
-                if key in ('density', 'I'):
+                if key == 'I':
                     s_group.attrs[key] = value
                 else:
                     s_group.create_dataset(key, data=value)

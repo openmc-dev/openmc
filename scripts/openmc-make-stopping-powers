@@ -12,7 +12,7 @@ from openmc.data import ATOMIC_SYMBOL
 base_url = 'https://physics.nist.gov/cgi-bin/Star/e_table-t.pl'
 energies = np.logspace(-3, 3, 200)
 data = {'matno': '', 'Energies': '\n'.join(str(x) for x in energies)}
-columns = {1: 's_collision', 2: 's_radiative', 4: 'density_effect'}
+columns = {1: 's_collision', 2: 's_radiative'}
 
 # ==============================================================================
 # SCRAPE DATA FROM ESTAR SITE AND GENERATE STOPPING POWER HDF5 FILE
@@ -41,12 +41,10 @@ with h5py.File('stopping_powers.h5', 'w') as f:
         # Create group for this element
         group = f.create_group('{:03}'.format(Z))
 
-        # Write the density and mean excitation energy
+        # Write the mean excitation energy
         attributes = np.fromstring(r[3], sep=' ')
-        group.attrs['density'] = attributes[1]
         group.attrs['I'] = attributes[2]
 
-        # Write collision and radiative stopping powers and density effect
-        # parameter
+        # Write collision and radiative stopping powers
         for i in columns:
             group.create_dataset(columns[i], data=values[i])

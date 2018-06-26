@@ -699,165 +699,221 @@ contains
 
   end function openmc_material_set_densities
 
-  subroutine bremsstrahlung_init(this, i_material)
-    class(Bremsstrahlung), intent(inout) :: this
+  subroutine bremsstrahlung_init(this, i_material, particle)
+    class(BremsstrahlungData), intent(inout) :: this
     integer, intent(in) :: i_material
+    integer, intent(in) :: particle
 
     integer                 :: i, j
     integer                 :: i_k
-    integer                 :: n_e, n_k
-    real(8)                 :: e
+    integer                 :: n, n_e, n_k
     real(8)                 :: c
-    real(8)                 :: k, k_l, k_r, k_c
-    real(8)                 :: x_l, x_r, x_c
+    real(8)                 :: k, k_l, k_r
+    real(8)                 :: e, e_l, e_r
+    real(8)                 :: w, w_l, w_r
+    real(8)                 :: x, x_l, x_r
+    real(8)                 :: t
+    real(8)                 :: r
     real(8)                 :: awr
-    real(8)                 :: density
-    real(8)                 :: density_gpcc
-    real(8)                 :: Z_eq_sq
     real(8)                 :: beta
-    real(8)                 :: atom_sum
-    real(8)                 :: mass_sum
-    real(8), allocatable    :: atom_fraction(:)
-    real(8), allocatable    :: mass_fraction(:)
+    real(8)                 :: Z_eq_sq
+    real(8)                 :: atom_density
+    real(8)                 :: mass_density
+    real(8)                 :: sum_density
+    real(8), allocatable    :: stopping_power_collision(:)
+    real(8), allocatable    :: stopping_power_radiative(:)
     real(8), allocatable    :: stopping_power(:)
-    real(8), allocatable    :: mfp_inv(:)
+    real(8), allocatable    :: dcs(:,:)
+    real(8), allocatable    :: f(:)
     real(8), allocatable    :: z(:)
+    logical                 :: positron_
     type(Material), pointer :: mat
     type(PhotonInteraction), pointer :: elm
 
     ! Get pointer to this material
     mat => materials(i_material)
-    this % i_material = i_material
 
-    ! Allocate and initialize arrays
-    n_k = size(ttb_k_grid)
-    n_e = size(ttb_e_grid)
-    allocate(atom_fraction(mat % n_nuclides))
-    allocate(mass_fraction(mat % n_nuclides))
-    allocate(stopping_power(n_e))
-    allocate(mfp_inv(n_e))
-    allocate(this % yield(n_e))
-    allocate(this % dcs(n_k, n_e))
-    allocate(this % cdf(n_k, n_e))
-    allocate(z(n_e))
-    stopping_power(:) = ZERO
-    mfp_inv(:) = ZERO
-    this % dcs(:,:) = ZERO
-    this % cdf(:,:) = ZERO
-
-    ! Calculate the "equivalent" atomic number Zeq, the atomic fraction and the
-    ! mass fraction of each element, and the material density in atom/b-cm and
-    ! in g/cm^3
-    Z_eq_sq = ZERO
-    do i = 1, mat % n_nuclides
-      awr = nuclides(mat % nuclide(i)) % awr
-
-      ! Given atom percent
-      if (mat % atom_density(1) > ZERO) then
-        atom_fraction(i) = mat % atom_density(i)
-        mass_fraction(i) = mat % atom_density(i) * awr
-
-      ! Given weight percent
-      else
-        atom_fraction(i) = -mat % atom_density(i) / awr
-        mass_fraction(i) = -mat % atom_density(i)
-      end if
-
-      Z_eq_sq = Z_eq_sq + atom_fraction(i) * nuclides(mat % nuclide(i)) % Z**2
-    end do
-    atom_sum = sum(atom_fraction)
-    mass_sum = sum(mass_fraction)
-
-    ! Given material density in g/cm^3
-    if (mat % density < ZERO) then
-      density = -mat % density * (atom_sum / mass_sum) * N_AVOGADRO / MASS_NEUTRON
-      density_gpcc = -mat % density
-
-    ! Given material density in atom/b-cm
+    ! Determine whether we are generating electron or positron data
+    if (particle == POSITRON) then
+      positron_ = .true.
     else
-      density = mat % density
-      density_gpcc = mat % density * (mass_sum / atom_sum) * MASS_NEUTRON / &
-           N_AVOGADRO
+      positron_ = .false.
     end if
 
-    Z_eq_sq = Z_eq_sq / atom_sum
-    atom_fraction = atom_fraction / atom_sum
-    mass_fraction = mass_fraction / mass_sum
+    ! Get the size of the energy grids
+    n_k = size(ttb_k_grid)
+    n_e = size(ttb_e_grid)
+
+    ! Allocate arrays for TTB data
+    allocate(this % pdf(n_e, n_e), source=ZERO)
+    allocate(this % cdf(n_e, n_e), source=ZERO)
+    allocate(this % yield(n_e))
+
+    ! Allocate temporary arrays
+    allocate(stopping_power_collision(n_e), source=ZERO)
+    allocate(stopping_power_radiative(n_e), source=ZERO)
+    allocate(stopping_power(n_e))
+    allocate(dcs(n_k, n_e), source=ZERO)
+    allocate(f(n_e))
+    allocate(z(n_e))
+
+    Z_eq_sq = ZERO
+    sum_density = ZERO
 
     ! Calculate the molecular DCS and the molecular total stopping power using
-    ! Bragg's additivity rule. Note: the collision stopping power cannot be
-    ! accurately calculated using Bragg's additivity rule since the mean
-    ! excitation energies and the density effect corrections cannot simply be
-    ! summed together. Bragg's additivity rule fails especially when a
-    ! higher-density compound is composed of elements that are in lower-density
-    ! form at normal temperature and pressure (at which the NIST stopping
-    ! powers are given). It will be used to approximate the collision stopping
-    ! powers for now, but should be fixed in the future.
+    ! Bragg's additivity rule.
+    ! TODO: The collision stopping power cannot be accurately calculated using
+    ! Bragg's additivity rule since the mean excitation energies and the
+    ! density effect corrections cannot simply be summed together. Bragg's
+    ! additivity rule fails especially when a higher-density compound is
+    ! composed of elements that are in lower-density form at normal temperature
+    ! and pressure (at which the NIST stopping powers are given). It will be
+    ! used to approximate the collision stopping powers for now, but should be
+    ! fixed in the future.
     do i = 1, mat % n_nuclides
       ! Get pointer to current element
       elm => elements(mat % element(i))
 
-      ! TODO: for molecular DCS, atom_fraction should actually be the number of
-      ! atoms in the molecule.
+      awr = nuclides(mat % nuclide(i)) % awr
+
+      ! Get atomic density and mass density of nuclide given atom percent
+      if (mat % atom_density(1) > ZERO) then
+        atom_density = mat % atom_density(i)
+        mass_density = mat % atom_density(i) * awr
+      ! Given weight percent
+      else
+        atom_density = -mat % atom_density(i) / awr
+        mass_density = -mat % atom_density(i)
+      end if
+
+      ! Calculate the "equivalent" atomic number Zeq of the material
+      Z_eq_sq = Z_eq_sq + atom_density * elm % Z**2
+      sum_density = sum_density + atom_density
+
       ! Accumulate material DCS
-      this % dcs = this % dcs + atom_fraction(i) * elm % Z**2 / Z_eq_sq * elm % dcs
+      dcs = dcs + atom_density * elm % Z**2 * elm % dcs
 
-      ! Accumulate material total stopping power
-      stopping_power = stopping_power + mass_fraction(i) * density_gpcc * &
-           (elm % stopping_power_collision + elm % stopping_power_radiative)
+      ! Accumulate material collision stopping power
+      stopping_power_collision = stopping_power_collision + mass_density &
+           * MASS_NEUTRON / N_AVOGADRO * elm % stopping_power_collision
+
+      ! Accumulate material radiative stopping power
+      stopping_power_radiative = stopping_power_radiative + mass_density &
+           * MASS_NEUTRON / N_AVOGADRO * elm % stopping_power_radiative
     end do
+    Z_eq_sq = Z_eq_sq / sum_density
 
-    ! Calculate inverse bremsstrahlung mean free path
-    do i = 1, n_e
-      e = ttb_e_grid(i)
-      if (e <= energy_cutoff(PHOTON)) cycle
+    ! Calculate the positron DCS and radiative stopping power. These are
+    ! obtained by multiplying the electron DCS and radiative stopping powers by
+    ! a factor r, which is a numerical approximation of the ratio of the
+    ! radiative stopping powers for positrons and electrons. Source: F. Salvat,
+    ! J. M. Fernández-Varea, and J. Sempau, "PENELOPE-2011: A Code System for
+    ! Monte Carlo Simulation of Electron and Photon Transport," OECD-NEA,
+    ! Issy-les-Moulineaux, France (2011).
+    if (positron_) then
+      do i = 1, n_e
+        t = log(ONE + 1.0e6_8*ttb_e_grid(i)/(Z_eq_sq*MASS_ELECTRON))
+        r = ONE - exp(-1.2359e-1_8*t + 6.1274e-2_8*t**2 - 3.1516e-2_8*t**3 + &
+             7.7446e-3_8*t**4 - 1.0595e-3_8*t**5 + 7.0568e-5_8*t**6 - &
+             1.808e-6_8*t**7)
+        stopping_power_radiative(i) = r*stopping_power_radiative(i)
+        dcs(:,i) = r*dcs(:,i)
+      end do
+    end if
 
-      ! Ratio of the velocity of the charged particle to the speed of light
-      beta = sqrt(e*(e + TWO*MASS_ELECTRON)) / (e + MASS_ELECTRON)
+    ! Total material stopping power
+    stopping_power = stopping_power_collision + stopping_power_radiative
 
-      ! Integration lower bound
-      k_c = energy_cutoff(PHOTON) / e
+    ! Loop over photon energies
+    do i = 1, n_e - 1
+      w = ttb_e_grid(i)
 
-      ! Find the upper bounding index of the reduced photon cutoff energy
-      i_k = binary_search(ttb_k_grid, n_k, k_c) + 1
+      ! Loop over incident particle energies
+      do j = i, n_e
+        e = ttb_e_grid(j)
 
-      ! Get the interpolation bounds
-      k_l = ttb_k_grid(i_k-1)
-      k_r = ttb_k_grid(i_k)
-      x_l = this % dcs(i_k-1, i)
-      x_r = this % dcs(i_k, i)
+        ! Reduced photon energy
+        k = w / e
 
-      ! Use linear interpolation in reduced photon energy k to find value of
-      ! the DCS at the cutoff energy
-      x_c = (x_l * (k_r - k_c) + x_r * (k_c - k_l)) / (k_r - k_l)
+        ! Find the lower bounding index of the reduced photon energy
+        i_k = binary_search(ttb_k_grid, n_k, k)
 
-      ! Calculate the CDF using the trapezoidal rule in log-log space
-      c = HALF * (log(k_r) - log(k_c)) * (x_c + x_r)
-      this % cdf(i_k,i) = c
-      do j = i_k, n_k - 1
-        c = c + HALF * (log(ttb_k_grid(j+1)) - log(ttb_k_grid(j))) * &
-             (this % dcs(j,i) + this % dcs(j+1,i))
-        this % cdf(j+1,i) = c
+        ! Get the interpolation bounds
+        k_l = ttb_k_grid(i_k)
+        k_r = ttb_k_grid(i_k+1)
+        x_l = dcs(i_k, j)
+        x_r = dcs(i_k+1, j)
+
+        ! Find the value of the DCS using linear interpolation in reduced
+        ! photon energy k
+        x = x_l + (k - k_l) * (x_r - x_l) / (k_r - k_l)
+
+        ! Ratio of the velocity of the charged particle to the speed of light
+        beta = sqrt(e*(e + TWO*MASS_ELECTRON)) / (e + MASS_ELECTRON)
+
+        ! Compute the integrand of the PDF
+        f(j) = (1.0e-3_8 * x) / (beta**2 * stopping_power(j) * w)
       end do
 
-      ! Calculate the inverse bremsstrahlung mean free path
-      mfp_inv(i) = c * density * Z_eq_sq / beta**2 * 1.0e-3_8
+      ! Number of points to integrate
+      n = n_e - i + 1
+
+      ! Integrate the PDF using cubic spline integration over the incident
+      ! particle energy
+      if (n > 2) then
+        call spline(ttb_e_grid(i:), f(i:), z(i:), n)
+
+        c = ZERO
+        do j = i, n_e - 1
+          c = c + spline_integrate(ttb_e_grid(i:), f(i:), z(i:), n, &
+               ttb_e_grid(j), ttb_e_grid(j+1))
+          this % pdf(i,j+1) = c
+        end do
+
+      ! Integrate the last two points using trapezoidal rule in log-log space
+      else
+        e_l = log(ttb_e_grid(i))
+        e_r = log(ttb_e_grid(i+1))
+        x_l = log(f(i))
+        x_r = log(f(i+1))
+
+        this % pdf(i,i+1) = HALF * (e_r - e_l) * (exp(e_l + x_l) + exp(e_r + x_r))
+      end if
     end do
 
-    ! Calculate photon number yield
-    mfp_inv(:) = mfp_inv(:) / stopping_power(:)
-    call spline(ttb_e_grid, mfp_inv, z, n_e)
-    do i = 1, n_e
-      this % yield(i) = spline_integrate(ttb_e_grid, mfp_inv, z, n_e, &
-           energy_cutoff(PHOTON), ttb_e_grid(i))
+    ! Loop over incident particle energies
+    do j = 2, n_e
+      ! Set last element of PDF to small non-zero value to enable log-log
+      ! interpolation
+      this % pdf(j,j) = exp(-500.0_8)
+
+      ! Loop over photon energies
+      c = ZERO
+      do i = 1, j - 1
+        ! Integrate the CDF from the PDF using the trapezoidal rule in log-log
+        ! space
+        w_l = log(ttb_e_grid(i))
+        w_r = log(ttb_e_grid(i+1))
+        x_l = log(this % pdf(i,j))
+        x_r = log(this % pdf(i+1,j))
+
+        c = c + HALF * (w_r - w_l) * (exp(w_l + x_l) + exp(w_r + x_r))
+        this % cdf(i+1,j) = c
+      end do
+
+      ! Set photon number yield
+      this % yield(j) = c
     end do
 
     ! Use logarithm of number yield since it is log-log interpolated
     where (this % yield > ZERO)
       this % yield = log(this % yield)
+    elsewhere
+      this % yield = -500.0_8
     end where
 
-    deallocate(atom_fraction, mass_fraction, stopping_power, mfp_inv, z)
+    deallocate(stopping_power_collision, stopping_power_radiative, &
+         stopping_power, dcs, f, z)
 
   end subroutine bremsstrahlung_init
 

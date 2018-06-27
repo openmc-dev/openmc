@@ -140,6 +140,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
     hid_t xsdata = open_dataset(xsdata_grp, "beta");
     int ndims = dataset_ndims(xsdata);
 
+    // raise ndims to make the isotropic ndims the same as angular
     if (is_isotropic) ndims += 2;
 
     if (ndims == 3) {
@@ -211,6 +212,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
   if (object_exists(xsdata_grp, "nu-fission")) {
     hid_t xsdata = open_dataset(xsdata_grp, "nu-fission");
     int ndims = dataset_ndims(xsdata);
+    // raise ndims to make the isotropic ndims the same as angular
     if (is_isotropic) ndims += 2;
 
     if (ndims == 3) {
@@ -317,6 +319,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
   if (object_exists(xsdata_grp, "chi-delayed")) {
     hid_t xsdata = open_dataset(xsdata_grp, "chi-delayed");
     int ndims = dataset_ndims(xsdata);
+    // raise ndims to make the isotropic ndims the same as angular
     if (is_isotropic) ndims += 2;
     close_dataset(xsdata);
 
@@ -374,6 +377,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
   if (object_exists(xsdata_grp, "prompt-nu-fission")) {
     hid_t xsdata = open_dataset(xsdata_grp, "prompt-nu-fission");
     int ndims = dataset_ndims(xsdata);
+    // raise ndims to make the isotropic ndims the same as angular
     if (is_isotropic) ndims += 2;
     close_dataset(xsdata);
 
@@ -419,6 +423,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
     hid_t xsdata = open_dataset(xsdata_grp, "delayed-nu-fission");
     int ndims = dataset_ndims(xsdata);
     close_dataset(xsdata);
+    // raise ndims to make the isotropic ndims the same as angular
     if (is_isotropic) ndims += 2;
 
     if (ndims == 3) {

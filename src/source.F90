@@ -14,7 +14,7 @@ module source
   use hdf5_interface
   use math
   use message_passing,  only: rank
-  use mgxs_header,      only: rev_energy_bins, num_energy_groups
+  use mgxs_interface,   only: rev_energy_bins, num_energy_groups
   use output,           only: write_message
   use particle_header,  only: Particle
   use random_lcg,       only: prn, set_particle_seed, prn_set_stream

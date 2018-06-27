@@ -452,7 +452,7 @@ read_nd_vector(hid_t obj_id, const char* name, std::vector<double>& result,
                bool must_have)
 {
   if (object_exists(obj_id, name)) {
-    read_double(obj_id, name, &result[0], true);
+    read_double(obj_id, name, result.data(), true);
   } else if (must_have) {
     fatal_error(std::string("Must provide " + std::string(name) + "!"));
   }
@@ -466,8 +466,8 @@ read_nd_vector(hid_t obj_id, const char* name,
   if (object_exists(obj_id, name)) {
     int dim1 = result.size();
     int dim2 = result[0].size();
-    std::vector<double> temp_arr = std::vector<double>(dim1 * dim2);
-    read_double(obj_id, name, &temp_arr[0], true);
+    double temp_arr[dim1 * dim2];
+    read_double(obj_id, name, temp_arr, true);
 
     int temp_idx = 0;
     for (int i = 0; i < dim1; i++) {
@@ -488,8 +488,8 @@ read_nd_vector(hid_t obj_id, const char* name,
   if (object_exists(obj_id, name)) {
     int dim1 = result.size();
     int dim2 = result[0].size();
-    std::vector<int> temp_arr = std::vector<int>(dim1 * dim2);
-    read_int(obj_id, name, &temp_arr[0], true);
+    int temp_arr[dim1 * dim2];
+    read_int(obj_id, name, temp_arr, true);
 
     int temp_idx = 0;
     for (int i = 0; i < dim1; i++) {
@@ -512,8 +512,8 @@ read_nd_vector(hid_t obj_id, const char* name,
     int dim1 = result.size();
     int dim2 = result[0].size();
     int dim3 = result[0][0].size();
-    std::vector<double> temp_arr = std::vector<double>(dim1 * dim2 * dim3);
-    read_double(obj_id, name, &temp_arr[0], true);
+    double temp_arr[dim1 * dim2 * dim3];
+    read_double(obj_id, name, temp_arr, true);
 
     int temp_idx = 0;
     for (int i = 0; i < dim1; i++) {
@@ -537,8 +537,8 @@ read_nd_vector(hid_t obj_id, const char* name,
     int dim1 = result.size();
     int dim2 = result[0].size();
     int dim3 = result[0][0].size();
-    std::vector<int> temp_arr = std::vector<int>(dim1 * dim2 * dim3);
-    read_int(obj_id, name, &temp_arr[0], true);
+    int temp_arr[dim1 * dim2 * dim3];
+    read_int(obj_id, name, temp_arr, true);
 
     int temp_idx = 0;
     for (int i = 0; i < dim1; i++) {
@@ -563,9 +563,8 @@ read_nd_vector(hid_t obj_id, const char* name,
     int dim2 = result[0].size();
     int dim3 = result[0][0].size();
     int dim4 = result[0][0][0].size();
-    std::vector<double> temp_arr = std::vector<double>(
-         dim1 * dim2 * dim3 * dim4);
-    read_double(obj_id, name, &temp_arr[0], true);
+    double temp_arr[dim1 * dim2 * dim3 * dim4];
+    read_double(obj_id, name, temp_arr, true);
 
     int temp_idx = 0;
     for (int i = 0; i < dim1; i++) {
@@ -593,9 +592,8 @@ read_nd_vector(hid_t obj_id, const char* name,
     int dim3 = result[0][0].size();
     int dim4 = result[0][0][0].size();
     int dim5 = result[0][0][0][0].size();
-    std::vector<double> temp_arr = std::vector<double>(
-         dim1 * dim2 * dim3 * dim4 * dim5);
-    read_double(obj_id, name, &temp_arr[0], true);
+    double temp_arr[dim1 * dim2 * dim3 * dim4 * dim5];
+    read_double(obj_id, name, temp_arr, true);
 
     int temp_idx = 0;
     for (int i = 0; i < dim1; i++) {

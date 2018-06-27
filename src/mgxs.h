@@ -4,23 +4,11 @@
 #ifndef MGXS_H
 #define MGXS_H
 
-#include <cmath>
-#include <cstdlib>
-#include <algorithm>
 #include <string>
-#include <valarray>
 #include <vector>
-
- #ifdef _OPENMP
- # include <omp.h>
- #endif
 
 #include "constants.h"
 #include "hdf5_interface.h"
-#include "math_functions.h"
-#include "random_lcg.h"
-#include "scattdata.h"
-#include "string_functions.h"
 #include "xsdata.h"
 
 

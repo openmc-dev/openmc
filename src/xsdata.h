@@ -4,15 +4,10 @@
 #ifndef XSDATA_H
 #define XSDATA_H
 
-#include <cmath>
-#include <cstdlib>
-#include <algorithm>
+#include <memory>
 #include <vector>
 
-#include "constants.h"
 #include "hdf5_interface.h"
-#include "math_functions.h"
-#include "random_lcg.h"
 #include "scattdata.h"
 
 
@@ -61,7 +56,7 @@ class XsData {
     // [angle][incoming group][outgoing group][delayed group]
     double_4dvec chi_delayed;
     // scatter has the following dimensions: [angle]
-    std::vector<ScattData*> scatter;
+    std::vector<std::shared_ptr<ScattData> > scatter;
 
     XsData() = default;
 

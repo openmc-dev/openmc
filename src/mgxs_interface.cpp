@@ -1,4 +1,9 @@
+#include <string>
+
+#include "error.h"
+#include "math_functions.h"
 #include "mgxs_interface.h"
+
 
 namespace openmc {
 
@@ -12,11 +17,8 @@ add_mgxs_c(hid_t file_id, const char* name, int energy_groups,
      int max_order, bool legendre_to_tabular, int legendre_to_tabular_points,
      int& method)
 {
-  //!! mgxs_data.F90 will be modified to just create the list of names
-  //!! in the order needed
   // Convert temps to a vector for the from_hdf5 function
-  double_1dvec temperature;
-  temperature.assign(temps, temps + n_temps);
+  double_1dvec temperature(temps, temps + n_temps);
 
   write_message("Loading " + std::string(name) + " data...", 6);
 
@@ -33,6 +35,7 @@ add_mgxs_c(hid_t file_id, const char* name, int energy_groups,
           max_order, legendre_to_tabular, legendre_to_tabular_points, method);
 
   nuclides_MG.push_back(mg);
+  close_group(xs_grp);
 }
 
 //==============================================================================
@@ -56,12 +59,11 @@ create_macro_xs_c(const char* mat_name, int n_nuclides, const int i_nuclides[],
 {
   if (n_temps > 0) {
     // // Convert temps to a vector
-    double_1dvec temperature;
-    temperature.assign(temps, temps + n_temps);
+    double_1dvec temperature(temps, temps + n_temps);
 
     // Convert atom_densities to a vector
-    double_1dvec atom_densities_vec;
-    atom_densities_vec.assign(atom_densities, atom_densities + n_nuclides);
+    double_1dvec atom_densities_vec(atom_densities,
+         atom_densities + n_nuclides);
 
     // Build array of pointers to nuclides_MG's Mgxs objects needed for this
     // material
@@ -72,11 +74,11 @@ create_macro_xs_c(const char* mat_name, int n_nuclides, const int i_nuclides[],
 
     Mgxs macro(mat_name, temperature, mgxs_ptr, atom_densities_vec,
          tolerance, method);
-    macro_xs.push_back(macro);
+    macro_xs.emplace_back(macro);
   } else {
     // Preserve the ordering of materials by including a blank entry
     Mgxs macro;
-    macro_xs.push_back(macro);
+    macro_xs.emplace_back(macro);
   }
 }
 

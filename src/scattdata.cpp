@@ -1,3 +1,11 @@
+#include <algorithm>
+#include <numeric>
+#include <cmath>
+
+#include "constants.h"
+#include "math_functions.h"
+#include "random_lcg.h"
+#include "error.h"
 #include "scattdata.h"
 
 namespace openmc {
@@ -35,7 +43,6 @@ ScattData::base_init(int order, const int_1dvec& in_gmin,
     dist[gin].resize(in_gmax[gin] - in_gmin[gin] + 1);
     for (auto& v : dist[gin]) {
       v.resize(order);
-      for (auto& n : v) n = 0.;
     }
   }
 }
@@ -193,27 +200,22 @@ ScattData::get_xs(int xstype, int gin, const int* gout, const double* mu)
     i_gout = *gout - gmin[gin];
   }
 
-  double val = 0.;
+  double val = scattxs[gin];
   switch(xstype) {
   case MG_GET_XS_SCATTER:
-    if (gout != nullptr) {
-      val = scattxs[gin] * energy[gin][i_gout];
-    } else {
-      val = scattxs[gin];
-    }
+    if (gout != nullptr) val *= energy[gin][i_gout];
     break;
   case MG_GET_XS_SCATTER_MULT:
     if (gout != nullptr) {
-      val = scattxs[gin] * energy[gin][i_gout] / mult[gin][i_gout];
+      val *= energy[gin][i_gout] / mult[gin][i_gout];
     } else {
-      val = scattxs[gin] /
-           std::inner_product(mult[gin].begin(), mult[gin].end(),
-           energy[gin].begin(), 0.0);
+      val /= std::inner_product(mult[gin].begin(), mult[gin].end(),
+                                energy[gin].begin(), 0.0);
     }
     break;
   case MG_GET_XS_SCATTER_FMU_MULT:
     if ((gout != nullptr) && (mu != nullptr)) {
-      val = scattxs[gin] * energy[gin][i_gout] * calc_f(gin, *gout, *mu);
+      val *= energy[gin][i_gout] * calc_f(gin, *gout, *mu);
     } else {
       // This is not an expected path (asking for f_mu without asking for a
       // group or mu is not useful
@@ -222,8 +224,7 @@ ScattData::get_xs(int xstype, int gin, const int* gout, const double* mu)
     break;
   case MG_GET_XS_SCATTER_FMU:
     if ((gout != nullptr) && (mu != nullptr)) {
-      val = scattxs[gin] * energy[gin][i_gout] * calc_f(gin, *gout, *mu) /
-           mult[gin][i_gout];
+      val *= energy[gin][i_gout] * calc_f(gin, *gout, *mu) / mult[gin][i_gout];
     } else {
       // This is not an expected path (asking for f_mu without asking for a
       // group or mu is not useful
@@ -674,8 +675,7 @@ ScattDataTabular::init(const int_1dvec& in_gmin, const int_1dvec& in_gmax,
   }
 
   // Build the energy transfer matrix from data in the variable matrix
-  double_2dvec in_energy;
-  in_energy.resize(groups);
+  double_2dvec in_energy(groups);
   for (int gin = 0; gin < groups; gin++) {
     int num_groups = in_gmax[gin] - in_gmin[gin] + 1;
     in_energy[gin].resize(num_groups);

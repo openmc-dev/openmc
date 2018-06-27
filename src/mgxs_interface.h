@@ -4,7 +4,7 @@
 #ifndef MGXS_INTERFACE_H
 #define MGXS_INTERFACE_H
 
-#include "error.h"
+#include "hdf5_interface.h"
 #include "mgxs.h"
 
 

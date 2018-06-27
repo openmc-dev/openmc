@@ -1,4 +1,14 @@
+#include <cmath>
+#include <cstdlib>
+#include <algorithm>
+#include <numeric>
+
+#include "constants.h"
+#include "error.h"
+#include "math_functions.h"
+#include "random_lcg.h"
 #include "xsdata.h"
+
 
 namespace openmc {
 
@@ -44,14 +54,17 @@ XsData::XsData(int energy_groups, int num_delayed_groups, bool fissionable,
          double_2dvec(energy_groups, double_1dvec(num_delayed_groups, 0.))));
   }
 
-  scatter.resize(n_ang);
+
   for (int a = 0; a < n_ang; a++) {
     if (scatter_format == ANGLE_HISTOGRAM) {
-      scatter[a] = new ScattDataHistogram;
+      // scatter[a] = std::make_unique(ScattDataHistogram);
+      scatter.emplace_back(new ScattDataHistogram);
     } else if (scatter_format == ANGLE_TABULAR) {
-      scatter[a] = new ScattDataTabular;
+      // scatter[a] = std::make_unique(ScattDataTabular);
+      scatter.emplace_back(new ScattDataTabular);
     } else if (scatter_format == ANGLE_LEGENDRE) {
-      scatter[a] = new ScattDataLegendre;
+      // scatter[a] = std::make_unique(ScattDataLegendre);
+      scatter.emplace_back(new ScattDataLegendre);
     }
   }
 }
@@ -131,7 +144,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
 
     if (ndims == 3) {
       // Beta is input as [delayed group]
-      double_1dvec temp_arr = double_1dvec(n_pol * n_azi * delayed_groups);
+      double_1dvec temp_arr(n_pol * n_azi * delayed_groups);
       read_nd_vector(xsdata_grp, "beta", temp_arr);
 
       // Broadcast to all incoming groups
@@ -155,7 +168,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
 
   // If chi is provided, set chi-prompt and chi-delayed
   if (object_exists(xsdata_grp, "chi")) {
-    double_2dvec temp_arr = double_2dvec(n_ang, double_1dvec(energy_groups));
+    double_2dvec temp_arr(n_ang, double_1dvec(energy_groups));
     read_nd_vector(xsdata_grp, "chi", temp_arr);
 
     for (int a = 0; a < n_ang; a++) {
@@ -277,7 +290,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
 
   // If chi-prompt is provided, set chi-prompt
   if (object_exists(xsdata_grp, "chi-prompt")) {
-    double_2dvec temp_arr = double_2dvec(n_ang, double_1dvec(energy_groups));
+    double_2dvec temp_arr(n_ang, double_1dvec(energy_groups));
     read_nd_vector(xsdata_grp, "chi-prompt", temp_arr);
 
     for (int a = 0; a < n_ang; a++) {
@@ -309,7 +322,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
 
     if (ndims == 3) {
       // chi-delayed is a [in group] vector
-      double_2dvec temp_arr = double_2dvec(n_ang, double_1dvec(energy_groups));
+      double_2dvec temp_arr(n_ang, double_1dvec(energy_groups));
       read_nd_vector(xsdata_grp, "chi-delayed", temp_arr);
 
       for (int a = 0; a < n_ang; a++) {
@@ -371,7 +384,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
     } else if (ndims == 4) {
       // prompt nu fission is a matrix,
       // so set prompt_nu_fiss & chi_prompt
-      double_3dvec temp_arr = double_3dvec(n_ang, double_2dvec(energy_groups,
+      double_3dvec temp_arr(n_ang, double_2dvec(energy_groups,
            double_1dvec(energy_groups)));
       read_nd_vector(xsdata_grp, "prompt-nu-fission", temp_arr);
 
@@ -414,7 +427,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
         fatal_error("cannot set delayed-nu-fission with a 1D array if "
                     "beta is not provided");
       }
-      double_2dvec temp_arr = double_2dvec(n_ang, double_1dvec(energy_groups));
+      double_2dvec temp_arr(n_ang, double_1dvec(energy_groups));
       read_nd_vector(xsdata_grp, "delayed-nu-fission", temp_arr);
 
       for (int a = 0; a < n_ang; a++) {
@@ -433,7 +446,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
 
     } else if (ndims == 5) {
       // This will contain delayed-nu-fision and chi-delayed data
-      double_4dvec temp_arr = double_4dvec(n_ang, double_3dvec(energy_groups,
+      double_4dvec temp_arr(n_ang, double_3dvec(energy_groups,
            double_2dvec(energy_groups, double_1dvec(delayed_groups))));
       read_nd_vector(xsdata_grp, "delayed-nu-fission", temp_arr);
 
@@ -491,9 +504,9 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
   hid_t scatt_grp = open_group(xsdata_grp, "scatter_data");
 
   // Get the outgoing group boundary indices
-  int_2dvec gmin = int_2dvec(n_ang, int_1dvec(energy_groups));
+  int_2dvec gmin(n_ang, int_1dvec(energy_groups));
   read_nd_vector(scatt_grp, "g_min", gmin, true);
-  int_2dvec gmax = int_2dvec(n_ang, int_1dvec(energy_groups));
+  int_2dvec gmax(n_ang, int_1dvec(energy_groups));
   read_nd_vector(scatt_grp, "g_max", gmax, true);
 
   // Make gmin and gmax start from 0 vice 1 as they do in the library
@@ -512,7 +525,7 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
       length += order_data * (gmax[a][gin] - gmin[a][gin] + 1);
     }
   }
-  double_1dvec temp_arr = double_1dvec(length);
+  double_1dvec temp_arr(length);
   read_nd_vector(scatt_grp, "scatter_matrix", temp_arr, true);
 
   // Compare the number of orders given with the max order of the problem;
@@ -526,8 +539,7 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
 
   // convert the flattened temp_arr to a jagged array for passing to
   // scatt data
-  double_4dvec input_scatt =
-       double_4dvec(n_ang, double_3dvec(energy_groups));
+  double_4dvec input_scatt(n_ang, double_3dvec(energy_groups));
 
   int temp_idx = 0;
   for (int a = 0; a < n_ang; a++) {
@@ -546,7 +558,7 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
   temp_arr.clear();
 
   // Get multiplication matrix
-  double_3dvec temp_mult = double_3dvec(n_ang, double_2dvec(energy_groups));
+  double_3dvec temp_mult(n_ang, double_2dvec(energy_groups));
   if (object_exists(scatt_grp, "multiplicity_matrix")) {
     temp_arr.resize(length / order_data);
     read_nd_vector(scatt_grp, "multiplicity_matrix", temp_arr);
@@ -584,7 +596,7 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
 
       // Now create a tabular version of legendre_scatt
       convert_legendre_to_tabular(legendre_scatt,
-           *static_cast<ScattDataTabular*>(scatter[a]),
+           *static_cast<ScattDataTabular*>(scatter[a].get()),
            legendre_to_tabular_points);
 
       scatter_format = final_scatter_format;
@@ -676,7 +688,7 @@ XsData::combine(const std::vector<XsData*>& those_xs,
     // Build vector of the scattering objects to incorporate
     std::vector<ScattData*> those_scatts(those_xs.size());
     for (int i = 0; i < those_xs.size(); i++) {
-      those_scatts[i] = those_xs[i]->scatter[a];
+      those_scatts[i] = those_xs[i]->scatter[a].get();
     }
 
     // Now combine these guys
@@ -689,12 +701,8 @@ XsData::combine(const std::vector<XsData*>& those_xs,
 bool
 XsData::equiv(const XsData& that)
 {
-  bool match = false;
-  if ((absorption.size() == that.absorption.size()) &&
-      (absorption[0].size() == that.absorption[0].size())) {
-    match = true;
-  }
-  return match;
+  return ((absorption.size() == that.absorption.size()) &&
+      (absorption[0].size() == that.absorption[0].size()));
 }
 
 } //namespace openmc

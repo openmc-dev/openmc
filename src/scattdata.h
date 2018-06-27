@@ -4,19 +4,11 @@
 #ifndef SCATTDATA_H
 #define SCATTDATA_H
 
-#include <algorithm>
-#include <numeric>
 #include <vector>
-#include <cmath>
-
-#include "constants.h"
-#include "math_functions.h"
-#include "random_lcg.h"
-#include "error.h"
 
 namespace openmc {
 
-// temporary declaations so we can name our friend functions
+// forward declarations so we can name our friend functions
 class ScattDataLegendre;
 class ScattDataTabular;
 

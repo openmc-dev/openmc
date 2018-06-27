@@ -1,4 +1,18 @@
+#include <cmath>
+#include <cstdlib>
+#include <algorithm>
+#include <valarray>
+
+ #ifdef _OPENMP
+ # include <omp.h>
+ #endif
+
+#include "error.h"
+#include "math_functions.h"
+#include "random_lcg.h"
+#include "string_functions.h"
 #include "mgxs.h"
+
 
 namespace openmc {
 
@@ -39,14 +53,7 @@ Mgxs::init(const std::string& in_name, double in_awr,
   int n_threads = 1;
 #endif
   cache.resize(n_threads);
-  for (int thread = 0; thread < n_threads; thread++) {
-    cache[thread].sqrtkT = 0.;
-    cache[thread].t = 0;
-    cache[thread].a = 0;
-    cache[thread].u = 0.;
-    cache[thread].v = 0.;
-    cache[thread].w = 0.;
-  }
+  // std::vector.resize() will value-initialize the members of cache[:]
 }
 
 //==============================================================================
@@ -59,7 +66,7 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, int in_num_groups,
   // get name
   char char_name[MAX_WORD_LEN];
   get_name(xs_id, char_name);
-  std::string in_name(char_name, std::strlen(char_name));
+  std::string in_name {char_name};
   // remove the leading '/'
   in_name = in_name.substr(1);
 
@@ -85,6 +92,9 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, int in_num_groups,
 
     // convert eV to Kelvin
     available_temps[i] /= K_BOLTZMANN;
+
+    // Done with dset_names, so delete it
+    delete[] dset_names[i];
   }
   std::sort(available_temps.begin(), available_temps.end());
 
@@ -92,7 +102,7 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, int in_num_groups,
   // interpolation
   if ((num_temps == 1) && (method == TEMPERATURE_INTERPOLATION)) {
     warning("Cross sections for " + strtrim(name) + " are only available " +
-            "at one temperature.  Reverying to the nearest temperature " +
+            "at one temperature.  Reverting to the nearest temperature " +
             "method.");
     method = TEMPERATURE_NEAREST;
   }
@@ -190,7 +200,7 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, int in_num_groups,
   if (attribute_exists(xs_id, "fissionable")) {
     int int_fiss;
     read_attr_int(xs_id, "fissionable", &int_fiss);
-    in_fissionable = (bool)int_fiss;
+    in_fissionable = int_fiss;
   } else {
     fatal_error("Fissionable element must be set!");
   }
@@ -208,7 +218,7 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, int in_num_groups,
   // moment). Adjust for that. Histogram and Tabular formats dont need this
   // adjustment.
   if (in_scatter_format == ANGLE_LEGENDRE) {
-    order_dim = order_dim + 1;
+    ++order_dim;
   }
 
   // Get the angular information
@@ -220,7 +230,7 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, int in_num_groups,
     read_attr_string(xs_id, "representation", MAX_WORD_LEN, &temp_str[0]);
     to_lower(strtrim(temp_str));
     if (temp_str.compare(0, 5, "angle") == 0) {
-      in_is_isotropic =  false;
+      in_is_isotropic = false;
     } else if (temp_str.compare(0, 9, "isotropic") != 0) {
       fatal_error("Invalid Data Representation!");
     }
@@ -326,7 +336,7 @@ Mgxs::Mgxs(const std::string& in_name, const double_1dvec& mat_kTs,
 
   // Create the xs data for each temperature
   for (int t = 0; t < mat_kTs.size(); t++) {
-    xs[t]= XsData(in_num_groups, in_num_delayed_groups, in_fissionable,
+    xs[t] = XsData(in_num_groups, in_num_delayed_groups, in_fissionable,
        in_scatter_format, in_polar.size(), in_azimuthal.size());
 
     // Find the right temperature index to use
@@ -433,28 +443,16 @@ Mgxs::get_xs(int xstype, int gin, int* gout, double* mu, int* dg)
     val = xs_t->total[a][gin];
     break;
   case MG_GET_XS_NU_FISSION:
-    if (fissionable) {
-      val = xs_t->nu_fission[a][gin];
-    } else {
-      val = 0.;
-    }
+    val = fissionable ? xs_t->nu_fission[a][gin] : 0.;
     break;
   case MG_GET_XS_ABSORPTION:
     val = xs_t->absorption[a][gin];
     break;
   case MG_GET_XS_FISSION:
-    if (fissionable) {
-      val = xs_t->fission[a][gin];
-    } else {
-      val = 0.;
-    }
+    val = fissionable ? xs_t->fission[a][gin] : 0.;
     break;
   case MG_GET_XS_KAPPA_FISSION:
-    if (fissionable) {
-      val = xs_t->kappa_fission[a][gin];
-    } else {
-      val = 0.;
-    }
+    val = fissionable ? xs_t->kappa_fission[a][gin] : 0.;
     break;
   case MG_GET_XS_SCATTER:
   case MG_GET_XS_SCATTER_MULT:
@@ -463,11 +461,7 @@ Mgxs::get_xs(int xstype, int gin, int* gout, double* mu, int* dg)
     val = xs_t->scatter[a]->get_xs(xstype, gin, gout, mu);
     break;
   case MG_GET_XS_PROMPT_NU_FISSION:
-    if (fissionable) {
-      val = xs_t->prompt_nu_fission[a][gin];
-    } else {
-      val = 0.;
-    }
+    val = fissionable ? xs_t->prompt_nu_fission[a][gin] : 0.;
     break;
   case MG_GET_XS_DELAYED_NU_FISSION:
     if (fissionable) {
@@ -638,11 +632,7 @@ Mgxs::calculate_xs(int gin, double sqrtkT, const double uvw[3],
   total_xs = xs_t->total[cache[tid].a][gin];
   abs_xs = xs_t->absorption[cache[tid].a][gin];
 
-  if (fissionable) {
-    nu_fiss_xs = xs_t->nu_fission[cache[tid].a][gin];
-  } else {
-    nu_fiss_xs = 0.;
-  }
+  nu_fiss_xs = fissionable ? xs_t->nu_fission[cache[tid].a][gin] : 0.;
 }
 
 //==============================================================================
@@ -650,18 +640,13 @@ Mgxs::calculate_xs(int gin, double sqrtkT, const double uvw[3],
 bool
 Mgxs::equiv(const Mgxs& that)
 {
-  bool match = false;
-
-  if ((num_delayed_groups == that.num_delayed_groups) &&
-      (num_groups == that.num_groups) &&
-      (n_pol == that.n_pol) &&
-      (n_azi == that.n_azi) &&
-      (std::equal(polar.begin(), polar.end(), that.polar.begin())) &&
-      (std::equal(azimuthal.begin(), azimuthal.end(), that.azimuthal.begin())) &&
-      (scatter_format == that.scatter_format)) {
-    match = true;
-  }
-  return match;
+  return ((num_delayed_groups == that.num_delayed_groups) &&
+       (num_groups == that.num_groups) &&
+       (n_pol == that.n_pol) &&
+       (n_azi == that.n_azi) &&
+       (std::equal(polar.begin(), polar.end(), that.polar.begin())) &&
+       (std::equal(azimuthal.begin(), azimuthal.end(), that.azimuthal.begin())) &&
+       (scatter_format == that.scatter_format));
 }
 
 //==============================================================================

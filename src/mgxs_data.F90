@@ -1,5 +1,7 @@
 module mgxs_data
 
+  use, intrinsic :: ISO_C_BINDING
+
   use constants
   use algorithm,       only: find
   use dict_header,     only: DictCharInt
@@ -7,11 +9,11 @@ module mgxs_data
   use geometry_header, only: get_temperatures, cells
   use hdf5_interface
   use material_header, only: Material, materials, n_materials
-  use mgxs_header
+  use mgxs_interface
   use nuclide_header,  only: n_nuclides
   use set_header,      only: SetChar
   use settings
-  use stl_vector,      only: VectorReal
+  use stl_vector,      only: VectorReal, VectorChar
   use string,          only: to_lower
   implicit none
 
@@ -27,14 +29,11 @@ contains
     integer                 :: j              ! index over nuclides in material
     integer                 :: i_nuclide      ! index in nuclides array
     character(20)           :: name           ! name of library to load
-    integer                 :: representation ! Data representation
-    character(MAX_LINE_LEN) :: temp_str
     type(Material), pointer :: mat
     type(SetChar)           :: already_read
     integer(HID_T)          :: file_id
-    integer(HID_T)          :: xsdata_group
     logical                 :: file_exists
-    type(VectorReal), allocatable :: temps(:)
+    type(VectorReal), allocatable, target :: temps(:)
     character(MAX_WORD_LEN) :: word
     integer, allocatable    :: array(:)
 
@@ -69,9 +68,6 @@ contains
                        &version supported by OpenMC.")
     end if
 
-    ! allocate arrays for MGXS storage and cross section cache
-    allocate(nuclides_MG(n_nuclides))
-
     ! ==========================================================================
     ! READ ALL MGXS CROSS SECTION TABLES
 
@@ -80,88 +76,28 @@ contains
       mat => materials(i)
 
       NUCLIDE_LOOP: do j = 1, mat % n_nuclides
-        name = mat % names(j)
+        name = trim(mat % names(j)) // C_NULL_CHAR
+        i_nuclide = mat % nuclide(j)
 
         if (.not. already_read % contains(name)) then
-          i_nuclide = mat % nuclide(j)
+          call add_mgxs_c(file_id, name, num_energy_groups, num_delayed_groups, &
+               temps(i_nuclide) % size(), temps(i_nuclide) % data, &
+               temperature_tolerance, max_order, &
+               logical(legendre_to_tabular, C_BOOL), &
+               legendre_to_tabular_points, temperature_method)
 
-          call write_message("Loading " // trim(name) // " data...", 6)
-
-          ! Check to make sure cross section set exists in the library
-          if (object_exists(file_id, trim(name))) then
-            xsdata_group = open_group(file_id, trim(name))
-          else
-            call fatal_error("Data for '" // trim(name) // "' does not exist in "&
-                 &// trim(path_cross_sections))
-          end if
-
-          ! First find out the data representation
-          if (attribute_exists(xsdata_group, "representation")) then
-
-            call read_attribute(temp_str, xsdata_group, "representation")
-
-            if (trim(temp_str) == 'isotropic') then
-              representation = MGXS_ISOTROPIC
-            else if (trim(temp_str) == 'angle') then
-              representation = MGXS_ANGLE
-            else
-              call fatal_error("Invalid Data Representation!")
-            end if
-          else
-            ! Default to isotropic representation
-            representation = MGXS_ISOTROPIC
-          end if
-
-          ! Now allocate accordingly
-          select case(representation)
-
-          case(MGXS_ISOTROPIC)
-            allocate(MgxsIso :: nuclides_MG(i_nuclide) % obj)
-
-          case(MGXS_ANGLE)
-            allocate(MgxsAngle :: nuclides_MG(i_nuclide) % obj)
-
-          end select
-
-          ! Now read in the data specific to the type we just declared
-          call nuclides_MG(i_nuclide) % obj % from_hdf5(xsdata_group, &
-               num_energy_groups, num_delayed_groups, temps(i_nuclide), &
-               temperature_method, temperature_tolerance, max_order, &
-               legendre_to_tabular, legendre_to_tabular_points)
-
-          ! Add name to dictionary
           call already_read % add(name)
-
-          call close_group(xsdata_group)
-
         end if
       end do NUCLIDE_LOOP
+
+      mat % fissionable = query_fissionable_c(mat % n_nuclides, mat % nuclide)
+
     end do MATERIAL_LOOP
+
+    call file_close(file_id)
 
     ! Avoid some valgrind leak errors
     call already_read % clear()
-
-    ! Loop around material
-    MATERIAL_LOOP3: do i = 1, n_materials
-
-      ! Get material
-      mat => materials(i)
-
-      ! Loop around nuclides in material
-      NUCLIDE_LOOP2: do j = 1, mat % n_nuclides
-
-        ! Is this fissionable?
-        if (nuclides_MG(mat % nuclide(j)) % obj % fissionable) then
-          mat % fissionable = .true.
-        end if
-        if (mat % fissionable) then
-          exit NUCLIDE_LOOP2
-        end if
-
-      end do NUCLIDE_LOOP2
-    end do MATERIAL_LOOP3
-
-    call file_close(file_id)
 
   end subroutine read_mgxs
 
@@ -173,8 +109,7 @@ contains
     integer                       :: i_mat ! index in materials array
     type(Material), pointer       :: mat   ! current material
     type(VectorReal), allocatable :: kTs(:)
-
-    allocate(macro_xs(n_materials))
+    character(MAX_WORD_LEN)       :: name  ! name of material
 
     ! Get temperatures to read for each material
     call get_mat_kTs(kTs)
@@ -188,19 +123,13 @@ contains
       ! Get the material
       mat => materials(i_mat)
 
-      ! Get the scattering type for the first nuclide
-      select type(nuc => nuclides_MG(mat % nuclide(1)) % obj)
-      type is (MgxsIso)
-        allocate(MgxsIso :: macro_xs(i_mat) % obj)
-      type is (MgxsAngle)
-        allocate(MgxsAngle :: macro_xs(i_mat) % obj)
-      end select
+      name = trim(mat % name) // C_NULL_CHAR
 
       ! Do not read materials which we do not actually use in the problem to
       ! reduce storage
       if (allocated(kTs(i_mat) % data)) then
-        call macro_xs(i_mat) % obj % combine(kTs(i_mat), mat, nuclides_MG, &
-             num_energy_groups, num_delayed_groups, max_order, &
+        call create_macro_xs_c(name, mat % n_nuclides, mat % nuclide, &
+             kTs(i_mat) % size(), kTs(i_mat) % data, mat % atom_density, &
              temperature_tolerance, temperature_method)
       end if
     end do

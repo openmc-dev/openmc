@@ -2,8 +2,6 @@ module plot
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5
-
   use constants
   use error,           only: fatal_error, write_message
   use geometry,        only: find_cell, check_cell_overlap
@@ -32,7 +30,8 @@ contains
 ! RUN_PLOT controls the logic for making one or many plots
 !===============================================================================
 
-  subroutine openmc_plot_geometry() bind(C)
+  function openmc_plot_geometry() result(err) bind(C)
+    integer(C_INT) :: err
 
     integer :: i ! loop index for plots
 
@@ -52,7 +51,8 @@ contains
       end associate
     end do
 
-  end subroutine openmc_plot_geometry
+    err = 0
+  end function openmc_plot_geometry
 
 !===============================================================================
 ! POSITION_RGB computes the red/green/blue values for a given plot with the
@@ -85,7 +85,7 @@ contains
       if (pl % color_by == PLOT_COLOR_MATS) then
         ! Assign color based on material
         associate (c => cells(p % coord(j) % cell))
-          if (c % type == FILL_UNIVERSE) then
+          if (c % type() == FILL_UNIVERSE) then
             ! If we stopped on a middle universe level, treat as if not found
             rgb = pl % not_found % rgb
             id = -1
@@ -101,7 +101,7 @@ contains
       else if (pl % color_by == PLOT_COLOR_CELLS) then
         ! Assign color based on cell
         rgb = pl % colors(p % coord(j) % cell) % rgb
-        id = cells(p % coord(j) % cell) % id
+        id = cells(p % coord(j) % cell) % id()
       else
         rgb = 0
         id = -1
@@ -340,23 +340,46 @@ contains
   subroutine create_voxel(pl)
     type(ObjectPlot), intent(in) :: pl
 
-    integer :: x, y, z      ! voxel location indices
+    integer(C_INT) :: x, y, z      ! voxel location indices
     integer :: rgb(3)       ! colors (red, green, blue) from 0-255
     integer :: id           ! id of cell or material
-    integer :: hdf5_err
-    integer, target :: data(pl%pixels(3),pl%pixels(2))
+    integer(C_INT), target :: data(pl%pixels(3),pl%pixels(2))
     integer(HID_T) :: file_id
     integer(HID_T) :: dspace
     integer(HID_T) :: memspace
     integer(HID_T) :: dset
     integer(HSIZE_T) :: dims(3)
-    integer(HSIZE_T) :: dims_slab(3)
-    integer(HSIZE_T) :: offset(3)
     real(8) :: vox(3)       ! x, y, and z voxel widths
     real(8) :: ll(3)        ! lower left starting point for each sweep direction
     type(Particle)    :: p
     type(ProgressBar) :: progress
-    type(c_ptr)       :: f_ptr
+
+    interface
+      subroutine voxel_init(file_id, dims, dspace, dset, memspace) bind(C)
+        import HID_T, HSIZE_T
+        integer(HID_T), value :: file_id
+        integer(HSIZE_T), intent(in) :: dims(*)
+        integer(HID_T), intent(out) :: dspace
+        integer(HID_T), intent(out) :: dset
+        integer(HID_T), intent(out) :: memspace
+      end subroutine voxel_init
+
+      subroutine voxel_write_slice(x, dspace, dset, memspace, buf) bind(C)
+        import C_INT, HID_T, C_PTR
+        integer(C_INT), value :: x
+        integer(HID_T), value :: dspace
+        integer(HID_T), value :: dset
+        integer(HID_T), value :: memspace
+        type(C_PTR), value :: buf
+      end subroutine voxel_write_slice
+
+      subroutine voxel_finalize(dspace, dset, memspace) bind(C)
+        import HID_T
+        integer(HID_T), value :: dspace
+        integer(HID_T), value :: dset
+        integer(HID_T), value :: memspace
+      end subroutine voxel_finalize
+    end interface
 
     ! compute voxel widths in each direction
     vox = pl % width/dble(pl % pixels)
@@ -371,7 +394,7 @@ contains
     p % coord(1) % universe = root_universe
 
     ! Open binary plot file for writing
-    file_id = file_create(pl%path_plot)
+    file_id = file_open(pl%path_plot, 'w')
 
     ! write header info
     call write_attribute(file_id, "filetype", 'voxel')
@@ -390,20 +413,8 @@ contains
 
     ! Create dataset for voxel data -- note that the dimensions are reversed
     ! since we want the order in the file to be z, y, x
-    dims(:) = [pl%pixels(3), pl%pixels(2), pl%pixels(1)]
-    call h5screate_simple_f(3, dims, dspace, hdf5_err)
-    call h5dcreate_f(file_id, "data", H5T_NATIVE_INTEGER, dspace, dset, hdf5_err)
-
-    ! Create another dataspace for 2D array in memory
-    dims_slab(1) = pl%pixels(3)
-    dims_slab(2) = pl%pixels(2)
-    dims_slab(3) = 1
-    call h5screate_simple_f(2, dims_slab(1:2), memspace, hdf5_err)
-
-    ! Initialize offset and get pointer to data
-    offset(:) = 0
-    call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, offset, dims_slab, hdf5_err)
-    f_ptr = c_loc(data)
+    dims(:) = pl % pixels
+    call voxel_init(file_id, dims, dspace, dset, memspace)
 
     ! move to center of voxels
     ll = ll + vox / TWO
@@ -433,15 +444,10 @@ contains
       p % coord(1) % xyz(3) = ll(3)
 
       ! Write to HDF5 dataset
-      offset(3) = x - 1
-      call h5soffset_simple_f(dspace, offset, hdf5_err)
-      call h5dwrite_f(dset, H5T_NATIVE_INTEGER, f_ptr, hdf5_err, &
-           mem_space_id=memspace, file_space_id=dspace)
+      call voxel_write_slice(x, dspace, dset, memspace, c_loc(data))
     end do
 
-    call h5dclose_f(dset, hdf5_err)
-    call h5sclose_f(dspace, hdf5_err)
-    call h5sclose_f(memspace, hdf5_err)
+    call voxel_finalize(dspace, dset, memspace)
     call file_close(file_id)
 
   end subroutine create_voxel

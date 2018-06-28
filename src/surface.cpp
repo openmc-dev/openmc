@@ -12,6 +12,25 @@
 namespace openmc {
 
 //==============================================================================
+// Module constant definitions
+//==============================================================================
+
+extern "C" const int BC_TRANSMIT {0};
+extern "C" const int BC_VACUUM {1};
+extern "C" const int BC_REFLECT {2};
+extern "C" const int BC_PERIODIC {3};
+
+//==============================================================================
+// Global variables
+//==============================================================================
+
+int32_t n_surfaces;
+
+Surface **surfaces_c;
+
+std::map<int, int> surface_map;
+
+//==============================================================================
 // Helper functions for reading the "coeffs" node of an XML surface element
 //==============================================================================
 
@@ -202,21 +221,21 @@ Surface::to_hdf5(hid_t group_id) const
 
   switch(bc) {
     case BC_TRANSMIT :
-      write_string(surf_group, "boundary_type", "transmission");
+      write_string(surf_group, "boundary_type", "transmission", false);
       break;
     case BC_VACUUM :
-      write_string(surf_group, "boundary_type", "vacuum");
+      write_string(surf_group, "boundary_type", "vacuum", false);
       break;
     case BC_REFLECT :
-      write_string(surf_group, "boundary_type", "reflective");
+      write_string(surf_group, "boundary_type", "reflective", false);
       break;
     case BC_PERIODIC :
-      write_string(surf_group, "boundary_type", "periodic");
+      write_string(surf_group, "boundary_type", "periodic", false);
       break;
   }
 
   if (!name.empty()) {
-    write_string(surf_group, "name", name);
+    write_string(surf_group, "name", name, false);
   }
 
   to_hdf5_inner(surf_group);
@@ -297,9 +316,9 @@ inline void SurfaceXPlane::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceXPlane::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "x-plane");
+  write_string(group_id, "type", "x-plane", false);
   std::array<double, 1> coeffs {{x0}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 bool SurfaceXPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
@@ -362,9 +381,9 @@ inline void SurfaceYPlane::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceYPlane::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "y-plane");
+  write_string(group_id, "type", "y-plane", false);
   std::array<double, 1> coeffs {{y0}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 bool SurfaceYPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
@@ -428,9 +447,9 @@ inline void SurfaceZPlane::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceZPlane::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "z-plane");
+  write_string(group_id, "type", "z-plane", false);
   std::array<double, 1> coeffs {{z0}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 bool SurfaceZPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
@@ -489,9 +508,9 @@ SurfacePlane::normal(const double xyz[3], double uvw[3]) const
 
 void SurfacePlane::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "plane");
+  write_string(group_id, "type", "plane", false);
   std::array<double, 4> coeffs {{A, B, C, D}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 bool SurfacePlane::periodic_translate(PeriodicSurface *other, double xyz[3],
@@ -621,9 +640,9 @@ inline void SurfaceXCylinder::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceXCylinder::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "x-cylinder");
+  write_string(group_id, "type", "x-cylinder", false);
   std::array<double, 3> coeffs {{y0, z0, r}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 //==============================================================================
@@ -655,9 +674,9 @@ inline void SurfaceYCylinder::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceYCylinder::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "y-cylinder");
+  write_string(group_id, "type", "y-cylinder", false);
   std::array<double, 3> coeffs {{x0, z0, r}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 //==============================================================================
@@ -689,9 +708,9 @@ inline void SurfaceZCylinder::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceZCylinder::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "z-cylinder");
+  write_string(group_id, "type", "z-cylinder", false);
   std::array<double, 3> coeffs {{x0, y0, r}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 //==============================================================================
@@ -760,9 +779,9 @@ inline void SurfaceSphere::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceSphere::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "sphere");
+  write_string(group_id, "type", "sphere", false);
   std::array<double, 4> coeffs {{x0, y0, z0, r}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 //==============================================================================
@@ -877,9 +896,9 @@ inline void SurfaceXCone::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "x-cone");
+  write_string(group_id, "type", "x-cone", false);
   std::array<double, 4> coeffs {{x0, y0, z0, r_sq}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 //==============================================================================
@@ -911,9 +930,9 @@ inline void SurfaceYCone::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "y-cone");
+  write_string(group_id, "type", "y-cone", false);
   std::array<double, 4> coeffs {{x0, y0, z0, r_sq}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 //==============================================================================
@@ -945,9 +964,9 @@ inline void SurfaceZCone::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceZCone::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "z-cone");
+  write_string(group_id, "type", "z-cone", false);
   std::array<double, 4> coeffs {{x0, y0, z0, r_sq}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 //==============================================================================
@@ -1039,9 +1058,9 @@ SurfaceQuadric::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "quadric");
+  write_string(group_id, "type", "quadric", false);
   std::array<double, 10> coeffs {{A, B, C, D, E, F, G, H, J, K}};
-  write_double_1D(group_id, "coefficients", coeffs);
+  write_double(group_id, "coefficients", coeffs, false);
 }
 
 //==============================================================================
@@ -1110,12 +1129,12 @@ read_surfaces(pugi::xml_node *node)
     }
   }
 
-  // Fill the surface dictionary.
+  // Fill the surface map.
   for (int i_surf = 0; i_surf < n_surfaces; i_surf++) {
     int id = surfaces_c[i_surf]->id;
-    auto in_dict = surface_dict.find(id);
-    if (in_dict == surface_dict.end()) {
-      surface_dict[id] = i_surf;
+    auto in_map = surface_map.find(id);
+    if (in_map == surface_map.end()) {
+      surface_map[id] = i_surf;
     } else {
       std::stringstream err_msg;
       err_msg << "Two or more surfaces use the same unique ID: " << id;
@@ -1205,7 +1224,7 @@ read_surfaces(pugi::xml_node *node)
           }
         } else {
           // Convert the surface id to an index.
-          surf->i_periodic = surface_dict[surf->i_periodic];
+          surf->i_periodic = surface_map[surf->i_periodic];
         }
       } else {
         // This is a SurfacePlane.  We won't try to find it's partner if the
@@ -1217,7 +1236,7 @@ read_surfaces(pugi::xml_node *node)
           fatal_error(err_msg);
         } else {
           // Convert the surface id to an index.
-          surf->i_periodic = surface_dict[surf->i_periodic];
+          surf->i_periodic = surface_map[surf->i_periodic];
         }
       }
 
@@ -1229,6 +1248,42 @@ read_surfaces(pugi::xml_node *node)
         fatal_error(err_msg);
       }
     }
+  }
+}
+
+//==============================================================================
+// Fortran compatibility functions
+//==============================================================================
+
+extern "C" {
+  Surface* surface_pointer(int surf_ind) {return surfaces_c[surf_ind];}
+
+  int surface_id(Surface *surf) {return surf->id;}
+
+  int surface_bc(Surface *surf) {return surf->bc;}
+
+  void surface_reflect(Surface *surf, double xyz[3], double uvw[3])
+  {surf->reflect(xyz, uvw);}
+
+  void surface_normal(Surface *surf, double xyz[3], double uvw[3])
+  {return surf->normal(xyz, uvw);}
+
+  void surface_to_hdf5(Surface *surf, hid_t group) {surf->to_hdf5(group);}
+
+  int surface_i_periodic(PeriodicSurface *surf) {return surf->i_periodic;}
+
+  bool
+  surface_periodic(PeriodicSurface *surf, PeriodicSurface *other, double xyz[3],
+                   double uvw[3])
+  {return surf->periodic_translate(other, xyz, uvw);}
+
+  void free_memory_surfaces_c()
+  {
+    for (int i = 0; i < n_surfaces; i++) {delete surfaces_c[i];}
+    delete surfaces_c;
+    surfaces_c = nullptr;
+    n_surfaces = 0;
+    surface_map.clear();
   }
 }
 

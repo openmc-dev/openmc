@@ -57,6 +57,11 @@ Benchmarking
 Coupling and Multi-physics
 --------------------------
 
+- Jun Chen, Liangzhi Cao, Chuanqi Zhao, and Zhouyu Liu, "`Development of
+  Subchannel Code SUBSC for high-fidelity multi-physics coupling application
+  <https://doi.org/10.1016/j.egypro.2017.08.121>`_", Energy Procedia, **127**,
+  264-274 (2017).
+
 - Tianliang Hu, Liangzhu Cao, Hongchun Wu, Xianan Du, and Mingtao He, "`Coupled
   neutrons and thermal-hydraulics simulation of molten salt reactors based on
   OpenMC/TANSY <https://doi.org/10.1016/j.anucene.2017.05.002>`_,"
@@ -98,6 +103,11 @@ Coupling and Multi-physics
 Geometry and Visualization
 --------------------------
 
+- Jin-Yang Li, Long Gu, Hu-Shan Xu, Nadezha Korepanova, Rui Yu, Yan-Lei Zhu, and
+  Chang-Ping Qin, "`CAD modeling study on FLUKA and OpenMC for accelerator
+  driven system simulation <https://doi.org/10.1016/j.anucene.2017.12.050>`_",
+  *Ann. Nucl. Energy*, **114**, 329-341 (2018).
+
 - Logan Abel, William Boyd, Benoit Forget, and Kord Smith, "Interactive
   Visualization of Multi-Group Cross Sections on High-Fidelity Spatial Meshes,"
   *Trans. Am. Nucl. Soc.*, **114**, 391-394 (2016).
@@ -113,6 +123,11 @@ Geometry and Visualization
 -------------
 Miscellaneous
 -------------
+
+- Bruno Merk, Dzianis Litskevich, R. Gregg, and A. R. Mount, "`Demand driven
+  salt clean-up in a molten salt fast reactor -- Defining a priority list
+  <https://doi.org/10.1371/journal.pone.0192020>`_", *PLOS One*, **13**,
+  e0192020 (2018).
 
 - Adam G. Nelson, Samuel Shaner, William Boyd, and Paul K. Romano,
   "Incorporation of a Multigroup Transport Capability in the OpenMC Monte Carlo

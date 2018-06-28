@@ -22,6 +22,7 @@ def test_full(run_in_tmpdir):
 
     This test runs a complete OpenMC simulation and tests the outputs.
     It will take a while.
+
     """
 
     n_rings = 2

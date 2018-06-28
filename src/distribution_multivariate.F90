@@ -119,7 +119,7 @@ contains
     else
       ! Sample azimuthal angle
       phi = this % phi % sample()
-      uvw(:) = rotate_angle(this % reference_uvw, mu, phi)
+      uvw = rotate_angle(this % reference_uvw, mu, phi)
     end if
   end function polar_azimuthal_sample
 

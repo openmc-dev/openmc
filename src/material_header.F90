@@ -5,6 +5,7 @@ module material_header
   use constants
   use dict_header, only: DictIntInt
   use error
+  use math, only: spline, spline_integrate
   use nuclide_header
   use particle_header, only: Particle
   use photon_header
@@ -861,11 +862,11 @@ contains
       ! Integrate the PDF using cubic spline integration over the incident
       ! particle energy
       if (n > 2) then
-        call spline(ttb_e_grid(i:), f(i:), z(i:), n)
+        call spline(n, ttb_e_grid(i:), f(i:), z(i:))
 
         c = ZERO
         do j = i, n_e - 1
-          c = c + spline_integrate(ttb_e_grid(i:), f(i:), z(i:), n, &
+          c = c + spline_integrate(n, ttb_e_grid(i:), f(i:), z(i:), &
                ttb_e_grid(j), ttb_e_grid(j+1))
           this % pdf(i,j+1) = c
         end do

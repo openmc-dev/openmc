@@ -41,7 +41,7 @@ parser.add_argument('-b', '--batch', action='store_true',
 parser.add_argument('-d', '--destination', default='jeff-3.2-hdf5',
                     help='Directory to create new library in')
 parser.add_argument('--libver', choices=['earliest', 'latest'],
-                    default='earliest', help="Output HDF5 versioning. Use "
+                    default='latest', help="Output HDF5 versioning. Use "
                     "'earliest' for backwards compatibility or 'latest' for "
                     "performance")
 args = parser.parse_args()

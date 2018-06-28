@@ -26,14 +26,6 @@ contains
       string = "scatter"
     case (SCORE_NU_SCATTER)
       string = "nu-scatter"
-    case (SCORE_SCATTER_N)
-      string = "scatter-n"
-    case (SCORE_SCATTER_PN)
-      string = "scatter-pn"
-    case (SCORE_NU_SCATTER_N)
-      string = "nu-scatter-n"
-    case (SCORE_NU_SCATTER_PN)
-      string = "nu-scatter-pn"
     case (SCORE_ABSORPTION)
       string = "absorption"
     case (SCORE_FISSION)
@@ -50,14 +42,6 @@ contains
       string = "kappa-fission"
     case (SCORE_CURRENT)
       string = "current"
-    case (SCORE_FLUX_YN)
-      string = "flux-yn"
-    case (SCORE_TOTAL_YN)
-      string = "total-yn"
-    case (SCORE_SCATTER_YN)
-      string = "scatter-yn"
-    case (SCORE_NU_SCATTER_YN)
-      string = "nu-scatter-yn"
     case (SCORE_EVENTS)
       string = "events"
     case (SCORE_INVERSE_VELOCITY)

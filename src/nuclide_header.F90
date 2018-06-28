@@ -3,8 +3,6 @@ module nuclide_header
   use, intrinsic :: ISO_FORTRAN_ENV
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5,                   only: HID_T, HSIZE_T, SIZE_T
-
   use algorithm,              only: sort, find, binary_search
   use constants
   use dict_header,            only: DictIntInt, DictCharInt
@@ -12,7 +10,6 @@ module nuclide_header
   use endf_header,            only: Function1D, Polynomial, Tabulated1D
   use error
   use hdf5_interface
-  use list_header,            only: ListInt
   use math,                   only: faddeeva, w_derivative, &
                                     broaden_wmp_polynomials
   use multipole_header,       only: FORM_RM, FORM_MLBW, MP_EA, RM_RT, RM_RA, &
@@ -286,7 +283,7 @@ contains
     integer,          intent(inout) :: method
     real(8),          intent(in)    :: tolerance
     real(8),          intent(in)    :: minmax(2)  ! range of temperatures
-    logical,          intent(in)    :: master     ! if this is the master proc
+    logical(C_BOOL),  intent(in)    :: master     ! if this is the master proc
     integer,          intent(in)    :: i_nuclide  ! Nuclide index in nuclides
 
     integer :: i
@@ -301,7 +298,6 @@ contains
     integer(HID_T) :: total_nu
     integer(HID_T) :: fer_group                 ! fission_energy_release group
     integer(HID_T) :: fer_dset
-    integer(SIZE_T) :: name_len
     integer(HSIZE_T) :: j
     integer(HSIZE_T) :: dims(1)
     character(MAX_WORD_LEN) :: temp_str
@@ -315,8 +311,7 @@ contains
     type(VectorInt) :: index_inelastic_scatter
 
     ! Get name of nuclide from group
-    name_len = len(this % name)
-    this % name = get_name(group_id, name_len)
+    this % name = get_name(group_id)
 
     ! Get rid of leading '/'
     this % name = trim(this % name(2:))
@@ -911,7 +906,7 @@ contains
         micro_xs % reaction(:) = ZERO
 
         ! Only non-zero reaction is (n,gamma)
-        micro_xs % reaction(4) = sig_a - sig_f
+        micro_xs % reaction(1) = sig_a - sig_f
       end if
 
       ! Ensure these values are set
@@ -1003,12 +998,24 @@ contains
 
       ! Depletion-related reactions
       if (need_depletion_rx) then
-        do j = 1, 6
-          ! Initialize reaction xs to zero
-          micro_xs % reaction(j) = ZERO
+        ! Initialize all reaction cross sections to zero
+        micro_xs % reaction(:) = ZERO
 
-          ! If reaction is present and energy is greater than threshold, set
-          ! the reaction xs appropriately
+        ! Physics says that (n,gamma) is not a threshold reaction, so we don't
+        ! need to specifically check its threshold index
+        i_rxn = this % reaction_index(DEPLETION_RX(1))
+        if (i_rxn > 0) then
+          associate (xs => this % reactions(i_rxn) % xs(i_temp))
+          micro_xs % reaction(1) = (ONE - f) * &
+               xs % value(i_grid - xs % threshold + 1) + &
+               f * xs % value(i_grid - xs % threshold + 2)
+          end associate
+        end if
+
+        ! Loop over remaining depletion reactions
+        do j = 2, 6
+          ! If reaction is present and energy is greater than threshold, set the
+          ! reaction xs appropriately
           i_rxn = this % reaction_index(DEPLETION_RX(j))
           if (i_rxn > 0) then
             associate (xs => this % reactions(i_rxn) % xs(i_temp))
@@ -1016,12 +1023,17 @@ contains
                 micro_xs % reaction(j) = (ONE - f) * &
                      xs % value(i_grid - xs % threshold + 1) + &
                      f * xs % value(i_grid - xs % threshold + 2)
+              elseif (j >= 4) then
+                ! One can show that the the threshold for (n,(x+1)n) is always
+                ! higher than the threshold for (n,xn). Thus, if we are below
+                ! the threshold for, e.g., (n,2n), there is no reason to check
+                ! the threshold for (n,3n) and (n,4n).
+                exit
               end if
             end associate
           end if
         end do
       end if
-
     end if
 
     ! Initialize sab treatment to false

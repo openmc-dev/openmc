@@ -2,8 +2,6 @@ module tally_filter_cellfrom
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5
-
   use constants,          only: ONE, MAX_LINE_LEN
   use dict_header,        only: EMPTY
   use error,              only: fatal_error
@@ -66,7 +64,7 @@ contains
 
     allocate(cell_ids(size(this % cells)))
     do i = 1, size(this % cells)
-      cell_ids(i) = cells(this % cells(i)) % id
+      cell_ids(i) = cells(this % cells(i)) % id()
     end do
     call write_dataset(filter_group, "bins", cell_ids)
   end subroutine to_statepoint_cell_from
@@ -76,7 +74,7 @@ contains
     integer,               intent(in) :: bin
     character(MAX_LINE_LEN)           :: label
 
-    label = "Cell from " // to_str(cells(this % cells(bin)) % id)
+    label = "Cell from " // to_str(cells(this % cells(bin)) % id())
   end function text_label_cell_from
 
 end module tally_filter_cellfrom

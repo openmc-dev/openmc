@@ -1,9 +1,9 @@
 module surface_header
 
   use, intrinsic :: ISO_C_BINDING
-  use hdf5
 
   use dict_header, only: DictIntInt
+  use hdf5_interface
 
   implicit none
 
@@ -30,16 +30,6 @@ module surface_header
       integer(C_INT)                 :: bc
     end function surface_bc_c
 
-    pure function surface_sense_c(surf_ptr, xyz, uvw) &
-         bind(C, name='surface_sense') result(sense)
-      use ISO_C_BINDING
-      implicit none
-      type(C_PTR),    intent(in), value :: surf_ptr
-      real(C_DOUBLE), intent(in)        :: xyz(3)
-      real(C_DOUBLE), intent(in)        :: uvw(3)
-      logical(C_BOOL)                   :: sense
-    end function surface_sense_c
-
     pure subroutine surface_reflect_c(surf_ptr, xyz, uvw) &
          bind(C, name='surface_reflect')
       use ISO_C_BINDING
@@ -48,17 +38,6 @@ module surface_header
       real(C_DOUBLE), intent(in)        :: xyz(3);
       real(C_DOUBLE), intent(inout)     :: uvw(3);
     end subroutine surface_reflect_c
-
-    pure function surface_distance_c(surf_ptr, xyz, uvw, coincident) &
-         bind(C, name='surface_distance') result(d)
-      use ISO_C_BINDING
-      implicit none
-      type(C_PTR),     intent(in), value :: surf_ptr
-      real(C_DOUBLE),  intent(in)        :: xyz(3);
-      real(C_DOUBLE),  intent(in)        :: uvw(3);
-      logical(C_BOOL), intent(in), value :: coincident;
-      real(C_DOUBLE)                     :: d;
-    end function surface_distance_c
 
     pure subroutine surface_normal_c(surf_ptr, xyz, uvw) &
          bind(C, name='surface_normal')
@@ -71,8 +50,7 @@ module surface_header
 
     subroutine surface_to_hdf5_c(surf_ptr, group) &
          bind(C, name='surface_to_hdf5')
-      use ISO_C_BINDING
-      use hdf5
+      import C_PTR, HID_T
       implicit none
       type(C_PTR),    intent(in), value :: surf_ptr
       integer(HID_T), intent(in), value :: group
@@ -116,9 +94,7 @@ module surface_header
 
     procedure :: id => surface_id
     procedure :: bc => surface_bc
-    procedure :: sense => surface_sense
     procedure :: reflect => surface_reflect
-    procedure :: distance => surface_distance
     procedure :: normal => surface_normal
     procedure :: to_hdf5 => surface_to_hdf5
     procedure :: i_periodic => surface_i_periodic
@@ -147,29 +123,12 @@ contains
     bc = surface_bc_c(this % ptr)
   end function surface_bc
 
-  pure function surface_sense(this, xyz, uvw) result(sense)
-    class(Surface), intent(in) :: this
-    real(C_DOUBLE), intent(in) :: xyz(3)
-    real(C_DOUBLE), intent(in) :: uvw(3)
-    logical(C_BOOL)            :: sense
-    sense = surface_sense_c(this % ptr, xyz, uvw)
-  end function surface_sense
-
   pure subroutine surface_reflect(this, xyz, uvw)
     class(Surface), intent(in)    :: this
     real(C_DOUBLE), intent(in)    :: xyz(3);
     real(C_DOUBLE), intent(inout) :: uvw(3);
     call surface_reflect_c(this % ptr, xyz, uvw)
   end subroutine surface_reflect
-
-  pure function surface_distance(this, xyz, uvw, coincident) result(d)
-    class(Surface),  intent(in) :: this
-    real(C_DOUBLE),  intent(in) :: xyz(3);
-    real(C_DOUBLE),  intent(in) :: uvw(3);
-    logical(C_BOOL), intent(in) :: coincident;
-    real(C_DOUBLE)              :: d;
-    d = surface_distance_c(this % ptr, xyz, uvw, coincident)
-  end function surface_distance
 
   pure subroutine surface_normal(this, xyz, uvw)
     class(Surface), intent(in)  :: this

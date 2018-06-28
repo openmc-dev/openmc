@@ -1,13 +1,10 @@
 module photon_header
 
-  use hdf5, only: HID_T, HSIZE_T, SIZE_T
-
   use algorithm,        only: binary_search
   use constants
   use dict_header,      only: DictIntInt, DictCharInt
   use endf_header,      only: Tabulated1D
   use hdf5_interface
-  use math,             only: spline, spline_integrate
   use nuclide_header,   only: nuclides
   use settings
 
@@ -119,7 +116,6 @@ contains
     integer(HID_T)   :: rgroup, tgroup
     integer(HID_T)   :: dset_id
     integer(HSIZE_T) :: dims(1), dims2(2)
-    integer(SIZE_T)  :: name_len
     integer          :: n_energy
     integer          :: n_shell
     integer          :: n_profile
@@ -135,8 +131,7 @@ contains
     real(8), allocatable :: dcs(:,:)
 
     ! Get name of nuclide from group
-    name_len = len(this % name)
-    this % name = get_name(group_id, name_len)
+    this % name = get_name(group_id)
 
     ! Get rid of leading '/'
     this % name = trim(this % name(2:))

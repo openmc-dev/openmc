@@ -45,40 +45,32 @@ module simulation
   implicit none
   private
   public :: openmc_next_batch
-  public :: openmc_run
   public :: openmc_simulation_init
   public :: openmc_simulation_finalize
 
+  integer(C_INT), parameter :: STATUS_EXIT_NORMAL = 0
+  integer(C_INT), parameter :: STATUS_EXIT_MAX_BATCH = 1
+  integer(C_INT), parameter :: STATUS_EXIT_ON_TRIGGER = 2
+
 contains
-
-!===============================================================================
-! OPENMC_RUN encompasses all the main logic where iterations are performed
-! over the batches, generations, and histories in a fixed source or k-eigenvalue
-! calculation.
-!===============================================================================
-
-  subroutine openmc_run() bind(C)
-
-    call openmc_simulation_init()
-    do while (openmc_next_batch() == 0)
-    end do
-    call openmc_simulation_finalize()
-
-  end subroutine openmc_run
 
 !===============================================================================
 ! OPENMC_NEXT_BATCH
 !===============================================================================
 
-  function openmc_next_batch() result(retval) bind(C)
-    integer(C_INT) :: retval
+  function openmc_next_batch(status) result(err) bind(C)
+    integer(C_INT), intent(out), optional :: status
+    integer(C_INT) :: err
 
     type(Particle) :: p
     integer(8)     :: i_work
 
+    err = 0
+
     ! Make sure simulation has been initialized
     if (.not. simulation_initialized) then
-      retval = -3
+      err = E_ALLOCATE
+      call set_errmsg("Simulation has not been initialized yet.")
       return
     end if
 
@@ -87,7 +79,7 @@ contains
     ! Handle restart runs
     if (restart_run .and. current_batch <= restart_batch) then
       call replay_batch_history()
-      retval = 0
+      status = STATUS_EXIT_NORMAL
       return
     end if
 
@@ -125,12 +117,14 @@ contains
     call finalize_batch()
 
     ! Check simulation ending criteria
-    if (current_batch == n_max_batches) then
-      retval = -1
-    elseif (satisfy_triggers) then
-      retval = -2
-    else
-      retval = 0
+    if (present(status)) then
+      if (current_batch == n_max_batches) then
+        status = STATUS_EXIT_MAX_BATCH
+      elseif (satisfy_triggers) then
+        status = STATUS_EXIT_ON_TRIGGER
+      else
+        status = STATUS_EXIT_NORMAL
+      end if
     end if
 
   end function openmc_next_batch
@@ -319,6 +313,7 @@ contains
 
   subroutine finalize_batch()
 
+    integer(C_INT) :: err
 #ifdef OPENMC_MPI
     integer :: mpi_err ! MPI error code
 #endif
@@ -354,7 +349,7 @@ contains
 
     ! Write out state point if it's been specified for this batch
     if (statepoint_batch % contains(current_batch)) then
-      call openmc_statepoint_write()
+      err = openmc_statepoint_write()
     end if
 
     ! Write out source point if it's been specified for this batch
@@ -403,8 +398,12 @@ contains
 ! INITIALIZE_SIMULATION
 !===============================================================================
 
-  subroutine openmc_simulation_init() bind(C)
+  function openmc_simulation_init() result(err) bind(C)
+    integer(C_INT) :: err
+
     integer :: i
+
+    err = 0
 
     ! Skip if simulation has already been initialized
     if (simulation_initialized) return
@@ -464,14 +463,15 @@ contains
     ! Set flag indicating initialization is done
     simulation_initialized = .true.
 
-  end subroutine openmc_simulation_init
+  end function openmc_simulation_init
 
 !===============================================================================
 ! FINALIZE_SIMULATION calculates tally statistics, writes tallies, and displays
 ! execution time and results
 !===============================================================================
 
-  subroutine openmc_simulation_finalize() bind(C)
+  function openmc_simulation_finalize() result(err) bind(C)
+    integer(C_INT) :: err
 
     integer    :: i       ! loop index
 #ifdef OPENMC_MPI
@@ -486,6 +486,8 @@ contains
     integer :: result_block
 #endif
 #endif
+
+    err = 0
 
     ! Skip if simulation was never run
     if (.not. simulation_initialized) return
@@ -561,7 +563,7 @@ contains
     need_depletion_rx = .false.
     simulation_initialized = .false.
 
-  end subroutine openmc_simulation_finalize
+  end function openmc_simulation_finalize
 
 !===============================================================================
 ! CALCULATE_WORK determines how many particles each processor should simulate

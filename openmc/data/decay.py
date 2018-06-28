@@ -7,10 +7,7 @@ import re
 from warnings import warn
 
 import numpy as np
-try:
-    from uncertainties import ufloat, unumpy, UFloat
-except ImportError:
-    ufloat = UFloat = namedtuple('UFloat', ['nominal_value', 'std_dev'])
+from uncertainties import ufloat, unumpy, UFloat
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin

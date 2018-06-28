@@ -4,7 +4,6 @@ from numbers import Integral, Real
 import random
 import sys
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 import openmc
@@ -146,7 +145,7 @@ class Universe(IDManagerMixin):
         """
         if volume_calc.domain_type == 'universe':
             if self.id in volume_calc.volumes:
-                self._volume = volume_calc.volumes[self.id][0]
+                self._volume = volume_calc.volumes[self.id].n
                 self._atoms = volume_calc.atoms[self.id]
             else:
                 raise ValueError('No volume information found for this universe.')
@@ -184,9 +183,13 @@ class Universe(IDManagerMixin):
         return []
 
     def plot(self, origin=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
-             basis='xy', color_by='cell', colors=None, filename=None, seed=None,
+             basis='xy', color_by='cell', colors=None, seed=None,
              **kwargs):
         """Display a slice plot of the universe.
+
+        To display or save the plot, call :func:`matplotlib.pyplot.show` or
+        :func:`matplotlib.pyplot.savefig`. In a Jupyter notebook, enabling the
+        matplotlib inline backend will show the plot inline.
 
         Parameters
         ----------
@@ -212,9 +215,6 @@ class Universe(IDManagerMixin):
                water = openmc.Cell(fill=h2o)
                universe.plot(..., colors={water: (0., 0., 1.))
 
-        filename : str or None
-            Filename to save plot to. If no filename is given, the plot will be
-            displayed using the currently enabled matplotlib backend.
         seed : hashable object or None
             Hashable object which is used to seed the random number generator
             used to select colors. If None, the generator is seeded from the
@@ -223,7 +223,14 @@ class Universe(IDManagerMixin):
             All keyword arguments are passed to
             :func:`matplotlib.pyplot.imshow`.
 
+        Returns
+        -------
+        matplotlib.image.AxesImage
+            Resulting image
+
         """
+        import matplotlib.pyplot as plt
+
         # Seed the random number generator
         if seed is not None:
             random.seed(seed)
@@ -298,14 +305,8 @@ class Universe(IDManagerMixin):
                     img[j, i, :] = colors[obj]
 
         # Display image
-        plt.imshow(img, extent=(x_min, x_max, y_min, y_max),
-                   interpolation='nearest', **kwargs)
-
-        # Show or save the plot
-        if filename is None:
-            plt.show()
-        else:
-            plt.savefig(filename)
+        return plt.imshow(img, extent=(x_min, x_max, y_min, y_max),
+                          interpolation='nearest', **kwargs)
 
     def add_cell(self, cell):
         """Add a cell to the universe.
@@ -405,7 +406,7 @@ class Universe(IDManagerMixin):
             volume = self.volume
             for name, atoms in self._atoms.items():
                 nuclide = openmc.Nuclide(name)
-                density = 1.0e-24 * atoms[0]/volume  # density in atoms/b-cm
+                density = 1.0e-24 * atoms.n/volume  # density in atoms/b-cm
                 nuclides[name] = (nuclide, density)
         else:
             raise RuntimeError(

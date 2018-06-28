@@ -148,7 +148,7 @@
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
-  <material id="1" name="UOX fuel">
+  <material depletable="true" id="1" name="UOX fuel">
     <density units="g/cm3" value="10.062" />
     <nuclide ao="4.9476e-06" name="U234" />
     <nuclide ao="0.00048218" name="U235" />
@@ -156,7 +156,7 @@
     <nuclide ao="1.0801e-08" name="Xe135" />
     <nuclide ao="0.045737" name="O16" />
   </material>
-  <material id="2" name="Zircaloy">
+  <material depletable="true" id="2" name="Zircaloy">
     <density units="g/cm3" value="5.77" />
     <nuclide ao="0.5145" name="Zr90" />
     <nuclide ao="0.1122" name="Zr91" />

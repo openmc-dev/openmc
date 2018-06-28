@@ -345,10 +345,10 @@ def test_nbody(tmpdir, h2):
     assert nbody1.q_value == nbody2.q_value
 
 
-def test_ace_convert(tmpdir):
+def test_ace_convert(run_in_tmpdir):
     filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-001_H_001.endf')
-    ace_ascii = str(tmpdir.join('ace_ascii'))
-    ace_binary = str(tmpdir.join('ace_binary'))
+    ace_ascii = 'ace_ascii'
+    ace_binary = 'ace_binary'
     openmc.data.njoy.make_ace(filename, ace=ace_ascii)
 
     # Convert to binary

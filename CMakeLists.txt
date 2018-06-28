@@ -5,13 +5,9 @@ project(openmc Fortran C CXX)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/include)
 
 # Set module path
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
-
-# Make sure Fortran module directory is included when building
-include_directories(${CMAKE_BINARY_DIR}/include)
 
 #===============================================================================
 # Architecture specific definitions
@@ -73,7 +69,7 @@ if(NOT DEFINED HDF5_PREFER_PARALLEL)
   endif()
 endif()
 
-find_package(HDF5 COMPONENTS Fortran_HL)
+find_package(HDF5 COMPONENTS HL)
 if(NOT HDF5_FOUND)
   message(FATAL_ERROR "Could not find HDF5")
 endif()
@@ -368,7 +364,6 @@ set(LIBOPENMC_FORTRAN_SRC
   src/message_passing.F90
   src/mgxs_data.F90
   src/mgxs_header.F90
-  src/multipole.F90
   src/multipole_header.F90
   src/nuclide_header.F90
   src/output.F90
@@ -423,30 +418,43 @@ set(LIBOPENMC_FORTRAN_SRC
   src/tallies/tally_filter_distribcell.F90
   src/tallies/tally_filter_energy.F90
   src/tallies/tally_filter_energyfunc.F90
+  src/tallies/tally_filter_legendre.F90
   src/tallies/tally_filter_material.F90
   src/tallies/tally_filter_mesh.F90
+  src/tallies/tally_filter_meshsurface.F90
   src/tallies/tally_filter_mu.F90
   src/tallies/tally_filter_particle.F90
   src/tallies/tally_filter_polar.F90
+  src/tallies/tally_filter_sph_harm.F90
+  src/tallies/tally_filter_sptl_legendre.F90
   src/tallies/tally_filter_surface.F90
   src/tallies/tally_filter_universe.F90
+  src/tallies/tally_filter_zernike.F90
   src/tallies/tally_header.F90
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90
 )
 set(LIBOPENMC_CXX_SRC
-  src/error.h
-  src/hdf5_interface.h
+  src/cell.cpp
+  src/initialize.cpp
+  src/finalize.cpp
+  src/geometry_aux.cpp
+  src/hdf5_interface.cpp
+  src/lattice.cpp
+  src/math_functions.cpp
+  src/message_passing.cpp
+  src/plot.cpp
   src/random_lcg.cpp
-  src/random_lcg.h
+  src/simulation.cpp
+  src/state_point.cpp
   src/surface.cpp
-  src/surface.h
-  src/xml_interface.h
-  src/pugixml/pugixml.cpp
-  src/pugixml/pugixml.hpp)
+  src/xml_interface.cpp
+  src/pugixml/pugixml.cpp)
 add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC} ${LIBOPENMC_CXX_SRC})
-set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
-add_executable(${program} src/main.F90)
+set_target_properties(libopenmc PROPERTIES
+  OUTPUT_NAME openmc
+  PUBLIC_HEADER include/openmc.h)
+add_executable(${program} src/main.cpp)
 
 #===============================================================================
 # Add compiler/linker flags
@@ -455,11 +463,11 @@ add_executable(${program} src/main.F90)
 set_property(TARGET ${program} libopenmc pugixml_fortran
   PROPERTY LINKER_LANGUAGE Fortran)
 
-target_include_directories(libopenmc PUBLIC ${HDF5_INCLUDE_DIRS})
+target_include_directories(libopenmc PUBLIC include ${HDF5_INCLUDE_DIRS})
 
 # The executable and the faddeeva package use only one language.  They can be
 # set via target_compile_options which accepts a list.
-target_compile_options(${program} PUBLIC ${f90flags})
+target_compile_options(${program} PUBLIC ${cxxflags})
 target_compile_options(faddeeva PRIVATE ${cflags})
 
 # The libopenmc library has both F90 and C++ so the compile flags must be set
@@ -500,7 +508,9 @@ add_custom_command(TARGET libopenmc POST_BUILD
 install(TARGETS ${program} libopenmc
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib)
+  ARCHIVE DESTINATION lib
+  PUBLIC_HEADER DESTINATION include
+  )
 install(DIRECTORY src/relaxng DESTINATION share/openmc)
 install(FILES man/man1/openmc.1 DESTINATION share/man/man1)
 install(FILES LICENSE DESTINATION "share/doc/${program}" RENAME copyright)

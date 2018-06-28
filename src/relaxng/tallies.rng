@@ -182,6 +182,7 @@
                     <value>azimuthal</value>
                     <value>delayedgroup</value>
                     <value>energyfunction</value>
+                    <value>meshsurface</value>
                   </choice>
                 </element>
                 <attribute name="type">
@@ -201,6 +202,7 @@
                     <value>azimuthal</value>
                     <value>delayedgroup</value>
                     <value>energyfunction</value>
+                    <value>meshsurface</value>
                   </choice>
                 </attribute>
               </choice>

@@ -15,6 +15,7 @@ from openmc.surface import *
 from openmc.universe import *
 from openmc.lattice import *
 from openmc.filter import *
+from openmc.filter_expansion import *
 from openmc.trigger import *
 from openmc.tally_derivative import *
 from openmc.tallies import *

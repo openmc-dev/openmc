@@ -40,7 +40,7 @@ class IncidentNeutron(EqualityMixin):
     sublibrary. Instances of this class are not normally instantiated by the
     user but rather created using the factory methods
     :meth:`IncidentNeutron.from_hdf5`, :meth:`IncidentNeutron.from_ace`, and
-    :math:`IncidentNeutron.from_endf`.
+    :meth:`IncidentNeutron.from_endf`.
 
     Parameters
     ----------

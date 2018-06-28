@@ -2,8 +2,6 @@ module tally_filter_mesh
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5
-
   use constants
   use dict_header,         only: EMPTY
   use error
@@ -16,6 +14,7 @@ module tally_filter_mesh
 
   implicit none
   private
+  public :: openmc_mesh_filter_get_mesh
   public :: openmc_mesh_filter_set_mesh
 
 !===============================================================================
@@ -84,7 +83,6 @@ contains
     integer :: ijk1(3)              ! indices of ending coordinates
     integer :: search_iter          ! loop count for intersection search
     integer :: bin
-    real(8) :: weight               ! weight to be pushed back
     real(8) :: uvw(3)               ! cosine of angle of particle
     real(8) :: xyz0(3)              ! starting/intermediate coordinates
     real(8) :: xyz1(3)              ! ending coordinates of particle
@@ -95,8 +93,6 @@ contains
     logical :: start_in_mesh        ! starting coordinates inside mesh?
     logical :: end_in_mesh          ! ending coordinates inside mesh?
     type(RegularMesh), pointer :: m
-
-    weight = ERROR_REAL
 
     ! Get a pointer to the mesh.
     m => meshes(this % mesh)
@@ -283,35 +279,46 @@ contains
 !                               C API FUNCTIONS
 !===============================================================================
 
+  function openmc_mesh_filter_get_mesh(index, index_mesh) result(err) bind(C)
+    ! Get the mesh for a mesh filter
+    integer(C_INT32_T), value, intent(in) :: index
+    integer(C_INT32_T), intent(out)       :: index_mesh
+    integer(C_INT) :: err
+
+    err = verify_filter(index)
+    if (err == 0) then
+      select type (f => filters(index) % obj)
+      type is (MeshFilter)
+        index_mesh = f % mesh
+      class default
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to set mesh on a non-mesh filter.")
+      end select
+    end if
+  end function openmc_mesh_filter_get_mesh
+
+
   function openmc_mesh_filter_set_mesh(index, index_mesh) result(err) bind(C)
     ! Set the mesh for a mesh filter
     integer(C_INT32_T), value, intent(in) :: index
     integer(C_INT32_T), value, intent(in) :: index_mesh
     integer(C_INT) :: err
 
-    err = 0
-    if (index >= 1 .and. index <= n_filters) then
-      if (allocated(filters(index) % obj)) then
-        select type (f => filters(index) % obj)
-        type is (MeshFilter)
-          if (index_mesh >= 1 .and. index_mesh <= n_meshes) then
-            f % mesh = index_mesh
-            f % n_bins = product(meshes(index_mesh) % dimension)
-          else
-            err = E_OUT_OF_BOUNDS
-            call set_errmsg("Index in 'meshes' array is out of bounds.")
-          end if
+    err = verify_filter(index)
+    if (err == 0) then
+      select type (f => filters(index) % obj)
+      type is (MeshFilter)
+        if (index_mesh >= 1 .and. index_mesh <= n_meshes) then
+          f % mesh = index_mesh
+          f % n_bins = product(meshes(index_mesh) % dimension)
+        else
+          err = E_OUT_OF_BOUNDS
+          call set_errmsg("Index in 'meshes' array is out of bounds.")
+        end if
         class default
-          err = E_INVALID_TYPE
-          call set_errmsg("Tried to set mesh on a non-mesh filter.")
-        end select
-      else
-        err = E_ALLOCATE
-        call set_errmsg("Filter type has not been set yet.")
-      end if
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in filters array out of bounds.")
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to set mesh on a non-mesh filter.")
+      end select
     end if
   end function openmc_mesh_filter_set_mesh
 

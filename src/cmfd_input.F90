@@ -278,7 +278,7 @@ contains
     m % id = i_start
 
     ! Set mesh type to rectangular
-    m % type = LATTICE_RECT
+    m % type = MESH_REGULAR
 
     ! Get pointer to mesh XML node
     node_mesh = root % child("mesh")
@@ -409,48 +409,25 @@ contains
     ! Duplicate the mesh filter for the mesh current tally since other
     ! tallies use this filter and we need to change the dimension
     i_filt = i_filt + 1
-    err = openmc_filter_set_type(i_filt, C_CHAR_'mesh' // C_NULL_CHAR)
+    err = openmc_filter_set_type(i_filt, C_CHAR_'meshsurface' // C_NULL_CHAR)
     call openmc_get_filter_next_id(filt_id)
     err = openmc_filter_set_id(i_filt, filt_id)
-    err = openmc_mesh_filter_set_mesh(i_filt, i_start)
+    err = openmc_meshsurface_filter_set_mesh(i_filt, i_start)
 
-    ! We need to increase the dimension by one since we also need
-    ! currents coming into and out of the boundary mesh cells.
-    filters(i_filt) % obj % n_bins = product(m % dimension + 1)
-
-    ! Set up surface filter
+    ! Add in legendre filter for the P1 tally
     i_filt = i_filt + 1
-    allocate(SurfaceFilter :: filters(i_filt) % obj)
-    select type(filt => filters(i_filt) % obj)
-    type is(SurfaceFilter)
-      filt % id = i_filt
-      filt % n_bins = 4 * m % n_dimension
-      allocate(filt % surfaces(4 * m % n_dimension))
-      if (m % n_dimension == 2) then
-        filt % surfaces = (/ OUT_LEFT, IN_LEFT, IN_RIGHT, OUT_RIGHT, &
-             OUT_BACK, IN_BACK, IN_FRONT, OUT_FRONT /)
-      elseif (m % n_dimension == 3) then
-        filt % surfaces = (/ OUT_LEFT, IN_LEFT, IN_RIGHT, OUT_RIGHT, &
-             OUT_BACK, IN_BACK, IN_FRONT, OUT_FRONT, &
-             OUT_BOTTOM, IN_BOTTOM, IN_TOP, OUT_TOP /)
-      end if
-      filt % current = .true.
-      ! Add filter to dictionary
-      call filter_dict % set(filt % id, i_filt)
-    end select
+    err = openmc_filter_set_type(i_filt, C_CHAR_'legendre' // C_NULL_CHAR)
+    call openmc_get_filter_next_id(filt_id)
+    err = openmc_filter_set_id(i_filt, filt_id)
+    err = openmc_legendre_filter_set_order(i_filt, 1)
 
     ! Initialize filters
     do i = i_filt_start, i_filt_end
-      select type (filt => filters(i) % obj)
-      type is (SurfaceFilter)
-        ! Don't do anything
-      class default
-        call filt % initialize()
-      end select
+      call filters(i) % obj % initialize()
     end do
 
     ! Allocate tallies
-    err = openmc_extend_tallies(3, i_start, i_end)
+    err = openmc_extend_tallies(4, i_start, i_end)
     cmfd_tallies => tallies(i_start:i_end)
 
     ! Begin loop around tallies
@@ -484,7 +461,7 @@ contains
       if (i == 1) then
 
         ! Set name
-        t % name = "CMFD flux, total, scatter-1"
+        t % name = "CMFD flux, total"
 
         ! Set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
@@ -502,19 +479,12 @@ contains
         deallocate(filter_indices)
 
         ! Allocate scoring bins
-        allocate(t % score_bins(3))
-        t % n_score_bins = 3
-        t % n_user_score_bins = 3
-
-        ! Allocate scattering order data
-        allocate(t % moment_order(3))
-        t % moment_order = 0
+        allocate(t % score_bins(2))
+        t % n_score_bins = 2
 
         ! Set macro_bins
         t % score_bins(1)  = SCORE_FLUX
         t % score_bins(2)  = SCORE_TOTAL
-        t % score_bins(3)  = SCORE_SCATTER_N
-        t % moment_order(3) = 1
 
       else if (i == 2) then
 
@@ -546,11 +516,6 @@ contains
         ! Allocate macro reactions
         allocate(t % score_bins(2))
         t % n_score_bins = 2
-        t % n_user_score_bins = 2
-
-        ! Allocate scattering order data
-        allocate(t % moment_order(2))
-        t % moment_order = 0
 
         ! Set macro_bins
         t % score_bins(1) = SCORE_NU_SCATTER
@@ -564,13 +529,9 @@ contains
         ! Set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
 
-        ! Set the surface filter index in the tally find_filter array
-        n_filter = n_filter + 1
-
         ! Allocate and set filters
         allocate(filter_indices(n_filter))
         filter_indices(1) = i_filt_end - 1
-        filter_indices(n_filter) = i_filt_end
         if (energy_filters) then
           filter_indices(2) = i_filt_start + 1
         end if
@@ -580,15 +541,41 @@ contains
         ! Allocate macro reactions
         allocate(t % score_bins(1))
         t % n_score_bins = 1
-        t % n_user_score_bins = 1
-
-        ! Allocate scattering order data
-        allocate(t % moment_order(1))
-        t % moment_order = 0
 
         ! Set macro bins
         t % score_bins(1) = SCORE_CURRENT
-        t % type = TALLY_MESH_CURRENT
+        t % type = TALLY_MESH_SURFACE
+
+      else if (i == 4) then
+        ! Set name
+        t % name = "CMFD P1 scatter"
+
+        ! Set tally estimator to analog
+        t % estimator = ESTIMATOR_ANALOG
+
+        ! Set tally type to volume
+        t % type = TALLY_VOLUME
+
+        ! Allocate and set filters
+        n_filter = 2
+        if (energy_filters) then
+          n_filter = n_filter + 1
+        end if
+        allocate(filter_indices(n_filter))
+        filter_indices(1) = i_filt_start
+        filter_indices(2) = i_filt_end
+        if (energy_filters) then
+          filter_indices(3) = i_filt_start + 1
+        end if
+        err = openmc_tally_set_filters(i_start + i - 1, n_filter, filter_indices)
+        deallocate(filter_indices)
+
+        ! Allocate scoring bins
+        allocate(t % score_bins(1))
+        t % n_score_bins = 1
+
+        ! Set macro_bins
+        t % score_bins(1) = SCORE_SCATTER
       end if
 
       ! Make CMFD tallies active from the start

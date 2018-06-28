@@ -3,10 +3,8 @@ module mgxs_header
   use, intrinsic :: ISO_FORTRAN_ENV
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5, only: HID_T, HSIZE_T, SIZE_T
-
   use algorithm,       only: find, sort
-  use constants,       only: MAX_WORD_LEN, ZERO, ONE, TWO, PI
+  use constants,       only: MAX_WORD_LEN, ZERO, ONE, TWO, PI, MACROSCOPIC_AWR
   use error,           only: fatal_error
   use hdf5_interface
   use material_header, only: material
@@ -248,7 +246,6 @@ contains
       type(VectorInt), intent(out)   :: temps_to_read ! Temperatures to read
       integer, intent(out)           :: order_dim     ! Scattering data order size
 
-      integer(SIZE_T) :: name_len
       integer(HID_T) :: kT_group
       character(MAX_WORD_LEN), allocatable :: dset_names(:)
       real(8), allocatable :: temps_available(:) ! temperatures available
@@ -259,8 +256,7 @@ contains
       integer :: ipol, iazi
 
       ! Get name of dataset from group
-      name_len = len(this % name)
-      this % name = get_name(xs_id, name_len)
+      this % name = get_name(xs_id)
 
       ! Get rid of leading '/'
       this % name = trim(this % name(2:))
@@ -268,7 +264,7 @@ contains
       if (attribute_exists(xs_id, "atomic_weight_ratio")) then
         call read_attribute(this % awr, xs_id, "atomic_weight_ratio")
       else
-        this % awr = -ONE
+        this % awr = MACROSCOPIC_AWR
       end if
 
       ! Determine temperatures available
@@ -396,9 +392,9 @@ contains
 
       ! Store the dimensionality of the data in order_dim.
       ! For Legendre data, we usually refer to it as Pn where n is the order.
-      ! However Pn has n+1 sets of points (since you need to
-      ! the count the P0 moment).  Adjust for that.  Histogram and Tabular
-      ! formats dont need this adjustment.
+      ! However Pn has n+1 sets of points (since you need to count the P0
+      ! moment). Adjust for that. Histogram and Tabular formats dont need this
+      ! adjustment.
       if (this % scatter_format == ANGLE_LEGENDRE) then
         order_dim = order_dim + 1
       else
@@ -551,6 +547,8 @@ contains
               else
                 call fatal_error("beta must be provided as a 1D or 2D array")
               end if
+
+              call close_dataset(xsdata)
             else
               temp_beta = ZERO
             end if
@@ -681,6 +679,8 @@ contains
                 call fatal_error("nu-fission must be provided as a 1D or 2D &
                      &array")
               end if
+
+              call close_dataset(xsdata)
             end if
 
             ! If chi-prompt provided, set chi-prompt
@@ -784,6 +784,8 @@ contains
                 call fatal_error("chi-delayed must be provided as a 1D or 2D &
                      &array")
               end if
+
+              call close_dataset(xsdata)
             end if
 
             ! If prompt-nu-fission present, set prompt-nu-fission
@@ -840,6 +842,8 @@ contains
                 call fatal_error("prompt-nu-fission must be provided as a 1D &
                      &or 2D array")
               end if
+
+              call close_dataset(xsdata)
             end if
 
             ! If delayed-nu-fission provided, set delayed-nu-fission. If
@@ -965,6 +969,8 @@ contains
                 call fatal_error("delayed-nu-fission must be provided as a &
                      &1D, 2D, or 3D array")
               end if
+
+              call close_dataset(xsdata)
             end if
 
             ! Deallocate temporary beta array
@@ -1348,6 +1354,8 @@ contains
               else
                 call fatal_error("beta must be provided as a 3D or 4D array")
               end if
+
+              call close_dataset(xsdata)
             else
               temp_beta = ZERO
             end if
@@ -1519,6 +1527,8 @@ contains
                 call fatal_error("nu-fission must be provided as a 3D or &
                      &4D array")
               end if
+
+              call close_dataset(xsdata)
             end if
 
             ! If chi-prompt provided, set chi-prompt
@@ -1653,6 +1663,8 @@ contains
                 call fatal_error("chi-delayed must be provided as a 3D or 4D &
                      &array")
               end if
+
+              call close_dataset(xsdata)
             end if
 
             ! If prompt-nu-fission present, set prompt-nu-fission
@@ -1722,6 +1734,8 @@ contains
                 call fatal_error("prompt-nu-fission must be provided as a 3D &
                      &or 4D array")
               end if
+
+              call close_dataset(xsdata)
             end if
 
             ! If delayed-nu-fission provided, set delayed-nu-fission. If
@@ -1870,6 +1884,8 @@ contains
                 call fatal_error("delayed-nu-fission must be provided as a &
                      &3D, 4D, or 5D array")
               end if
+
+              call close_dataset(xsdata)
             end if
 
             ! Deallocate temporary beta array

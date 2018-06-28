@@ -23,7 +23,8 @@ module simulation_header
   integer :: current_batch     ! current batch
   integer :: current_gen       ! current generation within a batch
   integer :: total_gen     = 0 ! total number of generations simulated
-  logical(C_BOOL), bind(C) :: simulation_initialized = .false.
+  logical(C_BOOL), bind(C, name='openmc_simulation_initialized') :: &
+       simulation_initialized = .false.
   logical :: need_depletion_rx ! need to calculate depletion reaction rx?
 
   ! ============================================================================
@@ -31,8 +32,8 @@ module simulation_header
 
   logical :: satisfy_triggers = .false.       ! whether triggers are satisfied
 
-  integer(8) :: work         ! number of particles per processor
-  integer(8), allocatable :: work_index(:) ! starting index in source bank for each process
+  integer(C_INT64_T), bind(C, name='openmc_work') :: work         ! number of particles per processor
+  integer(C_INT64_T), allocatable :: work_index(:) ! starting index in source bank for each process
   integer(8) :: current_work ! index in source bank of current history simulated
 
   ! ============================================================================
@@ -40,8 +41,8 @@ module simulation_header
 
   ! Temporary k-effective values
   type(VectorReal) :: k_generation ! single-generation estimates of k
-  real(C_DOUBLE), bind(C) :: keff = ONE  ! average k over active batches
-  real(C_DOUBLE), bind(C) :: keff_std    ! standard deviation of average k
+  real(C_DOUBLE), bind(C, name='openmc_keff')     :: keff = ONE  ! average k over active batches
+  real(C_DOUBLE), bind(C, name='openmc_keff_std') :: keff_std    ! standard deviation of average k
   real(8) :: k_col_abs = ZERO ! sum over batches of k_collision * k_absorption
   real(8) :: k_col_tra = ZERO ! sum over batches of k_collision * k_tracklength
   real(8) :: k_abs_tra = ZERO ! sum over batches of k_absorption * k_tracklength
@@ -57,7 +58,7 @@ module simulation_header
   ! PARALLEL PROCESSING VARIABLES
 
 #ifdef _OPENMP
-  integer :: n_threads = NONE      ! number of OpenMP threads
+  integer(C_INT), bind(C, name='openmc_n_threads') :: n_threads = NONE      ! number of OpenMP threads
   integer :: thread_id             ! ID of a given thread
 #endif
 
@@ -70,9 +71,6 @@ module simulation_header
   integer(8), allocatable  :: overlap_check_cnt(:)
 
   logical :: trace
-
-  ! Number of distribcell maps
-  integer :: n_maps
 
 !$omp threadprivate(trace, thread_id, current_work)
 

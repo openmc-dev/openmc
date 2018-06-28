@@ -5,6 +5,7 @@ Contains results generation and saving capabilities.
 
 from collections import OrderedDict
 import copy
+from warnings import warn
 
 import numpy as np
 import h5py
@@ -24,6 +25,8 @@ class Results(object):
         Eigenvalue for each substep.
     time : list of float
         Time at beginning, end of step, in seconds.
+    power : float
+        Power during time step, in Watts
     n_mat : int
         Number of mats.
     n_nuc : int
@@ -49,6 +52,7 @@ class Results(object):
     def __init__(self):
         self.k = None
         self.time = None
+        self.power = None
         self.rates = None
         self.volume = None
 
@@ -161,6 +165,7 @@ class Results(object):
         else:
             kwargs = {}
 
+        # Write new file if first time step, else add to existing file
         kwargs['mode'] = "w" if step == 0 else "a"
 
         with h5py.File(filename, **kwargs) as handle:
@@ -237,6 +242,9 @@ class Results(object):
 
         handle.create_dataset("time", (1, 2), maxshape=(None, 2), dtype='float64')
 
+        handle.create_dataset("power", (1, n_stages), maxshape=(None, n_stages),
+                              dtype='float64')
+
     def _to_hdf5(self, handle, index):
         """Converts results object into an hdf5 object.
 
@@ -259,6 +267,7 @@ class Results(object):
         rxn_dset = handle["/reaction rates"]
         eigenvalues_dset = handle["/eigenvalues"]
         time_dset = handle["/time"]
+        power_dset = handle["/power"]
 
         # Get number of results stored
         number_shape = list(number_dset.shape)
@@ -283,6 +292,10 @@ class Results(object):
             time_shape[0] = new_shape
             time_dset.resize(time_shape)
 
+            power_shape = list(power_dset.shape)
+            power_shape[0] = new_shape
+            power_dset.resize(power_shape)
+
         # If nothing to write, just return
         if len(self.mat_to_ind) == 0:
             return
@@ -300,6 +313,7 @@ class Results(object):
                 eigenvalues_dset[index, i] = self.k[i]
         if comm.rank == 0:
             time_dset[index, :] = self.time
+            power_dset[index, :] = self.power
 
     @classmethod
     def from_hdf5(cls, handle, step):
@@ -319,10 +333,12 @@ class Results(object):
         number_dset = handle["/number"]
         eigenvalues_dset = handle["/eigenvalues"]
         time_dset = handle["/time"]
+        power_dset = handle["/power"]
 
         results.data = number_dset[step, :, :, :]
         results.k = eigenvalues_dset[step, :]
         results.time = time_dset[step, :]
+        results.power = power_dset[step, :]
 
         # Reconstruct dictionaries
         results.volume = OrderedDict()
@@ -351,7 +367,7 @@ class Results(object):
         results.rates = []
         # Reconstruct reactions
         for i in range(results.n_stages):
-            rate = ReactionRates(results.mat_to_ind, rxn_nuc_to_ind, rxn_to_ind)
+            rate = ReactionRates(results.mat_to_ind, rxn_nuc_to_ind, rxn_to_ind, True)
 
             rate[:] = handle["/reaction rates"][step, i, :, :, :]
             results.rates.append(rate)
@@ -359,7 +375,7 @@ class Results(object):
         return results
 
     @staticmethod
-    def save(op, x, op_results, t, step_ind):
+    def save(op, x, op_results, t, power, step_ind):
         """Creates and writes depletion results to disk
 
         Parameters
@@ -372,6 +388,8 @@ class Results(object):
             Results of applying transport operator
         t : list of float
             Time indices.
+        power : float
+            Power during time step
         step_ind : int
             Step index.
 
@@ -379,8 +397,18 @@ class Results(object):
         # Get indexing terms
         vol_dict, nuc_list, burn_list, full_burn_list = op.get_results_info()
 
-        # Create results
+        # For a restart calculation, limit number of stages saved to meet the
+        # format of the hdf5 file
         stages = len(x)
+        offset = 0
+        if op.prev_res is not None and op.prev_res[0].n_stages < stages:
+            offset = stages - op.prev_res[0].n_stages
+            stages = min(stages, op.prev_res[0].n_stages)
+            warn("Number of restart integrator stages saved limited by initial"
+                 " depletion integrator choice to {}"
+                 .format(op.prev_res[0].n_stages))
+
+        # Create results
         results = Results()
         results.allocate(vol_dict, nuc_list, burn_list, full_burn_list, stages)
 
@@ -388,10 +416,25 @@ class Results(object):
 
         for i in range(stages):
             for mat_i in range(n_mat):
-                results[i, mat_i, :] = x[i][mat_i][:]
+                results[i, mat_i, :] = x[offset + i][mat_i][:]
 
         results.k = [r.k for r in op_results]
         results.rates = [r.rates for r in op_results]
         results.time = t
+        results.power = power
 
         results.export_to_hdf5("depletion_results.h5", step_ind)
+
+    def transfer_volumes(self, geometry):
+        """Transfers volumes from depletion results to geometry
+
+        Parameters
+        ----------
+        geometry : OpenMC geometry to be used in a depletion restart
+            calculation
+
+        """
+        for cell in geometry.get_all_material_cells().values():
+            for material in cell.get_all_materials().values():
+                if material.depletable:
+                    material.volume = self.volume[str(material.id)]

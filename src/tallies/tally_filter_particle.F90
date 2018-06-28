@@ -2,8 +2,6 @@ module tally_filter_particle
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5
-
   use constants,          only: ONE, MAX_LINE_LEN
   use hdf5_interface
   use particle_header,    only: Particle

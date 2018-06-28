@@ -8,37 +8,30 @@
 #include "hdf5.h"
 #include "pugixml/pugixml.hpp"
 
+#include "constants.h"
+
 
 namespace openmc {
 
 //==============================================================================
-// Module constants
+// Module constant declarations (defined in .cpp)
 //==============================================================================
 
-extern "C" const int BC_TRANSMIT {0};
-extern "C" const int BC_VACUUM {1};
-extern "C" const int BC_REFLECT {2};
-extern "C" const int BC_PERIODIC {3};
-
-//==============================================================================
-// Constants that should eventually be moved out of this file
-//==============================================================================
-
-extern "C" double FP_COINCIDENT;
-constexpr double INFTY{std::numeric_limits<double>::max()};
-constexpr int C_NONE {-1};
+extern "C" const int BC_TRANSMIT;
+extern "C" const int BC_VACUUM;
+extern "C" const int BC_REFLECT;
+extern "C" const int BC_PERIODIC;
 
 //==============================================================================
 // Global variables
 //==============================================================================
 
-// Braces force n_surfaces to be defined here, not just declared.
-extern "C" {int32_t n_surfaces {0};}
+extern "C" int32_t n_surfaces;
 
 class Surface;
-Surface **surfaces_c;
+extern Surface **surfaces_c;
 
-std::map<int, int> surface_dict;
+extern std::map<int, int> surface_map;
 
 //==============================================================================
 //! Coordinates for an axis-aligned cube that bounds a geometric object.
@@ -65,7 +58,7 @@ public:
   //int neighbor_pos[],        //!< List of cells on positive side
   //    neighbor_neg[];        //!< List of cells on negative side
   int bc;                    //!< Boundary condition
-  std::string name{""};      //!< User-defined name
+  std::string name;          //!< User-defined name
 
   explicit Surface(pugi::xml_node surf_node);
 
@@ -108,6 +101,7 @@ public:
 
   //! Write all information needed to reconstruct the surface to an HDF5 group.
   //! @param group_id An HDF5 group id.
+  //TODO: this probably needs to include i_periodic for PeriodicSurface
   void to_hdf5(hid_t group_id) const;
 
 protected:
@@ -384,43 +378,20 @@ public:
 // Fortran compatibility functions
 //==============================================================================
 
-extern "C" Surface* surface_pointer(int surf_ind) {return surfaces_c[surf_ind];}
-
-extern "C" int surface_id(Surface *surf) {return surf->id;}
-
-extern "C" int surface_bc(Surface *surf) {return surf->bc;}
-
-extern "C" bool surface_sense(Surface *surf, double xyz[3], double uvw[3])
-{return surf->sense(xyz, uvw);}
-
-extern "C" void surface_reflect(Surface *surf, double xyz[3], double uvw[3])
-{surf->reflect(xyz, uvw);}
-
-extern "C" double
-surface_distance(Surface *surf, double xyz[3], double uvw[3], bool coincident)
-{return surf->distance(xyz, uvw, coincident);}
-
-extern "C" void surface_normal(Surface *surf, double xyz[3], double uvw[3])
-{return surf->normal(xyz, uvw);}
-
-extern "C" void surface_to_hdf5(Surface *surf, hid_t group)
-{surf->to_hdf5(group);}
-
-extern "C" int surface_i_periodic(PeriodicSurface *surf)
-{return surf->i_periodic;}
-
-extern "C" bool
-surface_periodic(PeriodicSurface *surf, PeriodicSurface *other, double xyz[3],
-                 double uvw[3])
-{return surf->periodic_translate(other, xyz, uvw);}
-
-extern "C" void free_memory_surfaces_c()
-{
-  for (int i = 0; i < n_surfaces; i++) {delete surfaces_c[i];}
-  delete surfaces_c;
-  surfaces_c = nullptr;
-  n_surfaces = 0;
-  surface_dict.clear();
+extern "C" {
+    Surface* surface_pointer(int surf_ind);
+    int surface_id(Surface *surf);
+    int surface_bc(Surface *surf);
+    bool surface_sense(Surface *surf, double xyz[3], double uvw[3]);
+    void surface_reflect(Surface *surf, double xyz[3], double uvw[3]);
+    double surface_distance(Surface *surf, double xyz[3], double uvw[3],
+                            bool coincident);
+    void surface_normal(Surface *surf, double xyz[3], double uvw[3]);
+    void surface_to_hdf5(Surface *surf, hid_t group);
+    int surface_i_periodic(PeriodicSurface *surf);
+    bool surface_periodic(PeriodicSurface *surf, PeriodicSurface *other,
+                          double xyz[3], double uvw[3]);
+    void free_memory_surfaces_c();
 }
 
 } // namespace openmc

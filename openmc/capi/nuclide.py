@@ -5,9 +5,10 @@ from weakref import WeakValueDictionary
 import numpy as np
 from numpy.ctypeslib import as_array
 
+from openmc.exceptions import DataError, AllocationError
 from . import _dll
 from .core import _FortranObject
-from .error import _error_handler, DataError, AllocationError
+from .error import _error_handler
 
 
 __all__ = ['Nuclide', 'nuclides', 'load_nuclide']

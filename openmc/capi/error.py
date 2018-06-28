@@ -1,43 +1,8 @@
 from ctypes import c_int, c_char
 from warnings import warn
 
+import openmc.exceptions as exc
 from . import _dll
-
-
-class OpenMCError(Exception):
-    """Root exception class for OpenMC."""
-
-
-class GeometryError(OpenMCError):
-    """Geometry-related error"""
-
-
-class InvalidIDError(OpenMCError):
-    """Use of an ID that is invalid."""
-
-
-class AllocationError(OpenMCError):
-    """Error related to memory allocation."""
-
-
-class OutOfBoundsError(OpenMCError):
-    """Index in array out of bounds."""
-
-
-class DataError(OpenMCError):
-    """Error relating to nuclear data."""
-
-
-class PhysicsError(OpenMCError):
-    """Error relating to performing physics."""
-
-
-class InvalidArgumentError(OpenMCError):
-    """Argument passed was invalid."""
-
-
-class InvalidTypeError(OpenMCError):
-    """Tried to perform an operation on the wrong type."""
 
 
 def _error_handler(err, func, args):
@@ -52,23 +17,23 @@ def _error_handler(err, func, args):
     msg = errmsg.value.decode()
 
     # Raise exception type corresponding to error code
-    if err == errcode('e_allocate'):
-        raise AllocationError(msg)
-    elif err == errcode('e_out_of_bounds'):
-        raise OutOfBoundsError(msg)
-    elif err == errcode('e_invalid_argument'):
-        raise InvalidArgumentError(msg)
-    elif err == errcode('e_invalid_type'):
-        raise InvalidTypeError(msg)
-    if err == errcode('e_invalid_id'):
-        raise InvalidIDError(msg)
-    elif err == errcode('e_geometry'):
-        raise GeometryError(msg)
-    elif err == errcode('e_data'):
-        raise DataError(msg)
-    elif err == errcode('e_physics'):
-        raise PhysicsError(msg)
-    elif err == errcode('e_warning'):
+    if err == errcode('OPENMC_E_ALLOCATE'):
+        raise exc.AllocationError(msg)
+    elif err == errcode('OPENMC_E_OUT_OF_BOUNDS'):
+        raise exc.OutOfBoundsError(msg)
+    elif err == errcode('OPENMC_E_INVALID_ARGUMENT'):
+        raise exc.InvalidArgumentError(msg)
+    elif err == errcode('OPENMC_E_INVALID_TYPE'):
+        raise exc.InvalidTypeError(msg)
+    if err == errcode('OPENMC_E_INVALID_ID'):
+        raise exc.InvalidIDError(msg)
+    elif err == errcode('OPENMC_E_GEOMETRY'):
+        raise exc.GeometryError(msg)
+    elif err == errcode('OPENMC_E_DATA'):
+        raise exc.DataError(msg)
+    elif err == errcode('OPENMC_E_PHYSICS'):
+        raise exc.PhysicsError(msg)
+    elif err == errcode('OPENMC_E_WARNING'):
         warn(msg)
     elif err < 0:
-        raise OpenMCError("Unknown error encountered (code {}).".format(err))
+        raise exc.OpenMCError("Unknown error encountered (code {}).".format(err))

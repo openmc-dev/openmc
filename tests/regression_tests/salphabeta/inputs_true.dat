@@ -12,19 +12,19 @@
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
-  <material id="1">
+  <material depletable="true" id="1">
     <density units="g/cc" value="4.5" />
     <nuclide ao="1.0" name="U235" />
     <nuclide ao="1.0" name="H1" />
     <sab fraction="0.5" name="c_H_in_H2O" />
   </material>
-  <material id="2">
+  <material depletable="true" id="2">
     <density units="g/cc" value="4.5" />
     <nuclide ao="1.0" name="U235" />
     <nuclide ao="1.0" name="C0" />
     <sab name="c_Graphite" />
   </material>
-  <material id="3">
+  <material depletable="true" id="3">
     <density units="g/cc" value="4.5" />
     <nuclide ao="1.0" name="U235" />
     <nuclide ao="1.0" name="Be9" />
@@ -32,7 +32,7 @@
     <sab name="c_Be_in_BeO" />
     <sab name="c_O_in_BeO" />
   </material>
-  <material id="4">
+  <material depletable="true" id="4">
     <density units="g/cm3" value="5.90168" />
     <nuclide ao="0.3" name="H1" />
     <nuclide ao="0.15" name="Zr90" />

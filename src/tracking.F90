@@ -19,9 +19,9 @@ module tracking
   use surface_header
   use tally_header
   use tally,              only: score_analog_tally, score_tracklength_tally, &
-                                score_collision_tally, score_surface_current, &
-                                score_track_derivative, score_surface_tally, &
-                                score_collision_derivative, zero_flux_derivs
+                                score_collision_tally, score_surface_tally, &
+                                score_track_derivative, zero_flux_derivs, &
+                                score_collision_derivative
   use track_output,       only: initialize_particle_track, write_particle_track, &
                                 add_particle_track, finalize_particle_track
 
@@ -182,7 +182,7 @@ contains
         p % coord(p % n_coord) % cell = NONE
         if (any(lattice_translation /= 0)) then
           ! Particle crosses lattice boundary
-          p % surface = NONE
+          p % surface = ERROR_INT
           call cross_lattice(p, lattice_translation)
           p % event = EVENT_LATTICE
         else
@@ -193,7 +193,8 @@ contains
           p % event = EVENT_SURFACE
         end if
         ! Score cell to cell partial currents
-        if(active_surface_tallies % size() > 0) call score_surface_tally(p)
+        if(active_surface_tallies % size() > 0) &
+             call score_surface_tally(p, active_surface_tallies)
       else
         ! ====================================================================
         ! PARTICLE HAS COLLISION
@@ -208,10 +209,11 @@ contains
         ! since the direction of the particle will change and we need to use the
         ! pre-collision direction to figure out what mesh surfaces were crossed
 
-        if (active_current_tallies % size() > 0) call score_surface_current(p)
+        if (active_meshsurf_tallies % size() > 0) &
+             call score_surface_tally(p, active_meshsurf_tallies)
 
         ! Clear surface component
-        p % surface = NONE
+        p % surface = ERROR_INT
 
         if (run_CE) then
           call collision(p)
@@ -325,12 +327,12 @@ contains
       ! forward slightly so that if the mesh boundary is on the surface, it is
       ! still processed
 
-      if (active_current_tallies % size() > 0) then
+      if (active_meshsurf_tallies % size() > 0) then
         ! TODO: Find a better solution to score surface currents than
         ! physically moving the particle forward slightly
 
         p % coord(1) % xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
-        call score_surface_current(p)
+        call score_surface_tally(p, active_meshsurf_tallies)
       end if
 
       ! Score to global leakage tally
@@ -358,10 +360,10 @@ contains
       ! particle to change -- artificially move the particle slightly back in
       ! case the surface crossing is coincident with a mesh boundary
 
-      if (active_current_tallies % size() > 0) then
+      if (active_meshsurf_tallies % size() > 0) then
         xyz = p % coord(1) % xyz
         p % coord(1) % xyz = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
-        call score_surface_current(p)
+        call score_surface_tally(p, active_meshsurf_tallies)
         p % coord(1) % xyz = xyz
       end if
 
@@ -415,10 +417,10 @@ contains
       ! Score surface currents since reflection causes the direction of the
       ! particle to change -- artificially move the particle slightly back in
       ! case the surface crossing is coincident with a mesh boundary
-      if (active_current_tallies % size() > 0) then
+      if (active_meshsurf_tallies % size() > 0) then
         xyz = p % coord(1) % xyz
         p % coord(1) % xyz = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
-        call score_surface_current(p)
+        call score_surface_tally(p, active_meshsurf_tallies)
         p % coord(1) % xyz = xyz
       end if
 
@@ -481,7 +483,7 @@ contains
     ! COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
 
     ! Remove lower coordinate levels and assignment of surface
-    p % surface = NONE
+    p % surface = ERROR_INT
     p % n_coord = 1
     call find_cell(p, found)
 

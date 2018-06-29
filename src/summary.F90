@@ -8,7 +8,7 @@ module summary
   use material_header, only: Material, n_materials
   use mesh_header,     only: RegularMesh
   use message_passing
-  use mgxs_header,     only: nuclides_MG
+  use mgxs_interface
   use nuclide_header
   use output,          only: time_stamp
   use settings,        only: run_CE
@@ -93,7 +93,7 @@ contains
       num_nuclides = 0
       num_macros = 0
       do i = 1, n_nuclides
-        if (nuclides_MG(i) % obj % awr /= MACROSCOPIC_AWR) then
+        if (get_awr_c(i) /= MACROSCOPIC_AWR) then
           num_nuclides = num_nuclides + 1
         else
           num_macros = num_macros + 1
@@ -118,12 +118,14 @@ contains
         nuc_names(i) = nuclides(i) % name
         awrs(i)     = nuclides(i) % awr
       else
-        if (nuclides_MG(i) % obj % awr /= MACROSCOPIC_AWR) then
-          nuc_names(j) = nuclides_MG(i) % obj % name
-          awrs(j)     = nuclides_MG(i) % obj % awr
+        if (get_awr_c(i) /= MACROSCOPIC_AWR) then
+          call get_name_c(i, len(nuc_names(j)), nuc_names(j))
+          nuc_names(j) = trim(nuc_names(j))
+          awrs(j)      = get_awr_c(i)
           j = j + 1
         else
-          macro_names(k) = nuclides_MG(i) % obj % name
+          call get_name_c(i, len(macro_names(k)), macro_names(k))
+          macro_names(k) = trim(macro_names(k))
           k = k + 1
         end if
       end if
@@ -353,7 +355,7 @@ contains
         num_nuclides  = 0
         num_macros = 0
         do j = 1, m % n_nuclides
-          if (nuclides_MG(m % nuclide(j)) % obj % awr /= MACROSCOPIC_AWR) then
+          if (get_awr_c(m % nuclide(j)) /= MACROSCOPIC_AWR) then
             num_nuclides = num_nuclides + 1
           else
             num_macros = num_macros + 1
@@ -379,12 +381,14 @@ contains
         k = 1
         n = 1
         do j = 1, m % n_nuclides
-          if (nuclides_MG(m % nuclide(j)) % obj % awr /= MACROSCOPIC_AWR) then
-            nuc_names(k) = nuclides_MG(m % nuclide(j)) % obj % name
+          if (get_awr_c(m % nuclide(j)) /= MACROSCOPIC_AWR) then
+            call get_name_c(m % nuclide(j), len(nuc_names(k)), nuc_names(k))
+            nuc_names(k) = trim(nuc_names(k))
             nuc_densities(k) = m % atom_density(j)
             k = k + 1
           else
-            macro_names(n) = nuclides_MG(m % nuclide(j)) % obj % name
+            call get_name_c(m % nuclide(j), len(macro_names(n)), macro_names(n))
+            macro_names(n) = trim(macro_names(n))
             n = n + 1
           end if
         end do

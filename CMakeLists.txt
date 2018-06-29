@@ -363,7 +363,7 @@ set(LIBOPENMC_FORTRAN_SRC
   src/mesh_header.F90
   src/message_passing.F90
   src/mgxs_data.F90
-  src/mgxs_header.F90
+  src/mgxs_interface.F90
   src/multipole_header.F90
   src/nuclide_header.F90
   src/output.F90
@@ -382,7 +382,6 @@ set(LIBOPENMC_FORTRAN_SRC
   src/reaction_header.F90
   src/relaxng
   src/sab_header.F90
-  src/scattdata_header.F90
   src/secondary_correlated.F90
   src/secondary_kalbach.F90
   src/secondary_nbody.F90
@@ -443,12 +442,17 @@ set(LIBOPENMC_CXX_SRC
   src/lattice.cpp
   src/math_functions.cpp
   src/message_passing.cpp
+  src/mgxs.cpp
+  src/mgxs_interface.cpp
   src/plot.cpp
   src/random_lcg.cpp
+  src/scattdata.cpp
   src/simulation.cpp
   src/state_point.cpp
+  src/string_functions.cpp
   src/surface.cpp
   src/xml_interface.cpp
+  src/xsdata.cpp
   src/pugixml/pugixml.cpp)
 add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC} ${LIBOPENMC_CXX_SRC})
 set_target_properties(libopenmc PROPERTIES

@@ -626,6 +626,7 @@ contains
       p_r = mat % pdf(i_w+1, i_e)
       c_l = mat % cdf(i_w, i_e)
       a = log(p_r/p_l)/(w_r - w_l) + ONE
+      w = exp(w_l)*(a*(c - c_l)/(exp(w_l)*p_l) + ONE)**(ONE/a)
 
       if (w > energy_cutoff(PHOTON)) then
         ! Create secondary photon

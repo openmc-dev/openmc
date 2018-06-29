@@ -130,7 +130,7 @@ contains
     index_ufs_mesh = -1
     keff = ONE
     legendre_to_tabular = .true.
-    legendre_to_tabular_points = 33
+    legendre_to_tabular_points = C_NONE
     n_batch_interval = 1
     n_lost_particles = 0
     n_particles = 0
@@ -312,7 +312,6 @@ contains
   subroutine free_memory()
 
     use cmfd_header
-    use mgxs_header
     use photon_header
     use plot_header
     use sab_header
@@ -332,7 +331,6 @@ contains
     call free_memory_nuclide()
     call free_memory_photon()
     call free_memory_settings()
-    call free_memory_mgxs()
     call free_memory_sab()
     call free_memory_source()
     call free_memory_mesh()

@@ -97,7 +97,7 @@ void calc_pn_c(int n, double x, double pnx[]) {
   }
 
   // Use recursion relation to build the higher orders
-  for (int l = 1; l < n; l ++) {
+  for (int l = 1; l < n; l++) {
     pnx[l + 1] = ((2 * l + 1) * x * pnx[l] - l * pnx[l - 1]) / (l + 1);
   }
 }

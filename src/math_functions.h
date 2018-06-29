@@ -7,21 +7,11 @@
 #include <cmath>
 #include <cstdlib>
 
+#include "constants.h"
 #include "random_lcg.h"
 
 
 namespace openmc {
-
-//==============================================================================
-// Module constants.
-//==============================================================================
-
-// TODO: cmath::M_PI has 3 more digits precision than the Fortran constant we
-// use so for now we will reuse the Fortran constant until we are OK with
-// modifying test results
-extern "C" constexpr double PI {3.1415926535898};
-
-extern "C" const double SQRT_PI {std::sqrt(PI)};
 
 //==============================================================================
 //! Calculate the percentile of the standard normal distribution with a

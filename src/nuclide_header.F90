@@ -167,17 +167,17 @@ module nuclide_header
 !===============================================================================
 
   type MaterialMacroXS
-    real(8) :: total         ! macroscopic total xs
-    real(8) :: absorption    ! macroscopic absorption xs
-    real(8) :: fission       ! macroscopic fission xs
-    real(8) :: nu_fission    ! macroscopic production xs
-    real(8) :: photon_prod   ! macroscopic photon production xs
+    real(C_DOUBLE) :: total         ! macroscopic total xs
+    real(C_DOUBLE) :: absorption    ! macroscopic absorption xs
+    real(C_DOUBLE) :: fission       ! macroscopic fission xs
+    real(C_DOUBLE) :: nu_fission    ! macroscopic production xs
+    real(C_DOUBLE) :: photon_prod   ! macroscopic photon production xs
 
     ! Photon cross sections
-    real(8) :: coherent        ! macroscopic coherent xs
-    real(8) :: incoherent      ! macroscopic incoherent xs
-    real(8) :: photoelectric   ! macroscopic photoelectric xs
-    real(8) :: pair_production ! macroscopic pair production xs
+    real(C_DOUBLE) :: coherent        ! macroscopic coherent xs
+    real(C_DOUBLE) :: incoherent      ! macroscopic incoherent xs
+    real(C_DOUBLE) :: photoelectric   ! macroscopic photoelectric xs
+    real(C_DOUBLE) :: pair_production ! macroscopic pair production xs
   end type MaterialMacroXS
 
 !===============================================================================

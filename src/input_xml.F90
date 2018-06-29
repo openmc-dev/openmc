@@ -19,7 +19,7 @@ module input_xml
   use mesh_header
   use message_passing
   use mgxs_data,        only: create_macro_xs, read_mgxs
-  use mgxs_header
+  use mgxs_interface
   use nuclide_header
   use output,           only: title, header, print_plot
   use photon_header
@@ -3567,7 +3567,7 @@ contains
           if (run_CE) then
             awr = nuclides(mat % nuclide(j)) % awr
           else
-            awr = nuclides_MG(mat % nuclide(j)) % obj % awr
+            awr = get_awr_c(mat % nuclide(j))
           end if
 
           ! if given weight percent, convert all values so that they are divided
@@ -3592,7 +3592,7 @@ contains
             if (run_CE) then
               awr = nuclides(mat % nuclide(j)) % awr
             else
-              awr = nuclides_MG(mat % nuclide(j)) % obj % awr
+              awr = get_awr_c(mat % nuclide(j))
             end if
             x = mat % atom_density(j)
             sum_percent = sum_percent + x*awr

@@ -420,6 +420,25 @@ module constants
        DIFF_NUCLIDE_DENSITY = 2, &
        DIFF_TEMPERATURE = 3
 
+
+  ! Mgxs::get_xs enumerated types
+  integer(C_INT), parameter :: &
+       MG_GET_XS_TOTAL              = 0, &
+       MG_GET_XS_ABSORPTION         = 1, &
+       MG_GET_XS_INVERSE_VELOCITY   = 2, &
+       MG_GET_XS_DECAY_RATE         = 3, &
+       MG_GET_XS_SCATTER            = 4, &
+       MG_GET_XS_SCATTER_MULT       = 5, &
+       MG_GET_XS_SCATTER_FMU_MULT   = 6, &
+       MG_GET_XS_SCATTER_FMU        = 7, &
+       MG_GET_XS_FISSION            = 8, &
+       MG_GET_XS_KAPPA_FISSION      = 9, &
+       MG_GET_XS_PROMPT_NU_FISSION  = 10, &
+       MG_GET_XS_DELAYED_NU_FISSION = 11, &
+       MG_GET_XS_NU_FISSION         = 12, &
+       MG_GET_XS_CHI_PROMPT         = 13, &
+       MG_GET_XS_CHI_DELAYED        = 14
+
   ! ============================================================================
   ! RANDOM NUMBER STREAM CONSTANTS
 

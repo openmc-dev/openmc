@@ -213,7 +213,7 @@ The following tables show all valid scores:
     +----------------------+---------------------------------------------------+
     |nu-fission            |Total production of neutrons due to fission.       |
     +----------------------+---------------------------------------------------+
-    |nu-scatter,           |This score is similar in functionality to the      |
+    |nu-scatter            |This score is similar in functionality to the      |
     |                      |``scatter`` score except the total production of   |
     |                      |neutrons due to scattering is scored vice simply   |
     |                      |the scattering rate. This accounts for             |

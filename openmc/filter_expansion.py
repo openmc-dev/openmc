@@ -54,7 +54,7 @@ class LegendreFilter(ExpansionFilter):
     r"""Score Legendre expansion moments up to specified order.
 
     This filter allows scores to be multiplied by Legendre polynomials of the
-    change in particle angle ($\mu$) up to a user-specified order.
+    change in particle angle (:math:`\mu`) up to a user-specified order.
 
     Parameters
     ----------

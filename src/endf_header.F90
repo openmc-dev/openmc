@@ -37,7 +37,6 @@ module endf_header
   contains
     procedure :: from_hdf5 => polynomial_from_hdf5
     procedure :: evaluate => polynomial_evaluate
-    procedure :: from_ace => polynomial_from_ace
   end type Polynomial
 
 !===============================================================================
@@ -52,7 +51,6 @@ module endf_header
     real(8), allocatable :: x(:)   ! values of abscissa
     real(8), allocatable :: y(:)   ! values of ordinate
   contains
-    procedure :: from_ace => tabulated1d_from_ace
     procedure :: from_hdf5 => tabulated1d_from_hdf5
     procedure :: evaluate => tabulated1d_evaluate
   end type Tabulated1D
@@ -62,24 +60,6 @@ contains
 !===============================================================================
 ! Polynomial implementation
 !===============================================================================
-
-  subroutine polynomial_from_ace(this, xss, idx)
-    class(Polynomial), intent(inout) :: this
-    real(8),           intent(in)    :: xss(:)
-    integer,           intent(in)    :: idx
-
-    integer :: nc  ! number of coefficients (order - 1)
-
-    ! Clear space
-    if (allocated(this % coef)) deallocate(this % coef)
-
-    ! Determine number of coefficients
-    nc = nint(xss(idx))
-
-    ! Allocate space for and read coefficients
-    allocate(this % coef(nc))
-    this % coef(:) = xss(idx + 1 : idx + nc)
-  end subroutine polynomial_from_ace
 
   subroutine polynomial_from_hdf5(this, dset_id)
     class(Polynomial), intent(inout) :: this
@@ -110,42 +90,6 @@ contains
 !===============================================================================
 ! Tabulated1D implementation
 !===============================================================================
-
-  subroutine tabulated1d_from_ace(this, xss, idx)
-    class(Tabulated1D), intent(inout) :: this
-    real(8), intent(in) :: xss(:)
-    integer, intent(in) :: idx
-
-    integer :: nr, ne
-
-    ! Clear space
-    if (allocated(this % nbt)) deallocate(this % nbt)
-    if (allocated(this % int)) deallocate(this % int)
-    if (allocated(this % x)) deallocate(this % x)
-    if (allocated(this % y)) deallocate(this % y)
-
-    ! Determine number of regions
-    nr = nint(xss(idx))
-    this % n_regions = nr
-
-    ! Read interpolation region data
-    if (nr > 0) then
-      allocate(this % nbt(nr))
-      allocate(this % int(nr))
-      this % nbt(:) = nint(xss(idx + 1 : idx + nr))
-      this % int(:) = nint(xss(idx + nr + 1 : idx + 2*nr))
-    end if
-
-    ! Determine number of pairs
-    ne = int(XSS(idx + 2*nr + 1))
-    this % n_pairs = ne
-
-    ! Read (x,y) pairs
-    allocate(this % x(ne))
-    allocate(this % y(ne))
-    this % x(:) = xss(idx + 2*nr + 2 : idx + 2*nr + 1 + ne)
-    this % y(:) = xss(idx + 2*nr + 2 + ne : idx + 2*nr + 1 + 2*ne)
-  end subroutine tabulated1d_from_ace
 
   subroutine tabulated1d_from_hdf5(this, dset_id)
     class(Tabulated1D), intent(inout) :: this

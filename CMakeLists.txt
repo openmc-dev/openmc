@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
 project(openmc Fortran C CXX)
 
 # Setup output directories
@@ -10,14 +10,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
 #===============================================================================
-# Architecture specific definitions
-#===============================================================================
-
-if (${UNIX})
-  add_definitions(-DUNIX)
-endif()
-
-#===============================================================================
 # Command line options
 #===============================================================================
 
@@ -27,10 +19,7 @@ option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
 option(mpif08   "Use Fortran 2008 MPI interface"                 OFF)
-
-# Maximum number of nested coordinates levels
 set(maxcoord 10 CACHE STRING "Maximum number of nested coordinate levels")
-add_definitions(-DMAX_COORD=${maxcoord})
 
 #===============================================================================
 # MPI for distributed-memory parallelism
@@ -39,17 +28,12 @@ add_definitions(-DMAX_COORD=${maxcoord})
 set(MPI_ENABLED FALSE)
 if($ENV{FC} MATCHES "(mpi[^/]*|ftn)$")
   message("-- Detected MPI wrapper: $ENV{FC}")
-  add_definitions(-DOPENMC_MPI)
   set(MPI_ENABLED TRUE)
-
-  # Get directory containing MPI wrapper
-  get_filename_component(MPI_DIR $ENV{FC} DIRECTORY)
 endif()
 
 # Check for Fortran 2008 MPI interface
 if(MPI_ENABLED AND mpif08)
   message("-- Using Fortran 2008 MPI bindings")
-  add_definitions(-DOPENMC_MPIF08)
 endif()
 
 #===============================================================================
@@ -77,7 +61,6 @@ if(HDF5_IS_PARALLEL)
   if(NOT MPI_ENABLED)
     message(FATAL_ERROR "Parallel HDF5 must be used with MPI.")
   endif()
-  add_definitions(-DPHDF5)
   message("-- Using parallel HDF5")
 endif()
 
@@ -85,19 +68,15 @@ endif()
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
-# Support for Fortran in FindOpenMP was added in CMake 3.1. To support lower
-# versions, we manually add the flags. However, at some point in time, the
-# manual logic can be removed in favor of the block below
-
-#if(NOT (CMAKE_VERSION VERSION_LESS 3.1))
-#  if(openmp)
-#    find_package(OpenMP)
-#    if(OPENMP_FOUND)
-#      list(APPEND f90flags ${OpenMP_Fortran_FLAGS})
-#      list(APPEND ldflags ${OpenMP_Fortran_FLAGS})
-#    endif()
-#  endif()
-#endif()
+if(openmp)
+  # Requires CMake 3.1+
+  find_package(OpenMP)
+  if(OPENMP_FOUND)
+    list(APPEND f90flags ${OpenMP_Fortran_FLAGS})
+    list(APPEND cxxflags ${OpenMP_CXX_FLAGS})
+    list(APPEND ldflags ${OpenMP_Fortran_FLAGS})
+  endif()
+endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -125,10 +104,6 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
     list(REMOVE_ITEM f90flags -O2)
     list(APPEND f90flags -O3)
   endif()
-  if(openmp)
-    list(APPEND f90flags -fopenmp)
-    list(APPEND ldflags -fopenmp)
-  endif()
   if(coverage)
     list(APPEND f90flags -coverage)
     list(APPEND ldflags -coverage)
@@ -148,10 +123,6 @@ elseif(CMAKE_Fortran_COMPILER_ID STREQUAL Intel)
   endif()
   if(optimize)
     list(APPEND f90flags -O3)
-  endif()
-  if(openmp)
-    list(APPEND f90flags -qopenmp)
-    list(APPEND ldflags -qopenmp)
   endif()
 
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL PGI)
@@ -187,10 +158,6 @@ elseif(CMAKE_Fortran_COMPILER_ID STREQUAL XL)
     list(REMOVE_ITEM f90flags -O2)
     list(APPEND f90flags -O3)
   endif()
-  if(openmp)
-    list(APPEND f90flags -qsmp=omp)
-    list(APPEND ldflags -qsmp=omp)
-  endif()
 
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL Cray)
   # Cray Fortran compiler options
@@ -204,7 +171,7 @@ endif()
 
 if(CMAKE_C_COMPILER_ID STREQUAL GNU)
   # GCC compiler options
-  list(APPEND cflags -std=c99 -O2)
+  list(APPEND cflags -O2)
   if(debug)
     list(REMOVE_ITEM cflags -O2)
     list(APPEND cflags -g -Wall -pedantic -fbounds-check)
@@ -222,7 +189,6 @@ if(CMAKE_C_COMPILER_ID STREQUAL GNU)
 
 elseif(CMAKE_C_COMPILER_ID STREQUAL Intel)
   # Intel compiler options
-  list(APPEND cflags -std=c99)
   if(debug)
     list(APPEND cflags -g -w3 -ftrapuv -fp-stack-check -O0)
   endif()
@@ -235,7 +201,6 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL Intel)
 
 elseif(CMAKE_C_COMPILER_ID MATCHES Clang)
   # Clang options
-  list(APPEND cflags -std=c99)
   if(debug)
     list(APPEND cflags -g -O0 -ftrapv)
   endif()
@@ -257,9 +222,6 @@ if(optimize)
   list(REMOVE_ITEM cxxflags -O2)
   list(APPEND cxxflags -O3)
 endif()
-if(openmp)
-  list(APPEND cxxflags -fopenmp)
-endif()
 
 # Show flags being used
 message(STATUS "Fortran flags: ${f90flags}")
@@ -268,25 +230,11 @@ message(STATUS "C++ flags: ${cxxflags}")
 message(STATUS "Linker flags: ${ldflags}")
 
 #===============================================================================
-# git SHA1 hash
-#===============================================================================
-
-execute_process(COMMAND git rev-parse HEAD
-                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                RESULT_VARIABLE GIT_SHA1_SUCCESS
-                OUTPUT_VARIABLE GIT_SHA1
-                ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
-if(GIT_SHA1_SUCCESS EQUAL 0)
-  add_definitions(-DGIT_SHA1="${GIT_SHA1}")
-endif()
-
-#===============================================================================
 # pugixml library
 #===============================================================================
 
-add_library(pugixml src/pugixml/pugixml_c.cpp src/pugixml/pugixml.cpp)
-add_library(pugixml_fortran src/pugixml/pugixml_f.F90)
-target_link_libraries(pugixml_fortran pugixml)
+add_library(pugixml vendor/pugixml/pugixml.cpp)
+target_include_directories(pugixml PUBLIC vendor/pugixml/)
 
 #===============================================================================
 # RPATH information
@@ -295,7 +243,7 @@ target_link_libraries(pugixml_fortran pugixml)
 # This block of code ensures that dynamic libraries can be found via the RPATH
 # whether the executable is the original one from the build directory or the
 # installed one in CMAKE_INSTALL_PREFIX. Ref:
-# https://cmake.org/Wiki/CMake_RPATH_handling#Always_full_RPATH
+# https://gitlab.kitware.com/cmake/community/wikis/doc/cmake/RPATH-handling
 
 # use, i.e. don't skip the full RPATH for the build tree
 set(CMAKE_SKIP_BUILD_RPATH  FALSE)
@@ -317,17 +265,20 @@ if("${isSystemDir}" STREQUAL "-1")
 endif()
 
 #===============================================================================
-# Build faddeeva library
+# faddeeva library
 #===============================================================================
 
-add_library(faddeeva STATIC src/faddeeva/Faddeeva.c)
+add_library(faddeeva STATIC vendor/faddeeva/Faddeeva.c)
+target_compile_options(faddeeva PRIVATE ${cflags})
+set_target_properties(faddeeva PROPERTIES
+  C_STANDARD 99
+  C_STANDARD_REQUIRED ON)
 
 #===============================================================================
-# List source files.  Define the libopenmc and the OpenMC executable
+# libopenmc
 #===============================================================================
 
-set(program "openmc")
-set(LIBOPENMC_FORTRAN_SRC
+add_library(libopenmc SHARED
   src/algorithm.F90
   src/angle_distribution.F90
   src/angleenergy_header.F90
@@ -344,7 +295,6 @@ set(LIBOPENMC_FORTRAN_SRC
   src/dict_header.F90
   src/distribution_multivariate.F90
   src/distribution_univariate.F90
-  src/doppler.F90
   src/eigenvalue.F90
   src/endf.F90
   src/endf_header.F90
@@ -376,6 +326,7 @@ set(LIBOPENMC_FORTRAN_SRC
   src/plot_header.F90
   src/product_header.F90
   src/progress_header.F90
+  src/pugixml/pugixml_f.F90
   src/random_lcg.F90
   src/reaction_header.F90
   src/relaxng
@@ -429,8 +380,6 @@ set(LIBOPENMC_FORTRAN_SRC
   src/tallies/tally_header.F90
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90
-)
-set(LIBOPENMC_CXX_SRC
   src/cell.cpp
   src/initialize.cpp
   src/finalize.cpp
@@ -442,6 +391,7 @@ set(LIBOPENMC_CXX_SRC
   src/mgxs.cpp
   src/mgxs_interface.cpp
   src/plot.cpp
+  src/pugixml/pugixml_c.cpp
   src/random_lcg.cpp
   src/scattdata.cpp
   src/simulation.cpp
@@ -449,48 +399,60 @@ set(LIBOPENMC_CXX_SRC
   src/string_functions.cpp
   src/surface.cpp
   src/xml_interface.cpp
-  src/xsdata.cpp
-  src/pugixml/pugixml.cpp)
-add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC} ${LIBOPENMC_CXX_SRC})
+  src/xsdata.cpp)
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc
-  PUBLIC_HEADER include/openmc.h)
-add_executable(${program} src/main.cpp)
+  PUBLIC_HEADER include/openmc.h
+  LINKER_LANGUAGE Fortran)
 
-#===============================================================================
-# Add compiler/linker flags
-#===============================================================================
-
-set_property(TARGET ${program} libopenmc pugixml_fortran
-  PROPERTY LINKER_LANGUAGE Fortran)
-
-target_include_directories(libopenmc PUBLIC include ${HDF5_INCLUDE_DIRS})
-
-# The executable and the faddeeva package use only one language.  They can be
-# set via target_compile_options which accepts a list.
-target_compile_options(${program} PUBLIC ${cxxflags})
-target_compile_options(faddeeva PRIVATE ${cflags})
+target_include_directories(libopenmc
+  PUBLIC include
+  PRIVATE ${HDF5_INCLUDE_DIRS})
 
 # The libopenmc library has both F90 and C++ so the compile flags must be set
-# file-by-file via set_source_file_properties.  The compile flags must first be
-# converted from lists to strings.
-string(REPLACE ";" " " f90flags "${f90flags}")
-string(REPLACE ";" " " cxxflags "${cxxflags}")
-set_source_files_properties(${LIBOPENMC_FORTRAN_SRC} PROPERTIES COMPILE_FLAGS
-                            ${f90flags})
-set_source_files_properties(${LIBOPENMC_CXX_SRC} PROPERTIES COMPILE_FLAGS
-                            ${cxxflags})
+# differently depending on the language. The $<COMPILE_LANGUAGE> generator
+# expression was added in CMake 3.3
+target_compile_options(libopenmc PRIVATE
+  $<$<COMPILE_LANGUAGE:Fortran>:${f90flags}>
+  $<$<COMPILE_LANGUAGE:CXX>:${cxxflags}>)
 
-# Add HDF5 library directories to link line with -L
-foreach(LIBDIR ${HDF5_LIBRARY_DIRS})
-  list(APPEND ldflags "-L${LIBDIR}")
-endforeach()
+target_compile_definitions(libopenmc PRIVATE -DMAX_COORD=${maxcoord})
+if (UNIX)
+  # Used in progress_header.F90 for calling check_isatty
+  target_compile_definitions(libopenmc PRIVATE -DUNIX)
+endif()
+if (HDF5_IS_PARALLEL)
+  target_compile_definitions(libopenmc PRIVATE -DPHDF5)
+endif()
+if (MPI_ENABLED)
+  target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
+  if (mpif08)
+    target_compile_definitions(libopenmc PRIVATE -DOPENMC_MPIF08)
+  endif()
+endif()
+
+# Set git SHA1 hash as a compile definition
+execute_process(COMMAND git rev-parse HEAD
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                RESULT_VARIABLE GIT_SHA1_SUCCESS
+                OUTPUT_VARIABLE GIT_SHA1
+                ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+if(GIT_SHA1_SUCCESS EQUAL 0)
+  target_compile_definitions(libopenmc PRIVATE -DGIT_SHA1="${GIT_SHA1}")
+endif()
 
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
-target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml_fortran
+target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml
                       faddeeva)
-target_link_libraries(${program} ${ldflags} libopenmc)
+
+#===============================================================================
+# openmc executable
+#===============================================================================
+
+add_executable(openmc src/main.cpp)
+target_compile_options(openmc PRIVATE ${cxxflags})
+target_link_libraries(openmc libopenmc)
 
 #===============================================================================
 # Python package
@@ -506,7 +468,7 @@ add_custom_command(TARGET libopenmc POST_BUILD
 # Install executable, scripts, manpage, license
 #===============================================================================
 
-install(TARGETS ${program} libopenmc
+install(TARGETS openmc libopenmc
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
@@ -514,4 +476,4 @@ install(TARGETS ${program} libopenmc
   )
 install(DIRECTORY src/relaxng DESTINATION share/openmc)
 install(FILES man/man1/openmc.1 DESTINATION share/man/man1)
-install(FILES LICENSE DESTINATION "share/doc/${program}" RENAME copyright)
+install(FILES LICENSE DESTINATION "share/doc/openmc" RENAME copyright)

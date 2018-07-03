@@ -86,6 +86,11 @@ extern "C" double FP_PRECISION;
 constexpr double INFTY {std::numeric_limits<double>::max()};
 constexpr int C_NONE {-1};
 
+// Interpolation rules
+enum class Interpolation {
+  histogram, lin_lin, lin_log, log_lin, log_log
+};
+
 } // namespace openmc
 
 #endif // CONSTANTS_H

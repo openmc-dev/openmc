@@ -384,6 +384,7 @@ add_library(libopenmc SHARED
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90
   src/cell.cpp
+  src/distribution.cpp
   src/initialize.cpp
   src/finalize.cpp
   src/geometry_aux.cpp

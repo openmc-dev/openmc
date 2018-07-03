@@ -147,9 +147,7 @@ class ResonanceCovarianceRange(object):
         Number of parameters in covariance matrix for each individual resonance
     """
     
-
-    @classmethod
-    def res_subset(cls, parameter_str, bounds):
+    def res_subset(self, parameter_str, bounds):
         """Produce a subset of resonance parameters and the covariance matrix
         to an IncidentNeutron object.
         
@@ -166,9 +164,9 @@ class ResonanceCovarianceRange(object):
         cov_subset: subset of covariance matrix (upper triangular)
         
         """
-        parameters = cls.parameters
-        cov = cls.covariance
-        mpar = cls.mpar
+        parameters = self.parameters
+        cov = self.covariance
+        mpar = self.mpar
         mask1 = parameters[parameter_str]>=bounds[0]
         mask2 = parameters[parameter_str]<=bounds[1]
         mask = mask1 & mask2
@@ -187,11 +185,10 @@ class ResonanceCovarianceRange(object):
         tri_indices = np.triu_indices(sub_cov_dim)
         cov_subset[tri_indices] = oldvalues
     
-        cls.parameters_subset = parameters_subset
-        cls.cov_subset = cov_subset
+        self.parameters_subset = parameters_subset
+        self.cov_subset = cov_subset
 
-    @classmethod
-    def sample_resonance_parameters(cls, n_samples, use_subset=False):
+    def sample_resonance_parameters(self, n_samples, use_subset=False):
         """Return a IncidentNeutron object with n_samples of xs
     
         Parameters
@@ -205,24 +202,20 @@ class ResonanceCovarianceRange(object):
         -------
     
         """
-        print('Begin sampling')
-        print((cls))
-        print(dir(cls))
-        print(vars(cls))
         if use_subset==False:
-            parameters = cls.parameters
-            cov = cls.covariance
+            parameters = self.parameters
+            cov = self.covariance
         else:
-            if cls.parameters_subset is None:
+            if self.parameters_subset is None:
                 raise ValueError('No subset of resonances defined')
-            parameters = cls.parameters_subset
-            cov = cls.cov_subset
+            parameters = self.parameters_subset
+            cov = self.cov_subset
 
         nparams,params = parameters.shape
         cov = cov + cov.T - np.diag(cov.diagonal()) #symmetrizing covariance matrix
         covsize = cov.shape[0]
-        formalism = cls.formalism
-        mpar = cls.mpar
+        formalism = self.formalism
+        mpar = self.mpar
         samples = []
     
     
@@ -270,6 +263,7 @@ class ResonanceCovarianceRange(object):
                     sample_params = pd.DataFrame.from_records(records, columns=columns)
                     samples.append(sample_params)
     
+    ###FIXME doesn't look any different from mpar == 4
             elif mpar == 5:
                 param_list = ['energy','neutronWidth','captureWidth','fissionWidth']
                 mean_array = pd.DataFrame.as_matrix(parameters[param_list])
@@ -335,7 +329,7 @@ class ResonanceCovarianceRange(object):
                     sample_params = pd.DataFrame.from_records(records, columns=columns)
                     samples.append(sample_params)
     
-        cls.samples = samples
+        self.samples = samples
 
 class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
     """Multi-level Breit-Wigner resolved resonance formalism covariance data.

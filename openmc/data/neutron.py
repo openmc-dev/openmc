@@ -803,7 +803,7 @@ class IncidentNeutron(EqualityMixin):
             data.resonances = res.Resonances.from_endf(ev)
 
         if (32, 151) in ev.section and get_covariance:
-            data.res_covariance = res_cov.ResonanceCovariance.from_endf(ev)
+            data.res_covariance = res_cov.ResonanceCovariances.from_endf(ev, data.resonances)
 
         # Read each reaction
         for mf, mt, nc, mod in ev.reaction_list:

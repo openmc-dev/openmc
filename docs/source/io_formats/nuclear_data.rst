@@ -179,7 +179,7 @@ Incident Photon Data
 
 **/<element>/stopping_powers/**
 
-:Datasets: - **density_effect** (*double[]*) -- Density effect parameter
+:Datasets: - **I** (*double*) -- Mean excitation energy in [eV]
            - **energy** (*double[]*) -- Energies in [eV]
            - **s_collision** (*double[]*) -- Collisiong stopping power in [eV-cm\ :sup:`2`\ /g]
            - **s_radiative** (*double[]*) -- Radiative stopping power in [eV-cm\ :sup:`2`\ /g]

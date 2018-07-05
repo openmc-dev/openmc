@@ -1,9 +1,10 @@
-from collections import Mapping
+from collections.abc import Mapping
 import os
 
 import numpy as np
 import pytest
 import openmc
+import openmc.exceptions as exc
 import openmc.capi
 
 from tests import cdtemp
@@ -24,6 +25,15 @@ def pincell_model():
     mat_tally.nuclides = ['U235', 'U238']
     mat_tally.scores = ['total', 'elastic', '(n,gamma)']
     pincell.tallies.append(mat_tally)
+
+    # Add an expansion tally
+    zernike_tally = openmc.Tally()
+    filter3 = openmc.ZernikeFilter(5, r=.63)
+    cells = pincell.geometry.root_universe.cells
+    filter4 = openmc.CellFilter(list(cells.values()))
+    zernike_tally.filters = [filter3, filter4]
+    zernike_tally.scores = ['fission']
+    pincell.tallies.append(zernike_tally)
 
     # Write XML files in tmpdir
     with cdtemp():
@@ -60,7 +70,7 @@ def test_cell(capi_init):
 
 
 def test_new_cell(capi_init):
-    with pytest.raises(openmc.capi.AllocationError):
+    with pytest.raises(exc.AllocationError):
         openmc.capi.Cell(1)
     new_cell = openmc.capi.Cell()
     new_cell_with_id = openmc.capi.Cell(10)
@@ -91,7 +101,7 @@ def test_material(capi_init):
 
 
 def test_new_material(capi_init):
-    with pytest.raises(openmc.capi.AllocationError):
+    with pytest.raises(exc.AllocationError):
         openmc.capi.Material(1)
     new_mat = openmc.capi.Material()
     new_mat_with_id = openmc.capi.Material(10)
@@ -109,7 +119,7 @@ def test_nuclide_mapping(capi_init):
 
 def test_load_nuclide(capi_init):
     openmc.capi.load_nuclide('Pu239')
-    with pytest.raises(openmc.capi.DataError):
+    with pytest.raises(exc.DataError):
         openmc.capi.load_nuclide('Pu3')
 
 
@@ -131,7 +141,7 @@ def test_settings(capi_init):
 def test_tally_mapping(capi_init):
     tallies = openmc.capi.tallies
     assert isinstance(tallies, Mapping)
-    assert len(tallies) == 1
+    assert len(tallies) == 2
     for tally_id, tally in tallies.items():
         assert isinstance(tally, openmc.capi.Tally)
         assert tally_id == tally.id
@@ -145,7 +155,7 @@ def test_tally(capi_init):
     assert isinstance(t.filters[1], openmc.capi.EnergyFilter)
 
     # Create new filter and replace existing
-    with pytest.raises(openmc.capi.AllocationError):
+    with pytest.raises(exc.AllocationError):
         openmc.capi.MaterialFilter(uid=1)
     mats = openmc.capi.materials
     f = openmc.capi.MaterialFilter([mats[2], mats[1]])
@@ -153,7 +163,7 @@ def test_tally(capi_init):
     assert t.filters == [f]
 
     assert t.nuclides == ['U235', 'U238']
-    with pytest.raises(openmc.capi.DataError):
+    with pytest.raises(exc.DataError):
         t.nuclides = ['Zr2']
     t.nuclides = ['U234', 'Zr90']
     assert t.nuclides == ['U234', 'Zr90']
@@ -163,24 +173,40 @@ def test_tally(capi_init):
     t.scores = new_scores
     assert t.scores == new_scores
 
+    assert not t.active
+    t.active = True
+    assert t.active
+
+    t2 = openmc.capi.tallies[2]
+    t2.id = 2
+    assert len(t2.filters) == 2
+    assert isinstance(t2.filters[0], openmc.capi.ZernikeFilter)
+    assert isinstance(t2.filters[1], openmc.capi.CellFilter)
+    assert len(t2.filters[1].bins) == 3
+    assert t2.filters[0].order == 5
+
 
 def test_new_tally(capi_init):
-    with pytest.raises(openmc.capi.AllocationError):
+    with pytest.raises(exc.AllocationError):
         openmc.capi.Material(1)
     new_tally = openmc.capi.Tally()
     new_tally.scores = ['flux']
     new_tally_with_id = openmc.capi.Tally(10)
     new_tally_with_id.scores = ['flux']
-    assert len(openmc.capi.tallies) == 3
+    assert len(openmc.capi.tallies) == 4
 
 
 def test_tally_results(capi_run):
     t = openmc.capi.tallies[1]
-    assert t.num_realizations == 5
+    assert t.num_realizations == 10  # t was made active in test_tally
     assert np.all(t.mean >= 0)
     nonzero = (t.mean > 0.0)
     assert np.all(t.std_dev[nonzero] >= 0)
     assert np.all(t.ci_width()[nonzero] >= 1.95*t.std_dev[nonzero])
+
+    t2 = openmc.capi.tallies[2]
+    n = 5
+    assert t2.mean.size == (n + 1) * (n + 2) // 2 * 3 # Number of Zernike coeffs * 3 cells
 
 
 def test_global_tallies(capi_run):
@@ -206,7 +232,7 @@ def test_by_batch(capi_run):
 
     # Running next batch before simulation is initialized should raise an
     # exception
-    with pytest.raises(openmc.capi.AllocationError):
+    with pytest.raises(exc.AllocationError):
         openmc.capi.next_batch()
 
     openmc.capi.simulation_init()
@@ -241,7 +267,7 @@ def test_find_cell(capi_init):
     assert cell is openmc.capi.cells[1]
     cell, instance = openmc.capi.find_cell((0.4, 0., 0.))
     assert cell is openmc.capi.cells[2]
-    with pytest.raises(openmc.capi.GeometryError):
+    with pytest.raises(exc.GeometryError):
         openmc.capi.find_cell((100., 100., 100.))
 
 
@@ -250,3 +276,38 @@ def test_find_material(capi_init):
     assert mat is openmc.capi.materials[1]
     mat = openmc.capi.find_material((0.4, 0., 0.))
     assert mat is openmc.capi.materials[2]
+
+
+def test_mesh(capi_init):
+    mesh = openmc.capi.Mesh()
+    mesh.dimension = (2, 3, 4)
+    assert mesh.dimension == (2, 3, 4)
+    with pytest.raises(exc.AllocationError):
+        mesh2 = openmc.capi.Mesh(mesh.id)
+
+    # Make sure each combination of parameters works
+    ll = (0., 0., 0.)
+    ur = (10., 10., 10.)
+    width = (1., 1., 1.)
+    mesh.set_parameters(lower_left=ll, upper_right=ur)
+    assert mesh.lower_left == pytest.approx(ll)
+    assert mesh.upper_right == pytest.approx(ur)
+    mesh.set_parameters(lower_left=ll, width=width)
+    assert mesh.lower_left == pytest.approx(ll)
+    assert mesh.width == pytest.approx(width)
+    mesh.set_parameters(upper_right=ur, width=width)
+    assert mesh.upper_right == pytest.approx(ur)
+    assert mesh.width == pytest.approx(width)
+
+    meshes = openmc.capi.meshes
+    assert isinstance(meshes, Mapping)
+    assert len(meshes) == 1
+    for mesh_id, mesh in meshes.items():
+        assert isinstance(mesh, openmc.capi.Mesh)
+        assert mesh_id == mesh.id
+
+    mf = openmc.capi.MeshFilter(mesh)
+    assert mf.mesh == mesh
+
+    msf = openmc.capi.MeshSurfaceFilter(mesh)
+    assert msf.mesh == mesh

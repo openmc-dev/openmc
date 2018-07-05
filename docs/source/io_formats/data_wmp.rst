@@ -28,12 +28,6 @@ Windowed Multipole Library Format
         ":math:`r`" and ":math:`i`" identifiers, similar to how `h5py`_ does it.
     - **end_E** (*double*)
         Highest energy the windowed multipole part of the library is valid for.
-    - **energy_points** (*double[]*)
-        Energy grid for the pointwise library in the reaction group.
-    - **fissionable** (*int*)
-        1 if this nuclide has fission data. 0 if it does not.
-    - **fit_order** (*int*)
-        The order of the curve fit.
     - **formalism** (*int*)
         The formalism of the underlying data. Uses the `ENDF-6`_ format
         formalism numbers.
@@ -51,18 +45,6 @@ Windowed Multipole Library Format
     - **l_value** (*int[]*)
         The index for a corresponding pole. Equivalent to the :math:`l` quantum
         number of the resonance the pole comes from :math:`+1`.
-    - **length** (*int*)
-        Total count of poles in `data`.
-    - **max_w** (*int*)
-        Maximum number of poles in a window.
-    - **MT_count** (*int*)
-        Number of pointwise tables in the library.
-    - **MT_list** (*int[]*)
-        A list of available MT identifiers. See `ENDF-6`_ for meaning.
-    - **n_grid** (*int*)
-        Total length of the pointwise data.
-    - **num_l** (*int*)
-        Number of possible :math:`l` quantum states for this nuclide.
     - **pseudo_K0RS** (*double[]*)
         :math:`l` dependent value of
 
@@ -90,13 +72,6 @@ Windowed Multipole Library Format
         The pole to start from for each window.
     - **w_end** (*int[]*)
         The pole to end at for each window.
-    - **windows** (*int*)
-        Number of windows.
-
-**/nuclide/reactions/MT<i>**
-    - **MT_sigma** (*double[]*) -- Cross section value for this reaction.
-    - **Q_value** (*double*) -- Energy released in this reaction, in eV.
-    - **threshold** (*int*) -- The first non-zero entry in ``MT_sigma``.
 
 .. _h5py: http://docs.h5py.org/en/latest/
 .. _ENDF-6: https://www.oecd-nea.org/dbdata/data/manual-endf/endf102.pdf

@@ -19,7 +19,7 @@ class TrackTestHarness(TestHarness):
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
         # Run the track-to-vtk conversion script.
-        call(['../../scripts/openmc-track-to-vtk', '-o', 'poly'] +
+        call(['../../../scripts/openmc-track-to-vtk', '-o', 'poly'] +
              glob.glob('track_1_1_*.h5'))
 
         # Make sure the vtk file was created then return it's contents.

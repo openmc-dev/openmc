@@ -6,6 +6,7 @@ module geometry_header
   use constants,       only: HALF, TWO, THREE, INFINITY, K_BOLTZMANN, &
                              MATERIAL_VOID, NONE
   use dict_header,     only: DictCharInt, DictIntInt
+  use hdf5_interface,  only: HID_T
   use material_header, only: Material, materials, material_dict, n_materials
   use nuclide_header
   use sab_header
@@ -14,13 +15,192 @@ module geometry_header
 
   implicit none
 
+  interface
+    function cell_pointer_c(cell_ind) bind(C, name='cell_pointer') result(ptr)
+      import C_PTR, C_INT32_T
+      integer(C_INT32_T), intent(in), value :: cell_ind
+      type(C_PTR)                           :: ptr
+    end function cell_pointer_c
+
+    function cell_id_c(cell_ptr) bind(C, name='cell_id') result(id)
+      import C_PTR, C_INT32_T
+      type(C_PTR), intent(in), value :: cell_ptr
+      integer(C_INT32_T)             :: id
+    end function cell_id_c
+
+    subroutine cell_set_id_c(cell_ptr, id) bind(C, name='cell_set_id')
+      import C_PTR, C_INT32_T
+      type(C_PTR),        intent(in), value :: cell_ptr
+      integer(C_INT32_T), intent(in), value :: id
+    end subroutine cell_set_id_c
+
+    function cell_type_c(cell_ptr) bind(C, name='cell_type') result(type)
+      import C_PTR, C_INT
+      type(C_PTR), intent(in), value :: cell_ptr
+      integer(C_INT)                 :: type
+    end function cell_type_c
+
+    subroutine cell_set_type_c(cell_ptr, type) bind(C, name='cell_set_type')
+      import C_PTR, C_INT
+      type(C_PTR),    intent(in), value :: cell_ptr
+      integer(C_INT), intent(in), value :: type
+    end subroutine cell_set_type_c
+
+    function cell_universe_c(cell_ptr) bind(C, name='cell_universe') &
+         result(universe)
+      import C_PTR, C_INT32_T
+      type(C_PTR), intent(in), value :: cell_ptr
+      integer(C_INT32_T)             :: universe
+    end function cell_universe_c
+
+    subroutine cell_set_universe_c(cell_ptr, universe) &
+         bind(C, name='cell_set_universe')
+      import C_PTR, C_INT32_T
+      type(C_PTR),        intent(in), value :: cell_ptr
+      integer(C_INT32_T), intent(in), value :: universe
+    end subroutine cell_set_universe_c
+
+    function cell_fill_c(cell_ptr) bind(C, name="cell_fill") result(fill)
+      import C_PTR, C_INT32_T
+      type(C_PTR), intent(in), value :: cell_ptr
+      integer(C_INT32_T)             :: fill
+    end function cell_fill_c
+
+    function cell_fill_ptr(cell_ptr) bind(C) result(fill_ptr)
+      import C_PTR
+      type(C_PTR), intent(in), value :: cell_ptr
+      type(C_PTR)                    :: fill_ptr
+    end function cell_fill_ptr
+
+    function cell_n_instances_c(cell_ptr) bind(C, name='cell_n_instances') &
+         result(n_instances)
+      import C_PTR, C_INT32_T
+      type(C_PTR), intent(in), value :: cell_ptr
+      integer(C_INT32_T)             :: n_instances
+    end function cell_n_instances_c
+
+    function cell_simple_c(cell_ptr) bind(C, name='cell_simple') result(simple)
+      import C_PTR, C_BOOL
+      type(C_PTR), intent(in), value :: cell_ptr
+      logical(C_BOOL)                :: simple
+    end function cell_simple_c
+
+    subroutine cell_distance_c(cell_ptr, xyz, uvw, on_surface, min_dist, &
+                               i_surf) bind(C, name="cell_distance")
+      import C_PTR, C_INT32_T, C_DOUBLE
+      type(C_PTR),        intent(in), value :: cell_ptr
+      real(C_DOUBLE),     intent(in)        :: xyz(3)
+      real(C_DOUBLE),     intent(in)        :: uvw(3)
+      integer(C_INT32_T), intent(in), value :: on_surface
+      real(C_DOUBLE),     intent(out)       :: min_dist
+      integer(C_INT32_T), intent(out)       :: i_surf
+    end subroutine cell_distance_c
+
+    function cell_offset_c(cell_ptr, map) bind(C, name="cell_offset") &
+         result(offset)
+      import C_PTR, C_INT, C_INT32_T
+      type(C_PTR),    intent(in), value :: cell_ptr
+      integer(C_INT), intent(in), value :: map
+      integer(C_INT32_T)                :: offset
+    end function cell_offset_c
+
+    subroutine cell_to_hdf5_c(cell_ptr, group) bind(C, name='cell_to_hdf5')
+      import HID_T, C_PTR
+      type(C_PTR),    intent(in), value :: cell_ptr
+      integer(HID_T), intent(in), value :: group
+    end subroutine cell_to_hdf5_c
+
+    function lattice_pointer_c(lat_ind) bind(C, name='lattice_pointer') &
+         result(ptr)
+      import C_PTR, C_INT32_T
+      integer(C_INT32_T), intent(in), value :: lat_ind
+      type(C_PTR)                           :: ptr
+    end function lattice_pointer_c
+
+    function lattice_id_c(lat_ptr) bind(C, name='lattice_id') result(id)
+      import C_PTR, C_INT32_T
+      type(C_PTR), intent(in), value :: lat_ptr
+      integer(C_INT32_T)             :: id
+    end function lattice_id_c
+
+    function lattice_are_valid_indices_c(lat_ptr, i_xyz) &
+         bind(C, name='lattice_are_valid_indices') result (is_valid)
+      import C_PTR, C_INT, C_BOOL
+      type(C_PTR),    intent(in), value :: lat_ptr
+      integer(C_INT), intent(in)        :: i_xyz(3)
+      logical(C_BOOL)                   :: is_valid
+    end function lattice_are_valid_indices_c
+
+    subroutine lattice_distance_c(lat_ptr, xyz, uvw, i_xyz, d, lattice_trans) &
+         bind(C, name='lattice_distance')
+      import C_PTR, C_INT, C_DOUBLE
+      type(C_PTR),    intent(in), value :: lat_ptr
+      real(C_DOUBLE), intent(in)        :: xyz(3)
+      real(C_DOUBLE), intent(in)        :: uvw(3)
+      integer(C_INT), intent(in)        :: i_xyz(3)
+      real(C_DOUBLE), intent(out)       :: d
+      integer(C_INT), intent(out)       :: lattice_trans(3)
+    end subroutine lattice_distance_c
+
+    subroutine lattice_get_indices_c(lat_ptr, xyz, i_xyz) &
+         bind(C, name='lattice_get_indices')
+      import C_PTR, C_INT, C_DOUBLE
+      type(C_PTR),    intent(in), value :: lat_ptr
+      real(C_DOUBLE), intent(in)        :: xyz(3)
+      integer(C_INT), intent(out)       :: i_xyz(3)
+    end subroutine lattice_get_indices_c
+
+    subroutine lattice_get_local_xyz_c(lat_ptr, global_xyz, i_xyz, local_xyz) &
+         bind(C, name='lattice_get_local_xyz')
+      import C_PTR, C_INT, C_DOUBLE
+      type(C_PTR),    intent(in), value :: lat_ptr
+      real(C_DOUBLE), intent(in)        :: global_xyz(3)
+      integer(C_INT), intent(in)        :: i_xyz(3)
+      real(C_DOUBLE), intent(out)       :: local_xyz(3)
+    end subroutine lattice_get_local_xyz_c
+
+    subroutine lattice_to_hdf5_c(lat_ptr, group) bind(C, name='lattice_to_hdf5')
+      import HID_T, C_PTR
+      type(C_PTR),    intent(in), value :: lat_ptr
+      integer(HID_T), intent(in), value :: group
+    end subroutine lattice_to_hdf5_c
+
+    function lattice_offset_c(lat_ptr, map, i_xyz) &
+         bind(C, name='lattice_offset') result(offset)
+      import C_PTR, C_INT, C_INT32_T
+      type(C_PTR),    intent(in), value :: lat_ptr
+      integer(C_INT), intent(in), value :: map
+      integer(C_INT), intent(in)        :: i_xyz(3)
+      integer(C_INT32_T)                :: offset
+    end function lattice_offset_c
+
+    function lattice_outer_c(lat_ptr) bind(C, name='lattice_outer') &
+         result(outer)
+      import C_PTR, C_INT32_T
+      type(C_PTR), intent(in), value :: lat_ptr
+      integer(C_INT32_T)             :: outer
+    end function lattice_outer_c
+
+    function lattice_universe_c(lat_ptr, i_xyz) &
+         bind(C, name='lattice_universe') result(univ)
+      import C_PTR, C_INT32_t, C_INT
+      type(C_PTR),    intent(in), value :: lat_ptr
+      integer(C_INT), intent(in)        :: i_xyz(3)
+      integer(C_INT32_T)                :: univ
+    end function lattice_universe_c
+
+    subroutine extend_cells_c(n) bind(C)
+      import C_INT32_t
+      integer(C_INT32_T), intent(in), value :: n
+    end subroutine extend_cells_c
+  end interface
+
 !===============================================================================
 ! UNIVERSE defines a geometry that fills all phase space
 !===============================================================================
 
   type Universe
     integer :: id                     ! Unique ID
-    integer :: type                   ! Type
     integer, allocatable :: cells(:)  ! List of cells within
     real(8) :: x0                     ! Translation in x-coordinate
     real(8) :: y0                     ! Translation in y-coordinate
@@ -32,68 +212,24 @@ module geometry_header
 !===============================================================================
 
   type, abstract :: Lattice
-    integer              :: id               ! Universe number for lattice
-    character(len=104)   :: name = ""        ! User-defined name
-    real(8), allocatable :: pitch(:)         ! Pitch along each axis
-    integer, allocatable :: universes(:,:,:) ! Specified universes
-    integer              :: outside          ! Material to fill area outside
-    integer              :: outer            ! universe to tile outside the lat
-    logical              :: is_3d            ! Lattice has cells on z axis
-    integer, allocatable :: offset(:,:,:,:)  ! Distribcell offsets
+    type(C_PTR) :: ptr
   contains
-    procedure(lattice_are_valid_indices_), deferred :: are_valid_indices
-    procedure(lattice_get_indices_),       deferred :: get_indices
-    procedure(lattice_get_local_xyz_),     deferred :: get_local_xyz
+    procedure :: id => lattice_id
+    procedure :: are_valid_indices => lattice_are_valid_indices
+    procedure :: distance => lattice_distance
+    procedure :: get => lattice_get
+    procedure :: get_indices => lattice_get_indices
+    procedure :: get_local_xyz => lattice_get_local_xyz
+    procedure :: offset => lattice_offset
+    procedure :: outer => lattice_outer
+    procedure :: to_hdf5 => lattice_to_hdf5
   end type Lattice
-
-  abstract interface
-
-!===============================================================================
-! ARE_VALID_INDICES returns .true. if the given lattice indices fit within the
-! bounds of the lattice.  Returns false otherwise.
-
-    function lattice_are_valid_indices_(this, i_xyz) result(is_valid)
-      import Lattice
-      class(Lattice), intent(in) :: this
-      integer,        intent(in) :: i_xyz(3)
-      logical                    :: is_valid
-    end function lattice_are_valid_indices_
-
-!===============================================================================
-! GET_INDICES returns the indices in a lattice for the given global xyz.
-
-    function lattice_get_indices_(this, global_xyz) result(i_xyz)
-      import Lattice
-      class(Lattice), intent(in) :: this
-      real(8),        intent(in) :: global_xyz(3)
-      integer                    :: i_xyz(3)
-    end function lattice_get_indices_
-
-!===============================================================================
-! GET_LOCAL_XYZ returns the translated local version of the given global xyz.
-
-    function lattice_get_local_xyz_(this, global_xyz, i_xyz) result(local_xyz)
-      import Lattice
-      class(Lattice), intent(in) :: this
-      real(8),        intent(in) :: global_xyz(3)
-      integer,        intent(in) :: i_xyz(3)
-      real(8)                    :: local_xyz(3)
-    end function lattice_get_local_xyz_
-  end interface
 
 !===============================================================================
 ! RECTLATTICE extends LATTICE for rectilinear arrays.
 !===============================================================================
 
   type, extends(Lattice) :: RectLattice
-    integer              :: n_cells(3)     ! Number of cells along each axis
-    real(8), allocatable :: lower_left(:)  ! Global lower-left corner of lat
-
-    contains
-
-    procedure :: are_valid_indices => valid_inds_rect
-    procedure :: get_indices => get_inds_rect
-    procedure :: get_local_xyz => get_local_rect
   end type RectLattice
 
 !===============================================================================
@@ -101,15 +237,6 @@ module geometry_header
 !===============================================================================
 
   type, extends(Lattice) :: HexLattice
-    integer              :: n_rings   ! Number of radial ring cell positoins
-    integer              :: n_axial   ! Number of axial cell positions
-    real(8), allocatable :: center(:) ! Global center of lattice
-
-    contains
-
-    procedure :: are_valid_indices => valid_inds_hex
-    procedure :: get_indices => get_inds_hex
-    procedure :: get_local_xyz => get_local_hex
   end type HexLattice
 
 !===============================================================================
@@ -125,25 +252,13 @@ module geometry_header
 !===============================================================================
 
   type Cell
-    integer :: id                          ! Unique ID
-    character(len=104) :: name = ""        ! User-defined name
-    integer :: type                        ! Type of cell (normal, universe,
-                                           !  lattice)
-    integer :: universe                    ! universe # this cell is in
-    integer :: fill                        ! universe # filling this cell
-    integer :: instances                   ! number of instances of this cell in
-                                           !  the geom
+    type(C_PTR) :: ptr
+
     integer, allocatable :: material(:)    ! Material within cell.  Multiple
                                            !  materials for distribcell
                                            !  instances.  0 signifies a universe
-    integer, allocatable :: offset(:)      ! Distribcell offset for tally
-                                           !  counter
     integer, allocatable :: region(:)      ! Definition of spatial region as
                                            !  Boolean expression of half-spaces
-    integer, allocatable :: rpn(:)         ! Reverse Polish notation for region
-                                           !  expression
-    logical :: simple                      ! Is the region simple (intersections
-                                           !  only)
     integer :: distribcell_index           ! Index corresponding to this cell in
                                            !  distribcell arrays
     real(8), allocatable :: sqrtkT(:)      ! Square root of k_Boltzmann *
@@ -154,6 +269,22 @@ module geometry_header
     real(8), allocatable :: translation(:)
     real(8), allocatable :: rotation(:)
     real(8), allocatable :: rotation_matrix(:,:)
+
+  contains
+
+    procedure :: id => cell_id
+    procedure :: set_id => cell_set_id
+    procedure :: type => cell_type
+    procedure :: set_type => cell_set_type
+    procedure :: universe => cell_universe
+    procedure :: set_universe => cell_set_universe
+    procedure :: fill => cell_fill
+    procedure :: n_instances => cell_n_instances
+    procedure :: simple => cell_simple
+    procedure :: distance => cell_distance
+    procedure :: offset => cell_offset
+    procedure :: to_hdf5 => cell_to_hdf5
+
   end type Cell
 
   ! array index of the root universe
@@ -161,7 +292,6 @@ module geometry_header
 
   integer(C_INT32_T), bind(C) :: n_cells     ! # of cells
   integer(C_INT32_T), bind(C) :: n_universes ! # of universes
-  integer(C_INT32_T), bind(C) :: n_lattices  ! # of lattices
 
   type(Cell),             allocatable, target :: cells(:)
   type(Universe),         allocatable, target :: universes(:)
@@ -174,172 +304,150 @@ module geometry_header
 
 contains
 
-!===============================================================================
+  function lattice_id(this) result(id)
+    class(Lattice), intent(in) :: this
+    integer(C_INT32_T)         :: id
+    id = lattice_id_c(this % ptr)
+  end function lattice_id
 
-  function valid_inds_rect(this, i_xyz) result(is_valid)
-    class(RectLattice), intent(in) :: this
-    integer,            intent(in) :: i_xyz(3)
-    logical                        :: is_valid
+  function lattice_are_valid_indices(this, i_xyz) result (is_valid)
+    class(Lattice), intent(in) :: this
+    integer(C_INT), intent(in) :: i_xyz(3)
+    logical(C_BOOL)            :: is_valid
+    is_valid = lattice_are_valid_indices_c(this % ptr, i_xyz)
+  end function lattice_are_valid_indices
 
-    is_valid = all(i_xyz > 0 .and. i_xyz <= this % n_cells)
-  end function valid_inds_rect
+  subroutine lattice_distance(this, xyz, uvw, i_xyz, d, lattice_trans)
+    class(Lattice), intent(in)  :: this
+    real(C_DOUBLE), intent(in)  :: xyz(3)
+    real(C_DOUBLE), intent(in)  :: uvw(3)
+    integer(C_INT), intent(in)  :: i_xyz(3)
+    real(C_DOUBLE), intent(out) :: d
+    integer(C_INT), intent(out) :: lattice_trans(3)
+    call lattice_distance_c(this % ptr, xyz, uvw, i_xyz, d, lattice_trans)
+  end subroutine lattice_distance
 
-!===============================================================================
+  function lattice_get(this, i_xyz) result(univ)
+    class(Lattice), intent(in)  :: this
+    integer(C_INT), intent(in)  :: i_xyz(3)
+    integer(C_INT32_T)          :: univ
+    univ = lattice_universe_c(this % ptr, i_xyz)
+  end function lattice_get
 
-  function valid_inds_hex(this, i_xyz) result(is_valid)
-    class(HexLattice), intent(in) :: this
-    integer,           intent(in) :: i_xyz(3)
-    logical                       :: is_valid
+  function lattice_get_indices(this, xyz) result(i_xyz)
+    class(Lattice), intent(in)  :: this
+    real(C_DOUBLE), intent(in)  :: xyz(3)
+    integer(C_INT)              :: i_xyz(3)
+    call lattice_get_indices_c(this % ptr, xyz, i_xyz)
+  end function lattice_get_indices
 
-    is_valid = (all(i_xyz > 0) .and. &
-               &i_xyz(1) < 2*this % n_rings .and. &
-               &i_xyz(2) < 2*this % n_rings .and. &
-               &i_xyz(1) + i_xyz(2) > this % n_rings .and. &
-               &i_xyz(1) + i_xyz(2) < 3*this % n_rings .and. &
-               &i_xyz(3) <= this % n_axial)
-  end function valid_inds_hex
+  function lattice_get_local_xyz(this, global_xyz, i_xyz) &
+       result(local_xyz)
+    class(Lattice), intent(in) :: this
+    real(C_DOUBLE), intent(in) :: global_xyz(3)
+    integer(C_INT), intent(in) :: i_xyz(3)
+    real(C_DOUBLE)             :: local_xyz(3)
+    call lattice_get_local_xyz_c(this % ptr, global_xyz, i_xyz, local_xyz)
+  end function lattice_get_local_xyz
 
-!===============================================================================
+  function lattice_offset(this, map, i_xyz) result(offset)
+    class(Lattice), intent(in) :: this
+    integer(C_INT), intent(in) :: map
+    integer(C_INT), intent(in) :: i_xyz(3)
+    integer(C_INT32_T)         :: offset
+    offset = lattice_offset_c(this % ptr, map, i_xyz)
+  end function lattice_offset
 
-  function get_inds_rect(this, global_xyz) result(i_xyz)
-    class(RectLattice), intent(in) :: this
-    real(8),            intent(in) :: global_xyz(3)
-    integer                        :: i_xyz(3)
+  function lattice_outer(this) result(outer)
+    class(Lattice), intent(in) :: this
+    integer(C_INT32_T)         :: outer
+    outer = lattice_outer_c(this % ptr)
+  end function lattice_outer
 
-    real(8) :: xyz(3)  ! global_xyz alias
-
-    xyz = global_xyz
-
-    i_xyz(1) = ceiling((xyz(1) - this % lower_left(1))/this % pitch(1))
-    i_xyz(2) = ceiling((xyz(2) - this % lower_left(2))/this % pitch(2))
-    if (this % is_3d) then
-      i_xyz(3) = ceiling((xyz(3) - this % lower_left(3))/this % pitch(3))
-    else
-      i_xyz(3) = 1
-    end if
-  end function get_inds_rect
-
-!===============================================================================
-
-  function get_inds_hex(this, global_xyz) result(i_xyz)
-    class(HexLattice), intent(in) :: this
-    real(8),           intent(in) :: global_xyz(3)
-    integer                       :: i_xyz(3)
-
-    real(8) :: xyz(3)    ! global xyz relative to the center
-    real(8) :: alpha     ! Skewed coord axis
-    real(8) :: xyz_t(3)  ! Local xyz
-    real(8) :: d, d_min  ! Squared distance from cell centers
-    integer :: i, j, k   ! Iterators
-    integer :: k_min     ! Minimum distance index
-
-    xyz(1) = global_xyz(1) - this % center(1)
-    xyz(2) = global_xyz(2) - this % center(2)
-
-    ! Index z direction.
-    if (this % is_3d) then
-      xyz(3) = global_xyz(3) - this % center(3)
-      i_xyz(3) = ceiling(xyz(3)/this % pitch(2) + HALF*this % n_axial)
-    else
-      xyz(3) = global_xyz(3)
-      i_xyz(3) = 1
-    end if
-
-    ! Convert coordinates into skewed bases.  The (x, alpha) basis is used to
-    ! find the index of the global coordinates to within 4 cells.
-    alpha = xyz(2) - xyz(1) / sqrt(THREE)
-    i_xyz(1) = floor(xyz(1) / (sqrt(THREE) / TWO * this % pitch(1)))
-    i_xyz(2) = floor(alpha / this % pitch(1))
-
-    ! Add offset to indices (the center cell is (i_x, i_alpha) = (0, 0) but
-    ! the array is offset so that the indices never go below 1).
-    i_xyz(1) = i_xyz(1) + this % n_rings
-    i_xyz(2) = i_xyz(2) + this % n_rings
-
-    ! Calculate the (squared) distance between the particle and the centers of
-    ! the four possible cells.  Regular hexagonal tiles form a centroidal
-    ! Voronoi tessellation so the global xyz should be in the hexagonal cell
-    ! that it is closest to the center of.  This method is used over a
-    ! method that uses the remainders of the floor divisions above because it
-    ! provides better finite precision performance.  Squared distances are
-    ! used becasue they are more computationally efficient than normal
-    ! distances.
-    k = 1
-    d_min = INFINITY
-    do i = 0, 1
-      do j = 0, 1
-        xyz_t = this % get_local_xyz(global_xyz, i_xyz + [j, i, 0])
-        d = xyz_t(1)**2 + xyz_t(2)**2
-        if (d < d_min) then
-          d_min = d
-          k_min = k
-        end if
-        k = k + 1
-      end do
-    end do
-
-    ! Select the minimum squared distance which corresponds to the cell the
-    ! coordinates are in.
-    if (k_min == 2) then
-      i_xyz(1) = i_xyz(1) + 1
-    else if (k_min == 3) then
-      i_xyz(2) = i_xyz(2) + 1
-    else if (k_min == 4) then
-      i_xyz(1) = i_xyz(1) + 1
-      i_xyz(2) = i_xyz(2) + 1
-    end if
-  end function get_inds_hex
+  subroutine lattice_to_hdf5(this, group)
+    class(Lattice), intent(in) :: this
+    integer(HID_T), intent(in) :: group
+    call lattice_to_hdf5_c(this % ptr, group)
+  end subroutine lattice_to_hdf5
 
 !===============================================================================
 
-  function get_local_rect(this, global_xyz, i_xyz) result(local_xyz)
-    class(RectLattice), intent(in) :: this
-    real(8),            intent(in) :: global_xyz(3)
-    integer,            intent(in) :: i_xyz(3)
-    real(8)                        :: local_xyz(3)
+  function cell_id(this) result(id)
+    class(Cell), intent(in) :: this
+    integer(C_INT32_T)      :: id
+    id = cell_id_c(this % ptr)
+  end function cell_id
 
-    real(8) :: xyz(3)  ! global_xyz alias
+  subroutine cell_set_id(this, id)
+    class(Cell),        intent(in) :: this
+    integer(C_INT32_T), intent(in) :: id
+    call cell_set_id_c(this % ptr, id)
+  end subroutine cell_set_id
 
-    xyz = global_xyz
+  function cell_type(this) result(type)
+    class(Cell), intent(in) :: this
+    integer(C_INT)          :: type
+    type = cell_type_c(this % ptr)
+  end function cell_type
 
-    local_xyz(1) = xyz(1) - (this % lower_left(1) + &
-         (i_xyz(1) - HALF)*this % pitch(1))
-    local_xyz(2) = xyz(2) - (this % lower_left(2) + &
-         (i_xyz(2) - HALF)*this % pitch(2))
-    if (this % is_3d) then
-      local_xyz(3) = xyz(3) - (this % lower_left(3) + &
-           (i_xyz(3) - HALF)*this % pitch(3))
-    else
-      local_xyz(3) = xyz(3)
-    end if
-  end function get_local_rect
+  subroutine cell_set_type(this, type)
+    class(Cell),    intent(in) :: this
+    integer(C_INT), intent(in) :: type
+    call cell_set_type_c(this % ptr, type)
+  end subroutine cell_set_type
 
-!===============================================================================
+  function cell_universe(this) result(universe)
+    class(Cell), intent(in) :: this
+    integer(C_INT32_T)      :: universe
+    universe = cell_universe_c(this % ptr)
+  end function cell_universe
 
-  function get_local_hex(this, global_xyz, i_xyz) result(local_xyz)
-    class(HexLattice), intent(in) :: this
-    real(8),           intent(in) :: global_xyz(3)
-    integer,           intent(in) :: i_xyz(3)
-    real(8)                       :: local_xyz(3)
+  subroutine cell_set_universe(this, universe)
+    class(Cell),        intent(in) :: this
+    integer(C_INT32_T), intent(in) :: universe
+    call cell_set_universe_c(this % ptr, universe)
+  end subroutine cell_set_universe
 
-    real(8) :: xyz(3)  ! global_xyz alias
+  function cell_fill(this) result(fill)
+    class(Cell), intent(in) :: this
+    integer(C_INT32_T)      :: fill
+    fill = cell_fill_c(this % ptr)
+  end function cell_fill
 
-    xyz = global_xyz
+  function cell_n_instances(this) result(n_instances)
+    class(Cell), intent(in) :: this
+    integer(C_INT32_T)      :: n_instances
+    n_instances = cell_n_instances_c(this % ptr)
+  end function cell_n_instances
 
-    ! x_l = x_g - (center + pitch_x*cos(30)*index_x)
-    local_xyz(1) = xyz(1) - (this % center(1) + &
-         sqrt(THREE) / TWO * (i_xyz(1) - this % n_rings) * this % pitch(1))
-    ! y_l = y_g - (center + pitch_x*index_x + pitch_y*sin(30)*index_y)
-    local_xyz(2) = xyz(2) - (this % center(2) + &
-         (i_xyz(2) - this % n_rings) * this % pitch(1) + &
-         (i_xyz(1) - this % n_rings) * this % pitch(1) / TWO)
-    if (this % is_3d) then
-      local_xyz(3) = xyz(3) - this % center(3) &
-           + (HALF*this % n_axial - i_xyz(3) + HALF) * this % pitch(2)
-    else
-      local_xyz(3) = xyz(3)
-    end if
-  end function get_local_hex
+  function cell_simple(this) result(simple)
+    class(Cell), intent(in) :: this
+    logical(C_BOOL)         :: simple
+    simple = cell_simple_c(this % ptr)
+  end function cell_simple
+
+  subroutine cell_distance(this, xyz, uvw, on_surface, min_dist, i_surf)
+    class(Cell),        intent(in)  :: this
+    real(C_DOUBLE),     intent(in)  :: xyz(3)
+    real(C_DOUBLE),     intent(in)  :: uvw(3)
+    integer(C_INT32_T), intent(in)  :: on_surface
+    real(C_DOUBLE),     intent(out) :: min_dist
+    integer(C_INT32_T), intent(out) :: i_surf
+    call cell_distance_c(this % ptr, xyz, uvw, on_surface, min_dist, i_surf)
+  end subroutine cell_distance
+
+  function cell_offset(this, map) result(offset)
+    class(Cell), intent(in)    :: this
+    integer(C_INT), intent(in) :: map
+    integer(C_INT32_T)         :: offset
+    offset = cell_offset_c(this % ptr, map)
+  end function cell_offset
+
+  subroutine cell_to_hdf5(this, group)
+    class(Cell),    intent(in) :: this
+    integer(HID_T), intent(in) :: group
+    call cell_to_hdf5_c(this % ptr, group)
+  end subroutine cell_to_hdf5
 
 !===============================================================================
 ! GET_TEMPERATURES returns a list of temperatures that each nuclide/S(a,b) table
@@ -408,10 +516,15 @@ contains
 !===============================================================================
 
   subroutine free_memory_geometry()
+    interface
+      subroutine free_memory_geometry_c() bind(C)
+      end subroutine free_memory_geometry_c
+    end interface
+
+    call free_memory_geometry_c()
 
     n_cells = 0
     n_universes = 0
-    n_lattices = 0
 
     if (allocated(cells)) deallocate(cells)
     if (allocated(universes)) deallocate(universes)
@@ -432,6 +545,7 @@ contains
     integer(C_INT32_T), value, intent(in) :: n
     integer(C_INT32_T), optional, intent(out) :: index_start
     integer(C_INT32_T), optional, intent(out) :: index_end
+    integer(C_INT32_T) :: i
     integer(C_INT) :: err
 
     type(Cell), allocatable :: temp(:) ! temporary cells array
@@ -453,7 +567,12 @@ contains
     ! Return indices in cells array
     if (present(index_start)) index_start = n_cells + 1
     if (present(index_end)) index_end = n_cells + n
-    n_cells = n_cells + n
+
+    ! Extend the C++ cells array and get pointers to the C++ objects
+    call extend_cells_c(n)
+    do i = n_cells - n, n_cells
+      cells(i) % ptr = cell_pointer_c(i - 1)
+    end do
 
     err = 0
   end function openmc_extend_cells
@@ -490,14 +609,14 @@ contains
     err = 0
     if (index >= 1 .and. index <= size(cells)) then
       associate (c => cells(index))
-        type = c % type
+        type = c % type()
         select case (type)
         case (FILL_MATERIAL)
           n = size(c % material)
           indices = C_LOC(c % material(1))
         case (FILL_UNIVERSE, FILL_LATTICE)
           n = 1
-          indices = C_LOC(c % fill)
+          indices = cell_fill_ptr(c % ptr)
         end select
       end associate
     else
@@ -514,7 +633,7 @@ contains
     integer(C_INT) :: err
 
     if (index >= 1 .and. index <= size(cells)) then
-      id = cells(index) % id
+      id = cells(index) % id()
       err = 0
     else
       err = E_OUT_OF_BOUNDS
@@ -541,25 +660,21 @@ contains
           if (allocated(c % material)) deallocate(c % material)
           allocate(c % material(n))
 
-          c % type = FILL_MATERIAL
+          call c % set_type(FILL_MATERIAL)
           do i = 1, n
             j = indices(i)
-            if (j == 0) then
-              c % material(i) = MATERIAL_VOID
+            if ((j >= 1 .and. j <= n_materials) .or. j == MATERIAL_VOID) then
+              c % material(i) = j
             else
-              if (j >= 1 .and. j <= n_materials) then
-                c % material(i) = j
-              else
-                err = E_OUT_OF_BOUNDS
-                call set_errmsg("Index " // trim(to_str(j)) // " in the &
-                     &materials array is out of bounds.")
-              end if
+              err = E_OUT_OF_BOUNDS
+              call set_errmsg("Index " // trim(to_str(j)) // " in the &
+                   &materials array is out of bounds.")
             end if
           end do
         case (FILL_UNIVERSE)
-          c % type = FILL_UNIVERSE
+          call c % set_type(FILL_UNIVERSE)
         case (FILL_LATTICE)
-          c % type = FILL_LATTICE
+          call c % set_type(FILL_LATTICE)
         end select
       end associate
     else
@@ -577,7 +692,7 @@ contains
     integer(C_INT) :: err
 
     if (index >= 1 .and. index <= n_cells) then
-      cells(index) % id = id
+      call cells(index) % set_id(id)
       call cell_dict % set(id, index)
       err = 0
     else
@@ -613,7 +728,7 @@ contains
     if (index >= 1 .and. index <= size(cells)) then
 
       ! error if the cell is filled with another universe
-      if (cells(index) % fill /= NONE) then
+      if (cells(index) % fill() /= C_NONE) then
         err = E_GEOMETRY
         call set_errmsg("Cannot set temperature on a cell filled &
              &with a universe.")

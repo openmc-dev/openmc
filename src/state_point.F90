@@ -13,8 +13,7 @@ module state_point
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5
-
+  use bank_header,        only: Bank
   use cmfd_header
   use constants
   use eigenvalue,         only: openmc_get_keff
@@ -23,7 +22,7 @@ module state_point
   use hdf5_interface
   use mesh_header,        only: RegularMesh, meshes, n_meshes
   use message_passing
-  use mgxs_header,        only: nuclides_MG
+  use mgxs_interface
   use nuclide_header,     only: nuclides
   use output,             only: time_stamp
   use random_lcg,         only: openmc_get_seed, openmc_set_seed
@@ -37,30 +36,46 @@ module state_point
 
   implicit none
 
+  interface
+    subroutine write_source_bank(group_id, work_index, bank_) bind(C)
+      import HID_T, C_INT64_T, Bank
+      integer(HID_T), value :: group_id
+      integer(C_INT64_T), intent(in) :: work_index(*)
+      type(Bank), intent(in) :: bank_(*)
+    end subroutine write_source_bank
+
+    subroutine read_source_bank(group_id, work_index, bank_) bind(C)
+      import HID_T, C_INT64_T, Bank
+      integer(HID_T), value :: group_id
+      integer(C_INT64_T), intent(in) :: work_index(*)
+      type(Bank), intent(out) :: bank_(*)
+    end subroutine read_source_bank
+  end interface
+
 contains
 
 !===============================================================================
 ! OPENMC_STATEPOINT_WRITE writes an HDF5 statepoint file to disk
 !===============================================================================
 
-  subroutine openmc_statepoint_write(filename) bind(C)
+  function openmc_statepoint_write(filename) result(err) bind(C)
     type(C_PTR), intent(in), optional :: filename
+    integer(C_INT) :: err
 
     integer :: i, j, k
     integer :: i_xs
-    integer :: n_order      ! loop index for moment orders
-    integer :: nm_order     ! loop index for Ynm moment orders
     integer, allocatable :: id_array(:)
     integer(HID_T) :: file_id
     integer(HID_T) :: cmfd_group, tallies_group, tally_group, meshes_group, &
                       filters_group, filter_group, derivs_group, &
                       deriv_group, runtime_group
-    integer(C_INT) :: err
     real(C_DOUBLE) :: k_combined(2)
     character(MAX_WORD_LEN), allocatable :: str_array(:)
     character(C_CHAR), pointer :: string(:)
     character(len=:, kind=C_CHAR), allocatable :: filename_
+    character(MAX_WORD_LEN, kind=C_CHAR) :: temp_name
 
+    err = 0
     if (present(filename)) then
       call c_f_pointer(filename, string, [MAX_FILE_LEN])
       filename_ = to_f_string(string)
@@ -76,7 +91,7 @@ contains
 
     if (master) then
       ! Create statepoint file
-      file_id = file_create(filename_)
+      file_id = file_open(filename_, 'w')
 
       ! Write file type
       call write_attribute(file_id, "filetype", "statepoint")
@@ -293,11 +308,13 @@ contains
                   str_array(j) = nuclides(tally % nuclide_bins(j)) % name
                 end if
               else
-                i_xs = index(nuclides_MG(tally % nuclide_bins(j)) % obj % name, '.')
+                call get_name_c(tally % nuclide_bins(j), len(temp_name), &
+                                temp_name)
+                i_xs = index(temp_name, '.')
                 if (i_xs > 0) then
-                  str_array(j) = nuclides_MG(tally % nuclide_bins(j)) % obj % name(1 : i_xs-1)
+                  str_array(j) = trim(temp_name(1 : i_xs-1))
                 else
-                  str_array(j) = nuclides_MG(tally % nuclide_bins(j)) % obj % name
+                  str_array(j) = trim(temp_name)
                 end if
               end if
             else
@@ -320,40 +337,7 @@ contains
             str_array(j) = reaction_name(tally % score_bins(j))
           end do
           call write_dataset(tally_group, "score_bins", str_array)
-          call write_dataset(tally_group, "n_user_score_bins", &
-               tally % n_user_score_bins)
 
-          deallocate(str_array)
-
-          ! Write explicit moment order strings for each score bin
-          k = 1
-          allocate(str_array(tally % n_score_bins))
-          MOMENT_LOOP: do j = 1, tally % n_user_score_bins
-            select case(tally % score_bins(k))
-            case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
-              str_array(k) = trim(to_str(tally % moment_order(k)))
-              k = k + 1
-            case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
-              do n_order = 0, tally % moment_order(k)
-                str_array(k) = trim(to_str(n_order))
-                k = k + 1
-              end do
-            case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
-                 SCORE_TOTAL_YN)
-              do n_order = 0, tally % moment_order(k)
-                do nm_order = -n_order, n_order
-                  str_array(k) = 'Y' // trim(to_str(n_order)) // ',' // &
-                       trim(to_str(nm_order))
-                  k = k + 1
-                end do
-              end do
-            case default
-              str_array(k) = ''
-              k = k + 1
-            end select
-          end do MOMENT_LOOP
-
-          call write_dataset(tally_group, "moment_orders", str_array)
           deallocate(str_array)
 
           call close_group(tally_group)
@@ -443,7 +427,7 @@ contains
 
       call file_close(file_id)
     end if
-  end subroutine openmc_statepoint_write
+  end function openmc_statepoint_write
 
 !===============================================================================
 ! WRITE_SOURCE_POINT
@@ -476,8 +460,8 @@ contains
 
         ! Create separate source file
         if (master .or. parallel) then
-          file_id = file_create(filename, parallel=.true.)
-          call write_dataset(file_id, "filetype", 'source')
+          file_id = file_open(filename, 'w', parallel=.true.)
+          call write_attribute(file_id, "filetype", 'source')
         end if
       else
         filename = trim(path_output) // 'statepoint.' // &
@@ -485,11 +469,11 @@ contains
         filename = trim(filename) // '.h5'
 
         if (master .or. parallel) then
-          file_id = file_open(filename, 'w', parallel=.true.)
+          file_id = file_open(filename, 'a', parallel=.true.)
         end if
       end if
 
-      call write_source_bank(file_id)
+      call write_source_bank(file_id, work_index, source_bank)
       if (master .or. parallel) call file_close(file_id)
     end if
 
@@ -498,11 +482,11 @@ contains
       filename = trim(path_output) // 'source' // '.h5'
       call write_message("Creating source file " // trim(filename) // "...", 5)
       if (master .or. parallel) then
-        file_id = file_create(filename, parallel=.true.)
-        call write_dataset(file_id, "filetype", 'source')
+        file_id = file_open(filename, 'w', parallel=.true.)
+        call write_attribute(file_id, "filetype", 'source')
       end if
 
-      call write_source_bank(file_id)
+      call write_source_bank(file_id, work_index, source_bank)
 
       if (master .or. parallel) call file_close(file_id)
     end if
@@ -815,14 +799,10 @@ contains
 
         ! Open source file
         file_id = file_open(path_source_point, 'r', parallel=.true.)
-
-        ! Read file type
-        call read_dataset(int_array(1), file_id, "filetype")
-
       end if
 
       ! Write out source
-      call read_source_bank(file_id)
+      call read_source_bank(file_id, work_index, source_bank)
 
     end if
 
@@ -830,188 +810,5 @@ contains
     call file_close(file_id)
 
   end subroutine load_state_point
-
-!===============================================================================
-! WRITE_SOURCE_BANK writes OpenMC source_bank data
-!===============================================================================
-
-  subroutine write_source_bank(group_id)
-    use bank_header, only: Bank
-
-    integer(HID_T), intent(in) :: group_id
-
-    integer :: hdf5_err
-    integer(HID_T) :: dset     ! data set handle
-    integer(HID_T) :: dspace   ! data or file space handle
-    integer(HID_T) :: memspace ! memory space handle
-    integer(HSIZE_T) :: offset(1) ! source data offset
-    integer(HSIZE_T) :: dims(1)
-    type(c_ptr) :: f_ptr
-#ifdef PHDF5
-    integer(HID_T) :: plist    ! property list
-#else
-    integer :: i
-#ifdef OPENMC_MPI
-    integer :: mpi_err ! MPI error code
-    type(Bank), allocatable, target :: temp_source(:)
-#endif
-#endif
-
-#ifdef PHDF5
-    ! Set size of total dataspace for all procs and rank
-    dims(1) = n_particles
-    call h5screate_simple_f(1, dims, dspace, hdf5_err)
-    call h5dcreate_f(group_id, "source_bank", hdf5_bank_t, dspace, dset, hdf5_err)
-
-    ! Create another data space but for each proc individually
-    dims(1) = work
-    call h5screate_simple_f(1, dims, memspace, hdf5_err)
-
-    ! Select hyperslab for this dataspace
-    offset(1) = work_index(rank)
-    call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, offset, dims, hdf5_err)
-
-    ! Set up the property list for parallel writing
-    call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
-    call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_COLLECTIVE_F, hdf5_err)
-
-    ! Set up pointer to data
-    f_ptr = c_loc(source_bank)
-
-    ! Write data to file in parallel
-    call h5dwrite_f(dset, hdf5_bank_t, f_ptr, hdf5_err, &
-         file_space_id=dspace, mem_space_id=memspace, &
-         xfer_prp=plist)
-
-    ! Close all ids
-    call h5sclose_f(dspace, hdf5_err)
-    call h5sclose_f(memspace, hdf5_err)
-    call h5dclose_f(dset, hdf5_err)
-    call h5pclose_f(plist, hdf5_err)
-
-#else
-
-    if (master) then
-      ! Create dataset big enough to hold all source sites
-      dims(1) = n_particles
-      call h5screate_simple_f(1, dims, dspace, hdf5_err)
-      call h5dcreate_f(group_id, "source_bank", hdf5_bank_t, &
-           dspace, dset, hdf5_err)
-
-      ! Save source bank sites since the souce_bank array is overwritten below
-#ifdef OPENMC_MPI
-      allocate(temp_source(work))
-      temp_source(:) = source_bank(:)
-#endif
-
-      do i = 0, n_procs - 1
-        ! Create memory space
-        dims(1) = work_index(i+1) - work_index(i)
-        call h5screate_simple_f(1, dims, memspace, hdf5_err)
-
-#ifdef OPENMC_MPI
-        ! Receive source sites from other processes
-        if (i > 0) then
-          call MPI_RECV(source_bank, int(dims(1)), MPI_BANK, i, i, &
-               mpi_intracomm, MPI_STATUS_IGNORE, mpi_err)
-        end if
-#endif
-
-        ! Select hyperslab for this dataspace
-        call h5dget_space_f(dset, dspace, hdf5_err)
-        offset(1) = work_index(i)
-        call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, offset, dims, hdf5_err)
-
-        ! Set up pointer to data and write data to hyperslab
-        f_ptr = c_loc(source_bank)
-        call h5dwrite_f(dset, hdf5_bank_t, f_ptr, hdf5_err, &
-             file_space_id=dspace, mem_space_id=memspace)
-
-        call h5sclose_f(memspace, hdf5_err)
-        call h5sclose_f(dspace, hdf5_err)
-      end do
-
-      ! Close all ids
-      call h5dclose_f(dset, hdf5_err)
-
-      ! Restore state of source bank
-#ifdef OPENMC_MPI
-      source_bank(:) = temp_source(:)
-      deallocate(temp_source)
-#endif
-    else
-#ifdef OPENMC_MPI
-      call MPI_SEND(source_bank, int(work), MPI_BANK, 0, rank, &
-           mpi_intracomm, mpi_err)
-#endif
-    end if
-
-#endif
-
-  end subroutine write_source_bank
-
-!===============================================================================
-! READ_SOURCE_BANK reads OpenMC source_bank data
-!===============================================================================
-
-  subroutine read_source_bank(group_id)
-    use bank_header, only: Bank
-
-    integer(HID_T), intent(in) :: group_id
-
-    integer :: hdf5_err
-    integer(HID_T) :: dset     ! data set handle
-    integer(HID_T) :: dspace   ! data space handle
-    integer(HID_T) :: memspace ! memory space handle
-    integer(HSIZE_T) :: dims(1)     ! dimensions on one processor
-    integer(HSIZE_T) :: dims_all(1) ! overall dimensions
-    integer(HSIZE_T) :: maxdims(1)  ! maximum dimensions
-    integer(HSIZE_T) :: offset(1) ! offset of data
-    type(c_ptr) :: f_ptr
-#ifdef PHDF5
-    integer(HID_T) :: plist    ! property list
-#endif
-
-    ! Open the dataset
-    call h5dopen_f(group_id, "source_bank", dset, hdf5_err)
-
-    ! Create another data space but for each proc individually
-    dims(1) = work
-    call h5screate_simple_f(1, dims, memspace, hdf5_err)
-
-    ! Make sure source bank is big enough
-    call h5dget_space_f(dset, dspace, hdf5_err)
-    call h5sget_simple_extent_dims_f(dspace, dims_all, maxdims, hdf5_err)
-    if (size(source_bank, KIND=HSIZE_T) > dims_all(1)) then
-      call fatal_error("Number of source sites in source file is less than &
-           &number of source particles per generation.")
-    end if
-
-    ! Select hyperslab for each process
-    offset(1) = work_index(rank)
-    call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, offset, dims, hdf5_err)
-
-    ! Set up pointer to data
-    f_ptr = c_loc(source_bank)
-
-#ifdef PHDF5
-    ! Read data in parallel
-    call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
-    call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_COLLECTIVE_F, hdf5_err)
-    call h5dread_f(dset, hdf5_bank_t, f_ptr, hdf5_err, &
-         file_space_id=dspace, mem_space_id=memspace, &
-         xfer_prp=plist)
-    call h5pclose_f(plist, hdf5_err)
-#else
-    call h5dread_f(dset, hdf5_bank_t, f_ptr, hdf5_err, &
-         file_space_id=dspace, mem_space_id=memspace)
-#endif
-
-    ! Close all ids
-    call h5sclose_f(dspace, hdf5_err)
-    call h5sclose_f(memspace, hdf5_err)
-    call h5dclose_f(dset, hdf5_err)
-
-  end subroutine read_source_bank
 
 end module state_point

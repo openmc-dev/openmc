@@ -18,9 +18,9 @@ module settings
   logical :: urr_ptables_on = .true.
 
   ! Default temperature and method for choosing temperatures
-  integer :: temperature_method = TEMPERATURE_NEAREST
+  integer(C_INT) :: temperature_method = TEMPERATURE_NEAREST
   logical :: temperature_multipole = .false.
-  real(8) :: temperature_tolerance = 10.0_8
+  real(C_DOUBLE) :: temperature_tolerance = 10.0_8
   real(8) :: temperature_default = 293.6_8
   real(8) :: temperature_range(2) = [ZERO, ZERO]
 
@@ -30,22 +30,22 @@ module settings
   ! MULTI-GROUP CROSS SECTION RELATED VARIABLES
 
   ! Maximum Data Order
-  integer :: max_order
+  integer(C_INT) :: max_order
 
   ! Whether or not to convert Legendres to tabulars
   logical :: legendre_to_tabular = .true.
 
   ! Number of points to use in the Legendre to tabular conversion
-  integer :: legendre_to_tabular_points = 33
+  integer(C_INT) :: legendre_to_tabular_points = C_NONE
+
+  ! ============================================================================
+  ! SIMULATION VARIABLES
 
   ! Assume all tallies are spatially distinct
   logical :: assume_separate = .false.
 
   ! Use confidence intervals for results instead of standard deviations
   logical :: confidence_intervals = .false.
-
-  ! ============================================================================
-  ! SIMULATION VARIABLES
 
   integer(C_INT64_T), bind(C) :: n_particles = 0   ! # of particles per generation
   integer(C_INT32_T), bind(C) :: n_batches         ! # of batches
@@ -75,16 +75,16 @@ module settings
   real(8) :: weight_survive = ONE
 
   ! Mode to run in (fixed source, eigenvalue, plotting, etc)
-  integer(C_INT), bind(C) :: run_mode = NONE
+  integer(C_INT), bind(C, name='openmc_run_mode') :: run_mode = NONE
 
   ! Restart run
-  logical :: restart_run = .false.
+  logical(C_BOOL), bind(C, name='openmc_restart_run') :: restart_run = .false.
 
   ! The verbosity controls how much information will be printed to the screen
   ! and in logs
-  integer(C_INT), bind(C) :: verbosity = 7
+  integer(C_INT), bind(C, name='openmc_verbosity') :: verbosity = 7
 
-  logical :: check_overlaps = .false.
+  logical(C_BOOL), bind(C, name='openmc_check_overlaps') :: check_overlaps = .false.
 
   ! Trace for single particle
   integer    :: trace_batch
@@ -92,11 +92,13 @@ module settings
   integer(8) :: trace_particle
 
   ! Particle tracks
-  logical :: write_all_tracks = .false.
+  logical(C_BOOL), bind(C, name='openmc_write_all_tracks') :: &
+       write_all_tracks = .false.
   integer, allocatable :: track_identifiers(:,:)
 
   ! Particle restart run
-  logical :: particle_restart_run = .false.
+  logical(C_BOOL), bind(C, name='openmc_particle_restart_run') :: &
+       particle_restart_run = .false.
 
   ! Write out initial source
   logical :: write_initial_source = .false.

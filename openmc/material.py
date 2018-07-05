@@ -24,7 +24,7 @@ class Material(IDManagerMixin):
     To create a material, one should create an instance of this class, add
     nuclides or elements with :meth:`Material.add_nuclide` or
     `Material.add_element`, respectively, and set the total material density
-    with `Material.export_to_xml()`. The material can then be assigned to a cell
+    with `Material.set_density()`. The material can then be assigned to a cell
     using the :attr:`Cell.fill` attribute.
 
     Parameters
@@ -52,8 +52,7 @@ class Material(IDManagerMixin):
         'atom/b-cm', 'atom/cm3', 'sum', or 'macro'.  The 'macro' unit only
         applies in the case of a multi-group calculation.
     depletable : bool
-        Indicate whether the material is depletable. This attribute can be used
-        by downstream depletion applications.
+        Indicate whether the material is depletable.
     nuclides : list of tuple
         List in which each item is a 3-tuple consisting of a nuclide string, the
         percent density, and the percent type ('ao' or 'wo').
@@ -74,6 +73,9 @@ class Material(IDManagerMixin):
         :meth:`Geometry.determine_paths` method.
     num_instances : int
         The number of instances of this material throughout the geometry.
+    fissionable_mass : float
+        Mass of fissionable nuclides in the material in [g]. Requires that the
+        :attr:`volume` attribute is set.
 
     """
 
@@ -86,7 +88,7 @@ class Material(IDManagerMixin):
         self.name = name
         self.temperature = temperature
         self._density = None
-        self._density_units = ''
+        self._density_units = 'sum'
         self._depletable = False
         self._paths = None
         self._num_instances = None
@@ -245,6 +247,18 @@ class Material(IDManagerMixin):
                                str)
         self._isotropic = list(isotropic)
 
+    @property
+    def fissionable_mass(self):
+        if self.volume is None:
+            raise ValueError("Volume must be set in order to determine mass.")
+        density = 0.0
+        for nuc, atoms_per_cc in self.get_nuclide_atom_densities().values():
+            Z = openmc.data.zam(nuc)[0]
+            if Z >= 90:
+                density += 1e24 * atoms_per_cc * openmc.data.atomic_mass(nuc) \
+                           / openmc.data.AVOGADRO
+        return density*self.volume
+
     @classmethod
     def from_hdf5(cls, group):
         """Create material from HDF5 group
@@ -264,8 +278,8 @@ class Material(IDManagerMixin):
 
         name = group['name'].value.decode() if 'name' in group else ''
         density = group['atom_density'].value
-        nuc_densities = group['nuclide_densities'][...]
-        nuclides = group['nuclides'].value
+        if 'nuclide_densities' in group:
+            nuc_densities = group['nuclide_densities'][...]
 
         # Create the Material
         material = cls(mat_id, name)
@@ -281,10 +295,18 @@ class Material(IDManagerMixin):
         # Set the Material's density to atom/b-cm as used by OpenMC
         material.set_density(density=density, units='atom/b-cm')
 
-        # Add all nuclides to the Material
-        for fullname, density in zip(nuclides, nuc_densities):
-            name = fullname.decode().strip()
-            material.add_nuclide(name, percent=density, percent_type='ao')
+        if 'nuclides' in group:
+            nuclides = group['nuclides'].value
+            # Add all nuclides to the Material
+            for fullname, density in zip(nuclides, nuc_densities):
+                name = fullname.decode().strip()
+                material.add_nuclide(name, percent=density, percent_type='ao')
+        if 'macroscopics' in group:
+            macroscopics = group['macroscopics'].value
+            # Add all macroscopics to the Material
+            for fullname in macroscopics:
+                name = fullname.decode().strip()
+                material.add_macroscopic(name)
 
         return material
 
@@ -299,7 +321,7 @@ class Material(IDManagerMixin):
         """
         if volume_calc.domain_type == 'material':
             if self.id in volume_calc.volumes:
-                self._volume = volume_calc.volumes[self.id][0]
+                self._volume = volume_calc.volumes[self.id].n
                 self._atoms = volume_calc.atoms[self.id]
             else:
                 raise ValueError('No volume information found for this material.')
@@ -365,33 +387,31 @@ class Material(IDManagerMixin):
         Parameters
         ----------
         nuclide : str
-            Nuclide to add
+            Nuclide to add, e.g., 'Mo95'
         percent : float
             Atom or weight percent
         percent_type : {'ao', 'wo'}
             'ao' for atom percent and 'wo' for weight percent
 
         """
+        cv.check_type('nuclide', nuclide, str)
+        cv.check_type('percent', percent, Real)
+        cv.check_value('percent type', percent_type, {'ao', 'wo'})
 
         if self._macroscopic is not None:
             msg = 'Unable to add a Nuclide to Material ID="{}" as a ' \
                   'macroscopic data-set has already been added'.format(self._id)
             raise ValueError(msg)
 
-        if not isinstance(nuclide, str):
-            msg = 'Unable to add a Nuclide to Material ID="{}" with a ' \
-                  'non-string value "{}"'.format(self._id, nuclide)
-            raise ValueError(msg)
-
-        elif not isinstance(percent, Real):
-            msg = 'Unable to add a Nuclide to Material ID="{}" with a ' \
-                  'non-floating point value "{}"'.format(self._id, percent)
-            raise ValueError(msg)
-
-        elif percent_type not in ('ao', 'wo'):
-            msg = 'Unable to add a Nuclide to Material ID="{}" with a ' \
-                  'percent type "{}"'.format(self._id, percent_type)
-            raise ValueError(msg)
+        # If nuclide name doesn't look valid, give a warning
+        try:
+            Z, _, _ = openmc.data.zam(nuclide)
+        except ValueError as e:
+            warnings.warn(str(e))
+        else:
+            # For actinides, have the material be depletable by default
+            if Z >= 89:
+                self.depletable = True
 
         self._nuclides.append((nuclide, percent, percent_type))
 
@@ -447,7 +467,7 @@ class Material(IDManagerMixin):
             raise ValueError(msg)
 
         # Generally speaking, the density for a macroscopic object will
-        # be 1.0.  Therefore, lets set density to 1.0 so that the user
+        # be 1.0. Therefore, lets set density to 1.0 so that the user
         # doesnt need to set it unless its needed.
         # Of course, if the user has already set a value of density,
         # then we will not override it.
@@ -479,7 +499,7 @@ class Material(IDManagerMixin):
         Parameters
         ----------
         element : str
-            Element to add
+            Element to add, e.g., 'Zr'
         percent : float
             Atom or weight percent
         percent_type : {'ao', 'wo'}, optional
@@ -491,25 +511,13 @@ class Material(IDManagerMixin):
             (natural composition).
 
         """
+        cv.check_type('nuclide', element, str)
+        cv.check_type('percent', percent, Real)
+        cv.check_value('percent type', percent_type, {'ao', 'wo'})
 
         if self._macroscopic is not None:
             msg = 'Unable to add an Element to Material ID="{}" as a ' \
                   'macroscopic data-set has already been added'.format(self._id)
-            raise ValueError(msg)
-
-        if not isinstance(element, str):
-            msg = 'Unable to add an Element to Material ID="{}" with a ' \
-                  'non-string value "{}"'.format(self._id, element)
-            raise ValueError(msg)
-
-        if not isinstance(percent, Real):
-            msg = 'Unable to add an Element to Material ID="{}" with a ' \
-                  'non-floating point value "{}"'.format(self._id, percent)
-            raise ValueError(msg)
-
-        if percent_type not in ['ao', 'wo']:
-            msg = 'Unable to add an Element to Material ID="{}" with a ' \
-                  'percent type "{}"'.format(self._id, percent_type)
             raise ValueError(msg)
 
         if enrichment is not None:
@@ -537,10 +545,15 @@ class Material(IDManagerMixin):
                       format(enrichment, self._id)
                 warnings.warn(msg)
 
+        # Make sure element name is just that
+        if not element.isalpha():
+            raise ValueError("Element name should be given by the "
+                             "element's symbol, e.g., 'Zr'")
+
         # Add naturally-occuring isotopes
         element = openmc.Element(element)
         for nuclide in element.expand(percent, percent_type, enrichment):
-            self._nuclides.append(nuclide)
+            self.add_nuclide(*nuclide)
 
     def add_s_alpha_beta(self, name, fraction=1.0):
         r"""Add an :math:`S(\alpha,\beta)` table to the material
@@ -686,6 +699,51 @@ class Material(IDManagerMixin):
             nuclides[nuc] = (nuc, nuc_densities[n])
 
         return nuclides
+
+    def get_mass_density(self, nuclide=None):
+        """Return mass density of one or all nuclides
+
+        Parameters
+        ----------
+        nuclides : str, optional
+            Nuclide for which density is desired. If not specified, the density
+            for the entire material is given.
+
+        Returns
+        -------
+        float
+            Density of the nuclide/material in [g/cm^3]
+
+        """
+        mass_density = 0.0
+        for nuc, atoms_per_cc in self.get_nuclide_atom_densities().values():
+            density_i = 1e24 * atoms_per_cc * openmc.data.atomic_mass(nuc) \
+                        / openmc.data.AVOGADRO
+            if nuclide is None or nuclide == nuc:
+                mass_density += density_i
+        return mass_density
+
+    def get_mass(self, nuclide=None):
+        """Return mass of one or all nuclides.
+
+        Note that this method requires that the :attr:`Material.volume` has
+        already been set.
+
+        Parameters
+        ----------
+        nuclides : str, optional
+            Nuclide for which mass is desired. If not specified, the density
+            for the entire material is given.
+
+        Returns
+        -------
+        float
+            Mass of the nuclide/material in [g]
+
+        """
+        if self.volume is None:
+            raise ValueError("Volume must be set in order to determine mass.")
+        return self.volume*self.get_mass_density(nuclide)
 
     def clone(self, memo=None):
         """Create a copy of this material with a new unique ID.

@@ -15,9 +15,9 @@ def test_nuclides(uo2):
     """Test adding/removing nuclides."""
     m = openmc.Material()
     m.add_nuclide('U235', 1.0)
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         m.add_nuclide('H1', '1.0')
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         m.add_nuclide(1.0, 'H1')
     with pytest.raises(ValueError):
         m.add_nuclide('H1', 1.0, 'oa')
@@ -119,6 +119,23 @@ def test_get_nuclide_atom_densities(uo2):
     for nuc, density in nucs.values():
         assert nuc in ('U235', 'O16')
         assert density > 0
+
+
+def test_mass():
+    m = openmc.Material()
+    m.add_nuclide('Zr90', 1.0, 'wo')
+    m.add_nuclide('U235', 1.0, 'wo')
+    m.set_density('g/cm3', 2.0)
+    m.volume = 10.0
+
+    assert m.get_mass_density('Zr90') == pytest.approx(1.0)
+    assert m.get_mass_density('U235') == pytest.approx(1.0)
+    assert m.get_mass_density() == pytest.approx(2.0)
+
+    assert m.get_mass('Zr90') == pytest.approx(10.0)
+    assert m.get_mass('U235') == pytest.approx(10.0)
+    assert m.get_mass() == pytest.approx(20.0)
+    assert m.fissionable_mass == pytest.approx(10.0)
 
 
 def test_materials(run_in_tmpdir):

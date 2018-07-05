@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
   <cell id="1" material="1" universe="1" />
-  <cell id="11" material="2 3 void 2" region="-9" universe="11" />
+  <cell id="11" material="2 void 3 2" region="-9" universe="11" />
   <cell id="12" material="1" region="9" universe="11" />
   <cell fill="101" id="101" region="10 -11 12 -13" universe="0" />
   <lattice id="101">
@@ -26,11 +26,11 @@
     <nuclide ao="2.0" name="H1" />
     <nuclide ao="1.0" name="O16" />
   </material>
-  <material id="2">
+  <material depletable="true" id="2">
     <density units="g/cc" value="4.5" />
     <nuclide ao="1.0" name="U235" />
   </material>
-  <material id="3">
+  <material depletable="true" id="3">
     <density units="g/cc" value="2.0" />
     <nuclide ao="1.0" name="U235" />
   </material>

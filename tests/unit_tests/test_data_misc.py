@@ -50,6 +50,19 @@ def test_thin():
     assert f(1.0) == pytest.approx(np.sin(1.0), 0.001)
 
 
+def test_atomic_mass():
+    assert openmc.data.atomic_mass('H1') == 1.00782503223
+    assert openmc.data.atomic_mass('U235') == 235.043930131
+    with pytest.raises(KeyError):
+        openmc.data.atomic_mass('U100')
+
+
+def test_atomic_weight():
+    assert openmc.data.atomic_weight('C') == 12.011115164862904
+    with pytest.raises(ValueError):
+        openmc.data.atomic_weight('Qt')
+
+
 def test_water_density():
     dens = openmc.data.water_density
     # These test values are from IAPWS R7-97(2012).  They are actually specific
@@ -58,3 +71,21 @@ def test_water_density():
     assert dens(300.0, 3.0) == pytest.approx(1e-3/0.100215168e-2, 1e-6)
     assert dens(300.0, 80.0) == pytest.approx(1e-3/0.971180894e-3, 1e-6)
     assert dens(500.0, 3.0) == pytest.approx(1e-3/0.120241800e-2, 1e-6)
+
+
+def test_gnd_name():
+    assert openmc.data.gnd_name(1, 1) == 'H1'
+    assert openmc.data.gnd_name(40, 90) == ('Zr90')
+    assert openmc.data.gnd_name(95, 242, 0) == ('Am242')
+    assert openmc.data.gnd_name(95, 242, 1) == ('Am242_m1')
+    assert openmc.data.gnd_name(95, 242, 10) == ('Am242_m10')
+
+
+def test_zam():
+    assert openmc.data.zam('H1') == (1, 1, 0)
+    assert openmc.data.zam('Zr90') == (40, 90, 0)
+    assert openmc.data.zam('Am242') == (95, 242, 0)
+    assert openmc.data.zam('Am242_m1') == (95, 242, 1)
+    assert openmc.data.zam('Am242_m10') == (95, 242, 10)
+    with pytest.raises(ValueError):
+        openmc.data.zam('garbage')

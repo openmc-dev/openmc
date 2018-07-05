@@ -16,7 +16,10 @@ de-excitation of these atoms can result in the emission of electrons and
 photons. Electrons themselves also can produce photons by means of
 bremsstrahlung radiation.
 
-------------------------------
+-------------------
+Photon Interactions
+-------------------
+
 Coherent (Rayleigh) Scattering
 ------------------------------
 
@@ -56,7 +59,7 @@ accounts for `anomalous scattering`_ which can occur near absorption edges. In a
 Monte Carlo simulation, when coherent scattering occurs, we only need to sample
 the scattering angle using the differential cross section in :eq:`coherent-xs`
 since the energy of the photon does not change. In OpenMC, anomalous scattering
-is ignored such that differential cross section comes
+is ignored such that differential cross section becomes
 
 .. math::
     :label: coherent-xs-openmc
@@ -147,7 +150,6 @@ section. The complete algorithm is as follows:
 6. If :math:`\xi_2 < (1 + \mu^2)/2`, accept :math:`\mu`. Otherwise, repeat the
    sampling at step 3.
 
--------------------------------
 Incoherent (Compton) Scattering
 -------------------------------
 
@@ -207,24 +209,49 @@ the form factor. As in other codes, `Kahn's rejection method`_ is used for
    from step 1.
 
 Doppler Energy Broadening
--------------------------
++++++++++++++++++++++++++
 
 LA-UR-04-0487_ and LA-UR-04-0488_
 
---------------------
 Photoelectric Effect
 --------------------
+
+
+Pair Production
+---------------
+
+
+-------------------
+Secondary Processes
+-------------------
+
+New photons may be produced in secondary processes related to the main photon
+interactions discussed above. A Compton-scattered photon transfers a portion of
+its energy to the kinetic energy of the recoil electron, which in turn may lose
+the energy as bremsstrahlung radiation. The vacancy left in the shell by the
+ejected electron is filled through atomic relaxation, creating a shower of
+electrons and fluorescence photons. Similarly, the vacancy left by the electron
+emitted in the photoelectric effect is filled through atomic relaxation. Pair
+production generates an electron and a positron, both of which can emit
+bremsstrahlung radiation before the positron eventually collides with an
+electron, resulting in annihilation of the pair and the creation of two
+additional photons.
 
 Atomic Relaxation
 -----------------
 
----------------
-Pair Production
----------------
 
----------------------------
-Thick-target Bremsstrahlung
----------------------------
+Electron-Positron Annihilation
+------------------------------
+
+
+Bremsstrahlung
+--------------
+
+
+Thick-Target Bremsstrahlung Approximation
++++++++++++++++++++++++++++++++++++++++++
+
 
 .. _Koblinger: http://www.tandfonline.com/doi/abs/10.13182/NSE75-A26646
 

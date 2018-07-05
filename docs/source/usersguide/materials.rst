@@ -43,14 +43,22 @@ of an element, you specify the element itself. For example,
 Internally, OpenMC stores data on the atomic masses and natural abundances of
 all known isotopes and then uses this data to determine what isotopes should be
 added to the material. When the material is later exported to XML for use by the
-:ref:`scripts_openmc` executable, you'll see that any natural elements are
+:ref:`scripts_openmc` executable, you'll see that any natural elements were
 expanded to the naturally-occurring isotopes.
+
+The :meth:`Material.add_element` method can also be used to add uranium at a
+specified enrichment through the `enrichment` argument. For example, the
+following would add 3.2% enriched uranium to a material::
+
+   mat.add_element('U', 1.0, enrichment=3.2)
+
+In addition to U235 and U238, concentrations of U234 and U236 will be present
+and are determined through a correlation based on measured data.
 
 Often, cross section libraries don't actually have all naturally-occurring
 isotopes for a given element. For example, in ENDF/B-VII.1, cross section
 evaluations are given for O16 and O17 but not for O18. If OpenMC is aware of
-what cross sections you will be using (either through the
-:attr:`Materials.cross_sections` attribute or the
+what cross sections you will be using (through the
 :envvar:`OPENMC_CROSS_SECTIONS` environment variable), it will attempt to only
 put isotopes in your model for which you have cross section data. In the case of
 oxygen in ENDF/B-VII.1, the abundance of O18 would end up being lumped with O16.

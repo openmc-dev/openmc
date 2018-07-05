@@ -1,9 +1,8 @@
 import itertools
+from math import sqrt
 import os
 import re
 from warnings import warn
-
-from numpy import sqrt
 
 
 # Isotopic abundances from Meija J, Coplen T B, et al, "Isotopic compositions
@@ -136,23 +135,24 @@ ATOMIC_NUMBER = {value: key for key, value in ATOMIC_SYMBOL.items()}
 
 _ATOMIC_MASS = {}
 
+_GND_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
+
 
 def atomic_mass(isotope):
     """Return atomic mass of isotope in atomic mass units.
 
-    Atomic mass data comes from the Atomic Mass Evaluation 2012, published in
-    Chinese Physics C 36 (2012), 1287--1602.
+    Atomic mass data comes from the `Atomic Mass Evaluation 2012
+    <https://www-nds.iaea.org/amdc/ame2012/AME2012-1.pdf>`_.
 
     Parameters
     ----------
     isotope : str
-        Name of isotope, e.g. 'Pu239'
+        Name of isotope, e.g., 'Pu239'
 
     Returns
     -------
-    float or None
-        Atomic mass of isotope in atomic mass units. If the isotope listed does
-        not have a known atomic mass, None is returned.
+    float
+        Atomic mass of isotope in [amu]
 
     """
     if not _ATOMIC_MASS:
@@ -183,7 +183,7 @@ def atomic_mass(isotope):
     if '_' in isotope:
         isotope = isotope[:isotope.find('_')]
 
-    return _ATOMIC_MASS.get(isotope.lower())
+    return _ATOMIC_MASS[isotope.lower()]
 
 
 def atomic_weight(element):
@@ -199,16 +199,19 @@ def atomic_weight(element):
 
     Returns
     -------
-    float or None
-        Atomic weight of element in atomic mass units. If the element listed does
-        not exist, None is returned.
+    float
+        Atomic weight of element in [amu]
 
     """
     weight = 0.
     for nuclide, abundance in NATURAL_ABUNDANCE.items():
         if re.match(r'{}\d+'.format(element), nuclide):
             weight += atomic_mass(nuclide) * abundance
-    return None if weight == 0. else weight
+    if weight > 0.:
+        return weight
+    else:
+        raise ValueError("No naturally-occurring isotopes for element '{}'."
+                         .format(element))
 
 
 def water_density(temperature, pressure=0.1013):
@@ -234,7 +237,7 @@ def water_density(temperature, pressure=0.1013):
     Returns
     -------
     float
-        Water density in units of [g / cm^3]
+        Water density in units of [g/cm^3]
 
     """
 
@@ -313,14 +316,62 @@ def water_density(temperature, pressure=0.1013):
     return coeff / pi / gamma1_pi
 
 
+def gnd_name(Z, A, m=0):
+    """Return nuclide name using GND convention
+
+    Parameters
+    ----------
+    Z : int
+        Atomic number
+    A : int
+        Mass number
+    m : int, optional
+        Metastable state
+
+    Returns
+    -------
+    str
+        Nuclide name in GND convention, e.g., 'Am242_m1'
+
+    """
+    if m > 0:
+        return '{}{}_m{}'.format(ATOMIC_SYMBOL[Z], A, m)
+    else:
+        return '{}{}'.format(ATOMIC_SYMBOL[Z], A)
+
+
+def zam(name):
+    """Return tuple of (atomic number, mass number, metastable state)
+
+    Parameters
+    ----------
+    name : str
+        Name of nuclide using GND convention, e.g., 'Am242_m1'
+
+    Returns
+    -------
+    3-tuple of int
+        Atomic number, mass number, and metastable state
+
+    """
+    try:
+        symbol, A, state = _GND_NAME_RE.match(name).groups()
+    except AttributeError:
+        raise ValueError("'{}' does not appear to be a nuclide name in GND "
+                         "format.".format(name))
+    metastable = int(state[2:]) if state else 0
+    return (ATOMIC_NUMBER[symbol], int(A), metastable)
+
+
 # Values here are from the Committee on Data for Science and Technology
 # (CODATA) 2014 recommendation (doi:10.1103/RevModPhys.88.035009).
 
 # The value of the Boltzman constant in units of eV / K
 K_BOLTZMANN = 8.6173303e-5
 
-# Used for converting units in ACE data
+# Unit conversions
 EV_PER_MEV = 1.0e6
+JOULE_PER_EV = 1.6021766208e-19
 
 # Avogadro's constant
 AVOGADRO = 6.022140857e23

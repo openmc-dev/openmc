@@ -10,13 +10,14 @@ import io
 import re
 import os
 from math import pi
+from pathlib import PurePath
 from collections import OrderedDict
 from collections.abc import Iterable
 
 import numpy as np
 from numpy.polynomial.polynomial import Polynomial
 
-from .data import ATOMIC_SYMBOL
+from .data import ATOMIC_SYMBOL, gnd_name
 from .function import Tabulated1D, INTERPOLATION_SCHEME
 from openmc.stats.univariate import Uniform, Tabular, Legendre
 
@@ -44,7 +45,7 @@ SUM_RULES = {1: [2, 3],
              106: list(range(750, 800)),
              107: list(range(800, 850))}
 
-ENDF_FLOAT_RE = re.compile(r'([\s\-\+]?\d*\.\d+)([\+\-]\d+)')
+_ENDF_FLOAT_RE = re.compile(r'([\s\-\+]?\d*\.\d+)([\+\-]\d+)')
 
 
 def float_endf(s):
@@ -367,8 +368,8 @@ class Evaluation(object):
 
     """
     def __init__(self, filename_or_obj):
-        if isinstance(filename_or_obj, str):
-            fh = open(filename_or_obj, 'r')
+        if isinstance(filename_or_obj, (str, PurePath)):
+            fh = open(str(filename_or_obj), 'r')
         else:
             fh = filename_or_obj
         self.section = {}
@@ -491,13 +492,9 @@ class Evaluation(object):
 
     @property
     def gnd_name(self):
-        symbol = ATOMIC_SYMBOL[self.target['atomic_number']]
-        A = self.target['mass_number']
-        m = self.target['isomeric_state']
-        if m > 0:
-            return '{}{}_m{}'.format(symbol, A, m)
-        else:
-            return '{}{}'.format(symbol, A)
+        return gnd_name(self.target['atomic_number'],
+                        self.target['mass_number'],
+                        self.target['isomeric_state'])
 
 
 class Tabulated2D(object):

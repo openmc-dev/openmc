@@ -196,7 +196,7 @@ def check_less_than(name, value, maximum, equality=False):
     maximum : object
         Maximum value to check against
     equality : bool, optional
-        Whether equality is allowed. Defaluts to False.
+        Whether equality is allowed. Defaults to False.
 
     """
 
@@ -223,7 +223,7 @@ def check_greater_than(name, value, minimum, equality=False):
     minimum : object
         Minimum value to check against
     equality : bool, optional
-        Whether equality is allowed. Defaluts to False.
+        Whether equality is allowed. Defaults to False.
 
     """
 
@@ -246,9 +246,9 @@ def check_filetype_version(obj, expected_type, expected_version):
     ----------
     obj : h5py.File
         HDF5 file to check
-    expected_type
+    expected_type : str
         Expected file type, e.g. 'statepoint'
-    expected_version
+    expected_version : int
         Expected major version number.
 
     """
@@ -265,8 +265,9 @@ def check_filetype_version(obj, expected_type, expected_version):
         if this_version[0] != expected_version:
             raise IOError('{} file has a version of {} which is not '
                           'consistent with the version expected by OpenMC, {}'
-                          .format(this_filetype, '.'.join(this_version),
-                                  expected_version))
+                          .format(this_filetype, 
+                              '.'.join(str(v) for v in this_version),
+                              expected_version))
     except AttributeError:
         raise IOError('Could not read {} file. This most likely means the {} '
                       'file was produced by a different version of OpenMC than '

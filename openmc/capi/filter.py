@@ -6,20 +6,27 @@ from weakref import WeakValueDictionary
 import numpy as np
 from numpy.ctypeslib import as_array
 
+from openmc.exceptions import AllocationError, InvalidIDError
 from . import _dll
 from .core import _FortranObjectWithID
-from .error import _error_handler, AllocationError, InvalidIDError
+from .error import _error_handler
 from .material import Material
+from .mesh import Mesh
 
 
 __all__ = ['Filter', 'AzimuthalFilter', 'CellFilter',
            'CellbornFilter', 'CellfromFilter', 'DistribcellFilter',
            'DelayedGroupFilter', 'EnergyFilter', 'EnergyoutFilter',
-           'EnergyFunctionFilter', 'MaterialFilter', 'MeshFilter',
-           'MuFilter', 'PolarFilter', 'SurfaceFilter',
-           'UniverseFilter', 'filters']
+           'EnergyFunctionFilter', 'LegendreFilter', 'MaterialFilter', 'MeshFilter',
+           'MeshSurfaceFilter', 'MuFilter', 'PolarFilter', 'SphericalHarmonicsFilter',
+           'SpatialLegendreFilter', 'SurfaceFilter',
+           'UniverseFilter', 'ZernikeFilter', 'filters']
 
 # Tally functions
+_dll.openmc_cell_filter_get_bins.argtypes = [
+    c_int32, POINTER(POINTER(c_int32)), POINTER(c_int32)]
+_dll.openmc_cell_filter_get_bins.restype = c_int
+_dll.openmc_cell_filter_get_bins.errcheck = _error_handler
 _dll.openmc_energy_filter_get_bins.argtypes = [
     c_int32, POINTER(POINTER(c_double)), POINTER(c_int32)]
 _dll.openmc_energy_filter_get_bins.restype = c_int
@@ -45,6 +52,12 @@ _dll.openmc_filter_set_type.errcheck = _error_handler
 _dll.openmc_get_filter_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_filter_index.restype = c_int
 _dll.openmc_get_filter_index.errcheck = _error_handler
+_dll.openmc_legendre_filter_get_order.argtypes = [c_int32, POINTER(c_int)]
+_dll.openmc_legendre_filter_get_order.restype = c_int
+_dll.openmc_legendre_filter_get_order.errcheck = _error_handler
+_dll.openmc_legendre_filter_set_order.argtypes = [c_int32, c_int]
+_dll.openmc_legendre_filter_set_order.restype = c_int
+_dll.openmc_legendre_filter_set_order.errcheck = _error_handler
 _dll.openmc_material_filter_get_bins.argtypes = [
     c_int32, POINTER(POINTER(c_int32)), POINTER(c_int32)]
 _dll.openmc_material_filter_get_bins.restype = c_int
@@ -52,10 +65,36 @@ _dll.openmc_material_filter_get_bins.errcheck = _error_handler
 _dll.openmc_material_filter_set_bins.argtypes = [c_int32, c_int32, POINTER(c_int32)]
 _dll.openmc_material_filter_set_bins.restype = c_int
 _dll.openmc_material_filter_set_bins.errcheck = _error_handler
+_dll.openmc_mesh_filter_get_mesh.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_mesh_filter_get_mesh.restype = c_int
+_dll.openmc_mesh_filter_get_mesh.errcheck = _error_handler
 _dll.openmc_mesh_filter_set_mesh.argtypes = [c_int32, c_int32]
 _dll.openmc_mesh_filter_set_mesh.restype = c_int
 _dll.openmc_mesh_filter_set_mesh.errcheck = _error_handler
-
+_dll.openmc_meshsurface_filter_get_mesh.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_meshsurface_filter_get_mesh.restype = c_int
+_dll.openmc_meshsurface_filter_get_mesh.errcheck = _error_handler
+_dll.openmc_meshsurface_filter_set_mesh.argtypes = [c_int32, c_int32]
+_dll.openmc_meshsurface_filter_set_mesh.restype = c_int
+_dll.openmc_meshsurface_filter_set_mesh.errcheck = _error_handler
+_dll.openmc_spatial_legendre_filter_get_order.argtypes = [c_int32, POINTER(c_int)]
+_dll.openmc_spatial_legendre_filter_get_order.restype = c_int
+_dll.openmc_spatial_legendre_filter_get_order.errcheck = _error_handler
+_dll.openmc_spatial_legendre_filter_set_order.argtypes = [c_int32, c_int]
+_dll.openmc_spatial_legendre_filter_set_order.restype = c_int
+_dll.openmc_spatial_legendre_filter_set_order.errcheck = _error_handler
+_dll.openmc_sphharm_filter_get_order.argtypes = [c_int32, POINTER(c_int)]
+_dll.openmc_sphharm_filter_get_order.restype = c_int
+_dll.openmc_sphharm_filter_get_order.errcheck = _error_handler
+_dll.openmc_sphharm_filter_set_order.argtypes = [c_int32, c_int]
+_dll.openmc_sphharm_filter_set_order.restype = c_int
+_dll.openmc_sphharm_filter_set_order.errcheck = _error_handler
+_dll.openmc_zernike_filter_get_order.argtypes = [c_int32, POINTER(c_int)]
+_dll.openmc_zernike_filter_get_order.restype = c_int
+_dll.openmc_zernike_filter_get_order.errcheck = _error_handler
+_dll.openmc_zernike_filter_set_order.argtypes = [c_int32, c_int]
+_dll.openmc_zernike_filter_set_order.restype = c_int
+_dll.openmc_zernike_filter_set_order.errcheck = _error_handler
 
 class Filter(_FortranObjectWithID):
     __instances = WeakValueDictionary()
@@ -128,7 +167,7 @@ class EnergyFilter(Filter):
             self._index, len(energies), energies_p)
 
 
-class EnergyoutFilter(Filter):
+class EnergyoutFilter(EnergyFilter):
     filter_type = 'energyout'
 
 
@@ -138,6 +177,13 @@ class AzimuthalFilter(Filter):
 
 class CellFilter(Filter):
     filter_type = 'cell'
+
+    @property
+    def bins(self):
+        cells = POINTER(c_int32)()
+        n = c_int32()
+        _dll.openmc_cell_filter_get_bins(self._index, cells, n)
+        return as_array(cells, (n.value,))
 
 
 class CellbornFilter(Filter):
@@ -158,6 +204,25 @@ class DistribcellFilter(Filter):
 
 class EnergyFunctionFilter(Filter):
     filter_type = 'energyfunction'
+
+
+class LegendreFilter(Filter):
+    filter_type = 'legendre'
+
+    def __init__(self, order=None, uid=None, new=True, index=None):
+        super().__init__(uid, new, index)
+        if order is not None:
+            self.order = order
+
+    @property
+    def order(self):
+        temp_order = c_int()
+        _dll.openmc_legendre_filter_get_order(self._index, temp_order)
+        return temp_order.value
+
+    @order.setter
+    def order(self, order):
+        _dll.openmc_legendre_filter_set_order(self._index, order)
 
 
 class MaterialFilter(Filter):
@@ -187,6 +252,40 @@ class MaterialFilter(Filter):
 class MeshFilter(Filter):
     filter_type = 'mesh'
 
+    def __init__(self, mesh=None, uid=None, new=True, index=None):
+        super().__init__(uid, new, index)
+        if mesh is not None:
+            self.mesh = mesh
+
+    @property
+    def mesh(self):
+        index_mesh = c_int32()
+        _dll.openmc_mesh_filter_get_mesh(self._index, index_mesh)
+        return Mesh(index=index_mesh.value)
+
+    @mesh.setter
+    def mesh(self, mesh):
+        _dll.openmc_mesh_filter_set_mesh(self._index, mesh._index)
+
+
+class MeshSurfaceFilter(Filter):
+    filter_type = 'meshsurface'
+
+    def __init__(self, mesh=None, uid=None, new=True, index=None):
+        super().__init__(uid, new, index)
+        if mesh is not None:
+            self.mesh = mesh
+
+    @property
+    def mesh(self):
+        index_mesh = c_int32()
+        _dll.openmc_meshsurface_filter_get_mesh(self._index, index_mesh)
+        return Mesh(index=index_mesh.value)
+
+    @mesh.setter
+    def mesh(self, mesh):
+        _dll.openmc_meshsurface_filter_set_mesh(self._index, mesh._index)
+
 
 class MuFilter(Filter):
     filter_type = 'mu'
@@ -196,12 +295,69 @@ class PolarFilter(Filter):
     filter_type = 'polar'
 
 
+class SphericalHarmonicsFilter(Filter):
+    filter_type = 'sphericalharmonics'
+
+    def __init__(self, order=None, uid=None, new=True, index=None):
+        super().__init__(uid, new, index)
+        if order is not None:
+            self.order = order
+
+    @property
+    def order(self):
+        temp_order = c_int()
+        _dll.openmc_sphharm_filter_get_order(self._index, temp_order)
+        return temp_order.value
+
+    @order.setter
+    def order(self, order):
+        _dll.openmc_sphharm_filter_set_order(self._index, order)
+
+
+class SpatialLegendreFilter(Filter):
+    filter_type = 'spatiallegendre'
+
+    def __init__(self, order=None, uid=None, new=True, index=None):
+        super().__init__(uid, new, index)
+        if order is not None:
+            self.order = order
+
+    @property
+    def order(self):
+        temp_order = c_int()
+        _dll.openmc_spatial_legendre_filter_get_order(self._index, temp_order)
+        return temp_order.value
+
+    @order.setter
+    def order(self, order):
+        _dll.openmc_spatial_legendre_filter_set_order(self._index, order)
+
+
 class SurfaceFilter(Filter):
     filter_type = 'surface'
 
 
 class UniverseFilter(Filter):
     filter_type = 'universe'
+
+
+class ZernikeFilter(Filter):
+    filter_type = 'zernike'
+
+    def __init__(self, order=None, uid=None, new=True, index=None):
+        super().__init__(uid, new, index)
+        if order is not None:
+            self.order = order
+
+    @property
+    def order(self):
+        temp_order = c_int()
+        _dll.openmc_zernike_filter_get_order(self._index, temp_order)
+        return temp_order.value
+
+    @order.setter
+    def order(self, order):
+        _dll.openmc_zernike_filter_set_order(self._index, order)
 
 
 _FILTER_TYPE_MAP = {
@@ -214,12 +370,17 @@ _FILTER_TYPE_MAP = {
     'energy': EnergyFilter,
     'energyout': EnergyoutFilter,
     'energyfunction': EnergyFunctionFilter,
+    'legendre': LegendreFilter,
     'material': MaterialFilter,
     'mesh': MeshFilter,
+    'meshsurface': MeshSurfaceFilter,
     'mu': MuFilter,
     'polar': PolarFilter,
+    'sphericalharmonics': SphericalHarmonicsFilter,
+    'spatiallegendre': SpatialLegendreFilter,
     'surface': SurfaceFilter,
     'universe': UniverseFilter,
+    'zernike': ZernikeFilter
 }
 
 

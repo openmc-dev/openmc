@@ -15,14 +15,15 @@ there are many substantial benefits to using the Python API, including:
 - The ability to define dimensions using variables.
 - Availability of standard-library modules for working with files.
 - An entire ecosystem of third-party packages for scientific computing.
-- Ability to create materials based on natural elements or uranium enrichment
 - Automated multi-group cross section generation (:mod:`openmc.mgxs`)
+- A fully-featured nuclear data interface (:mod:`openmc.data`)
+- Depletion capability (:mod:`openmc.deplete`)
 - Convenience functions (e.g., a function returning a hexagonal region)
 - Ability to plot individual universes as geometry is being created
 - A :math:`k_\text{eff}` search function (:func:`openmc.search_for_keff`)
 - Random sphere packing for generating TRISO particle locations
   (:func:`openmc.model.pack_trisos`)
-- A fully-featured nuclear data interface (:mod:`openmc.data`)
+- Ability to create materials based on natural elements or uranium enrichment
 
 For those new to Python, there are many good tutorials available online. We
 recommend going through the modules from `Codecademy
@@ -45,6 +46,7 @@ Modules
    base
    model
    examples
+   deplete
    mgxs
    stats
    data

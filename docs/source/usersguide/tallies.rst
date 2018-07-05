@@ -21,7 +21,12 @@ region of phase space, as in:
 Thus, to specify a tally, we need to specify what regions of phase space should
 be included when deciding whether to score an event as well as what the scoring
 function (:math:`f` in the above equation) should be used. The regions of phase
-space are called *filters* and the scoring functions are simply called *scores*.
+space are generally called *filters* and the scoring functions are simply
+called *scores*.
+
+The only cases when filters do not correspond directly with the regions of
+phase space are when expansion functions are applied in the integrand, such as
+for Legendre expansions of the scattering kernel.
 
 -------
 Filters
@@ -69,10 +74,9 @@ Scores
 ------
 
 To specify the scoring functions, a list of strings needs to be given to the
-:attr:`Tally.scores` attribute. You can score the flux ('flux'), a reaction rate
-('total', 'fission', etc.), or even scattering moments (e.g., 'scatter-P3'). For
-example, to tally the elastic scattering rate and the fission neutron
-production, you'd assign::
+:attr:`Tally.scores` attribute. You can score the flux ('flux'), or a reaction
+rate ('total', 'fission', etc.). For example, to tally the elastic scattering
+rate and the fission neutron production, you'd assign::
 
   tally.scores = ['elastic', 'nu-fission']
 
@@ -98,12 +102,6 @@ The following tables show all valid scores:
     +======================+===================================================+
     |flux                  |Total flux.                                        |
     +----------------------+---------------------------------------------------+
-    |flux-YN               |Spherical harmonic expansion of the direction of   |
-    |                      |motion :math:`\left(\Omega\right)` of the total    |
-    |                      |flux. This score will tally all of the harmonic    |
-    |                      |moments of order 0 to N.  N must be between 0 and  |
-    |                      |10.                                                |
-    +----------------------+---------------------------------------------------+
 
 .. table:: **Reaction scores: units are reactions per source particle.**
 
@@ -118,42 +116,9 @@ The following tables show all valid scores:
     +----------------------+---------------------------------------------------+
     |fission               |Total fission reaction rate.                       |
     +----------------------+---------------------------------------------------+
-    |scatter               |Total scattering rate. Can also be identified with |
-    |                      |the "scatter-0" response type.                     |
-    +----------------------+---------------------------------------------------+
-    |scatter-N             |Tally the N\ :sup:`th` \ scattering moment, where N|
-    |                      |is the Legendre expansion order of the change in   |
-    |                      |particle angle :math:`\left(\mu\right)`. N must be |
-    |                      |between 0 and 10. As an example, tallying the 2\   |
-    |                      |:sup:`nd` \ scattering moment would be specified as|
-    |                      |``<scores>scatter-2</scores>``.                    |
-    +----------------------+---------------------------------------------------+
-    |scatter-PN            |Tally all of the scattering moments from order 0 to|
-    |                      |N, where N is the Legendre expansion order of the  |
-    |                      |change in particle angle                           |
-    |                      |:math:`\left(\mu\right)`. That is, "scatter-P1" is |
-    |                      |equivalent to requesting tallies of "scatter-0" and|
-    |                      |"scatter-1".  Like for "scatter-N", N must be      |
-    |                      |between 0 and 10. As an example, tallying up to the|
-    |                      |2\ :sup:`nd` \ scattering moment would be specified|
-    |                      |as ``<scores> scatter-P2 </scores>``.              |
-    +----------------------+---------------------------------------------------+
-    |scatter-YN            |"scatter-YN" is similar to "scatter-PN" except an  |
-    |                      |additional expansion is performed for the incoming |
-    |                      |particle direction :math:`\left(\Omega\right)`     |
-    |                      |using the real spherical harmonics.  This is useful|
-    |                      |for performing angular flux moment weighting of the|
-    |                      |scattering moments. Like "scatter-PN", "scatter-YN"|
-    |                      |will tally all of the moments from order 0 to N; N |
-    |                      |again must be between 0 and 10.                    |
+    |scatter               |Total scattering rate.                             |
     +----------------------+---------------------------------------------------+
     |total                 |Total reaction rate.                               |
-    +----------------------+---------------------------------------------------+
-    |total-YN              |The total reaction rate expanded via spherical     |
-    |                      |harmonics about the direction of motion of the     |
-    |                      |neutron, :math:`\Omega`. This score will tally all |
-    |                      |of the harmonic moments of order 0 to N.  N must be|
-    |                      |between 0 and 10.                                  |
     +----------------------+---------------------------------------------------+
     |(n,2nd)               |(n,2nd) reaction rate.                             |
     +----------------------+---------------------------------------------------+
@@ -248,10 +213,10 @@ The following tables show all valid scores:
     +----------------------+---------------------------------------------------+
     |nu-fission            |Total production of neutrons due to fission.       |
     +----------------------+---------------------------------------------------+
-    |nu-scatter,           |These scores are similar in functionality to their |
-    |nu-scatter-N,         |``scatter*`` equivalents except the total          |
-    |nu-scatter-PN,        |production of neutrons due to scattering is scored |
-    |nu-scatter-YN         |vice simply the scattering rate. This accounts for |
+    |nu-scatter            |This score is similar in functionality to the      |
+    |                      |``scatter`` score except the total production of   |
+    |                      |neutrons due to scattering is scored vice simply   |
+    |                      |the scattering rate. This accounts for             |
     |                      |multiplicity from (n,2n), (n,3n), and (n,4n)       |
     |                      |reactions.                                         |
     +----------------------+---------------------------------------------------+
@@ -261,7 +226,7 @@ The following tables show all valid scores:
     +----------------------+---------------------------------------------------+
     |Score                 | Description                                       |
     +======================+===================================================+
-    |current               |Used in combination with a mesh filter:            |
+    |current               |Used in combination with a meshsurface filter:     |
     |                      |Partial currents on the boundaries of each cell in |
     |                      |a mesh. It may not be used in conjunction with any |
     |                      |other score. Only energy and mesh filters may be   |
@@ -269,7 +234,7 @@ The following tables show all valid scores:
     |                      |Used in combination with a surface filter:         |
     |                      |Net currents on any surface previously defined in  |
     |                      |the geometry. It may be used along with any other  |
-    |                      |filter, except mesh filters.                       |
+    |                      |filter, except meshsurface filters.                |
     |                      |Surfaces can alternatively be defined with cell    |
     |                      |from and cell filters thereby resulting in tallying|
     |                      |partial currents.                                  |

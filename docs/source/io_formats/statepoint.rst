@@ -133,15 +133,8 @@ The current version of the statepoint file format is 17.0.
            - **derivative** (*int*) -- ID of the derivative applied to the
              tally.
            - **n_score_bins** (*int*) -- Number of scoring bins for a single
-             nuclide. In general, this can be greater than the number of
-             user-specified scores since each score might have multiple scoring
-             bins, e.g., scatter-PN.
+             nuclide.
            - **score_bins** (*char[][]*) -- Values of specified scores.
-           - **n_user_scores** (*int*) -- Number of scores without accounting
-             for those added by expansions, e.g. scatter-PN.
-           - **moment_orders** (*char[][]*) -- Tallying moment orders for
-             Legendre and spherical harmonic tally expansions (e.g., 'P2',
-             'Y1,2', etc.).
            - **results** (*double[][][2]*) -- Accumulated sum and sum-of-squares
              for each bin of the i-th tally. The first dimension represents
              combinations of filter bins, the second dimensions represents

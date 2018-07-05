@@ -9,7 +9,7 @@
   </mesh>
 
   <filter id="1">
-    <type>mesh</type>
+    <type>meshsurface</type>
     <bins>1</bins>
   </filter>
 

@@ -9,7 +9,7 @@
 namespace openmc {
 
 std::string
-get_node_value(pugi::xml_node node, const char *name)
+get_node_value_str(pugi::xml_node node, const char* name)
 {
   // Search for either an attribute or child tag and get the data as a char*.
   const pugi::char_t *value_char;
@@ -23,9 +23,15 @@ get_node_value(pugi::xml_node node, const char *name)
             << node.name() << "\" XML node";
     fatal_error(err_msg);
   }
+  return value_char;
+}
 
-  // Convert to lowercase string.
-  std::string value(value_char);
+
+std::string
+get_node_value(pugi::xml_node node, const char *name)
+{
+  // Get char* and convert to lowercase string.
+  std::string value {get_node_value_str(node, name)};
   std::transform(value.begin(), value.end(), value.begin(), ::tolower);
 
   // Remove whitespace.

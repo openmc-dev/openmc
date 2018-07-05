@@ -159,7 +159,6 @@ class AtomicRelaxation(EqualityMixin):
         self.binding_energy = binding_energy
         self.num_electrons = num_electrons
         self.transitions = transitions
-        self.compton_profile = OrderedDict()
 
     @property
     def binding_energy(self):

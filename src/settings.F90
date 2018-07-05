@@ -27,7 +27,7 @@ module settings
   integer :: n_log_bins  ! number of bins for logarithmic grid
 
   logical :: photon_transport = .false.
-  integer :: electron_treatment = ELECTRON_LED
+  integer :: electron_treatment = ELECTRON_TTB
 
   ! ============================================================================
   ! MULTI-GROUP CROSS SECTION RELATED VARIABLES

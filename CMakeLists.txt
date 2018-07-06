@@ -210,7 +210,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES Clang)
 
 endif()
 
-list(APPEND cxxflags -std=c++11 -O2)
+list(APPEND cxxflags -std=c++14 -O2)
 if(debug)
   list(REMOVE_ITEM cxxflags -O2)
   list(APPEND cxxflags -g -O0)
@@ -235,6 +235,14 @@ message(STATUS "Linker flags: ${ldflags}")
 
 add_library(pugixml vendor/pugixml/pugixml.cpp)
 target_include_directories(pugixml PUBLIC vendor/pugixml/)
+
+#===============================================================================
+# xtensor header-only library
+#===============================================================================
+
+add_subdirectory(vendor/xtl)
+add_subdirectory(vendor/xtensor)
+target_link_libraries(xtensor INTERFACE xtl)
 
 #===============================================================================
 # RPATH information
@@ -453,7 +461,7 @@ endif()
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml
-                      faddeeva)
+                      faddeeva xtensor)
 
 #===============================================================================
 # openmc executable

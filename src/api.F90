@@ -15,7 +15,7 @@ module openmc_api
   use message_passing
   use nuclide_header
   use initialize,      only: openmc_init_f
-  use particle_header, only: Particle
+  use particle_header
   use plot,            only: openmc_plot_geometry
   use random_lcg,      only: openmc_get_seed, openmc_set_seed
   use settings
@@ -198,7 +198,7 @@ contains
     logical :: found
     type(Particle) :: p
 
-    call p % initialize()
+    call particle_initialize(p)
     p % coord(1) % xyz(:) = xyz
     p % coord(1) % uvw(:) = [ZERO, ZERO, ONE]
     call find_cell(p, found)

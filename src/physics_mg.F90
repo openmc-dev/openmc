@@ -11,7 +11,7 @@ module physics_mg
   use mgxs_interface
   use message_passing
   use nuclide_header,         only: material_xs
-  use particle_header,        only: Particle
+  use particle_header
   use physics_common
   use random_lcg,             only: prn
   use settings
@@ -185,7 +185,7 @@ contains
         call m % get_bin(p % coord(1) % xyz, mesh_bin)
 
         if (mesh_bin == NO_BIN_FOUND) then
-          call p % write_restart()
+          call particle_write_restart(p)
           call fatal_error("Source site outside UFS mesh!")
         end if
 

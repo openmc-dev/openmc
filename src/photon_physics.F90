@@ -2,7 +2,7 @@ module photon_physics
 
   use algorithm,       only: binary_search
   use constants
-  use particle_header, only: Particle
+  use particle_header
   use photon_header,   only: PhotonInteraction, BremsstrahlungData, &
                              compton_profile_pz, ttb_e_grid, ttb
   use random_lcg,      only: prn
@@ -332,7 +332,7 @@ contains
       uvw(2) = sqrt(ONE - mu*mu)*cos(phi)
       uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
       E = elm % shells(i_shell) % binding_energy
-      call p % create_secondary(uvw, E, PHOTON, run_ce=.true.)
+      call particle_create_secondary(p, uvw, E, PHOTON, run_ce=.true._C_BOOL)
       return
     end if
 
@@ -363,7 +363,7 @@ contains
       ! Non-radiative transition -- Auger/Coster-Kronig effect
 
       ! Create auger electron
-      call p % create_secondary(uvw, E, ELECTRON, run_ce=.true.)
+      call particle_create_secondary(p, uvw, E, ELECTRON, run_ce=.true._C_BOOL)
 
       ! Fill hole left by emitted auger electron
       i_hole = elm % shell_dict % get(secondary)
@@ -372,7 +372,7 @@ contains
       ! Radiative transition -- get X-ray energy
 
       ! Create fluorescent photon
-      call p % create_secondary(uvw, E, PHOTON, run_ce=.true.)
+      call particle_create_secondary(p, uvw, E, PHOTON, run_ce=.true._C_BOOL)
 
     end if
 
@@ -630,7 +630,8 @@ contains
 
       if (w > energy_cutoff(PHOTON)) then
         ! Create secondary photon
-        call p % create_secondary(p % coord(1) % uvw, w, PHOTON, run_ce=.true.)
+        call particle_create_secondary(p, p % coord(1) % uvw, w, PHOTON, &
+             run_ce=.true._C_BOOL)
         E_lost = E_lost + w
       end if
     end do

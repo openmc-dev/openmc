@@ -1232,8 +1232,8 @@ contains
       end if
 
       ! Read cell temperatures.  If the temperature is not specified, set it to
-      ! ERROR_REAL for now.  During initialization we'll replace ERROR_REAL with
-      ! the temperature from the material data.
+      ! a negative number for now.  During initialization we'll replace
+      ! negatives with the temperature from the material data.
       if (check_for_node(node_cell, "temperature")) then
         n = node_word_count(node_cell, "temperature")
         if (n > 0) then
@@ -1258,11 +1258,11 @@ contains
           c % sqrtkT(:) = sqrt(K_BOLTZMANN * c % sqrtkT(:))
         else
           allocate(c % sqrtkT(1))
-          c % sqrtkT(1) = ERROR_REAL
+          c % sqrtkT(1) = -1.0
         end if
       else
         allocate(c % sqrtkT(1))
-        c % sqrtkT = ERROR_REAL
+        c % sqrtkT = -1.0
       end if
 
       ! Add cell to dictionary
@@ -1580,7 +1580,7 @@ contains
       if (check_for_node(node_mat, "temperature")) then
         call get_node_value(node_mat, "temperature", material_temps(i))
       else
-        material_temps(i) = ERROR_REAL
+        material_temps(i) = -1.0
       end if
 
       ! Get pointer to density element
@@ -3847,7 +3847,7 @@ contains
     do i = 1, n_cells
       ! Ignore non-normal cells and cells with defined temperature.
       if (cells(i) % material(1) == NONE) cycle
-      if (cells(i) % sqrtkT(1) /= ERROR_REAL) cycle
+      if (cells(i) % sqrtkT(1) >= ZERO) cycle
 
       ! Set the number of temperatures equal to the number of materials.
       deallocate(cells(i) % sqrtkT)
@@ -3863,7 +3863,7 @@ contains
 
         ! Use material default or global default temperature
         i_material = cells(i) % material(j)
-        if (material_temps(i_material) /= ERROR_REAL) then
+        if (material_temps(i_material) >= ZERO) then
           cells(i) % sqrtkT(j) = sqrt(K_BOLTZMANN * &
                material_temps(i_material))
         else

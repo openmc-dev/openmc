@@ -69,9 +69,9 @@ def float_endf(s):
 
     """
     try:
-        return float(ENDF_FLOAT_RE.sub(r'\1e\2', s))
+        return float(_ENDF_FLOAT_RE.sub(r'\1e\2', s))
     except:
-        if ENDF_FLOAT_RE.sub(r'\1e\2', s).isspace():
+        if _ENDF_FLOAT_RE.sub(r'\1e\2', s).isspace():
             return 0
         else:
             raise TypeError('Expected float value or blank entry')

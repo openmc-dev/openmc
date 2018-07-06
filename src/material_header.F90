@@ -735,11 +735,7 @@ contains
     mat => materials(i_material)
 
     ! Determine whether we are generating electron or positron data
-    if (particle == POSITRON) then
-      positron_ = .true.
-    else
-      positron_ = .false.
-    end if
+    positron_ = (particle == POSITRON)
 
     ! Get the size of the energy grids
     n_k = size(ttb_k_grid)
@@ -853,7 +849,7 @@ contains
         beta = sqrt(e*(e + TWO*MASS_ELECTRON)) / (e + MASS_ELECTRON)
 
         ! Compute the integrand of the PDF
-        f(j) = (1.0e-3_8 * x) / (beta**2 * stopping_power(j) * w)
+        f(j) = x / (beta**2 * stopping_power(j) * w)
       end do
 
       ! Number of points to integrate
@@ -912,9 +908,6 @@ contains
     elsewhere
       this % yield = -500.0_8
     end where
-
-    deallocate(stopping_power_collision, stopping_power_radiative, &
-         stopping_power, dcs, f, z)
 
   end subroutine bremsstrahlung_init
 

@@ -24,8 +24,9 @@ from openmc.stats.univariate import Uniform, Tabular, Legendre
 
 _LIBRARY = {0: 'ENDF/B', 1: 'ENDF/A', 2: 'JEFF', 3: 'EFF',
             4: 'ENDF/B High Energy', 5: 'CENDL', 6: 'JENDL',
-            31: 'INDL/V', 32: 'INDL/A', 33: 'FENDL', 34: 'IRDF',
-            35: 'BROND', 36: 'INGDB-90', 37: 'FENDL/A', 41: 'BROND'}
+            17: 'TENDL', 18: 'ROSFOND', 21: 'SG-21', 31: 'INDL/V',
+            32: 'INDL/A', 33: 'FENDL', 34: 'IRDF', 35: 'BROND',
+            36: 'INGDB-90', 37: 'FENDL/A', 41: 'BROND'}
 
 _SUBLIBRARY = {
     0: 'Photo-nuclear data',

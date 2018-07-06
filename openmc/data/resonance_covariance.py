@@ -36,7 +36,7 @@ def file2contributions(file32params, file2params):
     file32params_sort = file32params.sort_values(by=['energy'])
     #Add in values (.values converts to array first to ignore index)
     file32params_sort['L'] = file2params['L'].values
-    if 'competiveWidth' in file32params_sort:
+    if 'competitiveWidth' in file2params.columns:
         file32params_sort['competitiveWidth'] = file2params['competitiveWidth'].values
     #Resort to File 32 order (by L then by E) for use with covariance
     parameters = file32params_sort.sort_index()
@@ -237,7 +237,7 @@ class ResonanceCovarianceRange(object):
         samples = []
     
     
-        # Handling MLBW Sampling
+        # Handling MLBW sampling
         if formalism == 'mlbw' or formalism == 'slbw':
             if mpar == 3:
                 param_list = ['energy','neutronWidth','captureWidth']
@@ -245,6 +245,7 @@ class ResonanceCovarianceRange(object):
                 spin = pd.DataFrame.as_matrix(parameters['J'])
                 l_value = pd.DataFrame.as_matrix(parameters['L'])
                 gf = pd.DataFrame.as_matrix(parameters['fissionWidth'])
+                gx = pd.DataFrame.as_matrix(parameters['competitiveWidth'])
                 mean = mean_array.flatten()
                 for i in range(n_samples):
                     sample = np.random.multivariate_normal(mean,cov)
@@ -255,9 +256,9 @@ class ResonanceCovarianceRange(object):
                     records = []
                     for j, E in enumerate(energy):
                         records.append([energy[j], l_value[j], spin[j], gt[j], gn[j],
-                                        gg[j], gf[j]])
+                                        gg[j], gf[j], gx[j]])
                     columns = ['energy', 'L', 'J', 'totalWidth', 'neutronWidth',
-                           'captureWidth', 'fissionWidth']
+                           'captureWidth', 'fissionWidth', 'competitiveWidth']
                     sample_params = pd.DataFrame.from_records(records, columns=columns)
                     samples.append(sample_params)
     
@@ -266,6 +267,7 @@ class ResonanceCovarianceRange(object):
                 mean_array = pd.DataFrame.as_matrix(parameters[param_list])
                 spin = pd.DataFrame.as_matrix(parameters['J'])
                 l_value = pd.DataFrame.as_matrix(parameters['L'])
+                gx = pd.DataFrame.as_matrix(parameters['competitiveWidth'])
                 mean = mean_array.flatten()
                 for i in range(n_samples):
                     sample = np.random.multivariate_normal(mean,cov)
@@ -277,9 +279,9 @@ class ResonanceCovarianceRange(object):
                     records = []
                     for j, E in enumerate(energy):
                         records.append([energy[j], l_value[j], spin[j], gt[j], gn[j],
-                                        gg[j], gf[j]])
+                                        gg[j], gf[j], gx[j]])
                     columns = ['energy', 'L', 'J', 'totalWidth', 'neutronWidth',
-                           'captureWidth', 'fissionWidth']
+                           'captureWidth', 'fissionWidth', 'competitiveWidth']
                     sample_params = pd.DataFrame.from_records(records, columns=columns)
                     samples.append(sample_params)
     

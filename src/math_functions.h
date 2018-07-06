@@ -157,15 +157,15 @@ extern "C" void broaden_wmp_polynomials_c(double E, double dopp, int n,
 //! used in any subsequent calls to spline_interpolate or spline_integrate for
 //! the same set of x and y values.
 //!
-//! @param n  Number of points
-//! @param x  Values of the independent variable, which must be strictly
+//! @param n       Number of points
+//! @param x       Values of the independent variable, which must be strictly
 //!   increasing.
-//! @param y  Values of the dependent variable.
-//! @param z  The second derivative of the interpolating function at each value
-//!   of x.
+//! @param y       Values of the dependent variable.
+//! @param[out] z  The second derivative of the interpolating function at each
+//!   value of x.
 //==============================================================================
 
-extern "C" void spline_c(int n, double x[], double y[], double z[]);
+extern "C" void spline_c(int n, const double x[], const double y[], double z[]);
 
 //==============================================================================
 //! Determine the cubic spline interpolated y-value for a given x-value.
@@ -180,8 +180,8 @@ extern "C" void spline_c(int n, double x[], double y[], double z[]);
 //! @result      Interpolated value
 //==============================================================================
 
-extern "C" double spline_interpolate_c(int n, double x[], double y[], double z[],
-                                       double xint);
+extern "C" double spline_interpolate_c(int n, const double x[], const double y[],
+                                       const double z[], double xint);
 
 //==============================================================================
 //! Evaluate the definite integral of the interpolating cubic spline between
@@ -198,8 +198,8 @@ extern "C" double spline_interpolate_c(int n, double x[], double y[], double z[]
 //! @result    Integral
 //==============================================================================
 
-extern "C" double spline_integrate_c(int n, double x[], double y[], double z[],
-                                     double xa, double xb);
+extern "C" double spline_integrate_c(int n, const double x[], const double y[],
+                                     const double z[], double xa, double xb);
 
 } // namespace openmc
 #endif // MATH_FUNCTIONS_H

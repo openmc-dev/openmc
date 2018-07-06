@@ -35,7 +35,11 @@
 </settings>
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>
+  <filter id="1" type="particle">
+    <bins>2</bins>
+  </filter>
   <tally id="1">
+    <filters>1</filters>
     <scores>flux</scores>
   </tally>
 </tallies>

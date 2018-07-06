@@ -691,7 +691,7 @@ void broaden_wmp_polynomials_c(double E, double dopp, int n, double factors[]) {
 }
 
 
-void spline_c(int n, double x[], double y[], double z[])
+void spline_c(int n, const double x[], const double y[], double z[])
 {
   double c_new[n-1];
 
@@ -718,7 +718,8 @@ void spline_c(int n, double x[], double y[], double z[])
 }
 
 
-double spline_interpolate_c(int n, double x[], double y[], double z[], double xint)
+double spline_interpolate_c(int n, const double x[], const double y[],
+                            const double z[], double xint)
 {
   // Find the lower bounding index in x of xint
   int i = n - 1;
@@ -734,14 +735,12 @@ double spline_interpolate_c(int n, double x[], double y[], double z[], double xi
   double c = z[i]/2.0;
   double d = (z[i+1] - z[i])/(h*6.0);
 
-  double yint = y[i] + b*r + c*r*r + d*r*r*r;
-
-  return yint;
+  return y[i] + b*r + c*r*r + d*r*r*r;
 }
 
 
-double spline_integrate_c(int n, double x[], double y[], double z[], double xa,
-                          double xb)
+double spline_integrate_c(int n, const double x[], const double y[],
+                          const double z[], double xa, double xb)
 {
   // Find the lower bounding index in x of the lower limit of integration.
   int ia = n - 1;

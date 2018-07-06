@@ -19,9 +19,7 @@ class SourceTestHarness(PyAPITestHarness):
         inside_sphere = openmc.Cell()
         inside_sphere.region = -sphere
         inside_sphere.fill = mat
-        root = openmc.Universe()
-        root.add_cell(inside_sphere)
-        geometry = openmc.Geometry(root)
+        geometry = openmc.Geometry([inside_sphere])
         geometry.export_to_xml()
  
         source = openmc.Source()
@@ -40,20 +38,22 @@ class SourceTestHarness(PyAPITestHarness):
         settings.source = source
         settings.export_to_xml()
  
+        particle_filter = openmc.ParticleFilter('photon')
         tally = openmc.Tally()
+        tally.filters = [particle_filter]
         tally.scores = ['flux']
         tallies = openmc.Tallies([tally])
         tallies.export_to_xml()
 
     def _get_results(self):
-        sp = openmc.StatePoint(self._sp_name)
-        outstr = ''
-        t = sp.get_tally()
-        outstr += 'tally {}:\n'.format(t.id)
-        outstr += 'sum = {:12.6E}\n'.format(t.sum[0, 0, 0])
-        outstr += 'sum_sq = {:12.6E}\n'.format(t.sum_sq[0, 0, 0])
+        with openmc.StatePoint(self._sp_name) as sp:
+            outstr = ''
+            t = sp.get_tally()
+            outstr += 'tally {}:\n'.format(t.id)
+            outstr += 'sum = {:12.6E}\n'.format(t.sum[0, 0, 0])
+            outstr += 'sum_sq = {:12.6E}\n'.format(t.sum_sq[0, 0, 0])
 
-        return outstr
+            return outstr
 
 
 def test_source():

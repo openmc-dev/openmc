@@ -9,7 +9,7 @@ module physics
   use mesh_header,            only: meshes
   use message_passing
   use nuclide_header
-  use particle_header,        only: Particle
+  use particle_header
   use photon_header
   use photon_physics,         only: rayleigh_scatter, compton_scatter, &
                                     atomic_relaxation, pair_production, &
@@ -231,7 +231,7 @@ contains
              / sqrt(alpha**2 + alpha_out**2 - TWO*alpha*alpha_out*mu)
         phi = TWO*PI*prn()
         uvw = rotate_angle(p % coord(1) % uvw, mu_electron, phi)
-        call p % create_secondary(uvw, E_electron, ELECTRON, .true.)
+        call particle_create_secondary(p, uvw, E_electron, ELECTRON, .true._C_BOOL)
 
         ! TODO: Compton subshell data does not match atomic relaxation data
         ! Allow electrons to fill orbital and produce auger electrons
@@ -288,7 +288,8 @@ contains
             uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
 
             ! Create secondary electron
-            call p % create_secondary(uvw, E_electron, ELECTRON, run_CE=.true.)
+            call particle_create_secondary(p, uvw, E_electron, ELECTRON, &
+                 run_CE=.true._C_BOOL)
 
             ! Allow electrons to fill orbital and produce auger electrons
             ! and fluorescent photons
@@ -311,11 +312,11 @@ contains
 
         ! Create secondary electron
         uvw = rotate_angle(p % coord(1) % uvw, mu_electron)
-        call p % create_secondary(uvw, E_electron, ELECTRON, .true.)
+        call particle_create_secondary(p, uvw, E_electron, ELECTRON, .true._C_BOOL)
 
         ! Create secondary positron
         uvw = rotate_angle(p % coord(1) % uvw, mu_positron)
-        call p % create_secondary(uvw, E_positron, POSITRON, .true.)
+        call particle_create_secondary(p, uvw, E_positron, POSITRON, .true._C_BOOL)
 
         p % event_MT = PAIR_PROD
         p % alive = .false.
@@ -380,8 +381,8 @@ contains
     uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
 
     ! Create annihilation photon pair traveling in opposite directions
-    call p % create_secondary( uvw, MASS_ELECTRON_EV, PHOTON, .true.)
-    call p % create_secondary(-uvw, MASS_ELECTRON_EV, PHOTON, .true.)
+    call particle_create_secondary(p, uvw, MASS_ELECTRON_EV, PHOTON, .true._C_BOOL)
+    call particle_create_secondary(p, -uvw, MASS_ELECTRON_EV, PHOTON, .true._C_BOOL)
 
     p % E = ZERO
     p % alive = .false.
@@ -425,7 +426,7 @@ contains
 
       ! Check to make sure that a nuclide was sampled
       if (i_nuc_mat > mat % n_nuclides) then
-        call p % write_restart()
+        call particle_write_restart(p)
         call fatal_error("Did not sample any nuclide during collision.")
       end if
 
@@ -475,7 +476,7 @@ contains
 
         ! Check to make sure that a nuclide was sampled
         if (i > mat % n_nuclides) then
-          call p % write_restart()
+          call particle_write_restart(p)
           call fatal_error("Did not sample any element during collision.")
         end if
 
@@ -744,7 +745,7 @@ contains
 
         ! Check to make sure inelastic scattering reaction sampled
         if (i > size(nuc % reactions)) then
-          call p % write_restart()
+          call particle_write_restart(p)
           call fatal_error("Did not sample any reaction for nuclide " &
                &// trim(nuc % name))
         end if
@@ -1451,7 +1452,7 @@ contains
         ! Determine indices on ufs mesh for current location
         call m % get_bin(p % coord(1) % xyz, mesh_bin)
         if (mesh_bin == NO_BIN_FOUND) then
-          call p % write_restart()
+          call particle_write_restart(p)
           call fatal_error("Source site outside UFS mesh!")
         end if
 
@@ -1607,7 +1608,7 @@ contains
         ! check for large number of resamples
         n_sample = n_sample + 1
         if (n_sample == MAX_SAMPLE) then
-          ! call p % write_restart()
+          ! call particle_write_restart(p)
           call fatal_error("Resampled energy distribution maximum number of " &
                // "times for nuclide " // nuc % name)
         end if
@@ -1631,7 +1632,7 @@ contains
         ! check for large number of resamples
         n_sample = n_sample + 1
         if (n_sample == MAX_SAMPLE) then
-          ! call p % write_restart()
+          ! call particle_write_restart(p)
           call fatal_error("Resampled energy distribution maximum number of " &
                // "times for nuclide " // nuc % name)
         end if
@@ -1695,8 +1696,8 @@ contains
     if (mod(yield, ONE) == ZERO) then
       ! If yield is integral, create exactly that many secondary particles
       do i = 1, nint(yield) - 1
-        call p % create_secondary(p % coord(1) % uvw, p % E, &
-             NEUTRON, run_CE=.true.)
+        call particle_create_secondary(p, p % coord(1) % uvw, p % E, &
+             NEUTRON, run_CE=.true._C_BOOL)
       end do
     else
       ! Otherwise, change weight of particle based on yield
@@ -1746,7 +1747,7 @@ contains
       uvw = rotate_angle(p % coord(1) % uvw, mu)
 
       ! Create the secondary photon
-      call p % create_secondary(uvw, E, PHOTON, run_CE=.true.)
+      call particle_create_secondary(p, uvw, E, PHOTON, run_CE=.true._C_BOOL)
     end do
 
   end subroutine sample_secondary_photons

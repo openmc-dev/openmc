@@ -3,7 +3,7 @@ module geometry
   use constants
   use error,                  only: fatal_error, warning, write_message
   use geometry_header
-  use particle_header,        only: LocalCoord, Particle
+  use particle_header
   use simulation_header
   use settings
   use surface_header
@@ -113,13 +113,13 @@ contains
     logical :: use_search_cells     ! use cells provided as argument
 
     do j = p % n_coord + 1, MAX_COORD
-      call p % coord(j) % reset()
+      call reset_coord(p % coord(j))
     end do
     j = p % n_coord
 
     ! Determine universe (if not yet set, use root universe)
     i_universe = p % coord(j) % universe
-    if (i_universe == NONE) then
+    if (i_universe == C_NONE) then
       p % coord(j) % universe = root_universe
       i_universe = root_universe
     end if
@@ -336,7 +336,7 @@ contains
       call find_cell(p, found)
       if (.not. found) then
         if (p % alive) then ! Particle may have been killed in find_cell
-          call p % mark_as_lost("Could not locate particle " &
+          call particle_mark_as_lost(p, "Could not locate particle " &
                // trim(to_str(p % id)) // " after crossing a lattice boundary.")
           return
         end if
@@ -360,7 +360,7 @@ contains
         ! Search for particle
         call find_cell(p, found)
         if (.not. found) then
-          call p % mark_as_lost("Could not locate particle " // &
+          call particle_mark_as_lost(p, "Could not locate particle " // &
                trim(to_str(p % id)) // " after crossing a lattice boundary.")
           return
         end if
@@ -440,7 +440,7 @@ contains
         end select LAT_TYPE
 
         if (d_lat < ZERO) then
-          call p % mark_as_lost("Particle " // trim(to_str(p % id)) &
+          call particle_mark_as_lost(p, "Particle " // trim(to_str(p % id)) &
                //" had a negative distance to a lattice boundary. d = " &
                //trim(to_str(d_lat)))
         end if

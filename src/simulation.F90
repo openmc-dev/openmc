@@ -25,7 +25,7 @@ module simulation
   use output,          only: header, print_columns, &
                              print_batch_keff, print_generation, print_runtime, &
                              print_results, print_overlap_check, write_tallies
-  use particle_header, only: Particle
+  use particle_header
   use photon_header,   only: micro_photon_xs, n_elements
   use random_lcg,      only: set_particle_seed
   use settings
@@ -142,7 +142,7 @@ contains
     integer :: i
 
     ! set defaults
-    call p % initialize_from_source(source_bank(index_source), run_CE, &
+    call particle_from_source(p, source_bank(index_source), run_CE, &
          energy_bin_avg)
 
     ! set identifier for particle

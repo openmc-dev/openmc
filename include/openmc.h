@@ -14,6 +14,7 @@ extern "C" {
     double uvw[3];
     double E;
     int delayed_group;
+    int particle;
   };
 
   int openmc_calculate_volumes();
@@ -128,6 +129,7 @@ extern "C" {
   extern char openmc_err_msg[256];
   extern double openmc_keff;
   extern double openmc_keff_std;
+  extern int32_t gen_per_batch;
   extern int32_t n_batches;
   extern int32_t n_cells;
   extern int32_t n_filters;

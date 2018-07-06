@@ -13,7 +13,7 @@ fi
 # Download ENDF/B-VII.1 distribution
 ENDF=$HOME/endf-b-vii.1/
 if [[ ! -d $ENDF/neutrons || ! -d $ENDF/photoat || ! -d $ENDF/atomic_relax ]]; then
-    wget https://anl.box.com/shared/static/yw7xe3k9gbps0e6muyf0cg134tq0punw.xz -O - | tar -C $HOME -xvJ
+    wget https://anl.box.com/shared/static/4kd2gxnf4gtk4w1c8eua5fsua22kvgjb.xz -O - | tar -C $HOME -xvJ
 fi
 
 # Download multipole library

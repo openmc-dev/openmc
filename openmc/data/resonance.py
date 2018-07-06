@@ -202,7 +202,7 @@ class ResonanceRange(object):
 
         return cls(target_spin, energy_min, energy_max, {0: a}, {0: ap})
 
-    def reconstruct(self, energies):
+    def reconstruct(self, energies, use_sample = False, sample_parameters = None):
         """Evaluate cross section at specified energies.
 
         Parameters
@@ -221,8 +221,8 @@ class ResonanceRange(object):
             raise RuntimeError("Resonance reconstruction not available.")
 
         # Pre-calculate penetrations and shifts for resonances
-        if not self._prepared:
-            self._prepare_resonances()
+        if not self._prepared or use_sample:
+            self._prepare_resonances(use_sample, sample_parameters)
 
         if isinstance(energies, Iterable):
             elastic = np.zeros_like(energies)
@@ -394,8 +394,11 @@ class MultiLevelBreitWigner(ResonanceRange):
 
         return mlbw
 
-    def _prepare_resonances(self):
-        df = self.parameters.copy()
+    def _prepare_resonances(self, use_sample = False, sample_parameters = None):
+        if use_sample == False:
+            df = self.parameters.copy()
+        else:
+            df = sample_parameters.copy()
 
         # Penetration and shift factors
         p = np.zeros(len(df))
@@ -653,8 +656,11 @@ class ReichMoore(ResonanceRange):
 
         return rm
 
-    def _prepare_resonances(self):
-        df = self.parameters.copy()
+    def _prepare_resonances(self, use_sample = False, sample_parameters = None):
+        if use_sample == False:
+            df = self.parameters.copy()
+        else:
+            df = sample_parameters.copy()
 
         # Penetration and shift factors
         p = np.zeros(len(df))

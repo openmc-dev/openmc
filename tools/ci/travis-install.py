@@ -83,6 +83,8 @@ def build_dagmc():
 
     subprocess.check_call(['make', 'test'])
 
+    os.chdir(current_dir)
+
 def main():
     # Convert Travis matrix environment variables into arguments for install()
     omp = (os.environ.get('OMP') == 'y')

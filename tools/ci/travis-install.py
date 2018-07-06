@@ -51,6 +51,7 @@ def install(omp=False, mpi=False, phdf5=False, cad=False):
 
     if cad:
         build_dagmc()
+        cmake_cmd.append('-Dcad=ON')
         
     # Build and install
     cmake_cmd.append('..')
@@ -59,30 +60,54 @@ def install(omp=False, mpi=False, phdf5=False, cad=False):
     subprocess.check_call(['make', '-j'])
     subprocess.check_call(['sudo', 'make', 'install'])
 
+def mkcd(directory):
+    os.mkdir(directory)
+    os.chdir(directory)
+    
 def build_dagmc():
 
     current_dir = os.getcwd()
     home_dir = os.environ['HOME']
     
     os.chdir(home_dir)
-    os.mkdir('MOAB')
-    os.chdir('MOAB')
+    mkcd('MOAB')
     
     clone_cmd = ['git', 'clone', '-b', 'Version'+MOAB_VERSION, 'https://bitbucket.org/fathomteam/moab']
     subprocess.check_call(clone_cmd)
 
-    os.mkdir('build')
-    os.chdir('build')
+    mkcd('build')
 
-    cmake_cmd = ['cmake', '../moab', '-DENABLE_HDF5=ON', '-DENABLE_TOOLS=ON', '-DCMAKE_INSTALL_PREFIX='+home_dir]
+    moab_install_dir = home_dir + "/" + "MOAB"
+    cmake_cmd = ['cmake', '../moab', '-DENABLE_HDF5=ON', '-DENABLE_TOOLS=ON', '-DCMAKE_INSTALL_PREFIX='+moab_install_dir]
     subprocess.check_call(cmake_cmd)
 
     subprocess.check_call(['make', '-j'])
 
     subprocess.check_call(['make', 'test'])
 
-    subprocess.check_call(['make', 'test'])
+    subprocess.check_call(['make','install'])
 
+    # update LB_LIBRARY_PATH (so DAGMC can find MOAB)
+    os.environ['LD_LIBRARY_PATH'] = moab_install_dir + ":" + os.environ['LD_LIBRARY_PATH']
+    
+    # build dagmc
+    os.chdir(home_dir)
+    
+    mkcd('DAGMC')
+
+    clone_cmd = ['git', 'clone', 'https://github.com/svalinn/dagmc']
+    subprocess.check_call(clone_cmd)
+
+    mkcd('build')
+
+    dagmc_install_dir = home_dir + "/" + 'DAGMC'
+    cmake_cmd = ['cmake', '../dagmc', '-DCMAKE_INSTALL_PREFIX='+dagmc_install_dir]
+    subprocess.check_call(cmake_cmd)    
+
+    subprocess.check_call(['make','-j'])
+
+    subprocess.check_call(['make','install'])
+    
     os.chdir(current_dir)
 
 def main():

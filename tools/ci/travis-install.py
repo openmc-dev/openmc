@@ -71,7 +71,7 @@ def build_dagmc():
     
     os.chdir(home_dir)
     mkcd('MOAB')
-    
+        
     clone_cmd = ['git', 'clone', '-b', 'Version'+MOAB_VERSION, 'https://bitbucket.org/fathomteam/moab']
     subprocess.check_call(clone_cmd)
 
@@ -87,8 +87,14 @@ def build_dagmc():
 
     subprocess.check_call(['make','install'])
 
+    # check for existing LD_LIBRARY_PATH
+    try:
+        ld_lib_path = os.environ['LD_LIBRARY_PATH']
+    except:
+        ld_lib_path = ''
+    
     # update LB_LIBRARY_PATH (so DAGMC can find MOAB)
-    os.environ['LD_LIBRARY_PATH'] = moab_install_dir + ":" + os.environ['LD_LIBRARY_PATH']
+    os.environ['LD_LIBRARY_PATH'] = moab_install_dir+"/lib" + ":" + ld_lib_path
     
     # build dagmc
     os.chdir(home_dir)

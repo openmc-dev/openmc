@@ -41,7 +41,7 @@ notifications:
 before_install:
   - sudo add-apt-repository ppa:nschloe/hdf5-backports -y
   - sudo apt-get update -q
-  - sudo apt-get install libhdf5-serial-dev libhdf5-mpich-dev -y
+  - sudo apt-get install libhdf5-serial-dev libhdf5-mpich-dev libblas-dev -y
 install:
   - ./tools/ci/travis-install.sh
 before_script:

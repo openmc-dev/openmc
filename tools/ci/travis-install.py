@@ -107,7 +107,7 @@ def build_dagmc():
     mkcd('build')
 
     dagmc_install_dir = home_dir + "/" + 'DAGMC'
-    cmake_cmd = ['cmake', '../dagmc', '-DCMAKE_INSTALL_PREFIX='+dagmc_install_dir]
+    cmake_cmd = ['cmake', '../dagmc', '-DCMAKE_INSTALL_PREFIX='+dagmc_install_dir, '-DBUILD_TALLY=ON']
     subprocess.check_call(cmake_cmd)    
 
     subprocess.check_call(['make','-j'])

@@ -113,6 +113,9 @@ def build_dagmc():
     subprocess.check_call(['make','-j'])
 
     subprocess.check_call(['make','install'])
+
+    # update LB_LIBRARY_PATH (so DAGMC can find MOAB)
+    os.environ['LD_LIBRARY_PATH'] = dagmc_install_dir+"/lib" + ":" + ld_lib_path
     
     os.chdir(current_dir)
 

@@ -153,7 +153,7 @@ struct H5TypeMap { static const hid_t type_id; };
 template<typename T>
 void read_attribute(hid_t obj_id, const char* name, T& buffer)
 {
-  read_attr(obj_id, name, H5TypeMap<T>::type_id, buffer);
+  read_attr(obj_id, name, H5TypeMap<T>::type_id, &buffer);
 }
 
 // vector version

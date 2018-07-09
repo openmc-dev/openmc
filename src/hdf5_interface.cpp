@@ -425,7 +425,7 @@ read_string(hid_t obj_id, const char* name, size_t slen, char* buffer, bool inde
 
 
 void
-read_complex(hid_t obj_id, const char* name, double _Complex* buffer, bool indep)
+read_complex(hid_t obj_id, const char* name, std::complex<double>* buffer, bool indep)
 {
   // Create compound datatype for complex numbers
   struct complex_t {

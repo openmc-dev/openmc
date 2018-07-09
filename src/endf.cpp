@@ -12,6 +12,26 @@
 
 namespace openmc {
 
+Interpolation int2interp(int i)
+{
+  switch (i) {
+  case 1:
+    return Interpolation::histogram;
+  case 2:
+    return Interpolation::lin_lin;
+  case 3:
+    return Interpolation::lin_log;
+  case 4:
+    return Interpolation::log_lin;
+  case 5:
+    return Interpolation::log_log;
+  }
+}
+
+//==============================================================================
+// Polynomial implementation
+//==============================================================================
+
 Polynomial::Polynomial(hid_t dset)
 {
   // Read coefficients into a vector
@@ -29,6 +49,10 @@ double Polynomial::operator()(double x) const
   return y;
 }
 
+//==============================================================================
+// Tabulated1D implementation
+//==============================================================================
+
 Tabulated1D::Tabulated1D(hid_t dset)
 {
   read_attribute(dset, "breakpoints", nbt_);
@@ -41,25 +65,8 @@ Tabulated1D::Tabulated1D(hid_t dset)
   read_attribute(dset, "interpolation", int_temp);
 
   // Convert vector of ints into Interpolation
-  for (const auto i : int_temp) {
-    switch (i) {
-    case 1:
-      int_.push_back(Interpolation::histogram);
-      break;
-    case 2:
-      int_.push_back(Interpolation::lin_lin);
-      break;
-    case 3:
-      int_.push_back(Interpolation::lin_log);
-      break;
-    case 4:
-      int_.push_back(Interpolation::log_lin);
-      break;
-    case 5:
-      int_.push_back(Interpolation::log_log);
-      break;
-    }
-  }
+  for (const auto i : int_temp)
+    int_.push_back(int2interp(i));
 
   xt::xarray<double> arr;
   read_dataset(dset, arr);

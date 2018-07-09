@@ -393,6 +393,7 @@ add_library(libopenmc SHARED
   src/tallies/trigger_header.F90
   src/cell.cpp
   src/distribution.cpp
+  src/distribution_angle.cpp
   src/distribution_energy.cpp
   src/distribution_multi.cpp
   src/distribution_spatial.cpp

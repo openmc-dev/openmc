@@ -5,11 +5,11 @@
 #include "hdf5_hl.h"
 
 #include <array>
+#include <complex>
 #include <cstddef>
 #include <string>
 #include <sstream>
 #include <vector>
-#include <complex.h>
 
 #include "position.h"
 
@@ -21,7 +21,7 @@ namespace openmc {
 //==============================================================================
 
 void read_attr(hid_t obj_id, const char* name, hid_t mem_type_id,
-               const void* buffer);
+               void* buffer);
 void write_attr(hid_t obj_id, int ndim, const hsize_t* dims, const char* name,
                 hid_t mem_type_id, const void* buffer);
 void read_dataset(hid_t obj_id, const char* name, hid_t mem_type_id,
@@ -101,7 +101,7 @@ extern "C" {
   void read_attr_string(hid_t obj_id, const char* name, size_t slen,
                         char* buffer);
   void read_complex(hid_t obj_id, const char* name,
-                             double _Complex* buffer, bool indep);
+                             std::complex<double>* buffer, bool indep);
   void read_double(hid_t obj_id, const char* name, double* buffer,
                             bool indep);
   void read_int(hid_t obj_id, const char* name, int* buffer,

@@ -8,6 +8,8 @@
 
 namespace openmc {
 
+Interpolation int2interp(int i);
+
 class Function1D {
 public:
   virtual double operator()(double x) const = 0;

@@ -395,6 +395,7 @@ add_library(libopenmc SHARED
   src/distribution.cpp
   src/distribution_multi.cpp
   src/distribution_spatial.cpp
+  src/endf.cpp
   src/initialize.cpp
   src/finalize.cpp
   src/geometry_aux.cpp

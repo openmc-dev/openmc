@@ -412,6 +412,7 @@ add_library(libopenmc SHARED
   src/position.cpp
   src/pugixml/pugixml_c.cpp
   src/random_lcg.cpp
+  src/secondary_nbody.cpp
   src/secondary_uncorrelated.cpp
   src/scattdata.cpp
   src/settings.cpp

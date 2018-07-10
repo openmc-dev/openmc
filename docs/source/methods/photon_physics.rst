@@ -5,7 +5,7 @@ Photon Physics
 ==============
 
 Photons, being neutral particles, behave much in the same manner as neutrons,
-traveling in straight lines and experiencing occassional collisions which change
+traveling in straight lines and experiencing occasional collisions which change
 their energy and direction. Photons undergo four basic interactions as they pass
 through matter: coherent (Rayleigh) scattering, incoherent (Compton) scattering,
 photoelectric effect, and pair/triplet production. Photons with energy in the
@@ -31,11 +31,11 @@ cross section is
 .. math::
     :label: thomson
 
-    \frac{d\sigma}{d\mu} = \pi r_0^2 ( 1 + \mu^2 )
+    \frac{d\sigma}{d\mu} = \pi r_e^2 ( 1 + \mu^2 )
 
-where :math:`\mu` is the cosine of the scattering angle and :math:`r_0` is the
-classical radius of the electron. Thomson scattering can generally occur when
-the photon energy is much less than rest mass energy of the particle.
+where :math:`\mu` is the cosine of the scattering angle and :math:`r_e` is the
+classical electron radius. Thomson scattering can generally occur when the
+photon energy is much less than the rest mass energy of the particle.
 
 In practice, most elastic scattering of photons off electrons happens not with
 free electrons but those bound in atoms. This process is known as Rayleigh
@@ -50,30 +50,33 @@ The differential cross section for Rayleigh scattering is given by
 .. math::
     :label: coherent-xs
 
-    \frac{d\sigma(E,E',\mu)}{d\mu} = \pi r_0^2 ( 1 + \mu^2 ) \left [ ( F(x, Z) +
-    F'(E) )^2 + F''(E)^2 \right ]
+    \frac{d\sigma(E,E',\mu)}{d\mu} &= \pi r_e^2 ( 1 + \mu^2 )~\left| F(x,Z)
+                                      + F' + iF'' \right|^2 \\
+                                   &= \pi r_e^2 ( 1 + \mu^2 ) \left [ ( F(x,Z)
+                                      + F'(E) )^2 + F''(E)^2 \right ]
 
 where :math:`F(x,Z)` is a form factor as a function of the momentum transfer
-:math:`x` and the atomic number :math:`Z` and :math:`F' + iF''` is a factor that
-accounts for `anomalous scattering`_ which can occur near absorption edges. In a
-Monte Carlo simulation, when coherent scattering occurs, we only need to sample
-the scattering angle using the differential cross section in :eq:`coherent-xs`
-since the energy of the photon does not change. In OpenMC, anomalous scattering
-is ignored such that differential cross section becomes
+:math:`x` and the atomic number :math:`Z` and the term :math:`F' + iF''`
+accounts for `anomalous scattering`_ which can occur near absorption edges. In
+a Monte Carlo simulation, when coherent scattering occurs, we only need to
+sample the scattering angle using the differential cross section in
+:eq:`coherent-xs` since the energy of the photon does not change. In OpenMC,
+anomalous scattering is ignored such that the differential cross section
+becomes
 
 .. math::
     :label: coherent-xs-openmc
 
-    \frac{d\sigma(E,E',\mu)}{d\mu} = \pi r_0^2 ( 1 + \mu^2 ) F(x, Z)^2
+    \frac{d\sigma(E,E',\mu)}{d\mu} = \pi r_e^2 ( 1 + \mu^2 ) F(x, Z)^2
 
-To construct a proper probability density, we need to normalize the differential
-cross section in :eq:`coherent-xs-openmc` by the integrated coherent scattering
-cross section:
+To construct a proper probability density, we need to normalize the
+differential cross section in :eq:`coherent-xs-openmc` by the integrated
+coherent scattering cross section:
 
 .. math::
     :label: coherent-pdf-1
 
-    p(\mu) d\mu = \frac{\pi r_0^2}{\sigma(E)} ( 1 + \mu^2 ) F(x, Z)^2 d\mu.
+    p(\mu) d\mu = \frac{\pi r_e^2}{\sigma(E)} ( 1 + \mu^2 ) F(x, Z)^2 d\mu.
 
 Since the form factor is given in terms of the momentum transfer, it is more
 convenient to change variables of the probability density to :math:`x^2`. The
@@ -84,23 +87,24 @@ momentum transfer is traditionally expressed as
 
     x = \kappa \alpha \sqrt{1 - \mu}
 
-where the coefficient :math:`\kappa` can be shown to be
+where :math:`\alpha` is the ratio of the photon energy to the electron rest
+mass, and the coefficient :math:`\kappa` can be shown to be
 
 .. math::
     :label: kappa
 
     \kappa = \frac{m_e c^2}{\sqrt{2}hc} \approx 29.14329,
 
-:math:`m_e` is the mass of the electron, :math:`c` is the speed of light
+where :math:`m_e` is the mass of the electron, :math:`c` is the speed of light
 in a vacuum, and :math:`h` is Planck's constant. Using :eq:`momentum-transfer`,
-we have that :math:`\mu = 1 - [x/(\kappa\alpha)]^2` and :math:`d\mu/dx^2 =
+we have :math:`\mu = 1 - [x/(\kappa\alpha)]^2` and :math:`d\mu/dx^2 =
 -1/(\kappa\alpha)^2`. The probability density in :math:`x^2` is
 
 .. math::
     :label: coherent-pdf-x2
 
     p(x^2) dx^2 = p(\mu) \left | \frac{d\mu}{dx^2} \right | dx^2 = \frac{2\pi
-    r_0^2 A(\bar{x}^2,Z)}{(\kappa\alpha)^2 \sigma(E)} \left (
+    r_e^2 A(\bar{x}^2,Z)}{(\kappa\alpha)^2 \sigma(E)} \left (
     \frac{1 + \mu^2}{2} \right ) \left ( \frac{F(x, Z)^2}{A(\bar{x}^2, Z)} \right ) dx^2
 
 where :math:`\bar{x}` is the maximum value of :math:`x` that occurs for
@@ -116,7 +120,7 @@ and :math:`A(x^2, Z)` is the integral of the square of the form factor:
 .. math::
     :label: coherent-int-ff
 
-    A(x^2, Z) = \int_0^{x^2} F(\chi, Z)^2 d\chi^2.
+    A(x^2, Z) = \int_0^{x^2} F(x,Z)^2 dx^2.
 
 As you see, we have multiplied and divided the probability density by the
 integral of the squared form factor so that the density in :eq:`coherent-pdf-x2`
@@ -127,7 +131,7 @@ run-time to do a table search on the cumulative distribution function:
 .. math::
     :label: coherent-form-factor-cdf
 
-    \frac{\int_0^{x^2} F(\chi,Z)^2 d\chi^2}{\int_0^{\bar{x}^2} F(x,Z)^2 dx^2}
+    \frac{\int_0^{x^2} F(x,Z)^2 dx^2}{\int_0^{\bar{x}^2} F(x,Z)^2 dx^2}
 
 Once a trial :math:`x^2` value has been selected, we can calculate :math:`\mu`
 and perform rejection sampling using the Thomson scattering differential cross
@@ -162,7 +166,7 @@ the two authors who discovered it:
 .. math::
     :label: klein-nishina
 
-    \frac{d\sigma_{KN}}{d\mu} = \pi r_0^2 \left ( \frac{\alpha'}{\alpha} \right
+    \frac{d\sigma_{KN}}{d\mu} = \pi r_e^2 \left ( \frac{\alpha'}{\alpha} \right
     ) \left [ \frac{\alpha'}{\alpha} + \frac{\alpha}{\alpha'} + \mu^2 - 1 \right
     ]
 
@@ -188,7 +192,7 @@ differential cross section for incoherent scattering is given by
 .. math::
     :label: incoherent-xs
 
-    \frac{d\sigma}{d\mu} = \frac{d\sigma_{KN}}{d\mu} S(x,Z) = \pi r_0^2 \left (
+    \frac{d\sigma}{d\mu} = \frac{d\sigma_{KN}}{d\mu} S(x,Z) = \pi r_e^2 \left (
     \frac{\alpha'}{\alpha} \right )^2 \left [ \frac{\alpha'}{\alpha} +
     \frac{\alpha}{\alpha'} + \mu^2 - 1 \right ] S(x,Z)
 
@@ -212,6 +216,10 @@ Doppler Energy Broadening
 +++++++++++++++++++++++++
 
 LA-UR-04-0487_ and LA-UR-04-0488_
+
+Compton Electrons
++++++++++++++++++
+
 
 Photoelectric Effect
 --------------------
@@ -253,7 +261,7 @@ Thick-Target Bremsstrahlung Approximation
 +++++++++++++++++++++++++++++++++++++++++
 
 
-.. _Koblinger: http://www.tandfonline.com/doi/abs/10.13182/NSE75-A26646
+.. _Koblinger: https://doi.org/10.13182/NSE75-A26663
 
 .. _anomalous scattering: http://pd.chem.ucl.ac.uk/pdnn/diff1/anomscat.htm
 

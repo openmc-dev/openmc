@@ -181,7 +181,7 @@ Incident Photon Data
 
 :Datasets: - **I** (*double*) -- Mean excitation energy in [eV]
            - **energy** (*double[]*) -- Energies in [eV]
-           - **s_collision** (*double[]*) -- Collisiong stopping power in [eV-cm\ :sup:`2`\ /g]
+           - **s_collision** (*double[]*) -- Collision stopping power in [eV-cm\ :sup:`2`\ /g]
            - **s_radiative** (*double[]*) -- Radiative stopping power in [eV-cm\ :sup:`2`\ /g]
 
 **/<element>/subshells/**
@@ -199,7 +199,7 @@ Incident Photon Data
 
              :Attributes:
                           - **threshold_idx** (*int*) -- Index on the energy
-                            grid that the reaction threshold
+                            grid of the reaction threshold
 
 -------------------------------
 Thermal Neutron Scattering Data

@@ -110,10 +110,11 @@ class AtomicRelaxation(EqualityMixin):
     """Atomic relaxation data.
 
     This class stores the binding energy, number of electrons, and electron
-    transitions possible from ioniziation for each subshell with an atom. All of
-    the data originates from an ENDF-6 atomic relaxation sub-library
-    (NSUB=6). Instances of this class are not normally instantiated directly but
-    rather created using the factory method :math:`AtomicRelaxation.from_endf`.
+    transitions possible from ioniziation for each electron subshell of an
+    atom. All of the data originates from an ENDF-6 atomic relaxation
+    sub-library (NSUB=6). Instances of this class are not normally instantiated
+    directly but rather created using the factory method
+    :math:`AtomicRelaxation.from_endf`.
 
     Parameters
     ----------
@@ -353,7 +354,7 @@ class IncidentPhoton(EqualityMixin):
         Dictionary of bremsstrahlung DCS data with keys 'electron_energy'
         (incident electron kinetic energy values in [eV]), 'photon_energy'
         (ratio of the energy of the emitted photon to the incident electron
-        kinetic energy), and 'dcs' (cross sectin values in [b]). The cross
+        kinetic energy), and 'dcs' (cross section values in [b]). The cross
         sections are in scaled form: :math:`(\beta^2/Z^2) E_k (d\sigma/dE_k)`,
         where :math:`E_k` is the energy of the emitted photon.
     compton_profiles : dict

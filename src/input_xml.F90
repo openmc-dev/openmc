@@ -2610,7 +2610,7 @@ contains
               do l = 1, filt % n_bins
                 if (filt % particles(l) /= NEUTRON) then
                   call warning("Particle filter other than NEUTRON used with &
-                       &photon transport turn off. All tallies for particle &
+                       &photon transport turned off. All tallies for particle &
                        &type " // trim(to_str(filt % particles(l))) // " will have no scores")
                 end if
               end do

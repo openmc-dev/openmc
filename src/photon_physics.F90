@@ -107,20 +107,20 @@ contains
       ! Note that the parameter used here does not correspond exactly to the
       ! momentum transfer q in ENDF-102 Eq. (27.2). Rather, this is the
       ! parameter as defined by Hubbell, where the actual data comes from
-      x = MASS_ELECTRON/PLANCK_C*alpha*sqrt(HALF*(ONE - mu))
+      x = MASS_ELECTRON_EV/PLANCK_C*alpha*sqrt(HALF*(ONE - mu))
 
       ! Calculate S(x, Z) and S(x_max, Z)
       form_factor_x = el % incoherent_form_factor % evaluate(x)
       if (form_factor_xmax == ZERO) then
         form_factor_xmax = el % incoherent_form_factor % evaluate(&
-             MASS_ELECTRON/PLANCK_C*alpha)
+             MASS_ELECTRON_EV/PLANCK_C*alpha)
       end if
 
       ! Perform rejection on form factor
       if (prn() < form_factor_x / form_factor_xmax) then
         if (use_doppler_) then
           call compton_doppler(el, alpha, mu, e_out, i_shell)
-          alpha_out = e_out/MASS_ELECTRON
+          alpha_out = e_out/MASS_ELECTRON_EV
         else
           i_shell = 0
         end if
@@ -168,16 +168,16 @@ contains
       e_b = el % binding_energy(i_shell)
 
       ! Determine p_z,max
-      e = alpha*MASS_ELECTRON
+      e = alpha*MASS_ELECTRON_EV
       if (e < e_b) then
-        e_out = alpha/(1 + alpha*(1 - mu))*MASS_ELECTRON
+        e_out = alpha/(1 + alpha*(1 - mu))*MASS_ELECTRON_EV
         exit
       end if
 
       pz_max = -FINE_STRUCTURE*(e_b - (e - e_b)*alpha*(ONE - mu)) / &
            sqrt(TWO*e*(e - e_b)*(ONE - mu) + e_b**2)
       if (pz_max < ZERO) then
-        e_out = alpha/(1 + alpha*(1 - mu))*MASS_ELECTRON
+        e_out = alpha/(1 + alpha*(1 - mu))*MASS_ELECTRON_EV
         exit
       end if
 
@@ -230,7 +230,7 @@ contains
 
       quad = b**2 - FOUR*a*c
       if (quad < 0) then
-        e_out = alpha/(1 + alpha*(1 - mu))*MASS_ELECTRON
+        e_out = alpha/(1 + alpha*(1 - mu))*MASS_ELECTRON_EV
         exit
       end if
       quad = sqrt(quad)
@@ -280,7 +280,7 @@ contains
 
     do
       ! Determine maximum value of x^2
-      x2_max = (MASS_ELECTRON/PLANCK_C*alpha)**2
+      x2_max = (MASS_ELECTRON_EV/PLANCK_C*alpha)**2
 
       ! Determine F(x^2_max, Z)
       F_max = el % coherent_int_form_factor % evaluate(x2_max)
@@ -517,20 +517,20 @@ contains
     end do
 
     ! Compute the kinetic energy of the electron and the positron
-    E_electron = (alpha*e - ONE)*MASS_ELECTRON
-    E_positron = (alpha*(ONE - e) - ONE)*MASS_ELECTRON
+    E_electron = (alpha*e - ONE)*MASS_ELECTRON_EV
+    E_positron = (alpha*(ONE - e) - ONE)*MASS_ELECTRON_EV
 
     ! Sample the scattering angle of the electron. The cosine of the polar
     ! angle of the direction relative to the incident photon is sampled from
     ! p(mu) = C/(1 - beta*mu)^2 using the inverse transform method.
-    beta = sqrt(E_electron*(E_electron + TWO*MASS_ELECTRON)) &
-         / (E_electron + MASS_ELECTRON)
+    beta = sqrt(E_electron*(E_electron + TWO*MASS_ELECTRON_EV)) &
+         / (E_electron + MASS_ELECTRON_EV)
     rn = TWO*prn() - ONE
     mu_electron = (rn + beta)/(rn*beta + ONE)
 
     ! Sample the scattering angle of the positron
-    beta = sqrt(E_positron*(E_positron + TWO*MASS_ELECTRON)) &
-         / (E_positron + MASS_ELECTRON)
+    beta = sqrt(E_positron*(E_positron + TWO*MASS_ELECTRON_EV)) &
+         / (E_positron + MASS_ELECTRON_EV)
     rn = TWO*prn() - ONE
     mu_positron = (rn + beta)/(rn*beta + ONE)
 

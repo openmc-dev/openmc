@@ -78,7 +78,7 @@ module constants
        MASS_NEUTRON     = 1.00866491588_8,   & ! mass of a neutron in amu
        MASS_NEUTRON_EV  = 939.5654133e6_8,   & ! mass of a neutron in eV/c^2
        MASS_PROTON      = 1.007276466879_8,  & ! mass of a proton in amu
-       MASS_ELECTRON    = 0.5109989461e6_8,  & ! electron mass energy equivalent in eV
+       MASS_ELECTRON_EV = 0.5109989461e6_8,  & ! electron mass energy equivalent in eV/c^2
        FINE_STRUCTURE   = 137.035999139_8,   & ! inverse fine structure constant
        PLANCK_C         = 1.2398419739062977e4_8,& ! Planck's constant times c in eV-Angstroms
        AMU              = 1.660539040e-27_8, & ! 1 amu in kg

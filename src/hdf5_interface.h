@@ -193,7 +193,20 @@ void read_attribute(hid_t obj_id, const char* name, xt::xarray<T>& arr)
   arr = xt::adapt(buffer, size, xt::acquire_ownership(), shape);
 }
 
-template <typename T>
+// specialization for std::string
+template<> inline void
+read_attribute<std::string>(hid_t obj_id, const char* name, std::string& str)
+{
+  // Create buffer to read data into
+  auto n = attribute_typesize(obj_id, name);
+  char buffer[n];
+
+  // Read attribute and set string
+  read_attr_string(obj_id, name, n, buffer);
+  str = std::string{buffer, n};
+}
+
+template<typename T>
 void read_dataset(hid_t obj_id, const char* name, T buffer, bool indep=false)
 {
   read_dataset(obj_id, name, H5TypeMap<T>::type_id, &buffer, indep);

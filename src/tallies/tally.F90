@@ -298,7 +298,6 @@ contains
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               ! Normally, we only need to make contributions to one scoring
               ! bin. However, in the case of fission, since multiple fission
-
               ! neutrons were emitted with different energies, multiple
               ! outgoing energy bins may have been scored to. The following
               ! logic treats this special case and results to multiple bins

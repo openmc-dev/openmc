@@ -195,7 +195,7 @@ contains
     p % event_nuclide = i_element
 
     ! Calculate photon energy over electron rest mass equivalent
-    alpha = p % E/MASS_ELECTRON
+    alpha = p % E/MASS_ELECTRON_EV
 
     ! For tallying purposes, this routine might be called directly. In that
     ! case, we need to sample a reaction via the cutoff variable
@@ -226,7 +226,7 @@ contains
         end if
 
         ! Create Compton electron
-        E_electron = (alpha - alpha_out)*MASS_ELECTRON - e_b
+        E_electron = (alpha - alpha_out)*MASS_ELECTRON_EV - e_b
         mu_electron = (alpha - alpha_out*mu) &
              / sqrt(alpha**2 + alpha_out**2 - TWO*alpha*alpha_out*mu)
         phi = TWO*PI*prn()
@@ -241,7 +241,7 @@ contains
         end if
 
         phi = phi + PI
-        p % E = alpha_out*MASS_ELECTRON
+        p % E = alpha_out*MASS_ELECTRON_EV
         p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu, phi)
         p % event_MT = INCOHERENT
         return
@@ -274,8 +274,8 @@ contains
             SAMPLE_MU: do
               r = prn()
               if (FOUR * (ONE - r) * r >= prn()) then
-                rel_vel = sqrt(E_electron * (E_electron + TWO * MASS_ELECTRON))&
-                     / (E_electron + MASS_ELECTRON)
+                rel_vel = sqrt(E_electron * (E_electron + TWO * MASS_ELECTRON_EV))&
+                     / (E_electron + MASS_ELECTRON_EV)
                 mu = (TWO * r + rel_vel - ONE) / &
                      (TWO * rel_vel * r - rel_vel + ONE)
                 exit SAMPLE_MU
@@ -354,7 +354,7 @@ contains
 ! energy locally (electron_treatment = ELECTRON_LED) or creates secondary
 ! bremsstrahlung photons from electron deflections with charged particles
 ! (electron_treatment = ELECTRON_TTB). Two annihilation photons of energy
-! MASS_ELECTRON (0.511 MeV) are created and travel in opposite directions.
+! MASS_ELECTRON_EV (0.511 MeV) are created and travel in opposite directions.
 !===============================================================================
 
   subroutine sample_positron_reaction(p)
@@ -380,8 +380,8 @@ contains
     uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
 
     ! Create annihilation photon pair traveling in opposite directions
-    call p % create_secondary( uvw, MASS_ELECTRON, PHOTON, .true.)
-    call p % create_secondary(-uvw, MASS_ELECTRON, PHOTON, .true.)
+    call p % create_secondary( uvw, MASS_ELECTRON_EV, PHOTON, .true.)
+    call p % create_secondary(-uvw, MASS_ELECTRON_EV, PHOTON, .true.)
 
     p % E = ZERO
     p % alive = .false.

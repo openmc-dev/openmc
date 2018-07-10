@@ -809,7 +809,7 @@ contains
     ! Issy-les-Moulineaux, France (2011).
     if (positron_) then
       do i = 1, n_e
-        t = log(ONE + 1.0e6_8*ttb_e_grid(i)/(Z_eq_sq*MASS_ELECTRON))
+        t = log(ONE + 1.0e6_8*ttb_e_grid(i)/(Z_eq_sq*MASS_ELECTRON_EV))
         r = ONE - exp(-1.2359e-1_8*t + 6.1274e-2_8*t**2 - 3.1516e-2_8*t**3 + &
              7.7446e-3_8*t**4 - 1.0595e-3_8*t**5 + 7.0568e-5_8*t**6 - &
              1.808e-6_8*t**7)
@@ -846,7 +846,7 @@ contains
         x = x_l + (k - k_l) * (x_r - x_l) / (k_r - k_l)
 
         ! Ratio of the velocity of the charged particle to the speed of light
-        beta = sqrt(e*(e + TWO*MASS_ELECTRON)) / (e + MASS_ELECTRON)
+        beta = sqrt(e*(e + TWO*MASS_ELECTRON_EV)) / (e + MASS_ELECTRON_EV)
 
         ! Compute the integrand of the PDF
         f(j) = x / (beta**2 * stopping_power(j) * w)

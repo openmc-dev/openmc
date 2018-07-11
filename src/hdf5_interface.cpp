@@ -314,6 +314,36 @@ get_groups(hid_t group_id, char* name[])
   }
 }
 
+std::vector<std::string>
+group_names(hid_t group_id)
+{
+  // Determine number of links in the group
+  H5G_info_t info;
+  H5Gget_info(group_id, &info);
+
+  // Iterate over links to get names
+  H5O_info_t oinfo;
+  size_t size;
+  std::vector<std::string> names;
+  for (hsize_t i = 0; i < info.nlinks; ++i) {
+    // Determine type of object (and skip non-group)
+    H5Oget_info_by_idx(group_id, ".", H5_INDEX_NAME, H5_ITER_INC, i, &oinfo,
+                       H5P_DEFAULT);
+    if (oinfo.type != H5O_TYPE_GROUP) continue;
+
+    // Get size of name
+    size = 1 + H5Lget_name_by_idx(group_id, ".", H5_INDEX_NAME, H5_ITER_INC,
+                                  i, nullptr, 0, H5P_DEFAULT);
+
+    // Read name
+    char buffer[size];
+    H5Lget_name_by_idx(group_id, ".", H5_INDEX_NAME, H5_ITER_INC, i,
+                       buffer, size, H5P_DEFAULT);
+    names.emplace_back(&buffer[0], size);
+  }
+  return names;
+}
+
 
 bool
 object_exists(hid_t object_id, const char* name)

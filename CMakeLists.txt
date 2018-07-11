@@ -412,6 +412,7 @@ add_library(libopenmc SHARED
   src/position.cpp
   src/pugixml/pugixml_c.cpp
   src/random_lcg.cpp
+  src/reaction.cpp
   src/reaction_product.cpp
   src/secondary_correlated.cpp
   src/secondary_kalbach.cpp

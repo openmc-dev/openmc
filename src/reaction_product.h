@@ -15,7 +15,7 @@ class ReactionProduct {
 public:
   explicit ReactionProduct(hid_t group);
   void sample(double E_in, double& E_out, double& mu) const;
-private:
+
   enum class EmissionMode {
     prompt,  // Prompt emission of secondary particle
     total,   // Delayed emission of secondary particle

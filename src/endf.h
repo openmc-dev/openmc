@@ -9,6 +9,7 @@
 namespace openmc {
 
 Interpolation int2interp(int i);
+bool is_fission(int MT);
 
 class Function1D {
 public:

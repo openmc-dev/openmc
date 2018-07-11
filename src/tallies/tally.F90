@@ -94,6 +94,7 @@ contains
     integer :: k                    ! loop index for bank sites
     integer :: d_bin                ! delayed group bin index
     integer :: dg_filter            ! index of delayed group filter
+    integer :: threshold            ! threshold energy index
     real(8) :: yield                ! delayed neutron yield
     real(8) :: atom_density_        ! atom/b-cm
     real(8) :: f                    ! interpolation factor
@@ -227,7 +228,7 @@ contains
           ! Get yield and apply to score
           associate (rxn => nuclides(p % event_nuclide) % reactions(m))
             score = p % last_wgt * flux &
-                 * rxn % products(1) % yield % evaluate(E)
+                 * rxn % product_yield(1, E)
           end associate
         end if
 
@@ -633,7 +634,7 @@ contains
                       score = p % absorb_wgt * yield * &
                            micro_xs(p % event_nuclide) % fission &
                            / micro_xs(p % event_nuclide) % absorption &
-                           * rxn % products(1 + d) % decay_rate * flux
+                           * rxn % product_decay_rate(1 + d) * flux
                     end associate
 
                     ! Tally to bin
@@ -657,9 +658,8 @@ contains
                   ! rxn % products array to be exceeded. Hence, we use the size
                   ! of this array and not the MAX_DELAYED_GROUPS constant for
                   ! this loop.
-                  do d = 1, size(rxn % products) - 2
-
-                    score = score + rxn % products(1 + d) % decay_rate * &
+                  do d = 1, rxn % products_size() - 2
+                    score = score + rxn % product_decay_rate(1 + d) * &
                          p % absorb_wgt &
                          * micro_xs(p % event_nuclide) % fission &
                          * nuclides(p % event_nuclide) % &
@@ -699,7 +699,7 @@ contains
 
                   ! determine score based on bank site weight and keff.
                   score = score + keff * fission_bank(n_bank - p % n_bank + k) &
-                       % wgt * rxn % products(1 + g) % decay_rate * flux
+                       % wgt * rxn % product_decay_rate(1 + g) * flux
                 end associate
 
                 ! if the delayed group filter is present, tally to corresponding
@@ -755,7 +755,7 @@ contains
 
                     ! Compute the score and tally to bin
                     score = micro_xs(i_nuclide) % fission * yield * flux * &
-                         atom_density * rxn % products(1 + d) % decay_rate
+                         atom_density * rxn % product_decay_rate(1 + d)
                   end associate
 
                   ! Tally to bin
@@ -778,11 +778,10 @@ contains
                 ! groups since this could cause the range of the rxn % products
                 ! array to be exceeded. Hence, we use the size of this array
                 ! and not the MAX_DELAYED_GROUPS constant for this loop.
-                do d = 1, size(rxn % products) - 2
-
+                do d = 1, rxn % products_size() - 2
                   score = score + micro_xs(i_nuclide) % fission * flux * &
                        nuclides(i_nuclide) % nu(E, EMISSION_DELAYED) * &
-                       atom_density * rxn % products(1 + d) % decay_rate
+                       atom_density * rxn % product_decay_rate(1 + d)
                 end do
               end associate
             end if
@@ -824,7 +823,7 @@ contains
                           ! Compute the score
                           score = micro_xs(i_nuc) % fission * yield * flux * &
                                atom_density_ &
-                               * rxn % products(1 + d) % decay_rate
+                               * rxn % product_decay_rate(1 + d)
                         end associate
 
                         ! Tally to bin
@@ -860,13 +859,13 @@ contains
                       ! rxn % products array to be exceeded. Hence, we use the
                       ! size of this array and not the MAX_DELAYED_GROUPS
                       ! constant for this loop.
-                      do d = 1, size(rxn % products) - 2
+                      do d = 1, rxn % products_size() - 2
 
                         ! Accumulate the contribution from each nuclide
                         score = score + micro_xs(i_nuc) % fission &
                              * nuclides(i_nuc) % nu(E, EMISSION_DELAYED) &
                              * atom_density_ * flux &
-                             * rxn % products(1 + d) % decay_rate
+                             * rxn % product_decay_rate(1 + d)
                       end do
                     end associate
                   end if
@@ -1132,12 +1131,12 @@ contains
                   i_energy = micro_xs(i_nuclide) % index_grid
                   f = micro_xs(i_nuclide) % interp_factor
 
-                  associate (xs => nuclides(i_nuclide) % reactions(m) &
-                             % xs(i_temp))
-                    if (i_energy >= xs % threshold) then
-                      score = ((ONE - f) * xs % value(i_energy - &
-                           xs % threshold + 1) + f * xs % value(i_energy - &
-                           xs % threshold + 2)) * atom_density * flux
+                  associate (rx => nuclides(i_nuclide) % reactions(m))
+                    threshold = rx % xs_threshold(i_temp)
+                    if (i_energy >= threshold) then
+                      score = ((ONE - f) * rx % xs(i_temp, i_energy - &
+                           threshold + 1) + f * rx % xs(i_temp, i_energy - &
+                           threshold + 2)) * atom_density * flux
                     end if
                   end associate
                 else
@@ -1165,12 +1164,12 @@ contains
                       i_energy = micro_xs(i_nuc) % index_grid
                       f = micro_xs(i_nuc) % interp_factor
 
-                      associate (xs => nuclides(i_nuc) % reactions(m) &
-                                 % xs(i_temp))
-                        if (i_energy >= xs % threshold) then
-                          score = score + ((ONE - f) * xs % value(i_energy - &
-                               xs % threshold + 1) + f * xs % value(i_energy - &
-                               xs % threshold + 2)) * atom_density_ * flux
+                      associate (rx => nuclides(i_nuc) % reactions(m))
+                        threshold = rx % xs_threshold(i_temp)
+                        if (i_energy >= threshold) then
+                          score = score + ((ONE - f) * rx % xs(i_temp, i_energy - &
+                               threshold + 1) + f * rx % xs(i_temp, i_energy - &
+                               threshold + 2)) * atom_density_ * flux
                         end if
                       end associate
                     else

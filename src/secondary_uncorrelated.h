@@ -15,8 +15,10 @@ class UncorrelatedAngleEnergy : public AngleEnergy {
 public:
   explicit UncorrelatedAngleEnergy(hid_t group);
   void sample(double E_in, double& E_out, double& mu) const;
-private:
+  double sampleMu(double E) const { return angle_.sample(E); }
+
   bool fission_ {false};
+private:
   AngleDistribution angle_;
   std::unique_ptr<EnergyDistribution> energy_;
 };

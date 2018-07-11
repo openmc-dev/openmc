@@ -21,6 +21,11 @@ constexpr int NEUTRON {1};
 constexpr int MAX_LOST_PARTICLES {10};
 constexpr double REL_MAX_LOST_PARTICLES {1.0e-6};
 
+//! Particle types
+enum class ParticleType {
+  neutron, photon, electron, positron
+};
+
 extern "C" {
 
   struct LocalCoord {

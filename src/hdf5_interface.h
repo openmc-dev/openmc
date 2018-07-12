@@ -74,8 +74,10 @@ read_nd_vector(hid_t obj_id, const char* name,
                bool must_have = false);
 
 std::vector<hsize_t> attribute_shape(hid_t obj_id, const char* name);
-std::vector<hsize_t> object_shape(hid_t obj_id);
+void ensure_exists(hid_t group_id, const char* name);
 std::vector<std::string> group_names(hid_t group_id);
+std::vector<hsize_t> object_shape(hid_t obj_id);
+std::string object_name(hid_t obj_id);
 
 //==============================================================================
 // Fortran compatibility functions

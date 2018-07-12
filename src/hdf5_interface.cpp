@@ -145,6 +145,18 @@ dataset_typesize(hid_t dset)
 }
 
 
+void
+ensure_exists(hid_t group_id, const char* name)
+{
+  if (!object_exists(group_id, name)) {
+    std::stringstream err_msg;
+    err_msg << "Object \"" << name << "\" does not exist in group "
+            << object_name(group_id);
+    fatal_error(err_msg);
+  }
+}
+
+
 hid_t
 file_open(const char* filename, char mode, bool parallel)
 {
@@ -358,14 +370,23 @@ object_exists(hid_t object_id, const char* name)
 }
 
 
+std::string
+object_name(hid_t obj_id)
+{
+  // Determine size and create buffer
+  size_t size = 1 + H5Iget_name(obj_id, nullptr, 0);
+  char buffer[size];
+
+  // Read and return name
+  H5Iget_name(obj_id, buffer, size);
+  return {buffer, size};
+}
+
+
 hid_t
 open_dataset(hid_t group_id, const char* name)
 {
-  if (!object_exists(group_id, name)) {
-    std::stringstream err_msg;
-    err_msg << "Group \"" << name << "\" does not exist";
-    fatal_error(err_msg);
-  }
+  ensure_exists(group_id, name);
   return H5Dopen(group_id, name, H5P_DEFAULT);
 }
 
@@ -373,11 +394,7 @@ open_dataset(hid_t group_id, const char* name)
 hid_t
 open_group(hid_t group_id, const char* name)
 {
-  if (!object_exists(group_id, name)) {
-    std::stringstream err_msg;
-    err_msg << "Group \"" << name << "\" does not exist";
-    fatal_error(err_msg);
-  }
+  ensure_exists(group_id, name);
   return H5Gopen(group_id, name, H5P_DEFAULT);
 }
 

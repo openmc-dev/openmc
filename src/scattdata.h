@@ -18,6 +18,8 @@ class ScattDataTabular;
 //==============================================================================
 
 class ScattData {
+  public:
+    virtual ~ScattData() = default;
   protected:
     //! \brief Initializes the attributes of the base class.
     void

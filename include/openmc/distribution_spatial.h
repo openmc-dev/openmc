@@ -43,7 +43,7 @@ private:
 
 class SpatialBox : public SpatialDistribution {
 public:
-  explicit SpatialBox(pugi::xml_node node);
+  explicit SpatialBox(pugi::xml_node node, bool fission=false);
 
   //! Sample a position from the distribution
   //! \return Sampled position
@@ -60,6 +60,7 @@ private:
 
 class SpatialPoint : public SpatialDistribution {
 public:
+  SpatialPoint() : r_{} { };
   explicit SpatialPoint(pugi::xml_node node);
 
   //! Sample a position from the distribution

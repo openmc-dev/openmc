@@ -24,6 +24,7 @@ Basic Usage
     triso
     candu
     nuclear-data
+    nuclear-data-resonance-covariance
 
 ------------------------------------
 Multi-Group Cross Section Generation

@@ -78,7 +78,12 @@ Resonance Data
     openmc.data.SingleLevelBreitWigner
     openmc.data.MultiLevelBreitWigner
     openmc.data.ReichMoore
+    openmc.data.ResonaneCovariances
     openmc.data.RMatrixLimited
+    openmc.data.ResonanceCovarianceRange
+    openmc.data.SingleLevelBreitWignerCovariance
+    openmc.data.MultiLevelBreitWignerCovariance
+    openmc.data.ReichMooreCovariance
     openmc.data.ParticlePair
     openmc.data.SpinGroup
     openmc.data.Unresolved

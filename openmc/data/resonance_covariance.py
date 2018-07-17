@@ -129,6 +129,7 @@ class ResonanceCovariances(Resonances):
 
 class ResonanceCovarianceRange(object):
     """Resonace covariance range. Base class for different formalisms.
+
     Parameters
     ----------
     energy_min : float

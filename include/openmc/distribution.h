@@ -36,6 +36,9 @@ public:
   //! Sample a value from the distribution
   //! \return Sampled value
   double sample() const;
+
+  const std::vector<double>& x() const { return x_; }
+  const std::vector<double>& p() const { return p_; }
 private:
   std::vector<double> x_; //!< Possible outcomes
   std::vector<double> p_; //!< Probability of each outcome

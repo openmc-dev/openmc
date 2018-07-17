@@ -33,7 +33,7 @@ constexpr double REL_MAX_LOST_PARTICLES {1.0e-6};
 
 //! Particle types
 enum class ParticleType {
-  neutron, photon, electron, positron
+  neutron = 1, photon = 2, electron = 3, positron = 4
 };
 
 extern "C" {

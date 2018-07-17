@@ -9,7 +9,7 @@ module settings
 
   ! ============================================================================
   ! ENERGY TREATMENT RELATED VARIABLES
-  logical(C_BOOL) :: run_CE = .true.  ! Run in CE mode?
+  logical(C_BOOL), bind(C, name='openmc_run_CE') :: run_CE = .true.  ! Run in CE mode?
 
   ! ============================================================================
   ! CONTINUOUS-ENERGY CROSS SECTION RELATED VARIABLES
@@ -26,7 +26,7 @@ module settings
 
   integer :: n_log_bins  ! number of bins for logarithmic grid
 
-  logical :: photon_transport = .false.
+  logical(C_BOOL), bind(C, name='openmc_photon_transport') :: photon_transport = .false.
   integer :: electron_treatment = ELECTRON_TTB
 
   ! ============================================================================
@@ -104,7 +104,8 @@ module settings
        particle_restart_run = .false.
 
   ! Write out initial source
-  logical :: write_initial_source = .false.
+  logical(C_BOOL), bind(C, name='openmc_write_initial_source') :: &
+       write_initial_source = .false.
 
   ! Whether create fission neutrons or not. Only applied for MODE_FIXEDSOURCE
   logical :: create_fission_neutrons = .true.

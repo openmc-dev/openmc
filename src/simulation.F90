@@ -30,7 +30,6 @@ module simulation
   use random_lcg,      only: set_particle_seed
   use settings
   use simulation_header
-  use source,          only: initialize_source, sample_external_source
   use state_point,     only: openmc_statepoint_write, write_source_point, load_state_point
   use string,          only: to_str
   use tally,           only: accumulate_tallies, setup_active_tallies, &
@@ -51,6 +50,19 @@ module simulation
   integer(C_INT), parameter :: STATUS_EXIT_NORMAL = 0
   integer(C_INT), parameter :: STATUS_EXIT_MAX_BATCH = 1
   integer(C_INT), parameter :: STATUS_EXIT_ON_TRIGGER = 2
+
+  interface
+    subroutine openmc_simulation_init_c() bind(C)
+    end subroutine
+
+    subroutine initialize_source() bind(C)
+    end subroutine
+
+    function sample_external_source() result(site) bind(C)
+      import Bank
+      type(Bank) :: site
+    end function
+  end interface
 
 contains
 
@@ -298,7 +310,7 @@ contains
         do i = 1, work
           call set_particle_seed((total_gen + overall_generation()) * &
                n_particles + work_index(rank) + i)
-          call sample_external_source(source_bank(i))
+          source_bank(i) = sample_external_source()
         end do
       end if
     end if
@@ -424,6 +436,9 @@ contains
 
     ! Skip if simulation has already been initialized
     if (simulation_initialized) return
+
+    ! Call initialization on C++ side
+    call openmc_simulation_init_c()
 
     ! Set up tally procedure pointers
     call init_tally_routines()

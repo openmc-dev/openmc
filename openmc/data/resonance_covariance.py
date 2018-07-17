@@ -3,11 +3,8 @@ import warnings
 import io
 
 import numpy as np
-from numpy.polynomial import Polynomial
-from scipy import sparse
 import pandas as pd
 
-from .data import NEUTRON_MASS
 from .endf import get_head_record, get_cont_record, get_tab1_record, get_list_record, get_intg_record
 import openmc.checkvalue as cv
 from .resonance import Resonances
@@ -453,7 +450,6 @@ class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
         # Other scatter radius parameters
         items = get_cont_record(file_obj)
         target_spin = items[0]
-        ap = Polynomial((items[1],))  # energy-independent scattering-radius
         LCOMP = items[3] # Flag for compatibility 0,1,2 - 2 is compact form
         NLS = items[4]  # number of l-values
 
@@ -728,7 +724,6 @@ class ReichMooreCovariance(ResonanceCovarianceRange):
         # Other scatter radius parameters
         items = get_cont_record(file_obj)
         target_spin = items[0]
-        ap = Polynomial((items[1],))
         LCOMP = items[3]  # Flag for compatibility 0,1,2 - 2 is compact form
         NLS = items[4]  # Number of l-values
 

@@ -30,7 +30,6 @@ extern "C" {
   int openmc_extend_filters(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end);
-  int openmc_extend_sources(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_extend_tallies(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_filter_get_id(int32_t index, int32_t* id);
   int openmc_filter_get_type(int32_t index, char* type);
@@ -57,6 +56,7 @@ extern "C" {
   int openmc_material_add_nuclide(int32_t index, const char name[], double density);
   int openmc_material_get_densities(int32_t index, int** nuclides, double** densities, int* n);
   int openmc_material_get_id(int32_t index, int32_t* id);
+  int openmc_material_get_fissionable(int32_t index, bool* fissionable);
   int openmc_material_get_volume(int32_t index, double* volume);
   int openmc_material_set_density(int32_t index, double density);
   int openmc_material_set_densities(int32_t index, int n, const char** name, const double* density);
@@ -84,7 +84,6 @@ extern "C" {
   int openmc_simulation_finalize();
   int openmc_simulation_init();
   int openmc_source_bank(struct Bank** ptr, int64_t* n);
-  int openmc_source_set_strength(int32_t index, double strength);
   int openmc_spatial_legendre_filter_get_order(int32_t index, int* order);
   int openmc_spatial_legendre_filter_get_params(int32_t index, int* axis, double* min, double* max);
   int openmc_spatial_legendre_filter_set_order(int32_t index, int order);

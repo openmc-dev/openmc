@@ -73,6 +73,8 @@ public:
   Direction sample() const;
 };
 
+using UPtrAngle = std::unique_ptr<UnitSphereDistribution>;
+
 } // namespace openmc
 
 #endif // DISTRIBUTION_MULTI_H

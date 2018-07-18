@@ -55,6 +55,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.viewcode',
               'sphinx.ext.imgconverter',
               'sphinx.ext.numfig',
+              #'sphinx_numfig',
               'notebook_sphinxext']
 
 # Add any paths that contain templates here, relative to this directory.

@@ -269,7 +269,8 @@ def get_tab2_record(file_obj):
 
 def get_intg_record(file_obj):
     """
-    Return data from an INTG record in an ENDF-6 file.
+    Return data from an INTG record in an ENDF-6 file. Used to store the 
+    covariance matrix in a compact format. 
 
     Parameters
     ----------
@@ -278,32 +279,32 @@ def get_intg_record(file_obj):
 
     Returns
     -------
-    array
+    numpy.ndarray
         The correlation matrix described in the INTG record
     """
     # determine how many items are in list and NDIGIT
     items = get_cont_record(file_obj)
-    NDIGIT = int(items[2])
-    NNN = int(items[3]) # Number of parameters
-    NM = int(items[4]) # Lines to read
-    NROW_RULES = {2: 18,3: 12,4: 11,5: 9,6: 8}
-    NROW = NROW_RULES[NDIGIT]
+    ndigit = int(items[2])
+    npar = int(items[3]) # Number of parameters
+    nlines = int(items[4]) # Lines to read
+    NROW_RULES = {2: 18, 3: 12, 4: 11, 5: 9, 6: 8}
+    nrow = NROW_RULES[ndigit]
 
     # read lines and build correlation matrix
-    corr = np.identity(NNN)
-    for i in range(NM):
+    corr = np.identity(npar)
+    for i in range(nlines):
         line = file_obj.readline()
         ii = int_endf(line[:5]) - 1 #-1 to account for 0 indexing
         jj = int_endf(line[5:10]) - 1
-        factor = 10**NDIGIT
-        for j in range(NROW):
+        factor = 10**ndigit
+        for j in range(nrow):
             if jj+j >= ii:
                 break
-            element = int_endf(line[11+(NDIGIT+1)*j:11+(NDIGIT+1)*(j+1)])
+            element = int_endf(line[11+(ndigit+1)*j:11+(ndigit+1)*(j+1)])
             if element > 0:
-                corr[ii,jj] = (element+0.5)/factor
+                corr[ii, jj] = (element+0.5)/factor
             elif element < 0:
-                corr[ii,jj] = (element-0.5)/factor
+                corr[ii, jj] = (element-0.5)/factor
 
     #Symmetrize the correlation matrix
     corr = corr + corr.T - np.diag(corr.diagonal())

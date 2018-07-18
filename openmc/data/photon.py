@@ -468,7 +468,8 @@ class IncidentPhoton(EqualityMixin):
 
             # Get binding energy for each shell
             idx = ace.jxs[7]
-            data.compton_profiles['binding_energy'] = ace.xss[idx : idx+n_shell]
+            e = ace.xss[idx : idx+n_shell]*EV_PER_MEV
+            data.compton_profiles['binding_energy'] = e
 
             # Create Compton profile for each electron shell
             profiles = []

@@ -994,6 +994,10 @@ contains
           micro_xs % fission         = ZERO
           micro_xs % nu_fission      = ZERO
         end if
+
+        ! Calculate microscopic nuclide photon production cross section
+        micro_xs % photon_prod = (ONE - f) * xs % value(XS_PHOTON_PROD,i_grid) &
+             + f * xs % value(XS_PHOTON_PROD,i_grid + 1)
       end associate
 
       ! Depletion-related reactions

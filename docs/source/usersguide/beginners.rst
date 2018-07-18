@@ -8,19 +8,19 @@ A Beginner's Guide to OpenMC
 What does OpenMC do?
 --------------------
 
-In a nutshell, OpenMC simulates neutral particles (presently only neutrons)
-moving stochastically through an arbitrarily defined model that represents an
-real-world experimental setup. The experiment could be as simple as a sphere of
-metal or as complicated as a full-scale `nuclear reactor`_. This is what's known
-as `Monte Carlo`_ simulation. In the case of a nuclear reactor model, neutrons
-are especially important because they are the particles that induce `fission`_
-in isotopes of uranium and other elements. Knowing the behavior of neutrons
-allows one to determine how often and where fission occurs. The amount of energy
-released is then directly proportional to the fission reaction rate since most
-heat is produced by fission. By simulating many neutrons (millions or billions),
-it is possible to determine the average behavior of these neutrons (or the
-behavior of the energy produced, or any other quantity one is interested in)
-very accurately.
+In a nutshell, OpenMC simulates neutral particles (presently neutrons and
+photons) moving stochastically through an arbitrarily defined model that
+represents an real-world experimental setup. The experiment could be as simple
+as a sphere of metal or as complicated as a full-scale `nuclear reactor`_. This
+is what's known as `Monte Carlo`_ simulation. In the case of a nuclear reactor
+model, neutrons are especially important because they are the particles that
+induce `fission`_ in isotopes of uranium and other elements. Knowing the
+behavior of neutrons allows one to determine how often and where fission
+occurs. The amount of energy released is then directly proportional to the
+fission reaction rate since most heat is produced by fission. By simulating
+many neutrons (millions or billions), it is possible to determine the average
+behavior of these neutrons (or the behavior of the energy produced, or any
+other quantity one is interested in) very accurately.
 
 Using Monte Carlo methods to determine the average behavior of various physical
 quantities in a system is quite different from other means of solving the same

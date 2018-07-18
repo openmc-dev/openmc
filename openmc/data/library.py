@@ -74,9 +74,6 @@ class DataLibrary(EqualityMixin):
         ----------
         path : str
             Path to file to write. Defaults to 'cross_sections.xml'.
-        append : bool
-            Whether to append to an existing file, if it exists.
-            Defaults to False.
 
         """
         root = ET.Element('cross_sections')
@@ -87,10 +84,9 @@ class DataLibrary(EqualityMixin):
         if common_dir == '':
             common_dir = '.'
 
-        directory = os.path.relpath(common_dir, os.path.dirname(path))
-        if directory != '.':
+        if os.path.relpath(common_dir, os.path.dirname(path)) != '.':
             dir_element = ET.SubElement(root, "directory")
-            dir_element.text = directory
+            dir_element.text = os.path.realpath(common_dir)
 
         for library in self.libraries:
             lib_element = ET.SubElement(root, "library")

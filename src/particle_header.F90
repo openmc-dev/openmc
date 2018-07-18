@@ -337,6 +337,7 @@ contains
         call write_dataset(file_id, 'run_mode', 'particle restart')
       end select
       call write_dataset(file_id, 'id', this % id)
+      call write_dataset(file_id, 'type', this % type)
       call write_dataset(file_id, 'weight', src % wgt)
       call write_dataset(file_id, 'energy', src % E)
       call write_dataset(file_id, 'xyz', src % xyz)

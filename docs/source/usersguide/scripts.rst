@@ -181,10 +181,10 @@ use with OpenMC. This script has the following optional arguments:
 ``openmc-get-photon-data``
 --------------------------
 
-This script downloads `ENDF/B-VII.1 <http://www.nndc.bnl.gov/endf/b7.1/zips/>`_
-ENDF data from NNDC for photo-atomic and atomic relaxation sublibraries and
-converts it to an HDF5 library for use with photon transport in OpenMC. This
-script has the following optional arguments:
+This script downloads `ENDF data <http://www.nndc.bnl.gov/endf/b7.1/zips/>`_
+from NNDC for photo-atomic and atomic relaxation sublibraries and converts it
+to an HDF5 library for use with photon transport in OpenMC. This script has the
+following optional arguments:
 
 -b, --batch
     Suppress standard in

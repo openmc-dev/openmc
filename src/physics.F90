@@ -567,7 +567,7 @@ contains
     integer, intent(in)  :: i_nuclide  ! index in nuclides array
     real(8), intent(in)  :: E          ! energy of neutron
     integer, intent(out) :: i_reaction ! index in nuc % reactions array
-    integer, intent(out) :: i_product  ! index in nuc % reactions array
+    integer, intent(out) :: i_product  ! index in reaction % products array
 
     integer :: i_grid
     integer :: i_temp
@@ -582,7 +582,7 @@ contains
     ! Get pointer to nuclide
     associate (nuc => nuclides(i_nuclide))
 
-      ! Get grid index and interpolation factor and sample proton production cdf
+      ! Get grid index and interpolation factor and sample photon production cdf
       i_temp = micro_xs(i_nuclide) % index_temp
       i_grid = micro_xs(i_nuclide) % index_grid
       f      = micro_xs(i_nuclide) % interp_factor
@@ -592,14 +592,13 @@ contains
       ! Loop through each reaction type
       REACTION_LOOP: do i_reaction = 1, size(nuc % reactions)
         associate (rx => nuc % reactions(i_reaction))
+          threshold = rx % xs(i_temp) % threshold
+
+          ! if energy is below threshold for this reaction, skip it
+          if (i_grid < threshold) cycle
+
           do i_product = 1, size(rx % products)
             if (rx % products(i_product) % particle == PHOTON) then
-
-              threshold = rx % xs(i_temp) % threshold
-
-              ! if energy is below threshold for this reaction, skip it
-              if (i_grid < threshold) cycle
-
               ! add to cumulative probability
               yield = rx % products(i_product) % yield % evaluate(E)
               prob = prob + ((ONE - f) * rx % xs(i_temp) % value(i_grid - threshold + 1) &
@@ -1725,7 +1724,8 @@ contains
     integer :: i
 
     ! Sample the number of photons produced
-    nu_t = micro_xs(i_nuclide) % photon_prod / micro_xs(i_nuclide) % total
+    nu_t =  p % wgt / keff * micro_xs(i_nuclide) % photon_prod / &
+         micro_xs(i_nuclide) % total
     if (prn() > nu_t - int(nu_t)) then
       nu = int(nu_t)
     else

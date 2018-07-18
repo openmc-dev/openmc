@@ -167,8 +167,8 @@ the two authors who discovered it:
     :label: klein-nishina
 
     \frac{d\sigma_{KN}}{d\mu} = \pi r_e^2 \left ( \frac{\alpha'}{\alpha} \right
-    ) \left [ \frac{\alpha'}{\alpha} + \frac{\alpha}{\alpha'} + \mu^2 - 1 \right
-    ]
+    )^2 \left [ \frac{\alpha'}{\alpha} + \frac{\alpha}{\alpha'} + \mu^2 - 1
+    \right ]
 
 where :math:`\alpha` and :math:`\alpha'` are the ratios of the incoming and
 exiting photon energies to the electron rest mass energy equivalent (0.511 MeV),

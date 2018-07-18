@@ -100,6 +100,7 @@ contains
       previous_run_mode = MODE_FIXEDSOURCE
     end select
     call read_dataset(p % id, file_id, 'id')
+    call read_dataset(p % type, file_id, 'type')
     call read_dataset(p % wgt, file_id, 'weight')
     call read_dataset(p % E, file_id, 'energy')
     call read_dataset(p % coord(1) % xyz, file_id, 'xyz')

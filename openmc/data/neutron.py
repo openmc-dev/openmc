@@ -233,7 +233,7 @@ class IncidentNeutron(EqualityMixin):
 
     @property
     def resonance_covariance(self):
-        return self._resoncance_covariance
+        return self._resonance_covariance
 
     @property
     def summed_reactions(self):
@@ -298,8 +298,9 @@ class IncidentNeutron(EqualityMixin):
 
     @resonance_covariance.setter
     def resonance_covariance(self, resonance_covariance):
-        cv.check_type('resonances', resonances, res_cov.ResonanceCovariance)
-        self._resonacne_covariance = resonance_covariance
+        cv.check_type('resonance covariance', resonance_covariance,
+                       res_cov.ResonanceCovariances)
+        self._resonance_covariance = resonance_covariance
 
     @summed_reactions.setter
     def summed_reactions(self, summed_reactions):

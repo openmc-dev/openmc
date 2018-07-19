@@ -16,6 +16,7 @@ except ImportError:
     _reconstruct = False
 import openmc.checkvalue as cv
 
+
 class Resonances(object):
     """Resolved and unresolved resonance data
 
@@ -202,7 +203,7 @@ class ResonanceRange(object):
 
         return cls(target_spin, energy_min, energy_max, {0: a}, {0: ap})
 
-    def reconstruct(self, energies, use_sample = False, sample_parameters = None):
+    def reconstruct(self, energies, use_sample=False, sample_parameters=None):
         """Evaluate cross section at specified energies.
 
         Parameters
@@ -394,8 +395,8 @@ class MultiLevelBreitWigner(ResonanceRange):
 
         return mlbw
 
-    def _prepare_resonances(self, use_sample = False, sample_parameters = None):
-        if use_sample == False:
+    def _prepare_resonances(self, use_sample=False, sample_parameters=None):
+        if not use_sample:
             df = self.parameters.copy()
         else:
             df = sample_parameters.copy()
@@ -656,8 +657,8 @@ class ReichMoore(ResonanceRange):
 
         return rm
 
-    def _prepare_resonances(self, use_sample = False, sample_parameters = None):
-        if use_sample == False:
+    def _prepare_resonances(self, use_sample=False, sample_parameters=None):
+        if not use_sample:
             df = self.parameters.copy()
         else:
             df = sample_parameters.copy()

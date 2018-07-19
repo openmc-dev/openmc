@@ -298,7 +298,7 @@ class IncidentNeutron(EqualityMixin):
 
     @resonance_covariance.setter
     def resonance_covariance(self, resonance_covariance):
-        cv.check_type('resonances', resonances, res.ResonanceCovariance)
+        cv.check_type('resonances', resonances, res_cov.ResonanceCovariance)
         self._resonacne_covariance = resonance_covariance
 
     @summed_reactions.setter
@@ -756,7 +756,7 @@ class IncidentNeutron(EqualityMixin):
         return data
 
     @classmethod
-    def from_endf(cls, ev_or_filename, get_covariance=False):
+    def from_endf(cls, ev_or_filename, covariance=False):
         """Generate incident neutron continuous-energy data from an ENDF evaluation
 
         Parameters
@@ -765,7 +765,7 @@ class IncidentNeutron(EqualityMixin):
             ENDF evaluation to read from. If given as a string, it is assumed to
             be the filename for the ENDF file.
 
-        get_covariance : bool
+        covariance : bool
             Flag to indicate whether or not covariance data from File 32 should be 
             retrieved
 
@@ -800,8 +800,8 @@ class IncidentNeutron(EqualityMixin):
         if (2, 151) in ev.section:
             data.resonances = res.Resonances.from_endf(ev)
 
-        if (32, 151) in ev.section and get_covariance:
-            data.res_covariance = res_cov.ResonanceCovariances.from_endf(ev, data.resonances)
+        if (32, 151) in ev.section and covariance:
+            data.resonance_covariance = res_cov.ResonanceCovariances.from_endf(ev, data.resonances)
 
         # Read each reaction
         for mf, mt, nc, mod in ev.reaction_list:

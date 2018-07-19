@@ -286,7 +286,7 @@ def test_rml(cl35):
 
 def test_mlbw_cov(ti50):
     #Testing on first range only
-    cov = ti50.res_covariance.ranges[0]
+    cov = ti50.resonance_covariance.ranges[0]
     res = ti50.resonances.ranges[0]
     assert cov.parameters['energy'][0] == pytest.approx(-21020.)
     assert res.parameters['energy'][0] == cov.parameters['energy'][0]
@@ -300,14 +300,14 @@ def test_mlbw_cov(ti50):
     assert not subset.empty
     assert cov.cov_subset is not None
     assert (subset['L'] == 1).all()
-    cov.sample_resonance_parameters(1)
-    xs = cov.reconstruct([10., 100., 1000.], res, 0)
+    cov.sample_resonance_parameters(1, res)
+    xs = cov.samples[0].reconstruct([10., 100., 1000.])
     assert sorted(xs.keys()) == [2, 18, 102]
 
 
 def test_rm_cov(gd154):
     #Testing on first range only
-    cov = gd154.res_covariance.ranges[0]
+    cov = gd154.resonance_covariance.ranges[0]
     res = gd154.resonances.ranges[0]
     assert cov.parameters['energy'][0] == pytest.approx(-2.200001)
     assert res.parameters['energy'][0] == cov.parameters['energy'][0]
@@ -321,8 +321,8 @@ def test_rm_cov(gd154):
     assert not subset.empty
     assert cov.cov_subset is not None
     assert (subset['energy'] < 100).all()
-    cov.sample_resonance_parameters(1)
-    xs = cov.reconstruct([10., 100., 1000.], res, 0)
+    cov.sample_resonance_parameters(1, res)
+    xs = cov.samples[0].reconstruct([10., 100., 1000.])
     assert sorted(xs.keys()) == [2, 18, 102]
 
 

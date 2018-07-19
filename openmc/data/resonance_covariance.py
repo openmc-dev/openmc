@@ -75,7 +75,8 @@ class ResonanceCovariances(Resonances):
         ev : openmc.data.endf.Evaluation
             ENDF evaluation
         resonances : openmc.data.Resonance object
-            Resonanance object generated from the same evaluation
+            openmc.data.Resonanance object generated from the same evaluation used
+            to import values not contained in File 32
 
         Returns
         -------
@@ -214,7 +215,7 @@ class ResonanceCovarianceRange:
         Returns
         -------
         samples : list of openmc.data.ResonanceCovarianceRange objects 
-            List of samples size [n_samples]
+            List of samples size `n_samples`
     
         """
         if not use_subset:
@@ -412,12 +413,12 @@ class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
         String descriptor of formalism
     """
 
-    def __init__(self, energy_min, energy_max):
+    def __init__(self, energy_min, energy_max, parameters, covariance, mpar, lcomp):
         super().__init__(energy_min, energy_max)
-        self.parameters = None
-        self.covariance = None
-        self.mpar = None
-        self.lcomp = None
+        self.parameters = parameters
+        self.covariance = covariance
+        self.mpar = mpar
+        self.lcomp = lcomp
         self.formalism = 'mlbw'
             
     @classmethod
@@ -454,11 +455,11 @@ class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
         # Other scatter radius parameters
         items = endf.get_cont_record(file_obj)
         target_spin = items[0]
-        LCOMP = items[3] # Flag for compatibility 0, 1, 2 - 2 is compact form
-        NLS = items[4]  # number of l-values
+        lcomp = items[3] # Flag for compatibility 0, 1, 2 - 2 is compact form
+        nls = items[4]  # number of l-values
 
         # Build covariance matrix for General Resolved Resonance Formats
-        if LCOMP == 1:
+        if lcomp == 1:
             items = endf.get_cont_record(file_obj)
             num_short_range = items[4] # Number of short range type resonance 
                                        # covariances
@@ -501,16 +502,7 @@ class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
             # Add parameters from File 2
             parameters = _add_file2_contributions(parameters, file2params)
 
-            # Create instance of class
-            mlbw = cls(energy_min, energy_max)
-            mlbw.parameters = parameters
-            mlbw.covariance = cov
-            mlbw.mpar  = mpar
-            mlbw.lcomp = LCOMP
-
-            return mlbw
-
-        elif LCOMP == 2: # Compact format - Resonances and individual
+        elif lcomp == 2: # Compact format - Resonances and individual
                          # uncertainties followed by compact correlations
             items, values = endf.get_list_record(file_obj)
             mean = items
@@ -523,7 +515,7 @@ class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
             gf = values[5::12]
             par_unc = []
             for i in range(num_res):
-                res_unc = values[i*12+6:i*12+12]
+                res_unc = values[i*12+6 : i*12+12]
                 # Delete 0 values (not provided, no fission width)
                 # DAJ/DGT always zero, DGF sometimes none zero [1, 2, 5]
                 res_unc_nonzero = []
@@ -556,37 +548,21 @@ class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
             # Add parameters from File 2
             parameters = _add_file2_contributions(parameters, file2params)
 
-            # Create instance of MultiLevelBreitWignerCovariance
-            mlbw = cls(energy_min, energy_max)
-            mlbw.parameters = parameters
-            mlbw.covariance = cov
-            mlbw.mpar  = mpar
-            mlbw.lcomp = LCOMP
-
-            return mlbw
-
-        elif LCOMP == 0 :
+        elif lcomp == 0 :
             cov = np.zeros([4, 4])
             records = []
             cov_index = 0
-            for i in range(NLS):
+            for i in range(nls):
                 items, values = endf.get_list_record(file_obj)
                 num_res = items[5]
                 for j in range(num_res):
                     one_res = values[18*j:18*(j+1)]
                     res_values = one_res[:6]
                     cov_values = one_res[6:]
-
-                    energy = res_values[0]
-                    spin = res_values[1]
-                    gt = res_values[2]
-                    gn = res_values[3]
-                    gg = res_values[4]
-                    gf = res_values[5]
-                    records.append([energy, spin, gt, gn, gg, gf])
+                    records.append(list(res_values))
 
                     # Populate the coviariance matrix for this resonance
-                    # There are no covariances between resonances in LCOMP=0
+                    # There are no covariances between resonances in lcomp=0
                     cov[cov_index, cov_index] = cov_values[0]
                     cov[cov_index+1, cov_index+1 : cov_index+2] = cov_values[1:2]
                     cov[cov_index+1, cov_index+3] = cov_values[4]
@@ -615,14 +591,9 @@ class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
             # Add parameters from File 2
             parameters = _add_file2_contributions(parameters, file2params)
 
-            # Create instance of class
-            mlbw = cls(energy_min, energy_max)
-            mlbw.parameters = parameters
-            mlbw.covariance = cov
-            mlbw.mpar  = mpar
-            mlbw.lcomp = LCOMP
-
-            return mlbw
+        # Create instance of class
+        mlbw = cls(energy_min, energy_max, parameters, cov, mpar, lcomp)
+        return mlbw
 
 
 class SingleLevelBreitWignerCovariance(MultiLevelBreitWignerCovariance):
@@ -655,8 +626,8 @@ class SingleLevelBreitWignerCovariance(MultiLevelBreitWignerCovariance):
         String descriptor of formalism
     """
 
-    def __init__(self, energy_min, energy_max):
-        super().__init__(energy_min, energy_max)
+    def __init__(self, energy_min, energy_max, parameters, covariance, mpar, lcomp):
+        super().__init__(energy_min, energy_max, parameters, covariance, mpar, lcomp)
         self.formalism = 'slbw'
 
 
@@ -691,10 +662,12 @@ class ReichMooreCovariance(ResonanceCovarianceRange):
         String descriptor of formalism
     """
 
-    def __init__(self, energy_min, energy_max):
+    def __init__(self, energy_min, energy_max, parameters, covariance, mpar, lcomp):
         super().__init__(energy_min, energy_max)
-        self.parameters = None
-        self.covariance = None
+        self.parameters = parameters
+        self.covariance = covariance
+        self.mpar = mpar
+        self.lcomp = lcomp
         self.formalism = 'rm'
 
     @classmethod
@@ -712,7 +685,9 @@ class ReichMooreCovariance(ResonanceCovarianceRange):
         items : list
             Items from the CONT record at the start of the resonance range
             subsection
-        resonances : Resonance object
+        resonances : openmc.data.Resonance object
+            openmc.data.Resonanance object generated from the same evaluation used
+            to import values not contained in File 32
 
         Returns
         -------
@@ -729,12 +704,12 @@ class ReichMooreCovariance(ResonanceCovarianceRange):
         # Other scatter radius parameters
         items = endf.get_cont_record(file_obj)
         target_spin = items[0]
-        LCOMP = items[3]  # Flag for compatibility 0, 1, 2 - 2 is compact form
-        NLS = items[4]  # Number of l-values
+        lcomp = items[3]  # Flag for compatibility 0, 1, 2 - 2 is compact form
+        nls = items[4]  # Number of l-values
 
         
         # Build covariance matrix for General Resolved Resonance Formats
-        if LCOMP == 1:
+        if lcomp == 1:
             items = endf.get_cont_record(file_obj)
             num_short_range = items[4] # Number of short range type resonance 
                                        # covariances
@@ -777,16 +752,7 @@ class ReichMooreCovariance(ResonanceCovarianceRange):
             # Add parameters from File 2
             parameters = _add_file2_contributions(parameters, file2params)
 
-            # Create instance of ReichMooreCovariance
-            rmc = cls(energy_min, energy_max)
-            rmc.parameters = parameters
-            rmc.covariance = cov
-            rmc.mpar  = mpar
-            rmc.lcomp = LCOMP
-
-            return rmc
-
-        elif LCOMP == 2: # Compact format - Resonances and individual
+        elif lcomp == 2: # Compact format - Resonances and individual
                          # uncertainties followed by compact correlations
             items, values = endf.get_list_record(file_obj)
             num_res = items[5] 
@@ -798,7 +764,7 @@ class ReichMooreCovariance(ResonanceCovarianceRange):
             gfb = values[5::12]
             par_unc = []
             for i in range(num_res):
-                res_unc = values[i*12+6:i*12+12]
+                res_unc = values[i*12+6 : i*12+12]
                 # Delete 0 values (not provided in evaluation)
                 res_unc = [x for x in res_unc if x != 0.0]
                 par_unc.extend(res_unc)
@@ -825,21 +791,17 @@ class ReichMooreCovariance(ResonanceCovarianceRange):
             # Add parameters from File 2
             parameters = _add_file2_contributions(parameters, file2params)
 
-            # Create instance of ReichMooreCovariance
-            rmc = cls(energy_min, energy_max)
-            rmc.parameters = parameters
-            rmc.covariance = cov
-            rmc.mpar  = mpar
-            rmc.lcomp = LCOMP
-
-            return rmc
+        # Create instance of ReichMooreCovariance
+        rmc = cls(energy_min, energy_max, parameters, cov, mpar, lcomp)
+        return rmc
 
 _FORMALISMS = {
-               0: ResonanceCovarianceRange,
-               1: SingleLevelBreitWignerCovariance,
-               2: MultiLevelBreitWignerCovariance,
-               3: ReichMooreCovariance
-               # 7: RMatrixLimitedCovariance
-               }
+    0: ResonanceCovarianceRange,
+    1: SingleLevelBreitWignerCovariance,
+    2: MultiLevelBreitWignerCovariance,
+    3: ReichMooreCovariance
+    # 7: RMatrixLimitedCovariance
+}
+    
 
 

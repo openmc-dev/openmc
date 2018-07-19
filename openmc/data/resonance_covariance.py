@@ -243,8 +243,9 @@ class ResonanceCovarianceRange:
                 gf = pd.DataFrame.as_matrix(parameters['fissionWidth'])
                 gx = pd.DataFrame.as_matrix(parameters['competitiveWidth'])
                 mean = mean_array.flatten()
-                for i in range(n_samples):
-                    sample = np.random.multivariate_normal(mean, cov)
+                par_samples = np.random.multivariate_normal(mean, cov,
+                                                            size=n_samples)
+                for sample in par_samples:
                     energy = sample[0::3]
                     gn = sample[1::3]
                     gg = sample[2::3]
@@ -270,8 +271,9 @@ class ResonanceCovarianceRange:
                 l_value = pd.DataFrame.as_matrix(parameters['L'])
                 gx = pd.DataFrame.as_matrix(parameters['competitiveWidth'])
                 mean = mean_array.flatten()
-                for i in range(n_samples):
-                    sample = np.random.multivariate_normal(mean, cov)
+                par_samples = np.random.multivariate_normal(mean, cov,
+                                                            size=n_samples)
+                for sample in par_samples:
                     energy = sample[0::4]
                     gn = sample[1::4]
                     gg = sample[2::4]
@@ -298,8 +300,9 @@ class ResonanceCovarianceRange:
                 spin = pd.DataFrame.as_matrix(parameters['J'])
                 l_value = pd.DataFrame.as_matrix(parameters['L'])
                 mean = mean_array.flatten()
-                for i in range(n_samples):
-                    sample = np.random.multivariate_normal(mean, cov)
+                par_samples = np.random.multivariate_normal(mean, cov,
+                                                            size=n_samples)
+                for sample in par_samples:
                     energy = sample[0::5]
                     gn = sample[1::5]
                     gg = sample[2::5]
@@ -330,8 +333,9 @@ class ResonanceCovarianceRange:
                 gfa = pd.DataFrame.as_matrix(parameters['fissionWidthA'])
                 gfb = pd.DataFrame.as_matrix(parameters['fissionWidthB'])
                 mean = mean_array.flatten()
-                for i in range(n_samples):
-                    sample = np.random.multivariate_normal(mean, cov)
+                par_samples = np.random.multivariate_normal(mean, cov,
+                                                            size=n_samples)
+                for sample in par_samples:
                     energy = sample[0::3]
                     gn = sample[1::3]
                     gg = sample[2::3]
@@ -356,8 +360,9 @@ class ResonanceCovarianceRange:
                 spin = pd.DataFrame.as_matrix(parameters['J'])
                 l_value = pd.DataFrame.as_matrix(parameters['L'])
                 mean = mean_array.flatten()
-                for i in range(n_samples):
-                    sample = np.random.multivariate_normal(mean, cov)
+                par_samples = np.random.multivariate_normal(mean, cov,
+                                                            size=n_samples)
+                for sample in par_samples:
                     energy = sample[0::5]
                     gn = sample[1::5]
                     gg = sample[2::5]

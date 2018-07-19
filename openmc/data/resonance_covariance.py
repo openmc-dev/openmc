@@ -1,6 +1,7 @@
 from collections import defaultdict, MutableSequence, Iterable
 import warnings
 import io
+import copy
 
 import numpy as np
 import pandas as pd
@@ -54,13 +55,6 @@ class ResonanceCovariances(Resonances):
     ranges : list of openmc.data.ResonanceCovarianceRange
         Distinct energy ranges for resonance data
     """
-
-    def __init__(self, ranges):
-        self.ranges = ranges
-
-    def __iter__(self):
-        for r in self.ranges:
-            yield r
 
     @property
     def ranges(self):
@@ -204,13 +198,16 @@ class ResonanceCovarianceRange:
         self.parameters_subset = parameters_subset
         self.cov_subset = cov_subset
 
-    def sample_resonance_parameters(self, n_samples, use_subset=False):
-        """Return a IncidentNeutron object with n_samples of xs
+    def sample_resonance_parameters(self, n_samples, resonances, use_subset=False):
+        """Return a list  size 'n_samples' of openmc.data.ResonanceRange objects.
+        Each with an indepentenly sampled set of parameters
     
         Parameters
         ----------
         n_samples : int
             The number of samples to produce
+        resonances : openmc.data.ResonanceRange object
+            Corresponding resonance range with File 2 data.
         use_subset : bool, optional
             Flag on whether to sample from an already produced subset
     
@@ -236,7 +233,6 @@ class ResonanceCovarianceRange:
         mpar = self.mpar
         samples = []
     
-    
         # Handling MLBW sampling
         if formalism == 'mlbw' or formalism == 'slbw':
             if mpar == 3:
@@ -258,9 +254,11 @@ class ResonanceCovarianceRange:
                         records.append([energy[j], l_value[j], spin[j], gt[j], gn[j],
                                         gg[j], gf[j], gx[j]])
                     columns = ['energy', 'L', 'J', 'totalWidth', 'neutronWidth',
-                           'captureWidth', 'fissionWidth', 'competitiveWidth']
+                               'captureWidth', 'fissionWidth', 'competitiveWidth']
                     sample_params = pd.DataFrame.from_records(records, columns=columns)
-                    samples.append(sample_params)
+                    res_range = copy.copy(resonances)
+                    res_range.parameters = sample_params
+                    samples.append(res_range)
     
             elif mpar == 4:
                 param_list = ['energy', 'neutronWidth', 'captureWidth', 'fissionWidth']
@@ -281,9 +279,11 @@ class ResonanceCovarianceRange:
                         records.append([energy[j], l_value[j], spin[j], gt[j], gn[j],
                                         gg[j], gf[j], gx[j]])
                     columns = ['energy', 'L', 'J', 'totalWidth', 'neutronWidth',
-                           'captureWidth', 'fissionWidth', 'competitiveWidth']
+                               'captureWidth', 'fissionWidth', 'competitiveWidth']
                     sample_params = pd.DataFrame.from_records(records, columns=columns)
-                    samples.append(sample_params)
+                    res_range = copy.copy(resonances)
+                    res_range.parameters = sample_params
+                    samples.append(res_range)
     
             elif mpar == 5:
                 param_list = ['energy', 'neutronWidth', 'captureWidth',
@@ -305,9 +305,11 @@ class ResonanceCovarianceRange:
                         records.append([energy[j], l_value[j], spin[j], gt[j], gn[j],
                                         gg[j], gf[j], gx[j]])
                     columns = ['energy', 'L', 'J', 'totalWidth', 'neutronWidth',
-                           'captureWidth', 'fissionWidth', 'competitveWidth']
+                               'captureWidth', 'fissionWidth', 'competitveWidth']
                     sample_params = pd.DataFrame.from_records(records, columns=columns)
-                    samples.append(sample_params)
+                    res_range = copy.copy(resonances)
+                    res_range.parameters = sample_params
+                    samples.append(res_range)
 
         # Handling RM Sampling
         if formalism == 'rm':
@@ -331,7 +333,9 @@ class ResonanceCovarianceRange:
                     columns = ['energy', 'L', 'J', 'neutronWidth',
                                'captureWidth', 'fissionWidthA', 'fissionWidthB']
                     sample_params = pd.DataFrame.from_records(records, columns=columns)
-                    samples.append(sample_params)
+                    res_range = copy.copy(resonances)
+                    res_range.parameters = sample_params
+                    samples.append(res_range)
     
             elif mpar == 5:
                 param_list = ['energy', 'neutronWidth', 'captureWidth',
@@ -354,37 +358,11 @@ class ResonanceCovarianceRange:
                     columns = ['energy', 'L', 'J', 'neutronWidth',
                                'captureWidth', 'fissionWidthA', 'fissionWidthB']
                     sample_params = pd.DataFrame.from_records(records, columns=columns)
-                    samples.append(sample_params)
+                    res_range = copy.copy(resonances)
+                    res_range.parameters = sample_params
+                    samples.append(res_range)
     
         self.samples = samples
-
-    def reconstruct(self, energies, resonances, sampleN):
-        """Evaluate the cross section at specified energies for an already
-        sampled set of resonance parameters. 
-    
-        Parameters
-        ----------
-        energies : float or Iterable of float
-            Energies at which the cross section should be evaluated
-        resonances : openmc.data.Resonance object
-            Corresponding resonance range with File 2 data. Used for
-            reconstruction method
-        sampleN : int
-            Index of sample of resonance parameters to be used
-    
-        Returns
-        -------
-        3-tuple of float or numpy.ndarray
-            Elastic, capture, and fission cross sections at the specified
-            energies
-    
-        """
-        if self.samples[sampleN] is None:
-            raise ValueError("Sample of resonance parameters has not been set.")
-        sample_parameters = self.samples[sampleN]
-        xs_array = resonances.reconstruct(energies, use_sample = True,
-                                          sample_parameters = sample_parameters)
-        return xs_array
 
 
 class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
@@ -436,7 +414,9 @@ class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
         items : list
             Items from the CONT record at the start of the resonance range
             subsection
-        resonances : openmc.data.IncidentNeutron.Resonance object
+        file2params : openmc.data.ResonanceRange object
+            Corresponding resonance range with File 2 data. Used for
+            reconstruction method
 
         Returns
         -------

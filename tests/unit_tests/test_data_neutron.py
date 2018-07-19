@@ -39,7 +39,7 @@ def sm150():
 def gd154():
     """Gd154 ENDF data (contains Reich Moore resonance range)"""
     filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-064_Gd_154.endf')
-    return openmc.data.IncidentNeutron.from_endf(filename, get_covariance = True)
+    return openmc.data.IncidentNeutron.from_endf(filename, covariance = True)
 
 
 @pytest.fixture(scope='module')
@@ -96,11 +96,12 @@ def am244():
     endf_file = os.path.join(_ENDF_DATA, 'neutrons', 'n-095_Am_244.endf')
     return openmc.data.IncidentNeutron.from_njoy(endf_file)
 
+
 @pytest.fixture(scope='module')
 def ti50():
     """Ti50 ENDF data (contains Multi-level Breit-Wigner resonance range)"""
     filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-022_Ti_050.endf')
-    return openmc.data.IncidentNeutron.from_endf(filename, get_covariance=True)
+    return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
 
 
 def test_attributes(pu239):

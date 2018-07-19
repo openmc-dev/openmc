@@ -257,6 +257,9 @@ class ResonanceCovarianceRange:
                                'captureWidth', 'fissionWidth', 'competitiveWidth']
                     sample_params = pd.DataFrame.from_records(records, columns=columns)
                     res_range = copy.copy(resonances)
+                    res_range._prepared = False # Set prepared to False to ensure
+                                                # the sampled parameters are used
+                                                # in reconstruction
                     res_range.parameters = sample_params
                     samples.append(res_range)
     
@@ -282,6 +285,9 @@ class ResonanceCovarianceRange:
                                'captureWidth', 'fissionWidth', 'competitiveWidth']
                     sample_params = pd.DataFrame.from_records(records, columns=columns)
                     res_range = copy.copy(resonances)
+                    res_range._prepared = False # Set prepared to False to ensure
+                                                # the sampled parameters are used
+                                                # in reconstruction
                     res_range.parameters = sample_params
                     samples.append(res_range)
     
@@ -308,6 +314,9 @@ class ResonanceCovarianceRange:
                                'captureWidth', 'fissionWidth', 'competitveWidth']
                     sample_params = pd.DataFrame.from_records(records, columns=columns)
                     res_range = copy.copy(resonances)
+                    res_range._prepared = False # Set prepared to False to ensure
+                                                # the sampled parameters are used
+                                                # in reconstruction
                     res_range.parameters = sample_params
                     samples.append(res_range)
 
@@ -334,6 +343,9 @@ class ResonanceCovarianceRange:
                                'captureWidth', 'fissionWidthA', 'fissionWidthB']
                     sample_params = pd.DataFrame.from_records(records, columns=columns)
                     res_range = copy.copy(resonances)
+                    res_range._prepared = False # Set prepared to False to ensure
+                                                # the sampled parameters are used
+                                                # in reconstruction
                     res_range.parameters = sample_params
                     samples.append(res_range)
     
@@ -359,6 +371,9 @@ class ResonanceCovarianceRange:
                                'captureWidth', 'fissionWidthA', 'fissionWidthB']
                     sample_params = pd.DataFrame.from_records(records, columns=columns)
                     res_range = copy.copy(resonances)
+                    res_range._prepared = False # Set prepared to False to ensure
+                                                # the sampled parameters are used
+                                                # in reconstruction
                     res_range.parameters = sample_params
                     samples.append(res_range)
     

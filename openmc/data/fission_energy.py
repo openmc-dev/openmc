@@ -6,25 +6,18 @@ import sys
 import h5py
 import numpy as np
 
-from .data import ATOMIC_SYMBOL, EV_PER_MEV
+from .data import EV_PER_MEV
 from .endf import get_cont_record, get_list_record, get_tab1_record, Evaluation
-from .function import Function1D, Tabulated1D, Polynomial, Sum
+from .function import Function1D, Tabulated1D, Polynomial, sum_functions
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
 
 
-_LABELS = ('EFR', 'ENP', 'END', 'EGP', 'EGD', 'EB', 'ENU', 'ER', 'ET')
-_NAMES = {
-    'EFR': 'fragments',
-    'ENP': 'prompt_neutrons',
-    'END': 'delayed_neutrons',
-    'EGP': 'prompt_photons',
-    'EGD': 'delayed_photons',
-    'EB': 'betas',
-    'ENU': 'neutrinos',
-    'ER': 'recoverable',
-    'ET': 'total'
-}
+_NAMES = (
+    'fragments', 'prompt_neutrons', 'delayed_neutrons',
+    'prompt_photons', 'delayed_photons', 'betas',
+    'neutrinos', 'recoverable', 'total'
+)
 
 
 class FissionEnergyRelease(EqualityMixin):
@@ -141,27 +134,33 @@ class FissionEnergyRelease(EqualityMixin):
 
     @property
     def recoverable(self):
-        return Sum([self.fragments, self.prompt_neutrons, self.delayed_neutrons,
-                    self.prompt_photons, self.delayed_photons, self.betas])
+        components = ['fragments', 'prompt_neutrons', 'delayed_neutrons',
+                      'prompt_photons', 'delayed_photons', 'betas']
+        return sum_functions(getattr(self, c) for c in components)
 
     @property
     def total(self):
-        return Sum([self.fragments, self.prompt_neutrons, self.delayed_neutrons,
-                    self.prompt_photons, self.delayed_photons, self.betas,
-                    self.neutrinos])
+        components = ['fragments', 'prompt_neutrons', 'delayed_neutrons',
+                      'prompt_photons', 'delayed_photons', 'betas',
+                      'neutrinos']
+        return sum_functions(getattr(self, c) for c in components)
 
     @property
     def q_prompt(self):
-        return Sum([self.fragments, self.prompt_neutrons, self.prompt_photons,
-                    lambda E: -E])
+        # Use a polynomial to subtract incident energy.
+        funcs = [self.fragments, self.prompt_neutrons, self.prompt_photons,
+                 Polynomial((0.0, -1.0))]
+        return sum_functions(funcs)
 
     @property
     def q_recoverable(self):
-        return Sum([self.recoverable, lambda E: -E])
+        # Use a polynomial to subtract incident energy.
+        return sum_functions([self.recoverable, Polynomial((0.0, -1.0))])
 
     @property
     def q_total(self):
-        return Sum([self.total, lambda E: -E])
+        # Use a polynomial to subtract incident energy.
+        return sum_functions([self.total, Polynomial((0.0, -1.0))])
 
     @fragments.setter
     def fragments(self, energy_release):
@@ -247,9 +246,8 @@ class FissionEnergyRelease(EqualityMixin):
 
         # Associate each set of values and uncertainties with its label.
         functions = {}
-        for i, label in enumerate(_LABELS):
+        for i, name in enumerate(_NAMES):
             coeffs = data[2*i::18]
-            name = _NAMES[label]
 
             # Ignore recoverable and total since we recalculate those directly
             if name in ('recoverable', 'total'):
@@ -327,13 +325,12 @@ class FissionEnergyRelease(EqualityMixin):
 
                 # Determine which component it is
                 ifc = items[3]
-                name = _NAMES[_LABELS[ifc - 1]]
+                name = _NAMES[ifc - 1]
 
                 # Replace value in dictionary
                 functions[name] = eifc
 
         # Build the object
-        print(functions)
         return cls(**functions)
 
     @classmethod
@@ -361,44 +358,7 @@ class FissionEnergyRelease(EqualityMixin):
         neutrinos = Function1D.from_hdf5(group['neutrinos'])
 
         return cls(fragments, prompt_neutrons, delayed_neutrons, prompt_photons,
-                   prompt_photons, delayed_photons, betas, neutrinos)
-
-    @classmethod
-    def from_compact_hdf5(cls, fname, incident_neutron):
-        """Generate fission energy release data from a small HDF5 library.
-
-        Parameters
-        ----------
-        fname : str
-            Path to an HDF5 file containing fission energy release data.  This
-            file should have been generated form the
-            :func:`openmc.data.write_compact_458_library` function.
-        incident_neutron : openmc.data.IncidentNeutron
-            Corresponding incident neutron dataset
-
-        Returns
-        -------
-        openmc.data.FissionEnergyRelease or None
-            Fission energy release data for the given nuclide if it is present
-            in the data file
-
-        """
-
-        fin = h5py.File(fname, 'r')
-
-        components = [s.decode() for s in fin.attrs['component order']]
-
-        nuclide_name = ATOMIC_SYMBOL[incident_neutron.atomic_number]
-        nuclide_name += str(incident_neutron.mass_number)
-        if incident_neutron.metastable != 0:
-            nuclide_name += '_m' + str(incident_neutron.metastable)
-
-        if nuclide_name not in fin: return None
-
-        data = {c: fin[nuclide_name + '/data'][i, 0, :]
-                for i, c in enumerate(components)}
-
-        return cls._from_dictionary(data, incident_neutron)
+                   delayed_photons, betas, neutrinos)
 
     def to_hdf5(self, group):
         """Write energy release data to an HDF5 group
@@ -417,33 +377,5 @@ class FissionEnergyRelease(EqualityMixin):
         self.delayed_photons.to_hdf5(group, 'delayed_photons')
         self.betas.to_hdf5(group, 'betas')
         self.neutrinos.to_hdf5(group, 'neutrinos')
-
-        if isinstance(self.prompt_neutrons, Polynomial):
-            # Add the polynomials for the relevant components together. Use a
-            # Polynomial((0.0, -1.0)) to subtract incident energy.
-            q_prompt = (self.fragments + self.prompt_neutrons +
-                        self.prompt_photons + Polynomial((0.0, -1.0)))
-            q_prompt.to_hdf5(group, 'q_prompt')
-            q_recoverable = (self.fragments + self.prompt_neutrons +
-                             self.delayed_neutrons + self.prompt_photons +
-                             self.delayed_photons + self.betas +
-                             Polynomial((0.0, -1.0)))
-            q_recoverable.to_hdf5(group, 'q_recoverable')
-
-        elif isinstance(self.prompt_neutrons, Tabulated1D):
-            # Make a Tabulated1D and evaluate the polynomial components at the
-            # table x points to get new y points.  Subtract x from y to remove
-            # incident energy.
-            q_prompt = deepcopy(self.prompt_neutrons)
-            q_prompt.y += self.fragments(q_prompt.x)
-            q_prompt.y += self.prompt_photons(q_prompt.x)
-            q_prompt.y -= q_prompt.x
-            q_prompt.to_hdf5(group, 'q_prompt')
-            q_recoverable = q_prompt
-            q_recoverable.y += self.delayed_neutrons(q_recoverable.x)
-            q_recoverable.y += self.delayed_photons(q_recoverable.x)
-            q_recoverable.y += self.betas(q_recoverable.x)
-            q_recoverable.to_hdf5(group, 'q_recoverable')
-
-        else:
-            raise ValueError('Unrecognized energy release format')
+        self.q_prompt.to_hdf5(group, 'q_prompt')
+        self.q_recoverable.to_hdf5(group, 'q_recoverable')

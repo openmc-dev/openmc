@@ -114,12 +114,13 @@ class ResonanceCovariances(Resonances):
                     file2params = resonances.ranges[j].parameters
                     erange = _FORMALISMS[formalism].from_endf(ev, file_obj,
                                                               items, file2params)
+                    ranges.append(erange)
+
                 elif unresolved_flag == 2:
-                    warn_str = 'Unresolved resonance not supported.'\
+                    warn_str = 'Unresolved resonance not supported. '\
                                'Covariance values for the unresolved region not imported.'
                     warnings.warn(warn_str)
                                  
-                ranges.append(erange)
 
         return cls(ranges)
 

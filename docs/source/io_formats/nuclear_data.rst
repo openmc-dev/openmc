@@ -85,33 +85,31 @@ temperature-dependent data set.  For example, the data set corresponding to
 
 **/<nuclide name>/fission_energy_release/**
 
-:Datasets: - **fragments** (:ref:`polynomial <1d_polynomial>`) -- Energy
+:Datasets: - **fragments** (:ref:`function <1d_functions>`) -- Energy
              released in the form of fragments as a function of incident
              neutron energy.
-           - **prompt_neutrons** (:ref:`polynomial <1d_polynomial>` or
-             :ref:`tabulated <1d_tabulated>`) -- Energy released in the form of
-             prompt neutrons as a function of incident neutron energy.
-           - **delayed_neutrons** (:ref:`polynomial <1d_polynomial>`) -- Energy
+           - **prompt_neutrons** (:ref:`function <1d_functions>`) -- Energy
+             released in the form of prompt neutrons as a function of incident
+             neutron energy.
+           - **delayed_neutrons** (:ref:`function <1d_functions>`) -- Energy
              released in the form of delayed neutrons as a function of incident
              neutron energy.
-           - **prompt_photons** (:ref:`polynomial <1d_polynomial>`) -- Energy
+           - **prompt_photons** (:ref:`function <1d_functions>`) -- Energy
              released in the form of prompt photons as a function of incident
              neutron energy.
-           - **delayed_photons** (:ref:`polynomial <1d_polynomial>`) -- Energy
+           - **delayed_photons** (:ref:`function <1d_functions>`) -- Energy
              released in the form of delayed photons as a function of incident
              neutron energy.
-           - **betas** (:ref:`polynomial <1d_polynomial>`) -- Energy
-             released in the form of betas as a function of incident
-             neutron energy.
-           - **neutrinos** (:ref:`polynomial <1d_polynomial>`) -- Energy
-             released in the form of neutrinos as a function of incident
-             neutron energy.
-           - **q_prompt** (:ref:`polynomial <1d_polynomial>` or
-             :ref:`tabulated <1d_tabulated>`) -- The prompt fission Q-value
-             (fragments + prompt neutrons + prompt photons - incident energy)
-           - **q_recoverable** (:ref:`polynomial <1d_polynomial>` or
-             :ref:`tabulated <1d_tabulated>`) -- The recoverable fission Q-value
-             (Q_prompt + delayed neutrons + delayed photons + betas)
+           - **betas** (:ref:`function <1d_functions>`) -- Energy released in
+             the form of betas as a function of incident neutron energy.
+           - **neutrinos** (:ref:`function <1d_functions>`) -- Energy released
+             in the form of neutrinos as a function of incident neutron energy.
+           - **q_prompt** (:ref:`function <1d_functions>`) -- The prompt fission
+             Q-value (fragments + prompt neutrons + prompt photons - incident
+             energy)
+           - **q_recoverable** (:ref:`function <1d_functions>`) -- The
+             recoverable fission Q-value (Q_prompt + delayed neutrons + delayed
+             photons + betas)
 
 -------------------------------
 Thermal Neutron Scattering Data

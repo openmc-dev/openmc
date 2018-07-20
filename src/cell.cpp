@@ -1,7 +1,6 @@
 #include "cell.h"
 
 #include <cmath>
-#include <limits>
 #include <sstream>
 #include <string>
 
@@ -14,18 +13,6 @@
 
 
 namespace openmc {
-
-//==============================================================================
-// Constants
-//==============================================================================
-
-constexpr int32_t OP_LEFT_PAREN   {std::numeric_limits<int32_t>::max()};
-constexpr int32_t OP_RIGHT_PAREN  {std::numeric_limits<int32_t>::max() - 1};
-constexpr int32_t OP_COMPLEMENT   {std::numeric_limits<int32_t>::max() - 2};
-constexpr int32_t OP_INTERSECTION {std::numeric_limits<int32_t>::max() - 3};
-constexpr int32_t OP_UNION        {std::numeric_limits<int32_t>::max() - 4};
-
-extern "C" double FP_PRECISION;
 
 //==============================================================================
 // Global variables

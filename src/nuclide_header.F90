@@ -17,11 +17,9 @@ module nuclide_header
                                     FIT_T, FIT_A, FIT_F, MultipoleArray
   use message_passing
   use multipole_header,       only: MultipoleArray
-  use product_header,         only: AngleEnergyContainer
   use random_lcg,             only: prn, future_prn, prn_set_stream
   use reaction_header,        only: Reaction
   use sab_header,             only: SAlphaBeta, sab_tables
-  use secondary_uncorrelated, only: UncorrelatedAngleEnergy
   use settings
   use stl_vector,             only: VectorInt, VectorReal
   use string

@@ -256,6 +256,7 @@ Electron-Positron Annihilation
 Bremsstrahlung
 --------------
 
+.. _ttb:
 
 Thick-Target Bremsstrahlung Approximation
 +++++++++++++++++++++++++++++++++++++++++

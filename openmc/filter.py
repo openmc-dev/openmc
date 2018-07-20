@@ -548,7 +548,8 @@ class ParticleFilter(Filter):
     ----------
     bins : str, int, or iterable of Integral
         The Particles to tally. Either str with particle type or their
-        ID numbers can be used with IDs listed in _PARTICLE_IDS.
+        ID numbers can be used ('neutron' = 1, 'photon' = 2, 'electron' = 3,
+        'positron' = 4).
     filter_id : int
         Unique identifier for the filter
 

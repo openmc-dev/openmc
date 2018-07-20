@@ -177,6 +177,8 @@ use with OpenMC. This script has the following optional arguments:
 -n, --neutron_only
     Whether to exclude photon interaction/atomic data
 
+.. _scripts_photon:
+
 --------------------------
 ``openmc-get-photon-data``
 --------------------------
@@ -192,6 +194,8 @@ following optional arguments:
 -c, --cross-sections
     cross_sections.xml file to append libraries to
 
+.. _scripts_compton:
+
 -----------------------
 ``openmc-make-compton``
 -----------------------
@@ -200,6 +204,8 @@ This script generates an HDF5 file called ``compton_profiles.h5`` that contains
 Compton profile data using an existing data library from `Geant4
 <http://geant4.cern.ch/>`_. Note that OpenMC includes this data file by default
 so it should not be necessary in practice to generate it yourself.
+
+.. _scripts_stopping:
 
 -------------------------------
 ``openmc-make-stopping-powers``

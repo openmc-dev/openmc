@@ -219,6 +219,10 @@ class ResonanceCovarianceRange:
             List of samples size `n_samples`
     
         """
+        warn_str = 'Sampling routine does not guarantee positive values for '\
+                   'parameters. This can lead to undefined behavior in the '\
+                   'reconstruction routine.'
+        warnings.warn(warn_str)
         if not use_subset:
             parameters = self.parameters
             cov = self.covariance

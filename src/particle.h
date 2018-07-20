@@ -15,10 +15,20 @@ namespace openmc {
 // Constants
 //==============================================================================
 
+// Since cross section libraries come with different numbers of delayed groups
+// (e.g. ENDF/B-VII.1 has 6 and JEFF 3.1.1 has 8 delayed groups) and we don't
+// yet know what cross section library is being used when the tallies.xml file
+// is read in, we want to have an upper bound on the size of the array we
+// use to store the bins for delayed group tallies.
 constexpr int MAX_DELAYED_GROUPS {8};
+
+// Maximum number of secondary particles created
 constexpr int MAX_SECONDARY {1000};
-constexpr int NEUTRON {1};
+
+// Maximum number of lost particles
 constexpr int MAX_LOST_PARTICLES {10};
+
+// Maximum number of lost particles, relative to the total number of particles
 constexpr double REL_MAX_LOST_PARTICLES {1.0e-6};
 
 //! Particle types

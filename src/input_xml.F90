@@ -3254,7 +3254,7 @@ contains
               ! Check if the specified tally mesh exists
               if (mesh_dict % has(meshid)) then
                 pl % meshlines_mesh => meshes(mesh_dict % get(meshid))
-                if (meshes(meshid) % type /= LATTICE_RECT) then
+                if (meshes(meshid) % type /= MESH_REGULAR) then
                   call fatal_error("Non-rectangular mesh specified in &
                        &meshlines for plot " // trim(to_str(pl % id)))
                 end if

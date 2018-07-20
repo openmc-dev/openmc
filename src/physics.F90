@@ -18,7 +18,6 @@ module physics
   use random_lcg,             only: prn, advance_prn_seed, prn_set_stream
   use reaction_header,        only: Reaction
   use sab_header,             only: sab_tables
-  use secondary_uncorrelated, only: UncorrelatedAngleEnergy
   use settings
   use simulation_header
   use string,                 only: to_str

@@ -115,9 +115,9 @@ class ResonanceCovariances(Resonances):
 
                 if unresolved_flag in (0, 1):
                     # Resolved resonance region
-                    file2params = resonances.ranges[j].parameters
+                    resonance = resonances.ranges[j]
                     erange = _FORMALISMS[formalism].from_endf(ev, file_obj,
-                                                              items, file2params)
+                                                              items, resonance)
                     ranges.append(erange)
 
                 elif unresolved_flag == 2:
@@ -159,7 +159,7 @@ class ResonanceCovarianceRange:
         self.energy_min = energy_min
         self.energy_max = energy_max
 
-    def res_subset(self, parameter_str, bounds, resonances):
+    def res_subset(self, parameter_str, bounds):
         """Produce a subset of resonance parameters and the corresponding
         covariance matrix to an IncidentNeutron object.
 
@@ -170,32 +170,25 @@ class ResonanceCovarianceRange:
             (i.e. 'energy', 'captureWidth', 'fissionWidthA'...)
         bounds : np.array
             [low numerical bound, high numerical bound]
-        resonances : openmc.data.ResonanceRange object
-            Corresponding resonance range with File 2 data.
 
         Returns
         -------
-        res_range : openmc.data.ResonanceRange
-            ResonanceRange object that contains a subset of parameters
-            (maintains indexing of original)
         res_cov_range : openmc.data.ResonanceCovarianceRange
             ResonanceCovarianceRange object that contains a subset of the
-            covariance matrix (upper triangular) as well as parameters
+            covariance matrix (upper triangular) as well as a subset parameters
+            within self.file2params
 
         """
-        # Copy the objects
-        res_range = copy.copy(resonances)
-        res_cov_range = copy.copy(self)
+        # Copy range and prevent change of original
+        res_cov_range = copy.deepcopy(self)
 
-        parameters = res_range.parameters
+        parameters = self.file2res.parameters
         cov = res_cov_range.covariance
         mpar = res_cov_range.mpar
         # Create mask
         mask1 = parameters[parameter_str] >= bounds[0]
         mask2 = parameters[parameter_str] <= bounds[1]
         mask = mask1 & mask2
-        # Set the parameters for each object
-        res_range.parameters = parameters[mask]
         res_cov_range.parameters = parameters[mask]
         indices = res_cov_range.parameters.index.values
         # Build subset of covariance
@@ -212,11 +205,16 @@ class ResonanceCovarianceRange:
         cov_subset = np.zeros([sub_cov_dim, sub_cov_dim])
         tri_indices = np.triu_indices(sub_cov_dim)
         cov_subset[tri_indices] = cov_subset_vals
+
+        res_cov_range.file2res.parameters = parameters[mask]
         res_cov_range.covariance = cov_subset
+        # Set _prepared to False to ensure parameter subset
+        # used during construction routine
+        res_cov_range.file2res._prepared = False
 
-        return res_range, res_cov_range
+        return res_cov_range
 
-    def sample_resonance_parameters(self, n_samples, resonances):
+    def sample_resonance_parameters(self, n_samples):
         """Sample resonance parameters based on the covariances provided
         within an ENDF evaluation.
 
@@ -224,8 +222,6 @@ class ResonanceCovarianceRange:
         ----------
         n_samples : int
             The number of samples to produce
-        resonances : openmc.data.ResonanceRange object
-            Corresponding resonance range with File 2 data.
 
         Returns
         -------
@@ -239,6 +235,11 @@ class ResonanceCovarianceRange:
         warnings.warn(warn_str)
         parameters = self.parameters
         cov = self.covariance
+        # Copy ResonanceRange object
+        res_range = copy.copy(self.file2res)
+        # Set _prepared to False to ensure sampled parameters are
+        # used during construction routine
+        res_range._prepared = False
 
         nparams, params = parameters.shape
         # Symmetrizing covariance matrix
@@ -273,10 +274,6 @@ class ResonanceCovarianceRange:
                                'captureWidth', 'fissionWidth', 'competitiveWidth']
                     sample_params = pd.DataFrame.from_records(records,
                                                               columns=columns)
-                    res_range = copy.copy(resonances)
-                    # Set _prepared to False to ensure sampled paramaters are
-                    # used during construction routine
-                    res_range._prepared = False
                     res_range.parameters = sample_params
                     samples.append(res_range)
 
@@ -304,11 +301,6 @@ class ResonanceCovarianceRange:
                                'captureWidth', 'fissionWidth', 'competitiveWidth']
                     sample_params = pd.DataFrame.from_records(records,
                                                               columns=columns)
-                    res_range = copy.copy(resonances)
-                    # Set _prepared to False to ensure sampled paramaters are
-                    # used during construction routine
-                    res_range._prepared = False
-                    res_range.parameters = sample_params
                     samples.append(res_range)
 
             elif mpar == 5:
@@ -335,11 +327,6 @@ class ResonanceCovarianceRange:
                                'captureWidth', 'fissionWidth', 'competitveWidth']
                     sample_params = pd.DataFrame.from_records(records,
                                                               columns=columns)
-                    res_range = copy.copy(resonances)
-                    # Set _prepared to False to ensure sampled paramaters are
-                    # used during construction routine
-                    res_range._prepared = False
-                    res_range.parameters = sample_params
                     samples.append(res_range)
 
         # Handling RM Sampling
@@ -366,11 +353,6 @@ class ResonanceCovarianceRange:
                                'captureWidth', 'fissionWidthA', 'fissionWidthB']
                     sample_params = pd.DataFrame.from_records(records,
                                                               columns=columns)
-                    res_range = copy.copy(resonances)
-                    # Set _prepared to False to ensure sampled paramaters are
-                    # used during construction routine
-                    res_range._prepared = False
-                    res_range.parameters = sample_params
                     samples.append(res_range)
 
             elif mpar == 5:
@@ -396,11 +378,6 @@ class ResonanceCovarianceRange:
                                'captureWidth', 'fissionWidthA', 'fissionWidthB']
                     sample_params = pd.DataFrame.from_records(records,
                                                               columns=columns)
-                    res_range = copy.copy(resonances)
-                    # Set _prepared to False to ensure sampled paramaters are
-                    # used during construction routine
-                    res_range._prepared = False
-                    res_range.parameters = sample_params
                     samples.append(res_range)
 
         return samples
@@ -425,24 +402,29 @@ class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
         Resonance parameters
     covariance : numpy.array
         The covariance matrix contained within the ENDF evaluation
-    lcomp : int
-        Flag indicating format of the covariance matrix within the ENDF file
     mpar : int
         Number of parameters in covariance matrix for each individual resonance
+    lcomp : int
+        Flag indicating format of the covariance matrix within the ENDF file
+    file2res : openmc.data.ResonanceRange object
+        Corresponding resonance range with File 2 data.
     formalism : str
         String descriptor of formalism
+
     """
 
-    def __init__(self, energy_min, energy_max, parameters, covariance, mpar, lcomp):
+    def __init__(self, energy_min, energy_max, parameters, covariance, mpar,
+                 lcomp, file2res):
         super().__init__(energy_min, energy_max)
         self.parameters = parameters
         self.covariance = covariance
         self.mpar = mpar
         self.lcomp = lcomp
+        self.file2res = copy.copy(file2res)
         self.formalism = 'mlbw'
 
     @classmethod
-    def from_endf(cls, ev, file_obj, items, file2params):
+    def from_endf(cls, ev, file_obj, items, resonance):
         """Create MLBW covariance data from an ENDF evaluation.
 
         Parameters
@@ -455,9 +437,8 @@ class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
         items : list
             Items from the CONT record at the start of the resonance range
             subsection
-        file2params : openmc.data.ResonanceRange object
-            Corresponding resonance range with File 2 data. Used for
-            reconstruction method
+        resonance : openmc.data.ResonanceRange object
+            Corresponding resonance range with File 2 data.
 
         Returns
         -------
@@ -520,7 +501,8 @@ class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
             parameters = pd.DataFrame.from_records(records, columns=columns)
 
             # Add parameters from File 2
-            parameters = _add_file2_contributions(parameters, file2params)
+            parameters = _add_file2_contributions(parameters,
+                                                  resonance.parameters)
 
         # Compact format - Resonances and individual uncertainties followed by
         # compact correlations
@@ -567,7 +549,8 @@ class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
             mpar = int(covsize/nparams)
 
             # Add parameters from File 2
-            parameters = _add_file2_contributions(parameters, file2params)
+            parameters = _add_file2_contributions(parameters,
+                                                  resonance.parameters)
 
         elif lcomp == 0:
             cov = np.zeros([4, 4])
@@ -609,10 +592,12 @@ class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
             mpar = int(covsize/nparams)
 
             # Add parameters from File 2
-            parameters = _add_file2_contributions(parameters, file2params)
+            parameters = _add_file2_contributions(parameters,
+                                                  resonance.parameters)
 
         # Create instance of class
-        mlbw = cls(energy_min, energy_max, parameters, cov, mpar, lcomp)
+        mlbw = cls(energy_min, energy_max, parameters, cov, mpar, lcomp,
+                   resonance)
         return mlbw
 
 
@@ -638,18 +623,20 @@ class SingleLevelBreitWignerCovariance(MultiLevelBreitWignerCovariance):
         Resonance parameters
     covariance : numpy.array
         The covariance matrix contained within the ENDF evaluation
-    lcomp : int
-        Flag indicating format of the covariance matrix within the ENDF file
     mpar : int
         Number of parameters in covariance matrix for each individual resonance
     formalism : str
         String descriptor of formalism
+    lcomp : int
+        Flag indicating format of the covariance matrix within the ENDF file
+    file2res : openmc.data.ResonanceRange object
+        Corresponding resonance range with File 2 data.
     """
 
     def __init__(self, energy_min, energy_max, parameters, covariance, mpar,
-                 lcomp):
+                 lcomp, file2res):
         super().__init__(energy_min, energy_max, parameters, covariance, mpar,
-                         lcomp)
+                         lcomp, file2res)
         self.formalism = 'slbw'
 
 
@@ -680,21 +667,24 @@ class ReichMooreCovariance(ResonanceCovarianceRange):
         Flag indicating format of the covariance matrix within the ENDF file
     mpar : int
         Number of parameters in covariance matrix for each individual resonance
+    file2res : openmc.data.ResonanceRange object
+        Corresponding resonance range with File 2 data.
     formalism : str
         String descriptor of formalism
     """
 
     def __init__(self, energy_min, energy_max, parameters, covariance, mpar,
-                 lcomp):
+                 lcomp, file2res):
         super().__init__(energy_min, energy_max)
         self.parameters = parameters
         self.covariance = covariance
         self.mpar = mpar
         self.lcomp = lcomp
+        self.file2res = copy.copy(file2res)
         self.formalism = 'rm'
 
     @classmethod
-    def from_endf(cls, ev, file_obj, items, file2params):
+    def from_endf(cls, ev, file_obj, items, resonance):
         """Create Reich-Moore resonance covariance data from an ENDF
         evaluation. Includes the resonance parameters contained separately in
         File 32.
@@ -709,7 +699,7 @@ class ReichMooreCovariance(ResonanceCovarianceRange):
         items : list
             Items from the CONT record at the start of the resonance range
             subsection
-        resonances : openmc.data.Resonance object
+        resonance : openmc.data.Resonance object
             openmc.data.Resonanance object generated from the same evaluation
             used to import values not contained in File 32
 
@@ -773,7 +763,8 @@ class ReichMooreCovariance(ResonanceCovarianceRange):
             parameters = pd.DataFrame.from_records(records, columns=columns)
 
             # Add parameters from File 2
-            parameters = _add_file2_contributions(parameters, file2params)
+            parameters = _add_file2_contributions(parameters,
+                                                  resonance.parameters)
 
         # Compact format - Resonances and individual uncertainties followed by
         # compact correlations
@@ -813,10 +804,12 @@ class ReichMooreCovariance(ResonanceCovarianceRange):
             mpar = int(covsize/nparams)
 
             # Add parameters from File 2
-            parameters = _add_file2_contributions(parameters, file2params)
+            parameters = _add_file2_contributions(parameters,
+                                                  resonance.parameters)
 
         # Create instance of ReichMooreCovariance
-        rmc = cls(energy_min, energy_max, parameters, cov, mpar, lcomp)
+        rmc = cls(energy_min, energy_max, parameters, cov, mpar, lcomp,
+                  resonance)
         return rmc
 
 

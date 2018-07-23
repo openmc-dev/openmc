@@ -299,7 +299,7 @@ class IncidentNeutron(EqualityMixin):
     @resonance_covariance.setter
     def resonance_covariance(self, resonance_covariance):
         cv.check_type('resonance covariance', resonance_covariance,
-                       res_cov.ResonanceCovariances)
+                      res_cov.ResonanceCovariances)
         self._resonance_covariance = resonance_covariance
 
     @summed_reactions.setter
@@ -767,7 +767,7 @@ class IncidentNeutron(EqualityMixin):
             be the filename for the ENDF file.
 
         covariance : bool
-            Flag to indicate whether or not covariance data from File 32 should be 
+            Flag to indicate whether or not covariance data from File 32 should be
             retrieved
 
         Returns
@@ -802,7 +802,9 @@ class IncidentNeutron(EqualityMixin):
             data.resonances = res.Resonances.from_endf(ev)
 
         if (32, 151) in ev.section and covariance:
-            data.resonance_covariance = res_cov.ResonanceCovariances.from_endf(ev, data.resonances)
+            data.resonance_covariance = (
+                res_cov.ResonanceCovariances.from_endf(ev, data.resonances)
+            )
 
         # Read each reaction
         for mf, mt, nc, mod in ev.reaction_list:

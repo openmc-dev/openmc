@@ -1534,9 +1534,7 @@ contains
 
       ! Check if material is depletable
       if (check_for_node(node_mat, "depletable")) then
-        call get_node_value(node_mat, "depletable", temp_str)
-        if (to_lower(temp_str) == "true" .or. temp_str == "1") &
-             mat % depletable = .true.
+        call get_node_value(node_mat, "depletable", mat % depletable)
       end if
 
       ! Copy material name

@@ -56,9 +56,11 @@ extern "C" {
   int openmc_material_add_nuclide(int32_t index, const char name[], double density);
   int openmc_material_get_densities(int32_t index, int** nuclides, double** densities, int* n);
   int openmc_material_get_id(int32_t index, int32_t* id);
+  int openmc_material_get_volume(int32_t index, double* volume);
   int openmc_material_set_density(int32_t index, double density);
   int openmc_material_set_densities(int32_t index, int n, const char** name, const double* density);
   int openmc_material_set_id(int32_t index, int32_t id);
+  int openmc_material_set_volume(int32_t index, double volume);
   int openmc_material_filter_get_bins(int32_t index, int32_t** bins, int32_t* n);
   int openmc_material_filter_set_bins(int32_t index, int32_t n, const int32_t* bins);
   int openmc_mesh_filter_get_mesh(int32_t index, int32_t* index_mesh);

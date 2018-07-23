@@ -24,6 +24,7 @@ module material_header
   public :: openmc_material_add_nuclide
   public :: openmc_material_get_id
   public :: openmc_material_get_densities
+  public :: openmc_material_get_volume
   public :: openmc_material_set_density
   public :: openmc_material_set_densities
   public :: openmc_material_set_id
@@ -51,9 +52,16 @@ module material_header
     end subroutine material_set_id_c
 
     subroutine extend_materials_c(n) bind(C)
-      import C_INT32_t
+      import C_INT32_T
       integer(C_INT32_T), intent(in), value :: n
     end subroutine extend_materials_c
+
+    function openmc_material_get_volume(index, volume) result(err) bind(C)
+      import C_INT32_T, C_DOUBLE, C_INT
+      integer(C_INT32_T), value :: index
+      real(C_DOUBLE), intent(out) :: volume
+      integer(C_INT) :: err
+    end function openmc_material_get_volume
   end interface
 
 !===============================================================================

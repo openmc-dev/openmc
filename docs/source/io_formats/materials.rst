@@ -50,6 +50,12 @@ Each ``material`` element can have the following attributes or sub-elements:
 
     *Default*: ""
 
+  :depletable:
+    Boolean value indicating whether the material is depletable.
+
+  :volume:
+    Volume of the material in cm^3.
+
   :temperature:
     An element with no attributes which is used to set the default temperature
     of the material in Kelvin.

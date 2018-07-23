@@ -25,6 +25,7 @@ class Material
 {
 public:
   int32_t id; //!< Unique ID
+  double volume_ {-1.0}; //!< Volume in [cm^3]
 
   Material() {};
 

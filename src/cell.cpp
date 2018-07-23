@@ -493,7 +493,7 @@ openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n)
       *n = 1;
     }
   } else {
-    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
   return 0;
@@ -517,7 +517,7 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
           //TODO: off-by-one
           c.material.push_back(i_mat - 1);
         } else {
-          strcpy(openmc_err_msg, "Index in materials array is out of bounds.");
+          set_errmsg("Index in materials array is out of bounds.");
           return OPENMC_E_OUT_OF_BOUNDS;
         }
       }
@@ -528,7 +528,7 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
       c.type = FILL_LATTICE;
     }
   } else {
-    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
   return 0;

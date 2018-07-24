@@ -318,8 +318,6 @@ def test_rm_cov(gd154):
     assert not subset.parameters.empty
     assert (subset.file2res.parameters['energy'] < 100).all()
     samples = cov.sample_resonance_parameters(1)
-    print(samples)
-    print(samples[0])
     xs = samples[0].reconstruct([10., 100., 1000.])
     assert sorted(xs.keys()) == [2, 18, 102]
 

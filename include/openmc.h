@@ -97,6 +97,7 @@ extern "C" {
   int openmc_tally_get_n_realizations(int32_t index, int32_t* n);
   int openmc_tally_get_nuclides(int32_t index, int** nuclides, int* n);
   int openmc_tally_get_scores(int32_t index, int** scores, int* n);
+  int openmc_tally_reset(int32_t index);
   int openmc_tally_results(int32_t index, double** ptr, int shape_[3]);
   int openmc_tally_set_active(int32_t index, bool active);
   int openmc_tally_set_filters(int32_t index, int n, const int32_t* indices);

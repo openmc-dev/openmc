@@ -438,7 +438,7 @@ class MultiLevelBreitWigner(ResonanceRange):
         self._l_values = np.array(l_values)
         self._competitive = np.array(competitive)
         for l in l_values:
-            self._parameter_matrix[l] = df[df.L == l].as_matrix()
+            self._parameter_matrix[l] = df[df.L == l].values
 
         self._prepared = True
 
@@ -683,7 +683,7 @@ class ReichMoore(ResonanceRange):
         self._l_values = np.array(l_values)
         for (l, J) in lj_values:
             self._parameter_matrix[l, J] = df[(df.L == l) &
-                                              (abs(df.J) == J)].as_matrix()
+                                              (abs(df.J) == J)].values
 
         self._prepared = True
 

@@ -253,11 +253,11 @@ class ResonanceCovarianceRange:
         if formalism == 'mlbw' or formalism == 'slbw':
             if mpar == 3:
                 param_list = ['energy', 'neutronWidth', 'captureWidth']
-                mean_array = pd.DataFrame.as_matrix(parameters[param_list])
-                spin = pd.DataFrame.as_matrix(parameters['J'])
-                l_value = pd.DataFrame.as_matrix(parameters['L'])
-                gf = pd.DataFrame.as_matrix(parameters['fissionWidth'])
-                gx = pd.DataFrame.as_matrix(parameters['competitiveWidth'])
+                mean_array = parameters[param_list].values
+                spin = parameters['J'].values
+                l_value = parameters['L'].values
+                gf = parameters['fissionWidth'].values
+                gx = parameters['competitiveWidth'].values
                 mean = mean_array.flatten()
                 par_samples = np.random.multivariate_normal(mean, cov,
                                                             size=n_samples)
@@ -274,16 +274,21 @@ class ResonanceCovarianceRange:
                                'captureWidth', 'fissionWidth', 'competitiveWidth']
                     sample_params = pd.DataFrame.from_records(records,
                                                               columns=columns)
+                    # Copy ResonanceRange object
+                    res_range = copy.copy(self.file2res)
+                    # Set _prepared to False to ensure sampled parameters are
+                    # used during construction routine
+                    res_range._prepared = False
                     res_range.parameters = sample_params
                     samples.append(res_range)
 
             elif mpar == 4:
                 param_list = ['energy', 'neutronWidth', 'captureWidth',
                               'fissionWidth']
-                mean_array = pd.DataFrame.as_matrix(parameters[param_list])
-                spin = pd.DataFrame.as_matrix(parameters['J'])
-                l_value = pd.DataFrame.as_matrix(parameters['L'])
-                gx = pd.DataFrame.as_matrix(parameters['competitiveWidth'])
+                mean_array = parameters[param_list].values
+                spin = parameters['J'].values
+                l_value = parameters['L'].values
+                gx = parameters['competitiveWidth'].values
                 mean = mean_array.flatten()
                 par_samples = np.random.multivariate_normal(mean, cov,
                                                             size=n_samples)
@@ -301,14 +306,20 @@ class ResonanceCovarianceRange:
                                'captureWidth', 'fissionWidth', 'competitiveWidth']
                     sample_params = pd.DataFrame.from_records(records,
                                                               columns=columns)
+                    # Copy ResonanceRange object
+                    res_range = copy.copy(self.file2res)
+                    # Set _prepared to False to ensure sampled parameters are
+                    # used during construction routine
+                    res_range._prepared = False
+                    res_range.parameters = sample_params
                     samples.append(res_range)
 
             elif mpar == 5:
                 param_list = ['energy', 'neutronWidth', 'captureWidth',
                               'fissionWidth', 'competitiveWidth']
-                mean_array = pd.DataFrame.as_matrix(parameters[param_list])
-                spin = pd.DataFrame.as_matrix(parameters['J'])
-                l_value = pd.DataFrame.as_matrix(parameters['L'])
+                mean_array = parameters[param_list].values
+                spin = parameters['J'].values
+                l_value = parameters['L'].values
                 mean = mean_array.flatten()
                 par_samples = np.random.multivariate_normal(mean, cov,
                                                             size=n_samples)
@@ -327,17 +338,23 @@ class ResonanceCovarianceRange:
                                'captureWidth', 'fissionWidth', 'competitveWidth']
                     sample_params = pd.DataFrame.from_records(records,
                                                               columns=columns)
+                    # Copy ResonanceRange object
+                    res_range = copy.copy(self.file2res)
+                    # Set _prepared to False to ensure sampled parameters are
+                    # used during construction routine
+                    res_range._prepared = False
+                    res_range.parameters = sample_params
                     samples.append(res_range)
 
         # Handling RM Sampling
         if formalism == 'rm':
             if mpar == 3:
                 param_list = ['energy', 'neutronWidth', 'captureWidth']
-                mean_array = pd.DataFrame.as_matrix(parameters[param_list])
-                spin = pd.DataFrame.as_matrix(parameters['J'])
-                l_value = pd.DataFrame.as_matrix(parameters['L'])
-                gfa = pd.DataFrame.as_matrix(parameters['fissionWidthA'])
-                gfb = pd.DataFrame.as_matrix(parameters['fissionWidthB'])
+                mean_array = parameters[param_list].values
+                spin = parameters['J'].values
+                l_value = parameters['L'].values
+                gfa = parameters['fissionWidthA'].values
+                gfb = parameters['fissionWidthB'].values
                 mean = mean_array.flatten()
                 par_samples = np.random.multivariate_normal(mean, cov,
                                                             size=n_samples)
@@ -353,14 +370,20 @@ class ResonanceCovarianceRange:
                                'captureWidth', 'fissionWidthA', 'fissionWidthB']
                     sample_params = pd.DataFrame.from_records(records,
                                                               columns=columns)
+                    # Copy ResonanceRange object
+                    res_range = copy.copy(self.file2res)
+                    # Set _prepared to False to ensure sampled parameters are
+                    # used during construction routine
+                    res_range._prepared = False
+                    res_range.parameters = sample_params
                     samples.append(res_range)
 
             elif mpar == 5:
                 param_list = ['energy', 'neutronWidth', 'captureWidth',
                               'fissionWidthA', 'fissionWidthB']
-                mean_array = pd.DataFrame.as_matrix(parameters[param_list])
-                spin = pd.DataFrame.as_matrix(parameters['J'])
-                l_value = pd.DataFrame.as_matrix(parameters['L'])
+                mean_array = parameters[param_list].values
+                spin = parameters['J'].values
+                l_value = parameters['L'].values
                 mean = mean_array.flatten()
                 par_samples = np.random.multivariate_normal(mean, cov,
                                                             size=n_samples)
@@ -378,6 +401,12 @@ class ResonanceCovarianceRange:
                                'captureWidth', 'fissionWidthA', 'fissionWidthB']
                     sample_params = pd.DataFrame.from_records(records,
                                                               columns=columns)
+                    # Copy ResonanceRange object
+                    res_range = copy.copy(self.file2res)
+                    # Set _prepared to False to ensure sampled parameters are
+                    # used during construction routine
+                    res_range._prepared = False
+                    res_range.parameters = sample_params
                     samples.append(res_range)
 
         return samples

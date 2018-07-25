@@ -28,7 +28,7 @@ OpenMC is hosted on GitHub and all bugs are reported and tracked through the
 
 We welcome suggestions for new features or enhancements to the code and
 encourage you to submit them as Issues on GitHub. However, it's important to
-recognize that our development team is relatively small are does not have
+recognize that our development team is relatively small and does not have
 unlimited time to devote to new feature suggestions. If you are interested in
 working on the feature you are requesting, indicate so in the issue and the
 development team will be happy to discuss it.

@@ -58,8 +58,11 @@ Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported by contacting the project team at openmc@anl.gov. All complaints will
 be reviewed and investigated and will result in a response that is deemed
 necessary and appropriate to the circumstances. The project team is obligated to
-maintain confidentiality with regard to the reporter of an incident.  Further
-details of specific enforcement policies may be posted separately.
+maintain confidentiality with regard to the reporter of an incident. However,
+note that some project team members may have a legal obligation to report
+certain forms of harassment because of their affiliation (for example, staff and
+faculty at universities in the United States). Further details of specific
+enforcement policies may be posted separately.
 
 Project maintainers who do not follow or enforce the Code of Conduct in good
 faith may face temporary or permanent repercussions as determined by other

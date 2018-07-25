@@ -235,11 +235,6 @@ class ResonanceCovarianceRange:
         warnings.warn(warn_str)
         parameters = self.parameters
         cov = self.covariance
-        # Copy ResonanceRange object
-        res_range = copy.copy(self.file2res)
-        # Set _prepared to False to ensure sampled parameters are
-        # used during construction routine
-        res_range._prepared = False
 
         nparams, params = parameters.shape
         # Symmetrizing covariance matrix

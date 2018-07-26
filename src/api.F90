@@ -276,6 +276,10 @@ contains
     k_abs_tra = ZERO
     k_sum(:) = ZERO
 
+    ! Set the number of inactive batches (used to compute k_eff for the fission
+    ! bank).
+    n_inactive = current_batch
+
     ! Clear active tally lists
     call active_analog_tallies % clear()
     call active_tracklength_tallies % clear()

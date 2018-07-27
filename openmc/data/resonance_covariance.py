@@ -236,7 +236,6 @@ class ResonanceCovarianceRange:
         parameters = self.parameters
         cov = self.covariance
 
-        nparams, params = parameters.shape
         # Symmetrizing covariance matrix
         cov = cov + cov.T - np.diag(cov.diagonal())
         covsize = cov.shape[0]
@@ -244,165 +243,73 @@ class ResonanceCovarianceRange:
         mpar = self.mpar
         samples = []
 
-        # Handling MLBW sampling
+        # Handling MLBW/SLBW sampling
         if formalism == 'mlbw' or formalism == 'slbw':
-            if mpar == 3:
-                param_list = ['energy', 'neutronWidth', 'captureWidth']
-                mean_array = parameters[param_list].values
-                spin = parameters['J'].values
-                l_value = parameters['L'].values
-                gf = parameters['fissionWidth'].values
-                gx = parameters['competitiveWidth'].values
-                mean = mean_array.flatten()
-                par_samples = np.random.multivariate_normal(mean, cov,
-                                                            size=n_samples)
-                for sample in par_samples:
-                    energy = sample[0::3]
-                    gn = sample[1::3]
-                    gg = sample[2::3]
-                    gt = gn + gg + gf
-                    records = []
-                    for j, E in enumerate(energy):
-                        records.append([energy[j], l_value[j], spin[j], gt[j],
-                                        gn[j], gg[j], gf[j], gx[j]])
-                    columns = ['energy', 'L', 'J', 'totalWidth', 'neutronWidth',
-                               'captureWidth', 'fissionWidth', 'competitiveWidth']
-                    sample_params = pd.DataFrame.from_records(records,
-                                                              columns=columns)
-                    # Copy ResonanceRange object
-                    res_range = copy.copy(self.file2res)
-                    # Set _prepared to False to ensure sampled parameters are
-                    # used during construction routine
-                    res_range._prepared = False
-                    res_range.parameters = sample_params
-                    samples.append(res_range)
+            params = ['energy', 'neutronWidth', 'captureWidth', 'fissionWidth',
+                      'competitiveWidth']
+            param_list = params[:mpar]
+            mean_array = parameters[param_list].values
+            mean = mean_array.flatten()
+            par_samples = np.random.multivariate_normal(mean, cov,
+                                                        size=n_samples)
+            spin = parameters['J'].values
+            l_value = parameters['L'].values
+            for sample in par_samples:
+                energy = sample[0::mpar]
+                gn = sample[1::mpar]
+                gg = sample[2::mpar]
+                gf = sample[3::mpar] if mpar > 3 else parameters['fissionWidth'].values
+                gx = sample[4::mpar] if mpar > 4 else parameters['competitiveWidth'].values
+                gt = gn + gg + gf + gx
 
-            elif mpar == 4:
-                param_list = ['energy', 'neutronWidth', 'captureWidth',
-                              'fissionWidth']
-                mean_array = parameters[param_list].values
-                spin = parameters['J'].values
-                l_value = parameters['L'].values
-                gx = parameters['competitiveWidth'].values
-                mean = mean_array.flatten()
-                par_samples = np.random.multivariate_normal(mean, cov,
-                                                            size=n_samples)
-                for sample in par_samples:
-                    energy = sample[0::4]
-                    gn = sample[1::4]
-                    gg = sample[2::4]
-                    gf = sample[3::4]
-                    gt = gn + gg + gf
-                    records = []
-                    for j, E in enumerate(energy):
-                        records.append([energy[j], l_value[j], spin[j], gt[j],
-                                        gn[j], gg[j], gf[j], gx[j]])
-                    columns = ['energy', 'L', 'J', 'totalWidth', 'neutronWidth',
-                               'captureWidth', 'fissionWidth', 'competitiveWidth']
-                    sample_params = pd.DataFrame.from_records(records,
-                                                              columns=columns)
-                    # Copy ResonanceRange object
-                    res_range = copy.copy(self.file2res)
-                    # Set _prepared to False to ensure sampled parameters are
-                    # used during construction routine
-                    res_range._prepared = False
-                    res_range.parameters = sample_params
-                    samples.append(res_range)
+                records = []
+                for j, E in enumerate(energy):
+                    records.append([energy[j], l_value[j], spin[j], gt[j], gn[j],
+                                    gg[j], gf[j], gx[j]])
+                columns = ['energy', 'L', 'J', 'totalWidth', 'neutronWidth',
+                           'captureWidth', 'fissionWidth', 'competitiveWidth']
+                sample_params = pd.DataFrame.from_records(records, columns=columns)
+                # Copy ResonanceRange object
+                res_range = copy.copy(self.file2res)
+                # Set _prepared to False to ensure sampled parameters are
+                # used during construction routine
+                res_range._prepared = False
+                res_range.parameters = sample_params
+                samples.append(res_range)
 
-            elif mpar == 5:
-                param_list = ['energy', 'neutronWidth', 'captureWidth',
-                              'fissionWidth', 'competitiveWidth']
-                mean_array = parameters[param_list].values
-                spin = parameters['J'].values
-                l_value = parameters['L'].values
-                mean = mean_array.flatten()
-                par_samples = np.random.multivariate_normal(mean, cov,
-                                                            size=n_samples)
-                for sample in par_samples:
-                    energy = sample[0::5]
-                    gn = sample[1::5]
-                    gg = sample[2::5]
-                    gf = sample[3::5]
-                    gx = sample[4::5]
-                    gt = gn + gg + gf
-                    records = []
-                    for j, E in enumerate(energy):
-                        records.append([energy[j], l_value[j], spin[j], gt[j],
-                                        gn[j], gg[j], gf[j], gx[j]])
-                    columns = ['energy', 'L', 'J', 'totalWidth', 'neutronWidth',
-                               'captureWidth', 'fissionWidth', 'competitveWidth']
-                    sample_params = pd.DataFrame.from_records(records,
-                                                              columns=columns)
-                    # Copy ResonanceRange object
-                    res_range = copy.copy(self.file2res)
-                    # Set _prepared to False to ensure sampled parameters are
-                    # used during construction routine
-                    res_range._prepared = False
-                    res_range.parameters = sample_params
-                    samples.append(res_range)
+        # Handling RM sampling
+        elif formalism == 'rm':
+            params = ['energy', 'L', 'J', 'neutronWidth', 'captureWidth',
+                      'fissionWidthA', 'fissionWidthB']
+            param_list = params[:mpar]
+            mean_array = parameters[param_list].values
+            mean = mean_array.flatten()
+            par_samples = np.random.multivariate_normal(mean, cov,
+                                                        size=n_samples)
+            spin = parameters['J']
+            l_value = parameters['L'].values
+            for sample in par_samples:
+                energy = sample[0::mpar]
+                gn = sample[1::mpar]
+                gg = sample[2::mpar]
+                gfa = sample[3::mpar] if mpar > 3 else parameters['fissionWidthA'].values
+                gfb = sample[3::mpar] if mpar > 3 else parameters['fissionWidthB'].values
 
-        # Handling RM Sampling
-        if formalism == 'rm':
-            if mpar == 3:
-                param_list = ['energy', 'neutronWidth', 'captureWidth']
-                mean_array = parameters[param_list].values
-                spin = parameters['J'].values
-                l_value = parameters['L'].values
-                gfa = parameters['fissionWidthA'].values
-                gfb = parameters['fissionWidthB'].values
-                mean = mean_array.flatten()
-                par_samples = np.random.multivariate_normal(mean, cov,
-                                                            size=n_samples)
-                for sample in par_samples:
-                    energy = sample[0::3]
-                    gn = sample[1::3]
-                    gg = sample[2::3]
-                    records = []
-                    for j, E in enumerate(energy):
-                        records.append([energy[j], l_value[j], spin[j], gn[j],
-                                        gg[j], gfa[j], gfb[j]])
-                    columns = ['energy', 'L', 'J', 'neutronWidth',
-                               'captureWidth', 'fissionWidthA', 'fissionWidthB']
-                    sample_params = pd.DataFrame.from_records(records,
-                                                              columns=columns)
-                    # Copy ResonanceRange object
-                    res_range = copy.copy(self.file2res)
-                    # Set _prepared to False to ensure sampled parameters are
-                    # used during construction routine
-                    res_range._prepared = False
-                    res_range.parameters = sample_params
-                    samples.append(res_range)
-
-            elif mpar == 5:
-                param_list = ['energy', 'neutronWidth', 'captureWidth',
-                              'fissionWidthA', 'fissionWidthB']
-                mean_array = parameters[param_list].values
-                spin = parameters['J'].values
-                l_value = parameters['L'].values
-                mean = mean_array.flatten()
-                par_samples = np.random.multivariate_normal(mean, cov,
-                                                            size=n_samples)
-                for sample in par_samples:
-                    energy = sample[0::5]
-                    gn = sample[1::5]
-                    gg = sample[2::5]
-                    gfa = sample[3::5]
-                    gfb = sample[4::5]
-                    records = []
-                    for j, E in enumerate(energy):
-                        records.append([energy[j], l_value[j], spin[j], gn[j],
-                                        gg[j], gfa[j], gfb[j]])
-                    columns = ['energy', 'L', 'J', 'neutronWidth',
-                               'captureWidth', 'fissionWidthA', 'fissionWidthB']
-                    sample_params = pd.DataFrame.from_records(records,
-                                                              columns=columns)
-                    # Copy ResonanceRange object
-                    res_range = copy.copy(self.file2res)
-                    # Set _prepared to False to ensure sampled parameters are
-                    # used during construction routine
-                    res_range._prepared = False
-                    res_range.parameters = sample_params
-                    samples.append(res_range)
+                records = []
+                for j, E in enumerate(energy):
+                    records.append([energy[j], l_value[j], spin[j], gn[j],
+                                    gg[j], gfa[j], gfb[j]])
+                columns = ['energy', 'L', 'J', 'neutronWidth',
+                           'captureWidth', 'fissionWidthA', 'fissionWidthB']
+                sample_params = pd.DataFrame.from_records(records,
+                                                          columns=columns)
+                # Copy ResonanceRange object
+                res_range = copy.copy(self.file2res)
+                # Set _prepared to False to ensure sampled parameters are
+                # used during construction routine
+                res_range._prepared = False
+                res_range.parameters = sample_params
+                samples.append(res_range)
 
         return samples
 

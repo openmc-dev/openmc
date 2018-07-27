@@ -234,7 +234,6 @@ class ResonanceCovarianceRange:
 
         # Symmetrizing covariance matrix
         cov = cov + cov.T - np.diag(cov.diagonal())
-        covsize = cov.shape[0]
         formalism = self.formalism
         mpar = self.mpar
         samples = []

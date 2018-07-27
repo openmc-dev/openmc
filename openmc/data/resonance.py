@@ -91,14 +91,14 @@ class Resonances(object):
 
         # Determine whether discrete or continuous representation
         items = get_head_record(file_obj)
-        n_isotope = items[4] # Number of isotopes
+        n_isotope = items[4]  # Number of isotopes
 
         ranges = []
         for iso in range(n_isotope):
             items = get_cont_record(file_obj)
             abundance = items[1]
-            fission_widths = (items[3] == 1) # fission widths are given?
-            n_ranges = items[4] # number of resonance energy ranges
+            fission_widths = (items[3] == 1)  # fission widths are given?
+            n_ranges = items[4]  # number of resonance energy ranges
 
             for j in range(n_ranges):
                 items = get_cont_record(file_obj)
@@ -113,7 +113,7 @@ class Resonances(object):
                     # unresolved resonance region
                     erange = Unresolved.from_endf(file_obj, items, fission_widths)
 
-                #erange.material = self
+                # erange.material = self
                 ranges.append(erange)
 
         return cls(ranges)
@@ -162,6 +162,13 @@ class ResonanceRange(object):
 
         self._prepared = False
         self._parameter_matrix = {}
+
+    def __copy__(self):
+        cls = type(self)
+        new_copy = cls.__new__(cls)
+        new_copy.__dict__.update(self.__dict__)
+        new_copy._prepared = False
+        return new_copy
 
     @classmethod
     def from_endf(cls, ev, file_obj, items):

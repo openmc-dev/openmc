@@ -208,10 +208,6 @@ class ResonanceCovarianceRange:
 
         res_cov_range.file2res.parameters = parameters[mask]
         res_cov_range.covariance = cov_subset
-        # Set _prepared to False to ensure parameter subset
-        # used during construction routine
-        res_cov_range.file2res._prepared = False
-
         return res_cov_range
 
     def sample_resonance_parameters(self, n_samples):
@@ -264,29 +260,27 @@ class ResonanceCovarianceRange:
 
                 records = []
                 for j, E in enumerate(energy):
-                    records.append([energy[j], l_value[j], spin[j], gt[j], gn[j],
-                                    gg[j], gf[j], gx[j]])
+                    records.append([energy[j], l_value[j], spin[j], gt[j],
+                                    gn[j], gg[j], gf[j], gx[j]])
                 columns = ['energy', 'L', 'J', 'totalWidth', 'neutronWidth',
                            'captureWidth', 'fissionWidth', 'competitiveWidth']
-                sample_params = pd.DataFrame.from_records(records, columns=columns)
+                sample_params = pd.DataFrame.from_records(records,
+                                                          columns=columns)
                 # Copy ResonanceRange object
                 res_range = copy.copy(self.file2res)
-                # Set _prepared to False to ensure sampled parameters are
-                # used during construction routine
-                res_range._prepared = False
                 res_range.parameters = sample_params
                 samples.append(res_range)
 
         # Handling RM sampling
         elif formalism == 'rm':
-            params = ['energy', 'L', 'J', 'neutronWidth', 'captureWidth',
+            params = ['energy', 'neutronWidth', 'captureWidth',
                       'fissionWidthA', 'fissionWidthB']
             param_list = params[:mpar]
             mean_array = parameters[param_list].values
             mean = mean_array.flatten()
             par_samples = np.random.multivariate_normal(mean, cov,
                                                         size=n_samples)
-            spin = parameters['J']
+            spin = parameters['J'].values
             l_value = parameters['L'].values
             for sample in par_samples:
                 energy = sample[0::mpar]
@@ -305,9 +299,6 @@ class ResonanceCovarianceRange:
                                                           columns=columns)
                 # Copy ResonanceRange object
                 res_range = copy.copy(self.file2res)
-                # Set _prepared to False to ensure sampled parameters are
-                # used during construction routine
-                res_range._prepared = False
                 res_range.parameters = sample_params
                 samples.append(res_range)
 

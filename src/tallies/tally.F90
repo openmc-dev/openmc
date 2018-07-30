@@ -3784,9 +3784,9 @@ contains
 
     ! Increase number of realizations (only used for global tallies)
     if (reduce_tallies) then
-      n_realizations = n_realizations + 1
+      n_realizations_batch = n_realizations_batch + 1
     else
-      n_realizations = n_realizations + n_procs
+      n_realizations_batch = n_realizations_batch + n_procs
     end if
 
     ! Accumulate on master only unless run is not reduced then do it on all

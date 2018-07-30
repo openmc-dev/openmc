@@ -359,7 +359,7 @@ contains
     elseif (master) then
 
       ! Write number of global realizations
-      call write_dataset(file_id, "n_realizations", n_realizations)
+      call write_dataset(file_id, "n_realizations", n_realizations_batch)
 
       ! Write global tallies
       call write_dataset(file_id, "global_tallies", global_tallies)
@@ -518,7 +518,7 @@ contains
 
     if (master) then
       ! Write number of realizations
-      call write_dataset(file_id, "n_realizations", n_realizations)
+      call write_dataset(file_id, "n_realizations", n_realizations_batch)
 
       ! Write number of global tallies
       call write_dataset(file_id, "n_global_tallies", N_GLOBAL_TALLIES)
@@ -756,7 +756,8 @@ contains
 #endif
 
       ! Read number of realizations for global tallies
-      call read_dataset(n_realizations, file_id, "n_realizations", indep=.true.)
+      call read_dataset(n_realizations_batch, file_id, "n_realizations", &
+                        indep=.true.)
 
       ! Read global tally data
       call read_dataset(global_tallies, file_id, "global_tallies")

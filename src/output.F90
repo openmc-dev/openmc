@@ -569,7 +569,7 @@ contains
     ! display header block for results
     call header("Results", 4)
 
-    n = n_realizations
+    n = n_realizations_batch
 
     if (confidence_intervals) then
       ! Calculate t-value for confidence intervals
@@ -714,7 +714,7 @@ contains
     ! Calculate t-value for confidence intervals
     if (confidence_intervals) then
       alpha = ONE - CONFIDENCE_LEVEL
-      t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
+      t_value = t_percentile(ONE - alpha/TWO, n_realizations_batch - 1)
     else
       t_value = ONE
     end if

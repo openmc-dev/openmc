@@ -736,7 +736,7 @@ contains
         ! find which material is associated with this cell (material_index
         ! is the index into the materials array)
         if (present(instance)) then
-          material_index = cells(index) % material(instance)
+          material_index = cells(index) % material(instance + 1)
         else
           material_index = cells(index) % material(1)
         end if

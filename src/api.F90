@@ -267,7 +267,8 @@ contains
     end if
 
     ! Reset global tallies
-    n_realizations = 0
+    n_realizations_batch = 0
+    n_realizations_gen = 0
     if (allocated(global_tallies)) then
       global_tallies(:, :) = ZERO
     end if
@@ -275,10 +276,6 @@ contains
     k_col_tra = ZERO
     k_abs_tra = ZERO
     k_sum(:) = ZERO
-
-    ! Set the number of inactive batches (used to compute k_eff for the fission
-    ! bank).
-    n_inactive = current_batch
 
     ! Clear active tally lists
     call active_analog_tallies % clear()

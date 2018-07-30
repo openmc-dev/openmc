@@ -380,7 +380,7 @@ contains
 
     ! Determine overall generation and number of active generations
     i = overall_generation()
-    n = i - n_inactive*gen_per_batch
+    n = n_realizations_gen
 
     if (n <= 0) then
       ! For inactive generations, use current generation k as estimate for next
@@ -438,13 +438,13 @@ contains
 
     ! Make sure we have at least four realizations. Notice that at the end,
     ! there is a N-3 term in a denominator.
-    if (n_realizations <= 3) then
+    if (n_realizations_batch <= 3) then
       err = -1
       return
     end if
 
     ! Initialize variables
-    n = real(n_realizations, 8)
+    n = real(n_realizations_batch, 8)
 
     ! Copy estimates of k-effective and its variance (not variance of the mean)
     kv(1) = global_tallies(RESULT_SUM, K_COLLISION) / n

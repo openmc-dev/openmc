@@ -39,7 +39,7 @@ def sm150():
 def gd154():
     """Gd154 ENDF data (contains Reich Moore resonance range)"""
     filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-064_Gd_154.endf')
-    return openmc.data.IncidentNeutron.from_endf(filename, covariance = True)
+    return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
 
 
 @pytest.fixture(scope='module')

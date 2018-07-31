@@ -295,10 +295,10 @@ def test_mlbw_cov(ti50):
     assert cov.energy_max == pytest.approx(587000.)
     assert cov.covariance[0,0] == pytest.approx(1.410177e5)
 
-    subset = cov.res_subset('L',[1,1])
+    subset = cov.subset('L',[1,1])
     assert not subset.parameters.empty
     assert (subset.file2res.parameters['L'] == 1).all()
-    samples = cov.sample_resonance_parameters(1)
+    samples = cov.sample(1)
     xs = samples[0].reconstruct([10., 100., 1000.])
     assert sorted(xs.keys()) == [2, 18, 102]
 
@@ -314,10 +314,10 @@ def test_rm_cov(gd154):
     assert cov.energy_max == pytest.approx(2760.)
     assert cov.covariance[0,0] == pytest.approx(0.8895997)
 
-    subset = cov.res_subset('energy',[0,100])
+    subset = cov.subset('energy',[0,100])
     assert not subset.parameters.empty
     assert (subset.file2res.parameters['energy'] < 100).all()
-    samples = cov.sample_resonance_parameters(1)
+    samples = cov.sample(1)
     xs = samples[0].reconstruct([10., 100., 1000.])
     assert sorted(xs.keys()) == [2, 18, 102]
 

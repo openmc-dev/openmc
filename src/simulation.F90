@@ -281,9 +281,6 @@ contains
       if (entropy_on) call shannon_entropy()
 
       ! Collect results and statistics
-      if (current_batch > n_inactive) then
-        n_realizations_gen = n_realizations_gen + 1
-      end if
       call calculate_generation_keff()
       call calculate_average_keff()
 
@@ -328,7 +325,7 @@ contains
     ! Reset global tally results
     if (current_batch <= n_inactive) then
       global_tallies(:,:) = ZERO
-      n_realizations_batch = 0
+      n_realizations = 0
     end if
 
     if (run_mode == MODE_EIGENVALUE) then
@@ -376,9 +373,6 @@ contains
 
     if (run_mode == MODE_EIGENVALUE) then
       do current_gen = 1, gen_per_batch
-        if (current_batch > n_inactive) then
-          n_realizations_gen = n_realizations_gen + 1
-        end if
         call calculate_average_keff()
 
         ! print out batch keff

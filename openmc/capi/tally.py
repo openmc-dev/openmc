@@ -116,7 +116,7 @@ def global_tallies():
 
 def num_realizations():
     """Number of realizations of global tallies."""
-    return c_int32.in_dll(_dll, 'n_realizations_batch').value
+    return c_int32.in_dll(_dll, 'n_realizations').value
 
 
 class Tally(_FortranObjectWithID):

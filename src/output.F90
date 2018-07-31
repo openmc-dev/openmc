@@ -324,7 +324,11 @@ contains
 
     ! Determine overall generation and number of active generations
     i = overall_generation()
-    n = i - n_inactive*gen_per_batch
+    if (current_batch > n_inactive) then
+      n = gen_per_batch*n_realizations + current_gen
+    else
+      n = 0
+    end if
 
     ! write out information about batch and generation
     write(UNIT=OUTPUT_UNIT, FMT='(2X,A9)', ADVANCE='NO') &
@@ -357,7 +361,7 @@ contains
 
     ! Determine overall generation and number of active generations
     i = current_batch*gen_per_batch
-    n = i - n_inactive*gen_per_batch
+    n = n_realizations*gen_per_batch
 
     ! write out information batch and option independent output
     write(UNIT=OUTPUT_UNIT, FMT='(2X,A9)', ADVANCE='NO') &
@@ -569,7 +573,7 @@ contains
     ! display header block for results
     call header("Results", 4)
 
-    n = n_realizations_batch
+    n = n_realizations
 
     if (confidence_intervals) then
       ! Calculate t-value for confidence intervals
@@ -714,7 +718,7 @@ contains
     ! Calculate t-value for confidence intervals
     if (confidence_intervals) then
       alpha = ONE - CONFIDENCE_LEVEL
-      t_value = t_percentile(ONE - alpha/TWO, n_realizations_batch - 1)
+      t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
     else
       t_value = ONE
     end if

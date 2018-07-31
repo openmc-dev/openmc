@@ -1,4 +1,4 @@
-from collections import defaultdict, MutableSequence, Iterable
+from collections import MutableSequence
 import warnings
 import io
 import copy
@@ -109,7 +109,7 @@ class ResonanceCovariances(Resonances):
 
                 # Throw error for unsupported formalisms
                 if formalism in [0, 7]:
-                    error = 'LRF = '+str(formalism)+'covariance not supported '\
+                    error = 'LRF='+str(formalism)+' covariance not supported '\
                             'for this formalism'
                     raise NotImplementedError(error)
 
@@ -150,6 +150,8 @@ class ResonanceCovarianceRange:
         The covariance matrix contained within the ENDF evaluation
     lcomp : int
         Flag indicating format of the covariance matrix within the ENDF file
+    file2res : openmc.data.ResonanceRange object
+        Corresponding resonance range with File 2 data.
     mpar : int
         Number of parameters in covariance matrix for each individual resonance
     formalism : str
@@ -159,7 +161,7 @@ class ResonanceCovarianceRange:
         self.energy_min = energy_min
         self.energy_max = energy_max
 
-    def res_subset(self, parameter_str, bounds):
+    def subset(self, parameter_str, bounds):
         """Produce a subset of resonance parameters and the corresponding
         covariance matrix to an IncidentNeutron object.
 
@@ -210,7 +212,7 @@ class ResonanceCovarianceRange:
         res_cov_range.covariance = cov_subset
         return res_cov_range
 
-    def sample_resonance_parameters(self, n_samples):
+    def sample(self, n_samples):
         """Sample resonance parameters based on the covariances provided
         within an ENDF evaluation.
 
@@ -286,7 +288,7 @@ class ResonanceCovarianceRange:
                 gn = sample[1::mpar]
                 gg = sample[2::mpar]
                 gfa = sample[3::mpar] if mpar > 3 else parameters['fissionWidthA'].values
-                gfb = sample[3::mpar] if mpar > 3 else parameters['fissionWidthB'].values
+                gfb = sample[4::mpar] if mpar > 3 else parameters['fissionWidthB'].values
 
                 records = []
                 for j, E in enumerate(energy):
@@ -415,16 +417,6 @@ class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
                 indices = np.triu_indices(cov_dim)
                 cov[indices] = cov_values
 
-            # Create pandas DataFrame with resonance data, currently
-            # redundant with data.IncidentNeutron.resonance
-            columns = ['energy', 'J', 'totalWidth', 'neutronWidth',
-                       'captureWidth', 'fissionWidth']
-            parameters = pd.DataFrame.from_records(records, columns=columns)
-
-            # Add parameters from File 2
-            parameters = _add_file2_contributions(parameters,
-                                                  resonance.parameters)
-
         # Compact format - Resonances and individual uncertainties followed by
         # compact correlations
         elif lcomp == 2:
@@ -458,21 +450,7 @@ class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
             corr = endf.get_intg_record(file_obj)
             cov = np.diag(par_unc).dot(corr).dot(np.diag(par_unc))
 
-            # Create pandas DataFrame with resonacne data
-            columns = ['energy', 'J', 'totalWidth', 'neutronWidth',
-                       'captureWidth', 'fissionWidth']
-            parameters = pd.DataFrame.from_records(records, columns=columns)
-
-            # Determine mpar (number of parameters for each resonance in
-            # covariance matrix)
-            nparams, params = parameters.shape
-            covsize = cov.shape[0]
-            mpar = int(covsize/nparams)
-
-            # Add parameters from File 2
-            parameters = _add_file2_contributions(parameters,
-                                                  resonance.parameters)
-
+        # Compatible resolved resonance format
         elif lcomp == 0:
             cov = np.zeros([4, 4])
             records = []
@@ -500,22 +478,19 @@ class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
                         cov = np.pad(cov, ((0, 4), (0, 4)), 'constant',
                                      constant_values=0)
 
-            # Create pandas DataFrame with resonance data, currently
-            # redundant with data.IncidentNeutron.resonance
-            columns = ['energy', 'J', 'totalWidth', 'neutronWidth',
-                       'captureWidth', 'fissionWidth']
-            parameters = pd.DataFrame.from_records(records, columns=columns)
-
-            # Determine mpar (number of parameters for each resonance in
-            # covariance matrix)
-            nparams, params = parameters.shape
-            covsize = cov.shape[0]
-            mpar = int(covsize/nparams)
-
-            # Add parameters from File 2
-            parameters = _add_file2_contributions(parameters,
-                                                  resonance.parameters)
-
+        # Create pandas DataFrame with resonance data, currently
+        # redundant with data.IncidentNeutron.resonance
+        columns = ['energy', 'J', 'totalWidth', 'neutronWidth',
+                   'captureWidth', 'fissionWidth']
+        parameters = pd.DataFrame.from_records(records, columns=columns)
+        # Determine mpar (number of parameters for each resonance in
+        # covariance matrix)
+        nparams, params = parameters.shape
+        covsize = cov.shape[0]
+        mpar = int(covsize/nparams)
+        # Add parameters from File 2
+        parameters = _add_file2_contributions(parameters,
+                                              resonance.parameters)
         # Create instance of class
         mlbw = cls(energy_min, energy_max, parameters, cov, mpar, lcomp,
                    resonance)
@@ -678,15 +653,6 @@ class ReichMooreCovariance(ResonanceCovarianceRange):
                 indices = np.triu_indices(cov_dim)
                 cov[indices] = cov_values
 
-            # Create pandas DataFrame with resonance data
-            columns = ['energy', 'J', 'neutronWidth', 'captureWidth',
-                       'fissionWidthA', 'fissionWidthB']
-            parameters = pd.DataFrame.from_records(records, columns=columns)
-
-            # Add parameters from File 2
-            parameters = _add_file2_contributions(parameters,
-                                                  resonance.parameters)
-
         # Compact format - Resonances and individual uncertainties followed by
         # compact correlations
         elif lcomp == 2:
@@ -713,21 +679,20 @@ class ReichMooreCovariance(ResonanceCovarianceRange):
             corr = endf.get_intg_record(file_obj)
             cov = np.diag(par_unc).dot(corr).dot(np.diag(par_unc))
 
-            # Create pandas DataFrame with resonacne data
-            columns = ['energy', 'J', 'neutronWidth', 'captureWidth',
-                       'fissionWidthA', 'fissionWidthB']
-            parameters = pd.DataFrame.from_records(records, columns=columns)
+        # Create pandas DataFrame with resonacne data
+        columns = ['energy', 'J', 'neutronWidth', 'captureWidth',
+                   'fissionWidthA', 'fissionWidthB']
+        parameters = pd.DataFrame.from_records(records, columns=columns)
 
-            # Determine mpar (number of parameters for each resonance in
-            # covariance matrix)
-            nparams, params = parameters.shape
-            covsize = cov.shape[0]
-            mpar = int(covsize/nparams)
+        # Determine mpar (number of parameters for each resonance in
+        # covariance matrix)
+        nparams, params = parameters.shape
+        covsize = cov.shape[0]
+        mpar = int(covsize/nparams)
 
-            # Add parameters from File 2
-            parameters = _add_file2_contributions(parameters,
-                                                  resonance.parameters)
-
+        # Add parameters from File 2
+        parameters = _add_file2_contributions(parameters,
+                                              resonance.parameters)
         # Create instance of ReichMooreCovariance
         rmc = cls(energy_min, energy_max, parameters, cov, mpar, lcomp,
                   resonance)

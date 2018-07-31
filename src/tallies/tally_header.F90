@@ -145,9 +145,8 @@ module tally_header
   type(VectorInt), public :: active_tallies
   type(VectorInt), public :: active_surface_tallies
 
-  ! Normalization for batch-based and generation-based global tally statistics
-  integer(C_INT32_T), public, bind(C) :: n_realizations_batch = 0
-  integer(C_INT32_T), public, bind(C) :: n_realizations_gen = 0
+  ! Normalization for statistics
+  integer(C_INT32_T), public, bind(C) :: n_realizations = 0 ! # of independent realizations
   real(8), public :: total_weight       ! total starting particle weight in realization
 
 contains

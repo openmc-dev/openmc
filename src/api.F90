@@ -267,8 +267,7 @@ contains
     end if
 
     ! Reset global tallies
-    n_realizations_batch = 0
-    n_realizations_gen = 0
+    n_realizations = 0
     if (allocated(global_tallies)) then
       global_tallies(:, :) = ZERO
     end if

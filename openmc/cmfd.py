@@ -14,11 +14,17 @@ from collections.abc import Iterable
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
+import numpy as np
+import openmc.capi
+from openmc.exceptions import AllocationError
 
 from openmc.clean_xml import clean_xml_indentation
 from openmc.checkvalue import (check_type, check_length, check_value,
                                check_greater_than, check_less_than)
 
+# Maximum/minimum neutron energies, from src/api.F90
+ENERGY_MAX_NEUTRON = np.inf
+ENERGY_MIN_NEUTRON = 0.
 
 class CMFDMesh(object):
     """A structured Cartesian mesh used for Coarse Mesh Finite Difference (CMFD)
@@ -119,12 +125,16 @@ class CMFDMesh(object):
     def dimension(self, dimension):
         check_type('CMFD mesh dimension', dimension, Iterable, Integral)
         check_length('CMFD mesh dimension', dimension, 2, 3)
+        for d in dimension:
+            check_greater_than('CMFD mesh dimension', d, 0)
         self._dimension = dimension
 
     @width.setter
     def width(self, width):
         check_type('CMFD mesh width', width, Iterable, Real)
         check_length('CMFD mesh width', width, 2, 3)
+        for w in width:
+            check_greater_than('CMFD mesh width', w, 0)
         self._width = width
 
     @energy.setter
@@ -518,3 +528,479 @@ class CMFD(object):
         tree = ET.ElementTree(self._cmfd_file)
         tree.write("cmfd.xml", xml_declaration=True,
                    encoding='utf-8', method="xml")
+
+class CMFDRun(object):
+    r"""Class to run openmc with CMFD acceleration through the C API. Running
+    openmc through this manner obviates the need of defining CMFD parameters
+    through a cmfd.xml file. Instead, all input parameters should be passed through
+    the CMFDRun initializer.
+
+    Self notes:
+    Have it so that only required parameters part of __init__, all other parameters
+        need to be set through setter functions
+    Require CMFD parameters if this routine called?
+    cmfd_run needs to be false in settings.xml, implication is either openmc called through cmfd.xml or through CMFDRun
+    does order of how things are being called matter?
+        (read_input_xml in input_xml.F90)
+        (openmc_init_f in initialize.F90)
+    Tell user anything when turning configure cmfd called? How to print to buffer?
+    When do things get initialized in beginning of cmfd_header? ok in __init__, or should all parameters be set to None?
+    Define external variables like flux, xs, matrices in init or later?
+    Make sure all input variables are used / have coveragage somewhere in code
+    Store indices of meshes, tallies relevant to CMFD?
+    raise AllocationError or use openmc.checkvalue?
+    All error checking for CMFDMesh attributes done in CMFDMesh setter function instead of create_cmfd_tally
+    Some variables stored as numpy array, some as list, based on how user defines them, is that ok?
+    Setting tally macro bins correctly?
+    Lines unable to replicate in create_cmfd_tally
+        281 - Set mesh type to rectangular
+        291 - Set mesh n_dimension
+        369 - Set volume fraction
+        441 - Set reset variable for each tally
+        453 - Set number of nuclide bins for each tally
+
+
+    Input parameters: Fill out, specifying which ones are required for CMFDRun
+        Required: cmfd_mesh, cmfd_mesh.dimension, cmfd_mesh.lower_left
+
+    Ignore:
+        1) MG mode - read_cmfd_xml
+        2) configure_cmfd
+            call time_cmfd % reset()
+            call time_cmfdbuild % reset()
+            call time_cmfdsolve % reset()
+        3) cmfd_adjoint_type input parameter, either set to 'physical' or 'math' - see cmfd_solver.F90
+
+
+
+    Attributes
+    ----------
+    To add: cmfd_coremap: Flag for active core map
+            indices: Stores spatial and group dimensions as [nx, ny, nz, ng]
+            egrid: energy grid used for CMFD acceleration
+            albedo: Albedo for global boundary conditions, taken from CMFD mesh. Set to [1,1,1,1,1,1] if not specified by user
+            cmfd_coremap: Optional acceleration map to overlay on coarse mesh spatial grid, taken from CMFD mesh
+            n_cmfd_resets: Number of elements in tally_reset, list that stores batches where CMFD tallies should be reset
+            cmfd_atoli: Absolute GS tolerance, set by gauss_seidel_tolerance
+            cmfd_rtoli: Relative GS tolerance, set by gauss_seidel_tolerance
+            cmfd_mesh_id: Mesh id of openmc.capi.Mesh object that corresponds to the CMFD mesh
+            energy_filters: Boolean that stores whether energy filters should be created or not.
+                Set to true if user specifies energy grid in CMFDMesh, false otherwise
+
+    TODO: Put descriptions for all methods in CMFDRun
+
+    """
+
+    def __init__(self):
+        '''
+        self._begin = None
+        self._dhat_reset = None
+        self._display = None
+        self._downscatter = None
+        self._feedback = None
+        self._gauss_seidel_tolerance = None
+        self._ktol = None
+        self._cmfd_mesh = None
+        self._norm = None
+        self._power_monitor = None
+        self._run_adjoint = None
+        self._shift = None
+        self._spectral = None
+        self._stol = None
+        self._tally_reset = None
+        self._write_matrices = None
+        '''
+
+        # Set CMFD default parameters based on cmfd_header.F90
+        # Input parameters that user can define
+        self._cmfd_begin = 1
+        self._dhat_reset = False
+        self._cmfd_display = 'balance'
+        self._cmfd_downscatter = False
+        self._cmfd_feedback = False
+        self._gauss_seidel_tolerance = [1.e-10, 1.e-5]
+        self._cmfd_ktol = 1.e-8
+        self._cmfd_mesh = None
+        self._norm = 1.
+        self._cmfd_power_monitor = False
+        self._cmfd_run_adjoint = False
+        self._cmfd_shift = 1.e-6
+        self._cmfd_spectral = 0.
+        self._cmfd_stol = 1.e-8
+        self._cmfd_reset = None
+        self._cmfd_write_matrices = False
+
+        # External variables used during runtime but users don't have control over
+        self._cmfd_coremap = False
+        self._indices = np.zeros(4, dtype=int)
+        self._egrid = None
+        self._albedo = None
+        self._coremap = None
+        self._n_cmfd_resets = 0
+        self._cmfd_atoli = None
+        self._cmfd_rtoli = None
+        self._cmfd_mesh_id = None
+        self._energy_filters = None
+
+        # All timing variables
+
+
+
+    @property
+    def cmfd_begin(self):
+        return self._cmfd_begin
+
+    @property
+    def dhat_reset(self):
+        return self._dhat_reset
+
+    @property
+    def display(self):
+        return self._display
+
+    @property
+    def cmfd_downscatter(self):
+        return self._cmfd_downscatter
+
+    @property
+    def cmfd_feedback(self):
+        return self._cmfd_feedback
+
+    @property
+    def gauss_seidel_tolerance(self):
+        return self._gauss_seidel_tolerance
+
+    @property
+    def cmfd_ktol(self):
+        return self._cmfd_ktol
+
+    @property
+    def cmfd_mesh(self):
+        return self._cmfd_mesh
+
+    @property
+    def norm(self):
+        return self._norm
+
+    @property
+    def cmfd_power_monitor(self):
+        return self._cmfd_power_monitor
+
+    @property
+    def cmfd_run_adjoint(self):
+        return self._cmfd_run_adjoint
+
+    @property
+    def cmfd_shift(self):
+        return self._cmfd_shift
+
+    @property
+    def cmfd_spectral(self):
+        return self._cmfd_spectral
+
+    @property
+    def cmfd_stol(self):
+        return self._cmfd_stol
+
+    @property
+    def cmfd_reset(self):
+        return self._cmfd_reset
+
+    @property
+    def cmfd_write_matrices(self):
+        return self._cmfd_write_matrices
+
+    @cmfd_begin.setter
+    def cmfd_begin(self, cmfd_begin):
+        check_type('CMFD begin batch', cmfd_begin, Integral)
+        check_greater_than('CMFD begin batch', cmfd_begin, 0)
+        self._cmfd_begin = begin
+
+    @dhat_reset.setter
+    def dhat_reset(self, dhat_reset):
+        check_type('CMFD Dhat reset', dhat_reset, bool)
+        self._dhat_reset = dhat_reset
+
+    @display.setter
+    def display(self, display):
+        check_type('CMFD display', display, str)
+        check_value('CMFD display', display,
+                    ['balance', 'dominance', 'entropy', 'source'])
+        self._display = display
+
+    @cmfd_downscatter.setter
+    def cmfd_downscatter(self, cmfd_downscatter):
+        check_type('CMFD downscatter', cmfd_downscatter, bool)
+        self._cmfd_downscatter = cmfd_downscatter
+
+    @cmfd_feedback.setter
+    def cmfd_feedback(self, cmfd_feedback):
+        check_type('CMFD feedback', cmfd_feedback, bool)
+        self._cmfd_feedback = cmfd_feedback
+
+    @gauss_seidel_tolerance.setter
+    def gauss_seidel_tolerance(self, gauss_seidel_tolerance):
+        check_type('CMFD Gauss-Seidel tolerance', gauss_seidel_tolerance,
+                   Iterable, Real)
+        check_length('Gauss-Seidel tolerance', gauss_seidel_tolerance, 2)
+        self._gauss_seidel_tolerance = gauss_seidel_tolerance
+
+    @cmfd_ktol.setter
+    def cmfd_ktol(self, cmfd_ktol):
+        check_type('CMFD eigenvalue tolerance', cmfd_ktol, Real)
+        self._cmfd_ktol = cmfd_ktol
+
+    @cmfd_mesh.setter
+    def cmfd_mesh(self, mesh):
+        check_type('CMFD mesh', mesh, CMFDMesh)
+
+        # Check dimension defined
+        if mesh.dimension is None:
+            raise AllocationError('CMFD mesh requires spatial '
+                                  'dimensions to be specified')
+
+        # Check lower left defined
+        if mesh.lower_left is None:
+            raise AllocationError('CMFD mesh requires lower left coordinates '
+                                  'to be specified')
+
+        # Check that both upper right and width both not defined
+        if mesh.upper_right is not None and mesh.width is not None:
+            raise AllocationError('Both upper right coordinates and width '
+                                  'cannot be specified for CMFD mesh')
+
+        # Check that at least one of width or upper right is defined
+        if mesh.upper_right is None and mesh.width is None:
+            raise AllocationError('CMFD mesh requires either upper right '
+                                  'coordinates or width to be specified')
+
+        # Check width and lower length are same dimension and define upper_right
+        if mesh.width is not None:
+            check_length('CMFD mesh width', mesh.width, len(mesh.lower_left))
+            mesh.upper_right = np.array(mesh.lower_left) + \
+                               np.array(mesh.width) * np.array(mesh.dimension)
+
+        # Check upper_right and lower length are same dimension and define width
+        elif mesh.upper_right is not None:
+            check_length('CMFD mesh upper right', mesh.upper_right, \
+                         len(mesh.lower_left))
+            # Check upper right coordinates are greater than lower left
+            if np.any(np.array(mesh.upper_right) <= np.array(mesh.lower_left)):
+                raise AllocationError('CMFD mesh requires upper right '
+                                      'coordinates to be greater than lower '
+                                      'left coordinates')
+            mesh.width = np.true_divide(
+                         (np.array(mesh.upper_right) - np.array(mesh.lower_left)), \
+                         np.array(mesh.dimension))
+        self._cmfd_mesh = mesh
+
+    @norm.setter
+    def norm(self, norm):
+        check_type('CMFD norm', norm, Real)
+        self._norm = norm
+
+    @cmfd_power_monitor.setter
+    def cmfd_power_monitor(self, cmfd_power_monitor):
+        check_type('CMFD power monitor', cmfd_power_monitor, bool)
+        self._cmfd_power_monitor = cmfd_power_monitor
+
+    @cmfd_run_adjoint.setter
+    def cmfd_run_adjoint(self, cmfd_run_adjoint):
+        check_type('CMFD run adjoint', cmfd_run_adjoint, bool)
+        self._cmfd_run_adjoint = cmfd_run_adjoint
+
+    @cmfd_shift.setter
+    def cmfd_shift(self, cmfd_shift):
+        check_type('CMFD Wielandt shift', cmfd_shift, Real)
+        self._cmfd_shift = cmfd_shift
+
+    @cmfd_spectral.setter
+    def cmfd_spectral(self, cmfd_spectral):
+        check_type('CMFD spectral radius', cmfd_spectral, Real)
+        self._cmfd_spectral = cmfd_spectral
+
+    @cmfd_stol.setter
+    def cmfd_stol(self, cmfd_stol):
+        check_type('CMFD fission source tolerance', cmfd_stol, Real)
+        self._cmfd_stol = cmfd_stol
+
+    @cmfd_reset.setter
+    def cmfd_reset(self, cmfd_reset):
+        check_type('tally reset batches', cmfd_reset, Iterable, Integral)
+        self._cmfd_reset = cmfd_reset
+
+    @cmfd_write_matrices.setter
+    def cmfd_write_matrices(self, cmfd_write_matrices):
+        check_type('CMFD write matrices', cmfd_write_matrices, bool)
+        self._cmfd_write_matrices = cmfd_write_matrices
+
+    def run(self):
+        openmc.capi.init()
+        self._configure_cmfd()
+        openmc.capi.simulation_init()
+        while True:
+            sys.exit()
+            # Look at how openmc.capi.run is defined
+            openmc.capi.next_batch(status)
+            #self._solve_cmfd()
+
+        openmc.capi.simulation_finalize()
+        openmc.capi.finalize()
+
+    def _configure_cmfd(self):
+        # TODO Tell user
+        # print('Configuring CMFD parameters for simulation')
+
+        # Check if CMFD mesh is defined
+        if self._cmfd_mesh is None:
+            raise AllocationError('No CMFD mesh has been specified for '
+                                  'simulation')
+
+        # Set spatial dimensions of CMFD object
+        # Iterate through each element of self._cmfd_mesh.dimension as could be
+        # length 2 or 3
+        for i, n in enumerate(self._cmfd_mesh.dimension):
+            self._indices[i] = n
+
+        # Set number of energy groups
+        if self._cmfd_mesh.energy is not None:
+            ng = len(self._cmfd_mesh.energy)
+            self._egrid = np.array(self._cmfd_mesh.energy)
+            self._indices[3] = ng - 1
+            self._energy_filters = True
+            # TODO: MG mode check
+        else:
+            self._egrid = np.array([ENERGY_MIN_NEUTRON, ENERGY_MAX_NEUTRON])
+            self._indices[3] = 1
+            self._energy_filters = False
+
+        # Set global albedo
+        if self._cmfd_mesh.albedo is not None:
+            self._albedo = np.array(self._cmfd_mesh.albedo)
+        else:
+            self._albedo = np.array([1.,1.,1.,1.,1.,1.])
+
+        # Get acceleration map
+        if self._cmfd_mesh.map is not None:
+            check_length('CMFD coremap', self._cmfd_mesh.map,
+                         np.product(self._indices[0:3]))
+            self._coremap = np.array(self._cmfd_mesh.map).reshape(( \
+                            self._indices[0], self._indices[1], \
+                            self._indices[2]))
+            self._cmfd_coremap = True
+
+        # Set number of batches where cmfd tallies should be reset
+        if self._cmfd_reset is not None:
+            self._n_cmfd_resets = len(self._cmfd_reset)
+
+        # Set Gauss Sidel tolerances
+        self._cmfd_atoli = self._gauss_seidel_tolerance[0]
+        self._cmfd_rtoli = self._gauss_seidel_tolerance[1]
+
+        # Create tally objects
+        self._create_cmfd_tally()
+
+    def _create_cmfd_tally(self):
+        # Create Mesh object based on CMFDMesh, stored internally
+        cmfd_mesh = openmc.capi.Mesh()
+        # Store id of Mesh object
+        self._cmfd_mesh_id = cmfd_mesh.id
+        # TODO Set mesh type to rectangular
+        # TODO Set n_dimension of Mesh object
+        # TODO Set volume fraction
+        # Set dimension and parameters of Mesh object
+        cmfd_mesh.dimension = self._cmfd_mesh.dimension
+        cmfd_mesh.set_parameters(lower_left=self._cmfd_mesh.lower_left,
+                                 upper_right=self._cmfd_mesh.upper_right,
+                                 width=self._cmfd_mesh.width)
+
+        # Create Mesh Filter object, stored internally
+        mesh_filter = openmc.capi.MeshFilter()
+        # Set mesh for Mesh Filter
+        mesh_filter.mesh = cmfd_mesh
+
+        # Set up energy filters, if applicable
+        if self._energy_filters:
+            # Create Energy Filter object, stored internally
+            energy_filter = openmc.capi.EnergyFilter()
+            # Set bins for Energy Filter
+            energy_filter.bins = self._egrid
+
+            # Create Energy Out Filter object, stored internally
+            energyout_filter = openmc.capi.EnergyoutFilter()
+            # Set bins for Energy Filter
+            energyout_filter.bins = self._egrid
+
+        # Create Mesh Surface Filter object, stored internally
+        meshsurface_filter = openmc.capi.MeshSurfaceFilter()
+        # Set mesh for Mesh Surface Filter
+        meshsurface_filter.mesh = cmfd_mesh
+
+        # Create Legendre Filter object, stored internally
+        legendre_filter = openmc.capi.LegendreFilter()
+        # Set order for Legendre Filter
+        legendre_filter.order = 1
+
+        # Create CMFD tallies, stored internally
+        n_tallies = 4
+        for i in range(n_tallies):
+            tally = openmc.capi.Tally()
+            # TODO: set tally reset variable
+            # TODO: set nuclide bins
+
+            # Set attributes of CMFD flux, total tally
+            if i == 0:
+                # TODO: Set name to "CMFD flux, total"
+                # TODO: Set tally estimator to ESTIMATOR_ANALOG
+                # TODO: Set tally type to TALLY_VOLUME
+                # Set filters for tally
+                if self._energy_filters:
+                    tally.filters = [mesh_filter, energy_filter]
+                else:
+                    tally.filters = [mesh_filter]
+                # Set scores for tally
+                tally.scores = ['flux', 'total']
+
+            # Set attributes of CMFD neutron production tally
+            if i == 1:
+                # TODO: Set name to "CMFD neutron production"
+                # TODO: Set tally estimator to ESTIMATOR_ANALOG
+                # TODO: Set tally type to TALLY_VOLUME
+                # Set filters for tally
+                if self._energy_filters:
+                    tally.filters = [mesh_filter, energy_filter, energyout_filter]
+                else:
+                    tally.filters = [mesh_filter]
+                # Set scores for tally
+                tally.scores = ['nu-scatter', 'nu-fission']
+
+            # Set attributes of CMFD surface current tally
+            if i == 2:
+                # TODO: Set name to "CMFD surface currents"
+                # TODO: Set tally estimator to ESTIMATOR_ANALOG
+                # TODO: Set tally type to TALLY_MESH_SURFACE
+                # Set filters for tally
+                if self._energy_filters:
+                    tally.filters = [meshsurface_filter, energy_filter]
+                else:
+                    tally.filters = [meshsurface_filter]
+                # Set scores for tally
+                tally.scores = ['current']
+
+            # Set attributes of CMFD P1 scatter tally
+            if i == 3:
+                # TODO: Set name to "CMFD P1 scatter"
+                # TODO: Set tally estimator to ESTIMATOR_ANALOG
+                # TODO: Set tally type to TALLY_VOLUME
+                # Set filters for tally
+                if self._energy_filters:
+                    tally.filters = [mesh_filter, legendre_filter, energy_filter]
+                else:
+                    tally.filters = [mesh_filter, legendre_filter]
+                # Set scores for tally
+                tally.scores = ['scatter']
+
+            # Set all tallies to be active from beginning
+            tally.active = True
+
+        # TODO: Stores id's of filters and tallies

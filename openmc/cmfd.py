@@ -538,26 +538,7 @@ class CMFDRun(object):
     Self notes:
     Have it so that only required parameters part of __init__, all other parameters
         need to be set through setter functions
-    Require CMFD parameters if this routine called?
-    cmfd_run needs to be false in settings.xml, implication is either openmc called through cmfd.xml or through CMFDRun
-    does order of how things are being called matter?
-        (read_input_xml in input_xml.F90)
-        (openmc_init_f in initialize.F90)
-    Tell user anything when turning configure cmfd called? How to print to buffer?
-    When do things get initialized in beginning of cmfd_header? ok in __init__, or should all parameters be set to None?
-    Define external variables like flux, xs, matrices in init or later?
     Make sure all input variables are used / have coveragage somewhere in code
-    Store indices of meshes, tallies relevant to CMFD?
-    raise AllocationError or use openmc.checkvalue?
-    All error checking for CMFDMesh attributes done in CMFDMesh setter function instead of create_cmfd_tally
-    Some variables stored as numpy array, some as list, based on how user defines them, is that ok?
-    Setting tally macro bins correctly?
-    Lines unable to replicate in create_cmfd_tally
-        281 - Set mesh type to rectangular
-        291 - Set mesh n_dimension
-        369 - Set volume fraction
-        441 - Set reset variable for each tally
-        453 - Set number of nuclide bins for each tally
 
 
     Input parameters: Fill out, specifying which ones are required for CMFDRun
@@ -592,24 +573,6 @@ class CMFDRun(object):
     """
 
     def __init__(self):
-        '''
-        self._begin = None
-        self._dhat_reset = None
-        self._display = None
-        self._downscatter = None
-        self._feedback = None
-        self._gauss_seidel_tolerance = None
-        self._ktol = None
-        self._cmfd_mesh = None
-        self._norm = None
-        self._power_monitor = None
-        self._run_adjoint = None
-        self._shift = None
-        self._spectral = None
-        self._stol = None
-        self._tally_reset = None
-        self._write_matrices = None
-        '''
 
         # Set CMFD default parameters based on cmfd_header.F90
         # Input parameters that user can define
@@ -642,7 +605,7 @@ class CMFDRun(object):
         self._cmfd_mesh_id = None
         self._energy_filters = None
 
-        # All timing variables
+        # TODO All timing variables
 
 
 
@@ -838,12 +801,7 @@ class CMFDRun(object):
         openmc.capi.init()
         self._configure_cmfd()
         openmc.capi.simulation_init()
-        while True:
-            sys.exit()
-            # Look at how openmc.capi.run is defined
-            openmc.capi.next_batch(status)
-            #self._solve_cmfd()
-
+        openmc.capi.run()
         openmc.capi.simulation_finalize()
         openmc.capi.finalize()
 
@@ -905,9 +863,6 @@ class CMFDRun(object):
         cmfd_mesh = openmc.capi.Mesh()
         # Store id of Mesh object
         self._cmfd_mesh_id = cmfd_mesh.id
-        # TODO Set mesh type to rectangular
-        # TODO Set n_dimension of Mesh object
-        # TODO Set volume fraction
         # Set dimension and parameters of Mesh object
         cmfd_mesh.dimension = self._cmfd_mesh.dimension
         cmfd_mesh.set_parameters(lower_left=self._cmfd_mesh.lower_left,
@@ -945,14 +900,10 @@ class CMFDRun(object):
         n_tallies = 4
         for i in range(n_tallies):
             tally = openmc.capi.Tally()
-            # TODO: set tally reset variable
-            # TODO: set nuclide bins
+            # Set nuclide bins
 
             # Set attributes of CMFD flux, total tally
             if i == 0:
-                # TODO: Set name to "CMFD flux, total"
-                # TODO: Set tally estimator to ESTIMATOR_ANALOG
-                # TODO: Set tally type to TALLY_VOLUME
                 # Set filters for tally
                 if self._energy_filters:
                     tally.filters = [mesh_filter, energy_filter]
@@ -963,9 +914,6 @@ class CMFDRun(object):
 
             # Set attributes of CMFD neutron production tally
             if i == 1:
-                # TODO: Set name to "CMFD neutron production"
-                # TODO: Set tally estimator to ESTIMATOR_ANALOG
-                # TODO: Set tally type to TALLY_VOLUME
                 # Set filters for tally
                 if self._energy_filters:
                     tally.filters = [mesh_filter, energy_filter, energyout_filter]
@@ -976,9 +924,6 @@ class CMFDRun(object):
 
             # Set attributes of CMFD surface current tally
             if i == 2:
-                # TODO: Set name to "CMFD surface currents"
-                # TODO: Set tally estimator to ESTIMATOR_ANALOG
-                # TODO: Set tally type to TALLY_MESH_SURFACE
                 # Set filters for tally
                 if self._energy_filters:
                     tally.filters = [meshsurface_filter, energy_filter]
@@ -989,9 +934,6 @@ class CMFDRun(object):
 
             # Set attributes of CMFD P1 scatter tally
             if i == 3:
-                # TODO: Set name to "CMFD P1 scatter"
-                # TODO: Set tally estimator to ESTIMATOR_ANALOG
-                # TODO: Set tally type to TALLY_VOLUME
                 # Set filters for tally
                 if self._energy_filters:
                     tally.filters = [mesh_filter, legendre_filter, energy_filter]
@@ -1002,5 +944,3 @@ class CMFDRun(object):
 
             # Set all tallies to be active from beginning
             tally.active = True
-
-        # TODO: Stores id's of filters and tallies

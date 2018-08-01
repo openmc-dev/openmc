@@ -261,7 +261,11 @@ double CADSurface::distance(const double xyz[3], const double uvw[3], bool coinc
 }
 
 void CADSurface::normal(const double xyz[3], double uvw[3]) const {
-    return;
+
+  moab::EntityHandle surf = dagmc_ptr->entity_by_id(2, id);
+  dagmc_ptr->get_angle(surf, xyz, uvw);
+  return;
+  
 }
 
 BoundingBox CADSurface::bounding_box() const { return BoundingBox(); }

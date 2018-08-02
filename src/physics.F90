@@ -1724,7 +1724,7 @@ contains
     integer :: i
 
     ! Sample the number of photons produced
-    nu_t =  p % wgt / keff * micro_xs(i_nuclide) % photon_prod / &
+    nu_t =  p % wgt * micro_xs(i_nuclide) % photon_prod / &
          micro_xs(i_nuclide) % total
     if (prn() > nu_t - int(nu_t)) then
       nu = int(nu_t)

@@ -1,8 +1,8 @@
 # OpenMC Monte Carlo Particle Transport Code
 
-[![License](https://img.shields.io/github/license/mit-crpg/openmc.svg)](http://openmc.readthedocs.io/en/latest/license.html)
-[![Travis CI build status (Linux)](https://travis-ci.org/mit-crpg/openmc.svg?branch=develop)](https://travis-ci.org/mit-crpg/openmc)
-[![Code Coverage](https://coveralls.io/repos/github/mit-crpg/openmc/badge.svg?branch=develop)](https://coveralls.io/github/mit-crpg/openmc?branch=develop)
+[![License](https://img.shields.io/github/license/openmc-dev/openmc.svg)](http://openmc.readthedocs.io/en/latest/license.html)
+[![Travis CI build status (Linux)](https://travis-ci.org/openmc-dev/openmc.svg?branch=develop)](https://travis-ci.org/openmc-dev/openmc)
+[![Code Coverage](https://coveralls.io/repos/github/openmc-dev/openmc/badge.svg?branch=develop)](https://coveralls.io/github/openmc-dev/openmc?branch=develop)
 
 The OpenMC project aims to provide a fully-featured Monte Carlo particle
 transport code based on modern methods. It is a constructive solid geometry,
@@ -44,7 +44,7 @@ list](https://groups.google.com/forum/?fromgroups=#!forum/openmc-users).
 ## Reporting Bugs
 
 OpenMC is hosted on GitHub and all bugs are reported and tracked through the
-[Issues](https://github.com/mit-crpg/openmc/issues) feature on GitHub. However,
+[Issues](https://github.com/openmc-dev/openmc/issues) feature on GitHub. However,
 GitHub Issues should not be used for common troubleshooting purposes. If you are
 having trouble installing the code or getting your model to run properly, you
 should first send a message to the User's Group mailing list. If it turns out

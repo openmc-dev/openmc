@@ -65,8 +65,8 @@ developer or send a message to the `developers mailing list`_.
 .. _property attribute: https://docs.python.org/3.6/library/functions.html#property
 .. _XML Schema Part 2: http://www.w3.org/TR/xmlschema-2/
 .. _boolean: http://www.w3.org/TR/xmlschema-2/#boolean
-.. _xml_interface module: https://github.com/mit-crpg/openmc/blob/develop/src/xml_interface.F90
-.. _input_xml module: https://github.com/mit-crpg/openmc/blob/develop/src/input_xml.F90
+.. _xml_interface module: https://github.com/openmc-dev/openmc/blob/develop/src/xml_interface.F90
+.. _input_xml module: https://github.com/openmc-dev/openmc/blob/develop/src/input_xml.F90
 .. _RELAX NG: http://relaxng.org/
 .. _compact syntax: http://relaxng.org/compact-tutorial-20030326.html
 .. _trang: http://www.thaiopensource.com/relaxng/trang.html

@@ -1,3 +1,6 @@
+
+#ifdef CAD
+
 #ifndef CAD_H
 #define CAD_H
 
@@ -11,3 +14,5 @@ extern "C" void load_cad_geometry_c();
 extern "C" void free_memory_cad_c();
 
 #endif // CAD_H
+
+#endif

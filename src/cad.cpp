@@ -1,4 +1,6 @@
 
+#ifdef CAD
+
 #include "cad.h"
 
 moab::DagMC* DAGMC;
@@ -65,3 +67,5 @@ void free_memory_cad_c()
 {
   delete DAGMC;
 }
+
+#endif

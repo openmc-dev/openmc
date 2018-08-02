@@ -37,7 +37,8 @@ def sm150():
 
 @pytest.fixture(scope='module')
 def gd154():
-    """Gd154 ENDF data (contains Reich Moore resonance range)"""
+    """Gd154 ENDF data (contains Reich Moore resonance range and reosnance
+    covariance with LCOMP=1)."""
     filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-064_Gd_154.endf')
     return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
 
@@ -78,6 +79,13 @@ def na22():
 
 
 @pytest.fixture(scope='module')
+def na23():
+    """Na23 ENDF data (contains MLBW resonance covariance with LCOMP=0)."""
+    filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-011_Na_023.endf')
+    return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
+
+
+@pytest.fixture(scope='module')
 def be9():
     """Be9 ENDF data (contains laboratory angle-energy distribution)."""
     filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-004_Be_009.endf')
@@ -99,8 +107,23 @@ def am244():
 
 @pytest.fixture(scope='module')
 def ti50():
-    """Ti50 ENDF data (contains Multi-level Breit-Wigner resonance range)"""
+    """Ti50 ENDF data (contains Multi-level Breit-Wigner resonance range and
+       resonance covariance with LCOMP=1)."""
     filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-022_Ti_050.endf')
+    return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
+
+
+@pytest.fixture(scope='module')
+def cf252():
+    """Cf252 ENDF data (contains RM resonance covariance with LCOMP=0)."""
+    filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-098_Cf_252.endf')
+    return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
+
+
+@pytest.fixture(scope='module')
+def th232():
+    """Th232 ENDF data (contains RM resonance covariance with LCOMP=2)."""
+    filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-090_Th_232.endf')
     return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
 
 
@@ -284,8 +307,27 @@ def test_rml(cl35):
         assert isinstance(group, openmc.data.SpinGroup)
 
 
-def test_mlbw_cov(ti50):
-    #Testing on first range only
+def test_mlbw_cov_lcomp0(cf252):
+    # Testing on first range only
+    cov = cf252.resonance_covariance.ranges[0]
+    res = cf252.resonances.ranges[0]
+    assert cov.parameters['energy'][0] == pytest.approx(-3.5)
+    assert res.parameters['energy'][0] == cov.parameters['energy'][0]
+    assert isinstance(cov, openmc.data.resonance_covariance.MultiLevelBreitWignerCovariance)
+    assert cov.energy_min == pytest.approx(1e-5)
+    assert cov.energy_max == pytest.approx(1000.)
+    assert cov.covariance[0,0] == pytest.approx(1.225e-05)
+
+    subset = cov.subset('energy', [0, 100])
+    assert not subset.parameters.empty
+    assert (subset.file2res.parameters['energy'] < 100).all()
+    samples = cov.sample(1)
+    xs = samples[0].reconstruct([10., 100., 1000.])
+    assert sorted(xs.keys()) == [2, 18, 102]
+
+
+def test_mlbw_cov_lcomp1(ti50):
+    # Testing on first range only
     cov = ti50.resonance_covariance.ranges[0]
     res = ti50.resonances.ranges[0]
     assert cov.parameters['energy'][0] == pytest.approx(-21020.)
@@ -295,7 +337,7 @@ def test_mlbw_cov(ti50):
     assert cov.energy_max == pytest.approx(587000.)
     assert cov.covariance[0,0] == pytest.approx(1.410177e5)
 
-    subset = cov.subset('L',[1,1])
+    subset = cov.subset('L', [1, 1])
     assert not subset.parameters.empty
     assert (subset.file2res.parameters['L'] == 1).all()
     samples = cov.sample(1)
@@ -303,8 +345,27 @@ def test_mlbw_cov(ti50):
     assert sorted(xs.keys()) == [2, 18, 102]
 
 
-def test_rm_cov(gd154):
-    #Testing on first range only
+def test_mlbw_cov_lcomp2(na23):
+    # Testing on first range only
+    cov = na23.resonance_covariance.ranges[0]
+    res = na23.resonances.ranges[0]
+    assert cov.parameters['energy'][0] == pytest.approx(2810.)
+    assert res.parameters['energy'][0] == cov.parameters['energy'][0]
+    assert isinstance(cov, openmc.data.resonance_covariance.MultiLevelBreitWignerCovariance)
+    assert cov.energy_min == pytest.approx(600)
+    assert cov.energy_max == pytest.approx(500000.)
+    assert cov.covariance[0,0] == pytest.approx(16.1064163584)
+
+    subset = cov.subset('L', [1, 1])
+    assert not subset.parameters.empty
+    assert (subset.file2res.parameters['L'] == 1).all()
+    samples = cov.sample(1)
+    xs = samples[0].reconstruct([10., 100., 1000.])
+    assert sorted(xs.keys()) == [2, 18, 102]
+
+
+def test_rmcov_lcomp1(gd154):
+    # Testing on first range only
     cov = gd154.resonance_covariance.ranges[0]
     res = gd154.resonances.ranges[0]
     assert cov.parameters['energy'][0] == pytest.approx(-2.200001)
@@ -314,7 +375,26 @@ def test_rm_cov(gd154):
     assert cov.energy_max == pytest.approx(2760.)
     assert cov.covariance[0,0] == pytest.approx(0.8895997)
 
-    subset = cov.subset('energy',[0,100])
+    subset = cov.subset('energy', [0, 100])
+    assert not subset.parameters.empty
+    assert (subset.file2res.parameters['energy'] < 100).all()
+    samples = cov.sample(1)
+    xs = samples[0].reconstruct([10., 100., 1000.])
+    assert sorted(xs.keys()) == [2, 18, 102]
+
+
+def test_rmcov_lcomp2(th232):
+    # Testing on first range only
+    cov = th232.resonance_covariance.ranges[0]
+    res = th232.resonances.ranges[0]
+    assert cov.parameters['energy'][0] == pytest.approx(-2000)
+    assert res.parameters['energy'][0] == cov.parameters['energy'][0]
+    assert isinstance(cov, openmc.data.resonance_covariance.ReichMooreCovariance)
+    assert cov.energy_min == pytest.approx(1e-5)
+    assert cov.energy_max == pytest.approx(4000.)
+    assert cov.covariance[0,0] == pytest.approx(246.6043092496)
+
+    subset = cov.subset('energy', [0, 100])
     assert not subset.parameters.empty
     assert (subset.file2res.parameters['energy'] < 100).all()
     samples = cov.sample(1)

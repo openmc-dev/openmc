@@ -433,7 +433,7 @@ class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
             for i in range(num_res):
                 res_unc = values[i*12+6 : i*12+12]
                 # Delete 0 values (not provided, no fission width)
-                # DAJ/DGT always zero, DGF sometimes none zero [1, 2, 5]
+                # DAJ/DGT always zero, DGF sometimes nonzero [1, 2, 5]
                 res_unc_nonzero = []
                 for j in range(6):
                     if j in [1, 2, 5] and res_unc[j] != 0.0:

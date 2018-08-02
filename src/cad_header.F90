@@ -1,3 +1,5 @@
+#ifdef CAD
+
 module cad_header
 
   use, intrinsic :: ISO_C_BINDING
@@ -24,3 +26,5 @@ contains
   end subroutine free_memory_cad
 
 end module cad_header
+
+#endif

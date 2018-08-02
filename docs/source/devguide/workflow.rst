@@ -55,7 +55,7 @@ Now that you understand the basic development workflow, let's discuss how an
 individual to contribute to development. Note that this would apply to both new
 features and bug fixes. The general steps for contributing are as follows:
 
-1. Fork the main openmc repository from `mit-crpg/openmc`_. This will create a
+1. Fork the main openmc repository from `openmc-dev/openmc`_. This will create a
    repository with the same name under your personal account. As such, you can
    commit to it as you please without disrupting other developers.
 
@@ -74,7 +74,7 @@ features and bug fixes. The general steps for contributing are as follows:
    ensure that those changes are made on a different branch.
 
 4. Issue a pull request from GitHub and select the *develop* branch of
-   mit-crpg/openmc as the target.
+   openmc-dev/openmc as the target.
 
    .. image:: ../_images/pullrequest.png
 
@@ -87,7 +87,7 @@ features and bug fixes. The general steps for contributing are as follows:
    request page itself.
 
 6. After the pull request has been thoroughly vetted, it is merged back into the
-   *develop* branch of mit-crpg/openmc.
+   *develop* branch of openmc-dev/openmc.
 
 Private Development
 -------------------
@@ -99,7 +99,7 @@ create a complete copy of the OpenMC repository (not a fork from GitHub). The
 private repository can then either be stored just locally or in conjunction with
 a private repository on Github (this requires a `paid plan`_). Alternatively,
 `Bitbucket`_ offers private repositories for free. If you want to merge some
-changes you've made in your private repository back to mit-crpg/openmc
+changes you've made in your private repository back to openmc-dev/openmc
 repository, simply follow the steps above with an extra step of pulling a branch
 from your private repository into a public fork.
 
@@ -128,9 +128,9 @@ can interfere with virtual environments.
 .. _GitHub: https://github.com/
 .. _git flow: http://nvie.com/git-model
 .. _valgrind: http://valgrind.org/
-.. _style guide: http://mit-crpg.github.io/openmc/devguide/styleguide.html
+.. _style guide: http://openmc.readthedocs.io/en/latest/devguide/styleguide.html
 .. _pull request: https://help.github.com/articles/using-pull-requests
-.. _mit-crpg/openmc: https://github.com/mit-crpg/openmc
+.. _openmc-dev/openmc: https://github.com/openmc-dev/openmc
 .. _paid plan: https://github.com/plans
 .. _Bitbucket: https://bitbucket.org
 .. _ctest: http://www.cmake.org/cmake/help/v2.8.12/ctest.html

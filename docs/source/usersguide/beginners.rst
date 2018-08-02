@@ -153,9 +153,9 @@ and `Volume II`_. You may also find it helpful to review the following terms:
 .. _Reactor Concepts Manual: http://www.tayloredge.com/periodic/trivia/ReactorConcepts.pdf
 .. _Volume I: https://www.standards.doe.gov/standards-documents/1000/1019-bhdbk-1993-v1
 .. _Volume II: https://www.standards.doe.gov/standards-documents/1000/1019-bhdbk-1993-v2
-.. _OpenMC source code: https://github.com/mit-crpg/openmc
+.. _OpenMC source code: https://github.com/openmc-dev/openmc
 .. _GitHub: https://github.com/
-.. _bug reports: https://github.com/mit-crpg/openmc/issues
+.. _bug reports: https://github.com/openmc-dev/openmc/issues
 .. _Neutron cross section: http://en.wikipedia.org/wiki/Neutron_cross_section
 .. _Effective multiplication factor: https://en.wikipedia.org/wiki/Nuclear_chain_reaction#Effective_neutron_multiplication_factor
 .. _Flux: http://en.wikipedia.org/wiki/Neutron_flux

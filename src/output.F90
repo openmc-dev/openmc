@@ -76,7 +76,7 @@ contains
     write(UNIT=OUTPUT_UNIT, FMT=*) &
          '                  | The OpenMC Monte Carlo Code'
     write(UNIT=OUTPUT_UNIT, FMT=*) &
-         '        Copyright | 2011-2018 Massachusetts Institute of Technology'
+         '        Copyright | 2011-2018 MIT and OpenMC contributors'
     write(UNIT=OUTPUT_UNIT, FMT=*) &
          '          License | http://openmc.readthedocs.io/en/latest/license.html'
     write(UNIT=OUTPUT_UNIT, FMT='(11X,"Version | ",I1,".",I2,".",I1)') &
@@ -171,7 +171,7 @@ contains
       write(UNIT=OUTPUT_UNIT, FMT='(1X,A,A)') "Git SHA1: ", GIT_SHA1
 #endif
       write(UNIT=OUTPUT_UNIT, FMT=*) "Copyright (c) 2011-2018 &
-           &Massachusetts Institute of Technology"
+           &Massachusetts Institute of Technology and OpenMC contributors"
       write(UNIT=OUTPUT_UNIT, FMT=*) "MIT/X license at &
            &<http://openmc.readthedocs.io/en/latest/license.html>"
     end if

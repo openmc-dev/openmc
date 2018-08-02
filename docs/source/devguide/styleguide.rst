@@ -182,37 +182,83 @@ Always use C++-style comments (``//``) as opposed to C-style (``/**/``). (It
 is more difficult to comment out a large section of code that uses C-style
 comments.)
 
-Header files should always use include guards with the following style (See
-`SF.8 <http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#sf8-use-include-guards-for-all-h-files>`_:
-
-.. code-block:: C++
-
-    #ifndef MODULE_NAME_H
-    #define MODULE_NAME_H
-    ...
-    content
-    ...
-    #endif // MODULE_NAME_H
-
 Do not use C-style casting. Always use the C++-style casts ``static_cast``,
 ``const_cast``, or ``reinterpret_cast``. (See `ES.49 <http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#es49-if-you-must-use-a-cast-use-a-named-cast>`_)
 
+Source Files
+------------
+
+Use a ``.cpp`` suffix for code files and ``.h`` for header files.
+
+Header files should always use include guards with the following style (See
+`SF.8 <http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#sf8-use-include-guards-for-all-h-files>`_):
+
+.. code-block:: C++
+
+    #ifndef OPENMC_MODULE_NAME_H
+    #define OPENMC_MODULE_NAME_H
+
+    namespace openmc {
+    ...
+    content
+    ...
+    }
+
+    #endif // OPENMC_MODULE_NAME_H
+
+Avoid hidden dependencies by always including a related header file first,
+followed by C/C++ library includes, other library includes, and then local
+includes. For example:
+
+.. code-block:: C++
+
+   // foo.cpp
+   #include "foo.h"
+
+   #include <cstddef>
+   #include <iostream>
+   #include <vector>
+
+   #include "hdf5.h"
+   #include "pugixml.hpp"
+
+   #include "error.h"
+   #include "random_lcg.h"
+
 Naming
 ------
-
-In general, write your code in lower-case. Having code in all caps does not
-enhance code readability or otherwise.
 
 Struct and class names should be CamelCase, e.g. ``HexLattice``.
 
 Functions (including member functions) should be lower-case with underscores,
 e.g. ``get_indices``.
 
-Local variables, global variables, and struct/class attributes should be
-lower-case with underscores (e.g. ``n_cells``) except for physics symbols that
-are written differently by convention (e.g. ``E`` for energy).
+Local variables, global variables, and struct/class member variables should be
+lower-case with underscores (e.g., ``n_cells``) except for physics symbols that
+are written differently by convention (e.g., ``E`` for energy). Data members of
+classes (but not structs) additionally have trailing underscores (e.g.,
+``a_class_member_``).
 
-Const variables should be in upper-case with underscores, e.g. ``SQRT_PI``.
+Accessors and mutators (get and set functions) may be named like
+variables. These often correspond to actual member variables, but this is not
+required. For example, ``int count()`` and ``void set_count(int count)``.
+
+Variables declared constexpr or const that have static storage duration (exist
+for the duration of the program) should be upper-case with underscores,
+e.g., ``SQRT_PI``.
+
+Use C++-style declarator layout (see `NL.18
+<http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#nl18-use-c-style-declarator-layout>`_):
+pointer and reference operators in declarations should be placed adject to the
+base type rather than the variable name. Avoid declaring multiple names in a
+single declaration to avoid confusion:
+
+.. code-block:: C++
+
+   T* p; // good
+   T& p; // good
+   T *p; // bad
+   T* p, q; // misleading
 
 Curly braces
 ------------
@@ -280,6 +326,13 @@ the same line or omit the braces entirely.
 
     for (int i = 0; i < 5; i++) content();
 
+Documentation
+-------------
+
+Classes, structs, and functions are to be annotated for the `Doxygen
+<http://www.stack.nl/~dimitri/doxygen/>`_ documentation generation tool. Use the
+``\`` form of Doxygen commands, e.g., ``\brief`` instead of ``@brief``.
+
 ------
 Python
 ------
@@ -288,15 +341,17 @@ Style for Python code should follow PEP8_.
 
 Docstrings for functions and methods should follow numpydoc_ style.
 
-Python code should work with both Python 2.7+ and Python 3.0+.
+Python code should work with Python 3.4+.
 
-Use of third-party Python packages should be limited to numpy_, scipy_, and
-h5py_. Use of other third-party packages must be implemented as optional
-dependencies rather than required dependencies.
+Use of third-party Python packages should be limited to numpy_, scipy_,
+matplotlib_, pandas_, and h5py_. Use of other third-party packages must be
+implemented as optional dependencies rather than required dependencies.
 
 .. _C++ Core Guidelines: http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
 .. _PEP8: https://www.python.org/dev/peps/pep-0008/
 .. _numpydoc: https://github.com/numpy/numpy/blob/master/doc/HOWTO_DOCUMENT.rst.txt
 .. _numpy: http://www.numpy.org/
-.. _scipy: http://www.scipy.org/
+.. _scipy: https://www.scipy.org/
+.. _matplotlib: https://matplotlib.org/
+.. _pandas: https://pandas.pydata.org/
 .. _h5py: http://www.h5py.org/

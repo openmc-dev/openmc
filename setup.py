@@ -39,7 +39,7 @@ kwargs = {
     'author': 'The OpenMC Development Team',
     'author_email': 'openmc-dev@googlegroups.com',
     'description': 'OpenMC',
-    'url': 'https://github.com/mit-crpg/openmc',
+    'url': 'https://github.com/openmc-dev/openmc',
     'classifiers': [
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',

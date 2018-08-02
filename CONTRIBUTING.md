@@ -12,7 +12,7 @@ openmc@anl.gov.
 
 ## Resources
 
-- [GitHub Repository](https://github.com/mit-crpg/openmc)
+- [GitHub Repository](https://github.com/openmc-dev/openmc)
 - [Documentation](http://openmc.readthedocs.io/en/latest)
 - [User's Mailing List](openmc-users@googlegroups.com)
 - [Developer's Mailing List](openmc-dev@googlegroups.com)
@@ -22,7 +22,7 @@ openmc@anl.gov.
 ## How to Report Bugs
 
 OpenMC is hosted on GitHub and all bugs are reported and tracked through the
-[Issues](https://github.com/mit-crpg/openmc/issues) listed on GitHub.
+[Issues](https://github.com/openmc-dev/openmc/issues) listed on GitHub.
 
 ## How to Suggest Enhancements
 

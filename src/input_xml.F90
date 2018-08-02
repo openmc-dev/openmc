@@ -3641,7 +3641,9 @@ contains
     allocate(nuclides(n_nuclides))
     allocate(elements(n_elements))
     allocate(sab_tables(n_sab_tables))
-    if (electron_treatment == ELECTRON_TTB) allocate(ttb(n_materials))
+    if (photon_transport .and. electron_treatment == ELECTRON_TTB) then
+      allocate(ttb(n_materials))
+    end if
 
     ! Read cross sections
     do i = 1, size(materials)

@@ -24,6 +24,7 @@ from .njoy import make_ace
 from .product import Product
 from .reaction import Reaction, _get_photon_products_ace
 from . import resonance as res
+from . import resonance_covariance as res_cov
 from .urr import ProbabilityTables
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
@@ -148,6 +149,8 @@ class IncidentNeutron(EqualityMixin):
         and the values are Reaction objects.
     resonances : openmc.data.Resonances or None
         Resonance parameters
+    resonance_covariance : openmc.data.ResonanceCovariance or None
+        Covariance for resonance parameters
     summed_reactions : collections.OrderedDict
         Contains summed cross sections, e.g., the total cross section. The keys
         are the MT values and the values are Reaction objects.
@@ -229,6 +232,10 @@ class IncidentNeutron(EqualityMixin):
         return self._resonances
 
     @property
+    def resonance_covariance(self):
+        return self._resonance_covariance
+
+    @property
     def summed_reactions(self):
         return self._summed_reactions
 
@@ -288,6 +295,12 @@ class IncidentNeutron(EqualityMixin):
     def resonances(self, resonances):
         cv.check_type('resonances', resonances, res.Resonances)
         self._resonances = resonances
+
+    @resonance_covariance.setter
+    def resonance_covariance(self, resonance_covariance):
+        cv.check_type('resonance covariance', resonance_covariance,
+                      res_cov.ResonanceCovariances)
+        self._resonance_covariance = resonance_covariance
 
     @summed_reactions.setter
     def summed_reactions(self, summed_reactions):
@@ -744,7 +757,7 @@ class IncidentNeutron(EqualityMixin):
         return data
 
     @classmethod
-    def from_endf(cls, ev_or_filename):
+    def from_endf(cls, ev_or_filename, covariance=False):
         """Generate incident neutron continuous-energy data from an ENDF evaluation
 
         Parameters
@@ -752,6 +765,10 @@ class IncidentNeutron(EqualityMixin):
         ev_or_filename : openmc.data.endf.Evaluation or str
             ENDF evaluation to read from. If given as a string, it is assumed to
             be the filename for the ENDF file.
+
+        covariance : bool
+            Flag to indicate whether or not covariance data from File 32 should be
+            retrieved
 
         Returns
         -------
@@ -783,6 +800,11 @@ class IncidentNeutron(EqualityMixin):
 
         if (2, 151) in ev.section:
             data.resonances = res.Resonances.from_endf(ev)
+
+        if (32, 151) in ev.section and covariance:
+            data.resonance_covariance = (
+                res_cov.ResonanceCovariances.from_endf(ev, data.resonances)
+            )
 
         # Read each reaction
         for mf, mt, nc, mod in ev.reaction_list:

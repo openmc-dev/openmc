@@ -34,7 +34,7 @@ module material_header
     integer              :: n_nuclides = 0  ! number of nuclides
     integer, allocatable :: nuclide(:)      ! index in nuclides array
     real(8)              :: density         ! total atom density in atom/b-cm
-    real(8), allocatable :: atom_density(:) ! nuclide atom density in atom/b-cm
+    real(C_DOUBLE), allocatable :: atom_density(:) ! nuclide atom density in atom/b-cm
     real(8)              :: density_gpcc    ! total density in g/cm^3
 
     ! To improve performance of tallying, we store an array (direct address

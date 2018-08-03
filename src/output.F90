@@ -12,7 +12,7 @@ module output
   use math,            only: t_percentile
   use mesh_header,     only: RegularMesh, meshes
   use message_passing, only: master, n_procs
-  use mgxs_header,     only: nuclides_MG
+  use mgxs_interface
   use nuclide_header
   use particle_header, only: LocalCoord, Particle
   use plot_header
@@ -76,7 +76,7 @@ contains
     write(UNIT=OUTPUT_UNIT, FMT=*) &
          '                  | The OpenMC Monte Carlo Code'
     write(UNIT=OUTPUT_UNIT, FMT=*) &
-         '        Copyright | 2011-2018 Massachusetts Institute of Technology'
+         '        Copyright | 2011-2018 MIT and OpenMC contributors'
     write(UNIT=OUTPUT_UNIT, FMT=*) &
          '          License | http://openmc.readthedocs.io/en/latest/license.html'
     write(UNIT=OUTPUT_UNIT, FMT='(11X,"Version | ",I1,".",I2,".",I1)') &
@@ -171,7 +171,7 @@ contains
       write(UNIT=OUTPUT_UNIT, FMT='(1X,A,A)') "Git SHA1: ", GIT_SHA1
 #endif
       write(UNIT=OUTPUT_UNIT, FMT=*) "Copyright (c) 2011-2018 &
-           &Massachusetts Institute of Technology"
+           &Massachusetts Institute of Technology and OpenMC contributors"
       write(UNIT=OUTPUT_UNIT, FMT=*) "MIT/X license at &
            &<http://openmc.readthedocs.io/en/latest/license.html>"
     end if
@@ -680,6 +680,7 @@ contains
     character(36)           :: score_name                  ! names of scoring function
                                                            ! to be applied at write-time
     type(TallyFilterMatch), allocatable :: matches(:)
+    character(MAX_WORD_LEN) :: temp_name
 
     ! Skip if there are no tallies
     if (n_tallies == 0) return
@@ -843,8 +844,9 @@ contains
               write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
                    trim(nuclides(i_nuclide) % name)
             else
+              call get_name_c(i_nuclide, len(temp_name), temp_name)
               write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
-                   trim(nuclides_MG(i_nuclide) % obj % name)
+                   trim(temp_name)
             end if
           end if
 

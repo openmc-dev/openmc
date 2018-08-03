@@ -71,14 +71,14 @@ Bug Fixes
 - 0c6915_: Bugfix for generating thermal scattering data
 - 61ecb4_: Fix bugs in Python multipole objects
 
-.. _937469: https://github.com/mit-crpg/openmc/commit/937469
-.. _a149ef: https://github.com/mit-crpg/openmc/commit/a149ef
-.. _2c9b21: https://github.com/mit-crpg/openmc/commit/2c9b21
-.. _8047f6: https://github.com/mit-crpg/openmc/commit/8047f6
-.. _0beb4c: https://github.com/mit-crpg/openmc/commit/0beb4c
-.. _f124be: https://github.com/mit-crpg/openmc/commit/f124be
-.. _0c6915: https://github.com/mit-crpg/openmc/commit/0c6915
-.. _61ecb4: https://github.com/mit-crpg/openmc/commit/61ecb4
+.. _937469: https://github.com/openmc-dev/openmc/commit/937469
+.. _a149ef: https://github.com/openmc-dev/openmc/commit/a149ef
+.. _2c9b21: https://github.com/openmc-dev/openmc/commit/2c9b21
+.. _8047f6: https://github.com/openmc-dev/openmc/commit/8047f6
+.. _0beb4c: https://github.com/openmc-dev/openmc/commit/0beb4c
+.. _f124be: https://github.com/openmc-dev/openmc/commit/f124be
+.. _0c6915: https://github.com/openmc-dev/openmc/commit/0c6915
+.. _61ecb4: https://github.com/openmc-dev/openmc/commit/61ecb4
 
 ------------
 Contributors

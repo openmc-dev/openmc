@@ -82,7 +82,7 @@ features and bug fixes. The general steps for contributing are as follows:
    you are making them. If the changes are related to an oustanding issue, make
    sure it is cross-referenced.
 
-5. A trusted developer will review your pull request based on the criteria
+5. A committer will review your pull request based on the criteria
    above. Any issues with the pull request can be discussed directly on the pull
    request page itself.
 

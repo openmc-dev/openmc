@@ -67,15 +67,17 @@ contains
     x = p % coord(1) % xyz(1) - this % x
     y = p % coord(1) % xyz(2) - this % y
     r = sqrt(x*x + y*y)/this % r
-    theta = atan2(y, x)
+    if (r <= 1) then
+      theta = atan2(y, x)
+      
+      ! Get moments for Zernike polynomial orders 0..n
+      call calc_zn(this % order, r, theta, zn)
 
-    ! Get moments for Zernike polynomial orders 0..n
-    call calc_zn(this % order, r, theta, zn)
-
-    do i = 1, this % n_bins
-      call match % bins % push_back(i)
-      call match % weights % push_back(zn(i))
-    end do
+      do i = 1, this % n_bins
+        call match % bins % push_back(i)
+        call match % weights % push_back(zn(i))
+      end do
+    endif
   end subroutine get_all_bins
 
   subroutine to_statepoint(this, filter_group)

@@ -305,7 +305,7 @@ def run_in_memory(intracomm=None):
         MPI intracommunicator
 
     """
-    init(intracomm)
+    init(intracomm=intracomm)
     try:
         yield
     finally:

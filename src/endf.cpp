@@ -144,4 +144,35 @@ double Tabulated1D::operator()(double x) const
   }
 }
 
+//==============================================================================
+// CoherentElasticXS implementation
+//==============================================================================
+
+CoherentElasticXS::CoherentElasticXS(hid_t dset)
+{
+  // Read 2D array from dataset
+  xt::xarray<double> arr;
+  read_dataset(dset, arr);
+
+  // Get views for Bragg edges and structure factors
+  auto E = xt::view(arr, 0);
+  auto s = xt::view(arr, 1);
+
+  // Copy Bragg edges and partial sums of structure factors
+  std::copy(E.begin(), E.end(), std::back_inserter(bragg_edges_));
+  std::copy(s.begin(), s.end(), std::back_inserter(factors_));
+}
+
+double CoherentElasticXS::operator()(double E) const
+{
+  if (E < bragg_edges_[0]) {
+    // If energy is below that of the lowest Bragg peak, the elastic cross
+    // section will be zero
+    return 0.0;
+  } else {
+    auto i_grid = lower_bound_index(bragg_edges_.begin(), bragg_edges_.end(), E);
+    return factors_[i_grid] / E;
+  }
+}
+
 } // namespace openmc

@@ -26,6 +26,7 @@ module tally_filter
   use tally_filter_surface
   use tally_filter_universe
   use tally_filter_zernike
+  use tally_filter_zernike_radial
 
   implicit none
 
@@ -88,6 +89,8 @@ contains
         type_ = 'universe'
       type is (ZernikeFilter)
         type_ = 'zernike'
+      type is (ZernikeRadialFilter)
+        type_ = 'zernikeradial'
       end select
 
       ! Convert Fortran string to null-terminated C string. We assume the
@@ -159,6 +162,8 @@ contains
           allocate(UniverseFilter :: filters(index) % obj)
         case ('zernike')
           allocate(ZernikeFilter :: filters(index) % obj)
+        case ('zernikeradial')
+          allocate(ZernikeRadialFilter :: filters(index) % obj)
         case default
           err = E_UNASSIGNED
           call set_errmsg("Unknown filter type: " // trim(type_))

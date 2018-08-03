@@ -1,5 +1,7 @@
 module tracking
 
+  use, intrinsic :: ISO_C_BINDING
+
   use constants
   use error,              only: warning, write_message
   use geometry_header,    only: cells
@@ -7,7 +9,7 @@ module tracking
                                 check_cell_overlap
   use material_header,    only: materials, Material
   use message_passing
-  use mgxs_header
+  use mgxs_interface
   use nuclide_header
   use particle_header,    only: LocalCoord, Particle
   use physics,            only: collision
@@ -112,8 +114,10 @@ contains
           end if
         else
           ! Get the MG data
-          call macro_xs(p % material) % obj % calculate_xs(p % g, p % sqrtkT, &
-               p % coord(p % n_coord) % uvw, material_xs)
+          call calculate_xs_c(p % material, p % g, p % sqrtkT, &
+               p % coord(p % n_coord) % uvw, material_xs % total, &
+               material_xs % absorption, material_xs % nu_fission)
+
 
           ! Finally, update the particle group while we have already checked
           ! for if multi-group

@@ -71,7 +71,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'OpenMC'
-copyright = u'2011-2018, Massachusetts Institute of Technology'
+copyright = u'2011-2018, Massachusetts Institute of Technology and OpenMC contributors'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -208,7 +208,7 @@ htmlhelp_basename = 'openmcdoc'
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
   ('index', 'openmc.tex', u'OpenMC Documentation',
-   u'Massachusetts Institute of Technology', 'manual'),
+   u'OpenMC contributors', 'manual'),
 ]
 
 latex_elements = {

@@ -6,7 +6,7 @@ module particle_restart
   use constants
   use error,            only: write_message
   use hdf5_interface,   only: file_open, file_close, read_dataset, HID_T
-  use mgxs_header,      only: energy_bin_avg
+  use mgxs_interface,   only: energy_bin_avg
   use nuclide_header,   only: micro_xs, n_nuclides
   use output,           only: print_particle
   use particle_header,  only: Particle

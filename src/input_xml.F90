@@ -19,7 +19,7 @@ module input_xml
   use mesh_header
   use message_passing
   use mgxs_data,        only: create_macro_xs, read_mgxs
-  use mgxs_header
+  use mgxs_interface
   use nuclide_header
   use output,           only: title, header, print_plot
   use plot_header
@@ -228,7 +228,7 @@ contains
              &not exist! In order to run OpenMC, you first need a set of input &
              &files; at a minimum, this includes settings.xml, geometry.xml, &
              &and materials.xml. Please consult the user's guide at &
-             &http://mit-crpg.github.io/openmc for further information.")
+             &http://openmc.readthedocs.io for further information.")
       else
         ! The settings.xml file is optional if we just want to make a plot.
         return
@@ -1369,7 +1369,7 @@ contains
                  &materials.xml, settings.xml,  or in the OPENMC_CROSS_SECTIONS&
                  & environment variable. OpenMC needs such a file to identify &
                  &where to find ACE cross section libraries. Please consult the&
-                 & user's guide at http://mit-crpg.github.io/openmc for &
+                 & user's guide at http://openmc.readthedocs.io for &
                  &information on how to set up ACE cross section libraries.")
           else
             call warning("The CROSS_SECTIONS environment variable is &
@@ -1387,7 +1387,7 @@ contains
                &materials.xml or in the OPENMC_MG_CROSS_SECTIONS environment &
                &variable. OpenMC needs such a file to identify where to &
                &find MG cross section libraries. Please consult the user's &
-               &guide at http://mit-crpg.github.io/openmc for information on &
+               &guide at http://openmc.readthedocs.io for information on &
                &how to set up MG cross section libraries.")
         else if (len_trim(env_variable) /= 0) then
           path_cross_sections = trim(env_variable)
@@ -3458,7 +3458,7 @@ contains
           if (run_CE) then
             awr = nuclides(mat % nuclide(j)) % awr
           else
-            awr = nuclides_MG(mat % nuclide(j)) % obj % awr
+            awr = get_awr_c(mat % nuclide(j))
           end if
 
           ! if given weight percent, convert all values so that they are divided
@@ -3483,7 +3483,7 @@ contains
             if (run_CE) then
               awr = nuclides(mat % nuclide(j)) % awr
             else
-              awr = nuclides_MG(mat % nuclide(j)) % obj % awr
+              awr = get_awr_c(mat % nuclide(j))
             end if
             x = mat % atom_density(j)
             sum_percent = sum_percent + x*awr

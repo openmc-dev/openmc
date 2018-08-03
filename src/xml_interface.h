@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "pugixml/pugixml.hpp"
+#include "pugixml.hpp"
 
 
 namespace openmc {

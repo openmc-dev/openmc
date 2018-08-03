@@ -463,3 +463,136 @@ class ZernikeFilter(ExpansionFilter):
         subelement.text = str(self.r)
 
         return element
+
+class ZernikeRadialFilter(ExpansionFilter):
+    r"""Score radial Zernike expansion moments in space up to specified order.
+
+    The Zernike polynomials are defined the same as in ZernikeFilter.
+
+    .. math::
+        Z_n^m(\rho, \theta) = R_n^m(\rho) \cos (m\theta), \quad m > 0
+
+        Z_n^{m}(\rho, \theta) = R_n^{m}(\rho) \sin (m\theta), \quad m < 0
+
+        Z_n^{m}(\rho, \theta) = R_n^{m}(\rho), \quad m = 0
+
+    where the radial polynomials are
+
+    .. math::
+        R_n^m(\rho) = \sum\limits_{k=0}^{(n-m)/2} \frac{(-1)^k (n-k)!}{k! (
+        \frac{n+m}{2} - k)! (\frac{n-m}{2} - k)!} \rho^{n-2k}.
+
+    With this definition, the integral of :math:`(Z_n^m)^2` over the unit disk
+    is :math:`\frac{\epsilon_m\pi}{2n+2}` for each polynomial where :math:`\epsilon_m` is
+    2 if :math:`m` equals 0 and 1 otherwise.
+
+    If there is only radial dependency, the polynomials are integrated over the azimuthal angles. The only terms left are :math:`Z_n^{0}(\rho, \theta) = R_n^{0}(\rho)`. Note that :math:`n` could only be even orders. Therefore, for a radial Zernike polynomials up to order of :math:`n`, there are :math:`\frac{n}{2} + 1` terms in total.
+
+    Parameters
+    ----------
+    order : int
+        Maximum radial Zernike polynomial order
+    x : float
+        x-coordinate of center of circle for normalization
+    y : float
+        y-coordinate of center of circle for normalization
+    r : int or None
+        Radius of circle for normalization
+
+    Attributes
+    ----------
+    order : int
+        Maximum radial Zernike polynomial order
+    x : float
+        x-coordinate of center of circle for normalization
+    y : float
+        y-coordinate of center of circle for normalization
+    r : int or None
+        Radius of circle for normalization
+    id : int
+        Unique identifier for the filter
+    num_bins : int
+        The number of filter bins
+
+    """
+
+    def __init__(self, order, x=0.0, y=0.0, r=1.0, filter_id=None):
+        super().__init__(order, filter_id)
+        self.x = x
+        self.y = y
+        self.r = r
+
+    def __hash__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tOrder', self.order)
+        return hash(string)
+
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tOrder', self.order)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        return string
+
+    @ExpansionFilter.order.setter
+    def order(self, order):
+        ExpansionFilter.order.__set__(self, order)
+        self.bins = ['Z{},0'.format(n) for n in range(0, order+1, 2)]
+
+    @property
+    def x(self):
+        return self._x
+
+    @x.setter
+    def x(self, x):
+        cv.check_type('x', x, Real)
+        self._x = x
+
+    @property
+    def y(self):
+        return self._y
+
+    @y.setter
+    def y(self, y):
+        cv.check_type('y', y, Real)
+        self._y = y
+
+    @property
+    def r(self):
+        return self._r
+
+    @r.setter
+    def r(self, r):
+        cv.check_type('r', r, Real)
+        self._r = r
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        if group['type'].value.decode() != cls.short_name.lower():
+            raise ValueError("Expected HDF5 data for filter type '"
+                             + cls.short_name.lower() + "' but got '"
+                             + group['type'].value.decode() + " instead")
+
+        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+        order = group['order'].value
+        x, y, r = group['x'].value, group['y'].value, group['r'].value
+
+        return cls(order, x, y, r, filter_id)
+
+    def to_xml_element(self):
+        """Return XML Element representing the filter.
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing radial Zernike filter data
+
+        """
+        element = super().to_xml_element()
+        subelement = ET.SubElement(element, 'x')
+        subelement.text = str(self.x)
+        subelement = ET.SubElement(element, 'y')
+        subelement.text = str(self.y)
+        subelement = ET.SubElement(element, 'r')
+        subelement.text = str(self.r)
+
+        return element

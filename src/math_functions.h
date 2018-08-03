@@ -112,7 +112,7 @@ extern "C" void calc_zn_c(int n, double rho, double phi, double zn[]);
 //!   evaluated at rho and phi when m = 0.
 //==============================================================================
 
-extern "C" void calc_zn_rad_c(int n, double rho, double phi, double zn_rad[]);
+extern "C" void calc_zn_rad_c(int n, double rho, double zn_rad[]);
 
 //==============================================================================
 //! Rotate the direction cosines through a polar angle whose cosine is mu and

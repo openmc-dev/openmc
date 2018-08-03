@@ -587,11 +587,10 @@ void calc_zn_c(int n, double rho, double phi, double zn[]) {
 
 }
 
-void calc_zn_rad_c(int n, double rho, double phi, double zn_rad[]) {
+void calc_zn_rad_c(int n, double rho, double zn_rad[]) {
   // Calculate R_p0(rho) as Zn_p0(rho)
   // Set up the array of the coefficients
-  int length = int(n/2) + 1;
-  double zn_rad[length];
+
   double q = 0;
 
   // R_00 is always 1
@@ -602,8 +601,8 @@ void calc_zn_rad_c(int n, double rho, double phi, double zn_rad[]) {
     int index = int(p/2);
     if (p == 2) {
     // Setting up R_22 to calculate R_20 (Eq 3.10 in Chong)
-      R_22 = std::pow(rho, 2);
-      zn_rad[index] = 2 * R_22 - zn_rad[0]
+      double R_22 = std::pow(rho, 2);
+      zn_rad[index] = 2 * R_22 - zn_rad[0];
     }
     else {
       double k1 = ((p + q) * (p - q) * (p - 2)) / 2.;

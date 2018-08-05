@@ -22,13 +22,11 @@ ongoing development takes place prior to a release and is not guaranteed to be
 stable. When the development team decides that a release should occur, the
 *develop* branch is merged into *master*.
 
-Trivial changes to the code may be committed directly to the *develop* branch by
-a trusted developer. However, most new features should be developed on a branch
+All new features, enhancements, and bug fixes should be developed on a branch
 that branches off of *develop*. When the feature is completed, a `pull request`_
-is initiated on GitHub that is then reviewed by a trusted developer. If the pull
-request is satisfactory, it is then merged into *develop*. Note that a trusted
-developer may not review their own pull request (i.e., an independent code
-review is required).
+is initiated on GitHub that is then reviewed by a committer. If the pull request
+is satisfactory, it is then merged into *develop*. Note that a committer may not
+review their own pull request (i.e., an independent code review is required).
 
 Code Review Criteria
 --------------------
@@ -37,9 +35,9 @@ In order to be considered suitable for inclusion in the *develop* branch, the
 following criteria must be satisfied for all proposed changes:
 
 - Changes have a clear purpose and are useful.
-- Compiles and passes the regression suite with all configurations (This is
+- Compiles and passes all tests under multiple build configurations (This is
   checked by Travis CI).
-- If appropriate, test cases are added to regression suite.
+- If appropriate, test cases are added to regression or unit test suites.
 - No memory leaks (checked with valgrind_).
 - Conforms to the OpenMC `style guide`_.
 - No degradation of performance or greatly increased memory usage. This is not a
@@ -75,8 +73,6 @@ features and bug fixes. The general steps for contributing are as follows:
 
 4. Issue a pull request from GitHub and select the *develop* branch of
    openmc-dev/openmc as the target.
-
-   .. image:: ../_images/pullrequest.png
 
    At a minimum, you should describe what the changes you've made are and why
    you are making them. If the changes are related to an oustanding issue, make

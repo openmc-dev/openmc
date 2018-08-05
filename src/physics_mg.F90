@@ -237,6 +237,9 @@ contains
       ! Bank source neutrons by copying particle data
       bank_array(i) % xyz = p % coord(1) % xyz
 
+      ! Set particle as neutron
+      bank_array(i) % particle = NEUTRON
+
       ! Set weight of fission bank site
       bank_array(i) % wgt = ONE/weight
 

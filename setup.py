@@ -32,7 +32,7 @@ kwargs = {
     # Data files and librarries
     'package_data': {
         'openmc.capi': ['libopenmc.{}'.format(suffix)],
-        'openmc.data': ['mass.mas12', 'fission_Q_data_endfb71.h5']
+        'openmc.data': ['mass.mas12', '*.h5']
     },
 
     # Metadata

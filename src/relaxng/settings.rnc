@@ -66,6 +66,7 @@ element settings {
   element source {
     grammar {
       start =
+        (element particle { xsd:string } | attribute particle { xsd:string })? &
         (element strength { xsd:double } | attribute strength { xsd:double })? &
         (element file { xsd:string } | attribute file { xsd:string })? &
         element space {

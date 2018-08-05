@@ -52,14 +52,17 @@ class DataLibrary(EqualityMixin):
             Path to the file to be registered.
 
         """
-        h5file = h5py.File(filename, 'r')
+        with h5py.File(filename, 'r') as h5file:
 
-        materials = []
-        filetype = 'neutron'
-        for name in h5file:
-            if name.startswith('c_'):
-                filetype = 'thermal'
-            materials.append(name)
+            materials = []
+            if 'filetype' in h5file.attrs:
+                filetype = h5file.attrs['filetype'].decode().lstrip('data_')
+            else:
+                filetype = 'neutron'
+            for name in h5file:
+                if name.startswith('c_'):
+                    filetype = 'thermal'
+                materials.append(name)
 
         library = {'path': filename, 'type': filetype, 'materials': materials}
         self.libraries.append(library)
@@ -81,10 +84,9 @@ class DataLibrary(EqualityMixin):
         if common_dir == '':
             common_dir = '.'
 
-        directory = os.path.relpath(common_dir, os.path.dirname(path))
-        if directory != '.':
+        if os.path.relpath(common_dir, os.path.dirname(path)) != '.':
             dir_element = ET.SubElement(root, "directory")
-            dir_element.text = directory
+            dir_element.text = os.path.realpath(common_dir)
 
         for library in self.libraries:
             lib_element = ET.SubElement(root, "library")

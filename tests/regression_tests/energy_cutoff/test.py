@@ -37,7 +37,7 @@ class EnergyCutoffTestHarness(PyAPITestHarness):
         settings_file.run_mode = 'fixed source'
         settings_file.batches = 10
         settings_file.particles = 100
-        settings_file.cutoff = {'energy': energy_cutoff}
+        settings_file.cutoff = {'energy_neutron': energy_cutoff}
         bounds = [-1, -1, -1, 1, 1, 1]
         uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:])
         watt_dist = openmc.stats.Watt()

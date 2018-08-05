@@ -30,12 +30,16 @@ class Settings(object):
         Indicate whether fission neutrons should be created or not.
     cutoff : dict
         Dictionary defining weight cutoff and energy cutoff. The dictionary may
-        have three keys, 'weight', 'weight_avg' and 'energy'. Value for 'weight'
+        have six keys, 'weight', 'weight_avg', 'energy_neutron', 'energy_photon',
+        'energy_electron', and 'energy_positron'. Value for 'weight'
         should be a float indicating weight cutoff below which particle undergo
         Russian roulette. Value for 'weight_avg' should be a float indicating
         weight assigned to particles that are not killed after Russian
         roulette. Value of energy should be a float indicating energy in eV
-        below which particle will be killed.
+        below which particle type will be killed.
+    electron_treatment : {'led', 'ttb'}
+        Whether to deposit all energy from electrons locally ('led') or create
+        secondary bremsstrahlung photons ('ttb').
     energy_mode : {'continuous-energy', 'multi-group'}
         Set whether the calculation should be continuous-energy or multi-group.
     entropy_mesh : openmc.Mesh
@@ -68,6 +72,8 @@ class Settings(object):
         :tallies: Whether the 'tallies.out' file should be written (bool)
     particles : int
         Number of particles per generation
+    photon_transport : bool
+        Whether to use photon transport.
     ptables : bool
         Determine whether probability tables are used.
     resonance_scattering : dict
@@ -171,7 +177,9 @@ class Settings(object):
 
         self._confidence_intervals = None
         self._cross_sections = None
+        self._electron_treatment = None
         self._multipole_library = None
+        self._photon_transport = None
         self._ptables = None
         self._run_cmfd = None
         self._seed = None
@@ -257,8 +265,16 @@ class Settings(object):
         return self._confidence_intervals
 
     @property
+    def electron_treatment(self):
+        return self._electron_treatment
+
+    @property
     def ptables(self):
         return self._ptables
+
+    @property
+    def photon_transport(self):
+        return self._photon_transport
 
     @property
     def run_cmfd(self):
@@ -485,6 +501,16 @@ class Settings(object):
         cv.check_type('confidence interval', confidence_intervals, bool)
         self._confidence_intervals = confidence_intervals
 
+    @electron_treatment.setter
+    def electron_treatment(self, electron_treatment):
+        cv.check_value('electron treatment', electron_treatment, ['led', 'ttb'])
+        self._electron_treatment = electron_treatment
+
+    @photon_transport.setter
+    def photon_transport(self, photon_transport):
+        cv.check_type('photon transport', photon_transport, bool)
+        self._photon_transport = photon_transport
+
     @ptables.setter
     def ptables(self, ptables):
         cv.check_type('probability tables', ptables, bool)
@@ -514,16 +540,16 @@ class Settings(object):
             raise ValueError(msg)
         for key in cutoff:
             if key == 'weight':
-                cv.check_type('weight cutoff', cutoff['weight'], Real)
-                cv.check_greater_than('weight cutoff', cutoff['weight'], 0.0)
+                cv.check_type('weight cutoff', cutoff[key], Real)
+                cv.check_greater_than('weight cutoff', cutoff[key], 0.0)
             elif key == 'weight_avg':
-                cv.check_type('average survival weight', cutoff['weight_avg'],
-                              Real)
+                cv.check_type('average survival weight', cutoff[key], Real)
                 cv.check_greater_than('average survival weight',
-                                      cutoff['weight_avg'], 0.0)
-            elif key == 'energy':
-                cv.check_type('energy cutoff', cutoff['energy'], Real)
-                cv.check_greater_than('energy cutoff', cutoff['energy'], 0.0)
+                                      cutoff[key], 0.0)
+            elif key in ['energy_neutron', 'energy_photon', 'energy_electron',
+                         'energy_positron']:
+                cv.check_type('energy cutoff', cutoff[key], Real)
+                cv.check_greater_than('energy cutoff', cutoff[key], 0.0)
             else:
                 msg = 'Unable to set cutoff to "{0}" which is unsupported by '\
                       'OpenMC'.format(key)
@@ -777,6 +803,16 @@ class Settings(object):
             element = ET.SubElement(root, "confidence_intervals")
             element.text = str(self._confidence_intervals).lower()
 
+    def _create_electron_treatment_subelement(self, root):
+        if self._electron_treatment is not None:
+            element = ET.SubElement(root, "electron_treatment")
+            element.text = str(self._electron_treatment)
+
+    def _create_photon_transport_subelement(self, root):
+        if self._photon_transport is not None:
+            element = ET.SubElement(root, "photon_transport")
+            element.text = str(self._photon_transport).lower()
+
     def _create_ptables_subelement(self, root):
         if self._ptables is not None:
             element = ET.SubElement(root, "ptables")
@@ -800,17 +836,9 @@ class Settings(object):
     def _create_cutoff_subelement(self, root):
         if self._cutoff is not None:
             element = ET.SubElement(root, "cutoff")
-            if 'weight' in self._cutoff:
-                subelement = ET.SubElement(element, "weight")
-                subelement.text = str(self._cutoff['weight'])
-
-            if 'weight_avg' in self._cutoff:
-                subelement = ET.SubElement(element, "weight_avg")
-                subelement.text = str(self._cutoff['weight_avg'])
-
-            if 'energy' in self._cutoff:
-                subelement = ET.SubElement(element, "energy")
-                subelement.text = str(self._cutoff['energy'])
+            for key, value in self._cutoff.items():
+                subelement = ET.SubElement(element, key)
+                subelement.text = str(value)
 
     def _create_entropy_mesh_subelement(self, root):
         if self.entropy_mesh is not None:
@@ -941,8 +969,10 @@ class Settings(object):
         self._create_statepoint_subelement(root_element)
         self._create_sourcepoint_subelement(root_element)
         self._create_confidence_intervals(root_element)
+        self._create_electron_treatment_subelement(root_element)
         self._create_energy_mode_subelement(root_element)
         self._create_max_order_subelement(root_element)
+        self._create_photon_transport_subelement(root_element)
         self._create_ptables_subelement(root_element)
         self._create_run_cmfd_subelement(root_element)
         self._create_seed_subelement(root_element)

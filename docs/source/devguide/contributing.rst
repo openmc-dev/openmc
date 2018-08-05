@@ -52,15 +52,17 @@ No pull request may be merged without being reviewed.
 
 For non-trivial contributions, pull requests should not be merged for at least
 36 hours to ensure that contributors in other timezones have time to review.
-Consideration should also be given to weekends and other holiday periods to
-ensure active committers have reasonable time to become involved in the
-discussion and review process if they wish.
+Consideration should be given to weekends and other holiday periods to ensure
+active committers have reasonable time to become involved in the discussion and
+review process if they wish. Any committer may request that the review period be
+extended if they are unable to review the change within 36 hours.
 
-The default for each contribution is that it is accepted once no committer has
-an objection. During review committers may also request that a specific
-contributor who is most versed in a particular area review the PR before it can
-be merged. Once all issues brought by committers are addressed it can be merged
-by any committer.
+During review, a committer may request that a specific contributor who is most
+versed in a particular area review the PR before it can be merged.
+
+A pull request can be merged by any committer, but only if no objections are
+raised by any other committer. In the case of an objection being raised, all
+involved committers should seek consensus through discussion and compromise.
 
 In the case of an objection being raised in a pull request by another committer,
 all involved committers should seek to arrive at a consensus by way of
@@ -82,12 +84,12 @@ committer in a timely manner. Committers are expected to follow this policy.
 TC Process
 ----------
 
-The TC uses a "consensus seeking" process for issues that are escalated to the
-TC. The group tries to find a resolution that has no objections among TC
-members. If a consensus cannot be reached, the Project Lead has the ultimate
-authority to make a final decision. It is expected that the majority of
-decisions made by the TC are via a consensus seeking process and that the
-Project Lead intercedes only as a last resort.
+Any issues brought to the TC will be addressed among the committee with a
+consensus-seeking process. The group tries to find a resolution that has no
+objections among TC members. If a consensus cannot be reached, the Project Lead
+has the ultimate authority to make a final decision. It is expected that the
+majority of decisions made by the TC are via a consensus seeking process and
+that the Project Lead intercedes only as a last resort.
 
 Resolution may involve returning the issue to committers with suggestions on how
 to move forward towards a consensus.

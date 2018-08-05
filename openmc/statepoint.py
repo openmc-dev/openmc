@@ -83,6 +83,8 @@ class StatePoint(object):
         Number of tally realizations
     path : str
         Working directory for simulation
+    photon_transport : bool
+        Indicate whether photon transport is active
     run_mode : str
         Simulation run mode, e.g. 'eigenvalue'
     runtime : dict
@@ -321,6 +323,10 @@ class StatePoint(object):
     @property
     def path(self):
         return self._f.attrs['path'].decode()
+
+    @property
+    def photon_transport(self):
+        return self._f.attrs['photon_transport'] > 0
 
     @property
     def run_mode(self):

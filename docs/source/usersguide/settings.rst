@@ -151,9 +151,18 @@ time and another that should be sampled 30% of the time::
 
   settings.source = [src1, src2]
 
+Finally, the :attr:`Source.particle` attribute can be used to indicate the
+source should be composed of particles other than neutrons. For example, the
+following would generate a photon source::
+
+  source = openmc.Source()
+  source.particle = 'photon'
+  ...
+
+  settings.source = source
+
 For a full list of all classes related to statistical distributions, see
 :ref:`pythonapi_stats`.
-
 
 ---------------
 Shannon Entropy
@@ -190,6 +199,52 @@ property::
 
   settings.entropy_mesh = m
 
+----------------
+Photon Transport
+----------------
+
+In addition to neutrons, OpenMC is also capable of simulating the passage of
+photons through matter. This allows the modeling of photon production from
+neutrons as well as pure photon calculations. The
+:attr:`Settings.photon_transport` attribute can be used to enable photon
+transport::
+
+  settings.photon_transport = True
+
+The way in which OpenMC handles secondary charged particles can be specified
+with the :attr:`Settings.electron_treatment` attribute. By default, the
+:ref:`thick-target bremsstrahlung <ttb>` (TTB) approximation is used to generate
+bremsstrahlung radiation emitted by electrons and positrons created in photon
+interactions. To neglect secondary bremsstrahlung photons and instead deposit
+all energy from electrons locally, the local energy deposition option can be
+selected::
+
+  settings.electron_treatment = 'led'
+
+.. warning::
+   Currently, collision stopping powers used in the TTB approximation come from
+   the `NIST ESTAR database`_, which provides data for each element calculated
+   using by default the material density at standard temperature and pressure.
+   In OpenMC, stopping powers for compounds are calculated from this elemental
+   data using Bragg's additivity rule. However, this is not a good
+   approximation --- the collision stopping power is a function of certain
+   quantities, such as the mean excitation energy and particularly the density
+   effect correction, that depend on material properties. Data for constituent
+   elements in a compound cannot simply be summed together, but rather these
+   quantities should be calculated for the material. This treatment will be
+   especially poor when the density of a material is different from the
+   densities used in the NIST data.
+
+.. note::
+   Some features related to photon transport are not currently implemented,
+   including:
+
+     * Tallying photon energy deposition.
+     * Properly accounting for energy deposition in coupled n-p calculations.
+     * Generating a photon source from a neutron calculation that can be used
+       for a later fixed source photon calculation.
+     * Photoneutron reactions.
+
 --------------------------
 Generation of Output Files
 --------------------------
@@ -224,3 +279,5 @@ As an example, to write a statepoint file every five batches::
 
   settings.batches = n
   settings.statepoint = {'batches': range(5, n + 5, 5)}
+
+.. _NIST ESTAR database: https://physics.nist.gov/PhysRefData/Star/Text/ESTAR.html

@@ -126,6 +126,11 @@ contains
       case (MODE_EIGENVALUE)
         call write_dataset(file_id, "run_mode", "eigenvalue")
       end select
+      if (photon_transport) then
+        call write_attribute(file_id, "photon_transport", 1)
+      else
+        call write_attribute(file_id, "photon_transport", 0)
+      end if
       call write_dataset(file_id, "n_particles", n_particles)
       call write_dataset(file_id, "n_batches", n_batches)
 
@@ -678,6 +683,12 @@ contains
     case ('eigenvalue')
       run_mode = MODE_EIGENVALUE
     end select
+    call read_attribute(int_array(1), file_id, "photon_transport")
+    if (int_array(1) == 1) then
+      photon_transport = .true.
+    else
+      photon_transport = .false.
+    end if
     call read_dataset(n_particles, file_id, "n_particles")
     call read_dataset(int_array(1), file_id, "n_batches")
 

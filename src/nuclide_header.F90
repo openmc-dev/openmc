@@ -42,14 +42,15 @@ module nuclide_header
 
   ! Positions for first dimension of Nuclide % xs
   integer, parameter :: &
-       XS_TOTAL      = 1, &
-       XS_ABSORPTION = 2, &
-       XS_FISSION    = 3, &
-       XS_NU_FISSION = 4
+       XS_TOTAL       = 1, &
+       XS_ABSORPTION  = 2, &
+       XS_FISSION     = 3, &
+       XS_NU_FISSION  = 4, &
+       XS_PHOTON_PROD = 5
 
-  ! The array within SumXS is of shape (4, n_energy) where the first dimension
+  ! The array within SumXS is of shape (5, n_energy) where the first dimension
   ! corresponds to the following values: 1) total, 2) absorption (MT > 100), 3)
-  ! fission, 4) neutron production
+  ! fission, 4) neutron production, 5) photon production
   type SumXS
     real(8), allocatable :: value(:,:)
   end type SumXS
@@ -104,8 +105,8 @@ module nuclide_header
     integer :: reaction_index(891)
 
     ! Fission energy release
-    class(Function1D), allocatable :: fission_q_prompt ! prompt neutrons, gammas
-    class(Function1D), allocatable :: fission_q_recov  ! neutrons, gammas, betas
+    class(Function1D), allocatable :: fission_q_prompt ! fragments and prompt neutrons, gammas
+    class(Function1D), allocatable :: fission_q_recov  ! fragments, neutrons, gammas, betas
 
   contains
     procedure :: assign_0K_elastic_scattering
@@ -138,6 +139,7 @@ module nuclide_header
                                 !   averaged over bound and non-bound nuclei
     real(8) :: thermal          ! Bound thermal elastic & inelastic scattering
     real(8) :: thermal_elastic  ! Bound thermal elastic scattering
+    real(8) :: photon_prod      ! microscopic photon production xs
 
     ! Cross sections for depletion reactions (note that these are not stored in
     ! macroscopic cache)
@@ -169,6 +171,13 @@ module nuclide_header
     real(C_DOUBLE) :: absorption    ! macroscopic absorption xs
     real(C_DOUBLE) :: fission       ! macroscopic fission xs
     real(C_DOUBLE) :: nu_fission    ! macroscopic production xs
+    real(C_DOUBLE) :: photon_prod   ! macroscopic photon production xs
+
+    ! Photon cross sections
+    real(C_DOUBLE) :: coherent        ! macroscopic coherent xs
+    real(C_DOUBLE) :: incoherent      ! macroscopic incoherent xs
+    real(C_DOUBLE) :: photoelectric   ! macroscopic photoelectric xs
+    real(C_DOUBLE) :: pair_production ! macroscopic pair production xs
   end type MaterialMacroXS
 
 !===============================================================================
@@ -196,8 +205,8 @@ module nuclide_header
 !$omp threadprivate(micro_xs, material_xs)
 
   ! Minimum/maximum energies
-  real(8) :: energy_min_neutron = ZERO
-  real(8) :: energy_max_neutron = INFINITY
+  real(8) :: energy_min(2) = [ZERO, ZERO]
+  real(8) :: energy_max(2) = [INFINITY, INFINITY]
 
 contains
 
@@ -549,34 +558,36 @@ contains
     if (object_exists(group_id, 'fission_energy_release')) then
       fer_group = open_group(group_id, 'fission_energy_release')
 
-      ! Check to see if this is polynomial or tabulated data
+      ! Q-PROMPT
       fer_dset = open_dataset(fer_group, 'q_prompt')
       call read_attribute(temp_str, fer_dset, 'type')
       if (temp_str == 'Polynomial') then
-        ! Read the prompt Q-value
         allocate(Polynomial :: this % fission_q_prompt)
         call this % fission_q_prompt % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
-
-        ! Read the recoverable energy Q-value
-        allocate(Polynomial :: this % fission_q_recov)
-        fer_dset = open_dataset(fer_group, 'q_recoverable')
-        call this % fission_q_recov % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
       else if (temp_str == 'Tabulated1D') then
-        ! Read the prompt Q-value
         allocate(Tabulated1D :: this % fission_q_prompt)
         call this % fission_q_prompt % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
+      else
+        call fatal_error('Unrecognized fission prompt energy release format.')
+      end if
 
-        ! Read the recoverable energy Q-value
+      ! Q-RECOV
+      fer_dset = open_dataset(fer_group, 'q_recoverable')
+      call read_attribute(temp_str, fer_dset, 'type')
+      if (temp_str == 'Polynomial') then
+        allocate(Polynomial :: this % fission_q_recov)
+        call this % fission_q_recov % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+      else if (temp_str == 'Tabulated1D') then
         allocate(Tabulated1D :: this % fission_q_recov)
-        fer_dset = open_dataset(fer_group, 'q_recoverable')
         call this % fission_q_recov % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
       else
-        call fatal_error('Unrecognized fission energy release format.')
+        call fatal_error('Unrecognized fission recoverable energy release format.')
       end if
+
       call close_group(fer_group)
     end if
 
@@ -591,7 +602,7 @@ contains
   subroutine nuclide_create_derived(this)
     class(Nuclide), intent(inout) :: this
 
-    integer :: i, j, k
+    integer :: i, j, k, l
     integer :: t
     integer :: m
     integer :: n
@@ -606,7 +617,7 @@ contains
     do i = 1, n_temperature
       ! Allocate and initialize derived cross sections
       n_grid = size(this % grid(i) % energy)
-      allocate(this % xs(i) % value(4,n_grid))
+      allocate(this % xs(i) % value(5,n_grid))
       this % xs(i) % value(:,:) = ZERO
     end do
 
@@ -638,6 +649,18 @@ contains
           this % xs(t) % value(XS_TOTAL,j:j+n-1) = this % xs(t) % &
                value(XS_TOTAL,j:j+n-1) + rx % xs(t) % value
 
+          ! Calculate photon production cross section
+          do k = 1, size(rx % products)
+            if (rx % products(k) % particle == PHOTON) then
+              do l = 1, n
+                this % xs(t) % value(XS_PHOTON_PROD,l+j-1) = &
+                     this % xs(t) % value(XS_PHOTON_PROD,l+j-1) + &
+                     rx % xs(t) % value(l) * rx % products(k) % &
+                     yield % evaluate(this % grid(t) % energy(l+j-1))
+              end do
+            end if
+          end do
+
           ! Add contribution to absorption cross section
           if (is_disappearance(rx % MT)) then
             this % xs(t) % value(XS_ABSORPTION,j:j+n-1) = this % xs(t) % &
@@ -663,10 +686,6 @@ contains
             ! Also need to add fission cross sections to absorption
             this % xs(t) % value(XS_ABSORPTION,j:j+n-1) = this % xs(t) % &
                  value(XS_ABSORPTION,j:j+n-1) + rx % xs(t) % value
-
-            ! If total fission reaction is present, there's no need to store the
-            ! reaction cross-section since it was copied to this % fission
-            if (rx % MT == N_FISSION) deallocate(rx % xs(t) % value)
 
             ! Keep track of this reaction for easy searching later
             if (t == 1) then
@@ -975,6 +994,10 @@ contains
           micro_xs % fission         = ZERO
           micro_xs % nu_fission      = ZERO
         end if
+
+        ! Calculate microscopic nuclide photon production cross section
+        micro_xs % photon_prod = (ONE - f) * xs % value(XS_PHOTON_PROD,i_grid) &
+             + f * xs % value(XS_PHOTON_PROD,i_grid + 1)
       end associate
 
       ! Depletion-related reactions
@@ -1695,8 +1718,8 @@ contains
         if (res_scat_on) call nuclides(n) % assign_0K_elastic_scattering()
 
         ! Initialize nuclide grid
-        call nuclides(n) % init_grid(energy_min_neutron, &
-             energy_max_neutron, n_log_bins)
+        call nuclides(n) % init_grid(energy_min(NEUTRON), &
+             energy_max(NEUTRON), n_log_bins)
       else
         err = E_DATA
         call set_errmsg("Nuclide '" // trim(name_) // "' is not present &

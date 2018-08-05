@@ -14,7 +14,7 @@ module tracking
   use particle_header,    only: LocalCoord, Particle
   use physics,            only: collision
   use physics_mg,         only: collision_mg
-  use random_lcg,         only: prn
+  use random_lcg,         only: prn, prn_set_stream
   use settings
   use simulation_header
   use string,             only: to_str
@@ -75,6 +75,13 @@ contains
     if (active_tallies % size() > 0) call zero_flux_derivs()
 
     EVENT_LOOP: do
+      ! Set the random number stream
+      if (p % type == NEUTRON) then
+        call prn_set_stream(STREAM_TRACKING)
+      else
+        call prn_set_stream(STREAM_PHOTON)
+      end if
+
       ! Store pre-collision particle properties
       p % last_wgt = p % wgt
       p % last_E   = p % E
@@ -109,8 +116,7 @@ contains
             ! If the material is the same as the last material and the
             ! temperature hasn't changed, we don't need to lookup cross
             ! sections again.
-            call materials(p % material) % calculate_xs(p % E, p % sqrtkT, &
-                 micro_xs, nuclides, material_xs)
+            call materials(p % material) % calculate_xs(p)
           end if
         else
           ! Get the MG data
@@ -135,7 +141,9 @@ contains
            lattice_translation, next_level)
 
       ! Sample a distance to collision
-      if (material_xs % total == ZERO) then
+      if (p % type == ELECTRON .or. p % type == POSITRON) then
+        d_collision = ZERO
+      else if (material_xs % total == ZERO) then
         d_collision = INFINITY
       else
         d_collision = -log(prn()) / material_xs % total
@@ -155,7 +163,7 @@ contains
       end if
 
       ! Score track-length estimate of k-eff
-      if (run_mode == MODE_EIGENVALUE) then
+      if (run_mode == MODE_EIGENVALUE .and. p % type == NEUTRON) then
         global_tally_tracklength = global_tally_tracklength + p % wgt * &
              distance * material_xs % nu_fission
       end if
@@ -196,7 +204,7 @@ contains
         ! PARTICLE HAS COLLISION
 
         ! Score collision estimate of keff
-        if (run_mode == MODE_EIGENVALUE) then
+        if (run_mode == MODE_EIGENVALUE .and. p % type == NEUTRON) then
           global_tally_collision = global_tally_collision + p % wgt * &
                material_xs % nu_fission / material_xs % total
         end if

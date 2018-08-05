@@ -258,6 +258,49 @@ method using :attr:`Settings.resonance_scattering`.
           running the :meth:`IncidentNeutron.add_elastic_0K_from_endf` method
           may take several minutes to complete.
 
+Photon Cross Sections
+---------------------
+
+Photon interaction data is needed to run OpenMC with photon transport enabled.
+Some of this data, namely bremsstrahlung cross sections from `Seltzer and
+Berger`_, stopping powers from the `NIST ESTAR database`_, and Compton profiles
+calculated by `Biggs et al.`_ and available in the Geant4 G4EMLOW data file, is
+distributed with OpenMC. The rest is available from the NNDC, which provides
+ENDF data from the photo-atomic and atomic relaxation sublibraries of the
+ENDF/B-VII.1 library. By default, the :ref:`scripts_nndc` script will download
+the ENDF data in addition to the neutron and thermal scattering data, extract
+it, combine it with the data from other sources, and convert it to an HDF5
+library. Alternatively, the :ref:`scripts_photon` script can be used to
+download the photon data on its own and create the HDF5 library:
+
+.. code-block:: sh
+
+    openmc-get-photon-data
+
+As with neutrons and thermal scattering, it is possible to use the Python API
+directly to convert photon interaction data from an ENDF or ACE file to an HDF5
+file. The :class:`openmc.data.IncidentPhoton` class contains an
+:meth:`IncidentPhoton.from_ace` method that will generate photon data from an
+ACE table and an :meth:`IncidentPhoton.export_to_hdf5` method that writes the
+data to an HDF5 file:
+
+::
+
+  u = openmc.data.IncidentPhoton.from_ace('92000.12p')
+  u.export_to_hdf5('U.h5')
+
+Similarly, the :meth:`IncidentPhoton.from_endf` method can be used to read
+photon data from an ENDF file. In the case, both the photo-atomic and atomic
+relaxation sublibrary files are required:
+
+::
+
+  u = openmc.data.IncidentPhoton.from_endf('photoat-092_U_000.endf',
+                                           'atom-092_U_000.endf')
+
+Once the HDF5 files have been generated, a library can be created using the
+:class:`DataLibrary` class as described in :ref:`create_xs_library`.
+
 -----------------------
 Windowed Multipole Data
 -----------------------
@@ -291,3 +334,6 @@ For an example of how to create a multi-group library, see
 .. _MCNP: http://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
 .. _TENDL: https://tendl.web.psi.ch/tendl_2015/tendl2015.html
+.. _Seltzer and Berger: https://www.sciencedirect.com/science/article/pii/0092640X86900148?via%3Dihub
+.. _NIST ESTAR database: https://physics.nist.gov/PhysRefData/Star/Text/ESTAR.html
+.. _Biggs et al.: https://www.sciencedirect.com/science/article/pii/0092640X75900303

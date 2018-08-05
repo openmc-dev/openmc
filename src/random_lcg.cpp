@@ -6,12 +6,13 @@ namespace openmc {
 
 
 // Constants
-extern "C" const int N_STREAMS         {5};
+extern "C" const int N_STREAMS         {6};
 extern "C" const int STREAM_TRACKING   {0};
 extern "C" const int STREAM_TALLIES    {1};
 extern "C" const int STREAM_SOURCE     {2};
 extern "C" const int STREAM_URR_PTABLE {3};
 extern "C" const int STREAM_VOLUME     {4};
+extern "C" const int STREAM_PHOTON     {5};
 
 // Starting seed
 int64_t seed {1};

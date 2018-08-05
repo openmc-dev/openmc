@@ -18,6 +18,7 @@ module bank_header
     real(C_DOUBLE) :: uvw(3)        ! diretional cosines
     real(C_DOUBLE) :: E             ! energy / energy group if in MG mode.
     integer(C_INT) :: delayed_group ! delayed group
+    integer(C_INT) :: particle      ! particle type (neutron, photon, etc.)
   end type Bank
 
   ! Source and fission bank

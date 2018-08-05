@@ -16,13 +16,82 @@ generates ACE-format cross sections.
 """
 
 from os import SEEK_CUR
+from pathlib import PurePath
 import struct
 import sys
 
 import numpy as np
 
 from openmc.mixin import EqualityMixin
-from openmc.data.endf import _ENDF_FLOAT_RE
+import openmc.checkvalue as cv
+from .data import ATOMIC_SYMBOL, gnd_name
+from .endf import ENDF_FLOAT_RE
+
+
+def get_metadata(zaid, metastable_scheme='nndc'):
+    """Return basic identifying data for a nuclide with a given ZAID.
+
+    Parameters
+    ----------
+    zaid : int
+        ZAID (1000*Z + A) obtained from a library
+    metastable_scheme : {'nndc', 'mcnp'}
+        Determine how ZAID identifiers are to be interpreted in the case of
+        a metastable nuclide. Because the normal ZAID (=1000*Z + A) does not
+        encode metastable information, different conventions are used among
+        different libraries. In MCNP libraries, the convention is to add 400
+        for a metastable nuclide except for Am242m, for which 95242 is
+        metastable and 95642 (or 1095242 in newer libraries) is the ground
+        state. For NNDC libraries, ZAID is given as 1000*Z + A + 100*m.
+
+    Returns
+    -------
+    name : str
+        Name of the table
+    element : str
+        The atomic symbol of the isotope in the table; e.g., Zr.
+    Z : int
+        Number of protons in the nucleus
+    mass_number : int
+        Number of nucleons in the nucleus
+    metastable : int
+        Metastable state of the nucleus. A value of zero indicates ground state.
+
+    """
+
+    cv.check_type('zaid', zaid, int)
+    cv.check_value('metastable_scheme', metastable_scheme, ['nndc', 'mcnp'])
+
+    Z = zaid // 1000
+    mass_number = zaid % 1000
+
+    if metastable_scheme == 'mcnp':
+        if zaid > 1000000:
+            # New SZA format
+            Z = Z % 1000
+            if zaid == 1095242:
+                metastable = 0
+            else:
+                metastable = zaid // 1000000
+        else:
+            if zaid == 95242:
+                metastable = 1
+            elif zaid == 95642:
+                metastable = 0
+            else:
+                metastable = 1 if mass_number > 300 else 0
+    elif metastable_scheme == 'nndc':
+        metastable = 1 if mass_number > 300 else 0
+
+    while mass_number > 3 * Z:
+        mass_number -= 100
+
+    # Determine name
+    element = ATOMIC_SYMBOL[Z]
+    name = gnd_name(Z, mass_number, metastable)
+
+    return (name, element, Z, mass_number, metastable)
+
 
 def ascii_to_binary(ascii_file, binary_file):
     """Convert an ACE file in ASCII format (type 1) to binary format (type 2).
@@ -160,7 +229,7 @@ class Library(EqualityMixin):
 
         # Determine whether file is ASCII or binary
         try:
-            fh = open(filename, 'rb')
+            fh = open(str(filename), 'rb')
             # Grab 10 lines of the library
             sb = b''.join([fh.readline() for i in range(10)])
 
@@ -349,7 +418,7 @@ class Library(EqualityMixin):
             # after it). If it's too short, then we apply the ENDF float regular
             # expression. We don't do this by default because it's expensive!
             if xss.size != nxs[1] + 1:
-                datastr = _ENDF_FLOAT_RE.sub(r'\1e\2', datastr)
+                datastr = ENDF_FLOAT_RE.sub(r'\1e\2', datastr)
                 xss = np.fromstring(datastr, sep=' ')
                 assert xss.size == nxs[1] + 1
 

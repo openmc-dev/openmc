@@ -339,6 +339,8 @@ contains
       type is (ZernikeFilter)
         j = FILTER_ZERNIKE
         this % estimator = ESTIMATOR_COLLISION
+      type is (ParticleFilter)
+        j = FILTER_PARTICLE
       type is (ZernikeRadialFilter)
         j = FILTER_ZERNIKE_RADIAL
         this % estimator = ESTIMATOR_COLLISION

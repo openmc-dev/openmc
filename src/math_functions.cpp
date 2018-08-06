@@ -718,4 +718,96 @@ void broaden_wmp_polynomials_c(double E, double dopp, int n, double factors[]) {
   }
 }
 
+
+void spline_c(int n, const double x[], const double y[], double z[])
+{
+  double c_new[n-1];
+
+  // Set natural boundary conditions
+  c_new[0] = 0.0;
+  z[0] = 0.0;
+  z[n-1] = 0.0;
+
+  // Solve using tridiagonal matrix algorithm; first do forward sweep
+  for (int i = 1; i < n - 1; i++) {
+    double a = x[i] - x[i-1];
+    double c = x[i+1] - x[i];
+    double b = 2.0*(a + c);
+    double d = 6.0*((y[i+1] - y[i])/c - (y[i] - y[i-1])/a);
+
+    c_new[i] = c/(b - a*c_new[i-1]);
+    z[i] = (d - a*z[i-1])/(b - a*c_new[i-1]);
+  }
+
+  // Back substitution
+  for (int i = n - 2; i >= 0; i--) {
+    z[i] = z[i] - c_new[i]*z[i+1];
+  }
+}
+
+
+double spline_interpolate_c(int n, const double x[], const double y[],
+                            const double z[], double xint)
+{
+  // Find the lower bounding index in x of xint
+  int i = n - 1;
+  while (--i) {
+    if (xint >= x[i]) break;
+  }
+
+  double h = x[i+1] - x[i];
+  double r = xint - x[i];
+
+  // Compute the coefficients
+  double b = (y[i+1] - y[i])/h - (h/6.0)*(z[i+1] + 2.0*z[i]);
+  double c = z[i]/2.0;
+  double d = (z[i+1] - z[i])/(h*6.0);
+
+  return y[i] + b*r + c*r*r + d*r*r*r;
+}
+
+
+double spline_integrate_c(int n, const double x[], const double y[],
+                          const double z[], double xa, double xb)
+{
+  // Find the lower bounding index in x of the lower limit of integration.
+  int ia = n - 1;
+  while (--ia) {
+    if (xa >= x[ia]) break;
+  }
+
+  // Find the lower bounding index in x of the upper limit of integration.
+  int ib = n - 1;
+  while (--ib) {
+    if (xb >= x[ib]) break;
+  }
+
+  // Evaluate the integral
+  double s = 0.0;
+  for (int i = ia; i <= ib; i++) {
+    double h = x[i+1] - x[i];
+
+    // Compute the coefficients
+    double b = (y[i+1] - y[i])/h - (h/6.0)*(z[i+1] + 2.0*z[i]);
+    double c = z[i]/2.0;
+    double d = (z[i+1] - z[i])/(h*6.0);
+
+    // Subtract the integral from x[ia] to xa
+    if (i == ia) {
+      double r = xa - x[ia];
+      s = s - (y[i]*r + b/2.0*r*r + c/3.0*r*r*r + d/4.0*r*r*r*r);
+    }
+
+    // Integrate from x[ib] to xb in final interval
+    if (i == ib) {
+      h = xb - x[ib];
+    }
+
+    // Accumulate the integral
+    s = s + y[i]*h + b/2.0*h*h + c/3.0*h*h*h + d/4.0*h*h*h*h;
+  }
+
+  return s;
+}
+
 } // namespace openmc

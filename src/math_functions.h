@@ -172,5 +172,57 @@ extern "C" double watt_spectrum_c(double a, double b);
 extern "C" void broaden_wmp_polynomials_c(double E, double dopp, int n,
                                           double factors[]);
 
+//==============================================================================
+//! Constructs a natural cubic spline.
+//!
+//! Given a tabulated function y_i = f(x_i), this computes the second
+//! derivative of the interpolating function at each x_i, which can then be
+//! used in any subsequent calls to spline_interpolate or spline_integrate for
+//! the same set of x and y values.
+//!
+//! @param n       Number of points
+//! @param x       Values of the independent variable, which must be strictly
+//!   increasing.
+//! @param y       Values of the dependent variable.
+//! @param[out] z  The second derivative of the interpolating function at each
+//!   value of x.
+//==============================================================================
+
+extern "C" void spline_c(int n, const double x[], const double y[], double z[]);
+
+//==============================================================================
+//! Determine the cubic spline interpolated y-value for a given x-value.
+//!
+//! @param n     Number of points
+//! @param x     Values of the independent variable, which must be strictly
+//!   increasing.
+//! @param y     Values of the dependent variable.
+//! @param z     The second derivative of the interpolating function at each
+//!   value of x.
+//! @param xint  Point at which to evaluate the cubic spline polynomial
+//! @result      Interpolated value
+//==============================================================================
+
+extern "C" double spline_interpolate_c(int n, const double x[], const double y[],
+                                       const double z[], double xint);
+
+//==============================================================================
+//! Evaluate the definite integral of the interpolating cubic spline between
+//! the given endpoints.
+//!
+//! @param n   Number of points
+//! @param x   Values of the independent variable, which must be strictly
+//!   increasing.
+//! @param y   Values of the dependent variable.
+//! @param z   The second derivative of the interpolating function at each
+//!   value of x.
+//! @param xa  Lower limit of integration
+//! @param xb  Upper limit of integration
+//! @result    Integral
+//==============================================================================
+
+extern "C" double spline_integrate_c(int n, const double x[], const double y[],
+                                     const double z[], double xa, double xb);
+
 } // namespace openmc
 #endif // MATH_FUNCTIONS_H

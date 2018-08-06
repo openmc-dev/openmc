@@ -547,7 +547,7 @@ contains
 
     ! format for write statements
 100 format (1X,A,T36,"= ",ES11.4," seconds")
-101 format (1X,A,T36,"=  ",A," neutrons/second")
+101 format (1X,A,T36,"=  ",A," particles/second")
 
   end subroutine print_runtime
 

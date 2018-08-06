@@ -9,8 +9,9 @@ module source_header
   use error
   use geometry, only: find_cell
   use material_header, only: materials
-  use nuclide_header, only: energy_min_neutron, energy_max_neutron
+  use nuclide_header, only: energy_min, energy_max
   use particle_header, only: Particle
+  use settings, only: photon_transport
   use string, only: to_lower
   use xml_interface
 
@@ -29,6 +30,7 @@ module source_header
 !===============================================================================
 
   type, public :: SourceDistribution
+    integer :: particle ! particle type
     real(8) :: strength = ONE ! source strength
     class(SpatialDistribution),    allocatable :: space  ! spatial distribution
     class(UnitSphereDistribution), allocatable :: angle  ! angle distribution
@@ -53,10 +55,26 @@ contains
 
     integer :: n
     logical :: file_exists
-    character(MAX_WORD_LEN) :: type
+    character(MAX_WORD_LEN) :: type, temp_str
     type(XMLNode) :: node_space
     type(XMLNode) :: node_angle
     type(XMLNode) :: node_dist
+
+    ! Check for particle type
+    if (check_for_node(node, "particle")) then
+      call get_node_value(node, "particle", temp_str)
+      select case (to_lower(temp_str))
+      case ('neutron')
+        this % particle = NEUTRON
+      case ('photon')
+        this % particle = PHOTON
+        photon_transport = .true.
+      case default
+        call fatal_error('Unknown source particle type: ' // trim(temp_str))
+      end select
+    else
+      this % particle = NEUTRON
+    end if
 
     ! Check for source strength
     if (check_for_node(node, "strength")) then
@@ -231,6 +249,9 @@ contains
       ! Set particle defaults
       call p % initialize()
 
+      ! Set particle type
+      site % particle = this % particle
+
       ! Sample spatial distribution
       site % xyz(:) = this % space % sample()
 
@@ -274,13 +295,13 @@ contains
     ! Sample angle
     site % uvw(:) = this % angle % sample()
 
-    ! Check for monoenergetic source above maximum neutron energy
+    ! Check for monoenergetic source above maximum particle energy
     select type (energy => this % energy)
     type is (Discrete)
-      if (any(energy % x > energy_max_neutron)) then
+      if (any(energy % x > energy_max(this % particle))) then
         call fatal_error("Source energy above range of energies of at least &
              &one cross section table")
-      else if (any(energy % x < energy_min_neutron)) then
+      else if (any(energy % x < energy_min(this % particle))) then
         call fatal_error("Source energy below range of energies of at least &
              &one cross section table")
       end if
@@ -290,8 +311,9 @@ contains
       ! Sample energy spectrum
       site % E = this % energy % sample()
 
-      ! Resample if energy falls outside minimum or maximum neutron energy
-      if (site % E < energy_max_neutron .and. site % E > energy_min_neutron) exit
+      ! Resample if energy falls outside minimum or maximum particle energy
+      if (site % E < energy_max(this % particle) .and. &
+           site % E > energy_min(this % particle)) exit
     end do
 
     ! Set delayed group

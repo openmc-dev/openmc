@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 
+"""
+Download ENDF/B-VII.1 incident neutron ACE data and incident photon ENDF data
+from NNDC and convert it to an HDF5 library for use with OpenMC. This data is
+used for OpenMC's regression test suite.
+"""
+
 import os
 import shutil
 import subprocess
@@ -13,31 +19,25 @@ from urllib.request import urlopen
 import openmc.data
 
 
-description = """
-Download ENDF/B-VII.1 ACE data from NNDC and convert it to an HDF5 library for
-use with OpenMC. This data is used for OpenMC's regression test suite.
-
-"""
-
-
 class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
                       argparse.RawDescriptionHelpFormatter):
     pass
 
 parser = argparse.ArgumentParser(
-    description=description,
+    description=__doc__,
     formatter_class=CustomFormatter
 )
 parser.add_argument('-b', '--batch', action='store_true',
                     help='supresses standard in')
+parser.add_argument('-n', '--neutron-only', action='store_true',
+                    help='Whether to exclude photon interaction/atomic data')
 parser.add_argument('--libver', choices=['earliest', 'latest'],
                     default='earliest', help="Output HDF5 versioning. Use "
                     "'earliest' for backwards compatibility or 'latest' for "
                     "performance")
 args = parser.parse_args()
 
-
-baseUrl = 'http://www.nndc.bnl.gov/endf/b7.1/aceFiles/'
+base_url = 'http://www.nndc.bnl.gov/endf/b7.1/aceFiles/'
 files = ['ENDF-B-VII.1-neutron-293.6K.tar.gz',
          'ENDF-B-VII.1-tsl.tar.gz']
 checksums = ['9729a17eb62b75f285d8a7628ace1449',
@@ -47,32 +47,29 @@ block_size = 16384
 # ==============================================================================
 # DOWNLOAD FILES FROM NNDC SITE
 
-filesComplete = []
+files_complete = []
 for f in files:
     # Establish connection to URL
-    url = baseUrl + f
+    url = base_url + f
     req = urlopen(url)
 
     # Get file size from header
-    if sys.version_info[0] < 3:
-        file_size = int(req.info().getheaders('Content-Length')[0])
-    else:
-        file_size = req.length
+    file_size = req.length
     downloaded = 0
 
     # Check if file already downloaded
     if os.path.exists(f):
         if os.path.getsize(f) == file_size:
             print('Skipping ' + f)
-            filesComplete.append(f)
+            files_complete.append(f)
             continue
         else:
-            overwrite = input('Overwrite {0}? ([y]/n) '.format(f))
+            overwrite = input('Overwrite {}? ([y]/n) '.format(f))
             if overwrite.lower().startswith('n'):
                 continue
 
     # Copy file to disk
-    print('Downloading {0}... '.format(f), end='')
+    print('Downloading {}... '.format(f), end='')
     with open(f, 'wb') as fh:
         while True:
             chunk = req.read(block_size)
@@ -83,7 +80,7 @@ for f in files:
                 downloaded, downloaded * 100. / file_size)
             print(status + chr(8)*len(status), end='')
         print('')
-        filesComplete.append(f)
+        files_complete.append(f)
 
 # ==============================================================================
 # VERIFY MD5 CHECKSUMS
@@ -101,18 +98,18 @@ for f, checksum in zip(files, checksums):
 # EXTRACT FILES FROM TGZ
 
 for f in files:
-    if f not in filesComplete:
+    if f not in files_complete:
         continue
 
     # Extract files
     suffix = f[f.rindex('-') + 1:].rstrip('.tar.gz')
     with tarfile.open(f, 'r') as tgz:
-        print('Extracting {0}...'.format(f))
+        print('Extracting {}...'.format(f))
         tgz.extractall(path='nndc/' + suffix)
 
 # Move ACE files down one level
 for filename in glob.glob('nndc/293.6K/ENDF-B-VII.1-neutron-293.6K/*'):
-    shutil.move(filename, 'nndc/293.6K/')
+    shutil.move(filename, 'nndc/293.6K/' + os.path.basename(filename))
 
 # ==============================================================================
 # FIX ZAID ASSIGNMENTS FOR VARIOUS S(A,B) TABLES
@@ -142,7 +139,7 @@ else:
 if not response or response.lower().startswith('y'):
     for f in files:
         if os.path.exists(f):
-            print('Removing {0}...'.format(f))
+            print('Removing {}...'.format(f))
             os.remove(f)
 
 # ==============================================================================
@@ -162,3 +159,10 @@ subprocess.call([ace2hdf5,
                  '-d', 'nndc_hdf5',
                  '--fission_energy_release', fer_file,
                  '--libver', args.libver] + ace_files)
+
+# Generate photo interaction library files
+if not args.neutron_only:
+    pwd = os.path.dirname(os.path.realpath(__file__))
+    photo_endf = os.path.join(pwd, 'openmc-get-photon-data')
+    subprocess.call([photo_endf, '-c', 'cross_sections.xml'],
+                    cwd='nndc_hdf5')

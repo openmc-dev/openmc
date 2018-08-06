@@ -78,6 +78,9 @@ module constants
        MASS_NEUTRON     = 1.00866491588_8,   & ! mass of a neutron in amu
        MASS_NEUTRON_EV  = 939.5654133e6_8,   & ! mass of a neutron in eV/c^2
        MASS_PROTON      = 1.007276466879_8,  & ! mass of a proton in amu
+       MASS_ELECTRON_EV = 0.5109989461e6_8,  & ! electron mass energy equivalent in eV/c^2
+       FINE_STRUCTURE   = 137.035999139_8,   & ! inverse fine structure constant
+       PLANCK_C         = 1.2398419739062977e4_8,& ! Planck's constant times c in eV-Angstroms
        AMU              = 1.660539040e-27_8, & ! 1 amu in kg
        C_LIGHT          = 2.99792458e8_8,    & ! speed of light in m/s
        N_AVOGADRO       = 0.6022140857_8,    & ! Avogadro's number in 10^24/mol
@@ -90,6 +93,14 @@ module constants
        THREE            = 3.0_8,             &
        FOUR             = 4.0_8
   complex(8), parameter :: ONEI = (ZERO, ONE)
+
+  ! Electron subshell labels
+  character(3), parameter :: SUBSHELLS(39) = [ &
+       'K  ', 'L1 ', 'L2 ', 'L3 ', 'M1 ', 'M2 ', 'M3 ', 'M4 ', 'M5 ', &
+       'N1 ', 'N2 ', 'N3 ', 'N4 ', 'N5 ', 'N6 ', 'N7 ', 'O1 ', 'O2 ', &
+       'O3 ', 'O4 ', 'O5 ', 'O6 ', 'O7 ', 'O8 ', 'O9 ', 'P1 ', 'P2 ', &
+       'P3 ', 'P4 ', 'P5 ', 'P6 ', 'P7 ', 'P8 ', 'P9 ', 'P10', 'P11', &
+       'Q1 ', 'Q2 ', 'Q3 ']
 
   ! ============================================================================
   ! GEOMETRY-RELATED CONSTANTS
@@ -172,7 +183,8 @@ module constants
   integer, parameter :: &
        NEUTRON  = 1, &
        PHOTON   = 2, &
-       ELECTRON = 3
+       ELECTRON = 3, &
+       POSITRON = 4
 
   ! Angular distribution type
   integer, parameter :: &
@@ -219,7 +231,9 @@ module constants
        N_3HEA  = 193, N_4N2P  = 194, N_4N2A = 195, N_4NPA  = 196, N_3P    = 197, &
        N_N3P   = 198, N_3N2PA = 199, N_5N2P = 200, N_P0    = 600, N_PC    = 649, &
        N_D0    = 650, N_DC    = 699, N_T0   = 700, N_TC    = 749, N_3HE0  = 750, &
-       N_3HEC  = 799, N_A0    = 800, N_AC   = 849, N_2N0   = 875, N_2NC   = 891
+       N_3HEC  = 799, N_A0    = 800, N_AC   = 849, N_2N0   = 875, N_2NC   = 891, &
+       COHERENT = 502, INCOHERENT = 504, PHOTOELECTRIC = 522, &
+       PAIR_PROD_ELEC = 515, PAIR_PROD = 516, PAIR_PROD_NUC = 517
 
   ! Depletion reactions
   integer, parameter :: DEPLETION_RX(6) = [N_GAMMA, N_P, N_A, N_2N, N_3N, N_4N]
@@ -343,7 +357,7 @@ module constants
   integer, parameter :: NO_BIN_FOUND = -1
 
   ! Tally filter and map types
-  integer, parameter :: N_FILTER_TYPES = 21
+  integer, parameter :: N_FILTER_TYPES = 22
   integer, parameter :: &
        FILTER_UNIVERSE       = 1,  &
        FILTER_MATERIAL       = 2,  &
@@ -365,7 +379,8 @@ module constants
        FILTER_SPH_HARMONICS  = 18, &
        FILTER_SPTL_LEGENDRE  = 19, &
        FILTER_ZERNIKE        = 20, &
-       FILTER_ZERNIKE_RADIAL = 21
+       FILTER_PARTICLE       = 21, &
+       FILTER_ZERNIKE_RADIAL = 22
 
   ! Mesh types
   integer, parameter :: &
@@ -434,6 +449,7 @@ module constants
   integer(C_INT), bind(C, name='STREAM_SOURCE') :: STREAM_SOURCE
   integer(C_INT), bind(C, name='STREAM_URR_PTABLE') :: STREAM_URR_PTABLE
   integer(C_INT), bind(C, name='STREAM_VOLUME') :: STREAM_VOLUME
+  integer(C_INT), bind(C, name='STREAM_PHOTON') :: STREAM_PHOTON
   integer(C_INT64_T), parameter :: DEFAULT_SEED = 1_8
 
   ! ============================================================================
@@ -455,6 +471,11 @@ module constants
        MODE_PLOTTING    = 3, & ! Plotting mode
        MODE_PARTICLE    = 4, & ! Particle restart mode
        MODE_VOLUME      = 5    ! Volume calculation mode
+
+  ! Electron treatments
+  integer, parameter :: &
+       ELECTRON_LED     = 1, & ! Local Energy Deposition
+       ELECTRON_TTB     = 2    ! Thick Target Bremsstrahlung
 
   !=============================================================================
   ! CMFD CONSTANTS

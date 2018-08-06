@@ -3,7 +3,6 @@ module particle_header
   use bank_header,     only: Bank, source_bank
   use constants
   use error,           only: fatal_error, warning
-  use geometry_header, only: root_universe
   use hdf5_interface
   use settings
   use simulation_header
@@ -159,9 +158,10 @@ contains
 ! the secondary bank and increments the number of sites in the secondary bank.
 !===============================================================================
 
-  subroutine create_secondary(this, uvw, type, run_CE)
+  subroutine create_secondary(this, uvw, E, type, run_CE)
     class(Particle), intent(inout) :: this
     real(8),         intent(in)    :: uvw(3)
+    real(8),         intent(in)    :: E
     integer,         intent(in)    :: type
     logical,         intent(in)    :: run_CE
 
@@ -174,14 +174,15 @@ contains
     end if
 
     n = this % n_secondary + 1
-    this % secondary_bank(n) % wgt    = this % wgt
+    this % secondary_bank(n) % particle = type
+    this % secondary_bank(n) % wgt = this % wgt
     this % secondary_bank(n) % xyz(:) = this % coord(1) % xyz
     this % secondary_bank(n) % uvw(:) = uvw
-    this % n_secondary = n
-    this % secondary_bank(this % n_secondary) % E = this % E
+    this % secondary_bank(n) % E = E
     if (.not. run_CE) then
-      this % secondary_bank(this % n_secondary) % E = real(this % g, 8)
+      this % secondary_bank(n) % E = real(this % g, 8)
     end if
+    this % n_secondary = n
 
   end subroutine create_secondary
 
@@ -219,7 +220,7 @@ contains
     this % g = NONE
 
     ! Set up base level coordinates
-    this % coord(1) % universe = root_universe
+    this % coord(1) % universe = NONE
     this % n_coord = 1
     this % last_n_coord = 1
 
@@ -241,6 +242,7 @@ contains
     call this % initialize()
 
     ! copy attributes from source bank site
+    this % type             = src % particle
     this % wgt              = src % wgt
     this % last_wgt         = src % wgt
     this % coord(1) % xyz   = src % xyz
@@ -335,6 +337,7 @@ contains
         call write_dataset(file_id, 'run_mode', 'particle restart')
       end select
       call write_dataset(file_id, 'id', this % id)
+      call write_dataset(file_id, 'type', this % type)
       call write_dataset(file_id, 'weight', src % wgt)
       call write_dataset(file_id, 'energy', src % E)
       call write_dataset(file_id, 'xyz', src % xyz)

@@ -22,7 +22,7 @@ _FILTER_TYPES = (
     'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
     'energyout', 'mu', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
     'energyfunction', 'cellfrom', 'legendre', 'spatiallegendre',
-    'sphericalharmonics', 'zernike', 'zernikeradial'
+    'sphericalharmonics', 'zernike', 'particle', 'zernikeradial'
 )
 
 _CURRENT_NAMES = (
@@ -31,6 +31,7 @@ _CURRENT_NAMES = (
     'z-min out', 'z-min in', 'z-max out', 'z-max in'
 )
 
+_PARTICLE_IDS = {'neutron': 1, 'photon': 2, 'electron': 3, 'positron': 4}
 
 class FilterMeta(ABCMeta):
     def __new__(cls, name, bases, namespace, **kwargs):
@@ -538,6 +539,46 @@ class SurfaceFilter(WithIDFilter):
 
     """
     expected_type = Surface
+
+
+class ParticleFilter(Filter):
+    """Bins tally events based on the Particle type.
+
+    Parameters
+    ----------
+    bins : str, int, or iterable of Integral
+        The Particles to tally. Either str with particle type or their
+        ID numbers can be used ('neutron' = 1, 'photon' = 2, 'electron' = 3,
+        'positron' = 4).
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : Iterable of Integral
+        The Particles to tally
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    @property
+    def bins(self):
+        return self._bins
+
+    @bins.setter
+    def bins(self, bins):
+        bins = np.atleast_1d(bins)
+        cv.check_iterable_type('filter bins', bins, (Integral, str))
+        for edge in bins:
+            if isinstance(edge, Integral):
+                cv.check_value('filter bin', edge, _PARTICLE_IDS.values())
+            else:
+                cv.check_value('filter bin', edge, _PARTICLE_IDS.keys())
+        bins = np.atleast_1d([b if isinstance(b, Integral) else _PARTICLE_IDS[b]
+                              for b in bins])
+        self._bins = bins
 
 
 class MeshFilter(Filter):

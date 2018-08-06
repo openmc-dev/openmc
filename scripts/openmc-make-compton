@@ -1,0 +1,99 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import tarfile
+from urllib.request import urlopen
+
+import numpy as np
+import h5py
+
+
+base_url = 'http://geant4.cern.ch/support/source/'
+filename = 'G4EMLOW.6.48.tar.gz'
+block_size = 16384
+
+# ==============================================================================
+# DOWNLOAD FILES FROM GEANT4 SITE
+
+# Establish connection to URL
+req = urlopen(base_url + filename)
+
+# Get file size from header
+file_size = req.length
+downloaded = 0
+
+# Check if file already downloaded
+download = True
+if os.path.exists(filename):
+    if os.path.getsize(filename) == file_size:
+        print('Already downloaded ' + filename)
+        download = False
+    else:
+        overwrite = input('Overwrite {}? ([y]/n) '.format(filename))
+        if overwrite.lower().startswith('n'):
+            download = False
+
+if download:
+    # Copy file to disk
+    print('Downloading {}... '.format(filename), end='')
+    with open(filename, 'wb') as fh:
+        while True:
+            chunk = req.read(block_size)
+            if not chunk: break
+            fh.write(chunk)
+            downloaded += len(chunk)
+            status = '{0:10}  [{1:3.2f}%]'.format(
+                downloaded, downloaded * 100. / file_size)
+            print(status + chr(8)*len(status), end='')
+        print('')
+
+# ==============================================================================
+# EXTRACT FILES FROM TGZ
+
+if not os.path.isdir('G4EMLOW6.48'):
+    with tarfile.open(filename, 'r') as tgz:
+        print('Extracting {0}...'.format(filename))
+        tgz.extractall()
+
+# ==============================================================================
+# GENERATE COMPTON PROFILE HDF5 FILE
+
+print('Generating compton_profiles.h5...')
+
+shell_file = os.path.join('G4EMLOW6.48', 'doppler', 'shell-doppler.dat')
+
+with open(shell_file, 'r') as shell:
+    with h5py.File('compton_profiles.h5', 'w') as f:
+        # Read/write electron momentum values
+        pz = np.loadtxt(os.path.join('G4EMLOW6.48', 'doppler', 'p-biggs.dat'))
+        f.create_dataset('pz', data=pz)
+
+        for Z in range(1, 101):
+            # Create group for this element
+            group = f.create_group('{:03}'.format(Z))
+
+            # Read data into one long array
+            path = os.path.join('G4EMLOW6.48', 'doppler', 'profile-{}.dat'.format(Z))
+            J = np.fromstring(open(path, 'r').read(), sep=' ')
+
+            # Determine number of electron shells and reshape
+            n_shells = J.size // 31
+            J.shape = (n_shells, 31)
+
+            # Write Compton profile for this Z
+            group.create_dataset('J', data=J)
+
+            # Determine binding energies and number of electrons for each shell
+            num_electrons = []
+            binding_energy = []
+            while True:
+                words = shell.readline().split()
+                if words[0] == '-1':
+                    break
+                num_electrons.append(float(words[0]))
+                binding_energy.append(float(words[1]))
+
+            # Write binding energies and number of electrons
+            group.create_dataset('num_electrons', data=num_electrons)
+            group.create_dataset('binding_energy', data=binding_energy)

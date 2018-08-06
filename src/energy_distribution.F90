@@ -331,8 +331,8 @@ contains
       c_k = c_k1
     end do
 
-    ! Check to make sure k is <= NP - 1
-    k = min(k, n_energy_out - 1)
+    ! Check to make sure 1 <= k <= NP - 1
+    k = max(1, min(k, n_energy_out - 1))
 
     E_l_k = this%distribution(l)%e_out(k)
     p_l_k = this%distribution(l)%p(k)
@@ -359,7 +359,7 @@ contains
     end if
 
     ! Now interpolate between incident energy bins i and i + 1
-    if (.not. histogram_interp) then
+    if (.not. histogram_interp .and. n_energy_out > 1) then
       if (l == i) then
         E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
       else

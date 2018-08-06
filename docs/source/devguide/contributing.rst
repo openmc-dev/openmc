@@ -48,7 +48,7 @@ Any change to the OpenMC repository must be made through a pull request (PR).
 This applies to all changes to documentation, code, binary files, etc. Even long
 term committers and TC members must use pull requests.
 
-No pull request may be merged without being reviewed.
+No pull request may be merged without being independently reviewed.
 
 For non-trivial contributions, pull requests should not be merged for at least
 36 hours to ensure that contributors in other timezones have time to review.

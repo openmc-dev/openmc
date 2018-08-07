@@ -70,6 +70,7 @@ contains
     integer(HID_T) :: cmfd_group, tallies_group, tally_group, meshes_group, &
                       filters_group, filter_group, derivs_group, &
                       deriv_group, runtime_group
+    integer(C_INT) :: ignored_err
     real(C_DOUBLE) :: k_combined(2)
     character(MAX_WORD_LEN), allocatable :: str_array(:)
     character(C_CHAR), pointer :: string(:)
@@ -151,7 +152,7 @@ contains
         call write_dataset(file_id, "k_col_abs", k_col_abs)
         call write_dataset(file_id, "k_col_tra", k_col_tra)
         call write_dataset(file_id, "k_abs_tra", k_abs_tra)
-        err = openmc_get_keff(k_combined)
+        ignored_err = openmc_get_keff(k_combined)
         call write_dataset(file_id, "k_combined", k_combined)
 
         ! Write out CMFD info

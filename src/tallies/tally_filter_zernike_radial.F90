@@ -98,18 +98,6 @@ contains
     character(MAX_LINE_LEN)         :: label
 
     label = "Zernike expansion, Z" // trim(to_str(2*bin)) // ",0"
-    ! integer :: n
-    ! integer :: first, last
-
-    ! do n = 0, this % order, -2
-      ! last = (n + 1)*(n + 2)/2
-      ! if (bin <= last) then
-      !   first = last - n
-      !   m = -n + (bin - first)*2
-        ! label = "Zernike expansion, Z" // trim(to_str(n)) // ",0"
-    !     exit
-    !   end if
-    ! end do
   end function text_label
 
 !===============================================================================

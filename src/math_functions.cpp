@@ -601,10 +601,9 @@ void calc_zn_rad_c(int n, double rho, double zn_rad[]) {
     int index = int(p/2);
     if (p == 2) {
     // Setting up R_22 to calculate R_20 (Eq 3.10 in Chong)
-      double R_22 = std::pow(rho, 2);
+      double R_22 = rho * rho;
       zn_rad[index] = 2 * R_22 - zn_rad[0];
-    }
-    else {
+    } else {
       double k1 = ((p + q) * (p - q) * (p - 2)) / 2.;
       double k2 = 2 * p * (p - 1) * (p - 2);
       double k3 = -q * q * (p - 1) - p * (p - 1) * (p - 2);

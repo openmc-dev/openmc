@@ -157,8 +157,12 @@ def calc_zn(n, rho, phi):
     _dll.calc_zn_c(n, rho, phi, zn)
     return zn
 
+
 def calc_zn_rad(n, rho):
-    """ Calculate the even orders in n-th order modified Zernike polynomial moment with no azimuthal dependency (m=0) for a given radial location in the unit disk. The normalization of the polynomials is such that the integral of Z_pq*Z_pq over the unit disk is exactly pi
+    """ Calculate the even orders in n-th order modified Zernike polynomial
+    moment with no azimuthal dependency (m=0) for a given radial location in
+    the unit disk. The normalization of the polynomials is such that the
+    integral of Z_pq*Z_pq over the unit disk is exactly pi.
 
     Parameters
     ----------
@@ -178,6 +182,7 @@ def calc_zn_rad(n, rho):
     zn_rad = np.zeros(num_bins, dtype=np.float64)
     _dll.calc_zn_rad_c(n, rho, zn_rad)
     return zn_rad
+    
 
 def rotate_angle(uvw0, mu, phi=None):
     """ Rotates direction cosines through a polar angle whose cosine is

@@ -10,7 +10,7 @@ module source_header
   use geometry, only: find_cell
   use material_header, only: materials
   use nuclide_header, only: energy_min, energy_max
-  use particle_header, only: Particle
+  use particle_header
   use settings, only: photon_transport
   use string, only: to_lower
   use xml_interface
@@ -247,7 +247,7 @@ contains
     found = .false.
     do while (.not. found)
       ! Set particle defaults
-      call p % initialize()
+      call particle_initialize(p)
 
       ! Set particle type
       site % particle = this % particle
@@ -290,7 +290,7 @@ contains
     ! Increment number of accepted samples
     n_accept = n_accept + 1
 
-    call p % clear()
+    call particle_clear(p)
 
     ! Sample angle
     site % uvw(:) = this % angle % sample()

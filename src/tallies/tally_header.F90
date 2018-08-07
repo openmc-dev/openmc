@@ -29,6 +29,7 @@ module tally_header
   public :: openmc_tally_get_n_realizations
   public :: openmc_tally_get_nuclides
   public :: openmc_tally_get_scores
+  public :: openmc_tally_reset
   public :: openmc_tally_results
   public :: openmc_tally_set_active
   public :: openmc_tally_set_filters
@@ -606,6 +607,24 @@ contains
       call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_get_scores
+
+
+  function openmc_tally_reset(index) result(err) bind(C)
+    ! Reset tally results and number of realizations
+    integer(C_INT32_T), intent(in), value :: index
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= size(tallies)) then
+      associate (t => tallies(index) % obj)
+        t % n_realizations = 0
+        if (allocated(t % results)) t % results(:, :, :) = ZERO
+        err = 0
+      end associate
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg('Index in tallies array is out of bounds.')
+    end if
+  end function openmc_tally_reset
 
 
   function openmc_tally_results(index, ptr, shape_) result(err) bind(C)

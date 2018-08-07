@@ -25,13 +25,6 @@ follows the NNDC data convention (1000*Z + A + 300 + 100*m), or the MCNP data
 convention (essentially the same as NNDC, except that the first metastable state
 of Am242 is 95242 and the ground state is 95642).
 
-The optional --fission_energy_release argument will accept an HDF5 file
-containing a library of fission energy release (ENDF MF=1 MT=458) data. A
-library built from ENDF/B-VII.1 data is released with OpenMC and can be found at
-openmc/data/fission_Q_data_endb71.h5. This data is necessary for
-'fission-q-prompt' and 'fission-q-recoverable' tallies, but is not needed
-otherwise.
-
 """
 
 class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
@@ -55,8 +48,6 @@ parser.add_argument('--xsdir', help='MCNP xsdir file that lists '
                     'ACE libraries')
 parser.add_argument('--xsdata', help='Serpent xsdata file that lists '
                     'ACE libraries')
-parser.add_argument('--fission_energy_release', help='HDF5 file containing '
-                    'fission energy release data')
 parser.add_argument('--libver', choices=['earliest', 'latest'],
                     default='earliest', help="Output HDF5 versioning. Use "
                     "'earliest' for backwards compatibility or 'latest' for "
@@ -141,13 +132,6 @@ for filename in ace_libraries:
                 except Exception as e:
                     print('Failed to convert {}: {}'.format(table.name, e))
                     continue
-
-                # Fission energy release data, if available
-                if args.fission_energy_release is not None:
-                    fer = openmc.data.FissionEnergyRelease.from_compact_hdf5(
-                        args.fission_energy_release, neutron)
-                    if fer is not None:
-                        neutron.fission_energy = fer
 
                 print('Converting {} (ACE) to {} (HDF5)'.format(table.name,
                                                                 neutron.name))

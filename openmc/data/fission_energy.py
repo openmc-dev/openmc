@@ -6,173 +6,18 @@ import sys
 import h5py
 import numpy as np
 
-from .data import ATOMIC_SYMBOL, EV_PER_MEV
-from .endf import get_cont_record, get_list_record, Evaluation
-from .function import Function1D, Tabulated1D, Polynomial, Sum
+from .data import EV_PER_MEV
+from .endf import get_cont_record, get_list_record, get_tab1_record, Evaluation
+from .function import Function1D, Tabulated1D, Polynomial, sum_functions
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
 
 
-def _extract_458_data(ev):
-    """Read an ENDF file and extract the MF=1, MT=458 values.
-
-    Parameters
-    ----------
-    ev : openmc.data.Evaluation
-        ENDF evaluation
-
-    Returns
-    -------
-    value : dict of str to list of float
-        Dictionary that gives lists of coefficients for each energy component.
-        The keys are the 2-3 letter strings used in ENDF-102, e.g. 'EFR' and
-        'ET'.  The list will have a length of 1 for Sher-Beck data, more for
-        polynomial data.
-    uncertainty : dict of str to list of float
-        A dictionary with the same format as above.  This is probably a
-        one-standard deviation value, but that is not specified explicitly in
-        ENDF-102.  Also, some evaluations will give zero uncertainty.  Use with
-        caution.
-
-    """
-    cv.check_type('evaluation', ev, Evaluation)
-
-    if not ev.target['fissionable']:
-        # This nuclide isn't fissionable.
-        return None
-
-    if (1, 458) not in ev.section:
-        # No 458 data here.
-        return None
-
-    file_obj = StringIO(ev.section[1, 458])
-
-    # Read the number of coefficients in this LIST record.
-    items = get_cont_record(file_obj)
-    NPL = items[3]
-
-    # Parse the ENDF LIST into an array.
-    items, data = get_list_record(file_obj)
-
-    # Declare the coefficient names and the order they are given in.  The LIST
-    # contains a value followed immediately by an uncertainty for each of these
-    # components, times the polynomial order + 1.
-    labels = ('EFR', 'ENP', 'END', 'EGP', 'EGD', 'EB', 'ENU', 'ER', 'ET')
-
-    # Associate each set of values and uncertainties with its label.
-    value = {}
-    uncertainty = {}
-    for i, label in enumerate(labels):
-        value[label] = data[2*i::18]
-        uncertainty[label] = data[2*i + 1::18]
-
-    # In ENDF/B-7.1, data for 2nd-order coefficients were mistakenly not
-    # converted from MeV to eV.  Check for this error and fix it if present.
-    n_coeffs = len(value['EFR'])
-    if n_coeffs == 3:  # Only check 2nd-order data.
-        # Check each energy component for the error.  If a 1 MeV neutron
-        # causes a change of more than 100 MeV, we know something is wrong.
-        error_present = False
-        for coeffs in value.values():
-            second_order = coeffs[2]
-            if abs(second_order) * 1e12 > 1e8:
-                error_present = True
-                break
-
-        # If we found the error, reduce all 2nd-order coeffs by 10**6.
-        if error_present:
-            for coeffs in value.values():
-                coeffs[2] /= EV_PER_MEV
-            for coeffs in uncertainty.values():
-                coeffs[2] /= EV_PER_MEV
-
-    return value, uncertainty
-
-
-def write_compact_458_library(endf_files, output_name='fission_Q_data.h5',
-                              comment=None, verbose=False):
-    """Read ENDF files, strip the MF=1 MT=458 data and write to small HDF5.
-
-    Parameters
-    ----------
-    endf_files : Collection of str
-        Strings giving the paths to the ENDF files that will be parsed for data.
-    output_name : str
-        Name of the output HDF5 file.  Default is 'fission_Q_data.h5'.
-    comment : str
-        Comment to write in the output HDF5 file.  Defaults to no comment.
-    verbose : bool
-        If True, print the name of each isomer as it is read.  Defaults to
-        False.
-
-    """
-    # Open the output file.
-    out = h5py.File(output_name, 'w', libver='earliest')
-
-    # Write comments, if given.  This commented out comment is the one used for
-    # the library distributed with OpenMC.
-    #comment = ('This data is extracted from ENDF/B-VII.1 library.  Thanks '
-    #           'evaluators, for all your hard work :)  Citation:  '
-    #           'M. B. Chadwick, M. Herman, P. Oblozinsky, '
-    #           'M. E. Dunn, Y. Danon, A. C. Kahler, D. L. Smith, '
-    #           'B. Pritychenko, G. Arbanas, R. Arcilla, R. Brewer, '
-    #           'D. A. Brown, R. Capote, A. D. Carlson, Y. S. Cho, H. Derrien, '
-    #           'K. Guber, G. M. Hale, S. Hoblit, S. Holloway, T. D. Johnson, '
-    #           'T. Kawano, B. C. Kiedrowski, H. Kim, S. Kunieda, '
-    #           'N. M. Larson, L. Leal, J. P. Lestone, R. C. Little, '
-    #           'E. A. McCutchan, R. E. MacFarlane, M. MacInnes, '
-    #           'C. M. Mattoon, R. D. McKnight, S. F. Mughabghab, '
-    #           'G. P. A. Nobre, G. Palmiotti, A. Palumbo, M. T. Pigni, '
-    #           'V. G. Pronyaev, R. O. Sayer, A. A. Sonzogni, N. C. Summers, '
-    #           'P. Talou, I. J. Thompson, A. Trkov, R. L. Vogt, '
-    #           'S. C. van der Marck, A. Wallner, M. C. White, D. Wiarda, '
-    #           'and P. G. Young. ENDF/B-VII.1 nuclear data for science and '
-    #           'technology: Cross sections, covariances, fission product '
-    #           'yields and decay data", Nuclear Data Sheets, '
-    #           '112(12):2887-2996 (2011).')
-    if comment is not None:
-        out.attrs['comment'] = np.string_(comment)
-
-    # Declare the order of the components.  Use fixed-length numpy strings
-    # because they work well with h5py.
-    labels = np.array(('EFR', 'ENP', 'END', 'EGP', 'EGD', 'EB', 'ENU', 'ER',
-                       'ET'), dtype='S3')
-    out.attrs['component order'] = labels
-
-    # Iterate over the given files.
-    if verbose: print('Reading ENDF files:')
-    for fname in endf_files:
-        if verbose: print(fname)
-
-        ev = Evaluation(fname)
-
-        # Skip non-fissionable nuclides.
-        if not ev.target['fissionable']:
-            continue
-
-        # Get the important bits.
-        data = _extract_458_data(ev)
-        if data is None: continue
-        value, uncertainty = data
-
-        # Make a group for this isomer.
-        name = ATOMIC_SYMBOL[ev.target['atomic_number']] + \
-               str(ev.target['mass_number'])
-        if ev.target['isomeric_state'] != 0:
-            name += '_m' + str(ev.target['isomeric_state'])
-        nuclide_group = out.create_group(name)
-
-        # Write all the coefficients into one array.  The first dimension gives
-        # the component (e.g. fragments or prompt neutrons); the second switches
-        # between value and uncertainty; the third gives the polynomial order.
-        n_coeffs = len(value['EFR'])
-        data_out = np.zeros((len(labels), 2, n_coeffs))
-        for i, label in enumerate(labels):
-            data_out[i, 0, :] = value[label.decode()]
-            data_out[i, 1, :] = uncertainty[label.decode()]
-        nuclide_group.create_dataset('data', data=data_out)
-
-    out.close()
+_NAMES = (
+    'fragments', 'prompt_neutrons', 'delayed_neutrons',
+    'prompt_photons', 'delayed_photons', 'betas',
+    'neutrinos', 'recoverable', 'total'
+)
 
 
 class FissionEnergyRelease(EqualityMixin):
@@ -249,14 +94,15 @@ class FissionEnergyRelease(EqualityMixin):
         - incident neutron energy).
 
     """
-    def __init__(self):
-        self._fragments = None
-        self._prompt_neutrons = None
-        self._delayed_neutrons = None
-        self._prompt_photons = None
-        self._delayed_photons = None
-        self._betas = None
-        self._neutrinos = None
+    def __init__(self, fragments, prompt_neutrons, delayed_neutrons,
+                 prompt_photons, delayed_photons, betas, neutrinos):
+        self.fragments = fragments
+        self.prompt_neutrons = prompt_neutrons
+        self.delayed_neutrons = delayed_neutrons
+        self.prompt_photons = prompt_photons
+        self.delayed_photons = delayed_photons
+        self.betas = betas
+        self.neutrinos = neutrinos
 
     @property
     def fragments(self):
@@ -288,27 +134,33 @@ class FissionEnergyRelease(EqualityMixin):
 
     @property
     def recoverable(self):
-        return Sum([self.fragments, self.prompt_neutrons, self.delayed_neutrons,
-                    self.prompt_photons, self.delayed_photons, self.betas])
+        components = ['fragments', 'prompt_neutrons', 'delayed_neutrons',
+                      'prompt_photons', 'delayed_photons', 'betas']
+        return sum_functions(getattr(self, c) for c in components)
 
     @property
     def total(self):
-        return Sum([self.fragments, self.prompt_neutrons, self.delayed_neutrons,
-                    self.prompt_photons, self.delayed_photons, self.betas,
-                    self.neutrinos])
+        components = ['fragments', 'prompt_neutrons', 'delayed_neutrons',
+                      'prompt_photons', 'delayed_photons', 'betas',
+                      'neutrinos']
+        return sum_functions(getattr(self, c) for c in components)
 
     @property
     def q_prompt(self):
-        return Sum([self.fragments, self.prompt_neutrons, self.prompt_photons,
-                    lambda E: -E])
+        # Use a polynomial to subtract incident energy.
+        funcs = [self.fragments, self.prompt_neutrons, self.prompt_photons,
+                 Polynomial((0.0, -1.0))]
+        return sum_functions(funcs)
 
     @property
     def q_recoverable(self):
-        return Sum([self.recoverable, lambda E: -E])
+        # Use a polynomial to subtract incident energy.
+        return sum_functions([self.recoverable, Polynomial((0.0, -1.0))])
 
     @property
     def q_total(self):
-        return Sum([self.total, lambda E: -E])
+        # Use a polynomial to subtract incident energy.
+        return sum_functions([self.total, Polynomial((0.0, -1.0))])
 
     @fragments.setter
     def fragments(self, energy_release):
@@ -346,92 +198,6 @@ class FissionEnergyRelease(EqualityMixin):
         self._neutrinos = energy_release
 
     @classmethod
-    def _from_dictionary(cls, energy_release, incident_neutron):
-        """Generate fission energy release data from a dictionary.
-
-        Parameters
-        ----------
-        energy_release : dict of str to list of float
-            Dictionary that gives lists of coefficients for each energy
-            component.  The keys are the 2-3 letter strings used in ENDF-102,
-            e.g. 'EFR' and 'ET'.  The list will have a length of 1 for Sher-Beck
-            data, more for polynomial data.
-        incident_neutron : openmc.data.IncidentNeutron
-            Corresponding incident neutron dataset
-
-        Returns
-        -------
-        openmc.data.FissionEnergyRelease
-            Fission energy release data
-
-        """
-        out = cls()
-
-        # How many coefficients are given for each component?  If we only find
-        # one value for each, then we need to use the Sher-Beck formula for
-        # energy dependence.  Otherwise, it is a polynomial.
-        n_coeffs = len(energy_release['EFR'])
-        if n_coeffs > 1:
-            out.fragments = Polynomial(energy_release['EFR'])
-            out.prompt_neutrons = Polynomial(energy_release['ENP'])
-            out.delayed_neutrons = Polynomial(energy_release['END'])
-            out.prompt_photons = Polynomial(energy_release['EGP'])
-            out.delayed_photons = Polynomial(energy_release['EGD'])
-            out.betas = Polynomial(energy_release['EB'])
-            out.neutrinos = Polynomial(energy_release['ENU'])
-        else:
-            # EFR and ENP are energy independent.  Use 0-order polynomials to
-            # make a constant function.  The energy-dependence of END is
-            # unspecified in ENDF-102 so assume it is independent.
-            out.fragments = Polynomial((energy_release['EFR'][0]))
-            out.prompt_photons = Polynomial((energy_release['EGP'][0]))
-            out.delayed_neutrons = Polynomial((energy_release['END'][0]))
-
-            # EDP, EB, and ENU are linear.
-            out.delayed_photons = Polynomial((energy_release['EGD'][0], -0.075))
-            out.betas = Polynomial((energy_release['EB'][0], -0.075))
-            out.neutrinos = Polynomial((energy_release['ENU'][0], -0.105))
-
-            # Prompt neutrons require nu-data.  It is not clear from ENDF-102
-            # whether prompt or total nu value should be used, but the delayed
-            # neutron fraction is so small that the difference is negligible.
-            # MT=18 (n, fission) might not be available so try MT=19 (n, f) as
-            # well.
-            if 18 in incident_neutron.reactions:
-                nu = [p.yield_ for p in incident_neutron[18].products
-                      if p.particle == 'neutron'
-                      and p.emission_mode in ('prompt', 'total')]
-            elif 19 in incident_neutron.reactions:
-                nu = [p.yield_ for p in incident_neutron[19].products
-                      if p.particle == 'neutron'
-                      and p.emission_mode in ('prompt', 'total')]
-            else:
-                raise ValueError('IncidentNeutron data has no fission '
-                                 'reaction.')
-            if len(nu) == 0:
-                raise ValueError('Nu data is needed to compute fission energy '
-                                 'release with the Sher-Beck format.')
-            if len(nu) > 1:
-                raise ValueError('Ambiguous prompt/total nu value.')
-
-            nu = nu[0]
-            if isinstance(nu, Tabulated1D):
-                ENP = deepcopy(nu)
-                ENP.y = (energy_release['ENP'] + 1.307 * nu.x
-                         - 8.07e6 * (nu.y - nu.y[0]))
-            elif isinstance(nu, Polynomial):
-                if len(nu) == 1:
-                    ENP = Polynomial([energy_release['ENP'][0], 1.307])
-                else:
-                    ENP = Polynomial(
-                        [energy_release['ENP'][0], 1.307 - 8.07e6*nu.coef[1]]
-                        + [-8.07e6*c for c in nu.coef[2:]])
-
-            out.prompt_neutrons = ENP
-
-        return out
-
-    @classmethod
     def from_endf(cls, ev, incident_neutron):
         """Generate fission energy release data from an ENDF file.
 
@@ -458,16 +224,117 @@ class FissionEnergyRelease(EqualityMixin):
             raise ValueError('The atomic mass of the ENDF evaluation does '
                              'not match the given IncidentNeutron.')
         if ev.target['isomeric_state'] != incident_neutron.metastable:
-            raise ValueError('The metastable state of the ENDF evaluation does '
-                             'not match the given IncidentNeutron.')
+            raise ValueError('The metastable state of the ENDF evaluation '
+                             'does not match the given IncidentNeutron.')
         if not ev.target['fissionable']:
             raise ValueError('The ENDF evaluation is not fissionable.')
 
-        # Read the 458 data from the ENDF file.
-        value, uncertainty = _extract_458_data(ev)
+        if (1, 458) not in ev.section:
+            raise ValueError('ENDF evaluation does not have MF=1, MT=458.')
 
-        # Build the object.
-        return cls._from_dictionary(value, incident_neutron)
+        file_obj = StringIO(ev.section[1, 458])
+
+        # Read first record and check whether any components appear as
+        # tabulated functions
+        items = get_cont_record(file_obj)
+        lfc = items[3]
+        nfc = items[5]
+
+        # Parse the ENDF LIST into an array.
+        items, data = get_list_record(file_obj)
+        npoly = items[3]
+
+        # Associate each set of values and uncertainties with its label.
+        functions = {}
+        for i, name in enumerate(_NAMES):
+            coeffs = data[2*i::18]
+
+            # Ignore recoverable and total since we recalculate those directly
+            if name in ('recoverable', 'total'):
+                continue
+
+            # In ENDF/B-VII.1, data for 2nd-order coefficients were mistakenly
+            # not converted from MeV to eV.  Check for this error and fix it if
+            # present.
+            if npoly == 2:  # Only check 2nd-order data.
+                # If a 5 MeV neutron causes a change of more than 100 MeV, we
+                # know something is wrong.
+                second_order = coeffs[2]
+                if abs(second_order) * (5e6)**2 > 1e8:
+                    # If we found the error, reduce 2nd-order coeff by 10**6.
+                    coeffs[2] /= EV_PER_MEV
+
+            # If multiple coefficients were given, we can create the polynomial
+            # and move on to the next component
+            if npoly > 0:
+                functions[name] = Polynomial(coeffs)
+                continue
+
+            # If a single coefficient was given, we need to use the Sher-Beck
+            # formula for energy dependence
+            zeroth_order = coeffs[0]
+            if name in ('delayed_photons', 'betas'):
+                func = Polynomial((zeroth_order, -0.075))
+            elif name == 'neutrinos':
+                func = Polynomial((zeroth_order, -0.105))
+            elif name == 'prompt_neutrons':
+                # Prompt neutrons require nu-data.  It is not clear from
+                # ENDF-102 whether prompt or total nu value should be used, but
+                # the delayed neutron fraction is so small that the difference
+                # is negligible. MT=18 (n, fission) might not be available so
+                # try MT=19 (n, f) as well.
+                if 18 in incident_neutron.reactions:
+                    nu = [p.yield_ for p in incident_neutron[18].products
+                          if p.particle == 'neutron'
+                          and p.emission_mode in ('prompt', 'total')]
+                elif 19 in incident_neutron.reactions:
+                    nu = [p.yield_ for p in incident_neutron[19].products
+                          if p.particle == 'neutron'
+                          and p.emission_mode in ('prompt', 'total')]
+                else:
+                    raise ValueError('IncidentNeutron data has no fission '
+                                     'reaction.')
+                if len(nu) == 0:
+                    raise ValueError(
+                        'Nu data is needed to compute fission energy '
+                        'release with the Sher-Beck format.'
+                    )
+                if len(nu) > 1:
+                    raise ValueError('Ambiguous prompt/total nu value.')
+
+                nu = nu[0]
+                if isinstance(nu, Tabulated1D):
+                    # Evaluate Sher-Beck polynomial form at each tabulated value
+                    func = deepcopy(nu)
+                    func.y = (zeroth_order + 1.307*nu.x - 8.07e6*(nu.y - nu.y[0]))
+                elif isinstance(nu, Polynomial):
+                    # Combine polynomials
+                    if len(nu) == 1:
+                        func = Polynomial([zeroth_order, 1.307])
+                    else:
+                        func = Polynomial(
+                            [zeroth_order, 1.307 - 8.07e6*nu.coef[1]]
+                            + [-8.07e6*c for c in nu.coef[2:]])
+            else:
+                func = Polynomial(coeffs)
+
+            functions[name] = func
+
+        # Check for tabulated data
+        if lfc == 1:
+            for _ in range(nfc):
+                # Get tabulated function
+                items, eifc = get_tab1_record(file_obj)
+
+                # Determine which component it is
+                ifc = items[3]
+                name = _NAMES[ifc - 1]
+
+                # Replace value in dictionary
+                functions[name] = eifc
+
+        # Build the object
+        return cls(**functions)
 
     @classmethod
     def from_hdf5(cls, group):
@@ -485,54 +352,16 @@ class FissionEnergyRelease(EqualityMixin):
 
         """
 
-        obj = cls()
+        fragments = Function1D.from_hdf5(group['fragments'])
+        prompt_neutrons = Function1D.from_hdf5(group['prompt_neutrons'])
+        delayed_neutrons = Function1D.from_hdf5(group['delayed_neutrons'])
+        prompt_photons = Function1D.from_hdf5(group['prompt_photons'])
+        delayed_photons = Function1D.from_hdf5(group['delayed_photons'])
+        betas = Function1D.from_hdf5(group['betas'])
+        neutrinos = Function1D.from_hdf5(group['neutrinos'])
 
-        obj.fragments = Function1D.from_hdf5(group['fragments'])
-        obj.prompt_neutrons = Function1D.from_hdf5(group['prompt_neutrons'])
-        obj.delayed_neutrons = Function1D.from_hdf5(group['delayed_neutrons'])
-        obj.prompt_photons = Function1D.from_hdf5(group['prompt_photons'])
-        obj.delayed_photons = Function1D.from_hdf5(group['delayed_photons'])
-        obj.betas = Function1D.from_hdf5(group['betas'])
-        obj.neutrinos = Function1D.from_hdf5(group['neutrinos'])
-
-        return obj
-
-    @classmethod
-    def from_compact_hdf5(cls, fname, incident_neutron):
-        """Generate fission energy release data from a small HDF5 library.
-
-        Parameters
-        ----------
-        fname : str
-            Path to an HDF5 file containing fission energy release data.  This
-            file should have been generated form the
-            :func:`openmc.data.write_compact_458_library` function.
-        incident_neutron : openmc.data.IncidentNeutron
-            Corresponding incident neutron dataset
-
-        Returns
-        -------
-        openmc.data.FissionEnergyRelease or None
-            Fission energy release data for the given nuclide if it is present
-            in the data file
-
-        """
-
-        fin = h5py.File(fname, 'r')
-
-        components = [s.decode() for s in fin.attrs['component order']]
-
-        nuclide_name = ATOMIC_SYMBOL[incident_neutron.atomic_number]
-        nuclide_name += str(incident_neutron.mass_number)
-        if incident_neutron.metastable != 0:
-            nuclide_name += '_m' + str(incident_neutron.metastable)
-
-        if nuclide_name not in fin: return None
-
-        data = {c: fin[nuclide_name + '/data'][i, 0, :]
-                for i, c in enumerate(components)}
-
-        return cls._from_dictionary(data, incident_neutron)
+        return cls(fragments, prompt_neutrons, delayed_neutrons, prompt_photons,
+                   delayed_photons, betas, neutrinos)
 
     def to_hdf5(self, group):
         """Write energy release data to an HDF5 group
@@ -551,33 +380,5 @@ class FissionEnergyRelease(EqualityMixin):
         self.delayed_photons.to_hdf5(group, 'delayed_photons')
         self.betas.to_hdf5(group, 'betas')
         self.neutrinos.to_hdf5(group, 'neutrinos')
-
-        if isinstance(self.prompt_neutrons, Polynomial):
-            # Add the polynomials for the relevant components together. Use a
-            # Polynomial((0.0, -1.0)) to subtract incident energy.
-            q_prompt = (self.fragments + self.prompt_neutrons +
-                        self.prompt_photons + Polynomial((0.0, -1.0)))
-            q_prompt.to_hdf5(group, 'q_prompt')
-            q_recoverable = (self.fragments + self.prompt_neutrons +
-                             self.delayed_neutrons + self.prompt_photons +
-                             self.delayed_photons + self.betas +
-                             Polynomial((0.0, -1.0)))
-            q_recoverable.to_hdf5(group, 'q_recoverable')
-
-        elif isinstance(self.prompt_neutrons, Tabulated1D):
-            # Make a Tabulated1D and evaluate the polynomial components at the
-            # table x points to get new y points.  Subtract x from y to remove
-            # incident energy.
-            q_prompt = deepcopy(self.prompt_neutrons)
-            q_prompt.y += self.fragments(q_prompt.x)
-            q_prompt.y += self.prompt_photons(q_prompt.x)
-            q_prompt.y -= q_prompt.x
-            q_prompt.to_hdf5(group, 'q_prompt')
-            q_recoverable = q_prompt
-            q_recoverable.y += self.delayed_neutrons(q_recoverable.x)
-            q_recoverable.y += self.delayed_photons(q_recoverable.x)
-            q_recoverable.y += self.betas(q_recoverable.x)
-            q_recoverable.to_hdf5(group, 'q_recoverable')
-
-        else:
-            raise ValueError('Unrecognized energy release format')
+        self.q_prompt.to_hdf5(group, 'q_prompt')
+        self.q_recoverable.to_hdf5(group, 'q_recoverable')

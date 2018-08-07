@@ -145,15 +145,6 @@ def test_fission_energy(pu239):
         assert isinstance(getattr(fer, c), Callable)
 
 
-def test_compact_fission_energy(tmpdir):
-    files = [os.path.join(_ENDF_DATA, 'neutrons', 'n-090_Th_232.endf'),
-             os.path.join(_ENDF_DATA, 'neutrons', 'n-094_Pu_240.endf'),
-             os.path.join(_ENDF_DATA, 'neutrons', 'n-094_Pu_241.endf')]
-    output = str(tmpdir.join('compact_lib.h5'))
-    openmc.data.write_compact_458_library(files, output)
-    assert os.path.exists(output)
-
-
 def test_energy_grid(pu239):
     assert isinstance(pu239.energy, Mapping)
     for temp, grid in pu239.energy.items():

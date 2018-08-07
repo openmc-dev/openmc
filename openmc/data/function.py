@@ -1,5 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable, Callable
+from functools import reduce
+from itertools import zip_longest
 from numbers import Real, Integral
 
 import numpy as np
@@ -11,6 +13,46 @@ from .data import EV_PER_MEV
 
 INTERPOLATION_SCHEME = {1: 'histogram', 2: 'linear-linear', 3: 'linear-log',
                         4: 'log-linear', 5: 'log-log'}
+
+
+def sum_functions(funcs):
+    """Add tabulated/polynomials functions together
+
+    Parameters
+    ----------
+    funcs : list of Function1D
+        Functions to add
+
+    Returns
+    -------
+    Function1D
+        Sum of polynomial/tabulated functions
+
+    """
+    # Copy so we can iterate multiple times
+    funcs = list(funcs)
+
+    # Get x values for all tabulated components
+    xs = []
+    for f in funcs:
+        if isinstance(f, Tabulated1D):
+            xs.append(f.x)
+            if not np.all(f.interpolation == 2):
+                raise ValueError('Only linear-linear tabulated functions '
+                                 'can be combined')
+
+    if xs:
+        # Take the union of all energies (sorted)
+        x = reduce(np.union1d, xs)
+
+        # Evaluate each function and add together
+        y = sum(f(x) for f in funcs)
+        return Tabulated1D(x, y)
+    else:
+        # If no tabulated functions are present, we need to combine the
+        # polynomials by adding their coefficients
+        coeffs = [sum(x) for x in zip_longest(*funcs, fillvalue=0.0)]
+        return Polynomial(coeffs)
 
 
 class Function1D(EqualityMixin, metaclass=ABCMeta):

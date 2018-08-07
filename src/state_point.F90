@@ -140,6 +140,17 @@ contains
       ! Write out current batch number
       call write_dataset(file_id, "current_batch", current_batch)
 
+      ! Indicate whether source bank is stored in statepoint
+      if (present(write_source)) then
+        if (write_source /= 0) then
+          call write_attribute(file_id, "source_present", 1)
+        else
+          call write_attribute(file_id, "source_present", 0)
+        end if
+      else
+        call write_attribute(file_id, "source_present", 0)
+      end if
+
       ! Write out information for eigenvalue run
       if (run_mode == MODE_EIGENVALUE) then
         call write_dataset(file_id, "n_inactive", n_inactive)
@@ -442,13 +453,8 @@ contains
           file_id = file_open(filename_, 'a', parallel=.true.)
         end if
         call write_source_bank(file_id, work_index, source_bank)
-        call write_attribute(file_id, "source_present", 1)
         if (master .or. parallel) call file_close(file_id)
-      else
-        call write_attribute(file_id, "source_present", 0)
       end if
-    else
-      call write_attribute(file_id, "source_present", 0)
     end if
   end function openmc_statepoint_write
 

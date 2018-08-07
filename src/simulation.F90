@@ -368,12 +368,6 @@ contains
       call write_source_point(filename)
     end if
 
-    ! Write out source point if it's been specified for this batch
-    !if ((sourcepoint_batch % contains(current_batch) .or. source_latest) .and. &
-    !     source_write) then
-    !  call write_source_point()
-    !end if
-
   end subroutine finalize_batch
 
 !===============================================================================

@@ -27,7 +27,6 @@ module tally_filter
   use tally_filter_surface
   use tally_filter_universe
   use tally_filter_zernike
-  ! use tally_filter_zernike_radial
 
   implicit none
 

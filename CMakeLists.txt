@@ -398,6 +398,7 @@ add_library(libopenmc SHARED
   src/pugixml/pugixml_c.cpp
   src/random_lcg.cpp
   src/scattdata.cpp
+  src/settings.cpp
   src/simulation.cpp
   src/state_point.cpp
   src/string_functions.cpp

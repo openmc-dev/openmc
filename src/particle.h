@@ -1,6 +1,9 @@
 #ifndef PARTICLE_H
 #define PARTICLE_H
 
+//! @file particle.h
+//! @brief Particle type
+
 #include <cstdint>
 #include <array>
 
@@ -21,12 +24,12 @@ constexpr double REL_MAX_LOST_PARTICLES {1.0e-6};
 extern "C" {
 
   struct LocalCoord {
-    int cell;
-    int universe;
-    int lattice;
-    int lattice_x;
-    int lattice_y;
-    int lattice_z;
+    int cell {-1};
+    int universe {-1};
+    int lattice {-1};
+    int lattice_x {-1};
+    int lattice_y {-1};
+    int lattice_z {-1};
     double xyz[3]; //!< particle position
     double uvw[3]; //!< particle direction
     bool rotated {false};  //!< Is the level rotated?
@@ -95,7 +98,7 @@ extern "C" {
     double last_sqrtkT;  //!< last temperature
 
     // Statistical data
-    int n_collision;  //!< # of collisions
+    int n_collision;  //!< number of collisions
 
     // Track output
     bool write_track {false};

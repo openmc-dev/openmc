@@ -82,6 +82,11 @@ module input_xml
       type(C_PTR) :: node_ptr
     end subroutine read_lattices
 
+    subroutine read_settings(node_ptr) bind(C)
+      import C_PTR
+      type(C_PTR) :: node_ptr
+    end subroutine read_settings
+
     function find_root_universe() bind(C) result(root)
       import C_INT32_T
       integer(C_INT32_T) :: root
@@ -239,6 +244,9 @@ contains
     ! Parse settings.xml file
     call doc % load_file(filename)
     root = doc % document_element()
+
+    ! Read settings from C++ side
+    call read_settings(root % ptr)
 
     ! Verbosity
     if (check_for_node(root, "verbosity")) then

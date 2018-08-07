@@ -58,8 +58,9 @@ contains
 ! OPENMC_STATEPOINT_WRITE writes an HDF5 statepoint file to disk
 !===============================================================================
 
-  function openmc_statepoint_write(filename) result(err) bind(C)
-    type(C_PTR), intent(in), optional :: filename
+  function openmc_statepoint_write(filename, write_source) result(err) bind(C)
+    type(C_PTR),    intent(in), optional :: filename
+    integer(C_INT), intent(in), optional :: write_source
     integer(C_INT) :: err
 
     integer :: i, j, k
@@ -74,6 +75,7 @@ contains
     character(C_CHAR), pointer :: string(:)
     character(len=:, kind=C_CHAR), allocatable :: filename_
     character(MAX_WORD_LEN, kind=C_CHAR) :: temp_name
+    logical :: parallel
 
     err = 0
     if (present(filename)) then
@@ -136,13 +138,6 @@ contains
 
       ! Write out current batch number
       call write_dataset(file_id, "current_batch", current_batch)
-
-      ! Indicate whether source bank is stored in statepoint
-      if (source_separate) then
-        call write_attribute(file_id, "source_present", 0)
-      else
-        call write_attribute(file_id, "source_present", 1)
-      end if
 
       ! Write out information for eigenvalue run
       if (run_mode == MODE_EIGENVALUE) then
@@ -432,17 +427,40 @@ contains
 
       call file_close(file_id)
     end if
+
+#ifdef PHDF5
+    parallel = .true.
+#else
+    parallel = .false.
+#endif
+
+    ! Write the source bank if desired
+    if (present(write_source)) then
+      if (write_source /= 0) then
+        if (master .or. parallel) then
+          file_id = file_open(filename_, 'a', parallel=.true.)
+        end if
+        call write_source_bank(file_id, work_index, source_bank)
+        call write_attribute(file_id, "source_present", 1)
+        if (master .or. parallel) call file_close(file_id)
+      else
+        call write_attribute(file_id, "source_present", 0)
+      end if
+    else
+      call write_attribute(file_id, "source_present", 0)
+    end if
   end function openmc_statepoint_write
 
 !===============================================================================
 ! WRITE_SOURCE_POINT
 !===============================================================================
 
-  subroutine write_source_point()
+  subroutine write_source_point(filename)
+    character(MAX_FILE_LEN), intent(in), optional :: filename
 
     logical :: parallel
     integer(HID_T) :: file_id
-    character(MAX_FILE_LEN) :: filename
+    character(MAX_FILE_LEN) :: filename_
 
     ! When using parallel HDF5, the file is written to collectively by all
     ! processes. With MPI-only, the file is opened and written by the master
@@ -454,47 +472,20 @@ contains
     parallel = .false.
 #endif
 
-    ! Check to write out source for a specified batch
-    if (sourcepoint_batch%contains(current_batch)) then
-      if (source_separate) then
-        filename = trim(path_output) // 'source.' // &
-             & zero_padded(current_batch, count_digits(n_max_batches))
-        filename = trim(filename) // '.h5'
-        call write_message("Creating source file " // trim(filename) &
-             // "...", 5)
-
-        ! Create separate source file
-        if (master .or. parallel) then
-          file_id = file_open(filename, 'w', parallel=.true.)
-          call write_attribute(file_id, "filetype", 'source')
-        end if
-      else
-        filename = trim(path_output) // 'statepoint.' // &
-             zero_padded(current_batch, count_digits(n_max_batches))
-        filename = trim(filename) // '.h5'
-
-        if (master .or. parallel) then
-          file_id = file_open(filename, 'a', parallel=.true.)
-        end if
-      end if
-
-      call write_source_bank(file_id, work_index, source_bank)
-      if (master .or. parallel) call file_close(file_id)
+    if (present(filename)) then
+      filename_ = filename
+    else
+      filename_ = trim(path_output) // 'source.' // &
+           & zero_padded(current_batch, count_digits(n_max_batches))
+      filename_ = trim(filename_) // '.h5'
     end if
 
-    ! Also check to write source separately in overwritten file
-    if (source_latest) then
-      filename = trim(path_output) // 'source' // '.h5'
-      call write_message("Creating source file " // trim(filename) // "...", 5)
-      if (master .or. parallel) then
-        file_id = file_open(filename, 'w', parallel=.true.)
-        call write_attribute(file_id, "filetype", 'source')
-      end if
-
-      call write_source_bank(file_id, work_index, source_bank)
-
-      if (master .or. parallel) call file_close(file_id)
+    if (master .or. parallel) then
+      file_id = file_open(filename_, 'w', parallel=.true.)
+      call write_attribute(file_id, "filetype", 'source')
     end if
+    call write_source_bank(file_id, work_index, source_bank)
+    if (master .or. parallel) call file_close(file_id)
 
   end subroutine write_source_point
 

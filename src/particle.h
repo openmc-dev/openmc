@@ -1,8 +1,8 @@
-#ifndef PARTICLE_H
-#define PARTICLE_H
+#ifndef OPENMC_PARTICLE_H
+#define OPENMC_PARTICLE_H
 
-//! @file particle.h
-//! @brief Particle type
+//! \file particle.h
+//! \brief Particle type
 
 #include <cstdint>
 #include <array>
@@ -114,10 +114,10 @@ extern "C" {
     //
     //! stores the current phase space attributes of the particle in the
     //! secondary bank and increments the number of sites in the secondary bank.
-    //! @param uvw Direction of the secondary particle
-    //! @param E Energy of the secondary particle in [eV]
-    //! @param type Particle type
-    //! @param run_CE Whether continuous-energy data is being used
+    //! \param uvw Direction of the secondary particle
+    //! \param E Energy of the secondary particle in [eV]
+    //! \param type Particle type
+    //! \param run_CE Whether continuous-energy data is being used
     void create_secondary(const double* uvw, double E, int type, bool run_CE);
 
     //! sets default attributes for a particle
@@ -128,13 +128,13 @@ extern "C" {
     //! initializes a particle from data stored in a source site. The source
     //! site may have been produced from an external source, from fission, or
     //! simply as a secondary particle.
-    //! @param src Source site data
-    //! @param run_CE Whether continuous-energy data is being used
-    //! @param energy_bin_avg An array of energy group bin averages
+    //! \param src Source site data
+    //! \param run_CE Whether continuous-energy data is being used
+    //! \param energy_bin_avg An array of energy group bin averages
     void from_source(const Bank* src, bool run_CE, const double* energy_bin_avg);
 
     //! mark a particle as lost and create a particle restart file
-    //! @param message A warning message to display
+    //! \param message A warning message to display
     void mark_as_lost(const char* message);
 
     //! create a particle restart HDF5 file
@@ -160,4 +160,4 @@ extern "C" {
 
 } // namespace openmc
 
-#endif // PARTICLE_H
+#endif // OPENMC_PARTICLE_H

@@ -1,8 +1,8 @@
 #ifndef OPENMC_SETTINGS_H
 #define OPENMC_SETTINGS_H
 
-//! @file settings.h
-//! @brief Settings for OpenMC
+//! \file settings.h
+//! \brief Settings for OpenMC
 
 #include <string>
 
@@ -33,7 +33,7 @@ extern std::string path_source;
 
 //==============================================================================
 //! Read settings from XML file
-//! @param[in] root XML node for <settings>
+//! \param[in] root XML node for <settings>
 //==============================================================================
 
 extern "C" void read_settings(pugi::xml_node* root);

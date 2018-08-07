@@ -1,5 +1,5 @@
 #ifndef OPENMC_STRING_UTILS_H
-#define OPNEMC_STRING_UTILS_H
+#define OPENMC_STRING_UTILS_H
 
 #include <algorithm>
 #include <string>
@@ -34,8 +34,8 @@ split(const std::string& in)
 inline bool
 ends_with(const std::string& value, const std::string& ending)
 {
-    if (ending.size() > value.size()) return false;
-    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+  if (ending.size() > value.size()) return false;
+  return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
 }
 
 } // namespace openmc

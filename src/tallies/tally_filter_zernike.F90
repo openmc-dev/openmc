@@ -5,7 +5,7 @@ module tally_filter_zernike
   use constants
   use error
   use hdf5_interface
-  use math,                only: calc_zn
+  use math,                only: calc_zn, calc_zn_rad
   use particle_header,     only: Particle
   use string,              only: to_str
   use tally_filter_header
@@ -24,11 +24,24 @@ module tally_filter_zernike
     real(8) :: y
     real(8) :: r
   contains
-    procedure :: from_xml
-    procedure :: get_all_bins
-    procedure :: to_statepoint
-    procedure :: text_label
+    procedure :: from_xml => from_xml_zn
+    procedure :: get_all_bins => get_all_bins_zn
+    procedure :: to_statepoint => to_statepoint_zn
+    procedure :: text_label => text_label_zn
   end type ZernikeFilter
+
+!===============================================================================
+! ZERNIKERADIALFILTER gives even order radial Zernike polynomial moments of a
+! particle's position
+!===============================================================================
+
+  type, public, extends(ZernikeFilter) :: ZernikeRadialFilter
+  contains
+    procedure :: from_xml => from_xml_zn_rad
+    procedure :: get_all_bins => get_all_bins_zn_rad
+    procedure :: to_statepoint => to_statepoint_zn_rad
+    procedure :: text_label => text_label_zn_rad
+  end type ZernikeRadialFilter
 
 contains
 
@@ -36,7 +49,7 @@ contains
 ! ZernikeFilter methods
 !===============================================================================
 
-  subroutine from_xml(this, node)
+  subroutine from_xml_zn(this, node)
     class(ZernikeFilter), intent(inout) :: this
     type(XMLNode), intent(in) :: node
 
@@ -51,9 +64,9 @@ contains
     call get_node_value(node, "order", n)
     this % order = n
     this % n_bins = ((n + 1)*(n + 2))/2
-  end subroutine from_xml
+  end subroutine from_xml_zn
 
-  subroutine get_all_bins(this, p, estimator, match)
+  subroutine get_all_bins_zn(this, p, estimator, match)
     class(ZernikeFilter), intent(in)  :: this
     type(Particle),      intent(in)  :: p
     integer,             intent(in)  :: estimator
@@ -78,9 +91,9 @@ contains
         call match % weights % push_back(zn(i))
       end do
     endif
-  end subroutine get_all_bins
+  end subroutine get_all_bins_zn
 
-  subroutine to_statepoint(this, filter_group)
+  subroutine to_statepoint_zn(this, filter_group)
     class(ZernikeFilter), intent(in) :: this
     integer(HID_T),      intent(in) :: filter_group
 
@@ -90,9 +103,9 @@ contains
     call write_dataset(filter_group, "x", this % x)
     call write_dataset(filter_group, "y", this % y)
     call write_dataset(filter_group, "r", this % r)
-  end subroutine to_statepoint
+  end subroutine to_statepoint_zn
 
-  function text_label(this, bin) result(label)
+  function text_label_zn(this, bin) result(label)
     class(ZernikeFilter), intent(in) :: this
     integer,             intent(in) :: bin
     character(MAX_LINE_LEN)         :: label
@@ -110,7 +123,74 @@ contains
         exit
       end if
     end do
-  end function text_label
+  end function text_label_zn
+
+!===============================================================================
+! ZernikeRadialFilter methods
+!===============================================================================
+
+  subroutine from_xml_zn_rad(this, node)
+    class(ZernikeRadialFilter), intent(inout) :: this
+    type(XMLNode), intent(in) :: node
+
+    integer :: n
+
+    ! Get center of cylinder and radius
+    call get_node_value(node, "x", this % x)
+    call get_node_value(node, "y", this % y)
+    call get_node_value(node, "r", this % r)
+
+    ! Get specified order
+    call get_node_value(node, "order", n)
+    this % order = n
+    this % n_bins = n/2 + 1
+  end subroutine from_xml_zn_rad
+
+  subroutine get_all_bins_zn_rad(this, p, estimator, match)
+    class(ZernikeRadialFilter), intent(in)  :: this
+    type(Particle),      intent(in)  :: p
+    integer,             intent(in)  :: estimator
+    type(TallyFilterMatch),   intent(inout) :: match
+
+    integer :: i
+    real(8) :: x, y, r
+    real(C_DOUBLE) :: zn_rad(this % n_bins)
+
+    ! Determine normalized (r,theta) positions
+    x = p % coord(1) % xyz(1) - this % x
+    y = p % coord(1) % xyz(2) - this % y
+    r = sqrt(x*x + y*y)/this % r
+    if (r <= 1) then
+
+      ! Get moments for even order Zernike polynomial orders 0..n
+      call calc_zn_rad(this % order, r, zn_rad)
+
+      do i = 1, this % n_bins
+        call match % bins % push_back(i)
+        call match % weights % push_back(zn_rad(i))
+      end do
+    endif
+  end subroutine get_all_bins_zn_rad
+
+  subroutine to_statepoint_zn_rad(this, filter_group)
+    class(ZernikeRadialFilter), intent(in) :: this
+    integer(HID_T),      intent(in) :: filter_group
+
+    call write_dataset(filter_group, "type", "zernikeradial")
+    call write_dataset(filter_group, "n_bins", this % n_bins)
+    call write_dataset(filter_group, "order", this % order)
+    call write_dataset(filter_group, "x", this % x)
+    call write_dataset(filter_group, "y", this % y)
+    call write_dataset(filter_group, "r", this % r)
+  end subroutine to_statepoint_zn_rad
+
+  function text_label_zn_rad(this, bin) result(label)
+    class(ZernikeRadialFilter), intent(in) :: this
+    integer,             intent(in) :: bin
+    character(MAX_LINE_LEN)         :: label
+
+    label = "Zernike expansion, Z" // trim(to_str(2*bin)) // ",0"
+  end function text_label_zn_rad
 
 !===============================================================================
 !                               C API FUNCTIONS
@@ -126,6 +206,8 @@ contains
     if (err == 0) then
       select type (f => filters(index) % obj)
       type is (ZernikeFilter)
+        order = f % order
+      type is (ZernikeRadialFilter)
         order = f % order
       class default
         err = E_INVALID_TYPE
@@ -150,6 +232,10 @@ contains
         x = f % x
         y = f % y
         r = f % r
+      type is (ZernikeRadialFilter)
+        x = f % x
+        y = f % y
+        r = f % r
       class default
         err = E_INVALID_TYPE
         call set_errmsg("Not a Zernike filter.")
@@ -170,6 +256,9 @@ contains
       type is (ZernikeFilter)
         f % order = order
         f % n_bins = ((order + 1)*(order + 2))/2
+      type is (ZernikeRadialFilter)
+        f % order = order
+        f % n_bins = order/2 + 1
       class default
         err = E_INVALID_TYPE
         call set_errmsg("Not a Zernike filter.")
@@ -190,6 +279,10 @@ contains
     if (err == 0) then
       select type (f => filters(index) % obj)
       type is (ZernikeFilter)
+        if (present(x)) f % x = x
+        if (present(y)) f % y = y
+        if (present(r)) f % r = r
+      type is (ZernikeRadialFilter)
         if (present(x)) f % x = x
         if (present(y)) f % y = y
         if (present(r)) f % r = r

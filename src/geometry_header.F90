@@ -288,7 +288,7 @@ module geometry_header
   end type Cell
 
   ! array index of the root universe
-  integer :: root_universe = -1
+  integer(C_INT), bind(C, name='openmc_root_universe') :: root_universe = -1
 
   integer(C_INT32_T), bind(C) :: n_cells     ! # of cells
   integer(C_INT32_T), bind(C) :: n_universes ! # of universes

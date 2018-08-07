@@ -16,7 +16,7 @@ module volume_calc
   use material_header, only: materials
   use message_passing
   use nuclide_header, only: nuclides
-  use particle_header, only: Particle
+  use particle_header
   use random_lcg,   only: prn, prn_set_stream, set_particle_seed
   use settings,     only: path_output
   use stl_vector,   only: VectorInt, VectorReal
@@ -159,7 +159,7 @@ contains
       i_end = i_start + min_samples - 1
     end if
 
-    call p % initialize()
+    call particle_initialize(p)
 
 !$omp parallel private(i, j, k, i_domain, i_material, level, found_cell, &
 !$omp&                 indices, hits, n_mat) firstprivate(p)

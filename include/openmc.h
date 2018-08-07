@@ -14,6 +14,7 @@ extern "C" {
     double uvw[3];
     double E;
     int delayed_group;
+    int particle;
   };
 
   int openmc_calculate_volumes();
@@ -51,7 +52,7 @@ extern "C" {
   int openmc_init_f(const int* intracomm);
   int openmc_legendre_filter_get_order(int32_t index, int* order);
   int openmc_legendre_filter_set_order(int32_t index, int order);
-  int openmc_load_nuclide(char name[]);
+  int openmc_load_nuclide(const char name[]);
   int openmc_material_add_nuclide(int32_t index, const char name[], double density);
   int openmc_material_get_densities(int32_t index, int** nuclides, double** densities, int* n);
   int openmc_material_get_id(int32_t index, int32_t* id);
@@ -97,6 +98,7 @@ extern "C" {
   int openmc_tally_get_n_realizations(int32_t index, int32_t* n);
   int openmc_tally_get_nuclides(int32_t index, int** nuclides, int* n);
   int openmc_tally_get_scores(int32_t index, int** scores, int* n);
+  int openmc_tally_reset(int32_t index);
   int openmc_tally_results(int32_t index, double** ptr, int shape_[3]);
   int openmc_tally_set_active(int32_t index, bool active);
   int openmc_tally_set_filters(int32_t index, int n, const int32_t* indices);
@@ -127,6 +129,7 @@ extern "C" {
   extern char openmc_err_msg[256];
   extern double openmc_keff;
   extern double openmc_keff_std;
+  extern int32_t gen_per_batch;
   extern int32_t n_batches;
   extern int32_t n_cells;
   extern int32_t n_filters;

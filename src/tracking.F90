@@ -11,7 +11,7 @@ module tracking
   use message_passing
   use mgxs_interface
   use nuclide_header
-  use particle_header,    only: LocalCoord, Particle
+  use particle_header
   use physics,            only: collision
   use physics_mg,         only: collision_mg
   use random_lcg,         only: prn, prn_set_stream
@@ -94,7 +94,7 @@ contains
       if (p % coord(p % n_coord) % cell == NONE) then
         call find_cell(p, found_cell)
         if (.not. found_cell) then
-          call p % mark_as_lost("Could not find the cell containing" &
+          call particle_mark_as_lost(p, "Could not find the cell containing" &
                      // " particle " // trim(to_str(p %id)))
           return
         end if
@@ -274,8 +274,8 @@ contains
       ! Check for secondary particles if this particle is dead
       if (.not. p % alive) then
         if (p % n_secondary > 0) then
-          call p % initialize_from_source(p % secondary_bank(p % n_secondary), &
-                                          run_CE, energy_bin_avg)
+          call particle_from_source(p, p % secondary_bank(p % n_secondary), &
+                                    run_CE, energy_bin_avg)
           p % n_secondary = p % n_secondary - 1
           n_event = 0
 
@@ -355,7 +355,7 @@ contains
 
       ! Do not handle reflective boundary conditions on lower universes
       if (p % n_coord /= 1) then
-        call p % mark_as_lost("Cannot reflect particle " &
+        call particle_mark_as_lost(p, "Cannot reflect particle " &
              // trim(to_str(p % id)) // " off surface in a lower universe.")
         return
       end if
@@ -392,7 +392,7 @@ contains
       p % n_coord = 1
       call find_cell(p, found)
       if (.not. found) then
-        call p % mark_as_lost("Couldn't find particle after reflecting&
+        call particle_mark_as_lost(p, "Couldn't find particle after reflecting&
              & from surface " // trim(to_str(surf % id())) // ".")
         return
       end if
@@ -412,7 +412,7 @@ contains
 
       ! Do not handle periodic boundary conditions on lower universes
       if (p % n_coord /= 1) then
-        call p % mark_as_lost("Cannot transfer particle " &
+        call particle_mark_as_lost(p, "Cannot transfer particle " &
              // trim(to_str(p % id)) // " across surface in a lower universe.&
              & Boundary conditions must be applied to universe 0.")
         return
@@ -447,7 +447,7 @@ contains
       p % n_coord = 1
       call find_cell(p, found)
       if (.not. found) then
-        call p % mark_as_lost("Couldn't find particle after hitting &
+        call particle_mark_as_lost(p, "Couldn't find particle after hitting &
              &periodic boundary on surface " // trim(to_str(surf % id())) &
              // ".")
         return
@@ -505,7 +505,7 @@ contains
       ! undefined region in the geometry.
 
       if (.not. found) then
-        call p % mark_as_lost("After particle " // trim(to_str(p % id)) &
+        call particle_mark_as_lost(p, "After particle " // trim(to_str(p % id)) &
              // " crossed surface " // trim(to_str(surf % id())) &
              // " it could not be located in any cell and it did not leak.")
         return

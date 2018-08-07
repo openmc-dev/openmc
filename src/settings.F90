@@ -9,7 +9,7 @@ module settings
 
   ! ============================================================================
   ! ENERGY TREATMENT RELATED VARIABLES
-  logical :: run_CE = .true.  ! Run in CE mode?
+  logical(C_BOOL) :: run_CE = .true.  ! Run in CE mode?
 
   ! ============================================================================
   ! CONTINUOUS-ENERGY CROSS SECTION RELATED VARIABLES

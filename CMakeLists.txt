@@ -393,10 +393,12 @@ add_library(libopenmc SHARED
   src/message_passing.cpp
   src/mgxs.cpp
   src/mgxs_interface.cpp
+  src/particle.cpp
   src/plot.cpp
   src/pugixml/pugixml_c.cpp
   src/random_lcg.cpp
   src/scattdata.cpp
+  src/settings.cpp
   src/simulation.cpp
   src/state_point.cpp
   src/string_functions.cpp

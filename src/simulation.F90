@@ -317,6 +317,7 @@ contains
 #ifdef OPENMC_MPI
     integer :: mpi_err ! MPI error code
 #endif
+    character(MAX_FILE_LEN) :: filename
 
     ! Reduce tallies onto master process and accumulate
     call time_tallies % start()
@@ -349,14 +350,29 @@ contains
 
     ! Write out state point if it's been specified for this batch
     if (statepoint_batch % contains(current_batch)) then
-      err = openmc_statepoint_write()
+      if (sourcepoint_batch % contains(current_batch) .and. source_write &
+           .and. .not. source_separate) then
+        err = openmc_statepoint_write(write_source=1)
+      else
+        err = openmc_statepoint_write(write_source=0)
+      end if
+    end if
+
+    ! Write out a separate source point if it's been specified for this batch
+    if (sourcepoint_batch % contains(current_batch) .and. source_write &
+         .and. source_separate) call write_source_point()
+
+    ! Write a continously-overwritten source point if requested.
+    if (source_latest) then
+      filename = trim(path_output) // 'source' // '.h5'
+      call write_source_point(filename)
     end if
 
     ! Write out source point if it's been specified for this batch
-    if ((sourcepoint_batch % contains(current_batch) .or. source_latest) .and. &
-         source_write) then
-      call write_source_point()
-    end if
+    !if ((sourcepoint_batch % contains(current_batch) .or. source_latest) .and. &
+    !     source_write) then
+    !  call write_source_point()
+    !end if
 
   end subroutine finalize_batch
 

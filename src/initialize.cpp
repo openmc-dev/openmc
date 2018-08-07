@@ -10,25 +10,17 @@
 #include "hdf5_interface.h"
 #include "message_passing.h"
 #include "openmc.h"
+#include "settings.h"
 #ifdef _OPENMP
 #include "omp.h"
 #endif
 
 // data/functions from Fortran side
-extern "C" bool openmc_check_overlaps;
-extern "C" bool openmc_write_all_tracks;
-extern "C" bool openmc_particle_restart_run;
-extern "C" bool openmc_restart_run;
 extern "C" void print_usage();
 extern "C" void print_version();
 
-
 // Paths to various files
 extern "C" {
-  char* openmc_path_input;
-  char* openmc_path_statepoint;
-  char* openmc_path_sourcepoint;
-  char* openmc_path_particle_restart;
   bool is_null(void* ptr) {return !ptr;}
 }
 

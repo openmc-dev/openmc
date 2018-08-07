@@ -7,6 +7,7 @@
 #include "error.h"
 #include "hdf5_interface.h"
 #include "openmc.h"
+#include "settings.h"
 #include "simulation.h"
 
 namespace openmc {
@@ -146,9 +147,8 @@ Particle::write_restart()
   if (openmc_run_mode == RUN_MODE_PARTICLE) return;
 
   // Set up file name
-  // TODO: Add path_output when available on C++ side
   std::stringstream filename;
-  filename << "particle_" << openmc_current_batch << '_' << id << ".h5";
+  filename << path_output << "particle_" << openmc_current_batch << '_' << id << ".h5";
 
 #pragma omp critical (WriteParticleRestart)
   {

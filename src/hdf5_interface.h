@@ -143,8 +143,8 @@ struct H5TypeMap { static const hid_t type_id; };
 // Template functions used to provide simple interface to lower-level functions
 //==============================================================================
 
-template<typename T>
-void write_attribute(hid_t obj_id, const char* name, T buffer)
+template<typename T> inline void
+write_attribute(hid_t obj_id, const char* name, T buffer)
 {
   write_attr(obj_id, name, 0, nullptr, H5TypeMap<T>::type_id, &buffer);
 }

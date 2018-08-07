@@ -95,12 +95,6 @@ _dll.openmc_zernike_filter_get_order.errcheck = _error_handler
 _dll.openmc_zernike_filter_set_order.argtypes = [c_int32, c_int]
 _dll.openmc_zernike_filter_set_order.restype = c_int
 _dll.openmc_zernike_filter_set_order.errcheck = _error_handler
-_dll.openmc_zernike_radial_filter_get_order.argtypes = [c_int32, POINTER(c_int)]
-_dll.openmc_zernike_radial_filter_get_order.restype = c_int
-_dll.openmc_zernike_radial_filter_get_order.errcheck = _error_handler
-_dll.openmc_zernike_radial_filter_set_order.argtypes = [c_int32, c_int]
-_dll.openmc_zernike_radial_filter_set_order.restype = c_int
-_dll.openmc_zernike_radial_filter_set_order.errcheck = _error_handler
 
 class Filter(_FortranObjectWithID):
     __instances = WeakValueDictionary()
@@ -368,21 +362,6 @@ class ZernikeFilter(Filter):
 
 class ZernikeRadialFilter(Filter):
     filter_type = 'zernikeradial'
-
-    def __init__(self, order=None, uid=None, new=True, index=None):
-        super().__init__(uid, new, index)
-        if order is not None:
-            self.order = order
-
-    @property
-    def order(self):
-        temp_order = c_int()
-        _dll.openmc_zernike_radial_filter_get_order(self._index, temp_order)
-        return temp_order.value
-
-    @order.setter
-    def order(self, order):
-        _dll.openmc_zernike_radial_filter_set_order(self._index, order)
 
 
 _FILTER_TYPE_MAP = {

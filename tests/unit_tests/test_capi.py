@@ -311,3 +311,31 @@ def test_mesh(capi_init):
 
     msf = openmc.capi.MeshSurfaceFilter(mesh)
     assert msf.mesh == mesh
+
+
+def test_restart(pincell_model):
+    # Run for 7 batches then write a statepoint.
+    openmc.capi.init()
+    openmc.capi.simulation_init()
+    for i in range(7):
+        openmc.capi.next_batch()
+    openmc.capi.statepoint_write('restart_test.h5', True)
+
+    # Run 3 more batches and copy the keff.
+    for i in range(3):
+        openmc.capi.next_batch()
+    keff0 = openmc.capi.keff()
+    openmc.capi.simulation_finalize()
+    openmc.capi.finalize()
+
+    # Restart the simulation and run all 10 batches.
+    openmc.capi.init(args=('-r', 'restart_test.h5'))
+    openmc.capi.simulation_init()
+    for i in range(10):
+        openmc.capi.next_batch()
+    keff1 = openmc.capi.keff()
+    openmc.capi.simulation_finalize()
+    openmc.capi.finalize()
+
+    # Compare the keff values.
+    assert keff0 == pytest.approx(keff1)

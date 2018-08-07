@@ -224,8 +224,8 @@ class FissionEnergyRelease(EqualityMixin):
             raise ValueError('The atomic mass of the ENDF evaluation does '
                              'not match the given IncidentNeutron.')
         if ev.target['isomeric_state'] != incident_neutron.metastable:
-            raise ValueError('The metastable state of the ENDF evaluation does '
-                             'not match the given IncidentNeutron.')
+            raise ValueError('The metastable state of the ENDF evaluation '
+                             'does not match the given IncidentNeutron.')
         if not ev.target['fissionable']:
             raise ValueError('The ENDF evaluation is not fissionable.')
 
@@ -234,8 +234,8 @@ class FissionEnergyRelease(EqualityMixin):
 
         file_obj = StringIO(ev.section[1, 458])
 
-        # Read first record and check whether any components appear as tabulated
-        # functions
+        # Read first record and check whether any components appear as
+        # tabulated functions
         items = get_cont_record(file_obj)
         lfc = items[3]
         nfc = items[5]
@@ -253,13 +253,14 @@ class FissionEnergyRelease(EqualityMixin):
             if name in ('recoverable', 'total'):
                 continue
 
-            # In ENDF/B-VII.1, data for 2nd-order coefficients were mistakenly not
-            # converted from MeV to eV.  Check for this error and fix it if present.
+            # In ENDF/B-VII.1, data for 2nd-order coefficients were mistakenly
+            # not converted from MeV to eV.  Check for this error and fix it if
+            # present.
             if npoly == 2:  # Only check 2nd-order data.
-                # If a 1 MeV neutron causes a change of more than 100 MeV, we know
-                # something is wrong.
+                # If a 5 MeV neutron causes a change of more than 100 MeV, we
+                # know something is wrong.
                 second_order = coeffs[2]
-                if abs(second_order) * 1e12 > 1e8:
+                if abs(second_order) * (5e6)**2 > 1e8:
                     # If we found the error, reduce 2nd-order coeff by 10**6.
                     coeffs[2] /= EV_PER_MEV
 
@@ -277,25 +278,27 @@ class FissionEnergyRelease(EqualityMixin):
             elif name == 'neutrinos':
                 func = Polynomial((zeroth_order, -0.105))
             elif name == 'prompt_neutrons':
-                # Prompt neutrons require nu-data.  It is not clear from ENDF-102
-                # whether prompt or total nu value should be used, but the delayed
-                # neutron fraction is so small that the difference is negligible.
-                # MT=18 (n, fission) might not be available so try MT=19 (n, f) as
-                # well.
+                # Prompt neutrons require nu-data.  It is not clear from
+                # ENDF-102 whether prompt or total nu value should be used, but
+                # the delayed neutron fraction is so small that the difference
+                # is negligible. MT=18 (n, fission) might not be available so
+                # try MT=19 (n, f) as well.
                 if 18 in incident_neutron.reactions:
                     nu = [p.yield_ for p in incident_neutron[18].products
-                        if p.particle == 'neutron'
-                        and p.emission_mode in ('prompt', 'total')]
+                          if p.particle == 'neutron'
+                          and p.emission_mode in ('prompt', 'total')]
                 elif 19 in incident_neutron.reactions:
                     nu = [p.yield_ for p in incident_neutron[19].products
-                        if p.particle == 'neutron'
-                        and p.emission_mode in ('prompt', 'total')]
+                          if p.particle == 'neutron'
+                          and p.emission_mode in ('prompt', 'total')]
                 else:
                     raise ValueError('IncidentNeutron data has no fission '
-                                    'reaction.')
+                                     'reaction.')
                 if len(nu) == 0:
-                    raise ValueError('Nu data is needed to compute fission energy '
-                                    'release with the Sher-Beck format.')
+                    raise ValueError(
+                        'Nu data is needed to compute fission energy '
+                        'release with the Sher-Beck format.'
+                    )
                 if len(nu) > 1:
                     raise ValueError('Ambiguous prompt/total nu value.')
 

@@ -13,6 +13,10 @@ module tally_filter_zernike
 
   implicit none
   private
+  public :: openmc_zernike_filter_get_order
+  public :: openmc_zernike_filter_get_params
+  public :: openmc_zernike_filter_set_order
+  public :: openmc_zernike_filter_set_params
 
 !===============================================================================
 ! ZERNIKEFILTER gives Zernike polynomial moments of a particle's position
@@ -24,6 +28,7 @@ module tally_filter_zernike
     real(8) :: y
     real(8) :: r
   contains
+    procedure :: calc_n_bins => calc_n_bins_zn
     procedure :: from_xml => from_xml_zn
     procedure :: get_all_bins => get_all_bins_zn
     procedure :: to_statepoint => to_statepoint_zn
@@ -37,7 +42,8 @@ module tally_filter_zernike
 
   type, public, extends(ZernikeFilter) :: ZernikeRadialFilter
   contains
-    procedure :: from_xml => from_xml_zn_rad
+    procedure :: calc_n_bins => calc_n_bins_zn_rad
+    ! Inherit from_xml from ZernikeFilter
     procedure :: get_all_bins => get_all_bins_zn_rad
     procedure :: to_statepoint => to_statepoint_zn_rad
     procedure :: text_label => text_label_zn_rad
@@ -48,6 +54,15 @@ contains
 !===============================================================================
 ! ZernikeFilter methods
 !===============================================================================
+
+  function calc_n_bins_zn(this) result(num_n_bins)
+    class(ZernikeFilter), intent(in) :: this
+    integer :: n
+    integer :: num_n_bins
+
+    n = this % order
+    num_n_bins = ((n+1) * (n+2))/2
+  end function calc_n_bins_zn
 
   subroutine from_xml_zn(this, node)
     class(ZernikeFilter), intent(inout) :: this
@@ -63,7 +78,7 @@ contains
     ! Get specified order
     call get_node_value(node, "order", n)
     this % order = n
-    this % n_bins = ((n + 1)*(n + 2))/2
+    this % n_bins = this % calc_n_bins()
   end subroutine from_xml_zn
 
   subroutine get_all_bins_zn(this, p, estimator, match)
@@ -129,22 +144,14 @@ contains
 ! ZernikeRadialFilter methods
 !===============================================================================
 
-  subroutine from_xml_zn_rad(this, node)
-    class(ZernikeRadialFilter), intent(inout) :: this
-    type(XMLNode), intent(in) :: node
-
+  function calc_n_bins_zn_rad(this) result(num_n_bins)
+    class(ZernikeRadialFilter), intent(in) :: this
     integer :: n
+    integer :: num_n_bins
 
-    ! Get center of cylinder and radius
-    call get_node_value(node, "x", this % x)
-    call get_node_value(node, "y", this % y)
-    call get_node_value(node, "r", this % r)
-
-    ! Get specified order
-    call get_node_value(node, "order", n)
-    this % order = n
-    this % n_bins = n/2 + 1
-  end subroutine from_xml_zn_rad
+    n = this % order
+    num_n_bins = n/2 + 1
+  end function calc_n_bins_zn_rad
 
   subroutine get_all_bins_zn_rad(this, p, estimator, match)
     class(ZernikeRadialFilter), intent(in)  :: this

@@ -74,10 +74,9 @@ public:
   bool sense(Position r, Direction u) const;
 
   //! Determine the direction of a ray reflected from the surface.
-  //! \param r The point at which the ray is incident.
-  //! \param u A direction.  This is both an input and an output parameter.
-  //!   It specifies the icident direction on input and the reflected direction
-  //!   on output.
+  //! \param[in] r The point at which the ray is incident.
+  //! \param[in] u Incident direction of the ray
+  //! \return Outgoing direction of the ray
   Direction reflect(Position r, Direction u) const;
 
   //! Evaluate the equation describing the surface.
@@ -227,7 +226,7 @@ public:
 
 class SurfaceXCylinder : public Surface
 {
-  double y0, z0, r;
+  double y0, z0, radius;
 public:
   explicit SurfaceXCylinder(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -245,7 +244,7 @@ public:
 
 class SurfaceYCylinder : public Surface
 {
-  double x0, z0, r;
+  double x0, z0, radius;
 public:
   explicit SurfaceYCylinder(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -263,7 +262,7 @@ public:
 
 class SurfaceZCylinder : public Surface
 {
-  double x0, y0, r;
+  double x0, y0, radius;
 public:
   explicit SurfaceZCylinder(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -281,7 +280,7 @@ public:
 
 class SurfaceSphere : public Surface
 {
-  double x0, y0, z0, r;
+  double x0, y0, z0, radius;
 public:
   explicit SurfaceSphere(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -299,7 +298,7 @@ public:
 
 class SurfaceXCone : public Surface
 {
-  double x0, y0, z0, r_sq;
+  double x0, y0, z0, radius_sq;
 public:
   explicit SurfaceXCone(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -317,7 +316,7 @@ public:
 
 class SurfaceYCone : public Surface
 {
-  double x0, y0, z0, r_sq;
+  double x0, y0, z0, radius_sq;
 public:
   explicit SurfaceYCone(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -335,7 +334,7 @@ public:
 
 class SurfaceZCone : public Surface
 {
-  double x0, y0, z0, r_sq;
+  double x0, y0, z0, radius_sq;
 public:
   explicit SurfaceZCone(pugi::xml_node surf_node);
   double evaluate(Position r) const;

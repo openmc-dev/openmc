@@ -380,7 +380,11 @@ contains
 
     ! Determine overall generation and number of active generations
     i = overall_generation()
-    n = i - n_inactive*gen_per_batch
+    if (current_batch > n_inactive) then
+      n = gen_per_batch*n_realizations + current_gen
+    else
+      n = 0
+    end if
 
     if (n <= 0) then
       ! For inactive generations, use current generation k as estimate for next

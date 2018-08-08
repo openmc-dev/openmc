@@ -183,8 +183,8 @@ write_dataset(hid_t obj_id, const char* name, const std::array<T, N>& buffer)
   write_dataset(obj_id, 1, dims, name, H5TypeMap<T>::type_id, buffer.data(), false);
 }
 
-template<> inline void
-write_dataset<Position>(hid_t obj_id, const char* name, Position r)
+inline void
+write_dataset(hid_t obj_id, const char* name, Position r)
 {
   std::array<double, 3> buffer {r.x, r.y, r.z};
   write_dataset(obj_id, name, buffer);

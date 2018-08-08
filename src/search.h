@@ -1,9 +1,14 @@
+//! \file search.h
+//! Search algorithms
+
 #ifndef OPENMC_SEARCH_H
 #define OPENMC_SEARCH_H
 
 #include <algorithm> // for lower_bound
 
 namespace openmc {
+
+//! Perform binary search
 
 template<class It, class T>
 typename std::iterator_traits<It>::difference_type
@@ -13,6 +18,6 @@ lower_bound_index(It first, It last, const T& value)
   return (index == last) ? -1 : index - first;
 }
 
-}
+} // namespace openmc
 
 #endif // OPENMC_SEARCH_H

@@ -1,12 +1,16 @@
-#ifndef DISTRIBUTION_H
-#define DISTRIBUTION_H
+//! \file distribution.h
+//! Univariate probability distributions
+
+#ifndef OPENMC_DISTRIBUTION_H
+#define OPENMC_DISTRIBUTION_H
 
 #include <cstddef> // for size_t
 #include <memory> // for unique_ptr
 #include <vector> // for vector
 
-#include "constants.h"
 #include "pugixml.hpp"
+
+#include "constants.h"
 
 namespace openmc {
 
@@ -16,8 +20,8 @@ namespace openmc {
 
 class Distribution {
 public:
-  virtual double sample() const = 0;
   virtual ~Distribution() = default;
+  virtual double sample() const = 0;
 };
 
 //==============================================================================
@@ -30,11 +34,13 @@ public:
   Discrete(const double* x, const double* p, int n);
 
   //! Sample a value from the distribution
+  //! \return Sampled value
   double sample() const;
 private:
-  std::vector<double> x_;
-  std::vector<double> p_;
+  std::vector<double> x_; //!< Possible outcomes
+  std::vector<double> p_; //!< Probability of each outcome
 
+  //! Normalize distribution so that probabilities sum to unity
   void normalize();
 };
 
@@ -48,14 +54,15 @@ public:
   Uniform(double a, double b) : a_{a}, b_{b} {};
 
   //! Sample a value from the distribution
+  //! \return Sampled value
   double sample() const;
 private:
-  double a_;
-  double b_;
+  double a_; //!< Lower bound of distribution
+  double b_; //!< Upper bound of distribution
 };
 
 //==============================================================================
-//! Maxwellian distribution of form c*E*exp(-E/a)
+//! Maxwellian distribution of form c*E*exp(-E/theta)
 //==============================================================================
 
 class Maxwell : public Distribution {
@@ -64,9 +71,10 @@ public:
   Maxwell(double theta) : theta_{theta} { };
 
   //! Sample a value from the distribution
+  //! \return Sampled value
   double sample() const;
 private:
-  double theta_;
+  double theta_; //!< Factor in exponential [eV]
 };
 
 //==============================================================================
@@ -79,10 +87,11 @@ public:
   Watt(double a, double b) : a_{a}, b_{b} { };
 
   //! Sample a value from the distribution
+  //! \return Sampled value
   double sample() const;
 private:
-  double a_;
-  double b_;
+  double a_; //!< Factor in exponential [eV]
+  double b_; //!< Factor in square root [1/eV]
 };
 
 //==============================================================================
@@ -96,6 +105,7 @@ public:
           const double* c=nullptr);
 
   //! Sample a value from the distribution
+  //! \return Sampled value
   double sample() const;
 private:
   std::vector<double> x_; //!< tabulated independent variable
@@ -104,15 +114,15 @@ private:
   Interpolation interp_;  //!< interpolation rule
 
   //! Initialize tabulated probability density function
-  //! @param x Array of values for independent variable
-  //! @param p Array of tabulated probabilities
-  //! @param n Number of tabulated values
+  //! \param x Array of values for independent variable
+  //! \param p Array of tabulated probabilities
+  //! \param n Number of tabulated values
   void init(const double* x, const double* p, std::size_t n,
             const double* c=nullptr);
 };
 
 //==============================================================================
-//!
+//! Equiprobable distribution
 //==============================================================================
 
 class Equiprobable : public Distribution {
@@ -121,16 +131,20 @@ public:
   Equiprobable(const double* x, int n) : x_{x, x+n} { };
 
   //! Sample a value from the distribution
+  //! \return Sampled value
   double sample() const;
 private:
-  std::vector<double> x_;
+  std::vector<double> x_; //! Possible outcomes
 };
 
 
 using UPtrDist = std::unique_ptr<Distribution>;
 
+//! Return univariate probability distribution specified in XML file
+//! \param[in] node XML node representing distribution
+//! \return Unique pointer to distribution
 UPtrDist distribution_from_xml(pugi::xml_node node);
 
 } // namespace openmc
 
-#endif // DISTRIBUTION_H
+#endif // OPENMC_DISTRIBUTION_H

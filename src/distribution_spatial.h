@@ -14,8 +14,10 @@ namespace openmc {
 
 class SpatialDistribution {
 public:
-  virtual Position sample() const = 0;
   virtual ~SpatialDistribution() = default;
+
+  //! Sample a position from the distribution
+  virtual Position sample() const = 0;
 };
 
 //==============================================================================
@@ -27,6 +29,7 @@ public:
   explicit CartesianIndependent(pugi::xml_node node);
 
   //! Sample a position from the distribution
+  //! \return Sampled position
   Position sample() const;
 private:
   UPtrDist x_; //!< Distribution of x coordinates
@@ -43,11 +46,12 @@ public:
   explicit SpatialBox(pugi::xml_node node);
 
   //! Sample a position from the distribution
+  //! \return Sampled position
   Position sample() const;
 private:
-  Position lower_left_;
-  Position upper_right_;
-  bool only_fissionable {false};
+  Position lower_left_; //!< Lower-left coordinates of box
+  Position upper_right_; //!< Upper-right coordinates of box
+  bool only_fissionable {false}; //!< Only accept sites in fissionable region?
 };
 
 //==============================================================================
@@ -59,9 +63,10 @@ public:
   explicit SpatialPoint(pugi::xml_node node);
 
   //! Sample a position from the distribution
+  //! \return Sampled position
   Position sample() const;
 private:
-  Position r_;
+  Position r_; //!< Single position at which sites are generated
 };
 
 } // namespace openmc

@@ -1,8 +1,8 @@
 //! \file constants.h
 //! A collection of constants
 
-#ifndef CONSTANTS_H
-#define CONSTANTS_H
+#ifndef OPENMC_CONSTANTS_H
+#define OPENMC_CONSTANTS_H
 
 #include <cmath>
 #include <array>
@@ -442,4 +442,4 @@ enum class Interpolation {
 
 } // namespace openmc
 
-#endif // CONSTANTS_H
+#endif // OPENMC_CONSTANTS_H

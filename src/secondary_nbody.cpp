@@ -62,4 +62,4 @@ void NBodyPhaseSpace::sample(double E_in, double& E_out, double& mu) const
   E_out = E_max * v;
 }
 
-}
+} // namespace openmc

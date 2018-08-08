@@ -352,9 +352,9 @@ contains
     if (statepoint_batch % contains(current_batch)) then
       if (sourcepoint_batch % contains(current_batch) .and. source_write &
            .and. .not. source_separate) then
-        err = openmc_statepoint_write(write_source=1)
+        err = openmc_statepoint_write(write_source=.true._C_BOOL)
       else
-        err = openmc_statepoint_write(write_source=0)
+        err = openmc_statepoint_write(write_source=.false._C_BOOL)
       end if
     end if
 

@@ -14,6 +14,10 @@
 
 namespace openmc {
 
+//==============================================================================
+//! CorrelatedAngleEnergy implementation
+//==============================================================================
+
 CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
 {
   // Open incoming energy dataset
@@ -237,4 +241,4 @@ void CorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu) const
   }
 }
 
-}
+} // namespace openmc

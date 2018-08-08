@@ -12,6 +12,10 @@
 
 namespace openmc {
 
+//==============================================================================
+// ReactionProduct implementation
+//==============================================================================
+
 ReactionProduct::ReactionProduct(hid_t group)
 {
   // Read particle type

@@ -59,7 +59,7 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
       if (p.particle_ == ParticleType::neutron) {
         for (auto& d : p.distribution_) {
           auto d_ = dynamic_cast<UncorrelatedAngleEnergy*>(d.get());
-          if (d_) d_->fission_ = true;
+          if (d_) d_->fission() = true;
         }
       }
     }
@@ -141,7 +141,7 @@ double reaction_sample_elastic_mu(Reaction* rx, double E)
   // Check if it is an uncorrelated angle-energy distribution
   auto d_ = dynamic_cast<UncorrelatedAngleEnergy*>(d.get());
   if (d_) {
-    return d_->sampleMu(E);
+    return d_->angle().sample(E);
   } else {
     return 2.0*prn() - 1.0;
   }

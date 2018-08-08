@@ -14,6 +14,10 @@
 
 namespace openmc {
 
+//==============================================================================
+//! KalbachMann implementation
+//==============================================================================
+
 KalbachMann::KalbachMann(hid_t group)
 {
   // Open incoming energy dataset

@@ -71,4 +71,4 @@ UncorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu) const
   E_out = energy_->sample(E_in);
 }
 
-}
+} // namespace openmc

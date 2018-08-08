@@ -1,5 +1,5 @@
-#ifndef HDF5_INTERFACE_H
-#define HDF5_INTERFACE_H
+#ifndef OPENMC_HDF5_INTERFACE_H
+#define OPENMC_HDF5_INTERFACE_H
 
 #include "hdf5.h"
 #include "hdf5_hl.h"
@@ -191,4 +191,4 @@ write_dataset(hid_t obj_id, const char* name, Position r)
 }
 
 } // namespace openmc
-#endif //HDF5_INTERFACE_H
+#endif // OPENMC_HDF5_INTERFACE_H

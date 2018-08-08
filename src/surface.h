@@ -1,5 +1,5 @@
-#ifndef SURFACE_H
-#define SURFACE_H
+#ifndef OPENMC_SURFACE_H
+#define OPENMC_SURFACE_H
 
 #include <map>
 #include <limits>  // For numeric_limits
@@ -66,16 +66,16 @@ public:
   virtual ~Surface() {}
 
   //! Determine which side of a surface a point lies on.
-  //! @param r The 3D Cartesian coordinate of a point.
-  //! @param o A direction used to "break ties" and pick a sense when the
+  //! \param r The 3D Cartesian coordinate of a point.
+  //! \param u A direction used to "break ties" and pick a sense when the
   //!   point is very close to the surface.
-  //! @return true if the point is on the "positive" side of the surface and
+  //! \return true if the point is on the "positive" side of the surface and
   //!   false otherwise.
   bool sense(Position r, Direction u) const;
 
   //! Determine the direction of a ray reflected from the surface.
-  //! @param r The point at which the ray is incident.
-  //! @param o A direction.  This is both an input and an output parameter.
+  //! \param r The point at which the ray is incident.
+  //! \param u A direction.  This is both an input and an output parameter.
   //!   It specifies the icident direction on input and the reflected direction
   //!   on output.
   Direction reflect(Position r, Direction u) const;
@@ -84,23 +84,23 @@ public:
   //!
   //! Surfaces can be described by some function f(x, y, z) = 0.  This member
   //! function evaluates that mathematical function.
-  //! @param r A 3D Cartesian coordinate.
+  //! \param r A 3D Cartesian coordinate.
   virtual double evaluate(Position r) const = 0;
 
   //! Compute the distance between a point and the surface along a ray.
-  //! @param r A 3D Cartesian coordinate.
-  //! @param o The direction of the ray.
-  //! @param coincident A hint to the code that the given point should lie
+  //! \param r A 3D Cartesian coordinate.
+  //! \param u The direction of the ray.
+  //! \param coincident A hint to the code that the given point should lie
   //!   exactly on the surface.
   virtual double distance(Position r, Direction u, bool coincident) const = 0;
 
   //! Compute the local outward normal direction of the surface.
-  //! @param r A 3D Cartesian coordinate.
-  //! @return Normal direction
+  //! \param r A 3D Cartesian coordinate.
+  //! \return Normal direction
   virtual Direction normal(Position r) const = 0;
 
   //! Write all information needed to reconstruct the surface to an HDF5 group.
-  //! @param group_id An HDF5 group id.
+  //! \param group_id An HDF5 group id.
   //TODO: this probably needs to include i_periodic for PeriodicSurface
   void to_hdf5(hid_t group_id) const;
 
@@ -124,12 +124,12 @@ public:
   explicit PeriodicSurface(pugi::xml_node surf_node);
 
   //! Translate a particle onto this surface from a periodic partner surface.
-  //! @param other A pointer to the partner surface in this periodic BC.
-  //! @param r A point on the partner surface that will be translated onto
+  //! \param other A pointer to the partner surface in this periodic BC.
+  //! \param r A point on the partner surface that will be translated onto
   //!   this surface.
-  //! @param a A direction that will be rotated for systems with rotational
+  //! \param u A direction that will be rotated for systems with rotational
   //!   periodicity.
-  //! @return true if this surface and its partner make a rotationally-periodic
+  //! \return true if this surface and its partner make a rotationally-periodic
   //!   boundary condition.
   virtual bool periodic_translate(const PeriodicSurface *other, Position& r,
                                   Direction& u) const = 0;
@@ -383,4 +383,4 @@ extern "C" {
 }
 
 } // namespace openmc
-#endif // SURFACE_H
+#endif // OPENMC_SURFACE_H

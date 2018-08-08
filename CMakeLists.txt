@@ -386,7 +386,6 @@ add_library(libopenmc SHARED
   src/cell.cpp
   src/initialize.cpp
   src/finalize.cpp
-  src/geometry.cpp
   src/geometry_aux.cpp
   src/hdf5_interface.cpp
   src/lattice.cpp
@@ -396,6 +395,7 @@ add_library(libopenmc SHARED
   src/mgxs_interface.cpp
   src/particle.cpp
   src/plot.cpp
+  src/position.cpp
   src/pugixml/pugixml_c.cpp
   src/random_lcg.cpp
   src/scattdata.cpp

@@ -7,10 +7,11 @@
 #include <unordered_map>
 #include <vector>
 
-#include "constants.h"
-#include "geometry.h"
 #include "hdf5.h"
 #include "pugixml.hpp"
+
+#include "constants.h"
+#include "position.h"
 
 
 namespace openmc {
@@ -82,7 +83,7 @@ public:
   //! @return The distance to the next crossing and an array indicating how the
   //!   lattice indices would change after crossing that boundary.
   virtual std::pair<double, std::array<int, 3>>
-  distance(Position r, Angle a, const int i_xyz[3]) const
+  distance(Position r, Direction u, const int i_xyz[3]) const
   = 0;
 
   //! \brief Find the lattice tile indices for a given point.
@@ -194,7 +195,7 @@ public:
   bool are_valid_indices(const int i_xyz[3]) const;
 
   std::pair<double, std::array<int, 3>>
-  distance(Position r, Angle a, const int i_xyz[3]) const;
+  distance(Position r, Direction u, const int i_xyz[3]) const;
 
   std::array<int, 3> get_indices(Position r) const;
 
@@ -234,7 +235,7 @@ public:
   bool are_valid_indices(const int i_xyz[3]) const;
 
   std::pair<double, std::array<int, 3>>
-  distance(Position r, Angle a, const int i_xyz[3]) const;
+  distance(Position r, Direction u, const int i_xyz[3]) const;
 
   std::array<int, 3> get_indices(Position r) const;
 

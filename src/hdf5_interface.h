@@ -11,7 +11,7 @@
 #include <vector>
 #include <complex.h>
 
-#include "geometry.h"
+#include "position.h"
 
 
 namespace openmc {

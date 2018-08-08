@@ -178,7 +178,7 @@ Surface::Surface(pugi::xml_node surf_node)
 }
 
 bool
-Surface::sense(Position r, Angle a) const
+Surface::sense(Position r, Direction u) const
 {
   // Evaluate the surface equation at the particle's coordinates to determine
   // which side the particle is on.
@@ -189,22 +189,22 @@ Surface::sense(Position r, Angle a) const
     // Particle may be coincident with this surface. To determine the sense, we
     // look at the direction of the particle relative to the surface normal (by
     // default in the positive direction) via their dot product.
-    return a.dot(normal(r)) > 0.0;
+    return u.dot(normal(r)) > 0.0;
   }
   return f > 0.0;
 }
 
-Angle
-Surface::reflect(Position r, Angle a) const
+Direction
+Surface::reflect(Position r, Direction u) const
 {
   // Determine projection of direction onto normal and squared magnitude of
   // normal.
-  Angle n = normal(r);
-  const double projection = n.dot(a);
+  Direction n = normal(r);
+  const double projection = n.dot(u);
   const double magnitude = n.dot(n);
 
   // Reflect direction according to normal.
-  return a -= (2.0 * projection / magnitude) * n;
+  return u -= (2.0 * projection / magnitude) * n;
 }
 
 void
@@ -257,11 +257,11 @@ PeriodicSurface::PeriodicSurface(pugi::xml_node surf_node)
 
 // The template parameter indicates the axis normal to the plane.
 template<int i> double
-axis_aligned_plane_distance(Position r, Angle a, bool coincident, double offset)
+axis_aligned_plane_distance(Position r, Direction u, bool coincident, double offset)
 {
   const double f = offset - r[i];
-  if (coincident or std::abs(f) < FP_COINCIDENT or a[i] == 0.0) return INFTY;
-  const double d = f / a[i];
+  if (coincident or std::abs(f) < FP_COINCIDENT or u[i] == 0.0) return INFTY;
+  const double d = f / u[i];
   if (d < 0.0) return INFTY;
   return d;
 }
@@ -281,12 +281,12 @@ double SurfaceXPlane::evaluate(Position r) const
   return r.x - x0;
 }
 
-double SurfaceXPlane::distance(Position r, Angle a, bool coincident) const
+double SurfaceXPlane::distance(Position r, Direction u, bool coincident) const
 {
-  return axis_aligned_plane_distance<0>(r, a, coincident, x0);
+  return axis_aligned_plane_distance<0>(r, u, coincident, x0);
 }
 
-Angle SurfaceXPlane::normal(Position r) const
+Direction SurfaceXPlane::normal(Position r) const
 {
   return {1., 0., 0.};
 }
@@ -299,23 +299,23 @@ void SurfaceXPlane::to_hdf5_inner(hid_t group_id) const
 }
 
 bool SurfaceXPlane::periodic_translate(const PeriodicSurface *other, Position& r,
-                                       Angle& a) const
+                                       Direction& u) const
 {
-  Angle other_n = other->normal(r);
-  if (other_n.u() == 1 and other_n.v() == 0 and other_n.w() == 0) {
+  Direction other_n = other->normal(r);
+  if (other_n.x == 1 and other_n.y == 0 and other_n.z == 0) {
     r.x = x0;
     return false;
   } else {
     // Assume the partner is an YPlane (the only supported partner).  Use the
-    // evaluate function to find y0, then adjust position/angle for rotational
+    // evaluate function to find y0, then adjust position/Direction for rotational
     // symmetry.
     double y0 = -other->evaluate({0., 0., 0.});
     r.y = r.x - x0 + y0;
     r.x = x0;
 
-    double u = a.u();
-    a.u() = -a.v();
-    a.v() = u;
+    double ux = u.x;
+    u.x = -u.y;
+    u.y = ux;
 
     return true;
   }
@@ -342,12 +342,12 @@ double SurfaceYPlane::evaluate(Position r) const
   return r.y - y0;
 }
 
-double SurfaceYPlane::distance(Position r, Angle a, bool coincident) const
+double SurfaceYPlane::distance(Position r, Direction u, bool coincident) const
 {
-  return axis_aligned_plane_distance<1>(r, a, coincident, y0);
+  return axis_aligned_plane_distance<1>(r, u, coincident, y0);
 }
 
-Angle SurfaceYPlane::normal(Position r) const
+Direction SurfaceYPlane::normal(Position r) const
 {
   return {0., 1., 0.};
 }
@@ -360,24 +360,24 @@ void SurfaceYPlane::to_hdf5_inner(hid_t group_id) const
 }
 
 bool SurfaceYPlane::periodic_translate(const PeriodicSurface *other, Position& r,
-                                       Angle& a) const
+                                       Direction& u) const
 {
-  Angle other_n = other->normal(r);
-  if (other_n.u() == 0 and other_n.v() == 1 and other_n.w() == 0) {
+  Direction other_n = other->normal(r);
+  if (other_n.x == 0 and other_n.y == 1 and other_n.z == 0) {
     // The periodic partner is also aligned along y.  Just change the y coord.
     r.y = y0;
     return false;
   } else {
     // Assume the partner is an XPlane (the only supported partner).  Use the
-    // evaluate function to find x0, then adjust position/angle for rotational
+    // evaluate function to find x0, then adjust position/Direction for rotational
     // symmetry.
     double x0 = -other->evaluate({0., 0., 0.});
     r.x = r.y - y0 + x0;
     r.y = y0;
 
-    double u = a.u();
-    a.u() = a.v();
-    a.v() = -u;
+    double ux = u.x;
+    u.x = u.y;
+    u.y = -ux;
 
     return true;
   }
@@ -404,12 +404,12 @@ double SurfaceZPlane::evaluate(Position r) const
   return r.z - z0;
 }
 
-double SurfaceZPlane::distance(Position r, Angle a, bool coincident) const
+double SurfaceZPlane::distance(Position r, Direction u, bool coincident) const
 {
-  return axis_aligned_plane_distance<2>(r, a, coincident, z0);
+  return axis_aligned_plane_distance<2>(r, u, coincident, z0);
 }
 
-Angle SurfaceZPlane::normal(Position r) const
+Direction SurfaceZPlane::normal(Position r) const
 {
   return {0., 0., 1.};
 }
@@ -422,7 +422,7 @@ void SurfaceZPlane::to_hdf5_inner(hid_t group_id) const
 }
 
 bool SurfaceZPlane::periodic_translate(const PeriodicSurface *other, Position& r,
-                                       Angle& a) const
+                                       Direction& u) const
 {
   // Assume the other plane is aligned along z.  Just change the z coord.
   r.z = z0;
@@ -452,10 +452,10 @@ SurfacePlane::evaluate(Position r) const
 }
 
 double
-SurfacePlane::distance(Position r, Angle a, bool coincident) const
+SurfacePlane::distance(Position r, Direction u, bool coincident) const
 {
   const double f = A*r.x + B*r.y + C*r.z - D;
-  const double projection = A*a.u() + B*a.v() + C*a.w();
+  const double projection = A*u.x + B*u.y + C*u.z;
   if (coincident or std::abs(f) < FP_COINCIDENT or projection == 0.0) {
     return INFTY;
   } else {
@@ -465,7 +465,7 @@ SurfacePlane::distance(Position r, Angle a, bool coincident) const
   }
 }
 
-Angle
+Direction
 SurfacePlane::normal(Position r) const
 {
   return {A, B, C};
@@ -479,7 +479,7 @@ void SurfacePlane::to_hdf5_inner(hid_t group_id) const
 }
 
 bool SurfacePlane::periodic_translate(const PeriodicSurface *other, Position& r,
-                                      Angle& a) const
+                                      Direction& u) const
 {
   // This function assumes the other plane shares this plane's normal direction.
 
@@ -520,7 +520,7 @@ axis_aligned_cylinder_evaluate(Position r, double offset1,
 // The other two parameters indicate the other two axes.  offset1 and offset2
 // should correspond with i2 and i3, respectively.
 template<int i1, int i2, int i3> double
-axis_aligned_cylinder_distance(Position r, Angle u,
+axis_aligned_cylinder_distance(Position r, Direction u,
      bool coincident, double offset1, double offset2, double radius)
 {
   const double a = 1.0 - u[i1]*u[i1];  // u^2 + v^2
@@ -565,14 +565,14 @@ axis_aligned_cylinder_distance(Position r, Angle u,
 // The first template parameter indicates which axis the cylinder is aligned to.
 // The other two parameters indicate the other two axes.  offset1 and offset2
 // should correspond with i2 and i3, respectively.
-template<int i1, int i2, int i3> Angle
+template<int i1, int i2, int i3> Direction
 axis_aligned_cylinder_normal(Position r, double offset1, double offset2)
 {
-  Angle a;
-  a[i2] = 2.0 * (r[i2] - offset1);
-  a[i3] = 2.0 * (r[i3] - offset2);
-  a[i1] = 0.0;
-  return a;
+  Direction u;
+  u[i2] = 2.0 * (r[i2] - offset1);
+  u[i3] = 2.0 * (r[i3] - offset2);
+  u[i1] = 0.0;
+  return u;
 }
 
 //==============================================================================
@@ -590,13 +590,13 @@ double SurfaceXCylinder::evaluate(Position r) const
   return axis_aligned_cylinder_evaluate<1, 2>(r, y0, z0, this->r);
 }
 
-double SurfaceXCylinder::distance(Position r, Angle a, bool coincident) const
+double SurfaceXCylinder::distance(Position r, Direction u, bool coincident) const
 {
-  return axis_aligned_cylinder_distance<0, 1, 2>(r, a, coincident, y0, z0,
+  return axis_aligned_cylinder_distance<0, 1, 2>(r, u, coincident, y0, z0,
                                                  this->r);
 }
 
-Angle SurfaceXCylinder::normal(Position r) const
+Direction SurfaceXCylinder::normal(Position r) const
 {
   return axis_aligned_cylinder_normal<0, 1, 2>(r, y0, z0);
 }
@@ -624,13 +624,13 @@ double SurfaceYCylinder::evaluate(Position r) const
   return axis_aligned_cylinder_evaluate<0, 2>(r, x0, z0, this->r);
 }
 
-double SurfaceYCylinder::distance(Position r, Angle a, bool coincident) const
+double SurfaceYCylinder::distance(Position r, Direction u, bool coincident) const
 {
-  return axis_aligned_cylinder_distance<1, 0, 2>(r, a, coincident, x0, z0,
+  return axis_aligned_cylinder_distance<1, 0, 2>(r, u, coincident, x0, z0,
                                                  this->r);
 }
 
-Angle SurfaceYCylinder::normal(Position r) const
+Direction SurfaceYCylinder::normal(Position r) const
 {
   return axis_aligned_cylinder_normal<1, 0, 2>(r, x0, z0);
 }
@@ -657,13 +657,13 @@ double SurfaceZCylinder::evaluate(Position r) const
   return axis_aligned_cylinder_evaluate<0, 1>(r, x0, y0, this->r);
 }
 
-double SurfaceZCylinder::distance(Position r, Angle a, bool coincident) const
+double SurfaceZCylinder::distance(Position r, Direction u, bool coincident) const
 {
-  return axis_aligned_cylinder_distance<2, 0, 1>(r, a, coincident, x0, y0,
+  return axis_aligned_cylinder_distance<2, 0, 1>(r, u, coincident, x0, y0,
                                                  this->r);
 }
 
-Angle SurfaceZCylinder::normal(Position r) const
+Direction SurfaceZCylinder::normal(Position r) const
 {
   return axis_aligned_cylinder_normal<2, 0, 1>(r, x0, y0);
 }
@@ -693,12 +693,12 @@ double SurfaceSphere::evaluate(Position r) const
   return x*x + y*y + z*z - this->r*this->r;
 }
 
-double SurfaceSphere::distance(Position r, Angle a, bool coincident) const
+double SurfaceSphere::distance(Position r, Direction u, bool coincident) const
 {
   const double x = r.x - x0;
   const double y = r.y - y0;
   const double z = r.z - z0;
-  const double k = x*a.u() + y*a.v() + z*a.w();
+  const double k = x*u.x + y*u.y + z*u.z;
   const double c = x*x + y*y + z*z - this->r*this->r;
   const double quad = k*k - c;
 
@@ -731,7 +731,7 @@ double SurfaceSphere::distance(Position r, Angle a, bool coincident) const
   }
 }
 
-Angle SurfaceSphere::normal(Position r) const
+Direction SurfaceSphere::normal(Position r) const
 {
   return {2.0*(r.x - x0), 2.0*(r.y - y0), 2.0*(r.z - z0)};
 }
@@ -764,7 +764,7 @@ axis_aligned_cone_evaluate(Position r, double offset1,
 // The other two parameters indicate the other two axes.  offset1, offset2,
 // and offset3 should correspond with i1, i2, and i3, respectively.
 template<int i1, int i2, int i3> double
-axis_aligned_cone_distance(Position r, Angle u,
+axis_aligned_cone_distance(Position r, Direction u,
      bool coincident, double offset1, double offset2, double offset3,
      double radius_sq)
 {
@@ -817,15 +817,15 @@ axis_aligned_cone_distance(Position r, Angle u,
 // The first template parameter indicates which axis the cone is aligned to.
 // The other two parameters indicate the other two axes.  offset1, offset2,
 // and offset3 should correspond with i1, i2, and i3, respectively.
-template<int i1, int i2, int i3> Angle
+template<int i1, int i2, int i3> Direction
 axis_aligned_cone_normal(Position r, double offset1, double offset2,
                          double offset3, double radius_sq)
 {
-  Angle a;
-  a[i1] = -2.0 * radius_sq * (r[i1] - offset1);
-  a[i2] = 2.0 * (r[i2] - offset2);
-  a[i3] = 2.0 * (r[i3] - offset3);
-  return a;
+  Direction u;
+  u[i1] = -2.0 * radius_sq * (r[i1] - offset1);
+  u[i2] = 2.0 * (r[i2] - offset2);
+  u[i3] = 2.0 * (r[i3] - offset3);
+  return u;
 }
 
 //==============================================================================
@@ -843,13 +843,13 @@ double SurfaceXCone::evaluate(Position r) const
   return axis_aligned_cone_evaluate<0, 1, 2>(r, x0, y0, z0, r_sq);
 }
 
-double SurfaceXCone::distance(Position r, Angle a, bool coincident) const
+double SurfaceXCone::distance(Position r, Direction u, bool coincident) const
 {
-  return axis_aligned_cone_distance<0, 1, 2>(r, a, coincident, x0, y0, z0,
+  return axis_aligned_cone_distance<0, 1, 2>(r, u, coincident, x0, y0, z0,
                                              r_sq);
 }
 
-Angle SurfaceXCone::normal(Position r) const
+Direction SurfaceXCone::normal(Position r) const
 {
   return axis_aligned_cone_normal<0, 1, 2>(r, x0, y0, z0, r_sq);
 }
@@ -876,13 +876,13 @@ double SurfaceYCone::evaluate(Position r) const
   return axis_aligned_cone_evaluate<1, 0, 2>(r, y0, x0, z0, r_sq);
 }
 
-double SurfaceYCone::distance(Position r, Angle a, bool coincident) const
+double SurfaceYCone::distance(Position r, Direction u, bool coincident) const
 {
-  return axis_aligned_cone_distance<1, 0, 2>(r, a, coincident, y0, x0, z0,
+  return axis_aligned_cone_distance<1, 0, 2>(r, u, coincident, y0, x0, z0,
                                              r_sq);
 }
 
-Angle SurfaceYCone::normal(Position r) const
+Direction SurfaceYCone::normal(Position r) const
 {
   return axis_aligned_cone_normal<1, 0, 2>(r, y0, x0, z0, r_sq);
 }
@@ -909,13 +909,13 @@ double SurfaceZCone::evaluate(Position r) const
   return axis_aligned_cone_evaluate<2, 0, 1>(r, z0, x0, y0, r_sq);
 }
 
-double SurfaceZCone::distance(Position r, Angle a, bool coincident) const
+double SurfaceZCone::distance(Position r, Direction u, bool coincident) const
 {
-  return axis_aligned_cone_distance<2, 0, 1>(r, a, coincident, z0, x0, y0,
+  return axis_aligned_cone_distance<2, 0, 1>(r, u, coincident, z0, x0, y0,
                                              r_sq);
 }
 
-Angle SurfaceZCone::normal(Position r) const
+Direction SurfaceZCone::normal(Position r) const
 {
   return axis_aligned_cone_normal<2, 0, 1>(r, z0, x0, y0, r_sq);
 }
@@ -949,14 +949,14 @@ SurfaceQuadric::evaluate(Position r) const
 }
 
 double
-SurfaceQuadric::distance(Position r, Angle ang, bool coincident) const
+SurfaceQuadric::distance(Position r, Direction ang, bool coincident) const
 {
   const double &x = r.x;
   const double &y = r.y;
   const double &z = r.z;
-  const double &u = ang.u();
-  const double &v = ang.v();
-  const double &w = ang.w();
+  const double &u = ang.x;
+  const double &v = ang.y;
+  const double &w = ang.z;
 
   const double a = A*u*u + B*v*v + C*w*w + D*u*v + E*v*w + F*u*w;
   const double k = (A*u*x + B*v*y + C*w*z + 0.5*(D*(u*y + v*x) +
@@ -1002,7 +1002,7 @@ SurfaceQuadric::distance(Position r, Angle ang, bool coincident) const
   return d;
 }
 
-Angle
+Direction
 SurfaceQuadric::normal(Position r) const
 {
   const double &x = r.x;
@@ -1222,21 +1222,21 @@ extern "C" {
   void surface_reflect(Surface *surf, double xyz[3], double uvw[3])
   {
     Position r {xyz};
-    Angle a {uvw};
-    a = surf->reflect(r, a);
+    Direction u {uvw};
+    u = surf->reflect(r, u);
 
-    uvw[0] = a.u();
-    uvw[1] = a.v();
-    uvw[2] = a.w();
+    uvw[0] = u.x;
+    uvw[1] = u.y;
+    uvw[2] = u.z;
   }
 
   void surface_normal(Surface *surf, double xyz[3], double uvw[3])
   {
     Position r {xyz};
-    Angle a = surf->normal(r);
-    uvw[0] = a.u();
-    uvw[1] = a.v();
-    uvw[2] = a.w();
+    Direction u = surf->normal(r);
+    uvw[0] = u.x;
+    uvw[1] = u.y;
+    uvw[2] = u.z;
   }
 
   void surface_to_hdf5(Surface *surf, hid_t group) {surf->to_hdf5(group);}
@@ -1248,16 +1248,16 @@ extern "C" {
                    double uvw[3])
   {
     Position r {xyz};
-    Angle a {uvw};
-    bool rotational = surf->periodic_translate(other, r, a);
+    Direction u {uvw};
+    bool rotational = surf->periodic_translate(other, r, u);
 
     // Copy back to arrays
     xyz[0] = r.x;
     xyz[1] = r.y;
     xyz[2] = r.z;
-    uvw[0] = a.u();
-    uvw[1] = a.v();
-    uvw[2] = a.w();
+    uvw[0] = u.x;
+    uvw[1] = u.y;
+    uvw[2] = u.z;
 
     return rotational;
   }

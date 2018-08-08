@@ -223,25 +223,23 @@ RectLattice::are_valid_indices(const int i_xyz[3]) const
 //==============================================================================
 
 std::pair<double, std::array<int, 3>>
-RectLattice::distance(Position r, Angle a, const int i_xyz[3]) const
+RectLattice::distance(Position r, Direction u, const int i_xyz[3]) const
 {
   // Get short aliases to the coordinates.
   double x = r.x;
   double y = r.y;
   double z = r.z;
-  double u = a.u();
-  double v = a.v();
 
   // Determine the oncoming edge.
-  double x0 {copysign(0.5 * pitch[0], u)};
-  double y0 {copysign(0.5 * pitch[1], v)};
+  double x0 {copysign(0.5 * pitch[0], u.x)};
+  double y0 {copysign(0.5 * pitch[1], u.y)};
 
   // Left and right sides
   double d {INFTY};
   std::array<int, 3> lattice_trans;
-  if ((std::abs(x - x0) > FP_PRECISION) && u != 0) {
-    d = (x0 - x) / u;
-    if (u > 0) {
+  if ((std::abs(x - x0) > FP_PRECISION) && u.x != 0) {
+    d = (x0 - x) / u.x;
+    if (u.x > 0) {
       lattice_trans = {1, 0, 0};
     } else {
       lattice_trans = {-1, 0, 0};
@@ -249,11 +247,11 @@ RectLattice::distance(Position r, Angle a, const int i_xyz[3]) const
   }
 
   // Front and back sides
-  if ((std::abs(y - y0) > FP_PRECISION) && v != 0) {
-    double this_d = (y0 - y) / v;
+  if ((std::abs(y - y0) > FP_PRECISION) && u.y != 0) {
+    double this_d = (y0 - y) / u.y;
     if (this_d < d) {
       d = this_d;
-      if (v > 0) {
+      if (u.y > 0) {
         lattice_trans = {0, 1, 0};
       } else {
         lattice_trans = {0, -1, 0};
@@ -263,13 +261,12 @@ RectLattice::distance(Position r, Angle a, const int i_xyz[3]) const
 
   // Top and bottom sides
   if (is_3d) {
-    double w {a.w()};
-    double z0 {copysign(0.5 * pitch[2], w)};
-    if ((std::abs(z - z0) > FP_PRECISION) && w != 0) {
-      double this_d = (z0 - z) / w;
+    double z0 {copysign(0.5 * pitch[2], u.z)};
+    if ((std::abs(z - z0) > FP_PRECISION) && u.z != 0) {
+      double this_d = (z0 - z) / u.z;
       if (this_d < d) {
         d = this_d;
-        if (w > 0) {
+        if (u.z > 0) {
           lattice_trans = {0, 0, 1};
         } else {
           lattice_trans = {0, 0, -1};
@@ -579,11 +576,11 @@ HexLattice::are_valid_indices(const int i_xyz[3]) const
 //==============================================================================
 
 std::pair<double, std::array<int, 3>>
-HexLattice::distance(Position r, Angle a, const int i_xyz[3]) const
+HexLattice::distance(Position r, Direction u, const int i_xyz[3]) const
 {
   // Compute the direction on the hexagonal basis.
-  double beta_dir = a.u() * std::sqrt(3.0) / 2.0 + a.v() / 2.0;
-  double gamma_dir = a.u() * std::sqrt(3.0) / 2.0 - a.v() / 2.0;
+  double beta_dir = u.x * std::sqrt(3.0) / 2.0 + u.y / 2.0;
+  double gamma_dir = u.x * std::sqrt(3.0) / 2.0 - u.y / 2.0;
 
   // Note that hexagonal lattice distance calculations are performed
   // using the particle's coordinates relative to the neighbor lattice
@@ -636,18 +633,18 @@ HexLattice::distance(Position r, Angle a, const int i_xyz[3]) const
   }
 
   // Upper and lower sides.
-  edge = -copysign(0.5*pitch[0], a.v());
-  if (a.v() > 0) {
+  edge = -copysign(0.5*pitch[0], u.y);
+  if (u.y > 0) {
     const int i_xyz_t[3] {i_xyz[0], i_xyz[1]+1, i_xyz[2]};
     r_t = get_local_position(r, i_xyz_t);
   } else {
     const int i_xyz_t[3] {i_xyz[0], i_xyz[1]-1, i_xyz[2]};
     r_t = get_local_position(r, i_xyz_t);
   }
-  if ((std::abs(r_t.y - edge) > FP_PRECISION) && a.v() != 0) {
-    double this_d = (edge - r_t.y) / a.v();
+  if ((std::abs(r_t.y - edge) > FP_PRECISION) && u.y != 0) {
+    double this_d = (edge - r_t.y) / u.y;
     if (this_d < d) {
-      if (a.v() > 0) {
+      if (u.y > 0) {
         lattice_trans = {0, 1, 0};
       } else {
         lattice_trans = {0, -1, 0};
@@ -659,13 +656,12 @@ HexLattice::distance(Position r, Angle a, const int i_xyz[3]) const
   // Top and bottom sides
   if (is_3d) {
     double z = r.z;
-    double w = a.w();
-    double z0 {copysign(0.5 * pitch[1], w)};
-    if ((std::abs(z - z0) > FP_PRECISION) && w != 0) {
-      double this_d = (z0 - z) / w;
+    double z0 {copysign(0.5 * pitch[1], u.z)};
+    if ((std::abs(z - z0) > FP_PRECISION) && u.z != 0) {
+      double this_d = (z0 - z) / u.z;
       if (this_d < d) {
         d = this_d;
-        if (w > 0) {
+        if (u.z > 0) {
           lattice_trans = {0, 0, 1};
         } else {
           lattice_trans = {0, 0, -1};
@@ -897,8 +893,8 @@ extern "C" {
                         const int i_xyz[3], double *d, int lattice_trans[3])
   {
     Position r {xyz};
-    Angle a {uvw};
-    std::pair<double, std::array<int, 3>> ld {lat->distance(r, a, i_xyz)};
+    Direction u {uvw};
+    std::pair<double, std::array<int, 3>> ld {lat->distance(r, u, i_xyz)};
     *d = ld.first;
     lattice_trans[0] = ld.second[0];
     lattice_trans[1] = ld.second[1];

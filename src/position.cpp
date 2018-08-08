@@ -1,6 +1,10 @@
-#include "geometry.h"
+#include "position.h"
 
 namespace openmc {
+
+//==============================================================================
+// Position implementation
+//==============================================================================
 
 Position&
 Position::operator+=(Position other)

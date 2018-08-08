@@ -80,7 +80,7 @@ contains
     x = p % coord(1) % xyz(1) - this % x
     y = p % coord(1) % xyz(2) - this % y
     r = sqrt(x*x + y*y)/this % r
-    if (r <= 1) then
+    if (r <= ONE) then
       theta = atan2(y, x)
       
       ! Get moments for Zernike polynomial orders 0..n
@@ -160,7 +160,7 @@ contains
     x = p % coord(1) % xyz(1) - this % x
     y = p % coord(1) % xyz(2) - this % y
     r = sqrt(x*x + y*y)/this % r
-    if (r <= 1) then
+    if (r <= ONE) then
 
       ! Get moments for even order Zernike polynomial orders 0..n
       call calc_zn_rad(this % order, r, zn_rad)
@@ -228,11 +228,7 @@ contains
     err = verify_filter(index)
     if (err == 0) then
       select type (f => filters(index) % obj)
-      type is (ZernikeFilter)
-        x = f % x
-        y = f % y
-        r = f % r
-      type is (ZernikeRadialFilter)
+      class is (ZernikeFilter)
         x = f % x
         y = f % y
         r = f % r
@@ -278,11 +274,7 @@ contains
     err = verify_filter(index)
     if (err == 0) then
       select type (f => filters(index) % obj)
-      type is (ZernikeFilter)
-        if (present(x)) f % x = x
-        if (present(y)) f % y = y
-        if (present(r)) f % r = r
-      type is (ZernikeRadialFilter)
+      class is (ZernikeFilter)
         if (present(x)) f % x = x
         if (present(y)) f % y = y
         if (present(r)) f % r = r

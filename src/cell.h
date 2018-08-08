@@ -8,7 +8,8 @@
 
 #include "hdf5.h"
 #include "pugixml.hpp"
-#include "geometry.h"
+
+#include "position.h"
 
 
 namespace openmc {
@@ -98,19 +99,19 @@ public:
   //!   known to be on.  This index takes precedence over surface sense
   //!   calculations.
   bool
-  contains(Position r, Angle a, int32_t on_surface) const;
+  contains(Position r, Direction u, int32_t on_surface) const;
 
   //! Find the oncoming boundary of this cell.
   std::pair<double, int32_t>
-  distance(Position r, Angle a, int32_t on_surface) const;
+  distance(Position r, Direction u, int32_t on_surface) const;
 
   //! \brief Write cell information to an HDF5 group.
   //! @param group_id An HDF5 group id.
   void to_hdf5(hid_t group_id) const;
 
 protected:
-  bool contains_simple(Position r, Angle a, int32_t on_surface) const;
-  bool contains_complex(Position r, Angle a, int32_t on_surface) const;
+  bool contains_simple(Position r, Direction u, int32_t on_surface) const;
+  bool contains_complex(Position r, Direction u, int32_t on_surface) const;
 };
 
 } // namespace openmc

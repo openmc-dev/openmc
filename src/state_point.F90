@@ -59,10 +59,11 @@ contains
 !===============================================================================
 
   function openmc_statepoint_write(filename, write_source) result(err) bind(C)
-    type(C_PTR),    intent(in), optional :: filename
-    integer(C_INT), intent(in), optional :: write_source
+    type(C_PTR),     intent(in), optional :: filename
+    logical(C_BOOL), intent(in), optional :: write_source
     integer(C_INT) :: err
 
+    logical :: write_source_
     integer :: i, j, k
     integer :: i_xs
     integer, allocatable :: id_array(:)
@@ -79,6 +80,8 @@ contains
     logical :: parallel
 
     err = 0
+
+    ! Set the filename
     if (present(filename)) then
       call c_f_pointer(filename, string, [MAX_FILE_LEN])
       filename_ = to_f_string(string)
@@ -87,6 +90,13 @@ contains
       filename_ = trim(path_output) // 'statepoint.' // &
            & zero_padded(current_batch, count_digits(n_max_batches))
       filename_ = trim(filename_) // '.h5'
+    end if
+
+    ! Determine whether or not to write the source bank
+    if (present(write_source)) then
+      write_source_ = write_source
+    else
+      write_source_ = .true.
     end if
 
     ! Write message
@@ -141,12 +151,8 @@ contains
       call write_dataset(file_id, "current_batch", current_batch)
 
       ! Indicate whether source bank is stored in statepoint
-      if (present(write_source)) then
-        if (write_source /= 0) then
-          call write_attribute(file_id, "source_present", 1)
-        else
-          call write_attribute(file_id, "source_present", 0)
-        end if
+      if (write_source_) then
+        call write_attribute(file_id, "source_present", 1)
       else
         call write_attribute(file_id, "source_present", 0)
       end if
@@ -447,14 +453,12 @@ contains
 #endif
 
     ! Write the source bank if desired
-    if (present(write_source)) then
-      if (write_source /= 0) then
-        if (master .or. parallel) then
-          file_id = file_open(filename_, 'a', parallel=.true.)
-        end if
-        call write_source_bank(file_id, work_index, source_bank)
-        if (master .or. parallel) call file_close(file_id)
+    if (write_source_) then
+      if (master .or. parallel) then
+        file_id = file_open(filename_, 'a', parallel=.true.)
       end if
+      call write_source_bank(file_id, work_index, source_bank)
+      if (master .or. parallel) call file_close(file_id)
     end if
   end function openmc_statepoint_write
 

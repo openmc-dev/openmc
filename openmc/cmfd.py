@@ -16,7 +16,6 @@ from xml.etree import ElementTree as ET
 import sys
 import numpy as np
 import openmc.capi
-from openmc.exceptions import AllocationError
 
 from openmc.clean_xml import clean_xml_indentation
 from openmc.checkvalue import (check_type, check_length, check_value,
@@ -376,6 +375,45 @@ class CMFD(object):
     @cmfd_mesh.setter
     def cmfd_mesh(self, mesh):
         check_type('CMFD mesh', mesh, CMFDMesh)
+
+        # Check dimension defined
+        if mesh.dimension is None:
+            raise ValueError('CMFD mesh requires spatial '
+                             'dimensions to be specified')
+
+        # Check lower left defined
+        if mesh.lower_left is None:
+            raise ValueError('CMFD mesh requires lower left coordinates '
+                             'to be specified')
+
+        # Check that both upper right and width both not defined
+        if mesh.upper_right is not None and mesh.width is not None:
+            raise ValueError('Both upper right coordinates and width '
+                             'cannot be specified for CMFD mesh')
+
+        # Check that at least one of width or upper right is defined
+        if mesh.upper_right is None and mesh.width is None:
+            raise ValueError('CMFD mesh requires either upper right '
+                             'coordinates or width to be specified')
+
+        # Check width and lower length are same dimension and define upper_right
+        if mesh.width is not None:
+            check_length('CMFD mesh width', mesh.width, len(mesh.lower_left))
+            mesh.upper_right = np.array(mesh.lower_left) + \
+                               np.array(mesh.width) * np.array(mesh.dimension)
+
+        # Check upper_right and lower length are same dimension and define width
+        elif mesh.upper_right is not None:
+            check_length('CMFD mesh upper right', mesh.upper_right, \
+                         len(mesh.lower_left))
+            # Check upper right coordinates are greater than lower left
+            if np.any(np.array(mesh.upper_right) <= np.array(mesh.lower_left)):
+                raise ValueError('CMFD mesh requires upper right '
+                                      'coordinates to be greater than lower '
+                                      'left coordinates')
+            mesh.width = np.true_divide(
+                         (np.array(mesh.upper_right) - np.array(mesh.lower_left)), \
+                         np.array(mesh.dimension))
         self._cmfd_mesh = mesh
 
     @norm.setter
@@ -418,86 +456,87 @@ class CMFD(object):
         check_type('CMFD write matrices', write_matrices, bool)
         self._write_matrices = write_matrices
 
+    # TODO: Remove
     def _create_begin_subelement(self):
         if self._begin is not None:
             element = ET.SubElement(self._cmfd_file, "begin")
             element.text = str(self._begin)
-
+    # TODO: Remove
     def _create_dhat_reset_subelement(self):
         if self._dhat_reset is not None:
             element = ET.SubElement(self._cmfd_file, "dhat_reset")
             element.text = str(self._dhat_reset).lower()
-
+    # TODO: Remove
     def _create_display_subelement(self):
         if self._display is not None:
             element = ET.SubElement(self._cmfd_file, "display")
             element.text = str(self._display)
-
+    # TODO: Remove
     def _create_downscatter_subelement(self):
         if self._downscatter is not None:
             element = ET.SubElement(self._cmfd_file, "downscatter")
             element.text = str(self._downscatter).lower()
-
+    # TODO: Remove
     def _create_feedback_subelement(self):
         if self._feedback is not None:
             element = ET.SubElement(self._cmfd_file, "feeback")
             element.text = str(self._feedback).lower()
-
+    # TODO: Remove
     def _create_gauss_seidel_tolerance_subelement(self):
         if self._gauss_seidel_tolerance is not None:
             element = ET.SubElement(self._cmfd_file, "gauss_seidel_tolerance")
             element.text = ' '.join(map(str, self._gauss_seidel_tolerance))
-
+    # TODO: Remove
     def _create_ktol_subelement(self):
         if self._ktol is not None:
             element = ET.SubElement(self._ktol, "ktol")
             element.text = str(self._ktol)
-
+    # TODO: Remove
     def _create_mesh_subelement(self):
         if self._cmfd_mesh is not None:
             xml_element = self._cmfd_mesh._get_xml_element()
             self._cmfd_file.append(xml_element)
-
+    # TODO: Remove
     def _create_norm_subelement(self):
         if self._norm is not None:
             element = ET.SubElement(self._cmfd_file, "norm")
             element.text = str(self._norm)
-
+    # TODO: Remove
     def _create_power_monitor_subelement(self):
         if self._power_monitor is not None:
             element = ET.SubElement(self._cmfd_file, "power_monitor")
             element.text = str(self._power_monitor).lower()
-
+    # TODO: Remove
     def _create_run_adjoint_subelement(self):
         if self._run_adjoint is not None:
             element = ET.SubElement(self._cmfd_file, "run_adjoint")
             element.text = str(self._run_adjoint).lower()
-
+    # TODO: Remove
     def _create_shift_subelement(self):
         if self._shift is not None:
             element = ET.SubElement(self._shift, "shift")
             element.text = str(self._shift)
-
+    # TODO: Remove
     def _create_spectral_subelement(self):
         if self._spectral is not None:
             element = ET.SubElement(self._spectral, "spectral")
             element.text = str(self._spectral)
-
+    # TODO: Remove
     def _create_stol_subelement(self):
         if self._stol is not None:
             element = ET.SubElement(self._stol, "stol")
             element.text = str(self._stol)
-
+    # TODO: Remove
     def _create_tally_reset_subelement(self):
         if self._tally_reset is not None:
             element = ET.SubElement(self._tally_reset, "tally_reset")
             element.text = ' '.join(map(str, self._tally_reset))
-
+    # TODO: Remove
     def _create_write_matrices_subelement(self):
         if self._write_matrices is not None:
             element = ET.SubElement(self._cmfd_file, "write_matrices")
             element.text = str(self._write_matrices).lower()
-
+    # TODO: Remove
     def export_to_xml(self):
         """Create a cmfd.xml file using the class data that can be used for an OpenMC
         simulation.
@@ -552,6 +591,18 @@ class CMFDRun(object):
             call time_cmfdsolve % reset()
         3) cmfd_adjoint_type input parameter, either set to 'physical' or 'math' - see cmfd_solver.F90
 
+    Notes:
+        -cmfd_run needs to be false if run from this class, ow call using cmfd.xml and set cmfd_run to true in settings.xml
+        -things run out of order, does not change results but will fix this in future PR when more funcs avail through Capillarity
+        -combine CMFD and CMFDRun class?
+        -Did not replicate: m % type = MESH_REGULAR (all meshes are regular for now)
+        -Did not replicate: m % n_dimension = n (Keep track through CMFD mesh dimension)
+        -Did not replicate: m % volume_frac = ONE/real(product(m % dimension),8) (can calculate if needed)
+        -Did not replicate: Set reset property (Never used in simulation)
+        -Import methods from CMFD into CMFDRun for error checking - will remove CMFD class altogether, left for now if xml files needed
+
+
+
 
 
     Attributes
@@ -565,10 +616,14 @@ class CMFDRun(object):
             cmfd_atoli: Absolute GS tolerance, set by gauss_seidel_tolerance
             cmfd_rtoli: Relative GS tolerance, set by gauss_seidel_tolerance
             cmfd_mesh_id: Mesh id of openmc.capi.Mesh object that corresponds to the CMFD mesh
+            cmfd_filter_ids: list of ids corresponding to CMFD filters (details:)
+            cmfd_tally_ids: list of ids corresponding to CMFD tallies (details:)
             energy_filters: Boolean that stores whether energy filters should be created or not.
                 Set to true if user specifies energy grid in CMFDMesh, false otherwise
 
     TODO: Put descriptions for all methods in CMFDRun
+    TODO All timing variables
+    TODO: add tally type and tally estimator to CAPI
 
     """
 
@@ -603,11 +658,9 @@ class CMFDRun(object):
         self._cmfd_atoli = None
         self._cmfd_rtoli = None
         self._cmfd_mesh_id = None
+        self._cmfd_filter_ids = None
+        self._cmfd_tally_ids = None
         self._energy_filters = None
-
-        # TODO All timing variables
-
-
 
     @property
     def cmfd_begin(self):
@@ -719,23 +772,23 @@ class CMFDRun(object):
 
         # Check dimension defined
         if mesh.dimension is None:
-            raise AllocationError('CMFD mesh requires spatial '
-                                  'dimensions to be specified')
+            raise ValueError('CMFD mesh requires spatial '
+                             'dimensions to be specified')
 
         # Check lower left defined
         if mesh.lower_left is None:
-            raise AllocationError('CMFD mesh requires lower left coordinates '
-                                  'to be specified')
+            raise ValueError('CMFD mesh requires lower left coordinates '
+                              'to be specified')
 
         # Check that both upper right and width both not defined
         if mesh.upper_right is not None and mesh.width is not None:
-            raise AllocationError('Both upper right coordinates and width '
-                                  'cannot be specified for CMFD mesh')
+            raise ValueError('Both upper right coordinates and width '
+                              'cannot be specified for CMFD mesh')
 
         # Check that at least one of width or upper right is defined
         if mesh.upper_right is None and mesh.width is None:
-            raise AllocationError('CMFD mesh requires either upper right '
-                                  'coordinates or width to be specified')
+            raise ValueError('CMFD mesh requires either upper right '
+                             'coordinates or width to be specified')
 
         # Check width and lower length are same dimension and define upper_right
         if mesh.width is not None:
@@ -749,9 +802,9 @@ class CMFDRun(object):
                          len(mesh.lower_left))
             # Check upper right coordinates are greater than lower left
             if np.any(np.array(mesh.upper_right) <= np.array(mesh.lower_left)):
-                raise AllocationError('CMFD mesh requires upper right '
-                                      'coordinates to be greater than lower '
-                                      'left coordinates')
+                raise ValueError('CMFD mesh requires upper right '
+                                 'coordinates to be greater than lower '
+                                 'left coordinates')
             mesh.width = np.true_divide(
                          (np.array(mesh.upper_right) - np.array(mesh.lower_left)), \
                          np.array(mesh.dimension))
@@ -806,17 +859,16 @@ class CMFDRun(object):
         openmc.capi.finalize()
 
     def _configure_cmfd(self):
-        # TODO Tell user
-        # print('Configuring CMFD parameters for simulation')
+        print('Configuring CMFD parameters for simulation')
 
         # Check if CMFD mesh is defined
         if self._cmfd_mesh is None:
-            raise AllocationError('No CMFD mesh has been specified for '
+            raise ValueError('No CMFD mesh has been specified for '
                                   'simulation')
 
         # Set spatial dimensions of CMFD object
-        # Iterate through each element of self._cmfd_mesh.dimension as could be
-        # length 2 or 3
+        # Iterate through each element of self._cmfd_mesh.dimension
+        # as could be length 2 or 3
         for i, n in enumerate(self._cmfd_mesh.dimension):
             self._indices[i] = n
 
@@ -869,10 +921,12 @@ class CMFDRun(object):
                                  upper_right=self._cmfd_mesh.upper_right,
                                  width=self._cmfd_mesh.width)
 
+        self._cmfd_filter_ids = []
         # Create Mesh Filter object, stored internally
         mesh_filter = openmc.capi.MeshFilter()
         # Set mesh for Mesh Filter
         mesh_filter.mesh = cmfd_mesh
+        self._cmfd_filter_ids.append(mesh_filter.id)
 
         # Set up energy filters, if applicable
         if self._energy_filters:
@@ -880,27 +934,34 @@ class CMFDRun(object):
             energy_filter = openmc.capi.EnergyFilter()
             # Set bins for Energy Filter
             energy_filter.bins = self._egrid
+            self._cmfd_filter_ids.append(energy_filter.id)
 
             # Create Energy Out Filter object, stored internally
             energyout_filter = openmc.capi.EnergyoutFilter()
             # Set bins for Energy Filter
             energyout_filter.bins = self._egrid
+            self._cmfd_filter_ids.append(energyout_filter.id)
 
         # Create Mesh Surface Filter object, stored internally
         meshsurface_filter = openmc.capi.MeshSurfaceFilter()
         # Set mesh for Mesh Surface Filter
         meshsurface_filter.mesh = cmfd_mesh
+        self._cmfd_filter_ids.append(meshsurface_filter.id)
 
         # Create Legendre Filter object, stored internally
         legendre_filter = openmc.capi.LegendreFilter()
         # Set order for Legendre Filter
         legendre_filter.order = 1
+        self._cmfd_filter_ids.append(legendre_filter.id)
 
         # Create CMFD tallies, stored internally
         n_tallies = 4
+        self._cmfd_tally_ids = []
         for i in range(n_tallies):
             tally = openmc.capi.Tally()
             # Set nuclide bins
+            tally.nuclides = ['total']
+            self._cmfd_tally_ids.append(tally.id)
 
             # Set attributes of CMFD flux, total tally
             if i == 0:

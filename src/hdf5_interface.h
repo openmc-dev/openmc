@@ -149,7 +149,7 @@ template<typename T>
 struct H5TypeMap { static const hid_t type_id; };
 
 //==============================================================================
-// Template functions used to provide simple interface to lower-level functions
+// Templates/overloads for read_attribute
 //==============================================================================
 
 // Scalar version
@@ -196,9 +196,9 @@ void read_attribute(hid_t obj_id, const char* name, xt::xarray<T>& arr)
   arr = xt::adapt(buffer, size, xt::acquire_ownership(), shape);
 }
 
-// specialization for std::string
-template<> inline void
-read_attribute<std::string>(hid_t obj_id, const char* name, std::string& str)
+// overload for std::string
+inline void
+read_attribute(hid_t obj_id, const char* name, std::string& str)
 {
   // Create buffer to read data into
   auto n = attribute_typesize(obj_id, name);
@@ -208,6 +208,10 @@ read_attribute<std::string>(hid_t obj_id, const char* name, std::string& str)
   read_attr_string(obj_id, name, n, buffer);
   str = std::string{buffer, n};
 }
+
+//==============================================================================
+// Templates/overloads for read_dataset
+//==============================================================================
 
 template<typename T>
 void read_dataset(hid_t obj_id, const char* name, T buffer, bool indep=false)
@@ -264,14 +268,18 @@ void read_dataset(hid_t obj_id, const char* name, xt::xarray<T>& arr, bool indep
   close_dataset(dset);
 }
 
+//==============================================================================
+// Templates/overloads for write_attribute
+//==============================================================================
+
 template<typename T> inline void
 write_attribute(hid_t obj_id, const char* name, T buffer)
 {
   write_attr(obj_id, name, 0, nullptr, H5TypeMap<T>::type_id, &buffer);
 }
 
-template<> inline void
-write_attribute<const char*>(hid_t obj_id, const char* name, const char* buffer)
+inline void
+write_attribute(hid_t obj_id, const char* name, const char* buffer)
 {
   write_attr_string(obj_id, name, buffer);
 }
@@ -283,14 +291,18 @@ write_attribute(hid_t obj_id, const char* name, const std::array<T, N>& buffer)
   write_attr(obj_id, 1, dims, name, H5TypeMap<T>::type_id, buffer.data());
 }
 
+//==============================================================================
+// Templates/overloads for write_dataset
+//==============================================================================
+
 template<typename T> inline void
 write_dataset(hid_t obj_id, const char* name, T buffer)
 {
   write_dataset(obj_id, 0, nullptr, name, H5TypeMap<T>::type_id, &buffer, false);
 }
 
-template<> inline void
-write_dataset<const char*>(hid_t obj_id, const char* name, const char* buffer)
+inline void
+write_dataset(hid_t obj_id, const char* name, const char* buffer)
 {
   write_string(obj_id, name, buffer, false);
 }

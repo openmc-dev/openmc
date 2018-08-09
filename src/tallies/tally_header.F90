@@ -85,9 +85,6 @@ module tally_header
     integer :: total_score_bins
     real(C_DOUBLE), allocatable :: results(:,:,:)
 
-    ! reset property - allows a tally to be reset after every batch
-    logical :: reset = .false.
-
     ! Number of realizations of tally random variables
     integer :: n_realizations = 0
 

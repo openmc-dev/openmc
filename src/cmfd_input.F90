@@ -438,11 +438,6 @@ contains
       ! Point t to tally variable
       associate (t => cmfd_tallies(i) % obj)
 
-      ! Set reset property
-      if (check_for_node(root, "reset")) then
-        call get_node_value(root, "reset", t % reset)
-      end if
-
       ! Set the incoming energy mesh filter index in the tally find_filter
       ! array
       n_filter = 1

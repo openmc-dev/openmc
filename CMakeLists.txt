@@ -84,8 +84,8 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
   # Make sure version is sufficient
   execute_process(COMMAND ${CMAKE_Fortran_COMPILER} -dumpversion
     OUTPUT_VARIABLE GCC_VERSION)
-  if(GCC_VERSION VERSION_LESS 4.8)
-    message(FATAL_ERROR "gfortran version must be 4.8 or higher")
+  if(GCC_VERSION VERSION_LESS 4.9)
+    message(FATAL_ERROR "gcc version must be 4.9 or higher")
   endif()
 
   # GCC compiler options

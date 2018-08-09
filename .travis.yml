@@ -7,10 +7,14 @@ python:
   - "3.6"
 addons:
   apt:
+    sources:
+      - ubuntu-toolchain-r-test
     packages:
-    - gfortran
-    - mpich
-    - libmpich-dev
+      - gcc-4.9
+      - g++-4.9
+      - gfortran-4.9
+      - mpich
+      - libmpich-dev
 cache:
   directories:
   - $HOME/nndc_hdf5
@@ -26,6 +30,9 @@ env:
     - OPENMC_MULTIPOLE_LIBRARY=$HOME/multipole_lib
     - PATH=$PATH:$HOME/NJOY2016/build
     - DISPLAY=:99.0
+    - CC=gcc-4.9
+    - CXX=g++-4.9
+    - FC=gfortran-4.9
   matrix:
     - OMP=n MPI=n PHDF5=n
     - OMP=y MPI=n PHDF5=n

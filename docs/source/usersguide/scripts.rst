@@ -166,12 +166,57 @@ ENDF/B-VII.1. It has the following optional arguments:
 ``openmc-get-nndc-data``
 ------------------------
 
-This script downloads `ENDF/B-VII.1 ACE data
-<http://www.nndc.bnl.gov/endf/b7.1/acefiles.html>`_ from NNDC and converts it to
-an HDF5 library for use with OpenMC. This script has the following optional
-arguments:
+This script downloads `ENDF/B-VII.1
+<http://www.nndc.bnl.gov/endf/b7.1/acefiles.html>`_ incident neutron ACE data
+and incident photon ENDF data from NNDC and converts it to an HDF5 library for
+use with OpenMC. This script has the following optional arguments:
 
--b, --batch     Suppress standard in
+-b, --batch
+    Suppress standard in
+
+-n, --neutron_only
+    Whether to exclude photon interaction/atomic data
+
+.. _scripts_photon:
+
+--------------------------
+``openmc-get-photon-data``
+--------------------------
+
+This script downloads `ENDF data <http://www.nndc.bnl.gov/endf/b7.1/zips/>`_
+from NNDC for photo-atomic and atomic relaxation sublibraries and converts it
+to an HDF5 library for use with photon transport in OpenMC. This script has the
+following optional arguments:
+
+-b, --batch
+    Suppress standard in
+
+-c, --cross-sections
+    cross_sections.xml file to append libraries to
+
+.. _scripts_compton:
+
+-----------------------
+``openmc-make-compton``
+-----------------------
+
+This script generates an HDF5 file called ``compton_profiles.h5`` that contains
+Compton profile data using an existing data library from `Geant4
+<http://geant4.cern.ch/>`_. Note that OpenMC includes this data file by default
+so it should not be necessary in practice to generate it yourself.
+
+.. _scripts_stopping:
+
+-------------------------------
+``openmc-make-stopping-powers``
+-------------------------------
+
+This script generates an HDF5 file called ``stopping_power.h5`` that contains
+radiative and collision stopping powers and mean excitation energy pulled from
+the `NIST ESTAR database
+<https://physics.nist.gov/PhysRefData/Star/Text/ESTAR.html>`_. Note that OpenMC
+includes this data file by default so it should not be necessary in practice to
+generate it yourself.
 
 .. _scripts_plot:
 

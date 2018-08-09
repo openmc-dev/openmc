@@ -83,7 +83,7 @@ Installing from Source on Linux or Mac OS X
 -------------------------------------------
 
 All OpenMC source code is hosted on `GitHub
-<https://github.com/mit-crpg/openmc>`_. If you have `git
+<https://github.com/openmc-dev/openmc>`_. If you have `git
 <https://git-scm.com>`_, the `gcc <https://gcc.gnu.org/>`_ compiler suite,
 `CMake <http://www.cmake.org>`_, and `HDF5 <https://www.hdfgroup.org/HDF5/>`_
 installed, you can download and install OpenMC be entering the following
@@ -91,7 +91,7 @@ commands in a terminal:
 
 .. code-block:: sh
 
-    git clone https://github.com/mit-crpg/openmc.git
+    git clone https://github.com/openmc-dev/openmc.git
     cd openmc
     mkdir build && cd build
     cmake ..

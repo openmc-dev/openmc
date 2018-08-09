@@ -9,7 +9,11 @@ module physics
   use mesh_header,            only: meshes
   use message_passing
   use nuclide_header
-  use particle_header,        only: Particle
+  use particle_header
+  use photon_header
+  use photon_physics,         only: rayleigh_scatter, compton_scatter, &
+                                    atomic_relaxation, pair_production, &
+                                    thick_target_bremsstrahlung
   use physics_common
   use random_lcg,             only: prn, advance_prn_seed, prn_set_stream
   use reaction_header,        only: Reaction
@@ -36,40 +40,48 @@ contains
     ! Add to collision counter for particle
     p % n_collision = p % n_collision + 1
 
-    ! Sample nuclide/reaction for the material the particle is in
-    call sample_reaction(p)
+    ! Sample reaction for the material the particle is in
+    if (p % type == NEUTRON) then
+      call sample_neutron_reaction(p)
+    else if (p % type == PHOTON) then
+      call sample_photon_reaction(p)
+    else if (p % type == ELECTRON) then
+      call sample_electron_reaction(p)
+    else if (p % type == POSITRON) then
+      call sample_positron_reaction(p)
+    end if
+
+    ! Kill particle if energy falls below cutoff
+    if (p % E < energy_cutoff(p % type)) then
+      p % alive = .false.
+      p % wgt = ZERO
+      p % last_wgt = ZERO
+    end if
 
     ! Display information about collision
     if (verbosity >= 10 .or. trace) then
-      call write_message("    " // trim(reaction_name(p % event_MT)) &
-           &// " with " // trim(adjustl(nuclides(p % event_nuclide) % name)) &
-           &// ". Energy = " // trim(to_str(p % E)) // " eV.")
+      if (p % type == NEUTRON) then
+        call write_message("    " // trim(reaction_name(p % event_MT)) &
+             &// " with " // trim(adjustl(nuclides(p % event_nuclide) % name)) &
+             &// ". Energy = " // trim(to_str(p % E)) // " eV.")
+      else
+        call write_message("    " // trim(reaction_name(p % event_MT)) &
+             &// " with " // trim(adjustl(elements(p % event_nuclide) % name)) &
+             &// ". Energy = " // trim(to_str(p % E)) // " eV.")
+      end if
     end if
-
-    ! check for very low energy
-    if (p % E < 1.0e-100_8) then
-      p % alive = .false.
-      if (master) call warning("Killing neutron with extremely low energy")
-    end if
-
-    ! Advance URR seed stream 'N' times after energy changes
-    if (p % E /= p % last_E) then
-      call prn_set_stream(STREAM_URR_PTABLE)
-      call advance_prn_seed(size(nuclides, kind=8))
-      call prn_set_stream(STREAM_TRACKING)
-    endif
 
   end subroutine collision
 
 !===============================================================================
-! SAMPLE_REACTION samples a nuclide based on the macroscopic cross sections for
-! each nuclide within a material and then samples a reaction for that nuclide
-! and calls the appropriate routine to process the physics. Note that there is
-! special logic when suvival biasing is turned on since fission and
-! disappearance are treated implicitly.
+! SAMPLE_NEUTRON_REACTION samples a nuclide based on the macroscopic cross
+! sections for each nuclide within a material and then samples a reaction for
+! that nuclide and calls the appropriate routine to process the physics. Note
+! that there is special logic when suvival biasing is turned on since fission
+! and disappearance are treated implicitly.
 !===============================================================================
 
-  subroutine sample_reaction(p)
+  subroutine sample_neutron_reaction(p)
 
     type(Particle), intent(inout) :: p
 
@@ -102,6 +114,13 @@ contains
       end if
     end if
 
+    ! Create secondary photons
+    if (photon_transport) then
+      call prn_set_stream(STREAM_PHOTON)
+      call sample_secondary_photons(p, i_nuclide)
+      call prn_set_stream(STREAM_TRACKING)
+    end if
+
     ! If survival biasing is being used, the following subroutine adjusts the
     ! weight of the particle. Otherwise, it checks to see if absorption occurs
 
@@ -116,21 +135,259 @@ contains
     ! exiting neutron
     call scatter(p, i_nuclide, i_nuc_mat)
 
-    ! Play russian roulette if survival biasing is turned on
+    ! Advance URR seed stream 'N' times after energy changes
+    if (p % E /= p % last_E) then
+      call prn_set_stream(STREAM_URR_PTABLE)
+      call advance_prn_seed(size(nuclides, kind=8))
+      call prn_set_stream(STREAM_TRACKING)
+    end if
 
+    ! Play russian roulette if survival biasing is turned on
     if (survival_biasing) then
       call russian_roulette(p)
       if (.not. p % alive) return
     end if
 
-    ! Kill neutron under certain energy
-    if (p % E < energy_cutoff) then
+  end subroutine sample_neutron_reaction
+
+!===============================================================================
+! SAMPLE_PHOTON_REACTION samples an element based on the macroscopic cross
+! sections for each nuclide within a material and then samples a reaction for
+! that element and calls the appropriate routine to process the physics.
+!===============================================================================
+
+  subroutine sample_photon_reaction(p)
+    type(Particle), intent(inout) :: p
+
+    integer :: i_shell      ! index in subshells
+    integer :: i_grid       ! index on energy grid
+    integer :: i_element    ! index in nuclides array
+    integer :: i_start      ! threshold index
+    real(8) :: prob         ! cumulative probability
+    real(8) :: cutoff       ! sampled total cross section
+    real(8) :: f            ! interpolation factor
+    real(8) :: xs           ! photoionization cross section
+    real(8) :: r            ! random number
+    real(8) :: prob_after
+    real(8) :: alpha        ! photon energy divided by electron rest mass
+    real(8) :: alpha_out    ! outgoing photon energy over electron rest mass
+    real(8) :: mu           ! scattering cosine
+    real(8) :: mu_electron  ! electron scattering cosine
+    real(8) :: mu_positron  ! positron scattering cosine
+    real(8) :: phi          ! azimuthal angle
+    real(8) :: uvw(3)       ! new direction
+    real(8) :: rel_vel      ! relative velocity of electron
+    real(8) :: e_b          ! binding energy of electron
+    real(8) :: E_electron   ! electron energy
+    real(8) :: E_positron   ! positron energy
+
+    ! Kill photon if below energy cutoff -- an extra check is made here because
+    ! photons with energy below the cutoff may have been produced by neutrons
+    ! reactions or atomic relaxation
+    if (p % E < energy_cutoff(PHOTON)) then
+      p % E = ZERO
       p % alive = .false.
-      p % wgt = ZERO
-      p % last_wgt = ZERO
+      return
     end if
 
-  end subroutine sample_reaction
+    ! Sample element within material
+    i_element = sample_element(p)
+    p % event_nuclide = i_element
+
+    ! Calculate photon energy over electron rest mass equivalent
+    alpha = p % E/MASS_ELECTRON_EV
+
+    ! For tallying purposes, this routine might be called directly. In that
+    ! case, we need to sample a reaction via the cutoff variable
+    prob = ZERO
+    cutoff = prn() * micro_photon_xs(i_element) % total
+
+    associate (elm => elements(i_element))
+      ! Coherent (Rayleigh) scattering
+      prob = prob + micro_photon_xs(i_element) % coherent
+      if (prob > cutoff) then
+        call rayleigh_scatter(elm, alpha, mu)
+        p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu)
+        p % event_MT = COHERENT
+        return
+      end if
+
+      ! Incoherent (Compton) scattering
+      prob = prob + micro_photon_xs(i_element) % incoherent
+      if (prob > cutoff) then
+        call compton_scatter(elm, alpha, alpha_out, mu, i_shell, .true.)
+
+        ! Determine binding energy of shell. The binding energy is zero if
+        ! doppler broadening is not used.
+        if (i_shell == 0) then
+          e_b = ZERO
+        else
+          e_b = elm % binding_energy(i_shell)
+        end if
+
+        ! Create Compton electron
+        E_electron = (alpha - alpha_out)*MASS_ELECTRON_EV - e_b
+        mu_electron = (alpha - alpha_out*mu) &
+             / sqrt(alpha**2 + alpha_out**2 - TWO*alpha*alpha_out*mu)
+        phi = TWO*PI*prn()
+        uvw = rotate_angle(p % coord(1) % uvw, mu_electron, phi)
+        call particle_create_secondary(p, uvw, E_electron, ELECTRON, .true._C_BOOL)
+
+        ! TODO: Compton subshell data does not match atomic relaxation data
+        ! Allow electrons to fill orbital and produce auger electrons
+        ! and fluorescent photons
+        if (i_shell > 0) then
+          call atomic_relaxation(p, elm, i_shell)
+        end if
+
+        phi = phi + PI
+        p % E = alpha_out*MASS_ELECTRON_EV
+        p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu, phi)
+        p % event_MT = INCOHERENT
+        return
+      end if
+
+      ! Photoelectric effect
+      prob_after = prob + micro_photon_xs(i_element) % photoelectric
+      if (prob_after > cutoff) then
+        do i_shell = 1, size(elm % shells)
+          ! Get grid index and interpolation factor
+          i_grid = micro_photon_xs(i_element) % index_grid
+          f      = micro_photon_xs(i_element) % interp_factor
+
+          ! Check threshold of reaction
+          i_start = elm % shells(i_shell) % threshold
+          if (i_grid <= i_start) cycle
+
+          ! Evaluation subshell photoionization cross section
+          xs = exp(elm % shells(i_shell) % cross_section(i_grid - i_start) + &
+               f*(elm % shells(i_shell) % cross_section(i_grid + 1 - i_start) - &
+               elm % shells(i_shell) % cross_section(i_grid - i_start)))
+
+          prob = prob + xs
+          if (prob > cutoff) then
+            E_electron = p % E - elm % shells(i_shell) % binding_energy
+
+            ! Sample mu using non-relativistic Sauter distribution.
+            ! See Eqns 3.19 and 3.20 in "Implementing a photon physics
+            ! model in Serpent 2" by Toni Kaltiaisenaho
+            SAMPLE_MU: do
+              r = prn()
+              if (FOUR * (ONE - r) * r >= prn()) then
+                rel_vel = sqrt(E_electron * (E_electron + TWO * MASS_ELECTRON_EV))&
+                     / (E_electron + MASS_ELECTRON_EV)
+                mu = (TWO * r + rel_vel - ONE) / &
+                     (TWO * rel_vel * r - rel_vel + ONE)
+                exit SAMPLE_MU
+              end if
+            end do SAMPLE_MU
+
+            phi = TWO*PI*prn()
+            uvw(1) = mu
+            uvw(2) = sqrt(ONE - mu*mu)*cos(phi)
+            uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
+
+            ! Create secondary electron
+            call particle_create_secondary(p, uvw, E_electron, ELECTRON, &
+                 run_CE=.true._C_BOOL)
+
+            ! Allow electrons to fill orbital and produce auger electrons
+            ! and fluorescent photons
+            call atomic_relaxation(p, elm, i_shell)
+            p % event_MT = 533 + elm % shells(i_shell) % index_subshell
+            p % alive = .false.
+            p % E = ZERO
+
+            return
+          end if
+        end do
+      end if
+      prob = prob_after
+
+      ! Pair production
+      prob = prob + micro_photon_xs(i_element) % pair_production
+      if (prob > cutoff) then
+        call pair_production(elm, alpha, E_electron, E_positron, mu_electron, &
+             mu_positron)
+
+        ! Create secondary electron
+        uvw = rotate_angle(p % coord(1) % uvw, mu_electron)
+        call particle_create_secondary(p, uvw, E_electron, ELECTRON, .true._C_BOOL)
+
+        ! Create secondary positron
+        uvw = rotate_angle(p % coord(1) % uvw, mu_positron)
+        call particle_create_secondary(p, uvw, E_positron, POSITRON, .true._C_BOOL)
+
+        p % event_MT = PAIR_PROD
+        p % alive = .false.
+        p % E = ZERO
+      end if
+
+    end associate
+
+  end subroutine sample_photon_reaction
+
+!===============================================================================
+! SAMPLE_ELECTRON_REACTION terminates the particle and either deposits all
+! energy locally (electron_treatment = ELECTRON_LED) or creates secondary
+! bremsstrahlung photons from electron deflections with charged particles
+! (electron_treatment = ELECTRON_TTB).
+!===============================================================================
+
+  subroutine sample_electron_reaction(p)
+    type(Particle), intent(inout) :: p
+
+    real(8) :: E_lost  ! energy lost to bremsstrahlung photons
+
+    ! TODO: create reaction types
+
+    if (electron_treatment == ELECTRON_TTB) then
+      call thick_target_bremsstrahlung(p, E_lost)
+    end if
+
+    p % E = ZERO
+    p % alive = .false.
+
+  end subroutine sample_electron_reaction
+
+!===============================================================================
+! SAMPLE_POSITRON_REACTION terminates the particle and either deposits all
+! energy locally (electron_treatment = ELECTRON_LED) or creates secondary
+! bremsstrahlung photons from electron deflections with charged particles
+! (electron_treatment = ELECTRON_TTB). Two annihilation photons of energy
+! MASS_ELECTRON_EV (0.511 MeV) are created and travel in opposite directions.
+!===============================================================================
+
+  subroutine sample_positron_reaction(p)
+    type(Particle), intent(inout) :: p
+
+    real(8) :: mu     ! scattering cosine
+    real(8) :: phi    ! azimuthal angle
+    real(8) :: uvw(3) ! new direction
+
+    real(8) :: E_lost  ! energy lost to bremsstrahlung photons
+
+    ! TODO: create reaction types
+
+    if (electron_treatment == ELECTRON_TTB) then
+      call thick_target_bremsstrahlung(p, E_lost)
+    end if
+
+    ! Sample angle isotropically
+    mu = TWO*prn() - ONE
+    phi = TWO*PI*prn()
+    uvw(1) = mu
+    uvw(2) = sqrt(ONE - mu*mu)*cos(phi)
+    uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
+
+    ! Create annihilation photon pair traveling in opposite directions
+    call particle_create_secondary(p, uvw, MASS_ELECTRON_EV, PHOTON, .true._C_BOOL)
+    call particle_create_secondary(p, -uvw, MASS_ELECTRON_EV, PHOTON, .true._C_BOOL)
+
+    p % E = ZERO
+    p % alive = .false.
+
+  end subroutine sample_positron_reaction
 
 !===============================================================================
 ! SAMPLE_NUCLIDE
@@ -169,7 +426,7 @@ contains
 
       ! Check to make sure that a nuclide was sampled
       if (i_nuc_mat > mat % n_nuclides) then
-        call p % write_restart()
+        call particle_write_restart(p)
         call fatal_error("Did not sample any nuclide during collision.")
       end if
 
@@ -193,6 +450,49 @@ contains
     end do
 
   end subroutine sample_nuclide
+
+!===============================================================================
+! SAMPLE_ELEMENT
+!===============================================================================
+
+  function sample_element(p) result(i_element)
+    type(Particle), intent(in) :: p
+    integer                    :: i_element
+
+    integer :: i
+    real(8) :: prob
+    real(8) :: cutoff
+    real(8) :: atom_density ! atom density of nuclide in atom/b-cm
+    real(8) :: sigma        ! microscopic total xs for nuclide
+
+    associate (mat => materials(p % material))
+      ! Sample cumulative distribution function
+      cutoff = prn() * material_xs % total
+
+      i = 0
+      prob = ZERO
+      do while (prob < cutoff)
+        i = i + 1
+
+        ! Check to make sure that a nuclide was sampled
+        if (i > mat % n_nuclides) then
+          call particle_write_restart(p)
+          call fatal_error("Did not sample any element during collision.")
+        end if
+
+        ! Find atom density
+        i_element    = mat % element(i)
+        atom_density = mat % atom_density(i)
+
+        ! Determine microscopic cross section
+        sigma = atom_density * micro_photon_xs(i_element) % total
+
+        ! Increment probability to compare to cutoff
+        prob = prob + sigma
+      end do
+    end associate
+
+  end function sample_element
 
 !===============================================================================
 ! SAMPLE_FISSION
@@ -259,6 +559,65 @@ contains
     end do FISSION_REACTION_LOOP
 
   end subroutine sample_fission
+
+!===============================================================================
+! SAMPLE_PHOTON_PRODUCT
+!===============================================================================
+
+  subroutine sample_photon_product(i_nuclide, E, i_reaction, i_product)
+    integer, intent(in)  :: i_nuclide  ! index in nuclides array
+    real(8), intent(in)  :: E          ! energy of neutron
+    integer, intent(out) :: i_reaction ! index in nuc % reactions array
+    integer, intent(out) :: i_product  ! index in reaction % products array
+
+    integer :: i_grid
+    integer :: i_temp
+    integer :: threshold
+    integer :: last_valid_reaction
+    integer :: last_valid_product
+    real(8) :: f
+    real(8) :: prob
+    real(8) :: cutoff
+    real(8) :: yield
+
+    ! Get pointer to nuclide
+    associate (nuc => nuclides(i_nuclide))
+
+      ! Get grid index and interpolation factor and sample photon production cdf
+      i_temp = micro_xs(i_nuclide) % index_temp
+      i_grid = micro_xs(i_nuclide) % index_grid
+      f      = micro_xs(i_nuclide) % interp_factor
+      cutoff = prn() * micro_xs(i_nuclide) % photon_prod
+      prob   = ZERO
+
+      ! Loop through each reaction type
+      REACTION_LOOP: do i_reaction = 1, size(nuc % reactions)
+        associate (rx => nuc % reactions(i_reaction))
+          threshold = rx % xs(i_temp) % threshold
+
+          ! if energy is below threshold for this reaction, skip it
+          if (i_grid < threshold) cycle
+
+          do i_product = 1, size(rx % products)
+            if (rx % products(i_product) % particle == PHOTON) then
+              ! add to cumulative probability
+              yield = rx % products(i_product) % yield % evaluate(E)
+              prob = prob + ((ONE - f) * rx % xs(i_temp) % value(i_grid - threshold + 1) &
+                   + f*(rx % xs(i_temp) % value(i_grid - threshold + 2))) * yield
+
+              if (prob > cutoff) return
+              last_valid_reaction = i_reaction
+              last_valid_product = i_product
+            end if
+          end do
+        end associate
+      end do REACTION_LOOP
+    end associate
+
+    i_reaction = last_valid_reaction
+    i_product = last_valid_product
+
+  end subroutine sample_photon_product
 
 !===============================================================================
 ! ABSORPTION
@@ -386,7 +745,7 @@ contains
 
         ! Check to make sure inelastic scattering reaction sampled
         if (i > size(nuc % reactions)) then
-          call p % write_restart()
+          call particle_write_restart(p)
           call fatal_error("Did not sample any reaction for nuclide " &
                &// trim(nuc % name))
         end if
@@ -1093,7 +1452,7 @@ contains
         ! Determine indices on ufs mesh for current location
         call m % get_bin(p % coord(1) % xyz, mesh_bin)
         if (mesh_bin == NO_BIN_FOUND) then
-          call p % write_restart()
+          call particle_write_restart(p)
           call fatal_error("Source site outside UFS mesh!")
         end if
 
@@ -1144,6 +1503,9 @@ contains
     do i = int(size_bank,4) + 1, int(min(size_bank + nu, int(size(bank_array),8)),4)
       ! Bank source neutrons by copying particle data
       bank_array(i) % xyz = p % coord(1) % xyz
+
+      ! Set particle as neutron
+      bank_array(i) % particle = NEUTRON
 
       ! Set weight of fission bank site
       bank_array(i) % wgt = ONE/weight
@@ -1241,12 +1603,12 @@ contains
         call rxn % products(1 + group) % sample(E_in, site % E, mu)
 
         ! resample if energy is greater than maximum neutron energy
-        if (site % E < energy_max_neutron) exit
+        if (site % E < energy_max(NEUTRON)) exit
 
         ! check for large number of resamples
         n_sample = n_sample + 1
         if (n_sample == MAX_SAMPLE) then
-          ! call p % write_restart()
+          ! call particle_write_restart(p)
           call fatal_error("Resampled energy distribution maximum number of " &
                // "times for nuclide " // nuc % name)
         end if
@@ -1265,12 +1627,12 @@ contains
         call rxn % products(1) % sample(E_in, site % E, mu)
 
         ! resample if energy is greater than maximum neutron energy
-        if (site % E < energy_max_neutron) exit
+        if (site % E < energy_max(NEUTRON)) exit
 
         ! check for large number of resamples
         n_sample = n_sample + 1
         if (n_sample == MAX_SAMPLE) then
-          ! call p % write_restart()
+          ! call particle_write_restart(p)
           call fatal_error("Resampled energy distribution maximum number of " &
                // "times for nuclide " // nuc % name)
         end if
@@ -1334,7 +1696,8 @@ contains
     if (mod(yield, ONE) == ZERO) then
       ! If yield is integral, create exactly that many secondary particles
       do i = 1, nint(yield) - 1
-        call p % create_secondary(p % coord(1) % uvw, NEUTRON, run_CE=.true.)
+        call particle_create_secondary(p, p % coord(1) % uvw, p % E, &
+             NEUTRON, run_CE=.true._C_BOOL)
       end do
     else
       ! Otherwise, change weight of particle based on yield
@@ -1342,5 +1705,51 @@ contains
     end if
 
   end subroutine inelastic_scatter
+
+!===============================================================================
+! SAMPLE_SECONDARY_PHOTONS
+!===============================================================================
+
+  subroutine sample_secondary_photons(p, i_nuclide)
+    type(Particle), intent(inout) :: p
+    integer, intent(in)           :: i_nuclide
+
+    integer :: i_reaction   ! index in nuc % reactions array
+    integer :: i_product    ! index in nuc % reactions % products array
+
+    real(8) :: nu_t
+    real(8) :: mu
+    real(8) :: E
+    real(8) :: uvw(3)
+    integer :: nu
+    integer :: i
+
+    ! Sample the number of photons produced
+    nu_t =  p % wgt * micro_xs(i_nuclide) % photon_prod / &
+         micro_xs(i_nuclide) % total
+    if (prn() > nu_t - int(nu_t)) then
+      nu = int(nu_t)
+    else
+      nu = int(nu_t) + 1
+    end if
+
+    ! Sample each secondary photon
+    do i = 1, nu
+
+      ! Sample the reaction and product
+      call sample_photon_product(i_nuclide, p % E, i_reaction, i_product)
+
+      ! Sample the outgoing energy and angle
+      call nuclides(i_nuclide) % reactions(i_reaction) % products(i_product) &
+           % sample(p % E, E, mu)
+
+      ! Sample the new direction
+      uvw = rotate_angle(p % coord(1) % uvw, mu)
+
+      ! Create the secondary photon
+      call particle_create_secondary(p, uvw, E, PHOTON, run_CE=.true._C_BOOL)
+    end do
+
+  end subroutine sample_secondary_photons
 
 end module physics

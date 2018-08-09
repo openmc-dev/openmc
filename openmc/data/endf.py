@@ -22,10 +22,31 @@ from .function import Tabulated1D, INTERPOLATION_SCHEME
 from openmc.stats.univariate import Uniform, Tabular, Legendre
 
 
-LIBRARIES = {0: 'ENDF/B', 1: 'ENDF/A', 2: 'JEFF', 3: 'EFF',
-             4: 'ENDF/B High Energy', 5: 'CENDL', 6: 'JENDL',
-             31: 'INDL/V', 32: 'INDL/A', 33: 'FENDL', 34: 'IRDF',
-             35: 'BROND', 36: 'INGDB-90', 37: 'FENDL/A', 41: 'BROND'}
+_LIBRARY = {0: 'ENDF/B', 1: 'ENDF/A', 2: 'JEFF', 3: 'EFF',
+            4: 'ENDF/B High Energy', 5: 'CENDL', 6: 'JENDL',
+            17: 'TENDL', 18: 'ROSFOND', 21: 'SG-21', 31: 'INDL/V',
+            32: 'INDL/A', 33: 'FENDL', 34: 'IRDF', 35: 'BROND',
+            36: 'INGDB-90', 37: 'FENDL/A', 41: 'BROND'}
+
+_SUBLIBRARY = {
+    0: 'Photo-nuclear data',
+    1: 'Photo-induced fission product yields',
+    3: 'Photo-atomic data',
+    4: 'Radioactive decay data',
+    5: 'Spontaneous fission product yields',
+    6: 'Atomic relaxation data',
+    10: 'Incident-neutron data',
+    11: 'Neutron-induced fission product yields',
+    12: 'Thermal neutron scattering data',
+    19: 'Neutron standards',
+    113: 'Electro-atomic data',
+    10010: 'Incident-proton data',
+    10011: 'Proton-induced fission product yields',
+    10020: 'Incident-deuteron data',
+    10030: 'Incident-triton data',
+    20030: 'Incident-helion (3He) data',
+    20040: 'Incident-alpha data'
+}
 
 SUM_RULES = {1: [2, 3],
              3: [4, 5, 11, 16, 17, 22, 23, 24, 25, 27, 28, 29, 30, 32, 33, 34, 35,
@@ -45,7 +66,7 @@ SUM_RULES = {1: [2, 3],
              106: list(range(750, 800)),
              107: list(range(800, 850))}
 
-_ENDF_FLOAT_RE = re.compile(r'([\s\-\+]?\d*\.\d+)([\+\-]\d+)')
+ENDF_FLOAT_RE = re.compile(r'([\s\-\+]?\d*\.\d+)([\+\-]\d+)')
 
 
 def float_endf(s):
@@ -68,7 +89,25 @@ def float_endf(s):
         The number
 
     """
-    return float(_ENDF_FLOAT_RE.sub(r'\1e\2', s))
+    return float(ENDF_FLOAT_RE.sub(r'\1e\2', s))
+
+
+def _int_endf(s):
+    """Convert string to int. Used for INTG records where blank entries
+    indicate a 0.
+
+    Parameters
+    ----------
+    s : str
+        Integer or spaces
+
+    Returns
+    -------
+    integer
+        The number or 0
+    """
+    s = s.strip()
+    return int(s) if s else 0
 
 
 def get_text_record(file_obj):
@@ -250,6 +289,50 @@ def get_tab2_record(file_obj):
     return params, Tabulated2D(breakpoints, interpolation)
 
 
+def get_intg_record(file_obj):
+    """
+    Return data from an INTG record in an ENDF-6 file. Used to store the
+    covariance matrix in a compact format.
+
+    Parameters
+    ----------
+    file_obj : file-like object
+        ENDF-6 file to read from
+
+    Returns
+    -------
+    numpy.ndarray
+        The correlation matrix described in the INTG record
+    """
+    # determine how many items are in list and NDIGIT
+    items = get_cont_record(file_obj)
+    ndigit = int(items[2])
+    npar = int(items[3])    # Number of parameters
+    nlines = int(items[4])  # Lines to read
+    NROW_RULES = {2: 18, 3: 12, 4: 11, 5: 9, 6: 8}
+    nrow = NROW_RULES[ndigit]
+
+    # read lines and build correlation matrix
+    corr = np.identity(npar)
+    for i in range(nlines):
+        line = file_obj.readline()
+        ii = _int_endf(line[:5]) - 1  # -1 to account for 0 indexing
+        jj = _int_endf(line[5:10]) - 1
+        factor = 10**ndigit
+        for j in range(nrow):
+            if jj+j >= ii:
+                break
+            element = _int_endf(line[11+(ndigit+1)*j:11+(ndigit+1)*(j+1)])
+            if element > 0:
+                corr[ii, jj] = (element+0.5)/factor
+            elif element < 0:
+                corr[ii, jj] = (element-0.5)/factor
+
+    # Symmetrize the correlation matrix
+    corr = corr + corr.T - np.diag(corr.diagonal())
+    return corr
+
+
 def get_evaluations(filename):
     """Return a list of all evaluations within an ENDF file.
 
@@ -288,7 +371,7 @@ class Evaluation(object):
     Attributes
     ----------
     info : dict
-        Miscallaneous information about the evaluation.
+        Miscellaneous information about the evaluation.
     target : dict
         Information about the target material, such as its mass, isomeric state,
         whether it's stable, and whether it's fissionable.
@@ -348,6 +431,14 @@ class Evaluation(object):
 
         self._read_header()
 
+    def __repr__(self):
+        if 'zsymam' in self.target:
+            name = self.target['zsymam'].replace(' ', '')
+        else:
+            name = 'Unknown'
+        return '<{} for {} {}>'.format(self.info['sublibrary'], name,
+                                       self.info['library'])
+
     def _read_header(self):
         file_obj = io.StringIO(self.section[1, 451])
 
@@ -360,8 +451,7 @@ class Evaluation(object):
         self._LRP = items[2]
         self.target['fissionable'] = (items[3] == 1)
         try:
-            global LIBRARIES
-            library = LIBRARIES[items[4]]
+            library = _LIBRARY[items[4]]
         except KeyError:
             library = 'Unknown'
         self.info['modification'] = items[5]
@@ -384,7 +474,7 @@ class Evaluation(object):
         self.projectile['mass'] = items[0]
         self.info['energy_max'] = items[1]
         library_release = items[2]
-        self.info['sublibrary'] = items[4]
+        self.info['sublibrary'] = _SUBLIBRARY[items[4]]
         library_version = items[5]
         self.info['library'] = (library, library_version, library_release)
 

@@ -9,7 +9,7 @@ module plot
   use hdf5_interface
   use output,          only: time_stamp
   use material_header, only: materials
-  use particle_header, only: LocalCoord, Particle
+  use particle_header
   use plot_header
   use progress_header, only: ProgressBar
   use settings,        only: check_overlaps
@@ -161,7 +161,7 @@ contains
     end if
 
     ! allocate and initialize particle
-    call p % initialize()
+    call particle_initialize(p)
     p % coord(1) % xyz = xyz
     p % coord(1) % uvw = [ HALF, HALF, HALF ]
     p % coord(1) % universe = root_universe
@@ -388,7 +388,7 @@ contains
     ll = pl % origin - pl % width / TWO
 
     ! allocate and initialize particle
-    call p % initialize()
+    call particle_initialize(p)
     p % coord(1) % xyz = ll
     p % coord(1) % uvw = [ HALF, HALF, HALF ]
     p % coord(1) % universe = root_universe

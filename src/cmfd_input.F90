@@ -116,7 +116,7 @@ contains
       end if
     else
       if(.not.allocated(cmfd % egrid)) allocate(cmfd % egrid(2))
-      cmfd % egrid = [ ZERO, energy_max_neutron ]
+      cmfd % egrid = [ ZERO, energy_max(NEUTRON) ]
       cmfd % indices(4) = 1 ! one energy group
     end if
 

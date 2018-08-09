@@ -9,7 +9,7 @@ module particle_restart
   use mgxs_interface,   only: energy_bin_avg
   use nuclide_header,   only: micro_xs, n_nuclides
   use output,           only: print_particle
-  use particle_header,  only: Particle
+  use particle_header
   use random_lcg,       only: set_particle_seed
   use settings
   use simulation_header
@@ -41,7 +41,7 @@ contains
     allocate(micro_xs(n_nuclides))
 
     ! Initialize the particle to be tracked
-    call p % initialize()
+    call particle_initialize(p)
 
     ! Read in the restart information
     call read_particle_restart(p, previous_run_mode)
@@ -100,6 +100,7 @@ contains
       previous_run_mode = MODE_FIXEDSOURCE
     end select
     call read_dataset(p % id, file_id, 'id')
+    call read_dataset(p % type, file_id, 'type')
     call read_dataset(p % wgt, file_id, 'weight')
     call read_dataset(p % E, file_id, 'energy')
     call read_dataset(p % coord(1) % xyz, file_id, 'xyz')

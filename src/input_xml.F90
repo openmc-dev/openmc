@@ -22,6 +22,7 @@ module input_xml
   use mgxs_interface
   use nuclide_header
   use output,           only: title, header, print_plot
+  use photon_header
   use plot_header
   use random_lcg,       only: prn, openmc_set_seed
   use surface_header
@@ -80,6 +81,11 @@ module input_xml
       import C_PTR
       type(C_PTR) :: node_ptr
     end subroutine read_lattices
+
+    subroutine read_settings(node_ptr) bind(C)
+      import C_PTR
+      type(C_PTR) :: node_ptr
+    end subroutine read_settings
 
     function find_root_universe() bind(C) result(root)
       import C_INT32_T
@@ -228,7 +234,7 @@ contains
              &not exist! In order to run OpenMC, you first need a set of input &
              &files; at a minimum, this includes settings.xml, geometry.xml, &
              &and materials.xml. Please consult the user's guide at &
-             &http://mit-crpg.github.io/openmc for further information.")
+             &http://openmc.readthedocs.io for further information.")
       else
         ! The settings.xml file is optional if we just want to make a plot.
         return
@@ -238,6 +244,9 @@ contains
     ! Parse settings.xml file
     call doc % load_file(filename)
     root = doc % document_element()
+
+    ! Read settings from C++ side
+    call read_settings(root % ptr)
 
     ! Verbosity
     if (check_for_node(root, "verbosity")) then
@@ -389,6 +398,30 @@ contains
       call openmc_set_seed(seed)
     end if
 
+    ! Check for electron treatment
+    if (check_for_node(root, "electron_treatment")) then
+      call get_node_value(root, "electron_treatment", temp_str)
+      select case (to_lower(temp_str))
+      case ("led")
+        electron_treatment = ELECTRON_LED
+      case ("ttb")
+        electron_treatment = ELECTRON_TTB
+      case default
+        call fatal_error("Unrecognized electron treatment: " // &
+             trim(temp_str) // ".")
+      end select
+    end if
+
+    ! Check for photon transport
+    if (check_for_node(root, "photon_transport")) then
+      call get_node_value(root, "photon_transport", photon_transport)
+
+      if (.not. run_CE .and. photon_transport) then
+        call fatal_error("Photon transport is not currently supported &
+             &in Multi-group mode")
+      end if
+    end if
+
     ! Number of bins for logarithmic grid
     if (check_for_node(root, "log_grid_bins")) then
       call get_node_value(root, "log_grid_bins", n_log_bins)
@@ -425,6 +458,7 @@ contains
     if (n == 0) then
       ! Default source is isotropic point source at origin with Watt spectrum
       allocate(external_source(1))
+      external_source % particle = NEUTRON
       external_source % strength = ONE
 
       allocate(SpatialPoint :: external_source(1) % space)
@@ -476,8 +510,21 @@ contains
       if (check_for_node(node_cutoff, "weight_avg")) then
         call get_node_value(node_cutoff, "weight_avg", weight_survive)
       end if
-      if (check_for_node(node_cutoff, "energy")) then
-        call get_node_value(node_cutoff, "energy", energy_cutoff)
+      if (check_for_node(node_cutoff, "energy_neutron")) then
+        call get_node_value(node_cutoff, "energy_neutron", energy_cutoff(1))
+      elseif (check_for_node(node_cutoff, "energy")) then
+        call warning("The use of an <energy> cutoff is deprecated and should &
+             &be replaced by <energy_neutron>.")
+        call get_node_value(node_cutoff, "energy", energy_cutoff(1))
+      end if
+      if (check_for_node(node_cutoff, "energy_photon")) then
+        call get_node_value(node_cutoff, "energy_photon", energy_cutoff(2))
+      end if
+      if (check_for_node(node_cutoff, "energy_electron")) then
+        call get_node_value(node_cutoff, "energy_electron", energy_cutoff(3))
+      end if
+      if (check_for_node(node_cutoff, "energy_positron")) then
+        call get_node_value(node_cutoff, "energy_positron", energy_cutoff(4))
       end if
     end if
 
@@ -1193,8 +1240,8 @@ contains
       end if
 
       ! Read cell temperatures.  If the temperature is not specified, set it to
-      ! ERROR_REAL for now.  During initialization we'll replace ERROR_REAL with
-      ! the temperature from the material data.
+      ! a negative number for now.  During initialization we'll replace
+      ! negatives with the temperature from the material data.
       if (check_for_node(node_cell, "temperature")) then
         n = node_word_count(node_cell, "temperature")
         if (n > 0) then
@@ -1219,11 +1266,11 @@ contains
           c % sqrtkT(:) = sqrt(K_BOLTZMANN * c % sqrtkT(:))
         else
           allocate(c % sqrtkT(1))
-          c % sqrtkT(1) = ERROR_REAL
+          c % sqrtkT(1) = -1.0
         end if
       else
         allocate(c % sqrtkT(1))
-        c % sqrtkT = ERROR_REAL
+        c % sqrtkT = -1.0
       end if
 
       ! Add cell to dictionary
@@ -1369,7 +1416,7 @@ contains
                  &materials.xml, settings.xml,  or in the OPENMC_CROSS_SECTIONS&
                  & environment variable. OpenMC needs such a file to identify &
                  &where to find ACE cross section libraries. Please consult the&
-                 & user's guide at http://mit-crpg.github.io/openmc for &
+                 & user's guide at http://openmc.readthedocs.io for &
                  &information on how to set up ACE cross section libraries.")
           else
             call warning("The CROSS_SECTIONS environment variable is &
@@ -1387,7 +1434,7 @@ contains
                &materials.xml or in the OPENMC_MG_CROSS_SECTIONS environment &
                &variable. OpenMC needs such a file to identify where to &
                &find MG cross section libraries. Please consult the user's &
-               &guide at http://mit-crpg.github.io/openmc for information on &
+               &guide at http://openmc.readthedocs.io for information on &
                &how to set up MG cross section libraries.")
         else if (len_trim(env_variable) /= 0) then
           path_cross_sections = trim(env_variable)
@@ -1450,9 +1497,11 @@ contains
     integer :: n_sab          ! number of sab tables for a material
     integer :: i_library      ! index in libraries array
     integer :: index_nuclide  ! index in nuclides
+    integer :: index_element  ! index in elements
     integer :: index_sab      ! index in sab_tables
     logical :: file_exists    ! does materials.xml exist?
-    character(20)           :: name         ! name of nuclide, e.g. 92235.03c
+    character(20)           :: name         ! name of nuclide, e.g. U235
+    character(3)            :: element      ! name of element, e.g. Zr
     character(MAX_WORD_LEN) :: units        ! units on density
     character(MAX_LINE_LEN) :: filename     ! absolute path to materials.xml
     character(MAX_LINE_LEN) :: temp_str     ! temporary string when reading
@@ -1501,6 +1550,7 @@ contains
 
     ! Initialize count for number of nuclides/S(a,b) tables
     index_nuclide = 0
+    index_element = 0
     index_sab = 0
 
     do i = 1, n_materials
@@ -1538,7 +1588,7 @@ contains
       if (check_for_node(node_mat, "temperature")) then
         call get_node_value(node_mat, "temperature", material_temps(i))
       else
-        material_temps(i) = ERROR_REAL
+        material_temps(i) = -1.0
       end if
 
       ! Get pointer to density element
@@ -1723,6 +1773,7 @@ contains
       mat % n_nuclides = n
       allocate(mat % names(n))
       allocate(mat % nuclide(n))
+      allocate(mat % element(n))
       allocate(mat % atom_density(n))
 
       ALL_NUCLIDES: do j = 1, mat % n_nuclides
@@ -1751,6 +1802,27 @@ contains
           call nuclide_dict % set(to_lower(name), index_nuclide)
         else
           mat % nuclide(j) = nuclide_dict % get(to_lower(name))
+        end if
+
+        ! If the corresponding element hasn't been encountered yet and photon
+        ! transport will be used, we need to add its symbol to the element_dict
+        if (photon_transport) then
+          element = name(1:scan(name, '0123456789') - 1)
+
+          ! Make sure photon cross section data is available
+          if (.not. library_dict % has(to_lower(element))) then
+            call fatal_error("Could not find element " // trim(element) &
+                 // " in cross_sections data file!")
+          end if
+
+          if (.not. element_dict % has(element)) then
+            index_element = index_element + 1
+            mat % element(j) = index_element
+
+            call element_dict % set(element, index_element)
+          else
+            mat % element(j) = element_dict % get(element)
+          end if
         end if
 
         ! Copy name and atom/weight percent
@@ -1868,6 +1940,7 @@ contains
 
     ! Set total number of nuclides and S(a,b) tables
     n_nuclides = index_nuclide
+    n_elements = index_element
     n_sab_tables = index_sab
 
     ! Close materials XML file
@@ -1885,6 +1958,7 @@ contains
     integer :: i             ! loop over user-specified tallies
     integer :: j             ! loop over words
     integer :: k             ! another loop index
+    integer :: l             ! loop over bins
     integer :: filter_id     ! user-specified identifier for filter
     integer :: i_filt        ! index in filters array
     integer :: i_elem        ! index of entry in dictionary
@@ -2510,6 +2584,47 @@ contains
             end if
           end do
         end do
+
+        ! Check if tally is compatible with particle type
+        if (photon_transport) then
+          if (t % find_filter(FILTER_PARTICLE) == 0) then
+            do j = 1, n_scores
+              select case (t % score_bins(j))
+              case (SCORE_INVERSE_VELOCITY)
+                call fatal_error("Particle filter must be used with photon &
+                     &transport on and inverse velocity score")
+              case (SCORE_FLUX, SCORE_TOTAL, SCORE_SCATTER, SCORE_NU_SCATTER, &
+                   SCORE_ABSORPTION, SCORE_FISSION, SCORE_NU_FISSION, &
+                   SCORE_CURRENT, SCORE_EVENTS, SCORE_DELAYED_NU_FISSION, &
+                   SCORE_PROMPT_NU_FISSION, SCORE_DECAY_RATE)
+                call warning("Particle filter is not used with photon transport&
+                     & on and " // trim(to_str(t % score_bins(j))) // " score")
+              end select
+            end do
+          else
+            select type(filt => filters(t % find_filter(FILTER_PARTICLE)) % obj)
+            type is (ParticleFilter)
+              do l = 1, filt % n_bins
+                if (filt % particles(l) == ELECTRON .or. filt % particles(l) == POSITRON) then
+                  t % estimator = ESTIMATOR_ANALOG
+                end if
+              end do
+            end select
+          end if
+        else
+          if (t % find_filter(FILTER_PARTICLE) > 0) then
+            select type(filt => filters(t % find_filter(FILTER_PARTICLE)) % obj)
+            type is (ParticleFilter)
+              do l = 1, filt % n_bins
+                if (filt % particles(l) /= NEUTRON) then
+                  call warning("Particle filter other than NEUTRON used with &
+                       &photon transport turned off. All tallies for particle &
+                       &type " // trim(to_str(filt % particles(l))) // " will have no scores")
+                end if
+              end do
+            end select
+          end if
+        end if
       else
         call fatal_error("No <scores> specified on tally " &
              // trim(to_str(t % id)) // ".")
@@ -3319,6 +3434,8 @@ contains
           libraries(i) % type = LIBRARY_NEUTRON
         case ('thermal')
           libraries(i) % type = LIBRARY_THERMAL
+        case ('photon')
+          libraries(i) % type = LIBRARY_PHOTON
         end select
       else
         call fatal_error("Missing library type")
@@ -3408,8 +3525,8 @@ contains
     end do
 
     ! Get the minimum and maximum energies
-    energy_min_neutron = energy_bins(num_energy_groups + 1)
-    energy_max_neutron = energy_bins(1)
+    energy_min(NEUTRON) = energy_bins(num_energy_groups + 1)
+    energy_max(NEUTRON) = energy_bins(1)
 
     ! Get the datasets present in the library
     call get_groups(file_id, names)
@@ -3519,15 +3636,22 @@ contains
     integer :: i, j
     integer :: i_library
     integer :: i_nuclide
+    integer :: i_element
     integer :: i_sab
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
     logical :: mp_found     ! if windowed multipole libraries were found
     character(MAX_WORD_LEN) :: name
+    character(3) :: element
     type(SetChar) :: already_read
+    type(SetChar) :: element_already_read
 
     allocate(nuclides(n_nuclides))
+    allocate(elements(n_elements))
     allocate(sab_tables(n_sab_tables))
+    if (photon_transport .and. electron_treatment == ELECTRON_TTB) then
+      allocate(ttb(n_materials))
+    end if
 
     ! Read cross sections
     do i = 1, size(materials)
@@ -3559,14 +3683,49 @@ contains
           ! Determine if minimum/maximum energy for this nuclide is greater/less
           ! than the previous
           if (size(nuclides(i_nuclide) % grid) >= 1) then
-            energy_min_neutron = max(energy_min_neutron, &
+            energy_min(NEUTRON) = max(energy_min(NEUTRON), &
                  nuclides(i_nuclide) % grid(1) % energy(1))
-            energy_max_neutron = min(energy_max_neutron, nuclides(i_nuclide) % &
+            energy_max(NEUTRON) = min(energy_max(NEUTRON), nuclides(i_nuclide) % &
                  grid(1) % energy(size(nuclides(i_nuclide) % grid(1) % energy)))
           end if
 
           ! Add name and alias to dictionary
           call already_read % add(name)
+
+          ! Check if elemental data has been read, if needed
+          element = name(1:scan(name, '0123456789') - 1)
+          if (photon_transport) then
+            if (.not. element_already_read % contains(element)) then
+              ! Read photon interaction data from HDF5 photon library
+              i_library = library_dict % get(to_lower(element))
+              i_element = element_dict % get(element)
+              call write_message('Reading ' // trim(element) // ' from ' // &
+                   trim(libraries(i_library) % path), 6)
+
+              ! Open file and make sure version is sufficient
+              file_id = file_open(libraries(i_library) % path, 'r')
+              call check_data_version(file_id)
+
+              ! Read element data from HDF5
+              group_id = open_group(file_id, element)
+              call elements(i_element) % from_hdf5(group_id)
+              call close_group(group_id)
+              call file_close(file_id)
+
+              ! Determine if minimum/maximum energy for this element is
+              ! greater/less than the previous
+              if (size(elements(i_element) % energy) >= 1) then
+                energy_min(PHOTON) = max(energy_min(PHOTON), &
+                     exp(elements(i_element) % energy(1)))
+                energy_max(PHOTON) = min(energy_max(PHOTON), &
+                     exp(elements(i_element) % energy(size(elements(i_element) &
+                     % energy))))
+              end if
+
+              ! Add element to set
+              call element_already_read % add(element)
+            end if
+          end if
 
           ! Read multipole file into the appropriate entry on the nuclides array
           if (temperature_multipole) call read_multipole_data(i_nuclide)
@@ -3577,14 +3736,43 @@ contains
           materials(i) % fissionable = .true.
         end if
       end do
+
+      ! Generate material bremsstrahlung data for electrons and positrons
+      if (photon_transport .and. electron_treatment == ELECTRON_TTB) then
+        call bremsstrahlung_init(ttb(i) % electron, i, ELECTRON)
+        call bremsstrahlung_init(ttb(i) % positron, i, POSITRON)
+      end if
     end do
+
+    if (photon_transport .and. electron_treatment == ELECTRON_TTB) then
+      ! Deallocate element bremsstrahlung DCS and stopping power data since
+      ! only the material bremsstrahlung data is needed
+      do i = 1, size(elements)
+        if (allocated(elements(i) % stopping_power_collision)) &
+             deallocate(elements(i) % stopping_power_collision)
+        if (allocated(elements(i) % stopping_power_radiative)) &
+             deallocate(elements(i) % stopping_power_radiative)
+        if (allocated(elements(i) % dcs)) deallocate(elements(i) % dcs)
+        if (allocated(ttb_k_grid)) deallocate(ttb_k_grid)
+      end do
+
+      ! Determine if minimum/maximum energy for bremsstrahlung is greater/less
+      ! than the current minimum/maximum
+      if (size(ttb_e_grid) >= 1) then
+        energy_min(PHOTON) = max(energy_min(PHOTON), ttb_e_grid(1))
+        energy_max(PHOTON) = min(energy_max(PHOTON), ttb_e_grid(size(ttb_e_grid)))
+      end if
+
+      ! Take logarithm of energies since they are log-log interpolated
+      ttb_e_grid = log(ttb_e_grid)
+    end if
 
     ! Set up logarithmic grid for nuclides
     do i = 1, size(nuclides)
-      call nuclides(i) % init_grid(energy_min_neutron, &
-           energy_max_neutron, n_log_bins)
+      call nuclides(i) % init_grid(energy_min(NEUTRON), &
+           energy_max(NEUTRON), n_log_bins)
     end do
-    log_spacing = log(energy_max_neutron/energy_min_neutron) / n_log_bins
+    log_spacing = log(energy_max(NEUTRON)/energy_min(NEUTRON)) / n_log_bins
 
     do i = 1, size(materials)
       ! Skip materials with no S(a,b) tables
@@ -3627,9 +3815,9 @@ contains
       ! grid has not been allocated
       if (size(nuclides(i) % grid) > 0) then
         if (nuclides(i) % grid(1) % energy(size(nuclides(i) % grid(1) % energy)) &
-             == energy_max_neutron) then
+             == energy_max(NEUTRON)) then
           call write_message("Maximum neutron transport energy: " // &
-               trim(to_str(energy_max_neutron)) // " eV for " // &
+               trim(to_str(energy_max(NEUTRON))) // " eV for " // &
                trim(adjustl(nuclides(i) % name)), 7)
           exit
         end if
@@ -3667,7 +3855,7 @@ contains
     do i = 1, n_cells
       ! Ignore non-normal cells and cells with defined temperature.
       if (cells(i) % material(1) == NONE) cycle
-      if (cells(i) % sqrtkT(1) /= ERROR_REAL) cycle
+      if (cells(i) % sqrtkT(1) >= ZERO) cycle
 
       ! Set the number of temperatures equal to the number of materials.
       deallocate(cells(i) % sqrtkT)
@@ -3683,7 +3871,7 @@ contains
 
         ! Use material default or global default temperature
         i_material = cells(i) % material(j)
-        if (material_temps(i_material) /= ERROR_REAL) then
+        if (material_temps(i_material) >= ZERO) then
           cells(i) % sqrtkT(j) = sqrt(K_BOLTZMANN * &
                material_temps(i_material))
         else

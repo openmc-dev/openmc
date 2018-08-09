@@ -9,7 +9,7 @@ module settings
 
   ! ============================================================================
   ! ENERGY TREATMENT RELATED VARIABLES
-  logical :: run_CE = .true.  ! Run in CE mode?
+  logical(C_BOOL) :: run_CE = .true.  ! Run in CE mode?
 
   ! ============================================================================
   ! CONTINUOUS-ENERGY CROSS SECTION RELATED VARIABLES
@@ -25,6 +25,9 @@ module settings
   real(8) :: temperature_range(2) = [ZERO, ZERO]
 
   integer :: n_log_bins  ! number of bins for logarithmic grid
+
+  logical :: photon_transport = .false.
+  integer :: electron_treatment = ELECTRON_TTB
 
   ! ============================================================================
   ! MULTI-GROUP CROSS SECTION RELATED VARIABLES
@@ -71,7 +74,7 @@ module settings
   ! Variance reduction settins
   logical :: survival_biasing = .false.
   real(8) :: weight_cutoff = 0.25_8
-  real(8) :: energy_cutoff = ZERO
+  real(8) :: energy_cutoff(4) = [ZERO, 1000.0_8, ZERO, ZERO]
   real(8) :: weight_survive = ONE
 
   ! Mode to run in (fixed source, eigenvalue, plotting, etc)

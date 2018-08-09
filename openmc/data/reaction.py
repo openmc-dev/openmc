@@ -1093,7 +1093,7 @@ class Reaction(EqualityMixin):
         ev : openmc.data.endf.Evaluation
             ENDF evaluation
         mt : int
-            The MT value of the reaction to get angular distributions for
+            The MT value of the reaction to get data for
 
         Returns
         -------

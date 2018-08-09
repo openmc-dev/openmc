@@ -15,7 +15,7 @@ module openmc_api
   use message_passing
   use nuclide_header
   use initialize,      only: openmc_init_f
-  use particle_header, only: Particle
+  use particle_header
   use plot,            only: openmc_plot_geometry
   use random_lcg,      only: openmc_get_seed, openmc_set_seed
   use settings
@@ -120,9 +120,10 @@ contains
     check_overlaps = .false.
     confidence_intervals = .false.
     create_fission_neutrons = .true.
-    energy_cutoff = ZERO
-    energy_max_neutron = INFINITY
-    energy_min_neutron = ZERO
+    electron_treatment = ELECTRON_LED
+    energy_cutoff(:) = [ZERO, 1000.0_8, ZERO, ZERO]
+    energy_max(:) = [INFINITY, INFINITY]
+    energy_min(:) = [ZERO, ZERO]
     entropy_on = .false.
     gen_per_batch = 1
     index_entropy_mesh = -1
@@ -139,6 +140,7 @@ contains
     output_summary = .true.
     output_tallies = .true.
     particle_restart_run = .false.
+    photon_transport = .false.
     pred_batches = .false.
     reduce_tallies = .true.
     res_scat_on = .false.
@@ -196,7 +198,7 @@ contains
     logical :: found
     type(Particle) :: p
 
-    call p % initialize()
+    call particle_initialize(p)
     p % coord(1) % xyz(:) = xyz
     p % coord(1) % uvw(:) = [ZERO, ZERO, ONE]
     call find_cell(p, found)
@@ -310,6 +312,7 @@ contains
   subroutine free_memory()
 
     use cmfd_header
+    use photon_header
     use plot_header
     use sab_header
     use settings
@@ -326,6 +329,7 @@ contains
     call free_memory_volume()
     call free_memory_simulation()
     call free_memory_nuclide()
+    call free_memory_photon()
     call free_memory_settings()
     call free_memory_sab()
     call free_memory_source()

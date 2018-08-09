@@ -1,14 +1,14 @@
-#ifndef STRING_UTILS_H
-#define STRING_UTILS_H
+#ifndef OPENMC_STRING_UTILS_H
+#define OPENMC_STRING_UTILS_H
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
-
 namespace openmc {
 
-std::vector<std::string>
-split(const std::string &in)
+inline std::vector<std::string>
+split(const std::string& in)
 {
   std::vector<std::string> out;
 
@@ -31,5 +31,12 @@ split(const std::string &in)
   return out;
 }
 
+inline bool
+ends_with(const std::string& value, const std::string& ending)
+{
+  if (ending.size() > value.size()) return false;
+  return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
+
 } // namespace openmc
-#endif // STRING_UTILS_H
+#endif // OPENMC_STRING_UTILS_H

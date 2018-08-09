@@ -19,6 +19,9 @@ Core Classes
     openmc.data.CoherentElastic
     openmc.data.FissionEnergyRelease
     openmc.data.DataLibrary
+    openmc.data.IncidentPhoton
+    openmc.data.PhotonReaction
+    openmc.data.AtomicRelaxation
     openmc.data.Decay
     openmc.data.FissionProductYields
     openmc.data.WindowedMultipole
@@ -79,6 +82,11 @@ Resonance Data
     openmc.data.MultiLevelBreitWigner
     openmc.data.ReichMoore
     openmc.data.RMatrixLimited
+    openmc.data.ResonanceCovariances
+    openmc.data.ResonanceCovarianceRange
+    openmc.data.SingleLevelBreitWignerCovariance
+    openmc.data.MultiLevelBreitWignerCovariance
+    openmc.data.ReichMooreCovariance
     openmc.data.ParticlePair
     openmc.data.SpinGroup
     openmc.data.Unresolved

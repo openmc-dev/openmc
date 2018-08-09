@@ -169,9 +169,9 @@ file_open(const char* filename, char mode, bool parallel)
 }
 
 hid_t
-file_open(const std::string& filename, char mode, bool parallel=false)
+file_open(const std::string& filename, char mode, bool parallel)
 {
-  file_open(filename.c_str(), mode, parallel);
+  return file_open(filename.c_str(), mode, parallel);
 }
 
 void file_close(hid_t file_id)
@@ -302,26 +302,24 @@ object_exists(hid_t object_id, const char* name)
 hid_t
 open_dataset(hid_t group_id, const char* name)
 {
-  if (object_exists(group_id, name)) {
-    return H5Dopen(group_id, name, H5P_DEFAULT);
-  } else {
+  if (!object_exists(group_id, name)) {
     std::stringstream err_msg;
     err_msg << "Group \"" << name << "\" does not exist";
     fatal_error(err_msg);
   }
+  return H5Dopen(group_id, name, H5P_DEFAULT);
 }
 
 
 hid_t
 open_group(hid_t group_id, const char* name)
 {
-  if (object_exists(group_id, name)) {
-    return H5Gopen(group_id, name, H5P_DEFAULT);
-  } else {
+  if (!object_exists(group_id, name)) {
     std::stringstream err_msg;
     err_msg << "Group \"" << name << "\" does not exist";
     fatal_error(err_msg);
   }
+  return H5Gopen(group_id, name, H5P_DEFAULT);
 }
 
 void
@@ -820,5 +818,15 @@ using_mpio_device(hid_t obj_id)
 
   return driver == H5FD_MPIO;
 }
+
+// Specializations of the H5TypeMap template struct
+template<>
+const hid_t H5TypeMap<int>::type_id = H5T_NATIVE_INT;
+template<>
+const hid_t H5TypeMap<int64_t>::type_id = H5T_NATIVE_INT64;
+template<>
+const hid_t H5TypeMap<double>::type_id = H5T_NATIVE_DOUBLE;
+template <>
+const hid_t H5TypeMap<char>::type_id = H5T_NATIVE_CHAR;
 
 } // namespace openmc

@@ -9,12 +9,13 @@ WMP_VERSION = 'v0.2'
 
 from .data import *
 from .neutron import *
+from .photon import *
 from .decay import *
 from .reaction import *
-from .ace import *
+from . import ace
 from .angle_distribution import *
 from .function import *
-from .endf import *
+from . import endf
 from .energy_distribution import *
 from .product import *
 from .angle_energy import *
@@ -27,5 +28,6 @@ from .urr import *
 from .library import *
 from .fission_energy import *
 from .resonance import *
+from .resonance_covariance import *
 from .multipole import *
 from .grid import *

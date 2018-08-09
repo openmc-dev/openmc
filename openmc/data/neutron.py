@@ -14,8 +14,8 @@ import numpy as np
 import h5py
 
 from . import HDF5_VERSION, HDF5_VERSION_MAJOR
-from .ace import Library, Table, get_table
-from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV, gnd_name
+from .ace import Library, Table, get_table, get_metadata
+from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV
 from .endf import Evaluation, SUM_RULES, get_head_record, get_tab1_record
 from .fission_energy import FissionEnergyRelease
 from .function import Tabulated1D, Sum, ResonancesWithBackground
@@ -24,6 +24,7 @@ from .njoy import make_ace
 from .product import Product
 from .reaction import Reaction, _get_photon_products_ace
 from . import resonance as res
+from . import resonance_covariance as res_cov
 from .urr import ProbabilityTables
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
@@ -33,88 +34,26 @@ from openmc.mixin import EqualityMixin
 _RESONANCE_ENERGY_GRID = np.logspace(-3, 3, 61)
 
 
-def _get_metadata(zaid, metastable_scheme='nndc'):
-    """Return basic identifying data for a nuclide with a given ZAID.
-
-    Parameters
-    ----------
-    zaid : int
-        ZAID (1000*Z + A) obtained from a library
-    metastable_scheme : {'nndc', 'mcnp'}
-        Determine how ZAID identifiers are to be interpreted in the case of
-        a metastable nuclide. Because the normal ZAID (=1000*Z + A) does not
-        encode metastable information, different conventions are used among
-        different libraries. In MCNP libraries, the convention is to add 400
-        for a metastable nuclide except for Am242m, for which 95242 is
-        metastable and 95642 (or 1095242 in newer libraries) is the ground
-        state. For NNDC libraries, ZAID is given as 1000*Z + A + 100*m.
-
-    Returns
-    -------
-    name : str
-        Name of the table
-    element : str
-        The atomic symbol of the isotope in the table; e.g., Zr.
-    Z : int
-        Number of protons in the nucleus
-    mass_number : int
-        Number of nucleons in the nucleus
-    metastable : int
-        Metastable state of the nucleus. A value of zero indicates ground state.
-
-    """
-
-    cv.check_type('zaid', zaid, int)
-    cv.check_value('metastable_scheme', metastable_scheme, ['nndc', 'mcnp'])
-
-    Z = zaid // 1000
-    mass_number = zaid % 1000
-
-    if metastable_scheme == 'mcnp':
-        if zaid > 1000000:
-            # New SZA format
-            Z = Z % 1000
-            if zaid == 1095242:
-                metastable = 0
-            else:
-                metastable = zaid // 1000000
-        else:
-            if zaid == 95242:
-                metastable = 1
-            elif zaid == 95642:
-                metastable = 0
-            else:
-                metastable = 1 if mass_number > 300 else 0
-    elif metastable_scheme == 'nndc':
-        metastable = 1 if mass_number > 300 else 0
-
-    while mass_number > 3 * Z:
-        mass_number -= 100
-
-    # Determine name
-    element = ATOMIC_SYMBOL[Z]
-    name = gnd_name(Z, mass_number, metastable)
-
-    return (name, element, Z, mass_number, metastable)
-
-
 class IncidentNeutron(EqualityMixin):
     """Continuous-energy neutron interaction data.
 
-    Instances of this class are not normally instantiated by the user but rather
-    created using the factory methods :meth:`IncidentNeutron.from_hdf5` and
-    :meth:`IncidentNeutron.from_ace`.
+    This class stores data derived from an ENDF-6 format neutron interaction
+    sublibrary. Instances of this class are not normally instantiated by the
+    user but rather created using the factory methods
+    :meth:`IncidentNeutron.from_hdf5`, :meth:`IncidentNeutron.from_ace`, and
+    :meth:`IncidentNeutron.from_endf`.
 
     Parameters
     ----------
     name : str
         Name of the nuclide using the GND naming convention
     atomic_number : int
-        Number of protons in the nucleus
+        Number of protons in the target nucleus
     mass_number : int
-        Number of nucleons in the nucleus
+        Number of nucleons in the target nucleus
     metastable : int
-        Metastable state of the nucleus. A value of zero indicates ground state.
+        Metastable state of the target nucleus. A value of zero indicates ground
+        state.
     atomic_weight_ratio : float
         Atomic mass ratio of the target nuclide.
     kTs : Iterable of float
@@ -124,22 +63,19 @@ class IncidentNeutron(EqualityMixin):
     Attributes
     ----------
     atomic_number : int
-        Number of protons in the nucleus
+        Number of protons in the target nucleus
     atomic_symbol : str
         Atomic symbol of the nuclide, e.g., 'Zr'
     atomic_weight_ratio : float
         Atomic weight ratio of the target nuclide.
-    energy : dict of numpy.ndarray
-        The energy values (eV) at which reaction cross-sections are tabulated.
-        They keys of the dict are the temperature string ('294K') for each
-        set of energies
     fission_energy : None or openmc.data.FissionEnergyRelease
         The energy released by fission, tabulated by component (e.g. prompt
         neutrons or beta particles) and dependent on incident neutron energy
     mass_number : int
-        Number of nucleons in the nucleus
+        Number of nucleons in the target nucleus
     metastable : int
-        Metastable state of the nucleus. A value of zero indicates ground state.
+        Metastable state of the target nucleus. A value of zero indicates ground
+        state.
     name : str
         Name of the nuclide using the GND naming convention
     reactions : collections.OrderedDict
@@ -148,6 +84,8 @@ class IncidentNeutron(EqualityMixin):
         and the values are Reaction objects.
     resonances : openmc.data.Resonances or None
         Resonance parameters
+    resonance_covariance : openmc.data.ResonanceCovariance or None
+        Covariance for resonance parameters
     summed_reactions : collections.OrderedDict
         Contains summed cross sections, e.g., the total cross section. The keys
         are the MT values and the values are Reaction objects.
@@ -229,6 +167,10 @@ class IncidentNeutron(EqualityMixin):
         return self._resonances
 
     @property
+    def resonance_covariance(self):
+        return self._resonance_covariance
+
+    @property
     def summed_reactions(self):
         return self._summed_reactions
 
@@ -288,6 +230,12 @@ class IncidentNeutron(EqualityMixin):
     def resonances(self, resonances):
         cv.check_type('resonances', resonances, res.Resonances)
         self._resonances = resonances
+
+    @resonance_covariance.setter
+    def resonance_covariance(self, resonance_covariance):
+        cv.check_type('resonance covariance', resonance_covariance,
+                      res_cov.ResonanceCovariances)
+        self._resonance_covariance = resonance_covariance
 
     @summed_reactions.setter
     def summed_reactions(self, summed_reactions):
@@ -499,6 +447,7 @@ class IncidentNeutron(EqualityMixin):
 
         # Open file and write version
         f = h5py.File(path, mode, libver=libver)
+        f.attrs['filetype'] = np.string_('data_neutron')
         f.attrs['version'] = np.array(HDF5_VERSION)
 
         # Write basic data
@@ -673,7 +622,7 @@ class IncidentNeutron(EqualityMixin):
         # If mass number hasn't been specified, make an educated guess
         zaid, xs = ace.name.split('.')
         name, element, Z, mass_number, metastable = \
-            _get_metadata(int(zaid), metastable_scheme)
+            get_metadata(int(zaid), metastable_scheme)
 
         # Assign temperature to the running list
         kTs = [ace.temperature*EV_PER_MEV]
@@ -744,7 +693,7 @@ class IncidentNeutron(EqualityMixin):
         return data
 
     @classmethod
-    def from_endf(cls, ev_or_filename):
+    def from_endf(cls, ev_or_filename, covariance=False):
         """Generate incident neutron continuous-energy data from an ENDF evaluation
 
         Parameters
@@ -752,6 +701,10 @@ class IncidentNeutron(EqualityMixin):
         ev_or_filename : openmc.data.endf.Evaluation or str
             ENDF evaluation to read from. If given as a string, it is assumed to
             be the filename for the ENDF file.
+
+        covariance : bool
+            Flag to indicate whether or not covariance data from File 32 should be
+            retrieved
 
         Returns
         -------
@@ -783,6 +736,11 @@ class IncidentNeutron(EqualityMixin):
 
         if (2, 151) in ev.section:
             data.resonances = res.Resonances.from_endf(ev)
+
+        if (32, 151) in ev.section and covariance:
+            data.resonance_covariance = (
+                res_cov.ResonanceCovariances.from_endf(ev, data.resonances)
+            )
 
         # Read each reaction
         for mf, mt, nc, mod in ev.reaction_list:

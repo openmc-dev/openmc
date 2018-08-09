@@ -32,14 +32,14 @@ kwargs = {
     # Data files and librarries
     'package_data': {
         'openmc.capi': ['libopenmc.{}'.format(suffix)],
-        'openmc.data': ['mass.mas12', 'fission_Q_data_endfb71.h5']
+        'openmc.data': ['mass.mas12', '*.h5']
     },
 
     # Metadata
     'author': 'The OpenMC Development Team',
     'author_email': 'openmc-dev@googlegroups.com',
     'description': 'OpenMC',
-    'url': 'https://github.com/mit-crpg/openmc',
+    'url': 'https://github.com/openmc-dev/openmc',
     'classifiers': [
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',

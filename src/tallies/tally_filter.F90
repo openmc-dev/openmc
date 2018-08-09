@@ -20,6 +20,7 @@ module tally_filter
   use tally_filter_mesh
   use tally_filter_meshsurface
   use tally_filter_mu
+  use tally_filter_particle
   use tally_filter_polar
   use tally_filter_sph_harm
   use tally_filter_sptl_legendre
@@ -88,6 +89,8 @@ contains
         type_ = 'universe'
       type is (ZernikeFilter)
         type_ = 'zernike'
+      type is (ParticleFilter)
+        type_ = 'particle'
       end select
 
       ! Convert Fortran string to null-terminated C string. We assume the
@@ -147,6 +150,8 @@ contains
           allocate(MeshSurfaceFilter :: filters(index) % obj)
         case ('mu')
           allocate(MuFilter :: filters(index) % obj)
+        case ('particle')
+          allocate(ParticleFilter :: filters(index) % obj)
         case ('polar')
           allocate(PolarFilter :: filters(index) % obj)
         case ('sphericalharmonics')

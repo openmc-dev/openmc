@@ -119,9 +119,9 @@ Lattice::to_hdf5(hid_t lattices_group) const
 
   if (outer != NO_OUTER_UNIVERSE) {
     int32_t outer_id = global_universes[outer]->id;
-    write_int(lat_group, 0, nullptr, "outer", &outer_id, false);
+    write_dataset(lat_group, "outer", outer_id);
   } else {
-    write_int(lat_group, 0, nullptr, "outer", &outer, false);
+    write_dataset(lat_group, "outer", outer);
   }
 
   // Call subclass-overriden function to fill in other details.
@@ -348,16 +348,16 @@ RectLattice::to_hdf5_inner(hid_t lat_group) const
   // Write basic lattice information.
   write_string(lat_group, "type", "rectangular", false);
   if (is_3d) {
-    write_double(lat_group, "pitch", pitch, false);
-    write_double(lat_group, "lower_left", lower_left, false);
-    write_int(lat_group, "dimension", n_cells, false);
+    write_dataset(lat_group, "pitch", pitch);
+    write_dataset(lat_group, "lower_left", lower_left);
+    write_dataset(lat_group, "dimension", n_cells);
   } else {
     std::array<double, 2> pitch_short {{pitch[0], pitch[1]}};
-    write_double(lat_group, "pitch", pitch_short, false);
+    write_dataset(lat_group, "pitch", pitch_short);
     std::array<double, 2> ll_short {{lower_left[0], lower_left[1]}};
-    write_double(lat_group, "lower_left", ll_short, false);
+    write_dataset(lat_group, "lower_left", ll_short);
     std::array<int, 2> nc_short {{n_cells[0], n_cells[1]}};
-    write_int(lat_group, "dimension", nc_short, false);
+    write_dataset(lat_group, "dimension", nc_short);
   }
 
   // Write the universe ids.  The convention here is to switch the ordering on
@@ -826,16 +826,16 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
 {
   // Write basic lattice information.
   write_string(lat_group, "type", "hexagonal", false);
-  write_int(lat_group, 0, nullptr, "n_rings", &n_rings, false);
-  write_int(lat_group, 0, nullptr, "n_axial", &n_axial, false);
+  write_dataset(lat_group, "n_rings", n_rings);
+  write_dataset(lat_group, "n_axial", n_axial);
   if (is_3d) {
-    write_double(lat_group, "pitch", pitch, false);
-    write_double(lat_group, "center", center, false);
+    write_dataset(lat_group, "pitch", pitch);
+    write_dataset(lat_group, "center", center);
   } else {
     std::array<double, 1> pitch_short {{pitch[0]}};
-    write_double(lat_group, "pitch", pitch_short, false);
+    write_dataset(lat_group, "pitch", pitch_short);
     std::array<double, 2> center_short {{center[0], center[1]}};
-    write_double(lat_group, "center", center_short, false);
+    write_dataset(lat_group, "center", center_short);
   }
 
   // Write the universe ids.

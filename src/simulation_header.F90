@@ -13,15 +13,15 @@ module simulation_header
   ! GEOMETRY-RELATED VARIABLES
 
   ! Number of lost particles
-  integer :: n_lost_particles = 0
+  integer(C_INT), bind(C, name='openmc_n_lost_particles') :: n_lost_particles = 0
 
   real(8) :: log_spacing ! spacing on logarithmic grid
 
   ! ============================================================================
   ! SIMULATION VARIABLES
 
-  integer :: current_batch     ! current batch
-  integer :: current_gen       ! current generation within a batch
+  integer(C_INT), bind(C, name='openmc_current_batch') :: current_batch     ! current batch
+  integer(C_INT), bind(C, name='openmc_current_gen') :: current_gen       ! current generation within a batch
   integer :: total_gen     = 0 ! total number of generations simulated
   logical(C_BOOL), bind(C, name='openmc_simulation_initialized') :: &
        simulation_initialized = .false.
@@ -34,7 +34,7 @@ module simulation_header
 
   integer(C_INT64_T), bind(C, name='openmc_work') :: work         ! number of particles per processor
   integer(C_INT64_T), allocatable :: work_index(:) ! starting index in source bank for each process
-  integer(8) :: current_work ! index in source bank of current history simulated
+  integer(C_INT64_T), bind(C, name='openmc_current_work') :: current_work ! index in source bank of current history simulated
 
   ! ============================================================================
   ! K-EIGENVALUE SIMULATION VARIABLES

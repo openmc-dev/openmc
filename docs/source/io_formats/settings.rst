@@ -32,6 +32,19 @@ standard deviation.
 
   *Default*: false
 
+-------------------------------------
+``<create_fission_neutrons>`` Element
+-------------------------------------
+
+The ``<create_fission_neutrons>`` element indicates whether fission neutrons
+should be created or not.  If this element is set to "true", fission neutrons
+will be created; otherwise the fission is treated as capture and no fission
+neutron will be created. Note that this option is only applied to fixed source
+calculation. For eigenvalue calculation, fission will always be treated as real
+fission.
+
+  *Default*: true
+
 --------------------
 ``<cutoff>`` Element
 --------------------
@@ -55,31 +68,35 @@ you care. This element has the following attributes/sub-elements:
 
     *Default*: 1.0
 
-  :energy:
-    The energy under which particles will be killed.
+  :energy_neutron:
+    The energy under which neutrons will be killed.
 
     *Default*: 0.0
 
--------------------------
-``<energy_grid>`` Element
--------------------------
+  :energy_photon:
+    The energy under which photons will be killed.
 
-The ``<energy_grid>`` element determines the treatment of the energy grid during
-a simulation. The valid options are "nuclide", "logarithm", and
-"material-union". Setting this element to "nuclide" will cause OpenMC to use a
-nuclide's energy grid when determining what points to interpolate between for
-determining cross sections (i.e. non-unionized energy grid). Setting this
-element to "logarithm" causes OpenMC to use a logarithmic mapping technique
-described in LA-UR-14-24530_. Setting this element to "material-union" will
-cause OpenMC to create energy grids that are unionized material-by-material and
-use these grids when determining the energy-cross section pairs to interpolate
-cross section values between.
+    *Default*: 1000.0
 
-  *Default*: logarithm
+  :energy_electron:
+    The energy under which electrons will be killed.
 
-  .. note:: This element is not used in the multi-group :ref:`energy_mode`.
+    *Default*: 0.0
 
-.. _LA-UR-14-24530: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-14-24530.pdf
+  :energy_positron:
+    The energy under which positrons will be killed.
+
+    *Default*: 0.0
+
+--------------------------------
+``<electron_treatment>`` Element
+--------------------------------
+
+When photon transport is enabled, the ``<electron_treatment>`` element tells
+OpenMC whether to deposit all energy from electrons locally (``led``) or create
+secondary bremsstrahlung photons (``ttb``).
+
+  *Default*: ttb
 
 .. _energy_mode:
 
@@ -153,8 +170,7 @@ the estimated eigenvalue. It has the following attributes/sub-elements:
 
     *Default*: None
 
-.. note:: See section on the :ref:`trigger` for more information.
-
+  .. note:: See section on the :ref:`trigger` for more information.
 
 ---------------------------
 ``<log_grid_bins>`` Element
@@ -168,6 +184,8 @@ based on the recommended value in LA-UR-14-24530_.
   *Default*: 8000
 
   .. note:: This element is not used in the multi-group :ref:`energy_mode`.
+
+.. _LA-UR-14-24530: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-14-24530.pdf
 
 ---------------------------
 ``<max_order>`` Element
@@ -259,10 +277,20 @@ out the file and "false" will not.
 -----------------------
 
 This element indicates the number of neutrons to simulate per fission source
-iteration when a k-eigenvalue calculation is performed or the number of neutrons
-per batch for a fixed source simulation.
+iteration when a k-eigenvalue calculation is performed or the number of
+particles per batch for a fixed source simulation.
 
   *Default*: None
+
+------------------------------
+``<photon_transport>`` Element
+------------------------------
+
+The ``<photon_transport>`` element determines whether photon transport is
+enabled. This element has no attributes or sub-elements and can be set to
+either "false" or "true".
+
+  *Default*: false
 
 ---------------------
 ``<ptables>`` Element
@@ -378,6 +406,11 @@ attributes/sub-elements:
     other.
 
     *Default*: 1.0
+
+  :particle:
+    The source particle type, either ``neutron`` or ``photon``.
+
+    *Default*: neutron
 
   :file:
     If this attribute is given, it indicates that the source is to be read from
@@ -811,20 +844,6 @@ and 10. The verbosity levels are defined as follows:
   :10: all of the above + event information
 
   *Default*: 7
-
--------------------------------------
-``<create_fission_neutrons>`` Element
--------------------------------------
-
-The ``<create_fission_neutrons>`` element indicates whether fission neutrons
-should be created or not.  If this element is set to "true", fission neutrons
-will be created; otherwise the fission is treated as capture and no fission
-neutron will be created. Note that this option is only applied to fixed source
-calculation. For eigenvalue calculation, fission will always be treated as real
-fission.
-
-  *Default*: true
-
 
 -------------------------
 ``<volume_calc>`` Element

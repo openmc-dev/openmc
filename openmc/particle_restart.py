@@ -27,6 +27,8 @@ class Particle(object):
         Type of simulation (criticality or fixed source)
     id : long
         Identifier of the particle
+    type : int
+        Particle type (1 = neutron, 2 = photon, 3 = electron, 4 = positron)
     weight : float
         Weight of the particle
     energy : float
@@ -64,6 +66,10 @@ class Particle(object):
     @property
     def id(self):
         return self._f['id'].value
+
+    @property
+    def type(self):
+        return self._f['type'].value
 
     @property
     def n_particles(self):

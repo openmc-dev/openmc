@@ -276,6 +276,16 @@
             <interleave>
               <optional>
                 <choice>
+                  <element name="particle">
+                    <data type="string"/>
+                  </element>
+                  <attribute name="particle">
+                    <data type="string"/>
+                  </attribute>
+                </choice>
+              </optional>
+              <optional>
+                <choice>
                   <element name="strength">
                     <data type="double"/>
                   </element>

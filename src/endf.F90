@@ -160,6 +160,20 @@ contains
       string = '(n,Xa)'
     case (444)
       string = '(damage)'
+    case (COHERENT)
+      string = 'coherent scatter'
+    case (INCOHERENT)
+      string = 'incoherent scatter'
+    case (PAIR_PROD_ELEC)
+      string = 'pair production, electron'
+    case (PAIR_PROD)
+      string = 'pair production'
+    case (PAIR_PROD_NUC)
+      string = 'pair production, nuclear'
+    case (PHOTOELECTRIC)
+      string = 'photoelectric'
+    case (534 : 572)
+      string = 'photoelectric, ' // trim(SUBSHELLS(MT - 533)) // ' subshell'
     case (600 : 648)
       string = '(n,p' // trim(to_str(MT-600)) // ')'
     case (649)

@@ -133,7 +133,7 @@ contains
       if (bin <= last) then
         first = last - n
         m = -n + (bin - first)*2
-        label = "Zernike expansion, Z" // trim(to_str(n)) // "," &
+        label = "Zernike expansion, Z" // trim(to_str((n-1))) // "," &
              // trim(to_str(m))
         exit
       end if

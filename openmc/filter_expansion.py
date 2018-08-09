@@ -466,32 +466,30 @@ class ZernikeFilter(ExpansionFilter):
 
 
 class ZernikeRadialFilter(ZernikeFilter):
-    r"""Score radial Zernike expansion moments in space up to specified order.
+    r"""Score the :math:`m = 0` (radial variation only) Zernike moments up to
+    specified order.
 
-    The Zernike polynomials are defined the same as in ZernikeFilter.
+    The Zernike polynomials are defined the same as in :class:`ZernikeFilter`.
 
     .. math::
-        Z_n^m(\rho, \theta) = R_n^m(\rho) \cos (m\theta), \quad m > 0
 
-        Z_n^{m}(\rho, \theta) = R_n^{m}(\rho) \sin (m\theta), \quad m < 0
-
-        Z_n^{m}(\rho, \theta) = R_n^{m}(\rho), \quad m = 0
+        Z_n^{0}(\rho, \theta) = R_n^{0}(\rho)
 
     where the radial polynomials are
 
     .. math::
-        R_n^m(\rho) = \sum\limits_{k=0}^{(n-m)/2} \frac{(-1)^k (n-k)!}{k! (
-        \frac{n+m}{2} - k)! (\frac{n-m}{2} - k)!} \rho^{n-2k}.
+        R_n^{0}(\rho) = \sum\limits_{k=0}^{n/2} \frac{(-1)^k (n-k)!}{k! ((
+        \frac{n}{2} - k)!)^{2}} \rho^{n-2k}.
 
-    With this definition, the integral of :math:`(Z_n^m)^2` over the unit disk
-    is :math:`\frac{\epsilon_m\pi}{2n+2}` for each polynomial where
-    :math:`\epsilon_m` is 2 if :math:`m` equals 0 and 1 otherwise.
+    With this definition, the integral of :math:`(Z_n^0)^2` over the unit disk
+    is :math:`\frac{\pi}{n+1}`.
 
     If there is only radial dependency, the polynomials are integrated over
     the azimuthal angles. The only terms left are :math:`Z_n^{0}(\rho, \theta) 
     = R_n^{0}(\rho)`. Note that :math:`n` could only be even orders.
     Therefore, for a radial Zernike polynomials up to order of :math:`n`,
-    there are :math:`\frac{n}{2} + 1` terms in total.
+    there are :math:`\frac{n}{2} + 1` terms in total. The indexing is from the
+    lowest even order (0) to highest even order.
 
     Parameters
     ----------

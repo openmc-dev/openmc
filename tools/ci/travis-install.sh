@@ -16,11 +16,6 @@ pip install cython
 # pytest installed by default -- make sure we get latest
 pip install --upgrade pytest
 
-# Pandas stopped supporting Python 3.4 with version 0.21
-if [[ $TRAVIS_PYTHON_VERSION == "3.4" ]]; then
-    pip install pandas==0.20.3
-fi
-
 # Install mpi4py for MPI configurations
 if [[ $MPI == 'y' ]]; then
     pip install --no-binary=mpi4py mpi4py

@@ -1,20 +1,18 @@
 sudo: required
-dist: trusty
+dist: xenial
 language: python
 python:
-  - "3.4"
   - "3.5"
   - "3.6"
+  - "3.7"
 addons:
   apt:
-    sources:
-      - ubuntu-toolchain-r-test
     packages:
-      - gcc-4.9
-      - g++-4.9
-      - gfortran-4.9
+      - gfortran
       - mpich
       - libmpich-dev
+      - libhdf5-serial-dev
+      - libhdf5-mpich-dev
 cache:
   directories:
   - $HOME/nndc_hdf5
@@ -30,18 +28,11 @@ env:
     - OPENMC_MULTIPOLE_LIBRARY=$HOME/multipole_lib
     - PATH=$PATH:$HOME/NJOY2016/build
     - DISPLAY=:99.0
-    - CC=gcc-4.9
-    - CXX=g++-4.9
-    - FC=gfortran-4.9
   matrix:
     - OMP=n MPI=n PHDF5=n
     - OMP=y MPI=n PHDF5=n
     - OMP=n MPI=y PHDF5=n
     - OMP=n MPI=y PHDF5=y
-before_install:
-  - sudo add-apt-repository ppa:nschloe/hdf5-backports -y
-  - sudo apt-get update -q
-  - sudo apt-get install libhdf5-serial-dev libhdf5-mpich-dev -y
 install:
   - ./tools/ci/travis-install.sh
 before_script:

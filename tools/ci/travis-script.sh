@@ -2,7 +2,7 @@
 set -ex
 
 # Run source check
-if [[ $TRAVIS_PYTHON_VERSION == "3.4" && $OMP == 'n' && $MPI == 'n' ]]; then
+if [[ $TRAVIS_PYTHON_VERSION == "3.5" && $OMP == 'n' && $MPI == 'n' ]]; then
     pushd tests && python check_source.py && popd
 fi
 

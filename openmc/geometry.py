@@ -1,7 +1,9 @@
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from collections.abc import Iterable
 from copy import deepcopy
 from xml.etree import ElementTree as ET
+
+import numpy as np
 
 import openmc
 from openmc.clean_xml import clean_xml_indentation
@@ -97,6 +99,191 @@ class Geometry(object):
         # Write the XML Tree to the geometry.xml file
         tree = ET.ElementTree(root_element)
         tree.write(path, xml_declaration=True, encoding='utf-8')
+
+    @classmethod
+    def from_xml(cls, path='geometry.xml', materials=None):
+        """Generate geometry from XML file
+
+        Parameters
+        ----------
+        path : str, optional
+            Path to geometry XML file
+        materials : openmc.Materials or None
+            Materials used to assign to cells. If None, an attempt is made to
+            generate it from the materials.xml file.
+
+        Returns
+        -------
+        openmc.Geometry
+            Geometry object
+
+        """
+        # Helper function to get value from an attribute/element
+        def get(elem, name, default=None):
+            if name in elem.attrib:
+                return elem.get(name, default)
+            else:
+                child = elem.find(name)
+                return child.text if child is not None else default
+
+        # Helper function for keeping a cache of Universe instances
+        universes = {}
+        def get_universe(univ_id):
+            if univ_id not in universes:
+                univ = openmc.Universe(univ_id)
+                universes[univ_id] = univ
+            return universes[univ_id]
+
+        tree = ET.parse(path)
+        root = tree.getroot()
+
+        # Get surfaces
+        surfaces = {}
+        periodic = {}
+        for surface in root.findall('surface'):
+            s = openmc.Surface.from_xml_element(surface)
+            surfaces[s.id] = s
+
+            # Check for periodic surface
+            other_id = get(surface, 'periodic_surface_id')
+            if other_id is not None:
+                periodic[s.id] = int(other_id)
+
+        # Apply periodic surfaces
+        for s1, s2 in periodic.items():
+            surfaces[s1].periodic_surface = surfaces[s2]
+
+        # Dictionary that maps each universe to a list of cells/lattices that
+        # contain it (needed to determine which universe is the root)
+        child_of = defaultdict(list)
+
+        for elem in root.findall('lattice'):
+            lat_id = int(get(elem, 'id'))
+            name = get(elem, 'name')
+            lat = openmc.RectLattice(lat_id, name)
+            lat.lower_left = [float(i) for i in get(elem, 'lower_left').split()]
+            lat.pitch = [float(i) for i in get(elem, 'pitch').split()]
+            outer = get(elem, 'outer')
+            if outer is not None:
+                lat.outer = get_universe(int(outer))
+            universes[lat_id] = lat
+
+            # Get array of universes
+            dimension = get(elem, 'dimension').split()
+            shape = np.array(dimension, dtype=int)[::-1]
+            uarray = np.array([get_universe(int(i)) for i in
+                               get(elem, 'universes').split()])
+            for u in uarray:
+                child_of[u].append(lat)
+            uarray.shape = shape
+            lat.universes = uarray
+
+        for elem in root.findall('hex_lattice'):
+            lat_id = int(get(elem, 'id'))
+            name = get(elem, 'name')
+            lat = openmc.HexLattice(lat_id, name)
+            lat.center = [float(i) for i in get(elem, 'center').split()]
+            lat.pitch = [float(i) for i in get(elem, 'pitch').split()]
+            outer = get(elem, 'outer')
+            if outer is not None:
+                lat.outer = get_universe(int(outer))
+            universes[lat_id] = lat
+
+            # Get nested lists of universes
+            lat._num_rings = n_rings = int(get(elem, 'n_rings'))
+            lat._num_axial = n_axial = int(get(elem, 'n_axial', 1))
+
+            # Create empty nested lists for one axial level
+            univs = [[None for _ in range(max(6*(n_rings - 1 - r), 1))]
+                     for r in range(n_rings)]
+            if n_axial > 1:
+                univs = [deepcopy(univs) for i in range(n_axial)]
+
+            # Get flat array of universes numbers
+            uarray = np.array([get_universe(int(i)) for i in
+                               get(elem, 'universes').split()])
+            for u in uarray:
+                child_of[u].append(lat)
+
+            # Fill nested lists
+            j = 0
+            for z in range(n_axial):
+                # Get list for a single axial level
+                axial_level = univs[z] if n_axial > 1 else univs
+
+                # Start iterating from top
+                x, alpha = 0, n_rings - 1
+                while True:
+                    # Set entry in list based on (x,alpha,z) coordinates
+                    _, i_ring, i_within = lat.get_universe_index((x, alpha, z))
+                    axial_level[i_ring][i_within] = uarray[j]
+
+                    # Move to the right
+                    x += 2
+                    alpha -= 1
+                    if not lat.is_valid_index((x, alpha, z)):
+                        # Move down in y direction
+                        alpha += x - 1
+                        x = 1 - x
+                        if not lat.is_valid_index((x, alpha, z)):
+                            # Move to the right
+                            x += 2
+                            alpha -= 1
+                            if not lat.is_valid_index((x, alpha, z)):
+                                # Reached the bottom
+                                break
+                    j += 1
+            lat.universes = univs
+
+        # Create dictionary to easily look up materials
+        if materials is None:
+            materials = openmc.Materials.from_xml()
+        mats = {str(m.id): m for m in materials}
+        mats['void'] = None
+
+        for elem in root.findall('cell'):
+            cell_id = int(get(elem, 'id'))
+            name = get(elem, 'name')
+            c = openmc.Cell(cell_id, name)
+
+            # Assign material/distributed materials or fill
+            mat_text = get(elem, 'material')
+            if mat_text is not None:
+                mat_ids = mat_text.split()
+                if len(mat_ids) > 1:
+                    c.fill = [mats[i] for i in mat_ids]
+                else:
+                    c.fill = mats[mat_ids[0]]
+            else:
+                fill_id = int(get(elem, 'fill'))
+                c.fill = get_universe(fill_id)
+                child_of[c.fill].append(c)
+
+            # Assign region
+            region = get(elem, 'region')
+            if region is not None:
+                c.region = openmc.Region.from_expression(region, surfaces)
+
+            # Check for other attributes
+            t = get(elem, 'temperature')
+            if t is not None:
+                c.temperature = float(t)
+            for key in ('temperature', 'rotation', 'translation'):
+                value = get(elem, key)
+                if value is not None:
+                    setattr(c, key, [float(x) for x in value.split()])
+
+            # Add this cell to appropriate universe
+            univ_id = int(get(elem, 'universe', 0))
+            get_universe(univ_id).add_cell(c)
+
+        # Determine which universe is the root by finding one which is not a
+        # child of any other object
+        for u in universes.values():
+            if not child_of[u]:
+                return cls(u)
+        else:
+            raise ValueError('Error determining root universe.')
 
     def find(self, point):
         """Find cells/universes/lattices which contain a given point

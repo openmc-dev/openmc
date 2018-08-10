@@ -13,7 +13,10 @@ _dll.calc_pn_c.restype = None
 _dll.calc_pn_c.argtypes = [c_int, c_double, ndpointer(c_double)]
 
 _dll.evaluate_legendre_c.restype = c_double
-_dll.evaluate_legendre_c.argtypes = [c_int, POINTER(c_double), c_double]
+_dll.evaluate_legendre_c.argtypes = [c_int, POINTER(c_double), c_double, c_int]
+
+_dll.calc_norm_pn_c.restype = None
+_dll.calc_norm_pn_c.argtypes =[c_int, c_double, c_double, ndpointer(c_double)]
 
 _dll.calc_rn_c.restype = None
 _dll.calc_rn_c.argtypes = [c_int, ndpointer(c_double), ndpointer(c_double)]
@@ -23,6 +26,12 @@ _dll.calc_zn_c.argtypes = [c_int, c_double, c_double, ndpointer(c_double)]
 
 _dll.calc_zn_rad_c.restype = None
 _dll.calc_zn_rad_c.argtypes = [c_int, c_double, ndpointer(c_double)]
+
+_dll.evaluate_zernike_rad_c.restype = c_double
+_dll.evaluate_zernike_rad_c.argtypes = [c_int, POINTER(c_double), c_double]
+
+_dll.calc_norm_zn_rad_c.restype = None
+_dll.calc_norm_zn_rad_c.argtypes = [c_int, c_double, ndpointer(c_double)]
 
 _dll.rotate_angle_c.restype = None
 _dll.rotate_angle_c.argtypes = [ndpointer(c_double), c_double,
@@ -81,7 +90,7 @@ def calc_pn(n, x):
     return pnx
 
 
-def evaluate_legendre(data, x):
+def evaluate_legendre(data, x, flag=1):
     """ Finds the value of f(x) given a set of Legendre coefficients
     and the value of x.
 
@@ -91,6 +100,8 @@ def evaluate_legendre(data, x):
         Legendre coefficients
     x : float
         Independent variable to evaluate the Legendre at
+    flag : int
+        Flags to indicate use default normalization or not
 
     Returns
     -------
@@ -102,7 +113,31 @@ def evaluate_legendre(data, x):
     data_arr = np.array(data, dtype=np.float64)
     return _dll.evaluate_legendre_c(len(data),
                                     data_arr.ctypes.data_as(POINTER(c_double)),
-                                    x)
+                                    x, flag)
+
+
+def calc_norm_pn(l, zmin, zmax):
+    """ Calculate normalization arrays for n orders in Legendre polynomial.
+
+    Parameters
+    ----------
+    l : int
+        Maximum order
+    zmin : float
+        The lowest boundary of the domain
+    zmax : float
+        The highest boundary of the domain
+
+    Returns
+    -------
+    numpy.ndarray
+        Corresponding resulting list of normalization coefficients
+
+    """
+
+    norm_pn = np.empty(l + 1, dtype=np.float64)
+    _dll.calc_norm_pn_c(l, zmin, zmax, norm_pn)
+    return norm_pn
 
 
 def calc_rn(n, uvw):
@@ -182,7 +217,57 @@ def calc_zn_rad(n, rho):
     zn_rad = np.zeros(num_bins, dtype=np.float64)
     _dll.calc_zn_rad_c(n, rho, zn_rad)
     return zn_rad
-    
+
+
+def evaluate_zernike_rad(data, r):
+    """ Finds the value of f(x) given a set of even order Zernike coefficients
+    and the value of r.
+
+    Parameters
+    ----------
+    data : iterable of float
+        Legendre coefficients
+    r : float
+        Independent variable to evaluate the radial part of Zernike at
+
+    Returns
+    -------
+    float
+        Corresponding Zernike expansion result
+
+    """
+
+    data_arr = np.array(data, dtype=np.float64)
+    n = int(2 * (len(data) - 1))
+    return _dll.evaluate_zernike_rad_c(n,
+                                        data_arr.ctypes.data_as(POINTER(
+                                        c_double)),
+                                        r)
+
+
+def calc_norm_zn_rad(n, rho):
+    """ Calculate normalization arrays for the even orders in modified Zernike
+    polynomial moment with no azimuthal dependency (m=0).
+
+    Parameters
+    ----------
+    n : int
+        Maximum order
+    rho : float
+        Radial location in the unit disk
+
+    Returns
+    -------
+    numpy.ndarray
+        Corresponding resulting list of normalization coefficients
+
+    """
+
+    num_bins = n // 2 + 1
+    norm_zn_rad = np.zeros(num_bins, dtype=np.float64)
+    _dll.calc_norm_zn_rad_c(n, rho, norm_zn_rad)
+    return norm_zn_rad
+
 
 def rotate_angle(uvw0, mu, phi=None):
     """ Rotates direction cosines through a polar angle whose cosine is

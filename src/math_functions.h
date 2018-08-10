@@ -53,11 +53,27 @@ extern "C" void calc_pn_c(int n, double x, double pnx[]);
 //! @param data The polynomial expansion coefficient data; without the (2l+1)/2
 //!   factor.
 //! @param x    The value to evaluate at; x is expected to be within [-1,1]
+//! @param flag A flag of which method to calculate Legendre polynomials. 1 for
+//!   default (2l+1)/2; 2 for custom normalized coefficients
 //! @return The requested Legendre polynomials of order 0 to n (inclusive)
 //!   evaluated at x
 //==============================================================================
 
-extern "C" double evaluate_legendre_c(int n, const double data[], double x);
+extern "C" double evaluate_legendre_c(int n, const double data[], double x, int flag = 1);
+
+//==============================================================================
+//! Evaluate the normalization vector when reconstructing functional expansion
+//! from Legendre polynomials. 
+//!
+//! The normalization is (2 * l + 1)/(zmax - zmin)
+//!
+//! @param l         The maximum order requested
+//! @param zmin      The minimum location of 1-d domain
+//! @param zmax      The maximum location of 1-d domain
+//! @param norm_vec  The requested normalization of order 0 to n (inclusive)
+//==============================================================================
+
+extern "C" void calc_norm_pn_c(int l, double zmin, double zmax, double norm_vec[]);
 
 //==============================================================================
 //! Calculate the n-th order real spherical harmonics for a given angle (in
@@ -68,6 +84,7 @@ extern "C" double evaluate_legendre_c(int n, const double data[], double x);
 //! @param rn     The requested harmonics of order 0 to n (inclusive)
 //!   evaluated at uvw.
 //==============================================================================
+
 
 extern "C" void calc_rn_c(int n, const double uvw[3], double rn[]);
 
@@ -108,6 +125,33 @@ extern "C" void calc_zn_c(int n, double rho, double phi, double zn[]);
 //==============================================================================
 
 extern "C" void calc_zn_rad_c(int n, double rho, double zn_rad[]);
+
+//==============================================================================
+//! Evaluate the normalization vector when reconstructing functional expansion
+//! from radial only Zernike polynomials. 
+//!
+//! The normalization is (2 * l + 1)/(zmax - zmin)
+//!
+//! @param n         The maximum order requested
+//! @param r      	 The radius of the disk
+//! @param norm_vec  The requested normalization of even orders from 0 to n
+//==============================================================================
+
+extern "C" void calc_norm_zn_rad_c(int n, double r, double norm_vec[]);
+
+//==============================================================================
+//! Find the value of f(x) given a set of even order Zernike coefficients and 
+//! the value of x if there is only radial dependency.
+//!
+//! @param n    The maximum order of the expansion
+//! @param data The overall polynomial expansion coefficient data;
+//!   normalization should be considered by users
+//! @param r    The value to evaluate at; r is expected to be within [0,1]
+//! @return The requested Zernike polynomials of order 0 to n (inclusive)
+//!   evaluated at r
+//==============================================================================
+
+extern "C" double evaluate_zernike_rad_c(int n, const double data[], double r);
 
 //==============================================================================
 //! Rotate the direction cosines through a polar angle whose cosine is mu and

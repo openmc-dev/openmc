@@ -133,7 +133,7 @@ contains
       if (bin <= last) then
         first = last - n
         m = -n + (bin - first)*2
-        label = "Zernike expansion, Z" // trim(to_str((n-1))) // "," &
+        label = "Zernike expansion, Z" // trim(to_str(n)) // "," &
              // trim(to_str(m))
         exit
       end if
@@ -196,7 +196,7 @@ contains
     integer,             intent(in) :: bin
     character(MAX_LINE_LEN)         :: label
 
-    label = "Zernike expansion, Z" // trim(to_str(2*bin)) // ",0"
+    label = "Zernike expansion, Z" // trim(to_str(2*(bin-1))) // ",0"
   end function text_label_zn_rad
 
 !===============================================================================

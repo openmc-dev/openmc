@@ -1,6 +1,10 @@
-#ifndef GEOMETRY_H
-#define GEOMETRY_H
+#ifndef OPENMC_GEOMETRY_H
+#define OPENMC_GEOMETRY_H
+
+namespace openmc {
 
 extern "C" int openmc_root_universe;
 
-#endif // GEOMETRY_H
+} // namespace openmc
+
+#endif // OPENMC_GEOMETRY_H

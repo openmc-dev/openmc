@@ -395,6 +395,7 @@ add_library(libopenmc SHARED
   src/mgxs_interface.cpp
   src/particle.cpp
   src/plot.cpp
+  src/position.cpp
   src/pugixml/pugixml_c.cpp
   src/random_lcg.cpp
   src/scattdata.cpp

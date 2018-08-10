@@ -103,14 +103,33 @@ void calc_pn_c(int n, double x, double pnx[]) {
 }
 
 
-double evaluate_legendre_c(int n, const double data[], double x) {
+double evaluate_legendre_c(int n, const double data[], double x, int flag) {
   double pnx[n + 1];
   double val = 0.0;
   calc_pn_c(n, x, pnx);
-  for (int l = 0; l <= n; l++) {
-    val += (l + 0.5) * data[l] * pnx[l];
+
+  if (flag == 1) {
+    for (int l = 0; l <= n; l++) {
+      val += (l + 0.5) * data[l] * pnx[l];
+    }
+  } else if (flag == 2) {
+    for (int l = 0; l <= n; l++) {
+      val += data[l] * pnx[l];
+    }
   }
+
   return val;
+}
+
+
+void calc_norm_pn_c(int l, double zmin, double zmax, double norm_vec[]) {
+  // ===========================================================================
+  // Set up the normalization vector for FET Pn reconstruction
+  double d = zmax - zmin;
+
+  for (int i = 0; i <= l; i++) {
+    norm_vec[i] = (2 * i + 1)/d;
+  }
 }
 
 
@@ -612,6 +631,33 @@ void calc_zn_rad_c(int n, double rho, double zn_rad[]) {
         ((k2 * rho * rho + k3) * zn_rad[index-1] + k4 * zn_rad[index-2]) / k1;
     }
   }
+}
+
+
+void calc_norm_zn_rad_c(int n, double r, double norm_vec[]) {
+  // ===========================================================================
+  // Set up the normalization vector for FET Zn Radial only reconstruction
+  int index;
+
+  for (int i = 0; i <= n; i+=2) {
+    index = int(i/2);
+    norm_vec[index] = (i + 1)/(PI * r * r);
+  }
+}
+
+
+double evaluate_zernike_rad_c(int n, const double data[], double r) {
+  double rnr[n / 2 + 1];
+  double val = 0.0;
+  calc_zn_rad_c(n, r, rnr);
+  int index;
+
+  for (int i = 0; i <= n; i+ = 2) {
+    index = int(i/2);
+    val += data[index] * rnr[index];
+  }
+
+  return val;
 }
 
 

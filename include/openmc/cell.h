@@ -132,10 +132,10 @@ public:
   //!   known to be on.  This index takes precedence over surface sense
   //!   calculations.
   virtual bool
-  contains(const double xyz[3], const double uvw[3], int32_t on_surface) const = 0;
+  contains(Position p, Direction u, int32_t on_surface) const = 0;
 
   virtual std::pair<double, int32_t>
-  distance(const double xyz[3], const double uvw[3], int32_t on_surface) const = 0;
+  distance(Position p, Direction u, int32_t on_surface) const = 0;
 
   //! Write all information needed to reconstruct the cell to an HDF5 group.
   //! @param group_id An HDF5 group id.
@@ -182,7 +182,6 @@ public:
   //! \param group_id An HDF5 group id.
   void to_hdf5(hid_t group_id) const;
 
-
 protected:
   bool contains_simple(Position r, Direction u, int32_t on_surface) const;
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
@@ -195,8 +194,8 @@ class CADCell : public Cell
   moab::DagMC *dagmc_ptr;
   explicit CADCell();
 
-  std::pair<double, int32_t> distance(const double xyz[3], const double uvw[3], int32_t on_surface) const;
-  bool contains(const double xyz[3], const double uvw[3], int32_t on_surface) const;
+  std::pair<double, int32_t> distance(Position p, Direction u, int32_t on_surface) const;
+  bool contains(Position p, Direction u, int32_t on_surface) const;
 
   void to_hdf5(hid_t group_id) const;
 

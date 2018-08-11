@@ -132,10 +132,10 @@ class CADSurface : public Surface
  public:
   moab::DagMC* dagmc_ptr;
   explicit CADSurface();
-  double evaluate(const double xyz[3]) const;
-  double distance(const double xyz[3], const double uvw[3],
+  double evaluate(Position p) const;
+  double distance(Position p, Direction u,
                   bool coincident) const;
-  void normal(const double xyz[3], double uvw[3]) const;
+  Direction normal(Position p) const;
   //! Get the bounding box of this surface.
   BoundingBox bounding_box() const;
 };

@@ -251,20 +251,23 @@ CSGSurface::to_hdf5(hid_t group_id) const
 #ifdef CAD
 CADSurface::CADSurface() :Surface{} {} // empty constructor
 
-double CADSurface::evaluate(const double xyz[3]) const
+double CADSurface::evaluate(Position r) const
 {
   return 0.0;
 }
 
-double CADSurface::distance(const double xyz[3], const double uvw[3], bool coincident) const {
+double CADSurface::distance(Position p, Direction u, bool coincident) const {
   return 0.0;
 }
 
-void CADSurface::normal(const double xyz[3], double uvw[3]) const {
+Direction CADSurface::normal(Position p) const {
 
+  double xyz[3] = {p.x, p.y, p.z};
+  double uvw[3];
   moab::EntityHandle surf = dagmc_ptr->entity_by_id(2, id);
   dagmc_ptr->get_angle(surf, xyz, uvw);
-  return;
+  Direction u = {uvw};
+  return u;
   
 }
 

@@ -262,11 +262,9 @@ double CADSurface::distance(Position p, Direction u, bool coincident) const {
 
 Direction CADSurface::normal(Position p) const {
 
-  double xyz[3] = {p.x, p.y, p.z};
-  double uvw[3];
+  Direction u;
   moab::EntityHandle surf = dagmc_ptr->entity_by_id(2, id);
-  dagmc_ptr->get_angle(surf, xyz, uvw);
-  Direction u = {uvw};
+  dagmc_ptr->get_angle(surf, p.xyz, u.xyz);
   return u;
   
 }

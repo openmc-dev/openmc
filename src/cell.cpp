@@ -597,8 +597,10 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 #ifdef CAD
 CADCell::CADCell() : Cell{} {};
 
-std::pair<double, int32_t> CADCell::distance(const double xyz[3], const double uvw[3], int32_t on_surface) const {
+std::pair<double, int32_t> CADCell::distance(Position p, Direction u, int32_t on_surface) const {
 
+  double xyz[3] = {p.x, p.y, p.z};
+  double uvw[3] = {u.x, u.y, u.z};
   moab::EntityHandle vol = dagmc_ptr->entity_by_id(3, id);
   moab::EntityHandle hit_surf;
   double dist;
@@ -611,7 +613,10 @@ std::pair<double, int32_t> CADCell::distance(const double xyz[3], const double u
   return result;
 }
   
-bool CADCell::contains(const double xyz[3], const double uvw[3], int32_t on_surface) const {
+bool CADCell::contains(Position p, Direction u, int32_t on_surface) const {
+
+  double xyz[3] = {p.x, p.y, p.z};
+  double uvw[3] = {u.x, u.y, u.z};
   moab::EntityHandle vol = dagmc_ptr->entity_by_id(3, id);
 
   int result = 0;

@@ -20,7 +20,7 @@ __all__ = ['Filter', 'AzimuthalFilter', 'CellFilter',
            'EnergyFunctionFilter', 'LegendreFilter', 'MaterialFilter', 'MeshFilter',
            'MeshSurfaceFilter', 'MuFilter', 'PolarFilter', 'SphericalHarmonicsFilter',
            'SpatialLegendreFilter', 'SurfaceFilter',
-           'UniverseFilter', 'ZernikeFilter', 'filters']
+           'UniverseFilter', 'ZernikeFilter', 'ZernikeRadialFilter', 'filters']
 
 # Tally functions
 _dll.openmc_cell_filter_get_bins.argtypes = [
@@ -360,6 +360,10 @@ class ZernikeFilter(Filter):
         _dll.openmc_zernike_filter_set_order(self._index, order)
 
 
+class ZernikeRadialFilter(ZernikeFilter):
+    filter_type = 'zernikeradial'
+
+
 _FILTER_TYPE_MAP = {
     'azimuthal': AzimuthalFilter,
     'cell': CellFilter,
@@ -380,7 +384,8 @@ _FILTER_TYPE_MAP = {
     'spatiallegendre': SpatialLegendreFilter,
     'surface': SurfaceFilter,
     'universe': UniverseFilter,
-    'zernike': ZernikeFilter
+    'zernike': ZernikeFilter,
+    'zernikeradial': ZernikeRadialFilter
 }
 
 

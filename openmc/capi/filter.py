@@ -360,7 +360,7 @@ class ZernikeFilter(Filter):
         _dll.openmc_zernike_filter_set_order(self._index, order)
 
 
-class ZernikeRadialFilter(Filter):
+class ZernikeRadialFilter(ZernikeFilter):
     filter_type = 'zernikeradial'
 
 

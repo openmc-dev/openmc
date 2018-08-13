@@ -112,7 +112,7 @@ double evaluate_legendre_c(int n, const double data[], double x, int flag) {
     for (int l = 0; l <= n; l++) {
       val += (l + 0.5) * data[l] * pnx[l];
     }
-  } else if (flag == 2) {
+  } else if (flag == 2) { // if flag is 2, we don't apply any normalization
     for (int l = 0; l <= n; l++) {
       val += data[l] * pnx[l];
     }
@@ -647,6 +647,7 @@ void calc_norm_zn_rad_c(int n, double r, double norm_vec[]) {
 
 
 double evaluate_zernike_rad_c(int n, const double data[], double r) {
+  // data here is already normalized outside this function
   double rnr[n / 2 + 1];
   double val = 0.0;
   calc_zn_rad_c(n, r, rnr);

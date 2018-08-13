@@ -74,6 +74,7 @@ read_nd_vector(hid_t obj_id, const char* name,
                bool must_have = false);
 
 std::vector<hsize_t> attribute_shape(hid_t obj_id, const char* name);
+std::vector<std::string> dataset_names(hid_t group_id);
 void ensure_exists(hid_t group_id, const char* name);
 std::vector<std::string> group_names(hid_t group_id);
 std::vector<hsize_t> object_shape(hid_t obj_id);
@@ -207,6 +208,25 @@ read_attribute(hid_t obj_id, const char* name, std::string& str)
   // Read attribute and set string
   read_attr_string(obj_id, name, n, buffer);
   str = std::string{buffer, n};
+}
+
+// overload for std::vector<std::string>
+inline void
+read_attribute(hid_t obj_id, const char* name, std::vector<std::string>& vec)
+{
+  auto dims = attribute_shape(obj_id, name);
+  auto m = dims[0];
+
+  // Allocate a C char array to get strings
+  auto n = attribute_typesize(obj_id, name);
+  char buffer[m][n+1];
+
+  // Read char data in attribute
+  read_attr_string(obj_id, name, n, buffer[0]);
+
+  for (int i = 0; i < m; ++i) {
+    vec.emplace_back(&buffer[i][0]);
+  }
 }
 
 //==============================================================================

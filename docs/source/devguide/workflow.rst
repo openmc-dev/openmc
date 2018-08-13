@@ -129,6 +129,4 @@ can interfere with virtual environments.
 .. _openmc-dev/openmc: https://github.com/openmc-dev/openmc
 .. _paid plan: https://github.com/plans
 .. _Bitbucket: https://bitbucket.org
-.. _ctest: http://www.cmake.org/cmake/help/v2.8.12/ctest.html
-.. _NNDC:  http://www.nndc.bnl.gov/endf/b7.1/acefiles.html
 .. _pip: https://pip.pypa.io/en/stable/

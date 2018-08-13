@@ -653,7 +653,7 @@ double evaluate_zernike_rad_c(int n, const double data[], double r) {
   calc_zn_rad_c(n, r, rnr);
   int index;
 
-  for (int i = 0; i <= n; i+ = 2) {
+  for (int i = 0; i <= n; i+= 2) {
     index = int(i/2);
     val += data[index] * rnr[index];
   }

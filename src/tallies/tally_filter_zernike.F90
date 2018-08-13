@@ -55,13 +55,13 @@ contains
 ! ZernikeFilter methods
 !===============================================================================
 
-  function calc_n_bins_zn(this) result(num_n_bins)
+  function calc_n_bins_zn(this) result(n_bins)
     class(ZernikeFilter), intent(in) :: this
     integer :: n
-    integer :: num_n_bins
+    integer :: n_bins
 
     n = this % order
-    num_n_bins = ((n+1) * (n+2))/2
+    n_bins = ((n+1) * (n+2))/2
   end function calc_n_bins_zn
 
   subroutine from_xml_zn(this, node)

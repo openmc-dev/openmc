@@ -161,7 +161,6 @@ def test_calc_zn():
 def test_calc_zn_rad():
     n = 10
     rho = 0.5
-    phi = 0.5
 
     # Reference solution from running the Fortran implementation
     ref_vals = np.array([
@@ -172,6 +171,22 @@ def test_calc_zn_rad():
 
     assert np.allclose(ref_vals, test_vals)
 
+def test_evaluate_legendre():
+    max_order = 10
+    rho = 0.5
+
+    raw_zn = np.array([
+        1.00000000e+00, -5.00000000e-01, -1.25000000e-01,
+        4.37500000e-01, -2.89062500e-01,-8.98437500e-02])
+    raw_coeff = np.ones(6)
+    norm_vec = np.divide(np.arange(0, max_order + 1, 2) + 1, np.pi * rho * rho)
+    real_coeff = np.multiply(raw_coeff,norm_vec)
+
+    ref_vals = np.sum(np.multiply(real_coeff,raw_zn))
+
+    test_vals = openmc.capi.math.evaluate_zernike_rad(real_coeff, rho)
+
+    assert np.allclose(ref_vals, test_vals)
 
 def test_calc_norm_zn_rad():
     max_order = 10

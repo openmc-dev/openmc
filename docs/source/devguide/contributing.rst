@@ -114,3 +114,16 @@ The TC consists of the following individuals:
 - `Benoit Forget <https://github.com/bforget>`_
 
 The Project Lead is Paul Romano.
+
+Next Steps
+----------
+
+If you are interested in working on a specific feature or helping to address
+outstanding issues, consider joining the developer's `mailing list
+<https://groups.google.com/forum/#!forum/openmc-dev>`_ and/or `Slack community
+<https://openmc.slack.com/signup>`_. Note that some issues have specifically
+been labeled as good for `first-time contributors
+<https://github.com/openmc-dev/openmc/issues?q=is%3Aopen+is%3Aissue+label%3AFirst-Timers-Only>`_.
+Once you're at the point of writing code, make sure your read through the
+:ref:`devguide_workflow` section to understand the mechanics of making pull
+requests and what is expected during code reviews.

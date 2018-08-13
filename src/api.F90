@@ -259,7 +259,6 @@ contains
     if (allocated(tallies)) then
       do i = 1, size(tallies)
         associate (t => tallies(i) % obj)
-          t % active = .false.
           t % n_realizations = 0
           if (allocated(t % results)) then
             t % results(:, :, :) = ZERO
@@ -277,14 +276,6 @@ contains
     k_col_tra = ZERO
     k_abs_tra = ZERO
     k_sum(:) = ZERO
-
-    ! Clear active tally lists
-    call active_analog_tallies % clear()
-    call active_tracklength_tallies % clear()
-    call active_meshsurf_tallies % clear()
-    call active_collision_tallies % clear()
-    call active_surface_tallies % clear()
-    call active_tallies % clear()
 
     ! Reset timers
     call time_total % reset()

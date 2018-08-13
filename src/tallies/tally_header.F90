@@ -388,6 +388,7 @@ contains
 
     do i = 1, n_tallies
       call tallies(i) % obj % allocate_results()
+      tallies(i) % obj % active = .false.
     end do
 
   end subroutine configure_tallies

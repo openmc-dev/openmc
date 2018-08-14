@@ -386,6 +386,7 @@ add_library(libopenmc SHARED
   src/cell.cpp
   src/initialize.cpp
   src/finalize.cpp
+  src/geometry.cpp
   src/geometry_aux.cpp
   src/hdf5_interface.cpp
   src/lattice.cpp

@@ -31,7 +31,14 @@ module geometry
       integer(C_INT32_T), intent(in), value :: search_univ
       integer(C_INT32_T), intent(in), value :: target_univ_id
       integer(C_INT)                        :: count
-    end function
+    end function count_universe_instances
+
+    function check_cell_overlap_c(p) bind(C, name="check_cell_overlap") &
+         result(is_overlapping)
+      import Particle, C_BOOL
+      type(Particle), intent(in) :: p
+      logical(C_BOOL)            :: is_overlapping
+    end function check_cell_overlap_c
   end interface
 
 contains
@@ -60,6 +67,9 @@ contains
     integer :: index_cell              ! index in cells array
     type(Cell),       pointer :: c     ! pointer to cell
     type(Universe),   pointer :: univ  ! universe to search in
+    logical :: overlap_c
+
+    overlap_c = check_cell_overlap_c(p)
 
     ! loop through each coordinate level
     n_coord = p % n_coord
@@ -76,6 +86,7 @@ contains
         if (cell_contains(c, p)) then
           ! the particle should only be contained in one cell per level
           if (index_cell /= p % coord(j) % cell) then
+            if (.not. overlap_c) call fatal_error("Cell overlap disagreement")
             call fatal_error("Overlapping cells detected: " &
                  &// trim(to_str(cells(index_cell) % id())) // ", " &
                  &// trim(to_str(cells(p % coord(j) % cell) % id())) &
@@ -88,6 +99,7 @@ contains
 
       end do
     end do
+    if (overlap_c) call fatal_error("Cell overlap disagreement")
 
   end subroutine check_cell_overlap
 

@@ -628,6 +628,14 @@ contains
 
   subroutine print_overlap_check
 
+    interface
+      function get_overlap_check_count(index_cell) result(count) bind(C)
+        import C_INT, C_INT64_T
+        integer(C_INT), intent(in), value :: index_cell
+        integer(C_INT64_T)                :: count
+      end function get_overlap_check_count
+    end interface
+
     integer :: i, j
     integer :: num_sparse = 0
 
@@ -638,6 +646,7 @@ contains
 
     do i = 1, n_cells
       write(ou,101) cells(i) % id(), overlap_check_cnt(i)
+      write(ou,101) cells(i) % id(), get_overlap_check_count(i-1)
       if (overlap_check_cnt(i) < 10) num_sparse = num_sparse + 1
     end do
     write(ou,*)

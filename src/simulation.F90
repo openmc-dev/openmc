@@ -397,6 +397,13 @@ contains
       end do
     end if
 
+    ! Increment n_realizations as would ordinarily be done in finalize_batch
+    if (reduce_tallies) then
+      n_realizations = n_realizations + 1
+    else
+      n_realizations = n_realizations + n_procs
+    end if
+
     ! Write message at end
     if (current_batch == restart_batch) then
       call write_message("Resuming simulation...", 6)
@@ -458,6 +465,19 @@ contains
       call load_state_point()
     else
       call initialize_source()
+    end if
+
+    ! In restart, set the batch to begin from in order to reproduce the correct
+    ! average keff (used in sampling the fission bank).  Use n_realizations from
+    ! the statepoint rather than n_inactive in case openmc_reset was called in
+    ! the previous run.
+    if (restart_run) then
+      if (reduce_tallies) then
+        current_batch = restart_batch - n_realizations
+      else
+        current_batch = restart_batch - n_realizations*n_procs
+      end if
+      n_realizations = 0
     end if
 
     ! Display header

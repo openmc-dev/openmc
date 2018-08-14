@@ -100,6 +100,23 @@ def test_zernike():
     assert elem.attrib['type'] == 'zernike'
     assert elem.find('order').text == str(n)
 
+def test_zernike_radial():
+    n = 4
+    f = openmc.ZernikeRadialFilter(n, 0., 0., 1.)
+    assert f.order == n
+    assert f.bins[0] == 'Z0,0'
+    assert f.bins[-1] == 'Z{},0'.format(n)
+    assert len(f.bins) == n//2 + 1
+
+    # Make sure __repr__ works
+    repr(f)
+
+    # to_xml_element()
+    elem = f.to_xml_element()
+    assert elem.tag == 'filter'
+    assert elem.attrib['type'] == 'zernikeradial'
+    assert elem.find('order').text == str(n)
+
 
 def test_first_moment(run_in_tmpdir, box_model):
     plain_tally = openmc.Tally()

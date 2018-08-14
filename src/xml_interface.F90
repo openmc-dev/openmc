@@ -261,6 +261,7 @@ contains
 
     ! Get value of text node/attribute
     str = node_value_string(node, name)
+    call whitespace_to_blanks(str)
 
     ! Read numbers into array
     read(UNIT=str, FMT=*, IOSTAT=stat) array
@@ -283,6 +284,7 @@ contains
 
     ! Get value of text node/attribute
     str = node_value_string(node, name)
+    call whitespace_to_blanks(str)
 
     ! Read numbers into array
     read(UNIT=str, FMT=*, IOSTAT=stat) array
@@ -332,5 +334,22 @@ contains
       array(n) = str(start:len(str))
     end if
   end subroutine get_node_array_string
+
+!===============================================================================
+! WHITESPACE_TO_BLANKS converts all whitespace to blanks
+!===============================================================================
+
+  subroutine whitespace_to_blanks(str)
+    character(len=*, kind=C_CHAR), intent(inout) :: str
+
+    integer :: i
+
+    do i = 1, len(str)
+      select case (str(i:i))
+      case (C_NEW_LINE, C_HORIZONTAL_TAB, C_CARRIAGE_RETURN)
+        str(i:i) = ' '
+      end select
+    end do
+  end subroutine
 
 end module xml_interface

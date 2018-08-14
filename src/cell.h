@@ -1,5 +1,5 @@
-#ifndef CELL_H
-#define CELL_H
+#ifndef OPENMC_CELL_H
+#define OPENMC_CELL_H
 
 #include <cstdint>
 #include <string>
@@ -8,6 +8,8 @@
 
 #include "hdf5.h"
 #include "pugixml.hpp"
+
+#include "position.h"
 
 
 namespace openmc {
@@ -90,29 +92,27 @@ public:
   //! provides a performance benefit for the common case. In
   //! contains_complex, we evaluate the RPN expression using a stack, similar to
   //! how a RPN calculator would work.
-  //! @param xyz[3] The 3D Cartesian coordinate to check.
-  //! @param uvw[3] A direction used to "break ties" the coordinates are very
+  //! \param r The 3D Cartesian coordinate to check.
+  //! \param u A direction used to "break ties" the coordinates are very
   //!   close to a surface.
-  //! @param on_surface The signed index of a surface that the coordinate is
+  //! \param on_surface The signed index of a surface that the coordinate is
   //!   known to be on.  This index takes precedence over surface sense
   //!   calculations.
   bool
-  contains(const double xyz[3], const double uvw[3], int32_t on_surface) const;
+  contains(Position r, Direction u, int32_t on_surface) const;
 
   //! Find the oncoming boundary of this cell.
   std::pair<double, int32_t>
-  distance(const double xyz[3], const double uvw[3], int32_t on_surface) const;
+  distance(Position r, Direction u, int32_t on_surface) const;
 
   //! \brief Write cell information to an HDF5 group.
-  //! @param group_id An HDF5 group id.
+  //! \param group_id An HDF5 group id.
   void to_hdf5(hid_t group_id) const;
 
 protected:
-  bool contains_simple(const double xyz[3], const double uvw[3],
-                       int32_t on_surface) const;
-  bool contains_complex(const double xyz[3], const double uvw[3],
-                        int32_t on_surface) const;
+  bool contains_simple(Position r, Direction u, int32_t on_surface) const;
+  bool contains_complex(Position r, Direction u, int32_t on_surface) const;
 };
 
 } // namespace openmc
-#endif // CELL_H
+#endif // OPENMC_CELL_H

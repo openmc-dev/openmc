@@ -151,7 +151,7 @@ Surface::Surface(pugi::xml_node surf_node)
   }
 
   if (check_for_node(surf_node, "boundary")) {
-    std::string surf_bc = get_node_value(surf_node, "boundary");
+    std::string surf_bc = get_node_value(surf_node, "boundary", true, true);
 
     if (surf_bc == "transmission" || surf_bc == "transmit" ||surf_bc.empty()) {
       bc = BC_TRANSMIT;
@@ -1040,7 +1040,7 @@ read_surfaces(pugi::xml_node *node)
     int i_surf;
     for (surf_node = node->child("surface"), i_surf = 0; surf_node;
          surf_node = surf_node.next_sibling("surface"), i_surf++) {
-      std::string surf_type = get_node_value(surf_node, "type");
+      std::string surf_type = get_node_value(surf_node, "type", true, true);
 
       if (surf_type == "x-plane") {
         surfaces_c[i_surf] = new SurfaceXPlane(surf_node);

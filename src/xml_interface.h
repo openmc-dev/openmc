@@ -16,14 +16,14 @@ check_for_node(pugi::xml_node node, const char *name)
   return node.attribute(name) || node.child(name);
 }
 
-std::string get_node_value_str(pugi::xml_node node, const char *name);
-std::string get_node_value(pugi::xml_node node, const char *name);
+std::string get_node_value(pugi::xml_node node, const char *name,
+  bool lowercase=false, bool strip=false);
 
 template <typename T>
 std::vector<T> get_node_array(pugi::xml_node node, const char* name)
 {
   // Get value of node attribute/child
-  std::string s {get_node_value_str(node, name)};
+  std::string s {get_node_value(node, name)};
 
   // Read values one by one into vector
   std::stringstream iss {s};

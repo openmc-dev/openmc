@@ -11,7 +11,7 @@ module cmfd_execute
 
   implicit none
   private
-  public :: execute_cmfd, cmfd_init_batch
+  public :: execute_cmfd, cmfd_init_batch, cmfd_tally_init
 
 contains
 
@@ -359,6 +359,19 @@ contains
     end if
 
   end function get_matrix_idx
+
+!===============================================================================
+! CMFD_TALLY_INIT
+!===============================================================================
+
+  subroutine cmfd_tally_init()
+    integer :: i
+    if (cmfd_run) then
+      do i = 1, size(cmfd_tallies)
+        cmfd_tallies(i) % obj % active = .true.
+      end do
+    end if
+  end subroutine cmfd_tally_init
 
 !===============================================================================
 ! CMFD_TALLY_RESET resets all cmfd tallies

@@ -33,12 +33,10 @@ module geometry
       integer(C_INT)                        :: count
     end function count_universe_instances
 
-    function check_cell_overlap_c(p) bind(C, name="check_cell_overlap") &
-         result(is_overlapping)
-      import Particle, C_BOOL
+    subroutine check_cell_overlap(p) bind(C)
+      import Particle
       type(Particle), intent(in) :: p
-      logical(C_BOOL)            :: is_overlapping
-    end function check_cell_overlap_c
+    end subroutine check_cell_overlap
   end interface
 
 contains
@@ -50,58 +48,6 @@ contains
     in_cell = cell_contains_c(c%ptr, p%coord(p%n_coord)%xyz, &
                               p%coord(p%n_coord)%uvw, p%surface)
   end function cell_contains
-
-!===============================================================================
-! CHECK_CELL_OVERLAP checks for overlapping cells at the current particle's
-! position using cell_contains and the LocalCoord's built up by find_cell
-!===============================================================================
-
-  subroutine check_cell_overlap(p)
-
-    type(Particle), intent(inout) :: p
-
-    integer :: i                       ! cell loop index on a level
-    integer :: j                       ! coordinate level index
-    integer :: n_coord                 ! saved number of coordinate levels
-    integer :: n                       ! number of cells to search on a level
-    integer :: index_cell              ! index in cells array
-    type(Cell),       pointer :: c     ! pointer to cell
-    type(Universe),   pointer :: univ  ! universe to search in
-    logical :: overlap_c
-
-    overlap_c = check_cell_overlap_c(p)
-
-    ! loop through each coordinate level
-    n_coord = p % n_coord
-    do j = 1, n_coord
-      p % n_coord = j
-      univ => universes(p % coord(j) % universe)
-      n = size(univ % cells)
-
-      ! loop through each cell on this level
-      do i = 1, n
-        index_cell = univ % cells(i)
-        c => cells(index_cell)
-
-        if (cell_contains(c, p)) then
-          ! the particle should only be contained in one cell per level
-          if (index_cell /= p % coord(j) % cell) then
-            if (.not. overlap_c) call fatal_error("Cell overlap disagreement")
-            call fatal_error("Overlapping cells detected: " &
-                 &// trim(to_str(cells(index_cell) % id())) // ", " &
-                 &// trim(to_str(cells(p % coord(j) % cell) % id())) &
-                 &// " on universe " // trim(to_str(univ % id)))
-          end if
-
-          overlap_check_cnt(index_cell) = overlap_check_cnt(index_cell) + 1
-
-        end if
-
-      end do
-    end do
-    if (overlap_c) call fatal_error("Cell overlap disagreement")
-
-  end subroutine check_cell_overlap
 
 !===============================================================================
 ! FIND_CELL determines what cell a source particle is in within a particular

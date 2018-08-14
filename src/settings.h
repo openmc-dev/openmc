@@ -19,6 +19,7 @@ extern "C" bool openmc_check_overlaps;
 extern "C" bool openmc_particle_restart_run;
 extern "C" bool openmc_restart_run;
 extern "C" bool openmc_write_all_tracks;
+extern "C" int openmc_verbosity;
 
 // Defined in .cpp
 // TODO: Make strings instead of char* once Fortran is gone

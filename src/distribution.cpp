@@ -245,7 +245,7 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
     openmc::fatal_error("Distribution type must be specified.");
 
   // Determine type of distribution
-  std::string type = get_node_value(node, "type");
+  std::string type = get_node_value(node, "type", true, true);
 
   // Allocate extension of Distribution
   if (type == "uniform") {

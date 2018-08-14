@@ -49,7 +49,13 @@ def capi_init(pincell_model):
 
 
 @pytest.fixture(scope='module')
-def capi_run(capi_init):
+def capi_simulation_init(pincell_model):
+    openmc.capi.simulation_init()
+    yield
+
+
+@pytest.fixture(scope='module')
+def capi_run(capi_simulation_init):
     openmc.capi.run()
 
 
@@ -173,10 +179,6 @@ def test_tally(capi_init):
     t.scores = new_scores
     assert t.scores == new_scores
 
-    assert not t.active
-    t.active = True
-    assert t.active
-
     t2 = openmc.capi.tallies[2]
     t2.id = 2
     assert len(t2.filters) == 2
@@ -194,6 +196,13 @@ def test_new_tally(capi_init):
     new_tally_with_id = openmc.capi.Tally(10)
     new_tally_with_id.scores = ['flux']
     assert len(openmc.capi.tallies) == 4
+
+
+def test_tally_activate(capi_simulation_init):
+    t = openmc.capi.tallies[1]
+    assert not t.active
+    t.active = True
+    assert t.active
 
 
 def test_tally_results(capi_run):

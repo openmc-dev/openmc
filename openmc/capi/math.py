@@ -21,6 +21,9 @@ _dll.calc_rn_c.argtypes = [c_int, ndpointer(c_double), ndpointer(c_double)]
 _dll.calc_zn_c.restype = None
 _dll.calc_zn_c.argtypes = [c_int, c_double, c_double, ndpointer(c_double)]
 
+_dll.calc_zn_rad_c.restype = None
+_dll.calc_zn_rad_c.argtypes = [c_int, c_double, ndpointer(c_double)]
+
 _dll.rotate_angle_c.restype = None
 _dll.rotate_angle_c.argtypes = [ndpointer(c_double), c_double,
                                 POINTER(c_double)]
@@ -154,6 +157,32 @@ def calc_zn(n, rho, phi):
     _dll.calc_zn_c(n, rho, phi, zn)
     return zn
 
+
+def calc_zn_rad(n, rho):
+    """ Calculate the even orders in n-th order modified Zernike polynomial
+    moment with no azimuthal dependency (m=0) for a given radial location in
+    the unit disk. The normalization of the polynomials is such that the
+    integral of Z_pq*Z_pq over the unit disk is exactly pi.
+
+    Parameters
+    ----------
+    n : int
+        Maximum order
+    rho : float
+        Radial location in the unit disk
+
+    Returns
+    -------
+    numpy.ndarray
+        Corresponding resulting list of coefficients
+
+    """
+
+    num_bins = n // 2 + 1
+    zn_rad = np.zeros(num_bins, dtype=np.float64)
+    _dll.calc_zn_rad_c(n, rho, zn_rad)
+    return zn_rad
+    
 
 def rotate_angle(uvw0, mu, phi=None):
     """ Rotates direction cosines through a polar angle whose cosine is

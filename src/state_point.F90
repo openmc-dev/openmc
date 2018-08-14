@@ -754,6 +754,9 @@ contains
       end if
     end if
 
+    ! Read number of realizations for global tallies
+    call read_dataset(n_realizations, file_id, "n_realizations", indep=.true.)
+
     ! Check to make sure source bank is present
     if (path_source_point == path_state_point .and. .not. source_present) then
       call fatal_error("Source bank must be contained in statepoint restart &
@@ -767,10 +770,6 @@ contains
 #else
     if (master) then
 #endif
-
-      ! Read number of realizations for global tallies
-      call read_dataset(n_realizations, file_id, "n_realizations", indep=.true.)
-
       ! Read global tally data
       call read_dataset(global_tallies, file_id, "global_tallies")
 

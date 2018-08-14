@@ -91,6 +91,8 @@ contains
         type_ = 'zernike'
       type is (ParticleFilter)
         type_ = 'particle'
+      type is (ZernikeRadialFilter)
+        type_ = 'zernikeradial'
       end select
 
       ! Convert Fortran string to null-terminated C string. We assume the
@@ -164,6 +166,8 @@ contains
           allocate(UniverseFilter :: filters(index) % obj)
         case ('zernike')
           allocate(ZernikeFilter :: filters(index) % obj)
+        case ('zernikeradial')
+          allocate(ZernikeRadialFilter :: filters(index) % obj)
         case default
           err = E_UNASSIGNED
           call set_errmsg("Unknown filter type: " // trim(type_))

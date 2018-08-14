@@ -1,5 +1,5 @@
-#ifndef LATTICE_H
-#define LATTICE_H
+#ifndef OPENMC_LATTICE_H
+#define OPENMC_LATTICE_H
 
 #include <array>
 #include <cstdint>
@@ -7,9 +7,11 @@
 #include <unordered_map>
 #include <vector>
 
-#include "constants.h"
 #include "hdf5.h"
 #include "pugixml.hpp"
+
+#include "constants.h"
+#include "position.h"
 
 
 namespace openmc {
@@ -69,54 +71,54 @@ public:
   int32_t fill_offset_table(int32_t offset, int32_t target_univ_id, int map);
 
   //! \brief Check lattice indices.
-  //! @param i_xyz[3] The indices for a lattice tile.
-  //! @return true if the given indices fit within the lattice bounds.  False
+  //! \param i_xyz[3] The indices for a lattice tile.
+  //! \return true if the given indices fit within the lattice bounds.  False
   //!   otherwise.
   virtual bool are_valid_indices(const int i_xyz[3]) const = 0;
 
   //! \brief Find the next lattice surface crossing
-  //! @param xyz[3] A 3D Cartesian coordinate.
-  //! @param uvw[3] A 3D Cartesian direction.
-  //! @param i_xyz[3] The indices for a lattice tile.
-  //! @return The distance to the next crossing and an array indicating how the
+  //! \param r A 3D Cartesian coordinate.
+  //! \param u A 3D Cartesian direction.
+  //! \param i_xyz[3] The indices for a lattice tile.
+  //! \return The distance to the next crossing and an array indicating how the
   //!   lattice indices would change after crossing that boundary.
   virtual std::pair<double, std::array<int, 3>>
-  distance(const double xyz[3], const double uvw[3], const int i_xyz[3]) const
+  distance(Position r, Direction u, const int i_xyz[3]) const
   = 0;
 
   //! \brief Find the lattice tile indices for a given point.
-  //! @param xyz[3] A 3D Cartesian coordinate.
-  //! @return An array containing the indices of a lattice tile.
-  virtual std::array<int, 3> get_indices(const double xyz[3]) const = 0;
+  //! \param r A 3D Cartesian coordinate.
+  //! \return An array containing the indices of a lattice tile.
+  virtual std::array<int, 3> get_indices(Position r) const = 0;
 
   //! \brief Get coordinates local to a lattice tile.
-  //! @param global_xyz[3] A 3D Cartesian coordinate.
-  //! @param i_xyz[3] The indices for a lattice tile.
-  //! @return Local 3D Cartesian coordinates.
-  virtual std::array<double, 3>
-  get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const = 0;
+  //! \param r A 3D Cartesian coordinate.
+  //! \param i_xyz[3] The indices for a lattice tile.
+  //! \return Local 3D Cartesian coordinates.
+  virtual Position
+  get_local_position(Position r, const int i_xyz[3]) const = 0;
 
   //! \brief Check flattened lattice index.
-  //! @param indx The index for a lattice tile.
-  //! @return true if the given index fit within the lattice bounds.  False
+  //! \param indx The index for a lattice tile.
+  //! \return true if the given index fit within the lattice bounds.  False
   //!   otherwise.
   virtual bool is_valid_index(int indx) const
   {return (indx >= 0) && (indx < universes.size());}
 
   //! \brief Get the distribcell offset for a lattice tile.
-  //! @param The map index for the target cell.
-  //! @param i_xyz[3] The indices for a lattice tile.
-  //! @return Distribcell offset i.e. the largest instance number for the target
+  //! \param The map index for the target cell.
+  //! \param i_xyz[3] The indices for a lattice tile.
+  //! \return Distribcell offset i.e. the largest instance number for the target
   //!  cell found in the geometry tree under this lattice tile.
   virtual int32_t& offset(int map, const int i_xyz[3]) = 0;
 
   //! \brief Convert an array index to a useful human-readable string.
-  //! @param indx The index for a lattice tile.
-  //! @return A string representing the lattice tile.
+  //! \param indx The index for a lattice tile.
+  //! \return A string representing the lattice tile.
   virtual std::string index_to_string(int indx) const = 0;
 
   //! \brief Write lattice information to an HDF5 group.
-  //! @param group_id An HDF5 group id.
+  //! \param group_id An HDF5 group id.
   void to_hdf5(hid_t group_id) const;
 
 protected:
@@ -193,12 +195,12 @@ public:
   bool are_valid_indices(const int i_xyz[3]) const;
 
   std::pair<double, std::array<int, 3>>
-  distance(const double xyz[3], const double uvw[3], const int i_xyz[3]) const;
+  distance(Position r, Direction u, const int i_xyz[3]) const;
 
-  std::array<int, 3> get_indices(const double xyz[3]) const;
+  std::array<int, 3> get_indices(Position r) const;
 
-  std::array<double, 3>
-  get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const;
+  Position
+  get_local_position(Position r, const int i_xyz[3]) const;
 
   int32_t& offset(int map, const int i_xyz[3]);
 
@@ -207,9 +209,9 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
 
 private:
-  std::array<int, 3> n_cells;       //!< Number of cells along each axis
-  std::array<double, 3> lower_left; //!< Global lower-left corner of the lattice
-  std::array<double, 3> pitch;      //!< Lattice tile width along each axis
+  std::array<int, 3> n_cells;    //!< Number of cells along each axis
+  Position lower_left;           //!< Global lower-left corner of the lattice
+  Position pitch;                //!< Lattice tile width along each axis
 
   // Convenience aliases
   int &nx {n_cells[0]};
@@ -233,12 +235,12 @@ public:
   bool are_valid_indices(const int i_xyz[3]) const;
 
   std::pair<double, std::array<int, 3>>
-  distance(const double xyz[3], const double uvw[3], const int i_xyz[3]) const;
+  distance(Position r, Direction u, const int i_xyz[3]) const;
 
-  std::array<int, 3> get_indices(const double xyz[3]) const;
+  std::array<int, 3> get_indices(Position r) const;
 
-  std::array<double, 3>
-  get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const;
+  Position
+  get_local_position(Position r, const int i_xyz[3]) const;
 
   bool is_valid_index(int indx) const;
 
@@ -251,9 +253,9 @@ public:
 private:
   int n_rings;                   //!< Number of radial tile positions
   int n_axial;                   //!< Number of axial tile positions
-  std::array<double, 3> center;  //!< Global center of lattice
+  Position center;               //!< Global center of lattice
   std::array<double, 2> pitch;   //!< Lattice tile width and height
 };
 
 } //  namespace openmc
-#endif // LATTICE_H
+#endif // OPENMC_LATTICE_H

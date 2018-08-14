@@ -1,5 +1,5 @@
-#ifndef HDF5_INTERFACE_H
-#define HDF5_INTERFACE_H
+#ifndef OPENMC_HDF5_INTERFACE_H
+#define OPENMC_HDF5_INTERFACE_H
 
 #include "hdf5.h"
 #include "hdf5_hl.h"
@@ -10,6 +10,8 @@
 #include <sstream>
 #include <vector>
 #include <complex.h>
+
+#include "position.h"
 
 
 namespace openmc {
@@ -181,5 +183,12 @@ write_dataset(hid_t obj_id, const char* name, const std::array<T, N>& buffer)
   write_dataset(obj_id, 1, dims, name, H5TypeMap<T>::type_id, buffer.data(), false);
 }
 
+inline void
+write_dataset(hid_t obj_id, const char* name, Position r)
+{
+  std::array<double, 3> buffer {r.x, r.y, r.z};
+  write_dataset(obj_id, name, buffer);
+}
+
 } // namespace openmc
-#endif //HDF5_INTERFACE_H
+#endif // OPENMC_HDF5_INTERFACE_H

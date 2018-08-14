@@ -7,7 +7,7 @@ module simulation
 #endif
 
   use bank_header,     only: source_bank
-  use cmfd_execute,    only: cmfd_init_batch, execute_cmfd
+  use cmfd_execute,    only: cmfd_init_batch, cmfd_tally_init, execute_cmfd
   use cmfd_header,     only: cmfd_on
   use constants,       only: ZERO
   use eigenvalue,      only: count_source_for_ufs, calculate_average_keff, &
@@ -427,6 +427,9 @@ contains
 
     ! Allocate tally results arrays if they're not allocated yet
     call configure_tallies()
+
+    ! Activate the CMFD tallies
+    call cmfd_tally_init()
 
     ! Set up material nuclide index mapping
     do i = 1, n_materials

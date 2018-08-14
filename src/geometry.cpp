@@ -46,7 +46,4 @@ check_cell_overlap(Particle* p) {
   return false;
 }
 
-extern "C" int64_t get_overlap_check_count(int i)
-{return overlap_check_count[i];}
-
 } // namespace openmc

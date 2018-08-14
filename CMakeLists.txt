@@ -394,6 +394,7 @@ add_library(libopenmc SHARED
   src/message_passing.cpp
   src/mgxs.cpp
   src/mgxs_interface.cpp
+  src/output.cpp
   src/particle.cpp
   src/plot.cpp
   src/position.cpp

@@ -7,8 +7,10 @@
 
 #include "constants.h"
 #include "error.h"
+#include "geometry.h"
 #include "hdf5_interface.h"
 #include "lattice.h"
+#include "settings.h"
 #include "surface.h"
 #include "xml_interface.h"
 
@@ -460,6 +462,9 @@ read_cells(pugi::xml_node *node)
       global_universes[it->second]->cells.push_back(i);
     }
   }
+
+  // Allocate the cell overlap count if necessary.
+  if (openmc_check_overlaps) overlap_check_count.resize(n_cells, 0);
 }
 
 //==============================================================================

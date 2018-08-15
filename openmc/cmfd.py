@@ -574,36 +574,6 @@ class CMFDRun(object):
     through a cmfd.xml file. Instead, all input parameters should be passed through
     the CMFDRun initializer.
 
-    Self notes:
-    Have it so that only required parameters part of __init__, all other parameters
-        need to be set through setter functions
-    Make sure all input variables are used / have coveragage somewhere in code
-
-
-    Input parameters: Fill out, specifying which ones are required for CMFDRun
-        Required: cmfd_mesh, cmfd_mesh.dimension, cmfd_mesh.lower_left
-
-    Ignore:
-        1) MG mode - read_cmfd_xml
-        2) configure_cmfd
-            call time_cmfd % reset()
-            call time_cmfdbuild % reset()
-            call time_cmfdsolve % reset()
-        3) cmfd_adjoint_type input parameter, either set to 'physical' or 'math' - see cmfd_solver.F90
-
-    Notes:
-        -cmfd_run needs to be false if run from this class, ow call using cmfd.xml and set cmfd_run to true in settings.xml
-        -things run out of order, does not change results but will fix this in future PR when more funcs avail through Capillarity
-        -combine CMFD and CMFDRun class?
-        -Did not replicate: m % type = MESH_REGULAR (all meshes are regular for now)
-        -Did not replicate: m % n_dimension = n (Keep track through CMFD mesh dimension)
-        -Did not replicate: m % volume_frac = ONE/real(product(m % dimension),8) (can calculate if needed)
-        -Did not replicate: Set reset property (Never used in simulation)
-        -Import methods from CMFD into CMFDRun for error checking - will remove CMFD class altogether, left for now if xml files needed
-
-
-
-
 
     Attributes
     ----------

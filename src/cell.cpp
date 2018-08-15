@@ -429,7 +429,7 @@ Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
 //==============================================================================
 
 extern "C" void
-read_cells(pugi::xml_node *node)
+read_cells(pugi::xml_node* node)
 {
   // Count the number of cells.
   for (pugi::xml_node cell_node: node->children("cell")) {n_cells++;}
@@ -467,35 +467,35 @@ read_cells(pugi::xml_node *node)
 extern "C" {
   Cell* cell_pointer(int32_t cell_ind) {return global_cells[cell_ind];}
 
-  int32_t cell_id(Cell *c) {return c->id;}
+  int32_t cell_id(Cell* c) {return c->id;}
 
-  void cell_set_id(Cell *c, int32_t id) {c->id = id;}
+  void cell_set_id(Cell* c, int32_t id) {c->id = id;}
 
-  int cell_type(Cell *c) {return c->type;}
+  int cell_type(Cell* c) {return c->type;}
 
-  void cell_set_type(Cell *c, int type) {c->type = type;}
+  void cell_set_type(Cell* c, int type) {c->type = type;}
 
-  int32_t cell_universe(Cell *c) {return c->universe;}
+  int32_t cell_universe(Cell* c) {return c->universe;}
 
-  void cell_set_universe(Cell *c, int32_t universe) {c->universe = universe;}
+  void cell_set_universe(Cell* c, int32_t universe) {c->universe = universe;}
 
-  int32_t cell_fill(Cell *c) {return c->fill;}
+  int32_t cell_fill(Cell* c) {return c->fill;}
 
-  int32_t* cell_fill_ptr(Cell *c) {return &c->fill;}
+  int32_t* cell_fill_ptr(Cell* c) {return &c->fill;}
 
-  int32_t cell_n_instances(Cell *c) {return c->n_instances;}
+  int32_t cell_n_instances(Cell* c) {return c->n_instances;}
 
-  bool cell_simple(Cell *c) {return c->simple;}
+  bool cell_simple(Cell* c) {return c->simple;}
 
-  bool cell_contains(Cell *c, double xyz[3], double uvw[3], int32_t on_surface)
+  bool cell_contains(Cell* c, double xyz[3], double uvw[3], int32_t on_surface)
   {
     Position r {xyz};
     Direction u {uvw};
     return c->contains(r, u, on_surface);
   }
 
-  void cell_distance(Cell *c, double xyz[3], double uvw[3], int32_t on_surface,
-                     double *min_dist, int32_t *i_surf)
+  void cell_distance(Cell* c, double xyz[3], double uvw[3], int32_t on_surface,
+                     double* min_dist, int32_t* i_surf)
   {
     Position r {xyz};
     Direction u {uvw};
@@ -504,9 +504,9 @@ extern "C" {
     *i_surf = out.second;
   }
 
-  int32_t cell_offset(Cell *c, int map) {return c->offset[map];}
+  int32_t cell_offset(Cell* c, int map) {return c->offset[map];}
 
-  void cell_to_hdf5(Cell *c, hid_t group) {c->to_hdf5(group);}
+  void cell_to_hdf5(Cell* c, hid_t group) {c->to_hdf5(group);}
 
   void extend_cells_c(int32_t n)
   {

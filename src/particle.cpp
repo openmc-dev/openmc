@@ -62,7 +62,7 @@ Particle::initialize()
   clear();
 
   // Set particle to neutron that's alive
-  type  = NEUTRON;
+  type  = static_cast<int>(ParticleType::neutron);
   alive = true;
 
   // clear attributes

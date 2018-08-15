@@ -1,83 +1,268 @@
 module reaction_header
 
+  use, intrinsic :: ISO_C_BINDING
+
   use constants,      only: MAX_WORD_LEN
   use hdf5_interface
-  use product_header, only: ReactionProduct
   use stl_vector,     only: VectorInt
   use string,         only: to_str, starts_with
 
   implicit none
+  private
 
 !===============================================================================
 ! REACTION contains the cross-section and secondary energy and angle
 ! distributions for a single reaction in a continuous-energy ACE-format table
 !===============================================================================
 
-  type TemperatureXS
-    integer :: threshold             ! Energy grid index of threshold
-    real(8), allocatable :: value(:) ! Cross section values
-  end type TemperatureXS
-
-  type Reaction
-    integer :: MT                      ! ENDF MT value
-    real(8) :: Q_value                 ! Reaction Q value
-    logical :: scatter_in_cm           ! scattering system in center-of-mass?
-    type(TemperatureXS), allocatable :: xs(:)
-    type(ReactionProduct), allocatable :: products(:)
+  type, public :: Reaction
+    type(C_PTR) :: ptr
+    integer(C_INT)  :: MT                      ! ENDF MT value
+    real(C_DOUBLE)  :: Q_value                 ! Reaction Q value
+    logical(C_BOOL) :: scatter_in_cm           ! scattering system in center-of-mass?
   contains
-    procedure :: from_hdf5 => reaction_from_hdf5
+    procedure :: from_hdf5
+    procedure :: mt_
+    procedure :: q_value_
+    procedure :: scatter_in_cm_
+    procedure :: product_decay_rate
+    procedure :: product_emission_mode
+    procedure :: product_particle
+    procedure :: product_sample
+    procedure :: product_yield
+    procedure :: products_size
+    procedure :: sample_elastic_mu
+    procedure :: xs
+    procedure :: xs_size
+    procedure :: xs_threshold
   end type Reaction
+
+  interface
+    function reaction_from_hdf5(group, temperatures, n) result(ptr) bind(C)
+      import C_PTR, HID_T, C_INT
+      integer(HID_T), value :: group
+      integer(C_INT), intent(in) :: temperatures
+      integer(C_INT), value :: n
+      type(C_PTR) :: ptr
+    end function
+
+    function reaction_mt(ptr) result(mt) bind(C)
+      import C_PTR, C_INT
+      type(C_PTR), value :: ptr
+      integer(C_INT) :: mt
+    end function
+
+    function reaction_q_value(ptr) result(q_value) bind(C)
+      import C_PTR, C_DOUBLE
+      type(C_PTR), value :: ptr
+      real(C_DOUBLE) :: q_value
+    end function
+
+    function reaction_scatter_in_cm(ptr) result(b) bind(C)
+      import C_PTR, C_BOOL
+      type(C_PTR), value :: ptr
+      logical(C_BOOL) :: b
+    end function
+
+    pure function reaction_product_decay_rate(ptr, product) result(rate) bind(C)
+      import C_PTR, C_INT, C_DOUBLE
+      type(C_PTR), value :: ptr
+      integer(C_INT), value :: product
+      real(C_DOUBLE) :: rate
+    end function
+
+    pure function reaction_product_emission_mode(ptr, product) result(m) bind(C)
+      import C_PTR, C_INT
+      type(C_PTR), value :: ptr
+      integer(C_INT), value :: product
+      integer(C_INT) :: m
+    end function
+
+    pure function reaction_product_particle(ptr, product) result(particle) bind(C)
+      import C_PTR, C_INT
+      type(C_PTR), value :: ptr
+      integer(C_INT), value :: product
+      integer(C_INT) :: particle
+    end function
+
+    subroutine reaction_product_sample(ptr, product, E_in, E_out, mu) bind(C)
+      import C_PTR, C_INT, C_DOUBLE
+      type(C_PTR), value :: ptr
+      integer(C_INT), value :: product
+      real(C_DOUBLE), value :: E_in
+      real(C_DOUBLE), intent(out) :: E_out
+      real(C_DOUBLE), intent(out) :: mu
+    end subroutine
+
+    pure function reaction_product_yield(ptr, product, E) result(val) bind(C)
+      import C_PTR, C_INT, C_DOUBLE
+      type(C_PTR), value :: ptr
+      integer(C_INT), value :: product
+      real(C_DOUBLE), value :: E
+      real(C_DOUBLE) :: val
+    end function
+
+    pure function reaction_products_size(ptr) result(sz) bind(C)
+      import C_PTR, C_INT
+      type(C_PTR), value :: ptr
+      integer(C_INT) :: sz
+    end function
+
+    function reaction_sample_elastic_mu(ptr, E) result(mu) bind(C)
+      import C_PTR, C_INT, C_DOUBLE
+      type(C_PTR), value :: ptr
+      real(C_DOUBLE), value :: E
+      real(C_DOUBLE) :: mu
+    end function
+
+    function reaction_xs(ptr, temperature, energy) result(xs) bind(C)
+      import C_PTR, C_INT, C_DOUBLE
+      type(C_PTR), value :: ptr
+      integer(C_INT), value :: temperature
+      integer(C_INT), value :: energy
+      real(C_DOUBLE) :: xs
+    end function
+
+    function reaction_xs_size(ptr, temperature) result(sz) bind(C)
+      import C_PTR, C_INT
+      type(C_PTR), value :: ptr
+      integer(C_INT), value :: temperature
+      integer(C_INT) :: sz
+    end function
+
+    function reaction_xs_threshold(ptr, temperature) result(threshold) bind(C)
+      import C_PTR, C_INT
+      type(C_PTR), value :: ptr
+      integer(C_INT), value :: temperature
+      integer(C_INT) :: threshold
+    end function
+  end interface
 
 contains
 
-  subroutine reaction_from_hdf5(this, group_id, temperatures)
+  subroutine from_hdf5(this, group_id, temperatures)
     class(Reaction), intent(inout) :: this
     integer(HID_T),  intent(in)    :: group_id
     type(VectorInt), intent(in)    :: temperatures
 
-    integer :: i
-    integer :: cm
-    integer :: n_product
-    integer(HID_T) :: pgroup
-    integer(HID_T) :: xs, temp_group
-    integer(HSIZE_T) :: dims(1)
-    integer(HSIZE_T) :: j
-    character(MAX_WORD_LEN) :: temp_str ! temperature dataset name, e.g. '294K'
-    character(MAX_WORD_LEN), allocatable :: grp_names(:)
+    integer(C_INT) :: dummy
+    integer(C_INT) :: n
 
-    call read_attribute(this % Q_value, group_id, 'Q_value')
-    call read_attribute(this % MT, group_id, 'mt')
-    call read_attribute(cm, group_id, 'center_of_mass')
-    this % scatter_in_cm = (cm == 1)
+    n = temperatures % size()
+    if (n > 0) then
+      this % ptr = reaction_from_hdf5(group_id, temperatures % data(1), n)
+    else
+      ! In this case, temperatures % data(1) doesn't exist, so we just pass a
+      ! dummy value
+      this % ptr = reaction_from_hdf5(group_id, dummy, n)
+    end if
+    this % MT = reaction_mt(this % ptr)
+    this % Q_value = reaction_q_value(this % ptr)
+    this % scatter_in_cm = reaction_scatter_in_cm(this % ptr)
+  end subroutine from_hdf5
 
-    ! Read cross section and threshold_idx data
-    allocate(this % xs(temperatures % size()))
-    do i = 1, temperatures % size()
-      temp_str = trim(to_str(temperatures % data(i))) // "K"
-      temp_group = open_group(group_id, temp_str)
-      xs = open_dataset(temp_group, 'xs')
-      call read_attribute(this % xs(i) % threshold, xs, 'threshold_idx')
-      call get_shape(xs, dims)
-      allocate(this % xs(i) % value(dims(1)))
-      call read_dataset(this % xs(i) % value, xs)
-      call close_dataset(xs)
-      call close_group(temp_group)
-    end do
+  function mt_(this) result(mt)
+    class(Reaction), intent(in) :: this
+    integer(C_INT) :: MT
 
-    ! Determine number of products
-    n_product = 0
-    call get_groups(group_id, grp_names)
-    do j = 1, size(grp_names)
-      if (starts_with(grp_names(j), "product_")) n_product = n_product + 1
-    end do
+    mt = reaction_mt(this % ptr)
+  end function
 
-    ! Read products
-    allocate(this % products(n_product))
-    do i = 1, n_product
-      pgroup = open_group(group_id, 'product_' // trim(to_str(i - 1)))
-      call this % products(i) % from_hdf5(pgroup)
-      call close_group(pgroup)
-    end do
-  end subroutine reaction_from_hdf5
+  function q_value_(this) result(q_value)
+    class(Reaction), intent(in) :: this
+    real(C_DOUBLE) :: q_value
+
+    q_value = reaction_q_value(this % ptr)
+  end function
+
+  function scatter_in_cm_(this) result(cm)
+    class (Reaction), intent(in) :: this
+    logical(C_BOOL) :: cm
+
+    cm = reaction_scatter_in_cm(this % ptr)
+  end function
+
+  pure function product_decay_rate(this, product) result(rate)
+    class(Reaction), intent(in) :: this
+    integer(C_INT), intent(in) :: product
+    real(C_DOUBLE) :: rate
+
+    rate = reaction_product_decay_rate(this % ptr, product)
+  end function
+
+  pure function product_emission_mode(this, product) result(m)
+    class(Reaction), intent(in) :: this
+    integer(C_INT), intent(in) :: product
+    integer(C_INT) :: m
+
+    m = reaction_product_emission_mode(this % ptr, product)
+  end function
+
+  pure function product_particle(this, product) result(p)
+    class(Reaction), intent(in) :: this
+    integer(C_INT), intent(in) :: product
+    integer(C_INT) :: p
+
+    p = reaction_product_particle(this % ptr, product)
+  end function
+
+  subroutine product_sample(this, product, E_in, E_out, mu)
+    class(Reaction), intent(in) :: this
+    integer(C_INT), intent(in) :: product
+    real(C_DOUBLE), intent(in) :: E_in
+    real(C_DOUBLE), intent(out) :: E_out
+    real(C_DOUBLE), intent(out) :: mu
+
+    call reaction_product_sample(this % ptr, product, E_in, E_out, mu)
+  end subroutine
+
+  pure function product_yield(this, product, E) result(val)
+    class(Reaction), intent(in) :: this
+    integer(C_INT), intent(in) :: product
+    real(C_DOUBLE), intent(in) :: E
+    real(C_DOUBLE) :: val
+
+    val = reaction_product_yield(this % ptr, product, E)
+  end function
+
+  pure function products_size(this) result(sz)
+    class(Reaction), intent(in) :: this
+    integer(C_INT) :: sz
+
+    sz = reaction_products_size(this % ptr)
+  end function
+
+  function sample_elastic_mu(this, E) result(mu)
+    class(Reaction), intent(in) :: this
+    real(C_DOUBLE), intent(in) :: E
+    real(C_DOUBLE) :: mu
+
+    mu = reaction_sample_elastic_mu(this % ptr, E)
+  end function
+
+  function xs(this, temperature, energy) result(val)
+    class(Reaction), intent(in) :: this
+    integer(C_INT), intent(in) :: temperature
+    integer(C_INT), intent(in) :: energy
+    real(C_DOUBLE) :: val
+
+    val = reaction_xs(this % ptr, temperature, energy)
+  end function
+
+  function xs_size(this, temperature) result(sz)
+    class(Reaction), intent(in) :: this
+    integer(C_INT) :: temperature
+    integer(C_INT) :: sz
+
+    sz = reaction_xs_size(this % ptr, temperature)
+  end function
+
+  function xs_threshold(this, temperature) result(val)
+    class(Reaction), intent(in) :: this
+    integer(C_INT), intent(in) :: temperature
+    integer(C_INT) :: val
+
+    val = reaction_xs_threshold(this % ptr, temperature)
+  end function
 
 end module reaction_header

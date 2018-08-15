@@ -650,6 +650,14 @@ void rotate_angle_c(double uvw[3], double mu, double* phi) {
 }
 
 
+Direction rotate_angle(Direction u, double mu, double* phi)
+{
+  double uvw[] {u.x, u.y, u.z};
+  rotate_angle_c(uvw, mu, phi);
+  return {uvw[0], uvw[1], uvw[2]};
+}
+
+
 double maxwell_spectrum_c(double T) {
   // Set the random numbers
   double r1 = prn();

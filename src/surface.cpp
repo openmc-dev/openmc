@@ -27,7 +27,7 @@ extern "C" const int BC_PERIODIC {3};
 
 int32_t n_surfaces;
 
-Surface **surfaces_c;
+Surface** surfaces_c;
 
 std::map<int, int> surface_map;
 
@@ -298,8 +298,8 @@ void SurfaceXPlane::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-bool SurfaceXPlane::periodic_translate(const PeriodicSurface *other, Position& r,
-                                       Direction& u) const
+bool SurfaceXPlane::periodic_translate(const PeriodicSurface* other,
+                                       Position& r,  Direction& u) const
 {
   Direction other_n = other->normal(r);
   if (other_n.x == 1 and other_n.y == 0 and other_n.z == 0) {
@@ -359,8 +359,8 @@ void SurfaceYPlane::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-bool SurfaceYPlane::periodic_translate(const PeriodicSurface *other, Position& r,
-                                       Direction& u) const
+bool SurfaceYPlane::periodic_translate(const PeriodicSurface *other,
+                                       Position& r, Direction& u) const
 {
   Direction other_n = other->normal(r);
   if (other_n.x == 0 and other_n.y == 1 and other_n.z == 0) {
@@ -421,8 +421,8 @@ void SurfaceZPlane::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-bool SurfaceZPlane::periodic_translate(const PeriodicSurface *other, Position& r,
-                                       Direction& u) const
+bool SurfaceZPlane::periodic_translate(const PeriodicSurface* other,
+                                       Position& r, Direction& u) const
 {
   // Assume the other plane is aligned along z.  Just change the z coord.
   r.z = z0;
@@ -478,7 +478,7 @@ void SurfacePlane::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-bool SurfacePlane::periodic_translate(const PeriodicSurface *other, Position& r,
+bool SurfacePlane::periodic_translate(const PeriodicSurface* other, Position& r,
                                       Direction& u) const
 {
   // This function assumes the other plane shares this plane's normal direction.
@@ -1023,7 +1023,7 @@ void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 //==============================================================================
 
 extern "C" void
-read_surfaces(pugi::xml_node *node)
+read_surfaces(pugi::xml_node* node)
 {
   // Count the number of surfaces.
   for (pugi::xml_node surf_node: node->children("surface")) {n_surfaces++;}
@@ -1106,8 +1106,8 @@ read_surfaces(pugi::xml_node *node)
   for (int i_surf = 0; i_surf < n_surfaces; i_surf++) {
     if (surfaces_c[i_surf]->bc == BC_PERIODIC) {
       // Downcast to the PeriodicSurface type.
-      Surface *surf_base = surfaces_c[i_surf];
-      PeriodicSurface *surf = dynamic_cast<PeriodicSurface *>(surf_base);
+      Surface* surf_base = surfaces_c[i_surf];
+      PeriodicSurface* surf = dynamic_cast<PeriodicSurface*>(surf_base);
 
       // Make sure this surface inherits from PeriodicSurface.
       if (!surf) {
@@ -1151,12 +1151,12 @@ read_surfaces(pugi::xml_node *node)
   for (int i_surf = 0; i_surf < n_surfaces; i_surf++) {
     if (surfaces_c[i_surf]->bc == BC_PERIODIC) {
       // Downcast to the PeriodicSurface type.
-      Surface *surf_base = surfaces_c[i_surf];
-      PeriodicSurface *surf = dynamic_cast<PeriodicSurface *>(surf_base);
+      Surface* surf_base = surfaces_c[i_surf];
+      PeriodicSurface* surf = dynamic_cast<PeriodicSurface*>(surf_base);
 
       // Also try downcasting to the SurfacePlane type (which must be handled
       // differently).
-      SurfacePlane *surf_p = dynamic_cast<SurfacePlane *>(surf);
+      SurfacePlane* surf_p = dynamic_cast<SurfacePlane*>(surf);
 
       if (!surf_p) {
         // This is not a SurfacePlane.
@@ -1215,11 +1215,11 @@ read_surfaces(pugi::xml_node *node)
 extern "C" {
   Surface* surface_pointer(int surf_ind) {return surfaces_c[surf_ind];}
 
-  int surface_id(Surface *surf) {return surf->id;}
+  int surface_id(Surface* surf) {return surf->id;}
 
-  int surface_bc(Surface *surf) {return surf->bc;}
+  int surface_bc(Surface* surf) {return surf->bc;}
 
-  void surface_reflect(Surface *surf, double xyz[3], double uvw[3])
+  void surface_reflect(Surface* surf, double xyz[3], double uvw[3])
   {
     Position r {xyz};
     Direction u {uvw};
@@ -1230,7 +1230,7 @@ extern "C" {
     uvw[2] = u.z;
   }
 
-  void surface_normal(Surface *surf, double xyz[3], double uvw[3])
+  void surface_normal(Surface* surf, double xyz[3], double uvw[3])
   {
     Position r {xyz};
     Direction u = surf->normal(r);
@@ -1239,12 +1239,12 @@ extern "C" {
     uvw[2] = u.z;
   }
 
-  void surface_to_hdf5(Surface *surf, hid_t group) {surf->to_hdf5(group);}
+  void surface_to_hdf5(Surface* surf, hid_t group) {surf->to_hdf5(group);}
 
-  int surface_i_periodic(PeriodicSurface *surf) {return surf->i_periodic;}
+  int surface_i_periodic(PeriodicSurface* surf) {return surf->i_periodic;}
 
   bool
-  surface_periodic(PeriodicSurface *surf, PeriodicSurface *other, double xyz[3],
+  surface_periodic(PeriodicSurface* surf, PeriodicSurface* other, double xyz[3],
                    double uvw[3])
   {
     Position r {xyz};

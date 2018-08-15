@@ -72,6 +72,32 @@ void read_settings(pugi::xml_node* root)
       }
     }
   }
+
+  // Get temperature settings
+  if (check_for_node(*root, "temperature_default")) {
+    temperature_default = std::stod(get_node_value(*root, "temperature_default"));
+  }
+  if (check_for_node(*root, "temperature_method")) {
+    auto temp_str = get_node_value(*root, "temperature_method", true, true);
+    if (temp_str == "nearest") {
+      temperature_method = TEMPERATURE_NEAREST;
+    } else if (temp_str == "interpolation") {
+      temperature_method = TEMPERATURE_INTERPOLATION;
+    } else {
+      fatal_error("Unknown temperature method: " + temp_str);
+    }
+  }
+  if (check_for_node(*root, "temperature_tolerance")) {
+    temperature_tolerance = std::stod(get_node_value(*root, "temperature_tolerance"));
+  }
+  if (check_for_node(*root, "temperature_multipole")) {
+    temperature_multipole = get_node_value_bool(*root, "temperature_multipole");
+  }
+  if (check_for_node(*root, "temperature_range")) {
+    auto range = get_node_array<double>(*root, "temperature_range");
+    temperature_range[0] = range[0];
+    temperature_range[1] = range[1];
+  }
 }
 
 } // namespace openmc

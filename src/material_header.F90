@@ -27,13 +27,39 @@ module material_header
   public :: openmc_material_set_density
   public :: openmc_material_set_densities
   public :: openmc_material_set_id
+  public :: material_pointer
+
+  interface
+    function material_pointer(mat_ind) bind(C) result(ptr)
+      import C_PTR, C_INT32_T
+      integer(C_INT32_T), intent(in), value :: mat_ind
+      type(C_PTR)                           :: ptr
+    end function material_pointer
+
+    function material_id_c(mat_ptr) bind(C, name='material_id') result(id)
+      import C_PTR, C_INT32_T
+      type(C_PTR), intent(in), value :: mat_ptr
+      integer(C_INT32_T)             :: id
+    end function material_id_c
+
+    subroutine material_set_id_c(mat_ptr, id) bind(C, name='material_set_id')
+      import C_PTR, C_INT32_T
+      type(C_PTR),        intent(in), value :: mat_ptr
+      integer(C_INT32_T), intent(in), value :: id
+    end subroutine material_set_id_c
+
+    subroutine extend_materials_c(n) bind(C)
+      import C_INT32_t
+      integer(C_INT32_T), intent(in), value :: n
+    end subroutine extend_materials_c
+  end interface
 
 !===============================================================================
 ! MATERIAL describes a material by its constituent nuclides
 !===============================================================================
 
   type, public :: Material
-    integer              :: id              ! unique identifier
+    type(C_PTR) :: ptr
     character(len=104)   :: name = ""       ! User-defined name
     integer              :: n_nuclides = 0  ! number of nuclides
     integer, allocatable :: nuclide(:)      ! index in nuclides array
@@ -67,6 +93,8 @@ module material_header
     logical, allocatable :: p0(:)
 
   contains
+    procedure :: id => material_id
+    procedure :: set_id => material_set_id
     procedure :: set_density => material_set_density
     procedure :: init_nuclide_index => material_init_nuclide_index
     procedure :: assign_sab_tables => material_assign_sab_tables
@@ -87,6 +115,18 @@ contains
 !===============================================================================
 ! MATERIAL_SET_DENSITY sets the total density of a material in atom/b-cm.
 !===============================================================================
+
+  function material_id(this) result(id)
+    class(Material), intent(in) :: this
+    integer(C_INT32_T)          :: id
+    id = material_id_c(this % ptr)
+  end function material_id
+
+  subroutine material_set_id(this, id)
+    class(Material),    intent(in) :: this
+    integer(C_INT32_T), intent(in) :: id
+    call material_set_id_c(this % ptr, id)
+  end subroutine material_set_id
 
   function material_set_density(this, density) result(err)
     class(Material), intent(inout) :: this
@@ -185,7 +225,7 @@ contains
       if (.not. found) then
         call fatal_error("S(a,b) table " // trim(this % &
              sab_names(k)) // " did not match any nuclide on material " &
-             // trim(to_str(this % id)))
+             // trim(to_str(this % id())))
       end if
     end do ASSIGN_SAB
 
@@ -195,7 +235,7 @@ contains
         if (i_sab_nuclides % data(j) == i_sab_nuclides % data(k)) then
           call fatal_error(trim( &
                nuclides(this % nuclide(i_sab_nuclides % data(j))) % name) &
-               // " in material " // trim(to_str(this % id)) // " was found &
+               // " in material " // trim(to_str(this % id())) // " was found &
                &in multiple S(a,b) tables. Each nuclide can only appear in &
                &one S(a,b) table per material.")
         end if
@@ -460,6 +500,7 @@ contains
     integer(C_INT32_T), optional, intent(out) :: index_end
     integer(C_INT) :: err
 
+    integer :: i
     type(Material), allocatable :: temp(:) ! temporary materials array
 
     if (n_materials == 0) then
@@ -480,6 +521,12 @@ contains
     if (present(index_start)) index_start = n_materials + 1
     if (present(index_end)) index_end = n_materials + n
     n_materials = n_materials + n
+
+    ! Extend the C++ materials array and get pointers to the C++ objects
+    call extend_materials_c(n)
+    do i = n_materials - n, n_materials
+      materials(i) % ptr = material_pointer(i - 1)
+    end do
 
     err = 0
   end function openmc_extend_materials
@@ -606,7 +653,7 @@ contains
     integer(C_INT) :: err
 
     if (index >= 1 .and. index <= size(materials)) then
-      id = materials(index) % id
+      id = materials(index) % id()
       err = 0
     else
       err = E_OUT_OF_BOUNDS
@@ -622,7 +669,7 @@ contains
     integer(C_INT) :: err
 
     if (index >= 1 .and. index <= n_materials) then
-      materials(index) % id = id
+      call materials(index) % set_id(id)
       call material_dict % set(id, index)
       err = 0
     else

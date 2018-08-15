@@ -16,11 +16,11 @@ module geometry_header
   implicit none
 
   interface
-    function cell_pointer_c(cell_ind) bind(C, name='cell_pointer') result(ptr)
+    function cell_pointer(cell_ind) bind(C) result(ptr)
       import C_PTR, C_INT32_T
       integer(C_INT32_T), intent(in), value :: cell_ind
       type(C_PTR)                           :: ptr
-    end function cell_pointer_c
+    end function cell_pointer
 
     function cell_id_c(cell_ptr) bind(C, name='cell_id') result(id)
       import C_PTR, C_INT32_T
@@ -110,12 +110,11 @@ module geometry_header
       integer(HID_T), intent(in), value :: group
     end subroutine cell_to_hdf5_c
 
-    function lattice_pointer_c(lat_ind) bind(C, name='lattice_pointer') &
-         result(ptr)
+    function lattice_pointer(lat_ind) bind(C) result(ptr)
       import C_PTR, C_INT32_T
       integer(C_INT32_T), intent(in), value :: lat_ind
       type(C_PTR)                           :: ptr
-    end function lattice_pointer_c
+    end function lattice_pointer
 
     function lattice_id_c(lat_ptr) bind(C, name='lattice_id') result(id)
       import C_PTR, C_INT32_T
@@ -571,7 +570,7 @@ contains
     ! Extend the C++ cells array and get pointers to the C++ objects
     call extend_cells_c(n)
     do i = n_cells - n, n_cells
-      cells(i) % ptr = cell_pointer_c(i - 1)
+      cells(i) % ptr = cell_pointer(i - 1)
     end do
 
     err = 0

@@ -824,7 +824,21 @@ class CMFDRun(object):
         openmc.capi.init()
         self._configure_cmfd()
         openmc.capi.simulation_init()
-        openmc.capi.run()
+
+        while(True):
+            openmc.capi.next_batch_before_cmfd_init()
+            self._cmfd_init()
+            # Status determines whether batch should continue with a
+            # CMFD update or skip it entirely if it is a restart run
+            status = openmc.capi.next_batch_between_cmfd_init_execute()
+            if status != 0:
+                self._cmfd_execute()
+                # Status now determines whether another batch should be run
+                # or simulation should be terminated.
+                status = openmc.capi.next_batch_after_cmfd_execute()
+            if status != 0:
+                break
+
         openmc.capi.simulation_finalize()
         openmc.capi.finalize()
 
@@ -879,6 +893,12 @@ class CMFDRun(object):
 
         # Create tally objects
         self._create_cmfd_tally()
+
+    def _cmfd_init(self):
+        pass
+
+    def _cmfd_execute(self):
+        pass
 
     def _create_cmfd_tally(self):
         # Create Mesh object based on CMFDMesh, stored internally

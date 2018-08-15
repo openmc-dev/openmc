@@ -39,6 +39,15 @@ _dll.openmc_get_keff.errcheck = _error_handler
 _dll.openmc_next_batch.argtypes = [POINTER(c_int)]
 _dll.openmc_next_batch.restype = c_int
 _dll.openmc_next_batch.errcheck = _error_handler
+_dll.openmc_next_batch_before_cmfd_init.argtypes = []
+_dll.openmc_next_batch_before_cmfd_init.restype = c_int
+_dll.openmc_next_batch_before_cmfd_init.errcheck = _error_handler
+_dll.openmc_next_batch_between_cmfd_init_execute.argtypes = [POINTER(c_int)]
+_dll.openmc_next_batch_between_cmfd_init_execute.restype = c_int
+_dll.openmc_next_batch_between_cmfd_init_execute.errcheck = _error_handler
+_dll.openmc_next_batch_after_cmfd_execute.argtypes = [POINTER(c_int)]
+_dll.openmc_next_batch_after_cmfd_execute.restype = c_int
+_dll.openmc_next_batch_after_cmfd_execute.errcheck = _error_handler
 _dll.openmc_plot_geometry.restype = c_int
 _dll.openmc_plot_geometry.restype = _error_handler
 _dll.openmc_run.restype = c_int
@@ -222,6 +231,42 @@ def next_batch():
     """
     status = c_int()
     _dll.openmc_next_batch(status)
+    return status.value
+
+
+def next_batch_before_cmfd_init():
+    """Run everything in batch that occurs before CMFD initialized."""
+    _dll.openmc_next_batch_before_cmfd_init()
+
+
+def next_batch_between_cmfd_init_execute():
+    """Run everything in batch that occurs between CMFD
+    initialization and execution.
+
+    Returns
+    -------
+    int
+        Status after running block (0=batch is part of restart batch so don't
+        run CMFD, 3=normal execution, continue with CMFD solver)
+
+    """
+    status = c_int()
+    _dll.openmc_next_batch_between_cmfd_init_execute(status)
+    return status.value
+
+
+def next_batch_after_cmfd_execute():
+    """Run next batch.
+
+    Returns
+    -------
+    int
+        Status after running a batch (0=normal, 1=reached maximum number of
+        batches, 2=tally triggers reached)
+
+    """
+    status = c_int()
+    _dll.openmc_next_batch_after_cmfd_execute(status)
     return status.value
 
 

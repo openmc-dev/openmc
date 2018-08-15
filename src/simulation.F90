@@ -47,10 +47,14 @@ module simulation
   public :: openmc_next_batch
   public :: openmc_simulation_init
   public :: openmc_simulation_finalize
+  public :: openmc_next_batch_before_cmfd_init
+  public :: openmc_next_batch_between_cmfd_init_execute
+  public :: openmc_next_batch_after_cmfd_execute
 
   integer(C_INT), parameter :: STATUS_EXIT_NORMAL = 0
   integer(C_INT), parameter :: STATUS_EXIT_MAX_BATCH = 1
   integer(C_INT), parameter :: STATUS_EXIT_ON_TRIGGER = 2
+  integer(C_INT), parameter :: STATUS_CONTINUE_BATCH = 3
 
 contains
 
@@ -130,6 +134,147 @@ contains
   end function openmc_next_batch
 
 !===============================================================================
+! OPENMC_NEXT_BATCH_BEFORE_CMFD_INIT
+!===============================================================================
+
+  function openmc_next_batch_before_cmfd_init() result(err) bind(C)
+    integer(C_INT) :: err
+
+    err = 0
+
+    ! Make sure simulation has been initialized
+    if (.not. simulation_initialized) then
+      err = E_ALLOCATE
+      call set_errmsg("Simulation has not been initialized yet.")
+      return
+    end if
+
+    call initialize_batch()
+
+  end function openmc_next_batch_before_cmfd_init
+
+!===============================================================================
+! OPENMC_NEXT_BATCH_BETWEEN_CMFD_INIT_EXECUTE
+!===============================================================================
+
+  function openmc_next_batch_between_cmfd_init_execute(status) result(err) bind(C)
+    integer(C_INT), intent(out), optional :: status
+    integer(C_INT) :: err
+
+    type(Particle) :: p
+    integer(8)     :: i_work
+
+    err = 0
+
+    ! Handle restart runs
+    if (restart_run .and. current_batch <= restart_batch) then
+      call replay_batch_history()
+      status = STATUS_EXIT_NORMAL
+      return
+    end if
+
+    ! =======================================================================
+    ! LOOP OVER GENERATIONS
+    GENERATION_LOOP: do current_gen = 1, gen_per_batch
+
+      call initialize_generation()
+
+      ! Start timer for transport
+      call time_transport % start()
+
+      ! ====================================================================
+      ! LOOP OVER PARTICLES
+!$omp parallel do schedule(runtime) firstprivate(p) copyin(tally_derivs)
+      PARTICLE_LOOP: do i_work = 1, work
+        current_work = i_work
+
+        ! grab source particle from bank
+        call initialize_history(p, current_work)
+
+        ! transport particle
+        call transport(p)
+
+      end do PARTICLE_LOOP
+!$omp end parallel do
+
+      ! Accumulate time for transport
+      call time_transport % stop()
+
+      call finalize_generation()
+
+    end do GENERATION_LOOP
+
+    ! Reduce tallies onto master process and accumulate
+    call time_tallies % start()
+    call accumulate_tallies()
+    call time_tallies % stop()
+
+    ! Reset global tally results
+    if (current_batch <= n_inactive) then
+      global_tallies(:,:) = ZERO
+      n_realizations = 0
+    end if
+
+  if (present(status)) then
+    status = STATUS_CONTINUE_BATCH
+  end if
+
+  end function openmc_next_batch_between_cmfd_init_execute
+
+!===============================================================================
+! OPENMC_NEXT_BATCH_AFTER_CMFD_EXECUTE
+!===============================================================================
+
+  function openmc_next_batch_after_cmfd_execute(status) result(err) bind(C)
+    integer(C_INT), intent(out), optional :: status
+    integer(C_INT) :: err
+#ifdef OPENMC_MPI
+    integer :: mpi_err ! MPI error code
+#endif
+
+    err = 0
+
+    if (run_mode == MODE_EIGENVALUE) then
+      ! Write batch output
+      if (master .and. verbosity >= 7) call print_batch_keff()
+    end if
+
+    ! Check_triggers
+    if (master) call check_triggers()
+#ifdef OPENMC_MPI
+    call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, &
+         mpi_intracomm, mpi_err)
+#endif
+    if (satisfy_triggers .or. &
+         (trigger_on .and. current_batch == n_max_batches)) then
+      call statepoint_batch % add(current_batch)
+    end if
+
+    ! Write out state point if it's been specified for this batch
+    if (statepoint_batch % contains(current_batch)) then
+      err = openmc_statepoint_write()
+    end if
+
+    ! Write out source point if it's been specified for this batch
+    if ((sourcepoint_batch % contains(current_batch) .or. source_latest) .and. &
+         source_write) then
+      call write_source_point()
+    end if
+
+    ! Check simulation ending criteria
+    if (present(status)) then
+      if (current_batch == n_max_batches) then
+        status = STATUS_EXIT_MAX_BATCH
+      elseif (satisfy_triggers) then
+        status = STATUS_EXIT_ON_TRIGGER
+      else
+        status = STATUS_EXIT_NORMAL
+      end if
+    end if
+
+  end function openmc_next_batch_after_cmfd_execute
+
+!===============================================================================
 ! INITIALIZE_HISTORY
 !===============================================================================
 
@@ -204,11 +349,6 @@ contains
       do i = 1, n_tallies
         tallies(i) % obj % active = .true.
       end do
-    end if
-
-    ! check CMFD initialize batch
-    if (run_mode == MODE_EIGENVALUE) then
-      if (cmfd_run) call cmfd_init_batch()
     end if
 
     ! Add user tallies to active tallies list

@@ -198,7 +198,7 @@ contains
       case (FILL_MATERIAL)
         call write_dataset(cell_group, "fill_type", "material")
 
-        if (size(c % material) == 1) then
+        if (c % material_size() == 1) then
           if (c % material(1) == MATERIAL_VOID) then
             call write_dataset(cell_group, "material", MATERIAL_VOID)
           else
@@ -206,8 +206,8 @@ contains
                  materials(c % material(1)) % id())
           end if
         else
-          allocate(cell_materials(size(c % material)))
-          do j = 1, size(c % material)
+          allocate(cell_materials(c % material_size()))
+          do j = 1, c % material_size()
             if (c % material(j) == MATERIAL_VOID) then
               cell_materials(j) = MATERIAL_VOID
             else

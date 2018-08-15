@@ -151,7 +151,7 @@ contains
     allocate(kTs(size(materials)))
 
     do i = 1, size(cells)
-      do j = 1, size(cells(i) % material)
+      do j = 1, cells(i) % material_size()
 
         ! Skip any non-material cells and void materials
         if (cells(i) % material(j) == NONE .or. &

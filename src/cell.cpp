@@ -8,6 +8,8 @@
 #include "error.h"
 #include "hdf5_interface.h"
 #include "lattice.h"
+#include "material.h"
+#include "openmc.h"
 #include "surface.h"
 #include "xml_interface.h"
 
@@ -219,10 +221,25 @@ Cell::Cell(pugi::xml_node cell_node)
     fill = C_NONE;
   }
 
+  // Read the material element.  There can be zero materials (filled with a
+  // universe), more than one material (distribmats), and some materials may
+  // be "void".
   if (check_for_node(cell_node, "material")) {
-    //TODO: read material ids.
-    material.push_back(C_NONE+1);
-    material.shrink_to_fit();
+    std::vector<std::string> mats
+         {get_node_array<std::string>(cell_node, "material")};
+    if (mats.size() > 0) {
+      material.reserve(mats.size());
+      for (std::string mat : mats) {
+        if (mat.compare("void") == 0) {
+          material.push_back(MATERIAL_VOID);
+        } else {
+          material.push_back(std::stoi(mat));
+        }
+      }
+    } else {
+      material.push_back(C_NONE);
+      material.shrink_to_fit();
+    }
   } else {
     material.push_back(C_NONE);
     material.shrink_to_fit();
@@ -461,6 +478,65 @@ read_cells(pugi::xml_node* node)
 }
 
 //==============================================================================
+// C-API functions
+//==============================================================================
+
+extern "C" int
+openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n)
+{
+  if (index >= 1 && index <= global_cells.size()) {
+    //TODO: off-by-one
+    Cell& c {*global_cells[index - 1]};
+    *type = c.type;
+    if (c.type == FILL_MATERIAL) {
+      *indices = c.material.data();
+      *n = c.material.size();
+    } else {
+      *indices = &c.fill;
+      *n = 1;
+    }
+  } else {
+    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  return 0;
+}
+
+extern "C" int
+openmc_cell_set_fill(int32_t index, int type, int32_t n,
+                     const int32_t* indices)
+{
+  if (index >= 1 && index <= global_cells.size()) {
+    //TODO: off-by-one
+    Cell& c {*global_cells[index - 1]};
+    if (type == FILL_MATERIAL) {
+      c.type = FILL_MATERIAL;
+      c.material.clear();
+      for (int i = 0; i < n; i++) {
+        int i_mat = indices[i];
+        if (i_mat == MATERIAL_VOID) {
+          c.material.push_back(MATERIAL_VOID);
+        } else if (i_mat >= 1 && i_mat <= global_materials.size()) {
+          //TODO: off-by-one
+          c.material.push_back(i_mat - 1);
+        } else {
+          strcpy(openmc_err_msg, "Index in materials array is out of bounds.");
+          return OPENMC_E_OUT_OF_BOUNDS;
+        }
+      }
+    } else if (type == FILL_UNIVERSE) {
+      c.type = FILL_UNIVERSE;
+    } else {
+      c.type = FILL_LATTICE;
+    }
+  } else {
+    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  return 0;
+}
+
+//==============================================================================
 // Fortran compatibility functions
 //==============================================================================
 
@@ -473,17 +549,22 @@ extern "C" {
 
   int cell_type(Cell* c) {return c->type;}
 
-  void cell_set_type(Cell* c, int type) {c->type = type;}
-
   int32_t cell_universe(Cell* c) {return c->universe;}
-
-  void cell_set_universe(Cell* c, int32_t universe) {c->universe = universe;}
 
   int32_t cell_fill(Cell* c) {return c->fill;}
 
-  int32_t* cell_fill_ptr(Cell* c) {return &c->fill;}
-
   int32_t cell_n_instances(Cell* c) {return c->n_instances;}
+
+  int cell_material_size(Cell* c) {return c->material.size();}
+
+  //TODO: off-by-one
+  int32_t cell_material(Cell* c, int i)
+  {
+    int32_t mat = c->material[i-1];
+    if (mat == C_NONE) return F90_NONE;
+    if (mat == MATERIAL_VOID) return MATERIAL_VOID;
+    return mat + 1;
+  }
 
   bool cell_simple(Cell* c) {return c->simple;}
 

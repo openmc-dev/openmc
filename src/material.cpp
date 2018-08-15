@@ -1,5 +1,8 @@
 #include "material.h"
 
+#include <string>
+#include <sstream>
+
 #include "error.h"
 #include "xml_interface.h"
 
@@ -14,6 +17,7 @@ namespace openmc {
 //==============================================================================
 
 std::vector<Material*> global_materials;
+std::unordered_map<int32_t, int32_t> material_map;
 
 //==============================================================================
 // Material implementation
@@ -26,8 +30,6 @@ Material::Material(pugi::xml_node material_node)
   } else {
     fatal_error("Must specify id of material in materials XML file.");
   }
-
-  std::cout << "Reading material with id " << id << std::endl;
 }
 
 //==============================================================================
@@ -40,6 +42,19 @@ read_materials(pugi::xml_node* node)
   // Loop over XML material elements and populate the array.
   for (pugi::xml_node material_node: node->children("material")) {
     global_materials.push_back(new Material(material_node));
+  }
+
+  // Populate the material map.
+  for (int i = 0; i < global_materials.size(); i++) {
+    int32_t mid = global_materials[i]->id;
+    auto search = material_map.find(mid);
+    if (search == material_map.end()) {
+      material_map[mid] = i;
+    } else {
+      std::stringstream err_msg;
+      err_msg << "Two or more materials use the same unique ID: " << mid;
+      fatal_error(err_msg);
+    }
   }
 }
 
@@ -60,6 +75,13 @@ extern "C" {
     for (int32_t i = 0; i < n; i++) {
       global_materials.push_back(new Material());
     }
+  }
+
+  void free_memory_material_c()
+  {
+    for (Material *mat : global_materials) {delete mat;}
+    global_materials.clear();
+    material_map.clear();
   }
 }
 

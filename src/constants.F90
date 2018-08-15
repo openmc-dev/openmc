@@ -129,7 +129,7 @@ module constants
   integer(C_INT), bind(C, name='FILL_LATTICE')  :: FILL_LATTICE_C  = FILL_LATTICE
 
   ! Void material
-  integer, parameter :: MATERIAL_VOID = -1
+  integer, parameter :: MATERIAL_VOID = -2
 
   ! Flag to say that the outside of a lattice is not defined
   integer, parameter :: NO_OUTER_UNIVERSE = -1

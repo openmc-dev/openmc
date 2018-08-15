@@ -8,6 +8,7 @@
 #include "constants.h"
 #include "error.h"
 #include "lattice.h"
+#include "material.h"
 
 
 namespace openmc {
@@ -15,7 +16,7 @@ namespace openmc {
 //==============================================================================
 
 void
-adjust_indices_c()
+adjust_indices()
 {
   // Adjust material/fill idices.
   for (Cell *c : global_cells) {
@@ -36,8 +37,21 @@ adjust_indices_c()
         fatal_error(err_msg);
       }
     } else {
-      //TODO: materials
       c->type = FILL_MATERIAL;
+      for (auto it = c->material.begin(); it != c->material.end(); it++) {
+        int32_t mid = *it;
+        if (mid != MATERIAL_VOID) {
+          auto search = material_map.find(mid);
+          if (search != material_map.end()) {
+            *it = search->second;
+          } else {
+            std::stringstream err_msg;
+            err_msg << "Could not find material " << mid
+                    << " specified on cell " << c->id;
+            fatal_error(err_msg);
+          }
+        }
+      }
     }
   }
 

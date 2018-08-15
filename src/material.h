@@ -1,6 +1,7 @@
-#ifndef OPENMC_CELL_H
-#define OPENMC_CELL_H
+#ifndef OPENMC_MATERIAL_H
+#define OPENMC_MATERIAL_H
 
+#include <unordered_map>
 #include <vector>
 
 #include "pugixml.hpp"
@@ -14,6 +15,7 @@ namespace openmc {
 
 class Material;
 extern std::vector<Material*> global_materials;
+extern std::unordered_map<int32_t, int32_t> material_map;
 
 //==============================================================================
 //! A substance with constituent nuclides and thermal scattering data
@@ -30,4 +32,4 @@ public:
 };
 
 } // namespace openmc
-#endif // OPENMC_CELL_H
+#endif // OPENMC_MATERIAL_H

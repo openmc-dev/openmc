@@ -87,6 +87,11 @@ module input_xml
       type(C_PTR) :: node_ptr
     end subroutine read_settings
 
+    subroutine read_materials(node_ptr) bind(C)
+      import C_PTR
+      type(C_PTR) :: node_ptr
+    end subroutine read_materials
+
     function find_root_universe() bind(C) result(root)
       import C_INT32_T
       integer(C_INT32_T) :: root
@@ -1051,7 +1056,7 @@ contains
     allocate(surfaces(n_surfaces))
 
     do i = 1, n_surfaces
-      surfaces(i) % ptr = surface_pointer_c(i - 1);
+      surfaces(i) % ptr = surface_pointer(i - 1);
 
       if (surfaces(i) % bc() /= BC_TRANSMIT) boundary_exists = .true.
 
@@ -1095,7 +1100,7 @@ contains
     do i = 1, n_cells
       c => cells(i)
 
-      c % ptr = cell_pointer_c(i - 1)
+      c % ptr = cell_pointer(i - 1)
 
       ! Initialize distribcell instances and distribcell index
       c % distribcell_index = NONE
@@ -1309,7 +1314,7 @@ contains
     RECT_LATTICES: do i = 1, n_rlats
       allocate(RectLattice::lattices(i) % obj)
       lat => lattices(i) % obj
-      lat % ptr = lattice_pointer_c(i - 1)
+      lat % ptr = lattice_pointer(i - 1)
       select type(lat)
       type is (RectLattice)
 
@@ -1325,7 +1330,7 @@ contains
     HEX_LATTICES: do i = 1, n_hlats
       allocate(HexLattice::lattices(n_rlats + i) % obj)
       lat => lattices(n_rlats + i) % obj
-      lat % ptr = lattice_pointer_c(n_rlats + i - 1)
+      lat % ptr = lattice_pointer(n_rlats + i - 1)
       select type (lat)
       type is (HexLattice)
 
@@ -1540,6 +1545,8 @@ contains
     call doc % load_file(filename)
     root = doc % document_element()
 
+    call read_materials(root % ptr)
+
     ! Get pointer to list of XML <material>
     call get_node_list(root, "material", node_mat_list)
 
@@ -1556,15 +1563,10 @@ contains
     do i = 1, n_materials
       mat => materials(i)
 
+      mat % ptr = material_pointer(i - 1)
+
       ! Get pointer to i-th material node
       node_mat = node_mat_list(i)
-
-      ! Copy material id
-      if (check_for_node(node_mat, "id")) then
-        call get_node_value(node_mat, "id", mat % id)
-      else
-        call fatal_error("Must specify id of material in materials XML file")
-      end if
 
       ! Check if material is depletable
       if (check_for_node(node_mat, "depletable")) then
@@ -1574,9 +1576,9 @@ contains
       end if
 
       ! Check to make sure 'id' hasn't been used
-      if (material_dict % has(mat % id)) then
+      if (material_dict % has(mat % id())) then
         call fatal_error("Two or more materials use the same unique ID: " &
-             // to_str(mat % id))
+             // to_str(mat % id()))
       end if
 
       ! Copy material name
@@ -1596,7 +1598,7 @@ contains
         node_dens = node_mat % child("density")
       else
         call fatal_error("Must specify density element in material " &
-             // trim(to_str(mat % id)))
+             // trim(to_str(mat % id())))
       end if
 
       ! Copy units
@@ -1626,7 +1628,7 @@ contains
         sum_density = .false.
         if (val <= ZERO) then
           call fatal_error("Need to specify a positive density on material " &
-               // trim(to_str(mat % id)) // ".")
+               // trim(to_str(mat % id())) // ".")
         end if
 
         ! Adjust material density based on specified units
@@ -1641,7 +1643,7 @@ contains
           mat % density = 1.0e-24_8 * val
         case default
           call fatal_error("Unkwown units '" // trim(units) &
-               // "' specified on material " // trim(to_str(mat % id)))
+               // "' specified on material " // trim(to_str(mat % id())))
         end select
       end if
 
@@ -1650,7 +1652,7 @@ contains
 
       if (size(node_ele_list) > 0) then
         call fatal_error("Unable to add an element to material " &
-             // trim(to_str(mat % id)) // " since the element option has &
+             // trim(to_str(mat % id())) // " since the element option has &
              &been removed from the xml input. Elements can only be added via &
              &the Python API, which will expand elements into their natural &
              &nuclides.")
@@ -1663,7 +1665,7 @@ contains
       if (.not. check_for_node(node_mat, "nuclide") .and. &
            .not. check_for_node(node_mat, "macroscopic")) then
         call fatal_error("No macroscopic data or nuclides specified on &
-             &material " // trim(to_str(mat % id)))
+             &material " // trim(to_str(mat % id())))
       end if
 
       ! Create list of macroscopic x/s based on those specified, just treat
@@ -1677,7 +1679,7 @@ contains
                          & mode!")
       else if (size(node_macro_list) > 1) then
         call fatal_error("Only one macroscopic object permitted per material, " &
-             // trim(to_str(mat % id)))
+             // trim(to_str(mat % id())))
       else if (size(node_macro_list) == 1) then
 
         node_nuc = node_macro_list(1)
@@ -1685,7 +1687,7 @@ contains
         ! Check for empty name on nuclide
         if (.not. check_for_node(node_nuc, "name")) then
           call fatal_error("No name specified on macroscopic data in material " &
-               // trim(to_str(mat % id)))
+               // trim(to_str(mat % id())))
         end if
 
         ! store nuclide name
@@ -1715,7 +1717,7 @@ contains
           ! Check for empty name on nuclide
           if (.not. check_for_node(node_nuc, "name")) then
             call fatal_error("No name specified on nuclide in material " &
-                 // trim(to_str(mat % id)))
+                 // trim(to_str(mat % id())))
           end if
 
           ! store nuclide name
@@ -1854,7 +1856,7 @@ contains
       if (.not. (all(mat % atom_density >= ZERO) .or. &
            all(mat % atom_density <= ZERO))) then
         call fatal_error("Cannot mix atom and weight percents in material " &
-             // to_str(mat % id))
+             // to_str(mat % id()))
       end if
 
       ! Determine density if it is a sum value
@@ -1935,7 +1937,7 @@ contains
       end if
 
       ! Add material to dictionary
-      call material_dict % set(mat % id, i)
+      call material_dict % set(mat % id(), i)
     end do
 
     ! Set total number of nuclides and S(a,b) tables

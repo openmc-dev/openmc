@@ -214,7 +214,7 @@ contains
         if (p % material == MATERIAL_VOID) then
           id = 0
         else
-          id = materials(p % material) % id
+          id = materials(p % material) % id()
         end if
       end if
       instance = p % cell_instance - 1

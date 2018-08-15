@@ -484,6 +484,11 @@ contains
 !===============================================================================
 
   subroutine free_memory_material()
+    interface
+      subroutine free_memory_material_c() bind(C)
+      end subroutine free_memory_material_c
+    end interface
+    call free_memory_material_c()
     n_materials = 0
     if (allocated(materials)) deallocate(materials)
     call material_dict % clear()

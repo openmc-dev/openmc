@@ -48,8 +48,8 @@ module input_xml
   save
 
   interface
-    subroutine adjust_indices_c() bind(C)
-    end subroutine adjust_indices_c
+    subroutine adjust_indices() bind(C)
+    end subroutine adjust_indices
 
     subroutine allocate_offset_tables(n_maps) bind(C)
       import C_INT
@@ -1114,42 +1114,6 @@ contains
              // to_str(c % id()))
       end if
 
-      ! Read material
-      if (check_for_node(node_cell, "material")) then
-        n_mats = node_word_count(node_cell, "material")
-
-        if (n_mats > 0) then
-          allocate(sarray(n_mats))
-          call get_node_array(node_cell, "material", sarray)
-
-          allocate(c % material(n_mats))
-          do j = 1, n_mats
-            select case(trim(to_lower(sarray(j))))
-            case ('void')
-              c % material(j) = MATERIAL_VOID
-            case default
-              c % material(j) = int(str_to_int(sarray(j)), 4)
-
-              ! Check for error
-              if (c % material(j) == ERROR_INT) then
-                call fatal_error("Invalid material specified on cell " &
-                     // to_str(c % id()))
-              end if
-            end select
-          end do
-
-          deallocate(sarray)
-
-        else
-          allocate(c % material(1))
-          c % material(1) = NONE
-        end if
-
-      else
-        allocate(c % material(1))
-        c % material(1) = NONE
-      end if
-
       ! Check for region specification (also under deprecated name surfaces)
       if (check_for_node(node_cell, "surfaces")) then
         call warning("The use of 'surfaces' is deprecated and will be &
@@ -1550,7 +1514,7 @@ contains
     ! Get pointer to list of XML <material>
     call get_node_list(root, "material", node_mat_list)
 
-    ! Allocate cells array
+    ! Allocate materials array
     n_materials = size(node_mat_list)
     allocate(materials(n_materials))
     allocate(material_temps(n_materials))
@@ -1573,12 +1537,6 @@ contains
         call get_node_value(node_mat, "depletable", temp_str)
         if (to_lower(temp_str) == "true" .or. temp_str == "1") &
              mat % depletable = .true.
-      end if
-
-      ! Check to make sure 'id' hasn't been used
-      if (material_dict % has(mat % id())) then
-        call fatal_error("Two or more materials use the same unique ID: " &
-             // to_str(mat % id()))
       end if
 
       ! Copy material name
@@ -3861,10 +3819,10 @@ contains
 
       ! Set the number of temperatures equal to the number of materials.
       deallocate(cells(i) % sqrtkT)
-      allocate(cells(i) % sqrtkT(size(cells(i) % material)))
+      allocate(cells(i) % sqrtkT(cells(i) % material_size()))
 
       ! Check each of the cell materials for temperature data.
-      do j = 1, size(cells(i) % material)
+      do j = 1, cells(i) % material_size()
         ! Arbitrarily set void regions to 0K.
         if (cells(i) % material(j) == MATERIAL_VOID) then
           cells(i) % sqrtkT(j) = ZERO
@@ -3933,45 +3891,6 @@ contains
   end subroutine read_multipole_data
 
 !===============================================================================
-! ADJUST_INDICES changes the values for 'surfaces' for each cell and the
-! material index assigned to each to the indices in the surfaces and material
-! array rather than the unique IDs assigned to each surface and material. Also
-! assigns boundary conditions to surfaces based on those read into the bc_dict
-! dictionary
-!===============================================================================
-
-  subroutine adjust_indices()
-
-    integer :: i                      ! index for various purposes
-    integer :: j                      ! index for various purposes
-    integer :: id                     ! user-specified id
-
-    call adjust_indices_c()
-
-    do i = 1, n_cells
-      associate (c => cells(i))
-
-      ! =======================================================================
-      ! ADJUST MATERIAL/FILL POINTERS FOR EACH CELL
-
-      if (c % material(1) /= NONE) then
-        do j = 1, size(c % material)
-          id = c % material(j)
-          if (id == MATERIAL_VOID) then
-          else if (material_dict % has(id)) then
-            c % material(j) = material_dict % get(id)
-          else
-            call fatal_error("Could not find material " // trim(to_str(id)) &
-                 // " specified on cell " // trim(to_str(c % id())))
-          end if
-        end do
-      end if
-      end associate
-    end do
-
-  end subroutine adjust_indices
-
-!===============================================================================
 ! PREPARE_DISTRIBCELL initializes any distribcell filters present and sets the
 ! offsets for distribcells
 !===============================================================================
@@ -3994,7 +3913,7 @@ contains
 
     ! Find all cells with multiple (distributed) materials or temperatures.
     do i = 1, n_cells
-      if (size(cells(i) % material) > 1 .or. size(cells(i) % sqrtkT) > 1) then
+      if (cells(i) % material_size() > 1 .or. size(cells(i) % sqrtkT) > 1) then
         call cell_list % add(i)
       end if
     end do
@@ -4003,10 +3922,10 @@ contains
     ! number of respective cell instances.
     do i = 1, n_cells
       associate (c => cells(i))
-        if (size(c % material) > 1) then
-          if (size(c % material) /= c % n_instances()) then
+        if (c % material_size() > 1) then
+          if (c % material_size() /= c % n_instances()) then
             call fatal_error("Cell " // trim(to_str(c % id())) // " was &
-                 &specified with " // trim(to_str(size(c % material))) &
+                 &specified with " // trim(to_str(c % material_size())) &
                  // " materials but has " // trim(to_str(c % n_instances())) &
                  // " distributed instances. The number of materials must &
                  &equal one or the number of instances.")

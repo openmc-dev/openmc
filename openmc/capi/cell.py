@@ -106,9 +106,10 @@ class Cell(_FortranObjectWithID):
 
         if fill_type.value == 1:
             if n.value > 1:
-                return [Material(index=i) for i in indices[:n.value]]
+                #TODO: off-by-one
+                return [Material(index=i+1) for i in indices[:n.value]]
             else:
-                return Material(index=indices[0])
+                return Material(index=indices[0]+1)
         else:
             raise NotImplementedError
 
@@ -116,14 +117,14 @@ class Cell(_FortranObjectWithID):
     def fill(self, fill):
         if isinstance(fill, Iterable):
             n = len(fill)
-            indices = (c_int32*n)(*(m._index if m is not None else -1
+            indices = (c_int32*n)(*(m._index if m is not None else -2
                                     for m in fill))
             _dll.openmc_cell_set_fill(self._index, 1, n, indices)
         elif isinstance(fill, Material):
             indices = (c_int32*1)(fill._index)
             _dll.openmc_cell_set_fill(self._index, 1, 1, indices)
         elif fill is None:
-            indices = (c_int32*1)(-1)
+            indices = (c_int32*1)(-2)
             _dll.openmc_cell_set_fill(self._index, 1, 1, indices)
 
     def set_temperature(self, T, instance=None):

@@ -1,13 +1,14 @@
 //! \file math_functions.h
 //! A collection of elementary math functions.
 
-#ifndef MATH_FUNCTIONS_H
-#define MATH_FUNCTIONS_H
+#ifndef OPENMC_MATH_FUNCTIONS_H
+#define OPENMC_MATH_FUNCTIONS_H
 
 #include <cmath>
 #include <cstdlib>
 
 #include "constants.h"
+#include "position.h"
 #include "random_lcg.h"
 
 
@@ -124,6 +125,8 @@ extern "C" void calc_zn_rad_c(int n, double rho, double zn_rad[]);
 
 extern "C" void rotate_angle_c(double uvw[3], double mu, double* phi);
 
+Direction rotate_angle(Direction u, double mu, double* phi);
+
 //==============================================================================
 //! Samples an energy from the Maxwell fission distribution based on a direct
 //! sampling scheme.
@@ -220,4 +223,4 @@ extern "C" double spline_integrate_c(int n, const double x[], const double y[],
                                      const double z[], double xa, double xb);
 
 } // namespace openmc
-#endif // MATH_FUNCTIONS_H
+#endif // OPENMC_MATH_FUNCTIONS_H

@@ -18,6 +18,7 @@ namespace openmc {
 // Module constant declarations (defined in .cpp)
 //==============================================================================
 
+// TODO: Convert to enum
 extern "C" const int BC_TRANSMIT;
 extern "C" const int BC_VACUUM;
 extern "C" const int BC_REFLECT;

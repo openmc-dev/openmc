@@ -8,12 +8,28 @@
 #include "xtensor/xtensor.hpp"
 
 #include "hdf5_interface.h"
+#include "nuclide.h"
 
 namespace openmc {
+
+// Secondary energy mode for S(a,b) inelastic scattering
+// TODO: Convert to enum
+constexpr int SAB_SECONDARY_EQUAL  {0}; // Equally-likely outgoing energy bins
+constexpr int SAB_SECONDARY_SKEWED {1}; // Skewed outgoing energy bins
+constexpr int SAB_SECONDARY_CONT   {2}; // Continuous, linear-linear interpolation
+
+// Elastic mode for S(a,b) elastic scattering
+// TODO: Convert to enum
+constexpr int SAB_ELASTIC_INCOHERENT {3}; // Incoherent elastic scattering
+constexpr int SAB_ELASTIC_COHERENT   {4}; // Coherent elastic scattering (Bragg edges)
 
 class ThermalData {
 public:
   ThermalData(hid_t group, int secondary_mode);
+
+  // Sample an outgoing energy and angle
+  void sample(const NuclideMicroXS* micro_xs, double E_in,
+              double* E_out, double* mu);
 private:
   struct DistEnergySab {
     std::size_t n_e_out;
@@ -28,6 +44,7 @@ private:
   double threshold_elastic_ {0.0};
 
   // Inelastic scattering data
+  int inelastic_mode_;            // secondary mode (equal/skewed/continuous)
   std::size_t n_inelastic_e_in_;  // # of incoming E for inelastic
   std::size_t n_inelastic_e_out_; // # of outgoing E for inelastic
   std::size_t n_inelastic_mu_;    // # of outgoing angles for inelastic
@@ -67,7 +84,6 @@ public:
   double awr_;      // weight of nucleus in neutron masses
   std::vector<double> kTs_;  // temperatures in eV (k*T)
   std::vector<std::string> nuclides_; // List of valid nuclides
-  int secondary_mode_;    // secondary mode (equal/skewed/continuous)
 
   // cross sections and distributions at each temperature
   std::vector<ThermalData> data_;

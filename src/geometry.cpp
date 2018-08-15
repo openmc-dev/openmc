@@ -3,8 +3,10 @@
 #include <sstream>
 
 #include "cell.h"
+#include "constants.h"
 #include "error.h"
 #include "particle.h"
+#include "settings.h"
 
 //TODO: remove this include
 #include <iostream>
@@ -20,14 +22,13 @@ check_cell_overlap(Particle* p) {
 
   // loop through each coordinate level
   for (int j = 0; j < n_coord; j++) {
-    //p->n_coord = j + 1;
-    Universe& univ {*global_universes[p->coord[j].universe - 1]};
+    Universe& univ = *global_universes[p->coord[j].universe - 1];
     int n = univ.cells.size();
 
     // loop through each cell on this level
     for (int i = 0; i < n; i++) {
       int index_cell = univ.cells[i];
-      Cell& c {*global_cells[index_cell]};
+      Cell& c = *global_cells[index_cell];
 
       if (c.contains(p->coord[j].xyz, p->coord[j].uvw, p->surface)) {
         //TODO: off-by-one indexing
@@ -44,6 +45,58 @@ check_cell_overlap(Particle* p) {
   }
 
   return false;
+}
+
+//==============================================================================
+
+extern "C" bool
+find_cell(Particle* p, int n_search_cells, int* search_cells) {
+  for (int i = p->n_coord; i < MAX_COORD; i++) {
+    p->coord[i].reset();
+  }
+
+  // Determine universe (if not yet set, use root universe)
+  int i_universe = p->coord[p->n_coord-1].universe;
+  if (i_universe == C_NONE) {
+    p->coord[p->n_coord-1].universe = openmc_root_universe;
+    i_universe = openmc_root_universe;
+  }
+  //TODO: off-by-one indexing
+  --i_universe;
+
+  // If not given a set of search cells, search all cells in the uninverse.
+  if (n_search_cells == 0) {
+    search_cells = global_universes[i_universe]->cells.data();
+    n_search_cells = global_universes[i_universe]->cells.size();
+  }
+
+  // Find which cell of this universe the particle is in.
+  bool found = false;
+  for (int i = 0; i < n_search_cells; i++) {
+    int32_t i_cell = search_cells[i];
+
+    // Make sure the search cell is in the same universe
+    //TODO: off-by-one indexing
+    if (global_cells[i_cell]->universe - 1 != i_universe) continue;
+
+    Position r {p->coord[p->n_coord-1].xyz};
+    Direction u {p->coord[p->n_coord-1].uvw};
+    int32_t surf = p->surface;
+    if (global_cells[i_cell]->contains(r, u, surf)) {
+      //TODO: off-by-one indexing
+      p->coord[p->n_coord-1].cell = i_cell + 1;
+
+      if (openmc_verbosity >= 10 || openmc_trace) {
+        std::stringstream msg;
+        msg << "    Entering cell " << global_cells[i_cell]->id;
+        write_message(msg, 1);
+      }
+      found = true;
+      break;
+    }
+  }
+
+  return found;
 }
 
 } // namespace openmc

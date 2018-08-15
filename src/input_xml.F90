@@ -1086,11 +1086,6 @@ contains
     ! Allocate cells array
     allocate(cells(n_cells))
 
-    if (check_overlaps) then
-      allocate(overlap_check_cnt(n_cells))
-      overlap_check_cnt = 0
-    end if
-
     n_universes = 0
     do i = 1, n_cells
       c => cells(i)

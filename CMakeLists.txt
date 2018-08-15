@@ -418,6 +418,7 @@ add_library(libopenmc SHARED
   src/state_point.cpp
   src/string_functions.cpp
   src/surface.cpp
+  src/thermal.cpp
   src/xml_interface.cpp
   src/xsdata.cpp)
 set_target_properties(libopenmc PROPERTIES

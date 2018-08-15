@@ -4,6 +4,7 @@
 //! \file settings.h
 //! \brief Settings for OpenMC
 
+#include <array>
 #include <string>
 
 #include "pugixml.hpp"
@@ -30,6 +31,12 @@ extern std::string path_cross_sections;
 extern std::string path_multipole;
 extern std::string path_output;
 extern std::string path_source;
+
+extern int temperature_method;
+extern bool temperature_multipole;
+extern double temperature_tolerance;
+extern double temperature_default;
+extern std::array<double, 2> temperature_range;
 
 //==============================================================================
 //! Read settings from XML file

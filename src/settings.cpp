@@ -1,5 +1,6 @@
 #include "settings.h"
 
+#include "constants.h"
 #include "error.h"
 #include "openmc.h"
 #include "string_utils.h"
@@ -19,6 +20,12 @@ std::string path_cross_sections;
 std::string path_multipole;
 std::string path_output;
 std::string path_source;
+
+int temperature_method {TEMPERATURE_NEAREST};
+bool temperature_multipole {false};
+double temperature_tolerance {10.0};
+double temperature_default {293.6};
+std::array<double, 2> temperature_range {0.0, 0.0};
 
 //==============================================================================
 // Functions

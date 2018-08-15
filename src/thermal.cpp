@@ -1,6 +1,6 @@
 #include "thermal.h"
 
-#include <algorithm> // for sort, move, min, max
+#include <algorithm> // for sort, move, min, max, find
 #include <cmath>     // for round, sqrt, fabs
 #include <sstream>   // for stringstream
 
@@ -148,7 +148,7 @@ ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& tem
 
 void
 ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
-                                double* elastic, double* inelastic)
+                                double* elastic, double* inelastic) const
 {
   // Determine temperature for S(a,b) table
   double kT = sqrtkT*sqrtkT;
@@ -180,12 +180,9 @@ ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
   auto& sab = data_[i];
 
   // Get index and interpolation factor for inelastic grid
-  int i_grid;
-  double f;
-  if (E < sab.inelastic_e_in_.front()) {
-    i_grid = 0;
-    f = 0.0;
-  } else {
+  int i_grid = 0;
+  double f = 0.0;
+  if (E >= sab.inelastic_e_in_.front()) {
     auto& E_in = sab.inelastic_e_in_;
     i_grid = lower_bound_index(E_in.begin(), E_in.end(), E);
     f = (E - E_in[i_grid]) / (E_in[i_grid+1] - E_in[i_grid]);
@@ -221,7 +218,7 @@ ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
       }
 
       // Get interpolation factor for elastic grid
-      f = (E - E_in[i_grid])/(E_in[i_grid+1] - E_in[i_grid]);
+      f = (E - E_in[i_grid]) / (E_in[i_grid+1] - E_in[i_grid]);
 
       // Calculate S(a,b) elastic scattering cross section
       auto& xs = sab.elastic_P_;
@@ -231,6 +228,13 @@ ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
     // No elastic data
     *elastic = 0.0;
   }
+}
+
+bool
+ThermalScattering::has_nuclide(const char* name) const
+{
+  std::string nuc {name};
+  return std::find(nuclides_.begin(), nuclides_.end(), nuc) != nuclides_.end();
 }
 
 //==============================================================================

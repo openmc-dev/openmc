@@ -111,6 +111,12 @@ public:
   //! \return Whether table applies to the nuclide
   bool has_nuclide(const char* name) const;
 
+  // Sample an outgoing energy and angle
+  void sample(const NuclideMicroXS* micro_xs, double E_in,
+              double* E_out, double* mu);
+
+  double threshold() const { return data_[0].threshold_inelastic_; }
+
   std::string name_; //!< name of table, e.g. "c_H_in_H2O"
   double awr_;       //!< weight of nucleus in neutron masses
   std::vector<double> kTs_;  //!< temperatures in [eV] (k*T)
@@ -119,6 +125,22 @@ public:
   //! cross sections and distributions at each temperature
   std::vector<ThermalData> data_;
 };
+
+//==============================================================================
+// Fortran compatibility functions
+//==============================================================================
+
+extern "C" {
+  ThermalScattering* sab_from_hdf5(hid_t group, const double* temperature,
+    int n, int method, double tolerance, const double* minmax);
+  void sab_calculate_xs(ThermalScattering* data, double E, double sqrtkT,
+    int* i_temp, double* elastic, double* inelastic);
+  void sab_free(ThermalScattering* data);
+  bool sab_has_nuclide(ThermalScattering* data, const char* name);
+  void sab_sample(ThermalScattering* data, const NuclideMicroXS* micro_xs,
+    double E_in, double* E_out, double* mu);
+  double sab_threshold(ThermalScattering* data);
+}
 
 } // namespace openmc
 

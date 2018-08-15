@@ -577,4 +577,41 @@ ThermalData::sample(const NuclideMicroXS* micro_xs, double E,
 
 }
 
+//==============================================================================
+// Fortran compatibility functions
+//==============================================================================
+
+ThermalScattering*
+sab_from_hdf5(hid_t group, const double* temperature, int n,
+    int method, double tolerance, const double* minmax)
+{
+  // Convert temperatures to a vector
+  std::vector<double> T {temperature, temperature + n};
+
+  // Create new object and return it
+  return new ThermalScattering{group, T, method, tolerance, minmax};
+}
+
+void sab_calculate_xs(ThermalScattering* data, double E, double sqrtkT,
+  int* i_temp, double* elastic, double* inelastic)
+{
+  data->calculate_xs(E, sqrtkT, i_temp, elastic, inelastic);
+}
+
+void sab_free(ThermalScattering* data) { delete data; }
+
+bool sab_has_nuclide(ThermalScattering* data, const char* name)
+{
+  return data->has_nuclide(name);
+}
+
+void sab_sample(ThermalScattering* data, const NuclideMicroXS* micro_xs,
+  double E_in, double* E_out, double* mu)
+{
+  int i_temp = micro_xs->index_temp_sab;
+  data->data_[i_temp - 1].sample(micro_xs, E_in, E_out, mu);
+}
+
+double sab_threshold(ThermalScattering* data) { return data->threshold(); }
+
 } // namespace openmc

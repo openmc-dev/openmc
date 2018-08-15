@@ -198,7 +198,7 @@ module nuclide_header
   type(DictCharInt) :: nuclide_dict
 
   ! Cross section caches
-  type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
+  type(NuclideMicroXS), allocatable, target :: micro_xs(:)  ! Cache for each nuclide
   type(MaterialMacroXS)             :: material_xs  ! Cache for current material
 !$omp threadprivate(micro_xs, material_xs)
 
@@ -1096,9 +1096,9 @@ contains
     real(8), intent(in) :: sab_frac  ! fraction of atoms affected by S(a,b)
     type(NuclideMicroXS), intent(inout) :: micro_xs ! Cross section cache
 
-    integer :: i_temp    ! temperature index
-    real(8) :: inelastic ! S(a,b) inelastic cross section
-    real(8) :: elastic   ! S(a,b) elastic cross section
+    integer(C_INT) :: i_temp    ! temperature index
+    real(C_DOUBLE) :: inelastic ! S(a,b) inelastic cross section
+    real(C_DOUBLE) :: elastic   ! S(a,b) elastic cross section
 
     ! Set flag that S(a,b) treatment should be used for scattering
     micro_xs % index_sab = i_sab

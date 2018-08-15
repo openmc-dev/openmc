@@ -37,6 +37,15 @@ module geometry
       import Particle
       type(Particle), intent(in) :: p
     end subroutine check_cell_overlap
+
+    function find_cell_c(p, n_search_cells, search_cells) &
+         bind(C, name="find_cell") result(found)
+      import Particle, C_INT, C_BOOL
+      type(Particle),  intent(in)           :: p
+      integer(C_INT),  intent(in), value    :: n_search_cells
+      integer(C_INT),  intent(in), optional :: search_cells(n_search_cells)
+      logical(C_BOOL)                       :: found
+    end function find_cell_c
   end interface
 
 contains
@@ -60,64 +69,19 @@ contains
     type(Particle), intent(inout) :: p
     logical,        intent(inout) :: found
     integer,        optional      :: search_cells(:)
-    integer :: i                    ! index over cells
     integer :: j, k                 ! coordinate level index
     integer :: offset               ! instance # of a distributed cell
     integer :: distribcell_index
     integer :: i_xyz(3)             ! indices in lattice
-    integer :: n                    ! number of cells to search
     integer :: i_cell               ! index in cells array
-    integer :: i_universe           ! index in universes array
-    logical :: use_search_cells     ! use cells provided as argument
 
-    do j = p % n_coord + 1, MAX_COORD
-      call reset_coord(p % coord(j))
-    end do
-    j = p % n_coord
-
-    ! Determine universe (if not yet set, use root universe)
-    i_universe = p % coord(j) % universe
-    if (i_universe == C_NONE) then
-      p % coord(j) % universe = root_universe
-      i_universe = root_universe
-    end if
-
-    ! set size of list to search
     if (present(search_cells)) then
-      use_search_cells = .true.
-      n = size(search_cells)
+      found = find_cell_c(p, size(search_cells), search_cells-1)
     else
-      use_search_cells = .false.
-      n = size(universes(i_universe) % cells)
+      found = find_cell_c(p, 0)
     end if
-
-    found = .false.
-    CELL_LOOP: do i = 1, n
-      ! select cells based on whether we are searching a universe or a provided
-      ! list of cells (this would be for lists of neighbor cells)
-      if (use_search_cells) then
-        i_cell = search_cells(i)
-        ! check to make sure search cell is in same universe
-        if (cells(i_cell) % universe() /= i_universe) cycle
-      else
-        i_cell = universes(i_universe) % cells(i)
-      end if
-
-      ! Move on to the next cell if the particle is not inside this cell
-      if (cell_contains(cells(i_cell), p)) then
-        ! Set cell on this level
-        p % coord(j) % cell = i_cell
-
-        ! Show cell information on trace
-        if (verbosity >= 10 .or. trace) then
-          call write_message("    Entering cell " // trim(to_str(&
-               cells(i_cell) % id())))
-        end if
-
-        found = .true.
-        exit
-      end if
-    end do CELL_LOOP
+    j = p % n_coord
+    i_cell = p % coord(j) % cell
 
     if (found) then
       associate(c => cells(i_cell))

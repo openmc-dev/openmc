@@ -78,7 +78,8 @@ public:
                     double tolerance, const double* minmax);
 
   void calculate_xs(double E, double sqrtkT, int* i_temp, double* elastic,
-                    double* inelastic);
+                    double* inelastic) const ;
+  bool has_nuclide(const char* name) const;
 
   std::string name_;    // name of table, e.g. "c_H_in_H2O"
   double awr_;      // weight of nucleus in neutron masses

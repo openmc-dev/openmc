@@ -330,7 +330,13 @@ contains
       p % material = cells(i_cell) % material(1)
       p % sqrtKT = cells(i_cell) % sqrtKT(1)
 
-      if (is_implicit_complement(cells(i_cell))) then
+      i_surface = abs(p % surface)
+      surf => surfaces(i_surface)
+      if ( surf % bc() == BC_VACUUM .and. (run_mode /= MODE_PLOTTING)) then
+        ! =======================================================================
+        ! PARTICLE LEAKS OUT OF PROBLEM
+
+        ! Kill particle
         p % alive = .false.
       end if
 

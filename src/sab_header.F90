@@ -161,10 +161,12 @@ contains
   subroutine free_memory_sab()
     integer :: i
     n_sab_tables = 0
-    do i = 1, size(sab_tables)
-      call sab_tables(i) % free()
-    end do
-    if (allocated(sab_tables)) deallocate(sab_tables)
+    if (allocated(sab_tables)) then
+      do i = 1, size(sab_tables)
+        call sab_tables(i) % free()
+      end do
+      deallocate(sab_tables)
+    end if
     call sab_dict % clear()
   end subroutine free_memory_sab
 

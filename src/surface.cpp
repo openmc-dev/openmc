@@ -1083,7 +1083,6 @@ read_surfaces(pugi::xml_node* node)
       }
     }
   }
-  global_surfaces.shrink_to_fit();
 
   // Fill the surface map.
   for (int i_surf = 0; i_surf < n_surfaces; i_surf++) {

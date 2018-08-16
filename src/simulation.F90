@@ -351,6 +351,11 @@ contains
       end do
     end if
 
+    ! check CMFD initialize batch
+    if (run_mode == MODE_EIGENVALUE) then
+      if (cmfd_run) call cmfd_init_batch()
+    end if
+
     ! Add user tallies to active tallies list
     call setup_active_tallies()
 

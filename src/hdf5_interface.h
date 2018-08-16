@@ -234,7 +234,7 @@ read_attribute(hid_t obj_id, const char* name, std::vector<std::string>& vec)
 //==============================================================================
 
 template<typename T>
-void read_dataset(hid_t obj_id, const char* name, T buffer, bool indep=false)
+void read_dataset(hid_t obj_id, const char* name, T& buffer, bool indep=false)
 {
   read_dataset(obj_id, name, H5TypeMap<T>::type_id, &buffer, indep);
 }

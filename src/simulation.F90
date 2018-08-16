@@ -573,6 +573,13 @@ contains
     ! Write tally results to tallies.out
     if (output_tallies .and. master) call write_tallies()
 
+    ! Deactivate all tallies
+    if (allocated(tallies)) then
+      do i = 1, n_tallies
+        tallies(i) % obj % active = .false.
+      end do
+    end if
+
     ! Stop timers and show timing statistics
     call time_finalize%stop()
     call time_total%stop()

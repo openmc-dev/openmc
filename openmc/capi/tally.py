@@ -53,6 +53,9 @@ _dll.openmc_tally_get_scores.errcheck = _error_handler
 _dll.openmc_tally_get_type.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_tally_get_type.restype = c_int
 _dll.openmc_tally_get_type.errcheck = _error_handler
+_dll.openmc_tally_reset.argtypes = [c_int32]
+_dll.openmc_tally_reset.restype = c_int
+_dll.openmc_tally_reset.errcheck = _error_handler
 _dll.openmc_tally_results.argtypes = [
     c_int32, POINTER(POINTER(c_double)), POINTER(c_int*3)]
 _dll.openmc_tally_results.restype = c_int
@@ -348,6 +351,9 @@ class Tally(_FortranObjectWithID):
                 (sum_sq[nonzero]/n - mean[nonzero]**2)/(n - 1))
 
         return std_dev
+
+    def reset(self):
+        _dll.openmc_tally_reset(self._index)
 
     def ci_width(self, alpha=0.05):
         """Confidence interval half-width based on a Student t distribution

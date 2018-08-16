@@ -7,7 +7,7 @@
     <dimension> 10 1 1 </dimension>
     <albedo> 0.0 0.0 1.0 1.0 1.0 1.0 </albedo>
   </mesh>
-
+  <!--tally_reset> 5 10 </tally_reset-->
   <begin>5</begin>
   <display>dominance</display>
   <feedback>true</feedback>

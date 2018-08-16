@@ -590,10 +590,32 @@ class CMFDRun(object):
             cmfd_tally_ids: list of ids corresponding to CMFD tallies (details:)
             energy_filters: Boolean that stores whether energy filters should be created or not.
                 Set to true if user specifies energy grid in CMFDMesh, false otherwise
+            cmfd_on: Boolean to tell if cmfd solver should be initiated, based on whether current batch has reached variable
+                cmfd_begin
+            batch_num: Current batch
+            # Look at cmfd_header.F90 for description
+            flux
+            totalxs
+            p1scattxs
+            scattxs
+            nfissxs
+            diffcof
+            dtilde
+            dhat
+            hxyz
+            current
+            cmfd_src
+            openmc_src
+            sourcecounts
+            weightfactors
+            entropy
+            balance
+            src_cmp
+            dom
+            k_cmfd
 
     TODO: Put descriptions for all methods in CMFDRun
     TODO All timing variables
-    TODO: add tally type and tally estimator to CAPI
 
     """
 
@@ -615,7 +637,7 @@ class CMFDRun(object):
         self._cmfd_shift = 1.e-6
         self._cmfd_spectral = 0.
         self._cmfd_stol = 1.e-8
-        self._cmfd_reset = None
+        self._cmfd_reset = [5,10]
         self._cmfd_write_matrices = False
 
         # External variables used during runtime but users don't have control over
@@ -631,6 +653,29 @@ class CMFDRun(object):
         self._cmfd_filter_ids = None
         self._cmfd_tally_ids = None
         self._energy_filters = None
+        self._cmfd_on = False
+        self._batch_num = 1
+
+        # Numpy arrays used to build CMFD matrices
+        self._flux = None
+        self._totalxs = None
+        self._p1scattxs = None
+        self._scattxs = None
+        self._nfissxs = None
+        self._diffcof = None
+        self._dtilde = None
+        self._dhat = None
+        self._hxyz = None
+        self._current = None
+        self._cmfd_src = None
+        self._openmc_src = None
+        self._sourcecounts = None
+        self._weightfactors = None
+        self._entropy = None
+        self._balance = None
+        self._src_cmp = None
+        self._dom = None
+        self._k_cmfd = None
 
     @property
     def cmfd_begin(self):
@@ -827,7 +872,7 @@ class CMFDRun(object):
 
         while(True):
             openmc.capi.next_batch_before_cmfd_init()
-            self._cmfd_init()
+            self._cmfd_init_batch()
             # Status determines whether batch should continue with a
             # CMFD update or skip it entirely if it is a restart run
             status = openmc.capi.next_batch_between_cmfd_init_execute()
@@ -838,12 +883,26 @@ class CMFDRun(object):
                 status = openmc.capi.next_batch_after_cmfd_execute()
             if status != 0:
                 break
+            self._batch_num += 1
 
         openmc.capi.simulation_finalize()
         openmc.capi.finalize()
 
     def _configure_cmfd(self):
-        print('Configuring CMFD parameters for simulation')
+        # Read in cmfd input from python
+        self._read_cmfd_input()
+
+        # TODO
+        # Initialize timers
+        #call time_cmfd % reset()
+        #call time_cmfdbuild % reset()
+        #call time_cmfdsolve % reset()
+
+        # Initialize all numpy arrays used for cmfd solver
+        self._allocate_cmfd(n_batches)
+
+    def _read_cmfd_input(self):
+        print(' Configuring CMFD parameters for simulation')
 
         # Check if CMFD mesh is defined
         if self._cmfd_mesh is None:
@@ -894,11 +953,75 @@ class CMFDRun(object):
         # Create tally objects
         self._create_cmfd_tally()
 
-    def _cmfd_init(self):
-        pass
+    def _allocate_cmfd(self):
+        # Determine number of batches through C API
+        n_batches = openmc.capi.settings.batches
+
+        # Extract spatial and energy indices
+        nx = self._indices[0]
+        ny = self._indices[1]
+        nz = self._indices[2]
+        ng = self._indices[3]
+
+        # Allocate flux, cross sections and diffusion coefficient
+        self._flux = np.zeros((ng, nx, ny, nz))
+        self._totalxs = np.zeros((ng, nx, ny, nz))
+        self._p1scattxs = np.zeros((ng, nx, ny, nz))
+        self._scattxs = np.zeros((ng, ng, nx, ny, nz))
+        self._nfissxs = np.zeros((ng, ng, nx, ny, nz))
+        self._diffcof = np.zeros((ng, nx, ny, nz))
+
+        # Allocate dtilde and dhat
+        self._dtilde = np.zeros((6, ng, nx, ny, nz))
+        self._dhat = np.zeros((6, ng, nx, ny, nz))
+
+        # Allocate dimensions for each box (here for general case)
+        self._hxyz = np.zeros((3, nx, ny, nz))
+
+        # Allocate surface currents
+        self._current = np.zeros((12, ng, nx, ny, nz))
+
+        # Allocate source distributions
+        self._cmfd_src = np.zeros((ng, nx, ny, nz))
+        self._openmc_src = np.zeros((ng, nx, ny, nz))
+
+        # Allocate source weight modification variables
+        self._sourcecounts = np.zeros((ng, nx*ny*nz))
+        self._weightfactors = np.ones((ng, nx, ny, nz))
+
+        # Allocate batchwise parameters
+        self._entropy = np.zeros((n_batches, ))
+        self._balance = np.zeros((n_batches, ))
+        self._src_cmp = np.zeros((n_batches, ))
+        self._dom = np.zeros((n_batches, ))
+        self._k_cmfd = np.zeros((n_batches, ))
+
+    def _cmfd_init_batch(self):
+        if self._cmfd_begin == self._batch_num:
+            self._cmfd_on = True
+
+        # TODO: Figure out how to tell if part of restart run
+        # if restart_run:
+        #   return
+        # If this is a restart run and we are just replaying batches leave
+        # if (restart_run .and. current_batch <= restart_batch) return
+
+        # Check to reset tallies
+        if self._n_cmfd_resets > 0 and self._batch_num in self._cmfd_reset:
+            self._cmfd_tally_reset()
 
     def _cmfd_execute(self):
         pass
+
+    def _cmfd_tally_reset(self):
+        # TODO: How does write_message in error.F90 work?
+        # Print message
+        print(' CMFD tallies reset')
+
+        # Reset CMFD tallies
+        tallies = openmc.capi.tallies
+        for tally_id in self._cmfd_tally_ids:
+            tallies[tally_id].reset()
 
     def _create_cmfd_tally(self):
         # Create Mesh object based on CMFDMesh, stored internally

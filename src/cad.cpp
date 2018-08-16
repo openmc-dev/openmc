@@ -21,7 +21,8 @@ void load_cad_geometry_c()
 
   std::vector< std::string > prop_keywords;
   prop_keywords.push_back("mat");
-
+  prop_keywords.push_back("boundary");
+  
   std::map<std::string, std::string> ph;
   DAGMC->parse_properties(prop_keywords, ph, ":");
   MB_CHK_ERR_CONT(rval);
@@ -83,6 +84,7 @@ void load_cad_geometry_c()
       }
       else {
 	std::cout << "Warning: volume without material found!" << std::endl;
+	c->material.push_back(openmc::C_MATERIAL_VOID);
       }
       
     }
@@ -93,11 +95,28 @@ void load_cad_geometry_c()
   
   for(int i = 0; i < openmc::n_surfaces; i++)
     {
+      moab::EntityHandle surf_handle = DAGMC->entity_by_index(2, i+1);
+      
       // set cell ids using global IDs
       openmc::CADSurface* s = new openmc::CADSurface();
       s->id = DAGMC->id_by_index(2, i+1);
       s->dagmc_ptr = DAGMC;
-      s->bc = openmc::BC_TRANSMIT;
+
+      if(DAGMC->has_prop(surf_handle, "boundary")) {
+	std::string value;
+	rval = DAGMC->prop_value(surf_handle, "boundary", value);
+	MB_CHK_ERR_CONT(rval);
+	if(value.find("Vacuum") != std::string::npos) {
+	  s->bc = openmc::BC_VACUUM;
+	}
+	else {
+	  s->bc = openmc::BC_TRANSMIT;
+	}
+      }
+      else {
+	s->bc = openmc::BC_TRANSMIT;
+      }
+      
       openmc::surfaces_c[i] = s;
       openmc::surface_map[s->id] = s->id;
     }

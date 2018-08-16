@@ -22,6 +22,7 @@ module tally_header
   public :: free_memory_tally
   public :: openmc_extend_tallies
   public :: openmc_get_tally_index
+  public :: openmc_get_tally_next_id
   public :: openmc_global_tallies
   public :: openmc_tally_get_active
   public :: openmc_tally_get_estimator
@@ -34,11 +35,12 @@ module tally_header
   public :: openmc_tally_reset
   public :: openmc_tally_results
   public :: openmc_tally_set_active
+  public :: openmc_tally_set_estimator
   public :: openmc_tally_set_filters
   public :: openmc_tally_set_id
   public :: openmc_tally_set_nuclides
   public :: openmc_tally_set_scores
-  public :: openmc_get_tally_next_id
+  public :: openmc_tally_update_type
 
 !===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to
@@ -1037,7 +1039,6 @@ contains
     integer(C_INT32_T), intent(out) :: id
 
     id = largest_tally_id + 1
-    print *, id
   end subroutine openmc_get_tally_next_id
 
 end module tally_header

@@ -218,10 +218,23 @@ class Model(object):
 
         openmc.run(**kwargs)
 
+        # in order to accomodate the fact that you may start with only 2
+        # batches but set max_batches to be 10000, the format that openmc
+        # actually writes would be in this case 00001
+        
         n = self.settings.batches
+        m = self.settings.trigger_max_batches
+               
         if self.settings.statepoint is not None:
             if 'batches' in self.settings.statepoint:
                 n = self.settings.statepoint['batches'][-1]
 
+
+        if self.settings.trigger_active:
+            if self.settings.trigger_max_batches is not None:
+                len_s_n = len(str(self.settings.batches))
+                n = str().zfill(len(str(self.settings.trigger_max_batches))-len_s_n)
+                n += str(self.settings.batches)
+                
         with openmc.StatePoint('statepoint.{}.h5'.format(n)) as sp:
             return sp.k_combined

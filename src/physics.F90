@@ -526,8 +526,8 @@ contains
     ! Check to see if we are in a windowed multipole range.  WMP only supports
     ! the first fission reaction.
     if (nuc % mp_present) then
-      if (E >= nuc % multipole % start_E .and. &
-           E <= nuc % multipole % end_E) then
+      if (E >= nuc % multipole % E_min .and. &
+           E <= nuc % multipole % E_max) then
         i_reaction = nuc % index_fission(1)
         return
       end if

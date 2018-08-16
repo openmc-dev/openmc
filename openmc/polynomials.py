@@ -19,6 +19,7 @@ class Legendre(Polynomials):
         self.norm_coeff = np.multiply(self.norm_vec,self.coeff)
 
     def __call__(self, x):
+        # x is the normalized position on [-1,1]
         pn = capi.calc_pn(self.order, x)
         return np.sum(np.multiply(self.norm_coeff, pn))
 
@@ -27,9 +28,11 @@ class ZernikeRadial(Polynomials):
         super().__init__(coeff)
         self.order = 2 * (self.n_coeff - 1)
         self.radius = radius
-        self.norm_vec = (2 * np.arange(self.n_coeff) + 1)/(np.pi * radius ** 2)
+        self.norm_vec = (2 * np.arange(self.n_coeff) + 1) / (np.pi * 
+            radius ** 2)
         self.norm_coeff = np.multiply(self.norm_vec,self.coeff)
         
     def __call__(self, r):
+        # r is the normalized position on radius [0,1]
         zn_rad = capi.calc_zn_rad(self.order, r)
         return np.sum(np.multiply(self.norm_coeff, zn_rad))

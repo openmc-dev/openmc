@@ -288,7 +288,6 @@ set_target_properties(faddeeva PROPERTIES
 
 add_library(libopenmc SHARED
   src/algorithm.F90
-  src/angleenergy_header.F90
   src/bank_header.F90
   src/api.F90
   src/cmfd_data.F90
@@ -338,7 +337,6 @@ add_library(libopenmc SHARED
   src/reaction_header.F90
   src/relaxng
   src/sab_header.F90
-  src/secondary_correlated.F90
   src/set_header.F90
   src/settings.F90
   src/simulation_header.F90

@@ -43,6 +43,7 @@ read_materials(pugi::xml_node* node)
   for (pugi::xml_node material_node: node->children("material")) {
     global_materials.push_back(new Material(material_node));
   }
+  global_materials.shrink_to_fit();
 
   // Populate the material map.
   for (int i = 0; i < global_materials.size(); i++) {
@@ -67,7 +68,12 @@ extern "C" {
 
   int32_t material_id(Material* mat) {return mat->id;}
 
-  void material_set_id(Material* mat, int32_t id) {mat->id = id;}
+  void material_set_id(Material* mat, int32_t id, int32_t index)
+  {
+    mat->id = id;
+    //TODO: off-by-one
+    material_map[id] = index - 1;
+  }
 
   void extend_materials_c(int32_t n)
   {

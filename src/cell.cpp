@@ -204,9 +204,8 @@ Cell::Cell(pugi::xml_node cell_node)
     fatal_error("Must specify id of cell in geometry XML file.");
   }
 
-  //TODO: don't automatically lowercase cell and surface names
   if (check_for_node(cell_node, "name")) {
-    name = get_node_value(cell_node, "name");
+    name = get_node_value(cell_node, "name", false);
   }
 
   if (check_for_node(cell_node, "universe")) {
@@ -238,8 +237,8 @@ Cell::Cell(pugi::xml_node cell_node)
       }
     } else {
       material.push_back(C_NONE);
-      material.shrink_to_fit();
     }
+    material.shrink_to_fit();
   } else {
     material.push_back(C_NONE);
     material.shrink_to_fit();
@@ -318,7 +317,7 @@ Cell::distance(Position r, Direction u, int32_t on_surface) const
     // Calculate the distance to this surface.
     // Note the off-by-one indexing
     bool coincident {token == on_surface};
-    double d {surfaces_c[abs(token)-1]->distance(r, u, coincident)};
+    double d {global_surfaces[abs(token)-1]->distance(r, u, coincident)};
 
     // Check if this distance is the new minimum.
     if (d < min_dist) {
@@ -359,7 +358,8 @@ Cell::to_hdf5(hid_t cell_group) const
         region_spec << " |";
       } else {
         // Note the off-by-one indexing
-        region_spec << " " << copysign(surfaces_c[abs(token)-1]->id, token);
+        region_spec << " "
+             << copysign(global_surfaces[abs(token)-1]->id, token);
       }
     }
     write_string(cell_group, "region", region_spec.str(), false);
@@ -382,7 +382,7 @@ Cell::contains_simple(Position r, Direction u, int32_t on_surface) const
         return false;
       } else {
         // Note the off-by-one indexing
-        bool sense = surfaces_c[abs(token)-1]->sense(r, u);
+        bool sense = global_surfaces[abs(token)-1]->sense(r, u);
         if (sense != (token > 0)) {return false;}
       }
     }
@@ -424,7 +424,7 @@ Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
         stack[i_stack] = false;
       } else {
         // Note the off-by-one indexing
-        bool sense = surfaces_c[abs(token)-1]->sense(r, u);;
+        bool sense = global_surfaces[abs(token)-1]->sense(r, u);
         stack[i_stack] = (sense == (token > 0));
       }
     }
@@ -454,13 +454,12 @@ read_cells(pugi::xml_node* node)
     fatal_error("No cells found in geometry.xml!");
   }
 
-  // Allocate the vector of Cells.
-  global_cells.reserve(n_cells);
-
   // Loop over XML cell elements and populate the array.
+  global_cells.reserve(n_cells);
   for (pugi::xml_node cell_node: node->children("cell")) {
     global_cells.push_back(new Cell(cell_node));
   }
+  global_cells.shrink_to_fit();
 
   // Populate the Universe vector and map.
   for (int i = 0; i < global_cells.size(); i++) {
@@ -475,6 +474,7 @@ read_cells(pugi::xml_node* node)
       global_universes[it->second]->cells.push_back(i);
     }
   }
+  global_universes.shrink_to_fit();
 }
 
 //==============================================================================
@@ -524,6 +524,7 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
           return OPENMC_E_OUT_OF_BOUNDS;
         }
       }
+      c.material.shrink_to_fit();
     } else if (type == FILL_UNIVERSE) {
       c.type = FILL_UNIVERSE;
     } else {

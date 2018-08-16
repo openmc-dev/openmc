@@ -57,30 +57,9 @@ def test_evaluate_legendre():
     test_vals = np.array([openmc.capi.math.evaluate_legendre(test_coeffs, x)
                           for x in test_xs])
 
-    # When turn on the flag 2, evaluate_legendre should be the same as
-    # np.polynomial.legendre.legval().
-    test_coeffs = [(2. * l + 1.) / 10 for l in range(max_order + 1)]
-    ref_vals_1 = np.polynomial.legendre.legval(test_xs, test_coeffs)
-
-    test_vals_1 = np.array([openmc.capi.math.evaluate_legendre(test_coeffs, x,
-                            2)for x in test_xs])
-
-    assert np.allclose(ref_vals, test_vals)
-    assert np.allclose(ref_vals_1, test_vals_1)
-
-
-def test_calc_norm_pn():
-    max_order = 10
-    zmin = -10
-    zmax = 10
-
-    ref_vals = np.divide(2 * np.arange(max_order + 1) + 1, (zmax-zmin))
-
-    test_vals = openmc.capi.math.calc_norm_pn(max_order, zmin, zmax)
-
     assert np.allclose(ref_vals, test_vals)
 
-    
+
 def test_calc_rn():
     max_order = 10
     test_ns = np.array([i for i in range(0, max_order + 1)])
@@ -168,33 +147,6 @@ def test_calc_zn_rad():
         4.37500000e-01, -2.89062500e-01,-8.98437500e-02])
 
     test_vals = openmc.capi.math.calc_zn_rad(n, rho)
-
-    assert np.allclose(ref_vals, test_vals)
-
-def test_evaluate_legendre():
-    max_order = 10
-    rho = 0.5
-
-    raw_zn = np.array([
-        1.00000000e+00, -5.00000000e-01, -1.25000000e-01,
-        4.37500000e-01, -2.89062500e-01,-8.98437500e-02])
-    raw_coeff = np.ones(6)
-    norm_vec = np.divide(np.arange(0, max_order + 1, 2) + 1, np.pi * rho * rho)
-    real_coeff = np.multiply(raw_coeff,norm_vec)
-
-    ref_vals = np.sum(np.multiply(real_coeff,raw_zn))
-
-    test_vals = openmc.capi.math.evaluate_zernike_rad(real_coeff, rho)
-
-    assert np.allclose(ref_vals, test_vals)
-
-def test_calc_norm_zn_rad():
-    max_order = 10
-    rho = 0.5
-
-    ref_vals = np.divide(np.arange(0, max_order + 1, 2) + 1, np.pi * rho * rho)
-
-    test_vals = openmc.capi.math.calc_norm_zn_rad(max_order, rho)
 
     assert np.allclose(ref_vals, test_vals)
 

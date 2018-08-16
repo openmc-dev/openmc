@@ -4,7 +4,7 @@ module geometry_header
 
   use algorithm,       only: find
   use constants,       only: HALF, TWO, THREE, INFINITY, K_BOLTZMANN, &
-                             MATERIAL_VOID, NONE
+                             MATERIAL_VOID
   use dict_header,     only: DictCharInt, DictIntInt
   use hdf5_interface,  only: HID_T
   use material_header, only: Material, materials, material_dict, n_materials
@@ -462,10 +462,12 @@ contains
     if (present(sab_temps)) allocate(sab_temps(n_sab_tables))
 
     do i = 1, size(cells)
+      ! Skip non-material cells.
+      if (cells(i) % fill() /= C_NONE) cycle
+
       do j = 1, cells(i) % material_size()
-        ! Skip any non-material cells and void materials
-        if (cells(i) % material(j) == NONE .or. &
-             cells(i) % material(j) == MATERIAL_VOID) cycle
+        ! Skip void materials
+        if (cells(i) % material(j) == MATERIAL_VOID) cycle
 
         ! Get temperature of cell (rounding to nearest integer)
         if (size(cells(i) % sqrtkT) > 1) then

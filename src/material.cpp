@@ -6,9 +6,6 @@
 #include "error.h"
 #include "xml_interface.h"
 
-//TODO: remove this include
-#include <iostream>
-
 
 namespace openmc {
 
@@ -26,7 +23,7 @@ std::unordered_map<int32_t, int32_t> material_map;
 Material::Material(pugi::xml_node material_node)
 {
   if (check_for_node(material_node, "id")) {
-    id = stoi(get_node_value(material_node, "id"));
+    id = std::stoi(get_node_value(material_node, "id"));
   } else {
     fatal_error("Must specify id of material in materials XML file.");
   }
@@ -40,7 +37,7 @@ extern "C" void
 read_materials(pugi::xml_node* node)
 {
   // Loop over XML material elements and populate the array.
-  for (pugi::xml_node material_node: node->children("material")) {
+  for (pugi::xml_node material_node : node->children("material")) {
     global_materials.push_back(new Material(material_node));
   }
   global_materials.shrink_to_fit();

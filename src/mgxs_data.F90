@@ -151,11 +151,13 @@ contains
     allocate(kTs(size(materials)))
 
     do i = 1, size(cells)
+      ! Skip non-material cells
+      if (cells(i) % fill() /= C_NONE) cycle
+
       do j = 1, cells(i) % material_size()
 
-        ! Skip any non-material cells and void materials
-        if (cells(i) % material(j) == NONE .or. &
-             cells(i) % material(j) == MATERIAL_VOID) cycle
+        ! Skip void materials
+        if (cells(i) % material(j) == MATERIAL_VOID) cycle
 
         ! Get temperature of cell (rounding to nearest integer)
         if (size(cells(i) % sqrtkT) > 1) then

@@ -34,7 +34,7 @@ The current version of the summary file format is 6.0.
              'material', 'universe', or 'lattice'.
            - **material** (*int* or *int[]*) -- Unique ID of the material(s)
              assigned to the cell. This dataset is present only if fill_type is
-             set to 'normal'.  The value '-2' signifies void material.  The data
+             set to 'normal'.  The value '-1' signifies void material.  The data
              is an array if the cell uses distributed materials, otherwise it is
              a scalar.
            - **temperature** (*double[]*) -- Temperature of the cell in Kelvin.

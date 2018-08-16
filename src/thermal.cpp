@@ -140,7 +140,7 @@ ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& tem
     // Open group for temperature i
     hid_t T_group = open_group(group, temp_str.data());
     data_.emplace_back(T_group, secondary_mode);
-    close_group(group);
+    close_group(T_group);
   }
 
   close_group(kT_group);
@@ -312,11 +312,13 @@ ThermalData::ThermalData(hid_t group, int secondary_mode)
       xt::xarray<double> E_out;
       read_dataset(inelastic_group, "energy_out", E_out);
       inelastic_e_out_ = E_out;
+      n_inelastic_e_out_ = inelastic_e_out_.shape()[1];
 
       // Read angle distribution
       xt::xarray<double> mu_out;
       read_dataset(inelastic_group, "mu_out", mu_out);
       inelastic_mu_ = mu_out;
+      n_inelastic_mu_ = inelastic_mu_.shape()[2];
     } else {
       // Read correlated angle-energy distribution
       CorrelatedAngleEnergy dist {inelastic_group};
@@ -396,10 +398,8 @@ ThermalData::sample(const NuclideMicroXS* micro_xs, double E,
 
       // Sample a Bragg edge between 1 and i
       double prob = prn() * elastic_P_[i+1];
-      int k;
-      if (prob < elastic_P_.front()) {
-        k = 1;
-      } else {
+      int k = 0;
+      if (prob >= elastic_P_.front()) {
         k = lower_bound_index(elastic_P_.begin(), elastic_P_.begin() + (i+1), prob);
       }
 
@@ -408,7 +408,8 @@ ThermalData::sample(const NuclideMicroXS* micro_xs, double E,
 
     }
 
-    // Outgoing energy is same as incoming energy -- no need to do anything
+    // Outgoing energy is same as incoming energy
+    *E_out = E;
 
   } else {
     // Perform inelastic calculations
@@ -595,7 +596,12 @@ sab_from_hdf5(hid_t group, const double* temperature, int n,
 void sab_calculate_xs(ThermalScattering* data, double E, double sqrtkT,
   int* i_temp, double* elastic, double* inelastic)
 {
-  data->calculate_xs(E, sqrtkT, i_temp, elastic, inelastic);
+  // Calculate cross section
+  int t;
+  data->calculate_xs(E, sqrtkT, &t, elastic, inelastic);
+
+  // Fortran needs index plus one
+  *i_temp = t + 1;
 }
 
 void sab_free(ThermalScattering* data) { delete data; }

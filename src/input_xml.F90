@@ -1215,7 +1215,7 @@ contains
         n = node_word_count(node_cell, "temperature")
         if (n > 0) then
           ! Make sure this is a "normal" cell.
-          if (c % material(1) == NONE) call fatal_error("Cell " &
+          if (c % fill() /= C_NONE) call fatal_error("Cell " &
                // trim(to_str(c % id())) // " was specified with a temperature &
                &but no material. Temperature specification is only valid for &
                &cells filled with a material.")
@@ -3814,7 +3814,7 @@ contains
 
     do i = 1, n_cells
       ! Ignore non-normal cells and cells with defined temperature.
-      if (cells(i) % material(1) == NONE) cycle
+      if (cells(i) % fill() /= C_NONE) cycle
       if (cells(i) % sqrtkT(1) >= ZERO) cycle
 
       ! Set the number of temperatures equal to the number of materials.

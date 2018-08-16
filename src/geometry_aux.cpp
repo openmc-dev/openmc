@@ -20,7 +20,7 @@ adjust_indices()
 {
   // Adjust material/fill idices.
   for (Cell* c : global_cells) {
-    if (c->material[0] == C_NONE) {
+    if (c->fill != C_NONE) {
       int32_t id = c->fill;
       auto search_univ = universe_map.find(id);
       auto search_lat = lattice_map.find(id);

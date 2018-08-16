@@ -112,7 +112,7 @@ constexpr char SUBSHELLS[][4]  {
 
 // Void material
 // TODO: refactor and remove
-constexpr int MATERIAL_VOID {-2};
+constexpr int MATERIAL_VOID {-1};
 
 // ============================================================================
 // CROSS SECTION RELATED CONSTANTS
@@ -434,7 +434,6 @@ constexpr int DIFF_NUCLIDE_DENSITY {2};
 constexpr int DIFF_TEMPERATURE {3};
 
 constexpr int C_NONE {-1};
-constexpr int F90_NONE {0};
 
 // Interpolation rules
 enum class Interpolation {

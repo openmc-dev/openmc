@@ -141,7 +141,7 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
 Surface::Surface(pugi::xml_node surf_node)
 {
   if (check_for_node(surf_node, "id")) {
-    id = stoi(get_node_value(surf_node, "id"));
+    id = std::stoi(get_node_value(surf_node, "id"));
   } else {
     fatal_error("Must specify id of surface in geometry XML file.");
   }
@@ -247,7 +247,7 @@ PeriodicSurface::PeriodicSurface(pugi::xml_node surf_node)
   : Surface {surf_node}
 {
   if (check_for_node(surf_node, "periodic_surface_id")) {
-    i_periodic = stoi(get_node_value(surf_node, "periodic_surface_id"));
+    i_periodic = std::stoi(get_node_value(surf_node, "periodic_surface_id"));
   }
 }
 

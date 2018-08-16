@@ -199,23 +199,38 @@ generate_rpn(int32_t cell_id, std::vector<int32_t> infix)
 Cell::Cell(pugi::xml_node cell_node)
 {
   if (check_for_node(cell_node, "id")) {
-    id = stoi(get_node_value(cell_node, "id"));
+    id = std::stoi(get_node_value(cell_node, "id"));
   } else {
     fatal_error("Must specify id of cell in geometry XML file.");
   }
 
   if (check_for_node(cell_node, "name")) {
-    name = get_node_value(cell_node, "name", false);
+    name = get_node_value(cell_node, "name");
   }
 
   if (check_for_node(cell_node, "universe")) {
-    universe = stoi(get_node_value(cell_node, "universe"));
+    universe = std::stoi(get_node_value(cell_node, "universe"));
   } else {
     universe = 0;
   }
 
-  if (check_for_node(cell_node, "fill")) {
-    fill = stoi(get_node_value(cell_node, "fill"));
+  // Make sure that either material or fill was specified, but not both.
+  bool fill_present = check_for_node(cell_node, "fill");
+  bool material_present = check_for_node(cell_node, "material");
+  if (!(fill_present || material_present)) {
+    std::stringstream err_msg;
+    err_msg << "Neither material nor fill was specified for cell " << id;
+    fatal_error(err_msg);
+  }
+  if (fill_present && material_present) {
+    std::stringstream err_msg;
+    err_msg << "Cell " << id << " has both a material and a fill specified; "
+            << "only one can be specified per cell";
+    fatal_error(err_msg);
+  }
+
+  if (fill_present) {
+    fill = std::stoi(get_node_value(cell_node, "fill"));
   } else {
     fill = C_NONE;
   }
@@ -223,9 +238,9 @@ Cell::Cell(pugi::xml_node cell_node)
   // Read the material element.  There can be zero materials (filled with a
   // universe), more than one material (distribmats), and some materials may
   // be "void".
-  if (check_for_node(cell_node, "material")) {
+  if (material_present) {
     std::vector<std::string> mats
-         {get_node_array<std::string>(cell_node, "material")};
+         {get_node_array<std::string>(cell_node, "material", true)};
     if (mats.size() > 0) {
       material.reserve(mats.size());
       for (std::string mat : mats) {
@@ -235,28 +250,12 @@ Cell::Cell(pugi::xml_node cell_node)
           material.push_back(std::stoi(mat));
         }
       }
+      material.shrink_to_fit();
     } else {
-      material.push_back(C_NONE);
+      std::stringstream err_msg;
+      err_msg << "An empty material element was specified for cell " << id;
+      fatal_error(err_msg);
     }
-    material.shrink_to_fit();
-  } else {
-    material.push_back(C_NONE);
-    material.shrink_to_fit();
-  }
-
-  // Make sure that either material or fill was specified.
-  if ((material[0] == C_NONE) && (fill == C_NONE)) {
-    std::stringstream err_msg;
-    err_msg << "Neither material nor fill was specified for cell " << id;
-    fatal_error(err_msg);
-  }
-
-  // Make sure that material and fill haven't been specified simultaneously.
-  if ((material[0] != C_NONE) && (fill != C_NONE)) {
-    std::stringstream err_msg;
-    err_msg << "Cell " << id << " has both a material and a fill specified; "
-            << "only one can be specified per cell";
-    fatal_error(err_msg);
   }
 
   // Read the region specification.
@@ -562,7 +561,6 @@ extern "C" {
   int32_t cell_material(Cell* c, int i)
   {
     int32_t mat = c->material[i-1];
-    if (mat == C_NONE) return F90_NONE;
     if (mat == MATERIAL_VOID) return MATERIAL_VOID;
     return mat + 1;
   }

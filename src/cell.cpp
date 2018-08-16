@@ -250,7 +250,6 @@ Cell::Cell(pugi::xml_node cell_node)
           material.push_back(std::stoi(mat));
         }
       }
-      material.shrink_to_fit();
     } else {
       std::stringstream err_msg;
       err_msg << "An empty material element was specified for cell " << id;
@@ -458,7 +457,6 @@ read_cells(pugi::xml_node* node)
   for (pugi::xml_node cell_node: node->children("cell")) {
     global_cells.push_back(new Cell(cell_node));
   }
-  global_cells.shrink_to_fit();
 
   // Populate the Universe vector and map.
   for (int i = 0; i < global_cells.size(); i++) {

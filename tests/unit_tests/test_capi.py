@@ -245,17 +245,51 @@ def test_by_batch(capi_run):
         openmc.capi.next_batch()
 
     openmc.capi.simulation_init()
-    for _ in openmc.capi.iter_batches():
-        # Make sure we can get k-effective during inactive/active batches
-        mean, std_dev = openmc.capi.keff()
-        assert 0.0 < mean < 2.5
-        assert std_dev > 0.0
-    assert openmc.capi.num_realizations() == 5
+    try:
+        for _ in openmc.capi.iter_batches():
+            # Make sure we can get k-effective during inactive/active batches
+            mean, std_dev = openmc.capi.keff()
+            assert 0.0 < mean < 2.5
+            assert std_dev > 0.0
+        assert openmc.capi.num_realizations() == 5
 
-    for i in range(3):
-        openmc.capi.next_batch()
-    assert openmc.capi.num_realizations() == 8
-    openmc.capi.simulation_finalize()
+        for i in range(3):
+            openmc.capi.next_batch()
+        assert openmc.capi.num_realizations() == 8
+
+    finally:
+        openmc.capi.simulation_finalize()
+
+
+def test_reset(capi_run):
+    # Init and run 10 batches.
+    openmc.capi.hard_reset()
+    openmc.capi.simulation_init()
+    try:
+        for i in range(10):
+            openmc.capi.next_batch()
+
+        # Make sure there are 5 realizations for the 5 active batches.
+        assert openmc.capi.num_realizations() == 5
+        assert openmc.capi.tallies[2].num_realizations == 5
+        _, keff_sd1 = openmc.capi.keff()
+        tally_sd1 = openmc.capi.tallies[2].std_dev[0]
+
+        # Reset and run 3 more batches.  Check the number of realizations.
+        openmc.capi.reset()
+        for i in range(3):
+            openmc.capi.next_batch()
+        assert openmc.capi.num_realizations() == 3
+        assert openmc.capi.tallies[2].num_realizations == 3
+
+        # Check the tally std devs to make sure results were cleared.
+        _, keff_sd2 = openmc.capi.keff()
+        tally_sd2 = openmc.capi.tallies[2].std_dev[0]
+        assert keff_sd2 > keff_sd1
+        assert tally_sd2 > tally_sd1
+
+    finally:
+        openmc.capi.simulation_finalize()
 
 
 def test_reproduce_keff(capi_init):

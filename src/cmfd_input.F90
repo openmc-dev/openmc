@@ -262,6 +262,7 @@ contains
     integer(C_INT) :: err
     integer :: i_filt     ! index in filters array
     integer :: filt_id
+    integer :: tally_id
     integer :: iarray3(3) ! temp integer array
     real(8) :: rarray3(3) ! temp double array
     real(C_DOUBLE), allocatable :: energies(:)
@@ -434,6 +435,8 @@ contains
     do i = 1, size(cmfd_tallies)
       ! Allocate tally
       err = openmc_tally_set_type(i_start + i - 1, C_CHAR_'generic' // C_NULL_CHAR)
+      call openmc_get_tally_next_id(tally_id)
+      err = openmc_tally_set_id(i_start + i - 1, tally_id)
 
       ! Point t to tally variable
       associate (t => cmfd_tallies(i) % obj)

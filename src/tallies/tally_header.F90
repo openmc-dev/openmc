@@ -38,6 +38,7 @@ module tally_header
   public :: openmc_tally_set_id
   public :: openmc_tally_set_nuclides
   public :: openmc_tally_set_scores
+  public :: openmc_get_tally_next_id
 
 !===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to
@@ -116,6 +117,10 @@ module tally_header
 
   ! Dictionary that maps user IDs to indices in 'tallies'
   type(DictIntInt), public :: tally_dict
+
+  ! The largest tally ID that has been specified in the system.  This is useful
+  ! in case the code needs to find an ID for a new tally.
+  integer :: largest_tally_id
 
   ! Global tallies
   !   1) collision estimate of k-eff
@@ -399,6 +404,7 @@ contains
     n_tallies = 0
     if (allocated(tallies)) deallocate(tallies)
     call tally_dict % clear()
+    largest_tally_id = 0
 
     if (allocated(global_tallies)) deallocate(global_tallies)
 
@@ -763,6 +769,7 @@ contains
       if (allocated(tallies(index) % obj)) then
         tallies(index) % obj % id = id
         call tally_dict % set(id, index)
+        if (id > largest_tally_id) largest_tally_id = id
 
         err = 0
       else
@@ -1024,5 +1031,13 @@ contains
       call set_errmsg("Index in tally array is out of bounds.")
     end if
   end function openmc_tally_update_type
+
+  subroutine openmc_get_tally_next_id(id) bind(C)
+    ! Returns an ID number that has not been used by any other tallies.
+    integer(C_INT32_T), intent(out) :: id
+
+    id = largest_tally_id + 1
+    print *, id
+  end subroutine openmc_get_tally_next_id
 
 end module tally_header

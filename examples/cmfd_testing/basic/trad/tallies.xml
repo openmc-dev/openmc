@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<tallies>
+
+  <mesh id="1">
+    <type>regular</type>
+    <lower_left>-10 -1 -1 </lower_left>
+    <upper_right>10 1 1</upper_right>
+    <dimension>10 1 1</dimension>
+  </mesh>
+
+  <filter id="1">
+    <type>mesh</type>
+    <bins>1</bins>
+  </filter>
+
+  <tally id="1">
+    <filters>1</filters>
+    <scores>flux</scores>
+  </tally>
+
+</tallies>

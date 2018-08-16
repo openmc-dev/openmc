@@ -42,10 +42,12 @@ module material_header
       integer(C_INT32_T)             :: id
     end function material_id_c
 
-    subroutine material_set_id_c(mat_ptr, id) bind(C, name='material_set_id')
+    subroutine material_set_id_c(mat_ptr, id, index) &
+         bind(C, name='material_set_id')
       import C_PTR, C_INT32_T
       type(C_PTR),        intent(in), value :: mat_ptr
       integer(C_INT32_T), intent(in), value :: id
+      integer(C_INT32_T), intent(in), value :: index
     end subroutine material_set_id_c
 
     subroutine extend_materials_c(n) bind(C)
@@ -122,10 +124,11 @@ contains
     id = material_id_c(this % ptr)
   end function material_id
 
-  subroutine material_set_id(this, id)
+  subroutine material_set_id(this, id, index)
     class(Material),    intent(in) :: this
     integer(C_INT32_T), intent(in) :: id
-    call material_set_id_c(this % ptr, id)
+    integer(C_INT32_T), intent(in) :: index
+    call material_set_id_c(this % ptr, id, index)
   end subroutine material_set_id
 
   function material_set_density(this, density) result(err)
@@ -674,7 +677,7 @@ contains
     integer(C_INT) :: err
 
     if (index >= 1 .and. index <= n_materials) then
-      call materials(index) % set_id(id)
+      call materials(index) % set_id(id, index)
       call material_dict % set(id, index)
       err = 0
     else

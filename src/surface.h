@@ -4,6 +4,7 @@
 #include <map>
 #include <limits>  // For numeric_limits
 #include <string>
+#include <vector>
 
 #include "hdf5.h"
 #include "pugixml.hpp"
@@ -31,7 +32,7 @@ extern "C" const int BC_PERIODIC;
 extern "C" int32_t n_surfaces;
 
 class Surface;
-extern Surface** surfaces_c;
+extern std::vector<Surface*> global_surfaces;
 
 extern std::map<int, int> surface_map;
 

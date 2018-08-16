@@ -19,7 +19,7 @@ void
 adjust_indices()
 {
   // Adjust material/fill idices.
-  for (Cell *c : global_cells) {
+  for (Cell* c : global_cells) {
     if (c->material[0] == C_NONE) {
       int32_t id = c->fill;
       auto search_univ = universe_map.find(id);
@@ -56,7 +56,7 @@ adjust_indices()
   }
 
   // Change cell.universe values from IDs to indices.
-  for (Cell *c : global_cells) {
+  for (Cell* c : global_cells) {
     auto search = universe_map.find(c->universe);
     if (search != universe_map.end()) {
       //TODO: Remove this off-by-one indexing.
@@ -70,7 +70,7 @@ adjust_indices()
   }
 
   // Change all lattice universe values from IDs to indices.
-  for (Lattice *l : lattices_c) {
+  for (Lattice* l : lattices_c) {
     l->adjust_indices();
   }
 }
@@ -82,12 +82,12 @@ find_root_universe()
 {
   // Find all the universes listed as a cell fill.
   std::unordered_set<int32_t> fill_univ_ids;
-  for (Cell *c : global_cells) {
+  for (Cell* c : global_cells) {
     fill_univ_ids.insert(c->fill);
   }
 
   // Find all the universes contained in a lattice.
-  for (Lattice *lat : lattices_c) {
+  for (Lattice* lat : lattices_c) {
     for (auto it = lat->begin(); it != lat->end(); ++it) {
       fill_univ_ids.insert(*it);
     }
@@ -123,13 +123,13 @@ find_root_universe()
 void
 allocate_offset_tables(int n_maps)
 {
-  for (Cell *c : global_cells) {
+  for (Cell* c : global_cells) {
     if (c->type != FILL_MATERIAL) {
       c->offset.resize(n_maps, C_NONE);
     }
   }
 
-  for (Lattice *lat : lattices_c) {
+  for (Lattice* lat : lattices_c) {
     lat->allocate_offset_table(n_maps);
   }
 }
@@ -140,7 +140,7 @@ void
 count_cell_instances(int32_t univ_indx)
 {
   for (int32_t cell_indx : global_universes[univ_indx]->cells) {
-    Cell &c = *global_cells[cell_indx];
+    Cell& c = *global_cells[cell_indx];
     ++c.n_instances;
 
     if (c.type == FILL_UNIVERSE) {
@@ -149,7 +149,7 @@ count_cell_instances(int32_t univ_indx)
 
     } else if (c.type == FILL_LATTICE) {
       // This cell contains a lattice.  Recurse into the lattice universes.
-      Lattice &lat = *lattices_c[c.fill];
+      Lattice& lat = *lattices_c[c.fill];
       for (auto it = lat.begin(); it != lat.end(); ++it) {
         count_cell_instances(*it);
       }
@@ -169,14 +169,14 @@ count_universe_instances(int32_t search_univ, int32_t target_univ_id)
 
   int count {0};
   for (int32_t cell_indx : global_universes[search_univ]->cells) {
-    Cell &c = *global_cells[cell_indx];
+    Cell& c = *global_cells[cell_indx];
 
     if (c.type == FILL_UNIVERSE) {
       int32_t next_univ = c.fill;
       count += count_universe_instances(next_univ, target_univ_id);
 
     } else if (c.type == FILL_LATTICE) {
-      Lattice &lat = *lattices_c[c.fill];
+      Lattice& lat = *lattices_c[c.fill];
       for (auto it = lat.begin(); it != lat.end(); ++it) {
         int32_t next_univ = *it;
         count += count_universe_instances(next_univ, target_univ_id);
@@ -192,10 +192,10 @@ count_universe_instances(int32_t search_univ, int32_t target_univ_id)
 void
 fill_offset_tables(int32_t target_univ_id, int map)
 {
-  for (Universe *univ : global_universes) {
+  for (Universe* univ : global_universes) {
     int32_t offset {0};  // TODO: is this a bug?  It matches F90 implementation.
     for (int32_t cell_indx : univ->cells) {
-      Cell &c = *global_cells[cell_indx];
+      Cell& c = *global_cells[cell_indx];
 
       if (c.type == FILL_UNIVERSE) {
         c.offset[map] = offset;
@@ -203,7 +203,7 @@ fill_offset_tables(int32_t target_univ_id, int map)
         offset += count_universe_instances(search_univ, target_univ_id);
 
       } else if (c.type == FILL_LATTICE) {
-        Lattice &lat = *lattices_c[c.fill];
+        Lattice& lat = *lattices_c[c.fill];
         offset = lat.fill_offset_table(offset, target_univ_id, map);
       }
     }
@@ -214,7 +214,7 @@ fill_offset_tables(int32_t target_univ_id, int map)
 
 std::string
 distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
-                       const Universe &search_univ, int32_t offset)
+                       const Universe& search_univ, int32_t offset)
 {
   std::stringstream path;
 
@@ -224,7 +224,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
   // write to the path and return.
   for (int32_t cell_indx : search_univ.cells) {
     if ((cell_indx == target_cell) && (offset == target_offset)) {
-      Cell &c = *global_cells[cell_indx];
+      Cell& c = *global_cells[cell_indx];
       path << "c" << c.id;
       return path.str();
     }
@@ -236,7 +236,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
   std::vector<std::int32_t>::const_reverse_iterator cell_it
        {search_univ.cells.crbegin()};
   for (; cell_it != search_univ.cells.crend(); ++cell_it) {
-    Cell &c = *global_cells[*cell_it];
+    Cell& c = *global_cells[*cell_it];
 
     // Material cells don't contain other cells so ignore them.
     if (c.type != FILL_MATERIAL) {
@@ -244,7 +244,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
       if (c.type == FILL_UNIVERSE) {
         temp_offset = offset + c.offset[map];
       } else {
-        Lattice &lat = *lattices_c[c.fill];
+        Lattice& lat = *lattices_c[c.fill];
         int32_t indx = lat.universes.size()*map + lat.begin().indx;
         temp_offset = offset + lat.offsets[indx];
       }
@@ -256,7 +256,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
   }
 
   // Add the cell to the path string.
-  Cell &c = *global_cells[*cell_it];
+  Cell& c = *global_cells[*cell_it];
   path << "c" << c.id << "->";
 
   if (c.type == FILL_UNIVERSE) {
@@ -267,7 +267,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
     return path.str();
   } else {
     // Recurse into the lattice cell.
-    Lattice &lat = *lattices_c[c.fill];
+    Lattice& lat = *lattices_c[c.fill];
     path << "l" << lat.id;
     for (ReverseLatticeIter it = lat.rbegin(); it != lat.rend(); ++it) {
       int32_t indx = lat.universes.size()*map + it.indx;
@@ -289,7 +289,7 @@ int
 distribcell_path_len(int32_t target_cell, int32_t map, int32_t target_offset,
                      int32_t root_univ)
 {
-  Universe &root = *global_universes[root_univ];
+  Universe& root = *global_universes[root_univ];
   std::string path_ {distribcell_path_inner(target_cell, map, target_offset,
                                             root, 0)};
   return path_.size() + 1;
@@ -299,9 +299,9 @@ distribcell_path_len(int32_t target_cell, int32_t map, int32_t target_offset,
 
 void
 distribcell_path(int32_t target_cell, int32_t map, int32_t target_offset,
-                 int32_t root_univ, char *path)
+                 int32_t root_univ, char* path)
 {
-  Universe &root = *global_universes[root_univ];
+  Universe& root = *global_universes[root_univ];
   std::string path_ {distribcell_path_inner(target_cell, map, target_offset,
                                             root, 0)};
   path_.copy(path, path_.size());
@@ -316,12 +316,12 @@ maximum_levels(int32_t univ)
   int levels_below {0};
 
   for (int32_t cell_indx : global_universes[univ]->cells) {
-    Cell &c = *global_cells[cell_indx];
+    Cell& c = *global_cells[cell_indx];
     if (c.type == FILL_UNIVERSE) {
       int32_t next_univ = c.fill;
       levels_below = std::max(levels_below, maximum_levels(next_univ));
     } else if (c.type == FILL_LATTICE) {
-      Lattice &lat = *lattices_c[c.fill];
+      Lattice& lat = *lattices_c[c.fill];
       for (auto it = lat.begin(); it != lat.end(); ++it) {
         int32_t next_univ = *it;
         levels_below = std::max(levels_below, maximum_levels(next_univ));
@@ -338,16 +338,16 @@ maximum_levels(int32_t univ)
 void
 free_memory_geometry_c()
 {
-  for (Cell *c : global_cells) {delete c;}
+  for (Cell* c : global_cells) {delete c;}
   global_cells.clear();
   cell_map.clear();
   n_cells = 0;
 
-  for (Universe *u : global_universes) {delete u;}
+  for (Universe* u : global_universes) {delete u;}
   global_universes.clear();
   universe_map.clear();
 
-  for (Lattice *lat : lattices_c) {delete lat;}
+  for (Lattice* lat : lattices_c) {delete lat;}
   lattices_c.clear();
   lattice_map.clear();
 }

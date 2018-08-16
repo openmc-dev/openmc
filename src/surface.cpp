@@ -27,7 +27,7 @@ extern "C" const int BC_PERIODIC {3};
 
 int32_t n_surfaces;
 
-Surface** surfaces_c;
+std::vector<Surface*> global_surfaces;
 
 std::map<int, int> surface_map;
 
@@ -147,7 +147,7 @@ Surface::Surface(pugi::xml_node surf_node)
   }
 
   if (check_for_node(surf_node, "name")) {
-    name = get_node_value(surf_node, "name");
+    name = get_node_value(surf_node, "name", false);
   }
 
   if (check_for_node(surf_node, "boundary")) {
@@ -1031,10 +1031,8 @@ read_surfaces(pugi::xml_node* node)
     fatal_error("No surfaces found in geometry.xml!");
   }
 
-  // Allocate the array of Surface pointers.
-  surfaces_c = new Surface* [n_surfaces];
-
   // Loop over XML surface elements and populate the array.
+  global_surfaces.reserve(n_surfaces);
   {
     pugi::xml_node surf_node;
     int i_surf;
@@ -1043,40 +1041,40 @@ read_surfaces(pugi::xml_node* node)
       std::string surf_type = get_node_value(surf_node, "type", true, true);
 
       if (surf_type == "x-plane") {
-        surfaces_c[i_surf] = new SurfaceXPlane(surf_node);
+        global_surfaces.push_back(new SurfaceXPlane(surf_node));
 
       } else if (surf_type == "y-plane") {
-        surfaces_c[i_surf] = new SurfaceYPlane(surf_node);
+        global_surfaces.push_back(new SurfaceYPlane(surf_node));
 
       } else if (surf_type == "z-plane") {
-        surfaces_c[i_surf] = new SurfaceZPlane(surf_node);
+        global_surfaces.push_back(new SurfaceZPlane(surf_node));
 
       } else if (surf_type == "plane") {
-        surfaces_c[i_surf] = new SurfacePlane(surf_node);
+        global_surfaces.push_back(new SurfacePlane(surf_node));
 
       } else if (surf_type == "x-cylinder") {
-        surfaces_c[i_surf] = new SurfaceXCylinder(surf_node);
+        global_surfaces.push_back(new SurfaceXCylinder(surf_node));
 
       } else if (surf_type == "y-cylinder") {
-        surfaces_c[i_surf] = new SurfaceYCylinder(surf_node);
+        global_surfaces.push_back(new SurfaceYCylinder(surf_node));
 
       } else if (surf_type == "z-cylinder") {
-        surfaces_c[i_surf] = new SurfaceZCylinder(surf_node);
+        global_surfaces.push_back(new SurfaceZCylinder(surf_node));
 
       } else if (surf_type == "sphere") {
-        surfaces_c[i_surf] = new SurfaceSphere(surf_node);
+        global_surfaces.push_back(new SurfaceSphere(surf_node));
 
       } else if (surf_type == "x-cone") {
-        surfaces_c[i_surf] = new SurfaceXCone(surf_node);
+        global_surfaces.push_back(new SurfaceXCone(surf_node));
 
       } else if (surf_type == "y-cone") {
-        surfaces_c[i_surf] = new SurfaceYCone(surf_node);
+        global_surfaces.push_back(new SurfaceYCone(surf_node));
 
       } else if (surf_type == "z-cone") {
-        surfaces_c[i_surf] = new SurfaceZCone(surf_node);
+        global_surfaces.push_back(new SurfaceZCone(surf_node));
 
       } else if (surf_type == "quadric") {
-        surfaces_c[i_surf] = new SurfaceQuadric(surf_node);
+        global_surfaces.push_back(new SurfaceQuadric(surf_node));
 
       } else {
         std::stringstream err_msg;
@@ -1085,10 +1083,11 @@ read_surfaces(pugi::xml_node* node)
       }
     }
   }
+  global_surfaces.shrink_to_fit();
 
   // Fill the surface map.
   for (int i_surf = 0; i_surf < n_surfaces; i_surf++) {
-    int id = surfaces_c[i_surf]->id;
+    int id = global_surfaces[i_surf]->id;
     auto in_map = surface_map.find(id);
     if (in_map == surface_map.end()) {
       surface_map[id] = i_surf;
@@ -1104,9 +1103,9 @@ read_surfaces(pugi::xml_node* node)
          zmin {INFTY}, zmax {-INFTY};
   int i_xmin, i_xmax, i_ymin, i_ymax, i_zmin, i_zmax;
   for (int i_surf = 0; i_surf < n_surfaces; i_surf++) {
-    if (surfaces_c[i_surf]->bc == BC_PERIODIC) {
+    if (global_surfaces[i_surf]->bc == BC_PERIODIC) {
       // Downcast to the PeriodicSurface type.
-      Surface* surf_base = surfaces_c[i_surf];
+      Surface* surf_base = global_surfaces[i_surf];
       PeriodicSurface* surf = dynamic_cast<PeriodicSurface*>(surf_base);
 
       // Make sure this surface inherits from PeriodicSurface.
@@ -1149,9 +1148,9 @@ read_surfaces(pugi::xml_node* node)
 
   // Set i_periodic for periodic BC surfaces.
   for (int i_surf = 0; i_surf < n_surfaces; i_surf++) {
-    if (surfaces_c[i_surf]->bc == BC_PERIODIC) {
+    if (global_surfaces[i_surf]->bc == BC_PERIODIC) {
       // Downcast to the PeriodicSurface type.
-      Surface* surf_base = surfaces_c[i_surf];
+      Surface* surf_base = global_surfaces[i_surf];
       PeriodicSurface* surf = dynamic_cast<PeriodicSurface*>(surf_base);
 
       // Also try downcasting to the SurfacePlane type (which must be handled
@@ -1198,7 +1197,7 @@ read_surfaces(pugi::xml_node* node)
       }
 
       // Make sure the opposite surface is also periodic.
-      if (surfaces_c[surf->i_periodic]->bc != BC_PERIODIC) {
+      if (global_surfaces[surf->i_periodic]->bc != BC_PERIODIC) {
         std::stringstream err_msg;
         err_msg << "Could not find matching surface for periodic boundary "
                    "condition on surface " << surf->id;
@@ -1213,7 +1212,7 @@ read_surfaces(pugi::xml_node* node)
 //==============================================================================
 
 extern "C" {
-  Surface* surface_pointer(int surf_ind) {return surfaces_c[surf_ind];}
+  Surface* surface_pointer(int surf_ind) {return global_surfaces[surf_ind];}
 
   int surface_id(Surface* surf) {return surf->id;}
 
@@ -1264,9 +1263,8 @@ extern "C" {
 
   void free_memory_surfaces_c()
   {
-    for (int i = 0; i < n_surfaces; i++) {delete surfaces_c[i];}
-    delete surfaces_c;
-    surfaces_c = nullptr;
+    for (Surface* surf : global_surfaces) {delete surf;}
+    global_surfaces.clear();
     n_surfaces = 0;
     surface_map.clear();
   }

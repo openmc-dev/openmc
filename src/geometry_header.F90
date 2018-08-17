@@ -27,13 +27,6 @@ module geometry_header
       integer(C_INT32_T), intent(in), value :: cell_ind
       type(C_PTR)                           :: ptr
     end function cell_pointer
-
-    function cell_material_c(cell_ptr, mat_ind) bind(C, name='cell_material') result(mat_id)
-      import C_PTR, C_INT32_T
-      type(C_PTR), intent(in), value        :: cell_ptr
-      integer(C_INT32_T), intent(in), value :: mat_ind
-      integer(C_INT32_T)                    :: mat_id
-     end function cell_material_c
     
     function cell_id_c(cell_ptr) bind(C, name='cell_id') result(id)
       import C_PTR, C_INT32_T

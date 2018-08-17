@@ -77,7 +77,7 @@ void load_cad_geometry_c()
       
       if(DAGMC->is_implicit_complement(vol_handle)) {
 	// assuming implicit complement is void for now
-        c->material.push_back(openmc::C_MATERIAL_VOID);	
+        c->material.push_back(openmc::MATERIAL_VOID);	
 	continue;
       }
       
@@ -88,7 +88,7 @@ void load_cad_geometry_c()
 	TOLOWER(mat_value);
 	
 	if(mat_value == "void") {
-	  c->material.push_back(openmc::C_MATERIAL_VOID);
+	  c->material.push_back(openmc::MATERIAL_VOID);
 	}
 	else {
 	  c->material.push_back(std::stoi(mat_value));
@@ -96,13 +96,13 @@ void load_cad_geometry_c()
       }
       else {
 	std::cout << "Warning: volume without material found!" << std::endl;
-	c->material.push_back(openmc::C_MATERIAL_VOID);
+	c->material.push_back(openmc::MATERIAL_VOID);
       }     
     }
 
   // initialize surface objects
   openmc::n_surfaces = DAGMC->num_entities(2);
-  openmc::surfaces_c = new openmc::Surface*[openmc::n_surfaces];
+  openmc::global_surfaces.resize(openmc::n_surfaces);
   
   for(int i = 0; i < openmc::n_surfaces; i++)
     {
@@ -144,7 +144,7 @@ void load_cad_geometry_c()
       }
 
       // add to global array and map
-      openmc::surfaces_c[i] = s;
+      openmc::global_surfaces[i] = s;
       openmc::surface_map[s->id] = s->id;
     }
 

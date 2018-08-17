@@ -4,12 +4,14 @@ import openmc.capi as capi
 
 
 def legendre_from_expcoef(coef, domain):
-    """Download file from a URL
+    """Return a Legendre object
 
     Parameters
     ----------
     coef : Iterable of float
         A list of coefficients of each term in Legendre polynomials
+    domain : (2,) List of float
+        Domain of the Legendre polynomial
 
     Returns
     -------
@@ -57,9 +59,9 @@ class ZernikeRadial(Polynomial):
     """
     def __init__(self, coef, radius=1):
         super().__init__(coef)
-        self._order = 2 * (self.n_coef - 1)
+        self._order = 2 * (len(self.coef) - 1)
         self.radius = radius
-        norm_vec = (2 * np.arange(self.n_coef) + 1) / (np.pi * radius**2)
+        norm_vec = (2 * np.arange(len(self.coef)) + 1) / (np.pi * radius**2)
         self._norm_coef = norm_vec * self.coef
 
     @property

@@ -2168,21 +2168,14 @@ contains
       ! Get pointer to tally xml node
       node_tal = node_tal_list(i)
 
-      ! Copy tally id
+      ! Copy and set tally id
       if (check_for_node(node_tal, "id")) then
         call get_node_value(node_tal, "id", tally_id)
+        err = openmc_tally_set_id(i_start + i - 1, tally_id)
+        if (err /= 0) call fatal_error(to_f_string(openmc_err_msg))
       else
         call fatal_error("Must specify id for tally in tally XML file.")
       end if
-
-      ! Check to make sure 'id' hasn't been used
-      if (tally_dict % has(t % id)) then
-        call fatal_error("Two or more tallies use the same unique ID: " &
-             // to_str(tally_id))
-      end if
-
-      ! Set tally id
-      err = openmc_tally_set_id(i_start + i - 1, tally_id)
 
       ! Copy tally name
       if (check_for_node(node_tal, "name")) &

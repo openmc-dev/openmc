@@ -397,6 +397,7 @@ add_library(libopenmc SHARED
   src/geometry_aux.cpp
   src/hdf5_interface.cpp
   src/lattice.cpp
+  src/material.cpp
   src/math_functions.cpp
   src/message_passing.cpp
   src/mgxs.cpp

@@ -8,6 +8,8 @@
 #include "error.h"
 #include "hdf5_interface.h"
 #include "lattice.h"
+#include "material.h"
+#include "openmc.h"
 #include "surface.h"
 #include "xml_interface.h"
 
@@ -197,50 +199,62 @@ generate_rpn(int32_t cell_id, std::vector<int32_t> infix)
 Cell::Cell(pugi::xml_node cell_node)
 {
   if (check_for_node(cell_node, "id")) {
-    id = stoi(get_node_value(cell_node, "id"));
+    id = std::stoi(get_node_value(cell_node, "id"));
   } else {
     fatal_error("Must specify id of cell in geometry XML file.");
   }
 
-  //TODO: don't automatically lowercase cell and surface names
   if (check_for_node(cell_node, "name")) {
     name = get_node_value(cell_node, "name");
   }
 
   if (check_for_node(cell_node, "universe")) {
-    universe = stoi(get_node_value(cell_node, "universe"));
+    universe = std::stoi(get_node_value(cell_node, "universe"));
   } else {
     universe = 0;
   }
 
-  if (check_for_node(cell_node, "fill")) {
-    fill = stoi(get_node_value(cell_node, "fill"));
-  } else {
-    fill = C_NONE;
-  }
-
-  if (check_for_node(cell_node, "material")) {
-    //TODO: read material ids.
-    material.push_back(C_NONE+1);
-    material.shrink_to_fit();
-  } else {
-    material.push_back(C_NONE);
-    material.shrink_to_fit();
-  }
-
-  // Make sure that either material or fill was specified.
-  if ((material[0] == C_NONE) && (fill == C_NONE)) {
+  // Make sure that either material or fill was specified, but not both.
+  bool fill_present = check_for_node(cell_node, "fill");
+  bool material_present = check_for_node(cell_node, "material");
+  if (!(fill_present || material_present)) {
     std::stringstream err_msg;
     err_msg << "Neither material nor fill was specified for cell " << id;
     fatal_error(err_msg);
   }
-
-  // Make sure that material and fill haven't been specified simultaneously.
-  if ((material[0] != C_NONE) && (fill != C_NONE)) {
+  if (fill_present && material_present) {
     std::stringstream err_msg;
     err_msg << "Cell " << id << " has both a material and a fill specified; "
             << "only one can be specified per cell";
     fatal_error(err_msg);
+  }
+
+  if (fill_present) {
+    fill = std::stoi(get_node_value(cell_node, "fill"));
+  } else {
+    fill = C_NONE;
+  }
+
+  // Read the material element.  There can be zero materials (filled with a
+  // universe), more than one material (distribmats), and some materials may
+  // be "void".
+  if (material_present) {
+    std::vector<std::string> mats
+         {get_node_array<std::string>(cell_node, "material", true)};
+    if (mats.size() > 0) {
+      material.reserve(mats.size());
+      for (std::string mat : mats) {
+        if (mat.compare("void") == 0) {
+          material.push_back(MATERIAL_VOID);
+        } else {
+          material.push_back(std::stoi(mat));
+        }
+      }
+    } else {
+      std::stringstream err_msg;
+      err_msg << "An empty material element was specified for cell " << id;
+      fatal_error(err_msg);
+    }
   }
 
   // Read the region specification.
@@ -301,7 +315,7 @@ Cell::distance(Position r, Direction u, int32_t on_surface) const
     // Calculate the distance to this surface.
     // Note the off-by-one indexing
     bool coincident {token == on_surface};
-    double d {surfaces_c[abs(token)-1]->distance(r, u, coincident)};
+    double d {global_surfaces[abs(token)-1]->distance(r, u, coincident)};
 
     // Check if this distance is the new minimum.
     if (d < min_dist) {
@@ -342,7 +356,8 @@ Cell::to_hdf5(hid_t cell_group) const
         region_spec << " |";
       } else {
         // Note the off-by-one indexing
-        region_spec << " " << copysign(surfaces_c[abs(token)-1]->id, token);
+        region_spec << " "
+             << copysign(global_surfaces[abs(token)-1]->id, token);
       }
     }
     write_string(cell_group, "region", region_spec.str(), false);
@@ -365,7 +380,7 @@ Cell::contains_simple(Position r, Direction u, int32_t on_surface) const
         return false;
       } else {
         // Note the off-by-one indexing
-        bool sense = surfaces_c[abs(token)-1]->sense(r, u);
+        bool sense = global_surfaces[abs(token)-1]->sense(r, u);
         if (sense != (token > 0)) {return false;}
       }
     }
@@ -407,7 +422,7 @@ Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
         stack[i_stack] = false;
       } else {
         // Note the off-by-one indexing
-        bool sense = surfaces_c[abs(token)-1]->sense(r, u);;
+        bool sense = global_surfaces[abs(token)-1]->sense(r, u);
         stack[i_stack] = (sense == (token > 0));
       }
     }
@@ -429,7 +444,7 @@ Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
 //==============================================================================
 
 extern "C" void
-read_cells(pugi::xml_node *node)
+read_cells(pugi::xml_node* node)
 {
   // Count the number of cells.
   for (pugi::xml_node cell_node: node->children("cell")) {n_cells++;}
@@ -437,10 +452,8 @@ read_cells(pugi::xml_node *node)
     fatal_error("No cells found in geometry.xml!");
   }
 
-  // Allocate the vector of Cells.
-  global_cells.reserve(n_cells);
-
   // Loop over XML cell elements and populate the array.
+  global_cells.reserve(n_cells);
   for (pugi::xml_node cell_node: node->children("cell")) {
     global_cells.push_back(new Cell(cell_node));
   }
@@ -458,6 +471,67 @@ read_cells(pugi::xml_node *node)
       global_universes[it->second]->cells.push_back(i);
     }
   }
+  global_universes.shrink_to_fit();
+}
+
+//==============================================================================
+// C-API functions
+//==============================================================================
+
+extern "C" int
+openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n)
+{
+  if (index >= 1 && index <= global_cells.size()) {
+    //TODO: off-by-one
+    Cell& c {*global_cells[index - 1]};
+    *type = c.type;
+    if (c.type == FILL_MATERIAL) {
+      *indices = c.material.data();
+      *n = c.material.size();
+    } else {
+      *indices = &c.fill;
+      *n = 1;
+    }
+  } else {
+    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  return 0;
+}
+
+extern "C" int
+openmc_cell_set_fill(int32_t index, int type, int32_t n,
+                     const int32_t* indices)
+{
+  if (index >= 1 && index <= global_cells.size()) {
+    //TODO: off-by-one
+    Cell& c {*global_cells[index - 1]};
+    if (type == FILL_MATERIAL) {
+      c.type = FILL_MATERIAL;
+      c.material.clear();
+      for (int i = 0; i < n; i++) {
+        int i_mat = indices[i];
+        if (i_mat == MATERIAL_VOID) {
+          c.material.push_back(MATERIAL_VOID);
+        } else if (i_mat >= 1 && i_mat <= global_materials.size()) {
+          //TODO: off-by-one
+          c.material.push_back(i_mat - 1);
+        } else {
+          strcpy(openmc_err_msg, "Index in materials array is out of bounds.");
+          return OPENMC_E_OUT_OF_BOUNDS;
+        }
+      }
+      c.material.shrink_to_fit();
+    } else if (type == FILL_UNIVERSE) {
+      c.type = FILL_UNIVERSE;
+    } else {
+      c.type = FILL_LATTICE;
+    }
+  } else {
+    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  return 0;
 }
 
 //==============================================================================
@@ -467,35 +541,39 @@ read_cells(pugi::xml_node *node)
 extern "C" {
   Cell* cell_pointer(int32_t cell_ind) {return global_cells[cell_ind];}
 
-  int32_t cell_id(Cell *c) {return c->id;}
+  int32_t cell_id(Cell* c) {return c->id;}
 
-  void cell_set_id(Cell *c, int32_t id) {c->id = id;}
+  void cell_set_id(Cell* c, int32_t id) {c->id = id;}
 
-  int cell_type(Cell *c) {return c->type;}
+  int cell_type(Cell* c) {return c->type;}
 
-  void cell_set_type(Cell *c, int type) {c->type = type;}
+  int32_t cell_universe(Cell* c) {return c->universe;}
 
-  int32_t cell_universe(Cell *c) {return c->universe;}
+  int32_t cell_fill(Cell* c) {return c->fill;}
 
-  void cell_set_universe(Cell *c, int32_t universe) {c->universe = universe;}
+  int32_t cell_n_instances(Cell* c) {return c->n_instances;}
 
-  int32_t cell_fill(Cell *c) {return c->fill;}
+  int cell_material_size(Cell* c) {return c->material.size();}
 
-  int32_t* cell_fill_ptr(Cell *c) {return &c->fill;}
+  //TODO: off-by-one
+  int32_t cell_material(Cell* c, int i)
+  {
+    int32_t mat = c->material[i-1];
+    if (mat == MATERIAL_VOID) return MATERIAL_VOID;
+    return mat + 1;
+  }
 
-  int32_t cell_n_instances(Cell *c) {return c->n_instances;}
+  bool cell_simple(Cell* c) {return c->simple;}
 
-  bool cell_simple(Cell *c) {return c->simple;}
-
-  bool cell_contains(Cell *c, double xyz[3], double uvw[3], int32_t on_surface)
+  bool cell_contains(Cell* c, double xyz[3], double uvw[3], int32_t on_surface)
   {
     Position r {xyz};
     Direction u {uvw};
     return c->contains(r, u, on_surface);
   }
 
-  void cell_distance(Cell *c, double xyz[3], double uvw[3], int32_t on_surface,
-                     double *min_dist, int32_t *i_surf)
+  void cell_distance(Cell* c, double xyz[3], double uvw[3], int32_t on_surface,
+                     double* min_dist, int32_t* i_surf)
   {
     Position r {xyz};
     Direction u {uvw};
@@ -504,9 +582,9 @@ extern "C" {
     *i_surf = out.second;
   }
 
-  int32_t cell_offset(Cell *c, int map) {return c->offset[map];}
+  int32_t cell_offset(Cell* c, int map) {return c->offset[map];}
 
-  void cell_to_hdf5(Cell *c, hid_t group) {c->to_hdf5(group);}
+  void cell_to_hdf5(Cell* c, hid_t group) {c->to_hdf5(group);}
 
   void extend_cells_c(int32_t n)
   {

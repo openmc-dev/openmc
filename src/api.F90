@@ -37,8 +37,6 @@ module openmc_api
   public :: openmc_calculate_volumes
   public :: openmc_cell_filter_get_bins
   public :: openmc_cell_get_id
-  public :: openmc_cell_get_fill
-  public :: openmc_cell_set_fill
   public :: openmc_cell_set_id
   public :: openmc_cell_set_temperature
   public :: openmc_energy_filter_get_bins
@@ -214,7 +212,7 @@ contains
         if (p % material == MATERIAL_VOID) then
           id = 0
         else
-          id = materials(p % material) % id
+          id = materials(p % material) % id()
         end if
       end if
       instance = p % cell_instance - 1

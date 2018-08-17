@@ -762,6 +762,8 @@ extern "C" {
 
   int cell_type(Cell* c) {return c->type_;}
 
+  int cell_material(Cell* c, int32_t mat_ind) {return c->material[mat_ind-1];}
+  
 #ifdef CAD
   int32_t next_cell(CADCell* cur_cell, CADSurface *surf_xed ) {
     moab::EntityHandle surf = surf_xed->dagmc_ptr->entity_by_id(2,surf_xed->id);

@@ -777,11 +777,17 @@ contains
 
     if (index >= 1 .and. index <= n_tallies) then
       if (allocated(tallies(index) % obj)) then
-        tallies(index) % obj % id = id
-        call tally_dict % set(id, index)
-        if (id > largest_tally_id) largest_tally_id = id
+        if (tally_dict % has(id)) then
+          call set_errmsg("Two or more tallies use the same unique ID: " &
+               // to_str(id))
+          err = E_INVALID_ID
+        else
+          tallies(index) % obj % id = id
+          call tally_dict % set(id, index)
+          if (id > largest_tally_id) largest_tally_id = id
 
-        err = 0
+          err = 0
+        end if
       else
         err = E_ALLOCATE
         call set_errmsg("Tally type has not been set yet.")

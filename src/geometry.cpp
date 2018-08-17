@@ -58,22 +58,21 @@ find_cell(Particle* p, int search_surf) {
 
 #ifdef CAD
     // if (dagmc) then
-    //    i_cell = next_cell(cells(p % last_cell(1)), surfaces(ABS(p % surface)))
-    //    p % last_material = p % material
-    //    p % last_sqrtKT = p % sqrtKT
-    //    p % coord(1) % cell = i_cell
-    //    p % cell_instance = 1
-    //    p % material = cells(i_cell) % material(1)
-    //    p % sqrtKT = cells(i_cell) % sqrtKT(1)
+    //   i_cell = next_cell(cells(p % last_cell(1)), surfaces(ABS(p % surface)))
+    //   p % last_material = p % material
+    //   p % last_sqrtKT = p % sqrtKT
+    //   p % coord(1) % cell = i_cell
+    //   p % cell_instance = 1
+    //   p % material = cells(i_cell) % material(1)
+    //   p % sqrtKT = cells(i_cell) % sqrtKT(1)
 
-    //    ! Show cell information on trace
-    //     if (verbosity >= 10 .or. trace) then
-    //       call write_message("    Entering cell " // trim(to_str(&
-    //            cells(i_cell) % id())))
-    //       call write_message(" with material " // trim(to_str(p % material)))
-    //     end if
-
-    //    return
+    //   ! Show cell information on trace
+    //   if (verbosity >= 10 .or. trace) then
+    //     call write_message("    Entering cell " // trim(to_str(&
+    //          cells(i_cell) % id())))
+    //  end if
+     
+    // return
     // end if
 #endif
   

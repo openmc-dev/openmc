@@ -604,7 +604,14 @@ std::pair<double, int32_t> CADCell::distance(Position p, Direction u, int32_t on
   double dist;
   dagmc_ptr->ray_fire(vol, p.xyz, u.xyz, hit_surf, dist);
 
-  int surf_idx = dagmc_ptr->index_by_handle(hit_surf);
+  int surf_idx;
+  if(hit_surf != 0) {
+    surf_idx = dagmc_ptr->index_by_handle(hit_surf);
+  }
+  // indicate that particle is lost
+  else {
+    surf_idx = -1;
+  }
   
   std::pair<double, int> result(dist, surf_idx);
   

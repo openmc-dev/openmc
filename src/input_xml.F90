@@ -600,7 +600,7 @@ contains
         c => cells(i)
         ! additional metadata spoofing
         allocate(c % material(1))
-        c % material(1) = 40
+        c % material(1) = cell_material_c(cell_pointer_c(i-1), 1)
         allocate(c % sqrtKT(1))
         c % sqrtkT(1) = 293
         c % sqrtkT(:) = sqrt(K_BOLTZMANN * c % sqrtkT(:))

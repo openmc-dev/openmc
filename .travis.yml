@@ -39,8 +39,6 @@ env:
 notifications:
   webhooks: https://coveralls.io/webhook?repo_token=$COVERALLS_REPO_TOKEN
 before_install:
-  - sudo add-apt-repository ppa:nschloe/hdf5-backports -y
-  - sudo apt-get update -q
   - sudo apt-get install libhdf5-serial-dev libhdf5-mpich-dev libblas-dev liblapack-dev -y
 install:
   - ./tools/ci/travis-install.sh

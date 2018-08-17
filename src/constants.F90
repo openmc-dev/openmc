@@ -129,7 +129,7 @@ module constants
   integer(C_INT), bind(C, name='FILL_LATTICE')  :: FILL_LATTICE_C  = FILL_LATTICE
 
   ! Void material
-  integer, parameter :: MATERIAL_VOID = -2
+  integer, parameter :: MATERIAL_VOID = -1
 
   ! Flag to say that the outside of a lattice is not defined
   integer, parameter :: NO_OUTER_UNIVERSE = -1
@@ -424,7 +424,7 @@ module constants
   real(8), parameter :: ERROR_REAL = -huge(0.0_8) * 0.917826354_8
 
   ! Running modes
-  integer, parameter ::      &
+  integer, parameter ::        &
        MODE_FIXEDSOURCE = 1, & ! Fixed source mode
        MODE_EIGENVALUE  = 2, & ! K eigenvalue mode
        MODE_PLOTTING    = 3, & ! Plotting mode

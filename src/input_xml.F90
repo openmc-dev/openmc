@@ -599,8 +599,8 @@ contains
       do i = 1, n_cells
         c => cells(i)
         ! additional metadata spoofing
-        allocate(c % material(1))
-        c % material(1) = cell_material_c(cell_pointer_c(i-1), 1)
+!        allocate(c % material(1))
+!        c % material(1) = cell_material(cell_pointer(i-1), 1)
         allocate(c % sqrtKT(1))
         c % sqrtkT(1) = 293
         c % sqrtkT(:) = sqrt(K_BOLTZMANN * c % sqrtkT(:))
@@ -852,7 +852,7 @@ contains
     allocate(surfaces(n_surfaces))
 
     do i = 1, n_surfaces
-      surfaces(i) % ptr = surface_pointer_c(i - 1);
+      surfaces(i) % ptr = surface_pointer(i - 1);
       ! Add surface to dictionary
       call surface_dict % set(surfaces(i) % id(), i)
     end do
@@ -868,7 +868,7 @@ contains
 
     do i = 1, n_cells
       c => cells(i)
-      c % ptr = cell_pointer_c(i - 1)
+      c % ptr = cell_pointer(i - 1)
       ! Check to make sure 'id' hasn't been used
       if (cell_dict % has(c % id())) then
         call fatal_error("Two or more cells use the same unique ID: " &

@@ -249,7 +249,7 @@ CSGSurface::to_hdf5(hid_t group_id) const
 // CADSurface implementation
 //==============================================================================
 #ifdef CAD
-CADSurface::CADSurface() :Surface{} {} // empty constructor
+CADSurface::CADSurface() : Surface{} {} // empty constructor
 
 double CADSurface::evaluate(Position r) const
 {

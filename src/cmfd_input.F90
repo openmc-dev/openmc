@@ -462,10 +462,10 @@ contains
         t % name = "CMFD flux, total"
 
         ! Set tally estimator to analog
-        t % estimator = ESTIMATOR_ANALOG
+        err = openmc_tally_set_estimator(i_start + i - 1, C_CHAR_'analog' // C_NULL_CHAR)
 
         ! Set tally type to volume
-        t % type = TALLY_VOLUME
+        err = openmc_tally_update_type(i_start + i - 1, C_CHAR_'volume' // C_NULL_CHAR)
 
         ! Allocate and set filters
         allocate(filter_indices(n_filter))
@@ -490,10 +490,10 @@ contains
         t % name = "CMFD neutron production"
 
         ! Set tally estimator to analog
-        t % estimator = ESTIMATOR_ANALOG
+        err = openmc_tally_set_estimator(i_start + i - 1, C_CHAR_'analog' // C_NULL_CHAR)
 
         ! Set tally type to volume
-        t % type = TALLY_VOLUME
+        err = openmc_tally_update_type(i_start + i - 1, C_CHAR_'volume' // C_NULL_CHAR)
 
         ! Set the incoming energy mesh filter index in the tally find_filter
         ! array
@@ -525,7 +525,7 @@ contains
         t % name = "CMFD surface currents"
 
         ! Set tally estimator to analog
-        t % estimator = ESTIMATOR_ANALOG
+        err = openmc_tally_set_estimator(i_start + i - 1, C_CHAR_'analog' // C_NULL_CHAR)
 
         ! Allocate and set filters
         allocate(filter_indices(n_filter))
@@ -542,17 +542,17 @@ contains
 
         ! Set macro bins
         t % score_bins(1) = SCORE_CURRENT
-        t % type = TALLY_MESH_SURFACE
+        err = openmc_tally_update_type(i_start + i - 1, C_CHAR_'mesh-surface' // C_NULL_CHAR)
 
       else if (i == 4) then
         ! Set name
         t % name = "CMFD P1 scatter"
 
         ! Set tally estimator to analog
-        t % estimator = ESTIMATOR_ANALOG
+        err = openmc_tally_set_estimator(i_start + i - 1, C_CHAR_'analog' // C_NULL_CHAR)
 
         ! Set tally type to volume
-        t % type = TALLY_VOLUME
+        err = openmc_tally_update_type(i_start + i - 1, C_CHAR_'volume' // C_NULL_CHAR)
 
         ! Allocate and set filters
         n_filter = 2

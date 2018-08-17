@@ -8,7 +8,7 @@ module tracking
   use geometry,           only: find_cell, distance_to_boundary, cross_lattice,&
                                 check_cell_overlap
 #ifdef CAD
-  use geometry,           only: next_cell, is_implicit_complement
+  use geometry,           only: next_cell
 #endif
   use material_header,    only: materials, Material
   use message_passing

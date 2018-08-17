@@ -2159,7 +2159,7 @@ contains
 
     READ_TALLIES: do i = 1, n
       ! Allocate tally
-      err = openmc_tally_set_type(i_start + i - 1, &
+      err = openmc_tally_allocate(i_start + i - 1, &
            C_CHAR_'generic' // C_NULL_CHAR)
 
       ! Get pointer to tally

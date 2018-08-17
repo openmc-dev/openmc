@@ -3931,7 +3931,7 @@ contains
 !                               C API FUNCTIONS
 !===============================================================================
 
-  function openmc_tally_set_type(index, type) result(err) bind(C)
+  function openmc_tally_allocate(index, type) result(err) bind(C)
     ! Set the type of the tally
     integer(C_INT32_T), value, intent(in) :: index
     character(kind=C_CHAR), intent(in) :: type(*)
@@ -3964,6 +3964,6 @@ contains
       err = E_OUT_OF_BOUNDS
       call set_errmsg("Index in tallies array is out of bounds.")
     end if
-  end function openmc_tally_set_type
+  end function openmc_tally_allocate
 
 end module tally

@@ -40,7 +40,7 @@ module tally_header
   public :: openmc_tally_set_id
   public :: openmc_tally_set_nuclides
   public :: openmc_tally_set_scores
-  public :: openmc_tally_update_type
+  public :: openmc_tally_set_type
 
 !===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to
@@ -1013,8 +1013,7 @@ contains
     end if
   end function openmc_tally_set_scores
 
-
-  function openmc_tally_update_type(index, type) result(err) bind(C)
+  function openmc_tally_set_type(index, type) result(err) bind(C)
     ! Update the type of a tally that is already allocated
     integer(C_INT32_T), value, intent(in) :: index
     character(kind=C_CHAR), intent(in) :: type(*)
@@ -1042,7 +1041,7 @@ contains
       err = E_OUT_OF_BOUNDS
       call set_errmsg("Index in tally array is out of bounds.")
     end if
-  end function openmc_tally_update_type
+  end function openmc_tally_set_type
 
 
   subroutine openmc_get_tally_next_id(id) bind(C)

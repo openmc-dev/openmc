@@ -243,7 +243,7 @@ contains
     use error,            only: fatal_error, warning
     use mesh_header,      only: RegularMesh, openmc_extend_meshes
     use string
-    use tally,            only: openmc_tally_set_type
+    use tally,            only: openmc_tally_allocate
     use tally_header,     only: openmc_extend_tallies
     use tally_filter_header
     use tally_filter
@@ -434,7 +434,7 @@ contains
     ! Begin loop around tallies
     do i = 1, size(cmfd_tallies)
       ! Allocate tally
-      err = openmc_tally_set_type(i_start + i - 1, C_CHAR_'generic' // C_NULL_CHAR)
+      err = openmc_tally_allocate(i_start + i - 1, C_CHAR_'generic' // C_NULL_CHAR)
       call openmc_get_tally_next_id(tally_id)
       err = openmc_tally_set_id(i_start + i - 1, tally_id)
 
@@ -465,7 +465,7 @@ contains
         err = openmc_tally_set_estimator(i_start + i - 1, C_CHAR_'analog' // C_NULL_CHAR)
 
         ! Set tally type to volume
-        err = openmc_tally_update_type(i_start + i - 1, C_CHAR_'volume' // C_NULL_CHAR)
+        err = openmc_tally_set_type(i_start + i - 1, C_CHAR_'volume' // C_NULL_CHAR)
 
         ! Allocate and set filters
         allocate(filter_indices(n_filter))
@@ -493,7 +493,7 @@ contains
         err = openmc_tally_set_estimator(i_start + i - 1, C_CHAR_'analog' // C_NULL_CHAR)
 
         ! Set tally type to volume
-        err = openmc_tally_update_type(i_start + i - 1, C_CHAR_'volume' // C_NULL_CHAR)
+        err = openmc_tally_set_type(i_start + i - 1, C_CHAR_'volume' // C_NULL_CHAR)
 
         ! Set the incoming energy mesh filter index in the tally find_filter
         ! array
@@ -542,7 +542,7 @@ contains
 
         ! Set macro bins
         t % score_bins(1) = SCORE_CURRENT
-        err = openmc_tally_update_type(i_start + i - 1, C_CHAR_'mesh-surface' // C_NULL_CHAR)
+        err = openmc_tally_set_type(i_start + i - 1, C_CHAR_'mesh-surface' // C_NULL_CHAR)
 
       else if (i == 4) then
         ! Set name
@@ -552,7 +552,7 @@ contains
         err = openmc_tally_set_estimator(i_start + i - 1, C_CHAR_'analog' // C_NULL_CHAR)
 
         ! Set tally type to volume
-        err = openmc_tally_update_type(i_start + i - 1, C_CHAR_'volume' // C_NULL_CHAR)
+        err = openmc_tally_set_type(i_start + i - 1, C_CHAR_'volume' // C_NULL_CHAR)
 
         ! Allocate and set filters
         n_filter = 2

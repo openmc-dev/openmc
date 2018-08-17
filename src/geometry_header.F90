@@ -27,7 +27,7 @@ module geometry_header
       integer(C_INT32_T), intent(in), value :: cell_ind
       type(C_PTR)                           :: ptr
     end function cell_pointer
-    
+
     function cell_id_c(cell_ptr) bind(C, name='cell_id') result(id)
       import C_PTR, C_INT32_T
       type(C_PTR), intent(in), value :: cell_ptr

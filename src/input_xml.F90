@@ -563,7 +563,7 @@ contains
 
 
 #ifdef CAD
-  
+
 !===============================================================================
 ! READ_GEOMETRY_CAD reads data from a DAGMC .h5m file, checking
 ! for material properties and surface boundary conditions
@@ -589,68 +589,68 @@ contains
       call fatal_error("Geometry CAD file '" // trim(filename) // "' does not &
            &exist!")
     end if
-    
+
     call write_message("Reading CAD geometry...", 5)
     call load_cad_geometry()
     call allocate_surfaces()
     call allocate_cells()
-    
+
     ! setup universe data structs
     do i = 1, n_cells
-       c => cells(i)
-       ! additional metadata spoofing
-       allocate(c % sqrtKT(1))
-       c % sqrtkT(1) = -1.0 ! rely on temps from elsewhere
-       univ_id = c % universe()
-       if (.not. allocated(c%region)) allocate(c%region(0))
-       
-       if (.not. cells_in_univ_dict % has(univ_id)) then
-          n_universes = n_universes + 1
-          n_cells_in_univ = 1
-          call universe_dict % set(univ_id, n_universes)
-          call univ_ids % push_back(univ_id)
-       else
-          n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
-       end if
-       call cells_in_univ_dict % set(univ_id, n_cells_in_univ)
-    end do
-    
+      c => cells(i)
+      ! additional metadata spoofing
+      allocate(c % sqrtKT(1))
+      c % sqrtkT(1) = -1.0 ! rely on temps from elsewhere
+      univ_id = c % universe()
+      if (.not. allocated(c%region)) allocate(c%region(0))
+      
+      if (.not. cells_in_univ_dict % has(univ_id)) then
+         n_universes = n_universes + 1
+         n_cells_in_univ = 1
+         call universe_dict % set(univ_id, n_universes)
+         call univ_ids % push_back(univ_id)
+      else
+         n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
+      end if
+      call cells_in_univ_dict % set(univ_id, n_cells_in_univ)
+   end do
+
     ! ==========================================================================
     ! SETUP UNIVERSES
-    
+
     ! Allocate universes, universe cell arrays, and assign base universe
     allocate(universes(n_universes))
     do i = 1, n_universes
-       associate (u => universes(i))
-         u % id = univ_ids % data(i)
-         ! Allocate cell list
-         n_cells_in_univ = cells_in_univ_dict % get(u % id)
-         allocate(u % cells(n_cells_in_univ))
-         u % cells(:) = 0
-       end associate
+      associate (u => universes(i))
+        u % id = univ_ids % data(i)
+        ! Allocate cell list
+        n_cells_in_univ = cells_in_univ_dict % get(u % id)
+        allocate(u % cells(n_cells_in_univ))
+        u % cells(:) = 0
+      end associate
     end do
-    
+
     root_universe = 0 + 1
-    
+
     do i = 1, n_cells
-       ! Get index in universes array
-       j = universe_dict % get(cells(i) % universe())
-       ! Set the first zero entry in the universe cells array to the index in the
-       ! global cells array
-       associate (u => universes(j))
-         u % cells(find(u % cells, 0)) = i
-       end associate
+      ! Get index in universes array
+      j = universe_dict % get(cells(i) % universe())
+      ! Set the first zero entry in the universe cells array to the index in the
+      ! global cells array
+      associate (u => universes(j))
+        u % cells(find(u % cells, 0)) = i
+      end associate
     end do
-    
+
     ! Clear dictionary
     call cells_in_univ_dict%clear()
-    
+
     return
 
   end subroutine read_geometry_cad
 
 #endif
-  
+
 !===============================================================================
 ! READ_GEOMETRY_XML reads data from a geometry.xml file and parses it, checking
 ! for errors and placing properly-formatted data in the right data structures
@@ -680,8 +680,8 @@ contains
                                            ! universe contains
 #ifdef CAD
     if (dagmc) then
-       call read_geometry_cad()
-       return
+      call read_geometry_cad()
+      return
     end if
 #endif
 

@@ -210,10 +210,6 @@ class WindowedMultipole(EqualityMixin):
         return self._data
 
     @property
-    def l_value(self):
-        return self._l_value
-
-    @property
     def windows(self):
         return self._windows
 
@@ -228,35 +224,35 @@ class WindowedMultipole(EqualityMixin):
     @spacing.setter
     def spacing(self, spacing):
         if spacing is not None:
-            check_type('spacing', spacing, Real)
-            check_greater_than('spacing', spacing, 0.0, equality=False)
+            cv.check_type('spacing', spacing, Real)
+            cv.check_greater_than('spacing', spacing, 0.0, equality=False)
         self._spacing = spacing
 
     @sqrtAWR.setter
     def sqrtAWR(self, sqrtAWR):
         if sqrtAWR is not None:
-            check_type('sqrtAWR', sqrtAWR, Real)
-            check_greater_than('sqrtAWR', sqrtAWR, 0.0, equality=False)
+            cv.check_type('sqrtAWR', sqrtAWR, Real)
+            cv.check_greater_than('sqrtAWR', sqrtAWR, 0.0, equality=False)
         self._sqrtAWR = sqrtAWR
 
     @E_min.setter
     def E_min(self, E_min):
         if E_min is not None:
-            check_type('E_min', E_min, Real)
-            check_greater_than('E_min', E_min, 0.0, equality=True)
+            cv.check_type('E_min', E_min, Real)
+            cv.check_greater_than('E_min', E_min, 0.0, equality=True)
         self._E_min = E_min
 
     @E_max.setter
     def E_max(self, E_max):
         if E_max is not None:
-            check_type('E_max', E_max, Real)
-            check_greater_than('E_max', E_max, 0.0, equality=False)
+            cv.check_type('E_max', E_max, Real)
+            cv.check_greater_than('E_max', E_max, 0.0, equality=False)
         self._E_max = E_max
 
     @data.setter
     def data(self, data):
         if data is not None:
-            check_type('data', data, np.ndarray)
+            cv.check_type('data', data, np.ndarray)
             if len(data.shape) != 2:
                 raise ValueError('Multipole data arrays must be 2D')
             if data.shape[1] not in (3, 4):
@@ -271,7 +267,7 @@ class WindowedMultipole(EqualityMixin):
     @windows.setter
     def windows(self, windows):
         if windows is not None:
-            check_type('windows', windows, np.ndarray)
+            cv.check_type('windows', windows, np.ndarray)
             if len(windows.shape) != 2:
                 raise ValueError('Multipole windows arrays must be 2D')
             if not np.issubdtype(windows.dtype, int):
@@ -282,7 +278,7 @@ class WindowedMultipole(EqualityMixin):
     @broaden_poly.setter
     def broaden_poly(self, broaden_poly):
         if broaden_poly is not None:
-            check_type('broaden_poly', broaden_poly, np.ndarray)
+            cv.check_type('broaden_poly', broaden_poly, np.ndarray)
             if len(broaden_poly.shape) != 1:
                 raise ValueError('Multipole broaden_poly arrays must be 1D')
             if not np.issubdtype(broaden_poly.dtype, bool):
@@ -293,7 +289,7 @@ class WindowedMultipole(EqualityMixin):
     @curvefit.setter
     def curvefit(self, curvefit):
         if curvefit is not None:
-            check_type('curvefit', curvefit, np.ndarray)
+            cv.check_type('curvefit', curvefit, np.ndarray)
             if len(curvefit.shape) != 3:
                 raise ValueError('Multipole curvefit arrays must be 3D')
             if curvefit.shape[2] not in (2, 3):  # sig_s, sig_a (maybe sig_f)

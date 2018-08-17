@@ -66,13 +66,6 @@ module geometry
       integer(C_INT32_T)             :: new_cell
     end function next_cell_c
 
-    function is_implicit_complement_C(cell) &
-         bind(C, name="is_implicit_complement") result(res)
-      import C_PTR, C_BOOL
-      type(C_PTR), intent(in), value :: cell
-      logical(C_BOOL)                :: res
-    end function is_implicit_complement_C
-
 #endif
 
   end interface
@@ -95,12 +88,6 @@ contains
     integer :: new_cell
     new_cell = next_cell_c(c%ptr, s%ptr)
   end function next_cell
-
-  function is_implicit_complement(c) result(res)
-    type(Cell), intent(in) :: c
-    logical:: res
-    res = is_implicit_complement_c(c%ptr)
-  end function is_implicit_complement
 
 #endif
 

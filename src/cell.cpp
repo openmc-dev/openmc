@@ -772,6 +772,7 @@ extern "C" {
   int cell_material(Cell* c, int32_t mat_ind) {return c->material[mat_ind-1];}
   
 #ifdef CAD
+
   int32_t next_cell(CADCell* cur_cell, CADSurface *surf_xed ) {
     moab::EntityHandle surf = surf_xed->dagmc_ptr->entity_by_id(2,surf_xed->id);
     moab::EntityHandle vol = cur_cell->dagmc_ptr->entity_by_id(3,cur_cell->id);
@@ -782,10 +783,6 @@ extern "C" {
     return cur_cell->dagmc_ptr->index_by_handle(new_vol);
   }
 
-  bool is_implicit_complement(CADCell *c) {
-    moab::EntityHandle handle = c->dagmc_ptr->entity_by_id(3,c->id);
-    return c->dagmc_ptr->is_implicit_complement(handle);
-  }
 #endif
 
   int32_t cell_universe(Cell* c) {return c->universe_;}

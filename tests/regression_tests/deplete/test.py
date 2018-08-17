@@ -10,7 +10,7 @@ from openmc.data import JOULE_PER_EV
 import openmc.deplete
 
 from tests.regression_tests import config
-from .example_geometry import generate_problem
+from example_geometry import generate_problem
 
 
 def test_full(run_in_tmpdir):
@@ -34,15 +34,15 @@ def test_full(run_in_tmpdir):
     # OpenMC-specific settings
     settings = openmc.Settings()
     settings.particles = 100
-    settings.batches = 100
-    settings.inactive = 40
+    settings.batches = 10
+    settings.inactive = 0
     space = openmc.stats.Box(lower_left, upper_right)
     settings.source = openmc.Source(space=space)
     settings.seed = 1
     settings.verbosity = 3
 
     # Create operator
-    chain_file = Path(__file__).parents[1] / 'chain_simple.xml'
+    chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
     op = openmc.deplete.Operator(geometry, settings, chain_file)
     op.round_number = True
 

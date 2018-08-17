@@ -95,7 +95,7 @@ contains
             id = -1
           else
             rgb = pl % colors(p % material) % rgb
-            id = materials(p % material) % id
+            id = materials(p % material) % id()
           end if
         end associate
       else if (pl % color_by == PLOT_COLOR_CELLS) then

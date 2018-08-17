@@ -4,6 +4,7 @@
 #include <map>
 #include <limits>  // For numeric_limits
 #include <string>
+#include <vector>
 
 #include "hdf5.h"
 #include "pugixml.hpp"
@@ -31,7 +32,7 @@ extern "C" const int BC_PERIODIC;
 extern "C" int32_t n_surfaces;
 
 class Surface;
-extern Surface **surfaces_c;
+extern std::vector<Surface*> global_surfaces;
 
 extern std::map<int, int> surface_map;
 
@@ -131,7 +132,7 @@ public:
   //!   periodicity.
   //! \return true if this surface and its partner make a rotationally-periodic
   //!   boundary condition.
-  virtual bool periodic_translate(const PeriodicSurface *other, Position& r,
+  virtual bool periodic_translate(const PeriodicSurface* other, Position& r,
                                   Direction& u) const = 0;
 
   //! Get the bounding box for this surface.
@@ -153,8 +154,8 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-  bool periodic_translate(const PeriodicSurface *other, Position& r, Direction& u)
-       const;
+  bool periodic_translate(const PeriodicSurface* other, Position& r,
+                          Direction& u) const;
   BoundingBox bounding_box() const;
 };
 
@@ -173,8 +174,8 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-  bool periodic_translate(const PeriodicSurface *other, Position& r, Direction& u)
-       const;
+  bool periodic_translate(const PeriodicSurface* other, Position& r,
+                          Direction& u) const;
   BoundingBox bounding_box() const;
 };
 
@@ -193,8 +194,8 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-  bool periodic_translate(const PeriodicSurface *other, Position& r, Direction& u)
-       const;
+  bool periodic_translate(const PeriodicSurface* other, Position& r,
+                          Direction& u) const;
   BoundingBox bounding_box() const;
 };
 
@@ -213,8 +214,8 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-  bool periodic_translate(const PeriodicSurface *other, Position& r, Direction& u)
-       const;
+  bool periodic_translate(const PeriodicSurface* other, Position& r,
+                          Direction& u) const;
   BoundingBox bounding_box() const;
 };
 
@@ -368,16 +369,16 @@ public:
 
 extern "C" {
   Surface* surface_pointer(int surf_ind);
-  int surface_id(Surface *surf);
-  int surface_bc(Surface *surf);
-  bool surface_sense(Surface *surf, double xyz[3], double uvw[3]);
-  void surface_reflect(Surface *surf, double xyz[3], double uvw[3]);
-  double surface_distance(Surface *surf, double xyz[3], double uvw[3],
+  int surface_id(Surface* surf);
+  int surface_bc(Surface* surf);
+  bool surface_sense(Surface* surf, double xyz[3], double uvw[3]);
+  void surface_reflect(Surface* surf, double xyz[3], double uvw[3]);
+  double surface_distance(Surface* surf, double xyz[3], double uvw[3],
                           bool coincident);
-  void surface_normal(Surface *surf, double xyz[3], double uvw[3]);
-  void surface_to_hdf5(Surface *surf, hid_t group);
-  int surface_i_periodic(PeriodicSurface *surf);
-  bool surface_periodic(PeriodicSurface *surf, PeriodicSurface *other,
+  void surface_normal(Surface* surf, double xyz[3], double uvw[3]);
+  void surface_to_hdf5(Surface* surf, hid_t group);
+  int surface_i_periodic(PeriodicSurface* surf);
+  bool surface_periodic(PeriodicSurface* surf, PeriodicSurface* other,
                         double xyz[3], double uvw[3]);
   void free_memory_surfaces_c();
 }

@@ -4,7 +4,7 @@ module geometry_header
 
   use algorithm,       only: find
   use constants,       only: HALF, TWO, THREE, INFINITY, K_BOLTZMANN, &
-                             MATERIAL_VOID, NONE
+                             MATERIAL_VOID
   use dict_header,     only: DictCharInt, DictIntInt
   use hdf5_interface,  only: HID_T
   use material_header, only: Material, materials, material_dict, n_materials
@@ -16,11 +16,11 @@ module geometry_header
   implicit none
 
   interface
-    function cell_pointer_c(cell_ind) bind(C, name='cell_pointer') result(ptr)
+    function cell_pointer(cell_ind) bind(C) result(ptr)
       import C_PTR, C_INT32_T
       integer(C_INT32_T), intent(in), value :: cell_ind
       type(C_PTR)                           :: ptr
-    end function cell_pointer_c
+    end function cell_pointer
 
     function cell_id_c(cell_ptr) bind(C, name='cell_id') result(id)
       import C_PTR, C_INT32_T
@@ -40,12 +40,6 @@ module geometry_header
       integer(C_INT)                 :: type
     end function cell_type_c
 
-    subroutine cell_set_type_c(cell_ptr, type) bind(C, name='cell_set_type')
-      import C_PTR, C_INT
-      type(C_PTR),    intent(in), value :: cell_ptr
-      integer(C_INT), intent(in), value :: type
-    end subroutine cell_set_type_c
-
     function cell_universe_c(cell_ptr) bind(C, name='cell_universe') &
          result(universe)
       import C_PTR, C_INT32_T
@@ -53,24 +47,11 @@ module geometry_header
       integer(C_INT32_T)             :: universe
     end function cell_universe_c
 
-    subroutine cell_set_universe_c(cell_ptr, universe) &
-         bind(C, name='cell_set_universe')
-      import C_PTR, C_INT32_T
-      type(C_PTR),        intent(in), value :: cell_ptr
-      integer(C_INT32_T), intent(in), value :: universe
-    end subroutine cell_set_universe_c
-
     function cell_fill_c(cell_ptr) bind(C, name="cell_fill") result(fill)
       import C_PTR, C_INT32_T
       type(C_PTR), intent(in), value :: cell_ptr
       integer(C_INT32_T)             :: fill
     end function cell_fill_c
-
-    function cell_fill_ptr(cell_ptr) bind(C) result(fill_ptr)
-      import C_PTR
-      type(C_PTR), intent(in), value :: cell_ptr
-      type(C_PTR)                    :: fill_ptr
-    end function cell_fill_ptr
 
     function cell_n_instances_c(cell_ptr) bind(C, name='cell_n_instances') &
          result(n_instances)
@@ -78,6 +59,21 @@ module geometry_header
       type(C_PTR), intent(in), value :: cell_ptr
       integer(C_INT32_T)             :: n_instances
     end function cell_n_instances_c
+
+    function cell_material_size_c(cell_ptr) bind(C, name='cell_material_size') &
+         result(n)
+      import C_PTR, C_INT
+      type(C_PTR), intent(in), value :: cell_ptr
+      integer(C_INT)                 :: n
+    end function cell_material_size_c
+
+    function cell_material_c(cell_ptr, i) bind(C, name='cell_material') &
+         result(mat)
+      import C_PTR, C_INT, C_INT32_T
+      type(C_PTR),    intent(in), value :: cell_ptr
+      integer(C_INT), intent(in), value :: i
+      integer(C_INT32_T)                :: mat
+    end function cell_material_c
 
     function cell_simple_c(cell_ptr) bind(C, name='cell_simple') result(simple)
       import C_PTR, C_BOOL
@@ -110,12 +106,11 @@ module geometry_header
       integer(HID_T), intent(in), value :: group
     end subroutine cell_to_hdf5_c
 
-    function lattice_pointer_c(lat_ind) bind(C, name='lattice_pointer') &
-         result(ptr)
+    function lattice_pointer(lat_ind) bind(C) result(ptr)
       import C_PTR, C_INT32_T
       integer(C_INT32_T), intent(in), value :: lat_ind
       type(C_PTR)                           :: ptr
-    end function lattice_pointer_c
+    end function lattice_pointer
 
     function lattice_id_c(lat_ptr) bind(C, name='lattice_id') result(id)
       import C_PTR, C_INT32_T
@@ -254,9 +249,6 @@ module geometry_header
   type Cell
     type(C_PTR) :: ptr
 
-    integer, allocatable :: material(:)    ! Material within cell.  Multiple
-                                           !  materials for distribcell
-                                           !  instances.  0 signifies a universe
     integer, allocatable :: region(:)      ! Definition of spatial region as
                                            !  Boolean expression of half-spaces
     integer :: distribcell_index           ! Index corresponding to this cell in
@@ -275,11 +267,11 @@ module geometry_header
     procedure :: id => cell_id
     procedure :: set_id => cell_set_id
     procedure :: type => cell_type
-    procedure :: set_type => cell_set_type
     procedure :: universe => cell_universe
-    procedure :: set_universe => cell_set_universe
     procedure :: fill => cell_fill
     procedure :: n_instances => cell_n_instances
+    procedure :: material_size => cell_material_size
+    procedure :: material => cell_material
     procedure :: simple => cell_simple
     procedure :: distance => cell_distance
     procedure :: offset => cell_offset
@@ -390,23 +382,11 @@ contains
     type = cell_type_c(this % ptr)
   end function cell_type
 
-  subroutine cell_set_type(this, type)
-    class(Cell),    intent(in) :: this
-    integer(C_INT), intent(in) :: type
-    call cell_set_type_c(this % ptr, type)
-  end subroutine cell_set_type
-
   function cell_universe(this) result(universe)
     class(Cell), intent(in) :: this
     integer(C_INT32_T)      :: universe
     universe = cell_universe_c(this % ptr)
   end function cell_universe
-
-  subroutine cell_set_universe(this, universe)
-    class(Cell),        intent(in) :: this
-    integer(C_INT32_T), intent(in) :: universe
-    call cell_set_universe_c(this % ptr, universe)
-  end subroutine cell_set_universe
 
   function cell_fill(this) result(fill)
     class(Cell), intent(in) :: this
@@ -419,6 +399,19 @@ contains
     integer(C_INT32_T)      :: n_instances
     n_instances = cell_n_instances_c(this % ptr)
   end function cell_n_instances
+
+  function cell_material_size(this) result(n)
+    class(Cell), intent(in) :: this
+    integer(C_INT)          :: n
+    n = cell_material_size_c(this % ptr)
+  end function cell_material_size
+
+  function cell_material(this, i) result(mat)
+    class(Cell), intent(in) :: this
+    integer,     intent(in) :: i
+    integer(C_INT32_T)      :: mat
+    mat = cell_material_c(this % ptr, i)
+  end function cell_material
 
   function cell_simple(this) result(simple)
     class(Cell), intent(in) :: this
@@ -469,10 +462,12 @@ contains
     if (present(sab_temps)) allocate(sab_temps(n_sab_tables))
 
     do i = 1, size(cells)
-      do j = 1, size(cells(i) % material)
-        ! Skip any non-material cells and void materials
-        if (cells(i) % material(j) == NONE .or. &
-             cells(i) % material(j) == MATERIAL_VOID) cycle
+      ! Skip non-material cells.
+      if (cells(i) % fill() /= C_NONE) cycle
+
+      do j = 1, cells(i) % material_size()
+        ! Skip void materials
+        if (cells(i) % material(j) == MATERIAL_VOID) cycle
 
         ! Get temperature of cell (rounding to nearest integer)
         if (size(cells(i) % sqrtkT) > 1) then
@@ -571,7 +566,7 @@ contains
     ! Extend the C++ cells array and get pointers to the C++ objects
     call extend_cells_c(n)
     do i = n_cells - n, n_cells
-      cells(i) % ptr = cell_pointer_c(i - 1)
+      cells(i) % ptr = cell_pointer(i - 1)
     end do
 
     err = 0
@@ -599,33 +594,6 @@ contains
   end function openmc_get_cell_index
 
 
-  function openmc_cell_get_fill(index, type, indices, n) result(err) bind(C)
-    integer(C_INT32_T), value, intent(in) :: index
-    integer(C_INT), intent(out) :: type
-    integer(C_INT32_T), intent(out) :: n
-    type(C_PTR), intent(out) :: indices
-    integer(C_INT) :: err
-
-    err = 0
-    if (index >= 1 .and. index <= size(cells)) then
-      associate (c => cells(index))
-        type = c % type()
-        select case (type)
-        case (FILL_MATERIAL)
-          n = size(c % material)
-          indices = C_LOC(c % material(1))
-        case (FILL_UNIVERSE, FILL_LATTICE)
-          n = 1
-          indices = cell_fill_ptr(c % ptr)
-        end select
-      end associate
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in cells array is out of bounds.")
-    end if
-  end function openmc_cell_get_fill
-
-
   function openmc_cell_get_id(index, id) result(err) bind(C)
     ! Return the ID of a cell
     integer(C_INT32_T), value       :: index
@@ -640,49 +608,6 @@ contains
       call set_errmsg("Index in cells array is out of bounds.")
     end if
   end function openmc_cell_get_id
-
-
-  function openmc_cell_set_fill(index, type, n, indices) result(err) bind(C)
-    ! Set the fill for a cell
-    integer(C_INT32_T), value, intent(in) :: index    ! index in cells
-    integer(C_INT), value, intent(in)     :: type
-    integer(c_INT32_T), value, intent(in) :: n
-    integer(C_INT32_T), intent(in) :: indices(n)
-    integer(C_INT) :: err
-
-    integer :: i, j
-
-    err = 0
-    if (index >= 1 .and. index <= size(cells)) then
-      associate (c => cells(index))
-        select case (type)
-        case (FILL_MATERIAL)
-          if (allocated(c % material)) deallocate(c % material)
-          allocate(c % material(n))
-
-          call c % set_type(FILL_MATERIAL)
-          do i = 1, n
-            j = indices(i)
-            if ((j >= 1 .and. j <= n_materials) .or. j == MATERIAL_VOID) then
-              c % material(i) = j
-            else
-              err = E_OUT_OF_BOUNDS
-              call set_errmsg("Index " // trim(to_str(j)) // " in the &
-                   &materials array is out of bounds.")
-            end if
-          end do
-        case (FILL_UNIVERSE)
-          call c % set_type(FILL_UNIVERSE)
-        case (FILL_LATTICE)
-          call c % set_type(FILL_LATTICE)
-        end select
-      end associate
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in cells array is out of bounds.")
-    end if
-
-  end function openmc_cell_set_fill
 
 
   function openmc_cell_set_id(index, id) result(err) bind(C)

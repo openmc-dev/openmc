@@ -2176,10 +2176,13 @@ contains
       end if
 
       ! Check to make sure 'id' hasn't been used
-      if (tally_dict % has(tally_id)) then
+      if (tally_dict % has(t % id)) then
         call fatal_error("Two or more tallies use the same unique ID: " &
              // to_str(tally_id))
       end if
+
+      ! Set tally id
+      err = openmc_tally_set_id(i_start + i - 1, tally_id)
 
       ! Copy tally name
       if (check_for_node(node_tal, "name")) &
@@ -2217,7 +2220,7 @@ contains
           else
             call fatal_error("Could not find filter " &
                  // trim(to_str(temp_filter(j))) // " specified on tally " &
-                 // trim(to_str(tally_id)))
+                 // trim(to_str(t % id)))
           end if
 
           ! Store the index of the filter
@@ -2271,7 +2274,7 @@ contains
             if (.not. nuclide_dict % has(word)) then
               call fatal_error("Could not find the nuclide " &
                    // trim(word) // " specified in tally " &
-                   // trim(to_str(tally_id)) // " in any material.")
+                   // trim(to_str(t % id)) // " in any material.")
             end if
 
             ! Set bin to index in nuclides array
@@ -2581,7 +2584,7 @@ contains
             if (t % score_bins(j) == t % score_bins(k)) then
               call fatal_error("Duplicate score of type '" // trim(&
                    reaction_name(t % score_bins(j))) // "' found in tally " &
-                   // trim(to_str(tally_id)))
+                   // trim(to_str(t % id)))
             end if
           end do
         end do
@@ -2628,7 +2631,7 @@ contains
         end if
       else
         call fatal_error("No <scores> specified on tally " &
-             // trim(to_str(tally_id)) // ".")
+             // trim(to_str(t % id)) // ".")
       end if
 
       ! Check for a tally derivative.
@@ -2651,7 +2654,7 @@ contains
           if (j == size(tally_derivs)) then
             call fatal_error("Could not find derivative " &
                  // trim(to_str(t % deriv)) // " specified on tally " &
-                 // trim(to_str(tally_id)))
+                 // trim(to_str(t % id)))
           end if
         end do
 
@@ -2659,7 +2662,7 @@ contains
              .or. tally_derivs(t % deriv) % variable == DIFF_TEMPERATURE) then
           if (any(t % nuclide_bins == -1)) then
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              call fatal_error("Error on tally " // trim(to_str(tally_id)) &
+              call fatal_error("Error on tally " // trim(to_str(t % id)) &
                    // ": Cannot use a 'nuclide_density' or 'temperature' &
                    &derivative on a tally with an outgoing energy filter and &
                    &'total' nuclide rate. Instead, tally each nuclide in the &
@@ -2736,7 +2739,7 @@ contains
             temp_str = to_lower(temp_str)
           else
             call fatal_error("Must specify trigger type for tally " // &
-                 trim(to_str(tally_id)) // " in tally XML file.")
+                 trim(to_str(t % id)) // " in tally XML file.")
           end if
 
           ! Get the convergence threshold for the trigger
@@ -2744,7 +2747,7 @@ contains
             call get_node_value(node_trigger, "threshold", threshold)
           else
             call fatal_error("Must specify trigger threshold for tally " // &
-                 trim(to_str(tally_id)) // " in tally XML file.")
+                 trim(to_str(t % id)) // " in tally XML file.")
           end if
 
           ! Get list scores for this trigger
@@ -2788,7 +2791,7 @@ contains
                   t % triggers(trig_ind) % type = RELATIVE_ERROR
                 case default
                   call fatal_error("Unknown trigger type " // &
-                       trim(temp_str) // " in tally " // trim(to_str(tally_id)))
+                       trim(temp_str) // " in tally " // trim(to_str(t % id)))
                 end select
 
                 ! Store the trigger convergence threshold
@@ -2809,7 +2812,7 @@ contains
               ! Check if an invalid score was set for the trigger
               if (t % triggers(trig_ind) % score_index == 0) then
                 call fatal_error("The trigger score " // trim(score_name) // &
-                     " is not set for tally " // trim(to_str(tally_id)))
+                     " is not set for tally " // trim(to_str(t % id)))
               end if
 
               ! Store the trigger convergence threshold
@@ -2825,7 +2828,7 @@ contains
                 t % triggers(trig_ind) % type = RELATIVE_ERROR
               case default
                 call fatal_error("Unknown trigger type " // trim(temp_str) // &
-                     " in tally " // trim(to_str(tally_id)))
+                     " in tally " // trim(to_str(t % id)))
               end select
 
               ! Increment the overall trigger index
@@ -2857,7 +2860,7 @@ contains
           ! tally needs post-collision information
           if (t % estimator == ESTIMATOR_ANALOG) then
             call fatal_error("Cannot use track-length estimator for tally " &
-                 // to_str(tally_id))
+                 // to_str(t % id))
           end if
 
           ! Set estimator to track-length estimator
@@ -2868,7 +2871,7 @@ contains
           ! tally needs post-collision information
           if (t % estimator == ESTIMATOR_ANALOG) then
             call fatal_error("Cannot use collision estimator for tally " &
-                 // to_str(tally_id))
+                 // to_str(t % id))
           end if
 
           ! Set estimator to collision estimator
@@ -2879,9 +2882,6 @@ contains
                // "' on tally " // to_str(t % id))
         end select
       end if
-
-      ! Set tally id
-      err = openmc_tally_set_id(i_start + i - 1, tally_id)
 
       end associate
     end do READ_TALLIES

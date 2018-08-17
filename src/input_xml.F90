@@ -562,6 +562,8 @@ contains
   end subroutine read_settings_xml_f
 
 
+#ifdef CAD
+  
 !===============================================================================
 ! READ_GEOMETRY_CAD reads data from a DAGMC .h5m file, checking
 ! for material properties and surface boundary conditions
@@ -646,6 +648,8 @@ contains
     return
 
   end subroutine read_geometry_cad
+
+#endif
   
 !===============================================================================
 ! READ_GEOMETRY_XML reads data from a geometry.xml file and parses it, checking

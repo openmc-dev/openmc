@@ -17,6 +17,13 @@ if [[ ! -d $ENDF/neutrons || ! -d $ENDF/photoat || ! -d $ENDF/atomic_relax ]]; t
 fi
 
 # Download multipole library
-if [[ ! -d $HOME/WMP_Library ]]; then
-    git lfs clone https://github.com/mit-crpg/WMP_Library.git
+if [[ ! -e $HOME/WMP_Library/092235.h5 ]]; then
+    if [[ $(command -v git-lfs) ]]; then
+        echo "Downloading WMP Library ..."
+        git clone https://github.com/mit-crpg/WMP_Library.git wmp_repo
+        mv wmp_repo/WMP_Library $HOME
+    else
+        echo "git lfs not found"
+        unset OPENMC_MULTIPOLE_LIBRARY
+    fi
 fi

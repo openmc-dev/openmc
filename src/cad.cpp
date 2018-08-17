@@ -2,8 +2,14 @@
 #ifdef CAD
 
 #include "cad.h"
+#include "error.h"
+
+#include <string>
+#include <algorithm>
 
 moab::DagMC* DAGMC;
+
+#define TOLOWER(S) std::transform(S.begin(), S.end(), S.begin(), ::tolower)
 
 void load_cad_geometry_c()
 {
@@ -78,15 +84,20 @@ void load_cad_geometry_c()
       if(DAGMC->has_prop(vol_handle, "mat")){
 	std::string mat_value;
 	rval = DAGMC->prop_value(vol_handle, "mat", mat_value);
-	MB_CHK_ERR_CONT(rval);	
-	int mat_id = std::stoi(mat_value);
-	c->material.push_back(mat_id);
+	MB_CHK_ERR_CONT(rval);
+	TOLOWER(mat_value);
+	
+	if(mat_value == "void") {
+	  c->material.push_back(openmc::C_MATERIAL_VOID);
+	}
+	else {
+	  c->material.push_back(std::stoi(mat_value));
+	}
       }
       else {
 	std::cout << "Warning: volume without material found!" << std::endl;
 	c->material.push_back(openmc::C_MATERIAL_VOID);
-      }
-      
+      }     
     }
 
   // initialize surface objects
@@ -103,20 +114,36 @@ void load_cad_geometry_c()
       s->dagmc_ptr = DAGMC;
 
       if(DAGMC->has_prop(surf_handle, "boundary")) {
-	std::string value;
-	rval = DAGMC->prop_value(surf_handle, "boundary", value);
+	std::string bc_value;
+	rval = DAGMC->prop_value(surf_handle, "boundary", bc_value);
 	MB_CHK_ERR_CONT(rval);
-	if(value.find("Vacuum") != std::string::npos) {
-	  s->bc = openmc::BC_VACUUM;
-	}
-	else {
+	TOLOWER(bc_value);
+
+	if(bc_value == "transmit" || bc_value == "transmission") {
 	  s->bc = openmc::BC_TRANSMIT;
 	}
+	else if(bc_value == "vacuum") {
+	  s->bc = openmc::BC_VACUUM;
+	}
+	else if(bc_value == "reflective" || bc_value == "reflect" || bc_value == "reflecting") {
+	  s->bc = openmc::BC_REFLECT;
+	}
+	else if(bc_value == "periodic") {
+	  openmc::fatal_error("Periodic boundary condition not supported in CAD.");
+	}
+	else {
+	  std::stringstream err_msg;
+	  err_msg << "Unknown boundary condition \"" << s->bc
+		  << "\" specified on surface " << s->id;
+	  openmc::fatal_error(err_msg);
+	}
       }
+      // if no BC property is found, set to transmit
       else {
 	s->bc = openmc::BC_TRANSMIT;
       }
-      
+
+      // add to global array and map
       openmc::surfaces_c[i] = s;
       openmc::surface_map[s->id] = s->id;
     }

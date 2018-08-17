@@ -198,20 +198,20 @@ contains
       case (FILL_MATERIAL)
         call write_dataset(cell_group, "fill_type", "material")
 
-        if (size(c % material) == 1) then
+        if (c % material_size() == 1) then
           if (c % material(1) == MATERIAL_VOID) then
             call write_dataset(cell_group, "material", MATERIAL_VOID)
           else
             call write_dataset(cell_group, "material", &
-                 materials(c % material(1)) % id)
+                 materials(c % material(1)) % id())
           end if
         else
-          allocate(cell_materials(size(c % material)))
-          do j = 1, size(c % material)
+          allocate(cell_materials(c % material_size()))
+          do j = 1, c % material_size()
             if (c % material(j) == MATERIAL_VOID) then
               cell_materials(j) = MATERIAL_VOID
             else
-              cell_materials(j) = materials(c % material(j)) % id
+              cell_materials(j) = materials(c % material(j)) % id()
             end if
           end do
           call write_dataset(cell_group, "material", cell_materials)
@@ -333,7 +333,7 @@ contains
     do i = 1, n_materials
       m => materials(i)
       material_group = create_group(materials_group, "material " // &
-           trim(to_str(m%id)))
+           trim(to_str(m%id())))
 
       if (m % depletable) then
         call write_attribute(material_group, "depletable", 1)

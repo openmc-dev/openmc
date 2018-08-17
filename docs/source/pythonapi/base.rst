@@ -178,6 +178,24 @@ Post-processing
    openmc.StatePoint
    openmc.Summary
 
+Polynomial
+---------------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst 
+
+   openmc.ZernikeRadial
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
+   openmc.legendre_from_expcoef
+
+
 Various classes may be created when performing tally slicing and/or arithmetic:
 
 .. autosummary::

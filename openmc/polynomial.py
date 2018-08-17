@@ -3,8 +3,11 @@ import openmc
 import openmc.capi as capi
 
 
-def legendre_from_expcoef(coef, domain):
-    """Return a Legendre object
+def legendre_from_expcoef(coef, domain= [-1,1]):
+    """Return a Legendre object.
+
+    Given a list of coefficients from FET tally and a array of down, return
+    the numpy Legendre object.
 
     Parameters
     ----------
@@ -19,7 +22,8 @@ def legendre_from_expcoef(coef, domain):
         A numpy Legendre series object
 
     """
-    n = np.arange(len(coef) + 1)
+
+    n = np.arange(len(coef))
     c = (2*n + 1) * np.asarray(coef) / (domain[1] - domain[0])
     return np.polynomial.Legendre(c, domain)
 

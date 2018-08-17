@@ -29,6 +29,9 @@ _dll.openmc_global_tallies.errcheck = _error_handler
 _dll.openmc_tally_get_active.argtypes = [c_int32, POINTER(c_bool)]
 _dll.openmc_tally_get_active.restype = c_int
 _dll.openmc_tally_get_active.errcheck = _error_handler
+_dll.openmc_tally_get_estimator.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_tally_get_estimator.restype = c_int
+_dll.openmc_tally_get_estimator.errcheck = _error_handler
 _dll.openmc_tally_get_id.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_tally_get_id.restype = c_int
 _dll.openmc_tally_get_id.errcheck = _error_handler
@@ -47,6 +50,12 @@ _dll.openmc_tally_get_scores.argtypes = [
     c_int32, POINTER(POINTER(c_int)), POINTER(c_int)]
 _dll.openmc_tally_get_scores.restype = c_int
 _dll.openmc_tally_get_scores.errcheck = _error_handler
+_dll.openmc_tally_get_type.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_tally_get_type.restype = c_int
+_dll.openmc_tally_get_type.errcheck = _error_handler
+_dll.openmc_tally_reset.argtypes = [c_int32]
+_dll.openmc_tally_reset.restype = c_int
+_dll.openmc_tally_reset.errcheck = _error_handler
 _dll.openmc_tally_results.argtypes = [
     c_int32, POINTER(POINTER(c_double)), POINTER(c_int*3)]
 _dll.openmc_tally_results.restype = c_int
@@ -57,6 +66,9 @@ _dll.openmc_tally_set_active.errcheck = _error_handler
 _dll.openmc_tally_set_filters.argtypes = [c_int32, c_int, POINTER(c_int32)]
 _dll.openmc_tally_set_filters.restype = c_int
 _dll.openmc_tally_set_filters.errcheck = _error_handler
+_dll.openmc_tally_set_estimator.argtypes = [c_int32, c_char_p]
+_dll.openmc_tally_set_estimator.restype = c_int
+_dll.openmc_tally_set_estimator.errcheck = _error_handler
 _dll.openmc_tally_set_id.argtypes = [c_int32, c_int32]
 _dll.openmc_tally_set_id.restype = c_int
 _dll.openmc_tally_set_id.errcheck = _error_handler
@@ -69,6 +81,9 @@ _dll.openmc_tally_set_scores.errcheck = _error_handler
 _dll.openmc_tally_set_type.argtypes = [c_int32, c_char_p]
 _dll.openmc_tally_set_type.restype = c_int
 _dll.openmc_tally_set_type.errcheck = _error_handler
+_dll.openmc_tally_update_type.argtypes = [c_int32, c_char_p]
+_dll.openmc_tally_update_type.restype = c_int
+_dll.openmc_tally_update_type.errcheck = _error_handler
 
 
 _SCORES = {
@@ -77,6 +92,12 @@ _SCORES = {
     -9: 'current', -10: 'events', -11: 'delayed-nu-fission',
     -12: 'prompt-nu-fission', -13: 'inverse-velocity', -14: 'fission-q-prompt',
     -15: 'fission-q-recoverable', -16: 'decay-rate'
+}
+_ESTIMATORS = {
+    1: 'analog', 2: 'tracklength', 3: 'collision'
+}
+_TALLY_TYPES = {
+    1: 'volume', 2: 'mesh-surface', 3: 'surface'
 }
 
 
@@ -140,6 +161,8 @@ class Tally(_FortranObjectWithID):
     ----------
     id : int
         ID of the tally
+    estimator: str
+        Estimator type of tally (analog, tracklength, collision)
     filters : list
         List of tally filters
     mean : numpy.ndarray
@@ -152,6 +175,8 @@ class Tally(_FortranObjectWithID):
         Array of tally results
     std_dev : numpy.ndarray
         An array containing the sample standard deviation for each bin
+    type : str
+        Type of tally (volume, mesh_surface, surface)
 
     """
     __instances = WeakValueDictionary()
@@ -189,6 +214,30 @@ class Tally(_FortranObjectWithID):
         active = c_bool()
         _dll.openmc_tally_get_active(self._index, active)
         return active.value
+
+    @property
+    def type(self):
+        type = c_int32()
+        _dll.openmc_tally_get_type(self._index, type)
+        return _TALLY_TYPES[type.value]
+
+    @type.setter
+    def type(self, type):
+        _dll.openmc_tally_update_type(self._index, type.encode())
+
+    @property
+    def estimator(self):
+        estimator = c_int32()
+        try:
+            _dll.openmc_tally_get_estimator(self._index, estimator)
+        except AllocationError:
+            return ""
+        else:
+            return _ESTIMATORS[estimator.value]
+
+    @estimator.setter
+    def estimator(self, estimator):
+        _dll.openmc_tally_set_estimator(self._index, estimator.encode())
 
     @active.setter
     def active(self, active):
@@ -301,6 +350,9 @@ class Tally(_FortranObjectWithID):
                 (sum_sq[nonzero]/n - mean[nonzero]**2)/(n - 1))
 
         return std_dev
+
+    def reset(self):
+        _dll.openmc_tally_reset(self._index)
 
     def ci_width(self, alpha=0.05):
         """Confidence interval half-width based on a Student t distribution

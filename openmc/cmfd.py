@@ -637,7 +637,7 @@ class CMFDRun(object):
         self._cmfd_shift = 1.e-6
         self._cmfd_spectral = 0.
         self._cmfd_stol = 1.e-8
-        self._cmfd_reset = [5,10]
+        self._cmfd_reset = []
         self._cmfd_write_matrices = False
 
         # External variables used during runtime but users don't have control over
@@ -899,7 +899,7 @@ class CMFDRun(object):
         #call time_cmfdsolve % reset()
 
         # Initialize all numpy arrays used for cmfd solver
-        self._allocate_cmfd(n_batches)
+        self._allocate_cmfd()
 
     def _read_cmfd_input(self):
         print(' Configuring CMFD parameters for simulation')
@@ -1085,6 +1085,8 @@ class CMFDRun(object):
                     tally.filters = [mesh_filter]
                 # Set scores for tally
                 tally.scores = ['flux', 'total']
+                tally.type = 'volume'
+                tally.estimator = 'analog'
 
             # Set attributes of CMFD neutron production tally
             if i == 1:
@@ -1095,6 +1097,8 @@ class CMFDRun(object):
                     tally.filters = [mesh_filter]
                 # Set scores for tally
                 tally.scores = ['nu-scatter', 'nu-fission']
+                tally.type = 'volume'
+                tally.estimator = 'analog'
 
             # Set attributes of CMFD surface current tally
             if i == 2:
@@ -1105,6 +1109,8 @@ class CMFDRun(object):
                     tally.filters = [meshsurface_filter]
                 # Set scores for tally
                 tally.scores = ['current']
+                tally.type = 'mesh-surface'
+                tally.estimator = 'analog'
 
             # Set attributes of CMFD P1 scatter tally
             if i == 3:
@@ -1115,6 +1121,8 @@ class CMFDRun(object):
                     tally.filters = [mesh_filter, legendre_filter]
                 # Set scores for tally
                 tally.scores = ['scatter']
+                tally.type = 'volume'
+                tally.estimator = 'analog'
 
             # Set all tallies to be active from beginning
             tally.active = True

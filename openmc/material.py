@@ -936,14 +936,6 @@ class Material(IDManagerMixin):
             elif 'wo' in nuclide.attrib:
                 mat.add_nuclide(name, float(nuclide.attrib['wo']), 'wo')
 
-        # Get each element
-        for element in elem.findall('element'):
-            name = element.attrib['name']
-            if 'ao' in element.attrib:
-                mat.add_element(name, float(element.attrib['ao']))
-            elif 'wo' in element.attrib:
-                mat.add_element(name, float(element.attrib['wo']), 'wo')
-
         # Get each S(a,b) table
         for sab in elem.findall('sab'):
             fraction = float(sab.get('fraction', 1.0))

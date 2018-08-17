@@ -182,3 +182,37 @@ def test_borated_water():
     # Test the density override
     m = openmc.model.borated_water(975, 566.5, 15.51, density=0.9)
     assert m.density == pytest.approx(0.9, 1e-3)
+
+
+def test_from_xml(run_in_tmpdir):
+    # Create a materials.xml file
+    m1 = openmc.Material(1, 'water')
+    m1.add_nuclide('H1', 1.0)
+    m1.add_nuclide('O16', 2.0)
+    m1.add_s_alpha_beta('c_H_in_H2O')
+    m1.set_density('g/cm3', 0.9)
+    m1.isotropic = ['H1']
+    m2 = openmc.Material(2, 'zirc')
+    m2.add_nuclide('Zr90', 1.0, 'wo')
+    m2.set_density('kg/m3', 10.0)
+    m3 = openmc.Material(3)
+    m3.add_nuclide('N14', 0.02)
+
+    mats = openmc.Materials([m1, m2, m3])
+    mats.cross_sections = 'fake_path.xml'
+    mats.multipole_library = 'fake_multipole/'
+    mats.export_to_xml()
+
+    # Regenerate materials from XML
+    mats = openmc.Materials.from_xml()
+    assert len(mats) == 3
+    m1 = mats[0]
+    assert m1.id == 1
+    assert m1.name == 'water'
+    assert m1.nuclides == [('H1', 1.0, 'ao'), ('O16', 2.0, 'ao')]
+    assert m1.isotropic == ['H1']
+    m2 = mats[1]
+    assert m2.nuclides == [('Zr90', 1.0, 'wo')]
+    assert m2.density == 10.0
+    assert m2.density_units == 'kg/m3'
+    assert mats[2].density_units == 'sum'

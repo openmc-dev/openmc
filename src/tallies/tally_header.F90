@@ -716,7 +716,7 @@ contains
       case ('collision')
         tallies(index) % obj % estimator = ESTIMATOR_COLLISION
       case default
-        err = E_UNASSIGNED
+        err = E_INVALID_ARGUMENT
         call set_errmsg("Unknown tally estimator: " // trim(estimator_))
       end select
     else
@@ -1035,7 +1035,7 @@ contains
       case ('surface')
         tallies(index) % obj % type = TALLY_SURFACE
       case default
-        err = E_UNASSIGNED
+        err = E_INVALID_ARGUMENT
         call set_errmsg("Unknown tally type: " // trim(type_))
       end select
     else

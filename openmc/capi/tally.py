@@ -228,12 +228,8 @@ class Tally(_FortranObjectWithID):
     @property
     def estimator(self):
         estimator = c_int32()
-        try:
-            _dll.openmc_tally_get_estimator(self._index, estimator)
-        except AllocationError:
-            return ""
-        else:
-            return _ESTIMATORS[estimator.value]
+        _dll.openmc_tally_get_estimator(self._index, estimator)
+        return _ESTIMATORS[estimator.value]
 
     @estimator.setter
     def estimator(self, estimator):
@@ -352,6 +348,7 @@ class Tally(_FortranObjectWithID):
         return std_dev
 
     def reset(self):
+        """Reset results and num_realizations of tally"""
         _dll.openmc_tally_reset(self._index)
 
     def ci_width(self, alpha=0.05):

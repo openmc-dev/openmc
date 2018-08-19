@@ -37,8 +37,6 @@ module openmc_api
   public :: openmc_calculate_volumes
   public :: openmc_cell_filter_get_bins
   public :: openmc_cell_get_id
-  public :: openmc_cell_get_fill
-  public :: openmc_cell_set_fill
   public :: openmc_cell_set_id
   public :: openmc_cell_set_temperature
   public :: openmc_energy_filter_get_bins
@@ -214,7 +212,7 @@ contains
         if (p % material == MATERIAL_VOID) then
           id = 0
         else
-          id = materials(p % material) % id
+          id = materials(p % material) % id()
         end if
       end if
       instance = p % cell_instance - 1
@@ -259,7 +257,6 @@ contains
     if (allocated(tallies)) then
       do i = 1, size(tallies)
         associate (t => tallies(i) % obj)
-          t % active = .false.
           t % n_realizations = 0
           if (allocated(t % results)) then
             t % results(:, :, :) = ZERO
@@ -277,14 +274,6 @@ contains
     k_col_tra = ZERO
     k_abs_tra = ZERO
     k_sum(:) = ZERO
-
-    ! Clear active tally lists
-    call active_analog_tallies % clear()
-    call active_tracklength_tallies % clear()
-    call active_meshsurf_tallies % clear()
-    call active_collision_tallies % clear()
-    call active_surface_tallies % clear()
-    call active_tallies % clear()
 
     ! Reset timers
     call time_total % reset()

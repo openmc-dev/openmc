@@ -1,13 +1,14 @@
 //! \file math_functions.h
 //! A collection of elementary math functions.
 
-#ifndef MATH_FUNCTIONS_H
-#define MATH_FUNCTIONS_H
+#ifndef OPENMC_MATH_FUNCTIONS_H
+#define OPENMC_MATH_FUNCTIONS_H
 
 #include <cmath>
 #include <cstdlib>
 
 #include "constants.h"
+#include "position.h"
 #include "random_lcg.h"
 
 
@@ -92,6 +93,24 @@ extern "C" void calc_rn_c(int n, const double uvw[3], double rn[]);
 extern "C" void calc_zn_c(int n, double rho, double phi, double zn[]);
 
 //==============================================================================
+//! Calculate only the even order components of n-th order modified Zernike 
+//! polynomial moment with azimuthal dependency m = 0 for a given radial (rho)
+//! location on the unit disk.
+//!
+//! Since m = 0, n could only be even orders. Z_q0 = R_q0
+//!
+//! See calc_zn_c for methodology.
+//!
+//! @param n       The maximum order requested
+//! @param rho     The radial parameter to specify location on the unit disk
+//! @param phi     The angle parameter to specify location on the unit disk
+//! @param zn_rad  The requested moments of order 0 to n (inclusive)
+//!   evaluated at rho and phi when m = 0.
+//==============================================================================
+
+extern "C" void calc_zn_rad_c(int n, double rho, double zn_rad[]);
+
+//==============================================================================
 //! Rotate the direction cosines through a polar angle whose cosine is mu and
 //! through an azimuthal angle sampled uniformly.
 //!
@@ -105,6 +124,8 @@ extern "C" void calc_zn_c(int n, double rho, double phi, double zn[]);
 //==============================================================================
 
 extern "C" void rotate_angle_c(double uvw[3], double mu, double* phi);
+
+Direction rotate_angle(Direction u, double mu, double* phi);
 
 //==============================================================================
 //! Samples an energy from the Maxwell fission distribution based on a direct
@@ -202,4 +223,4 @@ extern "C" double spline_integrate_c(int n, const double x[], const double y[],
                                      const double z[], double xa, double xb);
 
 } // namespace openmc
-#endif // MATH_FUNCTIONS_H
+#endif // OPENMC_MATH_FUNCTIONS_H

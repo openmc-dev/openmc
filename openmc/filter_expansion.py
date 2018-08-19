@@ -234,8 +234,8 @@ class SphericalHarmonicsFilter(ExpansionFilter):
     r"""Score spherical harmonic expansion moments up to specified order.
 
     This filter allows you to obtain real spherical harmonic moments of either
-    the particle's direction or the cosine of the scattering angle. Specifying a
-    filter with order :math:`\ell` tallies moments for all orders from 0 to
+    the particle's direction or the cosine of the scattering angle. Specifying
+    a filter with order :math:`\ell` tallies moments for all orders from 0 to
     :math:`\ell`.
 
     Parameters
@@ -342,11 +342,11 @@ class ZernikeFilter(ExpansionFilter):
         \frac{n+m}{2} - k)! (\frac{n-m}{2} - k)!} \rho^{n-2k}.
 
     With this definition, the integral of :math:`(Z_n^m)^2` over the unit disk
-    is :math:`\frac{\epsilon_m\pi}{2n+2}` for each polynomial where :math:`\epsilon_m` is
-    2 if :math:`m` equals 0 and 1 otherwise.
+    is :math:`\frac{\epsilon_m\pi}{2n+2}` for each polynomial where 
+    :math:`\epsilon_m` is 2 if :math:`m` equals 0 and 1 otherwise.
 
-    Specifying a filter with order N tallies moments for all :math:`n` from 0 to
-    N and each value of :math:`m`. The ordering of the Zernike polynomial
+    Specifying a filter with order N tallies moments for all :math:`n` from 0
+    to N and each value of :math:`m`. The ordering of the Zernike polynomial
     moments follows the ANSI Z80.28 standard, where the one-dimensional index
     :math:`j` corresponds to the :math:`n` and :math:`m` by
 
@@ -463,3 +463,63 @@ class ZernikeFilter(ExpansionFilter):
         subelement.text = str(self.r)
 
         return element
+
+
+class ZernikeRadialFilter(ZernikeFilter):
+    r"""Score the :math:`m = 0` (radial variation only) Zernike moments up to
+    specified order.
+
+    The Zernike polynomials are defined the same as in :class:`ZernikeFilter`.
+
+    .. math::
+
+        Z_n^{0}(\rho, \theta) = R_n^{0}(\rho)
+
+    where the radial polynomials are
+
+    .. math::
+        R_n^{0}(\rho) = \sum\limits_{k=0}^{n/2} \frac{(-1)^k (n-k)!}{k! ((
+        \frac{n}{2} - k)!)^{2}} \rho^{n-2k}.
+
+    With this definition, the integral of :math:`(Z_n^0)^2` over the unit disk
+    is :math:`\frac{\pi}{n+1}`.
+
+    If there is only radial dependency, the polynomials are integrated over
+    the azimuthal angles. The only terms left are :math:`Z_n^{0}(\rho, \theta) 
+    = R_n^{0}(\rho)`. Note that :math:`n` could only be even orders.
+    Therefore, for a radial Zernike polynomials up to order of :math:`n`,
+    there are :math:`\frac{n}{2} + 1` terms in total. The indexing is from the
+    lowest even order (0) to highest even order.
+
+    Parameters
+    ----------
+    order : int
+        Maximum radial Zernike polynomial order
+    x : float
+        x-coordinate of center of circle for normalization
+    y : float
+        y-coordinate of center of circle for normalization
+    r : int or None
+        Radius of circle for normalization
+
+    Attributes
+    ----------
+    order : int
+        Maximum radial Zernike polynomial order
+    x : float
+        x-coordinate of center of circle for normalization
+    y : float
+        y-coordinate of center of circle for normalization
+    r : int or None
+        Radius of circle for normalization
+    id : int
+        Unique identifier for the filter
+    num_bins : int
+        The number of filter bins
+
+    """
+
+    @ExpansionFilter.order.setter
+    def order(self, order):
+        ExpansionFilter.order.__set__(self, order)
+        self.bins = ['Z{},0'.format(n) for n in range(0, order+1, 2)]

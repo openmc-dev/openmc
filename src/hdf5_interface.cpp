@@ -51,6 +51,35 @@ get_shape(hid_t obj_id, hsize_t* dims)
 }
 
 
+std::vector<hsize_t> attribute_shape(hid_t obj_id, const char* name)
+{
+  hid_t attr = H5Aopen(obj_id, name, H5P_DEFAULT);
+  std::vector<hsize_t> shape = object_shape(attr);
+  H5Aclose(attr);
+  return shape;
+}
+
+std::vector<hsize_t> object_shape(hid_t obj_id)
+{
+  // Get number of dimensions
+  auto type = H5Iget_type(obj_id);
+  hid_t dspace;
+  if (type == H5I_DATASET) {
+    dspace = H5Dget_space(obj_id);
+  } else if (type == H5I_ATTR) {
+    dspace = H5Aget_space(obj_id);
+  }
+  int n = H5Sget_simple_extent_ndims(dspace);
+
+  // Get shape of array
+  std::vector<hsize_t> shape(n);
+  H5Sget_simple_extent_dims(dspace, shape.data(), nullptr);
+
+  // Free resources and return
+  H5Sclose(dspace);
+  return shape;
+}
+
 void
 get_shape_attr(hid_t obj_id, const char* name, hsize_t* dims)
 {
@@ -113,6 +142,18 @@ dataset_typesize(hid_t dset)
   size_t n = H5Tget_size(filetype);
   H5Tclose(filetype);
   return n;
+}
+
+
+void
+ensure_exists(hid_t group_id, const char* name)
+{
+  if (!object_exists(group_id, name)) {
+    std::stringstream err_msg;
+    err_msg << "Object \"" << name << "\" does not exist in group "
+            << object_name(group_id);
+    fatal_error(err_msg);
+  }
 }
 
 
@@ -285,6 +326,36 @@ get_groups(hid_t group_id, char* name[])
   }
 }
 
+std::vector<std::string>
+group_names(hid_t group_id)
+{
+  // Determine number of links in the group
+  H5G_info_t info;
+  H5Gget_info(group_id, &info);
+
+  // Iterate over links to get names
+  H5O_info_t oinfo;
+  size_t size;
+  std::vector<std::string> names;
+  for (hsize_t i = 0; i < info.nlinks; ++i) {
+    // Determine type of object (and skip non-group)
+    H5Oget_info_by_idx(group_id, ".", H5_INDEX_NAME, H5_ITER_INC, i, &oinfo,
+                       H5P_DEFAULT);
+    if (oinfo.type != H5O_TYPE_GROUP) continue;
+
+    // Get size of name
+    size = 1 + H5Lget_name_by_idx(group_id, ".", H5_INDEX_NAME, H5_ITER_INC,
+                                  i, nullptr, 0, H5P_DEFAULT);
+
+    // Read name
+    char buffer[size];
+    H5Lget_name_by_idx(group_id, ".", H5_INDEX_NAME, H5_ITER_INC, i,
+                       buffer, size, H5P_DEFAULT);
+    names.emplace_back(&buffer[0], size);
+  }
+  return names;
+}
+
 
 bool
 object_exists(hid_t object_id, const char* name)
@@ -299,14 +370,23 @@ object_exists(hid_t object_id, const char* name)
 }
 
 
+std::string
+object_name(hid_t obj_id)
+{
+  // Determine size and create buffer
+  size_t size = 1 + H5Iget_name(obj_id, nullptr, 0);
+  char buffer[size];
+
+  // Read and return name
+  H5Iget_name(obj_id, buffer, size);
+  return {buffer, size};
+}
+
+
 hid_t
 open_dataset(hid_t group_id, const char* name)
 {
-  if (!object_exists(group_id, name)) {
-    std::stringstream err_msg;
-    err_msg << "Group \"" << name << "\" does not exist";
-    fatal_error(err_msg);
-  }
+  ensure_exists(group_id, name);
   return H5Dopen(group_id, name, H5P_DEFAULT);
 }
 
@@ -314,11 +394,7 @@ open_dataset(hid_t group_id, const char* name)
 hid_t
 open_group(hid_t group_id, const char* name)
 {
-  if (!object_exists(group_id, name)) {
-    std::stringstream err_msg;
-    err_msg << "Group \"" << name << "\" does not exist";
-    fatal_error(err_msg);
-  }
+  ensure_exists(group_id, name);
   return H5Gopen(group_id, name, H5P_DEFAULT);
 }
 
@@ -425,7 +501,7 @@ read_string(hid_t obj_id, const char* name, size_t slen, char* buffer, bool inde
 
 
 void
-read_complex(hid_t obj_id, const char* name, double _Complex* buffer, bool indep)
+read_complex(hid_t obj_id, const char* name, std::complex<double>* buffer, bool indep)
 {
   // Create compound datatype for complex numbers
   struct complex_t {

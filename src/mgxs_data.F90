@@ -160,10 +160,10 @@ contains
         if (cells(i) % material(j) == MATERIAL_VOID) cycle
 
         ! Get temperature of cell (rounding to nearest integer)
-        if (size(cells(i) % sqrtkT) > 1) then
-          kT = cells(i) % sqrtkT(j)**2
+        if (cells(i) % sqrtkT_size() > 1) then
+          kT = cells(i) % sqrtkT(j-1)**2
         else
-          kT = cells(i) % sqrtkT(1)**2
+          kT = cells(i) % sqrtkT(0)**2
         end if
 
         i_material = cells(i) % material(j)

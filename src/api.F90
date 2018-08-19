@@ -38,7 +38,6 @@ module openmc_api
   public :: openmc_cell_filter_get_bins
   public :: openmc_cell_get_id
   public :: openmc_cell_set_id
-  public :: openmc_cell_set_temperature
   public :: openmc_energy_filter_get_bins
   public :: openmc_energy_filter_set_bins
   public :: openmc_extend_filters

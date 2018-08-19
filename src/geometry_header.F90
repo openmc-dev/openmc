@@ -75,6 +75,21 @@ module geometry_header
       integer(C_INT32_T)                :: mat
     end function cell_material_c
 
+    function cell_sqrtkT_size_c(cell_ptr) bind(C, name='cell_sqrtkT_size') &
+         result(n)
+      import C_PTR, C_INT
+      type(C_PTR),    intent(in), value :: cell_ptr
+      integer(C_INT)                    :: n
+    end function cell_sqrtkT_size_c
+
+    function cell_sqrtkT_c(cell_ptr, i) bind(C, name='cell_sqrtkT') &
+         result(sqrtkT)
+      import C_PTR, C_INT, C_DOUBLE
+      type(C_PTR),    intent(in), value :: cell_ptr
+      integer(C_INT), intent(in), value :: i
+      real(C_DOUBLE)                    :: sqrtkT
+    end function cell_sqrtkT_c
+
     function cell_simple_c(cell_ptr) bind(C, name='cell_simple') result(simple)
       import C_PTR, C_BOOL
       type(C_PTR), intent(in), value :: cell_ptr
@@ -253,9 +268,6 @@ module geometry_header
                                            !  Boolean expression of half-spaces
     integer :: distribcell_index           ! Index corresponding to this cell in
                                            !  distribcell arrays
-    real(8), allocatable :: sqrtkT(:)      ! Square root of k_Boltzmann *
-                                           !  temperature in eV.  Multiple for
-                                           !  distribcell
 
     ! Rotation matrix and translation vector
     real(8), allocatable :: translation(:)
@@ -272,6 +284,8 @@ module geometry_header
     procedure :: n_instances => cell_n_instances
     procedure :: material_size => cell_material_size
     procedure :: material => cell_material
+    procedure :: sqrtkT_size => cell_sqrtkT_size
+    procedure :: sqrtkT => cell_sqrtkT
     procedure :: simple => cell_simple
     procedure :: distance => cell_distance
     procedure :: offset => cell_offset
@@ -413,6 +427,19 @@ contains
     mat = cell_material_c(this % ptr, i)
   end function cell_material
 
+  function cell_sqrtkT_size(this) result(n)
+    class(Cell), intent(in) :: this
+    integer                 :: n
+    n = cell_sqrtkT_size_c(this % ptr)
+  end function cell_sqrtkT_size
+
+  function cell_sqrtkT(this, i) result(sqrtkT)
+    class(Cell), intent(in) :: this
+    integer,     intent(in) :: i
+    real(C_DOUBLE)          :: sqrtkT
+    sqrtkT = cell_sqrtkT_c(this % ptr, i)
+  end function cell_sqrtkT
+
   function cell_simple(this) result(simple)
     class(Cell), intent(in) :: this
     logical(C_BOOL)         :: simple
@@ -470,10 +497,10 @@ contains
         if (cells(i) % material(j) == MATERIAL_VOID) cycle
 
         ! Get temperature of cell (rounding to nearest integer)
-        if (size(cells(i) % sqrtkT) > 1) then
-          temperature = cells(i) % sqrtkT(j)**2 / K_BOLTZMANN
+        if (cells(i) % sqrtkT_size() > 1) then
+          temperature = cells(i) % sqrtkT(j-1)**2 / K_BOLTZMANN
         else
-          temperature = cells(i) % sqrtkT(1)**2 / K_BOLTZMANN
+          temperature = cells(i) % sqrtkT(0)**2 / K_BOLTZMANN
         end if
 
         i_material = cells(i) % material(j)
@@ -625,106 +652,5 @@ contains
       call set_errmsg("Index in cells array is out of bounds.")
     end if
   end function openmc_cell_set_id
-
-
-  function openmc_cell_set_temperature(index, T, instance) result(err) bind(C)
-    ! Set the temperature of a cell
-    integer(C_INT32_T), value, intent(in)    :: index    ! index in cells
-    real(C_DOUBLE), value, intent(in)        :: T        ! temperature
-    integer(C_INT32_T), optional, intent(in) :: instance ! cell instance
-
-    integer(C_INT) :: err     ! error code
-    integer :: j              ! looping variable
-    integer :: n              ! number of cell instances
-    integer :: material_index ! material index in materials array
-    integer :: num_nuclides   ! num nuclides in material
-    integer :: nuclide_index  ! index of nuclide in nuclides array
-    real(8) :: min_temp       ! min common-denominator avail temp
-    real(8) :: max_temp       ! max common-denominator avail temp
-    real(8) :: temp           ! actual temp we'll assign
-    logical :: outside_low    ! lower than available data
-    logical :: outside_high   ! higher than available data
-
-    outside_low = .false.
-    outside_high = .false.
-
-    err = E_UNASSIGNED
-
-    if (index >= 1 .and. index <= size(cells)) then
-
-      ! error if the cell is filled with another universe
-      if (cells(index) % fill() /= C_NONE) then
-        err = E_GEOMETRY
-        call set_errmsg("Cannot set temperature on a cell filled &
-             &with a universe.")
-      else
-        ! find which material is associated with this cell (material_index
-        ! is the index into the materials array)
-        if (present(instance)) then
-          material_index = cells(index) % material(instance + 1)
-        else
-          material_index = cells(index) % material(1)
-        end if
-
-        ! number of nuclides associated with this material
-        num_nuclides = size(materials(material_index) % nuclide)
-
-        min_temp = ZERO
-        max_temp = INFINITY
-
-        do j = 1, num_nuclides
-          nuclide_index = materials(material_index) % nuclide(j)
-          min_temp = max(min_temp, minval(nuclides(nuclide_index) % kTs))
-          max_temp = min(max_temp, maxval(nuclides(nuclide_index) % kTs))
-        end do
-
-        ! adjust the temperature to be within bounds if necessary
-        if (K_BOLTZMANN * T < min_temp) then
-          outside_low = .true.
-          temp = min_temp / K_BOLTZMANN
-        else if (K_BOLTZMANN * T > max_temp) then
-          outside_high = .true.
-          temp = max_temp / K_BOLTZMANN
-        else
-          temp = T
-        end if
-
-        associate (c => cells(index))
-          if (allocated(c % sqrtkT)) then
-            n = size(c % sqrtkT)
-            if (present(instance) .and. n > 1) then
-              if (instance >= 0 .and. instance < n) then
-                c % sqrtkT(instance + 1) = sqrt(K_BOLTZMANN * temp)
-                err = 0
-              end if
-            else
-              c % sqrtkT(:) = sqrt(K_BOLTZMANN * temp)
-              err = 0
-            end if
-          end if
-        end associate
-
-        ! Assign error codes for outside of temperature bounds provided the
-        ! temperature was changed correctly. This needs to be done after
-        ! changing the temperature based on the logical structure above.
-        if (err == 0) then
-          if (outside_low) then
-            err = E_WARNING
-            call set_errmsg("Nuclear data has not been loaded beyond lower &
-                 &bound of T=" // trim(to_str(T)) // " K.")
-          else if (outside_high) then
-            err = E_WARNING
-            call set_errmsg("Nuclear data has not been loaded beyond upper &
-                 &bound of T=" // trim(to_str(T)) // " K.")
-          end if
-        end if
-
-      end if
-
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in cells array is out of bounds.")
-    end if
-  end function openmc_cell_set_temperature
 
 end module geometry_header

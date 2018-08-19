@@ -27,6 +27,10 @@ Material::Material(pugi::xml_node material_node)
   } else {
     fatal_error("Must specify id of material in materials XML file.");
   }
+
+  if (check_for_node(material_node, "temperature")) {
+    temperature = std::stod(get_node_value(material_node, "temperature"));
+  }
 }
 
 //==============================================================================

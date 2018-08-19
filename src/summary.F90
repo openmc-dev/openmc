@@ -218,9 +218,10 @@ contains
           deallocate(cell_materials)
         end if
 
-        allocate(cell_temperatures(size(c % sqrtkT)))
-        cell_temperatures(:) = c % sqrtkT(:)
-        cell_temperatures(:) = cell_temperatures(:)**2 / K_BOLTZMANN
+        allocate(cell_temperatures(c % sqrtkT_size()))
+        do j = 1, c % sqrtkT_size()
+          cell_temperatures(j) = c % sqrtkT(j-1)**2 / K_BOLTZMANN
+        end do
         call write_dataset(cell_group, "temperature", cell_temperatures)
         deallocate(cell_temperatures)
 

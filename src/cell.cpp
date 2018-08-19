@@ -259,6 +259,36 @@ Cell::Cell(pugi::xml_node cell_node)
     }
   }
 
+  // Read the temperature element which may be distributed like materials.
+  if (check_for_node(cell_node, "temperature")) {
+    sqrtkT = get_node_array<double>(cell_node, "temperature");
+    sqrtkT.shrink_to_fit();
+
+    // Make sure this is a material-filled cell.
+    if (material.size() == 0) {
+      std::stringstream err_msg;
+      err_msg << "Cell " << id << " was specified with a temperature but "
+           "no material. Temperature specification is only valid for cells "
+           "filled with a material.";
+      fatal_error(err_msg);
+    }
+
+    // Make sure all temperatures are non-negative.
+    for (auto T : sqrtkT) {
+      if (T < 0) {
+        std::stringstream err_msg;
+        err_msg << "Cell " << id
+                << " was specified with a negative temperature";
+        fatal_error(err_msg);
+      }
+    }
+
+    // Convert to sqrt(k*T).
+    for (auto& T : sqrtkT) {
+      T = std::sqrt(K_BOLTZMANN * T);
+    }
+  }
+
   // Read the region specification.
   std::string region_spec;
   if (check_for_node(cell_node, "region")) {
@@ -539,6 +569,35 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
   return 0;
 }
 
+//TODO: make sure data is loaded for this temperature
+extern "C" int
+openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance)
+{
+  if (index >= 1 && index <= global_cells.size()) {
+    //TODO: off-by-one
+    Cell& c {*global_cells[index - 1]};
+
+    if (instance) {
+      if (*instance >= 0 && *instance < c.sqrtkT.size()) {
+        c.sqrtkT[*instance] = std::sqrt(K_BOLTZMANN * T);
+      } else {
+        strcpy(openmc_err_msg, "Distribcell instance is out of bounds.");
+        return OPENMC_E_OUT_OF_BOUNDS;
+      }
+    } else {
+      for (auto& T_ : c.sqrtkT) {
+        T_ = std::sqrt(K_BOLTZMANN * T);
+      }
+    }
+
+  } else {
+    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  return 0;
+}
+
 //==============================================================================
 // Fortran compatibility functions
 //==============================================================================
@@ -567,6 +626,10 @@ extern "C" {
     if (mat == MATERIAL_VOID) return MATERIAL_VOID;
     return mat + 1;
   }
+
+  int cell_sqrtkT_size(Cell* c) {return c->sqrtkT.size();}
+
+  double cell_sqrtkT(Cell* c, int i) {return c->sqrtkT[i];}
 
   bool cell_simple(Cell* c) {return c->simple;}
 

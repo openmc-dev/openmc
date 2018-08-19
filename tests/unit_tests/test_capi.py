@@ -101,6 +101,10 @@ def test_material(capi_init):
     m.set_densities(m.nuclides, test_dens)
     assert m.densities == pytest.approx(test_dens)
 
+    assert m.volume is None
+    m.volume = 10.0
+    assert m.volume == 10.0
+
     rho = 2.25e-2
     m.set_density(rho)
     assert sum(m.densities) == pytest.approx(rho)

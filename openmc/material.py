@@ -284,6 +284,8 @@ class Material(IDManagerMixin):
         # Create the Material
         material = cls(mat_id, name)
         material.depletable = bool(group.attrs['depletable'])
+        if 'volume' in group.attrs:
+            material.volume = group.attrs['volume']
 
         # Read the names of the S(a,b) tables for this Material and add them
         if 'sab_names' in group:
@@ -832,6 +834,9 @@ class Material(IDManagerMixin):
 
         if self._depletable:
             element.set("depletable", "true")
+
+        if self._volume:
+            element.set("volume", str(self._volume))
 
         # Create temperature XML subelement
         if self.temperature is not None:

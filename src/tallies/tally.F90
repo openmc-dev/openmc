@@ -3251,6 +3251,7 @@ contains
                 end do
 
                 dsig_s = ZERO
+                dsig_a = ZERO
                 associate (nuc => nuclides(p % event_nuclide))
                   if (nuc % mp_present .and. &
                        p % last_E >= nuc % multipole % E_min .and. &
@@ -3278,7 +3279,6 @@ contains
                 end do
 
                 dsig_s = ZERO
-                dsig_a = ZERO
                 associate (nuc => nuclides(p % event_nuclide))
                   if (nuc % mp_present .and. &
                        p % last_E >= nuc % multipole % E_min .and. &
@@ -3408,6 +3408,7 @@ contains
             else if (materials(p % material) % id == deriv % diff_material &
                  .and. material_xs % total > ZERO) then
               dsig_s = ZERO
+              dsig_a = ZERO
               associate (nuc => nuclides(i_nuclide))
                 if (nuc % mp_present .and. &
                      p % last_E >= nuc % multipole % E_min .and. &
@@ -3448,7 +3449,6 @@ contains
                  .and. (material_xs % total - material_xs % absorption) > ZERO)&
                  then
               dsig_s = ZERO
-              dsig_a = ZERO
               associate (nuc => nuclides(i_nuclide))
                 if (nuc % mp_present .and. &
                      p % last_E >= nuc % multipole % E_min .and. &
@@ -3734,7 +3734,7 @@ contains
                     ! (1 / phi) * (d_phi / d_T) = (d_sigma_s / d_T) / sigma_s
                     call multipole_deriv_eval(nuc % multipole, p % last_E, &
                          p % sqrtkT, dsig_s, dsig_a, dsig_f)
-                    deriv % flux_deriv = deriv % flux_deriv + (dsig_s + dsig_a)&
+                    deriv % flux_deriv = deriv % flux_deriv + dsig_s&
                          / (micro_xs(mat % nuclide(l)) % total &
                          - micro_xs(mat % nuclide(l)) % absorption)
                     ! Note that this is an approximation!  The real scattering

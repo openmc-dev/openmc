@@ -2,6 +2,7 @@
 #define OPENMC_CELL_H
 
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -18,6 +19,7 @@ namespace openmc {
 // Constants
 //==============================================================================
 
+// TODO: Convert to enum
 extern "C" int FILL_MATERIAL;
 extern "C" int FILL_UNIVERSE;
 extern "C" int FILL_LATTICE;

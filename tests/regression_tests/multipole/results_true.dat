@@ -37,5 +37,5 @@ Cell
 	Fill           =	Material 2
 	Region         =	-1
 	Rotation       =	None
-	Temperature    =	[ 500.  700.    0.  800.]
+	Temperature    =	[500. 700.   0. 800.]
 	Translation    =	None

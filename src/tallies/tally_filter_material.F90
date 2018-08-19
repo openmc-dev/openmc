@@ -76,7 +76,7 @@ contains
 
     allocate(material_ids(size(this % materials)))
     do i = 1, size(this % materials)
-      material_ids(i) = materials(this % materials(i)) % id
+      material_ids(i) = materials(this % materials(i)) % id()
     end do
     call write_dataset(filter_group, "bins", material_ids)
   end subroutine to_statepoint_material
@@ -110,7 +110,7 @@ contains
     integer,               intent(in) :: bin
     character(MAX_LINE_LEN)           :: label
 
-    label = "Material " // to_str(materials(this % materials(bin)) % id)
+    label = "Material " // to_str(materials(this % materials(bin)) % id())
   end function text_label_material
 
 !===============================================================================

@@ -84,8 +84,8 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
   # Make sure version is sufficient
   execute_process(COMMAND ${CMAKE_Fortran_COMPILER} -dumpversion
     OUTPUT_VARIABLE GCC_VERSION)
-  if(GCC_VERSION VERSION_LESS 4.8)
-    message(FATAL_ERROR "gfortran version must be 4.8 or higher")
+  if(GCC_VERSION VERSION_LESS 4.9)
+    message(FATAL_ERROR "gcc version must be 4.9 or higher")
   endif()
 
   # GCC compiler options
@@ -210,7 +210,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES Clang)
 
 endif()
 
-list(APPEND cxxflags -std=c++11 -O2)
+list(APPEND cxxflags -std=c++14 -O2)
 if(debug)
   list(REMOVE_ITEM cxxflags -O2)
   list(APPEND cxxflags -g -O0)
@@ -235,6 +235,14 @@ message(STATUS "Linker flags: ${ldflags}")
 
 add_library(pugixml vendor/pugixml/pugixml.cpp)
 target_include_directories(pugixml PUBLIC vendor/pugixml/)
+
+#===============================================================================
+# xtensor header-only library
+#===============================================================================
+
+add_subdirectory(vendor/xtl)
+add_subdirectory(vendor/xtensor)
+target_link_libraries(xtensor INTERFACE xtl)
 
 #===============================================================================
 # RPATH information
@@ -280,7 +288,6 @@ set_target_properties(faddeeva PROPERTIES
 
 add_library(libopenmc SHARED
   src/algorithm.F90
-  src/angle_distribution.F90
   src/angleenergy_header.F90
   src/bank_header.F90
   src/api.F90
@@ -298,7 +305,6 @@ add_library(libopenmc SHARED
   src/eigenvalue.F90
   src/endf.F90
   src/endf_header.F90
-  src/energy_distribution.F90
   src/error.F90
   src/geometry.F90
   src/geometry_header.F90
@@ -326,7 +332,6 @@ add_library(libopenmc SHARED
   src/physics_mg.F90
   src/plot.F90
   src/plot_header.F90
-  src/product_header.F90
   src/progress_header.F90
   src/pugixml/pugixml_f.F90
   src/random_lcg.F90
@@ -334,9 +339,6 @@ add_library(libopenmc SHARED
   src/relaxng
   src/sab_header.F90
   src/secondary_correlated.F90
-  src/secondary_kalbach.F90
-  src/secondary_nbody.F90
-  src/secondary_uncorrelated.F90
   src/set_header.F90
   src/settings.F90
   src/simulation_header.F90
@@ -384,12 +386,19 @@ add_library(libopenmc SHARED
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90
   src/cell.cpp
+  src/distribution.cpp
+  src/distribution_angle.cpp
+  src/distribution_energy.cpp
+  src/distribution_multi.cpp
+  src/distribution_spatial.cpp
+  src/endf.cpp
   src/initialize.cpp
   src/finalize.cpp
   src/geometry.cpp
   src/geometry_aux.cpp
   src/hdf5_interface.cpp
   src/lattice.cpp
+  src/material.cpp
   src/math_functions.cpp
   src/message_passing.cpp
   src/mgxs.cpp
@@ -400,6 +409,12 @@ add_library(libopenmc SHARED
   src/position.cpp
   src/pugixml/pugixml_c.cpp
   src/random_lcg.cpp
+  src/reaction.cpp
+  src/reaction_product.cpp
+  src/secondary_correlated.cpp
+  src/secondary_kalbach.cpp
+  src/secondary_nbody.cpp
+  src/secondary_uncorrelated.cpp
   src/scattdata.cpp
   src/settings.cpp
   src/simulation.cpp
@@ -452,7 +467,7 @@ endif()
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml
-                      faddeeva)
+                      faddeeva xtensor)
 
 #===============================================================================
 # openmc executable

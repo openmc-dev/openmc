@@ -18,7 +18,6 @@ module physics
   use random_lcg,             only: prn, advance_prn_seed, prn_set_stream
   use reaction_header,        only: Reaction
   use sab_header,             only: sab_tables
-  use secondary_uncorrelated, only: UncorrelatedAngleEnergy
   use settings
   use simulation_header
   use string,                 only: to_str
@@ -506,6 +505,7 @@ contains
     integer :: i
     integer :: i_grid
     integer :: i_temp
+    integer :: threshold
     real(8) :: f
     real(8) :: prob
     real(8) :: cutoff
@@ -545,13 +545,14 @@ contains
     FISSION_REACTION_LOOP: do i = 1, nuc % n_fission
       i_reaction = nuc % index_fission(i)
 
-      associate (xs => nuc % reactions(i_reaction) % xs(i_temp))
+      associate (rx => nuc % reactions(i_reaction))
         ! if energy is below threshold for this reaction, skip it
-        if (i_grid < xs % threshold) cycle
+        threshold = rx % xs_threshold(i_temp)
+        if (i_grid < threshold) cycle
 
         ! add to cumulative probability
-        prob = prob + ((ONE - f) * xs % value(i_grid - xs % threshold + 1) &
-             + f*(xs % value(i_grid - xs % threshold + 2)))
+        prob = prob + ((ONE - f) * rx % xs(i_temp, i_grid - threshold + 1) &
+             + f*(rx % xs(i_temp, i_grid - threshold + 2)))
       end associate
 
       ! Create fission bank sites if fission occurs
@@ -593,17 +594,17 @@ contains
       ! Loop through each reaction type
       REACTION_LOOP: do i_reaction = 1, size(nuc % reactions)
         associate (rx => nuc % reactions(i_reaction))
-          threshold = rx % xs(i_temp) % threshold
+          threshold = rx % xs_threshold(i_temp)
 
           ! if energy is below threshold for this reaction, skip it
           if (i_grid < threshold) cycle
 
-          do i_product = 1, size(rx % products)
-            if (rx % products(i_product) % particle == PHOTON) then
+          do i_product = 1, rx % products_size()
+            if (rx % product_particle(i_product) == PHOTON) then
               ! add to cumulative probability
-              yield = rx % products(i_product) % yield % evaluate(E)
-              prob = prob + ((ONE - f) * rx % xs(i_temp) % value(i_grid - threshold + 1) &
-                   + f*(rx % xs(i_temp) % value(i_grid - threshold + 2))) * yield
+              yield = rx % product_yield(i_product, E)
+              prob = prob + ((ONE - f) * rx % xs(i_temp, i_grid - threshold + 1) &
+                   + f*(rx % xs(i_temp, i_grid - threshold + 2))) * yield
 
               if (prob > cutoff) return
               last_valid_reaction = i_reaction
@@ -672,6 +673,7 @@ contains
     integer :: j
     integer :: i_temp
     integer :: i_grid
+    integer :: threshold
     real(8) :: f
     real(8) :: prob
     real(8) :: cutoff
@@ -750,14 +752,14 @@ contains
                &// trim(nuc % name))
         end if
 
-        associate (rx => nuc % reactions(i), &
-             xs => nuc % reactions(i) % xs(i_temp))
+        associate (rx => nuc % reactions(i))
           ! if energy is below threshold for this reaction, skip it
-          if (i_grid < xs % threshold) cycle
+          threshold = rx % xs_threshold(i_temp)
+          if (i_grid < threshold) cycle
 
           ! add to cumulative probability
-          prob = prob + ((ONE - f)*xs % value(i_grid - xs % threshold + 1) &
-               + f*(xs % value(i_grid - xs % threshold + 2)))
+          prob = prob + ((ONE - f)*rx % xs(i_temp, i_grid - threshold + 1) &
+               + f*(rx % xs(i_temp, i_grid - threshold + 2)))
         end associate
       end do
 
@@ -839,14 +841,7 @@ contains
     vel = sqrt(dot_product(v_n, v_n))
 
     ! Sample scattering angle
-    select type (dist => rxn % products(1) % distribution(1) % obj)
-    type is (UncorrelatedAngleEnergy)
-      if (allocated(dist % angle % energy)) then
-        mu_cm = dist % angle % sample(E)
-      else
-        mu_cm = TWO*prn() - ONE
-      end if
-    end select
+    mu_cm = rxn % sample_elastic_mu(E)
 
     ! Determine direction cosines in CM
     uvw_cm = v_n/vel
@@ -1581,7 +1576,7 @@ contains
       do group = 1, nuc % n_precursor
 
         ! determine delayed neutron precursor yield for group j
-        yield = rxn % products(1 + group) % yield % evaluate(E_in)
+        yield = rxn % product_yield(1 + group, E_in)
 
         ! Check if this group is sampled
         prob = prob + yield
@@ -1600,7 +1595,7 @@ contains
       do
         ! sample from energy/angle distribution -- note that mu has already been
         ! sampled above and doesn't need to be resampled
-        call rxn % products(1 + group) % sample(E_in, site % E, mu)
+        call rxn % product_sample(1 + group, E_in, site % E, mu)
 
         ! resample if energy is greater than maximum neutron energy
         if (site % E < energy_max(NEUTRON)) exit
@@ -1624,7 +1619,7 @@ contains
       ! sample from prompt neutron energy distribution
       n_sample = 0
       do
-        call rxn % products(1) % sample(E_in, site % E, mu)
+        call rxn % product_sample(1, E_in, site % E, mu)
 
         ! resample if energy is greater than maximum neutron energy
         if (site % E < energy_max(NEUTRON)) exit
@@ -1663,7 +1658,7 @@ contains
     E_in = p % E
 
     ! sample outgoing energy and scattering cosine
-    call rxn % products(1) % sample(E_in, E, mu)
+    call rxn % product_sample(1, E_in, E, mu)
 
     ! if scattering system is in center-of-mass, transfer cosine of scattering
     ! angle and outgoing energy from CM to LAB
@@ -1692,7 +1687,7 @@ contains
     p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu)
 
     ! evaluate yield
-    yield = rxn % products(1) % yield % evaluate(E_in)
+    yield = rxn % product_yield(1, E_in)
     if (mod(yield, ONE) == ZERO) then
       ! If yield is integral, create exactly that many secondary particles
       do i = 1, nint(yield) - 1
@@ -1740,8 +1735,8 @@ contains
       call sample_photon_product(i_nuclide, p % E, i_reaction, i_product)
 
       ! Sample the outgoing energy and angle
-      call nuclides(i_nuclide) % reactions(i_reaction) % products(i_product) &
-           % sample(p % E, E, mu)
+      call nuclides(i_nuclide) % reactions(i_reaction) % &
+           product_sample(i_product, p % E, E, mu)
 
       ! Sample the new direction
       uvw = rotate_angle(p % coord(1) % uvw, mu)

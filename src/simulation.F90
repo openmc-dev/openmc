@@ -7,7 +7,7 @@ module simulation
 #endif
 
   use bank_header,     only: source_bank
-  use cmfd_execute,    only: cmfd_init_batch, execute_cmfd
+  use cmfd_execute,    only: cmfd_init_batch, cmfd_tally_init, execute_cmfd
   use cmfd_header,     only: cmfd_on
   use constants,       only: ZERO
   use eigenvalue,      only: count_source_for_ufs, calculate_average_keff, &
@@ -317,6 +317,7 @@ contains
 #ifdef OPENMC_MPI
     integer :: mpi_err ! MPI error code
 #endif
+    character(MAX_FILE_LEN) :: filename
 
     ! Reduce tallies onto master process and accumulate
     call time_tallies % start()
@@ -349,13 +350,22 @@ contains
 
     ! Write out state point if it's been specified for this batch
     if (statepoint_batch % contains(current_batch)) then
-      err = openmc_statepoint_write()
+      if (sourcepoint_batch % contains(current_batch) .and. source_write &
+           .and. .not. source_separate) then
+        err = openmc_statepoint_write(write_source=.true._C_BOOL)
+      else
+        err = openmc_statepoint_write(write_source=.false._C_BOOL)
+      end if
     end if
 
-    ! Write out source point if it's been specified for this batch
-    if ((sourcepoint_batch % contains(current_batch) .or. source_latest) .and. &
-         source_write) then
-      call write_source_point()
+    ! Write out a separate source point if it's been specified for this batch
+    if (sourcepoint_batch % contains(current_batch) .and. source_write &
+         .and. source_separate) call write_source_point()
+
+    ! Write a continously-overwritten source point if requested.
+    if (source_latest) then
+      filename = trim(path_output) // 'source' // '.h5'
+      call write_source_point(filename)
     end if
 
   end subroutine finalize_batch
@@ -427,6 +437,9 @@ contains
 
     ! Allocate tally results arrays if they're not allocated yet
     call configure_tallies()
+
+    ! Activate the CMFD tallies
+    call cmfd_tally_init()
 
     ! Set up material nuclide index mapping
     do i = 1, n_materials
@@ -567,6 +580,13 @@ contains
 
     ! Write tally results to tallies.out
     if (output_tallies .and. master) call write_tallies()
+
+    ! Deactivate all tallies
+    if (allocated(tallies)) then
+      do i = 1, n_tallies
+        tallies(i) % obj % active = .false.
+      end do
+    end if
 
     ! Stop timers and show timing statistics
     call time_finalize%stop()

@@ -66,8 +66,14 @@ public:
 
   //! \brief Material(s) within this cell.
   //!
-  //! May be multiple materials for distribcell.  C_NONE signifies a universe.
+  //! May be multiple materials for distribcell.
   std::vector<int32_t> material;
+
+  //! \brief Temperature(s) within this cell.
+  //!
+  //! The stored values are actually sqrt(k_Boltzmann * T) for each temperature
+  //! T. The units are sqrt(eV).
+  std::vector<double> sqrtkT;
 
   //! Definition of spatial region as Boolean expression of half-spaces
   std::vector<std::int32_t> region;

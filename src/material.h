@@ -26,6 +26,11 @@ class Material
 public:
   int32_t id; //!< Unique ID
 
+  //! \brief Default temperature for cells containing this material.
+  //!
+  //! A negative value indicates no default temperature was specified.
+  double temperature {-1};
+
   Material() {};
 
   explicit Material(pugi::xml_node material_node);

@@ -10,6 +10,7 @@
 #include "geometry.h"
 #include "lattice.h"
 #include "material.h"
+#include "settings.h"
 
 
 namespace openmc {
@@ -73,6 +74,36 @@ adjust_indices()
   // Change all lattice universe values from IDs to indices.
   for (Lattice* l : lattices_c) {
     l->adjust_indices();
+  }
+}
+
+//==============================================================================
+
+void
+assign_temperatures()
+{
+  for (Cell* c : global_cells) {
+    // Ignore non-material cells and cells with defined temperature.
+    if (c->material.size() == 0) continue;
+    if (c->sqrtkT.size() > 0) continue;
+
+    c->sqrtkT.reserve(c->material.size());
+    for (auto i_mat : c->material) {
+      if (i_mat == MATERIAL_VOID) {
+        // Set void region to 0K.
+        c->sqrtkT.push_back(0);
+
+      } else {
+        if (global_materials[i_mat]->temperature >= 0) {
+          // This material has a default temperature; use that value.
+          auto T = global_materials[i_mat]->temperature;
+          c->sqrtkT.push_back(std::sqrt(K_BOLTZMANN * T));
+        } else {
+          // Use the global default temperature.
+          c->sqrtkT.push_back(std::sqrt(K_BOLTZMANN * temperature_default));
+        }
+      }
+    }
   }
 }
 

@@ -16,6 +16,12 @@ namespace openmc {
 extern "C" void adjust_indices();
 
 //==============================================================================
+//! Assign defaults to cells with undefined temperatures.
+//==============================================================================
+
+extern "C" void assign_temperatures();
+
+//==============================================================================
 //! Figure out which Universe is the root universe.
 //!
 //! This function looks for a universe that is not listed in a Cell::fill or in

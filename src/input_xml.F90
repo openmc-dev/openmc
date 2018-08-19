@@ -56,6 +56,9 @@ module input_xml
       integer(C_INT), intent(in), value :: n_maps
     end subroutine allocate_offset_tables
 
+    subroutine assign_temperatures() bind(C)
+    end subroutine assign_temperatures
+
     subroutine fill_offset_tables(target_univ_id, map) bind(C)
       import C_INT32_T, C_INT
       integer(C_INT32_T), intent(in), value :: target_univ_id
@@ -178,7 +181,7 @@ contains
     call neighbor_lists()
 
     ! Assign temperatures to cells that don't have temperatures already assigned
-    call assign_temperatures(material_temps)
+    call assign_temperatures()
 
     ! Determine desired txemperatures for each nuclide and S(a,b) table
     call get_temperatures(nuc_temps, sab_temps)
@@ -1201,40 +1204,6 @@ contains
         ! Copy translation vector
         allocate(c % translation(3))
         call get_node_array(node_cell, "translation", c % translation)
-      end if
-
-      ! Read cell temperatures.  If the temperature is not specified, set it to
-      ! a negative number for now.  During initialization we'll replace
-      ! negatives with the temperature from the material data.
-      if (check_for_node(node_cell, "temperature")) then
-        n = node_word_count(node_cell, "temperature")
-        if (n > 0) then
-          ! Make sure this is a "normal" cell.
-          if (c % fill() /= C_NONE) call fatal_error("Cell " &
-               // trim(to_str(c % id())) // " was specified with a temperature &
-               &but no material. Temperature specification is only valid for &
-               &cells filled with a material.")
-
-          ! Copy in temperatures
-          allocate(c % sqrtkT(n))
-          call get_node_array(node_cell, "temperature", c % sqrtkT)
-
-          ! Make sure all temperatues are positive
-          do j = 1, size(c % sqrtkT)
-            if (c % sqrtkT(j) < ZERO) call fatal_error("Cell " &
-                 // trim(to_str(c % id())) // " was specified with a negative &
-                 &temperature. All cell temperatures must be non-negative.")
-          end do
-
-          ! Convert to sqrt(kT)
-          c % sqrtkT(:) = sqrt(K_BOLTZMANN * c % sqrtkT(:))
-        else
-          allocate(c % sqrtkT(1))
-          c % sqrtkT(1) = -1.0
-        end if
-      else
-        allocate(c % sqrtkT(1))
-        c % sqrtkT = -1.0
       end if
 
       ! Add cell to dictionary
@@ -3797,46 +3766,6 @@ contains
   end subroutine read_ce_cross_sections
 
 !===============================================================================
-! ASSIGN_TEMPERATURES If any cells have undefined temperatures, try to find
-! their temperatures from material or global default temperatures
-!===============================================================================
-
-  subroutine assign_temperatures(material_temps)
-    real(8), intent(in) :: material_temps(:)
-
-    integer :: i, j
-    integer :: i_material
-
-    do i = 1, n_cells
-      ! Ignore non-normal cells and cells with defined temperature.
-      if (cells(i) % fill() /= C_NONE) cycle
-      if (cells(i) % sqrtkT(1) >= ZERO) cycle
-
-      ! Set the number of temperatures equal to the number of materials.
-      deallocate(cells(i) % sqrtkT)
-      allocate(cells(i) % sqrtkT(cells(i) % material_size()))
-
-      ! Check each of the cell materials for temperature data.
-      do j = 1, cells(i) % material_size()
-        ! Arbitrarily set void regions to 0K.
-        if (cells(i) % material(j) == MATERIAL_VOID) then
-          cells(i) % sqrtkT(j) = ZERO
-          cycle
-        end if
-
-        ! Use material default or global default temperature
-        i_material = cells(i) % material(j)
-        if (material_temps(i_material) >= ZERO) then
-          cells(i) % sqrtkT(j) = sqrt(K_BOLTZMANN * &
-               material_temps(i_material))
-        else
-          cells(i) % sqrtkT(j) = sqrt(K_BOLTZMANN * temperature_default)
-        end if
-      end do
-    end do
-  end subroutine assign_temperatures
-
-!===============================================================================
 ! READ_MULTIPOLE_DATA checks for the existence of a multipole library in the
 ! directory and loads it using multipole_read
 !===============================================================================
@@ -3908,7 +3837,7 @@ contains
 
     ! Find all cells with multiple (distributed) materials or temperatures.
     do i = 1, n_cells
-      if (cells(i) % material_size() > 1 .or. size(cells(i) % sqrtkT) > 1) then
+      if (cells(i) % material_size() > 1 .or. cells(i) % sqrtkT_size() > 1) then
         call cell_list % add(i)
       end if
     end do
@@ -3926,10 +3855,10 @@ contains
                  &equal one or the number of instances.")
           end if
         end if
-        if (size(c % sqrtkT) > 1) then
-          if (size(c % sqrtkT) /= c % n_instances()) then
+        if (c % sqrtkT_size() > 1) then
+          if (c % sqrtkT_size() /= c % n_instances()) then
             call fatal_error("Cell " // trim(to_str(c % id())) // " was &
-                 &specified with " // trim(to_str(size(c % sqrtkT))) &
+                 &specified with " // trim(to_str(c % sqrtkT_size())) &
                  // " temperatures but has " // trim(to_str(c % n_instances()))&
                  // " distributed instances. The number of temperatures must &
                  &equal one or the number of instances.")

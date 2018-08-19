@@ -260,7 +260,7 @@ class WindowedMultipole(EqualityMixin):
                      'data.shape[1] must be 3 or 4. One value for the pole.'
                      ' One each for the scattering and absorption residues. '
                      'Possibly one more for a fission residue.')
-            if not np.issubdtype(data.dtype, complex):
+            if not np.issubdtype(data.dtype, np.complexfloating):
                 raise TypeError('Multipole data arrays must be complex dtype')
         self._data = data
 
@@ -270,7 +270,7 @@ class WindowedMultipole(EqualityMixin):
             cv.check_type('windows', windows, np.ndarray)
             if len(windows.shape) != 2:
                 raise ValueError('Multipole windows arrays must be 2D')
-            if not np.issubdtype(windows.dtype, int):
+            if not np.issubdtype(windows.dtype, np.integer):
                 raise TypeError('Multipole windows arrays must be integer'
                                 ' dtype')
         self._windows = windows
@@ -281,7 +281,7 @@ class WindowedMultipole(EqualityMixin):
             cv.check_type('broaden_poly', broaden_poly, np.ndarray)
             if len(broaden_poly.shape) != 1:
                 raise ValueError('Multipole broaden_poly arrays must be 1D')
-            if not np.issubdtype(broaden_poly.dtype, bool):
+            if not np.issubdtype(broaden_poly.dtype, np.bool_):
                 raise TypeError('Multipole broaden_poly arrays must be boolean'
                                 ' dtype')
         self._broaden_poly = broaden_poly
@@ -295,7 +295,7 @@ class WindowedMultipole(EqualityMixin):
             if curvefit.shape[2] not in (2, 3):  # sig_s, sig_a (maybe sig_f)
                 raise ValueError('The third dimension of multipole curvefit'
                                  ' arrays must have a length of 2 or 3')
-            if not np.issubdtype(curvefit.dtype, float):
+            if not np.issubdtype(curvefit.dtype, np.floating):
                 raise TypeError('Multipole curvefit arrays must be float dtype')
         self._curvefit = curvefit
 

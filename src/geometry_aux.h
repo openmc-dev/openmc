@@ -32,10 +32,10 @@ extern "C" void assign_temperatures();
 extern "C" int32_t find_root_universe();
 
 //==============================================================================
-//! Allocate storage in Lattice and Cell objects for distribcell offset tables.
+//! Populate all data structures needed for distribcells.
 //==============================================================================
 
-extern "C" void allocate_offset_tables(int n_maps);
+extern "C" void prepare_distribcell(int32_t* filter_cell_list, int n);
 
 //==============================================================================
 //! Recursively search through the geometry and count cell instances.
@@ -58,15 +58,6 @@ extern "C" void count_cell_instances(int32_t univ_indx);
 
 extern "C" int
 count_universe_instances(int32_t search_univ, int32_t target_univ_id);
-
-//==============================================================================
-//! Populate Cell and Lattice distribcell offset tables.
-//! @param target_univ_id The ID of the universe to be counted.
-//! @param map The index of the distribcell map that defines the offsets for the
-//!   target universe.
-//==============================================================================
-
-extern "C" void fill_offset_tables(int32_t target_univ_id, int map);
 
 //==============================================================================
 //! Find the length necessary for a string to contain a distribcell path.

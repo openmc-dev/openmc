@@ -51,24 +51,20 @@ module input_xml
     subroutine adjust_indices() bind(C)
     end subroutine adjust_indices
 
-    subroutine allocate_offset_tables(n_maps) bind(C)
-      import C_INT
-      integer(C_INT), intent(in), value :: n_maps
-    end subroutine allocate_offset_tables
-
     subroutine assign_temperatures() bind(C)
     end subroutine assign_temperatures
-
-    subroutine fill_offset_tables(target_univ_id, map) bind(C)
-      import C_INT32_T, C_INT
-      integer(C_INT32_T), intent(in), value :: target_univ_id
-      integer(C_INT),     intent(in), value :: map
-    end subroutine fill_offset_tables
 
     subroutine count_cell_instances(univ_indx) bind(C)
       import C_INT32_T
       integer(C_INT32_T), intent(in), value :: univ_indx
     end subroutine count_cell_instances
+
+    subroutine prepare_distribcell_c(cell_list, n) &
+         bind(C, name="prepare_distribcell")
+      import C_INT32_T, C_INT
+      integer(C_INT),     intent(in), value :: n
+      integer(C_INT32_T), intent(in)        :: cell_list(n)
+    end subroutine prepare_distribcell_c
 
     subroutine read_surfaces(node_ptr) bind(C)
       import C_PTR
@@ -1007,7 +1003,7 @@ contains
   subroutine read_geometry_xml()
 
     integer :: i, j, k
-    integer :: n, n_mats, n_rlats, n_hlats
+    integer :: n, n_rlats, n_hlats
     integer :: id
     integer :: univ_id
     integer :: n_cells_in_univ
@@ -1015,7 +1011,6 @@ contains
     logical :: file_exists
     logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
-    character(MAX_WORD_LEN), allocatable :: sarray(:)
     character(:), allocatable :: region_spec
     type(Cell),     pointer :: c
     class(Lattice), pointer :: lat
@@ -1099,9 +1094,6 @@ contains
       c => cells(i)
 
       c % ptr = cell_pointer(i - 1)
-
-      ! Initialize distribcell instances and distribcell index
-      c % distribcell_index = NONE
 
       ! Get pointer to i-th cell node
       node_cell = node_cell_list(i)
@@ -3821,9 +3813,9 @@ contains
 
   subroutine prepare_distribcell()
 
-    integer :: i, j, k
+    integer :: i, j
     type(SetInt)  :: cell_list  ! distribcells to track
-    type(ListInt) :: univ_list  ! universes containing distribcells
+    integer(C_INT32_T), allocatable :: cell_list_c(:)
 
     ! Find all cells listed in a distribcell filter.
     do i = 1, n_tallies
@@ -3835,56 +3827,11 @@ contains
       end do
     end do
 
-    ! Find all cells with multiple (distributed) materials or temperatures.
-    do i = 1, n_cells
-      if (cells(i) % material_size() > 1 .or. cells(i) % sqrtkT_size() > 1) then
-        call cell_list % add(i)
-      end if
+    allocate(cell_list_c(cell_list % size()))
+    do i = 1, cell_list % size()
+      cell_list_c(i) = cell_list % get_item(i) - 1
     end do
-
-    ! Make sure the number of distributed materials and temperatures matches the
-    ! number of respective cell instances.
-    do i = 1, n_cells
-      associate (c => cells(i))
-        if (c % material_size() > 1) then
-          if (c % material_size() /= c % n_instances()) then
-            call fatal_error("Cell " // trim(to_str(c % id())) // " was &
-                 &specified with " // trim(to_str(c % material_size())) &
-                 // " materials but has " // trim(to_str(c % n_instances())) &
-                 // " distributed instances. The number of materials must &
-                 &equal one or the number of instances.")
-          end if
-        end if
-        if (c % sqrtkT_size() > 1) then
-          if (c % sqrtkT_size() /= c % n_instances()) then
-            call fatal_error("Cell " // trim(to_str(c % id())) // " was &
-                 &specified with " // trim(to_str(c % sqrtkT_size())) &
-                 // " temperatures but has " // trim(to_str(c % n_instances()))&
-                 // " distributed instances. The number of temperatures must &
-                 &equal one or the number of instances.")
-          end if
-        end if
-      end associate
-    end do
-
-    ! Search through universes for distributed cells and assign each one a
-    ! unique distribcell array index.
-    k = 1
-    do i = 1, n_universes
-      do j = 1, size(universes(i) % cells)
-        if (cell_list % contains(universes(i) % cells(j))) then
-          cells(universes(i) % cells(j)) % distribcell_index = k
-          call univ_list % append(universes(i) % id)
-          k = k + 1
-        end if
-      end do
-    end do
-
-    ! Allocate and fill cell and lattice offset tables.
-    call allocate_offset_tables(univ_list % size())
-    do i = 1, univ_list % size()
-      call fill_offset_tables(univ_list % get_item(i), i-1)
-    end do
+    call prepare_distribcell_c(cell_list_c, cell_list % size())
 
   end subroutine prepare_distribcell
 

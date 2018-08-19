@@ -54,7 +54,7 @@ contains
 
     integer :: distribcell_index, offset, i
 
-      distribcell_index = cells(this % cell) % distribcell_index
+      distribcell_index = cells(this % cell) % distribcell_index()
       offset = 0
       do i = 1, p % n_coord
         if (cells(p % coord(i) % cell) % type() == FILL_UNIVERSE) then
@@ -154,7 +154,7 @@ contains
     end interface
 
     ! Get the distribcell index for this cell
-    map = cells(i_cell) % distribcell_index
+    map = cells(i_cell) % distribcell_index()
 
     path_len = distribcell_path_len(i_cell-1, map-1, target_offset, &
                                     root_universe-1)

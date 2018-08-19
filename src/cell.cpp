@@ -4,7 +4,6 @@
 #include <sstream>
 #include <string>
 
-#include "constants.h"
 #include "error.h"
 #include "geometry.h"
 #include "hdf5_interface.h"
@@ -616,6 +615,8 @@ extern "C" {
   int32_t cell_fill(Cell* c) {return c->fill;}
 
   int32_t cell_n_instances(Cell* c) {return c->n_instances;}
+
+  int cell_distribcell_index(Cell* c) {return c->distribcell_index;}
 
   int cell_material_size(Cell* c) {return c->material.size();}
 

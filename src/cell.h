@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "constants.h"
 #include "hdf5.h"
 #include "pugixml.hpp"
 
@@ -63,6 +64,9 @@ public:
   int32_t universe;          //!< Universe # this cell is in
   int32_t fill;              //!< Universe # filling this cell
   int32_t n_instances{0};    //!< Number of instances of this cell
+
+  //! \brief Index corresponding to this cell in distribcell arrays
+  int distribcell_index{C_NONE};
 
   //! \brief Material(s) within this cell.
   //!

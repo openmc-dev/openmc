@@ -153,16 +153,89 @@ find_root_universe()
 //==============================================================================
 
 void
-allocate_offset_tables(int n_maps)
+prepare_distribcell(int32_t* filter_cell_list, int n)
 {
+  // Read the list of cells contained in distribcell filters from Fortran.
+  std::unordered_set<int32_t> distribcells;
+  for (int i = 0; i < n; i++) {
+    distribcells.insert(filter_cell_list[i]);
+  }
+
+  // Find all cells with distributed materials or temperatures.  Make sure that
+  // the number of materials/temperatures matches the number of cell instances.
+  for (int i = 0; i < global_cells.size(); i++) {
+    Cell& c {*global_cells[i]};
+
+    if (c.material.size() > 1) {
+      if (c.material.size() != c.n_instances) {
+        std::stringstream err_msg;
+        err_msg <<  "Cell " << c.id <<  " was specified with "
+              << c.material.size() << " materials but has " << c.n_instances
+              << " distributed instances. The number of materials must equal "
+              "one or the number of instances.";
+        fatal_error(err_msg);
+      }
+      distribcells.insert(i);
+    }
+
+    if (c.sqrtkT.size() > 1) {
+      if (c.sqrtkT.size() != c.n_instances) {
+        std::stringstream err_msg;
+        err_msg <<  "Cell " << c.id <<  " was specified with "
+              << c.sqrtkT.size() << " temperatures but has " << c.n_instances
+              << " distributed instances. The number of temperatures must equal "
+              "one or the number of instances.";
+        fatal_error(err_msg);
+      }
+      distribcells.insert(i);
+    }
+  }
+
+  // Search through universes for distributed cells and assign each one a
+  // unique distribcell array index.
+  //TODO: off-by-one
+  int distribcell_index = 1;
+  std::vector<int32_t> target_univ_ids;
+  for (Universe* u : global_universes) {
+    for (auto cell_indx : u->cells) {
+      if (distribcells.find(cell_indx) != distribcells.end()) {
+        global_cells[cell_indx]->distribcell_index = distribcell_index;
+        target_univ_ids.push_back(u->id);
+        ++distribcell_index;
+      }
+    }
+  }
+
+  // Allocate the cell and lattice offset tables.
+  int n_maps = target_univ_ids.size();
   for (Cell* c : global_cells) {
     if (c->type != FILL_MATERIAL) {
       c->offset.resize(n_maps, C_NONE);
     }
   }
-
   for (Lattice* lat : lattices_c) {
     lat->allocate_offset_table(n_maps);
+  }
+
+  // Fill the cell and lattice offset tables.
+  for (int map = 0; map < target_univ_ids.size(); map++) {
+    auto target_univ_id = target_univ_ids[map];
+    for (Universe* univ : global_universes) {
+      int32_t offset {0};  // TODO: is this a bug?  It matches F90 implementation.
+      for (int32_t cell_indx : univ->cells) {
+        Cell& c = *global_cells[cell_indx];
+
+        if (c.type == FILL_UNIVERSE) {
+          c.offset[map] = offset;
+          int32_t search_univ = c.fill;
+          offset += count_universe_instances(search_univ, target_univ_id);
+
+        } else if (c.type == FILL_LATTICE) {
+          Lattice& lat = *lattices_c[c.fill];
+          offset = lat.fill_offset_table(offset, target_univ_id, map);
+        }
+      }
+    }
   }
 }
 
@@ -217,29 +290,6 @@ count_universe_instances(int32_t search_univ, int32_t target_univ_id)
   }
 
   return count;
-}
-
-//==============================================================================
-
-void
-fill_offset_tables(int32_t target_univ_id, int map)
-{
-  for (Universe* univ : global_universes) {
-    int32_t offset {0};  // TODO: is this a bug?  It matches F90 implementation.
-    for (int32_t cell_indx : univ->cells) {
-      Cell& c = *global_cells[cell_indx];
-
-      if (c.type == FILL_UNIVERSE) {
-        c.offset[map] = offset;
-        int32_t search_univ = c.fill;
-        offset += count_universe_instances(search_univ, target_univ_id);
-
-      } else if (c.type == FILL_LATTICE) {
-        Lattice& lat = *lattices_c[c.fill];
-        offset = lat.fill_offset_table(offset, target_univ_id, map);
-      }
-    }
-  }
 }
 
 //==============================================================================

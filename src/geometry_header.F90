@@ -60,6 +60,13 @@ module geometry_header
       integer(C_INT32_T)             :: n_instances
     end function cell_n_instances_c
 
+    function cell_distribcell_index_c(cell_ptr) &
+         bind(C, name='cell_distribcell_index') result(distribcell_index)
+      import C_PTR, C_INT
+      type(C_PTR), intent(in), value :: cell_ptr
+      integer(C_INT)                 :: distribcell_index
+    end function cell_distribcell_index_c
+
     function cell_material_size_c(cell_ptr) bind(C, name='cell_material_size') &
          result(n)
       import C_PTR, C_INT
@@ -266,8 +273,6 @@ module geometry_header
 
     integer, allocatable :: region(:)      ! Definition of spatial region as
                                            !  Boolean expression of half-spaces
-    integer :: distribcell_index           ! Index corresponding to this cell in
-                                           !  distribcell arrays
 
     ! Rotation matrix and translation vector
     real(8), allocatable :: translation(:)
@@ -282,6 +287,7 @@ module geometry_header
     procedure :: universe => cell_universe
     procedure :: fill => cell_fill
     procedure :: n_instances => cell_n_instances
+    procedure :: distribcell_index => cell_distribcell_index
     procedure :: material_size => cell_material_size
     procedure :: material => cell_material
     procedure :: sqrtkT_size => cell_sqrtkT_size
@@ -413,6 +419,12 @@ contains
     integer(C_INT32_T)      :: n_instances
     n_instances = cell_n_instances_c(this % ptr)
   end function cell_n_instances
+
+  function cell_distribcell_index(this) result(distribcell_index)
+    class(Cell), intent(in) :: this
+    integer(C_INT)          :: distribcell_index
+    distribcell_index = cell_distribcell_index_c(this % ptr)
+  end function cell_distribcell_index
 
   function cell_material_size(this) result(n)
     class(Cell), intent(in) :: this

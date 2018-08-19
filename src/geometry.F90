@@ -98,7 +98,7 @@ contains
             ! Distributed instances of this cell have different
             ! materials/temperatures. Determine which instance this is for
             ! assigning the matching material/temperature.
-            distribcell_index = c % distribcell_index
+            distribcell_index = c % distribcell_index()
             offset = 0
             do k = 1, p % n_coord
               if (cells(p % coord(k) % cell) % type() == FILL_UNIVERSE) then

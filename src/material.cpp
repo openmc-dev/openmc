@@ -1,10 +1,10 @@
-#include "material.h"
+#include "openmc/material.h"
 
 #include <string>
 #include <sstream>
 
-#include "error.h"
-#include "xml_interface.h"
+#include "openmc/error.h"
+#include "openmc/xml_interface.h"
 
 
 namespace openmc {

@@ -1,4 +1,4 @@
-#include "secondary_kalbach.h"
+#include "openmc/secondary_kalbach.h"
 
 #include <algorithm> // for copy, move
 #include <cmath>     // for log, sqrt, sinh
@@ -8,9 +8,10 @@
 
 #include "xtensor/xarray.hpp"
 #include "xtensor/xview.hpp"
-#include "hdf5_interface.h"
-#include "random_lcg.h"
-#include "search.h"
+
+#include "openmc/hdf5_interface.h"
+#include "openmc/random_lcg.h"
+#include "openmc/search.h"
 
 namespace openmc {
 

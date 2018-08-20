@@ -25,7 +25,7 @@ module openmc_api
   use tally_header
   use tally_filter_header
   use tally_filter
-  use tally,           only: openmc_tally_set_type
+  use tally,           only: openmc_tally_allocate
   use simulation
   use string,          only: to_f_string
   use timer_header
@@ -37,8 +37,6 @@ module openmc_api
   public :: openmc_calculate_volumes
   public :: openmc_cell_filter_get_bins
   public :: openmc_cell_get_id
-  public :: openmc_cell_get_fill
-  public :: openmc_cell_set_fill
   public :: openmc_cell_set_id
   public :: openmc_cell_set_temperature
   public :: openmc_energy_filter_get_bins
@@ -89,6 +87,7 @@ module openmc_api
   public :: openmc_simulation_init
   public :: openmc_source_bank
   public :: openmc_source_set_strength
+  public :: openmc_tally_allocate
   public :: openmc_tally_get_estimator
   public :: openmc_tally_get_id
   public :: openmc_tally_get_filters
@@ -222,7 +221,7 @@ contains
         if (p % material == MATERIAL_VOID) then
           id = 0
         else
-          id = materials(p % material) % id
+          id = materials(p % material) % id()
         end if
       end if
       instance = p % cell_instance - 1
@@ -267,7 +266,6 @@ contains
     if (allocated(tallies)) then
       do i = 1, size(tallies)
         associate (t => tallies(i) % obj)
-          t % active = .false.
           t % n_realizations = 0
           if (allocated(t % results)) then
             t % results(:, :, :) = ZERO
@@ -285,14 +283,6 @@ contains
     k_col_tra = ZERO
     k_abs_tra = ZERO
     k_sum(:) = ZERO
-
-    ! Clear active tally lists
-    call active_analog_tallies % clear()
-    call active_tracklength_tallies % clear()
-    call active_meshsurf_tallies % clear()
-    call active_collision_tallies % clear()
-    call active_surface_tallies % clear()
-    call active_tallies % clear()
 
     ! Reset timers
     call time_total % reset()

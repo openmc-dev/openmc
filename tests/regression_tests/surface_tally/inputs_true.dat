@@ -48,10 +48,10 @@
     <bins>0.0 4000000.0 20000000.0</bins>
   </filter>
   <filter id="2" type="polar">
-    <bins>0.0 0.785398163397 3.14159265359</bins>
+    <bins>0.0 0.7853981633974483 3.141592653589793</bins>
   </filter>
   <filter id="3" type="azimuthal">
-    <bins>0.0 0.785398163397 3.14159265359</bins>
+    <bins>0.0 0.7853981633974483 3.141592653589793</bins>
   </filter>
   <filter id="4" type="surface">
     <bins>1</bins>

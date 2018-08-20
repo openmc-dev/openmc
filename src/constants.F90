@@ -131,34 +131,6 @@ module constants
   ! Void material
   integer, parameter :: MATERIAL_VOID = -1
 
-  ! Lattice types
-  integer, parameter ::  &
-       LATTICE_RECT = 1, & ! Rectangular lattice
-       LATTICE_HEX  = 2    ! Hexagonal lattice
-
-  ! Lattice boundary crossings
-  integer, parameter ::    &
-       LATTICE_LEFT   = 1, & ! Flag for crossing left (x) lattice boundary
-       LATTICE_RIGHT  = 2, & ! Flag for crossing right (x) lattice boundary
-       LATTICE_BACK   = 3, & ! Flag for crossing back (y) lattice boundary
-       LATTICE_FRONT  = 4, & ! Flag for crossing front (y) lattice boundary
-       LATTICE_BOTTOM = 5, & ! Flag for crossing bottom (z) lattice boundary
-       LATTICE_TOP    = 6    ! Flag for crossing top (z) lattice boundary
-
-  ! Surface types
-  integer, parameter ::  &
-       SURF_PX     =  1, & ! Plane parallel to x-plane
-       SURF_PY     =  2, & ! Plane parallel to y-plane
-       SURF_PZ     =  3, & ! Plane parallel to z-plane
-       SURF_PLANE  =  4, & ! Arbitrary plane
-       SURF_CYL_X  =  5, & ! Cylinder along x-axis
-       SURF_CYL_Y  =  6, & ! Cylinder along y-axis
-       SURF_CYL_Z  =  7, & ! Cylinder along z-axis
-       SURF_SPHERE =  8, & ! Sphere
-       SURF_CONE_X =  9, & ! Cone parallel to x-axis
-       SURF_CONE_Y = 10, & ! Cone parallel to y-axis
-       SURF_CONE_Z = 11    ! Cone parallel to z-axis
-
   ! Flag to say that the outside of a lattice is not defined
   integer, parameter :: NO_OUTER_UNIVERSE = -1
 
@@ -238,12 +210,6 @@ module constants
   ! Depletion reactions
   integer, parameter :: DEPLETION_RX(6) = [N_GAMMA, N_P, N_A, N_2N, N_3N, N_4N]
 
-  ! ACE table types
-  integer, parameter :: &
-       ACE_NEUTRON   = 1, & ! continuous-energy neutron
-       ACE_THERMAL   = 2, & ! thermal S(a,b) scattering data
-       ACE_DOSIMETRY = 3    ! dosimetry cross sections
-
   ! MGXS Table Types
   integer, parameter :: &
        MGXS_ISOTROPIC   = 1, & ! Isotropically Weighted Data
@@ -264,11 +230,6 @@ module constants
        EMISSION_PROMPT = 1,  & ! Prompt emission of secondary particle
        EMISSION_DELAYED = 2, & ! Delayed emission of secondary particle
        EMISSION_TOTAL = 3      ! Yield represents total emission (prompt + delayed)
-
-  ! Cross section filetypes
-  integer, parameter :: &
-       ASCII  = 1, & ! ASCII cross section file
-       BINARY = 2    ! Binary cross section file
 
   ! Library types
   integer, parameter :: &
@@ -350,14 +311,11 @@ module constants
        SCORE_FISS_Q_RECOV       = -15, & ! recoverable fission Q-value
        SCORE_DECAY_RATE         = -16    ! delayed neutron precursor decay rate
 
-  ! Maximum scattering order supported
-  integer, parameter :: MAX_ANG_ORDER = 10
-
   ! Tally map bin finding
   integer, parameter :: NO_BIN_FOUND = -1
 
   ! Tally filter and map types
-  integer, parameter :: N_FILTER_TYPES = 21
+  integer, parameter :: N_FILTER_TYPES = 22
   integer, parameter :: &
        FILTER_UNIVERSE       = 1,  &
        FILTER_MATERIAL       = 2,  &
@@ -379,7 +337,9 @@ module constants
        FILTER_SPH_HARMONICS  = 18, &
        FILTER_SPTL_LEGENDRE  = 19, &
        FILTER_ZERNIKE        = 20, &
-       FILTER_PARTICLE       = 21
+       FILTER_ZERNIKE_RADIAL = 21, &
+       FILTER_PARTICLE       = 22
+
 
   ! Mesh types
   integer, parameter :: &

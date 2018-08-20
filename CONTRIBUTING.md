@@ -36,8 +36,8 @@ development team will be happy to discuss it.
 ## How to Submit Changes
 
 All changes to OpenMC happen through pull requests. For a full overview of the
-process, see the developer's guide section on [Development
-Workflow](http://openmc.readthedocs.io/en/latest/devguide/workflow.html).
+process, see the developer's guide section on [Contributing to
+OpenMC](http://openmc.readthedocs.io/en/latest/devguide/contributing.html).
 
 ## Code Style
 

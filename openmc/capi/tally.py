@@ -26,6 +26,9 @@ _dll.openmc_get_tally_index.errcheck = _error_handler
 _dll.openmc_global_tallies.argtypes = [POINTER(POINTER(c_double))]
 _dll.openmc_global_tallies.restype = c_int
 _dll.openmc_global_tallies.errcheck = _error_handler
+_dll.openmc_tally_allocate.argtypes = [c_int32, c_char_p]
+_dll.openmc_tally_allocate.restype = c_int
+_dll.openmc_tally_allocate.errcheck = _error_handler
 _dll.openmc_tally_get_active.argtypes = [c_int32, POINTER(c_bool)]
 _dll.openmc_tally_get_active.restype = c_int
 _dll.openmc_tally_get_active.errcheck = _error_handler
@@ -99,7 +102,6 @@ _ESTIMATORS = {
 _TALLY_TYPES = {
     1: 'volume', 2: 'mesh-surface', 3: 'surface'
 }
-
 
 
 def global_tallies():
@@ -196,7 +198,7 @@ class Tally(_FortranObjectWithID):
 
                 index = c_int32()
                 _dll.openmc_extend_tallies(1, index, None)
-                _dll.openmc_tally_set_type(index, b'generic')
+                _dll.openmc_tally_allocate(index, b'generic')
                 index = index.value
             else:
                 index = mapping[uid]._index
@@ -224,17 +226,13 @@ class Tally(_FortranObjectWithID):
 
     @type.setter
     def type(self, type):
-        _dll.openmc_tally_update_type(self._index, type.encode())
+        _dll.openmc_tally_set_type(self._index, type.encode())
 
     @property
     def estimator(self):
         estimator = c_int32()
-        try:
-            _dll.openmc_tally_get_estimator(self._index, estimator)
-        except AllocationError:
-            return ""
-        else:
-            return _ESTIMATORS[estimator.value]
+        _dll.openmc_tally_get_estimator(self._index, estimator)
+        return _ESTIMATORS[estimator.value]
 
     @estimator.setter
     def estimator(self, estimator):
@@ -353,6 +351,7 @@ class Tally(_FortranObjectWithID):
         return std_dev
 
     def reset(self):
+        """Reset results and num_realizations of tally"""
         _dll.openmc_tally_reset(self._index)
 
     def ci_width(self, alpha=0.05):

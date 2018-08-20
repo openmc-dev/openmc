@@ -1,10 +1,14 @@
 element materials {
   element material {
     (element id { xsd:int } | attribute id { xsd:int }) &
-    (element name { xsd:string { maxLength="52" } } |
-      attribute name { xsd:string { maxLength="52" } })? &
 
-    element temperature { xsd:double }? &
+    (element name { xsd:string } | attribute name { xsd:string })? &
+
+    (element depletable { xsd:boolean } | attribute depletable { xsd:boolean })? &
+
+    (element volume { xsd:double } | attribute volume { xsd:double })? &
+
+    (element temperature { xsd:double } | attribute temperature { xsd:double })? &
 
     element density {
       (element value { xsd:double } | attribute value { xsd:double })? &

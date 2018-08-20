@@ -57,9 +57,11 @@ extern "C" {
   int openmc_material_add_nuclide(int32_t index, const char name[], double density);
   int openmc_material_get_densities(int32_t index, int** nuclides, double** densities, int* n);
   int openmc_material_get_id(int32_t index, int32_t* id);
+  int openmc_material_get_volume(int32_t index, double* volume);
   int openmc_material_set_density(int32_t index, double density);
   int openmc_material_set_densities(int32_t index, int n, const char** name, const double* density);
   int openmc_material_set_id(int32_t index, int32_t id);
+  int openmc_material_set_volume(int32_t index, double volume);
   int openmc_material_filter_get_bins(int32_t index, int32_t** bins, int32_t* n);
   int openmc_material_filter_set_bins(int32_t index, int32_t n, const int32_t* bins);
   int openmc_mesh_filter_get_mesh(int32_t index, int32_t* index_mesh);
@@ -96,6 +98,7 @@ extern "C" {
   int openmc_sphharm_filter_set_order(int32_t index, int order);
   int openmc_sphharm_filter_set_cosine(int32_t index, const char cosine[]);
   int openmc_statepoint_write(const char filename[]);
+  int openmc_tally_allocate(int32_t index, const char* type);
   int openmc_tally_get_active(int32_t index, bool* active);
   int openmc_tally_get_estimator(int32_t index, int32_t* estimator);
   int openmc_tally_get_id(int32_t index, int32_t* id);

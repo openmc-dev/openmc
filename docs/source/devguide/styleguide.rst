@@ -174,9 +174,7 @@ Follow the `C++ Core Guidelines`_ except when they conflict with another
 guideline listed here. For convenience, many important guidelines from that
 list are repeated here.
 
-Conform to the C++11 standard. Note that this is a significant difference
-between our style and the C++ Core Guidelines.  Many suggestions in those
-Guidelines require C++14.
+Conform to the C++14 standard.
 
 Always use C++-style comments (``//``) as opposed to C-style (``/**/``). (It
 is more difficult to comment out a large section of code that uses C-style

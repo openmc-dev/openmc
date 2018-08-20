@@ -17,11 +17,9 @@ module nuclide_header
                                     FIT_T, FIT_A, FIT_F, MultipoleArray
   use message_passing
   use multipole_header,       only: MultipoleArray
-  use product_header,         only: AngleEnergyContainer
   use random_lcg,             only: prn, future_prn, prn_set_stream
   use reaction_header,        only: Reaction
   use sab_header,             only: SAlphaBeta, sab_tables
-  use secondary_uncorrelated, only: UncorrelatedAngleEnergy
   use settings
   use stl_vector,             only: VectorInt, VectorReal
   use string
@@ -128,36 +126,36 @@ module nuclide_header
   ! (NuclideMicroXS % elastic)
   real(8), parameter :: CACHE_INVALID = dble(Z"FFE0000000000000")
 
-  type NuclideMicroXS
+  type, bind(C) :: NuclideMicroXS
     ! Microscopic cross sections in barns
-    real(8) :: total
-    real(8) :: absorption       ! absorption (disappearance)
-    real(8) :: fission          ! fission
-    real(8) :: nu_fission       ! neutron production from fission
+    real(C_DOUBLE) :: total
+    real(C_DOUBLE) :: absorption       ! absorption (disappearance)
+    real(C_DOUBLE) :: fission          ! fission
+    real(C_DOUBLE) :: nu_fission       ! neutron production from fission
 
-    real(8) :: elastic          ! If sab_frac is not 1 or 0, then this value is
+    real(C_DOUBLE) :: elastic          ! If sab_frac is not 1 or 0, then this value is
                                 !   averaged over bound and non-bound nuclei
-    real(8) :: thermal          ! Bound thermal elastic & inelastic scattering
-    real(8) :: thermal_elastic  ! Bound thermal elastic scattering
-    real(8) :: photon_prod      ! microscopic photon production xs
+    real(C_DOUBLE) :: thermal          ! Bound thermal elastic & inelastic scattering
+    real(C_DOUBLE) :: thermal_elastic  ! Bound thermal elastic scattering
+    real(C_DOUBLE) :: photon_prod      ! microscopic photon production xs
 
     ! Cross sections for depletion reactions (note that these are not stored in
     ! macroscopic cache)
-    real(8) :: reaction(size(DEPLETION_RX))
+    real(C_DOUBLE) :: reaction(size(DEPLETION_RX))
 
     ! Indicies and factors needed to compute cross sections from the data tables
-    integer :: index_grid        ! Index on nuclide energy grid
-    integer :: index_temp        ! Temperature index for nuclide
-    real(8) :: interp_factor     ! Interpolation factor on nuc. energy grid
-    integer :: index_sab = NONE  ! Index in sab_tables
-    integer :: index_temp_sab    ! Temperature index for sab_tables
-    real(8) :: sab_frac          ! Fraction of atoms affected by S(a,b)
-    logical :: use_ptable        ! In URR range with probability tables?
+    integer(C_INT) :: index_grid        ! Index on nuclide energy grid
+    integer(C_INT) :: index_temp        ! Temperature index for nuclide
+    real(C_DOUBLE) :: interp_factor     ! Interpolation factor on nuc. energy grid
+    integer(C_INT) :: index_sab = NONE  ! Index in sab_tables
+    integer(C_INT) :: index_temp_sab    ! Temperature index for sab_tables
+    real(C_DOUBLE) :: sab_frac          ! Fraction of atoms affected by S(a,b)
+    logical(C_BOOL) :: use_ptable        ! In URR range with probability tables?
 
     ! Energy and temperature last used to evaluate these cross sections.  If
     ! these values have changed, then the cross sections must be re-evaluated.
-    real(8) :: last_E = ZERO       ! Last evaluated energy
-    real(8) :: last_sqrtkT = ZERO  ! Last temperature in sqrt(Boltzmann
+    real(C_DOUBLE) :: last_E = ZERO       ! Last evaluated energy
+    real(C_DOUBLE) :: last_sqrtkT = ZERO  ! Last temperature in sqrt(Boltzmann
                                    !   constant * temperature (eV))
   end type NuclideMicroXS
 
@@ -166,7 +164,7 @@ module nuclide_header
 ! particle is traveling through
 !===============================================================================
 
-  type MaterialMacroXS
+  type, bind(C) :: MaterialMacroXS
     real(C_DOUBLE) :: total         ! macroscopic total xs
     real(C_DOUBLE) :: absorption    ! macroscopic absorption xs
     real(C_DOUBLE) :: fission       ! macroscopic fission xs
@@ -200,7 +198,7 @@ module nuclide_header
   type(DictCharInt) :: nuclide_dict
 
   ! Cross section caches
-  type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
+  type(NuclideMicroXS), allocatable, target :: micro_xs(:)  ! Cache for each nuclide
   type(MaterialMacroXS)             :: material_xs  ! Cache for current material
 !$omp threadprivate(micro_xs, material_xs)
 
@@ -642,29 +640,33 @@ contains
         if (rx % MT >= N_2N0 .and. rx % MT <= N_2NC .and. find(MTs, N_2N) /= -1) cycle
 
         do t = 1, n_temperature
-          j = rx % xs(t) % threshold
-          n = size(rx % xs(t) % value)
+          j = rx % xs_threshold(t)
+          n = rx % xs_size(t)
 
           ! Add contribution to total cross section
-          this % xs(t) % value(XS_TOTAL,j:j+n-1) = this % xs(t) % &
-               value(XS_TOTAL,j:j+n-1) + rx % xs(t) % value
+          do k = j, j + n - 1
+            this % xs(t) % value(XS_TOTAL,k) = this % xs(t) % &
+                 value(XS_TOTAL,k) + rx % xs(t, k - j + 1)
+          end do
 
           ! Calculate photon production cross section
-          do k = 1, size(rx % products)
-            if (rx % products(k) % particle == PHOTON) then
+          do k = 1, rx % products_size()
+            if (rx % product_particle(k) == PHOTON) then
               do l = 1, n
                 this % xs(t) % value(XS_PHOTON_PROD,l+j-1) = &
                      this % xs(t) % value(XS_PHOTON_PROD,l+j-1) + &
-                     rx % xs(t) % value(l) * rx % products(k) % &
-                     yield % evaluate(this % grid(t) % energy(l+j-1))
+                     rx % xs(t, l) * rx % product_yield(k, &
+                     this % grid(t) % energy(l+j-1))
               end do
             end if
           end do
 
           ! Add contribution to absorption cross section
           if (is_disappearance(rx % MT)) then
-            this % xs(t) % value(XS_ABSORPTION,j:j+n-1) = this % xs(t) % &
-                 value(XS_ABSORPTION,j:j+n-1) + rx % xs(t) % value
+            do k = j, j + n - 1
+              this % xs(t) % value(XS_ABSORPTION,k) = this % xs(t) % &
+                   value(XS_ABSORPTION,k) + rx % xs(t, k - j + 1)
+            end do
           end if
 
           ! Information about fission reactions
@@ -680,39 +682,20 @@ contains
           ! Add contribution to fission cross section
           if (is_fission(rx % MT)) then
             this % fissionable = .true.
-            this % xs(t) % value(XS_FISSION,j:j+n-1) = this % xs(t) % &
-                 value(XS_FISSION,j:j+n-1) + rx % xs(t) % value
+            do k = j, j + n - 1
+              this % xs(t) % value(XS_FISSION,k) = this % xs(t) % &
+                   value(XS_FISSION,k) + rx % xs(t, k - j + 1)
 
-            ! Also need to add fission cross sections to absorption
-            this % xs(t) % value(XS_ABSORPTION,j:j+n-1) = this % xs(t) % &
-                 value(XS_ABSORPTION,j:j+n-1) + rx % xs(t) % value
+              ! Also need to add fission cross sections to absorption
+              this % xs(t) % value(XS_ABSORPTION,k) = this % xs(t) % &
+                   value(XS_ABSORPTION,k) + rx % xs(t, k - j + 1)
+            end do
 
             ! Keep track of this reaction for easy searching later
             if (t == 1) then
               i_fission = i_fission + 1
               this % index_fission(i_fission) = i
               this % n_fission = this % n_fission + 1
-
-              ! <<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<
-              ! Before the secondary distribution refactor, when the angle/energy
-              ! distribution was uncorrelated, no angle was actually sampled. With
-              ! the refactor, an angle is always sampled for an uncorrelated
-              ! distribution even when no angle distribution exists in the ACE file
-              ! (isotropic is assumed). To preserve the RNG stream, we explicitly
-              ! mark fission reactions so that we avoid the angle sampling.
-              do k = 1, size(rx % products)
-                if (rx % products(k) % particle == NEUTRON) then
-                  do m = 1, size(rx % products(k) % distribution)
-                    associate (aedist => rx % products(k) % distribution(m) % obj)
-                      select type (aedist)
-                      type is (UncorrelatedAngleEnergy)
-                        aedist % fission = .true.
-                      end select
-                    end associate
-                  end do
-                end if
-              end do
-              ! <<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<
             end if
           end if  ! fission
         end do  ! temperature
@@ -721,12 +704,13 @@ contains
 
     ! Determine number of delayed neutron precursors
     if (this % fissionable) then
-      do i = 1, size(this % reactions(this % index_fission(1)) % products)
-        if (this % reactions(this % index_fission(1)) % products(i) % &
-             emission_mode == EMISSION_DELAYED) then
-          this % n_precursor = this % n_precursor + 1
-        end if
-      end do
+      associate (rx => this % reactions(this % index_fission(1)))
+        do i = 1, rx % products_size()
+          if (rx % product_emission_mode(i) == EMISSION_DELAYED) then
+            this % n_precursor = this % n_precursor + 1
+          end if
+        end do
+      end associate
     end if
 
     ! Calculate nu-fission cross section
@@ -761,36 +745,30 @@ contains
 
     select case (emission_mode)
     case (EMISSION_PROMPT)
-      associate (product => this % reactions(this % index_fission(1)) % products(1))
-        nu = product % yield % evaluate(E)
+      associate (rx => this % reactions(this % index_fission(1)))
+        nu = rx % product_yield(1, E)
       end associate
 
     case (EMISSION_DELAYED)
       if (this % n_precursor > 0) then
-        if (present(group) .and. group < &
-             size(this % reactions(this % index_fission(1)) % products)) then
-          ! If delayed group specified, determine yield immediately
-          associate(p => this % reactions(this % index_fission(1)) % products(1 + group))
-            nu = p % yield % evaluate(E)
-          end associate
+        associate(rx => this % reactions(this % index_fission(1)))
+          if (present(group) .and. group < rx % products_size()) then
+            ! If delayed group specified, determine yield immediately
+            nu = rx % product_yield(1 + group, E)
+          else
+            nu = ZERO
 
-        else
-          nu = ZERO
+            do i = 2, rx % products_size()
+              ! Skip any non-neutron products
+              if (rx % product_particle(i) /= NEUTRON) exit
 
-          associate (rx => this % reactions(this % index_fission(1)))
-            do i = 2, size(rx % products)
-              associate (product => rx % products(i))
-                ! Skip any non-neutron products
-                if (product % particle /= NEUTRON) exit
-
-                ! Evaluate yield
-                if (product % emission_mode == EMISSION_DELAYED) then
-                  nu = nu + product % yield % evaluate(E)
-                end if
-              end associate
+              ! Evaluate yield
+              if (rx % product_emission_mode(i) == EMISSION_DELAYED) then
+                nu = nu + rx % product_yield(i, E)
+              end if
             end do
-          end associate
-        end if
+          end if
+        end associate
       else
         nu = ZERO
       end if
@@ -799,8 +777,8 @@ contains
       if (allocated(this % total_nu)) then
         nu = this % total_nu % evaluate(E)
       else
-        associate (product => this % reactions(this % index_fission(1)) % products(1))
-          nu = product % yield % evaluate(E)
+        associate (rx => this % reactions(this % index_fission(1)))
+          nu = rx % product_yield(1, E)
         end associate
       end if
     end select
@@ -868,6 +846,7 @@ contains
     integer :: i_high ! upper logarithmic mapping index
     integer :: i_rxn  ! reaction index
     integer :: j      ! index in DEPLETION_RX
+    integer :: threshold ! threshold energy index
     real(8) :: f      ! interp factor on nuclide energy grid
     real(8) :: kT     ! temperature in eV
     real(8) :: sig_t, sig_a, sig_f ! Intermediate multipole variables
@@ -1009,10 +988,11 @@ contains
         ! need to specifically check its threshold index
         i_rxn = this % reaction_index(DEPLETION_RX(1))
         if (i_rxn > 0) then
-          associate (xs => this % reactions(i_rxn) % xs(i_temp))
+          associate (rx => this % reactions(i_rxn))
+          threshold = rx % xs_threshold(i_temp)
           micro_xs % reaction(1) = (ONE - f) * &
-               xs % value(i_grid - xs % threshold + 1) + &
-               f * xs % value(i_grid - xs % threshold + 2)
+               rx % xs(i_temp, i_grid - threshold + 1) + &
+               f * rx % xs(i_temp, i_grid - threshold + 2)
           end associate
         end if
 
@@ -1022,11 +1002,12 @@ contains
           ! reaction xs appropriately
           i_rxn = this % reaction_index(DEPLETION_RX(j))
           if (i_rxn > 0) then
-            associate (xs => this % reactions(i_rxn) % xs(i_temp))
-              if (i_grid >= xs % threshold) then
+            associate (rx => this % reactions(i_rxn))
+              threshold = rx % xs_threshold(i_temp)
+              if (i_grid >= threshold) then
                 micro_xs % reaction(j) = (ONE - f) * &
-                     xs % value(i_grid - xs % threshold + 1) + &
-                     f * xs % value(i_grid - xs % threshold + 2)
+                     rx % xs(i_temp, i_grid - threshold + 1) + &
+                     f * rx % xs(i_temp, i_grid - threshold + 2)
               elseif (j >= 4) then
                 ! One can show that the the threshold for (n,(x+1)n) is always
                 ! higher than the threshold for (n,xn). Thus, if we are below
@@ -1091,8 +1072,9 @@ contains
     f      =  micro_xs % interp_factor
 
     if (i_temp > 0) then
-      associate (xs => this % reactions(1) % xs(i_temp) % value)
-        micro_xs % elastic = (ONE - f) * xs(i_grid) + f * xs(i_grid + 1)
+      associate (rx => this % reactions(1))
+        micro_xs % elastic = (ONE - f) * rx % xs(i_temp, i_grid) + &
+             f * rx % xs(i_temp, i_grid + 1)
       end associate
     else
       ! For multipole, elastic is total - absorption
@@ -1114,9 +1096,9 @@ contains
     real(8), intent(in) :: sab_frac  ! fraction of atoms affected by S(a,b)
     type(NuclideMicroXS), intent(inout) :: micro_xs ! Cross section cache
 
-    integer :: i_temp    ! temperature index
-    real(8) :: inelastic ! S(a,b) inelastic cross section
-    real(8) :: elastic   ! S(a,b) elastic cross section
+    integer(C_INT) :: i_temp    ! temperature index
+    real(C_DOUBLE) :: inelastic ! S(a,b) inelastic cross section
+    real(C_DOUBLE) :: elastic   ! S(a,b) elastic cross section
 
     ! Set flag that S(a,b) treatment should be used for scattering
     micro_xs % index_sab = i_sab
@@ -1459,6 +1441,7 @@ contains
     integer :: i_energy     ! index for energy
     integer :: i_low        ! band index at lower bounding energy
     integer :: i_up         ! band index at upper bounding energy
+    integer :: threshold    ! threshold energy index
     real(8) :: f            ! interpolation factor
     real(8) :: r            ! pseudo-random number
     real(8) :: elastic      ! elastic cross section
@@ -1551,10 +1534,11 @@ contains
         f = micro_xs % interp_factor
 
         ! Determine inelastic scattering cross section
-        associate (xs => this % reactions(this % urr_inelastic) % xs(i_temp))
-          if (i_energy >= xs % threshold) then
-            inelastic = (ONE - f) * xs % value(i_energy - xs % threshold + 1) + &
-                 f * xs % value(i_energy - xs % threshold + 2)
+        associate (rx => this % reactions(this % urr_inelastic))
+          threshold = rx % xs_threshold(i_temp)
+          if (i_energy >= threshold) then
+            inelastic = (ONE - f) * rx % xs(i_temp, i_energy - threshold + 1) + &
+                 f * rx % xs(i_temp, i_energy - threshold + 2)
           end if
         end associate
       end if

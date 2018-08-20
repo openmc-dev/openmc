@@ -511,20 +511,6 @@ contains
     end if
   end function openmc_tally_get_active
 
-  function openmc_tally_get_estimator(index, estimator) result(err) bind(C)
-    ! Return the type of estimator of a tally
-    integer(C_INT32_T), value    :: index
-    integer(C_INT32_T), intent(out) :: estimator
-    integer(C_INT) :: err
-
-    if (index >= 1 .and. index <= size(tallies)) then
-      estimator = tallies(index) % obj % estimator
-      err = 0
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg('Index in tallies array is out of bounds.')
-    end if
-  end function openmc_tally_get_estimator
 
   function openmc_tally_get_estimator(index, estimator) result(err) bind(C)
     ! Return the type of estimator of a tally
@@ -664,22 +650,6 @@ contains
   end function openmc_tally_get_type
 
 
-  function openmc_tally_get_type(index, type) result(err) bind(C)
-    ! Return the type of a tally
-    integer(C_INT32_T), value    :: index
-    integer(C_INT32_T), intent(out) :: type
-    integer(C_INT) :: err
-
-    if (index >= 1 .and. index <= size(tallies)) then
-      type = tallies(index) % obj % type
-      err = 0
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg('Index in tallies array is out of bounds.')
-    end if
-  end function openmc_tally_get_type
-
-
   function openmc_tally_reset(index) result(err) bind(C)
     ! Reset tally results and number of realizations
     integer(C_INT32_T), intent(in), value :: index
@@ -723,6 +693,7 @@ contains
     end if
   end function openmc_tally_results
 
+
   function openmc_tally_set_estimator(index, estimator) result(err) bind(C)
     ! Set the type of estimator a tally
     integer(C_INT32_T), value, intent(in) :: index
@@ -752,37 +723,6 @@ contains
       call set_errmsg("Index in tally array is out of bounds.")
     end if
   end function openmc_tally_set_estimator
-
-  function openmc_tally_set_estimator(index, estimator) result(err) bind(C)
-    ! Set the type of estimator a tally
-    integer(C_INT32_T), value, intent(in) :: index
-    character(kind=C_CHAR), intent(in) :: estimator(*)
-    integer(C_INT) :: err
-
-    character(:), allocatable :: estimator_
-
-    ! Convert C string to Fortran string
-    estimator_ = to_f_string(estimator)
-
-    err = 0
-    if (index >= 1 .and. index <= size(tallies)) then
-      select case (estimator_)
-      case ('analog')
-        tallies(index) % obj % estimator = ESTIMATOR_ANALOG
-      case ('tracklength')
-        tallies(index) % obj % estimator = ESTIMATOR_TRACKLENGTH
-      case ('collision')
-        tallies(index) % obj % estimator = ESTIMATOR_COLLISION
-      case default
-        err = E_INVALID_ARGUMENT
-        call set_errmsg("Unknown tally estimator: " // trim(estimator_))
-      end select
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in tally array is out of bounds.")
-    end if
-  end function openmc_tally_set_estimator
-
 
   function openmc_tally_set_filters(index, n, filter_indices) result(err) bind(C)
     ! Set the list of filters for a tally

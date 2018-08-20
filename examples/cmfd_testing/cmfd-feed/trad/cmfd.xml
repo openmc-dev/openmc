@@ -6,10 +6,11 @@
     <upper_right>  10  1  1 </upper_right>
     <dimension> 10 1 1 </dimension>
     <albedo> 0.0 0.0 1.0 1.0 1.0 1.0 </albedo>
+    <energy> 0.0 10000.0 10000000.0</energy>
+    <map> 1 2 2 2 2 2 2 2 2 1</map>
   </mesh>
-  <tally_reset> 5 10 </tally_reset>
   <begin>5</begin>
   <display>dominance</display>
-  <feedback>true</feedback>
+  <feedback>false</feedback>
   <gauss_seidel_tolerance>1.e-15 1.e-20</gauss_seidel_tolerance>
 </cmfd>

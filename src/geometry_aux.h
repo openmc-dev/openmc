@@ -13,7 +13,7 @@ namespace openmc {
 //! Replace Universe, Lattice, and Material IDs with indices.
 //==============================================================================
 
-extern "C" void adjust_indices_c();
+extern "C" void adjust_indices();
 
 //==============================================================================
 //! Figure out which Universe is the root universe.

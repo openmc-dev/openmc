@@ -5,7 +5,7 @@ from weakref import WeakValueDictionary
 import numpy as np
 from numpy.ctypeslib import as_array
 
-from openmc.exceptions import AllocationError, InvalidIDError
+from openmc.exceptions import AllocationError, InvalidIDError, OpenMCError
 from . import _dll, Nuclide
 from .core import _FortranObjectWithID
 from .error import _error_handler
@@ -32,6 +32,9 @@ _dll.openmc_material_get_densities.argtypes = [
     POINTER(c_int)]
 _dll.openmc_material_get_densities.restype = c_int
 _dll.openmc_material_get_densities.errcheck = _error_handler
+_dll.openmc_material_get_volume.argtypes = [c_int32, POINTER(c_double)]
+_dll.openmc_material_get_volume.restype = c_int
+_dll.openmc_material_get_volume.errcheck = _error_handler
 _dll.openmc_material_set_density.argtypes = [c_int32, c_double]
 _dll.openmc_material_set_density.restype = c_int
 _dll.openmc_material_set_density.errcheck = _error_handler
@@ -42,6 +45,9 @@ _dll.openmc_material_set_densities.errcheck = _error_handler
 _dll.openmc_material_set_id.argtypes = [c_int32, c_int32]
 _dll.openmc_material_set_id.restype = c_int
 _dll.openmc_material_set_id.errcheck = _error_handler
+_dll.openmc_material_set_volume.argtypes = [c_int32, c_double]
+_dll.openmc_material_set_volume.restype = c_int
+_dll.openmc_material_set_volume.errcheck = _error_handler
 
 
 class Material(_FortranObjectWithID):
@@ -112,6 +118,19 @@ class Material(_FortranObjectWithID):
     @id.setter
     def id(self, mat_id):
         _dll.openmc_material_set_id(self._index, mat_id)
+
+    @property
+    def volume(self):
+        volume = c_double()
+        try:
+            _dll.openmc_material_get_volume(self._index, volume)
+        except OpenMCError:
+            return None
+        return volume.value
+
+    @volume.setter
+    def volume(self, volume):
+        _dll.openmc_material_set_volume(self._index, volume)
 
     @property
     def nuclides(self):

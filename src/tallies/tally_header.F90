@@ -40,7 +40,7 @@ module tally_header
   public :: openmc_tally_set_id
   public :: openmc_tally_set_nuclides
   public :: openmc_tally_set_scores
-  public :: openmc_tally_update_type
+  public :: openmc_tally_set_type
 
 !===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to
@@ -346,6 +346,9 @@ contains
       type is (ZernikeFilter)
         j = FILTER_ZERNIKE
         this % estimator = ESTIMATOR_COLLISION
+      type is (ZernikeRadialFilter)
+        j = FILTER_ZERNIKE_RADIAL
+        this % estimator = ESTIMATOR_COLLISION
       type is (ParticleFilter)
         j = FILTER_PARTICLE
       end select
@@ -523,6 +526,22 @@ contains
     end if
   end function openmc_tally_get_estimator
 
+  function openmc_tally_get_estimator(index, estimator) result(err) bind(C)
+    ! Return the type of estimator of a tally
+    integer(C_INT32_T), value    :: index
+    integer(C_INT32_T), intent(out) :: estimator
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= size(tallies)) then
+      estimator = tallies(index) % obj % estimator
+      err = 0
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg('Index in tallies array is out of bounds.')
+    end if
+  end function openmc_tally_get_estimator
+
+
   function openmc_tally_get_id(index, id) result(err) bind(C)
     ! Return the ID of a tally
     integer(C_INT32_T), value       :: index
@@ -645,6 +664,22 @@ contains
   end function openmc_tally_get_type
 
 
+  function openmc_tally_get_type(index, type) result(err) bind(C)
+    ! Return the type of a tally
+    integer(C_INT32_T), value    :: index
+    integer(C_INT32_T), intent(out) :: type
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= size(tallies)) then
+      type = tallies(index) % obj % type
+      err = 0
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg('Index in tallies array is out of bounds.')
+    end if
+  end function openmc_tally_get_type
+
+
   function openmc_tally_reset(index) result(err) bind(C)
     ! Reset tally results and number of realizations
     integer(C_INT32_T), intent(in), value :: index
@@ -718,6 +753,37 @@ contains
     end if
   end function openmc_tally_set_estimator
 
+  function openmc_tally_set_estimator(index, estimator) result(err) bind(C)
+    ! Set the type of estimator a tally
+    integer(C_INT32_T), value, intent(in) :: index
+    character(kind=C_CHAR), intent(in) :: estimator(*)
+    integer(C_INT) :: err
+
+    character(:), allocatable :: estimator_
+
+    ! Convert C string to Fortran string
+    estimator_ = to_f_string(estimator)
+
+    err = 0
+    if (index >= 1 .and. index <= size(tallies)) then
+      select case (estimator_)
+      case ('analog')
+        tallies(index) % obj % estimator = ESTIMATOR_ANALOG
+      case ('tracklength')
+        tallies(index) % obj % estimator = ESTIMATOR_TRACKLENGTH
+      case ('collision')
+        tallies(index) % obj % estimator = ESTIMATOR_COLLISION
+      case default
+        err = E_INVALID_ARGUMENT
+        call set_errmsg("Unknown tally estimator: " // trim(estimator_))
+      end select
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in tally array is out of bounds.")
+    end if
+  end function openmc_tally_set_estimator
+
+
   function openmc_tally_set_filters(index, n, filter_indices) result(err) bind(C)
     ! Set the list of filters for a tally
     integer(C_INT32_T), value, intent(in) :: index
@@ -769,11 +835,17 @@ contains
 
     if (index >= 1 .and. index <= n_tallies) then
       if (allocated(tallies(index) % obj)) then
-        tallies(index) % obj % id = id
-        call tally_dict % set(id, index)
-        if (id > largest_tally_id) largest_tally_id = id
+        if (tally_dict % has(id)) then
+          call set_errmsg("Two or more tallies use the same unique ID: " &
+               // to_str(id))
+          err = E_INVALID_ID
+        else
+          tallies(index) % obj % id = id
+          call tally_dict % set(id, index)
+          if (id > largest_tally_id) largest_tally_id = id
 
-        err = 0
+          err = 0
+        end if
       else
         err = E_ALLOCATE
         call set_errmsg("Tally type has not been set yet.")
@@ -830,6 +902,7 @@ contains
       call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_set_nuclides
+
 
   function openmc_tally_set_scores(index, n, scores) result(err) bind(C)
     ! Sets the scores in the tally
@@ -1004,7 +1077,8 @@ contains
     end if
   end function openmc_tally_set_scores
 
-  function openmc_tally_update_type(index, type) result(err) bind(C)
+
+  function openmc_tally_set_type(index, type) result(err) bind(C)
     ! Update the type of a tally that is already allocated
     integer(C_INT32_T), value, intent(in) :: index
     character(kind=C_CHAR), intent(in) :: type(*)
@@ -1025,14 +1099,15 @@ contains
       case ('surface')
         tallies(index) % obj % type = TALLY_SURFACE
       case default
-        err = E_UNASSIGNED
+        err = E_INVALID_ARGUMENT
         call set_errmsg("Unknown tally type: " // trim(type_))
       end select
     else
       err = E_OUT_OF_BOUNDS
       call set_errmsg("Index in tally array is out of bounds.")
     end if
-  end function openmc_tally_update_type
+  end function openmc_tally_set_type
+
 
   subroutine openmc_get_tally_next_id(id) bind(C)
     ! Returns an ID number that has not been used by any other tallies.

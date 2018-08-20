@@ -49,7 +49,13 @@ def capi_init(pincell_model):
 
 
 @pytest.fixture(scope='module')
-def capi_run(capi_init):
+def capi_simulation_init(pincell_model):
+    openmc.capi.simulation_init()
+    yield
+
+
+@pytest.fixture(scope='module')
+def capi_run(capi_simulation_init):
     openmc.capi.run()
 
 
@@ -94,6 +100,10 @@ def test_material(capi_init):
     test_dens = [1.0e-1, 2.0e-1, 2.5e-1, 1.0e-3]
     m.set_densities(m.nuclides, test_dens)
     assert m.densities == pytest.approx(test_dens)
+
+    assert m.volume is None
+    m.volume = 10.0
+    assert m.volume == 10.0
 
     rho = 2.25e-2
     m.set_density(rho)
@@ -149,7 +159,6 @@ def test_tally_mapping(capi_init):
 
 def test_tally(capi_init):
     t = openmc.capi.tallies[1]
-    t.id = 1
     assert len(t.filters) == 2
     assert isinstance(t.filters[0], openmc.capi.MaterialFilter)
     assert isinstance(t.filters[1], openmc.capi.EnergyFilter)
@@ -173,12 +182,7 @@ def test_tally(capi_init):
     t.scores = new_scores
     assert t.scores == new_scores
 
-    assert not t.active
-    t.active = True
-    assert t.active
-
     t2 = openmc.capi.tallies[2]
-    t2.id = 2
     assert len(t2.filters) == 2
     assert isinstance(t2.filters[0], openmc.capi.ZernikeFilter)
     assert isinstance(t2.filters[1], openmc.capi.CellFilter)
@@ -194,6 +198,13 @@ def test_new_tally(capi_init):
     new_tally_with_id = openmc.capi.Tally(10)
     new_tally_with_id.scores = ['flux']
     assert len(openmc.capi.tallies) == 4
+
+
+def test_tally_activate(capi_simulation_init):
+    t = openmc.capi.tallies[1]
+    assert not t.active
+    t.active = True
+    assert t.active
 
 
 def test_tally_results(capi_run):
@@ -236,17 +247,51 @@ def test_by_batch(capi_run):
         openmc.capi.next_batch()
 
     openmc.capi.simulation_init()
-    for _ in openmc.capi.iter_batches():
-        # Make sure we can get k-effective during inactive/active batches
-        mean, std_dev = openmc.capi.keff()
-        assert 0.0 < mean < 2.5
-        assert std_dev > 0.0
-    assert openmc.capi.num_realizations() == 5
+    try:
+        for _ in openmc.capi.iter_batches():
+            # Make sure we can get k-effective during inactive/active batches
+            mean, std_dev = openmc.capi.keff()
+            assert 0.0 < mean < 2.5
+            assert std_dev > 0.0
+        assert openmc.capi.num_realizations() == 5
 
-    for i in range(3):
-        openmc.capi.next_batch()
-    assert openmc.capi.num_realizations() == 8
-    openmc.capi.simulation_finalize()
+        for i in range(3):
+            openmc.capi.next_batch()
+        assert openmc.capi.num_realizations() == 8
+
+    finally:
+        openmc.capi.simulation_finalize()
+
+
+def test_reset(capi_run):
+    # Init and run 10 batches.
+    openmc.capi.hard_reset()
+    openmc.capi.simulation_init()
+    try:
+        for i in range(10):
+            openmc.capi.next_batch()
+
+        # Make sure there are 5 realizations for the 5 active batches.
+        assert openmc.capi.num_realizations() == 5
+        assert openmc.capi.tallies[2].num_realizations == 5
+        _, keff_sd1 = openmc.capi.keff()
+        tally_sd1 = openmc.capi.tallies[2].std_dev[0]
+
+        # Reset and run 3 more batches.  Check the number of realizations.
+        openmc.capi.reset()
+        for i in range(3):
+            openmc.capi.next_batch()
+        assert openmc.capi.num_realizations() == 3
+        assert openmc.capi.tallies[2].num_realizations == 3
+
+        # Check the tally std devs to make sure results were cleared.
+        _, keff_sd2 = openmc.capi.keff()
+        tally_sd2 = openmc.capi.tallies[2].std_dev[0]
+        assert keff_sd2 > keff_sd1
+        assert tally_sd2 > tally_sd1
+
+    finally:
+        openmc.capi.simulation_finalize()
 
 
 def test_reproduce_keff(capi_init):
@@ -311,3 +356,35 @@ def test_mesh(capi_init):
 
     msf = openmc.capi.MeshSurfaceFilter(mesh)
     assert msf.mesh == mesh
+
+
+def test_restart(capi_init):
+    # Finalize and re-init to make internal state consistent with XML.
+    openmc.capi.hard_reset()
+    openmc.capi.finalize()
+    openmc.capi.init()
+    openmc.capi.simulation_init()
+
+    # Run for 7 batches then write a statepoint.
+    for i in range(7):
+        openmc.capi.next_batch()
+    openmc.capi.statepoint_write('restart_test.h5', True)
+
+    # Run 3 more batches and copy the keff.
+    for i in range(3):
+        openmc.capi.next_batch()
+    keff0 = openmc.capi.keff()
+
+    # Restart the simulation from the statepoint and the 5 active batches.
+    openmc.capi.simulation_finalize()
+    openmc.capi.hard_reset()
+    openmc.capi.finalize()
+    openmc.capi.init(args=('-r', 'restart_test.h5'))
+    openmc.capi.simulation_init()
+    for i in range(5):
+        openmc.capi.next_batch()
+    keff1 = openmc.capi.keff()
+    openmc.capi.simulation_finalize()
+
+    # Compare the keff values.
+    assert keff0 == pytest.approx(keff1)

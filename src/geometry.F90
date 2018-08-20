@@ -172,7 +172,7 @@ contains
           p % last_sqrtkT = p % sqrtkT
 
           ! Get distributed offset
-          if (size(c % material) > 1 .or. size(c % sqrtkT) > 1) then
+          if (c % material_size() > 1 .or. size(c % sqrtkT) > 1) then
             ! Distributed instances of this cell have different
             ! materials/temperatures. Determine which instance this is for
             ! assigning the matching material/temperature.
@@ -204,7 +204,7 @@ contains
           end if
 
           ! Save the material
-          if (size(c % material) > 1) then
+          if (c % material_size() > 1) then
             p % material = c % material(offset + 1)
           else
             p % material = c % material(1)

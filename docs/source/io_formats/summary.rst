@@ -123,7 +123,8 @@ The current version of the summary file format is 6.0.
 
 **/macroscopics/**
 
-:Attributes: - **n_macroscopics** (*int*) -- Number of macroscopic data sets
+:Attributes:
+             - **n_macroscopics** (*int*) -- Number of macroscopic data sets
                in the problem.
 
 :Datasets: - **names** (*char[][]*) -- Names of the macroscopic data sets.

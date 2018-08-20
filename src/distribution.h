@@ -107,6 +107,10 @@ public:
   //! Sample a value from the distribution
   //! \return Sampled value
   double sample() const;
+
+  // x property
+  std::vector<double>& x() { return x_; }
+  const std::vector<double>& x() const { return x_; }
 private:
   std::vector<double> x_; //!< tabulated independent variable
   std::vector<double> p_; //!< tabulated probability density

@@ -73,6 +73,19 @@ private:
   std::vector<double> y_; //!< values of ordinate
 };
 
+//==============================================================================
+//! Coherent elastic scattering data from a crystalline material
+//==============================================================================
+
+class CoherentElasticXS : public Function1D {
+  explicit CoherentElasticXS(hid_t dset);
+  double operator()(double E) const;
+private:
+  std::vector<double> bragg_edges_; //!< Bragg edges in [eV]
+  std::vector<double> factors_;     //!< Partial sums of structure factors [eV-b]
+};
+
+
 } // namespace openmc
 
 #endif // OPENMC_ENDF_H

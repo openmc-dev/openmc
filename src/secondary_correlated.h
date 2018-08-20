@@ -21,14 +21,6 @@ namespace openmc {
 
 class CorrelatedAngleEnergy : public AngleEnergy {
 public:
-  explicit CorrelatedAngleEnergy(hid_t group);
-
-  //! Sample distribution for an angle and energy
-  //! \param[in] E_in Incoming energy in [eV]
-  //! \param[out] E_out Outgoing energy in [eV]
-  //! \param[out] mu Outgoing cosine with respect to current direction
-  void sample(double E_in, double& E_out, double& mu) const;
-private:
   //! Outgoing energy/angle at a single incoming energy
   struct CorrTable {
     int n_discrete; //!< Number of discrete lines
@@ -39,6 +31,22 @@ private:
     std::vector<UPtrDist> angle; //!< Angle distribution
   };
 
+  explicit CorrelatedAngleEnergy(hid_t group);
+
+  //! Sample distribution for an angle and energy
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[out] mu Outgoing cosine with respect to current direction
+  void sample(double E_in, double& E_out, double& mu) const;
+
+  // energy property
+  std::vector<double>& energy() { return energy_; }
+  const std::vector<double>& energy() const { return energy_; }
+
+  // distribution property
+  std::vector<CorrTable>& distribution() { return distribution_; }
+  const std::vector<CorrTable>& distribution() const { return distribution_; }
+private:
   int n_region_; //!< Number of interpolation regions
   std::vector<int> breakpoints_; //!< Breakpoints between regions
   std::vector<Interpolation> interpolation_; //!< Interpolation laws

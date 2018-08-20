@@ -130,17 +130,6 @@ constexpr int ANGLE_HISTOGRAM {5};
 constexpr int TEMPERATURE_NEAREST {1};
 constexpr int TEMPERATURE_INTERPOLATION {2};
 
-// Secondary energy mode for S(a,b) inelastic scattering
-// TODO: Convert to enum
-constexpr int SAB_SECONDARY_EQUAL  {0}; // Equally-likely outgoing energy bins
-constexpr int SAB_SECONDARY_SKEWED {1}; // Skewed outgoing energy bins
-constexpr int SAB_SECONDARY_CONT   {2}; // Continuous, linear-linear interpolation
-
-// Elastic mode for S(a,b) elastic scattering
-// TODO: Convert to enum
-constexpr int SAB_ELASTIC_DISCRETE {3}; // Sample from discrete cosines
-constexpr int SAB_ELASTIC_EXACT    {4}; // Exact treatment for coherent elastic
-
 // Reaction types
 // TODO: Convert to enum
 constexpr int TOTAL_XS {1};
@@ -259,6 +248,8 @@ constexpr int N_A0    {800};
 constexpr int N_AC    {849};
 constexpr int N_2N0   {875};
 constexpr int N_2NC   {891};
+
+constexpr std::array<int, 6> DEPLETION_RX {N_GAMMA, N_P, N_A, N_2N, N_3N, N_4N};
 
 // Fission neutron emission (nu) type
 constexpr int NU_NONE       {0}; // No nu values (non-fissionable)

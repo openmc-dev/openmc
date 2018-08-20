@@ -18,12 +18,6 @@ fi
 
 # Download multipole library
 if [[ ! -e $HOME/WMP_Library/092235.h5 ]]; then
-    if [[ $(command -v git-lfs) ]]; then
-        echo "Downloading WMP Library ..."
-        git clone https://github.com/mit-crpg/WMP_Library.git wmp_repo
-        mv wmp_repo/WMP_Library $HOME
-    else
-        echo "git lfs not found"
-        unset OPENMC_MULTIPOLE_LIBRARY
-    fi
+    wget https://github.com/mit-crpg/WMP_Library/releases/download/v1.0/WMP_Library_v1.0.tar.gz
+    tar -C $HOME -xzvf WMP_Library_v1.0.tar.gz
 fi

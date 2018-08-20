@@ -25,7 +25,7 @@ module openmc_api
   use tally_header
   use tally_filter_header
   use tally_filter
-  use tally,           only: openmc_tally_set_type
+  use tally,           only: openmc_tally_allocate
   use simulation
   use string,          only: to_f_string
   use timer_header
@@ -60,6 +60,7 @@ module openmc_api
   public :: openmc_get_nuclide_index
   public :: openmc_get_seed
   public :: openmc_get_tally_index
+  public :: openmc_get_tally_next_id
   public :: openmc_global_tallies
   public :: openmc_hard_reset
   public :: openmc_init_f
@@ -83,12 +84,16 @@ module openmc_api
   public :: openmc_simulation_init
   public :: openmc_source_bank
   public :: openmc_source_set_strength
+  public :: openmc_tally_allocate
+  public :: openmc_tally_get_estimator
   public :: openmc_tally_get_id
   public :: openmc_tally_get_filters
   public :: openmc_tally_get_n_realizations
   public :: openmc_tally_get_nuclides
   public :: openmc_tally_get_scores
+  public :: openmc_tally_get_type
   public :: openmc_tally_results
+  public :: openmc_tally_set_estimator
   public :: openmc_tally_set_filters
   public :: openmc_tally_set_id
   public :: openmc_tally_set_nuclides

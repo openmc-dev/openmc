@@ -422,7 +422,6 @@ add_library(libopenmc SHARED
   src/xsdata.cpp)
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc
-  PUBLIC_HEADER include/openmc/capi.h
   LINKER_LANGUAGE Fortran)
 
 target_include_directories(libopenmc
@@ -492,8 +491,8 @@ install(TARGETS openmc libopenmc
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
-  PUBLIC_HEADER DESTINATION include
   )
 install(DIRECTORY src/relaxng DESTINATION share/openmc)
 install(FILES man/man1/openmc.1 DESTINATION share/man/man1)
 install(FILES LICENSE DESTINATION "share/doc/openmc" RENAME copyright)
+install(DIRECTORY include/ DESTINATION include)

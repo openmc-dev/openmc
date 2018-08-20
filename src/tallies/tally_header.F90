@@ -274,6 +274,7 @@ contains
 
   end subroutine tally_allocate_results
 
+
   function tally_set_filters(this, filter_indices) result(err)
     class(TallyObject), intent(inout) :: this
     integer(C_INT32_T), intent(in) :: filter_indices(:)
@@ -634,6 +635,7 @@ contains
     end if
   end function openmc_tally_get_scores
 
+
   function openmc_tally_get_type(index, type) result(err) bind(C)
     ! Return the type of a tally
     integer(C_INT32_T), value    :: index
@@ -715,7 +717,7 @@ contains
       case ('collision')
         tallies(index) % obj % estimator = ESTIMATOR_COLLISION
       case default
-        err = E_UNASSIGNED
+        err = E_INVALID_ARGUMENT
         call set_errmsg("Unknown tally estimator: " // trim(estimator_))
       end select
     else

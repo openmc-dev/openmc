@@ -69,9 +69,7 @@ contains
     type(Particle), intent(inout) :: p
     logical,        intent(inout) :: found
     integer,        optional      :: search_cells(:)
-    integer :: j, k                 ! coordinate level index
-    integer :: offset               ! instance # of a distributed cell
-    integer :: distribcell_index
+    integer :: j                    ! coordinate level index
     integer :: i_xyz(3)             ! indices in lattice
     integer :: i_cell               ! index in cells array
 
@@ -85,61 +83,7 @@ contains
 
     if (found) then
       associate(c => cells(i_cell))
-        CELL_TYPE: if (c % type() == FILL_MATERIAL) then
-          ! ======================================================================
-          ! AT LOWEST UNIVERSE, TERMINATE SEARCH
-
-          ! Save previous material and temperature
-          p % last_material = p % material
-          p % last_sqrtkT = p % sqrtkT
-
-          ! Get distributed offset
-          if (c % material_size() > 1 .or. c % sqrtkT_size() > 1) then
-            ! Distributed instances of this cell have different
-            ! materials/temperatures. Determine which instance this is for
-            ! assigning the matching material/temperature.
-            distribcell_index = c % distribcell_index()
-            offset = 0
-            do k = 1, p % n_coord
-              if (cells(p % coord(k) % cell) % type() == FILL_UNIVERSE) then
-                offset = offset + cells(p % coord(k) % cell) &
-                     % offset(distribcell_index-1)
-              elseif (cells(p % coord(k) % cell) % type() == FILL_LATTICE) then
-                if (lattices(p % coord(k + 1) % lattice) % obj &
-                     % are_valid_indices([&
-                     p % coord(k + 1) % lattice_x, &
-                     p % coord(k + 1) % lattice_y, &
-                     p % coord(k + 1) % lattice_z])) then
-                  offset = offset + lattices(p % coord(k + 1) % lattice) % obj &
-                       % offset(distribcell_index - 1, &
-                       [p % coord(k + 1) % lattice_x, &
-                       p % coord(k + 1) % lattice_y, &
-                       p % coord(k + 1) % lattice_z])
-                end if
-              end if
-            end do
-
-            ! Keep track of which instance of the cell the particle is in
-            p % cell_instance = offset + 1
-          else
-            p % cell_instance = 1
-          end if
-
-          ! Save the material
-          if (c % material_size() > 1) then
-            p % material = c % material(offset + 1)
-          else
-            p % material = c % material(1)
-          end if
-
-          ! Save the temperature
-          if (c % sqrtkT_size() > 1) then
-            p % sqrtkT = c % sqrtkT(offset)
-          else
-            p % sqrtkT = c % sqrtkT(0)
-          end if
-
-        elseif (c % type() == FILL_UNIVERSE) then CELL_TYPE
+        CELL_TYPE: if (c % type() == FILL_UNIVERSE) then
           ! ======================================================================
           ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
 

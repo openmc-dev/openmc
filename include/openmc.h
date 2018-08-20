@@ -47,6 +47,7 @@ extern "C" {
   int openmc_get_nuclide_index(const char name[], int* index);
   int64_t openmc_get_seed();
   int openmc_get_tally_index(int32_t id, int32_t* index);
+  void openmc_get_tally_next_id(int32_t* id);
   int openmc_hard_reset();
   int openmc_init(int argc, char* argv[], const void* intracomm);
   int openmc_init_f(const int* intracomm);
@@ -94,15 +95,19 @@ extern "C" {
   int openmc_sphharm_filter_set_order(int32_t index, int order);
   int openmc_sphharm_filter_set_cosine(int32_t index, const char cosine[]);
   int openmc_statepoint_write(const char filename[]);
+  int openmc_tally_allocate(int32_t index, const char* type);
   int openmc_tally_get_active(int32_t index, bool* active);
+  int openmc_tally_get_estimator(int32_t index, int32_t* estimator);
   int openmc_tally_get_id(int32_t index, int32_t* id);
   int openmc_tally_get_filters(int32_t index, int32_t** indices, int* n);
   int openmc_tally_get_n_realizations(int32_t index, int32_t* n);
   int openmc_tally_get_nuclides(int32_t index, int** nuclides, int* n);
   int openmc_tally_get_scores(int32_t index, int** scores, int* n);
+  int openmc_tally_get_type(int32_t index, int32_t* type);
   int openmc_tally_reset(int32_t index);
   int openmc_tally_results(int32_t index, double** ptr, int shape_[3]);
   int openmc_tally_set_active(int32_t index, bool active);
+  int openmc_tally_set_estimator(int32_t index, const char* estimator);
   int openmc_tally_set_filters(int32_t index, int n, const int32_t* indices);
   int openmc_tally_set_id(int32_t index, int32_t id);
   int openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides);

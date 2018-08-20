@@ -84,9 +84,6 @@ _dll.openmc_tally_set_scores.errcheck = _error_handler
 _dll.openmc_tally_set_type.argtypes = [c_int32, c_char_p]
 _dll.openmc_tally_set_type.restype = c_int
 _dll.openmc_tally_set_type.errcheck = _error_handler
-_dll.openmc_tally_update_type.argtypes = [c_int32, c_char_p]
-_dll.openmc_tally_update_type.restype = c_int
-_dll.openmc_tally_update_type.errcheck = _error_handler
 
 
 _SCORES = {

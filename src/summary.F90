@@ -225,17 +225,6 @@ contains
         call write_dataset(cell_group, "temperature", cell_temperatures)
         deallocate(cell_temperatures)
 
-      case (FILL_UNIVERSE)
-        call write_dataset(cell_group, "fill_type", "universe")
-        call write_dataset(cell_group, "fill", universes(c%fill()+1)%id)
-
-        if (allocated(c%translation)) then
-          call write_dataset(cell_group, "translation", c%translation)
-        end if
-        if (allocated(c%rotation)) then
-          call write_dataset(cell_group, "rotation", c%rotation)
-        end if
-
       case (FILL_LATTICE)
         call write_dataset(cell_group, "fill_type", "lattice")
         ! Do not access the 'lattices' array with 'c % fill() + 1' directly; it

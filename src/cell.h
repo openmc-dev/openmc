@@ -85,6 +85,16 @@ public:
   std::vector<std::int32_t> rpn;
   bool simple;  //!< Does the region contain only intersections?
 
+  Position translation {0, 0, 0}; //!< Translation vector for filled universe
+
+  //! \brief Rotational tranfsormation of the filled universe.
+  //
+  //! The vector is empty if there is no rotation.  Otherwise, the first three
+  //! values are the rotation angles respectively about the x-, y-, and z-, axes
+  //! in degrees.  The next 9 values give the rotation matrix in row-major
+  //! order.
+  std::vector<double> rotation;
+
   std::vector<int32_t> offset;  //!< Distribcell offset table
 
   Cell() {};

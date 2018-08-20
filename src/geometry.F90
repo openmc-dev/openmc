@@ -84,30 +84,8 @@ contains
     if (found) then
       associate(c => cells(i_cell))
         CELL_TYPE: if (c % type() == FILL_UNIVERSE) then
-          ! ======================================================================
-          ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
-
-          ! Store lower level coordinates
-          p % coord(j + 1) % xyz = p % coord(j) % xyz
-          p % coord(j + 1) % uvw = p % coord(j) % uvw
-
-          ! Move particle to next level and set universe
           j = j + 1
           p % n_coord = j
-          p % coord(j) % universe = c % fill() + 1
-
-          ! Apply translation
-          if (allocated(c % translation)) then
-            p % coord(j) % xyz = p % coord(j) % xyz - c % translation
-          end if
-
-          ! Apply rotation
-          if (allocated(c % rotation_matrix)) then
-            p % coord(j) % xyz = matmul(c % rotation_matrix, p % coord(j) % xyz)
-            p % coord(j) % uvw = matmul(c % rotation_matrix, p % coord(j) % uvw)
-            p % coord(j) % rotated = .true.
-          end if
-
           call find_cell(p, found)
           j = p % n_coord
 

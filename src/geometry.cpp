@@ -5,7 +5,7 @@
 #include "cell.h"
 #include "constants.h"
 #include "error.h"
-#include "particle.h"
+#include "lattice.h"
 #include "settings.h"
 
 //TODO: remove this include
@@ -15,6 +15,8 @@
 namespace openmc {
 
 std::vector<int64_t> overlap_check_count;
+
+//==============================================================================
 
 extern "C" bool
 check_cell_overlap(Particle* p) {
@@ -72,10 +74,11 @@ find_cell(Particle* p, int n_search_cells, int* search_cells) {
 
   // Find which cell of this universe the particle is in.
   bool found = false;
+  int32_t i_cell;
   for (int i = 0; i < n_search_cells; i++) {
-    int32_t i_cell = search_cells[i];
+    i_cell = search_cells[i];
 
-    // Make sure the search cell is in the same universe
+    // Make sure the search cell is in the same universe.
     //TODO: off-by-one indexing
     if (global_cells[i_cell]->universe - 1 != i_universe) continue;
 
@@ -93,6 +96,58 @@ find_cell(Particle* p, int n_search_cells, int* search_cells) {
       }
       found = true;
       break;
+    }
+  }
+
+  if (found) {
+    Cell& c {*global_cells[i_cell]};
+    if (c.type == FILL_MATERIAL) {
+      // Find the distribcell instance number.
+      if (c.material.size() > 1 || c.sqrtkT.size() > 1) {
+        //=====================================================================
+        //! Found a material cell which means this is the lowest coord level.
+
+        //TODO: off-by-one indexing
+        int distribcell_index = c.distribcell_index - 1;
+        int offset = 0;
+        for (int i = 0; i < p->n_coord; i++) {
+          Cell& c_i {*global_cells[p->coord[i].cell-1]};
+          if (c_i.type == FILL_UNIVERSE) {
+            offset += c_i.offset[distribcell_index];
+          } else if (c_i.type == FILL_LATTICE) {
+            Lattice& lat {*lattices_c[p->coord[i+1].lattice-1]};
+            int i_xyz[3] {p->coord[i+1].lattice_x,
+                          p->coord[i+1].lattice_y,
+                          p->coord[i+1].lattice_z};
+            if (lat.are_valid_indices(i_xyz)) {
+              offset += lat.offset(distribcell_index, i_xyz);
+            }
+          }
+        }
+        p->cell_instance = offset + 1;
+      } else {
+        p->cell_instance = 1;
+      }
+
+      // Set the material and temperature.
+      p->last_material = p->material;
+      int32_t mat;
+      if (c.material.size() > 1) {
+        mat = c.material[p->cell_instance-1];
+      } else {
+        mat = c.material[0];
+      }
+      if (mat == MATERIAL_VOID) {
+        p->material = MATERIAL_VOID;
+      } else {
+        p->material = mat + 1;
+      }
+      p->last_sqrtkT = p->sqrtkT;
+      if (c.sqrtkT.size() > 1) {
+        p->sqrtkT = c.sqrtkT[p->cell_instance-1];
+      } else {
+        p->sqrtkT = c.sqrtkT[0];
+      }
     }
   }
 

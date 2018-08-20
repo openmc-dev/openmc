@@ -1,6 +1,8 @@
 #ifndef OPENMC_POSITION_H
 #define OPENMC_POSITION_H
 
+#include <vector>
+
 namespace openmc {
 
 //==============================================================================
@@ -12,6 +14,7 @@ struct Position {
   Position() = default;
   Position(double x_, double y_, double z_) : x{x_}, y{y_}, z{z_} { };
   Position(const double xyz[]) : x{xyz[0]}, y{xyz[1]}, z{xyz[2]} { };
+  Position(const std::vector<double> xyz) : x{xyz[0]}, y{xyz[1]}, z{xyz[2]} { };
 
   // Unary operators
   Position& operator+=(Position);
@@ -62,6 +65,20 @@ inline Position operator-(double a, Position b)   { return b -= a; }
 inline Position operator*(Position a, Position b) { return a *= b; }
 inline Position operator*(Position a, double b)   { return a *= b; }
 inline Position operator*(double a, Position b)   { return b *= a; }
+
+inline bool operator==(Position a, Position b)
+{return a.x == b.x && a.y == b.y && a.z == b.z;}
+inline bool operator==(Position a, double b)
+{return a.x == b && a.y == b && a.z == b;}
+inline bool operator==(double a, Position b)
+{return a == b.x && a == b.y && a == b.z;}
+
+inline bool operator!=(Position a, Position b)
+{return a.x != b.x || a.y != b.y || a.z != b.z;}
+inline bool operator!=(Position a, double b)
+{return a.x != b || a.y != b || a.z != b;}
+inline bool operator!=(double a, Position b)
+{return a != b.x || a != b.y || a != b.z;}
 
 //==============================================================================
 //! Type representing a vector direction in Cartesian coordinates

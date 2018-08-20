@@ -1176,28 +1176,6 @@ contains
              cos(phi)*cos(theta) /), (/ 3,3 /))
       end if
 
-      ! Translation vector
-      if (check_for_node(node_cell, "translation")) then
-        ! Translations can only be applied to cells that are being filled with
-        ! another universe
-        if (c % fill() == C_NONE) then
-          call fatal_error("Cannot apply a translation to cell " &
-               // trim(to_str(c % id())) // " because it is not filled with &
-               &another universe")
-        end if
-
-        ! Read number of translation parameters
-        n = node_word_count(node_cell, "translation")
-        if (n /= 3) then
-          call fatal_error("Incorrect number of translation parameters on &
-               &cell " // to_str(c % id()))
-        end if
-
-        ! Copy translation vector
-        allocate(c % translation(3))
-        call get_node_array(node_cell, "translation", c % translation)
-      end if
-
       ! Add cell to dictionary
       call cell_dict % set(c % id(), i)
 

@@ -102,11 +102,11 @@ find_cell(Particle* p, int n_search_cells, int* search_cells) {
   if (found) {
     Cell& c {*global_cells[i_cell]};
     if (c.type == FILL_MATERIAL) {
+      //=======================================================================
+      //! Found a material cell which means this is the lowest coord level.
+
       // Find the distribcell instance number.
       if (c.material.size() > 1 || c.sqrtkT.size() > 1) {
-        //=====================================================================
-        //! Found a material cell which means this is the lowest coord level.
-
         //TODO: off-by-one indexing
         int distribcell_index = c.distribcell_index - 1;
         int offset = 0;
@@ -147,6 +147,48 @@ find_cell(Particle* p, int n_search_cells, int* search_cells) {
         p->sqrtkT = c.sqrtkT[p->cell_instance-1];
       } else {
         p->sqrtkT = c.sqrtkT[0];
+      }
+
+    } else if (c.type == FILL_UNIVERSE) {
+      //========================================================================
+      //! Found a lower universe, update this coord level then search the next.
+
+      // Add another coordinate level.
+      //++p->n_coord;
+      p->coord[p->n_coord].universe = c.fill + 1;
+
+      // Set the position and direction.
+      for (int i = 0; i < 3; i++) {
+        p->coord[p->n_coord].xyz[i] = p->coord[p->n_coord-1].xyz[i];
+        p->coord[p->n_coord].uvw[i] = p->coord[p->n_coord-1].uvw[i];
+      }
+
+      // Apply translation.
+      p->coord[p->n_coord].xyz[0] -= c.translation.x;
+      p->coord[p->n_coord].xyz[1] -= c.translation.y;
+      p->coord[p->n_coord].xyz[2] -= c.translation.z;
+
+      // Apply rotation.
+      if (!c.rotation.empty()) {
+        auto x = p->coord[p->n_coord].xyz[0];
+        auto y = p->coord[p->n_coord].xyz[1];
+        auto z = p->coord[p->n_coord].xyz[2];
+        p->coord[p->n_coord].xyz[0] = x*c.rotation[3] + y*c.rotation[4]
+                                      + z*c.rotation[5];
+        p->coord[p->n_coord].xyz[1] = x*c.rotation[6] + y*c.rotation[7]
+                                      + z*c.rotation[8];
+        p->coord[p->n_coord].xyz[2] = x*c.rotation[9] + y*c.rotation[10]
+                                      + z*c.rotation[11];
+        auto u = p->coord[p->n_coord].uvw[0];
+        auto v = p->coord[p->n_coord].uvw[1];
+        auto w = p->coord[p->n_coord].uvw[2];
+        p->coord[p->n_coord].uvw[0] = u*c.rotation[3] + v*c.rotation[4]
+                                      + w*c.rotation[5];
+        p->coord[p->n_coord].uvw[1] = u*c.rotation[6] + v*c.rotation[7]
+                                      + w*c.rotation[8];
+        p->coord[p->n_coord].uvw[2] = u*c.rotation[9] + v*c.rotation[10]
+                                      + w*c.rotation[11];
+        p->coord[p->n_coord].rotated = true;
       }
     }
   }

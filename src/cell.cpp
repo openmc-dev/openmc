@@ -317,6 +317,65 @@ Cell::Cell(pugi::xml_node cell_node)
       break;
     }
   }
+
+  // Read the translation vector.
+  if (check_for_node(cell_node, "translation")) {
+    if (fill == C_NONE) {
+      std::stringstream err_msg;
+      err_msg << "Cannot apply a translation to cell " << id
+              << " because it is not filled with another universe";
+      fatal_error(err_msg);
+    }
+
+    auto xyz {get_node_array<double>(cell_node, "translation")};
+    if (xyz.size() != 3) {
+      std::stringstream err_msg;
+      err_msg << "Non-3D translation vector applied to cell " << id;
+      fatal_error(err_msg);
+    }
+    translation = xyz;
+  }
+
+  // Read the rotation transform.
+  if (check_for_node(cell_node, "rotation")) {
+    if (fill == C_NONE) {
+      std::stringstream err_msg;
+      err_msg << "Cannot apply a rotation to cell " << id
+              << " because it is not filled with another universe";
+      fatal_error(err_msg);
+    }
+
+    auto rot {get_node_array<double>(cell_node, "rotation")};
+    if (rot.size() != 3) {
+      std::stringstream err_msg;
+      err_msg << "Non-3D rotation vector applied to cell " << id;
+      fatal_error(err_msg);
+    }
+
+    // Store the rotation angles.
+    rotation.reserve(12);
+    rotation.push_back(rot[0]);
+    rotation.push_back(rot[1]);
+    rotation.push_back(rot[2]);
+
+    // Compute and store the rotation matrix.
+    auto phi = -rot[0] * PI / 180.0;
+    auto theta = -rot[1] * PI / 180.0;
+    auto psi = -rot[2] * PI / 180.0;
+    rotation.push_back(std::cos(theta) * std::cos(psi));
+    rotation.push_back(-std::cos(phi) * std::sin(psi)
+                       + std::sin(phi) * std::sin(theta) * std::cos(psi));
+    rotation.push_back(std::sin(phi) * std::sin(psi)
+                       + std::cos(phi) * std::sin(theta) * std::cos(psi));
+    rotation.push_back(std::cos(theta) * std::sin(psi));
+    rotation.push_back(std::cos(phi) * std::cos(psi)
+                       + std::sin(phi) * std::sin(theta) * std::sin(psi));
+    rotation.push_back(-std::sin(phi) * std::cos(psi)
+                       + std::cos(phi) * std::sin(theta) * std::sin(psi));
+    rotation.push_back(-std::sin(theta));
+    rotation.push_back(std::sin(phi) * std::cos(theta));
+    rotation.push_back(std::cos(phi) * std::cos(theta));
+  }
 }
 
 //==============================================================================
@@ -392,6 +451,18 @@ Cell::to_hdf5(hid_t cell_group) const
       }
     }
     write_string(cell_group, "region", region_spec.str(), false);
+  }
+
+  if (type == FILL_UNIVERSE) {
+    write_dataset(cell_group, "fill_type", "universe");
+    write_dataset(cell_group, "fill", global_universes[fill]->id);
+    if (translation != 0) {
+      write_dataset(cell_group, "translation", translation);
+    }
+    if (!rotation.empty()) {
+      std::array<double, 3> rot {rotation[0], rotation[1], rotation[2]};
+      write_dataset(cell_group, "rotation", rot);
+    }
   }
 }
 

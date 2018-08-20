@@ -126,36 +126,36 @@ module nuclide_header
   ! (NuclideMicroXS % elastic)
   real(8), parameter :: CACHE_INVALID = dble(Z"FFE0000000000000")
 
-  type NuclideMicroXS
+  type, bind(C) :: NuclideMicroXS
     ! Microscopic cross sections in barns
-    real(8) :: total
-    real(8) :: absorption       ! absorption (disappearance)
-    real(8) :: fission          ! fission
-    real(8) :: nu_fission       ! neutron production from fission
+    real(C_DOUBLE) :: total
+    real(C_DOUBLE) :: absorption       ! absorption (disappearance)
+    real(C_DOUBLE) :: fission          ! fission
+    real(C_DOUBLE) :: nu_fission       ! neutron production from fission
 
-    real(8) :: elastic          ! If sab_frac is not 1 or 0, then this value is
+    real(C_DOUBLE) :: elastic          ! If sab_frac is not 1 or 0, then this value is
                                 !   averaged over bound and non-bound nuclei
-    real(8) :: thermal          ! Bound thermal elastic & inelastic scattering
-    real(8) :: thermal_elastic  ! Bound thermal elastic scattering
-    real(8) :: photon_prod      ! microscopic photon production xs
+    real(C_DOUBLE) :: thermal          ! Bound thermal elastic & inelastic scattering
+    real(C_DOUBLE) :: thermal_elastic  ! Bound thermal elastic scattering
+    real(C_DOUBLE) :: photon_prod      ! microscopic photon production xs
 
     ! Cross sections for depletion reactions (note that these are not stored in
     ! macroscopic cache)
-    real(8) :: reaction(size(DEPLETION_RX))
+    real(C_DOUBLE) :: reaction(size(DEPLETION_RX))
 
     ! Indicies and factors needed to compute cross sections from the data tables
-    integer :: index_grid        ! Index on nuclide energy grid
-    integer :: index_temp        ! Temperature index for nuclide
-    real(8) :: interp_factor     ! Interpolation factor on nuc. energy grid
-    integer :: index_sab = NONE  ! Index in sab_tables
-    integer :: index_temp_sab    ! Temperature index for sab_tables
-    real(8) :: sab_frac          ! Fraction of atoms affected by S(a,b)
-    logical :: use_ptable        ! In URR range with probability tables?
+    integer(C_INT) :: index_grid        ! Index on nuclide energy grid
+    integer(C_INT) :: index_temp        ! Temperature index for nuclide
+    real(C_DOUBLE) :: interp_factor     ! Interpolation factor on nuc. energy grid
+    integer(C_INT) :: index_sab = NONE  ! Index in sab_tables
+    integer(C_INT) :: index_temp_sab    ! Temperature index for sab_tables
+    real(C_DOUBLE) :: sab_frac          ! Fraction of atoms affected by S(a,b)
+    logical(C_BOOL) :: use_ptable        ! In URR range with probability tables?
 
     ! Energy and temperature last used to evaluate these cross sections.  If
     ! these values have changed, then the cross sections must be re-evaluated.
-    real(8) :: last_E = ZERO       ! Last evaluated energy
-    real(8) :: last_sqrtkT = ZERO  ! Last temperature in sqrt(Boltzmann
+    real(C_DOUBLE) :: last_E = ZERO       ! Last evaluated energy
+    real(C_DOUBLE) :: last_sqrtkT = ZERO  ! Last temperature in sqrt(Boltzmann
                                    !   constant * temperature (eV))
   end type NuclideMicroXS
 
@@ -164,7 +164,7 @@ module nuclide_header
 ! particle is traveling through
 !===============================================================================
 
-  type MaterialMacroXS
+  type, bind(C) :: MaterialMacroXS
     real(C_DOUBLE) :: total         ! macroscopic total xs
     real(C_DOUBLE) :: absorption    ! macroscopic absorption xs
     real(C_DOUBLE) :: fission       ! macroscopic fission xs
@@ -198,7 +198,7 @@ module nuclide_header
   type(DictCharInt) :: nuclide_dict
 
   ! Cross section caches
-  type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
+  type(NuclideMicroXS), allocatable, target :: micro_xs(:)  ! Cache for each nuclide
   type(MaterialMacroXS)             :: material_xs  ! Cache for current material
 !$omp threadprivate(micro_xs, material_xs)
 
@@ -1096,9 +1096,9 @@ contains
     real(8), intent(in) :: sab_frac  ! fraction of atoms affected by S(a,b)
     type(NuclideMicroXS), intent(inout) :: micro_xs ! Cross section cache
 
-    integer :: i_temp    ! temperature index
-    real(8) :: inelastic ! S(a,b) inelastic cross section
-    real(8) :: elastic   ! S(a,b) elastic cross section
+    integer(C_INT) :: i_temp    ! temperature index
+    real(C_DOUBLE) :: inelastic ! S(a,b) inelastic cross section
+    real(C_DOUBLE) :: elastic   ! S(a,b) elastic cross section
 
     ! Set flag that S(a,b) treatment should be used for scattering
     micro_xs % index_sab = i_sab

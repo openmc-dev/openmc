@@ -7,10 +7,6 @@ set -ex
 # Upgrade pip before doing anything else
 pip install --upgrade pip
 
-# Running OpenMC's setup.py requires numpy/cython already
-pip install numpy
-pip install cython
-
 # pytest installed by default -- make sure we get latest
 pip install --upgrade pytest
 

@@ -1,4 +1,4 @@
-#include "state_point.h"
+#include "openmc/state_point.h"
 
 #include <algorithm>
 #include <vector>
@@ -6,9 +6,10 @@
 #ifdef OPENMC_MPI
 #include "mpi.h"
 #endif
-#include "error.h"
-#include "message_passing.h"
-#include "openmc.h"
+
+#include "openmc/capi.h"
+#include "openmc/error.h"
+#include "openmc/message_passing.h"
 
 namespace openmc {
 

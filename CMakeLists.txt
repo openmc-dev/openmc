@@ -422,7 +422,7 @@ add_library(libopenmc SHARED
   src/xsdata.cpp)
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc
-  PUBLIC_HEADER include/openmc.h
+  PUBLIC_HEADER include/openmc/capi.h
   LINKER_LANGUAGE Fortran)
 
 target_include_directories(libopenmc

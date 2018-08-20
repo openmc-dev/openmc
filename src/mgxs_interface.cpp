@@ -1,8 +1,9 @@
+#include "openmc/mgxs_interface.h"
+
 #include <string>
 
-#include "error.h"
-#include "math_functions.h"
-#include "mgxs_interface.h"
+#include "openmc/error.h"
+#include "openmc/math_functions.h"
 
 
 namespace openmc {

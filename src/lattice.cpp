@@ -1,15 +1,15 @@
-#include "lattice.h"
+#include "openmc/lattice.h"
 
 #include <cmath>
 #include <sstream>
 #include <vector>
 
-#include "cell.h"
-#include "error.h"
-#include "geometry_aux.h"
-#include "hdf5_interface.h"
-#include "string_utils.h"
-#include "xml_interface.h"
+#include "openmc/cell.h"
+#include "openmc/error.h"
+#include "openmc/geometry_aux.h"
+#include "openmc/hdf5_interface.h"
+#include "openmc/string_utils.h"
+#include "openmc/xml_interface.h"
 
 
 namespace openmc {

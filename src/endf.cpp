@@ -1,14 +1,15 @@
-#include "endf.h"
+#include "openmc/endf.h"
 
 #include <algorithm> // for copy
 #include <cmath>     // for log, exp
 #include <iterator>  // for back_inserter
 
-#include "constants.h"
-#include "hdf5_interface.h"
-#include "search.h"
 #include "xtensor/xarray.hpp"
 #include "xtensor/xview.hpp"
+
+#include "openmc/constants.h"
+#include "openmc/hdf5_interface.h"
+#include "openmc/search.h"
 
 namespace openmc {
 

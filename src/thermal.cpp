@@ -1,4 +1,4 @@
-#include "thermal.h"
+#include "openmc/thermal.h"
 
 #include <algorithm> // for sort, move, min, max, find
 #include <cmath>     // for round, sqrt, fabs
@@ -11,12 +11,12 @@
 #include "xtensor/xtensor.hpp"
 #include "xtensor/xview.hpp"
 
-#include "constants.h"
-#include "error.h"
-#include "random_lcg.h"
-#include "search.h"
-#include "secondary_correlated.h"
-#include "settings.h"
+#include "openmc/constants.h"
+#include "openmc/error.h"
+#include "openmc/random_lcg.h"
+#include "openmc/search.h"
+#include "openmc/secondary_correlated.h"
+#include "openmc/settings.h"
 
 namespace openmc {
 

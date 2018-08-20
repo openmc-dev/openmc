@@ -102,7 +102,6 @@ module openmc_api
   public :: openmc_tally_set_nuclides
   public :: openmc_tally_set_scores
   public :: openmc_tally_set_type
-  public :: openmc_tally_update_type
 
 contains
 

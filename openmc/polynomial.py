@@ -3,8 +3,8 @@ import openmc
 import openmc.capi as capi
 
 
-def legendre_from_expcoef(coef, domain= [-1,1]):
-    """Return a Legendre object.
+def legendre_from_expcoef(coef, domain= (-1,1)):
+    """Return a Legendre series object based on expansion coefficients.
 
     Given a list of coefficients from FET tally and a array of down, return
     the numpy Legendre object.
@@ -18,8 +18,8 @@ def legendre_from_expcoef(coef, domain= [-1,1]):
 
     Returns
     -------
-    Legendre class
-        A numpy Legendre series object
+    numpy.polynomial.Legendre
+        A numpy Legendre series class
 
     """
 
@@ -36,7 +36,7 @@ class Polynomial(object):
 
 
 class ZernikeRadial(Polynomial):
-    """Create radial only Zernike polynomials given coefficients and domian.
+    """Create radial only Zernike polynomials given coefficients and domain.
 
     The radial only Zernike polynomials are defined as in
     :class:`ZernikeRadialFilter`.

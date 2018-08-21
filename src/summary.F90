@@ -163,15 +163,21 @@ contains
 
     integer :: i, j, cell_fill
     integer, allocatable :: cell_materials(:)
-    integer, allocatable :: cell_ids(:)
     real(8), allocatable :: cell_temperatures(:)
     integer(HID_T) :: geom_group
     integer(HID_T) :: cells_group, cell_group
     integer(HID_T) :: surfaces_group
-    integer(HID_T) :: universes_group, univ_group
+    integer(HID_T) :: universes_group
     integer(HID_T) :: lattices_group
     type(Cell),     pointer :: c
     class(Lattice), pointer :: lat
+
+    interface
+      subroutine universes_to_hdf5(universes_group) bind(C)
+        import HID_T
+        integer(HID_T), intent(in), value :: universes_group
+      end subroutine universes_to_hdf5
+    end interface
 
     ! Use H5LT interface to write number of geometry objects
     geom_group = create_group(file_id, "geometry")
@@ -254,29 +260,8 @@ contains
     ! ==========================================================================
     ! WRITE INFORMATION ON UNIVERSES
 
-    ! Create universes group (nothing directly written here) then close
     universes_group = create_group(geom_group, "universes")
-
-    ! Write information on each universe
-    UNIVERSE_LOOP: do i = 1, n_universes
-      associate (u => universes(i))
-        univ_group = create_group(universes_group, "universe " // &
-             trim(to_str(u%id)))
-
-        ! Write list of cells in this universe
-        if (size(u % cells) > 0) then
-          allocate(cell_ids(size(u % cells)))
-          do j = 1, size(u % cells)
-            cell_ids(j) = cells(u % cells(j)) % id()
-          end do
-          call write_dataset(univ_group, "cells", cell_ids)
-          deallocate(cell_ids)
-        end if
-
-        call close_group(univ_group)
-      end associate
-    end do UNIVERSE_LOOP
-
+    call universes_to_hdf5(universes_group)
     call close_group(universes_group)
 
     ! ==========================================================================

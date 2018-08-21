@@ -9,7 +9,7 @@ module volume_calc
   use constants
   use error,        only: write_message
   use geometry,     only: find_cell
-  use geometry_header, only: universes, cells
+  use geometry_header, only: cells, universe_id
   use hdf5_interface, only: file_open, file_close, write_attribute, &
        create_group, close_group, write_dataset, HID_T
   use output,       only: header, time_stamp
@@ -216,7 +216,7 @@ contains
       elseif (this % domain_type == FILTER_UNIVERSE) then
         do level = 1, p % n_coord
           do i_domain = 1, size(this % domain_id)
-            if (universes(p % coord(level) % universe) % id == &
+            if (universe_id(p % coord(level) % universe - 1) == &
                  this % domain_id(i_domain)) then
               i_material = p % material
               call check_hit(i_domain, i_material, indices, hits, n_mat)

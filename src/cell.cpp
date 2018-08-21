@@ -183,6 +183,28 @@ generate_rpn(int32_t cell_id, std::vector<int32_t> infix)
 }
 
 //==============================================================================
+// Universe implementation
+//==============================================================================
+
+void
+Universe::to_hdf5(hid_t universes_group) const
+{
+  // Create a group for this universe.
+  std::stringstream group_name;
+  group_name << "universe " << id;
+  auto group = create_group(universes_group, group_name);
+
+  // Write the contained cells.
+  if (cells.size() > 0) {
+    std::vector<int32_t> cell_ids;
+    for (auto i_cell : cells) cell_ids.push_back(global_cells[i_cell]->id);
+    write_dataset(group, "cells", cell_ids);
+  }
+
+  close_group(group);
+}
+
+//==============================================================================
 // Cell implementation
 //==============================================================================
 
@@ -704,6 +726,11 @@ extern "C" {
     }
     n_cells = global_cells.size();
   }
+
+  int32_t universe_id(int i_univ) {return global_universes[i_univ]->id;}
+
+  void universes_to_hdf5(hid_t universes_group)
+  {for (Universe* u : global_universes) u->to_hdf5(universes_group);}
 }
 
 

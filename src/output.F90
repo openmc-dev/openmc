@@ -211,7 +211,6 @@ contains
 
     integer :: i ! index for coordinate levels
     type(Cell),       pointer :: c
-    type(Universe),   pointer :: u
     class(Lattice),   pointer :: l
 
     ! display type of particle
@@ -239,8 +238,8 @@ contains
 
       ! Print universe for this level
       if (p % coord(i) % universe /= NONE) then
-        u => universes(p % coord(i) % universe)
-        write(ou,*) '    Universe         = ' // trim(to_str(u % id))
+        write(ou,*) '    Universe         = ' &
+             // trim(to_str(universe_id(p % coord(i) % universe-1)))
       end if
 
       ! Print information on lattice

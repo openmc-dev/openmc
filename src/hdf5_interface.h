@@ -36,7 +36,13 @@ bool using_mpio_device(hid_t obj_id);
 //==============================================================================
 
 hid_t create_group(hid_t parent_id, const std::string& name);
+
+inline hid_t create_group(hid_t parent_id, const std::stringstream& name)
+{return create_group(parent_id, name.str());}
+
+
 hid_t file_open(const std::string& filename, char mode, bool parallel=false);
+
 void write_string(hid_t group_id, const char* name, const std::string& buffer,
                   bool indep);
 
@@ -311,6 +317,13 @@ template<typename T, std::size_t N> inline void
 write_dataset(hid_t obj_id, const char* name, const std::array<T, N>& buffer)
 {
   hsize_t dims[] {N};
+  write_dataset(obj_id, 1, dims, name, H5TypeMap<T>::type_id, buffer.data(), false);
+}
+
+template<typename T> inline void
+write_dataset(hid_t obj_id, const char* name, const std::vector<T>& buffer)
+{
+  hsize_t dims[] {buffer.size()};
   write_dataset(obj_id, 1, dims, name, H5TypeMap<T>::type_id, buffer.data(), false);
 }
 

@@ -6,7 +6,7 @@ import sys
 
 import numpy as np
 
-from openmc.clean_xml import clean_xml_indentation
+from openmc._xml import clean_indentation
 import openmc.checkvalue as cv
 from openmc import VolumeCalculation, Source, Mesh
 
@@ -994,7 +994,7 @@ class Settings(object):
         self._create_log_grid_bins_subelement(root_element)
 
         # Clean the indentation in the file to be user-readable
-        clean_xml_indentation(root_element)
+        clean_indentation(root_element)
 
         # Write the XML Tree to the settings.xml file
         tree = ET.ElementTree(root_element)

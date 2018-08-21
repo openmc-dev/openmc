@@ -15,16 +15,6 @@ module geometry
   implicit none
 
   interface
-    function cell_contains_c(cell_ptr, xyz, uvw, on_surface) &
-         bind(C, name="cell_contains") result(in_cell)
-      import C_PTR, C_DOUBLE, C_INT32_T, C_BOOL
-      type(C_PTR),        intent(in), value :: cell_ptr
-      real(C_DOUBLE),     intent(in)        :: xyz(3)
-      real(C_DOUBLE),     intent(in)        :: uvw(3)
-      integer(C_INT32_T), intent(in), value :: on_surface
-      logical(C_BOOL)                       :: in_cell
-    end function cell_contains_c
-
     function count_universe_instances(search_univ, target_univ_id) bind(C) &
          result(count)
       import C_INT32_T, C_INT
@@ -38,12 +28,11 @@ module geometry
       type(Particle), intent(in) :: p
     end subroutine check_cell_overlap
 
-    function find_cell_c(p, n_search_cells, search_cells) &
+    function find_cell_c(p, search_surf) &
          bind(C, name="find_cell") result(found)
       import Particle, C_INT, C_BOOL
       type(Particle),  intent(inout)        :: p
-      integer(C_INT),  intent(in), value    :: n_search_cells
-      integer(C_INT),  intent(in), optional :: search_cells(n_search_cells)
+      integer(C_INT),  intent(in), value    :: search_surf
       logical(C_BOOL)                       :: found
     end function find_cell_c
 
@@ -53,17 +42,12 @@ module geometry
       type(Particle), intent(inout) :: p
       integer(C_INT), intent(in)    :: lattice_translation(3)
     end subroutine cross_lattice
+
+    subroutine neighbor_lists() bind(C)
+    end subroutine neighbor_lists
   end interface
 
 contains
-
-  function cell_contains(c, p) result(in_cell)
-    type(Cell), intent(in) :: c
-    type(Particle), intent(in) :: p
-    logical :: in_cell
-    in_cell = cell_contains_c(c%ptr, p%coord(p%n_coord)%xyz, &
-                              p%coord(p%n_coord)%uvw, p%surface)
-  end function cell_contains
 
 !===============================================================================
 ! FIND_CELL determines what cell a source particle is in within a particular
@@ -71,13 +55,13 @@ contains
 ! as it's within the geometry
 !===============================================================================
 
-  recursive subroutine find_cell(p, found, search_cells)
-    type(Particle), intent(inout) :: p
-    logical,        intent(inout) :: found
-    integer,        optional      :: search_cells(:)
+  subroutine find_cell(p, found, search_surf)
+    type(Particle),    intent(inout) :: p
+    logical,           intent(inout) :: found
+    integer, optional, intent(in)    :: search_surf
 
-    if (present(search_cells)) then
-      found = find_cell_c(p, size(search_cells), search_cells-1)
+    if (present(search_surf)) then
+      found = find_cell_c(p, search_surf)
     else
       found = find_cell_c(p, 0)
     end if
@@ -200,59 +184,5 @@ contains
     end do LEVEL_LOOP
 
   end subroutine distance_to_boundary
-
-!===============================================================================
-! NEIGHBOR_LISTS builds a list of neighboring cells to each surface to speed up
-! searches when a cell boundary is crossed.
-!===============================================================================
-
-  subroutine neighbor_lists()
-
-    integer :: i  ! index in cells/surfaces array
-    integer :: j  ! index in region specification
-    integer :: k  ! surface half-space spec
-    integer :: n  ! size of vector
-    type(VectorInt), allocatable :: neighbor_pos(:)
-    type(VectorInt), allocatable :: neighbor_neg(:)
-
-    call write_message("Building neighboring cells lists for each surface...", &
-         6)
-
-    allocate(neighbor_pos(n_surfaces))
-    allocate(neighbor_neg(n_surfaces))
-
-    do i = 1, n_cells
-      do j = 1, size(cells(i)%region)
-        ! Get token from region specification and skip any tokens that
-        ! correspond to operators rather than regions
-        k = cells(i)%region(j)
-        if (abs(k) >= OP_UNION) cycle
-
-        ! Add this cell ID to neighbor list for k-th surface
-        if (k > 0) then
-          call neighbor_pos(abs(k))%push_back(i)
-        else
-          call neighbor_neg(abs(k))%push_back(i)
-        end if
-      end do
-    end do
-
-    do i = 1, n_surfaces
-      ! Copy positive neighbors to Surface instance
-      n = neighbor_pos(i)%size()
-      if (n > 0) then
-        allocate(surfaces(i)%neighbor_pos(n))
-        surfaces(i)%neighbor_pos(:) = neighbor_pos(i)%data(1:n)
-      end if
-
-      ! Copy negative neighbors to Surface instance
-      n = neighbor_neg(i)%size()
-      if (n > 0) then
-        allocate(surfaces(i)%neighbor_neg(n))
-        surfaces(i)%neighbor_neg(:) = neighbor_neg(i)%data(1:n)
-      end if
-    end do
-
-  end subroutine neighbor_lists
 
 end module geometry

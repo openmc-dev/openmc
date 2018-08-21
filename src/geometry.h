@@ -24,7 +24,7 @@ check_cell_overlap(Particle* p);
 //==============================================================================
 
 extern "C" bool
-find_cell(Particle* p, int n_search_cells, int* search_cells);
+find_cell(Particle* p, int search_surf);
 
 //==============================================================================
 //! Move a particle into a new lattice tile.

@@ -8,6 +8,7 @@
 #include "error.h"
 #include "lattice.h"
 #include "settings.h"
+#include "surface.h"
 
 
 namespace openmc {
@@ -50,7 +51,7 @@ check_cell_overlap(Particle* p) {
 //==============================================================================
 
 extern "C" bool
-find_cell(Particle* p, int n_search_cells, int* search_cells) {
+find_cell(Particle* p, int search_surf) {
   for (int i = p->n_coord; i < MAX_COORD; i++) {
     p->coord[i].reset();
   }
@@ -64,8 +65,18 @@ find_cell(Particle* p, int n_search_cells, int* search_cells) {
   //TODO: off-by-one indexing
   --i_universe;
 
-  // If not given a set of search cells, search all cells in the uninverse.
-  if (n_search_cells == 0) {
+  // If a surface was indicated, only search cells from the neighbor list of
+  // that surface.
+  int* search_cells;
+  int n_search_cells;
+  if (search_surf > 0) {
+    search_cells = global_surfaces[search_surf-1]->neighbor_pos.data();
+    n_search_cells = global_surfaces[search_surf-1]->neighbor_pos.size();
+  } else if (search_surf < 0) {
+    search_cells = global_surfaces[-search_surf-1]->neighbor_neg.data();
+    n_search_cells = global_surfaces[-search_surf-1]->neighbor_neg.size();
+  } else {
+    // No surface was indicated, search all cells in the universe.
     search_cells = global_universes[i_universe]->cells.data();
     n_search_cells = global_universes[i_universe]->cells.size();
   }
@@ -190,7 +201,7 @@ find_cell(Particle* p, int n_search_cells, int* search_cells) {
 
       // Update the coordinate level and recurse.
       ++p->n_coord;
-      find_cell(p, 0, nullptr);
+      find_cell(p, 0);
 
     } else if (c.type == FILL_LATTICE) {
       //========================================================================
@@ -237,7 +248,7 @@ find_cell(Particle* p, int n_search_cells, int* search_cells) {
 
       // Update the coordinate level and recurse.
       ++p->n_coord;
-      find_cell(p, 0, nullptr);
+      find_cell(p, 0);
     }
   }
 
@@ -277,7 +288,7 @@ cross_lattice(Particle* p, int lattice_translation[3])
   if (!lat.are_valid_indices(i_xyz)) {
     // The particle is outside the lattice.  Search for it from the base coords.
     p->n_coord = 1;
-    bool found = find_cell(p, 0, nullptr);
+    bool found = find_cell(p, 0);
     if (!found && p->alive) {
       std::stringstream err_msg;
       err_msg << "Could not locate particle " << p->id
@@ -288,13 +299,13 @@ cross_lattice(Particle* p, int lattice_translation[3])
   } else {
     // Find cell in next lattice element.
     p->coord[p->n_coord-1].universe = lat[i_xyz] + 1;
-    bool found = find_cell(p, 0, nullptr);
+    bool found = find_cell(p, 0);
 
     if (!found) {
       // A particle crossing the corner of a lattice tile may not be found.  In
       // this case, search for it from the base coords.
       p->n_coord = 1;
-      bool found = find_cell(p, 0, nullptr);
+      bool found = find_cell(p, 0);
       if (!found && p->alive) {
         std::stringstream err_msg;
         err_msg << "Could not locate particle " << p->id

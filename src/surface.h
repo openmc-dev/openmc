@@ -58,10 +58,11 @@ class Surface
 {
 public:
   int id;                    //!< Unique ID
-  //int neighbor_pos[],        //!< List of cells on positive side
-  //    neighbor_neg[];        //!< List of cells on negative side
   int bc;                    //!< Boundary condition
   std::string name;          //!< User-defined name
+
+  std::vector<int> neighbor_pos; //!< List of cells on positive side
+  std::vector<int> neighbor_neg; //!< List of cells on negative side
 
   explicit Surface(pugi::xml_node surf_node);
 

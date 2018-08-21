@@ -84,9 +84,6 @@ module surface_header
 !===============================================================================
 
   type :: Surface
-    integer, allocatable :: &
-         neighbor_pos(:), &           ! List of cells on positive side
-         neighbor_neg(:)              ! List of cells on negative side
     type(C_PTR) :: ptr
 
   contains

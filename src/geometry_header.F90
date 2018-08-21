@@ -16,6 +16,12 @@ module geometry_header
   implicit none
 
   interface
+    function universe_id(universe_ind) bind(C) result(id)
+      import C_INT, C_INT32_T
+      integer(C_INT), intent(in), value :: universe_ind
+      integer(C_INT32_T)                :: id
+    end function universe_id
+
     function cell_pointer(cell_ind) bind(C) result(ptr)
       import C_PTR, C_INT32_T
       integer(C_INT32_T), intent(in), value :: cell_ind
@@ -178,15 +184,6 @@ module geometry_header
   end interface
 
 !===============================================================================
-! UNIVERSE defines a geometry that fills all phase space
-!===============================================================================
-
-  type Universe
-    integer :: id                     ! Unique ID
-    integer, allocatable :: cells(:)  ! List of cells within
-  end type Universe
-
-!===============================================================================
 ! LATTICE abstract type for ordered array of universes.
 !===============================================================================
 
@@ -260,7 +257,6 @@ module geometry_header
   integer(C_INT32_T), bind(C) :: n_universes ! # of universes
 
   type(Cell),             allocatable, target :: cells(:)
-  type(Universe),         allocatable, target :: universes(:)
   type(LatticeContainer), allocatable, target :: lattices(:)
 
   ! Dictionaries which map user IDs to indices in the global arrays
@@ -483,7 +479,6 @@ contains
     n_universes = 0
 
     if (allocated(cells)) deallocate(cells)
-    if (allocated(universes)) deallocate(universes)
     if (allocated(lattices)) deallocate(lattices)
 
     call cell_dict % clear()

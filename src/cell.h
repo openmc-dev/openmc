@@ -55,7 +55,10 @@ class Universe
 public:
   int32_t id;                  //!< Unique ID
   std::vector<int32_t> cells;  //!< Cells within this universe
-  //double x0, y0, z0;           //!< Translation coordinates.
+
+  //! \brief Write universe information to an HDF5 group.
+  //! \param group_id An HDF5 group id.
+  void to_hdf5(hid_t group_id) const;
 };
 
 //==============================================================================

@@ -65,77 +65,14 @@ contains
 !===============================================================================
 
   recursive subroutine find_cell(p, found, search_cells)
-
     type(Particle), intent(inout) :: p
     logical,        intent(inout) :: found
     integer,        optional      :: search_cells(:)
-    integer :: j                    ! coordinate level index
-    integer :: i_xyz(3)             ! indices in lattice
-    integer :: i_cell               ! index in cells array
 
     if (present(search_cells)) then
       found = find_cell_c(p, size(search_cells), search_cells-1)
     else
       found = find_cell_c(p, 0)
-    end if
-    j = p % n_coord
-    i_cell = p % coord(j) % cell
-
-    if (found) then
-      associate(c => cells(i_cell))
-        CELL_TYPE: if (c % type() == FILL_UNIVERSE) then
-          j = j + 1
-          p % n_coord = j
-          call find_cell(p, found)
-          j = p % n_coord
-
-        elseif (c % type() == FILL_LATTICE) then CELL_TYPE
-          ! ======================================================================
-          ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
-
-          associate (lat => lattices(c % fill() + 1) % obj)
-            ! Determine lattice indices
-            i_xyz = lat % get_indices(p % coord(j) % xyz + TINY_BIT * p % coord(j) % uvw)
-
-            ! Store lower level coordinates
-            p % coord(j + 1) % xyz = lat % get_local_xyz(p % coord(j) % xyz, i_xyz)
-            p % coord(j + 1) % uvw = p % coord(j) % uvw
-
-            ! set particle lattice indices
-            p % coord(j + 1) % lattice   = c % fill() + 1
-            p % coord(j + 1) % lattice_x = i_xyz(1)
-            p % coord(j + 1) % lattice_y = i_xyz(2)
-            p % coord(j + 1) % lattice_z = i_xyz(3)
-
-            ! Set the next lowest coordinate level.
-            if (lat % are_valid_indices(i_xyz)) then
-              ! Particle is inside the lattice.
-              p % coord(j + 1) % universe = &
-                   lat % get([i_xyz(1), i_xyz(2), i_xyz(3)]) + 1
-
-            else
-              ! Particle is outside the lattice.
-              if (lat % outer() == NO_OUTER_UNIVERSE) then
-                call warning("Particle " // trim(to_str(p %id)) &
-                     // " is outside lattice " // trim(to_str(lat % id())) &
-                     // " but the lattice has no defined outer universe.")
-                found = .false.
-                return
-              else
-                p % coord(j + 1) % universe = lat % outer() + 1
-              end if
-            end if
-          end associate
-
-          ! Move particle to next level and search for the lower cells.
-          j = j + 1
-          p % n_coord = j
-
-          call find_cell(p, found)
-          j = p % n_coord
-
-        end if CELL_TYPE
-      end associate
     end if
 
   end subroutine find_cell

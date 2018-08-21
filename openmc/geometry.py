@@ -1,6 +1,7 @@
 from collections import OrderedDict, defaultdict
 from collections.abc import Iterable
 from copy import deepcopy
+from pathlib import Path
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -237,7 +238,8 @@ class Geometry(object):
 
         # Create dictionary to easily look up materials
         if materials is None:
-            materials = openmc.Materials.from_xml()
+            filename = Path(path).parent / 'materials.xml'
+            materials = openmc.Materials.from_xml(str(filename))
         mats = {str(m.id): m for m in materials}
         mats['void'] = None
 

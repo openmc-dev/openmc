@@ -15,6 +15,8 @@ namespace openmc {
 
 std::vector<int64_t> overlap_check_count;
 
+constexpr int F90_NONE {0}; //TODO: replace usage of this with C_NONE
+
 //==============================================================================
 
 extern "C" bool
@@ -311,6 +313,103 @@ cross_lattice(Particle* p, int lattice_translation[3])
         err_msg << "Could not locate particle " << p->id
                 << " after crossing a lattice boundary";
         p->mark_as_lost(err_msg);
+      }
+    }
+  }
+}
+
+//==============================================================================
+
+extern "C" void
+distance_to_boundary(Particle* p, double* dist, int* surface_crossed,
+                     int lattice_translation[3], int* next_level)
+{
+  *dist = INFINITY;
+  double d_lat = INFINITY;
+  double d_surf = INFINITY;
+  lattice_translation[0] = 0;
+  lattice_translation[1] = 0;
+  lattice_translation[2] = 0;
+  int32_t level_surf_cross;
+  std::array<int, 3> level_lat_trans;
+
+  // Loop over each coordinate level.
+  for (int i = 0; i < p->n_coord; i++) {
+    Position r {p->coord[i].xyz};
+    Direction u {p->coord[i].uvw};
+    Cell& c {*global_cells[p->coord[i].cell-1]};
+
+    // Find the oncoming surface in this cell and the distance to it.
+    auto surface_distance = c.distance(r, u, p->surface);
+    d_surf = surface_distance.first;
+    level_surf_cross = surface_distance.second;
+
+    // Find the distance to the next lattice tile crossing.
+    if (p->coord[i].lattice != F90_NONE) {
+      Lattice& lat {*lattices_c[p->coord[i].lattice-1]};
+      std::array<int, 3> i_xyz {p->coord[i].lattice_x, p->coord[i].lattice_y,
+                                p->coord[i].lattice_z};
+      //TODO: refactor so both lattice use the same position argument (which
+      //also means the lat.type attribute can be removed)
+      std::pair<double, std::array<int, 3>> lattice_distance;
+      switch (lat.type) {
+        case LatticeType::rect:
+          lattice_distance = lat.distance(r, u, i_xyz);
+          break;
+        case LatticeType::hex:
+          Position r_hex {p->coord[i-1].xyz[0], p->coord[i-1].xyz[1],
+                          p->coord[i].xyz[2]};
+          lattice_distance = lat.distance(r_hex, u, i_xyz);
+          break;
+      }
+      d_lat = lattice_distance.first;
+      level_lat_trans = lattice_distance.second;
+
+      if (d_lat < 0) {
+        std::stringstream err_msg;
+        err_msg << "Particle " << p->id
+                << " had a negative distance to a lattice boundary";
+        p->mark_as_lost(err_msg);
+      }
+    }
+
+    // If the boundary on this coordinate level is coincident with a boundary on
+    // a higher level then we need to make sure that the higher level boundary
+    // is selected.  This logic must consider floating point precision.
+    if (d_surf < d_lat) {
+      if (*dist == INFINITY || ((*dist) - d_surf)/(*dist) >= FP_REL_PRECISION) {
+        *dist = d_surf;
+
+        // If the cell is not simple, it is possible that both the negative and
+        // positive half-space were given in the region specification. Thus, we
+        // have to explicitly check which half-space the particle would be
+        // traveling into if the surface is crossed
+        if (c.simple) {
+          *surface_crossed = level_surf_cross;
+        } else {
+          Position r_hit = r + d_surf * u;
+          Surface& surf {*global_surfaces[std::abs(level_surf_cross)-1]};
+          Direction norm = surf.normal(r_hit);
+          if (u.dot(norm) > 0) {
+            *surface_crossed = std::abs(level_surf_cross);
+          } else {
+            *surface_crossed = -std::abs(level_surf_cross);
+          }
+        }
+
+        lattice_translation[0] = 0;
+        lattice_translation[1] = 0;
+        lattice_translation[2] = 0;
+        *next_level = i + 1;
+      }
+    } else {
+      if (*dist == INFINITY || ((*dist) - d_lat)/(*dist) >= FP_REL_PRECISION) {
+        *dist = d_lat;
+        *surface_crossed = F90_NONE;
+        lattice_translation[0] = level_lat_trans[0];
+        lattice_translation[1] = level_lat_trans[1];
+        lattice_translation[2] = level_lat_trans[2];
+        *next_level = i + 1;
       }
     }
   }

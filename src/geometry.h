@@ -33,6 +33,14 @@ find_cell(Particle* p, int search_surf);
 extern "C" void
 cross_lattice(Particle* p, int lattice_translation[3]);
 
+//==============================================================================
+//! Find the next boundary a particle will intersect.
+//==============================================================================
+
+extern "C" void
+distance_to_boundary(Particle* p, double* dist, int* surface_crossed,
+                     int lattice_translation[3], int* next_level);
+
 } // namespace openmc
 
 #endif // OPENMC_GEOMETRY_H

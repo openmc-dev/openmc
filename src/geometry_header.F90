@@ -97,23 +97,6 @@ module geometry_header
       real(C_DOUBLE)                    :: sqrtkT
     end function cell_sqrtkT_c
 
-    function cell_simple_c(cell_ptr) bind(C, name='cell_simple') result(simple)
-      import C_PTR, C_BOOL
-      type(C_PTR), intent(in), value :: cell_ptr
-      logical(C_BOOL)                :: simple
-    end function cell_simple_c
-
-    subroutine cell_distance_c(cell_ptr, xyz, uvw, on_surface, min_dist, &
-                               i_surf) bind(C, name="cell_distance")
-      import C_PTR, C_INT32_T, C_DOUBLE
-      type(C_PTR),        intent(in), value :: cell_ptr
-      real(C_DOUBLE),     intent(in)        :: xyz(3)
-      real(C_DOUBLE),     intent(in)        :: uvw(3)
-      integer(C_INT32_T), intent(in), value :: on_surface
-      real(C_DOUBLE),     intent(out)       :: min_dist
-      integer(C_INT32_T), intent(out)       :: i_surf
-    end subroutine cell_distance_c
-
     function cell_offset_c(cell_ptr, map) bind(C, name="cell_offset") &
          result(offset)
       import C_PTR, C_INT, C_INT32_T
@@ -147,17 +130,6 @@ module geometry_header
       integer(C_INT), intent(in)        :: i_xyz(3)
       logical(C_BOOL)                   :: is_valid
     end function lattice_are_valid_indices_c
-
-    subroutine lattice_distance_c(lat_ptr, xyz, uvw, i_xyz, d, lattice_trans) &
-         bind(C, name='lattice_distance')
-      import C_PTR, C_INT, C_DOUBLE
-      type(C_PTR),    intent(in), value :: lat_ptr
-      real(C_DOUBLE), intent(in)        :: xyz(3)
-      real(C_DOUBLE), intent(in)        :: uvw(3)
-      integer(C_INT), intent(in)        :: i_xyz(3)
-      real(C_DOUBLE), intent(out)       :: d
-      integer(C_INT), intent(out)       :: lattice_trans(3)
-    end subroutine lattice_distance_c
 
     subroutine lattice_get_indices_c(lat_ptr, xyz, i_xyz) &
          bind(C, name='lattice_get_indices')
@@ -223,7 +195,6 @@ module geometry_header
   contains
     procedure :: id => lattice_id
     procedure :: are_valid_indices => lattice_are_valid_indices
-    procedure :: distance => lattice_distance
     procedure :: get => lattice_get
     procedure :: get_indices => lattice_get_indices
     procedure :: get_local_xyz => lattice_get_local_xyz
@@ -277,8 +248,6 @@ module geometry_header
     procedure :: material => cell_material
     procedure :: sqrtkT_size => cell_sqrtkT_size
     procedure :: sqrtkT => cell_sqrtkT
-    procedure :: simple => cell_simple
-    procedure :: distance => cell_distance
     procedure :: offset => cell_offset
     procedure :: to_hdf5 => cell_to_hdf5
 
@@ -313,16 +282,6 @@ contains
     logical(C_BOOL)            :: is_valid
     is_valid = lattice_are_valid_indices_c(this % ptr, i_xyz)
   end function lattice_are_valid_indices
-
-  subroutine lattice_distance(this, xyz, uvw, i_xyz, d, lattice_trans)
-    class(Lattice), intent(in)  :: this
-    real(C_DOUBLE), intent(in)  :: xyz(3)
-    real(C_DOUBLE), intent(in)  :: uvw(3)
-    integer(C_INT), intent(in)  :: i_xyz(3)
-    real(C_DOUBLE), intent(out) :: d
-    integer(C_INT), intent(out) :: lattice_trans(3)
-    call lattice_distance_c(this % ptr, xyz, uvw, i_xyz, d, lattice_trans)
-  end subroutine lattice_distance
 
   function lattice_get(this, i_xyz) result(univ)
     class(Lattice), intent(in)  :: this
@@ -430,22 +389,6 @@ contains
     real(C_DOUBLE)          :: sqrtkT
     sqrtkT = cell_sqrtkT_c(this % ptr, i)
   end function cell_sqrtkT
-
-  function cell_simple(this) result(simple)
-    class(Cell), intent(in) :: this
-    logical(C_BOOL)         :: simple
-    simple = cell_simple_c(this % ptr)
-  end function cell_simple
-
-  subroutine cell_distance(this, xyz, uvw, on_surface, min_dist, i_surf)
-    class(Cell),        intent(in)  :: this
-    real(C_DOUBLE),     intent(in)  :: xyz(3)
-    real(C_DOUBLE),     intent(in)  :: uvw(3)
-    integer(C_INT32_T), intent(in)  :: on_surface
-    real(C_DOUBLE),     intent(out) :: min_dist
-    integer(C_INT32_T), intent(out) :: i_surf
-    call cell_distance_c(this % ptr, xyz, uvw, on_surface, min_dist, i_surf)
-  end subroutine cell_distance
 
   function cell_offset(this, map) result(offset)
     class(Cell), intent(in)    :: this

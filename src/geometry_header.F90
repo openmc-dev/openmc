@@ -212,9 +212,6 @@ module geometry_header
   type Universe
     integer :: id                     ! Unique ID
     integer, allocatable :: cells(:)  ! List of cells within
-    real(8) :: x0                     ! Translation in x-coordinate
-    real(8) :: y0                     ! Translation in y-coordinate
-    real(8) :: z0                     ! Translation in z-coordinate
   end type Universe
 
 !===============================================================================
@@ -262,9 +259,6 @@ module geometry_header
 
   type Cell
     type(C_PTR) :: ptr
-
-    integer, allocatable :: region(:)      ! Definition of spatial region as
-                                           !  Boolean expression of half-spaces
 
     ! Rotation matrix and translation vector
     real(8), allocatable :: rotation(:)

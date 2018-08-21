@@ -31,7 +31,7 @@ module input_xml
   use source_header
   use stl_vector,       only: VectorInt, VectorReal, VectorChar
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
-                              starts_with, ends_with, tokenize, split_string, &
+                              starts_with, ends_with, split_string, &
                               zero_padded, to_c_string
   use summary,          only: write_summary
   use tally
@@ -1002,16 +1002,14 @@ contains
 
   subroutine read_geometry_xml()
 
-    integer :: i, j, k
+    integer :: i, j
     integer :: n, n_rlats, n_hlats
-    integer :: id
     integer :: univ_id
     integer :: n_cells_in_univ
     real(8) :: phi, theta, psi
     logical :: file_exists
     logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
-    character(:), allocatable :: region_spec
     type(Cell),     pointer :: c
     class(Lattice), pointer :: lat
     type(XMLDocument) :: doc
@@ -1021,7 +1019,6 @@ contains
     type(XMLNode), allocatable :: node_cell_list(:)
     type(XMLNode), allocatable :: node_rlat_list(:)
     type(XMLNode), allocatable :: node_hlat_list(:)
-    type(VectorInt) :: tokens
     type(VectorInt) :: univ_ids      ! List of all universe IDs
     type(DictIntInt) :: cells_in_univ_dict ! Used to count how many cells each
                                            ! universe contains
@@ -1103,43 +1100,6 @@ contains
         call fatal_error("Two or more cells use the same unique ID: " &
              // to_str(c % id()))
       end if
-
-      ! Check for region specification (also under deprecated name surfaces)
-      if (check_for_node(node_cell, "surfaces")) then
-        call warning("The use of 'surfaces' is deprecated and will be &
-             &disallowed in a future release.  Use 'region' instead. The &
-             &openmc-update-inputs utility can be used to automatically &
-             &update geometry.xml files.")
-        region_spec = node_value_string(node_cell, "surfaces")
-        call get_node_value(node_cell, "surfaces", region_spec)
-      elseif (check_for_node(node_cell, "region")) then
-        region_spec = node_value_string(node_cell, "region")
-      else
-        region_spec = ''
-      end if
-
-      if (len_trim(region_spec) > 0) then
-        ! Create surfaces array from string
-        call tokenize(region_spec, tokens)
-
-        ! Convert user IDs to surface indices
-        do j = 1, tokens % size()
-          id = tokens % data(j)
-          if (id < OP_UNION) then
-            if (surface_dict % has(abs(id))) then
-              k = surface_dict % get(abs(id))
-              tokens % data(j) = sign(k, id)
-            end if
-          end if
-        end do
-
-        ! Copy region spec and RPN form to cell arrays
-        allocate(c % region(tokens%size()))
-        c % region(:) = tokens%data(1:tokens%size())
-
-        call tokens%clear()
-      end if
-      if (.not. allocated(c%region)) allocate(c%region(0))
 
       ! Rotation matrix
       if (check_for_node(node_cell, "rotation")) then

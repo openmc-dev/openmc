@@ -18,17 +18,6 @@
 namespace openmc {
 
 //==============================================================================
-// Constants
-//==============================================================================
-
-// TODO: Convert to enum
-constexpr int32_t OP_LEFT_PAREN   {std::numeric_limits<int32_t>::max()};
-constexpr int32_t OP_RIGHT_PAREN  {std::numeric_limits<int32_t>::max() - 1};
-constexpr int32_t OP_COMPLEMENT   {std::numeric_limits<int32_t>::max() - 2};
-constexpr int32_t OP_INTERSECTION {std::numeric_limits<int32_t>::max() - 3};
-constexpr int32_t OP_UNION        {std::numeric_limits<int32_t>::max() - 4};
-
-//==============================================================================
 // Global variables
 //==============================================================================
 
@@ -704,13 +693,6 @@ extern "C" {
   double cell_sqrtkT(Cell* c, int i) {return c->sqrtkT[i];}
 
   bool cell_simple(Cell* c) {return c->simple;}
-
-  bool cell_contains(Cell* c, double xyz[3], double uvw[3], int32_t on_surface)
-  {
-    Position r {xyz};
-    Direction u {uvw};
-    return c->contains(r, u, on_surface);
-  }
 
   void cell_distance(Cell* c, double xyz[3], double uvw[3], int32_t on_surface,
                      double* min_dist, int32_t* i_surf)

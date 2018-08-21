@@ -11,6 +11,7 @@
 #include "lattice.h"
 #include "material.h"
 #include "settings.h"
+#include "surface.h"
 
 
 namespace openmc {
@@ -148,6 +149,33 @@ find_root_universe()
        "there are no circular dependencies in the geometry.");
 
   return root_univ;
+}
+
+//==============================================================================
+
+void
+neighbor_lists()
+{
+  write_message("Building neighboring cells lists for each surface...", 6);
+
+  for (int i = 0; i < global_cells.size(); i++) {
+    for (auto token : global_cells[i]->region) {
+      // Skip operator tokens.
+      if (std::abs(token) >= OP_UNION) continue;
+
+      // This token is a surface index.  Add the cell to the surface's list.
+      if (token > 0) {
+        global_surfaces[std::abs(token)-1]->neighbor_pos.push_back(i);
+      } else {
+        global_surfaces[std::abs(token)-1]->neighbor_neg.push_back(i);
+      }
+    }
+  }
+
+  for (Surface* surf : global_surfaces) {
+    surf->neighbor_pos.shrink_to_fit();
+    surf->neighbor_neg.shrink_to_fit();
+  }
 }
 
 //==============================================================================

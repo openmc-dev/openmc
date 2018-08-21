@@ -467,21 +467,8 @@ contains
     ! ==========================================================================
     ! SEARCH NEIGHBOR LISTS FOR NEXT CELL
 
-    if (p % surface > 0 .and. allocated(surf%neighbor_pos)) then
-      ! If coming from negative side of surface, search all the neighboring
-      ! cells on the positive side
-
-      call find_cell(p, found, surf%neighbor_pos)
-      if (found) return
-
-    elseif (p % surface < 0  .and. allocated(surf%neighbor_neg)) then
-      ! If coming from positive side of surface, search all the neighboring
-      ! cells on the negative side
-
-      call find_cell(p, found, surf%neighbor_neg)
-      if (found) return
-
-    end if
+    call find_cell(p, found, p % surface)
+    if (found) return
 
     ! ==========================================================================
     ! COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS

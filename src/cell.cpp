@@ -692,18 +692,6 @@ extern "C" {
 
   double cell_sqrtkT(Cell* c, int i) {return c->sqrtkT[i];}
 
-  bool cell_simple(Cell* c) {return c->simple;}
-
-  void cell_distance(Cell* c, double xyz[3], double uvw[3], int32_t on_surface,
-                     double* min_dist, int32_t* i_surf)
-  {
-    Position r {xyz};
-    Direction u {uvw};
-    std::pair<double, int32_t> out = c->distance(r, u, on_surface);
-    *min_dist = out.first;
-    *i_surf = out.second;
-  }
-
   int32_t cell_offset(Cell* c, int map) {return c->offset[map];}
 
   void cell_to_hdf5(Cell* c, hid_t group) {c->to_hdf5(group);}

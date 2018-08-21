@@ -137,6 +137,8 @@ Lattice::to_hdf5(hid_t lattices_group) const
 RectLattice::RectLattice(pugi::xml_node lat_node)
   : Lattice {lat_node}
 {
+  type = LatticeType::rect;
+
   // Read the number of lattice cells in each dimension.
   std::string dimension_str {get_node_value(lat_node, "dimension")};
   std::vector<std::string> dimension_words {split(dimension_str)};
@@ -399,6 +401,8 @@ RectLattice::to_hdf5_inner(hid_t lat_group) const
 HexLattice::HexLattice(pugi::xml_node lat_node)
   : Lattice {lat_node}
 {
+  type = LatticeType::hex;
+
   // Read the number of lattice cells in each dimension.
   n_rings = std::stoi(get_node_value(lat_node, "n_rings"));
   if (check_for_node(lat_node, "n_axial")) {
@@ -888,18 +892,6 @@ extern "C" {
 
   bool lattice_are_valid_indices(Lattice *lat, const int i_xyz[3])
   {return lat->are_valid_indices(i_xyz);}
-
-  void lattice_distance(Lattice *lat, const double xyz[3], const double uvw[3],
-                        const int i_xyz[3], double *d, int lattice_trans[3])
-  {
-    Position r {xyz};
-    Direction u {uvw};
-    std::pair<double, std::array<int, 3>> ld {lat->distance(r, u, i_xyz)};
-    *d = ld.first;
-    lattice_trans[0] = ld.second[0];
-    lattice_trans[1] = ld.second[1];
-    lattice_trans[2] = ld.second[2];
-  }
 
   void lattice_get_indices(Lattice *lat, const double xyz[3], int i_xyz[3])
   {

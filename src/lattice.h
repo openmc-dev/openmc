@@ -22,6 +22,10 @@ namespace openmc {
 
 constexpr int32_t NO_OUTER_UNIVERSE{-1};
 
+enum class LatticeType {
+  rect, hex
+};
+
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -44,6 +48,7 @@ class Lattice
 public:
   int32_t id;                         //!< Universe ID number
   std::string name;                   //!< User-defined name
+  LatticeType type;
   std::vector<int32_t> universes;     //!< Universes filling each lattice tile
   int32_t outer {NO_OUTER_UNIVERSE};  //!< Universe tiled outside the lattice
   std::vector<int32_t> offsets;       //!< Distribcell offset table
@@ -99,6 +104,13 @@ public:
   virtual std::pair<double, std::array<int, 3>>
   distance(Position r, Direction u, const int i_xyz[3]) const
   = 0;
+
+  std::pair<double, std::array<int, 3>>
+  distance(Position r, Direction u, std::array<int, 3> i_xyz) const
+  {
+    int i_xyz_[3] {i_xyz[0], i_xyz[1], i_xyz[2]};
+    return distance(r, u, i_xyz_);
+  }
 
   //! \brief Find the lattice tile indices for a given point.
   //! \param r A 3D Cartesian coordinate.

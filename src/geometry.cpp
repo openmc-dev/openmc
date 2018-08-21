@@ -1,5 +1,6 @@
 #include "geometry.h"
 
+#include <array>
 #include <sstream>
 
 #include "cell.h"
@@ -230,7 +231,7 @@ find_cell(Particle* p, int n_search_cells, int* search_cells) {
                   << lat.id << " but the lattice has no defined outer "
                   "universe.";
           warning(err_msg);
-          found = false;
+          return false;
         }
       }
 
@@ -241,6 +242,67 @@ find_cell(Particle* p, int n_search_cells, int* search_cells) {
   }
 
   return found;
+}
+
+//==============================================================================
+
+extern "C" void
+cross_lattice(Particle* p, int lattice_translation[3])
+{
+  Lattice& lat {*lattices_c[p->coord[p->n_coord-1].lattice-1]};
+
+  if (openmc_verbosity >= 10 || openmc_trace) {
+    std::stringstream msg;
+    msg << "    Crossing lattice " << lat.id << ". Current position ("
+         << p->coord[p->n_coord-1].lattice_x << ","
+         << p->coord[p->n_coord-1].lattice_y << ","
+         << p->coord[p->n_coord-1].lattice_z << ")";
+    write_message(msg, 1);
+  }
+
+  // Set the lattice indices.
+  p->coord[p->n_coord-1].lattice_x += lattice_translation[0];
+  p->coord[p->n_coord-1].lattice_y += lattice_translation[1];
+  p->coord[p->n_coord-1].lattice_z += lattice_translation[2];
+  std::array<int, 3> i_xyz {p->coord[p->n_coord-1].lattice_x,
+                            p->coord[p->n_coord-1].lattice_y,
+                            p->coord[p->n_coord-1].lattice_z};
+
+  // Set the new coordinate position.
+  auto r = lat.get_local_position(p->coord[p->n_coord-2].xyz, i_xyz);
+  p->coord[p->n_coord-1].xyz[0] = r.x;
+  p->coord[p->n_coord-1].xyz[1] = r.y;
+  p->coord[p->n_coord-1].xyz[2] = r.z;
+
+  if (!lat.are_valid_indices(i_xyz)) {
+    // The particle is outside the lattice.  Search for it from the base coords.
+    p->n_coord = 1;
+    bool found = find_cell(p, 0, nullptr);
+    if (!found && p->alive) {
+      std::stringstream err_msg;
+      err_msg << "Could not locate particle " << p->id
+              << " after crossing a lattice boundary";
+      p->mark_as_lost(err_msg);
+    }
+
+  } else {
+    // Find cell in next lattice element.
+    p->coord[p->n_coord-1].universe = lat[i_xyz] + 1;
+    bool found = find_cell(p, 0, nullptr);
+
+    if (!found) {
+      // A particle crossing the corner of a lattice tile may not be found.  In
+      // this case, search for it from the base coords.
+      p->n_coord = 1;
+      bool found = find_cell(p, 0, nullptr);
+      if (!found && p->alive) {
+        std::stringstream err_msg;
+        err_msg << "Could not locate particle " << p->id
+                << " after crossing a lattice boundary";
+        p->mark_as_lost(err_msg);
+      }
+    }
+  }
 }
 
 } // namespace openmc

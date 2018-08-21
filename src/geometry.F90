@@ -41,11 +41,18 @@ module geometry
     function find_cell_c(p, n_search_cells, search_cells) &
          bind(C, name="find_cell") result(found)
       import Particle, C_INT, C_BOOL
-      type(Particle),  intent(in)           :: p
+      type(Particle),  intent(inout)        :: p
       integer(C_INT),  intent(in), value    :: n_search_cells
       integer(C_INT),  intent(in), optional :: search_cells(n_search_cells)
       logical(C_BOOL)                       :: found
     end function find_cell_c
+
+    subroutine cross_lattice(p, lattice_translation) &
+         bind(C, name="cross_lattice")
+      import Particle, C_INT
+      type(Particle), intent(inout) :: p
+      integer(C_INT), intent(in)    :: lattice_translation(3)
+    end subroutine cross_lattice
   end interface
 
 contains
@@ -76,79 +83,6 @@ contains
     end if
 
   end subroutine find_cell
-
-!===============================================================================
-! CROSS_LATTICE moves a particle into a new lattice element
-!===============================================================================
-
-  subroutine cross_lattice(p, lattice_translation)
-
-    type(Particle), intent(inout) :: p
-    integer,        intent(in)    :: lattice_translation(3)
-    integer :: j
-    integer :: i_xyz(3)       ! indices in lattice
-    logical :: found          ! particle found in cell?
-    class(Lattice),   pointer :: lat
-
-    j = p % n_coord
-    lat => lattices(p % coord(j) % lattice) % obj
-
-    if (verbosity >= 10 .or. trace) then
-      call write_message("    Crossing lattice " // trim(to_str(lat % id())) &
-           &// ". Current position (" // trim(to_str(p % coord(j) % lattice_x)) &
-           &// "," // trim(to_str(p % coord(j) % lattice_y)) // "," &
-           &// trim(to_str(p % coord(j) % lattice_z)) // ")")
-    end if
-
-    ! Set the lattice indices.
-    p % coord(j) % lattice_x = p % coord(j) % lattice_x + lattice_translation(1)
-    p % coord(j) % lattice_y = p % coord(j) % lattice_y + lattice_translation(2)
-    p % coord(j) % lattice_z = p % coord(j) % lattice_z + lattice_translation(3)
-    i_xyz(1) = p % coord(j) % lattice_x
-    i_xyz(2) = p % coord(j) % lattice_y
-    i_xyz(3) = p % coord(j) % lattice_z
-
-    ! Set the new coordinate position.
-    p % coord(j) % xyz = lat % get_local_xyz(p % coord(j - 1) % xyz, i_xyz)
-
-    OUTSIDE_LAT: if (.not. lat % are_valid_indices(i_xyz)) then
-      ! The particle is outside the lattice.  Search for it from base coord
-      p % n_coord = 1
-      call find_cell(p, found)
-      if (.not. found) then
-        if (p % alive) then ! Particle may have been killed in find_cell
-          call particle_mark_as_lost(p, "Could not locate particle " &
-               // trim(to_str(p % id)) // " after crossing a lattice boundary.")
-          return
-        end if
-      end if
-
-    else OUTSIDE_LAT
-
-      ! Find cell in next lattice element
-      p % coord(j) % universe = &
-           lat % get([i_xyz(1), i_xyz(2), i_xyz(3)]) + 1
-
-      call find_cell(p, found)
-      if (.not. found) then
-        ! In some circumstances, a particle crossing the corner of a cell may
-        ! not be able to be found in the next universe. In this scenario we cut
-        ! off all lower-level coordinates and search from universe zero
-
-        ! Remove lower coordinates
-        p % n_coord = 1
-
-        ! Search for particle
-        call find_cell(p, found)
-        if (.not. found) then
-          call particle_mark_as_lost(p, "Could not locate particle " // &
-               trim(to_str(p % id)) // " after crossing a lattice boundary.")
-          return
-        end if
-      end if
-    end if OUTSIDE_LAT
-
-  end subroutine cross_lattice
 
 !===============================================================================
 ! DISTANCE_TO_BOUNDARY calculates the distance to the nearest boundary for a

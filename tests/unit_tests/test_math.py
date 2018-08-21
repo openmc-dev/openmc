@@ -137,6 +137,20 @@ def test_calc_zn():
     assert np.allclose(ref_vals, test_vals)
 
 
+def test_calc_zn_rad():
+    n = 10
+    rho = 0.5
+
+    # Reference solution from running the Fortran implementation
+    ref_vals = np.array([
+        1.00000000e+00, -5.00000000e-01, -1.25000000e-01,
+        4.37500000e-01, -2.89062500e-01,-8.98437500e-02])
+
+    test_vals = openmc.capi.math.calc_zn_rad(n, rho)
+
+    assert np.allclose(ref_vals, test_vals)
+
+
 def test_rotate_angle():
     uvw0 = np.array([1., 0., 0.])
     phi = 0.

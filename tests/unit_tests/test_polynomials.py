@@ -1,8 +1,6 @@
 import numpy as np
-import scipy as sp
 
 import openmc
-import openmc.capi
 
 
 def test_zernike_radial():

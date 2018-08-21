@@ -178,8 +178,7 @@ Post-processing
    openmc.StatePoint
    openmc.Summary
 
-Polynomial
----------------
+The following classes and functions are used for functional expansion reconstruction.
 
 .. autosummary::
    :toctree: generated

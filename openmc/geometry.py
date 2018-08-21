@@ -167,6 +167,7 @@ class Geometry(object):
             outer = get(elem, 'outer')
             if outer is not None:
                 lat.outer = get_universe(int(outer))
+                child_of[lat.outer].append(lat)
             universes[lat_id] = lat
 
             # Get array of universes
@@ -188,6 +189,7 @@ class Geometry(object):
             outer = get(elem, 'outer')
             if outer is not None:
                 lat.outer = get_universe(int(outer))
+                child_of[lat.outer].append(lat)
             universes[lat_id] = lat
 
             # Get nested lists of universes

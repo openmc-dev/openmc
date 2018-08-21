@@ -8,9 +8,6 @@
 #include "lattice.h"
 #include "settings.h"
 
-//TODO: remove this include
-#include <iostream>
-
 
 namespace openmc {
 
@@ -153,8 +150,7 @@ find_cell(Particle* p, int n_search_cells, int* search_cells) {
       //========================================================================
       //! Found a lower universe, update this coord level then search the next.
 
-      // Add another coordinate level.
-      //++p->n_coord;
+      // Set the lower coordinate level universe.
       p->coord[p->n_coord].universe = c.fill + 1;
 
       // Set the position and direction.
@@ -190,6 +186,57 @@ find_cell(Particle* p, int n_search_cells, int* search_cells) {
                                       + w*c.rotation[11];
         p->coord[p->n_coord].rotated = true;
       }
+
+      // Update the coordinate level and recurse.
+      ++p->n_coord;
+      find_cell(p, 0, nullptr);
+
+    } else if (c.type == FILL_LATTICE) {
+      //========================================================================
+      //! Found a lower lattice, update this coord level then search the next.
+
+      Lattice& lat {*lattices_c[c.fill]};
+
+      // Determine lattice indices.
+      Position r {p->coord[p->n_coord-1].xyz};
+      Direction u {p->coord[p->n_coord-1].uvw};
+      r += TINY_BIT * u;
+      auto i_xyz = lat.get_indices(r);
+
+      // Store lower level coordinates.
+      r = lat.get_local_position(p->coord[p->n_coord-1].xyz, i_xyz);
+      p->coord[p->n_coord].xyz[0] = r.x;
+      p->coord[p->n_coord].xyz[1] = r.y;
+      p->coord[p->n_coord].xyz[2] = r.z;
+      p->coord[p->n_coord].uvw[0] = u.x;
+      p->coord[p->n_coord].uvw[1] = u.y;
+      p->coord[p->n_coord].uvw[2] = u.z;
+
+      // Set lattice indices.
+      p->coord[p->n_coord].lattice = c.fill + 1;
+      p->coord[p->n_coord].lattice_x = i_xyz[0];
+      p->coord[p->n_coord].lattice_y = i_xyz[1];
+      p->coord[p->n_coord].lattice_z = i_xyz[2];
+
+      // Set the lower coordinate level universe.
+      if (lat.are_valid_indices(i_xyz)) {
+        p->coord[p->n_coord].universe = lat[i_xyz] + 1;
+      } else {
+        if (lat.outer != NO_OUTER_UNIVERSE) {
+          p->coord[p->n_coord].universe = lat.outer + 1;
+        } else {
+          std::stringstream err_msg;
+          err_msg << "Particle " << p->id << " is outside lattice "
+                  << lat.id << " but the lattice has no defined outer "
+                  "universe.";
+          warning(err_msg);
+          found = false;
+        }
+      }
+
+      // Update the coordinate level and recurse.
+      ++p->n_coord;
+      find_cell(p, 0, nullptr);
     }
   }
 

@@ -923,8 +923,6 @@ extern "C" {
   int32_t lattice_offset(Lattice *lat, int map, const int i_xyz[3])
   {return lat->offset(map, i_xyz);}
 
-  int32_t lattice_outer(Lattice *lat) {return lat->outer;}
-
   void lattice_to_hdf5(Lattice *lat, hid_t group) {lat->to_hdf5(group);}
 
   int32_t lattice_universe(Lattice *lat, const int i_xyz[3])

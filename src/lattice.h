@@ -54,6 +54,13 @@ public:
 
   virtual int32_t& operator[](const int i_xyz[3]) = 0;
 
+  int32_t&
+  operator[](std::array<int, 3> i_xyz)
+  {
+    int i_xyz_[3] {i_xyz[0], i_xyz[1], i_xyz[2]};
+    return operator[](i_xyz_);
+  }
+
   virtual LatticeIter begin();
   LatticeIter end();
 
@@ -76,6 +83,13 @@ public:
   //!   otherwise.
   virtual bool are_valid_indices(const int i_xyz[3]) const = 0;
 
+  bool
+  are_valid_indices(std::array<int, 3> i_xyz) const
+  {
+    int i_xyz_[3] {i_xyz[0], i_xyz[1], i_xyz[2]};
+    return are_valid_indices(i_xyz_);
+  }
+
   //! \brief Find the next lattice surface crossing
   //! \param r A 3D Cartesian coordinate.
   //! \param u A 3D Cartesian direction.
@@ -97,6 +111,13 @@ public:
   //! \return Local 3D Cartesian coordinates.
   virtual Position
   get_local_position(Position r, const int i_xyz[3]) const = 0;
+
+  Position
+  get_local_position(Position r, std::array<int, 3> i_xyz) const
+  {
+    int i_xyz_[3] {i_xyz[0], i_xyz[1], i_xyz[2]};
+    return get_local_position(r, i_xyz_);
+  }
 
   //! \brief Check flattened lattice index.
   //! \param indx The index for a lattice tile.

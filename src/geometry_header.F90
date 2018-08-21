@@ -191,13 +191,6 @@ module geometry_header
       integer(C_INT32_T)                :: offset
     end function lattice_offset_c
 
-    function lattice_outer_c(lat_ptr) bind(C, name='lattice_outer') &
-         result(outer)
-      import C_PTR, C_INT32_T
-      type(C_PTR), intent(in), value :: lat_ptr
-      integer(C_INT32_T)             :: outer
-    end function lattice_outer_c
-
     function lattice_universe_c(lat_ptr, i_xyz) &
          bind(C, name='lattice_universe') result(univ)
       import C_PTR, C_INT32_t, C_INT
@@ -238,7 +231,6 @@ module geometry_header
     procedure :: get_indices => lattice_get_indices
     procedure :: get_local_xyz => lattice_get_local_xyz
     procedure :: offset => lattice_offset
-    procedure :: outer => lattice_outer
     procedure :: to_hdf5 => lattice_to_hdf5
   end type Lattice
 
@@ -275,7 +267,6 @@ module geometry_header
                                            !  Boolean expression of half-spaces
 
     ! Rotation matrix and translation vector
-    real(8), allocatable :: translation(:)
     real(8), allocatable :: rotation(:)
     real(8), allocatable :: rotation_matrix(:,:)
 
@@ -369,12 +360,6 @@ contains
     integer(C_INT32_T)         :: offset
     offset = lattice_offset_c(this % ptr, map, i_xyz)
   end function lattice_offset
-
-  function lattice_outer(this) result(outer)
-    class(Lattice), intent(in) :: this
-    integer(C_INT32_T)         :: outer
-    outer = lattice_outer_c(this % ptr)
-  end function lattice_outer
 
   subroutine lattice_to_hdf5(this, group)
     class(Lattice), intent(in) :: this

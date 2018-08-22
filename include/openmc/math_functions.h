@@ -93,13 +93,18 @@ extern "C" void calc_rn_c(int n, const double uvw[3], double rn[]);
 extern "C" void calc_zn_c(int n, double rho, double phi, double zn[]);
 
 //==============================================================================
-//! Calculate only the even order components of n-th order modified Zernike
-//! polynomial moment with azimuthal dependency m = 0 for a given radial (rho)
-//! location on the unit disk.
+//! Calculate only the even radial components of n-th order modified Zernike
+//! polynomial moment with azimuthal dependency m = 0 for a given angle
+//! (rho, theta) location on the unit disk.
 //!
 //! Since m = 0, n could only be even orders. Z_q0 = R_q0
 //!
-//! See calc_zn_c for methodology.
+//! This procedure uses the modified Kintner's method for calculating Zernike
+//! polynomials as outlined in Chong, C. W., Raveendran, P., & Mukundan,
+//! R. (2003). A comparative analysis of algorithms for fast computation of
+//! Zernike moments. Pattern Recognition, 36(3), 731-742.
+//! The normalization of the polynomials is such that the integral of Z_pq^2
+//! over the unit disk is exactly pi.
 //!
 //! @param n       The maximum order requested
 //! @param rho     The radial parameter to specify location on the unit disk

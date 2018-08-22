@@ -726,6 +726,7 @@ contains
     end if
   end function openmc_tally_set_estimator
 
+
   function openmc_tally_set_filters(index, n, filter_indices) result(err) bind(C)
     ! Set the list of filters for a tally
     integer(C_INT32_T), value, intent(in) :: index

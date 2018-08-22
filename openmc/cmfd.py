@@ -41,9 +41,12 @@ _CMFD_NOACCEL = 99999
 # Constant to represent a zero flux "albedo"
 _ZERO_FLUX = 999.0
 
-# Constant for writing out no residual
-_CMFD_NORES = 99999.0
-
+# Map that returns index of current direction in current matrix
+_CURRENTS = {
+    'out_left'  : 0, 'in_left'  : 1, 'out_right':  2, 'in_right': 3,
+    'out_back'  : 4, 'in_back'  : 5, 'out_front':  6, 'in_front': 7,
+    'out_bottom': 8, 'in_bottom': 9, 'out_top'  : 10, 'in_top'  : 11
+}
 
 class CMFDMesh(object):
     """A structured Cartesian mesh used for Coarse Mesh Finite Difference (CMFD)
@@ -619,7 +622,7 @@ class CMFDRun(object):
             diffcof
             dtilde
             dhat
-            hxyz
+            hxyz: mesh width
             current
             cmfd_src
             openmc_src
@@ -636,6 +639,8 @@ class CMFDRun(object):
     TODO: Put descriptions for all methods in CMFDRun
     TODO All timing variables
     TODO Get rid of CMFD constants
+    TODO Get rid of unused variables defined in init
+    TODO Make sure all self variables defined in init
 
     """
 
@@ -675,6 +680,7 @@ class CMFDRun(object):
         self._cmfd_on = False
         self._mat_dim = _CMFD_NOACCEL
         self._keff_bal = None
+        self._cmfd_adjoint_type = None
 
         # Numpy arrays used to build CMFD matrices
         self._flux = None
@@ -696,6 +702,7 @@ class CMFDRun(object):
         self._src_cmp = None
         self._dom = None
         self._k_cmfd = None
+        self._resnb = None
 
     @property
     def cmfd_begin(self):
@@ -989,16 +996,16 @@ class CMFDRun(object):
         self._flux = np.zeros((nx, ny, nz, ng))
         self._totalxs = np.zeros((nx, ny, nz, ng))
         self._p1scattxs = np.zeros((nx, ny, nz, ng))
-        self._scattxs = np.zeros((nx, ny, nz, ng, ng))  # Outgoing, incoming
-        self._nfissxs = np.zeros((nx, ny, nz, ng, ng))  # Outgoing, incoming
+        self._scattxs = np.zeros((nx, ny, nz, ng, ng))  # Incoming, outgoing
+        self._nfissxs = np.zeros((nx, ny, nz, ng, ng))  # Incoming, outgoing
         self._diffcof = np.zeros((nx, ny, nz, ng))
 
         # Allocate dtilde and dhat
-        self._dtilde = np.zeros((6, nx, ny, nz, ng))
-        self._dhat = np.zeros((6, nx, ny, nz, ng))
+        self._dtilde = np.zeros((nx, ny, nz, ng, 6))
+        self._dhat = np.zeros((nx, ny, nz, ng, 6))
 
-        # Allocate dimensions for each box (here for general case)
-        self._hxyz = np.zeros((3, nx, ny, nz))
+        # Allocate dimensions for each box (assume fixed mesh dimensions)
+        self._hxyz = np.zeros((3))
 
         # Allocate surface currents
         self._current = np.zeros((nx, ny, nz, ng, 12))
@@ -1046,10 +1053,9 @@ class CMFDRun(object):
           # Create cmfd data from OpenMC tallies
           self._set_up_cmfd()
 
-        '''
-          ! Call solver
-          call cmfd_solver_execute()
-
+          # Call solver
+          self._cmfd_solver_execute()
+          '''
           ! Save k-effective
           cmfd % k_cmfd(current_batch) = cmfd % keff
 
@@ -1083,28 +1089,117 @@ class CMFDRun(object):
     def _set_up_cmfd(self):
         # Check for core map and set it up
         if (self._mat_dim == _CMFD_NOACCEL):
+            # TODO: Don't reshape coremap before this point, reshape in set_coremap
             self._set_coremap()
 
         # Calculate all cross sections based on reaction rates from last batch
         self._compute_xs()
+
+        # Compute effective downscatter cross section
+        if (self._cmfd_downscatter): self._compute_effective_downscatter()
+
+        # Check neutron balance
+        self._neutron_balance()
+
+        # Calculate dtilde
+        self._compute_dtilde()
+
+        # Calculate dhat
+        self._compute_dhat()
+
+    def _cmfd_solver_execute(self, adjoint=False):
+        # TODO Check for physical adjoint
+        physical_adjoint = adjoint and self._cmfd_adjoint_type == 'physical'
+
+        # TODO Start timer for build
+        # call time_cmfdbuild % start()
+
+        # Initialize matrices and vectors
+        self._init_data(physical_adjoint)
+
+        # TODO Check for mathematical adjoint calculation
+        #if (adjoint_calc .and. trim(cmfd_adjoint_type) == 'math') &
+        #     call compute_adjoint()
+
+        # TODO Stop timer for build
+        # call time_cmfdbuild % stop()
+
+        # TODO Begin power iteration
+        # call time_cmfdsolve % start()
+        self._execute_power_iter()
+        # call time_cmfdsolve % stop()
+
+        # Extract results
+        self._extract_results()
+
+    def _init_data(self, adjoint):
+        # Set up matrices
+        
+        call init_loss_matrix(loss)
+        call init_prod_matrix(prod)
         '''
-        ! Compute effective downscatter cross section
-        if (cmfd_downscatter) call compute_effective_downscatter()
+        # Get problem size
+        n = loss % n
 
-        ! Check neutron balance
-        call neutron_balance()
+        # Set up flux vectors
+        call phi_n % create(n)
+        call phi_o % create(n)
 
-        ! Calculate dtilde
-        call compute_dtilde()
+        # Set up source vectors
+        call s_n % create(n)
+        call s_o % create(n)
+        call serr_v % create(n)
 
-        ! Calculate dhat
-        call compute_dhat()
+        # Set initial guess
+        guess = ONE
+        phi_n % val = guess
+        phi_o % val = guess
+        k_n = keff
+        k_o = k_n
+        dw = cmfd_shift
+        k_s = k_o + dw
+        k_ln = ONE/(ONE/k_n - ONE/k_s)
+        k_lo = k_ln
+
+        # Fill in loss matrix
+        call build_loss_matrix(loss, adjoint=adjoint)
+
+        # Fill in production matrix
+        call build_prod_matrix(prod, adjoint=adjoint)
+
+        # Finalize setup of CSR matrices
+        call loss % assemble()
+        call prod % assemble()
+        if (cmfd_write_matrices) then
+          call loss % write('loss.dat')
+          call prod % write('prod.dat')
+        end if
+
+        # Set norms to 0
+        norm_n = ZERO
+        norm_o = ZERO
+
+        # Set tolerances
+        ktol = cmfd_ktol
+        stol = cmfd_stol
         '''
+
+    def _execute_power_iter(self):
+        pass
+
+    def _extract_results(self):
+        pass
 
     def _set_coremap(self):
         self._mat_dim = np.sum(self._coremap)
-        self._coremap = np.where(self._coremap == 0,
-                                 _CMFD_NOACCEL, self._coremap)
+
+        # Create a temporary array that unravels coremap and aggregates
+        # cumulative sum over accelerated regions
+        temp = np.where(self._coremap.ravel()==0, _CMFD_NOACCEL,
+                        np.cumsum(self._coremap.ravel())-1)
+
+        # Reshape coremap back to correct shape
+        self._coremap = temp.reshape(self._coremap.shape)
 
     def _compute_xs(self):
         # Extract energy indices
@@ -1113,6 +1208,9 @@ class CMFDRun(object):
         # Set flux object and source distribution all to zeros
         self._flux.fill(0.)
         self._openmc_src.fill(0.)
+
+        # Set mesh widths
+        self._hxyz = openmc.capi.meshes[self._cmfd_mesh_id].width
 
         # Reset keff_bal to zero
         self._keff_bal = 0.
@@ -1196,7 +1294,7 @@ class CMFDRun(object):
         tally_results = np.where(np.repeat(flux>0, ng), tally_results, \
                                  0.)
 
-        # Openmc source distribution is sum of nu-fission rr in outgoing energies
+        # Openmc source distribution is sum of nu-fission rr in incoming energies
         openmc_src = np.sum(tally_results.reshape(self._nfissxs.shape),
                             axis=3)
 
@@ -1239,8 +1337,244 @@ class CMFDRun(object):
                                     out=np.zeros_like(p1scattrr))
 
         # Calculate and store diffusion coefficient
-        self._diffcof = np.where(self._flux > 0, 1.0 / (3.0 * \
+        self._diffcof = np.where(self._flux>0, 1.0 / (3.0 * \
                                  (self._totalxs - self._p1scattxs)), 0.)
+
+    def _compute_effective_downscatter(self):
+        # Extract energy index
+        ng = self._indices[3]
+
+        # Return if not two groups
+        if ng != 2:
+            return
+
+        # Extract cross sections and flux for each group
+        flux1 = self._flux[:,:,:,0]
+        flux2 = self._flux[:,:,:,1]
+        sigt1 = self._totalxs[:,:,:,0]
+        sigt2 = self._totalxs[:,:,:,1]
+        # First energy index is incoming, second is outgoing
+        sigs11 = self._scattxs[:,:,:,0,0]
+        sigs21 = self._scattxs[:,:,:,1,0]
+        sigs12 = self._scattxs[:,:,:,0,1]
+        sigs22 = self._scattxs[:,:,:,1,1]
+
+        # Compute absorption xs
+        siga1 = sigt1 - sigs11 - sigs12
+        siga2 = sigt2 - sigs22 - sigs21
+
+        # Compute effective downscatter XS
+        sigs12_eff = sigs12 - sigs21 * np.divide(flux2, flux1, where=flux1>0,
+                                                 out=np.zeros_like(flux2))
+
+        # Recompute total cross sections and record
+        self._totalxs[:,:,:,0] = siga1 + sigs11 + sigs12_eff
+        self._totalxs[:,:,:,1] = siga2 + sigs22
+
+        # Record effective dowmscatter xs
+        self._scattxs[:,:,:,0,1] = sigs12_eff
+
+        # Zero out upscatter cross section
+        self._scattxs[:,:,:,1,0] = 0.0
+
+    def _neutron_balance(self):
+        # Extract energy indices
+        ng = self._indices[3]
+
+        # Get openmc k-effective
+        keff = openmc.capi.keff()[0]
+
+        leakage = ((self._current[:,:,:,:,_CURRENTS['out_right']] - \
+            self._current[:,:,:,:,_CURRENTS['in_right']]) - \
+            (self._current[:,:,:,:,_CURRENTS['in_left']] - \
+            self._current[:,:,:,:,_CURRENTS['out_left']])) + \
+            ((self._current[:,:,:,:,_CURRENTS['out_front']] - \
+            self._current[:,:,:,:,_CURRENTS['in_front']]) - \
+            (self._current[:,:,:,:,_CURRENTS['in_back']] - \
+            self._current[:,:,:,:,_CURRENTS['out_back']])) + \
+            ((self._current[:,:,:,:,_CURRENTS['out_top']] - \
+            self._current[:,:,:,:,_CURRENTS['in_top']]) - \
+            (self._current[:,:,:,:,_CURRENTS['in_bottom']] - \
+            self._current[:,:,:,:,_CURRENTS['out_bottom']]))
+
+        # Compute total rr
+        interactions = self._totalxs * self._flux
+
+        # Compute scattering rr by broadcasting flux in outgoing energy and
+        # summing over incoming energy
+        scattering = np.sum(self._scattxs * \
+            np.repeat(self._flux[:,:,:,:,np.newaxis], ng, axis=4), axis=3)
+
+        # Compute fission rr by broadcasting flux in outgoing energy and
+        # summing over incoming energy
+        fission = np.sum(self._nfissxs * \
+            np.repeat(self._flux[:,:,:,:,np.newaxis], ng, axis=4), axis=3)
+
+        # Compute residual
+        res = leakage + interactions - scattering - (1.0 / keff) * fission
+
+        # Normalize res by flux and bank res
+        self._resnb = np.divide(res, self._flux, where=self._flux>0)
+
+        # Calculate RMS and record for this batch
+        self._balance.append(np.sqrt(
+            np.sum(np.multiply(self._resnb, self._resnb)) / \
+            np.count_nonzero(self._resnb)))
+
+    def _compute_dtilde(self):
+        # Get maximum of spatial and group indices
+        nx = self._indices[0]
+        ny = self._indices[1]
+        nz = self._indices[2]
+        ng = self._indices[3]
+
+        # Create single vector of these indices for boundary calculation
+        nxyz = np.array([[0,nx-1], [0,ny-1], [0,nz-1]])
+
+        # Get boundary condition information
+        albedo = self._albedo
+
+        # Loop over group and spatial indices
+        for k in range(nz):
+            for j in range(ny):
+                for i in range(nx):
+                    for g in range(ng):
+                        # Cycle if non-accelration region
+                        if self._coremap[i,j,k] == _CMFD_NOACCEL:
+                            continue
+
+                        # Get cell data
+                        cell_dc = self._diffcof[i,j,k,g]
+                        cell_hxyz = self._hxyz
+
+                        # Setup of vector to identify boundary conditions
+                        bound = np.repeat([i,j,k], 2)
+
+                        # Begin loop around sides of cell for leakage
+                        for l in range(6):
+                            xyz_idx = int(l/2)  # x=0, y=1, z=2
+                            dir_idx = l % 2     # -=0, +=1
+
+                            # Check if at boundary
+                            if bound[l] == nxyz[xyz_idx, dir_idx]:
+                                # Compute dtilde with albedo boundary condition
+                                dtilde = (2*cell_dc*(1-albedo[l]))/ \
+                                    (4*cell_dc*(1+albedo[l]) + \
+                                    (1-albedo[l])*cell_hxyz[xyz_idx])
+
+                                # Check for zero flux albedo
+                                if abs(albedo[l] - _ZERO_FLUX) < _TINY_BIT:
+                                    dtilde = 2*cell_dc / cell_hxyz[xyz_idx]
+
+                            else:  # Not at a boundary
+                                shift_idx = 2*(l % 2) - 1 # shift neig by -1 or +1
+
+                                # Compute neighboring cell indices
+                                neig_idx = [i,j,k]  # Begin with i,j,k
+                                neig_idx[xyz_idx] += shift_idx
+
+                                # Get neighbor cell data
+                                neig_dc = self._diffcof[tuple(neig_idx) + (g,)]
+
+                                # Check for fuel-reflector interface
+                                if (self._coremap[tuple(neig_idx)] ==
+                                         _CMFD_NOACCEL):
+                                    # Get albedo
+                                    ref_albedo = self._get_reflector_albedo(l,g,i,j,k)
+                                    dtilde = (2*cell_dc*(1-ref_albedo))/(4*cell_dc*(1+ \
+                                             ref_albedo)+(1-ref_albedo)*cell_hxyz[xyz_idx])
+
+                                else:  # Not next to a reflector
+                                    # Compute dtilde to neighbor cell
+                                    dtilde = (2*cell_dc*neig_dc)/(cell_hxyz[xyz_idx]*cell_dc + \
+                                             cell_hxyz[xyz_idx]*neig_dc)
+
+                            # Record dtilde
+                            self._dtilde[i, j, k, g, l] = dtilde
+
+    def _compute_dhat(self):
+        #TODO compute dhat and dtilde for general case with hxyz (just define as repeated but use in formulas)
+        # Get maximum of spatial and group indices
+        nx = self._indices[0]
+        ny = self._indices[1]
+        nz = self._indices[2]
+        ng = self._indices[3]
+
+        # Create single vector of these indices for boundary calculation
+        nxyz = np.array([[0,nx-1], [0,ny-1], [0,nz-1]])
+
+        # Loop over group and spatial indices
+        for k in range(nz):
+            for j in range(ny):
+                for i in range(nx):
+                    for g in range(ng):
+                        # Cycle if non-accelration region
+                        if self._coremap[i,j,k] == _CMFD_NOACCEL:
+                            continue
+
+                        # Get cell data
+                        cell_dtilde = self._dtilde[i,j,k,g,:]
+                        cell_flux = self._flux[i,j,k,g]/np.product(self._hxyz)
+                        current = self._current[i,j,k,g,:]
+
+                        # Setup of vector to identify boundary conditions
+                        bound = np.repeat([i,j,k], 2)
+
+                        # Begin loop around sides of cell for leakage
+                        for l in range(6):
+                            xyz_idx = int(l/2)  # x=0, y=1, z=2
+                            dir_idx = l % 2     # -=0, +=1
+                            shift_idx = 2*(l % 2) - 1 # shift neig by -1 or +1
+
+                            # Calculate net current on l face (divided by surf area)
+                            net_current = shift_idx*(current[2*l] - current[2*l+1]) / \
+                                np.product(self._hxyz) * self._hxyz[xyz_idx]
+
+                            # Check if at boundary
+                            if bound[l] == nxyz[xyz_idx, dir_idx]:
+                                # Compute dhat
+                                dhat = (net_current - shift_idx*cell_dtilde[l]*cell_flux) / \
+                                     cell_flux
+                                #print(dhat, i, j, k, g, l)
+                            else:  # Not at a boundary
+                                # Compute neighboring cell indices
+                                neig_idx = [i,j,k]  # Begin with i,j,k
+                                neig_idx[xyz_idx] += shift_idx
+
+                                # Get neigbor flux
+                                neig_flux = self._flux[tuple(neig_idx)+(g,)] / \
+                                            np.product(self._hxyz)
+
+                                # Check for fuel-reflector interface
+                                if (self._coremap[tuple(neig_idx)] ==
+                                         _CMFD_NOACCEL):
+                                    # Compute dhat
+                                    dhat = (net_current - shift_idx*cell_dtilde[l]*cell_flux) / \
+                                         cell_flux
+                                else:  # not a fuel-reflector interface
+                                    # Compute dhat
+                                    dhat = (net_current + shift_idx*cell_dtilde[l]* \
+                                        (neig_flux - cell_flux))/(neig_flux + cell_flux)
+
+                            # Record dhat
+                            self._dhat[i, j, k, g, l] = dhat
+
+                            # check for dhat reset
+                            if self._dhat_reset:
+                                self._dhat[i, j, k, g, l] = 0.0
+
+        sys.exit()
+
+
+    def _get_reflector_albedo(self, l, g, i, j, k):
+        # Get partial currents from object
+        current = self._current[i,j,k,g,:]
+
+        # Calculate albedo
+        if current[2*l] < 1.0e-10:
+            return 1.0
+        else:
+          return current[2*l+1]/current[2*l]
 
     def _create_cmfd_tally(self):
         # Create Mesh object based on CMFDMesh, stored internally
@@ -1308,7 +1642,7 @@ class CMFDRun(object):
                 tally.estimator = 'analog'
 
             # Set attributes of CMFD neutron production tally
-            if i == 1:
+            elif i == 1:
                 # Set filters for tally
                 if self._energy_filters:
                     tally.filters = [mesh_filter, energy_filter, energyout_filter]
@@ -1320,7 +1654,7 @@ class CMFDRun(object):
                 tally.estimator = 'analog'
 
             # Set attributes of CMFD surface current tally
-            if i == 2:
+            elif i == 2:
                 # Set filters for tally
                 if self._energy_filters:
                     tally.filters = [meshsurface_filter, energy_filter]
@@ -1332,7 +1666,7 @@ class CMFDRun(object):
                 tally.estimator = 'analog'
 
             # Set attributes of CMFD P1 scatter tally
-            if i == 3:
+            elif i == 3:
                 # Set filters for tally
                 if self._energy_filters:
                     tally.filters = [mesh_filter, legendre_filter, energy_filter]

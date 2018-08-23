@@ -1,17 +1,17 @@
-#include "cell.h"
+#include "openmc/cell.h"
 
 #include <cmath>
 #include <sstream>
 #include <string>
 
-#include "constants.h"
-#include "error.h"
-#include "hdf5_interface.h"
-#include "lattice.h"
-#include "material.h"
-#include "openmc.h"
-#include "surface.h"
-#include "xml_interface.h"
+#include "openmc/capi.h"
+#include "openmc/constants.h"
+#include "openmc/error.h"
+#include "openmc/hdf5_interface.h"
+#include "openmc/lattice.h"
+#include "openmc/material.h"
+#include "openmc/surface.h"
+#include "openmc/xml_interface.h"
 
 
 namespace openmc {

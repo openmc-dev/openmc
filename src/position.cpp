@@ -1,4 +1,4 @@
-#include "position.h"
+#include "openmc/position.h"
 
 namespace openmc {
 

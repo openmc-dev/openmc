@@ -1,10 +1,10 @@
-#include "settings.h"
+#include "openmc/settings.h"
 
-#include "constants.h"
-#include "error.h"
-#include "openmc.h"
-#include "string_utils.h"
-#include "xml_interface.h"
+#include "openmc/capi.h"
+#include "openmc/constants.h"
+#include "openmc/error.h"
+#include "openmc/string_utils.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 

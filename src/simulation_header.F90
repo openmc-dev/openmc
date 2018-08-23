@@ -80,8 +80,8 @@ contains
 ! OVERALL_GENERATION determines the overall generation number
 !===============================================================================
 
-  pure function overall_generation() result(gen)
-    integer :: gen
+  pure function overall_generation() result(gen) bind(C)
+    integer(C_INT) :: gen
     gen = gen_per_batch*(current_batch - 1) + current_gen
   end function overall_generation
 

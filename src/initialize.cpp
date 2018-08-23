@@ -1,4 +1,4 @@
-#include "initialize.h"
+#include "openmc/initialize.h"
 
 #include <cstddef>
 #include <cstring>
@@ -6,14 +6,15 @@
 #include <sstream>
 #include <string>
 
-#include "error.h"
-#include "hdf5_interface.h"
-#include "message_passing.h"
-#include "openmc.h"
-#include "settings.h"
 #ifdef _OPENMP
 #include "omp.h"
 #endif
+
+#include "openmc/capi.h"
+#include "openmc/error.h"
+#include "openmc/hdf5_interface.h"
+#include "openmc/message_passing.h"
+#include "openmc/settings.h"
 
 // data/functions from Fortran side
 extern "C" void print_usage();

@@ -1,16 +1,17 @@
-#include "secondary_correlated.h"
+#include "openmc/secondary_correlated.h"
 
 #include <algorithm> // for copy
 #include <cmath>
 #include <cstddef>   // for size_t
 #include <iterator>  // for back_inserter
 
-#include "hdf5_interface.h"
 #include "xtensor/xarray.hpp"
 #include "xtensor/xview.hpp"
-#include "endf.h"
-#include "random_lcg.h"
-#include "search.h"
+
+#include "openmc/hdf5_interface.h"
+#include "openmc/endf.h"
+#include "openmc/random_lcg.h"
+#include "openmc/search.h"
 
 namespace openmc {
 

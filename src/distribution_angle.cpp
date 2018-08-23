@@ -1,14 +1,15 @@
-#include "distribution_angle.h"
+#include "openmc/distribution_angle.h"
 
 #include <cmath>  // for abs, copysign
 #include <vector> // for vector
 
-#include "endf.h"
-#include "hdf5_interface.h"
-#include "random_lcg.h"
-#include "search.h"
 #include "xtensor/xarray.hpp"
 #include "xtensor/xview.hpp"
+
+#include "openmc/endf.h"
+#include "openmc/hdf5_interface.h"
+#include "openmc/random_lcg.h"
+#include "openmc/search.h"
 
 namespace openmc {
 

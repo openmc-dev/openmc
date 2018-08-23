@@ -1,9 +1,9 @@
-#include "xml_interface.h"
+#include "openmc/xml_interface.h"
 
 #include <algorithm>  // for transform
 #include <sstream>
 
-#include "error.h"
+#include "openmc/error.h"
 
 
 namespace openmc {

@@ -1,4 +1,4 @@
-#include "hdf5_interface.h"
+#include "openmc/hdf5_interface.h"
 
 #include <array>
 #include <cstring>
@@ -9,9 +9,9 @@
 #include "hdf5_hl.h"
 #ifdef OPENMC_MPI
 #include "mpi.h"
-#include "message_passing.h"
+#include "openmc/message_passing.h"
 #endif
-#include "error.h"
+#include "openmc/error.h"
 
 
 namespace openmc {

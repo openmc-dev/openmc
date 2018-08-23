@@ -1,4 +1,4 @@
-#include "distribution.h"
+#include "openmc/distribution.h"
 
 #include <algorithm> // for copy
 #include <cmath>     // for sqrt, floor, max
@@ -6,10 +6,10 @@
 #include <numeric>   // for accumulate
 #include <string>    // for string, stod
 
-#include "error.h"
-#include "math_functions.h"
-#include "random_lcg.h"
-#include "xml_interface.h"
+#include "openmc/error.h"
+#include "openmc/math_functions.h"
+#include "openmc/random_lcg.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 

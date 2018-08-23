@@ -1,14 +1,14 @@
-#include "geometry_aux.h"
+#include "openmc/geometry_aux.h"
 
 #include <algorithm>  // for std::max
 #include <sstream>
 #include <unordered_set>
 
-#include "cell.h"
-#include "constants.h"
-#include "error.h"
-#include "lattice.h"
-#include "material.h"
+#include "openmc/cell.h"
+#include "openmc/constants.h"
+#include "openmc/error.h"
+#include "openmc/lattice.h"
+#include "openmc/material.h"
 
 
 namespace openmc {

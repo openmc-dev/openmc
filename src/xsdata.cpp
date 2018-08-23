@@ -1,13 +1,14 @@
+#include "openmc/xsdata.h"
+
 #include <cmath>
 #include <cstdlib>
 #include <algorithm>
 #include <numeric>
 
-#include "constants.h"
-#include "error.h"
-#include "math_functions.h"
-#include "random_lcg.h"
-#include "xsdata.h"
+#include "openmc/constants.h"
+#include "openmc/error.h"
+#include "openmc/math_functions.h"
+#include "openmc/random_lcg.h"
 
 
 namespace openmc {

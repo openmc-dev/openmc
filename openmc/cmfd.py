@@ -74,6 +74,7 @@ class CMFDMesh(object):
         boundary conditions. They are listed in the following order: -x +x -y +y
         -z +z.
     map : Iterable of int
+        TODO: EDIT THIS DESCRIPTION WITH CORRECT VALUES
         An optional acceleration map can be specified to overlay on the coarse
         mesh spatial grid. If this option is used, a ``1`` is used for a
         non-accelerated region and a ``2`` is used for an accelerated region.
@@ -182,6 +183,7 @@ class CMFDMesh(object):
             check_value('CMFD mesh map', m, [0, 1])
         self._map = meshmap
 
+    # REMOVE
     def _get_xml_element(self):
         element = ET.Element("mesh")
 
@@ -479,87 +481,87 @@ class CMFD(object):
         check_type('CMFD write matrices', write_matrices, bool)
         self._write_matrices = write_matrices
 
-    # TODO: Remove
+
     def _create_begin_subelement(self):
         if self._begin is not None:
             element = ET.SubElement(self._cmfd_file, "begin")
             element.text = str(self._begin)
-    # TODO: Remove
+
     def _create_dhat_reset_subelement(self):
         if self._dhat_reset is not None:
             element = ET.SubElement(self._cmfd_file, "dhat_reset")
             element.text = str(self._dhat_reset).lower()
-    # TODO: Remove
+
     def _create_display_subelement(self):
         if self._display is not None:
             element = ET.SubElement(self._cmfd_file, "display")
             element.text = str(self._display)
-    # TODO: Remove
+
     def _create_downscatter_subelement(self):
         if self._downscatter is not None:
             element = ET.SubElement(self._cmfd_file, "downscatter")
             element.text = str(self._downscatter).lower()
-    # TODO: Remove
+
     def _create_feedback_subelement(self):
         if self._feedback is not None:
             element = ET.SubElement(self._cmfd_file, "feeback")
             element.text = str(self._feedback).lower()
-    # TODO: Remove
+
     def _create_gauss_seidel_tolerance_subelement(self):
         if self._gauss_seidel_tolerance is not None:
             element = ET.SubElement(self._cmfd_file, "gauss_seidel_tolerance")
             element.text = ' '.join(map(str, self._gauss_seidel_tolerance))
-    # TODO: Remove
+
     def _create_ktol_subelement(self):
         if self._ktol is not None:
             element = ET.SubElement(self._ktol, "ktol")
             element.text = str(self._ktol)
-    # TODO: Remove
+
     def _create_mesh_subelement(self):
         if self._cmfd_mesh is not None:
             xml_element = self._cmfd_mesh._get_xml_element()
             self._cmfd_file.append(xml_element)
-    # TODO: Remove
+
     def _create_norm_subelement(self):
         if self._norm is not None:
             element = ET.SubElement(self._cmfd_file, "norm")
             element.text = str(self._norm)
-    # TODO: Remove
+
     def _create_power_monitor_subelement(self):
         if self._power_monitor is not None:
             element = ET.SubElement(self._cmfd_file, "power_monitor")
             element.text = str(self._power_monitor).lower()
-    # TODO: Remove
+
     def _create_run_adjoint_subelement(self):
         if self._run_adjoint is not None:
             element = ET.SubElement(self._cmfd_file, "run_adjoint")
             element.text = str(self._run_adjoint).lower()
-    # TODO: Remove
+
     def _create_shift_subelement(self):
         if self._shift is not None:
             element = ET.SubElement(self._shift, "shift")
             element.text = str(self._shift)
-    # TODO: Remove
+
     def _create_spectral_subelement(self):
         if self._spectral is not None:
             element = ET.SubElement(self._spectral, "spectral")
             element.text = str(self._spectral)
-    # TODO: Remove
+
     def _create_stol_subelement(self):
         if self._stol is not None:
             element = ET.SubElement(self._stol, "stol")
             element.text = str(self._stol)
-    # TODO: Remove
+
     def _create_tally_reset_subelement(self):
         if self._tally_reset is not None:
             element = ET.SubElement(self._tally_reset, "tally_reset")
             element.text = ' '.join(map(str, self._tally_reset))
-    # TODO: Remove
+
     def _create_write_matrices_subelement(self):
         if self._write_matrices is not None:
             element = ET.SubElement(self._cmfd_file, "write_matrices")
             element.text = str(self._write_matrices).lower()
-    # TODO: Remove
+
     def export_to_xml(self):
         """Create a cmfd.xml file using the class data that can be used for an OpenMC
         simulation.
@@ -641,6 +643,8 @@ class CMFDRun(object):
     TODO Get rid of CMFD constants
     TODO Get rid of unused variables defined in init
     TODO Make sure all self variables defined in init
+    TODO Clean up logic for adjoint, understand what different adjoint types are doing
+    TODO Check to make sure no compatibility issues with numpy arrays for input variables
 
     """
 
@@ -1115,28 +1119,206 @@ class CMFDRun(object):
         # call time_cmfdbuild % start()
 
         # Initialize matrices and vectors
-        self._init_data(physical_adjoint)
+        loss, prod = self._build_matrices(physical_adjoint)
 
         # TODO Check for mathematical adjoint calculation
-        #if (adjoint_calc .and. trim(cmfd_adjoint_type) == 'math') &
-        #     call compute_adjoint()
+        #if adjoint_calc and self._cmfd_adjoint_type == 'math':
+        #     self._compute_adjoint()
 
         # TODO Stop timer for build
         # call time_cmfdbuild % stop()
 
         # TODO Begin power iteration
         # call time_cmfdsolve % start()
-        self._execute_power_iter()
+        phi, keff, dom = self._execute_power_iter(loss, prod)
         # call time_cmfdsolve % stop()
 
-        # Extract results
-        self._extract_results()
+        # TODO Save results
+        #if self._
 
-    def _init_data(self, adjoint):
+    def _build_matrices(self, adjoint):
         # Set up matrices
-        
-        call init_loss_matrix(loss)
-        call init_prod_matrix(prod)
+
+        loss = self._build_loss_matrix(adjoint)
+        prod = self._build_prod_matrix(adjoint)
+        '''
+        # TODO Write matrices
+        if (cmfd_write_matrices) then
+          call loss % write('loss.dat')
+          call prod % write('prod.dat')
+        end if
+        '''
+
+        return loss, prod
+
+    def _build_loss_matrix(self, adjoint):
+        # Extract spatial and energy indices and define matrix dimension
+        nx = self._indices[0]
+        ny = self._indices[1]
+        nz = self._indices[2]
+        ng = self._indices[3]
+        n = self._mat_dim*ng
+
+        # Allocate matrix
+        loss = np.zeros((n, n))
+
+        # Create single vector of these indices for boundary calculation
+        nxyz = np.array([[0,nx-1], [0,ny-1], [0,nz-1]])
+
+        # Allocate leakage coefficients in front of cell flux
+        jo = np.zeros((6,))
+
+        for irow in range(n):
+            i,j,k,g = self._matrix_to_indices(irow, nx, ny, nz, ng)
+
+            # Retrieve cell data
+            totxs = self._totalxs[i,j,k,g]
+            scattxsgg = self._scattxs[i,j,k,g,g]
+            dtilde = self._dtilde[i,j,k,g,:]
+            hxyz = self._hxyz
+            dhat = self._dhat[i,j,k,g,:]
+
+            # Create boundary vector
+            bound = np.repeat([i,j,k], 2)
+
+            # Begin loop over leakages
+            for l in range(6):
+                # Define (x,y,z) and (-,+) indices
+                xyz_idx = int(l/2)  # x=0, y=1, z=2
+                dir_idx = l % 2     # -=0, +=1
+
+                # Calculate spatial indices of neighbor
+                neig_idx = [i,j,k]  # Begin with i,j,k
+                shift_idx = 2*(l % 2) - 1 # shift neig by -1 or +1
+                neig_idx[xyz_idx] += shift_idx
+
+                # Check for global boundary
+                if bound[l] != nxyz[xyz_idx, dir_idx]:
+
+                    # Check that neighbor is not reflector
+                    if self._coremap[tuple(neig_idx)] != _CMFD_NOACCEL:
+                        # Compute leakage coefficient for neighbor
+                        jn = -1.0 * dtilde[l] + shift_idx*dhat[l]
+
+                        # Get neighbor matrix index
+                        neig_mat_idx = self._indices_to_matrix(neig_idx[0], \
+                                neig_idx[1], neig_idx[2], g, ng)
+                        # Compute value and record to bank
+                        val = jn/hxyz[xyz_idx]
+                        loss[irow, neig_mat_idx] = val
+
+                # Compute leakage coefficient for target
+                jo[l] = shift_idx*dtilde[l] + dhat[l]
+
+                # Calculate net leakage coefficient for target
+                jnet = (jo[1] - jo[0])/hxyz[0] + (jo[3] - jo[2])/hxyz[1] + \
+                    (jo[5] - jo[4])/hxyz[2]
+
+                # Calculate loss of neutrons
+                val = jnet + totxs - scattxsgg
+                loss[irow, irow] = val
+
+                for h in range(ng):
+                    # Cycle though if h=g, value already banked in removal xs
+                    if h == g:
+                        continue
+
+                    # Get neighbor matrix index
+                    scatt_mat_idx = self._indices_to_matrix(i,j,k, h, ng)
+
+                    # TODO Check for adjoint
+                    #if (adjoint_calc) then
+                        #! Get scattering macro xs, transposed!
+                        #scattxshg = cmfd%scattxs(g, h, i, j, k)
+                    #else
+                    # Get scattering macro xs
+                    scattxshg = self._scattxs[i, j, k, h, g]
+                    #end if
+
+                    # Negate the scattering xs
+                    val = -1.0*scattxshg
+
+                    # Record value in matrix
+                    loss[irow, scatt_mat_idx] = val
+
+        '''
+        print("Loss matrix:")
+        for i in range(loss.shape[0]):
+            print_str = ""
+            for j in range(loss.shape[1]):
+                if loss[i,j] != 0.0:
+                    print_str += "%.3g\t" % loss[i, j]
+                else:
+                    print_str += "%.3f\t" % loss[i, j]
+            print(print_str)
+        '''
+
+        return loss
+
+    def _build_prod_matrix(self, adjoint):
+        # Extract spatial and energy indices and define matrix dimension
+        nx = self._indices[0]
+        ny = self._indices[1]
+        nz = self._indices[2]
+        ng = self._indices[3]
+        n = self._mat_dim*ng
+
+        # Allocate matrix
+        prod = np.zeros((n, n))
+
+        for irow in range(n):
+            i,j,k,g = self._matrix_to_indices(irow, nx, ny, nz, ng)
+
+            # Check if at a reflector
+            if self._coremap[i,j,k] == _CMFD_NOACCEL:
+                continue
+
+            # loop around all other groups
+            for h in range(ng):
+                hmat_idx = self._indices_to_matrix(i,j,k, h, ng)
+                # TODO check for adjoint and bank val
+                #if (adjoint_calc) then
+                #  ! get nu-fission cross section from cell
+                #  nfissxs = cmfd%nfissxs(g,h,i,j,k)
+                #else
+                # get nu-fission cross section from cell
+                nfissxs = self._nfissxs[i, j, k, h, g]
+
+                # set as value to be recorded
+                val = nfissxs
+
+                # record value in matrix
+                prod[irow, hmat_idx] = val
+
+        '''
+        print("Prod matrix:")
+        for i in range(prod.shape[0]):
+            print_str = ""
+            for j in range(prod.shape[1]):
+                if prod[i,j] != 0.0:
+                    print_str += "%.3g\t" % prod[i, j]
+                else:
+                    print_str += "%.3f\t" % prod[i, j]
+            print(print_str)
+        return prod
+        '''
+        sys.exit()
+
+    def _matrix_to_indices(self, irow, nx, ny, nz, ng):
+        # Get indices from coremap
+        g = irow % ng
+        spatial_idx = np.where(self._coremap == int(irow/ng))
+        i = spatial_idx[0][0]
+        j = spatial_idx[1][0]
+        k = spatial_idx[2][0]
+        return i, j, k, g
+
+    def _indices_to_matrix(self, i, j, k, g, ng):
+        matidx = ng*(self._coremap[i,j,k]) + g
+        return matidx
+
+    def _execute_power_iter(self):
+        pass
         '''
         # Get problem size
         n = loss % n
@@ -1161,20 +1343,6 @@ class CMFDRun(object):
         k_ln = ONE/(ONE/k_n - ONE/k_s)
         k_lo = k_ln
 
-        # Fill in loss matrix
-        call build_loss_matrix(loss, adjoint=adjoint)
-
-        # Fill in production matrix
-        call build_prod_matrix(prod, adjoint=adjoint)
-
-        # Finalize setup of CSR matrices
-        call loss % assemble()
-        call prod % assemble()
-        if (cmfd_write_matrices) then
-          call loss % write('loss.dat')
-          call prod % write('prod.dat')
-        end if
-
         # Set norms to 0
         norm_n = ZERO
         norm_o = ZERO
@@ -1183,12 +1351,6 @@ class CMFDRun(object):
         ktol = cmfd_ktol
         stol = cmfd_stol
         '''
-
-    def _execute_power_iter(self):
-        pass
-
-    def _extract_results(self):
-        pass
 
     def _set_coremap(self):
         self._mat_dim = np.sum(self._coremap)
@@ -1563,7 +1725,11 @@ class CMFDRun(object):
                             if self._dhat_reset:
                                 self._dhat[i, j, k, g, l] = 0.0
 
-        sys.exit()
+        # Write that dhats are zero
+        if self._dhat_reset:
+            # TODO: Print message with verbosity 8
+            print(' Dhats reset to zero')
+
 
 
     def _get_reflector_albedo(self, l, g, i, j, k):

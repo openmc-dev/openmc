@@ -668,7 +668,7 @@ def _get_photon_products_endf(ev, rx):
 
     Returns
     -------
-    photons : list of openmc.Products
+    products : list of openmc.Products
         Photons produced from reaction with given MT
 
     """

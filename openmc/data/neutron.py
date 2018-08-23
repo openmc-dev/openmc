@@ -492,6 +492,14 @@ class IncidentNeutron(EqualityMixin):
             fer_group = g.create_group('fission_energy_release')
             self.fission_energy.to_hdf5(fer_group)
 
+        # Write summed reaction data only for reactions with photon production
+        for rx in self.summed_reactions.values():
+            if any([p.particle == 'photon' for p in rx.products]):
+                if not 'summed_reactions' in g:
+                    srxs_group = g.create_group('summed_reactions')
+                rx_group = srxs_group.create_group('reaction_{:03}'.format(rx.mt))
+                rx.to_hdf5(rx_group)
+
         f.close()
 
     @classmethod
@@ -561,6 +569,14 @@ class IncidentNeutron(EqualityMixin):
                 if rx.mt in (18, 19, 20, 21, 38) and 'total_nu' in group:
                     tgroup = group['total_nu']
                     rx.derived_products.append(Product.from_hdf5(tgroup))
+
+        # Read summed reaction data
+        if 'summed_reactions' in group:
+            srxs_group = group['summed_reactions']
+            for name, obj in sorted(srxs_group.items()):
+                if name.startswith('reaction_'):
+                    rx = Reaction.from_hdf5(obj, data.energy)
+                    data.summed_reactions[rx.mt] = rx
 
         # Build summed reactions.  Start from the highest MT number because
         # high MTs never depend on lower MTs.
@@ -678,8 +694,12 @@ class IncidentNeutron(EqualityMixin):
                     warn('Photon production is present for MT={} but no '
                          'reaction components exist.'.format(mt))
                     continue
-                rx.xs[strT] = Sum([data.reactions[mt_i].xs[strT]
-                                   for mt_i in mts])
+
+                xss = [data.reactions[mt_i].xs[strT] for mt_i in mts]
+                idx = min([xs._threshold_idx if hasattr(xs, '_threshold_idx')
+                           else 0 for xs in xss])
+                rx.xs[strT] = Tabulated1D(energy[idx:], Sum(xss)(energy[idx:]))
+                rx.xs[strT]._threshold_idx = idx
 
                 # Determine summed cross section
                 rx.products += _get_photon_products_ace(ace, rx)

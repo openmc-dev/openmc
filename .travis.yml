@@ -28,11 +28,14 @@ env:
     - OPENMC_MULTIPOLE_LIBRARY=$HOME/multipole_lib
     - PATH=$PATH:$HOME/NJOY2016/build
     - DISPLAY=:99.0
+    - COVERALLS_PARALLEL=true
   matrix:
     - OMP=n MPI=n PHDF5=n
     - OMP=y MPI=n PHDF5=n
     - OMP=n MPI=y PHDF5=n
     - OMP=n MPI=y PHDF5=y
+notifications:
+  webhooks: https://coveralls.io/webhook?repo_token=$COVERALLS_REPO_TOKEN
 install:
   - ./tools/ci/travis-install.sh
 before_script:

@@ -1,7 +1,7 @@
 import numpy as np
 import openmc
 import openmc.capi as capi
-from collections import Iterable
+from collections.abc import Iterable
 
 
 def legendre_from_expcoef(coef, domain=(-1, 1)):

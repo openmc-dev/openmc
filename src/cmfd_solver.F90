@@ -101,7 +101,7 @@ contains
 
     use constants, only: ONE, ZERO
     use cmfd_header, only: cmfd_shift, cmfd_ktol, cmfd_stol, cmfd_write_matrices
-    use simulation_header, only: keff
+    use simulation_header, only: keff, current_batch
 
     logical, intent(in) :: adjoint
 
@@ -146,8 +146,8 @@ contains
     call loss % assemble()
     call prod % assemble()
     if (cmfd_write_matrices) then
-      call loss % write('loss.dat')
-      call prod % write('prod.dat')
+      call loss % write('loss' // trim(to_str(current_batch)) // '.dat')
+      call prod % write('prod' // trim(to_str(current_batch)) // '.dat')
     end if
 
     ! Set norms to 0

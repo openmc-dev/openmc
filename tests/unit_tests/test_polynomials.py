@@ -41,7 +41,4 @@ def test_zernike_radial():
 
     test_vals = zn_rad(rho)
 
-    print(ref_vals)
-    print(test_vals)
-
     assert np.allclose(ref_vals, test_vals)

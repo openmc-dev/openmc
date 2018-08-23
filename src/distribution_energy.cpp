@@ -211,7 +211,7 @@ double ContinuousTabular::sample(double E) const
   double E_out;
   if (distribution_[l].interpolation == Interpolation::histogram) {
     // Histogram interpolation
-    if (p_l_k > 0.0) {
+    if (p_l_k > 0.0 && k >= distribution_[l].n_discrete) {
       E_out = E_l_k + (r1 - c_k)/p_l_k;
     } else {
       E_out = E_l_k;

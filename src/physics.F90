@@ -565,11 +565,12 @@ contains
 ! SAMPLE_PHOTON_PRODUCT
 !===============================================================================
 
-  subroutine sample_photon_product(i_nuclide, E, i_reaction, i_product)
+  subroutine sample_photon_product(i_nuclide, E, i_reaction, i_product, summed)
     integer, intent(in)  :: i_nuclide  ! index in nuclides array
     real(8), intent(in)  :: E          ! energy of neutron
     integer, intent(out) :: i_reaction ! index in nuc % reactions array
     integer, intent(out) :: i_product  ! index in reaction % products array
+    logical, intent(out) :: summed     ! whether a summed reaction was sampled
 
     integer :: i_grid
     integer :: i_temp
@@ -590,6 +591,7 @@ contains
       f      = micro_xs(i_nuclide) % interp_factor
       cutoff = prn() * micro_xs(i_nuclide) % photon_prod
       prob   = ZERO
+      summed = .false.
 
       ! Loop through each reaction type
       REACTION_LOOP: do i_reaction = 1, size(nuc % reactions)
@@ -613,6 +615,33 @@ contains
           end do
         end associate
       end do REACTION_LOOP
+
+      ! Loop through each summed reaction type
+      if (allocated(nuc % summed_reactions)) then
+        SUMMED_REACTION_LOOP: do i_reaction = 1, size(nuc % summed_reactions)
+          associate (rx => nuc % summed_reactions(i_reaction))
+            threshold = rx % xs_threshold(i_temp)
+
+            ! if energy is below threshold for this reaction, skip it
+            if (i_grid < threshold) cycle
+
+            do i_product = 1, rx % products_size()
+              if (rx % product_particle(i_product) == PHOTON) then
+                summed = .true.
+
+                ! add to cumulative probability
+                yield = rx % product_yield(i_product, E)
+                prob = prob + ((ONE - f) * rx % xs(i_temp, i_grid - threshold + 1) &
+                     + f*(rx % xs(i_temp, i_grid - threshold + 2))) * yield
+
+                if (prob > cutoff) return
+                last_valid_reaction = i_reaction
+                last_valid_product = i_product
+              end if
+            end do
+          end associate
+        end do SUMMED_REACTION_LOOP
+      end if
     end associate
 
     i_reaction = last_valid_reaction
@@ -1718,6 +1747,7 @@ contains
     real(8) :: uvw(3)
     integer :: nu
     integer :: i
+    logical :: summed
 
     ! Sample the number of photons produced
     nu_t =  p % wgt * micro_xs(i_nuclide) % photon_prod / &
@@ -1732,11 +1762,16 @@ contains
     do i = 1, nu
 
       ! Sample the reaction and product
-      call sample_photon_product(i_nuclide, p % E, i_reaction, i_product)
+      call sample_photon_product(i_nuclide, p % E, i_reaction, i_product, summed)
 
       ! Sample the outgoing energy and angle
-      call nuclides(i_nuclide) % reactions(i_reaction) % &
-           product_sample(i_product, p % E, E, mu)
+      if (summed) then
+        call nuclides(i_nuclide) % summed_reactions(i_reaction) % &
+             product_sample(i_product, p % E, E, mu)
+      else
+        call nuclides(i_nuclide) % reactions(i_reaction) % &
+             product_sample(i_product, p % E, E, mu)
+      end if
 
       ! Sample the new direction
       uvw = rotate_angle(p % coord(1) % uvw, mu)

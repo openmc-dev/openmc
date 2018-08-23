@@ -352,4 +352,28 @@ extern "C" double total_source_strength()
   return strength;
 }
 
+// Needed in fill_source_bank_fixedsource
+extern "C" int overall_generation();
+
+//! Fill source bank at end of generation for fixed source simulations
+extern "C" void fill_source_bank_fixedsource()
+{
+  if (path_source.empty()) {
+    // Get pointer to source bank
+    Bank* source_bank;
+    int64_t n;
+    openmc_source_bank(&source_bank, &n);
+
+    for (int64_t i = 0; i < openmc_work; ++i) {
+      // initialize random number seed
+      int64_t id = (openmc_total_gen + overall_generation())*n_particles +
+        work_index[openmc::mpi::rank] + i + 1;
+      set_particle_seed(id);
+
+      // sample external source distribution
+      source_bank[i] = sample_external_source();
+    }
+  }
+}
+
 } // namespace openmc

@@ -253,7 +253,10 @@ contains
 
   subroutine finalize_generation()
 
-    integer(8) :: i
+    interface
+      subroutine fill_source_bank_fixedsource() bind(C)
+      end subroutine
+    end interface
 
     ! Update global tallies with the omp private accumulation variables
 !$omp parallel
@@ -306,13 +309,7 @@ contains
 
     elseif (run_mode == MODE_FIXEDSOURCE) then
       ! For fixed-source mode, we need to sample the external source
-      if (path_source == '') then
-        do i = 1, work
-          call set_particle_seed((total_gen + overall_generation()) * &
-               n_particles + work_index(rank) + i)
-          source_bank(i) = sample_external_source()
-        end do
-      end if
+      call fill_source_bank_fixedsource()
     end if
 
   end subroutine finalize_generation

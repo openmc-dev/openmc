@@ -19,7 +19,7 @@ class ExpansionFilter(Filter):
         if type(self) is not type(other):
             return False
         else:
-            return self.bins == other.bins
+            return hash(self) == hash(other)
 
     @property
     def order(self):
@@ -390,6 +390,9 @@ class ZernikeFilter(ExpansionFilter):
     def __hash__(self):
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tOrder', self.order)
+        string += '{: <16}=\t{}\n'.format('\tX', self.x)
+        string += '{: <16}=\t{}\n'.format('\tY', self.y)
+        string += '{: <16}=\t{}\n'.format('\tR', self.r)
         return hash(string)
 
     def __repr__(self):

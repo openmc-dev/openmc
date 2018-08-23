@@ -1,9 +1,10 @@
 import numpy as np
 import openmc
 import openmc.capi as capi
+from collections import Iterable
 
 
-def legendre_from_expcoef(coef, domain= (-1,1)):
+def legendre_from_expcoef(coef, domain=(-1, 1)):
     """Return a Legendre series object based on expansion coefficients.
 
     Given a list of coefficients from FET tally and a array of down, return
@@ -73,5 +74,8 @@ class ZernikeRadial(Polynomial):
         return self._order
 
     def __call__(self, r):
-        zn_rad = capi.calc_zn_rad(self.order, r)
-        return np.sum(self._norm_coef * zn_rad)
+        if isinstance(r, Iterable):
+            return [np.sum(self._norm_coef * capi.calc_zn_rad(self.order, r_i))
+                    for r_i in r]
+        else:
+            return np.sum(self._norm_coef * capi.calc_zn_rad(self.order, r))

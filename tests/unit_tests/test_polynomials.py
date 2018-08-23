@@ -27,3 +27,21 @@ def test_zernike_radial():
     test_vals = zn_rad(rho)
 
     assert ref_vals == test_vals
+
+    rho = [0.2, 0.5]
+    # Reference solution from running the Fortran implementation
+    raw_zn1 = np.array([
+        1.00000000e+00, -9.20000000e-01, 7.69600000e-01,
+        -5.66720000e-01, 3.35219200e-01, -1.01747000e-01])
+    raw_zn2 = np.array([
+        1.00000000e+00, -5.00000000e-01, -1.25000000e-01,
+        4.37500000e-01, -2.89062500e-01, -8.98437500e-02])
+
+    ref_vals = [np.sum(norm_coeff * raw_zn1), np.sum(norm_coeff * raw_zn2)]
+
+    test_vals = zn_rad(rho)
+
+    print(ref_vals)
+    print(test_vals)
+
+    assert np.allclose(ref_vals, test_vals)

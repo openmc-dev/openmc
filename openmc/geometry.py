@@ -1,10 +1,13 @@
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from collections.abc import Iterable
 from copy import deepcopy
+from pathlib import Path
 from xml.etree import ElementTree as ET
 
+import numpy as np
+
 import openmc
-from openmc.clean_xml import clean_xml_indentation
+import openmc._xml as xml
 from openmc.checkvalue import check_type
 
 
@@ -92,11 +95,103 @@ class Geometry(object):
             x.tag, int(x.get('id'))))
 
         # Clean the indentation in the file to be user-readable
-        clean_xml_indentation(root_element)
+        xml.clean_indentation(root_element)
 
         # Write the XML Tree to the geometry.xml file
         tree = ET.ElementTree(root_element)
         tree.write(path, xml_declaration=True, encoding='utf-8')
+
+    @classmethod
+    def from_xml(cls, path='geometry.xml', materials=None):
+        """Generate geometry from XML file
+
+        Parameters
+        ----------
+        path : str, optional
+            Path to geometry XML file
+        materials : openmc.Materials or None
+            Materials used to assign to cells. If None, an attempt is made to
+            generate it from the materials.xml file.
+
+        Returns
+        -------
+        openmc.Geometry
+            Geometry object
+
+        """
+        # Helper function for keeping a cache of Universe instances
+        universes = {}
+        def get_universe(univ_id):
+            if univ_id not in universes:
+                univ = openmc.Universe(univ_id)
+                universes[univ_id] = univ
+            return universes[univ_id]
+
+        tree = ET.parse(path)
+        root = tree.getroot()
+
+        # Get surfaces
+        surfaces = {}
+        periodic = {}
+        for surface in root.findall('surface'):
+            s = openmc.Surface.from_xml_element(surface)
+            surfaces[s.id] = s
+
+            # Check for periodic surface
+            other_id = xml.get_text(surface, 'periodic_surface_id')
+            if other_id is not None:
+                periodic[s.id] = int(other_id)
+
+        # Apply periodic surfaces
+        for s1, s2 in periodic.items():
+            surfaces[s1].periodic_surface = surfaces[s2]
+
+        # Dictionary that maps each universe to a list of cells/lattices that
+        # contain it (needed to determine which universe is the root)
+        child_of = defaultdict(list)
+
+        for elem in root.findall('lattice'):
+            lat = openmc.RectLattice.from_xml_element(elem, get_universe)
+            universes[lat.id] = lat
+            if lat.outer is not None:
+                child_of[lat.outer].append(lat)
+            for u in lat.universes.ravel():
+                child_of[u].append(lat)
+
+        for elem in root.findall('hex_lattice'):
+            lat = openmc.HexLattice.from_xml_element(elem, get_universe)
+            universes[lat.id] = lat
+            if lat.outer is not None:
+                child_of[lat.outer].append(lat)
+            if lat.ndim == 2:
+                for ring in lat.universes:
+                    for u in ring:
+                        child_of[u].append(lat)
+            else:
+                for axial_slice in lat.universes:
+                    for ring in axial_slice:
+                        for u in ring:
+                            child_of[u].append(lat)
+
+        # Create dictionary to easily look up materials
+        if materials is None:
+            filename = Path(path).parent / 'materials.xml'
+            materials = openmc.Materials.from_xml(str(filename))
+        mats = {str(m.id): m for m in materials}
+        mats['void'] = None
+
+        for elem in root.findall('cell'):
+            c = openmc.Cell.from_xml_element(elem, surfaces, mats, get_universe)
+            if c.fill_type in ('universe', 'lattice'):
+                child_of[c.fill].append(c)
+
+        # Determine which universe is the root by finding one which is not a
+        # child of any other object
+        for u in universes.values():
+            if not child_of[u]:
+                return cls(u)
+        else:
+            raise ValueError('Error determining root universe.')
 
     def find(self, point):
         """Find cells/universes/lattices which contain a given point

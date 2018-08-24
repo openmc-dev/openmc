@@ -9,7 +9,7 @@ import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from openmc.clean_xml import clean_xml_indentation
+from openmc._xml import clean_indentation
 from openmc.mixin import IDManagerMixin
 
 
@@ -816,7 +816,7 @@ class Plots(cv.CheckedList):
         self._create_plot_subelements()
 
         # Clean the indentation in the file to be user-readable
-        clean_xml_indentation(self._plots_file)
+        clean_indentation(self._plots_file)
 
         # Write the XML Tree to the plots.xml file
         tree = ET.ElementTree(self._plots_file)

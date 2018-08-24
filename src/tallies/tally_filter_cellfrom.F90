@@ -42,7 +42,7 @@ contains
 
     ! Starting one coordinate level deeper, find the next bin.
     do i = 1, p % last_n_coord
-      val = this % map % get(p % last_cell(i))
+      val = this % map % get(p % last_cell(i) + 1)
       if (val /= EMPTY) then
         call match % bins % push_back(val)
         call match % weights % push_back(ONE)

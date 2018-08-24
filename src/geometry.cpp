@@ -34,11 +34,10 @@ check_cell_overlap(Particle* p) {
       Cell& c = *global_cells[index_cell];
 
       if (c.contains(p->coord[j].xyz, p->coord[j].uvw, p->surface)) {
-        //TODO: off-by-one indexing
-        if (index_cell != p->coord[j].cell - 1) {
+        if (index_cell != p->coord[j].cell) {
           std::stringstream err_msg;
           err_msg << "Overlapping cells detected: " << c.id << ", "
-                  << global_cells[p->coord[j].cell-1]->id << " on universe "
+                  << global_cells[p->coord[j].cell]->id << " on universe "
                   << univ.id;
           fatal_error(err_msg);
         }
@@ -94,8 +93,7 @@ find_cell(Particle* p, int search_surf) {
     Direction u {p->coord[p->n_coord-1].uvw};
     int32_t surf = p->surface;
     if (global_cells[i_cell]->contains(r, u, surf)) {
-      //TODO: off-by-one indexing
-      p->coord[p->n_coord-1].cell = i_cell + 1;
+      p->coord[p->n_coord-1].cell = i_cell;
 
       if (openmc_verbosity >= 10 || openmc_trace) {
         std::stringstream msg;
@@ -119,7 +117,7 @@ find_cell(Particle* p, int search_surf) {
         int distribcell_index = c.distribcell_index - 1;
         int offset = 0;
         for (int i = 0; i < p->n_coord; i++) {
-          Cell& c_i {*global_cells[p->coord[i].cell-1]};
+          Cell& c_i {*global_cells[p->coord[i].cell]};
           if (c_i.type == FILL_UNIVERSE) {
             offset += c_i.offset[distribcell_index];
           } else if (c_i.type == FILL_LATTICE) {
@@ -334,7 +332,7 @@ distance_to_boundary(Particle* p, double* dist, int* surface_crossed,
   for (int i = 0; i < p->n_coord; i++) {
     Position r {p->coord[i].xyz};
     Direction u {p->coord[i].uvw};
-    Cell& c {*global_cells[p->coord[i].cell-1]};
+    Cell& c {*global_cells[p->coord[i].cell]};
 
     // Find the oncoming surface in this cell and the distance to it.
     auto surface_distance = c.distance(r, u, p->surface);

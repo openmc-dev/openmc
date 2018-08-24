@@ -281,7 +281,7 @@ void read_dataset(hid_t obj_id, const char* name, xt::xarray<T>& arr, bool indep
 template<typename T> inline void
 write_attribute(hid_t obj_id, const char* name, T buffer)
 {
-  write_attr(obj_id, name, 0, nullptr, H5TypeMap<T>::type_id, &buffer);
+  write_attr(obj_id, 0, nullptr, name, H5TypeMap<T>::type_id, &buffer);
 }
 
 inline void

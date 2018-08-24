@@ -433,13 +433,18 @@ Cell::distance(Position r, Direction u, int32_t on_surface) const
 //==============================================================================
 
 void
-Cell::to_hdf5(hid_t cell_group) const
+Cell::to_hdf5(hid_t cells_group) const
 {
+  // Create a group for this cell.
+  std::stringstream group_name;
+  group_name << "cell " << id;
+  auto group = create_group(cells_group, group_name);
+
   if (!name.empty()) {
-    write_string(cell_group, "name", name, false);
+    write_string(group, "name", name, false);
   }
 
-  write_dataset(cell_group, "universe", global_universes[universe]->id);
+  write_dataset(group, "universe", global_universes[universe]->id);
 
   // Write the region specification.
   if (!region.empty()) {
@@ -460,20 +465,48 @@ Cell::to_hdf5(hid_t cell_group) const
              << copysign(global_surfaces[abs(token)-1]->id, token);
       }
     }
-    write_string(cell_group, "region", region_spec.str(), false);
+    write_string(group, "region", region_spec.str(), false);
   }
 
-  if (type == FILL_UNIVERSE) {
-    write_dataset(cell_group, "fill_type", "universe");
-    write_dataset(cell_group, "fill", global_universes[fill]->id);
+  // Write fill information.
+  if (type == FILL_MATERIAL) {
+    write_dataset(group, "fill_type", "material");
+    std::vector<int32_t> mat_ids;
+    for (auto i_mat : material) {
+      if (i_mat != MATERIAL_VOID) {
+        mat_ids.push_back(global_materials[i_mat]->id);
+      } else {
+        mat_ids.push_back(MATERIAL_VOID);
+      }
+    }
+    if (mat_ids.size() == 1) {
+      write_dataset(group, "material", mat_ids[0]);
+    } else {
+      write_dataset(group, "material", mat_ids);
+    }
+
+    std::vector<double> temps;
+    for (auto sqrtkT_val : sqrtkT)
+      temps.push_back(sqrtkT_val * sqrtkT_val / K_BOLTZMANN);
+    write_dataset(group, "temperature", temps);
+
+  } else if (type == FILL_UNIVERSE) {
+    write_dataset(group, "fill_type", "universe");
+    write_dataset(group, "fill", global_universes[fill]->id);
     if (translation != 0) {
-      write_dataset(cell_group, "translation", translation);
+      write_dataset(group, "translation", translation);
     }
     if (!rotation.empty()) {
       std::array<double, 3> rot {rotation[0], rotation[1], rotation[2]};
-      write_dataset(cell_group, "rotation", rot);
+      write_dataset(group, "rotation", rot);
     }
+
+  } else if (type == FILL_LATTICE) {
+    write_dataset(group, "fill_type", "lattice");
+    write_dataset(group, "lattice", lattices_c[fill]->id);
   }
+
+  close_group(group);
 }
 
 //==============================================================================

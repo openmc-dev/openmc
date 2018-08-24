@@ -420,6 +420,7 @@ add_library(libopenmc SHARED
   src/simulation.cpp
   src/state_point.cpp
   src/string_functions.cpp
+  src/summary.cpp
   src/surface.cpp
   src/xml_interface.cpp
   src/xsdata.cpp)

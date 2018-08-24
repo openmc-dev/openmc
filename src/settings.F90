@@ -24,7 +24,7 @@ module settings
   real(C_DOUBLE), bind(C) :: temperature_default
   real(C_DOUBLE), bind(C) :: temperature_range(2)
 
-  integer :: n_log_bins  ! number of bins for logarithmic grid
+  integer(C_INT), bind(C) :: n_log_bins  ! number of bins for logarithmic grid
 
   logical(C_BOOL), bind(C) :: photon_transport
   integer(C_INT), bind(C) :: electron_treatment
@@ -33,7 +33,7 @@ module settings
   ! MULTI-GROUP CROSS SECTION RELATED VARIABLES
 
   ! Maximum Data Order
-  integer(C_INT) :: max_order
+  integer(C_INT), bind(C) :: max_order
 
   ! Whether or not to convert Legendres to tabulars
   logical(C_BOOL), bind(C) :: legendre_to_tabular
@@ -55,8 +55,8 @@ module settings
   integer(C_INT32_T), bind(C) :: n_inactive        ! # of inactive batches
   integer(C_INT32_T), bind(C) :: gen_per_batch = 1 ! # of generations per batch
 
-  integer :: n_max_batches             ! max # of batches
-  integer :: n_batch_interval = 1      ! batch interval for triggers
+  integer(C_INT), bind(C) :: n_max_batches             ! max # of batches
+  integer(C_INT), bind(C, name='trigger_batch_interval') :: n_batch_interval      ! batch interval for triggers
   logical(C_BOOL), bind(C, name='trigger_predict') :: pred_batches   ! predict batches for triggers
   logical(C_BOOL), bind(C) :: trigger_on      ! flag for turning triggers on/off
 
@@ -75,7 +75,7 @@ module settings
   logical(C_BOOL), bind(C) :: survival_biasing
   real(C_DOUBLE), bind(C) :: weight_cutoff
   real(C_DOUBLE), bind(C) :: energy_cutoff(4)
-  real(C_DOUBLE) :: weight_survive
+  real(C_DOUBLE), bind(C) :: weight_survive
 
   ! Mode to run in (fixed source, eigenvalue, plotting, etc)
   integer(C_INT), bind(C) :: run_mode
@@ -90,9 +90,9 @@ module settings
   logical(C_BOOL), bind(C) :: check_overlaps
 
   ! Trace for single particle
-  integer    :: trace_batch
-  integer    :: trace_gen
-  integer(8) :: trace_particle
+  integer(C_INT), bind(C)     :: trace_batch
+  integer(C_INT), bind(C)     :: trace_gen
+  integer(C_INT64_T), bind(C) :: trace_particle
 
   ! Particle tracks
   logical(C_BOOL), bind(C) :: write_all_tracks

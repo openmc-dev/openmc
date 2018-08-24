@@ -61,12 +61,11 @@ contains
           offset = offset + cells(p % coord(i) % cell + 1) &
                % offset(distribcell_index-1)
         elseif (cells(p % coord(i) % cell + 1) % type() == FILL_LATTICE) then
-          if (lattices(p % coord(i + 1) % lattice) % obj &
-               % are_valid_indices([&
+          if (lattices(p % coord(i + 1) % lattice) % are_valid_indices([&
                p % coord(i + 1) % lattice_x, &
                p % coord(i + 1) % lattice_y, &
                p % coord(i + 1) % lattice_z])) then
-            offset = offset + lattices(p % coord(i + 1) % lattice) % obj &
+            offset = offset + lattices(p % coord(i + 1) % lattice) &
                  % offset(distribcell_index - 1, &
                  [p % coord(i + 1) % lattice_x, &
                  p % coord(i + 1) % lattice_y, &

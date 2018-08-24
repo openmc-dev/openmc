@@ -57,14 +57,7 @@ public:
 
   virtual ~Lattice() {}
 
-  virtual int32_t& operator[](const int i_xyz[3]) = 0;
-
-  int32_t&
-  operator[](std::array<int, 3> i_xyz)
-  {
-    int i_xyz_[3] {i_xyz[0], i_xyz[1], i_xyz[2]};
-    return operator[](i_xyz_);
-  }
+  virtual int32_t& operator[](std::array<int, 3> i_xyz) = 0;
 
   virtual LatticeIter begin();
   LatticeIter end();
@@ -98,19 +91,12 @@ public:
   //! \brief Find the next lattice surface crossing
   //! \param r A 3D Cartesian coordinate.
   //! \param u A 3D Cartesian direction.
-  //! \param i_xyz[3] The indices for a lattice tile.
+  //! \param i_xyz The indices for a lattice tile.
   //! \return The distance to the next crossing and an array indicating how the
   //!   lattice indices would change after crossing that boundary.
   virtual std::pair<double, std::array<int, 3>>
-  distance(Position r, Direction u, const int i_xyz[3]) const
+  distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const
   = 0;
-
-  std::pair<double, std::array<int, 3>>
-  distance(Position r, Direction u, std::array<int, 3> i_xyz) const
-  {
-    int i_xyz_[3] {i_xyz[0], i_xyz[1], i_xyz[2]};
-    return distance(r, u, i_xyz_);
-  }
 
   //! \brief Find the lattice tile indices for a given point.
   //! \param r A 3D Cartesian coordinate.
@@ -119,17 +105,10 @@ public:
 
   //! \brief Get coordinates local to a lattice tile.
   //! \param r A 3D Cartesian coordinate.
-  //! \param i_xyz[3] The indices for a lattice tile.
+  //! \param i_xyz The indices for a lattice tile.
   //! \return Local 3D Cartesian coordinates.
   virtual Position
-  get_local_position(Position r, const int i_xyz[3]) const = 0;
-
-  Position
-  get_local_position(Position r, std::array<int, 3> i_xyz) const
-  {
-    int i_xyz_[3] {i_xyz[0], i_xyz[1], i_xyz[2]};
-    return get_local_position(r, i_xyz_);
-  }
+  get_local_position(Position r, const std::array<int, 3> i_xyz) const = 0;
 
   //! \brief Check flattened lattice index.
   //! \param indx The index for a lattice tile.
@@ -223,17 +202,17 @@ class RectLattice : public Lattice
 public:
   explicit RectLattice(pugi::xml_node lat_node);
 
-  int32_t& operator[](const int i_xyz[3]);
+  int32_t& operator[](std::array<int, 3> i_xyz);
 
   bool are_valid_indices(const int i_xyz[3]) const;
 
   std::pair<double, std::array<int, 3>>
-  distance(Position r, Direction u, const int i_xyz[3]) const;
+  distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
 
   std::array<int, 3> get_indices(Position r) const;
 
   Position
-  get_local_position(Position r, const int i_xyz[3]) const;
+  get_local_position(Position r, const std::array<int, 3> i_xyz) const;
 
   int32_t& offset(int map, const int i_xyz[3]);
 
@@ -259,7 +238,7 @@ class HexLattice : public Lattice
 public:
   explicit HexLattice(pugi::xml_node lat_node);
 
-  int32_t& operator[](const int i_xyz[3]);
+  int32_t& operator[](std::array<int, 3> i_xyz);
 
   LatticeIter begin();
 
@@ -268,12 +247,12 @@ public:
   bool are_valid_indices(const int i_xyz[3]) const;
 
   std::pair<double, std::array<int, 3>>
-  distance(Position r, Direction u, const int i_xyz[3]) const;
+  distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
 
   std::array<int, 3> get_indices(Position r) const;
 
   Position
-  get_local_position(Position r, const int i_xyz[3]) const;
+  get_local_position(Position r, const std::array<int, 3> i_xyz) const;
 
   bool is_valid_index(int indx) const;
 

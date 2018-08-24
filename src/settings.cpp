@@ -16,10 +16,12 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-char* openmc_path_input;
-char* openmc_path_statepoint;
-char* openmc_path_sourcepoint;
-char* openmc_path_particle_restart;
+namespace settings {
+
+char* path_input;
+char* path_statepoint;
+char* path_sourcepoint;
+char* path_particle_restart;
 std::string path_cross_sections;
 std::string path_multipole;
 std::string path_output;
@@ -31,12 +33,16 @@ double temperature_tolerance {10.0};
 double temperature_default {293.6};
 std::array<double, 2> temperature_range {0.0, 0.0};
 
+} // namespace settings
+
 //==============================================================================
 // Functions
 //==============================================================================
 
 void read_settings(pugi::xml_node* root)
 {
+  using namespace settings;
+
   // Look for deprecated cross_sections.xml file in settings.xml
   if (check_for_node(*root, "cross_sections")) {
     warning("Setting cross_sections in settings.xml has been deprecated."

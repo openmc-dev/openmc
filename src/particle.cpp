@@ -148,7 +148,8 @@ Particle::write_restart()
 
   // Set up file name
   std::stringstream filename;
-  filename << path_output << "particle_" << openmc_current_batch << '_' << id << ".h5";
+  filename << settings::path_output << "particle_" << openmc_current_batch
+    << '_' << id << ".h5";
 
 #pragma omp critical (WriteParticleRestart)
   {

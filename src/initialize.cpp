@@ -109,7 +109,7 @@ parse_command_line(int argc, char* argv[])
     if (arg[0] == '-') {
       if (arg == "-p" || arg == "--plot") {
         openmc_run_mode = RUN_MODE_PLOTTING;
-        openmc_check_overlaps = true;
+        settings::check_overlaps = true;
 
       } else if (arg == "-n" || arg == "--particles") {
         i += 1;
@@ -127,11 +127,11 @@ parse_command_line(int argc, char* argv[])
 
         // Set path and flag for type of run
         if (filetype == "statepoint") {
-          openmc_path_statepoint = argv[i];
-          openmc_restart_run = true;
+          settings::path_statepoint = argv[i];
+          settings::restart_run = true;
         } else if (filetype == "particle restart") {
-          openmc_path_particle_restart = argv[i];
-          openmc_particle_restart_run = true;
+          settings::path_particle_restart = argv[i];
+          settings::particle_restart_run = true;
         } else {
           std::stringstream msg;
           msg << "Unrecognized file after restart flag: " << filetype << ".";
@@ -140,7 +140,7 @@ parse_command_line(int argc, char* argv[])
         }
 
         // If its a restart run check for additional source file
-        if (openmc_restart_run && i + 1 < argc) {
+        if (settings::restart_run && i + 1 < argc) {
           // Check if it has extension we can read
           if (ends_with(argv[i+1], ".h5")) {
 
@@ -156,21 +156,21 @@ parse_command_line(int argc, char* argv[])
             }
 
             // It is a source file
-            openmc_path_sourcepoint = argv[i+1];
+            settings::path_sourcepoint = argv[i+1];
             i += 1;
 
           } else {
             // Source is in statepoint file
-            openmc_path_sourcepoint = openmc_path_statepoint;
+            settings::path_sourcepoint = settings::path_statepoint;
           }
 
         } else {
           // Source is assumed to be in statepoint file
-          openmc_path_sourcepoint = openmc_path_statepoint;
+          settings::path_sourcepoint = settings::path_statepoint;
         }
 
       } else if (arg == "-g" || arg == "--geometry-debug") {
-        openmc_check_overlaps = true;
+      settings::check_overlaps = true;
       } else if (arg == "-c" || arg == "--volume") {
         openmc_run_mode = RUN_MODE_VOLUME;
       } else if (arg == "-s" || arg == "--threads") {
@@ -200,7 +200,7 @@ parse_command_line(int argc, char* argv[])
         return OPENMC_E_UNASSIGNED;
 
       } else if (arg == "-t" || arg == "--track") {
-        openmc_write_all_tracks = true;
+        settings::write_all_tracks = true;
 
       } else {
         std::cerr << "Unknown option: " << argv[i] << '\n';
@@ -213,7 +213,7 @@ parse_command_line(int argc, char* argv[])
   }
 
   // Determine directory where XML input files are
-  if (argc > 1 && last_flag < argc) openmc_path_input = argv[last_flag + 1];
+  if (argc > 1 && last_flag < argc) settings::path_input = argv[last_flag + 1];
 
   return 0;
 }

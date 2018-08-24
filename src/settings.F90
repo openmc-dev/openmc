@@ -9,7 +9,7 @@ module settings
 
   ! ============================================================================
   ! ENERGY TREATMENT RELATED VARIABLES
-  logical(C_BOOL), bind(C, name='openmc_run_CE') :: run_CE = .true.  ! Run in CE mode?
+  logical(C_BOOL), bind(C, name='run_CE') :: run_CE = .true.  ! Run in CE mode?
 
   ! ============================================================================
   ! CONTINUOUS-ENERGY CROSS SECTION RELATED VARIABLES
@@ -26,7 +26,7 @@ module settings
 
   integer :: n_log_bins  ! number of bins for logarithmic grid
 
-  logical(C_BOOL), bind(C, name='openmc_photon_transport') :: photon_transport = .false.
+  logical(C_BOOL), bind(C) :: photon_transport = .false.
   integer :: electron_treatment = ELECTRON_TTB
 
   ! ============================================================================
@@ -81,13 +81,13 @@ module settings
   integer(C_INT), bind(C, name='openmc_run_mode') :: run_mode = NONE
 
   ! Restart run
-  logical(C_BOOL), bind(C, name='openmc_restart_run') :: restart_run = .false.
+  logical(C_BOOL), bind(C) :: restart_run = .false.
 
   ! The verbosity controls how much information will be printed to the screen
   ! and in logs
   integer(C_INT), bind(C, name='openmc_verbosity') :: verbosity = 7
 
-  logical(C_BOOL), bind(C, name='openmc_check_overlaps') :: check_overlaps = .false.
+  logical(C_BOOL), bind(C) :: check_overlaps = .false.
 
   ! Trace for single particle
   integer    :: trace_batch
@@ -95,17 +95,14 @@ module settings
   integer(8) :: trace_particle
 
   ! Particle tracks
-  logical(C_BOOL), bind(C, name='openmc_write_all_tracks') :: &
-       write_all_tracks = .false.
+  logical(C_BOOL), bind(C) :: write_all_tracks = .false.
   integer, allocatable :: track_identifiers(:,:)
 
   ! Particle restart run
-  logical(C_BOOL), bind(C, name='openmc_particle_restart_run') :: &
-       particle_restart_run = .false.
+  logical(C_BOOL), bind(C) :: particle_restart_run = .false.
 
   ! Write out initial source
-  logical(C_BOOL), bind(C, name='openmc_write_initial_source') :: &
-       write_initial_source = .false.
+  logical(C_BOOL), bind(C) :: write_initial_source = .false.
 
   ! Whether create fission neutrons or not. Only applied for MODE_FIXEDSOURCE
   logical :: create_fission_neutrons = .true.

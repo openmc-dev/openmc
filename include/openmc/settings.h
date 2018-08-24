@@ -15,21 +15,23 @@ namespace openmc {
 // Global variable declarations
 //==============================================================================
 
+namespace settings {
+
 // Defined on Fortran side
-extern "C" bool openmc_check_overlaps;
-extern "C" bool openmc_particle_restart_run;
-extern "C" bool openmc_photon_transport;
-extern "C" bool openmc_restart_run;
-extern "C" bool openmc_run_CE;
-extern "C" bool openmc_write_all_tracks;
-extern "C" bool openmc_write_initial_source;
+extern "C" bool check_overlaps;
+extern "C" bool particle_restart_run;
+extern "C" bool photon_transport;
+extern "C" bool restart_run;
+extern "C" bool run_CE;
+extern "C" bool write_all_tracks;
+extern "C" bool write_initial_source;
 
 // Defined in .cpp
 // TODO: Make strings instead of char* once Fortran is gone
-extern "C" char* openmc_path_input;
-extern "C" char* openmc_path_statepoint;
-extern "C" char* openmc_path_sourcepoint;
-extern "C" char* openmc_path_particle_restart;
+extern "C" char* path_input;
+extern "C" char* path_statepoint;
+extern "C" char* path_sourcepoint;
+extern "C" char* path_particle_restart;
 extern std::string path_cross_sections;
 extern std::string path_multipole;
 extern std::string path_output;
@@ -40,6 +42,8 @@ extern bool temperature_multipole;
 extern double temperature_tolerance;
 extern double temperature_default;
 extern std::array<double, 2> temperature_range;
+
+} // namespace settings
 
 //==============================================================================
 //! Read settings from XML file

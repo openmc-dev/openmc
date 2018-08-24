@@ -231,8 +231,8 @@ contains
       write(ou,*) '  Level ' // trim(to_str(i - 1))
 
       ! Print cell for this level
-      if (p % coord(i) % cell /= NONE) then
-        c => cells(p % coord(i) % cell)
+      if (p % coord(i) % cell /= C_NONE) then
+        c => cells(p % coord(i) % cell + 1)
         write(ou,*) '    Cell             = ' // trim(to_str(c % id()))
       end if
 

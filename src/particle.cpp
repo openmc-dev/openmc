@@ -19,8 +19,8 @@ namespace openmc {
 void
 LocalCoord::reset()
 {
-  cell = 0;
-  universe = 0;
+  cell = C_NONE;
+  universe = C_NONE;
   lattice = 0;
   lattice_x = 0;
   lattice_y = 0;
@@ -67,7 +67,7 @@ Particle::initialize()
 
   // clear attributes
   surface           = 0;
-  cell_born         = 0;
+  cell_born         = C_NONE;
   material          = 0;
   last_material     = 0;
   last_sqrtkT       = 0;

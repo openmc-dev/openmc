@@ -91,7 +91,7 @@ contains
       ! If the cell hasn't been determined based on the particle's location,
       ! initiate a search for the current cell. This generally happens at the
       ! beginning of the history and again for any secondary particles
-      if (p % coord(p % n_coord) % cell == NONE) then
+      if (p % coord(p % n_coord) % cell == C_NONE) then
         call find_cell(p, found_cell)
         if (.not. found_cell) then
           call particle_mark_as_lost(p, "Could not find the cell containing" &
@@ -100,7 +100,7 @@ contains
         end if
 
         ! set birth cell attribute
-        if (p % cell_born == NONE) p % cell_born = p % coord(p % n_coord) % cell
+        if (p % cell_born == C_NONE) p % cell_born = p % coord(p % n_coord) % cell
       end if
 
       ! Write particle track.
@@ -183,7 +183,7 @@ contains
         end do
         p % last_n_coord = p % n_coord
 
-        p % coord(p % n_coord) % cell = NONE
+        p % coord(p % n_coord) % cell = C_NONE
         if (any(lattice_translation /= 0)) then
           ! Particle crosses lattice boundary
           p % surface = ERROR_INT
@@ -251,7 +251,7 @@ contains
         do j = 1, p % n_coord - 1
           if (p % coord(j + 1) % rotated) then
             ! If next level is rotated, apply rotation matrix
-            p % coord(j + 1) % uvw = matmul(cells(p % coord(j) % cell) % &
+            p % coord(j + 1) % uvw = matmul(cells(p % coord(j) % cell + 1) % &
                  rotation_matrix, p % coord(j) % uvw)
           else
             ! Otherwise, copy this level's direction

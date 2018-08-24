@@ -57,10 +57,10 @@ contains
       distribcell_index = cells(this % cell) % distribcell_index()
       offset = 0
       do i = 1, p % n_coord
-        if (cells(p % coord(i) % cell) % type() == FILL_UNIVERSE) then
-          offset = offset + cells(p % coord(i) % cell) &
+        if (cells(p % coord(i) % cell + 1) % type() == FILL_UNIVERSE) then
+          offset = offset + cells(p % coord(i) % cell + 1) &
                % offset(distribcell_index-1)
-        elseif (cells(p % coord(i) % cell) % type() == FILL_LATTICE) then
+        elseif (cells(p % coord(i) % cell + 1) % type() == FILL_LATTICE) then
           if (lattices(p % coord(i + 1) % lattice) % obj &
                % are_valid_indices([&
                p % coord(i + 1) % lattice_x, &
@@ -73,7 +73,7 @@ contains
                  p % coord(i + 1) % lattice_z])
           end if
         end if
-        if (this % cell == p % coord(i) % cell) then
+        if (this % cell == p % coord(i) % cell + 1) then
           call match % bins % push_back(offset + 1)
           call match % weights % push_back(ONE)
           return

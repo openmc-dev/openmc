@@ -102,6 +102,7 @@ contains
     use constants, only: ONE, ZERO
     use cmfd_header, only: cmfd_shift, cmfd_ktol, cmfd_stol, cmfd_write_matrices
     use simulation_header, only: keff, current_batch
+    use string, only: to_str
 
     logical, intent(in) :: adjoint
 

@@ -216,7 +216,7 @@ contains
       elseif (this % domain_type == FILTER_UNIVERSE) then
         do level = 1, p % n_coord
           do i_domain = 1, size(this % domain_id)
-            if (universe_id(p % coord(level) % universe - 1) == &
+            if (universe_id(p % coord(level) % universe) == &
                  this % domain_id(i_domain)) then
               i_material = p % material
               call check_hit(i_domain, i_material, indices, hits, n_mat)

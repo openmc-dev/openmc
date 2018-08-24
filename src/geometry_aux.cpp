@@ -62,8 +62,7 @@ adjust_indices()
   for (Cell* c : global_cells) {
     auto search = universe_map.find(c->universe);
     if (search != universe_map.end()) {
-      //TODO: Remove this off-by-one indexing.
-      c->universe = search->second + 1;
+      c->universe = search->second;
     } else {
       std::stringstream err_msg;
       err_msg << "Could not find universe " << c->universe

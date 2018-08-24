@@ -239,7 +239,7 @@ contains
       ! Print universe for this level
       if (p % coord(i) % universe /= NONE) then
         write(ou,*) '    Universe         = ' &
-             // trim(to_str(universe_id(p % coord(i) % universe-1)))
+             // trim(to_str(universe_id(p % coord(i) % universe)))
       end if
 
       ! Print information on lattice

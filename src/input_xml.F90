@@ -170,7 +170,7 @@ contains
 
     ! Perform some final operations to set up the geometry
     call adjust_indices()
-    call count_cell_instances(root_universe-1)
+    call count_cell_instances(root_universe)
 
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
@@ -185,7 +185,7 @@ contains
     ! Check to make sure there are not too many nested coordinate levels in the
     ! geometry since the coordinate list is statically allocated for performance
     ! reasons
-    if (maximum_levels(root_universe - 1) > MAX_COORD) then
+    if (maximum_levels(root_universe) > MAX_COORD) then
       call fatal_error("Too many nested coordinate levels in the geometry. &
            &Try increasing the maximum number of coordinate levels by &
            &providing the CMake -Dmaxcoord= option.")
@@ -1146,7 +1146,7 @@ contains
       if (.not. cells_in_univ_dict % has(univ_id)) then
         n_universes = n_universes + 1
         n_cells_in_univ = 1
-        call universe_dict % set(univ_id, n_universes)
+        call universe_dict % set(univ_id, n_universes - 1)
         call univ_ids % push_back(univ_id)
       else
         n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
@@ -1205,7 +1205,7 @@ contains
     ! SETUP UNIVERSES
 
     ! Allocate universes, universe cell arrays, and assign base universe
-    root_universe = find_root_universe() + 1
+    root_universe = find_root_universe()
 
     ! Clear dictionary
     call cells_in_univ_dict%clear()

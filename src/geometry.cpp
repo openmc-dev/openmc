@@ -25,7 +25,7 @@ check_cell_overlap(Particle* p) {
 
   // loop through each coordinate level
   for (int j = 0; j < n_coord; j++) {
-    Universe& univ = *global_universes[p->coord[j].universe - 1];
+    Universe& univ = *global_universes[p->coord[j].universe];
     int n = univ.cells.size();
 
     // loop through each cell on this level
@@ -64,8 +64,6 @@ find_cell(Particle* p, int search_surf) {
     p->coord[p->n_coord-1].universe = openmc_root_universe;
     i_universe = openmc_root_universe;
   }
-  //TODO: off-by-one indexing
-  --i_universe;
 
   // If a surface was indicated, only search cells from the neighbor list of
   // that surface.
@@ -90,8 +88,7 @@ find_cell(Particle* p, int search_surf) {
     i_cell = search_cells[i];
 
     // Make sure the search cell is in the same universe.
-    //TODO: off-by-one indexing
-    if (global_cells[i_cell]->universe - 1 != i_universe) continue;
+    if (global_cells[i_cell]->universe != i_universe) continue;
 
     Position r {p->coord[p->n_coord-1].xyz};
     Direction u {p->coord[p->n_coord-1].uvw};
@@ -165,7 +162,7 @@ find_cell(Particle* p, int search_surf) {
       //! Found a lower universe, update this coord level then search the next.
 
       // Set the lower coordinate level universe.
-      p->coord[p->n_coord].universe = c.fill + 1;
+      p->coord[p->n_coord].universe = c.fill;
 
       // Set the position and direction.
       for (int i = 0; i < 3; i++) {
@@ -234,10 +231,10 @@ find_cell(Particle* p, int search_surf) {
 
       // Set the lower coordinate level universe.
       if (lat.are_valid_indices(i_xyz)) {
-        p->coord[p->n_coord].universe = lat[i_xyz] + 1;
+        p->coord[p->n_coord].universe = lat[i_xyz];
       } else {
         if (lat.outer != NO_OUTER_UNIVERSE) {
-          p->coord[p->n_coord].universe = lat.outer + 1;
+          p->coord[p->n_coord].universe = lat.outer;
         } else {
           std::stringstream err_msg;
           err_msg << "Particle " << p->id << " is outside lattice "
@@ -300,7 +297,7 @@ cross_lattice(Particle* p, int lattice_translation[3])
 
   } else {
     // Find cell in next lattice element.
-    p->coord[p->n_coord-1].universe = lat[i_xyz] + 1;
+    p->coord[p->n_coord-1].universe = lat[i_xyz];
     bool found = find_cell(p, 0);
 
     if (!found) {

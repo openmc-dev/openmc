@@ -157,9 +157,9 @@ contains
     map = cells(i_cell) % distribcell_index()
 
     path_len = distribcell_path_len(i_cell-1, map-1, target_offset, &
-                                    root_universe-1)
+                                    root_universe)
     allocate(path_c(path_len))
-    call distribcell_path(i_cell-1, map-1, target_offset, root_universe-1, &
+    call distribcell_path(i_cell-1, map-1, target_offset, root_universe, &
                           path_c)
     do i = 1, min(path_len, MAX_LINE_LEN)
       if (path_c(i) == C_NULL_CHAR) exit

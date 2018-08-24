@@ -439,8 +439,7 @@ Cell::to_hdf5(hid_t cell_group) const
     write_string(cell_group, "name", name, false);
   }
 
-  //TODO: Fix the off-by-one indexing.
-  write_dataset(cell_group, "universe", global_universes[universe-1]->id);
+  write_dataset(cell_group, "universe", global_universes[universe]->id);
 
   // Write the region specification.
   if (!region.empty()) {

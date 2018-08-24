@@ -112,7 +112,7 @@ contains
     integer,               intent(in) :: bin
     character(MAX_LINE_LEN)           :: label
 
-    label = "Universe " // to_str(universe_id(this % universes(bin)-1))
+    label = "Universe " // to_str(universe_id(this % universes(bin)))
   end function text_label_universe
 
 end module tally_filter_universe

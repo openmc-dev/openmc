@@ -47,15 +47,14 @@ extern "C" bool write_all_tracks;        //!< write track files for every partic
 extern "C" bool write_initial_source;    //!< write out initial source file?
 
 // Paths to various files
-// TODO: Make strings instead of char* once Fortran is gone
-extern "C" char* path_input;
-extern "C" char* path_statepoint;
-extern "C" char* path_sourcepoint;
-extern "C" char* path_particle_restart;
-extern std::string path_cross_sections;
-extern std::string path_multipole;
-extern std::string path_output;
+extern std::string path_cross_sections;   //!< path to cross_sections.xml
+extern std::string path_input;            //!< directory where main .xml files resides
+extern std::string path_multipole;        //!< directory containing multipole files
+extern std::string path_output;           //!< directory where output files are written
+extern std::string path_particle_restart; //!< path to a particle restart file
 extern std::string path_source;
+extern std::string path_sourcepoint;      //!< path to a source file
+extern std::string path_statepoint;       //!< path to a statepoint file
 
 extern "C" int32_t index_entropy_mesh;  //!< Index of entropy mesh in global mesh array
 extern "C" int32_t index_ufs_mesh;      //!< Index of UFS mesh in global mesh array
@@ -95,7 +94,7 @@ extern "C" double weight_survive;        //!< Survival weight after Russian roul
 //! \param[in] root XML node for <settings>
 //==============================================================================
 
-extern "C" void read_settings(pugi::xml_node* root);
+extern "C" void read_settings_xml();
 
 } // namespace openmc
 

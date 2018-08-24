@@ -10,6 +10,7 @@ import numpy as np
 
 import openmc.checkvalue as cv
 import openmc
+from openmc._xml import get_text
 from openmc.mixin import IDManagerMixin
 
 
@@ -768,6 +769,42 @@ class RectLattice(Lattice):
         # Append the XML subelement for this Lattice to the XML element
         xml_element.append(lattice_subelement)
 
+    @classmethod
+    def from_xml_element(cls, elem, get_universe):
+        """Generate rectangular lattice from XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            `<lattice>` element
+        get_universe : function
+            Function returning universe (defined in
+            :meth:`openmc.Geometry.from_xml`)
+
+        Returns
+        -------
+        RectLattice
+            Rectangular lattice
+
+        """
+        lat_id = int(get_text(elem, 'id'))
+        name = get_text(elem, 'name')
+        lat = cls(lat_id, name)
+        lat.lower_left = [float(i) for i in get_text(elem, 'lower_left').split()]
+        lat.pitch = [float(i) for i in get_text(elem, 'pitch').split()]
+        outer = get_text(elem, 'outer')
+        if outer is not None:
+            lat.outer = get_universe(int(outer))
+
+        # Get array of universes
+        dimension = get_text(elem, 'dimension').split()
+        shape = np.array(dimension, dtype=int)[::-1]
+        uarray = np.array([get_universe(int(i)) for i in
+                            get_text(elem, 'universes').split()])
+        uarray.shape = shape
+        lat.universes = uarray
+        return lat
+
 
 class HexLattice(Lattice):
     r"""A lattice consisting of hexagonal prisms.
@@ -1206,6 +1243,78 @@ class HexLattice(Lattice):
 
         # Append the XML subelement for this Lattice to the XML element
         xml_element.append(lattice_subelement)
+
+    @classmethod
+    def from_xml_element(cls, elem, get_universe):
+        """Generate hexagonal lattice from XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            `<hex_lattice>` element
+        get_universe : function
+            Function returning universe (defined in
+            :meth:`openmc.Geometry.from_xml`)
+
+        Returns
+        -------
+        HexLattice
+            Hexagonal lattice
+
+        """
+        lat_id = int(get_text(elem, 'id'))
+        name = get_text(elem, 'name')
+        lat = cls(lat_id, name)
+        lat.center = [float(i) for i in get_text(elem, 'center').split()]
+        lat.pitch = [float(i) for i in get_text(elem, 'pitch').split()]
+        outer = get_text(elem, 'outer')
+        if outer is not None:
+            lat.outer = get_universe(int(outer))
+
+        # Get nested lists of universes
+        lat._num_rings = n_rings = int(get_text(elem, 'n_rings'))
+        lat._num_axial = n_axial = int(get_text(elem, 'n_axial', 1))
+
+        # Create empty nested lists for one axial level
+        univs = [[None for _ in range(max(6*(n_rings - 1 - r), 1))]
+                    for r in range(n_rings)]
+        if n_axial > 1:
+            univs = [deepcopy(univs) for i in range(n_axial)]
+
+        # Get flat array of universes numbers
+        uarray = np.array([get_universe(int(i)) for i in
+                            get_text(elem, 'universes').split()])
+
+        # Fill nested lists
+        j = 0
+        for z in range(n_axial):
+            # Get list for a single axial level
+            axial_level = univs[z] if n_axial > 1 else univs
+
+            # Start iterating from top
+            x, alpha = 0, n_rings - 1
+            while True:
+                # Set entry in list based on (x,alpha,z) coordinates
+                _, i_ring, i_within = lat.get_universe_index((x, alpha, z))
+                axial_level[i_ring][i_within] = uarray[j]
+
+                # Move to the right
+                x += 2
+                alpha -= 1
+                if not lat.is_valid_index((x, alpha, z)):
+                    # Move down in y direction
+                    alpha += x - 1
+                    x = 1 - x
+                    if not lat.is_valid_index((x, alpha, z)):
+                        # Move to the right
+                        x += 2
+                        alpha -= 1
+                        if not lat.is_valid_index((x, alpha, z)):
+                            # Reached the bottom
+                            break
+                j += 1
+        lat.universes = univs
+        return lat
 
     def _repr_axial_slice(self, universes):
         """Return string representation for the given 2D group of universes.

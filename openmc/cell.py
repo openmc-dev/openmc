@@ -13,6 +13,7 @@ import openmc
 import openmc.checkvalue as cv
 from openmc.surface import Halfspace
 from openmc.region import Region, Intersection, Complement
+from openmc._xml import get_text
 from .mixin import IDManagerMixin
 
 
@@ -522,3 +523,61 @@ class Cell(IDManagerMixin):
             element.set("rotation", ' '.join(map(str, self.rotation)))
 
         return element
+
+    @classmethod
+    def from_xml_element(cls, elem, surfaces, materials, get_universe):
+        """Generate cell from XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            `<cell>` element
+        surfaces : dict
+            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
+        materials : dict
+            Dictionary mapping material IDs to :class:`openmc.Material`
+            instances (defined in :math:`openmc.Geometry.from_xml`)
+        get_universe : function
+            Function returning universe (defined in
+            :meth:`openmc.Geometry.from_xml`)
+
+        Returns
+        -------
+        Cell
+            Cell instance
+
+        """
+        cell_id = int(get_text(elem, 'id'))
+        name = get_text(elem, 'name')
+        c = cls(cell_id, name)
+
+        # Assign material/distributed materials or fill
+        mat_text = get_text(elem, 'material')
+        if mat_text is not None:
+            mat_ids = mat_text.split()
+            if len(mat_ids) > 1:
+                c.fill = [materials[i] for i in mat_ids]
+            else:
+                c.fill = materials[mat_ids[0]]
+        else:
+            fill_id = int(get_text(elem, 'fill'))
+            c.fill = get_universe(fill_id)
+
+        # Assign region
+        region = get_text(elem, 'region')
+        if region is not None:
+            c.region = Region.from_expression(region, surfaces)
+
+        # Check for other attributes
+        t = get_text(elem, 'temperature')
+        if t is not None:
+            c.temperature = float(t)
+        for key in ('temperature', 'rotation', 'translation'):
+            value = get_text(elem, key)
+            if value is not None:
+                setattr(c, key, [float(x) for x in value.split()])
+
+        # Add this cell to appropriate universe
+        univ_id = int(get_text(elem, 'universe', 0))
+        get_universe(univ_id).add_cell(c)
+        return c

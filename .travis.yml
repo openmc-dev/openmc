@@ -17,6 +17,7 @@ cache:
   directories:
   - $HOME/nndc_hdf5
   - $HOME/endf-b-vii.1
+  - $HOME/WMP_Library
 env:
   global:
     - FC=gfortran
@@ -25,7 +26,7 @@ env:
     - OMP_NUM_THREADS=2
     - OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml
     - OPENMC_ENDF_DATA=$HOME/endf-b-vii.1
-    - OPENMC_MULTIPOLE_LIBRARY=$HOME/multipole_lib
+    - OPENMC_MULTIPOLE_LIBRARY=$HOME/WMP_Library
     - PATH=$PATH:$HOME/NJOY2016/build
     - DISPLAY=:99.0
     - COVERALLS_PARALLEL=true

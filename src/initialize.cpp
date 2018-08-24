@@ -10,6 +10,7 @@
 #endif
 
 #include "openmc/capi.h"
+#include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/message_passing.h"
@@ -113,7 +114,7 @@ parse_command_line(int argc, char* argv[])
 
       } else if (arg == "-n" || arg == "--particles") {
         i += 1;
-        n_particles = std::stoll(argv[i]);
+        settings::n_particles = std::stoll(argv[i]);
 
       } else if (arg == "-r" || arg == "--restart") {
         i += 1;

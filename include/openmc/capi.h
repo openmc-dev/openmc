@@ -135,16 +135,12 @@ extern "C" {
   extern char openmc_err_msg[256];
   extern double openmc_keff;
   extern double openmc_keff_std;
-  extern int32_t gen_per_batch;
-  extern int32_t n_batches;
   extern int32_t n_cells;
   extern int32_t n_filters;
-  extern int32_t n_inactive;
   extern int32_t n_lattices;
   extern int32_t n_materials;
   extern int32_t n_meshes;
   extern int n_nuclides;
-  extern int64_t n_particles;
   extern int32_t n_plots;
   extern int32_t n_realizations;
   extern int32_t n_sab_tables;
@@ -161,13 +157,6 @@ extern "C" {
   extern int openmc_n_threads;
   extern int openmc_rank;
   extern int64_t openmc_work;
-
-  // Run modes
-  const int RUN_MODE_FIXEDSOURCE = 1;
-  const int RUN_MODE_EIGENVALUE = 2;
-  const int RUN_MODE_PLOTTING = 3;
-  const int RUN_MODE_PARTICLE = 4;
-  const int RUN_MODE_VOLUME = 5;
 
 #ifdef __cplusplus
 }

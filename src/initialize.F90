@@ -17,10 +17,10 @@ module initialize
 
   implicit none
 
-  type(C_PTR), bind(C) :: openmc_path_input
-  type(C_PTR), bind(C) :: openmc_path_statepoint
-  type(C_PTR), bind(C) :: openmc_path_sourcepoint
-  type(C_PTR), bind(C) :: openmc_path_particle_restart
+  type(C_PTR), bind(C, name='path_input') :: openmc_path_input
+  type(C_PTR), bind(C, name='path_statepoint') :: openmc_path_statepoint
+  type(C_PTR), bind(C, name='path_sourcepoint') :: openmc_path_sourcepoint
+  type(C_PTR), bind(C, name='path_particle_restart') :: openmc_path_particle_restart
 
 contains
 

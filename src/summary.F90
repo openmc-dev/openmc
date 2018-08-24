@@ -29,6 +29,13 @@ contains
 
   subroutine write_summary()
 
+    interface
+      subroutine write_geometry(file_id) bind(C)
+        import HID_T
+        integer(HID_T), intent(in), value :: file_id
+      end subroutine write_geometry
+    end interface
+
     integer(HID_T) :: file_id
 
     ! Display output message
@@ -153,131 +160,6 @@ contains
     if (allocated(macro_names)) deallocate(macro_names)
 
   end subroutine write_nuclides
-
-!===============================================================================
-! WRITE_GEOMETRY
-!===============================================================================
-
-  subroutine write_geometry(file_id)
-    integer(HID_T), intent(in) :: file_id
-
-    integer :: i, j, cell_fill
-    integer, allocatable :: cell_materials(:)
-    real(8), allocatable :: cell_temperatures(:)
-    integer(HID_T) :: geom_group
-    integer(HID_T) :: cells_group, cell_group
-    integer(HID_T) :: surfaces_group
-    integer(HID_T) :: universes_group
-    integer(HID_T) :: lattices_group
-    type(Cell),     pointer :: c
-    class(Lattice), pointer :: lat
-
-    interface
-      subroutine universes_to_hdf5(universes_group) bind(C)
-        import HID_T
-        integer(HID_T), intent(in), value :: universes_group
-      end subroutine universes_to_hdf5
-    end interface
-
-    ! Use H5LT interface to write number of geometry objects
-    geom_group = create_group(file_id, "geometry")
-    call write_attribute(geom_group, "n_cells", n_cells)
-    call write_attribute(geom_group, "n_surfaces", n_surfaces)
-    call write_attribute(geom_group, "n_universes", n_universes)
-    call write_attribute(geom_group, "n_lattices", size(lattices))
-
-    ! ==========================================================================
-    ! WRITE INFORMATION ON CELLS
-
-    ! Create a cell group (nothing directly written in this group) then close
-    cells_group = create_group(geom_group, "cells")
-
-    ! Write information on each cell
-    CELL_LOOP: do i = 1, n_cells
-      c => cells(i)
-      cell_group = create_group(cells_group, "cell " // trim(to_str(c%id())))
-
-      call c % to_hdf5(cell_group)
-
-      ! Write information on what fills this cell
-      select case (c%type())
-      case (FILL_MATERIAL)
-        call write_dataset(cell_group, "fill_type", "material")
-
-        if (c % material_size() == 1) then
-          if (c % material(1) == MATERIAL_VOID) then
-            call write_dataset(cell_group, "material", MATERIAL_VOID)
-          else
-            call write_dataset(cell_group, "material", &
-                 materials(c % material(1)) % id())
-          end if
-        else
-          allocate(cell_materials(c % material_size()))
-          do j = 1, c % material_size()
-            if (c % material(j) == MATERIAL_VOID) then
-              cell_materials(j) = MATERIAL_VOID
-            else
-              cell_materials(j) = materials(c % material(j)) % id()
-            end if
-          end do
-          call write_dataset(cell_group, "material", cell_materials)
-          deallocate(cell_materials)
-        end if
-
-        allocate(cell_temperatures(c % sqrtkT_size()))
-        do j = 1, c % sqrtkT_size()
-          cell_temperatures(j) = c % sqrtkT(j-1)**2 / K_BOLTZMANN
-        end do
-        call write_dataset(cell_group, "temperature", cell_temperatures)
-        deallocate(cell_temperatures)
-
-      case (FILL_LATTICE)
-        call write_dataset(cell_group, "fill_type", "lattice")
-        ! Do not access the 'lattices' array with 'c % fill() + 1' directly; it
-        ! causes a segfault in GCC 7.3.0
-        cell_fill = c % fill() + 1
-        call write_dataset(cell_group, "lattice", lattices(cell_fill)%obj%id())
-      end select
-
-      call close_group(cell_group)
-    end do CELL_LOOP
-
-    call close_group(cells_group)
-
-    ! ==========================================================================
-    ! WRITE INFORMATION ON SURFACES
-
-    ! Create surfaces group
-    surfaces_group = create_group(geom_group, "surfaces")
-
-    ! Write information on each surface
-    SURFACE_LOOP: do i = 1, n_surfaces
-      call surfaces(i) % to_hdf5(surfaces_group)
-    end do SURFACE_LOOP
-
-    call close_group(surfaces_group)
-
-    ! ==========================================================================
-    ! WRITE INFORMATION ON UNIVERSES
-
-    universes_group = create_group(geom_group, "universes")
-    call universes_to_hdf5(universes_group)
-    call close_group(universes_group)
-
-    ! ==========================================================================
-    ! WRITE INFORMATION ON LATTICES
-
-    lattices_group = create_group(geom_group, "lattices")
-
-    do i = 1, size(lattices)
-      lat => lattices(i)%obj
-      call lat % to_hdf5(lattices_group)
-    end do
-
-    call close_group(lattices_group)
-    call close_group(geom_group)
-
-  end subroutine write_geometry
 
 !===============================================================================
 ! WRITE_MATERIALS

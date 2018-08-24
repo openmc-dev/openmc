@@ -67,9 +67,11 @@ extern "C" int temperature_method;       //!< method for choosing temperatures
 extern "C" int res_scat_method;          //!< resonance upscattering method
 extern "C" double res_scat_energy_min;   //!< Min energy in [eV] for res. upscattering
 extern "C" double res_scat_energy_max;   //!< Max energy in [eV] for res. upscattering
+extern "C" int run_mode;                 //!< Run mode (eigenvalue, fixed src, etc.)
 extern "C" double temperature_tolerance; //!< Tolerance in [K] on choosing temperatures
 extern "C" double temperature_default;   //!< Default T in [K]
 extern "C" double temperature_range[2];  //!< Min/max T in [K] over which to load xs
+extern "C" int verbosity;                //!< How verbose to make output
 extern "C" double weight_cutoff;         //!< Weight cutoff for Russian roulette
 extern "C" double weight_survive;        //!< Survival weight after Russian roulette
 

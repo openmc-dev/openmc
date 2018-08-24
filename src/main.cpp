@@ -3,6 +3,7 @@
 #endif
 #include "openmc/capi.h"
 #include "openmc/error.h"
+#include "openmc/settings.h"
 
 
 int main(int argc, char* argv[]) {
@@ -23,7 +24,7 @@ int main(int argc, char* argv[]) {
   }
 
   // start problem based on mode
-  switch (openmc_run_mode) {
+  switch (openmc::settings::run_mode) {
     case RUN_MODE_FIXEDSOURCE:
     case RUN_MODE_EIGENVALUE:
       err = openmc_run();

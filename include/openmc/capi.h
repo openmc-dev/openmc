@@ -152,9 +152,7 @@ extern "C" {
   extern int32_t n_surfaces;
   extern int32_t n_tallies;
   extern int32_t n_universes;
-  extern int openmc_run_mode;
   extern bool openmc_simulation_initialized;
-  extern int openmc_verbosity;
 
   // Variables that are shared by necessity (can be removed from public header
   // later)

@@ -22,7 +22,21 @@ int openmc_run() {
 
 namespace openmc {
 
+//==============================================================================
+// Global variables
+//==============================================================================
+
 std::vector<int64_t> work_index;
+
+//==============================================================================
+// Functions
+//==============================================================================
+
+void openmc_simulation_init_c()
+{
+  // Determine how much work each process should do
+  calculate_work();
+}
 
 void calculate_work()
 {
@@ -46,12 +60,6 @@ void calculate_work()
     i_bank += work_i;
     work_index.push_back(i_bank);
   }
-}
-
-void openmc_simulation_init_c()
-{
-  // Determine how much work each process should do
-  calculate_work();
 }
 
 } // namespace openmc

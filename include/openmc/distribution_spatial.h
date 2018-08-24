@@ -48,6 +48,8 @@ public:
   //! Sample a position from the distribution
   //! \return Sampled position
   Position sample() const;
+
+  // Properties
   bool only_fissionable() const { return only_fissionable_; }
 private:
   Position lower_left_; //!< Lower-left coordinates of box

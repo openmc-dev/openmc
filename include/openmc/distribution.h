@@ -37,6 +37,7 @@ public:
   //! \return Sampled value
   double sample() const;
 
+  // Properties
   const std::vector<double>& x() const { return x_; }
   const std::vector<double>& p() const { return p_; }
 private:

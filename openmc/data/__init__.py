@@ -4,7 +4,7 @@ HDF5_VERSION_MINOR = 0
 HDF5_VERSION = (HDF5_VERSION_MAJOR, HDF5_VERSION_MINOR)
 
 # Version of WMP nuclear data format
-WMP_VERSION = 'v0.2'
+WMP_VERSION = 'v1.0'
 
 
 from .data import *

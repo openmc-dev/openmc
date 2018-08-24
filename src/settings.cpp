@@ -18,6 +18,14 @@ namespace openmc {
 
 namespace settings {
 
+bool check_overlaps {false};
+bool particle_restart_run {false};
+bool photon_transport {false};
+bool restart_run {false};
+bool run_CE {true};
+bool write_all_tracks {false};
+bool write_initial_source {false};
+
 char* path_input;
 char* path_statepoint;
 char* path_sourcepoint;

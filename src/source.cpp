@@ -304,12 +304,11 @@ Bank sample_external_source()
     total_strength += s.strength();
 
   // Sample from among multiple source distributions
-  auto n_source = external_sources.size();
   int i = 0;
-  if (n_source > 1) {
+  if (external_sources.size() > 1) {
     double xi = prn()*total_strength;
     double c = 0.0;
-    for (i = 0; i < external_sources.size(); ++i) {
+    for (; i < external_sources.size(); ++i) {
       c += external_sources[i].strength();
       if (xi < c) break;
     }

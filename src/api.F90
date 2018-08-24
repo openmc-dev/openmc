@@ -133,7 +133,7 @@ contains
     legendre_to_tabular_points = C_NONE
     n_batch_interval = 1
     n_lost_particles = 0
-    n_particles = 0
+    n_particles = -1
     n_source_points = 0
     n_state_points = 0
     n_tallies = 0
@@ -150,7 +150,7 @@ contains
     restart_run = .false.
     root_universe = -1
     run_CE = .true.
-    run_mode = NONE
+    run_mode = -1
     satisfy_triggers = .false.
     call openmc_set_seed(DEFAULT_SEED)
     source_latest = .false.

@@ -15,6 +15,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/message_passing.h"
 #include "openmc/settings.h"
+#include "openmc/string_utils.h"
 
 // data/functions from Fortran side
 extern "C" void print_usage();
@@ -91,13 +92,6 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Type_commit(&openmc::mpi::bank);
 }
 #endif // OPENMC_MPI
-
-
-inline bool ends_with(std::string const& value, std::string const& ending)
-{
-  if (ending.size() > value.size()) return false;
-  return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
-}
 
 
 int
@@ -214,7 +208,14 @@ parse_command_line(int argc, char* argv[])
   }
 
   // Determine directory where XML input files are
-  if (argc > 1 && last_flag < argc) settings::path_input = argv[last_flag + 1];
+  if (argc > 1 && last_flag < argc - 1) {
+    settings::path_input = std::string(argv[last_flag + 1]);
+
+    // Add slash at end of directory if it isn't there
+    if (!ends_with(settings::path_input, "/")) {
+      settings::path_input += "/";
+    }
+  }
 
   return 0;
 }

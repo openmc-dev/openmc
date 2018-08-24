@@ -10,17 +10,19 @@ References
 
 """
 
-# TODO: Check to make sure no redundant import statements
 from collections.abc import Iterable
 from numbers import Real, Integral
-from xml.etree import ElementTree as ET
-import sys
+from xml.etree import ElementTree as ET # TODO Remove
+import sys   # TODO Remove
 import numpy as np
-import openmc.capi
+from scipy import sparse
 
-from openmc.clean_xml import clean_xml_indentation
+import openmc.capi
+from openmc.clean_xml import clean_xml_indentation  # TODO Remove
 from openmc.checkvalue import (check_type, check_length, check_value,
                                check_greater_than, check_less_than)
+from openmc.exceptions import OpenMCError
+
 
 
 """
@@ -606,8 +608,6 @@ class CMFDRun(object):
             egrid: energy grid used for CMFD acceleration
             albedo: Albedo for global boundary conditions, taken from CMFD mesh. Set to [1,1,1,1,1,1] if not specified by user
             n_cmfd_resets: Number of elements in tally_reset, list that stores batches where CMFD tallies should be reset
-            cmfd_atoli: Absolute GS tolerance, set by gauss_seidel_tolerance
-            cmfd_rtoli: Relative GS tolerance, set by gauss_seidel_tolerance
             cmfd_mesh_id: Mesh id of openmc.capi.Mesh object that corresponds to the CMFD mesh
             cmfd_filter_ids: list of ids corresponding to CMFD filters (details:)
             cmfd_tally_ids: list of ids corresponding to CMFD tallies (details:)
@@ -645,6 +645,7 @@ class CMFDRun(object):
     TODO Make sure all self variables defined in init
     TODO Clean up logic for adjoint, understand what different adjoint types are doing
     TODO Check to make sure no compatibility issues with numpy arrays for input variables
+    TODO Create write_vector function in cmfd_solver.F90
 
     """
 
@@ -657,14 +658,12 @@ class CMFDRun(object):
         self._cmfd_display = 'balance'
         self._cmfd_downscatter = False
         self._cmfd_feedback = False
-        self._gauss_seidel_tolerance = [1.e-10, 1.e-5]
         self._cmfd_ktol = 1.e-8
         self._cmfd_mesh = None
         self._norm = 1.
         self._cmfd_power_monitor = False
         self._cmfd_run_adjoint = False
-        self._cmfd_shift = 1.e-6
-        self._cmfd_spectral = 0.
+        self._cmfd_shift = 1.e6
         self._cmfd_stol = 1.e-8
         self._cmfd_reset = []
         self._cmfd_write_matrices = False
@@ -675,8 +674,6 @@ class CMFDRun(object):
         self._albedo = None
         self._coremap = None
         self._n_cmfd_resets = 0
-        self._cmfd_atoli = None
-        self._cmfd_rtoli = None
         self._cmfd_mesh_id = None
         self._cmfd_filter_ids = None
         self._cmfd_tally_ids = None
@@ -685,6 +682,10 @@ class CMFDRun(object):
         self._mat_dim = _CMFD_NOACCEL
         self._keff_bal = None
         self._cmfd_adjoint_type = None
+        self._keff = None
+        self._adj_keff = None
+        self._phi = None
+        self._adj_phi = None
 
         # Numpy arrays used to build CMFD matrices
         self._flux = None
@@ -729,10 +730,6 @@ class CMFDRun(object):
         return self._cmfd_feedback
 
     @property
-    def gauss_seidel_tolerance(self):
-        return self._gauss_seidel_tolerance
-
-    @property
     def cmfd_ktol(self):
         return self._cmfd_ktol
 
@@ -755,10 +752,6 @@ class CMFDRun(object):
     @property
     def cmfd_shift(self):
         return self._cmfd_shift
-
-    @property
-    def cmfd_spectral(self):
-        return self._cmfd_spectral
 
     @property
     def cmfd_stol(self):
@@ -799,13 +792,6 @@ class CMFDRun(object):
     def cmfd_feedback(self, cmfd_feedback):
         check_type('CMFD feedback', cmfd_feedback, bool)
         self._cmfd_feedback = cmfd_feedback
-
-    @gauss_seidel_tolerance.setter
-    def gauss_seidel_tolerance(self, gauss_seidel_tolerance):
-        check_type('CMFD Gauss-Seidel tolerance', gauss_seidel_tolerance,
-                   Iterable, Real)
-        check_length('Gauss-Seidel tolerance', gauss_seidel_tolerance, 2)
-        self._gauss_seidel_tolerance = gauss_seidel_tolerance
 
     @cmfd_ktol.setter
     def cmfd_ktol(self, cmfd_ktol):
@@ -876,11 +862,6 @@ class CMFDRun(object):
         check_type('CMFD Wielandt shift', cmfd_shift, Real)
         self._cmfd_shift = cmfd_shift
 
-    @cmfd_spectral.setter
-    def cmfd_spectral(self, cmfd_spectral):
-        check_type('CMFD spectral radius', cmfd_spectral, Real)
-        self._cmfd_spectral = cmfd_spectral
-
     @cmfd_stol.setter
     def cmfd_stol(self, cmfd_stol):
         check_type('CMFD fission source tolerance', cmfd_stol, Real)
@@ -896,9 +877,12 @@ class CMFDRun(object):
         check_type('CMFD write matrices', cmfd_write_matrices, bool)
         self._cmfd_write_matrices = cmfd_write_matrices
 
-    def run(self, mpi_procs=None, omp_threads=None):
-        # TODO: Add logic for mpi_procs, omp_threads as args
-        openmc.capi.init()
+    def run(self, mpi_procs=None, omp_num_threads=None):
+        if omp_num_threads is not None:
+            check_type('OpenMP num threads', omp_num_threads, Integral)
+            openmc.capi.init(args=['-s',str(omp_num_threads)])
+        else:
+            openmc.capi.init()
         self._configure_cmfd()
         openmc.capi.simulation_init()
 
@@ -971,20 +955,13 @@ class CMFDRun(object):
         if self._cmfd_mesh.map is not None:
             check_length('CMFD coremap', self._cmfd_mesh.map,
                          np.product(self._indices[0:3]))
-            self._coremap = np.array(self._cmfd_mesh.map).reshape(( \
-                            self._indices[0], self._indices[1], \
-                            self._indices[2]))
+            self._coremap = np.array(self._cmfd_mesh.map)
         else:
-            self._coremap = np.ones((self._indices[0], self._indices[1], \
-                            self._indices[2]))
+            self._coremap = np.ones((np.product(self._indices[0:3])))
 
         # Set number of batches where cmfd tallies should be reset
         if self._cmfd_reset is not None:
             self._n_cmfd_resets = len(self._cmfd_reset)
-
-        # Set Gauss Sidel tolerances
-        self._cmfd_atoli = self._gauss_seidel_tolerance[0]
-        self._cmfd_rtoli = self._gauss_seidel_tolerance[1]
 
         # Create tally objects
         self._create_cmfd_tally()
@@ -1059,24 +1036,24 @@ class CMFDRun(object):
 
           # Call solver
           self._cmfd_solver_execute()
-          '''
-          ! Save k-effective
-          cmfd % k_cmfd(current_batch) = cmfd % keff
 
-          ! check to perform adjoint on last batch
+          # Save k-effective
+          self._k_cmfd.append(self._keff)
+          '''
+          ! TODO check to perform adjoint on last batch
           if (current_batch == n_batches .and. cmfd_run_adjoint) then
             call cmfd_solver_execute(adjoint=.true.)
           end if
 
         end if
 
-        ! calculate fission source
+        ! TODO calculate fission source
         call calc_fission_source()
 
-        ! calculate weight factors
+        ! TODO calculate weight factors
         call cmfd_reweight(.true.)
 
-        ! stop cmfd timer
+        ! TODO stop cmfd timer
         if (master) call time_cmfd % stop()
         '''
 
@@ -1128,13 +1105,32 @@ class CMFDRun(object):
         # TODO Stop timer for build
         # call time_cmfdbuild % stop()
 
-        # TODO Begin power iteration
-        # call time_cmfdsolve % start()
+        # Begin power iteration
+        # TODO call time_cmfdsolve % start()
         phi, keff, dom = self._execute_power_iter(loss, prod)
-        # call time_cmfdsolve % stop()
+        # TODO call time_cmfdsolve % stop()
 
-        # TODO Save results
-        #if self._
+        # Save results, normalizing phi to sum to 1
+        if adjoint:
+            self._adj_keff = keff
+            self._adj_phi = phi/np.sqrt(np.sum(phi*phi))
+        else:
+            self._keff = keff
+            self._phi = phi/np.sqrt(np.sum(phi*phi))
+
+        self._dom.append(dom)
+
+        # TODO Write out flux vector
+        '''
+        if (cmfd_write_matrices) then
+          if (adjoint_calc) then
+            filename = 'adj_fluxvec.dat'
+          else
+            filename = 'fluxvec.dat'
+          end if
+          ! TODO: call phi_n % write(filename)
+        end if
+        '''
 
     def _build_matrices(self, adjoint):
         # Set up matrices
@@ -1300,9 +1296,9 @@ class CMFDRun(object):
                 else:
                     print_str += "%.3f\t" % prod[i, j]
             print(print_str)
-        return prod
         '''
-        sys.exit()
+        return prod
+
 
     def _matrix_to_indices(self, irow, nx, ny, nz, ng):
         # Get indices from coremap
@@ -1317,51 +1313,107 @@ class CMFDRun(object):
         matidx = ng*(self._coremap[i,j,k]) + g
         return matidx
 
-    def _execute_power_iter(self):
-        pass
-        '''
+    def _execute_power_iter(self, loss, prod):
         # Get problem size
-        n = loss % n
+        n = loss.shape[0]
 
-        # Set up flux vectors
-        call phi_n % create(n)
-        call phi_o % create(n)
+        # Set up flux vectors, intital guess set to 1
+        phi_n = np.ones((n,))
+        phi_o = np.ones((n,))
 
         # Set up source vectors
-        call s_n % create(n)
-        call s_o % create(n)
-        call serr_v % create(n)
+        s_n = np.zeros((n,))
+        s_o = np.zeros((n,))
+        serr_v = np.zeros((n,))
 
         # Set initial guess
-        guess = ONE
-        phi_n % val = guess
-        phi_o % val = guess
-        k_n = keff
+        k_n = openmc.capi.keff()[0]
         k_o = k_n
-        dw = cmfd_shift
+        dw = self._cmfd_shift
         k_s = k_o + dw
-        k_ln = ONE/(ONE/k_n - ONE/k_s)
+        k_ln = 1.0/(1.0/k_n - 1.0/k_s)
         k_lo = k_ln
 
         # Set norms to 0
-        norm_n = ZERO
-        norm_o = ZERO
+        norm_n = 0.0
+        norm_o = 0.0
 
-        # Set tolerances
-        ktol = cmfd_ktol
-        stol = cmfd_stol
-        '''
+        # Maximum number of power iterations
+        maxits = 10000
+
+        # Perform Wielandt shift
+        loss -= 1.0/k_s*prod
+
+        # Convert matrices to csr matrix in order to use scipy sparse solver
+        prod = sparse.csr_matrix(prod)
+        loss = sparse.csr_matrix(loss)
+
+        for i in range(maxits):
+            if i == maxits - 1:
+                raise OpenMCError('Reached maximum iterations in CMFD power '
+                                  'iteration solver.')
+            print("iter", i)
+            # Compute source vector
+            s_o = prod.dot(phi_o)
+
+            # Normalize source vector
+            s_o /= k_lo
+
+            # Compute new flux vector with scipy sparse solver
+            phi_n = sparse.linalg.spsolve(loss, s_o)
+
+            # Compute new source vector
+            s_n = prod.dot(phi_n)
+
+            # Compute new shifted eigenvalue
+            k_ln = np.sum(s_n) / np.sum(s_o)
+
+            # Compute new eigenvalue
+            k_n = 1.0/(1.0/k_ln + 1.0/k_s)
+
+            # Renormalize the old source
+            s_o *= k_lo
+
+            # Check convergence
+            iconv, norm_n = self._check_convergence(s_n, s_o, k_n, k_o)
+
+            # If converged, calculate dominance ratio and break from loop
+            if iconv:
+                dom = norm_n / norm_o
+                return phi_n, k_n, dom
+
+            # Record old values if not converged
+            phi_o = phi_n
+            k_o = k_n
+            k_lo = k_ln
+            norm_o = norm_n
+
+    def _check_convergence(self, s_n, s_o, k_n, k_o):
+        # Calculate error in keff
+        kerr = abs(k_o - k_n)/k_n
+
+        # Calculate max error in source
+        serr = np.sqrt(np.sum(np.where(s_n>0, ((s_n-s_o)/s_n)**2,0))/len(s_n))
+
+        # Check for convergence
+        iconv = kerr < self._cmfd_ktol and serr < self._cmfd_stol
+
+        # TODO Print out to user
+        #if (cmfd_power_monitor .and. master) then
+        #  write(OUTPUT_UNIT,FMT='(I0,":",T10,"k-eff: ",F0.8,T30,"k-error: ", &
+        #       &1PE12.5,T55, "src-error: ",1PE12.5,T80,I0)') iter, k_n, kerr, &
+        #        serr, innerits
+
+        # Return source error and convergence logical back to solver
+        return iconv, serr
 
     def _set_coremap(self):
         self._mat_dim = np.sum(self._coremap)
 
-        # Create a temporary array that unravels coremap and aggregates
-        # cumulative sum over accelerated regions
-        temp = np.where(self._coremap.ravel()==0, _CMFD_NOACCEL,
-                        np.cumsum(self._coremap.ravel())-1)
-
-        # Reshape coremap back to correct shape
-        self._coremap = temp.reshape(self._coremap.shape)
+        # Create a temporary array that aggregates cumulative sum over
+        # accelerated regions
+        self._coremap = np.where(self._coremap==0, _CMFD_NOACCEL,
+                        np.cumsum(self._coremap)-1)
 
     def _compute_xs(self):
         # Extract energy indices
@@ -1382,7 +1434,7 @@ class CMFDRun(object):
 
         # Set conditional numpy array as boolean vector based on coremap
         # Repeat each value for number of groups in problem
-        is_cmfd_accel = np.repeat(self._coremap.ravel() != _CMFD_NOACCEL, ng)
+        is_cmfd_accel = np.repeat(self._coremap != _CMFD_NOACCEL, ng)
 
         # Get flux from CMFD tally 0
         tally_id = self._cmfd_tally_ids[0]
@@ -1403,7 +1455,7 @@ class CMFDRun(object):
                           ' at mesh: (' + \
                           ', '.join(str(i+1) for i in mat_idx[:-1]) + \
                           ') in group ' + str(ng-mat_idx[-1])
-            raise ValueError(err_message)
+            raise OpenMCError(err_message)
 
         # Store flux and reshape
         # Flux is flipped in energy axis as tally results are given in reverse
@@ -1433,8 +1485,7 @@ class CMFDRun(object):
         # Scattering xs is flipped in both incoming and outgoing energy axes
         # as tally results are given in reverse order of energy group
         self._scattxs = np.flip(scattxs.reshape(self._scattxs.shape), axis=3)
-        self._scattxs = np.flip(self._scattxs.reshape(self._scattxs.shape), \
-                                axis=4)
+        self._scattxs = np.flip(self._scattxs, axis=4)
 
         # Get nu-fission xs from CMFD tally 1
         # flux is repeated to account for extra dimensionality of nu-fission xs
@@ -1564,6 +1615,7 @@ class CMFDRun(object):
 
         # Compute scattering rr by broadcasting flux in outgoing energy and
         # summing over incoming energy
+        # TODO Improve this with knowledge of numpy bradcasting
         scattering = np.sum(self._scattxs * \
             np.repeat(self._flux[:,:,:,:,np.newaxis], ng, axis=4), axis=3)
 
@@ -1729,8 +1781,6 @@ class CMFDRun(object):
         if self._dhat_reset:
             # TODO: Print message with verbosity 8
             print(' Dhats reset to zero')
-
-
 
     def _get_reflector_albedo(self, l, g, i, j, k):
         # Get partial currents from object

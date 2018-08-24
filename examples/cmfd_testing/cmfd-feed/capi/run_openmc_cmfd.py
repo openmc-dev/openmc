@@ -1,5 +1,8 @@
 import openmc
 import numpy as np
+from mpi4py import MPI
+
+comm = MPI.COMM_WORLD
 
 # Initialize CMFD Mesh
 cmfd_mesh = openmc.CMFDMesh()
@@ -19,7 +22,6 @@ cmfd_run.cmfd_mesh = cmfd_mesh
 cmfd_run.cmfd_begin = 5
 cmfd_run.cmfd_display = 'dominance'
 cmfd_run.cmfd_feedback = True
-cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
 
 # Run CMFD
 cmfd_run.run()

@@ -58,6 +58,11 @@ std::string path_source;
 int32_t index_entropy_mesh {-1};
 int32_t index_ufs_mesh {-1};
 
+int32_t n_batches;
+int32_t n_inactive;
+int32_t gen_per_batch {1};
+int64_t n_particles {0};
+
 int electron_treatment {ELECTRON_TTB};
 double energy_cutoff[4] {0.0, 1000.0, 0.0, 0.0};
 int legendre_to_tabular_points {C_NONE};

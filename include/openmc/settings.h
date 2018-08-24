@@ -60,12 +60,18 @@ extern std::string path_source;
 extern "C" int32_t index_entropy_mesh;  //!< Index of entropy mesh in global mesh array
 extern "C" int32_t index_ufs_mesh;      //!< Index of UFS mesh in global mesh array
 
+extern "C" int32_t n_batches;      //!< number of (inactive+active) batches
+extern "C" int32_t n_inactive;     //!< number of inactive batches
+extern "C" int32_t gen_per_batch;  //!< number of generations per batch
+extern "C" int64_t n_particles;    //!< number of particles per generation
+
 extern "C" int electron_treatment;       //!< how to treat secondary electrons
 extern "C" double energy_cutoff[4];      //!< Energy cutoff in [eV] for each particle type
 extern "C" int legendre_to_tabular_points; //!< number of points to convert Legendres
 extern "C" int max_order;                //!< Maximum Legendre order for multigroup data
 extern "C" int n_log_bins;               //!< number of bins for logarithmic energy grid
 extern "C" int n_max_batches;            //!< Maximum number of batches
+
 extern "C" int res_scat_method;          //!< resonance upscattering method
 extern "C" double res_scat_energy_min;   //!< Min energy in [eV] for res. upscattering
 extern "C" double res_scat_energy_max;   //!< Max energy in [eV] for res. upscattering

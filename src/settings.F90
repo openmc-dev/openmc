@@ -50,10 +50,10 @@ module settings
   ! Use confidence intervals for results instead of standard deviations
   logical(C_BOOL), bind(C) :: confidence_intervals
 
-  integer(C_INT64_T), bind(C) :: n_particles = 0   ! # of particles per generation
-  integer(C_INT32_T), bind(C) :: n_batches         ! # of batches
-  integer(C_INT32_T), bind(C) :: n_inactive        ! # of inactive batches
-  integer(C_INT32_T), bind(C) :: gen_per_batch = 1 ! # of generations per batch
+  integer(C_INT64_T), bind(C) :: n_particles   ! # of particles per generation
+  integer(C_INT32_T), bind(C) :: n_batches     ! # of batches
+  integer(C_INT32_T), bind(C) :: n_inactive    ! # of inactive batches
+  integer(C_INT32_T), bind(C) :: gen_per_batch ! # of generations per batch
 
   integer(C_INT), bind(C) :: n_max_batches             ! max # of batches
   integer(C_INT), bind(C, name='trigger_batch_interval') :: n_batch_interval      ! batch interval for triggers

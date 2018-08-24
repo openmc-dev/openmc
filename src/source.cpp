@@ -273,7 +273,8 @@ void initialize_source()
     // Generation source sites from specified distribution in user input
     for (int64_t i = 0; i < openmc_work; ++i) {
       // initialize random number seed
-      int64_t id = openmc_total_gen*n_particles + work_index[openmc::mpi::rank] + i + 1;
+      int64_t id = openmc_total_gen*settings::n_particles +
+        work_index[openmc::mpi::rank] + i + 1;
       set_particle_seed(id);
 
       // sample external source distribution
@@ -365,8 +366,8 @@ extern "C" void fill_source_bank_fixedsource()
 
     for (int64_t i = 0; i < openmc_work; ++i) {
       // initialize random number seed
-      int64_t id = (openmc_total_gen + overall_generation())*n_particles +
-        work_index[openmc::mpi::rank] + i + 1;
+      int64_t id = (openmc_total_gen + overall_generation()) *
+        settings::n_particles + work_index[openmc::mpi::rank] + i + 1;
       set_particle_seed(id);
 
       // sample external source distribution

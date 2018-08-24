@@ -144,7 +144,7 @@ void
 Particle::write_restart()
 {
   // Dont write another restart file if in particle restart mode
-  if (openmc_run_mode == RUN_MODE_PARTICLE) return;
+  if (settings::run_mode == RUN_MODE_PARTICLE) return;
 
   // Set up file name
   std::stringstream filename;
@@ -169,7 +169,7 @@ Particle::write_restart()
     write_dataset(file_id, "generations_per_batch", gen_per_batch);
     write_dataset(file_id, "current_generation", openmc_current_gen);
     write_dataset(file_id, "n_particles", n_particles);
-    switch (openmc_run_mode) {
+    switch (settings::run_mode) {
       case RUN_MODE_FIXEDSOURCE:
         write_dataset(file_id, "run_mode", "fixed source");
         break;

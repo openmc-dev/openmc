@@ -108,7 +108,7 @@ parse_command_line(int argc, char* argv[])
     std::string arg {argv[i]};
     if (arg[0] == '-') {
       if (arg == "-p" || arg == "--plot") {
-        openmc_run_mode = RUN_MODE_PLOTTING;
+        settings::run_mode = RUN_MODE_PLOTTING;
         settings::check_overlaps = true;
 
       } else if (arg == "-n" || arg == "--particles") {
@@ -172,7 +172,7 @@ parse_command_line(int argc, char* argv[])
       } else if (arg == "-g" || arg == "--geometry-debug") {
       settings::check_overlaps = true;
       } else if (arg == "-c" || arg == "--volume") {
-        openmc_run_mode = RUN_MODE_VOLUME;
+        settings::run_mode = RUN_MODE_VOLUME;
       } else if (arg == "-s" || arg == "--threads") {
         // Read number of threads
         i += 1;

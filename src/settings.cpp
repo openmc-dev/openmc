@@ -64,10 +64,12 @@ int legendre_to_tabular_points {C_NONE};
 int res_scat_method {RES_SCAT_ARES};
 double res_scat_energy_min {0.01};
 double res_scat_energy_max {1000.0};
+int run_mode;
 int temperature_method {TEMPERATURE_NEAREST};
 double temperature_tolerance {10.0};
 double temperature_default {293.6};
 double temperature_range[2] {0.0, 0.0};
+int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
 
@@ -92,7 +94,7 @@ void read_settings(pugi::xml_node* root)
   }
 
   // Look for deprecated windowed_multipole file in settings.xml
-  if (openmc_run_mode != RUN_MODE_PLOTTING) {
+  if (run_mode != RUN_MODE_PLOTTING) {
     if (check_for_node(*root, "multipole_library")) {
       warning("Setting multipole_library in settings.xml has been "
           "deprecated. The multipole_library is now set in materials.xml and"

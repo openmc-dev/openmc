@@ -18,13 +18,33 @@ namespace openmc {
 
 namespace settings {
 
-bool check_overlaps {false};
-bool particle_restart_run {false};
-bool photon_transport {false};
-bool restart_run {false};
-bool run_CE {true};
-bool write_all_tracks {false};
-bool write_initial_source {false};
+// Default values for boolean flags
+bool assume_separate         {false};
+bool check_overlaps          {false};
+bool cmfd_run                {false};
+bool confidence_intervals    {false};
+bool create_fission_neutrons {true};
+bool entropy_on              {false};
+bool legendre_to_tabular     {true};
+bool output_summary          {true};
+bool output_tallies          {true};
+bool particle_restart_run    {false};
+bool photon_transport        {false};
+bool reduce_tallies          {true};
+bool res_scat_on             {false};
+bool restart_run             {false};
+bool run_CE                  {true};
+bool source_latest           {false};
+bool source_separate         {false};
+bool source_write            {true};
+bool survival_biasing        {false};
+bool temperature_multipole   {false};
+bool trigger_on              {false};
+bool trigger_predict         {false};
+bool ufs_on                  {false};
+bool urr_ptables_on          {true};
+bool write_all_tracks        {false};
+bool write_initial_source    {false};
 
 char* path_input;
 char* path_statepoint;
@@ -35,11 +55,21 @@ std::string path_multipole;
 std::string path_output;
 std::string path_source;
 
+int32_t index_entropy_mesh {-1};
+int32_t index_ufs_mesh {-1};
+
+int electron_treatment {ELECTRON_TTB};
+double energy_cutoff[4] {0.0, 1000.0, 0.0, 0.0};
+int legendre_to_tabular_points {C_NONE};
+int res_scat_method {RES_SCAT_ARES};
+double res_scat_energy_min {0.01};
+double res_scat_energy_max {1000.0};
 int temperature_method {TEMPERATURE_NEAREST};
-bool temperature_multipole {false};
 double temperature_tolerance {10.0};
 double temperature_default {293.6};
-std::array<double, 2> temperature_range {0.0, 0.0};
+double temperature_range[2] {0.0, 0.0};
+double weight_cutoff {0.25};
+double weight_survive {1.0};
 
 } // namespace settings
 

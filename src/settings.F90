@@ -15,19 +15,19 @@ module settings
   ! CONTINUOUS-ENERGY CROSS SECTION RELATED VARIABLES
 
   ! Unreoslved resonance probablity tables
-  logical(C_BOOL) :: urr_ptables_on = .true.
+  logical(C_BOOL), bind(C) :: urr_ptables_on
 
   ! Default temperature and method for choosing temperatures
-  integer(C_INT) :: temperature_method = TEMPERATURE_NEAREST
-  logical :: temperature_multipole = .false.
-  real(C_DOUBLE) :: temperature_tolerance = 10.0_8
-  real(8) :: temperature_default = 293.6_8
-  real(8) :: temperature_range(2) = [ZERO, ZERO]
+  integer(C_INT), bind(C) :: temperature_method
+  logical(C_BOOL), bind(C) :: temperature_multipole
+  real(C_DOUBLE), bind(C) :: temperature_tolerance
+  real(C_DOUBLE), bind(C) :: temperature_default
+  real(C_DOUBLE), bind(C) :: temperature_range(2)
 
   integer :: n_log_bins  ! number of bins for logarithmic grid
 
   logical(C_BOOL), bind(C) :: photon_transport
-  integer :: electron_treatment = ELECTRON_TTB
+  integer(C_INT), bind(C) :: electron_treatment
 
   ! ============================================================================
   ! MULTI-GROUP CROSS SECTION RELATED VARIABLES
@@ -36,19 +36,19 @@ module settings
   integer(C_INT) :: max_order
 
   ! Whether or not to convert Legendres to tabulars
-  logical :: legendre_to_tabular = .true.
+  logical(C_BOOL), bind(C) :: legendre_to_tabular
 
   ! Number of points to use in the Legendre to tabular conversion
-  integer(C_INT) :: legendre_to_tabular_points = C_NONE
+  integer(C_INT), bind(C) :: legendre_to_tabular_points
 
   ! ============================================================================
   ! SIMULATION VARIABLES
 
   ! Assume all tallies are spatially distinct
-  logical :: assume_separate = .false.
+  logical(C_BOOL), bind(C) :: assume_separate
 
   ! Use confidence intervals for results instead of standard deviations
-  logical :: confidence_intervals = .false.
+  logical(C_BOOL), bind(C) :: confidence_intervals
 
   integer(C_INT64_T), bind(C) :: n_particles = 0   ! # of particles per generation
   integer(C_INT32_T), bind(C) :: n_batches         ! # of batches
@@ -57,25 +57,25 @@ module settings
 
   integer :: n_max_batches             ! max # of batches
   integer :: n_batch_interval = 1      ! batch interval for triggers
-  logical :: pred_batches = .false.    ! predict batches for triggers
-  logical :: trigger_on = .false.      ! flag for turning triggers on/off
+  logical(C_BOOL), bind(C, name='trigger_predict') :: pred_batches   ! predict batches for triggers
+  logical(C_BOOL), bind(C) :: trigger_on      ! flag for turning triggers on/off
 
-  logical :: entropy_on = .false.
-  integer :: index_entropy_mesh = -1
+  logical(C_BOOL), bind(C) :: entropy_on
+  integer(C_INT32_T), bind(C) :: index_entropy_mesh
 
-  logical :: ufs = .false.
-  integer :: index_ufs_mesh = -1
+  logical(C_BOOL), bind(C, name='ufs_on') :: ufs
+  integer(C_INT32_T), bind(C) :: index_ufs_mesh
 
   ! Write source at end of simulation
-  logical :: source_separate = .false.
-  logical :: source_write = .true.
-  logical :: source_latest = .false.
+  logical(C_BOOL), bind(C) :: source_separate
+  logical(C_BOOL), bind(C) :: source_write
+  logical(C_BOOL), bind(C) :: source_latest
 
   ! Variance reduction settins
-  logical :: survival_biasing = .false.
-  real(8) :: weight_cutoff = 0.25_8
-  real(8) :: energy_cutoff(4) = [ZERO, 1000.0_8, ZERO, ZERO]
-  real(8) :: weight_survive = ONE
+  logical(C_BOOL), bind(C) :: survival_biasing
+  real(C_DOUBLE), bind(C) :: weight_cutoff
+  real(C_DOUBLE), bind(C) :: energy_cutoff(4)
+  real(C_DOUBLE) :: weight_survive
 
   ! Mode to run in (fixed source, eigenvalue, plotting, etc)
   integer(C_INT), bind(C, name='openmc_run_mode') :: run_mode = NONE
@@ -105,7 +105,7 @@ module settings
   logical(C_BOOL), bind(C) :: write_initial_source
 
   ! Whether create fission neutrons or not. Only applied for MODE_FIXEDSOURCE
-  logical :: create_fission_neutrons = .true.
+  logical(C_BOOL), bind(C) :: create_fission_neutrons
 
   ! Information about state points to be written
   integer :: n_state_points = 0
@@ -124,21 +124,21 @@ module settings
   character(MAX_FILE_LEN) :: path_output = ''         ! Path to output directory
 
   ! Various output options
-  logical :: output_summary = .true.
-  logical :: output_tallies = .true.
+  logical(C_BOOL), bind(C) :: output_summary
+  logical(C_BOOL), bind(C) :: output_tallies
 
   ! Resonance scattering settings
-  logical :: res_scat_on = .false. ! is resonance scattering treated?
-  integer :: res_scat_method = RES_SCAT_ARES  ! resonance scattering method
-  real(8) :: res_scat_energy_min = 0.01_8
-  real(8) :: res_scat_energy_max = 1000.0_8
+  logical(C_BOOL), bind(C) :: res_scat_on ! is resonance scattering treated?
+  integer(C_INT), bind(C) :: res_scat_method  ! resonance scattering method
+  real(C_DOUBLE), bind(C) :: res_scat_energy_min
+  real(C_DOUBLE), bind(C) :: res_scat_energy_max
   character(10), allocatable :: res_scat_nuclides(:)
 
   ! Is CMFD active
-  logical :: cmfd_run = .false.
+  logical(C_BOOL), bind(C) :: cmfd_run
 
   ! No reduction at end of batch
-  logical :: reduce_tallies = .true.
+  logical(C_BOOL), bind(C) :: reduce_tallies
 
 contains
 

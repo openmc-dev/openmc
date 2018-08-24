@@ -1170,11 +1170,8 @@ contains
     allocate(lattices(n_rlats + n_hlats))
 
     RECT_LATTICES: do i = 1, n_rlats
-      allocate(RectLattice::lattices(i) % obj)
-      lat => lattices(i) % obj
+      lat => lattices(i)
       lat % ptr = lattice_pointer(i - 1)
-      select type(lat)
-      type is (RectLattice)
 
       ! Get pointer to i-th lattice
       node_lat = node_rlat_list(i)
@@ -1182,15 +1179,11 @@ contains
       ! Add lattice to dictionary
       call lattice_dict % set(lat % id(), i)
 
-      end select
     end do RECT_LATTICES
 
     HEX_LATTICES: do i = 1, n_hlats
-      allocate(HexLattice::lattices(n_rlats + i) % obj)
-      lat => lattices(n_rlats + i) % obj
+      lat => lattices(n_rlats + i)
       lat % ptr = lattice_pointer(n_rlats + i - 1)
-      select type (lat)
-      type is (HexLattice)
 
       ! Get pointer to i-th lattice
       node_lat = node_hlat_list(i)
@@ -1198,7 +1191,6 @@ contains
       ! Add lattice to dictionary
       call lattice_dict % set(lat % id(), n_rlats + i)
 
-      end select
     end do HEX_LATTICES
 
     ! ==========================================================================

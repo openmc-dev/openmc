@@ -1228,17 +1228,6 @@ extern "C" {
     uvw[2] = u.z;
   }
 
-  void surface_normal(Surface* surf, double xyz[3], double uvw[3])
-  {
-    Position r {xyz};
-    Direction u = surf->normal(r);
-    uvw[0] = u.x;
-    uvw[1] = u.y;
-    uvw[2] = u.z;
-  }
-
-  void surface_to_hdf5(Surface* surf, hid_t group) {surf->to_hdf5(group);}
-
   int surface_i_periodic(PeriodicSurface* surf) {return surf->i_periodic;}
 
   bool

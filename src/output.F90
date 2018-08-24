@@ -244,7 +244,7 @@ contains
 
       ! Print information on lattice
       if (p % coord(i) % lattice /= NONE) then
-        l => lattices(p % coord(i) % lattice) % obj
+        l => lattices(p % coord(i) % lattice)
         write(ou,*) '    Lattice          = ' // trim(to_str(l % id()))
         write(ou,*) '    Lattice position = (' // trim(to_str(&
              p % coord(i) % lattice_x)) // ',' // trim(to_str(&

@@ -206,7 +206,7 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
 //==============================================================================
 
 int32_t&
-RectLattice::operator[](const int i_xyz[3])
+RectLattice::operator[](std::array<int, 3> i_xyz)
 {
   int indx = nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0];
   return universes[indx];
@@ -225,7 +225,8 @@ RectLattice::are_valid_indices(const int i_xyz[3]) const
 //==============================================================================
 
 std::pair<double, std::array<int, 3>>
-RectLattice::distance(Position r, Direction u, const int i_xyz[3]) const
+RectLattice::distance(Position r, Direction u, const std::array<int, 3>& i_xyz)
+const
 {
   // Get short aliases to the coordinates.
   double x = r.x;
@@ -299,7 +300,8 @@ RectLattice::get_indices(Position r) const
 //==============================================================================
 
 Position
-RectLattice::get_local_position(Position r, const int i_xyz[3]) const
+RectLattice::get_local_position(Position r, const std::array<int, 3> i_xyz)
+const
 {
   r.x -= (lower_left.x + (i_xyz[0] + 0.5)*pitch.x);
   r.y -= (lower_left.y + (i_xyz[1] + 0.5)*pitch.y);
@@ -549,7 +551,7 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
 //==============================================================================
 
 int32_t&
-HexLattice::operator[](const int i_xyz[3])
+HexLattice::operator[](std::array<int, 3> i_xyz)
 {
   int indx = (2*n_rings-1)*(2*n_rings-1) * i_xyz[2]
               + (2*n_rings-1) * i_xyz[1]
@@ -580,7 +582,8 @@ HexLattice::are_valid_indices(const int i_xyz[3]) const
 //==============================================================================
 
 std::pair<double, std::array<int, 3>>
-HexLattice::distance(Position r, Direction u, const int i_xyz[3]) const
+HexLattice::distance(Position r, Direction u, const std::array<int, 3>& i_xyz)
+const
 {
   // Compute the direction on the hexagonal basis.
   double beta_dir = u.x * std::sqrt(3.0) / 2.0 + u.y / 2.0;
@@ -598,10 +601,10 @@ HexLattice::distance(Position r, Direction u, const int i_xyz[3]) const
   double edge = -copysign(0.5*pitch[0], beta_dir);  // Oncoming edge
   Position r_t;
   if (beta_dir > 0) {
-    const int i_xyz_t[3] {i_xyz[0]+1, i_xyz[1], i_xyz[2]};
+    const std::array<int, 3> i_xyz_t {i_xyz[0]+1, i_xyz[1], i_xyz[2]};
     r_t = get_local_position(r, i_xyz_t);
   } else {
-    const int i_xyz_t[3] {i_xyz[0]-1, i_xyz[1], i_xyz[2]};
+    const std::array<int, 3> i_xyz_t {i_xyz[0]-1, i_xyz[1], i_xyz[2]};
     r_t = get_local_position(r, i_xyz_t);
   }
   double beta = r_t.x * std::sqrt(3.0) / 2.0 + r_t.y / 2.0;
@@ -617,10 +620,10 @@ HexLattice::distance(Position r, Direction u, const int i_xyz[3]) const
   // Lower-right and upper-left sides.
   edge = -copysign(0.5*pitch[0], gamma_dir);
   if (gamma_dir > 0) {
-    const int i_xyz_t[3] {i_xyz[0]+1, i_xyz[1]-1, i_xyz[2]};
+    const std::array<int, 3> i_xyz_t {i_xyz[0]+1, i_xyz[1]-1, i_xyz[2]};
     r_t = get_local_position(r, i_xyz_t);
   } else {
-    const int i_xyz_t[3] {i_xyz[0]-1, i_xyz[1]+1, i_xyz[2]};
+    const std::array<int, 3> i_xyz_t {i_xyz[0]-1, i_xyz[1]+1, i_xyz[2]};
     r_t = get_local_position(r, i_xyz_t);
   }
   double gamma = r_t.x * std::sqrt(3.0) / 2.0 - r_t.y / 2.0;
@@ -639,10 +642,10 @@ HexLattice::distance(Position r, Direction u, const int i_xyz[3]) const
   // Upper and lower sides.
   edge = -copysign(0.5*pitch[0], u.y);
   if (u.y > 0) {
-    const int i_xyz_t[3] {i_xyz[0], i_xyz[1]+1, i_xyz[2]};
+    const std::array<int, 3> i_xyz_t {i_xyz[0], i_xyz[1]+1, i_xyz[2]};
     r_t = get_local_position(r, i_xyz_t);
   } else {
-    const int i_xyz_t[3] {i_xyz[0], i_xyz[1]-1, i_xyz[2]};
+    const std::array<int, 3> i_xyz_t {i_xyz[0], i_xyz[1]-1, i_xyz[2]};
     r_t = get_local_position(r, i_xyz_t);
   }
   if ((std::abs(r_t.y - edge) > FP_PRECISION) && u.y != 0) {
@@ -719,7 +722,7 @@ HexLattice::get_indices(Position r) const
   double d_min {INFTY};
   for (int i = 0; i < 2; i++) {
     for (int j = 0; j < 2; j++) {
-      int i_xyz[3] {out[0] + j, out[1] + i, 0};
+      const std::array<int, 3> i_xyz {out[0] + j, out[1] + i, 0};
       Position r_t = get_local_position(r, i_xyz);
       double d = r_t.x*r_t.x + r_t.y*r_t.y;
       if (d < d_min) {
@@ -747,7 +750,8 @@ HexLattice::get_indices(Position r) const
 //==============================================================================
 
 Position
-HexLattice::get_local_position(Position r, const int i_xyz[3]) const
+HexLattice::get_local_position(Position r, const std::array<int, 3> i_xyz)
+const
 {
   // x_l = x_g - (center + pitch_x*cos(30)*index_x)
   r.x -= (center.x + std::sqrt(3.0)/2.0 * (i_xyz[0] - n_rings + 1) * pitch[0]);
@@ -893,32 +897,8 @@ extern "C" {
   bool lattice_are_valid_indices(Lattice *lat, const int i_xyz[3])
   {return lat->are_valid_indices(i_xyz);}
 
-  void lattice_get_indices(Lattice *lat, const double xyz[3], int i_xyz[3])
-  {
-    Position r {xyz};
-    std::array<int, 3> inds = lat->get_indices(r);
-    i_xyz[0] = inds[0];
-    i_xyz[1] = inds[1];
-    i_xyz[2] = inds[2];
-  }
-
-  void lattice_get_local_xyz(Lattice *lat, const double global_xyz[3],
-                             const int i_xyz[3], double local_xyz[3])
-  {
-    Position global {global_xyz};
-    Position local = lat->get_local_position(global, i_xyz);
-    local_xyz[0] = local.x;
-    local_xyz[1] = local.y;
-    local_xyz[2] = local.z;
-  }
-
   int32_t lattice_offset(Lattice *lat, int map, const int i_xyz[3])
   {return lat->offset(map, i_xyz);}
-
-  void lattice_to_hdf5(Lattice *lat, hid_t group) {lat->to_hdf5(group);}
-
-  int32_t lattice_universe(Lattice *lat, const int i_xyz[3])
-  {return (*lat)[i_xyz];}
 }
 
 } // namespace openmc

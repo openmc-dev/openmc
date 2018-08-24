@@ -111,12 +111,6 @@ module geometry_header
       integer(C_INT32_T)                :: offset
     end function cell_offset_c
 
-    subroutine cell_to_hdf5_c(cell_ptr, group) bind(C, name='cell_to_hdf5')
-      import HID_T, C_PTR
-      type(C_PTR),    intent(in), value :: cell_ptr
-      integer(HID_T), intent(in), value :: group
-    end subroutine cell_to_hdf5_c
-
     function lattice_pointer(lat_ind) bind(C) result(ptr)
       import C_PTR, C_INT32_T
       integer(C_INT32_T), intent(in), value :: lat_ind
@@ -137,29 +131,6 @@ module geometry_header
       logical(C_BOOL)                   :: is_valid
     end function lattice_are_valid_indices_c
 
-    subroutine lattice_get_indices_c(lat_ptr, xyz, i_xyz) &
-         bind(C, name='lattice_get_indices')
-      import C_PTR, C_INT, C_DOUBLE
-      type(C_PTR),    intent(in), value :: lat_ptr
-      real(C_DOUBLE), intent(in)        :: xyz(3)
-      integer(C_INT), intent(out)       :: i_xyz(3)
-    end subroutine lattice_get_indices_c
-
-    subroutine lattice_get_local_xyz_c(lat_ptr, global_xyz, i_xyz, local_xyz) &
-         bind(C, name='lattice_get_local_xyz')
-      import C_PTR, C_INT, C_DOUBLE
-      type(C_PTR),    intent(in), value :: lat_ptr
-      real(C_DOUBLE), intent(in)        :: global_xyz(3)
-      integer(C_INT), intent(in)        :: i_xyz(3)
-      real(C_DOUBLE), intent(out)       :: local_xyz(3)
-    end subroutine lattice_get_local_xyz_c
-
-    subroutine lattice_to_hdf5_c(lat_ptr, group) bind(C, name='lattice_to_hdf5')
-      import HID_T, C_PTR
-      type(C_PTR),    intent(in), value :: lat_ptr
-      integer(HID_T), intent(in), value :: group
-    end subroutine lattice_to_hdf5_c
-
     function lattice_offset_c(lat_ptr, map, i_xyz) &
          bind(C, name='lattice_offset') result(offset)
       import C_PTR, C_INT, C_INT32_T
@@ -168,14 +139,6 @@ module geometry_header
       integer(C_INT), intent(in)        :: i_xyz(3)
       integer(C_INT32_T)                :: offset
     end function lattice_offset_c
-
-    function lattice_universe_c(lat_ptr, i_xyz) &
-         bind(C, name='lattice_universe') result(univ)
-      import C_PTR, C_INT32_t, C_INT
-      type(C_PTR),    intent(in), value :: lat_ptr
-      integer(C_INT), intent(in)        :: i_xyz(3)
-      integer(C_INT32_T)                :: univ
-    end function lattice_universe_c
 
     subroutine extend_cells_c(n) bind(C)
       import C_INT32_t
@@ -187,39 +150,13 @@ module geometry_header
 ! LATTICE abstract type for ordered array of universes.
 !===============================================================================
 
-  type, abstract :: Lattice
+  type :: Lattice
     type(C_PTR) :: ptr
   contains
     procedure :: id => lattice_id
     procedure :: are_valid_indices => lattice_are_valid_indices
-    procedure :: get => lattice_get
-    procedure :: get_indices => lattice_get_indices
-    procedure :: get_local_xyz => lattice_get_local_xyz
     procedure :: offset => lattice_offset
-    procedure :: to_hdf5 => lattice_to_hdf5
   end type Lattice
-
-!===============================================================================
-! RECTLATTICE extends LATTICE for rectilinear arrays.
-!===============================================================================
-
-  type, extends(Lattice) :: RectLattice
-  end type RectLattice
-
-!===============================================================================
-! HEXLATTICE extends LATTICE for hexagonal (sometimes called triangular) arrays.
-!===============================================================================
-
-  type, extends(Lattice) :: HexLattice
-  end type HexLattice
-
-!===============================================================================
-! LATTICECONTAINER pointer array for storing lattices
-!===============================================================================
-
-  type LatticeContainer
-    class(Lattice), allocatable :: obj
-  end type LatticeContainer
 
 !===============================================================================
 ! CELL defines a closed volume by its bounding surfaces
@@ -246,7 +183,6 @@ module geometry_header
     procedure :: sqrtkT_size => cell_sqrtkT_size
     procedure :: sqrtkT => cell_sqrtkT
     procedure :: offset => cell_offset
-    procedure :: to_hdf5 => cell_to_hdf5
 
   end type Cell
 
@@ -257,7 +193,7 @@ module geometry_header
   integer(C_INT32_T), bind(C) :: n_universes ! # of universes
 
   type(Cell),             allocatable, target :: cells(:)
-  type(LatticeContainer), allocatable, target :: lattices(:)
+  type(Lattice),          allocatable, target :: lattices(:)
 
   ! Dictionaries which map user IDs to indices in the global arrays
   type(DictIntInt) :: cell_dict
@@ -279,29 +215,6 @@ contains
     is_valid = lattice_are_valid_indices_c(this % ptr, i_xyz)
   end function lattice_are_valid_indices
 
-  function lattice_get(this, i_xyz) result(univ)
-    class(Lattice), intent(in)  :: this
-    integer(C_INT), intent(in)  :: i_xyz(3)
-    integer(C_INT32_T)          :: univ
-    univ = lattice_universe_c(this % ptr, i_xyz)
-  end function lattice_get
-
-  function lattice_get_indices(this, xyz) result(i_xyz)
-    class(Lattice), intent(in)  :: this
-    real(C_DOUBLE), intent(in)  :: xyz(3)
-    integer(C_INT)              :: i_xyz(3)
-    call lattice_get_indices_c(this % ptr, xyz, i_xyz)
-  end function lattice_get_indices
-
-  function lattice_get_local_xyz(this, global_xyz, i_xyz) &
-       result(local_xyz)
-    class(Lattice), intent(in) :: this
-    real(C_DOUBLE), intent(in) :: global_xyz(3)
-    integer(C_INT), intent(in) :: i_xyz(3)
-    real(C_DOUBLE)             :: local_xyz(3)
-    call lattice_get_local_xyz_c(this % ptr, global_xyz, i_xyz, local_xyz)
-  end function lattice_get_local_xyz
-
   function lattice_offset(this, map, i_xyz) result(offset)
     class(Lattice), intent(in) :: this
     integer(C_INT), intent(in) :: map
@@ -309,12 +222,6 @@ contains
     integer(C_INT32_T)         :: offset
     offset = lattice_offset_c(this % ptr, map, i_xyz)
   end function lattice_offset
-
-  subroutine lattice_to_hdf5(this, group)
-    class(Lattice), intent(in) :: this
-    integer(HID_T), intent(in) :: group
-    call lattice_to_hdf5_c(this % ptr, group)
-  end subroutine lattice_to_hdf5
 
 !===============================================================================
 
@@ -392,12 +299,6 @@ contains
     integer(C_INT32_T)         :: offset
     offset = cell_offset_c(this % ptr, map)
   end function cell_offset
-
-  subroutine cell_to_hdf5(this, group)
-    class(Cell),    intent(in) :: this
-    integer(HID_T), intent(in) :: group
-    call cell_to_hdf5_c(this % ptr, group)
-  end subroutine cell_to_hdf5
 
 !===============================================================================
 ! GET_TEMPERATURES returns a list of temperatures that each nuclide/S(a,b) table

@@ -38,23 +38,6 @@ module surface_header
       real(C_DOUBLE), intent(inout)     :: uvw(3);
     end subroutine surface_reflect_c
 
-    pure subroutine surface_normal_c(surf_ptr, xyz, uvw) &
-         bind(C, name='surface_normal')
-      use ISO_C_BINDING
-      implicit none
-      type(C_PTR),    intent(in), value :: surf_ptr
-      real(C_DOUBLE), intent(in)        :: xyz(3);
-      real(C_DOUBLE), intent(out)       :: uvw(3);
-    end subroutine surface_normal_c
-
-    subroutine surface_to_hdf5_c(surf_ptr, group) &
-         bind(C, name='surface_to_hdf5')
-      import C_PTR, HID_T
-      implicit none
-      type(C_PTR),    intent(in), value :: surf_ptr
-      integer(HID_T), intent(in), value :: group
-    end subroutine surface_to_hdf5_c
-
     pure function surface_i_periodic_c(surf_ptr) &
          bind(C, name="surface_i_periodic") result(i_periodic)
       use ISO_C_BINDING
@@ -91,8 +74,6 @@ module surface_header
     procedure :: id => surface_id
     procedure :: bc => surface_bc
     procedure :: reflect => surface_reflect
-    procedure :: normal => surface_normal
-    procedure :: to_hdf5 => surface_to_hdf5
     procedure :: i_periodic => surface_i_periodic
     procedure :: periodic_translate => surface_periodic
 
@@ -125,19 +106,6 @@ contains
     real(C_DOUBLE), intent(inout) :: uvw(3);
     call surface_reflect_c(this % ptr, xyz, uvw)
   end subroutine surface_reflect
-
-  pure subroutine surface_normal(this, xyz, uvw)
-    class(Surface), intent(in)  :: this
-    real(C_DOUBLE), intent(in)  :: xyz(3);
-    real(C_DOUBLE), intent(out) :: uvw(3);
-    call surface_normal_c(this % ptr, xyz, uvw)
-  end subroutine surface_normal
-
-  subroutine surface_to_hdf5(this, group)
-    class(Surface), intent(in) :: this
-    integer(HID_T), intent(in) :: group
-    call surface_to_hdf5_c(this % ptr, group)
-  end subroutine surface_to_hdf5
 
   pure function surface_i_periodic(this) result(i_periodic)
     class(Surface), intent(in)  :: this

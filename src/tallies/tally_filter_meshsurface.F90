@@ -162,8 +162,8 @@ contains
                 i_mesh = m % get_bin_from_indices(ijk0)
                 i_bin = 4*n_dim*(i_mesh - 1) + i_surf
 
-                call match % bins % push_back(i_bin)
-                call match % weights % push_back(ONE)
+                call match % bins_push_back(i_bin)
+                call match % weights_push_back(ONE)
               end if
 
               ! Advance position
@@ -178,8 +178,8 @@ contains
                 i_mesh = m % get_bin_from_indices(ijk0)
                 i_bin = 4*n_dim*(i_mesh - 1) + i_surf
 
-                call match % bins % push_back(i_bin)
-                call match % weights % push_back(ONE)
+                call match % bins_push_back(i_bin)
+                call match % weights_push_back(ONE)
               end if
 
             else
@@ -192,8 +192,8 @@ contains
                 i_mesh = m % get_bin_from_indices(ijk0)
                 i_bin = 4*n_dim*(i_mesh - 1) + i_surf
 
-                call match % bins % push_back(i_bin)
-                call match % weights % push_back(ONE)
+                call match % bins_push_back(i_bin)
+                call match % weights_push_back(ONE)
               end if
 
               ! Advance position
@@ -208,8 +208,8 @@ contains
                 i_mesh = m % get_bin_from_indices(ijk0)
                 i_bin = 4*n_dim*(i_mesh - 1) + i_surf
 
-                call match % bins % push_back(i_bin)
-                call match % weights % push_back(ONE)
+                call match % bins_push_back(i_bin)
+                call match % weights_push_back(ONE)
               end if
             end if
           end if

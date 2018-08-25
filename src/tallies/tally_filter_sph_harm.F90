@@ -95,8 +95,8 @@ contains
       ! Append matching (bin,weight) for each moment
       do i = 1, num_nm
         j = j + 1
-        call match % bins % push_back(j)
-        call match % weights % push_back(wgt(n + 1) * rn(j))
+        call match % bins_push_back(j)
+        call match % weights_push_back(wgt(n + 1) * rn(j))
       end do
     end do
 

@@ -74,8 +74,8 @@ contains
           end if
         end if
         if (this % cell == p % coord(i) % cell) then
-          call match % bins % push_back(offset + 1)
-          call match % weights % push_back(ONE)
+          call match % bins_push_back(offset + 1)
+          call match % weights_push_back(ONE)
           return
         end if
       end do

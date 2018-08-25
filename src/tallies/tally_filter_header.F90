@@ -28,11 +28,21 @@ module tally_filter_header
   type, public :: TallyFilterMatch
     ! Index of the bin and weight being used in the current filter combination
     integer          :: i_bin
-    type(VectorInt)  :: bins
-    type(VectorReal) :: weights
+    type(VectorInt)  :: bins_
+    type(VectorReal) :: weights_
 
     ! Indicates whether all valid bins for this filter have been found
     logical          :: bins_present = .false.
+
+  contains
+    procedure :: bins_push_back
+    procedure :: weights_push_back
+    procedure :: bins_clear
+    procedure :: weights_clear
+    procedure :: bins_size
+    procedure :: bins_data
+    procedure :: weights_data
+    procedure :: bins_set_data
   end type TallyFilterMatch
 
 !===============================================================================
@@ -128,6 +138,58 @@ module tally_filter_header
   integer :: largest_filter_id
 
 contains
+
+!===============================================================================
+!===============================================================================
+
+  subroutine bins_push_back(this, val)
+    class(TallyFilterMatch), intent(inout) :: this
+    integer,                 intent(in)    :: val
+    call this % bins_ % push_back(val)
+  end subroutine bins_push_back
+
+  subroutine weights_push_back(this, val)
+    class(TallyFilterMatch), intent(inout) :: this
+    real(8),                 intent(in)    :: val
+    call this % weights_ % push_back(val)
+  end subroutine weights_push_back
+
+  subroutine bins_clear(this)
+    class(TallyFilterMatch), intent(inout) :: this
+    call this % bins_ % clear()
+  end subroutine bins_clear
+
+  subroutine weights_clear(this)
+    class(TallyFilterMatch), intent(inout) :: this
+    call this % weights_ % clear()
+  end subroutine weights_clear
+
+  function bins_size(this) result(len)
+    class(TallyFilterMatch), intent(inout) :: this
+    integer                                :: len
+    len = this % bins_ % size()
+  end function bins_size
+
+  function bins_data(this, indx) result(val)
+    class(TallyFilterMatch), intent(inout) :: this
+    integer,                 intent(in)    :: indx
+    integer                                :: val
+    val = this % bins_ % data(indx)
+  end function bins_data
+
+  function weights_data(this, indx) result(val)
+    class(TallyFilterMatch), intent(inout) :: this
+    integer,                 intent(in)    :: indx
+    real(8)                                :: val
+    val = this % weights_ % data(indx)
+  end function weights_data
+
+  subroutine bins_set_data(this, indx, val)
+    class(TallyFilterMatch), intent(inout) :: this
+    integer,                 intent(in)    :: indx
+    integer,                 intent(in)    :: val
+    this % bins_ % data(indx) = val
+  end subroutine bins_set_data
 
 !===============================================================================
 ! INITIALIZE sets up any internal data, as necessary.  If this procedure is not

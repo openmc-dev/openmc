@@ -773,8 +773,8 @@ contains
 
       ! Initialize bins, filter level, and indentation
       do h = 1, size(t % filter)
-        call matches(t % filter(h)) % bins % clear()
-        call matches(t % filter(h)) % bins % push_back(0)
+        call matches(t % filter(h)) % bins_clear()
+        call matches(t % filter(h)) % bins_push_back(0)
       end do
       j = 1
       indent = 0
@@ -785,18 +785,18 @@ contains
           if (size(t % filter) == 0) exit find_bin
 
           ! Increment bin combination
-          matches(t % filter(j)) % bins % data(1) = &
-               matches(t % filter(j)) % bins % data(1) + 1
+          call matches(t % filter(j)) % bins_set_data(1, &
+               matches(t % filter(j)) % bins_data(1) + 1)
 
           ! =================================================================
           ! REACHED END OF BINS FOR THIS FILTER, MOVE TO NEXT FILTER
 
-          if (matches(t % filter(j)) % bins % data(1) > &
+          if (matches(t % filter(j)) % bins_data(1) > &
                filters(t % filter(j)) % obj % n_bins) then
             ! If this is the first filter, then exit
             if (j == 1) exit print_bin
 
-            matches(t % filter(j)) % bins % data(1) = 0
+            call matches(t % filter(j)) % bins_set_data(1, 0)
             j = j - 1
             indent = indent - 2
 
@@ -810,7 +810,7 @@ contains
             ! Print current filter information
             write(UNIT=unit_tally, FMT='(1X,2A)') repeat(" ", indent), &
                  trim(filters(t % filter(j)) % obj % &
-                 text_label(matches(t % filter(j)) % bins % data(1)))
+                 text_label(matches(t % filter(j)) % bins_data(1)))
             indent = indent + 2
             j = j + 1
           end if
@@ -821,7 +821,7 @@ contains
         if (size(t % filter) > 0) then
           write(UNIT=unit_tally, FMT='(1X,2A)') repeat(" ", indent), &
                trim(filters(t % filter(j)) % obj % &
-               text_label(matches(t % filter(j)) % bins % data(1)))
+               text_label(matches(t % filter(j)) % bins_data(1)))
         end if
 
         ! Determine scoring index for this bin combination -- note that unlike
@@ -831,7 +831,7 @@ contains
         filter_index = 1
         do h = 1, size(t % filter)
           filter_index = filter_index + (max(matches(t % filter(h)) &
-               % bins % data(1),1) - 1) * t % stride(h)
+               % bins_data(1),1) - 1) * t % stride(h)
         end do
 
         ! Write results for this filter bin combination

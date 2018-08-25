@@ -102,8 +102,8 @@ contains
       call calc_zn(this % order, r, theta, zn)
 
       do i = 1, this % n_bins
-        call match % bins % push_back(i)
-        call match % weights % push_back(zn(i))
+        call match % bins_push_back(i)
+        call match % weights_push_back(zn(i))
       end do
     endif
   end subroutine get_all_bins_zn
@@ -173,8 +173,8 @@ contains
       call calc_zn_rad(this % order, r, zn_rad)
 
       do i = 1, this % n_bins
-        call match % bins % push_back(i)
-        call match % weights % push_back(zn_rad(i))
+        call match % bins_push_back(i)
+        call match % weights_push_back(zn_rad(i))
       end do
     endif
   end subroutine get_all_bins_zn_rad

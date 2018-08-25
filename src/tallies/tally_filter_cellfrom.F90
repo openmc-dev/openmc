@@ -44,8 +44,8 @@ contains
     do i = 1, p % last_n_coord
       val = this % map % get(p % last_cell(i))
       if (val /= EMPTY) then
-        call match % bins % push_back(val)
-        call match % weights % push_back(ONE)
+        call match % bins_push_back(val)
+        call match % weights_push_back(ONE)
         exit
       end if
     end do

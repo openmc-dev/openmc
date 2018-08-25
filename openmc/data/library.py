@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 import h5py
 
 from openmc.mixin import EqualityMixin
-from openmc.clean_xml import clean_xml_indentation
+from openmc._xml import clean_indentation
 from openmc.checkvalue import check_type
 
 
@@ -95,7 +95,7 @@ class DataLibrary(EqualityMixin):
             lib_element.set('type', library['type'])
 
         # Clean the indentation to be user-readable
-        clean_xml_indentation(root)
+        clean_indentation(root)
 
         # Write XML file
         tree = ET.ElementTree(root)

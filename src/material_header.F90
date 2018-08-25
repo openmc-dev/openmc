@@ -24,6 +24,7 @@ module material_header
   public :: openmc_material_add_nuclide
   public :: openmc_material_get_id
   public :: openmc_material_get_densities
+  public :: openmc_material_get_volume
   public :: openmc_material_set_density
   public :: openmc_material_set_densities
   public :: openmc_material_set_id
@@ -51,9 +52,16 @@ module material_header
     end subroutine material_set_id_c
 
     subroutine extend_materials_c(n) bind(C)
-      import C_INT32_t
+      import C_INT32_T
       integer(C_INT32_T), intent(in), value :: n
     end subroutine extend_materials_c
+
+    function openmc_material_get_volume(index, volume) result(err) bind(C)
+      import C_INT32_T, C_DOUBLE, C_INT
+      integer(C_INT32_T), value :: index
+      real(C_DOUBLE), intent(out) :: volume
+      integer(C_INT) :: err
+    end function openmc_material_get_volume
   end interface
 
 !===============================================================================
@@ -215,7 +223,7 @@ contains
       found = .false.
       associate (sab => sab_tables(this % i_sab_tables(k)))
         FIND_NUCLIDE: do j = 1, size(this % nuclide)
-          if (any(sab % nuclides == nuclides(this % nuclide(j)) % name)) then
+          if (sab % has_nuclide(nuclides(this % nuclide(j)) % name)) then
             call i_sab_tables % push_back(this % i_sab_tables(k))
             call i_sab_nuclides % push_back(j)
             call sab_fracs % push_back(this % sab_fracs(k))
@@ -369,7 +377,7 @@ contains
 
           ! If particle energy is greater than the highest energy for the
           ! S(a,b) table, then don't use the S(a,b) table
-          if (p % E > sab_tables(i_sab) % data(1) % threshold_inelastic) then
+          if (p % E > sab_tables(i_sab) % threshold()) then
             i_sab = 0
           end if
 

@@ -1,4 +1,4 @@
-#include "math_functions.h"
+#include "openmc/math_functions.h"
 
 namespace openmc {
 
@@ -608,7 +608,7 @@ void calc_zn_rad_c(int n, double rho, double zn_rad[]) {
       double k2 = 2 * p * (p - 1) * (p - 2);
       double k3 = -q * q * (p - 1) - p * (p - 1) * (p - 2);
       double k4 = (-p * (p + q - 2) * (p - q - 2)) / 2.;
-      zn_rad[index] = 
+      zn_rad[index] =
         ((k2 * rho * rho + k3) * zn_rad[index-1] + k4 * zn_rad[index-2]) / k1;
     }
   }

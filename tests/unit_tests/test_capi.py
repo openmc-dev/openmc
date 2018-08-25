@@ -101,6 +101,10 @@ def test_material(capi_init):
     m.set_densities(m.nuclides, test_dens)
     assert m.densities == pytest.approx(test_dens)
 
+    assert m.volume is None
+    m.volume = 10.0
+    assert m.volume == 10.0
+
     rho = 2.25e-2
     m.set_density(rho)
     assert sum(m.densities) == pytest.approx(rho)
@@ -155,7 +159,6 @@ def test_tally_mapping(capi_init):
 
 def test_tally(capi_init):
     t = openmc.capi.tallies[1]
-    t.id = 1
     assert len(t.filters) == 2
     assert isinstance(t.filters[0], openmc.capi.MaterialFilter)
     assert isinstance(t.filters[1], openmc.capi.EnergyFilter)
@@ -180,7 +183,6 @@ def test_tally(capi_init):
     assert t.scores == new_scores
 
     t2 = openmc.capi.tallies[2]
-    t2.id = 2
     assert len(t2.filters) == 2
     assert isinstance(t2.filters[0], openmc.capi.ZernikeFilter)
     assert isinstance(t2.filters[1], openmc.capi.CellFilter)

@@ -1398,9 +1398,7 @@ contains
 
       ! Check if material is depletable
       if (check_for_node(node_mat, "depletable")) then
-        call get_node_value(node_mat, "depletable", temp_str)
-        if (to_lower(temp_str) == "true" .or. temp_str == "1") &
-             mat % depletable = .true.
+        call get_node_value(node_mat, "depletable", mat % depletable)
       end if
 
       ! Copy material name
@@ -1784,6 +1782,7 @@ contains
     integer :: k             ! another loop index
     integer :: l             ! loop over bins
     integer :: filter_id     ! user-specified identifier for filter
+    integer :: tally_id      ! user-specified identifier for filter
     integer :: i_filt        ! index in filters array
     integer :: i_elem        ! index of entry in dictionary
     integer :: n             ! size of arrays in mesh specification
@@ -1982,7 +1981,7 @@ contains
 
     READ_TALLIES: do i = 1, n
       ! Allocate tally
-      err = openmc_tally_set_type(i_start + i - 1, &
+      err = openmc_tally_allocate(i_start + i - 1, &
            C_CHAR_'generic' // C_NULL_CHAR)
 
       ! Get pointer to tally
@@ -1991,17 +1990,13 @@ contains
       ! Get pointer to tally xml node
       node_tal = node_tal_list(i)
 
-      ! Copy tally id
+      ! Copy and set tally id
       if (check_for_node(node_tal, "id")) then
-        call get_node_value(node_tal, "id", t % id)
+        call get_node_value(node_tal, "id", tally_id)
+        err = openmc_tally_set_id(i_start + i - 1, tally_id)
+        if (err /= 0) call fatal_error(to_f_string(openmc_err_msg))
       else
         call fatal_error("Must specify id for tally in tally XML file.")
-      end if
-
-      ! Check to make sure 'id' hasn't been used
-      if (tally_dict % has(t % id)) then
-        call fatal_error("Two or more tallies use the same unique ID: " &
-             // to_str(t % id))
       end if
 
       ! Copy tally name
@@ -2702,9 +2697,6 @@ contains
                // "' on tally " // to_str(t % id))
         end select
       end if
-
-      ! Add tally to dictionary
-      call tally_dict % set(t % id, i)
 
       end associate
     end do READ_TALLIES

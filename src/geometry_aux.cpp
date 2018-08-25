@@ -1,17 +1,17 @@
-#include "geometry_aux.h"
+#include "openmc/geometry_aux.h"
 
 #include <algorithm>  // for std::max
 #include <sstream>
 #include <unordered_set>
 
-#include "cell.h"
-#include "constants.h"
-#include "error.h"
-#include "geometry.h"
-#include "lattice.h"
-#include "material.h"
-#include "settings.h"
-#include "surface.h"
+#include "openmc/cell.h"
+#include "openmc/constants.h"
+#include "openmc/error.h"
+#include "openmc/geometry.h"
+#include "openmc/lattice.h"
+#include "openmc/material.h"
+#include "openmc/settings.h"
+#include "openmc/surface.h"
 
 
 namespace openmc {
@@ -94,9 +94,9 @@ assign_temperatures()
         c->sqrtkT.push_back(0);
 
       } else {
-        if (global_materials[i_mat]->temperature >= 0) {
+        if (global_materials[i_mat]->temperature_ >= 0) {
           // This material has a default temperature; use that value.
-          auto T = global_materials[i_mat]->temperature;
+          auto T = global_materials[i_mat]->temperature_;
           c->sqrtkT.push_back(std::sqrt(K_BOLTZMANN * T));
         } else {
           // Use the global default temperature.

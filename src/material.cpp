@@ -1,10 +1,10 @@
-#include "material.h"
+#include "openmc/material.h"
 
 #include <string>
 #include <sstream>
 
-#include "error.h"
-#include "xml_interface.h"
+#include "openmc/error.h"
+#include "openmc/xml_interface.h"
 
 
 namespace openmc {
@@ -20,16 +20,20 @@ std::unordered_map<int32_t, int32_t> material_map;
 // Material implementation
 //==============================================================================
 
-Material::Material(pugi::xml_node material_node)
+Material::Material(pugi::xml_node node)
 {
-  if (check_for_node(material_node, "id")) {
-    id = std::stoi(get_node_value(material_node, "id"));
+  if (check_for_node(node, "id")) {
+    id = std::stoi(get_node_value(node, "id"));
   } else {
     fatal_error("Must specify id of material in materials XML file.");
   }
 
-  if (check_for_node(material_node, "temperature")) {
-    temperature = std::stod(get_node_value(material_node, "temperature"));
+  if (check_for_node(node, "temperature")) {
+    temperature_ = std::stod(get_node_value(node, "temperature"));
+  }
+
+  if (check_for_node(node, "volume")) {
+    volume_ = std::stod(get_node_value(node, "volume"));
   }
 }
 
@@ -57,6 +61,48 @@ read_materials(pugi::xml_node* node)
       err_msg << "Two or more materials use the same unique ID: " << mid;
       fatal_error(err_msg);
     }
+  }
+}
+
+//==============================================================================
+// C API
+//==============================================================================
+
+extern "C" int
+openmc_material_get_volume(int32_t index, double* volume)
+{
+  if (index >= 1 && index <= global_materials.size()) {
+    Material* m = global_materials[index - 1];
+    if (m->volume_ >= 0.0) {
+      *volume = m->volume_;
+      return 0;
+    } else {
+      std::stringstream msg;
+      msg << "Volume for material with ID=" << m->id << " not set.";
+      set_errmsg(msg);
+      return OPENMC_E_UNASSIGNED;
+    }
+  } else {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+}
+
+extern "C" int
+openmc_material_set_volume(int32_t index, double volume)
+{
+  if (index >= 1 && index <= global_materials.size()) {
+    Material* m = global_materials[index - 1];
+    if (volume >= 0.0) {
+      m->volume_ = volume;
+      return 0;
+    } else {
+      set_errmsg("Volume must be non-negative");
+      return OPENMC_E_INVALID_ARGUMENT;
+    }
+  } else {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
   }
 }
 

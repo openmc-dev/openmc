@@ -288,7 +288,6 @@ set_target_properties(faddeeva PROPERTIES
 
 add_library(libopenmc SHARED
   src/algorithm.F90
-  src/angleenergy_header.F90
   src/bank_header.F90
   src/api.F90
   src/cmfd_data.F90
@@ -338,7 +337,6 @@ add_library(libopenmc SHARED
   src/reaction_header.F90
   src/relaxng
   src/sab_header.F90
-  src/secondary_correlated.F90
   src/set_header.F90
   src/settings.F90
   src/simulation_header.F90
@@ -422,11 +420,11 @@ add_library(libopenmc SHARED
   src/string_functions.cpp
   src/summary.cpp
   src/surface.cpp
+  src/thermal.cpp
   src/xml_interface.cpp
   src/xsdata.cpp)
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc
-  PUBLIC_HEADER include/openmc.h
   LINKER_LANGUAGE Fortran)
 
 target_include_directories(libopenmc
@@ -496,8 +494,8 @@ install(TARGETS openmc libopenmc
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
-  PUBLIC_HEADER DESTINATION include
   )
 install(DIRECTORY src/relaxng DESTINATION share/openmc)
 install(FILES man/man1/openmc.1 DESTINATION share/man/man1)
 install(FILES LICENSE DESTINATION "share/doc/openmc" RENAME copyright)
+install(DIRECTORY include/ DESTINATION include)

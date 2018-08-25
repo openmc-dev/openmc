@@ -1,14 +1,14 @@
-#include "reaction_product.h"
+#include "openmc/reaction_product.h"
 
 #include <memory> // for unique_ptr
 #include <string> // for string
 
-#include "hdf5_interface.h"
-#include "random_lcg.h"
-#include "secondary_correlated.h"
-#include "secondary_kalbach.h"
-#include "secondary_nbody.h"
-#include "secondary_uncorrelated.h"
+#include "openmc/hdf5_interface.h"
+#include "openmc/random_lcg.h"
+#include "openmc/secondary_correlated.h"
+#include "openmc/secondary_kalbach.h"
+#include "openmc/secondary_nbody.h"
+#include "openmc/secondary_uncorrelated.h"
 
 namespace openmc {
 

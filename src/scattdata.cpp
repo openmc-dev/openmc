@@ -1,12 +1,13 @@
+#include "openmc/scattdata.h"
+
 #include <algorithm>
 #include <numeric>
 #include <cmath>
 
-#include "constants.h"
-#include "math_functions.h"
-#include "random_lcg.h"
-#include "error.h"
-#include "scattdata.h"
+#include "openmc/constants.h"
+#include "openmc/error.h"
+#include "openmc/math_functions.h"
+#include "openmc/random_lcg.h"
 
 namespace openmc {
 

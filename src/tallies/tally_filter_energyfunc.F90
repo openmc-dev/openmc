@@ -89,9 +89,9 @@ contains
            / (this % energy(indx+1) - this % energy(indx))
 
       ! Interpolate on the lin-lin grid.
-      call match % bins % push_back(1)
+      call match % bins_push_back(1)
       weight = (ONE - f) * this % y(indx) + f * this % y(indx+1)
-      call match % weights % push_back(weight)
+      call match % weights_push_back(weight)
     end select
   end subroutine get_all_bins_energyfunction
 

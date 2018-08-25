@@ -55,8 +55,8 @@ contains
 
     call calc_pn(this % order, p % mu, wgt)
     do i = 1, this % n_bins
-      call match % bins % push_back(i)
-      call match % weights % push_back(wgt(i))
+      call match % bins_push_back(i)
+      call match % weights_push_back(wgt(i))
     end do
   end subroutine get_all_bins
 

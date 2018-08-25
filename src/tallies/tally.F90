@@ -2080,15 +2080,15 @@ contains
       do j = 1, size(t % filter)
         i_filt = t % filter(j)
         if (.not. filter_matches(i_filt) % bins_present) then
-          call filter_matches(i_filt) % bins % clear()
-          call filter_matches(i_filt) % weights % clear()
+          call filter_matches(i_filt) % bins_clear()
+          call filter_matches(i_filt) % weights_clear()
           call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
                filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
         ! If there are no valid bins for this filter, then there is nothing to
         ! score and we can move on to the next tally.
-        if (filter_matches(i_filt) % bins % size() == 0) cycle TALLY_LOOP
+        if (filter_matches(i_filt) % bins_size() == 0) cycle TALLY_LOOP
 
         ! Set the index of the bin used in the first filter combination
         filter_matches(i_filt) % i_bin = 1
@@ -2107,10 +2107,10 @@ contains
         do j = 1, size(t % filter)
           i_filt = t % filter(j)
           i_bin = filter_matches(i_filt) % i_bin
-          filter_index = filter_index + (filter_matches(i_filt) % bins % &
-               data(i_bin) - 1) * t % stride(j)
-          filter_weight = filter_weight * filter_matches(i_filt) % weights % &
-               data(i_bin)
+          filter_index = filter_index + (filter_matches(i_filt) &
+               % bins_data(i_bin) - 1) * t % stride(j)
+          filter_weight = filter_weight * filter_matches(i_filt) &
+               % weights_data(i_bin)
         end do
 
         ! ======================================================================
@@ -2167,7 +2167,7 @@ contains
         do j = size(t % filter), 1, -1
           i_filt = t % filter(j)
           if (filter_matches(i_filt) % i_bin < filter_matches(i_filt) % &
-               bins % size()) then
+               bins_size()) then
             filter_matches(i_filt) % i_bin = filter_matches(i_filt) % i_bin + 1
             finished = .false.
             exit
@@ -2226,15 +2226,15 @@ contains
       do j = 1, size(t % filter)
         i_filt = t % filter(j)
         if (.not. filter_matches(i_filt) % bins_present) then
-          call filter_matches(i_filt) % bins % clear()
-          call filter_matches(i_filt) % weights % clear()
+          call filter_matches(i_filt) % bins_clear()
+          call filter_matches(i_filt) % weights_clear()
           call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
                filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
         ! If there are no valid bins for this filter, then there is nothing to
         ! score and we can move on to the next tally.
-        if (filter_matches(i_filt) % bins % size() == 0) cycle TALLY_LOOP
+        if (filter_matches(i_filt) % bins_size() == 0) cycle TALLY_LOOP
 
         ! Set the index of the bin used in the first filter combination
         filter_matches(i_filt) % i_bin = 1
@@ -2253,10 +2253,10 @@ contains
         do j = 1, size(t % filter)
           i_filt = t % filter(j)
           i_bin = filter_matches(i_filt) % i_bin
-          filter_index = filter_index + (filter_matches(i_filt) % bins % &
-               data(i_bin) - 1) * t % stride(j)
-          filter_weight = filter_weight * filter_matches(i_filt) % weights % &
-               data(i_bin)
+          filter_index = filter_index + (filter_matches(i_filt) &
+               % bins_data(i_bin) - 1) * t % stride(j)
+          filter_weight = filter_weight * filter_matches(i_filt) &
+               % weights_data(i_bin)
         end do
 
         ! ======================================================================
@@ -2296,7 +2296,7 @@ contains
         do j = size(t % filter), 1, -1
           i_filt = t % filter(j)
           if (filter_matches(i_filt) % i_bin < filter_matches(i_filt) % &
-               bins % size()) then
+               bins_size()) then
             filter_matches(i_filt) % i_bin = filter_matches(i_filt) % i_bin + 1
             finished = .false.
             exit
@@ -2361,7 +2361,7 @@ contains
     ! save original outgoing energy bin and score index
     i = t % filter(t % find_filter(FILTER_ENERGYOUT))
     i_bin = filter_matches(i) % i_bin
-    bin_energyout = filter_matches(i) % bins % data(i_bin)
+    bin_energyout = filter_matches(i) % bins_data(i_bin)
 
     ! declare the energyout filter type
     select type(eo_filt => filters(i) % obj)
@@ -2401,7 +2401,7 @@ contains
           g_out = size(eo_filt % bins) - g_out
 
           ! change outgoing energy bin
-          filter_matches(i) % bins % data(i_bin) = g_out
+          call filter_matches(i) % bins_set_data(i_bin, g_out)
 
         else
 
@@ -2417,8 +2417,8 @@ contains
           if (E_out < eo_filt % bins(1) .or. E_out > eo_filt % bins(n)) cycle
 
           ! change outgoing energy bin
-          filter_matches(i) % bins % data(i_bin) = &
-               binary_search(eo_filt % bins, n, E_out)
+          call filter_matches(i) % bins_set_data(i_bin, &
+               binary_search(eo_filt % bins, n, E_out))
 
         end if
 
@@ -2429,8 +2429,8 @@ contains
           ! determine scoring index and weight for this filter combination
           i_filter = 1
           do l = 1, size(t % filter)
-            i_filter = i_filter + (filter_matches(t % filter(l)) % bins % &
-                 data(filter_matches(t % filter(l)) % i_bin) - 1) * &
+            i_filter = i_filter + (filter_matches(t % filter(l)) &
+                 % bins_data(filter_matches(t % filter(l)) % i_bin) - 1) * &
                  t % stride(l)
           end do
 
@@ -2471,10 +2471,10 @@ contains
                   do l = 1, size(t % filter)
                     f = t % filter(l)
                     b = filter_matches(f) % i_bin
-                    i_filter = i_filter + (filter_matches(f) % bins % &
-                         data(b) - 1) * t % stride(l)
-                    filter_weight = filter_weight * filter_matches(f) % &
-                         weights % data(b)
+                    i_filter = i_filter + (filter_matches(f) &
+                         % bins_data(b) - 1) * t % stride(l)
+                    filter_weight = filter_weight * filter_matches(f) &
+                         % weights_data(b)
                   end do
 
                   call score_fission_delayed_dg(t, d_bin, &
@@ -2494,10 +2494,10 @@ contains
             do l = 1, size(t % filter)
               f = t % filter(l)
               b = filter_matches(f) % i_bin
-              i_filter = i_filter + (filter_matches(f) % bins % data(b) - 1) &
+              i_filter = i_filter + (filter_matches(f) % bins_data(b) - 1) &
                    * t % stride(l)
-              filter_weight = filter_weight * filter_matches(f) % weights % &
-                   data(b)
+              filter_weight = filter_weight * filter_matches(f) &
+                   % weights_data(b)
             end do
 
             ! Add score to tally
@@ -2510,7 +2510,7 @@ contains
     end select
 
     ! reset outgoing energy bin and score index
-    filter_matches(i) % bins % data(i_bin) = bin_energyout
+    call filter_matches(i) % bins_set_data(i_bin, bin_energyout)
 
   end subroutine score_fission_eout
 
@@ -2535,14 +2535,14 @@ contains
     ! save original delayed group bin
     i_filt = t % filter(t % find_filter(FILTER_DELAYEDGROUP))
     i_bin = filter_matches(i_filt) % i_bin
-    bin_original = filter_matches(i_filt) % bins % data(i_bin)
-    filter_matches(i_filt) % bins % data(i_bin) = d_bin
+    bin_original = filter_matches(i_filt) % bins_data(i_bin)
+    call filter_matches(i_filt) % bins_set_data(i_bin, d_bin)
 
     ! determine scoring index and weight on the modified matching bins
     filter_index = 1
     do i = 1, size(t % filter)
-      filter_index = filter_index + (filter_matches(t % filter(i)) % bins % &
-           data(filter_matches(t % filter(i)) % i_bin) - 1) * t % stride(i)
+      filter_index = filter_index + (filter_matches(t % filter(i)) % &
+           bins_data(filter_matches(t % filter(i)) % i_bin) - 1) * t % stride(i)
     end do
 
 !$omp atomic
@@ -2550,7 +2550,7 @@ contains
          t % results(RESULT_VALUE, score_index, filter_index) + score
 
     ! reset original delayed group bin
-    filter_matches(i_filt) % bins % data(i_bin) = bin_original
+    call filter_matches(i_filt) % bins_set_data(i_bin, bin_original)
 
   end subroutine score_fission_delayed_dg
 
@@ -2596,15 +2596,15 @@ contains
       do j = 1, size(t % filter)
         i_filt = t % filter(j)
         if (.not. filter_matches(i_filt) % bins_present) then
-          call filter_matches(i_filt) % bins % clear()
-          call filter_matches(i_filt) % weights % clear()
+          call filter_matches(i_filt) % bins_clear()
+          call filter_matches(i_filt) % weights_clear()
           call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
                filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
         ! If there are no valid bins for this filter, then there is nothing to
         ! score and we can move on to the next tally.
-        if (filter_matches(i_filt) % bins % size() == 0) cycle TALLY_LOOP
+        if (filter_matches(i_filt) % bins_size() == 0) cycle TALLY_LOOP
 
         ! Set the index of the bin used in the first filter combination
         filter_matches(i_filt) % i_bin = 1
@@ -2623,10 +2623,10 @@ contains
         do j = 1, size(t % filter)
           i_filt = t % filter(j)
           i_bin = filter_matches(i_filt) % i_bin
-          filter_index = filter_index + (filter_matches(i_filt) % bins % &
-               data(i_bin) - 1) * t % stride(j)
-          filter_weight = filter_weight * filter_matches(i_filt) % weights % &
-               data(i_bin)
+          filter_index = filter_index + (filter_matches(i_filt) &
+               % bins_data(i_bin) - 1) * t % stride(j)
+          filter_weight = filter_weight * filter_matches(i_filt) &
+               % weights_data(i_bin)
         end do
 
         ! ======================================================================
@@ -2675,7 +2675,7 @@ contains
         do j = size(t % filter), 1, -1
           i_filt = t % filter(j)
           if (filter_matches(i_filt) % i_bin < filter_matches(i_filt) % &
-               bins % size()) then
+               bins_size()) then
             filter_matches(i_filt) % i_bin = filter_matches(i_filt) % i_bin + 1
             finished = .false.
             exit
@@ -2753,15 +2753,15 @@ contains
       do j = 1, size(t % filter)
         i_filt = t % filter(j)
         if (.not. filter_matches(i_filt) % bins_present) then
-          call filter_matches(i_filt) % bins % clear()
-          call filter_matches(i_filt) % weights % clear()
+          call filter_matches(i_filt) % bins_clear()
+          call filter_matches(i_filt) % weights_clear()
           call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
                filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
         ! If there are no valid bins for this filter, then there is nothing to
         ! score and we can move on to the next tally.
-        if (filter_matches(i_filt) % bins % size() == 0) cycle TALLY_LOOP
+        if (filter_matches(i_filt) % bins_size() == 0) cycle TALLY_LOOP
 
         ! Set the index of the bin used in the first filter combination
         filter_matches(i_filt) % i_bin = 1
@@ -2780,10 +2780,10 @@ contains
         do j = 1, size(t % filter)
           i_filt = t % filter(j)
           i_bin = filter_matches(i_filt) % i_bin
-          filter_index = filter_index + (filter_matches(i_filt) % bins % &
-               data(i_bin) - 1) * t % stride(j)
-          filter_weight = filter_weight * filter_matches(i_filt) % weights % &
-               data(i_bin)
+          filter_index = filter_index + (filter_matches(i_filt) &
+               % bins_data(i_bin) - 1) * t % stride(j)
+          filter_weight = filter_weight * filter_matches(i_filt) &
+               % weights_data(i_bin)
         end do
 
         ! ======================================================================
@@ -2832,7 +2832,7 @@ contains
         do j = size(t % filter), 1, -1
           i_filt = t % filter(j)
           if (filter_matches(i_filt) % i_bin < filter_matches(i_filt) % &
-               bins % size()) then
+               bins_size()) then
             filter_matches(i_filt) % i_bin = filter_matches(i_filt) % i_bin + 1
             finished = .false.
             exit
@@ -2899,15 +2899,15 @@ contains
       do j = 1, size(t % filter)
         i_filt = t % filter(j)
         if (.not. filter_matches(i_filt) % bins_present) then
-          call filter_matches(i_filt) % bins % clear()
-          call filter_matches(i_filt) % weights % clear()
+          call filter_matches(i_filt) % bins_clear()
+          call filter_matches(i_filt) % weights_clear()
           call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
                filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
         ! If there are no valid bins for this filter, then there is nothing to
         ! score and we can move on to the next tally.
-        if (filter_matches(i_filt) % bins % size() == 0) cycle TALLY_LOOP
+        if (filter_matches(i_filt) % bins_size() == 0) cycle TALLY_LOOP
 
         ! Set the index of the bin used in the first filter combination
         filter_matches(i_filt) % i_bin = 1
@@ -2926,10 +2926,10 @@ contains
         do j = 1, size(t % filter)
           i_filt = t % filter(j)
           i_bin = filter_matches(i_filt) % i_bin
-          filter_index = filter_index + (filter_matches(i_filt) % bins % &
-               data(i_bin) - 1) * t % stride(j)
-          filter_weight = filter_weight * filter_matches(i_filt) % weights % &
-               data(i_bin)
+          filter_index = filter_index + (filter_matches(i_filt) &
+               % bins_data(i_bin) - 1) * t % stride(j)
+          filter_weight = filter_weight * filter_matches(i_filt) &
+               % weights_data(i_bin)
         end do
 
         ! Determine score
@@ -2962,7 +2962,7 @@ contains
         do j = size(t % filter), 1, -1
           i_filt = t % filter(j)
           if (filter_matches(i_filt) % i_bin < filter_matches(i_filt) % &
-               bins % size()) then
+               bins_size()) then
             filter_matches(i_filt) % i_bin = filter_matches(i_filt) % i_bin + 1
             finished = .false.
             exit

@@ -57,8 +57,8 @@ contains
 
       val = this % map % get(p % cell_born)
       if (val /= EMPTY) then
-        call match % bins % push_back(val)
-        call match % weights % push_back(ONE)
+        call match % bins_push_back(val)
+        call match % weights_push_back(ONE)
       end if
 
   end subroutine get_all_bins_cellborn

@@ -173,8 +173,8 @@ contains
 
             ! Initialize bins, filter level
             do j = 1, size(t % filter)
-              call filter_matches(t % filter(j)) % bins % clear()
-              call filter_matches(t % filter(j)) % bins % push_back(0)
+              call filter_matches(t % filter(j)) % bins_clear()
+              call filter_matches(t % filter(j)) % bins_push_back(0)
             end do
 
             FILTER_LOOP: do filter_index = 1, t % n_filter_bins
@@ -269,8 +269,8 @@ contains
 
     ! initialize bins array
     do j = 1, size(t % filter)
-      call filter_matches(t % filter(j)) % bins % clear()
-      call filter_matches(t % filter(j)) % bins % push_back(1)
+      call filter_matches(t % filter(j)) % bins_clear()
+      call filter_matches(t % filter(j)) % bins_push_back(1)
     end do
 
     ! determine how many energyin bins there are
@@ -293,20 +293,20 @@ contains
 
       ! Get the indices for this cell
       call m % get_indices_from_bin(i, ijk)
-      filter_matches(i_filter_mesh) % bins % data(1) = i
+      call filter_matches(i_filter_mesh) % bins_set_data(1, i)
 
       do l = 1, n
 
         if (print_ebin) then
-          filter_matches(i_filter_ein) % bins % data(1) = l
+          call filter_matches(i_filter_ein) % bins_set_data(1, l)
         end if
 
         ! Left Surface
-        filter_matches(i_filter_surf) % bins % data(1) = OUT_LEFT
+        call filter_matches(i_filter_surf) % bins_set_data(1, OUT_LEFT)
         filter_index = 1
         do j = 1, size(t % filter)
           filter_index = filter_index + (filter_matches(t % filter(j)) % &
-               bins % data(1) - 1) * t % stride(j)
+               bins_data(1) - 1) * t % stride(j)
         end do
         call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
         if (trigger % std_dev < std_dev) then
@@ -318,11 +318,11 @@ contains
         trigger % variance = std_dev**2
 
         ! Right Surface
-        filter_matches(i_filter_surf) % bins % data(1) = OUT_RIGHT
+        call filter_matches(i_filter_surf) % bins_set_data(1, OUT_RIGHT)
         filter_index = 1
         do j = 1, size(t % filter)
           filter_index = filter_index + (filter_matches(t % filter(j)) % &
-               bins % data(1) - 1) * t % stride(j)
+               bins_data(1) - 1) * t % stride(j)
         end do
         call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
         if (trigger % std_dev < std_dev) then
@@ -334,11 +334,11 @@ contains
         trigger % variance = trigger % std_dev**2
 
         ! Back Surface
-        filter_matches(i_filter_surf) % bins % data(1) = OUT_BACK
+        call filter_matches(i_filter_surf) % bins_set_data(1, OUT_BACK)
         filter_index = 1
         do j = 1, size(t % filter)
           filter_index = filter_index + (filter_matches(t % filter(j)) % &
-               bins % data(1) - 1) * t % stride(j)
+               bins_data(1) - 1) * t % stride(j)
         end do
         call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
         if (trigger % std_dev < std_dev) then
@@ -350,11 +350,11 @@ contains
         trigger % variance = trigger % std_dev**2
 
         ! Front Surface
-        filter_matches(i_filter_surf) % bins % data(1) = OUT_FRONT
+        call filter_matches(i_filter_surf) % bins_set_data(1, OUT_FRONT)
         filter_index = 1
         do j = 1, size(t % filter)
           filter_index = filter_index + (filter_matches(t % filter(j)) % &
-               bins % data(1) - 1) * t % stride(j)
+               bins_data(1) - 1) * t % stride(j)
         end do
         call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
         if (trigger % std_dev < std_dev) then
@@ -366,11 +366,11 @@ contains
         trigger % variance = trigger % std_dev**2
 
         ! Bottom Surface
-        filter_matches(i_filter_surf) % bins % data(1) = OUT_BOTTOM
+        call filter_matches(i_filter_surf) % bins_set_data(1, OUT_BOTTOM)
         filter_index = 1
         do j = 1, size(t % filter)
           filter_index = filter_index + (filter_matches(t % filter(j)) % &
-               bins % data(1) - 1) * t % stride(j)
+               bins_data(1) - 1) * t % stride(j)
         end do
         call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
         if (trigger % std_dev < std_dev) then
@@ -382,11 +382,11 @@ contains
         trigger % variance = trigger % std_dev**2
 
         ! Top Surface
-        filter_matches(i_filter_surf) % bins % data(1) = OUT_TOP
+        call filter_matches(i_filter_surf) % bins_set_data(1, OUT_TOP)
         filter_index = 1
         do j = 1, size(t % filter)
           filter_index = filter_index + (filter_matches(t % filter(j)) % &
-               bins % data(1) - 1) * t % stride(j)
+               bins_data(1) - 1) * t % stride(j)
         end do
         call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
         if (trigger % std_dev < std_dev) then

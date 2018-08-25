@@ -103,8 +103,8 @@ contains
       ! valid mesh bin.
       call m % get_bin(p % coord(1) % xyz, bin)
       if (bin /= NO_BIN_FOUND) then
-        call match % bins % push_back(bin)
-        call match % weights % push_back(ONE)
+        call match % bins_push_back(bin)
+        call match % weights_push_back(ONE)
       end if
       return
     end if
@@ -217,8 +217,8 @@ contains
 
       ! Assign the next tally bin and the score.
       bin = m % get_bin_from_indices(ijk0(:n))
-      call match % bins % push_back(bin)
-      call match % weights % push_back(distance / total_distance)
+      call match % bins_push_back(bin)
+      call match % weights_push_back(distance / total_distance)
 
       ! Find the next mesh cell that the particle enters.
 

@@ -154,27 +154,27 @@ contains
 
                 ! Reset all bins to 1
                 do l = 1, size(t % filter)
-                  call filter_matches(t % filter(l)) % bins % clear()
-                  call filter_matches(t % filter(l)) % bins % push_back(1)
+                  call filter_matches(t % filter(l)) % bins_clear()
+                  call filter_matches(t % filter(l)) % bins_push_back(1)
                 end do
 
                 ! Set ijk as mesh indices
                 ijk = (/ i, j, k /)
 
                 ! Get bin number for mesh indices
-                filter_matches(i_filter_mesh) % bins % data(1) = &
-                     m % get_bin_from_indices(ijk)
+                call filter_matches(i_filter_mesh) &
+                     % bins_set_data(1, m % get_bin_from_indices(ijk))
 
                 ! Apply energy in filter
                 if (energy_filters) then
-                  filter_matches(i_filter_ein) % bins % data(1) = ng - h + 1
+                  call filter_matches(i_filter_ein) % bins_set_data(1, ng - h + 1)
                 end if
 
                 ! Calculate score index from bins
                 score_index = 1
                 do l = 1, size(t % filter)
                   score_index = score_index + (filter_matches(t % filter(l)) &
-                       % bins % data(1) - 1) * t % stride(l)
+                       % bins_data(1) - 1) * t % stride(l)
                 end do
 
                 ! Get flux
@@ -198,30 +198,30 @@ contains
 
                   ! Reset all bins to 1
                   do l = 1, size(t % filter)
-                    call filter_matches(t % filter(l)) % bins % clear()
-                    call filter_matches(t % filter(l)) % bins % push_back(1)
+                    call filter_matches(t % filter(l)) % bins_clear()
+                    call filter_matches(t % filter(l)) % bins_push_back(1)
                   end do
 
                   ! Set ijk as mesh indices
                   ijk = (/ i, j, k /)
 
                   ! Get bin number for mesh indices
-                  filter_matches(i_filter_mesh) % bins % data(1) = &
-                       m % get_bin_from_indices(ijk)
+                  call filter_matches(i_filter_mesh) &
+                       % bins_set_data(1, m % get_bin_from_indices(ijk))
 
                   if (energy_filters) then
                     ! Apply energy in filter
-                    filter_matches(i_filter_ein) % bins % data(1) = ng - h + 1
+                    call filter_matches(i_filter_ein) % bins_set_data(1, ng - h + 1)
 
                     ! Set energy out bin
-                    filter_matches(i_filter_eout) % bins % data(1) = ng - g + 1
+                    call filter_matches(i_filter_eout) % bins_set_data(1, ng - g + 1)
                   end if
 
                   ! Calculate score index from bins
                   score_index = 1
                   do l = 1, size(t % filter)
                     score_index = score_index + (filter_matches(t % filter(l)) &
-                         % bins % data(1) - 1) * t % stride(l)
+                         % bins_data(1) - 1) * t % stride(l)
                   end do
 
                   ! Get scattering
@@ -244,23 +244,23 @@ contains
 
                 ! Initialize and filter for energy
                 do l = 1, size(t % filter)
-                  call filter_matches(t % filter(l)) % bins % clear()
-                  call filter_matches(t % filter(l)) % bins % push_back(1)
+                  call filter_matches(t % filter(l)) % bins_clear()
+                  call filter_matches(t % filter(l)) % bins_push_back(1)
                 end do
 
                 ! Set the bin for this mesh cell
                 i_mesh = m % get_bin_from_indices([ i, j, k ])
-                filter_matches(i_filter_mesh) % bins % data(1) = 12*(i_mesh - 1) + 1
+                call filter_matches(i_filter_mesh) % bins_set_data(1, 12*(i_mesh - 1) + 1)
 
                 ! Set the energy bin if needed
                 if (energy_filters) then
-                  filter_matches(i_filter_ein) % bins % data(1) = ng - h + 1
+                  call filter_matches(i_filter_ein) % bins_set_data(1, ng - h + 1)
                 end if
 
                 score_index = 0
                 do l = 1, size(t % filter)
                   score_index = score_index + (filter_matches(t % filter(l)) &
-                       % bins % data(1) - 1) * t % stride(l)
+                       % bins_data(1) - 1) * t % stride(l)
                 end do
 
                 ! Left surface
@@ -303,30 +303,30 @@ contains
 
                 ! Reset all bins to 1
                 do l = 1, size(t % filter)
-                  call filter_matches(t % filter(l)) % bins % clear()
-                  call filter_matches(t % filter(l)) % bins % push_back(1)
+                  call filter_matches(t % filter(l)) % bins_clear()
+                  call filter_matches(t % filter(l)) % bins_push_back(1)
                 end do
 
                 ! Set ijk as mesh indices
                 ijk = (/ i, j, k /)
 
                 ! Get bin number for mesh indices
-                filter_matches(i_filter_mesh) % bins % data(1) = &
-                     m % get_bin_from_indices(ijk)
+                call filter_matches(i_filter_mesh) &
+                     % bins_set_data(1, m % get_bin_from_indices(ijk))
 
                 ! Apply energy in filter
                 if (energy_filters) then
-                  filter_matches(i_filter_ein) % bins % data(1) = ng - h + 1
+                  call filter_matches(i_filter_ein) % bins_set_data(1, ng - h + 1)
                 end if
 
                 ! Apply Legendre filter
-                filter_matches(i_filter_legendre) % bins % data(1) = 2
+                call filter_matches(i_filter_legendre) % bins_set_data(1, 2)
 
                 ! Calculate score index from bins
                 score_index = 1
                 do l = 1, size(t % filter)
                   score_index = score_index + (filter_matches(t % filter(l)) &
-                       % bins % data(1) - 1) * t % stride(l)
+                       % bins_data(1) - 1) * t % stride(l)
                 end do
 
                 ! Get p1 scatter rr and convert to p1 scatter xs

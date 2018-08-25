@@ -89,8 +89,8 @@ contains
     ! Search to find azimuthal angle bin.
     bin = binary_search(this % bins, n + 1, phi)
     if (bin /= NO_BIN_FOUND) then
-      call match % bins % push_back(bin)
-      call match % weights % push_back(ONE)
+      call match % bins_push_back(bin)
+      call match % weights_push_back(ONE)
     end if
 
   end subroutine get_all_bins_azimuthal

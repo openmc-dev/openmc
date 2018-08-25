@@ -62,8 +62,8 @@ contains
     integer,                   intent(in)  :: estimator
     type(TallyFilterMatch),         intent(inout) :: match
 
-    call match % bins % push_back(1)
-    call match % weights % push_back(ONE)
+    call match % bins_push_back(1)
+    call match % weights_push_back(ONE)
   end subroutine get_all_bins_dg
 
   subroutine to_statepoint_dg(this, filter_group)

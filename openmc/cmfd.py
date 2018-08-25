@@ -1042,16 +1042,17 @@ class CMFDRun(object):
             if (current_batch == n_batches .and. cmfd_run_adjoint) then
             call cmfd_solver_execute(adjoint=.true.)
             end if
-
-            ! TODO calculate fission source
-            call calc_fission_source()
-
-            ! TODO calculate weight factors
-            call cmfd_reweight(.true.)
-
-            ! TODO stop cmfd timer
-            if (master) call time_cmfd % stop()
             '''
+            # calculate fission source
+            self._calc_fission_source()
+
+        '''
+        ! TODO calculate weight factors
+        call cmfd_reweight(.true.)
+
+        ! TODO stop cmfd timer
+        if (master) call time_cmfd % stop()
+        '''
 
     def _cmfd_tally_reset(self):
         # Print message
@@ -1080,6 +1081,8 @@ class CMFDRun(object):
 
         # Calculate dtilde
         self._compute_dtilde()
+
+        self._compute_dtilde2()
 
         # Calculate dhat
         self._compute_dhat()
@@ -1118,7 +1121,6 @@ class CMFDRun(object):
             self._phi = phi/np.sqrt(np.sum(phi*phi))
 
         self._dom.append(dom)
-        #print(phi, keff, dom)
 
         # TODO Write out flux vector
         '''
@@ -1131,7 +1133,9 @@ class CMFDRun(object):
           ! TODO: call phi_n % write(filename)
         end if
         '''
-        sys.exit()
+
+    def _calc_fission_source(self):
+        pass
 
     def _build_matrices(self, adjoint):
         # Set up matrices
@@ -1443,9 +1447,6 @@ class CMFDRun(object):
         tally_results = tallies[tally_id].results[:,0,1]
         flux = np.where(is_cmfd_accel, tally_results, 0.)
 
-        print(flux)
-        print(self._coremap)
-
         # Detect zero flux, abort if located
         if np.any(flux[is_cmfd_accel] < _TINY_BIT):
             # Get index of zero flux in flux array
@@ -1633,6 +1634,184 @@ class CMFDRun(object):
             np.sum(np.multiply(self._resnb, self._resnb)) / \
             np.count_nonzero(self._resnb)))
 
+    def _compute_dtilde2(self):
+        dtilde2 = np.zeros(self._dtilde.shape)
+
+        is_accel = self._coremap != _CMFD_NOACCEL
+        is_zero_flux_alb = abs(self._albedo - _ZERO_FLUX) < _TINY_BIT
+
+        dtilde2[0,:,:,:,0] = np.where(is_accel[0,:,:,np.newaxis],
+            np.where(is_zero_flux_alb[0], 2.0 * self._diffcof[0,:,:,:] / \
+                     self._hxyz[0],
+                     (2.0 * self._diffcof[0,:,:,:] * \
+                     (1.0 - self._albedo[0])) / \
+                     (4.0 * self._diffcof[0,:,:,:] * \
+                     (1.0 + self._albedo[0]) + \
+                     (1.0 - self._albedo[0]) * self._hxyz[0])), 0)
+
+        dtilde2[-1,:,:,:,1] = np.where(is_accel[-1,:,:,np.newaxis],
+            np.where(is_zero_flux_alb[1], 2.0 * self._diffcof[-1,:,:,:] / \
+                     self._hxyz[0],
+                     (2.0 * self._diffcof[-1,:,:,:] * \
+                     (1.0 - self._albedo[1])) / \
+                     (4.0 * self._diffcof[-1,:,:,:] * \
+                     (1.0 + self._albedo[1]) + \
+                     (1.0 - self._albedo[1]) * self._hxyz[0])), 0)
+
+        dtilde2[:,0,:,:,2] = np.where(is_accel[:,0,:,np.newaxis],
+            np.where(is_zero_flux_alb[2], 2.0 * self._diffcof[:,0,:,:] / \
+                     self._hxyz[1],
+                     (2.0 * self._diffcof[:,0,:,:] * \
+                     (1.0 - self._albedo[2])) / \
+                     (4.0 * self._diffcof[:,0,:,:] * \
+                     (1.0 + self._albedo[2]) + \
+                     (1.0 - self._albedo[2]) * self._hxyz[1])), 0)
+
+        dtilde2[:,-1,:,:,3] = np.where(is_accel[:,-1,:,np.newaxis],
+            np.where(is_zero_flux_alb[3], 2.0 * self._diffcof[:,-1,:,:] / \
+                     self._hxyz[1],
+                     (2.0 * self._diffcof[:,-1,:,:] * \
+                     (1.0 - self._albedo[3])) / \
+                     (4.0 * self._diffcof[:,-1,:,:] * \
+                     (1.0 + self._albedo[3]) + \
+                     (1.0 - self._albedo[3]) * self._hxyz[1])), 0)
+
+        dtilde2[:,:,0,:,4] = np.where(is_accel[:,:,0,np.newaxis],
+            np.where(is_zero_flux_alb[4], 2.0 * self._diffcof[:,:,0,:] / \
+                     self._hxyz[2],
+                     (2.0 * self._diffcof[:,:,0,:] * \
+                     (1.0 - self._albedo[4])) / \
+                     (4.0 * self._diffcof[:,:,0,:] * \
+                     (1.0 + self._albedo[4]) + \
+                     (1.0 - self._albedo[4]) * self._hxyz[2])), 0)
+
+        dtilde2[:,:,-1,:,5] = np.where(is_accel[:,:,-1,np.newaxis],
+            np.where(is_zero_flux_alb[5], 2.0 * self._diffcof[:,:,-1,:] / \
+                     self._hxyz[2],
+                     (2.0 * self._diffcof[:,:,-1,:] * \
+                     (1.0 - self._albedo[5])) / \
+                     (4.0 * self._diffcof[:,:,-1,:] * \
+                     (1.0 + self._albedo[5]) + \
+                     (1.0 - self._albedo[5]) * self._hxyz[2])), 0)
+
+        ref_albedo = np.divide(self._current[:,:,:,:,_CURRENTS['in_left']],
+                self._current[:,:,:,:,_CURRENTS['out_left']],
+                where=self._current[:,:,:,:,_CURRENTS['out_left']] > 1.0e-10,
+                out=np.ones_like(self._current[:,:,:,:,_CURRENTS['out_left']]))
+        adj_reflector = np.roll(self._coremap, 1, axis=0) == _CMFD_NOACCEL
+        neig_dc = np.roll(self._diffcof, 1, axis=0)
+        # Define neg_hxyz
+
+        dtilde2[1:,:,:,:,0] = np.where(is_accel[1:,:,:,np.newaxis], \
+            np.where(adj_reflector[1:,:,:,np.newaxis],
+                     (2.0 * self._diffcof[1:,:,:,:] * \
+                     (1.0 - ref_albedo[1:,:,:,:])) / \
+                     (4.0 * self._diffcof[1:,:,:,:] * \
+                     (1.0 + ref_albedo[1:,:,:,:]) + \
+                     (1.0 - ref_albedo[1:,:,:,:]) * self._hxyz[0]),
+                     (2.0 * self._diffcof[1:,:,:,:] * neig_dc[1:,:,:,:]) / \
+                     (self._hxyz[0] * self._diffcof[1:,:,:,:] + \
+                     self._hxyz[0] * neig_dc[1:,:,:,:])), 0.0)
+
+        ref_albedo = np.divide(self._current[:,:,:,:,_CURRENTS['in_right']],
+                self._current[:,:,:,:,_CURRENTS['out_right']],
+                where=self._current[:,:,:,:,_CURRENTS['out_right']] > 1.0e-10,
+                out=np.ones_like(self._current[:,:,:,:,_CURRENTS['out_right']]))
+        adj_reflector = np.roll(self._coremap, -1, axis=0) == _CMFD_NOACCEL
+        neig_dc = np.roll(self._diffcof, -1, axis=0)
+        # Define neg_hxyz
+
+        dtilde2[:-1,:,:,:,1] = np.where(is_accel[:-1,:,:,np.newaxis], \
+            np.where(adj_reflector[:-1,:,:,np.newaxis],
+                     (2.0 * self._diffcof[:-1,:,:,:] * \
+                     (1.0 - ref_albedo[:-1,:,:,:])) / \
+                     (4.0 * self._diffcof[:-1,:,:,:] * \
+                     (1.0 + ref_albedo[:-1,:,:,:]) + \
+                     (1.0 - ref_albedo[:-1,:,:,:]) * self._hxyz[0]),
+                     (2.0 * self._diffcof[:-1,:,:,:] * neig_dc[:-1,:,:,:]) / \
+                     (self._hxyz[0] * self._diffcof[:-1,:,:,:] + \
+                     self._hxyz[0] * neig_dc[:-1,:,:,:])), 0.0)
+
+        ref_albedo = np.divide(self._current[:,:,:,:,_CURRENTS['in_back']],
+                self._current[:,:,:,:,_CURRENTS['out_back']],
+                where=self._current[:,:,:,:,_CURRENTS['out_back']] > 1.0e-10,
+                out=np.ones_like(self._current[:,:,:,:,_CURRENTS['out_back']]))
+        adj_reflector = np.roll(self._coremap, 1, axis=1) == _CMFD_NOACCEL
+        neig_dc = np.roll(self._diffcof, 1, axis=1)
+        # Define neg_hxyz
+
+        dtilde2[:,1:,:,:,2] = np.where(is_accel[:,1:,:,np.newaxis], \
+            np.where(adj_reflector[:,1:,:,np.newaxis],
+                     (2.0 * self._diffcof[:,1:,:,:] * \
+                     (1.0 - ref_albedo[:,1:,:,:])) / \
+                     (4.0 * self._diffcof[:,1:,:,:] * \
+                     (1.0 + ref_albedo[:,1:,:,:]) + \
+                     (1.0 - ref_albedo[:,1:,:,:]) * self._hxyz[1]),
+                     (2.0 * self._diffcof[:,1:,:,:] * neig_dc[:,1:,:,:]) / \
+                     (self._hxyz[1] * self._diffcof[:,1:,:,:] + \
+                     self._hxyz[1] * neig_dc[:,1:,:,:])), 0.0)
+
+        ref_albedo = np.divide(self._current[:,:,:,:,_CURRENTS['in_front']],
+                self._current[:,:,:,:,_CURRENTS['out_front']],
+                where=self._current[:,:,:,:,_CURRENTS['out_front']] > 1.0e-10,
+                out=np.ones_like(self._current[:,:,:,:,_CURRENTS['out_front']]))
+        adj_reflector = np.roll(self._coremap, -1, axis=1) == _CMFD_NOACCEL
+        neig_dc = np.roll(self._diffcof, -1, axis=1)
+        # Define neg_hxyz
+
+        dtilde2[:,:-1,:,:,3] = np.where(is_accel[:,:-1,:,np.newaxis], \
+            np.where(adj_reflector[:,:-1,:,np.newaxis],
+                     (2.0 * self._diffcof[:,:-1,:,:] * \
+                     (1.0 - ref_albedo[:,:-1,:,:])) / \
+                     (4.0 * self._diffcof[:,:-1,:,:] * \
+                     (1.0 + ref_albedo[:,:-1,:,:]) + \
+                     (1.0 - ref_albedo[:,:-1,:,:]) * self._hxyz[1]),
+                     (2.0 * self._diffcof[:,:-1,:,:] * neig_dc[:,:-1,:,:]) / \
+                     (self._hxyz[1] * self._diffcof[:,:-1,:,:] + \
+                     self._hxyz[1] * neig_dc[:,:-1,:,:])), 0.0)
+
+        ref_albedo = np.divide(self._current[:,:,:,:,_CURRENTS['in_bottom']],
+                self._current[:,:,:,:,_CURRENTS['out_bottom']],
+                where=self._current[:,:,:,:,_CURRENTS['out_bottom']] > 1.0e-10,
+                out=np.ones_like(self._current[:,:,:,:,_CURRENTS['out_bottom']]))
+        adj_reflector = np.roll(self._coremap, 1, axis=2) == _CMFD_NOACCEL
+        neig_dc = np.roll(self._diffcof, 1, axis=2)
+        # Define neg_hxyz
+
+        dtilde2[:,:,1:,:,4] = np.where(is_accel[:,:,1:,np.newaxis], \
+            np.where(adj_reflector[:,:,1:,np.newaxis],
+                     (2.0 * self._diffcof[:,:,1:,:] * \
+                     (1.0 - ref_albedo[:,:,1:,:])) / \
+                     (4.0 * self._diffcof[:,:,1:,:] * \
+                     (1.0 + ref_albedo[:,:,1:,:]) + \
+                     (1.0 - ref_albedo[:,:,1:,:]) * self._hxyz[2]),
+                     (2.0 * self._diffcof[:,:,1:,:] * neig_dc[:,:,1:,:]) / \
+                     (self._hxyz[2] * self._diffcof[:,:,1:,:] + \
+                     self._hxyz[2] * neig_dc[:,:,1:,:])), 0.0)
+
+        ref_albedo = np.divide(self._current[:,:,:,:,_CURRENTS['in_top']],
+                self._current[:,:,:,:,_CURRENTS['out_top']],
+                where=self._current[:,:,:,:,_CURRENTS['out_top']] > 1.0e-10,
+                out=np.ones_like(self._current[:,:,:,:,_CURRENTS['out_top']]))
+        adj_reflector = np.roll(self._coremap, -1, axis=2) == _CMFD_NOACCEL
+        neig_dc = np.roll(self._diffcof, -1, axis=2)
+        # Define neg_hxyz
+
+        dtilde2[:,:,:-1,:,5] = np.where(is_accel[:,:,:-1,np.newaxis], \
+            np.where(adj_reflector[:,:,:-1,np.newaxis],
+                     (2.0 * self._diffcof[:,:,:-1,:] * \
+                     (1.0 - ref_albedo[:,:,:-1,:])) / \
+                     (4.0 * self._diffcof[:,:,:-1,:] * \
+                     (1.0 + ref_albedo[:,:,:-1,:]) + \
+                     (1.0 - ref_albedo[:,:,:-1,:]) * self._hxyz[2]),
+                     (2.0 * self._diffcof[:,:,:-1,:] * neig_dc[:,:,:-1,:]) / \
+                     (self._hxyz[2] * self._diffcof[:,:,:-1,:] + \
+                     self._hxyz[2] * neig_dc[:,:,:-1,:])), 0.0)
+
+        print("After dtilde")
+        print(dtilde2)
+        sys.exit()
+
     def _compute_dtilde(self):
         # Get maximum of spatial and group indices
         nx = self._indices[0]
@@ -1705,10 +1884,6 @@ class CMFDRun(object):
                             self._dtilde[i, j, k, g, l] = dtilde
 
     def _compute_dhat2(self):
-        print("Before dhat:")
-        print(self._dhat)
-        print()
-
         dhat2 = np.zeros(self._dhat.shape)
 
         net_current_minusx = ((self._current[:,:,:,:,_CURRENTS['in_left']] - \
@@ -1817,10 +1992,6 @@ class CMFDRun(object):
                      (net_current_plusz[:,:,:-1,:] + self._dtilde[:,:,:-1,:,5] * \
                      (neig_flux[:,:,:-1,:] - cell_flux[:,:,:-1,:])) / \
                      (neig_flux[:,:,:-1,:] + cell_flux[:,:,:-1,:])), 0.0)
-
-        print("After dhat")
-        print(dhat2)
-        sys.exit()
 
     def _compute_dhat(self):
         #TODO compute dhat and dtilde for general case with hxyz (just define as repeated but use in formulas)

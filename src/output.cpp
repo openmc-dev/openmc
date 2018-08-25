@@ -1,4 +1,4 @@
-#include "output.h"
+#include "openmc/output.h"
 
 #include <algorithm>  // for std::transform
 #include <cstring>  // for strlen
@@ -6,11 +6,11 @@
 #include <iostream>
 #include <sstream>
 
-#include "cell.h"
-#include "geometry.h"
-#include "message_passing.h"
-#include "openmc.h"
-#include "settings.h"
+#include "openmc/cell.h"
+#include "openmc/geometry.h"
+#include "openmc/message_passing.h"
+#include "openmc/capi.h"
+#include "openmc/settings.h"
 
 
 namespace openmc {

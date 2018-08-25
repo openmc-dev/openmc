@@ -1,11 +1,11 @@
-#include "distribution_multi.h"
+#include "openmc/distribution_multi.h"
 
 #include <algorithm> // for move
 #include <cmath>     // for sqrt, sin, cos, max
 
-#include "constants.h"
-#include "math_functions.h"
-#include "random_lcg.h"
+#include "openmc/constants.h"
+#include "openmc/math_functions.h"
+#include "openmc/random_lcg.h"
 
 namespace openmc {
 

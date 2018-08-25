@@ -25,7 +25,7 @@ module openmc_api
   use tally_header
   use tally_filter_header
   use tally_filter
-  use tally,           only: openmc_tally_set_type
+  use tally,           only: openmc_tally_allocate
   use simulation
   use string,          only: to_f_string
   use timer_header
@@ -50,7 +50,7 @@ module openmc_api
   public :: openmc_filter_set_id
   public :: openmc_filter_set_type
   public :: openmc_finalize
-  public :: openmc_find
+  public :: openmc_find_cell
   public :: openmc_get_cell_index
   public :: openmc_get_keff
   public :: openmc_get_filter_index
@@ -59,6 +59,7 @@ module openmc_api
   public :: openmc_get_nuclide_index
   public :: openmc_get_seed
   public :: openmc_get_tally_index
+  public :: openmc_get_tally_next_id
   public :: openmc_global_tallies
   public :: openmc_hard_reset
   public :: openmc_init_f
@@ -82,12 +83,16 @@ module openmc_api
   public :: openmc_simulation_init
   public :: openmc_source_bank
   public :: openmc_source_set_strength
+  public :: openmc_tally_allocate
+  public :: openmc_tally_get_estimator
   public :: openmc_tally_get_id
   public :: openmc_tally_get_filters
   public :: openmc_tally_get_n_realizations
   public :: openmc_tally_get_nuclides
   public :: openmc_tally_get_scores
+  public :: openmc_tally_get_type
   public :: openmc_tally_results
+  public :: openmc_tally_set_estimator
   public :: openmc_tally_set_filters
   public :: openmc_tally_set_id
   public :: openmc_tally_set_nuclides
@@ -182,13 +187,12 @@ contains
   end function openmc_finalize
 
 !===============================================================================
-! OPENMC_FIND determines the ID or a cell or material at a given point in space
+! OPENMC_FIND_CELL determines what cell contains a given point in space
 !===============================================================================
 
-  function openmc_find(xyz, rtype, id, instance) result(err) bind(C)
+  function openmc_find_cell(xyz, index, instance) result(err) bind(C)
     real(C_DOUBLE), intent(in)        :: xyz(3) ! Cartesian point
-    integer(C_INT), intent(in), value :: rtype  ! 1 for cell, 2 for material
-    integer(C_INT32_T), intent(out)   :: id
+    integer(C_INT32_T), intent(out)   :: index
     integer(C_INT32_T), intent(out)   :: instance
     integer(C_INT) :: err
 
@@ -200,30 +204,22 @@ contains
     p % coord(1) % uvw(:) = [ZERO, ZERO, ONE]
     call find_cell(p, found)
 
-    id = -1
+    index = -1
     instance = -1
     err = E_UNASSIGNED
 
     if (found) then
-      if (rtype == 1) then
-        id = cells(p % coord(p % n_coord) % cell + 1) % id()
-      elseif (rtype == 2) then
-        if (p % material == MATERIAL_VOID) then
-          id = 0
-        else
-          id = materials(p % material) % id()
-        end if
-      end if
+      index = p % coord(p % n_coord) % cell + 1
       instance = p % cell_instance - 1
       err = 0
     else
       err = E_GEOMETRY
-      call set_errmsg("Could not find cell/material at position (" // &
+      call set_errmsg("Could not find cell at position (" // &
            trim(to_str(xyz(1))) // "," // trim(to_str(xyz(2))) // "," // &
            trim(to_str(xyz(3))) // ").")
     end if
 
-  end function openmc_find
+  end function openmc_find_cell
 
 !===============================================================================
 ! OPENMC_HARD_RESET reset tallies and timers as well as the pseudorandom

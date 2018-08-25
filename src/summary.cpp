@@ -1,7 +1,7 @@
-#include "cell.h"
-#include "hdf5_interface.h"
-#include "lattice.h"
-#include "surface.h"
+#include "openmc/cell.h"
+#include "openmc/hdf5_interface.h"
+#include "openmc/lattice.h"
+#include "openmc/surface.h"
 
 
 namespace openmc {

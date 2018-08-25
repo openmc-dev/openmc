@@ -5,7 +5,7 @@ module summary
   use error,           only: write_message
   use geometry_header
   use hdf5_interface
-  use material_header, only: Material, n_materials
+  use material_header, only: Material, n_materials, openmc_material_get_volume
   use mesh_header,     only: RegularMesh
   use message_passing
   use mgxs_interface
@@ -172,8 +172,10 @@ contains
     integer :: j
     integer :: k
     integer :: n
+    integer :: err
     character(20), allocatable :: nuc_names(:)
     character(20), allocatable :: macro_names(:)
+    real(8) :: volume
     real(8), allocatable :: nuc_densities(:)
     integer :: num_nuclides
     integer :: num_macros
@@ -196,6 +198,11 @@ contains
         call write_attribute(material_group, "depletable", 1)
       else
         call write_attribute(material_group, "depletable", 0)
+      end if
+
+      err = openmc_material_get_volume(i, volume)
+      if (err == 0 .and. volume > ZERO) then
+        call write_attribute(material_group, "volume", volume)
       end if
 
       ! Write name for this material

@@ -1,8 +1,8 @@
-#include "error.h"
 #ifdef OPENMC_MPI
 #include "mpi.h"
 #endif
-#include "openmc.h"
+#include "openmc/capi.h"
+#include "openmc/error.h"
 
 
 int main(int argc, char* argv[]) {

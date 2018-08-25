@@ -1,18 +1,19 @@
-#include "cell.h"
+#include "openmc/cell.h"
 
 #include <cmath>
 #include <sstream>
 #include <string>
 
-#include "error.h"
-#include "geometry.h"
-#include "hdf5_interface.h"
-#include "lattice.h"
-#include "material.h"
-#include "openmc.h"
-#include "settings.h"
-#include "surface.h"
-#include "xml_interface.h"
+#include "openmc/capi.h"
+#include "openmc/constants.h"
+#include "openmc/error.h"
+#include "openmc/geometry.h"
+#include "openmc/hdf5_interface.h"
+#include "openmc/lattice.h"
+#include "openmc/material.h"
+#include "openmc/settings.h"
+#include "openmc/surface.h"
+#include "openmc/xml_interface.h"
 
 
 namespace openmc {
@@ -641,7 +642,7 @@ openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n)
       *n = 1;
     }
   } else {
-    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
   return 0;
@@ -665,7 +666,7 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
           //TODO: off-by-one
           c.material.push_back(i_mat - 1);
         } else {
-          strcpy(openmc_err_msg, "Index in materials array is out of bounds.");
+          set_errmsg("Index in materials array is out of bounds.");
           return OPENMC_E_OUT_OF_BOUNDS;
         }
       }
@@ -676,7 +677,7 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
       c.type = FILL_LATTICE;
     }
   } else {
-    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
   return 0;

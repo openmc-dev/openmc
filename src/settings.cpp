@@ -1,9 +1,10 @@
-#include "settings.h"
+#include "openmc/settings.h"
 
-#include "error.h"
-#include "openmc.h"
-#include "string_utils.h"
-#include "xml_interface.h"
+#include "openmc/capi.h"
+#include "openmc/constants.h"
+#include "openmc/error.h"
+#include "openmc/string_utils.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 
@@ -19,6 +20,12 @@ std::string path_cross_sections;
 std::string path_multipole;
 std::string path_output;
 std::string path_source;
+
+int temperature_method {TEMPERATURE_NEAREST};
+bool temperature_multipole {false};
+double temperature_tolerance {10.0};
+double temperature_default {293.6};
+std::array<double, 2> temperature_range {0.0, 0.0};
 
 //==============================================================================
 // Functions
@@ -64,6 +71,32 @@ void read_settings(pugi::xml_node* root)
         path_output += "/";
       }
     }
+  }
+
+  // Get temperature settings
+  if (check_for_node(*root, "temperature_default")) {
+    temperature_default = std::stod(get_node_value(*root, "temperature_default"));
+  }
+  if (check_for_node(*root, "temperature_method")) {
+    auto temp_str = get_node_value(*root, "temperature_method", true, true);
+    if (temp_str == "nearest") {
+      temperature_method = TEMPERATURE_NEAREST;
+    } else if (temp_str == "interpolation") {
+      temperature_method = TEMPERATURE_INTERPOLATION;
+    } else {
+      fatal_error("Unknown temperature method: " + temp_str);
+    }
+  }
+  if (check_for_node(*root, "temperature_tolerance")) {
+    temperature_tolerance = std::stod(get_node_value(*root, "temperature_tolerance"));
+  }
+  if (check_for_node(*root, "temperature_multipole")) {
+    temperature_multipole = get_node_value_bool(*root, "temperature_multipole");
+  }
+  if (check_for_node(*root, "temperature_range")) {
+    auto range = get_node_array<double>(*root, "temperature_range");
+    temperature_range[0] = range[0];
+    temperature_range[1] = range[1];
   }
 }
 

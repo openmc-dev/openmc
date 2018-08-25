@@ -1,14 +1,14 @@
-#include "particle.h"
+#include "openmc/particle.h"
 
 #include <algorithm>
 #include <sstream>
 
-#include "constants.h"
-#include "error.h"
-#include "hdf5_interface.h"
-#include "openmc.h"
-#include "settings.h"
-#include "simulation.h"
+#include "openmc/capi.h"
+#include "openmc/constants.h"
+#include "openmc/error.h"
+#include "openmc/hdf5_interface.h"
+#include "openmc/settings.h"
+#include "openmc/simulation.h"
 
 namespace openmc {
 

@@ -59,17 +59,12 @@ class Surface(IDManagerMixin):
     def __init__(self, surface_id=None, boundary_type='transmission', name=''):
         self.id = surface_id
         self.name = name
-        self._type = ''
         self.boundary_type = boundary_type
 
         # A dictionary of the quadratic surface coefficients
         # Key        - coefficeint name
         # Value    - coefficient value
         self._coefficients = {}
-
-        # An ordered list of the coefficient names to export to XML in the
-        # proper order
-        self._coeff_keys = []
 
     def __neg__(self):
         return Halfspace(self, '-')
@@ -204,6 +199,49 @@ class Surface(IDManagerMixin):
         return element
 
     @staticmethod
+    def from_xml_element(elem):
+        """Generate surface from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.Surface
+            Instance of a surface subclass
+
+        """
+
+        # Determine appropriate class
+        surf_type = elem.get('type')
+        surface_classes = {
+            'plane': Plane,
+            'x-plane': XPlane,
+            'y-plane': YPlane,
+            'z-plane': ZPlane,
+            'x-cylinder': XCylinder,
+            'y-cylinder': YCylinder,
+            'z-cylinder': ZCylinder,
+            'sphere': Sphere,
+            'x-cone': XCone,
+            'y-cone': YCone,
+            'z-cone': ZCone,
+            'quadric': Quadric,
+        }
+        cls = surface_classes[surf_type]
+
+        # Determine ID, boundary type, coefficients
+        kwargs = {}
+        kwargs['surface_id'] = int(elem.get('id'))
+        kwargs['boundary_type'] = elem.get('boundary', 'transmission')
+        coeffs = [float(x) for x in elem.get('coeffs').split()]
+        kwargs.update(dict(zip(cls._coeff_keys, coeffs)))
+
+        return cls(**kwargs)
+
+    @staticmethod
     def from_hdf5(group):
         """Create surface from HDF5 group
 
@@ -324,12 +362,12 @@ class Plane(Surface):
 
     """
 
+    _type = 'plane'
+    _coeff_keys = ('A', 'B', 'C', 'D')
+
     def __init__(self, surface_id=None, boundary_type='transmission',
                  A=1., B=0., C=0., D=0., name=''):
         super().__init__(surface_id, boundary_type, name=name)
-
-        self._type = 'plane'
-        self._coeff_keys = ['A', 'B', 'C', 'D']
         self._periodic_surface = None
         self.a = A
         self.b = B
@@ -458,12 +496,12 @@ class XPlane(Plane):
 
     """
 
+    _type = 'x-plane'
+    _coeff_keys = ('x0',)
+
     def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=0., name=''):
         super().__init__(surface_id, boundary_type, name=name)
-
-        self._type = 'x-plane'
-        self._coeff_keys = ['x0']
         self.x0 = x0
 
     @property
@@ -563,13 +601,13 @@ class YPlane(Plane):
 
     """
 
+    _type = 'y-plane'
+    _coeff_keys = ('y0',)
+
     def __init__(self, surface_id=None, boundary_type='transmission',
                  y0=0., name=''):
         # Initialize YPlane class attributes
         super().__init__(surface_id, boundary_type, name=name)
-
-        self._type = 'y-plane'
-        self._coeff_keys = ['y0']
         self.y0 = y0
 
     @property
@@ -669,13 +707,13 @@ class ZPlane(Plane):
 
     """
 
+    _type = 'z-plane'
+    _coeff_keys = ('z0',)
+
     def __init__(self, surface_id=None, boundary_type='transmission',
                  z0=0., name=''):
         # Initialize ZPlane class attributes
         super().__init__(surface_id, boundary_type, name=name)
-
-        self._type = 'z-plane'
-        self._coeff_keys = ['z0']
         self.z0 = z0
 
     @property
@@ -774,8 +812,6 @@ class Cylinder(Surface, metaclass=ABCMeta):
     def __init__(self, surface_id=None, boundary_type='transmission',
                  R=1., name=''):
         super().__init__(surface_id, boundary_type, name=name)
-
-        self._coeff_keys = ['R']
         self.r = R
 
     @property
@@ -831,12 +867,12 @@ class XCylinder(Cylinder):
 
     """
 
+    _type = 'x-cylinder'
+    _coeff_keys = ('y0', 'z0', 'R')
+
     def __init__(self, surface_id=None, boundary_type='transmission',
                  y0=0., z0=0., R=1., name=''):
         super().__init__(surface_id, boundary_type, R, name=name)
-
-        self._type = 'x-cylinder'
-        self._coeff_keys = ['y0', 'z0', 'R']
         self.y0 = y0
         self.z0 = z0
 
@@ -953,12 +989,12 @@ class YCylinder(Cylinder):
 
     """
 
+    _type = 'y-cylinder'
+    _coeff_keys = ('x0', 'z0', 'R')
+
     def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=0., z0=0., R=1., name=''):
         super().__init__(surface_id, boundary_type, R, name=name)
-
-        self._type = 'y-cylinder'
-        self._coeff_keys = ['x0', 'z0', 'R']
         self.x0 = x0
         self.z0 = z0
 
@@ -1075,12 +1111,12 @@ class ZCylinder(Cylinder):
 
     """
 
+    _type = 'z-cylinder'
+    _coeff_keys = ('x0', 'y0', 'R')
+
     def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=0., y0=0., R=1., name=''):
         super().__init__(surface_id, boundary_type, R, name=name)
-
-        self._type = 'z-cylinder'
-        self._coeff_keys = ['x0', 'y0', 'R']
         self.x0 = x0
         self.y0 = y0
 
@@ -1201,12 +1237,12 @@ class Sphere(Surface):
 
     """
 
+    _type = 'sphere'
+    _coeff_keys = ('x0', 'y0', 'z0', 'R')
+
     def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=0., y0=0., z0=0., R=1., name=''):
         super().__init__(surface_id, boundary_type, name=name)
-
-        self._type = 'sphere'
-        self._coeff_keys = ['x0', 'y0', 'z0', 'R']
         self.x0 = x0
         self.y0 = y0
         self.z0 = z0
@@ -1348,11 +1384,12 @@ class Cone(Surface, metaclass=ABCMeta):
         Type of the surface
 
     """
+
+    _coeff_keys = ('x0', 'y0', 'z0', 'R2')
+
     def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=0., y0=0., z0=0., R2=1., name=''):
         super().__init__(surface_id, boundary_type, name=name)
-
-        self._coeff_keys = ['x0', 'y0', 'z0', 'R2']
         self.x0 = x0
         self.y0 = y0
         self.z0 = z0
@@ -1443,12 +1480,7 @@ class XCone(Cone):
 
     """
 
-    def __init__(self, surface_id=None, boundary_type='transmission',
-                 x0=0., y0=0., z0=0., R2=1., name=''):
-        super().__init__(surface_id, boundary_type, x0, y0,
-                                    z0, R2, name=name)
-
-        self._type = 'x-cone'
+    _type = 'x-cone'
 
     def evaluate(self, point):
         """Evaluate the surface equation at a given point.
@@ -1519,12 +1551,7 @@ class YCone(Cone):
 
     """
 
-    def __init__(self, surface_id=None, boundary_type='transmission',
-                 x0=0., y0=0., z0=0., R2=1., name=''):
-        super().__init__(surface_id, boundary_type, x0, y0, z0,
-                                    R2, name=name)
-
-        self._type = 'y-cone'
+    _type = 'y-cone'
 
     def evaluate(self, point):
         """Evaluate the surface equation at a given point.
@@ -1595,12 +1622,7 @@ class ZCone(Cone):
 
     """
 
-    def __init__(self, surface_id=None, boundary_type='transmission',
-                 x0=0., y0=0., z0=0., R2=1., name=''):
-        super().__init__(surface_id, boundary_type, x0, y0, z0,
-                                    R2, name=name)
-
-        self._type = 'z-cone'
+    _type = 'z-cone'
 
     def evaluate(self, point):
         """Evaluate the surface equation at a given point.
@@ -1659,13 +1681,13 @@ class Quadric(Surface):
 
     """
 
+    _type = 'quadric'
+    _coeff_keys = ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k')
+
     def __init__(self, surface_id=None, boundary_type='transmission',
                  a=0., b=0., c=0., d=0., e=0., f=0., g=0.,
                  h=0., j=0., k=0., name=''):
         super().__init__(surface_id, boundary_type, name=name)
-
-        self._type = 'quadric'
-        self._coeff_keys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k']
         self.a = a
         self.b = b
         self.c = c

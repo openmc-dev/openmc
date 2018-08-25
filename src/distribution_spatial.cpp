@@ -1,8 +1,8 @@
-#include "distribution_spatial.h"
+#include "openmc/distribution_spatial.h"
 
-#include "error.h"
-#include "random_lcg.h"
-#include "xml_interface.h"
+#include "openmc/error.h"
+#include "openmc/random_lcg.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 

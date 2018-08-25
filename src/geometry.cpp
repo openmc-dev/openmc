@@ -1,14 +1,14 @@
-#include "geometry.h"
+#include "openmc/geometry.h"
 
 #include <array>
 #include <sstream>
 
-#include "cell.h"
-#include "constants.h"
-#include "error.h"
-#include "lattice.h"
-#include "settings.h"
-#include "surface.h"
+#include "openmc/cell.h"
+#include "openmc/constants.h"
+#include "openmc/error.h"
+#include "openmc/lattice.h"
+#include "openmc/settings.h"
+#include "openmc/surface.h"
 
 
 namespace openmc {

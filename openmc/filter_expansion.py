@@ -19,7 +19,7 @@ class ExpansionFilter(Filter):
         if type(self) is not type(other):
             return False
         else:
-            return self.bins == other.bins
+            return hash(self) == hash(other)
 
     @property
     def order(self):
@@ -325,8 +325,8 @@ class ZernikeFilter(ExpansionFilter):
 
     This filter allows scores to be multiplied by Zernike polynomials of the
     particle's position normalized to a given unit circle, up to a
-    user-specified order. The standard Zernike polynomials follow the definition by
-    Born and Wolf, *Principles of Optics* and are defined as
+    user-specified order. The standard Zernike polynomials follow the
+    definition by Born and Wolf, *Principles of Optics* and are defined as
 
     .. math::
         Z_n^m(\rho, \theta) = R_n^m(\rho) \cos (m\theta), \quad m > 0
@@ -342,7 +342,7 @@ class ZernikeFilter(ExpansionFilter):
         \frac{n+m}{2} - k)! (\frac{n-m}{2} - k)!} \rho^{n-2k}.
 
     With this definition, the integral of :math:`(Z_n^m)^2` over the unit disk
-    is :math:`\frac{\epsilon_m\pi}{2n+2}` for each polynomial where 
+    is :math:`\frac{\epsilon_m\pi}{2n+2}` for each polynomial where
     :math:`\epsilon_m` is 2 if :math:`m` equals 0 and 1 otherwise.
 
     Specifying a filter with order N tallies moments for all :math:`n` from 0
@@ -390,6 +390,9 @@ class ZernikeFilter(ExpansionFilter):
     def __hash__(self):
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tOrder', self.order)
+        string += '{: <16}=\t{}\n'.format('\tX', self.x)
+        string += '{: <16}=\t{}\n'.format('\tY', self.y)
+        string += '{: <16}=\t{}\n'.format('\tR', self.r)
         return hash(string)
 
     def __repr__(self):
@@ -485,7 +488,7 @@ class ZernikeRadialFilter(ZernikeFilter):
     is :math:`\frac{\pi}{n+1}`.
 
     If there is only radial dependency, the polynomials are integrated over
-    the azimuthal angles. The only terms left are :math:`Z_n^{0}(\rho, \theta) 
+    the azimuthal angles. The only terms left are :math:`Z_n^{0}(\rho, \theta)
     = R_n^{0}(\rho)`. Note that :math:`n` could only be even orders.
     Therefore, for a radial Zernike polynomials up to order of :math:`n`,
     there are :math:`\frac{n}{2} + 1` terms in total. The indexing is from the

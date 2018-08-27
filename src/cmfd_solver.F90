@@ -7,6 +7,8 @@ module cmfd_solver
   use cmfd_prod_operator, only: init_prod_matrix, build_prod_matrix
   use matrix_header,      only: Matrix
   use vector_header,      only: Vector
+  use simulation_header,  only: current_batch
+  use string,             only: to_str
 
   implicit none
   private
@@ -101,8 +103,7 @@ contains
 
     use constants, only: ONE, ZERO
     use cmfd_header, only: cmfd_shift, cmfd_ktol, cmfd_stol, cmfd_write_matrices
-    use simulation_header, only: keff, current_batch
-    use string, only: to_str
+    use simulation_header, only: keff
 
     logical, intent(in) :: adjoint
 
@@ -147,8 +148,8 @@ contains
     call loss % assemble()
     call prod % assemble()
     if (cmfd_write_matrices) then
-      call loss % write('loss' // trim(to_str(current_batch)) // '.dat')
-      call prod % write('prod' // trim(to_str(current_batch)) // '.dat')
+      call loss % write('loss_gen' // trim(to_str(current_batch)) // '.dat')
+      call prod % write('prod_gen' // trim(to_str(current_batch)) // '.dat')
     end if
 
     ! Set norms to 0
@@ -176,8 +177,8 @@ contains
 
     ! Write out matrix in binary file (debugging)
     if (cmfd_write_matrices) then
-      call loss % write('adj_loss.dat')
-      call prod % write('adj_prod.dat')
+      call loss % write('adj_loss_gen' // trim(to_str(current_batch)) // '.dat')
+      call prod % write('adj_prod_gen' // trim(to_str(current_batch)) // '.dat')
     end if
 
   end subroutine compute_adjoint
@@ -731,17 +732,19 @@ contains
       cmfd%phi = cmfd%phi/sqrt(sum(cmfd%phi*cmfd%phi))
     end if
 
+    print *, cmfd % phi
+
     ! Save dominance ratio
     cmfd % dom(current_batch) = norm_n/norm_o
 
     ! Write out results
     if (cmfd_write_matrices) then
       if (adjoint_calc) then
-        filename = 'adj_fluxvec.dat'
+        filename = 'adj_fluxvec_gen' // trim(to_str(current_batch)) // '.dat'
       else
-        filename = 'fluxvec.dat'
+        filename = 'fluxvec_gen' // trim(to_str(current_batch)) // '.dat'
       end if
-      ! TODO: call phi_n % write(filename)
+      call phi_n % write(filename)
     end if
 
   end subroutine extract_results

@@ -494,7 +494,7 @@ Cell::to_hdf5(hid_t cells_group) const
   } else if (type == FILL_UNIVERSE) {
     write_dataset(group, "fill_type", "universe");
     write_dataset(group, "fill", global_universes[fill]->id);
-    if (translation != 0) {
+    if (translation != Position(0, 0, 0)) {
       write_dataset(group, "translation", translation);
     }
     if (!rotation.empty()) {

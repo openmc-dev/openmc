@@ -68,17 +68,9 @@ inline Position operator*(double a, Position b)   { return b *= a; }
 
 inline bool operator==(Position a, Position b)
 {return a.x == b.x && a.y == b.y && a.z == b.z;}
-inline bool operator==(Position a, double b)
-{return a.x == b && a.y == b && a.z == b;}
-inline bool operator==(double a, Position b)
-{return a == b.x && a == b.y && a == b.z;}
 
 inline bool operator!=(Position a, Position b)
 {return a.x != b.x || a.y != b.y || a.z != b.z;}
-inline bool operator!=(Position a, double b)
-{return a.x != b || a.y != b || a.z != b;}
-inline bool operator!=(double a, Position b)
-{return a != b.x || a != b.y || a != b.z;}
 
 //==============================================================================
 //! Type representing a vector direction in Cartesian coordinates

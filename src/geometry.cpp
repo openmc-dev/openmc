@@ -26,17 +26,17 @@ check_cell_overlap(Particle* p) {
   // Loop through each coordinate level
   for (int j = 0; j < n_coord; j++) {
     Universe& univ = *global_universes[p->coord[j].universe];
-    int n = univ.cells.size();
+    int n = univ.cells_.size();
 
     // Loop through each cell on this level
-    for (auto index_cell : univ.cells) {
+    for (auto index_cell : univ.cells_) {
       Cell& c = *global_cells[index_cell];
       if (c.contains(p->coord[j].xyz, p->coord[j].uvw, p->surface)) {
         if (index_cell != p->coord[j].cell) {
           std::stringstream err_msg;
-          err_msg << "Overlapping cells detected: " << c.id << ", "
-                  << global_cells[p->coord[j].cell]->id << " on universe "
-                  << univ.id;
+          err_msg << "Overlapping cells detected: " << c.id_ << ", "
+                  << global_cells[p->coord[j].cell]->id_ << " on universe "
+                  << univ.id_;
           fatal_error(err_msg);
         }
         ++overlap_check_count[index_cell];
@@ -67,12 +67,12 @@ find_cell(Particle* p, int search_surf) {
   // the positive or negative side of the surface should be searched.
   const std::vector<int>* search_cells;
   if (search_surf > 0) {
-    search_cells = &global_surfaces[search_surf-1]->neighbor_pos;
+    search_cells = &global_surfaces[search_surf-1]->neighbor_pos_;
   } else if (search_surf < 0) {
-    search_cells = &global_surfaces[-search_surf-1]->neighbor_neg;
+    search_cells = &global_surfaces[-search_surf-1]->neighbor_neg_;
   } else {
     // No surface was indicated, search all cells in the universe.
-    search_cells = &global_universes[i_universe]->cells;
+    search_cells = &global_universes[i_universe]->cells_;
   }
 
   // Find which cell of this universe the particle is in.
@@ -82,7 +82,7 @@ find_cell(Particle* p, int search_surf) {
     i_cell = (*search_cells)[i];
 
     // Make sure the search cell is in the same universe.
-    if (global_cells[i_cell]->universe != i_universe) continue;
+    if (global_cells[i_cell]->universe_ != i_universe) continue;
 
     Position r {p->coord[p->n_coord-1].xyz};
     Direction u {p->coord[p->n_coord-1].uvw};
@@ -92,7 +92,7 @@ find_cell(Particle* p, int search_surf) {
 
       if (openmc_verbosity >= 10 || openmc_trace) {
         std::stringstream msg;
-        msg << "    Entering cell " << global_cells[i_cell]->id;
+        msg << "    Entering cell " << global_cells[i_cell]->id_;
         write_message(msg, 1);
       }
       found = true;
@@ -102,20 +102,20 @@ find_cell(Particle* p, int search_surf) {
 
   if (found) {
     Cell& c {*global_cells[i_cell]};
-    if (c.type == FILL_MATERIAL) {
+    if (c.type_ == FILL_MATERIAL) {
       //=======================================================================
       //! Found a material cell which means this is the lowest coord level.
 
       // Find the distribcell instance number.
-      if (c.material.size() > 1 || c.sqrtkT.size() > 1) {
+      if (c.material_.size() > 1 || c.sqrtkT_.size() > 1) {
         //TODO: off-by-one indexing
-        int distribcell_index = c.distribcell_index - 1;
+        int distribcell_index = c.distribcell_index_ - 1;
         int offset = 0;
         for (int i = 0; i < p->n_coord; i++) {
           Cell& c_i {*global_cells[p->coord[i].cell]};
-          if (c_i.type == FILL_UNIVERSE) {
-            offset += c_i.offset[distribcell_index];
-          } else if (c_i.type == FILL_LATTICE) {
+          if (c_i.type_ == FILL_UNIVERSE) {
+            offset += c_i.offset_[distribcell_index];
+          } else if (c_i.type_ == FILL_LATTICE) {
             Lattice& lat {*lattices_c[p->coord[i+1].lattice-1]};
             int i_xyz[3] {p->coord[i+1].lattice_x,
                           p->coord[i+1].lattice_y,
@@ -133,10 +133,10 @@ find_cell(Particle* p, int search_surf) {
       // Set the material and temperature.
       p->last_material = p->material;
       int32_t mat;
-      if (c.material.size() > 1) {
-        mat = c.material[p->cell_instance-1];
+      if (c.material_.size() > 1) {
+        mat = c.material_[p->cell_instance-1];
       } else {
-        mat = c.material[0];
+        mat = c.material_[0];
       }
       if (mat == MATERIAL_VOID) {
         p->material = MATERIAL_VOID;
@@ -144,20 +144,20 @@ find_cell(Particle* p, int search_surf) {
         p->material = mat + 1;
       }
       p->last_sqrtkT = p->sqrtkT;
-      if (c.sqrtkT.size() > 1) {
-        p->sqrtkT = c.sqrtkT[p->cell_instance-1];
+      if (c.sqrtkT_.size() > 1) {
+        p->sqrtkT = c.sqrtkT_[p->cell_instance-1];
       } else {
-        p->sqrtkT = c.sqrtkT[0];
+        p->sqrtkT = c.sqrtkT_[0];
       }
 
       return true;
 
-    } else if (c.type == FILL_UNIVERSE) {
+    } else if (c.type_ == FILL_UNIVERSE) {
       //========================================================================
       //! Found a lower universe, update this coord level then search the next.
 
       // Set the lower coordinate level universe.
-      p->coord[p->n_coord].universe = c.fill;
+      p->coord[p->n_coord].universe = c.fill_;
 
       // Set the position and direction.
       for (int i = 0; i < 3; i++) {
@@ -166,30 +166,30 @@ find_cell(Particle* p, int search_surf) {
       }
 
       // Apply translation.
-      p->coord[p->n_coord].xyz[0] -= c.translation.x;
-      p->coord[p->n_coord].xyz[1] -= c.translation.y;
-      p->coord[p->n_coord].xyz[2] -= c.translation.z;
+      p->coord[p->n_coord].xyz[0] -= c.translation_.x;
+      p->coord[p->n_coord].xyz[1] -= c.translation_.y;
+      p->coord[p->n_coord].xyz[2] -= c.translation_.z;
 
       // Apply rotation.
-      if (!c.rotation.empty()) {
+      if (!c.rotation_.empty()) {
         auto x = p->coord[p->n_coord].xyz[0];
         auto y = p->coord[p->n_coord].xyz[1];
         auto z = p->coord[p->n_coord].xyz[2];
-        p->coord[p->n_coord].xyz[0] = x*c.rotation[3] + y*c.rotation[4]
-                                      + z*c.rotation[5];
-        p->coord[p->n_coord].xyz[1] = x*c.rotation[6] + y*c.rotation[7]
-                                      + z*c.rotation[8];
-        p->coord[p->n_coord].xyz[2] = x*c.rotation[9] + y*c.rotation[10]
-                                      + z*c.rotation[11];
+        p->coord[p->n_coord].xyz[0] = x*c.rotation_[3] + y*c.rotation_[4]
+                                      + z*c.rotation_[5];
+        p->coord[p->n_coord].xyz[1] = x*c.rotation_[6] + y*c.rotation_[7]
+                                      + z*c.rotation_[8];
+        p->coord[p->n_coord].xyz[2] = x*c.rotation_[9] + y*c.rotation_[10]
+                                      + z*c.rotation_[11];
         auto u = p->coord[p->n_coord].uvw[0];
         auto v = p->coord[p->n_coord].uvw[1];
         auto w = p->coord[p->n_coord].uvw[2];
-        p->coord[p->n_coord].uvw[0] = u*c.rotation[3] + v*c.rotation[4]
-                                      + w*c.rotation[5];
-        p->coord[p->n_coord].uvw[1] = u*c.rotation[6] + v*c.rotation[7]
-                                      + w*c.rotation[8];
-        p->coord[p->n_coord].uvw[2] = u*c.rotation[9] + v*c.rotation[10]
-                                      + w*c.rotation[11];
+        p->coord[p->n_coord].uvw[0] = u*c.rotation_[3] + v*c.rotation_[4]
+                                      + w*c.rotation_[5];
+        p->coord[p->n_coord].uvw[1] = u*c.rotation_[6] + v*c.rotation_[7]
+                                      + w*c.rotation_[8];
+        p->coord[p->n_coord].uvw[2] = u*c.rotation_[9] + v*c.rotation_[10]
+                                      + w*c.rotation_[11];
         p->coord[p->n_coord].rotated = true;
       }
 
@@ -197,11 +197,11 @@ find_cell(Particle* p, int search_surf) {
       ++p->n_coord;
       return find_cell(p, 0);
 
-    } else if (c.type == FILL_LATTICE) {
+    } else if (c.type_ == FILL_LATTICE) {
       //========================================================================
       //! Found a lower lattice, update this coord level then search the next.
 
-      Lattice& lat {*lattices_c[c.fill]};
+      Lattice& lat {*lattices_c[c.fill_]};
 
       // Determine lattice indices.
       Position r {p->coord[p->n_coord-1].xyz};
@@ -219,7 +219,7 @@ find_cell(Particle* p, int search_surf) {
       p->coord[p->n_coord].uvw[2] = u.z;
 
       // Set lattice indices.
-      p->coord[p->n_coord].lattice = c.fill + 1;
+      p->coord[p->n_coord].lattice = c.fill_ + 1;
       p->coord[p->n_coord].lattice_x = i_xyz[0];
       p->coord[p->n_coord].lattice_y = i_xyz[1];
       p->coord[p->n_coord].lattice_z = i_xyz[2];
@@ -228,12 +228,12 @@ find_cell(Particle* p, int search_surf) {
       if (lat.are_valid_indices(i_xyz)) {
         p->coord[p->n_coord].universe = lat[i_xyz];
       } else {
-        if (lat.outer != NO_OUTER_UNIVERSE) {
-          p->coord[p->n_coord].universe = lat.outer;
+        if (lat.outer_ != NO_OUTER_UNIVERSE) {
+          p->coord[p->n_coord].universe = lat.outer_;
         } else {
           std::stringstream err_msg;
           err_msg << "Particle " << p->id << " is outside lattice "
-                  << lat.id << " but the lattice has no defined outer "
+                  << lat.id_ << " but the lattice has no defined outer "
                   "universe.";
           warning(err_msg);
           return false;
@@ -256,7 +256,7 @@ cross_lattice(Particle* p, int lattice_translation[3])
 
   if (openmc_verbosity >= 10 || openmc_trace) {
     std::stringstream msg;
-    msg << "    Crossing lattice " << lat.id << ". Current position ("
+    msg << "    Crossing lattice " << lat.id_ << ". Current position ("
          << p->coord[p->n_coord-1].lattice_x << ","
          << p->coord[p->n_coord-1].lattice_y << ","
          << p->coord[p->n_coord-1].lattice_z << ")";
@@ -342,7 +342,7 @@ distance_to_boundary(Particle* p, double* dist, int* surface_crossed,
       //TODO: refactor so both lattice use the same position argument (which
       //also means the lat.type attribute can be removed)
       std::pair<double, std::array<int, 3>> lattice_distance;
-      switch (lat.type) {
+      switch (lat.type_) {
         case LatticeType::rect:
           lattice_distance = lat.distance(r, u, i_xyz);
           break;
@@ -374,7 +374,7 @@ distance_to_boundary(Particle* p, double* dist, int* surface_crossed,
         // positive half-space were given in the region specification. Thus, we
         // have to explicitly check which half-space the particle would be
         // traveling into if the surface is crossed
-        if (c.simple) {
+        if (c.simple_) {
           *surface_crossed = level_surf_cross;
         } else {
           Position r_hit = r + d_surf * u;

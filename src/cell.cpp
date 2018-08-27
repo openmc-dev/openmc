@@ -192,13 +192,13 @@ Universe::to_hdf5(hid_t universes_group) const
 {
   // Create a group for this universe.
   std::stringstream group_name;
-  group_name << "universe " << id;
+  group_name << "universe " << id_;
   auto group = create_group(universes_group, group_name);
 
   // Write the contained cells.
-  if (cells.size() > 0) {
+  if (cells_.size() > 0) {
     std::vector<int32_t> cell_ids;
-    for (auto i_cell : cells) cell_ids.push_back(global_cells[i_cell]->id);
+    for (auto i_cell : cells_) cell_ids.push_back(global_cells[i_cell]->id_);
     write_dataset(group, "cells", cell_ids);
   }
 
@@ -212,19 +212,19 @@ Universe::to_hdf5(hid_t universes_group) const
 Cell::Cell(pugi::xml_node cell_node)
 {
   if (check_for_node(cell_node, "id")) {
-    id = std::stoi(get_node_value(cell_node, "id"));
+    id_ = std::stoi(get_node_value(cell_node, "id"));
   } else {
     fatal_error("Must specify id of cell in geometry XML file.");
   }
 
   if (check_for_node(cell_node, "name")) {
-    name = get_node_value(cell_node, "name");
+    name_ = get_node_value(cell_node, "name");
   }
 
   if (check_for_node(cell_node, "universe")) {
-    universe = std::stoi(get_node_value(cell_node, "universe"));
+    universe_ = std::stoi(get_node_value(cell_node, "universe"));
   } else {
-    universe = 0;
+    universe_ = 0;
   }
 
   // Make sure that either material or fill was specified, but not both.
@@ -232,20 +232,20 @@ Cell::Cell(pugi::xml_node cell_node)
   bool material_present = check_for_node(cell_node, "material");
   if (!(fill_present || material_present)) {
     std::stringstream err_msg;
-    err_msg << "Neither material nor fill was specified for cell " << id;
+    err_msg << "Neither material nor fill was specified for cell " << id_;
     fatal_error(err_msg);
   }
   if (fill_present && material_present) {
     std::stringstream err_msg;
-    err_msg << "Cell " << id << " has both a material and a fill specified; "
+    err_msg << "Cell " << id_ << " has both a material and a fill specified; "
             << "only one can be specified per cell";
     fatal_error(err_msg);
   }
 
   if (fill_present) {
-    fill = std::stoi(get_node_value(cell_node, "fill"));
+    fill_ = std::stoi(get_node_value(cell_node, "fill"));
   } else {
-    fill = C_NONE;
+    fill_ = C_NONE;
   }
 
   // Read the material element.  There can be zero materials (filled with a
@@ -255,47 +255,47 @@ Cell::Cell(pugi::xml_node cell_node)
     std::vector<std::string> mats
          {get_node_array<std::string>(cell_node, "material", true)};
     if (mats.size() > 0) {
-      material.reserve(mats.size());
+      material_.reserve(mats.size());
       for (std::string mat : mats) {
         if (mat.compare("void") == 0) {
-          material.push_back(MATERIAL_VOID);
+          material_.push_back(MATERIAL_VOID);
         } else {
-          material.push_back(std::stoi(mat));
+          material_.push_back(std::stoi(mat));
         }
       }
     } else {
       std::stringstream err_msg;
-      err_msg << "An empty material element was specified for cell " << id;
+      err_msg << "An empty material element was specified for cell " << id_;
       fatal_error(err_msg);
     }
   }
 
   // Read the temperature element which may be distributed like materials.
   if (check_for_node(cell_node, "temperature")) {
-    sqrtkT = get_node_array<double>(cell_node, "temperature");
-    sqrtkT.shrink_to_fit();
+    sqrtkT_ = get_node_array<double>(cell_node, "temperature");
+    sqrtkT_.shrink_to_fit();
 
     // Make sure this is a material-filled cell.
-    if (material.size() == 0) {
+    if (material_.size() == 0) {
       std::stringstream err_msg;
-      err_msg << "Cell " << id << " was specified with a temperature but "
+      err_msg << "Cell " << id_ << " was specified with a temperature but "
            "no material. Temperature specification is only valid for cells "
            "filled with a material.";
       fatal_error(err_msg);
     }
 
     // Make sure all temperatures are non-negative.
-    for (auto T : sqrtkT) {
+    for (auto T : sqrtkT_) {
       if (T < 0) {
         std::stringstream err_msg;
-        err_msg << "Cell " << id
+        err_msg << "Cell " << id_
                 << " was specified with a negative temperature";
         fatal_error(err_msg);
       }
     }
 
     // Convert to sqrt(k*T).
-    for (auto& T : sqrtkT) {
+    for (auto& T : sqrtkT_) {
       T = std::sqrt(K_BOLTZMANN * T);
     }
   }
@@ -307,34 +307,34 @@ Cell::Cell(pugi::xml_node cell_node)
   }
 
   // Get a tokenized representation of the region specification.
-  region = tokenize(region_spec);
-  region.shrink_to_fit();
+  region_ = tokenize(region_spec);
+  region_.shrink_to_fit();
 
   // Convert user IDs to surface indices.
-  for (auto &r : region) {
+  for (auto& r : region_) {
     if (r < OP_UNION) {
       r = copysign(surface_map[abs(r)] + 1, r);
     }
   }
 
   // Convert the infix region spec to RPN.
-  rpn = generate_rpn(id, region);
-  rpn.shrink_to_fit();
+  rpn_ = generate_rpn(id_, region_);
+  rpn_.shrink_to_fit();
 
   // Check if this is a simple cell.
-  simple = true;
-  for (int32_t token : rpn) {
+  simple_ = true;
+  for (int32_t token : rpn_) {
     if ((token == OP_COMPLEMENT) || (token == OP_UNION)) {
-      simple = false;
+      simple_ = false;
       break;
     }
   }
 
   // Read the translation vector.
   if (check_for_node(cell_node, "translation")) {
-    if (fill == C_NONE) {
+    if (fill_ == C_NONE) {
       std::stringstream err_msg;
-      err_msg << "Cannot apply a translation to cell " << id
+      err_msg << "Cannot apply a translation to cell " << id_
               << " because it is not filled with another universe";
       fatal_error(err_msg);
     }
@@ -342,17 +342,17 @@ Cell::Cell(pugi::xml_node cell_node)
     auto xyz {get_node_array<double>(cell_node, "translation")};
     if (xyz.size() != 3) {
       std::stringstream err_msg;
-      err_msg << "Non-3D translation vector applied to cell " << id;
+      err_msg << "Non-3D translation vector applied to cell " << id_;
       fatal_error(err_msg);
     }
-    translation = xyz;
+    translation_ = xyz;
   }
 
   // Read the rotation transform.
   if (check_for_node(cell_node, "rotation")) {
-    if (fill == C_NONE) {
+    if (fill_ == C_NONE) {
       std::stringstream err_msg;
-      err_msg << "Cannot apply a rotation to cell " << id
+      err_msg << "Cannot apply a rotation to cell " << id_
               << " because it is not filled with another universe";
       fatal_error(err_msg);
     }
@@ -360,33 +360,33 @@ Cell::Cell(pugi::xml_node cell_node)
     auto rot {get_node_array<double>(cell_node, "rotation")};
     if (rot.size() != 3) {
       std::stringstream err_msg;
-      err_msg << "Non-3D rotation vector applied to cell " << id;
+      err_msg << "Non-3D rotation vector applied to cell " << id_;
       fatal_error(err_msg);
     }
 
     // Store the rotation angles.
-    rotation.reserve(12);
-    rotation.push_back(rot[0]);
-    rotation.push_back(rot[1]);
-    rotation.push_back(rot[2]);
+    rotation_.reserve(12);
+    rotation_.push_back(rot[0]);
+    rotation_.push_back(rot[1]);
+    rotation_.push_back(rot[2]);
 
     // Compute and store the rotation matrix.
     auto phi = -rot[0] * PI / 180.0;
     auto theta = -rot[1] * PI / 180.0;
     auto psi = -rot[2] * PI / 180.0;
-    rotation.push_back(std::cos(theta) * std::cos(psi));
-    rotation.push_back(-std::cos(phi) * std::sin(psi)
-                       + std::sin(phi) * std::sin(theta) * std::cos(psi));
-    rotation.push_back(std::sin(phi) * std::sin(psi)
-                       + std::cos(phi) * std::sin(theta) * std::cos(psi));
-    rotation.push_back(std::cos(theta) * std::sin(psi));
-    rotation.push_back(std::cos(phi) * std::cos(psi)
-                       + std::sin(phi) * std::sin(theta) * std::sin(psi));
-    rotation.push_back(-std::sin(phi) * std::cos(psi)
-                       + std::cos(phi) * std::sin(theta) * std::sin(psi));
-    rotation.push_back(-std::sin(theta));
-    rotation.push_back(std::sin(phi) * std::cos(theta));
-    rotation.push_back(std::cos(phi) * std::cos(theta));
+    rotation_.push_back(std::cos(theta) * std::cos(psi));
+    rotation_.push_back(-std::cos(phi) * std::sin(psi)
+                        + std::sin(phi) * std::sin(theta) * std::cos(psi));
+    rotation_.push_back(std::sin(phi) * std::sin(psi)
+                        + std::cos(phi) * std::sin(theta) * std::cos(psi));
+    rotation_.push_back(std::cos(theta) * std::sin(psi));
+    rotation_.push_back(std::cos(phi) * std::cos(psi)
+                        + std::sin(phi) * std::sin(theta) * std::sin(psi));
+    rotation_.push_back(-std::sin(phi) * std::cos(psi)
+                        + std::cos(phi) * std::sin(theta) * std::sin(psi));
+    rotation_.push_back(-std::sin(theta));
+    rotation_.push_back(std::sin(phi) * std::cos(theta));
+    rotation_.push_back(std::cos(phi) * std::cos(theta));
   }
 }
 
@@ -395,7 +395,7 @@ Cell::Cell(pugi::xml_node cell_node)
 bool
 Cell::contains(Position r, Direction u, int32_t on_surface) const
 {
-  if (simple) {
+  if (simple_) {
     return contains_simple(r, u, on_surface);
   } else {
     return contains_complex(r, u, on_surface);
@@ -410,7 +410,7 @@ Cell::distance(Position r, Direction u, int32_t on_surface) const
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
 
-  for (int32_t token : rpn) {
+  for (int32_t token : rpn_) {
     // Ignore this token if it corresponds to an operator rather than a region.
     if (token >= OP_UNION) continue;
 
@@ -438,19 +438,19 @@ Cell::to_hdf5(hid_t cells_group) const
 {
   // Create a group for this cell.
   std::stringstream group_name;
-  group_name << "cell " << id;
+  group_name << "cell " << id_;
   auto group = create_group(cells_group, group_name);
 
-  if (!name.empty()) {
-    write_string(group, "name", name, false);
+  if (!name_.empty()) {
+    write_string(group, "name", name_, false);
   }
 
-  write_dataset(group, "universe", global_universes[universe]->id);
+  write_dataset(group, "universe", global_universes[universe_]->id_);
 
   // Write the region specification.
-  if (!region.empty()) {
+  if (!region_.empty()) {
     std::stringstream region_spec {};
-    for (int32_t token : region) {
+    for (int32_t token : region_) {
       if (token == OP_LEFT_PAREN) {
         region_spec << " (";
       } else if (token == OP_RIGHT_PAREN) {
@@ -463,17 +463,17 @@ Cell::to_hdf5(hid_t cells_group) const
       } else {
         // Note the off-by-one indexing
         region_spec << " "
-             << copysign(global_surfaces[abs(token)-1]->id, token);
+             << copysign(global_surfaces[abs(token)-1]->id_, token);
       }
     }
     write_string(group, "region", region_spec.str(), false);
   }
 
   // Write fill information.
-  if (type == FILL_MATERIAL) {
+  if (type_ == FILL_MATERIAL) {
     write_dataset(group, "fill_type", "material");
     std::vector<int32_t> mat_ids;
-    for (auto i_mat : material) {
+    for (auto i_mat : material_) {
       if (i_mat != MATERIAL_VOID) {
         mat_ids.push_back(global_materials[i_mat]->id);
       } else {
@@ -487,24 +487,24 @@ Cell::to_hdf5(hid_t cells_group) const
     }
 
     std::vector<double> temps;
-    for (auto sqrtkT_val : sqrtkT)
+    for (auto sqrtkT_val : sqrtkT_)
       temps.push_back(sqrtkT_val * sqrtkT_val / K_BOLTZMANN);
     write_dataset(group, "temperature", temps);
 
-  } else if (type == FILL_UNIVERSE) {
+  } else if (type_ == FILL_UNIVERSE) {
     write_dataset(group, "fill_type", "universe");
-    write_dataset(group, "fill", global_universes[fill]->id);
-    if (translation != Position(0, 0, 0)) {
-      write_dataset(group, "translation", translation);
+    write_dataset(group, "fill", global_universes[fill_]->id_);
+    if (translation_ != Position(0, 0, 0)) {
+      write_dataset(group, "translation", translation_);
     }
-    if (!rotation.empty()) {
-      std::array<double, 3> rot {rotation[0], rotation[1], rotation[2]};
+    if (!rotation_.empty()) {
+      std::array<double, 3> rot {rotation_[0], rotation_[1], rotation_[2]};
       write_dataset(group, "rotation", rot);
     }
 
-  } else if (type == FILL_LATTICE) {
+  } else if (type_ == FILL_LATTICE) {
     write_dataset(group, "fill_type", "lattice");
-    write_dataset(group, "lattice", lattices_c[fill]->id);
+    write_dataset(group, "lattice", lattices_c[fill_]->id_);
   }
 
   close_group(group);
@@ -515,7 +515,7 @@ Cell::to_hdf5(hid_t cells_group) const
 bool
 Cell::contains_simple(Position r, Direction u, int32_t on_surface) const
 {
-  for (int32_t token : rpn) {
+  for (int32_t token : rpn_) {
     if (token < OP_UNION) {
       // If the token is not an operator, evaluate the sense of particle with
       // respect to the surface and see if the token matches the sense. If the
@@ -541,10 +541,10 @@ Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
 {
   // Make a stack of booleans.  We don't know how big it needs to be, but we do
   // know that rpn.size() is an upper-bound.
-  bool stack[rpn.size()];
+  bool stack[rpn_.size()];
   int i_stack = -1;
 
-  for (int32_t token : rpn) {
+  for (int32_t token : rpn_) {
     // If the token is a binary operator (intersection/union), apply it to
     // the last two items on the stack. If the token is a unary operator
     // (complement), apply it to the last item on the stack.
@@ -606,15 +606,15 @@ read_cells(pugi::xml_node* node)
 
   // Populate the Universe vector and map.
   for (int i = 0; i < global_cells.size(); i++) {
-    int32_t uid = global_cells[i]->universe;
+    int32_t uid = global_cells[i]->universe_;
     auto it = universe_map.find(uid);
     if (it == universe_map.end()) {
       global_universes.push_back(new Universe());
-      global_universes.back()->id = uid;
-      global_universes.back()->cells.push_back(i);
+      global_universes.back()->id_ = uid;
+      global_universes.back()->cells_.push_back(i);
       universe_map[uid] = global_universes.size() - 1;
     } else {
-      global_universes[it->second]->cells.push_back(i);
+      global_universes[it->second]->cells_.push_back(i);
     }
   }
   global_universes.shrink_to_fit();
@@ -633,12 +633,12 @@ openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n)
   if (index >= 1 && index <= global_cells.size()) {
     //TODO: off-by-one
     Cell& c {*global_cells[index - 1]};
-    *type = c.type;
-    if (c.type == FILL_MATERIAL) {
-      *indices = c.material.data();
-      *n = c.material.size();
+    *type = c.type_;
+    if (c.type_ == FILL_MATERIAL) {
+      *indices = c.material_.data();
+      *n = c.material_.size();
     } else {
-      *indices = &c.fill;
+      *indices = &c.fill_;
       *n = 1;
     }
   } else {
@@ -656,25 +656,25 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
     //TODO: off-by-one
     Cell& c {*global_cells[index - 1]};
     if (type == FILL_MATERIAL) {
-      c.type = FILL_MATERIAL;
-      c.material.clear();
+      c.type_ = FILL_MATERIAL;
+      c.material_.clear();
       for (int i = 0; i < n; i++) {
         int i_mat = indices[i];
         if (i_mat == MATERIAL_VOID) {
-          c.material.push_back(MATERIAL_VOID);
+          c.material_.push_back(MATERIAL_VOID);
         } else if (i_mat >= 1 && i_mat <= global_materials.size()) {
           //TODO: off-by-one
-          c.material.push_back(i_mat - 1);
+          c.material_.push_back(i_mat - 1);
         } else {
           set_errmsg("Index in materials array is out of bounds.");
           return OPENMC_E_OUT_OF_BOUNDS;
         }
       }
-      c.material.shrink_to_fit();
+      c.material_.shrink_to_fit();
     } else if (type == FILL_UNIVERSE) {
-      c.type = FILL_UNIVERSE;
+      c.type_ = FILL_UNIVERSE;
     } else {
-      c.type = FILL_LATTICE;
+      c.type_ = FILL_LATTICE;
     }
   } else {
     set_errmsg("Index in cells array is out of bounds.");
@@ -692,14 +692,14 @@ openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance)
     Cell& c {*global_cells[index - 1]};
 
     if (instance) {
-      if (*instance >= 0 && *instance < c.sqrtkT.size()) {
-        c.sqrtkT[*instance] = std::sqrt(K_BOLTZMANN * T);
+      if (*instance >= 0 && *instance < c.sqrtkT_.size()) {
+        c.sqrtkT_[*instance] = std::sqrt(K_BOLTZMANN * T);
       } else {
         strcpy(openmc_err_msg, "Distribcell instance is out of bounds.");
         return OPENMC_E_OUT_OF_BOUNDS;
       }
     } else {
-      for (auto& T_ : c.sqrtkT) {
+      for (auto& T_ : c.sqrtkT_) {
         T_ = std::sqrt(K_BOLTZMANN * T);
       }
     }
@@ -719,35 +719,35 @@ openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance)
 extern "C" {
   Cell* cell_pointer(int32_t cell_ind) {return global_cells[cell_ind];}
 
-  int32_t cell_id(Cell* c) {return c->id;}
+  int32_t cell_id(Cell* c) {return c->id_;}
 
-  void cell_set_id(Cell* c, int32_t id) {c->id = id;}
+  void cell_set_id(Cell* c, int32_t id) {c->id_ = id;}
 
-  int cell_type(Cell* c) {return c->type;}
+  int cell_type(Cell* c) {return c->type_;}
 
-  int32_t cell_universe(Cell* c) {return c->universe;}
+  int32_t cell_universe(Cell* c) {return c->universe_;}
 
-  int32_t cell_fill(Cell* c) {return c->fill;}
+  int32_t cell_fill(Cell* c) {return c->fill_;}
 
-  int32_t cell_n_instances(Cell* c) {return c->n_instances;}
+  int32_t cell_n_instances(Cell* c) {return c->n_instances_;}
 
-  int cell_distribcell_index(Cell* c) {return c->distribcell_index;}
+  int cell_distribcell_index(Cell* c) {return c->distribcell_index_;}
 
-  int cell_material_size(Cell* c) {return c->material.size();}
+  int cell_material_size(Cell* c) {return c->material_.size();}
 
   //TODO: off-by-one
   int32_t cell_material(Cell* c, int i)
   {
-    int32_t mat = c->material[i-1];
+    int32_t mat = c->material_[i-1];
     if (mat == MATERIAL_VOID) return MATERIAL_VOID;
     return mat + 1;
   }
 
-  int cell_sqrtkT_size(Cell* c) {return c->sqrtkT.size();}
+  int cell_sqrtkT_size(Cell* c) {return c->sqrtkT_.size();}
 
-  double cell_sqrtkT(Cell* c, int i) {return c->sqrtkT[i];}
+  double cell_sqrtkT(Cell* c, int i) {return c->sqrtkT_[i];}
 
-  int32_t cell_offset(Cell* c, int map) {return c->offset[map];}
+  int32_t cell_offset(Cell* c, int map) {return c->offset_[map];}
 
   void extend_cells_c(int32_t n)
   {
@@ -758,7 +758,7 @@ extern "C" {
     n_cells = global_cells.size();
   }
 
-  int32_t universe_id(int i_univ) {return global_universes[i_univ]->id;}
+  int32_t universe_id(int i_univ) {return global_universes[i_univ]->id_;}
 
   void universes_to_hdf5(hid_t universes_group)
   {for (Universe* u : global_universes) u->to_hdf5(universes_group);}

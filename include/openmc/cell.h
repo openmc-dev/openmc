@@ -53,8 +53,8 @@ extern std::unordered_map<int32_t, int32_t> universe_map;
 class Universe
 {
 public:
-  int32_t id;                  //!< Unique ID
-  std::vector<int32_t> cells;  //!< Cells within this universe
+  int32_t id_;                  //!< Unique ID
+  std::vector<int32_t> cells_;  //!< Cells within this universe
 
   //! \brief Write universe information to an HDF5 group.
   //! \param group_id An HDF5 group id.
@@ -68,34 +68,34 @@ public:
 class Cell
 {
 public:
-  int32_t id;                //!< Unique ID
-  std::string name;          //!< User-defined name
-  int type;                  //!< Material, universe, or lattice
-  int32_t universe;          //!< Universe # this cell is in
-  int32_t fill;              //!< Universe # filling this cell
-  int32_t n_instances{0};    //!< Number of instances of this cell
+  int32_t id_;                //!< Unique ID
+  std::string name_;          //!< User-defined name
+  int type_;                  //!< Material, universe, or lattice
+  int32_t universe_;          //!< Universe # this cell is in
+  int32_t fill_;              //!< Universe # filling this cell
+  int32_t n_instances_{0};    //!< Number of instances of this cell
 
   //! \brief Index corresponding to this cell in distribcell arrays
-  int distribcell_index{C_NONE};
+  int distribcell_index_{C_NONE};
 
   //! \brief Material(s) within this cell.
   //!
   //! May be multiple materials for distribcell.
-  std::vector<int32_t> material;
+  std::vector<int32_t> material_;
 
   //! \brief Temperature(s) within this cell.
   //!
   //! The stored values are actually sqrt(k_Boltzmann * T) for each temperature
   //! T. The units are sqrt(eV).
-  std::vector<double> sqrtkT;
+  std::vector<double> sqrtkT_;
 
   //! Definition of spatial region as Boolean expression of half-spaces
-  std::vector<std::int32_t> region;
+  std::vector<std::int32_t> region_;
   //! Reverse Polish notation for region expression
-  std::vector<std::int32_t> rpn;
-  bool simple;  //!< Does the region contain only intersections?
+  std::vector<std::int32_t> rpn_;
+  bool simple_;  //!< Does the region contain only intersections?
 
-  Position translation {0, 0, 0}; //!< Translation vector for filled universe
+  Position translation_ {0, 0, 0}; //!< Translation vector for filled universe
 
   //! \brief Rotational tranfsormation of the filled universe.
   //
@@ -103,9 +103,9 @@ public:
   //! values are the rotation angles respectively about the x-, y-, and z-, axes
   //! in degrees.  The next 9 values give the rotation matrix in row-major
   //! order.
-  std::vector<double> rotation;
+  std::vector<double> rotation_;
 
-  std::vector<int32_t> offset;  //!< Distribcell offset table
+  std::vector<int32_t> offset_;  //!< Distribcell offset table
 
   Cell() {};
 

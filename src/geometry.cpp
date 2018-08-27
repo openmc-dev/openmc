@@ -7,7 +7,7 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/lattice.h"
-#include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/surface.h"
 
 
@@ -23,16 +23,14 @@ extern "C" bool
 check_cell_overlap(Particle* p) {
   int n_coord = p->n_coord;
 
-  // loop through each coordinate level
+  // Loop through each coordinate level
   for (int j = 0; j < n_coord; j++) {
     Universe& univ = *global_universes[p->coord[j].universe];
     int n = univ.cells.size();
 
-    // loop through each cell on this level
-    for (int i = 0; i < n; i++) {
-      int index_cell = univ.cells[i];
+    // Loop through each cell on this level
+    for (auto index_cell : univ.cells) {
       Cell& c = *global_cells[index_cell];
-
       if (c.contains(p->coord[j].xyz, p->coord[j].uvw, p->surface)) {
         if (index_cell != p->coord[j].cell) {
           std::stringstream err_msg;
@@ -65,26 +63,23 @@ find_cell(Particle* p, int search_surf) {
   }
 
   // If a surface was indicated, only search cells from the neighbor list of
-  // that surface.
-  int* search_cells;
-  int n_search_cells;
+  // that surface.  The surface index is signed, and the sign signifies whether
+  // the positive or negative side of the surface should be searched.
+  const std::vector<int>* search_cells;
   if (search_surf > 0) {
-    search_cells = global_surfaces[search_surf-1]->neighbor_pos.data();
-    n_search_cells = global_surfaces[search_surf-1]->neighbor_pos.size();
+    search_cells = &global_surfaces[search_surf-1]->neighbor_pos;
   } else if (search_surf < 0) {
-    search_cells = global_surfaces[-search_surf-1]->neighbor_neg.data();
-    n_search_cells = global_surfaces[-search_surf-1]->neighbor_neg.size();
+    search_cells = &global_surfaces[-search_surf-1]->neighbor_neg;
   } else {
     // No surface was indicated, search all cells in the universe.
-    search_cells = global_universes[i_universe]->cells.data();
-    n_search_cells = global_universes[i_universe]->cells.size();
+    search_cells = &global_universes[i_universe]->cells;
   }
 
   // Find which cell of this universe the particle is in.
   bool found = false;
   int32_t i_cell;
-  for (int i = 0; i < n_search_cells; i++) {
-    i_cell = search_cells[i];
+  for (int i = 0; i < search_cells->size(); i++) {
+    i_cell = (*search_cells)[i];
 
     // Make sure the search cell is in the same universe.
     if (global_cells[i_cell]->universe != i_universe) continue;
@@ -155,6 +150,8 @@ find_cell(Particle* p, int search_surf) {
         p->sqrtkT = c.sqrtkT[0];
       }
 
+      return true;
+
     } else if (c.type == FILL_UNIVERSE) {
       //========================================================================
       //! Found a lower universe, update this coord level then search the next.
@@ -198,7 +195,7 @@ find_cell(Particle* p, int search_surf) {
 
       // Update the coordinate level and recurse.
       ++p->n_coord;
-      find_cell(p, 0);
+      return find_cell(p, 0);
 
     } else if (c.type == FILL_LATTICE) {
       //========================================================================
@@ -245,11 +242,9 @@ find_cell(Particle* p, int search_surf) {
 
       // Update the coordinate level and recurse.
       ++p->n_coord;
-      find_cell(p, 0);
+      return find_cell(p, 0);
     }
   }
-
-  return found;
 }
 
 //==============================================================================

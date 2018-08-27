@@ -46,29 +46,29 @@ print_overlap_check() {
 #ifdef OPENMC_MPI
   std::vector<int64_t> temp(overlap_check_count);
   int err = MPI_Reduce(temp.data(), overlap_check_count.data(),
-                       overlap_check_count.size(), MPI_LONG, MPI_SUM, 0,
+                       overlap_check_count.size(), MPI_INT64_T, MPI_SUM, 0,
                        mpi::intracomm);
 #endif
 
   if (openmc_master) {
     header("cell overlap check summary", 1);
-    std::cout << " Cell ID      No. Overlap Checks" << std::endl;
+    std::cout << " Cell ID      No. Overlap Checks\n";
 
     std::vector<int32_t> sparse_cell_ids;
     for (int i = 0; i < n_cells; i++) {
       std::cout << " " << std::setw(8) << global_cells[i]->id << std::setw(17)
-                << overlap_check_count[i] << std::endl;;
+                << overlap_check_count[i] << "\n";
       if (overlap_check_count[i] < 10) {
         sparse_cell_ids.push_back(global_cells[i]->id);
       }
     }
 
-    std::cout << std::endl << " There were " << sparse_cell_ids.size()
-              << " cells with less than 10 overlap checks" << std::endl;
+    std::cout << "\n There were " << sparse_cell_ids.size()
+              << " cells with less than 10 overlap checks\n";
     for (auto id : sparse_cell_ids) {
       std::cout << " " << id;
     }
-    std::cout << std::endl;
+    std::cout << "\n";
   }
 }
 

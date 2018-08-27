@@ -4,9 +4,14 @@
 #include <cstdint>
 #include <vector>
 
-#include "particle.h"
+#include "openmc/particle.h"
+
 
 namespace openmc {
+
+//==============================================================================
+// Global variables
+//==============================================================================
 
 extern "C" int openmc_root_universe;
 
@@ -21,6 +26,15 @@ check_cell_overlap(Particle* p);
 
 //==============================================================================
 //! Locate a particle in the geometry tree and set its geometry data fields.
+//!
+//! \param p A particle to be located.  This function will populate the
+//!   geometry-dependent data fields of the particle.
+//! \param search_surf A surface that the particle is expected to be on.  This
+//!   value should be the signed, 1-based index of a surface.  If positive, the
+//!   cells on the positive half-space of the surface will be searched.  If
+//!   negative, the negative half-space will be searched.
+//! \return True if the particle's location could be found and ascribed to a
+//!   valid geometry coordinate stack.
 //==============================================================================
 
 extern "C" bool

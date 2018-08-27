@@ -7,10 +7,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include "constants.h"
 #include "hdf5.h"
 #include "pugixml.hpp"
 
+#include "openmc/constants.h"
 #include "openmc/position.h"
 
 

@@ -24,10 +24,10 @@ namespace openmc {
 
 int32_t n_cells {0};
 
-std::vector<Cell*> global_cells;
+std::vector<Cell*> cells;
 std::unordered_map<int32_t, int32_t> cell_map;
 
-std::vector<Universe*> global_universes;
+std::vector<Universe*> universes;
 std::unordered_map<int32_t, int32_t> universe_map;
 
 //==============================================================================
@@ -198,7 +198,7 @@ Universe::to_hdf5(hid_t universes_group) const
   // Write the contained cells.
   if (cells_.size() > 0) {
     std::vector<int32_t> cell_ids;
-    for (auto i_cell : cells_) cell_ids.push_back(global_cells[i_cell]->id_);
+    for (auto i_cell : cells_) cell_ids.push_back(cells[i_cell]->id_);
     write_dataset(group, "cells", cell_ids);
   }
 
@@ -417,7 +417,7 @@ Cell::distance(Position r, Direction u, int32_t on_surface) const
     // Calculate the distance to this surface.
     // Note the off-by-one indexing
     bool coincident {token == on_surface};
-    double d {global_surfaces[abs(token)-1]->distance(r, u, coincident)};
+    double d {surfaces[abs(token)-1]->distance(r, u, coincident)};
 
     // Check if this distance is the new minimum.
     if (d < min_dist) {
@@ -445,7 +445,7 @@ Cell::to_hdf5(hid_t cells_group) const
     write_string(group, "name", name_, false);
   }
 
-  write_dataset(group, "universe", global_universes[universe_]->id_);
+  write_dataset(group, "universe", universes[universe_]->id_);
 
   // Write the region specification.
   if (!region_.empty()) {
@@ -463,7 +463,7 @@ Cell::to_hdf5(hid_t cells_group) const
       } else {
         // Note the off-by-one indexing
         region_spec << " "
-             << copysign(global_surfaces[abs(token)-1]->id_, token);
+             << copysign(surfaces[abs(token)-1]->id_, token);
       }
     }
     write_string(group, "region", region_spec.str(), false);
@@ -475,7 +475,7 @@ Cell::to_hdf5(hid_t cells_group) const
     std::vector<int32_t> mat_ids;
     for (auto i_mat : material_) {
       if (i_mat != MATERIAL_VOID) {
-        mat_ids.push_back(global_materials[i_mat]->id);
+        mat_ids.push_back(materials[i_mat]->id);
       } else {
         mat_ids.push_back(MATERIAL_VOID);
       }
@@ -493,7 +493,7 @@ Cell::to_hdf5(hid_t cells_group) const
 
   } else if (type_ == FILL_UNIVERSE) {
     write_dataset(group, "fill_type", "universe");
-    write_dataset(group, "fill", global_universes[fill_]->id_);
+    write_dataset(group, "fill", universes[fill_]->id_);
     if (translation_ != Position(0, 0, 0)) {
       write_dataset(group, "translation", translation_);
     }
@@ -504,7 +504,7 @@ Cell::to_hdf5(hid_t cells_group) const
 
   } else if (type_ == FILL_LATTICE) {
     write_dataset(group, "fill_type", "lattice");
-    write_dataset(group, "lattice", lattices_c[fill_]->id_);
+    write_dataset(group, "lattice", lattices[fill_]->id_);
   }
 
   close_group(group);
@@ -526,7 +526,7 @@ Cell::contains_simple(Position r, Direction u, int32_t on_surface) const
         return false;
       } else {
         // Note the off-by-one indexing
-        bool sense = global_surfaces[abs(token)-1]->sense(r, u);
+        bool sense = surfaces[abs(token)-1]->sense(r, u);
         if (sense != (token > 0)) {return false;}
       }
     }
@@ -568,7 +568,7 @@ Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
         stack[i_stack] = false;
       } else {
         // Note the off-by-one indexing
-        bool sense = global_surfaces[abs(token)-1]->sense(r, u);
+        bool sense = surfaces[abs(token)-1]->sense(r, u);
         stack[i_stack] = (sense == (token > 0));
       }
     }
@@ -599,25 +599,25 @@ read_cells(pugi::xml_node* node)
   }
 
   // Loop over XML cell elements and populate the array.
-  global_cells.reserve(n_cells);
+  cells.reserve(n_cells);
   for (pugi::xml_node cell_node: node->children("cell")) {
-    global_cells.push_back(new Cell(cell_node));
+    cells.push_back(new Cell(cell_node));
   }
 
   // Populate the Universe vector and map.
-  for (int i = 0; i < global_cells.size(); i++) {
-    int32_t uid = global_cells[i]->universe_;
+  for (int i = 0; i < cells.size(); i++) {
+    int32_t uid = cells[i]->universe_;
     auto it = universe_map.find(uid);
     if (it == universe_map.end()) {
-      global_universes.push_back(new Universe());
-      global_universes.back()->id_ = uid;
-      global_universes.back()->cells_.push_back(i);
-      universe_map[uid] = global_universes.size() - 1;
+      universes.push_back(new Universe());
+      universes.back()->id_ = uid;
+      universes.back()->cells_.push_back(i);
+      universe_map[uid] = universes.size() - 1;
     } else {
-      global_universes[it->second]->cells_.push_back(i);
+      universes[it->second]->cells_.push_back(i);
     }
   }
-  global_universes.shrink_to_fit();
+  universes.shrink_to_fit();
 
   // Allocate the cell overlap count if necessary.
   if (openmc_check_overlaps) overlap_check_count.resize(n_cells, 0);
@@ -630,9 +630,9 @@ read_cells(pugi::xml_node* node)
 extern "C" int
 openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n)
 {
-  if (index >= 1 && index <= global_cells.size()) {
+  if (index >= 1 && index <= cells.size()) {
     //TODO: off-by-one
-    Cell& c {*global_cells[index - 1]};
+    Cell& c {*cells[index - 1]};
     *type = c.type_;
     if (c.type_ == FILL_MATERIAL) {
       *indices = c.material_.data();
@@ -652,9 +652,9 @@ extern "C" int
 openmc_cell_set_fill(int32_t index, int type, int32_t n,
                      const int32_t* indices)
 {
-  if (index >= 1 && index <= global_cells.size()) {
+  if (index >= 1 && index <= cells.size()) {
     //TODO: off-by-one
-    Cell& c {*global_cells[index - 1]};
+    Cell& c {*cells[index - 1]};
     if (type == FILL_MATERIAL) {
       c.type_ = FILL_MATERIAL;
       c.material_.clear();
@@ -662,7 +662,7 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
         int i_mat = indices[i];
         if (i_mat == MATERIAL_VOID) {
           c.material_.push_back(MATERIAL_VOID);
-        } else if (i_mat >= 1 && i_mat <= global_materials.size()) {
+        } else if (i_mat >= 1 && i_mat <= materials.size()) {
           //TODO: off-by-one
           c.material_.push_back(i_mat - 1);
         } else {
@@ -687,9 +687,9 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
 extern "C" int
 openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance)
 {
-  if (index >= 1 && index <= global_cells.size()) {
+  if (index >= 1 && index <= cells.size()) {
     //TODO: off-by-one
-    Cell& c {*global_cells[index - 1]};
+    Cell& c {*cells[index - 1]};
 
     if (instance) {
       if (*instance >= 0 && *instance < c.sqrtkT_.size()) {
@@ -717,7 +717,7 @@ openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance)
 //==============================================================================
 
 extern "C" {
-  Cell* cell_pointer(int32_t cell_ind) {return global_cells[cell_ind];}
+  Cell* cell_pointer(int32_t cell_ind) {return cells[cell_ind];}
 
   int32_t cell_id(Cell* c) {return c->id_;}
 
@@ -751,17 +751,17 @@ extern "C" {
 
   void extend_cells_c(int32_t n)
   {
-    global_cells.reserve(global_cells.size() + n);
+    cells.reserve(cells.size() + n);
     for (int32_t i = 0; i < n; i++) {
-      global_cells.push_back(new Cell());
+      cells.push_back(new Cell());
     }
-    n_cells = global_cells.size();
+    n_cells = cells.size();
   }
 
-  int32_t universe_id(int i_univ) {return global_universes[i_univ]->id_;}
+  int32_t universe_id(int i_univ) {return universes[i_univ]->id_;}
 
   void universes_to_hdf5(hid_t universes_group)
-  {for (Universe* u : global_universes) u->to_hdf5(universes_group);}
+  {for (Universe* u : universes) u->to_hdf5(universes_group);}
 }
 
 

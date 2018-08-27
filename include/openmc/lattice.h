@@ -31,7 +31,7 @@ enum class LatticeType {
 //==============================================================================
 
 class Lattice;
-extern std::vector<Lattice*> lattices_c;
+extern std::vector<Lattice*> lattices;
 
 extern std::unordered_map<int32_t, int32_t> lattice_map;
 

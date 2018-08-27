@@ -14,7 +14,7 @@ namespace openmc {
 //==============================================================================
 
 class Material;
-extern std::vector<Material*> global_materials;
+extern std::vector<Material*> materials;
 extern std::unordered_map<int32_t, int32_t> material_map;
 
 //==============================================================================

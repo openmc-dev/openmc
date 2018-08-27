@@ -8,13 +8,12 @@ module surface_header
   implicit none
 
   interface
-    pure function surface_pointer_c(surf_ind) &
-         bind(C, name='surface_pointer') result(ptr)
+    pure function surface_pointer(surf_ind) bind(C) result(ptr)
       use ISO_C_BINDING
       implicit none
       integer(C_INT), intent(in), value :: surf_ind
       type(C_PTR)                       :: ptr
-    end function surface_pointer_c
+    end function surface_pointer
 
     pure function surface_id_c(surf_ptr) bind(C, name='surface_id') result(id)
       use ISO_C_BINDING

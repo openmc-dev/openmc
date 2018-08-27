@@ -1,4 +1,4 @@
-#include "plot.h"
+#include "openmc/plot.h"
 
 namespace openmc {
 

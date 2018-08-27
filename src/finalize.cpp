@@ -1,6 +1,6 @@
-#include "finalize.h"
+#include "openmc/finalize.h"
 
-#include "message_passing.h"
+#include "openmc/message_passing.h"
 
 void openmc_free_bank()
 {

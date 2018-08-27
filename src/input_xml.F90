@@ -48,8 +48,8 @@ module input_xml
   save
 
   interface
-    subroutine adjust_indices_c() bind(C)
-    end subroutine adjust_indices_c
+    subroutine adjust_indices() bind(C)
+    end subroutine adjust_indices
 
     subroutine allocate_offset_tables(n_maps) bind(C)
       import C_INT
@@ -86,6 +86,11 @@ module input_xml
       import C_PTR
       type(C_PTR) :: node_ptr
     end subroutine read_settings
+
+    subroutine read_materials(node_ptr) bind(C)
+      import C_PTR
+      type(C_PTR) :: node_ptr
+    end subroutine read_materials
 
     function find_root_universe() bind(C) result(root)
       import C_INT32_T
@@ -1051,7 +1056,7 @@ contains
     allocate(surfaces(n_surfaces))
 
     do i = 1, n_surfaces
-      surfaces(i) % ptr = surface_pointer_c(i - 1);
+      surfaces(i) % ptr = surface_pointer(i - 1);
 
       if (surfaces(i) % bc() /= BC_TRANSMIT) boundary_exists = .true.
 
@@ -1095,7 +1100,7 @@ contains
     do i = 1, n_cells
       c => cells(i)
 
-      c % ptr = cell_pointer_c(i - 1)
+      c % ptr = cell_pointer(i - 1)
 
       ! Initialize distribcell instances and distribcell index
       c % distribcell_index = NONE
@@ -1107,42 +1112,6 @@ contains
       if (cell_dict % has(c % id())) then
         call fatal_error("Two or more cells use the same unique ID: " &
              // to_str(c % id()))
-      end if
-
-      ! Read material
-      if (check_for_node(node_cell, "material")) then
-        n_mats = node_word_count(node_cell, "material")
-
-        if (n_mats > 0) then
-          allocate(sarray(n_mats))
-          call get_node_array(node_cell, "material", sarray)
-
-          allocate(c % material(n_mats))
-          do j = 1, n_mats
-            select case(trim(to_lower(sarray(j))))
-            case ('void')
-              c % material(j) = MATERIAL_VOID
-            case default
-              c % material(j) = int(str_to_int(sarray(j)), 4)
-
-              ! Check for error
-              if (c % material(j) == ERROR_INT) then
-                call fatal_error("Invalid material specified on cell " &
-                     // to_str(c % id()))
-              end if
-            end select
-          end do
-
-          deallocate(sarray)
-
-        else
-          allocate(c % material(1))
-          c % material(1) = NONE
-        end if
-
-      else
-        allocate(c % material(1))
-        c % material(1) = NONE
       end if
 
       ! Check for region specification (also under deprecated name surfaces)
@@ -1246,7 +1215,7 @@ contains
         n = node_word_count(node_cell, "temperature")
         if (n > 0) then
           ! Make sure this is a "normal" cell.
-          if (c % material(1) == NONE) call fatal_error("Cell " &
+          if (c % fill() /= C_NONE) call fatal_error("Cell " &
                // trim(to_str(c % id())) // " was specified with a temperature &
                &but no material. Temperature specification is only valid for &
                &cells filled with a material.")
@@ -1309,7 +1278,7 @@ contains
     RECT_LATTICES: do i = 1, n_rlats
       allocate(RectLattice::lattices(i) % obj)
       lat => lattices(i) % obj
-      lat % ptr = lattice_pointer_c(i - 1)
+      lat % ptr = lattice_pointer(i - 1)
       select type(lat)
       type is (RectLattice)
 
@@ -1325,7 +1294,7 @@ contains
     HEX_LATTICES: do i = 1, n_hlats
       allocate(HexLattice::lattices(n_rlats + i) % obj)
       lat => lattices(n_rlats + i) % obj
-      lat % ptr = lattice_pointer_c(n_rlats + i - 1)
+      lat % ptr = lattice_pointer(n_rlats + i - 1)
       select type (lat)
       type is (HexLattice)
 
@@ -1540,10 +1509,12 @@ contains
     call doc % load_file(filename)
     root = doc % document_element()
 
+    call read_materials(root % ptr)
+
     ! Get pointer to list of XML <material>
     call get_node_list(root, "material", node_mat_list)
 
-    ! Allocate cells array
+    ! Allocate materials array
     n_materials = size(node_mat_list)
     allocate(materials(n_materials))
     allocate(material_temps(n_materials))
@@ -1556,27 +1527,14 @@ contains
     do i = 1, n_materials
       mat => materials(i)
 
+      mat % ptr = material_pointer(i - 1)
+
       ! Get pointer to i-th material node
       node_mat = node_mat_list(i)
 
-      ! Copy material id
-      if (check_for_node(node_mat, "id")) then
-        call get_node_value(node_mat, "id", mat % id)
-      else
-        call fatal_error("Must specify id of material in materials XML file")
-      end if
-
       ! Check if material is depletable
       if (check_for_node(node_mat, "depletable")) then
-        call get_node_value(node_mat, "depletable", temp_str)
-        if (to_lower(temp_str) == "true" .or. temp_str == "1") &
-             mat % depletable = .true.
-      end if
-
-      ! Check to make sure 'id' hasn't been used
-      if (material_dict % has(mat % id)) then
-        call fatal_error("Two or more materials use the same unique ID: " &
-             // to_str(mat % id))
+        call get_node_value(node_mat, "depletable", mat % depletable)
       end if
 
       ! Copy material name
@@ -1596,7 +1554,7 @@ contains
         node_dens = node_mat % child("density")
       else
         call fatal_error("Must specify density element in material " &
-             // trim(to_str(mat % id)))
+             // trim(to_str(mat % id())))
       end if
 
       ! Copy units
@@ -1626,7 +1584,7 @@ contains
         sum_density = .false.
         if (val <= ZERO) then
           call fatal_error("Need to specify a positive density on material " &
-               // trim(to_str(mat % id)) // ".")
+               // trim(to_str(mat % id())) // ".")
         end if
 
         ! Adjust material density based on specified units
@@ -1641,7 +1599,7 @@ contains
           mat % density = 1.0e-24_8 * val
         case default
           call fatal_error("Unkwown units '" // trim(units) &
-               // "' specified on material " // trim(to_str(mat % id)))
+               // "' specified on material " // trim(to_str(mat % id())))
         end select
       end if
 
@@ -1650,7 +1608,7 @@ contains
 
       if (size(node_ele_list) > 0) then
         call fatal_error("Unable to add an element to material " &
-             // trim(to_str(mat % id)) // " since the element option has &
+             // trim(to_str(mat % id())) // " since the element option has &
              &been removed from the xml input. Elements can only be added via &
              &the Python API, which will expand elements into their natural &
              &nuclides.")
@@ -1663,7 +1621,7 @@ contains
       if (.not. check_for_node(node_mat, "nuclide") .and. &
            .not. check_for_node(node_mat, "macroscopic")) then
         call fatal_error("No macroscopic data or nuclides specified on &
-             &material " // trim(to_str(mat % id)))
+             &material " // trim(to_str(mat % id())))
       end if
 
       ! Create list of macroscopic x/s based on those specified, just treat
@@ -1677,7 +1635,7 @@ contains
                          & mode!")
       else if (size(node_macro_list) > 1) then
         call fatal_error("Only one macroscopic object permitted per material, " &
-             // trim(to_str(mat % id)))
+             // trim(to_str(mat % id())))
       else if (size(node_macro_list) == 1) then
 
         node_nuc = node_macro_list(1)
@@ -1685,7 +1643,7 @@ contains
         ! Check for empty name on nuclide
         if (.not. check_for_node(node_nuc, "name")) then
           call fatal_error("No name specified on macroscopic data in material " &
-               // trim(to_str(mat % id)))
+               // trim(to_str(mat % id())))
         end if
 
         ! store nuclide name
@@ -1715,7 +1673,7 @@ contains
           ! Check for empty name on nuclide
           if (.not. check_for_node(node_nuc, "name")) then
             call fatal_error("No name specified on nuclide in material " &
-                 // trim(to_str(mat % id)))
+                 // trim(to_str(mat % id())))
           end if
 
           ! store nuclide name
@@ -1854,7 +1812,7 @@ contains
       if (.not. (all(mat % atom_density >= ZERO) .or. &
            all(mat % atom_density <= ZERO))) then
         call fatal_error("Cannot mix atom and weight percents in material " &
-             // to_str(mat % id))
+             // to_str(mat % id()))
       end if
 
       ! Determine density if it is a sum value
@@ -1935,7 +1893,7 @@ contains
       end if
 
       ! Add material to dictionary
-      call material_dict % set(mat % id, i)
+      call material_dict % set(mat % id(), i)
     end do
 
     ! Set total number of nuclides and S(a,b) tables
@@ -1960,6 +1918,7 @@ contains
     integer :: k             ! another loop index
     integer :: l             ! loop over bins
     integer :: filter_id     ! user-specified identifier for filter
+    integer :: tally_id      ! user-specified identifier for filter
     integer :: i_filt        ! index in filters array
     integer :: i_elem        ! index of entry in dictionary
     integer :: n             ! size of arrays in mesh specification
@@ -2158,7 +2117,7 @@ contains
 
     READ_TALLIES: do i = 1, n
       ! Allocate tally
-      err = openmc_tally_set_type(i_start + i - 1, &
+      err = openmc_tally_allocate(i_start + i - 1, &
            C_CHAR_'generic' // C_NULL_CHAR)
 
       ! Get pointer to tally
@@ -2167,17 +2126,13 @@ contains
       ! Get pointer to tally xml node
       node_tal = node_tal_list(i)
 
-      ! Copy tally id
+      ! Copy and set tally id
       if (check_for_node(node_tal, "id")) then
-        call get_node_value(node_tal, "id", t % id)
+        call get_node_value(node_tal, "id", tally_id)
+        err = openmc_tally_set_id(i_start + i - 1, tally_id)
+        if (err /= 0) call fatal_error(to_f_string(openmc_err_msg))
       else
         call fatal_error("Must specify id for tally in tally XML file.")
-      end if
-
-      ! Check to make sure 'id' hasn't been used
-      if (tally_dict % has(t % id)) then
-        call fatal_error("Two or more tallies use the same unique ID: " &
-             // to_str(t % id))
       end if
 
       ! Copy tally name
@@ -2878,9 +2833,6 @@ contains
                // "' on tally " // to_str(t % id))
         end select
       end if
-
-      ! Add tally to dictionary
-      call tally_dict % set(t % id, i)
 
       end associate
     end do READ_TALLIES
@@ -3854,15 +3806,15 @@ contains
 
     do i = 1, n_cells
       ! Ignore non-normal cells and cells with defined temperature.
-      if (cells(i) % material(1) == NONE) cycle
+      if (cells(i) % fill() /= C_NONE) cycle
       if (cells(i) % sqrtkT(1) >= ZERO) cycle
 
       ! Set the number of temperatures equal to the number of materials.
       deallocate(cells(i) % sqrtkT)
-      allocate(cells(i) % sqrtkT(size(cells(i) % material)))
+      allocate(cells(i) % sqrtkT(cells(i) % material_size()))
 
       ! Check each of the cell materials for temperature data.
-      do j = 1, size(cells(i) % material)
+      do j = 1, cells(i) % material_size()
         ! Arbitrarily set void regions to 0K.
         if (cells(i) % material(j) == MATERIAL_VOID) then
           cells(i) % sqrtkT(j) = ZERO
@@ -3931,45 +3883,6 @@ contains
   end subroutine read_multipole_data
 
 !===============================================================================
-! ADJUST_INDICES changes the values for 'surfaces' for each cell and the
-! material index assigned to each to the indices in the surfaces and material
-! array rather than the unique IDs assigned to each surface and material. Also
-! assigns boundary conditions to surfaces based on those read into the bc_dict
-! dictionary
-!===============================================================================
-
-  subroutine adjust_indices()
-
-    integer :: i                      ! index for various purposes
-    integer :: j                      ! index for various purposes
-    integer :: id                     ! user-specified id
-
-    call adjust_indices_c()
-
-    do i = 1, n_cells
-      associate (c => cells(i))
-
-      ! =======================================================================
-      ! ADJUST MATERIAL/FILL POINTERS FOR EACH CELL
-
-      if (c % material(1) /= NONE) then
-        do j = 1, size(c % material)
-          id = c % material(j)
-          if (id == MATERIAL_VOID) then
-          else if (material_dict % has(id)) then
-            c % material(j) = material_dict % get(id)
-          else
-            call fatal_error("Could not find material " // trim(to_str(id)) &
-                 // " specified on cell " // trim(to_str(c % id())))
-          end if
-        end do
-      end if
-      end associate
-    end do
-
-  end subroutine adjust_indices
-
-!===============================================================================
 ! PREPARE_DISTRIBCELL initializes any distribcell filters present and sets the
 ! offsets for distribcells
 !===============================================================================
@@ -3992,7 +3905,7 @@ contains
 
     ! Find all cells with multiple (distributed) materials or temperatures.
     do i = 1, n_cells
-      if (size(cells(i) % material) > 1 .or. size(cells(i) % sqrtkT) > 1) then
+      if (cells(i) % material_size() > 1 .or. size(cells(i) % sqrtkT) > 1) then
         call cell_list % add(i)
       end if
     end do
@@ -4001,10 +3914,10 @@ contains
     ! number of respective cell instances.
     do i = 1, n_cells
       associate (c => cells(i))
-        if (size(c % material) > 1) then
-          if (size(c % material) /= c % n_instances()) then
+        if (c % material_size() > 1) then
+          if (c % material_size() /= c % n_instances()) then
             call fatal_error("Cell " // trim(to_str(c % id())) // " was &
-                 &specified with " // trim(to_str(size(c % material))) &
+                 &specified with " // trim(to_str(c % material_size())) &
                  // " materials but has " // trim(to_str(c % n_instances())) &
                  // " distributed instances. The number of materials must &
                  &equal one or the number of instances.")

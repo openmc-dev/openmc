@@ -1,17 +1,18 @@
+#include "openmc/mgxs.h"
+
 #include <cmath>
 #include <cstdlib>
 #include <algorithm>
 #include <valarray>
 
- #ifdef _OPENMP
- # include <omp.h>
- #endif
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
-#include "error.h"
-#include "math_functions.h"
-#include "random_lcg.h"
-#include "string_functions.h"
-#include "mgxs.h"
+#include "openmc/error.h"
+#include "openmc/math_functions.h"
+#include "openmc/random_lcg.h"
+#include "openmc/string_functions.h"
 
 
 namespace openmc {

@@ -9,7 +9,7 @@ import numpy as np
 import openmc
 import openmc.data
 import openmc.checkvalue as cv
-from openmc.clean_xml import clean_xml_indentation
+from openmc._xml import clean_indentation
 from .mixin import IDManagerMixin
 
 
@@ -284,6 +284,8 @@ class Material(IDManagerMixin):
         # Create the Material
         material = cls(mat_id, name)
         material.depletable = bool(group.attrs['depletable'])
+        if 'volume' in group.attrs:
+            material.volume = group.attrs['volume']
 
         # Read the names of the S(a,b) tables for this Material and add them
         if 'sab_names' in group:
@@ -833,6 +835,9 @@ class Material(IDManagerMixin):
         if self._depletable:
             element.set("depletable", "true")
 
+        if self._volume:
+            element.set("volume", str(self._volume))
+
         # Create temperature XML subelement
         if self.temperature is not None:
             subelement = ET.SubElement(element, "temperature")
@@ -906,6 +911,56 @@ class Material(IDManagerMixin):
             subelement.text = ' '.join(self._isotropic)
 
         return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate material from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.Material
+            Material generated from XML element
+
+        """
+        mat_id = int(elem.get('id'))
+        mat = cls(mat_id)
+        mat.name = elem.get('name')
+        mat.temperature = elem.get('temperature')
+        mat.depletable = bool(elem.get('depletable'))
+
+        # Get each nuclide
+        for nuclide in elem.findall('nuclide'):
+            name = nuclide.attrib['name']
+            if 'ao' in nuclide.attrib:
+                mat.add_nuclide(name, float(nuclide.attrib['ao']))
+            elif 'wo' in nuclide.attrib:
+                mat.add_nuclide(name, float(nuclide.attrib['wo']), 'wo')
+
+        # Get each S(a,b) table
+        for sab in elem.findall('sab'):
+            fraction = float(sab.get('fraction', 1.0))
+            mat.add_s_alpha_beta(sab.get('name'), fraction)
+
+        # Get total material density
+        density = elem.find('density')
+        units = density.get('units')
+        if units == 'sum':
+            mat.set_density(units)
+        else:
+            value = float(density.get('value'))
+            mat.set_density(units, value)
+
+        # Check for isotropic scattering nuclides
+        isotropic = elem.find('isotropic')
+        if isotropic is not None:
+            mat.isotropic = isotropic.text.split()
+
+        return mat
 
 
 class Materials(cv.CheckedList):
@@ -1026,8 +1081,41 @@ class Materials(cv.CheckedList):
         self._create_material_subelements(root_element)
 
         # Clean the indentation in the file to be user-readable
-        clean_xml_indentation(root_element)
+        clean_indentation(root_element)
 
         # Write the XML Tree to the materials.xml file
         tree = ET.ElementTree(root_element)
         tree.write(path, xml_declaration=True, encoding='utf-8')
+
+    @classmethod
+    def from_xml(cls, path='materials.xml'):
+        """Generate materials collection from XML file
+
+        Parameters
+        ----------
+        path : str, optional
+            Path to materials XML file
+
+        Returns
+        -------
+        openmc.Materials
+            Materials collection
+
+        """
+        tree = ET.parse(path)
+        root = tree.getroot()
+
+        # Generate each material
+        materials = cls()
+        for material in root.findall('material'):
+            materials.append(Material.from_xml_element(material))
+
+        # Check for cross sections settings
+        xs = tree.find('cross_sections')
+        if xs is not None:
+            materials.cross_sections = xs.text
+        mpl = tree.find('multipole_library')
+        if mpl is not None:
+            materials.multipole_library = mpl.text
+
+        return materials

@@ -5,7 +5,7 @@ module summary
   use error,           only: write_message
   use geometry_header
   use hdf5_interface
-  use material_header, only: Material, n_materials
+  use material_header, only: Material, n_materials, openmc_material_get_volume
   use mesh_header,     only: RegularMesh
   use message_passing
   use mgxs_interface
@@ -198,20 +198,20 @@ contains
       case (FILL_MATERIAL)
         call write_dataset(cell_group, "fill_type", "material")
 
-        if (size(c % material) == 1) then
+        if (c % material_size() == 1) then
           if (c % material(1) == MATERIAL_VOID) then
             call write_dataset(cell_group, "material", MATERIAL_VOID)
           else
             call write_dataset(cell_group, "material", &
-                 materials(c % material(1)) % id)
+                 materials(c % material(1)) % id())
           end if
         else
-          allocate(cell_materials(size(c % material)))
-          do j = 1, size(c % material)
+          allocate(cell_materials(c % material_size()))
+          do j = 1, c % material_size()
             if (c % material(j) == MATERIAL_VOID) then
               cell_materials(j) = MATERIAL_VOID
             else
-              cell_materials(j) = materials(c % material(j)) % id
+              cell_materials(j) = materials(c % material(j)) % id()
             end if
           end do
           call write_dataset(cell_group, "material", cell_materials)
@@ -315,8 +315,10 @@ contains
     integer :: j
     integer :: k
     integer :: n
+    integer :: err
     character(20), allocatable :: nuc_names(:)
     character(20), allocatable :: macro_names(:)
+    real(8) :: volume
     real(8), allocatable :: nuc_densities(:)
     integer :: num_nuclides
     integer :: num_macros
@@ -333,12 +335,17 @@ contains
     do i = 1, n_materials
       m => materials(i)
       material_group = create_group(materials_group, "material " // &
-           trim(to_str(m%id)))
+           trim(to_str(m%id())))
 
       if (m % depletable) then
         call write_attribute(material_group, "depletable", 1)
       else
         call write_attribute(material_group, "depletable", 0)
+      end if
+
+      err = openmc_material_get_volume(i, volume)
+      if (err == 0 .and. volume > ZERO) then
+        call write_attribute(material_group, "volume", volume)
       end if
 
       ! Write name for this material

@@ -1,12 +1,12 @@
-#include "reaction.h"
+#include "openmc/reaction.h"
 
 #include <string>
 #include <utility> // for move
 
-#include "hdf5_interface.h"
-#include "endf.h"
-#include "random_lcg.h"
-#include "secondary_uncorrelated.h"
+#include "openmc/hdf5_interface.h"
+#include "openmc/endf.h"
+#include "openmc/random_lcg.h"
+#include "openmc/secondary_uncorrelated.h"
 
 namespace openmc {
 

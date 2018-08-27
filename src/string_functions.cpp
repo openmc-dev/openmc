@@ -1,4 +1,4 @@
-#include "string_functions.h"
+#include "openmc/string_functions.h"
 
 namespace openmc {
 

@@ -196,7 +196,7 @@ contains
         i_material = p % material
         if (i_material /= MATERIAL_VOID) then
           do i_domain = 1, size(this % domain_id)
-            if (materials(i_material) % id == this % domain_id(i_domain)) then
+            if (materials(i_material) % id() == this % domain_id(i_domain)) then
               call check_hit(i_domain, i_material, indices, hits, n_mat)
             end if
           end do

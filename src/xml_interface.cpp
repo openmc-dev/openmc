@@ -1,9 +1,9 @@
-#include "xml_interface.h"
+#include "openmc/xml_interface.h"
 
 #include <algorithm>  // for transform
 #include <sstream>
 
-#include "error.h"
+#include "openmc/error.h"
 
 
 namespace openmc {
@@ -38,6 +38,21 @@ get_node_value(pugi::xml_node node, const char* name, bool lowercase,
   }
 
   return value;
+}
+
+bool
+get_node_value_bool(pugi::xml_node node, const char* name)
+{
+  if (node.attribute(name)) {
+    return node.attribute(name).as_bool();
+  } else if (node.child(name)) {
+    return node.child(name).text().as_bool();
+  } else {
+    std::stringstream err_msg;
+    err_msg << "Node \"" << name << "\" is not a member of the \""
+            << node.name() << "\" XML node";
+    fatal_error(err_msg);
+  }
 }
 
 } // namespace openmc

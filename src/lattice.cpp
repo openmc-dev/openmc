@@ -1,15 +1,15 @@
-#include "lattice.h"
+#include "openmc/lattice.h"
 
 #include <cmath>
 #include <sstream>
 #include <vector>
 
-#include "cell.h"
-#include "error.h"
-#include "geometry_aux.h"
-#include "hdf5_interface.h"
-#include "string_utils.h"
-#include "xml_interface.h"
+#include "openmc/cell.h"
+#include "openmc/error.h"
+#include "openmc/geometry_aux.h"
+#include "openmc/hdf5_interface.h"
+#include "openmc/string_utils.h"
+#include "openmc/xml_interface.h"
 
 
 namespace openmc {
@@ -29,7 +29,7 @@ std::unordered_map<int32_t, int32_t> lattice_map;
 Lattice::Lattice(pugi::xml_node lat_node)
 {
   if (check_for_node(lat_node, "id")) {
-    id = stoi(get_node_value(lat_node, "id"));
+    id = std::stoi(get_node_value(lat_node, "id"));
   } else {
     fatal_error("Must specify id of lattice in geometry XML file.");
   }
@@ -39,7 +39,7 @@ Lattice::Lattice(pugi::xml_node lat_node)
   }
 
   if (check_for_node(lat_node, "outer")) {
-    outer = stoi(get_node_value(lat_node, "outer"));
+    outer = std::stoi(get_node_value(lat_node, "outer"));
   }
 }
 
@@ -141,14 +141,14 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
   std::string dimension_str {get_node_value(lat_node, "dimension")};
   std::vector<std::string> dimension_words {split(dimension_str)};
   if (dimension_words.size() == 2) {
-    n_cells[0] = stoi(dimension_words[0]);
-    n_cells[1] = stoi(dimension_words[1]);
+    n_cells[0] = std::stoi(dimension_words[0]);
+    n_cells[1] = std::stoi(dimension_words[1]);
     n_cells[2] = 1;
     is_3d = false;
   } else if (dimension_words.size() == 3) {
-    n_cells[0] = stoi(dimension_words[0]);
-    n_cells[1] = stoi(dimension_words[1]);
-    n_cells[2] = stoi(dimension_words[2]);
+    n_cells[0] = std::stoi(dimension_words[0]);
+    n_cells[1] = std::stoi(dimension_words[1]);
+    n_cells[2] = std::stoi(dimension_words[2]);
     is_3d = true;
   } else {
     fatal_error("Rectangular lattice must be two or three dimensions.");
@@ -195,7 +195,7 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
       for (int ix = 0; ix < nx; ix++) {
         int indx1 = nx*ny*iz + nx*(ny-iy-1) + ix;
         int indx2 = nx*ny*iz + nx*iy + ix;
-        universes[indx1] = stoi(univ_words[indx2]);
+        universes[indx1] = std::stoi(univ_words[indx2]);
       }
     }
   }
@@ -400,9 +400,9 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
   : Lattice {lat_node}
 {
   // Read the number of lattice cells in each dimension.
-  n_rings = stoi(get_node_value(lat_node, "n_rings"));
+  n_rings = std::stoi(get_node_value(lat_node, "n_rings"));
   if (check_for_node(lat_node, "n_axial")) {
-    n_axial = stoi(get_node_value(lat_node, "n_axial"));
+    n_axial = std::stoi(get_node_value(lat_node, "n_axial"));
     is_3d = true;
   } else {
     n_axial = 1;
@@ -476,7 +476,7 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
         int indx = (2*n_rings-1)*(2*n_rings-1) * m
                     + (2*n_rings-1) * (i_a+n_rings-1)
                     + (i_x+n_rings-1);
-        universes[indx] = stoi(univ_words[input_index]);
+        universes[indx] = std::stoi(univ_words[input_index]);
         input_index++;
         // Walk the index to the right neighbor (which is not adjacent).
         i_x += 2;
@@ -505,7 +505,7 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
         int indx = (2*n_rings-1)*(2*n_rings-1) * m
                     + (2*n_rings-1) * (i_a+n_rings-1)
                     + (i_x+n_rings-1);
-        universes[indx] = stoi(univ_words[input_index]);
+        universes[indx] = std::stoi(univ_words[input_index]);
         input_index++;
         // Walk the index to the right neighbor (which is not adjacent).
         i_x += 2;
@@ -528,7 +528,7 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
         int indx = (2*n_rings-1)*(2*n_rings-1) * m
                     + (2*n_rings-1) * (i_a+n_rings-1)
                     + (i_x+n_rings-1);
-        universes[indx] = stoi(univ_words[input_index]);
+        universes[indx] = std::stoi(univ_words[input_index]);
         input_index++;
         // Walk the index to the right neighbor (which is not adjacent).
         i_x += 2;

@@ -1,4 +1,5 @@
-#include "random_lcg.h"
+#include "openmc/random_lcg.h"
+
 #include <cmath>
 
 

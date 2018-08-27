@@ -23,7 +23,7 @@ except ImportError:
 import scipy.sparse as sp
 
 import openmc.data
-from openmc.clean_xml import clean_xml_indentation
+from openmc._xml import clean_indentation
 from .nuclide import Nuclide, DecayTuple, ReactionTuple
 
 
@@ -356,7 +356,7 @@ class Chain(object):
         if _have_lxml:
             tree.write(str(filename), encoding='utf-8', pretty_print=True)
         else:
-            clean_xml_indentation(root_elem)
+            clean_indentation(root_elem)
             tree.write(str(filename), encoding='utf-8')
 
     def form_matrix(self, rates):

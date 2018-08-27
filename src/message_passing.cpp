@@ -1,4 +1,4 @@
-#include "message_passing.h"
+#include "openmc/message_passing.h"
 
 namespace openmc {
 namespace mpi {

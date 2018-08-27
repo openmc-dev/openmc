@@ -1,15 +1,16 @@
-#include "distribution_energy.h"
+#include "openmc/distribution_energy.h"
 
 #include <algorithm> // for max, min, copy, move
 #include <cstddef>   // for size_t
 #include <iterator>  // for back_inserter
 
-#include "endf.h"
-#include "hdf5_interface.h"
-#include "math_functions.h"
-#include "random_lcg.h"
-#include "search.h"
 #include "xtensor/xview.hpp"
+
+#include "openmc/endf.h"
+#include "openmc/hdf5_interface.h"
+#include "openmc/math_functions.h"
+#include "openmc/random_lcg.h"
+#include "openmc/search.h"
 
 namespace openmc {
 

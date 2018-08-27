@@ -1,4 +1,4 @@
-#include "openmc.h"
+#include "openmc/capi.h"
 
 // OPENMC_RUN encompasses all the main logic where iterations are performed
 // over the batches, generations, and histories in a fixed source or k-eigenvalue

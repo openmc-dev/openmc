@@ -243,7 +243,7 @@ contains
     use error,            only: fatal_error, warning
     use mesh_header,      only: RegularMesh, openmc_extend_meshes
     use string
-    use tally,            only: openmc_tally_set_type
+    use tally,            only: openmc_tally_allocate
     use tally_header,     only: openmc_extend_tallies
     use tally_filter_header
     use tally_filter
@@ -262,6 +262,7 @@ contains
     integer(C_INT) :: err
     integer :: i_filt     ! index in filters array
     integer :: filt_id
+    integer :: tally_id
     integer :: iarray3(3) ! temp integer array
     real(8) :: rarray3(3) ! temp double array
     real(C_DOUBLE), allocatable :: energies(:)
@@ -433,15 +434,12 @@ contains
     ! Begin loop around tallies
     do i = 1, size(cmfd_tallies)
       ! Allocate tally
-      err = openmc_tally_set_type(i_start + i - 1, C_CHAR_'generic' // C_NULL_CHAR)
+      err = openmc_tally_allocate(i_start + i - 1, C_CHAR_'generic' // C_NULL_CHAR)
+      call openmc_get_tally_next_id(tally_id)
+      err = openmc_tally_set_id(i_start + i - 1, tally_id)
 
       ! Point t to tally variable
       associate (t => cmfd_tallies(i) % obj)
-
-      ! Set reset property
-      if (check_for_node(root, "reset")) then
-        call get_node_value(root, "reset", t % reset)
-      end if
 
       ! Set the incoming energy mesh filter index in the tally find_filter
       ! array
@@ -464,10 +462,10 @@ contains
         t % name = "CMFD flux, total"
 
         ! Set tally estimator to analog
-        t % estimator = ESTIMATOR_ANALOG
+        err = openmc_tally_set_estimator(i_start + i - 1, C_CHAR_'analog' // C_NULL_CHAR)
 
         ! Set tally type to volume
-        t % type = TALLY_VOLUME
+        err = openmc_tally_set_type(i_start + i - 1, C_CHAR_'volume' // C_NULL_CHAR)
 
         ! Allocate and set filters
         allocate(filter_indices(n_filter))
@@ -492,10 +490,10 @@ contains
         t % name = "CMFD neutron production"
 
         ! Set tally estimator to analog
-        t % estimator = ESTIMATOR_ANALOG
+        err = openmc_tally_set_estimator(i_start + i - 1, C_CHAR_'analog' // C_NULL_CHAR)
 
         ! Set tally type to volume
-        t % type = TALLY_VOLUME
+        err = openmc_tally_set_type(i_start + i - 1, C_CHAR_'volume' // C_NULL_CHAR)
 
         ! Set the incoming energy mesh filter index in the tally find_filter
         ! array
@@ -527,7 +525,7 @@ contains
         t % name = "CMFD surface currents"
 
         ! Set tally estimator to analog
-        t % estimator = ESTIMATOR_ANALOG
+        err = openmc_tally_set_estimator(i_start + i - 1, C_CHAR_'analog' // C_NULL_CHAR)
 
         ! Allocate and set filters
         allocate(filter_indices(n_filter))
@@ -544,17 +542,17 @@ contains
 
         ! Set macro bins
         t % score_bins(1) = SCORE_CURRENT
-        t % type = TALLY_MESH_SURFACE
+        err = openmc_tally_set_type(i_start + i - 1, C_CHAR_'mesh-surface' // C_NULL_CHAR)
 
       else if (i == 4) then
         ! Set name
         t % name = "CMFD P1 scatter"
 
         ! Set tally estimator to analog
-        t % estimator = ESTIMATOR_ANALOG
+        err = openmc_tally_set_estimator(i_start + i - 1, C_CHAR_'analog' // C_NULL_CHAR)
 
         ! Set tally type to volume
-        t % type = TALLY_VOLUME
+        err = openmc_tally_set_type(i_start + i - 1, C_CHAR_'volume' // C_NULL_CHAR)
 
         ! Allocate and set filters
         n_filter = 2

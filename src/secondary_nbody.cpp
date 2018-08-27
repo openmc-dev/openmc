@@ -1,11 +1,11 @@
-#include "secondary_nbody.h"
+#include "openmc/secondary_nbody.h"
 
 #include <cmath> // for log
 
-#include "constants.h"
-#include "hdf5_interface.h"
-#include "math_functions.h"
-#include "random_lcg.h"
+#include "openmc/constants.h"
+#include "openmc/hdf5_interface.h"
+#include "openmc/math_functions.h"
+#include "openmc/random_lcg.h"
 
 namespace openmc {
 

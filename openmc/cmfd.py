@@ -15,6 +15,8 @@ from numbers import Real, Integral
 from xml.etree import ElementTree as ET # TODO Remove
 import sys   # TODO Remove
 import numpy as np
+# TODO Include comment for this
+np.seterr(divide='ignore', invalid='ignore')
 from scipy import sparse
 import time
 
@@ -1197,7 +1199,7 @@ class CMFDRun(object):
         # Loop over all groups and set CMFD flux based on indices of coremap
         # and values of phi
         for g in range(ng):
-            flux[idx + (np.full((n,),g),)]  = phi[:,g]
+            cmfd_flux[idx + (np.full((n,),g),)]  = phi[:,g]
 
         # Compute fission source
         self._cmfd_src = np.sum(self._nfissxs[:,:,:,:,:] * \
@@ -1206,9 +1208,11 @@ class CMFDRun(object):
     def _build_matrices(self, adjoint):
         # Build loss matrix
         loss = self._build_loss_matrix(adjoint)
+        self._build_loss_matrix2(adjoint)
 
         # Build production matrix
         prod = self._build_prod_matrix(adjoint)
+        self._build_prod_matrix2(adjoint)
 
         # TODO Write out matrices
         #if self._cmfd_write_matrices:
@@ -1334,6 +1338,118 @@ class CMFDRun(object):
 
         return loss
 
+    def _build_loss_matrix2(self, adjoint):
+        # TODO build as csr matrix
+        # Extract spatial and energy indices and define matrix dimension
+        ng = self._indices[3]
+        n = self._mat_dim*ng
+
+        # Allocate matrix
+        loss2 = np.zeros((n, n))
+
+        # Define net leakage coefficient for each matrix element
+        jnet = ((1.0 * self._dtilde[:,:,:,:,1] + self._dhat[:,:,:,:,1]) - \
+               (-1.0 * self._dtilde[:,:,:,:,0] + self._dhat[:,:,:,:,0])) / \
+               self._hxyz[0] + \
+               ((1.0 * self._dtilde[:,:,:,:,3] + self._dhat[:,:,:,:,3]) - \
+               (-1.0 * self._dtilde[:,:,:,:,2] + self._dhat[:,:,:,:,2])) / \
+               self._hxyz[1] + \
+               ((1.0 * self._dtilde[:,:,:,:,5] + self._dhat[:,:,:,:,5]) - \
+               (-1.0 * self._dtilde[:,:,:,:,4] + self._dhat[:,:,:,:,4])) / \
+               self._hxyz[2]
+
+        # Shift coremap in all directions to determine whether leakage term
+        # should be defined for particular cell in matrix
+        coremap_minusx = np.pad(self._coremap, ((1,0),(0,0),(0,0)), mode='constant',
+                            constant_values=_CMFD_NOACCEL)[:-1,:,:]
+
+        coremap_plusx = np.pad(self._coremap, ((0,1),(0,0),(0,0)), mode='constant',
+                            constant_values=_CMFD_NOACCEL)[1:,:,:]
+
+        coremap_minusy = np.pad(self._coremap, ((0,0),(1,0),(0,0)), mode='constant',
+                            constant_values=_CMFD_NOACCEL)[:,:-1,:]
+
+        coremap_plusy = np.pad(self._coremap, ((0,0),(0,1),(0,0)), mode='constant',
+                            constant_values=_CMFD_NOACCEL)[:,1:,:]
+
+        coremap_minusz = np.pad(self._coremap, ((0,0),(0,0),(1,0)), mode='constant',
+                            constant_values=_CMFD_NOACCEL)[:,:,:-1]
+
+        coremap_plusz = np.pad(self._coremap, ((0,0),(0,0),(0,1)), mode='constant',
+                            constant_values=_CMFD_NOACCEL)[:,:,1:]
+
+        condition = np.logical_and(self._coremap != _CMFD_NOACCEL,
+                                   coremap_minusy != _CMFD_NOACCEL)
+
+        for g in range(ng):
+            # Leakage terms
+            condition = np.logical_and(self._coremap != _CMFD_NOACCEL,
+                                       coremap_minusx != _CMFD_NOACCEL)
+            idx_x = ng * (self._coremap[condition]) + g
+            idx_y = ng * (coremap_minusx[condition]) + g
+            vals = (-1.0 * self._dtilde[:,:,:,g,0] -
+                   self._dhat[:,:,:,g,0])[condition] / self._hxyz[0]
+            loss2[idx_x, idx_y] = vals
+
+            condition = np.logical_and(self._coremap != _CMFD_NOACCEL,
+                                       coremap_plusx != _CMFD_NOACCEL)
+            idx_x = ng * (self._coremap[condition]) + g
+            idx_y = ng * (coremap_plusx[condition]) + g
+            vals = (-1.0 * self._dtilde[:,:,:,g,1] +
+                   self._dhat[:,:,:,g,1])[condition] / self._hxyz[0]
+            loss2[idx_x, idx_y] = vals
+
+            condition = np.logical_and(self._coremap != _CMFD_NOACCEL,
+                                       coremap_minusy != _CMFD_NOACCEL)
+            idx_x = ng * (self._coremap[condition]) + g
+            idx_y = ng * (coremap_minusy[condition]) + g
+            vals = (-1.0 * self._dtilde[:,:,:,g,2] -
+                   self._dhat[:,:,:,g,2])[condition] / self._hxyz[1]
+            loss2[idx_x, idx_y] = vals
+
+            condition = np.logical_and(self._coremap != _CMFD_NOACCEL,
+                                       coremap_plusy != _CMFD_NOACCEL)
+            idx_x = ng * (self._coremap[condition]) + g
+            idx_y = ng * (coremap_plusy[condition]) + g
+            vals = (-1.0 * self._dtilde[:,:,:,g,3] +
+                   self._dhat[:,:,:,g,3])[condition] / self._hxyz[1]
+            loss2[idx_x, idx_y] = vals
+
+            condition = np.logical_and(self._coremap != _CMFD_NOACCEL,
+                                       coremap_minusz != _CMFD_NOACCEL)
+            idx_x = ng * (self._coremap[condition]) + g
+            idx_y = ng * (coremap_minusz[condition]) + g
+            vals = (-1.0 * self._dtilde[:,:,:,g,4] -
+                   self._dhat[:,:,:,g,4])[condition] / self._hxyz[1]
+            loss2[idx_x, idx_y] = vals
+
+            condition = np.logical_and(self._coremap != _CMFD_NOACCEL,
+                                       coremap_plusz != _CMFD_NOACCEL)
+            idx_x = ng * (self._coremap[condition]) + g
+            idx_y = ng * (coremap_plusz[condition]) + g
+            vals = (-1.0 * self._dtilde[:,:,:,g,5] +
+                   self._dhat[:,:,:,g,5])[condition] / self._hxyz[1]
+            loss2[idx_x, idx_y] = vals
+
+            # Loss of neutrons
+            condition = self._coremap != _CMFD_NOACCEL
+            idx_x = ng * (self._coremap[condition]) + g
+            idx_y = idx_x
+            vals = (jnet[:,:,:,g] + self._totalxs[:,:,:,g] - \
+                   self._scattxs[:,:,:,g,g])[condition]
+            loss2[idx_x, idx_y] = vals
+
+            # Off diagonal in-scattering
+            for h in range(ng):
+                #TODO check for adjoint (see cmfd_loss_operator.F90)
+                if h != g:
+                    condition = self._coremap != _CMFD_NOACCEL
+                    idx_x = ng * (self._coremap[condition]) + g
+                    idx_y = ng * (self._coremap[condition]) + h
+                    vals = (-1.0 * self._scattxs[:, :, :, h, g])[condition]
+                    loss2[idx_x, idx_y] = vals
+
+
     def _build_prod_matrix(self, adjoint):
         # Extract spatial and energy indices and define matrix dimension
         nx = self._indices[0]
@@ -1384,6 +1500,24 @@ class CMFDRun(object):
         '''
         return prod
 
+    def _build_prod_matrix2(self, adjoint):
+        # Extract spatial and energy indices and define matrix dimension
+        ng = self._indices[3]
+        n = self._mat_dim*ng
+
+        # Allocate matrix
+        prod2 = np.zeros((n, n))
+
+        for g in range(ng):
+            for h in range(ng):
+                #TODO check for adjoint (see cmfd_prod_operator.F90)
+                condition = self._coremap != _CMFD_NOACCEL
+                idx_x = ng * (self._coremap[condition]) + g
+                idx_y = ng * (self._coremap[condition]) + h
+                vals = (self._nfissxs[:, :, :, h, g])[condition]
+                prod2[idx_x, idx_y] = vals
+
+        prod = prod2
 
     def _matrix_to_indices(self, irow, nx, ny, nz, ng):
         # Get indices from coremap

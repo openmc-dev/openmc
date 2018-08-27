@@ -2,7 +2,11 @@
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
+#include "openmc/distribution.h"
+#include "openmc/distribution_multi.h"
+#include "openmc/distribution_spatial.h"
 #include "openmc/error.h"
+#include "openmc/source.h"
 #include "openmc/string_utils.h"
 #include "openmc/xml_interface.h"
 
@@ -97,6 +101,24 @@ void read_settings(pugi::xml_node* root)
     auto range = get_node_array<double>(*root, "temperature_range");
     temperature_range[0] = range[0];
     temperature_range[1] = range[1];
+  }
+
+  // ==========================================================================
+  // EXTERNAL SOURCE
+
+  // Get point to list of <source> elements and make sure there is at least one
+  for (pugi::xml_node node : root->children("source")) {
+    external_sources.emplace_back(node);
+  }
+
+  // If no source specified, default to isotropic point source at origin with Watt spectrum
+  if (external_sources.empty()) {
+    SourceDistribution source {
+      UPtrSpace{new SpatialPoint({0.0, 0.0, 0.0})},
+      UPtrAngle{new Isotropic()},
+      UPtrDist{new Watt(0.988, 2.249e-6)}
+    };
+    external_sources.push_back(std::move(source));
   }
 }
 

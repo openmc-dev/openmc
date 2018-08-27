@@ -147,7 +147,7 @@ module mgxs_interface
   end interface
 
   ! Number of energy groups
-  integer(C_INT) :: num_energy_groups
+  integer(C_INT), bind(C) :: num_energy_groups
 
   ! Number of delayed groups
   integer(C_INT) :: num_delayed_groups
@@ -159,6 +159,13 @@ module mgxs_interface
   real(8), allocatable :: energy_bin_avg(:)
 
   ! Energy group structure with increasing energy
-  real(8), allocatable :: rev_energy_bins(:)
+  real(C_DOUBLE), allocatable, target :: rev_energy_bins(:)
+
+contains
+
+  function rev_energy_bins_ptr() result(ptr) bind(C)
+    type(C_PTR) :: ptr
+    ptr = C_LOC(rev_energy_bins(1))
+  end function
 
 end module mgxs_interface

@@ -22,7 +22,7 @@ module simulation_header
 
   integer(C_INT), bind(C, name='openmc_current_batch') :: current_batch     ! current batch
   integer(C_INT), bind(C, name='openmc_current_gen') :: current_gen       ! current generation within a batch
-  integer :: total_gen     = 0 ! total number of generations simulated
+  integer(C_INT), bind(C, name='openmc_total_gen') :: total_gen     = 0 ! total number of generations simulated
   logical(C_BOOL), bind(C, name='openmc_simulation_initialized') :: &
        simulation_initialized = .false.
   logical :: need_depletion_rx ! need to calculate depletion reaction rx?
@@ -80,8 +80,8 @@ contains
 ! OVERALL_GENERATION determines the overall generation number
 !===============================================================================
 
-  pure function overall_generation() result(gen)
-    integer :: gen
+  pure function overall_generation() result(gen) bind(C)
+    integer(C_INT) :: gen
     gen = gen_per_batch*(current_batch - 1) + current_gen
   end function overall_generation
 

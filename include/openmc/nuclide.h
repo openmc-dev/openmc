@@ -1,9 +1,23 @@
+//! \file nuclide.h
+//! \brief Nuclide type and other associated types/data
+
 #ifndef OPENMC_NUCLIDE_H
 #define OPENMC_NUCLIDE_H
+
+#include <array>
 
 #include "openmc/constants.h"
 
 namespace openmc {
+
+//==============================================================================
+// Global variables
+//==============================================================================
+
+// Minimum/maximum transport energy for each particle type. Order corresponds to
+// that of the ParticleType enum
+extern std::array<double, 2> energy_min;
+extern std::array<double, 2> energy_max;
 
 //===============================================================================
 //! Cached microscopic cross sections for a particular nuclide at the current

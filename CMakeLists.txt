@@ -299,8 +299,6 @@ add_library(libopenmc SHARED
   src/cmfd_solver.F90
   src/constants.F90
   src/dict_header.F90
-  src/distribution_multivariate.F90
-  src/distribution_univariate.F90
   src/eigenvalue.F90
   src/endf.F90
   src/endf_header.F90
@@ -341,8 +339,6 @@ add_library(libopenmc SHARED
   src/settings.F90
   src/simulation_header.F90
   src/simulation.F90
-  src/source.F90
-  src/source_header.F90
   src/state_point.F90
   src/stl_vector.F90
   src/string.F90
@@ -400,6 +396,7 @@ add_library(libopenmc SHARED
   src/message_passing.cpp
   src/mgxs.cpp
   src/mgxs_interface.cpp
+  src/nuclide.cpp
   src/particle.cpp
   src/plot.cpp
   src/position.cpp
@@ -414,6 +411,7 @@ add_library(libopenmc SHARED
   src/scattdata.cpp
   src/settings.cpp
   src/simulation.cpp
+  src/source.cpp
   src/state_point.cpp
   src/string_functions.cpp
   src/surface.cpp

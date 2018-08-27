@@ -16,6 +16,7 @@ from xml.etree import ElementTree as ET # TODO Remove
 import sys   # TODO Remove
 import numpy as np
 from scipy import sparse
+import time
 
 import openmc.capi
 from openmc.clean_xml import clean_xml_indentation  # TODO Remove
@@ -637,11 +638,9 @@ class CMFDRun(object):
             mat_dim
 
     TODO: Put descriptions for all methods in CMFDRun
-    TODO All timing variables
     TODO Get rid of CMFD constants
     TODO Get rid of unused variables defined in init
     TODO Make sure all self variables defined in init
-    TODO Clean up logic for adjoint, understand what different adjoint types are doing
     TODO Check to make sure no compatibility issues with numpy arrays for input variables
     TODO Create write_vector function in cmfd_solver.F90
 
@@ -679,7 +678,7 @@ class CMFDRun(object):
         self._cmfd_on = False
         self._mat_dim = _CMFD_NOACCEL
         self._keff_bal = None
-        self._cmfd_adjoint_type = None
+        self._cmfd_adjoint_type = "physical"
         self._keff = None
         self._adj_keff = None
         self._phi = None
@@ -707,6 +706,10 @@ class CMFDRun(object):
         self._dom = None
         self._k_cmfd = None
         self._resnb = None
+
+        self._time_cmfd = None
+        self._time_cmfdbuild = None
+        self._time_cmfdsolve = None
 
     @property
     def cmfd_begin(self):
@@ -739,6 +742,10 @@ class CMFDRun(object):
     @property
     def norm(self):
         return self._norm
+
+    @property
+    def cmfd_adjoint_type(self):
+        return self._cmfd_adjoint_type
 
     @property
     def cmfd_power_monitor(self):
@@ -846,6 +853,13 @@ class CMFDRun(object):
         check_type('CMFD norm', norm, Real)
         self._norm = norm
 
+    @cmfd_adjoint_type.setter
+    def cmfd_adjoint_type(self, adjoint_type):
+        check_type('CMFD adjoint type', adjoint_type, str)
+        check_value('CMFD adjoint type', adjoint_type,
+                    ['math', 'phyical'])
+        self._cmfd_adjoint_type = adjoint_type
+
     @cmfd_power_monitor.setter
     def cmfd_power_monitor(self, cmfd_power_monitor):
         check_type('CMFD power monitor', cmfd_power_monitor, bool)
@@ -877,47 +891,65 @@ class CMFDRun(object):
         self._cmfd_write_matrices = cmfd_write_matrices
 
     def run(self, mpi_procs=None, omp_num_threads=None):
+        # Check number of OpenMP threads is valid input and initialize C API
         if omp_num_threads is not None:
             check_type('OpenMP num threads', omp_num_threads, Integral)
             openmc.capi.init(args=['-s',str(omp_num_threads)])
         else:
             openmc.capi.init()
+
+        # Configure cmfd parameters and tallies
         self._configure_cmfd()
+
+        # Initialize simulation
         openmc.capi.simulation_init()
 
         while(True):
+            # Run everything in next batch before initializing cmfd
             openmc.capi.next_batch_before_cmfd_init()
+
+            # Initialize CMFD batch
             self._cmfd_init_batch()
+
+            # Run everything in next batch in between initializing and
+            # executing CMFD
+            status = openmc.capi.next_batch_between_cmfd_init_execute()
+
             # Status determines whether batch should continue with a
             # CMFD update or skip it entirely if it is a restart run
-            status = openmc.capi.next_batch_between_cmfd_init_execute()
             if status != 0:
+
+                # Perform CMFD calculation if on
                 if self._cmfd_on:
                     self._execute_cmfd()
-                # Status now determines whether another batch should be run
-                # or simulation should be terminated.
+
+                # Run everything in next batch after executing CMFD. Status
+                # now determines whether another batch should be run or
+                # simulation should be terminated.
                 status = openmc.capi.next_batch_after_cmfd_execute()
             if status != 0:
                 break
 
+        # Finalize simuation
         openmc.capi.simulation_finalize()
+
+        # Finalize and free memory
         openmc.capi.finalize()
 
     def _configure_cmfd(self):
-        # Read in cmfd input from python
+        # Read in cmfd input defined in Python
         self._read_cmfd_input()
 
-        # TODO
         # Initialize timers
-        #call time_cmfd % reset()
-        #call time_cmfdbuild % reset()
-        #call time_cmfdsolve % reset()
+        self._time_cmfd = 0.0
+        self._time_cmfdbuild = 0.0
+        self._time_cmfdsolve = 0.0
 
         # Initialize all numpy arrays used for cmfd solver
         self._allocate_cmfd()
 
     def _read_cmfd_input(self):
-        # Print message
+        # Print message to user
         if openmc.capi.settings.verbosity >= 7 and openmc.capi.settings.master:
             print(' Configuring CMFD parameters for simulation')
 
@@ -985,6 +1017,7 @@ class CMFDRun(object):
         self._dhat = np.zeros((nx, ny, nz, ng, 6))
 
         # Allocate dimensions for each box (assume fixed mesh dimensions)
+        # TODO Update this
         self._hxyz = np.zeros((3))
 
         # Allocate surface currents
@@ -1006,14 +1039,18 @@ class CMFDRun(object):
         self._k_cmfd = []
 
     def _cmfd_init_batch(self):
+        # Get simulation parameters through C API
         current_batch = openmc.capi.settings.current_batch
         restart_run = openmc.capi.settings.restart_run
         restart_batch = openmc.capi.settings.restart_batch
 
+        # Check to activate CMFD diffusion and possible feedback
         if self._cmfd_begin == current_batch:
             self._cmfd_on = True
 
         # TODO: Test restart_batch
+        # If this is a restart run we are just replaying batches so don't
+        # execute anything
         if restart_run and current_batch <= restart_batch:
             return
 
@@ -1023,11 +1060,10 @@ class CMFDRun(object):
             self._cmfd_tally_reset()
 
     def _execute_cmfd(self):
-        # CMFD single processor on master
+        # Run CMFD on single processor on master
         if openmc.capi.settings.master:
-            # TODO
             #! Start cmfd timer
-            #call time_cmfd % start()
+            time_start_cmfd = time.time()
 
             # Create cmfd data from OpenMC tallies
             self._set_up_cmfd()
@@ -1037,22 +1073,22 @@ class CMFDRun(object):
 
             # Save k-effective
             self._k_cmfd.append(self._keff)
-            '''
-            ! TODO check to perform adjoint on last batch
-            if (current_batch == n_batches .and. cmfd_run_adjoint) then
-            call cmfd_solver_execute(adjoint=.true.)
-            end if
-            '''
-            # calculate fission source
+
+            # Check to perform adjoint on last batch
+            if (openmc.capi.settings.current_batch == \
+                    openmc.capi.settings.batches and self._cmfd_run_adjoint):
+                self._cmfd_solver_execute(adjoint=True)
+
+            # Calculate fission source
             self._calc_fission_source()
-
         '''
-        ! TODO calculate weight factors
+        ! TODO Calculate weight factors
         call cmfd_reweight(.true.)
-
-        ! TODO stop cmfd timer
-        if (master) call time_cmfd % stop()
         '''
+        # Stop cmfd timer
+        if openmc.capi.settings.master:
+            time_stop_cmfd = time.time()
+            self._time_cmfd += time_stop_cmfd - time_start_cmfd
 
     def _cmfd_tally_reset(self):
         # Print message
@@ -1065,9 +1101,8 @@ class CMFDRun(object):
             tallies[tally_id].reset()
 
     def _set_up_cmfd(self):
-        # Check for core map and set it up
+        # Set up CMFD coremap
         if (self._mat_dim == _CMFD_NOACCEL):
-            # TODO: Don't reshape coremap before this point, reshape in set_coremap
             self._set_coremap()
 
         # Calculate all cross sections based on reaction rates from last batch
@@ -1087,30 +1122,31 @@ class CMFDRun(object):
         # Calculate dhat
         self._compute_dhat()
 
-        # Calculate dhat
         self._compute_dhat2()
 
     def _cmfd_solver_execute(self, adjoint=False):
-        # TODO Check for physical adjoint
+        # Check for physical adjoint
         physical_adjoint = adjoint and self._cmfd_adjoint_type == 'physical'
 
-        # TODO Start timer for build
-        # call time_cmfdbuild % start()
+        # Start timer for build
+        time_start_buildcmfd = time.time()
 
-        # Initialize matrices and vectors
+        # Build loss and production matrices
         loss, prod = self._build_matrices(physical_adjoint)
 
-        # TODO Check for mathematical adjoint calculation
-        #if adjoint_calc and self._cmfd_adjoint_type == 'math':
-        #     self._compute_adjoint()
+        # Check for mathematical adjoint calculation
+        if adjoint and self._cmfd_adjoint_type == 'math':
+            loss, prod = self._compute_adjoint(loss, prod)
 
-        # TODO Stop timer for build
-        # call time_cmfdbuild % stop()
+        # Stop timer for build
+        time_stop_buildcmfd = time.time()
+        self._time_cmfdbuild += time_stop_buildcmfd - time_start_buildcmfd
 
         # Begin power iteration
-        # TODO call time_cmfdsolve % start()
+        time_start_solvecmfd = time.time()
         phi, keff, dom = self._execute_power_iter(loss, prod)
-        # TODO call time_cmfdsolve % stop()
+        time_stop_solvecmfd = time.time()
+        self._time_cmfdsolve += time_stop_solvecmfd - time_start_solvecmfd
 
         # Save results, normalizing phi to sum to 1
         if adjoint:
@@ -1135,20 +1171,61 @@ class CMFDRun(object):
         '''
 
     def _calc_fission_source(self):
-        pass
+        # Extract number of groups and number of accelerated regions
+        nx = self._indices[0]
+        ny = self._indices[1]
+        nz = self._indices[2]
+        ng = self._indices[3]
+        n = self._mat_dim
+
+        # Reset cmfd source to 0
+        self._cmfd_src.fill(0.)
+
+        # Calculate volume
+        vol = np.product(self._hxyz)
+
+        # Reshape phi by number of groups
+        phi = self._phi.reshape((n, ng))
+
+        # Extract indices of coremap that are accelerated
+        idx = np.where(self._coremap != _CMFD_NOACCEL)
+
+        # Initialize CMFD flux map that maps phi to actualy spatial and group
+        # indices of problem
+        cmfd_flux = np.zeros((nx, ny, nz, ng))
+
+        # Loop over all groups and set CMFD flux based on indices of coremap
+        # and values of phi
+        for g in range(ng):
+            flux[idx + (np.full((n,),g),)]  = phi[:,g]
+
+        # Compute fission source
+        self._cmfd_src = np.sum(self._nfissxs[:,:,:,:,:] * \
+                         cmfd_flux[:,:,:,:,np.newaxis], axis=3) * vol
 
     def _build_matrices(self, adjoint):
-        # Set up matrices
-
+        # Build loss matrix
         loss = self._build_loss_matrix(adjoint)
+
+        # Build production matrix
         prod = self._build_prod_matrix(adjoint)
-        '''
-        # TODO Write matrices
-        if (cmfd_write_matrices) then
-          call loss % write('loss.dat')
-          call prod % write('prod.dat')
-        end if
-        '''
+
+        # TODO Write out matrices
+        #if self._cmfd_write_matrices:
+        #    self._write_matrix(loss, 'loss.dat')
+        #    self._write_matrix(prod, 'prod.dat')
+
+        return loss, prod
+
+    def _compute_adjoint(self, loss, prod):
+        # Transpose matrices
+        loss = np.transpose(loss)
+        prod = np.transpose(prod)
+
+        # TODO Write out matrices
+        #if self._cmfd_write_matrices:
+        #    self._write_matrix(loss, 'adj_loss.dat')
+        #    self._write_matrix(prod, 'adj_prod.dat')
 
         return loss, prod
 
@@ -1170,6 +1247,7 @@ class CMFDRun(object):
         jo = np.zeros((6,))
 
         for irow in range(n):
+            # Get indices for row in matrix
             i,j,k,g = self._matrix_to_indices(irow, nx, ny, nz, ng)
 
             # Retrieve cell data
@@ -1219,6 +1297,7 @@ class CMFDRun(object):
                 val = jnet + totxs - scattxsgg
                 loss[irow, irow] = val
 
+                # Begin loop over off diagonal in-scattering
                 for h in range(ng):
                     # Cycle though if h=g, value already banked in removal xs
                     if h == g:
@@ -1227,14 +1306,13 @@ class CMFDRun(object):
                     # Get neighbor matrix index
                     scatt_mat_idx = self._indices_to_matrix(i,j,k, h, ng)
 
-                    # TODO Check for adjoint
-                    #if (adjoint_calc) then
-                        #! Get scattering macro xs, transposed!
-                        #scattxshg = cmfd%scattxs(g, h, i, j, k)
-                    #else
-                    # Get scattering macro xs
-                    scattxshg = self._scattxs[i, j, k, h, g]
-                    #end if
+                    # Check for adjoint
+                    if adjoint:
+                        # Get scattering macro xs, transposed!
+                        scattxshg = self._scattxs[i, j, k, g, h]
+                    else:
+                        # Get scattering macro xs
+                        scattxshg = self._scattxs[i, j, k, h, g]
 
                     # Negate the scattering xs
                     val = -1.0*scattxshg
@@ -1268,24 +1346,26 @@ class CMFDRun(object):
         prod = np.zeros((n, n))
 
         for irow in range(n):
+            # Get indices for row in matrix
             i,j,k,g = self._matrix_to_indices(irow, nx, ny, nz, ng)
 
             # Check if at a reflector
             if self._coremap[i,j,k] == _CMFD_NOACCEL:
                 continue
 
-            # loop around all other groups
+            # Loop around all other groups
             for h in range(ng):
+                # Get matrix column location
                 hmat_idx = self._indices_to_matrix(i,j,k, h, ng)
-                # TODO check for adjoint and bank val
-                #if (adjoint_calc) then
-                #  ! get nu-fission cross section from cell
-                #  nfissxs = cmfd%nfissxs(g,h,i,j,k)
-                #else
-                # get nu-fission cross section from cell
-                nfissxs = self._nfissxs[i, j, k, h, g]
+                # Check for adjoint and bank val
+                if adjoint:
+                    # Get nu-fission cross section from cell, transposed!
+                    nfissxs = self._nfissxs[i, j, k, g, h]
+                else:
+                    # Get nu-fission cross section from cell
+                    nfissxs = self._nfissxs[i, j, k, h, g]
 
-                # set as value to be recorded
+                # Set as value to be recorded
                 val = nfissxs
 
                 # record value in matrix
@@ -1312,9 +1392,11 @@ class CMFDRun(object):
         i = spatial_idx[0][0]
         j = spatial_idx[1][0]
         k = spatial_idx[2][0]
+
         return i, j, k, g
 
     def _indices_to_matrix(self, i, j, k, g, ng):
+        # Get matrix index from coremap
         matidx = ng*(self._coremap[i,j,k]) + g
         return matidx
 
@@ -1353,7 +1435,9 @@ class CMFDRun(object):
         prod = sparse.csr_matrix(prod)
         loss = sparse.csr_matrix(loss)
 
+        # Begin power iteration
         for i in range(maxits):
+            # Check if reach max number of iterations
             if i == maxits - 1:
                 raise OpenMCError('Reached maximum iterations in CMFD power '
                                   'iteration solver.')
@@ -1415,8 +1499,9 @@ class CMFDRun(object):
     def _set_coremap(self):
         self._mat_dim = np.sum(self._coremap)
 
-        # Create a temporary array that aggregates cumulative sum over
-        # accelerated regions
+        # Define coremap as cumulative sum over accelerated regions,
+        # otherwise set value to _CMFD_NOACCEL
+        # TODO, does algorithm work if CMFD_ACCEL is fixed number
         self._coremap = np.where(self._coremap==0, _CMFD_NOACCEL,
                         np.cumsum(self._coremap)-1)
 
@@ -1597,6 +1682,7 @@ class CMFDRun(object):
         # Get openmc k-effective
         keff = openmc.capi.keff()[0]
 
+        # Define leakage in each mesh cell and energy group
         leakage = ((self._current[:,:,:,:,_CURRENTS['out_right']] - \
             self._current[:,:,:,:,_CURRENTS['in_right']]) - \
             (self._current[:,:,:,:,_CURRENTS['in_left']] - \
@@ -1635,6 +1721,7 @@ class CMFDRun(object):
             np.count_nonzero(self._resnb)))
 
     def _compute_dtilde2(self):
+        #TODO add coments for this method
         dtilde2 = np.zeros(self._dtilde.shape)
 
         is_accel = self._coremap != _CMFD_NOACCEL
@@ -1808,10 +1895,6 @@ class CMFDRun(object):
                      (self._hxyz[2] * self._diffcof[:,:,:-1,:] + \
                      self._hxyz[2] * neig_dc[:,:,:-1,:])), 0.0)
 
-        print("After dtilde")
-        print(dtilde2)
-        sys.exit()
-
     def _compute_dtilde(self):
         # Get maximum of spatial and group indices
         nx = self._indices[0]
@@ -1884,6 +1967,7 @@ class CMFDRun(object):
                             self._dtilde[i, j, k, g, l] = dtilde
 
     def _compute_dhat2(self):
+        # TODO Write comments for this function
         dhat2 = np.zeros(self._dhat.shape)
 
         net_current_minusx = ((self._current[:,:,:,:,_CURRENTS['in_left']] - \

@@ -108,33 +108,31 @@ find_cell(Particle* p, int search_surf) {
 
       // Find the distribcell instance number.
       if (c.material_.size() > 1 || c.sqrtkT_.size() > 1) {
-        //TODO: off-by-one indexing
-        int distribcell_index = c.distribcell_index_ - 1;
         int offset = 0;
         for (int i = 0; i < p->n_coord; i++) {
           Cell& c_i {*cells[p->coord[i].cell]};
           if (c_i.type_ == FILL_UNIVERSE) {
-            offset += c_i.offset_[distribcell_index];
+            offset += c_i.offset_[c.distribcell_index_];
           } else if (c_i.type_ == FILL_LATTICE) {
             Lattice& lat {*lattices[p->coord[i+1].lattice-1]};
             int i_xyz[3] {p->coord[i+1].lattice_x,
                           p->coord[i+1].lattice_y,
                           p->coord[i+1].lattice_z};
             if (lat.are_valid_indices(i_xyz)) {
-              offset += lat.offset(distribcell_index, i_xyz);
+              offset += lat.offset(c.distribcell_index_, i_xyz);
             }
           }
         }
-        p->cell_instance = offset + 1;
+        p->cell_instance = offset;
       } else {
-        p->cell_instance = 1;
+        p->cell_instance = 0;
       }
 
       // Set the material and temperature.
       p->last_material = p->material;
       int32_t mat;
       if (c.material_.size() > 1) {
-        mat = c.material_[p->cell_instance-1];
+        mat = c.material_[p->cell_instance];
       } else {
         mat = c.material_[0];
       }
@@ -145,7 +143,7 @@ find_cell(Particle* p, int search_surf) {
       }
       p->last_sqrtkT = p->sqrtkT;
       if (c.sqrtkT_.size() > 1) {
-        p->sqrtkT = c.sqrtkT_[p->cell_instance-1];
+        p->sqrtkT = c.sqrtkT_[p->cell_instance];
       } else {
         p->sqrtkT = c.sqrtkT_[0];
       }

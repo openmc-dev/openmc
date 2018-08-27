@@ -220,8 +220,7 @@ prepare_distribcell(int32_t* filter_cell_list, int n)
 
   // Search through universes for distributed cells and assign each one a
   // unique distribcell array index.
-  //TODO: off-by-one
-  int distribcell_index = 1;
+  int distribcell_index = 0;
   std::vector<int32_t> target_univ_ids;
   for (Universe* u : universes) {
     for (auto cell_indx : u->cells_) {

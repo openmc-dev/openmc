@@ -59,14 +59,14 @@ contains
       do i = 1, p % n_coord
         if (cells(p % coord(i) % cell + 1) % type() == FILL_UNIVERSE) then
           offset = offset + cells(p % coord(i) % cell + 1) &
-               % offset(distribcell_index-1)
+               % offset(distribcell_index)
         elseif (cells(p % coord(i) % cell + 1) % type() == FILL_LATTICE) then
           if (lattices(p % coord(i + 1) % lattice) % are_valid_indices([&
                p % coord(i + 1) % lattice_x, &
                p % coord(i + 1) % lattice_y, &
                p % coord(i + 1) % lattice_z])) then
             offset = offset + lattices(p % coord(i + 1) % lattice) &
-                 % offset(distribcell_index - 1, &
+                 % offset(distribcell_index, &
                  [p % coord(i + 1) % lattice_x, &
                  p % coord(i + 1) % lattice_y, &
                  p % coord(i + 1) % lattice_z])
@@ -155,10 +155,10 @@ contains
     ! Get the distribcell index for this cell
     map = cells(i_cell) % distribcell_index()
 
-    path_len = distribcell_path_len(i_cell-1, map-1, target_offset, &
+    path_len = distribcell_path_len(i_cell-1, map, target_offset, &
                                     root_universe)
     allocate(path_c(path_len))
-    call distribcell_path(i_cell-1, map-1, target_offset, root_universe, &
+    call distribcell_path(i_cell-1, map, target_offset, root_universe, &
                           path_c)
     do i = 1, min(path_len, MAX_LINE_LEN)
       if (path_c(i) == C_NULL_CHAR) exit

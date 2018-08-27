@@ -56,10 +56,10 @@ print_overlap_check() {
 
     std::vector<int32_t> sparse_cell_ids;
     for (int i = 0; i < n_cells; i++) {
-      std::cout << " " << std::setw(8) << global_cells[i]->id << std::setw(17)
+      std::cout << " " << std::setw(8) << global_cells[i]->id_ << std::setw(17)
                 << overlap_check_count[i] << "\n";
       if (overlap_check_count[i] < 10) {
-        sparse_cell_ids.push_back(global_cells[i]->id);
+        sparse_cell_ids.push_back(global_cells[i]->id_);
       }
     }
 

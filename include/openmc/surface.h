@@ -57,12 +57,12 @@ struct BoundingBox
 class Surface
 {
 public:
-  int id;                    //!< Unique ID
-  int bc;                    //!< Boundary condition
-  std::string name;          //!< User-defined name
+  int id_;                    //!< Unique ID
+  int bc_;                    //!< Boundary condition
+  std::string name_;          //!< User-defined name
 
-  std::vector<int> neighbor_pos; //!< List of cells on positive side
-  std::vector<int> neighbor_neg; //!< List of cells on negative side
+  std::vector<int> neighbor_pos_; //!< List of cells on positive side
+  std::vector<int> neighbor_neg_; //!< List of cells on negative side
 
   explicit Surface(pugi::xml_node surf_node);
 
@@ -121,7 +121,7 @@ protected:
 class PeriodicSurface : public Surface
 {
 public:
-  int i_periodic{C_NONE};    //!< Index of corresponding periodic surface
+  int i_periodic_{C_NONE};    //!< Index of corresponding periodic surface
 
   explicit PeriodicSurface(pugi::xml_node surf_node);
 
@@ -148,7 +148,7 @@ public:
 
 class SurfaceXPlane : public PeriodicSurface
 {
-  double x0;
+  double x0_;
 public:
   explicit SurfaceXPlane(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -168,7 +168,7 @@ public:
 
 class SurfaceYPlane : public PeriodicSurface
 {
-  double y0;
+  double y0_;
 public:
   explicit SurfaceYPlane(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -188,7 +188,7 @@ public:
 
 class SurfaceZPlane : public PeriodicSurface
 {
-  double z0;
+  double z0_;
 public:
   explicit SurfaceZPlane(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -208,7 +208,7 @@ public:
 
 class SurfacePlane : public PeriodicSurface
 {
-  double A, B, C, D;
+  double A_, B_, C_, D_;
 public:
   explicit SurfacePlane(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -229,7 +229,7 @@ public:
 
 class SurfaceXCylinder : public Surface
 {
-  double y0, z0, radius;
+  double y0_, z0_, radius_;
 public:
   explicit SurfaceXCylinder(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -247,7 +247,7 @@ public:
 
 class SurfaceYCylinder : public Surface
 {
-  double x0, z0, radius;
+  double x0_, z0_, radius_;
 public:
   explicit SurfaceYCylinder(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -265,7 +265,7 @@ public:
 
 class SurfaceZCylinder : public Surface
 {
-  double x0, y0, radius;
+  double x0_, y0_, radius_;
 public:
   explicit SurfaceZCylinder(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -283,7 +283,7 @@ public:
 
 class SurfaceSphere : public Surface
 {
-  double x0, y0, z0, radius;
+  double x0_, y0_, z0_, radius_;
 public:
   explicit SurfaceSphere(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -301,7 +301,7 @@ public:
 
 class SurfaceXCone : public Surface
 {
-  double x0, y0, z0, radius_sq;
+  double x0_, y0_, z0_, radius_sq_;
 public:
   explicit SurfaceXCone(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -319,7 +319,7 @@ public:
 
 class SurfaceYCone : public Surface
 {
-  double x0, y0, z0, radius_sq;
+  double x0_, y0_, z0_, radius_sq_;
 public:
   explicit SurfaceYCone(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -337,7 +337,7 @@ public:
 
 class SurfaceZCone : public Surface
 {
-  double x0, y0, z0, radius_sq;
+  double x0_, y0_, z0_, radius_sq_;
 public:
   explicit SurfaceZCone(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -355,7 +355,7 @@ public:
 class SurfaceQuadric : public Surface
 {
   // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
-  double A, B, C, D, E, F, G, H, J, K;
+  double A_, B_, C_, D_, E_, F_, G_, H_, J_, K_;
 public:
   explicit SurfaceQuadric(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -374,10 +374,6 @@ extern "C" {
   int surface_bc(Surface* surf);
   bool surface_sense(Surface* surf, double xyz[3], double uvw[3]);
   void surface_reflect(Surface* surf, double xyz[3], double uvw[3]);
-  double surface_distance(Surface* surf, double xyz[3], double uvw[3],
-                          bool coincident);
-  void surface_normal(Surface* surf, double xyz[3], double uvw[3]);
-  void surface_to_hdf5(Surface* surf, hid_t group);
   int surface_i_periodic(PeriodicSurface* surf);
   bool surface_periodic(PeriodicSurface* surf, PeriodicSurface* other,
                         double xyz[3], double uvw[3]);

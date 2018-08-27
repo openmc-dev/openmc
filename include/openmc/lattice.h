@@ -46,12 +46,12 @@ class ReverseLatticeIter;
 class Lattice
 {
 public:
-  int32_t id;                         //!< Universe ID number
-  std::string name;                   //!< User-defined name
-  LatticeType type;
-  std::vector<int32_t> universes;     //!< Universes filling each lattice tile
-  int32_t outer {NO_OUTER_UNIVERSE};  //!< Universe tiled outside the lattice
-  std::vector<int32_t> offsets;       //!< Distribcell offset table
+  int32_t id_;                         //!< Universe ID number
+  std::string name_;                   //!< User-defined name
+  LatticeType type_;
+  std::vector<int32_t> universes_;     //!< Universes filling each lattice tile
+  int32_t outer_ {NO_OUTER_UNIVERSE};  //!< Universe tiled outside the lattice
+  std::vector<int32_t> offsets_;       //!< Distribcell offset table
 
   explicit Lattice(pugi::xml_node lat_node);
 
@@ -70,7 +70,7 @@ public:
 
   //! Allocate offset table for distribcell.
   void allocate_offset_table(int n_maps)
-  {offsets.resize(n_maps * universes.size(), C_NONE);}
+  {offsets_.resize(n_maps * universes_.size(), C_NONE);}
 
   //! Populate the distribcell offset tables.
   int32_t fill_offset_table(int32_t offset, int32_t target_univ_id, int map);
@@ -115,7 +115,7 @@ public:
   //! \return true if the given index fit within the lattice bounds.  False
   //!   otherwise.
   virtual bool is_valid_index(int indx) const
-  {return (indx >= 0) && (indx < universes.size());}
+  {return (indx >= 0) && (indx < universes_.size());}
 
   //! \brief Get the distribcell offset for a lattice tile.
   //! \param The map index for the target cell.
@@ -134,7 +134,7 @@ public:
   void to_hdf5(hid_t group_id) const;
 
 protected:
-  bool is_3d;  //!< Has divisions along the z-axis?
+  bool is_3d_;  //!< Has divisions along the z-axis?
 
   virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
@@ -146,31 +146,31 @@ protected:
 class LatticeIter
 {
 public:
-  int indx;  //!< An index to a Lattice universes or offsets array.
+  int indx_;  //!< An index to a Lattice universes or offsets array.
 
-  LatticeIter(Lattice &lat_, int indx_)
-    : lat(lat_),
-      indx(indx_)
+  LatticeIter(Lattice &lat, int indx)
+    : lat_(lat),
+      indx_(indx)
   {}
 
-  bool operator==(const LatticeIter &rhs) {return (indx == rhs.indx);}
+  bool operator==(const LatticeIter &rhs) {return (indx_ == rhs.indx_);}
 
   bool operator!=(const LatticeIter &rhs) {return !(*this == rhs);}
 
-  int32_t& operator*() {return lat.universes[indx];}
+  int32_t& operator*() {return lat_.universes_[indx_];}
 
   LatticeIter& operator++()
   {
-    while (indx < lat.universes.size()) {
-      ++indx;
-      if (lat.is_valid_index(indx)) return *this;
+    while (indx_ < lat_.universes_.size()) {
+      ++indx_;
+      if (lat_.is_valid_index(indx_)) return *this;
     }
-    indx = lat.universes.size();
+    indx_ = lat_.universes_.size();
     return *this;
   }
 
 protected:
-  Lattice &lat;
+  Lattice& lat_;
 };
 
 //==============================================================================
@@ -180,17 +180,17 @@ protected:
 class ReverseLatticeIter : public LatticeIter
 {
 public:
-  ReverseLatticeIter(Lattice &lat_, int indx_)
-    : LatticeIter {lat_, indx_}
+  ReverseLatticeIter(Lattice &lat, int indx)
+    : LatticeIter {lat, indx}
   {}
 
   ReverseLatticeIter& operator++()
   {
-    while (indx > -1) {
-      --indx;
-      if (lat.is_valid_index(indx)) return *this;
+    while (indx_ > -1) {
+      --indx_;
+      if (lat_.is_valid_index(indx_)) return *this;
     }
-    indx = -1;
+    indx_ = -1;
     return *this;
   }
 };
@@ -221,14 +221,14 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
 
 private:
-  std::array<int, 3> n_cells;    //!< Number of cells along each axis
-  Position lower_left;           //!< Global lower-left corner of the lattice
-  Position pitch;                //!< Lattice tile width along each axis
+  std::array<int, 3> n_cells_;    //!< Number of cells along each axis
+  Position lower_left_;           //!< Global lower-left corner of the lattice
+  Position pitch_;                //!< Lattice tile width along each axis
 
   // Convenience aliases
-  int &nx {n_cells[0]};
-  int &ny {n_cells[1]};
-  int &nz {n_cells[2]};
+  int &nx {n_cells_[0]};
+  int &ny {n_cells_[1]};
+  int &nz {n_cells_[2]};
 };
 
 //==============================================================================
@@ -263,10 +263,10 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
 
 private:
-  int n_rings;                   //!< Number of radial tile positions
-  int n_axial;                   //!< Number of axial tile positions
-  Position center;               //!< Global center of lattice
-  std::array<double, 2> pitch;   //!< Lattice tile width and height
+  int n_rings_;                   //!< Number of radial tile positions
+  int n_axial_;                   //!< Number of axial tile positions
+  Position center_;               //!< Global center of lattice
+  std::array<double, 2> pitch_;   //!< Lattice tile width and height
 };
 
 } //  namespace openmc

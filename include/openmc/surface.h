@@ -32,7 +32,7 @@ extern "C" const int BC_PERIODIC;
 extern "C" int32_t n_surfaces;
 
 class Surface;
-extern std::vector<Surface*> global_surfaces;
+extern std::vector<Surface*> surfaces;
 
 extern std::map<int, int> surface_map;
 

@@ -39,11 +39,11 @@ constexpr int32_t OP_UNION        {std::numeric_limits<int32_t>::max() - 4};
 extern "C" int32_t n_cells;
 
 class Cell;
-extern std::vector<Cell*> global_cells;
+extern std::vector<Cell*> cells;
 extern std::unordered_map<int32_t, int32_t> cell_map;
 
 class Universe;
-extern std::vector<Universe*> global_universes;
+extern std::vector<Universe*> universes;
 extern std::unordered_map<int32_t, int32_t> universe_map;
 
 //==============================================================================

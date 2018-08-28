@@ -19,7 +19,12 @@ import numpy as np
 np.seterr(divide='ignore', invalid='ignore')
 from scipy import sparse
 import time
-from mpi4py import MPI
+try:
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+    have_mpi = True
+except ImportError:
+    have_mpi = False
 
 import openmc.capi
 from openmc.clean_xml import clean_xml_indentation  # TODO Remove
@@ -899,8 +904,7 @@ class CMFDRun(object):
             check_type('OpenMP num threads', omp_num_threads, Integral)
             openmc.capi.init(args=['-s',str(omp_num_threads)])
         else:
-            comm = MPI.COMM_WORLD
-            openmc.capi.init(intracomm=comm)
+            openmc.capi.init()
 
         # Configure cmfd parameters and tallies
         self._configure_cmfd()
@@ -1234,8 +1238,9 @@ class CMFDRun(object):
             if not self._cmfd_feedback:
                 return
 
-            comm = MPI.COMM_WORLD
-            self._weightfactors = comm.bcast(self._weightfactors, root=0)
+            if have_mpi:
+                comm = MPI.COMM_WORLD
+                self._weightfactors = comm.bcast(self._weightfactors, root=0)
 
             m = openmc.capi.meshes[self._cmfd_mesh_id]
             bank = openmc.capi.source_bank()
@@ -1269,8 +1274,6 @@ class CMFDRun(object):
                 bank[i][0] *= self._weightfactors[ijk[0], ijk[1], ijk[2], e_bin]
 
     def _count_bank_sites(self):
-        comm = MPI.COMM_WORLD
-
         m = openmc.capi.meshes[self._cmfd_mesh_id]
         bank = openmc.capi.source_bank()
         energy = self._egrid
@@ -1300,12 +1303,18 @@ class CMFDRun(object):
 
         count[idx[0].astype(int), idx[1].astype(int)] = counts
 
-        comm.Reduce(count, self._sourcecounts, MPI.SUM, 0)
-        comm.Reduce(outside, sites_outside, MPI.LOR, 0)
+        if have_mpi:
+            comm = MPI.COMM_WORLD
+            comm.Reduce(count, self._sourcecounts, MPI.SUM, 0)
+            comm.Reduce(outside, sites_outside, MPI.LOR, 0)
+        else:
+            sites_outside = outside
+            self._sourcecounts = count
 
         # TODO ifdef mpi?
         # how to define comm?
         # issue with output out of order?
+        # travis mpi4py error
         return sites_outside[0]
 
 

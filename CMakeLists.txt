@@ -394,6 +394,7 @@ add_library(libopenmc SHARED
   src/lattice.cpp
   src/material.cpp
   src/math_functions.cpp
+  src/mesh.cpp
   src/message_passing.cpp
   src/mgxs.cpp
   src/mgxs_interface.cpp

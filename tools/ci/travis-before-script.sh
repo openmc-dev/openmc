@@ -17,5 +17,7 @@ if [[ ! -d $ENDF/neutrons || ! -d $ENDF/photoat || ! -d $ENDF/atomic_relax ]]; t
 fi
 
 # Download multipole library
-git clone --branch=master git://github.com/smharper/windowed_multipole_library.git wmp_lib
-tar -C $HOME -xzvf wmp_lib/multipole_lib.tar.gz
+if [[ ! -e $HOME/WMP_Library/092235.h5 ]]; then
+    wget https://github.com/mit-crpg/WMP_Library/releases/download/v1.0/WMP_Library_v1.0.tar.gz
+    tar -C $HOME -xzvf WMP_Library_v1.0.tar.gz
+fi

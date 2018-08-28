@@ -49,7 +49,7 @@ def capi_init(pincell_model):
 
 
 @pytest.fixture(scope='module')
-def capi_simulation_init(pincell_model):
+def capi_simulation_init(capi_init):
     openmc.capi.simulation_init()
     yield
 

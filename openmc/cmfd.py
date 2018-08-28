@@ -15,7 +15,7 @@ from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
 
-from openmc.clean_xml import clean_xml_indentation
+from openmc._xml import clean_indentation
 from openmc.checkvalue import (check_type, check_length, check_value,
                                check_greater_than, check_less_than)
 
@@ -512,7 +512,7 @@ class CMFD(object):
         self._create_write_matrices_subelement()
 
         # Clean the indentation in the file to be user-readable
-        clean_xml_indentation(self._cmfd_file)
+        clean_indentation(self._cmfd_file)
 
         # Write the XML Tree to the cmfd.xml file
         tree = ET.ElementTree(self._cmfd_file)

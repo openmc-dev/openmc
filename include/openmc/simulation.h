@@ -18,10 +18,11 @@ extern "C" int openmc_current_gen;
 extern "C" int64_t openmc_current_work;
 extern "C" int openmc_n_lost_particles;
 extern "C" int openmc_total_gen;
+extern "C" bool openmc_trace;
 
 extern std::vector<int64_t> work_index;
 
-#pragma omp threadprivate(openmc_current_work)
+#pragma omp threadprivate(openmc_current_work, openmc_trace)
 
 //==============================================================================
 // Functions

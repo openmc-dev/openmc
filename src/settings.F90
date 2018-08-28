@@ -21,7 +21,7 @@ module settings
   integer(C_INT) :: temperature_method = TEMPERATURE_NEAREST
   logical :: temperature_multipole = .false.
   real(C_DOUBLE) :: temperature_tolerance = 10.0_8
-  real(8) :: temperature_default = 293.6_8
+  real(C_DOUBLE) :: temperature_default = 293.6_8
   real(8) :: temperature_range(2) = [ZERO, ZERO]
 
   integer :: n_log_bins  ! number of bins for logarithmic grid

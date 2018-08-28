@@ -732,8 +732,6 @@ contains
       cmfd%phi = cmfd%phi/sqrt(sum(cmfd%phi*cmfd%phi))
     end if
 
-    print *, cmfd % phi
-
     ! Save dominance ratio
     cmfd % dom(current_batch) = norm_n/norm_o
 

@@ -104,7 +104,6 @@ contains
 
     do i = 1, self % n
       write(unit_,*) i, self % data(i)
-      print *, self % data(i)
     end do
 
     close(unit_)

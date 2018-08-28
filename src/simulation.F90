@@ -24,7 +24,7 @@ module simulation
   use nuclide_header,  only: micro_xs, n_nuclides
   use output,          only: header, print_columns, &
                              print_batch_keff, print_generation, print_runtime, &
-                             print_results, print_overlap_check, write_tallies
+                             print_results, write_tallies
   use particle_header
   use photon_header,   only: micro_photon_xs, n_elements
   use random_lcg,      only: set_particle_seed
@@ -523,7 +523,6 @@ contains
     integer    :: n       ! size of arrays
     integer    :: mpi_err  ! MPI error code
     integer    :: count_per_filter ! number of result values for one filter bin
-    integer(8) :: temp
     real(8)    :: tempr(3) ! temporary array for communication
 #ifdef OPENMC_MPIF08
     type(MPI_Datatype) :: result_block
@@ -531,6 +530,11 @@ contains
     integer :: result_block
 #endif
 #endif
+
+    interface
+      subroutine print_overlap_check() bind(C)
+      end subroutine print_overlap_check
+    end interface
 
     err = 0
 
@@ -584,12 +588,6 @@ contains
     k_col_abs = tempr(1)
     k_col_tra = tempr(2)
     k_abs_tra = tempr(3)
-
-    if (check_overlaps) then
-      call MPI_REDUCE(overlap_check_cnt, temp, n_cells, MPI_INTEGER8, &
-           MPI_SUM, 0, mpi_intracomm, mpi_err)
-      overlap_check_cnt = temp
-    end if
 #endif
 
     ! Write tally results to tallies.out
@@ -608,8 +606,8 @@ contains
     if (master) then
       if (verbosity >= 6) call print_runtime()
       if (verbosity >= 4) call print_results()
-      if (check_overlaps) call print_overlap_check()
     end if
+    if (check_overlaps) call print_overlap_check()
 
     ! Reset flags
     need_depletion_rx = .false.

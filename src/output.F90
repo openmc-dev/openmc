@@ -211,7 +211,6 @@ contains
 
     integer :: i ! index for coordinate levels
     type(Cell),       pointer :: c
-    type(Universe),   pointer :: u
     class(Lattice),   pointer :: l
 
     ! display type of particle
@@ -232,20 +231,20 @@ contains
       write(ou,*) '  Level ' // trim(to_str(i - 1))
 
       ! Print cell for this level
-      if (p % coord(i) % cell /= NONE) then
-        c => cells(p % coord(i) % cell)
+      if (p % coord(i) % cell /= C_NONE) then
+        c => cells(p % coord(i) % cell + 1)
         write(ou,*) '    Cell             = ' // trim(to_str(c % id()))
       end if
 
       ! Print universe for this level
       if (p % coord(i) % universe /= NONE) then
-        u => universes(p % coord(i) % universe)
-        write(ou,*) '    Universe         = ' // trim(to_str(u % id))
+        write(ou,*) '    Universe         = ' &
+             // trim(to_str(universe_id(p % coord(i) % universe)))
       end if
 
       ! Print information on lattice
       if (p % coord(i) % lattice /= NONE) then
-        l => lattices(p % coord(i) % lattice) % obj
+        l => lattices(p % coord(i) % lattice)
         write(ou,*) '    Lattice          = ' // trim(to_str(l % id()))
         write(ou,*) '    Lattice position = (' // trim(to_str(&
              p % coord(i) % lattice_x)) // ',' // trim(to_str(&
@@ -621,42 +620,6 @@ contains
 103 format (1X,A,T30,"= ",F8.5)
 
   end subroutine print_results
-
-!===============================================================================
-! PRINT_OVERLAP_DEBUG displays information regarding overlap checking results
-!===============================================================================
-
-  subroutine print_overlap_check
-
-    integer :: i, j
-    integer :: num_sparse = 0
-
-    ! display header block for geometry debugging section
-    call header("Cell Overlap Check Summary", 1)
-
-    write(ou,100) 'Cell ID','No. Overlap Checks'
-
-    do i = 1, n_cells
-      write(ou,101) cells(i) % id(), overlap_check_cnt(i)
-      if (overlap_check_cnt(i) < 10) num_sparse = num_sparse + 1
-    end do
-    write(ou,*)
-    write(ou,'(1X,A)') 'There were ' // trim(to_str(num_sparse)) // &
-                       ' cells with less than 10 overlap checks'
-    j = 0
-    do i = 1, n_cells
-      if (overlap_check_cnt(i) < 10) then
-        j = j + 1
-        write(ou,'(1X,A8)', advance='no') trim(to_str(cells(i) % id()))
-        if (modulo(j,8) == 0) write(ou,*)
-      end if
-    end do
-    write(ou,*)
-
-100 format (1X,A,T15,A)
-101 format (1X,I8,T15,I12)
-
-  end subroutine print_overlap_check
 
 !===============================================================================
 ! WRITE_TALLIES creates an output file and writes out the mean values of all

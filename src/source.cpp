@@ -167,9 +167,9 @@ Bank SourceDistribution::sample() const
       if (space_box) {
         if (space_box->only_fissionable()) {
           // Determine material
-          auto c = global_cells[cell_index - 1];
-          int32_t mat_index = c->material[instance];
-          auto m = global_materials[mat_index];
+          auto c = cells[cell_index - 1];
+          int32_t mat_index = c->material_[instance];
+          auto m = materials[mat_index];
 
           if (mat_index == MATERIAL_VOID) {
             found = false;

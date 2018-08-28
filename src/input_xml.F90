@@ -7,8 +7,6 @@ module input_xml
   use cmfd_header,      only: cmfd_mesh
   use constants
   use dict_header,      only: DictIntInt, DictCharInt, DictEntryCI
-  use distribution_multivariate
-  use distribution_univariate
   use endf,             only: reaction_name
   use error,            only: fatal_error, warning, write_message, openmc_err_msg
   use geometry,         only: neighbor_lists
@@ -28,7 +26,6 @@ module input_xml
   use surface_header
   use set_header,       only: SetChar
   use settings
-  use source_header
   use stl_vector,       only: VectorInt, VectorReal, VectorChar
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
                               starts_with, ends_with, split_string, &
@@ -101,6 +98,13 @@ module input_xml
       integer(C_INT32_T), intent(in), value :: univ
       integer(C_INT)                        :: n
     end function maximum_levels
+
+    subroutine set_particle_energy_bounds(particle, E_min, E_max) bind(C)
+      import C_INT, C_DOUBLE
+      integer(C_INT), value :: particle
+      real(C_DOUBLE), value :: E_min
+      real(C_DOUBLE), value :: E_max
+    end subroutine
   end interface
 
 contains
@@ -211,7 +215,6 @@ contains
     integer, allocatable :: temp_int_array(:)
     integer :: n_tracks
     logical :: file_exists
-    character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: filename
     type(XMLDocument) :: doc
     type(XMLNode) :: root
@@ -226,7 +229,6 @@ contains
     type(XMLNode) :: node_vol
     type(XMLNode) :: node_tab_leg
     type(XMLNode), allocatable :: node_mesh_list(:)
-    type(XMLNode), allocatable :: node_source_list(:)
     type(XMLNode), allocatable :: node_vol_list(:)
 
     ! Check if settings.xml exists
@@ -455,45 +457,12 @@ contains
     ! ==========================================================================
     ! EXTERNAL SOURCE
 
-    ! Get point to list of <source> elements and make sure there is at least one
-    call get_node_list(root, "source", node_source_list)
-    n = size(node_source_list)
-
-    if (n == 0) then
-      ! Default source is isotropic point source at origin with Watt spectrum
-      allocate(external_source(1))
-      external_source % particle = NEUTRON
-      external_source % strength = ONE
-
-      allocate(SpatialPoint :: external_source(1) % space)
-      select type (space => external_source(1) % space)
-      type is (SpatialPoint)
-        space % xyz(:) = [ZERO, ZERO, ZERO]
-      end select
-
-      allocate(Isotropic :: external_source(1) % angle)
-      external_source(1) % angle % reference_uvw(:) = [ZERO, ZERO, ONE]
-
-      allocate(Watt :: external_source(1) % energy)
-      select type(energy => external_source(1) % energy)
-      type is (Watt)
-        energy % a = 0.988e6_8
-        energy % b = 2.249e-6_8
-      end select
-    else
-      ! Allocate array for sources
-      allocate(external_source(n))
-    end if
+    ! Handled on C++ side
 
     ! Check if we want to write out source
     if (check_for_node(root, "write_initial_source")) then
       call get_node_value(root, "write_initial_source", write_initial_source)
     end if
-
-    ! Read each source
-    do i = 1, n
-      call external_source(i) % from_xml(node_source_list(i), path_source)
-    end do
 
     ! Survival biasing
     if (check_for_node(root, "survival_biasing")) then
@@ -1337,7 +1306,6 @@ contains
     character(3)            :: element      ! name of element, e.g. Zr
     character(MAX_WORD_LEN) :: units        ! units on density
     character(MAX_LINE_LEN) :: filename     ! absolute path to materials.xml
-    character(MAX_LINE_LEN) :: temp_str     ! temporary string when reading
     character(MAX_WORD_LEN), allocatable :: sarray(:)
     real(8)                 :: val          ! value entered for density
     real(8)                 :: temp_dble    ! temporary double prec. real
@@ -3343,6 +3311,8 @@ contains
     ! Get the minimum and maximum energies
     energy_min(NEUTRON) = energy_bins(num_energy_groups + 1)
     energy_max(NEUTRON) = energy_bins(1)
+    call set_particle_energy_bounds(NEUTRON, energy_min(NEUTRON), &
+         energy_max(NEUTRON))
 
     ! Get the datasets present in the library
     call get_groups(file_id, names)
@@ -3503,6 +3473,8 @@ contains
                  nuclides(i_nuclide) % grid(1) % energy(1))
             energy_max(NEUTRON) = min(energy_max(NEUTRON), nuclides(i_nuclide) % &
                  grid(1) % energy(size(nuclides(i_nuclide) % grid(1) % energy)))
+            call set_particle_energy_bounds(NEUTRON, energy_min(NEUTRON), &
+                 energy_max(NEUTRON))
           end if
 
           ! Add name and alias to dictionary
@@ -3536,6 +3508,8 @@ contains
                 energy_max(PHOTON) = min(energy_max(PHOTON), &
                      exp(elements(i_element) % energy(size(elements(i_element) &
                      % energy))))
+                call set_particle_energy_bounds(PHOTON, energy_min(PHOTON), &
+                     energy_max(PHOTON))
               end if
 
               ! Add element to set
@@ -3577,6 +3551,8 @@ contains
       if (size(ttb_e_grid) >= 1) then
         energy_min(PHOTON) = max(energy_min(PHOTON), ttb_e_grid(1))
         energy_max(PHOTON) = min(energy_max(PHOTON), ttb_e_grid(size(ttb_e_grid)))
+        call set_particle_energy_bounds(PHOTON, energy_min(PHOTON), &
+             energy_max(PHOTON))
       end if
 
       ! Take logarithm of energies since they are log-log interpolated

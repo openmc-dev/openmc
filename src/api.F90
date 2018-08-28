@@ -207,7 +207,7 @@ contains
 
     if (found) then
       index = p % coord(p % n_coord) % cell + 1
-      instance = p % cell_instance - 1
+      instance = p % cell_instance
       err = 0
     else
       err = E_GEOMETRY

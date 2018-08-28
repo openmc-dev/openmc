@@ -3,6 +3,8 @@
 
 #include <memory>
 
+#include "pugixml.hpp"
+
 #include "openmc/distribution.h"
 #include "openmc/position.h"
 
@@ -16,14 +18,15 @@ namespace openmc {
 class UnitSphereDistribution {
 public:
   UnitSphereDistribution() { };
-  explicit UnitSphereDistribution(Direction u) : u_ref{u} { };
+  explicit UnitSphereDistribution(Direction u) : u_ref_{u} { };
+  explicit UnitSphereDistribution(pugi::xml_node node);
   virtual ~UnitSphereDistribution() = default;
 
   //! Sample a direction from the distribution
   //! \return Direction sampled
   virtual Direction sample() const = 0;
 
-  Direction u_ref {0.0, 0.0, 1.0};  //!< reference direction
+  Direction u_ref_ {0.0, 0.0, 1.0};  //!< reference direction
 };
 
 //==============================================================================
@@ -33,6 +36,7 @@ public:
 class PolarAzimuthal : public UnitSphereDistribution {
 public:
   PolarAzimuthal(Direction u, UPtrDist mu, UPtrDist phi);
+  explicit PolarAzimuthal(pugi::xml_node node);
 
   //! Sample a direction from the distribution
   //! \return Direction sampled
@@ -62,11 +66,14 @@ public:
 class Monodirectional : public UnitSphereDistribution {
 public:
   Monodirectional(Direction u) : UnitSphereDistribution{u} { };
+  explicit Monodirectional(pugi::xml_node node) : UnitSphereDistribution{node} { };
 
   //! Sample a direction from the distribution
   //! \return Sampled direction
   Direction sample() const;
 };
+
+using UPtrAngle = std::unique_ptr<UnitSphereDistribution>;
 
 } // namespace openmc
 

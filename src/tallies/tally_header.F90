@@ -9,7 +9,6 @@ module tally_header
   use message_passing,     only: n_procs
   use nuclide_header,      only: nuclide_dict
   use settings,            only: reduce_tallies, run_mode
-  use source_header,       only: external_source
   use stl_vector,          only: VectorInt
   use string,              only: to_lower, to_f_string, str_to_int, to_str
   use tally_filter_header, only: TallyFilterContainer, filters, n_filters
@@ -169,6 +168,13 @@ contains
     real(C_DOUBLE) :: val
     real(C_DOUBLE) :: total_source
 
+    interface
+      function total_source_strength() result(strength) bind(C)
+        import C_DOUBLE
+        real(C_DOUBLE) :: strength
+      end function
+    end interface
+
     ! Increment number of realizations
     if (reduce_tallies) then
       this % n_realizations = this % n_realizations + 1
@@ -178,7 +184,7 @@ contains
 
     ! Calculate total source strength for normalization
     if (run_mode == MODE_FIXEDSOURCE) then
-      total_source = sum(external_source(:) % strength)
+      total_source = total_source_strength()
     else
       total_source = ONE
     end if

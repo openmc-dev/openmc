@@ -37,7 +37,6 @@ module openmc_api
   public :: openmc_cell_filter_get_bins
   public :: openmc_cell_get_id
   public :: openmc_cell_set_id
-  public :: openmc_cell_set_temperature
   public :: openmc_energy_filter_get_bins
   public :: openmc_energy_filter_set_bins
   public :: openmc_extend_filters
@@ -207,8 +206,8 @@ contains
     err = E_UNASSIGNED
 
     if (found) then
-      index = p % coord(p % n_coord) % cell
-      instance = p % cell_instance - 1
+      index = p % coord(p % n_coord) % cell + 1
+      instance = p % cell_instance
       err = 0
     else
       err = E_GEOMETRY

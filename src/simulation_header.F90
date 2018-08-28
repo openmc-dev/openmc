@@ -67,10 +67,7 @@ module simulation_header
 
   integer :: restart_batch
 
-  ! Flag for enabling cell overlap checking during transport
-  integer(8), allocatable  :: overlap_check_cnt(:)
-
-  logical :: trace
+  logical(C_BOOL), bind(C, name='openmc_trace') :: trace
 
 !$omp threadprivate(trace, thread_id, current_work)
 
@@ -90,7 +87,6 @@ contains
 !===============================================================================
 
   subroutine free_memory_simulation()
-    if (allocated(overlap_check_cnt)) deallocate(overlap_check_cnt)
     if (allocated(entropy_p)) deallocate(entropy_p)
     if (allocated(source_frac)) deallocate(source_frac)
     if (allocated(work_index)) deallocate(work_index)

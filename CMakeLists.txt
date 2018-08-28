@@ -388,6 +388,7 @@ add_library(libopenmc SHARED
   src/endf.cpp
   src/initialize.cpp
   src/finalize.cpp
+  src/geometry.cpp
   src/geometry_aux.cpp
   src/hdf5_interface.cpp
   src/lattice.cpp
@@ -397,6 +398,7 @@ add_library(libopenmc SHARED
   src/mgxs.cpp
   src/mgxs_interface.cpp
   src/nuclide.cpp
+  src/output.cpp
   src/particle.cpp
   src/plot.cpp
   src/position.cpp
@@ -414,6 +416,7 @@ add_library(libopenmc SHARED
   src/source.cpp
   src/state_point.cpp
   src/string_functions.cpp
+  src/summary.cpp
   src/surface.cpp
   src/thermal.cpp
   src/xml_interface.cpp

@@ -10,7 +10,7 @@ cmfd_mesh.lower_left = [-10, -1, -1]
 cmfd_mesh.upper_right = [10, 1, 1]
 cmfd_mesh.dimension = [10, 1, 1]
 cmfd_mesh.albedo = [0., 0., 1., 1., 1., 1.]
-cmfd_mesh.energy = [0., 10000., 10000000.]
+cmfd_mesh.energy = [0., 1000000., 10000000000.]
 cmfd_mesh.map = [0,1,1,1,1,1,1,1,1,0]
 
 # Initialize CMFDRun object

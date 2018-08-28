@@ -19,6 +19,7 @@ import numpy as np
 np.seterr(divide='ignore', invalid='ignore')
 from scipy import sparse
 import time
+from mpi4py import MPI
 
 import openmc.capi
 from openmc.clean_xml import clean_xml_indentation  # TODO Remove
@@ -898,7 +899,8 @@ class CMFDRun(object):
             check_type('OpenMP num threads', omp_num_threads, Integral)
             openmc.capi.init(args=['-s',str(omp_num_threads)])
         else:
-            openmc.capi.init()
+            comm = MPI.COMM_WORLD
+            openmc.capi.init(intracomm=comm)
 
         # Configure cmfd parameters and tallies
         self._configure_cmfd()
@@ -1083,10 +1085,10 @@ class CMFDRun(object):
 
             # Calculate fission source
             self._calc_fission_source()
-        '''
-        ! TODO Calculate weight factors
-        call cmfd_reweight(.true.)
-        '''
+
+        # Calculate weight factors
+        self._cmfd_reweight(True)
+
         # Stop cmfd timer
         if openmc.capi.settings.master:
             time_stop_cmfd = time.time()
@@ -1119,12 +1121,12 @@ class CMFDRun(object):
         # Calculate dtilde
         self._compute_dtilde()
 
-        self._compute_dtilde2()
+        #self._compute_dtilde2()
 
         # Calculate dhat
         self._compute_dhat()
 
-        self._compute_dhat2()
+        #self._compute_dhat2()
 
     def _cmfd_solver_execute(self, adjoint=False):
         # Check for physical adjoint
@@ -1204,6 +1206,110 @@ class CMFDRun(object):
         # Compute fission source
         self._cmfd_src = np.sum(self._nfissxs[:,:,:,:,:] * \
                          cmfd_flux[:,:,:,:,np.newaxis], axis=3) * vol
+
+    def _cmfd_reweight(self, new_weights):
+        # Compute new weight factors
+        if new_weights:
+
+            # Set weight factors to default 1.0
+            self._weightfactors.fill(1.0)
+
+            # Count bank site in mesh and reverse due to egrid structured
+            outside = self._count_bank_sites()
+
+            if openmc.capi.settings.master and outside:
+                raise OpenMCError('Source sites outside of the CMFD mesh!')
+
+            if openmc.capi.settings.master:
+                norm = np.sum(self._sourcecounts) / np.sum(self._cmfd_src)
+                sourcecounts = np.flip(
+                        self._sourcecounts.reshape(self._cmfd_src.shape), \
+                        axis=3)
+                divide_condition = np.logical_and(sourcecounts > 0,
+                                                  self._cmfd_src > 0)
+                self._weightfactors = np.divide(self._cmfd_src * norm, \
+                        sourcecounts, where=divide_condition, \
+                        out=np.ones_like(self._cmfd_src))
+
+            if not self._cmfd_feedback:
+                return
+
+            comm = MPI.COMM_WORLD
+            self._weightfactors = comm.bcast(self._weightfactors, root=0)
+
+            m = openmc.capi.meshes[self._cmfd_mesh_id]
+            bank = openmc.capi.source_bank()
+            energy = self._egrid
+            ng = self._indices[3]
+
+            for i in range(bank.size):
+                # Get xyz location of source point
+                xyz = bank[i][1]
+                # Get energy of source point
+                source_energy = bank[i][3]
+
+                # Determine which mesh location of source point
+                ijk = np.floor((xyz - m.lower_left) / m.width).astype(int)
+
+                # Determine energy bin of source point
+                e_bin = np.where(source_energy < energy[0], 0,
+                        np.where(source_energy > energy[-1], ng - 1, \
+                        np.digitize(source_energy, energy) - 1))
+
+                # Issue warnings if energy below or above defined grid
+                if openmc.capi.settings.master and source_energy < energy[0]:
+                    print(' WARNING: Source pt below energy grid')
+                if openmc.capi.settings.master and source_energy > energy[-1]:
+                    print(' WARNING: Source pt above energy grid')
+
+                # Reverse index of bin due to egrid structure
+                e_bin = ng - e_bin - 1
+
+                # Reweight particle
+                bank[i][0] *= self._weightfactors[ijk[0], ijk[1], ijk[2], e_bin]
+
+    def _count_bank_sites(self):
+        comm = MPI.COMM_WORLD
+
+        m = openmc.capi.meshes[self._cmfd_mesh_id]
+        bank = openmc.capi.source_bank()
+        energy = self._egrid
+        sites_outside = np.zeros(1, dtype=bool)
+        ng = self._indices[3]
+
+        # Initiate variables
+        outside = np.zeros(1, dtype=bool)
+        count = np.zeros(self._sourcecounts.shape)
+
+        source_xyz = np.array([bank[i][1] for i in range(bank.size)])
+        source_energies = np.array([bank[i][3] for i in range(bank.size)])
+
+        mesh_locations = np.floor((source_xyz - m.lower_left) / m.width)
+        mesh_bins = mesh_locations[:,2] * m.dimension[2] + \
+                    mesh_locations[:,1] * m.dimension[1] + mesh_locations[:,0]
+
+        if np.any(mesh_bins < 0) or np.any(mesh_bins >= np.prod(m.dimension)):
+            outside[0] = True
+
+        energy_bins = np.where(source_energies < energy[0], 0,
+                np.where(source_energies > energy[-1], ng - 1, \
+                         np.digitize(source_energies, energy) - 1))
+
+        idx, counts = np.unique(np.array([mesh_bins, energy_bins]), axis=1,
+                                return_counts=True)
+
+        count[idx[0].astype(int), idx[1].astype(int)] = counts
+
+        comm.Reduce(count, self._sourcecounts, MPI.SUM, 0)
+        comm.Reduce(outside, sites_outside, MPI.LOR, 0)
+
+        # TODO ifdef mpi?
+        # how to define comm?
+        # issue with output out of order?
+        return sites_outside[0]
+
+
+
 
     def _build_matrices(self, adjoint):
         # Build loss matrix
@@ -1635,7 +1741,6 @@ class CMFDRun(object):
 
         # Define coremap as cumulative sum over accelerated regions,
         # otherwise set value to _CMFD_NOACCEL
-        # TODO, does algorithm work if CMFD_ACCEL is fixed number
         self._coremap = np.where(self._coremap==0, _CMFD_NOACCEL,
                         np.cumsum(self._coremap)-1)
 

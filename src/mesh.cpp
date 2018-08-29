@@ -1,5 +1,6 @@
 #include "openmc/mesh.h"
 
+#include <cstddef> // for size_t
 #include <cmath>  // for ceil
 #include <string>
 
@@ -8,6 +9,7 @@
 #include "xtensor/xsort.hpp"
 #include "xtensor/xtensor.hpp"
 
+#include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
@@ -517,6 +519,145 @@ void RegularMesh::to_hdf5(hid_t group)
   write_dataset(mesh_group, "width", width_);
 
   close_group(mesh_group);
+}
+
+//==============================================================================
+// C API functions
+//==============================================================================
+
+//! Extend the meshes array by n elements
+extern "C" int
+openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end)
+{
+  if (!index_start) *index_start = meshes.size();
+  for (int i = 0; i < n; ++i) {
+    meshes.emplace_back(new RegularMesh{});
+  }
+  if (!index_end) *index_end = meshes.size() - 1;
+
+  return 0;
+}
+
+//! Return the index in the meshes array of a mesh with a given ID
+extern "C" int
+openmc_get_mesh_index(int32_t id, int32_t* index)
+{
+  auto pair = mesh_map.find(id);
+  if (pair == mesh_map.end()) {
+    set_errmsg("No mesh exists with ID=" + std::to_string(id) + ".");
+    return OPENMC_E_INVALID_ID;
+  }
+  *index = pair->second;
+  return 0;
+}
+
+// Return the ID of a mesh
+extern "C" int
+openmc_mesh_get_id(int32_t index, int32_t* id)
+{
+  if (index < 0 || index >= meshes.size()) {
+    set_errmsg("Index in meshes array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  *id = meshes[index]->id_;
+  return 0;
+}
+
+//! Set the ID of a mesh
+extern "C" int
+openmc_mesh_set_id(int32_t index, int32_t id)
+{
+  if (index < 0 || index >= meshes.size()) {
+    set_errmsg("Index in meshes array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  meshes[index]->id_ = id;
+  mesh_map[id] = index;
+  return 0;
+}
+
+//! Get the dimension of a mesh
+extern "C" int
+openmc_mesh_get_dimension(int32_t index, int** dims, int* n)
+{
+  if (index < 0 || index >= meshes.size()) {
+    set_errmsg("Index in meshes array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  *dims = meshes[index]->shape_.data();
+  *n = meshes[index]->n_dimension_;
+  return 0;
+}
+
+//! Set the dimension of a mesh
+extern "C" int
+openmc_mesh_set_dimension(int32_t index, int n, const int* dims)
+{
+  if (index < 0 || index >= meshes.size()) {
+    set_errmsg("Index in meshes array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  // Copy dimension
+  std::vector<std::size_t> shape = {static_cast<std::size_t>(n)};
+  auto& m = meshes[index];
+  m->shape_ = xt::adapt(dims, n, xt::no_ownership(), shape);
+  m->n_dimension_ = m->shape_.size();
+
+  return 0;
+}
+
+//! Get the mesh parameters
+extern "C" int
+openmc_mesh_get_params(int32_t index, double** ll, double** ur, double** width, int* n)
+{
+  if (index < 0 || index >= meshes.size()) {
+    set_errmsg("Index in meshes array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  auto& m = meshes[index];
+  if (m->lower_left_.dimension() == 0) {
+    set_errmsg("Mesh parameters have not been set.");
+    return OPENMC_E_ALLOCATE;
+  }
+
+  *ll = m->lower_left_.data();
+  *ur = m->upper_right_.data();
+  *n = m->n_dimension_;
+  return 0;
+}
+
+//! Set the mesh parameters
+extern "C" int
+openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
+                       const double* width)
+{
+  if (index < 0 || index >= meshes.size()) {
+    set_errmsg("Index in meshes array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  auto& m = meshes[index];
+  std::vector<std::size_t> shape = {static_cast<std::size_t>(n)};
+  if (ll && ur) {
+    m->lower_left_ = xt::adapt(ll, n, xt::no_ownership(), shape);
+    m->upper_right_ = xt::adapt(ur, n, xt::no_ownership(), shape);
+    m->width_ = (m->upper_right_ - m->lower_left_) / m->shape_;
+  } else if (ll && width) {
+    m->lower_left_ = xt::adapt(ll, n, xt::no_ownership(), shape);
+    m->width_ = xt::adapt(width, n, xt::no_ownership(), shape);
+    m->upper_right_ = m->lower_left_ + m->shape_ * m->width_;
+  } else if (ur && width) {
+    m->upper_right_ = xt::adapt(ur, n, xt::no_ownership(), shape);
+    m->width_ = xt::adapt(width, n, xt::no_ownership(), shape);
+    m->lower_left_ = m->upper_right_ - m->shape_ * m->width_;
+  } else {
+    set_errmsg("At least two parameters must be specified.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  return 0;
 }
 
 } // namespace openmc

@@ -1,7 +1,6 @@
 #ifndef OPENMC_MESH_H
 #define OPENMC_MESH_H
 
-#include <cstdint> // for size_t
 #include <memory> // for unique_ptr
 #include <vector>
 #include <unordered_map>
@@ -22,6 +21,7 @@ namespace openmc {
 class RegularMesh {
 public:
   // Constructors
+  RegularMesh() = default;
   RegularMesh(pugi::xml_node node);
 
   // Methods

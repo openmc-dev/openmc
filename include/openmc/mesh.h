@@ -10,6 +10,7 @@
 #include "pugixml.hpp"
 #include "xtensor/xarray.hpp"
 
+#include "openmc/particle.h"
 #include "openmc/position.h"
 
 namespace openmc {
@@ -24,6 +25,8 @@ public:
   RegularMesh(pugi::xml_node node);
 
   // Methods
+  void bins_crossed(const Particle* p, std::vector<int>& bins,
+                    std::vector<double>& lengths);
   int get_bin(Position r);
   int get_bin_from_indices(const int* ijk);
   void get_indices(Position r, int* ijk, bool* in_mesh);

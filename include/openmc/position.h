@@ -1,6 +1,7 @@
 #ifndef OPENMC_POSITION_H
 #define OPENMC_POSITION_H
 
+#include <cmath>
 #include <vector>
 
 namespace openmc {
@@ -45,6 +46,9 @@ struct Position {
   //! \result Resulting dot product
   inline double dot(Position other) {
     return x*other.x + y*other.y + z*other.z;
+  }
+  inline double norm() {
+    return std::sqrt(x*x + y*y + z*z);
   }
 
   // Data members

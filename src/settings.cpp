@@ -1,7 +1,9 @@
 #include "openmc/settings.h"
 
+#include <cmath> // for ceil, pow
 #include <limits> // for numeric_limits
 #include <sstream>
+#include <stdexcept> // for out_of_range
 #include <string>
 
 #include <omp.h>
@@ -13,6 +15,7 @@
 #include "openmc/distribution_spatial.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/mesh.h"
 #include "openmc/random_lcg.h"
 #include "openmc/source.h"
 #include "openmc/string_utils.h"
@@ -484,7 +487,100 @@ read_settings_xml()
     //track_identifiers = reshape(temp_int_array, [3, n_tracks/3])
   }
 
-  // TODO: Read meshes
+  // Read meshes
+  for (auto node : root.children("mesh")) {
+    // Read mesh and add to vector
+    meshes.emplace_back(new RegularMesh{node});
+
+    // Map ID to position in vector
+    mesh_map[meshes.back()->id_] = meshes.size() - 1;
+  }
+
+  // Shannon Entropy mesh
+  if (check_for_node(root, "entropy_mesh")) {
+    int temp = std::stoi(get_node_value(root, "entropy_mesh"));
+    try {
+      index_entropy_mesh = mesh_map.at(temp);
+    } catch (std::out_of_range) {
+      std::stringstream msg;
+      msg << "Mesh " << temp << " specified for Shannon entropy does not exist.";
+      fatal_error(msg);
+    }
+  } else if (check_for_node(root, "entropy")) {
+    warning("Specifying a Shannon entropy mesh via the <entropy> element "
+      "is deprecated. Please create a mesh using <mesh> and then reference "
+      "it by specifying its ID in an <entropy_mesh> element.");
+
+    // Read entropy mesh from <entropy>
+    auto node_entropy = root.child("entropy");
+    meshes.emplace_back(new RegularMesh{node_entropy});
+
+    // Set entropy mesh index
+    index_entropy_mesh = meshes.size() - 1;
+
+    // Assign ID and set mapping
+    meshes.back()->id_ = 10000;
+    mesh_map[10000] = index_entropy_mesh;
+  }
+
+  if (index_entropy_mesh >= 0) {
+    auto& m = *meshes[index_entropy_mesh];
+    if (m.shape_.dimension() == 0) {
+      // If the user did not specify how many mesh cells are to be used in
+      // each direction, we automatically determine an appropriate number of
+      // cells
+      int n = std::ceil(std::pow(settings::n_particles / 20, 1.0/3.0));
+      m.shape_ = {n, n, n};
+      m.n_dimension_ = 3;
+
+      // Calculate width
+      m.width_ = (m.upper_right_ - m.lower_left_) / m.shape_;
+    }
+
+    // TODO: Allocate entropy_P
+    // Allocate space for storing number of fission sites in each mesh cell
+    //allocate(entropy_p(1, product(m % dimension)))
+
+    // Turn on Shannon entropy calculation
+    settings::entropy_on = true;
+  }
+
+  // Uniform fission source weighting mesh
+  if (check_for_node(root, "ufs_mesh")) {
+    auto temp = std::stoi(get_node_value(root, "ufs_mesh"));
+    try {
+      index_ufs_mesh = mesh_map.at(temp);
+    } catch (std::out_of_range) {
+      std::stringstream msg;
+      msg << "Mesh " << temp << " specified for uniform fission site method "
+        "does not exist.";
+      fatal_error(msg);
+    }
+  } else if (check_for_node(root, "uniform_fs")) {
+    warning("Specifying a UFS mesh via the <uniform_fs> element "
+      "is deprecated. Please create a mesh using <mesh> and then reference "
+      "it by specifying its ID in a <ufs_mesh> element.");
+
+    // Read entropy mesh from <entropy>
+    auto node_ufs = root.child("uniform_fs");
+    meshes.emplace_back(new RegularMesh{node_ufs});
+
+    // Set entropy mesh index
+    index_ufs_mesh = meshes.size() - 1;
+
+    // Assign ID and set mapping
+    meshes.back()->id_ = 10001;
+    mesh_map[10001] = index_entropy_mesh;
+  }
+
+  if (index_ufs_mesh >= 0) {
+    // Allocate array to store source fraction for UFS
+    // TODO: Allocate source_frac
+    //allocate(source_frac(1, product(meshes(index_ufs_mesh) % dimension)))
+
+    // Turn on uniform fission source weighting
+    settings::ufs_on = true;
+  }
 
   // TODO: Read <state_point>
 

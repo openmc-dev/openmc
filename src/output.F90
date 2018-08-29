@@ -10,7 +10,6 @@ module output
   use error,           only: fatal_error, warning
   use geometry_header
   use math,            only: t_percentile
-  use mesh_header,     only: RegularMesh, meshes
   use message_passing, only: master, n_procs
   use mgxs_interface
   use nuclide_header

@@ -16,7 +16,7 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-std::vector<RegularMesh*> global_meshes;
+std::vector<std::unique_ptr<RegularMesh>> meshes;
 
 std::unordered_map<int32_t, int32_t> mesh_map;
 

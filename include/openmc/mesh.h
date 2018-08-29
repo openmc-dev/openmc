@@ -1,7 +1,8 @@
 #ifndef OPENMC_MESH_H
 #define OPENMC_MESH_H
 
-#include <cstdint>
+#include <cstdint> // for size_t
+#include <memory> // for unique_ptr
 #include <vector>
 #include <unordered_map>
 
@@ -48,7 +49,7 @@ private:
 // Global variables
 //==============================================================================
 
-extern std::vector<RegularMesh*> global_meshes;
+extern std::vector<std::unique_ptr<RegularMesh>> meshes;
 
 extern std::unordered_map<int32_t, int32_t> mesh_map;
 

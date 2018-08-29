@@ -13,7 +13,7 @@ References
 from collections.abc import Iterable
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET # TODO Remove
-import sys   # TODO Remove
+import sys
 import numpy as np
 # TODO Include comment for this
 np.seterr(divide='ignore', invalid='ignore')
@@ -21,7 +21,6 @@ from scipy import sparse
 import time
 try:
     from mpi4py import MPI
-    comm = MPI.COMM_WORLD
     have_mpi = True
 except ImportError:
     have_mpi = False
@@ -719,6 +718,8 @@ class CMFDRun(object):
         self._time_cmfdbuild = None
         self._time_cmfdsolve = None
 
+        self._intracomm = None
+
     @property
     def cmfd_begin(self):
         return self._cmfd_begin
@@ -898,7 +899,14 @@ class CMFDRun(object):
         check_type('CMFD write matrices', cmfd_write_matrices, bool)
         self._cmfd_write_matrices = cmfd_write_matrices
 
-    def run(self, mpi_procs=None, omp_num_threads=None):
+    def run(self, mpi_procs=None, omp_num_threads=None, intracomm=None):
+        # Store intracomm for part of CMFD routine where MPI reduce and
+        # broadcast calls are made
+        if intracomm is not None:
+            self._intracomm = intracomm
+        elif intracomm is None and have_mpi:
+            self._intracomm = MPI.COMM_WORLD
+
         # Check number of OpenMP threads is valid input and initialize C API
         if omp_num_threads is not None:
             check_type('OpenMP num threads', omp_num_threads, Integral)
@@ -960,6 +968,7 @@ class CMFDRun(object):
         # Print message to user
         if openmc.capi.settings.verbosity >= 7 and openmc.capi.settings.master:
             print(' Configuring CMFD parameters for simulation')
+            sys.stdout.flush()
 
         # Check if CMFD mesh is defined
         if self._cmfd_mesh is None:
@@ -996,7 +1005,7 @@ class CMFDRun(object):
                          np.product(self._indices[0:3]))
             self._coremap = np.array(self._cmfd_mesh.map)
         else:
-            self._coremap = np.ones((np.product(self._indices[0:3])))
+            self._coremap = np.ones((np.product(self._indices[0:3])), dtype=int)
 
         # Set number of batches where cmfd tallies should be reset
         if self._cmfd_reset is not None:
@@ -1102,13 +1111,14 @@ class CMFDRun(object):
         # Print message
         if openmc.capi.settings.verbosity >= 6 and openmc.capi.settings.master:
             print(' CMFD tallies reset')
+            sys.stdout.flush()
 
         # Reset CMFD tallies
         tallies = openmc.capi.tallies
         for tally_id in self._cmfd_tally_ids:
             tallies[tally_id].reset()
 
-    def _set_up_cmfd(self):
+    def _set_up_cmfd(self, vectorized=True):
         # Set up CMFD coremap
         if (self._mat_dim == _CMFD_NOACCEL):
             self._set_coremap()
@@ -1123,16 +1133,18 @@ class CMFDRun(object):
         self._neutron_balance()
 
         # Calculate dtilde
-        self._compute_dtilde()
-
-        #self._compute_dtilde2()
+        if vectorized:
+            self._compute_dtilde_vectorized()
+        else:
+            self._compute_dtilde()
 
         # Calculate dhat
-        self._compute_dhat()
+        if vectorized:
+            self._compute_dhat_vectorized()
+        else:
+            self._compute_dhat()
 
-        #self._compute_dhat2()
-
-    def _cmfd_solver_execute(self, adjoint=False):
+    def _cmfd_solver_execute(self, adjoint=False, vectorized=True):
         # Check for physical adjoint
         physical_adjoint = adjoint and self._cmfd_adjoint_type == 'physical'
 
@@ -1140,7 +1152,7 @@ class CMFDRun(object):
         time_start_buildcmfd = time.time()
 
         # Build loss and production matrices
-        loss, prod = self._build_matrices(physical_adjoint)
+        loss, prod = self._build_matrices(physical_adjoint, vectorized)
 
         # Check for mathematical adjoint calculation
         if adjoint and self._cmfd_adjoint_type == 'math':
@@ -1213,6 +1225,7 @@ class CMFDRun(object):
 
     def _cmfd_reweight(self, new_weights):
         # Compute new weight factors
+        # TODO Comments for this section
         if new_weights:
 
             # Set weight factors to default 1.0
@@ -1239,41 +1252,35 @@ class CMFDRun(object):
                 return
 
             if have_mpi:
-                comm = MPI.COMM_WORLD
-                self._weightfactors = comm.bcast(self._weightfactors, root=0)
+                self._weightfactors = self._intracomm.bcast(
+                                      self._weightfactors, root=0)
 
             m = openmc.capi.meshes[self._cmfd_mesh_id]
-            bank = openmc.capi.source_bank()
             energy = self._egrid
             ng = self._indices[3]
 
-            for i in range(bank.size):
-                # Get xyz location of source point
-                xyz = bank[i][1]
-                # Get energy of source point
-                source_energy = bank[i][3]
+            source_xyz = openmc.capi.source_bank()['xyz']
+            source_energies = openmc.capi.source_bank()['E']
 
-                # Determine which mesh location of source point
-                ijk = np.floor((xyz - m.lower_left) / m.width).astype(int)
+            mesh_ijk = np.floor((source_xyz - m.lower_left) / m.width).astype(int)
 
-                # Determine energy bin of source point
-                e_bin = np.where(source_energy < energy[0], 0,
-                        np.where(source_energy > energy[-1], ng - 1, \
-                        np.digitize(source_energy, energy) - 1))
+            # Flip energy
+            energy_bins = np.where(source_energies < energy[0], ng - 1,
+                    np.where(source_energies > energy[-1], 0, \
+                    ng - np.digitize(source_energies, energy)))
 
-                # Issue warnings if energy below or above defined grid
-                if openmc.capi.settings.master and source_energy < energy[0]:
-                    print(' WARNING: Source pt below energy grid')
-                if openmc.capi.settings.master and source_energy > energy[-1]:
-                    print(' WARNING: Source pt above energy grid')
+            openmc.capi.source_bank()['wgt'] *= self._weightfactors[ \
+                    mesh_ijk[:,0], mesh_ijk[:,1], mesh_ijk[:,2], energy_bins]
 
-                # Reverse index of bin due to egrid structure
-                e_bin = ng - e_bin - 1
-
-                # Reweight particle
-                bank[i][0] *= self._weightfactors[ijk[0], ijk[1], ijk[2], e_bin]
+            if openmc.capi.settings.master and \
+                    np.any(source_energies < energy[0]):
+                print(' WARNING: Source pt below energy grid')
+            if openmc.capi.settings.master and \
+                    np.any(source_energies > energy[-1]):
+                print(' WARNING: Source pt above energy grid')
 
     def _count_bank_sites(self):
+        # TODO Comments for this section
         m = openmc.capi.meshes[self._cmfd_mesh_id]
         bank = openmc.capi.source_bank()
         energy = self._egrid
@@ -1284,8 +1291,8 @@ class CMFDRun(object):
         outside = np.zeros(1, dtype=bool)
         count = np.zeros(self._sourcecounts.shape)
 
-        source_xyz = np.array([bank[i][1] for i in range(bank.size)])
-        source_energies = np.array([bank[i][3] for i in range(bank.size)])
+        source_xyz = openmc.capi.source_bank()['xyz']
+        source_energies = openmc.capi.source_bank()['E']
 
         mesh_locations = np.floor((source_xyz - m.lower_left) / m.width)
         mesh_bins = mesh_locations[:,2] * m.dimension[2] + \
@@ -1304,30 +1311,22 @@ class CMFDRun(object):
         count[idx[0].astype(int), idx[1].astype(int)] = counts
 
         if have_mpi:
-            comm = MPI.COMM_WORLD
-            comm.Reduce(count, self._sourcecounts, MPI.SUM, 0)
-            comm.Reduce(outside, sites_outside, MPI.LOR, 0)
+            self._intracomm.Reduce(count, self._sourcecounts, MPI.SUM, 0)
+            self._intracomm.Reduce(outside, sites_outside, MPI.LOR, 0)
         else:
             sites_outside = outside
             self._sourcecounts = count
 
-        # TODO ifdef mpi?
-        # how to define comm?
-        # issue with output out of order?
-        # travis mpi4py error
         return sites_outside[0]
 
-
-
-
-    def _build_matrices(self, adjoint):
-        # Build loss matrix
-        loss = self._build_loss_matrix(adjoint)
-        self._build_loss_matrix2(adjoint)
-
-        # Build production matrix
-        prod = self._build_prod_matrix(adjoint)
-        self._build_prod_matrix2(adjoint)
+    def _build_matrices(self, adjoint, vectorized):
+        # Build loss and production matrices
+        if vectorized:
+            loss = self._build_loss_matrix_vectorized(adjoint)
+            prod = self._build_prod_matrix_vectorized(adjoint)
+        else:
+            loss = self._build_loss_matrix(adjoint)
+            prod = self._build_prod_matrix(adjoint)
 
         # TODO Write out matrices
         #if self._cmfd_write_matrices:
@@ -1453,14 +1452,15 @@ class CMFDRun(object):
 
         return loss
 
-    def _build_loss_matrix2(self, adjoint):
+    def _build_loss_matrix_vectorized(self, adjoint):
         # TODO build as csr matrix
+        # TODO comments for this section
         # Extract spatial and energy indices and define matrix dimension
         ng = self._indices[3]
         n = self._mat_dim*ng
 
         # Allocate matrix
-        loss2 = np.zeros((n, n))
+        loss = np.zeros((n, n))
 
         # Define net leakage coefficient for each matrix element
         jnet = ((1.0 * self._dtilde[:,:,:,:,1] + self._dhat[:,:,:,:,1]) - \
@@ -1504,7 +1504,7 @@ class CMFDRun(object):
             idx_y = ng * (coremap_minusx[condition]) + g
             vals = (-1.0 * self._dtilde[:,:,:,g,0] -
                    self._dhat[:,:,:,g,0])[condition] / self._hxyz[0]
-            loss2[idx_x, idx_y] = vals
+            loss[idx_x, idx_y] = vals
 
             condition = np.logical_and(self._coremap != _CMFD_NOACCEL,
                                        coremap_plusx != _CMFD_NOACCEL)
@@ -1512,7 +1512,7 @@ class CMFDRun(object):
             idx_y = ng * (coremap_plusx[condition]) + g
             vals = (-1.0 * self._dtilde[:,:,:,g,1] +
                    self._dhat[:,:,:,g,1])[condition] / self._hxyz[0]
-            loss2[idx_x, idx_y] = vals
+            loss[idx_x, idx_y] = vals
 
             condition = np.logical_and(self._coremap != _CMFD_NOACCEL,
                                        coremap_minusy != _CMFD_NOACCEL)
@@ -1520,7 +1520,7 @@ class CMFDRun(object):
             idx_y = ng * (coremap_minusy[condition]) + g
             vals = (-1.0 * self._dtilde[:,:,:,g,2] -
                    self._dhat[:,:,:,g,2])[condition] / self._hxyz[1]
-            loss2[idx_x, idx_y] = vals
+            loss[idx_x, idx_y] = vals
 
             condition = np.logical_and(self._coremap != _CMFD_NOACCEL,
                                        coremap_plusy != _CMFD_NOACCEL)
@@ -1528,7 +1528,7 @@ class CMFDRun(object):
             idx_y = ng * (coremap_plusy[condition]) + g
             vals = (-1.0 * self._dtilde[:,:,:,g,3] +
                    self._dhat[:,:,:,g,3])[condition] / self._hxyz[1]
-            loss2[idx_x, idx_y] = vals
+            loss[idx_x, idx_y] = vals
 
             condition = np.logical_and(self._coremap != _CMFD_NOACCEL,
                                        coremap_minusz != _CMFD_NOACCEL)
@@ -1536,7 +1536,7 @@ class CMFDRun(object):
             idx_y = ng * (coremap_minusz[condition]) + g
             vals = (-1.0 * self._dtilde[:,:,:,g,4] -
                    self._dhat[:,:,:,g,4])[condition] / self._hxyz[1]
-            loss2[idx_x, idx_y] = vals
+            loss[idx_x, idx_y] = vals
 
             condition = np.logical_and(self._coremap != _CMFD_NOACCEL,
                                        coremap_plusz != _CMFD_NOACCEL)
@@ -1544,7 +1544,7 @@ class CMFDRun(object):
             idx_y = ng * (coremap_plusz[condition]) + g
             vals = (-1.0 * self._dtilde[:,:,:,g,5] +
                    self._dhat[:,:,:,g,5])[condition] / self._hxyz[1]
-            loss2[idx_x, idx_y] = vals
+            loss[idx_x, idx_y] = vals
 
             # Loss of neutrons
             condition = self._coremap != _CMFD_NOACCEL
@@ -1552,7 +1552,7 @@ class CMFDRun(object):
             idx_y = idx_x
             vals = (jnet[:,:,:,g] + self._totalxs[:,:,:,g] - \
                    self._scattxs[:,:,:,g,g])[condition]
-            loss2[idx_x, idx_y] = vals
+            loss[idx_x, idx_y] = vals
 
             # Off diagonal in-scattering
             for h in range(ng):
@@ -1562,7 +1562,9 @@ class CMFDRun(object):
                     idx_x = ng * (self._coremap[condition]) + g
                     idx_y = ng * (self._coremap[condition]) + h
                     vals = (-1.0 * self._scattxs[:, :, :, h, g])[condition]
-                    loss2[idx_x, idx_y] = vals
+                    loss[idx_x, idx_y] = vals
+
+        return loss
 
 
     def _build_prod_matrix(self, adjoint):
@@ -1615,13 +1617,15 @@ class CMFDRun(object):
         '''
         return prod
 
-    def _build_prod_matrix2(self, adjoint):
+    def _build_prod_matrix_vectorized(self, adjoint):
+        # TODO Comments for this section
+        # TODO Build as csr matrix
         # Extract spatial and energy indices and define matrix dimension
         ng = self._indices[3]
         n = self._mat_dim*ng
 
         # Allocate matrix
-        prod2 = np.zeros((n, n))
+        prod = np.zeros((n, n))
 
         for g in range(ng):
             for h in range(ng):
@@ -1630,9 +1634,9 @@ class CMFDRun(object):
                 idx_x = ng * (self._coremap[condition]) + g
                 idx_y = ng * (self._coremap[condition]) + h
                 vals = (self._nfissxs[:, :, :, h, g])[condition]
-                prod2[idx_x, idx_y] = vals
+                prod[idx_x, idx_y] = vals
 
-        prod = prod2
+        return prod
 
     def _matrix_to_indices(self, irow, nx, ny, nz, ng):
         # Get indices from coremap
@@ -1746,6 +1750,8 @@ class CMFDRun(object):
         return iconv, serr
 
     def _set_coremap(self):
+        # Set number of accelerated regions in problem. This will be related to
+        # the dimension of CMFD matrices
         self._mat_dim = np.sum(self._coremap)
 
         # Define coremap as cumulative sum over accelerated regions,
@@ -1869,7 +1875,7 @@ class CMFDRun(object):
         tally_results = tallies[tally_id].results[:,0,1]
 
         # Reshape and extract only p1 data from tally results (no need for p0 data)
-        p1scattrr = tally_results.reshape(self._p1scattxs.shape+(2,))[:,:,:,1]
+        p1scattrr = tally_results.reshape(self._p1scattxs.shape+(2,))[:,:,:,:,1]
 
         # Store p1 scatter xs
         # p1 scatter xs is flipped in energy axis as tally results are given in
@@ -1968,14 +1974,12 @@ class CMFDRun(object):
             np.sum(np.multiply(self._resnb, self._resnb)) / \
             np.count_nonzero(self._resnb)))
 
-    def _compute_dtilde2(self):
+    def _compute_dtilde_vectorized(self):
         #TODO add coments for this method
-        dtilde2 = np.zeros(self._dtilde.shape)
-
         is_accel = self._coremap != _CMFD_NOACCEL
         is_zero_flux_alb = abs(self._albedo - _ZERO_FLUX) < _TINY_BIT
 
-        dtilde2[0,:,:,:,0] = np.where(is_accel[0,:,:,np.newaxis],
+        self._dtilde[0,:,:,:,0] = np.where(is_accel[0,:,:,np.newaxis],
             np.where(is_zero_flux_alb[0], 2.0 * self._diffcof[0,:,:,:] / \
                      self._hxyz[0],
                      (2.0 * self._diffcof[0,:,:,:] * \
@@ -1984,7 +1988,7 @@ class CMFDRun(object):
                      (1.0 + self._albedo[0]) + \
                      (1.0 - self._albedo[0]) * self._hxyz[0])), 0)
 
-        dtilde2[-1,:,:,:,1] = np.where(is_accel[-1,:,:,np.newaxis],
+        self._dtilde[-1,:,:,:,1] = np.where(is_accel[-1,:,:,np.newaxis],
             np.where(is_zero_flux_alb[1], 2.0 * self._diffcof[-1,:,:,:] / \
                      self._hxyz[0],
                      (2.0 * self._diffcof[-1,:,:,:] * \
@@ -1993,7 +1997,7 @@ class CMFDRun(object):
                      (1.0 + self._albedo[1]) + \
                      (1.0 - self._albedo[1]) * self._hxyz[0])), 0)
 
-        dtilde2[:,0,:,:,2] = np.where(is_accel[:,0,:,np.newaxis],
+        self._dtilde[:,0,:,:,2] = np.where(is_accel[:,0,:,np.newaxis],
             np.where(is_zero_flux_alb[2], 2.0 * self._diffcof[:,0,:,:] / \
                      self._hxyz[1],
                      (2.0 * self._diffcof[:,0,:,:] * \
@@ -2002,7 +2006,7 @@ class CMFDRun(object):
                      (1.0 + self._albedo[2]) + \
                      (1.0 - self._albedo[2]) * self._hxyz[1])), 0)
 
-        dtilde2[:,-1,:,:,3] = np.where(is_accel[:,-1,:,np.newaxis],
+        self._dtilde[:,-1,:,:,3] = np.where(is_accel[:,-1,:,np.newaxis],
             np.where(is_zero_flux_alb[3], 2.0 * self._diffcof[:,-1,:,:] / \
                      self._hxyz[1],
                      (2.0 * self._diffcof[:,-1,:,:] * \
@@ -2011,7 +2015,7 @@ class CMFDRun(object):
                      (1.0 + self._albedo[3]) + \
                      (1.0 - self._albedo[3]) * self._hxyz[1])), 0)
 
-        dtilde2[:,:,0,:,4] = np.where(is_accel[:,:,0,np.newaxis],
+        self._dtilde[:,:,0,:,4] = np.where(is_accel[:,:,0,np.newaxis],
             np.where(is_zero_flux_alb[4], 2.0 * self._diffcof[:,:,0,:] / \
                      self._hxyz[2],
                      (2.0 * self._diffcof[:,:,0,:] * \
@@ -2020,7 +2024,7 @@ class CMFDRun(object):
                      (1.0 + self._albedo[4]) + \
                      (1.0 - self._albedo[4]) * self._hxyz[2])), 0)
 
-        dtilde2[:,:,-1,:,5] = np.where(is_accel[:,:,-1,np.newaxis],
+        self._dtilde[:,:,-1,:,5] = np.where(is_accel[:,:,-1,np.newaxis],
             np.where(is_zero_flux_alb[5], 2.0 * self._diffcof[:,:,-1,:] / \
                      self._hxyz[2],
                      (2.0 * self._diffcof[:,:,-1,:] * \
@@ -2037,7 +2041,7 @@ class CMFDRun(object):
         neig_dc = np.roll(self._diffcof, 1, axis=0)
         # Define neg_hxyz
 
-        dtilde2[1:,:,:,:,0] = np.where(is_accel[1:,:,:,np.newaxis], \
+        self._dtilde[1:,:,:,:,0] = np.where(is_accel[1:,:,:,np.newaxis], \
             np.where(adj_reflector[1:,:,:,np.newaxis],
                      (2.0 * self._diffcof[1:,:,:,:] * \
                      (1.0 - ref_albedo[1:,:,:,:])) / \
@@ -2056,7 +2060,7 @@ class CMFDRun(object):
         neig_dc = np.roll(self._diffcof, -1, axis=0)
         # Define neg_hxyz
 
-        dtilde2[:-1,:,:,:,1] = np.where(is_accel[:-1,:,:,np.newaxis], \
+        self._dtilde[:-1,:,:,:,1] = np.where(is_accel[:-1,:,:,np.newaxis], \
             np.where(adj_reflector[:-1,:,:,np.newaxis],
                      (2.0 * self._diffcof[:-1,:,:,:] * \
                      (1.0 - ref_albedo[:-1,:,:,:])) / \
@@ -2075,7 +2079,7 @@ class CMFDRun(object):
         neig_dc = np.roll(self._diffcof, 1, axis=1)
         # Define neg_hxyz
 
-        dtilde2[:,1:,:,:,2] = np.where(is_accel[:,1:,:,np.newaxis], \
+        self._dtilde[:,1:,:,:,2] = np.where(is_accel[:,1:,:,np.newaxis], \
             np.where(adj_reflector[:,1:,:,np.newaxis],
                      (2.0 * self._diffcof[:,1:,:,:] * \
                      (1.0 - ref_albedo[:,1:,:,:])) / \
@@ -2094,7 +2098,7 @@ class CMFDRun(object):
         neig_dc = np.roll(self._diffcof, -1, axis=1)
         # Define neg_hxyz
 
-        dtilde2[:,:-1,:,:,3] = np.where(is_accel[:,:-1,:,np.newaxis], \
+        self._dtilde[:,:-1,:,:,3] = np.where(is_accel[:,:-1,:,np.newaxis], \
             np.where(adj_reflector[:,:-1,:,np.newaxis],
                      (2.0 * self._diffcof[:,:-1,:,:] * \
                      (1.0 - ref_albedo[:,:-1,:,:])) / \
@@ -2113,7 +2117,7 @@ class CMFDRun(object):
         neig_dc = np.roll(self._diffcof, 1, axis=2)
         # Define neg_hxyz
 
-        dtilde2[:,:,1:,:,4] = np.where(is_accel[:,:,1:,np.newaxis], \
+        self._dtilde[:,:,1:,:,4] = np.where(is_accel[:,:,1:,np.newaxis], \
             np.where(adj_reflector[:,:,1:,np.newaxis],
                      (2.0 * self._diffcof[:,:,1:,:] * \
                      (1.0 - ref_albedo[:,:,1:,:])) / \
@@ -2132,7 +2136,7 @@ class CMFDRun(object):
         neig_dc = np.roll(self._diffcof, -1, axis=2)
         # Define neg_hxyz
 
-        dtilde2[:,:,:-1,:,5] = np.where(is_accel[:,:,:-1,np.newaxis], \
+        self._dtilde[:,:,:-1,:,5] = np.where(is_accel[:,:,:-1,np.newaxis], \
             np.where(adj_reflector[:,:,:-1,np.newaxis],
                      (2.0 * self._diffcof[:,:,:-1,:] * \
                      (1.0 - ref_albedo[:,:,:-1,:])) / \
@@ -2214,10 +2218,8 @@ class CMFDRun(object):
                             # Record dtilde
                             self._dtilde[i, j, k, g, l] = dtilde
 
-    def _compute_dhat2(self):
+    def _compute_dhat_vectorized(self):
         # TODO Write comments for this function
-        dhat2 = np.zeros(self._dhat.shape)
-
         net_current_minusx = ((self._current[:,:,:,:,_CURRENTS['in_left']] - \
                              self._current[:,:,:,:,_CURRENTS['out_left']]) / \
                              np.prod(self._hxyz)*self._hxyz[0])
@@ -2240,29 +2242,29 @@ class CMFDRun(object):
         cell_flux = self._flux / np.prod(self._hxyz)
         is_accel = self._coremap != _CMFD_NOACCEL
 
-        dhat2[0,:,:,:,0] = np.where(is_accel[0,:,:,np.newaxis],
+        self._dhat[0,:,:,:,0] = np.where(is_accel[0,:,:,np.newaxis],
             (net_current_minusx[0,:,:,:] + self._dtilde[0,:,:,:,0] * \
             cell_flux[0,:,:,:]) / cell_flux[0,:,:,:], 0)
-        dhat2[-1,:,:,:,1] = np.where(is_accel[-1,:,:,np.newaxis],
+        self._dhat[-1,:,:,:,1] = np.where(is_accel[-1,:,:,np.newaxis],
             (net_current_plusx[-1,:,:,:] - self._dtilde[-1,:,:,:,1] * \
             cell_flux[-1,:,:,:]) / cell_flux[-1,:,:,:], 0)
-        dhat2[:,0,:,:,2] = np.where(is_accel[:,0,:,np.newaxis],
+        self._dhat[:,0,:,:,2] = np.where(is_accel[:,0,:,np.newaxis],
             (net_current_minusy[:,0,:,:] + self._dtilde[:,0,:,:,2] * \
             cell_flux[:,0,:,:]) / cell_flux[:,0,:,:], 0)
-        dhat2[:,-1,:,:,3] = np.where(is_accel[:,-1,:,np.newaxis],
+        self._dhat[:,-1,:,:,3] = np.where(is_accel[:,-1,:,np.newaxis],
             (net_current_plusy[:,-1,:,:] + self._dtilde[:,-1,:,:,3] * \
             cell_flux[:,-1,:,:]) / cell_flux[:,-1,:,:], 0)
-        dhat2[:,:,0,:,4] = np.where(is_accel[:,:,0,np.newaxis],
+        self._dhat[:,:,0,:,4] = np.where(is_accel[:,:,0,np.newaxis],
             (net_current_minusz[:,:,0,:] + self._dtilde[:,:,0,:,4] * \
             cell_flux[:,:,0,:]) / cell_flux[:,:,0,:], 0)
-        dhat2[:,:,-1,:,5] = np.where(is_accel[:,:,-1,np.newaxis],
+        self._dhat[:,:,-1,:,5] = np.where(is_accel[:,:,-1,np.newaxis],
             (net_current_minusz[:,:,-1,:] + self._dtilde[:,:,-1,:,5] * \
             cell_flux[:,:,-1,:]) / cell_flux[:,:,-1,:], 0)
 
         # Minus x direction
         adj_reflector = np.roll(self._coremap, 1, axis=0) == _CMFD_NOACCEL
         neig_flux = np.roll(self._flux, 1, axis=0) / np.prod(self._hxyz)
-        dhat2[1:,:,:,:,0] = np.where(is_accel[1:,:,:,np.newaxis], \
+        self._dhat[1:,:,:,:,0] = np.where(is_accel[1:,:,:,np.newaxis], \
             np.where(adj_reflector[1:,:,:,np.newaxis],
                      (net_current_minusx[1:,:,:,:] + self._dtilde[1:,:,:,:,0] * \
                      cell_flux[1:,:,:,:]) / cell_flux[1:,:,:,:],
@@ -2273,7 +2275,7 @@ class CMFDRun(object):
         # Plus x direction
         adj_reflector = np.roll(self._coremap, -1, axis=0) == _CMFD_NOACCEL
         neig_flux = np.roll(self._flux, -1, axis=0) / np.prod(self._hxyz)
-        dhat2[:-1,:,:,:,1] = np.where(is_accel[:-1,:,:,np.newaxis], \
+        self._dhat[:-1,:,:,:,1] = np.where(is_accel[:-1,:,:,np.newaxis], \
             np.where(adj_reflector[:-1,:,:,np.newaxis],
                      (net_current_plusx[:-1,:,:,:] - self._dtilde[:-1,:,:,:,1] * \
                      cell_flux[:-1,:,:,:]) / cell_flux[:-1,:,:,:],
@@ -2284,7 +2286,7 @@ class CMFDRun(object):
         # Minus y direction
         adj_reflector = np.roll(self._coremap, 1, axis=1) == _CMFD_NOACCEL
         neig_flux = np.roll(self._flux, 1, axis=1) / np.prod(self._hxyz)
-        dhat2[:,1:,:,:,2] = np.where(is_accel[:,1:,:,np.newaxis], \
+        self._dhat[:,1:,:,:,2] = np.where(is_accel[:,1:,:,np.newaxis], \
             np.where(adj_reflector[:,1:,:,np.newaxis],
                      (net_current_minusy[:,1:,:,:] + self._dtilde[:,1:,:,:,2] * \
                      cell_flux[:,1:,:,:]) / cell_flux[:,1:,:,:],
@@ -2295,7 +2297,7 @@ class CMFDRun(object):
         # Plus y direction
         adj_reflector = np.roll(self._coremap, -1, axis=1) == _CMFD_NOACCEL
         neig_flux = np.roll(self._flux, -1, axis=1) / np.prod(self._hxyz)
-        dhat2[:,:-1,:,:,3] = np.where(is_accel[:,:-1,:,np.newaxis], \
+        self._dhat[:,:-1,:,:,3] = np.where(is_accel[:,:-1,:,np.newaxis], \
             np.where(adj_reflector[:,:-1,:,np.newaxis],
                      (net_current_plusy[:,:-1,:,:] - self._dtilde[:,:-1,:,:,3] * \
                      cell_flux[:,:-1,:,:]) / cell_flux[:,:-1,:,:],
@@ -2306,7 +2308,7 @@ class CMFDRun(object):
         # Minus z direction
         adj_reflector = np.roll(self._coremap, 1, axis=2) == _CMFD_NOACCEL
         neig_flux = np.roll(self._flux, 1, axis=2) / np.prod(self._hxyz)
-        dhat2[:,:,1:,:,4] = np.where(is_accel[:,:,1:,np.newaxis], \
+        self._dhat[:,:,1:,:,4] = np.where(is_accel[:,:,1:,np.newaxis], \
             np.where(adj_reflector[:,:,1:,np.newaxis],
                      (net_current_minusz[:,:,1:,:] + self._dtilde[:,:,1:,:,4] * \
                      cell_flux[:,:,1:,:]) / cell_flux[:,:,1:,:],
@@ -2317,7 +2319,7 @@ class CMFDRun(object):
         # Plus z direction
         adj_reflector = np.roll(self._coremap, -1, axis=2) == _CMFD_NOACCEL
         neig_flux = np.roll(self._flux, -1, axis=2) / np.prod(self._hxyz)
-        dhat2[:,:,:-1,:,5] = np.where(is_accel[:,:,:-1,np.newaxis], \
+        self._dhat[:,:,:-1,:,5] = np.where(is_accel[:,:,:-1,np.newaxis], \
             np.where(adj_reflector[:,:,:-1,np.newaxis],
                      (net_current_plusz[:,:,:-1,:] - self._dtilde[:,:,:-1,:,5] * \
                      cell_flux[:,:,:-1,:]) / cell_flux[:,:,:-1,:],
@@ -2368,10 +2370,6 @@ class CMFDRun(object):
                                 # Compute dhat
                                 dhat = (net_current - shift_idx*cell_dtilde[l]*cell_flux) / \
                                      cell_flux
-                                if l == 1:
-                                    print(dhat, i, j, k, g, l)
-                                    print(net_current, cell_dtilde, cell_flux)
-                                    print("yo")
 
                             else:  # Not at a boundary
                                 # Compute neighboring cell indices
@@ -2388,9 +2386,7 @@ class CMFDRun(object):
                                     # Compute dhat
                                     dhat = (net_current - shift_idx*cell_dtilde[l]*cell_flux) / \
                                          cell_flux
-                                    #if l==0:
-                                    #    print("hit")
-                                    #    print(dhat, net_current, cell_dtilde[l], cell_flux)
+
                                 else:  # not a fuel-reflector interface
                                     # Compute dhat
                                     dhat = (net_current + shift_idx*cell_dtilde[l]* \
@@ -2407,6 +2403,7 @@ class CMFDRun(object):
         if self._dhat_reset and openmc.capi.settings.verbosity >= 8 and \
                 openmc.capi.settings.master:
             print(' Dhats reset to zero')
+            sys.stdout.flush()
 
     def _get_reflector_albedo(self, l, g, i, j, k):
         # Get partial currents from object

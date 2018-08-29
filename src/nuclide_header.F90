@@ -649,6 +649,23 @@ contains
       this % reaction_index(this % reactions(i) % MT) = i
 
       associate (rx => this % reactions(i))
+        do t = 1, n_temperature
+          j = rx % xs_threshold(t)
+          n = rx % xs_size(t)
+
+          ! Calculate photon production cross section
+          do k = 1, rx % products_size()
+            if (rx % product_particle(k) == PHOTON) then
+              do l = 1, n
+                this % xs(t) % value(XS_PHOTON_PROD,l+j-1) = &
+                     this % xs(t) % value(XS_PHOTON_PROD,l+j-1) + &
+                     rx % xs(t, l) * rx % product_yield(k, &
+                     this % grid(t) % energy(l+j-1))
+              end do
+            end if
+          end do
+        end do
+
         ! Skip total inelastic level scattering, gas production cross sections
         ! (MT=200+), etc.
         if (rx % MT == N_LEVEL .or. rx % MT == N_NONELASTIC) cycle
@@ -670,18 +687,6 @@ contains
           do k = j, j + n - 1
             this % xs(t) % value(XS_TOTAL,k) = this % xs(t) % &
                  value(XS_TOTAL,k) + rx % xs(t, k - j + 1)
-          end do
-
-          ! Calculate photon production cross section
-          do k = 1, rx % products_size()
-            if (rx % product_particle(k) == PHOTON) then
-              do l = 1, n
-                this % xs(t) % value(XS_PHOTON_PROD,l+j-1) = &
-                     this % xs(t) % value(XS_PHOTON_PROD,l+j-1) + &
-                     rx % xs(t, l) * rx % product_yield(k, &
-                     this % grid(t) % energy(l+j-1))
-              end do
-            end if
           end do
 
           ! Add contribution to absorption cross section

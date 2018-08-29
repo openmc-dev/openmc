@@ -678,6 +678,22 @@ contains
   end function openmc_material_get_id
 
 
+  function openmc_material_get_fissionable(index, fissionable) result(err) bind(C)
+    ! returns whether a material is fissionable
+    integer(C_INT32_T), value :: index
+    logical(C_BOOL), intent(out) :: fissionable
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= size(materials)) then
+      fissionable = materials(index) % fissionable
+      err = 0
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in materials array is out of bounds.")
+    end if
+  end function openmc_material_get_fissionable
+
+
   function openmc_material_set_id(index, id) result(err) bind(C)
     ! Set the ID of a material
     integer(C_INT32_T), value, intent(in) :: index

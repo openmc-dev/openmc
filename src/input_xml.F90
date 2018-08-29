@@ -7,8 +7,6 @@ module input_xml
   use cmfd_header,      only: cmfd_mesh
   use constants
   use dict_header,      only: DictIntInt, DictCharInt, DictEntryCI
-  use distribution_multivariate
-  use distribution_univariate
   use endf,             only: reaction_name
   use error,            only: fatal_error, warning, write_message, openmc_err_msg
   use geometry,         only: neighbor_lists
@@ -28,10 +26,9 @@ module input_xml
   use surface_header
   use set_header,       only: SetChar
   use settings
-  use source_header
   use stl_vector,       only: VectorInt, VectorReal, VectorChar
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
-                              starts_with, ends_with, tokenize, split_string, &
+                              starts_with, ends_with, split_string, &
                               zero_padded, to_c_string
   use summary,          only: write_summary
   use tally
@@ -51,21 +48,20 @@ module input_xml
     subroutine adjust_indices() bind(C)
     end subroutine adjust_indices
 
-    subroutine allocate_offset_tables(n_maps) bind(C)
-      import C_INT
-      integer(C_INT), intent(in), value :: n_maps
-    end subroutine allocate_offset_tables
-
-    subroutine fill_offset_tables(target_univ_id, map) bind(C)
-      import C_INT32_T, C_INT
-      integer(C_INT32_T), intent(in), value :: target_univ_id
-      integer(C_INT),     intent(in), value :: map
-    end subroutine fill_offset_tables
+    subroutine assign_temperatures() bind(C)
+    end subroutine assign_temperatures
 
     subroutine count_cell_instances(univ_indx) bind(C)
       import C_INT32_T
       integer(C_INT32_T), intent(in), value :: univ_indx
     end subroutine count_cell_instances
+
+    subroutine prepare_distribcell_c(cell_list, n) &
+         bind(C, name="prepare_distribcell")
+      import C_INT32_T, C_INT
+      integer(C_INT),     intent(in), value :: n
+      integer(C_INT32_T), intent(in)        :: cell_list(n)
+    end subroutine prepare_distribcell_c
 
     subroutine read_surfaces(node_ptr) bind(C)
       import C_PTR
@@ -102,6 +98,13 @@ module input_xml
       integer(C_INT32_T), intent(in), value :: univ
       integer(C_INT)                        :: n
     end function maximum_levels
+
+    subroutine set_particle_energy_bounds(particle, E_min, E_max) bind(C)
+      import C_INT, C_DOUBLE
+      integer(C_INT), value :: particle
+      real(C_DOUBLE), value :: E_min
+      real(C_DOUBLE), value :: E_max
+    end subroutine
   end interface
 
 contains
@@ -171,14 +174,14 @@ contains
 
     ! Perform some final operations to set up the geometry
     call adjust_indices()
-    call count_cell_instances(root_universe-1)
+    call count_cell_instances(root_universe)
 
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
     call neighbor_lists()
 
     ! Assign temperatures to cells that don't have temperatures already assigned
-    call assign_temperatures(material_temps)
+    call assign_temperatures()
 
     ! Determine desired txemperatures for each nuclide and S(a,b) table
     call get_temperatures(nuc_temps, sab_temps)
@@ -186,7 +189,7 @@ contains
     ! Check to make sure there are not too many nested coordinate levels in the
     ! geometry since the coordinate list is statically allocated for performance
     ! reasons
-    if (maximum_levels(root_universe - 1) > MAX_COORD) then
+    if (maximum_levels(root_universe) > MAX_COORD) then
       call fatal_error("Too many nested coordinate levels in the geometry. &
            &Try increasing the maximum number of coordinate levels by &
            &providing the CMake -Dmaxcoord= option.")
@@ -212,7 +215,6 @@ contains
     integer, allocatable :: temp_int_array(:)
     integer :: n_tracks
     logical :: file_exists
-    character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: filename
     type(XMLDocument) :: doc
     type(XMLNode) :: root
@@ -227,7 +229,6 @@ contains
     type(XMLNode) :: node_vol
     type(XMLNode) :: node_tab_leg
     type(XMLNode), allocatable :: node_mesh_list(:)
-    type(XMLNode), allocatable :: node_source_list(:)
     type(XMLNode), allocatable :: node_vol_list(:)
 
     ! Check if settings.xml exists
@@ -456,45 +457,12 @@ contains
     ! ==========================================================================
     ! EXTERNAL SOURCE
 
-    ! Get point to list of <source> elements and make sure there is at least one
-    call get_node_list(root, "source", node_source_list)
-    n = size(node_source_list)
-
-    if (n == 0) then
-      ! Default source is isotropic point source at origin with Watt spectrum
-      allocate(external_source(1))
-      external_source % particle = NEUTRON
-      external_source % strength = ONE
-
-      allocate(SpatialPoint :: external_source(1) % space)
-      select type (space => external_source(1) % space)
-      type is (SpatialPoint)
-        space % xyz(:) = [ZERO, ZERO, ZERO]
-      end select
-
-      allocate(Isotropic :: external_source(1) % angle)
-      external_source(1) % angle % reference_uvw(:) = [ZERO, ZERO, ONE]
-
-      allocate(Watt :: external_source(1) % energy)
-      select type(energy => external_source(1) % energy)
-      type is (Watt)
-        energy % a = 0.988e6_8
-        energy % b = 2.249e-6_8
-      end select
-    else
-      ! Allocate array for sources
-      allocate(external_source(n))
-    end if
+    ! Handled on C++ side
 
     ! Check if we want to write out source
     if (check_for_node(root, "write_initial_source")) then
       call get_node_value(root, "write_initial_source", write_initial_source)
     end if
-
-    ! Read each source
-    do i = 1, n
-      call external_source(i) % from_xml(node_source_list(i), path_source)
-    end do
 
     ! Survival biasing
     if (check_for_node(root, "survival_biasing")) then
@@ -1003,17 +971,14 @@ contains
 
   subroutine read_geometry_xml()
 
-    integer :: i, j, k
-    integer :: n, n_mats, n_rlats, n_hlats
-    integer :: id
+    integer :: i
+    integer :: n, n_rlats, n_hlats
     integer :: univ_id
     integer :: n_cells_in_univ
     real(8) :: phi, theta, psi
     logical :: file_exists
     logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
-    character(MAX_WORD_LEN), allocatable :: sarray(:)
-    character(:), allocatable :: region_spec
     type(Cell),     pointer :: c
     class(Lattice), pointer :: lat
     type(XMLDocument) :: doc
@@ -1023,7 +988,6 @@ contains
     type(XMLNode), allocatable :: node_cell_list(:)
     type(XMLNode), allocatable :: node_rlat_list(:)
     type(XMLNode), allocatable :: node_hlat_list(:)
-    type(VectorInt) :: tokens
     type(VectorInt) :: univ_ids      ! List of all universe IDs
     type(DictIntInt) :: cells_in_univ_dict ! Used to count how many cells each
                                            ! universe contains
@@ -1091,19 +1055,11 @@ contains
     ! Allocate cells array
     allocate(cells(n_cells))
 
-    if (check_overlaps) then
-      allocate(overlap_check_cnt(n_cells))
-      overlap_check_cnt = 0
-    end if
-
     n_universes = 0
     do i = 1, n_cells
       c => cells(i)
 
       c % ptr = cell_pointer(i - 1)
-
-      ! Initialize distribcell instances and distribcell index
-      c % distribcell_index = NONE
 
       ! Get pointer to i-th cell node
       node_cell = node_cell_list(i)
@@ -1113,43 +1069,6 @@ contains
         call fatal_error("Two or more cells use the same unique ID: " &
              // to_str(c % id()))
       end if
-
-      ! Check for region specification (also under deprecated name surfaces)
-      if (check_for_node(node_cell, "surfaces")) then
-        call warning("The use of 'surfaces' is deprecated and will be &
-             &disallowed in a future release.  Use 'region' instead. The &
-             &openmc-update-inputs utility can be used to automatically &
-             &update geometry.xml files.")
-        region_spec = node_value_string(node_cell, "surfaces")
-        call get_node_value(node_cell, "surfaces", region_spec)
-      elseif (check_for_node(node_cell, "region")) then
-        region_spec = node_value_string(node_cell, "region")
-      else
-        region_spec = ''
-      end if
-
-      if (len_trim(region_spec) > 0) then
-        ! Create surfaces array from string
-        call tokenize(region_spec, tokens)
-
-        ! Convert user IDs to surface indices
-        do j = 1, tokens % size()
-          id = tokens % data(j)
-          if (id < OP_UNION) then
-            if (surface_dict % has(abs(id))) then
-              k = surface_dict % get(abs(id))
-              tokens % data(j) = sign(k, id)
-            end if
-          end if
-        end do
-
-        ! Copy region spec and RPN form to cell arrays
-        allocate(c % region(tokens%size()))
-        c % region(:) = tokens%data(1:tokens%size())
-
-        call tokens%clear()
-      end if
-      if (.not. allocated(c%region)) allocate(c%region(0))
 
       ! Rotation matrix
       if (check_for_node(node_cell, "rotation")) then
@@ -1186,62 +1105,6 @@ contains
              cos(phi)*cos(theta) /), (/ 3,3 /))
       end if
 
-      ! Translation vector
-      if (check_for_node(node_cell, "translation")) then
-        ! Translations can only be applied to cells that are being filled with
-        ! another universe
-        if (c % fill() == C_NONE) then
-          call fatal_error("Cannot apply a translation to cell " &
-               // trim(to_str(c % id())) // " because it is not filled with &
-               &another universe")
-        end if
-
-        ! Read number of translation parameters
-        n = node_word_count(node_cell, "translation")
-        if (n /= 3) then
-          call fatal_error("Incorrect number of translation parameters on &
-               &cell " // to_str(c % id()))
-        end if
-
-        ! Copy translation vector
-        allocate(c % translation(3))
-        call get_node_array(node_cell, "translation", c % translation)
-      end if
-
-      ! Read cell temperatures.  If the temperature is not specified, set it to
-      ! a negative number for now.  During initialization we'll replace
-      ! negatives with the temperature from the material data.
-      if (check_for_node(node_cell, "temperature")) then
-        n = node_word_count(node_cell, "temperature")
-        if (n > 0) then
-          ! Make sure this is a "normal" cell.
-          if (c % fill() /= C_NONE) call fatal_error("Cell " &
-               // trim(to_str(c % id())) // " was specified with a temperature &
-               &but no material. Temperature specification is only valid for &
-               &cells filled with a material.")
-
-          ! Copy in temperatures
-          allocate(c % sqrtkT(n))
-          call get_node_array(node_cell, "temperature", c % sqrtkT)
-
-          ! Make sure all temperatues are positive
-          do j = 1, size(c % sqrtkT)
-            if (c % sqrtkT(j) < ZERO) call fatal_error("Cell " &
-                 // trim(to_str(c % id())) // " was specified with a negative &
-                 &temperature. All cell temperatures must be non-negative.")
-          end do
-
-          ! Convert to sqrt(kT)
-          c % sqrtkT(:) = sqrt(K_BOLTZMANN * c % sqrtkT(:))
-        else
-          allocate(c % sqrtkT(1))
-          c % sqrtkT(1) = -1.0
-        end if
-      else
-        allocate(c % sqrtkT(1))
-        c % sqrtkT = -1.0
-      end if
-
       ! Add cell to dictionary
       call cell_dict % set(c % id(), i)
 
@@ -1252,7 +1115,7 @@ contains
       if (.not. cells_in_univ_dict % has(univ_id)) then
         n_universes = n_universes + 1
         n_cells_in_univ = 1
-        call universe_dict % set(univ_id, n_universes)
+        call universe_dict % set(univ_id, n_universes - 1)
         call univ_ids % push_back(univ_id)
       else
         n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
@@ -1276,11 +1139,8 @@ contains
     allocate(lattices(n_rlats + n_hlats))
 
     RECT_LATTICES: do i = 1, n_rlats
-      allocate(RectLattice::lattices(i) % obj)
-      lat => lattices(i) % obj
+      lat => lattices(i)
       lat % ptr = lattice_pointer(i - 1)
-      select type(lat)
-      type is (RectLattice)
 
       ! Get pointer to i-th lattice
       node_lat = node_rlat_list(i)
@@ -1288,15 +1148,11 @@ contains
       ! Add lattice to dictionary
       call lattice_dict % set(lat % id(), i)
 
-      end select
     end do RECT_LATTICES
 
     HEX_LATTICES: do i = 1, n_hlats
-      allocate(HexLattice::lattices(n_rlats + i) % obj)
-      lat => lattices(n_rlats + i) % obj
+      lat => lattices(n_rlats + i)
       lat % ptr = lattice_pointer(n_rlats + i - 1)
-      select type (lat)
-      type is (HexLattice)
 
       ! Get pointer to i-th lattice
       node_lat = node_hlat_list(i)
@@ -1304,36 +1160,13 @@ contains
       ! Add lattice to dictionary
       call lattice_dict % set(lat % id(), n_rlats + i)
 
-      end select
     end do HEX_LATTICES
 
     ! ==========================================================================
     ! SETUP UNIVERSES
 
     ! Allocate universes, universe cell arrays, and assign base universe
-    allocate(universes(n_universes))
-    do i = 1, n_universes
-      associate (u => universes(i))
-        u % id = univ_ids % data(i)
-
-        ! Allocate cell list
-        n_cells_in_univ = cells_in_univ_dict % get(u % id)
-        allocate(u % cells(n_cells_in_univ))
-        u % cells(:) = 0
-      end associate
-    end do
-    root_universe = find_root_universe() + 1
-
-    do i = 1, n_cells
-      ! Get index in universes array
-      j = universe_dict % get(cells(i) % universe())
-
-      ! Set the first zero entry in the universe cells array to the index in the
-      ! global cells array
-      associate (u => universes(j))
-        u % cells(find(u % cells, 0)) = i
-      end associate
-    end do
+    root_universe = find_root_universe()
 
     ! Clear dictionary
     call cells_in_univ_dict%clear()
@@ -1473,7 +1306,6 @@ contains
     character(3)            :: element      ! name of element, e.g. Zr
     character(MAX_WORD_LEN) :: units        ! units on density
     character(MAX_LINE_LEN) :: filename     ! absolute path to materials.xml
-    character(MAX_LINE_LEN) :: temp_str     ! temporary string when reading
     character(MAX_WORD_LEN), allocatable :: sarray(:)
     real(8)                 :: val          ! value entered for density
     real(8)                 :: temp_dble    ! temporary double prec. real
@@ -3479,6 +3311,8 @@ contains
     ! Get the minimum and maximum energies
     energy_min(NEUTRON) = energy_bins(num_energy_groups + 1)
     energy_max(NEUTRON) = energy_bins(1)
+    call set_particle_energy_bounds(NEUTRON, energy_min(NEUTRON), &
+         energy_max(NEUTRON))
 
     ! Get the datasets present in the library
     call get_groups(file_id, names)
@@ -3639,6 +3473,8 @@ contains
                  nuclides(i_nuclide) % grid(1) % energy(1))
             energy_max(NEUTRON) = min(energy_max(NEUTRON), nuclides(i_nuclide) % &
                  grid(1) % energy(size(nuclides(i_nuclide) % grid(1) % energy)))
+            call set_particle_energy_bounds(NEUTRON, energy_min(NEUTRON), &
+                 energy_max(NEUTRON))
           end if
 
           ! Add name and alias to dictionary
@@ -3672,6 +3508,8 @@ contains
                 energy_max(PHOTON) = min(energy_max(PHOTON), &
                      exp(elements(i_element) % energy(size(elements(i_element) &
                      % energy))))
+                call set_particle_energy_bounds(PHOTON, energy_min(PHOTON), &
+                     energy_max(PHOTON))
               end if
 
               ! Add element to set
@@ -3713,6 +3551,8 @@ contains
       if (size(ttb_e_grid) >= 1) then
         energy_min(PHOTON) = max(energy_min(PHOTON), ttb_e_grid(1))
         energy_max(PHOTON) = min(energy_max(PHOTON), ttb_e_grid(size(ttb_e_grid)))
+        call set_particle_energy_bounds(PHOTON, energy_min(PHOTON), &
+             energy_max(PHOTON))
       end if
 
       ! Take logarithm of energies since they are log-log interpolated
@@ -3794,46 +3634,6 @@ contains
   end subroutine read_ce_cross_sections
 
 !===============================================================================
-! ASSIGN_TEMPERATURES If any cells have undefined temperatures, try to find
-! their temperatures from material or global default temperatures
-!===============================================================================
-
-  subroutine assign_temperatures(material_temps)
-    real(8), intent(in) :: material_temps(:)
-
-    integer :: i, j
-    integer :: i_material
-
-    do i = 1, n_cells
-      ! Ignore non-normal cells and cells with defined temperature.
-      if (cells(i) % fill() /= C_NONE) cycle
-      if (cells(i) % sqrtkT(1) >= ZERO) cycle
-
-      ! Set the number of temperatures equal to the number of materials.
-      deallocate(cells(i) % sqrtkT)
-      allocate(cells(i) % sqrtkT(cells(i) % material_size()))
-
-      ! Check each of the cell materials for temperature data.
-      do j = 1, cells(i) % material_size()
-        ! Arbitrarily set void regions to 0K.
-        if (cells(i) % material(j) == MATERIAL_VOID) then
-          cells(i) % sqrtkT(j) = ZERO
-          cycle
-        end if
-
-        ! Use material default or global default temperature
-        i_material = cells(i) % material(j)
-        if (material_temps(i_material) >= ZERO) then
-          cells(i) % sqrtkT(j) = sqrt(K_BOLTZMANN * &
-               material_temps(i_material))
-        else
-          cells(i) % sqrtkT(j) = sqrt(K_BOLTZMANN * temperature_default)
-        end if
-      end do
-    end do
-  end subroutine assign_temperatures
-
-!===============================================================================
 ! READ_MULTIPOLE_DATA checks for the existence of a multipole library in the
 ! directory and loads it using multipole_read
 !===============================================================================
@@ -3889,9 +3689,9 @@ contains
 
   subroutine prepare_distribcell()
 
-    integer :: i, j, k
+    integer :: i, j
     type(SetInt)  :: cell_list  ! distribcells to track
-    type(ListInt) :: univ_list  ! universes containing distribcells
+    integer(C_INT32_T), allocatable :: cell_list_c(:)
 
     ! Find all cells listed in a distribcell filter.
     do i = 1, n_tallies
@@ -3903,56 +3703,11 @@ contains
       end do
     end do
 
-    ! Find all cells with multiple (distributed) materials or temperatures.
-    do i = 1, n_cells
-      if (cells(i) % material_size() > 1 .or. size(cells(i) % sqrtkT) > 1) then
-        call cell_list % add(i)
-      end if
+    allocate(cell_list_c(cell_list % size()))
+    do i = 1, cell_list % size()
+      cell_list_c(i) = cell_list % get_item(i) - 1
     end do
-
-    ! Make sure the number of distributed materials and temperatures matches the
-    ! number of respective cell instances.
-    do i = 1, n_cells
-      associate (c => cells(i))
-        if (c % material_size() > 1) then
-          if (c % material_size() /= c % n_instances()) then
-            call fatal_error("Cell " // trim(to_str(c % id())) // " was &
-                 &specified with " // trim(to_str(c % material_size())) &
-                 // " materials but has " // trim(to_str(c % n_instances())) &
-                 // " distributed instances. The number of materials must &
-                 &equal one or the number of instances.")
-          end if
-        end if
-        if (size(c % sqrtkT) > 1) then
-          if (size(c % sqrtkT) /= c % n_instances()) then
-            call fatal_error("Cell " // trim(to_str(c % id())) // " was &
-                 &specified with " // trim(to_str(size(c % sqrtkT))) &
-                 // " temperatures but has " // trim(to_str(c % n_instances()))&
-                 // " distributed instances. The number of temperatures must &
-                 &equal one or the number of instances.")
-          end if
-        end if
-      end associate
-    end do
-
-    ! Search through universes for distributed cells and assign each one a
-    ! unique distribcell array index.
-    k = 1
-    do i = 1, n_universes
-      do j = 1, size(universes(i) % cells)
-        if (cell_list % contains(universes(i) % cells(j))) then
-          cells(universes(i) % cells(j)) % distribcell_index = k
-          call univ_list % append(universes(i) % id)
-          k = k + 1
-        end if
-      end do
-    end do
-
-    ! Allocate and fill cell and lattice offset tables.
-    call allocate_offset_tables(univ_list % size())
-    do i = 1, univ_list % size()
-      call fill_offset_tables(univ_list % get_item(i), i-1)
-    end do
+    call prepare_distribcell_c(cell_list_c, cell_list % size())
 
   end subroutine prepare_distribcell
 

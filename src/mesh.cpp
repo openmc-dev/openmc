@@ -5,7 +5,10 @@
 
 #include "xtensor/xeval.hpp"
 #include "xtensor/xmath.hpp"
+#include "xtensor/xsort.hpp"
+#include "xtensor/xtensor.hpp"
 
+#include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/xml_interface.h"
@@ -350,6 +353,157 @@ bool RegularMesh::intersects_3d(Position r0, Position r1)
     }
   }
   return false;
+}
+
+void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
+                               std::vector<double>& lengths)
+{
+  constexpr int MAX_SEARCH_ITER = 100;
+
+  // ========================================================================
+  // Determine if the track intersects the tally mesh.
+
+  // Copy the starting and ending coordinates of the particle.  Offset these
+  // just a bit for the purposes of determining if there was an intersection
+  // in case the mesh surfaces coincide with lattice/geometric surfaces which
+  // might produce finite-precision errors.
+  Position last_r {p->last_xyz};
+  Position r {p->coord[0].xyz};
+  Direction u {p->coord[0].uvw};
+
+  Position r0 = last_r + TINY_BIT*u;
+  Position r1 = r - TINY_BIT*u;
+
+  // Determine indices for starting and ending location.
+  int n = n_dimension_;
+  xt::xtensor<int, 1> ijk0 = xt::empty<int>({n});
+  bool start_in_mesh;
+  get_indices(r0, ijk0.data(), &start_in_mesh);
+  xt::xtensor<int, 1> ijk1 = xt::empty<int>({n});
+  bool end_in_mesh;
+  get_indices(r1, ijk1.data(), &end_in_mesh);
+
+  // If this is the first iteration of the filter loop, check if the track
+  // intersects any part of the mesh.
+  if ((!start_in_mesh) && (!end_in_mesh)) {
+    if (!intersects(r0, r1)) return;
+  }
+
+  // ========================================================================
+  // Figure out which mesh cell to tally.
+
+  // Copy the un-modified coordinates the particle direction.
+  r0 = Position{p->last_xyz};
+  r1 = Position{p->coord[0].xyz};
+
+  // Compute the length of the entire track.
+  double total_distance = (r1 - r0).norm();
+
+  // We are looking for the first valid mesh bin.  Check to see if the
+  // particle starts inside the mesh.
+  if (!start_in_mesh) {
+    xt::xtensor<double, 1> d = xt::zeros<double>({n});
+
+    // The particle does not start in the mesh.  Note that we nudged the
+    // start and end coordinates by a TINY_BIT each so we will have
+    // difficulty resolving tracks that are less than 2*TINY_BIT in length.
+    // If the track is that short, it is also insignificant so we can
+    // safely ignore it in the tallies.
+    if (total_distance < 2*TINY_BIT) return;
+
+    // The particle does not start in the mesh so keep iterating the ijk0
+    // indices to cross the nearest mesh surface until we've found a valid
+    // bin.  MAX_SEARCH_ITER prevents an infinite loop.
+    int search_iter = 0;
+    int j;
+    while (xt::any(ijk0 < 1) || xt::any(ijk0 > shape_)) {
+      if (search_iter == MAX_SEARCH_ITER) {
+        warning("Failed to find a mesh intersection on a tally mesh filter.");
+        return;
+      }
+
+      for (j = 0; j < n; ++j) {
+        if (std::abs(u[j]) < FP_PRECISION) {
+          d(j) = INFTY;
+        } else if (u[j] > 0) {
+          double xyz_cross = lower_left_[j] + ijk0(j) * width_[j];
+          d(j) = (xyz_cross - r0[j]) / u[j];
+        } else {
+          double xyz_cross = lower_left_[j] + (ijk0(j) - 1) * width_[j];
+          d(j) = (xyz_cross - r0[j]) / u[j];
+        }
+      }
+
+      int j = xt::argmin(d)(0);
+      if (u[j] > 0.0) {
+        ++ijk0(j);
+      } else {
+        --ijk0(j);
+      }
+
+      ++search_iter;
+    }
+
+    // Advance position
+    r0 += d(j) * u;
+  }
+
+  while (true) {
+    // ========================================================================
+    // Compute the length of the track segment in the appropiate mesh cell and
+    // return.
+
+    double distance;
+    int j;
+    if (ijk0 == ijk1) {
+      // The track ends in this cell.  Use the particle end location rather
+      // than the mesh surface.
+      distance = (r1 - r0).norm();
+    } else {
+      // The track exits this cell.  Determine the distance to the closest mesh
+      // surface.
+      xt::xtensor<double, 1> d = xt::zeros<double>({n});
+      for (int j = 0; j < n; ++j) {
+        if (abs(u[j]) < FP_PRECISION) {
+          d(j) = INFTY;
+        } else if (u[j] > 0) {
+          double xyz_cross = lower_left_[j] + ijk0(j) * width_[j];
+          d(j) = (xyz_cross - r0[j]) / u[j];
+        } else {
+          double xyz_cross = lower_left_[j] + (ijk0(j) - 1) * width_[j];
+          d(j) = (xyz_cross - r0[j]) / u[j];
+        }
+      }
+      j = xt::argmin(d)(0);
+      distance = d(j);
+    }
+
+    // Assign the next tally bin and the score.
+    int bin = get_bin_from_indices(ijk0.data());
+    bins.push_back(bin);
+    lengths.push_back(distance / total_distance);
+
+    // Find the next mesh cell that the particle enters.
+
+    // If the particle track ends in that bin, { we are done.
+    if (ijk0 == ijk1) break;
+
+    // Translate the starting coordintes by the distance to that face. This
+    // should be the xyz that we computed the distance to in the last
+    // iteration of the filter loop.
+    r0 += distance * u;
+
+    // Increment the indices into the next mesh cell.
+    if (u[j] > 0.0) {
+      ++ijk0(j);
+    } else {
+      --ijk0(j);
+    }
+
+    // If the next indices are invalid, then the track has left the mesh and
+    // we are done.
+    if (xt::any(ijk0 < 1) || xt::any(ijk0 > shape_)) break;
+  }
 }
 
 void RegularMesh::to_hdf5(hid_t group)

@@ -52,6 +52,73 @@ module mesh_header
   ! Dictionary that maps user IDs to indices in 'meshes'
   type(DictIntInt), public :: mesh_dict
 
+  interface
+    function openmc_extend_meshes(n, index_start, index_end) result(err) bind(C)
+      import C_INT32_T, C_INT
+      integer(C_INT32_T), value, intent(in) :: n
+      integer(C_INT32_T), optional, intent(out) :: index_start
+      integer(C_INT32_T), optional, intent(out) :: index_end
+      integer(C_INT) :: err
+    end function openmc_extend_meshes
+
+    function openmc_get_mesh_index(id, index) result(err) bind(C)
+      import C_INT32_T, C_INT
+      integer(C_INT32_T), value :: id
+      integer(C_INT32_T), intent(out) :: index
+      integer(C_INT) :: err
+    end function openmc_get_mesh_index
+
+    function openmc_mesh_get_id(index, id) result(err) bind(C)
+      import C_INT32_T, C_INT
+      integer(C_INT32_T), value       :: index
+      integer(C_INT32_T), intent(out) :: id
+      integer(C_INT) :: err
+    end function openmc_mesh_get_id
+
+    function openmc_mesh_set_id(index, id) result(err) bind(C)
+      import C_INT32_T, C_INT
+      integer(C_INT32_T), value, intent(in) :: index
+      integer(C_INT32_T), value, intent(in) :: id
+      integer(C_INT) :: err
+    end function openmc_mesh_set_id
+
+    function openmc_mesh_get_dimension(index, dims, n) result(err) bind(C)
+      import C_INT32_T, C_PTR, C_INT
+      integer(C_INT32_T), value, intent(in) :: index
+      type(C_PTR),               intent(out) :: dims
+      integer(C_INT),            intent(out) :: n
+      integer(C_INT) :: err
+    end function openmc_mesh_get_dimension
+
+    function openmc_mesh_set_dimension(index, n, dims) result(err) bind(C)
+      import C_INT32_T, C_INT
+      integer(C_INT32_T), value, intent(in) :: index
+      integer(C_INT),     value, intent(in) :: n
+      integer(C_INT),            intent(in) :: dims(n)
+      integer(C_INT) :: err
+    end function openmc_mesh_set_dimension
+
+    function openmc_mesh_get_params(index, ll, ur, width, n) result(err) bind(C)
+      import C_INT32_T, C_PTR, C_INT
+      integer(C_INT32_T), value, intent(in) :: index
+      type(C_PTR), intent(out) :: ll
+      type(C_PTR), intent(out) :: ur
+      type(C_PTR), intent(out) :: width
+      integer(C_INT), intent(out) :: n
+      integer(C_INT) :: err
+    end function openmc_mesh_get_params
+
+    function openmc_mesh_set_params(index, n, ll, ur, width) result(err) bind(C)
+      import C_INT32_T, C_INT, C_DOUBLE
+      integer(C_INT32_T), value, intent(in) :: index
+      integer(C_INT),     value, intent(in) :: n
+      real(C_DOUBLE), intent(in), optional :: ll(n)
+      real(C_DOUBLE), intent(in), optional :: ur(n)
+      real(C_DOUBLE), intent(in), optional :: width(n)
+      integer(C_INT) :: err
+    end function openmc_mesh_set_params
+  end interface
+
 contains
 
   subroutine regular_from_xml(this, node)
@@ -561,216 +628,5 @@ contains
     if (allocated(meshes)) deallocate(meshes)
     call mesh_dict % clear()
   end subroutine free_memory_mesh
-
-!===============================================================================
-!                               C API FUNCTIONS
-!===============================================================================
-
-  function openmc_extend_meshes(n, index_start, index_end) result(err) bind(C)
-    ! Extend the meshes array by n elements
-    integer(C_INT32_T), value, intent(in) :: n
-    integer(C_INT32_T), optional, intent(out) :: index_start
-    integer(C_INT32_T), optional, intent(out) :: index_end
-    integer(C_INT) :: err
-
-    type(RegularMesh), allocatable :: temp(:) ! temporary meshes array
-
-    if (n_meshes == 0) then
-      ! Allocate meshes array
-      allocate(meshes(n))
-    else
-      ! Allocate meshes array with increased size
-      allocate(temp(n_meshes + n))
-
-      ! Copy original meshes to temporary array
-      temp(1:n_meshes) = meshes
-
-      ! Move allocation from temporary array
-      call move_alloc(FROM=temp, TO=meshes)
-    end if
-
-    ! Return indices in meshes array
-    if (present(index_start)) index_start = n_meshes + 1
-    if (present(index_end)) index_end = n_meshes + n
-    n_meshes = n_meshes + n
-
-    err = 0
-  end function openmc_extend_meshes
-
-
-  function openmc_get_mesh_index(id, index) result(err) bind(C)
-    ! Return the index in the meshes array of a mesh with a given ID
-    integer(C_INT32_T), value :: id
-    integer(C_INT32_T), intent(out) :: index
-    integer(C_INT) :: err
-
-    if (allocated(meshes)) then
-      if (mesh_dict % has(id)) then
-        index = mesh_dict % get(id)
-        err = 0
-      else
-        err = E_INVALID_ID
-        call set_errmsg("No mesh exists with ID=" // trim(to_str(id)) // ".")
-      end if
-    else
-      err = E_ALLOCATE
-      call set_errmsg("Memory has not been allocated for meshes.")
-    end if
-  end function openmc_get_mesh_index
-
-
-  function openmc_mesh_get_id(index, id) result(err) bind(C)
-    ! Return the ID of a mesh
-    integer(C_INT32_T), value       :: index
-    integer(C_INT32_T), intent(out) :: id
-    integer(C_INT) :: err
-
-    if (index >= 1 .and. index <= size(meshes)) then
-      id = meshes(index) % id
-      err = 0
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in meshes array is out of bounds.")
-    end if
-  end function openmc_mesh_get_id
-
-
-  function openmc_mesh_set_id(index, id) result(err) bind(C)
-    ! Set the ID of a mesh
-    integer(C_INT32_T), value, intent(in) :: index
-    integer(C_INT32_T), value, intent(in) :: id
-    integer(C_INT) :: err
-
-    if (index >= 1 .and. index <= n_meshes) then
-      meshes(index) % id = id
-      call mesh_dict % set(id, index)
-      err = 0
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in meshes array is out of bounds.")
-    end if
-  end function openmc_mesh_set_id
-
-
-  function openmc_mesh_get_dimension(index, dims, n) result(err) bind(C)
-    ! Get the dimension of a mesh
-    integer(C_INT32_T), value, intent(in) :: index
-    type(C_PTR),               intent(out) :: dims
-    integer(C_INT),            intent(out) :: n
-    integer(C_INT) :: err
-
-    if (index >= 1 .and. index <= n_meshes) then
-      dims = C_LOC(meshes(index) % dimension)
-      n = meshes(index) % n_dimension
-      err = 0
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in meshes array is out of bounds.")
-    end if
-  end function openmc_mesh_get_dimension
-
-
-  function openmc_mesh_set_dimension(index, n, dims) result(err) bind(C)
-    ! Set the dimension of a mesh
-    integer(C_INT32_T), value, intent(in) :: index
-    integer(C_INT),     value, intent(in) :: n
-    integer(C_INT),            intent(in) :: dims(n)
-    integer(C_INT) :: err
-
-    if (index >= 1 .and. index <= n_meshes) then
-      associate (m => meshes(index))
-        if (allocated(m % dimension)) deallocate (m % dimension)
-        if (allocated(m % lower_left)) deallocate (m % lower_left)
-        if (allocated(m % upper_right)) deallocate (m % upper_right)
-        if (allocated(m % width)) deallocate (m % width)
-
-        m % n_dimension = n
-        allocate(m % dimension(n))
-        allocate(m % lower_left(n))
-        allocate(m % upper_right(n))
-        allocate(m % width(n))
-
-        ! Copy dimension
-        m % dimension(:) = dims
-      end associate
-      err = 0
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in meshes array is out of bounds.")
-    end if
-  end function openmc_mesh_set_dimension
-
-
-  function openmc_mesh_get_params(index, ll, ur, width, n) result(err) bind(C)
-    ! Get the mesh parameters
-    integer(C_INT32_T), value, intent(in) :: index
-    type(C_PTR), intent(out) :: ll
-    type(C_PTR), intent(out) :: ur
-    type(C_PTR), intent(out) :: width
-    integer(C_INT), intent(out) :: n
-    integer(C_INT) :: err
-
-    err = 0
-    if (index >= 1 .and. index <= n_meshes) then
-      associate (m => meshes(index))
-        if (allocated(m % lower_left)) then
-          ll = C_LOC(m % lower_left(1))
-          ur = C_LOC(m % upper_right(1))
-          width = C_LOC(m % width(1))
-          n = m % n_dimension
-        else
-          err = E_ALLOCATE
-          call set_errmsg("Mesh parameters have not been set.")
-        end if
-      end associate
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in meshes array is out of bounds.")
-    end if
-  end function openmc_mesh_get_params
-
-
-  function openmc_mesh_set_params(index, n, ll, ur, width) result(err) bind(C)
-    ! Set the mesh parameters
-    integer(C_INT32_T), value, intent(in) :: index
-    integer(C_INT),     value, intent(in) :: n
-    real(C_DOUBLE), intent(in), optional :: ll(n)
-    real(C_DOUBLE), intent(in), optional :: ur(n)
-    real(C_DOUBLE), intent(in), optional :: width(n)
-    integer(C_INT) :: err
-
-    err = 0
-    if (index >= 1 .and. index <= n_meshes) then
-      associate (m => meshes(index))
-        if (allocated(m % lower_left)) deallocate (m % lower_left)
-        if (allocated(m % upper_right)) deallocate (m % upper_right)
-        if (allocated(m % width)) deallocate (m % width)
-
-        allocate(m % lower_left(n))
-        allocate(m % upper_right(n))
-        allocate(m % width(n))
-
-        if (present(ll) .and. present(ur)) then
-          m % lower_left(:) = ll
-          m % upper_right(:) = ur
-          m % width(:) = (ur - ll) / m % dimension
-        elseif (present(ll) .and. present(width)) then
-          m % lower_left(:) = ll
-          m % width(:) = width
-          m % upper_right(:) = ll + width * m % dimension
-        elseif (present(ur) .and. present(width)) then
-          m % upper_right(:) = ur
-          m % width(:) = width
-          m % lower_left(:) = ur - width * m % dimension
-        else
-          err = E_INVALID_ARGUMENT
-          call set_errmsg("At least two parameters must be specified.")
-        end if
-      end associate
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in meshes array is out of bounds.")
-    end if
-  end function openmc_mesh_set_params
 
 end module mesh_header

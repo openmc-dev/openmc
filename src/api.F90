@@ -11,7 +11,7 @@ module openmc_api
   use hdf5_interface
   use material_header
   use math
-  use mesh_header
+  use mesh_header,     only: free_memory_mesh
   use message_passing
   use nuclide_header
   use initialize,      only: openmc_init_f

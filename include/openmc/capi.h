@@ -71,7 +71,7 @@ extern "C" {
   int openmc_mesh_get_params(int32_t index, double** ll, double** ur, double** width, int* n);
   int openmc_mesh_set_id(int32_t index, int32_t id);
   int openmc_mesh_set_dimension(int32_t index, int n, const int* dims);
-  int openmc_mesh_set_params(int32_t index, const double* ll, const double* ur, const double* width, int n);
+  int openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur, const double* width);
   int openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh);
   int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
   int openmc_next_batch(int* status);

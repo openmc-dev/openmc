@@ -501,7 +501,7 @@ read_settings_xml()
     int temp = std::stoi(get_node_value(root, "entropy_mesh"));
     try {
       index_entropy_mesh = mesh_map.at(temp);
-    } catch (std::out_of_range) {
+    } catch (const std::out_of_range& e) {
       std::stringstream msg;
       msg << "Mesh " << temp << " specified for Shannon entropy does not exist.";
       fatal_error(msg);
@@ -550,7 +550,7 @@ read_settings_xml()
     auto temp = std::stoi(get_node_value(root, "ufs_mesh"));
     try {
       index_ufs_mesh = mesh_map.at(temp);
-    } catch (std::out_of_range) {
+    } catch (const std::out_of_range& e) {
       std::stringstream msg;
       msg << "Mesh " << temp << " specified for uniform fission site method "
         "does not exist.";

@@ -20,7 +20,6 @@ module openmc_api
   use random_lcg,      only: openmc_get_seed, openmc_set_seed
   use settings
   use simulation_header
-  use source_header,   only: openmc_extend_sources, openmc_source_set_strength
   use state_point,     only: openmc_statepoint_write
   use tally_header
   use tally_filter_header
@@ -38,13 +37,11 @@ module openmc_api
   public :: openmc_cell_filter_get_bins
   public :: openmc_cell_get_id
   public :: openmc_cell_set_id
-  public :: openmc_cell_set_temperature
   public :: openmc_energy_filter_get_bins
   public :: openmc_energy_filter_set_bins
   public :: openmc_extend_filters
   public :: openmc_extend_cells
   public :: openmc_extend_materials
-  public :: openmc_extend_sources
   public :: openmc_extend_tallies
   public :: openmc_filter_get_id
   public :: openmc_filter_get_type
@@ -83,7 +80,6 @@ module openmc_api
   public :: openmc_simulation_finalize
   public :: openmc_simulation_init
   public :: openmc_source_bank
-  public :: openmc_source_set_strength
   public :: openmc_tally_allocate
   public :: openmc_tally_get_estimator
   public :: openmc_tally_get_id
@@ -210,8 +206,8 @@ contains
     err = E_UNASSIGNED
 
     if (found) then
-      index = p % coord(p % n_coord) % cell
-      instance = p % cell_instance - 1
+      index = p % coord(p % n_coord) % cell + 1
+      instance = p % cell_instance
       err = 0
     else
       err = E_GEOMETRY
@@ -301,11 +297,15 @@ contains
     use plot_header
     use sab_header
     use settings
-    use source_header
     use surface_header
     use tally_derivative_header
     use trigger_header
     use volume_header
+
+    interface
+      subroutine free_memory_source() bind(C)
+      end subroutine
+    end interface
 
     call free_memory_geometry()
     call free_memory_surfaces()

@@ -24,13 +24,12 @@ module simulation
   use nuclide_header,  only: micro_xs, n_nuclides
   use output,          only: header, print_columns, &
                              print_batch_keff, print_generation, print_runtime, &
-                             print_results, print_overlap_check, write_tallies
+                             print_results, write_tallies
   use particle_header
   use photon_header,   only: micro_photon_xs, n_elements
   use random_lcg,      only: set_particle_seed
   use settings
   use simulation_header
-  use source,          only: initialize_source, sample_external_source
   use state_point,     only: openmc_statepoint_write, write_source_point, load_state_point
   use string,          only: to_str
   use tally,           only: accumulate_tallies, setup_active_tallies, &
@@ -51,6 +50,19 @@ module simulation
   integer(C_INT), parameter :: STATUS_EXIT_NORMAL = 0
   integer(C_INT), parameter :: STATUS_EXIT_MAX_BATCH = 1
   integer(C_INT), parameter :: STATUS_EXIT_ON_TRIGGER = 2
+
+  interface
+    subroutine openmc_simulation_init_c() bind(C)
+    end subroutine
+
+    subroutine initialize_source() bind(C)
+    end subroutine
+
+    function sample_external_source() result(site) bind(C)
+      import Bank
+      type(Bank) :: site
+    end function
+  end interface
 
 contains
 
@@ -241,7 +253,10 @@ contains
 
   subroutine finalize_generation()
 
-    integer(8) :: i
+    interface
+      subroutine fill_source_bank_fixedsource() bind(C)
+      end subroutine
+    end interface
 
     ! Update global tallies with the omp private accumulation variables
 !$omp parallel
@@ -294,13 +309,7 @@ contains
 
     elseif (run_mode == MODE_FIXEDSOURCE) then
       ! For fixed-source mode, we need to sample the external source
-      if (path_source == '') then
-        do i = 1, work
-          call set_particle_seed((total_gen + overall_generation()) * &
-               n_particles + work_index(rank) + i)
-          call sample_external_source(source_bank(i))
-        end do
-      end if
+      call fill_source_bank_fixedsource()
     end if
 
   end subroutine finalize_generation
@@ -425,6 +434,9 @@ contains
     ! Skip if simulation has already been initialized
     if (simulation_initialized) return
 
+    ! Call initialization on C++ side
+    call openmc_simulation_init_c()
+
     ! Set up tally procedure pointers
     call init_tally_routines()
 
@@ -511,7 +523,6 @@ contains
     integer    :: n       ! size of arrays
     integer    :: mpi_err  ! MPI error code
     integer    :: count_per_filter ! number of result values for one filter bin
-    integer(8) :: temp
     real(8)    :: tempr(3) ! temporary array for communication
 #ifdef OPENMC_MPIF08
     type(MPI_Datatype) :: result_block
@@ -519,6 +530,11 @@ contains
     integer :: result_block
 #endif
 #endif
+
+    interface
+      subroutine print_overlap_check() bind(C)
+      end subroutine print_overlap_check
+    end interface
 
     err = 0
 
@@ -572,12 +588,6 @@ contains
     k_col_abs = tempr(1)
     k_col_tra = tempr(2)
     k_abs_tra = tempr(3)
-
-    if (check_overlaps) then
-      call MPI_REDUCE(overlap_check_cnt, temp, n_cells, MPI_INTEGER8, &
-           MPI_SUM, 0, mpi_intracomm, mpi_err)
-      overlap_check_cnt = temp
-    end if
 #endif
 
     ! Write tally results to tallies.out
@@ -596,8 +606,8 @@ contains
     if (master) then
       if (verbosity >= 6) call print_runtime()
       if (verbosity >= 4) call print_results()
-      if (check_overlaps) call print_overlap_check()
     end if
+    if (check_overlaps) call print_overlap_check()
 
     ! Reset flags
     need_depletion_rx = .false.

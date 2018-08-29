@@ -9,7 +9,7 @@ module settings
 
   ! ============================================================================
   ! ENERGY TREATMENT RELATED VARIABLES
-  logical(C_BOOL) :: run_CE = .true.  ! Run in CE mode?
+  logical(C_BOOL), bind(C, name='openmc_run_CE') :: run_CE = .true.  ! Run in CE mode?
 
   ! ============================================================================
   ! CONTINUOUS-ENERGY CROSS SECTION RELATED VARIABLES
@@ -21,12 +21,12 @@ module settings
   integer(C_INT) :: temperature_method = TEMPERATURE_NEAREST
   logical :: temperature_multipole = .false.
   real(C_DOUBLE) :: temperature_tolerance = 10.0_8
-  real(8) :: temperature_default = 293.6_8
+  real(C_DOUBLE) :: temperature_default = 293.6_8
   real(8) :: temperature_range(2) = [ZERO, ZERO]
 
   integer :: n_log_bins  ! number of bins for logarithmic grid
 
-  logical :: photon_transport = .false.
+  logical(C_BOOL), bind(C, name='openmc_photon_transport') :: photon_transport = .false.
   integer :: electron_treatment = ELECTRON_TTB
 
   ! ============================================================================
@@ -104,7 +104,8 @@ module settings
        particle_restart_run = .false.
 
   ! Write out initial source
-  logical :: write_initial_source = .false.
+  logical(C_BOOL), bind(C, name='openmc_write_initial_source') :: &
+       write_initial_source = .false.
 
   ! Whether create fission neutrons or not. Only applied for MODE_FIXEDSOURCE
   logical :: create_fission_neutrons = .true.
@@ -120,7 +121,6 @@ module settings
   character(MAX_FILE_LEN) :: path_input               ! Path to input file
   character(MAX_FILE_LEN) :: path_cross_sections = '' ! Path to cross_sections.xml
   character(MAX_FILE_LEN) :: path_multipole           ! Path to wmp library
-  character(MAX_FILE_LEN) :: path_source = ''         ! Path to binary source
   character(MAX_FILE_LEN) :: path_state_point         ! Path to binary state point
   character(MAX_FILE_LEN) :: path_source_point        ! Path to binary source point
   character(MAX_FILE_LEN) :: path_particle_restart    ! Path to particle restart

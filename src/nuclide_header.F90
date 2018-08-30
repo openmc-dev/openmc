@@ -94,7 +94,6 @@ module nuclide_header
 
     ! Reactions
     type(Reaction), allocatable :: reactions(:)
-    type(Reaction), allocatable :: summed_reactions(:)
     integer, allocatable :: index_inelastic_scatter(:)
 
     ! Array that maps MT values to index in reactions; used at tally-time. Note
@@ -477,7 +476,8 @@ contains
       if (MTs % data(i) /= N_FISSION .and. MTs % data(i) /= N_F .and. &
            MTs % data(i) /= N_NF .and. MTs % data(i) /= N_2NF .and. &
            MTs % data(i) /= N_3NF .and. MTs % data(i) < 200 .and. &
-           MTs % data(i) /= N_LEVEL .and. MTs % data(i) /= ELASTIC) then
+           MTs % data(i) /= N_LEVEL .and. MTs % data(i) /= ELASTIC .and. &
+           .not. this % reactions(i) % summed) then
 
         call index_inelastic_scatter % push_back(i)
       end if
@@ -490,30 +490,6 @@ contains
     allocate(this % index_inelastic_scatter(index_inelastic_scatter % size()))
     this % index_inelastic_scatter = &
          index_inelastic_scatter % data(1: index_inelastic_scatter % size())
-
-    ! Read summed reactions if present. These are needed for photon production.
-    if (object_exists(group_id, 'summed_reactions')) then
-      ! Get MT values for summed reactions based on group names
-      call MTs % clear()
-      rxs_group = open_group(group_id, 'summed_reactions')
-      call get_groups(rxs_group, grp_names)
-      do j = 1, size(grp_names)
-        if (starts_with(grp_names(j), "reaction_")) then
-          call MTs % push_back(int(str_to_int(grp_names(j)(10:12))))
-        end if
-      end do
-
-      ! Read summed reactions
-      allocate(this % summed_reactions(MTs % size()))
-      do i = 1, size(this % summed_reactions)
-        rx_group = open_group(rxs_group, 'reaction_' // trim(&
-             zero_padded(MTs % data(i), 3)))
-
-        call this % summed_reactions(i) % from_hdf5(rx_group, temps_to_read)
-        call close_group(rx_group)
-      end do
-      call close_group(rxs_group)
-    end if
 
     ! Read unresolved resonance probability tables if present
     if (object_exists(group_id, 'urr')) then
@@ -664,24 +640,22 @@ contains
               end do
             end if
           end do
-        end do
 
-        ! Skip total inelastic level scattering, gas production cross sections
-        ! (MT=200+), etc.
-        if (rx % MT == N_LEVEL .or. rx % MT == N_NONELASTIC) cycle
-        if (rx % MT > N_5N2P .and. rx % MT < N_P0) cycle
+          ! Skip total inelastic level scattering, gas production cross sections
+          ! (MT=200+), etc.
+          if (rx % MT == N_LEVEL .or. rx % MT == N_NONELASTIC) cycle
+          if (rx % MT > N_5N2P .and. rx % MT < N_P0) cycle
 
-        ! Skip level cross sections if total is available
-        if (rx % MT >= N_P0 .and. rx % MT <= N_PC .and. find(MTs, N_P) /= -1) cycle
-        if (rx % MT >= N_D0 .and. rx % MT <= N_DC .and. find(MTs, N_D) /= -1) cycle
-        if (rx % MT >= N_T0 .and. rx % MT <= N_TC .and. find(MTs, N_T) /= -1) cycle
-        if (rx % MT >= N_3HE0 .and. rx % MT <= N_3HEC .and. find(MTs, N_3HE) /= -1) cycle
-        if (rx % MT >= N_A0 .and. rx % MT <= N_AC .and. find(MTs, N_A) /= -1) cycle
-        if (rx % MT >= N_2N0 .and. rx % MT <= N_2NC .and. find(MTs, N_2N) /= -1) cycle
+          ! Skip level cross sections if total is available
+          if (rx % MT >= N_P0 .and. rx % MT <= N_PC .and. find(MTs, N_P) /= -1) cycle
+          if (rx % MT >= N_D0 .and. rx % MT <= N_DC .and. find(MTs, N_D) /= -1) cycle
+          if (rx % MT >= N_T0 .and. rx % MT <= N_TC .and. find(MTs, N_T) /= -1) cycle
+          if (rx % MT >= N_3HE0 .and. rx % MT <= N_3HEC .and. find(MTs, N_3HE) /= -1) cycle
+          if (rx % MT >= N_A0 .and. rx % MT <= N_AC .and. find(MTs, N_A) /= -1) cycle
+          if (rx % MT >= N_2N0 .and. rx % MT <= N_2NC .and. find(MTs, N_2N) /= -1) cycle
 
-        do t = 1, n_temperature
-          j = rx % xs_threshold(t)
-          n = rx % xs_size(t)
+          ! Skip summed reactions, which are used for photon production
+          if (rx % summed) cycle
 
           ! Add contribution to total cross section
           do k = j, j + n - 1
@@ -729,30 +703,6 @@ contains
         end do  ! temperature
       end associate  ! rx
     end do ! reactions
-
-    ! Add contribution to photon production cross section from summed reactions
-    if (allocated(this % summed_reactions)) then
-      do i = 1, size(this % summed_reactions)
-        associate (rx => this % summed_reactions(i))
-          do t = 1, n_temperature
-            j = rx % xs_threshold(t)
-            n = rx % xs_size(t)
-
-            ! Calculate photon production cross section
-            do k = 1, rx % products_size()
-              if (rx % product_particle(k) == PHOTON) then
-                do l = 1, n
-                  this % xs(t) % value(XS_PHOTON_PROD,l+j-1) = &
-                       this % xs(t) % value(XS_PHOTON_PROD,l+j-1) + &
-                       rx % xs(t, l) * rx % product_yield(k, &
-                       this % grid(t) % energy(l+j-1))
-                end do
-              end if
-            end do
-          end do
-        end associate
-      end do
-    end if
 
     ! Determine number of delayed neutron precursors
     if (this % fissionable) then

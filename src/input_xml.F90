@@ -65,17 +65,17 @@ module input_xml
 
     subroutine read_surfaces(node_ptr) bind(C)
       import C_PTR
-      type(C_PTR) :: node_ptr
+      type(C_PTR), value :: node_ptr
     end subroutine read_surfaces
 
     subroutine read_cells(node_ptr) bind(C)
       import C_PTR
-      type(C_PTR) :: node_ptr
+      type(C_PTR), value :: node_ptr
     end subroutine read_cells
 
     subroutine read_lattices(node_ptr) bind(C)
       import C_PTR
-      type(C_PTR) :: node_ptr
+      type(C_PTR), value :: node_ptr
     end subroutine read_lattices
 
     subroutine read_settings_xml() bind(C)
@@ -83,8 +83,13 @@ module input_xml
 
     subroutine read_materials(node_ptr) bind(C)
       import C_PTR
-      type(C_PTR) :: node_ptr
+      type(C_PTR), value :: node_ptr
     end subroutine read_materials
+
+    subroutine read_meshes(node_ptr) bind(C)
+      import C_PTR
+      type(C_PTR), value :: node_ptr
+    end subroutine
 
     function find_root_universe() bind(C) result(root)
       import C_INT32_T
@@ -1202,9 +1207,6 @@ contains
     ! ==========================================================================
     ! DETERMINE SIZE OF ARRAYS AND ALLOCATE
 
-    ! Get pointer list to XML <mesh>
-    call get_node_list(root, "mesh", node_mesh_list)
-
     ! Get pointer list to XML <filter>
     call get_node_list(root, "filter", node_filt_list)
 
@@ -1220,20 +1222,7 @@ contains
     ! READ MESH DATA
 
     ! Check for user meshes and allocate
-    n = size(node_mesh_list)
-    if (n > 0) then
-      err = openmc_extend_meshes(n, i_start, i_end)
-    end if
-
-    do i = 1, n
-      m => meshes(i_start + i - 1)
-
-      ! Instantiate mesh from XML node
-      call m % from_xml(node_mesh_list(i))
-
-      ! Add mesh to dictionary
-      call mesh_dict % set(m % id, i_start + i - 1)
-    end do
+    call read_meshes()
 
     ! We only need the mesh info for plotting
     if (run_mode == MODE_PLOTTING) then

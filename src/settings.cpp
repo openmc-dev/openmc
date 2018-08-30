@@ -170,11 +170,7 @@ void get_run_parameters(pugi::xml_node node_base)
   }
 }
 
-extern "C" void title();
-extern "C" void read_settings_xml_f(pugi::xml_node_struct* root_ptr);
-
-extern "C" void
-read_settings_xml()
+void read_settings_xml()
 {
   using namespace settings;
   using namespace pugi;
@@ -488,13 +484,7 @@ read_settings_xml()
   }
 
   // Read meshes
-  for (auto node : root.children("mesh")) {
-    // Read mesh and add to vector
-    meshes.emplace_back(new RegularMesh{node});
-
-    // Map ID to position in vector
-    mesh_map[meshes.back()->id_] = meshes.size() - 1;
-  }
+  read_meshes(&root);
 
   // Shannon Entropy mesh
   if (check_for_node(root, "entropy_mesh")) {

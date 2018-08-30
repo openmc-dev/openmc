@@ -16,6 +16,7 @@
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/mesh.h"
+#include "openmc/output.h"
 #include "openmc/random_lcg.h"
 #include "openmc/source.h"
 #include "openmc/string_utils.h"

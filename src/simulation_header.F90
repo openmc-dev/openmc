@@ -64,6 +64,12 @@ module simulation_header
 
 !$omp threadprivate(trace, thread_id, current_work)
 
+  interface
+    subroutine entropy_clear() bind(C)
+    end subroutine
+  end interface
+
+
 contains
 
 !===============================================================================
@@ -80,12 +86,12 @@ contains
 !===============================================================================
 
   subroutine free_memory_simulation()
+
     if (allocated(work_index)) deallocate(work_index)
 
     call k_generation % clear()
     call k_generation % shrink_to_fit()
-    call entropy % clear()
-    call entropy % shrink_to_fit()
+    call entropy_clear()
   end subroutine free_memory_simulation
 
 end module simulation_header

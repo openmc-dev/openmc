@@ -6,7 +6,6 @@ module physics
   use error,                  only: fatal_error, warning, write_message
   use material_header,        only: Material, materials
   use math
-  use mesh_header,            only: meshes
   use message_passing
   use nuclide_header
   use particle_header

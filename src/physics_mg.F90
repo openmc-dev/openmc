@@ -7,7 +7,6 @@ module physics_mg
   use error,                  only: fatal_error, warning, write_message
   use material_header,        only: Material, materials
   use math,                   only: rotate_angle
-  use mesh_header,            only: meshes
   use mgxs_interface
   use message_passing
   use nuclide_header,         only: material_xs

@@ -10,8 +10,7 @@ module simulation
   use cmfd_execute,    only: cmfd_init_batch, cmfd_tally_init, execute_cmfd
   use cmfd_header,     only: cmfd_on
   use constants,       only: ZERO
-  use eigenvalue,      only: calculate_average_keff, &
-                             calculate_generation_keff, shannon_entropy, &
+  use eigenvalue,      only: calculate_average_keff, calculate_generation_keff, &
                              synchronize_bank, keff_generation, k_sum
 #ifdef _OPENMP
   use eigenvalue,      only: join_bank_from_threads
@@ -479,7 +478,7 @@ contains
     ! will potentially populate k_generation and entropy)
     current_batch = 0
     call k_generation % clear()
-    call entropy % clear()
+    call entropy_clear()
     need_depletion_rx = .false.
 
     ! If this is a restart run, load the state point data and binary source

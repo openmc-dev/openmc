@@ -37,6 +37,7 @@ extern "C" {
   int openmc_filter_set_type(int32_t index, const char* type);
   int openmc_finalize();
   int openmc_find_cell(double* xyz, int32_t* index, int32_t* instance);
+  int openmc_fission_bank(struct Bank** ptr, int64_t* n);
   int openmc_get_cell_index(int32_t id, int32_t* index);
   int openmc_get_filter_index(int32_t id, int32_t* index);
   void openmc_get_filter_next_id(int32_t* id);

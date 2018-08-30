@@ -5,6 +5,7 @@ namespace mpi {
 
 int rank {0};
 int n_procs {1};
+bool master {false};
 
 #ifdef OPENMC_MPI
 MPI_Comm intracomm;

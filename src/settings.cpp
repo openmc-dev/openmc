@@ -537,10 +537,6 @@ read_settings_xml()
       m.width_ = (m.upper_right_ - m.lower_left_) / m.shape_;
     }
 
-    // TODO: Allocate entropy_P
-    // Allocate space for storing number of fission sites in each mesh cell
-    //allocate(entropy_p(1, product(m % dimension)))
-
     // Turn on Shannon entropy calculation
     settings::entropy_on = true;
   }
@@ -574,10 +570,6 @@ read_settings_xml()
   }
 
   if (index_ufs_mesh >= 0) {
-    // Allocate array to store source fraction for UFS
-    // TODO: Allocate source_frac
-    //allocate(source_frac(1, product(meshes(index_ufs_mesh) % dimension)))
-
     // Turn on uniform fission source weighting
     settings::ufs_on = true;
   }

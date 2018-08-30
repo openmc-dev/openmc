@@ -28,7 +28,7 @@ module bank_header
   type(Bank), allocatable, target :: master_fission_bank(:)
 #endif
 
-  integer(8) :: n_bank       ! # of sites in fission bank
+  integer(C_INT64_T), bind(C) :: n_bank       ! # of sites in fission bank
 
 !$omp threadprivate(fission_bank, n_bank)
 
@@ -70,5 +70,21 @@ contains
       n = size(source_bank)
     end if
   end function openmc_source_bank
+
+  function openmc_fission_bank(ptr, n) result(err) bind(C)
+    ! Return a pointer to the source bank
+    type(C_PTR), intent(out) :: ptr
+    integer(C_INT64_T), intent(out) :: n
+    integer(C_INT) :: err
+
+    if (.not. allocated(fission_bank)) then
+      err = E_ALLOCATE
+      call set_errmsg("Fission bank has not been allocated.")
+    else
+      err = 0
+      ptr = C_LOC(fission_bank)
+      n = size(fission_bank)
+    end if
+  end function openmc_fission_bank
 
 end module bank_header

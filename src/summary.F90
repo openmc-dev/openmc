@@ -6,7 +6,6 @@ module summary
   use geometry_header
   use hdf5_interface
   use material_header, only: Material, n_materials, openmc_material_get_volume
-  use mesh_header,     only: RegularMesh
   use message_passing
   use mgxs_interface
   use nuclide_header

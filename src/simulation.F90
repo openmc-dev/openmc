@@ -10,7 +10,7 @@ module simulation
   use cmfd_execute,    only: cmfd_init_batch, cmfd_tally_init, execute_cmfd
   use cmfd_header,     only: cmfd_on
   use constants,       only: ZERO
-  use eigenvalue,      only: count_source_for_ufs, calculate_average_keff, &
+  use eigenvalue,      only: calculate_average_keff, &
                              calculate_generation_keff, shannon_entropy, &
                              synchronize_bank, keff_generation, k_sum
 #ifdef _OPENMP
@@ -234,12 +234,17 @@ contains
 
   subroutine initialize_generation()
 
+    interface
+      subroutine ufs_count_sites() bind(C)
+      end subroutine
+    end interface
+
     if (run_mode == MODE_EIGENVALUE) then
       ! Reset number of fission bank sites
       n_bank = 0
 
       ! Count source sites if using uniform fission source weighting
-      if (ufs) call count_source_for_ufs()
+      if (ufs) call ufs_count_sites()
 
       ! Store current value of tracklength k
       keff_generation = global_tallies(RESULT_VALUE, K_TRACKLENGTH)
@@ -255,6 +260,9 @@ contains
 
     interface
       subroutine fill_source_bank_fixedsource() bind(C)
+      end subroutine
+
+      subroutine shannon_entropy() bind(C)
       end subroutine
     end interface
 

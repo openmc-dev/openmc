@@ -11,7 +11,6 @@ module mesh_header
 
   implicit none
   private
-  public :: free_memory_mesh
   public :: openmc_extend_meshes
   public :: openmc_get_mesh_index
   public :: openmc_mesh_get_id
@@ -27,22 +26,23 @@ module mesh_header
 !===============================================================================
 
   type, public :: RegularMesh
-    integer :: id = -1                     ! user-specified id
-    integer :: type = MESH_REGULAR         ! rectangular, hexagonal
+    type(C_PTR) :: ptr
     integer(C_INT) :: n_dimension          ! rank of mesh
-    real(8) :: volume_frac                 ! volume fraction of each cell
     integer(C_INT), allocatable :: dimension(:)   ! number of cells in each direction
     real(C_DOUBLE), allocatable :: lower_left(:)  ! lower-left corner of mesh
     real(C_DOUBLE), allocatable :: upper_right(:) ! upper-right corner of mesh
     real(C_DOUBLE), allocatable :: width(:)       ! width of each mesh cell
   contains
+    procedure :: id => regular_id
+    procedure :: volume_frac => regular_volume_frac
+
+
     procedure :: from_xml => regular_from_xml
     procedure :: get_bin => regular_get_bin
     procedure :: get_indices => regular_get_indices
     procedure :: get_bin_from_indices => regular_get_bin_from_indices
     procedure :: get_indices_from_bin => regular_get_indices_from_bin
     procedure :: intersects => regular_intersects
-    procedure :: to_hdf5 => regular_to_hdf5
   end type RegularMesh
 
   integer(C_INT32_T), public, bind(C) :: n_meshes = 0 ! # of structured meshes
@@ -120,6 +120,36 @@ module mesh_header
   end interface
 
 contains
+
+  function regular_id(this) result(id)
+    class(RegularMesh), intent(in) :: this
+    integer(C_INT32_T) :: id
+
+    interface
+      function mesh_id(ptr) result(id) bind(C)
+        import C_PTR, C_INT32_T
+        type(C_PTR), value :: ptr
+        integer(C_INT32_T) :: id
+      end function
+    end interface
+
+    id = mesh_id(this % ptr)
+  end function
+
+  function regular_volume_frac(this) result(volume_frac)
+    class(RegularMesh), intent(in) :: this
+    real(C_DOUBLE) :: volume_frac
+
+    interface
+      function mesh_volume_frac(ptr) result(volume_frac) bind(C)
+        import C_PTR, C_DOUBLE
+        type(C_PTR), value :: ptr
+        real(C_DOUBLE) :: volume_frac
+      end function
+    end interface
+
+    volume_frac = mesh_volume_frac(this % ptr)
+  end function
 
   subroutine regular_from_xml(this, node)
     class(RegularMesh), intent(inout) :: this
@@ -597,36 +627,5 @@ contains
     end if
 
   end function mesh_intersects_3d
-
-!===============================================================================
-! TO_HDF5 writes the mesh data to an HDF5 group
-!===============================================================================
-
-  subroutine regular_to_hdf5(this, group)
-    class(RegularMesh), intent(in) :: this
-    integer(HID_T), intent(in) :: group
-
-    integer(HID_T) :: mesh_group
-
-    mesh_group = create_group(group, "mesh " // trim(to_str(this % id)))
-
-    call write_dataset(mesh_group, "type", "regular")
-    call write_dataset(mesh_group, "dimension", this % dimension)
-    call write_dataset(mesh_group, "lower_left", this % lower_left)
-    call write_dataset(mesh_group, "upper_right", this % upper_right)
-    call write_dataset(mesh_group, "width", this % width)
-
-    call close_group(mesh_group)
-  end subroutine regular_to_hdf5
-
-!===============================================================================
-! FREE_MEMORY_MESH deallocates global arrays defined in this module
-!===============================================================================
-
-  subroutine free_memory_mesh()
-    n_meshes = 0
-    if (allocated(meshes)) deallocate(meshes)
-    call mesh_dict % clear()
-  end subroutine free_memory_mesh
 
 end module mesh_header

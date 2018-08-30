@@ -33,6 +33,14 @@ module output
   integer :: ou = OUTPUT_UNIT
   integer :: eu = ERROR_UNIT
 
+  interface
+    function entropy(i) result(h) bind(C, name='entropy_c')
+      import C_INT, C_DOUBLE
+      integer(C_INT), value :: i
+      real(C_DOUBLE) :: h
+    end function
+  end interface
+
 contains
 
 !===============================================================================
@@ -335,7 +343,7 @@ contains
 
     ! write out entropy info
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-         entropy % data(i)
+         entropy(i)
 
     if (n > 1) then
       write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5," +/-",F8.5)', ADVANCE='NO') &
@@ -369,7 +377,7 @@ contains
 
     ! write out entropy info
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-         entropy % data(i)
+         entropy(i)
 
     ! write out accumulated k-effective if after first active batch
     if (n > 1) then

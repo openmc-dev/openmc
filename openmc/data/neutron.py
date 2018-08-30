@@ -480,6 +480,12 @@ class IncidentNeutron(EqualityMixin):
                 tgroup = g.create_group('total_nu')
                 rx.derived_products[0].to_hdf5(tgroup)
 
+        # Write summed reaction data only for reactions with photon production
+        for rx in self.summed_reactions.values():
+            if any([p.particle == 'photon' for p in rx.products]):
+                rx_group = rxs_group.create_group('reaction_{:03}'.format(rx.mt))
+                rx.to_hdf5(rx_group)
+
         # Write unresolved resonance probability tables
         if self.urr:
             urr_group = g.create_group('urr')
@@ -491,14 +497,6 @@ class IncidentNeutron(EqualityMixin):
         if self.fission_energy is not None:
             fer_group = g.create_group('fission_energy_release')
             self.fission_energy.to_hdf5(fer_group)
-
-        # Write summed reaction data only for reactions with photon production
-        for rx in self.summed_reactions.values():
-            if any([p.particle == 'photon' for p in rx.products]):
-                if not 'summed_reactions' in g:
-                    srxs_group = g.create_group('summed_reactions')
-                rx_group = srxs_group.create_group('reaction_{:03}'.format(rx.mt))
-                rx.to_hdf5(rx_group)
 
         f.close()
 
@@ -563,22 +561,17 @@ class IncidentNeutron(EqualityMixin):
         for name, obj in sorted(rxs_group.items()):
             if name.startswith('reaction_'):
                 rx = Reaction.from_hdf5(obj, data.energy)
-                data.reactions[rx.mt] = rx
+                if rx.summed:
+                    data.summed_reactions[rx.mt] = rx
+                else:
+                    data.reactions[rx.mt] = rx
 
                 # Read total nu data if available
                 if rx.mt in (18, 19, 20, 21, 38) and 'total_nu' in group:
                     tgroup = group['total_nu']
                     rx.derived_products.append(Product.from_hdf5(tgroup))
 
-        # Read summed reaction data
-        if 'summed_reactions' in group:
-            srxs_group = group['summed_reactions']
-            for name, obj in sorted(srxs_group.items()):
-                if name.startswith('reaction_'):
-                    rx = Reaction.from_hdf5(obj, data.energy)
-                    data.summed_reactions[rx.mt] = rx
-
-        # Build summed reactions.  Start from the highest MT number because
+        # Build summed reactions. Start from the highest MT number because
         # high MTs never depend on lower MTs.
         for mt_sum in sorted(SUM_RULES, reverse=True):
             if mt_sum not in data:
@@ -660,11 +653,13 @@ class IncidentNeutron(EqualityMixin):
         # Create summed reactions (total and absorption)
         total = Reaction(1)
         total.xs[strT] = Tabulated1D(energy, total_xs)
+        total.summed = True
         data.summed_reactions[1] = total
 
         if np.count_nonzero(absorption_xs) > 0:
             absorption = Reaction(27)
             absorption.xs[strT] = Tabulated1D(energy, absorption_xs)
+            absorption.summed = True
             data.summed_reactions[27] = absorption
 
         # Read each reaction
@@ -700,6 +695,7 @@ class IncidentNeutron(EqualityMixin):
                            else 0 for xs in xss])
                 rx.xs[strT] = Tabulated1D(energy[idx:], Sum(xss)(energy[idx:]))
                 rx.xs[strT]._threshold_idx = idx
+                rx.summed = True
 
                 # Determine summed cross section
                 rx.products += _get_photon_products_ace(ace, rx)

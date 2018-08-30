@@ -738,6 +738,21 @@ openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
 }
 
 //==============================================================================
+// Non-member functions
+//==============================================================================
+
+void read_meshes(pugi::xml_node* root)
+{
+  for (auto node : root->children("mesh")) {
+    // Read mesh and add to vector
+    meshes.emplace_back(new RegularMesh{node});
+
+    // Map ID to position in vector
+    mesh_map[meshes.back()->id_] = meshes.size() - 1;
+  }
+}
+
+//==============================================================================
 // Fortran compatibility
 //==============================================================================
 

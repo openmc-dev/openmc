@@ -22,5 +22,7 @@ void header(const char* msg, int level);
 
 extern "C" void print_overlap_check();
 
+extern "C" void title();
+
 } // namespace openmc
 #endif // OPENMC_OUTPUT_H

@@ -89,7 +89,7 @@ contains
   end subroutine vector_copy
 
 !===============================================================================
-! VECTOR_WRITE write a vector to file
+! VECTOR_WRITE writes a vector to file
 !===============================================================================
 
   subroutine vector_write(self, filename)

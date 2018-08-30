@@ -196,7 +196,6 @@ contains
     use constants,  only: ONE
     use error,      only: fatal_error
     use cmfd_header, only: cmfd, cmfd_atoli, cmfd_rtoli
-    use simulation_header, only: current_batch
 
     integer :: i ! iteration counter
     integer :: innerits ! # of inner iterations

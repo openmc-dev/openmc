@@ -60,7 +60,7 @@ module settings
   logical :: pred_batches = .false.    ! predict batches for triggers
   logical :: trigger_on = .false.      ! flag for turning triggers on/off
 
-  logical :: entropy_on = .false.
+  logical(C_BOOL), bind(C, name='openmc_entropy_on') :: entropy_on = .false.
   integer :: index_entropy_mesh = -1
 
   logical :: ufs = .false.

@@ -757,17 +757,40 @@ void read_meshes(pugi::xml_node* root)
 //==============================================================================
 
 extern "C" {
+  RegularMesh* mesh_ptr(int i) { return meshes[i-1].get(); }
+
   int32_t mesh_id(RegularMesh* m) { return m->id_; }
 
   double mesh_volume_frac(RegularMesh* m) { return m->volume_frac_; }
 
   int mesh_n_dimension(RegularMesh* m) { return m->n_dimension_; }
 
-  double* mesh_lower_left(RegularMesh* m) { return m->lower_left_.data(); }
+  int mesh_dimension(RegularMesh* m, int i) { return m->shape_(i - 1); }
+
+  double mesh_lower_left(RegularMesh* m, int i) { return m->lower_left_(i - 1); }
+
+  double mesh_upper_right(RegularMesh* m, int i) { return m->upper_right_(i - 1); }
+
+  double mesh_width(RegularMesh* m, int i) { return m->width_(i - 1); }
 
   int mesh_get_bin(RegularMesh* m, const double* xyz)
   {
     return m->get_bin({xyz});
+  }
+
+  int mesh_get_bin_from_indices(RegularMesh* m, const int* ijk)
+  {
+    return m->get_bin_from_indices(ijk);
+  }
+
+  void mesh_get_indices(RegularMesh* m, const double* xyz, int* ijk, bool* in_mesh)
+  {
+    m->get_indices({xyz}, ijk, in_mesh);
+  }
+
+  void mesh_get_indices_from_bin(RegularMesh* m, int bin, int* ijk)
+  {
+    m->get_indices_from_bin(bin, ijk);
   }
 
   void meshes_to_hdf5(hid_t group)

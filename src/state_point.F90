@@ -173,7 +173,7 @@ contains
         call write_dataset(file_id, "generations_per_batch", gen_per_batch)
         k = k_generation % size()
         call write_dataset(file_id, "k_generation", k_generation % data(1:k))
-        call entropy_to_hdf5()
+        call entropy_to_hdf5(file_id)
         call write_dataset(file_id, "k_col_abs", k_col_abs)
         call write_dataset(file_id, "k_col_tra", k_col_tra)
         call write_dataset(file_id, "k_abs_tra", k_abs_tra)

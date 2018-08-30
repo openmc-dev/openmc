@@ -4,7 +4,7 @@ module input_xml
 
   use algorithm,        only: find
   use cmfd_input,       only: configure_cmfd
-  use cmfd_header,      only: cmfd_mesh
+  use cmfd_header,      only: index_cmfd_mesh
   use constants
   use dict_header,      only: DictIntInt, DictCharInt, DictEntryCI
   use endf,             only: reaction_name
@@ -85,11 +85,6 @@ module input_xml
       import C_PTR
       type(C_PTR), value :: node_ptr
     end subroutine read_materials
-
-    subroutine read_meshes(node_ptr) bind(C)
-      import C_PTR
-      type(C_PTR), value :: node_ptr
-    end subroutine
 
     function find_root_universe() bind(C) result(root)
       import C_INT32_T
@@ -232,7 +227,6 @@ contains
     if (run_mode == MODE_EIGENVALUE) then
       ! Preallocate space for keff and entropy by generation
       call k_generation % reserve(n_max_batches*gen_per_batch)
-      call entropy % reserve(n_max_batches*gen_per_batch)
     end if
 
     ! Particle tracks
@@ -1222,7 +1216,7 @@ contains
     ! READ MESH DATA
 
     ! Check for user meshes and allocate
-    call read_meshes()
+    call read_meshes(root % ptr)
 
     ! We only need the mesh info for plotting
     if (run_mode == MODE_PLOTTING) then
@@ -2396,7 +2390,7 @@ contains
                      &meshlines on plot " // trim(to_str(pl % id)))
               end if
 
-              pl % meshlines_mesh => cmfd_mesh
+              pl % index_meshlines_mesh = index_cmfd_mesh
 
             case ('entropy')
 

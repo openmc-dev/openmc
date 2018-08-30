@@ -2,6 +2,9 @@
 #define OPENMC_EIGENVALUE_H
 
 #include <cstdint> // for int64_t
+#include <vector>
+
+#include "xtensor/xtensor.hpp"
 
 #include "openmc/particle.h"
 
@@ -15,6 +18,7 @@ extern std::vector<double> entropy; //!< Shannon entropy at each generation
 extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS
 
 extern "C" int64_t n_bank;
+#pragma omp threadprivate(n_bank)
 
 //==============================================================================
 // Non-member functions

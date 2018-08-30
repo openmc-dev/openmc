@@ -2,35 +2,20 @@ module mesh_header
 
   use, intrinsic :: ISO_C_BINDING
 
-  use constants
-  use dict_header, only: DictIntInt
-  use error
-  use hdf5_interface
-  use string, only: to_str, to_lower
-  use xml_interface
-
   implicit none
-  private
-  public :: openmc_extend_meshes
-  public :: openmc_get_mesh_index
-  public :: openmc_mesh_get_id
-  public :: openmc_mesh_get_dimension
-  public :: openmc_mesh_get_params
-  public :: openmc_mesh_set_id
-  public :: openmc_mesh_set_dimension
-  public :: openmc_mesh_set_params
 
 !===============================================================================
 ! STRUCTUREDMESH represents a tessellation of n-dimensional Euclidean space by
 ! congruent squares or cubes
 !===============================================================================
 
-  type, public :: RegularMesh
+  type :: RegularMesh
     type(C_PTR) :: ptr
   contains
     procedure :: id => regular_id
     procedure :: volume_frac => regular_volume_frac
     procedure :: n_dimension => regular_n_dimension
+    procedure :: dimension => regular_dimension
     procedure :: lower_left => regular_lower_left
     procedure :: upper_right => regular_upper_right
     procedure :: width => regular_width
@@ -40,11 +25,6 @@ module mesh_header
     procedure :: get_bin_from_indices => regular_get_bin_from_indices
     procedure :: get_indices_from_bin => regular_get_indices_from_bin
   end type RegularMesh
-
-  integer(C_INT32_T), public, bind(C) :: n_meshes = 0 ! # of structured meshes
-
-  ! Dictionary that maps user IDs to indices in 'meshes'
-  type(DictIntInt), public :: mesh_dict
 
   interface
     function openmc_extend_meshes(n, index_start, index_end) result(err) bind(C)
@@ -158,21 +138,21 @@ module mesh_header
       real(C_DOUBLE) :: w
     end function
 
-    function mesh_get_bin(ptr, xyz) result(bin) bind(C)
+    pure function mesh_get_bin(ptr, xyz) result(bin) bind(C)
       import C_PTR, C_DOUBLE, C_INT
       type(C_PTR), value :: ptr
       real(C_DOUBLE), intent(in) :: xyz(*)
       integer(C_INT) :: bin
     end function
 
-    function mesh_get_bin_from_indices(ptr, ijk) result(bin) bind(C)
+    pure function mesh_get_bin_from_indices(ptr, ijk) result(bin) bind(C)
       import C_PTR, C_INT
       type(C_PTR), value :: ptr
       integer(C_INT), intent(in) :: ijk(*)
       integer(C_INT) :: bin
     end function
 
-    subroutine mesh_get_indices(ptr, xyz, ijk, in_mesh) bind(C)
+    pure subroutine mesh_get_indices(ptr, xyz, ijk, in_mesh) bind(C)
       import C_PTR, C_DOUBLE, C_INT, C_BOOL
       type(C_PTR), value :: ptr
       real(C_DOUBLE), intent(in) :: xyz(*)
@@ -180,7 +160,7 @@ module mesh_header
       logical(C_BOOL), intent(out) :: in_mesh
     end subroutine
 
-    subroutine mesh_get_indices_from_bin(ptr, bin, ijk) bind(C)
+    pure subroutine mesh_get_indices_from_bin(ptr, bin, ijk) bind(C)
       import C_PTR, C_INT
       type(C_PTR), value :: ptr
       integer(C_INT), value :: bin
@@ -191,6 +171,16 @@ module mesh_header
       import C_INT, C_PTR
       integer(C_INT), value :: i
       type(C_PTR) :: ptr
+    end function
+
+    subroutine read_meshes(node_ptr) bind(C)
+      import C_PTR
+      type(C_PTR), value :: node_ptr
+    end subroutine
+
+    function n_meshes() result(n) bind(C)
+      import C_INT
+      integer(C_INT) :: n
     end function
   end interface
 

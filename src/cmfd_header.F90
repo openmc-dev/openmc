@@ -95,7 +95,8 @@ module cmfd_header
   ! Main object
   type(cmfd_type), public :: cmfd
 
-  type(RegularMesh), public, pointer :: cmfd_mesh => null()
+  integer, public :: index_cmfd_mesh
+  type(RegularMesh), public :: cmfd_mesh
 
   ! Pointers for different tallies
   type(TallyContainer), public, pointer :: cmfd_tallies(:) => null()

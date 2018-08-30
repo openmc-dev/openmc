@@ -532,10 +532,10 @@ xt::xarray<double> RegularMesh::count_sites(int64_t n, const Bank* bank,
   int n_energy, const double* energies, bool* outside)
 {
   // Determine shape of array for counts
-  int m = xt::prod(shape_)();
+  std::size_t m = xt::prod(shape_)();
   std::vector<std::size_t> shape;
   if (n_energy > 0) {
-    shape = {m, n_energy};
+    shape = {m, static_cast<std::size_t>(n_energy)};
   } else {
     shape = {m};
   }
@@ -757,6 +757,8 @@ void read_meshes(pugi::xml_node* root)
 //==============================================================================
 
 extern "C" {
+  int n_meshes() { return meshes.size(); }
+
   RegularMesh* mesh_ptr(int i) { return meshes[i-1].get(); }
 
   int32_t mesh_id(RegularMesh* m) { return m->id_; }

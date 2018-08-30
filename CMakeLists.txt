@@ -385,6 +385,7 @@ add_library(libopenmc SHARED
   src/distribution_energy.cpp
   src/distribution_multi.cpp
   src/distribution_spatial.cpp
+  src/eigenvalue.cpp
   src/endf.cpp
   src/initialize.cpp
   src/finalize.cpp

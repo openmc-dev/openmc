@@ -317,6 +317,14 @@ write_attribute(hid_t obj_id, const char* name, const std::array<T, N>& buffer)
   write_attr(obj_id, 1, dims, name, H5TypeMap<T>::type_id, buffer.data());
 }
 
+template<typename T> inline void
+write_attribute(hid_t obj_id, const char* name, const std::vector<T>& buffer)
+{
+  hsize_t dims[] {buffer.size()};
+  write_attr(obj_id, 1, dims, name, H5TypeMap<T>::type_id, buffer.data());
+}
+
+
 //==============================================================================
 // Templates/overloads for write_dataset
 //==============================================================================

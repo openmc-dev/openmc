@@ -9,7 +9,7 @@ module plot
   use hdf5_interface
   use output,          only: time_stamp
   use material_header, only: materials
-  use mesh_header,     only: meshes
+  use mesh_header,     only: meshes, RegularMesh
   use particle_header
   use plot_header
   use progress_header, only: ProgressBar
@@ -242,8 +242,8 @@ contains
     width = xyz_ur_plot - xyz_ll_plot
 
     m = meshes(pl % index_meshlines_mesh)
-    call m % get_indices(xyz_ll_plot, ijk_ll(:m % n_dimension), in_mesh)
-    call m % get_indices(xyz_ur_plot, ijk_ur(:m % n_dimension), in_mesh)
+    call m % get_indices(xyz_ll_plot, ijk_ll(:m % n_dimension()), in_mesh)
+    call m % get_indices(xyz_ur_plot, ijk_ur(:m % n_dimension()), in_mesh)
 
     ! sweep through all meshbins on this plane and draw borders
     do i = ijk_ll(outer), ijk_ur(outer)

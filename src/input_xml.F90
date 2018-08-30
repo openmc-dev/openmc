@@ -2064,6 +2064,7 @@ contains
     integer :: i, j
     integer :: n_cols, col_id, n_comp, n_masks, n_meshlines
     integer :: meshid
+    integer(C_INT) :: err, idx
     integer, allocatable :: iarray(:)
     logical :: file_exists              ! does plots.xml file exist?
     character(MAX_LINE_LEN) :: filename ! absolute path to plots.xml
@@ -2386,7 +2387,7 @@ contains
                      // trim(to_str(pl % id)))
               end if
 
-              pl % meshlines_mesh => meshes(index_ufs_mesh)
+              pl % index_meshlines_mesh = index_ufs_mesh
 
             case ('cmfd')
 
@@ -2404,7 +2405,7 @@ contains
                      // trim(to_str(pl % id)))
               end if
 
-              pl % meshlines_mesh => meshes(index_entropy_mesh)
+              pl % index_meshlines_mesh = index_entropy_mesh
 
             case ('tally')
 
@@ -2417,17 +2418,13 @@ contains
               end if
 
               ! Check if the specified tally mesh exists
-              if (mesh_dict % has(meshid)) then
-                pl % meshlines_mesh => meshes(mesh_dict % get(meshid))
-                if (meshes(meshid) % type /= MESH_REGULAR) then
-                  call fatal_error("Non-rectangular mesh specified in &
-                       &meshlines for plot " // trim(to_str(pl % id)))
-                end if
-              else
+              err = openmc_get_mesh_index(meshid, idx)
+              if (err /= 0) then
                 call fatal_error("Could not find mesh " &
                      // trim(to_str(meshid)) // " specified in meshlines for &
                      &plot " // trim(to_str(pl % id)))
               end if
+              pl % index_meshlines_mesh = idx
 
             case default
               call fatal_error("Invalid type for meshlines on plot " &

@@ -1,9 +1,14 @@
 #include "openmc/mesh.h"
 
+#include <algorithm> // for copy
 #include <cstddef> // for size_t
 #include <cmath>  // for ceil
 #include <string>
 
+#ifdef OPENMC_MPI
+#include "mpi.h"
+#endif
+#include "xtensor/xbuilder.hpp"
 #include "xtensor/xeval.hpp"
 #include "xtensor/xmath.hpp"
 #include "xtensor/xsort.hpp"
@@ -13,6 +18,8 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/message_passing.h"
+#include "openmc/search.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -521,6 +528,76 @@ void RegularMesh::to_hdf5(hid_t group)
   close_group(mesh_group);
 }
 
+xt::xarray<double> RegularMesh::count_sites(int64_t n, const Bank* bank,
+  int n_energy, const double* energies, bool* outside)
+{
+  // Determine shape of array for counts
+  int m = xt::prod(shape_)();
+  std::vector<std::size_t> shape;
+  if (n_energy > 0) {
+    shape = {m, n_energy};
+  } else {
+    shape = {m};
+  }
+
+  // Create array of zeros
+  xt::xarray<double> cnt {shape, 0.0};
+  bool outside_ = false;
+
+  for (int64_t i = 0; i < n; ++i) {
+    // determine scoring bin for entropy mesh
+    int mesh_bin = get_bin({bank[i].xyz});
+
+    // if outside mesh, skip particle
+    if (mesh_bin < 0) {
+      outside_ = true;
+      continue;
+    }
+
+    if (n_energy > 0) {
+      double E = bank[i].E;
+      int e_bin;
+      if (E >= energies[0] && E <= energies[n_energy - 1]) {
+        // determine energy bin
+        int e_bin = lower_bound_index(energies, energies + n_energy, E);
+
+        // Add to appropriate bin
+        cnt(mesh_bin, e_bin) += bank[i].wgt;
+      }
+    } else {
+      // Add to appropriate bin
+      cnt(mesh_bin) += bank[i].wgt;
+    }
+  }
+
+  // Create copy of count data
+  int total = cnt.size();
+  double* cnt_reduced = new double[total];
+
+#ifdef OPENMC_MPI
+  // collect values from all processors
+  MPI_Reduce(cnt.data(), cnt_reduced, total, MPI_DOUBLE, MPI_SUM, 0,
+    mpi::intracomm);
+  if (outside) {
+    MPI_Reduce(&outside_, outside, 1, MPI_BOOL, MPI_LOR, 0, mpi::intracomm);
+  }
+
+  // Check if there were sites outside the mesh for any processor
+  MPI_REDUCE(outside, sites_outside, 1, MPI_LOGICAL, MPI_LOR, 0, &
+          mpi_intracomm, mpi_err)
+  end if
+#else
+  std::copy(cnt.data(), cnt.data() + total, cnt_reduced);
+  if (outside) *outside = outside_;
+#endif
+
+  // Adapt reduced values in array back into an xarray
+  auto arr = xt::adapt(cnt_reduced, total, xt::acquire_ownership(), shape);
+  xt::xarray<double> counts = arr;
+
+  return counts;
+}
+
 //==============================================================================
 // C API functions
 //==============================================================================
@@ -659,5 +736,51 @@ openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
 
   return 0;
 }
+
+//==============================================================================
+// Fortran compatibility
+//==============================================================================
+
+extern "C" {
+  int32_t mesh_id(RegularMesh* m) { return m->id_; }
+
+  double mesh_volume_frac(RegularMesh* m) { return m->volume_frac_; }
+
+  int mesh_n_dimension(RegularMesh* m) { return m->n_dimension_; }
+
+  double* mesh_lower_left(RegularMesh* m) { return m->lower_left_.data(); }
+
+  int mesh_get_bin(RegularMesh* m, const double* xyz)
+  {
+    return m->get_bin({xyz});
+  }
+
+  void meshes_to_hdf5(hid_t group)
+  {
+    // Write number of meshes
+    hid_t meshes_group = create_group(group, "meshes");
+    int32_t n_meshes = meshes.size();
+    write_attribute(meshes_group, "n_meshes", n_meshes);
+
+    if (n_meshes > 0) {
+      // Write IDs of meshes
+      std::vector<int> ids;
+      for (const auto& m : meshes) {
+        m->to_hdf5(meshes_group);
+        ids.push_back(m->id_);
+      }
+      write_attribute(meshes_group, "ids", ids);
+    }
+
+    close_group(meshes_group);
+  }
+
+  void free_memory_mesh()
+  {
+    meshes.clear();
+    mesh_map.clear();
+  }
+}
+
 
 } // namespace openmc

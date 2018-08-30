@@ -34,6 +34,9 @@ public:
   bool intersects(Position r0, Position r1);
   void to_hdf5(hid_t group);
 
+  xt::xarray<double> count_sites(int64_t n, const Bank* bank,
+    int n_energy, const double* energies, bool* outside);
+
   int id_ {-1};  //!< User-specified ID
   int n_dimension_;
   double volume_frac_;

@@ -11,7 +11,6 @@ module openmc_api
   use hdf5_interface
   use material_header
   use math
-  use mesh_header,     only: free_memory_mesh
   use message_passing
   use nuclide_header
   use initialize,      only: openmc_init_f
@@ -305,6 +304,9 @@ contains
     interface
       subroutine free_memory_source() bind(C)
       end subroutine
+
+      subroutine free_memory_mesh() bind(C)
+      end subroutine free_memory_mesh
     end interface
 
     call free_memory_geometry()

@@ -47,13 +47,6 @@ module simulation_header
   real(8) :: k_col_tra = ZERO ! sum over batches of k_collision * k_tracklength
   real(8) :: k_abs_tra = ZERO ! sum over batches of k_absorption * k_tracklength
 
-  ! Shannon entropy
-  type(VectorReal)     :: entropy        ! shannon entropy at each generation
-  real(8), allocatable :: entropy_p(:,:) ! % of source sites in each cell
-
-  ! Uniform fission source weighting
-  real(8), allocatable :: source_frac(:,:)
-
   ! ============================================================================
   ! PARALLEL PROCESSING VARIABLES
 
@@ -87,8 +80,6 @@ contains
 !===============================================================================
 
   subroutine free_memory_simulation()
-    if (allocated(entropy_p)) deallocate(entropy_p)
-    if (allocated(source_frac)) deallocate(source_frac)
     if (allocated(work_index)) deallocate(work_index)
 
     call k_generation % clear()

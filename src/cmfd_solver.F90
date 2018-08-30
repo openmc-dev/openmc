@@ -7,8 +7,6 @@ module cmfd_solver
   use cmfd_prod_operator, only: init_prod_matrix, build_prod_matrix
   use matrix_header,      only: Matrix
   use vector_header,      only: Vector
-  use simulation_header,  only: current_batch
-  use string,             only: to_str
 
   implicit none
   private
@@ -148,8 +146,13 @@ contains
     call loss % assemble()
     call prod % assemble()
     if (cmfd_write_matrices) then
-      call loss % write('loss_gen' // trim(to_str(current_batch)) // '.dat')
-      call prod % write('prod_gen' // trim(to_str(current_batch)) // '.dat')
+      if (adjoint) then
+        call loss % write('adj_loss.dat')
+        call prod % write('adj_prod.dat')
+      else
+        call loss % write('adj.dat')
+        call prod % write('adj.dat')
+      end if
     end if
 
     ! Set norms to 0
@@ -177,8 +180,8 @@ contains
 
     ! Write out matrix in binary file (debugging)
     if (cmfd_write_matrices) then
-      call loss % write('adj_loss_gen' // trim(to_str(current_batch)) // '.dat')
-      call prod % write('adj_prod_gen' // trim(to_str(current_batch)) // '.dat')
+      call loss % write('adj_loss.dat')
+      call prod % write('adj_prod.dat')
     end if
 
   end subroutine compute_adjoint
@@ -193,6 +196,7 @@ contains
     use constants,  only: ONE
     use error,      only: fatal_error
     use cmfd_header, only: cmfd, cmfd_atoli, cmfd_rtoli
+    use simulation_header, only: current_batch
 
     integer :: i ! iteration counter
     integer :: innerits ! # of inner iterations
@@ -738,9 +742,9 @@ contains
     ! Write out results
     if (cmfd_write_matrices) then
       if (adjoint_calc) then
-        filename = 'adj_fluxvec_gen' // trim(to_str(current_batch)) // '.dat'
+        filename = 'adj_fluxvec.dat'
       else
-        filename = 'fluxvec_gen' // trim(to_str(current_batch)) // '.dat'
+        filename = 'fluxvec.dat'
       end if
       call phi_n % write(filename)
     end if

@@ -646,11 +646,6 @@ class CMFDRun(object):
 
     TODO: Put descriptions for all methods in CMFDRun
     TODO Get rid of CMFD constants
-    TODO Get rid of unused variables defined in init
-    TODO Make sure all self variables defined in init
-    TODO Check to make sure no compatibility issues with numpy arrays for input variables
-    TODO Create write_vector function in cmfd_solver.F90
-
     """
 
     def __init__(self):
@@ -685,7 +680,7 @@ class CMFDRun(object):
         self._cmfd_on = False
         self._mat_dim = _CMFD_NOACCEL
         self._keff_bal = None
-        self._cmfd_adjoint_type = "physical"
+        self._cmfd_adjoint_type = 'physical'
         self._keff = None
         self._adj_keff = None
         self._phi = None
@@ -729,8 +724,8 @@ class CMFDRun(object):
         return self._dhat_reset
 
     @property
-    def display(self):
-        return self._display
+    def cmfd_display(self):
+        return self._cmfd_display
 
     @property
     def cmfd_downscatter(self):
@@ -791,12 +786,12 @@ class CMFDRun(object):
         check_type('CMFD Dhat reset', dhat_reset, bool)
         self._dhat_reset = dhat_reset
 
-    @display.setter
-    def display(self, display):
+    @cmfd_display.setter
+    def cmfd_display(self, display):
         check_type('CMFD display', display, str)
         check_value('CMFD display', display,
                     ['balance', 'dominance', 'entropy', 'source'])
-        self._display = display
+        self._cmfd_display = display
 
     @cmfd_downscatter.setter
     def cmfd_downscatter(self, cmfd_downscatter):
@@ -917,6 +912,9 @@ class CMFDRun(object):
         # Configure cmfd parameters and tallies
         self._configure_cmfd()
 
+        # TODO comment
+        sys.stdout.flush()
+
         # Initialize simulation
         openmc.capi.simulation_init()
 
@@ -938,19 +936,42 @@ class CMFDRun(object):
                 # Perform CMFD calculation if on
                 if self._cmfd_on:
                     self._execute_cmfd()
+                    # TODO comment
 
                 # Run everything in next batch after executing CMFD. Status
                 # now determines whether another batch should be run or
                 # simulation should be terminated.
                 status = openmc.capi.next_batch_after_cmfd_execute()
+
+                # TODO Comment
+                if self._cmfd_on:
+                    self._write_cmfd_output()
+
             if status != 0:
                 break
 
         # Finalize simuation
         openmc.capi.simulation_finalize()
+        # TODO print out timing statistics
+        #print("yo")
 
         # Finalize and free memory
         openmc.capi.finalize()
+
+    def _write_cmfd_output(self):
+        # TODO Comment
+        str1 = 'CMFD k:   {:0.5f}'.format(self._k_cmfd[-1])
+        if self._cmfd_display == 'dominance':
+            str2 = 'Dom Rat:  {:0.5f}'.format(self._dom[-1])
+        elif self._cmfd_display == 'entropy':
+            str2 = 'CMFD Ent: {:0.5f}'.format(self._entropy[-1])
+        elif self._cmfd_display == 'source':
+            str2 = 'RMS Src:  {:0.5f}'.format(self._src_cmp[-1])
+        else:
+            str2 = 'RMS Bal:  {:0.5f}'.format(self._balance[-1])
+
+        print('{0:>76s}\n{1:>76s}'.format(str1, str2))
+        sys.stdout.flush()
 
     def _configure_cmfd(self):
         # Read in cmfd input defined in Python
@@ -966,9 +987,8 @@ class CMFDRun(object):
 
     def _read_cmfd_input(self):
         # Print message to user
-        if openmc.capi.settings.verbosity >= 7 and openmc.capi.settings.master:
+        if openmc.capi.settings.verbosity >= 7 and openmc.capi.master():
             print(' Configuring CMFD parameters for simulation')
-            sys.stdout.flush()
 
         # Check if CMFD mesh is defined
         if self._cmfd_mesh is None:
@@ -1057,7 +1077,7 @@ class CMFDRun(object):
 
     def _cmfd_init_batch(self):
         # Get simulation parameters through C API
-        current_batch = openmc.capi.settings.current_batch
+        current_batch = openmc.capi.current_batch()
         restart_run = openmc.capi.settings.restart_run
         restart_batch = openmc.capi.settings.restart_batch
 
@@ -1065,7 +1085,6 @@ class CMFDRun(object):
         if self._cmfd_begin == current_batch:
             self._cmfd_on = True
 
-        # TODO: Test restart_batch
         # If this is a restart run we are just replaying batches so don't
         # execute anything
         if restart_run and current_batch <= restart_batch:
@@ -1078,7 +1097,7 @@ class CMFDRun(object):
 
     def _execute_cmfd(self):
         # Run CMFD on single processor on master
-        if openmc.capi.settings.master:
+        if openmc.capi.master():
             #! Start cmfd timer
             time_start_cmfd = time.time()
 
@@ -1088,12 +1107,12 @@ class CMFDRun(object):
             # Call solver
             self._cmfd_solver_execute()
 
-            # Save k-effective
+            # Store k-effective
             self._k_cmfd.append(self._keff)
 
             # Check to perform adjoint on last batch
-            if (openmc.capi.settings.current_batch == \
-                    openmc.capi.settings.batches and self._cmfd_run_adjoint):
+            if (openmc.capi.current_batch() == openmc.capi.settings.batches
+                and self._cmfd_run_adjoint):
                 self._cmfd_solver_execute(adjoint=True)
 
             # Calculate fission source
@@ -1103,15 +1122,14 @@ class CMFDRun(object):
         self._cmfd_reweight(True)
 
         # Stop cmfd timer
-        if openmc.capi.settings.master:
+        if openmc.capi.master():
             time_stop_cmfd = time.time()
             self._time_cmfd += time_stop_cmfd - time_start_cmfd
 
     def _cmfd_tally_reset(self):
         # Print message
-        if openmc.capi.settings.verbosity >= 6 and openmc.capi.settings.master:
+        if openmc.capi.settings.verbosity >= 6 and openmc.capi.master():
             print(' CMFD tallies reset')
-            sys.stdout.flush()
 
         # Reset CMFD tallies
         tallies = openmc.capi.tallies
@@ -1178,19 +1196,34 @@ class CMFDRun(object):
 
         self._dom.append(dom)
 
-        # TODO Write out flux vector
-        '''
-        if (cmfd_write_matrices) then
-          if (adjoint_calc) then
-            filename = 'adj_fluxvec.dat'
-          else
-            filename = 'fluxvec.dat'
-          end if
-          ! TODO: call phi_n % write(filename)
-        end if
-        '''
+        # Write out flux vector
+        if self._cmfd_write_matrices:
+            if adjoint:
+                self._write_vector(self._adj_phi, 'adj_fluxvec')
+            else:
+                self._write_vector(self._phi, 'fluxvec')
 
-    def _calc_fission_source(self):
+    def _write_vector(self, vector, base_filename):
+        # TODO write comments
+        with open(base_filename+'.dat', 'w') as fh:
+            for val in vector:
+                fh.write('{:0.8f}\n'.format(val))
+
+        np.save(base_filename, vector)
+
+    def _write_matrix(self, matrix, base_filename):
+        # TODO write comments, mention zero-based indexing
+        with open(base_filename+'.dat', 'w') as fh:
+            for row in range(matrix.shape[0]):
+                cols = matrix.indices[matrix.indptr[row]:matrix.indptr[row+1]]
+                data = matrix.data[matrix.indptr[row]:matrix.indptr[row+1]]
+                for i in range(len(cols)):
+                    fh.write('({0:3d}, {1:3d}): {2:0.8f}\n'.format(
+                        row, cols[i], data[i]))
+
+        sparse.save_npz(base_filename, matrix)
+
+    def _calc_fission_source(self, vectorized=True):
         # Extract number of groups and number of accelerated regions
         nx = self._indices[0]
         ny = self._indices[1]
@@ -1201,27 +1234,69 @@ class CMFDRun(object):
         # Reset cmfd source to 0
         self._cmfd_src.fill(0.)
 
-        # Calculate volume
-        vol = np.product(self._hxyz)
+        # TODO Comment for vectorized vs. not-vectorized
+        if vectorized:
+            # Calculate volume
+            vol = np.product(self._hxyz)
 
-        # Reshape phi by number of groups
-        phi = self._phi.reshape((n, ng))
+            # Reshape phi by number of groups
+            phi = self._phi.reshape((n, ng))
 
-        # Extract indices of coremap that are accelerated
-        idx = np.where(self._coremap != _CMFD_NOACCEL)
+            # Extract indices of coremap that are accelerated
+            idx = np.where(self._coremap != _CMFD_NOACCEL)
 
-        # Initialize CMFD flux map that maps phi to actualy spatial and group
-        # indices of problem
-        cmfd_flux = np.zeros((nx, ny, nz, ng))
+            # Initialize CMFD flux map that maps phi to actualy spatial and
+            # group indices of problem
+            cmfd_flux = np.zeros((nx, ny, nz, ng))
 
-        # Loop over all groups and set CMFD flux based on indices of coremap
-        # and values of phi
-        for g in range(ng):
-            cmfd_flux[idx + (np.full((n,),g),)]  = phi[:,g]
+            # Loop over all groups and set CMFD flux based on indices of
+            # coremap and values of phi
+            for g in range(ng):
+                cmfd_flux[idx + (np.full((n,),g),)]  = phi[:,g]
 
-        # Compute fission source
-        self._cmfd_src = np.sum(self._nfissxs[:,:,:,:,:] * \
-                         cmfd_flux[:,:,:,:,np.newaxis], axis=3) * vol
+            # Compute fission source
+            cmfd_src = np.sum(self._nfissxs[:,:,:,:,:] * \
+                             cmfd_flux[:,:,:,:,np.newaxis], axis=3) * vol
+
+        else:
+            cmfd_src = np.zeros((nx, ny, nz, ng))
+            for k in range(nz):
+                for j in range(ny):
+                    for i in range(nx):
+                        for g in range(ng):
+                            # Cycle through if non-accelerated region
+                            if self._coremap[i,j,k] == _CMFD_NOACCEL:
+                                continue
+
+                            # Calculate volume
+                            vol = np.product(self._hxyz)
+
+                            # Get index in matrix
+                            idx = self._indices_to_matrix(i, j, k, 0, ng)
+
+                            # Compute fission source
+                            cmfd_src2[i,j,k,g] = np.sum(
+                                self._nfissxs[i,j,k,:,g] \
+                                * self._phi[idx:idx+ng]) * vol
+
+        # Normalize source such that it sums to 1.0
+        self._cmfd_src = cmfd_src / np.sum(cmfd_src)
+
+        # Compute entropy
+        if openmc.capi.settings.entropy_on:
+            # Compute source times log_2(source)
+            source = self._cmfd_src[self._cmfd_src > 0] \
+                * np.log(self._cmfd_src[self._cmfd_src > 0])/np.log(2)
+
+            # Sum source and store
+            self._entropy.append(-1.0 * np.sum(source))
+
+        # Normalize source so average is 1.0
+        self._cmfd_src = self._cmfd_src/np.sum(self._cmfd_src) * self._norm
+
+        # Calculate differences between normalized sources
+        self._src_cmp.append(np.sqrt(1.0 / self._norm \
+            * np.sum((self._cmfd_src - self._openmc_src)**2)))
 
     def _cmfd_reweight(self, new_weights):
         # Compute new weight factors
@@ -1234,10 +1309,10 @@ class CMFDRun(object):
             # Count bank site in mesh and reverse due to egrid structured
             outside = self._count_bank_sites()
 
-            if openmc.capi.settings.master and outside:
+            if openmc.capi.master() and outside:
                 raise OpenMCError('Source sites outside of the CMFD mesh!')
 
-            if openmc.capi.settings.master:
+            if openmc.capi.master():
                 norm = np.sum(self._sourcecounts) / np.sum(self._cmfd_src)
                 sourcecounts = np.flip(
                         self._sourcecounts.reshape(self._cmfd_src.shape), \
@@ -1272,11 +1347,9 @@ class CMFDRun(object):
             openmc.capi.source_bank()['wgt'] *= self._weightfactors[ \
                     mesh_ijk[:,0], mesh_ijk[:,1], mesh_ijk[:,2], energy_bins]
 
-            if openmc.capi.settings.master and \
-                    np.any(source_energies < energy[0]):
+            if openmc.capi.master() and np.any(source_energies < energy[0]):
                 print(' WARNING: Source pt below energy grid')
-            if openmc.capi.settings.master and \
-                    np.any(source_energies > energy[-1]):
+            if openmc.capi.master() and np.any(source_energies > energy[-1]):
                 print(' WARNING: Source pt above energy grid')
 
     def _count_bank_sites(self):
@@ -1328,10 +1401,14 @@ class CMFDRun(object):
             loss = self._build_loss_matrix(adjoint)
             prod = self._build_prod_matrix(adjoint)
 
-        # TODO Write out matrices
-        #if self._cmfd_write_matrices:
-        #    self._write_matrix(loss, 'loss.dat')
-        #    self._write_matrix(prod, 'prod.dat')
+        # Write out matrices
+        if self._cmfd_write_matrices:
+            if adjoint:
+                self._write_matrix(loss, 'adj_loss')
+                self._write_matrix(prod, 'adj_prod')
+            else:
+                self._write_matrix(loss, 'loss')
+                self._write_matrix(prod, 'prod')
 
         return loss, prod
 
@@ -1340,10 +1417,10 @@ class CMFDRun(object):
         loss = np.transpose(loss)
         prod = np.transpose(prod)
 
-        # TODO Write out matrices
-        #if self._cmfd_write_matrices:
-        #    self._write_matrix(loss, 'adj_loss.dat')
-        #    self._write_matrix(prod, 'adj_prod.dat')
+        # Write out matrices
+        if self._cmfd_write_matrices:
+            self._write_matrix(loss, 'adj_loss')
+            self._write_matrix(prod, 'adj_prod')
 
         return loss, prod
 
@@ -1438,29 +1515,20 @@ class CMFDRun(object):
                     # Record value in matrix
                     loss[irow, scatt_mat_idx] = val
 
-        '''
-        print("Loss matrix:")
-        for i in range(loss.shape[0]):
-            print_str = ""
-            for j in range(loss.shape[1]):
-                if loss[i,j] != 0.0:
-                    print_str += "%.3g\t" % loss[i, j]
-                else:
-                    print_str += "%.3f\t" % loss[i, j]
-            print(print_str)
-        '''
-
+        # Convert matrix to csr matrix in order to use scipy sparse solver
+        loss = sparse.csr_matrix(loss)
         return loss
 
     def _build_loss_matrix_vectorized(self, adjoint):
-        # TODO build as csr matrix
         # TODO comments for this section
         # Extract spatial and energy indices and define matrix dimension
         ng = self._indices[3]
         n = self._mat_dim*ng
 
-        # Allocate matrix
-        loss = np.zeros((n, n))
+        # Define rows, columns, and data used to build csr matrix
+        row = np.array([], dtype=int)
+        col = np.array([], dtype=int)
+        data = np.array([])
 
         # Define net leakage coefficient for each matrix element
         jnet = ((1.0 * self._dtilde[:,:,:,:,1] + self._dhat[:,:,:,:,1]) - \
@@ -1504,7 +1572,9 @@ class CMFDRun(object):
             idx_y = ng * (coremap_minusx[condition]) + g
             vals = (-1.0 * self._dtilde[:,:,:,g,0] -
                    self._dhat[:,:,:,g,0])[condition] / self._hxyz[0]
-            loss[idx_x, idx_y] = vals
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+            data = np.append(data, vals)
 
             condition = np.logical_and(self._coremap != _CMFD_NOACCEL,
                                        coremap_plusx != _CMFD_NOACCEL)
@@ -1512,7 +1582,9 @@ class CMFDRun(object):
             idx_y = ng * (coremap_plusx[condition]) + g
             vals = (-1.0 * self._dtilde[:,:,:,g,1] +
                    self._dhat[:,:,:,g,1])[condition] / self._hxyz[0]
-            loss[idx_x, idx_y] = vals
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+            data = np.append(data, vals)
 
             condition = np.logical_and(self._coremap != _CMFD_NOACCEL,
                                        coremap_minusy != _CMFD_NOACCEL)
@@ -1520,7 +1592,9 @@ class CMFDRun(object):
             idx_y = ng * (coremap_minusy[condition]) + g
             vals = (-1.0 * self._dtilde[:,:,:,g,2] -
                    self._dhat[:,:,:,g,2])[condition] / self._hxyz[1]
-            loss[idx_x, idx_y] = vals
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+            data = np.append(data, vals)
 
             condition = np.logical_and(self._coremap != _CMFD_NOACCEL,
                                        coremap_plusy != _CMFD_NOACCEL)
@@ -1528,7 +1602,9 @@ class CMFDRun(object):
             idx_y = ng * (coremap_plusy[condition]) + g
             vals = (-1.0 * self._dtilde[:,:,:,g,3] +
                    self._dhat[:,:,:,g,3])[condition] / self._hxyz[1]
-            loss[idx_x, idx_y] = vals
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+            data = np.append(data, vals)
 
             condition = np.logical_and(self._coremap != _CMFD_NOACCEL,
                                        coremap_minusz != _CMFD_NOACCEL)
@@ -1536,7 +1612,9 @@ class CMFDRun(object):
             idx_y = ng * (coremap_minusz[condition]) + g
             vals = (-1.0 * self._dtilde[:,:,:,g,4] -
                    self._dhat[:,:,:,g,4])[condition] / self._hxyz[1]
-            loss[idx_x, idx_y] = vals
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+            data = np.append(data, vals)
 
             condition = np.logical_and(self._coremap != _CMFD_NOACCEL,
                                        coremap_plusz != _CMFD_NOACCEL)
@@ -1544,7 +1622,9 @@ class CMFDRun(object):
             idx_y = ng * (coremap_plusz[condition]) + g
             vals = (-1.0 * self._dtilde[:,:,:,g,5] +
                    self._dhat[:,:,:,g,5])[condition] / self._hxyz[1]
-            loss[idx_x, idx_y] = vals
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+            data = np.append(data, vals)
 
             # Loss of neutrons
             condition = self._coremap != _CMFD_NOACCEL
@@ -1552,18 +1632,26 @@ class CMFDRun(object):
             idx_y = idx_x
             vals = (jnet[:,:,:,g] + self._totalxs[:,:,:,g] - \
                    self._scattxs[:,:,:,g,g])[condition]
-            loss[idx_x, idx_y] = vals
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+            data = np.append(data, vals)
 
             # Off diagonal in-scattering
             for h in range(ng):
-                #TODO check for adjoint (see cmfd_loss_operator.F90)
                 if h != g:
                     condition = self._coremap != _CMFD_NOACCEL
                     idx_x = ng * (self._coremap[condition]) + g
                     idx_y = ng * (self._coremap[condition]) + h
-                    vals = (-1.0 * self._scattxs[:, :, :, h, g])[condition]
-                    loss[idx_x, idx_y] = vals
+                    if adjoint:
+                        vals = (-1.0 * self._scattxs[:, :, :, g, h])[condition]
+                    else:
+                        vals = (-1.0 * self._scattxs[:, :, :, h, g])[condition]
+                    row = np.append(row, idx_x)
+                    col = np.append(col, idx_y)
+                    data = np.append(data, vals)
 
+        # Create csr matrix
+        loss = sparse.csr_matrix((data, (row, col)), shape=(n, n))
         return loss
 
 
@@ -1604,38 +1692,37 @@ class CMFDRun(object):
                 # record value in matrix
                 prod[irow, hmat_idx] = val
 
-        '''
-        print("Prod matrix:")
-        for i in range(prod.shape[0]):
-            print_str = ""
-            for j in range(prod.shape[1]):
-                if prod[i,j] != 0.0:
-                    print_str += "%.3g\t" % prod[i, j]
-                else:
-                    print_str += "%.3f\t" % prod[i, j]
-            print(print_str)
-        '''
+        # Convert matrix to csr matrix in order to use scipy sparse solver
+        prod = sparse.csr_matrix(prod)
+
         return prod
 
     def _build_prod_matrix_vectorized(self, adjoint):
         # TODO Comments for this section
-        # TODO Build as csr matrix
         # Extract spatial and energy indices and define matrix dimension
         ng = self._indices[3]
         n = self._mat_dim*ng
 
-        # Allocate matrix
-        prod = np.zeros((n, n))
+        # Define rows, columns, and data used to build csr matrix
+        row = np.array([], dtype=int)
+        col = np.array([], dtype=int)
+        data = np.array([])
 
         for g in range(ng):
             for h in range(ng):
-                #TODO check for adjoint (see cmfd_prod_operator.F90)
                 condition = self._coremap != _CMFD_NOACCEL
                 idx_x = ng * (self._coremap[condition]) + g
                 idx_y = ng * (self._coremap[condition]) + h
-                vals = (self._nfissxs[:, :, :, h, g])[condition]
-                prod[idx_x, idx_y] = vals
+                if adjoint:
+                    vals = (self._nfissxs[:, :, :, g, h])[condition]
+                else:
+                    vals = (self._nfissxs[:, :, :, h, g])[condition]
+                row = np.append(row, idx_x)
+                col = np.append(col, idx_y)
+                data = np.append(data, vals)
 
+        # Create csr matrix
+        prod = sparse.csr_matrix((data, (row, col)), shape=(n, n))
         return prod
 
     def _matrix_to_indices(self, irow, nx, ny, nz, ng):
@@ -1684,10 +1771,6 @@ class CMFDRun(object):
         # Perform Wielandt shift
         loss -= 1.0/k_s*prod
 
-        # Convert matrices to csr matrix in order to use scipy sparse solver
-        prod = sparse.csr_matrix(prod)
-        loss = sparse.csr_matrix(loss)
-
         # Begin power iteration
         for i in range(maxits):
             # Check if reach max number of iterations
@@ -1717,7 +1800,7 @@ class CMFDRun(object):
             s_o *= k_lo
 
             # Check convergence
-            iconv, norm_n = self._check_convergence(s_n, s_o, k_n, k_o)
+            iconv, norm_n = self._check_convergence(s_n, s_o, k_n, k_o, i+1)
 
             # If converged, calculate dominance ratio and break from loop
             if iconv:
@@ -1730,7 +1813,7 @@ class CMFDRun(object):
             k_lo = k_ln
             norm_o = norm_n
 
-    def _check_convergence(self, s_n, s_o, k_n, k_o):
+    def _check_convergence(self, s_n, s_o, k_n, k_o, iter):
         # Calculate error in keff
         kerr = abs(k_o - k_n)/k_n
 
@@ -1740,13 +1823,14 @@ class CMFDRun(object):
         # Check for convergence
         iconv = kerr < self._cmfd_ktol and serr < self._cmfd_stol
 
-        # TODO Print out to user
-        #if (cmfd_power_monitor .and. master) then
-        #  write(OUTPUT_UNIT,FMT='(I0,":",T10,"k-eff: ",F0.8,T30,"k-error: ", &
-        #       &1PE12.5,T55, "src-error: ",1PE12.5,T80,I0)') iter, k_n, kerr, &
-        #        serr, innerits
+        # Print out to user
+        if self._cmfd_power_monitor and openmc.capi.master():
+            str1 = ' {:d}:'.format(iter)
+            str2 = 'k-eff: {:0.8f}'.format(k_n)
+            str3 = 'k-error:  {0:.5E}'.format(kerr)
+            str4 = 'src-error:  {0:.5E}'.format(serr)
+            print('{0:8s}{1:20s}{2:25s}{3:s}'.format(str1, str2, str3, str4))
 
-        # Return source error and convergence logical back to solver
         return iconv, serr
 
     def _set_coremap(self):
@@ -1875,7 +1959,7 @@ class CMFDRun(object):
         tally_results = tallies[tally_id].results[:,0,1]
 
         # Reshape and extract only p1 data from tally results (no need for p0 data)
-        p1scattrr = tally_results.reshape(self._p1scattxs.shape+(2,))[:,:,:,:,1]
+        p1scattrr = tally_results.reshape(self._p1scattxs.shape+(2,))[:,:,:,1]
 
         # Store p1 scatter xs
         # p1 scatter xs is flipped in energy axis as tally results are given in
@@ -2401,9 +2485,8 @@ class CMFDRun(object):
 
         # Write that dhats are zero
         if self._dhat_reset and openmc.capi.settings.verbosity >= 8 and \
-                openmc.capi.settings.master:
+                openmc.capi.master():
             print(' Dhats reset to zero')
-            sys.stdout.flush()
 
     def _get_reflector_albedo(self, l, g, i, j, k):
         # Get partial currents from object

@@ -18,10 +18,9 @@ _dll.openmc_get_seed.restype = c_int64
 class _Settings(object):
     # Attributes that are accessed through a descriptor
     batches = _DLLGlobal(c_int32, 'n_batches')
-    current_batch = _DLLGlobal(c_int, 'openmc_current_batch')
+    entropy_on = _DLLGlobal(c_bool, 'openmc_entropy_on')
     generations_per_batch = _DLLGlobal(c_int32, 'gen_per_batch')
     inactive = _DLLGlobal(c_int32, 'n_inactive')
-    master = _DLLGlobal(c_bool, 'openmc_master')
     particles = _DLLGlobal(c_int64, 'n_particles')
     restart_batch = _DLLGlobal(c_int, 'openmc_restart_batch')
     restart_run = _DLLGlobal(c_bool, 'openmc_restart_run')

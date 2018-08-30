@@ -5,7 +5,7 @@ module tally_filter_meshsurface
   use constants
   use dict_header,         only: EMPTY
   use error
-  use mesh_header,         only: RegularMesh, meshes, n_meshes, mesh_dict
+  use mesh_header
   use hdf5_interface
   use particle_header,     only: Particle
   use string,              only: to_str
@@ -38,11 +38,11 @@ contains
     class(MeshSurfaceFilter), intent(inout) :: this
     type(XMLNode), intent(in) :: node
 
-    integer :: i_mesh
+    integer :: i
     integer :: id
     integer :: n
     integer :: n_dim
-    integer :: val
+    type(RegularMesh) :: m
 
     n = node_word_count(node, "bins")
 
@@ -53,20 +53,18 @@ contains
     call get_node_value(node, "bins", id)
 
     ! Get pointer to mesh
-    val = mesh_dict % get(id)
-    if (val /= EMPTY) then
-      i_mesh = val
-    else
+    err = openmc_get_mesh_index(id, this % mesh)
+    if (err /= 0) then
       call fatal_error("Could not find mesh " // trim(to_str(id)) &
            // " specified on filter.")
     end if
 
     ! Determine number of bins
-    n_dim = meshes(i_mesh) % n_dimension
-    this % n_bins = 4*n_dim*product(meshes(i_mesh) % dimension)
-
-    ! Store the index of the mesh
-    this % mesh = i_mesh
+    m = meshes(this % mesh)
+    this % n_bins = 4 * m % n_dimension()
+    do i = 1, m % n_dimension()
+      this % n_bins = this % n_bins * m % dimension(i)
+    end do
   end subroutine from_xml
 
   subroutine get_all_bins(this, p, estimator, match)

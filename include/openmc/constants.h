@@ -16,11 +16,6 @@ typedef std::vector<double> double_1dvec;
 typedef std::vector<std::vector<double> > double_2dvec;
 typedef std::vector<std::vector<std::vector<double> > > double_3dvec;
 typedef std::vector<std::vector<std::vector<std::vector<double> > > > double_4dvec;
-typedef std::vector<std::vector<std::vector<std::vector<std::vector<double> > > > > double_5dvec;
-typedef std::vector<std::vector<std::vector<std::vector<std::vector<std::vector<double> > > > > > double_6dvec;
-typedef std::vector<int> int_1dvec;
-typedef std::vector<std::vector<int> > int_2dvec;
-typedef std::vector<std::vector<std::vector<int> > > int_3dvec;
 
 // ============================================================================
 // VERSIONING NUMBERS

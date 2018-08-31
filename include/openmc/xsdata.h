@@ -7,6 +7,8 @@
 #include <memory>
 #include <vector>
 
+#include "xtensor/xtensor.hpp"
+
 #include "openmc/hdf5_interface.h"
 #include "openmc/scattdata.h"
 
@@ -35,26 +37,26 @@ class XsData {
 
     // The following quantities have the following dimensions:
     // [angle][incoming group]
-    double_2dvec total;
-    double_2dvec absorption;
-    double_2dvec nu_fission;
-    double_2dvec prompt_nu_fission;
-    double_2dvec kappa_fission;
-    double_2dvec fission;
-    double_2dvec inverse_velocity;
+    xt::xtensor<double, 2> total;
+    xt::xtensor<double, 2> absorption;
+    xt::xtensor<double, 2> nu_fission;
+    xt::xtensor<double, 2> prompt_nu_fission;
+    xt::xtensor<double, 2> kappa_fission;
+    xt::xtensor<double, 2> fission;
+    xt::xtensor<double, 2> inverse_velocity;
 
     // decay_rate has the following dimensions:
     // [angle][delayed group]
-    double_2dvec decay_rate;
+    xt::xtensor<double, 2> decay_rate;
     // delayed_nu_fission has the following dimensions:
     // [angle][incoming group][delayed group]
-    double_3dvec delayed_nu_fission;
+    xt::xtensor<double, 3> delayed_nu_fission;
     // chi_prompt has the following dimensions:
     // [angle][incoming group][outgoing group]
-    double_3dvec chi_prompt;
+    xt::xtensor<double, 3> chi_prompt;
     // chi_delayed has the following dimensions:
     // [angle][incoming group][outgoing group][delayed group]
-    double_4dvec chi_delayed;
+    xt::xtensor<double, 4> chi_delayed;
     // scatter has the following dimensions: [angle]
     std::vector<std::shared_ptr<ScattData> > scatter;
 

@@ -3,11 +3,16 @@
 #include <cmath>
 #include <cstdlib>
 #include <algorithm>
-#include <valarray>
+#include <sstream>
 
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+
+#include "xtensor/xmath.hpp"
+#include "xtensor/xsort.hpp"
+#include "xtensor/xadapt.hpp"
+#include "xtensor/xview.hpp"
 
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
@@ -28,14 +33,15 @@ std::vector<Mgxs> macro_xs;
 
 void
 Mgxs::init(const std::string& in_name, double in_awr,
-     const double_1dvec& in_kTs, bool in_fissionable, int in_scatter_format,
+     const std::vector<double>& in_kTs, bool in_fissionable, int in_scatter_format,
      int in_num_groups, int in_num_delayed_groups, bool in_is_isotropic,
-     const double_1dvec& in_polar, const double_1dvec& in_azimuthal)
+     const std::vector<double>& in_polar, const std::vector<double>& in_azimuthal)
 {
   // Set the metadata
   name = in_name;
   awr = in_awr;
-  kTs = in_kTs;
+  //TODO: Remove adapt when in_KTs is an xtensor
+  kTs = xt::adapt(in_kTs);
   fissionable = in_fissionable;
   scatter_format = in_scatter_format;
   num_groups = in_num_groups;
@@ -61,8 +67,8 @@ Mgxs::init(const std::string& in_name, double in_awr,
 
 void
 Mgxs::metadata_from_hdf5(hid_t xs_id, int in_num_groups,
-     int in_num_delayed_groups, const double_1dvec& temperature,
-     double tolerance, int_1dvec& temps_to_read, int& order_dim, int& method)
+     int in_num_delayed_groups, const std::vector<double>& temperature,
+     double tolerance, std::vector<int>& temps_to_read, int& order_dim, int& method)
 {
   // get name
   char char_name[MAX_WORD_LEN];
@@ -87,7 +93,7 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, int in_num_groups,
     dset_names[i] = new char[151];
   }
   get_datasets(kT_group, dset_names);
-  double_1dvec available_temps(num_temps);
+  xt::xarray<double> available_temps(num_temps);
   for (int i = 0; i < num_temps; i++) {
     read_double(kT_group, dset_names[i], &available_temps[i], true);
 
@@ -110,24 +116,20 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, int in_num_groups,
 
   switch(method) {
     case TEMPERATURE_NEAREST:
-      // Find the minimum difference
-      for (int i = 0; i < temperature.size(); i++) {
-        std::valarray<double> temp_diff(available_temps.data(),
-                                        available_temps.size());
-        temp_diff = std::abs(temp_diff - temperature[i]);
-        int i_closest = std::min_element(std::begin(temp_diff), std::end(temp_diff)) -
-             std::begin(temp_diff);
+      // Determine actual temperatures to read
+      for (const auto& T : temperature) {
+        auto i_closest = xt::argmin(xt::abs(available_temps - T))[0];
         double temp_actual = available_temps[i_closest];
-
-        if (std::abs(temp_actual - temperature[i]) < tolerance) {
-          if (std::find(temps_to_read.begin(), temps_to_read.end(),
-                        std::round(temp_actual)) == temps_to_read.end()) {
+        if (std::fabs(temp_actual - T) < tolerance) {
+          if (std::find(temps_to_read.begin(), temps_to_read.end(), std::round(temp_actual))
+              == temps_to_read.end()) {
             temps_to_read.push_back(std::round(temp_actual));
-          } else {
-            fatal_error("MGXS Library does not contain cross section for " +
-                        in_name + " at or near " +
-                        std::to_string(std::round(temperature[i])) + " K.");
           }
+        } else {
+          std::stringstream msg;
+          msg << "MGXS library does not contain cross sections for "
+            << in_name << " at or near " << std::round(T) << " K.";
+          fatal_error(msg);
         }
       }
       break;
@@ -160,7 +162,7 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, int in_num_groups,
 
   // Get the library's temperatures
   int n_temperature = temps_to_read.size();
-  double_1dvec in_kTs(n_temperature);
+  std::vector<double> in_kTs(n_temperature);
   for (int i = 0; i < n_temperature; i++) {
     std::string temp_str(std::to_string(temps_to_read[i]) + "K");
 
@@ -254,12 +256,12 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, int in_num_groups,
   }
 
   // Set the angular bins to use equally-spaced bins
-  double_1dvec in_polar(in_n_pol);
+  std::vector<double> in_polar(in_n_pol);
   double dangle = PI / in_n_pol;
   for (int p = 0; p < in_n_pol; p++) {
     in_polar[p]  = (p + 0.5) * dangle;
   }
-  double_1dvec in_azimuthal(in_n_azi);
+  std::vector<double> in_azimuthal(in_n_azi);
   dangle = 2. * PI / in_n_azi;
   for (int a = 0; a < in_n_azi; a++) {
     in_azimuthal[a] = (a + 0.5) * dangle - PI;
@@ -274,12 +276,12 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, int in_num_groups,
 //==============================================================================
 
 Mgxs::Mgxs(hid_t xs_id, int energy_groups, int delayed_groups,
-     const double_1dvec& temperature, double tolerance, int max_order,
+     const std::vector<double>& temperature, double tolerance, int max_order,
      bool legendre_to_tabular, int legendre_to_tabular_points, int& method)
 {
   // Call generic data gathering routine (will populate the metadata)
   int order_data;
-  int_1dvec temps_to_read;
+  std::vector<int> temps_to_read;
   metadata_from_hdf5(xs_id, energy_groups, delayed_groups, temperature,
        tolerance, temps_to_read, order_data, method);
 
@@ -310,8 +312,8 @@ Mgxs::Mgxs(hid_t xs_id, int energy_groups, int delayed_groups,
 
 //==============================================================================
 
-Mgxs::Mgxs(const std::string& in_name, const double_1dvec& mat_kTs,
-     const std::vector<Mgxs*>& micros, const double_1dvec& atom_densities,
+Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
+     const std::vector<Mgxs*>& micros, const std::vector<double>& atom_densities,
      double tolerance, int& method)
 {
   // Get the minimum data needed to initialize:
@@ -328,8 +330,8 @@ Mgxs::Mgxs(const std::string& in_name, const double_1dvec& mat_kTs,
   int in_num_groups = micros[0]->num_groups;
   int in_num_delayed_groups = micros[0]->num_delayed_groups;
   bool in_is_isotropic = micros[0]->is_isotropic;
-  double_1dvec in_polar = micros[0]->polar;
-  double_1dvec in_azimuthal = micros[0]->azimuthal;
+  std::vector<double> in_polar = micros[0]->polar;
+  std::vector<double> in_azimuthal = micros[0]->azimuthal;
 
   init(in_name, in_awr, mat_kTs, in_fissionable, in_scatter_format,
        in_num_groups, in_num_delayed_groups, in_is_isotropic, in_polar,
@@ -345,33 +347,27 @@ Mgxs::Mgxs(const std::string& in_name, const double_1dvec& mat_kTs,
 
     // Create the list of temperature indices and interpolation factors for
     // each microscopic data at the material temperature
-    int_1dvec micro_t(micros.size(), 0);
-    double_1dvec micro_t_interp(micros.size(), 0.);
+    std::vector<int> micro_t(micros.size(), 0);
+    std::vector<double> micro_t_interp(micros.size(), 0.);
     for (int m = 0; m < micros.size(); m++) {
       switch(method) {
       case TEMPERATURE_NEAREST:
         {
-          // Find the nearest temperature
-          std::valarray<double> temp_diff(micros[m]->kTs.data(),
-                                          micros[m]->kTs.size());
-          temp_diff = std::abs(temp_diff - temp_desired);
-          micro_t[m] = std::min_element(std::begin(temp_diff),
-                                        std::end(temp_diff)) -
-               std::begin(temp_diff);
-          double temp_actual = micros[m]->kTs[micro_t[m]];
+          micro_t[m] = xt::argmin(xt::abs(micros[m]->kTs - temp_desired))[0];
+          auto temp_actual = micros[m]->kTs[micro_t[m]];
 
           if (std::abs(temp_actual - temp_desired) >= K_BOLTZMANN * tolerance) {
-            fatal_error("MGXS Library does not contain cross section for " +
-                        name + " at or near " +
-                        std::to_string(std::round(temp_desired / K_BOLTZMANN))
-                        + " K.");
+            std::stringstream msg;
+            msg << "MGXS Library does not contain cross section for " << name
+              << " at or near " << std::round(temp_desired / K_BOLTZMANN) << "K.";
+            fatal_error(msg);
           }
         }
         break;
       case TEMPERATURE_INTERPOLATION:
         // Get a list of bounding temperatures for each actual temperature
         // present in the model
-        for (int k = 0; k < micros[m]->kTs.size() - 1; k++) {
+        for (int k = 0; k < micros[m]->kTs.shape()[0] - 1; k++) {
           if ((micros[m]->kTs[k] <= temp_desired) &&
               (temp_desired < micros[m]->kTs[k + 1])) {
             micro_t[m] = k;
@@ -394,8 +390,8 @@ Mgxs::Mgxs(const std::string& in_name, const double_1dvec& mat_kTs,
     int num_interp_points = 2;
     if (method == TEMPERATURE_NEAREST) num_interp_points = 1;
     for (int interp_point = 0; interp_point < num_interp_points; interp_point++) {
-      double_1dvec interp(micros.size());
-      double_1dvec temp_indices(micros.size());
+      std::vector<double> interp(micros.size());
+      std::vector<double> temp_indices(micros.size());
       for (int m = 0; m < micros.size(); m++) {
         interp[m] = (1. - micro_t_interp[m]) * atom_densities[m];
         temp_indices[m] = micro_t[m] + interp_point;
@@ -409,8 +405,8 @@ Mgxs::Mgxs(const std::string& in_name, const double_1dvec& mat_kTs,
 //==============================================================================
 
 void
-Mgxs::combine(const std::vector<Mgxs*>& micros, const double_1dvec& scalars,
-              const int_1dvec& micro_ts, int this_t)
+Mgxs::combine(const std::vector<Mgxs*>& micros, const std::vector<double>& scalars,
+              const std::vector<int>& micro_ts, int this_t)
 {
   // Build the vector of pointers to the xs objects within micros
   std::vector<XsData*> those_xs(micros.size());
@@ -441,19 +437,19 @@ Mgxs::get_xs(int xstype, int gin, int* gout, double* mu, int* dg)
   double val;
   switch(xstype) {
   case MG_GET_XS_TOTAL:
-    val = xs_t->total[a][gin];
+    val = xs_t->total(a, gin);
     break;
   case MG_GET_XS_NU_FISSION:
-    val = fissionable ? xs_t->nu_fission[a][gin] : 0.;
+    val = fissionable ? xs_t->nu_fission(a, gin) : 0.;
     break;
   case MG_GET_XS_ABSORPTION:
-    val = xs_t->absorption[a][gin];
+    val = xs_t->absorption(a, gin);;
     break;
   case MG_GET_XS_FISSION:
-    val = fissionable ? xs_t->fission[a][gin] : 0.;
+    val = fissionable ? xs_t->fission(a, gin) : 0.;
     break;
   case MG_GET_XS_KAPPA_FISSION:
-    val = fissionable ? xs_t->kappa_fission[a][gin] : 0.;
+    val = fissionable ? xs_t->kappa_fission(a, gin) : 0.;
     break;
   case MG_GET_XS_SCATTER:
   case MG_GET_XS_SCATTER_MULT:
@@ -462,16 +458,16 @@ Mgxs::get_xs(int xstype, int gin, int* gout, double* mu, int* dg)
     val = xs_t->scatter[a]->get_xs(xstype, gin, gout, mu);
     break;
   case MG_GET_XS_PROMPT_NU_FISSION:
-    val = fissionable ? xs_t->prompt_nu_fission[a][gin] : 0.;
+    val = fissionable ? xs_t->prompt_nu_fission(a, gin) : 0.;
     break;
   case MG_GET_XS_DELAYED_NU_FISSION:
     if (fissionable) {
       if (dg != nullptr) {
-        val = xs_t->delayed_nu_fission[a][gin][*dg];
+        val = xs_t->delayed_nu_fission(a, gin, *dg);
       } else {
         val = 0.;
-        for (auto& num : xs_t->delayed_nu_fission[a][gin]) {
-          val += num;
+        for (int d = 0; d < xs_t->delayed_nu_fission.shape()[2]; d++) {
+          val += xs_t->delayed_nu_fission(a, gin, d);
         }
       }
     } else {
@@ -481,12 +477,12 @@ Mgxs::get_xs(int xstype, int gin, int* gout, double* mu, int* dg)
   case MG_GET_XS_CHI_PROMPT:
     if (fissionable) {
       if (gout != nullptr) {
-        val = xs_t->chi_prompt[a][gin][*gout];
+        val = xs_t->chi_prompt(a, gin, *gout);
       } else {
         // provide an outgoing group-wise sum
         val = 0.;
-        for (auto& num : xs_t->chi_prompt[a][gin]) {
-          val += num;
+        for (int g = 0; g < xs_t->chi_prompt.shape()[2]; g++) {
+            val += xs_t->chi_prompt(a, gin, g);
         }
       }
     } else {
@@ -497,21 +493,21 @@ Mgxs::get_xs(int xstype, int gin, int* gout, double* mu, int* dg)
     if (fissionable) {
       if (gout != nullptr) {
         if (dg != nullptr) {
-          val = xs_t->chi_delayed[a][gin][*gout][*dg];
+          val = xs_t->chi_delayed(a, gin, *gout, *dg);
         } else {
-          val = xs_t->chi_delayed[a][gin][*gout][0];
+          val = xs_t->chi_delayed(a, gin, *gout, 0);
         }
       } else {
         if (dg != nullptr) {
           val = 0.;
-          for (int i = 0; i < xs_t->chi_delayed[a][gin].size(); i++) {
-            val += xs_t->chi_delayed[a][gin][i][*dg];
+          for (int g = 0; g < xs_t->delayed_nu_fission.shape()[2]; g++) {
+            val += xs_t->delayed_nu_fission(a, gin, g, *dg);
           }
         } else {
           val = 0.;
-          for (int i = 0; i < xs_t->chi_delayed[a][gin].size(); i++) {
-            for (auto& num : xs_t->chi_delayed[a][gin][i]) {
-              val += num;
+          for (int g = 0; g < xs_t->delayed_nu_fission.shape()[2]; g++) {
+            for (int d = 0; d < xs_t->delayed_nu_fission.shape()[3]; d++) {
+             val += xs_t->delayed_nu_fission(a, gin, g, d);
             }
           }
         }
@@ -521,13 +517,13 @@ Mgxs::get_xs(int xstype, int gin, int* gout, double* mu, int* dg)
     }
     break;
   case MG_GET_XS_INVERSE_VELOCITY:
-    val = xs_t->inverse_velocity[a][gin];
+    val = xs_t->inverse_velocity(a, gin);
     break;
   case MG_GET_XS_DECAY_RATE:
     if (dg != nullptr) {
-      val = xs_t->decay_rate[a][*dg + 1];
+      val = xs_t->decay_rate(a, *dg + 1);
     } else {
-      val = xs_t->decay_rate[a][0];
+      val = xs_t->decay_rate(a, 0);
     }
     break;
   default:
@@ -548,11 +544,11 @@ Mgxs::sample_fission_energy(int gin, int& dg, int& gout)
   int tid = 0;
 #endif
   XsData* xs_t = &xs[cache[tid].t];
-  double nu_fission = xs_t->nu_fission[cache[tid].a][gin];
+  double nu_fission = xs_t->nu_fission(cache[tid].a, gin);
 
   // Find the probability of having a prompt neutron
   double prob_prompt =
-       xs_t->prompt_nu_fission[cache[tid].a][gin];
+       xs_t->prompt_nu_fission(cache[tid].a, gin);
 
   // sample random numbers
   double xi_pd = prn() * nu_fission;
@@ -568,10 +564,10 @@ Mgxs::sample_fission_energy(int gin, int& dg, int& gout)
     // sample the outgoing energy group
     gout = 0;
     double prob_gout =
-         xs_t->chi_prompt[cache[tid].a][gin][gout];
+         xs_t->chi_prompt(cache[tid].a, gin, gout);
     while (prob_gout < xi_gout) {
       gout++;
-      prob_gout += xs_t->chi_prompt[cache[tid].a][gin][gout];
+      prob_gout += xs_t->chi_prompt(cache[tid].a, gin, gout);
     }
 
   } else {
@@ -582,7 +578,7 @@ Mgxs::sample_fission_energy(int gin, int& dg, int& gout)
     while (xi_pd >= prob_prompt) {
       dg++;
       prob_prompt +=
-           xs_t->delayed_nu_fission[cache[tid].a][gin][dg];
+           xs_t->delayed_nu_fission(cache[tid].a, gin, dg);
     }
 
     // adjust dg in case of round-off error
@@ -591,11 +587,11 @@ Mgxs::sample_fission_energy(int gin, int& dg, int& gout)
     // sample the outgoing energy group
     gout = 0;
     double prob_gout =
-         xs_t->chi_delayed[cache[tid].a][gin][gout][dg];
+         xs_t->chi_delayed(cache[tid].a, gin, gout, dg);
     while (prob_gout < xi_gout) {
       gout++;
       prob_gout +=
-           xs_t->chi_delayed[cache[tid].a][gin][gout][dg];
+           xs_t->chi_delayed(cache[tid].a, gin, gout, dg);
     }
   }
 }
@@ -630,10 +626,10 @@ Mgxs::calculate_xs(int gin, double sqrtkT, const double uvw[3],
   set_temperature_index(sqrtkT);
   set_angle_index(uvw);
   XsData* xs_t = &xs[cache[tid].t];
-  total_xs = xs_t->total[cache[tid].a][gin];
-  abs_xs = xs_t->absorption[cache[tid].a][gin];
+  total_xs = xs_t->total(cache[tid].a, gin);
+  abs_xs = xs_t->absorption(cache[tid].a, gin);
 
-  nu_fiss_xs = fissionable ? xs_t->nu_fission[cache[tid].a][gin] : 0.;
+  nu_fiss_xs = fissionable ? xs_t->nu_fission(cache[tid].a, gin) : 0.;
 }
 
 //==============================================================================
@@ -662,17 +658,7 @@ Mgxs::set_temperature_index(double sqrtkT)
   int tid = 0;
 #endif
   if (sqrtkT != cache[tid].sqrtkT) {
-    double kT = sqrtkT * sqrtkT;
-
-    // initialize vector for storage of the differences
-    std::valarray<double> temp_diff(kTs.data(), kTs.size());
-
-    // Find the minimum difference of kT and kTs
-    temp_diff = std::abs(temp_diff - kT);
-    cache[tid].t = std::min_element(std::begin(temp_diff), std::end(temp_diff)) -
-         std::begin(temp_diff);
-
-    // store this temperature as the last one used
+    cache[tid].t = xt::argmin(xt::abs(kTs - sqrtkT * sqrtkT))[0];
     cache[tid].sqrtkT = sqrtkT;
   }
 }

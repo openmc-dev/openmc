@@ -5,6 +5,9 @@
 #include <sstream>
 #include <string>
 
+#include "xtensor/xtensor.hpp"
+#include "xtensor/xarray.hpp"
+
 #include "hdf5.h"
 #include "hdf5_hl.h"
 #ifdef OPENMC_MPI
@@ -474,6 +477,106 @@ read_dataset(hid_t obj_id, const char* name, hid_t mem_type_id,
   if (name) H5Dclose(dset);
 }
 
+// //*****************************************************************************
+
+// void
+// read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 1>& result,
+//                bool must_have)
+// {
+//   if (object_exists(obj_id, name)) {
+//     read_double(obj_id, name, result.data(), true);
+//   } else if (must_have) {
+//     fatal_error(std::string("Must provide " + std::string(name) + "!"));
+//   }
+// }
+
+
+// void
+// read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 2>& result,
+//                bool must_have)
+// {
+//   if (object_exists(obj_id, name)) {
+//     xt::xarray<double> temp;
+//     read_double(obj_id, name, temp.data(), true);
+
+//     result = xt::adapt(temp, result.shape());
+//   } else if (must_have) {
+//     fatal_error(std::string("Must provide " + std::string(name) + "!"));
+//   }
+// }
+
+// void
+// read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 3>& result,
+//                bool must_have)
+// {
+//   if (object_exists(obj_id, name)) {
+//     xt::xarray<double> temp;
+//     read_double(obj_id, name, temp.data(), true);
+
+//     result = xt::adapt(temp, result.shape());
+//   } else if (must_have) {
+//     fatal_error(std::string("Must provide " + std::string(name) + "!"));
+//   }
+// }
+
+// void
+// read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 4>& result,
+//                bool must_have)
+// {
+//   if (object_exists(obj_id, name)) {
+//     xt::xarray<double> temp;
+//     read_double(obj_id, name, temp.data(), true);
+
+//     result = xt::adapt(temp, result.shape());
+//   } else if (must_have) {
+//     fatal_error(std::string("Must provide " + std::string(name) + "!"));
+//   }
+// }
+
+// void
+// read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 5>& result,
+//                bool must_have)
+// {
+//   if (object_exists(obj_id, name)) {
+//     xt::xarray<double> temp;
+//     read_double(obj_id, name, temp.data(), true);
+
+//     result = xt::adapt(temp, result.shape());
+//   } else if (must_have) {
+//     fatal_error(std::string("Must provide " + std::string(name) + "!"));
+//   }
+// }
+
+
+// void
+// read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<int, 2>& result,
+//                bool must_have)
+// {
+//   if (object_exists(obj_id, name)) {
+//     xt::xarray<int> temp;
+//     read_int(obj_id, name, temp.data(), true);
+
+//     result = xt::adapt(temp, result.shape());
+//   } else if (must_have) {
+//     fatal_error(std::string("Must provide " + std::string(name) + "!"));
+//   }
+// }
+
+// void
+// read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<int, 3>& result,
+//                bool must_have)
+// {
+//   if (object_exists(obj_id, name)) {
+//     xt::xarray<int> temp;
+//     read_int(obj_id, name, temp.data(), true);
+
+//     result = xt::adapt(temp, result.shape());
+//   } else if (must_have) {
+//     fatal_error(std::string("Must provide " + std::string(name) + "!"));
+//   }
+// }
+
+//*****************************************************************************
 
 void
 read_double(hid_t obj_id, const char* name, double* buffer, bool indep)
@@ -545,19 +648,38 @@ read_nd_vector(hid_t obj_id, const char* name, std::vector<double>& result,
 
 
 void
-read_nd_vector(hid_t obj_id, const char* name,
-               std::vector<std::vector<double> >& result, bool must_have)
+read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 1>& result,
+               bool must_have)
 {
   if (object_exists(obj_id, name)) {
-    int dim1 = result.size();
-    int dim2 = result[0].size();
+    int dim1 = result.shape()[0];
+    double temp_arr[dim1];
+    read_double(obj_id, name, temp_arr, true);
+
+    int temp_idx = 0;
+    for (int i = 0; i < dim1; i++) {
+      result(i) = temp_arr[temp_idx++];
+    }
+  } else if (must_have) {
+    fatal_error(std::string("Must provide " + std::string(name) + "!"));
+  }
+}
+
+
+void
+read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 2>& result,
+               bool must_have)
+{
+  if (object_exists(obj_id, name)) {
+    int dim1 = result.shape()[0];
+    int dim2 = result.shape()[1];
     double temp_arr[dim1 * dim2];
     read_double(obj_id, name, temp_arr, true);
 
     int temp_idx = 0;
     for (int i = 0; i < dim1; i++) {
       for (int j = 0; j < dim2; j++) {
-        result[i][j] = temp_arr[temp_idx++];
+        result(i, j) = temp_arr[temp_idx++];
       }
     }
   } else if (must_have) {
@@ -567,19 +689,19 @@ read_nd_vector(hid_t obj_id, const char* name,
 
 
 void
-read_nd_vector(hid_t obj_id, const char* name,
-               std::vector<std::vector<int> >& result, bool must_have)
+read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<int, 2>& result,
+               bool must_have)
 {
   if (object_exists(obj_id, name)) {
-    int dim1 = result.size();
-    int dim2 = result[0].size();
+    int dim1 = result.shape()[0];
+    int dim2 = result.shape()[1];
     int temp_arr[dim1 * dim2];
     read_int(obj_id, name, temp_arr, true);
 
     int temp_idx = 0;
     for (int i = 0; i < dim1; i++) {
       for (int j = 0; j < dim2; j++) {
-        result[i][j] = temp_arr[temp_idx++];
+        result(i, j) = temp_arr[temp_idx++];
       }
     }
   } else if (must_have) {
@@ -589,14 +711,13 @@ read_nd_vector(hid_t obj_id, const char* name,
 
 
 void
-read_nd_vector(hid_t obj_id, const char* name,
-               std::vector<std::vector<std::vector<double> > >& result,
+read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 3>& result,
                bool must_have)
 {
   if (object_exists(obj_id, name)) {
-    int dim1 = result.size();
-    int dim2 = result[0].size();
-    int dim3 = result[0][0].size();
+    int dim1 = result.shape()[0];
+    int dim2 = result.shape()[1];
+    int dim3 = result.shape()[2];
     double temp_arr[dim1 * dim2 * dim3];
     read_double(obj_id, name, temp_arr, true);
 
@@ -604,7 +725,7 @@ read_nd_vector(hid_t obj_id, const char* name,
     for (int i = 0; i < dim1; i++) {
       for (int j = 0; j < dim2; j++) {
         for (int k = 0; k < dim3; k++) {
-          result[i][j][k] = temp_arr[temp_idx++];
+          result(i, j, k) = temp_arr[temp_idx++];
         }
       }
     }
@@ -614,14 +735,13 @@ read_nd_vector(hid_t obj_id, const char* name,
 }
 
 void
-read_nd_vector(hid_t obj_id, const char* name,
-               std::vector<std::vector<std::vector<int> > >& result,
+read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<int, 3>& result,
                bool must_have)
 {
   if (object_exists(obj_id, name)) {
-    int dim1 = result.size();
-    int dim2 = result[0].size();
-    int dim3 = result[0][0].size();
+    int dim1 = result.shape()[0];
+    int dim2 = result.shape()[1];
+    int dim3 = result.shape()[2];
     int temp_arr[dim1 * dim2 * dim3];
     read_int(obj_id, name, temp_arr, true);
 
@@ -629,7 +749,7 @@ read_nd_vector(hid_t obj_id, const char* name,
     for (int i = 0; i < dim1; i++) {
       for (int j = 0; j < dim2; j++) {
         for (int k = 0; k < dim3; k++) {
-          result[i][j][k] = temp_arr[temp_idx++];
+          result(i, j, k) = temp_arr[temp_idx++];
         }
       }
     }
@@ -639,15 +759,14 @@ read_nd_vector(hid_t obj_id, const char* name,
 }
 
 void
-read_nd_vector(hid_t obj_id, const char* name,
-               std::vector<std::vector<std::vector<std::vector<double> > > >& result,
+read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 4>& result,
                bool must_have)
 {
   if (object_exists(obj_id, name)) {
-    int dim1 = result.size();
-    int dim2 = result[0].size();
-    int dim3 = result[0][0].size();
-    int dim4 = result[0][0][0].size();
+    int dim1 = result.shape()[0];
+    int dim2 = result.shape()[1];
+    int dim3 = result.shape()[2];
+    int dim4 = result.shape()[3];
     double temp_arr[dim1 * dim2 * dim3 * dim4];
     read_double(obj_id, name, temp_arr, true);
 
@@ -656,7 +775,7 @@ read_nd_vector(hid_t obj_id, const char* name,
       for (int j = 0; j < dim2; j++) {
         for (int k = 0; k < dim3; k++) {
           for (int l = 0; l < dim4; l++) {
-            result[i][j][k][l] = temp_arr[temp_idx++];
+            result(i, j, k, l) = temp_arr[temp_idx++];
           }
         }
       }
@@ -667,16 +786,15 @@ read_nd_vector(hid_t obj_id, const char* name,
 }
 
 void
-read_nd_vector(hid_t obj_id, const char* name,
-               std::vector<std::vector<std::vector<std::vector<std::vector<double> > > > >& result,
+read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 5>& result,
                bool must_have)
 {
   if (object_exists(obj_id, name)) {
-    int dim1 = result.size();
-    int dim2 = result[0].size();
-    int dim3 = result[0][0].size();
-    int dim4 = result[0][0][0].size();
-    int dim5 = result[0][0][0][0].size();
+    int dim1 = result.shape()[0];
+    int dim2 = result.shape()[1];
+    int dim3 = result.shape()[2];
+    int dim4 = result.shape()[3];
+    int dim5 = result.shape()[4];
     double temp_arr[dim1 * dim2 * dim3 * dim4 * dim5];
     read_double(obj_id, name, temp_arr, true);
 
@@ -686,7 +804,7 @@ read_nd_vector(hid_t obj_id, const char* name,
         for (int k = 0; k < dim3; k++) {
           for (int l = 0; l < dim4; l++) {
             for (int m = 0; m < dim5; m++) {
-              result[i][j][k][l][m] = temp_arr[temp_idx++];
+              result(i, j, k, l, m) = temp_arr[temp_idx++];
             }
           }
         }

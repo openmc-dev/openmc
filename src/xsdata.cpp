@@ -5,6 +5,9 @@
 #include <algorithm>
 #include <numeric>
 
+#include "xtensor/xbuilder.hpp"
+#include "xtensor/xview.hpp"
+
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
@@ -20,7 +23,7 @@ namespace openmc {
 XsData::XsData(int energy_groups, int num_delayed_groups, bool fissionable,
      int scatter_format, int n_pol, int n_azi)
 {
-  int n_ang = n_pol * n_azi;
+  size_t n_ang = n_pol * n_azi;
 
   // check to make sure scatter format is OK before we allocate
   if (scatter_format != ANGLE_HISTOGRAM && scatter_format != ANGLE_TABULAR &&
@@ -28,31 +31,33 @@ XsData::XsData(int energy_groups, int num_delayed_groups, bool fissionable,
     fatal_error("Invalid scatter_format!");
   }
   // allocate all [temperature][phi][theta][in group] quantities
-  total = double_2dvec(n_ang, double_1dvec(energy_groups, 0.));
-  absorption = double_2dvec(n_ang, double_1dvec(energy_groups, 0.));
-  inverse_velocity = double_2dvec(n_ang, double_1dvec(energy_groups, 0.));
+  std::vector<size_t> shape = {n_ang, energy_groups};
+  total = xt::zeros<double>(shape);
+  absorption = xt::zeros<double>(shape);
+  inverse_velocity = xt::zeros<double>(shape);
   if (fissionable) {
-    fission = double_2dvec(n_ang, double_1dvec(energy_groups, 0.));
-    nu_fission = double_2dvec(n_ang, double_1dvec(energy_groups, 0.));
-    prompt_nu_fission = double_2dvec(n_ang, double_1dvec(energy_groups, 0.));
-    kappa_fission = double_2dvec(n_ang, double_1dvec(energy_groups, 0.));
+    fission = xt::zeros<double>(shape);
+    nu_fission = xt::zeros<double>(shape);
+    prompt_nu_fission = xt::zeros<double>(shape);
+    kappa_fission = xt::zeros<double>(shape);
   }
 
   // allocate decay_rate; [temperature][phi][theta][delayed group]
-  decay_rate = double_2dvec(n_ang, double_1dvec(num_delayed_groups, 0.));
+  shape[1] = num_delayed_groups;
+  decay_rate = xt::zeros<double>(shape);
 
   if (fissionable) {
+    shape = {n_ang, energy_groups, num_delayed_groups};
     // allocate delayed_nu_fission; [temperature][phi][theta][in group][delay group]
-    delayed_nu_fission = double_3dvec(n_ang, double_2dvec(energy_groups,
-         double_1dvec(num_delayed_groups, 0.)));
+    delayed_nu_fission = xt::zeros<double>(shape);
 
-    // chi_prompt; [temperature][phi][theta][in group][delayed group]
-    chi_prompt = double_3dvec(n_ang, double_2dvec(energy_groups,
-         double_1dvec(energy_groups, 0.)));
+    // chi_prompt; [temperature][phi][theta][in group][out group]
+    shape = {n_ang, energy_groups, energy_groups};
+    chi_prompt = xt::zeros<double>(shape);
 
     // chi_delayed; [temperature][phi][theta][in group][out group][delay group]
-    chi_delayed = double_4dvec(n_ang, double_3dvec(energy_groups,
-         double_2dvec(energy_groups, double_1dvec(num_delayed_groups, 0.))));
+    shape = {n_ang, energy_groups, energy_groups, num_delayed_groups};
+    chi_delayed = xt::zeros<double>(shape);
   }
 
 
@@ -79,8 +84,8 @@ XsData::from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
 {
   // Reconstruct the dimension information so it doesn't need to be passed
   int n_ang = n_pol * n_azi;
-  int energy_groups = total[0].size();
-  int delayed_groups = decay_rate[0].size();
+  int energy_groups = total.shape()[1];
+  int delayed_groups = decay_rate.shape()[1];
 
   // Set the fissionable-specific data
   if (fissionable) {
@@ -100,7 +105,7 @@ XsData::from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
   // denominator in tally methods
   for (int a = 0; a < n_ang; a++) {
     for (int gin = 0; gin < energy_groups; gin++) {
-      if (absorption[a][gin] == 0.) absorption[a][gin] = 1.e-10;
+      if (absorption(a, gin) == 0.) absorption(a, gin) = 1.e-10;
     }
   }
 
@@ -110,7 +115,7 @@ XsData::from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
   } else {
     for (int a = 0; a < n_ang; a++) {
       for (int gin = 0; gin < energy_groups; gin++) {
-        total[a][gin] = absorption[a][gin] + scatter[a]->scattxs[gin];
+        total(a, gin) = absorption(a, gin) + scatter[a]->scattxs[gin];
       }
     }
   }
@@ -118,7 +123,7 @@ XsData::from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
   // Fix if total is 0, since it is in the denominator when tallying
   for (int a = 0; a < n_ang; a++) {
     for (int gin = 0; gin < energy_groups; gin++) {
-      if (total[a][gin] == 0.) total[a][gin] = 1.e-10;
+      if (total(a, gin) == 0.) total(a, gin) = 1.e-10;
     }
   }
 }
@@ -129,14 +134,13 @@ void
 XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
      int energy_groups, int delayed_groups, bool is_isotropic)
 {
-  int n_ang = n_pol * n_azi;
+  size_t n_ang = n_pol * n_azi;
   // Get the fission and kappa_fission data xs; these are optional
   read_nd_vector(xsdata_grp, "fission", fission);
   read_nd_vector(xsdata_grp, "kappa-fission", kappa_fission);
 
   // Set/get beta
-  double_3dvec temp_beta =double_3dvec(n_ang, double_2dvec(energy_groups,
-       double_1dvec(delayed_groups, 0.)));
+  xt::xtensor<double, 3> temp_beta({n_ang, energy_groups, delayed_groups}, 0.);
   if (object_exists(xsdata_grp, "beta")) {
     hid_t xsdata = open_dataset(xsdata_grp, "beta");
     int ndims = dataset_ndims(xsdata);
@@ -146,7 +150,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
 
     if (ndims == 3) {
       // Beta is input as [delayed group]
-      double_1dvec temp_arr(n_pol * n_azi * delayed_groups);
+      std::vector<double> temp_arr({n_pol * n_azi * delayed_groups});
       read_nd_vector(xsdata_grp, "beta", temp_arr);
 
       // Broadcast to all incoming groups
@@ -154,9 +158,9 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
       for (int a = 0; a < n_ang; a++) {
         for (int dg = 0; dg < delayed_groups; dg++) {
           // Set the first group index and copy the rest
-          temp_beta[a][0][dg] = temp_arr[temp_idx++];
+          temp_beta(a, 0, dg) = temp_arr[temp_idx++];
           for (int gin = 1; gin < energy_groups; gin++) {
-            temp_beta[a][gin] = temp_beta[a][0];
+            temp_beta(a, gin, dg) = temp_beta(a, 0, dg);
           }
         }
       }
@@ -170,29 +174,33 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
 
   // If chi is provided, set chi-prompt and chi-delayed
   if (object_exists(xsdata_grp, "chi")) {
-    double_2dvec temp_arr(n_ang, double_1dvec(energy_groups));
+    xt::xtensor<double, 2> temp_arr ({n_ang, energy_groups});
     read_nd_vector(xsdata_grp, "chi", temp_arr);
 
     for (int a = 0; a < n_ang; a++) {
       // First set the first group
       for (int gout = 0; gout < energy_groups; gout++) {
-        chi_prompt[a][0][gout] = temp_arr[a][gout];
+        chi_prompt(a, 0, gout) = temp_arr(a, gout);
       }
 
       // Now normalize this data
-      double chi_sum = std::accumulate(chi_prompt[a][0].begin(),
-                                       chi_prompt[a][0].end(),
-                                       0.);
+      double chi_sum = 0.;
+      for (int gout = 0; gout < energy_groups; gout++) {
+        chi_sum += chi_prompt(a, 0, gout);
+      }
+
       if (chi_sum <= 0.) {
         fatal_error("Encountered chi for a group that is <= 0!");
       }
       for (int gout = 0; gout < energy_groups; gout++) {
-        chi_prompt[a][0][gout] /= chi_sum;
+        chi_prompt(a, 0, gout) /= chi_sum;
       }
 
       // And extend to the remaining incoming groups
       for (int gin = 1; gin < energy_groups; gin++) {
-        chi_prompt[a][gin] = chi_prompt[a][0];
+        for (int gout = 0; gout < energy_groups; gout++) {
+          chi_prompt(a, gin, gout) = chi_prompt(a, 0, gout);
+        }
       }
 
       // Finally set chi-delayed equal to chi-prompt
@@ -200,8 +208,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
       for(int gin = 0; gin < energy_groups; gin++) {
         for (int gout = 0; gout < energy_groups; gout++) {
           for (int dg = 0; dg < delayed_groups; dg++) {
-            chi_delayed[a][gin][gout][dg] =
-                 chi_prompt[a][gin][gout];
+            chi_delayed(a, gin, gout, dg) = chi_prompt(a, gin, gout);
           }
         }
       }
@@ -224,15 +231,18 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
       for (int a = 0; a < n_ang; a++) {
         for (int gin = 0; gin < energy_groups; gin++) {
           for (int dg = 0; dg < delayed_groups; dg++) {
-            delayed_nu_fission[a][gin][dg] =
-                 temp_beta[a][gin][dg] * prompt_nu_fission[a][gin];
+            delayed_nu_fission(a, gin, dg) =
+                 temp_beta(a, gin, dg) * prompt_nu_fission(a, gin);
           }
 
           // Correct the prompt-nu-fission using the delayed neutron fraction
           if (delayed_groups > 0) {
-            double beta_sum = std::accumulate(temp_beta[a][gin].begin(),
-                                              temp_beta[a][gin].end(), 0.);
-            prompt_nu_fission[a][gin] *= (1. - beta_sum);
+            double beta_sum = 0.;
+            for (int gin = 0; gin < energy_groups; gin++) {
+              beta_sum += temp_beta(a, gin);
+            }
+
+            prompt_nu_fission(a, gin) *= (1. - beta_sum);
           }
         }
       }
@@ -244,14 +254,17 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
       // Normalize the chi info so the CDF is 1.
       for (int a = 0; a < n_ang; a++) {
         for (int gin = 0; gin < energy_groups; gin++) {
-          double chi_sum = std::accumulate(chi_prompt[a][gin].begin(),
-                                           chi_prompt[a][gin].end(), 0.);
+          double chi_sum = 0.;
+          for (int gout = 0; gout < energy_groups; gout++) {
+            chi_sum += chi_prompt(a, gin, gout);
+          }
+
           // Set the vector nu-fission from the matrix nu-fission
-          prompt_nu_fission[a][gin] = chi_sum;
+          prompt_nu_fission(a, gin) = chi_sum;
 
           if (chi_sum >= 0.) {
             for (int gout = 0; gout < energy_groups; gout++) {
-              chi_prompt[a][gin][gout] /= chi_sum;
+              chi_prompt(a, gin, gout) /= chi_sum;
             }
           } else {
             fatal_error("Encountered chi for a group that is <= 0!");
@@ -262,8 +275,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
         for (int gin = 0; gin < energy_groups; gin++) {
           for (int gout = 0; gout < energy_groups; gout++) {
             for (int dg = 0; dg < delayed_groups; dg++) {
-              chi_delayed[a][gin][gout][dg] =
-                   chi_prompt[a][gin][gout];
+              chi_delayed(a, gin, gout, dg) = chi_prompt(a, gin, gout);
             }
           }
         }
@@ -271,16 +283,17 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
         // Set the delayed-nu-fission and correct prompt-nu-fission with beta
         for (int gin = 0; gin < energy_groups; gin++) {
           for (int dg = 0; dg < delayed_groups; dg++) {
-            delayed_nu_fission[a][gin][dg] =
-                 temp_beta[a][gin][dg] *
-                 prompt_nu_fission[a][gin];
+            delayed_nu_fission(a, gin, dg) = temp_beta(a, gin, dg) *
+                 prompt_nu_fission(a, gin);
           }
 
           // Correct prompt-nu-fission using the delayed neutron fraction
           if (delayed_groups > 0) {
-            double beta_sum = std::accumulate(temp_beta[a][gin].begin(),
-                                              temp_beta[a][gin].end(), 0.);
-            prompt_nu_fission[a][gin] *= (1. - beta_sum);
+            double beta_sum = 0.;
+            for (int dg = 0; dg < delayed_groups; dg++) {
+              beta_sum += temp_beta(a, gin, dg);
+            }
+            prompt_nu_fission(a, gin) *= (1. - beta_sum);
           }
         }
       }
@@ -293,21 +306,24 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
 
   // If chi-prompt is provided, set chi-prompt
   if (object_exists(xsdata_grp, "chi-prompt")) {
-    double_2dvec temp_arr(n_ang, double_1dvec(energy_groups));
+    xt::xtensor<double, 2> temp_arr({n_ang, energy_groups});
     read_nd_vector(xsdata_grp, "chi-prompt", temp_arr);
 
     for (int a = 0; a < n_ang; a++) {
       for (int gin = 0; gin < energy_groups; gin++) {
         for (int gout = 0; gout < energy_groups; gout++) {
-          chi_prompt[a][gin][gout] = temp_arr[a][gout];
+          chi_prompt(a, gin, gout) = temp_arr(a, gout);
         }
 
         // Normalize chi so its CDF goes to 1
-        double chi_sum = std::accumulate(chi_prompt[a][gin].begin(),
-                                         chi_prompt[a][gin].end(), 0.);
+        double chi_sum = 0.;
+        for (int gout = 0; gout < energy_groups; gout++) {
+          chi_sum += chi_prompt(a, gin, gout);
+        }
+
         if (chi_sum >= 0.) {
           for (int gout = 0; gout < energy_groups; gout++) {
-            chi_prompt[a][gin][gout] /= chi_sum;
+            chi_prompt(a, gin, gout) /= chi_sum;
           }
         } else {
           fatal_error("Encountered chi-prompt for a group that is <= 0.!");
@@ -326,13 +342,16 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
 
     if (ndims == 3) {
       // chi-delayed is a [in group] vector
-      double_2dvec temp_arr(n_ang, double_1dvec(energy_groups));
+      xt::xtensor<double, 2> temp_arr({n_ang, energy_groups});
       read_nd_vector(xsdata_grp, "chi-delayed", temp_arr);
 
       for (int a = 0; a < n_ang; a++) {
         // normalize the chi CDF to 1
-        double chi_sum = std::accumulate(temp_arr[a].begin(),
-                                         temp_arr[a].end(), 0.);
+        double chi_sum = 0.;
+        for (int gout = 0; gout < energy_groups; gout++) {
+          chi_sum += temp_arr(a, gout);
+        }
+
         if (chi_sum <= 0.) {
           fatal_error("Encountered chi-delayed for a group that is <= 0!");
         }
@@ -341,7 +360,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
         for (int gin = 0; gin < energy_groups; gin++) {
           for (int gout = 0; gout < energy_groups; gout++) {
             for (int dg = 0; dg < delayed_groups; dg++) {
-              chi_delayed[a][gin][gout][dg] = temp_arr[a][gout] / chi_sum;
+              chi_delayed(a, gin, gout, dg) = temp_arr(a, gout) / chi_sum;
             }
           }
         }
@@ -356,12 +375,12 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
           for (int gin = 0; gin < energy_groups; gin++) {
             double chi_sum = 0.;
             for (int gout = 0; gout < energy_groups; gout++) {
-              chi_sum += chi_delayed[a][gin][gout][dg];
+              chi_sum += chi_delayed(a, gin, gout, dg);
             }
 
             if (chi_sum > 0.) {
               for (int gout = 0; gout < energy_groups; gout++) {
-                chi_delayed[a][gin][gout][dg] /= chi_sum;
+                chi_delayed(a, gin, gout, dg) /= chi_sum;
               }
             } else {
               fatal_error("Encountered chi-delayed for a group that is <= 0!");
@@ -384,29 +403,30 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
 
     if (ndims == 3) {
       // prompt-nu-fission is a [in group] vector
-      read_nd_vector(xsdata_grp, "prompt-nu-fission",
-                     prompt_nu_fission);
+      read_nd_vector(xsdata_grp, "prompt-nu-fission", prompt_nu_fission);
     } else if (ndims == 4) {
       // prompt nu fission is a matrix,
       // so set prompt_nu_fiss & chi_prompt
-      double_3dvec temp_arr(n_ang, double_2dvec(energy_groups,
-           double_1dvec(energy_groups)));
+      xt::xtensor<double, 3> temp_arr({n_ang, energy_groups, energy_groups});
       read_nd_vector(xsdata_grp, "prompt-nu-fission", temp_arr);
 
       // The prompt_nu_fission vector from the matrix form
       for (int a = 0; a < n_ang; a++) {
         for (int gin = 0; gin < energy_groups; gin++) {
-          double prompt_sum = std::accumulate(temp_arr[a][gin].begin(),
-                                              temp_arr[a][gin].end(), 0.);
-          prompt_nu_fission[a][gin] = prompt_sum;
+          double prompt_sum = 0.;
+          for (int gout = 0; gout < energy_groups; gout++) {
+            prompt_sum += temp_arr(a, gin, gout);
+          }
+
+          prompt_nu_fission(a, gin) = prompt_sum;
         }
 
         // The chi_prompt data is just the normalized fission matrix
         for (int gin= 0; gin < energy_groups; gin++) {
-          if (prompt_nu_fission[a][gin] > 0.) {
+          if (prompt_nu_fission(a, gin) > 0.) {
             for (int gout = 0; gout < energy_groups; gout++) {
-              chi_prompt[a][gin][gout] =
-                   temp_arr[a][gin][gout] / prompt_nu_fission[a][gin];
+              chi_prompt(a, gin, gout) =
+                   temp_arr(a, gin, gout) / prompt_nu_fission(a, gin);
             }
           } else {
             fatal_error("Encountered chi-prompt for a group that is <= 0!");
@@ -429,19 +449,19 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
 
     if (ndims == 3) {
       // delayed-nu-fission is an [in group] vector
-      if (temp_beta[0][0][0] == 0.) {
+      if (temp_beta(0, 0, 0) == 0.) {
         fatal_error("cannot set delayed-nu-fission with a 1D array if "
                     "beta is not provided");
       }
-      double_2dvec temp_arr(n_ang, double_1dvec(energy_groups));
+      xt::xtensor<double, 2> temp_arr({n_ang, energy_groups});
       read_nd_vector(xsdata_grp, "delayed-nu-fission", temp_arr);
 
       for (int a = 0; a < n_ang; a++) {
         for (int gin = 0; gin < energy_groups; gin++) {
           for (int dg = 0; dg < delayed_groups; dg++) {
             // Set delayed-nu-fission using beta
-            delayed_nu_fission[a][gin][dg] =
-                 temp_beta[a][gin][dg] * temp_arr[a][gin];
+            delayed_nu_fission(a, gin, dg) =
+                 temp_beta(a, gin, dg) * temp_arr(a, gin);
           }
         }
       }
@@ -451,9 +471,9 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
                     delayed_nu_fission);
 
     } else if (ndims == 5) {
-      // This will contain delayed-nu-fision and chi-delayed data
-      double_4dvec temp_arr(n_ang, double_3dvec(energy_groups,
-           double_2dvec(energy_groups, double_1dvec(delayed_groups))));
+      // This will contain delayed-nu-fission and chi-delayed data
+      xt::xtensor<double, 4> temp_arr({n_ang, energy_groups, energy_groups,
+                                       delayed_groups});
       read_nd_vector(xsdata_grp, "delayed-nu-fission", temp_arr);
 
       // Set the 3D delayed-nu-fission matrix and 4D chi-delayed matrix
@@ -463,14 +483,14 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
           for (int gin = 0; gin < energy_groups; gin++) {
             double gout_sum = 0.;
             for (int gout = 0; gout < energy_groups; gout++) {
-              gout_sum += temp_arr[a][gin][gout][dg];
-              chi_delayed[a][gin][gout][dg] = temp_arr[a][gin][gout][dg];
+              gout_sum += temp_arr(a, gin, gout, dg);
+              chi_delayed(a, gin, gout, dg) = temp_arr(a, gin, gout, dg);
             }
-            delayed_nu_fission[a][gin][dg] = gout_sum;
+            delayed_nu_fission(a, gin, dg) = gout_sum;
             // Normalize chi-delayed
             if (gout_sum > 0.) {
               for (int gout = 0; gout < energy_groups; gout++) {
-                chi_delayed[a][gin][gout][dg] /= gout_sum;
+                chi_delayed(a, gin, gout, dg) /= gout_sum;
               }
             } else {
               fatal_error("Encountered chi-delayed for a group that is <= 0!");
@@ -488,10 +508,10 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
   // Combine prompt_nu_fission and delayed_nu_fission into nu_fission
   for (int a = 0; a < n_ang; a++) {
     for (int gin = 0; gin < energy_groups; gin++) {
-      nu_fission[a][gin] =
-           std::accumulate(delayed_nu_fission[a][gin].begin(),
-                           delayed_nu_fission[a][gin].end(),
-                           prompt_nu_fission[a][gin]);
+      nu_fission(a, gin) = prompt_nu_fission(a, gin);
+      for (int dg = 0; dg < delayed_groups; dg++) {
+        nu_fission(a, gin) += delayed_nu_fission(a, gin, dg);
+      }
     }
   }
 }
@@ -503,94 +523,92 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
      int energy_groups, int scatter_format, int final_scatter_format,
      int order_data, int max_order, int legendre_to_tabular_points)
 {
-  int n_ang = n_pol * n_azi;
+  size_t n_ang = n_pol * n_azi;
   if (!object_exists(xsdata_grp, "scatter_data")) {
     fatal_error("Must provide scatter_data group!");
   }
   hid_t scatt_grp = open_group(xsdata_grp, "scatter_data");
 
   // Get the outgoing group boundary indices
-  int_2dvec gmin(n_ang, int_1dvec(energy_groups));
+  xt::xtensor<int, 2> gmin({n_ang, energy_groups});
   read_nd_vector(scatt_grp, "g_min", gmin, true);
-  int_2dvec gmax(n_ang, int_1dvec(energy_groups));
+  xt::xtensor<int, 2> gmax({n_ang, energy_groups});
   read_nd_vector(scatt_grp, "g_max", gmax, true);
 
   // Make gmin and gmax start from 0 vice 1 as they do in the library
-  for (int a = 0; a < n_ang; a++) {
-    for (int gin = 0; gin < energy_groups; gin++) {
-      gmin[a][gin] -= 1;
-      gmax[a][gin] -= 1;
-    }
-  }
+  gmin -= 1;
+  gmax -= 1;
 
   // Now use this info to find the length of a vector to hold the flattened
   // data.
   int length = 0;
   for (int a = 0; a < n_ang; a++) {
     for (int gin = 0; gin < energy_groups; gin++) {
-      length += order_data * (gmax[a][gin] - gmin[a][gin] + 1);
+      length += order_data * (gmax(a, gin) - gmin(a, gin) + 1);
     }
   }
-  double_1dvec temp_arr(length);
-  read_nd_vector(scatt_grp, "scatter_matrix", temp_arr, true);
 
-  // Compare the number of orders given with the max order of the problem;
-  // strip off the superfluous orders if needed
-  int order_dim;
-  if (scatter_format == ANGLE_LEGENDRE) {
-    order_dim = std::min(order_data - 1, max_order) + 1;
-  } else {
-    order_dim = order_data;
-  }
-
-  // convert the flattened temp_arr to a jagged array for passing to
-  // scatt data
   double_4dvec input_scatt(n_ang, double_3dvec(energy_groups));
+  //temp_arr scope
+  {
+    std::vector<double> temp_arr(length);
+    read_nd_vector(scatt_grp, "scatter_matrix", temp_arr, true);
 
-  int temp_idx = 0;
-  for (int a = 0; a < n_ang; a++) {
-    for (int gin = 0; gin < energy_groups; gin++) {
-      input_scatt[a][gin].resize(gmax[a][gin] - gmin[a][gin] + 1);
-      for (int i_gout = 0; i_gout < input_scatt[a][gin].size(); i_gout++) {
-        input_scatt[a][gin][i_gout].resize(order_dim);
-        for (int l = 0; l < order_dim; l++) {
-          input_scatt[a][gin][i_gout][l] = temp_arr[temp_idx++];
+    // Compare the number of orders given with the max order of the problem;
+    // strip off the superfluous orders if needed
+    int order_dim;
+    if (scatter_format == ANGLE_LEGENDRE) {
+      order_dim = std::min(order_data - 1, max_order) + 1;
+    } else {
+      order_dim = order_data;
+    }
+
+    // convert the flattened temp_arr to a jagged array for passing to
+    // scatt data
+    int temp_idx = 0;
+    for (int a = 0; a < n_ang; a++) {
+      for (int gin = 0; gin < energy_groups; gin++) {
+        input_scatt[a][gin].resize(gmax(a, gin) - gmin(a, gin) + 1);
+        for (int i_gout = 0; i_gout < input_scatt[a][gin].size(); i_gout++) {
+          input_scatt[a][gin][i_gout].resize(order_dim);
+          for (int l = 0; l < order_dim; l++) {
+            input_scatt[a][gin][i_gout][l] = temp_arr[temp_idx++];
+          }
+          // Adjust index for the orders we didnt take
+          temp_idx += (order_data - order_dim);
         }
-        // Adjust index for the orders we didnt take
-        temp_idx += (order_data - order_dim);
       }
     }
   }
-  temp_arr.clear();
 
   // Get multiplication matrix
   double_3dvec temp_mult(n_ang, double_2dvec(energy_groups));
   if (object_exists(scatt_grp, "multiplicity_matrix")) {
-    temp_arr.resize(length / order_data);
+    std::vector<double> temp_arr(length / order_data);
     read_nd_vector(scatt_grp, "multiplicity_matrix", temp_arr);
 
     // convert the flat temp_arr to a jagged array for passing to scatt data
     int temp_idx = 0;
     for (int a = 0; a < n_ang; a++) {
       for (int gin = 0; gin < energy_groups; gin++) {
-        temp_mult[a][gin].resize(gmax[a][gin] - gmin[a][gin] + 1);
+        temp_mult[a][gin].resize(gmax(a, gin) - gmin(a, gin) + 1);
         for (int i_gout = 0; i_gout < temp_mult[a][gin].size(); i_gout++) {
           temp_mult[a][gin][i_gout] = temp_arr[temp_idx++];
         }
       }
     }
+    temp_arr.clear();
   } else {
     // Use a default: multiplicities are 1.0.
     for (int a = 0; a < n_ang; a++) {
       for (int gin = 0; gin < energy_groups; gin++) {
-        temp_mult[a][gin].resize(gmax[a][gin] - gmin[a][gin] + 1);
+        temp_mult[a][gin].resize(gmax(a, gin) - gmin(a, gin) + 1);
         for (int i_gout = 0; i_gout < temp_mult[a][gin].size(); i_gout++) {
           temp_mult[a][gin][i_gout] = 1.;
         }
       }
     }
   }
-  temp_arr.clear();
   close_group(scatt_grp);
 
   // Finally, convert the Legendre data to tabular, if needed
@@ -598,7 +616,10 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
       final_scatter_format == ANGLE_TABULAR) {
     for (int a = 0; a < n_ang; a++) {
       ScattDataLegendre legendre_scatt;
-      legendre_scatt.init(gmin[a], gmax[a], temp_mult[a], input_scatt[a]);
+      xt::xtensor<int, 1> in_gmin = xt::view(gmin, a, xt::all());
+      xt::xtensor<int, 1> in_gmax = xt::view(gmax, a, xt::all());
+      legendre_scatt.init(in_gmin, in_gmax,
+                          temp_mult[a], input_scatt[a]);
 
       // Now create a tabular version of legendre_scatt
       convert_legendre_to_tabular(legendre_scatt,
@@ -611,7 +632,9 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi,
     // We are sticking with the current representation
     // Initialize the ScattData object with this data
     for (int a = 0; a < n_ang; a++) {
-      scatter[a]->init(gmin[a], gmax[a], temp_mult[a], input_scatt[a]);
+      scatter[a]->init(xt::view(gmin, a, xt::all()),
+                       xt::view(gmax, a, xt::all()),
+                       temp_mult[a], input_scatt[a]);
     }
   }
 }
@@ -627,70 +650,25 @@ XsData::combine(const std::vector<XsData*>& those_xs,
     XsData* that = those_xs[i];
     if (!equiv(*that)) fatal_error("Cannot combine the XsData objects!");
     double scalar = scalars[i];
-    for (int a = 0; a < total.size(); a++) {
-      for (int gin = 0; gin < total[a].size(); gin++) {
-        total[a][gin] += scalar * that->total[a][gin];
-        absorption[a][gin] += scalar * that->absorption[a][gin];
-        if (i == 0) {
-          inverse_velocity[a][gin] = that->inverse_velocity[a][gin];
-        }
-        if (that->prompt_nu_fission.size() > 0) {
-          nu_fission[a][gin] += scalar * that->nu_fission[a][gin];
-          prompt_nu_fission[a][gin] +=
-               scalar * that->prompt_nu_fission[a][gin];
-          kappa_fission[a][gin] += scalar * that->kappa_fission[a][gin];
-          fission[a][gin] += scalar * that->fission[a][gin];
-
-          for (int dg = 0; dg < delayed_nu_fission[a][gin].size(); dg++) {
-            delayed_nu_fission[a][gin][dg] +=
-                 scalar * that->delayed_nu_fission[a][gin][dg];
-          }
-
-          for (int gout = 0; gout < chi_prompt[a][gin].size(); gout++) {
-            chi_prompt[a][gin][gout] +=
-                 scalar * that->chi_prompt[a][gin][gout];
-
-            for (int dg = 0; dg < chi_delayed[a][gin][gout].size(); dg++) {
-              chi_delayed[a][gin][gout][dg] +=
-                   scalar * that->chi_delayed[a][gin][gout][dg];
-            }
-          }
-        }
-      }
-
-      for (int dg = 0; dg < decay_rate[a].size(); dg++) {
-        decay_rate[a][dg] += scalar * that->decay_rate[a][dg];
-      }
-
-      // Normalize chi
-      if (chi_prompt.size() > 0) {
-        for (int gin = 0; gin < chi_prompt[a].size(); gin++) {
-          double norm = std::accumulate(chi_prompt[a][gin].begin(),
-                                        chi_prompt[a][gin].end(), 0.);
-          if (norm > 0.) {
-            for (int gout = 0; gout < chi_prompt[a][gin].size(); gout++) {
-              chi_prompt[a][gin][gout] /= norm;
-            }
-          }
-
-          for (int dg = 0; dg < chi_delayed[a][gin][0].size(); dg++) {
-            norm = 0.;
-            for (int gout = 0; gout < chi_delayed[a][gin].size(); gout++) {
-              norm += chi_delayed[a][gin][gout][dg];
-            }
-            if (norm > 0.) {
-              for (int gout = 0; gout < chi_delayed[a][gin].size(); gout++) {
-                chi_delayed[a][gin][gout][dg] /= norm;
-              }
-            }
-          }
-        }
-      }
+    total += scalar * that->total;
+    absorption += scalar * that->absorption;
+    if (i == 0) {
+      inverse_velocity = that->inverse_velocity;
     }
+    if (that->prompt_nu_fission.shape()[0] > 0) {
+      nu_fission += scalar * that->nu_fission;
+      prompt_nu_fission += scalar * that->prompt_nu_fission;
+      kappa_fission += scalar * that->kappa_fission;
+      fission += scalar * that->fission;
+      delayed_nu_fission += scalar * that->delayed_nu_fission;
+      chi_prompt += scalar * that->chi_prompt;
+      chi_delayed += scalar * that->chi_delayed;
+    }
+    decay_rate += scalar * that->decay_rate;
   }
 
   // Allow the ScattData object to combine itself
-  for (int a = 0; a < total.size(); a++) {
+  for (int a = 0; a < total.shape()[0]; a++) {
     // Build vector of the scattering objects to incorporate
     std::vector<ScattData*> those_scatts(those_xs.size());
     for (int i = 0; i < those_xs.size(); i++) {
@@ -707,8 +685,7 @@ XsData::combine(const std::vector<XsData*>& those_xs,
 bool
 XsData::equiv(const XsData& that)
 {
-  return ((absorption.size() == that.absorption.size()) &&
-      (absorption[0].size() == that.absorption[0].size()));
+  return (absorption.shape() == that.absorption.shape());
 }
 
 } //namespace openmc

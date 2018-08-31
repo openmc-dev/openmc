@@ -47,36 +47,35 @@ void write_string(hid_t group_id, const char* name, const std::string& buffer,
                   bool indep);
 
 void
+read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 1>& result,
+               bool must_have = false);
+
+void
 read_nd_vector(hid_t obj_id, const char* name, std::vector<double>& result,
                bool must_have = false);
 
 void
-read_nd_vector(hid_t obj_id, const char* name,
-               std::vector<std::vector<double> >& result,
+read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 2>& result,
                bool must_have = false);
 
 void
-read_nd_vector(hid_t obj_id, const char* name,
-               std::vector<std::vector<int> >& result, bool must_have = false);
-
-void
-read_nd_vector(hid_t obj_id, const char* name,
-               std::vector<std::vector<std::vector<double> > >& result,
+read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<int, 2>& result,
                bool must_have = false);
 
 void
-read_nd_vector(hid_t obj_id, const char* name,
-               std::vector<std::vector<std::vector<int> > >& result,
+read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 3>& result,
                bool must_have = false);
 
 void
-read_nd_vector(hid_t obj_id, const char* name,
-               std::vector<std::vector<std::vector<std::vector<double> > > >& result,
+read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<int, 3>& result,
                bool must_have = false);
 
 void
-read_nd_vector(hid_t obj_id, const char* name,
-               std::vector<std::vector<std::vector<std::vector<std::vector<double> > > > >& result,
+read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 4>& result,
+               bool must_have = false);
+
+void
+read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 5>& result,
                bool must_have = false);
 
 std::vector<hsize_t> attribute_shape(hid_t obj_id, const char* name);

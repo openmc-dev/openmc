@@ -6,6 +6,8 @@
 
 #include <vector>
 
+#include "xtensor/xtensor.hpp"
+
 #include "openmc/constants.h"
 
 namespace openmc {
@@ -25,23 +27,25 @@ class ScattData {
   protected:
     //! \brief Initializes the attributes of the base class.
     void
-    base_init(int order, const int_1dvec& in_gmin, const int_1dvec& in_gmax,
-         const double_2dvec& in_energy, const double_2dvec& in_mult);
+    base_init(int order, const xt::xtensor<int, 1>& in_gmin,
+         const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_energy,
+         const double_2dvec& in_mult);
 
     //! \brief Combines microscopic ScattDatas into a macroscopic one.
     void
     base_combine(int max_order, const std::vector<ScattData*>& those_scatts,
-         const double_1dvec& scalars, int_1dvec& in_gmin, int_1dvec& in_gmax,
-         double_2dvec& sparse_mult, double_3dvec& sparse_scatter);
+         const double_1dvec& scalars, xt::xtensor<int, 1>& in_gmin,
+         xt::xtensor<int, 1>& in_gmax, double_2dvec& sparse_mult,
+         double_3dvec& sparse_scatter);
 
   public:
 
-    double_2dvec energy; // Normalized p0 matrix for sampling Eout
-    double_2dvec mult;   // nu-scatter multiplication (nu-scatt/scatt)
-    double_3dvec dist;   // Angular distribution
-    int_1dvec gmin;      // minimum outgoing group
-    int_1dvec gmax;      // maximum outgoing group
-    double_1dvec scattxs; // Isotropic Sigma_{s,g_{in}}
+    double_2dvec energy;            // Normalized p0 matrix for sampling Eout
+    double_2dvec mult;              // nu-scatter multiplication (nu-scatt/scatt)
+    double_3dvec dist;              // Angular distribution
+    xt::xtensor<double, 1> gmin;    // minimum outgoing group
+    xt::xtensor<double, 1> gmax;    // maximum outgoing group
+    xt::xtensor<double, 1> scattxs; // Isotropic Sigma_{s,g_{in}}
 
     //! \brief Calculates the value of normalized f(mu).
     //!
@@ -72,7 +76,7 @@ class ScattData {
     //! @param in_mult Input sparse multiplicity matrix
     //! @param coeffs Input sparse scattering matrix
     virtual void
-    init(const int_1dvec& in_gmin, const int_1dvec& in_gmax,
+    init(const xt::xtensor<int, 1>& in_gmin, const xt::xtensor<int, 1>& in_gmax,
          const double_2dvec& in_mult, const double_3dvec& coeffs) = 0;
 
     //! \brief Combines the microscopic data.
@@ -97,7 +101,7 @@ class ScattData {
     //! @param max_order If Legendre this is the maximum value of "n" in "Pn"
     //!   requested; ignored otherwise.
     //! @return The dense scattering matrix.
-    virtual double_3dvec
+    virtual xt::xtensor<double, 3>
     get_matrix(int max_order) = 0;
 
     //! \brief Samples the outgoing energy from the ScattData info.
@@ -142,7 +146,7 @@ class ScattDataLegendre: public ScattData {
   public:
 
     void
-    init(const int_1dvec& in_gmin, const int_1dvec& in_gmax,
+    init(const xt::xtensor<int, 1>& in_gmin, const xt::xtensor<int, 1>& in_gmax,
          const double_2dvec& in_mult, const double_3dvec& coeffs);
 
     void
@@ -163,7 +167,7 @@ class ScattDataLegendre: public ScattData {
     int
     get_order() {return dist[0][0].size() - 1;};
 
-    double_3dvec
+    xt::xtensor<double, 3>
     get_matrix(int max_order);
 };
 
@@ -176,14 +180,14 @@ class ScattDataHistogram: public ScattData {
 
   protected:
 
-    double_1dvec mu;  // Angle distribution mu bin boundaries
-    double dmu;       // Quick storage of the spacing between the mu bin points
-    double_3dvec fmu; // The angular distribution histogram
+    xt::xtensor<double, 1> mu; // Angle distribution mu bin boundaries
+    double dmu;                // Quick storage of the mu spacing
+    double_3dvec fmu;          // The angular distribution histogram
 
   public:
 
     void
-    init(const int_1dvec& in_gmin, const int_1dvec& in_gmax,
+    init(const xt::xtensor<int, 1>& in_gmin, const xt::xtensor<int, 1>& in_gmax,
          const double_2dvec& in_mult, const double_3dvec& coeffs);
 
     void
@@ -199,7 +203,7 @@ class ScattDataHistogram: public ScattData {
     int
     get_order() {return dist[0][0].size();};
 
-    double_3dvec
+    xt::xtensor<double, 3>
     get_matrix(int max_order);
 };
 
@@ -212,9 +216,9 @@ class ScattDataTabular: public ScattData {
 
   protected:
 
-    double_1dvec mu;  // Angle distribution mu grid points
-    double dmu;       // Quick storage of the spacing between the mu points
-    double_3dvec fmu; // The angular distribution function
+    xt::xtensor<double, 1> mu; // Angle distribution mu grid points
+    double dmu;                // Quick storage of the mu spacing
+    double_3dvec fmu;          // The angular distribution function
 
     // Friend convert_legendre_to_tabular so it has access to protected
     // parameters
@@ -225,7 +229,7 @@ class ScattDataTabular: public ScattData {
   public:
 
     void
-    init(const int_1dvec& in_gmin, const int_1dvec& in_gmax,
+    init(const xt::xtensor<int, 1>& in_gmin, const xt::xtensor<int, 1>& in_gmax,
          const double_2dvec& in_mult, const double_3dvec& coeffs);
 
     void
@@ -241,7 +245,7 @@ class ScattDataTabular: public ScattData {
     int
     get_order() {return dist[0][0].size();};
 
-    double_3dvec get_matrix(int max_order);
+    xt::xtensor<double, 3> get_matrix(int max_order);
 };
 
 //==============================================================================

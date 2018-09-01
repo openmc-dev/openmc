@@ -11,8 +11,6 @@
 
 namespace openmc {
 
-// TODO: Replace with xtensor/other library?
-typedef std::vector<double> double_1dvec;
 typedef std::vector<std::vector<double> > double_2dvec;
 typedef std::vector<std::vector<std::vector<double> > > double_3dvec;
 typedef std::vector<std::vector<std::vector<std::vector<double> > > > double_4dvec;

@@ -477,106 +477,6 @@ read_dataset(hid_t obj_id, const char* name, hid_t mem_type_id,
   if (name) H5Dclose(dset);
 }
 
-// //*****************************************************************************
-
-// void
-// read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 1>& result,
-//                bool must_have)
-// {
-//   if (object_exists(obj_id, name)) {
-//     read_double(obj_id, name, result.data(), true);
-//   } else if (must_have) {
-//     fatal_error(std::string("Must provide " + std::string(name) + "!"));
-//   }
-// }
-
-
-// void
-// read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 2>& result,
-//                bool must_have)
-// {
-//   if (object_exists(obj_id, name)) {
-//     xt::xarray<double> temp;
-//     read_double(obj_id, name, temp.data(), true);
-
-//     result = xt::adapt(temp, result.shape());
-//   } else if (must_have) {
-//     fatal_error(std::string("Must provide " + std::string(name) + "!"));
-//   }
-// }
-
-// void
-// read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 3>& result,
-//                bool must_have)
-// {
-//   if (object_exists(obj_id, name)) {
-//     xt::xarray<double> temp;
-//     read_double(obj_id, name, temp.data(), true);
-
-//     result = xt::adapt(temp, result.shape());
-//   } else if (must_have) {
-//     fatal_error(std::string("Must provide " + std::string(name) + "!"));
-//   }
-// }
-
-// void
-// read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 4>& result,
-//                bool must_have)
-// {
-//   if (object_exists(obj_id, name)) {
-//     xt::xarray<double> temp;
-//     read_double(obj_id, name, temp.data(), true);
-
-//     result = xt::adapt(temp, result.shape());
-//   } else if (must_have) {
-//     fatal_error(std::string("Must provide " + std::string(name) + "!"));
-//   }
-// }
-
-// void
-// read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 5>& result,
-//                bool must_have)
-// {
-//   if (object_exists(obj_id, name)) {
-//     xt::xarray<double> temp;
-//     read_double(obj_id, name, temp.data(), true);
-
-//     result = xt::adapt(temp, result.shape());
-//   } else if (must_have) {
-//     fatal_error(std::string("Must provide " + std::string(name) + "!"));
-//   }
-// }
-
-
-// void
-// read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<int, 2>& result,
-//                bool must_have)
-// {
-//   if (object_exists(obj_id, name)) {
-//     xt::xarray<int> temp;
-//     read_int(obj_id, name, temp.data(), true);
-
-//     result = xt::adapt(temp, result.shape());
-//   } else if (must_have) {
-//     fatal_error(std::string("Must provide " + std::string(name) + "!"));
-//   }
-// }
-
-// void
-// read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<int, 3>& result,
-//                bool must_have)
-// {
-//   if (object_exists(obj_id, name)) {
-//     xt::xarray<int> temp;
-//     read_int(obj_id, name, temp.data(), true);
-
-//     result = xt::adapt(temp, result.shape());
-//   } else if (must_have) {
-//     fatal_error(std::string("Must provide " + std::string(name) + "!"));
-//   }
-// }
-
-//*****************************************************************************
 
 void
 read_double(hid_t obj_id, const char* name, double* buffer, bool indep)
@@ -632,18 +532,6 @@ read_complex(hid_t obj_id, const char* name, std::complex<double>* buffer, bool 
 
   // Free resources
   H5Tclose(complex_id);
-}
-
-
-void
-read_nd_vector(hid_t obj_id, const char* name, std::vector<double>& result,
-               bool must_have)
-{
-  if (object_exists(obj_id, name)) {
-    read_double(obj_id, name, result.data(), true);
-  } else if (must_have) {
-    fatal_error(std::string("Must provide " + std::string(name) + "!"));
-  }
 }
 
 

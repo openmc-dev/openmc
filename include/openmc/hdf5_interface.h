@@ -51,10 +51,6 @@ read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 1>& result,
                bool must_have = false);
 
 void
-read_nd_vector(hid_t obj_id, const char* name, std::vector<double>& result,
-               bool must_have = false);
-
-void
 read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 2>& result,
                bool must_have = false);
 

@@ -71,11 +71,10 @@ class MGXSTestHarness(PyAPITestHarness):
             openmc.run(openmc_exec=config['exe'])
 
     def _cleanup(self):
-        pass
-        # super()._cleanup()
-        # f = 'mgxs.h5'
-        # if os.path.exists(f):
-        #     os.remove(f)
+        super()._cleanup()
+        f = 'mgxs.h5'
+        if os.path.exists(f):
+            os.remove(f)
 
 
 def test_mgxs_library_ce_to_mg():

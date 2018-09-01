@@ -33,8 +33,8 @@ class ScattData {
 
     //! \brief Combines microscopic ScattDatas into a macroscopic one.
     void
-    base_combine(int max_order, const std::vector<ScattData*>& those_scatts,
-         const double_1dvec& scalars, xt::xtensor<int, 1>& in_gmin,
+    base_combine(size_t max_order, const std::vector<ScattData*>& those_scatts,
+         const std::vector<double>& scalars, xt::xtensor<int, 1>& in_gmin,
          xt::xtensor<int, 1>& in_gmax, double_2dvec& sparse_mult,
          double_3dvec& sparse_scatter);
 
@@ -85,7 +85,7 @@ class ScattData {
     //! @param scalars Scalars to multiply the microscopic data by.
     virtual void
     combine(const std::vector<ScattData*>& those_scatts,
-         const double_1dvec& scalars) = 0;
+         const std::vector<double>& scalars) = 0;
 
     //! \brief Getter for the dimensionality of the scattering order.
     //!
@@ -93,7 +93,7 @@ class ScattData {
     //! of points, and for Histogram this is the number of bins.
     //!
     //! @return The order.
-    virtual int
+    virtual size_t
     get_order() = 0;
 
     //! \brief Builds a dense scattering matrix from the constituent parts
@@ -102,7 +102,7 @@ class ScattData {
     //!   requested; ignored otherwise.
     //! @return The dense scattering matrix.
     virtual xt::xtensor<double, 3>
-    get_matrix(int max_order) = 0;
+    get_matrix(size_t max_order) = 0;
 
     //! \brief Samples the outgoing energy from the ScattData info.
     //!
@@ -151,7 +151,7 @@ class ScattDataLegendre: public ScattData {
 
     void
     combine(const std::vector<ScattData*>& those_scatts,
-            const double_1dvec& scalars);
+            const std::vector<double>& scalars);
 
     //! \brief Find the maximal value of the angular distribution to use as a
     // bounding box with rejection sampling.
@@ -164,11 +164,11 @@ class ScattDataLegendre: public ScattData {
     void
     sample(int gin, int& gout, double& mu, double& wgt);
 
-    int
+    size_t
     get_order() {return dist[0][0].size() - 1;};
 
     xt::xtensor<double, 3>
-    get_matrix(int max_order);
+    get_matrix(size_t max_order);
 };
 
 //==============================================================================
@@ -192,7 +192,7 @@ class ScattDataHistogram: public ScattData {
 
     void
     combine(const std::vector<ScattData*>& those_scatts,
-            const double_1dvec& scalars);
+            const std::vector<double>& scalars);
 
     double
     calc_f(int gin, int gout, double mu);
@@ -200,11 +200,11 @@ class ScattDataHistogram: public ScattData {
     void
     sample(int gin, int& gout, double& mu, double& wgt);
 
-    int
+    size_t
     get_order() {return dist[0][0].size();};
 
     xt::xtensor<double, 3>
-    get_matrix(int max_order);
+    get_matrix(size_t max_order);
 };
 
 //==============================================================================
@@ -234,7 +234,7 @@ class ScattDataTabular: public ScattData {
 
     void
     combine(const std::vector<ScattData*>& those_scatts,
-            const double_1dvec& scalars);
+            const std::vector<double>& scalars);
 
     double
     calc_f(int gin, int gout, double mu);
@@ -242,10 +242,11 @@ class ScattDataTabular: public ScattData {
     void
     sample(int gin, int& gout, double& mu, double& wgt);
 
-    int
+    size_t
     get_order() {return dist[0][0].size();};
 
-    xt::xtensor<double, 3> get_matrix(int max_order);
+    xt::xtensor<double, 3>
+    get_matrix(size_t max_order);
 };
 
 //==============================================================================

@@ -24,14 +24,14 @@ class XsData {
   private:
     //! \brief Reads scattering data from the HDF5 file
     void
-    scatter_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi, int energy_groups,
+    scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
          int scatter_format, int final_scatter_format, int order_data,
          int max_order, int legendre_to_tabular_points);
 
     //! \brief Reads fission data from the HDF5 file
     void
-    fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi, int energy_groups,
-         int delayed_groups, bool is_isotropic);
+    fission_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
+         size_t delayed_groups, bool is_isotropic);
 
   public:
 
@@ -70,7 +70,7 @@ class XsData {
     //! @param scatter_format The scattering representation of the file.
     //! @param n_pol Number of polar angles.
     //! @param n_azi Number of azimuthal angles.
-    XsData(int num_groups, int num_delayed_groups, bool fissionable,
+    XsData(size_t num_groups, size_t num_delayed_groups, bool fissionable,
            int scatter_format, int n_pol, int n_azi);
 
     //! \brief Loads the XsData object from the HDF5 file
@@ -103,7 +103,7 @@ class XsData {
     //! @param micros Microscopic objects to combine.
     //! @param scalars Scalars to multiply the microscopic data by.
     void
-    combine(const std::vector<XsData*>& those_xs, const double_1dvec& scalars);
+    combine(const std::vector<XsData*>& those_xs, const std::vector<double>& scalars);
 
     //! \brief Checks to see if this and that are able to be combined
     //!

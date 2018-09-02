@@ -33,6 +33,42 @@ class XsData {
     fission_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
          size_t delayed_groups, bool is_isotropic);
 
+    //! \brief Reads fission data formatted as chi and nu-fission vectors from
+    //  the HDF5 file when beta is provided.
+    void
+    fission_vector_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
+         size_t energy_groups, size_t delayed_groups);
+
+    //! \brief Reads fission data formatted as chi and nu-fission vectors from
+    //  the HDF5 file when beta is not provided.
+    void
+    fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
+         size_t energy_groups, size_t delayed_groups);
+
+    //! \brief Reads fission data formatted as chi and nu-fission vectors from
+    //  the HDF5 file when no delayed data is provided.
+    void
+    fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang,
+         size_t energy_groups);
+
+    //! \brief Reads fission data formatted as a nu-fission matrix from
+    //  the HDF5 file when beta is provided.
+    void
+    fission_matrix_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
+         size_t energy_groups, size_t delayed_groups);
+
+    //! \brief Reads fission data formatted as a nu-fission matrix from
+    //  the HDF5 file when beta is not provided.
+    void
+    fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
+         size_t energy_groups, size_t delayed_groups);
+
+    //! \brief Reads fission data formatted as a nu-fission matrix from
+    //  the HDF5 file when no delayed data is provided.
+    void
+    fission_matrix_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang,
+         size_t energy_groups);
+
   public:
 
     // The following quantities have the following dimensions:

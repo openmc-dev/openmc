@@ -243,6 +243,8 @@ find_cell(Particle* p, int search_surf) {
       return find_cell(p, 0);
     }
   }
+
+  return found;
 }
 
 //==============================================================================

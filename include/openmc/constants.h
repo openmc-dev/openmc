@@ -431,6 +431,13 @@ enum class Interpolation {
   histogram, lin_lin, lin_log, log_lin, log_log
 };
 
+// Run modes
+constexpr int RUN_MODE_FIXEDSOURCE {1};
+constexpr int RUN_MODE_EIGENVALUE  {2};
+constexpr int RUN_MODE_PLOTTING    {3};
+constexpr int RUN_MODE_PARTICLE    {4};
+constexpr int RUN_MODE_VOLUME      {5};
+
 } // namespace openmc
 
 #endif // OPENMC_CONSTANTS_H

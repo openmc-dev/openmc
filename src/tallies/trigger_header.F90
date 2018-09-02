@@ -1,5 +1,7 @@
 module trigger_header
 
+  use, intrinsic :: ISO_C_BINDING
+
   use constants, only: NONE, N_FILTER_TYPES, ZERO
 
   implicit none
@@ -22,11 +24,11 @@ module trigger_header
 !===============================================================================
 ! KTRIGGER describes a user-specified precision trigger for k-effective
 !===============================================================================
-  type, public :: KTrigger
-    integer    :: trigger_type = 0
-    real(8)    :: threshold    = ZERO
+  type, public, bind(C) :: KTrigger
+    integer(C_INT)    :: trigger_type = 0
+    real(C_DOUBLE)    :: threshold    = ZERO
   end type KTrigger
 
-  type(KTrigger), public :: keff_trigger  ! trigger for k-effective
+  type(KTrigger), public, bind(C) :: keff_trigger  ! trigger for k-effective
 
 end module trigger_header

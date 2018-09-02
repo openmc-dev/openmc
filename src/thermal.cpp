@@ -153,10 +153,10 @@ ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
   // Determine temperature for S(a,b) table
   double kT = sqrtkT*sqrtkT;
   int i;
-  if (temperature_method == TEMPERATURE_NEAREST) {
+  if (settings::temperature_method == TEMPERATURE_NEAREST) {
     // If using nearest temperature, do linear search on temperature
     for (i = 0; i < kTs_.size(); ++i) {
-      if (abs(kTs_[i] - kT) < K_BOLTZMANN*temperature_tolerance) {
+      if (abs(kTs_[i] - kT) < K_BOLTZMANN*settings::temperature_tolerance) {
         break;
       }
     }

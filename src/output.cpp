@@ -34,7 +34,7 @@ header(const char* msg, int level) {
   for (int i = 0; i < n_suffix; i++) out << '=';
 
   // Print header based on verbosity level.
-  if (openmc_verbosity >= level) {
+  if (settings::verbosity >= level) {
     std::cout << out.str() << std::endl << std::endl;
   }
 }

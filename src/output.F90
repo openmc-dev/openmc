@@ -41,7 +41,7 @@ contains
 ! developers, version, and date/time which the problem was run.
 !===============================================================================
 
-  subroutine title()
+  subroutine title() bind(C)
 
 #ifdef _OPENMP
     use omp_lib

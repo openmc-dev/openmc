@@ -423,7 +423,7 @@ Mgxs::combine(const std::vector<Mgxs*>& micros, const std::vector<double>& scala
 //==============================================================================
 
 double
-Mgxs::get_xs(int xstype, int gin, int* gout, double* mu, int* dg)
+Mgxs::get_xs(const int xstype, const int gin, int* gout, double* mu, int* dg)
 {
   // This method assumes that the temperature and angle indices are set
 #ifdef _OPENMP
@@ -535,7 +535,7 @@ Mgxs::get_xs(int xstype, int gin, int* gout, double* mu, int* dg)
 //==============================================================================
 
 void
-Mgxs::sample_fission_energy(int gin, int& dg, int& gout)
+Mgxs::sample_fission_energy(const int gin, int& dg, int& gout)
 {
   // This method assumes that the temperature and angle indices are set
 #ifdef _OPENMP
@@ -599,7 +599,7 @@ Mgxs::sample_fission_energy(int gin, int& dg, int& gout)
 //==============================================================================
 
 void
-Mgxs::sample_scatter(int gin, int& gout, double& mu, double& wgt)
+Mgxs::sample_scatter(const int gin, int& gout, double& mu, double& wgt)
 {
   // This method assumes that the temperature and angle indices are set
   // Sample the data
@@ -614,7 +614,7 @@ Mgxs::sample_scatter(int gin, int& gout, double& mu, double& wgt)
 //==============================================================================
 
 void
-Mgxs::calculate_xs(int gin, double sqrtkT, const double uvw[3],
+Mgxs::calculate_xs(const int gin, const double sqrtkT, const double uvw[3],
      double& total_xs, double& abs_xs, double& nu_fiss_xs)
 {
   // Set our indices
@@ -649,7 +649,7 @@ Mgxs::equiv(const Mgxs& that)
 //==============================================================================
 
 void
-Mgxs::set_temperature_index(double sqrtkT)
+Mgxs::set_temperature_index(const double sqrtkT)
 {
   // See if we need to find the new index
 #ifdef _OPENMP

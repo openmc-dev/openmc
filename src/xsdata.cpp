@@ -122,6 +122,241 @@ XsData::from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
 //==============================================================================
 
 void
+XsData::fission_vector_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
+     size_t energy_groups, size_t delayed_groups)
+{
+  // Data is provided as nu-fission and chi with a beta for delayed info
+
+  // Get chi
+  xt::xtensor<double, 2> temp_chi({n_ang, energy_groups}, 0.);
+  read_nd_vector(xsdata_grp, "chi", temp_chi, true);
+
+  // Normalize chi by summing over the outgoing groups for each incoming angle
+  temp_chi = temp_chi / xt::view(xt::sum(temp_chi, {1}), xt::all(), xt::newaxis());
+
+  // Now every incoming group in prompt_chi and delayed_chi is the normalized
+  // chi we just made
+  for (size_t a = 0; a < n_ang; a++) {
+    for (size_t gin = 0; gin < energy_groups; gin++) {
+      for (size_t gout = 0; gout < energy_groups; gout++) {
+        chi_prompt(a, gin, gout) = temp_chi(a, gout);
+        for (size_t dg = 0; dg < delayed_groups; dg++) {
+          chi_delayed(a, gin, gout, dg) = temp_chi(a, gout);
+        }
+      }
+    }
+  }
+
+  // Get nu-fission
+  xt::xtensor<double, 2> temp_nufiss({n_ang, energy_groups}, 0.);
+  read_nd_vector(xsdata_grp, "nu-fission", temp_nufiss, true);
+
+  // Get beta
+  xt::xtensor<double, 2> temp_beta({n_ang, delayed_groups}, 0.);
+  read_nd_vector(xsdata_grp, "beta", temp_beta, true);
+
+  // Set prompt_nu_fission = (1. - beta_total)*nu_fission
+  prompt_nu_fission = temp_nufiss * (1. - xt::sum(temp_beta, {1}));
+
+  // Set delayed_nu_fission as beta * nu_fission
+  for (size_t a = 0; a < n_ang; a++) {
+    for (size_t gin = 0; gin < energy_groups; gin++) {
+      for (size_t dg = 0; dg < delayed_groups; dg++) {
+        delayed_nu_fission(a, gin, dg) = temp_beta(a, dg) * temp_nufiss(a, gin);
+      }
+    }
+  }
+}
+
+void
+XsData::fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
+     size_t energy_groups, size_t delayed_groups)
+{
+  // Data is provided separately as prompt + delayed nu-fission and chi
+
+  // Get chi-prompt
+  xt::xtensor<double, 2> temp_chi_p({n_ang, energy_groups}, 0.);
+  read_nd_vector(xsdata_grp, "chi-prompt", temp_chi_p, true);
+
+  // Normalize chi by summing over the outgoing groups for each incoming angle
+  temp_chi_p = temp_chi_p / xt::view(xt::sum(temp_chi_p, {1}), xt::all(), xt::newaxis());
+
+  // Get chi-delayed
+  xt::xtensor<double, 3> temp_chi_d({n_ang, energy_groups, delayed_groups}, 0.);
+  read_nd_vector(xsdata_grp, "chi-delayed", temp_chi_d, true);
+
+  // Normalize chi by summing over the outgoing groups for each incoming angle
+  temp_chi_d = temp_chi_d / xt::view(xt::sum(temp_chi_d, {1}), xt::all(),
+                                 xt::newaxis(), xt::all());
+
+  // Now assign the prompt and delayed chis by replicating for each incoming group
+  for (size_t a = 0; a < n_ang; a++) {
+    for (size_t gin = 0; gin < energy_groups; gin++) {
+      for (size_t gout = 0; gout < energy_groups; gout++) {
+        chi_prompt(a, gin, gout) = temp_chi_p(a, gout);
+        for (size_t dg = 0; dg < delayed_groups; dg++) {
+          chi_delayed(a, gin, gout, dg) = temp_chi_d(a, gout, dg);
+        }
+      }
+    }
+  }
+
+  // Get prompt and delayed nu-fission directly
+  read_nd_vector(xsdata_grp, "prompt-nu-fission", prompt_nu_fission, true);
+  read_nd_vector(xsdata_grp, "delayed-nu-fission", delayed_nu_fission, true);
+}
+
+void
+XsData::fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang,
+     size_t energy_groups)
+{
+  // No beta is provided and there is no prompt/delay distinction.
+  // Therefore, the code only considers the data as prompt.
+
+  // Get chi
+  xt::xtensor<double, 2> temp_chi({n_ang, energy_groups}, 0.);
+  read_nd_vector(xsdata_grp, "chi", temp_chi, true);
+
+  // Normalize chi by summing over the outgoing groups for each incoming angle
+  temp_chi = temp_chi / xt::view(xt::sum(temp_chi, {1}), xt::all(), xt::newaxis());
+
+  // Now every incoming group in self.chi is the normalized chi we just made
+  for (size_t a = 0; a < n_ang; a++) {
+    for (size_t gin = 0; gin < energy_groups; gin++) {
+      for (size_t gout = 0; gout < energy_groups; gout++) {
+        chi_prompt(a, gin, gout) = temp_chi(a, gout);
+      }
+    }
+  }
+
+  // Get nu-fission directly
+  if (object_exists(xsdata_grp, "prompt-nu-fission")) {
+    read_nd_vector(xsdata_grp, "prompt-nu-fission", prompt_nu_fission, true);
+  } else {
+    read_nd_vector(xsdata_grp, "nu-fission", prompt_nu_fission, true);
+  }
+}
+
+//==============================================================================
+
+void
+XsData::fission_matrix_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
+     size_t energy_groups, size_t delayed_groups)
+{
+  // Data is provided as nu-fission and chi with a beta for delayed info
+
+  // Get nu-fission matrix
+  xt::xtensor<double, 3> temp_matrix({n_ang, energy_groups, energy_groups});
+  read_nd_vector(xsdata_grp, "nu-fission", temp_matrix, true);
+
+  // Get beta
+  xt::xtensor<double, 3> temp_beta({n_ang, energy_groups, delayed_groups}, 0.);
+  read_nd_vector(xsdata_grp, "beta", temp_beta, true);
+
+  // prompt_nu_fission is the sum of this matrix over outgoing groups and
+  // multiplied by (1 - beta_tot)
+  prompt_nu_fission = xt::sum(temp_matrix, {2}) * (1. - xt::sum(temp_beta, {2}));
+
+  // delayed_nu_fission is the sum of this matrix over outgoing groups and
+  // multiplied by beta
+  for (size_t a = 0; a < n_ang; a++) {
+    for (size_t gin = 0; gin < energy_groups; gin++) {
+      double out_sum = 0.;
+      for (size_t gout = 0; gout < energy_groups; gout++) {
+        out_sum += temp_matrix(a, gin, gout);
+      }
+      for (size_t dg = 0; dg < delayed_groups; dg++) {
+        delayed_nu_fission(a, gin, dg) = temp_beta(a, dg) * out_sum;
+      }
+    }
+  }
+
+  // Store chi-prompt
+  for (size_t a = 0; a < n_ang; a++) {
+    for (size_t gin = 0; gin < energy_groups; gin++) {
+      for (size_t gout = 0; gout < energy_groups; gout++) {
+        double beta = 0.;
+        for (size_t dg = 0; dg < delayed_groups; dg++) {
+          beta += temp_beta(a, gin, dg);
+        }
+        chi_prompt(a, gin, gout) = (1.0 - beta) * temp_matrix(a, gin, gout);
+      }
+    }
+  }
+
+  // Store chi-delayed
+  for (size_t a = 0; a < n_ang; a++) {
+    for (size_t gin = 0; gin < energy_groups; gin++) {
+      for (size_t gout = 0; gout < energy_groups; gout++) {
+        for (size_t dg = 0; dg < delayed_groups; dg++) {
+          chi_delayed(a, gin, gout, dg) = temp_beta(a, gin, dg) * temp_matrix(a, gin, gout);
+        }
+      }
+    }
+  }
+
+  //Normalize both
+  chi_prompt = chi_prompt / xt::view(xt::sum(chi_prompt, {2}), xt::all(), xt::newaxis());
+  chi_delayed = chi_delayed / xt::view(xt::sum(chi_delayed, {2}), xt::all(),
+                                       xt::newaxis(), xt::all());
+}
+
+void
+XsData::fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
+     size_t energy_groups, size_t delayed_groups)
+{
+  // Data is provided separately as prompt + delayed nu-fission and chi
+
+  // Get the prompt nu-fission matrix
+  xt::xtensor<double, 3> temp_matrix_p({n_ang, energy_groups, energy_groups});
+  read_nd_vector(xsdata_grp, "prompt-nu-fission", temp_matrix_p, true);
+
+  // prompt_nu_fission is the sum over outgoing groups
+  prompt_nu_fission = xt::sum(temp_matrix_p, {2});
+
+  // chi_prompt is this matrix but normalized over outgoing groups, which we
+  // have already stored in prompt_nu_fission
+  chi_prompt = temp_matrix_p / prompt_nu_fission;
+
+  // Get the delayed nu-fission matrix
+  xt::xtensor<double, 4> temp_matrix_d({n_ang, energy_groups, energy_groups,
+                                        delayed_groups});
+  read_nd_vector(xsdata_grp, "delayed-nu-fission", temp_matrix_d, true);
+
+  // delayed_nu_fission is the sum over outgoing groups
+  delayed_nu_fission = xt::sum(temp_matrix_d, {2});
+
+  // chi_prompt is this matrix but normalized over outgoing groups, which we
+  // have already stored in prompt_nu_fission
+  chi_delayed = temp_matrix_d / delayed_nu_fission;
+}
+
+void
+XsData::fission_matrix_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang,
+     size_t energy_groups)
+{
+  // No beta is provided and there is no prompt/delay distinction.
+  // Therefore, the code only considers the data as prompt.
+
+  // Get nu-fission matrix
+  xt::xtensor<double, 3> temp_matrix({n_ang, energy_groups, energy_groups});
+  if (object_exists(xsdata_grp, "prompt-nu-fission")) {
+    read_nd_vector(xsdata_grp, "prompt-nu-fission", temp_matrix, true);
+  } else {
+    read_nd_vector(xsdata_grp, "nu-fission", temp_matrix, true);
+  }
+
+  // prompt_nu_fission is the sum over outgoing groups
+  prompt_nu_fission = xt::sum(temp_matrix, {2});
+
+  // chi_prompt is this matrix but normalized over outgoing groups, which we
+  // have already stored in prompt_nu_fission
+  chi_prompt = temp_matrix / prompt_nu_fission;
+}
+
+//==============================================================================
+
+void
 XsData::fission_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
      size_t delayed_groups, bool is_isotropic)
 {
@@ -129,369 +364,31 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
   read_nd_vector(xsdata_grp, "fission", fission);
   read_nd_vector(xsdata_grp, "kappa-fission", kappa_fission);
 
-  // Set/get beta
-  xt::xtensor<double, 3> temp_beta({n_ang, energy_groups, delayed_groups}, 0.);
-  if (object_exists(xsdata_grp, "beta")) {
-    hid_t xsdata = open_dataset(xsdata_grp, "beta");
-    size_t ndims = dataset_ndims(xsdata);
-
-    // raise ndims to make the isotropic ndims the same as angular
-    if (is_isotropic) ndims += 2;
-
-    if (ndims == 3) {
-      // Beta is input as [delayed group]
-      xt::xtensor<double, 1> temp_arr({n_ang * delayed_groups}, 0.);
-      read_nd_vector(xsdata_grp, "beta", temp_arr);
-
-      // Broadcast to all incoming groups
-      size_t temp_idx = 0;
-      for (size_t a = 0; a < n_ang; a++) {
-        for (size_t dg = 0; dg < delayed_groups; dg++) {
-          // Set the first group index and copy the rest
-          temp_beta(a, 0, dg) = temp_arr[temp_idx++];
-          for (size_t gin = 1; gin < energy_groups; gin++) {
-            temp_beta(a, gin, dg) = temp_beta(a, 0, dg);
-          }
-        }
-      }
-    } else if (ndims == 4) {
-      // Beta is input as [in group][delayed group]
-      read_nd_vector(xsdata_grp, "beta", temp_beta);
-    } else {
-      fatal_error("beta must be provided as a 3D or 4D array!");
-    }
-  }
-
-  // If chi is provided, set chi-prompt and chi-delayed
+  // Get the data; the strategy for doing so depends on if the data is provided
+  // as a nu-fission matrix or a set of chi and nu-fission vectors
   if (object_exists(xsdata_grp, "chi")) {
-    xt::xtensor<double, 2> temp_arr ({n_ang, energy_groups}, 0.);
-    read_nd_vector(xsdata_grp, "chi", temp_arr);
-
-    for (size_t a = 0; a < n_ang; a++) {
-      // First set the first group
-      for (size_t gout = 0; gout < energy_groups; gout++) {
-        chi_prompt(a, 0, gout) = temp_arr(a, gout);
-      }
-
-      // Now normalize this data
-      double chi_sum = 0.;
-      for (size_t gout = 0; gout < energy_groups; gout++) {
-        chi_sum += chi_prompt(a, 0, gout);
-      }
-
-      if (chi_sum <= 0.) {
-        fatal_error("Encountered chi for a group that is <= 0!");
-      }
-      for (size_t gout = 0; gout < energy_groups; gout++) {
-        chi_prompt(a, 0, gout) /= chi_sum;
-      }
-
-      // And extend to the remaining incoming groups
-      for (size_t gin = 1; gin < energy_groups; gin++) {
-        for (size_t gout = 0; gout < energy_groups; gout++) {
-          chi_prompt(a, gin, gout) = chi_prompt(a, 0, gout);
-        }
-      }
-
-      // Finally set chi-delayed equal to chi-prompt
-      // Set chi-delayed to chi-prompt
-      for(size_t gin = 0; gin < energy_groups; gin++) {
-        for (size_t gout = 0; gout < energy_groups; gout++) {
-          for (size_t dg = 0; dg < delayed_groups; dg++) {
-            chi_delayed(a, gin, gout, dg) = chi_prompt(a, gin, gout);
-          }
-        }
-      }
-    }
-  }
-
-  // If nu-fission is provided, set prompt- and delayed-nu-fission;
-  // if nu-fission is a matrix, set chi-prompt and chi-delayed.
-  if (object_exists(xsdata_grp, "nu-fission")) {
-    hid_t xsdata = open_dataset(xsdata_grp, "nu-fission");
-    size_t ndims = dataset_ndims(xsdata);
-    // raise ndims to make the isotropic ndims the same as angular
-    if (is_isotropic) ndims += 2;
-
-    if (ndims == 3) {
-      // nu-fission is a 3-d array
-      read_nd_vector(xsdata_grp, "nu-fission", prompt_nu_fission);
-
-      // set delayed-nu-fission and correct prompt-nu-fission with beta
-      for (size_t a = 0; a < n_ang; a++) {
-        for (size_t gin = 0; gin < energy_groups; gin++) {
-          for (size_t dg = 0; dg < delayed_groups; dg++) {
-            delayed_nu_fission(a, gin, dg) =
-                 temp_beta(a, gin, dg) * prompt_nu_fission(a, gin);
-          }
-
-          // Correct the prompt-nu-fission using the delayed neutron fraction
-          if (delayed_groups > 0) {
-            double beta_sum = 0.;
-            for (size_t gin = 0; gin < energy_groups; gin++) {
-              beta_sum += temp_beta(a, gin);
-            }
-
-            prompt_nu_fission(a, gin) *= (1. - beta_sum);
-          }
-        }
-      }
-
-    } else if (ndims == 4) {
-      // nu-fission is a matrix
-      read_nd_vector(xsdata_grp, "nu-fission", chi_prompt);
-
-      // Normalize the chi info so the CDF is 1.
-      for (size_t a = 0; a < n_ang; a++) {
-        for (size_t gin = 0; gin < energy_groups; gin++) {
-          double chi_sum = 0.;
-          for (size_t gout = 0; gout < energy_groups; gout++) {
-            chi_sum += chi_prompt(a, gin, gout);
-          }
-
-          // Set the vector nu-fission from the matrix nu-fission
-          prompt_nu_fission(a, gin) = chi_sum;
-
-          if (chi_sum >= 0.) {
-            for (size_t gout = 0; gout < energy_groups; gout++) {
-              chi_prompt(a, gin, gout) /= chi_sum;
-            }
-          } else {
-            fatal_error("Encountered chi for a group that is <= 0!");
-          }
-        }
-
-        // set all of chi-delayed to chi-prompt
-        for (size_t gin = 0; gin < energy_groups; gin++) {
-          for (size_t gout = 0; gout < energy_groups; gout++) {
-            for (size_t dg = 0; dg < delayed_groups; dg++) {
-              chi_delayed(a, gin, gout, dg) = chi_prompt(a, gin, gout);
-            }
-          }
-        }
-
-        // Set the delayed-nu-fission and correct prompt-nu-fission with beta
-        for (size_t gin = 0; gin < energy_groups; gin++) {
-          for (size_t dg = 0; dg < delayed_groups; dg++) {
-            delayed_nu_fission(a, gin, dg) = temp_beta(a, gin, dg) *
-                 prompt_nu_fission(a, gin);
-          }
-
-          // Correct prompt-nu-fission using the delayed neutron fraction
-          if (delayed_groups > 0) {
-            double beta_sum = 0.;
-            for (size_t dg = 0; dg < delayed_groups; dg++) {
-              beta_sum += temp_beta(a, gin, dg);
-            }
-            prompt_nu_fission(a, gin) *= (1. - beta_sum);
-          }
-        }
-      }
+    if (delayed_groups == 0) {
+      fission_vector_no_delayed_from_hdf5(xsdata_grp, n_ang, energy_groups);
     } else {
-      fatal_error("nu-fission must be provided as a 3D or 4D array!");
-    }
-
-    close_dataset(xsdata);
-  }
-
-  // If chi-prompt is provided, set chi-prompt
-  if (object_exists(xsdata_grp, "chi-prompt")) {
-    xt::xtensor<double, 2> temp_arr({n_ang, energy_groups}, 0.);
-    read_nd_vector(xsdata_grp, "chi-prompt", temp_arr);
-
-    for (size_t a = 0; a < n_ang; a++) {
-      for (size_t gin = 0; gin < energy_groups; gin++) {
-        for (size_t gout = 0; gout < energy_groups; gout++) {
-          chi_prompt(a, gin, gout) = temp_arr(a, gout);
-        }
-
-        // Normalize chi so its CDF goes to 1
-        double chi_sum = 0.;
-        for (size_t gout = 0; gout < energy_groups; gout++) {
-          chi_sum += chi_prompt(a, gin, gout);
-        }
-
-        if (chi_sum >= 0.) {
-          for (size_t gout = 0; gout < energy_groups; gout++) {
-            chi_prompt(a, gin, gout) /= chi_sum;
-          }
-        } else {
-          fatal_error("Encountered chi-prompt for a group that is <= 0.!");
-        }
+      if (object_exists(xsdata_grp, "beta")) {
+        fission_vector_beta_from_hdf5(xsdata_grp, n_ang, energy_groups,
+             delayed_groups);
+      } else {
+        fission_vector_no_beta_from_hdf5(xsdata_grp, n_ang, energy_groups,
+             delayed_groups);
       }
     }
-  }
-
-  // If chi-delayed is provided, set chi-delayed
-  if (object_exists(xsdata_grp, "chi-delayed")) {
-    hid_t xsdata = open_dataset(xsdata_grp, "chi-delayed");
-    size_t ndims = dataset_ndims(xsdata);
-    // raise ndims to make the isotropic ndims the same as angular
-    if (is_isotropic) ndims += 2;
-    close_dataset(xsdata);
-
-    if (ndims == 3) {
-      // chi-delayed is a [in group] vector
-      xt::xtensor<double, 2> temp_arr({n_ang, energy_groups}, 0.);
-      read_nd_vector(xsdata_grp, "chi-delayed", temp_arr);
-
-      for (size_t a = 0; a < n_ang; a++) {
-        // normalize the chi CDF to 1
-        double chi_sum = 0.;
-        for (size_t gout = 0; gout < energy_groups; gout++) {
-          chi_sum += temp_arr(a, gout);
-        }
-
-        if (chi_sum <= 0.) {
-          fatal_error("Encountered chi-delayed for a group that is <= 0!");
-        }
-
-        // set chi-delayed
-        for (size_t gin = 0; gin < energy_groups; gin++) {
-          for (size_t gout = 0; gout < energy_groups; gout++) {
-            for (size_t dg = 0; dg < delayed_groups; dg++) {
-              chi_delayed(a, gin, gout, dg) = temp_arr(a, gout) / chi_sum;
-            }
-          }
-        }
-      }
-    } else if (ndims == 4) {
-      // chi_delayed is a matrix
-      read_nd_vector(xsdata_grp, "chi-delayed", chi_delayed);
-
-      // Normalize the chi info so the CDF is 1.
-      for (size_t a = 0; a < n_ang; a++) {
-        for (size_t dg = 0; dg < delayed_groups; dg++) {
-          for (size_t gin = 0; gin < energy_groups; gin++) {
-            double chi_sum = 0.;
-            for (size_t gout = 0; gout < energy_groups; gout++) {
-              chi_sum += chi_delayed(a, gin, gout, dg);
-            }
-
-            if (chi_sum > 0.) {
-              for (size_t gout = 0; gout < energy_groups; gout++) {
-                chi_delayed(a, gin, gout, dg) /= chi_sum;
-              }
-            } else {
-              fatal_error("Encountered chi-delayed for a group that is <= 0!");
-            }
-          }
-        }
-      }
+  } else {
+    if (delayed_groups == 0) {
+      fission_matrix_no_delayed_from_hdf5(xsdata_grp, n_ang, energy_groups);
     } else {
-      fatal_error("chi-delayed must be provided as a 3D or 4D array!");
-    }
-  }
-
-  // Get prompt-nu-fission, if present
-  if (object_exists(xsdata_grp, "prompt-nu-fission")) {
-    hid_t xsdata = open_dataset(xsdata_grp, "prompt-nu-fission");
-    size_t ndims = dataset_ndims(xsdata);
-    // raise ndims to make the isotropic ndims the same as angular
-    if (is_isotropic) ndims += 2;
-    close_dataset(xsdata);
-
-    if (ndims == 3) {
-      // prompt-nu-fission is a [in group] vector
-      read_nd_vector(xsdata_grp, "prompt-nu-fission", prompt_nu_fission);
-    } else if (ndims == 4) {
-      // prompt nu fission is a matrix,
-      // so set prompt_nu_fiss & chi_prompt
-      xt::xtensor<double, 3> temp_arr({n_ang, energy_groups, energy_groups}, 0.);
-      read_nd_vector(xsdata_grp, "prompt-nu-fission", temp_arr);
-
-      // The prompt_nu_fission vector from the matrix form
-      for (size_t a = 0; a < n_ang; a++) {
-        for (size_t gin = 0; gin < energy_groups; gin++) {
-          double prompt_sum = 0.;
-          for (size_t gout = 0; gout < energy_groups; gout++) {
-            prompt_sum += temp_arr(a, gin, gout);
-          }
-
-          prompt_nu_fission(a, gin) = prompt_sum;
-        }
-
-        // The chi_prompt data is just the normalized fission matrix
-        for (size_t gin= 0; gin < energy_groups; gin++) {
-          if (prompt_nu_fission(a, gin) > 0.) {
-            for (size_t gout = 0; gout < energy_groups; gout++) {
-              chi_prompt(a, gin, gout) =
-                   temp_arr(a, gin, gout) / prompt_nu_fission(a, gin);
-            }
-          } else {
-            fatal_error("Encountered chi-prompt for a group that is <= 0!");
-          }
-        }
+      if (object_exists(xsdata_grp, "beta")) {
+        fission_matrix_beta_from_hdf5(xsdata_grp, n_ang, energy_groups,
+             delayed_groups);
+      } else {
+        fission_matrix_no_beta_from_hdf5(xsdata_grp, n_ang, energy_groups,
+             delayed_groups);
       }
-
-    } else {
-      fatal_error("prompt-nu-fission must be provided as a 3D or 4D array!");
-    }
-  }
-
-  // Get delayed-nu-fission, if present
-  if (object_exists(xsdata_grp, "delayed-nu-fission")) {
-    hid_t xsdata = open_dataset(xsdata_grp, "delayed-nu-fission");
-    size_t ndims = dataset_ndims(xsdata);
-    close_dataset(xsdata);
-    // raise ndims to make the isotropic ndims the same as angular
-    if (is_isotropic) ndims += 2;
-
-    if (ndims == 3) {
-      // delayed-nu-fission is an [in group] vector
-      if (temp_beta(0, 0, 0) == 0.) {
-        fatal_error("cannot set delayed-nu-fission with a 1D array if "
-                    "beta is not provided");
-      }
-      xt::xtensor<double, 2> temp_arr({n_ang, energy_groups}, 0.);
-      read_nd_vector(xsdata_grp, "delayed-nu-fission", temp_arr);
-
-      for (size_t a = 0; a < n_ang; a++) {
-        for (size_t gin = 0; gin < energy_groups; gin++) {
-          for (size_t dg = 0; dg < delayed_groups; dg++) {
-            // Set delayed-nu-fission using beta
-            delayed_nu_fission(a, gin, dg) =
-                 temp_beta(a, gin, dg) * temp_arr(a, gin);
-          }
-        }
-      }
-
-    } else if (ndims == 4) {
-      read_nd_vector(xsdata_grp, "delayed-nu-fission",
-                    delayed_nu_fission);
-
-    } else if (ndims == 5) {
-      // This will contain delayed-nu-fission and chi-delayed data
-      xt::xtensor<double, 4> temp_arr({n_ang, energy_groups, energy_groups,
-                                       delayed_groups}, 0.);
-      read_nd_vector(xsdata_grp, "delayed-nu-fission", temp_arr);
-
-      // Set the 3D delayed-nu-fission matrix and 4D chi-delayed matrix
-      // from the 4D delayed-nu-fission matrix
-      for (size_t a = 0; a < n_ang; a++) {
-        for (size_t dg = 0; dg < delayed_groups; dg++) {
-          for (size_t gin = 0; gin < energy_groups; gin++) {
-            double gout_sum = 0.;
-            for (size_t gout = 0; gout < energy_groups; gout++) {
-              gout_sum += temp_arr(a, gin, gout, dg);
-              chi_delayed(a, gin, gout, dg) = temp_arr(a, gin, gout, dg);
-            }
-            delayed_nu_fission(a, gin, dg) = gout_sum;
-            // Normalize chi-delayed
-            if (gout_sum > 0.) {
-              for (size_t gout = 0; gout < energy_groups; gout++) {
-                chi_delayed(a, gin, gout, dg) /= gout_sum;
-              }
-            } else {
-              fatal_error("Encountered chi-delayed for a group that is <= 0!");
-            }
-          }
-        }
-      }
-
-    } else {
-      fatal_error("prompt-nu-fission must be provided as a 3D, 4D, or 5D "
-                  "array!");
     }
   }
 

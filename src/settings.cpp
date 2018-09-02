@@ -138,7 +138,6 @@ void get_run_parameters(pugi::xml_node node_base)
 
     // TODO: Preallocate space for keff and entropy by generation
 
-    // TODO: Read keff_trigger information
     // Get the trigger information for keff
     if (check_for_node(node_base, "keff_trigger")) {
       xml_node node_keff_trigger = node_base.child("keff_trigger");
@@ -149,7 +148,7 @@ void get_run_parameters(pugi::xml_node node_base)
           keff_trigger.type = STANDARD_DEVIATION;
         } else if (temp == "variance") {
           keff_trigger.type = VARIANCE;
-        } else if ( temp == "rel_err") {
+        } else if (temp == "rel_err") {
           keff_trigger.type = RELATIVE_ERROR;
         } else {
           fatal_error("Unrecognized keff trigger type " + temp);
@@ -257,10 +256,9 @@ read_settings_xml()
       max_order = std::stoi(get_node_value(root, "max_order"));
     } else {
       // Set to default of largest int - 1, which means to use whatever is
-      // contained in library.
-      // This is largest int - 1 because for legendre scattering, a value of
-      // 1 is added to the order; adding 1 to huge(0) gets you the largest
-      // negative integer, which is not what we want.
+      // contained in library. This is largest int - 1 because for legendre
+      // scattering, a value of 1 is added to the order; adding 1 to the largest
+      // int gets you the largest negative integer, which is not what we want.
       max_order = std::numeric_limits<int>::max() - 1;
     }
   }
@@ -293,7 +291,7 @@ read_settings_xml()
 
   // Check run mode if it hasn't been set from the command line
   xml_node node_mode;
-  if (run_mode == -1) {
+  if (run_mode == C_NONE) {
     if (check_for_node(root, "run_mode")) {
       std::string temp_str = get_node_value(root, "run_mode", true, true);
       if (temp_str == "eigenvalue") {
@@ -318,11 +316,11 @@ read_settings_xml()
       // Make sure that either eigenvalue or fixed source was specified
       node_mode = root.child("eigenvalue");
       if (node_mode) {
-        if (run_mode == -1) run_mode = RUN_MODE_EIGENVALUE;
+        run_mode = RUN_MODE_EIGENVALUE;
       } else {
         node_mode = root.child("fixed_source");
         if (node_mode) {
-          if (run_mode == -1) run_mode = RUN_MODE_FIXEDSOURCE;
+          run_mode = RUN_MODE_FIXEDSOURCE;
         } else {
           fatal_error("<eigenvalue> or <fixed_source> not specified.");
         }
@@ -394,7 +392,8 @@ read_settings_xml()
       omp_set_num_threads(openmc_n_threads);
     }
 #else
-    if (openmc_master) warning("Ignoring number of threads.");
+    if (openmc_master) warning("OpenMC was not compiled with OpenMP support; "
+      "ignoring number of threads.");
 #endif
   }
 
@@ -461,6 +460,10 @@ read_settings_xml()
   // Particle trace
   if (check_for_node(root, "trace")) {
     auto temp = get_node_array<int64_t>(root, "trace");
+    if (temp.size() != 3) {
+      fatal_error("Must provide 3 integers for <trace> that specify the "
+        "batch, generation, and particle number.");
+    }
     trace_batch    = temp.at(0);
     trace_gen      = temp.at(1);
     trace_particle = temp.at(2);
@@ -593,7 +596,7 @@ read_settings_xml()
       res_scat_energy_max = std::stod(get_node_value(node_res_scat, "energy_max"));
     }
     if (res_scat_energy_max < res_scat_energy_min) {
-      fatal_error("Upper resonance scattering energy bound is below the"
+      fatal_error("Upper resonance scattering energy bound is below the "
         "lower resonance scattering energy bound.");
     }
 

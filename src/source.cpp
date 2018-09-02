@@ -45,7 +45,7 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
       particle_ = ParticleType::neutron;
     } else if (temp_str == "photon") {
       particle_ = ParticleType::photon;
-      openmc_photon_transport = true;
+      settings::photon_transport = true;
     } else {
       fatal_error(std::string("Unknown source particle type: ") + temp_str);
     }
@@ -59,12 +59,12 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
   // Check for external source file
   if (check_for_node(node, "file")) {
     // Copy path of source file
-    path_source = get_node_value(node, "file", false, true);
+    settings::path_source = get_node_value(node, "file", false, true);
 
     // Check if source file exists
-    if (!file_exists(path_source)) {
+    if (!file_exists(settings::path_source)) {
       std::stringstream msg;
-      msg << "Source file '" << path_source <<  "' does not exist.";
+      msg << "Source file '" << settings::path_source <<  "' does not exist.";
       fatal_error(msg);
     }
 
@@ -243,16 +243,16 @@ void initialize_source()
   int64_t n;
   openmc_source_bank(&source_bank, &n);
 
-  if (path_source != "") {
+  if (settings::path_source != "") {
     // Read the source from a binary file instead of sampling from some
     // assumed source distribution
 
     std::stringstream msg;
-    msg << "Reading source file from " << path_source << "...";
+    msg << "Reading source file from " << settings::path_source << "...";
     write_message(msg, 6);
 
     // Open the binary file
-    hid_t file_id = file_open(path_source, 'r', true);
+    hid_t file_id = file_open(settings::path_source, 'r', true);
 
     // Read the file type
     std::string filetype;
@@ -273,7 +273,8 @@ void initialize_source()
     // Generation source sites from specified distribution in user input
     for (int64_t i = 0; i < openmc_work; ++i) {
       // initialize random number seed
-      int64_t id = openmc_total_gen*n_particles + work_index[openmc::mpi::rank] + i + 1;
+      int64_t id = openmc_total_gen*settings::n_particles +
+        work_index[openmc::mpi::rank] + i + 1;
       set_particle_seed(id);
 
       // sample external source distribution
@@ -282,9 +283,9 @@ void initialize_source()
   }
 
   // Write out initial source
-  if (openmc_write_initial_source) {
+  if (settings::write_initial_source) {
     write_message("Writing out initial source...", 5);
-    std::string filename = path_output + "initial_source.h5";
+    std::string filename = settings::path_output + "initial_source.h5";
     hid_t file_id = file_open(filename, 'w', true);
     write_source_bank(file_id, work_index.data(), source_bank);
     file_close(file_id);
@@ -318,7 +319,7 @@ Bank sample_external_source()
   Bank site {external_sources[i].sample()};
 
   // If running in MG, convert site % E to group
-  if (!openmc_run_CE) {
+  if (!settings::run_CE) {
     // Get pointer to rev_energy_bins array on Fortran side
     double* rev_energy_bins = rev_energy_bins_ptr();
 
@@ -357,7 +358,7 @@ extern "C" int overall_generation();
 //! Fill source bank at end of generation for fixed source simulations
 extern "C" void fill_source_bank_fixedsource()
 {
-  if (path_source.empty()) {
+  if (settings::path_source.empty()) {
     // Get pointer to source bank
     Bank* source_bank;
     int64_t n;
@@ -365,8 +366,8 @@ extern "C" void fill_source_bank_fixedsource()
 
     for (int64_t i = 0; i < openmc_work; ++i) {
       // initialize random number seed
-      int64_t id = (openmc_total_gen + overall_generation())*n_particles +
-        work_index[openmc::mpi::rank] + i + 1;
+      int64_t id = (openmc_total_gen + overall_generation()) *
+        settings::n_particles + work_index[openmc::mpi::rank] + i + 1;
       set_particle_seed(id);
 
       // sample external source distribution

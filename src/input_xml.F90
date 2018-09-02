@@ -22,7 +22,7 @@ module input_xml
   use output,           only: title, header, print_plot
   use photon_header
   use plot_header
-  use random_lcg,       only: prn, openmc_set_seed
+  use random_lcg,       only: prn
   use surface_header
   use set_header,       only: SetChar
   use settings
@@ -78,10 +78,8 @@ module input_xml
       type(C_PTR) :: node_ptr
     end subroutine read_lattices
 
-    subroutine read_settings(node_ptr) bind(C)
-      import C_PTR
-      type(C_PTR) :: node_ptr
-    end subroutine read_settings
+    subroutine read_settings_xml() bind(C)
+    end subroutine read_settings_xml
 
     subroutine read_materials(node_ptr) bind(C)
       import C_PTR
@@ -202,7 +200,8 @@ contains
 ! for errors and placing properly-formatted data in the right data structures
 !===============================================================================
 
-  subroutine read_settings_xml()
+  subroutine read_settings_xml_f(root_ptr) bind(C)
+    type(C_PTR), value :: root_ptr
 
     character(MAX_LINE_LEN) :: temp_str
     integer :: i
@@ -210,303 +209,25 @@ contains
     integer :: temp_int
     integer :: temp_int_array3(3)
     integer(C_INT32_T) :: i_start, i_end
-    integer(C_INT64_T) :: seed
     integer(C_INT) :: err
     integer, allocatable :: temp_int_array(:)
     integer :: n_tracks
-    logical :: file_exists
-    character(MAX_LINE_LEN) :: filename
-    type(XMLDocument) :: doc
     type(XMLNode) :: root
-    type(XMLNode) :: node_mode
-    type(XMLNode) :: node_cutoff
     type(XMLNode) :: node_entropy
     type(XMLNode) :: node_ufs
     type(XMLNode) :: node_sp
-    type(XMLNode) :: node_output
     type(XMLNode) :: node_res_scat
-    type(XMLNode) :: node_trigger
     type(XMLNode) :: node_vol
-    type(XMLNode) :: node_tab_leg
     type(XMLNode), allocatable :: node_mesh_list(:)
     type(XMLNode), allocatable :: node_vol_list(:)
 
-    ! Check if settings.xml exists
-    filename = trim(path_input) // "settings.xml"
-    inquire(FILE=filename, EXIST=file_exists)
-    if (.not. file_exists) then
-      if (run_mode /= MODE_PLOTTING) then
-        call fatal_error("Settings XML file '" // trim(filename) // "' does &
-             &not exist! In order to run OpenMC, you first need a set of input &
-             &files; at a minimum, this includes settings.xml, geometry.xml, &
-             &and materials.xml. Please consult the user's guide at &
-             &http://openmc.readthedocs.io for further information.")
-      else
-        ! The settings.xml file is optional if we just want to make a plot.
-        return
-      end if
-    end if
+    ! Get proper XMLNode type given pointer
+    root % ptr = root_ptr
 
-    ! Parse settings.xml file
-    call doc % load_file(filename)
-    root = doc % document_element()
-
-    ! Read settings from C++ side
-    call read_settings(root % ptr)
-
-    ! Verbosity
-    if (check_for_node(root, "verbosity")) then
-      call get_node_value(root, "verbosity", verbosity)
-    end if
-
-    ! To this point, we haven't displayed any output since we didn't know what
-    ! the verbosity is. Now that we checked for it, show the title if necessary
-    if (master) then
-      if (verbosity >= 2) call title()
-    end if
-    call write_message("Reading settings XML file...", 5)
-
-    ! Find if a multi-group or continuous-energy simulation is desired
-    if (check_for_node(root, "energy_mode")) then
-      call get_node_value(root, "energy_mode", temp_str)
-      temp_str = trim(to_lower(temp_str))
-      if (temp_str == "mg" .or. temp_str == "multi-group") then
-        run_CE = .false.
-      else if (temp_str == "ce" .or. temp_str == "continuous-energy") then
-        run_CE = .true.
-      end if
-    end if
-
-    ! Look for deprecated cross_sections.xml file in settings.xml
-    if (check_for_node(root, "cross_sections")) then
-      call warning("Setting cross_sections in settings.xml has been deprecated.&
-           & The cross_sections are now set in materials.xml and the &
-           &cross_sections input to materials.xml and the OPENMC_CROSS_SECTIONS&
-           & environment variable will take precendent over setting &
-           &cross_sections in settings.xml.")
-      call get_node_value(root, "cross_sections", path_cross_sections)
-    end if
-
-    ! Look for deprecated windowed_multipole file in settings.xml
-    if (run_mode /= MODE_PLOTTING) then
-      if (check_for_node(root, "multipole_library")) then
-        call warning("Setting multipole_library in settings.xml has been &
-             &deprecated. The multipole_library is now set in materials.xml and&
-             & the multipole_library input to materials.xml and the &
-             &OPENMC_MULTIPOLE_LIBRARY environment variable will take &
-             &precendent over setting multipole_library in settings.xml.")
-        call get_node_value(root, "multipole_library", path_multipole)
-      end if
-      if (.not. ends_with(path_multipole, "/")) &
-           path_multipole = trim(path_multipole) // "/"
-    end if
-
-    if (.not. run_CE) then
-      ! Scattering Treatments
-      if (check_for_node(root, "max_order")) then
-        call get_node_value(root, "max_order", max_order)
-      else
-        ! Set to default of largest int - 1, which means to use whatever is
-        ! contained in library.
-        ! This is largest int - 1 because for legendre scattering, a value of
-        ! 1 is added to the order; adding 1 to huge(0) gets you the largest
-        ! negative integer, which is not what we want.
-        max_order = huge(0) - 1
-      end if
-    else
-      max_order = 0
-    end if
-
-    ! Check for a trigger node and get trigger information
-    if (check_for_node(root, "trigger")) then
-      node_trigger = root % child("trigger")
-
-      ! Check if trigger(s) are to be turned on
-      call get_node_value(node_trigger, "active", trigger_on)
-
-      if (trigger_on) then
-        if (check_for_node(node_trigger, "max_batches") )then
-          call get_node_value(node_trigger, "max_batches", n_max_batches)
-        else
-          call fatal_error("The max_batches must be specified with triggers")
-        end if
-
-        ! Get the batch interval to check triggers
-        if (.not. check_for_node(node_trigger, "batch_interval"))then
-          pred_batches = .true.
-        else
-          call get_node_value(node_trigger, "batch_interval", temp_int)
-          n_batch_interval = temp_int
-          if (n_batch_interval <= 0) then
-            call fatal_error("The batch interval must be greater than zero")
-          end if
-        end if
-      end if
-    end if
-
-    ! Check run mode if it hasn't been set from the command line
-    if (run_mode == NONE) then
-      if (check_for_node(root, "run_mode")) then
-        call get_node_value(root, "run_mode", temp_str)
-        select case (to_lower(temp_str))
-        case ("eigenvalue")
-          run_mode = MODE_EIGENVALUE
-        case ("fixed source")
-          run_mode = MODE_FIXEDSOURCE
-        case ("plot")
-          run_mode = MODE_PLOTTING
-        case ("particle restart")
-          run_mode = MODE_PARTICLE
-        case ("volume")
-          run_mode = MODE_VOLUME
-        case default
-          call fatal_error("Unrecognized run mode: " // &
-               trim(temp_str) // ".")
-        end select
-
-        ! Assume XML specifics <particles>, <batches>, etc. directly
-        node_mode = root
-      else
-        call warning("<run_mode> should be specified.")
-
-        ! Make sure that either eigenvalue or fixed source was specified
-        node_mode = root % child("eigenvalue")
-        if (node_mode % associated()) then
-          if (run_mode == NONE) run_mode = MODE_EIGENVALUE
-        else
-          node_mode = root % child("fixed_source")
-          if (node_mode % associated()) then
-            if (run_mode == NONE) run_mode = MODE_FIXEDSOURCE
-          else
-            call fatal_error("<eigenvalue> or <fixed_source> not specified.")
-          end if
-        end if
-      end if
-    end if
-
-    if (run_mode == MODE_EIGENVALUE .or. run_mode == MODE_FIXEDSOURCE) then
-      ! Read run parameters
-      call get_run_parameters(node_mode)
-
-      ! Check number of active batches, inactive batches, and particles
-      if (n_batches <= n_inactive) then
-        call fatal_error("Number of active batches must be greater than zero.")
-      elseif (n_inactive < 0) then
-        call fatal_error("Number of inactive batches must be non-negative.")
-      elseif (n_particles <= 0) then
-        call fatal_error("Number of particles must be greater than zero.")
-      end if
-    end if
-
-    ! Copy random number seed if specified
-    if (check_for_node(root, "seed")) then
-      call get_node_value(root, "seed", seed)
-      call openmc_set_seed(seed)
-    end if
-
-    ! Check for electron treatment
-    if (check_for_node(root, "electron_treatment")) then
-      call get_node_value(root, "electron_treatment", temp_str)
-      select case (to_lower(temp_str))
-      case ("led")
-        electron_treatment = ELECTRON_LED
-      case ("ttb")
-        electron_treatment = ELECTRON_TTB
-      case default
-        call fatal_error("Unrecognized electron treatment: " // &
-             trim(temp_str) // ".")
-      end select
-    end if
-
-    ! Check for photon transport
-    if (check_for_node(root, "photon_transport")) then
-      call get_node_value(root, "photon_transport", photon_transport)
-
-      if (.not. run_CE .and. photon_transport) then
-        call fatal_error("Photon transport is not currently supported &
-             &in Multi-group mode")
-      end if
-    end if
-
-    ! Number of bins for logarithmic grid
-    if (check_for_node(root, "log_grid_bins")) then
-      call get_node_value(root, "log_grid_bins", n_log_bins)
-      if (n_log_bins < 1) then
-        call fatal_error("Number of bins for logarithmic grid must be &
-             &greater than zero.")
-      end if
-    else
-      n_log_bins = 8000
-    end if
-
-    ! Number of OpenMP threads
-    if (check_for_node(root, "threads")) then
-#ifdef _OPENMP
-      if (n_threads == NONE) then
-        call get_node_value(root, "threads", n_threads)
-        if (n_threads < 1) then
-          call fatal_error("Invalid number of threads: " // to_str(n_threads))
-        end if
-        call omp_set_num_threads(n_threads)
-      end if
-#else
-      if (master) call warning("Ignoring number of threads.")
-#endif
-    end if
-
-    ! ==========================================================================
-    ! EXTERNAL SOURCE
-
-    ! Handled on C++ side
-
-    ! Check if we want to write out source
-    if (check_for_node(root, "write_initial_source")) then
-      call get_node_value(root, "write_initial_source", write_initial_source)
-    end if
-
-    ! Survival biasing
-    if (check_for_node(root, "survival_biasing")) then
-      call get_node_value(root, "survival_biasing", survival_biasing)
-    end if
-
-    ! Probability tables
-    if (check_for_node(root, "ptables")) then
-      call get_node_value(root, "ptables", urr_ptables_on)
-    end if
-
-    ! Cutoffs
-    if (check_for_node(root, "cutoff")) then
-      node_cutoff = root % child("cutoff")
-      if (check_for_node(node_cutoff, "weight")) then
-        call get_node_value(node_cutoff, "weight", weight_cutoff)
-      end if
-      if (check_for_node(node_cutoff, "weight_avg")) then
-        call get_node_value(node_cutoff, "weight_avg", weight_survive)
-      end if
-      if (check_for_node(node_cutoff, "energy_neutron")) then
-        call get_node_value(node_cutoff, "energy_neutron", energy_cutoff(1))
-      elseif (check_for_node(node_cutoff, "energy")) then
-        call warning("The use of an <energy> cutoff is deprecated and should &
-             &be replaced by <energy_neutron>.")
-        call get_node_value(node_cutoff, "energy", energy_cutoff(1))
-      end if
-      if (check_for_node(node_cutoff, "energy_photon")) then
-        call get_node_value(node_cutoff, "energy_photon", energy_cutoff(2))
-      end if
-      if (check_for_node(node_cutoff, "energy_electron")) then
-        call get_node_value(node_cutoff, "energy_electron", energy_cutoff(3))
-      end if
-      if (check_for_node(node_cutoff, "energy_positron")) then
-        call get_node_value(node_cutoff, "energy_positron", energy_cutoff(4))
-      end if
-    end if
-
-    ! Particle trace
-    if (check_for_node(root, "trace")) then
-      call get_node_array(root, "trace", temp_int_array3)
-      trace_batch    = temp_int_array3(1)
-      trace_gen      = temp_int_array3(2)
-      trace_particle = int(temp_int_array3(3), 8)
+    if (run_mode == MODE_EIGENVALUE) then
+      ! Preallocate space for keff and entropy by generation
+      call k_generation % reserve(n_max_batches*gen_per_batch)
+      call entropy % reserve(n_max_batches*gen_per_batch)
     end if
 
     ! Particle tracks
@@ -693,22 +414,9 @@ contains
           call sourcepoint_batch % add(statepoint_batch % get_item(i))
         end do
       end if
-
-      ! Check if the user has specified to write binary source file
-      if (check_for_node(node_sp, "separate")) then
-        call get_node_value(node_sp, "separate", source_separate)
-      end if
-      if (check_for_node(node_sp, "write")) then
-        call get_node_value(node_sp, "write", source_write)
-      end if
-      if (check_for_node(node_sp, "overwrite_latest")) then
-        call get_node_value(node_sp, "overwrite_latest", source_latest)
-        source_separate = source_latest
-      end if
     else
       ! If no <source_point> tag was present, by default we keep source bank in
       ! statepoint file and write it out at statepoints intervals
-      source_separate = .false.
       n_source_points = n_state_points
       do i = 1, n_state_points
         call sourcepoint_batch % add(statepoint_batch % get_item(i))
@@ -728,90 +436,9 @@ contains
       end do
     end if
 
-    ! Check if the user has specified to not reduce tallies at the end of every
-    ! batch
-    if (check_for_node(root, "no_reduce")) then
-      call get_node_value(root, "no_reduce", reduce_tallies)
-    end if
-
-    ! Check if the user has specified to use confidence intervals for
-    ! uncertainties rather than standard deviations
-    if (check_for_node(root, "confidence_intervals")) then
-      call get_node_value(root, "confidence_intervals", confidence_intervals)
-    end if
-
-    ! Check for output options
-    if (check_for_node(root, "output")) then
-
-      ! Get pointer to output node
-      node_output = root % child("output")
-
-      ! Check for summary option
-      if (check_for_node(node_output, "summary")) then
-        call get_node_value(node_output, "summary", output_summary)
-      end if
-
-      ! Check for ASCII tallies output option
-      if (check_for_node(node_output, "tallies")) then
-        call get_node_value(node_output, "tallies", output_tallies)
-      end if
-
-      ! Set output directory if a path has been specified
-      if (check_for_node(node_output, "path")) then
-        call get_node_value(node_output, "path", path_output)
-        if (.not. ends_with(path_output, "/")) &
-             path_output = trim(path_output) // "/"
-      end if
-    end if
-
-    ! Check for cmfd run
-    if (check_for_node(root, "run_cmfd")) then
-      call get_node_value(root, "run_cmfd", cmfd_run)
-    end if
-
     ! Resonance scattering parameters
     if (check_for_node(root, "resonance_scattering")) then
       node_res_scat = root % child("resonance_scattering")
-
-      ! See if resonance scattering is enabled
-      if (check_for_node(node_res_scat, "enable")) then
-        call get_node_value(node_res_scat, "enable", res_scat_on)
-      else
-        res_scat_on = .true.
-      end if
-
-      ! Determine what method is used
-      if (check_for_node(node_res_scat, "method")) then
-        call get_node_value(node_res_scat, "method", temp_str)
-        select case(to_lower(temp_str))
-        case ('ares')
-          res_scat_method = RES_SCAT_ARES
-        case ('dbrc')
-          res_scat_method = RES_SCAT_DBRC
-        case ('wcm')
-          res_scat_method = RES_SCAT_WCM
-        case default
-          call fatal_error("Unrecognized resonance elastic scattering method: " &
-               // trim(temp_str) // ".")
-        end select
-      end if
-
-      ! Minimum energy for resonance scattering
-      if (check_for_node(node_res_scat, "energy_min")) then
-        call get_node_value(node_res_scat, "energy_min", res_scat_energy_min)
-      end if
-      if (res_scat_energy_min < ZERO) then
-        call fatal_error("Lower resonance scattering energy bound is negative")
-      end if
-
-      ! Maximum energy for resonance scattering
-      if (check_for_node(node_res_scat, "energy_max")) then
-        call get_node_value(node_res_scat, "energy_max", res_scat_energy_max)
-      end if
-      if (res_scat_energy_max < res_scat_energy_min) then
-        call fatal_error("Upper resonance scattering energy bound is below the &
-             &lower resonance scattering energy bound.")
-      end if
 
       ! Get nuclides that resonance scattering should be applied to
       if (check_for_node(node_res_scat, "nuclides")) then
@@ -831,138 +458,7 @@ contains
       call volume_calcs(i) % from_xml(node_vol)
     end do
 
-    ! Get temperature settings
-    if (check_for_node(root, "temperature_default")) then
-      call get_node_value(root, "temperature_default", temperature_default)
-    end if
-    if (check_for_node(root, "temperature_method")) then
-      call get_node_value(root, "temperature_method", temp_str)
-      select case (to_lower(temp_str))
-      case ('nearest')
-        temperature_method = TEMPERATURE_NEAREST
-      case ('interpolation')
-        temperature_method = TEMPERATURE_INTERPOLATION
-      case default
-        call fatal_error("Unknown temperature method: " // trim(temp_str))
-      end select
-    end if
-    if (check_for_node(root, "temperature_tolerance")) then
-      call get_node_value(root, "temperature_tolerance", temperature_tolerance)
-    end if
-    if (check_for_node(root, "temperature_multipole")) then
-      call get_node_value(root, "temperature_multipole", temperature_multipole)
-    end if
-    if (check_for_node(root, "temperature_range")) then
-      call get_node_array(root, "temperature_range", temperature_range)
-    end if
-
-    ! Check for tabular_legendre options
-    if (check_for_node(root, "tabular_legendre")) then
-
-      ! Get pointer to tabular_legendre node
-      node_tab_leg = root % child("tabular_legendre")
-
-      ! Check for enable option
-      if (check_for_node(node_tab_leg, "enable")) then
-        call get_node_value(node_tab_leg, "enable", legendre_to_tabular)
-      end if
-
-      ! Check for the number of points
-      if (check_for_node(node_tab_leg, "num_points")) then
-        call get_node_value(node_tab_leg, "num_points", &
-             legendre_to_tabular_points)
-        if (legendre_to_tabular_points <= 1 .and. (.not. run_CE)) then
-          call fatal_error("The 'num_points' subelement/attribute of the &
-               &'tabular_legendre' element must contain a value greater than 1")
-        end if
-      end if
-    end if
-
-    ! Check whether create fission sites
-    if (run_mode == MODE_FIXEDSOURCE) then
-      if (check_for_node(root, "create_fission_neutrons")) then
-        call get_node_value(root, "create_fission_neutrons", &
-             create_fission_neutrons)
-      end if
-    end if
-
-    ! Close settings XML file
-    call doc % clear()
-
-  end subroutine read_settings_xml
-
-!===============================================================================
-! GET_RUN_PARAMETERS
-!===============================================================================
-
-  subroutine get_run_parameters(node_base)
-    type(XMLNode), intent(in) :: node_base
-
-    character(MAX_LINE_LEN) :: temp_str
-    type(XMLNode) :: node_keff_trigger
-
-    ! Check number of particles
-    if (.not. check_for_node(node_base, "particles")) then
-      call fatal_error("Need to specify number of particles.")
-    end if
-
-    ! Get number of particles if it wasn't specified as a command-line argument
-    if (n_particles == 0) then
-      call get_node_value(node_base, "particles", n_particles)
-    end if
-
-    ! Get number of basic batches
-    call get_node_value(node_base, "batches", n_batches)
-    if (.not. trigger_on) then
-      n_max_batches = n_batches
-    end if
-    n_inactive = 0
-    gen_per_batch = 1
-
-    ! Get number of inactive batches
-    if (run_mode == MODE_EIGENVALUE) then
-      call get_node_value(node_base, "inactive", n_inactive)
-      if (check_for_node(node_base, "generations_per_batch")) then
-        call get_node_value(node_base, "generations_per_batch", gen_per_batch)
-      end if
-
-      ! Preallocate space for keff and entropy by generation
-      call k_generation % reserve(n_max_batches*gen_per_batch)
-      call entropy % reserve(n_max_batches*gen_per_batch)
-
-      ! Get the trigger information for keff
-      if (check_for_node(node_base, "keff_trigger")) then
-        node_keff_trigger = node_base % child("keff_trigger")
-
-        if (check_for_node(node_keff_trigger, "type")) then
-          call get_node_value(node_keff_trigger, "type", temp_str)
-          temp_str = trim(to_lower(temp_str))
-
-          select case (temp_str)
-          case ('std_dev')
-            keff_trigger % trigger_type = STANDARD_DEVIATION
-          case ('variance')
-            keff_trigger % trigger_type = VARIANCE
-          case ('rel_err')
-            keff_trigger % trigger_type = RELATIVE_ERROR
-          case default
-            call fatal_error("Unrecognized keff trigger type " // temp_str)
-          end select
-
-        else
-          call fatal_error("Specify keff trigger type in settings XML")
-        end if
-
-        if (check_for_node(node_keff_trigger, "threshold")) then
-          call get_node_value(node_keff_trigger, "threshold", &
-               keff_trigger % threshold)
-        else
-          call fatal_error("Specify keff trigger threshold in settings XML")
-        end if
-      end if
-    end if
-
-  end subroutine get_run_parameters
+  end subroutine read_settings_xml_f
 
 !===============================================================================
 ! READ_GEOMETRY_XML reads data from a geometry.xml file and parses it, checking

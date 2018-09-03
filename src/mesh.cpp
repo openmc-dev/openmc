@@ -752,14 +752,38 @@ void read_meshes(pugi::xml_node* root)
   }
 }
 
+void meshes_to_hdf5(hid_t group)
+{
+  // Write number of meshes
+  hid_t meshes_group = create_group(group, "meshes");
+  int32_t n_meshes = meshes.size();
+  write_attribute(meshes_group, "n_meshes", n_meshes);
+
+  if (n_meshes > 0) {
+    // Write IDs of meshes
+    std::vector<int> ids;
+    for (const auto& m : meshes) {
+      m->to_hdf5(meshes_group);
+      ids.push_back(m->id_);
+    }
+    write_attribute(meshes_group, "ids", ids);
+  }
+
+  close_group(meshes_group);
+}
+
 //==============================================================================
 // Fortran compatibility
 //==============================================================================
 
 extern "C" {
+  // Declaration of Fortran procedures
+  void vector_int_push_back(void* ptr, int value);
+  void vector_real_push_back(void* ptr, double value);
+
   int n_meshes() { return meshes.size(); }
 
-  RegularMesh* mesh_ptr(int i) { return meshes[i-1].get(); }
+  RegularMesh* mesh_ptr(int i) { return meshes.at(i).get(); }
 
   int32_t mesh_id(RegularMesh* m) { return m->id_; }
 
@@ -795,24 +819,19 @@ extern "C" {
     m->get_indices_from_bin(bin, ijk);
   }
 
-  void meshes_to_hdf5(hid_t group)
+  void mesh_bins_crossed(RegularMesh* m, const Particle* p, void* match_bins,
+    void* match_weights)
   {
-    // Write number of meshes
-    hid_t meshes_group = create_group(group, "meshes");
-    int32_t n_meshes = meshes.size();
-    write_attribute(meshes_group, "n_meshes", n_meshes);
+    // Get bins crossed
+    std::vector<int> bins;
+    std::vector<double> lengths;
+    m->bins_crossed(p, bins, lengths);
 
-    if (n_meshes > 0) {
-      // Write IDs of meshes
-      std::vector<int> ids;
-      for (const auto& m : meshes) {
-        m->to_hdf5(meshes_group);
-        ids.push_back(m->id_);
-      }
-      write_attribute(meshes_group, "ids", ids);
+    // Call bindings for VectorInt and VectorReal on Fortran side
+    for (int i = 0; i < bins.size(); ++i) {
+      vector_int_push_back(match_bins, bins[i]);
+      vector_real_push_back(match_weights, lengths[i]);
     }
-
-    close_group(meshes_group);
   }
 
   void free_memory_mesh()

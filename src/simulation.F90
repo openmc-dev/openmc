@@ -472,6 +472,10 @@ contains
 
     ! Allocate array for matching filter bins
     allocate(filter_matches(n_filters))
+    do i = 1, n_filters
+      allocate(filter_matches(i) % bins)
+      allocate(filter_matches(i) % weights)
+    end do
 !$omp end parallel
 
     ! Reset global variables -- this is done before loading state point (as that
@@ -557,6 +561,10 @@ contains
       deallocate(materials(i) % mat_nuclide_index)
     end do
 !$omp parallel
+    do i = 1, size(filter_matches)
+      deallocate(filter_matches(i) % bins)
+      deallocate(filter_matches(i) % weights)
+    end do
     deallocate(micro_xs, micro_photon_xs, filter_matches)
 !$omp end parallel
 

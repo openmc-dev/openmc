@@ -660,6 +660,10 @@ contains
     if (n_tallies == 0) return
 
     allocate(matches(n_filters))
+    do i = 1, n_filters
+      allocate(matches(i) % bins)
+      allocate(matches(i) % weights)
+    end do
 
     ! Initialize names for scores
     score_names(abs(SCORE_FLUX))               = "Flux"
@@ -854,6 +858,11 @@ contains
     end do TALLY_LOOP
 
     close(UNIT=unit_tally)
+
+    do i = 1, n_filters
+      deallocate(matches(i) % bins)
+      deallocate(matches(i) % weights)
+    end do
 
   end subroutine write_tallies
 

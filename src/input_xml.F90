@@ -65,17 +65,17 @@ module input_xml
 
     subroutine read_surfaces(node_ptr) bind(C)
       import C_PTR
-      type(C_PTR), value :: node_ptr
+      type(C_PTR) :: node_ptr
     end subroutine read_surfaces
 
     subroutine read_cells(node_ptr) bind(C)
       import C_PTR
-      type(C_PTR), value :: node_ptr
+      type(C_PTR) :: node_ptr
     end subroutine read_cells
 
     subroutine read_lattices(node_ptr) bind(C)
       import C_PTR
-      type(C_PTR), value :: node_ptr
+      type(C_PTR) :: node_ptr
     end subroutine read_lattices
 
     subroutine read_settings_xml() bind(C)
@@ -83,7 +83,7 @@ module input_xml
 
     subroutine read_materials(node_ptr) bind(C)
       import C_PTR
-      type(C_PTR), value :: node_ptr
+      type(C_PTR) :: node_ptr
     end subroutine read_materials
 
     function find_root_universe() bind(C) result(root)

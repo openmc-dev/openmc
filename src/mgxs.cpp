@@ -463,11 +463,11 @@ Mgxs::get_xs(const int xstype, const int gin, int* gout, double* mu, int* dg)
   case MG_GET_XS_DELAYED_NU_FISSION:
     if (fissionable) {
       if (dg != nullptr) {
-        val = xs_t->delayed_nu_fission(a, gin, *dg);
+        val = xs_t->delayed_nu_fission(a, *dg, gin);
       } else {
         val = 0.;
         for (int d = 0; d < xs_t->delayed_nu_fission.shape()[2]; d++) {
-          val += xs_t->delayed_nu_fission(a, gin, d);
+          val += xs_t->delayed_nu_fission(a, d, gin);
         }
       }
     } else {
@@ -493,21 +493,21 @@ Mgxs::get_xs(const int xstype, const int gin, int* gout, double* mu, int* dg)
     if (fissionable) {
       if (gout != nullptr) {
         if (dg != nullptr) {
-          val = xs_t->chi_delayed(a, gin, *gout, *dg);
+          val = xs_t->chi_delayed(a, *dg, gin, *gout);
         } else {
-          val = xs_t->chi_delayed(a, gin, *gout, 0);
+          val = xs_t->chi_delayed(a, 0, gin, *gout);
         }
       } else {
         if (dg != nullptr) {
           val = 0.;
           for (int g = 0; g < xs_t->delayed_nu_fission.shape()[2]; g++) {
-            val += xs_t->delayed_nu_fission(a, gin, g, *dg);
+            val += xs_t->delayed_nu_fission(a, *dg, gin, g);
           }
         } else {
           val = 0.;
           for (int g = 0; g < xs_t->delayed_nu_fission.shape()[2]; g++) {
             for (int d = 0; d < xs_t->delayed_nu_fission.shape()[3]; d++) {
-             val += xs_t->delayed_nu_fission(a, gin, g, d);
+             val += xs_t->delayed_nu_fission(a, d, gin, g);
             }
           }
         }
@@ -578,7 +578,7 @@ Mgxs::sample_fission_energy(const int gin, int& dg, int& gout)
     while (xi_pd >= prob_prompt) {
       dg++;
       prob_prompt +=
-           xs_t->delayed_nu_fission(cache[tid].a, gin, dg);
+           xs_t->delayed_nu_fission(cache[tid].a, dg, gin);
     }
 
     // adjust dg in case of round-off error
@@ -587,11 +587,11 @@ Mgxs::sample_fission_energy(const int gin, int& dg, int& gout)
     // sample the outgoing energy group
     gout = 0;
     double prob_gout =
-         xs_t->chi_delayed(cache[tid].a, gin, gout, dg);
+         xs_t->chi_delayed(cache[tid].a, dg, gin, gout);
     while (prob_gout < xi_gout) {
       gout++;
       prob_gout +=
-           xs_t->chi_delayed(cache[tid].a, gin, gout, dg);
+           xs_t->chi_delayed(cache[tid].a, dg, gin, gout);
     }
   }
 }

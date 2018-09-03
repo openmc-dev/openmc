@@ -156,7 +156,7 @@ def create_model():
 class MGXSTestHarness(PyAPITestHarness):
     def _cleanup(self):
         super()._cleanup()
-        f = '2g .h5'
+        f = '2g.h5'
         if os.path.exists(f):
             os.remove(f)
 

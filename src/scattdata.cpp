@@ -109,13 +109,7 @@ ScattData::base_combine(size_t max_order,
 
   // Combine mult_numer and mult_denom into the combined multiplicity matrix
   xt::xtensor<double, 2> this_mult({groups, groups}, 1.);
-  for (int gin = 0; gin < groups; gin++) {
-    for (int gout = 0; gout < groups; gout++) {
-      if (mult_denom(gin, gout) > 0.) {
-        this_mult(gin, gout) = mult_numer(gin, gout) / mult_denom(gin, gout);
-      }
-    }
-  }
+  this_mult = xt::nan_to_num(mult_numer / mult_denom);
 
   // We have the data, now we need to convert to a jagged array and then use
   // the initialize function to store it on the object.
@@ -531,7 +525,7 @@ ScattDataHistogram::calc_f(int gin, int gout, double mu)
     int imu;
     if (mu == 1.) {
       // use size -2 to have the index one before the end
-      imu = this->mu.size() - 2;
+      imu = this->mu.shape()[0] - 2;
     } else {
       imu = std::floor((mu + 1.) / dmu + 1.) - 1;
     }

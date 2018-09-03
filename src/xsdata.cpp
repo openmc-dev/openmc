@@ -4,7 +4,6 @@
 #include <cstdlib>
 #include <algorithm>
 #include <numeric>
-#include <iostream>
 
 #include "xtensor/xview.hpp"
 #include "xtensor/xindex_view.hpp"
@@ -124,7 +123,7 @@ XsData::from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
 
 void
 XsData::fission_vector_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
-     size_t energy_groups, size_t delayed_groups)
+     size_t energy_groups, size_t delayed_groups, bool is_isotropic)
 {
   // Data is provided as nu-fission and chi with a beta for delayed info
 
@@ -145,17 +144,35 @@ XsData::fission_vector_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
   xt::xtensor<double, 2> temp_nufiss({n_ang, energy_groups}, 0.);
   read_nd_vector(xsdata_grp, "nu-fission", temp_nufiss, true);
 
-  // Get beta
-  xt::xtensor<double, 2> temp_beta({n_ang, delayed_groups}, 0.);
-  read_nd_vector(xsdata_grp, "beta", temp_beta, true);
+  // Get beta (strategy will depend upon the number of dimensions in beta)
+  hid_t beta_dset = open_dataset(xsdata_grp, "beta");
+  int beta_ndims = dataset_ndims(beta_dset);
+  close_dataset(beta_dset);
+  int ndim_target = 1;
+  if (!is_isotropic) ndim_target += 2;
+  if (beta_ndims == ndim_target) {
+    xt::xtensor<double, 2> temp_beta({n_ang, delayed_groups}, 0.);
+    read_nd_vector(xsdata_grp, "beta", temp_beta, true);
 
-  // Set prompt_nu_fission = (1. - beta_total)*nu_fission
-  prompt_nu_fission = temp_nufiss * (1. - xt::sum(temp_beta, {1}));
+    // Set prompt_nu_fission = (1. - beta_total)*nu_fission
+    prompt_nu_fission = temp_nufiss * (1. - xt::sum(temp_beta, {1}));
 
-  // Set delayed_nu_fission as beta * nu_fission
-  delayed_nu_fission =
-       xt::view(temp_beta, xt::all(), xt::all(), xt::newaxis()) *
-       xt::view(temp_nufiss, xt::all(), xt::newaxis(), xt::all());
+    // Set delayed_nu_fission as beta * nu_fission
+    delayed_nu_fission =
+         xt::view(temp_beta, xt::all(), xt::all(), xt::newaxis()) *
+         xt::view(temp_nufiss, xt::all(), xt::newaxis(), xt::all());
+  } else if (beta_ndims == ndim_target + 1) {
+    xt::xtensor<double, 3> temp_beta({n_ang, delayed_groups, energy_groups},
+                                     0.);
+    read_nd_vector(xsdata_grp, "beta", temp_beta, true);
+
+    // Set prompt_nu_fission = (1. - beta_total)*nu_fission
+    prompt_nu_fission = temp_nufiss * (1. - xt::sum(temp_beta, {1}));
+
+    // Set delayed_nu_fission as beta * nu_fission
+    delayed_nu_fission = temp_beta *
+         xt::view(temp_nufiss, xt::all(), xt::newaxis(), xt::all());
+  }
 }
 
 void
@@ -219,7 +236,7 @@ XsData::fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang,
 
 void
 XsData::fission_matrix_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
-     size_t energy_groups, size_t delayed_groups)
+     size_t energy_groups, size_t delayed_groups, bool is_isotropic)
 {
   // Data is provided as nu-fission and chi with a beta for delayed info
 
@@ -227,32 +244,65 @@ XsData::fission_matrix_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
   xt::xtensor<double, 3> temp_matrix({n_ang, energy_groups, energy_groups}, 0.);
   read_nd_vector(xsdata_grp, "nu-fission", temp_matrix, true);
 
-  // Get beta
-  xt::xtensor<double, 2> temp_beta({n_ang, delayed_groups}, 0.);
-  read_nd_vector(xsdata_grp, "beta", temp_beta, true);
+  // Get beta (strategy will depend upon the number of dimensions in beta)
+  hid_t beta_dset = open_dataset(xsdata_grp, "beta");
+  int beta_ndims = dataset_ndims(beta_dset);
+  close_dataset(beta_dset);
+  int ndim_target = 1;
+  if (!is_isotropic) ndim_target += 2;
+  if (beta_ndims == ndim_target) {
+    xt::xtensor<double, 2> temp_beta({n_ang, delayed_groups}, 0.);
+    read_nd_vector(xsdata_grp, "beta", temp_beta, true);
 
-  xt::xtensor<double, 1> temp_beta_sum({n_ang}, 0.);
-  temp_beta_sum = xt::sum(temp_beta, {1});
+    xt::xtensor<double, 1> temp_beta_sum({n_ang}, 0.);
+    temp_beta_sum = xt::sum(temp_beta, {1});
 
-  // prompt_nu_fission is the sum of this matrix over outgoing groups and
-  // multiplied by (1 - beta_sum)
-  prompt_nu_fission = xt::sum(temp_matrix, {2}) * (1. - temp_beta_sum);
+    // prompt_nu_fission is the sum of this matrix over outgoing groups and
+    // multiplied by (1 - beta_sum)
+    prompt_nu_fission = xt::sum(temp_matrix, {2}) * (1. - temp_beta_sum);
 
-  // delayed_nu_fission is the sum of this matrix over outgoing groups and
-  // multiplied by beta
-  delayed_nu_fission =
-       xt::view(temp_beta, xt::all(), xt::all(), xt::newaxis()) *
-       xt::view(xt::sum(temp_matrix, {2}), xt::all(), xt::newaxis(), xt::all());
+    // Store chi-prompt
+    chi_prompt = xt::view(1.0 - temp_beta_sum, xt::all(), xt::newaxis(),
+                          xt::newaxis()) * temp_matrix;
 
-  // Store chi-prompt
-  chi_prompt = xt::view(1.0 - temp_beta_sum, xt::all(), xt::newaxis(), xt::newaxis()) * temp_matrix;
+    // delayed_nu_fission is the sum of this matrix over outgoing groups and
+    // multiplied by beta
+    delayed_nu_fission =
+         xt::view(temp_beta, xt::all(), xt::all(), xt::newaxis()) *
+         xt::view(xt::sum(temp_matrix, {2}), xt::all(), xt::newaxis(), xt::all());
 
-  // Store chi-delayed
-  chi_delayed =
-       xt::view(temp_beta, xt::all(), xt::all(), xt::newaxis(), xt::newaxis()) *
-       xt::view(temp_matrix, xt::all(), xt::newaxis(), xt::all(), xt::all());
+    // Store chi-delayed
+    chi_delayed =
+         xt::view(temp_beta, xt::all(), xt::all(), xt::newaxis(), xt::newaxis()) *
+         xt::view(temp_matrix, xt::all(), xt::newaxis(), xt::all(), xt::all());
 
-  //Normalize both
+  } else if (beta_ndims == ndim_target + 1) {
+    xt::xtensor<double, 3> temp_beta({n_ang, delayed_groups, energy_groups}, 0.);
+    read_nd_vector(xsdata_grp, "beta", temp_beta, true);
+
+    xt::xtensor<double, 2> temp_beta_sum({n_ang, energy_groups}, 0.);
+    temp_beta_sum = xt::sum(temp_beta, {1});
+
+    // prompt_nu_fission is the sum of this matrix over outgoing groups and
+    // multiplied by (1 - beta_sum)
+    prompt_nu_fission = xt::sum(temp_matrix, {2}) * (1. - temp_beta_sum);
+
+    // Store chi-prompt
+    chi_prompt = xt::view(1.0 - temp_beta_sum, xt::all(), xt::all(),
+                          xt::newaxis()) * temp_matrix;
+
+    // delayed_nu_fission is the sum of this matrix over outgoing groups and
+    // multiplied by beta
+    delayed_nu_fission = temp_beta *
+         xt::view(xt::sum(temp_matrix, {2}), xt::all(), xt::newaxis(), xt::all());
+
+    // Store chi-delayed
+    chi_delayed =
+         xt::view(temp_beta, xt::all(), xt::all(), xt::all(), xt::newaxis()) *
+         xt::view(temp_matrix, xt::all(), xt::newaxis(), xt::all(), xt::all());
+  }
+
+  //Normalize both chis
   chi_prompt = chi_prompt / xt::view(xt::sum(chi_prompt, {2}), xt::all(),
                                      xt::all(), xt::newaxis());
 
@@ -335,7 +385,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
     } else {
       if (object_exists(xsdata_grp, "beta")) {
         fission_vector_beta_from_hdf5(xsdata_grp, n_ang, energy_groups,
-             delayed_groups);
+             delayed_groups, is_isotropic);
       } else {
         fission_vector_no_beta_from_hdf5(xsdata_grp, n_ang, energy_groups,
              delayed_groups);
@@ -347,7 +397,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
     } else {
       if (object_exists(xsdata_grp, "beta")) {
         fission_matrix_beta_from_hdf5(xsdata_grp, n_ang, energy_groups,
-             delayed_groups);
+             delayed_groups, is_isotropic);
       } else {
         fission_matrix_no_beta_from_hdf5(xsdata_grp, n_ang, energy_groups,
              delayed_groups);

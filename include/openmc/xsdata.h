@@ -37,7 +37,7 @@ class XsData {
     //  the HDF5 file when beta is provided.
     void
     fission_vector_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
-         size_t energy_groups, size_t delayed_groups);
+         size_t energy_groups, size_t delayed_groups, bool is_isotropic);
 
     //! \brief Reads fission data formatted as chi and nu-fission vectors from
     //  the HDF5 file when beta is not provided.
@@ -55,7 +55,7 @@ class XsData {
     //  the HDF5 file when beta is provided.
     void
     fission_matrix_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
-         size_t energy_groups, size_t delayed_groups);
+         size_t energy_groups, size_t delayed_groups, bool is_isotropic);
 
     //! \brief Reads fission data formatted as a nu-fission matrix from
     //  the HDF5 file when beta is not provided.

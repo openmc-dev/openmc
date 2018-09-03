@@ -85,6 +85,29 @@ def create_library():
     mat_4.set_total(total)
     mg_cross_sections_file.add_xsdata(mat_4)
 
+    # Make the base data that uses chi & nu-fiss vectors with a group-wise beta
+    mat_5 = openmc.XSdata('mat_5', groups)
+    mat_5.order = 1
+    mat_5.num_delayed_groups = 2
+    mat_5.set_beta(np.stack([beta] * groups.num_groups))
+    mat_5.set_nu_fission(np.multiply(nu, fiss))
+    mat_5.set_absorption(absorption)
+    mat_5.set_scatter_matrix(scatter)
+    mat_5.set_total(total)
+    mat_5.set_chi(chi)
+    mg_cross_sections_file.add_xsdata(mat_5)
+
+    # Make a version that uses a nu-fission matrix with a group-wise beta
+    mat_6 = openmc.XSdata('mat_6', groups)
+    mat_6.order = 1
+    mat_6.num_delayed_groups = 2
+    mat_6.set_beta(np.stack([beta] * groups.num_groups))
+    mat_6.set_nu_fission(np.outer(np.multiply(nu, fiss), chi))
+    mat_6.set_absorption(absorption)
+    mat_6.set_scatter_matrix(scatter)
+    mat_6.set_total(total)
+    mg_cross_sections_file.add_xsdata(mat_6)
+
     # Write the file
     mg_cross_sections_file.export_to_hdf5('2g.h5')
 
@@ -99,8 +122,10 @@ class MGXSTestHarness(PyAPITestHarness):
 
 def test_mg_basic_delayed():
     create_library()
-    model = slab_mg(num_regions=4, mat_names=['vec beta', 'vec no beta',
-                                              'matrix beta', 'matrix no beta'])
+    model = slab_mg(num_regions=6, mat_names=['vec beta', 'vec no beta',
+                                              'matrix beta', 'matrix no beta',
+                                              'vec group beta',
+                                              'matrix group beta'])
 
     harness = PyAPITestHarness('statepoint.10.h5', model)
     harness.main()

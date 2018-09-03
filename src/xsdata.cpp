@@ -225,11 +225,7 @@ XsData::fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang,
   chi_prompt = xt::view(temp_chi, xt::all(), xt::newaxis(), xt::all());
 
   // Get nu-fission directly
-  if (object_exists(xsdata_grp, "prompt-nu-fission")) {
-    read_nd_vector(xsdata_grp, "prompt-nu-fission", prompt_nu_fission, true);
-  } else {
-    read_nd_vector(xsdata_grp, "nu-fission", prompt_nu_fission, true);
-  }
+  read_nd_vector(xsdata_grp, "nu-fission", prompt_nu_fission, true);
 }
 
 //==============================================================================
@@ -351,11 +347,7 @@ XsData::fission_matrix_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang,
 
   // Get nu-fission matrix
   xt::xtensor<double, 3> temp_matrix({n_ang, energy_groups, energy_groups}, 0.);
-  if (object_exists(xsdata_grp, "prompt-nu-fission")) {
-    read_nd_vector(xsdata_grp, "prompt-nu-fission", temp_matrix, true);
-  } else {
-    read_nd_vector(xsdata_grp, "nu-fission", temp_matrix, true);
-  }
+  read_nd_vector(xsdata_grp, "nu-fission", temp_matrix, true);
 
   // prompt_nu_fission is the sum over outgoing groups
   prompt_nu_fission = xt::sum(temp_matrix, {2});

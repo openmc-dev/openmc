@@ -97,7 +97,7 @@ class MGXSTestHarness(PyAPITestHarness):
             os.remove(f)
 
 
-def test_mg_benchmark():
+def test_mg_basic_delayed():
     create_library()
     model = slab_mg(num_regions=4, mat_names=['vec beta', 'vec no beta',
                                               'matrix beta', 'matrix no beta'])

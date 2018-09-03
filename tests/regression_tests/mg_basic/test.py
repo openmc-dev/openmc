@@ -82,7 +82,7 @@ class MGXSTestHarness(PyAPITestHarness):
             os.remove(f)
 
 
-def test_mg_benchmark():
+def test_mg_basic():
     create_library()
     mat_names = ['base leg', 'base tab', 'base hist', 'base matrix',
                  'base ang', 'micro']

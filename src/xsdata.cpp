@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <numeric>
+#include <iostream>
 
 #include "xtensor/xview.hpp"
 #include "xtensor/xindex_view.hpp"
@@ -204,13 +205,7 @@ XsData::fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang,
   temp_chi = temp_chi / xt::view(xt::sum(temp_chi, {1}), xt::all(), xt::newaxis());
 
   // Now every incoming group in self.chi is the normalized chi we just made
-  for (size_t a = 0; a < n_ang; a++) {
-    for (size_t gin = 0; gin < energy_groups; gin++) {
-      for (size_t gout = 0; gout < energy_groups; gout++) {
-        chi_prompt(a, gin, gout) = temp_chi(a, gout);
-      }
-    }
-  }
+  chi_prompt = xt::view(temp_chi, xt::all(), xt::newaxis(), xt::all());
 
   // Get nu-fission directly
   if (object_exists(xsdata_grp, "prompt-nu-fission")) {
@@ -317,7 +312,8 @@ XsData::fission_matrix_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang,
 
   // chi_prompt is this matrix but normalized over outgoing groups, which we
   // have already stored in prompt_nu_fission
-  chi_prompt = temp_matrix / prompt_nu_fission;
+  chi_prompt = temp_matrix / xt::view(prompt_nu_fission, xt::all(), xt::all(),
+                                      xt::newaxis());
 }
 
 //==============================================================================
@@ -391,12 +387,7 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
 
   // Now use this info to find the length of a vector to hold the flattened
   // data.
-  size_t length = 0;
-  for (size_t a = 0; a < n_ang; a++) {
-    for (size_t gin = 0; gin < energy_groups; gin++) {
-      length += order_data * (gmax(a, gin) - gmin(a, gin) + 1);
-    }
-  }
+  size_t length = order_data * xt::sum(gmax - gmin + 1)();
 
   double_4dvec input_scatt(n_ang, double_3dvec(energy_groups));
   xt::xtensor<double, 1> temp_arr({length}, 0.);

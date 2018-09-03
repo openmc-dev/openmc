@@ -175,7 +175,7 @@ module mesh_header
 
     subroutine read_meshes(node_ptr) bind(C)
       import C_PTR
-      type(C_PTR), value :: node_ptr
+      type(C_PTR) :: node_ptr
     end subroutine
 
     function n_meshes() result(n) bind(C)

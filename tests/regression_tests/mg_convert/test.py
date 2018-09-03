@@ -17,7 +17,7 @@ def build_mgxs_library(convert):
     # Instantiate the energy group data
     groups = openmc.mgxs.EnergyGroups(group_edges=[1e-5, 0.625, 20.0e6])
 
-    # Instantiate the 7-group (C5G7) cross section data
+    # Instantiate the 2-group (C5G7) cross section data
     uo2_xsdata = openmc.XSdata('UO2', groups)
     uo2_xsdata.order = 2
     uo2_xsdata.set_total([2., 2.])

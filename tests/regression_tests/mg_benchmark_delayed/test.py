@@ -3,6 +3,7 @@ import os
 import numpy as np
 
 import openmc
+from openmc.examples import slab_mg
 
 from tests.testing_harness import PyAPITestHarness
 
@@ -71,7 +72,8 @@ def create_library():
     mat_4 = openmc.XSdata('mat_4', groups)
     mat_4.order = 1
     mat_4.num_delayed_groups = 2
-    mat_4.set_prompt_nu_fission(one_m_beta * np.outer(np.multiply(nu, fiss), chi))
+    mat_4.set_prompt_nu_fission(one_m_beta *
+                                np.outer(np.multiply(nu, fiss), chi))
     delay_nu_fiss = np.zeros((n_dg, groups.num_groups, groups.num_groups))
     for dg in range(n_dg):
         for g in range(groups.num_groups):
@@ -87,80 +89,6 @@ def create_library():
     mg_cross_sections_file.export_to_hdf5('2g.h5')
 
 
-def create_model():
-    create_library()
-
-    # # Make Materials
-    materials_file = openmc.Materials()
-
-    mat_names = ['vec beta', 'vec no beta', 'matrix beta', 'matrix no beta']
-    macros = []
-    mats = []
-    for i in range(len(mat_names)):
-        macros.append(openmc.Macroscopic('mat_' + str(i + 1)))
-        mats.append(openmc.Material(name=mat_names[i]))
-        mats[-1].set_density('macro', 1.0)
-        mats[-1].add_macroscopic(macros[-1])
-
-    materials_file += mats
-
-    materials_file.cross_sections = '2g.h5'
-
-    # # Make Geometry
-    rad_outer = 929.45
-    # Set a cell boundary to exist for every material above (exclude the 0)
-    rads = np.linspace(0., rad_outer, len(mats) + 1, endpoint=True)[1:]
-
-    # Instantiate Universe
-    root = openmc.Universe(universe_id=0, name='root universe')
-    cells = []
-
-    surfs = []
-    surfs.append(openmc.XPlane(x0=0., boundary_type='reflective'))
-    for r, rad in enumerate(rads):
-        if r == len(rads) - 1:
-            surfs.append(openmc.XPlane(x0=rad, boundary_type='vacuum'))
-        else:
-            surfs.append(openmc.XPlane(x0=rad))
-
-    # Instantiate Cells
-    cells = []
-    for c in range(len(surfs) - 1):
-        cells.append(openmc.Cell())
-        cells[-1].region = (+surfs[c] & -surfs[c + 1])
-        cells[-1].fill = mats[c]
-
-    # Register Cells with Universe
-    root.add_cells(cells)
-
-    # Instantiate a Geometry, register the root Universe, and export to XML
-    geometry_file = openmc.Geometry(root)
-
-    # # Make Settings
-    # Instantiate a Settings object, set all runtime parameters
-    settings_file = openmc.Settings()
-    settings_file.energy_mode = "multi-group"
-    settings_file.tabular_legendre = {'enable': False}
-    settings_file.batches = 10
-    settings_file.inactive = 5
-    settings_file.particles = 1000
-
-    # Build source distribution
-    INF = 1000.
-    bounds = [0., -INF, -INF, rads[0], INF, INF]
-    uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:])
-    settings_file.source = openmc.source.Source(space=uniform_dist)
-
-    settings_file.output = {'summary': False}
-
-    model = openmc.model.Model()
-    model.geometry = geometry_file
-    model.materials = materials_file
-    model.settings = settings_file
-
-    return model
-
-
 class MGXSTestHarness(PyAPITestHarness):
     def _cleanup(self):
         super()._cleanup()
@@ -170,6 +98,9 @@ class MGXSTestHarness(PyAPITestHarness):
 
 
 def test_mg_benchmark():
-    model = create_model()
+    create_library()
+    model = slab_mg(num_regions=4, mat_names=['vec beta', 'vec no beta',
+                                              'matrix beta', 'matrix no beta'])
+
     harness = PyAPITestHarness('statepoint.10.h5', model)
     harness.main()

@@ -551,7 +551,6 @@ ScattDataHistogram::sample(int gin, int& gout, double& mu, double& wgt)
   if (xi < dist[gin][i_gout][0]) {
     imu = 0;
   } else {
-    // TODO lower_bound?  + 1?
     imu = std::upper_bound(dist[gin][i_gout].begin(),
                            dist[gin][i_gout].end(), xi) -
          dist[gin][i_gout].begin();

@@ -351,7 +351,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
       err_msg << "Non-3D translation vector applied to cell " << id_;
       fatal_error(err_msg);
     }
-    translation_ = xyz;
+    translation_ = *xyz.begin();
   }
 
   // Read the rotation transform.
@@ -371,15 +371,16 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     }
 
     // Store the rotation angles.
+    std::vector<double> rot_vec = *rot.begin();
     rotation_.reserve(12);
-    rotation_.push_back(rot[0]);
-    rotation_.push_back(rot[1]);
-    rotation_.push_back(rot[2]);
+    rotation_.push_back(rot_vec[0]);
+    rotation_.push_back(rot_vec[1]);
+    rotation_.push_back(rot_vec[2]);
 
     // Compute and store the rotation matrix.
-    auto phi = -rot[0] * PI / 180.0;
-    auto theta = -rot[1] * PI / 180.0;
-    auto psi = -rot[2] * PI / 180.0;
+    auto phi = -rot_vec[0] * PI / 180.0;
+    auto theta = -rot_vec[1] * PI / 180.0;
+    auto psi = -rot_vec[2] * PI / 180.0;
     rotation_.push_back(std::cos(theta) * std::cos(psi));
     rotation_.push_back(-std::cos(phi) * std::sin(psi)
                         + std::sin(phi) * std::sin(theta) * std::cos(psi));
@@ -445,7 +446,7 @@ CSGCell::to_hdf5(hid_t cell_group) const
   // Create a group for this cell.
   std::stringstream group_name;
   group_name << "cell " << id_;
-  auto group = create_group(cells_group, group_name);
+  auto group = create_group(cell_group, group_name);
 
   if (!name_.empty()) {
     write_string(group, "name", name_, false);
@@ -645,7 +646,7 @@ read_cells(pugi::xml_node* node)
   // Loop over XML cell elements and populate the array.
   cells.reserve(n_cells);
   for (pugi::xml_node cell_node: node->children("cell")) {
-    global_cells.push_back(new CSGCell(cell_node));
+    cells.push_back(new CSGCell(cell_node));
   }
 
   // Populate the Universe vector and map.
@@ -811,7 +812,7 @@ extern "C" {
   {
     cells.reserve(cells.size() + n);
     for (int32_t i = 0; i < n; i++) {
-      global_cells.push_back(new CSGCell());
+      cells.push_back(new CSGCell());
     }
     n_cells = cells.size();
   }

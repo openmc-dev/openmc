@@ -113,6 +113,11 @@ public:
   //! \return Normal direction
   virtual Direction normal(Position r) const = 0;
 
+  //! Write all information needed to reconstruct the surface to an HDF5 group.
+  //! \param group_id An HDF5 group id.
+  //TODO: this probably needs to include i_periodic for PeriodicSurface
+  virtual void to_hdf5(hid_t group_id) const = 0;
+  
 };
 
 class CSGSurface : public Surface
@@ -121,11 +126,7 @@ class CSGSurface : public Surface
   explicit CSGSurface(pugi::xml_node surf_node);
   explicit CSGSurface();
 
-  //! Write all information needed to reconstruct the surface to an HDF5 group.
-  //! \param group_id An HDF5 group id.
-  //TODO: this probably needs to include i_periodic for PeriodicSurface
   void to_hdf5(hid_t group_id) const;
-
   
  protected:
   virtual void to_hdf5_inner(hid_t group_id) const = 0;  

@@ -111,7 +111,8 @@ public:
   std::vector<int32_t> offset_;  //!< Distribcell offset table
 
   explicit Cell(pugi::xml_node cell_node);
-
+  inline Cell() {};
+  
   //! Determine if a cell contains the particle at a given location.
   //!
   //! The bounds of the cell are detemined by a logical expression involving

@@ -431,8 +431,6 @@ contains
       trace_batch    = temp_int_array3(1)
       trace_gen      = temp_int_array3(2)
       trace_particle = int(temp_int_array3(3), 8)
->>>>>>> Updates to meet style guide.
->>>>>>> Updates to meet style guide.
     end if
 
     ! Particle tracks
@@ -755,12 +753,6 @@ contains
 
       c % ptr = cell_pointer(i - 1)
 
-<<<<<<< 25ab6776f10a1ea974b3aa15f74271aa80748913
-=======
-      ! Initialize distribcell instances and distribcell index
-      c % distribcell_index = NONE
-
->>>>>>> Updates to meet style guide.
       ! Get pointer to i-th cell node
       node_cell = node_cell_list(i)
 

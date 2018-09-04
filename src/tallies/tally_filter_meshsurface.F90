@@ -3,7 +3,6 @@ module tally_filter_meshsurface
   use, intrinsic :: ISO_C_BINDING
 
   use constants
-  use dict_header,         only: EMPTY
   use error
   use mesh_header
   use hdf5_interface
@@ -41,7 +40,6 @@ contains
     integer :: i
     integer :: id
     integer :: n
-    integer :: n_dim
     integer(C_INT) :: err
     type(RegularMesh) :: m
 
@@ -74,147 +72,25 @@ contains
     integer,                  intent(in)  :: estimator
     type(TallyFilterMatch), intent(inout) :: match
 
-    integer :: j                    ! loop indices
-    integer :: n_dim                ! num dimensions of the mesh
-    integer :: d1                   ! dimension index
-    integer :: ijk0(3)              ! indices of starting coordinates
-    integer :: ijk1(3)              ! indices of ending coordinates
-    integer :: n_cross              ! number of surface crossings
-    integer :: i_mesh               ! flattened mesh bin index
-    integer :: i_surf               ! surface index (1--12)
-    integer :: i_bin                ! actual index for filter
-    real(8) :: uvw(3)               ! cosine of angle of particle
-    real(8) :: xyz0(3)              ! starting/intermediate coordinates
-    real(8) :: xyz1(3)              ! ending coordinates of particle
-    real(8) :: xyz_cross(3)         ! coordinates of bounding surfaces
-    real(8) :: d(3)                 ! distance to each bounding surface
-    real(8) :: distance             ! actual distance traveled
-    logical :: start_in_mesh        ! particle's starting xyz in mesh?
-    logical :: end_in_mesh          ! particle's ending xyz in mesh?
     type(RegularMesh) :: m
+    type(C_PTR) :: ptr_bins, ptr_weights
 
-    ! ! Copy starting and ending location of particle
-    ! xyz0 = p % last_xyz_current
-    ! xyz1 = p % coord(1) % xyz
+    interface
+      subroutine mesh_surface_bins_crossed(m, p, bins, weights) bind(C)
+        import C_PTR, Particle
+        type(C_PTR), value :: m
+        type(Particle), intent(in) :: p
+        type(C_PTR), value :: bins
+        type(C_PTR), value :: weights
+      end subroutine
+    end interface
 
-    ! m = meshes(this % mesh)
-    ! n_dim = m % n_dimension()
+    ! Get a pointer to the mesh.
+    m = meshes(this % mesh)
 
-    ! ! Determine indices for starting and ending location
-    ! call m % get_indices(xyz0, ijk0, start_in_mesh)
-    ! call m % get_indices(xyz1, ijk1, end_in_mesh)
-
-    ! ! Check to see if start or end is in mesh -- if not, check if track still
-    ! ! intersects with mesh
-    ! if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) then
-    !   !if (.not. m % intersects(xyz0, xyz1)) return
-    ! end if
-
-    ! ! Calculate number of surface crossings
-    ! n_cross = sum(abs(ijk1(:n_dim) - ijk0(:n_dim)))
-    ! if (n_cross == 0) return
-
-    ! ! Copy particle's direction
-    ! uvw = p % coord(1) % uvw
-
-    ! ! Bounding coordinates
-    ! do d1 = 1, n_dim
-    !   if (uvw(d1) > 0) then
-    !     xyz_cross(d1) = m % lower_left(d1) + ijk0(d1) * m % width(d1)
-    !   else
-    !     xyz_cross(d1) = m % lower_left(d1) + (ijk0(d1) - 1) * m % width(d1)
-    !   end if
-    ! end do
-
-    ! do j = 1, n_cross
-    !   ! Set the distances to infinity
-    !   d = INFINITY
-
-    !   ! Calculate distance to each bounding surface. We need to treat
-    !   ! special case where the cosine of the angle is zero since this would
-    !   ! result in a divide-by-zero.
-    !   do d1 = 1, n_dim
-    !     if (uvw(d1) == 0) then
-    !       d(d1) = INFINITY
-    !     else
-    !       d(d1) = (xyz_cross(d1) - xyz0(d1))/uvw(d1)
-    !     end if
-    !   end do
-
-    !   ! Determine the closest bounding surface of the mesh cell by
-    !   ! calculating the minimum distance. Then use the minimum distance and
-    !   ! direction of the particle to determine which surface was crossed.
-    !   distance = minval(d)
-
-    !   ! Loop over the dimensions
-    !   do d1 = 1, n_dim
-
-    !     ! Check whether distance is the shortest distance
-    !     if (distance == d(d1)) then
-
-    !       ! Check whether particle is moving in positive d1 direction
-    !       if (uvw(d1) > 0) then
-
-    !         ! Outward current on d1 max surface
-    !         if (all(ijk0(:n_dim) >= 1) .and. &
-    !               all(ijk0(:n_dim) <= m % dimension)) then
-    !           i_surf = d1 * 4 - 1
-    !           i_mesh = m % get_bin_from_indices(ijk0)
-    !           i_bin = 4*n_dim*(i_mesh - 1) + i_surf
-
-    !           call match % bins % push_back(i_bin)
-    !           call match % weights % push_back(ONE)
-    !         end if
-
-    !         ! Advance position
-    !         ijk0(d1) = ijk0(d1) + 1
-    !         xyz_cross(d1) = xyz_cross(d1) + m % width(d1)
-
-    !         ! If the particle crossed the surface, tally the inward current on
-    !         ! d1 min surface
-    !         if (all(ijk0(:n_dim) >= 1)) then ! .and. all(ijk0(:n_dim) <= m % dimension)) then
-    !           i_surf = d1 * 4 - 2
-    !           i_mesh = m % get_bin_from_indices(ijk0)
-    !           i_bin = 4*n_dim*(i_mesh - 1) + i_surf
-
-    !           call match % bins % push_back(i_bin)
-    !           call match % weights % push_back(ONE)
-    !         end if
-
-    !       else
-    !         ! The particle is moving in the negative d1 direction
-
-    !         ! Outward current on d1 min surface
-    !         if (all(ijk0(:n_dim) >= 1)) then ! .and. all(ijk0(:n_dim) <= m % dimension)) then
-    !           i_surf = d1 * 4 - 3
-    !           i_mesh = m % get_bin_from_indices(ijk0)
-    !           i_bin = 4*n_dim*(i_mesh - 1) + i_surf
-
-    !           call match % bins % push_back(i_bin)
-    !           call match % weights % push_back(ONE)
-    !         end if
-
-    !         ! Advance position
-    !         ijk0(d1) = ijk0(d1) - 1
-    !         xyz_cross(d1) = xyz_cross(d1) - m % width(d1)
-
-    !         ! If the particle crossed the surface, tally the inward current on
-    !         ! d1 max surface
-    !         if (all(ijk0(:n_dim) >= 1)) then ! .and. all(ijk0(:n_dim) <= m % dimension)) then
-    !           i_surf = d1 * 4
-    !           i_mesh = m % get_bin_from_indices(ijk0)
-    !           i_bin = 4*n_dim*(i_mesh - 1) + i_surf
-
-    !           call match % bins % push_back(i_bin)
-    !           call match % weights % push_back(ONE)
-    !         end if
-    !       end if
-    !     end if
-    !   end do
-
-    !   ! Calculate new coordinates
-    !   xyz0 = xyz0 + distance * uvw
-    ! end do
+    ptr_bins = C_LOC(match % bins)
+    ptr_weights = C_LOC(match % weights)
+    call mesh_surface_bins_crossed(m % ptr, p, ptr_bins, ptr_weights)
 
   end subroutine get_all_bins
 

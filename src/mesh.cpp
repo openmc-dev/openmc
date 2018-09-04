@@ -1,6 +1,6 @@
 #include "openmc/mesh.h"
 
-#include <algorithm> // for copy
+#include <algorithm> // for copy, min
 #include <cstddef> // for size_t
 #include <cmath>  // for ceil
 #include <string>
@@ -515,6 +515,130 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   }
 }
 
+void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins)
+{
+  // ========================================================================
+  // Determine if the track intersects the tally mesh.
+
+  // Copy the starting and ending coordinates of the particle.
+  Position r0 {p->last_xyz_current};
+  Position r1 {p->coord[0].xyz};
+  Direction u {p->coord[0].uvw};
+
+  // Determine indices for starting and ending location.
+  int n = n_dimension_;
+  xt::xtensor<int, 1> ijk0 = xt::empty<int>({n});
+  bool start_in_mesh;
+  get_indices(r0, ijk0.data(), &start_in_mesh);
+  xt::xtensor<int, 1> ijk1 = xt::empty<int>({n});
+  bool end_in_mesh;
+  get_indices(r1, ijk1.data(), &end_in_mesh);
+
+  // If this is the first iteration of the filter loop, check if the track
+  // intersects any part of the mesh.
+  if ((!start_in_mesh) && (!end_in_mesh)) {
+    if (!intersects(r0, r1)) return;
+  }
+
+  // ========================================================================
+  // Figure out which mesh cell to tally.
+
+  // Calculate number of surface crossings
+  int n_cross = xt::sum(xt::abs(ijk1 - ijk0))();
+  if (n_cross == 0) return;
+
+  // Bounding coordinates
+  Position xyz_cross;
+  for (int i = 0; i < n; ++i) {
+    if (u[i] > 0.0) {
+      xyz_cross[i] = lower_left_[i] + ijk0[i] * width_[i];
+    } else {
+      xyz_cross[i] = lower_left_[i] + (ijk0[i] - 1) * width_[i];
+    }
+  }
+
+  for (int j = 0; j < n_cross; ++j) {
+    // Set the distances to infinity
+    Position d {INFTY, INFTY, INFTY};
+
+    // Determine closest bounding surface. We need to treat
+    // special case where the cosine of the angle is zero since this would
+    // result in a divide-by-zero.
+    double distance = INFTY;
+    for (int i = 0; i < n; ++i) {
+      if (u[i] == 0) {
+        d[i] = INFINITY;
+      } else {
+        d[i] = (xyz_cross[i] - r0[i])/u[i];
+      }
+      distance = std::min(distance, d[i]);
+    }
+
+    // Loop over the dimensions
+    for (int i = 0; i < n; ++i) {
+      // Check whether distance is the shortest distance
+      if (distance == d[i]) {
+
+        // Check whether particle is moving in positive i direction
+        if (u[i] > 0) {
+
+          // Outward current on i max surface
+          if (xt::all(ijk0 >= 1) && xt::all(ijk0 <= shape_)) {
+            int i_surf = 4*i + 3;
+            int i_mesh = get_bin_from_indices(ijk0.data());
+            int i_bin = 4*n*(i_mesh - 1) + i_surf;
+
+            bins.push_back(i_bin);
+          }
+
+          // Advance position
+          ++ijk0[i];
+          xyz_cross[i] += width_[i];
+
+          // If the particle crossed the surface, tally the inward current on
+          // i min surface
+          if (xt::all(ijk0 >= 1) && xt::all(ijk0 <= shape_)) {
+            int i_surf = 4*i + 2;
+            int i_mesh = get_bin_from_indices(ijk0.data());
+            int i_bin = 4*n*(i_mesh - 1) + i_surf;
+
+            bins.push_back(i_bin);
+          }
+
+        } else {
+          // The particle is moving in the negative i direction
+
+          // Outward current on i min surface
+          if (xt::all(ijk0 >= 1) && xt::all(ijk0 <= shape_) ){
+            int i_surf = 4*i + 1;
+            int i_mesh = get_bin_from_indices(ijk0.data());
+            int i_bin = 4*n*(i_mesh - 1) + i_surf;
+
+            bins.push_back(i_bin);
+          }
+
+          // Advance position
+          --ijk0[i];
+          xyz_cross[i] -= width_[i];
+
+          // If the particle crossed the surface, tally the inward current on
+          // i max surface
+          if (xt::all(ijk0 >= 1) && xt::all(ijk0 <= shape_)) {
+            int i_surf = 4*i + 4;
+            int i_mesh = get_bin_from_indices(ijk0.data());
+            int i_bin = 4*n*(i_mesh - 1) + i_surf;
+
+            bins.push_back(i_bin);
+          }
+        }
+      }
+    }
+
+    // Calculate new coordinates
+    r0 += distance * u;
+  }
+}
+
 void RegularMesh::to_hdf5(hid_t group)
 {
   hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
@@ -585,7 +709,6 @@ xt::xarray<double> RegularMesh::count_sites(int64_t n, const Bank* bank,
   // Check if there were sites outside the mesh for any processor
   MPI_REDUCE(outside, sites_outside, 1, MPI_LOGICAL, MPI_LOR, 0, &
           mpi_intracomm, mpi_err)
-  end if
 #else
   std::copy(cnt.data(), cnt.data() + total, cnt_reduced);
   if (outside) *outside = outside_;
@@ -831,6 +954,20 @@ extern "C" {
     for (int i = 0; i < bins.size(); ++i) {
       vector_int_push_back(match_bins, bins[i]);
       vector_real_push_back(match_weights, lengths[i]);
+    }
+  }
+
+  void mesh_surface_bins_crossed(RegularMesh* m, const Particle* p,
+    void* match_bins, void* match_weights)
+  {
+    // Get surface bins crossed
+    std::vector<int> bins;
+    m->surface_bins_crossed(p, bins);
+
+    // Call bindings for VectorInt and VectorReal
+    for (auto b : bins) {
+      vector_int_push_back(match_bins, b);
+      vector_real_push_back(match_weights, 1.0);
     }
   }
 

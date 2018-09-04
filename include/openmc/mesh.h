@@ -30,6 +30,7 @@ public:
   // Methods
   void bins_crossed(const Particle* p, std::vector<int>& bins,
                     std::vector<double>& lengths);
+  void surface_bins_crossed(const Particle* p, std::vector<int>& bins);
   int get_bin(Position r);
   int get_bin_from_indices(const int* ijk);
   void get_indices(Position r, int* ijk, bool* in_mesh);

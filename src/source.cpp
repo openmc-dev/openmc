@@ -316,7 +316,7 @@ Bank sample_external_source()
   }
 
   // Sample source site from i-th source distribution
-  Bank site {external_sources[i].sample()};
+  Bank site = external_sources[i].sample();
 
   // If running in MG, convert site % E to group
   if (!settings::run_CE) {

@@ -72,14 +72,6 @@ module geometry
 
 contains
 
-  function cell_contains(c, p) result(in_cell)
-    type(Cell), intent(in) :: c
-    type(Particle), intent(in) :: p
-    logical :: in_cell
-    in_cell = cell_contains_c(c%ptr, p%coord(p%n_coord)%xyz, &
-                              p%coord(p%n_coord)%uvw, p%surface)
-  end function cell_contains
-
 #ifdef CAD
 
   function next_cell(c, s) result(new_cell)

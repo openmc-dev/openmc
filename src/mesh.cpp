@@ -432,9 +432,9 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
       }
 
       for (j = 0; j < n; ++j) {
-        if (std::abs(u[j]) < FP_PRECISION) {
+        if (std::fabs(u[j]) < FP_PRECISION) {
           d(j) = INFTY;
-        } else if (u[j] > 0) {
+        } else if (u[j] > 0.0) {
           double xyz_cross = lower_left_[j] + ijk0(j) * width_[j];
           d(j) = (xyz_cross - r0[j]) / u[j];
         } else {
@@ -473,7 +473,7 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
       // surface.
       xt::xtensor<double, 1> d = xt::zeros<double>({n});
       for (int j = 0; j < n; ++j) {
-        if (abs(u[j]) < FP_PRECISION) {
+        if (std::fabs(u[j]) < FP_PRECISION) {
           d(j) = INFTY;
         } else if (u[j] > 0) {
           double xyz_cross = lower_left_[j] + ijk0(j) * width_[j];

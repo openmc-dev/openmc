@@ -110,7 +110,7 @@ void ufs_count_sites()
 
 double ufs_get_weight(const Particle* p)
 {
-  auto& m = meshes[settings::index_entropy_mesh];
+  auto& m = meshes[settings::index_ufs_mesh];
 
   // Determine indices on ufs mesh for current location
   // TODO: off by one

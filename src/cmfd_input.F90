@@ -263,8 +263,6 @@ contains
     integer :: i_filt     ! index in filters array
     integer :: filt_id
     integer :: tally_id
-    integer :: iarray3(3) ! temp integer array
-    real(8) :: rarray3(3) ! temp double array
     real(C_DOUBLE), allocatable :: energies(:)
     type(XMLNode) :: node_mesh
 

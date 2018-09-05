@@ -1181,7 +1181,6 @@ contains
     integer :: nu_d(MAX_DELAYED_GROUPS) ! number of delayed neutrons born
     integer :: i                        ! loop index
     integer :: nu                       ! actual number of neutrons produced
-    integer :: mesh_bin                 ! mesh bin for source site
     real(8) :: nu_t                     ! total nu
     real(8) :: weight                   ! weight adjustment for ufs method
     type(Nuclide),  pointer :: nuc

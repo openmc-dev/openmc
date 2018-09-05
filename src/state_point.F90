@@ -67,7 +67,7 @@ contains
     integer :: i_xs
     integer, allocatable :: id_array(:)
     integer(HID_T) :: file_id
-    integer(HID_T) :: cmfd_group, tallies_group, tally_group, meshes_group, &
+    integer(HID_T) :: cmfd_group, tallies_group, tally_group, &
                       filters_group, filter_group, derivs_group, &
                       deriv_group, runtime_group
     integer(C_INT) :: ignored_err

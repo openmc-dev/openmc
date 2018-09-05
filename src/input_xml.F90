@@ -203,22 +203,14 @@ contains
   subroutine read_settings_xml_f(root_ptr) bind(C)
     type(C_PTR), value :: root_ptr
 
-    character(MAX_LINE_LEN) :: temp_str
     integer :: i
     integer :: n
-    integer :: temp_int
-    integer :: temp_int_array3(3)
-    integer(C_INT32_T) :: i_start, i_end
-    integer(C_INT) :: err
     integer, allocatable :: temp_int_array(:)
     integer :: n_tracks
     type(XMLNode) :: root
-    type(XMLNode) :: node_entropy
-    type(XMLNode) :: node_ufs
     type(XMLNode) :: node_sp
     type(XMLNode) :: node_res_scat
     type(XMLNode) :: node_vol
-    type(XMLNode), allocatable :: node_mesh_list(:)
     type(XMLNode), allocatable :: node_vol_list(:)
 
     ! Get proper XMLNode type given pointer
@@ -1164,13 +1156,11 @@ contains
     character(MAX_WORD_LEN), allocatable :: sarray(:)
     type(DictCharInt) :: trigger_scores
     type(TallyFilterContainer), pointer :: f
-    type(RegularMesh), pointer :: m
     type(XMLDocument) :: doc
     type(XMLNode) :: root
     type(XMLNode) :: node_tal
     type(XMLNode) :: node_filt
     type(XMLNode) :: node_trigger
-    type(XMLNode), allocatable :: node_mesh_list(:)
     type(XMLNode), allocatable :: node_tal_list(:)
     type(XMLNode), allocatable :: node_filt_list(:)
     type(XMLNode), allocatable :: node_trigger_list(:)

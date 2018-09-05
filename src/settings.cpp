@@ -3,7 +3,6 @@
 #include <cmath> // for ceil, pow
 #include <limits> // for numeric_limits
 #include <sstream>
-#include <stdexcept> // for out_of_range
 #include <string>
 
 #include <omp.h>
@@ -490,13 +489,13 @@ void read_settings_xml()
   // Shannon Entropy mesh
   if (check_for_node(root, "entropy_mesh")) {
     int temp = std::stoi(get_node_value(root, "entropy_mesh"));
-    try {
-      index_entropy_mesh = mesh_map.at(temp);
-    } catch (const std::out_of_range& e) {
+    if (mesh_map.find(temp) == mesh_map.end()) {
       std::stringstream msg;
       msg << "Mesh " << temp << " specified for Shannon entropy does not exist.";
       fatal_error(msg);
     }
+    index_entropy_mesh = mesh_map.at(temp);
+
   } else if (check_for_node(root, "entropy")) {
     warning("Specifying a Shannon entropy mesh via the <entropy> element "
       "is deprecated. Please create a mesh using <mesh> and then reference "
@@ -535,14 +534,14 @@ void read_settings_xml()
   // Uniform fission source weighting mesh
   if (check_for_node(root, "ufs_mesh")) {
     auto temp = std::stoi(get_node_value(root, "ufs_mesh"));
-    try {
-      index_ufs_mesh = mesh_map.at(temp);
-    } catch (const std::out_of_range& e) {
+    if (mesh_map.find(temp) == mesh_map.end()) {
       std::stringstream msg;
       msg << "Mesh " << temp << " specified for uniform fission site method "
         "does not exist.";
       fatal_error(msg);
     }
+    index_ufs_mesh = mesh_map.at(temp);
+
   } else if (check_for_node(root, "uniform_fs")) {
     warning("Specifying a UFS mesh via the <uniform_fs> element "
       "is deprecated. Please create a mesh using <mesh> and then reference "

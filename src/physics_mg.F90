@@ -167,7 +167,6 @@ contains
     integer :: dg                       ! delayed group
     integer :: gout                     ! group out
     integer :: nu                       ! actual number of neutrons produced
-    integer :: mesh_bin                 ! mesh bin for source site
     real(8) :: nu_t                     ! total nu
     real(8) :: mu                       ! fission neutron angular cosine
     real(8) :: phi                      ! fission neutron azimuthal angle

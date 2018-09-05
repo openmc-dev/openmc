@@ -214,7 +214,6 @@ contains
     use bank_header, only: source_bank
     use constants,   only: ZERO, ONE
     use error,       only: warning, fatal_error
-    use mesh,        only: count_bank_sites
     use message_passing
     use string,      only: to_str
 

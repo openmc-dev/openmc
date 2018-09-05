@@ -443,7 +443,7 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
         }
       }
 
-      int j = xt::argmin(d)(0);
+      j = xt::argmin(d)(0);
       if (u[j] > 0.0) {
         ++ijk0(j);
       } else {
@@ -729,11 +729,11 @@ xt::xarray<double> RegularMesh::count_sites(int64_t n, const Bank* bank,
 extern "C" int
 openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end)
 {
-  if (!index_start) *index_start = meshes.size();
+  if (index_start) *index_start = meshes.size();
   for (int i = 0; i < n; ++i) {
     meshes.emplace_back(new RegularMesh{});
   }
-  if (!index_end) *index_end = meshes.size() - 1;
+  if (index_end) *index_end = meshes.size() - 1;
 
   return 0;
 }
@@ -824,6 +824,7 @@ openmc_mesh_get_params(int32_t index, double** ll, double** ur, double** width, 
 
   *ll = m->lower_left_.data();
   *ur = m->upper_right_.data();
+  *width = m->width_.data();
   *n = m->n_dimension_;
   return 0;
 }

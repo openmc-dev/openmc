@@ -1,5 +1,7 @@
 module cmfd_header
 
+  use, intrinsic :: ISO_C_BINDING
+
   use constants,  only: CMFD_NOACCEL, ZERO, ONE
   use mesh_header, only: RegularMesh
   use set_header, only: SetInt
@@ -24,7 +26,7 @@ module cmfd_header
     integer :: mat_dim = CMFD_NOACCEL
 
     ! Energy grid
-    real(8), allocatable :: egrid(:)
+    real(C_DOUBLE), allocatable :: egrid(:)
 
     ! Cross sections
     real(8), allocatable :: totalxs(:,:,:,:)
@@ -53,7 +55,7 @@ module cmfd_header
     real(8), allocatable :: openmc_src(:,:,:,:)
 
     ! Source sites in each mesh box
-    real(8), allocatable :: sourcecounts(:,:)
+    real(C_DOUBLE), allocatable :: sourcecounts(:,:)
 
     ! Weight adjustment factors
     real(8), allocatable :: weightfactors(:,:,:,:)
@@ -95,7 +97,7 @@ module cmfd_header
   ! Main object
   type(cmfd_type), public :: cmfd
 
-  integer, public :: index_cmfd_mesh
+  integer(C_INT), public, bind(C) :: index_cmfd_mesh
   type(RegularMesh), public :: cmfd_mesh
 
   ! Pointers for different tallies

@@ -520,7 +520,7 @@ void read_settings_xml()
       // If the user did not specify how many mesh cells are to be used in
       // each direction, we automatically determine an appropriate number of
       // cells
-      int n = std::ceil(std::pow(settings::n_particles / 20, 1.0/3.0));
+      int n = std::ceil(std::pow(settings::n_particles / 20.0, 1.0/3.0));
       m.shape_ = {n, n, n};
       m.n_dimension_ = 3;
 

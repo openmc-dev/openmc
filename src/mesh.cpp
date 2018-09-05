@@ -394,7 +394,7 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
 
   // If this is the first iteration of the filter loop, check if the track
   // intersects any part of the mesh.
-  if ((!start_in_mesh) && (!end_in_mesh)) {
+  if (!start_in_mesh && !end_in_mesh) {
     if (!intersects(r0, r1)) return;
   }
 
@@ -402,8 +402,8 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   // Figure out which mesh cell to tally.
 
   // Copy the un-modified coordinates the particle direction.
-  r0 = Position{p->last_xyz};
-  r1 = Position{p->coord[0].xyz};
+  r0 = last_r;
+  r1 = r;
 
   // Compute the length of the entire track.
   double total_distance = (r1 - r0).norm();
@@ -536,7 +536,7 @@ void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins
 
   // If this is the first iteration of the filter loop, check if the track
   // intersects any part of the mesh.
-  if ((!start_in_mesh) && (!end_in_mesh)) {
+  if (!start_in_mesh && !end_in_mesh) {
     if (!intersects(r0, r1)) return;
   }
 

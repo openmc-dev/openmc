@@ -6,7 +6,6 @@ module eigenvalue
   use constants,   only: ZERO
   use error,       only: fatal_error, warning
   use math,        only: t_percentile
-  use mesh,        only: count_bank_sites
   use message_passing
   use random_lcg,  only: prn, set_particle_seed, advance_prn_seed
   use settings

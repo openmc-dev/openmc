@@ -380,6 +380,7 @@ add_library(libopenmc SHARED
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90
   src/cell.cpp
+  src/cmfd_execute.cpp
   src/distribution.cpp
   src/distribution_angle.cpp
   src/distribution_energy.cpp

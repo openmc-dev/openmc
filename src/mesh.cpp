@@ -659,7 +659,7 @@ xt::xarray<double> RegularMesh::count_sites(int64_t n, const Bank* bank,
   std::size_t m = xt::prod(shape_)();
   std::vector<std::size_t> shape;
   if (n_energy > 0) {
-    shape = {m, static_cast<std::size_t>(n_energy)};
+    shape = {m, static_cast<std::size_t>(n_energy - 1)};
   } else {
     shape = {m};
   }
@@ -670,7 +670,8 @@ xt::xarray<double> RegularMesh::count_sites(int64_t n, const Bank* bank,
 
   for (int64_t i = 0; i < n; ++i) {
     // determine scoring bin for entropy mesh
-    int mesh_bin = get_bin({bank[i].xyz});
+    // TODO: off-by-one
+    int mesh_bin = get_bin({bank[i].xyz}) - 1;
 
     // if outside mesh, skip particle
     if (mesh_bin < 0) {
@@ -680,7 +681,6 @@ xt::xarray<double> RegularMesh::count_sites(int64_t n, const Bank* bank,
 
     if (n_energy > 0) {
       double E = bank[i].E;
-      int e_bin;
       if (E >= energies[0] && E <= energies[n_energy - 1]) {
         // determine energy bin
         int e_bin = lower_bound_index(energies, energies + n_energy, E);

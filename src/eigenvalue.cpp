@@ -80,7 +80,6 @@ void ufs_count_sites()
     int64_t n;
     openmc_source_bank(&source_bank, &n);
 
-
     // count number of source sites in each ufs mesh cell
     bool sites_outside;
     source_frac = m->count_sites(openmc_work, source_bank, 0, nullptr,

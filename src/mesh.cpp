@@ -702,13 +702,11 @@ xt::xarray<double> RegularMesh::count_sites(int64_t n, const Bank* bank,
   // collect values from all processors
   MPI_Reduce(cnt.data(), cnt_reduced, total, MPI_DOUBLE, MPI_SUM, 0,
     mpi::intracomm);
-  if (outside) {
-    MPI_Reduce(&outside_, outside, 1, MPI_BOOL, MPI_LOR, 0, mpi::intracomm);
-  }
 
   // Check if there were sites outside the mesh for any processor
-  MPI_REDUCE(outside, sites_outside, 1, MPI_LOGICAL, MPI_LOR, 0, &
-          mpi_intracomm, mpi_err)
+  if (outside) {
+    MPI_Reduce(&outside_, outside, 1, MPI_C_BOOL, MPI_LOR, 0, mpi::intracomm);
+  }
 #else
   std::copy(cnt.data(), cnt.data() + total, cnt_reduced);
   if (outside) *outside = outside_;

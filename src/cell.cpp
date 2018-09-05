@@ -599,7 +599,7 @@ CADCell::CADCell() : Cell{} {};
 
 std::pair<double, int32_t> CADCell::distance(Position p, Direction u, int32_t on_surface) const {
 
-  moab::EntityHandle vol = dagmc_ptr->entity_by_id(3, id);
+  moab::EntityHandle vol = dagmc_ptr->entity_by_id(3, id_);
   moab::EntityHandle hit_surf;
   double dist;
   dagmc_ptr->ray_fire(vol, p.xyz, u.xyz, hit_surf, dist);
@@ -620,7 +620,7 @@ std::pair<double, int32_t> CADCell::distance(Position p, Direction u, int32_t on
   
 bool CADCell::contains(Position p, Direction u, int32_t on_surface) const {
 
-  moab::EntityHandle vol = dagmc_ptr->entity_by_id(3, id);
+  moab::EntityHandle vol = dagmc_ptr->entity_by_id(3, id_);
 
   int result = 0;
   dagmc_ptr->point_in_volume(vol, p.xyz, result, u.xyz);
@@ -772,8 +772,8 @@ extern "C" {
 #ifdef CAD
 
   int32_t next_cell(CADCell* cur_cell, CADSurface *surf_xed ) {
-    moab::EntityHandle surf = surf_xed->dagmc_ptr->entity_by_id(2,surf_xed->id);
-    moab::EntityHandle vol = cur_cell->dagmc_ptr->entity_by_id(3,cur_cell->id);
+    moab::EntityHandle surf = surf_xed->dagmc_ptr->entity_by_id(2,surf_xed->id_);
+    moab::EntityHandle vol = cur_cell->dagmc_ptr->entity_by_id(3,cur_cell->id_);
 
     moab::EntityHandle new_vol;
     cur_cell->dagmc_ptr->next_vol(surf, vol, new_vol);

@@ -5,8 +5,8 @@
 #define CAD_H
 
 #include "DagMC.hpp"
-#include "cell.h"
-#include "surface.h"
+#include "openmc/cell.h"
+#include "openmc/surface.h"
 
 extern moab::DagMC* DAGMC;
 

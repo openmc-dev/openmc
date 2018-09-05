@@ -92,8 +92,8 @@ void ufs_count_sites()
 
 #ifdef OPENMC_MPI
     // Send source fraction to all processors
-    int n = xt::prod(m->shape_)();
-    MPI_Bcast(source_frac.data(), n, MPI_DOUBLE, 0, mpi::intracomm)
+    int n_bins = xt::prod(m->shape_)();
+    MPI_Bcast(source_frac.data(), n_bins, MPI_DOUBLE, 0, mpi::intracomm);
 #endif
 
     // Normalize to total weight to get fraction of source in each cell

@@ -81,7 +81,7 @@ module settings
   integer(C_INT), bind(C) :: run_mode
 
   ! flag for use of CAD geometry
-  logical, bind(C) :: dagmc = .false.
+  logical(C_BOOL), bind(C) :: dagmc
 
   ! Restart run
   logical(C_BOOL), bind(C) :: restart_run

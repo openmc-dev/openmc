@@ -147,6 +147,8 @@ class CADSurface : public Surface
   Direction normal(Position p) const;
   //! Get the bounding box of this surface.
   BoundingBox bounding_box() const;
+
+  void to_hdf5(hid_t group_id) const;
 };
 #endif 
 //==============================================================================

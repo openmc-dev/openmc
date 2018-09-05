@@ -219,17 +219,6 @@ contains
     ! Get proper XMLNode type given pointer
     root % ptr = root_ptr
 
-    ! Check for use of CAD geometry
-    if (check_for_node(root, "dagmc")) then
-#ifdef CAD
-      call get_node_value_bool(root, "dagmc", dagmc)
-#else
-      if (dagmc) then
-        call fatal_error("CAD mode unsupported for this build of OpenMC")
-      end if
-#endif
-    end if
-
     if (run_mode == MODE_EIGENVALUE) then
       ! Preallocate space for keff and entropy by generation
       call k_generation % reserve(n_max_batches*gen_per_batch)
@@ -597,10 +586,10 @@ contains
     do i = 1, n_cells
       c => cells(i)
       ! additional metadata spoofing
-      allocate(c % sqrtKT(1))
-      c % sqrtkT(1) = -1.0 ! rely on temps from elsewhere
+!      allocate(c % sqrtKT(1))
+!      c % sqrtkT(1) = -1.0 ! rely on temps from elsewhere
       univ_id = c % universe()
-      if (.not. allocated(c%region)) allocate(c%region(0))
+!      if (.not. allocated(c%region)) allocate(c%region(0))
       
       if (.not. cells_in_univ_dict % has(univ_id)) then
          n_universes = n_universes + 1
@@ -615,30 +604,30 @@ contains
 
     ! ==========================================================================
     ! SETUP UNIVERSES
-
+    
     ! Allocate universes, universe cell arrays, and assign base universe
-    allocate(universes(n_universes))
-    do i = 1, n_universes
-      associate (u => universes(i))
-        u % id = univ_ids % data(i)
-        ! Allocate cell list
-        n_cells_in_univ = cells_in_univ_dict % get(u % id)
-        allocate(u % cells(n_cells_in_univ))
-        u % cells(:) = 0
-      end associate
-    end do
+    ! allocate(universes(n_universes))
+    ! do i = 1, n_universes
+    !   associate (u => universes(i))
+    !     u % id = univ_ids % data(i)
+    !     ! Allocate cell list
+    !     n_cells_in_univ = cells_in_univ_dict % get(u % id)
+    !     allocate(u % cells(n_cells_in_univ))
+    !     u % cells(:) = 0
+    !   end associate
+    ! end do
 
-    root_universe = 0 + 1
+    root_universe = find_root_universe()
 
-    do i = 1, n_cells
-      ! Get index in universes array
-      j = universe_dict % get(cells(i) % universe())
-      ! Set the first zero entry in the universe cells array to the index in the
-      ! global cells array
-      associate (u => universes(j))
-        u % cells(find(u % cells, 0)) = i
-      end associate
-    end do
+    ! do i = 1, n_cells
+    !   ! Get index in universes array
+    !   j = universe_dict % get(cells(i) % universe())
+    !   ! Set the first zero entry in the universe cells array to the index in the
+    !   ! global cells array
+    !   associate (u => universes(j))
+    !     u % cells(find(u % cells, 0)) = i
+    !   end associate
+    ! end do
 
     ! Clear dictionary
     call cells_in_univ_dict%clear()

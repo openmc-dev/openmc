@@ -257,7 +257,7 @@ double CADSurface::evaluate(Position r) const
 }
 
 double CADSurface::distance(Position p, Direction u, bool coincident) const {
-  moab::EntityHandle surf = dagmc_ptr->entity_by_id(2, id);
+  moab::EntityHandle surf = dagmc_ptr->entity_by_id(2, id_);
   moab::EntityHandle hit_surf;
   double dist;
   dagmc_ptr->ray_fire(surf, p.xyz, u.xyz, hit_surf, dist, NULL, 0, 0);
@@ -267,17 +267,19 @@ double CADSurface::distance(Position p, Direction u, bool coincident) const {
 
 Direction CADSurface::normal(Position p) const {
   Direction u;
-  moab::EntityHandle surf = dagmc_ptr->entity_by_id(2, id);
+  moab::EntityHandle surf = dagmc_ptr->entity_by_id(2, id_);
   dagmc_ptr->get_angle(surf, p.xyz, u.xyz);
   return u;
 }
 
 BoundingBox CADSurface::bounding_box() const {
-  moab::EntityHandle surf = dagmc_ptr->entity_by_id(2, id);
+  moab::EntityHandle surf = dagmc_ptr->entity_by_id(2, id_);
   double min[3], max[3];
   dagmc_ptr->getobb(surf, min, max);
   return BoundingBox(min[0], max[0], min[1], max[1], min[2], max[2]);
 }
+
+void CADSurface::to_hdf5(hid_t group_id) const {}
 #endif
 //==============================================================================
 // PeriodicSurface implementation

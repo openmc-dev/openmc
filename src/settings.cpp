@@ -56,7 +56,8 @@ bool ufs_on                  {false};
 bool urr_ptables_on          {true};
 bool write_all_tracks        {false};
 bool write_initial_source    {false};
-
+bool dagmc                   {false};
+  
 std::string path_cross_sections;
 std::string path_input;
 std::string path_multipole;
@@ -207,6 +208,17 @@ void read_settings_xml()
     verbosity = std::stoi(get_node_value(root, "verbosity"));
   }
 
+  // DAGMC geometry check
+  if (check_for_node(root, "dagmc")) {
+      dagmc = get_node_value_bool(root, "dagmc");
+  }
+
+#ifndef CAD
+  if (dagmc) {
+    fatal_error("CAD mode unsupported for this build of OpenMC");
+  }
+#endif
+  
   // To this point, we haven't displayed any output since we didn't know what
   // the verbosity is. Now that we checked for it, show the title if necessary
   if (openmc_master) {

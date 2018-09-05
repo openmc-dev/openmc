@@ -2,7 +2,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/lattice.h"
 #include "openmc/surface.h"
-
+#include "openmc/settings.h"
 
 namespace openmc {
 
@@ -10,7 +10,7 @@ extern "C" void
 write_geometry(hid_t file_id) {
 
 #ifdef CAD
-  if (dagmc) {
+  if (settings::dagmc) {
     return;
   }
 #endif

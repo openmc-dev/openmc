@@ -140,7 +140,6 @@ extern "C" {
   extern int32_t n_filters;
   extern int32_t n_lattices;
   extern int32_t n_materials;
-  extern int32_t n_meshes;
   extern int n_nuclides;
   extern int32_t n_plots;
   extern int32_t n_realizations;

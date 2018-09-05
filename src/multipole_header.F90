@@ -1,7 +1,6 @@
 module multipole_header
 
   use constants
-  use dict_header,      only: DictIntInt
   use error,            only: fatal_error
   use hdf5_interface
 
@@ -74,12 +73,11 @@ contains
     character(len=*),      intent(in)    :: filename
 
     character(len=10) :: version
-    integer :: i, n_poles, n_residues, n_windows
+    integer :: n_poles, n_residues, n_windows
     integer(HSIZE_T) :: dims_1d(1), dims_2d(2), dims_3d(3)
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
     integer(HID_T) :: dset
-    type(DictIntInt) :: l_val_dict
 
     ! Open file for reading and move into the /isotope group
     file_id = file_open(filename, 'r', parallel=.true.)

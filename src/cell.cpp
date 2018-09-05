@@ -351,7 +351,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
       err_msg << "Non-3D translation vector applied to cell " << id_;
       fatal_error(err_msg);
     }
-    translation_ = *xyz.begin();
+    translation_ = xyz;
   }
 
   // Read the rotation transform.
@@ -371,16 +371,15 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     }
 
     // Store the rotation angles.
-    std::vector<double> rot_vec = *rot.begin();
     rotation_.reserve(12);
-    rotation_.push_back(rot_vec[0]);
-    rotation_.push_back(rot_vec[1]);
-    rotation_.push_back(rot_vec[2]);
+    rotation_.push_back(rot[0]);
+    rotation_.push_back(rot[1]);
+    rotation_.push_back(rot[2]);
 
     // Compute and store the rotation matrix.
-    auto phi = -rot_vec[0] * PI / 180.0;
-    auto theta = -rot_vec[1] * PI / 180.0;
-    auto psi = -rot_vec[2] * PI / 180.0;
+    auto phi = -rot[0] * PI / 180.0;
+    auto theta = -rot[1] * PI / 180.0;
+    auto psi = -rot[2] * PI / 180.0;
     rotation_.push_back(std::cos(theta) * std::cos(psi));
     rotation_.push_back(-std::cos(phi) * std::sin(psi)
                         + std::sin(phi) * std::sin(theta) * std::cos(psi));

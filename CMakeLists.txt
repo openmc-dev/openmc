@@ -312,7 +312,6 @@ add_library(libopenmc SHARED
   src/material_header.F90
   src/math.F90
   src/matrix_header.F90
-  src/mesh.F90
   src/mesh_header.F90
   src/message_passing.F90
   src/mgxs_data.F90

@@ -73,25 +73,7 @@ contains
     integer,           intent(in)  :: estimator
     type(TallyFilterMatch), intent(inout) :: match
 
-    integer, parameter :: MAX_SEARCH_ITER = 100 ! Maximum number of times we can
-                                                !  can loop while trying to find
-                                                !  the first intersection.
-
-    integer :: j                    ! loop index for direction
-    integer :: n
-    integer :: ijk0(3)              ! indices of starting coordinates
-    integer :: ijk1(3)              ! indices of ending coordinates
-    integer :: search_iter          ! loop count for intersection search
     integer :: bin
-    real(8) :: uvw(3)               ! cosine of angle of particle
-    real(8) :: xyz0(3)              ! starting/intermediate coordinates
-    real(8) :: xyz1(3)              ! ending coordinates of particle
-    real(8) :: xyz_cross            ! coordinates of next boundary
-    real(8) :: d(3)                 ! distance to each bounding surface
-    real(8) :: total_distance       ! distance of entire particle track
-    real(8) :: distance             ! distance traveled in mesh cell
-    logical :: start_in_mesh        ! starting coordinates inside mesh?
-    logical :: end_in_mesh          ! ending coordinates inside mesh?
     type(RegularMesh) :: m
     type(C_PTR) :: ptr_bins, ptr_weights
 

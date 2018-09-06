@@ -55,7 +55,7 @@ find_cell(Particle* p, int search_surf) {
   for (int i = p->n_coord; i < MAX_COORD; i++) {
     p->coord[i].reset();
   }
-  
+
   // Determine universe (if not yet set, use root universe)
   int i_universe = p->coord[p->n_coord-1].universe;
   if (i_universe == C_NONE) {

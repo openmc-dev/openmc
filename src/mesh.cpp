@@ -138,7 +138,7 @@ RegularMesh::RegularMesh(pugi::xml_node node)
   }
 }
 
-int RegularMesh::get_bin(Position r)
+int RegularMesh::get_bin(Position r) const
 {
   // Loop over the dimensions of the mesh
   for (int i = 0; i < n_dimension_; ++i) {
@@ -160,7 +160,7 @@ int RegularMesh::get_bin(Position r)
   return get_bin_from_indices(ijk);
 }
 
-int RegularMesh::get_bin_from_indices(const int* ijk)
+int RegularMesh::get_bin_from_indices(const int* ijk) const
 {
   if (n_dimension_ == 1) {
     return ijk[0];
@@ -171,7 +171,7 @@ int RegularMesh::get_bin_from_indices(const int* ijk)
   }
 }
 
-void RegularMesh::get_indices(Position r, int* ijk, bool* in_mesh)
+void RegularMesh::get_indices(Position r, int* ijk, bool* in_mesh) const
 {
   // Find particle in mesh
   *in_mesh = true;
@@ -183,7 +183,7 @@ void RegularMesh::get_indices(Position r, int* ijk, bool* in_mesh)
   }
 }
 
-void RegularMesh::get_indices_from_bin(int bin, int* ijk)
+void RegularMesh::get_indices_from_bin(int bin, int* ijk) const
 {
   if (n_dimension_ == 1) {
     ijk[0] = bin;
@@ -192,12 +192,12 @@ void RegularMesh::get_indices_from_bin(int bin, int* ijk)
     ijk[1] = (bin - 1) / shape_[0] + 1;
   } else if (n_dimension_ == 3) {
     ijk[0] = (bin - 1) % shape_[0] + 1;
-    ijk[1] = (bin - 1) % (shape_[0] * shape_[1]) / shape_[0] + 1;
+    ijk[1] = ((bin - 1) % (shape_[0] * shape_[1])) / shape_[0] + 1;
     ijk[2] = (bin - 1) / (shape_[0] * shape_[1]) + 1;
   }
 }
 
-bool RegularMesh::intersects(Position r0, Position r1)
+bool RegularMesh::intersects(Position r0, Position r1) const
 {
   switch(n_dimension_) {
     case 1:
@@ -209,7 +209,7 @@ bool RegularMesh::intersects(Position r0, Position r1)
   }
 }
 
-bool RegularMesh::intersects_1d(Position r0, Position r1)
+bool RegularMesh::intersects_1d(Position r0, Position r1) const
 {
   // Copy coordinates of mesh lower_left and upper_right
   double left = lower_left_[0];
@@ -225,7 +225,7 @@ bool RegularMesh::intersects_1d(Position r0, Position r1)
   }
 }
 
-bool RegularMesh::intersects_2d(Position r0, Position r1)
+bool RegularMesh::intersects_2d(Position r0, Position r1) const
 {
   // Copy coordinates of starting point
   double x0 = r0.x;
@@ -280,7 +280,7 @@ bool RegularMesh::intersects_2d(Position r0, Position r1)
   return false;
 }
 
-bool RegularMesh::intersects_3d(Position r0, Position r1)
+bool RegularMesh::intersects_3d(Position r0, Position r1) const
 {
   // Copy coordinates of starting point
   double x0 = r0.x;
@@ -365,7 +365,7 @@ bool RegularMesh::intersects_3d(Position r0, Position r1)
 }
 
 void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
-                               std::vector<double>& lengths)
+                               std::vector<double>& lengths) const
 {
   constexpr int MAX_SEARCH_ITER = 100;
 
@@ -392,8 +392,7 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   bool end_in_mesh;
   get_indices(r1, ijk1.data(), &end_in_mesh);
 
-  // If this is the first iteration of the filter loop, check if the track
-  // intersects any part of the mesh.
+  // Check if the track intersects any part of the mesh.
   if (!start_in_mesh && !end_in_mesh) {
     if (!intersects(r0, r1)) return;
   }
@@ -459,8 +458,7 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
 
   while (true) {
     // ========================================================================
-    // Compute the length of the track segment in the appropiate mesh cell and
-    // return.
+    // Compute the length of the track segment in the each mesh cell and return
 
     double distance;
     int j;
@@ -492,9 +490,7 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
     bins.push_back(bin);
     lengths.push_back(distance / total_distance);
 
-    // Find the next mesh cell that the particle enters.
-
-    // If the particle track ends in that bin, { we are done.
+    // If the particle track ends in that bin, then we are done.
     if (ijk0 == ijk1) break;
 
     // Translate the starting coordintes by the distance to that face. This
@@ -515,7 +511,7 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   }
 }
 
-void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins)
+void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins) const
 {
   // ========================================================================
   // Determine if the track intersects the tally mesh.
@@ -534,8 +530,7 @@ void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins
   bool end_in_mesh;
   get_indices(r1, ijk1.data(), &end_in_mesh);
 
-  // If this is the first iteration of the filter loop, check if the track
-  // intersects any part of the mesh.
+  // Check if the track intersects any part of the mesh.
   if (!start_in_mesh && !end_in_mesh) {
     if (!intersects(r0, r1)) return;
   }
@@ -639,7 +634,7 @@ void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins
   }
 }
 
-void RegularMesh::to_hdf5(hid_t group)
+void RegularMesh::to_hdf5(hid_t group) const
 {
   hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
 
@@ -653,7 +648,7 @@ void RegularMesh::to_hdf5(hid_t group)
 }
 
 xt::xarray<double> RegularMesh::count_sites(int64_t n, const Bank* bank,
-  int n_energy, const double* energies, bool* outside)
+  int n_energy, const double* energies, bool* outside) const
 {
   // Determine shape of array for counts
   std::size_t m = xt::prod(shape_)();

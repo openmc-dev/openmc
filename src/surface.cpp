@@ -178,7 +178,6 @@ Surface::Surface(pugi::xml_node surf_node)
   }
 
 }
-
   
 bool
 Surface::sense(Position r, Direction u) const

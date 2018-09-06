@@ -14,7 +14,6 @@ write_geometry(hid_t file_id) {
     return;
   }
 #endif
-
   
   auto geom_group = create_group(file_id, "geometry");
   write_attribute(geom_group, "n_cells", cells.size());

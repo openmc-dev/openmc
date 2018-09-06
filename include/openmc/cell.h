@@ -135,6 +135,7 @@ public:
   virtual bool
   contains(Position p, Direction u, int32_t on_surface) const = 0;
 
+  //! Find the oncoming boundary of this cell.
   virtual std::pair<double, int32_t>
   distance(Position p, Direction u, int32_t on_surface) const = 0;
 

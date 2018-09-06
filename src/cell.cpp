@@ -633,6 +633,8 @@ void CADCell::to_hdf5(hid_t group_id) const { return; }
 
 //==============================================================================
 // Non-method functions
+//==============================================================================
+
 extern "C" void
 read_cells(pugi::xml_node* node)
 {

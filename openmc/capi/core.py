@@ -42,7 +42,7 @@ _dll.openmc_next_batch.errcheck = _error_handler
 _dll.openmc_next_batch_before_cmfd_init.argtypes = []
 _dll.openmc_next_batch_before_cmfd_init.restype = c_int
 _dll.openmc_next_batch_before_cmfd_init.errcheck = _error_handler
-_dll.openmc_next_batch_between_cmfd_init_execute.argtypes = [POINTER(c_int)]
+_dll.openmc_next_batch_between_cmfd_init_execute.argtypes = []
 _dll.openmc_next_batch_between_cmfd_init_execute.restype = c_int
 _dll.openmc_next_batch_between_cmfd_init_execute.errcheck = _error_handler
 _dll.openmc_next_batch_after_cmfd_execute.argtypes = [POINTER(c_int)]
@@ -231,6 +231,23 @@ def keff():
         return (mean, std_dev)
 
 
+# TODO Remove
+def keff_temp():
+    """Return the calculated tracklength k-eigenvalue and its standard deviation.
+
+    Returns
+    -------
+    tuple
+        Mean k-eigenvalue and standard deviation of the mean
+
+    """
+    n = openmc.capi.num_realizations()
+    mean = c_double.in_dll(_dll, 'openmc_keff').value
+    std_dev = c_double.in_dll(_dll, 'openmc_keff_std').value \
+              if n > 1 else np.inf
+    return (mean, std_dev)
+
+
 def master():
     """Return whether processor is master processor or not.
 
@@ -267,16 +284,8 @@ def next_batch_between_cmfd_init_execute():
     """Run everything in batch that occurs between CMFD
     initialization and execution.
 
-    Returns
-    -------
-    int
-        Status after running block (0=batch is part of restart batch so don't
-        run CMFD, 3=normal execution, continue with CMFD solver)
-
     """
-    status = c_int()
-    _dll.openmc_next_batch_between_cmfd_init_execute(status)
-    return status.value
+    _dll.openmc_next_batch_between_cmfd_init_execute()
 
 
 def next_batch_after_cmfd_execute():

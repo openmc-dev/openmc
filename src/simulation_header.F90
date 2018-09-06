@@ -65,7 +65,7 @@ module simulation_header
   ! ============================================================================
   ! MISCELLANEOUS VARIABLES
 
-  integer(C_INT), bind(C, name='openmc_restart_batch') :: restart_batch
+  integer :: restart_batch
 
   ! Flag for enabling cell overlap checking during transport
   integer(8), allocatable  :: overlap_check_cnt(:)

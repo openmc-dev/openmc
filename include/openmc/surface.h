@@ -415,10 +415,6 @@ extern "C" {
   int surface_bc(Surface* surf);
   bool surface_sense(Surface* surf, double xyz[3], double uvw[3]);
   void surface_reflect(Surface* surf, double xyz[3], double uvw[3]);
-  /* double surface_distance(Surface* surf, double xyz[3], double uvw[3], */
-  /*                         bool coincident); */
-  /* void surface_normal(Surface* surf, double xyz[3], double uvw[3]); */
-  /* void surface_to_hdf5(CSGSurface* surf, hid_t group); */
   int surface_i_periodic(PeriodicSurface* surf);
   bool surface_periodic(PeriodicSurface* surf, PeriodicSurface* other,
                         double xyz[3], double uvw[3]);

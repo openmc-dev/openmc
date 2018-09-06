@@ -673,36 +673,6 @@ read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 4>& result,
   }
 }
 
-void
-read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 5>& result,
-               bool must_have)
-{
-  if (object_exists(obj_id, name)) {
-    int dim1 = result.shape()[0];
-    int dim2 = result.shape()[1];
-    int dim3 = result.shape()[2];
-    int dim4 = result.shape()[3];
-    int dim5 = result.shape()[4];
-    double temp_arr[dim1 * dim2 * dim3 * dim4 * dim5];
-    read_double(obj_id, name, temp_arr, true);
-
-    int temp_idx = 0;
-    for (int i = 0; i < dim1; i++) {
-      for (int j = 0; j < dim2; j++) {
-        for (int k = 0; k < dim3; k++) {
-          for (int l = 0; l < dim4; l++) {
-            for (int m = 0; m < dim5; m++) {
-              result(i, j, k, l, m) = temp_arr[temp_idx++];
-            }
-          }
-        }
-      }
-    }
-  } else if (must_have) {
-    fatal_error(std::string("Must provide " + std::string(name) + "!"));
-  }
-}
-
 
 void
 read_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score, double* results)

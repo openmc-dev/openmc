@@ -11,9 +11,9 @@
 
 namespace openmc {
 
-typedef std::vector<std::vector<double> > double_2dvec;
-typedef std::vector<std::vector<std::vector<double> > > double_3dvec;
-typedef std::vector<std::vector<std::vector<std::vector<double> > > > double_4dvec;
+using double_2dvec = std::vector<std::vector<double>>;
+using double_3dvec = std::vector<std::vector<std::vector<double>>>;
+using double_4dvec = std::vector<std::vector<std::vector<std::vector<double>>>>;
 
 // ============================================================================
 // VERSIONING NUMBERS

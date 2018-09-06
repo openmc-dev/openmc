@@ -94,7 +94,7 @@ class XsData {
     // [angle][incoming group][outgoing group][delayed group]
     xt::xtensor<double, 4> chi_delayed;
     // scatter has the following dimensions: [angle]
-    std::vector<std::shared_ptr<ScattData> > scatter;
+    std::vector<std::shared_ptr<ScattData>> scatter;
 
     XsData() = default;
 

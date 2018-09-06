@@ -70,9 +70,6 @@ void
 read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 4>& result,
                bool must_have = false);
 
-void
-read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<double, 5>& result,
-               bool must_have = false);
 
 std::vector<hsize_t> attribute_shape(hid_t obj_id, const char* name);
 std::vector<std::string> dataset_names(hid_t group_id);

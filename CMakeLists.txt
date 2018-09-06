@@ -9,8 +9,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 # Set module path
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
-# Make sure Fortran module directory is included when building
-include_directories(${CMAKE_BINARY_DIR}/include)
 #===============================================================================
 # Command line options
 #===============================================================================

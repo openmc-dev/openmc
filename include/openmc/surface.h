@@ -47,11 +47,11 @@ struct BoundingBox
 {
 
   BoundingBox(double x_min, double x_max,
-	      double y_min, double y_max,
-	      double z_min, double z_max) :
+              double y_min, double y_max,
+              double z_min, double z_max) :
               xmin(x_min), xmax(x_max),
-	      ymin(y_min), ymax(y_max),
-	      zmin(z_min), zmax(z_max) {}
+              ymin(y_min), ymax(y_max),
+              zmin(z_min), zmax(z_max) {}
 	      
   double xmin;
   double xmax;

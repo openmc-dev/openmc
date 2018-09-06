@@ -154,35 +154,12 @@ public:
   
   explicit CSGCell(pugi::xml_node cell_node);
 
-  //! \brief Determine if a cell contains the particle at a given location.  
-  //! Determine if a cell contains the particle at a given location.
-  //!
-  //! The bounds of the cell are detemined by a logical expression involving
-  //! surface half-spaces. At initialization, the expression was converted
-  //! to RPN notation.
-  //!
-  //! The function is split into two cases, one for simple cells (those
-  //! involving only the intersection of half-spaces) and one for complex cells.
-  //! Simple cells can be evaluated with short circuit evaluation, i.e., as soon
-  //! as we know that one half-space is not satisfied, we can exit. This
-  //! provides a performance benefit for the common case. In
-  //! contains_complex, we evaluate the RPN expression using a stack, similar to
-  //! how a RPN calculator would work.
-  //! \param r The 3D Cartesian coordinate to check.
-  //! \param u A direction used to "break ties" the coordinates are very
-  //!   close to a surface.
-  //! \param on_surface The signed index of a surface that the coordinate is
-  //!   known to be on.  This index takes precedence over surface sense
-  //!   calculations.
   bool
   contains(Position r, Direction u, int32_t on_surface) const;
 
-  //! Find the oncoming boundary of this cell.
   std::pair<double, int32_t>
   distance(Position r, Direction u, int32_t on_surface) const;
 
-  //! \brief Write cell information to an HDF5 group.
-  //! \param group_id An HDF5 group id.
   void to_hdf5(hid_t group_id) const;
 
 protected:

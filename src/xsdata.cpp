@@ -132,7 +132,7 @@ XsData::fission_vector_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
   read_nd_vector(xsdata_grp, "chi", temp_chi, true);
 
   // Normalize chi by summing over the outgoing groups for each incoming angle
-  temp_chi = temp_chi / xt::view(xt::sum(temp_chi, {1}), xt::all(), xt::newaxis());
+  temp_chi /= xt::view(xt::sum(temp_chi, {1}), xt::all(), xt::newaxis());
 
   // Now every incoming group in prompt_chi and delayed_chi is the normalized
   // chi we just made
@@ -186,16 +186,15 @@ XsData::fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
   read_nd_vector(xsdata_grp, "chi-prompt", temp_chi_p, true);
 
   // Normalize chi by summing over the outgoing groups for each incoming angle
-  temp_chi_p = temp_chi_p / xt::view(xt::sum(temp_chi_p, {1}), xt::all(),
-                                     xt::newaxis());
+  temp_chi_p /= xt::view(xt::sum(temp_chi_p, {1}), xt::all(), xt::newaxis());
 
   // Get chi-delayed
   xt::xtensor<double, 3> temp_chi_d({n_ang, delayed_groups, energy_groups}, 0.);
   read_nd_vector(xsdata_grp, "chi-delayed", temp_chi_d, true);
 
   // Normalize chi by summing over the outgoing groups for each incoming angle
-  temp_chi_d = temp_chi_d / xt::view(xt::sum(temp_chi_d, {2}), xt::all(),
-                                 xt::all(), xt::newaxis());
+  temp_chi_d /= xt::view(xt::sum(temp_chi_d, {2}),
+       xt::all(), xt::all(), xt::newaxis());
 
   // Now assign the prompt and delayed chis by replicating for each incoming group
   chi_prompt = xt::view(temp_chi_p, xt::all(), xt::newaxis(), xt::all());
@@ -203,8 +202,10 @@ XsData::fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
                          xt::all());
 
   // Get prompt and delayed nu-fission directly
-  read_nd_vector(xsdata_grp, "prompt-nu-fission", prompt_nu_fission, true);
-  read_nd_vector(xsdata_grp, "delayed-nu-fission", delayed_nu_fission, true);
+  read_nd_vector(xsdata_grp, "prompt-nu-fission", prompt_nu_fission,
+       true);
+  read_nd_vector(xsdata_grp, "delayed-nu-fission",
+       delayed_nu_fission, true);
 }
 
 void
@@ -219,7 +220,7 @@ XsData::fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang,
   read_nd_vector(xsdata_grp, "chi", temp_chi, true);
 
   // Normalize chi by summing over the outgoing groups for each incoming angle
-  temp_chi = temp_chi / xt::view(xt::sum(temp_chi, {1}), xt::all(), xt::newaxis());
+  temp_chi /= xt::view(xt::sum(temp_chi, {1}), xt::all(), xt::newaxis());
 
   // Now every incoming group in self.chi is the normalized chi we just made
   chi_prompt = xt::view(temp_chi, xt::all(), xt::newaxis(), xt::all());
@@ -299,11 +300,11 @@ XsData::fission_matrix_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
   }
 
   //Normalize both chis
-  chi_prompt = chi_prompt / xt::view(xt::sum(chi_prompt, {2}), xt::all(),
-                                     xt::all(), xt::newaxis());
+  chi_prompt /= xt::view(xt::sum(chi_prompt, {2}),
+       xt::all(), xt::all(), xt::newaxis());
 
-  chi_delayed = chi_delayed / xt::view(xt::sum(chi_delayed, {3}), xt::all(),
-                                       xt::all(), xt::all(), xt::newaxis());
+  chi_delayed /= xt::view(xt::sum(chi_delayed, {3}),
+       xt::all(), xt::all(), xt::all(), xt::newaxis());
 }
 
 void

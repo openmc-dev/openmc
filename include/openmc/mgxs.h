@@ -159,7 +159,7 @@ class Mgxs {
     //! @param dg delayed group index; use nullptr if irrelevant.
     //! @return Requested cross section value.
     double
-    get_xs(const int xstype, const int gin, int* gout, double* mu, int* dg);
+    get_xs(int xstype, int gin, int* gout, double* mu, int* dg);
 
     //! \brief Samples the fission neutron energy and if prompt or delayed.
     //!
@@ -167,7 +167,7 @@ class Mgxs {
     //! @param dg Sampled delayed group index.
     //! @param gout Sampled outgoing energy group.
     void
-    sample_fission_energy(const int gin, int& dg, int& gout);
+    sample_fission_energy(int gin, int& dg, int& gout);
 
     //! \brief Samples the outgoing energy and angle from a scatter event.
     //!
@@ -176,7 +176,7 @@ class Mgxs {
     //! @param mu Sampled cosine of the change-in-angle.
     //! @param wgt Weight of the particle to be adjusted.
     void
-    sample_scatter(const int gin, int& gout, double& mu, double& wgt);
+    sample_scatter(int gin, int& gout, double& mu, double& wgt);
 
     //! \brief Calculates cross section quantities needed for tracking.
     //!
@@ -187,14 +187,14 @@ class Mgxs {
     //! @param abs_xs Resultant absorption cross section.
     //! @param nu_fiss_xs Resultant nu-fission cross section.
     void
-    calculate_xs(const int gin, const double sqrtkT, const double uvw[3],
+    calculate_xs(int gin, double sqrtkT, const double uvw[3],
          double& total_xs, double& abs_xs, double& nu_fiss_xs);
 
     //! \brief Sets the temperature index in cache given a temperature
     //!
     //! @param sqrtkT Temperature of the material.
     void
-    set_temperature_index(const double sqrtkT);
+    set_temperature_index(double sqrtkT);
 
     //! \brief Sets the angle index in cache given a direction
     //!

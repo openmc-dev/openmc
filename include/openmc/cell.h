@@ -112,8 +112,9 @@ public:
 
   explicit Cell(pugi::xml_node cell_node);
   Cell() {};
-  
-  //! Determine if a cell contains the particle at a given location.
+
+
+  //! \brief Determine if a cell contains the particle at a given location.
   //!
   //! The bounds of the cell are detemined by a logical expression involving
   //! surface half-spaces. At initialization, the expression was converted
@@ -126,10 +127,10 @@ public:
   //! provides a performance benefit for the common case. In
   //! contains_complex, we evaluate the RPN expression using a stack, similar to
   //! how a RPN calculator would work.
-  //! @param xyz[3] The 3D Cartesian coordinate to check.
-  //! @param uvw[3] A direction used to "break ties" the coordinates are very
+  //! \param r The 3D Cartesian coordinate to check.
+  //! \param u A direction used to "break ties" the coordinates are very
   //!   close to a surface.
-  //! @param on_surface The signed index of a surface that the coordinate is
+  //! \param on_surface The signed index of a surface that the coordinate is
   //!   known to be on.  This index takes precedence over surface sense
   //!   calculations.
   virtual bool

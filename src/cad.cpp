@@ -43,21 +43,8 @@ void load_cad_geometry_c()
       openmc::CADCell* c = new openmc::CADCell();
       c->id_ = DAGMC->id_by_index(3, i+1);
       c->dagmc_ptr = DAGMC;
-      c->universe_ = cad_univ_id; // set to zero for now
-
-      if(DAGMC->has_prop(vol_handle, "mat")){
-	std::string mat_value;
-	
-	rval = DAGMC->prop_value(vol_handle, "mat", mat_value);
-	MB_CHK_ERR_CONT(rval);	
-	int mat_id = std::stoi(mat_value);
-	c->material_.push_back(mat_id);
-      }
-      else {
-	c->material_.push_back(40); // TO-DO: add void material here
-      }
-      
-      c->fill_ = openmc::C_NONE;
+      c->universe_ = cad_univ_id; // set to zero for now     
+      c->fill_ = openmc::C_NONE; // no fill, single universe
 
       openmc::cells.push_back(c);
       openmc::cell_map[c->id_] = c->id_;
@@ -74,7 +61,6 @@ void load_cad_geometry_c()
 	openmc::universes[it->second]->cells_.push_back(i);
       }
 
-      
       if(DAGMC->is_implicit_complement(vol_handle)) {
 	// assuming implicit complement is void for now
         c->material_.push_back(openmc::MATERIAL_VOID);	

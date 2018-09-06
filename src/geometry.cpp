@@ -55,26 +55,6 @@ find_cell(Particle* p, int search_surf) {
   for (int i = p->n_coord; i < MAX_COORD; i++) {
     p->coord[i].reset();
   }
-
-#ifdef CAD
-    // if (dagmc) then
-    //   i_cell = next_cell(cells(p % last_cell(1)), surfaces(ABS(p % surface)))
-    //   p % last_material = p % material
-    //   p % last_sqrtKT = p % sqrtKT
-    //   p % coord(1) % cell = i_cell
-    //   p % cell_instance = 1
-    //   p % material = cells(i_cell) % material(1)
-    //   p % sqrtKT = cells(i_cell) % sqrtKT(1)
-
-    //   ! Show cell information on trace
-    //   if (verbosity >= 10 .or. trace) then
-    //     call write_message("    Entering cell " // trim(to_str(&
-    //          cells(i_cell) % id())))
-    //  end if
-     
-    // return
-    // end if
-#endif
   
   // Determine universe (if not yet set, use root universe)
   int i_universe = p->coord[p->n_coord-1].universe;

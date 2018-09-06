@@ -500,7 +500,7 @@ target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml
 #===============================================================================
 add_executable(openmc src/main.cpp)
 target_compile_options(openmc PRIVATE ${cxxflags})
-target_link_libraries(openmc ${ldflags} libopenmc ${DAGMC_LIBRARIES})
+target_link_libraries(openmc libopenmc ${DAGMC_LIBRARIES})
 
 #===============================================================================
 # Python package

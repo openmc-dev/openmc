@@ -318,6 +318,7 @@ contains
     class(Surface), pointer :: surf
     class(Surface), pointer :: surf2 ! periodic partner surface
 
+   
     i_surface = abs(p % surface)
     surf => surfaces(i_surface)
     if (verbosity >= 10 .or. trace) then
@@ -470,6 +471,21 @@ contains
 
     ! ==========================================================================
     ! SEARCH NEIGHBOR LISTS FOR NEXT CELL
+
+#ifdef CAD
+    if (dagmc) then
+       i_cell = next_cell(cells(p % last_cell(1) + 1), surfaces(ABS(p % surface)))
+       ! save material and temp
+       p % last_material = p % material
+       p % last_sqrtkT = p % sqrtKT
+       ! set new cell value
+       p % coord(1) % cell = i_cell-1 ! decrement for C++ indexing
+       p % cell_instance = 1
+       p % material = cells(i_cell) % material(1)
+       p % sqrtKT = cells(i_cell) % sqrtKT(1)
+       return
+    end if
+#endif
 
     call find_cell(p, found, p % surface)
     if (found) return

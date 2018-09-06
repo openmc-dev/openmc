@@ -689,8 +689,6 @@ contains
 
     call read_cells(root % ptr)
 
-!    call allocate_cells()
-
     ! Get pointer to list of XML <cell>
     call get_node_list(root, "cell", node_cell_list)
 
@@ -756,8 +754,6 @@ contains
       end if
 
       ! Add cell to dictionary
-      call cell_dict % set(c % id(), i)
-
       call cell_dict % set(c % id(), i)
 
       ! For cells, we also need to check if there's a new universe --

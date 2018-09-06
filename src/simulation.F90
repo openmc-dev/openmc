@@ -54,7 +54,6 @@ module simulation
   integer(C_INT), parameter :: STATUS_EXIT_NORMAL = 0
   integer(C_INT), parameter :: STATUS_EXIT_MAX_BATCH = 1
   integer(C_INT), parameter :: STATUS_EXIT_ON_TRIGGER = 2
-  integer(C_INT), parameter :: STATUS_CONTINUE_BATCH = 3
 
 contains
 
@@ -157,21 +156,13 @@ contains
 ! OPENMC_NEXT_BATCH_BETWEEN_CMFD_INIT_EXECUTE
 !===============================================================================
 
-  function openmc_next_batch_between_cmfd_init_execute(status) result(err) bind(C)
-    integer(C_INT), intent(out), optional :: status
+  function openmc_next_batch_between_cmfd_init_execute() result(err) bind(C)
     integer(C_INT) :: err
 
     type(Particle) :: p
     integer(8)     :: i_work
 
     err = 0
-
-    ! Handle restart runs
-    if (restart_run .and. current_batch <= restart_batch) then
-      call replay_batch_history()
-      status = STATUS_EXIT_NORMAL
-      return
-    end if
 
     ! =======================================================================
     ! LOOP OVER GENERATIONS
@@ -214,10 +205,6 @@ contains
       global_tallies(:,:) = ZERO
       n_realizations = 0
     end if
-
-  if (present(status)) then
-    status = STATUS_CONTINUE_BATCH
-  end if
 
   end function openmc_next_batch_between_cmfd_init_execute
 

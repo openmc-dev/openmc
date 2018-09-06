@@ -22,8 +22,6 @@ class _Settings(object):
     generations_per_batch = _DLLGlobal(c_int32, 'gen_per_batch')
     inactive = _DLLGlobal(c_int32, 'n_inactive')
     particles = _DLLGlobal(c_int64, 'n_particles')
-    restart_batch = _DLLGlobal(c_int, 'openmc_restart_batch')
-    restart_run = _DLLGlobal(c_bool, 'openmc_restart_run')
     verbosity = _DLLGlobal(c_int, 'openmc_verbosity')
 
     @property

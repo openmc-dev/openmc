@@ -20,12 +20,23 @@ module tally_filter_header
   public :: openmc_filter_set_id
   public :: openmc_get_filter_index
   public :: openmc_get_filter_next_id
+  public :: filter_match_pointer
+
+  interface
+    function filter_match_pointer(indx) bind(C) result(ptr)
+      import C_PTR, C_INT
+      integer(C_INT), intent(in), value :: indx
+      type(C_PTR)                       :: ptr
+    end function filter_match_pointer
+  end interface
 
 !===============================================================================
 ! TALLYFILTERMATCH stores every valid bin and weight for a filter
 !===============================================================================
 
   type, public :: TallyFilterMatch
+    type(C_PTR) :: ptr
+
     ! Index of the bin and weight being used in the current filter combination
     integer          :: i_bin
     type(VectorInt)  :: bins_

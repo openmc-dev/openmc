@@ -417,6 +417,7 @@ add_library(libopenmc SHARED
   src/state_point.cpp
   src/string_functions.cpp
   src/surface.cpp
+  src/tallies/tally_filter.cpp
   src/thermal.cpp
   src/xml_interface.cpp
   src/xsdata.cpp)

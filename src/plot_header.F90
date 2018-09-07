@@ -4,7 +4,6 @@ module plot_header
 
   use constants
   use dict_header, only: DictIntInt
-  use mesh_header, only: RegularMesh
 
   implicit none
 
@@ -31,7 +30,7 @@ module plot_header
     integer :: pixels(3)             ! pixel width/height of plot slice
     integer :: meshlines_width       ! pixel width of meshlines
     integer :: level                 ! universe depth to plot the cells of
-    type(RegularMesh), pointer :: meshlines_mesh => null() ! mesh to plot
+    integer :: index_meshlines_mesh = -1 ! index of  mesh to plot
     type(ObjectColor) :: meshlines_color ! Color for meshlines
     type(ObjectColor) :: not_found   ! color for positions where no cell found
     type(ObjectColor), allocatable :: colors(:) ! colors of cells/mats

@@ -61,7 +61,7 @@ namespace openmc {
 #ifdef OPENMC_MPI
 void initialize_mpi(MPI_Comm intracomm)
 {
-  openmc::mpi::intracomm = intracomm;
+  mpi::intracomm = intracomm;
 
   // Initialize MPI
   int flag;
@@ -69,13 +69,13 @@ void initialize_mpi(MPI_Comm intracomm)
   if (!flag) MPI_Init(nullptr, nullptr);
 
   // Determine number of processes and rank for each
-  MPI_Comm_size(intracomm, &openmc::mpi::n_procs);
-  MPI_Comm_rank(intracomm, &openmc::mpi::rank);
+  MPI_Comm_size(intracomm, &mpi::n_procs);
+  MPI_Comm_rank(intracomm, &mpi::rank);
 
   // Set variable for Fortran side
-  openmc_n_procs = openmc::mpi::n_procs;
-  openmc_rank = openmc::mpi::rank;
-  openmc_master = (openmc::mpi::rank == 0);
+  openmc_n_procs = mpi::n_procs;
+  openmc_rank = mpi::rank;
+  openmc_master = mpi::master = (mpi::rank == 0);
 
   // Create bank datatype
   Bank b;
@@ -88,8 +88,8 @@ void initialize_mpi(MPI_Comm intracomm)
   };
   int blocks[] {1, 3, 3, 1, 1};
   MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT};
-  MPI_Type_create_struct(5, blocks, disp, types, &openmc::mpi::bank);
-  MPI_Type_commit(&openmc::mpi::bank);
+  MPI_Type_create_struct(5, blocks, disp, types, &mpi::bank);
+  MPI_Type_commit(&mpi::bank);
 }
 #endif // OPENMC_MPI
 

@@ -3,7 +3,7 @@ module cmfd_input
   use, intrinsic :: ISO_C_BINDING
 
   use cmfd_header
-  use mesh_header,    only: mesh_dict
+  use mesh_header
   use mgxs_interface, only: energy_bins, num_energy_groups
   use tally
   use tally_header
@@ -241,7 +241,7 @@ contains
 
     use constants,        only: MAX_LINE_LEN
     use error,            only: fatal_error, warning
-    use mesh_header,      only: RegularMesh, openmc_extend_meshes
+    use mesh_header
     use string
     use tally,            only: openmc_tally_allocate
     use tally_header,     only: openmc_extend_tallies
@@ -263,114 +263,22 @@ contains
     integer :: i_filt     ! index in filters array
     integer :: filt_id
     integer :: tally_id
-    integer :: iarray3(3) ! temp integer array
-    real(8) :: rarray3(3) ! temp double array
     real(C_DOUBLE), allocatable :: energies(:)
-    type(RegularMesh), pointer :: m
     type(XMLNode) :: node_mesh
 
-    err = openmc_extend_meshes(1, i_start)
+    ! Read CMFD mesh
+    call read_meshes(root % ptr)
 
-    ! Allocate mesh
-    cmfd_mesh => meshes(i_start)
-    m => meshes(i_start)
+    ! Get index of cmfd mesh and set ID
+    i_start = n_meshes() - 1
+    err = openmc_mesh_set_id(i_start, i_start)
 
-    ! Set mesh id
-    m % id = i_start
-
-    ! Set mesh type to rectangular
-    m % type = MESH_REGULAR
+    ! Save reference to CMFD mesh
+    index_cmfd_mesh = i_start
+    cmfd_mesh = meshes(i_start)
 
     ! Get pointer to mesh XML node
     node_mesh = root % child("mesh")
-
-    ! Determine number of dimensions for mesh
-    n = node_word_count(node_mesh, "dimension")
-    if (n /= 2 .and. n /= 3) then
-      call fatal_error("Mesh must be two or three dimensions.")
-    end if
-    m % n_dimension = n
-
-    ! Allocate attribute arrays
-    allocate(m % dimension(n))
-    allocate(m % lower_left(n))
-    allocate(m % width(n))
-    allocate(m % upper_right(n))
-
-    ! Check that dimensions are all greater than zero
-    call get_node_array(node_mesh, "dimension", iarray3(1:n))
-    if (any(iarray3(1:n) <= 0)) then
-      call fatal_error("All entries on the <dimension> element for a tally mesh&
-           & must be positive.")
-    end if
-
-    ! Read dimensions in each direction
-    m % dimension = iarray3(1:n)
-
-    ! Read mesh lower-left corner location
-    if (m % n_dimension /= node_word_count(node_mesh, "lower_left")) then
-      call fatal_error("Number of entries on <lower_left> must be the same as &
-           &the number of entries on <dimension>.")
-    end if
-    call get_node_array(node_mesh, "lower_left", m % lower_left)
-
-    ! Make sure both upper-right or width were specified
-    if (check_for_node(node_mesh, "upper_right") .and. &
-         check_for_node(node_mesh, "width")) then
-      call fatal_error("Cannot specify both <upper_right> and <width> on a &
-           &tally mesh.")
-    end if
-
-    ! Make sure either upper-right or width was specified
-    if (.not.check_for_node(node_mesh, "upper_right") .and. &
-         .not.check_for_node(node_mesh, "width")) then
-      call fatal_error("Must specify either <upper_right> and <width> on a &
-           &tally mesh.")
-    end if
-
-    if (check_for_node(node_mesh, "width")) then
-      ! Check to ensure width has same dimensions
-      if (node_word_count(node_mesh, "width") /= &
-           node_word_count(node_mesh, "lower_left")) then
-        call fatal_error("Number of entries on <width> must be the same as the &
-             &number of entries on <lower_left>.")
-      end if
-
-      ! Check for negative widths
-      call get_node_array(node_mesh, "width", rarray3(1:n))
-      if (any(rarray3(1:n) < ZERO)) then
-        call fatal_error("Cannot have a negative <width> on a tally mesh.")
-      end if
-
-      ! Set width and upper right coordinate
-      m % width = rarray3(1:n)
-      m % upper_right = m % lower_left + m % dimension * m % width
-
-    elseif (check_for_node(node_mesh, "upper_right")) then
-      ! Check to ensure width has same dimensions
-      if (node_word_count(node_mesh, "upper_right") /= &
-           node_word_count(node_mesh, "lower_left")) then
-        call fatal_error("Number of entries on <upper_right> must be the same &
-             &as the number of entries on <lower_left>.")
-      end if
-
-      ! Check that upper-right is above lower-left
-      call get_node_array(node_mesh, "upper_right", rarray3(1:n))
-      if (any(rarray3(1:n) < m % lower_left)) then
-        call fatal_error("The <upper_right> coordinates must be greater than &
-             &the <lower_left> coordinates on a tally mesh.")
-      end if
-
-      ! Set upper right coordinate and width
-      m % upper_right = rarray3(1:n)
-      m % width = (m % upper_right - m % lower_left) / real(m % dimension, 8)
-    end if
-
-    ! Set volume fraction
-    m % volume_frac = ONE/real(product(m % dimension),8)
-
-    ! Add mesh to dictionary
-    call mesh_dict % set(m % id, i_start)
 
     ! Determine number of filters
     energy_filters = check_for_node(node_mesh, "energy")

@@ -4,7 +4,7 @@ module input_xml
 
   use algorithm,        only: find
   use cmfd_input,       only: configure_cmfd
-  use cmfd_header,      only: cmfd_mesh
+  use cmfd_header,      only: index_cmfd_mesh
   use constants
   use dict_header,      only: DictIntInt, DictCharInt, DictEntryCI
   use endf,             only: reaction_name
@@ -203,22 +203,14 @@ contains
   subroutine read_settings_xml_f(root_ptr) bind(C)
     type(C_PTR), value :: root_ptr
 
-    character(MAX_LINE_LEN) :: temp_str
     integer :: i
     integer :: n
-    integer :: temp_int
-    integer :: temp_int_array3(3)
-    integer(C_INT32_T) :: i_start, i_end
-    integer(C_INT) :: err
     integer, allocatable :: temp_int_array(:)
     integer :: n_tracks
     type(XMLNode) :: root
-    type(XMLNode) :: node_entropy
-    type(XMLNode) :: node_ufs
     type(XMLNode) :: node_sp
     type(XMLNode) :: node_res_scat
     type(XMLNode) :: node_vol
-    type(XMLNode), allocatable :: node_mesh_list(:)
     type(XMLNode), allocatable :: node_vol_list(:)
 
     ! Get proper XMLNode type given pointer
@@ -227,7 +219,6 @@ contains
     if (run_mode == MODE_EIGENVALUE) then
       ! Preallocate space for keff and entropy by generation
       call k_generation % reserve(n_max_batches*gen_per_batch)
-      call entropy % reserve(n_max_batches*gen_per_batch)
     end if
 
     ! Particle tracks
@@ -247,110 +238,6 @@ contains
       ! Reshape into track_identifiers
       allocate(track_identifiers(3, n_tracks/3))
       track_identifiers = reshape(temp_int_array, [3, n_tracks/3])
-    end if
-
-    ! Read meshes
-    call get_node_list(root, "mesh", node_mesh_list)
-
-    ! Check for user meshes and allocate
-    n = size(node_mesh_list)
-    if (n > 0) then
-      err = openmc_extend_meshes(n, i_start, i_end)
-    end if
-
-    do i = 1, n
-      associate (m => meshes(i_start + i - 1))
-        ! Instantiate mesh from XML node
-        call m % from_xml(node_mesh_list(i))
-
-        ! Add mesh to dictionary
-        call mesh_dict % set(m % id, i_start + i - 1)
-      end associate
-    end do
-
-    ! Shannon Entropy mesh
-    if (check_for_node(root, "entropy_mesh")) then
-      call get_node_value(root, "entropy_mesh", temp_int)
-      if (mesh_dict % has(temp_int)) then
-        index_entropy_mesh = mesh_dict % get(temp_int)
-      else
-        call fatal_error("Mesh " // to_str(temp_int) // " specified for &
-             &Shannon entropy does not exist.")
-      end if
-    elseif (check_for_node(root, "entropy")) then
-      call warning("Specifying a Shannon entropy mesh via the <entropy> element &
-           &is deprecated. Please create a mesh using <mesh> and then reference &
-           &it by specifying its ID in an <entropy_mesh> element.")
-
-      ! Get pointer to entropy node
-      node_entropy = root % child("entropy")
-
-      err = openmc_extend_meshes(1, index_entropy_mesh)
-
-      associate (m => meshes(index_entropy_mesh))
-        ! Assign ID
-        m % id = 10000
-
-        call m % from_xml(node_entropy)
-      end associate
-    end if
-
-    if (index_entropy_mesh > 0) then
-      associate(m => meshes(index_entropy_mesh))
-        if (.not. allocated(m % dimension)) then
-          ! If the user did not specify how many mesh cells are to be used in
-          ! each direction, we automatically determine an appropriate number of
-          ! cells
-          m % n_dimension = 3
-          allocate(m % dimension(3))
-          m % dimension = ceiling((n_particles/20)**(ONE/THREE))
-
-          ! Calculate width
-          m % width = (m % upper_right - m % lower_left) / m % dimension
-        end if
-
-        ! Allocate space for storing number of fission sites in each mesh cell
-        allocate(entropy_p(1, product(m % dimension)))
-      end associate
-
-      ! Turn on Shannon entropy calculation
-      entropy_on = .true.
-    end if
-
-    ! Uniform fission source weighting mesh
-    if (check_for_node(root, "ufs_mesh")) then
-      call get_node_value(root, "ufs_mesh", temp_int)
-      if (mesh_dict % has(temp_int)) then
-        index_ufs_mesh = mesh_dict % get(temp_int)
-      else
-        call fatal_error("Mesh " // to_str(temp_int) // " specified for &
-             &uniform fission site method does not exist.")
-      end if
-    elseif (check_for_node(root, "uniform_fs")) then
-      call warning("Specifying a UFS mesh via the <uniform_fs> element &
-           &is deprecated. Please create a mesh using <mesh> and then reference &
-           &it by specifying its ID in a <ufs_mesh> element.")
-
-      ! Get pointer to ufs node
-      node_ufs = root % child("uniform_fs")
-
-      err = openmc_extend_meshes(1, index_ufs_mesh)
-
-      ! Allocate mesh object and coordinates on mesh
-      associate (m => meshes(index_ufs_mesh))
-        ! Assign ID
-        m % id = 10001
-
-        call m % from_xml(node_ufs)
-      end associate
-    end if
-
-    if (index_ufs_mesh > 0) then
-      ! Allocate array to store source fraction for UFS
-      allocate(source_frac(1, product(meshes(index_ufs_mesh) % dimension)))
-
-      ! Turn on uniform fission source weighting
-      ufs = .true.
     end if
 
     ! Check if the user has specified to write state points
@@ -1269,13 +1156,11 @@ contains
     character(MAX_WORD_LEN), allocatable :: sarray(:)
     type(DictCharInt) :: trigger_scores
     type(TallyFilterContainer), pointer :: f
-    type(RegularMesh), pointer :: m
     type(XMLDocument) :: doc
     type(XMLNode) :: root
     type(XMLNode) :: node_tal
     type(XMLNode) :: node_filt
     type(XMLNode) :: node_trigger
-    type(XMLNode), allocatable :: node_mesh_list(:)
     type(XMLNode), allocatable :: node_tal_list(:)
     type(XMLNode), allocatable :: node_filt_list(:)
     type(XMLNode), allocatable :: node_trigger_list(:)
@@ -1306,9 +1191,6 @@ contains
     ! ==========================================================================
     ! DETERMINE SIZE OF ARRAYS AND ALLOCATE
 
-    ! Get pointer list to XML <mesh>
-    call get_node_list(root, "mesh", node_mesh_list)
-
     ! Get pointer list to XML <filter>
     call get_node_list(root, "filter", node_filt_list)
 
@@ -1324,20 +1206,7 @@ contains
     ! READ MESH DATA
 
     ! Check for user meshes and allocate
-    n = size(node_mesh_list)
-    if (n > 0) then
-      err = openmc_extend_meshes(n, i_start, i_end)
-    end if
-
-    do i = 1, n
-      m => meshes(i_start + i - 1)
-
-      ! Instantiate mesh from XML node
-      call m % from_xml(node_mesh_list(i))
-
-      ! Add mesh to dictionary
-      call mesh_dict % set(m % id, i_start + i - 1)
-    end do
+    call read_meshes(root % ptr)
 
     ! We only need the mesh info for plotting
     if (run_mode == MODE_PLOTTING) then
@@ -2179,6 +2048,7 @@ contains
     integer :: i, j
     integer :: n_cols, col_id, n_comp, n_masks, n_meshlines
     integer :: meshid
+    integer(C_INT) :: err, idx
     integer, allocatable :: iarray(:)
     logical :: file_exists              ! does plots.xml file exist?
     character(MAX_LINE_LEN) :: filename ! absolute path to plots.xml
@@ -2501,7 +2371,7 @@ contains
                      // trim(to_str(pl % id)))
               end if
 
-              pl % meshlines_mesh => meshes(index_ufs_mesh)
+              pl % index_meshlines_mesh = index_ufs_mesh
 
             case ('cmfd')
 
@@ -2510,7 +2380,7 @@ contains
                      &meshlines on plot " // trim(to_str(pl % id)))
               end if
 
-              pl % meshlines_mesh => cmfd_mesh
+              pl % index_meshlines_mesh = index_cmfd_mesh
 
             case ('entropy')
 
@@ -2519,7 +2389,7 @@ contains
                      // trim(to_str(pl % id)))
               end if
 
-              pl % meshlines_mesh => meshes(index_entropy_mesh)
+              pl % index_meshlines_mesh = index_entropy_mesh
 
             case ('tally')
 
@@ -2532,17 +2402,13 @@ contains
               end if
 
               ! Check if the specified tally mesh exists
-              if (mesh_dict % has(meshid)) then
-                pl % meshlines_mesh => meshes(mesh_dict % get(meshid))
-                if (meshes(meshid) % type /= MESH_REGULAR) then
-                  call fatal_error("Non-rectangular mesh specified in &
-                       &meshlines for plot " // trim(to_str(pl % id)))
-                end if
-              else
+              err = openmc_get_mesh_index(meshid, idx)
+              if (err /= 0) then
                 call fatal_error("Could not find mesh " &
                      // trim(to_str(meshid)) // " specified in meshlines for &
                      &plot " // trim(to_str(pl % id)))
               end if
+              pl % index_meshlines_mesh = idx
 
             case default
               call fatal_error("Invalid type for meshlines on plot " &

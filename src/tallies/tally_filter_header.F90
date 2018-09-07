@@ -28,8 +28,8 @@ module tally_filter_header
   type, public :: TallyFilterMatch
     ! Index of the bin and weight being used in the current filter combination
     integer          :: i_bin
-    type(VectorInt)  :: bins
-    type(VectorReal) :: weights
+    type(VectorInt),  pointer :: bins
+    type(VectorReal), pointer :: weights
 
     ! Indicates whether all valid bins for this filter have been found
     logical          :: bins_present = .false.

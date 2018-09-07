@@ -161,7 +161,7 @@ extern "C" {
     {mark_as_lost(message.str());}
 
     //! create a particle restart HDF5 file
-    void write_restart();
+    void write_restart() const;
   };
 
 

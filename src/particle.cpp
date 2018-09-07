@@ -141,7 +141,7 @@ Particle::mark_as_lost(const char* message)
 }
 
 void
-Particle::write_restart()
+Particle::write_restart() const
 {
   // Dont write another restart file if in particle restart mode
   if (settings::run_mode == RUN_MODE_PARTICLE) return;

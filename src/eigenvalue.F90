@@ -6,8 +6,6 @@ module eigenvalue
   use constants,   only: ZERO
   use error,       only: fatal_error, warning
   use math,        only: t_percentile
-  use mesh,        only: count_bank_sites
-  use mesh_header, only: RegularMesh, meshes
   use message_passing
   use random_lcg,  only: prn, set_particle_seed, advance_prn_seed
   use settings
@@ -295,46 +293,6 @@ contains
   end subroutine synchronize_bank
 
 !===============================================================================
-! SHANNON_ENTROPY calculates the Shannon entropy of the fission source
-! distribution to assess source convergence
-!===============================================================================
-
-  subroutine shannon_entropy()
-
-    integer :: i              ! index for mesh elements
-    real(8) :: entropy_gen    ! entropy at this generation
-    logical :: sites_outside  ! were there sites outside entropy box?
-
-    associate (m => meshes(index_entropy_mesh))
-      ! count number of fission sites over mesh
-      call count_bank_sites(m, fission_bank, entropy_p, &
-           size_bank=n_bank, sites_outside=sites_outside)
-
-      ! display warning message if there were sites outside entropy box
-      if (sites_outside) then
-        if (master) call warning("Fission source site(s) outside of entropy box.")
-      end if
-
-      ! sum values to obtain shannon entropy
-      if (master) then
-        ! Normalize to total weight of bank sites
-        entropy_p = entropy_p / sum(entropy_p)
-
-        entropy_gen = ZERO
-        do i = 1, size(entropy_p, 2)
-          if (entropy_p(1,i) > ZERO) then
-            entropy_gen = entropy_gen - &
-                 entropy_p(1,i) * log(entropy_p(1,i))/log(TWO)
-          end if
-        end do
-
-        ! Add value to vector
-        call entropy % push_back(entropy_gen)
-      end if
-    end associate
-  end subroutine shannon_entropy
-
-!===============================================================================
 ! CALCULATE_GENERATION_KEFF collects the single-processor tracklength k's onto
 ! the master processor and normalizes them. This should work whether or not the
 ! no-reduce method is being used.
@@ -576,61 +534,6 @@ contains
     err = 0
 
   end function openmc_get_keff
-
-!===============================================================================
-! COUNT_SOURCE_FOR_UFS determines the source fraction in each UFS mesh cell and
-! reweights the source bank so that the sum of the weights is equal to
-! n_particles. The 'source_frac' variable is used later to bias the production
-! of fission sites
-!===============================================================================
-
-  subroutine count_source_for_ufs()
-
-    real(8) :: total         ! total weight in source bank
-    logical :: sites_outside ! were there sites outside the ufs mesh?
-#ifdef OPENMC_MPI
-    integer :: n             ! total number of ufs mesh cells
-    integer :: mpi_err       ! MPI error code
-#endif
-
-    associate (m => meshes(index_ufs_mesh))
-
-    if (current_batch == 1 .and. current_gen == 1) then
-      ! On the first generation, just assume that the source is already evenly
-      ! distributed so that effectively the production of fission sites is not
-      ! biased
-
-      source_frac = m % volume_frac
-
-    else
-      ! count number of source sites in each ufs mesh cell
-      call count_bank_sites(m, source_bank, source_frac, &
-           sites_outside=sites_outside, size_bank=work)
-
-      ! Check for sites outside of the mesh
-      if (master .and. sites_outside) then
-        call fatal_error("Source sites outside of the UFS mesh!")
-      end if
-
-#ifdef OPENMC_MPI
-      ! Send source fraction to all processors
-      n = product(m % dimension)
-      call MPI_BCAST(source_frac, n, MPI_REAL8, 0, mpi_intracomm, mpi_err)
-#endif
-
-      ! Normalize to total weight to get fraction of source in each cell
-      total = sum(source_frac)
-      source_frac = source_frac / total
-
-      ! Since the total starting weight is not equal to n_particles, we need to
-      ! renormalize the weight of the source sites
-
-      source_bank % wgt = source_bank % wgt * n_particles / total
-    end if
-
-    end associate
-
-  end subroutine count_source_for_ufs
 
 #ifdef _OPENMP
 !===============================================================================

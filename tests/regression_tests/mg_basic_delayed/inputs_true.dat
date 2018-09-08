@@ -17,30 +17,29 @@
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
   <cross_sections>2g.h5</cross_sections>
-  <material id="1" name="base leg">
+  <material id="1" name="vec beta">
     <density units="macro" value="1.0" />
     <macroscopic name="mat_1" />
   </material>
-  <material id="2" name="base tab">
+  <material id="2" name="vec no beta">
     <density units="macro" value="1.0" />
     <macroscopic name="mat_2" />
   </material>
-  <material id="3" name="base hist">
+  <material id="3" name="matrix beta">
     <density units="macro" value="1.0" />
     <macroscopic name="mat_3" />
   </material>
-  <material id="4" name="base matrix">
+  <material id="4" name="matrix no beta">
     <density units="macro" value="1.0" />
     <macroscopic name="mat_4" />
   </material>
-  <material id="5" name="base ang">
+  <material id="5" name="vec group beta">
     <density units="macro" value="1.0" />
     <macroscopic name="mat_5" />
   </material>
-  <material id="6" name="micro">
-    <density units="sum" />
-    <nuclide ao="0.5" name="mat_1" />
-    <nuclide ao="0.5" name="mat_6" />
+  <material id="6" name="matrix group beta">
+    <density units="macro" value="1.0" />
+    <macroscopic name="mat_6" />
   </material>
 </materials>
 <?xml version='1.0' encoding='utf-8'?>

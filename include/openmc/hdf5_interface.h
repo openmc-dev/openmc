@@ -14,6 +14,7 @@
 #include "xtensor/xarray.hpp"
 
 #include "openmc/position.h"
+#include "openmc/error.h"
 
 namespace openmc {
 
@@ -45,39 +46,6 @@ hid_t file_open(const std::string& filename, char mode, bool parallel=false);
 
 void write_string(hid_t group_id, const char* name, const std::string& buffer,
                   bool indep);
-
-void
-read_nd_vector(hid_t obj_id, const char* name, std::vector<double>& result,
-               bool must_have = false);
-
-void
-read_nd_vector(hid_t obj_id, const char* name,
-               std::vector<std::vector<double> >& result,
-               bool must_have = false);
-
-void
-read_nd_vector(hid_t obj_id, const char* name,
-               std::vector<std::vector<int> >& result, bool must_have = false);
-
-void
-read_nd_vector(hid_t obj_id, const char* name,
-               std::vector<std::vector<std::vector<double> > >& result,
-               bool must_have = false);
-
-void
-read_nd_vector(hid_t obj_id, const char* name,
-               std::vector<std::vector<std::vector<int> > >& result,
-               bool must_have = false);
-
-void
-read_nd_vector(hid_t obj_id, const char* name,
-               std::vector<std::vector<std::vector<std::vector<double> > > >& result,
-               bool must_have = false);
-
-void
-read_nd_vector(hid_t obj_id, const char* name,
-               std::vector<std::vector<std::vector<std::vector<std::vector<double> > > > >& result,
-               bool must_have = false);
 
 std::vector<hsize_t> attribute_shape(hid_t obj_id, const char* name);
 std::vector<std::string> dataset_names(hid_t group_id);
@@ -236,7 +204,7 @@ read_attribute(hid_t obj_id, const char* name, std::vector<std::string>& vec)
 }
 
 //==============================================================================
-// Templates/overloads for read_dataset
+// Templates/overloads for read_dataset and related methods
 //==============================================================================
 
 template<typename T>
@@ -292,6 +260,40 @@ void read_dataset(hid_t obj_id, const char* name, xt::xarray<T>& arr, bool indep
   hid_t dset = open_dataset(obj_id, name);
   read_dataset(dset, arr, indep);
   close_dataset(dset);
+}
+
+
+template <typename T, std::size_t N>
+void read_dataset_as_shape(hid_t obj_id, const char* name,
+                           xt::xtensor<T, N>& arr, bool indep=false)
+{
+  hid_t dset = open_dataset(obj_id, name);
+
+  // Allocate new array to read data into
+  std::size_t size = 1;
+  for (const auto x : arr.shape())
+    size *= x;
+  T* buffer = new T[size];
+
+  // Read data from attribute
+  read_dataset(dset, nullptr, H5TypeMap<T>::type_id, buffer, indep);
+
+  // Adapt into xarray
+  arr = xt::adapt(buffer, size, xt::acquire_ownership(), arr.shape());
+
+  close_dataset(dset);
+}
+
+
+template <typename T, std::size_t N>
+void read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<T, N>& result,
+     bool must_have=false)
+{
+  if (object_exists(obj_id, name)) {
+    read_dataset_as_shape(obj_id, name, result, true);
+  } else if (must_have) {
+    fatal_error(std::string("Must provide " + std::string(name) + "!"));
+  }
 }
 
 //==============================================================================

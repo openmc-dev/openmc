@@ -181,7 +181,7 @@ contains
     ! Assign temperatures to cells that don't have temperatures already assigned
     call assign_temperatures()
 
-    ! Determine desired txemperatures for each nuclide and S(a,b) table
+    ! Determine desired temperatures for each nuclide and S(a,b) table
     call get_temperatures(nuc_temps, sab_temps)
 
     ! Check to make sure there are not too many nested coordinate levels in the

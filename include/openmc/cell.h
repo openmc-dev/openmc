@@ -10,6 +10,7 @@
 #include "hdf5.h"
 #include "pugixml.hpp"
 
+#include "openmc/constants.h"
 #include "openmc/position.h"
 
 
@@ -24,6 +25,13 @@ extern "C" int FILL_MATERIAL;
 extern "C" int FILL_UNIVERSE;
 extern "C" int FILL_LATTICE;
 
+// TODO: Convert to enum
+constexpr int32_t OP_LEFT_PAREN   {std::numeric_limits<int32_t>::max()};
+constexpr int32_t OP_RIGHT_PAREN  {std::numeric_limits<int32_t>::max() - 1};
+constexpr int32_t OP_COMPLEMENT   {std::numeric_limits<int32_t>::max() - 2};
+constexpr int32_t OP_INTERSECTION {std::numeric_limits<int32_t>::max() - 3};
+constexpr int32_t OP_UNION        {std::numeric_limits<int32_t>::max() - 4};
+
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -31,11 +39,11 @@ extern "C" int FILL_LATTICE;
 extern "C" int32_t n_cells;
 
 class Cell;
-extern std::vector<Cell*> global_cells;
+extern std::vector<Cell*> cells;
 extern std::unordered_map<int32_t, int32_t> cell_map;
 
 class Universe;
-extern std::vector<Universe*> global_universes;
+extern std::vector<Universe*> universes;
 extern std::unordered_map<int32_t, int32_t> universe_map;
 
 //==============================================================================
@@ -45,9 +53,12 @@ extern std::unordered_map<int32_t, int32_t> universe_map;
 class Universe
 {
 public:
-  int32_t id;                  //!< Unique ID
-  std::vector<int32_t> cells;  //!< Cells within this universe
-  //double x0, y0, z0;           //!< Translation coordinates.
+  int32_t id_;                  //!< Unique ID
+  std::vector<int32_t> cells_;  //!< Cells within this universe
+
+  //! \brief Write universe information to an HDF5 group.
+  //! \param group_id An HDF5 group id.
+  void to_hdf5(hid_t group_id) const;
 };
 
 //==============================================================================
@@ -57,25 +68,44 @@ public:
 class Cell
 {
 public:
-  int32_t id;                //!< Unique ID
-  std::string name;          //!< User-defined name
-  int type;                  //!< Material, universe, or lattice
-  int32_t universe;          //!< Universe # this cell is in
-  int32_t fill;              //!< Universe # filling this cell
-  int32_t n_instances{0};    //!< Number of instances of this cell
+  int32_t id_;                //!< Unique ID
+  std::string name_;          //!< User-defined name
+  int type_;                  //!< Material, universe, or lattice
+  int32_t universe_;          //!< Universe # this cell is in
+  int32_t fill_;              //!< Universe # filling this cell
+  int32_t n_instances_{0};    //!< Number of instances of this cell
+
+  //! \brief Index corresponding to this cell in distribcell arrays
+  int distribcell_index_{C_NONE};
 
   //! \brief Material(s) within this cell.
   //!
-  //! May be multiple materials for distribcell.  C_NONE signifies a universe.
-  std::vector<int32_t> material;
+  //! May be multiple materials for distribcell.
+  std::vector<int32_t> material_;
+
+  //! \brief Temperature(s) within this cell.
+  //!
+  //! The stored values are actually sqrt(k_Boltzmann * T) for each temperature
+  //! T. The units are sqrt(eV).
+  std::vector<double> sqrtkT_;
 
   //! Definition of spatial region as Boolean expression of half-spaces
-  std::vector<std::int32_t> region;
+  std::vector<std::int32_t> region_;
   //! Reverse Polish notation for region expression
-  std::vector<std::int32_t> rpn;
-  bool simple;  //!< Does the region contain only intersections?
+  std::vector<std::int32_t> rpn_;
+  bool simple_;  //!< Does the region contain only intersections?
 
-  std::vector<int32_t> offset;  //!< Distribcell offset table
+  Position translation_ {0, 0, 0}; //!< Translation vector for filled universe
+
+  //! \brief Rotational tranfsormation of the filled universe.
+  //
+  //! The vector is empty if there is no rotation.  Otherwise, the first three
+  //! values are the rotation angles respectively about the x-, y-, and z-, axes
+  //! in degrees.  The next 9 values give the rotation matrix in row-major
+  //! order.
+  std::vector<double> rotation_;
+
+  std::vector<int32_t> offset_;  //!< Distribcell offset table
 
   Cell() {};
 

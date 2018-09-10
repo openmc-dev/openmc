@@ -55,7 +55,7 @@ contains
 
     integer :: val
 
-      val = this % map % get(p % cell_born)
+      val = this % map % get(p % cell_born + 1)
       if (val /= EMPTY) then
         call match % bins_push_back(val)
         call match % weights_push_back(ONE)

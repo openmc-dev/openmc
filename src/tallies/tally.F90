@@ -8,7 +8,6 @@ module tally
   use error,            only: fatal_error
   use geometry_header
   use math,             only: t_percentile
-  use mesh_header,      only: RegularMesh, meshes
   use message_passing
   use mgxs_interface
   use nuclide_header

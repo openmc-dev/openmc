@@ -7,7 +7,6 @@ module physics_mg
   use error,                  only: fatal_error, warning, write_message
   use material_header,        only: Material, materials
   use math,                   only: rotate_angle
-  use mesh_header,            only: meshes
   use mgxs_interface
   use message_passing
   use nuclide_header,         only: material_xs
@@ -168,11 +167,18 @@ contains
     integer :: dg                       ! delayed group
     integer :: gout                     ! group out
     integer :: nu                       ! actual number of neutrons produced
-    integer :: mesh_bin                 ! mesh bin for source site
     real(8) :: nu_t                     ! total nu
     real(8) :: mu                       ! fission neutron angular cosine
     real(8) :: phi                      ! fission neutron azimuthal angle
     real(8) :: weight                   ! weight adjustment for ufs method
+
+    interface
+      function ufs_get_weight(p) result(weight) bind(C)
+        import Particle, C_DOUBLE
+        type(Particle), intent(in) :: p
+        real(C_DOUBLE) :: WEIGHT
+      end function
+    end interface
 
     ! TODO: Heat generation from fission
 
@@ -180,21 +186,7 @@ contains
     ! the expected number of fission sites produced
 
     if (ufs) then
-      associate (m => meshes(index_ufs_mesh))
-        ! Determine indices on ufs mesh for current location
-        call m % get_bin(p % coord(1) % xyz, mesh_bin)
-
-        if (mesh_bin == NO_BIN_FOUND) then
-          call particle_write_restart(p)
-          call fatal_error("Source site outside UFS mesh!")
-        end if
-
-        if (source_frac(1, mesh_bin) /= ZERO) then
-          weight = m % volume_frac / source_frac(1, mesh_bin)
-        else
-          weight = ONE
-        end if
-      end associate
+      weight = ufs_get_weight(p)
     else
       weight = ONE
     end if

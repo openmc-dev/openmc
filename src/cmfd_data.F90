@@ -80,7 +80,7 @@ contains
     integer :: i_mesh        ! flattend index for mesh
     logical :: energy_filters! energy filters present
     real(8) :: flux          ! temp variable for flux
-    type(RegularMesh), pointer :: m ! pointer for mesh object
+    type(RegularMesh) :: m ! pointer for mesh object
 
     ! Extract spatial and energy indices from object
     nx = cmfd % indices(1)
@@ -99,7 +99,7 @@ contains
 
     select type(filt => filters(i_filter_mesh) % obj)
     type is (MeshFilter)
-      m => meshes(filt % mesh)
+      m = meshes(filt % mesh)
     end select
 
     ! Set mesh widths
@@ -353,9 +353,6 @@ contains
 
     ! Normalize openmc source distribution
     cmfd % openmc_src = cmfd % openmc_src/sum(cmfd % openmc_src)*cmfd%norm
-
-    ! Nullify all pointers
-    if (associated(m)) nullify(m)
 
   end subroutine compute_xs
 

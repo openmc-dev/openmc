@@ -19,7 +19,7 @@ add_mgxs_c(hid_t file_id, const char* name, int energy_groups,
      int& method)
 {
   // Convert temps to a vector for the from_hdf5 function
-  double_1dvec temperature(temps, temps + n_temps);
+  std::vector<double> temperature(temps, temps + n_temps);
 
   write_message("Loading " + std::string(name) + " data...", 6);
 
@@ -60,10 +60,10 @@ create_macro_xs_c(const char* mat_name, int n_nuclides, const int i_nuclides[],
 {
   if (n_temps > 0) {
     // // Convert temps to a vector
-    double_1dvec temperature(temps, temps + n_temps);
+    std::vector<double> temperature(temps, temps + n_temps);
 
     // Convert atom_densities to a vector
-    double_1dvec atom_densities_vec(atom_densities,
+    std::vector<double> atom_densities_vec(atom_densities,
          atom_densities + n_nuclides);
 
     // Build array of pointers to nuclides_MG's Mgxs objects needed for this

@@ -22,4 +22,4 @@ python tools/ci/travis-install.py
 pip install -e .[test]
 
 # For uploading to coveralls
-pip install python-coveralls
+pip install coveralls

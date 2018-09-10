@@ -19,8 +19,8 @@ namespace openmc {
 void
 LocalCoord::reset()
 {
-  cell = 0;
-  universe = 0;
+  cell = C_NONE;
+  universe = C_NONE;
   lattice = 0;
   lattice_x = 0;
   lattice_y = 0;
@@ -67,7 +67,7 @@ Particle::initialize()
 
   // clear attributes
   surface           = 0;
-  cell_born         = 0;
+  cell_born         = C_NONE;
   material          = 0;
   last_material     = 0;
   last_sqrtkT       = 0;
@@ -130,7 +130,7 @@ Particle::mark_as_lost(const char* message)
   openmc_n_lost_particles += 1;
 
   // Count the total number of simulated particles (on this processor)
-  auto n = openmc_current_batch * gen_per_batch * openmc_work;
+  auto n = openmc_current_batch * settings::gen_per_batch * openmc_work;
 
   // Abort the simulation if the maximum number of lost particles has been
   // reached
@@ -141,14 +141,15 @@ Particle::mark_as_lost(const char* message)
 }
 
 void
-Particle::write_restart()
+Particle::write_restart() const
 {
   // Dont write another restart file if in particle restart mode
-  if (openmc_run_mode == RUN_MODE_PARTICLE) return;
+  if (settings::run_mode == RUN_MODE_PARTICLE) return;
 
   // Set up file name
   std::stringstream filename;
-  filename << path_output << "particle_" << openmc_current_batch << '_' << id << ".h5";
+  filename << settings::path_output << "particle_" << openmc_current_batch
+    << '_' << id << ".h5";
 
 #pragma omp critical (WriteParticleRestart)
   {
@@ -165,10 +166,10 @@ Particle::write_restart()
 
     // Write data to file
     write_dataset(file_id, "current_batch", openmc_current_batch);
-    write_dataset(file_id, "generations_per_batch", gen_per_batch);
+    write_dataset(file_id, "generations_per_batch", settings::gen_per_batch);
     write_dataset(file_id, "current_generation", openmc_current_gen);
-    write_dataset(file_id, "n_particles", n_particles);
-    switch (openmc_run_mode) {
+    write_dataset(file_id, "n_particles", settings::n_particles);
+    switch (settings::run_mode) {
       case RUN_MODE_FIXEDSOURCE:
         write_dataset(file_id, "run_mode", "fixed source");
         break;

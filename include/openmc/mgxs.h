@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "xtensor/xtensor.hpp"
+
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/xsdata.h"
@@ -35,7 +37,7 @@ struct CacheData {
 class Mgxs {
   private:
 
-    double_1dvec kTs;   // temperature in eV (k * T)
+    xt::xtensor<double, 1> kTs;   // temperature in eV (k * T)
     int scatter_format; // flag for if this is legendre, histogram, or tabular
     int num_delayed_groups; // number of delayed neutron groups
     int num_groups;     // number of energy groups
@@ -44,8 +46,8 @@ class Mgxs {
     bool is_isotropic; // used to skip search for angle indices if isotropic
     int n_pol;
     int n_azi;
-    double_1dvec polar;
-    double_1dvec azimuthal;
+    std::vector<double> polar;
+    std::vector<double> azimuthal;
 
     //! \brief Initializes the Mgxs object metadata
     //!
@@ -62,10 +64,10 @@ class Mgxs {
     //! @param in_polar Polar angle grid.
     //! @param in_azimuthal Azimuthal angle grid.
     void
-    init(const std::string& in_name, double in_awr, const double_1dvec& in_kTs,
+    init(const std::string& in_name, double in_awr, const std::vector<double>& in_kTs,
          bool in_fissionable, int in_scatter_format, int in_num_groups,
          int in_num_delayed_groups, bool in_is_isotropic,
-         const double_1dvec& in_polar, const double_1dvec& in_azimuthal);
+         const std::vector<double>& in_polar, const std::vector<double>& in_azimuthal);
 
     //! \brief Initializes the Mgxs object metadata from the HDF5 file
     //!
@@ -80,8 +82,8 @@ class Mgxs {
     //! @param method Method of choosing nearest temperatures.
     void
     metadata_from_hdf5(hid_t xs_id, int in_num_groups,
-         int in_num_delayed_groups, const double_1dvec& temperature,
-         double tolerance, int_1dvec& temps_to_read, int& order_dim,
+         int in_num_delayed_groups, const std::vector<double>& temperature,
+         double tolerance, std::vector<int>& temps_to_read, int& order_dim,
          int& method);
 
     //! \brief Performs the actual act of combining the microscopic data for a
@@ -93,8 +95,8 @@ class Mgxs {
     //!   corresponds to the temperature of interest.
     //! @param this_t The temperature index of the macroscopic object.
     void
-    combine(const std::vector<Mgxs*>& micros, const double_1dvec& scalars,
-         const int_1dvec& micro_ts, int this_t);
+    combine(const std::vector<Mgxs*>& micros, const std::vector<double>& scalars,
+         const std::vector<int>& micro_ts, int this_t);
 
     //! \brief Checks to see if this and that are able to be combined
     //!
@@ -128,7 +130,7 @@ class Mgxs {
     //!   provides the number of points to use in the tabular representation.
     //! @param method Method of choosing nearest temperatures.
     Mgxs(hid_t xs_id, int energy_groups,
-         int delayed_groups, const double_1dvec& temperature, double tolerance,
+         int delayed_groups, const std::vector<double>& temperature, double tolerance,
          int max_order, bool legendre_to_tabular,
          int legendre_to_tabular_points, int& method);
 
@@ -141,8 +143,8 @@ class Mgxs {
     //! @param atom_densities Atom densities of those microscopic quantities.
     //! @param tolerance Tolerance of temperature selection method.
     //! @param method Method of choosing nearest temperatures.
-    Mgxs(const std::string& in_name, const double_1dvec& mat_kTs,
-         const std::vector<Mgxs*>& micros, const double_1dvec& atom_densities,
+    Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
+         const std::vector<Mgxs*>& micros, const std::vector<double>& atom_densities,
          double tolerance, int& method);
 
     //! \brief Provides a cross section value given certain parameters

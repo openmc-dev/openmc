@@ -59,7 +59,7 @@ contains
 
     ! Iterate over coordinate levels to see with cells match
     do i = 1, p % n_coord
-      val = this % map % get(p % coord(i) % cell)
+      val = this % map % get(p % coord(i) % cell + 1)
       if (val /= EMPTY) then
         call match % bins_push_back(val)
         call match % weights_push_back(ONE)

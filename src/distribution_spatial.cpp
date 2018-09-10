@@ -55,7 +55,8 @@ Position CartesianIndependent::sample() const
 // SpatialBox implementation
 //==============================================================================
 
-SpatialBox::SpatialBox(pugi::xml_node node)
+SpatialBox::SpatialBox(pugi::xml_node node, bool fission)
+  : only_fissionable_{fission}
 {
   // Read lower-right/upper-left coordinates
   auto params = get_node_array<double>(node, "parameters");

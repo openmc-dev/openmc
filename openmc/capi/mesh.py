@@ -41,6 +41,8 @@ _dll.openmc_mesh_set_params.errcheck = _error_handler
 _dll.openmc_get_mesh_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_mesh_index.restype = c_int
 _dll.openmc_get_mesh_index.errcheck = _error_handler
+_dll.n_meshes.argtypes = []
+_dll.n_meshes.restype = c_int
 
 
 class Mesh(_FortranObjectWithID):
@@ -172,10 +174,10 @@ class _MeshMapping(Mapping):
 
     def __iter__(self):
         for i in range(len(self)):
-            yield Mesh(index=i + 1).id
+            yield Mesh(index=i).id
 
     def __len__(self):
-        return c_int32.in_dll(_dll, 'n_meshes').value
+        return _dll.n_meshes()
 
     def __repr__(self):
         return repr(dict(self))

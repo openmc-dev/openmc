@@ -683,13 +683,13 @@ contains
     character(36)           :: score_names(N_SCORE_TYPES)  ! names of scoring function
     character(36)           :: score_name                  ! names of scoring function
                                                            ! to be applied at write-time
-    type(TallyFilterMatch), allocatable :: matches(:)
+    integer, allocatable :: filter_bins(:)
     character(MAX_WORD_LEN) :: temp_name
 
     ! Skip if there are no tallies
     if (n_tallies == 0) return
 
-    allocate(matches(n_filters))
+    allocate(filter_bins(n_filters))
 
     ! Initialize names for scores
     score_names(abs(SCORE_FLUX))               = "Flux"
@@ -773,8 +773,7 @@ contains
 
       ! Initialize bins, filter level, and indentation
       do h = 1, size(t % filter)
-        call matches(t % filter(h)) % bins_clear()
-        call matches(t % filter(h)) % bins_push_back(0)
+        filter_bins(t % filter(h)) = 0
       end do
       j = 1
       indent = 0
@@ -785,18 +784,17 @@ contains
           if (size(t % filter) == 0) exit find_bin
 
           ! Increment bin combination
-          call matches(t % filter(j)) % bins_set_data(1, &
-               matches(t % filter(j)) % bins_data(1) + 1)
+          filter_bins(t % filter(j)) = filter_bins(t % filter(j)) + 1
 
           ! =================================================================
           ! REACHED END OF BINS FOR THIS FILTER, MOVE TO NEXT FILTER
 
-          if (matches(t % filter(j)) % bins_data(1) > &
+          if (filter_bins(t % filter(j)) > &
                filters(t % filter(j)) % obj % n_bins) then
             ! If this is the first filter, then exit
             if (j == 1) exit print_bin
 
-            call matches(t % filter(j)) % bins_set_data(1, 0)
+            filter_bins(t % filter(j)) = 0
             j = j - 1
             indent = indent - 2
 
@@ -810,7 +808,7 @@ contains
             ! Print current filter information
             write(UNIT=unit_tally, FMT='(1X,2A)') repeat(" ", indent), &
                  trim(filters(t % filter(j)) % obj % &
-                 text_label(matches(t % filter(j)) % bins_data(1)))
+                 text_label(filter_bins(t % filter(j))))
             indent = indent + 2
             j = j + 1
           end if
@@ -821,7 +819,7 @@ contains
         if (size(t % filter) > 0) then
           write(UNIT=unit_tally, FMT='(1X,2A)') repeat(" ", indent), &
                trim(filters(t % filter(j)) % obj % &
-               text_label(matches(t % filter(j)) % bins_data(1)))
+               text_label(filter_bins(t % filter(j))))
         end if
 
         ! Determine scoring index for this bin combination -- note that unlike
@@ -830,8 +828,8 @@ contains
 
         filter_index = 1
         do h = 1, size(t % filter)
-          filter_index = filter_index + (max(matches(t % filter(h)) &
-               % bins_data(1),1) - 1) * t % stride(h)
+          filter_index = filter_index &
+               + (max(filter_bins(t % filter(h)) ,1) - 1) * t % stride(h)
         end do
 
         ! Write results for this filter bin combination

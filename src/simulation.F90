@@ -455,12 +455,6 @@ contains
     ! Allocate array for microscopic cross section cache
     allocate(micro_xs(n_nuclides))
     allocate(micro_photon_xs(n_elements))
-
-    ! Allocate array for matching filter bins
-    allocate(filter_matches(n_filters))
-    do i = 1, n_filters
-      filter_matches(i) % ptr = filter_match_pointer(i - 1)
-    end do
 !$omp end parallel
 
     ! Reset global variables -- this is done before loading state point (as that
@@ -502,6 +496,14 @@ contains
     end if
 
     call openmc_simulation_init_c()
+
+!$omp parallel
+    ! Allocate array for matching filter bins
+    allocate(filter_matches(n_filters))
+    do i = 1, n_filters
+      filter_matches(i) % ptr = filter_match_pointer(i - 1)
+    end do
+!$omp end parallel
 
     ! Set flag indicating initialization is done
     simulation_initialized = .true.

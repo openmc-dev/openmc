@@ -1,4 +1,4 @@
-#ifndef OPENMC_DISTRIBTUION_SPATIAL_H
+#ifndef OPENMC_DISTRIBUTION_SPATIAL_H
 #define OPENMC_DISTRIBUTION_SPATIAL_H
 
 #include "pugixml.hpp"
@@ -43,15 +43,18 @@ private:
 
 class SpatialBox : public SpatialDistribution {
 public:
-  explicit SpatialBox(pugi::xml_node node);
+  explicit SpatialBox(pugi::xml_node node, bool fission=false);
 
   //! Sample a position from the distribution
   //! \return Sampled position
   Position sample() const;
+
+  // Properties
+  bool only_fissionable() const { return only_fissionable_; }
 private:
   Position lower_left_; //!< Lower-left coordinates of box
   Position upper_right_; //!< Upper-right coordinates of box
-  bool only_fissionable {false}; //!< Only accept sites in fissionable region?
+  bool only_fissionable_ {false}; //!< Only accept sites in fissionable region?
 };
 
 //==============================================================================
@@ -60,6 +63,8 @@ private:
 
 class SpatialPoint : public SpatialDistribution {
 public:
+  SpatialPoint() : r_{} { };
+  SpatialPoint(Position r) : r_{r} { };
   explicit SpatialPoint(pugi::xml_node node);
 
   //! Sample a position from the distribution
@@ -68,6 +73,8 @@ public:
 private:
   Position r_; //!< Single position at which sites are generated
 };
+
+using UPtrSpace = std::unique_ptr<SpatialDistribution>;
 
 } // namespace openmc
 

@@ -16,6 +16,7 @@ namespace openmc {
 
 extern std::vector<Mgxs> nuclides_MG;
 extern std::vector<Mgxs> macro_xs;
+extern "C" int num_energy_groups;
 
 //==============================================================================
 // Mgxs data loading interface methods

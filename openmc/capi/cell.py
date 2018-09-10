@@ -141,7 +141,7 @@ class Cell(_FortranObjectWithID):
             Which instance of the cell
 
         """
-        _dll.openmc_cell_set_temperature(self._index, T, instance)
+        _dll.openmc_cell_set_temperature(self._index, T, c_int32(instance))
 
 
 class _CellMapping(Mapping):

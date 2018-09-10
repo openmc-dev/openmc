@@ -7,6 +7,8 @@
 #include <memory>
 #include <vector>
 
+#include "xtensor/xtensor.hpp"
+
 #include "openmc/hdf5_interface.h"
 #include "openmc/scattdata.h"
 
@@ -22,41 +24,77 @@ class XsData {
   private:
     //! \brief Reads scattering data from the HDF5 file
     void
-    scatter_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi, int energy_groups,
+    scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
          int scatter_format, int final_scatter_format, int order_data,
          int max_order, int legendre_to_tabular_points);
 
     //! \brief Reads fission data from the HDF5 file
     void
-    fission_from_hdf5(hid_t xsdata_grp, int n_pol, int n_azi, int energy_groups,
-         int delayed_groups, bool is_isotropic);
+    fission_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
+         size_t delayed_groups, bool is_isotropic);
+
+    //! \brief Reads fission data formatted as chi and nu-fission vectors from
+    //  the HDF5 file when beta is provided.
+    void
+    fission_vector_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
+         size_t energy_groups, size_t delayed_groups, bool is_isotropic);
+
+    //! \brief Reads fission data formatted as chi and nu-fission vectors from
+    //  the HDF5 file when beta is not provided.
+    void
+    fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
+         size_t energy_groups, size_t delayed_groups);
+
+    //! \brief Reads fission data formatted as chi and nu-fission vectors from
+    //  the HDF5 file when no delayed data is provided.
+    void
+    fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang,
+         size_t energy_groups);
+
+    //! \brief Reads fission data formatted as a nu-fission matrix from
+    //  the HDF5 file when beta is provided.
+    void
+    fission_matrix_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
+         size_t energy_groups, size_t delayed_groups, bool is_isotropic);
+
+    //! \brief Reads fission data formatted as a nu-fission matrix from
+    //  the HDF5 file when beta is not provided.
+    void
+    fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
+         size_t energy_groups, size_t delayed_groups);
+
+    //! \brief Reads fission data formatted as a nu-fission matrix from
+    //  the HDF5 file when no delayed data is provided.
+    void
+    fission_matrix_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang,
+         size_t energy_groups);
 
   public:
 
     // The following quantities have the following dimensions:
     // [angle][incoming group]
-    double_2dvec total;
-    double_2dvec absorption;
-    double_2dvec nu_fission;
-    double_2dvec prompt_nu_fission;
-    double_2dvec kappa_fission;
-    double_2dvec fission;
-    double_2dvec inverse_velocity;
+    xt::xtensor<double, 2> total;
+    xt::xtensor<double, 2> absorption;
+    xt::xtensor<double, 2> nu_fission;
+    xt::xtensor<double, 2> prompt_nu_fission;
+    xt::xtensor<double, 2> kappa_fission;
+    xt::xtensor<double, 2> fission;
+    xt::xtensor<double, 2> inverse_velocity;
 
     // decay_rate has the following dimensions:
     // [angle][delayed group]
-    double_2dvec decay_rate;
+    xt::xtensor<double, 2> decay_rate;
     // delayed_nu_fission has the following dimensions:
     // [angle][incoming group][delayed group]
-    double_3dvec delayed_nu_fission;
+    xt::xtensor<double, 3> delayed_nu_fission;
     // chi_prompt has the following dimensions:
     // [angle][incoming group][outgoing group]
-    double_3dvec chi_prompt;
+    xt::xtensor<double, 3> chi_prompt;
     // chi_delayed has the following dimensions:
     // [angle][incoming group][outgoing group][delayed group]
-    double_4dvec chi_delayed;
+    xt::xtensor<double, 4> chi_delayed;
     // scatter has the following dimensions: [angle]
-    std::vector<std::shared_ptr<ScattData> > scatter;
+    std::vector<std::shared_ptr<ScattData>> scatter;
 
     XsData() = default;
 
@@ -68,7 +106,7 @@ class XsData {
     //! @param scatter_format The scattering representation of the file.
     //! @param n_pol Number of polar angles.
     //! @param n_azi Number of azimuthal angles.
-    XsData(int num_groups, int num_delayed_groups, bool fissionable,
+    XsData(size_t num_groups, size_t num_delayed_groups, bool fissionable,
            int scatter_format, int n_pol, int n_azi);
 
     //! \brief Loads the XsData object from the HDF5 file
@@ -101,7 +139,7 @@ class XsData {
     //! @param micros Microscopic objects to combine.
     //! @param scalars Scalars to multiply the microscopic data by.
     void
-    combine(const std::vector<XsData*>& those_xs, const double_1dvec& scalars);
+    combine(const std::vector<XsData*>& those_xs, const std::vector<double>& scalars);
 
     //! \brief Checks to see if this and that are able to be combined
     //!

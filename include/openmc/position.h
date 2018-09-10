@@ -1,6 +1,9 @@
 #ifndef OPENMC_POSITION_H
 #define OPENMC_POSITION_H
 
+#include <cmath>
+#include <vector>
+
 namespace openmc {
 
 //==============================================================================
@@ -12,6 +15,7 @@ struct Position {
   Position() = default;
   Position(double x_, double y_, double z_) : x{x_}, y{y_}, z{z_} { };
   Position(const double xyz[]) : x{xyz[0]}, y{xyz[1]}, z{xyz[2]} { };
+  Position(const std::vector<double> xyz) : x{xyz[0]}, y{xyz[1]}, z{xyz[2]} { };
 
   // Unary operators
   Position& operator+=(Position);
@@ -43,6 +47,9 @@ struct Position {
   inline double dot(Position other) {
     return x*other.x + y*other.y + z*other.z;
   }
+  inline double norm() {
+    return std::sqrt(x*x + y*y + z*z);
+  }
 
   // Data members
   double x = 0.;
@@ -62,6 +69,12 @@ inline Position operator-(double a, Position b)   { return b -= a; }
 inline Position operator*(Position a, Position b) { return a *= b; }
 inline Position operator*(Position a, double b)   { return a *= b; }
 inline Position operator*(double a, Position b)   { return b *= a; }
+
+inline bool operator==(Position a, Position b)
+{return a.x == b.x && a.y == b.y && a.z == b.z;}
+
+inline bool operator!=(Position a, Position b)
+{return a.x != b.x || a.y != b.y || a.z != b.z;}
 
 //==============================================================================
 //! Type representing a vector direction in Cartesian coordinates

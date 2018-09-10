@@ -4,8 +4,10 @@
 //! \file particle.h
 //! \brief Particle type
 
-#include <cstdint>
 #include <array>
+#include <cstdint>
+#include <sstream>
+#include <string>
 
 #include "openmc/capi.h"
 
@@ -33,7 +35,7 @@ constexpr double REL_MAX_LOST_PARTICLES {1.0e-6};
 
 //! Particle types
 enum class ParticleType {
-  neutron, photon, electron, positron
+  neutron = 1, photon = 2, electron = 3, positron = 4
 };
 
 extern "C" {
@@ -152,8 +154,14 @@ extern "C" {
     //! \param message A warning message to display
     void mark_as_lost(const char* message);
 
+    void mark_as_lost(const std::string& message)
+    {mark_as_lost(message.c_str());}
+
+    void mark_as_lost(const std::stringstream& message)
+    {mark_as_lost(message.str());}
+
     //! create a particle restart HDF5 file
-    void write_restart();
+    void write_restart() const;
   };
 
 

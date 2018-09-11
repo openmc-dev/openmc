@@ -312,7 +312,6 @@ add_library(libopenmc SHARED
   src/material_header.F90
   src/math.F90
   src/matrix_header.F90
-  src/mesh.F90
   src/mesh_header.F90
   src/message_passing.F90
   src/mgxs_data.F90
@@ -380,11 +379,13 @@ add_library(libopenmc SHARED
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90
   src/cell.cpp
+  src/cmfd_execute.cpp
   src/distribution.cpp
   src/distribution_angle.cpp
   src/distribution_energy.cpp
   src/distribution_multi.cpp
   src/distribution_spatial.cpp
+  src/eigenvalue.cpp
   src/endf.cpp
   src/initialize.cpp
   src/finalize.cpp
@@ -394,6 +395,7 @@ add_library(libopenmc SHARED
   src/lattice.cpp
   src/material.cpp
   src/math_functions.cpp
+  src/mesh.cpp
   src/message_passing.cpp
   src/mgxs.cpp
   src/mgxs_interface.cpp

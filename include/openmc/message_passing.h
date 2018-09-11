@@ -10,6 +10,7 @@ namespace mpi {
 
   extern int rank;
   extern int n_procs;
+  extern bool master;
 
 #ifdef OPENMC_MPI
   extern MPI_Datatype bank;

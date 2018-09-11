@@ -2,6 +2,7 @@
 
 #include "openmc/capi.h"
 #include "openmc/message_passing.h"
+#include "openmc/settings.h"
 
 // OPENMC_RUN encompasses all the main logic where iterations are performed
 // over the batches, generations, and histories in a fixed source or k-eigenvalue
@@ -41,10 +42,10 @@ void openmc_simulation_init_c()
 void calculate_work()
 {
   // Determine minimum amount of particles to simulate on each processor
-  int64_t min_work = n_particles/mpi::n_procs;
+  int64_t min_work = settings::n_particles / mpi::n_procs;
 
   // Determine number of processors that have one extra particle
-  int64_t remainder = n_particles % mpi::n_procs;
+  int64_t remainder = settings::n_particles % mpi::n_procs;
 
   int64_t i_bank = 0;
   work_index.reserve(mpi::n_procs);

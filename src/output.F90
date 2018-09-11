@@ -10,7 +10,6 @@ module output
   use error,           only: fatal_error, warning
   use geometry_header
   use math,            only: t_percentile
-  use mesh_header,     only: RegularMesh, meshes
   use message_passing, only: master, n_procs
   use mgxs_interface
   use nuclide_header
@@ -34,6 +33,14 @@ module output
   integer :: ou = OUTPUT_UNIT
   integer :: eu = ERROR_UNIT
 
+  interface
+    function entropy(i) result(h) bind(C, name='entropy_c')
+      import C_INT, C_DOUBLE
+      integer(C_INT), value :: i
+      real(C_DOUBLE) :: h
+    end function
+  end interface
+
 contains
 
 !===============================================================================
@@ -41,7 +48,7 @@ contains
 ! developers, version, and date/time which the problem was run.
 !===============================================================================
 
-  subroutine title()
+  subroutine title() bind(C)
 
 #ifdef _OPENMP
     use omp_lib
@@ -336,7 +343,7 @@ contains
 
     ! write out entropy info
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-         entropy % data(i)
+         entropy(i)
 
     if (n > 1) then
       write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5," +/-",F8.5)', ADVANCE='NO') &
@@ -370,7 +377,7 @@ contains
 
     ! write out entropy info
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-         entropy % data(i)
+         entropy(i)
 
     ! write out accumulated k-effective if after first active batch
     if (n > 1) then
@@ -653,6 +660,10 @@ contains
     if (n_tallies == 0) return
 
     allocate(matches(n_filters))
+    do i = 1, n_filters
+      allocate(matches(i) % bins)
+      allocate(matches(i) % weights)
+    end do
 
     ! Initialize names for scores
     score_names(abs(SCORE_FLUX))               = "Flux"
@@ -847,6 +858,11 @@ contains
     end do TALLY_LOOP
 
     close(UNIT=unit_tally)
+
+    do i = 1, n_filters
+      deallocate(matches(i) % bins)
+      deallocate(matches(i) % weights)
+    end do
 
   end subroutine write_tallies
 

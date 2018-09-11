@@ -11,16 +11,9 @@
 
 namespace openmc {
 
-// TODO: Replace with xtensor/other library?
-typedef std::vector<double> double_1dvec;
-typedef std::vector<std::vector<double> > double_2dvec;
-typedef std::vector<std::vector<std::vector<double> > > double_3dvec;
-typedef std::vector<std::vector<std::vector<std::vector<double> > > > double_4dvec;
-typedef std::vector<std::vector<std::vector<std::vector<std::vector<double> > > > > double_5dvec;
-typedef std::vector<std::vector<std::vector<std::vector<std::vector<std::vector<double> > > > > > double_6dvec;
-typedef std::vector<int> int_1dvec;
-typedef std::vector<std::vector<int> > int_2dvec;
-typedef std::vector<std::vector<std::vector<int> > > int_3dvec;
+using double_2dvec = std::vector<std::vector<double>>;
+using double_3dvec = std::vector<std::vector<std::vector<double>>>;
+using double_4dvec = std::vector<std::vector<std::vector<std::vector<double>>>>;
 
 // ============================================================================
 // VERSIONING NUMBERS
@@ -430,6 +423,13 @@ constexpr int C_NONE {-1};
 enum class Interpolation {
   histogram, lin_lin, lin_log, log_lin, log_log
 };
+
+// Run modes
+constexpr int RUN_MODE_FIXEDSOURCE {1};
+constexpr int RUN_MODE_EIGENVALUE  {2};
+constexpr int RUN_MODE_PLOTTING    {3};
+constexpr int RUN_MODE_PARTICLE    {4};
+constexpr int RUN_MODE_VOLUME      {5};
 
 } // namespace openmc
 

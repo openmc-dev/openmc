@@ -32,7 +32,7 @@ kwargs = {
     # Data files and librarries
     'package_data': {
         'openmc.capi': ['libopenmc.{}'.format(suffix)],
-        'openmc.data': ['mass.mas12', '*.h5']
+        'openmc.data': ['mass.mas12', 'BREMX.DAT', '*.h5']
     },
 
     # Metadata
@@ -52,6 +52,7 @@ kwargs = {
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
     ],
 
     # Required dependencies

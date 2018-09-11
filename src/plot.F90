@@ -9,6 +9,7 @@ module plot
   use hdf5_interface
   use output,          only: time_stamp
   use material_header, only: materials
+  use mesh_header,     only: meshes, RegularMesh
   use particle_header
   use plot_header
   use progress_header, only: ProgressBar
@@ -184,7 +185,7 @@ contains
 !$omp end parallel do
 
     ! Draw tally mesh boundaries on the image if requested
-    if (associated(pl % meshlines_mesh)) call draw_mesh_lines(pl, data)
+    if (pl % index_meshlines_mesh >= 0) call draw_mesh_lines(pl, data)
 
     ! Write out the ppm to a file
     call output_ppm(pl, data)
@@ -214,6 +215,7 @@ contains
     real(8) :: xyz_ur_plot(3)  ! upper right xyz of plot image
     real(8) :: xyz_ll(3)  ! lower left xyz
     real(8) :: xyz_ur(3)  ! upper right xyz
+    type(RegularMesh) :: m
 
     rgb(:) = pl % meshlines_color % rgb
 
@@ -239,57 +241,56 @@ contains
 
     width = xyz_ur_plot - xyz_ll_plot
 
-    associate (m => pl % meshlines_mesh)
-      call m % get_indices(xyz_ll_plot, ijk_ll(:m % n_dimension), in_mesh)
-      call m % get_indices(xyz_ur_plot, ijk_ur(:m % n_dimension), in_mesh)
+    m = meshes(pl % index_meshlines_mesh)
+    call m % get_indices(xyz_ll_plot, ijk_ll(:m % n_dimension()), in_mesh)
+    call m % get_indices(xyz_ur_plot, ijk_ur(:m % n_dimension()), in_mesh)
 
-      ! sweep through all meshbins on this plane and draw borders
-      do i = ijk_ll(outer), ijk_ur(outer)
-        do j = ijk_ll(inner), ijk_ur(inner)
-          ! check if we're in the mesh for this ijk
-          if (i > 0 .and. i <= m % dimension(outer) .and. &
-               j > 0 .and. j <= m % dimension(inner)) then
+    ! sweep through all meshbins on this plane and draw borders
+    do i = ijk_ll(outer), ijk_ur(outer)
+      do j = ijk_ll(inner), ijk_ur(inner)
+        ! check if we're in the mesh for this ijk
+        if (i > 0 .and. i <= m % dimension(outer) .and. &
+              j > 0 .and. j <= m % dimension(inner)) then
 
-            ! get xyz's of lower left and upper right of this mesh cell
-            xyz_ll(outer) = m % lower_left(outer) + m % width(outer) * (i - 1)
-            xyz_ll(inner) = m % lower_left(inner) + m % width(inner) * (j - 1)
-            xyz_ur(outer) = m % lower_left(outer) + m % width(outer) * i
-            xyz_ur(inner) = m % lower_left(inner) + m % width(inner) * j
+          ! get xyz's of lower left and upper right of this mesh cell
+          xyz_ll(outer) = m % lower_left(outer) + m % width(outer) * (i - 1)
+          xyz_ll(inner) = m % lower_left(inner) + m % width(inner) * (j - 1)
+          xyz_ur(outer) = m % lower_left(outer) + m % width(outer) * i
+          xyz_ur(inner) = m % lower_left(inner) + m % width(inner) * j
 
-            ! map the xyz ranges to pixel ranges
+          ! map the xyz ranges to pixel ranges
 
-            frac = (xyz_ll(outer) - xyz_ll_plot(outer)) / width(outer)
-            outrange(1) = int(frac * real(pl % pixels(1), 8))
-            frac = (xyz_ur(outer) - xyz_ll_plot(outer)) / width(outer)
-            outrange(2) = int(frac * real(pl % pixels(1), 8))
+          frac = (xyz_ll(outer) - xyz_ll_plot(outer)) / width(outer)
+          outrange(1) = int(frac * real(pl % pixels(1), 8))
+          frac = (xyz_ur(outer) - xyz_ll_plot(outer)) / width(outer)
+          outrange(2) = int(frac * real(pl % pixels(1), 8))
 
-            frac = (xyz_ur(inner) - xyz_ll_plot(inner)) / width(inner)
-            inrange(1) = int((ONE - frac) * real(pl % pixels(2), 8))
-            frac = (xyz_ll(inner) - xyz_ll_plot(inner)) / width(inner)
-            inrange(2) = int((ONE - frac) * real(pl % pixels(2), 8))
+          frac = (xyz_ur(inner) - xyz_ll_plot(inner)) / width(inner)
+          inrange(1) = int((ONE - frac) * real(pl % pixels(2), 8))
+          frac = (xyz_ll(inner) - xyz_ll_plot(inner)) / width(inner)
+          inrange(2) = int((ONE - frac) * real(pl % pixels(2), 8))
 
-            ! draw lines
-            do out_ = outrange(1), outrange(2)
-              do plus = 0, pl % meshlines_width
-                data(:, out_ + 1, inrange(1) + plus + 1) = rgb
-                data(:, out_ + 1, inrange(2) + plus + 1) = rgb
-                data(:, out_ + 1, inrange(1) - plus + 1) = rgb
-                data(:, out_ + 1, inrange(2) - plus + 1) = rgb
-              end do
+          ! draw lines
+          do out_ = outrange(1), outrange(2)
+            do plus = 0, pl % meshlines_width
+              data(:, out_ + 1, inrange(1) + plus + 1) = rgb
+              data(:, out_ + 1, inrange(2) + plus + 1) = rgb
+              data(:, out_ + 1, inrange(1) - plus + 1) = rgb
+              data(:, out_ + 1, inrange(2) - plus + 1) = rgb
             end do
-            do in_ = inrange(1), inrange(2)
-              do plus = 0, pl % meshlines_width
-                data(:, outrange(1) + plus + 1, in_ + 1) = rgb
-                data(:, outrange(2) + plus + 1, in_ + 1) = rgb
-                data(:, outrange(1) - plus + 1, in_ + 1) = rgb
-                data(:, outrange(2) - plus + 1, in_ + 1) = rgb
-              end do
+          end do
+          do in_ = inrange(1), inrange(2)
+            do plus = 0, pl % meshlines_width
+              data(:, outrange(1) + plus + 1, in_ + 1) = rgb
+              data(:, outrange(2) + plus + 1, in_ + 1) = rgb
+              data(:, outrange(1) - plus + 1, in_ + 1) = rgb
+              data(:, outrange(2) - plus + 1, in_ + 1) = rgb
             end do
+          end do
 
-          end if
-        end do
+        end if
       end do
-    end associate
+    end do
 
   end subroutine draw_mesh_lines
 

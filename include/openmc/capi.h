@@ -37,6 +37,7 @@ extern "C" {
   int openmc_filter_set_type(int32_t index, const char* type);
   int openmc_finalize();
   int openmc_find_cell(double* xyz, int32_t* index, int32_t* instance);
+  int openmc_fission_bank(struct Bank** ptr, int64_t* n);
   int openmc_get_cell_index(int32_t id, int32_t* index);
   int openmc_get_filter_index(int32_t id, int32_t* index);
   void openmc_get_filter_next_id(int32_t* id);
@@ -71,7 +72,7 @@ extern "C" {
   int openmc_mesh_get_params(int32_t index, double** ll, double** ur, double** width, int* n);
   int openmc_mesh_set_id(int32_t index, int32_t id);
   int openmc_mesh_set_dimension(int32_t index, int n, const int* dims);
-  int openmc_mesh_set_params(int32_t index, const double* ll, const double* ur, const double* width, int n);
+  int openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur, const double* width);
   int openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh);
   int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
   int openmc_next_batch(int* status);
@@ -135,16 +136,11 @@ extern "C" {
   extern char openmc_err_msg[256];
   extern double openmc_keff;
   extern double openmc_keff_std;
-  extern int32_t gen_per_batch;
-  extern int32_t n_batches;
   extern int32_t n_cells;
   extern int32_t n_filters;
-  extern int32_t n_inactive;
   extern int32_t n_lattices;
   extern int32_t n_materials;
-  extern int32_t n_meshes;
   extern int n_nuclides;
-  extern int64_t n_particles;
   extern int32_t n_plots;
   extern int32_t n_realizations;
   extern int32_t n_sab_tables;
@@ -152,9 +148,7 @@ extern "C" {
   extern int32_t n_surfaces;
   extern int32_t n_tallies;
   extern int32_t n_universes;
-  extern int openmc_run_mode;
   extern bool openmc_simulation_initialized;
-  extern int openmc_verbosity;
 
   // Variables that are shared by necessity (can be removed from public header
   // later)
@@ -163,13 +157,6 @@ extern "C" {
   extern int openmc_n_threads;
   extern int openmc_rank;
   extern int64_t openmc_work;
-
-  // Run modes
-  const int RUN_MODE_FIXEDSOURCE = 1;
-  const int RUN_MODE_EIGENVALUE = 2;
-  const int RUN_MODE_PLOTTING = 3;
-  const int RUN_MODE_PARTICLE = 4;
-  const int RUN_MODE_VOLUME = 5;
 
 #ifdef __cplusplus
 }

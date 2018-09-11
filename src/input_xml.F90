@@ -389,14 +389,14 @@ contains
       c => cells(i)
       ! additional metadata spoofing
       univ_id = c % universe()
-      
+
       if (.not. cells_in_univ_dict % has(univ_id)) then
-         n_universes = n_universes + 1
-         n_cells_in_univ = 1
-         call universe_dict % set(univ_id, n_universes)
-         call univ_ids % push_back(univ_id)
+        n_universes = n_universes + 1
+        n_cells_in_univ = 1
+        call universe_dict % set(univ_id, n_universes)
+        call univ_ids % push_back(univ_id)
       else
-         n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
+        n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
       end if
       call cells_in_univ_dict % set(univ_id, n_cells_in_univ)
     end do

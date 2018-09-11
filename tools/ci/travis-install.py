@@ -63,7 +63,7 @@ def install(omp=False, mpi=False, phdf5=False, cad=False):
 def mkcd(directory):
     os.mkdir(directory)
     os.chdir(directory)
-    
+
 def build_dagmc():
 
     current_dir = os.getcwd()
@@ -95,6 +95,9 @@ def build_dagmc():
     
     # update LB_LIBRARY_PATH (so DAGMC can find MOAB)
     os.environ['LD_LIBRARY_PATH'] = moab_install_dir+"/lib" + ":" + ld_lib_path
+
+    # remove moab source dir
+    os.rmdir(home_dir + "/MOAB/moab")
     
     # build dagmc
     os.chdir(home_dir)
@@ -116,7 +119,11 @@ def build_dagmc():
 
     # update LB_LIBRARY_PATH (so DAGMC can find MOAB)
     os.environ['LD_LIBRARY_PATH'] = dagmc_install_dir+"/lib" + ":" + ld_lib_path
-    
+
+    # remove dagmc source dir
+    os.rmdir(home_dir + "/DAGMC/dagmc")
+
+    # return to original directory
     os.chdir(current_dir)
 
 def main():

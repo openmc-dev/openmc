@@ -13,8 +13,8 @@ pytestmark = pytest.mark.skipif(
 def test_cad():
     # make sure cwd is in the python system path
     d = os.path.abspath(os.path.dirname(__file__))
-    print(d)
-    sys.path.append(d)
-    
+    # move here
+    os.chdir(d)
+    # run test
     assert not call(['openmc','-s','1'])
     

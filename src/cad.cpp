@@ -73,7 +73,7 @@ void load_cad_geometry_c()
 	MB_CHK_ERR_CONT(rval);
 	TOLOWER(mat_value);
 	
-	if(mat_value == "void") {
+	if(mat_value == "void" || mat_value == "vacuum") {
 	  c->material_.push_back(openmc::MATERIAL_VOID);
 	}
 	else {

@@ -1,4 +1,4 @@
-from tests.testing_harness import TestHarness
+from tests.testing_harness import CADTestHarness
 
 import pytest
 pytestmark = pytest.mark.skipif(
@@ -6,5 +6,5 @@ pytestmark = pytest.mark.skipif(
     reason="CAD build is not enabled.")
 
 def test_cad():
-    harness = TestHarness('statepoint.15.h5')
+    harness = CADTestHarness('statepoint.15.h5')
     harness.main()    

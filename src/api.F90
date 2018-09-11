@@ -11,7 +11,6 @@ module openmc_api
   use hdf5_interface
   use material_header
   use math
-  use mesh_header
   use message_passing
   use nuclide_header
   use initialize,      only: openmc_init_f
@@ -132,7 +131,7 @@ contains
     legendre_to_tabular_points = C_NONE
     n_batch_interval = 1
     n_lost_particles = 0
-    n_particles = 0
+    n_particles = -1
     n_source_points = 0
     n_state_points = 0
     n_tallies = 0
@@ -149,7 +148,7 @@ contains
     restart_run = .false.
     root_universe = -1
     run_CE = .true.
-    run_mode = NONE
+    run_mode = -1
     satisfy_triggers = .false.
     call openmc_set_seed(DEFAULT_SEED)
     source_latest = .false.
@@ -305,6 +304,9 @@ contains
     interface
       subroutine free_memory_source() bind(C)
       end subroutine
+
+      subroutine free_memory_mesh() bind(C)
+      end subroutine free_memory_mesh
     end interface
 
     call free_memory_geometry()

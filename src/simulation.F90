@@ -10,8 +10,7 @@ module simulation
   use cmfd_execute,    only: cmfd_init_batch, cmfd_tally_init, execute_cmfd
   use cmfd_header,     only: cmfd_on
   use constants,       only: ZERO
-  use eigenvalue,      only: count_source_for_ufs, calculate_average_keff, &
-                             calculate_generation_keff, shannon_entropy, &
+  use eigenvalue,      only: calculate_average_keff, calculate_generation_keff, &
                              synchronize_bank, keff_generation, k_sum
 #ifdef _OPENMP
   use eigenvalue,      only: join_bank_from_threads
@@ -234,12 +233,17 @@ contains
 
   subroutine initialize_generation()
 
+    interface
+      subroutine ufs_count_sites() bind(C)
+      end subroutine
+    end interface
+
     if (run_mode == MODE_EIGENVALUE) then
       ! Reset number of fission bank sites
       n_bank = 0
 
       ! Count source sites if using uniform fission source weighting
-      if (ufs) call count_source_for_ufs()
+      if (ufs) call ufs_count_sites()
 
       ! Store current value of tracklength k
       keff_generation = global_tallies(RESULT_VALUE, K_TRACKLENGTH)
@@ -255,6 +259,9 @@ contains
 
     interface
       subroutine fill_source_bank_fixedsource() bind(C)
+      end subroutine
+
+      subroutine shannon_entropy() bind(C)
       end subroutine
     end interface
 
@@ -465,13 +472,17 @@ contains
 
     ! Allocate array for matching filter bins
     allocate(filter_matches(n_filters))
+    do i = 1, n_filters
+      allocate(filter_matches(i) % bins)
+      allocate(filter_matches(i) % weights)
+    end do
 !$omp end parallel
 
     ! Reset global variables -- this is done before loading state point (as that
     ! will potentially populate k_generation and entropy)
     current_batch = 0
     call k_generation % clear()
-    call entropy % clear()
+    call entropy_clear()
     need_depletion_rx = .false.
 
     ! If this is a restart run, load the state point data and binary source
@@ -550,6 +561,10 @@ contains
       deallocate(materials(i) % mat_nuclide_index)
     end do
 !$omp parallel
+    do i = 1, size(filter_matches)
+      deallocate(filter_matches(i) % bins)
+      deallocate(filter_matches(i) % weights)
+    end do
     deallocate(micro_xs, micro_photon_xs, filter_matches)
 !$omp end parallel
 

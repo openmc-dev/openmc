@@ -100,7 +100,8 @@ assign_temperatures()
           c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * T));
         } else {
           // Use the global default temperature.
-          c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * temperature_default));
+          c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN *
+            settings::temperature_default));
         }
       }
     }

@@ -620,7 +620,7 @@ read_cells(pugi::xml_node* node)
   universes.shrink_to_fit();
 
   // Allocate the cell overlap count if necessary.
-  if (openmc_check_overlaps) overlap_check_count.resize(n_cells, 0);
+  if (settings::check_overlaps) overlap_check_count.resize(n_cells, 0);
 }
 
 //==============================================================================

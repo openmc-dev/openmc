@@ -257,14 +257,14 @@ contains
     logical :: print_ebin           ! should incoming energy bin be displayed?
     real(8) :: rel_err  = ZERO      ! temporary relative error of result
     real(8) :: std_dev  = ZERO      ! temporary standard deviration of result
-    type(RegularMesh), pointer :: m        ! surface current mesh
+    type(RegularMesh) :: m        ! surface current mesh
 
     ! Get pointer to mesh
     i_filter_mesh = t % filter(t % find_filter(FILTER_MESH))
     i_filter_surf = t % filter(t % find_filter(FILTER_SURFACE))
     select type(filt => filters(i_filter_mesh) % obj)
     type is (MeshFilter)
-      m => meshes(filt % mesh)
+      m = meshes(filt % mesh)
     end select
 
     ! initialize bins array
@@ -285,8 +285,11 @@ contains
     end if
 
     ! Get the dimensions and number of cells in the mesh
-    n_dim = m % n_dimension
-    n_cells = product(m % dimension)
+    n_dim = m % n_dimension()
+    n_cells = 1
+    do j = 1, n_dim
+      n_cells = n_cells * m % dimension(j)
+    end do
 
     ! Loop over all the mesh cells
     do i = 1, n_cells

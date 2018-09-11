@@ -1,11 +1,14 @@
 #ifndef OPENMC_XML_INTERFACE_H
 #define OPENMC_XML_INTERFACE_H
 
+#include <cstddef> // for size_t
 #include <sstream> // for stringstream
 #include <string>
 #include <vector>
 
 #include "pugixml.hpp"
+#include "xtensor/xarray.hpp"
+#include "xtensor/xadapt.hpp"
 
 
 namespace openmc {
@@ -36,6 +39,15 @@ std::vector<T> get_node_array(pugi::xml_node node, const char* name,
     values.push_back(value);
 
   return values;
+}
+
+template <typename T>
+xt::xarray<T> get_node_xarray(pugi::xml_node node, const char* name,
+                              bool lowercase=false)
+{
+  std::vector<T> v = get_node_array<T>(node, name, lowercase);
+  std::vector<std::size_t> shape = {v.size()};
+  return xt::adapt(v, shape);
 }
 
 } // namespace openmc

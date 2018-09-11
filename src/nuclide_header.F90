@@ -601,7 +601,6 @@ contains
 
     integer :: i, j, k, l
     integer :: t
-    integer :: m
     integer :: n
     integer :: n_grid
     integer :: i_fission

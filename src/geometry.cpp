@@ -7,6 +7,7 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/lattice.h"
+#include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/surface.h"
 
@@ -90,7 +91,7 @@ find_cell(Particle* p, int search_surf) {
     if (cells[i_cell]->contains(r, u, surf)) {
       p->coord[p->n_coord-1].cell = i_cell;
 
-      if (openmc_verbosity >= 10 || openmc_trace) {
+      if (settings::verbosity >= 10 || openmc_trace) {
         std::stringstream msg;
         msg << "    Entering cell " << cells[i_cell]->id_;
         write_message(msg, 1);
@@ -243,6 +244,8 @@ find_cell(Particle* p, int search_surf) {
       return find_cell(p, 0);
     }
   }
+
+  return found;
 }
 
 //==============================================================================
@@ -252,7 +255,7 @@ cross_lattice(Particle* p, int lattice_translation[3])
 {
   Lattice& lat {*lattices[p->coord[p->n_coord-1].lattice-1]};
 
-  if (openmc_verbosity >= 10 || openmc_trace) {
+  if (settings::verbosity >= 10 || openmc_trace) {
     std::stringstream msg;
     msg << "    Crossing lattice " << lat.id_ << ". Current position ("
          << p->coord[p->n_coord-1].lattice_x << ","

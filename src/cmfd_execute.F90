@@ -214,8 +214,6 @@ contains
     use bank_header, only: source_bank
     use constants,   only: ZERO, ONE
     use error,       only: warning, fatal_error
-    use mesh_header, only: RegularMesh
-    use mesh,        only: count_bank_sites
     use message_passing
     use string,      only: to_str
 
@@ -224,7 +222,7 @@ contains
     integer :: nx       ! maximum number of cells in x direction
     integer :: ny       ! maximum number of cells in y direction
     integer :: nz       ! maximum number of cells in z direction
-    integer :: ng       ! maximum number of energy groups
+    integer(C_INT) :: ng       ! maximum number of energy groups
     integer :: i        ! iteration counter
     integer :: g        ! index for group
     integer :: ijk(3)   ! spatial bin location
@@ -232,11 +230,21 @@ contains
     integer :: mesh_bin ! mesh bin of soruce particle
     integer :: n_groups ! number of energy groups
     real(8) :: norm     ! normalization factor
-    logical :: outside  ! any source sites outside mesh
+    logical(C_BOOL) :: outside  ! any source sites outside mesh
     logical :: in_mesh  ! source site is inside mesh
 #ifdef OPENMC_MPI
     integer :: mpi_err
 #endif
+
+    interface
+      subroutine cmfd_populate_sourcecounts(ng, energies, source_counts, outside) bind(C)
+        import C_INT, C_DOUBLE, C_BOOL
+        integer(C_INT), value :: ng
+        real(C_DOUBLE), intent(in) :: energies
+        real(C_DOUBLE), intent(out) :: source_counts
+        logical(C_BOOL), intent(out) :: outside
+      end subroutine
+    end interface
 
     ! Get maximum of spatial and group indices
     nx = cmfd % indices(1)
@@ -261,8 +269,8 @@ contains
       cmfd%weightfactors = ONE
 
       ! Count bank sites in mesh and reverse due to egrid structure
-      call count_bank_sites(cmfd_mesh, source_bank, cmfd%sourcecounts, &
-           cmfd % egrid, sites_outside=outside, size_bank=work)
+      call cmfd_populate_sourcecounts(ng + 1, cmfd % egrid(1), &
+           cmfd % sourcecounts(1,1), outside)
 
       ! Check for sites outside of the mesh
       if (master .and. outside) then

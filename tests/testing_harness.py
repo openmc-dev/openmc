@@ -316,8 +316,5 @@ class HashedPyAPITestHarness(PyAPITestHarness):
 
 class CADTestHarness(TestHarness):
 
-    def __init__(self, statepoint_name):
-        super(TestHarness, self).__init__(statepoint_name)
-
     def _run_openmc(self):
         openmc.run(openmc_exec=config['exe'], threads = 1)

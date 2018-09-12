@@ -57,7 +57,7 @@ def install(omp=False, mpi=False, phdf5=False, cad=False):
     cmake_cmd.append('..')
     print(' '.join(cmake_cmd))
     subprocess.check_call(cmake_cmd)
-    subprocess.check_call(['make', '-j'])
+    subprocess.check_call(['make', '-j2'])
     subprocess.check_call(['sudo', 'make', 'install'])
 
 def mkcd(directory):
@@ -81,7 +81,7 @@ def build_dagmc():
     cmake_cmd = ['cmake', '../moab', '-DENABLE_HDF5=ON', '-DENABLE_TOOLS=ON', '-DCMAKE_INSTALL_PREFIX='+moab_install_dir]
     subprocess.check_call(cmake_cmd)
 
-    subprocess.check_call(['make', '-j'])
+    subprocess.check_call(['make', '-j2'])
 
     subprocess.check_call(['make', 'test'])
 
@@ -113,7 +113,7 @@ def build_dagmc():
     cmake_cmd = ['cmake', '../dagmc', '-DCMAKE_INSTALL_PREFIX='+dagmc_install_dir, '-DBUILD_TALLY=ON']
     subprocess.check_call(cmake_cmd)    
 
-    subprocess.check_call(['make','-j'])
+    subprocess.check_call(['make','-j2'])
 
     subprocess.check_call(['make','install'])
 

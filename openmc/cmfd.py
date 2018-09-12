@@ -1020,7 +1020,7 @@ class CMFDRun(object):
         check_type('CMFD write matrices', cmfd_write_matrices, bool)
         self._cmfd_write_matrices = cmfd_write_matrices
 
-    def run(self, omp_num_threads=None, intracomm=None):
+    def run(self, omp_num_threads=None, intracomm=None, vectorized=True):
         """Public method to run OpenMC with CMFD
 
         This method is called by user to run CMFD once instance variables of
@@ -1068,7 +1068,7 @@ class CMFDRun(object):
 
             # Perform CMFD calculation if on
             if self._cmfd_on:
-                self._execute_cmfd()
+                self._execute_cmfd(vectorized)
 
             # Run everything in next batch after executing CMFD. Status
             # determines whether another batch should be run or
@@ -1237,18 +1237,18 @@ class CMFDRun(object):
                 and current_batch in self._cmfd_reset):
             self._cmfd_tally_reset()
 
-    def _execute_cmfd(self):
+    def _execute_cmfd(self, vectorized):
         """Runs CMFD calculation on master node"""
         # Run CMFD on single processor on master
         if openmc.capi.master():
-            #! Start CMFD timer
+            # Start CMFD timer
             time_start_cmfd = time.time()
 
             # Create CMFD data from OpenMC tallies
-            self._set_up_cmfd()
+            self._set_up_cmfd(vectorized=vectorized)
 
             # Call solver
-            self._cmfd_solver_execute()
+            self._cmfd_solver_execute(vectorized=vectorized)
 
             # Store k-effective
             self._k_cmfd.append(self._keff)
@@ -1259,7 +1259,7 @@ class CMFDRun(object):
                 self._cmfd_solver_execute(adjoint=True)
 
             # Calculate fission source
-            self._calc_fission_source()
+            self._calc_fission_source(vectorized=vectorized)
 
         # Calculate weight factors
         self._cmfd_reweight(True)
@@ -1363,9 +1363,11 @@ class CMFDRun(object):
         # Write out flux vector
         if self._cmfd_write_matrices:
             if adjoint:
-                self._write_vector(self._adj_phi, 'adj_fluxvec')
+                # TODO Change to self._adj_phi
+                self._write_vector(phi, 'adj_fluxvec')
             else:
-                self._write_vector(self._phi, 'fluxvec')
+                # TODO Change to self._phi
+                self._write_vector(phi, 'fluxvec')
 
     def _write_vector(self, vector, base_filename):
         """Write a 1-D numpy array to file and also save it in .npy format. This
@@ -1470,7 +1472,8 @@ class CMFDRun(object):
             # Loop over all groups and set CMFD flux based on indices of
             # coremap and values of phi
             for g in range(ng):
-                cmfd_flux[idx + (np.full((n,),g),)]  = phi[:,g]
+                phi_g = phi[:,g]
+                cmfd_flux[idx + (np.full((n,),g),)]  = phi_g[self._coremap[idx]]
 
             # Compute fission source
             cmfd_src = np.sum(self._nfissxs[:,:,:,:,:] * \
@@ -1531,6 +1534,12 @@ class CMFDRun(object):
         # Compute new weight factors
         if new_weights:
 
+            # Get spatial dimensions and energy groups
+            nx = self._indices[0]
+            ny = self._indices[1]
+            nz = self._indices[2]
+            ng = self._indices[3]
+
             # Set weight factors to default 1.0
             self._weightfactors.fill(1.0)
 
@@ -1546,10 +1555,20 @@ class CMFDRun(object):
             if openmc.capi.master():
                 # Compute normalization factor
                 norm = np.sum(self._sourcecounts) / np.sum(self._cmfd_src)
+
+                # Define target reshape dimensions for sourcecounts. This defines
+                # how self._sourcecounts is ordered by dimension
+                target_shape = [nz, ny, nx, ng]
+
+                # Reshape sourcecounts to target shape. Swap x and z axes so that
+                # shape is now [nx, ny, nz, ng]
+                sourcecounts = np.swapaxes(
+                        self._sourcecounts.reshape(target_shape), 0, 2)
+
                 # Flip index of energy dimension
-                sourcecounts = np.flip(
-                        self._sourcecounts.reshape(self._cmfd_src.shape), \
-                        axis=3)
+                sourcecounts = np.flip(sourcecounts, axis=3)
+
+                # Compute weight factors
                 divide_condition = np.logical_and(sourcecounts > 0,
                                                   self._cmfd_src > 0)
                 self._weightfactors = np.divide(self._cmfd_src * norm, \
@@ -1615,8 +1634,8 @@ class CMFDRun(object):
 
         # Convert xyz location to mesh index and ravel index to scalar
         mesh_locations = np.floor((source_xyz - m.lower_left) / m.width)
-        mesh_bins = mesh_locations[:,2] * m.dimension[2] + \
-                    mesh_locations[:,1] * m.dimension[1] + mesh_locations[:,0]
+        mesh_bins = mesh_locations[:,2] * m.dimension[1] * m.dimension[0] + \
+                    mesh_locations[:,1] * m.dimension[0] + mesh_locations[:,0]
 
         # Check if any source locations lie outside of defined CMFD mesh
         if np.any(mesh_bins < 0) or np.any(mesh_bins >= np.prod(m.dimension)):
@@ -1908,9 +1927,9 @@ class CMFDRun(object):
             # Extract all regions where a cell and its neighbor to the right
             # are both fuel regions
             condition = np.logical_and(self._coremap != _CMFD_NOACCEL,
-                                       coremap_shift_left != _CMFD_NOACCEL)
+                                       coremap_shift_right != _CMFD_NOACCEL)
             idx_x = ng * (self._coremap[condition]) + g
-            idx_y = ng * (coremap_shift_left[condition]) + g
+            idx_y = ng * (coremap_shift_right[condition]) + g
             # Compute leakage term associated with these regions
             vals = (-1.0 * self._dtilde[:,:,:,g,1] +
                    self._dhat[:,:,:,g,1])[condition] / \
@@ -2360,6 +2379,9 @@ class CMFDRun(object):
 
         """
         # Extract energy indices
+        nx = self._indices[0]
+        ny = self._indices[1]
+        nz = self._indices[2]
         ng = self._indices[3]
 
         # Set flux object and source distribution all to zeros
@@ -2400,20 +2422,30 @@ class CMFDRun(object):
                           ') in group ' + str(ng-mat_idx[-1])
             raise OpenMCError(err_message)
 
-        # Store flux and reshape
-        # Flux is flipped in energy axis as tally results are given in reverse
-        # order of energy group
-        self._flux = np.flip(flux.reshape(self._flux.shape), axis=3)
+        # Define target tally reshape dimensions. This defines how openmc
+        # tallies are ordered by dimension
+        target_tally_shape = [nz, ny, nx, ng]
+
+        # Reshape flux array to target shape. Swap x and z axes so that
+        # flux shape is now [nx, ny, nz, ng]
+        reshape_flux = np.swapaxes(flux.reshape(target_tally_shape), 0, 2)
+
+        # Flip energy axis as tally results are given in reverse order of
+        # energy group
+        self._flux = np.flip(reshape_flux, axis=3)
 
         # Get total rr and convert to total xs from CMFD tally 0
         tally_results = tallies[tally_id].results[:,1,1]
         totalxs = np.divide(tally_results, flux, \
                             where=flux>0, out=np.zeros_like(tally_results))
 
-        # Store total xs and reshape
+        # Reshape totalxs array to target shape. Swap x and z axes so that
+        # shape is now [nx, ny, nz, ng]
+        reshape_totalxs = np.swapaxes(totalxs.reshape(target_tally_shape), 0, 2)
+
         # Total xs is flipped in energy axis as tally results are given in
         # reverse order of energy group
-        self._totalxs = np.flip(totalxs.reshape(self._totalxs.shape), axis=3)
+        self._totalxs = np.flip(reshape_totalxs, axis=3)
 
         # Get scattering xs from CMFD tally 1
         # flux is repeated to account for extra dimensionality of scattering xs
@@ -2424,10 +2456,17 @@ class CMFDRun(object):
                             where=np.repeat(flux>0, ng), \
                             out=np.zeros_like(tally_results))
 
-        # Store scattxs and reshape
+        # Define target tally reshape dimensions for xs with incoming
+        # and outgoing energies
+        target_tally_shape = [nz, ny, nx, ng, ng]
+
+        # Reshape scattxs array to target shape. Swap x and z axes so that
+        # shape is now [nx, ny, nz, ng, ng]
+        reshape_scattxs = np.swapaxes(scattxs.reshape(target_tally_shape), 0, 2)
+
         # Scattering xs is flipped in both incoming and outgoing energy axes
         # as tally results are given in reverse order of energy group
-        self._scattxs = np.flip(scattxs.reshape(self._scattxs.shape), axis=3)
+        self._scattxs = np.flip(reshape_scattxs, axis=3)
         self._scattxs = np.flip(self._scattxs, axis=4)
 
         # Get nu-fission xs from CMFD tally 1
@@ -2439,10 +2478,13 @@ class CMFDRun(object):
                             where=np.repeat(flux>0, ng), \
                             out=np.zeros_like(tally_results))
 
-        # Store nfissxs and reshape
+        # Reshape nfissxs array to target shape. Swap x and z axes so that
+        # shape is now [nx, ny, nz, ng, ng]
+        reshape_nfissxs = np.swapaxes(nfissxs.reshape(target_tally_shape), 0, 2)
+
         # Nu-fission xs is flipped in both incoming and outgoing energy axes
         # as tally results are given in reverse order of energy group
-        self._nfissxs = np.flip(nfissxs.reshape(self._nfissxs.shape), axis=3)
+        self._nfissxs = np.flip(reshape_nfissxs, axis=3)
         self._nfissxs = np.flip(self._nfissxs, axis=4)
 
         # Openmc source distribution is sum of nu-fission rr in incoming energies
@@ -2460,20 +2502,29 @@ class CMFDRun(object):
         tally_results = tallies[tally_id].results[:,0,1]
 
         # Filter tally results to include only accelerated regions
-        tally_results = np.where(np.repeat(flux>0, 12), tally_results, 0.)
+        current = np.where(np.repeat(flux>0, 12), tally_results, 0.)
 
-        # Reshape and store current
+        # Define target tally reshape dimensions for current
+        target_tally_shape = [nz, ny, nx, ng, 12]
+
+        # Reshape current array to target shape. Swap x and z axes so that
+        # shape is now [nx, ny, nz, ng, 12]
+        reshape_current = np.swapaxes(current.reshape(target_tally_shape), 0, 2)
+
         # Current is flipped in energy axis as tally results are given in
         # reverse order of energy group
-        self._current = np.flip(tally_results.reshape(self._current.shape), \
-                                axis=3)
+        self._current = np.flip(reshape_current, axis=3)
 
         # Get p1 scatter xs from CMFD tally 3
         tally_id = self._cmfd_tally_ids[3]
         tally_results = tallies[tally_id].results[:,0,1]
 
+        # Define target tally reshape dimensions for p1 scatter tally
+        target_tally_shape = [nz, ny, nx, 2, ng]
+
         # Reshape and extract only p1 data from tally results (no need for p0 data)
-        p1scattrr = tally_results.reshape(self._p1scattxs.shape+(2,))[:,:,:,1]
+        p1scattrr = np.swapaxes(tally_results.reshape(target_tally_shape),
+                                0, 2)[:,:,:,1,:]
 
         # Store p1 scatter xs
         # p1 scatter xs is flipped in energy axis as tally results are given in
@@ -2488,7 +2539,8 @@ class CMFDRun(object):
 
         # Reshape coremap to three dimensional array as all cross section data
         # has been reshaped
-        self._coremap = self._coremap.reshape(self._indices[0:3])
+        self._coremap = self._coremap.reshape(nz,ny,nx)
+        self._coremap = np.swapaxes(self._coremap, 0, 2)
 
     def _compute_effective_downscatter(self):
         """Changes downscatter rate for zero upscatter"""
@@ -2942,7 +2994,7 @@ class CMFDRun(object):
             cell_flux[:,0,:,:]) / cell_flux[:,0,:,:], 0)
         # Define dtilde at front surface for all mesh cells on front boundary
         self._dhat[:,-1,:,:,3] = np.where(is_accel[:,-1,:,np.newaxis],
-            (net_current_front[:,-1,:,:] + self._dtilde[:,-1,:,:,3] * \
+            (net_current_front[:,-1,:,:] - self._dtilde[:,-1,:,:,3] * \
             cell_flux[:,-1,:,:]) / cell_flux[:,-1,:,:], 0)
         # Define dtilde at bottom surface for all mesh cells on bottom boundary
         self._dhat[:,:,0,:,4] = np.where(is_accel[:,:,0,np.newaxis],
@@ -2950,7 +3002,7 @@ class CMFDRun(object):
             cell_flux[:,:,0,:]) / cell_flux[:,:,0,:], 0)
         # Define dtilde at top surface for all mesh cells on top boundary
         self._dhat[:,:,-1,:,5] = np.where(is_accel[:,:,-1,np.newaxis],
-            (net_current_top[:,:,-1,:] + self._dtilde[:,:,-1,:,5] * \
+            (net_current_top[:,:,-1,:] - self._dtilde[:,:,-1,:,5] * \
             cell_flux[:,:,-1,:]) / cell_flux[:,:,-1,:], 0)
 
         # Logical for whether neighboring cell to the left is reflector region

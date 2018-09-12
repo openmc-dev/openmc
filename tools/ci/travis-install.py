@@ -97,7 +97,7 @@ def build_dagmc():
     os.environ['LD_LIBRARY_PATH'] = moab_install_dir+"/lib" + ":" + ld_lib_path
 
     # remove moab source dir
-    os.rmdir(home_dir + "/MOAB/moab")
+    shutil.rmtree(home_dir + "/MOAB/moab")
     
     # build dagmc
     os.chdir(home_dir)
@@ -121,7 +121,7 @@ def build_dagmc():
     os.environ['LD_LIBRARY_PATH'] = dagmc_install_dir+"/lib" + ":" + ld_lib_path
 
     # remove dagmc source dir
-    os.rmdir(home_dir + "/DAGMC/dagmc")
+    shutil.rmtree(home_dir + "/DAGMC/dagmc")
 
     # return to original directory
     os.chdir(current_dir)

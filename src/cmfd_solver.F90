@@ -150,8 +150,8 @@ contains
         call loss % write('adj_loss.dat')
         call prod % write('adj_prod.dat')
       else
-        call loss % write('adj.dat')
-        call prod % write('adj.dat')
+        call loss % write('loss.dat')
+        call prod % write('prod.dat')
       end if
     end if
 

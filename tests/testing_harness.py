@@ -316,5 +316,11 @@ class HashedPyAPITestHarness(PyAPITestHarness):
 
 class CADTestHarness(TestHarness):
 
-    def _run_openmc(self):
-        openmc.run(openmc_exec=config['exe'], threads = 1)
+    def execute_test(self):
+        """Run OpenMC with the appropriate arguments and check the outputs."""
+        try:
+            self._run_openmc()
+            self._test_output_created()
+        finally:
+            self._cleanup()
+        

@@ -477,7 +477,7 @@ contains
            MTs % data(i) /= N_NF .and. MTs % data(i) /= N_2NF .and. &
            MTs % data(i) /= N_3NF .and. MTs % data(i) < 200 .and. &
            MTs % data(i) /= N_LEVEL .and. MTs % data(i) /= ELASTIC .and. &
-           .not. this % reactions(i) % summed) then
+           .not. this % reactions(i) % redundant) then
 
         call index_inelastic_scatter % push_back(i)
       end if
@@ -653,8 +653,8 @@ contains
           if (rx % MT >= N_A0 .and. rx % MT <= N_AC .and. find(MTs, N_A) /= -1) cycle
           if (rx % MT >= N_2N0 .and. rx % MT <= N_2NC .and. find(MTs, N_2N) /= -1) cycle
 
-          ! Skip summed reactions, which are used for photon production
-          if (rx % summed) cycle
+          ! Skip redundant reactions, which are used for photon production
+          if (rx % redundant) cycle
 
           ! Add contribution to total cross section
           do k = j, j + n - 1

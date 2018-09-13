@@ -17,8 +17,8 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
   int tmp;
   read_attribute(group, "center_of_mass", tmp);
   scatter_in_cm_ = (tmp == 1);
-  read_attribute(group, "summed", tmp);
-  summed_ = (tmp == 1);
+  read_attribute(group, "redundant", tmp);
+  redundant_ = (tmp == 1);
 
   // Read cross section and threshold_idx data
   for (auto t : temperatures) {
@@ -87,7 +87,7 @@ double reaction_q_value(Reaction* rx) { return rx->q_value_; }
 
 bool reaction_scatter_in_cm(Reaction* rx) { return rx->scatter_in_cm_; }
 
-bool reaction_summed(Reaction* rx) { return rx->summed_; }
+bool reaction_redundant(Reaction* rx) { return rx->redundant_; }
 
 double reaction_product_decay_rate(Reaction* rx, int product)
 {

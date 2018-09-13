@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<cmfd>
+
+  <mesh>
+    <lower_left>{cmfd_mesh_ll}</lower_left>
+    <upper_right>{cmfd_mesh_ur}</upper_right>
+    <dimension>{cmfd_mesh_dim}</dimension>
+    <albedo>{albedo}</albedo>
+  </mesh>
+  <begin>{cmfd_begin}</begin>
+  <display>dominance</display>
+  <feedback>true</feedback>
+  <gauss_seidel_tolerance>1.e-15 1.e-20</gauss_seidel_tolerance>
+</cmfd>

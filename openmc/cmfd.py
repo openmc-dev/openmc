@@ -839,6 +839,8 @@ class CMFDRun(object):
         self._time_cmfd = None
         self._time_cmfdbuild = None
         self._time_cmfdsolve = None
+        self._time_compute_dhat_dtilde = None
+        self._time_compute_fs = None
         self._intracomm = None
 
     @property
@@ -1115,7 +1117,9 @@ class CMFDRun(object):
    Time in CMFD                    =  {0:.5E} seconds
      Building matrices             =  {1:.5E} seconds
      Solving matrices              =  {2:.5E} seconds
-""".format(self._time_cmfd, self._time_cmfdbuild, self._time_cmfdsolve))
+     Compute dhat, dtilde          =  {3:.5E} seconds
+     Compute fission source        =  {4:.5E} seconds
+""".format(self._time_cmfd, self._time_cmfdbuild, self._time_cmfdsolve, self._time_compute_dhat_dtilde, self._time_compute_fs))
         sys.stdout.flush()
 
     def _configure_cmfd(self):
@@ -1127,6 +1131,9 @@ class CMFDRun(object):
         self._time_cmfd = 0.0
         self._time_cmfdbuild = 0.0
         self._time_cmfdsolve = 0.0
+
+        self._time_compute_dhat_dtilde = 0.0
+        self._time_compute_fs = 0.0
 
         # Initialize all numpy arrays used for CMFD solver
         self._allocate_cmfd()
@@ -1258,8 +1265,12 @@ class CMFDRun(object):
                 and self._cmfd_run_adjoint):
                 self._cmfd_solver_execute(adjoint=True)
 
+            time_start_compute_fs = time.time()
             # Calculate fission source
             self._calc_fission_source(vectorized=vectorized)
+
+            time_stop_compute_fs = time.time()
+            self._time_compute_fs += (time_stop_compute_fs - time_start_compute_fs)
 
         # Calculate weight factors
         self._cmfd_reweight(True)
@@ -1303,6 +1314,7 @@ class CMFDRun(object):
         # Check neutron balance
         self._neutron_balance()
 
+        time_start_compute_dhat_dtilde = time.time()
         # Calculate dtilde
         if vectorized:
             self._compute_dtilde_vectorized()
@@ -1314,6 +1326,8 @@ class CMFDRun(object):
             self._compute_dhat_vectorized()
         else:
             self._compute_dhat()
+        time_stop_compute_dhat_dtilde = time.time()
+        self._time_compute_dhat_dtilde += (time_stop_compute_dhat_dtilde - time_start_compute_dhat_dtilde)
 
     def _cmfd_solver_execute(self, adjoint=False, vectorized=True):
         """Sets up and runs power iteration solver for CMFD

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings>
+
+  <!-- Parameters for criticality calculation -->
+  <run_mode>eigenvalue</run_mode>
+  <batches>{num_batches}</batches>
+  <inactive> {num_inactive}</inactive>
+  <particles>{num_particles}</particles>
+
+  <!-- Starting source -->
+  <source>
+    <space>
+      <type>box</type>
+      <parameters>{source}</parameters>
+    </space>
+  </source>
+
+  <!-- Shannon Entropy -->
+  <mesh id="10">
+    <dimension>{ent_mesh_dim}</dimension>
+    <lower_left>{ent_mesh_ll}</lower_left>
+    <upper_right>{ent_mesh_ur}</upper_right>
+  </mesh>
+  <entropy_mesh>10</entropy_mesh>
+
+  <!-- Run CMFD -->
+  <run_cmfd>{run_cmfd}</run_cmfd>
+</settings>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<geometry>
+
+<!-- Definition of Cells -->
+  <cell id="1">
+    <universe>0</universe>
+    <region>-1 2 -3 4 -5 6</region>
+    <material>1</material>
+  </cell>
+
+<!-- Defition of Surfaces -->
+  <surface id="1">
+    <type>x-plane</type>
+    <coeffs>{x_upper}</coeffs>
+    <boundary>{x_upper_bc}</boundary>
+  </surface>
+  <surface id="2">
+    <type>x-plane</type>
+    <coeffs>{x_lower}</coeffs>
+    <boundary>{x_lower_bc}</boundary>
+  </surface>
+  <surface id="3">
+    <type>y-plane</type>
+    <coeffs>{y_upper}</coeffs>
+    <boundary>{y_upper_bc}</boundary>
+  </surface>
+  <surface id="4">
+    <type>y-plane</type>
+    <coeffs>{y_lower}</coeffs>
+    <boundary>{y_lower_bc}</boundary>
+  </surface>
+  <surface id="5">
+    <type>z-plane</type>
+    <coeffs>{z_upper}</coeffs>
+    <boundary>{z_upper_bc}</boundary>
+  </surface>
+  <surface id="6">
+    <type>z-plane</type>
+    <coeffs>{z_lower}</coeffs>
+    <boundary>{z_lower_bc}</boundary>
+  </surface>
+
+</geometry>

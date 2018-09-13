@@ -654,7 +654,7 @@ class IncidentPhoton(EqualityMixin):
 
         return data
 
-    def export_to_hdf5(self, path, mode='a'):
+    def export_to_hdf5(self, path, mode='a', libver='earliest'):
         """Export incident photon data to an HDF5 file.
 
         Parameters

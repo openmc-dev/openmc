@@ -1,7 +1,8 @@
 #ifndef OPENMC_POSITION_H
 #define OPENMC_POSITION_H
 
-#include <cmath>
+#include <cmath> // for sqrt
+#include <stdexcept> // for out_of_range
 #include <vector>
 
 namespace openmc {
@@ -29,6 +30,8 @@ struct Position {
       case 0: return x;
       case 1: return y;
       case 2: return z;
+      default:
+        throw std::out_of_range{"Index in Position must be between 0 and 2."};
     }
   }
   double& operator[](int i) {
@@ -36,6 +39,8 @@ struct Position {
       case 0: return x;
       case 1: return y;
       case 2: return z;
+      default:
+        throw std::out_of_range{"Index in Position must be between 0 and 2."};
     }
   }
 

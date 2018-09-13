@@ -112,7 +112,7 @@ def find_material(xyz):
     if isinstance(mats, openmc.capi.Material):
         return mats
     else:
-        return mats[instance]
+        return mats[instance.value]
 
 def hard_reset():
     """Reset tallies, timers, and pseudo-random number generator state."""

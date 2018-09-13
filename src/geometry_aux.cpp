@@ -389,6 +389,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
         return path.str();
       }
     }
+    throw std::runtime_error{"Error determining distribcell path."};
   }
 }
 

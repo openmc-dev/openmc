@@ -3,6 +3,7 @@
 #include <algorithm> // for copy
 #include <cmath>     // for log, exp
 #include <iterator>  // for back_inserter
+#include <stdexcept> // for runtime_error
 
 #include "xtensor/xarray.hpp"
 #include "xtensor/xview.hpp"
@@ -19,17 +20,23 @@ namespace openmc {
 
 Interpolation int2interp(int i)
 {
+  // TODO: We are ignoring specification of two-dimensional interpolation
+  // schemes (method of corresponding points and unit base interpolation). Those
+  // should be accounted for in the distribution classes somehow.
+
   switch (i) {
-  case 1:
+  case 1: case 11: case 21:
     return Interpolation::histogram;
-  case 2:
+  case 2: case 12: case 22:
     return Interpolation::lin_lin;
-  case 3:
+  case 3: case 13: case 23:
     return Interpolation::lin_log;
-  case 4:
+  case 4: case 14: case 24:
     return Interpolation::log_lin;
-  case 5:
+  case 5: case 15: case 25:
     return Interpolation::log_log;
+  default:
+    throw std::runtime_error{"Invalid interpolation code."};
   }
 }
 
@@ -142,6 +149,8 @@ double Tabulated1D::operator()(double x) const
   case Interpolation::log_log:
     r = log(x/x0)/log(x1/x0);
     return y0*exp(r*log(y1/y0));
+  default:
+    throw std::runtime_error{"Invalid interpolation scheme."};
   }
 }
 

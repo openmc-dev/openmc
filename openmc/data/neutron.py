@@ -682,10 +682,6 @@ class IncidentNeutron(EqualityMixin):
                          'cross section is given.'.format(mt))
                     continue
 
-                # Don't duplicate fission cross sections
-                if mt == 18:
-                    continue
-
                 # Create redundant reaction with appropriate cross section
                 rx = Reaction(mt)
                 mts = data.get_reaction_components(mt)

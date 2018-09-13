@@ -576,14 +576,7 @@ def _get_photon_products_ace(ace, rx):
         # Determine corresponding reaction
         neutron_mt = photon_mts[i] // 1000
 
-        # Restrict to photons that match the requested MT. Note that if the
-        # photon is assigned to MT=18 but the file splits fission into
-        # MT=19,20,21,38, we assign the photon product to each of the individual
-        # reactions
-        if neutron_mt == 18:
-            if rx.mt not in (18, 19, 20, 21, 38):
-                continue
-        elif neutron_mt != rx.mt:
+        if neutron_mt != rx.mt:
             continue
 
         # Create photon product and assign to reactions

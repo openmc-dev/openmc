@@ -372,8 +372,8 @@ class IncidentPhoton(EqualityMixin):
         excitation energy), 's_collision' (collision stopping power in
         [eV cm\ :sup:`2`/g]), and 's_radiative' (radiative stopping power in
         [eV cm\ :sup:`2`/g])
-    summed_reactions : collections.OrderedDict
-        Contains summed cross sections. The keys are MT values and the values
+    redundant_reactions : collections.OrderedDict
+        Contains redundant cross sections. The keys are MT values and the values
         are instances of :class:`PhotonReaction`.
 
     """
@@ -382,19 +382,19 @@ class IncidentPhoton(EqualityMixin):
         self.atomic_number = atomic_number
         self._atomic_relaxation = None
         self.reactions = OrderedDict()
-        self.summed_reactions = OrderedDict()
+        self.redundant_reactions = OrderedDict()
         self.compton_profiles = {}
         self.stopping_powers = {}
         self.bremsstrahlung = {}
 
     def __contains__(self, mt):
-        return mt in self.reactions or mt in self.summed_reactions
+        return mt in self.reactions or mt in self.redundant_reactions
 
     def __getitem__(self, mt):
         if mt in self.reactions:
             return self.reactions[mt]
-        elif mt in self.summed_reactions:
-            return self.summed_reactions[mt]
+        elif mt in self.redundant_reactions:
+            return self.redundant_reactions[mt]
         else:
             raise KeyError('No reaction with MT={}.'.format(mt))
 

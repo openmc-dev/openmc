@@ -86,8 +86,8 @@ class IncidentNeutron(EqualityMixin):
         Resonance parameters
     resonance_covariance : openmc.data.ResonanceCovariance or None
         Covariance for resonance parameters
-    summed_reactions : collections.OrderedDict
-        Contains summed cross sections, e.g., the total cross section. The keys
+    redundant_reactions : collections.OrderedDict
+        Contains redundant cross sections, e.g., the total cross section. The keys
         are the MT values and the values are Reaction objects.
     temperatures : list of str
         List of string representations the temperatures of the target nuclide
@@ -113,18 +113,18 @@ class IncidentNeutron(EqualityMixin):
         self.energy = {}
         self._fission_energy = None
         self.reactions = OrderedDict()
-        self.summed_reactions = OrderedDict()
+        self.redundant_reactions = OrderedDict()
         self._urr = {}
         self._resonances = None
 
     def __contains__(self, mt):
-        return mt in self.reactions or mt in self.summed_reactions
+        return mt in self.reactions or mt in self.redundant_reactions
 
     def __getitem__(self, mt):
         if mt in self.reactions:
             return self.reactions[mt]
-        elif mt in self.summed_reactions:
-            return self.summed_reactions[mt]
+        elif mt in self.redundant_reactions:
+            return self.redundant_reactions[mt]
         else:
             raise KeyError('No reaction with MT={}.'.format(mt))
 
@@ -171,8 +171,8 @@ class IncidentNeutron(EqualityMixin):
         return self._resonance_covariance
 
     @property
-    def summed_reactions(self):
-        return self._summed_reactions
+    def redundant_reactions(self):
+        return self._redundant_reactions
 
     @property
     def urr(self):
@@ -237,10 +237,10 @@ class IncidentNeutron(EqualityMixin):
                       res_cov.ResonanceCovariances)
         self._resonance_covariance = resonance_covariance
 
-    @summed_reactions.setter
-    def summed_reactions(self, summed_reactions):
-        cv.check_type('summed reactions', summed_reactions, Mapping)
-        self._summed_reactions = summed_reactions
+    @redundant_reactions.setter
+    def redundant_reactions(self, redundant_reactions):
+        cv.check_type('redundant reactions', redundant_reactions, Mapping)
+        self._redundant_reactions = redundant_reactions
 
     @urr.setter
     def urr(self, urr):
@@ -287,8 +287,8 @@ class IncidentNeutron(EqualityMixin):
         # Add energy grid
         self.energy[strT] = data.energy[strT]
 
-        # Add normal and summed reactions
-        for mt in chain(data.reactions, data.summed_reactions):
+        # Add normal and redundant reactions
+        for mt in chain(data.reactions, data.redundant_reactions):
             if mt in self:
                 self[mt].xs[strT] = data[mt].xs[strT]
             else:
@@ -392,7 +392,7 @@ class IncidentNeutron(EqualityMixin):
         self[2].xs['0K'] = Tabulated1D(x, y)
 
     def get_reaction_components(self, mt):
-        """Determine what reactions make up summed reaction.
+        """Determine what reactions make up redundant reaction.
 
         Parameters
         ----------
@@ -402,7 +402,7 @@ class IncidentNeutron(EqualityMixin):
         Returns
         -------
         mts : list of int
-            ENDF MT numbers of reactions that make up the summed reaction and
+            ENDF MT numbers of reactions that make up the redundant reaction and
             have cross sections provided.
 
         """
@@ -480,8 +480,8 @@ class IncidentNeutron(EqualityMixin):
                 tgroup = g.create_group('total_nu')
                 rx.derived_products[0].to_hdf5(tgroup)
 
-        # Write summed reaction data only for reactions with photon production
-        for rx in self.summed_reactions.values():
+        # Write redundant reaction data only for reactions with photon production
+        for rx in self.redundant_reactions.values():
             if any([p.particle == 'photon' for p in rx.products]):
                 rx_group = rxs_group.create_group('reaction_{:03}'.format(rx.mt))
                 rx.to_hdf5(rx_group)
@@ -561,8 +561,8 @@ class IncidentNeutron(EqualityMixin):
         for name, obj in sorted(rxs_group.items()):
             if name.startswith('reaction_'):
                 rx = Reaction.from_hdf5(obj, data.energy)
-                if rx.summed:
-                    data.summed_reactions[rx.mt] = rx
+                if rx.redundant:
+                    data.redundant_reactions[rx.mt] = rx
                 else:
                     data.reactions[rx.mt] = rx
 
@@ -571,13 +571,13 @@ class IncidentNeutron(EqualityMixin):
                     tgroup = group['total_nu']
                     rx.derived_products.append(Product.from_hdf5(tgroup))
 
-        # Build summed reactions. Start from the highest MT number because
+        # Build redundant reactions. Start from the highest MT number because
         # high MTs never depend on lower MTs.
         for mt_sum in sorted(SUM_RULES, reverse=True):
             if mt_sum not in data:
                 rxs = [data[mt] for mt in SUM_RULES[mt_sum] if mt in data]
                 if len(rxs) > 0:
-                    data.summed_reactions[mt_sum] = rx = Reaction(mt_sum)
+                    data.redundant_reactions[mt_sum] = rx = Reaction(mt_sum)
                     if rx.mt == 18 and 'total_nu' in group:
                         tgroup = group['total_nu']
                         rx.derived_products.append(Product.from_hdf5(tgroup))
@@ -650,17 +650,17 @@ class IncidentNeutron(EqualityMixin):
         absorption_xs = ace.xss[ace.jxs[1] + 2 * n_energy:ace.jxs[1] +
                                 3 * n_energy]
 
-        # Create summed reactions (total and absorption)
+        # Create redundant reactions (total and absorption)
         total = Reaction(1)
         total.xs[strT] = Tabulated1D(energy, total_xs)
-        total.summed = True
-        data.summed_reactions[1] = total
+        total.redundant = True
+        data.redundant_reactions[1] = total
 
         if np.count_nonzero(absorption_xs) > 0:
             absorption = Reaction(27)
             absorption.xs[strT] = Tabulated1D(energy, absorption_xs)
-            absorption.summed = True
-            data.summed_reactions[27] = absorption
+            absorption.redundant = True
+            data.redundant_reactions[27] = absorption
 
         # Read each reaction
         n_reaction = ace.nxs[4] + 1
@@ -686,7 +686,7 @@ class IncidentNeutron(EqualityMixin):
                 if mt == 18:
                     continue
 
-                # Create summed reaction with appropriate cross section
+                # Create redundant reaction with appropriate cross section
                 rx = Reaction(mt)
                 mts = data.get_reaction_components(mt)
                 if len(mts) == 0:
@@ -699,11 +699,11 @@ class IncidentNeutron(EqualityMixin):
                            else 0 for xs in xss])
                 rx.xs[strT] = Tabulated1D(energy[idx:], Sum(xss)(energy[idx:]))
                 rx.xs[strT]._threshold_idx = idx
-                rx.summed = True
+                rx.redundant = True
 
-                # Determine summed cross section
+                # Determine redundant cross section
                 rx.products += _get_photon_products_ace(ace, rx)
-                data.summed_reactions[mt] = rx
+                data.redundant_reactions[mt] = rx
 
         # Read unresolved resonance probability tables
         urr = ProbabilityTables.from_ace(ace)

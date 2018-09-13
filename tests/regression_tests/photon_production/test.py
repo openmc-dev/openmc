@@ -65,6 +65,6 @@ class SourceTestHarness(PyAPITestHarness):
             return outstr
 
 
-def test_source():
+def test_photon_production():
     harness = SourceTestHarness('statepoint.1.h5')
     harness.main()

@@ -482,7 +482,7 @@ class IncidentNeutron(EqualityMixin):
 
         # Write redundant reaction data only for reactions with photon production
         for rx in self.redundant_reactions.values():
-            if any([p.particle == 'photon' for p in rx.products]):
+            if any(p.particle == 'photon' for p in rx.products):
                 rx_group = rxs_group.create_group('reaction_{:03}'.format(rx.mt))
                 rx.to_hdf5(rx_group)
 

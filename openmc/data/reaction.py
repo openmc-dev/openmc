@@ -785,8 +785,8 @@ class Reaction(EqualityMixin):
         Indicates whether scattering kinematics should be performed in the
         center-of-mass or laboratory reference frame.
         grid above the threshold value in barns.
-    summed : bool
-        Indicates whether or not this is a summed reactions
+    redundant : bool
+        Indicates whether or not this is a redundant reaction
     mt : int
         The ENDF MT number for this reaction.
     q_value : float
@@ -805,7 +805,7 @@ class Reaction(EqualityMixin):
 
     def __init__(self, mt):
         self._center_of_mass = True
-        self._summed = False
+        self._redundant = False
         self._q_value = 0.
         self._xs = {}
         self._products = []
@@ -824,8 +824,8 @@ class Reaction(EqualityMixin):
         return self._center_of_mass
 
     @property
-    def summed(self):
-        return self._summed
+    def redundant(self):
+        return self._redundant
 
     @property
     def q_value(self):
@@ -848,10 +848,10 @@ class Reaction(EqualityMixin):
         cv.check_type('center of mass', center_of_mass, (bool, np.bool_))
         self._center_of_mass = center_of_mass
 
-    @summed.setter
-    def summed(self, summed):
-        cv.check_type('summed', summed, (bool, np.bool_))
-        self._summed = summed
+    @redundant.setter
+    def redundant(self, redundant):
+        cv.check_type('redundant', redundant, (bool, np.bool_))
+        self._redundant = redundant
 
     @q_value.setter
     def q_value(self, q_value):
@@ -894,7 +894,7 @@ class Reaction(EqualityMixin):
             group.attrs['label'] = np.string_(self.mt)
         group.attrs['Q_value'] = self.q_value
         group.attrs['center_of_mass'] = 1 if self.center_of_mass else 0
-        group.attrs['summed'] = 1 if self.summed else 0
+        group.attrs['redundant'] = 1 if self.redundant else 0
         for T in self.xs:
             Tgroup = group.create_group(T)
             if self.xs[T] is not None:
@@ -931,7 +931,7 @@ class Reaction(EqualityMixin):
         rx = cls(mt)
         rx.q_value = group.attrs['Q_value']
         rx.center_of_mass = bool(group.attrs['center_of_mass'])
-        rx.summed = bool(group.attrs['summed'])
+        rx.redundant = bool(group.attrs['redundant'])
 
         # Read cross section at each temperature
         for T, Tgroup in group.items():

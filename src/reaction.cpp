@@ -17,8 +17,16 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
   int tmp;
   read_attribute(group, "center_of_mass", tmp);
   scatter_in_cm_ = (tmp == 1);
-  read_attribute(group, "redundant", tmp);
-  redundant_ = (tmp == 1);
+
+  // Checks if redudant attribute exists before loading
+  // (for compatibiltiy with legacy .h5 libraries)
+  htri_t exists = H5Aexists(group, "redundant");
+  if( exists ) {
+    read_attribute(group, "redundant", tmp);
+    redundant_ = (tmp == 1);
+  } else {
+    redundant_ = false;
+  }
 
   // Read cross section and threshold_idx data
   for (auto t : temperatures) {

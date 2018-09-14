@@ -122,7 +122,7 @@ module nuclide_header
 
   ! Arbitrary value to indicate invalid cache state for elastic scattering
   ! (NuclideMicroXS % elastic)
-  real(8), parameter :: CACHE_INVALID = dble(Z"FFE0000000000000")
+  real(8), parameter :: CACHE_INVALID = -1
 
   type, bind(C) :: NuclideMicroXS
     ! Microscopic cross sections in barns

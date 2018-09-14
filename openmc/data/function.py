@@ -502,7 +502,7 @@ class Sum(EqualityMixin):
     """Sum of multiple functions.
 
     This class allows you to create a callable object which represents the sum
-    of other callable objects. This is used for summed reactions whereby the
+    of other callable objects. This is used for redundant reactions whereby the
     cross section is defined as the sum of other cross sections.
 
     Parameters

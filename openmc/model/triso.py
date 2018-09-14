@@ -387,7 +387,7 @@ class _CylindricalDomain(_Domain):
 
     @property
     def volume(self):
-        return self.length * pi * self.radius**2
+        return self.length*pi*self.radius**2
 
     @length.setter
     def length(self, length):
@@ -493,7 +493,7 @@ class _SphericalDomain(_Domain):
 
     @property
     def volume(self):
-        return 4/3 * pi * self.radius**3
+        return 4/3*pi*self.radius**3
 
     @radius.setter
     def radius(self, radius):
@@ -533,6 +533,125 @@ class _SphericalDomain(_Domain):
         r = sqrt(q[0]**2 + q[1]**2 + q[2]**2)
         if r > r_max:
             q *= r_max/r
+
+
+class _SphericalShellDomain(_Domain):
+    """Spherical shell container in which to pack particles.
+
+    Parameters
+    ----------
+    radius : float
+        Outer radius of the spherical shell container.
+    inner_radius : float
+        Inner radius of the spherical shell container.
+    center : Iterable of float
+        Cartesian coordinates of the center of the container. Default is
+        [0., 0., 0.]
+
+    Attributes
+    ----------
+    radius : float
+        Outer radius of the spherical shell container.
+    inner_radius : float
+        Inner radius of the spherical shell container.
+    particle_radius : float
+        Radius of particles to be packed in container.
+    center : list of float
+        Cartesian coordinates of the center of the container. Default is
+        [0., 0., 0.]
+    cell_length : list of float
+        Length in x-, y-, and z- directions of each cell in mesh overlaid on
+        domain.
+    limits : list of float
+        Maximum radial distance and minimum radial distance where particle
+        center can be placed.
+    volume : float
+        Volume of the container.
+
+    """
+
+    def __init__(self, radius, inner_radius, particle_radius,
+                 center=[0., 0., 0.]):
+        super().__init__(particle_radius, center)
+        self.radius = radius
+        self.inner_radius = inner_radius
+
+    @property
+    def radius(self):
+        return self._radius
+
+    @property
+    def inner_radius(self):
+        return self._inner_radius
+
+    @property
+    def limits(self):
+        if self._limits is None:
+            self._limits = [self.radius - self.particle_radius,
+                            self.inner_radius + self.particle_radius]
+        return self._limits
+
+    @property
+    def cell_length(self):
+        if self._cell_length is None:
+            mesh_length = 3*[2*self.radius]
+            self._cell_length = [x/int(x/(4*self.particle_radius))
+                                 for x in mesh_length]
+        return self._cell_length
+
+    @property
+    def volume(self):
+        return 4/3*pi*(self.radius**3 - self.inner_radius**3)
+
+    @radius.setter
+    def radius(self, radius):
+        self._radius = float(radius)
+        self._limits = None
+        self._cell_length = None
+
+    @inner_radius.setter
+    def inner_radius(self, inner_radius):
+        self._inner_radius = float(inner_radius)
+        self._limits = None
+
+    @limits.setter
+    def limits(self, limits):
+        self._limits = limits
+
+    def random_point(self):
+        r_max = self.limits[0]
+        r_min = self.limits[1]
+        x = (gauss(0, 1), gauss(0, 1), gauss(0, 1))
+        r = (uniform(r_min**3, r_max**3)**(1/3)/sqrt(x[0]**2 + x[1]**2 + x[2]**2))
+        return [r*s for s in x]
+
+    def repel_particles(self, p, q, d, d_new):
+        # Moving each particle distance 's' away from the other along the line
+        # joining the particle centers will ensure their final distance is
+        # equal to the outer diameter
+        s = (d_new - d)/2
+
+        v = (p - q)/d
+        p += s*v
+        q -= s*v
+
+        # Enforce the rigid boundary by moving each particle back along the
+        # surface normal until it is completely within the container if it
+        # overlaps the surface
+        r_max = self.limits[0]
+        r_min = self.limits[1]
+
+        r = sqrt(p[0]**2 + p[1]**2 + p[2]**2)
+        if r > r_max:
+            p *= r_max/r
+        elif r < r_min:
+            p *= r_min/r
+
+        r = sqrt(q[0]**2 + q[1]**2 + q[2]**2)
+        if r > r_max:
+            q *= r_max/r
+        elif r < r_min:
+            q *= r_min/r
 
 
 def create_triso_lattice(trisos, lower_left, pitch, shape, background):
@@ -937,9 +1056,10 @@ def _close_random_pack(domain, particles, contraction_rate):
 
 
 def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
-                domain_radius=None, domain_center=[0., 0., 0.],
-                n_particles=None, packing_fraction=None,
-                initial_packing_fraction=0.3, contraction_rate=1.e-3, seed=1):
+                domain_radius=None, domain_inner_radius=None,
+                domain_center=[0., 0., 0.], n_particles=None,
+                packing_fraction=None, initial_packing_fraction=0.3,
+                contraction_rate=1.e-3, seed=1):
     """Generate a random, non-overlapping configuration of TRISO particles
     within a container.
 
@@ -955,6 +1075,8 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
         Length of the container (if cube or cylinder).
     domain_radius : float
         Radius of the container (if cylinder or sphere).
+    domain_inner_radius : float
+        Inner radius of the container (if spherical shell).
     domain_center : Iterable of float
         Cartesian coordinates of the center of the container.
     n_particles : int
@@ -1018,15 +1140,19 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
     """
 
     # Check for valid container geometry and dimensions
-    if domain_shape not in ['cube', 'cylinder', 'sphere']:
+    if domain_shape not in ['cube', 'cylinder', 'sphere', 'spherical shell']:
         raise ValueError('Unable to set domain_shape to "{}". Only "cube", '
-                         '"cylinder", and "sphere" are '
+                         '"cylinder", "sphere", and "spherical shell"  are '
                          'supported."'.format(domain_shape))
     if not domain_length and domain_shape in ['cube', 'cylinder']:
         raise ValueError('"domain_length" must be specified for {} domain '
                          'geometry '.format(domain_shape))
-    if not domain_radius and domain_shape in ['cylinder', 'sphere']:
+    if not domain_radius and domain_shape in ['cylinder', 'sphere',
+                                              'spherical shell']:
         raise ValueError('"domain_radius" must be specified for {} domain '
+                         'geometry '.format(domain_shape))
+    if not domain_inner_radius and domain_shape in ['spherical shell']:
+        raise ValueError('"domain_inner_radius" must be specified for {} domain '
                          'geometry '.format(domain_shape))
 
     if domain_shape == 'cube':
@@ -1038,6 +1164,11 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
     elif domain_shape == 'sphere':
         domain = _SphericalDomain(radius=domain_radius, particle_radius=radius,
                                   center=domain_center)
+    elif domain_shape == 'spherical shell':
+        domain = _SphericalShellDomain(radius=domain_radius,
+                                       inner_radius=domain_inner_radius,
+                                       particle_radius=radius,
+                                       center=domain_center)
 
     # Calculate the packing fraction if the number of particles is specified;
     # otherwise, calculate the number of particles from the packing fraction.

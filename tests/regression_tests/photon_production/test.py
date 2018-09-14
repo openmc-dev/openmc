@@ -17,7 +17,7 @@ class SourceTestHarness(PyAPITestHarness):
         cyl = openmc.XCylinder(boundary_type='vacuum', R=1.0e-6)
         x_plane_left = openmc.XPlane(boundary_type='vacuum', x0=-1.0)
         x_plane_center = openmc.XPlane(boundary_type='transmission', x0=1.0)
-        x_plane_right = openmc.XPlane(boundary_type='vacuum', x0=11.0)
+        x_plane_right = openmc.XPlane(boundary_type='vacuum', x0=1.0e9)
 
         inner_cyl_left = openmc.Cell()
         inner_cyl_right = openmc.Cell()
@@ -46,11 +46,11 @@ class SourceTestHarness(PyAPITestHarness):
         settings.source = source
         settings.export_to_xml()
 
-        cell_filter = openmc.CellFilter(inner_cyl_right)
+        surface_filter = openmc.SurfaceFilter(cyl)
         particle_filter = openmc.ParticleFilter('photon')
         tally = openmc.Tally()
-        tally.filters = [cell_filter, particle_filter]
-        tally.scores = ['flux']
+        tally.filters = [surface_filter, particle_filter]
+        tally.scores = ['current']
         tallies = openmc.Tallies([tally])
         tallies.export_to_xml()
 
@@ -65,6 +65,6 @@ class SourceTestHarness(PyAPITestHarness):
             return outstr
 
 
-def test_source():
+def test_photon_production():
     harness = SourceTestHarness('statepoint.1.h5')
     harness.main()

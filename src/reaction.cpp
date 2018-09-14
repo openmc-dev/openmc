@@ -20,8 +20,7 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
 
   // Checks if redudant attribute exists before loading
   // (for compatibiltiy with legacy .h5 libraries)
-  htri_t exists = H5Aexists(group, "redundant");
-  if( exists ) {
+  if (attribute_exists(group, "redundant")) {
     read_attribute(group, "redundant", tmp);
     redundant_ = (tmp == 1);
   } else {

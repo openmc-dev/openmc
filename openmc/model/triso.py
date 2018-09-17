@@ -486,7 +486,7 @@ class _SphericalDomain(_Domain):
     @property
     def cell_length(self):
         if self._cell_length is None:
-            mesh_length = [2*self.radius, 2*self.radius, 2*self.radius]
+            mesh_length = 3*[2*self.radius]
             self._cell_length = [x/int(x/(4*self.particle_radius))
                                  for x in mesh_length]
         return self._cell_length
@@ -535,7 +535,7 @@ class _SphericalDomain(_Domain):
             q *= r_max/r
 
 
-class _SphericalShellDomain(_Domain):
+class _SphericalShellDomain(_SphericalDomain):
     """Spherical shell container in which to pack particles.
 
     Parameters
@@ -572,13 +572,8 @@ class _SphericalShellDomain(_Domain):
 
     def __init__(self, radius, inner_radius, particle_radius,
                  center=[0., 0., 0.]):
-        super().__init__(particle_radius, center)
-        self.radius = radius
+        super().__init__(radius, particle_radius, center)
         self.inner_radius = inner_radius
-
-    @property
-    def radius(self):
-        return self._radius
 
     @property
     def inner_radius(self):
@@ -592,22 +587,8 @@ class _SphericalShellDomain(_Domain):
         return self._limits
 
     @property
-    def cell_length(self):
-        if self._cell_length is None:
-            mesh_length = 3*[2*self.radius]
-            self._cell_length = [x/int(x/(4*self.particle_radius))
-                                 for x in mesh_length]
-        return self._cell_length
-
-    @property
     def volume(self):
         return 4/3*pi*(self.radius**3 - self.inner_radius**3)
-
-    @radius.setter
-    def radius(self, radius):
-        self._radius = float(radius)
-        self._limits = None
-        self._cell_length = None
 
     @inner_radius.setter
     def inner_radius(self, inner_radius):

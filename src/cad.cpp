@@ -81,8 +81,8 @@ void load_cad_geometry_c()
 	}
       }
       else {
-	std::cout << "Warning: volume without material found!" << std::endl;
-	c->material_.push_back(openmc::MATERIAL_VOID);
+	std::cout << c->id_ << std::endl;
+	openmc::fatal_error("A volume without a material was found.");
       }     
     }
 

@@ -598,12 +598,12 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 CADCell::CADCell() : Cell{} {};
 
 std::pair<double, int32_t> CADCell::distance(Position p, Direction u, int32_t on_surface) const {
-
+  moab::ErrorCode rval;
   moab::EntityHandle vol = dagmc_ptr->entity_by_id(3, id_);
   moab::EntityHandle hit_surf;
   double dist;
-  dagmc_ptr->ray_fire(vol, p.xyz, u.xyz, hit_surf, dist);
-
+  rval = dagmc_ptr->ray_fire(vol, p.xyz, u.xyz, hit_surf, dist);
+  MB_CHK_ERR_CONT(rval);
   int surf_idx;
   if(hit_surf != 0) {
     surf_idx = dagmc_ptr->index_by_handle(hit_surf);
@@ -619,12 +619,12 @@ std::pair<double, int32_t> CADCell::distance(Position p, Direction u, int32_t on
 }
   
 bool CADCell::contains(Position p, Direction u, int32_t on_surface) const {
-
+  moab::ErrorCode rval;
   moab::EntityHandle vol = dagmc_ptr->entity_by_id(3, id_);
 
   int result = 0;
-  dagmc_ptr->point_in_volume(vol, p.xyz, result, u.xyz);
-  
+  rval = dagmc_ptr->point_in_volume(vol, p.xyz, result, u.xyz);
+  MB_CHK_ERR_CONT(rval);  
   return bool(result);
 }
 

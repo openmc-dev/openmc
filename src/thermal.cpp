@@ -1,7 +1,7 @@
 #include "openmc/thermal.h"
 
 #include <algorithm> // for sort, move, min, max, find
-#include <cmath>     // for round, sqrt, fabs
+#include <cmath>     // for round, sqrt, abs
 #include <sstream>   // for stringstream
 
 #include "xtensor/xarray.hpp"
@@ -80,7 +80,7 @@ ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& tem
 
       auto i_closest = xt::argmin(xt::abs(temps_available - T))[0];
       auto temp_actual = temps_available[i_closest];
-      if (std::fabs(temp_actual - T) < tolerance) {
+      if (std::abs(temp_actual - T) < tolerance) {
         if (std::find(temps_to_read.begin(), temps_to_read.end(), std::round(temp_actual))
             == temps_to_read.end()) {
           temps_to_read.push_back(std::round(temp_actual));
@@ -156,7 +156,7 @@ ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
   if (settings::temperature_method == TEMPERATURE_NEAREST) {
     // If using nearest temperature, do linear search on temperature
     for (i = 0; i < kTs_.size(); ++i) {
-      if (abs(kTs_[i] - kT) < K_BOLTZMANN*settings::temperature_tolerance) {
+      if (std::abs(kTs_[i] - kT) < K_BOLTZMANN*settings::temperature_tolerance) {
         break;
       }
     }
@@ -574,7 +574,7 @@ ThermalData::sample(const NuclideMicroXS* micro_xs, double E,
   // Because of floating-point roundoff, it may be possible for mu to be
   // outside of the range [-1,1). In these cases, we just set mu to exactly
   // -1 or 1
-  if (std::fabs(*mu) > 1.0) *mu = std::copysign(1.0, *mu);
+  if (std::abs(*mu) > 1.0) *mu = std::copysign(1.0, *mu);
 
 }
 

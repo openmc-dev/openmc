@@ -20,7 +20,7 @@ module tally_filter_cell
 ! CELLFILTER specifies which geometric cells tally events reside in.
 !===============================================================================
 
-  type, public, extends(TallyFilter) :: CellFilter
+  type, public, extends(CppTallyFilter) :: CellFilter
     integer(C_INT32_T), allocatable :: cells(:)
     type(DictIntInt)     :: map
   contains
@@ -38,6 +38,8 @@ contains
     type(XMLNode), intent(in) :: node
 
     integer :: n
+
+    call this % from_xml_c(node)
 
     ! Determine how many bins were given
     n = node_word_count(node, "bins")
@@ -90,6 +92,8 @@ contains
 
     integer :: i, id
     integer :: val
+
+    call this % initialize_c()
 
     ! Convert ids to indices.
     do i = 1, this % n_bins

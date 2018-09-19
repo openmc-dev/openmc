@@ -114,6 +114,14 @@ contains
 
     character(:), allocatable :: type_
 
+    interface
+      function allocate_filter(type) result(ptr) bind(C)
+        import C_CHAR, C_PTR
+        character(kind=C_CHAR), intent(in)        :: type(*)
+        type(C_PTR)                               :: ptr
+      end function allocate_filter
+    end interface
+
     ! Convert C string to Fortran string
     type_ = to_f_string(type)
 
@@ -128,6 +136,14 @@ contains
           allocate(AzimuthalFilter :: filters(index) % obj)
         case ('cell')
           allocate(CellFilter :: filters(index) % obj)
+          select type(filt => filters(index) % obj)
+          type is (CellFilter)
+            filt % ptr = allocate_filter(type)
+            if (.not. c_associated(filt % ptr)) then
+              err = E_UNASSIGNED
+              call set_errmsg("Could not allocate C++ tally filter")
+            end if
+          end select
         case ('cellborn')
           allocate(CellbornFilter :: filters(index) % obj)
         case ('cellfrom')

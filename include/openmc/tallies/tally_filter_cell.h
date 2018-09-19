@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <sstream>
+#include <unordered_map>
 #include <vector>
 
 #include "openmc/cell.h"
@@ -35,11 +36,27 @@ public:
       }
     }
 
-    //TODO: mapping
+    for (int i = 0; i < cells_.size(); i++) {
+      map_[cells_[i]] = i;
+    }
+  }
+
+  virtual void
+  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match) const
+  {
+    for (int i = 0; i < p->n_coord; i++) {
+      auto search = map_.find(p->coord[i].cell);
+      if (search != map_.end()) {
+        // TODO: off-by-one
+        match.bins.push_back(search->second + 1);
+        match.weights.push_back(1);
+      }
+    }
   }
 
 protected:
   std::vector<int32_t> cells_;
+  std::unordered_map<int32_t, int> map_;
 };
 
 } // namespace openmc

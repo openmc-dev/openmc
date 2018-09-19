@@ -69,6 +69,13 @@ extern "C" {
   void filter_from_xml(TallyFilter* filt, pugi::xml_node* node)
   {filt->from_xml(*node);}
 
+  void
+  filter_get_all_bins(TallyFilter* filt, Particle* p, int estimator,
+                      TallyFilterMatch* match)
+  {
+    filt->get_all_bins(p, estimator, *match);
+  }
+
   void filter_initialize(TallyFilter* filt) {filt->initialize();}
 }
 

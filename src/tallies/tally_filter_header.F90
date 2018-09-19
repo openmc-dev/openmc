@@ -131,6 +131,7 @@ module tally_filter_header
     type(C_PTR) :: ptr
   contains
     procedure :: from_xml_c
+    procedure :: get_all_bins_c
     procedure :: initialize_c
   end type CppTallyFilter
 
@@ -289,6 +290,23 @@ contains
     end interface
     call filter_from_xml(this % ptr, node % ptr)
   end subroutine from_xml_c
+
+  subroutine get_all_bins_c(this, p, estimator, match)
+    class(CppTallyFilter), intent(in) :: this
+    type(Particle),     intent(in)    :: p
+    integer,            intent(in)    :: estimator
+    type(TallyFilterMatch), intent(inout) :: match
+    interface
+      subroutine filter_get_all_bins(filt, p, estimator, match) bind(C)
+        import C_PTR, Particle, C_INT
+        type(C_PTR),                value :: filt
+        type(Particle), intent(in)        :: p
+        integer(C_INT), intent(in), value :: estimator
+        type(C_PTR),                value :: match
+      end subroutine filter_get_all_bins
+    end interface
+    call filter_get_all_bins(this % ptr, p, estimator, match % ptr)
+  end subroutine get_all_bins_c
 
   subroutine initialize_c(this)
     class(CppTallyFilter), intent(inout) :: this

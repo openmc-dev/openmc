@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 
+#include "openmc/particle.h"
 #include "openmc/xml_interface.h"
 
 
@@ -43,6 +44,10 @@ class TallyFilter
 {
 public:
   virtual void from_xml(pugi::xml_node node) = 0;
+
+  virtual void
+  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match) const = 0;
+
   virtual void initialize() = 0;
 };
 

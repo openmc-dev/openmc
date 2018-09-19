@@ -1,5 +1,9 @@
 #include "openmc/tallies/tally_filter.h"
 
+#include <string>
+
+#include "openmc/tallies/tally_filter_cell.h"
+
 
 namespace openmc {
 
@@ -8,6 +12,7 @@ namespace openmc {
 //==============================================================================
 
 std::vector<TallyFilterMatch> filter_matches;
+std::vector<TallyFilter*> tally_filters;
 
 //==============================================================================
 // Fortran compatibility functions
@@ -48,6 +53,23 @@ extern "C" {
   void
   filter_match_bins_set_data(TallyFilterMatch* match, int indx, int val)
   {match->bins.at(indx-1) = val;}
+
+  TallyFilter*
+  allocate_filter(const char* type)
+  {
+    std::string type_ {type};
+    if (type_ == "cell") {
+      tally_filters.push_back(new CellFilter());
+      return tally_filters.back();
+    } else {
+      return nullptr;
+    }
+  }
+
+  void filter_from_xml(TallyFilter* filt, pugi::xml_node* node)
+  {filt->from_xml(*node);}
+
+  void filter_initialize(TallyFilter* filt) {filt->initialize();}
 }
 
 } // namespace openmc

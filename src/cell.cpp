@@ -604,6 +604,20 @@ read_cells(pugi::xml_node* node)
     cells.push_back(new Cell(cell_node));
   }
 
+  // Fill the cell map.
+  // TODO: update this map when openmc_extend_cells is called
+  for (int i = 0; i < cells.size(); i++) {
+    int32_t id = cells[i]->id_;
+    auto search = cell_map.find(id);
+    if (search == cell_map.end()) {
+      cell_map[id] = i;
+    } else {
+      std::stringstream err_msg;
+      err_msg << "Two or more cells use the same unique ID: " << id;
+      fatal_error(err_msg);
+    }
+  }
+
   // Populate the Universe vector and map.
   for (int i = 0; i < cells.size(); i++) {
     int32_t uid = cells[i]->universe_;

@@ -125,6 +125,16 @@ module tally_filter_header
   end interface
 
 !===============================================================================
+!===============================================================================
+
+  type, public, abstract, extends(TallyFilter) :: CppTallyFilter
+    type(C_PTR) :: ptr
+  contains
+    procedure :: from_xml_c
+    procedure :: initialize_c
+  end type CppTallyFilter
+
+!===============================================================================
 ! TALLYFILTERCONTAINER contains an allocatable TallyFilter object for arrays of
 ! TallyFilters
 !===============================================================================
@@ -264,6 +274,32 @@ contains
   subroutine filter_initialize(this)
     class(TallyFilter), intent(inout) :: this
   end subroutine filter_initialize
+
+!===============================================================================
+
+  subroutine from_xml_c(this, node)
+    class(CppTallyFilter), intent(inout) :: this
+    class(XMLNode),        intent(in)    :: node
+    interface
+      subroutine filter_from_xml(filt, node) bind(C)
+        import C_PTR
+        type(C_PTR), value :: filt
+        type(C_PTR) :: node
+      end subroutine filter_from_xml
+    end interface
+    call filter_from_xml(this % ptr, node % ptr)
+  end subroutine from_xml_c
+
+  subroutine initialize_c(this)
+    class(CppTallyFilter), intent(inout) :: this
+    interface
+      subroutine filter_initialize(filt) bind(C)
+        import C_PTR
+        type(C_PTR), value :: filt
+      end subroutine filter_initialize
+    end interface
+    call filter_initialize(this % ptr)
+  end subroutine initialize_c
 
 !===============================================================================
 ! FREE_MEMORY_TALLY_FILTER deallocates global arrays defined in this module

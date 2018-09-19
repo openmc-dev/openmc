@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "openmc/xml_interface.h"
+
 
 namespace openmc {
 
@@ -17,8 +19,11 @@ class TallyFilterMatch;
 extern std::vector<TallyFilterMatch> filter_matches;
 #pragma omp threadprivate(filter_matches)
 
+class TallyFilter;
+extern std::vector<TallyFilter*> tally_filters;
+
 //==============================================================================
-//! Stores bins and weights for filtered tally events
+//! Stores bins and weights for filtered tally events.
 //==============================================================================
 
 class TallyFilterMatch
@@ -30,5 +35,16 @@ public:
   bool bins_present;
 };
 
+//==============================================================================
+//! Modifies tally score events.
+//==============================================================================
+
+class TallyFilter
+{
+public:
+  virtual void from_xml(pugi::xml_node node) = 0;
+  virtual void initialize() = 0;
+};
+
 } // namespace openmc
-#endif // OPENMC_TALLY_FILTER
+#endif // OPENMC_TALLY_FILTER_H

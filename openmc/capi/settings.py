@@ -22,6 +22,7 @@ class _Settings(object):
     generations_per_batch = _DLLGlobal(c_int32, 'gen_per_batch')
     inactive = _DLLGlobal(c_int32, 'n_inactive')
     particles = _DLLGlobal(c_int64, 'n_particles')
+    run_CE = _DLLGlobal(c_bool, 'run_CE')
     verbosity = _DLLGlobal(c_int, 'verbosity')
 
     @property

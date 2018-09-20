@@ -62,6 +62,16 @@ def calculate_volumes():
     _dll.openmc_calculate_volumes()
 
 
+def current_batch():
+    """Return the current batch of the simulation.
+     Returns
+    -------
+    int
+        Current batch of the simulation
+     """
+    return c_int.in_dll(_dll, 'openmc_current_batch').value
+
+
 def finalize():
     """Finalize simulation and free memory"""
     _dll.openmc_finalize()
@@ -212,6 +222,16 @@ def keff():
         std_dev = c_double.in_dll(_dll, 'openmc_keff_std').value \
                   if n > 1 else np.inf
         return (mean, std_dev)
+
+
+def master():
+    """Return whether processor is master processor or not.
+     Returns
+    -------
+    bool
+        Whether is master processor or not
+     """
+    return c_bool.in_dll(_dll, 'openmc_master').value
 
 
 def next_batch():

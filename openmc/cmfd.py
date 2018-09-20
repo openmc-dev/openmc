@@ -1058,34 +1058,26 @@ class CMFDRun(object):
         openmc.capi.simulation_init()
 
         while(True):
-            # Run everything in next batch before initializing CMFD
-            openmc.capi.next_batch_before_cmfd_init()
-
             # Initialize CMFD batch
             self._cmfd_init_batch()
 
-            # Run everything in next batch in between initializing and
-            # executing CMFD
-            openmc.capi.next_batch_between_cmfd_init_execute()
+            # Run next batch
+            status = openmc.capi.next_batch()
 
             # Perform CMFD calculation if on
             if self._cmfd_on:
                 self._execute_cmfd(vectorized)
 
-            # Run everything in next batch after executing CMFD. Status
-            # determines whether another batch should be run or
-            # simulation should be terminated.
-            status = openmc.capi.next_batch_after_cmfd_execute()
-
-            # Write CMFD output if CMFD on for current batch
-            if self._cmfd_on and openmc.capi.master():
-                self._write_cmfd_output()
+                # Write CMFD output if CMFD on for current batch
+                if openmc.capi.master():
+                    self._write_cmfd_output()
 
             if status != 0:
                 break
 
         # Finalize simuation
         openmc.capi.simulation_finalize()
+
         # Print out CMFD timing statistics
         self._write_cmfd_timing_stats()
 
@@ -1232,16 +1224,16 @@ class CMFDRun(object):
 
     def _cmfd_init_batch(self):
         """Handles CMFD options at the beginning of each batch"""
-        # Get simulation parameters through C API
-        current_batch = openmc.capi.current_batch()
+        # Get current batch through C API
+        # Add 1 as next_batch has not been called yet
+        current_batch = openmc.capi.current_batch() + 1
 
         # Check to activate CMFD diffusion and possible feedback
         if self._cmfd_begin == current_batch:
             self._cmfd_on = True
 
         # Check to reset tallies
-        if (self._n_cmfd_resets > 0
-                and current_batch in self._cmfd_reset):
+        if self._n_cmfd_resets > 0 and current_batch in self._cmfd_reset:
             self._cmfd_tally_reset()
 
     def _execute_cmfd(self, vectorized):

@@ -76,9 +76,6 @@ module openmc_api
   public :: openmc_mesh_filter_set_mesh
   public :: openmc_meshsurface_filter_set_mesh
   public :: openmc_next_batch
-  public :: openmc_next_batch_before_cmfd_init
-  public :: openmc_next_batch_between_cmfd_init_execute
-  public :: openmc_next_batch_after_cmfd_execute
   public :: openmc_nuclide_name
   public :: openmc_plot_geometry
   public :: openmc_reset

@@ -64,11 +64,13 @@ def calculate_volumes():
 
 def current_batch():
     """Return the current batch of the simulation.
-     Returns
+
+    Returns
     -------
     int
         Current batch of the simulation
-     """
+
+    """
     return c_int.in_dll(_dll, 'openmc_current_batch').value
 
 
@@ -226,11 +228,13 @@ def keff():
 
 def master():
     """Return whether processor is master processor or not.
-     Returns
+
+    Returns
     -------
     bool
         Whether is master processor or not
-     """
+
+    """
     return c_bool.in_dll(_dll, 'openmc_master').value
 
 

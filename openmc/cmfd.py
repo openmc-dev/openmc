@@ -1548,7 +1548,7 @@ class CMFDRun(object):
 
             # Check and raise error if source sites exist outside of CMFD mesh
             if openmc.capi.master() and outside:
-                raise OpenMCError('Source sites outside of the CMFD mesh!')
+                raise OpenMCError('Source sites outside of the CMFD mesh')
 
             # Have master compute weight factors, ignore any zeros in
             # sourcecounts or cmfd_src
@@ -1656,9 +1656,9 @@ class CMFDRun(object):
 
         if have_mpi:
             # Collect values of count from all processors
-            self._intracomm.Reduce(count, self._sourcecounts, MPI.SUM, 0)
+            self._intracomm.Reduce(count, self._sourcecounts, MPI.SUM, root=0)
             # Check if there were sites outside the mesh for any processor
-            self._intracomm.Reduce(outside, sites_outside, MPI.LOR, 0)
+            self._intracomm.Reduce(outside, sites_outside, MPI.LOR, root=0)
         # Deal with case if MPI not defined (only one proc)
         else:
             sites_outside = outside

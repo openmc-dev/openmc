@@ -75,9 +75,6 @@ extern "C" {
   int openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh);
   int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
   int openmc_next_batch(int* status);
-  int openmc_next_batch_before_cmfd_init();
-  int openmc_next_batch_between_cmfd_init_execute(int* status);
-  int openmc_next_batch_after_cmfd_execute(int* status);
   int openmc_nuclide_name(int index, char** name);
   int openmc_particle_restart();
   int openmc_plot_geometry();

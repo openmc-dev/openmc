@@ -168,11 +168,11 @@ protected:
 };
 
 #ifdef DAGMC
-class DAGMCCell : public Cell
+class DAGCell : public Cell
 {
  public:
   moab::DagMC *dagmc_ptr;
-  explicit DAGMCCell();
+  explicit DAGCell();
 
   std::pair<double, int32_t> distance(Position p, Direction u, int32_t on_surface) const;
   bool contains(Position p, Direction u, int32_t on_surface) const;

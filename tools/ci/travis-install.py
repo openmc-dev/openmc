@@ -21,7 +21,7 @@ def which(program):
     return None
 
 
-def install(omp=False, mpi=False, phdf5=False, cad=False):
+def install(omp=False, mpi=False, phdf5=False, dagmc=False):
     # Create build directory and change to it
     shutil.rmtree('build', ignore_errors=True)
     os.mkdir('build')
@@ -49,9 +49,9 @@ def install(omp=False, mpi=False, phdf5=False, cad=False):
     else:
         cmake_cmd.append('-DHDF5_PREFER_PARALLEL=OFF')
 
-    if cad:
+    if dagmc:
         build_dagmc()
-        cmake_cmd.append('-Dcad=ON')
+        cmake_cmd.append('-Ddagmc=ON')
         
     # Build and install
     cmake_cmd.append('..')
@@ -132,10 +132,10 @@ def main():
     mpi = (os.environ.get('MPI') == 'y')
     phdf5 = (os.environ.get('PHDF5') == 'y')
 
-    cad = (os.environ.get('CAD') == 'y')
+    dagmc = (os.environ.get('DAGMC') == 'y')
 
     # Build and install
-    install(omp, mpi, phdf5, cad)
+    install(omp, mpi, phdf5, dagmc)
 
 
 if __name__ == '__main__':

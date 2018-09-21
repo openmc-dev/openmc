@@ -245,17 +245,17 @@ CSGSurface::to_hdf5(hid_t group_id) const
 }
 
 //==============================================================================
-// DAGMCSurface implementation
+// DAGSurface implementation
 //==============================================================================
 #ifdef DAGMC
-DAGMCSurface::DAGMCSurface() : Surface{} {} // empty constructor
+DAGSurface::DAGSurface() : Surface{} {} // empty constructor
 
-double DAGMCSurface::evaluate(Position r) const
+double DAGSurface::evaluate(Position r) const
 {
   return 0.0;
 }
 
-double DAGMCSurface::distance(Position p, Direction u, bool coincident) const {
+double DAGSurface::distance(Position p, Direction u, bool coincident) const {
   moab::ErrorCode rval;
   moab::EntityHandle surf = dagmc_ptr->entity_by_id(2, id_);
   moab::EntityHandle hit_surf;
@@ -266,7 +266,7 @@ double DAGMCSurface::distance(Position p, Direction u, bool coincident) const {
   return dist;
 }
 
-Direction DAGMCSurface::normal(Position p) const {
+Direction DAGSurface::normal(Position p) const {
   moab::ErrorCode rval;
   Direction u;
   moab::EntityHandle surf = dagmc_ptr->entity_by_id(2, id_);
@@ -275,7 +275,7 @@ Direction DAGMCSurface::normal(Position p) const {
   return u;
 }
 
-BoundingBox DAGMCSurface::bounding_box() const {
+BoundingBox DAGSurface::bounding_box() const {
   moab::ErrorCode rval;
   moab::EntityHandle surf = dagmc_ptr->entity_by_id(2, id_);
   double min[3], max[3];
@@ -284,7 +284,7 @@ BoundingBox DAGMCSurface::bounding_box() const {
   return BoundingBox(min[0], max[0], min[1], max[1], min[2], max[2]);
 }
 
-void DAGMCSurface::to_hdf5(hid_t group_id) const {}
+void DAGSurface::to_hdf5(hid_t group_id) const {}
 #endif
 //==============================================================================
 // PeriodicSurface implementation

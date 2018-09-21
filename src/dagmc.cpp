@@ -40,7 +40,7 @@ void load_dagmc_geometry_c()
       moab::EntityHandle vol_handle = DAG->entity_by_index(3, i+1);
       
       // set cell ids using global IDs
-      openmc::DAGMCCell* c = new openmc::DAGMCCell();
+      openmc::DAGCell* c = new openmc::DAGCell();
       c->id_ = DAG->id_by_index(3, i+1);
       c->dagmc_ptr = DAG;
       c->universe_ = dagmc_univ_id; // set to zero for now     
@@ -95,7 +95,7 @@ void load_dagmc_geometry_c()
       moab::EntityHandle surf_handle = DAG->entity_by_index(2, i+1);
       
       // set cell ids using global IDs
-      openmc::DAGMCSurface* s = new openmc::DAGMCSurface();
+      openmc::DAGSurface* s = new openmc::DAGSurface();
       s->id_ = DAG->id_by_index(2, i+1);
       s->dagmc_ptr = DAG;
 

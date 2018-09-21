@@ -136,11 +136,11 @@ class CSGSurface : public Surface
 //! A `Surface` representing a DAGMC-based surface in DAGMC.
 //==============================================================================
 #ifdef DAGMC
-class DAGMCSurface : public Surface
+class DAGSurface : public Surface
 {
  public:
   moab::DagMC* dagmc_ptr;
-  explicit DAGMCSurface();
+  explicit DAGSurface();
   double evaluate(Position p) const;
   double distance(Position p, Direction u,
                   bool coincident) const;

@@ -19,7 +19,7 @@ option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
 option(mpif08   "Use Fortran 2008 MPI interface"                 OFF)
-option(cad      "Enable support for CAD-based geometry"          OFF)
+option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
 
 # Maximum number of nested coordinates levels
 set(maxcoord 10 CACHE STRING "Maximum number of nested coordinate levels")
@@ -40,14 +40,14 @@ if(MPI_ENABLED AND mpif08)
 endif()
 
 #===============================================================================
-# CAD Geometry Support - need DAGMC/MOAB
+# DAGMC Geometry Support - need DAGMC/MOAB
 #===============================================================================
-if(cad)
+if(dagmc)
   find_package(DAGMC REQUIRED)
   if(NOT DAGMC_FOUND)
     message(FATAL_ERROR "Could not find DAGMC installation")
   endif()
-  add_definitions(-DCAD)
+  add_definitions(-DDAGMC)
   link_directories(${DAGMC_LIBRARY_DIRS})
   include_directories(${DAGMC_INCLUDE_DIRS})
 endif()
@@ -311,7 +311,7 @@ add_library(libopenmc SHARED
   src/algorithm.F90
   src/bank_header.F90
   src/api.F90
-  src/cad_header.F90
+  src/dagmc_header.F90
   src/cmfd_data.F90
   src/cmfd_execute.F90
   src/cmfd_header.F90
@@ -400,8 +400,8 @@ add_library(libopenmc SHARED
   src/tallies/tally_header.F90
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90
-  src/cad.cpp
-  src/cad.h
+  src/dagmc.cpp
+  src/dagmc.h
   src/cell.cpp
   src/cmfd_execute.cpp
   src/distribution.cpp

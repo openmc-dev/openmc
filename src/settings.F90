@@ -80,7 +80,7 @@ module settings
   ! Mode to run in (fixed source, eigenvalue, plotting, etc)
   integer(C_INT), bind(C) :: run_mode
 
-  ! flag for use of CAD geometry
+  ! flag for use of DAGMC geometry
   logical(C_BOOL), bind(C) :: dagmc
 
   ! Restart run

@@ -592,12 +592,12 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 }
 
 //==============================================================================
-// CAD Cell implementation
+// DAGMC Cell implementation
 //==============================================================================
-#ifdef CAD
-CADCell::CADCell() : Cell{} {};
+#ifdef DAGMC
+DAGMCCell::DAGMCCell() : Cell{} {};
 
-std::pair<double, int32_t> CADCell::distance(Position p, Direction u, int32_t on_surface) const {
+std::pair<double, int32_t> DAGMCCell::distance(Position p, Direction u, int32_t on_surface) const {
   moab::ErrorCode rval;
   moab::EntityHandle vol = dagmc_ptr->entity_by_id(3, id_);
   moab::EntityHandle hit_surf;
@@ -618,7 +618,7 @@ std::pair<double, int32_t> CADCell::distance(Position p, Direction u, int32_t on
   return result;
 }
   
-bool CADCell::contains(Position p, Direction u, int32_t on_surface) const {
+bool DAGMCCell::contains(Position p, Direction u, int32_t on_surface) const {
   moab::ErrorCode rval;
   moab::EntityHandle vol = dagmc_ptr->entity_by_id(3, id_);
 
@@ -628,7 +628,7 @@ bool CADCell::contains(Position p, Direction u, int32_t on_surface) const {
   return bool(result);
 }
 
-void CADCell::to_hdf5(hid_t group_id) const { return; }
+void DAGMCCell::to_hdf5(hid_t group_id) const { return; }
 #endif
 
 //==============================================================================
@@ -771,9 +771,9 @@ extern "C" {
 
   int cell_type(Cell* c) {return c->type_;}
 
-#ifdef CAD
+#ifdef DAGMC
 
-  int32_t next_cell(CADCell* cur_cell, CADSurface *surf_xed ) {
+  int32_t next_cell(DAGMCCell* cur_cell, DAGMCSurface *surf_xed ) {
     moab::EntityHandle surf = surf_xed->dagmc_ptr->entity_by_id(2,surf_xed->id_);
     moab::EntityHandle vol = cur_cell->dagmc_ptr->entity_by_id(3,cur_cell->id_);
 

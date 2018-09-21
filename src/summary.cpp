@@ -9,7 +9,7 @@ namespace openmc {
 extern "C" void
 write_geometry(hid_t file_id) {
 
-#ifdef CAD
+#ifdef DAGMC
   if (settings::dagmc) {
     return;
   }

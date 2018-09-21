@@ -29,8 +29,8 @@ module openmc_api
   use timer_header
   use volume_calc,     only: openmc_calculate_volumes
 
-#ifdef CAD
-  use cad_header,      only: free_memory_cad
+#ifdef DAGMC
+  use dagmc_header,      only: free_memory_dagmc
 #endif
 
   implicit none
@@ -330,8 +330,8 @@ contains
     call free_memory_tally_filter()
     call free_memory_tally_derivative()
     call free_memory_bank()
-#ifdef CAD
-    call free_memory_cad()
+#ifdef DAGMC
+    call free_memory_dagmc()
 #endif
 
     ! Deallocate CMFD

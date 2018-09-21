@@ -12,7 +12,7 @@
 #include "openmc/constants.h"
 #include "openmc/position.h"
 
-#ifdef CAD
+#ifdef DAGMC
 #include "DagMC.hpp"
 #endif
 
@@ -133,14 +133,14 @@ class CSGSurface : public Surface
 };
  
 //==============================================================================
-//! A `Surface` representing a CAD-based surface in DAGMC.
+//! A `Surface` representing a DAGMC-based surface in DAGMC.
 //==============================================================================
-#ifdef CAD
-class CADSurface : public Surface
+#ifdef DAGMC
+class DAGMCSurface : public Surface
 {
  public:
   moab::DagMC* dagmc_ptr;
-  explicit CADSurface();
+  explicit DAGMCSurface();
   double evaluate(Position p) const;
   double distance(Position p, Direction u,
                   bool coincident) const;

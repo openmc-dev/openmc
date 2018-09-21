@@ -213,9 +213,9 @@ void read_settings_xml()
       dagmc = get_node_value_bool(root, "dagmc");
   }
 
-#ifndef CAD
+#ifndef DAGMC
   if (dagmc) {
-    fatal_error("CAD mode unsupported for this build of OpenMC");
+    fatal_error("DAGMC mode unsupported for this build of OpenMC");
   }
 #endif
   

@@ -13,7 +13,7 @@
 #include "openmc/constants.h"
 #include "openmc/position.h"
 
-#ifdef CAD
+#ifdef DAGMC
 #include "DagMC.hpp"
 #endif
 
@@ -167,12 +167,12 @@ protected:
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
 };
 
-#ifdef CAD
-class CADCell : public Cell
+#ifdef DAGMC
+class DAGMCCell : public Cell
 {
  public:
   moab::DagMC *dagmc_ptr;
-  explicit CADCell();
+  explicit DAGMCCell();
 
   std::pair<double, int32_t> distance(Position p, Direction u, int32_t on_surface) const;
   bool contains(Position p, Direction u, int32_t on_surface) const;

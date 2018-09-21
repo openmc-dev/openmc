@@ -56,7 +56,7 @@ module geometry
     subroutine neighbor_lists() bind(C)
     end subroutine neighbor_lists
 
-#ifdef CAD
+#ifdef DAGMC
 
     function next_cell_c(current_cell, surface_crossed) &
          bind(C, name="next_cell") result(new_cell)
@@ -72,7 +72,7 @@ module geometry
 
 contains
 
-#ifdef CAD
+#ifdef DAGMC
 
   function next_cell(c, s) result(new_cell)
     type(Cell), intent(in) :: c

@@ -7,7 +7,7 @@ module tracking
   use geometry_header,    only: cells
   use geometry,           only: find_cell, distance_to_boundary, cross_lattice,&
                                 check_cell_overlap
-#ifdef CAD
+#ifdef DAGMC
   use geometry,           only: next_cell
 #endif
 
@@ -473,7 +473,7 @@ contains
     ! ==========================================================================
     ! SEARCH NEIGHBOR LISTS FOR NEXT CELL
 
-#ifdef CAD
+#ifdef DAGMC
     if (dagmc) then
       i_cell = next_cell(cells(p % last_cell(1) + 1), surfaces(ABS(p % surface)))
       ! save material and temp

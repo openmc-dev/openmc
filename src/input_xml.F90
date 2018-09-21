@@ -11,8 +11,8 @@ module input_xml
   use error,            only: fatal_error, warning, write_message, openmc_err_msg
   use geometry,         only: neighbor_lists
   use geometry_header
-#ifdef CAD
-  use cad_header
+#ifdef DAGMC
+  use dagmc_header
 #endif
   use hdf5_interface
   use list_header,      only: ListChar, ListInt, ListReal
@@ -351,15 +351,15 @@ contains
   end subroutine read_settings_xml_f
 
 
-#ifdef CAD
+#ifdef DAGMC
 
 !===============================================================================
-! READ_GEOMETRY_CAD reads data from a DAGMC .h5m file, checking
+! READ_GEOMETRY_DAGMC reads data from a DAGMC .h5m file, checking
 ! for material properties and surface boundary conditions
 ! some universe information is spoofed for now
 !===============================================================================
 
-  subroutine read_geometry_cad()
+  subroutine read_geometry_dagmc()
 
     integer :: i, j
     integer :: univ_id
@@ -375,12 +375,12 @@ contains
     filename = trim(path_input) // "dagmc.h5m"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
-      call fatal_error("Geometry CAD file '" // trim(filename) // "' does not &
+      call fatal_error("Geometry DAGMC file '" // trim(filename) // "' does not &
            &exist!")
     end if
 
-    call write_message("Reading CAD geometry...", 5)
-    call load_cad_geometry()
+    call write_message("Reading DAGMC geometry...", 5)
+    call load_dagmc_geometry()
     call allocate_surfaces()
     call allocate_cells()
 
@@ -405,7 +405,7 @@ contains
 
     return
 
-  end subroutine read_geometry_cad
+  end subroutine read_geometry_dagmc
 
 #endif
 
@@ -436,9 +436,9 @@ contains
     type(VectorInt) :: univ_ids      ! List of all universe IDs
     type(DictIntInt) :: cells_in_univ_dict ! Used to count how many cells each
                                            ! universe contains
-#ifdef CAD
+#ifdef DAGMC
     if (dagmc) then
-      call read_geometry_cad()
+      call read_geometry_dagmc()
       return
     end if
 #endif
@@ -941,7 +941,7 @@ contains
       end if
 
       ! Create list of macroscopic x/s based on those specified, just treat
-      ! them as nuclides. This is all really a facade so the user thinks they
+      ! them as nuclides. This is all really a fadagmce so the user thinks they
       ! are entering in macroscopic data but the code treats them the same
       ! as nuclides internally.
       ! Get pointer list of XML <macroscopic>

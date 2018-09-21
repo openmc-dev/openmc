@@ -18,7 +18,7 @@ void load_dagmc_geometry_c()
   }
 
   int32_t dagmc_univ_id = 0; // universe is always 0 for DAGMC
-  
+
   moab::ErrorCode rval = DAG->load_file("dagmc.h5m");
   MB_CHK_ERR_CONT(rval);
 
@@ -28,22 +28,22 @@ void load_dagmc_geometry_c()
   std::vector< std::string > prop_keywords;
   prop_keywords.push_back("mat");
   prop_keywords.push_back("boundary");
-  
+
   std::map<std::string, std::string> ph;
   DAG->parse_properties(prop_keywords, ph, ":");
   MB_CHK_ERR_CONT(rval);
-  
+
   // initialize cell objects
   openmc::n_cells = DAG->num_entities(3);
   for(int i = 0; i < openmc::n_cells; i++)
     {
       moab::EntityHandle vol_handle = DAG->entity_by_index(3, i+1);
-      
+
       // set cell ids using global IDs
       openmc::DAGCell* c = new openmc::DAGCell();
       c->id_ = DAG->id_by_index(3, i+1);
       c->dagmc_ptr = DAG;
-      c->universe_ = dagmc_univ_id; // set to zero for now     
+      c->universe_ = dagmc_univ_id; // set to zero for now
       c->fill_ = openmc::C_NONE; // no fill, single universe
 
       openmc::cells.push_back(c);
@@ -63,16 +63,16 @@ void load_dagmc_geometry_c()
 
       if(DAG->is_implicit_complement(vol_handle)) {
 	// assuming implicit complement is void for now
-        c->material_.push_back(openmc::MATERIAL_VOID);	
+        c->material_.push_back(openmc::MATERIAL_VOID);
 	continue;
       }
-      
+
       if(DAG->has_prop(vol_handle, "mat")){
 	std::string mat_value;
 	rval = DAG->prop_value(vol_handle, "mat", mat_value);
 	MB_CHK_ERR_CONT(rval);
 	TOLOWER(mat_value);
-	
+
 	if(mat_value == "void" || mat_value == "vacuum") {
 	  c->material_.push_back(openmc::MATERIAL_VOID);
 	}
@@ -83,17 +83,17 @@ void load_dagmc_geometry_c()
       else {
 	std::cout << c->id_ << std::endl;
 	openmc::fatal_error("A volume without a material was found.");
-      }     
+      }
     }
 
   // initialize surface objects
   openmc::n_surfaces = DAG->num_entities(2);
   openmc::surfaces.resize(openmc::n_surfaces);
-  
+
   for(int i = 0; i < openmc::n_surfaces; i++)
     {
       moab::EntityHandle surf_handle = DAG->entity_by_index(2, i+1);
-      
+
       // set cell ids using global IDs
       openmc::DAGSurface* s = new openmc::DAGSurface();
       s->id_ = DAG->id_by_index(2, i+1);

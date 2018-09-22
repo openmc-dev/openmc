@@ -41,7 +41,7 @@ void load_dagmc_geometry_c()
     // set cell ids using global IDs
     openmc::DAGCell* c = new openmc::DAGCell();
     c->id_ = DAG->id_by_index(3, i+1);
-    c->dagmc_ptr = DAG;
+    c->dagmc_ptr_ = DAG;
     c->universe_ = dagmc_univ_id; // set to zero for now
     c->fill_ = openmc::C_NONE; // no fill, single universe
     
@@ -95,7 +95,7 @@ void load_dagmc_geometry_c()
     // set cell ids using global IDs
     openmc::DAGSurface* s = new openmc::DAGSurface();
     s->id_ = DAG->id_by_index(2, i+1);
-    s->dagmc_ptr = DAG;
+    s->dagmc_ptr_ = DAG;
     
     if(DAG->has_prop(surf_handle, "boundary")) {
       std::string bc_value;

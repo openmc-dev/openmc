@@ -139,7 +139,7 @@ class CSGSurface : public Surface
 class DAGSurface : public Surface
 {
  public:
-  moab::DagMC* dagmc_ptr;
+  moab::DagMC* dagmc_ptr_;
   explicit DAGSurface();
   double evaluate(Position p) const;
   double distance(Position p, Direction u,

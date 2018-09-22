@@ -599,14 +599,14 @@ DAGCell::DAGCell() : Cell{} {};
 
 std::pair<double, int32_t> DAGCell::distance(Position p, Direction u, int32_t on_surface) const {
   moab::ErrorCode rval;
-  moab::EntityHandle vol = dagmc_ptr->entity_by_id(3, id_);
+  moab::EntityHandle vol = dagmc_ptr_->entity_by_id(3, id_);
   moab::EntityHandle hit_surf;
   double dist;
-  rval = dagmc_ptr->ray_fire(vol, p.xyz, u.xyz, hit_surf, dist);
+  rval = dagmc_ptr_->ray_fire(vol, p.xyz, u.xyz, hit_surf, dist);
   MB_CHK_ERR_CONT(rval);
   int surf_idx;
   if(hit_surf != 0) {
-    surf_idx = dagmc_ptr->index_by_handle(hit_surf);
+    surf_idx = dagmc_ptr_->index_by_handle(hit_surf);
   }
   // indicate that particle is lost
   else {
@@ -620,10 +620,10 @@ std::pair<double, int32_t> DAGCell::distance(Position p, Direction u, int32_t on
   
 bool DAGCell::contains(Position p, Direction u, int32_t on_surface) const {
   moab::ErrorCode rval;
-  moab::EntityHandle vol = dagmc_ptr->entity_by_id(3, id_);
+  moab::EntityHandle vol = dagmc_ptr_->entity_by_id(3, id_);
 
   int result = 0;
-  rval = dagmc_ptr->point_in_volume(vol, p.xyz, result, u.xyz);
+  rval = dagmc_ptr_->point_in_volume(vol, p.xyz, result, u.xyz);
   MB_CHK_ERR_CONT(rval);  
   return bool(result);
 }
@@ -774,13 +774,13 @@ extern "C" {
 #ifdef DAGMC
 
   int32_t next_cell(DAGCell* cur_cell, DAGSurface *surf_xed ) {
-    moab::EntityHandle surf = surf_xed->dagmc_ptr->entity_by_id(2,surf_xed->id_);
-    moab::EntityHandle vol = cur_cell->dagmc_ptr->entity_by_id(3,cur_cell->id_);
+    moab::EntityHandle surf = surf_xed->dagmc_ptr_->entity_by_id(2,surf_xed->id_);
+    moab::EntityHandle vol = cur_cell->dagmc_ptr_->entity_by_id(3,cur_cell->id_);
 
     moab::EntityHandle new_vol;
-    cur_cell->dagmc_ptr->next_vol(surf, vol, new_vol);
+    cur_cell->dagmc_ptr_->next_vol(surf, vol, new_vol);
 
-    return cur_cell->dagmc_ptr->index_by_handle(new_vol);
+    return cur_cell->dagmc_ptr_->index_by_handle(new_vol);
   }
 
 #endif

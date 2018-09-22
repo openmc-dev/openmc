@@ -171,7 +171,7 @@ protected:
 class DAGCell : public Cell
 {
  public:
-  moab::DagMC *dagmc_ptr;
+  moab::DagMC *dagmc_ptr_;
   explicit DAGCell();
 
   std::pair<double, int32_t> distance(Position p, Direction u, int32_t on_surface) const;

@@ -84,7 +84,7 @@ contains
     integer :: i
     character(kind=C_CHAR, len=20), allocatable :: nuc_names(:)
     character(kind=C_CHAR, len=20), allocatable :: macro_names(:)
-    real(8), allocatable :: awrs(:)
+    real(C_DOUBLE), allocatable :: awrs(:)
     integer :: num_nuclides
     integer :: num_macros
     integer :: j

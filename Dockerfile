@@ -1,5 +1,4 @@
 FROM ubuntu:latest
-MAINTAINER Will Boyd <boyd.william.r@gmail.com>
 
 # Setup environment variables for Docker image
 ENV FC=/usr/bin/mpif90 CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx \

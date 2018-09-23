@@ -82,8 +82,8 @@ contains
     integer(HID_T) :: nuclide_group
     integer(HID_T) :: macro_group
     integer :: i
-    character(12), allocatable :: nuc_names(:)
-    character(12), allocatable :: macro_names(:)
+    character(kind=C_CHAR, len=20), allocatable :: nuc_names(:)
+    character(kind=C_CHAR, len=20), allocatable :: macro_names(:)
     real(8), allocatable :: awrs(:)
     integer :: num_nuclides
     integer :: num_macros
@@ -172,8 +172,8 @@ contains
     integer :: k
     integer :: n
     integer :: err
-    character(20), allocatable :: nuc_names(:)
-    character(20), allocatable :: macro_names(:)
+    character(kind=C_CHAR, len=20), allocatable :: nuc_names(:)
+    character(kind=C_CHAR, len=20), allocatable :: macro_names(:)
     real(8) :: volume
     real(8), allocatable :: nuc_densities(:)
     integer :: num_nuclides

@@ -37,7 +37,7 @@ RUN git clone https://github.com/wbinventor/openmc.git /opt/openmc && \
     cd /opt/openmc && mkdir -p build && cd build && \
     cmake  -Doptimize=on -DHDF5_PREFER_PARALLEL=on .. && \
     make && make install && \
-    cd .. && python setup.py install
+    cd .. && pip install -e .
 
 # Download cross sections (NNDC and WMP) and ENDF data needed by test suite
 RUN mkdir /opt/openmc/data

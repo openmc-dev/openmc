@@ -208,7 +208,7 @@ void
 get_name_c(int index, int name_len, char* name)
 {
   // First blank out our input string
-  std::string str(name_len, ' ');
+  std::string str(name_len - 1, ' ');
   std::strcpy(name, str.c_str());
 
   // Now get the data and copy to the C-string

@@ -204,7 +204,8 @@ contains
     ! Reset total starting particle weight used for normalizing tallies
     total_weight = ZERO
 
-    if (n_inactive > 0 .and. current_batch == 1) then
+    if ((n_inactive > 0 .and. current_batch == 1) .or. &
+        (restart_run .and. restart_batch <= n_inactive .and. current_batch == restart_batch)) then
       ! Turn on inactive timer
       call time_inactive % start()
     elseif (current_batch == n_inactive + 1) then
@@ -394,7 +395,7 @@ contains
   subroutine replay_batch_history
 
     ! Write message at beginning
-    if (current_batch == 1) then
+    if (n_realizations == 0) then
       call write_message("Replaying history from state point...", 6)
     end if
 
@@ -414,10 +415,12 @@ contains
     end if
 
     ! Increment n_realizations as would ordinarily be done in finalize_batch
-    if (reduce_tallies) then
-      n_realizations = n_realizations + 1
-    else
-      n_realizations = n_realizations + n_procs
+    if (current_batch > n_inactive) then
+      if (reduce_tallies) then
+        n_realizations = n_realizations + 1
+      else
+        n_realizations = n_realizations + n_procs
+      end if
     end if
 
     ! Write message at end
@@ -502,6 +505,12 @@ contains
         current_batch = restart_batch - n_realizations
       else
         current_batch = restart_batch - n_realizations*n_procs
+      end if
+      ! If simulation restarted from inactive batch, decrement current_batch
+      ! by one to replay an additional batch so that keff is set before resuming
+      ! simulation
+      if (restart_batch <= n_inactive) then
+        current_batch = current_batch - 1
       end if
       n_realizations = 0
     end if

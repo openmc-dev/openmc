@@ -41,7 +41,7 @@ endif()
 #===============================================================================
 
 # Allow user to specify HDF5_ROOT
-if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.12)
+if (NOT (CMAKE_VERSION VERSION_LESS 3.12))
   cmake_policy(SET CMP0074 NEW)
 endif()
 

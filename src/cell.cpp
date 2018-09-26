@@ -600,7 +600,9 @@ std::pair<double, int32_t> DAGCell::distance(Position p, Direction u, int32_t on
   moab::EntityHandle vol = dagmc_ptr_->entity_by_id(3, id_);
   moab::EntityHandle hit_surf;
   double dist;
-  rval = dagmc_ptr_->ray_fire(vol, p.xyz, u.xyz, hit_surf, dist);
+  double pnt[3] = {p.x, p.y, p.z};
+  double dir[3] = {u.x, u.y, u.z};
+  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist);
   MB_CHK_ERR_CONT(rval);
   int surf_idx;
   if (hit_surf != 0) {
@@ -619,7 +621,9 @@ bool DAGCell::contains(Position p, Direction u, int32_t on_surface) const {
   moab::EntityHandle vol = dagmc_ptr_->entity_by_id(3, id_);
 
   int result = 0;
-  rval = dagmc_ptr_->point_in_volume(vol, p.xyz, result, u.xyz);
+  double pnt[3] = {p.x, p.y, p.z};
+  double dir[3] = {u.x, u.y, u.z};
+  rval = dagmc_ptr_->point_in_volume(vol, pnt, result, dir);
   MB_CHK_ERR_CONT(rval);  
   return bool(result);
 }

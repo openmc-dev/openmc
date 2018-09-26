@@ -37,6 +37,8 @@ class Settings(object):
         weight assigned to particles that are not killed after Russian
         roulette. Value of energy should be a float indicating energy in eV
         below which particle type will be killed.
+    dagmc : bool
+        Indicate that a CAD-based DAGMC geometry will be used.
     electron_treatment : {'led', 'ttb'}
         Whether to deposit all energy from electrons locally ('led') or create
         secondary bremsstrahlung photons ('ttb').
@@ -224,6 +226,9 @@ class Settings(object):
         self._create_fission_neutrons = None
         self._log_grid_bins = None
 
+        # dagmc
+        self._dagmc = None
+        
     @property
     def run_mode(self):
         return self._run_mode
@@ -368,6 +373,10 @@ class Settings(object):
     def log_grid_bins(self):
         return self._log_grid_bins
 
+    @property
+    def dagmc(self):
+        return self._dagmc
+    
     @run_mode.setter
     def run_mode(self, run_mode):
         cv.check_value('run mode', run_mode, _RUN_MODES)
@@ -511,6 +520,11 @@ class Settings(object):
         cv.check_type('photon transport', photon_transport, bool)
         self._photon_transport = photon_transport
 
+    @dagmc.setter
+    def dagmc(self, dagmc):
+        cv.check_type('dagmc geometry', dagmc, bool)
+        self._dagmc = dagmc
+        
     @ptables.setter
     def ptables(self, ptables):
         cv.check_type('probability tables', ptables, bool)
@@ -945,6 +959,11 @@ class Settings(object):
             elem = ET.SubElement(root, "log_grid_bins")
             elem.text = str(self._log_grid_bins)
 
+    def _create_dagmc_subelement(self, root):
+        if self._dagmc is not None:
+            elem = ET.SubElement(root, "dagmc")
+            element.text = str(self._dagmc).lower()
+        
     def export_to_xml(self, path='settings.xml'):
         """Export simulation settings to an XML file.
 
@@ -992,7 +1011,7 @@ class Settings(object):
         self._create_volume_calcs_subelement(root_element)
         self._create_create_fission_neutrons_subelement(root_element)
         self._create_log_grid_bins_subelement(root_element)
-
+        self._create_dagmc_subelement(root_element)
         # Clean the indentation in the file to be user-readable
         clean_indentation(root_element)
 

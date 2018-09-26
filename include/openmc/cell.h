@@ -113,7 +113,6 @@ public:
   explicit Cell(pugi::xml_node cell_node);
   Cell() {};
 
-
   //! \brief Determine if a cell contains the particle at a given location.
   //!
   //! The bounds of the cell are detemined by a logical expression involving
@@ -144,6 +143,7 @@ public:
   //! @param group_id An HDF5 group id.
   virtual void to_hdf5(hid_t group_id) const = 0;
 
+  virtual ~Cell() {}
 };
  
 class CSGCell : public Cell
@@ -162,6 +162,8 @@ public:
 
   void to_hdf5(hid_t group_id) const;
 
+
+  
 protected:
   bool contains_simple(Position r, Direction u, int32_t on_surface) const;
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
@@ -172,7 +174,7 @@ class DAGCell : public Cell
 {
  public:
   moab::DagMC *dagmc_ptr_;
-  explicit DAGCell();
+  DAGCell();
 
   std::pair<double, int32_t> distance(Position p, Direction u, int32_t on_surface) const;
   bool contains(Position p, Direction u, int32_t on_surface) const;

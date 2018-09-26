@@ -76,7 +76,7 @@ public:
   std::vector<int> neighbor_neg_; //!< List of cells on negative side
 
   explicit Surface(pugi::xml_node surf_node);
-  explicit Surface();
+  Surface();
   
   virtual ~Surface() {}
 
@@ -124,7 +124,7 @@ class CSGSurface : public Surface
 {
  public:
   explicit CSGSurface(pugi::xml_node surf_node);
-  explicit CSGSurface();
+  CSGSurface();
 
   void to_hdf5(hid_t group_id) const;
   
@@ -140,7 +140,7 @@ class DAGSurface : public Surface
 {
  public:
   moab::DagMC* dagmc_ptr_;
-  explicit DAGSurface();
+  DAGSurface();
   double evaluate(Position p) const;
   double distance(Position p, Direction u,
                   bool coincident) const;

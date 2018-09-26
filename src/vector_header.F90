@@ -91,23 +91,23 @@ contains
 !===============================================================================
 ! VECTOR_WRITE writes a vector to file
 !===============================================================================
-   
+
   subroutine vector_write(self, filename)
-     
+
     class(Vector), target, intent(inout) :: self ! vector instance
     character(*), intent(in) :: filename         ! filename to output to
-     
+
     integer :: unit_
     integer :: i
-     
+
     open(newunit=unit_, file=filename)
-     
+
     do i = 1, self % n
       write(unit_,*) i, self % data(i)
     end do
-     
+
     close(unit_)
-   
+
   end subroutine vector_write
 
 end module vector_header

@@ -1,8 +1,8 @@
 
 #ifdef DAGMC
 
-#ifndef DAGMC_H
-#define DAGMC_H
+#ifndef OPEN_DAGMC_H
+#define OPEN_DAGMC_H
 
 #include "DagMC.hpp"
 #include "openmc/cell.h"

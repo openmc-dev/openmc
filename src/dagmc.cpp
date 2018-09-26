@@ -1,19 +1,18 @@
 
 #ifdef DAGMC
 
-#include "dagmc.h"
+#include "openmc/dagmc.h"
 #include "openmc/error.h"
+#include "openmc/string_functions.h"
 
 #include <string>
 #include <algorithm>
 
 moab::DagMC* DAG;
 
-#define TOLOWER(S) std::transform(S.begin(), S.end(), S.begin(), ::tolower)
-
 void load_dagmc_geometry_c()
 {
-  if(!DAG) {
+  if (!DAG) {
     DAG = new moab::DagMC();
   }
 
@@ -35,7 +34,7 @@ void load_dagmc_geometry_c()
 
   // initialize cell objects
   openmc::n_cells = DAG->num_entities(3);
-  for(int i = 0; i < openmc::n_cells; i++) {
+  for (int i = 0; i < openmc::n_cells; i++) {
     moab::EntityHandle vol_handle = DAG->entity_by_index(3, i+1);
     
     // set cell ids using global IDs
@@ -55,31 +54,28 @@ void load_dagmc_geometry_c()
       openmc::universes.back()-> id_ = dagmc_univ_id;
       openmc::universes.back()->cells_.push_back(i);
       openmc::universe_map[dagmc_univ_id] = openmc::universes.size() - 1;
-    }
-    else {
+    } else {
       openmc::universes[it->second]->cells_.push_back(i);
     }
     
-    if(DAG->is_implicit_complement(vol_handle)) {
+    if (DAG->is_implicit_complement(vol_handle)) {
       // assuming implicit complement is void for now
       c->material_.push_back(openmc::MATERIAL_VOID);
       continue;
     }
     
-    if(DAG->has_prop(vol_handle, "mat")){
+    if (DAG->has_prop(vol_handle, "mat")){
       std::string mat_value;
       rval = DAG->prop_value(vol_handle, "mat", mat_value);
       MB_CHK_ERR_CONT(rval);
-      TOLOWER(mat_value);
+      openmc::to_lower(mat_value);
       
-      if(mat_value == "void" || mat_value == "vacuum") {
+      if (mat_value == "void" || mat_value == "vacuum") {
 	c->material_.push_back(openmc::MATERIAL_VOID);
-      }
-      else {
+      } else {
 	c->material_.push_back(std::stoi(mat_value));
       }
-    }
-    else {
+    } else {
       std::cout << c->id_ << std::endl;
       openmc::fatal_error("A volume without a material was found.");
     }
@@ -89,7 +85,7 @@ void load_dagmc_geometry_c()
   openmc::n_surfaces = DAG->num_entities(2);
   openmc::surfaces.resize(openmc::n_surfaces);
 
-  for(int i = 0; i < openmc::n_surfaces; i++) {
+  for (int i = 0; i < openmc::n_surfaces; i++) {
     moab::EntityHandle surf_handle = DAG->entity_by_index(2, i+1);
     
     // set cell ids using global IDs
@@ -97,33 +93,27 @@ void load_dagmc_geometry_c()
     s->id_ = DAG->id_by_index(2, i+1);
     s->dagmc_ptr_ = DAG;
     
-    if(DAG->has_prop(surf_handle, "boundary")) {
+    if (DAG->has_prop(surf_handle, "boundary")) {
       std::string bc_value;
       rval = DAG->prop_value(surf_handle, "boundary", bc_value);
       MB_CHK_ERR_CONT(rval);
-      TOLOWER(bc_value);
+      openmc::to_lower(bc_value);
       
-      if(bc_value == "transmit" || bc_value == "transmission") {
+      if (bc_value == "transmit" || bc_value == "transmission") {
 	s->bc_ = openmc::BC_TRANSMIT;
-      }
-      else if(bc_value == "vacuum") {
+      } else if (bc_value == "vacuum") {
 	s->bc_ = openmc::BC_VACUUM;
-      }
-      else if(bc_value == "reflective" || bc_value == "reflect" || bc_value == "reflecting") {
+      } else if (bc_value == "reflective" || bc_value == "reflect" || bc_value == "reflecting") {
 	s->bc_ = openmc::BC_REFLECT;
-      }
-      else if(bc_value == "periodic") {
+      } else if (bc_value == "periodic") {
 	openmc::fatal_error("Periodic boundary condition not supported in DAGMC.");
-      }
-      else {
+      } else {
 	std::stringstream err_msg;
 	err_msg << "Unknown boundary condition \"" << s->bc_
 		<< "\" specified on surface " << s->id_;
 	openmc::fatal_error(err_msg);
       }
-    }
-    // if no BC property is found, set to transmit
-    else {
+    } else {   // if no BC property is found, set to transmit
       s->bc_ = openmc::BC_TRANSMIT;
     }
     

@@ -18,8 +18,6 @@
 //TODO: remove this include
 #include <iostream>
 
-//extern "C" {int32_t n_cells {0};}
-
 namespace openmc {
 
 //==============================================================================
@@ -605,11 +603,9 @@ std::pair<double, int32_t> DAGCell::distance(Position p, Direction u, int32_t on
   rval = dagmc_ptr_->ray_fire(vol, p.xyz, u.xyz, hit_surf, dist);
   MB_CHK_ERR_CONT(rval);
   int surf_idx;
-  if(hit_surf != 0) {
+  if (hit_surf != 0) {
     surf_idx = dagmc_ptr_->index_by_handle(hit_surf);
-  }
-  // indicate that particle is lost
-  else {
+  } else {  // indicate that particle is lost
     surf_idx = -1;
   }
   

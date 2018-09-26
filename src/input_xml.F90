@@ -638,7 +638,7 @@ contains
       call surface_dict % set(surfaces(i) % id(), i)
     end do
 
-    end subroutine allocate_surfaces
+  end subroutine allocate_surfaces
 
   subroutine allocate_cells()
     integer :: i
@@ -941,7 +941,7 @@ contains
       end if
 
       ! Create list of macroscopic x/s based on those specified, just treat
-      ! them as nuclides. This is all really a fadagmce so the user thinks they
+      ! them as nuclides. This is all really a facade so the user thinks they
       ! are entering in macroscopic data but the code treats them the same
       ! as nuclides internally.
       ! Get pointer list of XML <macroscopic>

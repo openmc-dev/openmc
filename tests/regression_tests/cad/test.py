@@ -3,8 +3,8 @@ import os
 import pytest
 
 pytestmark = pytest.mark.skipif(
-    os.environ.get('CAD') != 'y',
-    reason="CAD build is not enabled.")
+    os.environ.get('DAGMC') != 'y',
+    reason="DAGMC CAD geometry is not enabled.")
 
 def test_cad():
     harness = CADTestHarness('statepoint.15.h5')

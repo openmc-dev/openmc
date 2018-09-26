@@ -178,7 +178,7 @@ Surface::Surface(pugi::xml_node surf_node)
   }
 
 }
-  
+
 bool
 Surface::sense(Position r, Direction u) const
 {
@@ -1285,8 +1285,6 @@ extern "C" {
     uvw[1] = u.y;
     uvw[2] = u.z;
   }
-
-  void surface_to_hdf5(CSGSurface* surf, hid_t group) {surf->to_hdf5(group);}
 
   bool
   surface_periodic(PeriodicSurface* surf, PeriodicSurface* other, double xyz[3],

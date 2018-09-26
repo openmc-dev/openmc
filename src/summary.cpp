@@ -10,9 +10,7 @@ extern "C" void
 write_geometry(hid_t file_id) {
 
 #ifdef DAGMC
-  if (settings::dagmc) {
-    return;
-  }
+  if (settings::dagmc) return;
 #endif
   
   auto geom_group = create_group(file_id, "geometry");

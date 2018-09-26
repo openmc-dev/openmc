@@ -44,15 +44,7 @@ extern std::map<int, int> surface_map;
 //==============================================================================
 
 struct BoundingBox
-{
-
-  BoundingBox(double x_min, double x_max,
-              double y_min, double y_max,
-              double z_min, double z_max) :
-              xmin(x_min), xmax(x_max),
-              ymin(y_min), ymax(y_max),
-              zmin(z_min), zmax(z_max) {}
-	      
+{	      
   double xmin;
   double xmax;
   double ymin;
@@ -141,10 +133,10 @@ class DAGSurface : public Surface
  public:
   moab::DagMC* dagmc_ptr_;
   DAGSurface();
-  double evaluate(Position p) const;
-  double distance(Position p, Direction u,
+  double evaluate(Position r) const;
+  double distance(Position r, Direction u,
                   bool coincident) const;
-  Direction normal(Position p) const;
+  Direction normal(Position r) const;
   //! Get the bounding box of this surface.
   BoundingBox bounding_box() const;
 

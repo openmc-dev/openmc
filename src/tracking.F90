@@ -319,7 +319,6 @@ contains
     class(Surface), pointer :: surf
     class(Surface), pointer :: surf2 ! periodic partner surface
 
-
     i_surface = abs(p % surface)
     surf => surfaces(i_surface)
     if (verbosity >= 10 .or. trace) then
@@ -475,7 +474,7 @@ contains
 
 #ifdef DAGMC
     if (dagmc) then
-      i_cell = next_cell(cells(p % last_cell(1) + 1), surfaces(ABS(p % surface)))
+      i_cell = next_cell(cells(p % last_cell(1) + 1), surfaces(abs(p % surface)))
       ! save material and temp
       p % last_material = p % material
       p % last_sqrtkT = p % sqrtKT

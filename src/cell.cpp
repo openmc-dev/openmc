@@ -595,12 +595,12 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 #ifdef DAGMC
 DAGCell::DAGCell() : Cell{} {};
 
-std::pair<double, int32_t> DAGCell::distance(Position p, Direction u, int32_t on_surface) const {
+std::pair<double, int32_t> DAGCell::distance(Position r, Direction u, int32_t on_surface) const {
   moab::ErrorCode rval;
   moab::EntityHandle vol = dagmc_ptr_->entity_by_id(3, id_);
   moab::EntityHandle hit_surf;
   double dist;
-  double pnt[3] = {p.x, p.y, p.z};
+  double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
   rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist);
   MB_CHK_ERR_CONT(rval);
@@ -611,21 +611,19 @@ std::pair<double, int32_t> DAGCell::distance(Position p, Direction u, int32_t on
     surf_idx = -1;
   }
   
-  std::pair<double, int> result(dist, surf_idx);
-  
-  return result;
+  return {dist, surf_idx};
 }
   
-bool DAGCell::contains(Position p, Direction u, int32_t on_surface) const {
+bool DAGCell::contains(Position r, Direction u, int32_t on_surface) const {
   moab::ErrorCode rval;
   moab::EntityHandle vol = dagmc_ptr_->entity_by_id(3, id_);
 
   int result = 0;
-  double pnt[3] = {p.x, p.y, p.z};
+  double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
   rval = dagmc_ptr_->point_in_volume(vol, pnt, result, dir);
   MB_CHK_ERR_CONT(rval);  
-  return bool(result);
+  return result;
 }
 
 void DAGCell::to_hdf5(hid_t group_id) const { return; }
@@ -773,7 +771,7 @@ extern "C" {
 
 #ifdef DAGMC
 
-  int32_t next_cell(DAGCell* cur_cell, DAGSurface *surf_xed ) {
+  int32_t next_cell(DAGCell* cur_cell, DAGSurface* surf_xed ) {
     moab::EntityHandle surf = surf_xed->dagmc_ptr_->entity_by_id(2,surf_xed->id_);
     moab::EntityHandle vol = cur_cell->dagmc_ptr_->entity_by_id(3,cur_cell->id_);
 

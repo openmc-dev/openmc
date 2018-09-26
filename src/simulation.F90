@@ -205,7 +205,7 @@ contains
     total_weight = ZERO
 
     if ((n_inactive > 0 .and. current_batch == 1) .or. &
-        (restart_run .and. restart_batch <= n_inactive .and. current_batch == restart_batch)) then
+         (restart_run .and. restart_batch <= n_inactive .and. current_batch == restart_batch)) then
       ! Turn on inactive timer
       call time_inactive % start()
     elseif (current_batch == n_inactive + 1) then
@@ -414,7 +414,7 @@ contains
       end do
     end if
 
-    ! Increment n_realizations as would ordinarily be done in finalize_batch
+    ! Increment n_realizations if in active batches as would ordinarily be done in finalize_batch
     if (current_batch > n_inactive) then
       if (reduce_tallies) then
         n_realizations = n_realizations + 1

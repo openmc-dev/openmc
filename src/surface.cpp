@@ -260,7 +260,9 @@ double DAGSurface::distance(Position p, Direction u, bool coincident) const {
   moab::EntityHandle surf = dagmc_ptr_->entity_by_id(2, id_);
   moab::EntityHandle hit_surf;
   double dist;
-  rval = dagmc_ptr_->ray_fire(surf, p.xyz, u.xyz, hit_surf, dist, NULL, 0, 0);
+  double pnt[3] = {p.x, p.y, p.z};
+  double dir[3] = {u.x, u.y, u.z};
+  rval = dagmc_ptr_->ray_fire(surf, pnt, dir, hit_surf, dist, NULL, 0, 0);
   MB_CHK_ERR_CONT(rval);
   if (dist < 0.0) dist = INFTY;
   return dist;
@@ -270,7 +272,9 @@ Direction DAGSurface::normal(Position p) const {
   moab::ErrorCode rval;
   Direction u;
   moab::EntityHandle surf = dagmc_ptr_->entity_by_id(2, id_);
-  rval = dagmc_ptr_->get_angle(surf, p.xyz, u.xyz);
+  double pnt[3] = {p.x, p.y, p.z};
+  double dir[3] = {u.x, u.y, u.z};
+  rval = dagmc_ptr_->get_angle(surf, pnt, dir);
   MB_CHK_ERR_CONT(rval);
   return u;
 }

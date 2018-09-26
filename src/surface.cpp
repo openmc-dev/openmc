@@ -255,12 +255,12 @@ double DAGSurface::evaluate(Position r) const
   return 0.0;
 }
 
-double DAGSurface::distance(Position p, Direction u, bool coincident) const {
+double DAGSurface::distance(Position r, Direction u, bool coincident) const {
   moab::ErrorCode rval;
   moab::EntityHandle surf = dagmc_ptr_->entity_by_id(2, id_);
   moab::EntityHandle hit_surf;
   double dist;
-  double pnt[3] = {p.x, p.y, p.z};
+  double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
   rval = dagmc_ptr_->ray_fire(surf, pnt, dir, hit_surf, dist, NULL, 0, 0);
   MB_CHK_ERR_CONT(rval);
@@ -268,11 +268,11 @@ double DAGSurface::distance(Position p, Direction u, bool coincident) const {
   return dist;
 }
 
-Direction DAGSurface::normal(Position p) const {
+Direction DAGSurface::normal(Position r) const {
   moab::ErrorCode rval;
   Direction u;
   moab::EntityHandle surf = dagmc_ptr_->entity_by_id(2, id_);
-  double pnt[3] = {p.x, p.y, p.z};
+  double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
   rval = dagmc_ptr_->get_angle(surf, pnt, dir);
   MB_CHK_ERR_CONT(rval);
@@ -285,7 +285,7 @@ BoundingBox DAGSurface::bounding_box() const {
   double min[3], max[3];
   rval = dagmc_ptr_->getobb(surf, min, max);
   MB_CHK_ERR_CONT(rval);
-  return BoundingBox(min[0], max[0], min[1], max[1], min[2], max[2]);
+  return {min[0], max[0], min[1], max[1], min[2], max[2]};
 }
 
 void DAGSurface::to_hdf5(hid_t group_id) const {}

@@ -172,12 +172,12 @@ protected:
 #ifdef DAGMC
 class DAGCell : public Cell
 {
- public:
-  moab::DagMC *dagmc_ptr_;
+public:
+  moab::DagMC* dagmc_ptr_;
   DAGCell();
 
-  std::pair<double, int32_t> distance(Position p, Direction u, int32_t on_surface) const;
-  bool contains(Position p, Direction u, int32_t on_surface) const;
+  std::pair<double, int32_t> distance(Position r, Direction u, int32_t on_surface) const;
+  bool contains(Position r, Direction u, int32_t on_surface) const;
 
   void to_hdf5(hid_t group_id) const;
 

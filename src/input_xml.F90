@@ -403,8 +403,6 @@ contains
 
     root_universe = find_root_universe()
 
-    return
-
   end subroutine read_geometry_dagmc
 
 #endif

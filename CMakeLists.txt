@@ -47,9 +47,7 @@ if(dagmc)
   if(NOT DAGMC_FOUND)
     message(FATAL_ERROR "Could not find DAGMC installation")
   endif()
-  add_definitions(-DDAGMC)
   link_directories(${DAGMC_LIBRARY_DIRS})
-  include_directories(${DAGMC_INCLUDE_DIRS})
 endif()
 
 #===============================================================================
@@ -401,7 +399,6 @@ add_library(libopenmc SHARED
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90
   src/dagmc.cpp
-  src/dagmc.h
   src/cell.cpp
   src/cmfd_execute.cpp
   src/distribution.cpp
@@ -491,14 +488,20 @@ endif()
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml
-                      faddeeva xtensor ${DAGMC_LIBRARIES})
+  faddeeva xtensor ${DAGMC_LIBRARIES})
+
+if(dagmc)
+  target_compile_definitions(libopenmc PRIVATE DAGMC)
+  target_link_libraries(libopenmc ${DAGMC_LIBRARIES})
+  target_include_directories(libopenmc PRIVATE ${DAGMC_INCLUDE_DIRS})
+endif()
 
 #===============================================================================
 # openmc executable
 #===============================================================================
 add_executable(openmc src/main.cpp)
 target_compile_options(openmc PRIVATE ${cxxflags})
-target_link_libraries(openmc libopenmc ${DAGMC_LIBRARIES})
+target_link_libraries(openmc libopenmc)
 
 #===============================================================================
 # Python package

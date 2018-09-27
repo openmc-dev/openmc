@@ -592,7 +592,9 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 #ifdef DAGMC
 DAGCell::DAGCell() : Cell{} {};
 
-std::pair<double, int32_t> DAGCell::distance(Position r, Direction u, int32_t on_surface) const {
+std::pair<double, int32_t>
+DAGCell::distance(Position r, Direction u, int32_t on_surface) const
+{
   moab::ErrorCode rval;
   moab::EntityHandle vol = dagmc_ptr_->entity_by_id(3, id_);
   moab::EntityHandle hit_surf;
@@ -611,7 +613,8 @@ std::pair<double, int32_t> DAGCell::distance(Position r, Direction u, int32_t on
   return {dist, surf_idx};
 }
   
-bool DAGCell::contains(Position r, Direction u, int32_t on_surface) const {
+bool DAGCell::contains(Position r, Direction u, int32_t on_surface) const
+{
   moab::ErrorCode rval;
   moab::EntityHandle vol = dagmc_ptr_->entity_by_id(3, id_);
 
@@ -624,6 +627,7 @@ bool DAGCell::contains(Position r, Direction u, int32_t on_surface) const {
 }
 
 void DAGCell::to_hdf5(hid_t group_id) const { return; }
+
 #endif
 
 //==============================================================================

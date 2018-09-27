@@ -139,7 +139,7 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
 //==============================================================================
 
 Surface::Surface() {} // empty constructor
-  
+
 Surface::Surface(pugi::xml_node surf_node)
 {
   if (check_for_node(surf_node, "id")) {
@@ -255,7 +255,9 @@ double DAGSurface::evaluate(Position r) const
   return 0.0;
 }
 
-double DAGSurface::distance(Position r, Direction u, bool coincident) const {
+double
+DAGSurface::distance(Position r, Direction u, bool coincident) const
+{
   moab::ErrorCode rval;
   moab::EntityHandle surf = dagmc_ptr_->entity_by_id(2, id_);
   moab::EntityHandle hit_surf;
@@ -268,7 +270,8 @@ double DAGSurface::distance(Position r, Direction u, bool coincident) const {
   return dist;
 }
 
-Direction DAGSurface::normal(Position r) const {
+Direction DAGSurface::normal(Position r) const
+{
   moab::ErrorCode rval;
   Direction u;
   moab::EntityHandle surf = dagmc_ptr_->entity_by_id(2, id_);
@@ -279,7 +282,8 @@ Direction DAGSurface::normal(Position r) const {
   return u;
 }
 
-BoundingBox DAGSurface::bounding_box() const {
+BoundingBox DAGSurface::bounding_box() const
+{
   moab::ErrorCode rval;
   moab::EntityHandle surf = dagmc_ptr_->entity_by_id(2, id_);
   double min[3], max[3];

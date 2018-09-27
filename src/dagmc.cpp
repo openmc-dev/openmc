@@ -73,9 +73,9 @@ void load_dagmc_geometry()
       to_lower(mat_value);
       
       if (mat_value == "void" || mat_value == "vacuum") {
-	c->material_.push_back(MATERIAL_VOID);
+        c->material_.push_back(MATERIAL_VOID);
       } else {
-	c->material_.push_back(std::stoi(mat_value));
+        c->material_.push_back(std::stoi(mat_value));
       }
     } else {
       std::cout << c->id_ << std::endl;
@@ -102,18 +102,18 @@ void load_dagmc_geometry()
       to_lower(bc_value);
       
       if (bc_value == "transmit" || bc_value == "transmission") {
-	s->bc_ = BC_TRANSMIT;
+        s->bc_ = BC_TRANSMIT;
       } else if (bc_value == "vacuum") {
-	s->bc_ = BC_VACUUM;
+        s->bc_ = BC_VACUUM;
       } else if (bc_value == "reflective" || bc_value == "reflect" || bc_value == "reflecting") {
-	s->bc_ = BC_REFLECT;
+        s->bc_ = BC_REFLECT;
       } else if (bc_value == "periodic") {
-	fatal_error("Periodic boundary condition not supported in DAGMC.");
+        fatal_error("Periodic boundary condition not supported in DAGMC.");
       } else {
-	std::stringstream err_msg;
-	err_msg << "Unknown boundary condition \"" << s->bc_
-		<< "\" specified on surface " << s->id_;
-	fatal_error(err_msg);
+        std::stringstream err_msg;
+        err_msg << "Unknown boundary condition \"" << s->bc_
+                << "\" specified on surface " << s->id_;
+        fatal_error(err_msg);
       }
     } else {   // if no BC property is found, set to transmit
       s->bc_ = BC_TRANSMIT;

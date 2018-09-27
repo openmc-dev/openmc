@@ -210,7 +210,7 @@ void read_settings_xml()
 
   // DAGMC geometry check
   if (check_for_node(root, "dagmc")) {
-      dagmc = get_node_value_bool(root, "dagmc");
+    dagmc = get_node_value_bool(root, "dagmc");
   }
 
 #ifndef DAGMC

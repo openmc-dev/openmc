@@ -3,9 +3,9 @@
 
   <run_mode>eigenvalue</run_mode>
   <dagmc>true</dagmc>
-  <batches>15</batches>
-  <inactive>5</inactive>
-  <particles>10000</particles>
+  <batches>5</batches>
+  <inactive>0</inactive>
+  <particles>100</particles>
   <!-- Starting source -->
   <source>
     <space type="box">

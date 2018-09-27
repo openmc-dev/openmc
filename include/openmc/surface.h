@@ -44,7 +44,7 @@ extern std::map<int, int> surface_map;
 //==============================================================================
 
 struct BoundingBox
-{	      
+{
   double xmin;
   double xmax;
   double ymin;
@@ -69,7 +69,7 @@ public:
 
   explicit Surface(pugi::xml_node surf_node);
   Surface();
-  
+
   virtual ~Surface() {}
 
   //! Determine which side of a surface a point lies on.
@@ -109,7 +109,7 @@ public:
   //! \param group_id An HDF5 group id.
   //TODO: this probably needs to include i_periodic for PeriodicSurface
   virtual void to_hdf5(hid_t group_id) const = 0;
-  
+
 };
 
 class CSGSurface : public Surface
@@ -119,11 +119,11 @@ class CSGSurface : public Surface
   CSGSurface();
 
   void to_hdf5(hid_t group_id) const;
-  
+
  protected:
-  virtual void to_hdf5_inner(hid_t group_id) const = 0;  
+  virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
- 
+
 //==============================================================================
 //! A `Surface` representing a DAGMC-based surface in DAGMC.
 //==============================================================================
@@ -142,7 +142,7 @@ class DAGSurface : public Surface
 
   void to_hdf5(hid_t group_id) const;
 };
-#endif 
+#endif
 //==============================================================================
 //! A `Surface` that supports periodic boundary conditions.
 //!

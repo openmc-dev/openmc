@@ -15,9 +15,6 @@
 #include "openmc/surface.h"
 #include "openmc/xml_interface.h"
 
-//TODO: remove this include
-#include <iostream>
-
 namespace openmc {
 
 //==============================================================================

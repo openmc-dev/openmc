@@ -226,7 +226,6 @@ class Settings(object):
         self._create_fission_neutrons = None
         self._log_grid_bins = None
 
-        # dagmc
         self._dagmc = None
         
     @property
@@ -1012,6 +1011,7 @@ class Settings(object):
         self._create_create_fission_neutrons_subelement(root_element)
         self._create_log_grid_bins_subelement(root_element)
         self._create_dagmc_subelement(root_element)
+        
         # Clean the indentation in the file to be user-readable
         clean_indentation(root_element)
 

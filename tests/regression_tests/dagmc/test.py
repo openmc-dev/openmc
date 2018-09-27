@@ -7,5 +7,5 @@ pytestmark = pytest.mark.skipif(
     reason="DAGMC CAD geometry is not enabled.")
 
 def test_cad():
-    harness = CADTestHarness('statepoint.15.h5')
+    harness = CADTestHarness('statepoint.5.h5')
     harness.main()    

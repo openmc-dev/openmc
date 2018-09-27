@@ -21,7 +21,7 @@ git clone -b $MOAB_BRANCH $MOAB_REPO
 mkdir build && cd build
 cmake ../moab -DENABLE_HDF5=ON -DCMAKE_INSTALL_PREFIX=$MOAB_INSTALL_DIR
 make -j && make -j test install
-rm -r $HOME/MOAB/moab
+rm -rf $HOME/MOAB/moab
 export LD_LIBRARY_PATH=$MOAB_INSTALL_DIR/lib:$LD_LIBRARY_PATH
 
 # DAGMC Install
@@ -30,7 +30,7 @@ git clone -b $DAGMC_BRANCH $DAGMC_REPO
 mkdir build && cd build
 cmake ../dagmc -DBUILD_TALLY=ON -DCMAKE_INSTALL_PREFIX=$DAGMC_INSTALL_D 
 make -j install
-rm -r $HOME/DAGMC/dagmc
+rm -rf $HOME/DAGMC/dagmc
 export LD_LIBRARY_PATH=$DAGMC_INSTALL_DIR/lib:$LD_LIBRARY_PATH
 
 cd $CURRENT_DIR

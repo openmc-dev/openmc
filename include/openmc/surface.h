@@ -114,13 +114,13 @@ public:
 
 class CSGSurface : public Surface
 {
- public:
+public:
   explicit CSGSurface(pugi::xml_node surf_node);
   CSGSurface();
 
   void to_hdf5(hid_t group_id) const;
 
- protected:
+protected:
   virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
 
@@ -130,7 +130,7 @@ class CSGSurface : public Surface
 #ifdef DAGMC
 class DAGSurface : public Surface
 {
- public:
+public:
   moab::DagMC* dagmc_ptr_;
   DAGSurface();
   double evaluate(Position r) const;

@@ -124,6 +124,12 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
         m = mu.shape()[1] - offset_mu;
       }
 
+      // For incoherent inelastic thermal scattering, the angle distributions
+      // may be given as discrete mu values. In this case, interpolation values
+      // of zero appear in the HDF5 file. Here we change it to a 1 so that
+      // int2interp doesn't fail.
+      if (interp_mu == 0) interp_mu = 1;
+
       auto interp = int2interp(interp_mu);
       auto xs = xt::view(mu, 0, xt::range(offset_mu, offset_mu + m));
       auto ps = xt::view(mu, 1, xt::range(offset_mu, offset_mu + m));

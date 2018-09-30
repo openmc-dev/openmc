@@ -97,13 +97,17 @@ class Summary(object):
                 self._macroscopics = name.decode()
 
     def _read_geometry(self):
-        # Read in and initialize the Materials and Geometry
-        self._read_materials()
-        self._read_surfaces()
-        cell_fills = self._read_cells()
-        self._read_universes()
-        self._read_lattices()
-        self._finalize_geometry(cell_fills)
+        try:
+            self._f['geometry'].attrs.get("cad")
+            return
+        except:
+            # Read in and initialize the Materials and Geometry
+            self._read_materials()
+            self._read_surfaces()
+            cell_fills = self._read_cells()
+            self._read_universes()
+            self._read_lattices()
+            self._finalize_geometry(cell_fills)
 
     def _read_materials(self):
         for group in self._f['materials'].values():

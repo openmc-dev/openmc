@@ -9,11 +9,15 @@ namespace openmc {
 extern "C" void
 write_geometry(hid_t file_id) {
 
-#ifdef DAGMC
-  if (settings::dagmc) return;
-#endif
-  
   auto geom_group = create_group(file_id, "geometry");
+  
+#ifdef DAGMC
+  if (settings::dagmc) {
+    write_attribute(geom_group, "cad", 1);
+    return;
+  }
+#endif
+
   write_attribute(geom_group, "n_cells", cells.size());
   write_attribute(geom_group, "n_surfaces", surfaces.size());
   write_attribute(geom_group, "n_universes", universes.size());

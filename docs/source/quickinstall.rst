@@ -59,37 +59,18 @@ are no longer supported.
 .. _APT package manager: https://help.ubuntu.com/community/AptGet/Howto
 
 -------------------------------------------
-Installing with Docker on Linux/Mac/Windows
+Installing on Linux/Mac/Windows with Docker
 -------------------------------------------
 
 OpenMC can be easily deployed using `Docker <https://www.docker.com/>`_ on any
 Windows, Mac or Linux system. With Docker running, execute the following
-command in the shell to build a `Docker image`_ called ``debian/openmc:latest``:
+command in the shell to download and run a `Docker image`_ with the most recent release of OpenMC from `DockerHub <https://hub.docker.com/>`_ called ``openmc/openmc:latest``:
 
 .. code-block:: sh
 
-    docker build -t debian/openmc:latest https://github.com/openmc-dev/openmc.git#develop
+    docker run openmc/openmc:latest
 
-.. note:: This may take 5 -- 10 minutes to run to completion.
-
-This command will execute the instructions in OpenMC's ``Dockerfile`` to
-build a Docker image with OpenMC installed to ``/opt/openmc``. After building
-the Docker image, you can run the following to see the names of all images
-on your machine, including ``debian/openmc:latest``:
-
-.. code-block:: sh
-
-    docker image ls
-
-Now you can run the following to create a `Docker container`_ called
-``my_openmc`` based on the ``debian/openmc:latest`` image:
-
-.. code-block:: sh
-
-    docker run -it --name=my_openmc debian/openmc:latest
-
-This command will open an interactive shell running from within the
-Docker container where you have access to use OpenMC.
+This will take 5 -- 10 minutes to run to completion depending on your internet download speed. The command will place you in an interactive shell running in a `Docker container`_ with OpenMC installed.
 
 .. note:: The ``docker run`` command supports many
           `options <https://docs.docker.com/engine/reference/commandline/run/>`_

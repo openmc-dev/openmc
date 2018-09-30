@@ -97,10 +97,10 @@ class Summary(object):
                 self._macroscopics = name.decode()
 
     def _read_geometry(self):
-        try:
-            self._f['geometry'].attrs.get("cad")
+        
+        if "cad" in self._f['geometry'].attrs.keys():
             return
-        except:
+        else:
             # Read in and initialize the Materials and Geometry
             self._read_materials()
             self._read_surfaces()

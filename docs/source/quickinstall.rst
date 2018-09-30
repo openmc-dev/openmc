@@ -70,12 +70,11 @@ command in the shell to download and run a `Docker image`_ with the most recent 
 
     docker run openmc/openmc:latest
 
-This will take 5 -- 10 minutes to run to completion depending on your internet download speed. The command will place you in an interactive shell running in a `Docker container`_ with OpenMC installed.
+This will take several minutes to run depending on your internet download speed. The command will place you in an interactive shell running in a `Docker container`_ with OpenMC installed.
 
-.. note:: The ``docker run`` command supports many
-          `options <https://docs.docker.com/engine/reference/commandline/run/>`_
-          for spawning containers -- including `mounting volumes`_ from the
-          host filesystem -- which many users will find useful.
+.. note:: The ``docker run`` command supports many `options`_ for spawning
+          containers -- including `mounting volumes`_ from the host
+	  filesystem -- which many users will find useful.
 
 .. _Docker image: https://docs.docker.com/engine/reference/commandline/images/
 .. _Docker container: https://www.docker.com/resources/what-container

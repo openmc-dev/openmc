@@ -487,12 +487,12 @@ ThermalData::sample(const NuclideMicroXS* micro_xs, double E,
       // Determine endpoints on grid i
       auto n = inelastic_data_[i].e_out.size();
       double E_i_1 = inelastic_data_[i].e_out(0);
-      double E_i_J = inelastic_data_[i].e_out(n);
+      double E_i_J = inelastic_data_[i].e_out(n - 1);
 
       // Determine endpoints on grid i + 1
       n = inelastic_data_[i].e_out.size();
       double E_i1_1 = inelastic_data_[i + 1].e_out(0);
-      double E_i1_J = inelastic_data_[i + 1].e_out(n);
+      double E_i1_J = inelastic_data_[i + 1].e_out(n - 1);
 
       double E_1 = E_i_1 + f * (E_i1_1 - E_i_1);
       double E_J = E_i_J + f * (E_i1_J - E_i_J);

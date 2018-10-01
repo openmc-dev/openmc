@@ -1,6 +1,4 @@
 
-#ifdef DAGMC
-
 #include "openmc/dagmc.h"
 #include "openmc/error.h"
 #include "openmc/string_functions.h"
@@ -10,6 +8,8 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
+
+#ifdef DAGMC
 
 namespace openmc {
 

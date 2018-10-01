@@ -133,11 +133,11 @@ public:
   //!   known to be on.  This index takes precedence over surface sense
   //!   calculations.
   virtual bool
-  contains(Position p, Direction u, int32_t on_surface) const = 0;
+  contains(Position r, Direction u, int32_t on_surface) const = 0;
 
   //! Find the oncoming boundary of this cell.
   virtual std::pair<double, int32_t>
-  distance(Position p, Direction u, int32_t on_surface) const = 0;
+  distance(Position r, Direction u, int32_t on_surface) const = 0;
 
   //! Write all information needed to reconstruct the cell to an HDF5 group.
   //! @param group_id An HDF5 group id.

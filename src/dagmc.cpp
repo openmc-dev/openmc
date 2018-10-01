@@ -6,6 +6,7 @@
 #include "openmc/string_functions.h"
 
 #include <string>
+#include <sstream>
 #include <algorithm>
 
 namespace openmc {
@@ -78,8 +79,9 @@ void load_dagmc_geometry()
         c->material_.push_back(std::stoi(mat_value));
       }
     } else {
-      std::cout << c->id_ << std::endl;
-      fatal_error("A volume without a material was found.");
+      std::stringstream err_msg;
+      err_msg << "Volume " << c->id_ << " has no material assignment.";
+      fatal_error(err_msg.str());
     }
   }
   

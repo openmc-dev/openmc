@@ -13,7 +13,7 @@ write_geometry(hid_t file_id) {
   
 #ifdef DAGMC
   if (settings::dagmc) {
-    write_attribute(geom_group, "cad", 1);
+    write_attribute(geom_group, "dagmc", 1);
     return;
   }
 #endif

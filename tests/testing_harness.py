@@ -312,15 +312,3 @@ class HashedPyAPITestHarness(PyAPITestHarness):
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
         return super()._get_results(True)
-
-
-class CADTestHarness(TestHarness):
-
-    def execute_test(self):
-        """Run OpenMC with the appropriate arguments and check the outputs."""
-        try:
-            self._run_openmc()
-            self._test_output_created()
-        finally:
-            self._cleanup()
-        

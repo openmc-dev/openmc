@@ -142,3 +142,13 @@ void free_memory_dagmc()
 
 }
 #endif
+
+bool dagmc_enabled()
+{
+#ifdef DAGMC
+  return true;
+#else
+  return false;
+#endif
+}
+

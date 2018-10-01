@@ -98,7 +98,7 @@ class Summary(object):
 
     def _read_geometry(self):
         
-        if "cad" in self._f['geometry'].attrs.keys():
+        if "dagmc" in self._f['geometry'].attrs.keys():
             return
         else:
             # Read in and initialize the Materials and Geometry

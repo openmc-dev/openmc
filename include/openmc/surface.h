@@ -134,8 +134,7 @@ public:
   moab::DagMC* dagmc_ptr_;
   DAGSurface();
   double evaluate(Position r) const;
-  double distance(Position r, Direction u,
-                  bool coincident) const;
+  double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   //! Get the bounding box of this surface.
   BoundingBox bounding_box() const;

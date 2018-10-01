@@ -1,8 +1,8 @@
 
 #ifdef DAGMC
 
-#ifndef OPEN_DAGMC_H
-#define OPEN_DAGMC_H
+#ifndef OPENMC_DAGMC_H
+#define OPENMC_DAGMC_H
 
 #include "DagMC.hpp"
 #include "openmc/cell.h"
@@ -16,6 +16,7 @@ extern "C" void load_dagmc_geometry();
 extern "C" void free_memory_dagmc();
 
 }
-#endif // DAGMC_H
+
+#endif // OPENMC_DAGMC_H
 
 #endif

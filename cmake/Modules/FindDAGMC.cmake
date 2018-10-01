@@ -8,7 +8,7 @@
 #  DAGMC_DEFINITIONS - Compiler switches required for using DAGMC
 
 find_path(DAGMC_CMAKE_CONFIG NAMES DAGMCConfig.cmake
-          HINTS ${DAGMC_ROOT}
+          HINTS ${DAGMC_ROOT} $ENV{DAGMC_ROOT}
           PATHS ENV LD_LIBRARY_PATH
           PATH_SUFFIXES lib Lib cmake lib/cmake
           NO_DEFAULT_PATH)

@@ -1285,15 +1285,6 @@ extern "C" {
 
   int surface_i_periodic(PeriodicSurface* surf) {return surf->i_periodic_;}
 
-  void surface_normal(Surface* surf, double xyz[3], double uvw[3])
-  {
-    Position r {xyz};
-    Direction u = surf->normal(r);
-    uvw[0] = u.x;
-    uvw[1] = u.y;
-    uvw[2] = u.z;
-  }
-
   bool
   surface_periodic(PeriodicSurface* surf, PeriodicSurface* other, double xyz[3],
                    double uvw[3])

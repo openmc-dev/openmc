@@ -408,10 +408,12 @@ void read_settings_xml()
 #endif
   }
 
+#ifdef _OPENMP
   if (dagmc) {
     warning("Forcing number of threads to 1 for DAGMC simulation.");
     omp_set_num_threads(1);
   }
+#endif
   
   // ==========================================================================
   // EXTERNAL SOURCE

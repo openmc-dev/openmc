@@ -182,7 +182,7 @@ contains
     if (.not. dagmc) then
       call neighbor_lists()
     end if
-   
+
     ! Assign temperatures to cells that don't have temperatures already assigned
     call assign_temperatures()
 

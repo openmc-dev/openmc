@@ -181,7 +181,7 @@ contains
     ! neighboring cells for efficient tracking
     if (.not. dagmc) then
       call neighbor_lists()
-   end if
+    end if
    
     ! Assign temperatures to cells that don't have temperatures already assigned
     call assign_temperatures()

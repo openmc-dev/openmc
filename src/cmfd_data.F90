@@ -254,7 +254,7 @@ contains
 
                 ! Set the energy bin if needed
                 if (energy_filters) then
-                  filter_matches(i_filter_ein) % bins % data(1) = 12*(ng - h) + 1
+                  filter_matches(i_filter_ein) % bins % data(1) = ng - h
                 end if
 
                 score_index = 0
@@ -265,39 +265,39 @@ contains
 
                 ! Left surface
                 cmfd % current(1,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + OUT_LEFT)
+                     score_index + ng*OUT_LEFT)
                 cmfd % current(2,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + IN_LEFT)
+                     score_index + ng*IN_LEFT)
 
                 ! Right surface
                 cmfd % current(3,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + IN_RIGHT)
+                     score_index + ng*IN_RIGHT)
                 cmfd % current(4,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + OUT_RIGHT)
+                     score_index + ng*OUT_RIGHT)
 
                 ! Back surface
                 cmfd % current(5,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + OUT_BACK)
+                     score_index + ng*OUT_BACK)
                 cmfd % current(6,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + IN_BACK)
+                     score_index + ng*IN_BACK)
 
                 ! Front surface
                 cmfd % current(7,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + IN_FRONT)
+                     score_index + ng*IN_FRONT)
                 cmfd % current(8,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + OUT_FRONT)
+                     score_index + ng*OUT_FRONT)
 
                 ! Left surface
                 cmfd % current(9,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + OUT_BOTTOM)
+                     score_index + ng*OUT_BOTTOM)
                 cmfd % current(10,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + IN_BOTTOM)
+                     score_index + ng*IN_BOTTOM)
 
                 ! Right surface
                 cmfd % current(11,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + IN_TOP)
+                     score_index + ng*IN_TOP)
                 cmfd % current(12,h,i,j,k) = t % results(RESULT_SUM, 1, &
-                     score_index + OUT_TOP)
+                     score_index + ng*OUT_TOP)
 
               else if (ital == 4) then
 

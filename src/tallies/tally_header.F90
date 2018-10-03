@@ -412,6 +412,13 @@ contains
 !===============================================================================
 
   subroutine free_memory_tally()
+    interface
+      subroutine free_memory_tally_c() bind(C)
+      end subroutine free_memory_tally_c
+    end interface
+
+    call free_memory_tally_c()
+
     n_tallies = 0
     if (allocated(tallies)) deallocate(tallies)
     call tally_dict % clear()

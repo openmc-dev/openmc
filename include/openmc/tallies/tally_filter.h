@@ -51,5 +51,9 @@ public:
   virtual void initialize() = 0;
 };
 
+//==============================================================================
+
+extern "C" void free_memory_tally_c();
+
 } // namespace openmc
 #endif // OPENMC_TALLY_FILTER_H

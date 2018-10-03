@@ -16,6 +16,22 @@ std::vector<TallyFilterMatch> filter_matches;
 std::vector<TallyFilter*> tally_filters;
 
 //==============================================================================
+// Non-member functions
+//==============================================================================
+
+void
+free_memory_tally_c()
+{
+  #pragma omp parallel
+  {
+    filter_matches.clear();
+  }
+
+  for (TallyFilter* filt : tally_filters) {delete filt;}
+  tally_filters.clear();
+}
+
+//==============================================================================
 // Fortran compatibility functions
 //==============================================================================
 

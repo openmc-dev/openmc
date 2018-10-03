@@ -201,7 +201,8 @@ contains
          (restart_run .and. restart_batch < n_inactive .and. current_batch == restart_batch + 1)) then
       ! Turn on inactive timer
       call time_inactive % start()
-    elseif (current_batch == n_inactive + 1) then
+    elseif ((current_batch == n_inactive + 1) .or. &
+         (restart_run .and. restart_batch > n_inactive .and. current_batch == restart_batch + 1)) then
       ! Switch from inactive batch timer to active batch timer
       call time_inactive % stop()
       call time_active % start()

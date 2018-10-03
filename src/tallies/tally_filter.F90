@@ -136,18 +136,10 @@ contains
           allocate(AzimuthalFilter :: filters(index) % obj)
         case ('cell')
           allocate(CellFilter :: filters(index) % obj)
-          select type(filt => filters(index) % obj)
-          type is (CellFilter)
-            filt % ptr = allocate_filter(type)
-            if (.not. c_associated(filt % ptr)) then
-              err = E_UNASSIGNED
-              call set_errmsg("Could not allocate C++ tally filter")
-            end if
-          end select
         case ('cellborn')
           allocate(CellbornFilter :: filters(index) % obj)
         case ('cellfrom')
-          allocate(CellfromFilter :: filters(index) % obj)
+          allocate(CellFromFilter :: filters(index) % obj)
         case ('delayedgroup')
           allocate(DelayedGroupFilter :: filters(index) % obj)
         case ('distribcell')
@@ -188,6 +180,16 @@ contains
           err = E_UNASSIGNED
           call set_errmsg("Unknown filter type: " // trim(type_))
         end select
+
+        select type(filt => filters(index) % obj)
+        class is (CppTallyFilter)
+          filt % ptr = allocate_filter(type)
+          if (.not. c_associated(filt % ptr)) then
+            err = E_UNASSIGNED
+            call set_errmsg("Could not allocate C++ tally filter")
+          end if
+        end select
+
       end if
     else
       err = E_OUT_OF_BOUNDS

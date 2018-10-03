@@ -3,6 +3,7 @@
 #include <string>
 
 #include "openmc/tallies/tally_filter_cell.h"
+#include "openmc/tallies/tally_filter_cellfrom.h"
 
 
 namespace openmc {
@@ -60,10 +61,12 @@ extern "C" {
     std::string type_ {type};
     if (type_ == "cell") {
       tally_filters.push_back(new CellFilter());
-      return tally_filters.back();
+    } else if (type_ == "cellfrom") {
+      tally_filters.push_back(new CellFromFilter());
     } else {
       return nullptr;
     }
+    return tally_filters.back();
   }
 
   void filter_from_xml(TallyFilter* filt, pugi::xml_node* node)

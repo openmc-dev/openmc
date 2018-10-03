@@ -87,13 +87,6 @@ contains
 
     call initialize_batch()
 
-    ! Handle restart runs
-    if (restart_run .and. current_batch <= restart_batch) then
-      call replay_batch_history()
-      status = STATUS_EXIT_NORMAL
-      return
-    end if
-
     ! =======================================================================
     ! LOOP OVER GENERATIONS
     GENERATION_LOOP: do current_gen = 1, gen_per_batch
@@ -205,7 +198,7 @@ contains
     total_weight = ZERO
 
     if ((n_inactive > 0 .and. current_batch == 1) .or. &
-         (restart_run .and. restart_batch <= n_inactive .and. current_batch == restart_batch)) then
+         (restart_run .and. restart_batch < n_inactive .and. current_batch == restart_batch + 1)) then
       ! Turn on inactive timer
       call time_inactive % start()
     elseif (current_batch == n_inactive + 1) then
@@ -387,48 +380,6 @@ contains
 
   end subroutine finalize_batch
 
-!===============================================================================
-! REPLAY_BATCH_HISTORY displays keff and entropy for each generation within a
-! batch using data read from a state point file
-!===============================================================================
-
-  subroutine replay_batch_history
-
-    ! Write message at beginning
-    if (n_realizations == 0) then
-      call write_message("Replaying history from state point...", 6)
-    end if
-
-    if (run_mode == MODE_EIGENVALUE) then
-      do current_gen = 1, gen_per_batch
-        call calculate_average_keff()
-
-        ! print out batch keff
-        if (verbosity >= 7) then
-          if (current_gen < gen_per_batch) then
-            if (master) call print_generation()
-          else
-            if (master) call print_batch_keff()
-          end if
-        end if
-      end do
-    end if
-
-    ! Increment n_realizations if in active batches as would ordinarily be done in finalize_batch
-    if (current_batch > n_inactive) then
-      if (reduce_tallies) then
-        n_realizations = n_realizations + 1
-      else
-        n_realizations = n_realizations + n_procs
-      end if
-    end if
-
-    ! Write message at end
-    if (current_batch == restart_batch) then
-      call write_message("Resuming simulation...", 6)
-    end if
-
-  end subroutine replay_batch_history
 
 !===============================================================================
 ! INITIALIZE_SIMULATION
@@ -492,27 +443,9 @@ contains
     ! file
     if (restart_run) then
       call load_state_point()
+      call write_message("Resuming simulation...", 6)
     else
       call initialize_source()
-    end if
-
-    ! In restart, set the batch to begin from in order to reproduce the correct
-    ! average keff (used in sampling the fission bank).  Use n_realizations from
-    ! the statepoint rather than n_inactive in case openmc_reset was called in
-    ! the previous run.
-    if (restart_run) then
-      if (reduce_tallies) then
-        current_batch = restart_batch - n_realizations
-      else
-        current_batch = restart_batch - n_realizations*n_procs
-      end if
-      ! If simulation restarted from inactive batch, decrement current_batch
-      ! by one to replay an additional batch so that keff is set before resuming
-      ! simulation
-      if (restart_batch <= n_inactive) then
-        current_batch = current_batch - 1
-      end if
-      n_realizations = 0
     end if
 
     ! Display header

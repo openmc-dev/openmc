@@ -37,18 +37,7 @@ contains
     integer,           intent(in)  :: estimator
     type(TallyFilterMatch), intent(inout) :: match
 
-    integer :: i
-    integer :: val
-
-    ! Starting one coordinate level deeper, find the next bin.
-    do i = 1, p % last_n_coord
-      val = this % map % get(p % last_cell(i) + 1)
-      if (val /= EMPTY) then
-        call match % bins_push_back(val)
-        call match % weights_push_back(ONE)
-        exit
-      end if
-    end do
+    call this % get_all_bins_c(p, estimator, match)
 
   end subroutine get_all_bins_cell_from
 

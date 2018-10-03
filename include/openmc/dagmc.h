@@ -21,4 +21,8 @@ extern "C" void free_memory_dagmc();
 
 #endif
 
-extern "C" bool dagmc_enabled();
+#ifdef DAGMC
+extern "C" constexpr bool dagmc_enabled = true;
+#else
+extern "C" constexpr bool dagmc_enabled = false;
+#endif

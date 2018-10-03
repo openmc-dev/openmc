@@ -4,6 +4,8 @@
 
 #include "openmc/tallies/tally_filter_cell.h"
 #include "openmc/tallies/tally_filter_cellfrom.h"
+#include "openmc/tallies/tally_filter_mesh.h"
+#include "openmc/tallies/tally_filter_meshsurface.h"
 
 
 namespace openmc {
@@ -79,6 +81,10 @@ extern "C" {
       tally_filters.push_back(new CellFilter());
     } else if (type_ == "cellfrom") {
       tally_filters.push_back(new CellFromFilter());
+    } else if (type_ == "mesh") {
+      tally_filters.push_back(new MeshFilter());
+    } else if (type_ == "meshsurface") {
+      tally_filters.push_back(new MeshSurfaceFilter());
     } else {
       return nullptr;
     }

@@ -22,7 +22,7 @@ module tally_filter_meshsurface
 ! will correspond to the fraction of the track length that lies in that bin.
 !===============================================================================
 
-  type, public, extends(TallyFilter) :: MeshSurfaceFilter
+  type, public, extends(CppTallyFilter) :: MeshSurfaceFilter
     integer :: mesh
   contains
     procedure :: from_xml
@@ -42,6 +42,8 @@ contains
     integer :: n
     integer(C_INT) :: err
     type(RegularMesh) :: m
+
+    call this % from_xml_c(node)
 
     n = node_word_count(node, "bins")
 
@@ -72,22 +74,7 @@ contains
     integer,                  intent(in)  :: estimator
     type(TallyFilterMatch), intent(inout) :: match
 
-    type(RegularMesh) :: m
-    type(C_PTR) :: ptr_bins, ptr_weights
-
-    interface
-      subroutine mesh_surface_bins_crossed(m, p, match) bind(C)
-        import C_PTR, Particle
-        type(C_PTR), value :: m
-        type(Particle), intent(in) :: p
-        type(C_PTR), value :: match
-      end subroutine
-    end interface
-
-    ! Get a pointer to the mesh.
-    m = meshes(this % mesh)
-
-    call mesh_surface_bins_crossed(m % ptr, p, match % ptr)
+    call this % get_all_bins_c(p, estimator, match)
 
   end subroutine get_all_bins
 

@@ -16,7 +16,7 @@ module state_point
   use bank_header,        only: Bank
   use cmfd_header
   use constants
-  use eigenvalue,         only: openmc_get_keff
+  use eigenvalue,         only: openmc_get_keff, k_sum
   use endf,               only: reaction_name
   use error,              only: fatal_error, warning, write_message
   use hdf5_interface
@@ -748,6 +748,20 @@ contains
 
     ! Read number of realizations for global tallies
     call read_dataset(n_realizations, file_id, "n_realizations", indep=.true.)
+
+    ! Set k_sum, keff, and current_batch based on whether restart file is part
+    ! of active cycle or inactive cycle
+    if (restart_batch > n_inactive) then
+      do i = n_inactive + 1, restart_batch
+        k_sum(1) = k_sum(1) + k_generation % data(i)
+        k_sum(2) = k_sum(2) + k_generation % data(i)**2
+      end do
+      n = gen_per_batch*n_realizations
+      keff = k_sum(1) / n
+    else
+      keff = k_generation % data(n)
+    end if
+    current_batch = restart_batch
 
     ! Check to make sure source bank is present
     if (path_source_point == path_state_point .and. .not. source_present) then

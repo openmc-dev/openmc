@@ -48,7 +48,7 @@ public:
   virtual void
   get_all_bins(Particle* p, int estimator, TallyFilterMatch& match) const = 0;
 
-  virtual void initialize() = 0;
+  virtual void initialize() {}
 };
 
 //==============================================================================

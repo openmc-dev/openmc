@@ -56,7 +56,7 @@ contains
     integer,           intent(in)  :: estimator
     type(TallyFilterMatch), intent(inout) :: match
 
-    call this % get_all_bins_c(p , estimator, match)
+    call this % get_all_bins_c(p, estimator, match)
 
   end subroutine get_all_bins_cell
 

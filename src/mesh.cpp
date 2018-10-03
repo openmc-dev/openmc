@@ -933,25 +933,6 @@ extern "C" {
     m->get_indices_from_bin(bin, ijk);
   }
 
-  void mesh_bins_crossed(RegularMesh* m, const Particle* p,
-    TallyFilterMatch* match)
-  {
-    match->bins.clear();
-    match->weights.clear();
-    m->bins_crossed(p, match->bins, match->weights);
-  }
-
-  void mesh_surface_bins_crossed(RegularMesh* m, const Particle* p,
-    TallyFilterMatch* match)
-  {
-    match->bins.clear();
-    match->weights.clear();
-    m->surface_bins_crossed(p, match->bins);
-    for (auto b : match->bins) {
-      match->weights.push_back(1.0);
-    }
-  }
-
   void free_memory_mesh()
   {
     meshes.clear();

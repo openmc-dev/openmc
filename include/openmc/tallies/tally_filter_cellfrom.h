@@ -10,7 +10,8 @@ class CellFromFilter : public CellFilter
 {
 public:
   virtual void
-  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match) const
+  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
+  const override
   {
     for (int i = 0; i < p->last_n_coord; i++) {
       auto search = map_.find(p->last_cell[i]);

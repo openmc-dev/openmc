@@ -17,13 +17,13 @@ class CellFilter : public TallyFilter
 {
 public:
   virtual void
-  from_xml(pugi::xml_node node)
+  from_xml(pugi::xml_node node) override
   {
     cells_ = get_node_array<int32_t>(node, "bins");
   }
 
   virtual void
-  initialize()
+  initialize() override
   {
     for (auto& c : cells_) {
       auto search = cell_map.find(c);
@@ -42,7 +42,8 @@ public:
   }
 
   virtual void
-  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match) const
+  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
+  const override
   {
     for (int i = 0; i < p->n_coord; i++) {
       auto search = map_.find(p->coord[i].cell);

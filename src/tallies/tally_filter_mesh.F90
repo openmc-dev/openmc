@@ -23,7 +23,7 @@ module tally_filter_mesh
 ! will correspond to the fraction of the track length that lies in that bin.
 !===============================================================================
 
-  type, public, extends(TallyFilter) :: MeshFilter
+  type, public, extends(CppTallyFilter) :: MeshFilter
     integer :: mesh
   contains
     procedure :: from_xml
@@ -43,6 +43,8 @@ contains
     integer :: n
     integer(C_INT) :: err
     type(RegularMesh) :: m
+
+    call this % from_xml_c(node)
 
     n = node_word_count(node, "bins")
 
@@ -73,33 +75,7 @@ contains
     integer,           intent(in)  :: estimator
     type(TallyFilterMatch), intent(inout) :: match
 
-    integer :: bin
-    type(RegularMesh) :: m
-
-    interface
-      subroutine mesh_bins_crossed(m, p, match) bind(C)
-        import C_PTR, Particle
-        type(C_PTR), value :: m
-        type(Particle), intent(in) :: p
-        type(C_PTR), value :: match
-      end subroutine
-    end interface
-
-    ! Get a pointer to the mesh.
-    m = meshes(this % mesh)
-
-    if (estimator /= ESTIMATOR_TRACKLENGTH) then
-      ! If this is an analog or collision tally, then there can only be one
-      ! valid mesh bin.
-      call m % get_bin(p % coord(1) % xyz, bin)
-      if (bin >= 0) then
-        call match % bins_push_back(bin)
-        call match % weights_push_back(ONE)
-      end if
-      return
-    else
-      call mesh_bins_crossed(m % ptr, p, match % ptr)
-    end if
+    call this % get_all_bins_c(p, estimator, match)
 
   end subroutine get_all_bins_mesh
 

@@ -815,17 +815,15 @@ class MeshSurfaceFilter(MeshFilter):
         mesh_key = 'mesh {}'.format(self.mesh.id)
 
         # Find mesh dimensions - use 3D indices for simplicity
+        n_surfs = 4 * len(self.mesh.dimension)
         if len(self.mesh.dimension) == 3:
             nx, ny, nz = self.mesh.dimension
-            n_surfs = 12
         elif len(self.mesh.dimension) == 2:
             nx, ny = self.mesh.dimension
             nz = 1
-            n_surfs = 8
         else:
             nx = self.mesh.dimension
             ny = nz = 1
-            n_surfs = 4
 
         # Generate multi-index sub-column for x-axis
         filter_bins = np.arange(1, nx + 1)
@@ -836,7 +834,7 @@ class MeshSurfaceFilter(MeshFilter):
         filter_dict[(mesh_key, 'x')] = filter_bins
 
         # Generate multi-index sub-column for y-axis
-        if (len(self.mesh.dimension) > 1):
+        if len(self.mesh.dimension) > 1:
             filter_bins = np.arange(1, ny + 1)
             repeat_factor = n_surfs * nx * stride
             filter_bins = np.repeat(filter_bins, repeat_factor)
@@ -845,7 +843,7 @@ class MeshSurfaceFilter(MeshFilter):
             filter_dict[(mesh_key, 'y')] = filter_bins
 
         # Generate multi-index sub-column for z-axis
-        if (len(self.mesh.dimension) > 2):
+        if len(self.mesh.dimension) > 2:
             filter_bins = np.arange(1, nz + 1)
             repeat_factor = n_surfs * nx * ny * stride
             filter_bins = np.repeat(filter_bins, repeat_factor)
@@ -855,12 +853,7 @@ class MeshSurfaceFilter(MeshFilter):
 
         # Generate multi-index sub-column for surface
         repeat_factor = stride
-        if len(self.mesh.dimension) == 3:
-            filter_bins = np.repeat(_CURRENT_NAMES, repeat_factor)
-        elif len(self.mesh.dimension) == 2:
-            filter_bins = np.repeat(_CURRENT_NAMES[:8], repeat_factor)
-        else:
-            filter_bins = np.repeat(_CURRENT_NAMES[:4], repeat_factor)
+        filter_bins = np.repeat(_CURRENT_NAMES[:n_surfs], repeat_factor)
         tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
         filter_dict[(mesh_key, 'surf')] = filter_bins

@@ -1,7 +1,7 @@
 import glob
 import hashlib
 import os
-
+from subprocess import call
 import h5py
 import openmc
 
@@ -51,6 +51,10 @@ class PlotTestHarness(TestHarness):
         sha512 = hashlib.sha512()
         sha512.update(outstr)
         outstr = sha512.hexdigest()
+
+        # test the voxel to vtk conversion script
+        call(['../../../scripts/openmc-voxel-to-vtk'] +
+             glob.glob('plot_4.h5'))
 
         return outstr
 

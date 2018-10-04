@@ -18,3 +18,4 @@ other related topics.
     tests
     user-input
     docbuild
+    docker

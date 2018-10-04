@@ -53,8 +53,12 @@ class PlotTestHarness(TestHarness):
         outstr = sha512.hexdigest()
 
         # test the voxel to vtk conversion script
-        call(['../../../scripts/openmc-voxel-to-vtk'] +
-             glob.glob('plot_4.h5'))
+        try:
+            import vtk
+            call(['../../../scripts/openmc-voxel-to-vtk'] +
+                 glob.glob('plot_4.h5'))
+        except:
+            pass
 
         return outstr
 

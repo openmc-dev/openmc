@@ -17,9 +17,9 @@ extern "C" void free_memory_dagmc();
 
 }
 
-#endif // OPENMC_DAGMC_H
+#endif // DAGMC
 
-#endif
+#endif // OPENMC_DAGMC_H
 
 #ifdef DAGMC
 extern "C" constexpr bool dagmc_enabled = true;

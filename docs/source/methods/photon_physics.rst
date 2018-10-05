@@ -85,26 +85,26 @@ momentum transfer is traditionally expressed as
 .. math::
     :label: momentum-transfer
 
-    x = a \kappa \sqrt{1 - \mu}
+    x = a k \sqrt{1 - \mu}
 
-where :math:`\kappa` is the ratio of the photon energy to the electron rest
+where :math:`k` is the ratio of the photon energy to the electron rest
 mass, and the coefficient :math:`a` can be shown to be
 
 .. math::
     :label: omega
 
-    a = \frac{m_e c^2}{\sqrt{2}hc} \approx 29.14329,
+    a = \frac{m_e c^2}{\sqrt{2}hc} \approx 29.14329~\unicode{x212B},
 
 where :math:`m_e` is the mass of the electron, :math:`c` is the speed of light
 in a vacuum, and :math:`h` is Planck's constant. Using :eq:`momentum-transfer`,
-we have :math:`\mu = 1 - [x/(a\kappa)]^2` and :math:`d\mu/dx^2 =
--1/(a\kappa)^2`. The probability density in :math:`x^2` is
+we have :math:`\mu = 1 - [x/(ak)]^2` and :math:`d\mu/dx^2 =
+-1/(ak)^2`. The probability density in :math:`x^2` is
 
 .. math::
     :label: coherent-pdf-x2
 
     p(x^2) dx^2 = p(\mu) \left | \frac{d\mu}{dx^2} \right | dx^2 = \frac{2\pi
-    r_e^2 A(\bar{x}^2,Z)}{(a\kappa)^2 \sigma(E)} \left (
+    r_e^2 A(\bar{x}^2,Z)}{(ak)^2 \sigma(E)} \left (
     \frac{1 + \mu^2}{2} \right ) \left ( \frac{F(x, Z)^2}{A(\bar{x}^2, Z)} \right ) dx^2
 
 where :math:`\bar{x}` is the maximum value of :math:`x` that occurs for
@@ -113,7 +113,7 @@ where :math:`\bar{x}` is the maximum value of :math:`x` that occurs for
 .. math::
     :label: xmax
 
-    \bar{x} = a \kappa \sqrt{2} = \frac{m_e c^2}{hc} \kappa,
+    \bar{x} = a k \sqrt{2} = \frac{m_e c^2}{hc} k,
 
 and :math:`A(x^2, Z)` is the integral of the square of the form factor:
 
@@ -168,12 +168,11 @@ the two authors who discovered it:
 .. math::
     :label: klein-nishina
 
-    \frac{d\sigma_{KN}}{d\mu} = \pi r_e^2 \left ( \frac{\kappa'}{\kappa} \right
-    )^2 \left [ \frac{\kappa'}{\kappa} + \frac{\kappa}{\kappa'} + \mu^2 - 1
-    \right ]
+    \frac{d\sigma_{KN}}{d\mu} = \pi r_e^2 \left ( \frac{k'}{k} \right)^2 \left
+    [ \frac{k'}{k} + \frac{k}{k'} + \mu^2 - 1 \right ]
 
-where :math:`\kappa` and :math:`\kappa'` are the ratios of the incoming and
-exiting photon energies to the electron rest mass energy equivalent (0.511 MeV),
+where :math:`k` and :math:`k'` are the ratios of the incoming and exiting
+photon energies to the electron rest mass energy equivalent (0.511 MeV),
 respectively. Although it appears that the outgoing energy and angle are
 separate, there is actually a one-to-one relationship between them such that
 only one needs to be sampled:
@@ -181,32 +180,31 @@ only one needs to be sampled:
 .. math::
     :label: compton-energy-angle
 
-    \kappa' = \frac{\kappa}{1 + \kappa(1 - \mu)}.
+    k' = \frac{k}{1 + k(1 - \mu)}.
 
-Note that when :math:`\kappa'/\kappa` goes to one, i.e., scattering is elastic,
-the Klein-Nishina cross section becomes identical to the Thomson cross
-section. In general though, the scattering is inelastic and is known as Compton
-scattering. When a photon interacts with a bound electron in an atom, the
-Klein-Nishina formula must be modified to account for the binding effects. As in
-the case of coherent scattering, this is done by means of a form factor. The
-differential cross section for incoherent scattering is given by
+Note that when :math:`k'/k` goes to one, i.e., scattering is elastic, the
+Klein-Nishina cross section becomes identical to the Thomson cross section. In
+general though, the scattering is inelastic and is known as Compton scattering.
+When a photon interacts with a bound electron in an atom, the Klein-Nishina
+formula must be modified to account for the binding effects. As in the case of
+coherent scattering, this is done by means of a form factor. The differential
+cross section for incoherent scattering is given by
 
 .. math::
     :label: incoherent-xs
 
     \frac{d\sigma}{d\mu} = \frac{d\sigma_{KN}}{d\mu} S(x,Z) = \pi r_e^2 \left (
-    \frac{\kappa'}{\kappa} \right )^2 \left [ \frac{\kappa'}{\kappa} +
-    \frac{\kappa}{\kappa'} + \mu^2 - 1 \right ] S(x,Z)
+    \frac{k'}{k} \right )^2 \left [ \frac{k'}{k} + \frac{k}{k'} + \mu^2 - 1
+    \right ] S(x,Z)
 
 where :math:`S(x,Z)` is the form factor. The approach in OpenMC is to first
 sample the Klein-Nishina cross section and then perform rejection sampling on
 the form factor. As in other codes, `Kahn's rejection method`_ is used for
-:math:`\kappa < 3` and a direct method by Koblinger_ is used for :math:`\kappa
-\ge 3`. The complete algorithm is as follows:
+:math:`k < 3` and a direct method by Koblinger_ is used for :math:`k \ge 3`.
+The complete algorithm is as follows:
 
-1. If :math:`\kappa < 3`, sample :math:`\mu` from the Klein-Nishina cross
-   section using Kahn's rejection method. Otherwise, use Koblinger's direct
-   method.
+1. If :math:`k < 3`, sample :math:`\mu` from the Klein-Nishina cross section
+   using Kahn's rejection method. Otherwise, use Koblinger's direct method.
 
 2. Calculate :math:`x` and :math:`\bar{x}` using :eq:`momentum-transfer` and
    :eq:`xmax`, respectively.
@@ -243,7 +241,8 @@ scattering angle:
 .. math::
     :label: pz
 
-    p_z = \frac{E - E' - EE'(1 - \mu)/(m_e c^2)}{-\alpha \sqrt{E^2 + E'^2 - 2EE'\mu}},
+    p_z = \frac{E - E' - EE'(1 - \mu)/(m_e c^2)}{-\alpha \sqrt{E^2 + E'^2 -
+    2EE'\mu}},
 
 where :math:`\alpha` is the fine structure constant. The maximum momentum
 transferred, :math:`p_{z,\text{max}}`, can be calculated from :eq:`pz` using
@@ -269,7 +268,7 @@ The sampling algorithm is summarized below:
    :ref:`incoherent-sampling`.
 
 2. Sample the electron subshell :math:`i` using the number of electrons per
-   shell as the PDF.
+   shell as the probability mass function.
 
 3. Sample :math:`p_z` using :math:`J_i(p_z)` as the PDF.
 
@@ -325,7 +324,7 @@ heavier elements.
 
 When simulating the photoelectric effect, the first step is to sample the
 electron shell. The shell :math:`i` where the ionization occurs can be
-considered a discrete random variable with probability density function
+considered a discrete random variable with probability mass function
 
 .. math::
     :label: photoelectron-shell-pdf
@@ -339,7 +338,7 @@ shell has been sampled, the energy of the photoelectron is calculated using
 :eq:`photoelectron-kinetic-energy`.
 
 To determine the direction of the photoelectron, we implement the method
-described in [Kaltiaisenaho]_, which models the angular distribution of the
+described in Kaltiaisenaho_, which models the angular distribution of the
 photoelectrons using the K-shell cross section derived by Sauter (K-shell
 electrons are the most tightly bound, and they contribute the most to
 :math:`\sigma_{\text{pe}}`). The non-relativistic Sauter distribution for
@@ -372,10 +371,11 @@ where
 .. math::
     :label: mu-pdf-factors
 
-    \psi(\mu_{-}) &= \frac{(1 - \beta_{-}^2)(1 - \mu_{-}^2)}{(1 - \beta_{-}\mu_{-})^2}, \\
+    \psi(\mu_{-}) &= \frac{(1 - \beta_{-}^2)(1 - \mu_{-}^2)}{(1 -
+    \beta_{-}\mu_{-})^2}, \\
     g(\mu_{-}) &= \frac{1 - \beta_{-}^2}{2 (1 - \beta_{-}\mu_{-})^2}.
 
-In the interval :math:`(-1, 1)`, :math:`g(\mu_{-})` is a normalized PDF and
+In the interval :math:`[-1, 1]`, :math:`g(\mu_{-})` is a normalized PDF and
 :math:`\psi(\mu_{-})` satisfies the condition :math:`0 < \psi(\mu_{-}) < 1`.
 The following algorithm can now be used to sample :math:`\mu_{-}`:
 
@@ -426,7 +426,7 @@ Accurately modeling the creation of electron-positron pair is important because
 the charged particles can go on to lose much of their energy as bremsstrahlung
 radiation, and the subsequent annihilation of the positron with an electron
 produces two additional photons. We sample the energy and direction of the
-charged particles using a semiempirical model described in [Salvat]_. The
+charged particles using a semiempirical model described in Salvat_. The
 Bethe-Heitler differential cross section, given by
 
 .. math::
@@ -441,9 +441,9 @@ constant, :math:`f_C` is the Coulomb correction function, :math:`\Phi_1` and
 :math:`\Phi_2` are screening functions, and :math:`\epsilon = (E_{-} + m_e
 c^2)/E` is the electron reduced energy (i.e., the fraction of the photon energy
 given to the electron). :math:`\epsilon` can take values between
-:math:`\epsilon_{\text{min}} = \kappa^{-1}` (when the kinetic energy of the
-electron is zero) and :math:`\epsilon_{\text{max}} = 1 - \kappa^{-1}` (when the
-kinetic energy of the positron is zero).
+:math:`\epsilon_{\text{min}} = k^{-1}` (when the kinetic energy of the electron
+is zero) and :math:`\epsilon_{\text{max}} = 1 - k^{-1}` (when the kinetic
+energy of the positron is zero).
 
 The Coulomb correction, given by
 
@@ -478,7 +478,7 @@ where
 .. math::
     :label: b
 
-    b = \frac{Rm_{e}c}{2\kappa\epsilon(1 - \epsilon)\hbar}.
+    b = \frac{Rm_{e}c}{2k\epsilon(1 - \epsilon)\hbar}.
 
 and :math:`R` is the screening radius.
 
@@ -487,15 +487,15 @@ described above will not be accurate at low energies: the lower boundary of
 :math:`\epsilon` will be shifted above :math:`\epsilon_{\text{min}}` and the
 upper boundary of :math:`\epsilon` will be shifted below
 :math:`\epsilon_{\text{max}}`. To offset this behavior, a correcting factor
-:math:`F_0(\kappa, Z)` is used:
+:math:`F_0(k, Z)` is used:
 
 .. math::
     :label: correcting-factor
 
-    F_0(\kappa, Z) =~& (0.1774 + 12.10\alpha Z - 11.18\alpha^{2}Z^{2})(2/\kappa)^{1/2} \\
-    &+ (8.523 + 73.26\alpha Z - 44.41\alpha^{2}Z^{2})(2/\kappa) \\
-    &- (13.52 + 121.1\alpha Z - 96.41\alpha^{2}Z^{2})(2/\kappa)^{3/2} \\
-    &+ (8.946 + 62.05\alpha Z - 63.41\alpha^{2}Z^{2})(2/\kappa)^{2}.
+    F_0(k, Z) =~& (0.1774 + 12.10\alpha Z - 11.18\alpha^{2}Z^{2})(2/k)^{1/2} \\
+    &+ (8.523 + 73.26\alpha Z - 44.41\alpha^{2}Z^{2})(2/k) \\
+    &- (13.52 + 121.1\alpha Z - 96.41\alpha^{2}Z^{2})(2/k)^{3/2} \\
+    &+ (8.946 + 62.05\alpha Z - 63.41\alpha^{2}Z^{2})(2/k)^{2}.
 
 To aid sampling, the differential cross section used to sample :math:`\epsilon`
 (minus the normalization constant) can now be expressed in the form
@@ -512,23 +512,23 @@ where
 .. math::
     :label: u
 
-    u_1 &= \frac{2}{3} \left(\frac{1}{2} - \frac{1}{\kappa}\right)^2 \phi_1(1/2), \\
+    u_1 &= \frac{2}{3} \left(\frac{1}{2} - \frac{1}{k}\right)^2 \phi_1(1/2), \\
     u_2 &= \phi_2(1/2),
 
 .. math::
     :label: phi
 
-    \phi_1(\epsilon) &= \frac{1}{2}(3\Phi_1 - \Phi_2) - 4f_{C}(Z) + F_0(\kappa, Z), \\
-    \phi_2(\epsilon) &= \frac{1}{4}(3\Phi_1 + \Phi_2) - 4f_{C}(Z) + F_0(\kappa, Z),
+    \phi_1(\epsilon) &= \frac{1}{2}(3\Phi_1 - \Phi_2) - 4f_{C}(Z) + F_0(k, Z), \\
+    \phi_2(\epsilon) &= \frac{1}{4}(3\Phi_1 + \Phi_2) - 4f_{C}(Z) + F_0(k, Z),
 
 and
 
 .. math::
     :label: pi
 
-    \pi_1(\epsilon) &= \frac{3}{2} \left(\frac{1}{2} - \frac{1}{\kappa}\right)^{-3}
+    \pi_1(\epsilon) &= \frac{3}{2} \left(\frac{1}{2} - \frac{1}{k}\right)^{-3}
     \left(\frac{1}{2} - \epsilon\right)^2, \\
-    \pi_2(\epsilon) &= \frac{1}{2} \left(\frac{1}{2} - \frac{1}{\kappa}\right)^{-1}.
+    \pi_2(\epsilon) &= \frac{1}{2} \left(\frac{1}{2} - \frac{1}{k}\right)^{-1}.
 
 The functions in :eq:`phi` are non-negative and maximum at :math:`\epsilon =
 1/2`. In the interval :math:`(\epsilon_{\text{min}}, \epsilon_{\text{max}})`,
@@ -545,10 +545,10 @@ sample the reduced electron energy :math:`\epsilon`:
 
    .. math::
 
-       \epsilon &= \frac{1}{2} + \left(\frac{1}{2} - \frac{1}{\kappa}\right)
+       \epsilon &= \frac{1}{2} + \left(\frac{1}{2} - \frac{1}{k}\right)
        (2\xi_1 - 1)^{1/3} ~~~~&\text{if}~~ i = 1 \\
-       \epsilon &= \frac{1}{\kappa} + \left(\frac{1}{2} -
-       \frac{1}{\kappa}\right) 2\xi_1 ~~~~&\text{if}~~ i = 2.
+       \epsilon &= \frac{1}{k} + \left(\frac{1}{2} -
+       \frac{1}{k}\right) 2\xi_1 ~~~~&\text{if}~~ i = 2.
 
 3. If :math:`\xi_2 \le \phi_i(\epsilon)/\phi_i(1/2)`, accept
    :math:`\epsilon`. Otherwise, repeat the sampling from step 1.
@@ -563,13 +563,14 @@ distribution,
 .. math::
     :label: sauter–gluckstern–hull
 
-    \frac{d\sigma_{pp}}{d\Omega_{\pm}} = C(1 - \beta_{\pm}\mu_{\pm})^{-2},
+    p(\mu_{\pm}) = C(1 - \beta_{\pm}\mu_{\pm})^{-2},
 
-where :math:`C` is a normalization constant and :math:`\beta_{\pm}` is the ratio of
-the velocity of the charged particle to the speed of light given in :eq:`beta-2`.
+where :math:`C` is a normalization constant and :math:`\beta_{\pm}` is the
+ratio of the velocity of the charged particle to the speed of light given in
+:eq:`beta-2`.
 
-The inverse transform method is used to sample :math:`\mu_{-}` and :math:`\mu_{+}`
-from :eq:`sauter–gluckstern–hull`, using the sampling formula
+The inverse transform method is used to sample :math:`\mu_{-}` and
+:math:`\mu_{+}` from :eq:`sauter–gluckstern–hull`, using the sampling formula
 
 .. math::
     :label: sample-mu
@@ -638,7 +639,7 @@ and Auger electrons:
    photon assuming it is from a captured free electron and terminate.
 
 2. Sample a transition using the transition probabilities for the vacancy
-   shell as the PDF.
+   shell as the probability mass function.
 
 3. Create either a fluorescence photon or Auger electron, sampling the
    direction of the particle isotropically.
@@ -688,18 +689,14 @@ expressed in the form
     \chi(Z, T, \kappa),
 
 where :math:`\kappa = E/T` is the reduced photon energy and :math:`\chi(Z, T,
-\kappa)` is the scaled bremsstrahlung cross section,
-
-.. math::
-    :label: scaled-bremsstrahlung-dcs
-
-    \chi(Z, T, \kappa) = \frac{\beta^2}{Z^2} E \frac{d\sigma_{\text{br}}}{dE}.
+\kappa)` is the scaled bremsstrahlung cross section, which is experimentally
+measured.
 
 Because electrons are attracted to atomic nuclei whereas positrons are
 repulsed, the cross section for positrons is smaller, though it approaches that
 of electrons in the high energy limit. To obtain the positron cross section, we
 multiply :eq:`bremsstrahlung-dcs` by the :math:`\kappa`-independent factor used
-in [Salvat]_,
+in Salvat_,
 
 .. math::
     :label: positron-factor
@@ -777,9 +774,9 @@ transport electrons. However, the bremsstrahlung emitted from high energy
 electrons and positrons can travel far from the interaction site. Thus, even
 without a full electron transport mode it is necessary to model bremsstrahlung.
 We use a thick-target bremsstrahlung (TTB) approximation based on the models in
-[Salvat]_ and [Kaltiaisenaho]_ for generating bremsstrahlung photons, which
-assumes the charged particle loses all its energy in a single homogeneous
-material region.
+Salvat_ and Kaltiaisenaho_ for generating bremsstrahlung photons, which assumes
+the charged particle loses all its energy in a single homogeneous material
+region.
 
 To model bremsstrahlung using the TTB approximation, we need to know the number
 of photons emitted by the charged particle and the energy distribution of the
@@ -906,11 +903,6 @@ angles.
 
 .. _LA-UR-04-0488: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-04-0488.pdf
 
-   .. rubric:: References
+.. _Kaltiaisenaho: https://aaltodoc.aalto.fi/bitstream/handle/123456789/21004/master_Kaltiaisenaho_Toni_2016.pdf
 
-.. [Kaltiaisenaho] T. Kaltiaisenaho, "Implementing a photon physics model in
-   Serpent 2." M.Sc. Thesis, Aalto University, 2016.
-
-.. [Salvat] F. Salvat, J. M. Fernández-Varea, and J. Sempau, "PENELOPE-2011:
-   A Code System for Monte Carlo Simulation of Electron and Photon Transport,"
-   OECD-NEA, Issy-les-Moulineaux, France (2011).
+.. _Salvat: http://www.oecd-nea.org/globalsearch/download.php?doc=77434

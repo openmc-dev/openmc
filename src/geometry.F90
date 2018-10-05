@@ -55,9 +55,33 @@ module geometry
 
     subroutine neighbor_lists() bind(C)
     end subroutine neighbor_lists
+
+#ifdef DAGMC
+
+    function next_cell_c(current_cell, surface_crossed) &
+         bind(C, name="next_cell") result(new_cell)
+      import C_PTR, C_INT32_T
+      type(C_PTR), intent(in), value :: current_cell
+      type(C_PTR), intent(in), value :: surface_crossed
+      integer(C_INT32_T)             :: new_cell
+    end function next_cell_c
+
+#endif
+
   end interface
 
 contains
+
+#ifdef DAGMC
+
+  function next_cell(c, s) result(new_cell)
+    type(Cell), intent(in) :: c
+    type(Surface), intent(in) :: s
+    integer :: new_cell
+    new_cell = next_cell_c(c%ptr, s%ptr)
+  end function next_cell
+
+#endif
 
 !===============================================================================
 ! FIND_CELL determines what cell a source particle is in within a particular

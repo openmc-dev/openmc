@@ -2,13 +2,22 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/lattice.h"
 #include "openmc/surface.h"
-
+#include "openmc/settings.h"
 
 namespace openmc {
 
 extern "C" void
 write_geometry(hid_t file_id) {
+
   auto geom_group = create_group(file_id, "geometry");
+  
+#ifdef DAGMC
+  if (settings::dagmc) {
+    write_attribute(geom_group, "dagmc", 1);
+    return;
+  }
+#endif
+
   write_attribute(geom_group, "n_cells", cells.size());
   write_attribute(geom_group, "n_surfaces", surfaces.size());
   write_attribute(geom_group, "n_universes", universes.size());

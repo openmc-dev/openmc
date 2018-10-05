@@ -266,6 +266,19 @@ contains
 
   subroutine nuclide_clear(this)
     class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
+    integer :: i
+
+    interface
+      subroutine reaction_delete(rx) bind(C)
+        import C_PTR
+        type(C_PTR), value :: rx
+      end subroutine reaction_delete
+    end interface
+
+    do i = 1, size(this % reactions)
+      call reaction_delete(this % reactions(i) % ptr)
+    end do
+    deallocate(this % reactions)
 
     if (associated(this % multipole)) deallocate(this % multipole)
 

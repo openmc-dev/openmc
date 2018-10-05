@@ -3094,6 +3094,9 @@ contains
            &OPENMC_MULTIPOLE_LIBRARY environment variable.")
     end if
 
+    call already_read % clear()
+    call element_already_read % clear()
+
   end subroutine read_ce_cross_sections
 
 !===============================================================================

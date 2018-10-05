@@ -12,6 +12,9 @@
 #include "openmc/constants.h"
 #include "openmc/position.h"
 
+#ifdef DAGMC
+#include "DagMC.hpp"
+#endif
 
 namespace openmc {
 
@@ -65,6 +68,7 @@ public:
   std::vector<int> neighbor_neg_; //!< List of cells on negative side
 
   explicit Surface(pugi::xml_node surf_node);
+  Surface();
 
   virtual ~Surface() {}
 
@@ -104,12 +108,40 @@ public:
   //! Write all information needed to reconstruct the surface to an HDF5 group.
   //! \param group_id An HDF5 group id.
   //TODO: this probably needs to include i_periodic for PeriodicSurface
+  virtual void to_hdf5(hid_t group_id) const = 0;
+
+};
+
+class CSGSurface : public Surface
+{
+public:
+  explicit CSGSurface(pugi::xml_node surf_node);
+  CSGSurface();
+
   void to_hdf5(hid_t group_id) const;
 
 protected:
   virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
 
+//==============================================================================
+//! A `Surface` representing a DAGMC-based surface in DAGMC.
+//==============================================================================
+#ifdef DAGMC
+class DAGSurface : public Surface
+{
+public:
+  moab::DagMC* dagmc_ptr_;
+  DAGSurface();
+  double evaluate(Position r) const;
+  double distance(Position r, Direction u, bool coincident) const;
+  Direction normal(Position r) const;
+  //! Get the bounding box of this surface.
+  BoundingBox bounding_box() const;
+
+  void to_hdf5(hid_t group_id) const;
+};
+#endif
 //==============================================================================
 //! A `Surface` that supports periodic boundary conditions.
 //!
@@ -118,7 +150,7 @@ protected:
 //! `XPlane`-`YPlane` pairs.
 //==============================================================================
 
-class PeriodicSurface : public Surface
+class PeriodicSurface : public CSGSurface
 {
 public:
   int i_periodic_{C_NONE};    //!< Index of corresponding periodic surface
@@ -227,7 +259,7 @@ public:
 //! \f$(y - y_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceXCylinder : public Surface
+class SurfaceXCylinder : public CSGSurface
 {
   double y0_, z0_, radius_;
 public:
@@ -245,7 +277,7 @@ public:
 //! \f$(x - x_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceYCylinder : public Surface
+class SurfaceYCylinder : public CSGSurface
 {
   double x0_, z0_, radius_;
 public:
@@ -263,7 +295,7 @@ public:
 //! \f$(x - x_0)^2 + (y - y_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceZCylinder : public Surface
+class SurfaceZCylinder : public CSGSurface
 {
   double x0_, y0_, radius_;
 public:
@@ -281,7 +313,7 @@ public:
 //! \f$(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceSphere : public Surface
+class SurfaceSphere : public CSGSurface
 {
   double x0_, y0_, z0_, radius_;
 public:
@@ -299,7 +331,7 @@ public:
 //! \f$(y - y_0)^2 + (z - z_0)^2 - R^2 (x - x_0)^2 = 0\f$
 //==============================================================================
 
-class SurfaceXCone : public Surface
+class SurfaceXCone : public CSGSurface
 {
   double x0_, y0_, z0_, radius_sq_;
 public:
@@ -317,7 +349,7 @@ public:
 //! \f$(x - x_0)^2 + (z - z_0)^2 - R^2 (y - y_0)^2 = 0\f$
 //==============================================================================
 
-class SurfaceYCone : public Surface
+class SurfaceYCone : public CSGSurface
 {
   double x0_, y0_, z0_, radius_sq_;
 public:
@@ -335,7 +367,7 @@ public:
 //! \f$(x - x_0)^2 + (y - y_0)^2 - R^2 (z - z_0)^2 = 0\f$
 //==============================================================================
 
-class SurfaceZCone : public Surface
+class SurfaceZCone : public CSGSurface
 {
   double x0_, y0_, z0_, radius_sq_;
 public:
@@ -352,7 +384,7 @@ public:
 //! \f$A x^2 + B y^2 + C z^2 + D x y + E y z + F x z + G x + H y + J z + K = 0\f$
 //==============================================================================
 
-class SurfaceQuadric : public Surface
+class SurfaceQuadric : public CSGSurface
 {
   // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
   double A_, B_, C_, D_, E_, F_, G_, H_, J_, K_;

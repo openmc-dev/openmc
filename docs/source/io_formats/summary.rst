@@ -24,6 +24,8 @@ The current version of the summary file format is 6.0.
              - **n_universes** (*int*) -- Number of unique universes in the
                problem.
              - **n_lattices** (*int*) -- Number of lattices in the problem.
+             - **dagmc** (*int*) -- Indicates that a DAGMC geometry was used
+               if present.
 
 **/geometry/cells/cell <uid>/**
 

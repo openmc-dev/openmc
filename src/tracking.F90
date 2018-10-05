@@ -7,6 +7,10 @@ module tracking
   use geometry_header,    only: cells
   use geometry,           only: find_cell, distance_to_boundary, cross_lattice,&
                                 check_cell_overlap
+#ifdef DAGMC
+  use geometry,           only: next_cell
+#endif
+
   use material_header,    only: materials, Material
   use message_passing
   use mgxs_interface
@@ -309,6 +313,7 @@ contains
     real(8) :: norm       ! "norm" of surface normal
     real(8) :: xyz(3)     ! Saved global coordinate
     integer :: i_surface  ! index in surfaces
+    integer :: i_cell     ! index of new cell
     logical :: rotational ! if rotational periodic BC applied
     logical :: found      ! particle found in universe?
     class(Surface), pointer :: surf
@@ -466,6 +471,21 @@ contains
 
     ! ==========================================================================
     ! SEARCH NEIGHBOR LISTS FOR NEXT CELL
+
+#ifdef DAGMC
+    if (dagmc) then
+      i_cell = next_cell(cells(p % last_cell(1) + 1), surfaces(abs(p % surface)))
+      ! save material and temp
+      p % last_material = p % material
+      p % last_sqrtkT = p % sqrtKT
+      ! set new cell value
+      p % coord(1) % cell = i_cell-1 ! decrement for C++ indexing
+      p % cell_instance = 1
+      p % material = cells(i_cell) % material(1)
+      p % sqrtKT = cells(i_cell) % sqrtKT(1)
+      return
+    end if
+#endif
 
     call find_cell(p, found, p % surface)
     if (found) return

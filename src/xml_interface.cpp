@@ -53,6 +53,7 @@ get_node_value_bool(pugi::xml_node node, const char* name)
             << node.name() << "\" XML node";
     fatal_error(err_msg);
   }
+  return false;
 }
 
 } // namespace openmc

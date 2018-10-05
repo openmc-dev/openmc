@@ -13,6 +13,9 @@
 #include "openmc/constants.h"
 #include "openmc/position.h"
 
+#ifdef DAGMC
+#include "DagMC.hpp"
+#endif
 
 namespace openmc {
 
@@ -107,9 +110,8 @@ public:
 
   std::vector<int32_t> offset_;  //!< Distribcell offset table
 
-  Cell() {};
-
   explicit Cell(pugi::xml_node cell_node);
+  Cell() {};
 
   //! \brief Determine if a cell contains the particle at a given location.
   //!
@@ -130,21 +132,57 @@ public:
   //! \param on_surface The signed index of a surface that the coordinate is
   //!   known to be on.  This index takes precedence over surface sense
   //!   calculations.
+  virtual bool
+  contains(Position r, Direction u, int32_t on_surface) const = 0;
+
+  //! Find the oncoming boundary of this cell.
+  virtual std::pair<double, int32_t>
+  distance(Position r, Direction u, int32_t on_surface) const = 0;
+
+  //! Write all information needed to reconstruct the cell to an HDF5 group.
+  //! @param group_id An HDF5 group id.
+  virtual void to_hdf5(hid_t group_id) const = 0;
+
+  virtual ~Cell() {}
+};
+ 
+class CSGCell : public Cell
+{
+public:
+
+  CSGCell();
+  
+  explicit CSGCell(pugi::xml_node cell_node);
+
   bool
   contains(Position r, Direction u, int32_t on_surface) const;
 
-  //! Find the oncoming boundary of this cell.
   std::pair<double, int32_t>
   distance(Position r, Direction u, int32_t on_surface) const;
 
-  //! \brief Write cell information to an HDF5 group.
-  //! \param group_id An HDF5 group id.
   void to_hdf5(hid_t group_id) const;
 
+
+  
 protected:
   bool contains_simple(Position r, Direction u, int32_t on_surface) const;
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
 };
 
+#ifdef DAGMC
+class DAGCell : public Cell
+{
+public:
+  moab::DagMC* dagmc_ptr_;
+  DAGCell();
+
+  std::pair<double, int32_t> distance(Position r, Direction u, int32_t on_surface) const;
+  bool contains(Position r, Direction u, int32_t on_surface) const;
+
+  void to_hdf5(hid_t group_id) const;
+
+};
+#endif
+ 
 } // namespace openmc
 #endif // OPENMC_CELL_H

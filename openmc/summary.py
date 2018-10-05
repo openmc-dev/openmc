@@ -97,6 +97,9 @@ class Summary(object):
                 self._macroscopics = name.decode()
 
     def _read_geometry(self):
+        if "dagmc" in self._f['geometry'].attrs.keys():
+            return
+
         # Read in and initialize the Materials and Geometry
         self._read_materials()
         self._read_surfaces()

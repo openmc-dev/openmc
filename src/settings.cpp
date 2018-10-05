@@ -56,7 +56,8 @@ bool ufs_on                  {false};
 bool urr_ptables_on          {true};
 bool write_all_tracks        {false};
 bool write_initial_source    {false};
-
+bool dagmc                   {false};
+  
 std::string path_cross_sections;
 std::string path_input;
 std::string path_multipole;
@@ -207,6 +208,17 @@ void read_settings_xml()
     verbosity = std::stoi(get_node_value(root, "verbosity"));
   }
 
+  // DAGMC geometry check
+  if (check_for_node(root, "dagmc")) {
+    dagmc = get_node_value_bool(root, "dagmc");
+  }
+
+#ifndef DAGMC
+  if (dagmc) {
+    fatal_error("DAGMC mode unsupported for this build of OpenMC");
+  }
+#endif
+  
   // To this point, we haven't displayed any output since we didn't know what
   // the verbosity is. Now that we checked for it, show the title if necessary
   if (openmc_master) {
@@ -396,6 +408,13 @@ void read_settings_xml()
 #endif
   }
 
+#ifdef _OPENMP
+  if (dagmc && omp_get_max_threads() > 1) {
+    warning("Forcing number of threads to 1 for DAGMC simulation.");
+    omp_set_num_threads(1);
+  }
+#endif
+  
   // ==========================================================================
   // EXTERNAL SOURCE
 

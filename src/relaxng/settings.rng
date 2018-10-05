@@ -255,6 +255,11 @@
       </element>
     </optional>
     <optional>
+      <element name="dagmc">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
       <element name="run_cmfd">
         <data type="boolean"/>
       </element>

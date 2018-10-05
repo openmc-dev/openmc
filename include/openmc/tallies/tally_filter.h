@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 
+#include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"
 #include "openmc/xml_interface.h"
 
@@ -47,6 +48,8 @@ public:
 
   virtual void
   get_all_bins(Particle* p, int estimator, TallyFilterMatch& match) const = 0;
+
+  virtual void to_statepoint(hid_t filter_group) const {}
 
   virtual void initialize() {}
 };

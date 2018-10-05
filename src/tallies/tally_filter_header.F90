@@ -132,6 +132,7 @@ module tally_filter_header
   contains
     procedure :: from_xml_c
     procedure :: get_all_bins_c
+    procedure :: to_statepoint_c
     procedure :: initialize_c
   end type CppTallyFilter
 
@@ -307,6 +308,19 @@ contains
     end interface
     call filter_get_all_bins(this % ptr, p, estimator, match % ptr)
   end subroutine get_all_bins_c
+
+  subroutine to_statepoint_c(this, filter_group)
+    class(CppTallyFilter), intent(in) :: this
+    integer(HID_T),        intent(in) :: filter_group
+    interface
+      subroutine filter_to_statepoint(filt, filter_group) bind(C)
+        import C_PTR, HID_T
+        type(C_PTR),                value :: filt
+        integer(HID_T), intent(in), value :: filter_group
+      end subroutine filter_to_statepoint
+    end interface
+    call filter_to_statepoint(this % ptr, filter_group)
+  end subroutine to_statepoint_c
 
   subroutine initialize_c(this)
     class(CppTallyFilter), intent(inout) :: this

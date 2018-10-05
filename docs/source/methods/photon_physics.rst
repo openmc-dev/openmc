@@ -259,11 +259,11 @@ where :math:`\rho_i({\bf p})` is the initial electron momentum distribution.
 :math:`J_i(p_z)` can be interpreted as the probability density function of
 :math:`p_z`.
 
-The Doppler broadened energy of the Compton-scattered can be sampled by
+The Doppler broadened energy of the Compton-scattered photon can be sampled by
 selecting an electron shell, sampling a value of :math:`p_z` using the Compton
-profile, and calculating the scattered photon energy. The methods and algorithm
-used to do this are described in LA-UR-04-0487_ and LA-UR-04-0488_. The
-sampling algorithm is summarized below:
+profile, and calculating the scattered photon energy. The theory and methods
+used to do this are described in detail in LA-UR-04-0487_ and LA-UR-04-0488_.
+The sampling algorithm is summarized below:
 
 1. Sample :math:`\mu` from :eq:`incoherent-xs` using the algorithm described in
    :ref:`incoherent-sampling`.
@@ -286,7 +286,7 @@ Because the Compton-scattered photons can transfer a large fraction of their
 energy to the kinetic energy of the recoil electron, which may in turn go on to
 lose its energy as bremsstrahlung radiation, it is necessary to accurately
 model the angular and energy distributions of Compton electrons. The energy of
-the recoil electron ejected from the :math:`i`-th subshell is simply given by
+the recoil electron ejected from the :math:`i`-th subshell is given by
 
 .. math::
     :label: compton-electron-energy

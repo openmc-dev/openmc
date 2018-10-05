@@ -55,6 +55,16 @@ public:
     }
   }
 
+  virtual void
+  to_statepoint(hid_t filter_group) const override
+  {
+    write_dataset(filter_group, "type", "cell");
+    write_dataset(filter_group, "n_bins", cells_.size());
+    std::vector<int32_t> cell_ids;
+    for (auto c : cells_) cell_ids.push_back(cells[c]->id_);
+    write_dataset(filter_group, "bins", cell_ids);
+  }
+
 protected:
   std::vector<int32_t> cells_;
   std::unordered_map<int32_t, int> map_;

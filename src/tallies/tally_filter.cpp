@@ -101,6 +101,9 @@ extern "C" {
     filt->get_all_bins(p, estimator, *match);
   }
 
+  void filter_to_statepoint(TallyFilter* filt, hid_t group)
+  {filt->to_statepoint(group);}
+
   void filter_initialize(TallyFilter* filt) {filt->initialize();}
 }
 

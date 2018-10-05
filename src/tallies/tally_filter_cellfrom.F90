@@ -45,17 +45,8 @@ contains
     class(CellFromFilter), intent(in) :: this
     integer(HID_T),        intent(in) :: filter_group
 
-    integer :: i
-    integer, allocatable :: cell_ids(:)
+    call this % to_statepoint_c(filter_group)
 
-    call write_dataset(filter_group, "type", "cellfrom")
-    call write_dataset(filter_group, "n_bins", this % n_bins)
-
-    allocate(cell_ids(size(this % cells)))
-    do i = 1, size(this % cells)
-      cell_ids(i) = cells(this % cells(i)) % id()
-    end do
-    call write_dataset(filter_group, "bins", cell_ids)
   end subroutine to_statepoint_cell_from
 
   function text_label_cell_from(this, bin) result(label)

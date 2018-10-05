@@ -6,4 +6,4 @@ set -ex
 sh -e /etc/init.d/xvfb start
 
 # Download NNDC HDF5 data, ENDF/B-VII.1 distribution, multipole library
-sh ./tools/ci/download-xs.sh
+source tools/ci/download-xs.sh

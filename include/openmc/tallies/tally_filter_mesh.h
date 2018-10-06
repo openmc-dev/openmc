@@ -49,6 +49,8 @@ public:
     }
   }
 
+  virtual std::string text_label(int bin) const {};
+
 protected:
   int32_t mesh_;
 };

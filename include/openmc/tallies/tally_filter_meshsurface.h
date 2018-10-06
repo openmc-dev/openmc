@@ -42,6 +42,8 @@ public:
     for (auto b : match.bins) match.weights.push_back(1.0);
   }
 
+  virtual std::string text_label(int bin) const {};
+
 protected:
   int32_t mesh_;
 };

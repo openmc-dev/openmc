@@ -133,6 +133,7 @@ module tally_filter_header
     procedure :: from_xml_c
     procedure :: get_all_bins_c
     procedure :: to_statepoint_c
+    procedure :: text_label_c
     procedure :: initialize_c
   end type CppTallyFilter
 
@@ -321,6 +322,28 @@ contains
     end interface
     call filter_to_statepoint(this % ptr, filter_group)
   end subroutine to_statepoint_c
+
+  function text_label_c(this, bin) result(label)
+    class(CppTallyFilter), intent(in) :: this
+    integer,               intent(in) :: bin
+    character(MAX_LINE_LEN)           :: label
+    character(kind=C_CHAR)            :: label_(MAX_LINE_LEN+1)
+    integer :: i
+    interface
+      subroutine filter_text_label(filt, bin, label) bind(C)
+        import C_PTR, C_INT, C_CHAR
+        type(C_PTR), value     :: filt
+        integer(C_INT), value  :: bin
+        character(kind=C_CHAR) :: label(*)
+      end subroutine filter_text_label
+    end interface
+    call filter_text_label(this % ptr, bin, label_)
+    label = " "
+    do i = 1, MAX_LINE_LEN
+      if (label_(i) == C_NULL_CHAR) exit
+      label(i:i) = label_(i)
+    end do
+  end function text_label_c
 
   subroutine initialize_c(this)
     class(CppTallyFilter), intent(inout) :: this

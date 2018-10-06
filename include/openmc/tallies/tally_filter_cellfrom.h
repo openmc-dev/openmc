@@ -32,6 +32,12 @@ public:
     for (auto c : cells_) cell_ids.push_back(cells[c]->id_);
     write_dataset(filter_group, "bins", cell_ids);
   }
+
+  virtual std::string
+  text_label(int bin) const override
+  {
+    return "Cell from " + std::to_string(cells[cells_[bin-1]]->id_);
+  }
 };
 
 } // namespace openmc

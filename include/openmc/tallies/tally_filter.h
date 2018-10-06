@@ -2,6 +2,7 @@
 #define OPENMC_TALLY_FILTER_H
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "openmc/hdf5_interface.h"
@@ -52,6 +53,8 @@ public:
   get_all_bins(Particle* p, int estimator, TallyFilterMatch& match) const = 0;
 
   virtual void to_statepoint(hid_t filter_group) const {}
+
+  virtual std::string text_label(int bin) const = 0;
 
   virtual void initialize() {}
 };

@@ -54,7 +54,7 @@ contains
     integer,               intent(in) :: bin
     character(MAX_LINE_LEN)           :: label
 
-    label = "Cell from " // to_str(cells(this % cells(bin)) % id())
+    label = this % text_label_c(bin)
   end function text_label_cell_from
 
 end module tally_filter_cellfrom

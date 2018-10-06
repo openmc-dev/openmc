@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "openmc/constants.h"  // for MAX_LINE_LEN;
 #include "openmc/tallies/tally_filter_cell.h"
 #include "openmc/tallies/tally_filter_cellfrom.h"
 #include "openmc/tallies/tally_filter_mesh.h"
@@ -103,6 +104,15 @@ extern "C" {
 
   void filter_to_statepoint(TallyFilter* filt, hid_t group)
   {filt->to_statepoint(group);}
+
+  void filter_text_label(TallyFilter* filt, int bin, char* label)
+  {
+    std::string label_str = filt->text_label(bin);
+    int i = 0;
+    for (; i < label_str.size() && i < MAX_LINE_LEN; i++)
+      label[i] = label_str[i];
+    label[i] = '\0';
+  }
 
   void filter_initialize(TallyFilter* filt) {filt->initialize();}
 }

@@ -67,6 +67,12 @@ public:
     write_dataset(filter_group, "bins", cell_ids);
   }
 
+  virtual std::string
+  text_label(int bin) const override
+  {
+    return "Cell " + std::to_string(cells[cells_[bin-1]]->id_);
+  }
+
 protected:
   std::vector<int32_t> cells_;
   std::unordered_map<int32_t, int> map_;

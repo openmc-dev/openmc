@@ -15,7 +15,6 @@
 #include "openmc/surface.h"
 #include "openmc/xml_interface.h"
 
-
 namespace openmc {
 
 //==============================================================================
@@ -209,7 +208,9 @@ Universe::to_hdf5(hid_t universes_group) const
 // Cell implementation
 //==============================================================================
 
-Cell::Cell(pugi::xml_node cell_node)
+CSGCell::CSGCell() {} // empty constructor
+  
+CSGCell::CSGCell(pugi::xml_node cell_node)
 {
   if (check_for_node(cell_node, "id")) {
     id_ = std::stoi(get_node_value(cell_node, "id"));
@@ -393,7 +394,7 @@ Cell::Cell(pugi::xml_node cell_node)
 //==============================================================================
 
 bool
-Cell::contains(Position r, Direction u, int32_t on_surface) const
+CSGCell::contains(Position r, Direction u, int32_t on_surface) const
 {
   if (simple_) {
     return contains_simple(r, u, on_surface);
@@ -405,7 +406,7 @@ Cell::contains(Position r, Direction u, int32_t on_surface) const
 //==============================================================================
 
 std::pair<double, int32_t>
-Cell::distance(Position r, Direction u, int32_t on_surface) const
+CSGCell::distance(Position r, Direction u, int32_t on_surface) const
 {
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
@@ -434,12 +435,12 @@ Cell::distance(Position r, Direction u, int32_t on_surface) const
 //==============================================================================
 
 void
-Cell::to_hdf5(hid_t cells_group) const
+CSGCell::to_hdf5(hid_t cell_group) const
 {
   // Create a group for this cell.
   std::stringstream group_name;
   group_name << "cell " << id_;
-  auto group = create_group(cells_group, group_name);
+  auto group = create_group(cell_group, group_name);
 
   if (!name_.empty()) {
     write_string(group, "name", name_, false);
@@ -513,7 +514,7 @@ Cell::to_hdf5(hid_t cells_group) const
 //==============================================================================
 
 bool
-Cell::contains_simple(Position r, Direction u, int32_t on_surface) const
+CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
 {
   for (int32_t token : rpn_) {
     if (token < OP_UNION) {
@@ -537,7 +538,7 @@ Cell::contains_simple(Position r, Direction u, int32_t on_surface) const
 //==============================================================================
 
 bool
-Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
+CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 {
   // Make a stack of booleans.  We don't know how big it needs to be, but we do
   // know that rpn.size() is an upper-bound.
@@ -586,6 +587,50 @@ Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
 }
 
 //==============================================================================
+// DAGMC Cell implementation
+//==============================================================================
+#ifdef DAGMC
+DAGCell::DAGCell() : Cell{} {};
+
+std::pair<double, int32_t>
+DAGCell::distance(Position r, Direction u, int32_t on_surface) const
+{
+  moab::ErrorCode rval;
+  moab::EntityHandle vol = dagmc_ptr_->entity_by_id(3, id_);
+  moab::EntityHandle hit_surf;
+  double dist;
+  double pnt[3] = {r.x, r.y, r.z};
+  double dir[3] = {u.x, u.y, u.z};
+  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist);
+  MB_CHK_ERR_CONT(rval);
+  int surf_idx;
+  if (hit_surf != 0) {
+    surf_idx = dagmc_ptr_->index_by_handle(hit_surf);
+  } else {  // indicate that particle is lost
+    surf_idx = -1;
+  }
+  
+  return {dist, surf_idx};
+}
+  
+bool DAGCell::contains(Position r, Direction u, int32_t on_surface) const
+{
+  moab::ErrorCode rval;
+  moab::EntityHandle vol = dagmc_ptr_->entity_by_id(3, id_);
+
+  int result = 0;
+  double pnt[3] = {r.x, r.y, r.z};
+  double dir[3] = {u.x, u.y, u.z};
+  rval = dagmc_ptr_->point_in_volume(vol, pnt, result, dir);
+  MB_CHK_ERR_CONT(rval);  
+  return result;
+}
+
+void DAGCell::to_hdf5(hid_t group_id) const { return; }
+
+#endif
+
+//==============================================================================
 // Non-method functions
 //==============================================================================
 
@@ -601,7 +646,7 @@ read_cells(pugi::xml_node* node)
   // Loop over XML cell elements and populate the array.
   cells.reserve(n_cells);
   for (pugi::xml_node cell_node: node->children("cell")) {
-    cells.push_back(new Cell(cell_node));
+    cells.push_back(new CSGCell(cell_node));
   }
 
   // Fill the cell map.
@@ -739,6 +784,21 @@ extern "C" {
 
   int cell_type(Cell* c) {return c->type_;}
 
+#ifdef DAGMC
+
+  int32_t next_cell(DAGCell* cur_cell, DAGSurface* surf_xed )
+  {
+    moab::EntityHandle surf = surf_xed->dagmc_ptr_->entity_by_id(2,surf_xed->id_);
+    moab::EntityHandle vol = cur_cell->dagmc_ptr_->entity_by_id(3,cur_cell->id_);
+
+    moab::EntityHandle new_vol;
+    cur_cell->dagmc_ptr_->next_vol(surf, vol, new_vol);
+
+    return cur_cell->dagmc_ptr_->index_by_handle(new_vol);
+  }
+
+#endif
+
   int32_t cell_universe(Cell* c) {return c->universe_;}
 
   int32_t cell_fill(Cell* c) {return c->fill_;}
@@ -767,7 +827,7 @@ extern "C" {
   {
     cells.reserve(cells.size() + n);
     for (int32_t i = 0; i < n; i++) {
-      cells.push_back(new Cell());
+      cells.push_back(new CSGCell());
     }
     n_cells = cells.size();
   }

@@ -124,6 +124,12 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
         m = mu.shape()[1] - offset_mu;
       }
 
+      // For incoherent inelastic thermal scattering, the angle distributions
+      // may be given as discrete mu values. In this case, interpolation values
+      // of zero appear in the HDF5 file. Here we change it to a 1 so that
+      // int2interp doesn't fail.
+      if (interp_mu == 0) interp_mu = 1;
+
       auto interp = int2interp(interp_mu);
       auto xs = xt::view(mu, 0, xt::range(offset_mu, offset_mu + m));
       auto ps = xt::view(mu, 1, xt::range(offset_mu, offset_mu + m));
@@ -177,11 +183,13 @@ void CorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu) const
 
   // Interpolation for energy E1 and EK
   int n_energy_out = distribution_[i].e_out.size();
-  double E_i_1 = distribution_[i].e_out[0];
+  int n_discrete = distribution_[i].n_discrete;
+  double E_i_1 = distribution_[i].e_out[n_discrete];
   double E_i_K = distribution_[i].e_out[n_energy_out - 1];
 
   n_energy_out = distribution_[i+1].e_out.size();
-  double E_i1_1 = distribution_[i+1].e_out[0];
+  n_discrete = distribution_[i+1].n_discrete;
+  double E_i1_1 = distribution_[i+1].e_out[n_discrete];
   double E_i1_K = distribution_[i+1].e_out[n_energy_out - 1];
 
   double E_1 = E_i_1 + r*(E_i1_1 - E_i_1);
@@ -189,24 +197,37 @@ void CorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu) const
 
   // Determine outgoing energy bin
   n_energy_out = distribution_[l].e_out.size();
+  n_discrete = distribution_[l].n_discrete;
   double r1 = prn();
   double c_k = distribution_[l].c[0];
-  double c_k1;
-  int k;
-  for (k = 0; k < n_energy_out - 2; ++k) {
-    c_k1 = distribution_[l].c[k+1];
-    if (r1 < c_k1) break;
-    c_k = c_k1;
+  int k = 0;
+  int end = n_energy_out - 2;
+
+  // Discrete portion
+  for (int j = 0; j < n_discrete; ++j) {
+    k = j;
+    c_k = distribution_[l].c[k];
+    if (r1 < c_k) {
+      end = j;
+      break;
+    }
   }
 
-  // Check to make sure 1 <= k <= NP - 1
-  k = std::max(0, std::min(k, n_energy_out - 2));
+  // Continuous portion
+  double c_k1;
+  for (int j = n_discrete; j < end; ++j) {
+    k = j;
+    c_k1 = distribution_[l].c[k+1];
+    if (r1 < c_k1) break;
+    k = j + 1;
+    c_k = c_k1;
+  }
 
   double E_l_k = distribution_[l].e_out[k];
   double p_l_k = distribution_[l].p[k];
   if (distribution_[l].interpolation == Interpolation::histogram) {
     // Histogram interpolation
-    if (p_l_k > 0.0) {
+    if (p_l_k > 0.0 && k >= n_discrete) {
       E_out = E_l_k + (r1 - c_k)/p_l_k;
     } else {
       E_out = E_l_k;
@@ -228,10 +249,12 @@ void CorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu) const
   }
 
   // Now interpolate between incident energy bins i and i + 1
-  if (l == i) {
-    E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1);
-  } else {
-    E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1);
+  if (k >= n_discrete){
+    if (l == i) {
+      E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1);
+    } else {
+      E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1);
+    }
   }
 
   // Find correlated angular distribution for closest outgoing energy bin

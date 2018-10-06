@@ -14,9 +14,18 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
 {
   read_attribute(group, "Q_value", q_value_);
   read_attribute(group, "mt", mt_);
-  int cm;
-  read_attribute(group, "center_of_mass", cm);
-  scatter_in_cm_ = (cm == 1);
+  int tmp;
+  read_attribute(group, "center_of_mass", tmp);
+  scatter_in_cm_ = (tmp == 1);
+
+  // Checks if redudant attribute exists before loading
+  // (for compatibiltiy with legacy .h5 libraries)
+  if (attribute_exists(group, "redundant")) {
+    read_attribute(group, "redundant", tmp);
+    redundant_ = (tmp == 1);
+  } else {
+    redundant_ = false;
+  }
 
   // Read cross section and threshold_idx data
   for (auto t : temperatures) {
@@ -84,6 +93,8 @@ int reaction_mt(Reaction* rx) { return rx->mt_; }
 double reaction_q_value(Reaction* rx) { return rx->q_value_; }
 
 bool reaction_scatter_in_cm(Reaction* rx) { return rx->scatter_in_cm_; }
+
+bool reaction_redundant(Reaction* rx) { return rx->redundant_; }
 
 double reaction_product_decay_rate(Reaction* rx, int product)
 {

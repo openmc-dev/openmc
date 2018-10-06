@@ -1,7 +1,7 @@
 #include "openmc/thermal.h"
 
 #include <algorithm> // for sort, move, min, max, find
-#include <cmath>     // for round, sqrt, fabs
+#include <cmath>     // for round, sqrt, abs
 #include <sstream>   // for stringstream
 
 #include "xtensor/xarray.hpp"
@@ -80,7 +80,7 @@ ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& tem
 
       auto i_closest = xt::argmin(xt::abs(temps_available - T))[0];
       auto temp_actual = temps_available[i_closest];
-      if (std::fabs(temp_actual - T) < tolerance) {
+      if (std::abs(temp_actual - T) < tolerance) {
         if (std::find(temps_to_read.begin(), temps_to_read.end(), std::round(temp_actual))
             == temps_to_read.end()) {
           temps_to_read.push_back(std::round(temp_actual));
@@ -156,7 +156,7 @@ ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
   if (settings::temperature_method == TEMPERATURE_NEAREST) {
     // If using nearest temperature, do linear search on temperature
     for (i = 0; i < kTs_.size(); ++i) {
-      if (abs(kTs_[i] - kT) < K_BOLTZMANN*settings::temperature_tolerance) {
+      if (std::abs(kTs_[i] - kT) < K_BOLTZMANN*settings::temperature_tolerance) {
         break;
       }
     }
@@ -487,12 +487,12 @@ ThermalData::sample(const NuclideMicroXS* micro_xs, double E,
       // Determine endpoints on grid i
       auto n = inelastic_data_[i].e_out.size();
       double E_i_1 = inelastic_data_[i].e_out(0);
-      double E_i_J = inelastic_data_[i].e_out(n);
+      double E_i_J = inelastic_data_[i].e_out(n - 1);
 
       // Determine endpoints on grid i + 1
-      n = inelastic_data_[i].e_out.size();
+      n = inelastic_data_[i + 1].e_out.size();
       double E_i1_1 = inelastic_data_[i + 1].e_out(0);
-      double E_i1_J = inelastic_data_[i + 1].e_out(n);
+      double E_i1_J = inelastic_data_[i + 1].e_out(n - 1);
 
       double E_1 = E_i_1 + f * (E_i1_1 - E_i_1);
       double E_J = E_i_J + f * (E_i1_J - E_i_J);
@@ -504,7 +504,7 @@ ThermalData::sample(const NuclideMicroXS* micro_xs, double E,
       double c_j = inelastic_data_[l].e_out_cdf[0];
       double c_j1;
       std::size_t j;
-      for (j = 0; j < n - 2; ++j) {
+      for (j = 0; j < n - 1; ++j) {
         c_j1 = inelastic_data_[l].e_out_cdf[j + 1];
         if (r1 < c_j1) break;
         c_j = c_j1;
@@ -532,9 +532,9 @@ ThermalData::sample(const NuclideMicroXS* micro_xs, double E,
 
       // Now interpolate between incident energy bins i and i + 1
       if (l == i) {
-        *E_out = E_1 + (E - E_i_1) * (E_J - E_1) / (E_i_J - E_i_1);
+        *E_out = E_1 + (*E_out - E_i_1) * (E_J - E_1) / (E_i_J - E_i_1);
       } else {
-        *E_out = E_1 + (E - E_i1_1) * (E_J - E_1) / (E_i1_J - E_i1_1);
+        *E_out = E_1 + (*E_out - E_i1_1) * (E_J - E_1) / (E_i1_J - E_i1_1);
       }
 
       // Sample outgoing cosine bin
@@ -560,9 +560,9 @@ ThermalData::sample(const NuclideMicroXS* micro_xs, double E,
       // Determine (k+1)th mu value
       double mu_right;
       if (k == n_inelastic_mu_ - 1) {
-        mu_right = 1.0 - *mu;
+        mu_right = 1.0;
       } else {
-        mu_right = mu_l(j, k+1) + f*(mu_l(j+1, k+1) - mu_l(j, k+1)) - *mu;
+        mu_right = mu_l(j, k+1) + f*(mu_l(j+1, k+1) - mu_l(j, k+1));
       }
 
       // Smear angle
@@ -574,7 +574,7 @@ ThermalData::sample(const NuclideMicroXS* micro_xs, double E,
   // Because of floating-point roundoff, it may be possible for mu to be
   // outside of the range [-1,1). In these cases, we just set mu to exactly
   // -1 or 1
-  if (std::fabs(*mu) > 1.0) *mu = std::copysign(1.0, *mu);
+  if (std::abs(*mu) > 1.0) *mu = std::copysign(1.0, *mu);
 
 }
 

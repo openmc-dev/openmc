@@ -29,6 +29,7 @@ bool is_fission(int MT);
 class Function1D {
 public:
   virtual double operator()(double x) const = 0;
+  virtual ~Function1D() = default;
 };
 
 //==============================================================================

@@ -12,6 +12,7 @@ module xml_interface
   public :: check_for_node
   public :: get_node_list
   public :: get_node_value
+  public :: get_node_value_bool
   public :: get_node_array
   public :: node_value_string
   public :: node_word_count

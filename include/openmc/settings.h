@@ -45,6 +45,7 @@ extern "C" bool ufs_on;                  //!< uniform fission site method on?
 extern "C" bool urr_ptables_on;          //!< use unresolved resonance prob. tables?
 extern "C" bool write_all_tracks;        //!< write track files for every particle?
 extern "C" bool write_initial_source;    //!< write out initial source file?
+extern "C" bool dagmc;                   //!< indicator of DAGMC geometry
 
 // Paths to various files
 extern std::string path_cross_sections;   //!< path to cross_sections.xml
@@ -86,7 +87,6 @@ extern "C" int trigger_batch_interval;   //!< Batch interval for triggers
 extern "C" int verbosity;                //!< How verbose to make output
 extern "C" double weight_cutoff;         //!< Weight cutoff for Russian roulette
 extern "C" double weight_survive;        //!< Survival weight after Russian roulette
-
 } // namespace settings
 
 //! Read settings from XML file

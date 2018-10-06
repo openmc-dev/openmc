@@ -34,6 +34,7 @@ public:
   int mt_;             //!< ENDF MT value
   double q_value_;     //!< Reaction Q value in [eV]
   bool scatter_in_cm_; //!< scattering system in center-of-mass?
+  bool redundant_;     //!< redundant reaction?
   std::vector<TemperatureXS> xs_; //!< Cross section at each temperature
   std::vector<ReactionProduct> products_; //!< Reaction products
 };
@@ -48,6 +49,7 @@ extern "C" {
   int reaction_mt(Reaction* rx);
   double reaction_q_value(Reaction* rx);
   bool reaction_scatter_in_cm(Reaction* rx);
+  bool reaction_redundant(Reaction* rx);
   double reaction_product_decay_rate(Reaction* rx, int product);
   int reaction_product_emission_mode(Reaction* rx, int product);
   int reaction_product_particle(Reaction* rx, int product);

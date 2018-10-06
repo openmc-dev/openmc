@@ -146,7 +146,7 @@ extern "C" double entropy_c(int i)
   return entropy.at(i - 1);
 }
 
-extern "C" double entropy_clear()
+extern "C" void entropy_clear()
 {
   entropy.clear();
 }

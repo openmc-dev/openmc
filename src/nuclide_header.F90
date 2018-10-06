@@ -122,7 +122,7 @@ module nuclide_header
 
   ! Arbitrary value to indicate invalid cache state for elastic scattering
   ! (NuclideMicroXS % elastic)
-  real(8), parameter :: CACHE_INVALID = dble(Z"FFE0000000000000")
+  real(8), parameter :: CACHE_INVALID = -1
 
   type, bind(C) :: NuclideMicroXS
     ! Microscopic cross sections in barns
@@ -266,6 +266,19 @@ contains
 
   subroutine nuclide_clear(this)
     class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
+    integer :: i
+
+    interface
+      subroutine reaction_delete(rx) bind(C)
+        import C_PTR
+        type(C_PTR), value :: rx
+      end subroutine reaction_delete
+    end interface
+
+    do i = 1, size(this % reactions)
+      call reaction_delete(this % reactions(i) % ptr)
+    end do
+    deallocate(this % reactions)
 
     if (associated(this % multipole)) deallocate(this % multipole)
 
@@ -476,7 +489,8 @@ contains
       if (MTs % data(i) /= N_FISSION .and. MTs % data(i) /= N_F .and. &
            MTs % data(i) /= N_NF .and. MTs % data(i) /= N_2NF .and. &
            MTs % data(i) /= N_3NF .and. MTs % data(i) < 200 .and. &
-           MTs % data(i) /= N_LEVEL .and. MTs % data(i) /= ELASTIC) then
+           MTs % data(i) /= N_LEVEL .and. MTs % data(i) /= ELASTIC .and. &
+           .not. this % reactions(i) % redundant) then
 
         call index_inelastic_scatter % push_back(i)
       end if
@@ -623,28 +637,9 @@ contains
       this % reaction_index(this % reactions(i) % MT) = i
 
       associate (rx => this % reactions(i))
-        ! Skip total inelastic level scattering, gas production cross sections
-        ! (MT=200+), etc.
-        if (rx % MT == N_LEVEL .or. rx % MT == N_NONELASTIC) cycle
-        if (rx % MT > N_5N2P .and. rx % MT < N_P0) cycle
-
-        ! Skip level cross sections if total is available
-        if (rx % MT >= N_P0 .and. rx % MT <= N_PC .and. find(MTs, N_P) /= -1) cycle
-        if (rx % MT >= N_D0 .and. rx % MT <= N_DC .and. find(MTs, N_D) /= -1) cycle
-        if (rx % MT >= N_T0 .and. rx % MT <= N_TC .and. find(MTs, N_T) /= -1) cycle
-        if (rx % MT >= N_3HE0 .and. rx % MT <= N_3HEC .and. find(MTs, N_3HE) /= -1) cycle
-        if (rx % MT >= N_A0 .and. rx % MT <= N_AC .and. find(MTs, N_A) /= -1) cycle
-        if (rx % MT >= N_2N0 .and. rx % MT <= N_2NC .and. find(MTs, N_2N) /= -1) cycle
-
         do t = 1, n_temperature
           j = rx % xs_threshold(t)
           n = rx % xs_size(t)
-
-          ! Add contribution to total cross section
-          do k = j, j + n - 1
-            this % xs(t) % value(XS_TOTAL,k) = this % xs(t) % &
-                 value(XS_TOTAL,k) + rx % xs(t, k - j + 1)
-          end do
 
           ! Calculate photon production cross section
           do k = 1, rx % products_size()
@@ -656,6 +651,28 @@ contains
                      this % grid(t) % energy(l+j-1))
               end do
             end if
+          end do
+
+          ! Skip total inelastic level scattering, gas production cross sections
+          ! (MT=200+), etc.
+          if (rx % MT == N_LEVEL .or. rx % MT == N_NONELASTIC) cycle
+          if (rx % MT > N_5N2P .and. rx % MT < N_P0) cycle
+
+          ! Skip level cross sections if total is available
+          if (rx % MT >= N_P0 .and. rx % MT <= N_PC .and. find(MTs, N_P) /= -1) cycle
+          if (rx % MT >= N_D0 .and. rx % MT <= N_DC .and. find(MTs, N_D) /= -1) cycle
+          if (rx % MT >= N_T0 .and. rx % MT <= N_TC .and. find(MTs, N_T) /= -1) cycle
+          if (rx % MT >= N_3HE0 .and. rx % MT <= N_3HEC .and. find(MTs, N_3HE) /= -1) cycle
+          if (rx % MT >= N_A0 .and. rx % MT <= N_AC .and. find(MTs, N_A) /= -1) cycle
+          if (rx % MT >= N_2N0 .and. rx % MT <= N_2NC .and. find(MTs, N_2N) /= -1) cycle
+
+          ! Skip redundant reactions, which are used for photon production
+          if (rx % redundant) cycle
+
+          ! Add contribution to total cross section
+          do k = j, j + n - 1
+            this % xs(t) % value(XS_TOTAL,k) = this % xs(t) % &
+                 value(XS_TOTAL,k) + rx % xs(t, k - j + 1)
           end do
 
           ! Add contribution to absorption cross section

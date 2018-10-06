@@ -44,6 +44,7 @@ temperature-dependent data set.  For example, the data set corresponding to
              - **center_of_mass** (*int*) -- Whether the reference frame for
                scattering is center-of-mass (1) or laboratory (0)
              - **n_product** (*int*) -- Number of reaction products
+             - **redundant** (*int*) -- Whether reaction is redundant
 
 **/<nuclide name>/reactions/reaction_<mt>/<TTT>K/**
 

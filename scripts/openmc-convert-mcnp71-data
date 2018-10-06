@@ -25,8 +25,6 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument('-d', '--destination', default='mcnp_endfb71',
                     help='Directory to create new library in')
-parser.add_argument('-f', '--fission_energy_release',
-                    help='HDF5 file containing fission energy release data')
 parser.add_argument('--libver', choices=['earliest', 'latest'],
                     default='earliest', help="Output HDF5 versioning. Use "
                     "'earliest' for backwards compatibility or 'latest' for "
@@ -63,13 +61,6 @@ for basename, xs_list in sorted(suffixes.items()):
         data = openmc.data.ThermalScattering.from_ace(filename)
     else:
         data = openmc.data.IncidentNeutron.from_ace(filename, 'mcnp')
-
-        # Add fission energy release data, if available
-        if args.fission_energy_release is not None:
-            fer = openmc.data.FissionEnergyRelease.from_compact_hdf5(
-                args.fission_energy_release, data)
-            if fer is not None:
-                data.fission_energy = fer
 
     # For each higher temperature, add cross sections to the existing table
     for xs in xs_list[1:]:

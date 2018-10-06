@@ -163,12 +163,15 @@ int RegularMesh::get_bin(Position r) const
 
 int RegularMesh::get_bin_from_indices(const int* ijk) const
 {
-  if (n_dimension_ == 1) {
-    return ijk[0];
-  } else if (n_dimension_ == 2) {
-    return (ijk[1] - 1)*shape_[0] + ijk[0];
-  } else if (n_dimension_ == 3) {
-    return ((ijk[2] - 1)*shape_[1] + (ijk[1] - 1))*shape_[0] + ijk[0];
+  switch (n_dimension_) {
+    case 1:
+      return ijk[0];
+    case 2:
+      return (ijk[1] - 1)*shape_[0] + ijk[0];
+    case 3:
+      return ((ijk[2] - 1)*shape_[1] + (ijk[1] - 1))*shape_[0] + ijk[0];
+    default:
+      throw std::runtime_error{"Invalid number of mesh dimensions"};
   }
 }
 
@@ -207,6 +210,8 @@ bool RegularMesh::intersects(Position r0, Position r1) const
       return intersects_2d(r0, r1);
     case 3:
       return intersects_3d(r0, r1);
+    default:
+      throw std::runtime_error{"Invalid number of mesh dimensions."};
   }
 }
 

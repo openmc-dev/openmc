@@ -44,6 +44,8 @@ public:
 class TallyFilter
 {
 public:
+  virtual ~TallyFilter() = 0;
+
   virtual void from_xml(pugi::xml_node node) = 0;
 
   virtual void
@@ -53,6 +55,8 @@ public:
 
   virtual void initialize() {}
 };
+
+inline TallyFilter::~TallyFilter() {}
 
 //==============================================================================
 

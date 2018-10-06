@@ -14,6 +14,8 @@ namespace openmc {
 class MeshSurfaceFilter : public TallyFilter
 {
 public:
+  virtual ~MeshSurfaceFilter() override = default;
+
   virtual void
   from_xml(pugi::xml_node node) override
   {

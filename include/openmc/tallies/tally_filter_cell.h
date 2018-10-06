@@ -16,6 +16,8 @@ namespace openmc {
 class CellFilter : public TallyFilter
 {
 public:
+  virtual ~CellFilter() override = default;
+
   virtual void
   from_xml(pugi::xml_node node) override
   {

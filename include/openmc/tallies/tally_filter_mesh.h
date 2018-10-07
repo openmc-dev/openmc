@@ -53,7 +53,31 @@ public:
     }
   }
 
-  virtual std::string text_label(int bin) const {};
+  virtual void
+  to_statepoint(hid_t filter_group) const override
+  {
+    write_dataset(filter_group, "type", "mesh");
+    write_dataset(filter_group, "n_bins", n_bins_);
+    write_dataset(filter_group, "bins", meshes[mesh_]->id_);
+  }
+
+  virtual std::string
+  text_label(int bin) const override
+  {
+    auto& mesh = *meshes[mesh_];
+    int n_dim = mesh.n_dimension_;
+
+    int ijk[n_dim];
+    mesh.get_indices_from_bin(bin, ijk);
+
+    std::stringstream out;
+    out << "Mesh Index (" << ijk[0];
+    if (n_dim > 1) out << ", " << ijk[1];
+    if (n_dim > 2) out << ", " << ijk[2];
+    out << ")";
+
+    return out.str();
+  }
 
   int32_t mesh_;
 };

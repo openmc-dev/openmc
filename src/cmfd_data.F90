@@ -82,6 +82,14 @@ contains
     real(8) :: flux          ! temp variable for flux
     type(RegularMesh) :: m ! pointer for mesh object
 
+    interface
+      function mesh_filter_get_mesh(filt) result(index_mesh) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: filt
+        integer(C_INT)     :: index_mesh
+      end function mesh_filter_get_mesh
+    end interface
+
     ! Extract spatial and energy indices from object
     nx = cmfd % indices(1)
     ny = cmfd % indices(2)
@@ -99,7 +107,7 @@ contains
 
     select type(filt => filters(i_filter_mesh) % obj)
     type is (MeshFilter)
-      m = meshes(filt % mesh)
+      m = meshes(filt % mesh())
     end select
 
     ! Set mesh widths

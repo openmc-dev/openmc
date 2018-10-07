@@ -26,7 +26,6 @@ module tally_filter_meshsurface
     integer :: mesh
   contains
     procedure :: from_xml
-    procedure :: get_all_bins
     procedure :: to_statepoint
     procedure :: text_label
   end type MeshSurfaceFilter
@@ -43,7 +42,7 @@ contains
     integer(C_INT) :: err
     type(RegularMesh) :: m
 
-    call this % from_xml_c(node)
+    call this % from_xml_cpp_inner(node)
 
     n = node_word_count(node, "bins")
 
@@ -67,16 +66,6 @@ contains
       this % n_bins = this % n_bins * m % dimension(i)
     end do
   end subroutine from_xml
-
-  subroutine get_all_bins(this, p, estimator, match)
-    class(MeshSurfaceFilter), intent(in)  :: this
-    type(Particle),           intent(in)  :: p
-    integer,                  intent(in)  :: estimator
-    type(TallyFilterMatch), intent(inout) :: match
-
-    call this % get_all_bins_c(p, estimator, match)
-
-  end subroutine get_all_bins
 
   subroutine to_statepoint(this, filter_group)
     class(MeshSurfaceFilter), intent(in) :: this

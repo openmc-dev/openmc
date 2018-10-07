@@ -25,9 +25,6 @@ module tally_filter_cell
     type(DictIntInt)     :: map
   contains
     procedure :: from_xml
-    procedure :: get_all_bins => get_all_bins_cell
-    procedure :: to_statepoint => to_statepoint_cell
-    procedure :: text_label => text_label_cell
     procedure :: initialize => initialize_cell
   end type CellFilter
 
@@ -39,7 +36,7 @@ contains
 
     integer :: n
 
-    call this % from_xml_c(node)
+    call this % from_xml_cpp_inner(node)
 
     ! Determine how many bins were given
     n = node_word_count(node, "bins")
@@ -50,31 +47,13 @@ contains
     call get_node_array(node, "bins", this % cells)
   end subroutine from_xml
 
-  subroutine get_all_bins_cell(this, p, estimator, match)
-    class(CellFilter), intent(in)  :: this
-    type(Particle),    intent(in)  :: p
-    integer,           intent(in)  :: estimator
-    type(TallyFilterMatch), intent(inout) :: match
-
-    call this % get_all_bins_c(p, estimator, match)
-
-  end subroutine get_all_bins_cell
-
-  subroutine to_statepoint_cell(this, filter_group)
-    class(CellFilter), intent(in) :: this
-    integer(HID_T),    intent(in) :: filter_group
-
-    call this % to_statepoint_c(filter_group)
-
-  end subroutine to_statepoint_cell
-
   subroutine initialize_cell(this)
     class(CellFilter), intent(inout) :: this
 
     integer :: i, id
     integer :: val
 
-    call this % initialize_c()
+    call this % initialize_cpp_inner()
 
     ! Convert ids to indices.
     do i = 1, this % n_bins
@@ -93,14 +72,6 @@ contains
       call this % map % set(this % cells(i), i)
     end do
   end subroutine initialize_cell
-
-  function text_label_cell(this, bin) result(label)
-    class(CellFilter), intent(in) :: this
-    integer,           intent(in) :: bin
-    character(MAX_LINE_LEN)       :: label
-
-    label = this % text_label_c(bin)
-  end function text_label_cell
 
 !===============================================================================
 !                               C API FUNCTIONS

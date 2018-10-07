@@ -19,6 +19,9 @@ option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
 option(mpif08   "Use Fortran 2008 MPI interface"                 OFF)
+option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
+
+# Maximum number of nested coordinates levels
 set(maxcoord 10 CACHE STRING "Maximum number of nested coordinate levels")
 
 #===============================================================================
@@ -37,11 +40,22 @@ if(MPI_ENABLED AND mpif08)
 endif()
 
 #===============================================================================
+# DAGMC Geometry Support - need DAGMC/MOAB
+#===============================================================================
+if(dagmc)
+  find_package(DAGMC REQUIRED)
+  if(NOT DAGMC_FOUND)
+    message(FATAL_ERROR "Could not find DAGMC installation")
+  endif()
+  link_directories(${DAGMC_LIBRARY_DIRS})
+endif()
+
+#===============================================================================
 # HDF5 for binary output
 #===============================================================================
 
 # Allow user to specify HDF5_ROOT
-if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.12)
+if (NOT (CMAKE_VERSION VERSION_LESS 3.12))
   cmake_policy(SET CMP0074 NEW)
 endif()
 
@@ -295,6 +309,7 @@ add_library(libopenmc SHARED
   src/algorithm.F90
   src/bank_header.F90
   src/api.F90
+  src/dagmc_header.F90
   src/cmfd_data.F90
   src/cmfd_execute.F90
   src/cmfd_header.F90
@@ -383,6 +398,7 @@ add_library(libopenmc SHARED
   src/tallies/tally_header.F90
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90
+  src/dagmc.cpp
   src/cell.cpp
   src/cmfd_execute.cpp
   src/distribution.cpp
@@ -428,6 +444,7 @@ add_library(libopenmc SHARED
   src/thermal.cpp
   src/xml_interface.cpp
   src/xsdata.cpp)
+
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc
   LINKER_LANGUAGE Fortran)
@@ -473,10 +490,15 @@ endif()
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml
                       faddeeva xtensor)
 
+if(dagmc)
+  target_compile_definitions(libopenmc PRIVATE DAGMC)
+  target_link_libraries(libopenmc ${DAGMC_LIBRARIES})
+  target_include_directories(libopenmc PRIVATE ${DAGMC_INCLUDE_DIRS})
+endif()
+
 #===============================================================================
 # openmc executable
 #===============================================================================
-
 add_executable(openmc src/main.cpp)
 target_compile_options(openmc PRIVATE ${cxxflags})
 target_link_libraries(openmc libopenmc)

@@ -12,7 +12,7 @@ objects in the :mod:`openmc.capi` subpackage, for example:
 
 """
 
-from ctypes import CDLL
+from ctypes import CDLL, c_bool
 import os
 import sys
 
@@ -38,6 +38,8 @@ else:
     from unittest.mock import Mock
     _dll = Mock()
 
+dagmc_enabled = bool(c_bool.in_dll(_dll, "dagmc_enabled"))
+    
 from .error import *
 from .core import *
 from .nuclide import *

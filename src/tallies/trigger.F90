@@ -264,7 +264,7 @@ contains
     i_filter_surf = t % filter(t % find_filter(FILTER_SURFACE))
     select type(filt => filters(i_filter_mesh) % obj)
     type is (MeshFilter)
-      m = meshes(filt % mesh)
+      m = meshes(filt % mesh())
     end select
 
     ! initialize bins array

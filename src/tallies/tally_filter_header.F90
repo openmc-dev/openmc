@@ -379,6 +379,7 @@ contains
     class(CppTallyFilter), intent(inout) :: this
     type(XMLNode),         intent(in)    :: node
     call this % from_xml_cpp_inner(node)
+    this % n_bins = this % n_bins_cpp()
   end subroutine from_xml_cpp_default
 
   subroutine get_all_bins_cpp_default(this, p, estimator, match)

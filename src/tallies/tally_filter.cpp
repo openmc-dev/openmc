@@ -115,6 +115,28 @@ extern "C" {
   }
 
   void filter_initialize(TallyFilter* filt) {filt->initialize();}
+
+  int filter_n_bins(TallyFilter* filt) {return filt->n_bins_;}
+
+  int mesh_filter_get_mesh(MeshFilter* filt) {return filt->mesh_;}
+
+  void
+  mesh_filter_set_mesh(MeshFilter* filt, int mesh)
+  {
+    filt->mesh_ = mesh;
+    filt->n_bins_ = 1;
+    for (auto dim : meshes[mesh]->shape_) filt->n_bins_ *= dim;
+  }
+
+  int meshsurface_filter_get_mesh(MeshSurfaceFilter* filt) {return filt->mesh_;}
+
+  void
+  meshsurface_filter_set_mesh(MeshSurfaceFilter* filt, int mesh)
+  {
+    filt->mesh_ = mesh;
+    filt->n_bins_ = 4 * meshes[mesh]->n_dimension_;
+    for (auto dim : meshes[mesh]->shape_) filt->n_bins_ *= dim;
+  }
 }
 
 } // namespace openmc

@@ -37,11 +37,9 @@ contains
     class(MeshFilter), intent(inout) :: this
     type(XMLNode), intent(in) :: node
 
-    integer :: i
     integer :: id
     integer :: n
     integer(C_INT) :: err
-    type(RegularMesh) :: m
 
     call this % from_xml_cpp_inner(node)
 
@@ -61,11 +59,7 @@ contains
     end if
 
     ! Determine number of bins
-    m = meshes(this % mesh)
-    this % n_bins = 1
-    do i = 1, m % n_dimension()
-      this % n_bins = this % n_bins * m % dimension(i)
-    end do
+    this % n_bins = this % n_bins_cpp()
   end subroutine from_xml
 
   subroutine to_statepoint_mesh(this, filter_group)
@@ -112,11 +106,19 @@ contains
     integer(C_INT32_T), intent(out)       :: index_mesh
     integer(C_INT) :: err
 
+    interface
+      function mesh_filter_get_mesh(filt) result(index_mesh) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: filt
+        integer(C_INT)     :: index_mesh
+      end function mesh_filter_get_mesh
+    end interface
+
     err = verify_filter(index)
     if (err == 0) then
       select type (f => filters(index) % obj)
       type is (MeshFilter)
-        index_mesh = f % mesh
+        index_mesh = mesh_filter_get_mesh(f % ptr)
       class default
         err = E_INVALID_TYPE
         call set_errmsg("Tried to set mesh on a non-mesh filter.")
@@ -131,20 +133,21 @@ contains
     integer(C_INT32_T), value, intent(in) :: index_mesh
     integer(C_INT) :: err
 
-    type(RegularMesh) :: m
-    integer :: i
+    interface
+      subroutine mesh_filter_set_mesh(filt, mesh) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR),    value :: filt
+        integer(C_INT), value :: mesh
+      end subroutine mesh_filter_set_mesh
+    end interface
 
     err = verify_filter(index)
     if (err == 0) then
       select type (f => filters(index) % obj)
       type is (MeshFilter)
         if (index_mesh >= 0 .and. index_mesh < n_meshes()) then
-          f % mesh = index_mesh
-          f % n_bins = 1
-          m = meshes(index_mesh)
-          do i = 1, m % n_dimension()
-            f % n_bins = f % n_bins * m % dimension(i)
-          end do
+          call mesh_filter_set_mesh(f % ptr, index_mesh)
+          f % n_bins = f % n_bins_cpp()
         else
           err = E_OUT_OF_BOUNDS
           call set_errmsg("Index in 'meshes' array is out of bounds.")

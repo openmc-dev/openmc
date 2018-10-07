@@ -423,6 +423,7 @@ add_library(libopenmc SHARED
   src/nuclide.cpp
   src/output.cpp
   src/particle.cpp
+  src/physics_common.cpp
   src/plot.cpp
   src/position.cpp
   src/pugixml/pugixml_c.cpp

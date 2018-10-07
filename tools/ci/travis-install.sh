@@ -26,8 +26,8 @@ python tools/ci/travis-install.py
 # Install Python API in editable mode
 pip install -e .[test]
 
-a=$(dpkg --compare-versions $(python --version | cut -d" " -f 2) lt 3.7.0)
-if [ $a -eq 0 ]; then
+# conditionally install vtk
+if [ $TRAVIS_PYTHON_VERSION -ne 3.7 ]; then
     pip install -e .[vtk]
 fi
 

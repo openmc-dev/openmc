@@ -25,6 +25,7 @@ struct Position {
   Position& operator-=(double);
   Position& operator*=(Position);
   Position& operator*=(double);
+
   const double& operator[](int i) const {
     switch (i) {
       case 0: return x;

@@ -39,7 +39,6 @@ Core Functions
     openmc.data.linearize
     openmc.data.thin
     openmc.data.water_density
-    openmc.data.write_compact_458_library
     openmc.data.zam
 
 Angle-Energy Distributions

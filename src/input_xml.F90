@@ -11,6 +11,9 @@ module input_xml
   use error,            only: fatal_error, warning, write_message, openmc_err_msg
   use geometry,         only: neighbor_lists
   use geometry_header
+#ifdef DAGMC
+  use dagmc_header
+#endif
   use hdf5_interface
   use list_header,      only: ListChar, ListInt, ListReal
   use material_header
@@ -176,7 +179,9 @@ contains
 
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
-    call neighbor_lists()
+    if (.not. dagmc) then
+      call neighbor_lists()
+    end if
 
     ! Assign temperatures to cells that don't have temperatures already assigned
     call assign_temperatures()
@@ -347,6 +352,63 @@ contains
 
   end subroutine read_settings_xml_f
 
+
+#ifdef DAGMC
+
+!===============================================================================
+! READ_GEOMETRY_DAGMC reads data from a DAGMC .h5m file, checking
+! for material properties and surface boundary conditions
+! some universe information is spoofed for now
+!===============================================================================
+
+  subroutine read_geometry_dagmc()
+
+    integer :: i, j
+    integer :: univ_id
+    integer :: n_cells_in_univ
+    logical :: file_exists
+    character(MAX_LINE_LEN) :: filename
+    type(Cell),     pointer :: c
+    type(VectorInt) :: univ_ids      ! List of all universe IDs
+    type(DictIntInt) :: cells_in_univ_dict ! Used to count how many cells each
+                                           ! universe contains
+
+    ! Check if dagmc.h5m exists
+    filename = trim(path_input) // "dagmc.h5m"
+    inquire(FILE=filename, EXIST=file_exists)
+    if (.not. file_exists) then
+      call fatal_error("Geometry DAGMC file '" // trim(filename) // "' does not &
+           &exist!")
+    end if
+
+    call write_message("Reading DAGMC geometry...", 5)
+    call load_dagmc_geometry()
+    call allocate_surfaces()
+    call allocate_cells()
+
+    ! setup universe data structs
+    do i = 1, n_cells
+      c => cells(i)
+      ! additional metadata spoofing
+      univ_id = c % universe()
+
+      if (.not. cells_in_univ_dict % has(univ_id)) then
+        n_universes = n_universes + 1
+        n_cells_in_univ = 1
+        call universe_dict % set(univ_id, n_universes)
+        call univ_ids % push_back(univ_id)
+      else
+        n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
+      end if
+      call cells_in_univ_dict % set(univ_id, n_cells_in_univ)
+    end do
+
+    root_universe = find_root_universe()
+
+  end subroutine read_geometry_dagmc
+
+#endif
+
 !===============================================================================
 ! READ_GEOMETRY_XML reads data from a geometry.xml file and parses it, checking
 ! for errors and placing properly-formatted data in the right data structures
@@ -374,6 +436,12 @@ contains
     type(VectorInt) :: univ_ids      ! List of all universe IDs
     type(DictIntInt) :: cells_in_univ_dict ! Used to count how many cells each
                                            ! universe contains
+#ifdef DAGMC
+    if (dagmc) then
+      call read_geometry_dagmc()
+      return
+    end if
+#endif
 
     ! Display output message
     call write_message("Reading geometry XML file...", 5)
@@ -401,7 +469,6 @@ contains
 
     ! Allocate surfaces array
     allocate(surfaces(n_surfaces))
-
     do i = 1, n_surfaces
       surfaces(i) % ptr = surface_pointer(i - 1);
 
@@ -558,6 +625,40 @@ contains
     call doc % clear()
 
   end subroutine read_geometry_xml
+
+  subroutine allocate_surfaces()
+    integer :: i
+
+    ! Allocate surfaces array
+    allocate(surfaces(n_surfaces))
+
+    do i = 1, n_surfaces
+      surfaces(i) % ptr = surface_pointer(i - 1);
+      ! Add surface to dictionary
+      call surface_dict % set(surfaces(i) % id(), i)
+    end do
+
+  end subroutine allocate_surfaces
+
+  subroutine allocate_cells()
+    integer :: i
+    type(Cell), pointer :: c
+
+    ! Allocate cells array
+    allocate(cells(n_cells))
+
+    do i = 1, n_cells
+      c => cells(i)
+      c % ptr = cell_pointer(i - 1)
+      ! Check to make sure 'id' hasn't been used
+      if (cell_dict % has(c % id())) then
+        call fatal_error("Two or more cells use the same unique ID: " &
+               // to_str(c % id()))
+      end if
+      ! Add cell to dictionary
+      call cell_dict % set(c % id(), i)
+    end do
+  end subroutine allocate_cells
 
 !===============================================================================
 ! READ_MATERIAL_XML reads data from a materials.xml file and parses it, checking
@@ -2992,6 +3093,9 @@ contains
            &<multipole_library> element in settings.xml or the &
            &OPENMC_MULTIPOLE_LIBRARY environment variable.")
     end if
+
+    call already_read % clear()
+    call element_already_read % clear()
 
   end subroutine read_ce_cross_sections
 

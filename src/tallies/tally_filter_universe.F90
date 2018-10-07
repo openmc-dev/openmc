@@ -78,7 +78,7 @@ contains
 
     allocate(universe_ids(size(this % universes)))
     do i = 1, size(this % universes)
-      universe_ids(i) = universe_id(this % universes(i)-1)
+      universe_ids(i) = universe_id(this % universes(i))
     end do
     call write_dataset(filter_group, "bins", universe_ids)
   end subroutine to_statepoint_universe

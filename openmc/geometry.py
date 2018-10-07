@@ -266,7 +266,10 @@ class Geometry(object):
             Dictionary mapping cell IDs to :class:`openmc.Cell` instances
 
         """
-        return self.root_universe.get_all_cells()
+        if self.root_universe is not None:
+            return self.root_universe.get_all_cells()
+        else:
+            return []
 
     def get_all_universes(self):
         """Return all universes in the geometry.

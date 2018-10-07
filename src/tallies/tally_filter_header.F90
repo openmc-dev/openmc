@@ -130,6 +130,7 @@ module tally_filter_header
   type, public, abstract, extends(TallyFilter) :: CppTallyFilter
     type(C_PTR) :: ptr
   contains
+    procedure :: n_bins_cpp
     procedure :: from_xml_cpp_inner
     procedure :: get_all_bins_cpp_inner
     procedure :: to_statepoint_cpp_inner
@@ -284,6 +285,19 @@ contains
   end subroutine filter_initialize
 
 !===============================================================================
+
+  function n_bins_cpp(this) result(n_bins)
+    class(CppTallyFilter), intent(inout) :: this
+    integer                              :: n_bins
+    interface
+      function filter_n_bins(filt) result(n_bins) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: filt
+        integer(C_INT)     :: n_bins
+      end function filter_n_bins
+    end interface
+    n_bins = filter_n_bins(this % ptr)
+  end function n_bins_cpp
 
   subroutine from_xml_cpp_inner(this, node)
     class(CppTallyFilter), intent(inout) :: this

@@ -32,6 +32,9 @@ public:
       err_msg << "Could not find cell " << id << " specified on tally filter.";
       fatal_error(err_msg);
     }
+
+    n_bins_ = 4 * meshes[mesh_]->n_dimension_;;
+    for (auto dim : meshes[mesh_]->shape_) n_bins_ *= dim;
   }
 
   virtual void
@@ -44,7 +47,6 @@ public:
 
   virtual std::string text_label(int bin) const {};
 
-protected:
   int32_t mesh_;
 };
 

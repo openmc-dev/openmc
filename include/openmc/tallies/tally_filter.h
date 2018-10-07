@@ -57,6 +57,8 @@ public:
   virtual std::string text_label(int bin) const = 0;
 
   virtual void initialize() {}
+
+  int n_bins_;
 };
 
 inline TallyFilter::~TallyFilter() {}

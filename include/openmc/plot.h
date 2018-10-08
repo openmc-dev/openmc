@@ -7,9 +7,15 @@
 
 namespace openmc {
 
+  class ObjectPlot;
+  
   int PLOT_LEVEL_LOWEST = -1;
 
   std::map<int, int> plot_dict;
+  
+  std::vector<int32_t> n_plots;
+
+  std::vector<ObjectPlot*> plots;
   
   enum PLOT_TYPE {
     SLICE = 1,

@@ -1,8 +1,9 @@
 import glob
 import hashlib
 import os
-from subprocess import run
+from subprocess import check_call
 import importlib
+
 import h5py
 import openmc
 import pytest
@@ -23,8 +24,8 @@ class PlotVoxelTestHarness(TestHarness):
     def _run_openmc(self):
         openmc.plot_geometry(openmc_exec=config['exe'])
 
-        run(['../../../scripts/openmc-voxel-to-vtk'] +
-             glob.glob('plot_4.h5'), check=True)
+        check_call(['../../../scripts/openmc-voxel-to-vtk'] +
+                   glob.glob('plot_4.h5'))
                 
     def _test_output_created(self):
         """Make sure *.ppm has been created."""

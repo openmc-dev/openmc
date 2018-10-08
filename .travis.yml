@@ -15,6 +15,8 @@ addons:
       - libhdf5-mpich-dev
       - libblas-dev
       - liblapack-dev
+    config:
+      retries: true
 cache:
   directories:
   - $HOME/nndc_hdf5
@@ -39,7 +41,7 @@ env:
     - OMP=n MPI=y PHDF5=n
     - OMP=n MPI=y PHDF5=y
     - OMP=n MPI=y PHDF5=y DAGMC=y
-    - OMP=y MPI=y PHDF5=y DAGMC=y        
+    - OMP=y MPI=y PHDF5=y DAGMC=y
 notifications:
   webhooks: https://coveralls.io/webhook?repo_token=$COVERALLS_REPO_TOKEN
 install:

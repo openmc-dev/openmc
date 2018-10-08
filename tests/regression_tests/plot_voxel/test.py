@@ -1,16 +1,21 @@
 import glob
 import hashlib
 import os
-
+from subprocess import run
+import importlib
 import h5py
 import openmc
+import pytest
 
 from tests.testing_harness import TestHarness
 from tests.regression_tests import config
 
 
-class PlotTestHarness(TestHarness):
-    """Specialized TestHarness for running OpenMC plotting tests."""
+pytestmark = pytest.mark.skipif(
+    importlib.util.find_spec('vtk') is None,
+    reason="vtk module is not installed.")
+class PlotVoxelTestHarness(TestHarness):
+    """Specialized TestHarness for running OpenMC voxel plot tests."""
     def __init__(self, plot_names):
         super().__init__(None)
         self._plot_names = plot_names
@@ -18,6 +23,9 @@ class PlotTestHarness(TestHarness):
     def _run_openmc(self):
         openmc.plot_geometry(openmc_exec=config['exe'])
 
+        run(['../../../scripts/openmc-voxel-to-vtk'] +
+             glob.glob('plot_4.h5'), check=True)
+                
     def _test_output_created(self):
         """Make sure *.ppm has been created."""
         for fname in self._plot_names:
@@ -34,11 +42,7 @@ class PlotTestHarness(TestHarness):
         outstr = bytes()
 
         for fname in self._plot_names:
-            if fname.endswith('.ppm'):
-                # Add PPM output to results
-                with open(fname, 'rb') as fh:
-                    outstr += fh.read()
-            elif fname.endswith('.h5'):
+            if fname.endswith('.h5'):
                 # Add voxel data to results
                 with h5py.File(fname, 'r') as fh:
                     outstr += fh.attrs['filetype']
@@ -56,6 +60,5 @@ class PlotTestHarness(TestHarness):
 
 
 def test_plot():
-    harness = PlotTestHarness(('plot_1.ppm', 'plot_2.ppm', 'plot_3.ppm',
-                               'plot_4.h5'))
+    harness = PlotVoxelTestHarness(('plot_4.h5', 'plot.vti'))
     harness.main()

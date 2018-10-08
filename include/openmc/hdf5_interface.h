@@ -162,8 +162,7 @@ void read_attribute(hid_t obj_id, const char* name, xt::xarray<T>& arr)
   std::size_t size = 1;
   for (const auto x : shape)
     size *= x;
-  std::vector<T> buffer;
-  buffer.resize(size);
+  std::vector<T> buffer(size);
 
   // Read data from attribute
   read_attr(obj_id, name, H5TypeMap<T>::type_id, buffer.data());
@@ -245,8 +244,7 @@ void read_dataset(hid_t dset, xt::xarray<T>& arr, bool indep=false)
   std::size_t size = 1;
   for (const auto x : shape)
     size *= x;
-  std::vector<T> buffer;
-  buffer.resize(size);
+  std::vector<T> buffer(size);
 
   // Read data from attribute
   read_dataset(dset, nullptr, H5TypeMap<T>::type_id, buffer.data(), indep);
@@ -275,8 +273,7 @@ void read_dataset_as_shape(hid_t obj_id, const char* name,
   std::size_t size = 1;
   for (const auto x : arr.shape())
     size *= x;
-  std::vector<T> buffer;
-  buffer.resize(size);
+  std::vector<T> buffer(size);
 
   // Read data from attribute
   read_dataset(dset, nullptr, H5TypeMap<T>::type_id, buffer.data(), indep);

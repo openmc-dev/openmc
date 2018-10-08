@@ -4,12 +4,17 @@
 #include "openmc/error.h"
 #include "openmc/particle.h"
 #include "openmc/geometry.h"
+#include "openmc/cell.h"
+#include "openmc/material.h"
 
 namespace openmc {
 
 const int RED   = 1;
 const int GREEN = 2;
 const int BLUE  = 3;
+
+const int WHITE[3] = {255, 255, 255};
+const int NULLRGB[3] = {0, 0, 0};
 
 //===============================================================================
 // RUN_PLOT controls the logic for making one or many plots
@@ -28,7 +33,7 @@ int openmc_plot_geometry() {
       
       if (pl->type_ == PLOT_TYPE::SLICE) {
         // create 2D image
-        // create_ppm(pl);
+        create_ppm(pl);
         continue;
       } else if (pl->type_ == PLOT_TYPE::VOXEL) {
         // create voxel file for 3D viewing
@@ -108,8 +113,66 @@ void create_ppm(ObjectPlot* pl) {
   
 }
 
-  
-  
+//===============================================================================
+// POSITION_RGB computes the red/green/blue values for a given plot with the
+// current particle's position
+//===============================================================================
+
+void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id) {
+  bool found_cell;
+
+  p->n_coord = 1;
+
+  found_cell = find_cell(p, 0);
+
+  int j = p->n_coord - 1;
+
+  if (settings::check_overlaps) { check_cell_overlap(p); }
+
+  // Set coordinate level if specified
+  if (pl->level_ >= 0) j = pl->level_ + 1;
+
+  Cell* c;
+
+  if (!found_cell) {
+    // If no cell, revert to default color
+    rgb = pl->not_found_.rgb_;
+    id = -1;
+  } else {
+    if (pl->color_by_ = PLOT_COLOR_BY::MATS) {
+      // Assign color based on material
+      c = cells[p->coord[j].cell];
+      if (c->type_ == FILL_UNIVERSE) {
+        // If we stopped on a middle universe level, treat as if not found
+        rgb = pl->not_found_.rgb_;
+        id = -1;
+      } else if (p->material == MATERIAL_VOID) {
+        // By default, color void cells white
+        std::copy(WHITE, WHITE+3, rgb);
+        id = -1;
+      } else {
+        std::copy(pl->colors_[p->material].rgb_,
+                  pl->colors_[p->material].rgb_ + 3,
+                  rgb);
+        id = materials[p->material]->id;
+      }
+
+    } else if (pl->color_by_ == PLOT_COLOR_BY::CELLS) {
+      // Assign color based on cell
+      std::copy(pl->colors_[p->coord[j].cell].rgb_,
+                pl->colors_[p->coord[j].cell].rgb_ + 3,
+                rgb);
+      id = cells[p->coord[j].cell]->id_;
+    } else {
+      std::copy(NULLRGB, NULLRGB+3, rgb);
+      id = -1;
+    }
+
+
+  } // endif found_cell
+
+}
+
 void
 voxel_init(hid_t file_id, const hsize_t* dims, hid_t* dspace, hid_t* dset,
            hid_t* memspace)

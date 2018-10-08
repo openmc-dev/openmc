@@ -18,6 +18,8 @@ class PlotTestHarness(TestHarness):
     def _run_openmc(self):
         openmc.plot_geometry(openmc_exec=config['exe'])
 
+        # TEMP: this should always be checked once vtk is added
+        # to Python3.7
         try:
             import vtk
             call(['../../../scripts/openmc-voxel-to-vtk'] +
@@ -64,6 +66,8 @@ class PlotTestHarness(TestHarness):
 def test_plot():
     expected_plots = ['plot_1.ppm', 'plot_2.ppm',
                            'plot_3.ppm', 'plot_4.h5']
+    # TEMP: this should always be checked once vtk is added
+    # to Python3.7
     try:
         import vtk
         expected_plots.append('plot.vti')

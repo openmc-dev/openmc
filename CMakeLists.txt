@@ -424,6 +424,7 @@ add_library(libopenmc SHARED
   src/output.cpp
   src/particle.cpp
   src/physics_common.cpp
+  src/physics_mg.cpp
   src/plot.cpp
   src/position.cpp
   src/pugixml/pugixml_c.cpp

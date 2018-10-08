@@ -156,7 +156,7 @@ module mgxs_interface
   real(8), allocatable :: energy_bins(:)
 
   ! Midpoint of the energy group structure
-  real(8), allocatable :: energy_bin_avg(:)
+  real(C_DOUBLE), allocatable :: energy_bin_avg(:)
 
   ! Energy group structure with increasing energy
   real(C_DOUBLE), allocatable, target :: rev_energy_bins(:)

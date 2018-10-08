@@ -2,6 +2,7 @@ import glob
 import hashlib
 import os
 from subprocess import call
+
 import h5py
 import openmc
 
@@ -63,9 +64,9 @@ class PlotTestHarness(TestHarness):
 
         return outstr
 
+
 def test_plot():
-    expected_plots = ['plot_1.ppm', 'plot_2.ppm',
-                           'plot_3.ppm', 'plot_4.h5']
+    expected_plots = ['plot_1.ppm', 'plot_2.ppm', 'plot_3.ppm', 'plot_4.h5']
     # TEMP: this should always be checked once vtk is added
     # to Python3.7
     try:

@@ -18,6 +18,13 @@ class PlotTestHarness(TestHarness):
     def _run_openmc(self):
         openmc.plot_geometry(openmc_exec=config['exe'])
 
+        try:
+            import vtk
+            call(['../../../scripts/openmc-voxel-to-vtk'] +
+                 glob.glob('plot_4.h5'))
+        except:
+            pass
+                
     def _test_output_created(self):
         """Make sure *.ppm has been created."""
         for fname in self._plot_names:
@@ -52,18 +59,16 @@ class PlotTestHarness(TestHarness):
         sha512.update(outstr)
         outstr = sha512.hexdigest()
 
-        # test the voxel to vtk conversion script
-        try:
-            import vtk
-            call(['../../../scripts/openmc-voxel-to-vtk'] +
-                 glob.glob('plot_4.h5'))
-        except:
-            pass
-
         return outstr
 
-
 def test_plot():
-    harness = PlotTestHarness(('plot_1.ppm', 'plot_2.ppm', 'plot_3.ppm',
-                               'plot_4.h5'))
+    expected_plots = ['plot_1.ppm', 'plot_2.ppm',
+                           'plot_3.ppm', 'plot_4.h5']
+    try:
+        import vtk
+        expected_plots.append('plot.vti')
+    except:
+        pass
+
+    harness = PlotTestHarness(expected_plots)
     harness.main()

@@ -25,8 +25,6 @@ cmfd_populate_sourcecounts(int n_energy, const double* energies,
   auto& m = meshes.at(index_cmfd_mesh);
   xt::xarray<double> counts = m->count_sites(openmc_work, source_bank, n_energy, energies, outside);
 
-  std::cout << counts << "\n";
-
   // Copy data from the xarray into the source counts array
   std::copy(counts.begin(), counts.end(), source_counts);
 }

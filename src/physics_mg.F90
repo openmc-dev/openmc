@@ -20,6 +20,14 @@ module physics_mg
 
   implicit none
 
+  interface
+    subroutine scatter(p, energy_bin_avg) bind(C)
+      import Particle, C_DOUBLE
+      type(Particle), intent(inout) :: p
+      real(C_DOUBLE), intent(in)    :: energy_bin_avg(*)
+    end subroutine scatter
+  end interface
+
 contains
 
 !===============================================================================
@@ -85,7 +93,7 @@ contains
 
     ! Sample a scattering reaction and determine the secondary energy of the
     ! exiting neutron
-    call scatter(p)
+    call scatter(p, energy_bin_avg)
 
     ! Play russian roulette if survival biasing is turned on
     if (survival_biasing) then
@@ -132,25 +140,6 @@ contains
     end if
 
   end subroutine absorption
-
-!===============================================================================
-! SCATTER
-!===============================================================================
-
-  subroutine scatter(p)
-
-    type(Particle), intent(inout)  :: p
-
-    call sample_scatter_c(p % material, p % last_g, p % g, p % mu, &
-         p % wgt, p % coord(1) % uvw)
-
-    ! Update energy value for downstream compatability (in tallying)
-    p % E = energy_bin_avg(p % g)
-
-    ! Set event component
-    p % event = EVENT_SCATTER
-
-  end subroutine scatter
 
 !===============================================================================
 ! CREATE_FISSION_SITES determines the average total, prompt, and delayed

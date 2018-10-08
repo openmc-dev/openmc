@@ -1,7 +1,40 @@
 #include "openmc/plot.h"
+#include "openmc/constants.h"
+#include "openmc/settings.h"
+#include "openmc/error.h"
 
 namespace openmc {
 
+const int RED   = 1;
+const int GREEN = 2;
+const int BLUE  = 3;
+
+  int openmc_plot_geometry() {
+    int err;
+
+    for(auto i : n_plots) {
+      ObjectPlot* pl = plots[i];
+
+      std::stringstream ss;
+      ss << "Processing plot " << pl->id_ << ": "
+         << pl->path_plot_ << "...";
+      write_message(ss.str(), 5);
+
+      if (pl->type_ == PLOT_TYPE::SLICE) {
+        // create 2D image
+        // create_ppm(pl);
+        continue;
+      } else if (pl->type_ == PLOT_TYPE::VOXEL) {
+        // create voxel file for 3D viewing
+        // create_voxel(pl);
+        continue;
+      }
+      
+    }
+
+    return 0;
+  }
+    
 void
 voxel_init(hid_t file_id, const hsize_t* dims, hid_t* dspace, hid_t* dset,
            hid_t* memspace)

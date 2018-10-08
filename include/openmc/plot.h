@@ -4,6 +4,7 @@
 #include "hdf5.h"
 #include "position.h"
 #include <map>
+#include <sstream>
 
 namespace openmc {
 
@@ -38,6 +39,7 @@ namespace openmc {
 //===============================================================================
 
   class ObjectColor {
+  public:
     int rgb_[3];
   };
 
@@ -46,7 +48,7 @@ namespace openmc {
 //===============================================================================
   
   class ObjectPlot {
-
+  public:
     int id_;
     std::string path_plot_;
     int type_;

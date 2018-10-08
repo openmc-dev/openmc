@@ -14,7 +14,7 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('voxel_file', help='Path to voxel file')
     parser.add_argument('-o', '--output', action='store',
-                        default='plot', help='Path to output SILO or VTK file.')
+                        default='plot', help='Path to output VTK file.')
     args = parser.parse_args()
 
     # Read data from voxel file

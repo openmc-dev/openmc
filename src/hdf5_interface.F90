@@ -1131,6 +1131,7 @@ contains
     do i = 0, dims(1) - 1
       n = len_trim(buffer(i+1)) + 1
       buffer_(i*m+1 : i*m+n) = to_c_string(buffer(i+1))
+      if (n < m) buffer_(i*m+n : i*m+m) = C_NULL_CHAR
     end do
 
     call write_string_c(group_id, 1, dims, m, to_c_string(name), &

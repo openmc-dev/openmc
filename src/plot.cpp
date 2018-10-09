@@ -23,7 +23,7 @@ const int NULLRGB[3] = {0, 0, 0};
 int openmc_plot_geometry() {
   int err;
 
-  for(auto i : n_plots) {
+  for (auto i : n_plots) {
     ObjectPlot* pl = plots[i];
 
     std::stringstream ss;
@@ -99,12 +99,11 @@ void create_ppm(ObjectPlot* pl) {
   // local variables
   int rgb[3];
   int id;
-  for(int y = 0; y < height; y++) {
+  for (int y = 0; y < height; y++) {
     p->coord[0].xyz[out_i] = xyz[out_i] - out_pixel*(y);
-    for(int x = 0; x < width; x++) {
+    for (int x = 0; x < width; x++) {
       p->coord[0].xyz[in_i] = xyz[in_i] + in_pixel*(x);
       // position_rgb(p, pl, rgb, id);
-
       std::copy(rgb, rgb+3, &(data[x][y][0]));
     }
   }

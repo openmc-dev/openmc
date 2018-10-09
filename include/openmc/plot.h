@@ -40,7 +40,7 @@ namespace openmc {
 
   class ObjectColor {
   public:
-    int rgb_[3];
+    int rgb[3];
   };
 
 //===============================================================================
@@ -49,20 +49,20 @@ namespace openmc {
   
   class ObjectPlot {
   public:
-    int id_;
-    std::string path_plot_;
-    int type_;
-    int color_by_;
-    Position origin_;
-    Position width_;
-    int basis_;
-    int pixels_[3];
-    int meshlines_width_;
-    int level_;
-    int index_meshlines_mesh_;
-    ObjectColor meshlines_color_;
-    ObjectColor not_found_;
-    std::vector<ObjectColor> colors_;
+    int id;
+    std::string path_plot;
+    int type;
+    int color_by;
+    Position origin;
+    Position width;
+    int basis;
+    int pixels[3];
+    int meshlines_width;
+    int level;
+    int index_meshlines_mesh;
+    ObjectColor meshlines_color;
+    ObjectColor not_found;
+    std::vector<ObjectColor> colors;
     
   };
   

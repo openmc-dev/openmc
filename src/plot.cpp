@@ -27,15 +27,15 @@ int openmc_plot_geometry() {
     ObjectPlot* pl = plots[i];
     
     std::stringstream ss;
-    ss << "Processing plot " << pl->id_ << ": "
-       << pl->path_plot_ << "...";
+    ss << "Processing plot " << pl->id << ": "
+       << pl->path_plot << "...";
       write_message(ss.str(), 5);
       
-      if (pl->type_ == PLOT_TYPE::SLICE) {
+      if (pl->type == PLOT_TYPE::SLICE) {
         // create 2D image
         // create_ppm(pl);
         continue;
-      } else if (pl->type_ == PLOT_TYPE::VOXEL) {
+      } else if (pl->type == PLOT_TYPE::VOXEL) {
         // create voxel file for 3D viewing
         // create_voxel(pl);
         continue;
@@ -53,11 +53,11 @@ int openmc_plot_geometry() {
 
 void create_ppm(ObjectPlot* pl) {
 
-  int width = pl->pixels_[0];
-  int height = pl->pixels_[1];
+  int width = pl->pixels[0];
+  int height = pl->pixels[1];
 
-  double in_pixel = (pl->width_[0])/double(width);
-  double out_pixel = (pl->width_[1])/double(height);
+  double in_pixel = (pl->width[0])/double(width);
+  double out_pixel = (pl->width[1])/double(height);
 
   std::vector< std::vector< std::vector<int>>> data;
 
@@ -69,24 +69,24 @@ void create_ppm(ObjectPlot* pl) {
 
   int in_i, out_i;
   double xyz[3];
-  if (pl->basis_ == PLOT_BASIS::XY) {
+  if (pl->basis == PLOT_BASIS::XY) {
     in_i = 0;
     out_i = 1;
-    xyz[0] = pl->origin_[0] - pl->width_[0] / TWO;
-    xyz[1] = pl->origin_[1] - pl->width_[1] / TWO;
-    xyz[2] = pl->origin_[2];
-  } else if (pl->basis_ == PLOT_BASIS::XZ) {
+    xyz[0] = pl->origin[0] - pl->width[0] / TWO;
+    xyz[1] = pl->origin[1] - pl->width[1] / TWO;
+    xyz[2] = pl->origin[2];
+  } else if (pl->basis == PLOT_BASIS::XZ) {
     in_i = 0;
     out_i = 2;
-    xyz[0] = pl->origin_[0] - pl->width_[0] / TWO;
-    xyz[1] = pl->origin_[1];
-    xyz[2] = pl->origin_[2] - pl->width_[1] / TWO;
-  } else if (pl->basis_ == PLOT_BASIS::YZ) {
+    xyz[0] = pl->origin[0] - pl->width[0] / TWO;
+    xyz[1] = pl->origin[1];
+    xyz[2] = pl->origin[2] - pl->width[1] / TWO;
+  } else if (pl->basis == PLOT_BASIS::YZ) {
     in_i = 1;
     out_i = 2;
-    xyz[0] = pl->origin_[0];
-    xyz[1] = pl->origin_[1] - pl->width_[0] / TWO;
-    xyz[2] = pl->origin_[2] - pl->width_[1] / TWO;
+    xyz[0] = pl->origin[0];
+    xyz[1] = pl->origin[1] - pl->width[0] / TWO;
+    xyz[2] = pl->origin[2] - pl->width[1] / TWO;
   }
 
   double dir[3];
@@ -130,44 +130,43 @@ void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id) {
   if (settings::check_overlaps) { check_cell_overlap(p); }
 
   // Set coordinate level if specified
-  if (pl->level_ >= 0) j = pl->level_ + 1;
+  if (pl->level >= 0) j = pl->level + 1;
 
   Cell* c;
 
   if (!found_cell) {
     // If no cell, revert to default color
-    rgb = pl->not_found_.rgb_;
+    rgb = pl->not_found.rgb;
     id = -1;
   } else {
-    if (pl->color_by_ = PLOT_COLOR_BY::MATS) {
+    if (pl->color_by = PLOT_COLOR_BY::MATS) {
       // Assign color based on material
       c = cells[p->coord[j].cell];
       if (c->type_ == FILL_UNIVERSE) {
         // If we stopped on a middle universe level, treat as if not found
-        rgb = pl->not_found_.rgb_;
+        rgb = pl->not_found.rgb;
         id = -1;
       } else if (p->material == MATERIAL_VOID) {
         // By default, color void cells white
         std::copy(WHITE, WHITE+3, rgb);
         id = -1;
       } else {
-        std::copy(pl->colors_[p->material].rgb_,
-                  pl->colors_[p->material].rgb_ + 3,
+        std::copy(pl->colors[p->material].rgb,
+                  pl->colors[p->material].rgb + 3,
                   rgb);
         id = materials[p->material]->id;
       }
 
-    } else if (pl->color_by_ == PLOT_COLOR_BY::CELLS) {
+    } else if (pl->color_by == PLOT_COLOR_BY::CELLS) {
       // Assign color based on cell
-      std::copy(pl->colors_[p->coord[j].cell].rgb_,
-                pl->colors_[p->coord[j].cell].rgb_ + 3,
+      std::copy(pl->colors[p->coord[j].cell].rgb,
+                pl->colors[p->coord[j].cell].rgb + 3,
                 rgb);
       id = cells[p->coord[j].cell]->id_;
     } else {
       std::copy(NULLRGB, NULLRGB+3, rgb);
       id = -1;
     }
-
 
   } // endif found_cell
 

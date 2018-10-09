@@ -67,6 +67,12 @@ namespace openmc {
     
   };
 
+extern "C" void output_ppm(ObjectPlot* pl,
+                           const std::vector< std::vector< std::vector<int> > > &data);
+
+  
+extern "C" void create_ppm(ObjectPlot* pl);
+  
 extern "C" void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id);
  
 extern "C" void voxel_init(hid_t file_id, const hsize_t* dims, hid_t* dspace,

@@ -31,11 +31,11 @@ int openmc_plot_geometry() {
        << pl->path_plot << "...";
       write_message(ss.str(), 5);
 
-      if (pl->type == PLOT_TYPE::SLICE) {
+      if (PLOT_TYPE::SLICE == pl->type) {
         // create 2D image
         // create_ppm(pl);
         continue;
-      } else if (pl->type == PLOT_TYPE::VOXEL) {
+      } else if (PLOT_TYPE::VOXEL == pl->type) {
         // create voxel file for 3D viewing
         // create_voxel(pl);
         continue;
@@ -69,19 +69,19 @@ void create_ppm(ObjectPlot* pl) {
 
   int in_i, out_i;
   double xyz[3];
-  if (pl->basis == PLOT_BASIS::XY) {
+  if (PLOT_BASIS::XY == pl->basis) {
     in_i = 0;
     out_i = 1;
     xyz[0] = pl->origin[0] - pl->width[0] / TWO;
     xyz[1] = pl->origin[1] - pl->width[1] / TWO;
     xyz[2] = pl->origin[2];
-  } else if (pl->basis == PLOT_BASIS::XZ) {
+  } else if (PLOT_BASIS::XZ == pl->basis) {
     in_i = 0;
     out_i = 2;
     xyz[0] = pl->origin[0] - pl->width[0] / TWO;
     xyz[1] = pl->origin[1];
     xyz[2] = pl->origin[2] - pl->width[1] / TWO;
-  } else if (pl->basis == PLOT_BASIS::YZ) {
+  } else if (PLOT_BASIS::YZ == pl->basis) {
     in_i = 1;
     out_i = 2;
     xyz[0] = pl->origin[0];
@@ -141,7 +141,7 @@ void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id) {
               rgb);
     id = -1;
   } else {
-    if (pl->color_by = PLOT_COLOR_BY::MATS) {
+    if (PLOT_COLOR_BY::MATS == pl->color_by) {
       // Assign color based on material
       c = cells[p->coord[j].cell];
       if (c->type_ == FILL_UNIVERSE) {
@@ -161,12 +161,12 @@ void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id) {
         id = materials[p->material - 1]->id;
       }
 
-    } else if (pl->color_by == PLOT_COLOR_BY::CELLS) {
+    } else if (PLOT_COLOR_BY::CELLS == pl->color_by) {
       // Assign color based on cell
-      std::copy(pl->colors[p->coord[j].cell - 1].rgb,
-                pl->colors[p->coord[j].cell - 1].rgb + 3,
+      std::copy(pl->colors[p->coord[j].cell].rgb,
+                pl->colors[p->coord[j].cell].rgb + 3,
                 rgb);
-      id = cells[p->coord[j].cell - 1]->id_;
+      id = cells[p->coord[j].cell]->id_;
     } else {
       std::copy(NULLRGB, NULLRGB+3, rgb);
       id = -1;

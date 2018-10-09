@@ -1,6 +1,4 @@
 #include <fstream>
-#include <stdio.h>
-#include <stdlib.h>
 
 #include "openmc/plot.h"
 #include "openmc/constants.h"
@@ -64,7 +62,7 @@ void create_ppm(ObjectPlot* pl) {
   double in_pixel = (pl->width[0])/double(width);
   double out_pixel = (pl->width[1])/double(height);
 
-  std::vector< std::vector< std::vector<int>>> data;
+  std::vector< std::vector< std::vector<int> > > data;
 
   data.resize(width);
   for (auto & i : data) {
@@ -80,23 +78,23 @@ void create_ppm(ObjectPlot* pl) {
     in_i = 0;
     out_i = 1;
     xyz[0] = pl->origin[0] - pl->width[0] / TWO;
-    xyz[1] = pl->origin[1] - pl->width[1] / TWO;
+    xyz[1] = pl->origin[1] + pl->width[1] / TWO;
     xyz[2] = pl->origin[2];
   } else if (PLOT_BASIS::XZ == pl->basis) {
     in_i = 0;
     out_i = 2;
     xyz[0] = pl->origin[0] - pl->width[0] / TWO;
     xyz[1] = pl->origin[1];
-    xyz[2] = pl->origin[2] - pl->width[1] / TWO;
+    xyz[2] = pl->origin[2] + pl->width[1] / TWO;
   } else if (PLOT_BASIS::YZ == pl->basis) {
     in_i = 1;
     out_i = 2;
     xyz[0] = pl->origin[0];
     xyz[1] = pl->origin[1] - pl->width[0] / TWO;
-    xyz[2] = pl->origin[2] - pl->width[1] / TWO;
+    xyz[2] = pl->origin[2] + pl->width[1] / TWO;
   }
 
-  double dir[3];
+  double dir[3] = {HALF, HALF, HALF};
   Particle *p = new Particle();
   p->initialize();
   std::copy(xyz, xyz+3, p->coord[0].xyz);
@@ -110,7 +108,7 @@ void create_ppm(ObjectPlot* pl) {
     p->coord[0].xyz[out_i] = xyz[out_i] - out_pixel*(y);
     for (int x = 0; x < width; x++) {
       p->coord[0].xyz[in_i] = xyz[in_i] + in_pixel*(x);
-      // position_rgb(p, pl, rgb, id);
+      position_rgb(p, pl, rgb, id);
       data[x][y][0] = rgb[0];
       data[x][y][1] = rgb[1];
       data[x][y][2] = rgb[2];
@@ -188,30 +186,34 @@ void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id) {
 //===============================================================================
 
   void output_ppm(ObjectPlot* pl,
-                  const std::vector< std::vector< std::vector<int> > > &data)
+                  std::vector< std::vector< std::vector<int> > > data)
 {
 
   // Open PPM file for writing
   std::string fname = std::string(pl->path_plot);
   fname = strtrim(fname);
-  std::ofstream of(fname);
+  std::ofstream of;
+
+  of.open(fname);
   
   // Write header
   of << "P6" << std::endl;
   of << pl->pixels[0] << " " << pl->pixels[1] << std::endl;
   of << "255" << std::endl;
+  of.close();
 
+  of.open(fname, std::ios::binary | std::ios::app);
   // Write color for each pixel
   for (int y = 0; y < pl->pixels[1]; y++) {
     for (int x = 0; x < pl->pixels[0]; x++) {
       std::vector<int> rgb = data[x][y];
-      of << (char)rgb[0] << (char)rgb[1] << (char)rgb[2];
+      of.write((char*)&rgb[0], 1);
+      of.write((char*)&rgb[1], 1);
+      of.write((char*)&rgb[2], 1);
     }
   }
-
   // Close file
   of.close();
-
 }
   
 void

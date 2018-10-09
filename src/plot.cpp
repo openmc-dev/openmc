@@ -1,3 +1,5 @@
+#include <fstream>
+
 #include "openmc/plot.h"
 #include "openmc/constants.h"
 #include "openmc/settings.h"
@@ -64,7 +66,9 @@ void create_ppm(ObjectPlot* pl) {
   data.resize(width);
   for (auto i : data) {
     i.resize(height);
-    for (auto j : i) { j.resize(3); }
+    for (auto j : i) {
+      j.resize(3);
+    }
   }
 
   int in_i, out_i;
@@ -174,6 +178,39 @@ void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id) {
   } // endif found_cell
 }
 
+//===============================================================================
+// OUTPUT_PPM writes out a previously generated image to a PPM file
+//===============================================================================
+
+  void output_ppm(ObjectPlot* pl, int* data, int data_size)
+{
+
+  // check incoming data size
+  assert(data_size % 3 == 0);
+
+  // Open PPM file for writing
+  std::ofstream of(pl->path_plot);
+  
+  // Write header
+  of << "P6" << std::endl;
+  of << pl->pixels[0] << " " << pl->pixels[1] << std::endl;
+  of << "255" << std::endl;
+
+  int* rgb;
+  // Write color for each pixel
+  for (int y = 0; y < pl->pixels[1]; y++) {
+    for (int x = 0; x < pl->pixels[0]; x++) {
+      int idx = 3*(x + y*width);
+      rgb = &data[idx];
+      of << itoa(rgb[0]) << itoa(rgb[1]) << itoa(rgb[2]);
+    }
+  }
+
+  // Close file
+  of.close();
+
+}
+  
 void
 voxel_init(hid_t file_id, const hsize_t* dims, hid_t* dspace, hid_t* dset,
            hid_t* memspace)

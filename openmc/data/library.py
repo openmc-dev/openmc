@@ -53,16 +53,8 @@ class DataLibrary(EqualityMixin):
 
         """
         with h5py.File(filename, 'r') as h5file:
-
-            materials = []
-            if 'filetype' in h5file.attrs:
-                filetype = h5file.attrs['filetype'].decode().lstrip('data_')
-            else:
-                filetype = 'neutron'
-            for name in h5file:
-                if name.startswith('c_'):
-                    filetype = 'thermal'
-                materials.append(name)
+            filetype = h5file.attrs['filetype'].decode().lstrip('data_')
+            materials = list(h5file)
 
         library = {'path': filename, 'type': filetype, 'materials': materials}
         self.libraries.append(library)

@@ -1,4 +1,6 @@
 #include <fstream>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "openmc/plot.h"
 #include "openmc/constants.h"
@@ -8,6 +10,7 @@
 #include "openmc/geometry.h"
 #include "openmc/cell.h"
 #include "openmc/material.h"
+#include "openmc/string_functions.h"
 
 namespace openmc {
 
@@ -64,9 +67,9 @@ void create_ppm(ObjectPlot* pl) {
   std::vector< std::vector< std::vector<int>>> data;
 
   data.resize(width);
-  for (auto i : data) {
+  for (auto & i : data) {
     i.resize(height);
-    for (auto j : i) {
+    for (auto & j : i) {
       j.resize(3);
     }
   }
@@ -108,11 +111,13 @@ void create_ppm(ObjectPlot* pl) {
     for (int x = 0; x < width; x++) {
       p->coord[0].xyz[in_i] = xyz[in_i] + in_pixel*(x);
       // position_rgb(p, pl, rgb, id);
-      std::copy(rgb, rgb+3, &(data[x][y][0]));
+      data[x][y][0] = rgb[0];
+      data[x][y][1] = rgb[1];
+      data[x][y][2] = rgb[2];
     }
   }
 
-  //output_ppm(pl, data);
+  output_ppm(pl, data);
 
 }
 
@@ -182,27 +187,25 @@ void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id) {
 // OUTPUT_PPM writes out a previously generated image to a PPM file
 //===============================================================================
 
-  void output_ppm(ObjectPlot* pl, int* data, int data_size)
+  void output_ppm(ObjectPlot* pl,
+                  const std::vector< std::vector< std::vector<int> > > &data)
 {
 
-  // check incoming data size
-  assert(data_size % 3 == 0);
-
   // Open PPM file for writing
-  std::ofstream of(pl->path_plot);
+  std::string fname = std::string(pl->path_plot);
+  fname = strtrim(fname);
+  std::ofstream of(fname);
   
   // Write header
   of << "P6" << std::endl;
   of << pl->pixels[0] << " " << pl->pixels[1] << std::endl;
   of << "255" << std::endl;
 
-  int* rgb;
   // Write color for each pixel
   for (int y = 0; y < pl->pixels[1]; y++) {
     for (int x = 0; x < pl->pixels[0]; x++) {
-      int idx = 3*(x + y*width);
-      rgb = &data[idx];
-      of << itoa(rgb[0]) << itoa(rgb[1]) << itoa(rgb[2]);
+      std::vector<int> rgb = data[x][y];
+      of << (char)rgb[0] << (char)rgb[1] << (char)rgb[2];
     }
   }
 

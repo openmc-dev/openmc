@@ -9,6 +9,7 @@
 #include "openmc/cell.h"
 #include "openmc/material.h"
 #include "openmc/string_functions.h"
+#include "openmc/mesh.h"
 
 namespace openmc {
 
@@ -115,6 +116,8 @@ void create_ppm(ObjectPlot* pl) {
     }
   }
 
+  if (pl->index_meshlines_mesh >= 0) { draw_mesh_lines(pl, data); }
+  
   output_ppm(pl, data);
 
 }
@@ -186,7 +189,7 @@ void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id) {
 //===============================================================================
 
   void output_ppm(ObjectPlot* pl,
-                  std::vector< std::vector< std::vector<int> > > data)
+                  const std::vector< std::vector< std::vector<int> > > &data)
 {
 
   // Open PPM file for writing
@@ -214,6 +217,106 @@ void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id) {
   }
   // Close file
   of.close();
+}
+
+//===============================================================================
+// DRAW_MESH_LINES draws mesh line boundaries on an image
+//===============================================================================
+  
+void draw_mesh_lines(ObjectPlot *pl,
+                     std::vector< std::vector< std::vector<int> > > &data) {
+
+  std::vector<int> rgb; rgb.resize(3);
+  rgb[0] = pl->meshlines_color.rgb[0];
+  rgb[1] = pl->meshlines_color.rgb[1];
+  rgb[2] = pl->meshlines_color.rgb[2];
+
+  int outer, inner;
+  switch(pl->basis){
+  case PLOT_BASIS::XY :
+    outer = 0;
+    inner = 1;
+    break;
+  case PLOT_BASIS::XZ :
+    outer = 0;
+    inner = 2;
+    break;
+  case PLOT_BASIS::YZ :
+    outer = 1;
+    inner = 2;
+    break;
+  }
+
+  double xyz_ll_plot[3], xyz_ur_plot[3];
+  std::copy((double*)&pl->origin, (double*)&pl->origin + 3, xyz_ll_plot);
+  std::copy((double*)&pl->origin, (double*)&pl->origin + 3, xyz_ur_plot);
+
+  xyz_ll_plot[outer] = pl->origin[outer] - pl->width[0] / TWO;
+  xyz_ll_plot[inner] = pl->origin[inner] - pl->width[1] / TWO;
+  xyz_ur_plot[outer] = pl->origin[outer] + pl->width[0] / TWO;
+  xyz_ur_plot[inner] = pl->origin[inner] + pl->width[1] / TWO;
+
+  int width[3];
+  width[0] = xyz_ur_plot[0] - xyz_ll_plot[0];
+  width[1] = xyz_ur_plot[1] - xyz_ll_plot[1];
+  width[2] = xyz_ur_plot[2] - xyz_ll_plot[2];
+
+  auto &m = meshes[pl->index_meshlines_mesh];
+
+  int ijk_ll[3], ijk_ur[3];
+  bool in_mesh;
+  m->get_indices(Position(xyz_ll_plot), &(ijk_ll[0]), &in_mesh);
+  m->get_indices(Position(xyz_ur_plot), &(ijk_ur[0]), &in_mesh);
+
+  double frac;
+  int outrange[3], inrange[3];
+  double xyz_ll[3], xyz_ur[3];
+  // sweep through all meshbins on this plane and draw borders  
+  for (int i = ijk_ll[outer]; i < ijk_ur[outer]; i++) {
+    for (int j = ijk_ll[inner]; j < ijk_ur[inner]; j++) {
+      // check if we're in the mesh for this ijk
+      if (i > 0 && i <= m->shape_[outer] && j >0 && j <= m->shape_[inner] ) {
+      
+        // get xyz's of lower left and upper right of this mesh cell
+        xyz_ll[outer] = m->lower_left_[outer] + m->width_[outer] * (i - 1);
+        xyz_ll[inner] = m->lower_left_[inner] + m->width_[inner] * (j - 1);
+        xyz_ur[outer] = m->lower_left_[outer] + m->width_[outer] * i;
+        xyz_ur[inner] = m->lower_left_[inner] + m->width_[inner] * j;
+
+        // map the xyz ranges to pixel ranges
+        frac = (xyz_ll[outer] - xyz_ll_plot[outer]) / width[outer];
+        outrange[0] = int(frac * double(pl->pixels[0]));
+        frac = (xyz_ur[outer] - xyz_ll_plot[outer]) / width[outer];
+        outrange[1] = int(frac * double(pl->pixels[0]));
+
+        frac = (xyz_ur[inner] - xyz_ll_plot[inner]) / width[inner];
+        inrange[0] = int((ONE - frac) * (double)pl->pixels[1]);
+        frac = (xyz_ll[inner] - xyz_ll_plot[inner]) / width[inner];
+        inrange[1] = int((ONE - frac) * (double)pl->pixels[1]);
+
+        // draw lines
+        for (int out_ = outrange[0]; out_ < outrange[1]; out_++) {
+          for (int plus = 0; plus < pl->meshlines_width; plus++) {
+            data[out_ + 1][inrange[0] + plus + 1] = rgb;
+            data[out_ + 1][inrange[1] + plus + 1] = rgb;
+            data[out_ + 1][inrange[0] - plus + 1] = rgb;
+            data[out_ + 1][inrange[1] - plus + 1] = rgb;
+          }
+        }
+
+        for (int in_ = inrange[0]; in_ < inrange[1]; in_++) {
+          for (int plus = 0; plus < pl->meshlines_width; plus++) {
+            data[outrange[0] + plus + 1][in_ + 1] = rgb;
+            data[outrange[1] + plus + 1][in_ + 1] = rgb;
+            data[outrange[0] - plus + 1][in_ + 1] = rgb;
+            data[outrange[1] - plus + 1][in_ + 1] = rgb;
+          }
+        }
+
+      } // end if(in mesh)
+    }
+  } // end outer loops
+        
 }
   
 void

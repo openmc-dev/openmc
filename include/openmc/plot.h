@@ -7,6 +7,7 @@
 #include "hdf5.h"
 #include "position.h"
 #include "openmc/constants.h"
+#include "openmc/particle.h"
 
 namespace openmc {
 
@@ -67,7 +68,9 @@ namespace openmc {
     char path_plot[MAX_WORD_LEN];
     
   };
-  
+
+extern "C" void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id);
+ 
 extern "C" void voxel_init(hid_t file_id, const hsize_t* dims, hid_t* dspace,
                            hid_t* dset, hid_t* memspace);
 extern "C" void voxel_write_slice(int x, hid_t dspace, hid_t dset,

@@ -20,20 +20,20 @@ module plot_header
 !===============================================================================
 
   type, bind(C) :: ObjectPlot
-    integer(C_INT) :: id                        ! Unique ID
-    integer(C_INT) :: type                      ! Type
-    integer(C_INT) :: color_by                  ! quantity to color regions by
-    real(C_DOUBLE) :: origin(3)                 ! xyz center of plot location
-    real(C_DOUBLE) :: width(3)                  ! xyz widths of plot
-    integer(C_INT) :: basis                     ! direction of plot slice
-    integer(C_INT) :: pixels(3)                 ! pixel width/height of plot slice
-    integer(C_INT) :: meshlines_width           ! pixel width of meshlines
-    integer(C_INT) :: level                     ! universe depth to plot the cells of
-    integer(C_INT) :: index_meshlines_mesh = -1 ! index of  mesh to plot
-    type(ObjectColor) :: meshlines_color        ! Color for meshlines
-    type(ObjectColor) :: not_found              ! color for positions where no cell found
-    type(ObjectColor) :: colors(MAX_COORD)      ! colors of cells/mats
-    character(MAX_WORD_LEN) :: path_plot        ! path for plot file    
+    integer(C_INT) :: id                              ! Unique ID
+    integer(C_INT) :: type                            ! Type
+    integer(C_INT) :: color_by                        ! quantity to color regions by
+    real(C_DOUBLE) :: origin(3)                       ! xyz center of plot location
+    real(C_DOUBLE) :: width(3)                        ! xyz widths of plot
+    integer(C_INT) :: basis                           ! direction of plot slice
+    integer(C_INT) :: pixels(3)                       ! pixel width/height of plot slice
+    integer(C_INT) :: meshlines_width                 ! pixel width of meshlines
+    integer(C_INT) :: level                           ! universe depth to plot the cells of
+    integer(C_INT) :: index_meshlines_mesh = -1       ! index of  mesh to plot
+    type(ObjectColor) :: meshlines_color              ! Color for meshlines
+    type(ObjectColor) :: not_found                    ! color for positions where no cell found
+    type(ObjectColor) :: colors(MAX_COORD)            ! colors of cells/mats
+    character(MAX_WORD_LEN, kind=C_CHAR) :: path_plot ! path for plot file    
   end type ObjectPlot
 
   ! Plot type

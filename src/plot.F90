@@ -30,11 +30,11 @@ module plot
        import Particle, ObjectPlot, C_INT
        type(Particle), intent(inout) :: p
        type(ObjectPlot), intent(in) :: pl
-       integer(C_INT),   intent(inout) :: rgb(3)
-       integer(C_INT), intent(inout) :: id
+       integer(C_INT),   intent(out) :: rgb(3)
+       integer(C_INT), intent(out) :: id
      end subroutine position_rgb
   end interface
-  
+
 contains
 
 !===============================================================================
@@ -64,62 +64,6 @@ contains
 
     err = 0
   end function openmc_plot_geometry
-
-!===============================================================================
-! POSITION_RGB computes the red/green/blue values for a given plot with the
-! current particle's position
-!===============================================================================
-
-  ! subroutine position_rgb(p, pl, rgb, id)
-  !   type(Particle), intent(inout) :: p
-  !   type(ObjectPlot), intent(in)  :: pl
-  !   integer, intent(out)          :: rgb(3)
-  !   integer, intent(out)          :: id
-
-  !   integer :: j
-  !   logical :: found_cell
-
-  !   p % n_coord = 1
-
-  !   call find_cell(p, found_cell)
-  !   j = p % n_coord
-  !   if (check_overlaps) call check_cell_overlap(p)
-
-  !   ! Set coordinate level if specified
-  !   if (pl % level >= 0) j = pl % level + 1
-
-  !   if (.not. found_cell) then
-  !     ! If no cell, revert to default color
-  !     rgb = pl % not_found % rgb
-  !     id = -1
-  !   else
-  !     if (pl % color_by == PLOT_COLOR_MATS) then
-  !       ! Assign color based on material
-  !       associate (c => cells(p % coord(j) % cell + 1))
-  !         if (c % type() == FILL_UNIVERSE) then
-  !           ! If we stopped on a middle universe level, treat as if not found
-  !           rgb = pl % not_found % rgb
-  !           id = -1
-  !         else if (p % material == MATERIAL_VOID) then
-  !           ! By default, color void cells white
-  !           rgb = 255
-  !           id = -1
-  !         else
-  !           rgb = pl % colors(p % material) % rgb
-  !           id = materials(p % material) % id()
-  !         end if
-  !       end associate
-  !     else if (pl % color_by == PLOT_COLOR_CELLS) then
-  !       ! Assign color based on cell
-  !       rgb = pl % colors(p % coord(j) % cell + 1) % rgb
-  !       id = cells(p % coord(j) % cell + 1) % id()
-  !     else
-  !       rgb = 0
-  !       id = -1
-  !     end if
-  !   end if
-
-  ! end subroutine position_rgb
 
 !===============================================================================
 ! CREATE_PPM creates an image based on user input from a plots.xml <plot>
@@ -187,7 +131,6 @@ contains
 
         ! get pixel color
         call position_rgb(p, pl, rgb, id)
-
         ! Create a pixel at (x,y) with color (r,g,b)
         data(:, x, y) = rgb
       end do
@@ -436,7 +379,6 @@ contains
         do z = 1, pl % pixels(3)
           ! get voxel color
           call position_rgb(p, pl, rgb, id)
-
           ! write to plot file
           data(z,y) = id
 

@@ -41,8 +41,7 @@ namespace openmc {
 // ObjectColor holds color information for plotted objects
 //===============================================================================
 
-  class ObjectColor {
-  public:
+  struct ObjectColor {
     int rgb[3];
   };
 
@@ -50,8 +49,7 @@ namespace openmc {
 // ObjectPlot holds plot information
 //===============================================================================
   
-  class ObjectPlot {
-  public:
+  struct ObjectPlot {
     int id;
     int type;
     int color_by;

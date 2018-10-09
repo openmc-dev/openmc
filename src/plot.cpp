@@ -19,18 +19,18 @@ const int NULLRGB[3] = {0, 0, 0};
 //===============================================================================
 // RUN_PLOT controls the logic for making one or many plots
 //===============================================================================
-  
+
 int openmc_plot_geometry() {
   int err;
 
   for(auto i : n_plots) {
     ObjectPlot* pl = plots[i];
-    
+
     std::stringstream ss;
     ss << "Processing plot " << pl->id << ": "
        << pl->path_plot << "...";
       write_message(ss.str(), 5);
-      
+
       if (pl->type == PLOT_TYPE::SLICE) {
         // create 2D image
         // create_ppm(pl);
@@ -40,9 +40,9 @@ int openmc_plot_geometry() {
         // create_voxel(pl);
         continue;
       }
-      
+
   }
-  
+
   return 0;
 }
 
@@ -110,7 +110,7 @@ void create_ppm(ObjectPlot* pl) {
   }
 
   //output_ppm(pl, data);
-  
+
 }
 
 //===============================================================================
@@ -130,13 +130,15 @@ void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id) {
   if (settings::check_overlaps) { check_cell_overlap(p); }
 
   // Set coordinate level if specified
-  if (pl->level >= 0) j = pl->level + 1;
+  if (pl->level >= 0) {j = pl->level + 1;}
 
   Cell* c;
 
   if (!found_cell) {
     // If no cell, revert to default color
-    rgb = pl->not_found.rgb;
+    std::copy(pl->not_found.rgb,
+              pl->not_found.rgb + 3,
+              rgb);
     id = -1;
   } else {
     if (pl->color_by = PLOT_COLOR_BY::MATS) {
@@ -144,32 +146,33 @@ void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id) {
       c = cells[p->coord[j].cell];
       if (c->type_ == FILL_UNIVERSE) {
         // If we stopped on a middle universe level, treat as if not found
-        rgb = pl->not_found.rgb;
+        std::copy(pl->not_found.rgb,
+                  pl->not_found.rgb + 3,
+                  rgb);
         id = -1;
       } else if (p->material == MATERIAL_VOID) {
         // By default, color void cells white
         std::copy(WHITE, WHITE+3, rgb);
         id = -1;
       } else {
-        std::copy(pl->colors[p->material].rgb,
-                  pl->colors[p->material].rgb + 3,
+        std::copy(pl->colors[p->material - 1].rgb,
+                  pl->colors[p->material - 1].rgb + 3,
                   rgb);
-        id = materials[p->material]->id;
+        id = materials[p->material - 1]->id;
       }
 
     } else if (pl->color_by == PLOT_COLOR_BY::CELLS) {
       // Assign color based on cell
-      std::copy(pl->colors[p->coord[j].cell].rgb,
-                pl->colors[p->coord[j].cell].rgb + 3,
+      std::copy(pl->colors[p->coord[j].cell - 1].rgb,
+                pl->colors[p->coord[j].cell - 1].rgb + 3,
                 rgb);
-      id = cells[p->coord[j].cell]->id_;
+      id = cells[p->coord[j].cell - 1]->id_;
     } else {
       std::copy(NULLRGB, NULLRGB+3, rgb);
       id = -1;
     }
 
   } // endif found_cell
-
 }
 
 void

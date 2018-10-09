@@ -296,7 +296,7 @@ void draw_mesh_lines(ObjectPlot *pl,
 
         // draw lines
         for (int out_ = outrange[0]; out_ < outrange[1]; out_++) {
-          for (int plus = 0; plus < pl->meshlines_width; plus++) {
+          for (int plus = 0; plus <= pl->meshlines_width; plus++) {
             data[out_ + 1][inrange[0] + plus + 1] = rgb;
             data[out_ + 1][inrange[1] + plus + 1] = rgb;
             data[out_ + 1][inrange[0] - plus + 1] = rgb;
@@ -305,7 +305,7 @@ void draw_mesh_lines(ObjectPlot *pl,
         }
 
         for (int in_ = inrange[0]; in_ < inrange[1]; in_++) {
-          for (int plus = 0; plus < pl->meshlines_width; plus++) {
+          for (int plus = 0; plus <= pl->meshlines_width; plus++) {
             data[outrange[0] + plus + 1][in_ + 1] = rgb;
             data[outrange[1] + plus + 1][in_ + 1] = rgb;
             data[outrange[0] - plus + 1][in_ + 1] = rgb;

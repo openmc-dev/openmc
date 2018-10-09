@@ -33,7 +33,7 @@ module plot_header
     type(ObjectColor) :: meshlines_color              ! Color for meshlines
     type(ObjectColor) :: not_found                    ! color for positions where no cell found
     type(ObjectColor) :: colors(MAX_COORD)            ! colors of cells/mats
-    character(MAX_WORD_LEN, kind=C_CHAR) :: path_plot ! path for plot file    
+    character(MAX_WORD_LEN, kind=C_CHAR) :: path_plot ! path for plot file
   end type ObjectPlot
 
   ! Plot type

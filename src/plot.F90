@@ -26,13 +26,13 @@ module plot
   integer, parameter :: BLUE = 3
 
   interface
-     subroutine position_rgb(p, pl, rgb, id) bind(C)
-       import Particle, ObjectPlot, C_INT
-       type(Particle), intent(inout) :: p
-       type(ObjectPlot), intent(in) :: pl
-       integer(C_INT),   intent(out) :: rgb(3)
-       integer(C_INT), intent(out) :: id
-     end subroutine position_rgb
+    subroutine position_rgb(p, pl, rgb, id) bind(C)
+      import Particle, ObjectPlot, C_INT
+      type(Particle), intent(inout) :: p
+      type(ObjectPlot), intent(in) :: pl
+      integer(C_INT),   intent(out) :: rgb(3)
+      integer(C_INT), intent(out) :: id
+    end subroutine position_rgb
   end interface
 
 contains

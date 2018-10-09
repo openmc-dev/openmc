@@ -675,6 +675,7 @@ contains
     ! If 'name' argument is passed, obj_id is interpreted to be a group and
     ! 'name' is the name of the dataset we should read from
     if (present(name)) then
+      allocate(name_(len_trim(name) + 1))
       name_ = to_c_string(name)
       call read_double_c(obj_id, c_loc(name_), buffer_, indep_)
     else
@@ -698,6 +699,7 @@ contains
     ! If 'name' argument is passed, obj_id is interpreted to be a group and
     ! 'name' is the name of the dataset we should read from
     if (present(name)) then
+      allocate(name_(len_trim(name) + 1))
       name_ = to_c_string(name)
       call read_double_c(obj_id, c_loc(name_), buffer, indep_)
     else
@@ -720,6 +722,7 @@ contains
     ! If 'name' argument is passed, obj_id is interpreted to be a group and
     ! 'name' is the name of the dataset we should read from
     if (present(name)) then
+      allocate(name_(len_trim(name) + 1))
       name_ = to_c_string(name)
       call read_double_c(obj_id, c_loc(name_), buffer, indep_)
     else
@@ -742,6 +745,7 @@ contains
     ! If 'name' argument is passed, obj_id is interpreted to be a group and
     ! 'name' is the name of the dataset we should read from
     if (present(name)) then
+      allocate(name_(len_trim(name) + 1))
       name_ = to_c_string(name)
       call read_double_c(obj_id, c_loc(name_), buffer, indep_)
     else
@@ -764,6 +768,7 @@ contains
     ! If 'name' argument is passed, obj_id is interpreted to be a group and
     ! 'name' is the name of the dataset we should read from
     if (present(name)) then
+      allocate(name_(len_trim(name) + 1))
       name_ = to_c_string(name)
       call read_double_c(obj_id, c_loc(name_), buffer, indep_)
     else
@@ -888,6 +893,7 @@ contains
     ! If 'name' argument is passed, obj_id is interpreted to be a group and
     ! 'name' is the name of the dataset we should read from
     if (present(name)) then
+      allocate(name_(len_trim(name) + 1))
       name_ = to_c_string(name)
       call read_int_c(obj_id, c_loc(name_), buffer_, indep_)
     else
@@ -911,6 +917,7 @@ contains
     ! If 'name' argument is passed, obj_id is interpreted to be a group and
     ! 'name' is the name of the dataset we should read from
     if (present(name)) then
+      allocate(name_(len_trim(name) + 1))
       name_ = to_c_string(name)
       call read_int_c(obj_id, c_loc(name_), buffer, indep_)
     else
@@ -933,6 +940,7 @@ contains
     ! If 'name' argument is passed, obj_id is interpreted to be a group and
     ! 'name' is the name of the dataset we should read from
     if (present(name)) then
+      allocate(name_(len_trim(name) + 1))
       name_ = to_c_string(name)
       call read_int_c(obj_id, c_loc(name_), buffer, indep_)
     else
@@ -955,6 +963,7 @@ contains
     ! If 'name' argument is passed, obj_id is interpreted to be a group and
     ! 'name' is the name of the dataset we should read from
     if (present(name)) then
+      allocate(name_(len_trim(name) + 1))
       name_ = to_c_string(name)
       call read_int_c(obj_id, c_loc(name_), buffer, indep_)
     else
@@ -977,6 +986,7 @@ contains
     ! If 'name' argument is passed, obj_id is interpreted to be a group and
     ! 'name' is the name of the dataset we should read from
     if (present(name)) then
+      allocate(name_(len_trim(name) + 1))
       name_ = to_c_string(name)
       call read_int_c(obj_id, c_loc(name_), buffer, indep_)
     else
@@ -1025,6 +1035,7 @@ contains
     ! If 'name' argument is passed, obj_id is interpreted to be a group and
     ! 'name' is the name of the dataset we should read from
     if (present(name)) then
+      allocate(name_(len_trim(name) + 1))
       name_ = to_c_string(name)
       call read_llong_c(obj_id, c_loc(name_), buffer_, indep_)
     else
@@ -1425,6 +1436,7 @@ contains
     ! If 'name' argument is passed, obj_id is interpreted to be a group and
     ! 'name' is the name of the dataset we should read from
     if (present(name)) then
+      allocate(name_(len_trim(name) + 1))
       name_ = to_c_string(name)
       call read_complex_c(obj_id, c_loc(name_), buffer, indep_)
     else

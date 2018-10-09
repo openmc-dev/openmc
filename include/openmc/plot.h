@@ -67,9 +67,8 @@ namespace openmc {
     
   };
 
-extern "C" void output_ppm(ObjectPlot* pl,
-                           const std::vector< std::vector< std::vector<int> > > &data);
-
+void output_ppm(ObjectPlot* pl,
+                std::vector< std::vector< std::vector<int> > > data);
   
 extern "C" void create_ppm(ObjectPlot* pl);
   

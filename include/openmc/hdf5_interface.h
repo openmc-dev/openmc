@@ -1,9 +1,11 @@
 #ifndef OPENMC_HDF5_INTERFACE_H
 #define OPENMC_HDF5_INTERFACE_H
 
+#include <algorithm> // for min
 #include <array>
 #include <complex>
 #include <cstddef>
+#include <cstring> // for strlen
 #include <string>
 #include <sstream>
 #include <vector>
@@ -193,13 +195,13 @@ read_attribute(hid_t obj_id, const char* name, std::vector<std::string>& vec)
 
   // Allocate a C char array to get strings
   auto n = attribute_typesize(obj_id, name);
-  char buffer[m][n+1];
+  char buffer[m][n];
 
   // Read char data in attribute
   read_attr_string(obj_id, name, n, buffer[0]);
 
   for (int i = 0; i < m; ++i) {
-    vec.emplace_back(&buffer[i][0]);
+    vec.emplace_back(&buffer[i][0], std::min(strlen(buffer[i]), n));
   }
 }
 

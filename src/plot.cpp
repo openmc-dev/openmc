@@ -33,7 +33,7 @@ int openmc_plot_geometry() {
       
       if (pl->type_ == PLOT_TYPE::SLICE) {
         // create 2D image
-        create_ppm(pl);
+        // create_ppm(pl);
         continue;
       } else if (pl->type_ == PLOT_TYPE::VOXEL) {
         // create voxel file for 3D viewing

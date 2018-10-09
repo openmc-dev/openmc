@@ -1,10 +1,12 @@
 #ifndef OPENMC_PLOT_H
 #define OPENMC_PLOT_H
 
-#include "hdf5.h"
-#include "position.h"
 #include <map>
 #include <sstream>
+
+#include "hdf5.h"
+#include "position.h"
+#include "openmc/constants.h"
 
 namespace openmc {
 
@@ -50,7 +52,6 @@ namespace openmc {
   class ObjectPlot {
   public:
     int id;
-    std::string path_plot;
     int type;
     int color_by;
     Position origin;
@@ -62,7 +63,8 @@ namespace openmc {
     int index_meshlines_mesh;
     ObjectColor meshlines_color;
     ObjectColor not_found;
-    std::vector<ObjectColor> colors;
+    ObjectColor colors[MAX_COORD];
+    char path_plot[MAX_WORD_LEN];
     
   };
   

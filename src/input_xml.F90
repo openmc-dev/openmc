@@ -2216,7 +2216,7 @@ contains
       case ("cell")
 
         pl % color_by = PLOT_COLOR_CELLS
-        allocate(pl % colors(n_cells))
+        !        allocate(pl % colors(n_cells))
         do j = 1, n_cells
           pl % colors(j) % rgb(1) = int(prn()*255)
           pl % colors(j) % rgb(2) = int(prn()*255)
@@ -2226,7 +2226,7 @@ contains
       case ("material")
 
         pl % color_by = PLOT_COLOR_MATS
-        allocate(pl % colors(n_materials))
+        ! allocate(pl % colors(n_materials))
         do j = 1, n_materials
           pl % colors(j) % rgb(1) = int(prn()*255)
           pl % colors(j) % rgb(2) = int(prn()*255)

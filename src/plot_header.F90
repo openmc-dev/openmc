@@ -11,29 +11,29 @@ module plot_header
 ! ObjectColor holds color information for plotted objects
 !===============================================================================
 
-  type ObjectColor
-    integer :: rgb(3)
+  type, bind(C) :: ObjectColor
+    integer(C_INT) :: rgb(3)
   end type ObjectColor
 
 !===============================================================================
 ! PLOTSLICE holds plot information
 !===============================================================================
 
-  type ObjectPlot
-    integer :: id                    ! Unique ID
-    character(MAX_LINE_LEN) :: path_plot ! path for plot file
-    integer :: type                  ! Type
-    integer :: color_by              ! quantity to color regions by
-    real(8) :: origin(3)             ! xyz center of plot location
-    real(8) :: width(3)              ! xyz widths of plot
-    integer :: basis                 ! direction of plot slice
-    integer :: pixels(3)             ! pixel width/height of plot slice
-    integer :: meshlines_width       ! pixel width of meshlines
-    integer :: level                 ! universe depth to plot the cells of
-    integer :: index_meshlines_mesh = -1 ! index of  mesh to plot
-    type(ObjectColor) :: meshlines_color ! Color for meshlines
-    type(ObjectColor) :: not_found   ! color for positions where no cell found
-    type(ObjectColor), allocatable :: colors(:) ! colors of cells/mats
+  type, bind(C) :: ObjectPlot
+    integer(C_INT) :: id                        ! Unique ID
+    integer(C_INT) :: type                      ! Type
+    integer(C_INT) :: color_by                  ! quantity to color regions by
+    real(C_DOUBLE) :: origin(3)                 ! xyz center of plot location
+    real(C_DOUBLE) :: width(3)                  ! xyz widths of plot
+    integer(C_INT) :: basis                     ! direction of plot slice
+    integer(C_INT) :: pixels(3)                 ! pixel width/height of plot slice
+    integer(C_INT) :: meshlines_width           ! pixel width of meshlines
+    integer(C_INT) :: level                     ! universe depth to plot the cells of
+    integer(C_INT) :: index_meshlines_mesh = -1 ! index of  mesh to plot
+    type(ObjectColor) :: meshlines_color        ! Color for meshlines
+    type(ObjectColor) :: not_found              ! color for positions where no cell found
+    type(ObjectColor) :: colors(MAX_COORD)      ! colors of cells/mats
+    character(MAX_WORD_LEN) :: path_plot        ! path for plot file    
   end type ObjectPlot
 
   ! Plot type

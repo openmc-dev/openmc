@@ -174,38 +174,6 @@ contains
   end subroutine draw_mesh_lines
 
 !===============================================================================
-! OUTPUT_PPM writes out a previously generated image to a PPM file
-!===============================================================================
-
-  subroutine output_ppm(pl, data)
-    type(ObjectPlot), intent(in) :: pl
-    integer,          intent(in) :: data(:,:,:)
-
-    integer :: y ! loop index for height
-    integer :: x ! loop index for width
-    integer :: unit_plot
-
-    ! Open PPM file for writing
-    open(NEWUNIT=unit_plot, FILE=pl % path_plot)
-
-    ! Write header
-    write(unit_plot, '(A2)') 'P6'
-    write(unit_plot, '(I0,'' '',I0)') pl % pixels(1), pl % pixels(2)
-    write(unit_plot, '(A)') '255'
-
-    ! Write color for each pixel
-    do y = 1, pl % pixels(2)
-      do x = 1, pl % pixels(1)
-        write(unit_plot, '(3A1)', advance='no') achar(data(RED, x, y)), &
-             achar(data(GREEN, x, y)), achar(data(BLUE, x, y))
-      end do
-    end do
-
-    ! Close plot file
-    close(UNIT=unit_plot)
-  end subroutine output_ppm
-
-!===============================================================================
 ! CREATE_VOXEL outputs a binary file that can be input into silomesh for 3D
 ! geometry visualization.  It works the same way as create_ppm by dragging a
 ! particle across the geometry for the specified number of voxels. The first

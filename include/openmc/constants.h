@@ -82,6 +82,7 @@ constexpr double EXTSRC_REJECT_FRACTION {0.05};
 constexpr double PI {3.1415926535898};
 const double SQRT_PI {std::sqrt(PI)};
 constexpr double INFTY {std::numeric_limits<double>::max()};
+constexpr double ONE {1.0};
 constexpr double TWO {2.0};
 constexpr double HALF {0.5};
  

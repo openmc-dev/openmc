@@ -2,7 +2,6 @@ import glob
 import hashlib
 import os
 from subprocess import check_call
-import importlib
 
 import h5py
 import openmc
@@ -12,9 +11,7 @@ from tests.testing_harness import TestHarness
 from tests.regression_tests import config
 
 
-pytestmark = pytest.mark.skipif(
-    importlib.util.find_spec('vtk') is None,
-    reason="vtk module is not installed.")
+vtk = pytest.importorskip('vtk')
 class PlotVoxelTestHarness(TestHarness):
     """Specialized TestHarness for running OpenMC voxel plot tests."""
     def __init__(self, plot_names):
@@ -60,6 +57,6 @@ class PlotVoxelTestHarness(TestHarness):
         return outstr
 
 
-def test_plot():
+def test_plot_voxel():
     harness = PlotVoxelTestHarness(('plot_4.h5', 'plot.vti'))
     harness.main()

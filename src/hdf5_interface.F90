@@ -1362,7 +1362,7 @@ contains
     ! Allocate a C char array to get strings
     n = attribute_typesize(obj_id, to_c_string(name))
     m = size(buffer)
-    allocate(buffer_((n+1)*m))
+    allocate(buffer_(n*m))
 
     ! Read attribute
     call read_attr_string_c(obj_id, to_c_string(name), n, buffer_)
@@ -1371,7 +1371,7 @@ contains
     do i = 1, m
       buffer(i) = ''
       do j = 1, n
-        k = (i-1)*(n+1) + j
+        k = (i-1)*n + j
         if (buffer_(k) == C_NULL_CHAR) exit
         buffer(i)(j:j) = buffer_(k)
       end do

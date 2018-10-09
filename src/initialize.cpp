@@ -115,10 +115,9 @@ parse_command_line(int argc, char* argv[])
 
         // Check what type of file this is
         hid_t file_id = file_open(argv[i], 'r', true);
-        size_t len = attribute_typesize(file_id, "filetype");
-        read_attr_string(file_id, "filetype", len, buffer);
+        std::string filetype;
+        read_attribute(file_id, "filetype", filetype);
         file_close(file_id);
-        std::string filetype {buffer};
 
         // Set path and flag for type of run
         if (filetype == "statepoint") {
@@ -141,8 +140,7 @@ parse_command_line(int argc, char* argv[])
 
             // Check file type is a source file
             file_id = file_open(argv[i+1], 'r', true);
-            len = attribute_typesize(file_id, "filetype");
-            read_attr_string(file_id, "filetype", len, buffer);
+            read_attribute(file_id, "filetype", filetype);
             file_close(file_id);
             if (filetype != "source") {
               std::string msg {"Second file after restart flag must be a source file"};

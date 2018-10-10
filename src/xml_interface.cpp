@@ -71,5 +71,10 @@ get_child_nodes(pugi::xml_node node, const char* name)
   return node_list;
 }
 
-  
+int node_word_count(pugi::xml_node node, const char* name)
+{
+    std::string s = get_node_value(node, name);
+    return word_count(s);
+}
+
 } // namespace openmc

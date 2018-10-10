@@ -56,4 +56,20 @@ get_node_value_bool(pugi::xml_node node, const char* name)
   return false;
 }
 
+
+
+std::vector<pugi::xml_node>
+get_child_nodes(pugi::xml_node node, const char* name)
+{
+  pugi::xml_node current;
+  std::vector<pugi::xml_node> node_list;
+
+  for (pugi::xml_node current : node.children(name)) {
+      node_list.push_back(current);
+  }
+
+  return node_list;
+}
+
+  
 } // namespace openmc

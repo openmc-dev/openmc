@@ -50,5 +50,12 @@ xt::xarray<T> get_node_xarray(pugi::xml_node node, const char* name,
   return xt::adapt(v, shape);
 }
 
+//===============================================================================
+// GET_NODE_LIST is used to get a pointer to a list of sub-element nodes
+//===============================================================================
+
+std::vector<pugi::xml_node>
+get_child_nodes(pugi::xml_node node, const char* name);
+ 
 } // namespace openmc
 #endif // OPENMC_XML_INTERFACE_H

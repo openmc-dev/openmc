@@ -39,16 +39,15 @@ int openmc_plot_geometry() {
 
       if (PLOT_TYPE::SLICE == pl->type) {
         // create 2D image
-        // create_ppm(pl);
+        create_ppm(pl);
         continue;
       } else if (PLOT_TYPE::VOXEL == pl->type) {
         // create voxel file for 3D viewing
-        // create_voxel(pl);
+        create_voxel(pl);
         continue;
       }
 
   }
-
   return 0;
 }
 
@@ -397,7 +396,7 @@ void create_voxel(ObjectPlot *pl) {
   ll[2] = ll[2] + vox[2] / TWO;
 
   int data[pl->pixels[1]][pl->pixels[2]];
-  
+
   int rgb[3], id;
   for (int x = 0; x < pl->pixels[0]; x++) {
     // progress bar here
@@ -424,10 +423,10 @@ void create_voxel(ObjectPlot *pl) {
 
   voxel_finalize(dspace, dset, memspace);
   file_close(file_id);
-  
+
 }
 
-  
+
 void
 voxel_init(hid_t file_id, const hsize_t* dims, hid_t* dspace, hid_t* dset,
            hid_t* memspace)

@@ -69,24 +69,24 @@ namespace openmc {
 
   };
 
-void draw_mesh_lines(ObjectPlot* pl,
-                     std::vector< std::vector< std::vector<int> > > &data);
-
-
-void output_ppm(ObjectPlot* pl,
-                const std::vector< std::vector< std::vector<int> > > &data);
 
 extern "C" void create_ppm(ObjectPlot* pl);
 
 extern "C" void create_voxel(ObjectPlot *pl);
- 
-extern "C" void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id);
 
-extern "C" void voxel_init(hid_t file_id, const hsize_t* dims, hid_t* dspace,
+void draw_mesh_lines(ObjectPlot* pl,
+                     std::vector< std::vector< std::vector<int> > > &data);
+
+void output_ppm(ObjectPlot* pl,
+                const std::vector< std::vector< std::vector<int> > > &data);
+
+void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id);
+
+void voxel_init(hid_t file_id, const hsize_t* dims, hid_t* dspace,
                            hid_t* dset, hid_t* memspace);
-extern "C" void voxel_write_slice(int x, hid_t dspace, hid_t dset,
+void voxel_write_slice(int x, hid_t dspace, hid_t dset,
                                   hid_t memspace, void* buf);
-extern "C" void voxel_finalize(hid_t dspace, hid_t dset, hid_t memspace);
+void voxel_finalize(hid_t dspace, hid_t dset, hid_t memspace);
 
 } // namespace openmc
 #endif // OPENMC_PLOT_H

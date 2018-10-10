@@ -2,18 +2,9 @@ module plot
 
   use, intrinsic :: ISO_C_BINDING
 
-  use constants
-  use error,           only: fatal_error, write_message
-  use geometry,        only: find_cell, check_cell_overlap
-  use geometry_header, only: Cell, root_universe, cells
-  use hdf5_interface
-  use output,          only: time_stamp
-  use material_header, only: materials
-  use mesh_header,     only: meshes, RegularMesh
+  use error,           only: write_message
   use particle_header
   use plot_header
-  use progress_header, only: ProgressBar
-  use settings,        only: check_overlaps
   use string,          only: to_str
 
   implicit none
@@ -21,20 +12,7 @@ module plot
 
   public :: openmc_plot_geometry
 
-  integer, parameter :: RED = 1
-  integer, parameter :: GREEN = 2
-  integer, parameter :: BLUE = 3
-
   interface
-    subroutine position_rgb(p, pl, rgb, id) bind(C)
-      import Particle, ObjectPlot, C_INT
-      type(Particle), intent(inout) :: p
-      type(ObjectPlot), intent(in) :: pl
-      integer(C_INT),   intent(out) :: rgb(3)
-      integer(C_INT), intent(out) :: id
-    end subroutine position_rgb
-
-
     subroutine create_ppm(pl) bind(C)
       import ObjectPlot
       type(ObjectPlot), intent(in) :: pl
@@ -44,7 +22,6 @@ module plot
       import ObjectPlot
       type(ObjectPlot), intent(in) :: pl
     end subroutine create_voxel
-
   end interface
 contains
 

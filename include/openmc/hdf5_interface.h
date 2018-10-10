@@ -368,6 +368,15 @@ write_dataset(hid_t obj_id, const char* name, const xt::xarray<T>& arr)
                 arr.data(), false);
 }
 
+template<typename T, std::size_t N> inline void
+write_dataset(hid_t obj_id, const char* name, const xt::xtensor<T, N>& arr)
+{
+  auto s = arr.shape();
+  std::vector<hsize_t> dims {s.cbegin(), s.cend()};
+  write_dataset(obj_id, dims.size(), dims.data(), name, H5TypeMap<T>::type_id,
+                arr.data(), false);
+}
+
 inline void
 write_dataset(hid_t obj_id, const char* name, Position r)
 {

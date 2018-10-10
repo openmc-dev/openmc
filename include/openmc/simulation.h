@@ -26,12 +26,13 @@ extern "C" double k_abs_tra;     //!< sum over batches of k_absorption * k_track
 extern "C" double log_spacing;   //!< lethargy spacing for energy grid searches
 extern "C" int n_lost_particles; //!< cumulative number of lost particles
 extern "C" bool need_depletion_rx; //!< need to calculate depletion rx?
-extern "C" bool restart_batch;   //!< batch at which a restart job resumed
+extern "C" int restart_batch;   //!< batch at which a restart job resumed
 extern "C" bool satisfy_triggers; //!< have tally triggers been satisfied?
 extern "C" bool simulation_initialized; //!< has simulation been initialized?
 extern "C" int total_gen;        //!< total number of generations simulated
 extern "C" int64_t work;         //!< number of particles per process
 
+extern std::vector<double> k_generation;
 extern std::vector<int64_t> work_index;
 
 // Threadprivate variables
@@ -51,6 +52,9 @@ extern "C" int thread_id;  //!< ID of a given thread
 
 //! Initialize simulation
 extern "C" void openmc_simulation_init_c();
+
+//! Determine overall generation number
+extern "C" int overall_generation();
 
 //! Determine number of particles to transport per process
 void calculate_work();

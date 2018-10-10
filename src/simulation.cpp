@@ -29,7 +29,32 @@ namespace openmc {
 
 namespace simulation {
 
+int current_batch;
+int current_gen;
+int64_t current_work;
+double keff {1.0};
+double keff_std;
+double k_col_abs {0.0};
+double k_col_tra {0.0};
+double k_abs_tra {0.0};
+double log_spacing;
+int n_lost_particles {0};
+bool need_depletion_rx {false};
+int restart_batch;
+bool satisfy_triggers {false};
+bool simulation_initialized {false};
+int total_gen {0};
+int64_t work;
+
+std::vector<double> k_generation;
 std::vector<int64_t> work_index;
+
+// Threadprivate variables
+bool trace;     //!< flag to show debug information
+#ifdef _OPENMP
+int n_threads {-1};  //!< number of OpenMP threads
+int thread_id;  //!< ID of a given thread
+#endif
 
 } // namespace simulation
 
@@ -41,6 +66,12 @@ void openmc_simulation_init_c()
 {
   // Determine how much work each process should do
   calculate_work();
+}
+
+int overall_generation()
+{
+  using namespace simulation;
+  return settings::gen_per_batch*(current_batch - 1) + current_gen;
 }
 
 void calculate_work()

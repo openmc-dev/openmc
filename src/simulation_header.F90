@@ -13,7 +13,7 @@ module simulation_header
   ! GEOMETRY-RELATED VARIABLES
 
   ! Number of lost particles
-  integer(C_INT), bind(C) :: n_lost_particles = 0
+  integer(C_INT), bind(C) :: n_lost_particles
 
   real(C_DOUBLE), bind(C) :: log_spacing ! spacing on logarithmic grid
 
@@ -22,14 +22,14 @@ module simulation_header
 
   integer(C_INT), bind(C) :: current_batch     ! current batch
   integer(C_INT), bind(C) :: current_gen       ! current generation within a batch
-  integer(C_INT), bind(C) :: total_gen     = 0 ! total number of generations simulated
-  logical(C_BOOL), bind(C) :: simulation_initialized = .false.
+  integer(C_INT), bind(C) :: total_gen         ! total number of generations simulated
+  logical(C_BOOL), bind(C) :: simulation_initialized
   logical(C_BOOL), bind(C) :: need_depletion_rx ! need to calculate depletion reaction rx?
 
   ! ============================================================================
   ! TALLY PRECISION TRIGGER VARIABLES
 
-  logical(C_BOOL), bind(C) :: satisfy_triggers = .false.       ! whether triggers are satisfied
+  logical(C_BOOL), bind(C) :: satisfy_triggers  ! whether triggers are satisfied
 
   integer(C_INT64_T), bind(C) :: work         ! number of particles per processor
   integer(C_INT64_T), allocatable :: work_index(:) ! starting index in source bank for each process
@@ -40,18 +40,18 @@ module simulation_header
 
   ! Temporary k-effective values
   type(VectorReal) :: k_generation ! single-generation estimates of k
-  real(C_DOUBLE), bind(C) :: keff = ONE  ! average k over active batches
-  real(C_DOUBLE), bind(C) :: keff_std    ! standard deviation of average k
-  real(C_DOUBLE), bind(C) :: k_col_abs = ZERO ! sum over batches of k_collision * k_absorption
-  real(C_DOUBLE), bind(C) :: k_col_tra = ZERO ! sum over batches of k_collision * k_tracklength
-  real(C_DOUBLE), bind(C) :: k_abs_tra = ZERO ! sum over batches of k_absorption * k_tracklength
+  real(C_DOUBLE), bind(C) :: keff      ! average k over active batches
+  real(C_DOUBLE), bind(C) :: keff_std  ! standard deviation of average k
+  real(C_DOUBLE), bind(C) :: k_col_abs ! sum over batches of k_collision * k_absorption
+  real(C_DOUBLE), bind(C) :: k_col_tra ! sum over batches of k_collision * k_tracklength
+  real(C_DOUBLE), bind(C) :: k_abs_tra ! sum over batches of k_absorption * k_tracklength
 
   ! ============================================================================
   ! PARALLEL PROCESSING VARIABLES
 
 #ifdef _OPENMP
-  integer(C_INT), bind(C) :: n_threads = NONE      ! number of OpenMP threads
-  integer(C_INT), bind(C) :: thread_id             ! ID of a given thread
+  integer(C_INT), bind(C) :: n_threads      ! number of OpenMP threads
+  integer(C_INT), bind(C) :: thread_id      ! ID of a given thread
 #endif
 
   ! ============================================================================
@@ -66,19 +66,14 @@ module simulation_header
   interface
     subroutine entropy_clear() bind(C)
     end subroutine
+
+    pure function overall_generation() result(gen) bind(C)
+      import C_INT
+      integer(C_INT) :: gen
+    end function overall_generation
   end interface
 
-
 contains
-
-!===============================================================================
-! OVERALL_GENERATION determines the overall generation number
-!===============================================================================
-
-  pure function overall_generation() result(gen) bind(C)
-    integer(C_INT) :: gen
-    gen = gen_per_batch*(current_batch - 1) + current_gen
-  end function overall_generation
 
 !===============================================================================
 ! FREE_MEMORY_SIMULATION deallocates global arrays defined in this module

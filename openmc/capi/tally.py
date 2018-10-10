@@ -298,7 +298,7 @@ class Tally(_FortranObjectWithID):
         data = POINTER(c_double)()
         shape = (c_int*3)()
         _dll.openmc_tally_results(self._index, data, shape)
-        return as_array(data, tuple(shape[::-1]))
+        return as_array(data, tuple(shape))
 
     @property
     def scores(self):

@@ -30,7 +30,7 @@ collision_mg(Particle* p, const double* energy_bin_avg,
   sample_reaction(p, energy_bin_avg, material_xs);
 
   // Display information about collision
-  if ((settings::verbosity >= 10) || (openmc_trace)) {
+  if ((settings::verbosity >= 10) || (simulation::trace)) {
     std::stringstream msg;
     msg << "    Energy Group = " << p->g;
     write_message(msg, 1);
@@ -115,7 +115,7 @@ create_fission_sites(Particle* p, Bank* bank_array, int64_t* size_bank,
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
-  double nu_t = p->wgt / openmc_keff * weight * material_xs->nu_fission /
+  double nu_t = p->wgt / simulation::keff * weight * material_xs->nu_fission /
        material_xs->total;
 
   // Sample the number of neutrons produced

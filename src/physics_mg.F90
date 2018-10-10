@@ -9,7 +9,7 @@ module physics_mg
   use math,                   only: rotate_angle
   use mgxs_interface
   use message_passing
-  use nuclide_header,         only: material_xs
+  use nuclide_header,         only: MaterialMacroXS, material_xs
   use particle_header
   use physics_common
   use random_lcg,             only: prn
@@ -26,6 +26,22 @@ module physics_mg
       type(Particle), intent(inout) :: p
       real(C_DOUBLE), intent(in)    :: energy_bin_avg(*)
     end subroutine scatter
+
+    subroutine create_fission_sites(p, bank_array, size_bank, bank_array_size, &
+         material_xs) bind(C)
+      import Particle, Bank, C_INT64_T, MaterialMacroXS
+      type(Particle),        intent(inout) :: p
+      type(Bank),            intent(inout) :: bank_array(*)
+      integer(C_INT64_T),    intent(inout) :: size_bank
+      integer(C_INT64_T),    intent(in)    :: bank_array_size
+      type(MaterialMacroXS), intent(in)    :: material_xs
+    end subroutine create_fission_sites
+
+    subroutine absorption(p, material_xs) bind(C)
+      import Particle, MaterialMacroXS
+      type(Particle),        intent(inout) :: p
+      type(MaterialMacroXS), intent(in)    :: material_xs
+    end subroutine absorption
   end interface
 
 contains
@@ -75,9 +91,13 @@ contains
 
     if (mat % fissionable) then
       if (run_mode == MODE_EIGENVALUE) then
-        call create_fission_sites(p, fission_bank, n_bank)
+        call create_fission_sites(p, fission_bank, n_bank, &
+                                  size(fission_bank, KIND=C_INT64_T), &
+                                  material_xs)
       elseif (run_mode == MODE_FIXEDSOURCE .and. create_fission_neutrons) then
-        call create_fission_sites(p, p % secondary_bank, p % n_secondary)
+        call create_fission_sites(p, p % secondary_bank, p % n_secondary, &
+                                  size(p % secondary_bank, KIND=C_INT64_T), &
+                                  material_xs)
       end if
     end if
 
@@ -85,7 +105,7 @@ contains
     ! weight of the particle. Otherwise, it checks to see if absorption occurs
 
     if (material_xs % absorption > ZERO) then
-      call absorption(p)
+      call absorption(p, material_xs)
     else
       p % absorb_wgt = ZERO
     end if
@@ -102,163 +122,5 @@ contains
     end if
 
   end subroutine sample_reaction
-
-!===============================================================================
-! ABSORPTION
-!===============================================================================
-
-  subroutine absorption(p)
-
-    type(Particle), intent(inout) :: p
-
-    if (survival_biasing) then
-      ! Determine weight absorbed in survival biasing
-      p % absorb_wgt = (p % wgt * &
-                        material_xs % absorption / material_xs % total)
-
-      ! Adjust weight of particle by probability of absorption
-      p % wgt = p % wgt - p % absorb_wgt
-      p % last_wgt = p % wgt
-
-      ! Score implicit absorption estimate of keff
-!$omp atomic
-      global_tallies(RESULT_VALUE, K_ABSORPTION) = &
-           global_tallies(RESULT_VALUE, K_ABSORPTION) + p % absorb_wgt * &
-           material_xs % nu_fission / material_xs % absorption
-    else
-      ! See if disappearance reaction happens
-      if (material_xs % absorption > prn() * material_xs % total) then
-        ! Score absorption estimate of keff
-!$omp atomic
-        global_tallies(RESULT_VALUE, K_ABSORPTION) = &
-             global_tallies(RESULT_VALUE, K_ABSORPTION) + p % wgt * &
-             material_xs % nu_fission / material_xs % absorption
-
-        p % alive = .false.
-        p % event = EVENT_ABSORB
-      end if
-    end if
-
-  end subroutine absorption
-
-!===============================================================================
-! CREATE_FISSION_SITES determines the average total, prompt, and delayed
-! neutrons produced from fission and creates appropriate bank sites.
-!===============================================================================
-
-  subroutine create_fission_sites(p, bank_array, size_bank)
-    type(Particle), intent(inout) :: p
-    type(Bank),     intent(inout) :: bank_array(:)
-    integer(8),     intent(inout) :: size_bank
-
-    integer :: nu_d(MAX_DELAYED_GROUPS) ! number of delayed neutrons born
-    integer :: i                        ! loop index
-    integer :: dg                       ! delayed group
-    integer :: gout                     ! group out
-    integer :: nu                       ! actual number of neutrons produced
-    real(8) :: nu_t                     ! total nu
-    real(8) :: mu                       ! fission neutron angular cosine
-    real(8) :: phi                      ! fission neutron azimuthal angle
-    real(8) :: weight                   ! weight adjustment for ufs method
-
-    interface
-      function ufs_get_weight(p) result(weight) bind(C)
-        import Particle, C_DOUBLE
-        type(Particle), intent(in) :: p
-        real(C_DOUBLE) :: WEIGHT
-      end function
-    end interface
-
-    ! TODO: Heat generation from fission
-
-    ! If uniform fission source weighting is turned on, we increase of decrease
-    ! the expected number of fission sites produced
-
-    if (ufs) then
-      weight = ufs_get_weight(p)
-    else
-      weight = ONE
-    end if
-
-    ! Determine expected number of neutrons produced
-    nu_t = p % wgt / keff * weight * &
-         material_xs % nu_fission / material_xs % total
-
-    ! Sample number of neutrons produced
-    if (prn() > nu_t - int(nu_t)) then
-      nu = int(nu_t)
-    else
-      nu = int(nu_t) + 1
-    end if
-
-    ! Check for bank size getting hit. For fixed source calculations, this is a
-    ! fatal error. For eigenvalue calculations, it just means that k-effective
-    ! was too high for a single batch.
-    if (size_bank + nu > size(bank_array)) then
-      if (run_mode == MODE_FIXEDSOURCE) then
-        call fatal_error("Secondary particle bank size limit reached. If you &
-             &are running a subcritical multiplication problem, k-effective &
-             &may be too close to one.")
-      else
-        if (master) call warning("Maximum number of sites in fission bank &
-             &reached. This can result in irreproducible results using different &
-             &numbers of processes/threads.")
-      end if
-    end if
-
-    ! Bank source neutrons
-    if (nu == 0 .or. size_bank == size(bank_array)) return
-
-    ! Initialize counter of delayed neutrons encountered for each delayed group
-    ! to zero.
-    nu_d(:) = 0
-
-    p % fission = .true. ! Fission neutrons will be banked
-    do i = int(size_bank,4) + 1, int(min(size_bank + nu, int(size(bank_array),8)),4)
-      ! Bank source neutrons by copying particle data
-      bank_array(i) % xyz = p % coord(1) % xyz
-
-      ! Set particle as neutron
-      bank_array(i) % particle = NEUTRON
-
-      ! Set weight of fission bank site
-      bank_array(i) % wgt = ONE/weight
-
-      ! Sample cosine of angle -- fission neutrons are treated as being emitted
-      ! isotropically.
-      mu = TWO * prn() - ONE
-
-      ! Sample azimuthal angle uniformly in [0,2*pi)
-      phi = TWO * PI * prn()
-      bank_array(i) % uvw(1) = mu
-      bank_array(i) % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
-      bank_array(i) % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
-
-      ! Sample secondary energy distribution for fission reaction and set energy
-      ! in fission bank
-      call sample_fission_energy_c(p % material, p % g, dg, gout)
-
-      bank_array(i) % E = real(gout, 8)
-      bank_array(i) % delayed_group = dg
-
-      ! Set delayed group on particle too
-      p % delayed_group = dg
-
-      ! Increment the number of neutrons born delayed
-      if (p % delayed_group > 0) then
-        nu_d(p % delayed_group) = nu_d(p % delayed_group) + 1
-      end if
-
-    end do
-
-    ! increment number of bank sites
-    size_bank = min(size_bank + nu, int(size(bank_array),8))
-
-    ! Store total weight banked for analog fission tallies
-    p % n_bank   = nu
-    p % wgt_bank = nu/weight
-    p % n_delayed_bank(:) = nu_d(:)
-
-  end subroutine create_fission_sites
 
 end module physics_mg

@@ -137,7 +137,7 @@ module tally_header
   ! invalidation. Thus, we use threadprivate variables to accumulate global
   ! tallies and then reduce at the end of a generation.
   real(C_DOUBLE), public :: global_tally_collision   = ZERO
-  real(C_DOUBLE), public :: global_tally_absorption  = ZERO
+  real(C_DOUBLE), public, bind(C) :: global_tally_absorption  = ZERO
   real(C_DOUBLE), public :: global_tally_tracklength = ZERO
   real(C_DOUBLE), public :: global_tally_leakage     = ZERO
 !$omp threadprivate(global_tally_collision, global_tally_absorption, &

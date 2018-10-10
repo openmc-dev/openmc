@@ -10,19 +10,28 @@
 namespace openmc {
 
 //==============================================================================
-// Global variables
+// Global variable declarations
 //==============================================================================
 
-extern "C" int openmc_current_batch;
-extern "C" int openmc_current_gen;
-extern "C" int64_t openmc_current_work;
-extern "C" int openmc_n_lost_particles;
-extern "C" int openmc_total_gen;
-extern "C" bool openmc_trace;
+namespace simulation {
+
+extern "C" int current_batch;
+extern "C" int current_gen;
+extern "C" int64_t current_work;
+extern "C" int n_lost_particles;
+extern "C" int total_gen;
+extern "C" bool trace;
+extern "C" int64_t work;
+
+#ifdef _OPENMP
+extern "C" int n_threads;
+#endif
 
 extern std::vector<int64_t> work_index;
 
-#pragma omp threadprivate(openmc_current_work, openmc_trace)
+#pragma omp threadprivate(current_work, trace)
+
+} // namespace simulation
 
 //==============================================================================
 // Functions

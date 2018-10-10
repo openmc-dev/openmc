@@ -11,6 +11,7 @@
 #include "openmc/error.h"
 #include "openmc/message_passing.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 
 namespace openmc {
 
@@ -46,7 +47,7 @@ write_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
   // Create another data space but for each proc individually
-  hsize_t count[] {static_cast<hsize_t>(openmc_work)};
+  hsize_t count[] {static_cast<hsize_t>(simulation::work)};
   hid_t memspace = H5Screate_simple(1, count, nullptr);
 
   // Select hyperslab for this dataspace
@@ -77,7 +78,7 @@ write_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
 
     // Save source bank sites since the souce_bank array is overwritten below
 #ifdef OPENMC_MPI
-    std::vector<Bank> temp_source {source_bank, source_bank + openmc_work};
+    std::vector<Bank> temp_source {source_bank, source_bank + simulation::work};
 #endif
 
     for (int i = 0; i < openmc::mpi::n_procs; ++i) {
@@ -113,7 +114,7 @@ write_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
 #endif
   } else {
 #ifdef OPENMC_MPI
-    MPI_Send(source_bank, openmc_work, openmc::mpi::bank, 0, openmc::mpi::rank,
+    MPI_Send(source_bank, simulation::work, openmc::mpi::bank, 0, openmc::mpi::rank,
              openmc::mpi::intracomm);
 #endif
   }
@@ -131,7 +132,7 @@ void read_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
   hid_t dset = H5Dopen(group_id, "source_bank", H5P_DEFAULT);
 
   // Create another data space but for each proc individually
-  hsize_t dims[] {static_cast<hsize_t>(openmc_work)};
+  hsize_t dims[] {static_cast<hsize_t>(simulation::work)};
   hid_t memspace = H5Screate_simple(1, dims, nullptr);
 
   // Make sure source bank is big enough

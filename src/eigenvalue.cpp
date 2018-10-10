@@ -66,7 +66,7 @@ void ufs_count_sites()
 {
   auto &m = meshes[settings::index_ufs_mesh];
 
-  if (openmc_current_batch == 1 && openmc_current_gen == 1) {
+  if (simulation::current_batch == 1 && simulation::current_gen == 1) {
     // On the first generation, just assume that the source is already evenly
     // distributed so that effectively the production of fission sites is not
     // biased
@@ -82,7 +82,7 @@ void ufs_count_sites()
 
     // count number of source sites in each ufs mesh cell
     bool sites_outside;
-    source_frac = m->count_sites(openmc_work, source_bank, 0, nullptr,
+    source_frac = m->count_sites(simulation::work, source_bank, 0, nullptr,
       &sites_outside);
 
     // Check for sites outside of the mesh
@@ -102,7 +102,7 @@ void ufs_count_sites()
 
     // Since the total starting weight is not equal to n_particles, we need to
     // renormalize the weight of the source sites
-    for (int i = 0; i < openmc_work; ++i) {
+    for (int i = 0; i < simulation::work; ++i) {
       source_bank[i].wgt *= settings::n_particles / total;
     }
   }

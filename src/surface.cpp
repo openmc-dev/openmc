@@ -35,24 +35,6 @@ std::map<int, int> surface_map;
 // Helper functions for reading the "coeffs" node of an XML surface element
 //==============================================================================
 
-int word_count(const std::string &text)
-{
-  bool in_word = false;
-  int count {0};
-  for (auto c = text.begin(); c != text.end(); c++) {
-    if (std::isspace(*c)) {
-      if (in_word) {
-        in_word = false;
-        count++;
-      }
-    } else {
-      in_word = true;
-    }
-  }
-  if (in_word) count++;
-  return count;
-}
-
 void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1)
 {
   // Check the given number of coefficients.

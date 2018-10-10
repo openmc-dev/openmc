@@ -270,12 +270,15 @@ void draw_mesh_lines(ObjectPlot *pl,
   m->get_indices(Position(xyz_ll_plot), &(ijk_ll[0]), &in_mesh);
   m->get_indices(Position(xyz_ur_plot), &(ijk_ur[0]), &in_mesh);
 
+  // Fortran/C++ index correction
+  ijk_ur[0]++; ijk_ur[1]++; ijk_ur[2]++;
+  
   double frac;
   int outrange[3], inrange[3];
   double xyz_ll[3], xyz_ur[3];
   // sweep through all meshbins on this plane and draw borders  
-  for (int i = ijk_ll[outer]; i <= ijk_ur[outer] + 1; i++) {
-    for (int j = ijk_ll[inner]; j <= ijk_ur[inner] + 1; j++) {
+  for (int i = ijk_ll[outer]; i <= ijk_ur[outer]; i++) {
+    for (int j = ijk_ll[inner]; j <= ijk_ur[inner]; j++) {
       // check if we're in the mesh for this ijk
       if (i > 0 && i <= m->shape_[outer] && j >0 && j <= m->shape_[inner] ) {
       

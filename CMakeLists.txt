@@ -407,6 +407,7 @@ add_library(libopenmc SHARED
   src/distribution_spatial.cpp
   src/eigenvalue.cpp
   src/endf.cpp
+  src/error.cpp
   src/initialize.cpp
   src/finalize.cpp
   src/geometry.cpp

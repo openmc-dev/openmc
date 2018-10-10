@@ -10,6 +10,8 @@
 #include "openmc/material.h"
 #include "openmc/string_functions.h"
 #include "openmc/mesh.h"
+#include "openmc/output.h"
+#include "openmc/hdf5_interface.h"
 
 namespace openmc {
 
@@ -324,6 +326,113 @@ void draw_mesh_lines(ObjectPlot *pl, ImageData &data)
 
 }
 
+//===============================================================================
+// CREATE_VOXEL outputs a binary file that can be input into silomesh for 3D
+// geometry visualization.  It works the same way as create_ppm by dragging a
+// particle across the geometry for the specified number of voxels. The first
+// 3 int(4)'s in the binary are the number of x, y, and z voxels.  The next 3
+// real(8)'s are the widths of the voxels in the x, y, and z directions. The next
+// 3 real(8)'s are the x, y, and z coordinates of the lower left point. Finally
+// the binary is filled with entries of four int(4)'s each. Each 'row' in the
+// binary contains four int(4)'s: 3 for x,y,z position and 1 for cell or material
+// id.  For 1 million voxels this produces a file of approximately 15MB.
+//===============================================================================
+
+void create_voxel(ObjectPlot *pl) {
+
+  // compute voxel widths in each direction
+  double vox[3];
+  vox[0] = pl->width[0]/(double)pl->pixels[0];
+  vox[1] = pl->width[1]/(double)pl->pixels[1];
+  vox[2] = pl->width[2]/(double)pl->pixels[2];
+
+  // initial particle position
+  double ll[3];
+  ll[0] = pl->origin[0] - pl->width[0] / TWO;
+  ll[1] = pl->origin[1] - pl->width[1] / TWO;
+  ll[2] = pl->origin[2] - pl->width[2] / TWO;
+
+  // allocate and initialize particle
+  double dir[3] = {HALF, HALF, HALF};
+  Particle *p = new Particle();
+  p->initialize();
+  std::copy(ll, ll + 3, p->coord[0].xyz);
+  std::copy(dir, dir + 3, p->coord[0].uvw);
+  p->coord[0].universe = openmc_root_universe;
+
+  // Open binary plot file for writing
+  std::ofstream of;
+  std::string fname = std::string(pl->path_plot);
+  fname = strtrim(fname);
+  hid_t file_id = file_open(fname, 'w');
+
+  // write header info
+  write_attribute(file_id, "filetype", 'voxel');
+  write_attribute(file_id, "version", VERSION_VOXEL);
+  write_attribute(file_id, "openmc_version", VERSION);
+
+#ifdef GIT_SHA1
+  write_attribute(file_id, "git_sha1", GIT_SHA1);
+#endif
+
+  // Write current date and time
+  //  write_attribute(file_id, "date_and_time", time_stamp());
+  hsize_t three = 3;
+  write_attr_int(file_id, 1, &three, "num_voxels", pl->pixels);
+  write_attr_double(file_id, 1, &three, "voxel_width", vox);
+  write_attr_double(file_id, 1, &three, "lower_left", ll);
+
+  hsize_t dims[3];
+  dims[0] = pl->pixels[0];
+  dims[1] = pl->pixels[1];
+  dims[2] = pl->pixels[2];
+  hid_t dspace, dset, memspace;
+  voxel_init(file_id, &(dims[0]), &dspace, &dset, &memspace);
+  
+  ll[0] = ll[0] + vox[0] / TWO;
+  ll[1] = ll[1] + vox[1] / TWO;
+  ll[2] = ll[2] + vox[2] / TWO;
+
+  ImageData data;
+  
+
+  data.resize(pl->pixels[2]);
+  for (auto & i : data) {
+    i.resize(pl->pixels[1]);
+    for (auto & j : i) {
+      j.resize(1);
+    }
+  }
+  
+  int rgb[3], id;
+  for (int x = 0; x < pl->pixels[0]; x++) {
+    // progress bar here
+    for (int y = 0; y < pl->pixels[1]; y++) {
+      for(int z = 0; z < pl->pixels[2]; z++) {
+        // get voxel color
+        position_rgb(p, pl, rgb, id);
+        // advance particle in z direction
+        p->coord[0].xyz[2] = p->coord[0].xyz[2] + vox[2];
+      }
+      // advance particle in y direction
+      p->coord[0].xyz[1] = p->coord[0].xyz[1] + vox[1];
+      p->coord[0].xyz[2] = ll[2];
+    }
+    // advance particle in x direction
+      p->coord[0].xyz[0] = p->coord[0].xyz[0] + vox[0];
+      p->coord[0].xyz[1] = ll[1];
+      p->coord[0].xyz[2] = ll[2];
+
+      // Write to HDF5 dataset
+      voxel_write_slice(x, dspace, dset, memspace, &(data[0]));
+  }
+
+  voxel_finalize(dspace, dset, memspace);
+  file_close(file_id);
+  
+}
+
+  
 void
 voxel_init(hid_t file_id, const hsize_t* dims, hid_t* dspace, hid_t* dset,
            hid_t* memspace)

@@ -13,9 +13,9 @@
 
 namespace openmc {
 
-const int RED   = 1;
-const int GREEN = 2;
-const int BLUE  = 3;
+const int RED   = 0;
+const int GREEN = 1;
+const int BLUE  = 2;
 
 const int WHITE[3] = {255, 255, 255};
 const int NULLRGB[3] = {0, 0, 0};
@@ -113,9 +113,9 @@ void create_ppm(ObjectPlot* pl) {
     for (int x = 0; x < width; x++) {
       p->coord[0].xyz[in_i] = xyz[in_i] + in_pixel*(x);
       position_rgb(p, pl, rgb, id);
-      data[x][y][0] = rgb[0];
-      data[x][y][1] = rgb[1];
-      data[x][y][2] = rgb[2];
+      data[x][y][RED] = rgb[RED];
+      data[x][y][GREEN] = rgb[GREEN];
+      data[x][y][BLUE] = rgb[BLUE];
     }
   }
 
@@ -211,9 +211,9 @@ void output_ppm(ObjectPlot* pl, const ImageData &data)
   for (int y = 0; y < pl->pixels[1]; y++) {
     for (int x = 0; x < pl->pixels[0]; x++) {
       std::vector<int> rgb = data[x][y];
-      of.write((char*)&rgb[0], 1);
-      of.write((char*)&rgb[1], 1);
-      of.write((char*)&rgb[2], 1);
+      of.write((char*)&rgb[RED], 1);
+      of.write((char*)&rgb[GREEN], 1);
+      of.write((char*)&rgb[BLUE], 1);
     }
   }
   // Close file
@@ -229,9 +229,9 @@ void output_ppm(ObjectPlot* pl, const ImageData &data)
 void draw_mesh_lines(ObjectPlot *pl, ImageData &data)
 {
   std::vector<int> rgb; rgb.resize(3);
-  rgb[0] = pl->meshlines_color.rgb[0];
-  rgb[1] = pl->meshlines_color.rgb[1];
-  rgb[2] = pl->meshlines_color.rgb[2];
+  rgb[RED] = pl->meshlines_color.rgb[RED];
+  rgb[GREEN] = pl->meshlines_color.rgb[GREEN];
+  rgb[BLUE] = pl->meshlines_color.rgb[BLUE];
 
   int outer, inner;
   switch(pl->basis){

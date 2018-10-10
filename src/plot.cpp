@@ -74,24 +74,28 @@ void create_ppm(ObjectPlot* pl) {
 
   int in_i, out_i;
   double xyz[3];
-  if (PLOT_BASIS::XY == pl->basis) {
+  switch(pl->basis) {
+  case PLOT_BASIS::XY :
     in_i = 0;
     out_i = 1;
     xyz[0] = pl->origin[0] - pl->width[0] / TWO;
     xyz[1] = pl->origin[1] + pl->width[1] / TWO;
     xyz[2] = pl->origin[2];
-  } else if (PLOT_BASIS::XZ == pl->basis) {
+    break;
+  case PLOT_BASIS::XZ :
     in_i = 0;
     out_i = 2;
     xyz[0] = pl->origin[0] - pl->width[0] / TWO;
     xyz[1] = pl->origin[1];
     xyz[2] = pl->origin[2] + pl->width[1] / TWO;
-  } else if (PLOT_BASIS::YZ == pl->basis) {
+    break;
+  case PLOT_BASIS::YZ :
     in_i = 1;
     out_i = 2;
     xyz[0] = pl->origin[0];
     xyz[1] = pl->origin[1] - pl->width[0] / TWO;
     xyz[2] = pl->origin[2] + pl->width[1] / TWO;
+    break;
   }
 
   double dir[3] = {HALF, HALF, HALF};

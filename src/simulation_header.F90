@@ -40,8 +40,8 @@ module simulation_header
 
   ! Temporary k-effective values
   type(VectorReal) :: k_generation ! single-generation estimates of k
-  real(C_DOUBLE), bind(C, name='openmc_keff')     :: keff = ONE  ! average k over active batches
-  real(C_DOUBLE), bind(C, name='openmc_keff_std') :: keff_std    ! standard deviation of average k
+  real(C_DOUBLE), bind(C) :: keff = ONE  ! average k over active batches
+  real(C_DOUBLE), bind(C) :: keff_std    ! standard deviation of average k
   real(C_DOUBLE), bind(C) :: k_col_abs = ZERO ! sum over batches of k_collision * k_absorption
   real(C_DOUBLE), bind(C) :: k_col_tra = ZERO ! sum over batches of k_collision * k_tracklength
   real(C_DOUBLE), bind(C) :: k_abs_tra = ZERO ! sum over batches of k_absorption * k_tracklength

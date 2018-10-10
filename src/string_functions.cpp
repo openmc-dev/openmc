@@ -1,4 +1,5 @@
 #include "openmc/string_functions.h"
+#include <sstream>
 
 namespace openmc {
 
@@ -27,4 +28,15 @@ void to_lower(std::string& str)
   for (int i = 0; i < str.size(); i++) str[i] = std::tolower(str[i]);
 }
 
+int word_count(std::string const& str) {
+  std::stringstream stream(str);
+  std::string dum;
+  int count = 0;
+  while(stream >> dum) { count++; }
+  return count;
+}
+  
 } // namespace openmc
+
+
+

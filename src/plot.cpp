@@ -216,6 +216,8 @@ void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id) {
     }
   }
   // Close file
+  // THIS IS HERE TO MATCH FORTRAN VERSION, NOT NECESSARY  
+  of << std::endl; 
   of.close();
 }
 
@@ -272,8 +274,8 @@ void draw_mesh_lines(ObjectPlot *pl,
   int outrange[3], inrange[3];
   double xyz_ll[3], xyz_ur[3];
   // sweep through all meshbins on this plane and draw borders  
-  for (int i = ijk_ll[outer]; i < ijk_ur[outer]; i++) {
-    for (int j = ijk_ll[inner]; j < ijk_ur[inner]; j++) {
+  for (int i = ijk_ll[outer]; i <= ijk_ur[outer] + 1; i++) {
+    for (int j = ijk_ll[inner]; j <= ijk_ur[inner] + 1; j++) {
       // check if we're in the mesh for this ijk
       if (i > 0 && i <= m->shape_[outer] && j >0 && j <= m->shape_[inner] ) {
       
@@ -295,21 +297,21 @@ void draw_mesh_lines(ObjectPlot *pl,
         inrange[1] = int((ONE - frac) * (double)pl->pixels[1]);
 
         // draw lines
-        for (int out_ = outrange[0]; out_ < outrange[1]; out_++) {
+        for (int out_ = outrange[0]; out_ <= outrange[1]; out_++) {
           for (int plus = 0; plus <= pl->meshlines_width; plus++) {
-            data[out_ + 1][inrange[0] + plus + 1] = rgb;
-            data[out_ + 1][inrange[1] + plus + 1] = rgb;
-            data[out_ + 1][inrange[0] - plus + 1] = rgb;
-            data[out_ + 1][inrange[1] - plus + 1] = rgb;
+            data[out_][inrange[0] + plus] = rgb;
+            data[out_][inrange[1] + plus] = rgb;
+            data[out_][inrange[0] - plus] = rgb;
+            data[out_][inrange[1] - plus] = rgb;
           }
         }
 
-        for (int in_ = inrange[0]; in_ < inrange[1]; in_++) {
+        for (int in_ = inrange[0]; in_ <= inrange[1]; in_++) {
           for (int plus = 0; plus <= pl->meshlines_width; plus++) {
-            data[outrange[0] + plus + 1][in_ + 1] = rgb;
-            data[outrange[1] + plus + 1][in_ + 1] = rgb;
-            data[outrange[0] - plus + 1][in_ + 1] = rgb;
-            data[outrange[1] - plus + 1][in_ + 1] = rgb;
+            data[outrange[0] + plus][in_] = rgb;
+            data[outrange[1] + plus][in_] = rgb;
+            data[outrange[0] - plus][in_] = rgb;
+            data[outrange[1] - plus][in_] = rgb;
           }
         }
 

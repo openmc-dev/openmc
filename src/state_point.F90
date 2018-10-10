@@ -87,6 +87,10 @@ contains
         import HID_T
         integer(HID_T), value :: group
       end subroutine
+      subroutine write_tally_results_nr(file_id) bind(C)
+        import HID_T
+        integer(HID_T), value :: file_id
+      end subroutine
     end interface
 
     err = 0
@@ -489,129 +493,6 @@ contains
     if (master .or. parallel) call file_close(file_id)
 
   end subroutine write_source_point
-
-!===============================================================================
-! WRITE_TALLY_RESULTS_NR
-!===============================================================================
-
-  subroutine write_tally_results_nr(file_id)
-    integer(HID_T), intent(in) :: file_id
-
-    integer :: i      ! loop index
-    integer :: n      ! number of filter bins
-    integer :: m      ! number of score bins
-    integer :: n_bins ! total number of bins
-    integer(HID_T) :: tallies_group, tally_group
-    real(8), allocatable :: tally_temp(:,:,:) ! contiguous array of results
-    real(8), target :: global_temp(3,N_GLOBAL_TALLIES)
-#ifdef OPENMC_MPI
-    integer :: mpi_err ! MPI error code
-    real(8) :: dummy   ! temporary receive buffer for non-root reduces
-#endif
-    type(TallyObject) :: dummy_tally
-
-    ! ==========================================================================
-    ! COLLECT AND WRITE GLOBAL TALLIES
-
-    if (master) then
-      ! Write number of realizations
-      call write_dataset(file_id, "n_realizations", n_realizations)
-
-      ! Write number of global tallies
-      call write_dataset(file_id, "n_global_tallies", N_GLOBAL_TALLIES)
-
-      tallies_group = open_group(file_id, "tallies")
-    end if
-
-
-#ifdef OPENMC_MPI
-    ! Reduce global tallies
-    n_bins = size(global_tallies)
-    call MPI_REDUCE(global_tallies, global_temp, n_bins, MPI_REAL8, MPI_SUM, &
-         0, mpi_intracomm, mpi_err)
-#endif
-
-    if (master) then
-      ! Transfer values to value on master
-      if (current_batch == n_max_batches .or. satisfy_triggers) then
-        global_tallies(:,:) = global_temp(:,:)
-      end if
-
-      ! Write out global tallies sum and sum_sq
-      call write_dataset(file_id, "global_tallies", global_temp)
-    end if
-
-    if (active_tallies % size() > 0) then
-      ! Indicate that tallies are on
-      if (master) then
-        call write_attribute(file_id, "tallies_present", 1)
-      end if
-
-      ! Write all tally results
-      TALLY_RESULTS: do i = 1, n_tallies
-        associate (t => tallies(i) % obj)
-          ! Determine size of tally results array
-          m = size(t % results, 2)
-          n = size(t % results, 3)
-          n_bins = m*n*2
-
-          ! Allocate array for storing sums and sums of squares, but
-          ! contiguously in memory for each
-          allocate(tally_temp(2,m,n))
-          tally_temp(1,:,:) = t % results(RESULT_SUM,:,:)
-          tally_temp(2,:,:) = t % results(RESULT_SUM_SQ,:,:)
-
-          if (master) then
-            tally_group = open_group(tallies_group, "tally " // &
-                 trim(to_str(t % id)))
-
-            ! The MPI_IN_PLACE specifier allows the master to copy values into
-            ! a receive buffer without having a temporary variable
-#ifdef OPENMC_MPI
-            call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
-                 MPI_SUM, 0, mpi_intracomm, mpi_err)
-#endif
-
-            ! At the end of the simulation, store the results back in the
-            ! regular TallyResults array
-            if (current_batch == n_max_batches .or. satisfy_triggers) then
-              t % results(RESULT_SUM,:,:) = tally_temp(1,:,:)
-              t % results(RESULT_SUM_SQ,:,:) = tally_temp(2,:,:)
-            end if
-
-            ! Put in temporary tally result
-            allocate(dummy_tally % results(3,m,n))
-            dummy_tally % results(RESULT_SUM,:,:) = tally_temp(1,:,:)
-            dummy_tally % results(RESULT_SUM_SQ,:,:) = tally_temp(2,:,:)
-
-            ! Write reduced tally results to file
-            call dummy_tally % write_results_hdf5(tally_group)
-
-            ! Deallocate temporary tally result
-            deallocate(dummy_tally % results)
-          else
-            ! Receive buffer not significant at other processors
-#ifdef OPENMC_MPI
-            call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
-                 0, mpi_intracomm, mpi_err)
-#endif
-          end if
-
-          ! Deallocate temporary copy of tally results
-          deallocate(tally_temp)
-
-          if (master) call close_group(tally_group)
-        end associate
-      end do TALLY_RESULTS
-
-      if (master) call close_group(tallies_group)
-    else
-      ! Indicate that tallies are off
-      if (master) call write_dataset(file_id, "tallies_present", 0)
-    end if
-
-
-  end subroutine write_tally_results_nr
 
 !===============================================================================
 ! LOAD_STATE_POINT

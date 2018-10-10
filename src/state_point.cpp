@@ -1,17 +1,20 @@
 #include "openmc/state_point.h"
 
-#include <algorithm>
-#include <vector>
-
-#ifdef OPENMC_MPI
-#include "mpi.h"
-#endif
-
 #include "openmc/capi.h"
+#include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/hdf5_interface.h"
 #include "openmc/message_passing.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/tallies/tally.h"
+
+#include "xtensor/xbuilder.hpp" // for empty_like
+#include "xtensor/xview.hpp"
+
+#include <algorithm>
+#include <string>
+#include <vector>
 
 namespace openmc {
 
@@ -163,6 +166,112 @@ void read_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
   H5Sclose(memspace);
   H5Dclose(dset);
   H5Tclose(banktype);
+}
+
+void write_tally_results_nr(hid_t file_id)
+{
+  // ==========================================================================
+  // COLLECT AND WRITE GLOBAL TALLIES
+
+  hid_t tallies_group;
+  if (mpi::master) {
+    // Write number of realizations
+    write_dataset(file_id, "n_realizations", n_realizations);
+
+    // Write number of global tallies
+    write_dataset(file_id, "n_global_tallies", N_GLOBAL_TALLIES);
+
+    tallies_group = open_group(file_id, "tallies");
+  }
+
+  // Get pointer to global tallies
+  auto gt = global_tallies();
+
+#ifdef OPENMC_MPI
+  // Reduce global tallies
+  xt::xtensor<double, 2> gt_reduced = xt::empty_like(gt);
+  MPI_Reduce(gt.data(), gt_reduced.data(), gt.size(), MPI_DOUBLE,
+    MPI_SUM, 0, mpi::intracomm);
+
+  // Transfer values to value on master
+  if (mpi::master) {
+    if (simulation::current_batch == settings::n_max_batches ||
+        simulation::satisfy_triggers) {
+      std::copy(gt_reduced.begin(), gt_reduced.end(), gt.begin());
+    }
+  }
+#endif
+
+  // Write out global tallies sum and sum_sq
+  if (mpi::master) {
+    write_dataset(file_id, "global_tallies", gt);
+  }
+
+  for (int i = 1; i <= n_tallies; ++i) {
+    // Skip any tallies that are not active
+    bool active;
+    openmc_tally_get_active(i, &active);
+    if (!active) continue;
+
+    if (mpi::master && !object_exists(file_id, "tallies_present")) {
+      write_attribute(file_id, "tallies_present", 1);
+    }
+
+    // Get view of accumulated tally values
+    auto results = tally_results(i);
+    auto values_view = xt::view(results, xt::all(), xt::all(),
+      xt::range(RESULT_SUM, RESULT_SUM_SQ + 1));
+
+    // Make copy of tally values in contiguous array
+    xt::xtensor<double, 2> values = values_view;
+
+    if (mpi::master) {
+      // Open group for tally
+      int id;
+      openmc_tally_get_id(i, &id);
+      std::string groupname {"tally " + std::to_string(id)};
+      hid_t tally_group = open_group(tallies_group, groupname.c_str());
+
+      // The MPI_IN_PLACE specifier allows the master to copy values into
+      // a receive buffer without having a temporary variable
+#ifdef OPENMC_MPI
+      MPI_Reduce(MPI_IN_PLACE, values.data(), values.size(), MPI_DOUBLE,
+        MPI_SUM, 0, mpi::intracomm);
+#endif
+
+      // At the end of the simulation, store the results back in the
+      // regular TallyResults array
+      if (simulation::current_batch == settings::n_max_batches ||
+          simulation::satisfy_triggers) {
+        values_view = values;
+      }
+
+      // Put in temporary tally result
+      xt::xtensor<double, 3> results_copy = xt::zeros_like(results);
+      auto copy_view = xt::view(results_copy, xt::all(), xt::all(),
+        xt::range(RESULT_SUM, RESULT_SUM_SQ + 1));
+      copy_view = values;
+
+      // Write reduced tally results to file
+      auto shape = results_copy.shape();
+      write_tally_results(tally_group, shape[0], shape[1], results_copy.data());
+
+      close_group(tally_group);
+    } else {
+      // Receive buffer not significant at other processors
+#ifdef OPENMC_MPI
+      MPI_Reduce(values.data(), nullptr, values.size(), MPI_REAL8, MPI_SUM,
+            0, mpi::intracomm);
+#endif
+    }
+  }
+
+  if (mpi::master) {
+    if (!object_exists(file_id, "tallies_present")) {
+      // Indicate that tallies are off
+      write_dataset(file_id, "tallies_present", 0);
+    }
+  }
 }
 
 } // namespace openmc

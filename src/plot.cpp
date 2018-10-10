@@ -63,8 +63,7 @@ void create_ppm(ObjectPlot* pl) {
   double in_pixel = (pl->width[0])/double(width);
   double out_pixel = (pl->width[1])/double(height);
 
-  std::vector< std::vector< std::vector<int> > > data;
-
+  ImageData data;
   data.resize(width);
   for (auto & i : data) {
     i.resize(height);
@@ -117,7 +116,7 @@ void create_ppm(ObjectPlot* pl) {
   }
 
   if (pl->index_meshlines_mesh >= 0) { draw_mesh_lines(pl, data); }
-  
+
   output_ppm(pl, data);
 
 }
@@ -188,17 +187,15 @@ void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id) {
 // OUTPUT_PPM writes out a previously generated image to a PPM file
 //===============================================================================
 
-  void output_ppm(ObjectPlot* pl,
-                  const std::vector< std::vector< std::vector<int> > > &data)
+void output_ppm(ObjectPlot* pl, const ImageData &data)
 {
-
   // Open PPM file for writing
   std::string fname = std::string(pl->path_plot);
   fname = strtrim(fname);
   std::ofstream of;
 
   of.open(fname);
-  
+
   // Write header
   of << "P6" << std::endl;
   of << pl->pixels[0] << " " << pl->pixels[1] << std::endl;
@@ -216,18 +213,17 @@ void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id) {
     }
   }
   // Close file
-  // THIS IS HERE TO MATCH FORTRAN VERSION, NOT NECESSARY  
-  of << std::endl; 
+  // THIS IS HERE TO MATCH FORTRAN VERSION, NOT NECESSARY
+  of << std::endl;
   of.close();
 }
 
 //===============================================================================
 // DRAW_MESH_LINES draws mesh line boundaries on an image
 //===============================================================================
-  
-void draw_mesh_lines(ObjectPlot *pl,
-                     std::vector< std::vector< std::vector<int> > > &data) {
 
+void draw_mesh_lines(ObjectPlot *pl, ImageData &data)
+{
   std::vector<int> rgb; rgb.resize(3);
   rgb[0] = pl->meshlines_color.rgb[0];
   rgb[1] = pl->meshlines_color.rgb[1];
@@ -272,16 +268,16 @@ void draw_mesh_lines(ObjectPlot *pl,
 
   // Fortran/C++ index correction
   ijk_ur[0]++; ijk_ur[1]++; ijk_ur[2]++;
-  
+
   double frac;
   int outrange[3], inrange[3];
   double xyz_ll[3], xyz_ur[3];
-  // sweep through all meshbins on this plane and draw borders  
+  // sweep through all meshbins on this plane and draw borders
   for (int i = ijk_ll[outer]; i <= ijk_ur[outer]; i++) {
     for (int j = ijk_ll[inner]; j <= ijk_ur[inner]; j++) {
       // check if we're in the mesh for this ijk
       if (i > 0 && i <= m->shape_[outer] && j >0 && j <= m->shape_[inner] ) {
-      
+
         // get xyz's of lower left and upper right of this mesh cell
         xyz_ll[outer] = m->lower_left_[outer] + m->width_[outer] * (i - 1);
         xyz_ll[inner] = m->lower_left_[inner] + m->width_[inner] * (j - 1);
@@ -321,9 +317,9 @@ void draw_mesh_lines(ObjectPlot *pl,
       } // end if(in mesh)
     }
   } // end outer loops
-        
+
 }
-  
+
 void
 voxel_init(hid_t file_id, const hsize_t* dims, hid_t* dspace, hid_t* dset,
            hid_t* memspace)

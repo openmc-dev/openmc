@@ -39,7 +39,7 @@ module plot
       import ObjectPlot
       type(ObjectPlot), intent(in) :: pl
     end subroutine create_ppm
-    
+
   end interface
 contains
 

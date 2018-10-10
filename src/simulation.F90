@@ -325,9 +325,6 @@ contains
   subroutine finalize_batch()
 
     integer(C_INT) :: err
-#ifdef OPENMC_MPI
-    integer :: mpi_err ! MPI error code
-#endif
     character(MAX_FILE_LEN) :: filename
 
     interface
@@ -477,17 +474,6 @@ contains
     integer(C_INT) :: err
 
     integer    :: i       ! loop index
-#ifdef OPENMC_MPI
-    integer    :: n       ! size of arrays
-    integer    :: mpi_err  ! MPI error code
-    integer    :: count_per_filter ! number of result values for one filter bin
-    real(8)    :: tempr(3) ! temporary array for communication
-#ifdef OPENMC_MPIF08
-    type(MPI_Datatype) :: result_block
-#else
-    integer :: result_block
-#endif
-#endif
 
     interface
       subroutine print_overlap_check() bind(C)

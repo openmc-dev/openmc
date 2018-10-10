@@ -8,6 +8,7 @@
 #include "position.h"
 #include "openmc/constants.h"
 #include "openmc/particle.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 
@@ -19,7 +20,7 @@ namespace openmc {
 
   std::map<int, int> plot_dict;
 
-  std::vector<int32_t> n_plots;
+  int n_plots;
 
   std::vector<ObjectPlot*> plots;
 
@@ -52,6 +53,9 @@ namespace openmc {
 //===============================================================================
 
   struct ObjectPlot {
+
+    ObjectPlot(pugi::xml_node plot);
+    
     int id;
     int type;
     int color_by;

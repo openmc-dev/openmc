@@ -376,33 +376,27 @@ void create_voxel(ObjectPlot *pl) {
 #endif
 
   // Write current date and time
-  //  write_attribute(file_id, "date_and_time", time_stamp());
+  //  write_attribute(file_id, "date_and_time", time_stamp()); <-- RE-ADD!!!
   hsize_t three = 3;
   write_attr_int(file_id, 1, &three, "num_voxels", pl->pixels);
   write_attr_double(file_id, 1, &three, "voxel_width", vox);
   write_attr_double(file_id, 1, &three, "lower_left", ll);
 
+  // Create dataset for voxel data -- note that the dimensions are reversed
+  // since we want the order in the file to be z, y, x
   hsize_t dims[3];
   dims[0] = pl->pixels[0];
   dims[1] = pl->pixels[1];
   dims[2] = pl->pixels[2];
   hid_t dspace, dset, memspace;
   voxel_init(file_id, &(dims[0]), &dspace, &dset, &memspace);
-  
+
+  // move to center of voxels
   ll[0] = ll[0] + vox[0] / TWO;
   ll[1] = ll[1] + vox[1] / TWO;
   ll[2] = ll[2] + vox[2] / TWO;
 
-  ImageData data;
-  
-
-  data.resize(pl->pixels[2]);
-  for (auto & i : data) {
-    i.resize(pl->pixels[1]);
-    for (auto & j : i) {
-      j.resize(1);
-    }
-  }
+  int data[pl->pixels[1]][pl->pixels[2]];
   
   int rgb[3], id;
   for (int x = 0; x < pl->pixels[0]; x++) {
@@ -411,6 +405,8 @@ void create_voxel(ObjectPlot *pl) {
       for(int z = 0; z < pl->pixels[2]; z++) {
         // get voxel color
         position_rgb(p, pl, rgb, id);
+        // write to plot data
+        data[y][z] = id;
         // advance particle in z direction
         p->coord[0].xyz[2] = p->coord[0].xyz[2] + vox[2];
       }
@@ -419,12 +415,11 @@ void create_voxel(ObjectPlot *pl) {
       p->coord[0].xyz[2] = ll[2];
     }
     // advance particle in x direction
-      p->coord[0].xyz[0] = p->coord[0].xyz[0] + vox[0];
-      p->coord[0].xyz[1] = ll[1];
-      p->coord[0].xyz[2] = ll[2];
-
-      // Write to HDF5 dataset
-      voxel_write_slice(x, dspace, dset, memspace, &(data[0]));
+    p->coord[0].xyz[0] = p->coord[0].xyz[0] + vox[0];
+    p->coord[0].xyz[1] = ll[1];
+    p->coord[0].xyz[2] = ll[2];
+    // Write to HDF5 dataset
+    voxel_write_slice(x, dspace, dset, memspace, &(data[0]));
   }
 
   voxel_finalize(dspace, dset, memspace);
@@ -456,7 +451,7 @@ voxel_init(hid_t file_id, const hsize_t* dims, hid_t* dspace, hid_t* dset,
 void
 voxel_write_slice(int x, hid_t dspace, hid_t dset, hid_t memspace, void* buf)
 {
-  hssize_t offset[3] {x - 1, 0, 0};
+  hssize_t offset[3] {x, 0, 0};
   H5Soffset_simple(dspace, offset);
   H5Dwrite(dset, H5T_NATIVE_INT, memspace, dspace, H5P_DEFAULT, buf);
 }

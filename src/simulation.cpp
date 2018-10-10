@@ -27,7 +27,11 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
+namespace simulation {
+
 std::vector<int64_t> work_index;
+
+} // namespace simulation
 
 //==============================================================================
 // Functions
@@ -48,18 +52,18 @@ void calculate_work()
   int64_t remainder = settings::n_particles % mpi::n_procs;
 
   int64_t i_bank = 0;
-  work_index.reserve(mpi::n_procs);
-  work_index.push_back(0);
+  simulation::work_index.reserve(mpi::n_procs);
+  simulation::work_index.push_back(0);
   for (int i = 0; i < mpi::n_procs; ++i) {
     // Number of particles for rank i
     int64_t work_i = i < remainder ? min_work + 1 : min_work;
 
     // Set number of particles
-    if (mpi::rank == i) openmc_work = work_i;
+    if (mpi::rank == i) simulation::work = work_i;
 
     // Set index into source bank for rank i
     i_bank += work_i;
-    work_index.push_back(i_bank);
+    simulation::work_index.push_back(i_bank);
   }
 }
 

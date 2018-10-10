@@ -15,6 +15,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/message_passing.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/string_utils.h"
 
 // data/functions from Fortran side
@@ -172,13 +173,13 @@ parse_command_line(int argc, char* argv[])
 
 #ifdef _OPENMP
         // Read and set number of OpenMP threads
-        openmc_n_threads = std::stoi(argv[i]);
-        if (openmc_n_threads < 1) {
+        simulation::n_threads = std::stoi(argv[i]);
+        if (simulation::n_threads < 1) {
           std::string msg {"Number of threads must be positive."};
           strcpy(openmc_err_msg, msg.c_str());
           return OPENMC_E_INVALID_ARGUMENT;
         }
-        omp_set_num_threads(openmc_n_threads);
+        omp_set_num_threads(simulation::n_threads);
 #else
         if (openmc_master)
           warning("Ignoring number of threads specified on command line.");

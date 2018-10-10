@@ -71,7 +71,7 @@ def current_batch():
         Current batch of the simulation
 
     """
-    return c_int.in_dll(_dll, 'openmc_current_batch').value
+    return c_int.in_dll(_dll, 'current_batch').value
 
 
 def finalize():

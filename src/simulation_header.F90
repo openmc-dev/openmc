@@ -13,18 +13,17 @@ module simulation_header
   ! GEOMETRY-RELATED VARIABLES
 
   ! Number of lost particles
-  integer(C_INT), bind(C, name='openmc_n_lost_particles') :: n_lost_particles = 0
+  integer(C_INT), bind(C) :: n_lost_particles = 0
 
   real(8) :: log_spacing ! spacing on logarithmic grid
 
   ! ============================================================================
   ! SIMULATION VARIABLES
 
-  integer(C_INT), bind(C, name='openmc_current_batch') :: current_batch     ! current batch
-  integer(C_INT), bind(C, name='openmc_current_gen') :: current_gen       ! current generation within a batch
-  integer(C_INT), bind(C, name='openmc_total_gen') :: total_gen     = 0 ! total number of generations simulated
-  logical(C_BOOL), bind(C, name='openmc_simulation_initialized') :: &
-       simulation_initialized = .false.
+  integer(C_INT), bind(C) :: current_batch     ! current batch
+  integer(C_INT), bind(C) :: current_gen       ! current generation within a batch
+  integer(C_INT), bind(C) :: total_gen     = 0 ! total number of generations simulated
+  logical(C_BOOL), bind(C) :: simulation_initialized = .false.
   logical :: need_depletion_rx ! need to calculate depletion reaction rx?
 
   ! ============================================================================
@@ -32,9 +31,9 @@ module simulation_header
 
   logical :: satisfy_triggers = .false.       ! whether triggers are satisfied
 
-  integer(C_INT64_T), bind(C, name='openmc_work') :: work         ! number of particles per processor
+  integer(C_INT64_T), bind(C) :: work         ! number of particles per processor
   integer(C_INT64_T), allocatable :: work_index(:) ! starting index in source bank for each process
-  integer(C_INT64_T), bind(C, name='openmc_current_work') :: current_work ! index in source bank of current history simulated
+  integer(C_INT64_T), bind(C) :: current_work ! index in source bank of current history simulated
 
   ! ============================================================================
   ! K-EIGENVALUE SIMULATION VARIABLES
@@ -51,7 +50,7 @@ module simulation_header
   ! PARALLEL PROCESSING VARIABLES
 
 #ifdef _OPENMP
-  integer(C_INT), bind(C, name='openmc_n_threads') :: n_threads = NONE      ! number of OpenMP threads
+  integer(C_INT), bind(C) :: n_threads = NONE      ! number of OpenMP threads
   integer :: thread_id             ! ID of a given thread
 #endif
 
@@ -60,7 +59,7 @@ module simulation_header
 
   integer :: restart_batch
 
-  logical(C_BOOL), bind(C, name='openmc_trace') :: trace
+  logical(C_BOOL), bind(C) :: trace
 
 !$omp threadprivate(trace, thread_id, current_work)
 

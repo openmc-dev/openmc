@@ -148,7 +148,6 @@ extern "C" {
   extern int32_t n_surfaces;
   extern int32_t n_tallies;
   extern int32_t n_universes;
-  extern bool openmc_simulation_initialized;
   extern double global_tally_absorption;
 #pragma omp threadprivate(global_tally_absorption)
 
@@ -156,9 +155,7 @@ extern "C" {
   // later)
   extern bool openmc_master;
   extern int openmc_n_procs;
-  extern int openmc_n_threads;
   extern int openmc_rank;
-  extern int64_t openmc_work;
 
 #ifdef __cplusplus
 }

@@ -12,6 +12,7 @@
 #include "openmc/mesh.h"
 #include "openmc/output.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/random_lcg.h"
 
 namespace openmc {
 
@@ -29,7 +30,7 @@ const int NULLRGB[3] = {0, 0, 0};
 int openmc_plot_geometry() {
   int err;
 
-  for (auto i : n_plots) {
+  for(int i = 0; i < n_plots; i++) {
     ObjectPlot* pl = plots[i];
 
     std::stringstream ss;
@@ -49,6 +50,18 @@ int openmc_plot_geometry() {
 
   }
   return 0;
+}
+
+void read_plots(pugi::xml_node plots_node) {
+
+  std::vector<pugi::xml_node> plot_nodes;
+  plot_nodes = get_child_nodes(plots_node, "plot");
+
+  n_plots = plot_nodes.size();
+
+  for(auto plot : plot_nodes) {
+    //    ObjectPlot* pl = new ObjectPlot(plot);
+  }
 }
 
 //===============================================================================
@@ -126,6 +139,244 @@ void create_ppm(ObjectPlot* pl) {
 
 }
 
+ObjectPlot::ObjectPlot(pugi::xml_node plot_node) {
+
+  // Copy data into plots  
+  if (check_for_node(plot_node, "id")) {
+    id = std::stoi(get_node_value(plot_node, "id"));
+  } else {
+    fatal_error("Must specify plot id in plots XML file.");
+  }
+
+  // Check to make sure 'id' hasn't been used
+  if (plot_dict.find(id) != plot_dict.end()) {
+    std::stringstream err_msg;
+    err_msg << "Two or more plots use the same unique ID: ";
+    err_msg << id;
+    fatal_error(err_msg.str());
+  }
+
+  // Copy plot type
+  // Default is slice
+  std::string type_str = "slice"; 
+  if (check_for_node(plot_node, "type")) {
+    type_str = get_node_value(plot_node, "type");
+    to_lower(type_str);
+    if (type_str == "slice") {
+      type = PLOT_TYPE::SLICE;
+    }
+    else if (type_str == "voxel") {
+      type = PLOT_TYPE::VOXEL;
+    } else {
+      std::stringstream err_msg;
+      err_msg << "Unsupported plot type '" << type_str
+              << "' in plot " << id;
+      fatal_error(err_msg.str());
+    }
+  }
+
+  // Set output file path
+  std::stringstream filename;
+  filename << "plot_" << id;
+
+  if (check_for_node(plot_node, "filename")) {
+    switch(type) {
+    case PLOT_TYPE::SLICE:
+      filename << ".ppm";
+      break;
+    case PLOT_TYPE::VOXEL:
+      filename << ".h5";
+      break;
+    }
+  }
+
+  // Copy plot pixel size
+  std::vector<int> pxls;
+  if (PLOT_TYPE::SLICE == type) {
+    if (node_word_count(plot_node, "pixels") == 2) {
+      pxls = get_node_array<int>(plot_node, "pixels");
+      pixels[0] = pxls[0];
+      pixels[1] = pxls[1];
+    } else {
+      std::stringstream err_msg;
+      err_msg << "<pixels> must be length 2 in slice plot "
+              << id;
+      fatal_error(err_msg.str());
+    }
+  } else if (PLOT_TYPE::VOXEL == type) {
+    if (node_word_count(plot_node, "pixels") == 3) {
+      pxls = get_node_array<int>(plot_node, "pixels");
+      pixels[0] = pxls[0];
+      pixels[1] = pxls[1];
+      pixels[2] = pxls[2];      
+    } else {
+      std::stringstream err_msg;
+      err_msg << "<pixels> must be length 3 in voxel plot "
+              << id;
+      fatal_error(err_msg.str());
+    }
+  }
+
+  // Copy plot background color
+  std::vector<int> bg_rgb;
+  if (check_for_node(plot_node, "background")) {
+    if (PLOT_TYPE::VOXEL == type) {
+      if (openmc_master) {
+        std::stringstream err_msg;
+        err_msg << "Background color ignored in voxel plot "
+                << id;
+        warning(err_msg.str());
+      }
+    }
+    if (node_word_count(plot_node, "background") == 3) {
+      bg_rgb = get_node_array<int>(plot_node, "background");
+      not_found.rgb[0] = bg_rgb[0];
+      not_found.rgb[1] = bg_rgb[1];
+      not_found.rgb[2] = bg_rgb[2];
+    } else {
+      std::stringstream err_msg;
+      err_msg << "Bad background RGB in plot "
+              << id;
+      fatal_error(err_msg);
+    }
+  } else {
+    // default to a white background
+    not_found.rgb[0] = 255;
+    not_found.rgb[1] = 255;
+    not_found.rgb[2] = 255;
+  }
+
+  // Copy plot basis
+  if (PLOT_TYPE::SLICE == type) {
+    std::string pl_basis = "xy";
+    if (check_for_node(plot_node, "basis")) {
+      pl_basis = get_node_value(plot_node, "basis");
+    }
+    to_lower(pl_basis);
+    if ("xy" == pl_basis) {
+      basis = PLOT_BASIS::XY;
+    } else if ("xz" == pl_basis) {
+      basis = PLOT_BASIS::XZ;
+    } else if ("yz" == pl_basis) {
+      basis = PLOT_BASIS::YZ;
+    } else {
+      std::stringstream err_msg;
+      err_msg << "Unsupported plot basis '" << pl_basis
+              << "' in plot " << id;
+      fatal_error(err_msg);
+    }
+  }
+
+  // Copy plotting origin
+  std::vector<double> pl_origin;
+  if (node_word_count(plot_node, "origin") == 3) {
+    pl_origin = get_node_array<double>(plot_node, "origin");
+    origin[0] = pl_origin[0];
+    origin[1] = pl_origin[1];
+    origin[2] = pl_origin[2];
+  } else {
+    std::stringstream err_msg;
+    err_msg << "Origin must be length 3 in plot "
+            << id;
+    fatal_error(err_msg);
+  }
+
+  // Copy plotting width
+  std::vector<int> pl_width;
+  if (PLOT_TYPE::SLICE == type) {
+    if (node_word_count(plot_node, "width") == 2) {
+      pl_width = get_node_array<int>(plot_node, "width");
+      width[0] = pl_width[0];
+      width[1] = pl_width[1];
+    } else {
+      std::stringstream err_msg;
+      err_msg << "<width> must be length 2 in slice plot "
+              << id;
+      fatal_error(err_msg);
+    }
+  } else if (PLOT_TYPE::VOXEL == type) {
+    if (node_word_count(plot_node, "width") == 3) {
+      pl_width = get_node_array<int>(plot_node, "width");
+      width[0] = pl_width[0];
+      width[1] = pl_width[1];
+      width[2] = pl_width[2];
+    } else {
+      std::stringstream err_msg;
+      err_msg << "<width> must be length 3 in voxel plot "
+              << id;
+      fatal_error(err_msg);
+    }
+  }
+
+  // Copy plot universe level
+  if (check_for_node(plot_node, "level")) {
+    level = std::stoi(get_node_value(plot_node, "level"));
+    if (level < 0) {
+      std::stringstream err_msg;
+      err_msg << "Bad universe level in plot " << id ;
+      fatal_error(err_msg);
+    }
+  } else {
+    level = PLOT_LEVEL_LOWEST;
+  }
+
+  // Copy plot color type and initialize all colors randomly
+  std::string pl_color_by = "cell";
+  if (check_for_node(plot_node, "color_by")) {
+    pl_color_by = get_node_value(plot_node, "color_by");
+    to_lower(pl_color_by);
+  }
+  if ("cell" == pl_color_by) {
+    color_by = PLOT_COLOR_BY::CELLS;
+
+    //    colors.resize(n_cells);
+    for(int i = 0; i < n_cells; i++) {
+      colors[i].rgb[0] = int(prn()*255);
+      colors[i].rgb[1] = int(prn()*255);
+      colors[i].rgb[2] = int(prn()*255);
+    }
+
+  } else if("material" == pl_color_by) {
+
+    color_by = PLOT_COLOR_BY::MATS;
+      
+    //    colors.resize(materials.size());
+    for(int i = 0; i < n_cells; i++) {
+      colors[i].rgb[0] = int(prn()*255);
+      colors[i].rgb[1] = int(prn()*255);
+      colors[i].rgb[2] = int(prn()*255);
+    }
+  } else {
+    std::stringstream err_msg;
+    err_msg << "Unsupported plot color type '" << pl_color_by
+            << "' in plot " << id;
+    fatal_error(err_msg);
+  }
+
+  // Get the number of <color> nodes and get a list of them
+  std::vector<pugi::xml_node> color_nodes;
+  color_nodes = get_child_nodes(plot_node, "color");
+    
+  // Copy user-specified colors
+  if (0 != color_nodes.size()) {
+
+    if (PLOT_TYPE::VOXEL == type) {
+      if (openmc_master) {
+        std::stringstream err_msg;
+        err_msg << "Color specifications ignored in voxel plot "
+                << id;
+        warning(err_msg);
+      }
+    }
+
+    for(auto cn : color_nodes) {
+      
+    }
+      
+  }
+
+} // End ObjectPlot constructor
+  
 //===============================================================================
 // POSITION_RGB computes the red/green/blue values for a given plot with the
 // current particle's position

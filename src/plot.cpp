@@ -370,11 +370,120 @@ ObjectPlot::ObjectPlot(pugi::xml_node plot_node) {
     }
 
     for(auto cn : color_nodes) {
-      
-    }
-      
-  }
 
+      // Check and make sure 3 values are specified for RGB
+      if (node_word_count(cn, "rgb") != 3) {
+        std::stringstream err_msg;
+        err_msg << "Bad RGB in plot " << id;
+        fatal_error(err_msg);
+      }
+
+      // Ensure that there is an id for this color specification
+      // Ensure that there is an id for this color specification
+      int col_id;
+      if (check_for_node(cn, "id")) {
+        col_id = std::stoi(get_node_value(cn, "id"));
+      } else {
+        std::stringstream err_msg;
+        err_msg << "Must specify id for color specification in plot "
+                << id;
+        fatal_error(err_msg);
+      }
+      // Add RGB
+      if (PLOT_COLOR_BY::CELLS == color_by) {
+        std::vector<int> cell_rgb;
+        if (cell_map.find(col_id) != cell_map.end()) {
+          col_id = cell_map[col_id];
+          cell_rgb = get_node_array<int>(cn, "rgb");
+          colors[col_id].rgb[0] = cell_rgb[0];
+          colors[col_id].rgb[1] = cell_rgb[1];
+          colors[col_id].rgb[2] = cell_rgb[2];          
+        } else {
+          std::stringstream err_msg;
+          err_msg << "Could not find cell " << col_id
+                  << " specified in plot " << id;
+          fatal_error(err_msg);
+        }
+      } else if (PLOT_COLOR_BY::MATS == color_by) {
+        std::vector<int> mat_rgb;
+        if (material_map.find(col_id) != material_map.end()) {
+          col_id = material_map[col_id];
+          mat_rgb = get_node_array<int>(cn, "rgb");
+          colors[col_id].rgb[0] = mat_rgb[0];
+          colors[col_id].rgb[1] = mat_rgb[1];
+          colors[col_id].rgb[2] = mat_rgb[2];          
+        } else {
+          std::stringstream err_msg;
+          err_msg << "Could not find material " << col_id
+                  << " specified in plot " << id;            
+          fatal_error(err_msg);
+        }
+      }
+    } // color node loop
+  }
+      
+
+  // Deal with meshlines
+  std::vector<pugi::xml_node> mesh_line_nodes;
+  mesh_line_nodes = get_child_nodes(plot_node, "meshlines");
+
+  int n_meshlines = mesh_line_nodes.size();
+
+  if (n_meshlines != 0) {
+
+    if (PLOT_TYPE::VOXEL == type) {
+      std::stringstream msg;
+      msg << "Meshlines ignored in voxel plot " << id;
+      warning(msg);
+    }
+
+    if (0 == n_meshlines) {
+      // Skip if no meshlines are specified
+    } else if (1 == n_meshlines) {
+      // Get first meshline node
+      pugi::xml_node meshlines_node = mesh_line_nodes[0];
+      
+      // Check mesh type
+      std::string meshline_type;
+      if (check_for_node(meshlines_node, "meshtype")) {
+        meshline_type = get_node_value(meshlines_node, "meshtype");
+      } else {
+        std::stringstream err_msg;
+        err_msg << "Must specify a meshtype for meshlines specification in plot " << id;
+        fatal_error(err_msg);
+      }
+
+      // Check mesh type
+      std::string meshline_width;
+      if (check_for_node(meshlines_node, "linewidth")) {
+        meshline_width = get_node_value(meshlines_node, "linewidth");
+      } else {
+        std::stringstream err_msg;
+        err_msg << "Must specify a linewidth for meshlines specification in plot " << id;
+        fatal_error(err_msg);
+      }
+
+      // Check for color
+      std::vector<int> ml_rgb;
+      if (check_for_node(meshlines_node, "color")) {
+        // Check and make sure 3 values are specified for RGB
+        if (node_word_count(meshlines_node, "color") != 3) {
+          std::stringstream err_msg;
+          err_msg << "Bad RGB for meshlines color in plot " << id;
+          fatal_error(err_msg);
+        }
+        ml_rgb = get_node_array<int>(meshlines_node, "color");
+        meshlines_color.rgb[0] = ml_rgb[0];
+        meshlines_color.rgb[1] = ml_rgb[1];
+        meshlines_color.rgb[2] = ml_rgb[2];
+      } else {
+        meshlines_color.rgb[0] = 0;
+        meshlines_color.rgb[1] = 0;
+        meshlines_color.rgb[2] = 0;
+      }
+      
+    } 
+  }
 } // End ObjectPlot constructor
   
 //===============================================================================

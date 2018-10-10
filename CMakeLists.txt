@@ -445,7 +445,8 @@ add_library(libopenmc SHARED
   src/surface.cpp
   src/thermal.cpp
   src/xml_interface.cpp
-  src/xsdata.cpp)
+  src/xsdata.cpp
+  src/tallies/tally.cpp)
 
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc

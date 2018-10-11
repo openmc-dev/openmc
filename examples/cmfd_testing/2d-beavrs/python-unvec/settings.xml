@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <settings>
   <run_mode>eigenvalue</run_mode>
-  <particles>10000</particles>
+  <particles>1000000</particles>
   <batches>300</batches>
   <inactive>150</inactive>
   <source strength="1.0">
@@ -13,11 +13,11 @@
     <summary>true</summary>
     <tallies>false</tallies>
   </output>
-  <mesh id="1">
+  <mesh id="2">
     <dimension> 17 17 1 </dimension>
     <lower_left> -182.78094 -182.78094 220.0 </lower_left>
     <upper_right> 182.78094 182.78094 240.0 </upper_right>
   </mesh>
-  <entropy_mesh>1</entropy_mesh>
-  <run_cmfd>true</run_cmfd>
+  <entropy_mesh>2</entropy_mesh>
+  <run_cmfd>false</run_cmfd>
 </settings>

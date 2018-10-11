@@ -8,31 +8,33 @@
 #include "xtensor/xbuilder.hpp" // for empty_like
 #include "xtensor/xview.hpp"
 
+#include <array>
 #include <cstddef>
 
 namespace openmc {
 
-xt::xtensor<double, 2> global_tallies()
+adaptor_type<2> global_tallies()
 {
   // Get pointer to global tallies
   double* buffer;
   openmc_global_tallies(&buffer);
 
   // Adapt into xtensor
-  std::vector<int> shape {N_GLOBAL_TALLIES, 3};
-  int size {3*N_GLOBAL_TALLIES};
+  std::array<size_t, 2> shape = {N_GLOBAL_TALLIES, 3};
+  std::size_t size {3*N_GLOBAL_TALLIES};
+
   return xt::adapt(buffer, size, xt::no_ownership(), shape);
 }
 
-xt::xtensor<double, 3> tally_results(int idx)
+adaptor_type<3> tally_results(int idx)
 {
   // Get pointer to tally results
   double* results;
-  std::vector<int> shape(3);
+  std::array<std::size_t, 3> shape;
   openmc_tally_results(idx, &results, shape.data());
 
   // Adapt array into xtensor with no ownership
-  int size {shape[0] * shape[1] * shape[2]};
+  std::size_t size {shape[0] * shape[1] * shape[2]};
   return xt::adapt(results, size, xt::no_ownership(), shape);
 }
 
@@ -59,7 +61,7 @@ void reduce_tally_results()
 
     // Transfer values on master and reset on other ranks
     if (mpi::master) {
-      values_view = mpi::master;
+      values_view = values_reduced;
     } else {
       values_view = 0.0;
     }

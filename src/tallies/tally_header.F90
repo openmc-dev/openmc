@@ -681,7 +681,7 @@ contains
     ! allows a user to obtain in-memory tally results from Python directly.
     integer(C_INT32_T), intent(in), value :: index
     type(C_PTR),        intent(out) :: ptr
-    integer(C_INT),     intent(out) :: shape_(3)
+    integer(C_SIZE_T),  intent(out) :: shape_(3)
     integer(C_INT) :: err
 
     if (index >= 1 .and. index <= size(tallies)) then

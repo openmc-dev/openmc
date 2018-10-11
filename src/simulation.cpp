@@ -3,10 +3,7 @@
 #include "openmc/capi.h"
 #include "openmc/message_passing.h"
 #include "openmc/settings.h"
-
-#ifdef OPENMC_MPI
-#include <mpi.h>
-#endif
+#include "openmc/tallies/tally.h"
 
 #include <algorithm>
 
@@ -106,29 +103,25 @@ void calculate_work()
 
 #ifdef OPENMC_MPI
 void broadcast_results() {
-    // Broadcast tally results so that each process has access to results
-  double* buffer;
-  if (n_tallies > 0) {
-    for (int i=1; i <= n_tallies; ++i) {
-      // Create a new datatype that consists of all values for a given filter
-      // bin and then use that to broadcast. This is done to minimize the
-      // chance of the 'count' argument of MPI_BCAST exceeding 2**31
-      int shape[3];
-      openmc_tally_results(i, &buffer, shape);
+  // Broadcast tally results so that each process has access to results
+  for (int i = 1; i <= n_tallies; ++i) {
+    // Create a new datatype that consists of all values for a given filter
+    // bin and then use that to broadcast. This is done to minimize the
+    // chance of the 'count' argument of MPI_BCAST exceeding 2**31
+    auto results = tally_results(i);
 
-      int n = shape[0];
-      int count_per_filter = shape[1] * shape[2];
-      MPI_Datatype result_block;
-      MPI_Type_contiguous(count_per_filter, MPI_DOUBLE, &result_block);
-      MPI_Type_commit(&result_block);
-      MPI_Bcast(buffer, n, result_block, 0, mpi::intracomm);
-      MPI_Type_free(&result_block);
-    }
+    auto shape = results.shape();
+    int count_per_filter = shape[1] * shape[2];
+    MPI_Datatype result_block;
+    MPI_Type_contiguous(count_per_filter, MPI_DOUBLE, &result_block);
+    MPI_Type_commit(&result_block);
+    MPI_Bcast(results.data(), shape[0], result_block, 0, mpi::intracomm);
+    MPI_Type_free(&result_block);
   }
 
   // Also broadcast global tally results
-  openmc_global_tallies(&buffer);
-  MPI_Bcast(buffer, 4, MPI_DOUBLE, 0, mpi::intracomm);
+  auto gt = global_tallies();
+  MPI_Bcast(gt.data(), gt.size(), MPI_DOUBLE, 0, mpi::intracomm);
 
   // These guys are needed so that non-master processes can calculate the
   // combined estimate of k-effective

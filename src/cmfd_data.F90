@@ -254,7 +254,7 @@ contains
 
                 ! Set the energy bin if needed
                 if (energy_filters) then
-                  filter_matches(i_filter_ein) % bins % data(1) = 12*(ng - h) + 1
+                  filter_matches(i_filter_ein) % bins % data(1) = ng - h + 1
                 end if
 
                 score_index = 0

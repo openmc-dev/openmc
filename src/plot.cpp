@@ -59,8 +59,9 @@ void read_plots(pugi::xml_node plots_node) {
 
   n_plots = plot_nodes.size();
 
-  for(auto plot : plot_nodes) {
-    //    ObjectPlot* pl = new ObjectPlot(plot);
+  for(int i = 0; i < plot_nodes.size(); i++) {
+    ObjectPlot* pl = new ObjectPlot(plot_nodes[i]);
+    plot_dict[pl->id] = i;
   }
 }
 
@@ -482,8 +483,86 @@ ObjectPlot::ObjectPlot(pugi::xml_node plot_node) {
         meshlines_color.rgb[2] = 0;
       }
       
-    } 
+    }
   }
+
+  // Deal with masks
+  std::vector<pugi::xml_node> mask_nodes;
+  mask_nodes = get_child_nodes(plot_node, "mask");
+  int n_masks = mask_nodes.size();
+
+  if (PLOT_TYPE::VOXEL == type) {
+    if (openmc_master) {
+      std::stringstream wrn_msg;
+      wrn_msg << "Mask ignored in voxel plot " << id;
+      warning(wrn_msg);
+    }
+  }
+  
+  if (1 == n_masks) {
+    // Get pointer to mask
+    pugi::xml_node mask_node = mask_nodes[0];
+
+    // Determine how many components there are and allocate
+    int n_comp;
+    n_comp = node_word_count(mask_node, "components");
+    if (0 == n_comp) {
+      std::stringstream err_msg;
+      err_msg << "Missing <components> in mask of plot " << id;
+      fatal_error(err_msg);
+    }
+    std::vector<int> iarray = get_node_array<int>(mask_node, "components");
+
+    // First we need to change the user-specified identifiers to indices      
+    // in the cell and material arrays
+    int col_id;
+    for (int j = 0; j < iarray.size(); j++) {
+      col_id = iarray[j];
+
+      if (PLOT_COLOR_BY::CELLS == color_by) {
+        if (cell_map.find(col_id) != cell_map.end()) {
+          iarray[j] = cell_map[col_id];
+        }
+        else {
+          std::stringstream err_msg;
+          err_msg << "Could not find cell " << col_id
+                  << " specified in the mask in plot " << id;
+          fatal_error(err_msg);
+        }
+      } else if (PLOT_COLOR_BY::MATS == color_by) {
+        if (material_map.find(col_id) != material_map.end()) {
+          iarray[j] = material_map[col_id];
+        }
+        else {
+          std::stringstream err_msg;
+          err_msg << "Could not find material " << col_id
+                  << " specified in the mask in plot " << id;
+          fatal_error(err_msg);
+        }
+      }
+    }
+
+    // Alter colors based on mask information
+    // TODO: 
+    for(int j = 0; j < MAX_COORD; j++) {
+      if (std::find(iarray.begin(), iarray.end(), j) != iarray.end()) {
+        if (check_for_node(mask_node, "background")) {
+          std::vector<int> bg_rgb = get_node_array<int>(mask_node, "background");
+        } else {
+          colors[j].rgb[0] = 255;
+          colors[j].rgb[1] = 255;
+          colors[j].rgb[2] = 255;
+        }
+      }
+    }
+  
+  } else {
+    std::stringstream err_msg;
+    err_msg << "Mutliple masks specified in plot " << id;
+    fatal_error(err_msg);
+  }
+
+
 } // End ObjectPlot constructor
   
 //===============================================================================

@@ -280,6 +280,7 @@ contains
 
   end subroutine tally_allocate_results
 
+
   function tally_set_filters(this, filter_indices) result(err)
     class(TallyObject), intent(inout) :: this
     integer(C_INT32_T), intent(in) :: filter_indices(:)
@@ -1031,6 +1032,7 @@ contains
       call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_set_scores
+
 
   function openmc_tally_set_type(index, type) result(err) bind(C)
     ! Update the type of a tally that is already allocated

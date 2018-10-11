@@ -69,6 +69,7 @@ scripts/G4EMLOW*/
 # Images
 *.ppm
 *.voxel
+*.vti
 
 # PyCharm project configuration files
 .idea

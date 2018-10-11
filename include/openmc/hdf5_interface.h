@@ -1,9 +1,11 @@
 #ifndef OPENMC_HDF5_INTERFACE_H
 #define OPENMC_HDF5_INTERFACE_H
 
+#include <algorithm> // for min
 #include <array>
 #include <complex>
 #include <cstddef>
+#include <cstring> // for strlen
 #include <string>
 #include <sstream>
 #include <vector>
@@ -162,13 +164,13 @@ void read_attribute(hid_t obj_id, const char* name, xt::xarray<T>& arr)
   std::size_t size = 1;
   for (const auto x : shape)
     size *= x;
-  T* buffer = new T[size];
+  std::vector<T> buffer(size);
 
   // Read data from attribute
-  read_attr(obj_id, name, H5TypeMap<T>::type_id, buffer);
+  read_attr(obj_id, name, H5TypeMap<T>::type_id, buffer.data());
 
   // Adapt array into xarray
-  arr = xt::adapt(buffer, size, xt::acquire_ownership(), shape);
+  arr = xt::adapt(buffer, shape);
 }
 
 // overload for std::string
@@ -193,13 +195,13 @@ read_attribute(hid_t obj_id, const char* name, std::vector<std::string>& vec)
 
   // Allocate a C char array to get strings
   auto n = attribute_typesize(obj_id, name);
-  char buffer[m][n+1];
+  char buffer[m][n];
 
   // Read char data in attribute
   read_attr_string(obj_id, name, n, buffer[0]);
 
   for (int i = 0; i < m; ++i) {
-    vec.emplace_back(&buffer[i][0]);
+    vec.emplace_back(&buffer[i][0], std::min(strlen(buffer[i]), n));
   }
 }
 
@@ -244,13 +246,13 @@ void read_dataset(hid_t dset, xt::xarray<T>& arr, bool indep=false)
   std::size_t size = 1;
   for (const auto x : shape)
     size *= x;
-  T* buffer = new T[size];
+  std::vector<T> buffer(size);
 
   // Read data from attribute
-  read_dataset(dset, nullptr, H5TypeMap<T>::type_id, buffer, indep);
+  read_dataset(dset, nullptr, H5TypeMap<T>::type_id, buffer.data(), indep);
 
   // Adapt into xarray
-  arr = xt::adapt(buffer, size, xt::acquire_ownership(), shape);
+  arr = xt::adapt(buffer, shape);
 }
 
 template <typename T>
@@ -273,13 +275,13 @@ void read_dataset_as_shape(hid_t obj_id, const char* name,
   std::size_t size = 1;
   for (const auto x : arr.shape())
     size *= x;
-  T* buffer = new T[size];
+  std::vector<T> buffer(size);
 
   // Read data from attribute
-  read_dataset(dset, nullptr, H5TypeMap<T>::type_id, buffer, indep);
+  read_dataset(dset, nullptr, H5TypeMap<T>::type_id, buffer.data(), indep);
 
   // Adapt into xarray
-  arr = xt::adapt(buffer, size, xt::acquire_ownership(), arr.shape());
+  arr = xt::adapt(buffer, arr.shape());
 
   close_dataset(dset);
 }

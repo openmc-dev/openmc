@@ -146,8 +146,13 @@ contains
     call loss % assemble()
     call prod % assemble()
     if (cmfd_write_matrices) then
-      call loss % write('loss.dat')
-      call prod % write('prod.dat')
+      if (adjoint) then
+        call loss % write('adj_loss.dat')
+        call prod % write('adj_prod.dat')
+      else
+        call loss % write('loss.dat')
+        call prod % write('prod.dat')
+      end if
     end if
 
     ! Set norms to 0
@@ -740,7 +745,7 @@ contains
       else
         filename = 'fluxvec.dat'
       end if
-      ! TODO: call phi_n % write(filename)
+      call phi_n % write(filename)
     end if
 
   end subroutine extract_results

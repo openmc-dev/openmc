@@ -375,13 +375,13 @@ def test_restart(capi_init):
         openmc.capi.next_batch()
     keff0 = openmc.capi.keff()
 
-    # Restart the simulation from the statepoint and the 5 active batches.
+    # Restart the simulation from the statepoint and the 3 remaining active batches.
     openmc.capi.simulation_finalize()
     openmc.capi.hard_reset()
     openmc.capi.finalize()
     openmc.capi.init(args=('-r', 'restart_test.h5'))
     openmc.capi.simulation_init()
-    for i in range(5):
+    for i in range(3):
         openmc.capi.next_batch()
     keff1 = openmc.capi.keff()
     openmc.capi.simulation_finalize()

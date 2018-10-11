@@ -24,6 +24,9 @@ extern "C" int64_t n_bank;
 // Non-member functions
 //==============================================================================
 
+//! Sample/redistribute source sites from accumulated fission sites
+extern "C" void synchronize_bank();
+
 //! Calculates the Shannon entropy of the fission source distribution to assess
 //! source convergence
 extern "C" void shannon_entropy();

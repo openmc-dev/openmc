@@ -181,7 +181,6 @@ contains
     err = 0
 #ifdef OPENMC_MPI
     ! Free all MPI types
-    call MPI_TYPE_FREE(MPI_BANK, err)
     call openmc_free_bank()
 #endif
 

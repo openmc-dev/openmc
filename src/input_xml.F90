@@ -363,7 +363,7 @@ contains
 
   subroutine read_geometry_dagmc()
 
-    integer :: i, j
+    integer :: i
     integer :: univ_id
     integer :: n_cells_in_univ
     logical :: file_exists

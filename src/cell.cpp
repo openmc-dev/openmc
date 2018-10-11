@@ -645,8 +645,11 @@ read_cells(pugi::xml_node* node)
 
   // Loop over XML cell elements and populate the array.
   cells.reserve(n_cells);
+  int idx = 1;
   for (pugi::xml_node cell_node: node->children("cell")) {
-    cells.push_back(new CSGCell(cell_node));
+    Cell * c = new CSGCell(cell_node);
+    cells.push_back(c);
+    cell_map[c->id_] = idx++; // plus one to match fortran dict
   }
 
   // Populate the Universe vector and map.

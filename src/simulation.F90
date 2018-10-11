@@ -11,7 +11,7 @@ module simulation
   use cmfd_header,     only: cmfd_on
   use constants,       only: ZERO
   use eigenvalue,      only: calculate_average_keff, calculate_generation_keff, &
-                             synchronize_bank, keff_generation, k_sum
+                             keff_generation, k_sum
 #ifdef _OPENMP
   use eigenvalue,      only: join_bank_from_threads
 #endif
@@ -257,6 +257,9 @@ contains
       end subroutine
 
       subroutine shannon_entropy() bind(C)
+      end subroutine
+
+      subroutine synchronize_bank() bind(C)
       end subroutine
     end interface
 

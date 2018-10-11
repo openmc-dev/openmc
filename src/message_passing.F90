@@ -19,10 +19,8 @@ module message_passing
   logical(C_BOOL), bind(C, name='openmc_master') :: master  = .true. ! master process?
   logical :: mpi_enabled = .false. ! is MPI in use and initialized?
 #ifdef OPENMC_MPIF08
-  type(MPI_Datatype) :: MPI_BANK   ! MPI datatype for fission bank
   type(MPI_Comm) :: mpi_intracomm  ! MPI intra-communicator
 #else
-  integer :: MPI_BANK              ! MPI datatype for fission bank
   integer :: mpi_intracomm         ! MPI intra-communicator
 #endif
 

@@ -13,6 +13,11 @@ module plot
   public :: openmc_plot_geometry
 
   interface
+    function openmc_plot_geometry_c() bind(C) result(err)
+      import C_INT
+      integer(C_INT) :: err
+    end function openmc_plot_geometry_c
+     
     subroutine create_ppm(pl) bind(C)
       import ObjectPlot
       type(ObjectPlot), intent(in) :: pl
@@ -31,8 +36,10 @@ contains
 
   function openmc_plot_geometry() result(err) bind(C)
     integer(C_INT) :: err
-
     integer :: i ! loop index for plots
+
+    err = openmc_plot_geometry_c()
+    return
 
     do i = 1, n_plots
       associate (pl => plots(i))

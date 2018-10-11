@@ -73,7 +73,10 @@ namespace openmc {
 
   };
 
-
+extern "C" int openmc_plot_geometry_c();
+  
+extern "C" void read_plots(pugi::xml_node* plot_node);
+  
 extern "C" void create_ppm(ObjectPlot* pl);
 
 extern "C" void create_voxel(ObjectPlot *pl);

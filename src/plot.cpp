@@ -27,7 +27,7 @@ const int NULLRGB[3] = {0, 0, 0};
 // RUN_PLOT controls the logic for making one or many plots
 //===============================================================================
 
-int openmc_plot_geometry() {
+int openmc_plot_geometry_c() {
   int err;
 
   for(int i = 0; i < n_plots; i++) {
@@ -52,15 +52,17 @@ int openmc_plot_geometry() {
   return 0;
 }
 
-void read_plots(pugi::xml_node plots_node) {
+
+void read_plots(pugi::xml_node* plots_node) {
 
   std::vector<pugi::xml_node> plot_nodes;
-  plot_nodes = get_child_nodes(plots_node, "plot");
+  plot_nodes = get_child_nodes(*plots_node, "plot");
 
   n_plots = plot_nodes.size();
 
   for(int i = 0; i < plot_nodes.size(); i++) {
     ObjectPlot* pl = new ObjectPlot(plot_nodes[i]);
+    plots.push_back(pl);
     plot_dict[pl->id] = i;
   }
 }
@@ -140,7 +142,8 @@ void create_ppm(ObjectPlot* pl) {
 
 }
 
-ObjectPlot::ObjectPlot(pugi::xml_node plot_node) {
+  ObjectPlot::ObjectPlot(pugi::xml_node plot_node) :
+    index_meshlines_mesh(-1) {
 
   // Copy data into plots  
   if (check_for_node(plot_node, "id")) {
@@ -159,7 +162,8 @@ ObjectPlot::ObjectPlot(pugi::xml_node plot_node) {
 
   // Copy plot type
   // Default is slice
-  std::string type_str = "slice"; 
+  std::string type_str = "slice";
+  type = PLOT_TYPE::SLICE;
   if (check_for_node(plot_node, "type")) {
     type_str = get_node_value(plot_node, "type");
     to_lower(type_str);
@@ -181,6 +185,8 @@ ObjectPlot::ObjectPlot(pugi::xml_node plot_node) {
   filename << "plot_" << id;
 
   if (check_for_node(plot_node, "filename")) {
+    filename << get_node_value(plot_node, "filename");
+  } else {
     switch(type) {
     case PLOT_TYPE::SLICE:
       filename << ".ppm";
@@ -190,7 +196,8 @@ ObjectPlot::ObjectPlot(pugi::xml_node plot_node) {
       break;
     }
   }
-
+  std::strcpy(path_plot, filename.str().c_str());
+  
   // Copy plot pixel size
   std::vector<int> pxls;
   if (PLOT_TYPE::SLICE == type) {
@@ -380,7 +387,6 @@ ObjectPlot::ObjectPlot(pugi::xml_node plot_node) {
       }
 
       // Ensure that there is an id for this color specification
-      // Ensure that there is an id for this color specification
       int col_id;
       if (check_for_node(cn, "id")) {
         col_id = std::stoi(get_node_value(cn, "id"));
@@ -455,9 +461,20 @@ ObjectPlot::ObjectPlot(pugi::xml_node plot_node) {
       }
 
       // Check mesh type
+      std::string meshtype;
+      if (check_for_node(meshlines_node, "meshtype")) {
+        meshtype = get_node_value(meshlines_node, "meshtype");
+      } else {
+        std::stringstream err_msg;
+        err_msg << "Must specify a meshtype for meshlines specification in plot " << id ;
+        fatal_error(err_msg);
+      }
+      
+      // Ensure that there is a linewidth for this meshlines specification
       std::string meshline_width;
       if (check_for_node(meshlines_node, "linewidth")) {
         meshline_width = get_node_value(meshlines_node, "linewidth");
+        meshlines_width = std::stoi(meshline_width);
       } else {
         std::stringstream err_msg;
         err_msg << "Must specify a linewidth for meshlines specification in plot " << id;
@@ -483,6 +500,59 @@ ObjectPlot::ObjectPlot(pugi::xml_node plot_node) {
         meshlines_color.rgb[2] = 0;
       }
       
+      // Set mesh based on type
+      if ("ufs" == meshtype) {
+        if (settings::index_ufs_mesh < 0) {
+          std::stringstream err_msg;
+          err_msg << "No UFS mesh for meshlines on plot " << id;
+          fatal_error(err_msg);
+        } else {
+          index_meshlines_mesh = settings::index_ufs_mesh;
+        }
+      // } else if ("cmfd" == meshtype) {
+      //   if (!settings::cmfd_run) {
+      //     std::stringstream err_msg;
+      //     err_msg << "Need CMFD run to plot CMFD mesh for meshlines on plot " << id;
+      //     fatal_error(err_msg);
+      //   } else {
+      //     index_meshlines_mesh = settings::index_cmfd_mesh;
+      //   }
+      } else if ("entropy" == meshtype) {
+        if (settings::index_entropy_mesh < 0) {
+          std::stringstream err_msg;
+          err_msg <<"No entropy mesh for meshlines on plot " << id;
+          fatal_error(err_msg);
+        } else {
+          index_meshlines_mesh = settings::index_entropy_mesh;
+        }
+      } else if ("tally" == meshtype) {
+        // Ensure that there is a mesh id if the type is tally
+        int tally_mesh_id;
+        if (check_for_node(meshlines_node, "id")) {
+          int tally_mesh_id = std::stoi(get_node_value(meshlines_node, "id"));
+          } else {
+            std::stringstream err_msg;
+            err_msg << "Must specify a mesh id for meshlines tally "
+                    << "mesh specification in plot " << id;
+            fatal_error(err_msg);
+          }
+          int idx;
+          int err = openmc_get_mesh_index(tally_mesh_id, &idx);
+          if (0 != err) {
+            std::stringstream err_msg;
+            err_msg << "Could not find mesh " << tally_mesh_id
+                    << " specified in meshlines for plot " << id;
+            fatal_error(err_msg);
+          }
+      } else {
+        std::stringstream err_msg;
+        err_msg << "Invalid type for meshlines on plot " << id ;
+        fatal_error(err_msg);
+      }
+    } else {
+      std::stringstream err_msg;
+      err_msg << "Mutliple meshlines specified in plot " << id;
+      fatal_error(err_msg);
     }
   }
 
@@ -491,77 +561,79 @@ ObjectPlot::ObjectPlot(pugi::xml_node plot_node) {
   mask_nodes = get_child_nodes(plot_node, "mask");
   int n_masks = mask_nodes.size();
 
-  if (PLOT_TYPE::VOXEL == type) {
-    if (openmc_master) {
-      std::stringstream wrn_msg;
-      wrn_msg << "Mask ignored in voxel plot " << id;
-      warning(wrn_msg);
-    }
-  }
+  if (n_masks > 0) {
   
-  if (1 == n_masks) {
-    // Get pointer to mask
-    pugi::xml_node mask_node = mask_nodes[0];
+    if (PLOT_TYPE::VOXEL == type) {
+      if (openmc_master) {
+        std::stringstream wrn_msg;
+        wrn_msg << "Mask ignored in voxel plot " << id;
+        warning(wrn_msg);
+      }
+    }
+  
+    if (1 == n_masks) {
+      // Get pointer to mask
+      pugi::xml_node mask_node = mask_nodes[0];
 
-    // Determine how many components there are and allocate
-    int n_comp;
-    n_comp = node_word_count(mask_node, "components");
-    if (0 == n_comp) {
+      // Determine how many components there are and allocate
+      int n_comp;
+      n_comp = node_word_count(mask_node, "components");
+      if (0 == n_comp) {
+        std::stringstream err_msg;
+        err_msg << "Missing <components> in mask of plot " << id;
+        fatal_error(err_msg);
+      }
+      std::vector<int> iarray = get_node_array<int>(mask_node, "components");
+
+      // First we need to change the user-specified identifiers to indices      
+      // in the cell and material arrays
+      int col_id;
+      for (int j = 0; j < iarray.size(); j++) {
+        col_id = iarray[j];
+
+        if (PLOT_COLOR_BY::CELLS == color_by) {
+          if (cell_map.find(col_id) != cell_map.end()) {
+            iarray[j] = cell_map[col_id];
+          }
+          else {
+            std::stringstream err_msg;
+            err_msg << "Could not find cell " << col_id
+                    << " specified in the mask in plot " << id;
+            fatal_error(err_msg);
+          }
+        } else if (PLOT_COLOR_BY::MATS == color_by) {
+          if (material_map.find(col_id) != material_map.end()) {
+            iarray[j] = material_map[col_id];
+          }
+          else {
+            std::stringstream err_msg;
+            err_msg << "Could not find material " << col_id
+                    << " specified in the mask in plot " << id;
+            fatal_error(err_msg);
+          }
+        }
+      }
+
+      // Alter colors based on mask information
+      // TODO: 
+      for(int j = 0; j < MAX_COORD; j++) {
+        if (std::find(iarray.begin(), iarray.end(), j) != iarray.end()) {
+          if (check_for_node(mask_node, "background")) {
+            std::vector<int> bg_rgb = get_node_array<int>(mask_node, "background");
+          } else {
+            colors[j].rgb[0] = 255;
+            colors[j].rgb[1] = 255;
+            colors[j].rgb[2] = 255;
+          }
+        }
+      }
+  
+    } else {
       std::stringstream err_msg;
-      err_msg << "Missing <components> in mask of plot " << id;
+      err_msg << "Mutliple masks specified in plot " << id;
       fatal_error(err_msg);
     }
-    std::vector<int> iarray = get_node_array<int>(mask_node, "components");
-
-    // First we need to change the user-specified identifiers to indices      
-    // in the cell and material arrays
-    int col_id;
-    for (int j = 0; j < iarray.size(); j++) {
-      col_id = iarray[j];
-
-      if (PLOT_COLOR_BY::CELLS == color_by) {
-        if (cell_map.find(col_id) != cell_map.end()) {
-          iarray[j] = cell_map[col_id];
-        }
-        else {
-          std::stringstream err_msg;
-          err_msg << "Could not find cell " << col_id
-                  << " specified in the mask in plot " << id;
-          fatal_error(err_msg);
-        }
-      } else if (PLOT_COLOR_BY::MATS == color_by) {
-        if (material_map.find(col_id) != material_map.end()) {
-          iarray[j] = material_map[col_id];
-        }
-        else {
-          std::stringstream err_msg;
-          err_msg << "Could not find material " << col_id
-                  << " specified in the mask in plot " << id;
-          fatal_error(err_msg);
-        }
-      }
-    }
-
-    // Alter colors based on mask information
-    // TODO: 
-    for(int j = 0; j < MAX_COORD; j++) {
-      if (std::find(iarray.begin(), iarray.end(), j) != iarray.end()) {
-        if (check_for_node(mask_node, "background")) {
-          std::vector<int> bg_rgb = get_node_array<int>(mask_node, "background");
-        } else {
-          colors[j].rgb[0] = 255;
-          colors[j].rgb[1] = 255;
-          colors[j].rgb[2] = 255;
-        }
-      }
-    }
-  
-  } else {
-    std::stringstream err_msg;
-    err_msg << "Mutliple masks specified in plot " << id;
-    fatal_error(err_msg);
   }
-
 
 } // End ObjectPlot constructor
   
@@ -637,7 +709,7 @@ void output_ppm(ObjectPlot* pl, const ImageData &data)
   std::string fname = std::string(pl->path_plot);
   fname = strtrim(fname);
   std::ofstream of;
-
+  
   of.open(fname);
 
   // Write header

@@ -108,6 +108,7 @@ def create_timing_test(problem_size, problem_type, num_threads, root_dir, varyin
       file.write(py_cmfd_file1)
     if run_openmc:
       print("Running openmc on directory {}".format(dir1))
+      sys.stdout.flush()
       os.system("python3 run_openmc_cmfd.py > results.dat")
     os.chdir("./..")
 
@@ -123,6 +124,7 @@ def create_timing_test(problem_size, problem_type, num_threads, root_dir, varyin
       file.write(py_cmfd_file2)
     if run_openmc:
       print("Running openmc on directory {}".format(dir2))
+      sys.stdout.flush()
       os.system("python3 run_openmc_cmfd.py > results.dat")
     os.chdir("./..")
 
@@ -138,6 +140,7 @@ def create_timing_test(problem_size, problem_type, num_threads, root_dir, varyin
       file.write(cmfd_file)
     if run_openmc:
       print("Running openmc on directory {}".format(dir3))
+      sys.stdout.flush()
       os.system("openmc -s {} > results.dat".format(num_threads))
     os.chdir("./..")
 
@@ -155,7 +158,7 @@ if __name__ == "__main__":
       run = False
 
     # Generate timing test cases that vary problem sizes
-    problem_sizes = [20., 40., 60., 80., 100.]
+    problem_sizes = [20.,30.,40.,50.,60.,]
     problem_types = ["1d1grp", "2d1grp", "3d1grp"]
     num_threads = 1
     for problem_size in problem_sizes:
@@ -165,7 +168,7 @@ if __name__ == "__main__":
     # Generate timing test cases that vary number of threads
     num_threads = [1, 2, 4, 8, 16]
     problem_types = ["1d1grp", "2d1grp", "3d1grp"]
-    problem_size = 80.
+    problem_size = 60.
     for threads in num_threads:
       for problem_type in problem_types:
         create_timing_test(problem_size, problem_type, threads, "timing-tests", varying_input="threads", run_openmc=run)

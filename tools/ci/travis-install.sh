@@ -23,8 +23,13 @@ fi
 # Build and install OpenMC executable
 python tools/ci/travis-install.py
 
-# Install Python API in editable mode
-pip install -e .[test]
+if [[ $TRAVIS_PYTHON_VERSION == "3.7" ]]; then
+    # Install Python API in editable mode
+    pip install -e .[test]
+else
+    # Conditionally install vtk
+    pip install -e .[test,vtk]
+fi
 
 # For uploading to coveralls
 pip install coveralls

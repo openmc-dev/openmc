@@ -8,6 +8,7 @@
 #include <cstring> // for strlen
 #include <string>
 #include <sstream>
+#include <type_traits>
 #include <vector>
 
 #include "hdf5.h"
@@ -333,7 +334,9 @@ write_attribute(hid_t obj_id, const char* name, const std::vector<T>& buffer)
 // Templates/overloads for write_dataset
 //==============================================================================
 
-template<typename T> inline void
+// Template for scalars (ensured by SFINAE)
+template<typename T> inline
+std::enable_if_t<std::is_scalar<std::decay_t<T>>::value>
 write_dataset(hid_t obj_id, const char* name, T buffer)
 {
   write_dataset(obj_id, 0, nullptr, name, H5TypeMap<T>::type_id, &buffer, false);
@@ -359,18 +362,11 @@ write_dataset(hid_t obj_id, const char* name, const std::vector<T>& buffer)
   write_dataset(obj_id, 1, dims, name, H5TypeMap<T>::type_id, buffer.data(), false);
 }
 
-template<typename T> inline void
-write_dataset(hid_t obj_id, const char* name, const xt::xarray<T>& arr)
+// Template for xarray, xtensor, etc.
+template<typename D> inline void
+write_dataset(hid_t obj_id, const char* name, const xt::xcontainer<D>& arr)
 {
-  auto s = arr.shape();
-  std::vector<hsize_t> dims {s.cbegin(), s.cend()};
-  write_dataset(obj_id, dims.size(), dims.data(), name, H5TypeMap<T>::type_id,
-                arr.data(), false);
-}
-
-template<typename T, std::size_t N> inline void
-write_dataset(hid_t obj_id, const char* name, const xt::xtensor<T, N>& arr)
-{
+  using T = typename D::value_type;
   auto s = arr.shape();
   std::vector<hsize_t> dims {s.cbegin(), s.cend()};
   write_dataset(obj_id, dims.size(), dims.data(), name, H5TypeMap<T>::type_id,

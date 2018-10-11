@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from ctypes import c_int, c_int32, c_double, c_char_p, c_bool, POINTER
+from ctypes import c_int, c_int32, c_size_t, c_double, c_char_p, c_bool, POINTER
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -60,7 +60,7 @@ _dll.openmc_tally_reset.argtypes = [c_int32]
 _dll.openmc_tally_reset.restype = c_int
 _dll.openmc_tally_reset.errcheck = _error_handler
 _dll.openmc_tally_results.argtypes = [
-    c_int32, POINTER(POINTER(c_double)), POINTER(c_int*3)]
+    c_int32, POINTER(POINTER(c_double)), POINTER(c_size_t*3)]
 _dll.openmc_tally_results.restype = c_int
 _dll.openmc_tally_results.errcheck = _error_handler
 _dll.openmc_tally_set_active.argtypes = [c_int32, c_bool]
@@ -296,7 +296,7 @@ class Tally(_FortranObjectWithID):
     @property
     def results(self):
         data = POINTER(c_double)()
-        shape = (c_int*3)()
+        shape = (c_size_t*3)()
         _dll.openmc_tally_results(self._index, data, shape)
         return as_array(data, tuple(shape))
 

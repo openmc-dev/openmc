@@ -9,9 +9,11 @@ namespace openmc {
 
 extern "C" double total_weight;
 
-xt::xtensor<double, 3> tally_results(int idx);
+template <std::size_t N>
+using adaptor_type = xt::xtensor_adaptor<xt::xbuffer_adaptor<double*&, xt::no_ownership>, N>;
 
-xt::xtensor<double, 2> global_tallies();
+adaptor_type<2> global_tallies();
+adaptor_type<3> tally_results(int idx);
 
 #ifdef OPENMC_MPI
 //! Collect all tally results onto master process

@@ -11,7 +11,6 @@ module openmc_api
   use hdf5_interface
   use material_header
   use math
-  use mesh_header
   use message_passing
   use nuclide_header
   use initialize,      only: openmc_init_f
@@ -20,7 +19,6 @@ module openmc_api
   use random_lcg,      only: openmc_get_seed, openmc_set_seed
   use settings
   use simulation_header
-  use source_header,   only: openmc_extend_sources, openmc_source_set_strength
   use state_point,     only: openmc_statepoint_write
   use tally_header
   use tally_filter_header
@@ -31,6 +29,10 @@ module openmc_api
   use timer_header
   use volume_calc,     only: openmc_calculate_volumes
 
+#ifdef DAGMC
+  use dagmc_header,      only: free_memory_dagmc
+#endif
+
   implicit none
 
   private
@@ -38,20 +40,18 @@ module openmc_api
   public :: openmc_cell_filter_get_bins
   public :: openmc_cell_get_id
   public :: openmc_cell_set_id
-  public :: openmc_cell_set_temperature
   public :: openmc_energy_filter_get_bins
   public :: openmc_energy_filter_set_bins
   public :: openmc_extend_filters
   public :: openmc_extend_cells
   public :: openmc_extend_materials
-  public :: openmc_extend_sources
   public :: openmc_extend_tallies
   public :: openmc_filter_get_id
   public :: openmc_filter_get_type
   public :: openmc_filter_set_id
   public :: openmc_filter_set_type
   public :: openmc_finalize
-  public :: openmc_find
+  public :: openmc_find_cell
   public :: openmc_get_cell_index
   public :: openmc_get_keff
   public :: openmc_get_filter_index
@@ -83,7 +83,6 @@ module openmc_api
   public :: openmc_simulation_finalize
   public :: openmc_simulation_init
   public :: openmc_source_bank
-  public :: openmc_source_set_strength
   public :: openmc_tally_allocate
   public :: openmc_tally_get_estimator
   public :: openmc_tally_get_id
@@ -136,7 +135,7 @@ contains
     legendre_to_tabular_points = C_NONE
     n_batch_interval = 1
     n_lost_particles = 0
-    n_particles = 0
+    n_particles = -1
     n_source_points = 0
     n_state_points = 0
     n_tallies = 0
@@ -153,7 +152,8 @@ contains
     restart_run = .false.
     root_universe = -1
     run_CE = .true.
-    run_mode = NONE
+    run_mode = -1
+    dagmc = .false.
     satisfy_triggers = .false.
     call openmc_set_seed(DEFAULT_SEED)
     source_latest = .false.
@@ -188,13 +188,12 @@ contains
   end function openmc_finalize
 
 !===============================================================================
-! OPENMC_FIND determines the ID or a cell or material at a given point in space
+! OPENMC_FIND_CELL determines what cell contains a given point in space
 !===============================================================================
 
-  function openmc_find(xyz, rtype, id, instance) result(err) bind(C)
+  function openmc_find_cell(xyz, index, instance) result(err) bind(C)
     real(C_DOUBLE), intent(in)        :: xyz(3) ! Cartesian point
-    integer(C_INT), intent(in), value :: rtype  ! 1 for cell, 2 for material
-    integer(C_INT32_T), intent(out)   :: id
+    integer(C_INT32_T), intent(out)   :: index
     integer(C_INT32_T), intent(out)   :: instance
     integer(C_INT) :: err
 
@@ -206,30 +205,22 @@ contains
     p % coord(1) % uvw(:) = [ZERO, ZERO, ONE]
     call find_cell(p, found)
 
-    id = -1
+    index = -1
     instance = -1
     err = E_UNASSIGNED
 
     if (found) then
-      if (rtype == 1) then
-        id = cells(p % coord(p % n_coord) % cell) % id()
-      elseif (rtype == 2) then
-        if (p % material == MATERIAL_VOID) then
-          id = 0
-        else
-          id = materials(p % material) % id()
-        end if
-      end if
-      instance = p % cell_instance - 1
+      index = p % coord(p % n_coord) % cell + 1
+      instance = p % cell_instance
       err = 0
     else
       err = E_GEOMETRY
-      call set_errmsg("Could not find cell/material at position (" // &
+      call set_errmsg("Could not find cell at position (" // &
            trim(to_str(xyz(1))) // "," // trim(to_str(xyz(2))) // "," // &
            trim(to_str(xyz(3))) // ").")
     end if
 
-  end function openmc_find
+  end function openmc_find_cell
 
 !===============================================================================
 ! OPENMC_HARD_RESET reset tallies and timers as well as the pseudorandom
@@ -310,11 +301,18 @@ contains
     use plot_header
     use sab_header
     use settings
-    use source_header
     use surface_header
     use tally_derivative_header
     use trigger_header
     use volume_header
+
+    interface
+      subroutine free_memory_source() bind(C)
+      end subroutine
+
+      subroutine free_memory_mesh() bind(C)
+      end subroutine free_memory_mesh
+    end interface
 
     call free_memory_geometry()
     call free_memory_surfaces()
@@ -332,6 +330,9 @@ contains
     call free_memory_tally_filter()
     call free_memory_tally_derivative()
     call free_memory_bank()
+#ifdef DAGMC
+    call free_memory_dagmc()
+#endif
 
     ! Deallocate CMFD
     call deallocate_cmfd(cmfd)

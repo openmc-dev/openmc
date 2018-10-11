@@ -1,19 +1,21 @@
-#include "initialize.h"
+#include "openmc/initialize.h"
 
 #include <cstddef>
 #include <cstring>
-#include <iostream>
 #include <sstream>
 #include <string>
 
-#include "error.h"
-#include "hdf5_interface.h"
-#include "message_passing.h"
-#include "openmc.h"
-#include "settings.h"
 #ifdef _OPENMP
 #include "omp.h"
 #endif
+
+#include "openmc/capi.h"
+#include "openmc/constants.h"
+#include "openmc/error.h"
+#include "openmc/hdf5_interface.h"
+#include "openmc/message_passing.h"
+#include "openmc/settings.h"
+#include "openmc/string_utils.h"
 
 // data/functions from Fortran side
 extern "C" void print_usage();
@@ -59,7 +61,7 @@ namespace openmc {
 #ifdef OPENMC_MPI
 void initialize_mpi(MPI_Comm intracomm)
 {
-  openmc::mpi::intracomm = intracomm;
+  mpi::intracomm = intracomm;
 
   // Initialize MPI
   int flag;
@@ -67,13 +69,13 @@ void initialize_mpi(MPI_Comm intracomm)
   if (!flag) MPI_Init(nullptr, nullptr);
 
   // Determine number of processes and rank for each
-  MPI_Comm_size(intracomm, &openmc::mpi::n_procs);
-  MPI_Comm_rank(intracomm, &openmc::mpi::rank);
+  MPI_Comm_size(intracomm, &mpi::n_procs);
+  MPI_Comm_rank(intracomm, &mpi::rank);
 
   // Set variable for Fortran side
-  openmc_n_procs = openmc::mpi::n_procs;
-  openmc_rank = openmc::mpi::rank;
-  openmc_master = (openmc::mpi::rank == 0);
+  openmc_n_procs = mpi::n_procs;
+  openmc_rank = mpi::rank;
+  openmc_master = mpi::master = (mpi::rank == 0);
 
   // Create bank datatype
   Bank b;
@@ -86,17 +88,10 @@ void initialize_mpi(MPI_Comm intracomm)
   };
   int blocks[] {1, 3, 3, 1, 1};
   MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT};
-  MPI_Type_create_struct(5, blocks, disp, types, &openmc::mpi::bank);
-  MPI_Type_commit(&openmc::mpi::bank);
+  MPI_Type_create_struct(5, blocks, disp, types, &mpi::bank);
+  MPI_Type_commit(&mpi::bank);
 }
 #endif // OPENMC_MPI
-
-
-inline bool ends_with(std::string const& value, std::string const& ending)
-{
-  if (ending.size() > value.size()) return false;
-  return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
-}
 
 
 int
@@ -108,30 +103,29 @@ parse_command_line(int argc, char* argv[])
     std::string arg {argv[i]};
     if (arg[0] == '-') {
       if (arg == "-p" || arg == "--plot") {
-        openmc_run_mode = RUN_MODE_PLOTTING;
-        openmc_check_overlaps = true;
+        settings::run_mode = RUN_MODE_PLOTTING;
+        settings::check_overlaps = true;
 
       } else if (arg == "-n" || arg == "--particles") {
         i += 1;
-        n_particles = std::stoll(argv[i]);
+        settings::n_particles = std::stoll(argv[i]);
 
       } else if (arg == "-r" || arg == "--restart") {
         i += 1;
 
         // Check what type of file this is
         hid_t file_id = file_open(argv[i], 'r', true);
-        size_t len = attribute_typesize(file_id, "filetype");
-        read_attr_string(file_id, "filetype", len, buffer);
+        std::string filetype;
+        read_attribute(file_id, "filetype", filetype);
         file_close(file_id);
-        std::string filetype {buffer};
 
         // Set path and flag for type of run
         if (filetype == "statepoint") {
-          openmc_path_statepoint = argv[i];
-          openmc_restart_run = true;
+          settings::path_statepoint = argv[i];
+          settings::restart_run = true;
         } else if (filetype == "particle restart") {
-          openmc_path_particle_restart = argv[i];
-          openmc_particle_restart_run = true;
+          settings::path_particle_restart = argv[i];
+          settings::particle_restart_run = true;
         } else {
           std::stringstream msg;
           msg << "Unrecognized file after restart flag: " << filetype << ".";
@@ -140,14 +134,13 @@ parse_command_line(int argc, char* argv[])
         }
 
         // If its a restart run check for additional source file
-        if (openmc_restart_run && i + 1 < argc) {
+        if (settings::restart_run && i + 1 < argc) {
           // Check if it has extension we can read
           if (ends_with(argv[i+1], ".h5")) {
 
             // Check file type is a source file
             file_id = file_open(argv[i+1], 'r', true);
-            len = attribute_typesize(file_id, "filetype");
-            read_attr_string(file_id, "filetype", len, buffer);
+            read_attribute(file_id, "filetype", filetype);
             file_close(file_id);
             if (filetype != "source") {
               std::string msg {"Second file after restart flag must be a source file"};
@@ -156,23 +149,23 @@ parse_command_line(int argc, char* argv[])
             }
 
             // It is a source file
-            openmc_path_sourcepoint = argv[i+1];
+            settings::path_sourcepoint = argv[i+1];
             i += 1;
 
           } else {
             // Source is in statepoint file
-            openmc_path_sourcepoint = openmc_path_statepoint;
+            settings::path_sourcepoint = settings::path_statepoint;
           }
 
         } else {
           // Source is assumed to be in statepoint file
-          openmc_path_sourcepoint = openmc_path_statepoint;
+          settings::path_sourcepoint = settings::path_statepoint;
         }
 
       } else if (arg == "-g" || arg == "--geometry-debug") {
-        openmc_check_overlaps = true;
+      settings::check_overlaps = true;
       } else if (arg == "-c" || arg == "--volume") {
-        openmc_run_mode = RUN_MODE_VOLUME;
+        settings::run_mode = RUN_MODE_VOLUME;
       } else if (arg == "-s" || arg == "--threads") {
         // Read number of threads
         i += 1;
@@ -200,7 +193,7 @@ parse_command_line(int argc, char* argv[])
         return OPENMC_E_UNASSIGNED;
 
       } else if (arg == "-t" || arg == "--track") {
-        openmc_write_all_tracks = true;
+        settings::write_all_tracks = true;
 
       } else {
         std::cerr << "Unknown option: " << argv[i] << '\n';
@@ -213,7 +206,14 @@ parse_command_line(int argc, char* argv[])
   }
 
   // Determine directory where XML input files are
-  if (argc > 1 && last_flag < argc) openmc_path_input = argv[last_flag + 1];
+  if (argc > 1 && last_flag < argc - 1) {
+    settings::path_input = std::string(argv[last_flag + 1]);
+
+    // Add slash at end of directory if it isn't there
+    if (!ends_with(settings::path_input, "/")) {
+      settings::path_input += "/";
+    }
+  }
 
   return 0;
 }

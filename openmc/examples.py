@@ -1,3 +1,5 @@
+from numbers import Integral
+
 import numpy as np
 
 import openmc
@@ -538,20 +540,20 @@ def pwr_assembly():
     return model
 
 
-def slab_mg(reps=None, as_macro=True):
-    """Create a one-group, 1D slab model.
+def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5'):
+    """Create a 1D slab model.
 
     Parameters
     ----------
-    reps : list, optional
-        List of angular representations. Each item corresponds to materials and
-        dictates the angular representation of the multi-group cross
-        sections---isotropic ('iso') or angle-dependent ('ang'), and if Legendre
-        scattering or tabular scattering ('mu') is used. Thus, items can be
-        'ang', 'ang_mu', 'iso', or 'iso_mu'.
+    num_regions : int, optional
+        Number of regions in the problem, each with a unique MGXS dataset.
+        Defaults to 1.
 
-    as_macro : bool, optional
-        Whether :class:`openmc.Macroscopic` is used
+    mat_names : Iterable of str, optional
+        List of the material names to use; defaults to ['mat_1', 'mat_2',...].
+
+    mgxslib_name : str, optional
+        MGXS Library file to use; defaults to '2g.h5'.
 
     Returns
     -------
@@ -559,71 +561,82 @@ def slab_mg(reps=None, as_macro=True):
         One-group, 1D slab model
 
     """
+
+    openmc.check_type('num_regions', num_regions, Integral)
+    openmc.check_greater_than('num_regions', num_regions, 0)
+    if mat_names is not None:
+        openmc.check_length('mat_names', mat_names, num_regions)
+        openmc.check_iterable_type('mat_names', mat_names, str)
+    else:
+        mat_names = []
+        for i in range(num_regions):
+            mat_names.append('mat_' + str(i + 1))
+
+    # # Make Materials
+    materials_file = openmc.Materials()
+    macros = []
+    mats = []
+    for i in range(len(mat_names)):
+        macros.append(openmc.Macroscopic('mat_' + str(i + 1)))
+        mats.append(openmc.Material(name=mat_names[i]))
+        mats[-1].set_density('macro', 1.0)
+        mats[-1].add_macroscopic(macros[-1])
+
+    materials_file += mats
+
+    materials_file.cross_sections = mgxslib_name
+
+    # # Make Geometry
+    rad_outer = 929.45
+    # Set a cell boundary to exist for every material above (exclude the 0)
+    rads = np.linspace(0., rad_outer, len(mats) + 1, endpoint=True)[1:]
+
+    # Instantiate Universe
+    root = openmc.Universe(universe_id=0, name='root universe')
+    cells = []
+
+    surfs = []
+    surfs.append(openmc.XPlane(x0=0., boundary_type='reflective'))
+    for r, rad in enumerate(rads):
+        if r == len(rads) - 1:
+            surfs.append(openmc.XPlane(x0=rad, boundary_type='vacuum'))
+        else:
+            surfs.append(openmc.XPlane(x0=rad))
+
+    # Instantiate Cells
+    cells = []
+    for c in range(len(surfs) - 1):
+        cells.append(openmc.Cell())
+        cells[-1].region = (+surfs[c] & -surfs[c + 1])
+        cells[-1].fill = mats[c]
+
+    # Register Cells with Universe
+    root.add_cells(cells)
+
+    # Instantiate a Geometry, register the root Universe, and export to XML
+    geometry_file = openmc.Geometry(root)
+
+    # # Make Settings
+    # Instantiate a Settings object, set all runtime parameters
+    settings_file = openmc.Settings()
+    settings_file.energy_mode = "multi-group"
+    settings_file.tabular_legendre = {'enable': False}
+    settings_file.batches = 10
+    settings_file.inactive = 5
+    settings_file.particles = 1000
+
+    # Build source distribution
+    INF = 1000.
+    bounds = [0., -INF, -INF, rads[0], INF, INF]
+    uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:])
+    settings_file.source = openmc.source.Source(space=uniform_dist)
+
+    settings_file.output = {'summary': False}
+
     model = openmc.model.Model()
-
-    # Define materials needed for 1D/1G slab problem
-    mat_names = ['uo2', 'clad', 'lwtr']
-    mgxs_reps = ['ang', 'ang_mu', 'iso', 'iso_mu']
-
-    if reps is None:
-        reps = mgxs_reps
-
-    xs = []
-    i = 0
-    for mat in mat_names:
-        for rep in reps:
-            i += 1
-            name = mat + '_' + rep
-            xs.append(name)
-            if as_macro:
-                m = openmc.Material(name=str(i))
-                m.set_density('macro', 1.)
-                m.add_macroscopic(name)
-            else:
-                m = openmc.Material(name=str(i))
-                m.set_density('atom/b-cm', 1.)
-                m.add_nuclide(name, 1.0, 'ao')
-            model.materials.append(m)
-
-    # Define the materials file
-    model.xs_data = xs
-    model.materials.cross_sections = "../../1d_mgxs.h5"
-
-    # Define surfaces.
-    # Assembly/Problem Boundary
-    left = openmc.XPlane(x0=0.0, boundary_type='reflective')
-    right = openmc.XPlane(x0=10.0, boundary_type='reflective')
-    bottom = openmc.YPlane(y0=0.0, boundary_type='reflective')
-    top = openmc.YPlane(y0=10.0, boundary_type='reflective')
-
-    # for each material add a plane
-    planes = [openmc.ZPlane(z0=0.0, boundary_type='reflective')]
-    dz = round(5. / float(len(model.materials)), 4)
-    for i in range(len(model.materials) - 1):
-        planes.append(openmc.ZPlane(z0=dz * float(i + 1)))
-    planes.append(openmc.ZPlane(z0=5.0, boundary_type='reflective'))
-
-    # Define cells for each material
-    model.geometry.root_universe = openmc.Universe(name='root universe')
-    xy = +left & -right & +bottom & -top
-    for i, mat in enumerate(model.materials):
-        c = openmc.Cell(fill=mat, region=xy & +planes[i] & -planes[i + 1])
-        model.geometry.root_universe.add_cell(c)
-
-    model.settings.batches = 10
-    model.settings.inactive = 5
-    model.settings.particles = 100
-    model.settings.source = openmc.Source(space=openmc.stats.Box(
-        [0.0, 0.0, 0.0], [10.0, 10.0, 5.]))
-    model.settings.energy_mode = "multi-group"
-
-    plot = openmc.Plot()
-    plot.filename = 'mat'
-    plot.origin = (5.0, 5.0, 2.5)
-    plot.width = (2.5, 2.5)
-    plot.basis = 'xz'
-    plot.pixels = (3000, 3000)
-    plot.color_by = 'material'
-    model.plots.append(plot)
+    model.geometry = geometry_file
+    model.materials = materials_file
+    model.settings = settings_file
+    model.xs_data = macros
 
     return model

@@ -22,7 +22,7 @@ module simulation_header
 
   integer(C_INT), bind(C, name='openmc_current_batch') :: current_batch     ! current batch
   integer(C_INT), bind(C, name='openmc_current_gen') :: current_gen       ! current generation within a batch
-  integer :: total_gen     = 0 ! total number of generations simulated
+  integer(C_INT), bind(C, name='openmc_total_gen') :: total_gen     = 0 ! total number of generations simulated
   logical(C_BOOL), bind(C, name='openmc_simulation_initialized') :: &
        simulation_initialized = .false.
   logical :: need_depletion_rx ! need to calculate depletion reaction rx?
@@ -47,13 +47,6 @@ module simulation_header
   real(8) :: k_col_tra = ZERO ! sum over batches of k_collision * k_tracklength
   real(8) :: k_abs_tra = ZERO ! sum over batches of k_absorption * k_tracklength
 
-  ! Shannon entropy
-  type(VectorReal)     :: entropy        ! shannon entropy at each generation
-  real(8), allocatable :: entropy_p(:,:) ! % of source sites in each cell
-
-  ! Uniform fission source weighting
-  real(8), allocatable :: source_frac(:,:)
-
   ! ============================================================================
   ! PARALLEL PROCESSING VARIABLES
 
@@ -67,12 +60,15 @@ module simulation_header
 
   integer :: restart_batch
 
-  ! Flag for enabling cell overlap checking during transport
-  integer(8), allocatable  :: overlap_check_cnt(:)
-
-  logical :: trace
+  logical(C_BOOL), bind(C, name='openmc_trace') :: trace
 
 !$omp threadprivate(trace, thread_id, current_work)
+
+  interface
+    subroutine entropy_clear() bind(C)
+    end subroutine
+  end interface
+
 
 contains
 
@@ -80,8 +76,8 @@ contains
 ! OVERALL_GENERATION determines the overall generation number
 !===============================================================================
 
-  pure function overall_generation() result(gen)
-    integer :: gen
+  pure function overall_generation() result(gen) bind(C)
+    integer(C_INT) :: gen
     gen = gen_per_batch*(current_batch - 1) + current_gen
   end function overall_generation
 
@@ -90,15 +86,12 @@ contains
 !===============================================================================
 
   subroutine free_memory_simulation()
-    if (allocated(overlap_check_cnt)) deallocate(overlap_check_cnt)
-    if (allocated(entropy_p)) deallocate(entropy_p)
-    if (allocated(source_frac)) deallocate(source_frac)
+
     if (allocated(work_index)) deallocate(work_index)
 
     call k_generation % clear()
     call k_generation % shrink_to_fit()
-    call entropy % clear()
-    call entropy % shrink_to_fit()
+    call entropy_clear()
   end subroutine free_memory_simulation
 
 end module simulation_header

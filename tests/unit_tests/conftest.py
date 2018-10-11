@@ -60,3 +60,54 @@ def cell_with_lattice():
     return ([inside_cyl, outside_cyl, main_cell],
             [m_inside[0], m_inside[1], m_inside[3], m_outside],
             univ, lattice)
+
+@pytest.fixture
+def mixed_lattice_model(uo2, water):
+    cyl = openmc.ZCylinder(R=0.4)
+    c1 = openmc.Cell(fill=uo2, region=-cyl)
+    c1.temperature = 600.0
+    c2 = openmc.Cell(fill=water, region=+cyl)
+    pin = openmc.Universe(cells=[c1, c2])
+
+    empty = openmc.Cell()
+    empty_univ = openmc.Universe(cells=[empty])
+
+    hex_lattice = openmc.HexLattice()
+    hex_lattice.center = (0.0, 0.0)
+    hex_lattice.pitch = (1.2, 10.0)
+    outer_ring = [pin]*6
+    inner_ring = [empty_univ]
+    axial_level = [outer_ring, inner_ring]
+    hex_lattice.universes = [axial_level]*3
+    hex_lattice.outer = empty_univ
+
+    cell_hex = openmc.Cell(fill=hex_lattice)
+    u = openmc.Universe(cells=[cell_hex])
+    rotated_cell_hex = openmc.Cell(fill=u)
+    rotated_cell_hex.rotation = (0., 0., 30.)
+    ur = openmc.Universe(cells=[rotated_cell_hex])
+
+    d = 6.0
+    rect_lattice = openmc.RectLattice()
+    rect_lattice.lower_left = (-d, -d)
+    rect_lattice.pitch = (d, d)
+    rect_lattice.outer = empty_univ
+    rect_lattice.universes = [
+        [ur, empty_univ],
+        [empty_univ, u]
+    ]
+
+    xmin = openmc.XPlane(x0=-d, boundary_type='periodic')
+    xmax = openmc.XPlane(x0=d, boundary_type='periodic')
+    xmin.periodic_surface = xmax
+    ymin = openmc.YPlane(y0=-d, boundary_type='periodic')
+    ymax = openmc.YPlane(y0=d, boundary_type='periodic')
+    main_cell = openmc.Cell(fill=rect_lattice,
+                            region=+xmin & -xmax & +ymin & -ymax)
+
+    # Create geometry and use unique material in each fuel cell
+    geometry = openmc.Geometry([main_cell])
+    geometry.determine_paths()
+    c1.fill = [water.clone() for i in range(c1.num_instances)]
+
+    return openmc.model.Model(geometry)

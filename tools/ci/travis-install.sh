@@ -4,6 +4,11 @@ set -ex
 # Install NJOY 2016
 ./tools/ci/travis-install-njoy.sh
 
+# Install DAGMC if needed
+if [[ $DAGMC = 'y' ]]; then
+    ./tools/ci/travis-install-dagmc.sh
+fi
+
 # Upgrade pip before doing anything else
 pip install --upgrade pip
 
@@ -22,4 +27,4 @@ python tools/ci/travis-install.py
 pip install -e .[test]
 
 # For uploading to coveralls
-pip install python-coveralls
+pip install coveralls

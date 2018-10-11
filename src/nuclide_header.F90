@@ -12,11 +12,9 @@ module nuclide_header
   use hdf5_interface
   use math,                   only: faddeeva, w_derivative, &
                                     broaden_wmp_polynomials
-  use multipole_header,       only: FORM_RM, FORM_MLBW, MP_EA, RM_RT, RM_RA, &
-                                    RM_RF, MLBW_RT, MLBW_RX, MLBW_RA, MLBW_RF, &
-                                    FIT_T, FIT_A, FIT_F, MultipoleArray
+  use multipole_header,       only: MP_EA, MP_RS, MP_RA, MP_RF, &
+                                    FIT_S, FIT_A, FIT_F, MultipoleArray
   use message_passing
-  use multipole_header,       only: MultipoleArray
   use random_lcg,             only: prn, future_prn, prn_set_stream
   use reaction_header,        only: Reaction
   use sab_header,             only: SAlphaBeta, sab_tables
@@ -124,7 +122,7 @@ module nuclide_header
 
   ! Arbitrary value to indicate invalid cache state for elastic scattering
   ! (NuclideMicroXS % elastic)
-  real(8), parameter :: CACHE_INVALID = dble(Z"FFE0000000000000")
+  real(8), parameter :: CACHE_INVALID = -1
 
   type, bind(C) :: NuclideMicroXS
     ! Microscopic cross sections in barns
@@ -268,6 +266,19 @@ contains
 
   subroutine nuclide_clear(this)
     class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
+    integer :: i
+
+    interface
+      subroutine reaction_delete(rx) bind(C)
+        import C_PTR
+        type(C_PTR), value :: rx
+      end subroutine reaction_delete
+    end interface
+
+    do i = 1, size(this % reactions)
+      call reaction_delete(this % reactions(i) % ptr)
+    end do
+    deallocate(this % reactions)
 
     if (associated(this % multipole)) deallocate(this % multipole)
 
@@ -478,7 +489,8 @@ contains
       if (MTs % data(i) /= N_FISSION .and. MTs % data(i) /= N_F .and. &
            MTs % data(i) /= N_NF .and. MTs % data(i) /= N_2NF .and. &
            MTs % data(i) /= N_3NF .and. MTs % data(i) < 200 .and. &
-           MTs % data(i) /= N_LEVEL .and. MTs % data(i) /= ELASTIC) then
+           MTs % data(i) /= N_LEVEL .and. MTs % data(i) /= ELASTIC .and. &
+           .not. this % reactions(i) % redundant) then
 
         call index_inelastic_scatter % push_back(i)
       end if
@@ -602,7 +614,6 @@ contains
 
     integer :: i, j, k, l
     integer :: t
-    integer :: m
     integer :: n
     integer :: n_grid
     integer :: i_fission
@@ -626,28 +637,9 @@ contains
       this % reaction_index(this % reactions(i) % MT) = i
 
       associate (rx => this % reactions(i))
-        ! Skip total inelastic level scattering, gas production cross sections
-        ! (MT=200+), etc.
-        if (rx % MT == N_LEVEL .or. rx % MT == N_NONELASTIC) cycle
-        if (rx % MT > N_5N2P .and. rx % MT < N_P0) cycle
-
-        ! Skip level cross sections if total is available
-        if (rx % MT >= N_P0 .and. rx % MT <= N_PC .and. find(MTs, N_P) /= -1) cycle
-        if (rx % MT >= N_D0 .and. rx % MT <= N_DC .and. find(MTs, N_D) /= -1) cycle
-        if (rx % MT >= N_T0 .and. rx % MT <= N_TC .and. find(MTs, N_T) /= -1) cycle
-        if (rx % MT >= N_3HE0 .and. rx % MT <= N_3HEC .and. find(MTs, N_3HE) /= -1) cycle
-        if (rx % MT >= N_A0 .and. rx % MT <= N_AC .and. find(MTs, N_A) /= -1) cycle
-        if (rx % MT >= N_2N0 .and. rx % MT <= N_2NC .and. find(MTs, N_2N) /= -1) cycle
-
         do t = 1, n_temperature
           j = rx % xs_threshold(t)
           n = rx % xs_size(t)
-
-          ! Add contribution to total cross section
-          do k = j, j + n - 1
-            this % xs(t) % value(XS_TOTAL,k) = this % xs(t) % &
-                 value(XS_TOTAL,k) + rx % xs(t, k - j + 1)
-          end do
 
           ! Calculate photon production cross section
           do k = 1, rx % products_size()
@@ -659,6 +651,28 @@ contains
                      this % grid(t) % energy(l+j-1))
               end do
             end if
+          end do
+
+          ! Skip total inelastic level scattering, gas production cross sections
+          ! (MT=200+), etc.
+          if (rx % MT == N_LEVEL .or. rx % MT == N_NONELASTIC) cycle
+          if (rx % MT > N_5N2P .and. rx % MT < N_P0) cycle
+
+          ! Skip level cross sections if total is available
+          if (rx % MT >= N_P0 .and. rx % MT <= N_PC .and. find(MTs, N_P) /= -1) cycle
+          if (rx % MT >= N_D0 .and. rx % MT <= N_DC .and. find(MTs, N_D) /= -1) cycle
+          if (rx % MT >= N_T0 .and. rx % MT <= N_TC .and. find(MTs, N_T) /= -1) cycle
+          if (rx % MT >= N_3HE0 .and. rx % MT <= N_3HEC .and. find(MTs, N_3HE) /= -1) cycle
+          if (rx % MT >= N_A0 .and. rx % MT <= N_AC .and. find(MTs, N_A) /= -1) cycle
+          if (rx % MT >= N_2N0 .and. rx % MT <= N_2NC .and. find(MTs, N_2N) /= -1) cycle
+
+          ! Skip redundant reactions, which are used for photon production
+          if (rx % redundant) cycle
+
+          ! Add contribution to total cross section
+          do k = j, j + n - 1
+            this % xs(t) % value(XS_TOTAL,k) = this % xs(t) % &
+                 value(XS_TOTAL,k) + rx % xs(t, k - j + 1)
           end do
 
           ! Add contribution to absorption cross section
@@ -849,7 +863,7 @@ contains
     integer :: threshold ! threshold energy index
     real(8) :: f      ! interp factor on nuclide energy grid
     real(8) :: kT     ! temperature in eV
-    real(8) :: sig_t, sig_a, sig_f ! Intermediate multipole variables
+    real(8) :: sig_s, sig_a, sig_f ! Intermediate multipole variables
 
     ! Initialize cached cross sections to zero
     micro_xs % elastic         = CACHE_INVALID
@@ -859,8 +873,8 @@ contains
     ! Check to see if there is multipole data present at this energy
     use_mp = .false.
     if (this % mp_present) then
-      if (E >= this % multipole % start_E .and. &
-           E <= this % multipole % end_E) then
+      if (E >= this % multipole % E_min .and. &
+           E <= this % multipole % E_max) then
         use_mp = .true.
       end if
     end if
@@ -868,9 +882,10 @@ contains
     ! Evaluate multipole or interpolate
     if (use_mp) then
       ! Call multipole kernel
-      call multipole_eval(this % multipole, E, sqrtkT, sig_t, sig_a, sig_f)
+      call multipole_eval(this % multipole, E, sqrtkT, sig_s, sig_a, sig_f)
 
-      micro_xs % total = sig_t
+      micro_xs % total = sig_s + sig_a
+      micro_xs % elastic = sig_s
       micro_xs % absorption = sig_a
       micro_xs % fission = sig_f
 
@@ -1076,9 +1091,6 @@ contains
         micro_xs % elastic = (ONE - f) * rx % xs(i_temp, i_grid) + &
              f * rx % xs(i_temp, i_grid + 1)
       end associate
-    else
-      ! For multipole, elastic is total - absorption
-      micro_xs % elastic = micro_xs % total - micro_xs % absorption
     end if
   end subroutine nuclide_calculate_elastic_xs
 
@@ -1130,7 +1142,7 @@ contains
 ! sections in the resolved resonance regions
 !===============================================================================
 
-  subroutine multipole_eval(multipole, E, sqrtkT, sig_t, sig_a, sig_f)
+  subroutine multipole_eval(multipole, E, sqrtkT, sig_s, sig_a, sig_f)
     type(MultipoleArray), intent(in) :: multipole ! The windowed multipole
                                                   !  object to process.
     real(8), intent(in)              :: E         ! The energy at which to
@@ -1138,7 +1150,7 @@ contains
     real(8), intent(in)              :: sqrtkT    ! The temperature in the form
                                                   !  sqrt(kT), at which
                                                   !  to evaluate the XS.
-    real(8), intent(out)             :: sig_t     ! Total cross section
+    real(8), intent(out)             :: sig_s     ! Scattering cross section
     real(8), intent(out)             :: sig_a     ! Absorption cross section
     real(8), intent(out)             :: sig_f     ! Fission cross section
     complex(8) :: psi_chi  ! The value of the psi-chi function for the
@@ -1146,7 +1158,6 @@ contains
     complex(8) :: c_temp   ! complex temporary variable
     complex(8) :: w_val    ! The faddeeva function evaluated at Z
     complex(8) :: Z        ! sqrt(atomic weight ratio / kT) * (sqrt(E) - pole)
-    complex(8) :: sig_t_factor(multipole % num_l)
     real(8) :: broadened_polynomials(multipole % fit_order + 1)
     real(8) :: sqrtE       ! sqrt(E), eV
     real(8) :: invE        ! 1/E, eV
@@ -1166,18 +1177,13 @@ contains
     invE = ONE / E
 
     ! Locate us.
-    i_window = floor((sqrtE - sqrt(multipole % start_E)) / multipole % spacing &
+    i_window = floor((sqrtE - sqrt(multipole % E_min)) / multipole % spacing &
          + ONE)
-    startw = multipole % w_start(i_window)
-    endw = multipole % w_end(i_window)
-
-    ! Fill in factors.
-    if (startw <= endw) then
-      call compute_sig_t_factor(multipole, sqrtE, sig_t_factor)
-    end if
+    startw = multipole % windows(1, i_window)
+    endw = multipole % windows(2, i_window)
 
     ! Initialize the ouptut cross sections.
-    sig_t = ZERO
+    sig_s = ZERO
     sig_a = ZERO
     sig_f = ZERO
 
@@ -1190,7 +1196,7 @@ contains
       call broaden_wmp_polynomials(E, dopp, multipole % fit_order + 1, &
            broadened_polynomials)
       do i_poly = 1, multipole % fit_order+1
-        sig_t = sig_t + multipole % curvefit(FIT_T, i_poly, i_window) &
+        sig_s = sig_s + multipole % curvefit(FIT_S, i_poly, i_window) &
              * broadened_polynomials(i_poly)
         sig_a = sig_a + multipole % curvefit(FIT_A, i_poly, i_window) &
              * broadened_polynomials(i_poly)
@@ -1202,7 +1208,7 @@ contains
     else ! Evaluate as if it were a polynomial
       temp = invE
       do i_poly = 1, multipole % fit_order+1
-        sig_t = sig_t + multipole % curvefit(FIT_T, i_poly, i_window) * temp
+        sig_s = sig_s + multipole % curvefit(FIT_S, i_poly, i_window) * temp
         sig_a = sig_a + multipole % curvefit(FIT_A, i_poly, i_window) * temp
         if (multipole % fissionable) then
           sig_f = sig_f + multipole % curvefit(FIT_F, i_poly, i_window) * temp
@@ -1219,21 +1225,10 @@ contains
       do i_pole = startw, endw
         psi_chi = -ONEI / (multipole % data(MP_EA, i_pole) - sqrtE)
         c_temp = psi_chi / E
-        if (multipole % formalism == FORM_MLBW) then
-          sig_t = sig_t + real(multipole % data(MLBW_RT, i_pole) * c_temp * &
-                               sig_t_factor(multipole % l_value(i_pole))) &
-                        + real(multipole % data(MLBW_RX, i_pole) * c_temp)
-          sig_a = sig_a + real(multipole % data(MLBW_RA, i_pole) * c_temp)
-          if (multipole % fissionable) then
-            sig_f = sig_f + real(multipole % data(MLBW_RF, i_pole) * c_temp)
-          end if
-        else if (multipole % formalism == FORM_RM) then
-          sig_t = sig_t + real(multipole % data(RM_RT, i_pole) * c_temp * &
-                               sig_t_factor(multipole % l_value(i_pole)))
-          sig_a = sig_a + real(multipole % data(RM_RA, i_pole) * c_temp)
-          if (multipole % fissionable) then
-            sig_f = sig_f + real(multipole % data(RM_RF, i_pole) * c_temp)
-          end if
+        sig_s = sig_s + real(multipole % data(MP_RS, i_pole) * c_temp)
+        sig_a = sig_a + real(multipole % data(MP_RA, i_pole) * c_temp)
+        if (multipole % fissionable) then
+          sig_f = sig_f + real(multipole % data(MP_RF, i_pole) * c_temp)
         end if
       end do
     else
@@ -1243,21 +1238,10 @@ contains
         do i_pole = startw, endw
           Z = (sqrtE - multipole % data(MP_EA, i_pole)) * dopp
           w_val = faddeeva(Z) * dopp * invE * SQRT_PI
-          if (multipole % formalism == FORM_MLBW) then
-            sig_t = sig_t + real((multipole % data(MLBW_RT, i_pole) * &
-                            sig_t_factor(multipole % l_value(i_pole)) + &
-                            multipole % data(MLBW_RX, i_pole)) * w_val)
-            sig_a = sig_a + real(multipole % data(MLBW_RA, i_pole) * w_val)
-            if (multipole % fissionable) then
-              sig_f = sig_f + real(multipole % data(MLBW_RF, i_pole) * w_val)
-            end if
-          else if (multipole % formalism == FORM_RM) then
-            sig_t = sig_t + real(multipole % data(RM_RT, i_pole) * w_val * &
-                                 sig_t_factor(multipole % l_value(i_pole)))
-            sig_a = sig_a + real(multipole % data(RM_RA, i_pole) * w_val)
-            if (multipole % fissionable) then
-              sig_f = sig_f + real(multipole % data(RM_RF, i_pole) * w_val)
-            end if
+          sig_s = sig_s + real(multipole % data(MP_RS, i_pole) * w_val)
+          sig_a = sig_a + real(multipole % data(MP_RA, i_pole) * w_val)
+          if (multipole % fissionable) then
+            sig_f = sig_f + real(multipole % data(MP_RF, i_pole) * w_val)
           end if
         end do
       end if
@@ -1270,7 +1254,7 @@ contains
 ! temperature.
 !===============================================================================
 
-  subroutine multipole_deriv_eval(multipole, E, sqrtkT, sig_t, sig_a, sig_f)
+  subroutine multipole_deriv_eval(multipole, E, sqrtkT, sig_s, sig_a, sig_f)
     type(MultipoleArray), intent(in) :: multipole ! The windowed multipole
                                                   !  object to process.
     real(8), intent(in)              :: E         ! The energy at which to
@@ -1278,12 +1262,11 @@ contains
     real(8), intent(in)              :: sqrtkT    ! The temperature in the form
                                                   !  sqrt(kT), at which to
                                                   !  evaluate the XS.
-    real(8), intent(out)             :: sig_t     ! Total cross section
+    real(8), intent(out)             :: sig_s     ! Scattering cross section
     real(8), intent(out)             :: sig_a     ! Absorption cross section
     real(8), intent(out)             :: sig_f     ! Fission cross section
     complex(8) :: w_val    ! The faddeeva function evaluated at Z
     complex(8) :: Z        ! sqrt(atomic weight ratio / kT) * (sqrt(E) - pole)
-    complex(8) :: sig_t_factor(multipole % num_l)
     real(8) :: sqrtE       ! sqrt(E), eV
     real(8) :: invE        ! 1/E, eV
     real(8) :: dopp        ! sqrt(atomic weight ratio / kT)
@@ -1305,18 +1288,13 @@ contains
          &derivatives are not implemented for 0 Kelvin cross sections.")
 
     ! Locate us
-    i_window = floor((sqrtE - sqrt(multipole % start_E)) / multipole % spacing &
+    i_window = floor((sqrtE - sqrt(multipole % E_min)) / multipole % spacing &
          + ONE)
-    startw = multipole % w_start(i_window)
-    endw = multipole % w_end(i_window)
-
-    ! Fill in factors.
-    if (startw <= endw) then
-      call compute_sig_t_factor(multipole, sqrtE, sig_t_factor)
-    end if
+    startw = multipole % windows(1, i_window)
+    endw = multipole % windows(2, i_window)
 
     ! Initialize the ouptut cross sections.
-    sig_t = ZERO
+    sig_s = ZERO
     sig_a = ZERO
     sig_f = ZERO
 
@@ -1333,60 +1311,17 @@ contains
       do i_pole = startw, endw
         Z = (sqrtE - multipole % data(MP_EA, i_pole)) * dopp
         w_val = -invE * SQRT_PI * HALF * w_derivative(Z, 2)
-        if (multipole % formalism == FORM_MLBW) then
-          sig_t = sig_t + real((multipole % data(MLBW_RT, i_pole) * &
-                          sig_t_factor(multipole%l_value(i_pole)) + &
-                          multipole % data(MLBW_RX, i_pole)) * w_val)
-          sig_a = sig_a + real(multipole % data(MLBW_RA, i_pole) * w_val)
-          if (multipole % fissionable) then
-            sig_f = sig_f + real(multipole % data(MLBW_RF, i_pole) * w_val)
-          end if
-        else if (multipole % formalism == FORM_RM) then
-          sig_t = sig_t + real(multipole % data(RM_RT, i_pole) * w_val * &
-                               sig_t_factor(multipole % l_value(i_pole)))
-          sig_a = sig_a + real(multipole % data(RM_RA, i_pole) * w_val)
-          if (multipole % fissionable) then
-            sig_f = sig_f + real(multipole % data(RM_RF, i_pole) * w_val)
-          end if
+        sig_s = sig_s + real(multipole % data(MP_RS, i_pole) * w_val)
+        sig_a = sig_a + real(multipole % data(MP_RA, i_pole) * w_val)
+        if (multipole % fissionable) then
+          sig_f = sig_f + real(multipole % data(MP_RF, i_pole) * w_val)
         end if
       end do
-      sig_t = -HALF*multipole % sqrtAWR / sqrt(K_BOLTZMANN) * T**(-1.5) * sig_t
+      sig_s = -HALF*multipole % sqrtAWR / sqrt(K_BOLTZMANN) * T**(-1.5) * sig_s
       sig_a = -HALF*multipole % sqrtAWR / sqrt(K_BOLTZMANN) * T**(-1.5) * sig_a
       sig_f = -HALF*multipole % sqrtAWR / sqrt(K_BOLTZMANN) * T**(-1.5) * sig_f
     end if
   end subroutine multipole_deriv_eval
-
-!===============================================================================
-! COMPUTE_SIG_T_FACTOR calculates the sig_t_factor, a factor inside of the sig_t
-! equation not present in the sig_a and sig_f equations.
-!===============================================================================
-
-  subroutine compute_sig_t_factor(multipole, sqrtE, sig_t_factor)
-    type(MultipoleArray), intent(in)  :: multipole
-    real(8),              intent(in)  :: sqrtE
-    complex(8),           intent(out) :: sig_t_factor(multipole % num_l)
-
-    integer :: iL
-    real(8) :: twophi(multipole % num_l)
-    real(8) :: arg
-
-    do iL = 1, multipole % num_l
-      twophi(iL) = multipole % pseudo_k0RS(iL) * sqrtE
-      if (iL == 2) then
-        twophi(iL) = twophi(iL) - atan(twophi(iL))
-      else if (iL == 3) then
-        arg = 3.0_8 * twophi(iL) / (3.0_8 - twophi(iL)**2)
-        twophi(iL) = twophi(iL) - atan(arg)
-      else if (iL == 4) then
-        arg = twophi(iL) * (15.0_8 - twophi(iL)**2) &
-             / (15.0_8 - 6.0_8 * twophi(iL)**2)
-        twophi(iL) = twophi(iL) - atan(arg)
-      end if
-    end do
-
-    twophi = 2.0_8 * twophi
-    sig_t_factor = cmplx(cos(twophi), -sin(twophi), KIND=8)
-  end subroutine compute_sig_t_factor
 
 !===============================================================================
 ! 0K_ELASTIC_XS determines the microscopic 0K elastic cross section

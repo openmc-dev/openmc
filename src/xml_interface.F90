@@ -12,12 +12,14 @@ module xml_interface
   public :: check_for_node
   public :: get_node_list
   public :: get_node_value
+  public :: get_node_value_bool
   public :: get_node_array
   public :: node_value_string
   public :: node_word_count
 
   interface get_node_value
     module procedure get_node_value_bool
+    module procedure get_node_value_cbool
     module procedure get_node_value_integer
     module procedure get_node_value_long
     module procedure get_node_value_double
@@ -117,6 +119,16 @@ contains
       end if
     end if
   end subroutine get_node_value_bool
+
+  subroutine get_node_value_cbool(node, name, val)
+    type(XMLNode), intent(in) :: node
+    character(*), intent(in) :: name
+    logical(kind=C_BOOL), intent(out) :: val
+
+    logical :: val_
+    call get_node_value_bool(node, name, val_)
+    val = val_
+  end subroutine get_node_value_cbool
 
 !===============================================================================
 ! GET_NODE_VALUE_INTEGER returns a integer value from an attribute or node

@@ -1,11 +1,11 @@
-#include "secondary_uncorrelated.h"
+#include "openmc/secondary_uncorrelated.h"
 
 #include <sstream> // for stringstream
 #include <string>  // for string
 
-#include "error.h"
-#include "hdf5_interface.h"
-#include "random_lcg.h"
+#include "openmc/error.h"
+#include "openmc/hdf5_interface.h"
+#include "openmc/random_lcg.h"
 
 namespace openmc {
 

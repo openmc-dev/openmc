@@ -78,7 +78,7 @@ contains
 
     allocate(universe_ids(size(this % universes)))
     do i = 1, size(this % universes)
-      universe_ids(i) = universes(this % universes(i)) % id
+      universe_ids(i) = universe_id(this % universes(i))
     end do
     call write_dataset(filter_group, "bins", universe_ids)
   end subroutine to_statepoint_universe
@@ -112,7 +112,7 @@ contains
     integer,               intent(in) :: bin
     character(MAX_LINE_LEN)           :: label
 
-    label = "Universe " // to_str(universes(this % universes(bin)) % id)
+    label = "Universe " // to_str(universe_id(this % universes(bin)))
   end function text_label_universe
 
 end module tally_filter_universe

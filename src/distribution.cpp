@@ -1,15 +1,16 @@
-#include "distribution.h"
+#include "openmc/distribution.h"
 
 #include <algorithm> // for copy
 #include <cmath>     // for sqrt, floor, max
 #include <iterator>  // for back_inserter
 #include <numeric>   // for accumulate
+#include <stdexcept> // for runtime_error
 #include <string>    // for string, stod
 
-#include "error.h"
-#include "math_functions.h"
-#include "random_lcg.h"
-#include "xml_interface.h"
+#include "openmc/error.h"
+#include "openmc/math_functions.h"
+#include "openmc/random_lcg.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 
@@ -44,7 +45,7 @@ double Discrete::sample() const
       c += p_[i];
       if (xi < c) return x_[i];
     }
-    // throw exception?
+    throw std::runtime_error{"Error when sampling probability mass function."};
   } else {
     return x_[0];
   }
@@ -248,19 +249,21 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
   std::string type = get_node_value(node, "type", true, true);
 
   // Allocate extension of Distribution
+  UPtrDist dist;
   if (type == "uniform") {
-    return UPtrDist{new Uniform(node)};
+    dist = UPtrDist{new Uniform(node)};
   } else if (type == "maxwell") {
-    return UPtrDist{new Maxwell(node)};
+    dist = UPtrDist{new Maxwell(node)};
   } else if (type == "watt") {
-    return UPtrDist{new Watt(node)};
+    dist = UPtrDist{new Watt(node)};
   } else if (type == "discrete") {
-    return UPtrDist{new Discrete(node)};
+    dist = UPtrDist{new Discrete(node)};
   } else if (type == "tabular") {
-    return UPtrDist{new Tabular(node)};
+    dist = UPtrDist{new Tabular(node)};
   } else {
     openmc::fatal_error("Invalid distribution type: " + type);
   }
+  return dist;
 }
 
 } // namespace openmc

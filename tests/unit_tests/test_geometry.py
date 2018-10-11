@@ -244,3 +244,14 @@ def test_determine_paths(cell_with_lattice):
     for i in range(4):
         assert geom.get_instances(cells[0].paths[i]) == i
         assert geom.get_instances(mats[-1].paths[i]) == i
+
+def test_from_xml(run_in_tmpdir, mixed_lattice_model):
+    # Export model
+    mixed_lattice_model.export_to_xml()
+
+    # Import geometry
+    geom = openmc.Geometry.from_xml()
+    assert isinstance(geom, openmc.Geometry)
+    ll, ur = geom.bounding_box
+    assert ll == pytest.approx((-6.0, -6.0, -np.inf))
+    assert ur == pytest.approx((6.0, 6.0, np.inf))

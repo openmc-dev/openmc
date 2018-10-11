@@ -392,7 +392,7 @@ object_name(hid_t obj_id)
 
   // Read and return name
   H5Iget_name(obj_id, buffer, size);
-  return {buffer, size};
+  return buffer;
 }
 
 
@@ -439,7 +439,9 @@ read_attr_string(hid_t obj_id, const char* name, size_t slen, char* buffer)
 {
   // Create datatype for a string
   hid_t datatype = H5Tcopy(H5T_C_S1);
-  H5Tset_size(datatype, slen + 1);
+  H5Tset_size(datatype, slen);
+  // numpy uses null-padding when writing fixed-length strings
+  H5Tset_strpad(datatype, H5T_STR_NULLPAD);
 
   // Read data into buffer
   read_attr(obj_id, name, datatype, buffer);
@@ -503,7 +505,9 @@ read_string(hid_t obj_id, const char* name, size_t slen, char* buffer, bool inde
 {
   // Create datatype for a string
   hid_t datatype = H5Tcopy(H5T_C_S1);
-  H5Tset_size(datatype, slen + 1);
+  H5Tset_size(datatype, slen);
+  // numpy uses null-padding when writing fixed-length strings
+  H5Tset_strpad(datatype, H5T_STR_NULLPAD);
 
   // Read data into buffer
   read_dataset(obj_id, name, datatype, buffer, indep);

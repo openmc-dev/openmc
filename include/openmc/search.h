@@ -14,6 +14,7 @@ template<class It, class T>
 typename std::iterator_traits<It>::difference_type
 lower_bound_index(It first, It last, const T& value)
 {
+  if (*first == value) return 0;
   It index = std::lower_bound(first, last, value) - 1;
   return (index == last) ? -1 : index - first;
 }

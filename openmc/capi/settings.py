@@ -1,4 +1,5 @@
-from ctypes import c_int, c_int32, c_int64, c_double, c_char_p, POINTER
+from ctypes import (c_int, c_int32, c_int64, c_double, c_char_p, c_bool,
+                    POINTER)
 
 from . import _dll
 from .core import _DLLGlobal
@@ -17,9 +18,11 @@ _dll.openmc_get_seed.restype = c_int64
 class _Settings(object):
     # Attributes that are accessed through a descriptor
     batches = _DLLGlobal(c_int32, 'n_batches')
+    entropy_on = _DLLGlobal(c_bool, 'entropy_on')
     generations_per_batch = _DLLGlobal(c_int32, 'gen_per_batch')
     inactive = _DLLGlobal(c_int32, 'n_inactive')
     particles = _DLLGlobal(c_int64, 'n_particles')
+    run_CE = _DLLGlobal(c_bool, 'run_CE')
     verbosity = _DLLGlobal(c_int, 'verbosity')
 
     @property

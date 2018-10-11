@@ -1101,12 +1101,14 @@ class CMFDRun(object):
 
     def _write_cmfd_timing_stats(self):
         """Write CMFD timing statistics to buffer after finalizing simulation"""
-        print(
+        if openmc.capi.master():
+          print(
 """=====================>     CMFD TIMING STATISTICS     <====================
 
    Time in CMFD                    =  {0:.5E} seconds
      Building matrices             =  {1:.5E} seconds
      Solving matrices              =  {2:.5E} seconds
+<<<<<<< HEAD
 """.format(self._time_cmfd, self._time_cmfdbuild, self._time_cmfdsolve))
         sys.stdout.flush()
 
@@ -1136,10 +1138,12 @@ class CMFDRun(object):
                              'simulation')
 
         # Set spatial dimensions of CMFD object
-        # Iterate through each element of self._cmfd_mesh.dimension
-        # as could be length 2 or 3
         for i, n in enumerate(self._cmfd_mesh.dimension):
             self._indices[i] = n
+
+        # Check if in continuous energy mode
+        if not openmc.capi.settings.run_CE:
+            raise OpenMCError('CMFD must be run in continuous energy mode')
 
         # Set number of energy groups
         if self._cmfd_mesh.energy is not None:
@@ -1147,7 +1151,6 @@ class CMFDRun(object):
             self._egrid = np.array(self._cmfd_mesh.energy)
             self._indices[3] = ng - 1
             self._energy_filters = True
-            # TODO: MG mode check
         else:
             self._egrid = np.array([_ENERGY_MIN_NEUTRON, _ENERGY_MAX_NEUTRON])
             self._indices[3] = 1
@@ -1157,7 +1160,7 @@ class CMFDRun(object):
         if self._cmfd_mesh.albedo is not None:
             self._albedo = np.array(self._cmfd_mesh.albedo)
         else:
-            self._albedo = np.array([1.,1.,1.,1.,1.,1.])
+            self._albedo = np.array([1., 1., 1., 1., 1., 1.])
 
         # Get acceleration map, otherwise set all regions to be accelerated
         if self._cmfd_mesh.map is not None:
@@ -2497,11 +2500,12 @@ class CMFDRun(object):
         current = np.where(np.repeat(flux>0, 12), tally_results, 0.)
 
         # Define target tally reshape dimensions for current
-        target_tally_shape = [nz, ny, nx, ng, 12]
+        target_tally_shape = [nz, ny, nx, 12, ng]
 
         # Reshape current array to target shape. Swap x and z axes so that
         # shape is now [nx, ny, nz, ng, 12]
         reshape_current = np.swapaxes(current.reshape(target_tally_shape), 0, 2)
+        reshape_current = np.swapaxes(reshape_current, 3, 4)
 
         # Current is flipped in energy axis as tally results are given in
         # reverse order of energy group
@@ -2578,8 +2582,11 @@ class CMFDRun(object):
         # Extract energy indices
         ng = self._indices[3]
 
+        # Get number of accelerated regions
+        num_accel = np.sum(self._coremap != _CMFD_NOACCEL)
+
         # Get openmc k-effective
-        keff = openmc.capi.keff()[0]
+        keff = openmc.capi.keff_temp()[0]
 
         # Define leakage in each mesh cell and energy group
         leakage = ((self._current[:,:,:,:,_CURRENTS['out_right']] - \
@@ -2617,7 +2624,7 @@ class CMFDRun(object):
         # Calculate RMS and record for this batch
         self._balance.append(np.sqrt(
             np.sum(np.multiply(self._resnb, self._resnb)) / \
-            np.count_nonzero(self._resnb)))
+            (ng * num_accel)))
 
     def _compute_dtilde_vectorized(self):
         """Computes the diffusion coupling coefficient using a vectorized numpy

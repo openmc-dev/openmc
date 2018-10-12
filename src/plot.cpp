@@ -342,6 +342,11 @@ void create_ppm(ObjectPlot* pl) {
       colors[i].rgb[0] = int(prn()*255);
       colors[i].rgb[1] = int(prn()*255);
       colors[i].rgb[2] = int(prn()*255);
+      std::cout << "Cell " << i << " color:" << std::endl;
+      std::cout << "{" << colors[i].rgb[0]
+                << ", "<< colors[i].rgb[1]
+                << ", "<< colors[i].rgb[1]
+                << "}" << std::endl;
     }
 
   } else if("material" == pl_color_by) {
@@ -349,10 +354,15 @@ void create_ppm(ObjectPlot* pl) {
     color_by = PLOT_COLOR_BY::MATS;
       
     //    colors.resize(materials.size());
-    for(int i = 0; i < n_cells; i++) {
+    for(int i = 0; i < materials.size(); i++) {
       colors[i].rgb[0] = int(prn()*255);
       colors[i].rgb[1] = int(prn()*255);
       colors[i].rgb[2] = int(prn()*255);
+      std::cout << "Material " << i << " color:" << std::endl;
+      std::cout << "{" << colors[i].rgb[0]
+                << ", "<< colors[i].rgb[1]
+                << ", "<< colors[i].rgb[1]
+                << "}" << std::endl;      
     }
   } else {
     std::stringstream err_msg;
@@ -396,15 +406,16 @@ void create_ppm(ObjectPlot* pl) {
                 << id;
         fatal_error(err_msg);
       }
+      
       // Add RGB
       if (PLOT_COLOR_BY::CELLS == color_by) {
         std::vector<int> cell_rgb;
         if (cell_map.find(col_id) != cell_map.end()) {
           col_id = cell_map[col_id];
           cell_rgb = get_node_array<int>(cn, "rgb");
-          colors[col_id].rgb[0] = cell_rgb[0];
-          colors[col_id].rgb[1] = cell_rgb[1];
-          colors[col_id].rgb[2] = cell_rgb[2];          
+          colors[col_id - 1].rgb[0] = cell_rgb[0];
+          colors[col_id - 1].rgb[1] = cell_rgb[1];
+          colors[col_id - 1].rgb[2] = cell_rgb[2];          
         } else {
           std::stringstream err_msg;
           err_msg << "Could not find cell " << col_id
@@ -416,9 +427,9 @@ void create_ppm(ObjectPlot* pl) {
         if (material_map.find(col_id) != material_map.end()) {
           col_id = material_map[col_id];
           mat_rgb = get_node_array<int>(cn, "rgb");
-          colors[col_id].rgb[0] = mat_rgb[0];
-          colors[col_id].rgb[1] = mat_rgb[1];
-          colors[col_id].rgb[2] = mat_rgb[2];          
+          colors[col_id - 1].rgb[0] = mat_rgb[0];
+          colors[col_id - 1].rgb[1] = mat_rgb[1];
+          colors[col_id - 1].rgb[2] = mat_rgb[2];          
         } else {
           std::stringstream err_msg;
           err_msg << "Could not find material " << col_id
@@ -620,10 +631,13 @@ void create_ppm(ObjectPlot* pl) {
         if (std::find(iarray.begin(), iarray.end(), j) != iarray.end()) {
           if (check_for_node(mask_node, "background")) {
             std::vector<int> bg_rgb = get_node_array<int>(mask_node, "background");
+            colors[j - 1].rgb[0] = bg_rgb[0];
+            colors[j - 1].rgb[1] = bg_rgb[1];
+            colors[j - 1].rgb[2] = bg_rgb[2];
           } else {
-            colors[j].rgb[0] = 255;
-            colors[j].rgb[1] = 255;
-            colors[j].rgb[2] = 255;
+            colors[j - 1].rgb[0] = 255;
+            colors[j - 1].rgb[1] = 255;
+            colors[j - 1].rgb[2] = 255;
           }
         }
       }

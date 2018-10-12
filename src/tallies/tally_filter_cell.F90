@@ -2,15 +2,8 @@ module tally_filter_cell
 
   use, intrinsic :: ISO_C_BINDING
 
-  use constants,          only: ONE, MAX_LINE_LEN
-  use dict_header,        only: EMPTY
-  use error,              only: fatal_error
-  use hdf5_interface
-  use geometry_header
-  use particle_header,    only: Particle
-  use string,             only: to_str
+  use error
   use tally_filter_header
-  use xml_interface
 
   implicit none
   private
@@ -21,57 +14,9 @@ module tally_filter_cell
 !===============================================================================
 
   type, public, extends(CppTallyFilter) :: CellFilter
-    integer(C_INT32_T), allocatable :: cells(:)
-    type(DictIntInt)     :: map
-  contains
-    procedure :: from_xml
-    procedure :: initialize => initialize_cell
   end type CellFilter
 
 contains
-
-  subroutine from_xml(this, node)
-    class(CellFilter), intent(inout) :: this
-    type(XMLNode), intent(in) :: node
-
-    integer :: n
-
-    call this % from_xml_cpp_inner(node)
-
-    ! Determine how many bins were given
-    n = node_word_count(node, "bins")
-
-    ! Allocate and store bins
-    this % n_bins = n
-    allocate(this % cells(n))
-    call get_node_array(node, "bins", this % cells)
-  end subroutine from_xml
-
-  subroutine initialize_cell(this)
-    class(CellFilter), intent(inout) :: this
-
-    integer :: i, id
-    integer :: val
-
-    call this % initialize_cpp_inner()
-
-    ! Convert ids to indices.
-    do i = 1, this % n_bins
-      id = this % cells(i)
-      val = cell_dict % get(id)
-      if (val /= EMPTY) then
-        this % cells(i) = val
-      else
-        call fatal_error("Could not find cell " // trim(to_str(id)) &
-             &// " specified on tally filter.")
-      end if
-    end do
-
-    ! Generate mapping from cell indices to filter bins.
-    do i = 1, this % n_bins
-      call this % map % set(this % cells(i), i)
-    end do
-  end subroutine initialize_cell
 
 !===============================================================================
 !                               C API FUNCTIONS
@@ -84,12 +29,20 @@ contains
     integer(C_INT32_T), intent(out) :: n
     integer(C_INT) :: err
 
+    interface
+      subroutine cell_filter_get_bins(filt, cells, n) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR),    intent(in), value :: filt
+        type(C_PTR),    intent(out)       :: cells
+        integer(C_INT), intent(out)       :: n
+      end subroutine cell_filter_get_bins
+    end interface
+
     err = verify_filter(index)
     if (err == 0) then
        select type (f => filters(index) % obj)
        type is (CellFilter)
-          cells = C_LOC(f % cells)
-          n = size(f % cells)
+          call cell_filter_get_bins(f % ptr, cells, n)
        class default
           err = E_INVALID_TYPE
           call set_errmsg("Tried to get cells from a non-cell filter.")

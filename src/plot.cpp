@@ -1,5 +1,4 @@
 #include <fstream>
-#include <ctime>
 
 #include "openmc/plot.h"
 #include "openmc/constants.h"
@@ -14,6 +13,7 @@
 #include "openmc/output.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/random_lcg.h"
+#include "openmc/output.h"
 
 namespace openmc {
 
@@ -28,16 +28,6 @@ const int NULLRGB[3] = {0, 0, 0};
 // RUN_PLOT controls the logic for making one or many plots
 //===============================================================================
 
-  std::string time_stamp()
-  {
-    std::stringstream ts;
-    std::time_t t = std::time(0);   // get time now
-    std::tm* now = std::localtime(&t);
-    ts << now->tm_year + 1990 << "-" << now->tm_mon
-       << "-" << now->tm_mday << " " << now->tm_hour
-       << ":" << now->tm_min << ":" << now->tm_sec;
-    return ts.str();
-  }
 
 int openmc_plot_geometry_c() {
   int err;

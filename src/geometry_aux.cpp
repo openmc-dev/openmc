@@ -188,9 +188,8 @@ prepare_distribcell()
   // Find all cells listed in a DistribcellFilter.
   std::unordered_set<int32_t> distribcells;
   for (auto* filt : tally_filters) {
-    //TODO: replace this cast
-    auto* distrib_filt = dynamic_cast<DistribcellFilter*>(filt);
-    if (distrib_filt) {
+    if (filt->type() == "distribcell") {
+      auto* distrib_filt = static_cast<DistribcellFilter*>(filt);
       distribcells.insert(distrib_filt->cell_);
     }
   }

@@ -32,10 +32,10 @@ extern std::vector<TallyFilter*> tally_filters;
 class TallyFilterMatch
 {
 public:
-  int i_bin;
+  //int i_bin;
   std::vector<int> bins;
   std::vector<double> weights;
-  bool bins_present;
+  //bool bins_present;
 };
 
 //==============================================================================
@@ -45,6 +45,8 @@ public:
 class TallyFilter
 {
 public:
+  virtual std::string type() const = 0;
+
   virtual ~TallyFilter() = 0;
 
   virtual void from_xml(pugi::xml_node node) = 0;
@@ -52,7 +54,12 @@ public:
   virtual void
   get_all_bins(Particle* p, int estimator, TallyFilterMatch& match) const = 0;
 
-  virtual void to_statepoint(hid_t filter_group) const {}
+  virtual void
+  to_statepoint(hid_t filter_group) const
+  {
+    write_dataset(filter_group, "type", type());
+    write_dataset(filter_group, "n_bins", n_bins_);
+  }
 
   virtual std::string text_label(int bin) const = 0;
 

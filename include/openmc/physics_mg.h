@@ -14,19 +14,33 @@ namespace openmc {
 // SCATTER
 //==============================================================================
 
-//! \brief Samples the scattering event
+//! \brief samples particle behavior after a collision event.
 extern "C" void
+collision_mg(Particle* p, Bank* fission_bank, const int64_t fission_bank_size,
+     const double* energy_bin_avg, const MaterialMacroXS& material_xs);
+
+//! \brief samples a reaction type.
+//!
+//! Note that there is special logic when suvival biasing is turned on since
+//! fission and disappearance are treated implicitly.
+void
+sample_reaction(Particle* p, Bank* fission_bank,
+     const int64_t fission_bank_size, const double* energy_bin_avg,
+     const MaterialMacroXS& material_xs);
+
+//! \brief Samples the scattering event
+void
 scatter(Particle* p, const double* energy_bin_avg);
 
 //! \brief Determines the average total, prompt and delayed neutrons produced
 //! from fission and creates the appropriate bank sites.
-extern "C" void
+void
 create_fission_sites(Particle* p, Bank* bank_array, int64_t& size_bank,
-                     int64_t& bank_array_size, MaterialMacroXS& material_xs);
+     const int64_t& bank_array_size, const MaterialMacroXS& material_xs);
 
 //! \brief Handles an absorption event
-extern "C" void
-absorption(Particle* p, MaterialMacroXS& material_xs);
+void
+absorption(Particle* p, const MaterialMacroXS& material_xs);
 
 } // namespace openmc
 #endif // OPENMC_PHYSICS_MG_H

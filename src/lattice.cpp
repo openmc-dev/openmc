@@ -893,12 +893,6 @@ extern "C" {
   Lattice* lattice_pointer(int lat_ind) {return lattices[lat_ind];}
 
   int32_t lattice_id(Lattice *lat) {return lat->id_;}
-
-  bool lattice_are_valid_indices(Lattice *lat, const int i_xyz[3])
-  {return lat->are_valid_indices(i_xyz);}
-
-  int32_t lattice_offset(Lattice *lat, int map, const int i_xyz[3])
-  {return lat->offset(map, i_xyz);}
 }
 
 } // namespace openmc

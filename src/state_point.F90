@@ -419,11 +419,11 @@ contains
            time_active % get_value())
       if (run_mode == MODE_EIGENVALUE) then
         call write_dataset(runtime_group, "synchronizing fission bank", &
-             time_bank % get_value())
+             time_bank_elapsed())
         call write_dataset(runtime_group, "sampling source sites", &
-             time_bank_sample % get_value())
+             time_bank_sample_elapsed())
         call write_dataset(runtime_group, "SEND-RECV source sites", &
-             time_bank_sendrecv % get_value())
+             time_bank_sendrecv_elapsed())
       end if
       call write_dataset(runtime_group, "accumulating tallies", &
            time_tallies % get_value())

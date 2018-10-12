@@ -294,9 +294,7 @@ contains
 #endif
 
       ! Distribute fission bank across processors evenly
-      call time_bank % start()
       call synchronize_bank()
-      call time_bank % stop()
 
       ! Calculate shannon entropy
       if (entropy_on) call shannon_entropy()

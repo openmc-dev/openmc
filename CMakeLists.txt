@@ -443,6 +443,7 @@ add_library(libopenmc SHARED
   src/string_functions.cpp
   src/summary.cpp
   src/surface.cpp
+  src/timer.cpp
   src/thermal.cpp
   src/xml_interface.cpp
   src/xsdata.cpp

@@ -803,10 +803,6 @@ extern "C" {
 
   int32_t cell_fill(Cell* c) {return c->fill_;}
 
-  int32_t cell_n_instances(Cell* c) {return c->n_instances_;}
-
-  int cell_distribcell_index(Cell* c) {return c->distribcell_index_;}
-
   int cell_material_size(Cell* c) {return c->material_.size();}
 
   //TODO: off-by-one
@@ -820,8 +816,6 @@ extern "C" {
   int cell_sqrtkT_size(Cell* c) {return c->sqrtkT_.size();}
 
   double cell_sqrtkT(Cell* c, int i) {return c->sqrtkT_[i];}
-
-  int32_t cell_offset(Cell* c, int map) {return c->offset_[map];}
 
   void extend_cells_c(int32_t n)
   {

@@ -8,13 +8,75 @@
 #include "openmc/constants.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
+#include "openmc/material.h"
 #include "openmc/math_functions.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
+#include "openmc/physics_common.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 
 namespace openmc {
+
+void
+collision_mg(Particle* p, Bank* fission_bank, const int64_t fission_bank_size,
+     const double* energy_bin_avg, const MaterialMacroXS& material_xs)
+{
+  // Add to the collision counter for the particle
+  p->n_collision++;
+
+  // Sample the reaction type
+  sample_reaction(p, fission_bank, fission_bank_size, energy_bin_avg,
+                  material_xs);
+
+  // Display information about collision
+  if ((settings::verbosity >= 10) || (openmc_trace)) {
+    std::stringstream msg;
+    msg << "    Energy Group = " << p->g;
+    write_message(msg, 1);
+  }
+}
+
+void
+sample_reaction(Particle* p, Bank* fission_bank,
+                const int64_t fission_bank_size, const double* energy_bin_avg,
+                const MaterialMacroXS& material_xs)
+{
+  // Create fission bank sites. Note that while a fission reaction is sampled,
+  // it never actually "happens", i.e. the weight of the particle does not
+  // change when sampling fission sites. The following block handles all
+  // absorption (including fission)
+
+  if (materials[p->material - 1]->fissionable) {
+    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+      create_fission_sites(p, fission_bank, n_bank, fission_bank_size,
+                           material_xs);
+    } else if ((settings::run_mode == RUN_MODE_FIXEDSOURCE) &&
+               (settings::create_fission_neutrons)) {
+      create_fission_sites(p, p->secondary_bank, p->n_secondary,
+                           MAX_SECONDARY, material_xs);
+    }
+  }
+
+  // If survival biasing is being used, the following subroutine adjusts the
+  // weight of the particle. Otherwise, it checks to see if absorption occurs.
+  if (material_xs.absorption > 0.) {
+    absorption(p, material_xs);
+  } else {
+    p->absorb_wgt = 0.;
+  }
+  if (!p->alive) return;
+
+  // Sample a scattering event to determine the energy of the exiting neutron
+  scatter(p, energy_bin_avg);
+
+  // Play Russian roulette if survival biasing is turned on
+  if (settings::survival_biasing) {
+    russian_roulette(p);
+    if (!p->alive) return;
+  }
+}
 
 void
 scatter(Particle* p, const double* energy_bin_avg)
@@ -42,7 +104,8 @@ scatter(Particle* p, const double* energy_bin_avg)
 
 void
 create_fission_sites(Particle* p, Bank* bank_array, int64_t& size_bank,
-                     int64_t& bank_array_size, MaterialMacroXS& material_xs)
+                     const int64_t& bank_array_size,
+                     const MaterialMacroXS& material_xs)
 {
   // TODO: Heat generation from fission
 
@@ -146,7 +209,7 @@ create_fission_sites(Particle* p, Bank* bank_array, int64_t& size_bank,
 }
 
 void
-absorption(Particle* p, MaterialMacroXS& material_xs)
+absorption(Particle* p, const MaterialMacroXS& material_xs)
 {
   if (settings::survival_biasing) {
     // Determine weight absorbed in survival biasing

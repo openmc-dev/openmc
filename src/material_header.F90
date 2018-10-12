@@ -51,6 +51,20 @@ module material_header
       integer(C_INT32_T), intent(in), value :: index
     end subroutine material_set_id_c
 
+    function material_fissionable_c(mat_ptr) &
+         bind(C, name='material_fissionable') result(fissionable)
+      import C_PTR, C_BOOL
+      type(C_PTR), intent(in), value :: mat_ptr
+      logical(C_BOOL)                :: fissionable
+    end function material_fissionable_c
+
+    subroutine material_set_fissionable_c(mat_ptr, fissionable) &
+         bind(C, name='material_set_fissionable')
+      import C_PTR, C_BOOL
+      type(C_PTR),        intent(in), value :: mat_ptr
+      logical(C_BOOL),    intent(in), value :: fissionable
+    end subroutine material_set_fissionable_c
+
     subroutine extend_materials_c(n) bind(C)
       import C_INT32_T
       integer(C_INT32_T), intent(in), value :: n
@@ -95,7 +109,6 @@ module material_header
     character(20), allocatable :: sab_names(:) ! name of S(a,b) table
 
     ! Does this material contain fissionable nuclides? Is it depletable?
-    logical :: fissionable = .false.
     logical :: depletable = .false.
 
     ! enforce isotropic scattering in lab for specific nuclides
@@ -105,6 +118,8 @@ module material_header
   contains
     procedure :: id => material_id
     procedure :: set_id => material_set_id
+    procedure :: fissionable => material_fissionable
+    procedure :: set_fissionable => material_set_fissionable
     procedure :: set_density => material_set_density
     procedure :: init_nuclide_index => material_init_nuclide_index
     procedure :: assign_sab_tables => material_assign_sab_tables
@@ -138,6 +153,18 @@ contains
     integer(C_INT32_T), intent(in) :: index
     call material_set_id_c(this % ptr, id, index)
   end subroutine material_set_id
+
+  function material_fissionable(this) result(fissionable)
+    class(Material), intent(in) :: this
+    logical(C_BOOL)             :: fissionable
+    fissionable = material_fissionable_c(this % ptr)
+  end function material_fissionable
+
+  subroutine material_set_fissionable(this, fissionable)
+    class(Material),    intent(in) :: this
+    logical(C_BOOL),    intent(in) :: fissionable
+    call material_set_fissionable_c(this % ptr, fissionable)
+  end subroutine material_set_fissionable
 
   function material_set_density(this, density) result(err)
     class(Material), intent(inout) :: this
@@ -685,7 +712,7 @@ contains
     integer(C_INT) :: err
 
     if (index >= 1 .and. index <= size(materials)) then
-      fissionable = materials(index) % fissionable
+      fissionable = materials(index) % fissionable()
       err = 0
     else
       err = E_OUT_OF_BOUNDS

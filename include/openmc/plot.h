@@ -68,8 +68,8 @@ namespace openmc {
     int index_meshlines_mesh;
     ObjectColor meshlines_color;
     ObjectColor not_found;
-    ObjectColor colors[MAX_COORD];
-    char path_plot[MAX_WORD_LEN];
+    std::vector<ObjectColor*> colors;
+    std::string path_plot;
 
   };
 

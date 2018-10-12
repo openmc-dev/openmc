@@ -38,7 +38,7 @@ const int NULLRGB[3] = {0, 0, 0};
        << ":" << now->tm_min << ":" << now->tm_sec;
     return ts.str();
   }
-  
+
 int openmc_plot_geometry_c() {
   int err;
 
@@ -157,7 +157,7 @@ void create_ppm(ObjectPlot* pl) {
   ObjectPlot::ObjectPlot(pugi::xml_node plot_node) :
     index_meshlines_mesh(-1) {
 
-  // Copy data into plots  
+  // Copy data into plots
   if (check_for_node(plot_node, "id")) {
     id = std::stoi(get_node_value(plot_node, "id"));
   } else {
@@ -208,8 +208,8 @@ void create_ppm(ObjectPlot* pl) {
       break;
     }
   }
-  std::strcpy(path_plot, filename.str().c_str());
-  
+  path_plot = filename.str();
+
   // Copy plot pixel size
   std::vector<int> pxls;
   if (PLOT_TYPE::SLICE == type) {
@@ -228,7 +228,7 @@ void create_ppm(ObjectPlot* pl) {
       pxls = get_node_array<int>(plot_node, "pixels");
       pixels[0] = pxls[0];
       pixels[1] = pxls[1];
-      pixels[2] = pxls[2];      
+      pixels[2] = pxls[2];
     } else {
       std::stringstream err_msg;
       err_msg << "<pixels> must be length 3 in voxel plot "
@@ -349,22 +349,22 @@ void create_ppm(ObjectPlot* pl) {
   if ("cell" == pl_color_by) {
     color_by = PLOT_COLOR_BY::CELLS;
 
-    //    colors.resize(n_cells);
     for(int i = 0; i < n_cells; i++) {
-      colors[i].rgb[0] = int(prn()*255);
-      colors[i].rgb[1] = int(prn()*255);
-      colors[i].rgb[2] = int(prn()*255);
+      colors.push_back(new ObjectColor());
+      colors[i]->rgb[0] = int(prn()*255);
+      colors[i]->rgb[1] = int(prn()*255);
+      colors[i]->rgb[2] = int(prn()*255);
     }
 
   } else if("material" == pl_color_by) {
 
     color_by = PLOT_COLOR_BY::MATS;
-      
-    //    colors.resize(materials.size());
+
     for(int i = 0; i < materials.size(); i++) {
-      colors[i].rgb[0] = int(prn()*255);
-      colors[i].rgb[1] = int(prn()*255);
-      colors[i].rgb[2] = int(prn()*255);
+      colors.push_back(new ObjectColor());
+      colors[i]->rgb[0] = int(prn()*255);
+      colors[i]->rgb[1] = int(prn()*255);
+      colors[i]->rgb[2] = int(prn()*255);
     }
   } else {
     std::stringstream err_msg;
@@ -376,7 +376,7 @@ void create_ppm(ObjectPlot* pl) {
   // Get the number of <color> nodes and get a list of them
   std::vector<pugi::xml_node> color_nodes;
   color_nodes = get_child_nodes(plot_node, "color");
-    
+
   // Copy user-specified colors
   if (0 != color_nodes.size()) {
 
@@ -408,16 +408,16 @@ void create_ppm(ObjectPlot* pl) {
                 << id;
         fatal_error(err_msg);
       }
-      
+
       // Add RGB
       if (PLOT_COLOR_BY::CELLS == color_by) {
         std::vector<int> cell_rgb;
         if (cell_map.find(col_id) != cell_map.end()) {
           col_id = cell_map[col_id];
           cell_rgb = get_node_array<int>(cn, "rgb");
-          colors[col_id - 1].rgb[0] = cell_rgb[0];
-          colors[col_id - 1].rgb[1] = cell_rgb[1];
-          colors[col_id - 1].rgb[2] = cell_rgb[2];          
+          colors[col_id - 1]->rgb[0] = cell_rgb[0];
+          colors[col_id - 1]->rgb[1] = cell_rgb[1];
+          colors[col_id - 1]->rgb[2] = cell_rgb[2];
         } else {
           std::stringstream err_msg;
           err_msg << "Could not find cell " << col_id
@@ -429,19 +429,19 @@ void create_ppm(ObjectPlot* pl) {
         if (material_map.find(col_id) != material_map.end()) {
           col_id = material_map[col_id];
           mat_rgb = get_node_array<int>(cn, "rgb");
-          colors[col_id - 1].rgb[0] = mat_rgb[0];
-          colors[col_id - 1].rgb[1] = mat_rgb[1];
-          colors[col_id - 1].rgb[2] = mat_rgb[2];          
+          colors[col_id - 1]->rgb[0] = mat_rgb[0];
+          colors[col_id - 1]->rgb[1] = mat_rgb[1];
+          colors[col_id - 1]->rgb[2] = mat_rgb[2];
         } else {
           std::stringstream err_msg;
           err_msg << "Could not find material " << col_id
-                  << " specified in plot " << id;            
+                  << " specified in plot " << id;
           fatal_error(err_msg);
         }
       }
     } // color node loop
   }
-      
+
 
   // Deal with meshlines
   std::vector<pugi::xml_node> mesh_line_nodes;
@@ -462,7 +462,7 @@ void create_ppm(ObjectPlot* pl) {
     } else if (1 == n_meshlines) {
       // Get first meshline node
       pugi::xml_node meshlines_node = mesh_line_nodes[0];
-      
+
       // Check mesh type
       std::string meshline_type;
       if (check_for_node(meshlines_node, "meshtype")) {
@@ -482,7 +482,7 @@ void create_ppm(ObjectPlot* pl) {
         err_msg << "Must specify a meshtype for meshlines specification in plot " << id ;
         fatal_error(err_msg);
       }
-      
+
       // Ensure that there is a linewidth for this meshlines specification
       std::string meshline_width;
       if (check_for_node(meshlines_node, "linewidth")) {
@@ -512,7 +512,7 @@ void create_ppm(ObjectPlot* pl) {
         meshlines_color.rgb[1] = 0;
         meshlines_color.rgb[2] = 0;
       }
-      
+
       // Set mesh based on type
       if ("ufs" == meshtype) {
         if (settings::index_ufs_mesh < 0) {
@@ -575,7 +575,7 @@ void create_ppm(ObjectPlot* pl) {
   int n_masks = mask_nodes.size();
 
   if (n_masks > 0) {
-  
+
     if (PLOT_TYPE::VOXEL == type) {
       if (openmc_master) {
         std::stringstream wrn_msg;
@@ -583,7 +583,7 @@ void create_ppm(ObjectPlot* pl) {
         warning(wrn_msg);
       }
     }
-  
+
     if (1 == n_masks) {
       // Get pointer to mask
       pugi::xml_node mask_node = mask_nodes[0];
@@ -598,7 +598,7 @@ void create_ppm(ObjectPlot* pl) {
       }
       std::vector<int> iarray = get_node_array<int>(mask_node, "components");
 
-      // First we need to change the user-specified identifiers to indices      
+      // First we need to change the user-specified identifiers to indices
       // in the cell and material arrays
       int col_id;
       for (int j = 0; j < iarray.size(); j++) {
@@ -628,22 +628,22 @@ void create_ppm(ObjectPlot* pl) {
       }
 
       // Alter colors based on mask information
-      // TODO: 
-      for(int j = 0; j < MAX_COORD; j++) {
+      // TODO:
+      for(int j = 0; j < colors.size(); j++) {
         if (std::find(iarray.begin(), iarray.end(), j) != iarray.end()) {
           if (check_for_node(mask_node, "background")) {
             std::vector<int> bg_rgb = get_node_array<int>(mask_node, "background");
-            colors[j].rgb[0] = bg_rgb[0];
-            colors[j].rgb[1] = bg_rgb[1];
-            colors[j].rgb[2] = bg_rgb[2];
+            colors[j]->rgb[0] = bg_rgb[0];
+            colors[j]->rgb[1] = bg_rgb[1];
+            colors[j]->rgb[2] = bg_rgb[2];
           } else {
-            colors[j].rgb[0] = 255;
-            colors[j].rgb[1] = 255;
-            colors[j].rgb[2] = 255;
+            colors[j]->rgb[0] = 255;
+            colors[j]->rgb[1] = 255;
+            colors[j]->rgb[2] = 255;
           }
         }
       }
-  
+
     } else {
       std::stringstream err_msg;
       err_msg << "Mutliple masks specified in plot " << id;
@@ -652,7 +652,7 @@ void create_ppm(ObjectPlot* pl) {
   }
 
 } // End ObjectPlot constructor
-  
+
 //===============================================================================
 // POSITION_RGB computes the red/green/blue values for a given plot with the
 // current particle's position
@@ -695,16 +695,16 @@ void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id) {
         std::copy(WHITE, WHITE+3, rgb);
         id = -1;
       } else {
-        std::copy(pl->colors[p->material - 1].rgb,
-                  pl->colors[p->material - 1].rgb + 3,
+        std::copy(pl->colors[p->material - 1]->rgb,
+                  pl->colors[p->material - 1]->rgb + 3,
                   rgb);
         id = materials[p->material - 1]->id;
       }
 
     } else if (PLOT_COLOR_BY::CELLS == pl->color_by) {
       // Assign color based on cell
-      std::copy(pl->colors[p->coord[j].cell].rgb,
-                pl->colors[p->coord[j].cell].rgb + 3,
+      std::copy(pl->colors[p->coord[j].cell]->rgb,
+                pl->colors[p->coord[j].cell]->rgb + 3,
                 rgb);
       id = cells[p->coord[j].cell]->id_;
     } else {
@@ -722,10 +722,10 @@ void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id) {
 void output_ppm(ObjectPlot* pl, const ImageData &data)
 {
   // Open PPM file for writing
-  std::string fname = std::string(pl->path_plot);
+  std::string fname = pl->path_plot;
   fname = strtrim(fname);
   std::ofstream of;
-  
+
   of.open(fname);
 
   // Write header

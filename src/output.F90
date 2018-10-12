@@ -511,9 +511,9 @@ contains
     end if
     write(ou,100) "  Time in active batches", time_active % elapsed
     if (run_mode == MODE_EIGENVALUE) then
-      write(ou,100) "  Time synchronizing fission bank", time_bank % elapsed
-      write(ou,100) "    Sampling source sites", time_bank_sample % elapsed
-      write(ou,100) "    SEND/RECV source sites", time_bank_sendrecv % elapsed
+      write(ou,100) "  Time synchronizing fission bank", time_bank_elapsed()
+      write(ou,100) "    Sampling source sites", time_bank_sample_elapsed()
+      write(ou,100) "    SEND/RECV source sites", time_bank_sendrecv_elapsed()
     end if
     write(ou,100) "  Time accumulating tallies", time_tallies % elapsed
     if (cmfd_run) write(ou,100) "  Time in CMFD", time_cmfd % elapsed

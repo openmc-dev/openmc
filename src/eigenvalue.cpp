@@ -13,6 +13,7 @@
 #include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/timer.h"
 
 #include <algorithm> // for min
 #include <string>
@@ -32,6 +33,8 @@ xt::xtensor<double, 1> source_frac;
 
 void synchronize_bank()
 {
+  time_bank.start();
+
   // Get pointers to source/fission bank
   Bank* source_bank;
   Bank* fission_bank;
@@ -94,7 +97,7 @@ void synchronize_bank()
   }
   double p_sample = static_cast<double>(sites_needed) / total;
 
-  //time_bank_sample % start()
+  time_bank_sample.start();
 
   // ==========================================================================
   // SAMPLE N_PARTICLES FROM FISSION BANK AND PLACE IN TEMP_SITES
@@ -167,8 +170,8 @@ void synchronize_bank()
     finish = simulation::work_index[mpi::rank + 1];
   }
 
-  //time_bank_sample % stop()
-  //time_bank_sendrecv % start()
+  time_bank_sample.stop();
+  time_bank_sendrecv.start();
 
 #ifdef OPENMC_MPI
   // ==========================================================================
@@ -266,7 +269,8 @@ void synchronize_bank()
   std::copy(temp_sites, temp_sites + settings::n_particles, source_bank);
 #endif
 
-  //time_bank_sendrecv % stop()
+  time_bank_sendrecv.stop();
+  time_bank.stop();
 }
 
 void shannon_entropy()

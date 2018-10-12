@@ -62,26 +62,6 @@ module mgxs_interface
       real(C_DOUBLE),     intent(inout) :: nu_fiss_xs
     end subroutine calculate_xs_c
 
-    subroutine sample_scatter_c(i_mat, gin, gout, mu, wgt, uvw) bind(C)
-      use ISO_C_BINDING
-      implicit none
-      integer(C_INT), value, intent(in) :: i_mat
-      integer(C_INT), value, intent(in) :: gin
-      integer(C_INT),     intent(inout) :: gout
-      real(C_DOUBLE),     intent(inout) :: mu
-      real(C_DOUBLE),     intent(inout) :: wgt
-      real(C_DOUBLE),     intent(inout) :: uvw(1:3)
-    end subroutine sample_scatter_c
-
-    subroutine sample_fission_energy_c(i_mat, gin, dg, gout) bind(C)
-      use ISO_C_BINDING
-      implicit none
-      integer(C_INT), value, intent(in) :: i_mat
-      integer(C_INT), value, intent(in) :: gin
-      integer(C_INT),     intent(inout) :: dg
-      integer(C_INT),     intent(inout) :: gout
-    end subroutine sample_fission_energy_c
-
     subroutine get_name_c(index, name_len, name) bind(C)
       use ISO_C_BINDING
       implicit none

@@ -12,8 +12,8 @@ _dll.t_percentile_c.argtypes = [c_double, c_int]
 _dll.calc_pn_c.restype = None
 _dll.calc_pn_c.argtypes = [c_int, c_double, ndpointer(c_double)]
 
-_dll.evaluate_legendre_c.restype = c_double
-_dll.evaluate_legendre_c.argtypes = [c_int, POINTER(c_double), c_double]
+_dll.evaluate_legendre.restype = c_double
+_dll.evaluate_legendre.argtypes = [c_int, POINTER(c_double), c_double]
 
 _dll.calc_rn_c.restype = None
 _dll.calc_rn_c.argtypes = [c_int, ndpointer(c_double), ndpointer(c_double)]
@@ -27,11 +27,11 @@ _dll.calc_zn_rad_c.argtypes = [c_int, c_double, ndpointer(c_double)]
 _dll.rotate_angle_c.restype = None
 _dll.rotate_angle_c.argtypes = [ndpointer(c_double), c_double,
                                 POINTER(c_double)]
-_dll.maxwell_spectrum_c.restype = c_double
-_dll.maxwell_spectrum_c.argtypes = [c_double]
+_dll.maxwell_spectrum.restype = c_double
+_dll.maxwell_spectrum.argtypes = [c_double]
 
-_dll.watt_spectrum_c.restype = c_double
-_dll.watt_spectrum_c.argtypes = [c_double, c_double]
+_dll.watt_spectrum.restype = c_double
+_dll.watt_spectrum.argtypes = [c_double, c_double]
 
 _dll.broaden_wmp_polynomials_c.restype = None
 _dll.broaden_wmp_polynomials_c.argtypes = [c_double, c_double, c_int,
@@ -100,9 +100,8 @@ def evaluate_legendre(data, x):
     """
 
     data_arr = np.array(data, dtype=np.float64)
-    return _dll.evaluate_legendre_c(len(data),
-                                    data_arr.ctypes.data_as(POINTER(c_double)),
-                                    x)
+    return _dll.evaluate_legendre(len(data),
+                                  data_arr.ctypes.data_as(POINTER(c_double)), x)
 
 
 def calc_rn(n, uvw):
@@ -182,7 +181,7 @@ def calc_zn_rad(n, rho):
     zn_rad = np.zeros(num_bins, dtype=np.float64)
     _dll.calc_zn_rad_c(n, rho, zn_rad)
     return zn_rad
-    
+
 
 def rotate_angle(uvw0, mu, phi=None):
     """ Rotates direction cosines through a polar angle whose cosine is
@@ -231,7 +230,7 @@ def maxwell_spectrum(T):
 
     """
 
-    return _dll.maxwell_spectrum_c(T)
+    return _dll.maxwell_spectrum(T)
 
 
 def watt_spectrum(a, b):
@@ -251,7 +250,7 @@ def watt_spectrum(a, b):
 
     """
 
-    return _dll.watt_spectrum_c(a, b)
+    return _dll.watt_spectrum(a, b)
 
 
 def broaden_wmp_polynomials(E, dopp, n):

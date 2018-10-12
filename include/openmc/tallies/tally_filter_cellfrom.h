@@ -9,6 +9,8 @@ namespace openmc {
 class CellFromFilter : public CellFilter
 {
 public:
+  virtual std::string type() const override {return "cellfrom";}
+
   virtual void
   get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
   const override
@@ -21,16 +23,6 @@ public:
         match.weights.push_back(1);
       }
     }
-  }
-
-  virtual void
-  to_statepoint(hid_t filter_group) const override
-  {
-    write_dataset(filter_group, "type", "cellfrom");
-    write_dataset(filter_group, "n_bins", cells_.size());
-    std::vector<int32_t> cell_ids;
-    for (auto c : cells_) cell_ids.push_back(cells[c]->id_);
-    write_dataset(filter_group, "bins", cell_ids);
   }
 
   virtual std::string

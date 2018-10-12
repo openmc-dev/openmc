@@ -15,14 +15,18 @@ namespace openmc {
 class MeshFilter : public TallyFilter
 {
 public:
+  virtual std::string type() const override {return "mesh";}
+
   virtual ~MeshFilter() override = default;
 
   virtual void
   from_xml(pugi::xml_node node) override
   {
     auto bins_ = get_node_array<int32_t>(node, "bins");
-    if (bins_.size() != 1)
-      fatal_error("Only one mesh can be specified per mesh filter.");
+    if (bins_.size() != 1) {
+      fatal_error("Only one mesh can be specified per " + type()
+                  + " mesh filter.");
+    }
 
     auto id = bins_[0];
     auto search = mesh_map.find(id);
@@ -56,8 +60,7 @@ public:
   virtual void
   to_statepoint(hid_t filter_group) const override
   {
-    write_dataset(filter_group, "type", "mesh");
-    write_dataset(filter_group, "n_bins", n_bins_);
+    TallyFilter::to_statepoint(filter_group);
     write_dataset(filter_group, "bins", meshes[mesh_]->id_);
   }
 

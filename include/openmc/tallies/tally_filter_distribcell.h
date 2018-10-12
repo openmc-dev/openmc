@@ -15,6 +15,8 @@ namespace openmc {
 class DistribcellFilter : public TallyFilter
 {
 public:
+  virtual std::string type() const override {return "distribcell";}
+
   virtual ~DistribcellFilter() override = default;
 
   virtual void
@@ -72,8 +74,7 @@ public:
   virtual void
   to_statepoint(hid_t filter_group) const override
   {
-    write_dataset(filter_group, "type", "distribcell");
-    write_dataset(filter_group, "n_bins", n_bins_);
+    TallyFilter::to_statepoint(filter_group);
     write_dataset(filter_group, "bins", cells[cell_]->id_);
   }
 

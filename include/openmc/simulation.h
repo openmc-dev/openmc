@@ -56,6 +56,9 @@ void calculate_work();
 //! Initialize simulation
 extern "C" void openmc_simulation_init_c();
 
+//! Initialize a fission generation
+extern "C" void initialize_generation();
+
 //! Determine overall generation number
 extern "C" int overall_generation();
 

@@ -63,15 +63,13 @@ contains
     integer(C_INT) :: err
 
     logical :: write_source_
-    integer :: i, j, k
+    integer :: i, j
     integer :: i_xs
     integer, allocatable :: id_array(:)
     integer(HID_T) :: file_id
     integer(HID_T) :: cmfd_group, tallies_group, tally_group, &
                       filters_group, filter_group, derivs_group, &
                       deriv_group, runtime_group
-    integer(C_INT) :: ignored_err
-    real(C_DOUBLE) :: k_combined(2)
     character(MAX_WORD_LEN), allocatable :: str_array(:)
     character(C_CHAR), pointer :: string(:)
     character(len=:, kind=C_CHAR), allocatable :: filename_
@@ -83,7 +81,7 @@ contains
         import HID_T
         integer(HID_T), value :: group
       end subroutine
-      subroutine entropy_to_hdf5(group) bind(C)
+      subroutine write_eigenvalue_hdf5(group) bind(C)
         import HID_T
         integer(HID_T), value :: group
       end subroutine
@@ -173,16 +171,7 @@ contains
 
       ! Write out information for eigenvalue run
       if (run_mode == MODE_EIGENVALUE) then
-        call write_dataset(file_id, "n_inactive", n_inactive)
-        call write_dataset(file_id, "generations_per_batch", gen_per_batch)
-        k = k_generation % size()
-        call write_dataset(file_id, "k_generation", k_generation % data(1:k))
-        call entropy_to_hdf5(file_id)
-        call write_dataset(file_id, "k_col_abs", k_col_abs)
-        call write_dataset(file_id, "k_col_tra", k_col_tra)
-        call write_dataset(file_id, "k_abs_tra", k_abs_tra)
-        ignored_err = openmc_get_keff(k_combined)
-        call write_dataset(file_id, "k_combined", k_combined)
+        call write_eigenvalue_hdf5(file_id)
 
         ! Write out CMFD info
         if (cmfd_on) then
@@ -513,7 +502,9 @@ contains
     character(MAX_WORD_LEN) :: word
 
     interface
-      subroutine entropy_from_hdf5() bind(C)
+      subroutine read_eigenvalue_hdf5(group) bind(C)
+        import HID_T
+        integer(HID_T), value :: group
       end subroutine
     end interface
 
@@ -592,16 +583,7 @@ contains
     ! Read information specific to eigenvalue run
     if (run_mode == MODE_EIGENVALUE) then
       call read_dataset(int_array(1), file_id, "n_inactive")
-      call read_dataset(gen_per_batch, file_id, "generations_per_batch")
-
-      n = restart_batch*gen_per_batch
-      call k_generation % resize(n)
-      call read_dataset(k_generation % data(1:n), file_id, "k_generation")
-
-      call entropy_from_hdf5()
-      call read_dataset(k_col_abs, file_id, "k_col_abs")
-      call read_dataset(k_col_tra, file_id, "k_col_tra")
-      call read_dataset(k_abs_tra, file_id, "k_abs_tra")
+      call read_eigenvalue_hdf5(file_id)
 
       ! Take maximum of statepoint n_inactive and input n_inactive
       n_inactive = max(n_inactive, int_array(1))
@@ -634,13 +616,14 @@ contains
     ! of active cycle or inactive cycle
     if (restart_batch > n_inactive) then
       do i = n_inactive + 1, restart_batch
-        k_sum(1) = k_sum(1) + k_generation % data(i)
-        k_sum(2) = k_sum(2) + k_generation % data(i)**2
+        k_sum(1) = k_sum(1) + k_generation(i)
+        k_sum(2) = k_sum(2) + k_generation(i)**2
       end do
       n = gen_per_batch*n_realizations
       keff = k_sum(1) / n
     else
-      keff = k_generation % data(n)
+      n = k_generation_size()
+      keff = k_generation(n)
     end if
     current_batch = restart_batch
 

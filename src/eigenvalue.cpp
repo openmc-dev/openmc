@@ -5,6 +5,7 @@
 #include "xtensor/xview.hpp"
 
 #include "openmc/capi.h"
+#include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/mesh.h"
@@ -14,6 +15,7 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/timer.h"
+#include "openmc/tallies/tally.h"
 
 #include <algorithm> // for min
 #include <string>
@@ -24,12 +26,35 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
+double keff_generation;
 std::vector<double> entropy;
 xt::xtensor<double, 1> source_frac;
 
 //==============================================================================
 // Non-member functions
 //==============================================================================
+
+void calculate_generation_keff()
+{
+  auto gt = global_tallies();
+
+  // Get keff for this generation by subtracting off the starting value
+  keff_generation = gt(K_TRACKLENGTH, RESULT_VALUE) - keff_generation;
+
+  double keff_reduced;
+#ifdef OPENMC_MPI
+  // Combine values across all processors
+  MPI_Allreduce(&keff_generation, &keff_reduced, 1, MPI_DOUBLE,
+    MPI_SUM, mpi::intracomm);
+#else
+  keff_reduced = keff_generation;
+#endif
+
+  // Normalize single batch estimate of k
+  // TODO: This should be normalized by total_weight, not by n_particles
+  keff_reduced /= settings::n_particles;
+  simulation::k_generation.push_back(keff_reduced);
+}
 
 void synchronize_bank()
 {
@@ -375,18 +400,34 @@ double ufs_get_weight(const Particle* p)
   }
 }
 
-extern "C" void entropy_to_hdf5(hid_t group)
+extern "C" void write_eigenvalue_hdf5(hid_t group)
 {
+  write_dataset(group, "n_inactive", settings::n_inactive);
+  write_dataset(group, "generations_per_batch", settings::gen_per_batch);
+  write_dataset(group, "k_generation", simulation::k_generation);
   if (settings::entropy_on) {
     write_dataset(group, "entropy", entropy);
   }
+  write_dataset(group, "k_col_abs", simulation::k_col_abs);
+  write_dataset(group, "k_col_tra", simulation::k_col_tra);
+  write_dataset(group, "k_abs_tra", simulation::k_abs_tra);
+  std::array<double, 2> k_combined;
+  openmc_get_keff(k_combined.data());
+  write_dataset(group, "k_combined", k_combined);
 }
 
-extern "C" void entropy_from_hdf5(hid_t group)
+extern "C" void read_eigenvalue_hdf5(hid_t group)
 {
+  read_dataset(group, "generations_per_batch", settings::gen_per_batch);
+  int n = simulation::restart_batch*settings::gen_per_batch;
+  simulation::k_generation.resize(n);
+  read_dataset(group, "k_generation", simulation::k_generation);
   if (settings::entropy_on) {
     read_dataset(group, "entropy", entropy);
   }
+  read_dataset(group, "k_col_abs", simulation::k_col_abs);
+  read_dataset(group, "k_col_tra", simulation::k_col_tra);
+  read_dataset(group, "k_abs_tra", simulation::k_abs_tra);
 }
 
 extern "C" double entropy_c(int i)

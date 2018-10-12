@@ -28,8 +28,8 @@ const int NULLRGB[3] = {0, 0, 0};
 // RUN_PLOT controls the logic for making one or many plots
 //===============================================================================
 
-
-int openmc_plot_geometry_c() {
+extern "C"
+int openmc_plot_geometry() {
   int err;
 
   for(int i = 0; i < n_plots; i++) {

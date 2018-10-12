@@ -22,6 +22,7 @@ public:
   from_xml(pugi::xml_node node) override
   {
     cells_ = get_node_array<int32_t>(node, "bins");
+    n_bins_ = cells_.size();
   }
 
   virtual void
@@ -61,7 +62,7 @@ public:
   to_statepoint(hid_t filter_group) const override
   {
     write_dataset(filter_group, "type", "cell");
-    write_dataset(filter_group, "n_bins", cells_.size());
+    write_dataset(filter_group, "n_bins", n_bins_);
     std::vector<int32_t> cell_ids;
     for (auto c : cells_) cell_ids.push_back(cells[c]->id_);
     write_dataset(filter_group, "bins", cell_ids);
@@ -73,7 +74,6 @@ public:
     return "Cell " + std::to_string(cells[cells_[bin-1]]->id_);
   }
 
-protected:
   std::vector<int32_t> cells_;
   std::unordered_map<int32_t, int> map_;
 };

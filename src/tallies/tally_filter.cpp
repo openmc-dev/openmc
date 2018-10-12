@@ -118,6 +118,13 @@ extern "C" {
 
   int filter_n_bins(TallyFilter* filt) {return filt->n_bins_;}
 
+  void
+  cell_filter_get_bins(CellFilter* filt, int32_t** cells, int32_t* n)
+  {
+    *cells = filt->cells_.data();
+    *n = filt->cells_.size();
+  }
+
   int mesh_filter_get_mesh(MeshFilter* filt) {return filt->mesh_;}
 
   void

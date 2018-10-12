@@ -101,7 +101,7 @@ module input_xml
       import C_PTR
       type(C_PTR) :: node_ptr
     end subroutine read_plots
-    
+
     subroutine set_particle_energy_bounds(particle, E_min, E_max) bind(C)
       import C_INT, C_DOUBLE
       integer(C_INT), value :: particle
@@ -2056,7 +2056,7 @@ contains
     type(XMLNode), allocatable :: node_mask_list(:)
     type(XMLNode), allocatable :: node_meshline_list(:)
 
-    
+
     ! Check if plots.xml exists
     filename = trim(path_input) // "plots.xml"
     inquire(FILE=filename, EXIST=file_exists)
@@ -2074,7 +2074,7 @@ contains
 
     call read_plots(root % ptr)
     return
-    
+
     ! Get list pointer to XML <plot>
     call get_node_list(root, "plot", node_plot_list)
 

@@ -1,4 +1,5 @@
 #include <fstream>
+#include <ctime>
 
 #include "openmc/plot.h"
 #include "openmc/constants.h"
@@ -27,6 +28,17 @@ const int NULLRGB[3] = {0, 0, 0};
 // RUN_PLOT controls the logic for making one or many plots
 //===============================================================================
 
+  std::string time_stamp()
+  {
+    std::stringstream ts;
+    std::time_t t = std::time(0);   // get time now
+    std::tm* now = std::localtime(&t);
+    ts << now->tm_year + 1990 << "-" << now->tm_mon
+       << "-" << now->tm_mday << " " << now->tm_hour
+       << ":" << now->tm_min << ":" << now->tm_sec;
+    return ts.str();
+  }
+  
 int openmc_plot_geometry_c() {
   int err;
 
@@ -342,11 +354,6 @@ void create_ppm(ObjectPlot* pl) {
       colors[i].rgb[0] = int(prn()*255);
       colors[i].rgb[1] = int(prn()*255);
       colors[i].rgb[2] = int(prn()*255);
-      std::cout << "Cell " << i << " color:" << std::endl;
-      std::cout << "{" << colors[i].rgb[0]
-                << ", "<< colors[i].rgb[1]
-                << ", "<< colors[i].rgb[1]
-                << "}" << std::endl;
     }
 
   } else if("material" == pl_color_by) {
@@ -358,11 +365,6 @@ void create_ppm(ObjectPlot* pl) {
       colors[i].rgb[0] = int(prn()*255);
       colors[i].rgb[1] = int(prn()*255);
       colors[i].rgb[2] = int(prn()*255);
-      std::cout << "Material " << i << " color:" << std::endl;
-      std::cout << "{" << colors[i].rgb[0]
-                << ", "<< colors[i].rgb[1]
-                << ", "<< colors[i].rgb[1]
-                << "}" << std::endl;      
     }
   } else {
     std::stringstream err_msg;
@@ -631,13 +633,13 @@ void create_ppm(ObjectPlot* pl) {
         if (std::find(iarray.begin(), iarray.end(), j) != iarray.end()) {
           if (check_for_node(mask_node, "background")) {
             std::vector<int> bg_rgb = get_node_array<int>(mask_node, "background");
-            colors[j - 1].rgb[0] = bg_rgb[0];
-            colors[j - 1].rgb[1] = bg_rgb[1];
-            colors[j - 1].rgb[2] = bg_rgb[2];
+            colors[j].rgb[0] = bg_rgb[0];
+            colors[j].rgb[1] = bg_rgb[1];
+            colors[j].rgb[2] = bg_rgb[2];
           } else {
-            colors[j - 1].rgb[0] = 255;
-            colors[j - 1].rgb[1] = 255;
-            colors[j - 1].rgb[2] = 255;
+            colors[j].rgb[0] = 255;
+            colors[j].rgb[1] = 255;
+            colors[j].rgb[2] = 255;
           }
         }
       }
@@ -891,7 +893,7 @@ void create_voxel(ObjectPlot *pl) {
   hid_t file_id = file_open(fname, 'w');
 
   // write header info
-  write_attribute(file_id, "filetype", 'voxel');
+  write_attribute(file_id, "filetype", "voxel");
   write_attribute(file_id, "version", VERSION_VOXEL);
   write_attribute(file_id, "openmc_version", VERSION);
 
@@ -900,7 +902,7 @@ void create_voxel(ObjectPlot *pl) {
 #endif
 
   // Write current date and time
-  //  write_attribute(file_id, "date_and_time", time_stamp()); <-- RE-ADD!!!
+  write_attribute(file_id, "date_and_time", time_stamp().c_str());
   hsize_t three = 3;
   write_attr_int(file_id, 1, &three, "num_voxels", pl->pixels);
   write_attr_double(file_id, 1, &three, "voxel_width", vox);

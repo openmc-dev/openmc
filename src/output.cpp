@@ -5,6 +5,7 @@
 #include <iomanip>  // for setw
 #include <iostream>
 #include <sstream>
+#include <ctime>
 
 #include "openmc/cell.h"
 #include "openmc/geometry.h"
@@ -39,6 +40,18 @@ header(const char* msg, int level) {
   }
 }
 
+std::string time_stamp()
+{
+  int base_year = 1990;
+  std::stringstream ts;
+  std::time_t t = std::time(0);   // get time now
+  std::tm* now = std::localtime(&t);
+  ts << now->tm_year + base_year << "-" << now->tm_mon
+     << "-" << now->tm_mday << " " << now->tm_hour
+     << ":" << now->tm_min << ":" << now->tm_sec;
+  return ts.str();
+}
+  
 //==============================================================================
 
 void print_overlap_check() {

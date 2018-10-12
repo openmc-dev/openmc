@@ -4,6 +4,7 @@
 #ifndef OPENMC_OUTPUT_H
 #define OPENMC_OUTPUT_H
 
+#include <string>
 
 namespace openmc {
 
@@ -16,6 +17,14 @@ namespace openmc {
 
 void header(const char* msg, int level);
 
+
+//==============================================================================
+//! Retrieve a time stamp with the format "yyyy-mm-dd hh:mm:ss"
+//!
+//==============================================================================
+ 
+std::string time_stamp();
+ 
 //==============================================================================
 //! Display information regarding cell overlap checking.
 //==============================================================================

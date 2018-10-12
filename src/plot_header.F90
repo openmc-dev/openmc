@@ -71,4 +71,8 @@ contains
     call plot_dict % clear()
   end subroutine free_memory_plot
 
+!===============================================================================
+! RUN_PLOT controls the logic for making one or many plots
+!===============================================================================
+
 end module plot_header

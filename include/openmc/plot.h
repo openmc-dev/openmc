@@ -73,7 +73,7 @@ namespace openmc {
 
   };
 
-extern "C" int openmc_plot_geometry_c();
+  //extern "C" int openmc_plot_geometry();
   
 extern "C" void read_plots(pugi::xml_node* plot_node);
   

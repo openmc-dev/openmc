@@ -408,10 +408,10 @@ constexpr int STANDARD_DEVIATION {3};
 
 // Global tally parameters
 constexpr int N_GLOBAL_TALLIES {4};
-constexpr int K_COLLISION   {1};
-constexpr int K_ABSORPTION  {2};
-constexpr int K_TRACKLENGTH {3};
-constexpr int LEAKAGE       {4};
+constexpr int K_COLLISION   {0};
+constexpr int K_ABSORPTION  {1};
+constexpr int K_TRACKLENGTH {2};
+constexpr int LEAKAGE       {3};
 
 // Differential tally independent variables
 constexpr int DIFF_DENSITY {1};

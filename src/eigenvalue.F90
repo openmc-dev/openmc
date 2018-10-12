@@ -16,41 +16,14 @@ module eigenvalue
 
   implicit none
 
-  real(8) :: keff_generation ! Single-generation k on each processor
   real(8) :: k_sum(2) = ZERO ! Used to reduce sum and sum_sq
 
+  interface
+    subroutine calculate_generation_keff() bind(C)
+    end subroutine
+  end interface
+
 contains
-
-!===============================================================================
-! CALCULATE_GENERATION_KEFF collects the single-processor tracklength k's onto
-! the master processor and normalizes them. This should work whether or not the
-! no-reduce method is being used.
-!===============================================================================
-
-  subroutine calculate_generation_keff()
-
-    real(8) :: keff_reduced
-#ifdef OPENMC_MPI
-    integer :: mpi_err ! MPI error code
-#endif
-
-    ! Get keff for this generation by subtracting off the starting value
-    keff_generation = global_tallies(RESULT_VALUE, K_TRACKLENGTH) - keff_generation
-
-#ifdef OPENMC_MPI
-    ! Combine values across all processors
-    call MPI_ALLREDUCE(keff_generation, keff_reduced, 1, MPI_REAL8, &
-         MPI_SUM, mpi_intracomm, mpi_err)
-#else
-    keff_reduced = keff_generation
-#endif
-
-    ! Normalize single batch estimate of k
-    ! TODO: This should be normalized by total_weight, not by n_particles
-    keff_reduced = keff_reduced / n_particles
-    call k_generation % push_back(keff_reduced)
-
-  end subroutine calculate_generation_keff
 
 !===============================================================================
 ! CALCULATE_AVERAGE_KEFF calculates the mean and standard deviation of the mean
@@ -76,12 +49,12 @@ contains
     if (n <= 0) then
       ! For inactive generations, use current generation k as estimate for next
       ! generation
-      keff = k_generation % data(i)
+      keff = k_generation(i)
 
     else
       ! Sample mean of keff
-      k_sum(1) = k_sum(1) + k_generation % data(i)
-      k_sum(2) = k_sum(2) + k_generation % data(i)**2
+      k_sum(1) = k_sum(1) + k_generation(i)
+      k_sum(2) = k_sum(2) + k_generation(i)**2
 
       ! Determine mean
       keff = k_sum(1) / n

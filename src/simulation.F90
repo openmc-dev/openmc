@@ -11,7 +11,7 @@ module simulation
   use cmfd_header,     only: cmfd_on
   use constants,       only: ZERO
   use eigenvalue,      only: calculate_average_keff, calculate_generation_keff, &
-                             keff_generation, k_sum
+                             k_sum
 #ifdef _OPENMP
   use eigenvalue,      only: join_bank_from_threads
 #endif
@@ -55,6 +55,9 @@ module simulation
     end subroutine
 
     subroutine initialize_source() bind(C)
+    end subroutine
+
+    subroutine initialize_generation() bind(C)
     end subroutine
 
     function sample_external_source() result(site) bind(C)
@@ -221,30 +224,6 @@ contains
     call setup_active_tallies()
 
   end subroutine initialize_batch
-
-!===============================================================================
-! INITIALIZE_GENERATION
-!===============================================================================
-
-  subroutine initialize_generation()
-
-    interface
-      subroutine ufs_count_sites() bind(C)
-      end subroutine
-    end interface
-
-    if (run_mode == MODE_EIGENVALUE) then
-      ! Reset number of fission bank sites
-      n_bank = 0
-
-      ! Count source sites if using uniform fission source weighting
-      if (ufs) call ufs_count_sites()
-
-      ! Store current value of tracklength k
-      keff_generation = global_tallies(RESULT_VALUE, K_TRACKLENGTH)
-    end if
-
-  end subroutine initialize_generation
 
 !===============================================================================
 ! FINALIZE_GENERATION
@@ -438,7 +417,7 @@ contains
     ! Reset global variables -- this is done before loading state point (as that
     ! will potentially populate k_generation and entropy)
     current_batch = 0
-    call k_generation % clear()
+    call k_generation_clear()
     call entropy_clear()
     need_depletion_rx = .false.
 

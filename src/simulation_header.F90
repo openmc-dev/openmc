@@ -39,7 +39,6 @@ module simulation_header
   ! K-EIGENVALUE SIMULATION VARIABLES
 
   ! Temporary k-effective values
-  type(VectorReal) :: k_generation ! single-generation estimates of k
   real(C_DOUBLE), bind(C) :: keff      ! average k over active batches
   real(C_DOUBLE), bind(C) :: keff_std  ! standard deviation of average k
   real(C_DOUBLE), bind(C) :: k_col_abs ! sum over batches of k_collision * k_absorption
@@ -71,6 +70,25 @@ module simulation_header
       import C_INT
       integer(C_INT) :: gen
     end function overall_generation
+
+    function k_generation(i) result(k) bind(C)
+      import C_DOUBLE, C_INT
+      integer(C_INT), value :: i
+      real(C_DOUBLE) :: k
+    end function
+
+    function k_generation_size() result(sz) bind(C)
+      import C_INT
+      integer(C_INT) :: sz
+    end function
+
+    subroutine k_generation_clear() bind(C)
+    end subroutine
+
+    subroutine k_generation_reserve(i) bind(C)
+      import C_INT
+      integer(C_INT), value :: i
+    end subroutine
   end interface
 
 contains
@@ -83,8 +101,7 @@ contains
 
     if (allocated(work_index)) deallocate(work_index)
 
-    call k_generation % clear()
-    call k_generation % shrink_to_fit()
+    call k_generation_clear()
     call entropy_clear()
   end subroutine free_memory_simulation
 

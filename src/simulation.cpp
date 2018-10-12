@@ -1,6 +1,7 @@
 #include "openmc/simulation.h"
 
 #include "openmc/capi.h"
+#include "openmc/eigenvalue.h"
 #include "openmc/message_passing.h"
 #include "openmc/settings.h"
 #include "openmc/tallies/tally.h"
@@ -62,13 +63,27 @@ int thread_id;  //!< ID of a given thread
 } // namespace simulation
 
 //==============================================================================
-// Functions
+// Non-member functions
 //==============================================================================
 
 void openmc_simulation_init_c()
 {
   // Determine how much work each process should do
   calculate_work();
+}
+
+void initialize_generation()
+{
+  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    // Reset number of fission bank sites
+    n_bank = 0;
+
+    // Count source sites if using uniform fission source weighting
+    if (settings::ufs_on) ufs_count_sites();
+
+    // Store current value of tracklength k
+    keff_generation = global_tallies()(K_TRACKLENGTH, RESULT_VALUE);
+  }
 }
 
 int overall_generation()
@@ -138,5 +153,14 @@ void broadcast_triggers()
   MPI_Bcast(&simulation::satisfy_triggers, 1, MPI_C_BOOL, 0, mpi::intracomm);
 }
 #endif
+
+//==============================================================================
+// Fortran compatibility
+//==============================================================================
+
+extern "C" double k_generation(int i) { return simulation::k_generation.at(i - 1); }
+extern "C" int k_generation_size() { return simulation::k_generation.size(); }
+extern "C" void k_generation_clear() { simulation::k_generation.clear(); }
+extern "C" void k_generation_reserve(int i) { simulation::k_generation.reserve(i); }
 
 } // namespace openmc

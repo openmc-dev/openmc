@@ -223,7 +223,7 @@ contains
 
     if (run_mode == MODE_EIGENVALUE) then
       ! Preallocate space for keff and entropy by generation
-      call k_generation % reserve(n_max_batches*gen_per_batch)
+      call k_generation_reserve(n_max_batches*gen_per_batch)
     end if
 
     ! Particle tracks

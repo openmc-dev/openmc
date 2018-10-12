@@ -339,7 +339,7 @@ contains
     ! write out information about batch and generation
     write(UNIT=OUTPUT_UNIT, FMT='(2X,A9)', ADVANCE='NO') &
          trim(to_str(current_batch)) // "/" // trim(to_str(current_gen))
-    write(UNIT=OUTPUT_UNIT, FMT='(3X,F8.5)', ADVANCE='NO') k_generation % data(i)
+    write(UNIT=OUTPUT_UNIT, FMT='(3X,F8.5)', ADVANCE='NO') k_generation(i)
 
     ! write out entropy info
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
@@ -373,7 +373,7 @@ contains
     write(UNIT=OUTPUT_UNIT, FMT='(2X,A9)', ADVANCE='NO') &
          trim(to_str(current_batch)) // "/" // trim(to_str(gen_per_batch))
     write(UNIT=OUTPUT_UNIT, FMT='(3X,F8.5)', ADVANCE='NO') &
-         k_generation % data(i)
+         k_generation(i)
 
     ! write out entropy info
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &

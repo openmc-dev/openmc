@@ -10,22 +10,21 @@
 
 namespace openmc {
 
-//==============================================================================
-// SCATTER
-//==============================================================================
+//TODO: Remove energy_bin_avg and material_xs parameters when they reside on
+// the C-side this should happen after materials, physics, input, and tallies
+// are brought over
 
 //! \brief samples particle behavior after a collision event.
 extern "C" void
-collision_mg(Particle* p, Bank* fission_bank, const int64_t fission_bank_size,
-     const double* energy_bin_avg, const MaterialMacroXS& material_xs);
+collision_mg(Particle* p, const double* energy_bin_avg,
+     const MaterialMacroXS& material_xs);
 
 //! \brief samples a reaction type.
 //!
 //! Note that there is special logic when suvival biasing is turned on since
 //! fission and disappearance are treated implicitly.
 void
-sample_reaction(Particle* p, Bank* fission_bank,
-     const int64_t fission_bank_size, const double* energy_bin_avg,
+sample_reaction(Particle* p, const double* energy_bin_avg,
      const MaterialMacroXS& material_xs);
 
 //! \brief Samples the scattering event

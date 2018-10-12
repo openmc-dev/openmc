@@ -20,15 +20,14 @@
 namespace openmc {
 
 void
-collision_mg(Particle* p, Bank* fission_bank, const int64_t fission_bank_size,
-     const double* energy_bin_avg, const MaterialMacroXS& material_xs)
+collision_mg(Particle* p, const double* energy_bin_avg,
+             const MaterialMacroXS& material_xs)
 {
   // Add to the collision counter for the particle
   p->n_collision++;
 
   // Sample the reaction type
-  sample_reaction(p, fission_bank, fission_bank_size, energy_bin_avg,
-                  material_xs);
+  sample_reaction(p, energy_bin_avg, material_xs);
 
   // Display information about collision
   if ((settings::verbosity >= 10) || (openmc_trace)) {
@@ -39,8 +38,7 @@ collision_mg(Particle* p, Bank* fission_bank, const int64_t fission_bank_size,
 }
 
 void
-sample_reaction(Particle* p, Bank* fission_bank,
-                const int64_t fission_bank_size, const double* energy_bin_avg,
+sample_reaction(Particle* p, const double* energy_bin_avg,
                 const MaterialMacroXS& material_xs)
 {
   // Create fission bank sites. Note that while a fission reaction is sampled,
@@ -50,7 +48,11 @@ sample_reaction(Particle* p, Bank* fission_bank,
 
   if (materials[p->material - 1]->fissionable) {
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      create_fission_sites(p, fission_bank, n_bank, fission_bank_size,
+      Bank* result_bank;
+      int64_t result_bank_size;
+      // Get pointer to fission bank from Fortran side
+      openmc_fission_bank(&result_bank, &result_bank_size);
+      create_fission_sites(p, result_bank, n_bank, result_bank_size,
                            material_xs);
     } else if ((settings::run_mode == RUN_MODE_FIXEDSOURCE) &&
                (settings::create_fission_neutrons)) {

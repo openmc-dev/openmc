@@ -97,36 +97,6 @@ calculate_xs_c(int i_mat, int gin, double sqrtkT, const double uvw[3],
 
 //==============================================================================
 
-void
-sample_scatter_c(int i_mat, int gin, int& gout, double& mu, double& wgt,
-                 double uvw[3])
-{
-  int gout_c = gout - 1;
-  macro_xs[i_mat - 1].sample_scatter(gin - 1, gout_c, mu, wgt);
-
-  // adjust return value for fortran indexing
-  gout = gout_c + 1;
-
-  // Rotate the angle
-  rotate_angle_c(uvw, mu, nullptr);
-}
-
-//==============================================================================
-
-void
-sample_fission_energy_c(int i_mat, int gin, int& dg, int& gout)
-{
-  int dg_c = 0;
-  int gout_c = 0;
-  macro_xs[i_mat - 1].sample_fission_energy(gin - 1, dg_c, gout_c);
-
-  // adjust return values for fortran indexing
-  dg = dg_c + 1;
-  gout = gout_c + 1;
-}
-
-//==============================================================================
-
 double
 get_nuclide_xs_c(int index, int xstype, int gin, int* gout, double* mu, int* dg)
 {

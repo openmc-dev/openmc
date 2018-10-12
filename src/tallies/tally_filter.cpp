@@ -4,6 +4,7 @@
 
 #include "openmc/constants.h"  // for MAX_LINE_LEN;
 #include "openmc/tallies/tally_filter_cell.h"
+#include "openmc/tallies/tally_filter_cellborn.h"
 #include "openmc/tallies/tally_filter_cellfrom.h"
 #include "openmc/tallies/tally_filter_mesh.h"
 #include "openmc/tallies/tally_filter_meshsurface.h"
@@ -80,6 +81,8 @@ extern "C" {
     std::string type_ {type};
     if (type_ == "cell") {
       tally_filters.push_back(new CellFilter());
+    } else if (type_ == "cellborn") {
+      tally_filters.push_back(new CellbornFilter());
     } else if (type_ == "cellfrom") {
       tally_filters.push_back(new CellFromFilter());
     } else if (type_ == "mesh") {

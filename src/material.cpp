@@ -124,7 +124,7 @@ extern "C" {
 
   bool material_fissionable(Material* mat) {return mat->fissionable;}
 
-  void material_set_fissionable(Material* mat, bool fissionable, int32_t index)
+  void material_set_fissionable(Material* mat, bool fissionable)
   {
     mat->fissionable = fissionable;
   }

@@ -90,8 +90,8 @@ contains
         end if
       end do NUCLIDE_LOOP
 
-      call mat % set_fissionable(query_fissionable_c(mat % n_nuclides, &
-                                                     mat % nuclide))
+      call mat % set_fissionable( &
+           logical(query_fissionable_c(mat % n_nuclides, mat % nuclide)))
 
     end do MATERIAL_LOOP
 

@@ -3,12 +3,15 @@
 #include <string>
 
 #include "openmc/constants.h"  // for MAX_LINE_LEN;
+#include "openmc/tallies/tally_filter_azimuthal.h"
 #include "openmc/tallies/tally_filter_cell.h"
 #include "openmc/tallies/tally_filter_cellborn.h"
 #include "openmc/tallies/tally_filter_cellfrom.h"
 #include "openmc/tallies/tally_filter_distribcell.h"
 #include "openmc/tallies/tally_filter_mesh.h"
 #include "openmc/tallies/tally_filter_meshsurface.h"
+#include "openmc/tallies/tally_filter_mu.h"
+#include "openmc/tallies/tally_filter_polar.h"
 
 
 namespace openmc {
@@ -80,7 +83,9 @@ extern "C" {
   allocate_filter(const char* type)
   {
     std::string type_ {type};
-    if (type_ == "cell") {
+    if (type_ == "azimuthal") {
+      tally_filters.push_back(new AzimuthalFilter());
+    } else if (type_ == "cell") {
       tally_filters.push_back(new CellFilter());
     } else if (type_ == "cellborn") {
       tally_filters.push_back(new CellbornFilter());
@@ -92,6 +97,10 @@ extern "C" {
       tally_filters.push_back(new MeshFilter());
     } else if (type_ == "meshsurface") {
       tally_filters.push_back(new MeshSurfaceFilter());
+    } else if (type_ == "mu") {
+      tally_filters.push_back(new MuFilter());
+    } else if (type_ == "polar") {
+      tally_filters.push_back(new PolarFilter());
     } else {
       return nullptr;
     }

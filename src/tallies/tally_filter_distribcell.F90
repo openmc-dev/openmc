@@ -11,7 +11,6 @@ module tally_filter_distribcell
 !===============================================================================
 
   type, public, extends(CppTallyFilter) :: DistribcellFilter
-    integer :: cell
   contains
     procedure :: initialize => initialize_distribcell
   end type DistribcellFilter

@@ -65,12 +65,6 @@ contains
 ! FREE_MEMORY_PLOT deallocates global arrays defined in this module
 !===============================================================================
 
-  subroutine free_memory_plot()
-    n_plots = 0
-    if (allocated(plots)) deallocate(plots)
-    call plot_dict % clear()
-  end subroutine free_memory_plot
-
 !===============================================================================
 ! RUN_PLOT controls the logic for making one or many plots
 !===============================================================================

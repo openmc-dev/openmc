@@ -161,9 +161,9 @@ contains
   end function material_fissionable
 
   subroutine material_set_fissionable(this, fissionable)
-    class(Material),    intent(in) :: this
-    logical(C_BOOL),    intent(in) :: fissionable
-    call material_set_fissionable_c(this % ptr, fissionable)
+    class(Material),intent(in) :: this
+    logical,        intent(in) :: fissionable
+    call material_set_fissionable_c(this % ptr, logical(fissionable, C_BOOL))
   end subroutine material_set_fissionable
 
   function material_set_density(this, density) result(err)

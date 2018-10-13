@@ -17,7 +17,6 @@ module tracking
   use nuclide_header
   use particle_header
   use physics,            only: collision
-  ! use physics_mg,         only: collision_mg
   use random_lcg,         only: prn, prn_set_stream
   use settings
   use simulation_header

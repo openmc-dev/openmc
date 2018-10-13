@@ -85,7 +85,6 @@ contains
     call free_memory_geometry()
     call free_memory_surfaces()
     call free_memory_material()
-    call free_memory_plot()
     call free_memory_volume()
     call free_memory_simulation()
     call free_memory_nuclide()

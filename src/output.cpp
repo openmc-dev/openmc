@@ -12,7 +12,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/capi.h"
 #include "openmc/settings.h"
-
+#include "openmc/plot.h"
 
 namespace openmc {
 
@@ -54,7 +54,60 @@ std::string time_stamp()
   
 //==============================================================================
 
-void print_overlap_check() {
+//===============================================================================
+// PRINT_PLOT displays selected options for plotting
+//===============================================================================
+
+void print_plot() {
+  header("PLOTTING SUMMARY", 5);
+
+  for (auto pl : plots) {
+    // Plot id
+    std::cout << "Plot ID: " << pl->id << std::endl;
+    // Plot filename
+    std::cout << "Plot file: " << pl->path_plot << std::endl;
+    // Plot level
+    std::cout << "Universe depth: " << pl->level << std::endl;
+
+    // Plot type
+    if (PLOT_TYPE::SLICE == pl->type) {
+      std::cout << "Plot Type: Slice" << std::endl;
+    } else if (PLOT_TYPE::VOXEL == pl->type) {
+      std::cout << "Plot Type: Voxel" << std::endl;      
+    }
+
+    // Plot parameters
+    std::cout << "Origin: " << pl->origin[0] << " "
+              << pl->origin[1] << " "
+              << pl->origin[2] << std::endl;
+    
+    if (PLOT_TYPE::SLICE == pl->type) {
+      switch(pl->basis) {
+      case PLOT_BASIS::XY:
+        std::cout <<  "Basis: XY" << std::endl;
+        break;
+      case PLOT_BASIS::XZ:
+        std::cout <<  "Basis: XZ" << std::endl;
+        break;
+      case PLOT_BASIS::YZ:
+        std::cout <<  "Basis: YZ" << std::endl;
+        break;
+      }
+      std::cout << "Pixels: " << pl->pixels[0] << " "
+                << pl->pixels[1] << " " << std::endl;
+    } else if (PLOT_TYPE::VOXEL == pl->type) {
+      std::cout << "Voxel: " << pl->pixels[0] << " "
+                << pl->pixels[1] << " "
+                << pl->pixels[2] << std::endl;
+    }
+
+    std::cout << std::endl;
+    
+  }
+}
+  
+void
+print_overlap_check() {
 #ifdef OPENMC_MPI
   std::vector<int64_t> temp(overlap_check_count);
   int err = MPI_Reduce(temp.data(), overlap_check_count.data(),

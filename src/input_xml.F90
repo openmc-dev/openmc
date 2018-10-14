@@ -2047,7 +2047,6 @@ contains
     character(MAX_LINE_LEN) :: filename ! absolute path to plots.xml
     character(MAX_LINE_LEN) :: temp_str
     character(MAX_WORD_LEN) :: meshtype
-    type(ObjectPlot), pointer :: pl => null()
     type(XMLDocument) :: doc
     type(XMLNode) :: root
     type(XMLNode) :: node_plot

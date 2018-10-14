@@ -16,13 +16,13 @@ namespace openmc {
 
   class ObjectPlot;
 
-  int PLOT_LEVEL_LOWEST = -1;
+  extern int PLOT_LEVEL_LOWEST;
 
-  std::map<int, int> plot_dict;
+  extern std::map<int, int> plot_dict;
 
-  int n_plots;
+  extern int n_plots;
 
-  std::vector<ObjectPlot*> plots;
+  extern std::vector<ObjectPlot*> plots;
 
   enum PLOT_TYPE {
     SLICE = 1,
@@ -55,7 +55,7 @@ namespace openmc {
   struct ObjectPlot {
 
     ObjectPlot(pugi::xml_node plot);
-    
+
     int id;
     int type;
     int color_by;
@@ -74,9 +74,9 @@ namespace openmc {
   };
 
   //extern "C" int openmc_plot_geometry();
-  
+
 extern "C" void read_plots(pugi::xml_node* plot_node);
-  
+
 extern "C" void create_ppm(ObjectPlot* pl);
 
 extern "C" void create_voxel(ObjectPlot *pl);

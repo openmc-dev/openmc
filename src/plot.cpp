@@ -17,6 +17,14 @@
 
 namespace openmc {
 
+  int PLOT_LEVEL_LOWEST = -1;
+
+  std::map<int, int> plot_dict;
+
+  int n_plots;
+
+  std::vector<ObjectPlot*> plots;
+
 const int RED   = 0;
 const int GREEN = 1;
 const int BLUE  = 2;

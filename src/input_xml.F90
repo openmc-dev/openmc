@@ -25,7 +25,6 @@ module input_xml
   use multipole_header
   use output,           only: title, header
   use photon_header
-  use plot_header
   use random_lcg,       only: prn
   use surface_header
   use set_header,       only: SetChar, SetInt

@@ -2038,26 +2038,10 @@ contains
 
   subroutine read_plots_xml()
 
-    integer :: i, j
-    integer :: n_cols, col_id, n_comp, n_masks, n_meshlines
-    integer :: meshid
-    integer(C_INT) :: err, idx
-    integer, allocatable :: iarray(:)
     logical :: file_exists              ! does plots.xml file exist?
     character(MAX_LINE_LEN) :: filename ! absolute path to plots.xml
-    character(MAX_LINE_LEN) :: temp_str
-    character(MAX_WORD_LEN) :: meshtype
     type(XMLDocument) :: doc
     type(XMLNode) :: root
-    type(XMLNode) :: node_plot
-    type(XMLNode) :: node_col
-    type(XMLNode) :: node_mask
-    type(XMLNode) :: node_meshlines
-    type(XMLNode), allocatable :: node_plot_list(:)
-    type(XMLNode), allocatable :: node_col_list(:)
-    type(XMLNode), allocatable :: node_mask_list(:)
-    type(XMLNode), allocatable :: node_meshline_list(:)
-
 
     ! Check if plots.xml exists
     filename = trim(path_input) // "plots.xml"

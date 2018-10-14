@@ -468,9 +468,6 @@ contains
       surfaces(i) % ptr = surface_pointer(i - 1);
 
       if (surfaces(i) % bc() /= BC_TRANSMIT) boundary_exists = .true.
-
-      ! Add surface to dictionary
-      call surface_dict % set(surfaces(i) % id(), i)
     end do
 
     ! Check to make sure a boundary condition was applied to at least one
@@ -628,8 +625,6 @@ contains
 
     do i = 1, n_surfaces
       surfaces(i) % ptr = surface_pointer(i - 1);
-      ! Add surface to dictionary
-      call surface_dict % set(surfaces(i) % id(), i)
     end do
 
   end subroutine allocate_surfaces

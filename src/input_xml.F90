@@ -23,7 +23,7 @@ module input_xml
   use mgxs_interface
   use nuclide_header
   use multipole_header
-  use output,           only: title, header, print_plot
+  use output,           only: title, header
   use photon_header
   use plot_header
   use random_lcg,       only: prn
@@ -101,6 +101,9 @@ module input_xml
       import C_PTR
       type(C_PTR) :: node_ptr
     end subroutine read_plots
+
+    subroutine print_plot() bind(C)
+    end subroutine print_plot
 
     subroutine set_particle_energy_bounds(particle, E_min, E_max) bind(C)
       import C_INT, C_DOUBLE

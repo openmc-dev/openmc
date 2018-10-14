@@ -63,7 +63,6 @@ contains
     use geometry_header
     use material_header
     use photon_header
-    use plot_header
     use sab_header
     use settings
     use simulation_header

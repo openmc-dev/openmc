@@ -14,7 +14,6 @@ module output
   use mgxs_interface
   use nuclide_header
   use particle_header, only: LocalCoord, Particle
-  use plot_header
   use sab_header,      only: SAlphaBeta
   use settings
   use simulation_header

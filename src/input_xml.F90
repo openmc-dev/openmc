@@ -391,7 +391,6 @@ contains
       if (.not. cells_in_univ_dict % has(univ_id)) then
         n_universes = n_universes + 1
         n_cells_in_univ = 1
-        call universe_dict % set(univ_id, n_universes)
         call univ_ids % push_back(univ_id)
       else
         n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
@@ -561,7 +560,6 @@ contains
       if (.not. cells_in_univ_dict % has(univ_id)) then
         n_universes = n_universes + 1
         n_cells_in_univ = 1
-        call universe_dict % set(univ_id, n_universes - 1)
         call univ_ids % push_back(univ_id)
       else
         n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)

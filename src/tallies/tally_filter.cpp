@@ -13,6 +13,7 @@
 #include "openmc/tallies/tally_filter_meshsurface.h"
 #include "openmc/tallies/tally_filter_mu.h"
 #include "openmc/tallies/tally_filter_polar.h"
+#include "openmc/tallies/tally_filter_universe.h"
 
 
 namespace openmc {
@@ -104,6 +105,8 @@ extern "C" {
       tally_filters.push_back(new MuFilter());
     } else if (type_ == "polar") {
       tally_filters.push_back(new PolarFilter());
+    } else if (type_ == "universe") {
+      tally_filters.push_back(new UniverseFilter());
     } else {
       return nullptr;
     }

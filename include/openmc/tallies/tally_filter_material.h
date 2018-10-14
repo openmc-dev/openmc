@@ -1,6 +1,7 @@
 #ifndef OPENMC_TALLY_FILTER_MATERIAL_H
 #define OPENMC_TALLY_FILTER_MATERIAL_H
 
+#include <cstdint>
 #include <sstream>
 #include <unordered_map>
 #include <vector>

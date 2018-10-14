@@ -153,7 +153,6 @@ module geometry_header
 
   ! Dictionaries which map user IDs to indices in the global arrays
   type(DictIntInt) :: cell_dict
-  type(DictIntInt) :: universe_dict
   type(DictIntInt) :: lattice_dict
 
 contains
@@ -305,7 +304,6 @@ contains
     if (allocated(lattices)) deallocate(lattices)
 
     call cell_dict % clear()
-    call universe_dict % clear()
     call lattice_dict % clear()
 
   end subroutine free_memory_geometry

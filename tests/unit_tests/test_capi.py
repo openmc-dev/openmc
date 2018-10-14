@@ -168,6 +168,8 @@ def test_tally(capi_init):
         openmc.capi.MaterialFilter(uid=1)
     mats = openmc.capi.materials
     f = openmc.capi.MaterialFilter([mats[2], mats[1]])
+    assert f.bins[0] == mats[2]
+    assert f.bins[1] == mats[1]
     t.filters = [f]
     assert t.filters == [f]
 

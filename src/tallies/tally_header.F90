@@ -344,7 +344,7 @@ contains
         this % estimator = ESTIMATOR_ANALOG
       type is (SphericalHarmonicsFilter)
         j = FILTER_SPH_HARMONICS
-        if (filt % cosine == COSINE_SCATTER) then
+        if (filt % cosine() == COSINE_SCATTER) then
           this % estimator = ESTIMATOR_ANALOG
         end if
       type is (SpatialLegendreFilter)

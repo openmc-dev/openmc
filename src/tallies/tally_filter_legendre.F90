@@ -2,14 +2,8 @@ module tally_filter_legendre
 
   use, intrinsic :: ISO_C_BINDING
 
-  use constants
   use error
-  use hdf5_interface
-  use math,                only: calc_pn
-  use particle_header,     only: Particle
-  use string,              only: to_str
   use tally_filter_header
-  use xml_interface
 
   implicit none
   private
@@ -20,62 +14,10 @@ module tally_filter_legendre
 ! LEGENDREFILTER gives Legendre moments of the change in scattering angle
 !===============================================================================
 
-  type, public, extends(TallyFilter) :: LegendreFilter
-    integer(C_INT) :: order
-  contains
-    procedure :: from_xml
-    procedure :: get_all_bins
-    procedure :: to_statepoint
-    procedure :: text_label
+  type, public, extends(CppTallyFilter) :: LegendreFilter
   end type LegendreFilter
 
 contains
-
-!===============================================================================
-! LegendreFilter methods
-!===============================================================================
-
-  subroutine from_xml(this, node)
-    class(LegendreFilter), intent(inout) :: this
-    type(XMLNode), intent(in) :: node
-
-    ! Get specified order
-    call get_node_value(node, "order", this % order)
-    this % n_bins = this % order + 1
-  end subroutine from_xml
-
-  subroutine get_all_bins(this, p, estimator, match)
-    class(LegendreFilter), intent(in)  :: this
-    type(Particle),      intent(in)  :: p
-    integer,             intent(in)  :: estimator
-    type(TallyFilterMatch),   intent(inout) :: match
-
-    integer :: i
-    real(C_DOUBLE) :: wgt(this % n_bins)
-
-    call calc_pn(this % order, p % mu, wgt)
-    do i = 1, this % n_bins
-      call match % bins_push_back(i)
-      call match % weights_push_back(wgt(i))
-    end do
-  end subroutine get_all_bins
-
-  subroutine to_statepoint(this, filter_group)
-    class(LegendreFilter), intent(in) :: this
-    integer(HID_T),      intent(in) :: filter_group
-
-    call write_dataset(filter_group, "type", "legendre")
-    call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "order", this % order)
-  end subroutine to_statepoint
-
-  function text_label(this, bin) result(label)
-    class(LegendreFilter), intent(in) :: this
-    integer,             intent(in) :: bin
-    character(MAX_LINE_LEN)         :: label
-
-    label = "Legendre expansion, P" // trim(to_str(bin - 1))
-  end function text_label
 
 !===============================================================================
 !                               C API FUNCTIONS
@@ -87,11 +29,19 @@ contains
     integer(C_INT),     intent(out) :: order
     integer(C_INT) :: err
 
+    interface
+      function legendre_filter_get_order(filt) result(order) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: filt
+        integer(C_INT)     :: order
+      end function
+    end interface
+
     err = verify_filter(index)
     if (err == 0) then
       select type (f => filters(index) % obj)
       type is (LegendreFilter)
-        order = f % order
+        order = legendre_filter_get_order(f % ptr)
       class default
         err = E_INVALID_TYPE
         call set_errmsg("Tried to get order on a non-expansion filter.")
@@ -106,12 +56,20 @@ contains
     integer(C_INT),     value :: order
     integer(C_INT) :: err
 
+    interface
+      subroutine legendre_filter_set_order(filt, order) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR),    value :: filt
+        integer(C_INT), value :: order
+      end subroutine legendre_filter_set_order
+    end interface
+
     err = verify_filter(index)
     if (err == 0) then
       select type (f => filters(index) % obj)
       type is (LegendreFilter)
-        f % order = order
-        f % n_bins = order + 1
+        call legendre_filter_set_order(f % ptr, order)
+        f % n_bins = f % n_bins_cpp()
       class default
         err = E_INVALID_TYPE
         call set_errmsg("Tried to set order on a non-expansion filter.")

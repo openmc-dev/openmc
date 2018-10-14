@@ -8,11 +8,13 @@
 #include "openmc/tallies/tally_filter_cellborn.h"
 #include "openmc/tallies/tally_filter_cellfrom.h"
 #include "openmc/tallies/tally_filter_distribcell.h"
+#include "openmc/tallies/tally_filter_legendre.h"
 #include "openmc/tallies/tally_filter_material.h"
 #include "openmc/tallies/tally_filter_mesh.h"
 #include "openmc/tallies/tally_filter_meshsurface.h"
 #include "openmc/tallies/tally_filter_mu.h"
 #include "openmc/tallies/tally_filter_polar.h"
+#include "openmc/tallies/tally_filter_sph_harm.h"
 #include "openmc/tallies/tally_filter_surface.h"
 #include "openmc/tallies/tally_filter_universe.h"
 
@@ -96,6 +98,8 @@ extern "C" {
       tally_filters.push_back(new CellFromFilter());
     } else if (type_ == "distribcell") {
       tally_filters.push_back(new DistribcellFilter());
+    } else if (type_ == "legendre") {
+      tally_filters.push_back(new LegendreFilter());
     } else if (type_ == "material") {
       tally_filters.push_back(new MaterialFilter());
     } else if (type_ == "mesh") {
@@ -108,6 +112,8 @@ extern "C" {
       tally_filters.push_back(new PolarFilter());
     } else if (type_ == "surface") {
       tally_filters.push_back(new SurfaceFilter());
+    } else if (type_ == "sphericalharmonics") {
+      tally_filters.push_back(new SphericalHarmonicsFilter());
     } else if (type_ == "universe") {
       tally_filters.push_back(new UniverseFilter());
     } else {
@@ -149,6 +155,12 @@ extern "C" {
     *n = filt->cells_.size();
   }
 
+  int legendre_filter_get_order(LegendreFilter* filt)
+  {return filt->order_;}
+
+  void legendre_filter_set_order(LegendreFilter* filt, int order)
+  {filt->order_ = order;}
+
   void
   material_filter_get_bins(MaterialFilter* filt, int32_t** bins, int32_t* n)
   {
@@ -164,7 +176,7 @@ extern "C" {
     for (int i = 0; i < n; i++) filt->materials_[i] = bins[i];
     filt->n_bins_ = filt->materials_.size();
     filt->map_.clear();
-    for (int i = 0; i < n; i++) filt->map_[bins[i]] = i;
+    for (int i = 0; i < n; i++) filt->map_[filt->materials_[i]] = i;
   }
 
   int mesh_filter_get_mesh(MeshFilter* filt) {return filt->mesh_;}
@@ -186,6 +198,22 @@ extern "C" {
     filt->n_bins_ = 4 * meshes[mesh]->n_dimension_;
     for (auto dim : meshes[mesh]->shape_) filt->n_bins_ *= dim;
   }
+
+  int sphharm_filter_get_order(SphericalHarmonicsFilter* filt)
+  {return filt->order_;}
+
+  int sphharm_filter_get_cosine(SphericalHarmonicsFilter* filt)
+  {return static_cast<int>(filt->cosine_);}
+
+  void
+  sphharm_filter_set_order(SphericalHarmonicsFilter* filt, int order)
+  {
+    filt->order_ = order;
+    filt->n_bins_ = (order + 1) * (order + 1);
+  }
+
+  void sphharm_filter_set_cosine(SphericalHarmonicsFilter* filt, int cosine)
+  {filt->cosine_ = static_cast<SphericalHarmonicsCosine>(cosine);}
 }
 
 } // namespace openmc

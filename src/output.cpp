@@ -59,6 +59,7 @@ std::string time_stamp()
 //===============================================================================
 
 void print_plot() {
+
   header("PLOTTING SUMMARY", 5);
 
   for (auto pl : plots) {
@@ -80,6 +81,25 @@ void print_plot() {
     std::cout << "Origin: " << pl->origin[0] << " "
               << pl->origin[1] << " "
               << pl->origin[2] << std::endl;
+
+    if (PLOT_TYPE::SLICE == pl->type) {
+      std::cout << std::setprecision(4)
+                << "Width: "
+                << pl->width[0] << " "
+                << pl->width[1] << std::endl;
+    } else if (PLOT_TYPE::VOXEL == pl->type) {
+      std::cout << std::setprecision(4)
+                << "Width: "
+                << pl->width[0] << " "
+                << pl->width[1] << " "
+                << pl->width[2] << std::endl;
+    }
+
+    if (PLOT_COLOR_BY::CELLS == pl->color_by) {
+      std::cout << "Coloring: Cells" << std::endl;
+    } else if (PLOT_COLOR_BY::MATS == pl->color_by) {
+      std::cout << "Coloring: Materials" << std::endl;      
+    }
     
     if (PLOT_TYPE::SLICE == pl->type) {
       switch(pl->basis) {

@@ -31,6 +31,8 @@ std::string time_stamp();
 
 void print_overlap_check();
 
+extern "C" void print_plot();
+
 extern "C" void title();
 
 } // namespace openmc

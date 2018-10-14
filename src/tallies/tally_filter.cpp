@@ -8,6 +8,7 @@
 #include "openmc/tallies/tally_filter_cellborn.h"
 #include "openmc/tallies/tally_filter_cellfrom.h"
 #include "openmc/tallies/tally_filter_distribcell.h"
+#include "openmc/tallies/tally_filter_material.h"
 #include "openmc/tallies/tally_filter_mesh.h"
 #include "openmc/tallies/tally_filter_meshsurface.h"
 #include "openmc/tallies/tally_filter_mu.h"
@@ -93,6 +94,8 @@ extern "C" {
       tally_filters.push_back(new CellFromFilter());
     } else if (type_ == "distribcell") {
       tally_filters.push_back(new DistribcellFilter());
+    } else if (type_ == "material") {
+      tally_filters.push_back(new MaterialFilter());
     } else if (type_ == "mesh") {
       tally_filters.push_back(new MeshFilter());
     } else if (type_ == "meshsurface") {
@@ -138,6 +141,24 @@ extern "C" {
   {
     *cells = filt->cells_.data();
     *n = filt->cells_.size();
+  }
+
+  void
+  material_filter_get_bins(MaterialFilter* filt, int32_t** bins, int32_t* n)
+  {
+    *bins = filt->materials_.data();
+    *n = filt->materials_.size();
+  }
+
+  void
+  material_filter_set_bins(MaterialFilter* filt, int32_t n, int32_t* bins)
+  {
+    filt->materials_.clear();
+    filt->materials_.resize(n);
+    for (int i = 0; i < n; i++) filt->materials_[i] = bins[i];
+    filt->n_bins_ = filt->materials_.size();
+    filt->map_.clear();
+    for (int i = 0; i < n; i++) filt->map_[bins[i]] = i;
   }
 
   int mesh_filter_get_mesh(MeshFilter* filt) {return filt->mesh_;}

@@ -18,7 +18,6 @@ option(profile  "Compile with profiling flags"                   OFF)
 option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
-option(mpif08   "Use Fortran 2008 MPI interface"                 OFF)
 option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
 
 # Maximum number of nested coordinates levels
@@ -474,9 +473,6 @@ if (HDF5_IS_PARALLEL)
 endif()
 if (MPI_ENABLED)
   target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
-  if (mpif08)
-    target_compile_definitions(libopenmc PRIVATE -DOPENMC_MPIF08)
-  endif()
 endif()
 
 # Set git SHA1 hash as a compile definition

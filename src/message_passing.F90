@@ -2,26 +2,12 @@ module message_passing
 
   use, intrinsic :: ISO_C_BINDING
 
-#ifdef OPENMC_MPI
-#ifdef OPENMC_MPIF08
-  use mpi_f08
-#else
-  use mpi
-#endif
-#endif
-
-  ! The defaults set here for the number of processors, rank, and master and
-  ! mpi_enabled flag are for when MPI is not being used at all, i.e. a serial
-  ! run. In this case, these variables are still used at times.
+  ! The defaults set here for the number of processors, rank, and master and are
+  ! for when MPI is not being used at all, i.e. a serial run. In this case, these
+  ! variables are still used at times.
 
   integer(C_INT), bind(C, name='openmc_n_procs') :: n_procs = 1  ! number of processes
   integer(C_INT), bind(C, name='openmc_rank')    :: rank    = 0  ! rank of process
   logical(C_BOOL), bind(C, name='openmc_master') :: master  = .true. ! master process?
-  logical :: mpi_enabled = .false. ! is MPI in use and initialized?
-#ifdef OPENMC_MPIF08
-  type(MPI_Comm) :: mpi_intracomm  ! MPI intra-communicator
-#else
-  integer :: mpi_intracomm         ! MPI intra-communicator
-#endif
 
 end module message_passing

@@ -16,6 +16,7 @@
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/tallies/tally.h"
 
 namespace openmc {
 

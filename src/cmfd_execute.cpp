@@ -7,6 +7,7 @@
 
 #include "openmc/capi.h"
 #include "openmc/mesh.h"
+#include "openmc/message_passing.h"
 #include "openmc/simulation.h"
 
 namespace openmc {
@@ -29,5 +30,14 @@ cmfd_populate_sourcecounts(int n_energy, const double* energies,
   // Copy data from the xarray into the source counts array
   std::copy(counts.begin(), counts.end(), source_counts);
 }
+
+#ifdef OPENMC_MPI
+extern "C" void
+cmfd_broadcast(int n, double* buffer)
+{
+  MPI_Bcast(buffer, n, MPI_DOUBLE, 0, mpi::intracomm);
+}
+#endif
+
 
 } // namespace openmc

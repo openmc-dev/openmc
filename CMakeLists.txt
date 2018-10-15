@@ -345,7 +345,6 @@ add_library(libopenmc SHARED
   src/photon_physics.F90
   src/physics_common.F90
   src/physics.F90
-  src/physics_mg.F90
   src/plot.F90
   src/plot_header.F90
   src/progress_header.F90
@@ -423,6 +422,8 @@ add_library(libopenmc SHARED
   src/nuclide.cpp
   src/output.cpp
   src/particle.cpp
+  src/physics_common.cpp
+  src/physics_mg.cpp
   src/plot.cpp
   src/position.cpp
   src/pugixml/pugixml_c.cpp

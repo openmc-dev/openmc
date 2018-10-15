@@ -6,7 +6,7 @@ namespace openmc {
 // Mathematical methods
 //==============================================================================
 
-double normal_percentile_c(double p) {
+double normal_percentile(double p) {
   constexpr double p_low = 0.02425;
   constexpr double a[6] = {-3.969683028665376e1, 2.209460984245205e2,
                            -2.759285104469687e2, 1.383577518672690e2,
@@ -79,7 +79,7 @@ double t_percentile_c(double p, int df){
     // 16 (4), pp. 1123-1132 (1987).
     double n = df;
     double k = 1. / (n - 2.);
-    double z = normal_percentile_c(p);
+    double z = normal_percentile(p);
     double z2 = z * z;
     t = std::sqrt(n * k) * (z + (z2 - 3.) * z * k / 4. + ((5. * z2 - 56.) * z2 +
          75.) * z * k * k / 96. + (((z2 - 27.) * 3. * z2 + 417.) * z2 - 315.) *
@@ -103,7 +103,7 @@ void calc_pn_c(int n, double x, double pnx[]) {
 }
 
 
-double evaluate_legendre_c(int n, const double data[], double x) {
+double evaluate_legendre(int n, const double data[], double x) {
   double pnx[n + 1];
   double val = 0.0;
   calc_pn_c(n, x, pnx);
@@ -658,7 +658,7 @@ Direction rotate_angle(Direction u, double mu, double* phi)
 }
 
 
-double maxwell_spectrum_c(double T) {
+double maxwell_spectrum(double T) {
   // Set the random numbers
   double r1 = prn();
   double r2 = prn();
@@ -674,8 +674,8 @@ double maxwell_spectrum_c(double T) {
 }
 
 
-double watt_spectrum_c(double a, double b) {
-  double w = maxwell_spectrum_c(a);
+double watt_spectrum(double a, double b) {
+  double w = maxwell_spectrum(a);
   double E_out = w + 0.25 * a * a * b + (2. * prn() - 1.) * std::sqrt(a * a * b * w);
 
   return E_out;

@@ -316,8 +316,8 @@ ScattDataLegendre::update_max_val()
         }
 
         // Calculate probability
-        double f = evaluate_legendre_c(dist[gin][i_gout].size() - 1,
-                                       dist[gin][i_gout].data(), mu);
+        double f = evaluate_legendre(dist[gin][i_gout].size() - 1,
+                                     dist[gin][i_gout].data(), mu);
 
         // if this is a new maximum, store it
         if (f > max_val[gin][i_gout]) max_val[gin][i_gout] = f;
@@ -339,8 +339,8 @@ ScattDataLegendre::calc_f(int gin, int gout, double mu)
     f = 0.;
   } else {
     int i_gout = gout - gmin[gin];
-    f = evaluate_legendre_c(dist[gin][i_gout].size() - 1,
-                            dist[gin][i_gout].data(), mu);
+    f = evaluate_legendre(dist[gin][i_gout].size() - 1,
+                          dist[gin][i_gout].data(), mu);
   }
   return f;
 }
@@ -881,8 +881,8 @@ convert_legendre_to_tabular(ScattDataLegendre& leg, ScattDataTabular& tab,
       tab.fmu[gin][i_gout].resize(n_mu);
       for (int imu = 0; imu < n_mu; imu++) {
         tab.fmu[gin][i_gout][imu] =
-             evaluate_legendre_c(leg.dist[gin][i_gout].size() - 1,
-                                 leg.dist[gin][i_gout].data(), tab.mu[imu]);
+             evaluate_legendre(leg.dist[gin][i_gout].size() - 1,
+                               leg.dist[gin][i_gout].data(), tab.mu[imu]);
       }
 
       // Ensure positivity

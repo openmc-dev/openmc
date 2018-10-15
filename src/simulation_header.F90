@@ -32,7 +32,6 @@ module simulation_header
   logical(C_BOOL), bind(C) :: satisfy_triggers  ! whether triggers are satisfied
 
   integer(C_INT64_T), bind(C) :: work         ! number of particles per processor
-  integer(C_INT64_T), allocatable :: work_index(:) ! starting index in source bank for each process
   integer(C_INT64_T), bind(C) :: current_work ! index in source bank of current history simulated
 
   ! ============================================================================
@@ -89,6 +88,12 @@ module simulation_header
       import C_INT
       integer(C_INT), value :: i
     end subroutine
+
+    function work_index(rank) result(i) bind(C)
+      import C_INT, C_INT64_T
+      integer(C_INT), value :: rank
+      integer(C_INT64_T) :: i
+    end function
   end interface
 
 contains
@@ -98,8 +103,6 @@ contains
 !===============================================================================
 
   subroutine free_memory_simulation()
-
-    if (allocated(work_index)) deallocate(work_index)
 
     call k_generation_clear()
     call entropy_clear()

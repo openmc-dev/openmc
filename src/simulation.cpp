@@ -162,5 +162,6 @@ extern "C" double k_generation(int i) { return simulation::k_generation.at(i - 1
 extern "C" int k_generation_size() { return simulation::k_generation.size(); }
 extern "C" void k_generation_clear() { simulation::k_generation.clear(); }
 extern "C" void k_generation_reserve(int i) { simulation::k_generation.reserve(i); }
+extern "C" int64_t work_index(int rank) { return simulation::work_index[rank]; }
 
 } // namespace openmc

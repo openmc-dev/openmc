@@ -383,9 +383,6 @@ contains
     ! Set up tally procedure pointers
     call init_tally_routines()
 
-    ! Determine how much work each processor should do
-    call calculate_work()
-
     ! Allocate source bank, and for eigenvalue simulations also allocate the
     ! fission bank
     call allocate_banks()
@@ -515,46 +512,6 @@ contains
     simulation_initialized = .false.
 
   end function openmc_simulation_finalize
-
-!===============================================================================
-! CALCULATE_WORK determines how many particles each processor should simulate
-!===============================================================================
-
-  subroutine calculate_work()
-
-    integer    :: i         ! loop index
-    integer    :: remainder ! Number of processors with one extra particle
-    integer(8) :: i_bank    ! Running count of number of particles
-    integer(8) :: min_work  ! Minimum number of particles on each proc
-    integer(8) :: work_i    ! Number of particles on rank i
-
-    if (.not. allocated(work_index)) allocate(work_index(0:n_procs))
-
-    ! Determine minimum amount of particles to simulate on each processor
-    min_work = n_particles/n_procs
-
-    ! Determine number of processors that have one extra particle
-    remainder = int(mod(n_particles, int(n_procs,8)), 4)
-
-    i_bank = 0
-    work_index(0) = 0
-    do i = 0, n_procs - 1
-      ! Number of particles for rank i
-      if (i < remainder) then
-        work_i = min_work + 1
-      else
-        work_i = min_work
-      end if
-
-      ! Set number of particles
-      if (rank == i) work = work_i
-
-      ! Set index into source bank for rank i
-      i_bank = i_bank + work_i
-      work_index(i+1) = i_bank
-    end do
-
-  end subroutine calculate_work
 
 !===============================================================================
 ! ALLOCATE_BANKS allocates memory for the fission and source banks

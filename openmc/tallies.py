@@ -376,7 +376,7 @@ class Tally(IDManagerMixin):
     def scores(self, scores):
         cv.check_type('tally scores', scores, MutableSequence)
 
-        for i, score in enumerate(scores[:-1]):
+        for i, score in enumerate(scores):
             # If the score is already in the Tally, raise an error
             if score in scores[i+1:]:
                 msg = 'Unable to add a duplicate score "{0}" to Tally ID="{1}" ' \
@@ -390,7 +390,7 @@ class Tally(IDManagerMixin):
                 for deprecated in ['scatter-', 'nu-scatter-', 'scatter-p',
                                    'nu-scatter-p', 'scatter-y', 'nu-scatter-y',
                                     'flux-y', 'total-y']:
-                    if score.startswith(deprecated):
+                    if score.strip().startswith(deprecated):
                         msg = score.strip() + ' is no longer supported.'
                         raise ValueError(msg)
                 scores[i] = score.strip()

@@ -36,17 +36,15 @@ module state_point
   implicit none
 
   interface
-    subroutine write_source_bank(group_id, work_index, bank_) bind(C)
+    subroutine write_source_bank(group_id, bank_) bind(C)
       import HID_T, C_INT64_T, Bank
       integer(HID_T), value :: group_id
-      integer(C_INT64_T), intent(in) :: work_index(*)
       type(Bank), intent(in) :: bank_(*)
     end subroutine write_source_bank
 
-    subroutine read_source_bank(group_id, work_index, bank_) bind(C)
+    subroutine read_source_bank(group_id, bank_) bind(C)
       import HID_T, C_INT64_T, Bank
       integer(HID_T), value :: group_id
-      integer(C_INT64_T), intent(in) :: work_index(*)
       type(Bank), intent(out) :: bank_(*)
     end subroutine read_source_bank
   end interface
@@ -440,7 +438,7 @@ contains
       if (master .or. parallel) then
         file_id = file_open(filename_, 'a', parallel=.true.)
       end if
-      call write_source_bank(file_id, work_index, source_bank)
+      call write_source_bank(file_id, source_bank)
       if (master .or. parallel) call file_close(file_id)
     end if
   end function openmc_statepoint_write
@@ -478,7 +476,7 @@ contains
       file_id = file_open(filename_, 'w', parallel=.true.)
       call write_attribute(file_id, "filetype", 'source')
     end if
-    call write_source_bank(file_id, work_index, source_bank)
+    call write_source_bank(file_id, source_bank)
     if (master .or. parallel) call file_close(file_id)
 
   end subroutine write_source_point
@@ -684,7 +682,7 @@ contains
       end if
 
       ! Write out source
-      call read_source_bank(file_id, work_index, source_bank)
+      call read_source_bank(file_id, source_bank)
 
     end if
 

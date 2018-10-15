@@ -264,7 +264,7 @@ void initialize_source()
     }
 
     // Read in the source bank
-    read_source_bank(file_id, simulation::work_index.data(), source_bank);
+    read_source_bank(file_id, source_bank);
 
     // Close file
     file_close(file_id);
@@ -287,7 +287,7 @@ void initialize_source()
     write_message("Writing out initial source...", 5);
     std::string filename = settings::path_output + "initial_source.h5";
     hid_t file_id = file_open(filename, 'w', true);
-    write_source_bank(file_id, simulation::work_index.data(), source_bank);
+    write_source_bank(file_id, source_bank);
     file_close(file_id);
   }
 }

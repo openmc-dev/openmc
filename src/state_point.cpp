@@ -38,7 +38,7 @@ hid_t h5banktype() {
 
 
 void
-write_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
+write_source_bank(hid_t group_id, Bank* source_bank)
 {
   hid_t banktype = h5banktype();
 
@@ -54,7 +54,7 @@ write_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
   hid_t memspace = H5Screate_simple(1, count, nullptr);
 
   // Select hyperslab for this dataspace
-  hsize_t start[] {static_cast<hsize_t>(work_index[openmc::mpi::rank])};
+  hsize_t start[] {static_cast<hsize_t>(simulation::work_index[mpi::rank])};
   H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
   // Set up the property list for parallel writing
@@ -84,21 +84,22 @@ write_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
     std::vector<Bank> temp_source {source_bank, source_bank + simulation::work};
 #endif
 
-    for (int i = 0; i < openmc::mpi::n_procs; ++i) {
+    for (int i = 0; i < mpi::n_procs; ++i) {
       // Create memory space
-      hsize_t count[] {static_cast<hsize_t>(work_index[i+1] - work_index[i])};
+      hsize_t count[] {static_cast<hsize_t>(simulation::work_index[i+1] -
+        simulation::work_index[i])};
       hid_t memspace = H5Screate_simple(1, count, nullptr);
 
 #ifdef OPENMC_MPI
       // Receive source sites from other processes
       if (i > 0)
-        MPI_Recv(source_bank, count[0], openmc::mpi::bank, i, i,
-                 openmc::mpi::intracomm, MPI_STATUS_IGNORE);
+        MPI_Recv(source_bank, count[0], mpi::bank, i, i,
+                 mpi::intracomm, MPI_STATUS_IGNORE);
 #endif
 
       // Select hyperslab for this dataspace
       dspace = H5Dget_space(dset);
-      hsize_t start[] {static_cast<hsize_t>(work_index[i])};
+      hsize_t start[] {static_cast<hsize_t>(simulation::work_index[i])};
       H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
       // Write data to hyperslab
@@ -117,8 +118,8 @@ write_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
 #endif
   } else {
 #ifdef OPENMC_MPI
-    MPI_Send(source_bank, simulation::work, openmc::mpi::bank, 0, openmc::mpi::rank,
-             openmc::mpi::intracomm);
+    MPI_Send(source_bank, simulation::work, mpi::bank, 0, mpi::rank,
+             mpi::intracomm);
 #endif
   }
 #endif
@@ -127,7 +128,7 @@ write_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
 }
 
 
-void read_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
+void read_source_bank(hid_t group_id, Bank* source_bank)
 {
   hid_t banktype = h5banktype();
 
@@ -142,13 +143,13 @@ void read_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
   hid_t dspace = H5Dget_space(dset);
   hsize_t dims_all[1];
   H5Sget_simple_extent_dims(dspace, dims_all, nullptr);
-  if (work_index[openmc::mpi::n_procs] > dims_all[0]) {
+  if (simulation::work_index[mpi::n_procs] > dims_all[0]) {
     fatal_error("Number of source sites in source file is less "
                 "than number of source particles per generation.");
   }
 
   // Select hyperslab for each process
-  hsize_t start[] {static_cast<hsize_t>(work_index[openmc::mpi::rank])};
+  hsize_t start[] {static_cast<hsize_t>(simulation::work_index[mpi::rank])};
   H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, dims, nullptr);
 
 #ifdef PHDF5

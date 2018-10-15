@@ -32,13 +32,13 @@ void NBodyPhaseSpace::sample(double E_in, double& E_out, double& mu) const
   double E_max = (Ap - 1.0)/Ap * (A_/(A_ + 1.0)*E_in + Q_);
 
   // x is essentially a Maxwellian distribution
-  double x = maxwell_spectrum_c(1.0);
+  double x = maxwell_spectrum(1.0);
 
   double y;
   double r1, r2, r3, r4, r5, r6;
   switch (n_bodies_) {
   case 3:
-    y = maxwell_spectrum_c(1.0);
+    y = maxwell_spectrum(1.0);
     break;
   case 4:
     r1 = prn();

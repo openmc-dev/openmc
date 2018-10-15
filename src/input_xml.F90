@@ -2986,7 +2986,7 @@ contains
 
         ! Check if material is fissionable
         if (nuclides(materials(i) % nuclide(j)) % fissionable) then
-          materials(i) % fissionable = .true.
+          call materials(i) % set_fissionable(.true.)
         end if
       end do
 

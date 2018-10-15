@@ -13,9 +13,6 @@ module hdf5_interface
   use, intrinsic :: ISO_C_BINDING
 
   use error, only: fatal_error
-#ifdef PHDF5
-  use message_passing, only: mpi_intracomm, MPI_INFO_NULL
-#endif
   use string, only: to_c_string, to_f_string
 
   implicit none

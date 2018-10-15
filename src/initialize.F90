@@ -49,44 +49,16 @@ contains
 ! setting up timers, etc.
 !===============================================================================
 
-  function openmc_init_f(intracomm) result(err) bind(C)
-    integer, intent(in), optional :: intracomm  ! MPI intracommunicator
+  function openmc_init_f() result(err) bind(C)
     integer(C_INT) :: err
 
 #ifdef _OPENMP
     character(MAX_WORD_LEN) :: envvar
 #endif
 
-    ! Copy the communicator to a new variable. This is done to avoid changing
-    ! the signature of this subroutine. If MPI is being used but no communicator
-    ! was passed, assume MPI_COMM_WORLD.
-#ifdef OPENMC_MPI
-#ifdef OPENMC_MPIF08
-    type(MPI_Comm), intent(in) :: comm     ! MPI intracommunicator
-    if (present(intracomm)) then
-      comm % MPI_VAL = intracomm
-    else
-      comm = MPI_COMM_WORLD
-    end if
-#else
-    integer :: comm
-    if (present(intracomm)) then
-      comm = intracomm
-    else
-      comm = MPI_COMM_WORLD
-    end if
-#endif
-#endif
-
     ! Start total and initialization timer
     call time_total%start()
     call time_initialize%start()
-
-#ifdef OPENMC_MPI
-    ! Indicate that MPI is turned on
-    mpi_enabled = .true.
-    mpi_intracomm = intracomm
-#endif
 
 #ifdef _OPENMP
     ! Change schedule of main parallel-do loop if OMP_SCHEDULE is set

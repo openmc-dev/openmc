@@ -52,7 +52,6 @@ extern "C" {
   int openmc_global_tallies(double** ptr);
   int openmc_hard_reset();
   int openmc_init(int argc, char* argv[], const void* intracomm);
-  int openmc_init_f(const int* intracomm);
   int openmc_legendre_filter_get_order(int32_t index, int* order);
   int openmc_legendre_filter_set_order(int32_t index, int order);
   int openmc_load_nuclide(const char name[]);

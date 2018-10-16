@@ -19,6 +19,7 @@
 #include "openmc/string_utils.h"
 
 // data/functions from Fortran side
+extern "C" void openmc_init_f();
 extern "C" void print_usage();
 extern "C" void print_version();
 
@@ -47,12 +48,7 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   if (err) return err;
 
   // Continue with rest of initialization
-#ifdef OPENMC_MPI
-  MPI_Fint fcomm = MPI_Comm_c2f(comm);
-  openmc_init_f(&fcomm);
-#else
-  openmc_init_f(nullptr);
-#endif
+  openmc_init_f();
 
   return 0;
 }

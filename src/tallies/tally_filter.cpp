@@ -158,8 +158,12 @@ extern "C" {
   int legendre_filter_get_order(LegendreFilter* filt)
   {return filt->order_;}
 
-  void legendre_filter_set_order(LegendreFilter* filt, int order)
-  {filt->order_ = order;}
+  void
+  legendre_filter_set_order(LegendreFilter* filt, int order)
+  {
+    filt->order_ = order;
+    filt->n_bins_ = order + 1;
+  }
 
   void
   material_filter_get_bins(MaterialFilter* filt, int32_t** bins, int32_t* n)

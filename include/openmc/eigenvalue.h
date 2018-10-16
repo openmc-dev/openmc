@@ -37,6 +37,21 @@ extern "C" void calculate_generation_keff();
 //! generations. It also broadcasts the value from the master process.
 extern "C" void calculate_average_keff();
 
+
+//! Calculates a minimum variance estimate of k-effective
+//!
+//! The minimum variance estimate is based on a linear combination of the
+//! collision, absorption, and tracklength estimates. The theory behind this can
+//! be found in M. Halperin, "Almost linearly-optimum combination of unbiased
+//! estimates," J. Am. Stat. Assoc., 56, 36-43 (1961),
+//! doi:10.1080/01621459.1961.10482088. The implementation here follows that
+//! described in T. Urbatsch et al., "Estimation and interpretation of keff
+//! confidence intervals in MCNP," Nucl. Technol., 111, 169-182 (1995).
+//!
+//! \param[out] k_combined Estimate of k-effective and its standard deviation
+//! \return Error status
+extern "C" int openmc_get_keff(double* k_combined);
+
 //! Sample/redistribute source sites from accumulated fission sites
 extern "C" void synchronize_bank();
 

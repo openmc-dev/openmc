@@ -1,5 +1,6 @@
 #include "openmc/eigenvalue.h"
 
+#include "xtensor/xbuilder.hpp"
 #include "xtensor/xmath.hpp"
 #include "xtensor/xtensor.hpp"
 #include "xtensor/xview.hpp"
@@ -19,7 +20,8 @@
 #include "openmc/tallies/tally.h"
 
 #include <algorithm> // for min
-#include <cmath> // for sqrt
+#include <array>
+#include <cmath> // for sqrt, abs, pow
 #include <string>
 
 namespace openmc {
@@ -339,6 +341,153 @@ void calculate_average_keff()
         std::pow(simulation::keff, 2)) / (n - 1));
     }
   }
+}
+
+int openmc_get_keff(double* k_combined)
+{
+  k_combined[0] = 0.0;
+  k_combined[1] = 0.0;
+
+  // Make sure we have at least four realizations. Notice that at the end,
+  // there is a N-3 term in a denominator.
+  if (n_realizations <= 3) {
+    return -1;
+  }
+
+  // Initialize variables
+  int64_t n = n_realizations;
+
+  // Copy estimates of k-effective and its variance (not variance of the mean)
+  auto gt = global_tallies();
+
+  std::array<double, 3> kv {};
+  xt::xtensor<double, 2> cov = xt::zeros<double>({3, 3});
+  kv[0] = gt(K_COLLISION, RESULT_SUM) / n;
+  kv[1] = gt(K_ABSORPTION, RESULT_SUM) / n;
+  kv[2] = gt(K_TRACKLENGTH, RESULT_SUM) / n;
+  cov(0, 0) = (gt(K_COLLISION, RESULT_SUM_SQ) - n*kv[0]*kv[0]) / (n - 1);
+  cov(1, 1) = (gt(K_ABSORPTION, RESULT_SUM_SQ) - n*kv[1]*kv[1]) / (n - 1);
+  cov(2, 2) = (gt(K_TRACKLENGTH, RESULT_SUM_SQ) - n*kv[2]*kv[2]) / (n - 1);
+
+  // Calculate covariances based on sums with Bessel's correction
+  cov(0, 1) = (simulation::k_col_abs - n * kv[0] * kv[1]) / (n - 1);
+  cov(0, 2) = (simulation::k_col_tra - n * kv[0] * kv[2]) / (n - 1);
+  cov(1, 2) = (simulation::k_abs_tra - n * kv[1] * kv[2]) / (n - 1);
+  cov(1, 0) = cov(0, 1);
+  cov(2, 0) = cov(0, 2);
+  cov(2, 1) = cov(1, 2);
+
+  // Check to see if two estimators are the same; this is guaranteed to happen
+  // in MG-mode with survival biasing when the collision and absorption
+  // estimators are the same, but can theoretically happen at anytime.
+  // If it does, the standard estimators will produce floating-point
+  // exceptions and an expression specifically derived for the combination of
+  // two estimators (vice three) should be used instead.
+
+  // First we will identify if there are any matching estimators
+  int i, j, k;
+  if ((std::abs(kv[0] - kv[1]) / kv[0] < FP_REL_PRECISION) &&
+      (std::abs(cov(0, 0) - cov(1, 1)) / cov(0, 0) < FP_REL_PRECISION)) {
+    // 0 and 1 match, so only use 0 and 2 in our comparisons
+    i = 0;
+    j = 2;
+
+  } else if ((std::abs(kv[0] - kv[2]) / kv[0] < FP_REL_PRECISION) &&
+             (std::abs(cov(0, 0) - cov(2, 2)) / cov(0, 0) < FP_REL_PRECISION)) {
+    // 0 and 2 match, so only use 0 and 1 in our comparisons
+    i = 0;
+    j = 1;
+
+  } else if ((std::abs(kv[1] - kv[2]) / kv[1] < FP_REL_PRECISION) &&
+             (std::abs(cov(1, 1) - cov(2, 2)) / cov(1, 1) < FP_REL_PRECISION)) {
+    // 1 and 2 match, so only use 0 and 1 in our comparisons
+    i = 0;
+    j = 1;
+
+  } else {
+    // No two estimators match, so set i to -1 and this will be the indicator
+    // to use all three estimators.
+    i = -1;
+  }
+
+  if (i == -1) {
+    // Use three estimators as derived in the paper by Urbatsch
+
+    // Initialize variables
+    double g = 0.0;
+    std::array<double, 3> S {};
+
+    for (int l = 0; l < 3; ++l) {
+      // Permutations of estimates
+      switch (l) {
+      case 0:
+        // i = collision, j = absorption, k = tracklength
+        i = 0;
+        j = 1;
+        k = 2;
+        break;
+      case 1:
+        // i = absortion, j = tracklength, k = collision
+        i = 1;
+        j = 2;
+        k = 0;
+        break;
+      case 2:
+        // i = tracklength, j = collision, k = absorption
+        i = 2;
+        j = 0;
+        k = 1;
+        break;
+      }
+
+      // Calculate weighting
+      double f = cov(j, j) * (cov(k, k) - cov(i, k)) - cov(k, k) * cov(i, j) +
+        cov(j, k) * (cov(i, j) + cov(i, k) - cov(j, k));
+
+      // Add to S sums for variance of combined estimate
+      S[0] += f * cov(0, l);
+      S[1] += (cov(j, j) + cov(k, k) - 2.0 * cov(j, k)) * kv[l] * kv[l];
+      S[2] += (cov(k, k) + cov(i, j) - cov(j, k) - cov(i, k)) * kv[l] * kv[j];
+
+      // Add to sum for combined k-effective
+      k_combined[0] += f * kv[l];
+      g += f;
+    }
+
+    // Complete calculations of S sums
+    for (auto& S_i : S) {
+      S_i *= (n - 1);
+    }
+    S[0] *= (n - 1)*(n - 1);
+
+    // Calculate combined estimate of k-effective
+    k_combined[0] /= g;
+
+    // Calculate standard deviation of combined estimate
+    g *= (n - 1)*(n - 1);
+    k_combined[1] = std::sqrt(S[0] / (g*n*(n - 3)) *
+      (1 + n*((S[1] - 2*S[2]) / g)));
+
+  } else {
+    // Use only two estimators
+    // These equations are derived analogously to that done in the paper by
+    // Urbatsch, but are simpler than for the three estimators case since the
+    // block matrices of the three estimator equations reduces to scalars here
+
+    // Store the commonly used term
+    double f = kv[i] - kv[j];
+    double g = cov(i, i) + cov(j, j) - 2.0*cov(i, j);
+
+    // Calculate combined estimate of k-effective
+    k_combined[0] = kv[i] - (cov(i, i) - cov(i, j)) / g * f;
+
+    // Calculate standard deviation of combined estimate
+    k_combined[1] = (cov(i, i)*cov(j, j) - cov(i, j)*cov(i, j)) *
+          (g + n*f*f) / (n*(n - 2)*g*g);
+    k_combined[1] = std::sqrt(k_combined[1]);
+
+  }
+  return 0;
 }
 
 void shannon_entropy()

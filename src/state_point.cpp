@@ -9,6 +9,7 @@
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
+#include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/message_passing.h"
@@ -272,6 +273,20 @@ void write_tally_results_nr(hid_t file_id)
       // Indicate that tallies are off
       write_dataset(file_id, "tallies_present", 0);
     }
+  }
+}
+
+void restart_set_keff()
+{
+  if (simulation::restart_batch > settings::n_inactive) {
+    for (int i = settings::n_inactive; i < simulation::restart_batch; ++i) {
+      k_sum[0] += simulation::k_generation[i];
+      k_sum[1] += std::pow(simulation::k_generation[i], 2);
+    }
+    int n = settings::gen_per_batch*n_realizations;
+    simulation::keff = k_sum[0] / n;
+  } else {
+    simulation::keff = simulation::k_generation.back();
   }
 }
 

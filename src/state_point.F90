@@ -16,7 +16,7 @@ module state_point
   use bank_header,        only: Bank
   use cmfd_header
   use constants
-  use eigenvalue,         only: openmc_get_keff, k_sum
+  use eigenvalue,         only: openmc_get_keff
   use endf,               only: reaction_name
   use error,              only: fatal_error, warning, write_message
   use hdf5_interface
@@ -488,7 +488,6 @@ contains
   subroutine load_state_point()
 
     integer :: i
-    integer :: n
     integer :: int_array(3)
     integer, allocatable :: array(:)
     integer(C_INT64_T) :: seed
@@ -503,6 +502,9 @@ contains
       subroutine read_eigenvalue_hdf5(group) bind(C)
         import HID_T
         integer(HID_T), value :: group
+      end subroutine
+
+      subroutine restart_set_keff() bind(C)
       end subroutine
     end interface
 
@@ -612,17 +614,7 @@ contains
 
     ! Set k_sum, keff, and current_batch based on whether restart file is part
     ! of active cycle or inactive cycle
-    if (restart_batch > n_inactive) then
-      do i = n_inactive + 1, restart_batch
-        k_sum(1) = k_sum(1) + k_generation(i)
-        k_sum(2) = k_sum(2) + k_generation(i)**2
-      end do
-      n = gen_per_batch*n_realizations
-      keff = k_sum(1) / n
-    else
-      n = k_generation_size()
-      keff = k_generation(n)
-    end if
+    call restart_set_keff()
     current_batch = restart_batch
 
     ! Check to make sure source bank is present

@@ -10,8 +10,7 @@ module simulation
   use cmfd_execute,    only: cmfd_init_batch, cmfd_tally_init, execute_cmfd
   use cmfd_header,     only: cmfd_on
   use constants,       only: ZERO
-  use eigenvalue,      only: calculate_average_keff, calculate_generation_keff, &
-                             k_sum
+  use eigenvalue,      only: calculate_average_keff, calculate_generation_keff
 #ifdef _OPENMP
   use eigenvalue,      only: join_bank_from_threads
 #endif

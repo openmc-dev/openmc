@@ -4,7 +4,7 @@ module openmc_api
 
   use bank_header,     only: openmc_source_bank
   use constants,       only: K_BOLTZMANN
-  use eigenvalue,      only: k_sum, openmc_get_keff
+  use eigenvalue,      only: openmc_get_keff
   use error
   use geometry,        only: find_cell
   use geometry_header
@@ -248,6 +248,10 @@ contains
     integer(C_INT) :: err
 
     integer :: i
+    interface
+      subroutine k_sum_reset() bind(C)
+      end subroutine
+    end interface
 
     if (allocated(tallies)) then
       do i = 1, size(tallies)
@@ -268,7 +272,7 @@ contains
     k_col_abs = ZERO
     k_col_tra = ZERO
     k_abs_tra = ZERO
-    k_sum(:) = ZERO
+    call k_sum_reset()
 
     ! Reset timers
     call time_total % reset()

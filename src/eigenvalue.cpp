@@ -8,6 +8,7 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/math_functions.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/random_lcg.h"
@@ -18,6 +19,7 @@
 #include "openmc/tallies/tally.h"
 
 #include <algorithm> // for min
+#include <cmath> // for sqrt
 #include <string>
 
 namespace openmc {
@@ -27,6 +29,7 @@ namespace openmc {
 //==============================================================================
 
 double keff_generation;
+std::array<double, 2> k_sum;
 std::vector<double> entropy;
 xt::xtensor<double, 1> source_frac;
 
@@ -298,6 +301,46 @@ void synchronize_bank()
   time_bank.stop();
 }
 
+void calculate_average_keff()
+{
+  // Determine overall generation and number of active generations
+  int i = overall_generation() - 1;
+  int n;
+  if (simulation::current_batch > settings::n_inactive) {
+    n = settings::gen_per_batch*n_realizations + simulation::current_gen;
+  } else {
+    n = 0;
+  }
+
+  if (n <= 0) {
+    // For inactive generations, use current generation k as estimate for next
+    // generation
+    simulation::keff = simulation::k_generation[i];
+  } else {
+    // Sample mean of keff
+    k_sum[0] += simulation::k_generation[i];
+    k_sum[1] += std::pow(simulation::k_generation[i], 2);
+
+    // Determine mean
+    simulation::keff = k_sum[0] / n;
+
+    if (n > 1) {
+      double t_value;
+      if (settings::confidence_intervals) {
+        // Calculate t-value for confidence intervals
+        double alpha = 1.0 - CONFIDENCE_LEVEL;
+        t_value = t_percentile_c(1.0 - alpha/2.0, n - 1);
+      } else {
+        t_value = 1.0;
+      }
+
+      // Standard deviation of the sample mean of k
+      simulation::keff_std = t_value * std::sqrt((k_sum[1]/n -
+        std::pow(simulation::keff, 2)) / (n - 1));
+    }
+  }
+}
+
 void shannon_entropy()
 {
   // Get pointer to entropy mesh
@@ -430,6 +473,10 @@ extern "C" void read_eigenvalue_hdf5(hid_t group)
   read_dataset(group, "k_abs_tra", simulation::k_abs_tra);
 }
 
+//==============================================================================
+// Fortran compatibility
+//==============================================================================
+
 extern "C" double entropy_c(int i)
 {
   return entropy.at(i - 1);
@@ -440,5 +487,6 @@ extern "C" void entropy_clear()
   entropy.clear();
 }
 
+extern "C" void k_sum_reset() { k_sum.fill(0.0); }
 
 } // namespace openmc

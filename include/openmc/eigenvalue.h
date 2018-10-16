@@ -1,6 +1,7 @@
 #ifndef OPENMC_EIGENVALUE_H
 #define OPENMC_EIGENVALUE_H
 
+#include <array>
 #include <cstdint> // for int64_t
 #include <vector>
 
@@ -15,6 +16,7 @@ namespace openmc {
 //==============================================================================
 
 extern double keff_generation; //!<  Single-generation k on each processor
+extern std::array<double, 2> k_sum; //!< Used to reduce sum and sum_sq
 extern std::vector<double> entropy; //!< Shannon entropy at each generation
 extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS
 
@@ -27,6 +29,13 @@ extern "C" int64_t n_bank;
 
 //! Collect/normalize the tracklength keff from each process
 extern "C" void calculate_generation_keff();
+
+//! Calcaulte mean/standard deviation of keff during active generations
+//!
+//! This function sets the global variables keff and keff_std which represent
+//! the mean and standard deviation of the mean of k-effective over active
+//! generations. It also broadcasts the value from the master process.
+extern "C" void calculate_average_keff();
 
 //! Sample/redistribute source sites from accumulated fission sites
 extern "C" void synchronize_bank();

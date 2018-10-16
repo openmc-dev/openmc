@@ -2,78 +2,23 @@ module eigenvalue
 
   use, intrinsic :: ISO_C_BINDING
 
-  use algorithm,   only: binary_search
   use constants,   only: ZERO
-  use error,       only: fatal_error, warning
-  use math,        only: t_percentile
   use message_passing
-  use random_lcg,  only: prn, set_particle_seed, advance_prn_seed
   use settings
   use simulation_header
-  use string,      only: to_str
   use tally_header
-  use timer_header
 
   implicit none
-
-  real(8) :: k_sum(2) = ZERO ! Used to reduce sum and sum_sq
 
   interface
     subroutine calculate_generation_keff() bind(C)
     end subroutine
+
+    subroutine calculate_average_keff() bind(C)
+    end subroutine
   end interface
 
 contains
-
-!===============================================================================
-! CALCULATE_AVERAGE_KEFF calculates the mean and standard deviation of the mean
-! of k-effective during active generations and broadcasts the mean to all
-! processors
-!===============================================================================
-
-  subroutine calculate_average_keff()
-
-    integer :: i        ! overall generation within simulation
-    integer :: n        ! number of active generations
-    real(8) :: alpha    ! significance level for CI
-    real(8) :: t_value  ! t-value for confidence intervals
-
-    ! Determine overall generation and number of active generations
-    i = overall_generation()
-    if (current_batch > n_inactive) then
-      n = gen_per_batch*n_realizations + current_gen
-    else
-      n = 0
-    end if
-
-    if (n <= 0) then
-      ! For inactive generations, use current generation k as estimate for next
-      ! generation
-      keff = k_generation(i)
-
-    else
-      ! Sample mean of keff
-      k_sum(1) = k_sum(1) + k_generation(i)
-      k_sum(2) = k_sum(2) + k_generation(i)**2
-
-      ! Determine mean
-      keff = k_sum(1) / n
-
-      if (n > 1) then
-        if (confidence_intervals) then
-          ! Calculate t-value for confidence intervals
-          alpha = ONE - CONFIDENCE_LEVEL
-          t_value = t_percentile(ONE - alpha/TWO, n - 1)
-        else
-          t_value = ONE
-        end if
-
-        ! Standard deviation of the sample mean of k
-        keff_std = t_value * sqrt((k_sum(2)/n - keff**2) / (n - 1))
-      end if
-    end if
-
-  end subroutine calculate_average_keff
 
 !===============================================================================
 ! OPENMC_GET_KEFF calculates a minimum variance estimate of k-effective based on

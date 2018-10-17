@@ -27,7 +27,7 @@ module input_xml
   use plot_header
   use random_lcg,       only: prn
   use surface_header
-  use set_header,       only: SetChar
+  use set_header,       only: SetChar, SetInt
   use settings
   use stl_vector,       only: VectorInt, VectorReal, VectorChar
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &

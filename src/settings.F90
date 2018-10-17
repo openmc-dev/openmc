@@ -99,7 +99,6 @@ module settings
 
   ! Particle tracks
   logical(C_BOOL), bind(C) :: write_all_tracks
-  integer, allocatable :: track_identifiers(:,:)
 
   ! Particle restart run
   logical(C_BOOL), bind(C) :: particle_restart_run
@@ -151,7 +150,6 @@ contains
 
   subroutine free_memory_settings()
     if (allocated(res_scat_nuclides)) deallocate(res_scat_nuclides)
-    if (allocated(track_identifiers)) deallocate(track_identifiers)
 
     call statepoint_batch % clear()
     call sourcepoint_batch % clear()

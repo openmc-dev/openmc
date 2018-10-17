@@ -55,6 +55,12 @@ module simulation
     subroutine finalize_generation() bind(C)
     end subroutine finalize_generation
 
+    subroutine initialize_history(p, index_source) bind(C)
+      import Particle, C_INT64_T
+      type(Particle), intent(inout) :: p
+      integer(C_INT64_T), value :: index_source
+    end subroutine
+
     function sample_external_source() result(site) bind(C)
       import Bank
       type(Bank) :: site
@@ -134,51 +140,6 @@ contains
     end if
 
   end function openmc_next_batch
-
-!===============================================================================
-! INITIALIZE_HISTORY
-!===============================================================================
-
-  subroutine initialize_history(p, index_source)
-
-    type(Particle), intent(inout) :: p
-    integer(8),     intent(in)    :: index_source
-
-    integer(8) :: particle_seed  ! unique index for particle
-    integer :: i
-
-    ! set defaults
-    call particle_from_source(p, source_bank(index_source), run_CE, &
-         energy_bin_avg)
-
-    ! set identifier for particle
-    p % id = work_index(rank) + index_source
-
-    ! set random number seed
-    particle_seed = (total_gen + overall_generation() - 1)*n_particles + p % id
-    call set_particle_seed(particle_seed)
-
-    ! set particle trace
-    trace = .false.
-    if (current_batch == trace_batch .and. current_gen == trace_gen .and. &
-         p % id == trace_particle) trace = .true.
-
-    ! Set particle track.
-    p % write_track = .false.
-    if (write_all_tracks) then
-      p % write_track = .true.
-    else if (allocated(track_identifiers)) then
-      do i=1, size(track_identifiers(1,:))
-        if (current_batch == track_identifiers(1,i) .and. &
-             &current_gen == track_identifiers(2,i) .and. &
-             &p % id == track_identifiers(3,i)) then
-          p % write_track = .true.
-          exit
-        end if
-      end do
-    end if
-
-  end subroutine initialize_history
 
 !===============================================================================
 ! FINALIZE_BATCH handles synchronization and accumulation of tallies,

@@ -7,6 +7,7 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "pugixml.hpp"
 
@@ -71,7 +72,6 @@ extern "C" int legendre_to_tabular_points; //!< number of points to convert Lege
 extern "C" int max_order;                //!< Maximum Legendre order for multigroup data
 extern "C" int n_log_bins;               //!< number of bins for logarithmic energy grid
 extern "C" int n_max_batches;            //!< Maximum number of batches
-
 extern "C" int res_scat_method;          //!< resonance upscattering method
 extern "C" double res_scat_energy_min;   //!< Min energy in [eV] for res. upscattering
 extern "C" double res_scat_energy_max;   //!< Max energy in [eV] for res. upscattering
@@ -83,6 +83,7 @@ extern "C" double temperature_range[2];  //!< Min/max T in [K] over which to loa
 extern "C" int trace_batch;              //!< Batch to trace particle on
 extern "C" int trace_gen;                //!< Generation to trace particle on
 extern "C" int64_t trace_particle;       //!< Particle ID to enable trace on
+extern std::vector<std::array<int, 3>> track_identifiers; //!< Particle numbers for writing tracks
 extern "C" int trigger_batch_interval;   //!< Batch interval for triggers
 extern "C" int verbosity;                //!< How verbose to make output
 extern "C" double weight_cutoff;         //!< Weight cutoff for Russian roulette

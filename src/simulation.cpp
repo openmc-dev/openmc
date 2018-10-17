@@ -1,4 +1,4 @@
-  #include "openmc/simulation.h"
+#include "openmc/simulation.h"
 
 #include "openmc/capi.h"
 #include "openmc/eigenvalue.h"
@@ -6,6 +6,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/output.h"
 #include "openmc/settings.h"
+#include "openmc/source.h"
 #include "openmc/timer.h"
 #include "openmc/tallies/tally.h"
 
@@ -14,6 +15,8 @@
 
 // data/functions from Fortran side
 extern "C" void cmfd_init_batch();
+extern "C" void join_bank_from_threads();
+extern "C" void print_generation();
 extern "C" void print_results();
 extern "C" void print_runtime();
 extern "C" void setup_active_tallies();
@@ -179,6 +182,62 @@ void initialize_generation()
 
     // Store current value of tracklength k
     keff_generation = global_tallies()(K_TRACKLENGTH, RESULT_VALUE);
+  }
+}
+
+void finalize_generation()
+{
+  auto gt = global_tallies();
+
+  // Update global tallies with the omp private accumulation variables
+#pragma omp parallel
+  {
+#pragma omp critical(increment_global_tallies)
+    {
+      if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+        gt(K_COLLISION, RESULT_VALUE) += global_tally_collision;
+        gt(K_ABSORPTION, RESULT_VALUE) += global_tally_absorption;
+        gt(K_TRACKLENGTH, RESULT_VALUE) += global_tally_tracklength;
+      }
+      gt(LEAKAGE, RESULT_VALUE) += global_tally_leakage;
+    }
+
+    // reset threadprivate tallies
+    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+      global_tally_collision = 0.0;
+      global_tally_absorption = 0.0;
+      global_tally_tracklength = 0.0;
+    }
+    global_tally_leakage = 0.0;
+  }
+
+
+  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+#ifdef _OPENMP
+    // Join the fission bank from each thread into one global fission bank
+    join_bank_from_threads();
+#endif
+
+    // Distribute fission bank across processors evenly
+    synchronize_bank();
+
+    // Calculate shannon entropy
+    if (settings::entropy_on) shannon_entropy();
+
+    // Collect results and statistics
+    calculate_generation_keff();
+    calculate_average_keff();
+
+    // Write generation output
+    if (mpi::master && settings::verbosity >= 7) {
+      if (simulation::current_gen != settings::gen_per_batch) {
+        print_generation();
+      }
+    }
+
+  } else if (settings::run_mode == RUN_MODE_FIXEDSOURCE) {
+    // For fixed-source mode, we need to sample the external source
+    fill_source_bank_fixedsource();
   }
 }
 

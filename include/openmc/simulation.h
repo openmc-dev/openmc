@@ -62,6 +62,9 @@ extern "C" void initialize_batch();
 //! Initialize a fission generation
 extern "C" void initialize_generation();
 
+//! Finalize a fission generation
+extern "C" void finalize_generation();
+
 //! Determine overall generation number
 extern "C" int overall_generation();
 

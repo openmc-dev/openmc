@@ -391,19 +391,19 @@ contains
       ! Write out the runtime metrics.
       runtime_group = create_group(file_id, "runtime")
       call write_dataset(runtime_group, "total initialization", &
-           time_initialize % get_value())
+           time_initialize_elapsed())
       call write_dataset(runtime_group, "reading cross sections", &
            time_read_xs % get_value())
       call write_dataset(runtime_group, "simulation", &
-           time_inactive % get_value() + time_active % get_value())
+           time_inactive_elapsed() + time_active_elapsed())
       call write_dataset(runtime_group, "transport", &
            time_transport % get_value())
       if (run_mode == MODE_EIGENVALUE) then
         call write_dataset(runtime_group, "inactive batches", &
-             time_inactive % get_value())
+             time_inactive_elapsed())
       end if
       call write_dataset(runtime_group, "active batches", &
-           time_active % get_value())
+           time_active_elapsed())
       if (run_mode == MODE_EIGENVALUE) then
         call write_dataset(runtime_group, "synchronizing fission bank", &
              time_bank_elapsed())
@@ -421,7 +421,7 @@ contains
         call write_dataset(runtime_group, "CMFD solving matrices", &
              time_cmfdsolve % get_value())
       end if
-      call write_dataset(runtime_group, "total", time_total % get_value())
+      call write_dataset(runtime_group, "total", time_total_elapsed())
       call close_group(runtime_group)
 
       call file_close(file_id)

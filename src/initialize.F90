@@ -2,18 +2,8 @@ module initialize
 
   use, intrinsic :: ISO_C_BINDING
 
-#ifdef _OPENMP
-  use omp_lib
-#endif
-
-  use bank_header,     only: Bank
-  use constants
-  use input_xml,       only: read_input_xml
-  use message_passing
-  use random_lcg,      only: openmc_set_seed
   use settings
-  use string,          only: ends_with, to_f_string
-  use timer_header
+  use string, only: to_f_string
 
   implicit none
 
@@ -43,55 +33,10 @@ module initialize
 contains
 
 !===============================================================================
-! OPENMC_INIT takes care of all initialization tasks, i.e. reading
-! from command line, reading xml input files, initializing random
-! number seeds, reading cross sections, initializing starting source,
-! setting up timers, etc.
-!===============================================================================
-
-  function openmc_init_f() result(err) bind(C)
-    integer(C_INT) :: err
-
-#ifdef _OPENMP
-    character(MAX_WORD_LEN) :: envvar
-#endif
-
-    ! Start total and initialization timer
-    call time_total%start()
-    call time_initialize%start()
-
-#ifdef _OPENMP
-    ! Change schedule of main parallel-do loop if OMP_SCHEDULE is set
-    call get_environment_variable("OMP_SCHEDULE", envvar)
-    if (len_trim(envvar) == 0) then
-      call omp_set_schedule(omp_sched_static, 0)
-    end if
-#endif
-
-    ! Read command line arguments
-    call read_command_line()
-
-    ! Initialize random number generator -- if the user specifies a seed, it
-    ! will be re-initialized later
-    call openmc_set_seed(DEFAULT_SEED)
-
-    ! Read XML input files
-    call read_input_xml()
-
-    ! Check for particle restart run
-    if (particle_restart_run) run_mode = MODE_PARTICLE
-
-    ! Stop initialization timer
-    call time_initialize%stop()
-
-    err = 0
-  end function openmc_init_f
-
-!===============================================================================
 ! READ_COMMAND_LINE reads all parameters from the command line
 !===============================================================================
 
-  subroutine read_command_line()
+  subroutine read_command_line() bind(C)
     ! Arguments were already read on C++ side (initialize.cpp). Here we just
     ! convert the C-style strings to Fortran style
 

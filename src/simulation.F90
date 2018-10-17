@@ -21,8 +21,7 @@ module simulation
   use mgxs_interface,  only: energy_bins, energy_bin_avg
   use nuclide_header,  only: micro_xs, n_nuclides
   use output,          only: header, print_columns, &
-                             print_batch_keff, print_generation, print_runtime, &
-                             print_results, write_tallies
+                             print_batch_keff, print_generation
   use particle_header
   use photon_header,   only: micro_photon_xs, n_elements
   use random_lcg,      only: set_particle_seed
@@ -43,7 +42,6 @@ module simulation
   private
   public :: openmc_next_batch
   public :: openmc_simulation_init
-  public :: openmc_simulation_finalize
 
   integer(C_INT), parameter :: STATUS_EXIT_NORMAL = 0
   integer(C_INT), parameter :: STATUS_EXIT_MAX_BATCH = 1
@@ -77,6 +75,10 @@ contains
 
     type(Particle) :: p
     integer(8)     :: i_work
+    interface
+      subroutine initialize_batch() bind(C)
+      end subroutine
+    end interface
 
     err = 0
 
@@ -179,50 +181,6 @@ contains
     end if
 
   end subroutine initialize_history
-
-!===============================================================================
-! INITIALIZE_BATCH
-!===============================================================================
-
-  subroutine initialize_batch()
-
-    integer :: i
-
-    ! Increment current batch
-    current_batch = current_batch + 1
-
-    if (run_mode == MODE_FIXEDSOURCE) then
-      call write_message("Simulating batch " // trim(to_str(current_batch)) &
-           // "...", 6)
-    end if
-
-    ! Reset total starting particle weight used for normalizing tallies
-    total_weight = ZERO
-
-    if ((n_inactive > 0 .and. current_batch == 1) .or. &
-         (restart_run .and. restart_batch < n_inactive .and. current_batch == restart_batch + 1)) then
-      ! Turn on inactive timer
-      call time_inactive % start()
-    elseif ((current_batch == n_inactive + 1) .or. &
-         (restart_run .and. restart_batch > n_inactive .and. current_batch == restart_batch + 1)) then
-      ! Switch from inactive batch timer to active batch timer
-      call time_inactive % stop()
-      call time_active % start()
-
-      do i = 1, n_tallies
-        tallies(i) % obj % active = .true.
-      end do
-    end if
-
-    ! check CMFD initialize batch
-    if (run_mode == MODE_EIGENVALUE) then
-      if (cmfd_run) call cmfd_init_batch()
-    end if
-
-    ! Add user tallies to active tallies list
-    call setup_active_tallies()
-
-  end subroutine initialize_batch
 
 !===============================================================================
 ! FINALIZE_GENERATION
@@ -446,27 +404,9 @@ contains
 ! execution time and results
 !===============================================================================
 
-  function openmc_simulation_finalize() result(err) bind(C)
-    integer(C_INT) :: err
+  subroutine simulation_finalize_f() bind(C)
 
-    integer    :: i       ! loop index
-
-    interface
-      subroutine print_overlap_check() bind(C)
-      end subroutine print_overlap_check
-
-      subroutine broadcast_results() bind(C)
-      end subroutine broadcast_results
-    end interface
-
-    err = 0
-
-    ! Skip if simulation was never run
-    if (.not. simulation_initialized) return
-
-    ! Stop active batch timer and start finalization timer
-    call time_active % stop()
-    call time_finalize % start()
+    integer :: i       ! loop index
 
     ! Free up simulation-specific memory
     do i = 1, n_materials
@@ -480,37 +420,7 @@ contains
     deallocate(micro_xs, micro_photon_xs, filter_matches)
 !$omp end parallel
 
-    ! Increment total number of generations
-    total_gen = total_gen + current_batch*gen_per_batch
-
-#ifdef OPENMC_MPI
-    call broadcast_results()
-#endif
-
-    ! Write tally results to tallies.out
-    if (output_tallies .and. master) call write_tallies()
-
-    ! Deactivate all tallies
-    if (allocated(tallies)) then
-      do i = 1, n_tallies
-        tallies(i) % obj % active = .false.
-      end do
-    end if
-
-    ! Stop timers and show timing statistics
-    call time_finalize%stop()
-    call time_total%stop()
-    if (master) then
-      if (verbosity >= 6) call print_runtime()
-      if (verbosity >= 4) call print_results()
-    end if
-    if (check_overlaps) call print_overlap_check()
-
-    ! Reset flags
-    need_depletion_rx = .false.
-    simulation_initialized = .false.
-
-  end function openmc_simulation_finalize
+  end subroutine
 
 !===============================================================================
 ! ALLOCATE_BANKS allocates memory for the fission and source banks

@@ -73,7 +73,7 @@ contains
 ! CMFD_INIT_BATCH handles cmfd options at the start of every batch
 !==============================================================================
 
-  subroutine cmfd_init_batch()
+  subroutine cmfd_init_batch() bind(C)
 
     ! Check to activate CMFD diffusion and possible feedback
     ! this guarantees that when cmfd begins at least one batch of tallies are

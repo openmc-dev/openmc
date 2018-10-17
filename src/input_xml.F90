@@ -115,7 +115,7 @@ contains
 ! geometry, materials, and tallies.
 !===============================================================================
 
-  subroutine read_input_xml()
+  subroutine read_input_xml() bind(C)
 
     type(VectorReal), allocatable :: nuc_temps(:) ! List of T to read for each nuclide
     type(VectorReal), allocatable :: sab_temps(:) ! List of T to read for each S(a,b)

@@ -1,12 +1,24 @@
-#include "openmc/simulation.h"
+  #include "openmc/simulation.h"
 
 #include "openmc/capi.h"
 #include "openmc/eigenvalue.h"
+#include "openmc/error.h"
 #include "openmc/message_passing.h"
+#include "openmc/output.h"
 #include "openmc/settings.h"
+#include "openmc/timer.h"
 #include "openmc/tallies/tally.h"
 
 #include <algorithm>
+#include <string>
+
+// data/functions from Fortran side
+extern "C" void cmfd_init_batch();
+extern "C" void print_results();
+extern "C" void print_runtime();
+extern "C" void setup_active_tallies();
+extern "C" void simulation_finalize_f();
+extern "C" void write_tallies();
 
 // OPENMC_RUN encompasses all the main logic where iterations are performed
 // over the batches, generations, and histories in a fixed source or k-eigenvalue
@@ -23,6 +35,50 @@ int openmc_run() {
 
   openmc_simulation_finalize();
   return err;
+}
+
+int openmc_simulation_finalize()
+{
+  using namespace openmc;
+
+  // Skip if simulation was never run
+  if (!simulation::simulation_initialized) return 0;
+
+  // Stop active batch timer and start finalization timer
+  time_active.stop();
+  time_finalize.start();
+
+  // Deallocate Fortran variables, set tallies to inactive
+  simulation_finalize_f();
+
+  // Increment total number of generations
+  simulation::total_gen += simulation::current_batch*settings::gen_per_batch;
+
+#ifdef OPENMC_MPI
+  broadcast_results()
+#endif
+
+  // Write tally results to tallies.out
+  if (settings::output_tallies && mpi::master) write_tallies();
+
+  // Deactivate all tallies
+  for (int i = 1; i <= n_tallies; ++i) {
+    openmc_tally_set_active(i, false);
+  }
+
+  // Stop timers and show timing statistics
+  time_finalize.stop();
+  time_total.stop();
+  if (mpi::master) {
+    if (settings::verbosity >= 6) print_runtime();
+    if (settings::verbosity >= 4) print_results();
+  }
+  if (settings::check_overlaps) print_overlap_check();
+
+  // Reset flags
+  simulation::need_depletion_rx = false;
+  simulation::simulation_initialized = false;
+  return 0;
 }
 
 namespace openmc {
@@ -70,6 +126,46 @@ void openmc_simulation_init_c()
 {
   // Determine how much work each process should do
   calculate_work();
+}
+
+void initialize_batch()
+{
+  // Increment current batch
+  ++simulation::current_batch;
+
+  if (settings::run_mode == RUN_MODE_FIXEDSOURCE) {
+    int b = simulation::current_batch;
+    write_message("Simulating batch " + std::to_string(b), 6);
+  }
+
+  // Reset total starting particle weight used for normalizing tallies
+  total_weight = 0.0;
+
+  if ((settings::n_inactive > 0 && simulation::current_batch == 1) ||
+      (settings::restart_run && simulation::restart_batch < settings::n_inactive &&
+        simulation::current_batch == simulation::restart_batch + 1)) {
+    // Turn on inactive timer
+    time_inactive.start();
+  } else if ((simulation::current_batch == settings::n_inactive + 1) ||
+   (settings::restart_run && simulation::restart_batch > settings::n_inactive &&
+    simulation::current_batch == simulation::restart_batch + 1)) {
+    // Switch from inactive batch timer to active batch timer
+    time_inactive.stop();
+    time_active.start();
+
+    for (int i = 1; i <= n_tallies; ++i) {
+      // TODO: change one-based index
+      openmc_tally_set_active(i, true);
+    }
+  }
+
+  // check CMFD initialize batch
+  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    if (settings::cmfd_run) cmfd_init_batch();
+  }
+
+  // Add user tallies to active tallies list
+  setup_active_tallies();
 }
 
 void initialize_generation()

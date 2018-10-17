@@ -13,7 +13,6 @@ module openmc_api
   use math
   use message_passing
   use nuclide_header
-  use initialize,      only: openmc_init_f
   use particle_header
   use plot,            only: openmc_plot_geometry
   use random_lcg,      only: openmc_get_seed, openmc_set_seed
@@ -63,7 +62,6 @@ module openmc_api
   public :: openmc_get_tally_next_id
   public :: openmc_global_tallies
   public :: openmc_hard_reset
-  public :: openmc_init_f
   public :: openmc_load_nuclide
   public :: openmc_material_add_nuclide
   public :: openmc_material_get_id
@@ -80,7 +78,6 @@ module openmc_api
   public :: openmc_plot_geometry
   public :: openmc_reset
   public :: openmc_set_seed
-  public :: openmc_simulation_finalize
   public :: openmc_simulation_init
   public :: openmc_source_bank
   public :: openmc_tally_allocate
@@ -275,16 +272,10 @@ contains
     call k_sum_reset()
 
     ! Reset timers
-    call time_total % reset()
-    call time_total % reset()
-    call time_initialize % reset()
     call time_read_xs % reset()
     call time_unionize % reset()
     call time_tallies % reset()
-    call time_inactive % reset()
-    call time_active % reset()
     call time_transport % reset()
-    call time_finalize % reset()
     call reset_timers()
 
     err = 0

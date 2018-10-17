@@ -17,6 +17,7 @@ extern "C" const int STREAM_SOURCE;
 extern "C" const int STREAM_URR_PTABLE;
 extern "C" const int STREAM_VOLUME;
 extern "C" const int STREAM_PHOTON;
+constexpr int64_t DEFAULT_SEED = 1;
 
 //==============================================================================
 //! Generate a pseudo-random number using a linear congruential generator.

@@ -2,7 +2,7 @@
 #define OPENMC_MESSAGE_PASSING_H
 
 #ifdef OPENMC_MPI
-#include "mpi.h"
+#include <mpi.h>
 #endif
 
 namespace openmc {

@@ -1,14 +1,14 @@
-#include "openmc/finalize.h"
+#include "openmc/error.h"
 
 #include "openmc/message_passing.h"
 
 namespace openmc {
 
-void openmc_free_bank()
-{
 #ifdef OPENMC_MPI
-  MPI_Type_free(&mpi::bank);
-#endif
+void abort_mpi(int code)
+{
+    MPI_Abort(mpi::intracomm, code);
 }
+#endif
 
 } // namespace openmc

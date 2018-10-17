@@ -138,15 +138,34 @@ contains
     integer :: min_samples ! minimum number of samples per process
     integer :: remainder   ! leftover samples from uneven divide
 #ifdef OPENMC_MPI
-    integer :: mpi_err ! MPI error code
     integer :: m  ! index over materials
-    integer :: n  ! number of materials
-    integer, allocatable :: data(:) ! array used to send number of hits
+    integer(C_INT) :: n  ! number of materials
+    integer(C_INT), allocatable :: data(:) ! array used to send number of hits
 #endif
     real(8) :: f              ! fraction of hits
     real(8) :: var_f          ! variance of fraction of hits
     real(8) :: volume_sample  ! total volume of sampled region
     real(8) :: atoms(2, size(nuclides))
+
+#ifdef OPENMC_MPI
+    interface
+      subroutine send_int(buffer, count, dest, tag) bind(C)
+        import C_INT
+        integer(C_INT), intent(in) :: buffer
+        integer(C_INT), value :: count
+        integer(C_INT), value :: dest
+        integer(C_INT), value :: tag
+      end subroutine
+
+      subroutine recv_int(buffer, count, source, tag) bind(C)
+        import C_INT
+        integer(C_INT), intent(out) :: buffer
+        integer(C_INT), value :: count
+        integer(C_INT), value :: source
+        integer(C_INT), value :: tag
+      end subroutine
+    end interface
+#endif
 
     ! Divide work over MPI processes
     min_samples = this % samples / n_procs
@@ -285,12 +304,10 @@ contains
       if (master) then
 #ifdef OPENMC_MPI
         do j = 1, n_procs - 1
-          call MPI_RECV(n, 1, MPI_INTEGER, j, 0, mpi_intracomm, &
-               MPI_STATUS_IGNORE, mpi_err)
+          call recv_int(n, 1, j, 0)
 
           allocate(data(2*n))
-          call MPI_RECV(data, 2*n, MPI_INTEGER, j, 1, mpi_intracomm, &
-               MPI_STATUS_IGNORE, mpi_err)
+          call recv_int(data(1), 2*n, j, 1)
           do k = 0, n - 1
             do m = 1, master_indices(i_domain) % size()
               if (data(2*k + 1) == master_indices(i_domain) % data(m)) then
@@ -353,8 +370,8 @@ contains
           data(2*k + 2) = master_hits(i_domain) % data(k + 1)
         end do
 
-        call MPI_SEND(n, 1, MPI_INTEGER, 0, 0, mpi_intracomm, mpi_err)
-        call MPI_SEND(data, 2*n, MPI_INTEGER, 0, 1, mpi_intracomm, mpi_err)
+        call send_int(n, 1, 0, 0)
+        call send_int(data(1), 2*n, 0, 1)
         deallocate(data)
 #endif
       end if

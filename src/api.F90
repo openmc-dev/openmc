@@ -181,7 +181,6 @@ contains
     err = 0
 #ifdef OPENMC_MPI
     ! Free all MPI types
-    call MPI_TYPE_FREE(MPI_BANK, err)
     call openmc_free_bank()
 #endif
 
@@ -277,14 +276,12 @@ contains
     call time_initialize % reset()
     call time_read_xs % reset()
     call time_unionize % reset()
-    call time_bank % reset()
-    call time_bank_sample % reset()
-    call time_bank_sendrecv % reset()
     call time_tallies % reset()
     call time_inactive % reset()
     call time_active % reset()
     call time_transport % reset()
     call time_finalize % reset()
+    call reset_timers()
 
     err = 0
   end function openmc_reset

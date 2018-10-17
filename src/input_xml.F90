@@ -219,7 +219,7 @@ contains
 
     if (run_mode == MODE_EIGENVALUE) then
       ! Preallocate space for keff and entropy by generation
-      call k_generation % reserve(n_max_batches*gen_per_batch)
+      call k_generation_reserve(n_max_batches*gen_per_batch)
     end if
 
     ! Particle tracks
@@ -2975,7 +2975,7 @@ contains
 
         ! Check if material is fissionable
         if (nuclides(materials(i) % nuclide(j)) % fissionable) then
-          materials(i) % fissionable = .true.
+          call materials(i) % set_fissionable(.true.)
         end if
       end do
 

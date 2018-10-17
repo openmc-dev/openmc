@@ -51,8 +51,8 @@ module cmfd_header
     real(8), allocatable :: hxyz(:,:,:,:)
 
     ! Source distributions
-    real(8), allocatable :: cmfd_src(:,:,:,:)
-    real(8), allocatable :: openmc_src(:,:,:,:)
+    real(C_DOUBLE), allocatable :: cmfd_src(:,:,:,:)
+    real(C_DOUBLE), allocatable :: openmc_src(:,:,:,:)
 
     ! Source sites in each mesh box
     real(C_DOUBLE), allocatable :: sourcecounts(:,:)

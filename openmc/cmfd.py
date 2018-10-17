@@ -33,7 +33,6 @@ from openmc.checkvalue import (check_type, check_length, check_value,
                                check_greater_than, check_less_than)
 from openmc.exceptions import OpenMCError
 
-
 """
 --------------
 CMFD CONSTANTS
@@ -58,6 +57,7 @@ _CURRENTS = {
     'out_back'  : 4, 'in_back'  : 5, 'out_front':  6, 'in_front': 7,
     'out_bottom': 8, 'in_bottom': 9, 'out_top'  : 10, 'in_top'  : 11
 }
+
 
 class CMFDMesh(object):
     """A structured Cartesian mesh used for Coarse Mesh Finite Difference (CMFD)
@@ -604,6 +604,7 @@ class CMFD(object):
         tree.write("cmfd.xml", xml_declaration=True,
                    encoding='utf-8', method="xml")
 
+
 class CMFDRun(object):
     r"""Class to run openmc with CMFD acceleration through the C API. Running
     openmc in this manner obviates the need for defining CMFD parameters
@@ -782,7 +783,6 @@ class CMFDRun(object):
         set in this method.
 
         """
-
         # Variables that users can modify
         self._cmfd_begin = 1
         self._dhat_reset = False
@@ -839,6 +839,7 @@ class CMFDRun(object):
         self._time_cmfd = None
         self._time_cmfdbuild = None
         self._time_cmfdsolve = None
+        # REMOVE next two variables
         self._time_compute_dhat_dtilde = None
         self._time_compute_fs = None
         self._intracomm = None
@@ -1279,6 +1280,7 @@ class CMFDRun(object):
         # Print message
         if openmc.capi.settings.verbosity >= 6 and openmc.capi.master():
             print(' CMFD tallies reset')
+            sys.stdout.flush()
 
         # Reset CMFD tallies
         tallies = openmc.capi.tallies
@@ -1614,8 +1616,10 @@ class CMFDRun(object):
 
             if openmc.capi.master() and np.any(source_energies < energy[0]):
                 print(' WARNING: Source pt below energy grid')
+                sys.stdout.flush()
             if openmc.capi.master() and np.any(source_energies > energy[-1]):
                 print(' WARNING: Source pt above energy grid')
+                sys.stdout.flush()
 
     def _count_bank_sites(self):
         """Determines the number of fission bank sites in each cell of a given
@@ -2362,6 +2366,7 @@ class CMFDRun(object):
             str3 = 'k-error:  {0:.5E}'.format(kerr)
             str4 = 'src-error:  {0:.5E}'.format(serr)
             print('{0:8s}{1:20s}{2:25s}{3:s}'.format(str1, str2, str3, str4))
+            sys.stdout.flush()
 
         return iconv, serr
 
@@ -3180,6 +3185,7 @@ class CMFDRun(object):
         if self._dhat_reset and openmc.capi.settings.verbosity >= 8 and \
                 openmc.capi.master():
             print(' Dhats reset to zero')
+            sys.stdout.flush()
 
     def _get_reflector_albedo(self, l, g, i, j, k):
         """Calculates the albedo to the reflector by returning ratio of

@@ -49,7 +49,6 @@ module openmc_api
   public :: openmc_filter_get_type
   public :: openmc_filter_set_id
   public :: openmc_filter_set_type
-  public :: openmc_finalize
   public :: openmc_find_cell
   public :: openmc_get_cell_index
   public :: openmc_get_keff
@@ -95,89 +94,6 @@ module openmc_api
   public :: openmc_tally_set_type
 
 contains
-
-!===============================================================================
-! OPENMC_FINALIZE frees up memory by deallocating arrays and resetting global
-! variables
-!===============================================================================
-
-  function openmc_finalize() result(err) bind(C)
-    integer(C_INT) :: err
-
-    interface
-      subroutine openmc_free_bank() bind(C)
-      end subroutine openmc_free_bank
-    end interface
-
-    ! Clear results
-    err = openmc_reset()
-
-    ! Reset global variables
-    assume_separate = .false.
-    check_overlaps = .false.
-    confidence_intervals = .false.
-    create_fission_neutrons = .true.
-    electron_treatment = ELECTRON_LED
-    energy_cutoff(:) = [ZERO, 1000.0_8, ZERO, ZERO]
-    energy_max(:) = [INFINITY, INFINITY]
-    energy_min(:) = [ZERO, ZERO]
-    entropy_on = .false.
-    gen_per_batch = 1
-    index_entropy_mesh = -1
-    index_ufs_mesh = -1
-    keff = ONE
-    legendre_to_tabular = .true.
-    legendre_to_tabular_points = C_NONE
-    n_batch_interval = 1
-    n_lost_particles = 0
-    n_particles = -1
-    n_tallies = 0
-    output_summary = .true.
-    output_tallies = .true.
-    particle_restart_run = .false.
-    photon_transport = .false.
-    pred_batches = .false.
-    reduce_tallies = .true.
-    res_scat_on = .false.
-    res_scat_method = RES_SCAT_ARES
-    res_scat_energy_min = 0.01_8
-    res_scat_energy_max = 1000.0_8
-    restart_run = .false.
-    root_universe = -1
-    run_CE = .true.
-    run_mode = -1
-    dagmc = .false.
-    satisfy_triggers = .false.
-    call openmc_set_seed(DEFAULT_SEED)
-    source_latest = .false.
-    source_separate = .false.
-    source_write = .true.
-    survival_biasing = .false.
-    temperature_default = 293.6_8
-    temperature_method = TEMPERATURE_NEAREST
-    temperature_multipole = .false.
-    temperature_range = [ZERO, ZERO]
-    temperature_tolerance = 10.0_8
-    total_gen = 0
-    trigger_on = .false.
-    ufs = .false.
-    urr_ptables_on = .true.
-    verbosity = 7
-    weight_cutoff = 0.25_8
-    weight_survive = ONE
-    write_all_tracks = .false.
-    write_initial_source = .false.
-
-    ! Deallocate arrays
-    call free_memory()
-
-    err = 0
-#ifdef OPENMC_MPI
-    ! Free all MPI types
-    call openmc_free_bank()
-#endif
-
-  end function openmc_finalize
 
 !===============================================================================
 ! OPENMC_FIND_CELL determines what cell contains a given point in space
@@ -280,7 +196,7 @@ contains
 ! program
 !===============================================================================
 
-  subroutine free_memory()
+  subroutine free_memory() bind(C)
 
     use cmfd_header
     use photon_header

@@ -68,7 +68,7 @@ extern "C" int32_t gen_per_batch;  //!< number of generations per batch
 extern "C" int64_t n_particles;    //!< number of particles per generation
 
 extern "C" int electron_treatment;       //!< how to treat secondary electrons
-extern "C" double energy_cutoff[4];      //!< Energy cutoff in [eV] for each particle type
+extern "C" std::array<double, 4> energy_cutoff;      //!< Energy cutoff in [eV] for each particle type
 extern "C" int legendre_to_tabular_points; //!< number of points to convert Legendres
 extern "C" int max_order;                //!< Maximum Legendre order for multigroup data
 extern "C" int n_log_bins;               //!< number of bins for logarithmic energy grid
@@ -82,7 +82,7 @@ extern std::unordered_set<int> statepoint_batch; //!< Batches when state should 
 extern "C" int temperature_method;       //!< method for choosing temperatures
 extern "C" double temperature_tolerance; //!< Tolerance in [K] on choosing temperatures
 extern "C" double temperature_default;   //!< Default T in [K]
-extern "C" double temperature_range[2];  //!< Min/max T in [K] over which to load xs
+extern "C" std::array<double, 2> temperature_range;  //!< Min/max T in [K] over which to load xs
 extern "C" int trace_batch;              //!< Batch to trace particle on
 extern "C" int trace_gen;                //!< Generation to trace particle on
 extern "C" int64_t trace_particle;       //!< Particle ID to enable trace on

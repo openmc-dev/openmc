@@ -285,7 +285,7 @@ contains
 ! below them
 !===============================================================================
 
-  subroutine print_columns()
+  subroutine print_columns() bind(C)
 
     write(UNIT=ou, FMT='(2X,A9,3X)', ADVANCE='NO') "Bat./Gen."
     write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "   k    "

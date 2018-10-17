@@ -14,14 +14,25 @@
 #include <string>
 
 // data/functions from Fortran side
+extern "C" void allocate_banks();
 extern "C" void cmfd_init_batch();
+extern "C" void cmfd_tally_init();
+extern "C" void configure_tallies();
+extern "C" void init_tally_routines();
 extern "C" void join_bank_from_threads();
+extern "C" void load_state_point();
+extern "C" void print_columns();
 extern "C" void print_generation();
 extern "C" void print_results();
 extern "C" void print_runtime();
 extern "C" void setup_active_tallies();
+extern "C" void simulation_init_f();
 extern "C" void simulation_finalize_f();
 extern "C" void write_tallies();
+
+//==============================================================================
+// C API functions
+//==============================================================================
 
 // OPENMC_RUN encompasses all the main logic where iterations are performed
 // over the batches, generations, and histories in a fixed source or k-eigenvalue
@@ -40,12 +51,69 @@ int openmc_run() {
   return err;
 }
 
+int openmc_simulation_init()
+{
+  using namespace openmc;
+
+  // Skip if simulation has already been initialized
+  if (simulation::initialized) return 0;
+
+  // Determine how much work each process should do
+  calculate_work();
+
+  // Set up tally procedure pointers
+  init_tally_routines();
+
+  // Allocate source bank, and for eigenvalue simulations also allocate the
+  // fission bank
+  allocate_banks();
+
+  // Allocate tally results arrays if they're not allocated yet
+  configure_tallies();
+
+  // Activate the CMFD tallies
+  cmfd_tally_init();
+
+  // Call Fortran initialization
+  simulation_init_f();
+
+  // Reset global variables -- this is done before loading state point (as that
+  // will potentially populate k_generation and entropy)
+  simulation::current_batch = 0;
+  simulation::k_generation.clear();
+  entropy.clear();
+  simulation::need_depletion_rx = false;
+
+  // If this is a restart run, load the state point data and binary source
+  // file
+  if (settings::restart_run) {
+    load_state_point();
+    write_message("Resuming simulation...", 6);
+  } else {
+    initialize_source();
+  }
+
+  // Display header
+  if (mpi::master) {
+    if (settings::run_mode == RUN_MODE_FIXEDSOURCE) {
+      header("FIXED SOURCE TRANSPORT SIMULATION", 3);
+    } else if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+      header("K EIGENVALUE SIMULATION", 3);
+      if (settings::verbosity >= 7) print_columns();
+    }
+  }
+
+  // Set flag indicating initialization is done
+  simulation::initialized = true;
+  return 0;
+}
+
 int openmc_simulation_finalize()
 {
   using namespace openmc;
 
   // Skip if simulation was never run
-  if (!simulation::simulation_initialized) return 0;
+  if (!simulation::initialized) return 0;
 
   // Stop active batch timer and start finalization timer
   time_active.stop();
@@ -80,7 +148,7 @@ int openmc_simulation_finalize()
 
   // Reset flags
   simulation::need_depletion_rx = false;
-  simulation::simulation_initialized = false;
+  simulation::initialized = false;
   return 0;
 }
 
@@ -95,6 +163,7 @@ namespace simulation {
 int current_batch;
 int current_gen;
 int64_t current_work;
+bool initialized {false};
 double keff {1.0};
 double keff_std;
 double k_col_abs {0.0};
@@ -105,7 +174,6 @@ int n_lost_particles {0};
 bool need_depletion_rx {false};
 int restart_batch;
 bool satisfy_triggers {false};
-bool simulation_initialized {false};
 int total_gen {0};
 int64_t work;
 
@@ -124,12 +192,6 @@ int thread_id;  //!< ID of a given thread
 //==============================================================================
 // Non-member functions
 //==============================================================================
-
-void openmc_simulation_init_c()
-{
-  // Determine how much work each process should do
-  calculate_work();
-}
 
 void initialize_batch()
 {

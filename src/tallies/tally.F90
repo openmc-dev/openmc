@@ -52,7 +52,7 @@ contains
 ! with the CE and MG modes.
 !===============================================================================
 
-  subroutine init_tally_routines()
+  subroutine init_tally_routines() bind(C)
     if (run_CE) then
       score_general      => score_general_ce
       score_analog_tally => score_analog_tally_ce

@@ -485,7 +485,7 @@ contains
 ! LOAD_STATE_POINT
 !===============================================================================
 
-  subroutine load_state_point()
+  subroutine load_state_point() bind(C)
 
     integer :: i
     integer :: int_array(3)

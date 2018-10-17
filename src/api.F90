@@ -78,7 +78,6 @@ module openmc_api
   public :: openmc_plot_geometry
   public :: openmc_reset
   public :: openmc_set_seed
-  public :: openmc_simulation_init
   public :: openmc_source_bank
   public :: openmc_tally_allocate
   public :: openmc_tally_get_estimator

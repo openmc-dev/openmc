@@ -20,8 +20,7 @@ module simulation
   use message_passing
   use mgxs_interface,  only: energy_bins, energy_bin_avg
   use nuclide_header,  only: micro_xs, n_nuclides
-  use output,          only: header, print_columns, &
-                             print_batch_keff, print_generation
+  use output,          only: print_batch_keff
   use particle_header
   use photon_header,   only: micro_photon_xs, n_elements
   use random_lcg,      only: set_particle_seed
@@ -41,16 +40,12 @@ module simulation
   implicit none
   private
   public :: openmc_next_batch
-  public :: openmc_simulation_init
 
   integer(C_INT), parameter :: STATUS_EXIT_NORMAL = 0
   integer(C_INT), parameter :: STATUS_EXIT_MAX_BATCH = 1
   integer(C_INT), parameter :: STATUS_EXIT_ON_TRIGGER = 2
 
   interface
-    subroutine openmc_simulation_init_c() bind(C)
-    end subroutine
-
     subroutine initialize_source() bind(C)
     end subroutine
 
@@ -256,31 +251,9 @@ contains
 ! INITIALIZE_SIMULATION
 !===============================================================================
 
-  function openmc_simulation_init() result(err) bind(C)
-    integer(C_INT) :: err
+  subroutine simulation_init_f() bind(C)
 
     integer :: i
-
-    err = 0
-
-    ! Skip if simulation has already been initialized
-    if (simulation_initialized) return
-
-    ! Call initialization on C++ side
-    call openmc_simulation_init_c()
-
-    ! Set up tally procedure pointers
-    call init_tally_routines()
-
-    ! Allocate source bank, and for eigenvalue simulations also allocate the
-    ! fission bank
-    call allocate_banks()
-
-    ! Allocate tally results arrays if they're not allocated yet
-    call configure_tallies()
-
-    ! Activate the CMFD tallies
-    call cmfd_tally_init()
 
     ! Set up material nuclide index mapping
     do i = 1, n_materials
@@ -300,36 +273,7 @@ contains
     end do
 !$omp end parallel
 
-    ! Reset global variables -- this is done before loading state point (as that
-    ! will potentially populate k_generation and entropy)
-    current_batch = 0
-    call k_generation_clear()
-    call entropy_clear()
-    need_depletion_rx = .false.
-
-    ! If this is a restart run, load the state point data and binary source
-    ! file
-    if (restart_run) then
-      call load_state_point()
-      call write_message("Resuming simulation...", 6)
-    else
-      call initialize_source()
-    end if
-
-    ! Display header
-    if (master) then
-      if (run_mode == MODE_FIXEDSOURCE) then
-        call header("FIXED SOURCE TRANSPORT SIMULATION", 3)
-      elseif (run_mode == MODE_EIGENVALUE) then
-        call header("K EIGENVALUE SIMULATION", 3)
-        if (verbosity >= 7) call print_columns()
-      end if
-    end if
-
-    ! Set flag indicating initialization is done
-    simulation_initialized = .true.
-
-  end function openmc_simulation_init
+  end subroutine
 
 !===============================================================================
 ! FINALIZE_SIMULATION calculates tally statistics, writes tallies, and displays
@@ -358,7 +302,7 @@ contains
 ! ALLOCATE_BANKS allocates memory for the fission and source banks
 !===============================================================================
 
-  subroutine allocate_banks()
+  subroutine allocate_banks() bind(C)
 
     integer :: alloc_err  ! allocation error code
 

@@ -23,7 +23,7 @@ module simulation_header
   integer(C_INT), bind(C) :: current_batch     ! current batch
   integer(C_INT), bind(C) :: current_gen       ! current generation within a batch
   integer(C_INT), bind(C) :: total_gen         ! total number of generations simulated
-  logical(C_BOOL), bind(C) :: simulation_initialized
+  logical(C_BOOL), bind(C, name='initialized') :: simulation_initialized
   logical(C_BOOL), bind(C) :: need_depletion_rx ! need to calculate depletion reaction rx?
 
   ! ============================================================================

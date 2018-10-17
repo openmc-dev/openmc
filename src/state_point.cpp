@@ -1,5 +1,12 @@
 #include "openmc/state_point.h"
 
+#include <algorithm>
+#include <string>
+#include <vector>
+
+#include "xtensor/xbuilder.hpp" // for empty_like
+#include "xtensor/xview.hpp"
+
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
@@ -8,13 +15,6 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/tally.h"
-
-#include "xtensor/xbuilder.hpp" // for empty_like
-#include "xtensor/xview.hpp"
-
-#include <algorithm>
-#include <string>
-#include <vector>
 
 namespace openmc {
 

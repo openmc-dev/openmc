@@ -22,6 +22,8 @@ extern "C" double global_tally_absorption;
 // Non-member functions
 //==============================================================================
 
+// Alias for the type returned by xt::adapt(...). N is the dimension of the
+// multidimensional array
 template <std::size_t N>
 using adaptor_type = xt::xtensor_adaptor<xt::xbuffer_adaptor<double*&, xt::no_ownership>, N>;
 

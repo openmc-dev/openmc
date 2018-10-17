@@ -375,7 +375,7 @@ contains
 ! CMFD_TALLY_INIT
 !===============================================================================
 
-  subroutine cmfd_tally_init()
+  subroutine cmfd_tally_init() bind(C)
     integer :: i
     if (cmfd_run) then
       do i = 1, size(cmfd_tallies)

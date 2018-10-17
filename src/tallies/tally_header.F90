@@ -392,7 +392,7 @@ contains
 ! tallies.xml file.
 !===============================================================================
 
-  subroutine configure_tallies()
+  subroutine configure_tallies() bind(C)
 
     integer :: i
 

@@ -79,7 +79,7 @@ int32_t gen_per_batch {1};
 int64_t n_particles {-1};
 
 int electron_treatment {ELECTRON_TTB};
-double energy_cutoff[4] {0.0, 1000.0, 0.0, 0.0};
+std::array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
 int n_log_bins {8000};
@@ -93,7 +93,7 @@ std::unordered_set<int> statepoint_batch;
 int temperature_method {TEMPERATURE_NEAREST};
 double temperature_tolerance {10.0};
 double temperature_default {293.6};
-double temperature_range[2] {0.0, 0.0};
+std::array<double, 2> temperature_range {0.0, 0.0};
 int trace_batch;
 int trace_gen;
 int64_t trace_particle;

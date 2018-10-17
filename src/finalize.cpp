@@ -2,20 +2,24 @@
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
+#include "openmc/eigenvalue.h"
 #include "openmc/geometry.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/timer.h"
+#include "openmc/tallies/tally.h"
+
+using namespace openmc;
 
 // Functions defined in Fortran
 extern "C" void free_memory();
+extern "C" void reset_timers_f();
 
 int openmc_finalize()
 {
-  using namespace openmc;
-
   // Clear results
   openmc_reset();
 
@@ -85,5 +89,51 @@ int openmc_finalize()
   MPI_Type_free(&mpi::bank);
 #endif
 
+  return 0;
+}
+
+int openmc_reset()
+{
+  for (int i = 1; i <= n_tallies; ++i) {
+    openmc_tally_reset(i);
+  }
+
+  // Reset global tallies (can't really use global_tallies() right now because
+  // it doesn't have any information about whether the underlying buffer was
+  // allocated)
+  n_realizations = 0;
+  double* buffer = nullptr;
+  openmc_global_tallies(&buffer);
+  if (buffer) {
+    for (int i = 0; i < 3*N_GLOBAL_TALLIES*3; ++i) {
+      buffer[i] = 0.0;
+    }
+  }
+  // auto gt = global_tallies();
+  // std::fill(gt.begin(), gt.end(), 0.0);
+
+  simulation::k_col_abs = 0.0;
+  simulation::k_col_tra = 0.0;
+  simulation::k_abs_tra = 0.0;
+  k_sum = {0.0, 0.0};
+
+  // Reset timers
+  reset_timers();
+  reset_timers_f();
+
+  return 0;
+}
+
+int openmc_hard_reset()
+{
+  // Reset all tallies and timers
+  openmc_reset();
+
+  // Reset total generations and keff guess
+  simulation::keff = 1.0;
+  simulation::total_gen = 0;
+
+  // Reset the random number generator state
+  openmc_set_seed(DEFAULT_SEED);
   return 0;
 }

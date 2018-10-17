@@ -49,6 +49,12 @@ extern Timer time_tallies;
 extern Timer time_total;
 extern Timer time_transport;
 
+//==============================================================================
+// Non-member functions
+//==============================================================================
+
+void reset_timers();
+
 } // namespace openmc
 
 #endif // OPENMC_TIMER_H

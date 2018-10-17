@@ -64,7 +64,11 @@ extern "C" double time_tallies_elapsed() { return time_tallies.elapsed(); }
 extern "C" double time_total_elapsed() { return time_total.elapsed(); }
 extern "C" double time_transport_elapsed() { return time_transport.elapsed(); }
 
-extern "C" void reset_timers()
+//==============================================================================
+// Non-member functions
+//==============================================================================
+
+void reset_timers()
 {
   time_active.reset();
   time_bank.reset();

@@ -2,96 +2,17 @@ module openmc_api
 
   use, intrinsic :: ISO_C_BINDING
 
-  use bank_header,     only: openmc_source_bank
-  use constants,       only: K_BOLTZMANN
-  use eigenvalue,      only: openmc_get_keff
+  use constants
   use error
   use geometry,        only: find_cell
-  use geometry_header
-  use hdf5_interface
-  use material_header
-  use math
-  use message_passing
-  use nuclide_header
   use particle_header
-  use plot,            only: openmc_plot_geometry
-  use random_lcg,      only: openmc_get_seed, openmc_set_seed
-  use settings
-  use simulation_header
-  use state_point,     only: openmc_statepoint_write
-  use tally_header
-  use tally_filter_header
-  use tally_filter
-  use tally,           only: openmc_tally_allocate
-  use simulation
-  use string,          only: to_f_string
-  use timer_header
-  use volume_calc,     only: openmc_calculate_volumes
-
+  use string, only: to_str
 #ifdef DAGMC
   use dagmc_header,      only: free_memory_dagmc
 #endif
 
   implicit none
-
   private
-  public :: openmc_calculate_volumes
-  public :: openmc_cell_filter_get_bins
-  public :: openmc_cell_get_id
-  public :: openmc_cell_set_id
-  public :: openmc_energy_filter_get_bins
-  public :: openmc_energy_filter_set_bins
-  public :: openmc_extend_filters
-  public :: openmc_extend_cells
-  public :: openmc_extend_materials
-  public :: openmc_extend_tallies
-  public :: openmc_filter_get_id
-  public :: openmc_filter_get_type
-  public :: openmc_filter_set_id
-  public :: openmc_filter_set_type
-  public :: openmc_find_cell
-  public :: openmc_get_cell_index
-  public :: openmc_get_keff
-  public :: openmc_get_filter_index
-  public :: openmc_get_filter_next_id
-  public :: openmc_get_material_index
-  public :: openmc_get_nuclide_index
-  public :: openmc_get_seed
-  public :: openmc_get_tally_index
-  public :: openmc_get_tally_next_id
-  public :: openmc_global_tallies
-  public :: openmc_hard_reset
-  public :: openmc_load_nuclide
-  public :: openmc_material_add_nuclide
-  public :: openmc_material_get_id
-  public :: openmc_material_get_densities
-  public :: openmc_material_set_density
-  public :: openmc_material_set_densities
-  public :: openmc_material_set_id
-  public :: openmc_material_filter_get_bins
-  public :: openmc_material_filter_set_bins
-  public :: openmc_mesh_filter_set_mesh
-  public :: openmc_meshsurface_filter_set_mesh
-  public :: openmc_nuclide_name
-  public :: openmc_plot_geometry
-  public :: openmc_reset
-  public :: openmc_set_seed
-  public :: openmc_source_bank
-  public :: openmc_tally_allocate
-  public :: openmc_tally_get_estimator
-  public :: openmc_tally_get_id
-  public :: openmc_tally_get_filters
-  public :: openmc_tally_get_n_realizations
-  public :: openmc_tally_get_nuclides
-  public :: openmc_tally_get_scores
-  public :: openmc_tally_get_type
-  public :: openmc_tally_results
-  public :: openmc_tally_set_estimator
-  public :: openmc_tally_set_filters
-  public :: openmc_tally_set_id
-  public :: openmc_tally_set_nuclides
-  public :: openmc_tally_set_scores
-  public :: openmc_tally_set_type
 
 contains
 
@@ -131,80 +52,25 @@ contains
   end function openmc_find_cell
 
 !===============================================================================
-! OPENMC_HARD_RESET reset tallies and timers as well as the pseudorandom
-! generator state
-!===============================================================================
-
-  function openmc_hard_reset() result(err) bind(C)
-    integer(C_INT) :: err
-
-    ! Reset all tallies and timers
-    err = openmc_reset()
-
-    ! Reset total generations and keff guess
-    keff = ONE
-    total_gen = 0
-
-    ! Reset the random number generator state
-    call openmc_set_seed(DEFAULT_SEED)
-  end function openmc_hard_reset
-
-!===============================================================================
-! OPENMC_RESET resets tallies and timers
-!===============================================================================
-
-  function openmc_reset() result(err) bind(C)
-    integer(C_INT) :: err
-
-    integer :: i
-    interface
-      subroutine k_sum_reset() bind(C)
-      end subroutine
-    end interface
-
-    if (allocated(tallies)) then
-      do i = 1, size(tallies)
-        associate (t => tallies(i) % obj)
-          t % n_realizations = 0
-          if (allocated(t % results)) then
-            t % results(:, :, :) = ZERO
-          end if
-        end associate
-      end do
-    end if
-
-    ! Reset global tallies
-    n_realizations = 0
-    if (allocated(global_tallies)) then
-      global_tallies(:, :) = ZERO
-    end if
-    k_col_abs = ZERO
-    k_col_tra = ZERO
-    k_abs_tra = ZERO
-    call k_sum_reset()
-
-    ! Reset timers
-    call time_read_xs % reset()
-    call time_unionize % reset()
-    call reset_timers()
-
-    err = 0
-  end function openmc_reset
-
-!===============================================================================
 ! FREE_MEMORY deallocates and clears  all global allocatable arrays in the
 ! program
 !===============================================================================
 
   subroutine free_memory() bind(C)
 
+    use bank_header
     use cmfd_header
+    use geometry_header
+    use material_header
     use photon_header
     use plot_header
     use sab_header
     use settings
+    use simulation_header
     use surface_header
     use tally_derivative_header
+    use tally_filter_header
+    use tally_header
     use trigger_header
     use volume_header
 

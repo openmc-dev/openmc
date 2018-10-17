@@ -73,8 +73,6 @@ module timer_header
   ! TIMING VARIABLES
 
   type(Timer) :: time_read_xs       ! timer for reading cross sections
-  type(Timer) :: time_unionize      ! timer for material xs-energy grid union
-  type(Timer) :: time_finalize      ! timer for finalization
 
 contains
 
@@ -138,5 +136,13 @@ contains
     self % start_counts = 0
     self % elapsed      = ZERO
   end subroutine timer_reset
+
+!===============================================================================
+! RESET_TIMERS resets timers on the Fortran side
+!===============================================================================
+
+  subroutine reset_timers_f() bind(C)
+    call time_read_xs % reset()
+  end subroutine
 
 end module timer_header

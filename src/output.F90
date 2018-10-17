@@ -505,7 +505,7 @@ contains
     write(ou,100) "  Reading cross sections", time_read_xs % elapsed
     write(ou,100) "Total time in simulation", time_inactive_elapsed() + &
          time_active_elapsed()
-    write(ou,100) "  Time in transport only", time_transport % elapsed
+    write(ou,100) "  Time in transport only", time_transport_elapsed()
     if (run_mode == MODE_EIGENVALUE) then
       write(ou,100) "  Time in inactive batches", time_inactive_elapsed()
     end if
@@ -515,7 +515,7 @@ contains
       write(ou,100) "    Sampling source sites", time_bank_sample_elapsed()
       write(ou,100) "    SEND/RECV source sites", time_bank_sendrecv_elapsed()
     end if
-    write(ou,100) "  Time accumulating tallies", time_tallies % elapsed
+    write(ou,100) "  Time accumulating tallies", time_tallies_elapsed()
     if (cmfd_run) write(ou,100) "  Time in CMFD", time_cmfd % elapsed
     if (cmfd_run) write(ou,100) "    Building matrices", &
                   time_cmfdbuild % elapsed
@@ -531,7 +531,7 @@ contains
         speed_inactive = real(n_particles * (n_inactive - restart_batch) * &
              gen_per_batch) / time_inactive_elapsed()
         speed_active = real(n_particles * n_active * gen_per_batch) / &
-             time_active % elapsed
+             time_active_elapsed()
       else
         speed_inactive = ZERO
         speed_active = real(n_particles * (n_batches - restart_batch) * &

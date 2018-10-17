@@ -47,6 +47,7 @@ extern Timer time_inactive;
 extern Timer time_initialize;
 extern Timer time_tallies;
 extern Timer time_total;
+extern Timer time_transport;
 
 } // namespace openmc
 

@@ -73,7 +73,6 @@ module openmc_api
   public :: openmc_material_filter_set_bins
   public :: openmc_mesh_filter_set_mesh
   public :: openmc_meshsurface_filter_set_mesh
-  public :: openmc_next_batch
   public :: openmc_nuclide_name
   public :: openmc_plot_geometry
   public :: openmc_reset
@@ -271,8 +270,6 @@ contains
     ! Reset timers
     call time_read_xs % reset()
     call time_unionize % reset()
-    call time_tallies % reset()
-    call time_transport % reset()
     call reset_timers()
 
     err = 0

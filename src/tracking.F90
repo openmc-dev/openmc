@@ -48,7 +48,7 @@ contains
 ! TRANSPORT encompasses the main logic for moving a particle through geometry.
 !===============================================================================
 
-  subroutine transport(p)
+  subroutine transport(p) bind(C)
 
     type(Particle), intent(inout) :: p
 

@@ -7,142 +7,21 @@ module simulation
 #endif
 
   use bank_header,     only: source_bank
-  use cmfd_execute,    only: cmfd_init_batch, cmfd_tally_init, execute_cmfd
-  use cmfd_header,     only: cmfd_on
   use constants,       only: ZERO
-  use eigenvalue,      only: calculate_average_keff, calculate_generation_keff
-#ifdef _OPENMP
-  use eigenvalue,      only: join_bank_from_threads
-#endif
-  use error,           only: fatal_error, write_message
-  use geometry_header, only: n_cells
+  use error,           only: fatal_error
   use material_header, only: n_materials, materials
   use message_passing
-  use mgxs_interface,  only: energy_bins, energy_bin_avg
   use nuclide_header,  only: micro_xs, n_nuclides
-  use output,          only: print_batch_keff
-  use particle_header
   use photon_header,   only: micro_photon_xs, n_elements
-  use random_lcg,      only: set_particle_seed
   use settings
   use simulation_header
-  use state_point,     only: openmc_statepoint_write, load_state_point
-  use string,          only: to_str
-  use tally,           only: accumulate_tallies, setup_active_tallies, &
-                             init_tally_routines
   use tally_header
   use tally_filter_header, only: filter_matches, n_filters
-  use tally_derivative_header, only: tally_derivs
-  use timer_header
-  use trigger,         only: check_triggers
-  use tracking,        only: transport
 
   implicit none
   private
-  public :: openmc_next_batch
-
-  integer(C_INT), parameter :: STATUS_EXIT_NORMAL = 0
-  integer(C_INT), parameter :: STATUS_EXIT_MAX_BATCH = 1
-  integer(C_INT), parameter :: STATUS_EXIT_ON_TRIGGER = 2
-
-  interface
-    subroutine initialize_source() bind(C)
-    end subroutine
-
-    subroutine initialize_generation() bind(C)
-    end subroutine
-
-    subroutine finalize_generation() bind(C)
-    end subroutine finalize_generation
-
-    subroutine finalize_batch() bind(C)
-    end subroutine
-
-    subroutine initialize_history(p, index_source) bind(C)
-      import Particle, C_INT64_T
-      type(Particle), intent(inout) :: p
-      integer(C_INT64_T), value :: index_source
-    end subroutine
-
-    function sample_external_source() result(site) bind(C)
-      import Bank
-      type(Bank) :: site
-    end function
-  end interface
 
 contains
-
-!===============================================================================
-! OPENMC_NEXT_BATCH
-!===============================================================================
-
-  function openmc_next_batch(status) result(err) bind(C)
-    integer(C_INT), intent(out), optional :: status
-    integer(C_INT) :: err
-
-    type(Particle) :: p
-    integer(8)     :: i_work
-    interface
-      subroutine initialize_batch() bind(C)
-      end subroutine
-    end interface
-
-    err = 0
-
-    ! Make sure simulation has been initialized
-    if (.not. simulation_initialized) then
-      err = E_ALLOCATE
-      call set_errmsg("Simulation has not been initialized yet.")
-      return
-    end if
-
-    call initialize_batch()
-
-    ! =======================================================================
-    ! LOOP OVER GENERATIONS
-    GENERATION_LOOP: do current_gen = 1, gen_per_batch
-
-      call initialize_generation()
-
-      ! Start timer for transport
-      call time_transport % start()
-
-      ! ====================================================================
-      ! LOOP OVER PARTICLES
-!$omp parallel do schedule(runtime) firstprivate(p) copyin(tally_derivs)
-      PARTICLE_LOOP: do i_work = 1, work
-        current_work = i_work
-
-        ! grab source particle from bank
-        call initialize_history(p, current_work)
-
-        ! transport particle
-        call transport(p)
-
-      end do PARTICLE_LOOP
-!$omp end parallel do
-
-      ! Accumulate time for transport
-      call time_transport % stop()
-
-      call finalize_generation()
-
-    end do GENERATION_LOOP
-
-    call finalize_batch()
-
-    ! Check simulation ending criteria
-    if (present(status)) then
-      if (current_batch == n_max_batches) then
-        status = STATUS_EXIT_MAX_BATCH
-      elseif (satisfy_triggers) then
-        status = STATUS_EXIT_ON_TRIGGER
-      else
-        status = STATUS_EXIT_NORMAL
-      end if
-    end if
-
-  end function openmc_next_batch
 
 !===============================================================================
 ! INITIALIZE_SIMULATION

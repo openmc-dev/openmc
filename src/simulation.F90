@@ -26,7 +26,7 @@ module simulation
   use random_lcg,      only: set_particle_seed
   use settings
   use simulation_header
-  use state_point,     only: openmc_statepoint_write, write_source_point, load_state_point
+  use state_point,     only: openmc_statepoint_write, load_state_point
   use string,          only: to_str
   use tally,           only: accumulate_tallies, setup_active_tallies, &
                              init_tally_routines
@@ -54,6 +54,9 @@ module simulation
 
     subroutine finalize_generation() bind(C)
     end subroutine finalize_generation
+
+    subroutine finalize_batch() bind(C)
+    end subroutine
 
     subroutine initialize_history(p, index_source) bind(C)
       import Particle, C_INT64_T
@@ -140,73 +143,6 @@ contains
     end if
 
   end function openmc_next_batch
-
-!===============================================================================
-! FINALIZE_BATCH handles synchronization and accumulation of tallies,
-! calculation of Shannon entropy, getting single-batch estimate of keff, and
-! turning on tallies when appropriate
-!===============================================================================
-
-  subroutine finalize_batch()
-
-    integer(C_INT) :: err
-    character(MAX_FILE_LEN) :: filename
-
-    interface
-      subroutine broadcast_triggers() bind(C)
-      end subroutine broadcast_triggers
-    end interface
-
-    ! Reduce tallies onto master process and accumulate
-    call time_tallies % start()
-    call accumulate_tallies()
-    call time_tallies % stop()
-
-    ! Reset global tally results
-    if (current_batch <= n_inactive) then
-      global_tallies(:,:) = ZERO
-      n_realizations = 0
-    end if
-
-    if (run_mode == MODE_EIGENVALUE) then
-      ! Perform CMFD calculation if on
-      if (cmfd_on) call execute_cmfd()
-      ! Write batch output
-      if (master .and. verbosity >= 7) call print_batch_keff()
-    end if
-
-    ! Check_triggers
-    if (master) call check_triggers()
-#ifdef OPENMC_MPI
-    call broadcast_triggers()
-#endif
-    if (satisfy_triggers .or. &
-         (trigger_on .and. current_batch == n_max_batches)) then
-      call statepoint_batch % add(current_batch)
-    end if
-
-    ! Write out state point if it's been specified for this batch
-    if (statepoint_batch % contains(current_batch)) then
-      if (sourcepoint_batch % contains(current_batch) .and. source_write &
-           .and. .not. source_separate) then
-        err = openmc_statepoint_write(write_source=.true._C_BOOL)
-      else
-        err = openmc_statepoint_write(write_source=.false._C_BOOL)
-      end if
-    end if
-
-    ! Write out a separate source point if it's been specified for this batch
-    if (sourcepoint_batch % contains(current_batch) .and. source_write &
-         .and. source_separate) call write_source_point()
-
-    ! Write a continously-overwritten source point if requested.
-    if (source_latest) then
-      filename = trim(path_output) // 'source' // '.h5'
-      call write_source_point(filename)
-    end if
-
-  end subroutine finalize_batch
-
 
 !===============================================================================
 ! INITIALIZE_SIMULATION

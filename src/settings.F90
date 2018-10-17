@@ -109,14 +109,6 @@ module settings
   ! Whether create fission neutrons or not. Only applied for MODE_FIXEDSOURCE
   logical(C_BOOL), bind(C) :: create_fission_neutrons
 
-  ! Information about state points to be written
-  integer :: n_state_points = 0
-  type(SetInt) :: statepoint_batch
-
-  ! Information about source points to be written
-  integer :: n_source_points = 0
-  type(SetInt) :: sourcepoint_batch
-
   character(MAX_FILE_LEN) :: path_input               ! Path to input file
   character(MAX_FILE_LEN) :: path_cross_sections = '' ! Path to cross_sections.xml
   character(MAX_FILE_LEN) :: path_multipole           ! Path to wmp library
@@ -149,10 +141,14 @@ contains
 !===============================================================================
 
   subroutine free_memory_settings()
+    interface
+      subroutine free_memory_settings_c() bind(C)
+      end subroutine
+    end interface
+
     if (allocated(res_scat_nuclides)) deallocate(res_scat_nuclides)
 
-    call statepoint_batch % clear()
-    call sourcepoint_batch % clear()
+    call free_memory_settings_c()
   end subroutine free_memory_settings
 
 end module settings

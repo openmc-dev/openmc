@@ -360,7 +360,7 @@ contains
 ! multiplication factor as well as the average value if we're in active batches
 !===============================================================================
 
-  subroutine print_batch_keff()
+  subroutine print_batch_keff() bind(C)
 
     integer :: i  ! overall generation
     integer :: n  ! number of active generations

@@ -66,6 +66,13 @@ extern "C" void initialize_generation();
 
 extern "C" void initialize_history(Particle* p, int64_t index_source);
 
+//! Finalize a batch
+//!
+//! Handles synchronization and accumulation of tallies, calculation of Shannon
+//! entropy, getting single-batch estimate of keff, and turning on tallies when
+//! appropriate
+extern "C" void finalize_batch();
+
 //! Finalize a fission generation
 extern "C" void finalize_generation();
 
@@ -74,7 +81,6 @@ extern "C" int overall_generation();
 
 #ifdef OPENMC_MPI
 extern "C" void broadcast_results();
-extern "C" void broadcast_triggers();
 #endif
 
 } // namespace openmc

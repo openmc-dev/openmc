@@ -210,98 +210,13 @@ contains
 
     integer :: i
     integer :: n
-    integer, allocatable :: temp_int_array(:)
     type(XMLNode) :: root
-    type(XMLNode) :: node_sp
     type(XMLNode) :: node_res_scat
     type(XMLNode) :: node_vol
     type(XMLNode), allocatable :: node_vol_list(:)
 
     ! Get proper XMLNode type given pointer
     root % ptr = root_ptr
-
-    ! Check if the user has specified to write state points
-    if (check_for_node(root, "state_point")) then
-
-      ! Get pointer to state_point node
-      node_sp = root % child("state_point")
-
-      ! Determine number of batches at which to store state points
-      if (check_for_node(node_sp, "batches")) then
-        n_state_points = node_word_count(node_sp, "batches")
-      else
-        n_state_points = 0
-      end if
-
-      if (n_state_points > 0) then
-        ! User gave specific batches to write state points
-        allocate(temp_int_array(n_state_points))
-        call get_node_array(node_sp, "batches", temp_int_array)
-        do i = 1, n_state_points
-          call statepoint_batch % add(temp_int_array(i))
-        end do
-        deallocate(temp_int_array)
-      else
-        ! If neither were specified, write state point at last batch
-        n_state_points = 1
-        call statepoint_batch % add(n_batches)
-      end if
-    else
-      ! If no <state_point> tag was present, by default write state point at
-      ! last batch only
-      n_state_points = 1
-      call statepoint_batch % add(n_batches)
-    end if
-
-    ! Check if the user has specified to write source points
-    if (check_for_node(root, "source_point")) then
-
-      ! Get pointer to source_point node
-      node_sp = root % child("source_point")
-
-      ! Determine number of batches at which to store source points
-      if (check_for_node(node_sp, "batches")) then
-        n_source_points = node_word_count(node_sp, "batches")
-      else
-        n_source_points = 0
-      end if
-
-      if (n_source_points > 0) then
-        ! User gave specific batches to write source points
-        allocate(temp_int_array(n_source_points))
-        call get_node_array(node_sp, "batches", temp_int_array)
-        do i = 1, n_source_points
-          call sourcepoint_batch % add(temp_int_array(i))
-        end do
-        deallocate(temp_int_array)
-      else
-        ! If neither were specified, write source points with state points
-        n_source_points = n_state_points
-        do i = 1, n_state_points
-          call sourcepoint_batch % add(statepoint_batch % get_item(i))
-        end do
-      end if
-    else
-      ! If no <source_point> tag was present, by default we keep source bank in
-      ! statepoint file and write it out at statepoints intervals
-      n_source_points = n_state_points
-      do i = 1, n_state_points
-        call sourcepoint_batch % add(statepoint_batch % get_item(i))
-      end do
-    end if
-
-    ! If source is not seperate and is to be written out in the statepoint file,
-    ! make sure that the sourcepoint batch numbers are contained in the
-    ! statepoint list
-    if (.not. source_separate) then
-      do i = 1, n_source_points
-        if (.not. statepoint_batch % contains(sourcepoint_batch % &
-             get_item(i))) then
-          call fatal_error('Sourcepoint batches are not a subset&
-               & of statepoint batches.')
-        end if
-      end do
-    end if
 
     ! Resonance scattering parameters
     if (check_for_node(root, "resonance_scattering")) then

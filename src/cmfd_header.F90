@@ -143,7 +143,7 @@ module cmfd_header
   logical, public :: cmfd_run_adjoint = .false.
 
   ! CMFD run logicals
-  logical, public :: cmfd_on = .false.
+  logical(C_BOOL), public, bind(C) :: cmfd_on = .false.
 
   ! CMFD display info
   character(len=25), public :: cmfd_display = 'balance'

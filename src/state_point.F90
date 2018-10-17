@@ -444,44 +444,6 @@ contains
   end function openmc_statepoint_write
 
 !===============================================================================
-! WRITE_SOURCE_POINT
-!===============================================================================
-
-  subroutine write_source_point(filename)
-    character(MAX_FILE_LEN), intent(in), optional :: filename
-
-    logical :: parallel
-    integer(HID_T) :: file_id
-    character(MAX_FILE_LEN) :: filename_
-
-    ! When using parallel HDF5, the file is written to collectively by all
-    ! processes. With MPI-only, the file is opened and written by the master
-    ! (note that the call to write_source_bank is by all processes since slave
-    ! processes need to send source bank data to the master.
-#ifdef PHDF5
-    parallel = .true.
-#else
-    parallel = .false.
-#endif
-
-    if (present(filename)) then
-      filename_ = filename
-    else
-      filename_ = trim(path_output) // 'source.' // &
-           & zero_padded(current_batch, count_digits(n_max_batches))
-      filename_ = trim(filename_) // '.h5'
-    end if
-
-    if (master .or. parallel) then
-      file_id = file_open(filename_, 'w', parallel=.true.)
-      call write_attribute(file_id, "filetype", 'source')
-    end if
-    call write_source_bank(file_id, source_bank)
-    if (master .or. parallel) call file_close(file_id)
-
-  end subroutine write_source_point
-
-!===============================================================================
 ! LOAD_STATE_POINT
 !===============================================================================
 

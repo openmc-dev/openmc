@@ -20,11 +20,13 @@ module reaction_header
     integer(C_INT)  :: MT                      ! ENDF MT value
     real(C_DOUBLE)  :: Q_value                 ! Reaction Q value
     logical(C_BOOL) :: scatter_in_cm           ! scattering system in center-of-mass?
+    logical(C_BOOL) :: redundant               ! redundant reaction?
   contains
     procedure :: from_hdf5
     procedure :: mt_
     procedure :: q_value_
     procedure :: scatter_in_cm_
+    procedure :: redundant_
     procedure :: product_decay_rate
     procedure :: product_emission_mode
     procedure :: product_particle
@@ -59,6 +61,12 @@ module reaction_header
     end function
 
     function reaction_scatter_in_cm(ptr) result(b) bind(C)
+      import C_PTR, C_BOOL
+      type(C_PTR), value :: ptr
+      logical(C_BOOL) :: b
+    end function
+
+    function reaction_redundant(ptr) result(b) bind(C)
       import C_PTR, C_BOOL
       type(C_PTR), value :: ptr
       logical(C_BOOL) :: b
@@ -159,6 +167,7 @@ contains
     this % MT = reaction_mt(this % ptr)
     this % Q_value = reaction_q_value(this % ptr)
     this % scatter_in_cm = reaction_scatter_in_cm(this % ptr)
+    this % redundant = reaction_redundant(this % ptr)
   end subroutine from_hdf5
 
   function mt_(this) result(mt)
@@ -180,6 +189,13 @@ contains
     logical(C_BOOL) :: cm
 
     cm = reaction_scatter_in_cm(this % ptr)
+  end function
+
+  function redundant_(this) result(redundant)
+    class (Reaction), intent(in) :: this
+    logical(C_BOOL) :: redundant
+
+    redundant = reaction_redundant(this % ptr)
   end function
 
   pure function product_decay_rate(this, product) result(rate)

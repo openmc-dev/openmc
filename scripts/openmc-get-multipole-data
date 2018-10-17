@@ -29,9 +29,9 @@ parser.add_argument('-b', '--batch', action='store_true',
 args = parser.parse_args()
 
 
-baseUrl = 'https://github.com/smharper/windowed_multipole_library/blob/master/'
-files = ['multipole_lib.tar.gz?raw=true']
-checksums = ['3985aea96f7162a9419c7ed8352e6abb']
+baseUrl = 'https://github.com/mit-crpg/WMP_Library/releases/download/v1.0/'
+files = ['WMP_Library_v1.0.tar.gz']
+checksums = ['22cb675734cfccb278dffd40dcfbf26a']
 block_size = 16384
 
 # ==============================================================================
@@ -101,12 +101,7 @@ for f in files:
     # Extract files
     with tarfile.open(fname, 'r') as tgz:
         print('Extracting {0}...'.format(fname))
-        tgz.extractall(path='wmp/')
-
-# Move data files down one level
-for filename in glob.glob('wmp/multipole_lib/*'):
-    shutil.move(filename, 'wmp/')
-os.rmdir('wmp/multipole_lib')
+        tgz.extractall(path='')
 
 # ==============================================================================
 # PROMPT USER TO DELETE .TAR.GZ FILES

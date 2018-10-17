@@ -57,6 +57,8 @@ element settings {
 
   element ptables { xsd:boolean }? &
 
+  element dagmc { xsd:boolean }? &
+
   element run_cmfd { xsd:boolean }? &
 
   element run_mode { xsd:string }? &

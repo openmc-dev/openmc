@@ -557,6 +557,8 @@ contains
     real(8) :: c, c_l, c_max
     type(BremsstrahlungData), pointer :: mat
 
+    if (p % material == MATERIAL_VOID) return
+
     if (p % E < energy_cutoff(PHOTON)) return
 
     ! Get bremsstrahlung data for this material and particle type

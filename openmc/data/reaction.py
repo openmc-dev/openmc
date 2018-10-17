@@ -576,14 +576,7 @@ def _get_photon_products_ace(ace, rx):
         # Determine corresponding reaction
         neutron_mt = photon_mts[i] // 1000
 
-        # Restrict to photons that match the requested MT. Note that if the
-        # photon is assigned to MT=18 but the file splits fission into
-        # MT=19,20,21,38, we assign the photon product to each of the individual
-        # reactions
-        if neutron_mt == 18:
-            if rx.mt not in (18, 19, 20, 21, 38):
-                continue
-        elif neutron_mt != rx.mt:
+        if neutron_mt != rx.mt:
             continue
 
         # Create photon product and assign to reactions
@@ -668,7 +661,7 @@ def _get_photon_products_endf(ev, rx):
 
     Returns
     -------
-    photons : list of openmc.Products
+    products : list of openmc.Products
         Photons produced from reaction with given MT
 
     """
@@ -785,6 +778,8 @@ class Reaction(EqualityMixin):
         Indicates whether scattering kinematics should be performed in the
         center-of-mass or laboratory reference frame.
         grid above the threshold value in barns.
+    redundant : bool
+        Indicates whether or not this is a redundant reaction
     mt : int
         The ENDF MT number for this reaction.
     q_value : float
@@ -803,6 +798,7 @@ class Reaction(EqualityMixin):
 
     def __init__(self, mt):
         self._center_of_mass = True
+        self._redundant = False
         self._q_value = 0.
         self._xs = {}
         self._products = []
@@ -819,6 +815,10 @@ class Reaction(EqualityMixin):
     @property
     def center_of_mass(self):
         return self._center_of_mass
+
+    @property
+    def redundant(self):
+        return self._redundant
 
     @property
     def q_value(self):
@@ -840,6 +840,11 @@ class Reaction(EqualityMixin):
     def center_of_mass(self, center_of_mass):
         cv.check_type('center of mass', center_of_mass, (bool, np.bool_))
         self._center_of_mass = center_of_mass
+
+    @redundant.setter
+    def redundant(self, redundant):
+        cv.check_type('redundant', redundant, (bool, np.bool_))
+        self._redundant = redundant
 
     @q_value.setter
     def q_value(self, q_value):
@@ -882,6 +887,7 @@ class Reaction(EqualityMixin):
             group.attrs['label'] = np.string_(self.mt)
         group.attrs['Q_value'] = self.q_value
         group.attrs['center_of_mass'] = 1 if self.center_of_mass else 0
+        group.attrs['redundant'] = 1 if self.redundant else 0
         for T in self.xs:
             Tgroup = group.create_group(T)
             if self.xs[T] is not None:
@@ -918,6 +924,7 @@ class Reaction(EqualityMixin):
         rx = cls(mt)
         rx.q_value = group.attrs['Q_value']
         rx.center_of_mass = bool(group.attrs['center_of_mass'])
+        rx.redundant = bool(group.attrs['redundant'])
 
         # Read cross section at each temperature
         for T, Tgroup in group.items():

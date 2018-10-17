@@ -28,7 +28,7 @@ except ImportError:
     have_mpi = False
 
 import openmc.capi
-from openmc.clean_xml import clean_xml_indentation  # TODO Remove
+from openmc._xml import clean_indentation  #TODO Remove
 from openmc.checkvalue import (check_type, check_length, check_value,
                                check_greater_than, check_less_than)
 from openmc.exceptions import OpenMCError
@@ -597,7 +597,7 @@ class CMFD(object):
         self._create_write_matrices_subelement()
 
         # Clean the indentation in the file to be user-readable
-        clean_xml_indentation(self._cmfd_file)
+        clean_indentation(self._cmfd_file)
 
         # Write the XML Tree to the cmfd.xml file
         tree = ET.ElementTree(self._cmfd_file)

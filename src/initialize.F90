@@ -17,10 +17,28 @@ module initialize
 
   implicit none
 
-  type(C_PTR), bind(C) :: openmc_path_input
-  type(C_PTR), bind(C) :: openmc_path_statepoint
-  type(C_PTR), bind(C) :: openmc_path_sourcepoint
-  type(C_PTR), bind(C) :: openmc_path_particle_restart
+  interface
+    function openmc_path_input() result(ptr) bind(C)
+      import C_PTR
+      type(C_PTR) :: ptr
+    end function
+    function openmc_path_output() result(ptr) bind(C)
+      import C_PTR
+      type(C_PTR) :: ptr
+    end function
+    function openmc_path_particle_restart() result(ptr) bind(C)
+      import C_PTR
+      type(C_PTR) :: ptr
+    end function
+    function openmc_path_statepoint() result(ptr) bind(C)
+      import C_PTR
+      type(C_PTR) :: ptr
+    end function
+    function openmc_path_sourcepoint() result(ptr) bind(C)
+      import C_PTR
+      type(C_PTR) :: ptr
+    end function
+  end interface
 
 contains
 
@@ -164,28 +182,23 @@ contains
       end function is_null
     end interface
 
-    if (.not. is_null(openmc_path_input)) then
-      call c_f_pointer(openmc_path_input, string, [255])
+    if (.not. is_null(openmc_path_input())) then
+      call c_f_pointer(openmc_path_input(), string, [255])
       path_input = to_f_string(string)
     else
       path_input = ''
     end if
-    if (.not. is_null(openmc_path_statepoint)) then
-      call c_f_pointer(openmc_path_statepoint, string, [255])
+    if (.not. is_null(openmc_path_statepoint())) then
+      call c_f_pointer(openmc_path_statepoint(), string, [255])
       path_state_point = to_f_string(string)
     end if
-    if (.not. is_null(openmc_path_sourcepoint)) then
-      call c_f_pointer(openmc_path_sourcepoint, string, [255])
+    if (.not. is_null(openmc_path_sourcepoint())) then
+      call c_f_pointer(openmc_path_sourcepoint(), string, [255])
       path_source_point = to_f_string(string)
     end if
-    if (.not. is_null(openmc_path_particle_restart)) then
-      call c_f_pointer(openmc_path_particle_restart, string, [255])
+    if (.not. is_null(openmc_path_particle_restart())) then
+      call c_f_pointer(openmc_path_particle_restart(), string, [255])
       path_particle_restart = to_f_string(string)
-    end if
-
-    ! Add slash at end of directory if it isn't there
-    if (len_trim(path_input) > 0 .and. .not. ends_with(path_input, "/")) then
-      path_input = trim(path_input) // "/"
     end if
   end subroutine read_command_line
 

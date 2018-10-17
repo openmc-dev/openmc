@@ -43,10 +43,6 @@ class FissionEnergyRelease(EqualityMixin):
     dataset.  The :meth:`FissionEnergyRelease.from_hdf5` method builds this
     class from the usual OpenMC HDF5 data files.
     :meth:`FissionEnergyRelease.from_endf` uses ENDF-formatted data.
-    :meth:`FissionEnergyRelease.from_compact_hdf5` uses a different HDF5 format
-    that is meant to be compact and store the exact same data as the ENDF
-    format.  Files with this format can be generated with the
-    :func:`openmc.data.write_compact_458_library` function.
 
     References
     ----------

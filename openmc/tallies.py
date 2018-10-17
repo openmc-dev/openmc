@@ -15,7 +15,7 @@ import h5py
 
 import openmc
 import openmc.checkvalue as cv
-from openmc.clean_xml import clean_xml_indentation
+from openmc._xml import clean_indentation
 from .mixin import IDManagerMixin
 
 
@@ -3187,7 +3187,7 @@ class Tallies(cv.CheckedList):
         self._create_derivative_subelements(root_element)
 
         # Clean the indentation in the file to be user-readable
-        clean_xml_indentation(root_element)
+        clean_indentation(root_element)
 
         # Write the XML Tree to the tallies.xml file
         tree = ET.ElementTree(root_element)

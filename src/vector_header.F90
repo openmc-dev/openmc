@@ -14,7 +14,7 @@ module vector_header
     procedure :: destroy      => vector_destroy
     procedure :: add_value    => vector_add_value
     procedure :: copy         => vector_copy
-    procedure :: write       => vector_write
+    procedure :: write        => vector_write
   end type Vector
 
 contains

@@ -1,8 +1,8 @@
-#include "distribution_spatial.h"
+#include "openmc/distribution_spatial.h"
 
-#include "error.h"
-#include "random_lcg.h"
-#include "xml_interface.h"
+#include "openmc/error.h"
+#include "openmc/random_lcg.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 
@@ -55,7 +55,8 @@ Position CartesianIndependent::sample() const
 // SpatialBox implementation
 //==============================================================================
 
-SpatialBox::SpatialBox(pugi::xml_node node)
+SpatialBox::SpatialBox(pugi::xml_node node, bool fission)
+  : only_fissionable_{fission}
 {
   // Read lower-right/upper-left coordinates
   auto params = get_node_array<double>(node, "parameters");

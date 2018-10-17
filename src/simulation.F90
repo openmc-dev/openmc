@@ -10,8 +10,7 @@ module simulation
   use cmfd_execute,    only: cmfd_init_batch, cmfd_tally_init, execute_cmfd
   use cmfd_header,     only: cmfd_on
   use constants,       only: ZERO
-  use eigenvalue,      only: count_source_for_ufs, calculate_average_keff, &
-                             calculate_generation_keff, shannon_entropy, &
+  use eigenvalue,      only: calculate_average_keff, calculate_generation_keff, &
                              synchronize_bank, keff_generation, k_sum
 #ifdef _OPENMP
   use eigenvalue,      only: join_bank_from_threads
@@ -24,13 +23,12 @@ module simulation
   use nuclide_header,  only: micro_xs, n_nuclides
   use output,          only: header, print_columns, &
                              print_batch_keff, print_generation, print_runtime, &
-                             print_results, print_overlap_check, write_tallies
+                             print_results, write_tallies
   use particle_header
   use photon_header,   only: micro_photon_xs, n_elements
   use random_lcg,      only: set_particle_seed
   use settings
   use simulation_header
-  use source,          only: initialize_source, sample_external_source
   use state_point,     only: openmc_statepoint_write, write_source_point, load_state_point
   use string,          only: to_str
   use tally,           only: accumulate_tallies, setup_active_tallies, &
@@ -51,6 +49,19 @@ module simulation
   integer(C_INT), parameter :: STATUS_EXIT_NORMAL = 0
   integer(C_INT), parameter :: STATUS_EXIT_MAX_BATCH = 1
   integer(C_INT), parameter :: STATUS_EXIT_ON_TRIGGER = 2
+
+  interface
+    subroutine openmc_simulation_init_c() bind(C)
+    end subroutine
+
+    subroutine initialize_source() bind(C)
+    end subroutine
+
+    function sample_external_source() result(site) bind(C)
+      import Bank
+      type(Bank) :: site
+    end function
+  end interface
 
 contains
 
@@ -75,13 +86,6 @@ contains
     end if
 
     call initialize_batch()
-
-    ! Handle restart runs
-    if (restart_run .and. current_batch <= restart_batch) then
-      call replay_batch_history()
-      status = STATUS_EXIT_NORMAL
-      return
-    end if
 
     ! =======================================================================
     ! LOOP OVER GENERATIONS
@@ -193,10 +197,12 @@ contains
     ! Reset total starting particle weight used for normalizing tallies
     total_weight = ZERO
 
-    if (n_inactive > 0 .and. current_batch == 1) then
+    if ((n_inactive > 0 .and. current_batch == 1) .or. &
+         (restart_run .and. restart_batch < n_inactive .and. current_batch == restart_batch + 1)) then
       ! Turn on inactive timer
       call time_inactive % start()
-    elseif (current_batch == n_inactive + 1) then
+    elseif ((current_batch == n_inactive + 1) .or. &
+         (restart_run .and. restart_batch > n_inactive .and. current_batch == restart_batch + 1)) then
       ! Switch from inactive batch timer to active batch timer
       call time_inactive % stop()
       call time_active % start()
@@ -222,12 +228,17 @@ contains
 
   subroutine initialize_generation()
 
+    interface
+      subroutine ufs_count_sites() bind(C)
+      end subroutine
+    end interface
+
     if (run_mode == MODE_EIGENVALUE) then
       ! Reset number of fission bank sites
       n_bank = 0
 
       ! Count source sites if using uniform fission source weighting
-      if (ufs) call count_source_for_ufs()
+      if (ufs) call ufs_count_sites()
 
       ! Store current value of tracklength k
       keff_generation = global_tallies(RESULT_VALUE, K_TRACKLENGTH)
@@ -241,7 +252,13 @@ contains
 
   subroutine finalize_generation()
 
-    integer(8) :: i
+    interface
+      subroutine fill_source_bank_fixedsource() bind(C)
+      end subroutine
+
+      subroutine shannon_entropy() bind(C)
+      end subroutine
+    end interface
 
     ! Update global tallies with the omp private accumulation variables
 !$omp parallel
@@ -294,13 +311,7 @@ contains
 
     elseif (run_mode == MODE_FIXEDSOURCE) then
       ! For fixed-source mode, we need to sample the external source
-      if (path_source == '') then
-        do i = 1, work
-          call set_particle_seed((total_gen + overall_generation()) * &
-               n_particles + work_index(rank) + i)
-          call sample_external_source(source_bank(i))
-        end do
-      end if
+      call fill_source_bank_fixedsource()
     end if
 
   end subroutine finalize_generation
@@ -370,46 +381,6 @@ contains
 
   end subroutine finalize_batch
 
-!===============================================================================
-! REPLAY_BATCH_HISTORY displays keff and entropy for each generation within a
-! batch using data read from a state point file
-!===============================================================================
-
-  subroutine replay_batch_history
-
-    ! Write message at beginning
-    if (current_batch == 1) then
-      call write_message("Replaying history from state point...", 6)
-    end if
-
-    if (run_mode == MODE_EIGENVALUE) then
-      do current_gen = 1, gen_per_batch
-        call calculate_average_keff()
-
-        ! print out batch keff
-        if (verbosity >= 7) then
-          if (current_gen < gen_per_batch) then
-            if (master) call print_generation()
-          else
-            if (master) call print_batch_keff()
-          end if
-        end if
-      end do
-    end if
-
-    ! Increment n_realizations as would ordinarily be done in finalize_batch
-    if (reduce_tallies) then
-      n_realizations = n_realizations + 1
-    else
-      n_realizations = n_realizations + n_procs
-    end if
-
-    ! Write message at end
-    if (current_batch == restart_batch) then
-      call write_message("Resuming simulation...", 6)
-    end if
-
-  end subroutine replay_batch_history
 
 !===============================================================================
 ! INITIALIZE_SIMULATION
@@ -424,6 +395,9 @@ contains
 
     ! Skip if simulation has already been initialized
     if (simulation_initialized) return
+
+    ! Call initialization on C++ side
+    call openmc_simulation_init_c()
 
     ! Set up tally procedure pointers
     call init_tally_routines()
@@ -453,34 +427,26 @@ contains
 
     ! Allocate array for matching filter bins
     allocate(filter_matches(n_filters))
+    do i = 1, n_filters
+      allocate(filter_matches(i) % bins)
+      allocate(filter_matches(i) % weights)
+    end do
 !$omp end parallel
 
     ! Reset global variables -- this is done before loading state point (as that
     ! will potentially populate k_generation and entropy)
     current_batch = 0
     call k_generation % clear()
-    call entropy % clear()
+    call entropy_clear()
     need_depletion_rx = .false.
 
     ! If this is a restart run, load the state point data and binary source
     ! file
     if (restart_run) then
       call load_state_point()
+      call write_message("Resuming simulation...", 6)
     else
       call initialize_source()
-    end if
-
-    ! In restart, set the batch to begin from in order to reproduce the correct
-    ! average keff (used in sampling the fission bank).  Use n_realizations from
-    ! the statepoint rather than n_inactive in case openmc_reset was called in
-    ! the previous run.
-    if (restart_run) then
-      if (reduce_tallies) then
-        current_batch = restart_batch - n_realizations
-      else
-        current_batch = restart_batch - n_realizations*n_procs
-      end if
-      n_realizations = 0
     end if
 
     ! Display header
@@ -511,7 +477,6 @@ contains
     integer    :: n       ! size of arrays
     integer    :: mpi_err  ! MPI error code
     integer    :: count_per_filter ! number of result values for one filter bin
-    integer(8) :: temp
     real(8)    :: tempr(3) ! temporary array for communication
 #ifdef OPENMC_MPIF08
     type(MPI_Datatype) :: result_block
@@ -519,6 +484,11 @@ contains
     integer :: result_block
 #endif
 #endif
+
+    interface
+      subroutine print_overlap_check() bind(C)
+      end subroutine print_overlap_check
+    end interface
 
     err = 0
 
@@ -534,6 +504,10 @@ contains
       deallocate(materials(i) % mat_nuclide_index)
     end do
 !$omp parallel
+    do i = 1, size(filter_matches)
+      deallocate(filter_matches(i) % bins)
+      deallocate(filter_matches(i) % weights)
+    end do
     deallocate(micro_xs, micro_photon_xs, filter_matches)
 !$omp end parallel
 
@@ -572,12 +546,6 @@ contains
     k_col_abs = tempr(1)
     k_col_tra = tempr(2)
     k_abs_tra = tempr(3)
-
-    if (check_overlaps) then
-      call MPI_REDUCE(overlap_check_cnt, temp, n_cells, MPI_INTEGER8, &
-           MPI_SUM, 0, mpi_intracomm, mpi_err)
-      overlap_check_cnt = temp
-    end if
 #endif
 
     ! Write tally results to tallies.out
@@ -596,8 +564,8 @@ contains
     if (master) then
       if (verbosity >= 6) call print_runtime()
       if (verbosity >= 4) call print_results()
-      if (check_overlaps) call print_overlap_check()
     end if
+    if (check_overlaps) call print_overlap_check()
 
     ! Reset flags
     need_depletion_rx = .false.

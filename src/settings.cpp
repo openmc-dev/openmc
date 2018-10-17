@@ -94,6 +94,7 @@ double temperature_range[2] {0.0, 0.0};
 int trace_batch;
 int trace_gen;
 int64_t trace_particle;
+std::vector<std::array<int, 3>> track_identifiers;
 int trigger_batch_interval {1};
 int verbosity {7};
 double weight_cutoff {0.25};
@@ -495,7 +496,8 @@ void read_settings_xml()
   // Particle tracks
   if (check_for_node(root, "track")) {
     // Get values and make sure there are three per particle
-    auto temp = get_node_array<int64_t>(root, "track");
+    auto temp = get_node_array<int>(root, "track");
+    std::cout << "track size " << temp.size() << "\n";
     if (temp.size() % 3 != 0) {
       fatal_error("Number of integers specified in 'track' is not "
         "divisible by 3.  Please provide 3 integers per particle to be "
@@ -503,8 +505,11 @@ void read_settings_xml()
     }
 
     // Reshape into track_identifiers
-    //allocate(track_identifiers(3, n_tracks/3))
-    //track_identifiers = reshape(temp_int_array, [3, n_tracks/3])
+    int n_tracks = temp.size() / 3;
+    for (int i = 0; i < n_tracks; ++i) {
+      settings::track_identifiers.push_back({temp[3*i], temp[3*i + 1],
+        temp[3*i + 2]});
+    }
   }
 
   // Read meshes

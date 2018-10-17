@@ -5,6 +5,7 @@
 #include "openmc/error.h"
 #include "openmc/message_passing.h"
 #include "openmc/output.h"
+#include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/source.h"
 #include "openmc/timer.h"
@@ -300,6 +301,46 @@ void finalize_generation()
   } else if (settings::run_mode == RUN_MODE_FIXEDSOURCE) {
     // For fixed-source mode, we need to sample the external source
     fill_source_bank_fixedsource();
+  }
+}
+
+void initialize_history(Particle* p, int64_t index_source)
+{
+  // Get pointer to source bank
+  Bank* source_bank;
+  int64_t n;
+  openmc_source_bank(&source_bank, &n);
+
+  // set defaults
+  p->from_source(&source_bank[index_source - 1]);
+
+  // set identifier for particle
+  p->id = simulation::work_index[mpi::rank] + index_source;
+
+  // set random number seed
+  int64_t particle_seed = (simulation::total_gen + overall_generation() - 1)
+    * settings::n_particles + p->id;
+  set_particle_seed(particle_seed);
+
+  // set particle trace
+  simulation::trace = false;
+  if (simulation::current_batch == settings::trace_batch &&
+      simulation::current_gen == settings::trace_gen &&
+      p->id == settings::trace_particle) simulation::trace = true;
+
+  // Set particle track.
+  p->write_track = false;
+  if (settings::write_all_tracks) {
+    p->write_track = true;
+  } else if (settings::track_identifiers.size() > 0) {
+    for (const auto& t : settings::track_identifiers) {
+      if (simulation::current_batch == t[0] &&
+          simulation::current_gen == t[1] &&
+          p->id == t[2]) {
+        p->write_track = true;
+        break;
+      }
+    }
   }
 }
 

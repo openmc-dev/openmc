@@ -52,7 +52,7 @@ void write_string(hid_t group_id, const char* name, const std::string& buffer,
 
 std::vector<hsize_t> attribute_shape(hid_t obj_id, const char* name);
 std::vector<std::string> dataset_names(hid_t group_id);
-void ensure_exists(hid_t group_id, const char* name);
+void ensure_exists(hid_t obj_id, const char* name, bool attribute=false);
 std::vector<std::string> group_names(hid_t group_id);
 std::vector<hsize_t> object_shape(hid_t obj_id);
 std::string object_name(hid_t obj_id);

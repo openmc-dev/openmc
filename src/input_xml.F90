@@ -211,7 +211,6 @@ contains
     integer :: i
     integer :: n
     integer, allocatable :: temp_int_array(:)
-    integer :: n_tracks
     type(XMLNode) :: root
     type(XMLNode) :: node_sp
     type(XMLNode) :: node_res_scat
@@ -220,25 +219,6 @@ contains
 
     ! Get proper XMLNode type given pointer
     root % ptr = root_ptr
-
-    ! Particle tracks
-    if (check_for_node(root, "track")) then
-      ! Make sure that there are three values per particle
-      n_tracks = node_word_count(root, "track")
-      if (mod(n_tracks, 3) /= 0) then
-        call fatal_error("Number of integers specified in 'track' is not &
-             &divisible by 3.  Please provide 3 integers per particle to be &
-             &tracked.")
-      end if
-
-      ! Allocate space and get list of tracks
-      allocate(temp_int_array(n_tracks))
-      call get_node_array(root, "track", temp_int_array)
-
-      ! Reshape into track_identifiers
-      allocate(track_identifiers(3, n_tracks/3))
-      track_identifiers = reshape(temp_int_array, [3, n_tracks/3])
-    end if
 
     ! Check if the user has specified to write state points
     if (check_for_node(root, "state_point")) then
@@ -2719,6 +2699,13 @@ contains
     integer(HID_T) :: file_id
     character(len=MAX_WORD_LEN), allocatable :: names(:)
 
+    interface
+      subroutine read_mg_cross_sections_header_c(file_id) bind(C)
+        import HID_T
+        integer(HID_T), value :: file_id
+      end subroutine
+    end interface
+
     ! Check if MGXS Library exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
     if (.not. file_exists) then
@@ -2765,6 +2752,9 @@ contains
     do i = 1, num_energy_groups
       energy_bin_avg(i) = HALF * (energy_bins(i) + energy_bins(i + 1))
     end do
+
+    ! Set up energy bins on C++ side
+    call read_mg_cross_sections_header_c(file_id)
 
     ! Get the minimum and maximum energies
     energy_min(NEUTRON) = energy_bins(num_energy_groups + 1)

@@ -129,12 +129,10 @@ module particle_header
       type(Particle), intent(inout) :: p
     end subroutine particle_initialize
 
-    subroutine particle_from_source(p, src, run_CE, energy_bin_avg) bind(C)
-      import Particle, Bank, C_BOOL, C_DOUBLE
+    subroutine particle_from_source(p, src) bind(C)
+      import Particle, Bank, C_DOUBLE
       type(Particle), intent(inout) :: p
       type(Bank),     intent(in)    :: src
-      logical(C_BOOL), value        :: run_CE
-      real(C_DOUBLE), intent(in)    :: energy_bin_avg(*)
     end subroutine particle_from_source
 
     subroutine particle_mark_as_lost_c(p, message) bind(C, name='particle_mark_as_lost')

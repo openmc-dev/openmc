@@ -4,6 +4,8 @@
 #ifndef OPENMC_SIMULATION_H
 #define OPENMC_SIMULATION_H
 
+#include "openmc/particle.h"
+
 #include <cstdint>
 #include <vector>
 
@@ -61,6 +63,8 @@ extern "C" void initialize_batch();
 
 //! Initialize a fission generation
 extern "C" void initialize_generation();
+
+extern "C" void initialize_history(Particle* p, int64_t index_source);
 
 //! Finalize a fission generation
 extern "C" void finalize_generation();

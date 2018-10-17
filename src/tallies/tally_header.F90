@@ -136,10 +136,10 @@ module tally_header
   ! global tally, it can cause a higher cache miss rate due to
   ! invalidation. Thus, we use threadprivate variables to accumulate global
   ! tallies and then reduce at the end of a generation.
-  real(C_DOUBLE), public :: global_tally_collision   = ZERO
-  real(C_DOUBLE), public, bind(C) :: global_tally_absorption  = ZERO
-  real(C_DOUBLE), public :: global_tally_tracklength = ZERO
-  real(C_DOUBLE), public :: global_tally_leakage     = ZERO
+  real(C_DOUBLE), public, bind(C) :: global_tally_collision
+  real(C_DOUBLE), public, bind(C) :: global_tally_absorption
+  real(C_DOUBLE), public, bind(C) :: global_tally_tracklength
+  real(C_DOUBLE), public, bind(C) :: global_tally_leakage
 !$omp threadprivate(global_tally_collision, global_tally_absorption, &
 !$omp&              global_tally_tracklength, global_tally_leakage)
 

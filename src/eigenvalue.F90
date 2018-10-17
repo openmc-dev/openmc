@@ -32,7 +32,7 @@ contains
 ! to preserve the order of the bank when using varying numbers of threads.
 !===============================================================================
 
-  subroutine join_bank_from_threads()
+  subroutine join_bank_from_threads() bind(C)
 
     integer(8) :: total ! total number of fission bank sites
     integer    :: i     ! loop index for threads

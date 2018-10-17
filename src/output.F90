@@ -323,7 +323,7 @@ contains
 ! PRINT_GENERATION displays information for a generation of neutrons.
 !===============================================================================
 
-  subroutine print_generation()
+  subroutine print_generation() bind(C)
 
     integer :: i  ! overall generation
     integer :: n  ! number of active generations

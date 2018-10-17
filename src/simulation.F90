@@ -57,6 +57,9 @@ module simulation
     subroutine initialize_generation() bind(C)
     end subroutine
 
+    subroutine finalize_generation() bind(C)
+    end subroutine finalize_generation
+
     function sample_external_source() result(site) bind(C)
       import Bank
       type(Bank) :: site
@@ -181,77 +184,6 @@ contains
     end if
 
   end subroutine initialize_history
-
-!===============================================================================
-! FINALIZE_GENERATION
-!===============================================================================
-
-  subroutine finalize_generation()
-
-    interface
-      subroutine fill_source_bank_fixedsource() bind(C)
-      end subroutine
-
-      subroutine shannon_entropy() bind(C)
-      end subroutine
-
-      subroutine synchronize_bank() bind(C)
-      end subroutine
-    end interface
-
-    ! Update global tallies with the omp private accumulation variables
-!$omp parallel
-!$omp critical
-    if (run_mode == MODE_EIGENVALUE) then
-      global_tallies(RESULT_VALUE, K_COLLISION) = &
-           global_tallies(RESULT_VALUE, K_COLLISION) + global_tally_collision
-      global_tallies(RESULT_VALUE, K_ABSORPTION) = &
-           global_tallies(RESULT_VALUE, K_ABSORPTION) + global_tally_absorption
-      global_tallies(RESULT_VALUE, K_TRACKLENGTH) = &
-           global_tallies(RESULT_VALUE, K_TRACKLENGTH) + global_tally_tracklength
-    end if
-    global_tallies(RESULT_VALUE, LEAKAGE) = &
-         global_tallies(RESULT_VALUE, LEAKAGE) + global_tally_leakage
-!$omp end critical
-
-    ! reset private tallies
-    if (run_mode == MODE_EIGENVALUE) then
-      global_tally_collision = ZERO
-      global_tally_absorption = ZERO
-      global_tally_tracklength = ZERO
-    end if
-    global_tally_leakage = ZERO
-!$omp end parallel
-
-    if (run_mode == MODE_EIGENVALUE) then
-#ifdef _OPENMP
-      ! Join the fission bank from each thread into one global fission bank
-      call join_bank_from_threads()
-#endif
-
-      ! Distribute fission bank across processors evenly
-      call synchronize_bank()
-
-      ! Calculate shannon entropy
-      if (entropy_on) call shannon_entropy()
-
-      ! Collect results and statistics
-      call calculate_generation_keff()
-      call calculate_average_keff()
-
-      ! Write generation output
-      if (master .and. verbosity >= 7) then
-        if (current_gen /= gen_per_batch) then
-          call print_generation()
-        end if
-      end if
-
-    elseif (run_mode == MODE_FIXEDSOURCE) then
-      ! For fixed-source mode, we need to sample the external source
-      call fill_source_bank_fixedsource()
-    end if
-
-  end subroutine finalize_generation
 
 !===============================================================================
 ! FINALIZE_BATCH handles synchronization and accumulation of tallies,

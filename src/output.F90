@@ -10,7 +10,6 @@ module output
   use error,           only: fatal_error, warning
   use geometry_header
   use math,            only: t_percentile
-  use mesh_header,     only: RegularMesh, meshes
   use message_passing, only: master, n_procs
   use mgxs_interface
   use nuclide_header
@@ -34,6 +33,14 @@ module output
   integer :: ou = OUTPUT_UNIT
   integer :: eu = ERROR_UNIT
 
+  interface
+    function entropy(i) result(h) bind(C, name='entropy_c')
+      import C_INT, C_DOUBLE
+      integer(C_INT), value :: i
+      real(C_DOUBLE) :: h
+    end function
+  end interface
+
 contains
 
 !===============================================================================
@@ -41,7 +48,7 @@ contains
 ! developers, version, and date/time which the problem was run.
 !===============================================================================
 
-  subroutine title()
+  subroutine title() bind(C)
 
 #ifdef _OPENMP
     use omp_lib
@@ -211,7 +218,6 @@ contains
 
     integer :: i ! index for coordinate levels
     type(Cell),       pointer :: c
-    type(Universe),   pointer :: u
     class(Lattice),   pointer :: l
 
     ! display type of particle
@@ -232,20 +238,20 @@ contains
       write(ou,*) '  Level ' // trim(to_str(i - 1))
 
       ! Print cell for this level
-      if (p % coord(i) % cell /= NONE) then
-        c => cells(p % coord(i) % cell)
+      if (p % coord(i) % cell /= C_NONE) then
+        c => cells(p % coord(i) % cell + 1)
         write(ou,*) '    Cell             = ' // trim(to_str(c % id()))
       end if
 
       ! Print universe for this level
       if (p % coord(i) % universe /= NONE) then
-        u => universes(p % coord(i) % universe)
-        write(ou,*) '    Universe         = ' // trim(to_str(u % id))
+        write(ou,*) '    Universe         = ' &
+             // trim(to_str(universe_id(p % coord(i) % universe)))
       end if
 
       ! Print information on lattice
       if (p % coord(i) % lattice /= NONE) then
-        l => lattices(p % coord(i) % lattice) % obj
+        l => lattices(p % coord(i) % lattice)
         write(ou,*) '    Lattice          = ' // trim(to_str(l % id()))
         write(ou,*) '    Lattice position = (' // trim(to_str(&
              p % coord(i) % lattice_x)) // ',' // trim(to_str(&
@@ -337,7 +343,7 @@ contains
 
     ! write out entropy info
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-         entropy % data(i)
+         entropy(i)
 
     if (n > 1) then
       write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5," +/-",F8.5)', ADVANCE='NO') &
@@ -371,7 +377,7 @@ contains
 
     ! write out entropy info
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-         entropy % data(i)
+         entropy(i)
 
     ! write out accumulated k-effective if after first active batch
     if (n > 1) then
@@ -623,42 +629,6 @@ contains
   end subroutine print_results
 
 !===============================================================================
-! PRINT_OVERLAP_DEBUG displays information regarding overlap checking results
-!===============================================================================
-
-  subroutine print_overlap_check
-
-    integer :: i, j
-    integer :: num_sparse = 0
-
-    ! display header block for geometry debugging section
-    call header("Cell Overlap Check Summary", 1)
-
-    write(ou,100) 'Cell ID','No. Overlap Checks'
-
-    do i = 1, n_cells
-      write(ou,101) cells(i) % id(), overlap_check_cnt(i)
-      if (overlap_check_cnt(i) < 10) num_sparse = num_sparse + 1
-    end do
-    write(ou,*)
-    write(ou,'(1X,A)') 'There were ' // trim(to_str(num_sparse)) // &
-                       ' cells with less than 10 overlap checks'
-    j = 0
-    do i = 1, n_cells
-      if (overlap_check_cnt(i) < 10) then
-        j = j + 1
-        write(ou,'(1X,A8)', advance='no') trim(to_str(cells(i) % id()))
-        if (modulo(j,8) == 0) write(ou,*)
-      end if
-    end do
-    write(ou,*)
-
-100 format (1X,A,T15,A)
-101 format (1X,I8,T15,I12)
-
-  end subroutine print_overlap_check
-
-!===============================================================================
 ! WRITE_TALLIES creates an output file and writes out the mean values of all
 ! tallies and their standard deviations
 !===============================================================================
@@ -690,6 +660,10 @@ contains
     if (n_tallies == 0) return
 
     allocate(matches(n_filters))
+    do i = 1, n_filters
+      allocate(matches(i) % bins)
+      allocate(matches(i) % weights)
+    end do
 
     ! Initialize names for scores
     score_names(abs(SCORE_FLUX))               = "Flux"
@@ -884,6 +858,11 @@ contains
     end do TALLY_LOOP
 
     close(UNIT=unit_tally)
+
+    do i = 1, n_filters
+      deallocate(matches(i) % bins)
+      deallocate(matches(i) % weights)
+    end do
 
   end subroutine write_tallies
 

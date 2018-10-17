@@ -1,9 +1,9 @@
-#include "xml_interface.h"
+#include "openmc/xml_interface.h"
 
 #include <algorithm>  // for transform
 #include <sstream>
 
-#include "error.h"
+#include "openmc/error.h"
 
 
 namespace openmc {
@@ -53,6 +53,7 @@ get_node_value_bool(pugi::xml_node node, const char* name)
             << node.name() << "\" XML node";
     fatal_error(err_msg);
   }
+  return false;
 }
 
 } // namespace openmc

@@ -1,8 +1,9 @@
+#include "openmc/mgxs_interface.h"
+
 #include <string>
 
-#include "error.h"
-#include "math_functions.h"
-#include "mgxs_interface.h"
+#include "openmc/error.h"
+#include "openmc/math_functions.h"
 
 
 namespace openmc {
@@ -18,7 +19,7 @@ add_mgxs_c(hid_t file_id, const char* name, int energy_groups,
      int& method)
 {
   // Convert temps to a vector for the from_hdf5 function
-  double_1dvec temperature(temps, temps + n_temps);
+  std::vector<double> temperature(temps, temps + n_temps);
 
   write_message("Loading " + std::string(name) + " data...", 6);
 
@@ -59,10 +60,10 @@ create_macro_xs_c(const char* mat_name, int n_nuclides, const int i_nuclides[],
 {
   if (n_temps > 0) {
     // // Convert temps to a vector
-    double_1dvec temperature(temps, temps + n_temps);
+    std::vector<double> temperature(temps, temps + n_temps);
 
     // Convert atom_densities to a vector
-    double_1dvec atom_densities_vec(atom_densities,
+    std::vector<double> atom_densities_vec(atom_densities,
          atom_densities + n_nuclides);
 
     // Build array of pointers to nuclides_MG's Mgxs objects needed for this
@@ -207,7 +208,7 @@ void
 get_name_c(int index, int name_len, char* name)
 {
   // First blank out our input string
-  std::string str(name_len, ' ');
+  std::string str(name_len - 1, ' ');
   std::strcpy(name, str.c_str());
 
   // Now get the data and copy to the C-string

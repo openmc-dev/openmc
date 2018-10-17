@@ -163,14 +163,18 @@ contains
     call this % coherent_int_form_factor % from_hdf5(dset_id)
     call close_dataset(dset_id)
 
-    dset_id = open_dataset(rgroup, 'anomalous_real')
-    call this % coherent_anomalous_real % from_hdf5(dset_id)
-    call close_dataset(dset_id)
+    if (object_exists(group_id, 'anomalous_real')) then
+      dset_id = open_dataset(rgroup, 'anomalous_real')
+      call this % coherent_anomalous_real % from_hdf5(dset_id)
+      call close_dataset(dset_id)
+    end if
 
-    dset_id = open_dataset(rgroup, 'anomalous_imag')
-    call this % coherent_anomalous_imag % from_hdf5(dset_id)
-    call close_dataset(dset_id)
-    call close_group(rgroup)
+    if (object_exists(group_id, 'anomalous_imag')) then
+      dset_id = open_dataset(rgroup, 'anomalous_imag')
+      call this % coherent_anomalous_imag % from_hdf5(dset_id)
+      call close_dataset(dset_id)
+      call close_group(rgroup)
+    end if
 
     ! Read incoherent scattering
     rgroup = open_group(group_id, 'incoherent')

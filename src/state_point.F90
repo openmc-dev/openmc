@@ -16,11 +16,10 @@ module state_point
   use bank_header,        only: Bank
   use cmfd_header
   use constants
-  use eigenvalue,         only: openmc_get_keff
+  use eigenvalue,         only: openmc_get_keff, k_sum
   use endf,               only: reaction_name
   use error,              only: fatal_error, warning, write_message
   use hdf5_interface
-  use mesh_header,        only: RegularMesh, meshes, n_meshes
   use message_passing
   use mgxs_interface
   use nuclide_header,     only: nuclides
@@ -68,7 +67,7 @@ contains
     integer :: i_xs
     integer, allocatable :: id_array(:)
     integer(HID_T) :: file_id
-    integer(HID_T) :: cmfd_group, tallies_group, tally_group, meshes_group, &
+    integer(HID_T) :: cmfd_group, tallies_group, tally_group, &
                       filters_group, filter_group, derivs_group, &
                       deriv_group, runtime_group
     integer(C_INT) :: ignored_err
@@ -78,6 +77,17 @@ contains
     character(len=:, kind=C_CHAR), allocatable :: filename_
     character(MAX_WORD_LEN, kind=C_CHAR) :: temp_name
     logical :: parallel
+
+    interface
+      subroutine meshes_to_hdf5(group) bind(C)
+        import HID_T
+        integer(HID_T), value :: group
+      end subroutine
+      subroutine entropy_to_hdf5(group) bind(C)
+        import HID_T
+        integer(HID_T), value :: group
+      end subroutine
+    end interface
 
     err = 0
 
@@ -163,9 +173,7 @@ contains
         call write_dataset(file_id, "generations_per_batch", gen_per_batch)
         k = k_generation % size()
         call write_dataset(file_id, "k_generation", k_generation % data(1:k))
-        if (entropy_on) then
-          call write_dataset(file_id, "entropy", entropy % data(1:k))
-        end if
+        call entropy_to_hdf5(file_id)
         call write_dataset(file_id, "k_col_abs", k_col_abs)
         call write_dataset(file_id, "k_col_tra", k_col_tra)
         call write_dataset(file_id, "k_abs_tra", k_abs_tra)
@@ -192,26 +200,8 @@ contains
 
       tallies_group = create_group(file_id, "tallies")
 
-      ! Write number of meshes
-      meshes_group = create_group(tallies_group, "meshes")
-      call write_attribute(meshes_group, "n_meshes", n_meshes)
-
-      if (n_meshes > 0) then
-        ! Write IDs of meshes
-        allocate(id_array(n_meshes))
-        do i = 1, n_meshes
-          id_array(i) = meshes(i) % id
-        end do
-        call write_attribute(meshes_group, "ids", id_array)
-        deallocate(id_array)
-
-        ! Write information for meshes
-        MESH_LOOP: do i = 1, n_meshes
-          call meshes(i) % to_hdf5(meshes_group)
-        end do MESH_LOOP
-      end if
-
-      call close_group(meshes_group)
+      ! Write meshes
+      call meshes_to_hdf5(tallies_group)
 
       ! Write information for derivatives.
       if (size(tally_derivs) > 0) then
@@ -641,6 +631,11 @@ contains
     logical :: source_present
     character(MAX_WORD_LEN) :: word
 
+    interface
+      subroutine entropy_from_hdf5() bind(C)
+      end subroutine
+    end interface
+
     ! Write message
     call write_message("Loading state point " // trim(path_state_point) &
          // "...", 5)
@@ -722,10 +717,7 @@ contains
       call k_generation % resize(n)
       call read_dataset(k_generation % data(1:n), file_id, "k_generation")
 
-      if (entropy_on) then
-        call entropy % resize(n)
-        call read_dataset(entropy % data(1:n), file_id, "entropy")
-      end if
+      call entropy_from_hdf5()
       call read_dataset(k_col_abs, file_id, "k_col_abs")
       call read_dataset(k_col_tra, file_id, "k_col_tra")
       call read_dataset(k_abs_tra, file_id, "k_abs_tra")
@@ -756,6 +748,20 @@ contains
 
     ! Read number of realizations for global tallies
     call read_dataset(n_realizations, file_id, "n_realizations", indep=.true.)
+
+    ! Set k_sum, keff, and current_batch based on whether restart file is part
+    ! of active cycle or inactive cycle
+    if (restart_batch > n_inactive) then
+      do i = n_inactive + 1, restart_batch
+        k_sum(1) = k_sum(1) + k_generation % data(i)
+        k_sum(2) = k_sum(2) + k_generation % data(i)**2
+      end do
+      n = gen_per_batch*n_realizations
+      keff = k_sum(1) / n
+    else
+      keff = k_generation % data(n)
+    end if
+    current_batch = restart_batch
 
     ! Check to make sure source bank is present
     if (path_source_point == path_state_point .and. .not. source_present) then

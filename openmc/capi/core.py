@@ -24,10 +24,10 @@ _dll.openmc_calculate_volumes.restype = c_int
 _dll.openmc_calculate_volumes.errcheck = _error_handler
 _dll.openmc_finalize.restype = c_int
 _dll.openmc_finalize.errcheck = _error_handler
-_dll.openmc_find.argtypes = [POINTER(c_double*3), c_int, POINTER(c_int32),
-                             POINTER(c_int32)]
-_dll.openmc_find.restype = c_int
-_dll.openmc_find.errcheck = _error_handler
+_dll.openmc_find_cell.argtypes = [POINTER(c_double*3), POINTER(c_int32),
+                                  POINTER(c_int32)]
+_dll.openmc_find_cell.restype = c_int
+_dll.openmc_find_cell.errcheck = _error_handler
 _dll.openmc_hard_reset.restype = c_int
 _dll.openmc_hard_reset.errcheck = _error_handler
 _dll.openmc_init.argtypes = [c_int, POINTER(POINTER(c_char)), c_void_p]
@@ -96,10 +96,10 @@ def find_cell(xyz):
         indicates which instance it is, i.e., 0 would be the first instance.
 
     """
-    uid = c_int32()
+    index = c_int32()
     instance = c_int32()
-    _dll.openmc_find((c_double*3)(*xyz), 1, uid, instance)
-    return openmc.capi.cells[uid.value], instance.value
+    _dll.openmc_find_cell((c_double*3)(*xyz), index, instance)
+    return openmc.capi.Cell(index=index.value), instance.value
 
 
 def find_material(xyz):
@@ -116,11 +116,15 @@ def find_material(xyz):
         Material containing the point, or None is no material is found
 
     """
-    uid = c_int32()
+    index = c_int32()
     instance = c_int32()
-    _dll.openmc_find((c_double*3)(*xyz), 2, uid, instance)
-    return openmc.capi.materials[uid.value] if uid != 0 else None
+    _dll.openmc_find_cell((c_double*3)(*xyz), index, instance)
 
+    mats = openmc.capi.Cell(index=index.value).fill
+    if isinstance(mats, openmc.capi.Material):
+        return mats
+    else:
+        return mats[instance.value]
 
 def hard_reset():
     """Reset tallies, timers, and pseudo-random number generator state."""

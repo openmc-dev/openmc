@@ -1,4 +1,4 @@
-#include "state_point.h"
+#include "openmc/state_point.h"
 
 #include <algorithm>
 #include <vector>
@@ -6,9 +6,11 @@
 #ifdef OPENMC_MPI
 #include "mpi.h"
 #endif
-#include "error.h"
-#include "message_passing.h"
-#include "openmc.h"
+
+#include "openmc/capi.h"
+#include "openmc/error.h"
+#include "openmc/message_passing.h"
+#include "openmc/settings.h"
 
 namespace openmc {
 
@@ -38,7 +40,7 @@ write_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
 
 #ifdef PHDF5
   // Set size of total dataspace for all procs and rank
-  hsize_t dims[] {static_cast<hsize_t>(n_particles)};
+  hsize_t dims[] {static_cast<hsize_t>(settings::n_particles)};
   hid_t dspace = H5Screate_simple(1, dims, nullptr);
   hid_t dset = H5Dcreate(group_id, "source_bank", banktype, dspace,
                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -68,7 +70,7 @@ write_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
 
   if (openmc_master) {
     // Create dataset big enough to hold all source sites
-    hsize_t dims[] {static_cast<hsize_t>(n_particles)};
+    hsize_t dims[] {static_cast<hsize_t>(settings::n_particles)};
     hid_t dspace = H5Screate_simple(1, dims, nullptr);
     hid_t dset = H5Dcreate(group_id, "source_bank", banktype, dspace,
                            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);

@@ -6,7 +6,6 @@ module summary
   use geometry_header
   use hdf5_interface
   use material_header, only: Material, n_materials, openmc_material_get_volume
-  use mesh_header,     only: RegularMesh
   use message_passing
   use mgxs_interface
   use nuclide_header
@@ -28,6 +27,13 @@ contains
 !===============================================================================
 
   subroutine write_summary()
+
+    interface
+      subroutine write_geometry(file_id) bind(C)
+        import HID_T
+        integer(HID_T), intent(in), value :: file_id
+      end subroutine write_geometry
+    end interface
 
     integer(HID_T) :: file_id
 
@@ -76,9 +82,9 @@ contains
     integer(HID_T) :: nuclide_group
     integer(HID_T) :: macro_group
     integer :: i
-    character(12), allocatable :: nuc_names(:)
-    character(12), allocatable :: macro_names(:)
-    real(8), allocatable :: awrs(:)
+    character(kind=C_CHAR, len=20), allocatable :: nuc_names(:)
+    character(kind=C_CHAR, len=20), allocatable :: macro_names(:)
+    real(C_DOUBLE), allocatable :: awrs(:)
     integer :: num_nuclides
     integer :: num_macros
     integer :: j
@@ -155,156 +161,6 @@ contains
   end subroutine write_nuclides
 
 !===============================================================================
-! WRITE_GEOMETRY
-!===============================================================================
-
-  subroutine write_geometry(file_id)
-    integer(HID_T), intent(in) :: file_id
-
-    integer :: i, j, cell_fill
-    integer, allocatable :: cell_materials(:)
-    integer, allocatable :: cell_ids(:)
-    real(8), allocatable :: cell_temperatures(:)
-    integer(HID_T) :: geom_group
-    integer(HID_T) :: cells_group, cell_group
-    integer(HID_T) :: surfaces_group
-    integer(HID_T) :: universes_group, univ_group
-    integer(HID_T) :: lattices_group
-    type(Cell),     pointer :: c
-    class(Lattice), pointer :: lat
-
-    ! Use H5LT interface to write number of geometry objects
-    geom_group = create_group(file_id, "geometry")
-    call write_attribute(geom_group, "n_cells", n_cells)
-    call write_attribute(geom_group, "n_surfaces", n_surfaces)
-    call write_attribute(geom_group, "n_universes", n_universes)
-    call write_attribute(geom_group, "n_lattices", size(lattices))
-
-    ! ==========================================================================
-    ! WRITE INFORMATION ON CELLS
-
-    ! Create a cell group (nothing directly written in this group) then close
-    cells_group = create_group(geom_group, "cells")
-
-    ! Write information on each cell
-    CELL_LOOP: do i = 1, n_cells
-      c => cells(i)
-      cell_group = create_group(cells_group, "cell " // trim(to_str(c%id())))
-
-      call c % to_hdf5(cell_group)
-
-      ! Write information on what fills this cell
-      select case (c%type())
-      case (FILL_MATERIAL)
-        call write_dataset(cell_group, "fill_type", "material")
-
-        if (c % material_size() == 1) then
-          if (c % material(1) == MATERIAL_VOID) then
-            call write_dataset(cell_group, "material", MATERIAL_VOID)
-          else
-            call write_dataset(cell_group, "material", &
-                 materials(c % material(1)) % id())
-          end if
-        else
-          allocate(cell_materials(c % material_size()))
-          do j = 1, c % material_size()
-            if (c % material(j) == MATERIAL_VOID) then
-              cell_materials(j) = MATERIAL_VOID
-            else
-              cell_materials(j) = materials(c % material(j)) % id()
-            end if
-          end do
-          call write_dataset(cell_group, "material", cell_materials)
-          deallocate(cell_materials)
-        end if
-
-        allocate(cell_temperatures(size(c % sqrtkT)))
-        cell_temperatures(:) = c % sqrtkT(:)
-        cell_temperatures(:) = cell_temperatures(:)**2 / K_BOLTZMANN
-        call write_dataset(cell_group, "temperature", cell_temperatures)
-        deallocate(cell_temperatures)
-
-      case (FILL_UNIVERSE)
-        call write_dataset(cell_group, "fill_type", "universe")
-        call write_dataset(cell_group, "fill", universes(c%fill()+1)%id)
-
-        if (allocated(c%translation)) then
-          call write_dataset(cell_group, "translation", c%translation)
-        end if
-        if (allocated(c%rotation)) then
-          call write_dataset(cell_group, "rotation", c%rotation)
-        end if
-
-      case (FILL_LATTICE)
-        call write_dataset(cell_group, "fill_type", "lattice")
-        ! Do not access the 'lattices' array with 'c % fill() + 1' directly; it
-        ! causes a segfault in GCC 7.3.0
-        cell_fill = c % fill() + 1
-        call write_dataset(cell_group, "lattice", lattices(cell_fill)%obj%id())
-      end select
-
-      call close_group(cell_group)
-    end do CELL_LOOP
-
-    call close_group(cells_group)
-
-    ! ==========================================================================
-    ! WRITE INFORMATION ON SURFACES
-
-    ! Create surfaces group
-    surfaces_group = create_group(geom_group, "surfaces")
-
-    ! Write information on each surface
-    SURFACE_LOOP: do i = 1, n_surfaces
-      call surfaces(i) % to_hdf5(surfaces_group)
-    end do SURFACE_LOOP
-
-    call close_group(surfaces_group)
-
-    ! ==========================================================================
-    ! WRITE INFORMATION ON UNIVERSES
-
-    ! Create universes group (nothing directly written here) then close
-    universes_group = create_group(geom_group, "universes")
-
-    ! Write information on each universe
-    UNIVERSE_LOOP: do i = 1, n_universes
-      associate (u => universes(i))
-        univ_group = create_group(universes_group, "universe " // &
-             trim(to_str(u%id)))
-
-        ! Write list of cells in this universe
-        if (size(u % cells) > 0) then
-          allocate(cell_ids(size(u % cells)))
-          do j = 1, size(u % cells)
-            cell_ids(j) = cells(u % cells(j)) % id()
-          end do
-          call write_dataset(univ_group, "cells", cell_ids)
-          deallocate(cell_ids)
-        end if
-
-        call close_group(univ_group)
-      end associate
-    end do UNIVERSE_LOOP
-
-    call close_group(universes_group)
-
-    ! ==========================================================================
-    ! WRITE INFORMATION ON LATTICES
-
-    lattices_group = create_group(geom_group, "lattices")
-
-    do i = 1, size(lattices)
-      lat => lattices(i)%obj
-      call lat % to_hdf5(lattices_group)
-    end do
-
-    call close_group(lattices_group)
-    call close_group(geom_group)
-
-  end subroutine write_geometry
-
-!===============================================================================
 ! WRITE_MATERIALS
 !===============================================================================
 
@@ -316,8 +172,8 @@ contains
     integer :: k
     integer :: n
     integer :: err
-    character(20), allocatable :: nuc_names(:)
-    character(20), allocatable :: macro_names(:)
+    character(kind=C_CHAR, len=20), allocatable :: nuc_names(:)
+    character(kind=C_CHAR, len=20), allocatable :: macro_names(:)
     real(8) :: volume
     real(8), allocatable :: nuc_densities(:)
     integer :: num_nuclides

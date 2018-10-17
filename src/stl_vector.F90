@@ -35,6 +35,8 @@ module stl_vector
   !
   ! size -- Returns the number of elements in the vector.
 
+  use, intrinsic :: ISO_C_BINDING
+
   implicit none
   private
 
@@ -520,5 +522,29 @@ contains
 
     size = this%size_
   end function size_char
+
+!===============================================================================
+! Procedures to be called from C++
+!===============================================================================
+
+  subroutine vector_int_push_back(ptr, val) bind(C)
+    type(C_PTR), value :: ptr
+    integer(C_INT), value :: val
+
+    type(VectorInt), pointer :: vec
+
+    call C_F_POINTER(ptr, vec)
+    call vec % push_back(val)
+  end subroutine
+
+  subroutine vector_real_push_back(ptr, val) bind(C)
+    type(C_PTR), value :: ptr
+    real(C_DOUBLE), value :: val
+
+    type(VectorReal), pointer :: vec
+
+    call C_F_POINTER(ptr, vec)
+    call vec % push_back(val)
+  end subroutine
 
 end module stl_vector

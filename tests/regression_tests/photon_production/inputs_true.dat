@@ -6,7 +6,7 @@
   <surface boundary="vacuum" coeffs="0.0 0.0 1e-06" id="9" type="x-cylinder" />
   <surface boundary="vacuum" coeffs="-1.0" id="10" type="x-plane" />
   <surface coeffs="1.0" id="11" type="x-plane" />
-  <surface boundary="vacuum" coeffs="11.0" id="12" type="x-plane" />
+  <surface boundary="vacuum" coeffs="1000000000.0" id="12" type="x-plane" />
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
@@ -37,14 +37,14 @@
 </settings>
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>
-  <filter id="1" type="cell">
-    <bins>14</bins>
+  <filter id="1" type="surface">
+    <bins>9</bins>
   </filter>
   <filter id="2" type="particle">
     <bins>2</bins>
   </filter>
   <tally id="1">
     <filters>1 2</filters>
-    <scores>flux</scores>
+    <scores>current</scores>
   </tally>
 </tallies>

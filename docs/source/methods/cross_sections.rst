@@ -90,7 +90,7 @@ Assuming free-gas thermal motion, cross sections in the multipole form can be
 analytically Doppler broadened to give the form:
 
 .. math::
-   \sigma(E, T) = \frac{1}{2 E \sqrt{\xi}} \sum_j \text{Re} \left[i r_j
+   \sigma(E, T) = \frac{1}{2 E \sqrt{\xi}} \sum_j \text{Re} \left[r_j
    \sqrt{\pi} W_i(z) - \frac{r_j}{\sqrt{\pi}} C \left(\frac{p_j}{\sqrt{\xi}},
    \frac{u}{2 \sqrt{\xi}}\right)\right]
 .. math::
@@ -141,7 +141,7 @@ scattering does not occur in the resolved resonance region.  This is usually,
 but not always the case.  Future library versions may eliminate this issue.
 
 The data format used by OpenMC to represent windowed multipole data is specified
-in :ref:`io_data_wmp`.
+in :ref:`io_data_wmp` with a publicly available `WMP library`_.
 
 .. _temperature_treatment:
 
@@ -270,6 +270,7 @@ or even isotropic scattering.
    https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-14-24530.pdf
 .. _Hwang: http://www.ans.org/pubs/journals/nse/a_16381
 .. _Josey: http://dx.doi.org/10.1016/j.jcp.2015.08.013
+.. _WMP Library: https://github.com/mit-crpg/WMP_Library
 .. _MCNP: http://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
 .. _NJOY: http://t2.lanl.gov/codes.shtml

@@ -19,6 +19,9 @@ option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
 option(mpif08   "Use Fortran 2008 MPI interface"                 OFF)
+option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
+
+# Maximum number of nested coordinates levels
 set(maxcoord 10 CACHE STRING "Maximum number of nested coordinate levels")
 
 #===============================================================================
@@ -37,8 +40,24 @@ if(MPI_ENABLED AND mpif08)
 endif()
 
 #===============================================================================
+# DAGMC Geometry Support - need DAGMC/MOAB
+#===============================================================================
+if(dagmc)
+  find_package(DAGMC REQUIRED)
+  if(NOT DAGMC_FOUND)
+    message(FATAL_ERROR "Could not find DAGMC installation")
+  endif()
+  link_directories(${DAGMC_LIBRARY_DIRS})
+endif()
+
+#===============================================================================
 # HDF5 for binary output
 #===============================================================================
+
+# Allow user to specify HDF5_ROOT
+if (NOT (CMAKE_VERSION VERSION_LESS 3.12))
+  cmake_policy(SET CMP0074 NEW)
+endif()
 
 # Unfortunately FindHDF5.cmake will always prefer a serial HDF5 installation
 # over a parallel installation if both appear on the user's PATH. To get around
@@ -290,6 +309,7 @@ add_library(libopenmc SHARED
   src/algorithm.F90
   src/bank_header.F90
   src/api.F90
+  src/dagmc_header.F90
   src/cmfd_data.F90
   src/cmfd_execute.F90
   src/cmfd_header.F90
@@ -299,8 +319,6 @@ add_library(libopenmc SHARED
   src/cmfd_solver.F90
   src/constants.F90
   src/dict_header.F90
-  src/distribution_multivariate.F90
-  src/distribution_univariate.F90
   src/eigenvalue.F90
   src/endf.F90
   src/endf_header.F90
@@ -314,7 +332,6 @@ add_library(libopenmc SHARED
   src/material_header.F90
   src/math.F90
   src/matrix_header.F90
-  src/mesh.F90
   src/mesh_header.F90
   src/message_passing.F90
   src/mgxs_data.F90
@@ -341,8 +358,6 @@ add_library(libopenmc SHARED
   src/settings.F90
   src/simulation_header.F90
   src/simulation.F90
-  src/source.F90
-  src/source_header.F90
   src/state_point.F90
   src/stl_vector.F90
   src/string.F90
@@ -383,23 +398,30 @@ add_library(libopenmc SHARED
   src/tallies/tally_header.F90
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90
+  src/dagmc.cpp
   src/cell.cpp
+  src/cmfd_execute.cpp
   src/distribution.cpp
   src/distribution_angle.cpp
   src/distribution_energy.cpp
   src/distribution_multi.cpp
   src/distribution_spatial.cpp
+  src/eigenvalue.cpp
   src/endf.cpp
   src/initialize.cpp
   src/finalize.cpp
+  src/geometry.cpp
   src/geometry_aux.cpp
   src/hdf5_interface.cpp
   src/lattice.cpp
   src/material.cpp
   src/math_functions.cpp
+  src/mesh.cpp
   src/message_passing.cpp
   src/mgxs.cpp
   src/mgxs_interface.cpp
+  src/nuclide.cpp
+  src/output.cpp
   src/particle.cpp
   src/plot.cpp
   src/position.cpp
@@ -414,15 +436,17 @@ add_library(libopenmc SHARED
   src/scattdata.cpp
   src/settings.cpp
   src/simulation.cpp
+  src/source.cpp
   src/state_point.cpp
   src/string_functions.cpp
+  src/summary.cpp
   src/surface.cpp
   src/thermal.cpp
   src/xml_interface.cpp
   src/xsdata.cpp)
+
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc
-  PUBLIC_HEADER include/openmc.h
   LINKER_LANGUAGE Fortran)
 
 target_include_directories(libopenmc
@@ -466,10 +490,15 @@ endif()
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml
                       faddeeva xtensor)
 
+if(dagmc)
+  target_compile_definitions(libopenmc PRIVATE DAGMC)
+  target_link_libraries(libopenmc ${DAGMC_LIBRARIES})
+  target_include_directories(libopenmc PRIVATE ${DAGMC_INCLUDE_DIRS})
+endif()
+
 #===============================================================================
 # openmc executable
 #===============================================================================
-
 add_executable(openmc src/main.cpp)
 target_compile_options(openmc PRIVATE ${cxxflags})
 target_link_libraries(openmc libopenmc)
@@ -492,8 +521,8 @@ install(TARGETS openmc libopenmc
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
-  PUBLIC_HEADER DESTINATION include
   )
 install(DIRECTORY src/relaxng DESTINATION share/openmc)
 install(FILES man/man1/openmc.1 DESTINATION share/man/man1)
 install(FILES LICENSE DESTINATION "share/doc/openmc" RENAME copyright)
+install(DIRECTORY include/ DESTINATION include)

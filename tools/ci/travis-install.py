@@ -2,7 +2,6 @@ import os
 import shutil
 import subprocess
 
-
 def which(program):
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
@@ -20,7 +19,7 @@ def which(program):
     return None
 
 
-def install(omp=False, mpi=False, phdf5=False):
+def install(omp=False, mpi=False, phdf5=False, dagmc=False):
     # Create build directory and change to it
     shutil.rmtree('build', ignore_errors=True)
     os.mkdir('build')
@@ -48,13 +47,15 @@ def install(omp=False, mpi=False, phdf5=False):
     else:
         cmake_cmd.append('-DHDF5_PREFER_PARALLEL=OFF')
 
+    if dagmc:
+        cmake_cmd.append('-Ddagmc=ON')
+        
     # Build and install
     cmake_cmd.append('..')
     print(' '.join(cmake_cmd))
     subprocess.check_call(cmake_cmd)
-    subprocess.check_call(['make', '-j'])
+    subprocess.check_call(['make', '-j4'])
     subprocess.check_call(['sudo', 'make', 'install'])
-
 
 def main():
     # Convert Travis matrix environment variables into arguments for install()
@@ -62,9 +63,10 @@ def main():
     mpi = (os.environ.get('MPI') == 'y')
     phdf5 = (os.environ.get('PHDF5') == 'y')
 
-    # Build and install
-    install(omp, mpi, phdf5)
+    dagmc = (os.environ.get('DAGMC') == 'y')
 
+    # Build and install
+    install(omp, mpi, phdf5, dagmc)
 
 if __name__ == '__main__':
     main()

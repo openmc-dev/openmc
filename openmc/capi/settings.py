@@ -18,15 +18,16 @@ _dll.openmc_get_seed.restype = c_int64
 class _Settings(object):
     # Attributes that are accessed through a descriptor
     batches = _DLLGlobal(c_int32, 'n_batches')
-    entropy_on = _DLLGlobal(c_bool, 'openmc_entropy_on')
+    entropy_on = _DLLGlobal(c_bool, 'entropy_on')
     generations_per_batch = _DLLGlobal(c_int32, 'gen_per_batch')
     inactive = _DLLGlobal(c_int32, 'n_inactive')
     particles = _DLLGlobal(c_int64, 'n_particles')
-    verbosity = _DLLGlobal(c_int, 'openmc_verbosity')
+    run_CE = _DLLGlobal(c_bool, 'run_CE')
+    verbosity = _DLLGlobal(c_int, 'verbosity')
 
     @property
     def run_mode(self):
-        i = c_int.in_dll(_dll, 'openmc_run_mode').value
+        i = c_int.in_dll(_dll, 'run_mode').value
         try:
             return _RUN_MODES[i]
         except KeyError:
@@ -34,7 +35,7 @@ class _Settings(object):
 
     @run_mode.setter
     def run_mode(self, mode):
-        current_idx = c_int.in_dll(_dll, 'openmc_run_mode')
+        current_idx = c_int.in_dll(_dll, 'run_mode')
         for idx, mode_value in _RUN_MODES.items():
             if mode_value == mode:
                 current_idx.value = idx

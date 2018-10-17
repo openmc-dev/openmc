@@ -11,6 +11,10 @@
 
 namespace openmc {
 
+constexpr int STATUS_EXIT_NORMAL {0};
+constexpr int STATUS_EXIT_MAX_BATCH {1};
+constexpr int STATUS_EXIT_ON_TRIGGER {2};
+
 //==============================================================================
 // Global variable declarations
 //==============================================================================
@@ -55,32 +59,29 @@ extern "C" int thread_id;  //!< ID of a given thread
 //! Determine number of particles to transport per process
 void calculate_work();
 
-//! Initialize simulation
-extern "C" void openmc_simulation_init_c();
-
 //! Initialize a batch
-extern "C" void initialize_batch();
+void initialize_batch();
 
 //! Initialize a fission generation
-extern "C" void initialize_generation();
+void initialize_generation();
 
-extern "C" void initialize_history(Particle* p, int64_t index_source);
+void initialize_history(Particle* p, int64_t index_source);
 
 //! Finalize a batch
 //!
 //! Handles synchronization and accumulation of tallies, calculation of Shannon
 //! entropy, getting single-batch estimate of keff, and turning on tallies when
 //! appropriate
-extern "C" void finalize_batch();
+void finalize_batch();
 
 //! Finalize a fission generation
-extern "C" void finalize_generation();
+void finalize_generation();
 
 //! Determine overall generation number
 extern "C" int overall_generation();
 
 #ifdef OPENMC_MPI
-extern "C" void broadcast_results();
+void broadcast_results();
 #endif
 
 } // namespace openmc

@@ -6,6 +6,7 @@
 #include "openmc/error.h"
 #include "openmc/message_passing.h"
 #include "openmc/output.h"
+#include "openmc/particle.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/source.h"
@@ -15,6 +16,8 @@
 
 #include <algorithm>
 #include <string>
+
+namespace openmc {
 
 // data/functions from Fortran side
 extern "C" bool cmfd_on;
@@ -37,7 +40,10 @@ extern "C" void print_runtime();
 extern "C" void setup_active_tallies();
 extern "C" void simulation_init_f();
 extern "C" void simulation_finalize_f();
+extern "C" void transport(Particle* p);
 extern "C" void write_tallies();
+
+} // namespace openmc
 
 //==============================================================================
 // C API functions
@@ -158,6 +164,64 @@ int openmc_simulation_finalize()
   // Reset flags
   simulation::need_depletion_rx = false;
   simulation::initialized = false;
+  return 0;
+}
+
+int openmc_next_batch(int* status)
+{
+  using namespace openmc;
+  using openmc::simulation::current_gen;
+
+  // Make sure simulation has been initialized
+  if (!simulation::initialized) {
+    set_errmsg("Simulation has not been initialized yet.");
+    return OPENMC_E_ALLOCATE;
+  }
+
+  initialize_batch();
+
+  // =======================================================================
+  // LOOP OVER GENERATIONS
+  for (current_gen = 1; current_gen <= settings::gen_per_batch; ++current_gen) {
+
+    initialize_generation();
+
+    // Start timer for transport
+    time_transport.start();
+
+    // ====================================================================
+    // LOOP OVER PARTICLES
+
+#pragma omp parallel for schedule(runtime)
+    for (int64_t i_work = 1; i_work <= simulation::work; ++i_work) {
+      simulation::current_work = i_work;
+
+      // grab source particle from bank
+      Particle p;
+      initialize_history(&p, simulation::current_work);
+
+      // transport particle
+      transport(&p);
+    }
+
+    // Accumulate time for transport
+    time_transport.stop();
+
+    finalize_generation();
+  }
+
+  finalize_batch();
+
+  // Check simulation ending criteria
+  if (status) {
+    if (simulation::current_batch == settings::n_max_batches) {
+      *status = STATUS_EXIT_MAX_BATCH;
+    } else if (simulation::satisfy_triggers) {
+      *status = STATUS_EXIT_ON_TRIGGER;
+    } else {
+      *status = STATUS_EXIT_NORMAL;
+    }
+  }
   return 0;
 }
 

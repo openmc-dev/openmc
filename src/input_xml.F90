@@ -1222,7 +1222,11 @@ contains
 
     ! Read derivative attributes.
     do i = 1, size(node_deriv_list)
+!$omp parallel
+!$omp critical (ReadTallyDeriv)
       call tally_derivs(i) % from_xml(node_deriv_list(i))
+!$omp end critical (ReadTallyDeriv)
+!$omp end parallel
 
       ! Update tally derivative dictionary
       call tally_deriv_dict % set(tally_derivs(i) % id, i)

@@ -397,7 +397,7 @@ contains
       call write_dataset(runtime_group, "simulation", &
            time_inactive_elapsed() + time_active_elapsed())
       call write_dataset(runtime_group, "transport", &
-           time_transport % get_value())
+           time_transport_elapsed())
       if (run_mode == MODE_EIGENVALUE) then
         call write_dataset(runtime_group, "inactive batches", &
              time_inactive_elapsed())
@@ -413,7 +413,7 @@ contains
              time_bank_sendrecv_elapsed())
       end if
       call write_dataset(runtime_group, "accumulating tallies", &
-           time_tallies % get_value())
+           time_tallies_elapsed())
       if (cmfd_run) then
         call write_dataset(runtime_group, "CMFD", time_cmfd % get_value())
         call write_dataset(runtime_group, "CMFD building matrices", &

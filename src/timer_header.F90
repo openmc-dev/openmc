@@ -43,6 +43,10 @@ module timer_header
       import C_DOUBLE
       real(C_DOUBLE) :: t
     end function
+    function time_transport_elapsed() result(t) bind(C)
+      import C_DOUBLE
+      real(C_DOUBLE) :: t
+    end function
     subroutine reset_timers() bind(C)
     end subroutine
   end interface
@@ -68,14 +72,8 @@ module timer_header
   ! ============================================================================
   ! TIMING VARIABLES
 
-  type(Timer) :: time_total         ! timer for total run
-  type(Timer) :: time_initialize    ! timer for initialization
   type(Timer) :: time_read_xs       ! timer for reading cross sections
   type(Timer) :: time_unionize      ! timer for material xs-energy grid union
-  type(Timer) :: time_tallies       ! timer for accumulate tallies
-  type(Timer) :: time_inactive      ! timer for inactive batches
-  type(Timer) :: time_active        ! timer for active batches
-  type(Timer) :: time_transport     ! timer for transport only
   type(Timer) :: time_finalize      ! timer for finalization
 
 contains

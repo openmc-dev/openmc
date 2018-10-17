@@ -47,6 +47,7 @@ Timer time_inactive;
 Timer time_initialize;
 Timer time_tallies;
 Timer time_total;
+Timer time_transport;
 
 //==============================================================================
 // Fortran compatibility
@@ -61,6 +62,7 @@ extern "C" double time_inactive_elapsed() { return time_inactive.elapsed(); }
 extern "C" double time_initialize_elapsed() { return time_initialize.elapsed(); }
 extern "C" double time_tallies_elapsed() { return time_tallies.elapsed(); }
 extern "C" double time_total_elapsed() { return time_total.elapsed(); }
+extern "C" double time_transport_elapsed() { return time_transport.elapsed(); }
 
 extern "C" void reset_timers()
 {
@@ -69,8 +71,11 @@ extern "C" void reset_timers()
   time_bank_sample.reset();
   time_bank_sendrecv.reset();
   time_finalize.reset();
+  time_inactive.reset();
   time_initialize.reset();
+  time_tallies.reset();
   time_total.reset();
+  time_transport.reset();
 }
 
 } // namespace openmc

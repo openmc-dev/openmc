@@ -3778,6 +3778,11 @@ contains
     real(C_DOUBLE) :: val
 
 #ifdef OPENMC_MPI
+    interface
+      subroutine reduce_tally_results() bind(C)
+      end subroutine
+    end interface
+
     ! Combine tally results onto master process
     if (reduce_tallies) call reduce_tally_results()
 #endif
@@ -3820,67 +3825,6 @@ contains
     end if
 
   end subroutine accumulate_tallies
-
-!===============================================================================
-! REDUCE_TALLY_RESULTS collects all the results from tallies onto one processor
-!===============================================================================
-
-#ifdef OPENMC_MPI
-  subroutine reduce_tally_results()
-
-    integer :: i
-    integer :: n       ! number of filter bins
-    integer :: m       ! number of score bins
-    integer :: n_bins  ! total number of bins
-    integer :: mpi_err ! MPI error code
-    real(C_DOUBLE), allocatable :: tally_temp(:,:)  ! contiguous array of results
-    real(C_DOUBLE), allocatable :: tally_temp2(:,:) ! reduced contiguous results
-    real(C_DOUBLE) :: temp(N_GLOBAL_TALLIES), temp2(N_GLOBAL_TALLIES)
-
-    do i = 1, active_tallies % size()
-      associate (t => tallies(active_tallies % data(i)) % obj)
-
-        m = size(t % results, 2)
-        n = size(t % results, 3)
-        n_bins = m*n
-
-        allocate(tally_temp(m,n), tally_temp2(m,n))
-
-        ! Reduce contiguous set of tally results
-        tally_temp = t % results(RESULT_VALUE,:,:)
-        call MPI_REDUCE(tally_temp, tally_temp2, n_bins, MPI_DOUBLE, &
-             MPI_SUM, 0, mpi_intracomm, mpi_err)
-
-        if (master) then
-          ! Transfer values to value on master
-          t % results(RESULT_VALUE,:,:) = tally_temp2
-        else
-          ! Reset value on other processors
-          t % results(RESULT_VALUE,:,:) = ZERO
-        end if
-
-        deallocate(tally_temp, tally_temp2)
-      end associate
-    end do
-
-    ! Reduce global tallies onto master
-    temp = global_tallies(RESULT_VALUE, :)
-    call MPI_REDUCE(temp, temp2, N_GLOBAL_TALLIES, MPI_DOUBLE, MPI_SUM, &
-         0, mpi_intracomm, mpi_err)
-    if (master) then
-      global_tallies(RESULT_VALUE, :) = temp2
-    else
-      global_tallies(RESULT_VALUE, :) = ZERO
-    end if
-
-    ! We also need to determine the total starting weight of particles from the
-    ! last realization
-    temp(1) = total_weight
-    call MPI_REDUCE(temp, total_weight, 1, MPI_REAL8, MPI_SUM, &
-         0, mpi_intracomm, mpi_err)
-
-  end subroutine reduce_tally_results
-#endif
 
 !===============================================================================
 ! SETUP_ACTIVE_TALLIES

@@ -36,17 +36,15 @@ module state_point
   implicit none
 
   interface
-    subroutine write_source_bank(group_id, work_index, bank_) bind(C)
+    subroutine write_source_bank(group_id, bank_) bind(C)
       import HID_T, C_INT64_T, Bank
       integer(HID_T), value :: group_id
-      integer(C_INT64_T), intent(in) :: work_index(*)
       type(Bank), intent(in) :: bank_(*)
     end subroutine write_source_bank
 
-    subroutine read_source_bank(group_id, work_index, bank_) bind(C)
+    subroutine read_source_bank(group_id, bank_) bind(C)
       import HID_T, C_INT64_T, Bank
       integer(HID_T), value :: group_id
-      integer(C_INT64_T), intent(in) :: work_index(*)
       type(Bank), intent(out) :: bank_(*)
     end subroutine read_source_bank
   end interface
@@ -63,15 +61,13 @@ contains
     integer(C_INT) :: err
 
     logical :: write_source_
-    integer :: i, j, k
+    integer :: i, j
     integer :: i_xs
     integer, allocatable :: id_array(:)
     integer(HID_T) :: file_id
     integer(HID_T) :: cmfd_group, tallies_group, tally_group, &
                       filters_group, filter_group, derivs_group, &
                       deriv_group, runtime_group
-    integer(C_INT) :: ignored_err
-    real(C_DOUBLE) :: k_combined(2)
     character(MAX_WORD_LEN), allocatable :: str_array(:)
     character(C_CHAR), pointer :: string(:)
     character(len=:, kind=C_CHAR), allocatable :: filename_
@@ -83,9 +79,13 @@ contains
         import HID_T
         integer(HID_T), value :: group
       end subroutine
-      subroutine entropy_to_hdf5(group) bind(C)
+      subroutine write_eigenvalue_hdf5(group) bind(C)
         import HID_T
         integer(HID_T), value :: group
+      end subroutine
+      subroutine write_tally_results_nr(file_id) bind(C)
+        import HID_T
+        integer(HID_T), value :: file_id
       end subroutine
     end interface
 
@@ -169,16 +169,7 @@ contains
 
       ! Write out information for eigenvalue run
       if (run_mode == MODE_EIGENVALUE) then
-        call write_dataset(file_id, "n_inactive", n_inactive)
-        call write_dataset(file_id, "generations_per_batch", gen_per_batch)
-        k = k_generation % size()
-        call write_dataset(file_id, "k_generation", k_generation % data(1:k))
-        call entropy_to_hdf5(file_id)
-        call write_dataset(file_id, "k_col_abs", k_col_abs)
-        call write_dataset(file_id, "k_col_tra", k_col_tra)
-        call write_dataset(file_id, "k_abs_tra", k_abs_tra)
-        ignored_err = openmc_get_keff(k_combined)
-        call write_dataset(file_id, "k_combined", k_combined)
+        call write_eigenvalue_hdf5(file_id)
 
         ! Write out CMFD info
         if (cmfd_on) then
@@ -415,11 +406,11 @@ contains
            time_active % get_value())
       if (run_mode == MODE_EIGENVALUE) then
         call write_dataset(runtime_group, "synchronizing fission bank", &
-             time_bank % get_value())
+             time_bank_elapsed())
         call write_dataset(runtime_group, "sampling source sites", &
-             time_bank_sample % get_value())
+             time_bank_sample_elapsed())
         call write_dataset(runtime_group, "SEND-RECV source sites", &
-             time_bank_sendrecv % get_value())
+             time_bank_sendrecv_elapsed())
       end if
       call write_dataset(runtime_group, "accumulating tallies", &
            time_tallies % get_value())
@@ -447,7 +438,7 @@ contains
       if (master .or. parallel) then
         file_id = file_open(filename_, 'a', parallel=.true.)
       end if
-      call write_source_bank(file_id, work_index, source_bank)
+      call write_source_bank(file_id, source_bank)
       if (master .or. parallel) call file_close(file_id)
     end if
   end function openmc_statepoint_write
@@ -485,133 +476,10 @@ contains
       file_id = file_open(filename_, 'w', parallel=.true.)
       call write_attribute(file_id, "filetype", 'source')
     end if
-    call write_source_bank(file_id, work_index, source_bank)
+    call write_source_bank(file_id, source_bank)
     if (master .or. parallel) call file_close(file_id)
 
   end subroutine write_source_point
-
-!===============================================================================
-! WRITE_TALLY_RESULTS_NR
-!===============================================================================
-
-  subroutine write_tally_results_nr(file_id)
-    integer(HID_T), intent(in) :: file_id
-
-    integer :: i      ! loop index
-    integer :: n      ! number of filter bins
-    integer :: m      ! number of score bins
-    integer :: n_bins ! total number of bins
-    integer(HID_T) :: tallies_group, tally_group
-    real(8), allocatable :: tally_temp(:,:,:) ! contiguous array of results
-    real(8), target :: global_temp(3,N_GLOBAL_TALLIES)
-#ifdef OPENMC_MPI
-    integer :: mpi_err ! MPI error code
-    real(8) :: dummy   ! temporary receive buffer for non-root reduces
-#endif
-    type(TallyObject) :: dummy_tally
-
-    ! ==========================================================================
-    ! COLLECT AND WRITE GLOBAL TALLIES
-
-    if (master) then
-      ! Write number of realizations
-      call write_dataset(file_id, "n_realizations", n_realizations)
-
-      ! Write number of global tallies
-      call write_dataset(file_id, "n_global_tallies", N_GLOBAL_TALLIES)
-
-      tallies_group = open_group(file_id, "tallies")
-    end if
-
-
-#ifdef OPENMC_MPI
-    ! Reduce global tallies
-    n_bins = size(global_tallies)
-    call MPI_REDUCE(global_tallies, global_temp, n_bins, MPI_REAL8, MPI_SUM, &
-         0, mpi_intracomm, mpi_err)
-#endif
-
-    if (master) then
-      ! Transfer values to value on master
-      if (current_batch == n_max_batches .or. satisfy_triggers) then
-        global_tallies(:,:) = global_temp(:,:)
-      end if
-
-      ! Write out global tallies sum and sum_sq
-      call write_dataset(file_id, "global_tallies", global_temp)
-    end if
-
-    if (active_tallies % size() > 0) then
-      ! Indicate that tallies are on
-      if (master) then
-        call write_attribute(file_id, "tallies_present", 1)
-      end if
-
-      ! Write all tally results
-      TALLY_RESULTS: do i = 1, n_tallies
-        associate (t => tallies(i) % obj)
-          ! Determine size of tally results array
-          m = size(t % results, 2)
-          n = size(t % results, 3)
-          n_bins = m*n*2
-
-          ! Allocate array for storing sums and sums of squares, but
-          ! contiguously in memory for each
-          allocate(tally_temp(2,m,n))
-          tally_temp(1,:,:) = t % results(RESULT_SUM,:,:)
-          tally_temp(2,:,:) = t % results(RESULT_SUM_SQ,:,:)
-
-          if (master) then
-            tally_group = open_group(tallies_group, "tally " // &
-                 trim(to_str(t % id)))
-
-            ! The MPI_IN_PLACE specifier allows the master to copy values into
-            ! a receive buffer without having a temporary variable
-#ifdef OPENMC_MPI
-            call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
-                 MPI_SUM, 0, mpi_intracomm, mpi_err)
-#endif
-
-            ! At the end of the simulation, store the results back in the
-            ! regular TallyResults array
-            if (current_batch == n_max_batches .or. satisfy_triggers) then
-              t % results(RESULT_SUM,:,:) = tally_temp(1,:,:)
-              t % results(RESULT_SUM_SQ,:,:) = tally_temp(2,:,:)
-            end if
-
-            ! Put in temporary tally result
-            allocate(dummy_tally % results(3,m,n))
-            dummy_tally % results(RESULT_SUM,:,:) = tally_temp(1,:,:)
-            dummy_tally % results(RESULT_SUM_SQ,:,:) = tally_temp(2,:,:)
-
-            ! Write reduced tally results to file
-            call dummy_tally % write_results_hdf5(tally_group)
-
-            ! Deallocate temporary tally result
-            deallocate(dummy_tally % results)
-          else
-            ! Receive buffer not significant at other processors
-#ifdef OPENMC_MPI
-            call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
-                 0, mpi_intracomm, mpi_err)
-#endif
-          end if
-
-          ! Deallocate temporary copy of tally results
-          deallocate(tally_temp)
-
-          if (master) call close_group(tally_group)
-        end associate
-      end do TALLY_RESULTS
-
-      if (master) call close_group(tallies_group)
-    else
-      ! Indicate that tallies are off
-      if (master) call write_dataset(file_id, "tallies_present", 0)
-    end if
-
-
-  end subroutine write_tally_results_nr
 
 !===============================================================================
 ! LOAD_STATE_POINT
@@ -632,7 +500,9 @@ contains
     character(MAX_WORD_LEN) :: word
 
     interface
-      subroutine entropy_from_hdf5() bind(C)
+      subroutine read_eigenvalue_hdf5(group) bind(C)
+        import HID_T
+        integer(HID_T), value :: group
       end subroutine
     end interface
 
@@ -711,16 +581,7 @@ contains
     ! Read information specific to eigenvalue run
     if (run_mode == MODE_EIGENVALUE) then
       call read_dataset(int_array(1), file_id, "n_inactive")
-      call read_dataset(gen_per_batch, file_id, "generations_per_batch")
-
-      n = restart_batch*gen_per_batch
-      call k_generation % resize(n)
-      call read_dataset(k_generation % data(1:n), file_id, "k_generation")
-
-      call entropy_from_hdf5()
-      call read_dataset(k_col_abs, file_id, "k_col_abs")
-      call read_dataset(k_col_tra, file_id, "k_col_tra")
-      call read_dataset(k_abs_tra, file_id, "k_abs_tra")
+      call read_eigenvalue_hdf5(file_id)
 
       ! Take maximum of statepoint n_inactive and input n_inactive
       n_inactive = max(n_inactive, int_array(1))
@@ -753,13 +614,14 @@ contains
     ! of active cycle or inactive cycle
     if (restart_batch > n_inactive) then
       do i = n_inactive + 1, restart_batch
-        k_sum(1) = k_sum(1) + k_generation % data(i)
-        k_sum(2) = k_sum(2) + k_generation % data(i)**2
+        k_sum(1) = k_sum(1) + k_generation(i)
+        k_sum(2) = k_sum(2) + k_generation(i)**2
       end do
       n = gen_per_batch*n_realizations
       keff = k_sum(1) / n
     else
-      keff = k_generation % data(n)
+      n = k_generation_size()
+      keff = k_generation(n)
     end if
     current_batch = restart_batch
 
@@ -820,7 +682,7 @@ contains
       end if
 
       ! Write out source
-      call read_source_bank(file_id, work_index, source_bank)
+      call read_source_bank(file_id, source_bank)
 
     end if
 

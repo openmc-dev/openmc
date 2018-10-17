@@ -9,7 +9,6 @@
 
 namespace openmc {
 
-
 extern "C" void fatal_error_from_c(const char* message, int message_len);
 extern "C" void warning_from_c(const char* message, int message_len);
 extern "C" void write_message_from_c(const char* message, int message_len,
@@ -80,6 +79,10 @@ void write_message(const std::stringstream& message, int level)
 {
   write_message(message.str(), level);
 }
+
+#ifdef OPENMC_MPI
+extern "C" void abort_mpi(int code);
+#endif
 
 } // namespace openmc
 #endif // OPENMC_ERROR_H

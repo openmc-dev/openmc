@@ -339,7 +339,7 @@ contains
     ! write out information about batch and generation
     write(UNIT=OUTPUT_UNIT, FMT='(2X,A9)', ADVANCE='NO') &
          trim(to_str(current_batch)) // "/" // trim(to_str(current_gen))
-    write(UNIT=OUTPUT_UNIT, FMT='(3X,F8.5)', ADVANCE='NO') k_generation % data(i)
+    write(UNIT=OUTPUT_UNIT, FMT='(3X,F8.5)', ADVANCE='NO') k_generation(i)
 
     ! write out entropy info
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
@@ -373,7 +373,7 @@ contains
     write(UNIT=OUTPUT_UNIT, FMT='(2X,A9)', ADVANCE='NO') &
          trim(to_str(current_batch)) // "/" // trim(to_str(gen_per_batch))
     write(UNIT=OUTPUT_UNIT, FMT='(3X,F8.5)', ADVANCE='NO') &
-         k_generation % data(i)
+         k_generation(i)
 
     ! write out entropy info
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
@@ -511,9 +511,9 @@ contains
     end if
     write(ou,100) "  Time in active batches", time_active % elapsed
     if (run_mode == MODE_EIGENVALUE) then
-      write(ou,100) "  Time synchronizing fission bank", time_bank % elapsed
-      write(ou,100) "    Sampling source sites", time_bank_sample % elapsed
-      write(ou,100) "    SEND/RECV source sites", time_bank_sendrecv % elapsed
+      write(ou,100) "  Time synchronizing fission bank", time_bank_elapsed()
+      write(ou,100) "    Sampling source sites", time_bank_sample_elapsed()
+      write(ou,100) "    SEND/RECV source sites", time_bank_sendrecv_elapsed()
     end if
     write(ou,100) "  Time accumulating tallies", time_tallies % elapsed
     if (cmfd_run) write(ou,100) "  Time in CMFD", time_cmfd % elapsed

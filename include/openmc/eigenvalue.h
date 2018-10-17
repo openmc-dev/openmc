@@ -14,6 +14,7 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
+extern double keff_generation; //!<  Single-generation k on each processor
 extern std::vector<double> entropy; //!< Shannon entropy at each generation
 extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS
 
@@ -23,6 +24,12 @@ extern "C" int64_t n_bank;
 //==============================================================================
 // Non-member functions
 //==============================================================================
+
+//! Collect/normalize the tracklength keff from each process
+extern "C" void calculate_generation_keff();
+
+//! Sample/redistribute source sites from accumulated fission sites
+extern "C" void synchronize_bank();
 
 //! Calculates the Shannon entropy of the fission source distribution to assess
 //! source convergence

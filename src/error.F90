@@ -130,14 +130,20 @@ contains
     character(*) :: message
     integer, optional :: error_code ! error code
 
-    integer :: code      ! error code
+    integer(C_INT) :: code ! error code
     integer :: i_start   ! starting position
     integer :: i_end     ! ending position
     integer :: line_wrap ! length of line
     integer :: length    ! length of message
     integer :: indent    ! length of indentation
+
 #ifdef OPENMC_MPI
-    integer :: mpi_err
+    interface
+      subroutine abort_mpi(code) bind(C)
+        import C_INT
+        integer(C_INT), value :: code
+      end subroutine
+    end interface
 #endif
 
 
@@ -190,7 +196,7 @@ contains
 
 #ifdef OPENMC_MPI
     ! Abort MPI
-    call MPI_ABORT(mpi_intracomm, code, mpi_err)
+    call abort_mpi(code)
 #endif
 
     ! Abort program

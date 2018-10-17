@@ -314,9 +314,9 @@ constexpr int MG_GET_XS_CHI_DELAYED        {14};
 // TALLY-RELATED CONSTANTS
 
 // Tally result entries
-constexpr int RESULT_VALUE  {1};
-constexpr int RESULT_SUM    {2};
-constexpr int RESULT_SUM_SQ {3};
+constexpr int RESULT_VALUE  {0};
+constexpr int RESULT_SUM    {1};
+constexpr int RESULT_SUM_SQ {2};
 
 // Tally type
 // TODO: Convert to enum
@@ -407,10 +407,11 @@ constexpr int RELATIVE_ERROR     {2};
 constexpr int STANDARD_DEVIATION {3};
 
 // Global tally parameters
-constexpr int K_COLLISION   {1};
-constexpr int K_ABSORPTION  {2};
-constexpr int K_TRACKLENGTH {3};
-constexpr int LEAKAGE       {4};
+constexpr int N_GLOBAL_TALLIES {4};
+constexpr int K_COLLISION   {0};
+constexpr int K_ABSORPTION  {1};
+constexpr int K_TRACKLENGTH {2};
+constexpr int LEAKAGE       {3};
 
 // Differential tally independent variables
 constexpr int DIFF_DENSITY {1};

@@ -322,7 +322,9 @@ contains
     real(8) :: norm       ! "norm" of surface normal
     real(8) :: xyz(3)     ! Saved global coordinate
     integer :: i_surface  ! index in surfaces
+#ifdef DAGMC
     integer :: i_cell     ! index of new cell
+#endif
     logical :: rotational ! if rotational periodic BC applied
     logical :: found      ! particle found in universe?
     class(Surface), pointer :: surf

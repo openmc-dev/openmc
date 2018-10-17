@@ -17,6 +17,7 @@
 #include "openmc/mesh.h"
 #include "openmc/output.h"
 #include "openmc/random_lcg.h"
+#include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/string_utils.h"
 #include "openmc/xml_interface.h"
@@ -57,7 +58,7 @@ bool urr_ptables_on          {true};
 bool write_all_tracks        {false};
 bool write_initial_source    {false};
 bool dagmc                   {false};
-  
+
 std::string path_cross_sections;
 std::string path_input;
 std::string path_multipole;
@@ -218,7 +219,7 @@ void read_settings_xml()
     fatal_error("DAGMC mode unsupported for this build of OpenMC");
   }
 #endif
-  
+
   // To this point, we haven't displayed any output since we didn't know what
   // the verbosity is. Now that we checked for it, show the title if necessary
   if (openmc_master) {
@@ -393,14 +394,14 @@ void read_settings_xml()
   // Number of OpenMP threads
   if (check_for_node(root, "threads")) {
 #ifdef _OPENMP
-    if (openmc_n_threads == 0) {
-      openmc_n_threads = std::stoi(get_node_value(root, "threads"));
-      if (openmc_n_threads < 1) {
+    if (simulation::n_threads == 0) {
+      simulation::n_threads = std::stoi(get_node_value(root, "threads"));
+      if (simulation::n_threads < 1) {
         std::stringstream msg;
-        msg << "Invalid number of threads: " << openmc_n_threads;
+        msg << "Invalid number of threads: " << simulation::n_threads;
         fatal_error(msg);
       }
-      omp_set_num_threads(openmc_n_threads);
+      omp_set_num_threads(simulation::n_threads);
     }
 #else
     if (openmc_master) warning("OpenMC was not compiled with OpenMP support; "
@@ -414,7 +415,7 @@ void read_settings_xml()
     omp_set_num_threads(1);
   }
 #endif
-  
+
   // ==========================================================================
   // EXTERNAL SOURCE
 

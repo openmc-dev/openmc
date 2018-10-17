@@ -18,7 +18,6 @@ option(profile  "Compile with profiling flags"                   OFF)
 option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
-option(mpif08   "Use Fortran 2008 MPI interface"                 OFF)
 option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
 
 # Maximum number of nested coordinates levels
@@ -407,6 +406,7 @@ add_library(libopenmc SHARED
   src/distribution_spatial.cpp
   src/eigenvalue.cpp
   src/endf.cpp
+  src/error.cpp
   src/initialize.cpp
   src/finalize.cpp
   src/geometry.cpp
@@ -442,9 +442,11 @@ add_library(libopenmc SHARED
   src/string_functions.cpp
   src/summary.cpp
   src/surface.cpp
+  src/timer.cpp
   src/thermal.cpp
   src/xml_interface.cpp
-  src/xsdata.cpp)
+  src/xsdata.cpp
+  src/tallies/tally.cpp)
 
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc
@@ -471,9 +473,6 @@ if (HDF5_IS_PARALLEL)
 endif()
 if (MPI_ENABLED)
   target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
-  if (mpif08)
-    target_compile_definitions(libopenmc PRIVATE -DOPENMC_MPIF08)
-  endif()
 endif()
 
 # Set git SHA1 hash as a compile definition

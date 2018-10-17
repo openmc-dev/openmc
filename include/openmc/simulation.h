@@ -56,6 +56,9 @@ void calculate_work();
 //! Initialize simulation
 extern "C" void openmc_simulation_init_c();
 
+//! Initialize a batch
+extern "C" void initialize_batch();
+
 //! Initialize a fission generation
 extern "C" void initialize_generation();
 

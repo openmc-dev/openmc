@@ -3830,7 +3830,7 @@ contains
 ! SETUP_ACTIVE_TALLIES
 !===============================================================================
 
-  subroutine setup_active_tallies()
+  subroutine setup_active_tallies() bind(C)
 
     integer :: i ! loop counter
 

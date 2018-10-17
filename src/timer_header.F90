@@ -7,6 +7,10 @@ module timer_header
   implicit none
 
   interface
+    function time_active_elapsed() result(t) bind(C)
+      import C_DOUBLE
+      real(C_DOUBLE) :: t
+    end function
     function time_bank_elapsed() result(t) bind(C)
       import C_DOUBLE
       real(C_DOUBLE) :: t
@@ -16,6 +20,22 @@ module timer_header
       real(C_DOUBLE) :: t
     end function
     function time_bank_sendrecv_elapsed() result(t) bind(C)
+      import C_DOUBLE
+      real(C_DOUBLE) :: t
+    end function
+    function time_finalize_elapsed() result(t) bind(C)
+      import C_DOUBLE
+      real(C_DOUBLE) :: t
+    end function
+    function time_inactive_elapsed() result(t) bind(C)
+      import C_DOUBLE
+      real(C_DOUBLE) :: t
+    end function
+    function time_initialize_elapsed() result(t) bind(C)
+      import C_DOUBLE
+      real(C_DOUBLE) :: t
+    end function
+    function time_total_elapsed() result(t) bind(C)
       import C_DOUBLE
       real(C_DOUBLE) :: t
     end function

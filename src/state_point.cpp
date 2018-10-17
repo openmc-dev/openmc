@@ -1,16 +1,20 @@
 #include "openmc/state_point.h"
 
 #include <algorithm>
+#include <string>
 #include <vector>
 
-#ifdef OPENMC_MPI
-#include "mpi.h"
-#endif
+#include "xtensor/xbuilder.hpp" // for empty_like
+#include "xtensor/xview.hpp"
 
 #include "openmc/capi.h"
+#include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/hdf5_interface.h"
 #include "openmc/message_passing.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
+#include "openmc/tallies/tally.h"
 
 namespace openmc {
 
@@ -34,7 +38,7 @@ hid_t h5banktype() {
 
 
 void
-write_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
+write_source_bank(hid_t group_id, Bank* source_bank)
 {
   hid_t banktype = h5banktype();
 
@@ -46,11 +50,11 @@ write_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
   // Create another data space but for each proc individually
-  hsize_t count[] {static_cast<hsize_t>(openmc_work)};
+  hsize_t count[] {static_cast<hsize_t>(simulation::work)};
   hid_t memspace = H5Screate_simple(1, count, nullptr);
 
   // Select hyperslab for this dataspace
-  hsize_t start[] {static_cast<hsize_t>(work_index[openmc::mpi::rank])};
+  hsize_t start[] {static_cast<hsize_t>(simulation::work_index[mpi::rank])};
   H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
   // Set up the property list for parallel writing
@@ -77,24 +81,25 @@ write_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
 
     // Save source bank sites since the souce_bank array is overwritten below
 #ifdef OPENMC_MPI
-    std::vector<Bank> temp_source {source_bank, source_bank + openmc_work};
+    std::vector<Bank> temp_source {source_bank, source_bank + simulation::work};
 #endif
 
-    for (int i = 0; i < openmc::mpi::n_procs; ++i) {
+    for (int i = 0; i < mpi::n_procs; ++i) {
       // Create memory space
-      hsize_t count[] {static_cast<hsize_t>(work_index[i+1] - work_index[i])};
+      hsize_t count[] {static_cast<hsize_t>(simulation::work_index[i+1] -
+        simulation::work_index[i])};
       hid_t memspace = H5Screate_simple(1, count, nullptr);
 
 #ifdef OPENMC_MPI
       // Receive source sites from other processes
       if (i > 0)
-        MPI_Recv(source_bank, count[0], openmc::mpi::bank, i, i,
-                 openmc::mpi::intracomm, MPI_STATUS_IGNORE);
+        MPI_Recv(source_bank, count[0], mpi::bank, i, i,
+                 mpi::intracomm, MPI_STATUS_IGNORE);
 #endif
 
       // Select hyperslab for this dataspace
       dspace = H5Dget_space(dset);
-      hsize_t start[] {static_cast<hsize_t>(work_index[i])};
+      hsize_t start[] {static_cast<hsize_t>(simulation::work_index[i])};
       H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
       // Write data to hyperslab
@@ -113,8 +118,8 @@ write_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
 #endif
   } else {
 #ifdef OPENMC_MPI
-    MPI_Send(source_bank, openmc_work, openmc::mpi::bank, 0, openmc::mpi::rank,
-             openmc::mpi::intracomm);
+    MPI_Send(source_bank, simulation::work, mpi::bank, 0, mpi::rank,
+             mpi::intracomm);
 #endif
   }
 #endif
@@ -123,7 +128,7 @@ write_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
 }
 
 
-void read_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
+void read_source_bank(hid_t group_id, Bank* source_bank)
 {
   hid_t banktype = h5banktype();
 
@@ -131,20 +136,20 @@ void read_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
   hid_t dset = H5Dopen(group_id, "source_bank", H5P_DEFAULT);
 
   // Create another data space but for each proc individually
-  hsize_t dims[] {static_cast<hsize_t>(openmc_work)};
+  hsize_t dims[] {static_cast<hsize_t>(simulation::work)};
   hid_t memspace = H5Screate_simple(1, dims, nullptr);
 
   // Make sure source bank is big enough
   hid_t dspace = H5Dget_space(dset);
   hsize_t dims_all[1];
   H5Sget_simple_extent_dims(dspace, dims_all, nullptr);
-  if (work_index[openmc::mpi::n_procs] > dims_all[0]) {
+  if (simulation::work_index[mpi::n_procs] > dims_all[0]) {
     fatal_error("Number of source sites in source file is less "
                 "than number of source particles per generation.");
   }
 
   // Select hyperslab for each process
-  hsize_t start[] {static_cast<hsize_t>(work_index[openmc::mpi::rank])};
+  hsize_t start[] {static_cast<hsize_t>(simulation::work_index[mpi::rank])};
   H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, dims, nullptr);
 
 #ifdef PHDF5
@@ -162,6 +167,112 @@ void read_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
   H5Sclose(memspace);
   H5Dclose(dset);
   H5Tclose(banktype);
+}
+
+void write_tally_results_nr(hid_t file_id)
+{
+  // ==========================================================================
+  // COLLECT AND WRITE GLOBAL TALLIES
+
+  hid_t tallies_group;
+  if (mpi::master) {
+    // Write number of realizations
+    write_dataset(file_id, "n_realizations", n_realizations);
+
+    // Write number of global tallies
+    write_dataset(file_id, "n_global_tallies", N_GLOBAL_TALLIES);
+
+    tallies_group = open_group(file_id, "tallies");
+  }
+
+  // Get pointer to global tallies
+  auto gt = global_tallies();
+
+#ifdef OPENMC_MPI
+  // Reduce global tallies
+  xt::xtensor<double, 2> gt_reduced = xt::empty_like(gt);
+  MPI_Reduce(gt.data(), gt_reduced.data(), gt.size(), MPI_DOUBLE,
+    MPI_SUM, 0, mpi::intracomm);
+
+  // Transfer values to value on master
+  if (mpi::master) {
+    if (simulation::current_batch == settings::n_max_batches ||
+        simulation::satisfy_triggers) {
+      std::copy(gt_reduced.begin(), gt_reduced.end(), gt.begin());
+    }
+  }
+#endif
+
+  // Write out global tallies sum and sum_sq
+  if (mpi::master) {
+    write_dataset(file_id, "global_tallies", gt);
+  }
+
+  for (int i = 1; i <= n_tallies; ++i) {
+    // Skip any tallies that are not active
+    bool active;
+    openmc_tally_get_active(i, &active);
+    if (!active) continue;
+
+    if (mpi::master && !object_exists(file_id, "tallies_present")) {
+      write_attribute(file_id, "tallies_present", 1);
+    }
+
+    // Get view of accumulated tally values
+    auto results = tally_results(i);
+    auto values_view = xt::view(results, xt::all(), xt::all(),
+      xt::range(RESULT_SUM, RESULT_SUM_SQ + 1));
+
+    // Make copy of tally values in contiguous array
+    xt::xtensor<double, 2> values = values_view;
+
+    if (mpi::master) {
+      // Open group for tally
+      int id;
+      openmc_tally_get_id(i, &id);
+      std::string groupname {"tally " + std::to_string(id)};
+      hid_t tally_group = open_group(tallies_group, groupname.c_str());
+
+      // The MPI_IN_PLACE specifier allows the master to copy values into
+      // a receive buffer without having a temporary variable
+#ifdef OPENMC_MPI
+      MPI_Reduce(MPI_IN_PLACE, values.data(), values.size(), MPI_DOUBLE,
+        MPI_SUM, 0, mpi::intracomm);
+#endif
+
+      // At the end of the simulation, store the results back in the
+      // regular TallyResults array
+      if (simulation::current_batch == settings::n_max_batches ||
+          simulation::satisfy_triggers) {
+        values_view = values;
+      }
+
+      // Put in temporary tally result
+      xt::xtensor<double, 3> results_copy = xt::zeros_like(results);
+      auto copy_view = xt::view(results_copy, xt::all(), xt::all(),
+        xt::range(RESULT_SUM, RESULT_SUM_SQ + 1));
+      copy_view = values;
+
+      // Write reduced tally results to file
+      auto shape = results_copy.shape();
+      write_tally_results(tally_group, shape[0], shape[1], results_copy.data());
+
+      close_group(tally_group);
+    } else {
+      // Receive buffer not significant at other processors
+#ifdef OPENMC_MPI
+      MPI_Reduce(values.data(), nullptr, values.size(), MPI_REAL8, MPI_SUM,
+            0, mpi::intracomm);
+#endif
+    }
+  }
+
+  if (mpi::master) {
+    if (!object_exists(file_id, "tallies_present")) {
+      // Indicate that tallies are off
+      write_dataset(file_id, "tallies_present", 0);
+    }
+  }
 }
 
 } // namespace openmc

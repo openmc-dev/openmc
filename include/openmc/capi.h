@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,9 +49,9 @@ extern "C" {
   int64_t openmc_get_seed();
   int openmc_get_tally_index(int32_t id, int32_t* index);
   void openmc_get_tally_next_id(int32_t* id);
+  int openmc_global_tallies(double** ptr);
   int openmc_hard_reset();
   int openmc_init(int argc, char* argv[], const void* intracomm);
-  int openmc_init_f(const int* intracomm);
   int openmc_legendre_filter_get_order(int32_t index, int* order);
   int openmc_legendre_filter_set_order(int32_t index, int order);
   int openmc_load_nuclide(const char name[]);
@@ -105,7 +106,7 @@ extern "C" {
   int openmc_tally_get_scores(int32_t index, int** scores, int* n);
   int openmc_tally_get_type(int32_t index, int32_t* type);
   int openmc_tally_reset(int32_t index);
-  int openmc_tally_results(int32_t index, double** ptr, int shape_[3]);
+  int openmc_tally_results(int32_t index, double** ptr, size_t shape_[3]);
   int openmc_tally_set_active(int32_t index, bool active);
   int openmc_tally_set_estimator(int32_t index, const char* estimator);
   int openmc_tally_set_filters(int32_t index, int n, const int32_t* indices);
@@ -134,8 +135,6 @@ extern "C" {
 
   // Global variables
   extern char openmc_err_msg[256];
-  extern double openmc_keff;
-  extern double openmc_keff_std;
   extern int32_t n_cells;
   extern int32_t n_filters;
   extern int32_t n_lattices;
@@ -148,17 +147,12 @@ extern "C" {
   extern int32_t n_surfaces;
   extern int32_t n_tallies;
   extern int32_t n_universes;
-  extern bool openmc_simulation_initialized;
-  extern double global_tally_absorption;
-#pragma omp threadprivate(global_tally_absorption)
 
   // Variables that are shared by necessity (can be removed from public header
   // later)
   extern bool openmc_master;
   extern int openmc_n_procs;
-  extern int openmc_n_threads;
   extern int openmc_rank;
-  extern int64_t openmc_work;
 
 #ifdef __cplusplus
 }

@@ -153,7 +153,7 @@ module tally_header
 
   ! Normalization for statistics
   integer(C_INT32_T), public, bind(C) :: n_realizations = 0 ! # of independent realizations
-  real(8), public :: total_weight       ! total starting particle weight in realization
+  real(C_DOUBLE), public, bind(C) :: total_weight       ! total starting particle weight in realization
 
 contains
 
@@ -681,14 +681,19 @@ contains
     ! allows a user to obtain in-memory tally results from Python directly.
     integer(C_INT32_T), intent(in), value :: index
     type(C_PTR),        intent(out) :: ptr
-    integer(C_INT),     intent(out) :: shape_(3)
+    integer(C_SIZE_T),  intent(out) :: shape_(3)
     integer(C_INT) :: err
 
     if (index >= 1 .and. index <= size(tallies)) then
       associate (t => tallies(index) % obj)
         if (allocated(t % results)) then
           ptr = C_LOC(t % results(1,1,1))
-          shape_(:) = shape(t % results)
+
+          ! Note that shape is reversed since it is assumed to be used from
+          ! C/C++ code
+          shape_(1) = size(t % results, 3)
+          shape_(2) = size(t % results, 2)
+          shape_(3) = size(t % results, 1)
           err = 0
         else
           err = E_ALLOCATE

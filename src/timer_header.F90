@@ -35,6 +35,10 @@ module timer_header
       import C_DOUBLE
       real(C_DOUBLE) :: t
     end function
+    function time_tallies_elapsed() result(t) bind(C)
+      import C_DOUBLE
+      real(C_DOUBLE) :: t
+    end function
     function time_total_elapsed() result(t) bind(C)
       import C_DOUBLE
       real(C_DOUBLE) :: t

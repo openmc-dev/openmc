@@ -132,8 +132,6 @@ contains
     n_batch_interval = 1
     n_lost_particles = 0
     n_particles = -1
-    n_source_points = 0
-    n_state_points = 0
     n_tallies = 0
     output_summary = .true.
     output_tallies = .true.

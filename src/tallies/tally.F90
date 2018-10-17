@@ -3769,7 +3769,7 @@ contains
 ! within the batch to a new random variable
 !===============================================================================
 
-  subroutine accumulate_tallies()
+  subroutine accumulate_tallies() bind(C)
 
     integer :: i
     real(C_DOUBLE) :: k_col ! Copy of batch collision estimate of keff

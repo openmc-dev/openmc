@@ -29,7 +29,7 @@ contains
 ! EXECUTE_CMFD runs the CMFD calculation
 !==============================================================================
 
-  subroutine execute_cmfd()
+  subroutine execute_cmfd() bind(C)
 
     use cmfd_data,              only: set_up_cmfd
     use cmfd_solver,            only: cmfd_solver_execute

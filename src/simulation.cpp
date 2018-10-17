@@ -1,6 +1,7 @@
 #include "openmc/simulation.h"
 
 #include "openmc/capi.h"
+#include "openmc/container_util.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/message_passing.h"
@@ -8,6 +9,7 @@
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/source.h"
+#include "openmc/state_point.h"
 #include "openmc/timer.h"
 #include "openmc/tallies/tally.h"
 
@@ -15,13 +17,19 @@
 #include <string>
 
 // data/functions from Fortran side
+extern "C" bool cmfd_on;
+
+extern "C" void accumulate_tallies();
 extern "C" void allocate_banks();
+extern "C" void check_triggers();
 extern "C" void cmfd_init_batch();
 extern "C" void cmfd_tally_init();
 extern "C" void configure_tallies();
+extern "C" void execute_cmfd();
 extern "C" void init_tally_routines();
 extern "C" void join_bank_from_threads();
 extern "C" void load_state_point();
+extern "C" void print_batch_keff();
 extern "C" void print_columns();
 extern "C" void print_generation();
 extern "C" void print_results();
@@ -234,6 +242,62 @@ void initialize_batch()
   setup_active_tallies();
 }
 
+void finalize_batch()
+{
+  // Reduce tallies onto master process and accumulate
+  time_tallies.start();
+  accumulate_tallies();
+  time_tallies.stop();
+
+  // Reset global tally results
+  if (simulation::current_batch <= settings::n_inactive) {
+    auto gt = global_tallies();
+    std::fill(gt.begin(), gt.end(), 0.0);
+    n_realizations = 0;
+  }
+
+  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    // Perform CMFD calculation if on
+    if (cmfd_on) execute_cmfd();
+    // Write batch output
+    if (mpi::master && settings::verbosity >= 7) print_batch_keff();
+  }
+
+  // Check_triggers
+  if (mpi::master) check_triggers();
+#ifdef OPENMC_MPI
+  MPI_Bcast(&simulation::satisfy_triggers, 1, MPI_C_BOOL, 0, mpi::intracomm);
+#endif
+  if (simulation::satisfy_triggers || (settings::trigger_on &&
+      simulation::current_batch == settings::n_max_batches)) {
+    settings::statepoint_batch.insert(simulation::current_batch);
+  }
+
+  // Write out state point if it's been specified for this batch
+  if (contains(settings::statepoint_batch, simulation::current_batch)) {
+    if (contains(settings::sourcepoint_batch, simulation::current_batch)
+        && settings::source_write && !settings::source_separate) {
+      bool b = true;
+      openmc_statepoint_write(nullptr, &b);
+    } else {
+      bool b = false;
+      openmc_statepoint_write(nullptr, &b);
+    }
+  }
+
+  // Write out a separate source point if it's been specified for this batch
+  if (contains(settings::sourcepoint_batch, simulation::current_batch)
+      && settings::source_write && settings::source_separate) {
+    write_source_point(nullptr);
+  }
+
+  // Write a continously-overwritten source point if requested.
+  if (settings::source_latest) {
+    auto filename = settings::path_output + "source.h5";
+    write_source_point(filename.c_str());
+  }
+}
+
 void initialize_generation()
 {
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
@@ -406,10 +470,6 @@ void broadcast_results() {
   simulation::k_abs_tra = temp[2];
 }
 
-void broadcast_triggers()
-{
-  MPI_Bcast(&simulation::satisfy_triggers, 1, MPI_C_BOOL, 0, mpi::intracomm);
-}
 #endif
 
 //==============================================================================

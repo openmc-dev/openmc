@@ -84,11 +84,6 @@ module simulation_header
     subroutine k_generation_clear() bind(C)
     end subroutine
 
-    subroutine k_generation_reserve(i) bind(C)
-      import C_INT
-      integer(C_INT), value :: i
-    end subroutine
-
     function work_index(rank) result(i) bind(C)
       import C_INT, C_INT64_T
       integer(C_INT), value :: rank

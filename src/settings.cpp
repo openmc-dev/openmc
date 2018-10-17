@@ -12,6 +12,7 @@
 #include "openmc/distribution.h"
 #include "openmc/distribution_multi.h"
 #include "openmc/distribution_spatial.h"
+#include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/mesh.h"
@@ -141,7 +142,10 @@ void get_run_parameters(pugi::xml_node node_base)
       gen_per_batch = std::stoi(get_node_value(node_base, "generations_per_batch"));
     }
 
-    // TODO: Preallocate space for keff and entropy by generation
+    // Preallocate space for keff and entropy by generation
+    int m = settings::n_max_batches * settings::gen_per_batch;
+    simulation::k_generation.reserve(m);
+    entropy.reserve(m);
 
     // Get the trigger information for keff
     if (check_for_node(node_base, "keff_trigger")) {

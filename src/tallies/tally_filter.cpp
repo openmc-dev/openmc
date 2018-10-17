@@ -8,6 +8,7 @@
 #include "openmc/tallies/tally_filter_cellborn.h"
 #include "openmc/tallies/tally_filter_cellfrom.h"
 #include "openmc/tallies/tally_filter_distribcell.h"
+#include "openmc/tallies/tally_filter_energyfunc.h"
 #include "openmc/tallies/tally_filter_legendre.h"
 #include "openmc/tallies/tally_filter_material.h"
 #include "openmc/tallies/tally_filter_mesh.h"
@@ -98,6 +99,8 @@ extern "C" {
       tally_filters.push_back(new CellFromFilter());
     } else if (type_ == "distribcell") {
       tally_filters.push_back(new DistribcellFilter());
+    } else if (type_ == "energyfunction") {
+      tally_filters.push_back(new EnergyFunctionFilter());
     } else if (type_ == "legendre") {
       tally_filters.push_back(new LegendreFilter());
     } else if (type_ == "material") {

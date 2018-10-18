@@ -740,7 +740,7 @@ class IncidentPhoton(EqualityMixin):
                         shell_values.insert(0, None)
                         df = relax.transitions[shell].replace(
                             shell_values, range(len(shell_values)))
-                        sub_group.create_dataset('transitions', data=df.as_matrix())
+                        sub_group.create_dataset('transitions', data=df.values)
 
                 # Determine threshold
                 threshold = rx.xs.x[0]

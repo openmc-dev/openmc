@@ -16,8 +16,10 @@
 #include "openmc/tallies/tally_filter_mu.h"
 #include "openmc/tallies/tally_filter_polar.h"
 #include "openmc/tallies/tally_filter_sph_harm.h"
+#include "openmc/tallies/tally_filter_sptl_legendre.h"
 #include "openmc/tallies/tally_filter_surface.h"
 #include "openmc/tallies/tally_filter_universe.h"
+#include "openmc/tallies/tally_filter_zernike.h"
 
 
 namespace openmc {
@@ -115,10 +117,16 @@ extern "C" {
       tally_filters.push_back(new PolarFilter());
     } else if (type_ == "surface") {
       tally_filters.push_back(new SurfaceFilter());
+    } else if (type_ == "spatiallegendre") {
+      tally_filters.push_back(new SpatialLegendreFilter());
     } else if (type_ == "sphericalharmonics") {
       tally_filters.push_back(new SphericalHarmonicsFilter());
     } else if (type_ == "universe") {
       tally_filters.push_back(new UniverseFilter());
+    } else if (type_ == "zernike") {
+      tally_filters.push_back(new ZernikeFilter());
+    } else if (type_ == "zernikeradial") {
+      tally_filters.push_back(new ZernikeRadialFilter());
     } else {
       return nullptr;
     }
@@ -221,6 +229,48 @@ extern "C" {
 
   void sphharm_filter_set_cosine(SphericalHarmonicsFilter* filt, int cosine)
   {filt->cosine_ = static_cast<SphericalHarmonicsCosine>(cosine);}
+
+  void
+  sptl_legendre_filter_get_params(SpatialLegendreFilter* filt, int* order,
+                                  int* axis, double* min, double* max)
+  {
+    *order = filt->order_;
+    *axis = static_cast<int>(filt->axis_);
+    *min = filt->min_;
+    *max = filt->max_;
+  }
+
+  void
+  sptl_legendre_filter_set_params(SpatialLegendreFilter* filt, int order,
+                                  int axis, double min, double max)
+  {
+    filt->order_ = order;
+    filt->axis_ = static_cast<LegendreAxis>(axis);
+    filt->min_ = min;
+    filt->max_ = max;
+    filt->n_bins_ = order + 1;
+  }
+
+  void
+  zernike_filter_get_params(ZernikeFilter* filt, int* order, double* x,
+                            double* y, double* r)
+  {
+    *order = filt->order_;
+    *x = filt->x_;
+    *y = filt->y_;
+    *r = filt->r_;
+  }
+
+  void
+  zernike_filter_set_params(ZernikeFilter* filt, int order, double x,
+                            double y, double r)
+  {
+    filt->order_ = order;
+    filt->x_ = x;
+    filt->y_ = y;
+    filt->r_ = r;
+    filt->calc_n_bins();
+  }
 }
 
 } // namespace openmc

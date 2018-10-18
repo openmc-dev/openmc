@@ -1,4 +1,5 @@
-from collections import OrderedDict, Iterable
+from collections import OrderedDict
+from collections.abc import Iterable
 from copy import copy, deepcopy
 from numbers import Integral, Real
 import random

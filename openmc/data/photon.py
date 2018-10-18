@@ -1,4 +1,5 @@
-from collections import OrderedDict, Mapping, Callable
+from collections import OrderedDict
+from collections.abc import Mapping, Callable
 from copy import deepcopy
 from io import StringIO
 from numbers import Integral, Real

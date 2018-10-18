@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from collections import Callable
+from collections.abc import Callable
 import os
 
 import numpy as np

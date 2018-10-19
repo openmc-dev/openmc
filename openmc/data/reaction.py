@@ -924,7 +924,7 @@ class Reaction(EqualityMixin):
         rx = cls(mt)
         rx.q_value = group.attrs['Q_value']
         rx.center_of_mass = bool(group.attrs['center_of_mass'])
-        rx.redundant = bool(group.attrs['redundant'])
+        rx.redundant = bool(group.attrs.get('redundant', False))
 
         # Read cross section at each temperature
         for T, Tgroup in group.items():

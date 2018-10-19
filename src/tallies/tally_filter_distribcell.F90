@@ -1,14 +1,9 @@
 module tally_filter_distribcell
 
-  use tally_filter_header
+  use tally_filter_cpp
 
   implicit none
   private
-
-!===============================================================================
-! DISTRIBCELLFILTER specifies which distributed geometric cells tally events
-! reside in.
-!===============================================================================
 
   type, public, extends(CppTallyFilter) :: DistribcellFilter
   contains

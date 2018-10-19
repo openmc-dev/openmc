@@ -11,6 +11,10 @@
 
 namespace openmc {
 
+//==============================================================================
+//! Gives Legendre moments of the change in scattering angle
+//==============================================================================
+
 class LegendreFilter : public TallyFilter
 {
 public:
@@ -32,8 +36,8 @@ public:
     double wgt[n_bins_];
     calc_pn_c(order_, p->mu, wgt);
     for (int i = 0; i < n_bins_; i++) {
-      match.bins.push_back(i + 1);
-      match.weights.push_back(wgt[i]);
+      match.bins_.push_back(i + 1);
+      match.weights_.push_back(wgt[i]);
     }
   }
 

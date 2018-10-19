@@ -2,7 +2,7 @@ module tally_filter_legendre
 
   use, intrinsic :: ISO_C_BINDING
 
-  use tally_filter_header
+  use tally_filter_cpp
 
   implicit none
 
@@ -15,11 +15,7 @@ module tally_filter_legendre
     end function
   end interface
 
-!===============================================================================
-! LEGENDREFILTER gives Legendre moments of the change in scattering angle
-!===============================================================================
-
-  type, public, extends(CppTallyFilter) :: LegendreFilter
+  type, extends(CppTallyFilter) :: LegendreFilter
   end type LegendreFilter
 
 end module tally_filter_legendre

@@ -14,6 +14,11 @@
 
 namespace openmc {
 
+//==============================================================================
+//! Multiplies tally scores by an arbitrary function of incident energy
+//! described by a piecewise linear-linear interpolation.
+//==============================================================================
+
 class EnergyFunctionFilter : public TallyFilter
 {
 public:
@@ -57,8 +62,8 @@ public:
       double f = (p->last_E - energy_[i]) / (energy_[i+1] - energy_[i]);
 
       // Interpolate on the lin-lin grid.
-      match.bins.push_back(1);
-      match.weights.push_back((1-f) * y_[i] + f * y_[i+1]);
+      match.bins_.push_back(1);
+      match.weights_.push_back((1-f) * y_[i] + f * y_[i+1]);
     }
   }
 

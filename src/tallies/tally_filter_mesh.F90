@@ -2,7 +2,7 @@ module tally_filter_mesh
 
   use, intrinsic :: ISO_C_BINDING
 
-  use tally_filter_header
+  use tally_filter_cpp
 
   implicit none
 
@@ -14,12 +14,6 @@ module tally_filter_mesh
       integer(C_INT) :: err
     end function
   end interface
-
-!===============================================================================
-! MESHFILTER indexes the location of particle events to a regular mesh.  For
-! tracklength tallies, it will produce multiple valid bins and the bin weight
-! will correspond to the fraction of the track length that lies in that bin.
-!===============================================================================
 
   type, public, extends(CppTallyFilter) :: MeshFilter
   contains

@@ -373,26 +373,15 @@ add_library(libopenmc SHARED
   src/tallies/tally_derivative_header.F90
   src/tallies/tally_filter.F90
   src/tallies/tally_filter_header.F90
-  src/tallies/tally_filter_azimuthal.F90
-  src/tallies/tally_filter_cell.F90
-  src/tallies/tally_filter_cellborn.F90
-  src/tallies/tally_filter_cellfrom.F90
+  src/tallies/tally_filter_cpp.F90
   src/tallies/tally_filter_delayedgroup.F90
   src/tallies/tally_filter_distribcell.F90
   src/tallies/tally_filter_energy.F90
-  src/tallies/tally_filter_energyfunc.F90
   src/tallies/tally_filter_legendre.F90
-  src/tallies/tally_filter_material.F90
   src/tallies/tally_filter_mesh.F90
   src/tallies/tally_filter_meshsurface.F90
-  src/tallies/tally_filter_mu.F90
   src/tallies/tally_filter_particle.F90
-  src/tallies/tally_filter_polar.F90
   src/tallies/tally_filter_sph_harm.F90
-  src/tallies/tally_filter_sptl_legendre.F90
-  src/tallies/tally_filter_surface.F90
-  src/tallies/tally_filter_universe.F90
-  src/tallies/tally_filter_zernike.F90
   src/tallies/tally_header.F90
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90

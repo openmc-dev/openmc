@@ -12,6 +12,10 @@
 
 namespace openmc {
 
+//==============================================================================
+//! Specifies which distributed geometric cells tally events reside in.
+//==============================================================================
+
 class DistribcellFilter : public TallyFilter
 {
 public:
@@ -64,8 +68,8 @@ public:
         }
       }
       if (cell_ == p->coord[i].cell) {
-        match.bins.push_back(offset + 1);
-        match.weights.push_back(1);
+        match.bins_.push_back(offset + 1);
+        match.weights_.push_back(1);
         return;
       }
     }

@@ -13,6 +13,10 @@
 
 namespace openmc {
 
+//==============================================================================
+//! Specifies which geometric universes tally events reside in.
+//==============================================================================
+
 class UniverseFilter : public TallyFilter
 {
 public:
@@ -54,9 +58,8 @@ public:
     for (int i = 0; i < p->n_coord; i++) {
       auto search = map_.find(p->coord[i].universe);
       if (search != map_.end()) {
-        // TODO: off-by-one
-        match.bins.push_back(search->second + 1);
-        match.weights.push_back(1);
+        match.bins_.push_back(search->second + 1);
+        match.weights_.push_back(1);
       }
     }
   }

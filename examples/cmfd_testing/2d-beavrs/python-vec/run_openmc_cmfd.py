@@ -40,7 +40,7 @@ cmfd_run.cmfd_display = 'balance'
 cmfd_run.cmfd_feedback = False
 cmfd_run.cmfd_downscatter = True
 cmfd_run.norm = 193
-cmfd_run.cmfd_reset = [101]
+cmfd_run.cmfd_reset = [151]
 
 # Run CMFD
 cmfd_run.run(vectorized=True, omp_num_threads=1)

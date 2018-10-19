@@ -33,5 +33,5 @@
   <downscatter> true </downscatter>
   <norm> 193 </norm>
   <gauss_seidel_tolerance>1.e-15 1.e-20</gauss_seidel_tolerance>
-  <tally_reset> 101 </tally_reset>
+  <tally_reset> 151 </tally_reset>
 </cmfd>

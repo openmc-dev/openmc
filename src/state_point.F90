@@ -16,7 +16,6 @@ module state_point
   use bank_header,        only: Bank
   use cmfd_header
   use constants
-  use eigenvalue,         only: openmc_get_keff
   use endf,               only: reaction_name
   use error,              only: fatal_error, warning, write_message
   use hdf5_interface

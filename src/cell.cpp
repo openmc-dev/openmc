@@ -650,7 +650,6 @@ read_cells(pugi::xml_node* node)
   }
 
   // Fill the cell map.
-  // TODO: update this map when openmc_extend_cells is called
   for (int i = 0; i < cells.size(); i++) {
     int32_t id = cells[i]->id_;
     auto search = cell_map.find(id);
@@ -780,7 +779,19 @@ extern "C" {
 
   int32_t cell_id(Cell* c) {return c->id_;}
 
-  void cell_set_id(Cell* c, int32_t id) {c->id_ = id;}
+  void
+  cell_set_id(Cell* c, int32_t id)
+  {
+    c->id_ = id;
+
+    // Find the index of this cell and update the cell map.
+    for (int i = 0; i < cells.size(); i++) {
+      if (cells[i] == c) {
+        cell_map[id] = i;
+        break;
+      }
+    }
+  }
 
   int cell_type(Cell* c) {return c->type_;}
 

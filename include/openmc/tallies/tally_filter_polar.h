@@ -12,6 +12,10 @@
 
 namespace openmc {
 
+//==============================================================================
+//! Bins the incident neutron polar angle (relative to the global z-axis).
+//==============================================================================
+
 class PolarFilter : public TallyFilter
 {
 public:
@@ -58,8 +62,8 @@ public:
 
     if (theta >= bins_[0] && theta <= bins_.back()) {
       auto bin = lower_bound_index(bins_.begin(), bins_.end(), theta) + 1;
-      match.bins.push_back(bin);
-      match.weights.push_back(1);
+      match.bins_.push_back(bin);
+      match.weights_.push_back(1);
     }
   }
 

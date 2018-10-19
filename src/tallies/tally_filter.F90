@@ -7,26 +7,15 @@ module tally_filter
   use tally_filter_header
 
   ! Inherit other filters
-  use tally_filter_azimuthal
-  use tally_filter_cell
-  use tally_filter_cellborn
-  use tally_filter_cellfrom
+  use tally_filter_cpp
   use tally_filter_delayedgroup
   use tally_filter_distribcell
   use tally_filter_energy
-  use tally_filter_energyfunc
   use tally_filter_legendre
-  use tally_filter_material
   use tally_filter_mesh
   use tally_filter_meshsurface
-  use tally_filter_mu
   use tally_filter_particle
-  use tally_filter_polar
   use tally_filter_sph_harm
-  use tally_filter_sptl_legendre
-  use tally_filter_surface
-  use tally_filter_universe
-  use tally_filter_zernike
 
   implicit none
 

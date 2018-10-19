@@ -13,6 +13,10 @@
 
 namespace openmc {
 
+//==============================================================================
+//! Specifies which surface particles are crossing
+//==============================================================================
+
 class SurfaceFilter : public TallyFilter
 {
 public:
@@ -53,11 +57,11 @@ public:
   {
     auto search = map_.find(std::abs(p->surface)-1);
     if (search != map_.end()) {
-      match.bins.push_back(search->second + 1);
+      match.bins_.push_back(search->second + 1);
       if (p->surface < 0) {
-        match.weights.push_back(-1);
+        match.weights_.push_back(-1);
       } else {
-        match.weights.push_back(1);
+        match.weights_.push_back(1);
       }
     }
   }

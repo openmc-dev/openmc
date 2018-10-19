@@ -15,6 +15,10 @@ enum class LegendreAxis {
   x = 1, y = 2, z = 3
 };
 
+//==============================================================================
+//! Gives Legendre moments of the particle's normalized position along an axis
+//==============================================================================
+
 class SpatialLegendreFilter : public TallyFilter
 {
 public:
@@ -66,8 +70,8 @@ public:
       double wgt[order_ + 1];
       calc_pn_c(order_, x_norm, wgt);
       for (int i = 0; i < order_ + 1; i++) {
-        match.bins.push_back(i + 1);
-        match.weights.push_back(wgt[i]);
+        match.bins_.push_back(i + 1);
+        match.weights_.push_back(wgt[i]);
       }
     }
   }

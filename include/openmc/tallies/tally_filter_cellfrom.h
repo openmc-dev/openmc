@@ -6,6 +6,10 @@
 
 namespace openmc {
 
+//==============================================================================
+//! Specifies which geometric cells particles exit when crossing a surface.
+//==============================================================================
+
 class CellFromFilter : public CellFilter
 {
 public:
@@ -19,8 +23,8 @@ public:
       auto search = map_.find(p->last_cell[i]);
       if (search != map_.end()) {
         // TODO: off-by-one
-        match.bins.push_back(search->second + 1);
-        match.weights.push_back(1);
+        match.bins_.push_back(search->second + 1);
+        match.weights_.push_back(1);
       }
     }
   }

@@ -14,6 +14,10 @@ enum class SphericalHarmonicsCosine {
   scatter = 1, particle = 2
 };
 
+//==============================================================================
+//! Gives spherical harmonics expansion moments of a tally score
+//==============================================================================
+
 class SphericalHarmonicsFilter : public TallyFilter
 {
 public:
@@ -65,8 +69,8 @@ public:
 
       // Append the matching (bin,weight) for each moment
       for (int i = 0; i < num_nm; i++) {
-        match.weights.push_back(wgt[n] * rn[j]);
-        match.bins.push_back(++j);
+        match.weights_.push_back(wgt[n] * rn[j]);
+        match.bins_.push_back(++j);
       }
     }
   }

@@ -12,6 +12,11 @@
 
 namespace openmc {
 
+//==============================================================================
+//! Bins the incoming-outgoing direction cosine.  This is only used for scatter
+//! reactions.
+//==============================================================================
+
 class MuFilter : public TallyFilter
 {
 public:
@@ -51,8 +56,8 @@ public:
   {
     if (p->mu >= bins_[0] && p->mu <= bins_.back()) {
       auto bin = lower_bound_index(bins_.begin(), bins_.end(), p->mu) + 1;
-      match.bins.push_back(bin);
-      match.weights.push_back(1);
+      match.bins_.push_back(bin);
+      match.weights_.push_back(1);
     }
   }
 

@@ -12,6 +12,10 @@
 
 namespace openmc {
 
+//==============================================================================
+//! Gives Zernike polynomial moments of a particle's position
+//==============================================================================
+
 class ZernikeFilter : public TallyFilter
 {
 public:
@@ -44,8 +48,8 @@ public:
       double zn[n_bins_];
       calc_zn_c(order_, r, theta, zn);
       for (int i = 0; i < n_bins_; i++) {
-        match.bins.push_back(i+1);
-        match.weights.push_back(zn[i]);
+        match.bins_.push_back(i+1);
+        match.weights_.push_back(zn[i]);
       }
     }
   }
@@ -81,6 +85,10 @@ public:
   double x_, y_, r_;
 };
 
+//==============================================================================
+//! Gives even order radial Zernike polynomial moments of a particle's position
+//==============================================================================
+
 class ZernikeRadialFilter : public ZernikeFilter
 {
 public:
@@ -102,8 +110,8 @@ public:
       double zn[n_bins_];
       calc_zn_rad_c(order_, r, zn);
       for (int i = 0; i < n_bins_; i++) {
-        match.bins.push_back(i+1);
-        match.weights.push_back(zn[i]);
+        match.bins_.push_back(i+1);
+        match.weights_.push_back(zn[i]);
       }
     }
   }

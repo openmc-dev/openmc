@@ -450,35 +450,35 @@ extern "C" {
 
   void
   filter_match_bins_push_back(TallyFilterMatch* match, int val)
-  {match->bins.push_back(val);}
+  {match->bins_.push_back(val);}
 
   void
   filter_match_weights_push_back(TallyFilterMatch* match, double val)
-  {match->weights.push_back(val);}
+  {match->weights_.push_back(val);}
 
   void
   filter_match_bins_clear(TallyFilterMatch* match)
-  {match->bins.clear();}
+  {match->bins_.clear();}
 
   void
   filter_match_weights_clear(TallyFilterMatch* match)
-  {match->weights.clear();}
+  {match->weights_.clear();}
 
   int
   filter_match_bins_size(TallyFilterMatch* match)
-  {return match->bins.size();}
+  {return match->bins_.size();}
 
   int
   filter_match_bins_data(TallyFilterMatch* match, int indx)
-  {return match->bins.at(indx-1);}
+  {return match->bins_[indx-1];}
 
   double
   filter_match_weights_data(TallyFilterMatch* match, int indx)
-  {return match->weights.at(indx-1);}
+  {return match->weights_[indx-1];}
 
   void
   filter_match_bins_set_data(TallyFilterMatch* match, int indx, int val)
-  {match->bins.at(indx-1) = val;}
+  {match->bins_[indx-1] = val;}
 
   TallyFilter*
   allocate_filter(const char* type)

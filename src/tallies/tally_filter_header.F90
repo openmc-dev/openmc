@@ -7,7 +7,6 @@ module tally_filter_header
   use error
   use hdf5_interface,  only: HID_T
   use particle_header, only: Particle
-  use stl_vector,      only: VectorInt, VectorReal
   use string,          only: to_str
   use xml_interface,   only: XMLNode
 
@@ -125,25 +124,6 @@ module tally_filter_header
   end interface
 
 !===============================================================================
-!===============================================================================
-
-  type, public, abstract, extends(TallyFilter) :: CppTallyFilter
-    type(C_PTR) :: ptr
-  contains
-    procedure :: n_bins_cpp
-    procedure :: from_xml_cpp_inner
-    procedure :: get_all_bins_cpp_inner
-    procedure :: to_statepoint_cpp_inner
-    procedure :: text_label_cpp_inner
-    procedure :: initialize_cpp_inner
-    procedure :: from_xml => from_xml_cpp_default
-    procedure :: get_all_bins => get_all_bins_cpp_default
-    procedure :: to_statepoint => to_statepoint_cpp_default
-    procedure :: text_label => text_label_cpp_default
-    procedure :: initialize => initialize_cpp_default
-  end type CppTallyFilter
-
-!===============================================================================
 ! TALLYFILTERCONTAINER contains an allocatable TallyFilter object for arrays of
 ! TallyFilters
 !===============================================================================
@@ -168,6 +148,7 @@ module tally_filter_header
 contains
 
 !===============================================================================
+! TallyFilterMatch implementation
 !===============================================================================
 
   subroutine bins_push_back(this, val)
@@ -285,130 +266,6 @@ contains
   end subroutine filter_initialize
 
 !===============================================================================
-
-  function n_bins_cpp(this) result(n_bins)
-    class(CppTallyFilter), intent(inout) :: this
-    integer                              :: n_bins
-    interface
-      function filter_n_bins(filt) result(n_bins) bind(C)
-        import C_PTR, C_INT
-        type(C_PTR), value :: filt
-        integer(C_INT)     :: n_bins
-      end function filter_n_bins
-    end interface
-    n_bins = filter_n_bins(this % ptr)
-  end function n_bins_cpp
-
-  subroutine from_xml_cpp_inner(this, node)
-    class(CppTallyFilter), intent(inout) :: this
-    class(XMLNode),        intent(in)    :: node
-    interface
-      subroutine filter_from_xml(filt, node) bind(C)
-        import C_PTR
-        type(C_PTR), value :: filt
-        type(C_PTR) :: node
-      end subroutine filter_from_xml
-    end interface
-    call filter_from_xml(this % ptr, node % ptr)
-  end subroutine from_xml_cpp_inner
-
-  subroutine get_all_bins_cpp_inner(this, p, estimator, match)
-    class(CppTallyFilter), intent(in) :: this
-    type(Particle),     intent(in)    :: p
-    integer,            intent(in)    :: estimator
-    type(TallyFilterMatch), intent(inout) :: match
-    interface
-      subroutine filter_get_all_bins(filt, p, estimator, match) bind(C)
-        import C_PTR, Particle, C_INT
-        type(C_PTR),                value :: filt
-        type(Particle), intent(in)        :: p
-        integer(C_INT), intent(in), value :: estimator
-        type(C_PTR),                value :: match
-      end subroutine filter_get_all_bins
-    end interface
-    call filter_get_all_bins(this % ptr, p, estimator, match % ptr)
-  end subroutine get_all_bins_cpp_inner
-
-  subroutine to_statepoint_cpp_inner(this, filter_group)
-    class(CppTallyFilter), intent(in) :: this
-    integer(HID_T),        intent(in) :: filter_group
-    interface
-      subroutine filter_to_statepoint(filt, filter_group) bind(C)
-        import C_PTR, HID_T
-        type(C_PTR),                value :: filt
-        integer(HID_T), intent(in), value :: filter_group
-      end subroutine filter_to_statepoint
-    end interface
-    call filter_to_statepoint(this % ptr, filter_group)
-  end subroutine to_statepoint_cpp_inner
-
-  function text_label_cpp_inner(this, bin) result(label)
-    class(CppTallyFilter), intent(in) :: this
-    integer,               intent(in) :: bin
-    character(MAX_LINE_LEN)           :: label
-    character(kind=C_CHAR)            :: label_(MAX_LINE_LEN+1)
-    integer :: i
-    interface
-      subroutine filter_text_label(filt, bin, label) bind(C)
-        import C_PTR, C_INT, C_CHAR
-        type(C_PTR), value     :: filt
-        integer(C_INT), value  :: bin
-        character(kind=C_CHAR) :: label(*)
-      end subroutine filter_text_label
-    end interface
-    call filter_text_label(this % ptr, bin, label_)
-    label = " "
-    do i = 1, MAX_LINE_LEN
-      if (label_(i) == C_NULL_CHAR) exit
-      label(i:i) = label_(i)
-    end do
-  end function text_label_cpp_inner
-
-  subroutine initialize_cpp_inner(this)
-    class(CppTallyFilter), intent(inout) :: this
-    interface
-      subroutine filter_initialize(filt) bind(C)
-        import C_PTR
-        type(C_PTR), value :: filt
-      end subroutine filter_initialize
-    end interface
-    call filter_initialize(this % ptr)
-  end subroutine initialize_cpp_inner
-
-  subroutine from_xml_cpp_default(this, node)
-    class(CppTallyFilter), intent(inout) :: this
-    type(XMLNode),         intent(in)    :: node
-    call this % from_xml_cpp_inner(node)
-    this % n_bins = this % n_bins_cpp()
-  end subroutine from_xml_cpp_default
-
-  subroutine get_all_bins_cpp_default(this, p, estimator, match)
-    class(CppTallyFilter), intent(in) :: this
-    type(Particle),     intent(in)    :: p
-    integer,            intent(in)    :: estimator
-    type(TallyFilterMatch), intent(inout) :: match
-    call this % get_all_bins_cpp_inner(p, estimator, match)
-  end subroutine get_all_bins_cpp_default
-
-  subroutine to_statepoint_cpp_default(this, filter_group)
-    class(CppTallyFilter), intent(in) :: this
-    integer(HID_T),        intent(in) :: filter_group
-    call this % to_statepoint_cpp_inner(filter_group)
-  end subroutine to_statepoint_cpp_default
-
-  function text_label_cpp_default(this, bin) result(label)
-    class(CppTallyFilter), intent(in) :: this
-    integer,               intent(in) :: bin
-    character(MAX_LINE_LEN)           :: label
-    label = this % text_label_cpp_inner(bin)
-  end function text_label_cpp_default
-
-  subroutine initialize_cpp_default(this)
-    class(CppTallyFilter), intent(inout) :: this
-    call this % initialize_cpp_inner()
-  end subroutine initialize_cpp_default
-
-!===============================================================================
 ! FREE_MEMORY_TALLY_FILTER deallocates global arrays defined in this module
 !===============================================================================
 
@@ -439,33 +296,6 @@ contains
       call set_errmsg("Index in filters array out of bounds.")
     end if
   end function verify_filter
-
-!===============================================================================
-! FILTER_FROM_F given a Fortran index, return a pointer to a C++ filter.
-!===============================================================================
-
-  function filter_from_f(index) result(filt) bind(C)
-    integer(C_INT32_T), intent(in), value :: index
-    type(C_PTR) :: filt
-
-    filt = C_NULL_PTR
-    select type(f => filters(index) % obj)
-    class is (CppTallyFilter)
-      filt = f % ptr
-    end select
-  end function
-
-!===============================================================================
-! FILTER_UPDATE_N_BINS updates filt % n_bins using C++.
-!===============================================================================
-
-  subroutine filter_update_n_bins(index) bind(C)
-    integer(C_INT32_T), intent(in), value :: index
-    select type(f => filters(index) % obj)
-    class is (CppTallyFilter)
-      f % n_bins = f % n_bins_cpp()
-    end select
-  end subroutine
 
 !===============================================================================
 !                               C API FUNCTIONS

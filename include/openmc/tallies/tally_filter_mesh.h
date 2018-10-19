@@ -12,6 +12,12 @@
 
 namespace openmc {
 
+//==============================================================================
+//! Indexes the location of particle events to a regular mesh.  For tracklength
+//! tallies, it will produce multiple valid bins and the bin weight will
+//! correspond to the fraction of the track length that lies in that bin.
+//==============================================================================
+
 class MeshFilter : public TallyFilter
 {
 public:
@@ -49,11 +55,11 @@ public:
     if (estimator != ESTIMATOR_TRACKLENGTH) {
       auto bin = meshes[mesh_]->get_bin(p->coord[0].xyz);
       if (bin >= 0) {
-        match.bins.push_back(bin);
-        match.weights.push_back(1.0);
+        match.bins_.push_back(bin);
+        match.weights_.push_back(1.0);
       }
     } else {
-      meshes[mesh_]->bins_crossed(p, match.bins, match.weights);
+      meshes[mesh_]->bins_crossed(p, match.bins_, match.weights_);
     }
   }
 

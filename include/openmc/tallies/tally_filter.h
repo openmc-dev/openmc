@@ -32,10 +32,10 @@ extern std::vector<TallyFilter*> tally_filters;
 class TallyFilterMatch
 {
 public:
-  //int i_bin;
-  std::vector<int> bins;
-  std::vector<double> weights;
-  //bool bins_present;
+  //int i_bin_;
+  std::vector<int> bins_;
+  std::vector<double> weights_;
+  //bool bins_present_;
 };
 
 //==============================================================================
@@ -49,11 +49,17 @@ public:
 
   virtual ~TallyFilter() = 0;
 
+  //! Uses an XML input to fill the filter's data fields.
   virtual void from_xml(pugi::xml_node node) = 0;
 
+  //! Matches a tally event to a set of filter bins and weights.
+  //!
+  //! \param[out] match will contain the matching bins and corresponding
+  //!   weights; note that there may be zero matching bins
   virtual void
   get_all_bins(Particle* p, int estimator, TallyFilterMatch& match) const = 0;
 
+  //! Writes data describing this filter to an HDF5 statepoint group.
   virtual void
   to_statepoint(hid_t filter_group) const
   {
@@ -61,6 +67,10 @@ public:
     write_dataset(filter_group, "n_bins", n_bins_);
   }
 
+  //! Return a string describing a filter bin for the tallies.out file.
+  //
+  //! For example, an `EnergyFilter` might return the string
+  //! "Incoming Energy [0.625E-6, 20.0)".
   virtual std::string text_label(int bin) const = 0;
 
   virtual void initialize() {}

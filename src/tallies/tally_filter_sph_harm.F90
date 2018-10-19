@@ -2,18 +2,13 @@ module tally_filter_sph_harm
 
   use, intrinsic :: ISO_C_BINDING
 
-  use tally_filter_header
+  use tally_filter_cpp
 
   implicit none
   private
 
   integer, public, parameter :: COSINE_SCATTER = 1
   integer, public, parameter :: COSINE_PARTICLE = 2
-
-!===============================================================================
-! SPHERICALHARMONICSFILTER gives spherical harmonics expansion moments of a
-! tally score
-!===============================================================================
 
   type, public, extends(CppTallyFilter) :: SphericalHarmonicsFilter
   contains

@@ -13,6 +13,10 @@
 
 namespace openmc {
 
+//==============================================================================
+//! Specifies which geometric cells tally events reside in.
+//==============================================================================
+
 class CellFilter : public TallyFilter
 {
 public:
@@ -54,8 +58,8 @@ public:
       auto search = map_.find(p->coord[i].cell);
       if (search != map_.end()) {
         // TODO: off-by-one
-        match.bins.push_back(search->second + 1);
-        match.weights.push_back(1);
+        match.bins_.push_back(search->second + 1);
+        match.weights_.push_back(1);
       }
     }
   }

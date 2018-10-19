@@ -29,8 +29,8 @@ public:
   get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
   const override
   {
-    meshes[mesh_]->surface_bins_crossed(p, match.bins);
-    for (auto b : match.bins) match.weights.push_back(1.0);
+    meshes[mesh_]->surface_bins_crossed(p, match.bins_);
+    for (auto b : match.bins_) match.weights_.push_back(1.0);
   }
 
   virtual std::string

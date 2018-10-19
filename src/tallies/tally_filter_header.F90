@@ -424,8 +424,8 @@ contains
 ! array is sufficient and a filter object has already been allocated.
 !===============================================================================
 
-  function verify_filter(index) result(err)
-    integer(C_INT32_T), intent(in) :: index
+  function verify_filter(index) result(err) bind(C)
+    integer(C_INT32_T), intent(in), value :: index
     integer(C_INT) :: err
 
     err = 0
@@ -439,6 +439,33 @@ contains
       call set_errmsg("Index in filters array out of bounds.")
     end if
   end function verify_filter
+
+!===============================================================================
+! FILTER_FROM_F given a Fortran index, return a pointer to a C++ filter.
+!===============================================================================
+
+  function filter_from_f(index) result(filt) bind(C)
+    integer(C_INT32_T), intent(in), value :: index
+    type(C_PTR) :: filt
+
+    filt = C_NULL_PTR
+    select type(f => filters(index) % obj)
+    class is (CppTallyFilter)
+      filt = f % ptr
+    end select
+  end function
+
+!===============================================================================
+! FILTER_UPDATE_N_BINS updates filt % n_bins using C++.
+!===============================================================================
+
+  subroutine filter_update_n_bins(index) bind(C)
+    integer(C_INT32_T), intent(in), value :: index
+    select type(f => filters(index) % obj)
+    class is (CppTallyFilter)
+      f % n_bins = f % n_bins_cpp()
+    end select
+  end subroutine
 
 !===============================================================================
 !                               C API FUNCTIONS

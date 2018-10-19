@@ -4,10 +4,15 @@
 Windowed Multipole Library Format
 =================================
 
-**/version** (*char[]*)
-  The format version of the file.  The current version is "v1.0"
+**/**
 
-**/nuclide/**
+:Attributes: - **filetype** (*char[]*) -- String indicating the type of file
+             - **version** (*int[2]*) -- Major and minor version of the data
+
+**/<nuclide name>/**
+
+:Datasets:
+
     - **broaden_poly** (*int[]*)
         If 1, Doppler broaden curve fit for window with corresponding index.
         If 0, do not.

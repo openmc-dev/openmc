@@ -2,20 +2,12 @@ module eigenvalue
 
   use, intrinsic :: ISO_C_BINDING
 
-  use message_passing
-  use settings
+  use bank_header
   use simulation_header
-  use tally_header
 
   implicit none
 
   interface
-    subroutine calculate_generation_keff() bind(C)
-    end subroutine
-
-    subroutine calculate_average_keff() bind(C)
-    end subroutine
-
     function openmc_get_keff(k_combined) result(err) bind(C)
       import C_INT, C_DOUBLE
       real(C_DOUBLE), intent(out) :: k_combined(2)

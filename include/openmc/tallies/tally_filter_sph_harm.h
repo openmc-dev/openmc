@@ -29,8 +29,6 @@ public:
 
     if (check_for_node(node, "cosine")) {
       auto cos = get_node_value(node, "cosine", true);
-      std::cout << cos << "\n";
-      std::cout << (cos == "scatter") << " " << (cos == "particle") << "\n";
       if (cos == "scatter") {
         cosine_ = SphericalHarmonicsCosine::scatter;
       } else if (cos == "particle") {

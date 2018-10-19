@@ -11,8 +11,10 @@ import tkinter.font as font
 import tkinter.messagebox as messagebox
 import tkinter.ttk as ttk
 
+import matplotlib
+matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.backends.backend_tkagg import NavigationToolbar2TkAgg
+from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import numpy as np
@@ -56,7 +58,7 @@ class MeshPlotter(tk.Frame):
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
         # Create the navigation toolbar, tied to the canvas
-        self.mpl_toolbar = NavigationToolbar2TkAgg(self.canvas, figureFrame)
+        self.mpl_toolbar = NavigationToolbar2Tk(self.canvas, figureFrame)
         self.mpl_toolbar.update()
         self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 

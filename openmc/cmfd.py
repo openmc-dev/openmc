@@ -1208,7 +1208,7 @@ class CMFDRun(object):
         self._hxyz = np.zeros((nx, ny, nz, 3))
 
         # Allocate surface currents
-        self._current = np.zeros((nx, ny, nz, ng, 12))
+        self._current = np.zeros((nx, ny, nz, 12, ng))
 
         # Allocate source distributions
         self._cmfd_src = np.zeros((nx, ny, nz, ng))
@@ -2523,11 +2523,10 @@ class CMFDRun(object):
         # Reshape current array to target shape. Swap x and z axes so that
         # shape is now [nx, ny, nz, ng, 12]
         reshape_current = np.swapaxes(current.reshape(target_tally_shape), 0, 2)
-        reshape_current = np.swapaxes(reshape_current, 3, 4)
 
         # Current is flipped in energy axis as tally results are given in
         # reverse order of energy group
-        self._current = np.flip(reshape_current, axis=3)
+        self._current = np.flip(reshape_current, axis=4)
 
         # Get p1 scatter xs from CMFD tally 3
         tally_id = self._cmfd_tally_ids[3]
@@ -2607,18 +2606,18 @@ class CMFDRun(object):
         keff = openmc.capi.keff_temp()[0]
 
         # Define leakage in each mesh cell and energy group
-        leakage = ((self._current[:,:,:,:,_CURRENTS['out_right']] - \
-            self._current[:,:,:,:,_CURRENTS['in_right']]) - \
-            (self._current[:,:,:,:,_CURRENTS['in_left']] - \
-            self._current[:,:,:,:,_CURRENTS['out_left']])) + \
-            ((self._current[:,:,:,:,_CURRENTS['out_front']] - \
-            self._current[:,:,:,:,_CURRENTS['in_front']]) - \
-            (self._current[:,:,:,:,_CURRENTS['in_back']] - \
-            self._current[:,:,:,:,_CURRENTS['out_back']])) + \
-            ((self._current[:,:,:,:,_CURRENTS['out_top']] - \
-            self._current[:,:,:,:,_CURRENTS['in_top']]) - \
-            (self._current[:,:,:,:,_CURRENTS['in_bottom']] - \
-            self._current[:,:,:,:,_CURRENTS['out_bottom']]))
+        leakage = ((self._current[:,:,:,_CURRENTS['out_right'],:] - \
+            self._current[:,:,:,_CURRENTS['in_right'],:]) - \
+            (self._current[:,:,:,_CURRENTS['in_left'],:] - \
+            self._current[:,:,:,_CURRENTS['out_left'],:])) + \
+            ((self._current[:,:,:,_CURRENTS['out_front'],:] - \
+            self._current[:,:,:,_CURRENTS['in_front'],:]) - \
+            (self._current[:,:,:,_CURRENTS['in_back'],:] - \
+            self._current[:,:,:,_CURRENTS['out_back'],:])) + \
+            ((self._current[:,:,:,_CURRENTS['out_top'],:] - \
+            self._current[:,:,:,_CURRENTS['in_top'],:]) - \
+            (self._current[:,:,:,_CURRENTS['in_bottom'],:] - \
+            self._current[:,:,:,_CURRENTS['out_bottom'],:]))
 
         # Compute total rr
         interactions = self._totalxs * self._flux
@@ -2727,10 +2726,10 @@ class CMFDRun(object):
 
         # Define reflector albedo for all cells on the left surface, in case
         # a cell borders a reflector region on the left
-        ref_albedo = np.divide(self._current[:,:,:,:,_CURRENTS['in_left']],
-                self._current[:,:,:,:,_CURRENTS['out_left']],
-                where=self._current[:,:,:,:,_CURRENTS['out_left']] > 1.0e-10,
-                out=np.ones_like(self._current[:,:,:,:,_CURRENTS['out_left']]))
+        ref_albedo = np.divide(self._current[:,:,:,_CURRENTS['in_left'],:],
+                self._current[:,:,:,_CURRENTS['out_left'],:],
+                where=self._current[:,:,:,_CURRENTS['out_left'],:] > 1.0e-10,
+                out=np.ones_like(self._current[:,:,:,_CURRENTS['out_left'],:]))
         # Logical for whether neighboring cell to the left is reflector region
         adj_reflector = np.roll(self._coremap, 1, axis=0) == _CMFD_NOACCEL
         # Diffusion coefficient of neighbor to left
@@ -2753,10 +2752,10 @@ class CMFDRun(object):
 
         # Define reflector albedo for all cells on the right surface, in case
         # a cell borders a reflector region on the right
-        ref_albedo = np.divide(self._current[:,:,:,:,_CURRENTS['in_right']],
-                self._current[:,:,:,:,_CURRENTS['out_right']],
-                where=self._current[:,:,:,:,_CURRENTS['out_right']] > 1.0e-10,
-                out=np.ones_like(self._current[:,:,:,:,_CURRENTS['out_right']]))
+        ref_albedo = np.divide(self._current[:,:,:,_CURRENTS['in_right'],:],
+                self._current[:,:,:,_CURRENTS['out_right'],:],
+                where=self._current[:,:,:,_CURRENTS['out_right'],:] > 1.0e-10,
+                out=np.ones_like(self._current[:,:,:,_CURRENTS['out_right'],:]))
         # Logical for whether neighboring cell to the right is reflector region
         adj_reflector = np.roll(self._coremap, -1, axis=0) == _CMFD_NOACCEL
         # Diffusion coefficient of neighbor to right
@@ -2779,10 +2778,10 @@ class CMFDRun(object):
 
         # Define reflector albedo for all cells on the back surface, in case
         # a cell borders a reflector region on the back
-        ref_albedo = np.divide(self._current[:,:,:,:,_CURRENTS['in_back']],
-                self._current[:,:,:,:,_CURRENTS['out_back']],
-                where=self._current[:,:,:,:,_CURRENTS['out_back']] > 1.0e-10,
-                out=np.ones_like(self._current[:,:,:,:,_CURRENTS['out_back']]))
+        ref_albedo = np.divide(self._current[:,:,:,_CURRENTS['in_back'],:],
+                self._current[:,:,:,_CURRENTS['out_back'],:],
+                where=self._current[:,:,:,_CURRENTS['out_back'],:] > 1.0e-10,
+                out=np.ones_like(self._current[:,:,:,_CURRENTS['out_back'],:]))
         # Logical for whether neighboring cell to the back is reflector region
         adj_reflector = np.roll(self._coremap, 1, axis=1) == _CMFD_NOACCEL
         # Diffusion coefficient of neighbor to back
@@ -2805,10 +2804,10 @@ class CMFDRun(object):
 
         # Define reflector albedo for all cells on the front surface, in case
         # a cell borders a reflector region in the front
-        ref_albedo = np.divide(self._current[:,:,:,:,_CURRENTS['in_front']],
-                self._current[:,:,:,:,_CURRENTS['out_front']],
-                where=self._current[:,:,:,:,_CURRENTS['out_front']] > 1.0e-10,
-                out=np.ones_like(self._current[:,:,:,:,_CURRENTS['out_front']]))
+        ref_albedo = np.divide(self._current[:,:,:,_CURRENTS['in_front'],:],
+                self._current[:,:,:,_CURRENTS['out_front'],:],
+                where=self._current[:,:,:,_CURRENTS['out_front'],:] > 1.0e-10,
+                out=np.ones_like(self._current[:,:,:,_CURRENTS['out_front'],:]))
         # Logical for whether neighboring cell to the front is reflector region
         adj_reflector = np.roll(self._coremap, -1, axis=1) == _CMFD_NOACCEL
         # Diffusion coefficient of neighbor to front
@@ -2831,10 +2830,10 @@ class CMFDRun(object):
 
         # Define reflector albedo for all cells on the bottom surface, in case
         # a cell borders a reflector region on the bottom
-        ref_albedo = np.divide(self._current[:,:,:,:,_CURRENTS['in_bottom']],
-                self._current[:,:,:,:,_CURRENTS['out_bottom']],
-                where=self._current[:,:,:,:,_CURRENTS['out_bottom']] > 1.0e-10,
-                out=np.ones_like(self._current[:,:,:,:,_CURRENTS['out_bottom']]))
+        ref_albedo = np.divide(self._current[:,:,:,_CURRENTS['in_bottom'],:],
+                self._current[:,:,:,_CURRENTS['out_bottom'],:],
+                where=self._current[:,:,:,_CURRENTS['out_bottom'],:] > 1.0e-10,
+                out=np.ones_like(self._current[:,:,:,_CURRENTS['out_bottom'],:]))
         # Logical for whether neighboring cell to the bottom is reflector region
         adj_reflector = np.roll(self._coremap, 1, axis=2) == _CMFD_NOACCEL
         # Diffusion coefficient of neighbor to bottom
@@ -2857,10 +2856,10 @@ class CMFDRun(object):
 
         # Define reflector albedo for all cells on the top surface, in case
         # a cell borders a reflector region on the top
-        ref_albedo = np.divide(self._current[:,:,:,:,_CURRENTS['in_top']],
-                self._current[:,:,:,:,_CURRENTS['out_top']],
-                where=self._current[:,:,:,:,_CURRENTS['out_top']] > 1.0e-10,
-                out=np.ones_like(self._current[:,:,:,:,_CURRENTS['out_top']]))
+        ref_albedo = np.divide(self._current[:,:,:,_CURRENTS['in_top'],:],
+                self._current[:,:,:,_CURRENTS['out_top'],:],
+                where=self._current[:,:,:,_CURRENTS['out_top'],:] > 1.0e-10,
+                out=np.ones_like(self._current[:,:,:,_CURRENTS['out_top'],:]))
         # Logical for whether neighboring cell to the top is reflector region
         adj_reflector = np.roll(self._coremap, -1, axis=2) == _CMFD_NOACCEL
         # Diffusion coefficient of neighbor to top
@@ -2967,28 +2966,28 @@ class CMFDRun(object):
 
         """
         # Define net current on each face, divided by surface area
-        net_current_left = ((self._current[:,:,:,:,_CURRENTS['in_left']] - \
-                             self._current[:,:,:,:,_CURRENTS['out_left']]) / \
+        net_current_left = ((self._current[:,:,:,_CURRENTS['in_left'],:] - \
+                             self._current[:,:,:,_CURRENTS['out_left'],:]) / \
                              np.prod(self._hxyz, axis=3)[:,:,:,np.newaxis] * \
                              self._hxyz[:,:,:,np.newaxis,0])
-        net_current_right = ((self._current[:,:,:,:,_CURRENTS['out_right']] - \
-                             self._current[:,:,:,:,_CURRENTS['in_right']]) / \
+        net_current_right = ((self._current[:,:,:,_CURRENTS['out_right'],:] - \
+                             self._current[:,:,:,_CURRENTS['in_right'],:]) / \
                              np.prod(self._hxyz, axis=3)[:,:,:,np.newaxis] * \
                              self._hxyz[:,:,:,np.newaxis,0])
-        net_current_back = ((self._current[:,:,:,:,_CURRENTS['in_back']] - \
-                             self._current[:,:,:,:,_CURRENTS['out_back']]) / \
+        net_current_back = ((self._current[:,:,:,_CURRENTS['in_back'],:] - \
+                             self._current[:,:,:,_CURRENTS['out_back'],:]) / \
                              np.prod(self._hxyz, axis=3)[:,:,:,np.newaxis] * \
                              self._hxyz[:,:,:,np.newaxis,1])
-        net_current_front = ((self._current[:,:,:,:,_CURRENTS['out_front']] - \
-                             self._current[:,:,:,:,_CURRENTS['in_front']]) / \
+        net_current_front = ((self._current[:,:,:,_CURRENTS['out_front'],:] - \
+                             self._current[:,:,:,_CURRENTS['in_front'],:]) / \
                              np.prod(self._hxyz, axis=3)[:,:,:,np.newaxis] * \
                              self._hxyz[:,:,:,np.newaxis,1])
-        net_current_bottom = ((self._current[:,:,:,:,_CURRENTS['in_bottom']] - \
-                             self._current[:,:,:,:,_CURRENTS['out_bottom']]) / \
+        net_current_bottom = ((self._current[:,:,:,_CURRENTS['in_bottom'],:] - \
+                             self._current[:,:,:,_CURRENTS['out_bottom'],:]) / \
                              np.prod(self._hxyz, axis=3)[:,:,:,np.newaxis] * \
                              self._hxyz[:,:,:,np.newaxis,2])
-        net_current_top = ((self._current[:,:,:,:,_CURRENTS['out_top']] - \
-                             self._current[:,:,:,:,_CURRENTS['in_top']]) / \
+        net_current_top = ((self._current[:,:,:,_CURRENTS['out_top'],:] - \
+                             self._current[:,:,:,_CURRENTS['in_top'],:]) / \
                              np.prod(self._hxyz, axis=3)[:,:,:,np.newaxis] * \
                              self._hxyz[:,:,:,np.newaxis,2])
 
@@ -3132,7 +3131,7 @@ class CMFDRun(object):
                         # Get cell data
                         cell_dtilde = self._dtilde[i,j,k,g,:]
                         cell_flux = self._flux[i,j,k,g]/np.product(self._hxyz[i,j,k,:])
-                        current = self._current[i,j,k,g,:]
+                        current = self._current[i,j,k,:,g]
 
                         # Setup of vector to identify boundary conditions
                         bound = np.repeat([i,j,k], 2)
@@ -3212,7 +3211,7 @@ class CMFDRun(object):
 
         """
         # Get partial currents from object
-        current = self._current[i,j,k,g,:]
+        current = self._current[i,j,k,:,g]
 
         # Calculate albedo
         if current[2*l] < 1.0e-10:

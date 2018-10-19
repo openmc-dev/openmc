@@ -28,7 +28,6 @@ module constants
   integer, parameter :: VERSION_VOLUME(2)           = [1, 0]
   integer, parameter :: VERSION_VOXEL(2)            = [1, 0]
   integer, parameter :: VERSION_MGXS_LIBRARY(2)     = [1, 0]
-  character(10), parameter :: VERSION_MULTIPOLE     = "v1.0"
 
   ! ============================================================================
   ! ADJUSTABLE PARAMETERS

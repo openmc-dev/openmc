@@ -22,6 +22,7 @@ module input_xml
   use mgxs_data,        only: create_macro_xs, read_mgxs
   use mgxs_interface
   use nuclide_header
+  use multipole_header
   use output,           only: title, header, print_plot
   use photon_header
   use plot_header
@@ -3110,7 +3111,9 @@ contains
 
     logical :: file_exists                 ! Does multipole library exist?
     character(7) :: readable               ! Is multipole library readable?
-    character(MAX_FILE_LEN) :: filename  ! Path to multipole xs library
+    character(MAX_FILE_LEN) :: filename    ! Path to multipole xs library
+    integer(HID_T) :: file_id
+    integer(HID_T) :: group_id
 
     ! For the time being, and I know this is a bit hacky, we just assume
     ! that the file will be ZZZAAAmM.h5.
@@ -3136,13 +3139,21 @@ contains
       end if
 
       ! Display message
-      call write_message("Loading Multipole XS table: " // filename, 6)
+      call write_message("Loading Windowed Multipole XS from " // filename, 6)
 
+      ! Open file and make sure version is sufficient
+      file_id = file_open(filename, 'r')
+      call check_wmp_version(file_id)
+
+      ! Read nuclide data from HDF5
+      group_id = open_group(file_id, nuc % name)
       allocate(nuc % multipole)
-
-      ! Call the read routine
-      call nuc % multipole % from_hdf5(filename)
+      call nuc % multipole % from_hdf5(group_id)
       nuc % mp_present = .true.
+
+      ! Close the group and file.
+      call close_group(group_id)
+      call file_close(file_id)
 
     end associate
 

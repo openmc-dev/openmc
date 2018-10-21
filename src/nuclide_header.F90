@@ -53,7 +53,7 @@ module nuclide_header
 
   type :: Nuclide
     ! Nuclide meta-data
-    character(20) :: name    ! name of nuclide, e.g. U235.71c
+    character(20) :: name    ! name of nuclide, e.g. U235
     integer       :: Z       ! atomic number
     integer       :: A       ! mass number
     integer       :: metastable ! metastable state

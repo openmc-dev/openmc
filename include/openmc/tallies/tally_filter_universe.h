@@ -20,18 +20,18 @@ namespace openmc {
 class UniverseFilter : public TallyFilter
 {
 public:
-  virtual std::string type() const override {return "universe";}
+  std::string type() const override {return "universe";}
 
-  virtual ~UniverseFilter() override = default;
+  ~UniverseFilter() = default;
 
-  virtual void
+  void
   from_xml(pugi::xml_node node) override
   {
     universes_ = get_node_array<int32_t>(node, "bins");
     n_bins_ = universes_.size();
   }
 
-  virtual void
+  void
   initialize() override
   {
     for (auto& u : universes_) {
@@ -51,7 +51,7 @@ public:
     }
   }
 
-  virtual void
+  void
   get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
   const override
   {
@@ -64,7 +64,7 @@ public:
     }
   }
 
-  virtual void
+  void
   to_statepoint(hid_t filter_group) const override
   {
     TallyFilter::to_statepoint(filter_group);
@@ -73,7 +73,7 @@ public:
     write_dataset(filter_group, "bins", universe_ids);
   }
 
-  virtual std::string
+  std::string
   text_label(int bin) const override
   {
     return "Universe " + std::to_string(universes[universes_[bin-1]]->id_);

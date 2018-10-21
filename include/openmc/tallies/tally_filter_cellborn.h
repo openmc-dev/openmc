@@ -12,9 +12,9 @@ namespace openmc {
 class CellbornFilter : public CellFilter
 {
 public:
-  virtual std::string type() const override {return "cellborn";}
+  std::string type() const override {return "cellborn";}
 
-  virtual void
+  void
   get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
   const override
   {
@@ -26,7 +26,7 @@ public:
     }
   }
 
-  virtual std::string
+  std::string
   text_label(int bin) const override
   {
     return "Birth Cell " + std::to_string(cells[cells_[bin-1]]->id_);

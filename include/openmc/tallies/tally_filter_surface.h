@@ -20,18 +20,18 @@ namespace openmc {
 class SurfaceFilter : public TallyFilter
 {
 public:
-  virtual std::string type() const override {return "surface";}
+  std::string type() const override {return "surface";}
 
-  virtual ~SurfaceFilter() override = default;
+  ~SurfaceFilter() = default;
 
-  virtual void
+  void
   from_xml(pugi::xml_node node) override
   {
     surfaces_ = get_node_array<int32_t>(node, "bins");
     n_bins_ = surfaces_.size();
   }
 
-  virtual void
+  void
   initialize() override
   {
     for (auto& s : surfaces_) {
@@ -51,7 +51,7 @@ public:
     }
   }
 
-  virtual void
+  void
   get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
   const override
   {
@@ -66,7 +66,7 @@ public:
     }
   }
 
-  virtual void
+  void
   to_statepoint(hid_t filter_group) const override
   {
     TallyFilter::to_statepoint(filter_group);
@@ -75,7 +75,7 @@ public:
     write_dataset(filter_group, "bins", surface_ids);
   }
 
-  virtual std::string
+  std::string
   text_label(int bin) const override
   {
     return "Surface " + std::to_string(surfaces[surfaces_[bin-1]]->id_);

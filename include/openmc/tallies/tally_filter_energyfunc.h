@@ -22,7 +22,7 @@ namespace openmc {
 class EnergyFunctionFilter : public TallyFilter
 {
 public:
-  virtual std::string type() const override {return "energyfunction";}
+  std::string type() const override {return "energyfunction";}
 
   EnergyFunctionFilter()
     : TallyFilter {}
@@ -30,9 +30,9 @@ public:
     n_bins_ = 1;
   }
 
-  virtual ~EnergyFunctionFilter() override = default;
+  ~EnergyFunctionFilter() = default;
 
-  virtual void
+  void
   from_xml(pugi::xml_node node) override
   {
     if (!settings::run_CE)
@@ -50,7 +50,7 @@ public:
     y_ = get_node_array<double>(node, "y");
   }
 
-  virtual void
+  void
   get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
   const override
   {
@@ -67,7 +67,7 @@ public:
     }
   }
 
-  virtual void
+  void
   to_statepoint(hid_t filter_group) const override
   {
     TallyFilter::to_statepoint(filter_group);
@@ -75,7 +75,7 @@ public:
     write_dataset(filter_group, "y", y_);
   }
 
-  virtual std::string
+  std::string
   text_label(int bin) const override
   {
     std::stringstream out;

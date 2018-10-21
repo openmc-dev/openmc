@@ -22,11 +22,11 @@ enum class LegendreAxis {
 class SpatialLegendreFilter : public TallyFilter
 {
 public:
-  virtual std::string type() const override {return "spatiallegendre";}
+  std::string type() const override {return "spatiallegendre";}
 
-  virtual ~SpatialLegendreFilter() override = default;
+  ~SpatialLegendreFilter() = default;
 
-  virtual void
+  void
   from_xml(pugi::xml_node node) override
   {
     order_ = std::stoi(get_node_value(node, "order"));
@@ -48,7 +48,7 @@ public:
     n_bins_ = order_ + 1;
   }
 
-  virtual void
+  void
   get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
   const override
   {
@@ -76,7 +76,7 @@ public:
     }
   }
 
-  virtual void
+  void
   to_statepoint(hid_t filter_group) const override
   {
     TallyFilter::to_statepoint(filter_group);
@@ -92,7 +92,7 @@ public:
     write_dataset(filter_group, "max", max_);
   }
 
-  virtual std::string
+  std::string
   text_label(int bin) const override
   {
     std::stringstream out;

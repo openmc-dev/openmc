@@ -21,11 +21,11 @@ namespace openmc {
 class MeshFilter : public TallyFilter
 {
 public:
-  virtual std::string type() const override {return "mesh";}
+  std::string type() const override {return "mesh";}
 
-  virtual ~MeshFilter() override = default;
+  ~MeshFilter() = default;
 
-  virtual void
+  void
   from_xml(pugi::xml_node node) override
   {
     auto bins_ = get_node_array<int32_t>(node, "bins");
@@ -48,7 +48,7 @@ public:
     for (auto dim : meshes[mesh_]->shape_) n_bins_ *= dim;
   }
 
-  virtual void
+  void
   get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
   const override
   {
@@ -63,14 +63,14 @@ public:
     }
   }
 
-  virtual void
+  void
   to_statepoint(hid_t filter_group) const override
   {
     TallyFilter::to_statepoint(filter_group);
     write_dataset(filter_group, "bins", meshes[mesh_]->id_);
   }
 
-  virtual std::string
+  std::string
   text_label(int bin) const override
   {
     auto& mesh = *meshes[mesh_];

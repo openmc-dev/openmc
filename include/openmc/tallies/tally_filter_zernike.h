@@ -46,7 +46,7 @@ public:
     if (r <= 1.0) {
       // Compute and return the Zernike weights.
       double zn[n_bins_];
-      calc_zn_c(order_, r, theta, zn);
+      calc_zn(order_, r, theta, zn);
       for (int i = 0; i < n_bins_; i++) {
         match.bins_.push_back(i+1);
         match.weights_.push_back(zn[i]);
@@ -106,7 +106,7 @@ public:
     if (r <= 1.0) {
       // Compute and return the Zernike weights.
       double zn[n_bins_];
-      calc_zn_rad_c(order_, r, zn);
+      calc_zn_rad(order_, r, zn);
       for (int i = 0; i < n_bins_; i++) {
         match.bins_.push_back(i+1);
         match.weights_.push_back(zn[i]);

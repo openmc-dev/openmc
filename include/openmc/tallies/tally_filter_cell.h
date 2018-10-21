@@ -20,18 +20,18 @@ namespace openmc {
 class CellFilter : public TallyFilter
 {
 public:
-  virtual std::string type() const override {return "cell";}
+  std::string type() const override {return "cell";}
 
-  virtual ~CellFilter() override = default;
+  ~CellFilter() = default;
 
-  virtual void
+  void
   from_xml(pugi::xml_node node) override
   {
     cells_ = get_node_array<int32_t>(node, "bins");
     n_bins_ = cells_.size();
   }
 
-  virtual void
+  void
   initialize() override
   {
     for (auto& c : cells_) {
@@ -50,7 +50,7 @@ public:
     }
   }
 
-  virtual void
+  void
   get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
   const override
   {
@@ -64,7 +64,7 @@ public:
     }
   }
 
-  virtual void
+  void
   to_statepoint(hid_t filter_group) const override
   {
     TallyFilter::to_statepoint(filter_group);
@@ -73,7 +73,7 @@ public:
     write_dataset(filter_group, "bins", cell_ids);
   }
 
-  virtual std::string
+  std::string
   text_label(int bin) const override
   {
     return "Cell " + std::to_string(cells[cells_[bin-1]]->id_);

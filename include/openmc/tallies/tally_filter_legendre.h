@@ -18,18 +18,18 @@ namespace openmc {
 class LegendreFilter : public TallyFilter
 {
 public:
-  virtual std::string type() const override {return "legendre";}
+  std::string type() const override {return "legendre";}
 
-  virtual ~LegendreFilter() override = default;
+  ~LegendreFilter() = default;
 
-  virtual void
+  void
   from_xml(pugi::xml_node node) override
   {
     order_ = std::stoi(get_node_value(node, "order"));
     n_bins_ = order_ + 1;
   }
 
-  virtual void
+  void
   get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
   const override
   {
@@ -41,14 +41,14 @@ public:
     }
   }
 
-  virtual void
+  void
   to_statepoint(hid_t filter_group) const override
   {
     TallyFilter::to_statepoint(filter_group);
     write_dataset(filter_group, "order", order_);
   }
 
-  virtual std::string
+  std::string
   text_label(int bin) const override
   {
     return "Legendre expansion, P" + std::to_string(bin - 1);

@@ -20,11 +20,11 @@ namespace openmc {
 class MuFilter : public TallyFilter
 {
 public:
-  virtual std::string type() const override {return "mu";}
+  std::string type() const override {return "mu";}
 
-  virtual ~MuFilter() override = default;
+  ~MuFilter() = default;
 
-  virtual void
+  void
   from_xml(pugi::xml_node node) override
   {
     auto bins = get_node_array<double>(node, "bins");
@@ -50,7 +50,7 @@ public:
     n_bins_ = bins_.size() - 1;
   }
 
-  virtual void
+  void
   get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
   const override
   {
@@ -61,14 +61,14 @@ public:
     }
   }
 
-  virtual void
+  void
   to_statepoint(hid_t filter_group) const override
   {
     TallyFilter::to_statepoint(filter_group);
     write_dataset(filter_group, "bins", bins_);
   }
 
-  virtual std::string
+  std::string
   text_label(int bin) const override
   {
     std::stringstream out;

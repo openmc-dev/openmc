@@ -19,11 +19,11 @@ namespace openmc {
 class DistribcellFilter : public TallyFilter
 {
 public:
-  virtual std::string type() const override {return "distribcell";}
+  std::string type() const override {return "distribcell";}
 
-  virtual ~DistribcellFilter() override = default;
+  ~DistribcellFilter() = default;
 
-  virtual void
+  void
   from_xml(pugi::xml_node node) override
   {
     auto cells = get_node_array<int32_t>(node, "bins");
@@ -33,7 +33,7 @@ public:
     cell_ = cells[0];
   }
 
-  virtual void
+  void
   initialize() override
   {
     auto search = cell_map.find(cell_);
@@ -48,7 +48,7 @@ public:
     }
   }
 
-  virtual void
+  void
   get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
   const override
   {
@@ -75,14 +75,14 @@ public:
     }
   }
 
-  virtual void
+  void
   to_statepoint(hid_t filter_group) const override
   {
     TallyFilter::to_statepoint(filter_group);
     write_dataset(filter_group, "bins", cells[cell_]->id_);
   }
 
-  virtual std::string
+  std::string
   text_label(int bin) const override
   {
     auto map = cells[cell_]->distribcell_index_;

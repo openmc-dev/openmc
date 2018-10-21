@@ -21,11 +21,11 @@ enum class SphericalHarmonicsCosine {
 class SphericalHarmonicsFilter : public TallyFilter
 {
 public:
-  virtual std::string type() const override {return "sphericalharmonics";}
+  std::string type() const override {return "sphericalharmonics";}
 
-  virtual ~SphericalHarmonicsFilter() override = default;
+  ~SphericalHarmonicsFilter() = default;
 
-  virtual void
+  void
   from_xml(pugi::xml_node node) override
   {
     order_ = std::stoi(get_node_value(node, "order"));
@@ -46,7 +46,7 @@ public:
     }
   }
 
-  virtual void
+  void
   get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
   const override
   {
@@ -75,7 +75,7 @@ public:
     }
   }
 
-  virtual void
+  void
   to_statepoint(hid_t filter_group) const override
   {
     TallyFilter::to_statepoint(filter_group);
@@ -87,7 +87,7 @@ public:
     }
   }
 
-  virtual std::string
+  std::string
   text_label(int bin) const override
   {
     std::stringstream out;

@@ -15,9 +15,9 @@ namespace openmc {
 class MeshSurfaceFilter : public MeshFilter
 {
 public:
-  virtual std::string type() const override {return "meshsurface";}
+  std::string type() const override {return "meshsurface";}
 
-  virtual void
+  void
   from_xml(pugi::xml_node node) override
   {
     MeshFilter::from_xml(node);
@@ -25,7 +25,7 @@ public:
     for (auto dim : meshes[mesh_]->shape_) n_bins_ *= dim;
   }
 
-  virtual void
+  void
   get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
   const override
   {
@@ -33,7 +33,7 @@ public:
     for (auto b : match.bins_) match.weights_.push_back(1.0);
   }
 
-  virtual std::string
+  std::string
   text_label(int bin) const override
   {
     auto& mesh = *meshes[mesh_];

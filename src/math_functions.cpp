@@ -510,7 +510,7 @@ void calc_rn_c(int n, const double uvw[3], double rn[]){
 }
 
 
-void calc_zn_c(int n, double rho, double phi, double zn[]) {
+void calc_zn(int n, double rho, double phi, double zn[]) {
   // ===========================================================================
   // Determine vector of sin(n*phi) and cos(n*phi). This takes advantage of the
   // following recurrence relations so that only a single sin/cos have to be
@@ -587,7 +587,7 @@ void calc_zn_c(int n, double rho, double phi, double zn[]) {
 
 }
 
-void calc_zn_rad_c(int n, double rho, double zn_rad[]) {
+void calc_zn_rad(int n, double rho, double zn_rad[]) {
   // Calculate R_p0(rho) as Zn_p0(rho)
   // Set up the array of the coefficients
 

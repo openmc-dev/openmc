@@ -44,7 +44,7 @@ public:
       double d_angle = 2.0 / n_angle;
       bins_.resize(n_angle + 1);
       for (int i = 0; i < n_angle; i++) bins_[i] = -1 + i * d_angle;
-      bins_[n_angle] = PI;
+      bins_[n_angle] = 1;
     }
 
     n_bins_ = bins_.size() - 1;

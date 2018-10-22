@@ -1,12 +1,12 @@
-#ifndef OPENMC_TALLY_FILTER_LEGENDRE_H
-#define OPENMC_TALLY_FILTER_LEGENDRE_H
+#ifndef OPENMC_TALLIES_FILTER_LEGENDRE_H
+#define OPENMC_TALLIES_FILTER_LEGENDRE_H
 
 #include <string>
 
 #include "openmc/cell.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
-#include "openmc/tallies/tally_filter.h"
+#include "openmc/tallies/filter.h"
 
 
 namespace openmc {
@@ -15,7 +15,7 @@ namespace openmc {
 //! Gives Legendre moments of the change in scattering angle
 //==============================================================================
 
-class LegendreFilter : public TallyFilter
+class LegendreFilter : public Filter
 {
 public:
   std::string type() const override {return "legendre";}
@@ -30,7 +30,7 @@ public:
   }
 
   void
-  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
+  get_all_bins(Particle* p, int estimator, FilterMatch& match)
   const override
   {
     double wgt[n_bins_];
@@ -44,7 +44,7 @@ public:
   void
   to_statepoint(hid_t filter_group) const override
   {
-    TallyFilter::to_statepoint(filter_group);
+    Filter::to_statepoint(filter_group);
     write_dataset(filter_group, "order", order_);
   }
 
@@ -58,4 +58,4 @@ public:
 };
 
 } // namespace openmc
-#endif // OPENMC_TALLY_FILTER_LEGENDRE_H
+#endif // OPENMC_TALLIES_FILTER_LEGENDRE_H

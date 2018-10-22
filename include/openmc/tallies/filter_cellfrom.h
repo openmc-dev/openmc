@@ -1,7 +1,7 @@
-#ifndef OPENMC_TALLY_FILTER_CELLFROM_H
-#define OPENMC_TALLY_FILTER_CELLFROM_H
+#ifndef OPENMC_TALLIES_FILTER_CELLFROM_H
+#define OPENMC_TALLIES_FILTER_CELLFROM_H
 
-#include "openmc/tallies/tally_filter_cell.h"
+#include "openmc/tallies/filter_cell.h"
 
 
 namespace openmc {
@@ -16,7 +16,7 @@ public:
   std::string type() const override {return "cellfrom";}
 
   void
-  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
+  get_all_bins(Particle* p, int estimator, FilterMatch& match)
   const override
   {
     for (int i = 0; i < p->last_n_coord; i++) {
@@ -37,4 +37,4 @@ public:
 };
 
 } // namespace openmc
-#endif // OPENMC_TALLY_FILTER_CELLFROM_H
+#endif // OPENMC_TALLIES_FILTER_CELLFROM_H

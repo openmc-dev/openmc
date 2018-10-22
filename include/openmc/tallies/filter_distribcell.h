@@ -1,5 +1,5 @@
-#ifndef OPENMC_TALLY_FILTER_DISTRIBCELL_H
-#define OPENMC_TALLY_FILTER_DISTRIBCELL_H
+#ifndef OPENMC_TALLIES_FILTER_DISTRIBCELL_H
+#define OPENMC_TALLIES_FILTER_DISTRIBCELL_H
 
 #include <string>
 
@@ -7,7 +7,7 @@
 #include "openmc/error.h"
 #include "openmc/geometry_aux.h" // For distribcell_path
 #include "openmc/lattice.h"
-#include "openmc/tallies/tally_filter.h"
+#include "openmc/tallies/filter.h"
 
 
 namespace openmc {
@@ -16,7 +16,7 @@ namespace openmc {
 //! Specifies which distributed geometric cells tally events reside in.
 //==============================================================================
 
-class DistribcellFilter : public TallyFilter
+class DistribcellFilter : public Filter
 {
 public:
   std::string type() const override {return "distribcell";}
@@ -49,7 +49,7 @@ public:
   }
 
   void
-  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
+  get_all_bins(Particle* p, int estimator, FilterMatch& match)
   const override
   {
     int offset = 0;
@@ -78,7 +78,7 @@ public:
   void
   to_statepoint(hid_t filter_group) const override
   {
-    TallyFilter::to_statepoint(filter_group);
+    Filter::to_statepoint(filter_group);
     write_dataset(filter_group, "bins", cells[cell_]->id_);
   }
 
@@ -95,4 +95,4 @@ public:
 };
 
 } // namespace openmc
-#endif // OPENMC_TALLY_FILTER_DISTRIBCELL_H
+#endif // OPENMC_TALLIES_FILTER_DISTRIBCELL_H

@@ -1,11 +1,11 @@
-#ifndef OPENMC_TALLY_FILTER_SPTL_LEGENDRE_H
-#define OPENMC_TALLY_FILTER_SPTL_LEGENDRE_H
+#ifndef OPENMC_TALLIES_FILTER_SPTL_LEGENDRE_H
+#define OPENMC_TALLIES_FILTER_SPTL_LEGENDRE_H
 
 #include <string>
 
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
-#include "openmc/tallies/tally_filter.h"
+#include "openmc/tallies/filter.h"
 
 
 namespace openmc {
@@ -19,7 +19,7 @@ enum class LegendreAxis {
 //! Gives Legendre moments of the particle's normalized position along an axis
 //==============================================================================
 
-class SpatialLegendreFilter : public TallyFilter
+class SpatialLegendreFilter : public Filter
 {
 public:
   std::string type() const override {return "spatiallegendre";}
@@ -49,7 +49,7 @@ public:
   }
 
   void
-  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
+  get_all_bins(Particle* p, int estimator, FilterMatch& match)
   const override
   {
     // Get the coordinate along the axis of interest.
@@ -79,7 +79,7 @@ public:
   void
   to_statepoint(hid_t filter_group) const override
   {
-    TallyFilter::to_statepoint(filter_group);
+    Filter::to_statepoint(filter_group);
     write_dataset(filter_group, "order", order_);
     if (axis_ == LegendreAxis::x) {
       write_dataset(filter_group, "axis", "x");
@@ -114,4 +114,4 @@ public:
 };
 
 } // namespace openmc
-#endif // OPENMC_TALLY_FILTER_SPTL_LEGENDRE_H
+#endif // OPENMC_TALLIES_FILTER_SPTL_LEGENDRE_H

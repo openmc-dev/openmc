@@ -1,5 +1,5 @@
-#ifndef OPENMC_TALLY_FILTER_UNIVERSE_H
-#define OPENMC_TALLY_FILTER_UNIVERSE_H
+#ifndef OPENMC_TALLIES_FILTER_UNIVERSE_H
+#define OPENMC_TALLIES_FILTER_UNIVERSE_H
 
 #include <cstdint>
 #include <sstream>
@@ -8,7 +8,7 @@
 
 #include "openmc/cell.h"
 #include "openmc/error.h"
-#include "openmc/tallies/tally_filter.h"
+#include "openmc/tallies/filter.h"
 
 
 namespace openmc {
@@ -17,7 +17,7 @@ namespace openmc {
 //! Specifies which geometric universes tally events reside in.
 //==============================================================================
 
-class UniverseFilter : public TallyFilter
+class UniverseFilter : public Filter
 {
 public:
   std::string type() const override {return "universe";}
@@ -52,7 +52,7 @@ public:
   }
 
   void
-  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
+  get_all_bins(Particle* p, int estimator, FilterMatch& match)
   const override
   {
     for (int i = 0; i < p->n_coord; i++) {
@@ -67,7 +67,7 @@ public:
   void
   to_statepoint(hid_t filter_group) const override
   {
-    TallyFilter::to_statepoint(filter_group);
+    Filter::to_statepoint(filter_group);
     std::vector<int32_t> universe_ids;
     for (auto u : universes_) universe_ids.push_back(universes[u]->id_);
     write_dataset(filter_group, "bins", universe_ids);
@@ -84,4 +84,4 @@ public:
 };
 
 } // namespace openmc
-#endif // OPENMC_TALLY_FILTER_UNIVERSE_H
+#endif // OPENMC_TALLIES_FILTER_UNIVERSE_H

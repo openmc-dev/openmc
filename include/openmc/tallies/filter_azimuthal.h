@@ -1,5 +1,5 @@
-#ifndef OPENMC_TALLY_FILTER_AZIMUTHAL_H
-#define OPENMC_TALLY_FILTER_AZIMUTHAL_H
+#ifndef OPENMC_TALLIES_FILTER_AZIMUTHAL_H
+#define OPENMC_TALLIES_FILTER_AZIMUTHAL_H
 
 #include <sstream>
 #include <cmath>
@@ -7,7 +7,7 @@
 
 #include "openmc/error.h"
 #include "openmc/search.h"
-#include "openmc/tallies/tally_filter.h"
+#include "openmc/tallies/filter.h"
 
 
 namespace openmc {
@@ -16,7 +16,7 @@ namespace openmc {
 //! Bins the incident neutron azimuthal angle (relative to the global xy-plane).
 //==============================================================================
 
-class AzimuthalFilter : public TallyFilter
+class AzimuthalFilter : public Filter
 {
 public:
   std::string type() const override {return "azimuthal";}
@@ -50,7 +50,7 @@ public:
   }
 
   void
-  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
+  get_all_bins(Particle* p, int estimator, FilterMatch& match)
   const override
   {
     double phi;
@@ -70,7 +70,7 @@ public:
   void
   to_statepoint(hid_t filter_group) const override
   {
-    TallyFilter::to_statepoint(filter_group);
+    Filter::to_statepoint(filter_group);
     write_dataset(filter_group, "bins", bins_);
   }
 
@@ -87,4 +87,4 @@ protected:
 };
 
 } // namespace openmc
-#endif // OPENMC_TALLY_FILTER_AZIMUTHAL_H
+#endif // OPENMC_TALLIES_FILTER_AZIMUTHAL_H

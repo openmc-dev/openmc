@@ -1,5 +1,5 @@
-#ifndef OPENMC_TALLY_FILTER_MESH_H
-#define OPENMC_TALLY_FILTER_MESH_H
+#ifndef OPENMC_TALLIES_FILTER_MESH_H
+#define OPENMC_TALLIES_FILTER_MESH_H
 
 #include <cstdint>
 #include <sstream>
@@ -7,7 +7,7 @@
 #include "openmc/capi.h"
 #include "openmc/error.h"
 #include "openmc/mesh.h"
-#include "openmc/tallies/tally_filter.h"
+#include "openmc/tallies/filter.h"
 
 
 namespace openmc {
@@ -18,7 +18,7 @@ namespace openmc {
 //! correspond to the fraction of the track length that lies in that bin.
 //==============================================================================
 
-class MeshFilter : public TallyFilter
+class MeshFilter : public Filter
 {
 public:
   std::string type() const override {return "mesh";}
@@ -49,7 +49,7 @@ public:
   }
 
   void
-  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
+  get_all_bins(Particle* p, int estimator, FilterMatch& match)
   const override
   {
     if (estimator != ESTIMATOR_TRACKLENGTH) {
@@ -66,7 +66,7 @@ public:
   void
   to_statepoint(hid_t filter_group) const override
   {
-    TallyFilter::to_statepoint(filter_group);
+    Filter::to_statepoint(filter_group);
     write_dataset(filter_group, "bins", meshes[mesh_]->id_);
   }
 
@@ -92,4 +92,4 @@ public:
 };
 
 } // namespace openmc
-#endif // OPENMC_TALLY_FILTER_MESH_H
+#endif // OPENMC_TALLIES_FILTER_MESH_H

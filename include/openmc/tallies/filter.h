@@ -1,5 +1,5 @@
-#ifndef OPENMC_TALLY_FILTER_H
-#define OPENMC_TALLY_FILTER_H
+#ifndef OPENMC_TALLIES_FILTER_H
+#define OPENMC_TALLIES_FILTER_H
 
 #include <cstdint>
 #include <string>
@@ -18,36 +18,34 @@ namespace openmc {
 
 extern "C" int32_t n_filters;
 
-class TallyFilterMatch;
-extern std::vector<TallyFilterMatch> filter_matches;
+class FilterMatch;
+extern std::vector<FilterMatch> filter_matches;
 #pragma omp threadprivate(filter_matches)
 
-class TallyFilter;
-extern std::vector<TallyFilter*> tally_filters;
+class Filter;
+extern std::vector<Filter*> tally_filters;
 
 //==============================================================================
 //! Stores bins and weights for filtered tally events.
 //==============================================================================
 
-class TallyFilterMatch
+class FilterMatch
 {
 public:
-  //int i_bin_;
   std::vector<int> bins_;
   std::vector<double> weights_;
-  //bool bins_present_;
 };
 
 //==============================================================================
 //! Modifies tally score events.
 //==============================================================================
 
-class TallyFilter
+class Filter
 {
 public:
   virtual std::string type() const = 0;
 
-  virtual ~TallyFilter() = 0;
+  virtual ~Filter() = 0;
 
   //! Uses an XML input to fill the filter's data fields.
   virtual void from_xml(pugi::xml_node node) = 0;
@@ -57,7 +55,7 @@ public:
   //! \param[out] match will contain the matching bins and corresponding
   //!   weights; note that there may be zero matching bins
   virtual void
-  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match) const = 0;
+  get_all_bins(Particle* p, int estimator, FilterMatch& match) const = 0;
 
   //! Writes data describing this filter to an HDF5 statepoint group.
   virtual void
@@ -78,11 +76,11 @@ public:
   int n_bins_;
 };
 
-inline TallyFilter::~TallyFilter() {}
+inline Filter::~Filter() {}
 
 //==============================================================================
 
 extern "C" void free_memory_tally_c();
 
 } // namespace openmc
-#endif // OPENMC_TALLY_FILTER_H
+#endif // OPENMC_TALLIES_FILTER_H

@@ -4,8 +4,8 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/message_passing.h"
 #include "openmc/settings.h"
+#include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
-#include "openmc/tallies/tally_filter.h"
 
 #include <algorithm>
 

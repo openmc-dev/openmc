@@ -1,5 +1,5 @@
-#ifndef OPENMC_TALLY_FILTER_MATERIAL_H
-#define OPENMC_TALLY_FILTER_MATERIAL_H
+#ifndef OPENMC_TALLIES_FILTER_MATERIAL_H
+#define OPENMC_TALLIES_FILTER_MATERIAL_H
 
 #include <cstdint>
 #include <sstream>
@@ -8,7 +8,7 @@
 
 #include "openmc/error.h"
 #include "openmc/material.h"
-#include "openmc/tallies/tally_filter.h"
+#include "openmc/tallies/filter.h"
 
 
 namespace openmc {
@@ -17,7 +17,7 @@ namespace openmc {
 //! Specifies which material tally events reside in.
 //==============================================================================
 
-class MaterialFilter : public TallyFilter
+class MaterialFilter : public Filter
 {
 public:
   std::string type() const override {return "material";}
@@ -52,7 +52,7 @@ public:
   }
 
   void
-  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
+  get_all_bins(Particle* p, int estimator, FilterMatch& match)
   const override
   {
     auto search = map_.find(p->material - 1);
@@ -66,7 +66,7 @@ public:
   void
   to_statepoint(hid_t filter_group) const override
   {
-    TallyFilter::to_statepoint(filter_group);
+    Filter::to_statepoint(filter_group);
     std::vector<int32_t> material_ids;
     for (auto c : materials_) material_ids.push_back(materials[c]->id_);
     write_dataset(filter_group, "bins", material_ids);
@@ -83,4 +83,4 @@ public:
 };
 
 } // namespace openmc
-#endif // OPENMC_TALLY_FILTER_MATERIAL_H
+#endif // OPENMC_TALLIES_FILTER_MATERIAL_H

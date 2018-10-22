@@ -1,5 +1,5 @@
-#ifndef OPENMC_TALLY_FILTER_MESHSURFACE_H
-#define OPENMC_TALLY_FILTER_MESHSURFACE_H
+#ifndef OPENMC_TALLIES_FILTER_MESHSURFACE_H
+#define OPENMC_TALLIES_FILTER_MESHSURFACE_H
 
 #include <cstdint>
 #include <sstream>
@@ -7,7 +7,7 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/mesh.h"
-#include "openmc/tallies/tally_filter_mesh.h"
+#include "openmc/tallies/filter_mesh.h"
 
 
 namespace openmc {
@@ -26,7 +26,7 @@ public:
   }
 
   void
-  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
+  get_all_bins(Particle* p, int estimator, FilterMatch& match)
   const override
   {
     meshes[mesh_]->surface_bins_crossed(p, match.bins_);
@@ -78,4 +78,4 @@ public:
 };
 
 } // namespace openmc
-#endif // OPENMC_TALLY_FILTER_MESHSURFACE_H
+#endif // OPENMC_TALLIES_FILTER_MESHSURFACE_H

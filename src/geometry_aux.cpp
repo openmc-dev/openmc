@@ -12,8 +12,8 @@
 #include "openmc/material.h"
 #include "openmc/settings.h"
 #include "openmc/surface.h"
-#include "openmc/tallies/tally_filter.h"
-#include "openmc/tallies/tally_filter_distribcell.h"
+#include "openmc/tallies/filter.h"
+#include "openmc/tallies/filter_distribcell.h"
 
 
 namespace openmc {

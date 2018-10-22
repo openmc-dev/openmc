@@ -1,27 +1,27 @@
-#include "openmc/tallies/tally_filter.h"
+#include "openmc/tallies/filter.h"
 
 #include <string>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"  // for MAX_LINE_LEN;
 #include "openmc/error.h"
-#include "openmc/tallies/tally_filter_azimuthal.h"
-#include "openmc/tallies/tally_filter_cell.h"
-#include "openmc/tallies/tally_filter_cellborn.h"
-#include "openmc/tallies/tally_filter_cellfrom.h"
-#include "openmc/tallies/tally_filter_distribcell.h"
-#include "openmc/tallies/tally_filter_energyfunc.h"
-#include "openmc/tallies/tally_filter_legendre.h"
-#include "openmc/tallies/tally_filter_material.h"
-#include "openmc/tallies/tally_filter_mesh.h"
-#include "openmc/tallies/tally_filter_meshsurface.h"
-#include "openmc/tallies/tally_filter_mu.h"
-#include "openmc/tallies/tally_filter_polar.h"
-#include "openmc/tallies/tally_filter_sph_harm.h"
-#include "openmc/tallies/tally_filter_sptl_legendre.h"
-#include "openmc/tallies/tally_filter_surface.h"
-#include "openmc/tallies/tally_filter_universe.h"
-#include "openmc/tallies/tally_filter_zernike.h"
+#include "openmc/tallies/filter_azimuthal.h"
+#include "openmc/tallies/filter_cell.h"
+#include "openmc/tallies/filter_cellborn.h"
+#include "openmc/tallies/filter_cellfrom.h"
+#include "openmc/tallies/filter_distribcell.h"
+#include "openmc/tallies/filter_energyfunc.h"
+#include "openmc/tallies/filter_legendre.h"
+#include "openmc/tallies/filter_material.h"
+#include "openmc/tallies/filter_mesh.h"
+#include "openmc/tallies/filter_meshsurface.h"
+#include "openmc/tallies/filter_mu.h"
+#include "openmc/tallies/filter_polar.h"
+#include "openmc/tallies/filter_sph_harm.h"
+#include "openmc/tallies/filter_sptl_legendre.h"
+#include "openmc/tallies/filter_surface.h"
+#include "openmc/tallies/filter_universe.h"
+#include "openmc/tallies/filter_zernike.h"
 
 
 namespace openmc {
@@ -30,8 +30,8 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-std::vector<TallyFilterMatch> filter_matches;
-std::vector<TallyFilter*> tally_filters;
+std::vector<FilterMatch> filter_matches;
+std::vector<Filter*> tally_filters;
 
 //==============================================================================
 // Non-member functions
@@ -45,7 +45,7 @@ free_memory_tally_c()
     filter_matches.clear();
   }
 
-  for (TallyFilter* filt : tally_filters) {delete filt;}
+  for (Filter* filt : tally_filters) {delete filt;}
   tally_filters.clear();
 }
 
@@ -55,7 +55,7 @@ free_memory_tally_c()
 
 // Fortran functions that will be called from C++
 extern "C" int verify_filter(int32_t index);
-extern "C" TallyFilter* filter_from_f(int32_t index);
+extern "C" Filter* filter_from_f(int32_t index);
 extern "C" void filter_update_n_bins(int32_t index);
 
 extern "C" {
@@ -445,42 +445,42 @@ extern "C" {
 //==============================================================================
 
 extern "C" {
-  TallyFilterMatch* filter_match_pointer(int indx)
+  FilterMatch* filter_match_pointer(int indx)
   {return &filter_matches[indx];}
 
   void
-  filter_match_bins_push_back(TallyFilterMatch* match, int val)
+  filter_match_bins_push_back(FilterMatch* match, int val)
   {match->bins_.push_back(val);}
 
   void
-  filter_match_weights_push_back(TallyFilterMatch* match, double val)
+  filter_match_weights_push_back(FilterMatch* match, double val)
   {match->weights_.push_back(val);}
 
   void
-  filter_match_bins_clear(TallyFilterMatch* match)
+  filter_match_bins_clear(FilterMatch* match)
   {match->bins_.clear();}
 
   void
-  filter_match_weights_clear(TallyFilterMatch* match)
+  filter_match_weights_clear(FilterMatch* match)
   {match->weights_.clear();}
 
   int
-  filter_match_bins_size(TallyFilterMatch* match)
+  filter_match_bins_size(FilterMatch* match)
   {return match->bins_.size();}
 
   int
-  filter_match_bins_data(TallyFilterMatch* match, int indx)
+  filter_match_bins_data(FilterMatch* match, int indx)
   {return match->bins_[indx-1];}
 
   double
-  filter_match_weights_data(TallyFilterMatch* match, int indx)
+  filter_match_weights_data(FilterMatch* match, int indx)
   {return match->weights_[indx-1];}
 
   void
-  filter_match_bins_set_data(TallyFilterMatch* match, int indx, int val)
+  filter_match_bins_set_data(FilterMatch* match, int indx, int val)
   {match->bins_[indx-1] = val;}
 
-  TallyFilter*
+  Filter*
   allocate_filter(const char* type)
   {
     std::string type_ {type};
@@ -526,20 +526,20 @@ extern "C" {
     return tally_filters.back();
   }
 
-  void filter_from_xml(TallyFilter* filt, pugi::xml_node* node)
+  void filter_from_xml(Filter* filt, pugi::xml_node* node)
   {filt->from_xml(*node);}
 
   void
-  filter_get_all_bins(TallyFilter* filt, Particle* p, int estimator,
-                      TallyFilterMatch* match)
+  filter_get_all_bins(Filter* filt, Particle* p, int estimator,
+                      FilterMatch* match)
   {
     filt->get_all_bins(p, estimator, *match);
   }
 
-  void filter_to_statepoint(TallyFilter* filt, hid_t group)
+  void filter_to_statepoint(Filter* filt, hid_t group)
   {filt->to_statepoint(group);}
 
-  void filter_text_label(TallyFilter* filt, int bin, char* label)
+  void filter_text_label(Filter* filt, int bin, char* label)
   {
     std::string label_str = filt->text_label(bin);
     int i = 0;
@@ -548,9 +548,9 @@ extern "C" {
     label[i] = '\0';
   }
 
-  void filter_initialize(TallyFilter* filt) {filt->initialize();}
+  void filter_initialize(Filter* filt) {filt->initialize();}
 
-  int filter_n_bins(TallyFilter* filt) {return filt->n_bins_;}
+  int filter_n_bins(Filter* filt) {return filt->n_bins_;}
 
   int mesh_filter_get_mesh(MeshFilter* filt) {return filt->mesh_;}
 

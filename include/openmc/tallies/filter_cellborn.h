@@ -1,7 +1,7 @@
-#ifndef OPENMC_TALLY_FILTER_CELLBORN_H
-#define OPENMC_TALLY_FILTER_CELLBORN_H
+#ifndef OPENMC_TALLIES_FILTER_CELLBORN_H
+#define OPENMC_TALLIES_FILTER_CELLBORN_H
 
-#include "openmc/tallies/tally_filter_cell.h"
+#include "openmc/tallies/filter_cell.h"
 
 namespace openmc {
 
@@ -15,7 +15,7 @@ public:
   std::string type() const override {return "cellborn";}
 
   void
-  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
+  get_all_bins(Particle* p, int estimator, FilterMatch& match)
   const override
   {
     auto search = map_.find(p->cell_born);
@@ -34,4 +34,4 @@ public:
 };
 
 } // namespace openmc
-#endif // OPENMC_TALLY_FILTER_CELLBORN_H
+#endif // OPENMC_TALLIES_FILTER_CELLBORN_H

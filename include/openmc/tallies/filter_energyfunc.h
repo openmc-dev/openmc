@@ -1,5 +1,5 @@
-#ifndef OPENMC_TALLY_FILTER_ENERGYFUNC_H
-#define OPENMC_TALLY_FILTER_ENERGYFUNC_H
+#ifndef OPENMC_TALLIES_FILTER_ENERGYFUNC_H
+#define OPENMC_TALLIES_FILTER_ENERGYFUNC_H
 
 #include <iomanip>  // for setprecision
 #include <ios>  // for scientific
@@ -9,7 +9,7 @@
 #include "openmc/error.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
-#include "openmc/tallies/tally_filter.h"
+#include "openmc/tallies/filter.h"
 
 
 namespace openmc {
@@ -19,13 +19,13 @@ namespace openmc {
 //! described by a piecewise linear-linear interpolation.
 //==============================================================================
 
-class EnergyFunctionFilter : public TallyFilter
+class EnergyFunctionFilter : public Filter
 {
 public:
   std::string type() const override {return "energyfunction";}
 
   EnergyFunctionFilter()
-    : TallyFilter {}
+    : Filter {}
   {
     n_bins_ = 1;
   }
@@ -51,7 +51,7 @@ public:
   }
 
   void
-  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
+  get_all_bins(Particle* p, int estimator, FilterMatch& match)
   const override
   {
     if (p->last_E >= energy_.front() && p->last_E <= energy_.back()) {
@@ -70,7 +70,7 @@ public:
   void
   to_statepoint(hid_t filter_group) const override
   {
-    TallyFilter::to_statepoint(filter_group);
+    Filter::to_statepoint(filter_group);
     write_dataset(filter_group, "energy", energy_);
     write_dataset(filter_group, "y", y_);
   }
@@ -91,4 +91,4 @@ public:
 };
 
 } // namespace openmc
-#endif // OPENMC_TALLY_FILTER_ENERGYFUNC_H
+#endif // OPENMC_TALLIES_FILTER_ENERGYFUNC_H

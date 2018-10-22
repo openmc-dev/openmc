@@ -1,10 +1,10 @@
-#ifndef OPENMC_TALLY_FILTER_SPHERICAL_HARMONICS_H
-#define OPENMC_TALLY_FILTER_SPHERICAL_HARMONICS_H
+#ifndef OPENMC_TALLIES_FILTER_SPH_HAR_H
+#define OPENMC_TALLIES_FILTER_SPH_HAR_H
 
 #include <string>
 
 #include "openmc/error.h"
-#include "openmc/tallies/tally_filter.h"
+#include "openmc/tallies/filter.h"
 
 
 namespace openmc {
@@ -18,7 +18,7 @@ enum class SphericalHarmonicsCosine {
 //! Gives spherical harmonics expansion moments of a tally score
 //==============================================================================
 
-class SphericalHarmonicsFilter : public TallyFilter
+class SphericalHarmonicsFilter : public Filter
 {
 public:
   std::string type() const override {return "sphericalharmonics";}
@@ -47,7 +47,7 @@ public:
   }
 
   void
-  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
+  get_all_bins(Particle* p, int estimator, FilterMatch& match)
   const override
   {
     // Determine cosine term for scatter expansion if necessary
@@ -78,7 +78,7 @@ public:
   void
   to_statepoint(hid_t filter_group) const override
   {
-    TallyFilter::to_statepoint(filter_group);
+    Filter::to_statepoint(filter_group);
     write_dataset(filter_group, "order", order_);
     if (cosine_ == SphericalHarmonicsCosine::scatter) {
       write_dataset(filter_group, "cosine", "scatter");
@@ -105,4 +105,4 @@ public:
 };
 
 } // namespace openmc
-#endif // OPENMC_TALLY_FILTER_SPHERICAL_HARMONICS_H
+#endif // OPENMC_TALLIES_FILTER_SPH_HAR_H

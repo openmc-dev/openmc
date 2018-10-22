@@ -1,5 +1,5 @@
-#ifndef OPENMC_TALLY_FILTER_ZERNIKE_H
-#define OPENMC_TALLY_FILTER_ZERNIKE_H
+#ifndef OPENMC_TALLIES_FILTER_ZERNIKE_H
+#define OPENMC_TALLIES_FILTER_ZERNIKE_H
 
 #include <cmath>
 #include <sstream>
@@ -7,7 +7,7 @@
 
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
-#include "openmc/tallies/tally_filter.h"
+#include "openmc/tallies/filter.h"
 
 
 namespace openmc {
@@ -16,7 +16,7 @@ namespace openmc {
 //! Gives Zernike polynomial moments of a particle's position
 //==============================================================================
 
-class ZernikeFilter : public TallyFilter
+class ZernikeFilter : public Filter
 {
 public:
   std::string type() const override {return "zernike";}
@@ -34,7 +34,7 @@ public:
   }
 
   void
-  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
+  get_all_bins(Particle* p, int estimator, FilterMatch& match)
   const override
   {
     // Determine the normalized (r,theta) coordinates.
@@ -57,7 +57,7 @@ public:
   void
   to_statepoint(hid_t filter_group) const override
   {
-    TallyFilter::to_statepoint(filter_group);
+    Filter::to_statepoint(filter_group);
     write_dataset(filter_group, "order", order_);
     write_dataset(filter_group, "x", x_);
     write_dataset(filter_group, "y", y_);
@@ -95,7 +95,7 @@ public:
   std::string type() const override {return "zernikeradial";}
 
   void
-  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
+  get_all_bins(Particle* p, int estimator, FilterMatch& match)
   const override
   {
     // Determine the normalized radius coordinate.
@@ -124,4 +124,4 @@ public:
 };
 
 } // namespace openmc
-#endif // OPENMC_TALLY_FILTER_ZERNIKE_H
+#endif // OPENMC_TALLIES_FILTER_ZERNIKE_H

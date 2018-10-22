@@ -20,7 +20,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/message_passing.h"
 #include "openmc/search.h"
-#include "openmc/tallies/tally_filter.h"
+#include "openmc/tallies/filter.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {

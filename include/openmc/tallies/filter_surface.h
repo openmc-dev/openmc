@@ -1,5 +1,5 @@
-#ifndef OPENMC_TALLY_FILTER_SURFACE_H
-#define OPENMC_TALLY_FILTER_SURFACE_H
+#ifndef OPENMC_TALLIES_FILTER_SURFACE_H
+#define OPENMC_TALLIES_FILTER_SURFACE_H
 
 #include <cstdint>
 #include <sstream>
@@ -8,7 +8,7 @@
 
 #include "openmc/error.h"
 #include "openmc/surface.h"
-#include "openmc/tallies/tally_filter.h"
+#include "openmc/tallies/filter.h"
 
 
 namespace openmc {
@@ -17,7 +17,7 @@ namespace openmc {
 //! Specifies which surface particles are crossing
 //==============================================================================
 
-class SurfaceFilter : public TallyFilter
+class SurfaceFilter : public Filter
 {
 public:
   std::string type() const override {return "surface";}
@@ -52,7 +52,7 @@ public:
   }
 
   void
-  get_all_bins(Particle* p, int estimator, TallyFilterMatch& match)
+  get_all_bins(Particle* p, int estimator, FilterMatch& match)
   const override
   {
     auto search = map_.find(std::abs(p->surface)-1);
@@ -69,7 +69,7 @@ public:
   void
   to_statepoint(hid_t filter_group) const override
   {
-    TallyFilter::to_statepoint(filter_group);
+    Filter::to_statepoint(filter_group);
     std::vector<int32_t> surface_ids;
     for (auto c : surfaces_) surface_ids.push_back(surfaces[c]->id_);
     write_dataset(filter_group, "bins", surface_ids);
@@ -86,4 +86,4 @@ public:
 };
 
 } // namespace openmc
-#endif // OPENMC_TALLY_FILTER_SURFACE_H
+#endif // OPENMC_TALLIES_FILTER_SURFACE_H

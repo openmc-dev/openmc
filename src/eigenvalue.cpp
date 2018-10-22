@@ -129,7 +129,7 @@ void synchronize_bank()
 
   // Allocate temporary source bank
   int64_t index_temp = 0;
-  Bank temp_sites[3*simulation::work];
+  Bank *temp_sites = new Bank[3*simulation::work]();
 
   for (int64_t i = 0; i < n_bank; ++i) {
     // If there are less than n_particles particles banked, automatically add
@@ -293,6 +293,7 @@ void synchronize_bank()
 #else
   std::copy(temp_sites, temp_sites + settings::n_particles, source_bank);
 #endif
+  delete[] temp_sites;
 
   time_bank_sendrecv.stop();
   time_bank.stop();

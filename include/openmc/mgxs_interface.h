@@ -18,6 +18,9 @@ extern std::vector<Mgxs> nuclides_MG;
 extern std::vector<Mgxs> macro_xs;
 extern "C" int num_energy_groups;
 
+//TODO: When more of the Fortran is converted (input_xml, tallies, etc, also
+// bring over energy_bin_avg, energy_bins, etc, as vectors)
+
 //==============================================================================
 // Mgxs data loading interface methods
 //==============================================================================
@@ -43,13 +46,6 @@ create_macro_xs_c(const char* mat_name, int n_nuclides, const int i_nuclides[],
 extern "C" void
 calculate_xs_c(int i_mat, int gin, double sqrtkT, const double uvw[3],
      double& total_xs, double& abs_xs, double& nu_fiss_xs);
-
-extern "C" void
-sample_scatter_c(int i_mat, int gin, int& gout, double& mu, double& wgt,
-     double uvw[3]);
-
-extern "C" void
-sample_fission_energy_c(int i_mat, int gin, int& dg, int& gout);
 
 extern "C" double
 get_nuclide_xs_c(int index, int xstype, int gin, int* gout, double* mu, int* dg);

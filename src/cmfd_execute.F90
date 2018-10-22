@@ -13,6 +13,16 @@ module cmfd_execute
   private
   public :: execute_cmfd, cmfd_init_batch, cmfd_tally_init
 
+#ifdef OPENMC_MPI
+  interface
+    subroutine cmfd_broadcast(n, buffer) bind(C)
+      import C_DOUBLE, C_INT
+      integer(C_INT), value :: n
+      real(C_DOUBLE), intent(out) :: buffer
+    end subroutine
+  end interface
+#endif
+
 contains
 
 !==============================================================================
@@ -105,9 +115,6 @@ contains
     real(8) :: hxyz(3) ! cell dimensions of current ijk cell
     real(8) :: vol     ! volume of cell
     real(8),allocatable :: source(:,:,:,:)  ! tmp source array for entropy
-#ifdef OPENMC_MPI
-    integer :: mpi_err ! MPI error code
-#endif
 
     ! Get maximum of spatial and group indices
     nx = cmfd % indices(1)
@@ -199,7 +206,7 @@ contains
 
 #ifdef OPENMC_MPI
     ! Broadcast full source to all procs
-    call MPI_BCAST(cmfd % cmfd_src, n, MPI_REAL8, 0, mpi_intracomm, mpi_err)
+    call cmfd_broadcast(n, cmfd % cmfd_src(1,1,1,1))
 #endif
 
   end subroutine calc_fission_source
@@ -232,9 +239,6 @@ contains
     real(8) :: norm     ! normalization factor
     logical(C_BOOL) :: outside  ! any source sites outside mesh
     logical :: in_mesh  ! source site is inside mesh
-#ifdef OPENMC_MPI
-    integer :: mpi_err
-#endif
 
     interface
       subroutine cmfd_populate_sourcecounts(ng, energies, source_counts, outside) bind(C)
@@ -300,8 +304,7 @@ contains
 
       ! Broadcast weight factors to all procs
 #ifdef OPENMC_MPI
-      call MPI_BCAST(cmfd % weightfactors, ng*nx*ny*nz, MPI_REAL8, 0, &
-           mpi_intracomm, mpi_err)
+      call cmfd_broadcast(ng*nx*ny*nz, cmfd % weightfactors(1,1,1,1))
 #endif
     end if
 

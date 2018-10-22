@@ -1,6 +1,5 @@
 import numpy as np
 import openmc
-import openmc.capi as capi
 from collections.abc import Iterable
 
 
@@ -74,6 +73,7 @@ class ZernikeRadial(Polynomial):
         return self._order
 
     def __call__(self, r):
+        import openmc.capi as capi
         if isinstance(r, Iterable):
             return [np.sum(self._norm_coef * capi.calc_zn_rad(self.order, r_i))
                     for r_i in r]

@@ -1,5 +1,6 @@
 from abc import ABCMeta
-from collections import Iterable, OrderedDict
+from collections import OrderedDict
+from collections.abc import Iterable
 import copy
 import hashlib
 from itertools import product

@@ -127,15 +127,15 @@ Particle::mark_as_lost(const char* message)
   // Increment number of lost particles
   alive = false;
 #pragma omp atomic
-  openmc_n_lost_particles += 1;
+  simulation::n_lost_particles += 1;
 
   // Count the total number of simulated particles (on this processor)
-  auto n = openmc_current_batch * settings::gen_per_batch * openmc_work;
+  auto n = simulation::current_batch * settings::gen_per_batch * simulation::work;
 
   // Abort the simulation if the maximum number of lost particles has been
   // reached
-  if (openmc_n_lost_particles >= MAX_LOST_PARTICLES &&
-      openmc_n_lost_particles >= REL_MAX_LOST_PARTICLES*n) {
+  if (simulation::n_lost_particles >= MAX_LOST_PARTICLES &&
+      simulation::n_lost_particles >= REL_MAX_LOST_PARTICLES*n) {
     fatal_error("Maximum number of lost particles has been reached.");
   }
 }
@@ -148,7 +148,7 @@ Particle::write_restart() const
 
   // Set up file name
   std::stringstream filename;
-  filename << settings::path_output << "particle_" << openmc_current_batch
+  filename << settings::path_output << "particle_" << simulation::current_batch
     << '_' << id << ".h5";
 
 #pragma omp critical (WriteParticleRestart)
@@ -165,9 +165,9 @@ Particle::write_restart() const
 #endif
 
     // Write data to file
-    write_dataset(file_id, "current_batch", openmc_current_batch);
+    write_dataset(file_id, "current_batch", simulation::current_batch);
     write_dataset(file_id, "generations_per_batch", settings::gen_per_batch);
-    write_dataset(file_id, "current_generation", openmc_current_gen);
+    write_dataset(file_id, "current_generation", simulation::current_gen);
     write_dataset(file_id, "n_particles", settings::n_particles);
     switch (settings::run_mode) {
       case RUN_MODE_FIXEDSOURCE:
@@ -188,7 +188,7 @@ Particle::write_restart() const
     int64_t n;
     openmc_source_bank(&src, &n);
 
-    int64_t i = openmc_current_work;
+    int64_t i = simulation::current_work;
     write_dataset(file_id, "weight", src[i-1].wgt);
     write_dataset(file_id, "energy", src[i-1].E);
     hsize_t dims[] {3};

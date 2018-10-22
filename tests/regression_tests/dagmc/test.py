@@ -1,7 +1,7 @@
 from tests.testing_harness import TestHarness
 import os
 import pytest
-import openmc
+import openmc.capi
 
 pytestmark = pytest.mark.skipif(
     not openmc.capi.dagmc_enabled,
@@ -9,4 +9,4 @@ pytestmark = pytest.mark.skipif(
 
 def test_dagmc():
     harness = TestHarness('statepoint.5.h5')
-    harness.main()    
+    harness.main()

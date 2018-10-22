@@ -1,8 +1,27 @@
 module timer_header
 
+  use, intrinsic :: ISO_C_BINDING
+
   use constants, only: ZERO
 
   implicit none
+
+  interface
+    function time_bank_elapsed() result(t) bind(C)
+      import C_DOUBLE
+      real(C_DOUBLE) :: t
+    end function
+    function time_bank_sample_elapsed() result(t) bind(C)
+      import C_DOUBLE
+      real(C_DOUBLE) :: t
+    end function
+    function time_bank_sendrecv_elapsed() result(t) bind(C)
+      import C_DOUBLE
+      real(C_DOUBLE) :: t
+    end function
+    subroutine reset_timers() bind(C)
+    end subroutine
+  end interface
 
 !===============================================================================
 ! TIMER represents a timer that can be started and stopped to measure how long
@@ -29,9 +48,6 @@ module timer_header
   type(Timer) :: time_initialize    ! timer for initialization
   type(Timer) :: time_read_xs       ! timer for reading cross sections
   type(Timer) :: time_unionize      ! timer for material xs-energy grid union
-  type(Timer) :: time_bank          ! timer for fission bank synchronization
-  type(Timer) :: time_bank_sample   ! timer for fission bank sampling
-  type(Timer) :: time_bank_sendrecv ! timer for fission bank SEND/RECV
   type(Timer) :: time_tallies       ! timer for accumulate tallies
   type(Timer) :: time_inactive      ! timer for inactive batches
   type(Timer) :: time_active        ! timer for active batches

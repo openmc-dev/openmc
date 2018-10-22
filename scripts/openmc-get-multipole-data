@@ -29,9 +29,9 @@ parser.add_argument('-b', '--batch', action='store_true',
 args = parser.parse_args()
 
 
-baseUrl = 'https://github.com/mit-crpg/WMP_Library/releases/download/v1.0/'
-files = ['WMP_Library_v1.0.tar.gz']
-checksums = ['22cb675734cfccb278dffd40dcfbf26a']
+baseUrl = 'https://github.com/mit-crpg/WMP_Library/releases/download/v1.1/'
+files = ['WMP_Library_v1.1.tar.gz']
+checksums = ['8523895928dd6ba63fba803e3a45d4f3']
 block_size = 16384
 
 # ==============================================================================

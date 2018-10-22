@@ -279,7 +279,7 @@ double MaxwellEnergy::sample(double E) const
 
   while (true) {
     // Sample maxwell fission spectrum
-    double E_out = maxwell_spectrum_c(theta);
+    double E_out = maxwell_spectrum(theta);
 
     // Accept energy based on restriction energy
     if (E_out <= E - u_) return E_out;
@@ -343,7 +343,7 @@ double WattEnergy::sample(double E) const
 
   while (true) {
     // Sample energy-dependent Watt fission spectrum
-    double E_out = watt_spectrum_c(a, b);
+    double E_out = watt_spectrum(a, b);
 
     // Accept energy based on restriction energy
     if (E_out <= E - u_) return E_out;

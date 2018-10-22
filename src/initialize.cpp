@@ -15,9 +15,11 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/message_passing.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/string_utils.h"
 
 // data/functions from Fortran side
+extern "C" void openmc_init_f();
 extern "C" void print_usage();
 extern "C" void print_version();
 
@@ -46,12 +48,7 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   if (err) return err;
 
   // Continue with rest of initialization
-#ifdef OPENMC_MPI
-  MPI_Fint fcomm = MPI_Comm_c2f(comm);
-  openmc_init_f(&fcomm);
-#else
-  openmc_init_f(nullptr);
-#endif
+  openmc_init_f();
 
   return 0;
 }
@@ -79,16 +76,18 @@ void initialize_mpi(MPI_Comm intracomm)
 
   // Create bank datatype
   Bank b;
-  MPI_Aint disp[] {
-    offsetof(Bank, wgt),
-    offsetof(Bank, xyz),
-    offsetof(Bank, uvw),
-    offsetof(Bank, E),
-    offsetof(Bank, delayed_group)
-  };
-  int blocks[] {1, 3, 3, 1, 1};
-  MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT};
-  MPI_Type_create_struct(5, blocks, disp, types, &mpi::bank);
+  MPI_Aint disp[6];
+  MPI_Get_address(&b.wgt, &disp[0]);
+  MPI_Get_address(&b.xyz, &disp[1]);
+  MPI_Get_address(&b.uvw, &disp[2]);
+  MPI_Get_address(&b.E, &disp[3]);
+  MPI_Get_address(&b.delayed_group, &disp[4]);
+  MPI_Get_address(&b.particle, &disp[5]);
+  for (int i = 5; i >= 0; --i) disp[i] -= disp[0];
+
+  int blocks[] {1, 3, 3, 1, 1, 1};
+  MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_INT};
+  MPI_Type_create_struct(6, blocks, disp, types, &mpi::bank);
   MPI_Type_commit(&mpi::bank);
 }
 #endif // OPENMC_MPI
@@ -172,13 +171,13 @@ parse_command_line(int argc, char* argv[])
 
 #ifdef _OPENMP
         // Read and set number of OpenMP threads
-        openmc_n_threads = std::stoi(argv[i]);
-        if (openmc_n_threads < 1) {
+        simulation::n_threads = std::stoi(argv[i]);
+        if (simulation::n_threads < 1) {
           std::string msg {"Number of threads must be positive."};
           strcpy(openmc_err_msg, msg.c_str());
           return OPENMC_E_INVALID_ARGUMENT;
         }
-        omp_set_num_threads(openmc_n_threads);
+        omp_set_num_threads(simulation::n_threads);
 #else
         if (openmc_master)
           warning("Ignoring number of threads specified on command line.");

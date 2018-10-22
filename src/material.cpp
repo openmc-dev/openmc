@@ -122,6 +122,13 @@ extern "C" {
     material_map[id] = index - 1;
   }
 
+  bool material_fissionable(Material* mat) {return mat->fissionable;}
+
+  void material_set_fissionable(Material* mat, bool fissionable)
+  {
+    mat->fissionable = fissionable;
+  }
+
   void extend_materials_c(int32_t n)
   {
     materials.reserve(materials.size() + n);

@@ -153,7 +153,7 @@ void create_ppm(ObjectPlot* pl) {
 }
 
 void
-ObjectPlot::set_id(pugi::xml_node plot_node) {
+ObjectPlot::set_id() {
     // Copy data into plots
   if (check_for_node(plot_node, "id")) {
     id = std::stoi(get_node_value(plot_node, "id"));
@@ -172,7 +172,7 @@ ObjectPlot::set_id(pugi::xml_node plot_node) {
 }
 
 void
-ObjectPlot::set_type(pugi::xml_node plot_node) {
+ObjectPlot::set_type() {
   // Copy plot type
   // Default is slice
   std::string type_str = "slice";
@@ -195,7 +195,7 @@ ObjectPlot::set_type(pugi::xml_node plot_node) {
 }
 
 void
-ObjectPlot::set_output_path(pugi::xml_node plot_node) {
+ObjectPlot::set_output_path() {
   // Set output file path
   std::stringstream filename;
   filename << "plot_" << id;
@@ -243,7 +243,7 @@ ObjectPlot::set_output_path(pugi::xml_node plot_node) {
 }
 
 void
-ObjectPlot::set_bg_color(pugi::xml_node plot_node){
+ObjectPlot::set_bg_color(){
     // Copy plot background color
   std::vector<int> bg_rgb;
   if (check_for_node(plot_node, "background")) {
@@ -275,7 +275,7 @@ ObjectPlot::set_bg_color(pugi::xml_node plot_node){
 }
 
 void
-ObjectPlot::set_basis(pugi::xml_node plot_node) {
+ObjectPlot::set_basis() {
   // Copy plot basis
   if (PLOT_TYPE::SLICE == type) {
     std::string pl_basis = "xy";
@@ -299,7 +299,7 @@ ObjectPlot::set_basis(pugi::xml_node plot_node) {
 }  
 
 void
-ObjectPlot::set_origin(pugi::xml_node plot_node) {
+ObjectPlot::set_origin() {
   // Copy plotting origin
   std::vector<double> pl_origin;
   if (node_word_count(plot_node, "origin") == 3) {
@@ -316,7 +316,7 @@ ObjectPlot::set_origin(pugi::xml_node plot_node) {
 }
 
 void
-ObjectPlot::set_width(pugi::xml_node plot_node) {
+ObjectPlot::set_width() {
     // Copy plotting width
   std::vector<int> pl_width;
   if (PLOT_TYPE::SLICE == type) {
@@ -346,7 +346,7 @@ ObjectPlot::set_width(pugi::xml_node plot_node) {
 }
 
 void
-ObjectPlot::set_universe(pugi::xml_node plot_node) {
+ObjectPlot::set_universe() {
   // Copy plot universe level
   if (check_for_node(plot_node, "level")) {
     level = std::stoi(get_node_value(plot_node, "level"));
@@ -361,7 +361,7 @@ ObjectPlot::set_universe(pugi::xml_node plot_node) {
 }  
 
 void
-ObjectPlot::set_default_colors(pugi::xml_node plot_node) {
+ObjectPlot::set_default_colors() {
   // Copy plot color type and initialize all colors randomly
   std::string pl_color_by = "cell";
   if (check_for_node(plot_node, "color_by")) {
@@ -397,7 +397,7 @@ ObjectPlot::set_default_colors(pugi::xml_node plot_node) {
 }
 
 void
-ObjectPlot::set_user_colors(pugi::xml_node plot_node) {
+ObjectPlot::set_user_colors() {
     // Get the number of <color> nodes and get a list of them
   std::vector<pugi::xml_node> color_nodes;
   color_nodes = get_child_nodes(plot_node, "color");
@@ -469,7 +469,7 @@ ObjectPlot::set_user_colors(pugi::xml_node plot_node) {
 }
 
 void
-ObjectPlot::set_meshlines(pugi::xml_node plot_node) {
+ObjectPlot::set_meshlines() {
     // Deal with meshlines
   std::vector<pugi::xml_node> mesh_line_nodes;
   mesh_line_nodes = get_child_nodes(plot_node, "meshlines");
@@ -598,7 +598,7 @@ ObjectPlot::set_meshlines(pugi::xml_node plot_node) {
 }
 
 void
-ObjectPlot::set_mask(pugi::xml_node plot_node) {
+ObjectPlot::set_mask() {
     // Deal with masks
   std::vector<pugi::xml_node> mask_nodes;
   mask_nodes = get_child_nodes(plot_node, "mask");
@@ -683,32 +683,34 @@ ObjectPlot::set_mask(pugi::xml_node plot_node) {
 }
   
 ObjectPlot::ObjectPlot(pugi::xml_node plot_node)
-  : index_meshlines_mesh(-1) {
+  : index_meshlines_mesh(-1), plot_node(plot_node) {
 
-  set_id(plot_node);
+  set_id();
   
-  set_type(plot_node);
+  set_type();
 
-  set_output_path(plot_node);
+  set_output_path();
 
-  set_bg_color(plot_node);
+  set_bg_color();
 
-  set_basis(plot_node);
+  set_basis();
 
-  set_origin(plot_node);
+  set_origin();
   
-  set_width(plot_node);
+  set_width();
 
-  set_universe(plot_node);  
+  set_universe();  
 
-  set_default_colors(plot_node);
+  set_default_colors();
   
-  set_user_colors(plot_node);
+  set_user_colors();
 
-  set_meshlines(plot_node);
+  set_meshlines();
   
-  set_mask(plot_node);
+  set_mask();
 
+  plot_node = pugi::xml_node(); // set to null node after construction
+  
 } // End ObjectPlot constructor
 
 //===============================================================================

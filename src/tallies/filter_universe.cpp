@@ -4,6 +4,7 @@
 
 #include "openmc/cell.h"
 #include "openmc/error.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 
@@ -17,6 +18,7 @@ UniverseFilter::from_xml(pugi::xml_node node)
 void
 UniverseFilter::initialize()
 {
+  // Convert universe IDs to indices of the global array.
   for (auto& u : universes_) {
     auto search = universe_map.find(u);
     if (search != universe_map.end()) {
@@ -29,20 +31,22 @@ UniverseFilter::initialize()
     }
   }
 
+  // Populate the index->bin map.
   for (int i = 0; i < universes_.size(); i++) {
     map_[universes_[i]] = i;
   }
 }
 
 void
-UniverseFilter::get_all_bins(Particle* p, int estimator, FilterMatch& match)
-const
+UniverseFilter::get_all_bins(const Particle* p, int estimator,
+                             FilterMatch& match) const
 {
   for (int i = 0; i < p->n_coord; i++) {
     auto search = map_.find(p->coord[i].universe);
     if (search != map_.end()) {
+      //TODO: off-by-one
       match.bins_.push_back(search->second + 1);
-      match.weights_.push_back(1);
+      match.weights_.push_back(1.0);
     }
   }
 }

@@ -25,7 +25,7 @@ public:
 
   void from_xml(pugi::xml_node node) override;
 
-  void get_all_bins(Particle* p, int estimator, FilterMatch& match)
+  void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
 
   void to_statepoint(hid_t filter_group) const override;
@@ -33,8 +33,15 @@ public:
   std::string text_label(int bin) const override;
 
   int order_;
+
+  //! The Cartesian coordinate axis that the Legendre expansion is applied to.
   LegendreAxis axis_;
-  double min_, max_;
+
+  //! The minimum coordinate along the reference axis that the expansion covers.
+  double min_;
+
+  //! The maximum coordinate along the reference axis that the expansion covers.
+  double max_;
 };
 
 } // namespace openmc

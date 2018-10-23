@@ -16,8 +16,8 @@ MeshSurfaceFilter::from_xml(pugi::xml_node node)
 }
 
 void
-MeshSurfaceFilter::get_all_bins(Particle* p, int estimator, FilterMatch& match)
-const
+MeshSurfaceFilter::get_all_bins(const Particle* p, int estimator,
+                                FilterMatch& match) const
 {
   meshes[mesh_]->surface_bins_crossed(p, match.bins_);
   for (auto b : match.bins_) match.weights_.push_back(1.0);
@@ -37,30 +37,43 @@ MeshSurfaceFilter::text_label(int bin) const
   std::string out = MeshFilter::text_label(i_mesh);
 
   // Get surface part of label.
-  if (i_surf == OUT_LEFT) {
-    out += " Outgoing, x-min";
-  } else if (i_surf == IN_LEFT) {
-    out += " Incoming, x-min";
-  } else if (i_surf == OUT_RIGHT) {
-    out += " Outgoing, x-max";
-  } else if (i_surf == IN_RIGHT) {
-    out += " Incoming, x-max";
-  } else if (i_surf == OUT_BACK) {
-    out += " Outgoing, y-min";
-  } else if (i_surf == IN_BACK) {
-    out += " Incoming, y-min";
-  } else if (i_surf == OUT_FRONT) {
-    out += " Outgoing, y-max";
-  } else if (i_surf == IN_FRONT) {
-    out += " Incoming, y-max";
-  } else if (i_surf == OUT_BOTTOM) {
-    out += " Outgoing, z-min";
-  } else if (i_surf == IN_BOTTOM) {
-    out += " Incoming, z-min";
-  } else if (i_surf == OUT_TOP) {
-    out += " Outgoing, z-max";
-  } else if (i_surf == IN_TOP) {
-    out += " Incoming, z-max";
+  switch (i_surf) {
+    case OUT_LEFT:
+      out += " Outgoing, x-min";
+      break;
+    case IN_LEFT:
+      out += " Incoming, x-min";
+      break;
+    case OUT_RIGHT:
+      out += " Outgoing, x-max";
+      break;
+    case IN_RIGHT:
+      out += " Incoming, x-max";
+      break;
+    case OUT_BACK:
+      out += " Outgoing, y-min";
+      break;
+    case IN_BACK:
+      out += " Incoming, y-min";
+      break;
+    case OUT_FRONT:
+      out += " Outgoing, y-max";
+      break;
+    case IN_FRONT:
+      out += " Incoming, y-max";
+      break;
+    case OUT_BOTTOM:
+      out += " Outgoing, z-min";
+      break;
+    case IN_BOTTOM:
+      out += " Incoming, z-min";
+      break;
+    case OUT_TOP:
+      out += " Outgoing, z-max";
+      break;
+    case IN_TOP:
+      out += " Incoming, z-max";
+      break;
   }
 
   return out;

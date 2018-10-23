@@ -5,6 +5,7 @@
 #include "openmc/capi.h"
 #include "openmc/error.h"
 #include "openmc/material.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 
@@ -18,6 +19,7 @@ MaterialFilter::from_xml(pugi::xml_node node)
 void
 MaterialFilter::initialize()
 {
+  // Convert material IDs to indices of the global array.
   for (auto& m : materials_) {
     auto search = material_map.find(m);
     if (search != material_map.end()) {
@@ -30,19 +32,21 @@ MaterialFilter::initialize()
     }
   }
 
+  // Populate the index->bin map.
   for (int i = 0; i < materials_.size(); i++) {
     map_[materials_[i]] = i;
   }
 }
 
 void
-MaterialFilter::get_all_bins(Particle* p, int estimator, FilterMatch& match)
-const
+MaterialFilter::get_all_bins(const Particle* p, int estimator,
+                             FilterMatch& match) const
 {
   auto search = map_.find(p->material - 1);
   if (search != map_.end()) {
+    //TODO: off-by-one
     match.bins_.push_back(search->second + 1);
-    match.weights_.push_back(1);
+    match.weights_.push_back(1.0);
   }
 }
 

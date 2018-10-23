@@ -20,17 +20,28 @@ public:
 
   void from_xml(pugi::xml_node node) override;
 
-  void get_all_bins(Particle* p, int estimator, FilterMatch& match)
+  void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
 
   void to_statepoint(hid_t filter_group) const override;
 
   std::string text_label(int bin) const override;
 
-  virtual void calc_n_bins() {n_bins_ = ((order_+1) * (order_+2)) / 2;}
+  int order() const {return order_;}
 
+  virtual void set_order(int order);
+
+  //! Cartesian x coordinate for the origin of this expansion.
+  double x_;
+
+  //! Cartesian y coordinate for the origin of this expansion.
+  double y_;
+
+  //! Maximum radius from the origin covered by this expansion.
+  double r_;
+
+protected:
   int order_;
-  double x_, y_, r_;
 };
 
 //==============================================================================
@@ -42,12 +53,12 @@ class ZernikeRadialFilter : public ZernikeFilter
 public:
   std::string type() const override {return "zernikeradial";}
 
-  void get_all_bins(Particle* p, int estimator, FilterMatch& match)
+  void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
 
   std::string text_label(int bin) const override;
 
-  void calc_n_bins() override {n_bins_ = order_ / 2 + 1;}
+  void set_order(int order) override;
 };
 
 } // namespace openmc

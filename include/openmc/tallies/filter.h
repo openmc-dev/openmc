@@ -7,7 +7,7 @@
 
 #include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"
-#include "openmc/xml_interface.h"
+#include "pugixml.hpp"
 
 
 namespace openmc {
@@ -43,9 +43,9 @@ public:
 class Filter
 {
 public:
-  virtual std::string type() const = 0;
-
   virtual ~Filter() = 0;
+
+  virtual std::string type() const = 0;
 
   //! Uses an XML input to fill the filter's data fields.
   virtual void from_xml(pugi::xml_node node) = 0;
@@ -55,7 +55,7 @@ public:
   //! \param[out] match will contain the matching bins and corresponding
   //!   weights; note that there may be zero matching bins
   virtual void
-  get_all_bins(Particle* p, int estimator, FilterMatch& match) const = 0;
+  get_all_bins(const Particle* p, int estimator, FilterMatch& match) const = 0;
 
   //! Writes data describing this filter to an HDF5 statepoint group.
   virtual void

@@ -3,6 +3,7 @@
 #include "openmc/capi.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 
@@ -28,7 +29,7 @@ SphericalHarmonicsFilter::from_xml(pugi::xml_node node)
 }
 
 void
-SphericalHarmonicsFilter::get_all_bins(Particle* p, int estimator,
+SphericalHarmonicsFilter::get_all_bins(const Particle* p, int estimator,
                                        FilterMatch& match) const
 {
   // Determine cosine term for scatter expansion if necessary
@@ -51,6 +52,7 @@ SphericalHarmonicsFilter::get_all_bins(Particle* p, int estimator,
     // Append the matching (bin,weight) for each moment
     for (int i = 0; i < num_nm; i++) {
       match.weights_.push_back(wgt[n] * rn[j]);
+      //TODO: off-by-one
       match.bins_.push_back(++j);
     }
   }

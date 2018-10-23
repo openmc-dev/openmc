@@ -7,6 +7,7 @@
 #include "openmc/error.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 
@@ -29,7 +30,7 @@ EnergyFunctionFilter::from_xml(pugi::xml_node node)
 }
 
 void
-EnergyFunctionFilter::get_all_bins(Particle* p, int estimator,
+EnergyFunctionFilter::get_all_bins(const Particle* p, int estimator,
                                    FilterMatch& match) const
 {
   if (p->last_E >= energy_.front() && p->last_E <= energy_.back()) {
@@ -40,6 +41,7 @@ EnergyFunctionFilter::get_all_bins(Particle* p, int estimator,
     double f = (p->last_E - energy_[i]) / (energy_[i+1] - energy_[i]);
 
     // Interpolate on the lin-lin grid.
+    //TODO: off-by-one
     match.bins_.push_back(1);
     match.weights_.push_back((1-f) * y_[i] + f * y_[i+1]);
   }

@@ -5,6 +5,7 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/search.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 
@@ -35,7 +36,7 @@ PolarFilter::from_xml(pugi::xml_node node)
 }
 
 void
-PolarFilter::get_all_bins(Particle* p, int estimator, FilterMatch& match)
+PolarFilter::get_all_bins(const Particle* p, int estimator, FilterMatch& match)
 const
 {
   double theta;
@@ -45,10 +46,11 @@ const
     theta = std::acos(p->last_uvw[2]);
   }
 
-  if (theta >= bins_[0] && theta <= bins_.back()) {
+  if (theta >= bins_.front() && theta <= bins_.back()) {
+    //TODO: off-by-one
     auto bin = lower_bound_index(bins_.begin(), bins_.end(), theta) + 1;
     match.bins_.push_back(bin);
-    match.weights_.push_back(1);
+    match.weights_.push_back(1.0);
   }
 }
 

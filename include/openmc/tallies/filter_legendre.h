@@ -20,7 +20,7 @@ public:
 
   void from_xml(pugi::xml_node node) override;
 
-  void get_all_bins(Particle* p, int estimator, FilterMatch& match)
+  void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
 
   void to_statepoint(hid_t filter_group) const override;

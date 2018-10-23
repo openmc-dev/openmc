@@ -71,6 +71,19 @@ namespace openmc {
     std::vector<ObjectColor*> colors;
     std::string path_plot;
 
+  private:
+    void set_id(pugi::xml_node plot_node);
+    void set_type(pugi::xml_node plot_node);
+    void set_output_path(pugi::xml_node plot_node);
+    void set_bg_color(pugi::xml_node plot_node);
+    void set_basis(pugi::xml_node plot_node);
+    void set_origin(pugi::xml_node plot_node);
+    void set_width(pugi::xml_node plot_node);
+    void set_universe(pugi::xml_node plot_node);
+    void set_default_colors(pugi::xml_node plot_node);
+    void set_user_colors(pugi::xml_node plot_node);
+    void set_meshlines(pugi::xml_node plot_node);
+    void set_mask(pugi::xml_node plot_node);
   };
 
   //extern "C" int openmc_plot_geometry();

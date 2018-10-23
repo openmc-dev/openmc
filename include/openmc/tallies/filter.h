@@ -82,5 +82,12 @@ inline Filter::~Filter() {}
 
 extern "C" void free_memory_tally_c();
 
+//==============================================================================
+
+// Filter-related Fortran functions that will be called from C++
+extern "C" int verify_filter(int32_t index);
+extern "C" Filter* filter_from_f(int32_t index);
+extern "C" void filter_update_n_bins(int32_t index);
+
 } // namespace openmc
 #endif // OPENMC_TALLIES_FILTER_H

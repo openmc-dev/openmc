@@ -431,8 +431,25 @@ add_library(libopenmc SHARED
   src/string_functions.cpp
   src/summary.cpp
   src/surface.cpp
+  src/tallies/filter.cpp
+  src/tallies/filter_azimuthal.cpp
+  src/tallies/filter_cellborn.cpp
+  src/tallies/filter_cellfrom.cpp
+  src/tallies/filter_cell.cpp
+  src/tallies/filter_distribcell.cpp
+  src/tallies/filter_energyfunc.cpp
+  src/tallies/filter_legendre.cpp
+  src/tallies/filter_material.cpp
+  src/tallies/filter_mesh.cpp
+  src/tallies/filter_meshsurface.cpp
+  src/tallies/filter_mu.cpp
+  src/tallies/filter_polar.cpp
+  src/tallies/filter_sph_harm.cpp
+  src/tallies/filter_sptl_legendre.cpp
+  src/tallies/filter_surface.cpp
+  src/tallies/filter_universe.cpp
+  src/tallies/filter_zernike.cpp
   src/tallies/tally.cpp
-  src/tallies/tally_filter.cpp
   src/timer.cpp
   src/thermal.cpp
   src/xml_interface.cpp

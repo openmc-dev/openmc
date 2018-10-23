@@ -24,14 +24,17 @@ public:
 
   void initialize() override;
 
-  void get_all_bins(Particle* p, int estimator, FilterMatch& match)
+  void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
 
   void to_statepoint(hid_t filter_group) const override;
 
   std::string text_label(int bin) const override;
 
+  //! The indices of the universes binned by this filter.
   std::vector<int32_t> universes_;
+
+  //! A map from universe indices to filter bin indices.
   std::unordered_map<int32_t, int> map_;
 };
 

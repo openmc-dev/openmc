@@ -6,6 +6,7 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/search.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 
@@ -36,8 +37,8 @@ AzimuthalFilter::from_xml(pugi::xml_node node)
 }
 
 void
-AzimuthalFilter::get_all_bins(Particle* p, int estimator, FilterMatch& match)
-const
+AzimuthalFilter::get_all_bins(const Particle* p, int estimator,
+                              FilterMatch& match) const
 {
   double phi;
   if (estimator == ESTIMATOR_TRACKLENGTH) {
@@ -46,10 +47,11 @@ const
     phi = std::atan2(p->last_uvw[1], p->last_uvw[0]);
   }
 
-  if (phi >= bins_[0] && phi <= bins_.back()) {
+  if (phi >= bins_.front() && phi <= bins_.back()) {
+    //TODO: off-by-one
     auto bin = lower_bound_index(bins_.begin(), bins_.end(), phi) + 1;
     match.bins_.push_back(bin);
-    match.weights_.push_back(1);
+    match.weights_.push_back(1.0);
   }
 }
 

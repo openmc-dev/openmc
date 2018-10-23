@@ -16,7 +16,7 @@ class CellbornFilter : public CellFilter
 public:
   std::string type() const override {return "cellborn";}
 
-  void get_all_bins(Particle* p, int estimator, FilterMatch& match)
+  void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
 
   std::string text_label(int bin) const override;

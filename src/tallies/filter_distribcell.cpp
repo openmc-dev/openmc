@@ -4,6 +4,7 @@
 #include "openmc/error.h"
 #include "openmc/geometry_aux.h" // For distribcell_path
 #include "openmc/lattice.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 
@@ -20,6 +21,7 @@ DistribcellFilter::from_xml(pugi::xml_node node)
 void
 DistribcellFilter::initialize()
 {
+  // Convert the cell ID to an index of the global array.
   auto search = cell_map.find(cell_);
   if (search != cell_map.end()) {
     cell_ = search->second;
@@ -33,8 +35,8 @@ DistribcellFilter::initialize()
 }
 
 void
-DistribcellFilter::get_all_bins(Particle* p, int estimator, FilterMatch& match)
-const
+DistribcellFilter::get_all_bins(const Particle* p, int estimator,
+                                FilterMatch& match) const
 {
   int offset = 0;
   auto distribcell_index = cells[cell_]->distribcell_index_;
@@ -52,8 +54,9 @@ const
       }
     }
     if (cell_ == p->coord[i].cell) {
+      //TODO: off-by-one
       match.bins_.push_back(offset + 1);
-      match.weights_.push_back(1);
+      match.weights_.push_back(1.0);
       return;
     }
   }

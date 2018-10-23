@@ -5,6 +5,7 @@
 #include "openmc/capi.h"
 #include "openmc/cell.h"
 #include "openmc/error.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 
@@ -18,6 +19,7 @@ CellFilter::from_xml(pugi::xml_node node)
 void
 CellFilter::initialize()
 {
+  // Convert cell IDs to indices of the global array.
   for (auto& c : cells_) {
     auto search = cell_map.find(c);
     if (search != cell_map.end()) {
@@ -29,19 +31,22 @@ CellFilter::initialize()
     }
   }
 
+  // Populate the index->bin map.
   for (int i = 0; i < cells_.size(); i++) {
     map_[cells_[i]] = i;
   }
 }
 
 void
-CellFilter::get_all_bins(Particle* p, int estimator, FilterMatch& match) const
+CellFilter::get_all_bins(const Particle* p, int estimator,
+                         FilterMatch& match) const
 {
   for (int i = 0; i < p->n_coord; i++) {
     auto search = map_.find(p->coord[i].cell);
     if (search != map_.end()) {
+      //TODO: off-by-one
       match.bins_.push_back(search->second + 1);
-      match.weights_.push_back(1);
+      match.weights_.push_back(1.0);
     }
   }
 }

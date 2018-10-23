@@ -6,6 +6,7 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/mesh.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 
@@ -33,12 +34,13 @@ MeshFilter::from_xml(pugi::xml_node node)
 }
 
 void
-MeshFilter::get_all_bins(Particle* p, int estimator, FilterMatch& match)
+MeshFilter::get_all_bins(const Particle* p, int estimator, FilterMatch& match)
 const
 {
   if (estimator != ESTIMATOR_TRACKLENGTH) {
     auto bin = meshes[mesh_]->get_bin(p->coord[0].xyz);
     if (bin >= 0) {
+      //TODO: off-by-one
       match.bins_.push_back(bin);
       match.weights_.push_back(1.0);
     }

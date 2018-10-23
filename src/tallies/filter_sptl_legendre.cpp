@@ -3,6 +3,7 @@
 #include "openmc/capi.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 
@@ -29,8 +30,8 @@ SpatialLegendreFilter::from_xml(pugi::xml_node node)
 }
 
 void
-SpatialLegendreFilter::get_all_bins(Particle* p, int estimator, FilterMatch& match)
-const
+SpatialLegendreFilter::get_all_bins(const Particle* p, int estimator,
+                                    FilterMatch& match) const
 {
   // Get the coordinate along the axis of interest.
   double x;
@@ -50,6 +51,7 @@ const
     double wgt[order_ + 1];
     calc_pn_c(order_, x_norm, wgt);
     for (int i = 0; i < order_ + 1; i++) {
+      //TODO: off-by-one
       match.bins_.push_back(i + 1);
       match.weights_.push_back(wgt[i]);
     }

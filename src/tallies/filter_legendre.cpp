@@ -3,6 +3,7 @@
 #include "openmc/capi.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 
@@ -14,12 +15,13 @@ LegendreFilter::from_xml(pugi::xml_node node)
 }
 
 void
-LegendreFilter::get_all_bins(Particle* p, int estimator, FilterMatch& match)
-const
+LegendreFilter::get_all_bins(const Particle* p, int estimator,
+                             FilterMatch& match) const
 {
   double wgt[n_bins_];
   calc_pn_c(order_, p->mu, wgt);
   for (int i = 0; i < n_bins_; i++) {
+    //TODO: off-by-one
     match.bins_.push_back(i + 1);
     match.weights_.push_back(wgt[i]);
   }

@@ -1,8 +1,9 @@
 #ifndef OPENMC_TALLIES_FILTER_CELLFROM_H
 #define OPENMC_TALLIES_FILTER_CELLFROM_H
 
-#include "openmc/tallies/filter_cell.h"
+#include <string>
 
+#include "openmc/tallies/filter_cell.h"
 
 namespace openmc {
 
@@ -15,25 +16,10 @@ class CellFromFilter : public CellFilter
 public:
   std::string type() const override {return "cellfrom";}
 
-  void
-  get_all_bins(Particle* p, int estimator, FilterMatch& match)
-  const override
-  {
-    for (int i = 0; i < p->last_n_coord; i++) {
-      auto search = map_.find(p->last_cell[i]);
-      if (search != map_.end()) {
-        // TODO: off-by-one
-        match.bins_.push_back(search->second + 1);
-        match.weights_.push_back(1);
-      }
-    }
-  }
+  void get_all_bins(Particle* p, int estimator, FilterMatch& match)
+  const override;
 
-  std::string
-  text_label(int bin) const override
-  {
-    return "Cell from " + std::to_string(cells[cells_[bin-1]]->id_);
-  }
+  std::string text_label(int bin) const override;
 };
 
 } // namespace openmc

@@ -2,14 +2,10 @@
 #define OPENMC_TALLIES_FILTER_UNIVERSE_H
 
 #include <cstdint>
-#include <sstream>
 #include <unordered_map>
 #include <vector>
 
-#include "openmc/cell.h"
-#include "openmc/error.h"
 #include "openmc/tallies/filter.h"
-
 
 namespace openmc {
 
@@ -20,64 +16,20 @@ namespace openmc {
 class UniverseFilter : public Filter
 {
 public:
-  std::string type() const override {return "universe";}
-
   ~UniverseFilter() = default;
 
-  void
-  from_xml(pugi::xml_node node) override
-  {
-    universes_ = get_node_array<int32_t>(node, "bins");
-    n_bins_ = universes_.size();
-  }
+  std::string type() const override {return "universe";}
 
-  void
-  initialize() override
-  {
-    for (auto& u : universes_) {
-      auto search = universe_map.find(u);
-      if (search != universe_map.end()) {
-        u = search->second;
-      } else {
-        std::stringstream err_msg;
-        err_msg << "Could not find universe " << u
-                << " specified on tally filter.";
-        fatal_error(err_msg);
-      }
-    }
+  void from_xml(pugi::xml_node node) override;
 
-    for (int i = 0; i < universes_.size(); i++) {
-      map_[universes_[i]] = i;
-    }
-  }
+  void initialize() override;
 
-  void
-  get_all_bins(Particle* p, int estimator, FilterMatch& match)
-  const override
-  {
-    for (int i = 0; i < p->n_coord; i++) {
-      auto search = map_.find(p->coord[i].universe);
-      if (search != map_.end()) {
-        match.bins_.push_back(search->second + 1);
-        match.weights_.push_back(1);
-      }
-    }
-  }
+  void get_all_bins(Particle* p, int estimator, FilterMatch& match)
+  const override;
 
-  void
-  to_statepoint(hid_t filter_group) const override
-  {
-    Filter::to_statepoint(filter_group);
-    std::vector<int32_t> universe_ids;
-    for (auto u : universes_) universe_ids.push_back(universes[u]->id_);
-    write_dataset(filter_group, "bins", universe_ids);
-  }
+  void to_statepoint(hid_t filter_group) const override;
 
-  std::string
-  text_label(int bin) const override
-  {
-    return "Universe " + std::to_string(universes[universes_[bin-1]]->id_);
-  }
+  std::string text_label(int bin) const override;
 
   std::vector<int32_t> universes_;
   std::unordered_map<int32_t, int> map_;

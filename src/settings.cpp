@@ -500,7 +500,6 @@ void read_settings_xml()
   if (check_for_node(root, "track")) {
     // Get values and make sure there are three per particle
     auto temp = get_node_array<int>(root, "track");
-    std::cout << "track size " << temp.size() << "\n";
     if (temp.size() % 3 != 0) {
       fatal_error("Number of integers specified in 'track' is not "
         "divisible by 3.  Please provide 3 integers per particle to be "

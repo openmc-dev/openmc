@@ -1,3 +1,6 @@
+//! \file eigenvalue.h
+//! \brief Data/functions related to k-eigenvalue calculations
+
 #ifndef OPENMC_EIGENVALUE_H
 #define OPENMC_EIGENVALUE_H
 
@@ -30,7 +33,7 @@ extern "C" int64_t n_bank;
 //! Collect/normalize the tracklength keff from each process
 extern "C" void calculate_generation_keff();
 
-//! Calcaulte mean/standard deviation of keff during active generations
+//! Calculate mean/standard deviation of keff during active generations
 //!
 //! This function sets the global variables keff and keff_std which represent
 //! the mean and standard deviation of the mean of k-effective over active

@@ -202,7 +202,13 @@ read_attribute(hid_t obj_id, const char* name, std::vector<std::string>& vec)
   read_attr_string(obj_id, name, n, buffer[0]);
 
   for (int i = 0; i < m; ++i) {
-    vec.emplace_back(&buffer[i][0], std::min(strlen(buffer[i]), n));
+    // Determine proper length of string -- strlen doesn't work because
+    // buffer[i] might not have any null characters
+    std::size_t k = 0;
+    for (; k < n; ++k) if (buffer[i][k] == '\0') break;
+
+    // Create string based on (char*, size_t) constructor
+    vec.emplace_back(&buffer[i][0], k);
   }
 }
 

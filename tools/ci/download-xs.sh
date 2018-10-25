@@ -14,6 +14,6 @@ fi
 
 # Download multipole library
 if [[ ! -e $HOME/WMP_Library/092235.h5 ]]; then
-    wget -q https://github.com/mit-crpg/WMP_Library/releases/download/v1.0/WMP_Library_v1.0.tar.gz
-    tar -C $HOME -xzf WMP_Library_v1.0.tar.gz
+    wget -q https://github.com/mit-crpg/WMP_Library/releases/download/v1.1/WMP_Library_v1.1.tar.gz
+    tar -C $HOME -xzf WMP_Library_v1.1.tar.gz
 fi

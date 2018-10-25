@@ -105,12 +105,10 @@ int openmc_reset()
   double* buffer = nullptr;
   openmc_global_tallies(&buffer);
   if (buffer) {
-    for (int i = 0; i < 3*N_GLOBAL_TALLIES*3; ++i) {
+    for (int i = 0; i < 3*N_GLOBAL_TALLIES; ++i) {
       buffer[i] = 0.0;
     }
   }
-  // auto gt = global_tallies();
-  // std::fill(gt.begin(), gt.end(), 0.0);
 
   simulation::k_col_abs = 0.0;
   simulation::k_col_tra = 0.0;

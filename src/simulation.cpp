@@ -12,6 +12,7 @@
 #include "openmc/source.h"
 #include "openmc/state_point.h"
 #include "openmc/timer.h"
+#include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
 
 #include <algorithm>
@@ -53,7 +54,8 @@ extern "C" void write_tallies();
 // over the batches, generations, and histories in a fixed source or k-eigenvalue
 // calculation.
 
-int openmc_run() {
+int openmc_run()
+{
   openmc_simulation_init();
 
   int err = 0;
@@ -75,6 +77,12 @@ int openmc_simulation_init()
 
   // Determine how much work each process should do
   calculate_work();
+
+  // Allocate array for matching filter bins
+#pragma omp parallel
+  {
+    filter_matches.resize(n_filters);
+  }
 
   // Set up tally procedure pointers
   init_tally_routines();
@@ -133,6 +141,11 @@ int openmc_simulation_finalize()
   // Stop active batch timer and start finalization timer
   time_active.stop();
   time_finalize.start();
+
+#pragma omp parallel
+  {
+    filter_matches.clear();
+  }
 
   // Deallocate Fortran variables, set tallies to inactive
   simulation_finalize_f();

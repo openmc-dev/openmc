@@ -90,7 +90,7 @@ extern "C" void calc_rn_c(int n, const double uvw[3], double rn[]);
 //!   evaluated at rho and phi.
 //==============================================================================
 
-extern "C" void calc_zn_c(int n, double rho, double phi, double zn[]);
+extern "C" void calc_zn(int n, double rho, double phi, double zn[]);
 
 //==============================================================================
 //! Calculate only the even radial components of n-th order modified Zernike
@@ -113,7 +113,7 @@ extern "C" void calc_zn_c(int n, double rho, double phi, double zn[]);
 //!   evaluated at rho and phi when m = 0.
 //==============================================================================
 
-extern "C" void calc_zn_rad_c(int n, double rho, double zn_rad[]);
+extern "C" void calc_zn_rad(int n, double rho, double zn_rad[]);
 
 //==============================================================================
 //! Rotate the direction cosines through a polar angle whose cosine is mu and

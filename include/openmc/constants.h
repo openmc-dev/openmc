@@ -62,6 +62,7 @@ constexpr int MAX_SAMPLE {100000};
 
 // Maximum number of words in a single line, length of line, and length of
 // single word
+constexpr int MAX_LINE_LEN {250};
 constexpr int MAX_WORD_LEN {150};
 
 // Maximum number of external source spatial resamples to encounter before an

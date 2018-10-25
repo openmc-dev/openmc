@@ -16,7 +16,7 @@ module simulation
   use settings
   use simulation_header
   use tally_header
-  use tally_filter_header, only: filter_matches, n_filters
+  use tally_filter_header, only: filter_matches, n_filters, filter_match_pointer
 
   implicit none
   private
@@ -44,8 +44,7 @@ contains
     ! Allocate array for matching filter bins
     allocate(filter_matches(n_filters))
     do i = 1, n_filters
-      allocate(filter_matches(i) % bins)
-      allocate(filter_matches(i) % weights)
+      filter_matches(i) % ptr = filter_match_pointer(i - 1)
     end do
 !$omp end parallel
 
@@ -65,10 +64,6 @@ contains
       deallocate(materials(i) % mat_nuclide_index)
     end do
 !$omp parallel
-    do i = 1, size(filter_matches)
-      deallocate(filter_matches(i) % bins)
-      deallocate(filter_matches(i) % weights)
-    end do
     deallocate(micro_xs, micro_photon_xs, filter_matches)
 !$omp end parallel
 

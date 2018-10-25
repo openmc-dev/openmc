@@ -7,7 +7,6 @@ module tally_filter_header
   use error
   use hdf5_interface,  only: HID_T
   use particle_header, only: Particle
-  use stl_vector,      only: VectorInt, VectorReal
   use string,          only: to_str
   use xml_interface,   only: XMLNode
 
@@ -20,19 +19,38 @@ module tally_filter_header
   public :: openmc_filter_set_id
   public :: openmc_get_filter_index
   public :: openmc_get_filter_next_id
+  public :: filter_match_pointer
+
+  interface
+    function filter_match_pointer(indx) bind(C) result(ptr)
+      import C_PTR, C_INT
+      integer(C_INT), intent(in), value :: indx
+      type(C_PTR)                       :: ptr
+    end function filter_match_pointer
+  end interface
 
 !===============================================================================
 ! TALLYFILTERMATCH stores every valid bin and weight for a filter
 !===============================================================================
 
   type, public :: TallyFilterMatch
+    type(C_PTR) :: ptr
+
     ! Index of the bin and weight being used in the current filter combination
     integer          :: i_bin
-    type(VectorInt),  pointer :: bins
-    type(VectorReal), pointer :: weights
 
     ! Indicates whether all valid bins for this filter have been found
     logical          :: bins_present = .false.
+
+  contains
+    procedure :: bins_push_back
+    procedure :: weights_push_back
+    procedure :: bins_clear
+    procedure :: weights_clear
+    procedure :: bins_size
+    procedure :: bins_data
+    procedure :: weights_data
+    procedure :: bins_set_data
   end type TallyFilterMatch
 
 !===============================================================================
@@ -130,6 +148,116 @@ module tally_filter_header
 contains
 
 !===============================================================================
+! TallyFilterMatch implementation
+!===============================================================================
+
+  subroutine bins_push_back(this, val)
+    class(TallyFilterMatch), intent(inout) :: this
+    integer,                 intent(in)    :: val
+    interface
+      subroutine filter_match_bins_push_back(ptr, val) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR),                value :: ptr
+        integer(C_INT), intent(in), value :: val
+      end subroutine
+    end interface
+    call filter_match_bins_push_back(this % ptr, val)
+  end subroutine bins_push_back
+
+  subroutine weights_push_back(this, val)
+    class(TallyFilterMatch), intent(inout) :: this
+    real(8),                 intent(in)    :: val
+    interface
+      subroutine filter_match_weights_push_back(ptr, val) bind(C)
+        import C_PTR, C_DOUBLE
+        type(C_PTR),                value :: ptr
+        real(C_DOUBLE), intent(in), value :: val
+      end subroutine
+    end interface
+    call filter_match_weights_push_back(this % ptr, val)
+  end subroutine weights_push_back
+
+  subroutine bins_clear(this)
+    class(TallyFilterMatch), intent(inout) :: this
+    interface
+      subroutine filter_match_bins_clear(ptr) bind(C)
+        import C_PTR
+        type(C_PTR), value :: ptr
+      end subroutine
+    end interface
+    call filter_match_bins_clear(this % ptr)
+  end subroutine bins_clear
+
+  subroutine weights_clear(this)
+    class(TallyFilterMatch), intent(inout) :: this
+    interface
+      subroutine filter_match_weights_clear(ptr) bind(C)
+        import C_PTR
+        type(C_PTR), value :: ptr
+      end subroutine
+    end interface
+    call filter_match_weights_clear(this % ptr)
+  end subroutine weights_clear
+
+  function bins_size(this) result(len)
+    class(TallyFilterMatch), intent(inout) :: this
+    integer                                :: len
+    interface
+      function filter_match_bins_size(ptr) bind(C) result(len)
+        import C_PTR, C_INT
+        type(C_PTR), value :: ptr
+        integer(C_INT)     :: len
+      end function
+    end interface
+    len = filter_match_bins_size(this % ptr)
+  end function bins_size
+
+  function bins_data(this, indx) result(val)
+    class(TallyFilterMatch), intent(inout) :: this
+    integer,                 intent(in)    :: indx
+    integer                                :: val
+    interface
+      function filter_match_bins_data(ptr, indx) bind(C) result(val)
+        import C_PTR, C_INT
+        type(C_PTR),                value :: ptr
+        integer(C_INT), intent(in), value :: indx
+        integer(C_INT)                    :: val
+      end function
+    end interface
+    val = filter_match_bins_data(this % ptr, indx)
+  end function bins_data
+
+  function weights_data(this, indx) result(val)
+    class(TallyFilterMatch), intent(inout) :: this
+    integer,                 intent(in)    :: indx
+    real(8)                                :: val
+    interface
+      function filter_match_weights_data(ptr, indx) bind(C) result(val)
+        import C_PTR, C_INT, C_DOUBLE
+        type(C_PTR),                value :: ptr
+        integer(C_INT), intent(in), value :: indx
+        real(C_DOUBLE)                    :: val
+      end function
+    end interface
+    val = filter_match_weights_data(this % ptr, indx)
+  end function weights_data
+
+  subroutine bins_set_data(this, indx, val)
+    class(TallyFilterMatch), intent(inout) :: this
+    integer,                 intent(in)    :: indx
+    integer,                 intent(in)    :: val
+    interface
+      subroutine filter_match_bins_set_data(ptr, indx, val) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR),    value             :: ptr
+        integer(C_INT), value, intent(in) :: indx
+        integer(C_INT), value, intent(in) :: val
+      end subroutine
+    end interface
+    call filter_match_bins_set_data(this % ptr, indx, val)
+  end subroutine bins_set_data
+
+!===============================================================================
 ! INITIALIZE sets up any internal data, as necessary.  If this procedure is not
 ! overriden by the derived class, then it will do nothing by default.
 
@@ -153,8 +281,8 @@ contains
 ! array is sufficient and a filter object has already been allocated.
 !===============================================================================
 
-  function verify_filter(index) result(err)
-    integer(C_INT32_T), intent(in) :: index
+  function verify_filter(index) result(err) bind(C)
+    integer(C_INT32_T), intent(in), value :: index
     integer(C_INT) :: err
 
     err = 0

@@ -10,8 +10,6 @@ module math
   public :: t_percentile
   public :: calc_pn
   public :: calc_rn
-  public :: calc_zn
-  public :: calc_zn_rad
   public :: rotate_angle
   public :: faddeeva
   public :: w_derivative
@@ -46,23 +44,6 @@ module math
       real(C_DOUBLE), intent(in)  :: uvw(3)
       real(C_DOUBLE), intent(out) :: rn(2 * n + 1)
     end subroutine calc_rn
-
-    pure subroutine calc_zn(n, rho, phi, zn) bind(C, name='calc_zn_c')
-      use ISO_C_BINDING
-      implicit none
-      integer(C_INT), value, intent(in) :: n
-      real(C_DOUBLE), value, intent(in) :: rho
-      real(C_DOUBLE), value, intent(in) :: phi
-      real(C_DOUBLE), intent(out) :: zn(((n + 1) * (n + 2)) / 2)
-    end subroutine calc_zn
-
-    pure subroutine calc_zn_rad(n, rho, zn_rad) bind(C, name='calc_zn_rad_c')
-      use ISO_C_BINDING
-      implicit none
-      integer(C_INT), value, intent(in) :: n
-      real(C_DOUBLE), value, intent(in) :: rho
-      real(C_DOUBLE), intent(out) :: zn_rad((n / 2) + 1)
-    end subroutine calc_zn_rad
 
     subroutine rotate_angle_c_intfc(uvw, mu, phi) bind(C, name='rotate_angle_c')
       use ISO_C_BINDING

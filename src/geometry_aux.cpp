@@ -12,6 +12,8 @@
 #include "openmc/material.h"
 #include "openmc/settings.h"
 #include "openmc/surface.h"
+#include "openmc/tallies/filter.h"
+#include "openmc/tallies/filter_distribcell.h"
 
 
 namespace openmc {
@@ -181,12 +183,15 @@ neighbor_lists()
 //==============================================================================
 
 void
-prepare_distribcell(int32_t* filter_cell_list, int n)
+prepare_distribcell()
 {
-  // Read the list of cells contained in distribcell filters from Fortran.
+  // Find all cells listed in a DistribcellFilter.
   std::unordered_set<int32_t> distribcells;
-  for (int i = 0; i < n; i++) {
-    distribcells.insert(filter_cell_list[i]);
+  for (auto* filt : tally_filters) {
+    if (filt->type() == "distribcell") {
+      auto* distrib_filt = static_cast<DistribcellFilter*>(filt);
+      distribcells.insert(distrib_filt->cell_);
+    }
   }
 
   // Find all cells with distributed materials or temperatures.  Make sure that
@@ -393,29 +398,11 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
   }
 }
 
-//==============================================================================
-
-int
-distribcell_path_len(int32_t target_cell, int32_t map, int32_t target_offset,
-                     int32_t root_univ)
+std::string
+distribcell_path(int32_t target_cell, int32_t map, int32_t target_offset)
 {
-  Universe& root = *universes[root_univ];
-  std::string path_ {distribcell_path_inner(target_cell, map, target_offset,
-                                            root, 0)};
-  return path_.size() + 1;
-}
-
-//==============================================================================
-
-void
-distribcell_path(int32_t target_cell, int32_t map, int32_t target_offset,
-                 int32_t root_univ, char* path)
-{
-  Universe& root = *universes[root_univ];
-  std::string path_ {distribcell_path_inner(target_cell, map, target_offset,
-                                            root, 0)};
-  path_.copy(path, path_.size());
-  path[path_.size()] = '\0';
+  auto& root_univ = *universes[openmc_root_universe];
+  return distribcell_path_inner(target_cell, map, target_offset, root_univ, 0);
 }
 
 //==============================================================================

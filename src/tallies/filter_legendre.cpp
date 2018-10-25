@@ -47,35 +47,45 @@ LegendreFilter::text_label(int bin) const
 extern "C" int
 openmc_legendre_filter_get_order(int32_t index, int* order)
 {
+  // Make sure this is a valid index to an allocated filter.
   int err = verify_filter(index);
   if (err) return err;
 
-  auto filt = filter_from_f(index);
-  if (filt->type() != "legendre") {
-    set_errmsg("Tried to get order on a non-expansion filter.");
+  // Get a pointer to the filter and downcast.
+  auto* filt_base = filter_from_f(index);
+  auto* filt = dynamic_cast<LegendreFilter*>(filt_base);
+
+  // Check the filter type.
+  if (!filt) {
+    set_errmsg("Not a legendre filter.");
     return OPENMC_E_INVALID_TYPE;
   }
 
-  auto l_filt = static_cast<LegendreFilter*>(filt);
-  *order = l_filt->order_;
+  // Output the order.
+  *order = filt->order_;
   return 0;
 }
 
 extern "C" int
 openmc_legendre_filter_set_order(int32_t index, int order)
 {
+  // Make sure this is a valid index to an allocated filter.
   int err = verify_filter(index);
   if (err) return err;
 
-  auto filt = filter_from_f(index);
-  if (filt->type() != "legendre") {
-    set_errmsg("Tried to set order on a non-expansion filter.");
+  // Get a pointer to the filter and downcast.
+  auto* filt_base = filter_from_f(index);
+  auto* filt = dynamic_cast<LegendreFilter*>(filt_base);
+
+  // Check the filter type.
+  if (!filt) {
+    set_errmsg("Not a legendre filter.");
     return OPENMC_E_INVALID_TYPE;
   }
 
-  auto l_filt = static_cast<LegendreFilter*>(filt);
-  l_filt->order_ = order;
-  l_filt->n_bins_ = order + 1;
+  // Update the filter.
+  filt->order_ = order;
+  filt->n_bins_ = order + 1;
   filter_update_n_bins(index);
   return 0;
 }

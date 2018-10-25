@@ -22,15 +22,12 @@ MeshFilter::from_xml(pugi::xml_node node)
   auto id = bins_[0];
   auto search = mesh_map.find(id);
   if (search != mesh_map.end()) {
-    mesh_ = search->second;
+    set_mesh(search->second);
   } else{
     std::stringstream err_msg;
     err_msg << "Could not find cell " << id << " specified on tally filter.";
     fatal_error(err_msg);
   }
-
-  n_bins_ = 1;
-  for (auto dim : meshes[mesh_]->shape_) n_bins_ *= dim;
 }
 
 void
@@ -74,6 +71,14 @@ MeshFilter::text_label(int bin) const
   return out.str();
 }
 
+void
+MeshFilter::set_mesh(int32_t mesh)
+{
+  mesh_ = mesh;
+  n_bins_ = 1;
+  for (auto dim : meshes[mesh_]->shape_) n_bins_ *= dim;
+}
+
 //==============================================================================
 // C-API functions
 //==============================================================================
@@ -81,45 +86,50 @@ MeshFilter::text_label(int bin) const
 extern "C" int
 openmc_mesh_filter_get_mesh(int32_t index, int32_t* index_mesh)
 {
+  // Make sure this is a valid index to an allocated filter.
   int err = verify_filter(index);
   if (err) return err;
 
-  auto filt = filter_from_f(index);
-  if (filt->type() != "mesh" && filt->type() != "meshsurface") {
+  // Get a pointer to the filter and downcast.
+  auto* filt_base = filter_from_f(index);
+  auto* filt = dynamic_cast<MeshFilter*>(filt_base);
+
+  // Check the filter type.
+  if (!filt) {
     set_errmsg("Tried to get mesh on a non-mesh filter.");
     return OPENMC_E_INVALID_TYPE;
   }
 
-  auto mesh_filt = static_cast<MeshFilter*>(filt);
-  *index_mesh = mesh_filt->mesh_;
+  // Output the mesh.
+  *index_mesh = filt->mesh();
   return 0;
 }
 
 extern "C" int
 openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh)
 {
+  // Make sure this is a valid index to an allocated filter.
   int err = verify_filter(index);
   if (err) return err;
 
-  auto filt = filter_from_f(index);
-  if (filt->type() != "mesh" && filt->type() != "meshsurface") {
+  // Get a pointer to the filter and downcast.
+  auto* filt_base = filter_from_f(index);
+  auto* filt = dynamic_cast<MeshFilter*>(filt_base);
+
+  // Check the filter type.
+  if (!filt) {
     set_errmsg("Tried to set mesh on a non-mesh filter.");
     return OPENMC_E_INVALID_TYPE;
   }
 
+  // Check the mesh index.
   if (index_mesh < 0 || index_mesh >= meshes.size()) {
     set_errmsg("Index in 'meshes' array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  auto mesh_filt = static_cast<MeshFilter*>(filt);
-  mesh_filt->mesh_ = index_mesh;
-  if (filt->type() == "mesh") {
-    mesh_filt->n_bins_ = 1;
-  } else {
-    filt->n_bins_ = 4 * meshes[index_mesh]->n_dimension_;
-  }
-  for (auto dim : meshes[index_mesh]->shape_) mesh_filt->n_bins_ *= dim;
+  // Update the filter.
+  filt->set_mesh(index_mesh);
   filter_update_n_bins(index);
   return 0;
 }

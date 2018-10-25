@@ -1,5 +1,7 @@
 #include "openmc/tallies/filter_sph_harm.h"
 
+#include <utility>  // For pair
+
 #include "openmc/capi.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
@@ -87,37 +89,52 @@ SphericalHarmonicsFilter::text_label(int bin) const
 // C-API functions
 //==============================================================================
 
+std::pair<int, SphericalHarmonicsFilter*>
+check_sphharm_filter(int32_t index)
+{
+  // Make sure this is a valid index to an allocated filter.
+  int err = verify_filter(index);
+  if (err) {
+    return {err, nullptr};
+  }
+
+  // Get a pointer to the filter and downcast.
+  auto* filt_base = filter_from_f(index);
+  auto* filt = dynamic_cast<SphericalHarmonicsFilter*>(filt_base);
+
+  // Check the filter type.
+  if (!filt) {
+    set_errmsg("Not a spherical harmonics filter.");
+    err = OPENMC_E_INVALID_TYPE;
+  }
+  return {err, filt};
+}
+
 extern "C" int
 openmc_sphharm_filter_get_order(int32_t index, int* order)
 {
-  int err = verify_filter(index);
+  // Check the filter.
+  auto check_result = check_sphharm_filter(index);
+  auto err = check_result.first;
+  auto filt = check_result.second;
   if (err) return err;
 
-  auto filt = filter_from_f(index);
-  if (filt->type() != "sphericalharmonics") {
-    set_errmsg("Not a spherical harmonics filter.");
-    return OPENMC_E_INVALID_TYPE;
-  }
-
-  auto sph_filt = static_cast<SphericalHarmonicsFilter*>(filt);
-  *order = sph_filt->order_;
+  // Output the order.
+  *order = filt->order_;
   return 0;
 }
 
 extern "C" int
 openmc_sphharm_filter_get_cosine(int32_t index, char cosine[])
 {
-  int err = verify_filter(index);
+  // Check the filter.
+  auto check_result = check_sphharm_filter(index);
+  auto err = check_result.first;
+  auto filt = check_result.second;
   if (err) return err;
 
-  auto filt = filter_from_f(index);
-  if (filt->type() != "sphericalharmonics") {
-    set_errmsg("Not a spherical harmonics filter.");
-    return OPENMC_E_INVALID_TYPE;
-  }
-
-  auto sph_filt = static_cast<SphericalHarmonicsFilter*>(filt);
-  if (sph_filt->cosine_ == SphericalHarmonicsCosine::scatter) {
+  // Output the cosine.
+  if (filt->cosine_ == SphericalHarmonicsCosine::scatter) {
     strcpy(cosine, "scatter");
   } else {
     strcpy(cosine, "particle");
@@ -128,18 +145,15 @@ openmc_sphharm_filter_get_cosine(int32_t index, char cosine[])
 extern "C" int
 openmc_sphharm_filter_set_order(int32_t index, int order)
 {
-  int err = verify_filter(index);
+  // Check the filter.
+  auto check_result = check_sphharm_filter(index);
+  auto err = check_result.first;
+  auto filt = check_result.second;
   if (err) return err;
 
-  auto filt = filter_from_f(index);
-  if (filt->type() != "sphericalharmonics") {
-    set_errmsg("Not a spherical harmonics filter.");
-    return OPENMC_E_INVALID_TYPE;
-  }
-
-  auto sph_filt = static_cast<SphericalHarmonicsFilter*>(filt);
-  sph_filt->order_ = order;
-  sph_filt->n_bins_ = (order + 1) * (order + 1);
+  // Update the filter.
+  filt->order_ = order;
+  filt->n_bins_ = (order + 1) * (order + 1);
   filter_update_n_bins(index);
   return 0;
 }
@@ -147,20 +161,17 @@ openmc_sphharm_filter_set_order(int32_t index, int order)
 extern "C" int
 openmc_sphharm_filter_set_cosine(int32_t index, const char cosine[])
 {
-  int err = verify_filter(index);
+  // Check the filter.
+  auto check_result = check_sphharm_filter(index);
+  auto err = check_result.first;
+  auto filt = check_result.second;
   if (err) return err;
 
-  auto filt = filter_from_f(index);
-  if (filt->type() != "sphericalharmonics") {
-    set_errmsg("Not a spherical harmonics filter.");
-    return OPENMC_E_INVALID_TYPE;
-  }
-
-  auto sph_filt = static_cast<SphericalHarmonicsFilter*>(filt);
+  // Update the filter.
   if (strcmp(cosine, "scatter") == 0) {
-    sph_filt->cosine_ = SphericalHarmonicsCosine::scatter;
+    filt->cosine_ = SphericalHarmonicsCosine::scatter;
   } else if (strcmp(cosine, "particle") == 0) {
-    sph_filt->cosine_ = SphericalHarmonicsCosine::particle;
+    filt->cosine_ = SphericalHarmonicsCosine::particle;
   } else {
     set_errmsg("Invalid spherical harmonics cosine.");
     return OPENMC_E_INVALID_ARGUMENT;

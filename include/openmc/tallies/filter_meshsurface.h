@@ -10,12 +10,12 @@ class MeshSurfaceFilter : public MeshFilter
 public:
   std::string type() const override {return "meshsurface";}
 
-  void from_xml(pugi::xml_node node) override;
-
   void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
 
   std::string text_label(int bin) const override;
+
+  void set_mesh(int32_t mesh) override;
 };
 
 } // namespace openmc

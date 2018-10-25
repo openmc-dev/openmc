@@ -8,14 +8,6 @@
 namespace openmc {
 
 void
-MeshSurfaceFilter::from_xml(pugi::xml_node node)
-{
-  MeshFilter::from_xml(node);
-  n_bins_ = 4 * meshes[mesh_]->n_dimension_;;
-  for (auto dim : meshes[mesh_]->shape_) n_bins_ *= dim;
-}
-
-void
 MeshSurfaceFilter::get_all_bins(const Particle* p, int estimator,
                                 FilterMatch& match) const
 {
@@ -77,6 +69,14 @@ MeshSurfaceFilter::text_label(int bin) const
   }
 
   return out;
+}
+
+void
+MeshSurfaceFilter::set_mesh(int32_t mesh)
+{
+  mesh_ = mesh;
+  n_bins_ = 4 * meshes[mesh_]->n_dimension_;
+  for (auto dim : meshes[mesh_]->shape_) n_bins_ *= dim;
 }
 
 //==============================================================================

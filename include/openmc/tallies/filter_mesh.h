@@ -29,6 +29,11 @@ public:
 
   std::string text_label(int bin) const override;
 
+  virtual int32_t mesh() const {return mesh_;}
+
+  virtual void set_mesh(int32_t mesh);
+
+protected:
   int32_t mesh_;
 };
 

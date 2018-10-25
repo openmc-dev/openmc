@@ -154,7 +154,7 @@ int openmc_simulation_finalize()
   simulation::total_gen += simulation::current_batch*settings::gen_per_batch;
 
 #ifdef OPENMC_MPI
-  broadcast_results()
+  broadcast_results();
 #endif
 
   // Write tally results to tallies.out

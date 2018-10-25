@@ -95,11 +95,11 @@ contains
 
     if (p % g /= NONE .and. this % matches_transport_groups) then
       if (estimator == ESTIMATOR_TRACKLENGTH) then
-        call match % bins % push_back(num_energy_groups - p % g + 1)
-        call match % weights % push_back(ONE)
+        call match % bins_push_back(num_energy_groups - p % g + 1)
+        call match % weights_push_back(ONE)
       else
-        call match % bins % push_back(num_energy_groups - p % last_g + 1)
-        call match % weights % push_back(ONE)
+        call match % bins_push_back(num_energy_groups - p % last_g + 1)
+        call match % weights_push_back(ONE)
       end if
 
     else
@@ -109,8 +109,8 @@ contains
       ! Search to find incoming energy bin.
       bin = binary_search(this % bins, n + 1, E)
       if (bin /= NO_BIN_FOUND) then
-        call match % bins % push_back(bin)
-        call match % weights % push_back(ONE)
+        call match % bins_push_back(bin)
+        call match % weights_push_back(ONE)
       end if
     end if
   end subroutine get_all_bins_energy
@@ -155,16 +155,16 @@ contains
     if (p % g /= NONE .and. this % matches_transport_groups) then
       ! Tallies are ordered in increasing groups, group indices
       ! however are the opposite, so switch
-      call match % bins % push_back(num_energy_groups - p % g + 1)
-      call match % weights % push_back(ONE)
+      call match % bins_push_back(num_energy_groups - p % g + 1)
+      call match % weights_push_back(ONE)
 
     else
 
       ! Search to find incoming energy bin.
       bin = binary_search(this % bins, n + 1, p % E)
       if (bin /= NO_BIN_FOUND) then
-        call match % bins % push_back(bin)
-        call match % weights % push_back(ONE)
+        call match % bins_push_back(bin)
+        call match % weights_push_back(ONE)
       end if
     end if
   end subroutine get_all_bins_energyout

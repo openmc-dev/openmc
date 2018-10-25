@@ -54,7 +54,7 @@ void load_dagmc_geometry()
     c->fill_ = C_NONE; // no fill, single universe
 
     cells.push_back(c);
-    cell_map[c->id_] = c->id_;
+    cell_map[c->id_] = i;
 
     // Populate the Universe vector and dict
     auto it = universe_map.find(dagmc_univ_id);

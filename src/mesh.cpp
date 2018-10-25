@@ -20,6 +20,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/message_passing.h"
 #include "openmc/search.h"
+#include "openmc/tallies/filter.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -899,10 +900,6 @@ void meshes_to_hdf5(hid_t group)
 //==============================================================================
 
 extern "C" {
-  // Declaration of Fortran procedures
-  void vector_int_push_back(void* ptr, int value);
-  void vector_real_push_back(void* ptr, double value);
-
   int n_meshes() { return meshes.size(); }
 
   RegularMesh* mesh_ptr(int i) { return meshes.at(i).get(); }
@@ -939,35 +936,6 @@ extern "C" {
   void mesh_get_indices_from_bin(RegularMesh* m, int bin, int* ijk)
   {
     m->get_indices_from_bin(bin, ijk);
-  }
-
-  void mesh_bins_crossed(RegularMesh* m, const Particle* p, void* match_bins,
-    void* match_weights)
-  {
-    // Get bins crossed
-    std::vector<int> bins;
-    std::vector<double> lengths;
-    m->bins_crossed(p, bins, lengths);
-
-    // Call bindings for VectorInt and VectorReal on Fortran side
-    for (int i = 0; i < bins.size(); ++i) {
-      vector_int_push_back(match_bins, bins[i]);
-      vector_real_push_back(match_weights, lengths[i]);
-    }
-  }
-
-  void mesh_surface_bins_crossed(RegularMesh* m, const Particle* p,
-    void* match_bins, void* match_weights)
-  {
-    // Get surface bins crossed
-    std::vector<int> bins;
-    m->surface_bins_crossed(p, bins);
-
-    // Call bindings for VectorInt and VectorReal
-    for (auto b : bins) {
-      vector_int_push_back(match_bins, b);
-      vector_real_push_back(match_weights, 1.0);
-    }
   }
 
   void free_memory_mesh()

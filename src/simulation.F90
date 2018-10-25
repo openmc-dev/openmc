@@ -34,7 +34,7 @@ module simulation
   use tally,           only: accumulate_tallies, setup_active_tallies, &
                              init_tally_routines
   use tally_header
-  use tally_filter_header, only: filter_matches, n_filters
+  use tally_filter_header, only: filter_matches, n_filters, filter_match_pointer
   use tally_derivative_header, only: tally_derivs
   use timer_header
   use trigger,         only: check_triggers
@@ -406,8 +406,7 @@ contains
     ! Allocate array for matching filter bins
     allocate(filter_matches(n_filters))
     do i = 1, n_filters
-      allocate(filter_matches(i) % bins)
-      allocate(filter_matches(i) % weights)
+      filter_matches(i) % ptr = filter_match_pointer(i - 1)
     end do
 !$omp end parallel
 
@@ -453,6 +452,9 @@ contains
     integer    :: i       ! loop index
 
     interface
+      subroutine openmc_simulation_finalize_c() bind(C)
+      end subroutine openmc_simulation_finalize_c
+
       subroutine print_overlap_check() bind(C)
       end subroutine print_overlap_check
 
@@ -474,10 +476,6 @@ contains
       deallocate(materials(i) % mat_nuclide_index)
     end do
 !$omp parallel
-    do i = 1, size(filter_matches)
-      deallocate(filter_matches(i) % bins)
-      deallocate(filter_matches(i) % weights)
-    end do
     deallocate(micro_xs, micro_photon_xs, filter_matches)
 !$omp end parallel
 
@@ -497,6 +495,8 @@ contains
         tallies(i) % obj % active = .false.
       end do
     end if
+
+    call openmc_simulation_finalize_c()
 
     ! Stop timers and show timing statistics
     call time_finalize%stop()

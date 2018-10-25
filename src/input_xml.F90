@@ -60,12 +60,8 @@ module input_xml
       integer(C_INT32_T), intent(in), value :: univ_indx
     end subroutine count_cell_instances
 
-    subroutine prepare_distribcell_c(cell_list, n) &
-         bind(C, name="prepare_distribcell")
-      import C_INT32_T, C_INT
-      integer(C_INT),     intent(in), value :: n
-      integer(C_INT32_T), intent(in)        :: cell_list(n)
-    end subroutine prepare_distribcell_c
+    subroutine prepare_distribcell() bind(C)
+    end subroutine prepare_distribcell
 
     subroutine read_surfaces(node_ptr) bind(C)
       import C_PTR
@@ -364,7 +360,7 @@ contains
 
   subroutine read_geometry_dagmc()
 
-    integer :: i, j
+    integer :: i
     integer :: univ_id
     integer :: n_cells_in_univ
     logical :: file_exists
@@ -396,7 +392,6 @@ contains
       if (.not. cells_in_univ_dict % has(univ_id)) then
         n_universes = n_universes + 1
         n_cells_in_univ = 1
-        call universe_dict % set(univ_id, n_universes)
         call univ_ids % push_back(univ_id)
       else
         n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
@@ -474,9 +469,6 @@ contains
       surfaces(i) % ptr = surface_pointer(i - 1);
 
       if (surfaces(i) % bc() /= BC_TRANSMIT) boundary_exists = .true.
-
-      ! Add surface to dictionary
-      call surface_dict % set(surfaces(i) % id(), i)
     end do
 
     ! Check to make sure a boundary condition was applied to at least one
@@ -566,7 +558,6 @@ contains
       if (.not. cells_in_univ_dict % has(univ_id)) then
         n_universes = n_universes + 1
         n_cells_in_univ = 1
-        call universe_dict % set(univ_id, n_universes - 1)
         call univ_ids % push_back(univ_id)
       else
         n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
@@ -635,8 +626,6 @@ contains
 
     do i = 1, n_surfaces
       surfaces(i) % ptr = surface_pointer(i - 1);
-      ! Add surface to dictionary
-      call surface_dict % set(surfaces(i) % id(), i)
     end do
 
   end subroutine allocate_surfaces
@@ -3158,34 +3147,5 @@ contains
     end associate
 
   end subroutine read_multipole_data
-
-!===============================================================================
-! PREPARE_DISTRIBCELL initializes any distribcell filters present and sets the
-! offsets for distribcells
-!===============================================================================
-
-  subroutine prepare_distribcell()
-
-    integer :: i, j
-    type(SetInt)  :: cell_list  ! distribcells to track
-    integer(C_INT32_T), allocatable :: cell_list_c(:)
-
-    ! Find all cells listed in a distribcell filter.
-    do i = 1, n_tallies
-      do j = 1, size(tallies(i) % obj % filter)
-        select type(filt => filters(tallies(i) % obj % filter(j)) % obj)
-        type is (DistribcellFilter)
-          call cell_list % add(filt % cell)
-        end select
-      end do
-    end do
-
-    allocate(cell_list_c(cell_list % size()))
-    do i = 1, cell_list % size()
-      cell_list_c(i) = cell_list % get_item(i) - 1
-    end do
-    call prepare_distribcell_c(cell_list_c, cell_list % size())
-
-  end subroutine prepare_distribcell
 
 end module input_xml

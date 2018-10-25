@@ -43,7 +43,7 @@ public:
 class Filter
 {
 public:
-  virtual ~Filter() = 0;
+  virtual ~Filter() = default;
 
   virtual std::string type() const = 0;
 
@@ -75,8 +75,6 @@ public:
 
   int n_bins_;
 };
-
-inline Filter::~Filter() {}
 
 //==============================================================================
 

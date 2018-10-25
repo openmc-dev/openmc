@@ -1,5 +1,7 @@
 #include "openmc/tallies/filter_sptl_legendre.h"
 
+#include <utility>  // For pair
+
 #include "openmc/capi.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
@@ -94,20 +96,38 @@ SpatialLegendreFilter::text_label(int bin) const
 // C-API functions
 //==============================================================================
 
+std::pair<int, SpatialLegendreFilter*>
+check_sptl_legendre_filter(int32_t index)
+{
+  // Make sure this is a valid index to an allocated filter.
+  int err = verify_filter(index);
+  if (err) {
+    return {err, nullptr};
+  }
+
+  // Get a pointer to the filter and downcast.
+  auto* filt_base = filter_from_f(index);
+  auto* filt = dynamic_cast<SpatialLegendreFilter*>(filt_base);
+
+  // Check the filter type.
+  if (!filt) {
+    set_errmsg("Not a spatial Legendre filter.");
+    err = OPENMC_E_INVALID_TYPE;
+  }
+  return {err, filt};
+}
+
 extern "C" int
 openmc_spatial_legendre_filter_get_order(int32_t index, int* order)
 {
-  int err = verify_filter(index);
+  // Check the filter.
+  auto check_result = check_sptl_legendre_filter(index);
+  auto err = check_result.first;
+  auto filt = check_result.second;
   if (err) return err;
 
-  auto filt = filter_from_f(index);
-  if (filt->type() != "spatiallegendre") {
-    set_errmsg("Not a spatial Legendre filter.");
-    return OPENMC_E_INVALID_TYPE;
-  }
-
-  auto l_filt = static_cast<SpatialLegendreFilter*>(filt);
-  *order = l_filt->order_;
+  // Output the order.
+  *order = filt->order_;
   return 0;
 }
 
@@ -115,37 +135,31 @@ extern "C" int
 openmc_spatial_legendre_filter_get_params(int32_t index, int* axis,
                                           double* min, double* max)
 {
-  int err = verify_filter(index);
+  // Check the filter.
+  auto check_result = check_sptl_legendre_filter(index);
+  auto err = check_result.first;
+  auto filt = check_result.second;
   if (err) return err;
 
-  auto filt = filter_from_f(index);
-  if (filt->type() != "spatiallegendre") {
-    set_errmsg("Not a spatial Legendre filter.");
-    return OPENMC_E_INVALID_TYPE;
-  }
-
-  auto l_filt = static_cast<SpatialLegendreFilter*>(filt);
-  *axis = static_cast<int>(l_filt->axis_);
-  *min = l_filt->min_;
-  *max = l_filt->max_;
+  // Output the params.
+  *axis = static_cast<int>(filt->axis_);
+  *min = filt->min_;
+  *max = filt->max_;
   return 0;
 }
 
 extern "C" int
 openmc_spatial_legendre_filter_set_order(int32_t index, int order)
 {
-  int err = verify_filter(index);
+  // Check the filter.
+  auto check_result = check_sptl_legendre_filter(index);
+  auto err = check_result.first;
+  auto filt = check_result.second;
   if (err) return err;
 
-  auto filt = filter_from_f(index);
-  if (filt->type() != "spatiallegendre") {
-    set_errmsg("Not a spatial Legendre filter.");
-    return OPENMC_E_INVALID_TYPE;
-  }
-
-  auto l_filt = static_cast<SpatialLegendreFilter*>(filt);
-  l_filt->order_ = order;
-  l_filt->n_bins_ = order + 1;
+  // Update the filter.
+  filt->order_ = order;
+  filt->n_bins_ = order + 1;
   filter_update_n_bins(index);
   return 0;
 }
@@ -154,19 +168,16 @@ extern "C" int
 openmc_spatial_legendre_filter_set_params(int32_t index, const int* axis,
   const double* min, const double* max)
 {
-  int err = verify_filter(index);
+  // Check the filter.
+  auto check_result = check_sptl_legendre_filter(index);
+  auto err = check_result.first;
+  auto filt = check_result.second;
   if (err) return err;
 
-  auto filt = filter_from_f(index);
-  if (filt->type() != "spatiallegendre") {
-    set_errmsg("Not a spatial Legendre filter.");
-    return OPENMC_E_INVALID_TYPE;
-  }
-
-  auto l_filt = static_cast<SpatialLegendreFilter*>(filt);
-  if (axis) l_filt->axis_ = static_cast<LegendreAxis>(*axis);
-  if (min) l_filt->min_ = *min;
-  if (max) l_filt->max_ = *max;
+  // Update the filter.
+  if (axis) filt->axis_ = static_cast<LegendreAxis>(*axis);
+  if (min) filt->min_ = *min;
+  if (max) filt->max_ = *max;
   return 0;
 }
 

@@ -161,7 +161,7 @@ extern "C" {
 
   int filter_n_bins(Filter* filt) {return filt->n_bins_;}
 
-  int mesh_filter_get_mesh(MeshFilter* filt) {return filt->mesh_;}
+  int mesh_filter_get_mesh(MeshFilter* filt) {return filt->mesh();}
 
   int sphharm_filter_get_cosine(SphericalHarmonicsFilter* filt)
   {return static_cast<int>(filt->cosine_);}

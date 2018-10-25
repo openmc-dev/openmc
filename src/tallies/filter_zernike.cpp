@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <sstream>
+#include <utility>  // For pair
 
 #include "openmc/capi.h"
 #include "openmc/error.h"
@@ -119,20 +120,38 @@ ZernikeRadialFilter::set_order(int order)
 // C-API functions
 //==============================================================================
 
+std::pair<int, ZernikeFilter*>
+check_zernike_filter(int32_t index)
+{
+  // Make sure this is a valid index to an allocated filter.
+  int err = verify_filter(index);
+  if (err) {
+    return {err, nullptr};
+  }
+
+  // Get a pointer to the filter and downcast.
+  auto* filt_base = filter_from_f(index);
+  auto* filt = dynamic_cast<ZernikeFilter*>(filt_base);
+
+  // Check the filter type.
+  if (!filt) {
+    set_errmsg("Not a Zernike filter.");
+    err = OPENMC_E_INVALID_TYPE;
+  }
+  return {err, filt};
+}
+
 extern "C" int
 openmc_zernike_filter_get_order(int32_t index, int* order)
 {
-  int err = verify_filter(index);
+  // Check the filter.
+  auto check_result = check_zernike_filter(index);
+  auto err = check_result.first;
+  auto filt = check_result.second;
   if (err) return err;
 
-  auto filt = filter_from_f(index);
-  if (filt->type() != "zernike" && filt->type() != "zernikeradial") {
-    set_errmsg("Not a Zernike filter.");
-    return OPENMC_E_INVALID_TYPE;
-  }
-
-  auto z_filt = static_cast<ZernikeFilter*>(filt);
-  *order = z_filt->order();
+  // Output the order.
+  *order = filt->order();
   return 0;
 }
 
@@ -140,36 +159,30 @@ extern "C" int
 openmc_zernike_filter_get_params(int32_t index, double* x, double* y,
                                  double* r)
 {
-  int err = verify_filter(index);
+  // Check the filter.
+  auto check_result = check_zernike_filter(index);
+  auto err = check_result.first;
+  auto filt = check_result.second;
   if (err) return err;
 
-  auto filt = filter_from_f(index);
-  if (filt->type() != "zernike" && filt->type() != "zernikeradial") {
-    set_errmsg("Not a Zernike filter.");
-    return OPENMC_E_INVALID_TYPE;
-  }
-
-  auto z_filt = static_cast<ZernikeFilter*>(filt);
-  *x = z_filt->x_;
-  *y = z_filt->y_;
-  *r = z_filt->r_;
+  // Output the params.
+  *x = filt->x_;
+  *y = filt->y_;
+  *r = filt->r_;
   return 0;
 }
 
 extern "C" int
 openmc_zernike_filter_set_order(int32_t index, int order)
 {
-  int err = verify_filter(index);
+  // Check the filter.
+  auto check_result = check_zernike_filter(index);
+  auto err = check_result.first;
+  auto filt = check_result.second;
   if (err) return err;
 
-  auto filt = filter_from_f(index);
-  if (filt->type() != "zernike" && filt->type() != "zernikeradial") {
-    set_errmsg("Not a Zernike filter.");
-    return OPENMC_E_INVALID_TYPE;
-  }
-
-  auto z_filt = static_cast<ZernikeFilter*>(filt);
-  z_filt->set_order(order);
+  // Update the filter.
+  filt->set_order(order);
   filter_update_n_bins(index);
   return 0;
 }
@@ -178,19 +191,16 @@ extern "C" int
 openmc_zernike_filter_set_params(int32_t index, const double* x,
                                  const double* y, const double* r)
 {
-  int err = verify_filter(index);
+  // Check the filter.
+  auto check_result = check_zernike_filter(index);
+  auto err = check_result.first;
+  auto filt = check_result.second;
   if (err) return err;
 
-  auto filt = filter_from_f(index);
-  if (filt->type() != "zernike" && filt->type() != "zernikeradial") {
-    set_errmsg("Not a Zernike filter.");
-    return OPENMC_E_INVALID_TYPE;
-  }
-
-  auto z_filt = static_cast<ZernikeFilter*>(filt);
-  if (x) z_filt->x_ = *x;
-  if (y) z_filt->y_ = *y;
-  if (r) z_filt->r_ = *r;
+  // Update the filter.
+  if (x) filt->x_ = *x;
+  if (y) filt->y_ = *y;
+  if (r) filt->r_ = *r;
   return 0;
 }
 

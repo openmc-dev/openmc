@@ -52,8 +52,8 @@ contains
 
     do i = 1, this % n_bins
       if (this % particles(i) == p % type) then
-        call match % bins % push_back(i)
-        call match % weights % push_back(ONE)
+        call match % bins_push_back(i)
+        call match % weights_push_back(ONE)
       end if
     end do
   end subroutine get_all_bins

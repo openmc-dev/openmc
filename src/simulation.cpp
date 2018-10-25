@@ -4,6 +4,7 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/message_passing.h"
 #include "openmc/settings.h"
+#include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
 
 #include <algorithm>
@@ -12,7 +13,8 @@
 // over the batches, generations, and histories in a fixed source or k-eigenvalue
 // calculation.
 
-int openmc_run() {
+int openmc_run()
+{
   openmc_simulation_init();
 
   int err = 0;
@@ -70,6 +72,12 @@ void openmc_simulation_init_c()
 {
   // Determine how much work each process should do
   calculate_work();
+
+  // Allocate array for matching filter bins
+  #pragma omp parallel
+  {
+    filter_matches.resize(n_filters);
+  }
 }
 
 void initialize_generation()
@@ -83,6 +91,15 @@ void initialize_generation()
 
     // Store current value of tracklength k
     keff_generation = global_tallies()(K_TRACKLENGTH, RESULT_VALUE);
+  }
+}
+
+extern "C" void
+openmc_simulation_finalize_c()
+{
+  #pragma omp parallel
+  {
+    filter_matches.clear();
   }
 }
 

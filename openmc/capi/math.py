@@ -18,11 +18,11 @@ _dll.evaluate_legendre.argtypes = [c_int, POINTER(c_double), c_double]
 _dll.calc_rn_c.restype = None
 _dll.calc_rn_c.argtypes = [c_int, ndpointer(c_double), ndpointer(c_double)]
 
-_dll.calc_zn_c.restype = None
-_dll.calc_zn_c.argtypes = [c_int, c_double, c_double, ndpointer(c_double)]
+_dll.calc_zn.restype = None
+_dll.calc_zn.argtypes = [c_int, c_double, c_double, ndpointer(c_double)]
 
-_dll.calc_zn_rad_c.restype = None
-_dll.calc_zn_rad_c.argtypes = [c_int, c_double, ndpointer(c_double)]
+_dll.calc_zn_rad.restype = None
+_dll.calc_zn_rad.argtypes = [c_int, c_double, ndpointer(c_double)]
 
 _dll.rotate_angle_c.restype = None
 _dll.rotate_angle_c.argtypes = [ndpointer(c_double), c_double,
@@ -153,7 +153,7 @@ def calc_zn(n, rho, phi):
 
     num_bins = ((n + 1) * (n + 2)) // 2
     zn = np.zeros(num_bins, dtype=np.float64)
-    _dll.calc_zn_c(n, rho, phi, zn)
+    _dll.calc_zn(n, rho, phi, zn)
     return zn
 
 
@@ -179,7 +179,7 @@ def calc_zn_rad(n, rho):
 
     num_bins = n // 2 + 1
     zn_rad = np.zeros(num_bins, dtype=np.float64)
-    _dll.calc_zn_rad_c(n, rho, zn_rad)
+    _dll.calc_zn_rad(n, rho, zn_rad)
     return zn_rad
 
 

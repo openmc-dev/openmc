@@ -134,7 +134,7 @@ void synchronize_bank()
 
   // Allocate temporary source bank
   int64_t index_temp = 0;
-  Bank temp_sites[3*simulation::work];
+  std::vector<Bank> temp_sites(3*simulation::work);
 
   for (int64_t i = 0; i < n_bank; ++i) {
     // If there are less than n_particles particles banked, automatically add
@@ -296,7 +296,7 @@ void synchronize_bank()
   MPI_Waitall(n_request, requests.data(), MPI_STATUSES_IGNORE);
 
 #else
-  std::copy(temp_sites, temp_sites + settings::n_particles, source_bank);
+  std::copy(temp_sites.data(), temp_sites.data() + settings::n_particles, source_bank);
 #endif
 
   time_bank_sendrecv.stop();

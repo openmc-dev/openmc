@@ -64,10 +64,16 @@ get_child_nodes(pugi::xml_node node, const char* name)
   pugi::xml_node current;
   std::vector<pugi::xml_node> node_list;
 
-  for (pugi::xml_node current : node.children(name)) {
+  // add all child nodes with name to vector and return
+  if (name) {
+    for (pugi::xml_node current : node.children(name)) {
       node_list.push_back(current);
+    }
+  } else {
+    for (pugi::xml_node current : node.children()) {
+      node_list.push_back(current);
+    }
   }
-
   return node_list;
 }
 

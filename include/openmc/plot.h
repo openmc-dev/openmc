@@ -52,42 +52,42 @@ namespace openmc {
 // ObjectPlot holds plot information
 //===============================================================================
 
-  struct ObjectPlot {
+class ObjectPlot
+{
 
-    ObjectPlot(pugi::xml_node plot);
+public:
+  ObjectPlot(pugi::xml_node plot);
 
-    int id;
-    int type;
-    int color_by;
-    Position origin;
-    Position width;
-    int basis;
-    int pixels[3];
-    int meshlines_width;
-    int level;
-    int index_meshlines_mesh;
-    ObjectColor meshlines_color;
-    ObjectColor not_found;
-    std::vector<ObjectColor*> colors;
-    std::string path_plot;
-    pugi::xml_node plot_node;
+  int id;
+  int type;
+  int color_by;
+  Position origin;
+  Position width;
+  int basis;
+  int pixels[3];
+  int meshlines_width;
+  int level;
+  int index_meshlines_mesh;
+  ObjectColor meshlines_color;
+  ObjectColor not_found;
+  std::vector<ObjectColor*> colors;
+  std::string path_plot;
+  pugi::xml_node plot_node;
 
-  private:
-    void set_id();
-    void set_type();
-    void set_output_path();
-    void set_bg_color();
-    void set_basis();
-    void set_origin();
-    void set_width();
-    void set_universe();
-    void set_default_colors();
-    void set_user_colors();
-    void set_meshlines();
-    void set_mask();
-  };
-
-  //extern "C" int openmc_plot_geometry();
+ private:
+  void set_id();
+  void set_type();
+  void set_output_path();
+  void set_bg_color();
+  void set_basis();
+  void set_origin();
+  void set_width();
+  void set_universe();
+  void set_default_colors();
+  void set_user_colors();
+  void set_meshlines();
+  void set_mask();
+};
 
 extern "C" void read_plots(pugi::xml_node* plot_node);
 

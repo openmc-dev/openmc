@@ -17,13 +17,13 @@
 
 namespace openmc {
 
-  int PLOT_LEVEL_LOWEST = -1;
+int PLOT_LEVEL_LOWEST = -1;
 
-  std::map<int, int> plot_dict;
+std::map<int, int> plot_dict;
 
-  int n_plots;
+int n_plots;
 
-  std::vector<ObjectPlot*> plots;
+std::vector<ObjectPlot*> plots;
 
 const int RED   = 0;
 const int GREEN = 1;
@@ -37,7 +37,8 @@ const int NULLRGB[3] = {0, 0, 0};
 //===============================================================================
 
 extern "C"
-int openmc_plot_geometry() {
+int openmc_plot_geometry()
+{
   int err;
 
   for(int i = 0; i < n_plots; i++) {
@@ -57,13 +58,14 @@ int openmc_plot_geometry() {
         create_voxel(pl);
         continue;
       }
-
   }
   return 0;
 }
 
 
-void read_plots(pugi::xml_node* plots_node) {
+void
+read_plots(pugi::xml_node* plots_node)
+{
 
   std::vector<pugi::xml_node> plot_nodes;
   plot_nodes = get_child_nodes(*plots_node, "plot");
@@ -82,7 +84,8 @@ void read_plots(pugi::xml_node* plots_node) {
 // specification in the portable pixmap format (PPM)
 //===============================================================================
 
-void create_ppm(ObjectPlot* pl) {
+void create_ppm(ObjectPlot* pl)
+{
 
   int width = pl->pixels[0];
   int height = pl->pixels[1];
@@ -146,14 +149,16 @@ void create_ppm(ObjectPlot* pl) {
     }
   }
 
+  // draw mesh lines if present
   if (pl->index_meshlines_mesh >= 0) { draw_mesh_lines(pl, data); }
 
+  // write ppm data to file
   output_ppm(pl, data);
-
 }
 
 void
-ObjectPlot::set_id() {
+ObjectPlot::set_id()
+{
     // Copy data into plots
   if (check_for_node(plot_node, "id")) {
     id = std::stoi(get_node_value(plot_node, "id"));
@@ -168,34 +173,39 @@ ObjectPlot::set_id() {
     err_msg << id;
     fatal_error(err_msg.str());
   }
-
 }
 
 void
-ObjectPlot::set_type() {
+ObjectPlot::set_type()
+{
   // Copy plot type
   // Default is slice
   std::string type_str = "slice";
   type = PLOT_TYPE::SLICE;
+  // check type specified on plot node
   if (check_for_node(plot_node, "type")) {
     type_str = get_node_value(plot_node, "type");
     to_lower(type_str);
+    // set type using node value
     if (type_str == "slice") {
       type = PLOT_TYPE::SLICE;
+      return;
     }
     else if (type_str == "voxel") {
       type = PLOT_TYPE::VOXEL;
-    } else {
-      std::stringstream err_msg;
-      err_msg << "Unsupported plot type '" << type_str
-              << "' in plot " << id;
-      fatal_error(err_msg.str());
+      return;
     }
-  }  
+    // if we're here, something is wrong
+    std::stringstream err_msg;
+    err_msg << "Unsupported plot type '" << type_str
+            << "' in plot " << id;
+    fatal_error(err_msg.str());
+  }
 }
 
 void
-ObjectPlot::set_output_path() {
+ObjectPlot::set_output_path()
+{
   // Set output file path
   std::stringstream filename;
   filename << "plot_" << id;
@@ -243,7 +253,8 @@ ObjectPlot::set_output_path() {
 }
 
 void
-ObjectPlot::set_bg_color(){
+ObjectPlot::set_bg_color()
+{
     // Copy plot background color
   std::vector<int> bg_rgb;
   if (check_for_node(plot_node, "background")) {
@@ -257,9 +268,9 @@ ObjectPlot::set_bg_color(){
     }
     if (node_word_count(plot_node, "background") == 3) {
       bg_rgb = get_node_array<int>(plot_node, "background");
-      not_found.rgb[0] = bg_rgb[0];
-      not_found.rgb[1] = bg_rgb[1];
-      not_found.rgb[2] = bg_rgb[2];
+      not_found.rgb[RED] = bg_rgb[RED];
+      not_found.rgb[GREEN] = bg_rgb[GREEN];
+      not_found.rgb[BLUE] = bg_rgb[BLUE];
     } else {
       std::stringstream err_msg;
       err_msg << "Bad background RGB in plot "
@@ -268,14 +279,15 @@ ObjectPlot::set_bg_color(){
     }
   } else {
     // default to a white background
-    not_found.rgb[0] = 255;
-    not_found.rgb[1] = 255;
-    not_found.rgb[2] = 255;
+    not_found.rgb[RED] = 255;
+    not_found.rgb[GREEN] = 255;
+    not_found.rgb[BLUE] = 255;
   }
 }
 
 void
-ObjectPlot::set_basis() {
+ObjectPlot::set_basis()
+{
   // Copy plot basis
   if (PLOT_TYPE::SLICE == type) {
     std::string pl_basis = "xy";
@@ -296,10 +308,11 @@ ObjectPlot::set_basis() {
       fatal_error(err_msg);
     }
   }
-}  
+}
 
 void
-ObjectPlot::set_origin() {
+ObjectPlot::set_origin()
+{
   // Copy plotting origin
   std::vector<double> pl_origin;
   if (node_word_count(plot_node, "origin") == 3) {
@@ -316,8 +329,9 @@ ObjectPlot::set_origin() {
 }
 
 void
-ObjectPlot::set_width() {
-    // Copy plotting width
+ObjectPlot::set_width()
+{
+  // Copy plotting width
   std::vector<int> pl_width;
   if (PLOT_TYPE::SLICE == type) {
     if (node_word_count(plot_node, "width") == 2) {
@@ -346,7 +360,8 @@ ObjectPlot::set_width() {
 }
 
 void
-ObjectPlot::set_universe() {
+ObjectPlot::set_universe()
+{
   // Copy plot universe level
   if (check_for_node(plot_node, "level")) {
     level = std::stoi(get_node_value(plot_node, "level"));
@@ -358,10 +373,11 @@ ObjectPlot::set_universe() {
   } else {
     level = PLOT_LEVEL_LOWEST;
   }
-}  
+}
 
 void
-ObjectPlot::set_default_colors() {
+ObjectPlot::set_default_colors()
+{
   // Copy plot color type and initialize all colors randomly
   std::string pl_color_by = "cell";
   if (check_for_node(plot_node, "color_by")) {
@@ -370,23 +386,20 @@ ObjectPlot::set_default_colors() {
   }
   if ("cell" == pl_color_by) {
     color_by = PLOT_COLOR_BY::CELLS;
-
     for(int i = 0; i < n_cells; i++) {
       colors.push_back(new ObjectColor());
-      colors[i]->rgb[0] = int(prn()*255);
-      colors[i]->rgb[1] = int(prn()*255);
-      colors[i]->rgb[2] = int(prn()*255);
+      colors[i]->rgb[RED] = int(prn()*255);
+      colors[i]->rgb[GREEN] = int(prn()*255);
+      colors[i]->rgb[BLUE] = int(prn()*255);
     }
 
   } else if("material" == pl_color_by) {
-
     color_by = PLOT_COLOR_BY::MATS;
-
     for(int i = 0; i < materials.size(); i++) {
       colors.push_back(new ObjectColor());
-      colors[i]->rgb[0] = int(prn()*255);
-      colors[i]->rgb[1] = int(prn()*255);
-      colors[i]->rgb[2] = int(prn()*255);
+      colors[i]->rgb[RED] = int(prn()*255);
+      colors[i]->rgb[GREEN] = int(prn()*255);
+      colors[i]->rgb[BLUE] = int(prn()*255);
     }
   } else {
     std::stringstream err_msg;
@@ -397,8 +410,9 @@ ObjectPlot::set_default_colors() {
 }
 
 void
-ObjectPlot::set_user_colors() {
-    // Get the number of <color> nodes and get a list of them
+ObjectPlot::set_user_colors()
+{
+  // Get the number of <color> nodes and get a list of them
   std::vector<pugi::xml_node> color_nodes;
   color_nodes = get_child_nodes(plot_node, "color");
 
@@ -415,14 +429,12 @@ ObjectPlot::set_user_colors() {
     }
 
     for(auto cn : color_nodes) {
-
       // Check and make sure 3 values are specified for RGB
       if (node_word_count(cn, "rgb") != 3) {
         std::stringstream err_msg;
         err_msg << "Bad RGB in plot " << id;
         fatal_error(err_msg);
       }
-
       // Ensure that there is an id for this color specification
       int col_id;
       if (check_for_node(cn, "id")) {
@@ -433,16 +445,15 @@ ObjectPlot::set_user_colors() {
                 << id;
         fatal_error(err_msg);
       }
-
       // Add RGB
       if (PLOT_COLOR_BY::CELLS == color_by) {
         std::vector<int> cell_rgb;
         if (cell_map.find(col_id) != cell_map.end()) {
           col_id = cell_map[col_id];
           cell_rgb = get_node_array<int>(cn, "rgb");
-          colors[col_id - 1]->rgb[0] = cell_rgb[0];
-          colors[col_id - 1]->rgb[1] = cell_rgb[1];
-          colors[col_id - 1]->rgb[2] = cell_rgb[2];
+          colors[col_id - 1]->rgb[RED] = cell_rgb[RED];
+          colors[col_id - 1]->rgb[GREEN] = cell_rgb[GREEN];
+          colors[col_id - 1]->rgb[BLUE] = cell_rgb[BLUE];
         } else {
           std::stringstream err_msg;
           err_msg << "Could not find cell " << col_id
@@ -454,9 +465,9 @@ ObjectPlot::set_user_colors() {
         if (material_map.find(col_id) != material_map.end()) {
           col_id = material_map[col_id];
           mat_rgb = get_node_array<int>(cn, "rgb");
-          colors[col_id - 1]->rgb[0] = mat_rgb[0];
-          colors[col_id - 1]->rgb[1] = mat_rgb[1];
-          colors[col_id - 1]->rgb[2] = mat_rgb[2];
+          colors[col_id - 1]->rgb[RED] = mat_rgb[RED];
+          colors[col_id - 1]->rgb[GREEN] = mat_rgb[GREEN];
+          colors[col_id - 1]->rgb[BLUE] = mat_rgb[BLUE];
         } else {
           std::stringstream err_msg;
           err_msg << "Could not find material " << col_id
@@ -469,15 +480,15 @@ ObjectPlot::set_user_colors() {
 }
 
 void
-ObjectPlot::set_meshlines() {
-    // Deal with meshlines
+ObjectPlot::set_meshlines()
+{
+  // Deal with meshlines
   std::vector<pugi::xml_node> mesh_line_nodes;
   mesh_line_nodes = get_child_nodes(plot_node, "meshlines");
 
   int n_meshlines = mesh_line_nodes.size();
 
   if (n_meshlines != 0) {
-
     if (PLOT_TYPE::VOXEL == type) {
       std::stringstream msg;
       msg << "Meshlines ignored in voxel plot " << id;
@@ -598,14 +609,14 @@ ObjectPlot::set_meshlines() {
 }
 
 void
-ObjectPlot::set_mask() {
-    // Deal with masks
+ObjectPlot::set_mask()
+{
+  // Deal with masks
   std::vector<pugi::xml_node> mask_nodes;
   mask_nodes = get_child_nodes(plot_node, "mask");
   int n_masks = mask_nodes.size();
 
   if (n_masks > 0) {
-
     if (PLOT_TYPE::VOXEL == type) {
       if (openmc_master) {
         std::stringstream wrn_msg;
@@ -663,13 +674,13 @@ ObjectPlot::set_mask() {
         if (std::find(iarray.begin(), iarray.end(), j) != iarray.end()) {
           if (check_for_node(mask_node, "background")) {
             std::vector<int> bg_rgb = get_node_array<int>(mask_node, "background");
-            colors[j]->rgb[0] = bg_rgb[0];
-            colors[j]->rgb[1] = bg_rgb[1];
-            colors[j]->rgb[2] = bg_rgb[2];
+            colors[j]->rgb[RED] = bg_rgb[RED];
+            colors[j]->rgb[GREEN] = bg_rgb[GREEN];
+            colors[j]->rgb[BLUE] = bg_rgb[BLUE];
           } else {
-            colors[j]->rgb[0] = 255;
-            colors[j]->rgb[1] = 255;
-            colors[j]->rgb[2] = 255;
+            colors[j]->rgb[RED] = 255;
+            colors[j]->rgb[GREEN] = 255;
+            colors[j]->rgb[BLUE] = 255;
           }
         }
       }
@@ -681,12 +692,13 @@ ObjectPlot::set_mask() {
     }
   }
 }
-  
-ObjectPlot::ObjectPlot(pugi::xml_node plot_node)
-  : index_meshlines_mesh(-1), plot_node(plot_node) {
+
+ObjectPlot::ObjectPlot(pugi::xml_node plot_node):
+index_meshlines_mesh(-1), plot_node(plot_node)
+{
 
   set_id();
-  
+
   set_type();
 
   set_output_path();
@@ -696,21 +708,21 @@ ObjectPlot::ObjectPlot(pugi::xml_node plot_node)
   set_basis();
 
   set_origin();
-  
+
   set_width();
 
-  set_universe();  
+  set_universe();
 
   set_default_colors();
-  
+
   set_user_colors();
 
   set_meshlines();
-  
+
   set_mask();
 
   plot_node = pugi::xml_node(); // set to null node after construction
-  
+
 } // End ObjectPlot constructor
 
 //===============================================================================
@@ -718,7 +730,8 @@ ObjectPlot::ObjectPlot(pugi::xml_node plot_node)
 // current particle's position
 //===============================================================================
 
-void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id) {
+void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id)
+{
   bool found_cell;
 
   p->n_coord = 1;
@@ -805,7 +818,7 @@ void output_ppm(ObjectPlot* pl, const ImageData &data)
     }
   }
   // Close file
-  // THIS IS HERE TO MATCH FORTRAN VERSION, NOT NECESSARY
+  // THIS IS HERE TO MATCH FORTRAN VERSION, NOT TECHNICALLY NECESSARY
   of << std::endl;
   of.close();
 }
@@ -909,8 +922,7 @@ void draw_mesh_lines(ObjectPlot *pl, ImageData &data)
       } // end if(in mesh)
     }
   } // end outer loops
-
-}
+} // end draw_mesh_lines
 
 //===============================================================================
 // CREATE_VOXEL outputs a binary file that can be input into silomesh for 3D
@@ -924,7 +936,8 @@ void draw_mesh_lines(ObjectPlot *pl, ImageData &data)
 // id.  For 1 million voxels this produces a file of approximately 15MB.
 //===============================================================================
 
-void create_voxel(ObjectPlot *pl) {
+void create_voxel(ObjectPlot *pl)
+{
 
   // compute voxel widths in each direction
   double vox[3];
@@ -1013,10 +1026,9 @@ void create_voxel(ObjectPlot *pl) {
 
 }
 
-
 void
-voxel_init(hid_t file_id, const hsize_t* dims, hid_t* dspace, hid_t* dset,
-           hid_t* memspace)
+voxel_init(hid_t file_id, const hsize_t* dims,
+           hid_t* dspace, hid_t* dset, hid_t* memspace)
 {
   // Create dataspace/dataset for voxel data
   *dspace = H5Screate_simple(3, dims, nullptr);

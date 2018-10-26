@@ -13,7 +13,6 @@
 
 namespace openmc {
 
-  //extern "C" int index_cmfd_mesh;
 
 extern "C" void
 cmfd_populate_sourcecounts(int n_energy, const double* energies,

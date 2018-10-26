@@ -1036,20 +1036,18 @@ def _close_random_pack(domain, particles, contraction_rate):
                 break
 
 
-def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
-                domain_radius=None, domain_inner_radius=None,
-                domain_center=[0., 0., 0.], n_particles=None,
-                packing_fraction=None, initial_packing_fraction=0.3,
-                contraction_rate=1.e-3, seed=1):
-    """Generate a random, non-overlapping configuration of TRISO particles
-    within a container.
+def pack_spheres(radius, domain_shape='cylinder', domain_length=None,
+                 domain_radius=None, domain_inner_radius=None,
+                 domain_center=[0., 0., 0.], n_particles=None,
+                 packing_fraction=None, initial_packing_fraction=0.3,
+                 contraction_rate=1.e-3, seed=1):
+    """Generate a random, non-overlapping configuration of spheres within a
+    container.
 
     Parameters
     ----------
     radius : float
         Outer radius of TRISO particles.
-    fill : openmc.Universe
-        Universe which contains all layers of the TRISO particle.
     domain_shape : {'cube', 'cylinder', or 'sphere'}
         Geometry of the container in which the TRISO particles are packed.
     domain_length : float
@@ -1080,9 +1078,9 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
         RNG seed.
 
     Returns
-    -------
-    trisos : list of openmc.model.TRISO
-        List of TRISO particles in the domain.
+    ------
+    numpy.ndarray
+        Cartesian coordinates of sphere centers.
 
     Notes
     -----
@@ -1202,7 +1200,24 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
         domain.particle_radius = radius
         _close_random_pack(domain, particles, contraction_rate)
 
-    trisos = []
-    for p in particles:
-        trisos.append(TRISO(radius, fill, [x + c for x, c in zip(p, domain.center)]))
-    return trisos
+    return particles + domain.center
+
+def create_trisos(outer_radius, fill, centers):
+    """Create TRISO particles at the given coordinates.
+
+    Parameters
+    ----------
+    outer_radius : float
+        Outer radius of TRISO particle
+    fill : openmc.Universe
+        Universe which contains all layers of the TRISO particle
+    centers : Iterable of float
+        Cartesian coordinates of the centers of the TRISO particles in cm
+
+    Returns
+    -------
+    list of openmc.model.TRISO
+        List of TRISO particles in the domain.
+
+    """
+    return [TRISO(outer_radius, fill, c) for c in centers]

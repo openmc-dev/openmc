@@ -22,11 +22,10 @@ namespace openmc {
 
   extern int n_plots; //!< number of plots in openmc run
 
-  extern std::vector<ObjectPlot*> plots; //!< Plot instance container
-  
-  typedef std::vector< std::vector< std::vector<int> > > ImageData;
-
   class ObjectPlot;
+  extern std::vector<ObjectPlot*> plots; //!< Plot instance container
+
+  typedef std::vector< std::vector< std::vector<int> > > ImageData;
 
   enum PLOT_TYPE {
     SLICE = 1,
@@ -64,7 +63,7 @@ public:
   ObjectPlot(pugi::xml_node plot);
 
   // Methods
- private:
+private:
   void set_id();
   void set_type();
   void set_output_path();
@@ -80,6 +79,7 @@ public:
 
 
   // Members
+public:
   int id; //!< Plot ID
   int type; //!< Plot type (Slice/Voxel)
   int color_by; //!< Plot coloring (cell/material)
@@ -106,7 +106,7 @@ public:
 //! \param[out] image data associated with the plot object
 void draw_mesh_lines(ObjectPlot* pl,
                      std::vector< std::vector< std::vector<int> > > &data);
- 
+
 //! Write a ppm image to file using a plot object's image data
 //! \param[in] plot object
 //! \param[out] image data associated with the plot object
@@ -117,7 +117,7 @@ void output_ppm(ObjectPlot* pl,
 //! \param[in] particle with position for current pixel
 //! \param[in] plot object
 //! \param[out] rgb color
-//! \param[out] cell or material id for particle position 
+//! \param[out] cell or material id for particle position
 void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id);
 
 
@@ -129,9 +129,9 @@ void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id);
 //! \param[out] pointer to memory space of voxel data
 void voxel_init(hid_t file_id, const hsize_t* dims, hid_t* dspace,
                            hid_t* dset, hid_t* memspace);
- 
+
 //! Write a section of the voxel data to hdf5
-//! \param[in] voxel slice 
+//! \param[in] voxel slice
 //! \param[out] dataspace pointer to voxel data
 //! \param[out] dataset pointer to voxesl data
 //! \param[out] pointer to data to write
@@ -159,6 +159,6 @@ extern "C" void create_ppm(ObjectPlot* pl);
 //! \param[in] plot object
 extern "C" void create_voxel(ObjectPlot *pl);
 
- 
+
 } // namespace openmc
 #endif // OPENMC_PLOT_H

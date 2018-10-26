@@ -160,8 +160,8 @@ void
 ObjectPlot::set_id()
 {
     // Copy data into plots
-  if (check_for_node(plot_node, "id")) {
-    id = std::stoi(get_node_value(plot_node, "id"));
+  if (check_for_node(_plot_node, "id")) {
+    id = std::stoi(get_node_value(_plot_node, "id"));
   } else {
     fatal_error("Must specify plot id in plots XML file.");
   }
@@ -183,8 +183,8 @@ ObjectPlot::set_type()
   std::string type_str = "slice";
   type = PLOT_TYPE::SLICE;
   // check type specified on plot node
-  if (check_for_node(plot_node, "type")) {
-    type_str = get_node_value(plot_node, "type");
+  if (check_for_node(_plot_node, "type")) {
+    type_str = get_node_value(_plot_node, "type");
     to_lower(type_str);
     // set type using node value
     if (type_str == "slice") {
@@ -210,8 +210,8 @@ ObjectPlot::set_output_path()
   std::stringstream filename;
   filename << "plot_" << id;
 
-  if (check_for_node(plot_node, "filename")) {
-    filename << get_node_value(plot_node, "filename");
+  if (check_for_node(_plot_node, "filename")) {
+    filename << get_node_value(_plot_node, "filename");
   } else {
     switch(type) {
     case PLOT_TYPE::SLICE:
@@ -227,8 +227,8 @@ ObjectPlot::set_output_path()
   // Copy plot pixel size
   std::vector<int> pxls;
   if (PLOT_TYPE::SLICE == type) {
-    if (node_word_count(plot_node, "pixels") == 2) {
-      pxls = get_node_array<int>(plot_node, "pixels");
+    if (node_word_count(_plot_node, "pixels") == 2) {
+      pxls = get_node_array<int>(_plot_node, "pixels");
       pixels[0] = pxls[0];
       pixels[1] = pxls[1];
     } else {
@@ -238,8 +238,8 @@ ObjectPlot::set_output_path()
       fatal_error(err_msg.str());
     }
   } else if (PLOT_TYPE::VOXEL == type) {
-    if (node_word_count(plot_node, "pixels") == 3) {
-      pxls = get_node_array<int>(plot_node, "pixels");
+    if (node_word_count(_plot_node, "pixels") == 3) {
+      pxls = get_node_array<int>(_plot_node, "pixels");
       pixels[0] = pxls[0];
       pixels[1] = pxls[1];
       pixels[2] = pxls[2];
@@ -257,7 +257,7 @@ ObjectPlot::set_bg_color()
 {
     // Copy plot background color
   std::vector<int> bg_rgb;
-  if (check_for_node(plot_node, "background")) {
+  if (check_for_node(_plot_node, "background")) {
     if (PLOT_TYPE::VOXEL == type) {
       if (openmc_master) {
         std::stringstream err_msg;
@@ -266,8 +266,8 @@ ObjectPlot::set_bg_color()
         warning(err_msg.str());
       }
     }
-    if (node_word_count(plot_node, "background") == 3) {
-      bg_rgb = get_node_array<int>(plot_node, "background");
+    if (node_word_count(_plot_node, "background") == 3) {
+      bg_rgb = get_node_array<int>(_plot_node, "background");
       not_found.rgb[RED] = bg_rgb[RED];
       not_found.rgb[GREEN] = bg_rgb[GREEN];
       not_found.rgb[BLUE] = bg_rgb[BLUE];
@@ -291,8 +291,8 @@ ObjectPlot::set_basis()
   // Copy plot basis
   if (PLOT_TYPE::SLICE == type) {
     std::string pl_basis = "xy";
-    if (check_for_node(plot_node, "basis")) {
-      pl_basis = get_node_value(plot_node, "basis");
+    if (check_for_node(_plot_node, "basis")) {
+      pl_basis = get_node_value(_plot_node, "basis");
     }
     to_lower(pl_basis);
     if ("xy" == pl_basis) {
@@ -315,8 +315,8 @@ ObjectPlot::set_origin()
 {
   // Copy plotting origin
   std::vector<double> pl_origin;
-  if (node_word_count(plot_node, "origin") == 3) {
-    pl_origin = get_node_array<double>(plot_node, "origin");
+  if (node_word_count(_plot_node, "origin") == 3) {
+    pl_origin = get_node_array<double>(_plot_node, "origin");
     origin[0] = pl_origin[0];
     origin[1] = pl_origin[1];
     origin[2] = pl_origin[2];
@@ -334,8 +334,8 @@ ObjectPlot::set_width()
   // Copy plotting width
   std::vector<int> pl_width;
   if (PLOT_TYPE::SLICE == type) {
-    if (node_word_count(plot_node, "width") == 2) {
-      pl_width = get_node_array<int>(plot_node, "width");
+    if (node_word_count(_plot_node, "width") == 2) {
+      pl_width = get_node_array<int>(_plot_node, "width");
       width[0] = pl_width[0];
       width[1] = pl_width[1];
     } else {
@@ -345,8 +345,8 @@ ObjectPlot::set_width()
       fatal_error(err_msg);
     }
   } else if (PLOT_TYPE::VOXEL == type) {
-    if (node_word_count(plot_node, "width") == 3) {
-      pl_width = get_node_array<int>(plot_node, "width");
+    if (node_word_count(_plot_node, "width") == 3) {
+      pl_width = get_node_array<int>(_plot_node, "width");
       width[0] = pl_width[0];
       width[1] = pl_width[1];
       width[2] = pl_width[2];
@@ -363,8 +363,8 @@ void
 ObjectPlot::set_universe()
 {
   // Copy plot universe level
-  if (check_for_node(plot_node, "level")) {
-    level = std::stoi(get_node_value(plot_node, "level"));
+  if (check_for_node(_plot_node, "level")) {
+    level = std::stoi(get_node_value(_plot_node, "level"));
     if (level < 0) {
       std::stringstream err_msg;
       err_msg << "Bad universe level in plot " << id ;
@@ -380,8 +380,8 @@ ObjectPlot::set_default_colors()
 {
   // Copy plot color type and initialize all colors randomly
   std::string pl_color_by = "cell";
-  if (check_for_node(plot_node, "color_by")) {
-    pl_color_by = get_node_value(plot_node, "color_by");
+  if (check_for_node(_plot_node, "color_by")) {
+    pl_color_by = get_node_value(_plot_node, "color_by");
     to_lower(pl_color_by);
   }
   if ("cell" == pl_color_by) {
@@ -414,7 +414,7 @@ ObjectPlot::set_user_colors()
 {
   // Get the number of <color> nodes and get a list of them
   std::vector<pugi::xml_node> color_nodes;
-  color_nodes = get_child_nodes(plot_node, "color");
+  color_nodes = get_child_nodes(_plot_node, "color");
 
   // Copy user-specified colors
   if (0 != color_nodes.size()) {
@@ -484,7 +484,7 @@ ObjectPlot::set_meshlines()
 {
   // Deal with meshlines
   std::vector<pugi::xml_node> mesh_line_nodes;
-  mesh_line_nodes = get_child_nodes(plot_node, "meshlines");
+  mesh_line_nodes = get_child_nodes(_plot_node, "meshlines");
 
   int n_meshlines = mesh_line_nodes.size();
 
@@ -613,7 +613,7 @@ ObjectPlot::set_mask()
 {
   // Deal with masks
   std::vector<pugi::xml_node> mask_nodes;
-  mask_nodes = get_child_nodes(plot_node, "mask");
+  mask_nodes = get_child_nodes(_plot_node, "mask");
   int n_masks = mask_nodes.size();
 
   if (n_masks > 0) {
@@ -694,7 +694,7 @@ ObjectPlot::set_mask()
 }
 
 ObjectPlot::ObjectPlot(pugi::xml_node plot_node):
-index_meshlines_mesh(-1), plot_node(plot_node)
+index_meshlines_mesh(-1), _plot_node(plot_node)
 {
 
   set_id();

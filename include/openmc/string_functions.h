@@ -15,6 +15,6 @@ char* strtrim(char* c_str);
 void to_lower(std::string& str);
 
 int word_count(std::string const& str);
- 
+
 } // namespace openmc
 #endif // STRING_FUNCTIONS_H

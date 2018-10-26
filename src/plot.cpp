@@ -451,9 +451,9 @@ ObjectPlot::set_user_colors()
         if (cell_map.find(col_id) != cell_map.end()) {
           col_id = cell_map[col_id];
           cell_rgb = get_node_array<int>(cn, "rgb");
-          colors[col_id - 1]->rgb[RED] = cell_rgb[RED];
-          colors[col_id - 1]->rgb[GREEN] = cell_rgb[GREEN];
-          colors[col_id - 1]->rgb[BLUE] = cell_rgb[BLUE];
+          colors[col_id]->rgb[RED] = cell_rgb[RED];
+          colors[col_id]->rgb[GREEN] = cell_rgb[GREEN];
+          colors[col_id]->rgb[BLUE] = cell_rgb[BLUE];
         } else {
           std::stringstream err_msg;
           err_msg << "Could not find cell " << col_id
@@ -465,9 +465,9 @@ ObjectPlot::set_user_colors()
         if (material_map.find(col_id) != material_map.end()) {
           col_id = material_map[col_id];
           mat_rgb = get_node_array<int>(cn, "rgb");
-          colors[col_id - 1]->rgb[RED] = mat_rgb[RED];
-          colors[col_id - 1]->rgb[GREEN] = mat_rgb[GREEN];
-          colors[col_id - 1]->rgb[BLUE] = mat_rgb[BLUE];
+          colors[col_id]->rgb[RED] = mat_rgb[RED];
+          colors[col_id]->rgb[GREEN] = mat_rgb[GREEN];
+          colors[col_id]->rgb[BLUE] = mat_rgb[BLUE];
         } else {
           std::stringstream err_msg;
           err_msg << "Could not find material " << col_id
@@ -671,7 +671,7 @@ ObjectPlot::set_mask()
       // Alter colors based on mask information
       // TODO:
       for(int j = 0; j < colors.size(); j++) {
-        if (std::find(iarray.begin(), iarray.end(), j) != iarray.end()) {
+        if (std::find(iarray.begin(), iarray.end(), j) == iarray.end()) {
           if (check_for_node(mask_node, "background")) {
             std::vector<int> bg_rgb = get_node_array<int>(mask_node, "background");
             colors[j]->rgb[RED] = bg_rgb[RED];
@@ -771,7 +771,7 @@ void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id)
         std::copy(pl->colors[p->material - 1]->rgb,
                   pl->colors[p->material - 1]->rgb + 3,
                   rgb);
-        id = materials[p->material - 1]->id;
+        id = materials[p->material - 1]->id_;
       }
 
     } else if (PLOT_COLOR_BY::CELLS == pl->color_by) {

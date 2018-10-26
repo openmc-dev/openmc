@@ -16,40 +16,40 @@ namespace openmc {
 // Global variables
 //===============================================================================
 
-  extern int PLOT_LEVEL_LOWEST; //!< lower bound on plot universe level
+extern int PLOT_LEVEL_LOWEST; //!< lower bound on plot universe level
 
-  extern std::map<int, int> plot_dict; //!< map of plot ids to index
+extern std::map<int, int> plot_dict; //!< map of plot ids to index
 
-  extern int n_plots; //!< number of plots in openmc run
+extern int n_plots; //!< number of plots in openmc run
 
-  class ObjectPlot;
-  extern std::vector<ObjectPlot*> plots; //!< Plot instance container
+class ObjectPlot;
+extern std::vector<ObjectPlot*> plots; //!< Plot instance container
 
-  typedef std::vector< std::vector< std::vector<int> > > ImageData;
+typedef std::vector< std::vector< std::vector<int> > > ImageData;
 
-  enum PLOT_TYPE {
-    SLICE = 1,
-    VOXEL = 2
-  };
+enum PLOT_TYPE {
+  SLICE = 1,
+  VOXEL = 2
+};
 
-  enum PLOT_BASIS {
-    XY = 1,
-    XZ = 2,
-    YZ = 3
-  };
+enum PLOT_BASIS {
+  XY = 1,
+  XZ = 2,
+  YZ = 3
+};
 
-  enum PLOT_COLOR_BY {
-    CELLS = 1,
-    MATS = 2
-  };
+enum PLOT_COLOR_BY {
+  CELLS = 1,
+  MATS = 2
+};
 
 //===============================================================================
 // ObjectColor holds color information for plotted objects
 //===============================================================================
 
-  struct ObjectColor {
-    int rgb[3]; //!< RGB color values
-  };
+struct ObjectColor {
+  int rgb[3]; //!< RGB color values
+};
 
 //===============================================================================
 // ObjectPlot holds plot information

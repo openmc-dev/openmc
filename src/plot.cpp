@@ -560,14 +560,14 @@ ObjectPlot::set_meshlines()
         } else {
           index_meshlines_mesh = settings::index_ufs_mesh;
         }
-      // } else if ("cmfd" == meshtype) {
-      //   if (!settings::cmfd_run) {
-      //     std::stringstream err_msg;
-      //     err_msg << "Need CMFD run to plot CMFD mesh for meshlines on plot " << id;
-      //     fatal_error(err_msg);
-      //   } else {
-      //     index_meshlines_mesh = settings::index_cmfd_mesh;
-      //   }
+      } else if ("cmfd" == meshtype) {
+        if (!settings::cmfd_run) {
+          std::stringstream err_msg;
+          err_msg << "Need CMFD run to plot CMFD mesh for meshlines on plot " << id;
+          fatal_error(err_msg);
+        } else {
+          index_meshlines_mesh = settings::index_cmfd_mesh;
+        }
       } else if ("entropy" == meshtype) {
         if (settings::index_entropy_mesh < 0) {
           std::stringstream err_msg;

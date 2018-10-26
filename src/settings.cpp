@@ -72,7 +72,8 @@ std::string path_statepoint;
 
 int32_t index_entropy_mesh {-1};
 int32_t index_ufs_mesh {-1};
-
+int32_t index_cmfd_mesh {-1};
+  
 int32_t n_batches;
 int32_t n_inactive {0};
 int32_t gen_per_batch {1};

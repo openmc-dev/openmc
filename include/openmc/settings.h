@@ -61,7 +61,8 @@ extern std::string path_statepoint;       //!< path to a statepoint file
 
 extern "C" int32_t index_entropy_mesh;  //!< Index of entropy mesh in global mesh array
 extern "C" int32_t index_ufs_mesh;      //!< Index of UFS mesh in global mesh array
-
+extern "C" int32_t index_cmfd_mesh;     //!< Index of CMFD mesh in global mesh array
+ 
 extern "C" int32_t n_batches;      //!< number of (inactive+active) batches
 extern "C" int32_t n_inactive;     //!< number of inactive batches
 extern "C" int32_t gen_per_batch;  //!< number of generations per batch

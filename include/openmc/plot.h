@@ -5,7 +5,7 @@
 #include <sstream>
 
 #include "hdf5.h"
-#include "position.h"
+#include "openmc/position.h"
 #include "openmc/constants.h"
 #include "openmc/particle.h"
 #include "openmc/xml_interface.h"
@@ -16,16 +16,20 @@ namespace openmc {
 // Global variables
 //===============================================================================
 
+constexpr int RED   = 0;
+constexpr int GREEN = 1;
+constexpr int BLUE  = 2;
+
 extern int PLOT_LEVEL_LOWEST; //!< lower bound on plot universe level
 
-extern std::map<int, int> plot_dict; //!< map of plot ids to index
+extern std::map<int, int> plot_map; //!< map of plot ids to index
 
 extern int n_plots; //!< number of plots in openmc run
 
 class ObjectPlot;
 extern std::vector<ObjectPlot*> plots; //!< Plot instance container
 
-typedef std::vector< std::vector< std::vector<int> > > ImageData;
+typedef std::vector<std::vector< std::vector<int>>> ImageData;
 
 enum PLOT_TYPE {
   SLICE = 1,
@@ -61,6 +65,9 @@ class ObjectPlot
 public:
   // Constructor
   ObjectPlot(pugi::xml_node plot);
+
+  // Destructor
+  ~ObjectPlot();
 
   // Methods
 private:

@@ -2344,11 +2344,11 @@ contains
     integer :: d             ! delayed group
     integer :: g             ! another delayed group
     integer :: d_bin         ! delayed group bin index
-    integer :: n             ! number of energies on filter
     integer :: k             ! loop index for bank sites
     integer :: l             ! loop index for tally filters
     integer :: f             ! index in filters array
     integer :: b             ! index of filter bin
+    integer :: i_match       ! matching bin index on energyout filter
     integer :: i_bin         ! index of matching filter bin
     integer :: bin_energyout ! original outgoing energy bin
     integer :: i_filter      ! index for matching filter bin combination
@@ -2365,9 +2365,6 @@ contains
     ! declare the energyout filter type
     select type(eo_filt => filters(i) % obj)
     type is (EnergyoutFilter)
-
-      ! Get number of energies on filter
-      n = size(eo_filt % bins)
 
       ! Since the creation of fission sites is weighted such that it is
       ! expected to create n_particles sites, we need to multiply the
@@ -2397,7 +2394,7 @@ contains
 
           ! modify the value so that g_out = 1 corresponds to the highest
           ! energy bin
-          g_out = size(eo_filt % bins) - g_out
+          g_out = eo_filt % n_bins - g_out + 1
 
           ! change outgoing energy bin
           call filter_matches(i) % bins_set_data(i_bin, g_out)
@@ -2412,12 +2409,11 @@ contains
                  % E))
           end if
 
-          ! check if outgoing energy is within specified range on filter
-          if (E_out < eo_filt % bins(1) .or. E_out > eo_filt % bins(n)) cycle
-
-          ! change outgoing energy bin
-          call filter_matches(i) % bins_set_data(i_bin, &
-               binary_search(eo_filt % bins, n, E_out))
+          ! If this outgoing energy falls within the energyout filter's range,
+          ! set the appropriate filter_matches bin.
+          i_match = eo_filt % search(E_out)
+          if (i_match == -1) cycle
+          call filter_matches(i) % bins_set_data(i_bin, i_match)
 
         end if
 

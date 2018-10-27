@@ -30,6 +30,8 @@ public:
   std::string text_label(int bin) const override;
 
   std::vector<double> bins_;
+
+  //! True if transport group number can be used directly to get bin number
   bool matches_transport_groups_ {false};
 };
 

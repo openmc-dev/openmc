@@ -2,14 +2,6 @@ module tally_filter_energy
 
   use, intrinsic :: ISO_C_BINDING
 
-  use algorithm,           only: binary_search
-  use constants
-  use error
-  use hdf5_interface
-  use mgxs_interface,      only: num_energy_groups, rev_energy_bins
-  use particle_header,     only: Particle
-  use settings,            only: run_CE
-  use string,              only: to_str
   use tally_filter_cpp
   use xml_interface
 
@@ -18,17 +10,33 @@ module tally_filter_energy
   public :: openmc_energy_filter_get_bins
   public :: openmc_energy_filter_set_bins
 
+  interface
+    function openmc_energy_filter_get_bins(index, energies, n) result(err) bind(C)
+      import C_INT32_T, C_PTR, C_INT
+      integer(C_INT32_T), value :: index
+      type(C_PTR), intent(out) :: energies
+      integer(C_INT32_T), intent(out) :: n
+      integer(C_INT) :: err
+    end function
+    function openmc_energy_filter_set_bins(index, n, energies) result(err) bind(C)
+      import C_INT32_T, C_DOUBLE, C_INT
+      integer(C_INT32_T), value, intent(in) :: index
+      integer(C_INT32_T), value, intent(in) :: n
+      real(C_DOUBLE), intent(in) :: energies(n)
+      integer(C_INT) :: err
+    end function
+  end interface
+
 !===============================================================================
 ! ENERGYFILTER bins the incident neutron energy.
 !===============================================================================
 
   type, public, extends(CppTallyFilter) :: EnergyFilter
-    real(8), allocatable :: bins(:)
-
     ! True if transport group number can be used directly to get bin number
     logical :: matches_transport_groups = .false.
   contains
     procedure :: from_xml => from_xml_energy
+    procedure :: search
   end type EnergyFilter
 
 !===============================================================================
@@ -50,86 +58,34 @@ contains
     class(EnergyFilter), intent(inout) :: this
     type(XMLNode), intent(in) :: node
 
-    integer :: n
+    interface
+      function energy_filter_matches_transport_groups(filt) result(matches) &
+           bind(C)
+        import C_PTR, C_BOOL
+        type(C_PTR), value :: filt
+        logical(C_BOOL)    :: matches
+      end function
+    end interface
 
     call this % from_xml_cpp_inner(node)
-
-    n = node_word_count(node, "bins")
-
-    ! Allocate and store bins
-    this % n_bins = n - 1
-    allocate(this % bins(n))
-    call get_node_array(node, "bins", this % bins)
-
-    ! We can save tallying time if we know that the tally bins match
-    ! the energy group structure.  In that case, the matching bin
-    ! index is simply the group (after flipping for the different
-    ! ordering of the library and tallying systems).
-    if (.not. run_CE) then
-      if (n == num_energy_groups + 1) then
-        if (all(this % bins == rev_energy_bins)) &
-             then
-          this % matches_transport_groups = .true.
-        end if
-      end if
-    end if
+    this % n_bins = this % n_bins_cpp()
+    this % matches_transport_groups = &
+         energy_filter_matches_transport_groups(this % ptr)
   end subroutine from_xml_energy
 
-!===============================================================================
-!                               C API FUNCTIONS
-!===============================================================================
-
-  function openmc_energy_filter_get_bins(index, energies, n) result(err) bind(C)
-    ! Return the bounding energies for an energy filter
-    integer(C_INT32_T), value :: index
-    type(C_PTR), intent(out) :: energies
-    integer(C_INT32_T), intent(out) :: n
-    integer(C_INT) :: err
-
-    err = verify_filter(index)
-    if (err == 0) then
-      select type (f => filters(index) % obj)
-      type is (EnergyFilter)
-        energies = C_LOC(f % bins)
-        n = size(f % bins)
-        err = 0
-      type is (EnergyoutFilter)
-        energies = C_LOC(f % bins)
-        n = size(f % bins)
-        err = 0
-        class default
-        err = E_INVALID_TYPE
-        call set_errmsg("Tried to get energy bins on a non-energy filter.")
-      end select
-    end if
-  end function openmc_energy_filter_get_bins
-
-
-  function openmc_energy_filter_set_bins(index, n, energies) result(err) bind(C)
-    ! Set the bounding energies for an energy filter
-    integer(C_INT32_T), value, intent(in) :: index
-    integer(C_INT32_T), value, intent(in) :: n
-    real(C_DOUBLE), intent(in) :: energies(n)
-    integer(C_INT) :: err
-
-    err = verify_filter(index)
-    if (err == 0) then
-      select type (f => filters(index) % obj)
-      type is (EnergyFilter)
-        f % n_bins = n - 1
-        if (allocated(f % bins)) deallocate(f % bins)
-        allocate(f % bins(n))
-        f % bins(:) = energies
-      type is (EnergyoutFilter)
-        f % n_bins = n - 1
-        if (allocated(f % bins)) deallocate(f % bins)
-        allocate(f % bins(n))
-        f % bins(:) = energies
-        class default
-        err = E_INVALID_TYPE
-        call set_errmsg("Tried to get energy bins on a non-energy filter.")
-      end select
-    end if
-  end function openmc_energy_filter_set_bins
+  function search(this, val) result(bin)
+    class(EnergyFilter), intent(in) :: this
+    real(8),             intent(in) :: val
+    integer                         :: bin
+    interface
+      function energy_filter_search(filt, val) result(bin) bind(C)
+        import C_PTR, C_DOUBLE, C_INT
+        type(C_PTR), value    :: filt
+        real(C_DOUBLE), value :: val
+        integer(C_INT)        :: bin
+      end function
+    end interface
+    bin = energy_filter_search(this % ptr, val)
+  end function search
 
 end module tally_filter_energy

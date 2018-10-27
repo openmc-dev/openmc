@@ -26,12 +26,16 @@ void header(const char* msg, int level);
 std::string time_stamp();
 
 //==============================================================================
+//! Display plot information
+//==============================================================================
+
+extern "C" void print_plot();
+
+//==============================================================================
 //! Display information regarding cell overlap checking.
 //==============================================================================
 
 void print_overlap_check();
-
-extern "C" void print_plot();
 
 extern "C" void title();
 

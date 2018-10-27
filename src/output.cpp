@@ -116,7 +116,7 @@ void print_plot() {
       std::cout << "Pixels: " << pl->pixels[0] << " "
                 << pl->pixels[1] << " " << std::endl;
     } else if (PLOT_TYPE::VOXEL == pl->type) {
-      std::cout << "Voxel: " << pl->pixels[0] << " "
+      std::cout << "Voxels: " << pl->pixels[0] << " "
                 << pl->pixels[1] << " "
                 << pl->pixels[2] << std::endl;
     }

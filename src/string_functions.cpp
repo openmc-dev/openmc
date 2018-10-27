@@ -33,7 +33,7 @@ int word_count(std::string const& str)
   std::stringstream stream(str);
   std::string dum;
   int count = 0;
-  while(stream >> dum) { count++; }
+  while (stream >> dum) {count++;}
   return count;
 }
 

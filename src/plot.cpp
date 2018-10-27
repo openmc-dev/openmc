@@ -17,17 +17,17 @@
 
 namespace openmc {
 
+//===============================================================================
+// Global variables
+//===============================================================================
+
 int PLOT_LEVEL_LOWEST = -1;
 
-std::map<int, int> plot_dict;
+std::map<int, int> plot_map;
 
 int n_plots;
 
 std::vector<ObjectPlot*> plots;
-
-const int RED   = 0;
-const int GREEN = 1;
-const int BLUE  = 2;
 
 const int WHITE[3] = {255, 255, 255};
 const int NULLRGB[3] = {0, 0, 0};
@@ -41,23 +41,21 @@ int openmc_plot_geometry()
 {
   int err;
 
-  for(int i = 0; i < n_plots; i++) {
+  for (int i = 0; i < n_plots; i++) {
     ObjectPlot* pl = plots[i];
 
     std::stringstream ss;
     ss << "Processing plot " << pl->id << ": "
        << pl->path_plot << "...";
-      write_message(ss.str(), 5);
+    write_message(ss.str(), 5);
 
-      if (PLOT_TYPE::SLICE == pl->type) {
-        // create 2D image
-        create_ppm(pl);
-        continue;
-      } else if (PLOT_TYPE::VOXEL == pl->type) {
-        // create voxel file for 3D viewing
-        create_voxel(pl);
-        continue;
-      }
+    if (PLOT_TYPE::SLICE == pl->type) {
+      // create 2D image
+      create_ppm(pl);
+    } else if (PLOT_TYPE::VOXEL == pl->type) {
+      // create voxel file for 3D viewing
+      create_voxel(pl);
+    }
   }
   return 0;
 }
@@ -75,7 +73,7 @@ read_plots(pugi::xml_node* plots_node)
   for(int i = 0; i < plot_nodes.size(); i++) {
     ObjectPlot* pl = new ObjectPlot(plot_nodes[i]);
     plots.push_back(pl);
-    plot_dict[pl->id] = i;
+    plot_map[pl->id] = i;
   }
 }
 
@@ -139,9 +137,9 @@ void create_ppm(ObjectPlot* pl)
   int rgb[3];
   int id;
   for (int y = 0; y < height; y++) {
-    p->coord[0].xyz[out_i] = xyz[out_i] - out_pixel*(y);
+    p->coord[0].xyz[out_i] = xyz[out_i] - out_pixel * y;
     for (int x = 0; x < width; x++) {
-      p->coord[0].xyz[in_i] = xyz[in_i] + in_pixel*(x);
+      p->coord[0].xyz[in_i] = xyz[in_i] + in_pixel * x;
       position_rgb(p, pl, rgb, id);
       data[x][y][RED] = rgb[RED];
       data[x][y][GREEN] = rgb[GREEN];
@@ -149,8 +147,10 @@ void create_ppm(ObjectPlot* pl)
     }
   }
 
+  delete p;
+
   // draw mesh lines if present
-  if (pl->index_meshlines_mesh >= 0) { draw_mesh_lines(pl, data); }
+  if (pl->index_meshlines_mesh >= 0) {draw_mesh_lines(pl, data);}
 
   // write ppm data to file
   output_ppm(pl, data);
@@ -159,7 +159,7 @@ void create_ppm(ObjectPlot* pl)
 void
 ObjectPlot::set_id()
 {
-    // Copy data into plots
+  // Copy data into plots
   if (check_for_node(_plot_node, "id")) {
     id = std::stoi(get_node_value(_plot_node, "id"));
   } else {
@@ -167,10 +167,9 @@ ObjectPlot::set_id()
   }
 
   // Check to make sure 'id' hasn't been used
-  if (plot_dict.find(id) != plot_dict.end()) {
+  if (plot_map.find(id) != plot_map.end()) {
     std::stringstream err_msg;
-    err_msg << "Two or more plots use the same unique ID: ";
-    err_msg << id;
+    err_msg << "Two or more plots use the same unique ID: " << id;
     fatal_error(err_msg.str());
   }
 }
@@ -184,8 +183,7 @@ ObjectPlot::set_type()
   type = PLOT_TYPE::SLICE;
   // check type specified on plot node
   if (check_for_node(_plot_node, "type")) {
-    type_str = get_node_value(_plot_node, "type");
-    to_lower(type_str);
+    type_str = get_node_value(_plot_node, "type", true);
     // set type using node value
     if (type_str == "slice") {
       type = PLOT_TYPE::SLICE;
@@ -255,7 +253,7 @@ ObjectPlot::set_output_path()
 void
 ObjectPlot::set_bg_color()
 {
-    // Copy plot background color
+  // Copy plot background color
   std::vector<int> bg_rgb;
   if (check_for_node(_plot_node, "background")) {
     if (PLOT_TYPE::VOXEL == type) {
@@ -381,8 +379,7 @@ ObjectPlot::set_default_colors()
   // Copy plot color type and initialize all colors randomly
   std::string pl_color_by = "cell";
   if (check_for_node(_plot_node, "color_by")) {
-    pl_color_by = get_node_value(_plot_node, "color_by");
-    to_lower(pl_color_by);
+    pl_color_by = get_node_value(_plot_node, "color_by", true);
   }
   if ("cell" == pl_color_by) {
     color_by = PLOT_COLOR_BY::CELLS;
@@ -417,7 +414,7 @@ ObjectPlot::set_user_colors()
   color_nodes = get_child_nodes(_plot_node, "color");
 
   // Copy user-specified colors
-  if (0 != color_nodes.size()) {
+  if (color_nodes.size() != 0) {
 
     if (PLOT_TYPE::VOXEL == type) {
       if (openmc_master) {
@@ -495,21 +492,9 @@ ObjectPlot::set_meshlines()
       warning(msg);
     }
 
-    if (0 == n_meshlines) {
-      // Skip if no meshlines are specified
-    } else if (1 == n_meshlines) {
+  if (1 == n_meshlines) {
       // Get first meshline node
       pugi::xml_node meshlines_node = mesh_line_nodes[0];
-
-      // Check mesh type
-      std::string meshline_type;
-      if (check_for_node(meshlines_node, "meshtype")) {
-        meshline_type = get_node_value(meshlines_node, "meshtype");
-      } else {
-        std::stringstream err_msg;
-        err_msg << "Must specify a meshtype for meshlines specification in plot " << id;
-        fatal_error(err_msg);
-      }
 
       // Check mesh type
       std::string meshtype;
@@ -517,7 +502,7 @@ ObjectPlot::set_meshlines()
         meshtype = get_node_value(meshlines_node, "meshtype");
       } else {
         std::stringstream err_msg;
-        err_msg << "Must specify a meshtype for meshlines specification in plot " << id ;
+        err_msg << "Must specify a meshtype for meshlines specification in plot " << id;
         fatal_error(err_msg);
       }
 
@@ -580,21 +565,23 @@ ObjectPlot::set_meshlines()
         // Ensure that there is a mesh id if the type is tally
         int tally_mesh_id;
         if (check_for_node(meshlines_node, "id")) {
-          int tally_mesh_id = std::stoi(get_node_value(meshlines_node, "id"));
-          } else {
-            std::stringstream err_msg;
-            err_msg << "Must specify a mesh id for meshlines tally "
-                    << "mesh specification in plot " << id;
-            fatal_error(err_msg);
-          }
-          int idx;
-          int err = openmc_get_mesh_index(tally_mesh_id, &idx);
-          if (0 != err) {
+          tally_mesh_id = std::stoi(get_node_value(meshlines_node, "id"));
+        } else {
+          std::stringstream err_msg;
+          err_msg << "Must specify a mesh id for meshlines tally "
+                  << "mesh specification in plot " << id;
+          fatal_error(err_msg);
+        }
+        // find the tally index
+        int idx;
+        int err = openmc_get_mesh_index(tally_mesh_id, &idx);
+        if (err != 0) {
             std::stringstream err_msg;
             err_msg << "Could not find mesh " << tally_mesh_id
                     << " specified in meshlines for plot " << id;
             fatal_error(err_msg);
-          }
+        }
+        index_meshlines_mesh = idx;
       } else {
         std::stringstream err_msg;
         err_msg << "Invalid type for meshlines on plot " << id ;
@@ -669,7 +656,6 @@ ObjectPlot::set_mask()
       }
 
       // Alter colors based on mask information
-      // TODO:
       for(int j = 0; j < colors.size(); j++) {
         if (std::find(iarray.begin(), iarray.end(), j) == iarray.end()) {
           if (check_for_node(mask_node, "background")) {
@@ -694,36 +680,30 @@ ObjectPlot::set_mask()
 }
 
 ObjectPlot::ObjectPlot(pugi::xml_node plot_node):
-index_meshlines_mesh(-1), _plot_node(plot_node)
+index_meshlines_mesh(-1)
 {
-
+  _plot_node = plot_node;
   set_id();
-
   set_type();
-
   set_output_path();
-
   set_bg_color();
-
   set_basis();
-
   set_origin();
-
   set_width();
-
   set_universe();
-
   set_default_colors();
-
   set_user_colors();
-
   set_meshlines();
-
   set_mask();
-
-  plot_node = pugi::xml_node(); // set to null node after construction
-
+  _plot_node = pugi::xml_node(); // set to null node after construction
 } // End ObjectPlot constructor
+
+ObjectPlot::~ObjectPlot() {
+  // cleanup color pointers
+  for (auto c : colors) {
+    if (c) {delete c;}
+  }
+}
 
 //===============================================================================
 // POSITION_RGB computes the red/green/blue values for a given plot with the
@@ -732,20 +712,16 @@ index_meshlines_mesh(-1), _plot_node(plot_node)
 
 void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id)
 {
-  bool found_cell;
-
   p->n_coord = 1;
 
-  found_cell = find_cell(p, 0);
+  bool found_cell = find_cell(p, 0);
 
   int j = p->n_coord - 1;
 
-  if (settings::check_overlaps) { check_cell_overlap(p); }
+  if (settings::check_overlaps) {check_cell_overlap(p);}
 
   // Set coordinate level if specified
   if (pl->level >= 0) {j = pl->level + 1;}
-
-  Cell* c;
 
   if (!found_cell) {
     // If no cell, revert to default color
@@ -756,7 +732,7 @@ void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id)
   } else {
     if (PLOT_COLOR_BY::MATS == pl->color_by) {
       // Assign color based on material
-      c = cells[p->coord[j].cell];
+      Cell* c = cells[p->coord[j].cell];
       if (c->type_ == FILL_UNIVERSE) {
         // If we stopped on a middle universe level, treat as if not found
         std::copy(pl->not_found.rgb,
@@ -835,7 +811,7 @@ void draw_mesh_lines(ObjectPlot *pl, ImageData &data)
   rgb[BLUE] = pl->meshlines_color.rgb[BLUE];
 
   int outer, inner;
-  switch(pl->basis){
+  switch(pl->basis) {
   case PLOT_BASIS::XY :
     outer = 0;
     inner = 1;
@@ -999,7 +975,7 @@ void create_voxel(ObjectPlot *pl)
 
   int rgb[3], id;
   for (int x = 0; x < pl->pixels[0]; x++) {
-    // progress bar here
+    // TODO: progress bar here
     for (int y = 0; y < pl->pixels[1]; y++) {
       for(int z = 0; z < pl->pixels[2]; z++) {
         // get voxel color

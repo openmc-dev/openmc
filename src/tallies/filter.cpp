@@ -11,6 +11,7 @@
 #include "openmc/tallies/filter_cellfrom.h"
 #include "openmc/tallies/filter_distribcell.h"
 #include "openmc/tallies/filter_energyfunc.h"
+#include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_legendre.h"
 #include "openmc/tallies/filter_material.h"
 #include "openmc/tallies/filter_mesh.h"
@@ -105,6 +106,10 @@ extern "C" {
       tally_filters.push_back(new DistribcellFilter());
     } else if (type_ == "energyfunction") {
       tally_filters.push_back(new EnergyFunctionFilter());
+    } else if (type_ == "energy") {
+      tally_filters.push_back(new EnergyFilter());
+    } else if (type_ == "energyout") {
+      tally_filters.push_back(new EnergyoutFilter());
     } else if (type_ == "legendre") {
       tally_filters.push_back(new LegendreFilter());
     } else if (type_ == "material") {

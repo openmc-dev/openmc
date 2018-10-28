@@ -445,6 +445,7 @@ add_library(libopenmc SHARED
   src/tallies/filter_mesh.cpp
   src/tallies/filter_meshsurface.cpp
   src/tallies/filter_mu.cpp
+  src/tallies/filter_particle.cpp
   src/tallies/filter_polar.cpp
   src/tallies/filter_sph_harm.cpp
   src/tallies/filter_sptl_legendre.cpp

@@ -27,7 +27,7 @@ DelayedGroupFilter::from_xml(pugi::xml_node node)
 
 void
 DelayedGroupFilter::get_all_bins(const Particle* p, int estimator,
-                         FilterMatch& match) const
+                                 FilterMatch& match) const
 {
   //TODO: off-by-one
   match.bins_.push_back(1);

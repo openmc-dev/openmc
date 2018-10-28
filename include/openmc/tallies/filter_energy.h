@@ -1,8 +1,6 @@
 #ifndef OPENMC_TALLIES_FILTER_ENERGY_H
 #define OPENMC_TALLIES_FILTER_ENERGY_H
 
-//#include <cstdint>
-//#include <unordered_map>
 #include <vector>
 
 #include "openmc/tallies/filter.h"

@@ -292,18 +292,23 @@ void initialize_batch()
   // Reset total starting particle weight used for normalizing tallies
   total_weight = 0.0;
 
-  if ((settings::n_inactive > 0 && simulation::current_batch == 1) ||
-      (settings::restart_run && simulation::restart_batch < settings::n_inactive &&
-        simulation::current_batch == simulation::restart_batch + 1)) {
-    // Turn on inactive timer
+  // Determine if this batch is the first inactive or active batch.
+  bool first_inactive = false;
+  bool first_active = false;
+  if (!settings::restart_run) {
+    first_inactive = settings::n_inactive > 0 && simulation::current_batch == 1;
+    first_active = simulation::current_batch == settings::n_inactive + 1;
+  } else if (simulation::current_batch == simulation::restart_batch + 1){
+    first_inactive = simulation::restart_batch < settings::n_inactive;
+    first_active = !first_inactive;
+  }
+
+  // Manage active/inactive timers and activate tallies if necessary.
+  if (first_inactive) {
     time_inactive.start();
-  } else if ((simulation::current_batch == settings::n_inactive + 1) ||
-   (settings::restart_run && simulation::restart_batch > settings::n_inactive &&
-    simulation::current_batch == simulation::restart_batch + 1)) {
-    // Switch from inactive batch timer to active batch timer
+  } else if (first_active) {
     time_inactive.stop();
     time_active.start();
-
     for (int i = 1; i <= n_tallies; ++i) {
       // TODO: change one-based index
       openmc_tally_set_active(i, true);

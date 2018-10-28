@@ -436,6 +436,7 @@ add_library(libopenmc SHARED
   src/tallies/filter_cellborn.cpp
   src/tallies/filter_cellfrom.cpp
   src/tallies/filter_cell.cpp
+  src/tallies/filter_delayedgroup.cpp
   src/tallies/filter_distribcell.cpp
   src/tallies/filter_energyfunc.cpp
   src/tallies/filter_energy.cpp

@@ -9,6 +9,7 @@
 #include "openmc/tallies/filter_cell.h"
 #include "openmc/tallies/filter_cellborn.h"
 #include "openmc/tallies/filter_cellfrom.h"
+#include "openmc/tallies/filter_delayedgroup.h"
 #include "openmc/tallies/filter_distribcell.h"
 #include "openmc/tallies/filter_energyfunc.h"
 #include "openmc/tallies/filter_energy.h"
@@ -104,6 +105,8 @@ extern "C" {
       tally_filters.push_back(new CellFromFilter());
     } else if (type_ == "distribcell") {
       tally_filters.push_back(new DistribcellFilter());
+    } else if (type_ == "delayedgroup") {
+      tally_filters.push_back(new DelayedGroupFilter());
     } else if (type_ == "energyfunction") {
       tally_filters.push_back(new EnergyFunctionFilter());
     } else if (type_ == "energy") {

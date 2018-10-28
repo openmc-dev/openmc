@@ -14,6 +14,15 @@
 namespace openmc {
 
 //==============================================================================
+// Global variable definitions
+//==============================================================================
+
+double global_tally_absorption;
+double global_tally_collision;
+double global_tally_tracklength;
+double global_tally_leakage;
+
+//==============================================================================
 // Non-member functions
 //==============================================================================
 

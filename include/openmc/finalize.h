@@ -3,8 +3,6 @@
 
 namespace openmc {
 
-extern "C" void openmc_free_bank();
-
 } // namespace openmc
 
 #endif // OPENMC_FINALIZE_H

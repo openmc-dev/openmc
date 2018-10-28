@@ -52,7 +52,7 @@ contains
 ! with the CE and MG modes.
 !===============================================================================
 
-  subroutine init_tally_routines()
+  subroutine init_tally_routines() bind(C)
     if (run_CE) then
       score_general      => score_general_ce
       score_analog_tally => score_analog_tally_ce
@@ -3769,7 +3769,7 @@ contains
 ! within the batch to a new random variable
 !===============================================================================
 
-  subroutine accumulate_tallies()
+  subroutine accumulate_tallies() bind(C)
 
     integer :: i
     real(C_DOUBLE) :: k_col ! Copy of batch collision estimate of keff
@@ -3830,7 +3830,7 @@ contains
 ! SETUP_ACTIVE_TALLIES
 !===============================================================================
 
-  subroutine setup_active_tallies()
+  subroutine setup_active_tallies() bind(C)
 
     integer :: i ! loop counter
 

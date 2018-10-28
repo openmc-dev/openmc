@@ -28,7 +28,7 @@ module input_xml
   use plot_header
   use random_lcg,       only: prn
   use surface_header
-  use set_header,       only: SetChar
+  use set_header,       only: SetChar, SetInt
   use settings
   use stl_vector,       only: VectorInt, VectorReal, VectorChar
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
@@ -112,7 +112,7 @@ contains
 ! geometry, materials, and tallies.
 !===============================================================================
 
-  subroutine read_input_xml()
+  subroutine read_input_xml() bind(C)
 
     type(VectorReal), allocatable :: nuc_temps(:) ! List of T to read for each nuclide
     type(VectorReal), allocatable :: sab_temps(:) ! List of T to read for each S(a,b)
@@ -207,123 +207,13 @@ contains
 
     integer :: i
     integer :: n
-    integer, allocatable :: temp_int_array(:)
-    integer :: n_tracks
     type(XMLNode) :: root
-    type(XMLNode) :: node_sp
     type(XMLNode) :: node_res_scat
     type(XMLNode) :: node_vol
     type(XMLNode), allocatable :: node_vol_list(:)
 
     ! Get proper XMLNode type given pointer
     root % ptr = root_ptr
-
-    if (run_mode == MODE_EIGENVALUE) then
-      ! Preallocate space for keff and entropy by generation
-      call k_generation_reserve(n_max_batches*gen_per_batch)
-    end if
-
-    ! Particle tracks
-    if (check_for_node(root, "track")) then
-      ! Make sure that there are three values per particle
-      n_tracks = node_word_count(root, "track")
-      if (mod(n_tracks, 3) /= 0) then
-        call fatal_error("Number of integers specified in 'track' is not &
-             &divisible by 3.  Please provide 3 integers per particle to be &
-             &tracked.")
-      end if
-
-      ! Allocate space and get list of tracks
-      allocate(temp_int_array(n_tracks))
-      call get_node_array(root, "track", temp_int_array)
-
-      ! Reshape into track_identifiers
-      allocate(track_identifiers(3, n_tracks/3))
-      track_identifiers = reshape(temp_int_array, [3, n_tracks/3])
-    end if
-
-    ! Check if the user has specified to write state points
-    if (check_for_node(root, "state_point")) then
-
-      ! Get pointer to state_point node
-      node_sp = root % child("state_point")
-
-      ! Determine number of batches at which to store state points
-      if (check_for_node(node_sp, "batches")) then
-        n_state_points = node_word_count(node_sp, "batches")
-      else
-        n_state_points = 0
-      end if
-
-      if (n_state_points > 0) then
-        ! User gave specific batches to write state points
-        allocate(temp_int_array(n_state_points))
-        call get_node_array(node_sp, "batches", temp_int_array)
-        do i = 1, n_state_points
-          call statepoint_batch % add(temp_int_array(i))
-        end do
-        deallocate(temp_int_array)
-      else
-        ! If neither were specified, write state point at last batch
-        n_state_points = 1
-        call statepoint_batch % add(n_batches)
-      end if
-    else
-      ! If no <state_point> tag was present, by default write state point at
-      ! last batch only
-      n_state_points = 1
-      call statepoint_batch % add(n_batches)
-    end if
-
-    ! Check if the user has specified to write source points
-    if (check_for_node(root, "source_point")) then
-
-      ! Get pointer to source_point node
-      node_sp = root % child("source_point")
-
-      ! Determine number of batches at which to store source points
-      if (check_for_node(node_sp, "batches")) then
-        n_source_points = node_word_count(node_sp, "batches")
-      else
-        n_source_points = 0
-      end if
-
-      if (n_source_points > 0) then
-        ! User gave specific batches to write source points
-        allocate(temp_int_array(n_source_points))
-        call get_node_array(node_sp, "batches", temp_int_array)
-        do i = 1, n_source_points
-          call sourcepoint_batch % add(temp_int_array(i))
-        end do
-        deallocate(temp_int_array)
-      else
-        ! If neither were specified, write source points with state points
-        n_source_points = n_state_points
-        do i = 1, n_state_points
-          call sourcepoint_batch % add(statepoint_batch % get_item(i))
-        end do
-      end if
-    else
-      ! If no <source_point> tag was present, by default we keep source bank in
-      ! statepoint file and write it out at statepoints intervals
-      n_source_points = n_state_points
-      do i = 1, n_state_points
-        call sourcepoint_batch % add(statepoint_batch % get_item(i))
-      end do
-    end if
-
-    ! If source is not seperate and is to be written out in the statepoint file,
-    ! make sure that the sourcepoint batch numbers are contained in the
-    ! statepoint list
-    if (.not. source_separate) then
-      do i = 1, n_source_points
-        if (.not. statepoint_batch % contains(sourcepoint_batch % &
-             get_item(i))) then
-          call fatal_error('Sourcepoint batches are not a subset&
-               & of statepoint batches.')
-        end if
-      end do
-    end if
 
     ! Resonance scattering parameters
     if (check_for_node(root, "resonance_scattering")) then
@@ -1322,7 +1212,11 @@ contains
 
     ! Read derivative attributes.
     do i = 1, size(node_deriv_list)
+!$omp parallel
+!$omp critical (ReadTallyDeriv)
       call tally_derivs(i) % from_xml(node_deriv_list(i))
+!$omp end critical (ReadTallyDeriv)
+!$omp end parallel
 
       ! Update tally derivative dictionary
       call tally_deriv_dict % set(tally_derivs(i) % id, i)
@@ -2714,6 +2608,13 @@ contains
     integer(HID_T) :: file_id
     character(len=MAX_WORD_LEN), allocatable :: names(:)
 
+    interface
+      subroutine read_mg_cross_sections_header_c(file_id) bind(C)
+        import HID_T
+        integer(HID_T), value :: file_id
+      end subroutine
+    end interface
+
     ! Check if MGXS Library exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
     if (.not. file_exists) then
@@ -2760,6 +2661,9 @@ contains
     do i = 1, num_energy_groups
       energy_bin_avg(i) = HALF * (energy_bins(i) + energy_bins(i + 1))
     end do
+
+    ! Set up energy bins on C++ side
+    call read_mg_cross_sections_header_c(file_id)
 
     ! Get the minimum and maximum energies
     energy_min(NEUTRON) = energy_bins(num_energy_groups + 1)

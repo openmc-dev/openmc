@@ -23,7 +23,6 @@ module simulation_header
   integer(C_INT), bind(C) :: current_batch     ! current batch
   integer(C_INT), bind(C) :: current_gen       ! current generation within a batch
   integer(C_INT), bind(C) :: total_gen         ! total number of generations simulated
-  logical(C_BOOL), bind(C) :: simulation_initialized
   logical(C_BOOL), bind(C) :: need_depletion_rx ! need to calculate depletion reaction rx?
 
   ! ============================================================================
@@ -32,7 +31,6 @@ module simulation_header
   logical(C_BOOL), bind(C) :: satisfy_triggers  ! whether triggers are satisfied
 
   integer(C_INT64_T), bind(C) :: work         ! number of particles per processor
-  integer(C_INT64_T), bind(C) :: current_work ! index in source bank of current history simulated
 
   ! ============================================================================
   ! K-EIGENVALUE SIMULATION VARIABLES
@@ -59,7 +57,7 @@ module simulation_header
 
   logical(C_BOOL), bind(C) :: trace
 
-!$omp threadprivate(trace, thread_id, current_work)
+!$omp threadprivate(trace, thread_id)
 
   interface
     subroutine entropy_clear() bind(C)
@@ -82,11 +80,6 @@ module simulation_header
     end function
 
     subroutine k_generation_clear() bind(C)
-    end subroutine
-
-    subroutine k_generation_reserve(i) bind(C)
-      import C_INT
-      integer(C_INT), value :: i
     end subroutine
 
     function work_index(rank) result(i) bind(C)

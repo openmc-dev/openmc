@@ -41,8 +41,7 @@ header(const char* msg, int level) {
 
 //==============================================================================
 
-extern "C" void
-print_overlap_check() {
+void print_overlap_check() {
 #ifdef OPENMC_MPI
   std::vector<int64_t> temp(overlap_check_count);
   int err = MPI_Reduce(temp.data(), overlap_check_count.data(),

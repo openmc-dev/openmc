@@ -18,6 +18,7 @@
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/filter_meshsurface.h"
 #include "openmc/tallies/filter_mu.h"
+#include "openmc/tallies/filter_particle.h"
 #include "openmc/tallies/filter_polar.h"
 #include "openmc/tallies/filter_sph_harm.h"
 #include "openmc/tallies/filter_sptl_legendre.h"
@@ -123,6 +124,8 @@ extern "C" {
       tally_filters.push_back(new MeshSurfaceFilter());
     } else if (type_ == "mu") {
       tally_filters.push_back(new MuFilter());
+    } else if (type_ == "particle") {
+      tally_filters.push_back(new ParticleFilter());
     } else if (type_ == "polar") {
       tally_filters.push_back(new PolarFilter());
     } else if (type_ == "surface") {

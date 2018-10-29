@@ -26,8 +26,8 @@ extern std::map<int, int> plot_map; //!< map of plot ids to index
 
 extern int n_plots; //!< number of plots in openmc run
 
-class ObjectPlot;
-extern std::vector<ObjectPlot*> plots; //!< Plot instance container
+class Plot;
+extern std::vector<Plot*> plots; //!< Plot instance container
 
 typedef std::vector<std::vector< std::vector<int>>> ImageData;
 
@@ -48,26 +48,26 @@ enum class plot_color_by {
 };
 
 //===============================================================================
-// ObjectColor holds color information for plotted objects
+// RGBColor holds color information for plotted objects
 //===============================================================================
 
-struct ObjectColor {
+struct RGBColor {
   int rgb[3]; //!< RGB color values
 };
 
 //===============================================================================
-// ObjectPlot holds plot information
+// Plot class
 //===============================================================================
 
-class ObjectPlot
+class Plot
 {
 
 public:
   // Constructor
-  ObjectPlot(pugi::xml_node plot);
+  Plot(pugi::xml_node plot);
 
   // Destructor
-  ~ObjectPlot();
+  ~Plot();
 
   // Methods
 private:
@@ -96,9 +96,9 @@ public:
   int meshlines_width; //!< Width of lines added to the plot
   int level; //!< Plot universe level
   int index_meshlines_mesh; //!< Index of the mesh to draw on the plot
-  ObjectColor meshlines_color; //!< Color of meshlines on the plot
-  ObjectColor not_found; //!< Plot background color
-  std::vector<ObjectColor*> colors; //!< Plot colors
+  RGBColor meshlines_color; //!< Color of meshlines on the plot
+  RGBColor not_found; //!< Plot background color
+  std::vector<RGBColor*> colors; //!< Plot colors
   std::string path_plot; //!< Plot output filename
   pugi::xml_node _plot_node;
 };
@@ -110,13 +110,13 @@ public:
 //! Add mesh lines to image data of a plot object
 //! \param[in] plot object
 //! \param[out] image data associated with the plot object
-void draw_mesh_lines(ObjectPlot* pl,
+void draw_mesh_lines(Plot* pl,
                      std::vector< std::vector< std::vector<int> > > &data);
 
 //! Write a ppm image to file using a plot object's image data
 //! \param[in] plot object
 //! \param[out] image data associated with the plot object
-void output_ppm(ObjectPlot* pl,
+void output_ppm(Plot* pl,
                 const std::vector< std::vector< std::vector<int> > > &data);
 
 //! Get the rgb color for a given particle position in a plot
@@ -124,7 +124,7 @@ void output_ppm(ObjectPlot* pl,
 //! \param[in] plot object
 //! \param[out] rgb color
 //! \param[out] cell or material id for particle position
-void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id);
+void position_rgb(Particle* p, Plot* pl, int rgb[3], int &id);
 
 
 //! Initialize a voxel file
@@ -159,11 +159,11 @@ extern "C" void read_plots(pugi::xml_node* plot_node);
 
 //! Create a ppm image for a plot object
 //! \param[in] plot object
-extern "C" void create_ppm(ObjectPlot* pl);
+extern "C" void create_ppm(Plot* pl);
 
 //! Create an hdf5 voxel file for a plot object
 //! \param[in] plot object
-extern "C" void create_voxel(ObjectPlot *pl);
+extern "C" void create_voxel(Plot *pl);
 
 
 } // namespace openmc

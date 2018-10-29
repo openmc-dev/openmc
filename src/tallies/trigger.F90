@@ -29,7 +29,7 @@ contains
 ! and predicts the number of remainining batches to convergence.
 !===============================================================================
 
-  subroutine check_triggers()
+  subroutine check_triggers() bind(C)
 
     implicit none
 

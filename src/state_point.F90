@@ -16,7 +16,6 @@ module state_point
   use bank_header,        only: Bank
   use cmfd_header
   use constants
-  use eigenvalue,         only: openmc_get_keff, k_sum
   use endf,               only: reaction_name
   use error,              only: fatal_error, warning, write_message
   use hdf5_interface
@@ -391,19 +390,19 @@ contains
       ! Write out the runtime metrics.
       runtime_group = create_group(file_id, "runtime")
       call write_dataset(runtime_group, "total initialization", &
-           time_initialize % get_value())
+           time_initialize_elapsed())
       call write_dataset(runtime_group, "reading cross sections", &
            time_read_xs % get_value())
       call write_dataset(runtime_group, "simulation", &
-           time_inactive % get_value() + time_active % get_value())
+           time_inactive_elapsed() + time_active_elapsed())
       call write_dataset(runtime_group, "transport", &
-           time_transport % get_value())
+           time_transport_elapsed())
       if (run_mode == MODE_EIGENVALUE) then
         call write_dataset(runtime_group, "inactive batches", &
-             time_inactive % get_value())
+             time_inactive_elapsed())
       end if
       call write_dataset(runtime_group, "active batches", &
-           time_active % get_value())
+           time_active_elapsed())
       if (run_mode == MODE_EIGENVALUE) then
         call write_dataset(runtime_group, "synchronizing fission bank", &
              time_bank_elapsed())
@@ -413,7 +412,7 @@ contains
              time_bank_sendrecv_elapsed())
       end if
       call write_dataset(runtime_group, "accumulating tallies", &
-           time_tallies % get_value())
+           time_tallies_elapsed())
       if (cmfd_run) then
         call write_dataset(runtime_group, "CMFD", time_cmfd % get_value())
         call write_dataset(runtime_group, "CMFD building matrices", &
@@ -421,7 +420,7 @@ contains
         call write_dataset(runtime_group, "CMFD solving matrices", &
              time_cmfdsolve % get_value())
       end if
-      call write_dataset(runtime_group, "total", time_total % get_value())
+      call write_dataset(runtime_group, "total", time_total_elapsed())
       call close_group(runtime_group)
 
       call file_close(file_id)
@@ -444,51 +443,12 @@ contains
   end function openmc_statepoint_write
 
 !===============================================================================
-! WRITE_SOURCE_POINT
-!===============================================================================
-
-  subroutine write_source_point(filename)
-    character(MAX_FILE_LEN), intent(in), optional :: filename
-
-    logical :: parallel
-    integer(HID_T) :: file_id
-    character(MAX_FILE_LEN) :: filename_
-
-    ! When using parallel HDF5, the file is written to collectively by all
-    ! processes. With MPI-only, the file is opened and written by the master
-    ! (note that the call to write_source_bank is by all processes since slave
-    ! processes need to send source bank data to the master.
-#ifdef PHDF5
-    parallel = .true.
-#else
-    parallel = .false.
-#endif
-
-    if (present(filename)) then
-      filename_ = filename
-    else
-      filename_ = trim(path_output) // 'source.' // &
-           & zero_padded(current_batch, count_digits(n_max_batches))
-      filename_ = trim(filename_) // '.h5'
-    end if
-
-    if (master .or. parallel) then
-      file_id = file_open(filename_, 'w', parallel=.true.)
-      call write_attribute(file_id, "filetype", 'source')
-    end if
-    call write_source_bank(file_id, source_bank)
-    if (master .or. parallel) call file_close(file_id)
-
-  end subroutine write_source_point
-
-!===============================================================================
 ! LOAD_STATE_POINT
 !===============================================================================
 
-  subroutine load_state_point()
+  subroutine load_state_point() bind(C)
 
     integer :: i
-    integer :: n
     integer :: int_array(3)
     integer, allocatable :: array(:)
     integer(C_INT64_T) :: seed
@@ -503,6 +463,9 @@ contains
       subroutine read_eigenvalue_hdf5(group) bind(C)
         import HID_T
         integer(HID_T), value :: group
+      end subroutine
+
+      subroutine restart_set_keff() bind(C)
       end subroutine
     end interface
 
@@ -612,17 +575,7 @@ contains
 
     ! Set k_sum, keff, and current_batch based on whether restart file is part
     ! of active cycle or inactive cycle
-    if (restart_batch > n_inactive) then
-      do i = n_inactive + 1, restart_batch
-        k_sum(1) = k_sum(1) + k_generation(i)
-        k_sum(2) = k_sum(2) + k_generation(i)**2
-      end do
-      n = gen_per_batch*n_realizations
-      keff = k_sum(1) / n
-    else
-      n = k_generation_size()
-      keff = k_generation(n)
-    end if
+    call restart_set_keff()
     current_batch = restart_batch
 
     ! Check to make sure source bank is present

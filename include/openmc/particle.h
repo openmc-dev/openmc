@@ -146,9 +146,7 @@ extern "C" {
     //! site may have been produced from an external source, from fission, or
     //! simply as a secondary particle.
     //! \param src Source site data
-    //! \param run_CE Whether continuous-energy data is being used
-    //! \param energy_bin_avg An array of energy group bin averages
-    void from_source(const Bank* src, bool run_CE, const double* energy_bin_avg);
+    void from_source(const Bank* src);
 
     //! mark a particle as lost and create a particle restart file
     //! \param message A warning message to display
@@ -174,8 +172,7 @@ extern "C" {
   void particle_create_secondary(Particle* p, const double* uvw, double E,
                                  int type, bool run_CE);
   void particle_initialize(Particle* p);
-  void particle_from_source(Particle* p, const Bank* src, bool run_CE,
-                            const double* energy_bin_avg);
+  void particle_from_source(Particle* p, const Bank* src);
   void particle_mark_as_lost(Particle* p, const char* message);
   void particle_write_restart(Particle* p);
 

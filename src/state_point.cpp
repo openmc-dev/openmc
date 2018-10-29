@@ -1,6 +1,7 @@
 #include "openmc/state_point.h"
 
 #include <algorithm>
+#include <iomanip> // for setfill, setw
 #include <string>
 #include <vector>
 
@@ -9,6 +10,7 @@
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
+#include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/message_passing.h"
@@ -17,7 +19,6 @@
 #include "openmc/tallies/tally.h"
 
 namespace openmc {
-
 
 hid_t h5banktype() {
   // Create type for array of 3 reals
@@ -36,6 +37,46 @@ hid_t h5banktype() {
   return banktype;
 }
 
+void
+write_source_point(const char* filename)
+{
+  // When using parallel HDF5, the file is written to collectively by all
+  // processes. With MPI-only, the file is opened and written by the master
+  // (note that the call to write_source_bank is by all processes since slave
+  // processes need to send source bank data to the master.
+#ifdef PHDF5
+  bool parallel = true;
+#else
+  bool parallel = false;
+#endif
+
+  std::string filename_;
+  if (filename) {
+    filename_ = filename;
+  } else {
+    // Determine width for zero padding
+    int w = std::to_string(settings::n_max_batches).size();
+
+    std::stringstream s;
+    s << settings::path_output << "source." << std::setfill('0')
+      << std::setw(w) << simulation::current_batch << ".h5";
+    filename_ = s.str();
+  }
+
+  hid_t file_id;
+  if (mpi::master || parallel) {
+    file_id = file_open(filename_, 'w', true);
+    write_attribute(file_id, "filetype", "source");
+  }
+
+  // Get pointer to source bank and write to file
+  Bank* source_bank;
+  int64_t n;
+  openmc_source_bank(&source_bank, &n);
+  write_source_bank(file_id, source_bank);
+
+  if (mpi::master || parallel) file_close(file_id);
+}
 
 void
 write_source_bank(hid_t group_id, Bank* source_bank)
@@ -272,6 +313,20 @@ void write_tally_results_nr(hid_t file_id)
       // Indicate that tallies are off
       write_dataset(file_id, "tallies_present", 0);
     }
+  }
+}
+
+void restart_set_keff()
+{
+  if (simulation::restart_batch > settings::n_inactive) {
+    for (int i = settings::n_inactive; i < simulation::restart_batch; ++i) {
+      k_sum[0] += simulation::k_generation[i];
+      k_sum[1] += std::pow(simulation::k_generation[i], 2);
+    }
+    int n = settings::gen_per_batch*n_realizations;
+    simulation::keff = k_sum[0] / n;
+  } else {
+    simulation::keff = simulation::k_generation.back();
   }
 }
 

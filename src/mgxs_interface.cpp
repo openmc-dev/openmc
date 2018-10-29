@@ -9,6 +9,14 @@
 namespace openmc {
 
 //==============================================================================
+// Global variable definitions
+//==============================================================================
+
+std::vector<double> energy_bins;
+std::vector<double> energy_bin_avg;
+std::vector<double> rev_energy_bins;
+
+//==============================================================================
 // Mgxs data loading interface methods
 //==============================================================================
 
@@ -80,6 +88,26 @@ create_macro_xs_c(const char* mat_name, int n_nuclides, const int i_nuclides[],
     // Preserve the ordering of materials by including a blank entry
     Mgxs macro;
     macro_xs.emplace_back(macro);
+  }
+}
+
+//==============================================================================
+
+void read_mg_cross_sections_header_c(hid_t file_id)
+{
+  ensure_exists(file_id, "energy_groups", true);
+  read_attribute(file_id, "energy_groups", num_energy_groups);
+
+  ensure_exists(file_id, "group structure", true);
+  read_attribute(file_id, "group structure", energy_bins);
+
+  // Create reverse energy bins
+  std::copy(energy_bins.crbegin(), energy_bins.crend(),
+    std::back_inserter(rev_energy_bins));
+
+  // Create average energies
+  for (int i = 0; i < energy_bins.size() - 1; ++i) {
+    energy_bin_avg.push_back(0.5*(energy_bins[i] + energy_bins[i+1]));
   }
 }
 

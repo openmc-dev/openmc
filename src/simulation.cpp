@@ -1,13 +1,54 @@
 #include "openmc/simulation.h"
 
 #include "openmc/capi.h"
+#include "openmc/container_util.h"
 #include "openmc/eigenvalue.h"
+#include "openmc/error.h"
 #include "openmc/message_passing.h"
+#include "openmc/output.h"
+#include "openmc/particle.h"
+#include "openmc/random_lcg.h"
 #include "openmc/settings.h"
+#include "openmc/source.h"
+#include "openmc/state_point.h"
+#include "openmc/timer.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
 
 #include <algorithm>
+#include <string>
+
+namespace openmc {
+
+// data/functions from Fortran side
+extern "C" bool cmfd_on;
+
+extern "C" void accumulate_tallies();
+extern "C" void allocate_banks();
+extern "C" void check_triggers();
+extern "C" void cmfd_init_batch();
+extern "C" void cmfd_tally_init();
+extern "C" void configure_tallies();
+extern "C" void execute_cmfd();
+extern "C" void init_tally_routines();
+extern "C" void join_bank_from_threads();
+extern "C" void load_state_point();
+extern "C" void print_batch_keff();
+extern "C" void print_columns();
+extern "C" void print_generation();
+extern "C" void print_results();
+extern "C" void print_runtime();
+extern "C" void setup_active_tallies();
+extern "C" void simulation_init_f();
+extern "C" void simulation_finalize_f();
+extern "C" void transport(Particle* p);
+extern "C" void write_tallies();
+
+} // namespace openmc
+
+//==============================================================================
+// C API functions
+//==============================================================================
 
 // OPENMC_RUN encompasses all the main logic where iterations are performed
 // over the batches, generations, and histories in a fixed source or k-eigenvalue
@@ -27,6 +68,176 @@ int openmc_run()
   return err;
 }
 
+int openmc_simulation_init()
+{
+  using namespace openmc;
+
+  // Skip if simulation has already been initialized
+  if (simulation::initialized) return 0;
+
+  // Determine how much work each process should do
+  calculate_work();
+
+  // Allocate array for matching filter bins
+#pragma omp parallel
+  {
+    filter_matches.resize(n_filters);
+  }
+
+  // Set up tally procedure pointers
+  init_tally_routines();
+
+  // Allocate source bank, and for eigenvalue simulations also allocate the
+  // fission bank
+  allocate_banks();
+
+  // Allocate tally results arrays if they're not allocated yet
+  configure_tallies();
+
+  // Activate the CMFD tallies
+  cmfd_tally_init();
+
+  // Call Fortran initialization
+  simulation_init_f();
+
+  // Reset global variables -- this is done before loading state point (as that
+  // will potentially populate k_generation and entropy)
+  simulation::current_batch = 0;
+  simulation::k_generation.clear();
+  entropy.clear();
+  simulation::need_depletion_rx = false;
+
+  // If this is a restart run, load the state point data and binary source
+  // file
+  if (settings::restart_run) {
+    load_state_point();
+    write_message("Resuming simulation...", 6);
+  } else {
+    initialize_source();
+  }
+
+  // Display header
+  if (mpi::master) {
+    if (settings::run_mode == RUN_MODE_FIXEDSOURCE) {
+      header("FIXED SOURCE TRANSPORT SIMULATION", 3);
+    } else if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+      header("K EIGENVALUE SIMULATION", 3);
+      if (settings::verbosity >= 7) print_columns();
+    }
+  }
+
+  // Set flag indicating initialization is done
+  simulation::initialized = true;
+  return 0;
+}
+
+int openmc_simulation_finalize()
+{
+  using namespace openmc;
+
+  // Skip if simulation was never run
+  if (!simulation::initialized) return 0;
+
+  // Stop active batch timer and start finalization timer
+  time_active.stop();
+  time_finalize.start();
+
+#pragma omp parallel
+  {
+    filter_matches.clear();
+  }
+
+  // Deallocate Fortran variables, set tallies to inactive
+  simulation_finalize_f();
+
+  // Increment total number of generations
+  simulation::total_gen += simulation::current_batch*settings::gen_per_batch;
+
+#ifdef OPENMC_MPI
+  broadcast_results();
+#endif
+
+  // Write tally results to tallies.out
+  if (settings::output_tallies && mpi::master) write_tallies();
+
+  // Deactivate all tallies
+  for (int i = 1; i <= n_tallies; ++i) {
+    openmc_tally_set_active(i, false);
+  }
+
+  // Stop timers and show timing statistics
+  time_finalize.stop();
+  time_total.stop();
+  if (mpi::master) {
+    if (settings::verbosity >= 6) print_runtime();
+    if (settings::verbosity >= 4) print_results();
+  }
+  if (settings::check_overlaps) print_overlap_check();
+
+  // Reset flags
+  simulation::need_depletion_rx = false;
+  simulation::initialized = false;
+  return 0;
+}
+
+int openmc_next_batch(int* status)
+{
+  using namespace openmc;
+  using openmc::simulation::current_gen;
+
+  // Make sure simulation has been initialized
+  if (!simulation::initialized) {
+    set_errmsg("Simulation has not been initialized yet.");
+    return OPENMC_E_ALLOCATE;
+  }
+
+  initialize_batch();
+
+  // =======================================================================
+  // LOOP OVER GENERATIONS
+  for (current_gen = 1; current_gen <= settings::gen_per_batch; ++current_gen) {
+
+    initialize_generation();
+
+    // Start timer for transport
+    time_transport.start();
+
+    // ====================================================================
+    // LOOP OVER PARTICLES
+
+#pragma omp parallel for schedule(runtime)
+    for (int64_t i_work = 1; i_work <= simulation::work; ++i_work) {
+      simulation::current_work = i_work;
+
+      // grab source particle from bank
+      Particle p;
+      initialize_history(&p, simulation::current_work);
+
+      // transport particle
+      transport(&p);
+    }
+
+    // Accumulate time for transport
+    time_transport.stop();
+
+    finalize_generation();
+  }
+
+  finalize_batch();
+
+  // Check simulation ending criteria
+  if (status) {
+    if (simulation::current_batch == settings::n_max_batches) {
+      *status = STATUS_EXIT_MAX_BATCH;
+    } else if (simulation::satisfy_triggers) {
+      *status = STATUS_EXIT_ON_TRIGGER;
+    } else {
+      *status = STATUS_EXIT_NORMAL;
+    }
+  }
+  return 0;
+}
+
 namespace openmc {
 
 //==============================================================================
@@ -38,6 +249,7 @@ namespace simulation {
 int current_batch;
 int current_gen;
 int64_t current_work;
+bool initialized {false};
 double keff {1.0};
 double keff_std;
 double k_col_abs {0.0};
@@ -48,7 +260,6 @@ int n_lost_particles {0};
 bool need_depletion_rx {false};
 int restart_batch;
 bool satisfy_triggers {false};
-bool simulation_initialized {false};
 int total_gen {0};
 int64_t work;
 
@@ -68,15 +279,104 @@ int thread_id;  //!< ID of a given thread
 // Non-member functions
 //==============================================================================
 
-void openmc_simulation_init_c()
+void initialize_batch()
 {
-  // Determine how much work each process should do
-  calculate_work();
+  // Increment current batch
+  ++simulation::current_batch;
 
-  // Allocate array for matching filter bins
-  #pragma omp parallel
-  {
-    filter_matches.resize(n_filters);
+  if (settings::run_mode == RUN_MODE_FIXEDSOURCE) {
+    int b = simulation::current_batch;
+    write_message("Simulating batch " + std::to_string(b), 6);
+  }
+
+  // Reset total starting particle weight used for normalizing tallies
+  total_weight = 0.0;
+
+  // Determine if this batch is the first inactive or active batch.
+  bool first_inactive = false;
+  bool first_active = false;
+  if (!settings::restart_run) {
+    first_inactive = settings::n_inactive > 0 && simulation::current_batch == 1;
+    first_active = simulation::current_batch == settings::n_inactive + 1;
+  } else if (simulation::current_batch == simulation::restart_batch + 1){
+    first_inactive = simulation::restart_batch < settings::n_inactive;
+    first_active = !first_inactive;
+  }
+
+  // Manage active/inactive timers and activate tallies if necessary.
+  if (first_inactive) {
+    time_inactive.start();
+  } else if (first_active) {
+    time_inactive.stop();
+    time_active.start();
+    for (int i = 1; i <= n_tallies; ++i) {
+      // TODO: change one-based index
+      openmc_tally_set_active(i, true);
+    }
+  }
+
+  // check CMFD initialize batch
+  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    if (settings::cmfd_run) cmfd_init_batch();
+  }
+
+  // Add user tallies to active tallies list
+  setup_active_tallies();
+}
+
+void finalize_batch()
+{
+  // Reduce tallies onto master process and accumulate
+  time_tallies.start();
+  accumulate_tallies();
+  time_tallies.stop();
+
+  // Reset global tally results
+  if (simulation::current_batch <= settings::n_inactive) {
+    auto gt = global_tallies();
+    std::fill(gt.begin(), gt.end(), 0.0);
+    n_realizations = 0;
+  }
+
+  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    // Perform CMFD calculation if on
+    if (cmfd_on) execute_cmfd();
+    // Write batch output
+    if (mpi::master && settings::verbosity >= 7) print_batch_keff();
+  }
+
+  // Check_triggers
+  if (mpi::master) check_triggers();
+#ifdef OPENMC_MPI
+  MPI_Bcast(&simulation::satisfy_triggers, 1, MPI_C_BOOL, 0, mpi::intracomm);
+#endif
+  if (simulation::satisfy_triggers || (settings::trigger_on &&
+      simulation::current_batch == settings::n_max_batches)) {
+    settings::statepoint_batch.insert(simulation::current_batch);
+  }
+
+  // Write out state point if it's been specified for this batch
+  if (contains(settings::statepoint_batch, simulation::current_batch)) {
+    if (contains(settings::sourcepoint_batch, simulation::current_batch)
+        && settings::source_write && !settings::source_separate) {
+      bool b = true;
+      openmc_statepoint_write(nullptr, &b);
+    } else {
+      bool b = false;
+      openmc_statepoint_write(nullptr, &b);
+    }
+  }
+
+  // Write out a separate source point if it's been specified for this batch
+  if (contains(settings::sourcepoint_batch, simulation::current_batch)
+      && settings::source_write && settings::source_separate) {
+    write_source_point(nullptr);
+  }
+
+  // Write a continously-overwritten source point if requested.
+  if (settings::source_latest) {
+    auto filename = settings::path_output + "source.h5";
+    write_source_point(filename.c_str());
   }
 }
 
@@ -94,12 +394,99 @@ void initialize_generation()
   }
 }
 
-extern "C" void
-openmc_simulation_finalize_c()
+void finalize_generation()
 {
-  #pragma omp parallel
+  auto gt = global_tallies();
+
+  // Update global tallies with the omp private accumulation variables
+#pragma omp parallel
   {
-    filter_matches.clear();
+#pragma omp critical(increment_global_tallies)
+    {
+      if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+        gt(K_COLLISION, RESULT_VALUE) += global_tally_collision;
+        gt(K_ABSORPTION, RESULT_VALUE) += global_tally_absorption;
+        gt(K_TRACKLENGTH, RESULT_VALUE) += global_tally_tracklength;
+      }
+      gt(LEAKAGE, RESULT_VALUE) += global_tally_leakage;
+    }
+
+    // reset threadprivate tallies
+    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+      global_tally_collision = 0.0;
+      global_tally_absorption = 0.0;
+      global_tally_tracklength = 0.0;
+    }
+    global_tally_leakage = 0.0;
+  }
+
+
+  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+#ifdef _OPENMP
+    // Join the fission bank from each thread into one global fission bank
+    join_bank_from_threads();
+#endif
+
+    // Distribute fission bank across processors evenly
+    synchronize_bank();
+
+    // Calculate shannon entropy
+    if (settings::entropy_on) shannon_entropy();
+
+    // Collect results and statistics
+    calculate_generation_keff();
+    calculate_average_keff();
+
+    // Write generation output
+    if (mpi::master && settings::verbosity >= 7) {
+      if (simulation::current_gen != settings::gen_per_batch) {
+        print_generation();
+      }
+    }
+
+  } else if (settings::run_mode == RUN_MODE_FIXEDSOURCE) {
+    // For fixed-source mode, we need to sample the external source
+    fill_source_bank_fixedsource();
+  }
+}
+
+void initialize_history(Particle* p, int64_t index_source)
+{
+  // Get pointer to source bank
+  Bank* source_bank;
+  int64_t n;
+  openmc_source_bank(&source_bank, &n);
+
+  // set defaults
+  p->from_source(&source_bank[index_source - 1]);
+
+  // set identifier for particle
+  p->id = simulation::work_index[mpi::rank] + index_source;
+
+  // set random number seed
+  int64_t particle_seed = (simulation::total_gen + overall_generation() - 1)
+    * settings::n_particles + p->id;
+  set_particle_seed(particle_seed);
+
+  // set particle trace
+  simulation::trace = false;
+  if (simulation::current_batch == settings::trace_batch &&
+      simulation::current_gen == settings::trace_gen &&
+      p->id == settings::trace_particle) simulation::trace = true;
+
+  // Set particle track.
+  p->write_track = false;
+  if (settings::write_all_tracks) {
+    p->write_track = true;
+  } else if (settings::track_identifiers.size() > 0) {
+    for (const auto& t : settings::track_identifiers) {
+      if (simulation::current_batch == t[0] &&
+          simulation::current_gen == t[1] &&
+          p->id == t[2]) {
+        p->write_track = true;
+        break;
+      }
+    }
   }
 }
 
@@ -165,10 +552,6 @@ void broadcast_results() {
   simulation::k_abs_tra = temp[2];
 }
 
-void broadcast_triggers()
-{
-  MPI_Bcast(&simulation::satisfy_triggers, 1, MPI_C_BOOL, 0, mpi::intracomm);
-}
 #endif
 
 //==============================================================================

@@ -826,15 +826,13 @@ void draw_mesh_lines(Plot pl, ImageData &data)
   // Fortran/C++ index correction
   ijk_ur[0]++; ijk_ur[1]++; ijk_ur[2]++;
 
-  double frac;
-  int outrange[3], inrange[3];
   double xyz_ll[3], xyz_ur[3];
   // sweep through all meshbins on this plane and draw borders
   for (int i = ijk_ll[outer]; i <= ijk_ur[outer]; i++) {
     for (int j = ijk_ll[inner]; j <= ijk_ur[inner]; j++) {
       // check if we're in the mesh for this ijk
       if (i > 0 && i <= m->shape_[outer] && j >0 && j <= m->shape_[inner] ) {
-
+        int outrange[3], inrange[3];
         // get xyz's of lower left and upper right of this mesh cell
         xyz_ll[outer] = m->lower_left_[outer] + m->width_[outer] * (i - 1);
         xyz_ll[inner] = m->lower_left_[inner] + m->width_[inner] * (j - 1);
@@ -842,7 +840,7 @@ void draw_mesh_lines(Plot pl, ImageData &data)
         xyz_ur[inner] = m->lower_left_[inner] + m->width_[inner] * j;
 
         // map the xyz ranges to pixel ranges
-        frac = (xyz_ll[outer] - xyz_ll_plot[outer]) / width[outer];
+        double frac = (xyz_ll[outer] - xyz_ll_plot[outer]) / width[outer];
         outrange[0] = int(frac * double(pl.pixels[0]));
         frac = (xyz_ur[outer] - xyz_ll_plot[outer]) / width[outer];
         outrange[1] = int(frac * double(pl.pixels[0]));

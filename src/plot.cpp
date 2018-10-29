@@ -330,10 +330,10 @@ void
 ObjectPlot::set_width()
 {
   // Copy plotting width
-  std::vector<int> pl_width;
+  std::vector<double> pl_width;
   if (PLOT_TYPE::SLICE == type) {
     if (node_word_count(_plot_node, "width") == 2) {
-      pl_width = get_node_array<int>(_plot_node, "width");
+      pl_width = get_node_array<double>(_plot_node, "width");
       width[0] = pl_width[0];
       width[1] = pl_width[1];
     } else {
@@ -344,7 +344,7 @@ ObjectPlot::set_width()
     }
   } else if (PLOT_TYPE::VOXEL == type) {
     if (node_word_count(_plot_node, "width") == 3) {
-      pl_width = get_node_array<int>(_plot_node, "width");
+      pl_width = get_node_array<double>(_plot_node, "width");
       width[0] = pl_width[0];
       width[1] = pl_width[1];
       width[2] = pl_width[2];

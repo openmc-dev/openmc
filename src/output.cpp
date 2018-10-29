@@ -64,45 +64,45 @@ void print_plot() {
 
   for (auto pl : plots) {
     // Plot id
-    std::cout << "Plot ID: " << pl->id << std::endl;
+    std::cout << "Plot ID: " << pl.id << std::endl;
     // Plot filename
-    std::cout << "Plot file: " << pl->path_plot << std::endl;
+    std::cout << "Plot file: " << pl.path_plot << std::endl;
     // Plot level
-    std::cout << "Universe depth: " << pl->level << std::endl;
+    std::cout << "Universe depth: " << pl.level << std::endl;
 
     // Plot type
-    if (plot_type::slice == pl->type) {
+    if (plot_type::slice == pl.type) {
       std::cout << "Plot Type: Slice" << std::endl;
-    } else if (plot_type::voxel == pl->type) {
+    } else if (plot_type::voxel == pl.type) {
       std::cout << "Plot Type: Voxel" << std::endl;      
     }
 
     // Plot parameters
-    std::cout << "Origin: " << pl->origin[0] << " "
-              << pl->origin[1] << " "
-              << pl->origin[2] << std::endl;
+    std::cout << "Origin: " << pl.origin[0] << " "
+              << pl.origin[1] << " "
+              << pl.origin[2] << std::endl;
 
-    if (plot_type::slice == pl->type) {
+    if (plot_type::slice == pl.type) {
       std::cout << std::setprecision(4)
                 << "Width: "
-                << pl->width[0] << " "
-                << pl->width[1] << std::endl;
-    } else if (plot_type::voxel == pl->type) {
+                << pl.width[0] << " "
+                << pl.width[1] << std::endl;
+    } else if (plot_type::voxel == pl.type) {
       std::cout << std::setprecision(4)
                 << "Width: "
-                << pl->width[0] << " "
-                << pl->width[1] << " "
-                << pl->width[2] << std::endl;
+                << pl.width[0] << " "
+                << pl.width[1] << " "
+                << pl.width[2] << std::endl;
     }
 
-    if (plot_color_by::cells == pl->color_by) {
+    if (plot_color_by::cells == pl.color_by) {
       std::cout << "Coloring: Cells" << std::endl;
-    } else if (plot_color_by::mats == pl->color_by) {
+    } else if (plot_color_by::mats == pl.color_by) {
       std::cout << "Coloring: Materials" << std::endl;      
     }
     
-    if (plot_type::slice == pl->type) {
-      switch(pl->basis) {
+    if (plot_type::slice == pl.type) {
+      switch(pl.basis) {
       case plot_basis::xy:
         std::cout <<  "Basis: XY" << std::endl;
         break;
@@ -113,12 +113,12 @@ void print_plot() {
         std::cout <<  "Basis: YZ" << std::endl;
         break;
       }
-      std::cout << "Pixels: " << pl->pixels[0] << " "
-                << pl->pixels[1] << " " << std::endl;
-    } else if (plot_type::voxel == pl->type) {
-      std::cout << "Voxels: " << pl->pixels[0] << " "
-                << pl->pixels[1] << " "
-                << pl->pixels[2] << std::endl;
+      std::cout << "Pixels: " << pl.pixels[0] << " "
+                << pl.pixels[1] << " " << std::endl;
+    } else if (plot_type::voxel == pl.type) {
+      std::cout << "Voxels: " << pl.pixels[0] << " "
+                << pl.pixels[1] << " "
+                << pl.pixels[2] << std::endl;
     }
 
     std::cout << std::endl;

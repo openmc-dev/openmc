@@ -7,7 +7,6 @@ module tally_filter
   use tally_filter_header
 
   ! Inherit other filters
-  use tally_filter_cpp
   use tally_filter_delayedgroup
   use tally_filter_distribcell
   use tally_filter_energy

@@ -9,7 +9,6 @@
 #include "pugixml.hpp"
 #include "xtensor/xarray.hpp"
 #include "xtensor/xadapt.hpp"
-#include "openmc/string_functions.h"
 
 namespace openmc {
 

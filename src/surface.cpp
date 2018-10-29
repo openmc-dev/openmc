@@ -8,7 +8,7 @@
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/xml_interface.h"
-
+#include "openmc/string_functions.h"
 
 namespace openmc {
 

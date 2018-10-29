@@ -24,7 +24,7 @@ extern int PLOT_LEVEL_LOWEST; //!< lower bound on plot universe level
 
 extern std::map<int, int> plot_map; //!< map of plot ids to index
 
-extern int n_plots; //!< number of plots in openmc run
+extern "C" int32_t n_plots; //!< number of plots in openmc run
 
 class Plot;
 extern std::vector<Plot> plots; //!< Plot instance container
@@ -153,11 +153,11 @@ extern "C" void read_plots(pugi::xml_node* plot_node);
 
 //! Create a ppm image for a plot object
 //! \param[in] plot object
-extern "C" void create_ppm(Plot pl);
+void create_ppm(Plot pl);
 
 //! Create an hdf5 voxel file for a plot object
 //! \param[in] plot object
-extern "C" void create_voxel(Plot pl);
+void create_voxel(Plot pl);
 
 
 } // namespace openmc

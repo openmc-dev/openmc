@@ -3,6 +3,7 @@
 #include <algorithm>  // for transform
 #include <sstream>
 
+#include "openmc/string_functions.h"
 #include "openmc/error.h"
 
 

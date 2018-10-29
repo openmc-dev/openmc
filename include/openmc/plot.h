@@ -29,7 +29,13 @@ extern int n_plots; //!< number of plots in openmc run
 class Plot;
 extern std::vector<Plot*> plots; //!< Plot instance container
 
-typedef std::vector<std::vector<std::vector<int>>> ImageData;
+//===============================================================================
+// RGBColor holds color information for plotted objects
+//===============================================================================
+
+typedef std::array<int, 3> RGBColor;
+ 
+typedef std::vector<std::vector<RGBColor>> ImageData;
 
 enum class plot_type {
   slice = 1,
@@ -46,12 +52,6 @@ enum class plot_color_by {
   cells = 1,
   mats = 2
 };
-
-//===============================================================================
-// RGBColor holds color information for plotted objects
-//===============================================================================
-
-typedef std::array<int, 3> RGBColor;
  
 //===============================================================================
 // Plot class

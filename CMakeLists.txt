@@ -413,6 +413,7 @@ add_library(libopenmc SHARED
   src/physics_mg.cpp
   src/plot.cpp
   src/position.cpp
+  src/progress_bar.cpp
   src/pugixml/pugixml_c.cpp
   src/random_lcg.cpp
   src/reaction.cpp

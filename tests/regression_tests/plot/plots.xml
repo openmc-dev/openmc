@@ -24,7 +24,7 @@
   </plot>
 
   <plot id="4" type="voxel">
-    <pixels>100 100 10</pixels>
+    <pixels>10000 100 10</pixels>
     <origin>0. 0. 0.</origin>
     <width>20 20 10</width>
   </plot>

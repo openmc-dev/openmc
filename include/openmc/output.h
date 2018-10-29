@@ -20,7 +20,7 @@ void header(const char* msg, int level);
 //! Display information regarding cell overlap checking.
 //==============================================================================
 
-extern "C" void print_overlap_check();
+void print_overlap_check();
 
 extern "C" void title();
 

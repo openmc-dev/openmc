@@ -29,7 +29,7 @@ contains
 ! EXECUTE_CMFD runs the CMFD calculation
 !==============================================================================
 
-  subroutine execute_cmfd()
+  subroutine execute_cmfd() bind(C)
 
     use cmfd_data,              only: set_up_cmfd
     use cmfd_solver,            only: cmfd_solver_execute
@@ -73,7 +73,7 @@ contains
 ! CMFD_INIT_BATCH handles cmfd options at the start of every batch
 !==============================================================================
 
-  subroutine cmfd_init_batch()
+  subroutine cmfd_init_batch() bind(C)
 
     ! Check to activate CMFD diffusion and possible feedback
     ! this guarantees that when cmfd begins at least one batch of tallies are
@@ -375,7 +375,7 @@ contains
 ! CMFD_TALLY_INIT
 !===============================================================================
 
-  subroutine cmfd_tally_init()
+  subroutine cmfd_tally_init() bind(C)
     integer :: i
     if (cmfd_run) then
       do i = 1, size(cmfd_tallies)

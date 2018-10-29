@@ -95,7 +95,7 @@ extern "C" {
   int openmc_sphharm_filter_get_cosine(int32_t index, char cosine[]);
   int openmc_sphharm_filter_set_order(int32_t index, int order);
   int openmc_sphharm_filter_set_cosine(int32_t index, const char cosine[]);
-  int openmc_statepoint_write(const char filename[]);
+  int openmc_statepoint_write(const char filename[], bool* write_source);
   int openmc_tally_allocate(int32_t index, const char* type);
   int openmc_tally_get_active(int32_t index, bool* active);
   int openmc_tally_get_estimator(int32_t index, int32_t* estimator);
@@ -136,7 +136,6 @@ extern "C" {
   // Global variables
   extern char openmc_err_msg[256];
   extern int32_t n_cells;
-  extern int32_t n_filters;
   extern int32_t n_lattices;
   extern int32_t n_materials;
   extern int n_nuclides;

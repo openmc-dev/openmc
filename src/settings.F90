@@ -3,7 +3,6 @@ module settings
   use, intrinsic :: ISO_C_BINDING
 
   use constants
-  use set_header,    only: SetInt
 
   implicit none
 
@@ -67,9 +66,6 @@ module settings
   integer(C_INT32_T), bind(C) :: index_ufs_mesh
 
   ! Write source at end of simulation
-  logical(C_BOOL), bind(C) :: source_separate
-  logical(C_BOOL), bind(C) :: source_write
-  logical(C_BOOL), bind(C) :: source_latest
 
   ! Variance reduction settins
   logical(C_BOOL), bind(C) :: survival_biasing
@@ -99,24 +95,9 @@ module settings
 
   ! Particle tracks
   logical(C_BOOL), bind(C) :: write_all_tracks
-  integer, allocatable :: track_identifiers(:,:)
-
-  ! Particle restart run
-  logical(C_BOOL), bind(C) :: particle_restart_run
-
-  ! Write out initial source
-  logical(C_BOOL), bind(C) :: write_initial_source
 
   ! Whether create fission neutrons or not. Only applied for MODE_FIXEDSOURCE
   logical(C_BOOL), bind(C) :: create_fission_neutrons
-
-  ! Information about state points to be written
-  integer :: n_state_points = 0
-  type(SetInt) :: statepoint_batch
-
-  ! Information about source points to be written
-  integer :: n_source_points = 0
-  type(SetInt) :: sourcepoint_batch
 
   character(MAX_FILE_LEN) :: path_input               ! Path to input file
   character(MAX_FILE_LEN) :: path_cross_sections = '' ! Path to cross_sections.xml
@@ -128,7 +109,6 @@ module settings
 
   ! Various output options
   logical(C_BOOL), bind(C) :: output_summary
-  logical(C_BOOL), bind(C) :: output_tallies
 
   ! Resonance scattering settings
   logical(C_BOOL), bind(C) :: res_scat_on ! is resonance scattering treated?
@@ -150,11 +130,14 @@ contains
 !===============================================================================
 
   subroutine free_memory_settings()
-    if (allocated(res_scat_nuclides)) deallocate(res_scat_nuclides)
-    if (allocated(track_identifiers)) deallocate(track_identifiers)
+    interface
+      subroutine free_memory_settings_c() bind(C)
+      end subroutine
+    end interface
 
-    call statepoint_batch % clear()
-    call sourcepoint_batch % clear()
+    if (allocated(res_scat_nuclides)) deallocate(res_scat_nuclides)
+
+    call free_memory_settings_c()
   end subroutine free_memory_settings
 
 end module settings

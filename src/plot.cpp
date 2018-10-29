@@ -27,7 +27,7 @@ std::map<int, int> plot_map;
 
 int n_plots;
 
-std::vector<Plot*> plots;
+std::vector<Plot> plots;
 
 const RGBColor WHITE = {255, 255, 255};
 const RGBColor NULLRGB = {0, 0, 0};
@@ -41,18 +41,16 @@ int openmc_plot_geometry()
 {
   int err;
 
-  for (int i = 0; i < n_plots; i++) {
-    Plot* pl = plots[i];
-
+  for (auto pl : plots) {
     std::stringstream ss;
-    ss << "Processing plot " << pl->id << ": "
-       << pl->path_plot << "...";
+    ss << "Processing plot " << pl.id << ": "
+       << pl.path_plot << "...";
     write_message(ss.str(), 5);
 
-    if (plot_type::slice == pl->type) {
+    if (plot_type::slice == pl.type) {
       // create 2D image
       create_ppm(pl);
-    } else if (plot_type::voxel == pl->type) {
+    } else if (plot_type::voxel == pl.type) {
       // create voxel file for 3D viewing
       create_voxel(pl);
     }
@@ -71,9 +69,9 @@ read_plots(pugi::xml_node* plots_node)
   n_plots = plot_nodes.size();
 
   for(int i = 0; i < plot_nodes.size(); i++) {
-    Plot* pl = new Plot(plot_nodes[i]);
+    Plot pl(plot_nodes[i]);
     plots.push_back(pl);
-    plot_map[pl->id] = i;
+    plot_map[pl.id] = i;
   }
 }
 
@@ -82,14 +80,14 @@ read_plots(pugi::xml_node* plots_node)
 // specification in the portable pixmap format (PPM)
 //==============================================================================
 
-void create_ppm(Plot* pl)
+void create_ppm(Plot pl)
 {
 
-  int width = pl->pixels[0];
-  int height = pl->pixels[1];
+  int width = pl.pixels[0];
+  int height = pl.pixels[1];
 
-  double in_pixel = (pl->width[0])/double(width);
-  double out_pixel = (pl->width[1])/double(height);
+  double in_pixel = (pl.width[0])/double(width);
+  double out_pixel = (pl.width[1])/double(height);
 
   ImageData data;
   data.resize(width);
@@ -99,27 +97,27 @@ void create_ppm(Plot* pl)
 
   int in_i, out_i;
   double xyz[3];
-  switch(pl->basis) {
+  switch(pl.basis) {
   case plot_basis::xy :
     in_i = 0;
     out_i = 1;
-    xyz[0] = pl->origin[0] - pl->width[0] / TWO;
-    xyz[1] = pl->origin[1] + pl->width[1] / TWO;
-    xyz[2] = pl->origin[2];
+    xyz[0] = pl.origin[0] - pl.width[0] / TWO;
+    xyz[1] = pl.origin[1] + pl.width[1] / TWO;
+    xyz[2] = pl.origin[2];
     break;
   case plot_basis::xz :
     in_i = 0;
     out_i = 2;
-    xyz[0] = pl->origin[0] - pl->width[0] / TWO;
-    xyz[1] = pl->origin[1];
-    xyz[2] = pl->origin[2] + pl->width[1] / TWO;
+    xyz[0] = pl.origin[0] - pl.width[0] / TWO;
+    xyz[1] = pl.origin[1];
+    xyz[2] = pl.origin[2] + pl.width[1] / TWO;
     break;
   case plot_basis::yz :
     in_i = 1;
     out_i = 2;
-    xyz[0] = pl->origin[0];
-    xyz[1] = pl->origin[1] - pl->width[0] / TWO;
-    xyz[2] = pl->origin[2] + pl->width[1] / TWO;
+    xyz[0] = pl.origin[0];
+    xyz[1] = pl.origin[1] - pl.width[0] / TWO;
+    xyz[2] = pl.origin[2] + pl.width[1] / TWO;
     break;
   }
 
@@ -147,7 +145,7 @@ void create_ppm(Plot* pl)
   delete p;
 
   // draw mesh lines if present
-  if (pl->index_meshlines_mesh >= 0) {draw_mesh_lines(pl, data);}
+  if (pl.index_meshlines_mesh >= 0) {draw_mesh_lines(pl, data);}
 
   // write ppm data to file
   output_ppm(pl, data);
@@ -700,7 +698,7 @@ index_meshlines_mesh(-1)
 // current particle's position
 //==============================================================================
 
-void position_rgb(Particle* p, Plot* pl, RGBColor &rgb, int &id)
+void position_rgb(Particle* p, Plot pl, RGBColor &rgb, int &id)
 {
   p->n_coord = 1;
 
@@ -711,32 +709,32 @@ void position_rgb(Particle* p, Plot* pl, RGBColor &rgb, int &id)
   if (settings::check_overlaps) {check_cell_overlap(p);}
 
   // Set coordinate level if specified
-  if (pl->level >= 0) {j = pl->level + 1;}
+  if (pl.level >= 0) {j = pl.level + 1;}
 
   if (!found_cell) {
     // If no cell, revert to default color
-    rgb = pl->not_found;
+    rgb = pl.not_found;
     id = -1;
   } else {
-    if (plot_color_by::mats == pl->color_by) {
+    if (plot_color_by::mats == pl.color_by) {
       // Assign color based on material
       Cell* c = cells[p->coord[j].cell];
       if (c->type_ == FILL_UNIVERSE) {
         // If we stopped on a middle universe level, treat as if not found
-        rgb = pl->not_found;
+        rgb = pl.not_found;
         id = -1;
       } else if (p->material == MATERIAL_VOID) {
         // By default, color void cells white
         rgb = WHITE;
         id = -1;
       } else {
-        rgb = pl->colors[p->material - 1];
+        rgb = pl.colors[p->material - 1];
         id = materials[p->material - 1]->id_;
       }
 
-    } else if (plot_color_by::cells == pl->color_by) {
+    } else if (plot_color_by::cells == pl.color_by) {
       // Assign color based on cell
-      rgb = pl->colors[p->coord[j].cell];
+      rgb = pl.colors[p->coord[j].cell];
       id = cells[p->coord[j].cell]->id_;
     } else {
       rgb = NULLRGB;
@@ -750,10 +748,10 @@ void position_rgb(Particle* p, Plot* pl, RGBColor &rgb, int &id)
 // OUTPUT_PPM writes out a previously generated image to a PPM file
 //==============================================================================
 
-void output_ppm(Plot* pl, const ImageData &data)
+void output_ppm(Plot pl, const ImageData &data)
 {
   // Open PPM file for writing
-  std::string fname = pl->path_plot;
+  std::string fname = pl.path_plot;
   fname = strtrim(fname);
   std::ofstream of;
 
@@ -761,14 +759,14 @@ void output_ppm(Plot* pl, const ImageData &data)
 
   // Write header
   of << "P6" << std::endl;
-  of << pl->pixels[0] << " " << pl->pixels[1] << std::endl;
+  of << pl.pixels[0] << " " << pl.pixels[1] << std::endl;
   of << "255" << std::endl;
   of.close();
 
   of.open(fname, std::ios::binary | std::ios::app);
   // Write color for each pixel
-  for (int y = 0; y < pl->pixels[1]; y++) {
-    for (int x = 0; x < pl->pixels[0]; x++) {
+  for (int y = 0; y < pl.pixels[1]; y++) {
+    for (int x = 0; x < pl.pixels[0]; x++) {
       RGBColor rgb = data[x][y];
       of.write((char*)&rgb[RED], 1);
       of.write((char*)&rgb[GREEN], 1);
@@ -785,15 +783,15 @@ void output_ppm(Plot* pl, const ImageData &data)
 // DRAW_MESH_LINES draws mesh line boundaries on an image
 //==============================================================================
 
-void draw_mesh_lines(Plot *pl, ImageData &data)
+void draw_mesh_lines(Plot pl, ImageData &data)
 {
   RGBColor rgb;
-  rgb[RED] = pl->meshlines_color[RED];
-  rgb[GREEN] = pl->meshlines_color[GREEN];
-  rgb[BLUE] = pl->meshlines_color[BLUE];
+  rgb[RED] = pl.meshlines_color[RED];
+  rgb[GREEN] = pl.meshlines_color[GREEN];
+  rgb[BLUE] = pl.meshlines_color[BLUE];
 
   int outer, inner;
-  switch(pl->basis) {
+  switch(pl.basis) {
   case plot_basis::xy :
     outer = 0;
     inner = 1;
@@ -809,20 +807,20 @@ void draw_mesh_lines(Plot *pl, ImageData &data)
   }
 
   double xyz_ll_plot[3], xyz_ur_plot[3];
-  std::copy((double*)&pl->origin, (double*)&pl->origin + 3, xyz_ll_plot);
-  std::copy((double*)&pl->origin, (double*)&pl->origin + 3, xyz_ur_plot);
+  std::copy((double*)&pl.origin, (double*)&pl.origin + 3, xyz_ll_plot);
+  std::copy((double*)&pl.origin, (double*)&pl.origin + 3, xyz_ur_plot);
 
-  xyz_ll_plot[outer] = pl->origin[outer] - pl->width[0] / TWO;
-  xyz_ll_plot[inner] = pl->origin[inner] - pl->width[1] / TWO;
-  xyz_ur_plot[outer] = pl->origin[outer] + pl->width[0] / TWO;
-  xyz_ur_plot[inner] = pl->origin[inner] + pl->width[1] / TWO;
+  xyz_ll_plot[outer] = pl.origin[outer] - pl.width[0] / TWO;
+  xyz_ll_plot[inner] = pl.origin[inner] - pl.width[1] / TWO;
+  xyz_ur_plot[outer] = pl.origin[outer] + pl.width[0] / TWO;
+  xyz_ur_plot[inner] = pl.origin[inner] + pl.width[1] / TWO;
 
   int width[3];
   width[0] = xyz_ur_plot[0] - xyz_ll_plot[0];
   width[1] = xyz_ur_plot[1] - xyz_ll_plot[1];
   width[2] = xyz_ur_plot[2] - xyz_ll_plot[2];
 
-  auto &m = meshes[pl->index_meshlines_mesh];
+  auto &m = meshes[pl.index_meshlines_mesh];
 
   int ijk_ll[3], ijk_ur[3];
   bool in_mesh;
@@ -849,18 +847,18 @@ void draw_mesh_lines(Plot *pl, ImageData &data)
 
         // map the xyz ranges to pixel ranges
         frac = (xyz_ll[outer] - xyz_ll_plot[outer]) / width[outer];
-        outrange[0] = int(frac * double(pl->pixels[0]));
+        outrange[0] = int(frac * double(pl.pixels[0]));
         frac = (xyz_ur[outer] - xyz_ll_plot[outer]) / width[outer];
-        outrange[1] = int(frac * double(pl->pixels[0]));
+        outrange[1] = int(frac * double(pl.pixels[0]));
 
         frac = (xyz_ur[inner] - xyz_ll_plot[inner]) / width[inner];
-        inrange[0] = int((ONE - frac) * (double)pl->pixels[1]);
+        inrange[0] = int((ONE - frac) * (double)pl.pixels[1]);
         frac = (xyz_ll[inner] - xyz_ll_plot[inner]) / width[inner];
-        inrange[1] = int((ONE - frac) * (double)pl->pixels[1]);
+        inrange[1] = int((ONE - frac) * (double)pl.pixels[1]);
 
         // draw lines
         for (int out_ = outrange[0]; out_ <= outrange[1]; out_++) {
-          for (int plus = 0; plus <= pl->meshlines_width; plus++) {
+          for (int plus = 0; plus <= pl.meshlines_width; plus++) {
             data[out_][inrange[0] + plus] = rgb;
             data[out_][inrange[1] + plus] = rgb;
             data[out_][inrange[0] - plus] = rgb;
@@ -869,7 +867,7 @@ void draw_mesh_lines(Plot *pl, ImageData &data)
         }
 
         for (int in_ = inrange[0]; in_ <= inrange[1]; in_++) {
-          for (int plus = 0; plus <= pl->meshlines_width; plus++) {
+          for (int plus = 0; plus <= pl.meshlines_width; plus++) {
             data[outrange[0] + plus][in_] = rgb;
             data[outrange[1] + plus][in_] = rgb;
             data[outrange[0] - plus][in_] = rgb;
@@ -895,20 +893,20 @@ void draw_mesh_lines(Plot *pl, ImageData &data)
 // approximately 15MB.
 // =============================================================================
 
-void create_voxel(Plot *pl)
+void create_voxel(Plot pl)
 {
 
   // compute voxel widths in each direction
   double vox[3];
-  vox[0] = pl->width[0]/(double)pl->pixels[0];
-  vox[1] = pl->width[1]/(double)pl->pixels[1];
-  vox[2] = pl->width[2]/(double)pl->pixels[2];
+  vox[0] = pl.width[0]/(double)pl.pixels[0];
+  vox[1] = pl.width[1]/(double)pl.pixels[1];
+  vox[2] = pl.width[2]/(double)pl.pixels[2];
 
   // initial particle position
   double ll[3];
-  ll[0] = pl->origin[0] - pl->width[0] / TWO;
-  ll[1] = pl->origin[1] - pl->width[1] / TWO;
-  ll[2] = pl->origin[2] - pl->width[2] / TWO;
+  ll[0] = pl.origin[0] - pl.width[0] / TWO;
+  ll[1] = pl.origin[1] - pl.width[1] / TWO;
+  ll[2] = pl.origin[2] - pl.width[2] / TWO;
 
   // allocate and initialize particle
   double dir[3] = {HALF, HALF, HALF};
@@ -920,7 +918,7 @@ void create_voxel(Plot *pl)
 
   // Open binary plot file for writing
   std::ofstream of;
-  std::string fname = std::string(pl->path_plot);
+  std::string fname = std::string(pl.path_plot);
   fname = strtrim(fname);
   hid_t file_id = file_open(fname, 'w');
 
@@ -936,16 +934,16 @@ void create_voxel(Plot *pl)
   // Write current date and time
   write_attribute(file_id, "date_and_time", time_stamp().c_str());
   hsize_t three = 3;
-  write_attr_int(file_id, 1, &three, "num_voxels", pl->pixels);
+  write_attr_int(file_id, 1, &three, "num_voxels", pl.pixels);
   write_attr_double(file_id, 1, &three, "voxel_width", vox);
   write_attr_double(file_id, 1, &three, "lower_left", ll);
 
   // Create dataset for voxel data -- note that the dimensions are reversed
   // since we want the order in the file to be z, y, x
   hsize_t dims[3];
-  dims[0] = pl->pixels[0];
-  dims[1] = pl->pixels[1];
-  dims[2] = pl->pixels[2];
+  dims[0] = pl.pixels[0];
+  dims[1] = pl.pixels[1];
+  dims[2] = pl.pixels[2];
   hid_t dspace, dset, memspace;
   voxel_init(file_id, &(dims[0]), &dspace, &dset, &memspace);
 
@@ -954,14 +952,14 @@ void create_voxel(Plot *pl)
   ll[1] = ll[1] + vox[1] / TWO;
   ll[2] = ll[2] + vox[2] / TWO;
 
-  int data[pl->pixels[1]][pl->pixels[2]];
+  int data[pl.pixels[1]][pl.pixels[2]];
 
   RGBColor rgb;
   int id;
-  for (int x = 0; x < pl->pixels[0]; x++) {
+  for (int x = 0; x < pl.pixels[0]; x++) {
     // TODO: progress bar here
-    for (int y = 0; y < pl->pixels[1]; y++) {
-      for(int z = 0; z < pl->pixels[2]; z++) {
+    for (int y = 0; y < pl.pixels[1]; y++) {
+      for(int z = 0; z < pl.pixels[2]; z++) {
         // get voxel color
         position_rgb(p, pl, rgb, id);
         // write to plot data

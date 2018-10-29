@@ -2,7 +2,7 @@ module tally_filter_particle
 
   use, intrinsic :: ISO_C_BINDING
 
-  use tally_filter_cpp
+  use tally_filter_header
 
   implicit none
   private
@@ -11,7 +11,7 @@ module tally_filter_particle
 ! PARTICLEFILTER specifies what particles can score to a tally
 !===============================================================================
 
-  type, public, extends(CppTallyFilter) :: ParticleFilter
+  type, public, extends(TallyFilter) :: ParticleFilter
   contains
     procedure :: particles
   end type ParticleFilter

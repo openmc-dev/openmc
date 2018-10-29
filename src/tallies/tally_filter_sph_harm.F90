@@ -2,7 +2,7 @@ module tally_filter_sph_harm
 
   use, intrinsic :: ISO_C_BINDING
 
-  use tally_filter_cpp
+  use tally_filter_header
 
   implicit none
   private
@@ -10,7 +10,7 @@ module tally_filter_sph_harm
   integer, public, parameter :: COSINE_SCATTER = 1
   integer, public, parameter :: COSINE_PARTICLE = 2
 
-  type, public, extends(CppTallyFilter) :: SphericalHarmonicsFilter
+  type, public, extends(TallyFilter) :: SphericalHarmonicsFilter
   contains
     procedure :: cosine
   end type SphericalHarmonicsFilter

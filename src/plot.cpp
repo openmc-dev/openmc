@@ -95,9 +95,6 @@ void create_ppm(Plot* pl)
   data.resize(width);
   for (auto & i : data) {
     i.resize(height);
-    for (auto & j : i) {
-      j.resize(3);
-    }
   }
 
   int in_i, out_i;
@@ -772,7 +769,7 @@ void output_ppm(Plot* pl, const ImageData &data)
   // Write color for each pixel
   for (int y = 0; y < pl->pixels[1]; y++) {
     for (int x = 0; x < pl->pixels[0]; x++) {
-      std::vector<int> rgb = data[x][y];
+      RGBColor rgb = data[x][y];
       of.write((char*)&rgb[RED], 1);
       of.write((char*)&rgb[GREEN], 1);
       of.write((char*)&rgb[BLUE], 1);
@@ -790,7 +787,7 @@ void output_ppm(Plot* pl, const ImageData &data)
 
 void draw_mesh_lines(Plot *pl, ImageData &data)
 {
-  std::vector<int> rgb; rgb.resize(3);
+  RGBColor rgb;
   rgb[RED] = pl->meshlines_color[RED];
   rgb[GREEN] = pl->meshlines_color[GREEN];
   rgb[BLUE] = pl->meshlines_color[BLUE];

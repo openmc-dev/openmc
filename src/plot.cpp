@@ -29,8 +29,8 @@ int n_plots;
 
 std::vector<Plot*> plots;
 
-const int WHITE[3] = {255, 255, 255};
-const int NULLRGB[3] = {0, 0, 0};
+const RGBColor WHITE = {255, 255, 255};
+const RGBColor NULLRGB = {0, 0, 0};
 
 //===============================================================================
 // RUN_PLOT controls the logic for making one or many plots
@@ -134,7 +134,7 @@ void create_ppm(Plot* pl)
   p->coord[0].universe = openmc_root_universe;
 
   // local variables
-  int rgb[3];
+  RGBColor rgb;
   int id;
   for (int y = 0; y < height; y++) {
     p->coord[0].xyz[out_i] = xyz[out_i] - out_pixel * y;
@@ -266,9 +266,9 @@ Plot::set_bg_color()
     }
     if (node_word_count(_plot_node, "background") == 3) {
       bg_rgb = get_node_array<int>(_plot_node, "background");
-      not_found.rgb[RED] = bg_rgb[RED];
-      not_found.rgb[GREEN] = bg_rgb[GREEN];
-      not_found.rgb[BLUE] = bg_rgb[BLUE];
+      not_found[RED] = bg_rgb[RED];
+      not_found[GREEN] = bg_rgb[GREEN];
+      not_found[BLUE] = bg_rgb[BLUE];
     } else {
       std::stringstream err_msg;
       err_msg << "Bad background RGB in plot "
@@ -277,9 +277,9 @@ Plot::set_bg_color()
     }
   } else {
     // default to a white background
-    not_found.rgb[RED] = 255;
-    not_found.rgb[GREEN] = 255;
-    not_found.rgb[BLUE] = 255;
+    not_found[RED] = 255;
+    not_found[GREEN] = 255;
+    not_found[BLUE] = 255;
   }
 }
 
@@ -383,20 +383,20 @@ Plot::set_default_colors()
   }
   if ("cell" == pl_color_by) {
     color_by = plot_color_by::cells;
+    colors.resize(n_cells);
     for(int i = 0; i < n_cells; i++) {
-      colors.push_back(new RGBColor());
-      colors[i]->rgb[RED] = int(prn()*255);
-      colors[i]->rgb[GREEN] = int(prn()*255);
-      colors[i]->rgb[BLUE] = int(prn()*255);
+      colors[i][RED] = int(prn()*255);
+      colors[i][GREEN] = int(prn()*255);
+      colors[i][BLUE] = int(prn()*255);
     }
 
   } else if("material" == pl_color_by) {
     color_by = plot_color_by::mats;
+    colors.resize(n_materials);
     for(int i = 0; i < materials.size(); i++) {
-      colors.push_back(new RGBColor());
-      colors[i]->rgb[RED] = int(prn()*255);
-      colors[i]->rgb[GREEN] = int(prn()*255);
-      colors[i]->rgb[BLUE] = int(prn()*255);
+      colors[i][RED] = int(prn()*255);
+      colors[i][GREEN] = int(prn()*255);
+      colors[i][BLUE] = int(prn()*255);
     }
   } else {
     std::stringstream err_msg;
@@ -448,9 +448,9 @@ Plot::set_user_colors()
         if (cell_map.find(col_id) != cell_map.end()) {
           col_id = cell_map[col_id];
           cell_rgb = get_node_array<int>(cn, "rgb");
-          colors[col_id]->rgb[RED] = cell_rgb[RED];
-          colors[col_id]->rgb[GREEN] = cell_rgb[GREEN];
-          colors[col_id]->rgb[BLUE] = cell_rgb[BLUE];
+          colors[col_id][RED] = cell_rgb[RED];
+          colors[col_id][GREEN] = cell_rgb[GREEN];
+          colors[col_id][BLUE] = cell_rgb[BLUE];
         } else {
           std::stringstream err_msg;
           err_msg << "Could not find cell " << col_id
@@ -462,9 +462,9 @@ Plot::set_user_colors()
         if (material_map.find(col_id) != material_map.end()) {
           col_id = material_map[col_id];
           mat_rgb = get_node_array<int>(cn, "rgb");
-          colors[col_id]->rgb[RED] = mat_rgb[RED];
-          colors[col_id]->rgb[GREEN] = mat_rgb[GREEN];
-          colors[col_id]->rgb[BLUE] = mat_rgb[BLUE];
+          colors[col_id][RED] = mat_rgb[RED];
+          colors[col_id][GREEN] = mat_rgb[GREEN];
+          colors[col_id][BLUE] = mat_rgb[BLUE];
         } else {
           std::stringstream err_msg;
           err_msg << "Could not find material " << col_id
@@ -527,13 +527,13 @@ Plot::set_meshlines()
           fatal_error(err_msg);
         }
         ml_rgb = get_node_array<int>(meshlines_node, "color");
-        meshlines_color.rgb[0] = ml_rgb[0];
-        meshlines_color.rgb[1] = ml_rgb[1];
-        meshlines_color.rgb[2] = ml_rgb[2];
+        meshlines_color[0] = ml_rgb[0];
+        meshlines_color[1] = ml_rgb[1];
+        meshlines_color[2] = ml_rgb[2];
       } else {
-        meshlines_color.rgb[0] = 0;
-        meshlines_color.rgb[1] = 0;
-        meshlines_color.rgb[2] = 0;
+        meshlines_color[0] = 0;
+        meshlines_color[1] = 0;
+        meshlines_color[2] = 0;
       }
 
       // Set mesh based on type
@@ -660,13 +660,13 @@ Plot::set_mask()
         if (std::find(iarray.begin(), iarray.end(), j) == iarray.end()) {
           if (check_for_node(mask_node, "background")) {
             std::vector<int> bg_rgb = get_node_array<int>(mask_node, "background");
-            colors[j]->rgb[RED] = bg_rgb[RED];
-            colors[j]->rgb[GREEN] = bg_rgb[GREEN];
-            colors[j]->rgb[BLUE] = bg_rgb[BLUE];
+            colors[j][RED] = bg_rgb[RED];
+            colors[j][GREEN] = bg_rgb[GREEN];
+            colors[j][BLUE] = bg_rgb[BLUE];
           } else {
-            colors[j]->rgb[RED] = 255;
-            colors[j]->rgb[GREEN] = 255;
-            colors[j]->rgb[BLUE] = 255;
+            colors[j][RED] = 255;
+            colors[j][GREEN] = 255;
+            colors[j][BLUE] = 255;
           }
         }
       }
@@ -698,19 +698,12 @@ index_meshlines_mesh(-1)
   _plot_node = pugi::xml_node(); // set to null node after construction
 } // End Plot constructor
 
-Plot::~Plot() {
-  // cleanup color pointers
-  for (auto c : colors) {
-    if (c) {delete c;}
-  }
-}
-
 //===============================================================================
 // POSITION_RGB computes the red/green/blue values for a given plot with the
 // current particle's position
 //===============================================================================
 
-void position_rgb(Particle* p, Plot* pl, int rgb[3], int &id)
+void position_rgb(Particle* p, Plot* pl, RGBColor &rgb, int &id)
 {
   p->n_coord = 1;
 
@@ -725,9 +718,7 @@ void position_rgb(Particle* p, Plot* pl, int rgb[3], int &id)
 
   if (!found_cell) {
     // If no cell, revert to default color
-    std::copy(pl->not_found.rgb,
-              pl->not_found.rgb + 3,
-              rgb);
+    rgb = pl->not_found;
     id = -1;
   } else {
     if (plot_color_by::mats == pl->color_by) {
@@ -735,29 +726,23 @@ void position_rgb(Particle* p, Plot* pl, int rgb[3], int &id)
       Cell* c = cells[p->coord[j].cell];
       if (c->type_ == FILL_UNIVERSE) {
         // If we stopped on a middle universe level, treat as if not found
-        std::copy(pl->not_found.rgb,
-                  pl->not_found.rgb + 3,
-                  rgb);
+        rgb = pl->not_found;
         id = -1;
       } else if (p->material == MATERIAL_VOID) {
         // By default, color void cells white
-        std::copy(WHITE, WHITE+3, rgb);
+        rgb = WHITE;
         id = -1;
       } else {
-        std::copy(pl->colors[p->material - 1]->rgb,
-                  pl->colors[p->material - 1]->rgb + 3,
-                  rgb);
+        rgb = pl->colors[p->material - 1];
         id = materials[p->material - 1]->id_;
       }
 
     } else if (plot_color_by::cells == pl->color_by) {
       // Assign color based on cell
-      std::copy(pl->colors[p->coord[j].cell]->rgb,
-                pl->colors[p->coord[j].cell]->rgb + 3,
-                rgb);
+      rgb = pl->colors[p->coord[j].cell];
       id = cells[p->coord[j].cell]->id_;
     } else {
-      std::copy(NULLRGB, NULLRGB+3, rgb);
+      rgb = NULLRGB;
       id = -1;
     }
 
@@ -806,9 +791,9 @@ void output_ppm(Plot* pl, const ImageData &data)
 void draw_mesh_lines(Plot *pl, ImageData &data)
 {
   std::vector<int> rgb; rgb.resize(3);
-  rgb[RED] = pl->meshlines_color.rgb[RED];
-  rgb[GREEN] = pl->meshlines_color.rgb[GREEN];
-  rgb[BLUE] = pl->meshlines_color.rgb[BLUE];
+  rgb[RED] = pl->meshlines_color[RED];
+  rgb[GREEN] = pl->meshlines_color[GREEN];
+  rgb[BLUE] = pl->meshlines_color[BLUE];
 
   int outer, inner;
   switch(pl->basis) {
@@ -973,7 +958,8 @@ void create_voxel(Plot *pl)
 
   int data[pl->pixels[1]][pl->pixels[2]];
 
-  int rgb[3], id;
+  RGBColor rgb;
+  int id;
   for (int x = 0; x < pl->pixels[0]; x++) {
     // TODO: progress bar here
     for (int y = 0; y < pl->pixels[1]; y++) {

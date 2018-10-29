@@ -29,7 +29,7 @@ extern int n_plots; //!< number of plots in openmc run
 class Plot;
 extern std::vector<Plot*> plots; //!< Plot instance container
 
-typedef std::vector<std::vector< std::vector<int>>> ImageData;
+typedef std::vector<std::vector<std::vector<int>>> ImageData;
 
 enum class plot_type {
   slice = 1,
@@ -51,10 +51,8 @@ enum class plot_color_by {
 // RGBColor holds color information for plotted objects
 //===============================================================================
 
-struct RGBColor {
-  int rgb[3]; //!< RGB color values
-};
-
+typedef std::array<int, 3> RGBColor;
+ 
 //===============================================================================
 // Plot class
 //===============================================================================
@@ -65,9 +63,6 @@ class Plot
 public:
   // Constructor
   Plot(pugi::xml_node plot);
-
-  // Destructor
-  ~Plot();
 
   // Methods
 private:
@@ -98,7 +93,7 @@ public:
   int index_meshlines_mesh; //!< Index of the mesh to draw on the plot
   RGBColor meshlines_color; //!< Color of meshlines on the plot
   RGBColor not_found; //!< Plot background color
-  std::vector<RGBColor*> colors; //!< Plot colors
+  std::vector<RGBColor> colors; //!< Plot colors
   std::string path_plot; //!< Plot output filename
   pugi::xml_node _plot_node;
 };
@@ -111,20 +106,20 @@ public:
 //! \param[in] plot object
 //! \param[out] image data associated with the plot object
 void draw_mesh_lines(Plot* pl,
-                     std::vector< std::vector< std::vector<int> > > &data);
+                     ImageData &data);
 
 //! Write a ppm image to file using a plot object's image data
 //! \param[in] plot object
 //! \param[out] image data associated with the plot object
 void output_ppm(Plot* pl,
-                const std::vector< std::vector< std::vector<int> > > &data);
+                const ImageData &data);
 
 //! Get the rgb color for a given particle position in a plot
 //! \param[in] particle with position for current pixel
 //! \param[in] plot object
 //! \param[out] rgb color
 //! \param[out] cell or material id for particle position
-void position_rgb(Particle* p, Plot* pl, int rgb[3], int &id);
+void position_rgb(Particle* p, Plot* pl, RGBColor &rgb, int &id);
 
 
 //! Initialize a voxel file

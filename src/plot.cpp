@@ -204,16 +204,17 @@ Plot::set_output_path(pugi::xml_node plot_node)
 
   if (check_for_node(plot_node, "filename")) {
     filename << get_node_value(plot_node, "filename");
-  } else {
-    switch(type) {
-    case plot_type::slice:
-      filename << ".ppm";
-      break;
-    case plot_type::voxel:
-      filename << ".h5";
-      break;
-    }
   }
+  // add appropriate file extension to name
+  switch(type) {
+  case plot_type::slice:
+    filename << ".ppm";
+    break;
+  case plot_type::voxel:
+    filename << ".h5";
+    break;
+  }
+
   path_plot = filename.str();
 
   // Copy plot pixel size
@@ -972,6 +973,7 @@ void create_voxel(Plot pl)
     // Write to HDF5 dataset
     voxel_write_slice(x, dspace, dset, memspace, &(data[0]));
   }
+  delete p;
 
   voxel_finalize(dspace, dset, memspace);
   file_close(file_id);

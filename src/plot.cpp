@@ -152,11 +152,11 @@ void create_ppm(Plot pl)
 }
 
 void
-Plot::set_id()
+Plot::set_id(pugi::xml_node plot_node)
 {
   // Copy data into plots
-  if (check_for_node(_plot_node, "id")) {
-    id = std::stoi(get_node_value(_plot_node, "id"));
+  if (check_for_node(plot_node, "id")) {
+    id = std::stoi(get_node_value(plot_node, "id"));
   } else {
     fatal_error("Must specify plot id in plots XML file.");
   }
@@ -170,14 +170,14 @@ Plot::set_id()
 }
 
 void
-Plot::set_type()
+Plot::set_type(pugi::xml_node plot_node)
 {
   // Copy plot type
   // Default is slice
   type = plot_type::slice;
   // check type specified on plot node
-  if (check_for_node(_plot_node, "type")) {
-    std::string type_str = get_node_value(_plot_node, "type", true);
+  if (check_for_node(plot_node, "type")) {
+    std::string type_str = get_node_value(plot_node, "type", true);
     // set type using node value
     if (type_str == "slice") {
       type = plot_type::slice;
@@ -196,14 +196,14 @@ Plot::set_type()
 }
 
 void
-Plot::set_output_path()
+Plot::set_output_path(pugi::xml_node plot_node)
 {
   // Set output file path
   std::stringstream filename;
   filename << "plot_" << id;
 
-  if (check_for_node(_plot_node, "filename")) {
-    filename << get_node_value(_plot_node, "filename");
+  if (check_for_node(plot_node, "filename")) {
+    filename << get_node_value(plot_node, "filename");
   } else {
     switch(type) {
     case plot_type::slice:
@@ -219,8 +219,8 @@ Plot::set_output_path()
   // Copy plot pixel size
   std::vector<int> pxls;
   if (plot_type::slice == type) {
-    if (node_word_count(_plot_node, "pixels") == 2) {
-      pxls = get_node_array<int>(_plot_node, "pixels");
+    if (node_word_count(plot_node, "pixels") == 2) {
+      pxls = get_node_array<int>(plot_node, "pixels");
       pixels[0] = pxls[0];
       pixels[1] = pxls[1];
     } else {
@@ -230,8 +230,8 @@ Plot::set_output_path()
       fatal_error(err_msg.str());
     }
   } else if (plot_type::voxel == type) {
-    if (node_word_count(_plot_node, "pixels") == 3) {
-      pxls = get_node_array<int>(_plot_node, "pixels");
+    if (node_word_count(plot_node, "pixels") == 3) {
+      pxls = get_node_array<int>(plot_node, "pixels");
       pixels[0] = pxls[0];
       pixels[1] = pxls[1];
       pixels[2] = pxls[2];
@@ -245,11 +245,11 @@ Plot::set_output_path()
 }
 
 void
-Plot::set_bg_color()
+Plot::set_bg_color(pugi::xml_node plot_node)
 {
   // Copy plot background color
   std::vector<int> bg_rgb;
-  if (check_for_node(_plot_node, "background")) {
+  if (check_for_node(plot_node, "background")) {
     if (plot_type::voxel == type) {
       if (openmc_master) {
         std::stringstream err_msg;
@@ -258,8 +258,8 @@ Plot::set_bg_color()
         warning(err_msg.str());
       }
     }
-    if (node_word_count(_plot_node, "background") == 3) {
-      bg_rgb = get_node_array<int>(_plot_node, "background");
+    if (node_word_count(plot_node, "background") == 3) {
+      bg_rgb = get_node_array<int>(plot_node, "background");
       not_found[RED] = bg_rgb[RED];
       not_found[GREEN] = bg_rgb[GREEN];
       not_found[BLUE] = bg_rgb[BLUE];
@@ -278,13 +278,13 @@ Plot::set_bg_color()
 }
 
 void
-Plot::set_basis()
+Plot::set_basis(pugi::xml_node plot_node)
 {
   // Copy plot basis
   if (plot_type::slice == type) {
     std::string pl_basis = "xy";
-    if (check_for_node(_plot_node, "basis")) {
-      pl_basis = get_node_value(_plot_node, "basis", true);
+    if (check_for_node(plot_node, "basis")) {
+      pl_basis = get_node_value(plot_node, "basis", true);
     }
     if ("xy" == pl_basis) {
       basis = plot_basis::xy;
@@ -302,12 +302,12 @@ Plot::set_basis()
 }
 
 void
-Plot::set_origin()
+Plot::set_origin(pugi::xml_node plot_node)
 {
   // Copy plotting origin
   std::vector<double> pl_origin;
-  if (node_word_count(_plot_node, "origin") == 3) {
-    pl_origin = get_node_array<double>(_plot_node, "origin");
+  if (node_word_count(plot_node, "origin") == 3) {
+    pl_origin = get_node_array<double>(plot_node, "origin");
     origin[0] = pl_origin[0];
     origin[1] = pl_origin[1];
     origin[2] = pl_origin[2];
@@ -320,13 +320,13 @@ Plot::set_origin()
 }
 
 void
-Plot::set_width()
+Plot::set_width(pugi::xml_node plot_node)
 {
   // Copy plotting width
   std::vector<double> pl_width;
   if (plot_type::slice == type) {
-    if (node_word_count(_plot_node, "width") == 2) {
-      pl_width = get_node_array<double>(_plot_node, "width");
+    if (node_word_count(plot_node, "width") == 2) {
+      pl_width = get_node_array<double>(plot_node, "width");
       width[0] = pl_width[0];
       width[1] = pl_width[1];
     } else {
@@ -336,8 +336,8 @@ Plot::set_width()
       fatal_error(err_msg);
     }
   } else if (plot_type::voxel == type) {
-    if (node_word_count(_plot_node, "width") == 3) {
-      pl_width = get_node_array<double>(_plot_node, "width");
+    if (node_word_count(plot_node, "width") == 3) {
+      pl_width = get_node_array<double>(plot_node, "width");
       width[0] = pl_width[0];
       width[1] = pl_width[1];
       width[2] = pl_width[2];
@@ -351,11 +351,11 @@ Plot::set_width()
 }
 
 void
-Plot::set_universe()
+Plot::set_universe(pugi::xml_node plot_node)
 {
   // Copy plot universe level
-  if (check_for_node(_plot_node, "level")) {
-    level = std::stoi(get_node_value(_plot_node, "level"));
+  if (check_for_node(plot_node, "level")) {
+    level = std::stoi(get_node_value(plot_node, "level"));
     if (level < 0) {
       std::stringstream err_msg;
       err_msg << "Bad universe level in plot " << id ;
@@ -367,12 +367,12 @@ Plot::set_universe()
 }
 
 void
-Plot::set_default_colors()
+Plot::set_default_colors(pugi::xml_node plot_node)
 {
   // Copy plot color type and initialize all colors randomly
   std::string pl_color_by = "cell";
-  if (check_for_node(_plot_node, "color_by")) {
-    pl_color_by = get_node_value(_plot_node, "color_by", true);
+  if (check_for_node(plot_node, "color_by")) {
+    pl_color_by = get_node_value(plot_node, "color_by", true);
   }
   if ("cell" == pl_color_by) {
     color_by = plot_color_by::cells;
@@ -400,11 +400,11 @@ Plot::set_default_colors()
 }
 
 void
-Plot::set_user_colors()
+Plot::set_user_colors(pugi::xml_node plot_node)
 {
   // Get the number of <color> nodes and get a list of them
   std::vector<pugi::xml_node> color_nodes;
-  color_nodes = get_child_nodes(_plot_node, "color");
+  color_nodes = get_child_nodes(plot_node, "color");
 
   // Copy user-specified colors
   if (color_nodes.size() != 0) {
@@ -470,11 +470,11 @@ Plot::set_user_colors()
 }
 
 void
-Plot::set_meshlines()
+Plot::set_meshlines(pugi::xml_node plot_node)
 {
   // Deal with meshlines
   std::vector<pugi::xml_node> mesh_line_nodes;
-  mesh_line_nodes = get_child_nodes(_plot_node, "meshlines");
+  mesh_line_nodes = get_child_nodes(plot_node, "meshlines");
 
   int n_meshlines = mesh_line_nodes.size();
 
@@ -589,11 +589,11 @@ Plot::set_meshlines()
 }
 
 void
-Plot::set_mask()
+Plot::set_mask(pugi::xml_node plot_node)
 {
   // Deal with masks
   std::vector<pugi::xml_node> mask_nodes;
-  mask_nodes = get_child_nodes(_plot_node, "mask");
+  mask_nodes = get_child_nodes(plot_node, "mask");
   int n_masks = mask_nodes.size();
 
   if (n_masks > 0) {
@@ -675,20 +675,18 @@ Plot::set_mask()
 Plot::Plot(pugi::xml_node plot_node):
 index_meshlines_mesh(-1)
 {
-  _plot_node = plot_node;
-  set_id();
-  set_type();
-  set_output_path();
-  set_bg_color();
-  set_basis();
-  set_origin();
-  set_width();
-  set_universe();
-  set_default_colors();
-  set_user_colors();
-  set_meshlines();
-  set_mask();
-  _plot_node = pugi::xml_node(); // set to null node after construction
+  set_id(plot_node);
+  set_type(plot_node);
+  set_output_path(plot_node);
+  set_bg_color(plot_node);
+  set_basis(plot_node);
+  set_origin(plot_node);
+  set_width(plot_node);
+  set_universe(plot_node);
+  set_default_colors(plot_node);
+  set_user_colors(plot_node);
+  set_meshlines(plot_node);
+  set_mask(plot_node);
 } // End Plot constructor
 
 //==============================================================================

@@ -31,20 +31,20 @@ extern std::vector<ObjectPlot*> plots; //!< Plot instance container
 
 typedef std::vector<std::vector< std::vector<int>>> ImageData;
 
-enum PLOT_TYPE {
-  SLICE = 1,
-  VOXEL = 2
+enum class plot_type {
+  slice = 1,
+  voxel = 2
 };
 
-enum PLOT_BASIS {
-  XY = 1,
-  XZ = 2,
-  YZ = 3
+enum class plot_basis {
+  xy = 1,
+  xz = 2,
+  yz = 3
 };
 
-enum PLOT_COLOR_BY {
-  CELLS = 1,
-  MATS = 2
+enum class plot_color_by {
+  cells = 1,
+  mats = 2
 };
 
 //===============================================================================
@@ -84,15 +84,14 @@ private:
   void set_meshlines();
   void set_mask();
 
-
   // Members
 public:
   int id; //!< Plot ID
-  int type; //!< Plot type (Slice/Voxel)
-  int color_by; //!< Plot coloring (cell/material)
+  plot_type type; //!< Plot type (Slice/Voxel)
+  plot_color_by color_by; //!< Plot coloring (cell/material)
   Position origin; //!< Plot origin in geometry
   Position width; //!< Plot width in geometry
-  int basis; //!< Plot basis (XY/XZ/YZ)
+  plot_basis basis; //!< Plot basis (XY/XZ/YZ)
   int pixels[3]; //!< Plot size in pixels
   int meshlines_width; //!< Width of lines added to the plot
   int level; //!< Plot universe level

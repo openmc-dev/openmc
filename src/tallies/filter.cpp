@@ -34,7 +34,7 @@ namespace openmc {
 //==============================================================================
 
 std::vector<FilterMatch> filter_matches;
-std::vector<Filter*> tally_filters;
+std::vector<std::unique_ptr<Filter>> tally_filters;
 
 //==============================================================================
 // Non-member functions
@@ -48,7 +48,6 @@ free_memory_tally_c()
     filter_matches.clear();
   }
 
-  for (Filter* filt : tally_filters) {delete filt;}
   tally_filters.clear();
 }
 
@@ -97,53 +96,53 @@ extern "C" {
   {
     std::string type_ {type};
     if (type_ == "azimuthal") {
-      tally_filters.push_back(new AzimuthalFilter());
+      tally_filters.push_back(std::make_unique<AzimuthalFilter>());
     } else if (type_ == "cell") {
-      tally_filters.push_back(new CellFilter());
+      tally_filters.push_back(std::make_unique<CellFilter>());
     } else if (type_ == "cellborn") {
-      tally_filters.push_back(new CellbornFilter());
+      tally_filters.push_back(std::make_unique<CellbornFilter>());
     } else if (type_ == "cellfrom") {
-      tally_filters.push_back(new CellFromFilter());
+      tally_filters.push_back(std::make_unique<CellFromFilter>());
     } else if (type_ == "distribcell") {
-      tally_filters.push_back(new DistribcellFilter());
+      tally_filters.push_back(std::make_unique<DistribcellFilter>());
     } else if (type_ == "delayedgroup") {
-      tally_filters.push_back(new DelayedGroupFilter());
+      tally_filters.push_back(std::make_unique<DelayedGroupFilter>());
     } else if (type_ == "energyfunction") {
-      tally_filters.push_back(new EnergyFunctionFilter());
+      tally_filters.push_back(std::make_unique<EnergyFunctionFilter>());
     } else if (type_ == "energy") {
-      tally_filters.push_back(new EnergyFilter());
+      tally_filters.push_back(std::make_unique<EnergyFilter>());
     } else if (type_ == "energyout") {
-      tally_filters.push_back(new EnergyoutFilter());
+      tally_filters.push_back(std::make_unique<EnergyoutFilter>());
     } else if (type_ == "legendre") {
-      tally_filters.push_back(new LegendreFilter());
+      tally_filters.push_back(std::make_unique<LegendreFilter>());
     } else if (type_ == "material") {
-      tally_filters.push_back(new MaterialFilter());
+      tally_filters.push_back(std::make_unique<MaterialFilter>());
     } else if (type_ == "mesh") {
-      tally_filters.push_back(new MeshFilter());
+      tally_filters.push_back(std::make_unique<MeshFilter>());
     } else if (type_ == "meshsurface") {
-      tally_filters.push_back(new MeshSurfaceFilter());
+      tally_filters.push_back(std::make_unique<MeshSurfaceFilter>());
     } else if (type_ == "mu") {
-      tally_filters.push_back(new MuFilter());
+      tally_filters.push_back(std::make_unique<MuFilter>());
     } else if (type_ == "particle") {
-      tally_filters.push_back(new ParticleFilter());
+      tally_filters.push_back(std::make_unique<ParticleFilter>());
     } else if (type_ == "polar") {
-      tally_filters.push_back(new PolarFilter());
+      tally_filters.push_back(std::make_unique<PolarFilter>());
     } else if (type_ == "surface") {
-      tally_filters.push_back(new SurfaceFilter());
+      tally_filters.push_back(std::make_unique<SurfaceFilter>());
     } else if (type_ == "spatiallegendre") {
-      tally_filters.push_back(new SpatialLegendreFilter());
+      tally_filters.push_back(std::make_unique<SpatialLegendreFilter>());
     } else if (type_ == "sphericalharmonics") {
-      tally_filters.push_back(new SphericalHarmonicsFilter());
+      tally_filters.push_back(std::make_unique<SphericalHarmonicsFilter>());
     } else if (type_ == "universe") {
-      tally_filters.push_back(new UniverseFilter());
+      tally_filters.push_back(std::make_unique<UniverseFilter>());
     } else if (type_ == "zernike") {
-      tally_filters.push_back(new ZernikeFilter());
+      tally_filters.push_back(std::make_unique<ZernikeFilter>());
     } else if (type_ == "zernikeradial") {
-      tally_filters.push_back(new ZernikeRadialFilter());
+      tally_filters.push_back(std::make_unique<ZernikeRadialFilter>());
     } else {
       return nullptr;
     }
-    return tally_filters.back();
+    return tally_filters.back().get();
   }
 
   void filter_from_xml(Filter* filt, pugi::xml_node* node)

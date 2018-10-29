@@ -27,7 +27,7 @@ std::map<int, int> plot_map;
 
 int n_plots;
 
-std::vector<ObjectPlot*> plots;
+std::vector<Plot*> plots;
 
 const int WHITE[3] = {255, 255, 255};
 const int NULLRGB[3] = {0, 0, 0};
@@ -42,7 +42,7 @@ int openmc_plot_geometry()
   int err;
 
   for (int i = 0; i < n_plots; i++) {
-    ObjectPlot* pl = plots[i];
+    Plot* pl = plots[i];
 
     std::stringstream ss;
     ss << "Processing plot " << pl->id << ": "
@@ -71,7 +71,7 @@ read_plots(pugi::xml_node* plots_node)
   n_plots = plot_nodes.size();
 
   for(int i = 0; i < plot_nodes.size(); i++) {
-    ObjectPlot* pl = new ObjectPlot(plot_nodes[i]);
+    Plot* pl = new Plot(plot_nodes[i]);
     plots.push_back(pl);
     plot_map[pl->id] = i;
   }
@@ -82,7 +82,7 @@ read_plots(pugi::xml_node* plots_node)
 // specification in the portable pixmap format (PPM)
 //===============================================================================
 
-void create_ppm(ObjectPlot* pl)
+void create_ppm(Plot* pl)
 {
 
   int width = pl->pixels[0];
@@ -157,7 +157,7 @@ void create_ppm(ObjectPlot* pl)
 }
 
 void
-ObjectPlot::set_id()
+Plot::set_id()
 {
   // Copy data into plots
   if (check_for_node(_plot_node, "id")) {
@@ -175,7 +175,7 @@ ObjectPlot::set_id()
 }
 
 void
-ObjectPlot::set_type()
+Plot::set_type()
 {
   // Copy plot type
   // Default is slice
@@ -202,7 +202,7 @@ ObjectPlot::set_type()
 }
 
 void
-ObjectPlot::set_output_path()
+Plot::set_output_path()
 {
   // Set output file path
   std::stringstream filename;
@@ -251,7 +251,7 @@ ObjectPlot::set_output_path()
 }
 
 void
-ObjectPlot::set_bg_color()
+Plot::set_bg_color()
 {
   // Copy plot background color
   std::vector<int> bg_rgb;
@@ -284,7 +284,7 @@ ObjectPlot::set_bg_color()
 }
 
 void
-ObjectPlot::set_basis()
+Plot::set_basis()
 {
   // Copy plot basis
   if (plot_type::slice == type) {
@@ -309,7 +309,7 @@ ObjectPlot::set_basis()
 }
 
 void
-ObjectPlot::set_origin()
+Plot::set_origin()
 {
   // Copy plotting origin
   std::vector<double> pl_origin;
@@ -327,7 +327,7 @@ ObjectPlot::set_origin()
 }
 
 void
-ObjectPlot::set_width()
+Plot::set_width()
 {
   // Copy plotting width
   std::vector<double> pl_width;
@@ -358,7 +358,7 @@ ObjectPlot::set_width()
 }
 
 void
-ObjectPlot::set_universe()
+Plot::set_universe()
 {
   // Copy plot universe level
   if (check_for_node(_plot_node, "level")) {
@@ -374,7 +374,7 @@ ObjectPlot::set_universe()
 }
 
 void
-ObjectPlot::set_default_colors()
+Plot::set_default_colors()
 {
   // Copy plot color type and initialize all colors randomly
   std::string pl_color_by = "cell";
@@ -384,7 +384,7 @@ ObjectPlot::set_default_colors()
   if ("cell" == pl_color_by) {
     color_by = plot_color_by::cells;
     for(int i = 0; i < n_cells; i++) {
-      colors.push_back(new ObjectColor());
+      colors.push_back(new RGBColor());
       colors[i]->rgb[RED] = int(prn()*255);
       colors[i]->rgb[GREEN] = int(prn()*255);
       colors[i]->rgb[BLUE] = int(prn()*255);
@@ -393,7 +393,7 @@ ObjectPlot::set_default_colors()
   } else if("material" == pl_color_by) {
     color_by = plot_color_by::mats;
     for(int i = 0; i < materials.size(); i++) {
-      colors.push_back(new ObjectColor());
+      colors.push_back(new RGBColor());
       colors[i]->rgb[RED] = int(prn()*255);
       colors[i]->rgb[GREEN] = int(prn()*255);
       colors[i]->rgb[BLUE] = int(prn()*255);
@@ -407,7 +407,7 @@ ObjectPlot::set_default_colors()
 }
 
 void
-ObjectPlot::set_user_colors()
+Plot::set_user_colors()
 {
   // Get the number of <color> nodes and get a list of them
   std::vector<pugi::xml_node> color_nodes;
@@ -477,7 +477,7 @@ ObjectPlot::set_user_colors()
 }
 
 void
-ObjectPlot::set_meshlines()
+Plot::set_meshlines()
 {
   // Deal with meshlines
   std::vector<pugi::xml_node> mesh_line_nodes;
@@ -596,7 +596,7 @@ ObjectPlot::set_meshlines()
 }
 
 void
-ObjectPlot::set_mask()
+Plot::set_mask()
 {
   // Deal with masks
   std::vector<pugi::xml_node> mask_nodes;
@@ -679,7 +679,7 @@ ObjectPlot::set_mask()
   }
 }
 
-ObjectPlot::ObjectPlot(pugi::xml_node plot_node):
+Plot::Plot(pugi::xml_node plot_node):
 index_meshlines_mesh(-1)
 {
   _plot_node = plot_node;
@@ -696,9 +696,9 @@ index_meshlines_mesh(-1)
   set_meshlines();
   set_mask();
   _plot_node = pugi::xml_node(); // set to null node after construction
-} // End ObjectPlot constructor
+} // End Plot constructor
 
-ObjectPlot::~ObjectPlot() {
+Plot::~Plot() {
   // cleanup color pointers
   for (auto c : colors) {
     if (c) {delete c;}
@@ -710,7 +710,7 @@ ObjectPlot::~ObjectPlot() {
 // current particle's position
 //===============================================================================
 
-void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id)
+void position_rgb(Particle* p, Plot* pl, int rgb[3], int &id)
 {
   p->n_coord = 1;
 
@@ -768,7 +768,7 @@ void position_rgb(Particle* p, ObjectPlot* pl, int rgb[3], int &id)
 // OUTPUT_PPM writes out a previously generated image to a PPM file
 //===============================================================================
 
-void output_ppm(ObjectPlot* pl, const ImageData &data)
+void output_ppm(Plot* pl, const ImageData &data)
 {
   // Open PPM file for writing
   std::string fname = pl->path_plot;
@@ -803,7 +803,7 @@ void output_ppm(ObjectPlot* pl, const ImageData &data)
 // DRAW_MESH_LINES draws mesh line boundaries on an image
 //===============================================================================
 
-void draw_mesh_lines(ObjectPlot *pl, ImageData &data)
+void draw_mesh_lines(Plot *pl, ImageData &data)
 {
   std::vector<int> rgb; rgb.resize(3);
   rgb[RED] = pl->meshlines_color.rgb[RED];
@@ -912,7 +912,7 @@ void draw_mesh_lines(ObjectPlot *pl, ImageData &data)
 // id.  For 1 million voxels this produces a file of approximately 15MB.
 //===============================================================================
 
-void create_voxel(ObjectPlot *pl)
+void create_voxel(Plot *pl)
 {
 
   // compute voxel widths in each direction

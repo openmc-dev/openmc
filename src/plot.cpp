@@ -122,6 +122,8 @@ void create_ppm(Plot pl)
   }
 
   double dir[3] = {HALF, HALF, HALF};
+#pragma omp parallel
+{
   Particle *p = new Particle();
   p->initialize();
   std::copy(xyz, xyz+3, p->coord[0].xyz);
@@ -141,8 +143,8 @@ void create_ppm(Plot pl)
       data[x][y][BLUE] = rgb[BLUE];
     }
   }
-
-  delete p;
+  delete p;  
+}
 
   // draw mesh lines if present
   if (pl.index_meshlines_mesh >= 0) {draw_mesh_lines(pl, data);}

@@ -68,7 +68,7 @@ read_plots(pugi::xml_node* plots_node)
 
   n_plots = plot_nodes.size();
 
-  for(int i = 0; i < plot_nodes.size(); i++) {
+  for (int i = 0; i < plot_nodes.size(); i++) {
     Plot pl(plot_nodes[i]);
     plots.push_back(pl);
     plot_map[pl.id] = i;
@@ -174,11 +174,10 @@ Plot::set_type()
 {
   // Copy plot type
   // Default is slice
-  std::string type_str = "slice";
   type = plot_type::slice;
   // check type specified on plot node
   if (check_for_node(_plot_node, "type")) {
-    type_str = get_node_value(_plot_node, "type", true);
+    std::string type_str = get_node_value(_plot_node, "type", true);
     // set type using node value
     if (type_str == "slice") {
       type = plot_type::slice;
@@ -285,9 +284,8 @@ Plot::set_basis()
   if (plot_type::slice == type) {
     std::string pl_basis = "xy";
     if (check_for_node(_plot_node, "basis")) {
-      pl_basis = get_node_value(_plot_node, "basis");
+      pl_basis = get_node_value(_plot_node, "basis", true);
     }
-    to_lower(pl_basis);
     if ("xy" == pl_basis) {
       basis = plot_basis::xy;
     } else if ("xz" == pl_basis) {
@@ -379,7 +377,7 @@ Plot::set_default_colors()
   if ("cell" == pl_color_by) {
     color_by = plot_color_by::cells;
     colors.resize(n_cells);
-    for(int i = 0; i < n_cells; i++) {
+    for (int i = 0; i < n_cells; i++) {
       colors[i][RED] = int(prn()*255);
       colors[i][GREEN] = int(prn()*255);
       colors[i][BLUE] = int(prn()*255);
@@ -388,7 +386,7 @@ Plot::set_default_colors()
   } else if("material" == pl_color_by) {
     color_by = plot_color_by::mats;
     colors.resize(n_materials);
-    for(int i = 0; i < materials.size(); i++) {
+    for (int i = 0; i < materials.size(); i++) {
       colors[i][RED] = int(prn()*255);
       colors[i][GREEN] = int(prn()*255);
       colors[i][BLUE] = int(prn()*255);
@@ -420,7 +418,7 @@ Plot::set_user_colors()
       }
     }
 
-    for(auto cn : color_nodes) {
+    for (auto cn : color_nodes) {
       // Check and make sure 3 values are specified for RGB
       if (node_word_count(cn, "rgb") != 3) {
         std::stringstream err_msg;
@@ -651,7 +649,7 @@ Plot::set_mask()
       }
 
       // Alter colors based on mask information
-      for(int j = 0; j < colors.size(); j++) {
+      for (int j = 0; j < colors.size(); j++) {
         if (std::find(iarray.begin(), iarray.end(), j) == iarray.end()) {
           if (check_for_node(mask_node, "background")) {
             std::vector<int> bg_rgb = get_node_array<int>(mask_node, "background");
@@ -959,7 +957,7 @@ void create_voxel(Plot pl)
   for (int x = 0; x < pl.pixels[0]; x++) {
     // TODO: progress bar here
     for (int y = 0; y < pl.pixels[1]; y++) {
-      for(int z = 0; z < pl.pixels[2]; z++) {
+      for (int z = 0; z < pl.pixels[2]; z++) {
         // get voxel color
         position_rgb(p, pl, rgb, id);
         // write to plot data

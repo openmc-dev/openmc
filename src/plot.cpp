@@ -17,9 +17,9 @@
 
 namespace openmc {
 
-//===============================================================================
+//==============================================================================
 // Global variables
-//===============================================================================
+//==============================================================================
 
 int PLOT_LEVEL_LOWEST = -1;
 
@@ -32,9 +32,9 @@ std::vector<Plot*> plots;
 const RGBColor WHITE = {255, 255, 255};
 const RGBColor NULLRGB = {0, 0, 0};
 
-//===============================================================================
+//==============================================================================
 // RUN_PLOT controls the logic for making one or many plots
-//===============================================================================
+//==============================================================================
 
 extern "C"
 int openmc_plot_geometry()
@@ -77,10 +77,10 @@ read_plots(pugi::xml_node* plots_node)
   }
 }
 
-//===============================================================================
+//==============================================================================
 // CREATE_PPM creates an image based on user input from a plots.xml <plot>
 // specification in the portable pixmap format (PPM)
-//===============================================================================
+//==============================================================================
 
 void create_ppm(Plot* pl)
 {
@@ -695,10 +695,10 @@ index_meshlines_mesh(-1)
   _plot_node = pugi::xml_node(); // set to null node after construction
 } // End Plot constructor
 
-//===============================================================================
+//==============================================================================
 // POSITION_RGB computes the red/green/blue values for a given plot with the
 // current particle's position
-//===============================================================================
+//==============================================================================
 
 void position_rgb(Particle* p, Plot* pl, RGBColor &rgb, int &id)
 {
@@ -746,9 +746,9 @@ void position_rgb(Particle* p, Plot* pl, RGBColor &rgb, int &id)
   } // endif found_cell
 }
 
-//===============================================================================
+//==============================================================================
 // OUTPUT_PPM writes out a previously generated image to a PPM file
-//===============================================================================
+//==============================================================================
 
 void output_ppm(Plot* pl, const ImageData &data)
 {
@@ -781,9 +781,9 @@ void output_ppm(Plot* pl, const ImageData &data)
   of.close();
 }
 
-//===============================================================================
+//==============================================================================
 // DRAW_MESH_LINES draws mesh line boundaries on an image
-//===============================================================================
+//==============================================================================
 
 void draw_mesh_lines(Plot *pl, ImageData &data)
 {
@@ -882,17 +882,18 @@ void draw_mesh_lines(Plot *pl, ImageData &data)
   } // end outer loops
 } // end draw_mesh_lines
 
-//===============================================================================
+//==============================================================================
 // CREATE_VOXEL outputs a binary file that can be input into silomesh for 3D
 // geometry visualization.  It works the same way as create_ppm by dragging a
-// particle across the geometry for the specified number of voxels. The first
-// 3 int(4)'s in the binary are the number of x, y, and z voxels.  The next 3
-// real(8)'s are the widths of the voxels in the x, y, and z directions. The next
-// 3 real(8)'s are the x, y, and z coordinates of the lower left point. Finally
-// the binary is filled with entries of four int(4)'s each. Each 'row' in the
-// binary contains four int(4)'s: 3 for x,y,z position and 1 for cell or material
-// id.  For 1 million voxels this produces a file of approximately 15MB.
-//===============================================================================
+// particle across the geometry for the specified number of voxels. The first 3
+// int(4)'s in the binary are the number of x, y, and z voxels.  The next 3
+// real(8)'s are the widths of the voxels in the x, y, and z directions. The
+// next 3 real(8)'s are the x, y, and z coordinates of the lower left
+// point. Finally the binary is filled with entries of four int(4)'s each. Each
+// 'row' in the binary contains four int(4)'s: 3 for x,y,z position and 1 for
+// cell or material id.  For 1 million voxels this produces a file of
+// approximately 15MB.
+// =============================================================================
 
 void create_voxel(Plot *pl)
 {

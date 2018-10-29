@@ -14,6 +14,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/random_lcg.h"
 #include "openmc/output.h"
+#include "openmc/progress_bar.h"
 
 namespace openmc {
 
@@ -951,10 +952,13 @@ void create_voxel(Plot pl)
 
   int data[pl.pixels[1]][pl.pixels[2]];
 
+  ProgressBar pb;
+  
   RGBColor rgb;
   int id;
   for (int x = 0; x < pl.pixels[0]; x++) {
     // TODO: progress bar here
+    pb.set_value(((double)x/(double)pl.pixels[0])*100);
     for (int y = 0; y < pl.pixels[1]; y++) {
       for (int z = 0; z < pl.pixels[2]; z++) {
         // get voxel color

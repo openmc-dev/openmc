@@ -2,7 +2,7 @@ module tally_filter_delayedgroup
 
   use, intrinsic :: ISO_C_BINDING
 
-  use tally_filter_cpp
+  use tally_filter_header
 
   implicit none
   private
@@ -13,7 +13,7 @@ module tally_filter_delayedgroup
 ! iterated over in the scoring subroutines.
 !===============================================================================
 
-  type, public, extends(CppTallyFilter) :: DelayedGroupFilter
+  type, public, extends(TallyFilter) :: DelayedGroupFilter
   contains
     procedure :: groups
   end type DelayedGroupFilter

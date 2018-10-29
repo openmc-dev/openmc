@@ -2,7 +2,7 @@ module tally_filter_energy
 
   use, intrinsic :: ISO_C_BINDING
 
-  use tally_filter_cpp
+  use tally_filter_header
   use xml_interface
 
   implicit none
@@ -31,7 +31,7 @@ module tally_filter_energy
 ! ENERGYFILTER bins the incident neutron energy.
 !===============================================================================
 
-  type, public, extends(CppTallyFilter) :: EnergyFilter
+  type, public, extends(TallyFilter) :: EnergyFilter
     ! True if transport group number can be used directly to get bin number
     logical :: matches_transport_groups = .false.
   contains
@@ -67,7 +67,7 @@ contains
       end function
     end interface
 
-    call this % from_xml_cpp_inner(node)
+    call this % from_xml_cpp(node)
     this % n_bins = this % n_bins_cpp()
     this % matches_transport_groups = &
          energy_filter_matches_transport_groups(this % ptr)

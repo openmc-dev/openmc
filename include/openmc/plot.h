@@ -118,8 +118,7 @@ void output_ppm(Plot pl,
 //! \param[in] plot object
 //! \param[out] rgb color
 //! \param[out] cell or material id for particle position
-void position_rgb(Particle* p, Plot pl, RGBColor &rgb, int &id);
-
+void position_rgb(Particle p, Plot pl, RGBColor &rgb, int &id);
 
 //! Initialize a voxel file
 //! \param[in] id of an open hdf5 file

@@ -102,27 +102,27 @@ void create_ppm(Plot pl)
   case plot_basis::xy :
     in_i = 0;
     out_i = 1;
-    xyz[0] = pl.origin[0] - pl.width[0] / TWO;
-    xyz[1] = pl.origin[1] + pl.width[1] / TWO;
+    xyz[0] = pl.origin[0] - pl.width[0] / 2.;
+    xyz[1] = pl.origin[1] + pl.width[1] / 2.;
     xyz[2] = pl.origin[2];
     break;
   case plot_basis::xz :
     in_i = 0;
     out_i = 2;
-    xyz[0] = pl.origin[0] - pl.width[0] / TWO;
+    xyz[0] = pl.origin[0] - pl.width[0] / 2.;
     xyz[1] = pl.origin[1];
-    xyz[2] = pl.origin[2] + pl.width[1] / TWO;
+    xyz[2] = pl.origin[2] + pl.width[1] / 2.;
     break;
   case plot_basis::yz :
     in_i = 1;
     out_i = 2;
     xyz[0] = pl.origin[0];
-    xyz[1] = pl.origin[1] - pl.width[0] / TWO;
-    xyz[2] = pl.origin[2] + pl.width[1] / TWO;
+    xyz[1] = pl.origin[1] - pl.width[0] / 2.;
+    xyz[2] = pl.origin[2] + pl.width[1] / 2.;
     break;
   }
 
-  double dir[3] = {HALF, HALF, HALF};
+  double dir[3] = {0.5, 0.5, 0.5};
 
 #pragma omp parallel
 {
@@ -811,10 +811,10 @@ void draw_mesh_lines(Plot pl, ImageData &data)
   std::copy((double*)&pl.origin, (double*)&pl.origin + 3, xyz_ll_plot);
   std::copy((double*)&pl.origin, (double*)&pl.origin + 3, xyz_ur_plot);
 
-  xyz_ll_plot[outer] = pl.origin[outer] - pl.width[0] / TWO;
-  xyz_ll_plot[inner] = pl.origin[inner] - pl.width[1] / TWO;
-  xyz_ur_plot[outer] = pl.origin[outer] + pl.width[0] / TWO;
-  xyz_ur_plot[inner] = pl.origin[inner] + pl.width[1] / TWO;
+  xyz_ll_plot[outer] = pl.origin[outer] - pl.width[0] / 2.;
+  xyz_ll_plot[inner] = pl.origin[inner] - pl.width[1] / 2.;
+  xyz_ur_plot[outer] = pl.origin[outer] + pl.width[0] / 2.;
+  xyz_ur_plot[inner] = pl.origin[inner] + pl.width[1] / 2.;
 
   int width[3];
   width[0] = xyz_ur_plot[0] - xyz_ll_plot[0];
@@ -851,9 +851,9 @@ void draw_mesh_lines(Plot pl, ImageData &data)
         outrange[1] = int(frac * double(pl.pixels[0]));
 
         frac = (xyz_ur[inner] - xyz_ll_plot[inner]) / width[inner];
-        inrange[0] = int((ONE - frac) * (double)pl.pixels[1]);
+        inrange[0] = int((1. - frac) * (double)pl.pixels[1]);
         frac = (xyz_ll[inner] - xyz_ll_plot[inner]) / width[inner];
-        inrange[1] = int((ONE - frac) * (double)pl.pixels[1]);
+        inrange[1] = int((1. - frac) * (double)pl.pixels[1]);
 
         // draw lines
         for (int out_ = outrange[0]; out_ <= outrange[1]; out_++) {
@@ -903,12 +903,12 @@ void create_voxel(Plot pl)
 
   // initial particle position
   double ll[3];
-  ll[0] = pl.origin[0] - pl.width[0] / TWO;
-  ll[1] = pl.origin[1] - pl.width[1] / TWO;
-  ll[2] = pl.origin[2] - pl.width[2] / TWO;
+  ll[0] = pl.origin[0] - pl.width[0] / 2.;
+  ll[1] = pl.origin[1] - pl.width[1] / 2.;
+  ll[2] = pl.origin[2] - pl.width[2] / 2.;
 
   // allocate and initialize particle
-  double dir[3] = {HALF, HALF, HALF};
+  double dir[3] = {0.5, 0.5, 0.5};
   Particle p;
   p.initialize();
   std::copy(ll, ll + 3, p.coord[0].xyz);
@@ -947,9 +947,9 @@ void create_voxel(Plot pl)
   voxel_init(file_id, &(dims[0]), &dspace, &dset, &memspace);
 
   // move to center of voxels
-  ll[0] = ll[0] + vox[0] / TWO;
-  ll[1] = ll[1] + vox[1] / TWO;
-  ll[2] = ll[2] + vox[2] / TWO;
+  ll[0] = ll[0] + vox[0] / 2.;
+  ll[1] = ll[1] + vox[1] / 2.;
+  ll[2] = ll[2] + vox[2] / 2.;
 
   int data[pl.pixels[1]][pl.pixels[2]];
 

@@ -8,8 +8,7 @@
 #define BAR_WIDTH 72
 
 ProgressBar::ProgressBar() {
-  //  bar = "???% |                                                                |";
-
+  bar = "";
   set_value(0.0);
 }
 
@@ -36,7 +35,6 @@ ProgressBar::set_value(double val) {
     bar.append(remain, '=');
   } else {
     int width = (int)(65*val/100);
-    std::cout << "Setting width: " << width;
     bar.append(width, '=');
     bar.append(1, '>');
     bar.append(remain-width-1, ' ');
@@ -48,5 +46,5 @@ ProgressBar::set_value(double val) {
   std::cout << '\r' << bar << std::flush;
 
   // reset the bar value
-  bar = ""; //???% |                                                                |";
+  bar = "";
 }

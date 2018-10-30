@@ -27,6 +27,7 @@ bool is_terminal() {
 
 ProgressBar::ProgressBar() {
   bar = "";
+  // initialize bar
   set_value(0.0);
 }
 

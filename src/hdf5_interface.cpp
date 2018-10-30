@@ -148,13 +148,22 @@ dataset_typesize(hid_t dset)
 
 
 void
-ensure_exists(hid_t group_id, const char* name)
+ensure_exists(hid_t obj_id, const char* name, bool attribute)
 {
-  if (!object_exists(group_id, name)) {
-    std::stringstream err_msg;
-    err_msg << "Object \"" << name << "\" does not exist in group "
-            << object_name(group_id);
-    fatal_error(err_msg);
+  if (attribute) {
+    if (!attribute_exists(obj_id, name)) {
+      std::stringstream err_msg;
+      err_msg << "Attribute \"" << name << "\" does not exist in object "
+              << object_name(obj_id);
+      fatal_error(err_msg);
+    }
+  } else {
+    if (!object_exists(obj_id, name)) {
+      std::stringstream err_msg;
+      err_msg << "Object \"" << name << "\" does not exist in object "
+              << object_name(obj_id);
+      fatal_error(err_msg);
+    }
   }
 }
 

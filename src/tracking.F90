@@ -48,7 +48,7 @@ contains
 ! TRANSPORT encompasses the main logic for moving a particle through geometry.
 !===============================================================================
 
-  subroutine transport(p)
+  subroutine transport(p) bind(C)
 
     type(Particle), intent(inout) :: p
 
@@ -287,8 +287,7 @@ contains
       ! Check for secondary particles if this particle is dead
       if (.not. p % alive) then
         if (p % n_secondary > 0) then
-          call particle_from_source(p, p % secondary_bank(p % n_secondary), &
-                                    run_CE, energy_bin_avg)
+          call particle_from_source(p, p % secondary_bank(p % n_secondary))
           p % n_secondary = p % n_secondary - 1
           n_event = 0
 

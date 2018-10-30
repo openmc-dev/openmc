@@ -1,12 +1,13 @@
 #include "openmc/initialize.h"
 
 #include <cstddef>
+#include <cstdlib> // for getenv
 #include <cstring>
 #include <sstream>
 #include <string>
 
 #ifdef _OPENMP
-#include "omp.h"
+#include <omp.h>
 #endif
 
 #include "openmc/capi.h"
@@ -14,14 +15,17 @@
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/message_passing.h"
+#include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
+#include "openmc/timer.h"
 
 // data/functions from Fortran side
-extern "C" void openmc_init_f();
 extern "C" void print_usage();
 extern "C" void print_version();
+extern "C" void read_command_line();
+extern "C" void read_input_xml();
 
 // Paths to various files
 extern "C" {
@@ -30,6 +34,8 @@ extern "C" {
 
 int openmc_init(int argc, char* argv[], const void* intracomm)
 {
+  using namespace openmc;
+
 #ifdef OPENMC_MPI
   // Check if intracomm was passed
   MPI_Comm comm;
@@ -40,15 +46,40 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   }
 
   // Initialize MPI for C++
-  openmc::initialize_mpi(comm);
+  initialize_mpi(comm);
 #endif
 
   // Parse command-line arguments
-  int err = openmc::parse_command_line(argc, argv);
+  int err = parse_command_line(argc, argv);
   if (err) return err;
 
-  // Continue with rest of initialization
-  openmc_init_f();
+  // Start total and initialization timer
+  time_total.start();
+  time_initialize.start();
+
+#ifdef _OPENMP
+  // If OMP_SCHEDULE is not set, default to a static schedule
+  char* envvar = std::getenv("OMP_SCHEDULE");
+  if (!envvar) {
+    omp_set_schedule(omp_sched_static, 0);
+  }
+#endif
+
+  // Read command line arguments
+  read_command_line();
+
+  // Initialize random number generator -- if the user specifies a seed, it
+  // will be re-initialized later
+  openmc_set_seed(DEFAULT_SEED);
+
+  // Read XML input files
+  read_input_xml();
+
+  // Check for particle restart run
+  if (settings::particle_restart_run) settings::run_mode = RUN_MODE_PARTICLE;
+
+  // Stop initialization timer
+  time_initialize.stop();
 
   return 0;
 }

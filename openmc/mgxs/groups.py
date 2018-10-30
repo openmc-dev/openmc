@@ -79,16 +79,15 @@ class EnergyGroups(object):
 
     @staticmethod
     def get_common_energy_groups(name):
-        """Returns one of many commonly used and energy group structures.
+        """Returns one of many commonly used energy group structures.
 
         Pre-defined structures include "CASMO-X" (where X is 2, 4, 8, 16, 25,
         40 or 70) from the [CASMO]_ lattice physics code.
 
         References
         ----------
-        .. [CASMO] J. Rhodes, K. Smith, and D. Lee, "CASMO-5 Development and 
-        Applications", *Proc. ANS Topical Meeting on Reactor Physics (PHYSOR)*,
-        (2006).
+        .. [CASMO] J. Rhodes, K. Smith, and D. Lee, "CASMO-5 Development and
+           Applications", *Proc. ANS Topical Meeting on Reactor Physics* (2006).
 
         Parameters
         ----------

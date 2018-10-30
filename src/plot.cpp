@@ -956,7 +956,7 @@ void create_voxel(Plot pl)
   int id;
   for (int x = 0; x < pl.pixels[0]; x++) {
     // TODO: progress bar here
-    pb.set_value(((double)x/(double)pl.pixels[0])*100);
+    pb.set_value(100.*(double)x/(double)(pl.pixels[0]-1));
     for (int y = 0; y < pl.pixels[1]; y++) {
       for (int z = 0; z < pl.pixels[2]; z++) {
         // get voxel color

@@ -58,6 +58,9 @@ extern "C" void initialize_source();
 //! \return Sampled source site
 extern "C" Bank sample_external_source();
 
+//! Fill source bank at end of generation for fixed source simulations
+void fill_source_bank_fixedsource();
+
 } // namespace openmc
 
 #endif // OPENMC_SOURCE_H

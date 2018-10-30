@@ -352,11 +352,7 @@ extern "C" double total_source_strength()
   return strength;
 }
 
-// Needed in fill_source_bank_fixedsource
-extern "C" int overall_generation();
-
-//! Fill source bank at end of generation for fixed source simulations
-extern "C" void fill_source_bank_fixedsource()
+void fill_source_bank_fixedsource()
 {
   if (settings::path_source.empty()) {
     // Get pointer to source bank

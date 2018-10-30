@@ -7,6 +7,7 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/mgxs_interface.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 
@@ -92,7 +93,7 @@ Particle::initialize()
 }
 
 void
-Particle::from_source(const Bank* src, bool run_CE, const double* energy_bin_avg)
+Particle::from_source(const Bank* src)
 {
   // set defaults
   initialize();
@@ -106,7 +107,7 @@ Particle::from_source(const Bank* src, bool run_CE, const double* energy_bin_avg
   std::copy(src->xyz, src->xyz + 3, last_xyz_current);
   std::copy(src->xyz, src->xyz + 3, last_xyz);
   std::copy(src->uvw, src->uvw + 3, last_uvw);
-  if (run_CE) {
+  if (settings::run_CE) {
     E = src->E;
     g = 0;
   } else {
@@ -212,10 +213,9 @@ void particle_create_secondary(Particle* p, const double* uvw, double E,
   p->create_secondary(uvw, E, type, run_CE);
 }
 void particle_initialize(Particle* p) { p->initialize(); }
-void particle_from_source(Particle* p, const Bank* src, bool run_CE,
-                          const double* energy_bin_avg)
+void particle_from_source(Particle* p, const Bank* src)
 {
-  p->from_source(src, run_CE, energy_bin_avg);
+  p->from_source(src);
 }
 void particle_mark_as_lost(Particle* p, const char* message)
 {

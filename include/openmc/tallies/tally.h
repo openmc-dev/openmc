@@ -14,9 +14,12 @@ namespace openmc {
 extern "C" double total_weight;
 
 // Threadprivate variables
-
 extern "C" double global_tally_absorption;
-#pragma omp threadprivate(global_tally_absorption)
+extern "C" double global_tally_collision;
+extern "C" double global_tally_tracklength;
+extern "C" double global_tally_leakage;
+#pragma omp threadprivate(global_tally_absorption, global_tally_collision, \
+  global_tally_tracklength, global_tally_leakage)
 
 //==============================================================================
 // Non-member functions

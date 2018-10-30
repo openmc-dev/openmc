@@ -134,7 +134,8 @@ class EnergyGroups(object):
                 3.025e5, 5.e5, 8.21e5, 1.353e6, 2.231e6, 3.679e6, 6.0655e6,
                 2.e7])
         else:
-            raise ValueError(f"Energy group structure \"{name}\" is not recognized")
+            raise ValueError("Energy group structure \"{}\" is not " \
+                             "recognized".format(name))
 
         energy_groups = EnergyGroups(group_edges)
         return energy_groups

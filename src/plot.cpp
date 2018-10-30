@@ -84,17 +84,14 @@ read_plots(pugi::xml_node* plots_node)
 void create_ppm(Plot pl)
 {
 
-  int width = pl.pixels[0];
-  int height = pl.pixels[1];
+  size_t width = pl.pixels[0];
+  size_t height = pl.pixels[1];
 
   double in_pixel = (pl.width[0])/double(width);
   double out_pixel = (pl.width[1])/double(height);
 
   ImageData data;
-  data.resize(width);
-  for (auto & i : data) {
-    i.resize(height);
-  }
+  data.resize({width, height});
 
   int in_i, out_i;
   double xyz[3];
@@ -141,9 +138,9 @@ void create_ppm(Plot pl)
       int id;
       p.coord[0].xyz[in_i] = xyz[in_i] + in_pixel * x;
       position_rgb(p, pl, rgb, id);
-      data[x][y][RED] = rgb[RED];
-      data[x][y][GREEN] = rgb[GREEN];
-      data[x][y][BLUE] = rgb[BLUE];
+      data(x,y)[RED] = rgb[RED];
+      data(x,y)[GREEN] = rgb[GREEN];
+      data(x,y)[BLUE] = rgb[BLUE];
     }
   }
 }
@@ -768,7 +765,7 @@ void output_ppm(Plot pl, const ImageData &data)
   // Write color for each pixel
   for (int y = 0; y < pl.pixels[1]; y++) {
     for (int x = 0; x < pl.pixels[0]; x++) {
-      RGBColor rgb = data[x][y];
+      RGBColor rgb = data(x,y);
       of.write((char*)&rgb[RED], 1);
       of.write((char*)&rgb[GREEN], 1);
       of.write((char*)&rgb[BLUE], 1);
@@ -858,19 +855,19 @@ void draw_mesh_lines(Plot pl, ImageData &data)
         // draw lines
         for (int out_ = outrange[0]; out_ <= outrange[1]; out_++) {
           for (int plus = 0; plus <= pl.meshlines_width; plus++) {
-            data[out_][inrange[0] + plus] = rgb;
-            data[out_][inrange[1] + plus] = rgb;
-            data[out_][inrange[0] - plus] = rgb;
-            data[out_][inrange[1] - plus] = rgb;
+            data(out_, inrange[0] + plus) = rgb;
+            data(out_, inrange[1] + plus) = rgb;
+            data(out_, inrange[0] - plus) = rgb;
+            data(out_, inrange[1] - plus) = rgb;
           }
         }
 
         for (int in_ = inrange[0]; in_ <= inrange[1]; in_++) {
           for (int plus = 0; plus <= pl.meshlines_width; plus++) {
-            data[outrange[0] + plus][in_] = rgb;
-            data[outrange[1] + plus][in_] = rgb;
-            data[outrange[0] - plus][in_] = rgb;
-            data[outrange[1] - plus][in_] = rgb;
+            data(outrange[0] + plus, in_) = rgb;
+            data(outrange[1] + plus, in_) = rgb;
+            data(outrange[0] - plus, in_) = rgb;
+            data(outrange[1] - plus, in_) = rgb;
           }
         }
 

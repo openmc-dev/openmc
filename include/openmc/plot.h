@@ -4,6 +4,8 @@
 #include <map>
 #include <sstream>
 
+#include "xtensor/xarray.hpp"
+
 #include "hdf5.h"
 #include "openmc/position.h"
 #include "openmc/constants.h"
@@ -35,7 +37,7 @@ extern std::vector<Plot> plots; //!< Plot instance container
 
 typedef std::array<int, 3> RGBColor;
  
-typedef std::vector<std::vector<RGBColor>> ImageData;
+typedef xt::xtensor<RGBColor, 2> ImageData;
 
 enum class plot_type {
   slice = 1,

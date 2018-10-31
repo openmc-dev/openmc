@@ -106,21 +106,20 @@ public:
 //! Add mesh lines to image data of a plot object
 //! \param[in] plot object
 //! \param[out] image data associated with the plot object
-void draw_mesh_lines(Plot pl,
-                     ImageData &data);
+void draw_mesh_lines(Plot pl, ImageData &data);
 
 //! Write a ppm image to file using a plot object's image data
 //! \param[in] plot object
 //! \param[out] image data associated with the plot object
 void output_ppm(Plot pl,
-                const ImageData &data);
+                const ImageData& data);
 
 //! Get the rgb color for a given particle position in a plot
 //! \param[in] particle with position for current pixel
 //! \param[in] plot object
 //! \param[out] rgb color
 //! \param[out] cell or material id for particle position
-void position_rgb(Particle p, Plot pl, RGBColor &rgb, int &id);
+void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id);
 
 //! Initialize a voxel file
 //! \param[in] id of an open hdf5 file

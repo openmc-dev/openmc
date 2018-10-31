@@ -83,20 +83,20 @@ private:
 
   // Members
 public:
-  int id; //!< Plot ID
-  plot_type type; //!< Plot type (Slice/Voxel)
-  plot_color_by color_by; //!< Plot coloring (cell/material)
-  Position origin; //!< Plot origin in geometry
-  Position width; //!< Plot width in geometry
-  plot_basis basis; //!< Plot basis (XY/XZ/YZ)
-  int pixels[3]; //!< Plot size in pixels
-  int meshlines_width; //!< Width of lines added to the plot
-  int level; //!< Plot universe level
-  int index_meshlines_mesh; //!< Index of the mesh to draw on the plot
-  RGBColor meshlines_color; //!< Color of meshlines on the plot
-  RGBColor not_found; //!< Plot background color
-  std::vector<RGBColor> colors; //!< Plot colors
-  std::string path_plot; //!< Plot output filename
+  int id_; //!< Plot ID
+  plot_type type_; //!< Plot type (Slice/Voxel)
+  plot_color_by color_by_; //!< Plot coloring (cell/material)
+  Position origin_; //!< Plot origin in geometry
+  Position width_; //!< Plot width in geometry
+  plot_basis basis_; //!< Plot basis (XY/XZ/YZ)
+  int pixels_[3]; //!< Plot size in pixels
+  int meshlines_width_; //!< Width of lines added to the plot
+  int level_; //!< Plot universe level
+  int index_meshlines_mesh_; //!< Index of the mesh to draw on the plot
+  RGBColor meshlines_color_; //!< Color of meshlines on the plot
+  RGBColor not_found_; //!< Plot background color
+  std::vector<RGBColor> colors_; //!< Plot colors
+  std::string path_plot_; //!< Plot output filename
 };
 
 //===============================================================================

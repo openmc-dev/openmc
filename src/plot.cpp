@@ -44,14 +44,14 @@ int openmc_plot_geometry()
 
   for (auto pl : plots) {
     std::stringstream ss;
-    ss << "Processing plot " << pl.id << ": "
-       << pl.path_plot << "...";
+    ss << "Processing plot " << pl.id_ << ": "
+       << pl.path_plot_ << "...";
     write_message(ss.str(), 5);
 
-    if (plot_type::slice == pl.type) {
+    if (plot_type::slice == pl.type_) {
       // create 2D image
       create_ppm(pl);
-    } else if (plot_type::voxel == pl.type) {
+    } else if (plot_type::voxel == pl.type_) {
       // create voxel file for 3D viewing
       create_voxel(pl);
     }
@@ -72,7 +72,7 @@ read_plots(pugi::xml_node* plots_node)
   for (int i = 0; i < plot_nodes.size(); i++) {
     Plot pl(plot_nodes[i]);
     plots.push_back(pl);
-    plot_map[pl.id] = i;
+    plot_map[pl.id_] = i;
   }
 }
 
@@ -84,38 +84,38 @@ read_plots(pugi::xml_node* plots_node)
 void create_ppm(Plot pl)
 {
 
-  size_t width = pl.pixels[0];
-  size_t height = pl.pixels[1];
+  size_t width = pl.pixels_[0];
+  size_t height = pl.pixels_[1];
 
-  double in_pixel = (pl.width[0])/double(width);
-  double out_pixel = (pl.width[1])/double(height);
+  double in_pixel = (pl.width_[0])/double(width);
+  double out_pixel = (pl.width_[1])/double(height);
 
   ImageData data;
   data.resize({width, height});
 
   int in_i, out_i;
   double xyz[3];
-  switch(pl.basis) {
+  switch(pl.basis_) {
   case plot_basis::xy :
     in_i = 0;
     out_i = 1;
-    xyz[0] = pl.origin[0] - pl.width[0] / 2.;
-    xyz[1] = pl.origin[1] + pl.width[1] / 2.;
-    xyz[2] = pl.origin[2];
+    xyz[0] = pl.origin_[0] - pl.width_[0] / 2.;
+    xyz[1] = pl.origin_[1] + pl.width_[1] / 2.;
+    xyz[2] = pl.origin_[2];
     break;
   case plot_basis::xz :
     in_i = 0;
     out_i = 2;
-    xyz[0] = pl.origin[0] - pl.width[0] / 2.;
-    xyz[1] = pl.origin[1];
-    xyz[2] = pl.origin[2] + pl.width[1] / 2.;
+    xyz[0] = pl.origin_[0] - pl.width_[0] / 2.;
+    xyz[1] = pl.origin_[1];
+    xyz[2] = pl.origin_[2] + pl.width_[1] / 2.;
     break;
   case plot_basis::yz :
     in_i = 1;
     out_i = 2;
-    xyz[0] = pl.origin[0];
-    xyz[1] = pl.origin[1] - pl.width[0] / 2.;
-    xyz[2] = pl.origin[2] + pl.width[1] / 2.;
+    xyz[0] = pl.origin_[0];
+    xyz[1] = pl.origin_[1] - pl.width_[0] / 2.;
+    xyz[2] = pl.origin_[2] + pl.width_[1] / 2.;
     break;
   }
 
@@ -145,7 +145,7 @@ void create_ppm(Plot pl)
   }
 }
   // draw mesh lines if present
-  if (pl.index_meshlines_mesh >= 0) {draw_mesh_lines(pl, data);}
+  if (pl.index_meshlines_mesh_ >= 0) {draw_mesh_lines(pl, data);}
 
   // write ppm data to file
   output_ppm(pl, data);
@@ -156,15 +156,15 @@ Plot::set_id(pugi::xml_node plot_node)
 {
   // Copy data into plots
   if (check_for_node(plot_node, "id")) {
-    id = std::stoi(get_node_value(plot_node, "id"));
+    id_ = std::stoi(get_node_value(plot_node, "id"));
   } else {
     fatal_error("Must specify plot id in plots XML file.");
   }
 
   // Check to make sure 'id' hasn't been used
-  if (plot_map.find(id) != plot_map.end()) {
+  if (plot_map.find(id_) != plot_map.end()) {
     std::stringstream err_msg;
-    err_msg << "Two or more plots use the same unique ID: " << id;
+    err_msg << "Two or more plots use the same unique ID: " << id_;
     fatal_error(err_msg.str());
   }
 }
@@ -174,23 +174,23 @@ Plot::set_type(pugi::xml_node plot_node)
 {
   // Copy plot type
   // Default is slice
-  type = plot_type::slice;
+  type_ = plot_type::slice;
   // check type specified on plot node
   if (check_for_node(plot_node, "type")) {
     std::string type_str = get_node_value(plot_node, "type", true);
     // set type using node value
     if (type_str == "slice") {
-      type = plot_type::slice;
+      type_ = plot_type::slice;
       return;
     }
     else if (type_str == "voxel") {
-      type = plot_type::voxel;
+      type_ = plot_type::voxel;
       return;
     }
     // if we're here, something is wrong
     std::stringstream err_msg;
     err_msg << "Unsupported plot type '" << type_str
-            << "' in plot " << id;
+            << "' in plot " << id_;
     fatal_error(err_msg.str());
   }
 }
@@ -200,13 +200,13 @@ Plot::set_output_path(pugi::xml_node plot_node)
 {
   // Set output file path
   std::stringstream filename;
-  filename << "plot_" << id;
+  filename << "plot_" << id_;
 
   if (check_for_node(plot_node, "filename")) {
     filename << get_node_value(plot_node, "filename");
   }
   // add appropriate file extension to name
-  switch(type) {
+  switch(type_) {
   case plot_type::slice:
     filename << ".ppm";
     break;
@@ -215,31 +215,31 @@ Plot::set_output_path(pugi::xml_node plot_node)
     break;
   }
 
-  path_plot = filename.str();
+  path_plot_ = filename.str();
 
   // Copy plot pixel size
   std::vector<int> pxls;
-  if (plot_type::slice == type) {
+  if (plot_type::slice == type_) {
     if (node_word_count(plot_node, "pixels") == 2) {
       pxls = get_node_array<int>(plot_node, "pixels");
-      pixels[0] = pxls[0];
-      pixels[1] = pxls[1];
+      pixels_[0] = pxls[0];
+      pixels_[1] = pxls[1];
     } else {
       std::stringstream err_msg;
       err_msg << "<pixels> must be length 2 in slice plot "
-              << id;
+              << id_;
       fatal_error(err_msg.str());
     }
-  } else if (plot_type::voxel == type) {
+  } else if (plot_type::voxel == type_) {
     if (node_word_count(plot_node, "pixels") == 3) {
       pxls = get_node_array<int>(plot_node, "pixels");
-      pixels[0] = pxls[0];
-      pixels[1] = pxls[1];
-      pixels[2] = pxls[2];
+      pixels_[0] = pxls[0];
+      pixels_[1] = pxls[1];
+      pixels_[2] = pxls[2];
     } else {
       std::stringstream err_msg;
       err_msg << "<pixels> must be length 3 in voxel plot "
-              << id;
+              << id_;
       fatal_error(err_msg.str());
     }
   }
@@ -251,30 +251,30 @@ Plot::set_bg_color(pugi::xml_node plot_node)
   // Copy plot background color
   std::vector<int> bg_rgb;
   if (check_for_node(plot_node, "background")) {
-    if (plot_type::voxel == type) {
+    if (plot_type::voxel == type_) {
       if (openmc_master) {
         std::stringstream err_msg;
         err_msg << "Background color ignored in voxel plot "
-                << id;
+                << id_;
         warning(err_msg.str());
       }
     }
     if (node_word_count(plot_node, "background") == 3) {
       bg_rgb = get_node_array<int>(plot_node, "background");
-      not_found[RED] = bg_rgb[RED];
-      not_found[GREEN] = bg_rgb[GREEN];
-      not_found[BLUE] = bg_rgb[BLUE];
+      not_found_[RED] = bg_rgb[RED];
+      not_found_[GREEN] = bg_rgb[GREEN];
+      not_found_[BLUE] = bg_rgb[BLUE];
     } else {
       std::stringstream err_msg;
       err_msg << "Bad background RGB in plot "
-              << id;
+              << id_;
       fatal_error(err_msg);
     }
   } else {
     // default to a white background
-    not_found[RED] = 255;
-    not_found[GREEN] = 255;
-    not_found[BLUE] = 255;
+    not_found_[RED] = 255;
+    not_found_[GREEN] = 255;
+    not_found_[BLUE] = 255;
   }
 }
 
@@ -282,21 +282,21 @@ void
 Plot::set_basis(pugi::xml_node plot_node)
 {
   // Copy plot basis
-  if (plot_type::slice == type) {
+  if (plot_type::slice == type_) {
     std::string pl_basis = "xy";
     if (check_for_node(plot_node, "basis")) {
       pl_basis = get_node_value(plot_node, "basis", true);
     }
     if ("xy" == pl_basis) {
-      basis = plot_basis::xy;
+      basis_ = plot_basis::xy;
     } else if ("xz" == pl_basis) {
-      basis = plot_basis::xz;
+      basis_ = plot_basis::xz;
     } else if ("yz" == pl_basis) {
-      basis = plot_basis::yz;
+      basis_ = plot_basis::yz;
     } else {
       std::stringstream err_msg;
       err_msg << "Unsupported plot basis '" << pl_basis
-              << "' in plot " << id;
+              << "' in plot " << id_;
       fatal_error(err_msg);
     }
   }
@@ -309,13 +309,13 @@ Plot::set_origin(pugi::xml_node plot_node)
   std::vector<double> pl_origin;
   if (node_word_count(plot_node, "origin") == 3) {
     pl_origin = get_node_array<double>(plot_node, "origin");
-    origin[0] = pl_origin[0];
-    origin[1] = pl_origin[1];
-    origin[2] = pl_origin[2];
+    origin_[0] = pl_origin[0];
+    origin_[1] = pl_origin[1];
+    origin_[2] = pl_origin[2];
   } else {
     std::stringstream err_msg;
     err_msg << "Origin must be length 3 in plot "
-            << id;
+            << id_;
     fatal_error(err_msg);
   }
 }
@@ -325,27 +325,27 @@ Plot::set_width(pugi::xml_node plot_node)
 {
   // Copy plotting width
   std::vector<double> pl_width;
-  if (plot_type::slice == type) {
+  if (plot_type::slice == type_) {
     if (node_word_count(plot_node, "width") == 2) {
       pl_width = get_node_array<double>(plot_node, "width");
-      width[0] = pl_width[0];
-      width[1] = pl_width[1];
+      width_[0] = pl_width[0];
+      width_[1] = pl_width[1];
     } else {
       std::stringstream err_msg;
       err_msg << "<width> must be length 2 in slice plot "
-              << id;
+              << id_;
       fatal_error(err_msg);
     }
-  } else if (plot_type::voxel == type) {
+  } else if (plot_type::voxel == type_) {
     if (node_word_count(plot_node, "width") == 3) {
       pl_width = get_node_array<double>(plot_node, "width");
-      width[0] = pl_width[0];
-      width[1] = pl_width[1];
-      width[2] = pl_width[2];
+      width_[0] = pl_width[0];
+      width_[1] = pl_width[1];
+      width_[2] = pl_width[2];
     } else {
       std::stringstream err_msg;
       err_msg << "<width> must be length 3 in voxel plot "
-              << id;
+              << id_;
       fatal_error(err_msg);
     }
   }
@@ -356,14 +356,14 @@ Plot::set_universe(pugi::xml_node plot_node)
 {
   // Copy plot universe level
   if (check_for_node(plot_node, "level")) {
-    level = std::stoi(get_node_value(plot_node, "level"));
-    if (level < 0) {
+    level_ = std::stoi(get_node_value(plot_node, "level"));
+    if (level_ < 0) {
       std::stringstream err_msg;
-      err_msg << "Bad universe level in plot " << id ;
+      err_msg << "Bad universe level in plot " << id_;
       fatal_error(err_msg);
     }
   } else {
-    level = PLOT_LEVEL_LOWEST;
+    level_ = PLOT_LEVEL_LOWEST;
   }
 }
 
@@ -376,26 +376,26 @@ Plot::set_default_colors(pugi::xml_node plot_node)
     pl_color_by = get_node_value(plot_node, "color_by", true);
   }
   if ("cell" == pl_color_by) {
-    color_by = plot_color_by::cells;
-    colors.resize(n_cells);
+    color_by_ = plot_color_by::cells;
+    colors_.resize(n_cells);
     for (int i = 0; i < n_cells; i++) {
-      colors[i][RED] = int(prn()*255);
-      colors[i][GREEN] = int(prn()*255);
-      colors[i][BLUE] = int(prn()*255);
+      colors_[i][RED] = int(prn()*255);
+      colors_[i][GREEN] = int(prn()*255);
+      colors_[i][BLUE] = int(prn()*255);
     }
 
   } else if("material" == pl_color_by) {
-    color_by = plot_color_by::mats;
-    colors.resize(n_materials);
+    color_by_ = plot_color_by::mats;
+    colors_.resize(n_materials);
     for (int i = 0; i < materials.size(); i++) {
-      colors[i][RED] = int(prn()*255);
-      colors[i][GREEN] = int(prn()*255);
-      colors[i][BLUE] = int(prn()*255);
+      colors_[i][RED] = int(prn()*255);
+      colors_[i][GREEN] = int(prn()*255);
+      colors_[i][BLUE] = int(prn()*255);
     }
   } else {
     std::stringstream err_msg;
     err_msg << "Unsupported plot color type '" << pl_color_by
-            << "' in plot " << id;
+            << "' in plot " << id_;
     fatal_error(err_msg);
   }
 }
@@ -410,11 +410,11 @@ Plot::set_user_colors(pugi::xml_node plot_node)
   // Copy user-specified colors
   if (color_nodes.size() != 0) {
 
-    if (plot_type::voxel == type) {
+    if (plot_type::voxel == type_) {
       if (openmc_master) {
         std::stringstream err_msg;
         err_msg << "Color specifications ignored in voxel plot "
-                << id;
+                << id_;
         warning(err_msg);
       }
     }
@@ -423,7 +423,7 @@ Plot::set_user_colors(pugi::xml_node plot_node)
       // Check and make sure 3 values are specified for RGB
       if (node_word_count(cn, "rgb") != 3) {
         std::stringstream err_msg;
-        err_msg << "Bad RGB in plot " << id;
+        err_msg << "Bad RGB in plot " << id_;
         fatal_error(err_msg);
       }
       // Ensure that there is an id for this color specification
@@ -433,36 +433,36 @@ Plot::set_user_colors(pugi::xml_node plot_node)
       } else {
         std::stringstream err_msg;
         err_msg << "Must specify id for color specification in plot "
-                << id;
+                << id_;
         fatal_error(err_msg);
       }
       // Add RGB
-      if (plot_color_by::cells == color_by) {
+      if (plot_color_by::cells == color_by_) {
         std::vector<int> cell_rgb;
         if (cell_map.find(col_id) != cell_map.end()) {
           col_id = cell_map[col_id];
           cell_rgb = get_node_array<int>(cn, "rgb");
-          colors[col_id][RED] = cell_rgb[RED];
-          colors[col_id][GREEN] = cell_rgb[GREEN];
-          colors[col_id][BLUE] = cell_rgb[BLUE];
+          colors_[col_id][RED] = cell_rgb[RED];
+          colors_[col_id][GREEN] = cell_rgb[GREEN];
+          colors_[col_id][BLUE] = cell_rgb[BLUE];
         } else {
           std::stringstream err_msg;
           err_msg << "Could not find cell " << col_id
-                  << " specified in plot " << id;
+                  << " specified in plot " << id_;
           fatal_error(err_msg);
         }
-      } else if (plot_color_by::mats == color_by) {
+      } else if (plot_color_by::mats == color_by_) {
         std::vector<int> mat_rgb;
         if (material_map.find(col_id) != material_map.end()) {
           col_id = material_map[col_id];
           mat_rgb = get_node_array<int>(cn, "rgb");
-          colors[col_id][RED] = mat_rgb[RED];
-          colors[col_id][GREEN] = mat_rgb[GREEN];
-          colors[col_id][BLUE] = mat_rgb[BLUE];
+          colors_[col_id][RED] = mat_rgb[RED];
+          colors_[col_id][GREEN] = mat_rgb[GREEN];
+          colors_[col_id][BLUE] = mat_rgb[BLUE];
         } else {
           std::stringstream err_msg;
           err_msg << "Could not find material " << col_id
-                  << " specified in plot " << id;
+                  << " specified in plot " << id_;
           fatal_error(err_msg);
         }
       }
@@ -480,9 +480,9 @@ Plot::set_meshlines(pugi::xml_node plot_node)
   int n_meshlines = mesh_line_nodes.size();
 
   if (n_meshlines != 0) {
-    if (plot_type::voxel == type) {
+    if (plot_type::voxel == type_) {
       std::stringstream msg;
-      msg << "Meshlines ignored in voxel plot " << id;
+      msg << "Meshlines ignored in voxel plot " << id_;
       warning(msg);
     }
 
@@ -496,7 +496,7 @@ Plot::set_meshlines(pugi::xml_node plot_node)
         meshtype = get_node_value(meshlines_node, "meshtype");
       } else {
         std::stringstream err_msg;
-        err_msg << "Must specify a meshtype for meshlines specification in plot " << id;
+        err_msg << "Must specify a meshtype for meshlines specification in plot " << id_;
         fatal_error(err_msg);
       }
 
@@ -504,10 +504,10 @@ Plot::set_meshlines(pugi::xml_node plot_node)
       std::string meshline_width;
       if (check_for_node(meshlines_node, "linewidth")) {
         meshline_width = get_node_value(meshlines_node, "linewidth");
-        meshlines_width = std::stoi(meshline_width);
+        meshlines_width_ = std::stoi(meshline_width);
       } else {
         std::stringstream err_msg;
-        err_msg << "Must specify a linewidth for meshlines specification in plot " << id;
+        err_msg << "Must specify a linewidth for meshlines specification in plot " << id_;
         fatal_error(err_msg);
       }
 
@@ -517,43 +517,43 @@ Plot::set_meshlines(pugi::xml_node plot_node)
         // Check and make sure 3 values are specified for RGB
         if (node_word_count(meshlines_node, "color") != 3) {
           std::stringstream err_msg;
-          err_msg << "Bad RGB for meshlines color in plot " << id;
+          err_msg << "Bad RGB for meshlines color in plot " << id_;
           fatal_error(err_msg);
         }
         ml_rgb = get_node_array<int>(meshlines_node, "color");
-        meshlines_color[0] = ml_rgb[0];
-        meshlines_color[1] = ml_rgb[1];
-        meshlines_color[2] = ml_rgb[2];
+        meshlines_color_[0] = ml_rgb[0];
+        meshlines_color_[1] = ml_rgb[1];
+        meshlines_color_[2] = ml_rgb[2];
       } else {
-        meshlines_color[0] = 0;
-        meshlines_color[1] = 0;
-        meshlines_color[2] = 0;
+        meshlines_color_[0] = 0;
+        meshlines_color_[1] = 0;
+        meshlines_color_[2] = 0;
       }
 
       // Set mesh based on type
       if ("ufs" == meshtype) {
         if (settings::index_ufs_mesh < 0) {
           std::stringstream err_msg;
-          err_msg << "No UFS mesh for meshlines on plot " << id;
+          err_msg << "No UFS mesh for meshlines on plot " << id_;
           fatal_error(err_msg);
         } else {
-          index_meshlines_mesh = settings::index_ufs_mesh;
+          index_meshlines_mesh_ = settings::index_ufs_mesh;
         }
       } else if ("cmfd" == meshtype) {
         if (!settings::cmfd_run) {
           std::stringstream err_msg;
-          err_msg << "Need CMFD run to plot CMFD mesh for meshlines on plot " << id;
+          err_msg << "Need CMFD run to plot CMFD mesh for meshlines on plot " << id_;
           fatal_error(err_msg);
         } else {
-          index_meshlines_mesh = settings::index_cmfd_mesh;
+          index_meshlines_mesh_ = settings::index_cmfd_mesh;
         }
       } else if ("entropy" == meshtype) {
         if (settings::index_entropy_mesh < 0) {
           std::stringstream err_msg;
-          err_msg <<"No entropy mesh for meshlines on plot " << id;
+          err_msg <<"No entropy mesh for meshlines on plot " << id_;
           fatal_error(err_msg);
         } else {
-          index_meshlines_mesh = settings::index_entropy_mesh;
+          index_meshlines_mesh_ = settings::index_entropy_mesh;
         }
       } else if ("tally" == meshtype) {
         // Ensure that there is a mesh id if the type is tally
@@ -563,7 +563,7 @@ Plot::set_meshlines(pugi::xml_node plot_node)
         } else {
           std::stringstream err_msg;
           err_msg << "Must specify a mesh id for meshlines tally "
-                  << "mesh specification in plot " << id;
+                  << "mesh specification in plot " << id_;
           fatal_error(err_msg);
         }
         // find the tally index
@@ -572,18 +572,18 @@ Plot::set_meshlines(pugi::xml_node plot_node)
         if (err != 0) {
             std::stringstream err_msg;
             err_msg << "Could not find mesh " << tally_mesh_id
-                    << " specified in meshlines for plot " << id;
+                    << " specified in meshlines for plot " << id_;
             fatal_error(err_msg);
         }
-        index_meshlines_mesh = idx;
+        index_meshlines_mesh_ = idx;
       } else {
         std::stringstream err_msg;
-        err_msg << "Invalid type for meshlines on plot " << id ;
+        err_msg << "Invalid type for meshlines on plot " << id_ ;
         fatal_error(err_msg);
       }
     } else {
       std::stringstream err_msg;
-      err_msg << "Mutliple meshlines specified in plot " << id;
+      err_msg << "Mutliple meshlines specified in plot " << id_;
       fatal_error(err_msg);
     }
   }
@@ -598,10 +598,10 @@ Plot::set_mask(pugi::xml_node plot_node)
   int n_masks = mask_nodes.size();
 
   if (n_masks > 0) {
-    if (plot_type::voxel == type) {
+    if (plot_type::voxel == type_) {
       if (openmc_master) {
         std::stringstream wrn_msg;
-        wrn_msg << "Mask ignored in voxel plot " << id;
+        wrn_msg << "Mask ignored in voxel plot " << id_;
         warning(wrn_msg);
       }
     }
@@ -615,7 +615,7 @@ Plot::set_mask(pugi::xml_node plot_node)
       n_comp = node_word_count(mask_node, "components");
       if (0 == n_comp) {
         std::stringstream err_msg;
-        err_msg << "Missing <components> in mask of plot " << id;
+        err_msg << "Missing <components> in mask of plot " << id_;
         fatal_error(err_msg);
       }
       std::vector<int> iarray = get_node_array<int>(mask_node, "components");
@@ -626,55 +626,55 @@ Plot::set_mask(pugi::xml_node plot_node)
       for (int j = 0; j < iarray.size(); j++) {
         col_id = iarray[j];
 
-        if (plot_color_by::cells == color_by) {
+        if (plot_color_by::cells == color_by_) {
           if (cell_map.find(col_id) != cell_map.end()) {
             iarray[j] = cell_map[col_id];
           }
           else {
             std::stringstream err_msg;
             err_msg << "Could not find cell " << col_id
-                    << " specified in the mask in plot " << id;
+                    << " specified in the mask in plot " << id_;
             fatal_error(err_msg);
           }
-        } else if (plot_color_by::mats == color_by) {
+        } else if (plot_color_by::mats == color_by_) {
           if (material_map.find(col_id) != material_map.end()) {
             iarray[j] = material_map[col_id];
           }
           else {
             std::stringstream err_msg;
             err_msg << "Could not find material " << col_id
-                    << " specified in the mask in plot " << id;
+                    << " specified in the mask in plot " << id_;
             fatal_error(err_msg);
           }
         }
       }
 
       // Alter colors based on mask information
-      for (int j = 0; j < colors.size(); j++) {
+      for (int j = 0; j < colors_.size(); j++) {
         if (std::find(iarray.begin(), iarray.end(), j) == iarray.end()) {
           if (check_for_node(mask_node, "background")) {
             std::vector<int> bg_rgb = get_node_array<int>(mask_node, "background");
-            colors[j][RED] = bg_rgb[RED];
-            colors[j][GREEN] = bg_rgb[GREEN];
-            colors[j][BLUE] = bg_rgb[BLUE];
+            colors_[j][RED] = bg_rgb[RED];
+            colors_[j][GREEN] = bg_rgb[GREEN];
+            colors_[j][BLUE] = bg_rgb[BLUE];
           } else {
-            colors[j][RED] = 255;
-            colors[j][GREEN] = 255;
-            colors[j][BLUE] = 255;
+            colors_[j][RED] = 255;
+            colors_[j][GREEN] = 255;
+            colors_[j][BLUE] = 255;
           }
         }
       }
 
     } else {
       std::stringstream err_msg;
-      err_msg << "Mutliple masks specified in plot " << id;
+      err_msg << "Mutliple masks specified in plot " << id_;
       fatal_error(err_msg);
     }
   }
 }
 
 Plot::Plot(pugi::xml_node plot_node):
-index_meshlines_mesh(-1)
+index_meshlines_mesh_(-1)
 {
   set_id(plot_node);
   set_type(plot_node);
@@ -707,32 +707,32 @@ void position_rgb(Particle p, Plot pl, RGBColor &rgb, int &id)
   if (settings::check_overlaps) {check_cell_overlap(&p);}
 
   // Set coordinate level if specified
-  if (pl.level >= 0) {j = pl.level + 1;}
+  if (pl.level_ >= 0) {j = pl.level_ + 1;}
 
   if (!found_cell) {
     // If no cell, revert to default color
-    rgb = pl.not_found;
+    rgb = pl.not_found_;
     id = -1;
   } else {
-    if (plot_color_by::mats == pl.color_by) {
+    if (plot_color_by::mats == pl.color_by_) {
       // Assign color based on material
       Cell* c = cells[p.coord[j].cell];
       if (c->type_ == FILL_UNIVERSE) {
         // If we stopped on a middle universe level, treat as if not found
-        rgb = pl.not_found;
+        rgb = pl.not_found_;
         id = -1;
       } else if (p.material == MATERIAL_VOID) {
         // By default, color void cells white
         rgb = WHITE;
         id = -1;
       } else {
-        rgb = pl.colors[p.material - 1];
+        rgb = pl.colors_[p.material - 1];
         id = materials[p.material - 1]->id_;
       }
 
-    } else if (plot_color_by::cells == pl.color_by) {
+    } else if (plot_color_by::cells == pl.color_by_) {
       // Assign color based on cell
-      rgb = pl.colors[p.coord[j].cell];
+      rgb = pl.colors_[p.coord[j].cell];
       id = cells[p.coord[j].cell]->id_;
     } else {
       rgb = NULLRGB;
@@ -749,7 +749,7 @@ void position_rgb(Particle p, Plot pl, RGBColor &rgb, int &id)
 void output_ppm(Plot pl, const ImageData &data)
 {
   // Open PPM file for writing
-  std::string fname = pl.path_plot;
+  std::string fname = pl.path_plot_;
   fname = strtrim(fname);
   std::ofstream of;
 
@@ -757,14 +757,14 @@ void output_ppm(Plot pl, const ImageData &data)
 
   // Write header
   of << "P6" << std::endl;
-  of << pl.pixels[0] << " " << pl.pixels[1] << std::endl;
+  of << pl.pixels_[0] << " " << pl.pixels_[1] << std::endl;
   of << "255" << std::endl;
   of.close();
 
   of.open(fname, std::ios::binary | std::ios::app);
   // Write color for each pixel
-  for (int y = 0; y < pl.pixels[1]; y++) {
-    for (int x = 0; x < pl.pixels[0]; x++) {
+  for (int y = 0; y < pl.pixels_[1]; y++) {
+    for (int x = 0; x < pl.pixels_[0]; x++) {
       RGBColor rgb = data(x,y);
       of.write((char*)&rgb[RED], 1);
       of.write((char*)&rgb[GREEN], 1);
@@ -784,12 +784,12 @@ void output_ppm(Plot pl, const ImageData &data)
 void draw_mesh_lines(Plot pl, ImageData &data)
 {
   RGBColor rgb;
-  rgb[RED] = pl.meshlines_color[RED];
-  rgb[GREEN] = pl.meshlines_color[GREEN];
-  rgb[BLUE] = pl.meshlines_color[BLUE];
+  rgb[RED] = pl.meshlines_color_[RED];
+  rgb[GREEN] = pl.meshlines_color_[GREEN];
+  rgb[BLUE] = pl.meshlines_color_[BLUE];
 
   int outer, inner;
-  switch(pl.basis) {
+  switch(pl.basis_) {
   case plot_basis::xy :
     outer = 0;
     inner = 1;
@@ -805,20 +805,20 @@ void draw_mesh_lines(Plot pl, ImageData &data)
   }
 
   double xyz_ll_plot[3], xyz_ur_plot[3];
-  std::copy((double*)&pl.origin, (double*)&pl.origin + 3, xyz_ll_plot);
-  std::copy((double*)&pl.origin, (double*)&pl.origin + 3, xyz_ur_plot);
+  std::copy((double*)&pl.origin_, (double*)&pl.origin_ + 3, xyz_ll_plot);
+  std::copy((double*)&pl.origin_, (double*)&pl.origin_ + 3, xyz_ur_plot);
 
-  xyz_ll_plot[outer] = pl.origin[outer] - pl.width[0] / 2.;
-  xyz_ll_plot[inner] = pl.origin[inner] - pl.width[1] / 2.;
-  xyz_ur_plot[outer] = pl.origin[outer] + pl.width[0] / 2.;
-  xyz_ur_plot[inner] = pl.origin[inner] + pl.width[1] / 2.;
+  xyz_ll_plot[outer] = pl.origin_[outer] - pl.width_[0] / 2.;
+  xyz_ll_plot[inner] = pl.origin_[inner] - pl.width_[1] / 2.;
+  xyz_ur_plot[outer] = pl.origin_[outer] + pl.width_[0] / 2.;
+  xyz_ur_plot[inner] = pl.origin_[inner] + pl.width_[1] / 2.;
 
   int width[3];
   width[0] = xyz_ur_plot[0] - xyz_ll_plot[0];
   width[1] = xyz_ur_plot[1] - xyz_ll_plot[1];
   width[2] = xyz_ur_plot[2] - xyz_ll_plot[2];
 
-  auto &m = meshes[pl.index_meshlines_mesh];
+  auto &m = meshes[pl.index_meshlines_mesh_];
 
   int ijk_ll[3], ijk_ur[3];
   bool in_mesh;
@@ -843,18 +843,18 @@ void draw_mesh_lines(Plot pl, ImageData &data)
 
         // map the xyz ranges to pixel ranges
         double frac = (xyz_ll[outer] - xyz_ll_plot[outer]) / width[outer];
-        outrange[0] = int(frac * double(pl.pixels[0]));
+        outrange[0] = int(frac * double(pl.pixels_[0]));
         frac = (xyz_ur[outer] - xyz_ll_plot[outer]) / width[outer];
-        outrange[1] = int(frac * double(pl.pixels[0]));
+        outrange[1] = int(frac * double(pl.pixels_[0]));
 
         frac = (xyz_ur[inner] - xyz_ll_plot[inner]) / width[inner];
-        inrange[0] = int((1. - frac) * (double)pl.pixels[1]);
+        inrange[0] = int((1. - frac) * (double)pl.pixels_[1]);
         frac = (xyz_ll[inner] - xyz_ll_plot[inner]) / width[inner];
-        inrange[1] = int((1. - frac) * (double)pl.pixels[1]);
+        inrange[1] = int((1. - frac) * (double)pl.pixels_[1]);
 
         // draw lines
         for (int out_ = outrange[0]; out_ <= outrange[1]; out_++) {
-          for (int plus = 0; plus <= pl.meshlines_width; plus++) {
+          for (int plus = 0; plus <= pl.meshlines_width_; plus++) {
             data(out_, inrange[0] + plus) = rgb;
             data(out_, inrange[1] + plus) = rgb;
             data(out_, inrange[0] - plus) = rgb;
@@ -863,7 +863,7 @@ void draw_mesh_lines(Plot pl, ImageData &data)
         }
 
         for (int in_ = inrange[0]; in_ <= inrange[1]; in_++) {
-          for (int plus = 0; plus <= pl.meshlines_width; plus++) {
+          for (int plus = 0; plus <= pl.meshlines_width_; plus++) {
             data(outrange[0] + plus, in_) = rgb;
             data(outrange[1] + plus, in_) = rgb;
             data(outrange[0] - plus, in_) = rgb;
@@ -894,15 +894,15 @@ void create_voxel(Plot pl)
 
   // compute voxel widths in each direction
   double vox[3];
-  vox[0] = pl.width[0]/(double)pl.pixels[0];
-  vox[1] = pl.width[1]/(double)pl.pixels[1];
-  vox[2] = pl.width[2]/(double)pl.pixels[2];
+  vox[0] = pl.width_[0]/(double)pl.pixels_[0];
+  vox[1] = pl.width_[1]/(double)pl.pixels_[1];
+  vox[2] = pl.width_[2]/(double)pl.pixels_[2];
 
   // initial particle position
   double ll[3];
-  ll[0] = pl.origin[0] - pl.width[0] / 2.;
-  ll[1] = pl.origin[1] - pl.width[1] / 2.;
-  ll[2] = pl.origin[2] - pl.width[2] / 2.;
+  ll[0] = pl.origin_[0] - pl.width_[0] / 2.;
+  ll[1] = pl.origin_[1] - pl.width_[1] / 2.;
+  ll[2] = pl.origin_[2] - pl.width_[2] / 2.;
 
   // allocate and initialize particle
   double dir[3] = {0.5, 0.5, 0.5};
@@ -914,7 +914,7 @@ void create_voxel(Plot pl)
 
   // Open binary plot file for writing
   std::ofstream of;
-  std::string fname = std::string(pl.path_plot);
+  std::string fname = std::string(pl.path_plot_);
   fname = strtrim(fname);
   hid_t file_id = file_open(fname, 'w');
 
@@ -930,16 +930,16 @@ void create_voxel(Plot pl)
   // Write current date and time
   write_attribute(file_id, "date_and_time", time_stamp().c_str());
   hsize_t three = 3;
-  write_attr_int(file_id, 1, &three, "num_voxels", pl.pixels);
+  write_attr_int(file_id, 1, &three, "num_voxels", pl.pixels_);
   write_attr_double(file_id, 1, &three, "voxel_width", vox);
   write_attr_double(file_id, 1, &three, "lower_left", ll);
 
   // Create dataset for voxel data -- note that the dimensions are reversed
   // since we want the order in the file to be z, y, x
   hsize_t dims[3];
-  dims[0] = pl.pixels[0];
-  dims[1] = pl.pixels[1];
-  dims[2] = pl.pixels[2];
+  dims[0] = pl.pixels_[0];
+  dims[1] = pl.pixels_[1];
+  dims[2] = pl.pixels_[2];
   hid_t dspace, dset, memspace;
   voxel_init(file_id, &(dims[0]), &dspace, &dset, &memspace);
 
@@ -948,17 +948,17 @@ void create_voxel(Plot pl)
   ll[1] = ll[1] + vox[1] / 2.;
   ll[2] = ll[2] + vox[2] / 2.;
 
-  int data[pl.pixels[1]][pl.pixels[2]];
+  int data[pl.pixels_[1]][pl.pixels_[2]];
 
   ProgressBar pb;
 
   RGBColor rgb;
   int id;
-  for (int x = 0; x < pl.pixels[0]; x++) {
+  for (int x = 0; x < pl.pixels_[0]; x++) {
     // TODO: progress bar here
-    pb.set_value(100.*(double)x/(double)(pl.pixels[0]-1));
-    for (int y = 0; y < pl.pixels[1]; y++) {
-      for (int z = 0; z < pl.pixels[2]; z++) {
+    pb.set_value(100.*(double)x/(double)(pl.pixels_[0]-1));
+    for (int y = 0; y < pl.pixels_[1]; y++) {
+      for (int z = 0; z < pl.pixels_[2]; z++) {
         // get voxel color
         position_rgb(p, pl, rgb, id);
         // write to plot data

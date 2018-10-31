@@ -13,9 +13,6 @@ namespace openmc {
 // EnergyFilter implementation
 //==============================================================================
 
-// Used to grab the rev_energy_bins array defined in Fortran.
-extern "C" double* rev_energy_bins_ptr();
-
 void
 EnergyFilter::from_xml(pugi::xml_node node)
 {
@@ -30,7 +27,6 @@ EnergyFilter::from_xml(pugi::xml_node node)
   if (!settings::run_CE) {
     if (n_bins_ == num_energy_groups) {
       matches_transport_groups_ = true;
-      double* rev_energy_bins = rev_energy_bins_ptr();
       for (auto i = 0; i < n_bins_ + 1; i++) {
         if (rev_energy_bins[i] != bins_[i]) {
           matches_transport_groups_ = false;
@@ -80,6 +76,7 @@ std::string
 EnergyFilter::text_label(int bin) const
 {
   std::stringstream out;
+  //TODO: off-by-one
   out << "Incoming Energy [" << bins_[bin-1] << ", " << bins_[bin] << ")";
   return out.str();
 }
@@ -110,6 +107,7 @@ std::string
 EnergyoutFilter::text_label(int bin) const
 {
   std::stringstream out;
+  //TODO: off-by-one
   out << "Outgoing Energy [" << bins_[bin-1] << ", " << bins_[bin] << ")";
   return out.str();
 }

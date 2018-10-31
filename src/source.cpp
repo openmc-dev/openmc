@@ -292,8 +292,6 @@ void initialize_source()
   }
 }
 
-extern "C" double* rev_energy_bins_ptr();
-
 Bank sample_external_source()
 {
   // Set the random number generator to the source stream.
@@ -320,11 +318,8 @@ Bank sample_external_source()
 
   // If running in MG, convert site % E to group
   if (!settings::run_CE) {
-    // Get pointer to rev_energy_bins array on Fortran side
-    double* rev_energy_bins = rev_energy_bins_ptr();
-
-    int n = num_energy_groups + 1;
-    site.E = lower_bound_index(rev_energy_bins, rev_energy_bins + n, site.E);
+    site.E = lower_bound_index(rev_energy_bins.begin(), rev_energy_bins.end(),
+                               site.E);
     site.E = num_energy_groups - site.E;
   }
 

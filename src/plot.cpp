@@ -866,13 +866,13 @@ void create_voxel(Plot pl)
 {
 
   // compute voxel widths in each direction
-  double vox[3];
+  std::array<double, 3> vox;
   vox[0] = pl.width_[0]/(double)pl.pixels_[0];
   vox[1] = pl.width_[1]/(double)pl.pixels_[1];
   vox[2] = pl.width_[2]/(double)pl.pixels_[2];
 
   // initial particle position
-  double ll[3];
+  std::array<double, 3> ll;
   ll[0] = pl.origin_[0] - pl.width_[0] / 2.;
   ll[1] = pl.origin_[1] - pl.width_[1] / 2.;
   ll[2] = pl.origin_[2] - pl.width_[2] / 2.;
@@ -881,8 +881,8 @@ void create_voxel(Plot pl)
   double dir[3] = {0.5, 0.5, 0.5};
   Particle p;
   p.initialize();
-  std::copy(ll, ll + 3, p.coord[0].xyz);
-  std::copy(dir, dir + 3, p.coord[0].uvw);
+  std::copy(ll.begin(), ll.begin()+ll.size(), p.coord[0].xyz);
+  std::copy(dir, dir+3, p.coord[0].uvw);
   p.coord[0].universe = openmc_root_universe;
 
   // Open binary plot file for writing
@@ -903,9 +903,9 @@ void create_voxel(Plot pl)
   // Write current date and time
   write_attribute(file_id, "date_and_time", time_stamp().c_str());
   hsize_t three = 3;
-  write_attr_int(file_id, 1, &three, "num_voxels", pl.pixels_);
-  write_attr_double(file_id, 1, &three, "voxel_width", vox);
-  write_attr_double(file_id, 1, &three, "lower_left", ll);
+  write_attribute(file_id, "num_voxels", pl.pixels_);
+  write_attribute(file_id, "voxel_width", vox);
+  write_attribute(file_id, "lower_left", ll);
 
   // Create dataset for voxel data -- note that the dimensions are reversed
   // since we want the order in the file to be z, y, x

@@ -24,7 +24,7 @@ namespace openmc {
 
 int PLOT_LEVEL_LOWEST = -1;
 
-std::map<int, int> plot_map;
+std::unordered_map<int, int> plot_map;
 
 int n_plots;
 

@@ -70,7 +70,7 @@ struct RGBColor {
   }
 
   // Members
-  unsigned char red, green, blue;
+  uint8_t red, green, blue;
 };
   
 typedef xt::xtensor<RGBColor, 2> ImageData;

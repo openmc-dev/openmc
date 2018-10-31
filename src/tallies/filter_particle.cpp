@@ -34,6 +34,7 @@ ParticleFilter::to_statepoint(hid_t filter_group) const
 std::string
 ParticleFilter::text_label(int bin) const
 {
+  //TODO: off-by-one
   return "Particle " + std::to_string(particles_[bin-1]);
 }
 
@@ -42,6 +43,6 @@ ParticleFilter::text_label(int bin) const
 //==============================================================================
 
 extern "C" int particle_filter_particles(ParticleFilter* filt, int i)
-{return filt->particles_[i];}
+{return filt->particles_[i-1];}
 
 } // namespace openmc

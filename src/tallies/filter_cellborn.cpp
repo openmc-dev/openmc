@@ -19,6 +19,7 @@ CellbornFilter::get_all_bins(const Particle* p, int estimator,
 std::string
 CellbornFilter::text_label(int bin) const
 {
+  //TODO: off-by-one
   return "Birth Cell " + std::to_string(cells[cells_[bin-1]]->id_);
 }
 

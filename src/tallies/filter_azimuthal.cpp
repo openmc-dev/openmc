@@ -66,6 +66,7 @@ std::string
 AzimuthalFilter::text_label(int bin) const
 {
   std::stringstream out;
+  //TODO: off-by-one
   out << "Azimuthal Angle [" << bins_[bin-1] << ", " << bins_[bin] << ")";
   return out.str();
 }

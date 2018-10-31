@@ -44,6 +44,7 @@ DelayedGroupFilter::to_statepoint(hid_t filter_group) const
 std::string
 DelayedGroupFilter::text_label(int bin) const
 {
+  //TODO: off-by-one
   return "Delayed Group " + std::to_string(groups_[bin-1]);
 }
 

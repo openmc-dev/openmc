@@ -22,6 +22,7 @@ MeshSurfaceFilter::text_label(int bin) const
   int n_dim = mesh.n_dimension_;
 
   // Get flattend mesh index and surface index.
+  //TODO: off-by-one
   int i_mesh = (bin - 1) / (4 * n_dim) + 1;
   int i_surf = ((bin - 1) % (4 * n_dim)) + 1;
 

@@ -73,6 +73,7 @@ std::string
 DistribcellFilter::text_label(int bin) const
 {
   auto map = cells[cell_]->distribcell_index_;
+  //TODO: off-by-one
   auto path = distribcell_path(cell_, map, bin-1);
   return "Distributed Cell " + path;
 }

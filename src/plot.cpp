@@ -37,7 +37,7 @@ int n_plots;
 
 std::vector<Plot> plots;
 
-  const RGBColor WHITE(255,255,255);// {static_cast<unsigned char>(255), static_cast<unsigned char>(255), static_cast<unsigned char>(255)};
+const RGBColor WHITE = {255, 255, 255};
 const RGBColor NULLRGB = {0, 0, 0};
 
 //==============================================================================
@@ -140,9 +140,7 @@ void create_ppm(Plot pl)
       int id;
       p.coord[0].xyz[in_i] = xyz[in_i] + in_pixel * x;
       position_rgb(p, pl, rgb, id);
-      data(x,y)[RED] = rgb[RED];
-      data(x,y)[GREEN] = rgb[GREEN];
-      data(x,y)[BLUE] = rgb[BLUE];
+      data(x,y) = rgb;
     }
   }
 }
@@ -259,9 +257,7 @@ Plot::set_bg_color(pugi::xml_node plot_node)
       }
     }
     if (bg_rgb.size() == 3) {
-      not_found_[RED] = bg_rgb[RED];
-      not_found_[GREEN] = bg_rgb[GREEN];
-      not_found_[BLUE] = bg_rgb[BLUE];
+      not_found_ = bg_rgb;
     } else {
       std::stringstream err_msg;
       err_msg << "Bad background RGB in plot "
@@ -270,9 +266,7 @@ Plot::set_bg_color(pugi::xml_node plot_node)
     }
   } else {
     // default to a white background
-    not_found_[RED] = 255;
-    not_found_[GREEN] = 255;
-    not_found_[BLUE] = 255;
+    not_found_ = WHITE;
   }
 }
 
@@ -375,18 +369,14 @@ Plot::set_default_colors(pugi::xml_node plot_node)
     color_by_ = PlotColorBy::cells;
     colors_.resize(n_cells);
     for (int i = 0; i < n_cells; i++) {
-      colors_[i][RED] = int(prn()*255);
-      colors_[i][GREEN] = int(prn()*255);
-      colors_[i][BLUE] = int(prn()*255);
+      colors_[i] = rdm_color();
     }
 
   } else if("material" == pl_color_by) {
     color_by_ = PlotColorBy::mats;
     colors_.resize(n_materials);
     for (int i = 0; i < materials.size(); i++) {
-      colors_[i][RED] = int(prn()*255);
-      colors_[i][GREEN] = int(prn()*255);
-      colors_[i][BLUE] = int(prn()*255);
+      colors_[i] = rdm_color();
     }
   } else {
     std::stringstream err_msg;
@@ -430,9 +420,7 @@ Plot::set_user_colors(pugi::xml_node plot_node)
     if (PlotColorBy::cells == color_by_) {
       if (cell_map.find(col_id) != cell_map.end()) {
         col_id = cell_map[col_id];
-        colors_[col_id][RED] = user_rgb[RED];
-        colors_[col_id][GREEN] = user_rgb[GREEN];
-        colors_[col_id][BLUE] = user_rgb[BLUE];
+        colors_[col_id] = user_rgb;
       } else {
         std::stringstream err_msg;
         err_msg << "Could not find cell " << col_id
@@ -442,9 +430,7 @@ Plot::set_user_colors(pugi::xml_node plot_node)
     } else if (PlotColorBy::mats == color_by_) {
       if (material_map.find(col_id) != material_map.end()) {
         col_id = material_map[col_id];
-        colors_[col_id][RED] = user_rgb[RED];
-        colors_[col_id][GREEN] = user_rgb[GREEN];
-        colors_[col_id][BLUE] = user_rgb[BLUE];
+        colors_[col_id] = user_rgb;
       } else {
         std::stringstream err_msg;
         err_msg << "Could not find material " << col_id
@@ -628,13 +614,9 @@ Plot::set_mask(pugi::xml_node plot_node)
         if (std::find(iarray.begin(), iarray.end(), j) == iarray.end()) {
           if (check_for_node(mask_node, "background")) {
             std::vector<int> bg_rgb = get_node_array<int>(mask_node, "background");
-            colors_[j][RED] = bg_rgb[RED];
-            colors_[j][GREEN] = bg_rgb[GREEN];
-            colors_[j][BLUE] = bg_rgb[BLUE];
+            colors_[j] = bg_rgb;
           } else {
-            colors_[j][RED] = 255;
-            colors_[j][GREEN] = 255;
-            colors_[j][BLUE] = 255;
+            colors_[j] = WHITE;
           }
         }
       }
@@ -758,9 +740,7 @@ void output_ppm(Plot pl, const ImageData& data)
 void draw_mesh_lines(Plot pl, ImageData& data)
 {
   RGBColor rgb;
-  rgb[RED] = pl.meshlines_color_[RED];
-  rgb[GREEN] = pl.meshlines_color_[GREEN];
-  rgb[BLUE] = pl.meshlines_color_[BLUE];
+  rgb = pl.meshlines_color_;
 
   int outer, inner;
   switch(pl.basis_) {
@@ -997,6 +977,14 @@ voxel_finalize(hid_t dspace, hid_t dset, hid_t memspace)
   H5Dclose(dset);
   H5Sclose(dspace);
   H5Sclose(memspace);
+}
+
+RGBColor rdm_color() {
+  RGBColor rgb;
+  rgb[RED] = int(prn()*255);
+  rgb[GREEN] = int(prn()*255);
+  rgb[BLUE] = int(prn()*255);
+  return rgb;
 }
 
 } // namespace openmc

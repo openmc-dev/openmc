@@ -52,8 +52,8 @@ struct RGBColor {
   const unsigned char& operator[](int i) const {
     switch (i) {
       case 0: return red;
-      case 1: return blue;
-      case 2: return green;
+      case 1: return green;
+      case 2: return blue;
       default:
         throw std::out_of_range{"Index in RGBColor must be between 0 and 2."};
     }
@@ -62,8 +62,8 @@ struct RGBColor {
   unsigned char& operator[](int i) {
     switch (i) {
       case 0: return red;
-      case 1: return blue;
-      case 2: return green;
+      case 1: return green;
+      case 2: return blue;
       default:
         throw std::out_of_range{"Index in RGBColor must be between 0 and 2."};
     }
@@ -195,6 +195,10 @@ void create_ppm(Plot pl);
 //! \param[in] plot object
 void create_voxel(Plot pl);
 
+//! Create a randomly generated RGB color
+//! \return RGBColor with random value
+RGBColor rdm_color();
 
+ 
 } // namespace openmc
 #endif // OPENMC_PLOT_H

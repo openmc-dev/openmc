@@ -48,10 +48,10 @@ int openmc_plot_geometry()
        << pl.path_plot_ << "...";
     write_message(ss.str(), 5);
 
-    if (plot_type::slice == pl.type_) {
+    if (PlotType::slice == pl.type_) {
       // create 2D image
       create_ppm(pl);
-    } else if (plot_type::voxel == pl.type_) {
+    } else if (PlotType::voxel == pl.type_) {
       // create voxel file for 3D viewing
       create_voxel(pl);
     }
@@ -96,21 +96,21 @@ void create_ppm(Plot pl)
   int in_i, out_i;
   double xyz[3];
   switch(pl.basis_) {
-  case plot_basis::xy :
+  case PlotBasis::xy :
     in_i = 0;
     out_i = 1;
     xyz[0] = pl.origin_[0] - pl.width_[0] / 2.;
     xyz[1] = pl.origin_[1] + pl.width_[1] / 2.;
     xyz[2] = pl.origin_[2];
     break;
-  case plot_basis::xz :
+  case PlotBasis::xz :
     in_i = 0;
     out_i = 2;
     xyz[0] = pl.origin_[0] - pl.width_[0] / 2.;
     xyz[1] = pl.origin_[1];
     xyz[2] = pl.origin_[2] + pl.width_[1] / 2.;
     break;
-  case plot_basis::yz :
+  case PlotBasis::yz :
     in_i = 1;
     out_i = 2;
     xyz[0] = pl.origin_[0];
@@ -174,17 +174,17 @@ Plot::set_type(pugi::xml_node plot_node)
 {
   // Copy plot type
   // Default is slice
-  type_ = plot_type::slice;
+  type_ = PlotType::slice;
   // check type specified on plot node
   if (check_for_node(plot_node, "type")) {
     std::string type_str = get_node_value(plot_node, "type", true);
     // set type using node value
     if (type_str == "slice") {
-      type_ = plot_type::slice;
+      type_ = PlotType::slice;
       return;
     }
     else if (type_str == "voxel") {
-      type_ = plot_type::voxel;
+      type_ = PlotType::voxel;
       return;
     }
     // if we're here, something is wrong
@@ -207,10 +207,10 @@ Plot::set_output_path(pugi::xml_node plot_node)
   }
   // add appropriate file extension to name
   switch(type_) {
-  case plot_type::slice:
+  case PlotType::slice:
     filename << ".ppm";
     break;
-  case plot_type::voxel:
+  case PlotType::voxel:
     filename << ".h5";
     break;
   }
@@ -219,7 +219,7 @@ Plot::set_output_path(pugi::xml_node plot_node)
 
   // Copy plot pixel size
   std::vector<int> pxls;
-  if (plot_type::slice == type_) {
+  if (PlotType::slice == type_) {
     if (node_word_count(plot_node, "pixels") == 2) {
       pxls = get_node_array<int>(plot_node, "pixels");
       pixels_[0] = pxls[0];
@@ -230,7 +230,7 @@ Plot::set_output_path(pugi::xml_node plot_node)
               << id_;
       fatal_error(err_msg.str());
     }
-  } else if (plot_type::voxel == type_) {
+  } else if (PlotType::voxel == type_) {
     if (node_word_count(plot_node, "pixels") == 3) {
       pxls = get_node_array<int>(plot_node, "pixels");
       pixels_[0] = pxls[0];
@@ -251,7 +251,7 @@ Plot::set_bg_color(pugi::xml_node plot_node)
   // Copy plot background color
   std::vector<int> bg_rgb;
   if (check_for_node(plot_node, "background")) {
-    if (plot_type::voxel == type_) {
+    if (PlotType::voxel == type_) {
       if (openmc_master) {
         std::stringstream err_msg;
         err_msg << "Background color ignored in voxel plot "
@@ -282,17 +282,17 @@ void
 Plot::set_basis(pugi::xml_node plot_node)
 {
   // Copy plot basis
-  if (plot_type::slice == type_) {
+  if (PlotType::slice == type_) {
     std::string pl_basis = "xy";
     if (check_for_node(plot_node, "basis")) {
       pl_basis = get_node_value(plot_node, "basis", true);
     }
     if ("xy" == pl_basis) {
-      basis_ = plot_basis::xy;
+      basis_ = PlotBasis::xy;
     } else if ("xz" == pl_basis) {
-      basis_ = plot_basis::xz;
+      basis_ = PlotBasis::xz;
     } else if ("yz" == pl_basis) {
-      basis_ = plot_basis::yz;
+      basis_ = PlotBasis::yz;
     } else {
       std::stringstream err_msg;
       err_msg << "Unsupported plot basis '" << pl_basis
@@ -325,7 +325,7 @@ Plot::set_width(pugi::xml_node plot_node)
 {
   // Copy plotting width
   std::vector<double> pl_width;
-  if (plot_type::slice == type_) {
+  if (PlotType::slice == type_) {
     if (node_word_count(plot_node, "width") == 2) {
       pl_width = get_node_array<double>(plot_node, "width");
       width_[0] = pl_width[0];
@@ -336,7 +336,7 @@ Plot::set_width(pugi::xml_node plot_node)
               << id_;
       fatal_error(err_msg);
     }
-  } else if (plot_type::voxel == type_) {
+  } else if (PlotType::voxel == type_) {
     if (node_word_count(plot_node, "width") == 3) {
       pl_width = get_node_array<double>(plot_node, "width");
       width_[0] = pl_width[0];
@@ -376,7 +376,7 @@ Plot::set_default_colors(pugi::xml_node plot_node)
     pl_color_by = get_node_value(plot_node, "color_by", true);
   }
   if ("cell" == pl_color_by) {
-    color_by_ = plot_color_by::cells;
+    color_by_ = PlotColorBy::cells;
     colors_.resize(n_cells);
     for (int i = 0; i < n_cells; i++) {
       colors_[i][RED] = int(prn()*255);
@@ -385,7 +385,7 @@ Plot::set_default_colors(pugi::xml_node plot_node)
     }
 
   } else if("material" == pl_color_by) {
-    color_by_ = plot_color_by::mats;
+    color_by_ = PlotColorBy::mats;
     colors_.resize(n_materials);
     for (int i = 0; i < materials.size(); i++) {
       colors_[i][RED] = int(prn()*255);
@@ -410,7 +410,7 @@ Plot::set_user_colors(pugi::xml_node plot_node)
   // Copy user-specified colors
   if (color_nodes.size() != 0) {
 
-    if (plot_type::voxel == type_) {
+    if (PlotType::voxel == type_) {
       if (openmc_master) {
         std::stringstream err_msg;
         err_msg << "Color specifications ignored in voxel plot "
@@ -437,7 +437,7 @@ Plot::set_user_colors(pugi::xml_node plot_node)
         fatal_error(err_msg);
       }
       // Add RGB
-      if (plot_color_by::cells == color_by_) {
+      if (PlotColorBy::cells == color_by_) {
         std::vector<int> cell_rgb;
         if (cell_map.find(col_id) != cell_map.end()) {
           col_id = cell_map[col_id];
@@ -451,7 +451,7 @@ Plot::set_user_colors(pugi::xml_node plot_node)
                   << " specified in plot " << id_;
           fatal_error(err_msg);
         }
-      } else if (plot_color_by::mats == color_by_) {
+      } else if (PlotColorBy::mats == color_by_) {
         std::vector<int> mat_rgb;
         if (material_map.find(col_id) != material_map.end()) {
           col_id = material_map[col_id];
@@ -480,7 +480,7 @@ Plot::set_meshlines(pugi::xml_node plot_node)
   int n_meshlines = mesh_line_nodes.size();
 
   if (n_meshlines != 0) {
-    if (plot_type::voxel == type_) {
+    if (PlotType::voxel == type_) {
       std::stringstream msg;
       msg << "Meshlines ignored in voxel plot " << id_;
       warning(msg);
@@ -598,7 +598,7 @@ Plot::set_mask(pugi::xml_node plot_node)
   int n_masks = mask_nodes.size();
 
   if (n_masks > 0) {
-    if (plot_type::voxel == type_) {
+    if (PlotType::voxel == type_) {
       if (openmc_master) {
         std::stringstream wrn_msg;
         wrn_msg << "Mask ignored in voxel plot " << id_;
@@ -626,7 +626,7 @@ Plot::set_mask(pugi::xml_node plot_node)
       for (int j = 0; j < iarray.size(); j++) {
         col_id = iarray[j];
 
-        if (plot_color_by::cells == color_by_) {
+        if (PlotColorBy::cells == color_by_) {
           if (cell_map.find(col_id) != cell_map.end()) {
             iarray[j] = cell_map[col_id];
           }
@@ -636,7 +636,7 @@ Plot::set_mask(pugi::xml_node plot_node)
                     << " specified in the mask in plot " << id_;
             fatal_error(err_msg);
           }
-        } else if (plot_color_by::mats == color_by_) {
+        } else if (PlotColorBy::mats == color_by_) {
           if (material_map.find(col_id) != material_map.end()) {
             iarray[j] = material_map[col_id];
           }
@@ -714,7 +714,7 @@ void position_rgb(Particle p, Plot pl, RGBColor &rgb, int &id)
     rgb = pl.not_found_;
     id = -1;
   } else {
-    if (plot_color_by::mats == pl.color_by_) {
+    if (PlotColorBy::mats == pl.color_by_) {
       // Assign color based on material
       Cell* c = cells[p.coord[j].cell];
       if (c->type_ == FILL_UNIVERSE) {
@@ -730,7 +730,7 @@ void position_rgb(Particle p, Plot pl, RGBColor &rgb, int &id)
         id = materials[p.material - 1]->id_;
       }
 
-    } else if (plot_color_by::cells == pl.color_by_) {
+    } else if (PlotColorBy::cells == pl.color_by_) {
       // Assign color based on cell
       rgb = pl.colors_[p.coord[j].cell];
       id = cells[p.coord[j].cell]->id_;
@@ -790,15 +790,15 @@ void draw_mesh_lines(Plot pl, ImageData &data)
 
   int outer, inner;
   switch(pl.basis_) {
-  case plot_basis::xy :
+  case PlotBasis::xy :
     outer = 0;
     inner = 1;
     break;
-  case plot_basis::xz :
+  case PlotBasis::xz :
     outer = 0;
     inner = 2;
     break;
-  case plot_basis::yz :
+  case PlotBasis::yz :
     outer = 1;
     inner = 2;
     break;

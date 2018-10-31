@@ -71,9 +71,9 @@ void print_plot() {
     std::cout << "Universe depth: " << pl.level_ << std::endl;
 
     // Plot type
-    if (plot_type::slice == pl.type_) {
+    if (PlotType::slice == pl.type_) {
       std::cout << "Plot Type: Slice" << std::endl;
-    } else if (plot_type::voxel == pl.type_) {
+    } else if (PlotType::voxel == pl.type_) {
       std::cout << "Plot Type: Voxel" << std::endl;      
     }
 
@@ -82,12 +82,12 @@ void print_plot() {
               << pl.origin_[1] << " "
               << pl.origin_[2] << std::endl;
 
-    if (plot_type::slice == pl.type_) {
+    if (PlotType::slice == pl.type_) {
       std::cout << std::setprecision(4)
                 << "Width: "
                 << pl.width_[0] << " "
                 << pl.width_[1] << std::endl;
-    } else if (plot_type::voxel == pl.type_) {
+    } else if (PlotType::voxel == pl.type_) {
       std::cout << std::setprecision(4)
                 << "Width: "
                 << pl.width_[0] << " "
@@ -95,27 +95,27 @@ void print_plot() {
                 << pl.width_[2] << std::endl;
     }
 
-    if (plot_color_by::cells == pl.color_by_) {
+    if (PlotColorBy::cells == pl.color_by_) {
       std::cout << "Coloring: Cells" << std::endl;
-    } else if (plot_color_by::mats == pl.color_by_) {
+    } else if (PlotColorBy::mats == pl.color_by_) {
       std::cout << "Coloring: Materials" << std::endl;      
     }
     
-    if (plot_type::slice == pl.type_) {
+    if (PlotType::slice == pl.type_) {
       switch(pl.basis_) {
-      case plot_basis::xy:
+      case PlotBasis::xy:
         std::cout <<  "Basis: XY" << std::endl;
         break;
-      case plot_basis::xz:
+      case PlotBasis::xz:
         std::cout <<  "Basis: XZ" << std::endl;
         break;
-      case plot_basis::yz:
+      case PlotBasis::yz:
         std::cout <<  "Basis: YZ" << std::endl;
         break;
       }
       std::cout << "Pixels: " << pl.pixels_[0] << " "
                 << pl.pixels_[1] << " " << std::endl;
-    } else if (plot_type::voxel == pl.type_) {
+    } else if (PlotType::voxel == pl.type_) {
       std::cout << "Voxels: " << pl.pixels_[0] << " "
                 << pl.pixels_[1] << " "
                 << pl.pixels_[2] << std::endl;

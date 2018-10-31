@@ -39,18 +39,18 @@ typedef std::array<int, 3> RGBColor;
  
 typedef xt::xtensor<RGBColor, 2> ImageData;
 
-enum class plot_type {
+enum class PlotType {
   slice = 1,
   voxel = 2
 };
 
-enum class plot_basis {
+enum class PlotBasis {
   xy = 1,
   xz = 2,
   yz = 3
 };
 
-enum class plot_color_by {
+enum class PlotColorBy {
   cells = 1,
   mats = 2
 };
@@ -84,11 +84,11 @@ private:
   // Members
 public:
   int id_; //!< Plot ID
-  plot_type type_; //!< Plot type (Slice/Voxel)
-  plot_color_by color_by_; //!< Plot coloring (cell/material)
+  PlotType type_; //!< Plot type (Slice/Voxel)
+  PlotColorBy color_by_; //!< Plot coloring (cell/material)
   Position origin_; //!< Plot origin in geometry
   Position width_; //!< Plot width in geometry
-  plot_basis basis_; //!< Plot basis (XY/XZ/YZ)
+  PlotBasis basis_; //!< Plot basis (XY/XZ/YZ)
   int pixels_[3]; //!< Plot size in pixels
   int meshlines_width_; //!< Width of lines added to the plot
   int level_; //!< Plot universe level

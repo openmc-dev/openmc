@@ -49,10 +49,5 @@ xt::xarray<T> get_node_xarray(pugi::xml_node node, const char* name,
   return xt::adapt(v, shape);
 }
 
-std::vector<pugi::xml_node>
-get_child_nodes(pugi::xml_node node, const char* name = NULL);
-
-int node_word_count(pugi::xml_node node, const char* name);
-
 } // namespace openmc
 #endif // OPENMC_XML_INTERFACE_H

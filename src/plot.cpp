@@ -63,16 +63,11 @@ int openmc_plot_geometry()
 void
 read_plots(pugi::xml_node* plots_node)
 {
-
-  std::vector<pugi::xml_node> plot_nodes;
-  plot_nodes = get_child_nodes(*plots_node, "plot");
-
-  n_plots = plot_nodes.size();
-
-  for (int i = 0; i < plot_nodes.size(); i++) {
-    Plot pl(plot_nodes[i]);
+  n_plots = 0;
+  for (auto node : plots_node->children("plot")) {
+    Plot pl(node);
     plots.push_back(pl);
-    plot_map[pl.id_] = i;
+    plot_map[pl.id_] = n_plots++;
   }
 }
 
@@ -87,8 +82,8 @@ void create_ppm(Plot pl)
   size_t width = pl.pixels_[0];
   size_t height = pl.pixels_[1];
 
-  double in_pixel = (pl.width_[0])/double(width);
-  double out_pixel = (pl.width_[1])/double(height);
+  double in_pixel = (pl.width_[0])/static_cast<double>(width);
+  double out_pixel = (pl.width_[1])/static_cast<double>(height);
 
   ImageData data;
   data.resize({width, height});
@@ -218,10 +213,9 @@ Plot::set_output_path(pugi::xml_node plot_node)
   path_plot_ = filename.str();
 
   // Copy plot pixel size
-  std::vector<int> pxls;
+  std::vector<int> pxls = get_node_array<int>(plot_node, "pixels");
   if (PlotType::slice == type_) {
-    if (node_word_count(plot_node, "pixels") == 2) {
-      pxls = get_node_array<int>(plot_node, "pixels");
+    if (pxls.size() == 2) {
       pixels_[0] = pxls[0];
       pixels_[1] = pxls[1];
     } else {
@@ -231,8 +225,7 @@ Plot::set_output_path(pugi::xml_node plot_node)
       fatal_error(err_msg.str());
     }
   } else if (PlotType::voxel == type_) {
-    if (node_word_count(plot_node, "pixels") == 3) {
-      pxls = get_node_array<int>(plot_node, "pixels");
+    if (pxls.size() == 3) {
       pixels_[0] = pxls[0];
       pixels_[1] = pxls[1];
       pixels_[2] = pxls[2];
@@ -249,8 +242,8 @@ void
 Plot::set_bg_color(pugi::xml_node plot_node)
 {
   // Copy plot background color
-  std::vector<int> bg_rgb;
   if (check_for_node(plot_node, "background")) {
+    std::vector<int> bg_rgb = get_node_array<int>(plot_node, "background");    
     if (PlotType::voxel == type_) {
       if (openmc_master) {
         std::stringstream err_msg;
@@ -259,8 +252,7 @@ Plot::set_bg_color(pugi::xml_node plot_node)
         warning(err_msg.str());
       }
     }
-    if (node_word_count(plot_node, "background") == 3) {
-      bg_rgb = get_node_array<int>(plot_node, "background");
+    if (bg_rgb.size() == 3) {
       not_found_[RED] = bg_rgb[RED];
       not_found_[GREEN] = bg_rgb[GREEN];
       not_found_[BLUE] = bg_rgb[BLUE];
@@ -306,9 +298,8 @@ void
 Plot::set_origin(pugi::xml_node plot_node)
 {
   // Copy plotting origin
-  std::vector<double> pl_origin;
-  if (node_word_count(plot_node, "origin") == 3) {
-    pl_origin = get_node_array<double>(plot_node, "origin");
+  std::vector<double> pl_origin = get_node_array<double>(plot_node, "origin");
+  if (pl_origin.size() == 3) {
     origin_[0] = pl_origin[0];
     origin_[1] = pl_origin[1];
     origin_[2] = pl_origin[2];
@@ -324,10 +315,9 @@ void
 Plot::set_width(pugi::xml_node plot_node)
 {
   // Copy plotting width
-  std::vector<double> pl_width;
+  std::vector<double> pl_width = get_node_array<double>(plot_node, "width");
   if (PlotType::slice == type_) {
-    if (node_word_count(plot_node, "width") == 2) {
-      pl_width = get_node_array<double>(plot_node, "width");
+    if (pl_width.size() == 2) {
       width_[0] = pl_width[0];
       width_[1] = pl_width[1];
     } else {
@@ -337,7 +327,7 @@ Plot::set_width(pugi::xml_node plot_node)
       fatal_error(err_msg);
     }
   } else if (PlotType::voxel == type_) {
-    if (node_word_count(plot_node, "width") == 3) {
+    if (pl_width.size() == 3) {
       pl_width = get_node_array<double>(plot_node, "width");
       width_[0] = pl_width[0];
       width_[1] = pl_width[1];
@@ -403,92 +393,78 @@ Plot::set_default_colors(pugi::xml_node plot_node)
 void
 Plot::set_user_colors(pugi::xml_node plot_node)
 {
-  // Get the number of <color> nodes and get a list of them
-  std::vector<pugi::xml_node> color_nodes;
-  color_nodes = get_child_nodes(plot_node, "color");
-
-  // Copy user-specified colors
-  if (color_nodes.size() != 0) {
-
-    if (PlotType::voxel == type_) {
-      if (openmc_master) {
-        std::stringstream err_msg;
-        err_msg << "Color specifications ignored in voxel plot "
-                << id_;
-        warning(err_msg);
-      }
+  if (!plot_node.select_nodes("color").empty() && PlotType::voxel == type_) {
+    if (openmc_master) {
+      std::stringstream err_msg;
+      err_msg << "Color specifications ignored in voxel plot "
+              << id_;
+      warning(err_msg);
     }
-
-    for (auto cn : color_nodes) {
-      // Check and make sure 3 values are specified for RGB
-      if (node_word_count(cn, "rgb") != 3) {
-        std::stringstream err_msg;
-        err_msg << "Bad RGB in plot " << id_;
-        fatal_error(err_msg);
-      }
-      // Ensure that there is an id for this color specification
-      int col_id;
-      if (check_for_node(cn, "id")) {
-        col_id = std::stoi(get_node_value(cn, "id"));
+  }
+  
+  for (auto cn : plot_node.children("color")) {
+    // Make sure 3 values are specified for RGB
+    std::vector<int> user_rgb = get_node_array<int>(cn, "rgb");
+    if (user_rgb.size() != 3) {
+      std::stringstream err_msg;
+      err_msg << "Bad RGB in plot " << id_;
+      fatal_error(err_msg);
+    }
+    // Ensure that there is an id for this color specification
+    int col_id;
+    if (check_for_node(cn, "id")) {
+      col_id = std::stoi(get_node_value(cn, "id"));
+    } else {
+      std::stringstream err_msg;
+      err_msg << "Must specify id for color specification in plot "
+              << id_;
+      fatal_error(err_msg);
+    }
+    // Add RGB
+    if (PlotColorBy::cells == color_by_) {
+      if (cell_map.find(col_id) != cell_map.end()) {
+        col_id = cell_map[col_id];
+        colors_[col_id][RED] = user_rgb[RED];
+        colors_[col_id][GREEN] = user_rgb[GREEN];
+        colors_[col_id][BLUE] = user_rgb[BLUE];
       } else {
         std::stringstream err_msg;
-        err_msg << "Must specify id for color specification in plot "
-                << id_;
+        err_msg << "Could not find cell " << col_id
+                << " specified in plot " << id_;
         fatal_error(err_msg);
       }
-      // Add RGB
-      if (PlotColorBy::cells == color_by_) {
-        std::vector<int> cell_rgb;
-        if (cell_map.find(col_id) != cell_map.end()) {
-          col_id = cell_map[col_id];
-          cell_rgb = get_node_array<int>(cn, "rgb");
-          colors_[col_id][RED] = cell_rgb[RED];
-          colors_[col_id][GREEN] = cell_rgb[GREEN];
-          colors_[col_id][BLUE] = cell_rgb[BLUE];
-        } else {
-          std::stringstream err_msg;
-          err_msg << "Could not find cell " << col_id
-                  << " specified in plot " << id_;
-          fatal_error(err_msg);
-        }
-      } else if (PlotColorBy::mats == color_by_) {
-        std::vector<int> mat_rgb;
-        if (material_map.find(col_id) != material_map.end()) {
-          col_id = material_map[col_id];
-          mat_rgb = get_node_array<int>(cn, "rgb");
-          colors_[col_id][RED] = mat_rgb[RED];
-          colors_[col_id][GREEN] = mat_rgb[GREEN];
-          colors_[col_id][BLUE] = mat_rgb[BLUE];
-        } else {
-          std::stringstream err_msg;
-          err_msg << "Could not find material " << col_id
-                  << " specified in plot " << id_;
-          fatal_error(err_msg);
-        }
+    } else if (PlotColorBy::mats == color_by_) {
+      if (material_map.find(col_id) != material_map.end()) {
+        col_id = material_map[col_id];
+        colors_[col_id][RED] = user_rgb[RED];
+        colors_[col_id][GREEN] = user_rgb[GREEN];
+        colors_[col_id][BLUE] = user_rgb[BLUE];
+      } else {
+        std::stringstream err_msg;
+        err_msg << "Could not find material " << col_id
+                << " specified in plot " << id_;
+        fatal_error(err_msg);
       }
-    } // color node loop
-  }
+    }
+  } // color node loop
 }
 
 void
 Plot::set_meshlines(pugi::xml_node plot_node)
 {
   // Deal with meshlines
-  std::vector<pugi::xml_node> mesh_line_nodes;
-  mesh_line_nodes = get_child_nodes(plot_node, "meshlines");
+  pugi::xpath_node_set mesh_line_nodes = plot_node.select_nodes("meshlines");
 
-  int n_meshlines = mesh_line_nodes.size();
-
-  if (n_meshlines != 0) {
+  if (!mesh_line_nodes.empty()) {
     if (PlotType::voxel == type_) {
       std::stringstream msg;
       msg << "Meshlines ignored in voxel plot " << id_;
       warning(msg);
     }
 
-  if (1 == n_meshlines) {
+    if (mesh_line_nodes.size() == 1) {
       // Get first meshline node
-      pugi::xml_node meshlines_node = mesh_line_nodes[0];
+      pugi::xml_node meshlines_node = mesh_line_nodes[0].node();
 
       // Check mesh type
       std::string meshtype;
@@ -512,15 +488,14 @@ Plot::set_meshlines(pugi::xml_node plot_node)
       }
 
       // Check for color
-      std::vector<int> ml_rgb;
       if (check_for_node(meshlines_node, "color")) {
         // Check and make sure 3 values are specified for RGB
-        if (node_word_count(meshlines_node, "color") != 3) {
+        std::vector<int> ml_rgb = get_node_array<int>(meshlines_node, "color");
+        if (ml_rgb.size() != 3) {
           std::stringstream err_msg;
           err_msg << "Bad RGB for meshlines color in plot " << id_;
           fatal_error(err_msg);
         }
-        ml_rgb = get_node_array<int>(meshlines_node, "color");
         meshlines_color_[0] = ml_rgb[0];
         meshlines_color_[1] = ml_rgb[1];
         meshlines_color_[2] = ml_rgb[2];
@@ -570,10 +545,10 @@ Plot::set_meshlines(pugi::xml_node plot_node)
         int idx;
         int err = openmc_get_mesh_index(tally_mesh_id, &idx);
         if (err != 0) {
-            std::stringstream err_msg;
-            err_msg << "Could not find mesh " << tally_mesh_id
-                    << " specified in meshlines for plot " << id_;
-            fatal_error(err_msg);
+          std::stringstream err_msg;
+          err_msg << "Could not find mesh " << tally_mesh_id
+                  << " specified in meshlines for plot " << id_;
+          fatal_error(err_msg);
         }
         index_meshlines_mesh_ = idx;
       } else {
@@ -593,11 +568,9 @@ void
 Plot::set_mask(pugi::xml_node plot_node)
 {
   // Deal with masks
-  std::vector<pugi::xml_node> mask_nodes;
-  mask_nodes = get_child_nodes(plot_node, "mask");
-  int n_masks = mask_nodes.size();
-
-  if (n_masks > 0) {
+  pugi::xpath_node_set mask_nodes = plot_node.select_nodes("mask");
+  
+  if (!mask_nodes.empty()) {
     if (PlotType::voxel == type_) {
       if (openmc_master) {
         std::stringstream wrn_msg;
@@ -606,19 +579,17 @@ Plot::set_mask(pugi::xml_node plot_node)
       }
     }
 
-    if (1 == n_masks) {
+    if (mask_nodes.size() == 1) {
       // Get pointer to mask
-      pugi::xml_node mask_node = mask_nodes[0];
+      pugi::xml_node mask_node = mask_nodes[0].node();
 
       // Determine how many components there are and allocate
-      int n_comp;
-      n_comp = node_word_count(mask_node, "components");
-      if (0 == n_comp) {
+      std::vector<int> iarray = get_node_array<int>(mask_node, "components");      
+      if (iarray.size() == 0) {
         std::stringstream err_msg;
         err_msg << "Missing <components> in mask of plot " << id_;
         fatal_error(err_msg);
       }
-      std::vector<int> iarray = get_node_array<int>(mask_node, "components");
 
       // First we need to change the user-specified identifiers to indices
       // in the cell and material arrays

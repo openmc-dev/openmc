@@ -35,7 +35,7 @@ extern std::vector<Plot> plots; //!< Plot instance container
 // RGBColor holds color information for plotted objects
 //===============================================================================
 
-typedef std::array<char, 3> RGBColor;
+typedef std::array<unsigned char, 3> RGBColor;
  
 typedef xt::xtensor<RGBColor, 2> ImageData;
 

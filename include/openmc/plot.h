@@ -89,7 +89,7 @@ public:
   Position origin_; //!< Plot origin in geometry
   Position width_; //!< Plot width in geometry
   PlotBasis basis_; //!< Plot basis (XY/XZ/YZ)
-  int pixels_[3]; //!< Plot size in pixels
+  std::array<int, 3> pixels_; //!< Plot size in pixels
   int meshlines_width_; //!< Width of lines added to the plot
   int level_; //!< Plot universe level
   int index_meshlines_mesh_; //!< Index of the mesh to draw on the plot

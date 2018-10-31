@@ -684,16 +684,11 @@ void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id)
         rgb = pl.colors_[p.material - 1];
         id = materials[p.material - 1]->id_;
       }
-
     } else if (PlotColorBy::cells == pl.color_by_) {
       // Assign color based on cell
       rgb = pl.colors_[p.coord[j].cell];
       id = cells[p.coord[j].cell]->id_;
-    } else {
-      rgb = RGBColor();
-      id = -1;
     }
-
   } // endif found_cell
 }
 

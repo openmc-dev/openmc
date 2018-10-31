@@ -38,7 +38,6 @@ int n_plots;
 std::vector<Plot> plots;
 
 const RGBColor WHITE = {255, 255, 255};
-const RGBColor NULLRGB = {0, 0, 0};
 
 //==============================================================================
 // RUN_PLOT controls the logic for making one or many plots
@@ -691,7 +690,7 @@ void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id)
       rgb = pl.colors_[p.coord[j].cell];
       id = cells[p.coord[j].cell]->id_;
     } else {
-      rgb = NULLRGB;
+      rgb = RGBColor();
       id = -1;
     }
 

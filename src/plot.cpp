@@ -593,13 +593,10 @@ Plot::set_mask(pugi::xml_node plot_node)
 
       // First we need to change the user-specified identifiers to indices
       // in the cell and material arrays
-      int col_id;
-      for (int j = 0; j < iarray.size(); j++) {
-        col_id = iarray[j];
-
+      for (auto& col_id : iarray) {
         if (PlotColorBy::cells == color_by_) {
           if (cell_map.find(col_id) != cell_map.end()) {
-            iarray[j] = cell_map[col_id];
+            col_id  = cell_map[col_id];
           }
           else {
             std::stringstream err_msg;
@@ -609,7 +606,7 @@ Plot::set_mask(pugi::xml_node plot_node)
           }
         } else if (PlotColorBy::mats == color_by_) {
           if (material_map.find(col_id) != material_map.end()) {
-            iarray[j] = material_map[col_id];
+            col_id = material_map[col_id];
           }
           else {
             std::stringstream err_msg;
@@ -667,7 +664,7 @@ index_meshlines_mesh_(-1)
 //==============================================================================
 
 
-void position_rgb(Particle p, Plot pl, RGBColor &rgb, int &id)
+void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id)
 {
   p.n_coord = 1;
 
@@ -717,7 +714,7 @@ void position_rgb(Particle p, Plot pl, RGBColor &rgb, int &id)
 // OUTPUT_PPM writes out a previously generated image to a PPM file
 //==============================================================================
 
-void output_ppm(Plot pl, const ImageData &data)
+void output_ppm(Plot pl, const ImageData& data)
 {
   // Open PPM file for writing
   std::string fname = pl.path_plot_;
@@ -737,9 +734,9 @@ void output_ppm(Plot pl, const ImageData &data)
   for (int y = 0; y < pl.pixels_[1]; y++) {
     for (int x = 0; x < pl.pixels_[0]; x++) {
       RGBColor rgb = data(x,y);
-      of.write((char*)&rgb[RED], 1);
-      of.write((char*)&rgb[GREEN], 1);
-      of.write((char*)&rgb[BLUE], 1);
+      of.write(reinterpret_cast<char*>(&rgb[RED]), 1);
+      of.write(reinterpret_cast<char*>(&rgb[GREEN]), 1);
+      of.write(reinterpret_cast<char*>(&rgb[BLUE]), 1);
     }
   }
   // Close file
@@ -752,7 +749,7 @@ void output_ppm(Plot pl, const ImageData &data)
 // DRAW_MESH_LINES draws mesh line boundaries on an image
 //==============================================================================
 
-void draw_mesh_lines(Plot pl, ImageData &data)
+void draw_mesh_lines(Plot pl, ImageData& data)
 {
   RGBColor rgb;
   rgb[RED] = pl.meshlines_color_[RED];
@@ -776,9 +773,14 @@ void draw_mesh_lines(Plot pl, ImageData &data)
   }
 
   double xyz_ll_plot[3], xyz_ur_plot[3];
-  std::copy((double*)&pl.origin_, (double*)&pl.origin_ + 3, xyz_ll_plot);
-  std::copy((double*)&pl.origin_, (double*)&pl.origin_ + 3, xyz_ur_plot);
+  xyz_ll_plot[0] = pl.origin_[0];
+  xyz_ll_plot[1] = pl.origin_[1];
+  xyz_ll_plot[2] = pl.origin_[2];
 
+  xyz_ur_plot[0] = pl.origin_[0];
+  xyz_ur_plot[1] = pl.origin_[1];
+  xyz_ur_plot[2] = pl.origin_[2];
+  
   xyz_ll_plot[outer] = pl.origin_[outer] - pl.width_[0] / 2.;
   xyz_ll_plot[inner] = pl.origin_[inner] - pl.width_[1] / 2.;
   xyz_ur_plot[outer] = pl.origin_[outer] + pl.width_[0] / 2.;
@@ -789,7 +791,7 @@ void draw_mesh_lines(Plot pl, ImageData &data)
   width[1] = xyz_ur_plot[1] - xyz_ll_plot[1];
   width[2] = xyz_ur_plot[2] - xyz_ll_plot[2];
 
-  auto &m = meshes[pl.index_meshlines_mesh_];
+  auto& m = meshes[pl.index_meshlines_mesh_];
 
   int ijk_ll[3], ijk_ur[3];
   bool in_mesh;

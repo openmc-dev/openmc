@@ -106,7 +106,7 @@ public:
 //! Add mesh lines to image data of a plot object
 //! \param[in] plot object
 //! \param[out] image data associated with the plot object
-void draw_mesh_lines(Plot pl, ImageData &data);
+void draw_mesh_lines(Plot pl, ImageData& data);
 
 //! Write a ppm image to file using a plot object's image data
 //! \param[in] plot object

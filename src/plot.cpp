@@ -1,4 +1,5 @@
 #include <fstream>
+#include <sstream>
 
 #include "openmc/plot.h"
 #include "openmc/constants.h"
@@ -22,6 +23,12 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
+const char* to_char(int i) {
+    std::stringstream s;
+    s << i;
+    return s.str().c_str();
+  }
+  
 int PLOT_LEVEL_LOWEST = -1;
 
 std::unordered_map<int, int> plot_map;
@@ -30,7 +37,7 @@ int n_plots;
 
 std::vector<Plot> plots;
 
-const RGBColor WHITE = {255, 255, 255};
+const RGBColor WHITE = {static_cast<char>(255), static_cast<char>(255), static_cast<char>(255)};
 const RGBColor NULLRGB = {0, 0, 0};
 
 //==============================================================================
@@ -734,9 +741,9 @@ void output_ppm(Plot pl, const ImageData& data)
   for (int y = 0; y < pl.pixels_[1]; y++) {
     for (int x = 0; x < pl.pixels_[0]; x++) {
       RGBColor rgb = data(x,y);
-      of.write(reinterpret_cast<char*>(&rgb[RED]), 1);
-      of.write(reinterpret_cast<char*>(&rgb[GREEN]), 1);
-      of.write(reinterpret_cast<char*>(&rgb[BLUE]), 1);
+      of.write(&rgb[RED], 1);
+      of.write(&rgb[GREEN], 1);
+      of.write(&rgb[BLUE], 1);
     }
   }
   // Close file

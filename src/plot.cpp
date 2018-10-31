@@ -37,7 +37,7 @@ int n_plots;
 
 std::vector<Plot> plots;
 
-const RGBColor WHITE = {static_cast<char>(255), static_cast<char>(255), static_cast<char>(255)};
+const RGBColor WHITE {static_cast<unsigned char>(255), static_cast<unsigned char>(255), static_cast<unsigned char>(255)};
 const RGBColor NULLRGB = {0, 0, 0};
 
 //==============================================================================
@@ -740,9 +740,9 @@ void output_ppm(Plot pl, const ImageData& data)
   for (int y = 0; y < pl.pixels_[1]; y++) {
     for (int x = 0; x < pl.pixels_[0]; x++) {
       RGBColor rgb = data(x,y);
-      of.write(&rgb[RED], 1);
-      of.write(&rgb[GREEN], 1);
-      of.write(&rgb[BLUE], 1);
+      of.write(reinterpret_cast<char*>(&rgb[RED]), 1);
+      of.write(reinterpret_cast<char*>(&rgb[GREEN]), 1);
+      of.write(reinterpret_cast<char*>(&rgb[BLUE]), 1);
     }
   }
   // Close file

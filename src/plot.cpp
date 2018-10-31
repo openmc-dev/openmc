@@ -756,9 +756,9 @@ void output_ppm(Plot pl, const ImageData &data)
   of.open(fname);
 
   // Write header
-  of << "P6" << std::endl;
-  of << pl.pixels_[0] << " " << pl.pixels_[1] << std::endl;
-  of << "255" << std::endl;
+  of << "P6" << "\n";
+  of << pl.pixels_[0] << " " << pl.pixels_[1] << "\n";
+  of << "255" << "\n";
   of.close();
 
   of.open(fname, std::ios::binary | std::ios::app);
@@ -773,7 +773,7 @@ void output_ppm(Plot pl, const ImageData &data)
   }
   // Close file
   // THIS IS HERE TO MATCH FORTRAN VERSION, NOT TECHNICALLY NECESSARY
-  of << std::endl;
+  of << "\n";
   of.close();
 }
 

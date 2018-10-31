@@ -11,22 +11,15 @@
 
 #define BAR_WIDTH 72
 
-#ifdef UNIX
-int check_isatty(int fd) {
-  return isatty(fd);
-}
-#endif
-
 bool is_terminal() {
 #ifdef UNIX
-  return check_isatty(STDOUT_FILENO) != 0;
+  return isatty(STDOUT_FILENO) != 0;
 #else
   return false;
 #endif
 }
 
 ProgressBar::ProgressBar() {
-  bar = "";
   // initialize bar
   set_value(0.0);
 }

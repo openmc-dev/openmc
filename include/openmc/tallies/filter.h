@@ -13,19 +13,6 @@
 namespace openmc {
 
 //==============================================================================
-// Global variables
-//==============================================================================
-
-extern "C" int32_t n_filters;
-
-class FilterMatch;
-extern std::vector<FilterMatch> filter_matches;
-#pragma omp threadprivate(filter_matches)
-
-class Filter;
-extern std::vector<Filter*> tally_filters;
-
-//==============================================================================
 //! Stores bins and weights for filtered tally events.
 //==============================================================================
 
@@ -35,6 +22,10 @@ public:
   std::vector<int> bins_;
   std::vector<double> weights_;
 };
+
+// Without an explicit instantiation of vector<FilterMatch>, the Intel compiler
+// will complain about the threadprivate directive on filter_matches
+template class std::vector<FilterMatch>;
 
 //==============================================================================
 //! Modifies tally score events.
@@ -75,6 +66,17 @@ public:
 
   int n_bins_;
 };
+
+//==============================================================================
+// Global variables
+//==============================================================================
+
+extern "C" int32_t n_filters;
+
+extern std::vector<FilterMatch> filter_matches;
+#pragma omp threadprivate(filter_matches)
+
+extern std::vector<Filter*> tally_filters;
 
 //==============================================================================
 

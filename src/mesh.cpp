@@ -476,7 +476,7 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
       // The track exits this cell.  Determine the distance to the closest mesh
       // surface.
       xt::xtensor<double, 1> d = xt::zeros<double>({n});
-      for (int j = 0; j < n; ++j) {
+      for (j = 0; j < n; ++j) {
         if (std::fabs(u[j]) < FP_PRECISION) {
           d(j) = INFTY;
         } else if (u[j] > 0) {

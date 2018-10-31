@@ -1,7 +1,7 @@
 #ifndef OPENMC_PLOT_H
 #define OPENMC_PLOT_H
 
-#include <map>
+#include <unordered_map>
 #include <sstream>
 
 #include "xtensor/xarray.hpp"
@@ -24,7 +24,7 @@ constexpr int BLUE  = 2;
 
 extern int PLOT_LEVEL_LOWEST; //!< lower bound on plot universe level
 
-extern std::map<int, int> plot_map; //!< map of plot ids to index
+extern std::unordered_map<int, int> plot_map; //!< map of plot ids to index
 
 extern "C" int32_t n_plots; //!< number of plots in openmc run
 

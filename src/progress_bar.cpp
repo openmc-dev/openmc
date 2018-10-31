@@ -48,18 +48,19 @@ ProgressBar::set_value(double val) {
   }
 
   bar.append("% |");
-
   // remaining width of the bar
-  int remain = BAR_WIDTH - bar.size() - 2;
+  int remaining_width = BAR_WIDTH - bar.size() - 2;
   
   // set the bar width
   if (val >= 100.0) {
-    bar.append(remain, '=');
+    bar.append(remaining_width, '=');
+  } else if (val < 0.0) {
+    bar.append(remaining_width, ' ');    
   } else {
-    int width = (int)((double)remain*val/100);
+    int width = (int)((double)remaining_width*val/100);
     bar.append(width, '=');
     bar.append(1, '>');
-    bar.append(remain-width-1, ' ');
+    bar.append(remaining_width-width-1, ' ');
   }
 
   bar.append("|+");

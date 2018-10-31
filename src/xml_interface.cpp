@@ -3,7 +3,6 @@
 #include <algorithm>  // for transform
 #include <sstream>
 
-#include "openmc/string_functions.h"
 #include "openmc/error.h"
 
 
@@ -55,33 +54,6 @@ get_node_value_bool(pugi::xml_node node, const char* name)
     fatal_error(err_msg);
   }
   return false;
-}
-
-
-
-std::vector<pugi::xml_node>
-get_child_nodes(pugi::xml_node node, const char* name)
-{
-  pugi::xml_node current;
-  std::vector<pugi::xml_node> node_list;
-
-  // add all child nodes with name to vector and return
-  if (name) {
-    for (pugi::xml_node current : node.children(name)) {
-      node_list.push_back(current);
-    }
-  } else {
-    for (pugi::xml_node current : node.children()) {
-      node_list.push_back(current);
-    }
-  }
-  return node_list;
-}
-
-int node_word_count(pugi::xml_node node, const char* name)
-{
-    std::string s = get_node_value(node, name);
-    return word_count(s);
 }
 
 } // namespace openmc

@@ -183,17 +183,16 @@ Plot::set_type(pugi::xml_node plot_node)
     // set type using node value
     if (type_str == "slice") {
       type_ = PlotType::slice;
-      return;
     }
     else if (type_str == "voxel") {
       type_ = PlotType::voxel;
-      return;
-    }
+    } else {
     // if we're here, something is wrong
     std::stringstream err_msg;
     err_msg << "Unsupported plot type '" << type_str
             << "' in plot " << id_;
     fatal_error(err_msg.str());
+    }
   }
 }
 

@@ -37,7 +37,7 @@ int n_plots;
 
 std::vector<Plot> plots;
 
-const RGBColor WHITE {static_cast<unsigned char>(255), static_cast<unsigned char>(255), static_cast<unsigned char>(255)};
+  const RGBColor WHITE(255,255,255);// {static_cast<unsigned char>(255), static_cast<unsigned char>(255), static_cast<unsigned char>(255)};
 const RGBColor NULLRGB = {0, 0, 0};
 
 //==============================================================================

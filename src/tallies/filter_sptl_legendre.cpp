@@ -88,6 +88,7 @@ SpatialLegendreFilter::text_label(int bin) const
   } else {
     out << "z";
   }
+  //TODO: off-by-one
   out << " axis, P" << std::to_string(bin - 1);
   return out.str();
 }

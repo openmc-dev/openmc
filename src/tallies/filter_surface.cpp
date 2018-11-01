@@ -65,6 +65,7 @@ SurfaceFilter::to_statepoint(hid_t filter_group) const
 std::string
 SurfaceFilter::text_label(int bin) const
 {
+  //TODO: off-by-one
   return "Surface " + std::to_string(surfaces[surfaces_[bin-1]]->id_);
 }
 

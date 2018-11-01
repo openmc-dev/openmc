@@ -21,6 +21,7 @@ CellFromFilter::get_all_bins(const Particle* p, int estimator,
 std::string
 CellFromFilter::text_label(int bin) const
 {
+  //TODO: off-by-one
   return "Cell from " + std::to_string(cells[cells_[bin-1]]->id_);
 }
 

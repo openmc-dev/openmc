@@ -62,6 +62,7 @@ ZernikeFilter::text_label(int bin) const
   std::stringstream out;
   for (int n = 0; n < order_+1; n++) {
     int last = (n + 1) * (n + 2) / 2;
+    //TODO: off-by-one
     if (bin <= last) {
       int first = last - n;
       int m = -n + (bin - first) * 2;
@@ -106,6 +107,7 @@ ZernikeRadialFilter::get_all_bins(const Particle* p, int estimator,
 std::string
 ZernikeRadialFilter::text_label(int bin) const
 {
+  //TODO: off-by-one
   return "Zernike expansion, Z" + std::to_string(2*(bin-1)) + ",0";
 }
 

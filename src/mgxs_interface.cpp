@@ -99,11 +99,11 @@ void read_mg_cross_sections_header_c(hid_t file_id)
   read_attribute(file_id, "energy_groups", num_energy_groups);
 
   ensure_exists(file_id, "group structure", true);
-  read_attribute(file_id, "group structure", energy_bins);
+  read_attribute(file_id, "group structure", rev_energy_bins);
 
-  // Create reverse energy bins
-  std::copy(energy_bins.crbegin(), energy_bins.crend(),
-    std::back_inserter(rev_energy_bins));
+  // Reverse energy bins
+  std::copy(rev_energy_bins.crbegin(), rev_energy_bins.crend(),
+    std::back_inserter(energy_bins));
 
   // Create average energies
   for (int i = 0; i < energy_bins.size() - 1; ++i) {

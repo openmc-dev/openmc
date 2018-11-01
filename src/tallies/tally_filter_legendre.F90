@@ -2,7 +2,7 @@ module tally_filter_legendre
 
   use, intrinsic :: ISO_C_BINDING
 
-  use tally_filter_cpp
+  use tally_filter_header
 
   implicit none
 
@@ -15,7 +15,7 @@ module tally_filter_legendre
     end function
   end interface
 
-  type, extends(CppTallyFilter) :: LegendreFilter
+  type, extends(TallyFilter) :: LegendreFilter
   end type LegendreFilter
 
 end module tally_filter_legendre

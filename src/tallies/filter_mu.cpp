@@ -57,6 +57,7 @@ std::string
 MuFilter::text_label(int bin) const
 {
   std::stringstream out;
+  //TODO: off-by-one
   out << "Change-in-Angle [" << bins_[bin-1] << ", " << bins_[bin] << ")";
   return out.str();
 }

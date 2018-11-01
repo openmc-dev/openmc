@@ -63,6 +63,7 @@ CellFilter::to_statepoint(hid_t filter_group) const
 std::string
 CellFilter::text_label(int bin) const
 {
+  //TODO: off-by-one
   return "Cell " + std::to_string(cells[cells_[bin-1]]->id_);
 }
 

@@ -373,7 +373,6 @@ add_library(libopenmc SHARED
   src/tallies/tally_derivative_header.F90
   src/tallies/tally_filter.F90
   src/tallies/tally_filter_header.F90
-  src/tallies/tally_filter_cpp.F90
   src/tallies/tally_filter_delayedgroup.F90
   src/tallies/tally_filter_distribcell.F90
   src/tallies/tally_filter_energy.F90
@@ -436,13 +435,16 @@ add_library(libopenmc SHARED
   src/tallies/filter_cellborn.cpp
   src/tallies/filter_cellfrom.cpp
   src/tallies/filter_cell.cpp
+  src/tallies/filter_delayedgroup.cpp
   src/tallies/filter_distribcell.cpp
   src/tallies/filter_energyfunc.cpp
+  src/tallies/filter_energy.cpp
   src/tallies/filter_legendre.cpp
   src/tallies/filter_material.cpp
   src/tallies/filter_mesh.cpp
   src/tallies/filter_meshsurface.cpp
   src/tallies/filter_mu.cpp
+  src/tallies/filter_particle.cpp
   src/tallies/filter_polar.cpp
   src/tallies/filter_sph_harm.cpp
   src/tallies/filter_sptl_legendre.cpp

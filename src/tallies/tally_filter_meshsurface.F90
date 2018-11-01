@@ -2,7 +2,7 @@ module tally_filter_meshsurface
 
   use, intrinsic :: ISO_C_BINDING
 
-  use tally_filter_cpp
+  use tally_filter_header
 
   implicit none
 
@@ -16,7 +16,7 @@ module tally_filter_meshsurface
     end function
   end interface
 
-  type, extends(CppTallyFilter) :: MeshSurfaceFilter
+  type, extends(TallyFilter) :: MeshSurfaceFilter
   end type MeshSurfaceFilter
 
 end module tally_filter_meshsurface

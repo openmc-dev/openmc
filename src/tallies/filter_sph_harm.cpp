@@ -78,6 +78,7 @@ SphericalHarmonicsFilter::text_label(int bin) const
   std::stringstream out;
   for (int n = 0; n < order_ + 1; n++) {
     if (bin <= (n + 1) * (n + 1)) {
+      //TODO: off-by-one
       int m = (bin - n*n - 1) - n;
       out << "Spherical harmonic expansion, Y" << n << "," << m;
       return out.str();

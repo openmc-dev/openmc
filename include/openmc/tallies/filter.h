@@ -2,6 +2,7 @@
 #define OPENMC_TALLIES_FILTER_H
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -23,7 +24,7 @@ extern std::vector<FilterMatch> filter_matches;
 #pragma omp threadprivate(filter_matches)
 
 class Filter;
-extern std::vector<Filter*> tally_filters;
+extern std::vector<std::unique_ptr<Filter>> tally_filters;
 
 //==============================================================================
 //! Stores bins and weights for filtered tally events.

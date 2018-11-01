@@ -62,6 +62,7 @@ MaterialFilter::to_statepoint(hid_t filter_group) const
 std::string
 MaterialFilter::text_label(int bin) const
 {
+  //TODO: off-by-one
   return "Material " + std::to_string(materials[materials_[bin-1]]->id_);
 }
 

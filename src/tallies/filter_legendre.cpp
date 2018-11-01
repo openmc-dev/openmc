@@ -37,6 +37,7 @@ LegendreFilter::to_statepoint(hid_t filter_group) const
 std::string
 LegendreFilter::text_label(int bin) const
 {
+  //TODO: off-by-one
   return "Legendre expansion, P" + std::to_string(bin - 1);
 }
 

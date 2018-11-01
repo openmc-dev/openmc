@@ -16,8 +16,6 @@ namespace openmc {
 
 std::vector<int64_t> overlap_check_count;
 
-constexpr int F90_NONE {0}; //TODO: replace usage of this with C_NONE
-
 //==============================================================================
 
 extern "C" bool

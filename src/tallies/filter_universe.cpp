@@ -63,6 +63,7 @@ UniverseFilter::to_statepoint(hid_t filter_group) const
 std::string
 UniverseFilter::text_label(int bin) const
 {
+  //TODO: off-by-one
   return "Universe " + std::to_string(universes[universes_[bin-1]]->id_);
 }
 

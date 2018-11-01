@@ -2,7 +2,7 @@ module tally_filter_mesh
 
   use, intrinsic :: ISO_C_BINDING
 
-  use tally_filter_cpp
+  use tally_filter_header
 
   implicit none
 
@@ -15,7 +15,7 @@ module tally_filter_mesh
     end function
   end interface
 
-  type, public, extends(CppTallyFilter) :: MeshFilter
+  type, public, extends(TallyFilter) :: MeshFilter
   contains
     procedure :: mesh => get_mesh
   end type MeshFilter

@@ -7,7 +7,6 @@ module tally_filter
   use tally_filter_header
 
   ! Inherit other filters
-  use tally_filter_cpp
   use tally_filter_delayedgroup
   use tally_filter_distribcell
   use tally_filter_energy
@@ -170,14 +169,11 @@ contains
           call set_errmsg("Unknown filter type: " // trim(type_))
         end select
 
-        select type(filt => filters(index) % obj)
-        class is (CppTallyFilter)
-          filt % ptr = allocate_filter(type)
-          if (.not. c_associated(filt % ptr)) then
-            err = E_UNASSIGNED
-            call set_errmsg("Could not allocate C++ tally filter")
-          end if
-        end select
+        filters(index) % obj % ptr = allocate_filter(type)
+        if (.not. c_associated(filters(index) % obj % ptr)) then
+          err = E_UNASSIGNED
+          call set_errmsg("Could not allocate C++ tally filter")
+        end if
 
       end if
     else

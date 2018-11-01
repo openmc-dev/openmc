@@ -2,6 +2,7 @@
 #define OPENMC_TALLIES_FILTER_H
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -81,7 +82,7 @@ extern "C" int32_t n_filters;
 extern std::vector<FilterMatch> filter_matches;
 #pragma omp threadprivate(filter_matches)
 
-extern std::vector<Filter*> tally_filters;
+extern std::vector<std::unique_ptr<Filter>> tally_filters;
 
 //==============================================================================
 

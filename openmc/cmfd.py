@@ -2697,7 +2697,7 @@ class CMFDRun(object):
         neig_dx = neig_hxyz[boundary + (np.newaxis, 0)]
         alb = ref_albedo[boundary_grps]
         is_adj_ref = self._is_adj_ref_left
-        self._dtilde[boundary_grps + (0,)] = np.where(is_adj_ref_left,
+        self._dtilde[boundary_grps + (0,)] = np.where(is_adj_ref,
              (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dx),
              (2.0 * D * neig_D) / (neig_dx * D + dx * neig_D))
 
@@ -2809,7 +2809,7 @@ class CMFDRun(object):
         neig_dz = neig_hxyz[boundary + (np.newaxis, 2)]
         alb = ref_albedo[boundary_grps]
         is_adj_ref = self._is_adj_ref_bottom
-        self._dtilde[boundary_grps + (4,)] = np.where(is_adj_ref_bottom,
+        self._dtilde[boundary_grps + (4,)] = np.where(is_adj_ref,
              (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dz),
              (2.0 * D * neig_D) / (neig_dz * D + dz * neig_D))
 
@@ -2837,7 +2837,7 @@ class CMFDRun(object):
         neig_dz = neig_hxyz[boundary + (np.newaxis, 2)]
         alb = ref_albedo[boundary_grps]
         is_adj_ref = self._is_adj_ref_top
-        self._dtilde[boundary_grps + (5,)] = np.where(is_adj_ref_top,
+        self._dtilde[boundary_grps + (5,)] = np.where(is_adj_ref,
              (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dz),
              (2.0 * D * neig_D) / (neig_dz * D + dz * neig_D))
 

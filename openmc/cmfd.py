@@ -839,8 +839,36 @@ class CMFDRun(object):
         self._time_cmfd = None
         self._time_cmfdbuild = None
         self._time_cmfdsolve = None
+
+        # Add all index-related variables, for numpy vectorization
+        self._last_x_accel = None
+        self._first_y_accel = None
+        self._last_y_accel = None
+        self._first_z_accel = None
+        self._last_z_accel = None
+        self._notfirst_x_accel = None
+        self._notlast_x_accel = None
+        self._notfirst_y_accel = None
+        self._notlast_y_accel = None
+        self._notfirst_z_accel = None
+        self._notlast_z_accel = None
+        self._adj_reflector_left = None
+        self._adj_reflector_right = None
+        self._adj_reflector_back = None
+        self._adj_reflector_front = None
+        self._adj_reflector_bottom = None
+        self._adj_reflector_top = None
+        self._accel_idxs = None
+        self._accel_neig_left_idxs = None
+        self._accel_neig_right_idxs = None
+        self._accel_neig_back_idxs = None
+        self._accel_neig_front_idxs = None
+        self._accel_neig_bottom_idxs = None
+        self._accel_neig_top_idxs = None
+        self._loss_row = None
+        self._loss_col = None
         self._intracomm = None
-        # TODO Add all index related variables
+
 
     @property
     def cmfd_begin(self):
@@ -1021,7 +1049,8 @@ class CMFDRun(object):
         check_type('CMFD write matrices', cmfd_write_matrices, bool)
         self._cmfd_write_matrices = cmfd_write_matrices
 
-    def run(self, omp_num_threads=None, intracomm=None, vectorized=True):
+    # TEMP
+    def run(self, omp_num_threads=None, intracomm=None, vectorized=True, updated=False):
         """Public method to run OpenMC with CMFD
 
         This method is called by user to run CMFD once instance variables of
@@ -1043,6 +1072,9 @@ class CMFDRun(object):
         elif intracomm is None and have_mpi:
             self._intracomm = MPI.COMM_WORLD
 
+        # TEMP
+        self._updated = updated
+
         # Check number of OpenMP threads is valid input and initialize C API
         if omp_num_threads is not None:
             check_type('OpenMP num threads', omp_num_threads, Integral)
@@ -1056,8 +1088,11 @@ class CMFDRun(object):
         # Set up CMFD coremap
         self._set_coremap()
 
-        # TEMP
+        # Compute and store array indices used to build cross section arrays
         self._precompute_array_indices()
+
+        # Compute and store row and column indices used to build CMFD matrices
+        self._precompute_matrix_indices()
 
         # Initialize simulation
         openmc.capi.simulation_init()
@@ -1115,7 +1150,6 @@ class CMFDRun(object):
    Time in CMFD                    =  {0:.5E} seconds
      Building matrices             =  {1:.5E} seconds
      Solving matrices              =  {2:.5E} seconds
-<<<<<<< HEAD
 """.format(self._time_cmfd, self._time_cmfdbuild, self._time_cmfdsolve))
           sys.stdout.flush()
 
@@ -1304,15 +1338,20 @@ class CMFDRun(object):
 
         # Calculate dtilde
         if vectorized:
-            self._compute_dtilde_vectorized()
-            self._compute_dtilde_vectorized_updated()
+            # TEMP
+            if self._updated:
+                self._compute_dtilde_vectorized_updated()
+            else:
+                self._compute_dtilde_vectorized()
         else:
             self._compute_dtilde()
 
         # Calculate dhat
         if vectorized:
-            self._compute_dhat_vectorized()
-            self._compute_dhat_vectorized_updated()
+            if self._updated:
+                self._compute_dhat_vectorized_updated()
+            else:
+                self._compute_dhat_vectorized()
         else:
             self._compute_dhat()
 
@@ -1464,21 +1503,21 @@ class CMFDRun(object):
             phi = self._phi.reshape((n, ng))
 
             # Extract indices of coremap that are accelerated
-            idx = np.where(self._coremap != _CMFD_NOACCEL)
+            idx = self._accel_idxs
 
             # Initialize CMFD flux map that maps phi to actual spatial and
             # group indices of problem
             cmfd_flux = np.zeros((nx, ny, nz, ng))
-            cmfd_flux2 = np.zeros((nx, ny, nz, ng))
 
             # Loop over all groups and set CMFD flux based on indices of
             # coremap and values of phi
             for g in range(ng):
                 phi_g = phi[:,g]
-                cmfd_flux[idx + (np.full((n,),g),)]  = phi_g[self._coremap[idx]]
-                cmfd_flux2[idx + (g,)]  = phi_g[self._coremap[idx]]
-            print("CMFD Flux")
-            print(np.where(cmfd_flux != cmfd_flux2))
+                # TEMP
+                if self._updated:
+                    cmfd_flux[idx + (g,)]  = phi_g[self._coremap[idx]]
+                else:
+                    cmfd_flux[idx + (np.full((n,),g),)]  = phi_g[self._coremap[idx]]
 
             # Compute fission source
             cmfd_src = np.sum(self._nfissxs[:,:,:,:,:] * \
@@ -1599,21 +1638,22 @@ class CMFDRun(object):
             # Convert xyz location to the CMFD mesh index
             mesh_ijk = np.floor((source_xyz - m.lower_left) / m.width).astype(int)
 
-            # Determine which energy bin each particle's energy belongs to
-            energy_bins = np.where(source_energies < energy[0], ng - 1,
-                    np.where(source_energies > energy[-1], 0, \
-                    ng - np.digitize(source_energies, energy)))
-            # Determine which energy bin each particle's energy belongs to
-            # Separate into cases bases on where source energies lies on egrid
-            energy_bins2 = np.zeros(len(source_energies), dtype=int)
-            idx = np.where(source_energies < energy[0])
-            energy_bins2[idx] = ng - 1
-            idx = np.where(source_energies > energy[-1])
-            energy_bins2[idx] = 0
-            idx = np.where((source_energies >= energy[0]) & (source_energies <= energy[-1]))
-            energy_bins2[idx] = ng - np.digitize(source_energies, energy)
-            print("Energy Bins Reweight")
-            print(np.where(energy_bins != energy_bins2))
+            # TEMP
+            if self._updated:
+                # Determine which energy bin each particle's energy belongs to
+                # Separate into cases bases on where source energies lies on egrid
+                energy_bins = np.zeros(len(source_energies), dtype=int)
+                idx = np.where(source_energies < energy[0])
+                energy_bins[idx] = ng - 1
+                idx = np.where(source_energies > energy[-1])
+                energy_bins[idx] = 0
+                idx = np.where((source_energies >= energy[0]) & (source_energies <= energy[-1]))
+                energy_bins[idx] = ng - np.digitize(source_energies, energy)
+            else:
+                # Determine which energy bin each particle's energy belongs to
+                energy_bins = np.where(source_energies < energy[0], ng - 1,
+                        np.where(source_energies > energy[-1], 0, \
+                        ng - np.digitize(source_energies, energy)))
 
             # Determine weight factor of each particle based on its mesh index
             # and energy bin and updates its weight
@@ -1659,22 +1699,22 @@ class CMFDRun(object):
         if np.any(mesh_bins < 0) or np.any(mesh_bins >= np.prod(m.dimension)):
             outside[0] = True
 
-        # Determine which energy bin each particle's energy corresponds to
-        energy_bins = np.where(source_energies < energy[0], 0,
-                np.where(source_energies > energy[-1], ng - 1, \
-                         np.digitize(source_energies, energy) - 1))
-
-        # Determine which energy bin each particle's energy belongs to
-        # Separate into cases bases on where source energies lies on egrid
-        energy_bins2 = np.zeros(len(source_energies), dtype=int)
-        idx = np.where(source_energies < energy[0])
-        energy_bins2[idx] = 0
-        idx = np.where(source_energies > energy[-1])
-        energy_bins2[idx] = ng - 1
-        idx = np.where((source_energies >= energy[0]) & (source_energies <= energy[-1]))
-        energy_bins2[idx] = np.digitize(source_energies, energy) - 1
-        print("Energy bins bank sites")
-        print(np.where(energy_bins != energy_bins2))
+        # TEMP
+        if self._updated:
+            # Determine which energy bin each particle's energy belongs to
+            # Separate into cases bases on where source energies lies on egrid
+            energy_bins = np.zeros(len(source_energies), dtype=int)
+            idx = np.where(source_energies < energy[0])
+            energy_bins[idx] = 0
+            idx = np.where(source_energies > energy[-1])
+            energy_bins[idx] = ng - 1
+            idx = np.where((source_energies >= energy[0]) & (source_energies <= energy[-1]))
+            energy_bins[idx] = np.digitize(source_energies, energy) - 1
+        else:
+            # Determine which energy bin each particle's energy corresponds to
+            energy_bins = np.where(source_energies < energy[0], 0,
+                    np.where(source_energies > energy[-1], ng - 1, \
+                             np.digitize(source_energies, energy) - 1))
 
         # Determine all unique combinations of mesh bin and energy bin, and
         # count number of particles that belong to these combinations
@@ -1717,10 +1757,14 @@ class CMFDRun(object):
         """
         # Build loss and production matrices
         if vectorized:
-            loss = self._build_loss_matrix_vectorized(adjoint)
-            loss2 = self._build_loss_matrix_vectorized_updated(adjoint,loss)
-            prod = self._build_prod_matrix_vectorized(adjoint)
-            prod2 = self._build_prod_matrix_vectorized_updated(adjoint,prod)
+            if self._updated:
+                loss = self._build_loss_matrix_vectorized_updated(adjoint)
+            else:
+                loss = self._build_loss_matrix_vectorized(adjoint)
+            if self._updated:
+                prod = self._build_prod_matrix_vectorized_updated(adjoint)
+            else:
+                prod = self._build_prod_matrix_vectorized(adjoint)
         else:
             loss = self._build_loss_matrix(adjoint)
             prod = self._build_prod_matrix(adjoint)
@@ -1766,276 +1810,7 @@ class CMFDRun(object):
 
         return loss, prod
 
-    def _precompute_array_indices(self):
-        nx = self._indices[0]
-        ny = self._indices[1]
-        nz = self._indices[2]
-        ng = self._indices[3]
-
-        # Logical for determining whether region of interest is accelerated region
-        is_accel = self._coremap != _CMFD_NOACCEL
-        # Logical for determining whether a zero flux "albedo" b.c. should be
-        # applied
-        is_zero_flux_alb = abs(self._albedo - _ZERO_FLUX) < _TINY_BIT
-        x_inds, y_inds, z_inds = np.indices((nx, ny, nz))
-
-        # Define slice equivalent to _accel[0,:,:]
-        slice_x = x_inds[:1,:,:]
-        slice_y = y_inds[:1,:,:]
-        slice_z = z_inds[:1,:,:]
-        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
-        self._first_x_accel = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
-
-        # Define slice equivalent to is_accel[-1,:,:]
-        slice_x = x_inds[-1:,:,:]
-        slice_y = y_inds[-1:,:,:]
-        slice_z = z_inds[-1:,:,:]
-        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
-        self._last_x_accel = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
-
-        # Define slice equivalent to is_accel[:,0,:]
-        slice_x = x_inds[:,:1,:]
-        slice_y = y_inds[:,:1,:]
-        slice_z = z_inds[:,:1,:]
-        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
-        self._first_y_accel = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
-
-        # Define slice equivalent to is_accel[:,-1,:]
-        slice_x = x_inds[:,-1:,:]
-        slice_y = y_inds[:,-1:,:]
-        slice_z = z_inds[:,-1:,:]
-        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
-        self._last_y_accel = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
-
-        # Define slice equivalent to is_accel[:,:,0]
-        slice_x = x_inds[:,:,:1]
-        slice_y = y_inds[:,:,:1]
-        slice_z = z_inds[:,:,:1]
-        bndry_accel = is_accel[(x_inds, y_inds, 0)]
-        self._first_z_accel = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
-
-        # Define slice equivalent to is_accel[:,:,-1]
-        slice_x = x_inds[:,:,-1:]
-        slice_y = y_inds[:,:,-1:]
-        slice_z = z_inds[:,:,-1:]
-        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
-        self._last_z_accel = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
-
-        # Logical for whether neighboring cell to the left is reflector region
-        adj_reflector = np.roll(self._coremap, 1, axis=0) == _CMFD_NOACCEL
-
-        # Define slice equivalent to is_accel[1:,:,:] & adj_reflector[1:,:,:]
-        slice_x = x_inds[1:,:,:]
-        slice_y = y_inds[1:,:,:]
-        slice_z = z_inds[1:,:,:]
-        bndry_accel = (is_accel[(slice_x, slice_y, slice_z)] &
-            adj_reflector[(slice_x, slice_y, slice_z)])
-        self._notfirst_x_accel_adj_ref = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
-
-        # Define slice equivalent to is_accel[1:,:,:] & ~adj_reflector[1:,:,:]
-        bndry_accel = (is_accel[(slice_x, slice_y, slice_z)] &
-            ~adj_reflector[(slice_x, slice_y, slice_z)])
-        self._notfirst_x_accel_not_adj_ref = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
-
-        # Logical for whether neighboring cell to the right is reflector region
-        adj_reflector = np.roll(self._coremap, -1, axis=0) == _CMFD_NOACCEL
-
-        # Define slice equivalent to is_accel[:-1,:,:] & adj_reflector[:-1,:,:]
-        slice_x = x_inds[:-1,:,:]
-        slice_y = y_inds[:-1,:,:]
-        slice_z = z_inds[:-1,:,:]
-        bndry_accel = (is_accel[(slice_x, slice_y, slice_z)] &
-            adj_reflector[(slice_x, slice_y, slice_z)])
-        self._notlast_x_accel_adj_ref = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
-
-        # Define slice equivalent to is_accel[:-1,:,:] & ~adj_reflector[:-1,:,:]
-        bndry_accel = (is_accel[(slice_x, slice_y, slice_z)] &
-            ~adj_reflector[(slice_x, slice_y, slice_z)])
-        self._notlast_x_accel_not_adj_ref = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
-
-        # Logical for whether neighboring cell to the back is reflector region
-        adj_reflector = np.roll(self._coremap, 1, axis=1) == _CMFD_NOACCEL
-
-        # Define slice equivalent to is_accel[:,1:,:] & adj_reflector[:,1:,:]
-        slice_x = x_inds[:,1:,:]
-        slice_y = y_inds[:,1:,:]
-        slice_z = z_inds[:,1:,:]
-        bndry_accel = (is_accel[(slice_x, slice_y, slice_z)] &
-            adj_reflector[(slice_x, slice_y, slice_z)])
-        self._notfirst_y_accel_adj_ref = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
-
-        # Define slice equivalent to is_accel[:,1:,:] & ~adj_reflector[:,1:,:]
-        bndry_accel = (is_accel[(slice_x, slice_y, slice_z)] &
-            ~adj_reflector[(slice_x, slice_y, slice_z)])
-        self._notfirst_y_accel_not_adj_ref = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
-
-        # Logical for whether neighboring cell to the front is reflector region
-        adj_reflector = np.roll(self._coremap, -1, axis=1) == _CMFD_NOACCEL
-
-        # Define slice equivalent to is_accel[:,:-1,:] & adj_reflector[:,:-1,:]
-        slice_x = x_inds[:,:-1,:]
-        slice_y = y_inds[:,:-1,:]
-        slice_z = z_inds[:,:-1,:]
-        bndry_accel = (is_accel[(slice_x, slice_y, slice_z)] &
-            adj_reflector[(slice_x, slice_y, slice_z)])
-        self._notlast_y_accel_adj_ref = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
-
-        # Define slice equivalent to is_accel[:,:-1,:] & ~adj_reflector[:,:-1,:]
-        bndry_accel = (is_accel[(slice_x, slice_y, slice_z)] &
-            ~adj_reflector[(slice_x, slice_y, slice_z)])
-        self._notlast_y_accel_not_adj_ref = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
-
-        # Logical for whether neighboring cell to the bottom is reflector region
-        adj_reflector = np.roll(self._coremap, 1, axis=2) == _CMFD_NOACCEL
-
-        # Define slice equivalent to is_accel[:,:,1:] & adj_reflector[:,:,1:]
-        slice_x = x_inds[:,:,1:]
-        slice_y = y_inds[:,:,1:]
-        slice_z = z_inds[:,:,1:]
-        bndry_accel = (is_accel[(slice_x, slice_y, slice_z)] &
-            adj_reflector[(slice_x, slice_y, slice_z)])
-        self._notfirst_z_accel_adj_ref = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
-
-        # Define slice equivalent to is_accel[:,:,1:] & ~adj_reflector[:,:,1:]
-        bndry_accel = (is_accel[(slice_x, slice_y, slice_z)] &
-            ~adj_reflector[(slice_x, slice_y, slice_z)])
-        self._notfirst_z_accel_not_adj_ref = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
-
-        # Logical for whether neighboring cell to the top is reflector region
-        adj_reflector = np.roll(self._coremap, -1, axis=2) == _CMFD_NOACCEL
-
-        # Define slice equivalent to is_accel[:,:,:-1] & adj_reflector[:,:,:-1]
-        slice_x = x_inds[:,:,:-1]
-        slice_y = y_inds[:,:,:-1]
-        slice_z = z_inds[:,:,:-1]
-        bndry_accel = (is_accel[(slice_x, slice_y, slice_z)] &
-            adj_reflector[(slice_x, slice_y, slice_z)])
-        self._notlast_z_accel_adj_ref = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
-
-        # Define slice equivalent to is_accel[:,:,:-1] & ~adj_reflector[:,:,:-1]
-        bndry_accel = (is_accel[(slice_x, slice_y, slice_z)] &
-            ~adj_reflector[(slice_x, slice_y, slice_z)])
-        self._notlast_z_accel_not_adj_ref = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
-
-        # TEMP ALL ARRAY INDICES RELATED TO BUILDING MATRIX
-        # Shift coremap in all directions to determine whether leakage term
-        # should be defined for particular cell in matrix
-        coremap_shift_left = np.pad(self._coremap, ((1,0),(0,0),(0,0)),
-                mode='constant', constant_values=_CMFD_NOACCEL)[:-1,:,:]
-
-        coremap_shift_right = np.pad(self._coremap, ((0,1),(0,0),(0,0)),
-                mode='constant', constant_values=_CMFD_NOACCEL)[1:,:,:]
-
-        coremap_shift_back = np.pad(self._coremap, ((0,0),(1,0),(0,0)),
-                mode='constant', constant_values=_CMFD_NOACCEL)[:,:-1,:]
-
-        coremap_shift_front = np.pad(self._coremap, ((0,0),(0,1),(0,0)),
-                mode='constant', constant_values=_CMFD_NOACCEL)[:,1:,:]
-
-        coremap_shift_bottom = np.pad(self._coremap, ((0,0),(0,0),(1,0)),
-                mode='constant', constant_values=_CMFD_NOACCEL)[:,:,:-1]
-
-        coremap_shift_top = np.pad(self._coremap, ((0,0),(0,0),(0,1)),
-                mode='constant', constant_values=_CMFD_NOACCEL)[:,:,1:]
-
-        # Create empty row and column vectors to store for loss matrix
-        row = np.array([], dtype=int)
-        col = np.array([], dtype=int)
-
-        self._is_accel = np.where(self._coremap != _CMFD_NOACCEL)
-        self._is_accel_neig_left = np.where((self._coremap != _CMFD_NOACCEL) &
-             (coremap_shift_left != _CMFD_NOACCEL))
-        self._is_accel_neig_right = np.where((self._coremap != _CMFD_NOACCEL) &
-             (coremap_shift_right != _CMFD_NOACCEL))
-        self._is_accel_neig_back = np.where((self._coremap != _CMFD_NOACCEL) &
-             (coremap_shift_back != _CMFD_NOACCEL))
-        self._is_accel_neig_front = np.where((self._coremap != _CMFD_NOACCEL) &
-             (coremap_shift_front != _CMFD_NOACCEL))
-        self._is_accel_neig_bottom = np.where((self._coremap != _CMFD_NOACCEL) &
-             (coremap_shift_bottom != _CMFD_NOACCEL))
-        self._is_accel_neig_top = np.where((self._coremap != _CMFD_NOACCEL) &
-             (coremap_shift_top != _CMFD_NOACCEL))
-
-        for g in range(ng):
-            # Extract row and column data of regions where a cell and its
-            # neighbor to the left are both fuel regions
-            idx_x = ng * (self._coremap[self._is_accel_neig_left]) + g
-            idx_y = ng * (coremap_shift_left[self._is_accel_neig_left]) + g
-            row = np.append(row, idx_x)
-            col = np.append(col, idx_y)
-
-            # Extract row and column data of regions where a cell and its
-            # neighbor to the right are both fuel regions
-            idx_x = ng * (self._coremap[self._is_accel_neig_right]) + g
-            idx_y = ng * (coremap_shift_right[self._is_accel_neig_right]) + g
-            row = np.append(row, idx_x)
-            col = np.append(col, idx_y)
-
-            # Extract row and column data of regions where a cell and its
-            # neighbor to the back are both fuel regions
-            idx_x = ng * (self._coremap[self._is_accel_neig_back]) + g
-            idx_y = ng * (coremap_shift_back[self._is_accel_neig_back]) + g
-            row = np.append(row, idx_x)
-            col = np.append(col, idx_y)
-
-            # Extract row and column data of regions where a cell and its
-            # neighbor to the front are both fuel regions
-            idx_x = ng * (self._coremap[self._is_accel_neig_front]) + g
-            idx_y = ng * (coremap_shift_front[self._is_accel_neig_front]) + g
-            row = np.append(row, idx_x)
-            col = np.append(col, idx_y)
-
-            # Extract row and column data of regions where a cell and its
-            # neighbor to the bottom are both fuel regions
-            idx_x = ng * (self._coremap[self._is_accel_neig_bottom]) + g
-            idx_y = ng * (coremap_shift_bottom[self._is_accel_neig_bottom]) + g
-            row = np.append(row, idx_x)
-            col = np.append(col, idx_y)
-
-            # Extract row and column data of regions where a cell and its
-            # neighbor to the top are both fuel regions
-            idx_x = ng * (self._coremap[self._is_accel_neig_top]) + g
-            idx_y = ng * (coremap_shift_top[self._is_accel_neig_top]) + g
-            row = np.append(row, idx_x)
-            col = np.append(col, idx_y)
-
-            # Extract all regions where a cell is a fuel region
-            idx_x = ng * (self._coremap[self._is_accel]) + g
-            idx_y = idx_x
-            row = np.append(row, idx_x)
-            col = np.append(col, idx_y)
-
-            for h in range(ng):
-                if h != g:
-                    # Extract all regions where a cell is a fuel region
-                    idx_x = ng * (self._coremap[self._is_accel]) + g
-                    idx_y = ng * (self._coremap[self._is_accel]) + h
-                    row = np.append(row, idx_x)
-                    col = np.append(col, idx_y)
-
-        # Store row and col as rows and columns of production matrix
-        self._loss_row = row
-        self._loss_col = col
-
-        # Create empty row and column vectors to store for production matrix
-        row = np.array([], dtype=int)
-        col = np.array([], dtype=int)
-
-        for g in range(ng):
-            for h in range(ng):
-                # Extract all regions where a cell is a fuel region
-                idx_x = ng * (self._coremap[self._is_accel]) + g
-                idx_y = ng * (self._coremap[self._is_accel]) + h
-                # Store rows, cols, and data to add to CSR matrix
-                row = np.append(row, idx_x)
-                col = np.append(col, idx_y)
-
-        # Store row and col as rows and columns of production matrix
-        self._prod_row = row
-        self._prod_col = col
-
-
-    def _build_loss_matrix_vectorized_updated(self, adjoint, org_loss):
+    def _build_loss_matrix_vectorized_updated(self, adjoint):
         # Extract spatial and energy indices and define matrix dimension
         ng = self._indices[3]
         n = self._mat_dim*ng
@@ -2068,63 +1843,63 @@ class CMFDRun(object):
         for g in range(ng):
             # Define leakage terms that relate terms to their neighbors to the
             # left
-            dtilde = self._dtilde[:,:,:,g,0][self._is_accel_neig_left]
-            dhat = self._dhat[:,:,:,g,0][self._is_accel_neig_left]
-            dx = self._hxyz[:,:,:,0][self._is_accel_neig_left]
+            dtilde = self._dtilde[:,:,:,g,0][self._accel_neig_left_idxs]
+            dhat = self._dhat[:,:,:,g,0][self._accel_neig_left_idxs]
+            dx = self._hxyz[:,:,:,0][self._accel_neig_left_idxs]
             vals = (-1.0 * dtilde - dhat) / dx
             # Store data to add to CSR matrix
             data = np.append(data, vals)
 
             # Define leakage terms that relate terms to their neighbors to the
             # right
-            dtilde = self._dtilde[:,:,:,g,1][self._is_accel_neig_right]
-            dhat = self._dhat[:,:,:,g,1][self._is_accel_neig_right]
-            dx = self._hxyz[:,:,:,0][self._is_accel_neig_right]
+            dtilde = self._dtilde[:,:,:,g,1][self._accel_neig_right_idxs]
+            dhat = self._dhat[:,:,:,g,1][self._accel_neig_right_idxs]
+            dx = self._hxyz[:,:,:,0][self._accel_neig_right_idxs]
             vals = (-1.0 * dtilde + dhat) / dx
             # Store data to add to CSR matrix
             data = np.append(data, vals)
 
             # Define leakage terms that relate terms to their neighbors in the
             # back
-            dtilde = self._dtilde[:,:,:,g,2][self._is_accel_neig_back]
-            dhat = self._dhat[:,:,:,g,2][self._is_accel_neig_back]
-            dy = self._hxyz[:,:,:,1][self._is_accel_neig_back]
+            dtilde = self._dtilde[:,:,:,g,2][self._accel_neig_back_idxs]
+            dhat = self._dhat[:,:,:,g,2][self._accel_neig_back_idxs]
+            dy = self._hxyz[:,:,:,1][self._accel_neig_back_idxs]
             vals = (-1.0 * dtilde - dhat) / dy
             # Store data to add to CSR matrix
             data = np.append(data, vals)
 
             # Define leakage terms that relate terms to their neighbors in the
             # front
-            dtilde = self._dtilde[:,:,:,g,3][self._is_accel_neig_front]
-            dhat = self._dhat[:,:,:,g,3][self._is_accel_neig_front]
-            dy = self._hxyz[:,:,:,1][self._is_accel_neig_front]
+            dtilde = self._dtilde[:,:,:,g,3][self._accel_neig_front_idxs]
+            dhat = self._dhat[:,:,:,g,3][self._accel_neig_front_idxs]
+            dy = self._hxyz[:,:,:,1][self._accel_neig_front_idxs]
             vals = (-1.0 * dtilde + dhat) / dy
             # Store data to add to CSR matrix
             data = np.append(data, vals)
 
             # Define leakage terms that relate terms to their neighbors to the
             # bottom
-            dtilde = self._dtilde[:,:,:,g,4][self._is_accel_neig_bottom]
-            dhat = self._dhat[:,:,:,g,4][self._is_accel_neig_bottom]
-            dz = self._hxyz[:,:,:,2][self._is_accel_neig_bottom]
+            dtilde = self._dtilde[:,:,:,g,4][self._accel_neig_bottom_idxs]
+            dhat = self._dhat[:,:,:,g,4][self._accel_neig_bottom_idxs]
+            dz = self._hxyz[:,:,:,2][self._accel_neig_bottom_idxs]
             vals = (-1.0 * dtilde - dhat) / dz
             # Store data to add to CSR matrix
             data = np.append(data, vals)
 
             # Define leakage terms that relate terms to their neighbors to the
             # top
-            dtilde = self._dtilde[:,:,:,g,5][self._is_accel_neig_top]
-            dhat = self._dhat[:,:,:,g,5][self._is_accel_neig_top]
-            dz = self._hxyz[:,:,:,2][self._is_accel_neig_top]
+            dtilde = self._dtilde[:,:,:,g,5][self._accel_neig_top_idxs]
+            dhat = self._dhat[:,:,:,g,5][self._accel_neig_top_idxs]
+            dz = self._hxyz[:,:,:,2][self._accel_neig_top_idxs]
             vals = (-1.0 * dtilde + dhat) / dz
             # Store data to add to CSR matrix
             data = np.append(data, vals)
 
             # Define terms that relate to loss of neutrons in a cell. These
             # correspond to all the diagonal entries of the loss matrix
-            jnet_g = jnet[:,:,:,g][self._is_accel]
-            total_xs = self._totalxs[:,:,:,g][self._is_accel]
-            scatt_xs = self._scattxs[:,:,:,g,g][self._is_accel]
+            jnet_g = jnet[:,:,:,g][self._accel_idxs]
+            total_xs = self._totalxs[:,:,:,g][self._accel_idxs]
+            scatt_xs = self._scattxs[:,:,:,g,g][self._accel_idxs]
             vals = jnet_g + total_xs - scatt_xs
             # Store data to add to CSR matrix
             data = np.append(data, vals)
@@ -2136,21 +1911,19 @@ class CMFDRun(object):
                 if h != g:
                     # Get scattering macro xs, transposed
                     if adjoint:
-                        scatt_xs = self._scattxs[:,:,:,g,h][self._is_accel]
+                        scatt_xs = self._scattxs[:,:,:,g,h][self._accel_idxs]
                     # Get scattering macro xs
                     else:
-                        scatt_xs = self._scattxs[:,:,:,h,g][self._is_accel]
+                        scatt_xs = self._scattxs[:,:,:,h,g][self._accel_idxs]
                     vals = -1.0 * scatt_xs
                     # Store data to add to CSR matrix
                     data = np.append(data, vals)
 
         # Create csr matrix
         loss = sparse.csr_matrix((data, (self._loss_row, self._loss_col)), shape=(n, n))
-        print("Loss Mat")
-        print(np.where(loss.toarray() != org_loss.toarray()))
         return loss
 
-    def _build_prod_matrix_vectorized_updated(self, adjoint, org_prod):
+    def _build_prod_matrix_vectorized_updated(self, adjoint):
         # Extract spatial and energy indices and define matrix dimension
         ng = self._indices[3]
         n = self._mat_dim*ng
@@ -2161,23 +1934,17 @@ class CMFDRun(object):
         # Define terms that relate to fission production from group to group.
         for g in range(ng):
             for h in range(ng):
-                # Extract all regions where a cell is a fuel region
-                indices = np.where(self._coremap != _CMFD_NOACCEL)
-                idx_x = ng * (self._coremap[indices]) + g
-                idx_y = ng * (self._coremap[indices]) + h
                 # Get nu-fission macro xs, transposed
                 if adjoint:
-                    vals = (self._nfissxs[:, :, :, g, h])[self._is_accel]
+                    vals = (self._nfissxs[:, :, :, g, h])[self._accel_idxs]
                 # Get nu-fission macro xs
                 else:
-                    vals = (self._nfissxs[:, :, :, h, g])[self._is_accel]
+                    vals = (self._nfissxs[:, :, :, h, g])[self._accel_idxs]
                 # Store rows, cols, and data to add to CSR matrix
                 data = np.append(data, vals)
 
         # Create csr matrix
         prod = sparse.csr_matrix((data, (self._prod_row, self._prod_col)), shape=(n, n))
-        print("Prod Mat")
-        print(np.where(prod.toarray() != org_prod.toarray()))
         return prod
 
     def _execute_power_iter(self, loss, prod):
@@ -2346,7 +2113,7 @@ class CMFDRun(object):
         sections, flux, and diffusion coefficients for each mesh cell
 
         """
-        # Extract energy indices
+        # Extract spatial and energy indices
         nx = self._indices[0]
         ny = self._indices[1]
         nz = self._indices[2]
@@ -2553,7 +2320,7 @@ class CMFDRun(object):
         ng = self._indices[3]
 
         # Get number of accelerated regions
-        num_accel = np.sum(self._coremap != _CMFD_NOACCEL)
+        num_accel = self._mat_dim
 
         # Get openmc k-effective
         keff = openmc.capi.keff_temp()[0]
@@ -2596,13 +2363,250 @@ class CMFDRun(object):
             np.sum(np.multiply(self._resnb, self._resnb)) / \
             (ng * num_accel)))
 
-    def _compute_dtilde_vectorized_updated(self):
-        # Extract spatial and energy indices
+    def _precompute_array_indices(self):
+        """Computes the indices used to populate certain cross section arrays.
+        These indices are used in _compute_dtilde and _compute_dhat
+
+        """
+        # Extract spatial indices
         nx = self._indices[0]
         ny = self._indices[1]
         nz = self._indices[2]
+
+
+        # Logical for determining whether region of interest is accelerated region
+        is_accel = self._coremap != _CMFD_NOACCEL
+        # Logical for determining whether a zero flux "albedo" b.c. should be
+        # applied
+        is_zero_flux_alb = abs(self._albedo - _ZERO_FLUX) < _TINY_BIT
+        x_inds, y_inds, z_inds = np.indices((nx, ny, nz))
+
+        # Define slice equivalent to _accel[0,:,:]
+        slice_x = x_inds[:1,:,:]
+        slice_y = y_inds[:1,:,:]
+        slice_z = z_inds[:1,:,:]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._first_x_accel = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[-1,:,:]
+        slice_x = x_inds[-1:,:,:]
+        slice_y = y_inds[-1:,:,:]
+        slice_z = z_inds[-1:,:,:]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._last_x_accel = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[:,0,:]
+        slice_x = x_inds[:,:1,:]
+        slice_y = y_inds[:,:1,:]
+        slice_z = z_inds[:,:1,:]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._first_y_accel = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[:,-1,:]
+        slice_x = x_inds[:,-1:,:]
+        slice_y = y_inds[:,-1:,:]
+        slice_z = z_inds[:,-1:,:]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._last_y_accel = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[:,:,0]
+        slice_x = x_inds[:,:,:1]
+        slice_y = y_inds[:,:,:1]
+        slice_z = z_inds[:,:,:1]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._first_z_accel = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[:,:,-1]
+        slice_x = x_inds[:,:,-1:]
+        slice_y = y_inds[:,:,-1:]
+        slice_z = z_inds[:,:,-1:]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._last_z_accel = (slice_x[bndry_accel], slice_y[bndry_accel], slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[1:,:,:]
+        slice_x = x_inds[1:,:,:]
+        slice_y = y_inds[1:,:,:]
+        slice_z = z_inds[1:,:,:]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._notfirst_x_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
+            slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[:-1,:,:]
+        slice_x = x_inds[:-1,:,:]
+        slice_y = y_inds[:-1,:,:]
+        slice_z = z_inds[:-1,:,:]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._notlast_x_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
+             slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[:,1:,:]
+        slice_x = x_inds[:,1:,:]
+        slice_y = y_inds[:,1:,:]
+        slice_z = z_inds[:,1:,:]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._notfirst_y_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
+             slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[:,:-1,:]
+        slice_x = x_inds[:,:-1,:]
+        slice_y = y_inds[:,:-1,:]
+        slice_z = z_inds[:,:-1,:]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._notlast_y_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
+             slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[:,:,1:]
+        slice_x = x_inds[:,:,1:]
+        slice_y = y_inds[:,:,1:]
+        slice_z = z_inds[:,:,1:]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._notfirst_z_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
+             slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[:,:,:-1]
+        slice_x = x_inds[:,:,:-1]
+        slice_y = y_inds[:,:,:-1]
+        slice_z = z_inds[:,:,:-1]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._notlast_z_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
+             slice_z[bndry_accel])
+
+        # Store logical for whether neighboring cell is reflector region
+        # in all directions
+        self._adj_reflector_left = np.roll(self._coremap, 1, axis=0) == _CMFD_NOACCEL
+        self._adj_reflector_right = np.roll(self._coremap, -1, axis=0) == _CMFD_NOACCEL
+        self._adj_reflector_back = np.roll(self._coremap, 1, axis=1) == _CMFD_NOACCEL
+        self._adj_reflector_front = np.roll(self._coremap, -1, axis=1) == _CMFD_NOACCEL
+        self._adj_reflector_bottom = np.roll(self._coremap, 1, axis=2) == _CMFD_NOACCEL
+        self._adj_reflector_top = np.roll(self._coremap, -1, axis=2) == _CMFD_NOACCEL
+
+    def _precompute_matrix_indices(self):
+        """Computes the indices and row/column data used to populate CMFD CSR matrices.
+        These indices are used in _build_loss_matrix and _build_prod_matrix
+
+        """
+        # Extract energy group indices
         ng = self._indices[3]
-        self._dtilde2 = np.zeros((nx, ny, nz, ng, 6))
+
+        # Shift coremap in all directions to determine whether leakage term
+        # should be defined for particular cell in matrix
+        coremap_shift_left = np.pad(self._coremap, ((1,0),(0,0),(0,0)),
+                mode='constant', constant_values=_CMFD_NOACCEL)[:-1,:,:]
+
+        coremap_shift_right = np.pad(self._coremap, ((0,1),(0,0),(0,0)),
+                mode='constant', constant_values=_CMFD_NOACCEL)[1:,:,:]
+
+        coremap_shift_back = np.pad(self._coremap, ((0,0),(1,0),(0,0)),
+                mode='constant', constant_values=_CMFD_NOACCEL)[:,:-1,:]
+
+        coremap_shift_front = np.pad(self._coremap, ((0,0),(0,1),(0,0)),
+                mode='constant', constant_values=_CMFD_NOACCEL)[:,1:,:]
+
+        coremap_shift_bottom = np.pad(self._coremap, ((0,0),(0,0),(1,0)),
+                mode='constant', constant_values=_CMFD_NOACCEL)[:,:,:-1]
+
+        coremap_shift_top = np.pad(self._coremap, ((0,0),(0,0),(0,1)),
+                mode='constant', constant_values=_CMFD_NOACCEL)[:,:,1:]
+
+        # Create empty row and column vectors to store for loss matrix
+        row = np.array([], dtype=int)
+        col = np.array([], dtype=int)
+
+        # Store all indices used to populate production and loss matrix
+        self._accel_idxs = np.where(self._coremap != _CMFD_NOACCEL)
+        self._accel_neig_left_idxs = np.where((self._coremap != _CMFD_NOACCEL) &
+             (coremap_shift_left != _CMFD_NOACCEL))
+        self._accel_neig_right_idxs = np.where((self._coremap != _CMFD_NOACCEL) &
+             (coremap_shift_right != _CMFD_NOACCEL))
+        self._accel_neig_back_idxs = np.where((self._coremap != _CMFD_NOACCEL) &
+             (coremap_shift_back != _CMFD_NOACCEL))
+        self._accel_neig_front_idxs = np.where((self._coremap != _CMFD_NOACCEL) &
+             (coremap_shift_front != _CMFD_NOACCEL))
+        self._accel_neig_bottom_idxs = np.where((self._coremap != _CMFD_NOACCEL) &
+             (coremap_shift_bottom != _CMFD_NOACCEL))
+        self._accel_neig_top_idxs = np.where((self._coremap != _CMFD_NOACCEL) &
+             (coremap_shift_top != _CMFD_NOACCEL))
+
+        for g in range(ng):
+            # Extract row and column data of regions where a cell and its
+            # neighbor to the left are both fuel regions
+            idx_x = ng * (self._coremap[self._accel_neig_left_idxs]) + g
+            idx_y = ng * (coremap_shift_left[self._accel_neig_left_idxs]) + g
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+
+            # Extract row and column data of regions where a cell and its
+            # neighbor to the right are both fuel regions
+            idx_x = ng * (self._coremap[self._accel_neig_right_idxs]) + g
+            idx_y = ng * (coremap_shift_right[self._accel_neig_right_idxs]) + g
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+
+            # Extract row and column data of regions where a cell and its
+            # neighbor to the back are both fuel regions
+            idx_x = ng * (self._coremap[self._accel_neig_back_idxs]) + g
+            idx_y = ng * (coremap_shift_back[self._accel_neig_back_idxs]) + g
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+
+            # Extract row and column data of regions where a cell and its
+            # neighbor to the front are both fuel regions
+            idx_x = ng * (self._coremap[self._accel_neig_front_idxs]) + g
+            idx_y = ng * (coremap_shift_front[self._accel_neig_front_idxs]) + g
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+
+            # Extract row and column data of regions where a cell and its
+            # neighbor to the bottom are both fuel regions
+            idx_x = ng * (self._coremap[self._accel_neig_bottom_idxs]) + g
+            idx_y = ng * (coremap_shift_bottom[self._accel_neig_bottom_idxs]) + g
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+
+            # Extract row and column data of regions where a cell and its
+            # neighbor to the top are both fuel regions
+            idx_x = ng * (self._coremap[self._accel_neig_top_idxs]) + g
+            idx_y = ng * (coremap_shift_top[self._accel_neig_top_idxs]) + g
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+
+            # Extract all regions where a cell is a fuel region
+            idx_x = ng * (self._coremap[self._accel_idxs]) + g
+            idx_y = idx_x
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+
+            for h in range(ng):
+                if h != g:
+                    # Extract all regions where a cell is a fuel region
+                    idx_x = ng * (self._coremap[self._accel_idxs]) + g
+                    idx_y = ng * (self._coremap[self._accel_idxs]) + h
+                    row = np.append(row, idx_x)
+                    col = np.append(col, idx_y)
+
+        # Store row and col as rows and columns of production matrix
+        self._loss_row = row
+        self._loss_col = col
+
+        # Create empty row and column vectors to store for production matrix
+        row = np.array([], dtype=int)
+        col = np.array([], dtype=int)
+
+        for g in range(ng):
+            for h in range(ng):
+                # Extract all regions where a cell is a fuel region
+                idx_x = ng * (self._coremap[self._accel_idxs]) + g
+                idx_y = ng * (self._coremap[self._accel_idxs]) + h
+                # Store rows, cols, and data to add to CSR matrix
+                row = np.append(row, idx_x)
+                col = np.append(col, idx_y)
+
+        # Store row and col as rows and columns of production matrix
+        self._prod_row = row
+        self._prod_col = col
+
+    def _compute_dtilde_vectorized_updated(self):
+        # TODO: Update comment
 
         # Logical for determining whether a zero flux "albedo" b.c. should be
         # applied
@@ -2615,10 +2619,10 @@ class CMFDRun(object):
         D = self._diffcof[boundary_grps]
         dx = self._hxyz[boundary + (np.newaxis, 0)]
         if is_zero_flux_alb[0]:
-            self._dtilde2[boundary_grps + (0,)] = 2.0 * D / dx
+            self._dtilde[boundary_grps + (0,)] = 2.0 * D / dx
         else:
             alb = self._albedo[0]
-            self._dtilde2[boundary_grps + (0,)] = ((2.0 * D * (1.0 - alb))
+            self._dtilde[boundary_grps + (0,)] = ((2.0 * D * (1.0 - alb))
                  / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dx))
 
         # Define dtilde at right surface for all mesh cells on right boundary
@@ -2628,10 +2632,10 @@ class CMFDRun(object):
         D = self._diffcof[boundary_grps]
         dx = self._hxyz[boundary + (np.newaxis, 0)]
         if is_zero_flux_alb[1]:
-            self._dtilde2[boundary_grps + (1,)] = 2.0 * D / dx
+            self._dtilde[boundary_grps + (1,)] = 2.0 * D / dx
         else:
             alb = self._albedo[1]
-            self._dtilde2[boundary_grps + (1,)] = ((2.0 * D * (1.0 - alb))
+            self._dtilde[boundary_grps + (1,)] = ((2.0 * D * (1.0 - alb))
                  / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dx))
 
         # Define dtilde at back surface for all mesh cells on back boundary
@@ -2641,10 +2645,10 @@ class CMFDRun(object):
         D = self._diffcof[boundary_grps]
         dy = self._hxyz[boundary + (np.newaxis, 1)]
         if is_zero_flux_alb[2]:
-            self._dtilde2[boundary_grps + (2,)] = 2.0 * D / dy
+            self._dtilde[boundary_grps + (2,)] = 2.0 * D / dy
         else:
             alb = self._albedo[2]
-            self._dtilde2[boundary_grps + (2,)] = ((2.0 * D * (1.0 - alb))
+            self._dtilde[boundary_grps + (2,)] = ((2.0 * D * (1.0 - alb))
                  / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dy))
 
         # Define dtilde at front surface for all mesh cells on front boundary
@@ -2654,10 +2658,10 @@ class CMFDRun(object):
         D = self._diffcof[boundary_grps]
         dy = self._hxyz[boundary + (np.newaxis, 1)]
         if is_zero_flux_alb[3]:
-            self._dtilde2[boundary_grps + (3,)] = 2.0 * D / dy
+            self._dtilde[boundary_grps + (3,)] = 2.0 * D / dy
         else:
             alb = self._albedo[3]
-            self._dtilde2[boundary_grps + (3,)] = ((2.0 * D * (1.0 - alb))
+            self._dtilde[boundary_grps + (3,)] = ((2.0 * D * (1.0 - alb))
                  / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dy))
 
         # Define dtilde at bottom surface for all mesh cells on bottom boundary
@@ -2667,10 +2671,10 @@ class CMFDRun(object):
         D = self._diffcof[boundary_grps]
         dz = self._hxyz[boundary + (np.newaxis, 2)]
         if is_zero_flux_alb[4]:
-            self._dtilde2[boundary_grps + (4,)] = 2.0 * D / dz
+            self._dtilde[boundary_grps + (4,)] = 2.0 * D / dz
         else:
             alb = self._albedo[4]
-            self._dtilde2[boundary_grps + (4,)] = ((2.0 * D * (1.0 - alb))
+            self._dtilde[boundary_grps + (4,)] = ((2.0 * D * (1.0 - alb))
                  / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dz))
 
         # Define dtilde at top surface for all mesh cells on top boundary
@@ -2681,10 +2685,10 @@ class CMFDRun(object):
         D = self._diffcof[boundary_grps]
         dz = self._hxyz[boundary + (np.newaxis, 2)]
         if is_zero_flux_alb[5]:
-            self._dtilde2[boundary_grps + (5,)] = 2.0 * D / dz
+            self._dtilde[boundary_grps + (5,)] = 2.0 * D / dz
         else:
             alb = self._albedo[5]
-            self._dtilde2[boundary_grps + (5,)] = ((2.0 * D * (1 - alb))
+            self._dtilde[boundary_grps + (5,)] = ((2.0 * D * (1 - alb))
                  / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dz))
 
         # Define reflector albedo for all cells on the left surface, in case
@@ -2701,23 +2705,19 @@ class CMFDRun(object):
         neig_hxyz = np.roll(self._hxyz, 1, axis=0)
 
         # Define dtilde at left surface for all mesh cells not on left boundary
-        # Separate between cases where regions do and don't neighbor reflector regions
-        boundary = self._notfirst_x_accel_adj_ref
-        boundary_grps = boundary + (slice(None),)
-        D = self._diffcof[boundary_grps]
-        dx = self._hxyz[boundary + (np.newaxis, 0)]
-        alb = ref_albedo[boundary_grps]
-        self._dtilde2[boundary_grps + (0,)] = ((2.0 * D * (1.0 - alb))
-             / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dx))
-
-        boundary = self._notfirst_x_accel_not_adj_ref
+        # Dtilde is defined differently for regions that do and don't neighbor
+        # reflector regions
+        boundary = self._notfirst_x_accel
         boundary_grps = boundary + (slice(None),)
         D = self._diffcof[boundary_grps]
         dx = self._hxyz[boundary + (np.newaxis, 0)]
         neig_D = neig_dc[boundary_grps]
         neig_dx = neig_hxyz[boundary + (np.newaxis, 0)]
-        self._dtilde2[boundary_grps + (0,)] = ((2.0 * D * neig_D)
-             / (neig_dx * D + dx * neig_D))
+        alb = ref_albedo[boundary_grps]
+        is_adj_ref_left = self._adj_reflector_left[boundary + (np.newaxis,)]
+        self._dtilde[boundary_grps + (0,)] = np.where(is_adj_ref_left,
+             (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dx),
+             (2.0 * D * neig_D) / (neig_dx * D + dx * neig_D))
 
         # Define reflector albedo for all cells on the right surface, in case
         # a cell borders a reflector region on the right
@@ -2733,23 +2733,19 @@ class CMFDRun(object):
         neig_hxyz = np.roll(self._hxyz, -1, axis=0)
 
         # Define dtilde at right surface for all mesh cells not on right boundary
-        # Separate between cases where regions do and don't neighbor reflector regions
-        boundary = self._notlast_x_accel_adj_ref
-        boundary_grps = boundary + (slice(None),)
-        D = self._diffcof[boundary_grps]
-        dx = self._hxyz[boundary + (np.newaxis, 0)]
-        alb = ref_albedo[boundary_grps]
-        self._dtilde2[boundary_grps + (1,)] = ((2.0 * D * (1.0 - alb))
-             / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dx))
-
-        boundary = self._notlast_x_accel_not_adj_ref
+        # Dtilde is defined differently for regions that do and don't neighbor
+        # reflector regions
+        boundary = self._notlast_x_accel
         boundary_grps = boundary + (slice(None),)
         D = self._diffcof[boundary_grps]
         dx = self._hxyz[boundary + (np.newaxis, 0)]
         neig_D = neig_dc[boundary_grps]
         neig_dx = neig_hxyz[boundary + (np.newaxis, 0)]
-        self._dtilde2[boundary_grps + (1,)] = ((2.0 * D * neig_D)
-             / (neig_dx * D + dx * neig_D))
+        alb = ref_albedo[boundary_grps]
+        is_adj_ref_right = self._adj_reflector_right[boundary + (np.newaxis,)]
+        self._dtilde[boundary_grps + (1,)] = np.where(is_adj_ref_right,
+             (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dx),
+             (2.0 * D * neig_D) / (neig_dx * D + dx * neig_D))
 
         # Define reflector albedo for all cells on the back surface, in case
         # a cell borders a reflector region on the back
@@ -2765,23 +2761,19 @@ class CMFDRun(object):
         neig_hxyz = np.roll(self._hxyz, 1, axis=1)
 
         # Define dtilde at back surface for all mesh cells not on back boundary
-        # Separate between cases where regions do and don't neighbor reflector regions
-        boundary = self._notfirst_y_accel_adj_ref
-        boundary_grps = boundary + (slice(None),)
-        D = self._diffcof[boundary_grps]
-        dy = self._hxyz[boundary + (np.newaxis, 1)]
-        alb = ref_albedo[boundary_grps]
-        self._dtilde2[boundary_grps + (2,)] = ((2.0 * D * (1.0 - alb))
-             / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dy))
-
-        boundary = self._notfirst_y_accel_not_adj_ref
+        # Dtilde is defined differently for regions that do and don't neighbor
+        # reflector regions
+        boundary = self._notfirst_y_accel
         boundary_grps = boundary + (slice(None),)
         D = self._diffcof[boundary_grps]
         dy = self._hxyz[boundary + (np.newaxis, 1)]
         neig_D = neig_dc[boundary_grps]
         neig_dy = neig_hxyz[boundary + (np.newaxis, 1)]
-        self._dtilde2[boundary_grps + (2,)] = ((2.0 * D * neig_D)
-             / (neig_dy * D + dy * neig_D))
+        alb = ref_albedo[boundary_grps]
+        is_adj_ref_back = self._adj_reflector_back[boundary + (np.newaxis,)]
+        self._dtilde[boundary_grps + (2,)] = np.where(is_adj_ref_back,
+             (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dy),
+             (2.0 * D * neig_D) / (neig_dy * D + dy * neig_D))
 
         # Define reflector albedo for all cells on the front surface, in case
         # a cell borders a reflector region in the front
@@ -2797,23 +2789,19 @@ class CMFDRun(object):
         neig_hxyz = np.roll(self._hxyz, -1, axis=1)
 
         # Define dtilde at front surface for all mesh cells not on front boundary
-        # Separate between cases where regions do and don't neighbor reflector regions
-        boundary = self._notlast_y_accel_adj_ref
-        boundary_grps = boundary + (slice(None),)
-        D = self._diffcof[boundary_grps]
-        dy = self._hxyz[boundary + (np.newaxis, 1)]
-        alb = ref_albedo[boundary_grps]
-        self._dtilde2[boundary_grps + (3,)] = ((2.0 * D * (1.0 - alb))
-             / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dy))
-
-        boundary = self._notlast_y_accel_not_adj_ref
+        # Dtilde is defined differently for regions that do and don't neighbor
+        # reflector regions
+        boundary = self._notlast_y_accel
         boundary_grps = boundary + (slice(None),)
         D = self._diffcof[boundary_grps]
         dy = self._hxyz[boundary + (np.newaxis, 1)]
         neig_D = neig_dc[boundary_grps]
         neig_dy = neig_hxyz[boundary + (np.newaxis, 1)]
-        self._dtilde2[boundary_grps + (3,)] = ((2.0 * D * neig_D)
-             / (neig_dy * D + dy * neig_D))
+        alb = ref_albedo[boundary_grps]
+        is_adj_ref_front = self._adj_reflector_front[boundary + (np.newaxis,)]
+        self._dtilde[boundary_grps + (3,)] = np.where(is_adj_ref_front,
+             (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dy),
+             (2.0 * D * neig_D) / (neig_dy * D + dy * neig_D))
 
         # Define reflector albedo for all cells on the bottom surface, in case
         # a cell borders a reflector region on the bottom
@@ -2829,23 +2817,19 @@ class CMFDRun(object):
         neig_hxyz = np.roll(self._hxyz, 1, axis=2)
 
         # Define dtilde at bottom surface for all mesh cells not on bottom boundary
-        # Separate between cases where regions do and don't neighbor reflector regions
-        boundary = self._notfirst_z_accel_adj_ref
-        boundary_grps = boundary + (slice(None),)
-        D = self._diffcof[boundary_grps]
-        dz = self._hxyz[boundary + (np.newaxis, 2)]
-        alb = ref_albedo[boundary_grps]
-        self._dtilde2[boundary_grps + (4,)] = ((2.0 * D * (1.0 - alb))
-             / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dz))
-
-        boundary = self._notfirst_z_accel_not_adj_ref
+        # Dtilde is defined differently for regions that do and don't neighbor
+        # reflector regions
+        boundary = self._notfirst_z_accel
         boundary_grps = boundary + (slice(None),)
         D = self._diffcof[boundary_grps]
         dz = self._hxyz[boundary + (np.newaxis, 2)]
         neig_D = neig_dc[boundary_grps]
         neig_dz = neig_hxyz[boundary + (np.newaxis, 2)]
-        self._dtilde2[boundary_grps + (4,)] = ((2.0 * D * neig_D)
-             / (neig_dz * D + dz * neig_D))
+        alb = ref_albedo[boundary_grps]
+        is_adj_ref_bottom = self._adj_reflector_bottom[boundary + (np.newaxis,)]
+        self._dtilde[boundary_grps + (4,)] = np.where(is_adj_ref_bottom,
+             (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dz),
+             (2.0 * D * neig_D) / (neig_dz * D + dz * neig_D))
 
         # Define reflector albedo for all cells on the top surface, in case
         # a cell borders a reflector region on the top
@@ -2861,31 +2845,22 @@ class CMFDRun(object):
         neig_hxyz = np.roll(self._hxyz, -1, axis=2)
 
         # Define dtilde at top surface for all mesh cells not on top boundary
-        # Separate between cases where regions do and don't neighbor reflector regions
-        boundary = self._notlast_z_accel_adj_ref
-        boundary_grps = boundary + (slice(None),)
-        D = self._diffcof[boundary_grps]
-        dz = self._hxyz[boundary + (np.newaxis, 2)]
-        alb = ref_albedo[boundary_grps]
-        self._dtilde2[boundary_grps + (5,)] = ((2.0 * D * (1.0 - alb))
-             / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dz))
-
-        boundary = self._notlast_z_accel_not_adj_ref
+        # Dtilde is defined differently for regions that do and don't neighbor
+        # reflector regions
+        boundary = self._notlast_z_accel
         boundary_grps = boundary + (slice(None),)
         D = self._diffcof[boundary_grps]
         dz = self._hxyz[boundary + (np.newaxis, 2)]
         neig_D = neig_dc[boundary_grps]
         neig_dz = neig_hxyz[boundary + (np.newaxis, 2)]
-        self._dtilde2[boundary_grps + (5,)] = ((2.0 * D * neig_D)
-             / (neig_dz * D + dz * neig_D))
+        alb = ref_albedo[boundary_grps]
+        is_adj_ref_top = self._adj_reflector_top[boundary + (np.newaxis,)]
+        self._dtilde[boundary_grps + (5,)] = np.where(is_adj_ref_top,
+             (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dz),
+             (2.0 * D * neig_D) / (neig_dz * D + dz * neig_D))
 
     def _compute_dhat_vectorized_updated(self):
-        nx = self._indices[0]
-        ny = self._indices[1]
-        nz = self._indices[2]
-        ng = self._indices[3]
-        self._dhat2 = np.zeros((nx, ny, nz, ng, 6))
-
+        #TODO update comment
         # Define current in each direction
         current_in_left = self._current[:,:,:,_CURRENTS['in_left'],:]
         current_out_left = self._current[:,:,:,_CURRENTS['out_left'],:]
@@ -2924,7 +2899,7 @@ class CMFDRun(object):
         net_current = net_current_left[boundary_grps]
         dtilde = self._dtilde[boundary + (slice(None), 0)]
         flux = cell_flux[boundary_grps]
-        self._dhat2[boundary_grps + (0,)] = (net_current + dtilde * flux) / flux
+        self._dhat[boundary_grps + (0,)] = (net_current + dtilde * flux) / flux
 
         # Define dhat at right surface for all mesh cells on right boundary
         boundary = self._last_x_accel
@@ -2932,7 +2907,7 @@ class CMFDRun(object):
         net_current = net_current_right[boundary_grps]
         dtilde = self._dtilde[boundary + (slice(None), 1)]
         flux = cell_flux[boundary_grps]
-        self._dhat2[boundary_grps + (1,)] = (net_current - dtilde * flux) / flux
+        self._dhat[boundary_grps + (1,)] = (net_current - dtilde * flux) / flux
 
         # Define dhat at back surface for all mesh cells on back boundary
         boundary = self._first_y_accel
@@ -2940,7 +2915,7 @@ class CMFDRun(object):
         net_current = net_current_back[boundary_grps]
         dtilde = self._dtilde[boundary + (slice(None), 2)]
         flux = cell_flux[boundary_grps]
-        self._dhat2[boundary_grps + (2,)] = (net_current + dtilde * flux) / flux
+        self._dhat[boundary_grps + (2,)] = (net_current + dtilde * flux) / flux
 
         # Define dhat at front surface for all mesh cells on front boundary
         boundary = self._last_y_accel
@@ -2948,7 +2923,7 @@ class CMFDRun(object):
         net_current = net_current_front[boundary_grps]
         dtilde = self._dtilde[boundary + (slice(None), 3)]
         flux = cell_flux[boundary_grps]
-        self._dhat2[boundary_grps + (3,)] = (net_current - dtilde * flux) / flux
+        self._dhat[boundary_grps + (3,)] = (net_current - dtilde * flux) / flux
 
         # Define dhat at bottom surface for all mesh cells on bottom boundary
         boundary = self._first_z_accel
@@ -2956,7 +2931,7 @@ class CMFDRun(object):
         net_current = net_current_bottom[boundary_grps]
         dtilde = self._dtilde[boundary + (slice(None), 4)]
         flux = cell_flux[boundary_grps]
-        self._dhat2[boundary_grps + (4,)] = (net_current + dtilde * flux) / flux
+        self._dhat[boundary_grps + (4,)] = (net_current + dtilde * flux) / flux
 
         # Define dhat at top surface for all mesh cells on top boundary
         boundary = self._last_z_accel
@@ -2964,135 +2939,109 @@ class CMFDRun(object):
         net_current = net_current_top[boundary_grps]
         dtilde = self._dtilde[boundary + (slice(None), 5)]
         flux = cell_flux[boundary_grps]
-        self._dhat2[boundary_grps + (5,)] = (net_current - dtilde * flux) / flux
+        self._dhat[boundary_grps + (5,)] = (net_current - dtilde * flux) / flux
 
         # Cell flux of neighbor to left
         neig_flux = np.roll(self._flux, 1, axis=0) / dxdydz
 
         # Define dhat at left surface for all mesh cells not on left boundary
-        # Separate between cases where regions do and don't neighbor reflector regions
-        boundary = self._notfirst_x_accel_adj_ref
+        # Dhat is defined differently for regions that do and don't neighbor
+        # reflector regions
+        boundary = self._notfirst_x_accel
         boundary_grps = boundary + (slice(None),)
         net_current = net_current_left[boundary_grps]
-        dtilde = self._dtilde[boundary + (slice(None), 0)]
-        flux = cell_flux[boundary_grps]
-        self._dhat2[boundary_grps + (0,)] = (net_current + dtilde * flux) / flux
-
-        boundary = self._notfirst_x_accel_not_adj_ref
-        boundary_grps = boundary + (slice(None),)
-        net_current = net_current_left[boundary_grps]
-        dtilde = self._dtilde[boundary + (slice(None), 0)]
+        dtilde = self._dtilde[boundary_grps + (0,)]
         flux = cell_flux[boundary_grps]
         flux_left = neig_flux[boundary_grps]
-        self._dhat2[boundary_grps + (0,)] = ((net_current - dtilde * (flux_left - flux))
-             / (flux_left + flux))
+        is_adj_ref_left = self._adj_reflector_left[boundary + (np.newaxis,)]
+        self._dhat[boundary_grps + (0,)] = np.where(is_adj_ref_left,
+             (net_current + dtilde * flux) / flux,
+             (net_current - dtilde * (flux_left - flux)) / (flux_left + flux))
 
         # Cell flux of neighbor to right
         neig_flux = np.roll(self._flux, -1, axis=0) / dxdydz
 
         # Define dhat at right surface for all mesh cells not on right boundary
-        # Separate between cases where regions do and don't neighbor reflector regions
-        boundary = self._notlast_x_accel_adj_ref
+        # Dhat is defined differently for regions that do and don't neighbor
+        # reflector regions
+        boundary = self._notlast_x_accel
         boundary_grps = boundary + (slice(None),)
         net_current = net_current_right[boundary_grps]
-        dtilde = self._dtilde[boundary + (slice(None), 1)]
-        flux = cell_flux[boundary_grps]
-        self._dhat2[boundary_grps + (1,)] = (net_current - dtilde * flux) / flux
-
-        boundary = self._notlast_x_accel_not_adj_ref
-        boundary_grps = boundary + (slice(None),)
-        net_current = net_current_right[boundary_grps]
-        dtilde = self._dtilde[boundary + (slice(None), 1)]
+        dtilde = self._dtilde[boundary_grps + (1,)]
         flux = cell_flux[boundary_grps]
         flux_right = neig_flux[boundary_grps]
-        self._dhat2[boundary_grps + (1,)] = ((net_current + dtilde * (flux_right - flux))
-             / (flux_right + flux))
+        is_adj_ref_right = self._adj_reflector_right[boundary + (np.newaxis,)]
+        self._dhat[boundary_grps + (1,)] = np.where(is_adj_ref_right,
+             (net_current - dtilde * flux) / flux,
+             (net_current + dtilde * (flux_right - flux)) / (flux_right + flux))
 
         # Cell flux of neighbor to back
         neig_flux = np.roll(self._flux, 1, axis=1) / dxdydz
 
         # Define dhat at back surface for all mesh cells not on back boundary
-        # Separate between cases where regions do and don't neighbor reflector regions
-        boundary = self._notfirst_y_accel_adj_ref
+        # Dhat is defined differently for regions that do and don't neighbor
+        # reflector regions
+        boundary = self._notfirst_y_accel
         boundary_grps = boundary + (slice(None),)
         net_current = net_current_back[boundary_grps]
-        dtilde = self._dtilde[boundary + (slice(None), 2)]
-        flux = cell_flux[boundary_grps]
-        self._dhat2[boundary_grps + (2,)] = (net_current + dtilde * flux) / flux
-
-        boundary = self._notfirst_y_accel_not_adj_ref
-        boundary_grps = boundary + (slice(None),)
-        net_current = net_current_back[boundary_grps]
-        dtilde = self._dtilde[boundary + (slice(None), 2)]
+        dtilde = self._dtilde[boundary_grps + (2,)]
         flux = cell_flux[boundary_grps]
         flux_back = neig_flux[boundary_grps]
-        self._dhat2[boundary_grps + (2,)] = ((net_current - dtilde * (flux_back - flux))
-             / (flux_back + flux))
+        is_adj_ref_back = self._adj_reflector_back[boundary + (np.newaxis,)]
+        self._dhat[boundary_grps + (2,)] = np.where(is_adj_ref_back,
+             (net_current + dtilde * flux) / flux,
+             (net_current - dtilde * (flux_back - flux)) / (flux_back + flux))
 
         # Cell flux of neighbor to front
         neig_flux = np.roll(self._flux, -1, axis=1) / dxdydz
 
         # Define dhat at front surface for all mesh cells not on front boundary
-        # Separate between cases where regions do and don't neighbor reflector regions
-        boundary = self._notlast_y_accel_adj_ref
+        # Dhat is defined differently for regions that do and don't neighbor
+        # reflector regions
+        boundary = self._notlast_y_accel
         boundary_grps = boundary + (slice(None),)
         net_current = net_current_front[boundary_grps]
-        dtilde = self._dtilde[boundary + (slice(None), 3)]
-        flux = cell_flux[boundary_grps]
-        self._dhat2[boundary_grps + (3,)] = (net_current - dtilde * flux) / flux
-
-        boundary = self._notlast_y_accel_not_adj_ref
-        boundary_grps = boundary + (slice(None),)
-        net_current = net_current_front[boundary_grps]
-        dtilde = self._dtilde[boundary + (slice(None), 3)]
+        dtilde = self._dtilde[boundary_grps + (3,)]
         flux = cell_flux[boundary_grps]
         flux_front = neig_flux[boundary_grps]
-        self._dhat2[boundary_grps + (3,)] = ((net_current + dtilde * (flux_front - flux))
-             / (flux_front + flux))
+        is_adj_ref_front = self._adj_reflector_front[boundary + (np.newaxis,)]
+        self._dhat[boundary_grps + (3,)] = np.where(is_adj_ref_front,
+             (net_current - dtilde * flux) / flux,
+             (net_current + dtilde * (flux_front - flux)) / (flux_front + flux))
 
         # Cell flux of neighbor to bottom
         neig_flux = np.roll(self._flux, 1, axis=2) / dxdydz
 
         # Define dhat at bottom surface for all mesh cells not on bottom boundary
-        # Separate between cases where regions do and don't neighbor reflector regions
-        boundary = self._notfirst_z_accel_adj_ref
+        # Dhat is defined differently for regions that do and don't neighbor
+        # reflector regions
+        boundary = self._notfirst_z_accel
         boundary_grps = boundary + (slice(None),)
         net_current = net_current_bottom[boundary_grps]
-        dtilde = self._dtilde[boundary + (slice(None), 4)]
-        flux = cell_flux[boundary_grps]
-        self._dhat2[boundary_grps + (4,)] = (net_current + dtilde * flux) / flux
-
-        boundary = self._notfirst_z_accel_not_adj_ref
-        boundary_grps = boundary + (slice(None),)
-        net_current = net_current_bottom[boundary_grps]
-        dtilde = self._dtilde[boundary + (slice(None), 4)]
+        dtilde = self._dtilde[boundary_grps + (4,)]
         flux = cell_flux[boundary_grps]
         flux_bottom = neig_flux[boundary_grps]
-        self._dhat2[boundary_grps + (4,)] = ((net_current - dtilde * (flux_bottom - flux))
-             / (flux_bottom + flux))
+        is_adj_ref_bottom = self._adj_reflector_bottom[boundary + (np.newaxis,)]
+        self._dhat[boundary_grps + (4,)] = np.where(is_adj_ref_bottom,
+             (net_current + dtilde * flux) / flux,
+             (net_current - dtilde * (flux_bottom - flux)) / (flux_bottom + flux))
 
         # Cell flux of neighbor to top
         neig_flux = np.roll(self._flux, -1, axis=2) / dxdydz
 
         # Define dhat at top surface for all mesh cells not on top boundary
-        # Separate between cases where regions do and don't neighbor reflector regions
-        boundary = self._notlast_z_accel_adj_ref
+        # Dhat is defined differently for regions that do and don't neighbor
+        # reflector regions
+        boundary = self._notlast_z_accel
         boundary_grps = boundary + (slice(None),)
         net_current = net_current_top[boundary_grps]
-        dtilde = self._dtilde[boundary + (slice(None), 5)]
-        flux = cell_flux[boundary_grps]
-        self._dhat2[boundary_grps + (5,)] = (net_current - dtilde * flux) / flux
-
-        boundary = self._notlast_z_accel_not_adj_ref
-        boundary_grps = boundary + (slice(None),)
-        net_current = net_current_top[boundary_grps]
-        dtilde = self._dtilde[boundary + (slice(None), 5)]
+        dtilde = self._dtilde[boundary_grps + (5,)]
         flux = cell_flux[boundary_grps]
         flux_top = neig_flux[boundary_grps]
-        self._dhat2[boundary_grps + (5,)] = ((net_current + dtilde * (flux_top - flux))
-             / (flux_top + flux))
-        print("Dhat")
-        print(np.where(self._dhat2 != self._dhat))
+        is_adj_ref_top = self._adj_reflector_top[boundary + (np.newaxis,)]
+        self._dhat[boundary_grps + (5,)] = np.where(is_adj_ref_top,
+             (net_current - dtilde * flux) / flux,
+             (net_current + dtilde * (flux_top - flux)) / (flux_top + flux))
 
     def _create_cmfd_tally(self):
         """Creates all tallies in-memory that are used to solve CMFD problem"""

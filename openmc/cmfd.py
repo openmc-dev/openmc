@@ -2453,12 +2453,23 @@ class CMFDRun(object):
 
         # Store logical for whether neighboring cell is reflector region
         # in all directions
-        self._adj_reflector_left = np.roll(self._coremap, 1, axis=0) == _CMFD_NOACCEL
-        self._adj_reflector_right = np.roll(self._coremap, -1, axis=0) == _CMFD_NOACCEL
-        self._adj_reflector_back = np.roll(self._coremap, 1, axis=1) == _CMFD_NOACCEL
-        self._adj_reflector_front = np.roll(self._coremap, -1, axis=1) == _CMFD_NOACCEL
-        self._adj_reflector_bottom = np.roll(self._coremap, 1, axis=2) == _CMFD_NOACCEL
-        self._adj_reflector_top = np.roll(self._coremap, -1, axis=2) == _CMFD_NOACCEL
+        adj_reflector_left = np.roll(self._coremap, 1, axis=0) == _CMFD_NOACCEL
+        self._is_adj_ref_left = adj_reflector_left[self._notfirst_x_accel + (np.newaxis,)]
+
+        adj_reflector_right = np.roll(self._coremap, -1, axis=0) == _CMFD_NOACCEL
+        self._is_adj_ref_right = adj_reflector_right[self._notlast_x_accel + (np.newaxis,)]
+
+        adj_reflector_back = np.roll(self._coremap, 1, axis=1) == _CMFD_NOACCEL
+        self._is_adj_ref_back = adj_reflector_back[self._notfirst_y_accel + (np.newaxis,)]
+
+        adj_reflector_front = np.roll(self._coremap, -1, axis=1) == _CMFD_NOACCEL
+        self._is_adj_ref_front = adj_reflector_front[self._notlast_y_accel + (np.newaxis,)]
+
+        adj_reflector_bottom = np.roll(self._coremap, 1, axis=2) == _CMFD_NOACCEL
+        self._is_adj_ref_bottom = adj_reflector_bottom[self._notfirst_z_accel + (np.newaxis,)]
+
+        adj_reflector_top = np.roll(self._coremap, -1, axis=2) == _CMFD_NOACCEL
+        self._is_adj_ref_top = adj_reflector_top[self._notlast_z_accel + (np.newaxis,)]
 
     def _precompute_matrix_indices(self):
         """Computes the indices and row/column data used to populate CMFD CSR matrices.
@@ -2586,8 +2597,14 @@ class CMFDRun(object):
         self._prod_col = col
 
     def _compute_dtilde_vectorized(self):
-        # TODO: Update comment
+        """Computes the diffusion coupling coefficient using a vectorized numpy
+        approach. Aggregate values for the dtilde multidimensional array are
+        populated by first defining values on the problem boundary, and then for
+        all other regions. For indices not lying on a boundary, dtilde values
+        are distinguished between regions that neighbor a reflector region and
+        regions that don't neighbor a reflector
 
+        """
         # Logical for determining whether a zero flux "albedo" b.c. should be
         # applied
         is_zero_flux_alb = abs(self._albedo - _ZERO_FLUX) < _TINY_BIT
@@ -2694,7 +2711,7 @@ class CMFDRun(object):
         neig_D = neig_dc[boundary_grps]
         neig_dx = neig_hxyz[boundary + (np.newaxis, 0)]
         alb = ref_albedo[boundary_grps]
-        is_adj_ref_left = self._adj_reflector_left[boundary + (np.newaxis,)]
+        is_adj_ref = self._is_adj_ref_left
         self._dtilde[boundary_grps + (0,)] = np.where(is_adj_ref_left,
              (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dx),
              (2.0 * D * neig_D) / (neig_dx * D + dx * neig_D))
@@ -2722,8 +2739,8 @@ class CMFDRun(object):
         neig_D = neig_dc[boundary_grps]
         neig_dx = neig_hxyz[boundary + (np.newaxis, 0)]
         alb = ref_albedo[boundary_grps]
-        is_adj_ref_right = self._adj_reflector_right[boundary + (np.newaxis,)]
-        self._dtilde[boundary_grps + (1,)] = np.where(is_adj_ref_right,
+        is_adj_ref = self._is_adj_ref_right
+        self._dtilde[boundary_grps + (1,)] = np.where(is_adj_ref,
              (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dx),
              (2.0 * D * neig_D) / (neig_dx * D + dx * neig_D))
 
@@ -2750,8 +2767,8 @@ class CMFDRun(object):
         neig_D = neig_dc[boundary_grps]
         neig_dy = neig_hxyz[boundary + (np.newaxis, 1)]
         alb = ref_albedo[boundary_grps]
-        is_adj_ref_back = self._adj_reflector_back[boundary + (np.newaxis,)]
-        self._dtilde[boundary_grps + (2,)] = np.where(is_adj_ref_back,
+        is_adj_ref = self._is_adj_ref_back
+        self._dtilde[boundary_grps + (2,)] = np.where(is_adj_ref,
              (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dy),
              (2.0 * D * neig_D) / (neig_dy * D + dy * neig_D))
 
@@ -2778,8 +2795,8 @@ class CMFDRun(object):
         neig_D = neig_dc[boundary_grps]
         neig_dy = neig_hxyz[boundary + (np.newaxis, 1)]
         alb = ref_albedo[boundary_grps]
-        is_adj_ref_front = self._adj_reflector_front[boundary + (np.newaxis,)]
-        self._dtilde[boundary_grps + (3,)] = np.where(is_adj_ref_front,
+        is_adj_ref = self._is_adj_ref_front
+        self._dtilde[boundary_grps + (3,)] = np.where(is_adj_ref,
              (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dy),
              (2.0 * D * neig_D) / (neig_dy * D + dy * neig_D))
 
@@ -2806,7 +2823,7 @@ class CMFDRun(object):
         neig_D = neig_dc[boundary_grps]
         neig_dz = neig_hxyz[boundary + (np.newaxis, 2)]
         alb = ref_albedo[boundary_grps]
-        is_adj_ref_bottom = self._adj_reflector_bottom[boundary + (np.newaxis,)]
+        is_adj_ref = self._is_adj_ref_bottom
         self._dtilde[boundary_grps + (4,)] = np.where(is_adj_ref_bottom,
              (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dz),
              (2.0 * D * neig_D) / (neig_dz * D + dz * neig_D))
@@ -2834,13 +2851,20 @@ class CMFDRun(object):
         neig_D = neig_dc[boundary_grps]
         neig_dz = neig_hxyz[boundary + (np.newaxis, 2)]
         alb = ref_albedo[boundary_grps]
-        is_adj_ref_top = self._adj_reflector_top[boundary + (np.newaxis,)]
+        is_adj_ref = self._is_adj_ref_top
         self._dtilde[boundary_grps + (5,)] = np.where(is_adj_ref_top,
              (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dz),
              (2.0 * D * neig_D) / (neig_dz * D + dz * neig_D))
 
     def _compute_dhat_vectorized(self):
-        #TODO update comment
+        """Computes the nonlinear coupling coefficient using a vectorized numpy
+        approach. Aggregate values for the dhat multidimensional array are
+        populated by first defining values on the problem boundary, and then for
+        all other regions. For indices not lying by a boundary, dhat values
+        are distinguished between regions that neighbor a reflector region and
+        regions that don't neighbor a reflector
+
+        """
         # Define current in each direction
         current_in_left = self._current[:,:,:,_CURRENTS['in_left'],:]
         current_out_left = self._current[:,:,:,_CURRENTS['out_left'],:]
@@ -2933,8 +2957,8 @@ class CMFDRun(object):
         dtilde = self._dtilde[boundary_grps + (0,)]
         flux = cell_flux[boundary_grps]
         flux_left = neig_flux[boundary_grps]
-        is_adj_ref_left = self._adj_reflector_left[boundary + (np.newaxis,)]
-        self._dhat[boundary_grps + (0,)] = np.where(is_adj_ref_left,
+        is_adj_ref = self._is_adj_ref_left
+        self._dhat[boundary_grps + (0,)] = np.where(is_adj_ref,
              (net_current + dtilde * flux) / flux,
              (net_current - dtilde * (flux_left - flux)) / (flux_left + flux))
 
@@ -2950,8 +2974,8 @@ class CMFDRun(object):
         dtilde = self._dtilde[boundary_grps + (1,)]
         flux = cell_flux[boundary_grps]
         flux_right = neig_flux[boundary_grps]
-        is_adj_ref_right = self._adj_reflector_right[boundary + (np.newaxis,)]
-        self._dhat[boundary_grps + (1,)] = np.where(is_adj_ref_right,
+        is_adj_ref = self._is_adj_ref_right
+        self._dhat[boundary_grps + (1,)] = np.where(is_adj_ref,
              (net_current - dtilde * flux) / flux,
              (net_current + dtilde * (flux_right - flux)) / (flux_right + flux))
 
@@ -2967,8 +2991,8 @@ class CMFDRun(object):
         dtilde = self._dtilde[boundary_grps + (2,)]
         flux = cell_flux[boundary_grps]
         flux_back = neig_flux[boundary_grps]
-        is_adj_ref_back = self._adj_reflector_back[boundary + (np.newaxis,)]
-        self._dhat[boundary_grps + (2,)] = np.where(is_adj_ref_back,
+        is_adj_ref = self._is_adj_ref_back
+        self._dhat[boundary_grps + (2,)] = np.where(is_adj_ref,
              (net_current + dtilde * flux) / flux,
              (net_current - dtilde * (flux_back - flux)) / (flux_back + flux))
 
@@ -2984,8 +3008,8 @@ class CMFDRun(object):
         dtilde = self._dtilde[boundary_grps + (3,)]
         flux = cell_flux[boundary_grps]
         flux_front = neig_flux[boundary_grps]
-        is_adj_ref_front = self._adj_reflector_front[boundary + (np.newaxis,)]
-        self._dhat[boundary_grps + (3,)] = np.where(is_adj_ref_front,
+        is_adj_ref = self._is_adj_ref_front
+        self._dhat[boundary_grps + (3,)] = np.where(is_adj_ref,
              (net_current - dtilde * flux) / flux,
              (net_current + dtilde * (flux_front - flux)) / (flux_front + flux))
 
@@ -3001,8 +3025,8 @@ class CMFDRun(object):
         dtilde = self._dtilde[boundary_grps + (4,)]
         flux = cell_flux[boundary_grps]
         flux_bottom = neig_flux[boundary_grps]
-        is_adj_ref_bottom = self._adj_reflector_bottom[boundary + (np.newaxis,)]
-        self._dhat[boundary_grps + (4,)] = np.where(is_adj_ref_bottom,
+        is_adj_ref = self._is_adj_ref_bottom
+        self._dhat[boundary_grps + (4,)] = np.where(is_adj_ref,
              (net_current + dtilde * flux) / flux,
              (net_current - dtilde * (flux_bottom - flux)) / (flux_bottom + flux))
 
@@ -3018,8 +3042,8 @@ class CMFDRun(object):
         dtilde = self._dtilde[boundary_grps + (5,)]
         flux = cell_flux[boundary_grps]
         flux_top = neig_flux[boundary_grps]
-        is_adj_ref_top = self._adj_reflector_top[boundary + (np.newaxis,)]
-        self._dhat[boundary_grps + (5,)] = np.where(is_adj_ref_top,
+        is_adj_ref = self._is_adj_ref_top
+        self._dhat[boundary_grps + (5,)] = np.where(is_adj_ref,
              (net_current - dtilde * flux) / flux,
              (net_current + dtilde * (flux_top - flux)) / (flux_top + flux))
 

@@ -60,7 +60,7 @@ extern "C" {
   int openmc_material_get_id(int32_t index, int32_t* id);
   int openmc_material_get_fissionable(int32_t index, bool* fissionable);
   int openmc_material_get_volume(int32_t index, double* volume);
-  int openmc_material_set_density(int32_t index, double density);
+  int openmc_material_set_density(int32_t index, double density, const char* units);
   int openmc_material_set_densities(int32_t index, int n, const char** name, const double* density);
   int openmc_material_set_id(int32_t index, int32_t id);
   int openmc_material_set_volume(int32_t index, double volume);

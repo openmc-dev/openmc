@@ -12,7 +12,7 @@ module material_header
   use sab_header
   use simulation_header, only: log_spacing
   use stl_vector, only: VectorReal, VectorInt
-  use string, only: to_str
+  use string, only: to_str, to_f_string
 
   implicit none
 
@@ -166,34 +166,52 @@ contains
     call material_set_fissionable_c(this % ptr, logical(fissionable, C_BOOL))
   end subroutine material_set_fissionable
 
-  function material_set_density(this, density) result(err)
+  function material_set_density(this, density, units) result(err)
     class(Material), intent(inout) :: this
     real(8), intent(in) :: density
+    character(*), intent(in) :: units
     integer :: err
 
     integer :: i
     real(8) :: sum_percent
     real(8) :: awr
+    real(8) :: previous_density_gpcc
+    real(8) :: f
 
     if (allocated(this % atom_density)) then
-      ! Set total density based on value provided
-      this % density = density
-
-      ! Determine normalized atom percents
-      sum_percent = sum(this % atom_density)
-      this % atom_density(:) = this % atom_density / sum_percent
-
-      ! Recalculate nuclide atom densities based on given density
-      this % atom_density(:) = density * this % atom_density
-
-      ! Calculate density in g/cm^3.
-      this % density_gpcc = ZERO
-      do i = 1, this % n_nuclides
-        awr = nuclides(this % nuclide(i)) % awr
-        this % density_gpcc = this % density_gpcc &
-             + this % atom_density(i) * awr * MASS_NEUTRON / N_AVOGADRO
-      end do
       err = 0
+      select case (units)
+      case ('atom/b-cm')
+        ! Set total density based on value provided
+        this % density = density
+
+        ! Determine normalized atom percents
+        sum_percent = sum(this % atom_density)
+        this % atom_density(:) = this % atom_density / sum_percent
+
+        ! Recalculate nuclide atom densities based on given density
+        this % atom_density(:) = density * this % atom_density
+
+        ! Calculate density in g/cm^3.
+        this % density_gpcc = ZERO
+        do i = 1, this % n_nuclides
+          awr = nuclides(this % nuclide(i)) % awr
+          this % density_gpcc = this % density_gpcc &
+              + this % atom_density(i) * awr * MASS_NEUTRON / N_AVOGADRO
+        end do
+      case ('g/cm3', 'g/cc')
+        ! Determine factor by which to change densities
+        previous_density_gpcc = this % density_gpcc
+        f = density / previous_density_gpcc
+
+        ! Update densities
+        this % density_gpcc = density
+        this % density = f * this % density
+        this % atom_density(:) = f * this % atom_density(:)
+      case default
+        err = E_INVALID_ARGUMENT
+        call set_errmsg("Invalid units '" // trim(units) // "' specified.")
+      end select
     else
       err = E_ALLOCATE
       call set_errmsg("Material atom density array hasn't been allocated.")
@@ -738,16 +756,22 @@ contains
   end function openmc_material_set_id
 
 
-  function openmc_material_set_density(index, density) result(err) bind(C)
-    ! Set the total density of a material in atom/b-cm
+  function openmc_material_set_density(index, density, units) result(err) bind(C)
+    ! Set the total density of a material
     integer(C_INT32_T), value, intent(in) :: index
     real(C_DOUBLE), value, intent(in) :: density
+    character(kind=C_CHAR), intent(in) :: units(*)
     integer(C_INT) :: err
+
+    character(:), allocatable :: units_
+
+    ! Convert C string to Fortran string
+    units_ = to_f_string(units)
 
     err = E_UNASSIGNED
     if (index >= 1 .and. index <= size(materials)) then
       associate (m => materials(index))
-        err = m % set_density(density)
+        err = m % set_density(density, units_)
       end associate
     else
       err = E_OUT_OF_BOUNDS
@@ -794,7 +818,7 @@ contains
         m % n_nuclides = n
 
         ! Set total density to the sum of the vector
-        err = m % set_density(sum(density))
+        err = m % set_density(sum(density), 'atom/b-cm')
 
         ! Assign S(a,b) tables
         call m % assign_sab_tables()

@@ -106,7 +106,7 @@ def ascii_to_binary(ascii_file, binary_file):
     """
 
     # Open ASCII file
-    ascii = open(ascii_file, 'r')
+    ascii = open(str(ascii_file), 'r')
 
     # Set default record length
     record_length = 4096
@@ -116,7 +116,7 @@ def ascii_to_binary(ascii_file, binary_file):
     ascii.close()
 
     # Open binary file
-    binary = open(binary_file, 'wb')
+    binary = open(str(binary_file), 'wb')
 
     idx = 0
 
@@ -228,8 +228,9 @@ class Library(EqualityMixin):
         self.tables = []
 
         # Determine whether file is ASCII or binary
+        filename = str(filename)
         try:
-            fh = open(str(filename), 'rb')
+            fh = open(filename, 'rb')
             # Grab 10 lines of the library
             sb = b''.join([fh.readline() for i in range(10)])
 

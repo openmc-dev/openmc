@@ -146,14 +146,14 @@ def run(commands, tapein, tapeout, input_filename=None, stdout=False,
     """
 
     if input_filename is not None:
-        with open(input_filename, 'w') as f:
+        with open(str(input_filename), 'w') as f:
             f.write(commands)
 
     with tempfile.TemporaryDirectory() as tmpdir:
         # Copy evaluations to appropriates 'tapes'
         for tape_num, filename in tapein.items():
             tmpfilename = os.path.join(tmpdir, 'tape{}'.format(tape_num))
-            shutil.copy(filename, tmpfilename)
+            shutil.copy(str(filename), tmpfilename)
 
         # Start up NJOY process
         njoy = Popen([njoy_exec], cwd=tmpdir, stdin=PIPE, stdout=PIPE,
@@ -182,7 +182,7 @@ def run(commands, tapein, tapeout, input_filename=None, stdout=False,
         for tape_num, filename in tapeout.items():
             tmpfilename = os.path.join(tmpdir, 'tape{}'.format(tape_num))
             if os.path.isfile(tmpfilename):
-                shutil.move(tmpfilename, filename)
+                shutil.move(tmpfilename, str(filename))
 
 
 def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
@@ -422,7 +422,7 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
     commands = ""
 
     nendf, nthermal_endf, npendf = 20, 21, 22
-    tapein = {nendf: filename, nthermal_endf:filename_thermal}
+    tapein = {nendf: filename, nthermal_endf: filename_thermal}
     tapeout = {}
 
     # reconr

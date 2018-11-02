@@ -446,7 +446,7 @@ class IncidentNeutron(EqualityMixin):
                                       'originated from an ENDF file.')
 
         # Open file and write version
-        f = h5py.File(path, mode, libver=libver)
+        f = h5py.File(str(path), mode, libver=libver)
         f.attrs['filetype'] = np.string_('data_neutron')
         f.attrs['version'] = np.array(HDF5_VERSION)
 
@@ -520,7 +520,7 @@ class IncidentNeutron(EqualityMixin):
         if isinstance(group_or_filename, h5py.Group):
             group = group_or_filename
         else:
-            h5file = h5py.File(group_or_filename, 'r')
+            h5file = h5py.File(str(group_or_filename), 'r')
 
             # Make sure version matches
             if 'version' in h5file.attrs:

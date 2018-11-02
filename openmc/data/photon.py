@@ -668,7 +668,7 @@ class IncidentPhoton(EqualityMixin):
 
         """
         # Open file and write version
-        f = h5py.File(path, mode, libver=libver)
+        f = h5py.File(str(path), mode, libver=libver)
         f.attrs['filetype'] = np.string_('data_photon')
         if 'version' not in f.attrs:
             f.attrs['version'] = np.array(HDF5_VERSION)

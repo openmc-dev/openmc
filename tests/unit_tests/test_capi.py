@@ -105,6 +105,9 @@ def test_material(capi_init):
     m.volume = 10.0
     assert m.volume == 10.0
 
+    with pytest.raises(exc.InvalidArgumentError):
+        m.set_density(1.0, 'goblins')
+
     rho = 2.25e-2
     m.set_density(rho)
     assert sum(m.densities) == pytest.approx(rho)

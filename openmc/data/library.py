@@ -57,7 +57,7 @@ class DataLibrary(EqualityMixin):
         filename = str(filename)
 
         with h5py.File(filename, 'r') as h5file:
-            filetype = h5file.attrs['filetype'].decode().lstrip('data_')
+            filetype = h5file.attrs['filetype'].decode()[5:]
             materials = list(h5file)
 
         library = {'path': filename, 'type': filetype, 'materials': materials}

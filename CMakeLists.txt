@@ -344,7 +344,6 @@ add_library(libopenmc SHARED
   src/photon_physics.F90
   src/physics_common.F90
   src/physics.F90
-  src/progress_header.F90
   src/pugixml/pugixml_f.F90
   src/random_lcg.F90
   src/reaction_header.F90

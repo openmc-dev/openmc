@@ -968,11 +968,7 @@ voxel_finalize(hid_t dspace, hid_t dset, hid_t memspace)
 }
 
 RGBColor random_color() {
-  RGBColor rgb;
-  rgb[RED] = int(prn()*255);
-  rgb[GREEN] = int(prn()*255);
-  rgb[BLUE] = int(prn()*255);
-  return rgb;
+  return {int(prn()*255), int(prn()*255), int(prn()*255)};
 }
 
 } // namespace openmc

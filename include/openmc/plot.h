@@ -38,7 +38,9 @@ struct RGBColor {
   RGBColor(int r, int g, int b) : red(r), green(g), blue(b) { };
   
   RGBColor(const std::vector<int> &v) {
-    assert(v.size() == 3);
+    if (v.size() != 3) {
+      throw std::out_of_range("Incorrect vector size for RGBColor.");
+    }
     red = v[0];
     green = v[1];
     blue = v[2];

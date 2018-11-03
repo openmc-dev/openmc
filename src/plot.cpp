@@ -22,7 +22,7 @@ namespace openmc {
 //==============================================================================
 // Global variables
 //==============================================================================
-  
+
 int PLOT_LEVEL_LOWEST = -1;
 
 std::unordered_map<int, int> plot_map;
@@ -241,7 +241,7 @@ Plot::set_bg_color(pugi::xml_node plot_node)
 {
   // Copy plot background color
   if (check_for_node(plot_node, "background")) {
-    std::vector<int> bg_rgb = get_node_array<int>(plot_node, "background");    
+    std::vector<int> bg_rgb = get_node_array<int>(plot_node, "background");
     if (PlotType::voxel == type_) {
       if (openmc_master) {
         std::stringstream err_msg;
@@ -391,7 +391,7 @@ Plot::set_user_colors(pugi::xml_node plot_node)
       warning(err_msg);
     }
   }
-  
+
   for (auto cn : plot_node.children("color")) {
     // Make sure 3 values are specified for RGB
     std::vector<int> user_rgb = get_node_array<int>(cn, "rgb");
@@ -549,7 +549,7 @@ Plot::set_mask(pugi::xml_node plot_node)
 {
   // Deal with masks
   pugi::xpath_node_set mask_nodes = plot_node.select_nodes("mask");
-  
+
   if (!mask_nodes.empty()) {
     if (PlotType::voxel == type_) {
       if (openmc_master) {
@@ -564,7 +564,7 @@ Plot::set_mask(pugi::xml_node plot_node)
       pugi::xml_node mask_node = mask_nodes[0].node();
 
       // Determine how many components there are and allocate
-      std::vector<int> iarray = get_node_array<int>(mask_node, "components");      
+      std::vector<int> iarray = get_node_array<int>(mask_node, "components");
       if (iarray.size() == 0) {
         std::stringstream err_msg;
         err_msg << "Missing <components> in mask of plot " << id_;
@@ -748,7 +748,7 @@ void draw_mesh_lines(Plot pl, ImageData& data)
   xyz_ur_plot[0] = pl.origin_[0];
   xyz_ur_plot[1] = pl.origin_[1];
   xyz_ur_plot[2] = pl.origin_[2];
-  
+
   xyz_ll_plot[outer] = pl.origin_[outer] - pl.width_[0] / 2.;
   xyz_ll_plot[inner] = pl.origin_[inner] - pl.width_[1] / 2.;
   xyz_ur_plot[outer] = pl.origin_[outer] + pl.width_[0] / 2.;
@@ -961,12 +961,7 @@ voxel_finalize(hid_t dspace, hid_t dset, hid_t memspace)
 }
 
 RGBColor random_color() {
-  RGBColor rgb;
-  rgb.red = int(prn()*255);
-  rgb.green = int(prn()*255);
-  rgb.blue = int(prn()*255);
-  return rgb;
-  //  return {int(prn()*255), int(prn()*255), int(prn()*255)};
+  return {int(prn()*255), int(prn()*255), int(prn()*255)};
 }
 
 } // namespace openmc

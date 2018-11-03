@@ -36,7 +36,7 @@ struct RGBColor {
   RGBColor() : red(0), green(0), blue(0) { };
   RGBColor(const int v[3]) : red(v[0]), green(v[1]), blue(v[2]) { };
   RGBColor(int r, int g, int b) : red(r), green(g), blue(b) { };
-  
+
   RGBColor(const std::vector<int> &v) {
     if (v.size() != 3) {
       throw std::out_of_range("Incorrect vector size for RGBColor.");
@@ -49,7 +49,7 @@ struct RGBColor {
   // Members
   uint8_t red, green, blue;
 };
-  
+
 typedef xt::xtensor<RGBColor, 2> ImageData;
 
 enum class PlotType {
@@ -67,7 +67,7 @@ enum class PlotColorBy {
   cells = 1,
   mats = 2
 };
- 
+
 //===============================================================================
 // Plot class
 //===============================================================================
@@ -176,6 +176,6 @@ void create_voxel(Plot pl);
 //! \return RGBColor with random value
 RGBColor random_color();
 
- 
+
 } // namespace openmc
 #endif // OPENMC_PLOT_H

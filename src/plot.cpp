@@ -481,13 +481,7 @@ Plot::set_meshlines(pugi::xml_node plot_node)
           err_msg << "Bad RGB for meshlines color in plot " << id_;
           fatal_error(err_msg);
         }
-        meshlines_color_[0] = ml_rgb[0];
-        meshlines_color_[1] = ml_rgb[1];
-        meshlines_color_[2] = ml_rgb[2];
-      } else {
-        meshlines_color_[0] = 0;
-        meshlines_color_[1] = 0;
-        meshlines_color_[2] = 0;
+        meshlines_color_ = ml_rgb;
       }
 
       // Set mesh based on type
@@ -710,11 +704,10 @@ void output_ppm(Plot pl, const ImageData& data)
   for (int y = 0; y < pl.pixels_[1]; y++) {
     for (int x = 0; x < pl.pixels_[0]; x++) {
       RGBColor rgb = data(x,y);
-      of.write(reinterpret_cast<char*>(&rgb[RED]), 1);
-      of.write(reinterpret_cast<char*>(&rgb[GREEN]), 1);
-      of.write(reinterpret_cast<char*>(&rgb[BLUE]), 1);
+      of << rgb.red << rgb.green << rgb.blue;
     }
   }
+
   // Close file
   // THIS IS HERE TO MATCH FORTRAN VERSION, NOT TECHNICALLY NECESSARY
   of << "\n";
@@ -902,7 +895,6 @@ void create_voxel(Plot pl)
   RGBColor rgb;
   int id;
   for (int x = 0; x < pl.pixels_[0]; x++) {
-    // TODO: progress bar here
     pb.set_value(100.*(double)x/(double)(pl.pixels_[0]-1));
     for (int y = 0; y < pl.pixels_[1]; y++) {
       for (int z = 0; z < pl.pixels_[2]; z++) {
@@ -968,7 +960,12 @@ voxel_finalize(hid_t dspace, hid_t dset, hid_t memspace)
 }
 
 RGBColor random_color() {
-  return {int(prn()*255), int(prn()*255), int(prn()*255)};
+  RGBColor rgb;
+  rgb.red = int(prn()*255);
+  rgb.green = int(prn()*255);
+  rgb.blue = int(prn()*255);
+  return rgb;
+  //  return {int(prn()*255), int(prn()*255), int(prn()*255)};
 }
 
 } // namespace openmc

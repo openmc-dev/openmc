@@ -192,10 +192,11 @@ Plot::set_output_path(pugi::xml_node plot_node)
 {
   // Set output file path
   std::stringstream filename;
-  filename << "plot_" << id_;
 
   if (check_for_node(plot_node, "filename")) {
     filename << get_node_value(plot_node, "filename");
+  } else {
+    filename << "plot_" << id_;
   }
   // add appropriate file extension to name
   switch(type_) {

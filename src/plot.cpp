@@ -368,14 +368,14 @@ Plot::set_default_colors(pugi::xml_node plot_node)
     color_by_ = PlotColorBy::cells;
     colors_.resize(n_cells);
     for (int i = 0; i < n_cells; i++) {
-      colors_[i] = rdm_color();
+      colors_[i] = random_color();
     }
 
   } else if("material" == pl_color_by) {
     color_by_ = PlotColorBy::mats;
     colors_.resize(n_materials);
     for (int i = 0; i < materials.size(); i++) {
-      colors_[i] = rdm_color();
+      colors_[i] = random_color();
     }
   } else {
     std::stringstream err_msg;
@@ -973,7 +973,7 @@ voxel_finalize(hid_t dspace, hid_t dset, hid_t memspace)
   H5Sclose(memspace);
 }
 
-RGBColor rdm_color() {
+RGBColor random_color() {
   RGBColor rgb;
   rgb[RED] = int(prn()*255);
   rgb[GREEN] = int(prn()*255);

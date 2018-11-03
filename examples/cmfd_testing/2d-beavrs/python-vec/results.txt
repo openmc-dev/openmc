@@ -1,0 +1,780 @@
+
+                               %%%%%%%%%%%%%%%
+                          %%%%%%%%%%%%%%%%%%%%%%%%
+                       %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                                   %%%%%%%%%%%%%%%%%%%%%%%%
+                                    %%%%%%%%%%%%%%%%%%%%%%%%
+                ###############      %%%%%%%%%%%%%%%%%%%%%%%%
+               ##################     %%%%%%%%%%%%%%%%%%%%%%%
+               ###################     %%%%%%%%%%%%%%%%%%%%%%%
+               ####################     %%%%%%%%%%%%%%%%%%%%%%
+               #####################     %%%%%%%%%%%%%%%%%%%%%
+               ######################     %%%%%%%%%%%%%%%%%%%%
+               #######################     %%%%%%%%%%%%%%%%%%
+                #######################     %%%%%%%%%%%%%%%%%
+                ######################     %%%%%%%%%%%%%%%%%
+                 ####################     %%%%%%%%%%%%%%%%%
+                   #################     %%%%%%%%%%%%%%%%%
+                    ###############     %%%%%%%%%%%%%%%%
+                      ############     %%%%%%%%%%%%%%%
+                         ########     %%%%%%%%%%%%%%
+                                     %%%%%%%%%%%
+
+                   | The OpenMC Monte Carlo Code
+         Copyright | 2011-2018 MIT and OpenMC contributors
+           License | http://openmc.readthedocs.io/en/latest/license.html
+           Version | 0.10.0
+          Git SHA1 | e1de657d9a7f76fcd1f98b83e0eccfbcd7c5298b
+         Date/Time | 2018-11-02 13:17:12
+     MPI Processes | 10
+    OpenMP Threads | 6
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading materials XML file...
+ Reading geometry XML file...
+ Building neighboring cells lists for each surface...
+ Reading O16 from /home/shared/nuclear-data/nndc_hdf5/O16.h5
+ Reading O17 from /home/shared/nuclear-data/nndc_hdf5/O17.h5
+ Reading N14 from /home/shared/nuclear-data/nndc_hdf5/N14.h5
+ Reading N15 from /home/shared/nuclear-data/nndc_hdf5/N15.h5
+ Reading Ar36 from /home/shared/nuclear-data/nndc_hdf5/Ar36.h5
+ WARNING: Negative value(s) found on probability table for nuclide Ar36         
+                 at 294K
+ Reading Ar38 from /home/shared/nuclear-data/nndc_hdf5/Ar38.h5
+ Reading Ar40 from /home/shared/nuclear-data/nndc_hdf5/Ar40.h5
+ Reading C0 from /home/shared/nuclear-data/nndc_hdf5/C0.h5
+ Reading Si28 from /home/shared/nuclear-data/nndc_hdf5/Si28.h5
+ Reading Si29 from /home/shared/nuclear-data/nndc_hdf5/Si29.h5
+ Reading Si30 from /home/shared/nuclear-data/nndc_hdf5/Si30.h5
+ Reading Cr50 from /home/shared/nuclear-data/nndc_hdf5/Cr50.h5
+ Reading Cr52 from /home/shared/nuclear-data/nndc_hdf5/Cr52.h5
+ Reading Cr53 from /home/shared/nuclear-data/nndc_hdf5/Cr53.h5
+ Reading Cr54 from /home/shared/nuclear-data/nndc_hdf5/Cr54.h5
+ Reading Mn55 from /home/shared/nuclear-data/nndc_hdf5/Mn55.h5
+ Reading Fe54 from /home/shared/nuclear-data/nndc_hdf5/Fe54.h5
+ Reading Fe56 from /home/shared/nuclear-data/nndc_hdf5/Fe56.h5
+ Reading Fe57 from /home/shared/nuclear-data/nndc_hdf5/Fe57.h5
+ Reading Fe58 from /home/shared/nuclear-data/nndc_hdf5/Fe58.h5
+ Reading Ni58 from /home/shared/nuclear-data/nndc_hdf5/Ni58.h5
+ Reading Ni60 from /home/shared/nuclear-data/nndc_hdf5/Ni60.h5
+ Reading Ni61 from /home/shared/nuclear-data/nndc_hdf5/Ni61.h5
+ Reading Ni62 from /home/shared/nuclear-data/nndc_hdf5/Ni62.h5
+ Reading Ni64 from /home/shared/nuclear-data/nndc_hdf5/Ni64.h5
+ Reading Ag107 from /home/shared/nuclear-data/nndc_hdf5/Ag107.h5
+ Reading Ag109 from /home/shared/nuclear-data/nndc_hdf5/Ag109.h5
+ Reading In113 from /home/shared/nuclear-data/nndc_hdf5/In113.h5
+ Reading In115 from /home/shared/nuclear-data/nndc_hdf5/In115.h5
+ Reading Cd106 from /home/shared/nuclear-data/nndc_hdf5/Cd106.h5
+ WARNING: Negative value(s) found on probability table for nuclide Cd106        
+                 at 294K
+ Reading Cd108 from /home/shared/nuclear-data/nndc_hdf5/Cd108.h5
+ Reading Cd110 from /home/shared/nuclear-data/nndc_hdf5/Cd110.h5
+ Reading Cd111 from /home/shared/nuclear-data/nndc_hdf5/Cd111.h5
+ Reading Cd112 from /home/shared/nuclear-data/nndc_hdf5/Cd112.h5
+ Reading Cd113 from /home/shared/nuclear-data/nndc_hdf5/Cd113.h5
+ Reading Cd114 from /home/shared/nuclear-data/nndc_hdf5/Cd114.h5
+ Reading Cd116 from /home/shared/nuclear-data/nndc_hdf5/Cd116.h5
+ Reading B10 from /home/shared/nuclear-data/nndc_hdf5/B10.h5
+ Reading B11 from /home/shared/nuclear-data/nndc_hdf5/B11.h5
+ Reading He3 from /home/shared/nuclear-data/nndc_hdf5/He3.h5
+ Reading He4 from /home/shared/nuclear-data/nndc_hdf5/He4.h5
+ Reading Zr90 from /home/shared/nuclear-data/nndc_hdf5/Zr90.h5
+ Reading Zr91 from /home/shared/nuclear-data/nndc_hdf5/Zr91.h5
+ Reading Zr92 from /home/shared/nuclear-data/nndc_hdf5/Zr92.h5
+ Reading Zr94 from /home/shared/nuclear-data/nndc_hdf5/Zr94.h5
+ Reading Zr96 from /home/shared/nuclear-data/nndc_hdf5/Zr96.h5
+ Reading Sn112 from /home/shared/nuclear-data/nndc_hdf5/Sn112.h5
+ Reading Sn114 from /home/shared/nuclear-data/nndc_hdf5/Sn114.h5
+ Reading Sn115 from /home/shared/nuclear-data/nndc_hdf5/Sn115.h5
+ Reading Sn116 from /home/shared/nuclear-data/nndc_hdf5/Sn116.h5
+ Reading Sn117 from /home/shared/nuclear-data/nndc_hdf5/Sn117.h5
+ Reading Sn118 from /home/shared/nuclear-data/nndc_hdf5/Sn118.h5
+ Reading Sn119 from /home/shared/nuclear-data/nndc_hdf5/Sn119.h5
+ Reading Sn120 from /home/shared/nuclear-data/nndc_hdf5/Sn120.h5
+ Reading Sn122 from /home/shared/nuclear-data/nndc_hdf5/Sn122.h5
+ Reading Sn124 from /home/shared/nuclear-data/nndc_hdf5/Sn124.h5
+ Reading P31 from /home/shared/nuclear-data/nndc_hdf5/P31.h5
+ Reading S32 from /home/shared/nuclear-data/nndc_hdf5/S32.h5
+ Reading S33 from /home/shared/nuclear-data/nndc_hdf5/S33.h5
+ Reading S34 from /home/shared/nuclear-data/nndc_hdf5/S34.h5
+ Reading S36 from /home/shared/nuclear-data/nndc_hdf5/S36.h5
+ Reading Mo100 from /home/shared/nuclear-data/nndc_hdf5/Mo100.h5
+ Reading Mo92 from /home/shared/nuclear-data/nndc_hdf5/Mo92.h5
+ Reading Mo94 from /home/shared/nuclear-data/nndc_hdf5/Mo94.h5
+ Reading Mo95 from /home/shared/nuclear-data/nndc_hdf5/Mo95.h5
+ Reading Mo96 from /home/shared/nuclear-data/nndc_hdf5/Mo96.h5
+ Reading Mo97 from /home/shared/nuclear-data/nndc_hdf5/Mo97.h5
+ Reading Mo98 from /home/shared/nuclear-data/nndc_hdf5/Mo98.h5
+ Reading V50 from /home/shared/nuclear-data/nndc_hdf5/V50.h5
+ Reading V51 from /home/shared/nuclear-data/nndc_hdf5/V51.h5
+ Reading Nb93 from /home/shared/nuclear-data/nndc_hdf5/Nb93.h5
+ Reading Cu63 from /home/shared/nuclear-data/nndc_hdf5/Cu63.h5
+ Reading Cu65 from /home/shared/nuclear-data/nndc_hdf5/Cu65.h5
+ Reading Ca40 from /home/shared/nuclear-data/nndc_hdf5/Ca40.h5
+ Reading Ca42 from /home/shared/nuclear-data/nndc_hdf5/Ca42.h5
+ Reading Ca43 from /home/shared/nuclear-data/nndc_hdf5/Ca43.h5
+ Reading Ca44 from /home/shared/nuclear-data/nndc_hdf5/Ca44.h5
+ Reading Ca46 from /home/shared/nuclear-data/nndc_hdf5/Ca46.h5
+ Reading Ca48 from /home/shared/nuclear-data/nndc_hdf5/Ca48.h5
+ Reading Ti46 from /home/shared/nuclear-data/nndc_hdf5/Ti46.h5
+ Reading Ti47 from /home/shared/nuclear-data/nndc_hdf5/Ti47.h5
+ Reading Ti48 from /home/shared/nuclear-data/nndc_hdf5/Ti48.h5
+ Reading Ti49 from /home/shared/nuclear-data/nndc_hdf5/Ti49.h5
+ Reading Ti50 from /home/shared/nuclear-data/nndc_hdf5/Ti50.h5
+ Reading Al27 from /home/shared/nuclear-data/nndc_hdf5/Al27.h5
+ Reading U234 from /home/shared/nuclear-data/nndc_hdf5/U234.h5
+ Reading U235 from /home/shared/nuclear-data/nndc_hdf5/U235.h5
+ Reading U238 from /home/shared/nuclear-data/nndc_hdf5/U238.h5
+ Reading U236 from /home/shared/nuclear-data/nndc_hdf5/U236.h5
+ Reading H1 from /home/shared/nuclear-data/nndc_hdf5/H1.h5
+ Reading H2 from /home/shared/nuclear-data/nndc_hdf5/H2.h5
+ Reading c_H_in_H2O from /home/shared/nuclear-data/nndc_hdf5/c_H_in_H2O.h5
+ Maximum neutron transport energy: 2.00000E+07 eV for O17
+ Writing summary.h5 file...
+ Configuring CMFD parameters for simulation
+ Initializing source particles...
+
+ ====================>     K EIGENVALUE SIMULATION     <====================
+
+  Bat./Gen.      k       Entropy         Average k         
+  =========   ========   ========   ====================   
+        1/1    1.00174    7.58917                       
+        2/1    1.01002    7.58622                       
+        3/1    1.01185    7.58425                       
+        4/1    1.01354    7.58267                       
+        5/1    1.01424    7.58151                       
+        6/1    1.01454    7.58063                       
+        7/1    1.01524    7.57993                       
+        8/1    1.01490    7.57926                       
+        9/1    1.01467    7.57875                       
+       10/1    1.01521    7.57833                       
+       11/1    1.01554    7.57785                       
+       12/1    1.01498    7.57743                       
+       13/1    1.01423    7.57711                       
+       14/1    1.01585    7.57673                       
+       15/1    1.01491    7.57628                       
+       16/1    1.01503    7.57605                       
+       17/1    1.01487    7.57573                       
+       18/1    1.01555    7.57553                       
+       19/1    1.01590    7.57508                       
+       20/1    1.01549    7.57493                       
+       21/1    1.01520    7.57479                       
+       22/1    1.01564    7.57445                       
+       23/1    1.01558    7.57431                       
+       24/1    1.01526    7.57420                       
+       25/1    1.01562    7.57388                       
+       26/1    1.01521    7.57387                       
+       27/1    1.01510    7.57370                       
+       28/1    1.01523    7.57330                       
+       29/1    1.01497    7.57308                       
+       30/1    1.01550    7.57283                       
+       31/1    1.01512    7.57249                       
+       32/1    1.01539    7.57234                       
+       33/1    1.01572    7.57241                       
+       34/1    1.01513    7.57215                       
+       35/1    1.01606    7.57192                       
+       36/1    1.01567    7.57185                       
+       37/1    1.01478    7.57174                       
+       38/1    1.01542    7.57144                       
+       39/1    1.01604    7.57154                       
+       40/1    1.01509    7.57126                       
+       41/1    1.01564    7.57107                       
+       42/1    1.01471    7.57100                       
+       43/1    1.01517    7.57079                       
+       44/1    1.01525    7.57060                       
+       45/1    1.01505    7.57048                       
+       46/1    1.01578    7.57032                       
+       47/1    1.01567    7.57038                       
+       48/1    1.01600    7.57025                       
+       49/1    1.01522    7.57020                       
+       50/1    1.01580    7.57014                       
+       51/1    1.01559    7.57017                       
+       52/1    1.01568    7.56998                       
+       53/1    1.01551    7.56996                       
+       54/1    1.01568    7.57012                       
+       55/1    1.01531    7.57001                       
+       56/1    1.01581    7.57010                       
+       57/1    1.01587    7.57017                       
+       58/1    1.01610    7.57011                       
+       59/1    1.01536    7.56997                       
+       60/1    1.01548    7.56985                       
+       61/1    1.01549    7.56983                       
+       62/1    1.01546    7.56983                       
+       63/1    1.01563    7.56975                       
+       64/1    1.01602    7.56989                       
+       65/1    1.01555    7.56982                       
+       66/1    1.01594    7.56980                       
+       67/1    1.01633    7.56962                       
+       68/1    1.01570    7.56951                       
+       69/1    1.01514    7.56949                       
+       70/1    1.01537    7.56949                       
+       71/1    1.01548    7.56935                       
+       72/1    1.01573    7.56947                       
+       73/1    1.01559    7.56926                       
+       74/1    1.01633    7.56933                       
+       75/1    1.01599    7.56939                       
+       76/1    1.01596    7.56924                       
+       77/1    1.01535    7.56926                       
+       78/1    1.01517    7.56932                       
+       79/1    1.01568    7.56917                       
+       80/1    1.01604    7.56924                       
+       81/1    1.01528    7.56922                       
+       82/1    1.01580    7.56917                       
+       83/1    1.01509    7.56921                       
+       84/1    1.01564    7.56928                       
+       85/1    1.01563    7.56929                       
+       86/1    1.01589    7.56921                       
+       87/1    1.01583    7.56918                       
+       88/1    1.01519    7.56917                       
+       89/1    1.01527    7.56912                       
+       90/1    1.01462    7.56911                       
+       91/1    1.01591    7.56899                       
+       92/1    1.01623    7.56890                       
+       93/1    1.01573    7.56892                       
+       94/1    1.01578    7.56902                       
+       95/1    1.01573    7.56898                       
+       96/1    1.01619    7.56897                       
+       97/1    1.01568    7.56898                       
+       98/1    1.01631    7.56876                       
+       99/1    1.01566    7.56891                       
+      100/1    1.01599    7.56885                       
+      101/1    1.01618    7.56897                       
+      102/1    1.01562    7.56902                       
+      103/1    1.01475    7.56901                       
+      104/1    1.01549    7.56886                       
+      105/1    1.01579    7.56895                       
+      106/1    1.01552    7.56895                       
+      107/1    1.01558    7.56911                       
+      108/1    1.01539    7.56899                       
+      109/1    1.01487    7.56887                       
+      110/1    1.01571    7.56889                       
+      111/1    1.01485    7.56897                       
+      112/1    1.01621    7.56900                       
+      113/1    1.01573    7.56909                       
+      114/1    1.01511    7.56924                       
+      115/1    1.01516    7.56918                       
+      116/1    1.01508    7.56921                       
+      117/1    1.01642    7.56922                       
+      118/1    1.01603    7.56913                       
+      119/1    1.01546    7.56914                       
+      120/1    1.01606    7.56903                       
+      121/1    1.01599    7.56897                       
+      122/1    1.01535    7.56909                       
+      123/1    1.01544    7.56909                       
+      124/1    1.01615    7.56913                       
+      125/1    1.01563    7.56929                       
+      126/1    1.01529    7.56920                       
+      127/1    1.01483    7.56917                       
+      128/1    1.01581    7.56924                       
+      129/1    1.01545    7.56919                       
+      130/1    1.01520    7.56919                       
+      131/1    1.01560    7.56917                       
+      132/1    1.01591    7.56915                       
+      133/1    1.01638    7.56909                       
+      134/1    1.01566    7.56920                       
+      135/1    1.01532    7.56924                       
+      136/1    1.01597    7.56930                       
+      137/1    1.01524    7.56920                       
+      138/1    1.01547    7.56909                       
+      139/1    1.01602    7.56904                       
+      140/1    1.01588    7.56915                       
+      141/1    1.01566    7.56912                       
+      142/1    1.01527    7.56901                       
+      143/1    1.01642    7.56896                       
+      144/1    1.01594    7.56904                       
+      145/1    1.01580    7.56911                       
+      146/1    1.01590    7.56927                       
+      147/1    1.01577    7.56923                       
+      148/1    1.01556    7.56934                       
+      149/1    1.01465    7.56930                       
+      150/1    1.01590    7.56931                       
+ CMFD tallies reset
+      151/1    1.01572    7.56935                       
+                                                           CMFD k:   1.01567
+                                                           RMS Bal:  0.00014
+      152/1    1.01604    7.56907    1.01588 +/- 0.00016
+                                                           CMFD k:   1.01601
+                                                           RMS Bal:  0.00009
+      153/1    1.01567    7.56909    1.01581 +/- 0.00012
+                                                           CMFD k:   1.01575
+                                                           RMS Bal:  0.00006
+      154/1    1.01592    7.56926    1.01584 +/- 0.00009
+                                                           CMFD k:   1.01571
+                                                           RMS Bal:  0.00005
+      155/1    1.01569    7.56933    1.01581 +/- 0.00007
+                                                           CMFD k:   1.01577
+                                                           RMS Bal:  0.00004
+      156/1    1.01466    7.56931    1.01562 +/- 0.00020
+                                                           CMFD k:   1.01579
+                                                           RMS Bal:  0.00003
+      157/1    1.01640    7.56928    1.01573 +/- 0.00020
+                                                           CMFD k:   1.01577
+                                                           RMS Bal:  0.00003
+      158/1    1.01514    7.56927    1.01566 +/- 0.00019
+                                                           CMFD k:   1.01576
+                                                           RMS Bal:  0.00003
+      159/1    1.01554    7.56925    1.01564 +/- 0.00017
+                                                           CMFD k:   1.01572
+                                                           RMS Bal:  0.00002
+      160/1    1.01530    7.56907    1.01561 +/- 0.00016
+                                                           CMFD k:   1.01573
+                                                           RMS Bal:  0.00002
+      161/1    1.01592    7.56914    1.01564 +/- 0.00014
+                                                           CMFD k:   1.01571
+                                                           RMS Bal:  0.00002
+      162/1    1.01575    7.56910    1.01565 +/- 0.00013
+                                                           CMFD k:   1.01571
+                                                           RMS Bal:  0.00002
+      163/1    1.01576    7.56908    1.01566 +/- 0.00012
+                                                           CMFD k:   1.01575
+                                                           RMS Bal:  0.00002
+      164/1    1.01507    7.56890    1.01561 +/- 0.00012
+                                                           CMFD k:   1.01574
+                                                           RMS Bal:  0.00002
+      165/1    1.01541    7.56882    1.01560 +/- 0.00011
+                                                           CMFD k:   1.01575
+                                                           RMS Bal:  0.00002
+      166/1    1.01527    7.56903    1.01558 +/- 0.00011
+                                                           CMFD k:   1.01569
+                                                           RMS Bal:  0.00001
+      167/1    1.01548    7.56887    1.01557 +/- 0.00010
+                                                           CMFD k:   1.01568
+                                                           RMS Bal:  0.00001
+      168/1    1.01565    7.56878    1.01558 +/- 0.00009
+                                                           CMFD k:   1.01567
+                                                           RMS Bal:  0.00001
+      169/1    1.01540    7.56870    1.01557 +/- 0.00009
+                                                           CMFD k:   1.01569
+                                                           RMS Bal:  0.00001
+      170/1    1.01619    7.56876    1.01560 +/- 0.00009
+                                                           CMFD k:   1.01568
+                                                           RMS Bal:  0.00001
+      171/1    1.01566    7.56869    1.01560 +/- 0.00009
+                                                           CMFD k:   1.01568
+                                                           RMS Bal:  0.00001
+      172/1    1.01576    7.56864    1.01561 +/- 0.00008
+                                                           CMFD k:   1.01569
+                                                           RMS Bal:  0.00001
+      173/1    1.01545    7.56877    1.01560 +/- 0.00008
+                                                           CMFD k:   1.01569
+                                                           RMS Bal:  0.00001
+      174/1    1.01628    7.56868    1.01563 +/- 0.00008
+                                                           CMFD k:   1.01570
+                                                           RMS Bal:  0.00001
+      175/1    1.01580    7.56882    1.01564 +/- 0.00008
+                                                           CMFD k:   1.01569
+                                                           RMS Bal:  0.00001
+      176/1    1.01574    7.56883    1.01564 +/- 0.00008
+                                                           CMFD k:   1.01571
+                                                           RMS Bal:  0.00001
+      177/1    1.01529    7.56889    1.01563 +/- 0.00007
+                                                           CMFD k:   1.01570
+                                                           RMS Bal:  0.00001
+      178/1    1.01548    7.56904    1.01562 +/- 0.00007
+                                                           CMFD k:   1.01572
+                                                           RMS Bal:  0.00001
+      179/1    1.01653    7.56911    1.01565 +/- 0.00008
+                                                           CMFD k:   1.01573
+                                                           RMS Bal:  0.00001
+      180/1    1.01551    7.56914    1.01565 +/- 0.00007
+                                                           CMFD k:   1.01574
+                                                           RMS Bal:  0.00001
+      181/1    1.01516    7.56908    1.01563 +/- 0.00007
+                                                           CMFD k:   1.01575
+                                                           RMS Bal:  0.00001
+      182/1    1.01581    7.56865    1.01564 +/- 0.00007
+                                                           CMFD k:   1.01576
+                                                           RMS Bal:  0.00001
+      183/1    1.01584    7.56879    1.01565 +/- 0.00007
+                                                           CMFD k:   1.01577
+                                                           RMS Bal:  0.00001
+      184/1    1.01579    7.56887    1.01565 +/- 0.00007
+                                                           CMFD k:   1.01577
+                                                           RMS Bal:  0.00001
+      185/1    1.01520    7.56895    1.01564 +/- 0.00007
+                                                           CMFD k:   1.01576
+                                                           RMS Bal:  0.00001
+      186/1    1.01503    7.56895    1.01562 +/- 0.00007
+                                                           CMFD k:   1.01576
+                                                           RMS Bal:  0.00001
+      187/1    1.01585    7.56912    1.01563 +/- 0.00006
+                                                           CMFD k:   1.01576
+                                                           RMS Bal:  0.00001
+      188/1    1.01644    7.56918    1.01565 +/- 0.00007
+                                                           CMFD k:   1.01576
+                                                           RMS Bal:  0.00001
+      189/1    1.01485    7.56908    1.01563 +/- 0.00007
+                                                           CMFD k:   1.01576
+                                                           RMS Bal:  0.00001
+      190/1    1.01531    7.56915    1.01562 +/- 0.00007
+                                                           CMFD k:   1.01576
+                                                           RMS Bal:  0.00001
+      191/1    1.01575    7.56904    1.01562 +/- 0.00007
+                                                           CMFD k:   1.01576
+                                                           RMS Bal:  0.00001
+      192/1    1.01538    7.56919    1.01562 +/- 0.00006
+                                                           CMFD k:   1.01576
+                                                           RMS Bal:  0.00001
+      193/1    1.01589    7.56916    1.01562 +/- 0.00006
+                                                           CMFD k:   1.01577
+                                                           RMS Bal:  0.00001
+      194/1    1.01635    7.56916    1.01564 +/- 0.00006
+                                                           CMFD k:   1.01578
+                                                           RMS Bal:  0.00001
+      195/1    1.01578    7.56923    1.01564 +/- 0.00006
+                                                           CMFD k:   1.01578
+                                                           RMS Bal:  0.00001
+      196/1    1.01512    7.56929    1.01563 +/- 0.00006
+                                                           CMFD k:   1.01577
+                                                           RMS Bal:  0.00001
+      197/1    1.01586    7.56926    1.01564 +/- 0.00006
+                                                           CMFD k:   1.01577
+                                                           RMS Bal:  0.00001
+      198/1    1.01564    7.56932    1.01564 +/- 0.00006
+                                                           CMFD k:   1.01576
+                                                           RMS Bal:  0.00001
+      199/1    1.01479    7.56932    1.01562 +/- 0.00006
+                                                           CMFD k:   1.01575
+                                                           RMS Bal:  0.00001
+      200/1    1.01497    7.56934    1.01561 +/- 0.00006
+                                                           CMFD k:   1.01574
+                                                           RMS Bal:  0.00001
+      201/1    1.01541    7.56941    1.01560 +/- 0.00006
+                                                           CMFD k:   1.01573
+                                                           RMS Bal:  0.00001
+      202/1    1.01537    7.56939    1.01560 +/- 0.00006
+                                                           CMFD k:   1.01573
+                                                           RMS Bal:  0.00001
+      203/1    1.01655    7.56946    1.01562 +/- 0.00006
+                                                           CMFD k:   1.01573
+                                                           RMS Bal:  0.00001
+      204/1    1.01531    7.56925    1.01561 +/- 0.00006
+                                                           CMFD k:   1.01572
+                                                           RMS Bal:  0.00001
+      205/1    1.01564    7.56925    1.01561 +/- 0.00006
+                                                           CMFD k:   1.01572
+                                                           RMS Bal:  0.00000
+      206/1    1.01597    7.56941    1.01562 +/- 0.00006
+                                                           CMFD k:   1.01572
+                                                           RMS Bal:  0.00000
+      207/1    1.01550    7.56944    1.01562 +/- 0.00006
+                                                           CMFD k:   1.01572
+                                                           RMS Bal:  0.00000
+      208/1    1.01517    7.56939    1.01561 +/- 0.00006
+                                                           CMFD k:   1.01572
+                                                           RMS Bal:  0.00000
+      209/1    1.01563    7.56933    1.01561 +/- 0.00006
+                                                           CMFD k:   1.01571
+                                                           RMS Bal:  0.00000
+      210/1    1.01634    7.56943    1.01562 +/- 0.00006
+                                                           CMFD k:   1.01571
+                                                           RMS Bal:  0.00000
+      211/1    1.01547    7.56951    1.01562 +/- 0.00005
+                                                           CMFD k:   1.01571
+                                                           RMS Bal:  0.00000
+      212/1    1.01607    7.56965    1.01562 +/- 0.00005
+                                                           CMFD k:   1.01572
+                                                           RMS Bal:  0.00000
+      213/1    1.01585    7.56961    1.01563 +/- 0.00005
+                                                           CMFD k:   1.01572
+                                                           RMS Bal:  0.00000
+      214/1    1.01503    7.56962    1.01562 +/- 0.00005
+                                                           CMFD k:   1.01572
+                                                           RMS Bal:  0.00000
+      215/1    1.01485    7.56950    1.01561 +/- 0.00005
+                                                           CMFD k:   1.01571
+                                                           RMS Bal:  0.00000
+      216/1    1.01568    7.56946    1.01561 +/- 0.00005
+                                                           CMFD k:   1.01571
+                                                           RMS Bal:  0.00000
+      217/1    1.01570    7.56928    1.01561 +/- 0.00005
+                                                           CMFD k:   1.01570
+                                                           RMS Bal:  0.00000
+      218/1    1.01599    7.56937    1.01562 +/- 0.00005
+                                                           CMFD k:   1.01570
+                                                           RMS Bal:  0.00000
+      219/1    1.01521    7.56938    1.01561 +/- 0.00005
+                                                           CMFD k:   1.01570
+                                                           RMS Bal:  0.00000
+      220/1    1.01571    7.56928    1.01561 +/- 0.00005
+                                                           CMFD k:   1.01570
+                                                           RMS Bal:  0.00000
+      221/1    1.01549    7.56946    1.01561 +/- 0.00005
+                                                           CMFD k:   1.01569
+                                                           RMS Bal:  0.00000
+      222/1    1.01616    7.56958    1.01562 +/- 0.00005
+                                                           CMFD k:   1.01570
+                                                           RMS Bal:  0.00000
+      223/1    1.01517    7.56961    1.01561 +/- 0.00005
+                                                           CMFD k:   1.01570
+                                                           RMS Bal:  0.00000
+      224/1    1.01593    7.56937    1.01561 +/- 0.00005
+                                                           CMFD k:   1.01570
+                                                           RMS Bal:  0.00000
+      225/1    1.01545    7.56947    1.01561 +/- 0.00005
+                                                           CMFD k:   1.01570
+                                                           RMS Bal:  0.00000
+      226/1    1.01547    7.56947    1.01561 +/- 0.00005
+                                                           CMFD k:   1.01569
+                                                           RMS Bal:  0.00000
+      227/1    1.01619    7.56949    1.01562 +/- 0.00005
+                                                           CMFD k:   1.01569
+                                                           RMS Bal:  0.00000
+      228/1    1.01543    7.56945    1.01562 +/- 0.00005
+                                                           CMFD k:   1.01568
+                                                           RMS Bal:  0.00000
+      229/1    1.01567    7.56945    1.01562 +/- 0.00005
+                                                           CMFD k:   1.01568
+                                                           RMS Bal:  0.00000
+      230/1    1.01560    7.56957    1.01562 +/- 0.00005
+                                                           CMFD k:   1.01568
+                                                           RMS Bal:  0.00000
+      231/1    1.01595    7.56949    1.01562 +/- 0.00005
+                                                           CMFD k:   1.01568
+                                                           RMS Bal:  0.00000
+      232/1    1.01566    7.56965    1.01562 +/- 0.00005
+                                                           CMFD k:   1.01567
+                                                           RMS Bal:  0.00000
+      233/1    1.01533    7.56964    1.01562 +/- 0.00004
+                                                           CMFD k:   1.01568
+                                                           RMS Bal:  0.00000
+      234/1    1.01452    7.56947    1.01560 +/- 0.00005
+                                                           CMFD k:   1.01568
+                                                           RMS Bal:  0.00000
+      235/1    1.01512    7.56951    1.01560 +/- 0.00005
+                                                           CMFD k:   1.01567
+                                                           RMS Bal:  0.00000
+      236/1    1.01509    7.56948    1.01559 +/- 0.00005
+                                                           CMFD k:   1.01567
+                                                           RMS Bal:  0.00000
+      237/1    1.01470    7.56943    1.01558 +/- 0.00005
+                                                           CMFD k:   1.01567
+                                                           RMS Bal:  0.00000
+      238/1    1.01582    7.56950    1.01559 +/- 0.00005
+                                                           CMFD k:   1.01567
+                                                           RMS Bal:  0.00000
+      239/1    1.01529    7.56949    1.01558 +/- 0.00005
+                                                           CMFD k:   1.01566
+                                                           RMS Bal:  0.00000
+      240/1    1.01548    7.56946    1.01558 +/- 0.00005
+                                                           CMFD k:   1.01566
+                                                           RMS Bal:  0.00000
+      241/1    1.01495    7.56939    1.01557 +/- 0.00005
+                                                           CMFD k:   1.01566
+                                                           RMS Bal:  0.00000
+      242/1    1.01508    7.56947    1.01557 +/- 0.00005
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      243/1    1.01569    7.56957    1.01557 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      244/1    1.01551    7.56957    1.01557 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      245/1    1.01593    7.56936    1.01557 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      246/1    1.01557    7.56925    1.01557 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      247/1    1.01569    7.56933    1.01557 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      248/1    1.01623    7.56938    1.01558 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      249/1    1.01580    7.56927    1.01558 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      250/1    1.01552    7.56941    1.01558 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      251/1    1.01571    7.56926    1.01558 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      252/1    1.01585    7.56928    1.01559 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      253/1    1.01527    7.56912    1.01558 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      254/1    1.01543    7.56920    1.01558 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      255/1    1.01603    7.56914    1.01559 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      256/1    1.01529    7.56915    1.01558 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      257/1    1.01487    7.56911    1.01558 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      258/1    1.01539    7.56914    1.01557 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      259/1    1.01590    7.56925    1.01558 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      260/1    1.01558    7.56925    1.01558 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      261/1    1.01516    7.56925    1.01557 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      262/1    1.01553    7.56911    1.01557 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      263/1    1.01576    7.56916    1.01558 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      264/1    1.01554    7.56919    1.01558 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      265/1    1.01627    7.56930    1.01558 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      266/1    1.01591    7.56929    1.01558 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      267/1    1.01646    7.56912    1.01559 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      268/1    1.01595    7.56928    1.01559 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      269/1    1.01517    7.56934    1.01559 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      270/1    1.01566    7.56943    1.01559 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      271/1    1.01481    7.56946    1.01559 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      272/1    1.01541    7.56942    1.01558 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      273/1    1.01598    7.56936    1.01559 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      274/1    1.01616    7.56932    1.01559 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      275/1    1.01525    7.56953    1.01559 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      276/1    1.01554    7.56948    1.01559 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      277/1    1.01556    7.56961    1.01559 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      278/1    1.01586    7.56946    1.01559 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      279/1    1.01538    7.56959    1.01559 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      280/1    1.01575    7.56943    1.01559 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      281/1    1.01506    7.56928    1.01559 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      282/1    1.01534    7.56914    1.01558 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      283/1    1.01555    7.56895    1.01558 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      284/1    1.01523    7.56887    1.01558 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      285/1    1.01628    7.56890    1.01559 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      286/1    1.01557    7.56905    1.01559 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      287/1    1.01533    7.56907    1.01558 +/- 0.00004
+                                                           CMFD k:   1.01564
+                                                           RMS Bal:  0.00000
+      288/1    1.01610    7.56901    1.01559 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      289/1    1.01630    7.56893    1.01559 +/- 0.00004
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      290/1    1.01554    7.56891    1.01559 +/- 0.00003
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      291/1    1.01608    7.56878    1.01560 +/- 0.00003
+                                                           CMFD k:   1.01565
+                                                           RMS Bal:  0.00000
+      292/1    1.01586    7.56889    1.01560 +/- 0.00003
+                                                           CMFD k:   1.01566
+                                                           RMS Bal:  0.00000
+      293/1    1.01540    7.56892    1.01560 +/- 0.00003
+                                                           CMFD k:   1.01566
+                                                           RMS Bal:  0.00000
+      294/1    1.01520    7.56870    1.01559 +/- 0.00003
+                                                           CMFD k:   1.01566
+                                                           RMS Bal:  0.00000
+      295/1    1.01661    7.56875    1.01560 +/- 0.00003
+                                                           CMFD k:   1.01566
+                                                           RMS Bal:  0.00000
+      296/1    1.01596    7.56883    1.01560 +/- 0.00003
+                                                           CMFD k:   1.01566
+                                                           RMS Bal:  0.00000
+      297/1    1.01595    7.56866    1.01561 +/- 0.00003
+                                                           CMFD k:   1.01566
+                                                           RMS Bal:  0.00000
+      298/1    1.01613    7.56867    1.01561 +/- 0.00003
+                                                           CMFD k:   1.01567
+                                                           RMS Bal:  0.00000
+      299/1    1.01601    7.56859    1.01561 +/- 0.00003
+                                                           CMFD k:   1.01567
+                                                           RMS Bal:  0.00000
+      300/1    1.01536    7.56862    1.01561 +/- 0.00003
+ Creating state point statepoint.300.h5...
+                                                           CMFD k:   1.01566
+                                                           RMS Bal:  0.00000
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  1.5300E+01 seconds
+   Reading cross sections          =  1.4521E+01 seconds
+ Total time in simulation          =  3.1013E+04 seconds
+   Time in transport only          =  2.9715E+04 seconds
+   Time in inactive batches        =  1.5233E+04 seconds
+   Time in active batches          =  1.5780E+04 seconds
+   Time synchronizing fission bank =  4.4047E+02 seconds
+     Sampling source sites         =  4.1602E+01 seconds
+     SEND/RECV source sites        =  6.1150E+00 seconds
+   Time accumulating tallies       =  3.3981E+00 seconds
+ Total time for finalization       =  1.2376E-02 seconds
+ Total time elapsed                =  3.1064E+04 seconds
+ Calculation Rate (inactive)       =  98472.3 particles/second
+ Calculation Rate (active)         =  95054.8 particles/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  1.01563 +/-  0.00003
+ k-effective (Track-length)  =  1.01561 +/-  0.00003
+ k-effective (Absorption)    =  1.01569 +/-  0.00003
+ Combined k-effective        =  1.01566 +/-  0.00002
+ Leakage Fraction            =  0.00145 +/-  0.00000
+
+=====================>     CMFD TIMING STATISTICS     <====================
+
+   Time in CMFD                    =  7.70570E+02 seconds
+     Building matrices             =  4.02047E-01 seconds
+     Solving matrices              =  5.18417E+02 seconds
+     Compute dhat, dtilde          =  6.87992E-01 seconds
+     Compute fission source        =  7.74291E-02 seconds
+

@@ -43,4 +43,4 @@ cmfd_run.norm = 193
 cmfd_run.cmfd_reset = [151]
 
 # Run CMFD
-cmfd_run.run(vectorized=False, omp_num_threads=1)
+cmfd_run.run(vectorized=False, omp_num_threads=6)

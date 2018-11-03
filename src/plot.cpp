@@ -22,12 +22,6 @@ namespace openmc {
 //==============================================================================
 // Global variables
 //==============================================================================
-
-const char* to_char(int i) {
-    std::stringstream s;
-    s << i;
-    return s.str().c_str();
-  }
   
 int PLOT_LEVEL_LOWEST = -1;
 

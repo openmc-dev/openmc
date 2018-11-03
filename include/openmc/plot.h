@@ -18,10 +18,6 @@ namespace openmc {
 // Global variables
 //===============================================================================
 
-constexpr int RED   = 0;
-constexpr int GREEN = 1;
-constexpr int BLUE  = 2;
-
 extern int PLOT_LEVEL_LOWEST; //!< lower bound on plot universe level
 
 extern std::unordered_map<int, int> plot_map; //!< map of plot ids to index
@@ -38,7 +34,7 @@ extern std::vector<Plot> plots; //!< Plot instance container
 struct RGBColor {
   //Constructors
   RGBColor() : red(0), green(0), blue(0) { };
-  RGBColor(const int v[3]) : red(v[RED]), green(v[GREEN]), blue(v[BLUE]) { };
+  RGBColor(const int v[3]) : red(v[0]), green(v[1]), blue(v[2]) { };
   RGBColor(int r, int g, int b) : red(r), green(g), blue(b) { };
   
   RGBColor(const std::vector<int> &v) {
@@ -46,27 +42,6 @@ struct RGBColor {
     red = v[0];
     green = v[1];
     blue = v[2];
-  }
-
-  // Index operators
-  const unsigned char& operator[](int i) const {
-    switch (i) {
-      case 0: return red;
-      case 1: return green;
-      case 2: return blue;
-      default:
-        throw std::out_of_range{"Index in RGBColor must be between 0 and 2."};
-    }
-  }
-  
-  unsigned char& operator[](int i) {
-    switch (i) {
-      case 0: return red;
-      case 1: return green;
-      case 2: return blue;
-      default:
-        throw std::out_of_range{"Index in RGBColor must be between 0 and 2."};
-    }
   }
 
   // Members

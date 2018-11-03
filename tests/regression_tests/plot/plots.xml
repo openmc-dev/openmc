@@ -29,4 +29,10 @@
     <width>20 20 10</width>
   </plot>
 
+  <plot id="5" type="voxel">
+    <pixels>100 100 10</pixels>
+    <origin>0. 0. 0.</origin>
+    <width>20 20 10</width>
+  </plot>
+
 </plots>

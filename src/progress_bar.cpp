@@ -60,7 +60,8 @@ ProgressBar::set_value(double val) {
   
   // write the bar
   std::cout << '\r' << bar << std::flush;
-
+  if (val >= 100.0) { std::cout << "\n"; }
+  
   // reset the bar value
   bar = "";
 }

@@ -10,7 +10,6 @@
 #include "xtensor/xarray.hpp"
 #include "xtensor/xadapt.hpp"
 
-
 namespace openmc {
 
 inline bool

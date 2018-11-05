@@ -205,7 +205,7 @@ void read_settings_xml()
 
   // Parse settings.xml file
   xml_document doc;
-  auto result = doc.load_file("settings.xml");
+  auto result = doc.load_file(filename.c_str());
   if (!result) {
     fatal_error("Error processing settings.xml file.");
   }

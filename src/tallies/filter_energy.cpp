@@ -180,6 +180,7 @@ openmc_energy_filter_set_bins(int32_t index, int32_t n, const double* energies)
   for (int i = 0; i < n; i++) filt->bins_[i] = energies[i];
   filt->n_bins_ = n - 1;
   filter_update_n_bins(index);
+  return 0;
 }
 
 }// namespace openmc

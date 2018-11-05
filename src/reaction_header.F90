@@ -74,22 +74,22 @@ module reaction_header
 
     pure function reaction_product_decay_rate(ptr, product) result(rate) bind(C)
       import C_PTR, C_INT, C_DOUBLE
-      type(C_PTR), value :: ptr
-      integer(C_INT), value :: product
+      type(C_PTR), intent(in), value :: ptr
+      integer(C_INT), intent(in), value :: product
       real(C_DOUBLE) :: rate
     end function
 
     pure function reaction_product_emission_mode(ptr, product) result(m) bind(C)
       import C_PTR, C_INT
-      type(C_PTR), value :: ptr
-      integer(C_INT), value :: product
+      type(C_PTR), intent(in), value :: ptr
+      integer(C_INT), intent(in), value :: product
       integer(C_INT) :: m
     end function
 
     pure function reaction_product_particle(ptr, product) result(particle) bind(C)
       import C_PTR, C_INT
-      type(C_PTR), value :: ptr
-      integer(C_INT), value :: product
+      type(C_PTR), intent(in), value :: ptr
+      integer(C_INT), intent(in), value :: product
       integer(C_INT) :: particle
     end function
 
@@ -104,15 +104,15 @@ module reaction_header
 
     pure function reaction_product_yield(ptr, product, E) result(val) bind(C)
       import C_PTR, C_INT, C_DOUBLE
-      type(C_PTR), value :: ptr
-      integer(C_INT), value :: product
-      real(C_DOUBLE), value :: E
+      type(C_PTR), intent(in), value :: ptr
+      integer(C_INT), intent(in), value :: product
+      real(C_DOUBLE), intent(in), value :: E
       real(C_DOUBLE) :: val
     end function
 
     pure function reaction_products_size(ptr) result(sz) bind(C)
       import C_PTR, C_INT
-      type(C_PTR), value :: ptr
+      type(C_PTR), intent(in), value :: ptr
       integer(C_INT) :: sz
     end function
 

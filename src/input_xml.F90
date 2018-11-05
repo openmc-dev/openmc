@@ -123,15 +123,14 @@ contains
 
     type(VectorReal), allocatable :: nuc_temps(:) ! List of T to read for each nuclide
     type(VectorReal), allocatable :: sab_temps(:) ! List of T to read for each S(a,b)
-    real(8), allocatable    :: material_temps(:)
 
     call read_settings_xml()
     call read_cross_sections_xml()
-    call read_materials_xml(material_temps)
+    call read_materials_xml()
     call read_geometry_xml()
 
     ! Set up neighbor lists, convert user IDs -> indices, assign temperatures
-    call finalize_geometry(material_temps, nuc_temps, sab_temps)
+    call finalize_geometry(nuc_temps, sab_temps)
 
     if (run_mode /= MODE_PLOTTING) then
       call time_read_xs % start()
@@ -172,8 +171,7 @@ contains
 
   end subroutine read_input_xml
 
-  subroutine finalize_geometry(material_temps, nuc_temps, sab_temps)
-    real(8), intent(in) :: material_temps(:)
+  subroutine finalize_geometry(nuc_temps, sab_temps)
     type(VectorReal),            allocatable, intent(out) :: nuc_temps(:)
     type(VectorReal),  optional, allocatable, intent(out) :: sab_temps(:)
 
@@ -660,9 +658,7 @@ contains
 
   end subroutine read_cross_sections_xml
 
-  subroutine read_materials_xml(material_temps)
-    real(8), allocatable, intent(out) :: material_temps(:)
-
+  subroutine read_materials_xml()
     integer :: i              ! loop index for materials
     integer :: j              ! loop index for nuclides
     integer :: k              ! loop index
@@ -720,7 +716,6 @@ contains
     ! Allocate materials array
     n_materials = size(node_mat_list)
     allocate(materials(n_materials))
-    allocate(material_temps(n_materials))
 
     ! Initialize count for number of nuclides/S(a,b) tables
     index_nuclide = 0
@@ -743,13 +738,6 @@ contains
       ! Copy material name
       if (check_for_node(node_mat, "name")) then
         call get_node_value(node_mat, "name", mat % name)
-      end if
-
-      ! Get material default temperature
-      if (check_for_node(node_mat, "temperature")) then
-        call get_node_value(node_mat, "temperature", material_temps(i))
-      else
-        material_temps(i) = -1.0
       end if
 
       ! Get pointer to density element

@@ -466,42 +466,38 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
     // ========================================================================
     // Compute the length of the track segment in the each mesh cell and return
 
-    double distance;
-    int j;
     if (ijk0 == ijk1) {
       // The track ends in this cell.  Use the particle end location rather
       // than the mesh surface.
-      distance = (r1 - r0).norm();
-    } else {
-      // The track exits this cell.  Determine the distance to the closest mesh
-      // surface.
-      xt::xtensor<double, 1> d = xt::zeros<double>({n});
-      for (int j = 0; j < n; ++j) {
-        if (std::fabs(u[j]) < FP_PRECISION) {
-          d(j) = INFTY;
-        } else if (u[j] > 0) {
-          double xyz_cross = lower_left_[j] + ijk0(j) * width_[j];
-          d(j) = (xyz_cross - r0[j]) / u[j];
-        } else {
-          double xyz_cross = lower_left_[j] + (ijk0(j) - 1) * width_[j];
-          d(j) = (xyz_cross - r0[j]) / u[j];
-        }
+      double distance = (r1 - r0).norm();
+      bins.push_back(get_bin_from_indices(ijk0.data()));
+      lengths.push_back(distance / total_distance);
+      break;
+    }
+
+    // The track exits this cell.  Determine the distance to the closest mesh
+    // surface.
+    xt::xtensor<double, 1> d = xt::zeros<double>({n});
+    for (int k = 0; k < n; ++k) {
+      if (std::fabs(u[k]) < FP_PRECISION) {
+        d(k) = INFTY;
+      } else if (u[k] > 0) {
+        double xyz_cross = lower_left_[k] + ijk0(k) * width_[k];
+        d(k) = (xyz_cross - r0[k]) / u[k];
+      } else {
+        double xyz_cross = lower_left_[k] + (ijk0(k) - 1) * width_[k];
+        d(k) = (xyz_cross - r0[k]) / u[k];
       }
-      j = xt::argmin(d)(0);
-      distance = d(j);
     }
 
     // Assign the next tally bin and the score.
-    int bin = get_bin_from_indices(ijk0.data());
-    bins.push_back(bin);
+    auto j = xt::argmin(d)(0);
+    double distance = d(j);
+    bins.push_back(get_bin_from_indices(ijk0.data()));
     lengths.push_back(distance / total_distance);
 
-    // If the particle track ends in that bin, then we are done.
-    if (ijk0 == ijk1) break;
-
-    // Translate the starting coordintes by the distance to that face. This
-    // should be the xyz that we computed the distance to in the last
-    // iteration of the filter loop.
+    // Translate the starting coordintes by the distance to the oncoming mesh
+    // surface.
     r0 += distance * u;
 
     // Increment the indices into the next mesh cell.

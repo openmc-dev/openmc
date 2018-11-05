@@ -140,21 +140,21 @@ module mesh_header
 
     pure function mesh_get_bin(ptr, xyz) result(bin) bind(C)
       import C_PTR, C_DOUBLE, C_INT
-      type(C_PTR), value :: ptr
+      type(C_PTR), intent(in), value :: ptr
       real(C_DOUBLE), intent(in) :: xyz(*)
       integer(C_INT) :: bin
     end function
 
     pure function mesh_get_bin_from_indices(ptr, ijk) result(bin) bind(C)
       import C_PTR, C_INT
-      type(C_PTR), value :: ptr
+      type(C_PTR), intent(in), value :: ptr
       integer(C_INT), intent(in) :: ijk(*)
       integer(C_INT) :: bin
     end function
 
     pure subroutine mesh_get_indices(ptr, xyz, ijk, in_mesh) bind(C)
       import C_PTR, C_DOUBLE, C_INT, C_BOOL
-      type(C_PTR), value :: ptr
+      type(C_PTR), intent(in), value :: ptr
       real(C_DOUBLE), intent(in) :: xyz(*)
       integer(C_INT), intent(out) :: ijk(*)
       logical(C_BOOL), intent(out) :: in_mesh
@@ -162,8 +162,8 @@ module mesh_header
 
     pure subroutine mesh_get_indices_from_bin(ptr, bin, ijk) bind(C)
       import C_PTR, C_INT
-      type(C_PTR), value :: ptr
-      integer(C_INT), value :: bin
+      type(C_PTR), intent(in), value :: ptr
+      integer(C_INT), intent(in), value :: bin
       integer(C_INT), intent(out) :: ijk(*)
     end subroutine
 

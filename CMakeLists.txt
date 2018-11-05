@@ -131,7 +131,7 @@ elseif(CMAKE_Fortran_COMPILER_ID STREQUAL Intel)
   # Intel compiler options
   list(APPEND f90flags -fpp -std08 -assume byterecl -traceback)
   if(debug)
-    list(APPEND f90flags -g -warn -ftrapuv -fp-stack-check
+    list(APPEND f90flags -g -warn -fp-stack-check
       "-check all" -fpe0 -O0)
     list(APPEND ldflags -g)
   endif()

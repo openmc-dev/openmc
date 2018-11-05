@@ -28,7 +28,7 @@ double Timer::elapsed()
 {
   if (running_) {
     std::chrono::duration<double> diff = clock::now() - start_;
-    return elapsed_ += diff.count();
+    return elapsed_ + diff.count();
   } else {
     return elapsed_;
   }

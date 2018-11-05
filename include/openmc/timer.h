@@ -31,7 +31,7 @@ public:
 private:
   bool running_ {false}; //!< is timer running?
   std::chrono::time_point<clock> start_; //!< starting point for clock
-  double elapsed_; //!< elasped time in [s]
+  double elapsed_ {0.0}; //!< elasped time in [s]
 };
 
 //==============================================================================

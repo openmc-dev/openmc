@@ -9,10 +9,10 @@
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/simulation.h"
+#include "openmc/settings.h"
 
 namespace openmc {
 
-extern "C" int index_cmfd_mesh;
 
 extern "C" void
 cmfd_populate_sourcecounts(int n_energy, const double* energies,
@@ -24,7 +24,7 @@ cmfd_populate_sourcecounts(int n_energy, const double* energies,
   openmc_source_bank(&source_bank, &n);
 
   // Get source counts in each mesh bin / energy bin
-  auto& m = meshes.at(index_cmfd_mesh);
+  auto& m = meshes.at(settings::index_cmfd_mesh);
   xt::xarray<double> counts = m->count_sites(simulation::work, source_bank, n_energy, energies, outside);
 
   // Copy data from the xarray into the source counts array

@@ -63,7 +63,6 @@ contains
     use geometry_header
     use material_header
     use photon_header
-    use plot_header
     use sab_header
     use settings
     use simulation_header
@@ -85,7 +84,6 @@ contains
     call free_memory_geometry()
     call free_memory_surfaces()
     call free_memory_material()
-    call free_memory_plot()
     call free_memory_volume()
     call free_memory_simulation()
     call free_memory_nuclide()

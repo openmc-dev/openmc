@@ -30,24 +30,36 @@ public:
   }
 
   // Data members
-  Type type_;
-  std::vector<std::string> materials_;
-  std::string path_;
+  Type type_; //!< Type of data library
+  std::vector<std::string> materials_; //!< Materials contained in library
+  std::string path_; //!< File path to library
 };
+
+using LibraryKey = std::pair<Library::Type, std::string>;
 
 //==============================================================================
 // Global variable declarations
 //==============================================================================
 
+namespace data {
+
+//!< Data libraries
 extern std::vector<Library> libraries;
-using LibraryKey = std::pair<Library::Type, std::string>;
-extern std::map<LibraryKey, std::size_t> library_dict;
+
+//! Maps (type, name) to index in libraries
+extern std::map<LibraryKey, std::size_t> library_map;
+
+} // namespace data
 
 //==============================================================================
 // Non-member functions
 //==============================================================================
 
+//! Read cross sections file (either XML or multigroup H5) and populate data
+//! libraries
 extern "C" void read_cross_sections_xml();
+
+//! Read cross_sections.xml and populate data libraries
 void read_ce_cross_sections_xml();
 
 } // namespace openmc

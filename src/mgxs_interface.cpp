@@ -122,7 +122,7 @@ void read_mg_cross_sections_header_c(hid_t file_id)
     Library lib {};
     lib.type_ = Library::Type::neutron;
     lib.materials_.push_back(name);
-    libraries.push_back(lib);
+    data::libraries.push_back(lib);
   }
 }
 

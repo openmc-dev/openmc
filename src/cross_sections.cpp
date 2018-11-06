@@ -19,10 +19,12 @@ namespace openmc {
 // Global variable declarations
 //==============================================================================
 
-std::vector<Library> libraries;
-std::map<LibraryKey, std::size_t> library_dict;
+namespace data {
 
-extern "C" void read_mg_cross_sections_header();
+std::vector<Library> libraries;
+std::map<LibraryKey, std::size_t> library_map;
+
+}
 
 //==============================================================================
 // Library methods
@@ -75,6 +77,8 @@ Library::Library(pugi::xml_node node, const std::string& directory)
 //==============================================================================
 // Non-member functions
 //==============================================================================
+
+extern "C" void read_mg_cross_sections_header();
 
 void read_cross_sections_xml()
 {
@@ -146,12 +150,12 @@ void read_cross_sections_xml()
 
   // Establish mapping between (type, material) and index in libraries
   int i = 0;
-  for (const auto& lib : libraries) {
+  for (const auto& lib : data::libraries) {
     for (const auto& name : lib.materials_) {
       std::string lower_name = name;
       to_lower(lower_name);
       LibraryKey key {lib.type_, lower_name};
-      library_dict.insert({key, i});
+      data::library_map.insert({key, i});
     }
     ++i;
   }
@@ -161,7 +165,7 @@ void read_cross_sections_xml()
     std::string lower_name = name;
     to_lower(lower_name);
     LibraryKey key {Library::Type::neutron, lower_name};
-    if (library_dict.find(key) == library_dict.end()) {
+    if (data::library_map.find(key) == data::library_map.end()) {
       fatal_error("Could not find resonant scatterer " +
         name + " in cross_sections.xml file!");
     }
@@ -200,11 +204,11 @@ void read_ce_cross_sections_xml()
   }
 
   for (const auto& node_library : root.children("library")) {
-    libraries.emplace_back(node_library, directory);
+    data::libraries.emplace_back(node_library, directory);
   }
 
   // Make sure file was not empty
-  if (libraries.empty()) {
+  if (data::libraries.empty()) {
     fatal_error("No cross section libraries present in cross_sections.xml file.");
   }
 }
@@ -214,25 +218,25 @@ void read_ce_cross_sections_xml()
 //==============================================================================
 
 extern "C" void library_clear() {
-  libraries.clear();
-  library_dict.clear();
+  data::libraries.clear();
+  data::library_map.clear();
 }
 
 extern "C" const char* library_path(int type, const char* name) {
   auto lib_type = static_cast<Library::Type>(type);
   LibraryKey key {lib_type, name};
-  if (library_dict.find(key) == library_dict.end()) {
+  if (data::library_map.find(key) == data::library_map.end()) {
     return nullptr;
   } else {
-    auto idx = library_dict[key];
-    return libraries[idx].path_.c_str();
+    auto idx = data::library_map[key];
+    return data::libraries[idx].path_.c_str();
   }
 }
 
 extern "C" bool library_present(int type, const char* name) {
   auto lib_type = static_cast<Library::Type>(type);
   LibraryKey key {lib_type, name};
-  return library_dict.find(key) != library_dict.end();
+  return data::library_map.find(key) != data::library_map.end();
 }
 
 } // namespace openmc

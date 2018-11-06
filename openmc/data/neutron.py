@@ -480,9 +480,12 @@ class IncidentNeutron(EqualityMixin):
                 tgroup = g.create_group('total_nu')
                 rx.derived_products[0].to_hdf5(tgroup)
 
-        # Write redundant reaction data only for reactions with photon production
+        # Write redundant reaction data only for reactions with photon
+        # production or transmutation reactions
         for rx in self.redundant_reactions.values():
-            if any(p.particle == 'photon' for p in rx.products):
+            photon_rx = any(p.particle == 'photon' for p in rx.products)
+            transmutation_rx = (rx.mt in (16, 103, 104, 105, 106, 107))
+            if photon_rx or transmutation_rx:
                 rx_group = rxs_group.create_group('reaction_{:03}'.format(rx.mt))
                 rx.to_hdf5(rx_group)
 
@@ -683,22 +686,31 @@ class IncidentNeutron(EqualityMixin):
                     continue
 
                 # Create redundant reaction with appropriate cross section
-                rx = Reaction(mt)
                 mts = data.get_reaction_components(mt)
                 if len(mts) == 0:
                     warn('Photon production is present for MT={} but no '
                          'reaction components exist.'.format(mt))
                     continue
 
-                xss = [data.reactions[mt_i].xs[strT] for mt_i in mts]
-                idx = min([xs._threshold_idx if hasattr(xs, '_threshold_idx')
-                           else 0 for xs in xss])
-                rx.xs[strT] = Tabulated1D(energy[idx:], Sum(xss)(energy[idx:]))
-                rx.xs[strT]._threshold_idx = idx
-                rx.redundant = True
+                # Determine redundant cross section
+                rx = data._get_redundant_reaction(mt, mts)
+                rx.products += _get_photon_products_ace(ace, rx)
+                data.redundant_reactions[mt] = rx
+
+        # For transmutation reactions, sometimes only individual levels are
+        # present in an ACE file, e.g. MT=600-649 instead of the summation
+        # MT=103. In this case, if a user wants to tally (n,p), OpenMC doesn't
+        # know about the total cross section. Here, we explicitly create a
+        # redundant reaction for this purpose.
+        for mt in (16, 103, 104, 105, 106, 107):
+            if mt not in data:
+                # Determine if any individual levels are present
+                mts = data.get_reaction_components(mt)
+                if len(mts) == 0:
+                    continue
 
                 # Determine redundant cross section
-                rx.products += _get_photon_products_ace(ace, rx)
+                rx = data._get_redundant_reaction(mt, mts)
                 data.redundant_reactions[mt] = rx
 
         # Read unresolved resonance probability tables
@@ -842,3 +854,33 @@ class IncidentNeutron(EqualityMixin):
                 data[2].xs['0K'] = xs
 
         return data
+
+    def _get_redundant_reaction(self, mt, mts):
+        """Create redundant reaction from its components
+
+        Parameters
+        ----------
+        mt : int
+            MT value of the desired reaction
+        mts : iterable of int
+            MT values of its components
+
+        Returns
+        -------
+        openmc.Reaction
+            Redundant reaction
+
+        """
+        # Get energy grid
+        strT = self.temperatures[0]
+        energy = self.energy[strT]
+
+        rx = Reaction(mt)
+        xss = [self.reactions[mt_i].xs[strT] for mt_i in mts]
+        idx = min([xs._threshold_idx if hasattr(xs, '_threshold_idx')
+                   else 0 for xs in xss])
+        rx.xs[strT] = Tabulated1D(energy[idx:], Sum(xss)(energy[idx:]))
+        rx.xs[strT]._threshold_idx = idx
+        rx.redundant = True
+
+        return rx

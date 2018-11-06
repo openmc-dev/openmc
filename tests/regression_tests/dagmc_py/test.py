@@ -42,7 +42,6 @@ def test_dagmc():
     water.add_s_alpha_beta('c_H_in_H2O')
     water.set_density('g/cc', 1.0)
     water.id = 41
-    print(water)
 
     mats = openmc.Materials([u235, water])
     model.materials = mats

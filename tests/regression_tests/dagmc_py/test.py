@@ -10,8 +10,7 @@ pytestmark = pytest.mark.skipif(
     reason="DAGMC CAD geometry is not enabled.")
 
 def test_dagmc():
-    harness = HashedPyAPITestHarness('statepoint.5.h5')
-    model = harness._model
+    model = openmc.model.Model()
 
     # settings
     model.settings.batches = 5
@@ -24,6 +23,9 @@ def test_dagmc():
 
     model.settings.dagmc = True
 
+    root = openmc.Universe(universe_id=0, name='root universe')
+    model.geometry = openmc.geometry.Geometry(root)
+    
     # tally
     tally = openmc.Tally()
     tally.scores = ['total']
@@ -46,4 +48,5 @@ def test_dagmc():
     mats = openmc.Materials([u235, water])
     model.materials = mats
 
+    harness = HashedPyAPITestHarness('statepoint.5.h5', model=model)
     harness.main()

@@ -176,20 +176,6 @@ module nuclide_header
     real(C_DOUBLE) :: pair_production ! macroscopic pair production xs
   end type MaterialMacroXS
 
-!===============================================================================
-! LIBRARY contains data read from a cross_sections.xml file
-!===============================================================================
-
-  type Library
-    integer :: type
-    character(MAX_WORD_LEN), allocatable :: materials(:)
-    character(MAX_FILE_LEN) :: path
-  end type Library
-
-  ! Cross section libraries
-  type(Library), allocatable :: libraries(:)
-  type(DictCharInt) :: library_dict
-
   ! Nuclear data for each nuclide
   type(Nuclide), allocatable, target :: nuclides(:)
   integer(C_INT), bind(C) :: n_nuclides
@@ -204,7 +190,45 @@ module nuclide_header
   real(8) :: energy_min(2) = [ZERO, ZERO]
   real(8) :: energy_max(2) = [INFINITY, INFINITY]
 
+
+  interface
+    function library_present_c(type, name) result(b) bind(C, name='library_present')
+      import C_INT, C_CHAR, C_BOOL
+      integer(C_INT), value :: type
+      character(kind=C_CHAR), intent(in) :: name(*)
+      logical(C_BOOL) :: b
+    end function
+
+    function library_path_c(type, name) result(path) bind(C, name='library_path')
+      import C_INT, C_CHAR, C_PTR
+      integer(C_INT), value :: type
+      character(kind=C_CHAR), intent(in) :: name(*)
+      type(C_PTR) :: path
+    end function
+  end interface
+
 contains
+
+  function library_path(type, name) result(path)
+    integer, intent(in) :: type
+    character(len=*), intent(in) :: name
+    character(MAX_FILE_LEN) :: path
+
+    type(C_PTR) :: ptr
+    character(kind=C_CHAR), pointer :: string(:)
+
+    ptr = library_path_c(type, to_c_string(name))
+    call c_f_pointer(ptr, string, [255])
+    path = to_f_string(string)
+  end function
+
+  function library_present(type, name) result(b)
+    integer, intent(in) :: type
+    character(len=*), intent(in) :: name
+    logical :: b
+
+    b = library_present_c(type, to_c_string(name))
+  end function
 
 !===============================================================================
 ! ASSIGN_0K_ELASTIC_SCATTERING
@@ -1540,6 +1564,11 @@ contains
   subroutine free_memory_nuclide()
     integer :: i
 
+    interface
+      subroutine library_clear() bind(C)
+      end subroutine
+    end interface
+
     ! Deallocate cross section data, listings, and cache
     if (allocated(nuclides)) then
       ! First call the clear routines
@@ -1550,10 +1579,8 @@ contains
     end if
     n_nuclides = 0
 
-    if (allocated(libraries)) deallocate(libraries)
-
     call nuclide_dict % clear()
-    call library_dict % clear()
+    call library_clear()
 
   end subroutine free_memory_nuclide
 
@@ -1593,11 +1620,11 @@ contains
     character(kind=C_CHAR), intent(in) :: name(*)
     integer(C_INT) :: err
 
-    integer :: i_library
     integer :: n
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
     character(:), allocatable :: name_
+    character(MAX_FILE_LEN) :: filename
     real(8) :: minmax(2) = [ZERO, INFINITY]
     type(VectorReal) :: temperature
     type(Nuclide), allocatable :: new_nuclides(:)
@@ -1607,7 +1634,7 @@ contains
 
     err = 0
     if (.not. nuclide_dict % has(to_lower(name_))) then
-      if (library_dict % has(to_lower(name_))) then
+      if (library_present(LIBRARY_NEUTRON, to_lower(name_))) then
         ! allocate extra space in nuclides array
         n = n_nuclides
         allocate(new_nuclides(n + 1))
@@ -1615,10 +1642,10 @@ contains
         call move_alloc(FROM=new_nuclides, TO=nuclides)
         n = n + 1
 
-        i_library = library_dict % get(to_lower(name_))
+        filename = library_path(LIBRARY_NEUTRON, to_lower(name_))
 
         ! Open file and make sure version is sufficient
-        file_id = file_open(libraries(i_library) % path, 'r')
+        file_id = file_open(filename, 'r')
         call check_data_version(file_id)
 
         ! Read nuclide data from HDF5

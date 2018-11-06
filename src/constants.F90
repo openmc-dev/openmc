@@ -238,7 +238,8 @@ module constants
        LIBRARY_NEUTRON = 1, &
        LIBRARY_THERMAL = 2, &
        LIBRARY_PHOTON = 3, &
-       LIBRARY_MULTIGROUP = 4
+       LIBRARY_MULTIGROUP = 4, &
+       LIBRARY_WMP = 5
 
   ! Probability table parameters
   integer, parameter :: &

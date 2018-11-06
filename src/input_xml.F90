@@ -72,6 +72,9 @@ module input_xml
       type(C_PTR) :: node_ptr
     end subroutine read_cells
 
+    subroutine read_cross_sections_xml() bind(C)
+    end subroutine
+
     subroutine read_lattices(node_ptr) bind(C)
       import C_PTR
       type(C_PTR) :: node_ptr
@@ -545,119 +548,6 @@ contains
     end do
   end subroutine allocate_cells
 
-!===============================================================================
-! READ_MATERIAL_XML reads data from a materials.xml file and parses it, checking
-! for errors and placing properly-formatted data in the right data structures
-!===============================================================================
-
-  subroutine read_cross_sections_xml()
-    integer :: i, j
-    logical                 :: file_exists
-    character(MAX_FILE_LEN) :: env_variable
-    character(MAX_LINE_LEN) :: filename
-    type(XMLDocument)       :: doc
-    type(XMLNode)           :: root
-
-    ! Check if materials.xml exists
-    filename = trim(path_input) // "materials.xml"
-    inquire(FILE=filename, EXIST=file_exists)
-    if (.not. file_exists) then
-      call fatal_error("Material XML file '" // trim(filename) // "' does not &
-           &exist!")
-    end if
-
-    ! Parse materials.xml file
-    call doc % load_file(filename)
-    root = doc % document_element()
-
-    ! Find cross_sections.xml file -- the first place to look is the
-    ! materials.xml file. If no file is found there, then we check the
-    ! OPENMC_CROSS_SECTIONS environment variable
-    if (.not. check_for_node(root, "cross_sections")) then
-      ! No cross_sections.xml file specified in settings.xml, check
-      ! environment variable
-      if (run_CE) then
-        call get_environment_variable("OPENMC_CROSS_SECTIONS", env_variable)
-        if (len_trim(env_variable) == 0) then
-          call get_environment_variable("CROSS_SECTIONS", env_variable)
-          ! FIXME: When deprecated option of setting the cross sections in
-          ! settings.xml is removed, remove ".and. path_cross_sections == ''"
-          if (len_trim(env_variable) == 0 .and. path_cross_sections == '') then
-            call fatal_error("No cross_sections.xml file was specified in &
-                 &materials.xml, settings.xml,  or in the OPENMC_CROSS_SECTIONS&
-                 & environment variable. OpenMC needs such a file to identify &
-                 &where to find ACE cross section libraries. Please consult the&
-                 & user's guide at http://openmc.readthedocs.io for &
-                 &information on how to set up ACE cross section libraries.")
-          else
-            call warning("The CROSS_SECTIONS environment variable is &
-                 &deprecated. Please update your environment to use &
-                 &OPENMC_CROSS_SECTIONS instead.")
-          end if
-        end if
-        path_cross_sections = trim(env_variable)
-      else
-        call get_environment_variable("OPENMC_MG_CROSS_SECTIONS", env_variable)
-          ! FIXME: When deprecated option of setting the mg cross sections in
-          ! settings.xml is removed, remove ".and. path_cross_sections == ''"
-        if (len_trim(env_variable) == 0 .and. path_cross_sections == '') then
-          call fatal_error("No mgxs.h5 file was specified in &
-               &materials.xml or in the OPENMC_MG_CROSS_SECTIONS environment &
-               &variable. OpenMC needs such a file to identify where to &
-               &find MG cross section libraries. Please consult the user's &
-               &guide at http://openmc.readthedocs.io for information on &
-               &how to set up MG cross section libraries.")
-        else if (len_trim(env_variable) /= 0) then
-          path_cross_sections = trim(env_variable)
-        end if
-      end if
-    else
-      call get_node_value(root, "cross_sections", path_cross_sections)
-    end if
-
-    ! Find the windowed multipole library
-    if (run_mode /= MODE_PLOTTING) then
-      if (.not. check_for_node(root, "multipole_library")) then
-        ! No library location specified in materials.xml, check
-        ! environment variable
-        call get_environment_variable("OPENMC_MULTIPOLE_LIBRARY", env_variable)
-        path_multipole = trim(env_variable)
-      else
-        call get_node_value(root, "multipole_library", path_multipole)
-      end if
-      if (.not. ends_with(path_multipole, "/")) &
-           path_multipole = trim(path_multipole) // "/"
-    end if
-
-    ! Close materials XML file
-    call doc % clear()
-
-    ! Now that the cross_sections.xml or mgxs.h5 has been located, read it in
-    if (run_CE) then
-      call read_ce_cross_sections_xml()
-    else
-      call read_mg_cross_sections_header()
-    end if
-
-    ! Creating dictionary that maps the name of the material to the entry
-    do i = 1, size(libraries)
-      do j = 1, size(libraries(i) % materials)
-        call library_dict % set(to_lower(libraries(i) % materials(j)), i)
-      end do
-    end do
-
-    ! Check that 0K nuclides are listed in the cross_sections.xml file
-    if (allocated(res_scat_nuclides)) then
-      do i = 1, size(res_scat_nuclides)
-        if (.not. library_dict % has(to_lower(res_scat_nuclides(i)))) then
-          call fatal_error("Could not find resonant scatterer " &
-               // trim(res_scat_nuclides(i)) // " in cross_sections.xml file!")
-        end if
-      end do
-    end if
-
-  end subroutine read_cross_sections_xml
-
   subroutine read_materials_xml()
     integer :: i              ! loop index for materials
     integer :: j              ! loop index for nuclides
@@ -928,18 +818,9 @@ contains
       ALL_NUCLIDES: do j = 1, mat % n_nuclides
         ! Check that this nuclide is listed in the cross_sections.xml file
         name = trim(names % data(j))
-        if (.not. library_dict % has(to_lower(name))) then
+        if (.not. library_present(LIBRARY_NEUTRON, (to_lower(name)))) then
           call fatal_error("Could not find nuclide " // trim(name) &
                // " in cross_sections data file!")
-        end if
-        i_library = library_dict % get(to_lower(name))
-
-        if (run_CE) then
-          ! Check to make sure cross-section is continuous energy neutron table
-          if (libraries(i_library) % type /= LIBRARY_NEUTRON) then
-            call fatal_error("Cross-section table " // trim(name) &
-                 // " is not a continuous-energy neutron table.")
-          end if
         end if
 
         ! If this nuclide hasn't been encountered yet, we need to add its name
@@ -959,7 +840,7 @@ contains
           element = name(1:scan(name, '0123456789') - 1)
 
           ! Make sure photon cross section data is available
-          if (.not. library_dict % has(to_lower(element))) then
+          if (.not. library_present(LIBRARY_PHOTON, to_lower(element))) then
             call fatal_error("Could not find element " // trim(element) &
                  // " in cross_sections data file!")
           end if
@@ -1053,21 +934,9 @@ contains
             end if
 
             ! Check that this nuclide is listed in the cross_sections.xml file
-            if (.not. library_dict % has(to_lower(name))) then
+            if (.not. library_present(LIBRARY_THERMAL, to_lower(name))) then
               call fatal_error("Could not find S(a,b) table " // trim(name) &
                    // " in cross_sections.xml file!")
-            end if
-
-            ! Find index in xs_listing and set the name and alias according to the
-            ! listing
-            i_library = library_dict % get(to_lower(name))
-
-            if (run_CE) then
-              ! Check to make sure cross-section is continuous energy neutron table
-              if (libraries(i_library) % type /= LIBRARY_THERMAL) then
-                call fatal_error("Cross-section table " // trim(name) &
-                     // " is not a S(a,b) table.")
-              end if
             end if
 
             ! If this S(a,b) table hasn't been encountered yet, we need to add its
@@ -2052,117 +1921,7 @@ contains
 
   end subroutine read_plots_xml
 
-!===============================================================================
-! READ_*_CROSS_SECTIONS_XML reads information from a cross_sections.xml file. This
-! file contains a listing of the CE and MG cross sections that may be used.
-!===============================================================================
-
-  subroutine read_ce_cross_sections_xml()
-    integer :: i           ! loop index
-    integer :: n
-    integer :: n_libraries
-    logical :: file_exists ! does cross_sections.xml exist?
-    character(MAX_WORD_LEN) :: directory ! directory with cross sections
-    character(MAX_WORD_LEN) :: words(MAX_WORDS)
-    character(10000) :: temp_str
-    type(XMLDocument) :: doc
-    type(XMLNode) :: root
-    type(XMLNode) :: node_library
-    type(XMLNode), allocatable :: node_library_list(:)
-
-    ! Check if cross_sections.xml exists
-    inquire(FILE=path_cross_sections, EXIST=file_exists)
-    if (.not. file_exists) then
-      ! Could not find cross_sections.xml file
-      call fatal_error("Cross sections XML file '" &
-           // trim(path_cross_sections) // "' does not exist!")
-    end if
-
-    call write_message("Reading cross sections XML file...", 5)
-
-    ! Parse cross_sections.xml file
-    call doc % load_file(path_cross_sections)
-    root = doc % document_element()
-
-    if (check_for_node(root, "directory")) then
-      ! Copy directory information if present
-      call get_node_value(root, "directory", directory)
-    else
-      ! If no directory is listed in cross_sections.xml, by default select the
-      ! directory in which the cross_sections.xml file resides
-      i = index(path_cross_sections, "/", BACK=.true.)
-      directory = path_cross_sections(1:i)
-    end if
-
-    ! Get node list of all <library>
-    call get_node_list(root, "library", node_library_list)
-    n_libraries = size(node_library_list)
-
-    ! Allocate xs_listings array
-    if (n_libraries == 0) then
-      call fatal_error("No cross section libraries present in cross_sections.xml &
-           &file!")
-    else
-      allocate(libraries(n_libraries))
-    end if
-
-    do i = 1, n_libraries
-      ! Get pointer to ace table XML node
-      node_library = node_library_list(i)
-
-      ! Get list of materials
-      if (check_for_node(node_library, "materials")) then
-        call get_node_value(node_library, "materials", temp_str)
-        call split_string(temp_str, words, n)
-        allocate(libraries(i) % materials(n))
-        libraries(i) % materials(:) = words(1:n)
-      end if
-
-      ! Get type of library
-      if (check_for_node(node_library, "type")) then
-        call get_node_value(node_library, "type", temp_str)
-        select case(to_lower(temp_str))
-        case ('neutron')
-          libraries(i) % type = LIBRARY_NEUTRON
-        case ('thermal')
-          libraries(i) % type = LIBRARY_THERMAL
-        case ('photon')
-          libraries(i) % type = LIBRARY_PHOTON
-        end select
-      else
-        call fatal_error("Missing library type")
-      end if
-
-      ! determine path of cross section table
-      if (check_for_node(node_library, "path")) then
-        call get_node_value(node_library, "path", temp_str)
-      else
-        call fatal_error("Missing library path")
-      end if
-
-      if (starts_with(temp_str, '/')) then
-        libraries(i) % path = trim(temp_str)
-      else
-        if (ends_with(directory,'/')) then
-          libraries(i) % path = trim(directory) // trim(temp_str)
-        else
-          libraries(i) % path = trim(directory) // '/' // trim(temp_str)
-        end if
-      end if
-
-      inquire(FILE=libraries(i) % path, EXIST=file_exists)
-      if (.not. file_exists) then
-        call warning("Cross section library " // trim(libraries(i) % path) // &
-             " does not exist.")
-      end if
-    end do
-
-    ! Close cross sections XML file
-    call doc % clear()
-
-  end subroutine read_ce_cross_sections_xml
-
-  subroutine read_mg_cross_sections_header()
+  subroutine read_mg_cross_sections_header() bind(C)
     integer :: i           ! loop index
     integer :: n_libraries
     logical :: file_exists ! does mgxs.h5 exist?
@@ -2240,15 +1999,7 @@ contains
     if (n_libraries == 0) then
       call fatal_error("At least one MGXS data set must be present in &
                        &mgxs library file!")
-    else
-      allocate(libraries(n_libraries))
     end if
-
-    do i = 1, n_libraries
-      ! Get name of material
-      allocate(libraries(i) % materials(1))
-      libraries(i) % materials(1) = names(i)
-    end do
 
     ! Close MGXS HDF5 file
     call file_close(file_id)
@@ -2346,6 +2097,7 @@ contains
     integer(HID_T) :: group_id
     logical :: mp_found     ! if windowed multipole libraries were found
     character(MAX_WORD_LEN) :: name
+    character(MAX_FILE_LEN) :: filename
     character(3) :: element
     type(SetChar) :: already_read
     type(SetChar) :: element_already_read
@@ -2363,14 +2115,14 @@ contains
         name = materials(i) % names(j)
 
         if (.not. already_read % contains(name)) then
-          i_library = library_dict % get(to_lower(name))
+          filename = library_path(LIBRARY_NEUTRON, to_lower(name))
           i_nuclide = nuclide_dict % get(to_lower(name))
 
           call write_message('Reading ' // trim(name) // ' from ' // &
-               trim(libraries(i_library) % path), 6)
+               trim(filename), 6)
 
           ! Open file and make sure version is sufficient
-          file_id = file_open(libraries(i_library) % path, 'r')
+          file_id = file_open(filename, 'r')
           call check_data_version(file_id)
 
           ! Read nuclide data from HDF5
@@ -2403,13 +2155,13 @@ contains
           if (photon_transport) then
             if (.not. element_already_read % contains(element)) then
               ! Read photon interaction data from HDF5 photon library
-              i_library = library_dict % get(to_lower(element))
+              filename = library_path(LIBRARY_PHOTON, to_lower(element))
               i_element = element_dict % get(element)
               call write_message('Reading ' // trim(element) // ' from ' // &
-                   trim(libraries(i_library) % path), 6)
+                   trim(filename), 6)
 
               ! Open file and make sure version is sufficient
-              file_id = file_open(libraries(i_library) % path, 'r')
+              file_id = file_open(filename, 'r')
               call check_data_version(file_id)
 
               ! Read element data from HDF5
@@ -2493,14 +2245,14 @@ contains
         name = materials(i) % sab_names(j)
 
         if (.not. already_read % contains(name)) then
-          i_library = library_dict % get(to_lower(name))
+          filename = library_path(LIBRARY_THERMAL, to_lower(name))
           i_sab  = sab_dict % get(to_lower(name))
 
           call write_message('Reading ' // trim(name) // ' from ' // &
-               trim(libraries(i_library) % path), 6)
+               trim(filename), 6)
 
           ! Open file and make sure version matches
-          file_id = file_open(libraries(i_library) % path, 'r')
+          file_id = file_open(filename, 'r')
           call check_data_version(file_id)
 
           ! Read S(a,b) data from HDF5

@@ -187,7 +187,7 @@ void read_settings_xml()
   using namespace pugi;
 
   // Check if settings.xml exists
-  std::string filename = std::string(path_input) + "settings.xml";
+  std::string filename = path_input + "settings.xml";
   if (!file_exists(filename)) {
     if (run_mode != RUN_MODE_PLOTTING) {
       std::stringstream msg;

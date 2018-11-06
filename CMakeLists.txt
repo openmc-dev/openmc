@@ -426,7 +426,7 @@ add_library(libopenmc SHARED
   src/simulation.cpp
   src/source.cpp
   src/state_point.cpp
-  src/string_functions.cpp
+  src/string_utils.cpp
   src/summary.cpp
   src/surface.cpp
   src/tallies/filter.cpp

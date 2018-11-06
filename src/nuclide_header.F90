@@ -240,11 +240,30 @@ contains
     integer :: i
     real(8) :: xs_cdf_sum
 
+    interface
+      function res_scat_nuclides_empty() result(empty) bind(C)
+        import C_BOOL
+        logical(C_BOOL) :: empty
+      end function
+
+      function res_scat_nuclides_size() result(n) bind(C)
+        import C_INT
+        integer(C_INT) :: n
+      end function
+
+      function res_scat_nuclides_cmp(i, name) result(b) bind(C)
+        import C_INT, C_CHAR, C_BOOL
+        integer(C_INT), value :: i
+        character(kind=C_CHAR), intent(in) :: name(*)
+        logical(C_BOOL) :: b
+      end function
+    end interface
+
     this % resonant = .false.
-    if (allocated(res_scat_nuclides)) then
+    if (.not. res_scat_nuclides_empty()) then
       ! If resonant nuclides were specified, check the list explicitly
-      do i = 1, size(res_scat_nuclides)
-        if (this % name == res_scat_nuclides(i)) then
+      do i = 1, res_scat_nuclides_size()
+        if (res_scat_nuclides_cmp(i, to_c_string(this % name))) then
           this % resonant = .true.
 
           ! Make sure nuclide has 0K data

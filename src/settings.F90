@@ -115,29 +115,11 @@ module settings
   integer(C_INT), bind(C) :: res_scat_method  ! resonance scattering method
   real(C_DOUBLE), bind(C) :: res_scat_energy_min
   real(C_DOUBLE), bind(C) :: res_scat_energy_max
-  character(10), allocatable :: res_scat_nuclides(:)
 
   ! Is CMFD active
   logical(C_BOOL), bind(C) :: cmfd_run
 
   ! No reduction at end of batch
   logical(C_BOOL), bind(C) :: reduce_tallies
-
-contains
-
-!===============================================================================
-! FREE_MEMORY_SETTINGS deallocates global arrays defined in this module
-!===============================================================================
-
-  subroutine free_memory_settings()
-    interface
-      subroutine free_memory_settings_c() bind(C)
-      end subroutine
-    end interface
-
-    if (allocated(res_scat_nuclides)) deallocate(res_scat_nuclides)
-
-    call free_memory_settings_c()
-  end subroutine free_memory_settings
 
 end module settings

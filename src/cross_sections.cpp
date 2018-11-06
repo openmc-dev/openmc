@@ -15,10 +15,18 @@
 
 namespace openmc {
 
+//==============================================================================
+// Global variable declarations
+//==============================================================================
+
 std::vector<Library> libraries;
 std::map<LibraryKey, std::size_t> library_dict;
 
 extern "C" void read_mg_cross_sections_header();
+
+//==============================================================================
+// Library methods
+//==============================================================================
 
 Library::Library(pugi::xml_node node, const std::string& directory)
 {
@@ -64,6 +72,9 @@ Library::Library(pugi::xml_node node, const std::string& directory)
   }
 }
 
+//==============================================================================
+// Non-member functions
+//==============================================================================
 
 void read_cross_sections_xml()
 {
@@ -145,14 +156,15 @@ void read_cross_sections_xml()
   }
 
   // Check that 0K nuclides are listed in the cross_sections.xml file
-  // if (allocated(res_scat_nuclides)) {
-  //   do i = 1, size(res_scat_nuclides)
-  //     if (!library_dict % has(to_lower(res_scat_nuclides(i)))) {
-  //       fatal_error("Could not find resonant scatterer " &
-  //             // trim(res_scat_nuclides(i)) // " in cross_sections.xml file!")
-  //     }
-  //   end do
-  // }
+  for (const auto& name : settings::res_scat_nuclides) {
+    std::string lower_name = name;
+    to_lower(lower_name);
+    LibraryKey key {Library::Type::neutron, lower_name};
+    if (library_dict.find(key) == library_dict.end()) {
+      fatal_error("Could not find resonant scatterer " +
+        name + " in cross_sections.xml file!");
+    }
+  }
 }
 
 void read_ce_cross_sections_xml()
@@ -195,6 +207,10 @@ void read_ce_cross_sections_xml()
     fatal_error("No cross section libraries present in cross_sections.xml file.");
   }
 }
+
+//==============================================================================
+// Fortran compatibility functions
+//==============================================================================
 
 extern "C" void library_clear() {
   libraries.clear();

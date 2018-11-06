@@ -216,7 +216,6 @@ contains
     integer :: i
     integer :: n
     type(XMLNode) :: root
-    type(XMLNode) :: node_res_scat
     type(XMLNode) :: node_vol
     type(XMLNode), allocatable :: node_vol_list(:)
 
@@ -540,7 +539,6 @@ contains
     integer :: k              ! loop index
     integer :: n              ! number of nuclides
     integer :: n_sab          ! number of sab tables for a material
-    integer :: i_library      ! index in libraries array
     integer :: index_nuclide  ! index in nuclides
     integer :: index_element  ! index in elements
     integer :: index_sab      ! index in sab_tables
@@ -1913,13 +1911,22 @@ contains
     logical :: file_exists ! does mgxs.h5 exist?
     integer(HID_T) :: file_id
     character(len=MAX_WORD_LEN), allocatable :: names(:)
+    character(kind=C_CHAR), pointer :: string(:)
 
     interface
       subroutine read_mg_cross_sections_header_c(file_id) bind(C)
         import HID_T
         integer(HID_T), value :: file_id
       end subroutine
+
+      function path_cross_sections_c() result(ptr) bind(C)
+        import C_PTR
+        type(C_PTR) :: ptr
+      end function
     end interface
+
+    call c_f_pointer(path_cross_sections_c(), string, [255])
+    path_cross_sections = to_f_string(string)
 
     ! Check if MGXS Library exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
@@ -2075,7 +2082,6 @@ contains
     type(VectorReal), intent(in)     :: sab_temps(:)
 
     integer :: i, j
-    integer :: i_library
     integer :: i_nuclide
     integer :: i_element
     integer :: i_sab
@@ -2304,20 +2310,38 @@ contains
     logical :: file_exists                 ! Does multipole library exist?
     character(7) :: readable               ! Is multipole library readable?
     character(MAX_FILE_LEN) :: filename    ! Path to multipole xs library
+    character(kind=C_CHAR), pointer :: string(:)
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
 
-    ! For the time being, and I know this is a bit hacky, we just assume
-    ! that the file will be ZZZAAAmM.h5.
+    interface
+      function path_multipole_c() result(ptr) bind(C)
+        import C_PTR
+        type(C_PTR) :: ptr
+      end function
+    end interface
+
     associate (nuc => nuclides(i_table))
 
-      if (nuc % metastable > 0) then
-        filename = trim(path_multipole) // trim(zero_padded(nuc % Z, 3)) // &
-             trim(zero_padded(nuc % A, 3)) // 'm' // &
-             trim(to_str(nuc % metastable)) // ".h5"
+      if (library_present(LIBRARY_WMP, to_lower(nuc % name))) then
+        ! If WMP data is listed in cross_sections.xml, prefer that
+        filename = library_path(LIBRARY_WMP, to_lower(nuc % name))
       else
-        filename = trim(path_multipole) // trim(zero_padded(nuc % Z, 3)) // &
-             trim(zero_padded(nuc % A, 3)) // ".h5"
+        ! Otherwise, we rely on the OPENMC_MULTIPOLE_LIBRARY environment
+        ! variable. This is a bit hacky, but we just assume that the file will be
+        ! ZZZAAAmM.h5.
+
+        call c_f_pointer(path_multipole_c(), string, [255])
+        path_multipole = to_f_string(string)
+
+        if (nuc % metastable > 0) then
+          filename = trim(path_multipole) // trim(zero_padded(nuc % Z, 3)) // &
+              trim(zero_padded(nuc % A, 3)) // 'm' // &
+              trim(to_str(nuc % metastable)) // ".h5"
+        else
+          filename = trim(path_multipole) // trim(zero_padded(nuc % Z, 3)) // &
+              trim(zero_padded(nuc % A, 3)) // ".h5"
+        end if
       end if
 
       ! Check if Multipole library exists and is readable
@@ -2331,7 +2355,8 @@ contains
       end if
 
       ! Display message
-      call write_message("Loading Windowed Multipole XS from " // filename, 6)
+      call write_message("Reading " // trim(nuc % name) // " WMP data from " &
+           // filename, 6)
 
       ! Open file and make sure version is sufficient
       file_id = file_open(filename, 'r')

@@ -127,7 +127,8 @@ void read_cross_sections_xml()
     if (!check_for_node(root, "multipole_library")) {
       // No library location specified in materials.xml, check
       // environment variable
-      settings::path_multipole = std::getenv("OPENMC_MULTIPOLE_LIBRARY");
+      char* envvar = std::getenv("OPENMC_MULTIPOLE_LIBRARY");
+      if (envvar) settings::path_multipole = envvar;
     } else {
       settings::path_multipole = get_node_value(root, "multipole_library");
     }

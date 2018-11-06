@@ -197,7 +197,7 @@ contains
         do i = 1, this % n_nuclides
           awr = nuclides(this % nuclide(i)) % awr
           this % density_gpcc = this % density_gpcc &
-              + this % atom_density(i) * awr * MASS_NEUTRON / N_AVOGADRO
+               + this % atom_density(i) * awr * MASS_NEUTRON / N_AVOGADRO
         end do
       case ('g/cm3', 'g/cc')
         ! Determine factor by which to change densities

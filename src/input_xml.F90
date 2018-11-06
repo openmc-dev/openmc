@@ -223,20 +223,6 @@ contains
     ! Get proper XMLNode type given pointer
     root % ptr = root_ptr
 
-    ! Resonance scattering parameters
-    if (check_for_node(root, "resonance_scattering")) then
-      node_res_scat = root % child("resonance_scattering")
-
-      ! Get nuclides that resonance scattering should be applied to
-      if (check_for_node(node_res_scat, "nuclides")) then
-        n = node_word_count(node_res_scat, "nuclides")
-        allocate(res_scat_nuclides(n))
-        if (n > 0) then
-          call get_node_array(node_res_scat, "nuclides", res_scat_nuclides)
-        end if
-      end if
-    end if
-
     call get_node_list(root, "volume_calc", node_vol_list)
     n = size(node_vol_list)
     allocate(volume_calcs(n))

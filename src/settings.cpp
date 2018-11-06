@@ -88,6 +88,7 @@ int n_max_batches;
 int res_scat_method {RES_SCAT_ARES};
 double res_scat_energy_min {0.01};
 double res_scat_energy_max {1000.0};
+std::vector<std::string> res_scat_nuclides;
 int run_mode {-1};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
@@ -749,7 +750,10 @@ void read_settings_xml()
         "lower resonance scattering energy bound.");
     }
 
-    // TODO: Get resonance scattering nuclides
+    // Get resonance scattering nuclides
+    if (check_for_node(node_res_scat, "nuclides")) {
+      res_scat_nuclides = get_node_array<std::string>(node_res_scat, "nuclides");
+    }
   }
 
   // TODO: Get volume calculations
@@ -817,6 +821,18 @@ void read_settings_xml()
 //==============================================================================
 
 extern "C" {
+  bool res_scat_nuclides_empty() {
+    return settings::res_scat_nuclides.empty();
+  }
+
+  int res_scat_nuclides_size() {
+    return settings::res_scat_nuclides.size();
+  }
+
+  bool res_scat_nuclides_cmp(int i, const char* name) {
+    return settings::res_scat_nuclides[i - 1] == name;
+  }
+
   const char* openmc_path_input() {
     return settings::path_input.c_str();
   }
@@ -830,9 +846,10 @@ extern "C" {
     return settings::path_particle_restart.c_str();
   }
 
-  void free_memory_settings_c() {
+  void free_memory_settings() {
     settings::statepoint_batch.clear();
     settings::sourcepoint_batch.clear();
+    settings::res_scat_nuclides.clear();
   }
 }
 

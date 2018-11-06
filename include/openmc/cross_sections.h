@@ -9,6 +9,10 @@
 
 namespace openmc {
 
+//==============================================================================
+// Library class
+//==============================================================================
+
 class Library {
 public:
   // Types, enums
@@ -30,14 +34,21 @@ public:
   std::string path_;
 };
 
+//==============================================================================
+// Global variable declarations
+//==============================================================================
+
 extern std::vector<Library> libraries;
 using LibraryKey = std::pair<Library::Type, std::string>;
 extern std::map<LibraryKey, std::size_t> library_dict;
 
+//==============================================================================
+// Non-member functions
+//==============================================================================
 
 extern "C" void read_cross_sections_xml();
 void read_ce_cross_sections_xml();
 
-}
+} // namespace openmc
 
 #endif // OPENMC_CROSS_SECTIONS_H

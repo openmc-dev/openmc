@@ -1907,10 +1907,8 @@ contains
 
   subroutine read_mg_cross_sections_header() bind(C)
     integer :: i           ! loop index
-    integer :: n_libraries
     logical :: file_exists ! does mgxs.h5 exist?
     integer(HID_T) :: file_id
-    character(len=MAX_WORD_LEN), allocatable :: names(:)
     character(kind=C_CHAR), pointer :: string(:)
 
     interface
@@ -1983,16 +1981,6 @@ contains
     energy_max(NEUTRON) = energy_bins(1)
     call set_particle_energy_bounds(NEUTRON, energy_min(NEUTRON), &
          energy_max(NEUTRON))
-
-    ! Get the datasets present in the library
-    call get_groups(file_id, names)
-    n_libraries = size(names)
-
-    ! Allocate libraries array
-    if (n_libraries == 0) then
-      call fatal_error("At least one MGXS data set must be present in &
-                       &mgxs library file!")
-    end if
 
     ! Close MGXS HDF5 file
     call file_close(file_id)

@@ -17,7 +17,7 @@
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_lcg.h"
-#include "openmc/string_functions.h"
+#include "openmc/string_utils.h"
 
 
 namespace openmc {

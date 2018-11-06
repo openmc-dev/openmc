@@ -5,7 +5,6 @@
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/settings.h"
-#include "openmc/string_functions.h"
 #include "openmc/string_utils.h"
 #include "openmc/xml_interface.h"
 

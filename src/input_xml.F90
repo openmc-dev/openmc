@@ -2324,11 +2324,11 @@ contains
 
         if (nuc % metastable > 0) then
           filename = trim(path_multipole) // trim(zero_padded(nuc % Z, 3)) // &
-              trim(zero_padded(nuc % A, 3)) // 'm' // &
-              trim(to_str(nuc % metastable)) // ".h5"
+               trim(zero_padded(nuc % A, 3)) // 'm' // &
+               trim(to_str(nuc % metastable)) // ".h5"
         else
           filename = trim(path_multipole) // trim(zero_padded(nuc % Z, 3)) // &
-              trim(zero_padded(nuc % A, 3)) // ".h5"
+               trim(zero_padded(nuc % A, 3)) // ".h5"
         end if
       end if
 

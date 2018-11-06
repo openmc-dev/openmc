@@ -833,16 +833,22 @@ extern "C" {
     return settings::res_scat_nuclides[i - 1] == name;
   }
 
-  const char* openmc_path_input() {
+  const char* path_cross_sections_c() {
+    return settings::path_cross_sections.c_str();
+  }
+  const char* path_input_c() {
     return settings::path_input.c_str();
   }
-  const char* openmc_path_statepoint() {
+  const char* path_multipole_c() {
+    return settings::path_multipole.c_str();
+  }
+  const char* path_statepoint_c() {
     return settings::path_statepoint.c_str();
   }
-  const char* openmc_path_sourcepoint() {
+  const char* path_sourcepoint_c() {
     return settings::path_sourcepoint.c_str();
   }
-  const char* openmc_path_particle_restart() {
+  const char* path_particle_restart_c() {
     return settings::path_particle_restart.c_str();
   }
 

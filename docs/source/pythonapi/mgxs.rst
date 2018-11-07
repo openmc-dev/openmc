@@ -8,9 +8,10 @@ Energy Groups
 .. autosummary::
     :toctree: generated
     :nosignatures:
-    :template: myclass.rst
+    :template: myclass.rst mymodulevar.rst
 
     openmc.mgxs.EnergyGroups
+    openmc.mgxs.GROUP_STRUCTURES
 
 Multi-group Cross Sections
 --------------------------

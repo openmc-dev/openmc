@@ -5,11 +5,10 @@ from openmc.mgxs.mgxs import *
 from openmc.mgxs.mdgxs import *
 
 GROUP_STRUCTURES = {}
-"""Commonly used energy group structures, including "CASMO-X" (where X
-is 2, 4, 8, 16, 25, 40 or 70) from the [CASMO]_ lattice physics code.
+"""Dictionary of commonly used energy group structures, including "CASMO-X" (where X
+is 2, 4, 8, 16, 25, 40 or 70) from the CASMO_ lattice physics code.
 
-    .. [CASMO] J. Rhodes, K. Smith, and D. Lee, "CASMO-5 Development and
-        Applications", *Proc. ANS Topical Meeting on Reactor Physics* (2006).
+.. _CASMO: https://www.studsvik.com/SharepointFiles/CASMO-5%20Development%20and%20Applications.pdf
 
 """
 

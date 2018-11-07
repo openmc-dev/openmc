@@ -22,9 +22,6 @@ def test_dagmc():
     model.settings.source = source
 
     model.settings.dagmc = True
-
-    root = openmc.Universe(universe_id=0, name='root universe')
-    model.geometry = openmc.geometry.Geometry(root)
     
     # tally
     tally = openmc.Tally()

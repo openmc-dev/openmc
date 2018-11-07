@@ -181,7 +181,8 @@ class Model(object):
         """Export model to XML files."""
 
         self.settings.export_to_xml()
-        self.geometry.export_to_xml()
+        if not settings.dagmc:
+            self.geometry.export_to_xml()
 
         # If a materials collection was specified, export it. Otherwise, look
         # for all materials in the geometry and use that to automatically build

@@ -1,3 +1,4 @@
+import numpy as np
 
 from openmc.mgxs.groups import EnergyGroups
 from openmc.mgxs.library import Library

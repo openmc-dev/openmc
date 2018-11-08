@@ -2,19 +2,24 @@ import copy
 import warnings
 import itertools
 import random
-from collections import defaultdict
+from abc import ABCMeta, abstractproperty, abstractmethod
+from collections import Counter, defaultdict
 from collections.abc import Iterable
-from numbers import Real
-from random import uniform, gauss
 from heapq import heappush, heappop
 from math import pi, sin, cos, floor, log10, sqrt
-from abc import ABCMeta, abstractproperty, abstractmethod
+from numbers import Real
+from operator import attrgetter
+from random import uniform, gauss
 
 import numpy as np
 import scipy.spatial
 
 import openmc
-import openmc.checkvalue as cv
+from openmc.checkvalue import check_type
+
+
+MAX_PF_RSP = 0.38
+MAX_PF_CRP = 0.64
 
 
 class TRISO(openmc.Cell):
@@ -55,7 +60,7 @@ class TRISO(openmc.Cell):
 
     @center.setter
     def center(self, center):
-        cv.check_type('TRISO center', center, Iterable, Real)
+        check_type('TRISO center', center, Iterable, Real)
         self._surface.x0 = center[0]
         self._surface.y0 = center[1]
         self._surface.z0 = center[2]
@@ -91,43 +96,43 @@ class TRISO(openmc.Cell):
                 k_min:k_max+1, j_min:j_max+1, i_min:i_max+1]))
 
 
-class _Domain(metaclass=ABCMeta):
-    """Container in which to pack particles.
+class _Container(metaclass=ABCMeta):
+    """Container in which to pack spheres.
 
     Parameters
     ----------
-    particle_radius : float
-        Radius of particles to be packed in container.
+    sphere_radius : float
+        Radius of spheres to be packed in container.
     center : Iterable of float
         Cartesian coordinates of the center of the container. Default is
-        [0., 0., 0.]
+        (0., 0., 0.)
 
     Attributes
     ----------
-    particle_radius : float
-        Radius of particles to be packed in container.
+    sphere_radius : float
+        Radius of spheres to be packed in container.
     center : list of float
         Cartesian coordinates of the center of the container. Default is
-        [0., 0., 0.]
+        (0., 0., 0.)
     cell_length : list of float
         Length in x-, y-, and z- directions of each cell in mesh overlaid on
         domain.
     limits : list of float
-        Constraint on where particle center can be placed.
+        Constraint on where sphere center can be placed.
     volume : float
         Volume of the container.
 
     """
-    def __init__(self, particle_radius, center=[0., 0., 0.]):
+    def __init__(self, sphere_radius, center=(0., 0., 0.)):
         self._cell_length = None
         self._limits = None
 
-        self.particle_radius = particle_radius
+        self.sphere_radius = sphere_radius
         self.center = center
 
     @property
-    def particle_radius(self):
-        return self._particle_radius
+    def sphere_radius(self):
+        return self._sphere_radius
 
     @property
     def center(self):
@@ -145,9 +150,9 @@ class _Domain(metaclass=ABCMeta):
     def volume(self):
         pass
 
-    @particle_radius.setter
-    def particle_radius(self, particle_radius):
-        self._particle_radius = float(particle_radius)
+    @sphere_radius.setter
+    def sphere_radius(self, sphere_radius):
+        self._sphere_radius = float(sphere_radius)
         self._limits = None
         self._cell_length = None
 
@@ -160,12 +165,12 @@ class _Domain(metaclass=ABCMeta):
 
     def mesh_cell(self, p):
         """Calculate the index of the cell in a mesh overlaid on the domain in
-        which the given particle center falls.
+        which the given sphere center falls.
 
         Parameters
         ----------
         p : Iterable of float
-            Cartesian coordinates of particle center.
+            Cartesian coordinates of sphere center.
 
         Returns
         -------
@@ -177,12 +182,12 @@ class _Domain(metaclass=ABCMeta):
 
     def nearby_mesh_cells(self, p):
         """Calculates the indices of all cells in a mesh overlaid on the domain
-        within one diameter of the given particle.
+        within one diameter of the given sphere.
 
         Parameters
         ----------
         p : Iterable of float
-            Cartesian coordinates of particle center.
+            Cartesian coordinates of sphere center.
 
         Returns
         -------
@@ -190,27 +195,27 @@ class _Domain(metaclass=ABCMeta):
             Indices of mesh cells.
 
         """
-        d = 2*self.particle_radius
+        d = 2*self.sphere_radius
         r = [[a/self.cell_length[i] for a in [p[i]-d, p[i], p[i]+d]]
              for i in range(3)]
         return list(itertools.product(*({int(x) for x in y} for y in r)))
 
     @abstractmethod
     def random_point(self):
-        """Generate Cartesian coordinates of center of a particle that is
+        """Generate Cartesian coordinates of center of a sphere that is
         contained entirely within the domain with uniform probability.
 
         Returns
         -------
         list of float
-            Cartesian coordinates of particle center.
+            Cartesian coordinates of sphere center.
 
         """
         pass
 
     @abstractmethod
-    def repel_particles(self, p, q, d, d_new):
-        """Move particles p and q apart according to the following
+    def repel_spheres(self, p, q, d, d_new):
+        """Move spheres p and q apart according to the following
         transformation (accounting for boundary conditions on domain):
 
             r_i^(n+1) = r_i^(n) + 1/2(d_out^(n+1) - d^(n))
@@ -219,78 +224,110 @@ class _Domain(metaclass=ABCMeta):
         Parameters
         ----------
         p, q : numpy.ndarray
-            Cartesian coordinates of particle center.
+            Cartesian coordinates of sphere center.
         d : float
-            distance between centers of particles i and j.
+            distance between centers of spheres i and j.
         d_new : float
-            final distance between centers of particles i and j.
+            final distance between centers of spheres i and j.
 
         """
         pass
 
 
-class _CubicDomain(_Domain):
-    """Cubic container in which to pack particles.
+class _RectangularPrism(_Container):
+    """Rectangular prism container in which to pack spheres.
 
     Parameters
     ----------
-    length : float
-        Length of each side of the cubic container.
-    particle_radius : float
-        Radius of particles to be packed in container.
+    width : float
+        Prism length along the x-axis
+    depth : float
+        Prism length along the y-axis
+    height : float
+        Prism length along the z-axis
+    sphere_radius : float
+        Radius of spheres to be packed in container.
     center : Iterable of float
         Cartesian coordinates of the center of the container. Default is
-        [0., 0., 0.]
+        (0., 0., 0.)
 
     Attributes
     ----------
-    length : float
-        Length of each side of the cubic container.
-    particle_radius : float
-        Radius of particles to be packed in container.
+    width : float
+        Prism length along the x-axis
+    depth : float
+        Prism length along the y-axis
+    height : float
+        Prism length along the z-axis
+    sphere_radius : float
+        Radius of spheres to be packed in container.
     center : list of float
         Cartesian coordinates of the center of the container. Default is
-        [0., 0., 0.]
+        (0., 0., 0.)
     cell_length : list of float
         Length in x-, y-, and z- directions of each cell in mesh overlaid on
         domain.
     limits : list of float
-        Maximum distance from center in x-, y-, or z-direction where particle
+        Maximum distance from center in x-, y-, or z-direction where sphere
         center can be placed.
     volume : float
         Volume of the container.
 
     """
 
-    def __init__(self, length, particle_radius, center=[0., 0., 0.]):
-        super().__init__(particle_radius, center)
-        self.length = length
+    def __init__(self, width, depth, height, sphere_radius, center=(0., 0., 0.)):
+        super().__init__(sphere_radius, center)
+        self.width = width
+        self.depth = depth
+        self.height = height
 
     @property
-    def length(self):
-        return self._length
+    def width(self):
+        return self._width
+
+    @property
+    def depth(self):
+        return self._depth
+
+    @property
+    def height(self):
+        return self._height
 
     @property
     def limits(self):
         if self._limits is None:
-            self._limits = [self.length/2 - self.particle_radius]
+            self._limits = [self.width/2 - self.sphere_radius,
+                            self.depth/2 - self.sphere_radius,
+                            self.height/2 - self.sphere_radius]
         return self._limits
 
     @property
     def cell_length(self):
         if self._cell_length is None:
-            mesh_length = [self.length, self.length, self.length]
-            self._cell_length = [x/int(x/(4*self.particle_radius))
+            mesh_length = [self.width, self.depth, self.height]
+            self._cell_length = [x/int(x/(4*self.sphere_radius))
                                  for x in mesh_length]
         return self._cell_length
 
     @property
     def volume(self):
-        return self.length**3
+        return self.width*self.depth*self.height
 
-    @length.setter
-    def length(self, length):
-        self._length = float(length)
+    @width.setter
+    def width(self, width):
+        self._width = float(width)
+        self._limits = None
+        self._cell_length = None
+
+    @depth.setter
+    def depth(self, depth):
+        self._depth = float(depth)
+        self._limits = None
+        self._cell_length = None
+
+    @height.setter
+    def height(self, height):
+        self._height = float(height)
         self._limits = None
         self._cell_length = None
 
@@ -299,14 +336,14 @@ class _CubicDomain(_Domain):
         self._limits = limits
 
     def random_point(self):
-        x_max = self.limits[0]
+        x_max, y_max, z_max = self.limits
         return [uniform(-x_max, x_max),
-                uniform(-x_max, x_max),
-                uniform(-x_max, x_max)]
+                uniform(-y_max, y_max),
+                uniform(-z_max, z_max)]
 
-    def repel_particles(self, p, q, d, d_new):
-        # Moving each particle distance 's' away from the other along the line
-        # joining the particle centers will ensure their final distance is
+    def repel_spheres(self, p, q, d, d_new):
+        # Moving each sphere distance 's' away from the other along the line
+        # joining the sphere centers will ensure their final distance is
         # equal to the outer diameter
         s = (d_new - d)/2
 
@@ -314,53 +351,64 @@ class _CubicDomain(_Domain):
         p += s*v
         q -= s*v
 
-        # Enforce the rigid boundary by moving each particle back along the
+        # Enforce the rigid boundary by moving each sphere back along the
         # surface normal until it is completely within the container if it
         # overlaps the surface
-        x_max = self.limits[0]
-        p[:] = np.clip(p, -x_max, x_max)
-        q[:] = np.clip(q, -x_max, x_max)
+        p[:] = np.clip(p, [-x for x in self.limits], self.limits)
+        q[:] = np.clip(q, [-x for x in self.limits], self.limits)
 
 
-class _CylindricalDomain(_Domain):
-    """Cylindrical container in which to pack particles.
+class _Cylinder(_Container):
+    """Cylindrical container in which to pack spheres.
 
     Parameters
     ----------
     length : float
-        Length along z-axis of the cylindrical container.
+        Length of the cylindrical container.
     radius : float
         Radius of the cylindrical container.
+    axis : string
+        Axis along which the length of the cylinder is aligned.
+    sphere_radius : float
+        Radius of spheres to be packed in container.
     center : Iterable of float
         Cartesian coordinates of the center of the container. Default is
-        [0., 0., 0.]
+        (0., 0., 0.)
 
     Attributes
     ----------
     length : float
-        Length along z-axis of the cylindrical container.
+        Length of the cylindrical container.
     radius : float
         Radius of the cylindrical container.
-    particle_radius : float
-        Radius of particles to be packed in container.
+    axis : string
+        Axis along which the length of the cylinder is aligned.
+    sphere_radius : float
+        Radius of spheres to be packed in container.
     center : list of float
         Cartesian coordinates of the center of the container. Default is
-        [0., 0., 0.]
+        (0., 0., 0.)
+    shift : list of int
+        Rolled indices of the x-, y-, and z- coordinates of a sphere so the
+        configuration is aligned with the correct axis. No shift corresponds to
+        a cylinder along the z-axis.
     cell_length : list of float
         Length in x-, y-, and z- directions of each cell in mesh overlaid on
         domain.
     limits : list of float
         Maximum radial distance and maximum distance from center in z-direction
-        where particle center can be placed.
+        where sphere center can be placed.
     volume : float
         Volume of the container.
 
     """
 
-    def __init__(self, length, radius, particle_radius, center=[0., 0., 0.]):
-        super().__init__(particle_radius, center)
+    def __init__(self, length, radius, axis, sphere_radius, center=(0., 0., 0.)):
+        super().__init__(sphere_radius, center)
+        self._shift = None
         self.length = length
         self.radius = radius
+        self.axis = axis
 
     @property
     def length(self):
@@ -371,18 +419,36 @@ class _CylindricalDomain(_Domain):
         return self._radius
 
     @property
+    def axis(self):
+        return self._axis
+
+    @property
+    def shift(self):
+        if self._shift is None:
+            if self.axis == 'x':
+                self._shift = [1, 2, 0]
+            elif self.axis == 'y':
+                self._shift = [2, 0, 1]
+            else:
+                self._shift = [0, 1, 2]
+        return self._shift
+
+    @property
     def limits(self):
         if self._limits is None:
-            self._limits = [self.radius - self.particle_radius,
-                            self.length/2 - self.particle_radius]
+            self._limits = [self.radius - self.sphere_radius,
+                            self.length/2 - self.sphere_radius]
         return self._limits
 
     @property
     def cell_length(self):
         if self._cell_length is None:
-            mesh_length = [2*self.radius, 2*self.radius, self.length]
-            self._cell_length = [x/int(x/(4*self.particle_radius))
-                                 for x in mesh_length]
+            h = 4*self.sphere_radius
+            i, j, k = self.shift
+            self._cell_length = [None]*3
+            self._cell_length[i] = 2*self.radius/int(2*self.radius/h)
+            self._cell_length[j] = 2*self.radius/int(2*self.radius/h)
+            self._cell_length[k] = self.length/int(self.length/h)
         return self._cell_length
 
     @property
@@ -401,20 +467,29 @@ class _CylindricalDomain(_Domain):
         self._limits = None
         self._cell_length = None
 
+    @axis.setter
+    def axis(self, axis):
+        self._axis = axis
+        self._shift = None
+
     @limits.setter
     def limits(self, limits):
         self._limits = limits
 
     def random_point(self):
-        r_max = self.limits[0]
-        z_max = self.limits[1]
+        r_max, z_max = self.limits
         r = sqrt(uniform(0, r_max**2))
         t = uniform(0, 2*pi)
-        return [r*cos(t), r*sin(t), uniform(-z_max, z_max)]
+        i, j, k = self.shift
+        p = [None]*3
+        p[i] = r*cos(t)
+        p[j] = r*sin(t)
+        p[k] = uniform(-z_max, z_max)
+        return p
 
-    def repel_particles(self, p, q, d, d_new):
-        # Moving each particle distance 's' away from the other along the line
-        # joining the particle centers will ensure their final distance is
+    def repel_spheres(self, p, q, d, d_new):
+        # Moving each sphere distance 's' away from the other along the line
+        # joining the sphere centers will ensure their final distance is
         # equal to the outer diameter
         s = (d_new - d)/2
 
@@ -422,25 +497,27 @@ class _CylindricalDomain(_Domain):
         p += s*v
         q -= s*v
 
-        # Enforce the rigid boundary by moving each particle back along the
+        # Enforce the rigid boundary by moving each sphere back along the
         # surface normal until it is completely within the container if it
         # overlaps the surface
-        r_max = self.limits[0]
-        z_max = self.limits[1]
+        r_max, z_max = self.limits
+        i, j, k = self.shift
 
-        r = sqrt(p[0]**2 + p[1]**2)
+        r = sqrt(p[i]**2 + p[j]**2)
         if r > r_max:
-            p[0:2] *= r_max/r
-        p[2] = np.clip(p[2], -z_max, z_max)
+            p[i] *= r_max/r
+            p[j] *= r_max/r
+        p[k] = np.clip(p[k], -z_max, z_max)
 
-        r = sqrt(q[0]**2 + q[1]**2)
+        r = sqrt(q[i]**2 + q[j]**2)
         if r > r_max:
-            q[0:2] *= r_max/r
-        q[2] = np.clip(q[2], -z_max, z_max)
+            q[i] *= r_max/r
+            q[j] *= r_max/r
+        q[k] = np.clip(q[k], -z_max, z_max)
 
 
-class _SphericalDomain(_Domain):
-    """Spherical container in which to pack particles.
+class _Sphere(_Container):
+    """Spherical container in which to pack spheres.
 
     Parameters
     ----------
@@ -448,29 +525,29 @@ class _SphericalDomain(_Domain):
         Radius of the spherical container.
     center : Iterable of float
         Cartesian coordinates of the center of the container. Default is
-        [0., 0., 0.]
+        (0., 0., 0.)
 
     Attributes
     ----------
     radius : float
         Radius of the spherical container.
-    particle_radius : float
-        Radius of particles to be packed in container.
+    sphere_radius : float
+        Radius of spheres to be packed in container.
     center : list of float
         Cartesian coordinates of the center of the container. Default is
-        [0., 0., 0.]
+        (0., 0., 0.)
     cell_length : list of float
         Length in x-, y-, and z- directions of each cell in mesh overlaid on
         domain.
     limits : list of float
-        Maximum radial distance where particle center can be placed.
+        Maximum radial distance where sphere center can be placed.
     volume : float
         Volume of the container.
 
     """
 
-    def __init__(self, radius, particle_radius, center=[0., 0., 0.]):
-        super().__init__(particle_radius, center)
+    def __init__(self, radius, sphere_radius, center=(0., 0., 0.)):
+        super().__init__(sphere_radius, center)
         self.radius = radius
 
     @property
@@ -480,14 +557,14 @@ class _SphericalDomain(_Domain):
     @property
     def limits(self):
         if self._limits is None:
-            self._limits = [self.radius - self.particle_radius]
+            self._limits = [self.radius - self.sphere_radius]
         return self._limits
 
     @property
     def cell_length(self):
         if self._cell_length is None:
             mesh_length = 3*[2*self.radius]
-            self._cell_length = [x/int(x/(4*self.particle_radius))
+            self._cell_length = [x/int(x/(4*self.sphere_radius))
                                  for x in mesh_length]
         return self._cell_length
 
@@ -511,9 +588,9 @@ class _SphericalDomain(_Domain):
         r = (uniform(0, r_max**3)**(1/3) / sqrt(x[0]**2 + x[1]**2 + x[2]**2))
         return [r*s for s in x]
 
-    def repel_particles(self, p, q, d, d_new):
-        # Moving each particle distance 's' away from the other along the line
-        # joining the particle centers will ensure their final distance is
+    def repel_spheres(self, p, q, d, d_new):
+        # Moving each sphere distance 's' away from the other along the line
+        # joining the sphere centers will ensure their final distance is
         # equal to the outer diameter
         s = (d_new - d)/2
 
@@ -521,7 +598,7 @@ class _SphericalDomain(_Domain):
         p += s*v
         q -= s*v
 
-        # Enforce the rigid boundary by moving each particle back along the
+        # Enforce the rigid boundary by moving each sphere back along the
         # surface normal until it is completely within the container if it
         # overlaps the surface
         r_max = self.limits[0]
@@ -535,8 +612,8 @@ class _SphericalDomain(_Domain):
             q *= r_max/r
 
 
-class _SphericalShellDomain(_SphericalDomain):
-    """Spherical shell container in which to pack particles.
+class _SphericalShell(_Sphere):
+    """Spherical shell container in which to pack spheres.
 
     Parameters
     ----------
@@ -546,7 +623,7 @@ class _SphericalShellDomain(_SphericalDomain):
         Inner radius of the spherical shell container.
     center : Iterable of float
         Cartesian coordinates of the center of the container. Default is
-        [0., 0., 0.]
+        (0., 0., 0.)
 
     Attributes
     ----------
@@ -554,25 +631,25 @@ class _SphericalShellDomain(_SphericalDomain):
         Outer radius of the spherical shell container.
     inner_radius : float
         Inner radius of the spherical shell container.
-    particle_radius : float
-        Radius of particles to be packed in container.
+    sphere_radius : float
+        Radius of spheres to be packed in container.
     center : list of float
         Cartesian coordinates of the center of the container. Default is
-        [0., 0., 0.]
+        (0., 0., 0.)
     cell_length : list of float
         Length in x-, y-, and z- directions of each cell in mesh overlaid on
         domain.
     limits : list of float
-        Maximum radial distance and minimum radial distance where particle
+        Maximum radial distance and minimum radial distance where sphere
         center can be placed.
     volume : float
         Volume of the container.
 
     """
 
-    def __init__(self, radius, inner_radius, particle_radius,
-                 center=[0., 0., 0.]):
-        super().__init__(radius, particle_radius, center)
+    def __init__(self, radius, inner_radius, sphere_radius,
+                 center=(0., 0., 0.)):
+        super().__init__(radius, sphere_radius, center)
         self.inner_radius = inner_radius
 
     @property
@@ -582,8 +659,8 @@ class _SphericalShellDomain(_SphericalDomain):
     @property
     def limits(self):
         if self._limits is None:
-            self._limits = [self.radius - self.particle_radius,
-                            self.inner_radius + self.particle_radius]
+            self._limits = [self.radius - self.sphere_radius,
+                            self.inner_radius + self.sphere_radius]
         return self._limits
 
     @property
@@ -600,15 +677,14 @@ class _SphericalShellDomain(_SphericalDomain):
         self._limits = limits
 
     def random_point(self):
-        r_max = self.limits[0]
-        r_min = self.limits[1]
+        r_max, r_min = self.limits
         x = (gauss(0, 1), gauss(0, 1), gauss(0, 1))
         r = (uniform(r_min**3, r_max**3)**(1/3)/sqrt(x[0]**2 + x[1]**2 + x[2]**2))
         return [r*s for s in x]
 
-    def repel_particles(self, p, q, d, d_new):
-        # Moving each particle distance 's' away from the other along the line
-        # joining the particle centers will ensure their final distance is
+    def repel_spheres(self, p, q, d, d_new):
+        # Moving each sphere distance 's' away from the other along the line
+        # joining the sphere centers will ensure their final distance is
         # equal to the outer diameter
         s = (d_new - d)/2
 
@@ -616,11 +692,10 @@ class _SphericalShellDomain(_SphericalDomain):
         p += s*v
         q -= s*v
 
-        # Enforce the rigid boundary by moving each particle back along the
+        # Enforce the rigid boundary by moving each sphere back along the
         # surface normal until it is completely within the container if it
         # overlaps the surface
-        r_max = self.limits[0]
-        r_min = self.limits[1]
+        r_max, r_min = self.limits
 
         r = sqrt(p[0]**2 + p[1]**2 + p[2]**2)
         if r > r_max:
@@ -708,28 +783,215 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background):
     return lattice
 
 
-def _random_sequential_pack(domain, n_particles):
-    """Random sequential packing of particles within a container.
+def _create_container(region, sphere_radius):
+    """Create a container to pack spheres in using the region to determine the
+    container shape.
 
     Parameters
     ----------
-    domain : openmc.model._Domain
-        Container in which to pack particles.
-    n_particles : int
-        Number of particles to pack.
+    region : openmc.Region
+        Container in which the spheres are packed. Supported shapes are
+        rectangular_prism, cylinder, sphere, and spherical shell.
+    sphere_radius : float
+        Outer radius of spheres.
+
+    Returns
+    -------
+    domain : openmc.model._Container
+        Container in which to pack spheres.
+
+    """
+
+    def rectangular_prism():
+        # Assume the simplest case where the prism volume is the intersection
+        # of the half-spaces of six planes
+        if not isinstance(region, openmc.Intersection):
+            return None
+
+        if any(not isinstance(node, openmc.Halfspace) for node in region):
+            return None
+
+        if len(region) != 6:
+            return None
+
+        # Sort half-spaces by surface type
+        px1, px2, py1, py2, pz1, pz2 = sorted(region, key=attrgetter('surface.type'))
+
+        # Make sure the region consists of the correct surfaces
+        if (not isinstance(px1.surface, openmc.XPlane) or
+            not isinstance(px2.surface, openmc.XPlane) or
+            not isinstance(py1.surface, openmc.YPlane) or
+            not isinstance(py2.surface, openmc.YPlane) or
+            not isinstance(pz1.surface, openmc.ZPlane) or
+            not isinstance(pz2.surface, openmc.ZPlane)):
+            return None
+
+        # Secondary sorting by location of the plane
+        if px1.surface.x0 > px2.surface.x0:
+            px1, px2 = px2, px1
+
+        if py1.surface.y0 > py2.surface.y0:
+            py1, py2 = py2, py1
+
+        if pz1.surface.z0 > pz2.surface.z0:
+            pz1, pz2 = pz2, pz1
+
+        # Make sure the half-spaces are on the correct side of the surfaces
+        if (px1.side != '+' or px2.side != '-' or
+            py1.side != '+' or py2.side != '-' or
+            pz1.side != '+' or pz2.side != '-'):
+            return None
+
+        # Calculate the parameters for the container
+        width = px2.surface.x0 - px1.surface.x0
+        depth = py2.surface.y0 - py1.surface.y0
+        height = pz2.surface.z0 - pz1.surface.z0
+        center = (px1.surface.x0 + width/2,
+                  py1.surface.y0 + depth/2,
+                  pz1.surface.z0 + height/2)
+
+        # The region is the volume of a rectangular prism, so create container
+        return _RectangularPrism(width, depth, height, sphere_radius, center)
+
+    def cylinder():
+        # Assume the simplest case where the cylinder volume is the
+        # intersection of the half-spaces of a cylinder and two planes
+        if not isinstance(region, openmc.Intersection):
+            return None
+
+        if any(not isinstance(node, openmc.Halfspace) for node in region):
+            return None
+
+        if len(region) != 3:
+            return None
+
+        # Identify the axis that the cylinder lies along
+        axis = region[0].surface.type[0]
+
+        # Make sure the region is composed of a cylinder and two planes on the
+        # same axis
+        count = Counter((node.surface.type for node in region))
+        if count[axis + '-cylinder'] != 1 or count[axis + '-plane'] != 2:
+            return None
+
+        # Sort the half-spaces by surface type
+        cyl, p1, p2 = sorted(region, key=attrgetter('surface.type'))
+
+        # Calculate the parameters for a cylinder along the x-axis
+        if axis == 'x':
+            if p1.surface.x0 > p2.surface.x0:
+                p1, p2 = p2, p1
+            length = p2.surface.x0 - p1.surface.x0
+            center = (length/2, cyl.surface.y0, cyl.surface.z0)
+
+        # Calculate the parameters for a cylinder along the y-axis
+        elif axis == 'y':
+            if p1.surface.y0 > p2.surface.y0:
+                p1, p2 = p2, p1
+            length = p2.surface.y0 - p1.surface.y0
+            center = (cyl.surface.x0, length/2, cyl.surface.z0)
+
+        # Calculate the parameters for a cylinder along the z-axis
+        else:
+            if p1.surface.z0 > p2.surface.z0:
+                p1, p2 = p2, p1
+            length = p2.surface.z0 - p1.surface.z0
+            center = (cyl.surface.x0, cyl.surface.y0, length/2)
+
+        # Make sure the half-spaces are on the correct side of the surfaces
+        if cyl.side != '-' or p1.side != '+' or p2.side != '-':
+            return None
+
+        radius = cyl.surface.r
+
+        # The region is the volume of a cylinder, so create container
+        return _Cylinder(length, radius, axis, sphere_radius, center)
+
+    def sphere():
+        # Assume the simplest case where the sphere volume is the negative
+        # half-space of a sphere
+        if not isinstance(region, openmc.Halfspace):
+            return None
+
+        if not isinstance(region.surface, openmc.Sphere):
+            return None
+
+        if region.side != '-':
+            return None
+
+        radius = region.surface.r
+        center = (region.surface.x0, region.surface.y0, region.surface.z0)
+
+        # The region is the volume of a sphere, so create container
+        return _Sphere(radius, sphere_radius, center)
+
+    def spherical_shell():
+        # Assume the simplest case where the spherical shell volume is the
+        # intersection of the half-spaces of two spheres
+        if not isinstance(region, openmc.Intersection):
+            return None
+
+        if any(not isinstance(node, openmc.Halfspace) for node in region):
+            return None
+
+        if len(region) != 2:
+            return None
+
+        if any(not isinstance(node.surface, openmc.Sphere) for node in region):
+            return None
+
+        s1, s2 = sorted(region, key=attrgetter('surface.r'))
+        radius = s2.surface.r
+        inner_radius = s1.surface.r
+        center = (s1.surface.x0, s1.surface.y0, s1.surface.z0)
+
+        if center != (s2.surface.x0, s2.surface.y0, s2.surface.z0):
+            return None
+
+        if s1.side != '+' or s2.side != '-':
+            return None
+
+        # The region is the volume of a spherical shell, so create container
+        return _SphericalShell(radius, inner_radius, sphere_radius, center)
+
+    check_type('region', region, openmc.Region)
+
+    # Check whether the region matches any of the supported container shapes
+    # and create the container if it does
+    shapes = [rectangular_prism, cylinder, sphere, spherical_shell]
+    for shape in shapes:
+        container = shape()
+        if container:
+            return container
+
+    msg = ('Could not translate region {} into a container: supported '
+           'container shapes are rectangular prism, cylinder, sphere, '
+           'and spherical shell.'.format(region))
+    raise ValueError(msg)
+
+
+def _random_sequential_pack(domain, num_spheres):
+    """Random sequential packing of spheres within a container.
+
+    Parameters
+    ----------
+    domain : openmc.model._Container
+        Container in which to pack spheres.
+    num_spheres : int
+        Number of spheres to pack.
 
     Returns
     ------
     numpy.ndarray
-        Cartesian coordinates of centers of particles.
+        Cartesian coordinates of centers of spheres.
 
     """
 
-    sqd = (2*domain.particle_radius)**2
-    particles = []
+    sqd = (2*domain.sphere_radius)**2
+    spheres = []
     mesh = defaultdict(list)
 
-    for i in range(n_particles):
+    for i in range(num_spheres):
         # Randomly sample new center coordinates while there are any overlaps
         while True:
             p = domain.random_point()
@@ -739,23 +1001,23 @@ def _random_sequential_pack(domain, n_particles):
                 continue
             else:
                 break
-        particles.append(p)
+        spheres.append(p)
 
         for idx in domain.nearby_mesh_cells(p):
             mesh[idx].append(p)
 
-    return np.array(particles)
+    return np.array(spheres)
 
 
-def _close_random_pack(domain, particles, contraction_rate):
-    """Close random packing of particles using the Jodrey-Tory algorithm.
+def _close_random_pack(domain, spheres, contraction_rate):
+    """Close random packing of spheres using the Jodrey-Tory algorithm.
 
     Parameters
     ----------
-    domain : openmc.model._Domain
-        Container in which to pack particles.
-    particles : numpy.ndarray
-        Initial Cartesian coordinates of centers of particles.
+    domain : openmc.model._Container
+        Container in which to pack spheres.
+    spheres : numpy.ndarray
+        Initial Cartesian coordinates of centers of spheres.
     contraction_rate : float
         Contraction rate of outer diameter.
 
@@ -767,9 +1029,9 @@ def _close_random_pack(domain, particles, contraction_rate):
         Parameters
         ----------
         d : float
-            distance between centers of particles i and j.
+            distance between centers of spheres i and j.
         i, j : int
-            Index of particles in particles array.
+            Index of spheres in spheres array.
 
         """
 
@@ -779,12 +1041,12 @@ def _close_random_pack(domain, particles, contraction_rate):
         heappush(rods, rod)
 
     def remove_rod(i):
-        """Mark the rod containing particle i as removed.
+        """Mark the rod containing sphere i as removed.
 
         Parameters
         ----------
         i : int
-            Index of particle in particles array.
+            Index of sphere in spheres array.
 
         """
 
@@ -800,9 +1062,9 @@ def _close_random_pack(domain, particles, contraction_rate):
         Returns
         -------
         d : float
-            distance between centers of particles i and j.
+            distance between centers of spheres i and j.
         i, j : int
-            Index of particles in particles array.
+            Index of spheres in spheres array.
 
         """
 
@@ -815,15 +1077,15 @@ def _close_random_pack(domain, particles, contraction_rate):
         return None, None, None
 
     def create_rod_list():
-        """Generate sorted list of rods (distances between particle centers).
+        """Generate sorted list of rods (distances between sphere centers).
 
         Rods are arranged in a heap where each element contains the rod length
-        and the particle indices. A rod between particles p and q is only
+        and the sphere indices. A rod between spheres p and q is only
         included if the distance between p and q could not be changed by the
         elimination of a greater overlap, i.e. q has no nearer neighbors than p.
 
-        A mapping of particle ids to rods is maintained in 'rods_map'. Each key
-        in the dict is the id of a particle that is in the rod list, and the
+        A mapping of sphere ids to rods is maintained in 'rods_map'. Each key
+        in the dict is the id of a sphere that is in the rod list, and the
         value is the id of its nearest neighbor and the rod that contains them.
         The dict is used to find rods in the priority queue and to mark removed
         rods so rods can be "removed" without breaking the heap structure
@@ -832,25 +1094,25 @@ def _close_random_pack(domain, particles, contraction_rate):
         """
 
         # Create KD tree for quick nearest neighbor search
-        tree = scipy.spatial.cKDTree(particles)
+        tree = scipy.spatial.cKDTree(spheres)
 
         # Find distance to nearest neighbor and index of nearest neighbor for
-        # all particles
-        d, n = tree.query(particles, k=2)
+        # all spheres
+        d, n = tree.query(spheres, k=2)
         d = d[:, 1]
         n = n[:, 1]
 
-        # Array of particle indices, indices of nearest neighbors, and
+        # Array of sphere indices, indices of nearest neighbors, and
         # distances to nearest neighbors
         a = np.vstack((list(range(n.size)), n, d)).T
 
         # Sort along second column and swap first and second columns to create
-        # array of nearest neighbor indices, indices of particles they are
+        # array of nearest neighbor indices, indices of spheres they are
         # nearest neighbors of, and distances between them
         b = a[a[:, 1].argsort()]
         b[:, [0, 1]] = b[:, [1, 0]]
 
-        # Find the intersection between 'a' and 'b': a list of particles who
+        # Find the intersection between 'a' and 'b': a list of spheres who
         # are each other's nearest neighbors and the distance between them
         r = list({tuple(x) for x in a} & {tuple(x) for x in b})
 
@@ -866,30 +1128,30 @@ def _close_random_pack(domain, particles, contraction_rate):
                 add_rod(d, i, j)
 
     def update_mesh(i):
-        """Update which mesh cells the particle is in based on new particle
+        """Update which mesh cells the sphere is in based on new sphere
         center coordinates.
 
         'mesh'/'mesh_map' is a two way dictionary used to look up which
-        particles are located within one diameter of a given mesh cell and
-        which mesh cells a given particle center is within one diameter of.
+        spheres are located within one diameter of a given mesh cell and
+        which mesh cells a given sphere center is within one diameter of.
         This is used to speed up the nearest neighbor search.
 
         Parameters
         ----------
         i : int
-            Index of particle in particles array.
+            Index of sphere in spheres array.
 
         """
 
-        # Determine which mesh cells the particle is in and remove the
-        # particle id from those cells
+        # Determine which mesh cells the sphere is in and remove the
+        # sphere id from those cells
         for idx in mesh_map[i]:
             mesh[idx].remove(i)
         del mesh_map[i]
 
-        # Determine which mesh cells are within one diameter of particle's
-        # center and add this particle to the list of particles in those cells
-        for idx in domain.nearby_mesh_cells(particles[i]):
+        # Determine which mesh cells are within one diameter of sphere's
+        # center and add this sphere to the list of spheres in those cells
+        for idx in domain.nearby_mesh_cells(spheres[i]):
             mesh[idx].add(i)
             mesh_map[i].add(idx)
 
@@ -898,7 +1160,7 @@ def _close_random_pack(domain, particles, contraction_rate):
 
             d_out^(i+1) = d_out^(i) - (1/2)^(j) * d_out0 * k / n,
 
-        where k is the contraction rate, n is the number of particles, and
+        where k is the contraction rate, n is the number of spheres, and
 
             j = floor(-log10(pf_out - pf_in)).
 
@@ -909,26 +1171,26 @@ def _close_random_pack(domain, particles, contraction_rate):
 
         """
 
-        inner_pf = 4/3*pi*(inner_diameter/2)**3*n_particles/domain.volume
-        outer_pf = 4/3*pi*(outer_diameter/2)**3*n_particles/domain.volume
+        inner_pf = 4/3*pi*(inner_diameter/2)**3*num_spheres/domain.volume
+        outer_pf = 4/3*pi*(outer_diameter/2)**3*num_spheres/domain.volume
 
         j = floor(-log10(outer_pf - inner_pf))
         return (outer_diameter - 0.5**j * contraction_rate *
-                initial_outer_diameter / n_particles)
+                initial_outer_diameter / num_spheres)
 
     def nearest(i):
-        """Find index of nearest neighbor of particle i.
+        """Find index of nearest neighbor of sphere i.
 
         Parameters
         ----------
         i : int
-            Index in particles array of particle for which to find nearest
+            Index in spheres array of sphere for which to find nearest
             neighbor.
 
         Returns
         -------
         int
-            Index in particles array of nearest neighbor of i
+            Index in spheres array of nearest neighbor of i
         float
             distance between i and nearest neighbor.
 
@@ -937,8 +1199,8 @@ def _close_random_pack(domain, particles, contraction_rate):
         # Need the second nearest neighbor of i since the nearest neighbor
         # will be itself. Using argpartition, the k-th nearest neighbor is
         # placed at index k.
-        idx = list(mesh[domain.mesh_cell(particles[i])])
-        dists = scipy.spatial.distance.cdist([particles[i]], particles[idx])[0]
+        idx = list(mesh[domain.mesh_cell(spheres[i])])
+        dists = scipy.spatial.distance.cdist([spheres[i]], spheres[idx])[0]
         if dists.size > 1:
             j = dists.argpartition(1)[1]
             return idx[j], dists[j]
@@ -946,17 +1208,17 @@ def _close_random_pack(domain, particles, contraction_rate):
             return None, None
 
     def update_rod_list(i):
-        """Update the rod list with the new nearest neighbors of particle since
+        """Update the rod list with the new nearest neighbors of sphere since
         its overlap was eliminated.
 
         Parameters
         ----------
         i : int
-            Index of particle in particles array.
+            Index of sphere in spheres array.
 
         """
 
-        # If the nearest neighbor k of particle i has no nearer neighbors,
+        # If the nearest neighbor k of sphere i has no nearer neighbors,
         # remove the rod currently containing k from the rod list and add rod
         # k-i, keeping the rod list sorted
         k, d_ik = nearest(i)
@@ -965,57 +1227,57 @@ def _close_random_pack(domain, particles, contraction_rate):
             remove_rod(k)
             add_rod(d_ik, i, k)
 
-    n_particles = len(particles)
-    diameter = 2*domain.particle_radius
+    num_spheres = len(spheres)
+    diameter = 2*domain.sphere_radius
 
     # Flag for marking rods that have been removed from priority queue
     removed = -1
 
     # Outer diameter initially set to arbitrary value that yields pf of 1
-    initial_outer_diameter = 2*(domain.volume/(n_particles*4/3*pi))**(1/3)
+    initial_outer_diameter = 2*(domain.volume/(num_spheres*4/3*pi))**(1/3)
 
-    # Inner and outer diameter of particles will change during packing
+    # Inner and outer diameter of spheres will change during packing
     outer_diameter = initial_outer_diameter
     inner_diameter = 0.
 
-    # List of rods arranged in a heap and mapping of particle ids to rods
+    # List of rods arranged in a heap and mapping of sphere ids to rods
     rods = []
     rods_map = {}
 
-    # Initialize two-way dictionary that identifies which particles are near a
-    # given mesh cell and which mesh cells a particle is near
+    # Initialize two-way dictionary that identifies which spheres are near a
+    # given mesh cell and which mesh cells a sphere is near
     mesh = defaultdict(set)
     mesh_map = defaultdict(set)
-    for i in range(n_particles):
-        for idx in domain.nearby_mesh_cells(particles[i]):
+    for i in range(num_spheres):
+        for idx in domain.nearby_mesh_cells(spheres[i]):
             mesh[idx].add(i)
             mesh_map[i].add(idx)
 
     while True:
-        # Rebuild the sorted list of rods according to the current particle
+        # Rebuild the sorted list of rods according to the current sphere
         # configuration
         create_rod_list()
 
         # Set the inner diameter to the shortest center-to-center distance
-        # between any two particles
+        # between any two spheres
         if rods:
             inner_diameter = rods[0][0]
 
-        # Reached the desired particle radius
+        # Reached the desired sphere radius
         if inner_diameter >= diameter:
             break
 
-        # The algorithm converged before reaching the desired particle radius.
+        # The algorithm converged before reaching the desired sphere radius.
         # This can happen when the desired packing fraction is close to the
         # packing fraction limit. The packing fraction is a random variable
-        # that is determined by the particle locations and the contraction
+        # that is determined by the sphere locations and the contraction
         # rate. A higher packing fraction can be achieved with a smaller
         # contraction rate, though at the cost of a longer simulation time --
         # the number of iterations needed to remove all overlaps is inversely
         # proportional to the contraction rate.
         if inner_diameter >= outer_diameter or not rods:
             warnings.warn('Close random pack converged before reaching true '
-                          'particle radius; some particles may overlap. Try '
+                          'sphere radius; some spheres may overlap. Try '
                           'reducing contraction rate or packing fraction.')
             break
 
@@ -1024,7 +1286,7 @@ def _close_random_pack(domain, particles, contraction_rate):
             if not d:
                 break
             outer_diameter = reduce_outer_diameter()
-            domain.repel_particles(particles[i], particles[j], d, outer_diameter)
+            domain.repel_spheres(spheres[i], spheres[j], d, outer_diameter)
             update_mesh(i)
             update_mesh(j)
             update_rod_list(i)
@@ -1036,10 +1298,7 @@ def _close_random_pack(domain, particles, contraction_rate):
                 break
 
 
-def pack_spheres(radius, domain_shape='cylinder', domain_length=None,
-                 domain_radius=None, domain_inner_radius=None,
-                 domain_center=[0., 0., 0.], n_particles=None,
-                 packing_fraction=None, initial_packing_fraction=0.3,
+def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
                  contraction_rate=1.e-3, seed=1):
     """Generate a random, non-overlapping configuration of spheres within a
     container.
@@ -1047,33 +1306,27 @@ def pack_spheres(radius, domain_shape='cylinder', domain_length=None,
     Parameters
     ----------
     radius : float
-        Outer radius of TRISO particles.
-    domain_shape : {'cube', 'cylinder', or 'sphere'}
-        Geometry of the container in which the TRISO particles are packed.
-    domain_length : float
-        Length of the container (if cube or cylinder).
-    domain_radius : float
-        Radius of the container (if cylinder or sphere).
-    domain_inner_radius : float
-        Inner radius of the container (if spherical shell).
-    domain_center : Iterable of float
-        Cartesian coordinates of the center of the container.
-    n_particles : int
-        Number of TRISO particles to pack in the domain. Exactly one of
-        'n_particles' and 'packing_fraction' should be specified -- the other
-        will be calculated.
-    packing_fraction : float
-        Packing fraction of particles. Exactly one of 'n_particles' and
-        'packing_fraction' should be specified -- the other will be calculated.
-    initial_packing_fraction : float, optional
-        Packing fraction used to initialize the configuration of particles in
+        Outer radius of spheres.
+    region : openmc.Region
+        Container in which the spheres are packed. Supported shapes are
+        rectangular prism, cylinder, sphere, and spherical shell.
+    pf : float
+        Packing fraction of the spheres. One of 'pf' and 'num_spheres' must
+        be specified; the other will be calculated. If both are specified, 'pf'
+        takes precedence over 'num_spheres'.
+    num_spheres : int
+        Number of spheres to pack in the domain. One of 'num_spheres' and 'pf'
+        must be specified; the other will be calculated.
+    initial_pf : float, optional
+        Packing fraction used to initialize the configuration of spheres in
         the domain. Default value is 0.3. It is not recommended to set the
         initial packing fraction much higher than 0.3 as the random sequential
         packing algorithm becomes prohibitively slow as it approaches its limit
         (~0.38).
     contraction_rate : float, optional
-        Contraction rate of outer diameter. This can affect the speed of the
-        close random packing algorithm. Default value is 1/400.
+        Contraction rate of the outer diameter. Higher packing fractions can be
+        reached using a smaller contraction rate, but the algorithm will take
+        longer to converge.
     seed : int, optional
         RNG seed.
 
@@ -1084,7 +1337,7 @@ def pack_spheres(radius, domain_shape='cylinder', domain_length=None,
 
     Notes
     -----
-    The particle configuration is generated using a combination of random
+    The sphere configuration is generated using a combination of random
     sequential packing (RSP) and close random packing (CRP). RSP performs
     better than CRP for lower packing fractions (pf), but it becomes
     prohibitively slow as it approaches its packing limit (~0.38). CRP can
@@ -1092,23 +1345,23 @@ def pack_spheres(radius, domain_shape='cylinder', domain_length=None,
 
     If the desired pf is below some threshold for which RSP will be faster than
     CRP ('initial_packing_fraction'), only RSP is used. If a higher pf is
-    required, particles with a radius smaller than the desired final radius
+    required, spheres with a radius smaller than the desired final radius
     (and therefore with a smaller pf) are initialized within the domain using
-    RSP. This initial configuration of particles is then used as a starting
+    RSP. This initial configuration of spheres is then used as a starting
     point for CRP using Jodrey and Tory's algorithm [1]_.
 
-    In RSP, particle centers are placed one by one at random, and placement
-    attempts for a particle are made until the particle is not overlapping any
+    In RSP, sphere centers are placed one by one at random, and placement
+    attempts for a sphere are made until the sphere is not overlapping any
     others. This implementation of the algorithm uses a mesh over the domain
-    to speed up the nearest neighbor search by only searching for a particle's
+    to speed up the nearest neighbor search by only searching for a sphere's
     neighbors within that mesh cell.
 
-    In CRP, each particle is assigned two diameters, an inner and an outer,
+    In CRP, each sphere is assigned two diameters, an inner and an outer,
     which approach each other during the simulation. The inner diameter,
     defined as the minimum center-to-center distance, is the true diameter of
-    the particles and defines the pf. At each iteration the worst overlap
-    between particles based on outer diameter is eliminated by moving the
-    particles apart along the line joining their centers. Iterations continue
+    the spheres and defines the pf. At each iteration the worst overlap
+    between spheres based on outer diameter is eliminated by moving the
+    spheres apart along the line joining their centers. Iterations continue
     until the two diameters converge or until the desired pf is reached.
 
     References
@@ -1117,90 +1370,60 @@ def pack_spheres(radius, domain_shape='cylinder', domain_length=None,
        packing of equal spheres", Phys. Rev. A 32 (1985) 2347-2351.
 
     """
-
-    # Check for valid container geometry and dimensions
-    if domain_shape not in ['cube', 'cylinder', 'sphere', 'spherical shell']:
-        raise ValueError('Unable to set domain_shape to "{}". Only "cube", '
-                         '"cylinder", "sphere", and "spherical shell"  are '
-                         'supported."'.format(domain_shape))
-    if not domain_length and domain_shape in ['cube', 'cylinder']:
-        raise ValueError('"domain_length" must be specified for {} domain '
-                         'geometry '.format(domain_shape))
-    if not domain_radius and domain_shape in ['cylinder', 'sphere',
-                                              'spherical shell']:
-        raise ValueError('"domain_radius" must be specified for {} domain '
-                         'geometry '.format(domain_shape))
-    if not domain_inner_radius and domain_shape in ['spherical shell']:
-        raise ValueError('"domain_inner_radius" must be specified for {} domain '
-                         'geometry '.format(domain_shape))
-
-    if domain_shape == 'cube':
-        domain = _CubicDomain(length=domain_length, particle_radius=radius,
-                              center=domain_center)
-    elif domain_shape == 'cylinder':
-        domain = _CylindricalDomain(length=domain_length, radius=domain_radius,
-                                    particle_radius=radius, center=domain_center)
-    elif domain_shape == 'sphere':
-        domain = _SphericalDomain(radius=domain_radius, particle_radius=radius,
-                                  center=domain_center)
-    elif domain_shape == 'spherical shell':
-        domain = _SphericalShellDomain(radius=domain_radius,
-                                       inner_radius=domain_inner_radius,
-                                       particle_radius=radius,
-                                       center=domain_center)
-
-    # Calculate the packing fraction if the number of particles is specified;
-    # otherwise, calculate the number of particles from the packing fraction.
-    if ((n_particles is None and packing_fraction is None) or
-        (n_particles is not None and packing_fraction is not None)):
-        raise ValueError('Exactly one of "n_particles" and "packing_fraction" '
-                         'must be specified.')
-    elif packing_fraction is None:
-        n_particles = int(n_particles)
-        packing_fraction = 4/3*pi*radius**3*n_particles / domain.volume
-    elif n_particles is None:
-        packing_fraction = float(packing_fraction)
-        n_particles = int(packing_fraction*domain.volume // (4/3*pi*radius**3))
-
-    # Check for valid packing fractions for each algorithm
-    if packing_fraction >= 0.64:
-        raise ValueError('Packing fraction of {} is greater than the '
-                         'packing fraction limit for close random '
-                         'packing (0.64)'.format(packing_fraction))
-    if initial_packing_fraction >= 0.38:
-        raise ValueError('Initial packing fraction of {} is greater than the '
-                         'packing fraction limit for random sequential'
-                         'packing (0.38)'.format(initial_packing_fraction))
-    if initial_packing_fraction > packing_fraction:
-        initial_packing_fraction = packing_fraction
-        if packing_fraction > 0.3:
-            initial_packing_fraction = 0.3
-
+    # Seed RNG
     random.seed(seed)
 
-    # Calculate the particle radius used in the initial random sequential
+    # Create container with the correct shape based on the supplied region
+    domain = _create_container(region, radius)
+
+    # Determine the packing fraction/number of spheres
+    volume = 4/3*pi*radius**3
+    if pf is None and num_spheres is None:
+        raise ValueError('`pf` or `num_spheres` must be specified.')
+    elif pf is None:
+        num_spheres = int(num_spheres)
+        pf = volume*num_spheres/domain.volume
+    else:
+        pf = float(pf)
+        num_spheres = int(pf*domain.volume//volume)
+
+    # Make sure initial packing fraction is less than packing fraction
+    if initial_pf > pf:
+        initial_pf = pf
+
+    # Check packing fraction for close random packing
+    if pf > MAX_PF_CRP:
+        raise ValueError('Packing fraction {0} is greater than the limit for '
+                         'close random packing, {1}'.format(pf, MAX_PF_CRP))
+
+    # Check packing fraction for random sequential packing
+    if initial_pf > MAX_PF_RSP:
+        raise ValueError('Initial packing fraction {0} is greater than the '
+                         'limit for random sequential packing, '
+                         '{1}'.format(initial_pf, MAX_PF_RSP))
+
+    # Calculate the sphere radius used in the initial random sequential
     # packing from the initial packing fraction
-    initial_radius = (3/4 * initial_packing_fraction * domain.volume /
-                      (pi * n_particles))**(1/3)
-    domain.particle_radius = initial_radius
+    initial_radius = (3/4*initial_pf*domain.volume/(pi*num_spheres))**(1/3)
+    domain.sphere_radius = initial_radius
 
     # Recalculate the limits for the initial random sequential packing using
-    # the desired final particle radius to ensure particles are fully contained
+    # the desired final sphere radius to ensure spheres are fully contained
     # within the domain during the close random pack
     domain.limits = [x + initial_radius - radius for x in domain.limits]
 
-    # Generate non-overlapping particles for an initial inner radius using
+    # Generate non-overlapping spheres for an initial inner radius using
     # random sequential packing algorithm
-    particles = _random_sequential_pack(domain, n_particles)
+    spheres = _random_sequential_pack(domain, num_spheres)
 
-    # Use the particle configuration produced in random sequential packing as a
-    # starting point for close random pack with the desired final particle
+    # Use the sphere configuration produced in random sequential packing as a
+    # starting point for close random pack with the desired final sphere
     # radius
-    if initial_packing_fraction != packing_fraction:
-        domain.particle_radius = radius
-        _close_random_pack(domain, particles, contraction_rate)
+    if initial_pf != pf:
+        domain.sphere_radius = radius
+        _close_random_pack(domain, spheres, contraction_rate)
 
-    return particles + domain.center
+    return spheres + domain.center
 
 def create_trisos(outer_radius, fill, centers):
     """Create TRISO particles at the given coordinates.

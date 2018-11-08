@@ -21,18 +21,22 @@
 namespace openmc {
 
 //==============================================================================
+// Constants
+//==============================================================================
+
+const RGBColor WHITE {255, 255, 255};
+constexpr int PLOT_LEVEL_LOWEST {-1}; //!< lower bound on plot universe level
+
+//==============================================================================
 // Global variables
 //==============================================================================
 
-int PLOT_LEVEL_LOWEST = -1;
-
-std::unordered_map<int, int> plot_map;
-
-int n_plots;
+namespace model {
 
 std::vector<Plot> plots;
+std::unordered_map<int, int> plot_map;
 
-const RGBColor WHITE = {255, 255, 255};
+} // namespace model
 
 //==============================================================================
 // RUN_PLOT controls the logic for making one or many plots
@@ -43,7 +47,7 @@ int openmc_plot_geometry()
 {
   int err;
 
-  for (auto pl : plots) {
+  for (auto pl : model::plots) {
     std::stringstream ss;
     ss << "Processing plot " << pl.id_ << ": "
        << pl.path_plot_ << "...";
@@ -64,11 +68,10 @@ int openmc_plot_geometry()
 void
 read_plots(pugi::xml_node* plots_node)
 {
-  n_plots = 0;
   for (auto node : plots_node->children("plot")) {
     Plot pl(node);
-    plots.push_back(pl);
-    plot_map[pl.id_] = n_plots++;
+    model::plots.push_back(pl);
+    model::plot_map[pl.id_] = model::plots.size() - 1;
   }
 }
 
@@ -156,7 +159,7 @@ Plot::set_id(pugi::xml_node plot_node)
   }
 
   // Check to make sure 'id' hasn't been used
-  if (plot_map.find(id_) != plot_map.end()) {
+  if (model::plot_map.find(id_) != model::plot_map.end()) {
     std::stringstream err_msg;
     err_msg << "Two or more plots use the same unique ID: " << id_;
     fatal_error(err_msg.str());

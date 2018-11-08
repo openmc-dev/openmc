@@ -81,7 +81,7 @@ int openmc_simulation_init()
   // Allocate array for matching filter bins
 #pragma omp parallel
   {
-    filter_matches.resize(n_filters);
+    simulation::filter_matches.resize(model::tally_filters.size());
   }
 
   // Set up tally procedure pointers
@@ -144,7 +144,7 @@ int openmc_simulation_finalize()
 
 #pragma omp parallel
   {
-    filter_matches.clear();
+    simulation::filter_matches.clear();
   }
 
   // Deallocate Fortran variables, set tallies to inactive

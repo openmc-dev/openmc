@@ -24,12 +24,12 @@ void
 adjust_indices()
 {
   // Adjust material/fill idices.
-  for (Cell* c : cells) {
+  for (Cell* c : model::cells) {
     if (c->fill_ != C_NONE) {
       int32_t id = c->fill_;
-      auto search_univ = universe_map.find(id);
+      auto search_univ = model::universe_map.find(id);
       auto search_lat = lattice_map.find(id);
-      if (search_univ != universe_map.end()) {
+      if (search_univ != model::universe_map.end()) {
         c->type_ = FILL_UNIVERSE;
         c->fill_ = search_univ->second;
       } else if (search_lat != lattice_map.end()) {
@@ -61,9 +61,9 @@ adjust_indices()
   }
 
   // Change cell.universe values from IDs to indices.
-  for (Cell* c : cells) {
-    auto search = universe_map.find(c->universe_);
-    if (search != universe_map.end()) {
+  for (Cell* c : model::cells) {
+    auto search = model::universe_map.find(c->universe_);
+    if (search != model::universe_map.end()) {
       c->universe_ = search->second;
     } else {
       std::stringstream err_msg;
@@ -84,7 +84,7 @@ adjust_indices()
 void
 assign_temperatures()
 {
-  for (Cell* c : cells) {
+  for (Cell* c : model::cells) {
     // Ignore non-material cells and cells with defined temperature.
     if (c->material_.size() == 0) continue;
     if (c->sqrtkT_.size() > 0) continue;
@@ -117,7 +117,7 @@ find_root_universe()
 {
   // Find all the universes listed as a cell fill.
   std::unordered_set<int32_t> fill_univ_ids;
-  for (Cell* c : cells) {
+  for (Cell* c : model::cells) {
     fill_univ_ids.insert(c->fill_);
   }
 
@@ -134,8 +134,8 @@ find_root_universe()
   // Figure out which universe is not in the set.  This is the root universe.
   bool root_found {false};
   int32_t root_univ;
-  for (int32_t i = 0; i < universes.size(); i++) {
-    auto search = fill_univ_ids.find(universes[i]->id_);
+  for (int32_t i = 0; i < model::universes.size(); i++) {
+    auto search = fill_univ_ids.find(model::universes[i]->id_);
     if (search == fill_univ_ids.end()) {
       if (root_found) {
         fatal_error("Two or more universes are not used as fill universes, so "
@@ -160,8 +160,8 @@ neighbor_lists()
 {
   write_message("Building neighboring cells lists for each surface...", 6);
 
-  for (int i = 0; i < cells.size(); i++) {
-    for (auto token : cells[i]->region_) {
+  for (int i = 0; i < model::cells.size(); i++) {
+    for (auto token : model::cells[i]->region_) {
       // Skip operator tokens.
       if (std::abs(token) >= OP_UNION) continue;
 
@@ -196,8 +196,8 @@ prepare_distribcell()
 
   // Find all cells with distributed materials or temperatures.  Make sure that
   // the number of materials/temperatures matches the number of cell instances.
-  for (int i = 0; i < cells.size(); i++) {
-    Cell& c {*cells[i]};
+  for (int i = 0; i < model::cells.size(); i++) {
+    Cell& c {*model::cells[i]};
 
     if (c.material_.size() > 1) {
       if (c.material_.size() != c.n_instances_) {
@@ -228,10 +228,10 @@ prepare_distribcell()
   // unique distribcell array index.
   int distribcell_index = 0;
   std::vector<int32_t> target_univ_ids;
-  for (Universe* u : universes) {
+  for (Universe* u : model::universes) {
     for (auto cell_indx : u->cells_) {
       if (distribcells.find(cell_indx) != distribcells.end()) {
-        cells[cell_indx]->distribcell_index_ = distribcell_index;
+        model::cells[cell_indx]->distribcell_index_ = distribcell_index;
         target_univ_ids.push_back(u->id_);
         ++distribcell_index;
       }
@@ -240,7 +240,7 @@ prepare_distribcell()
 
   // Allocate the cell and lattice offset tables.
   int n_maps = target_univ_ids.size();
-  for (Cell* c : cells) {
+  for (Cell* c : model::cells) {
     if (c->type_ != FILL_MATERIAL) {
       c->offset_.resize(n_maps, C_NONE);
     }
@@ -252,10 +252,10 @@ prepare_distribcell()
   // Fill the cell and lattice offset tables.
   for (int map = 0; map < target_univ_ids.size(); map++) {
     auto target_univ_id = target_univ_ids[map];
-    for (Universe* univ : universes) {
+    for (Universe* univ : model::universes) {
       int32_t offset {0};  // TODO: is this a bug?  It matches F90 implementation.
       for (int32_t cell_indx : univ->cells_) {
-        Cell& c = *cells[cell_indx];
+        Cell& c = *model::cells[cell_indx];
 
         if (c.type_ == FILL_UNIVERSE) {
           c.offset_[map] = offset;
@@ -276,8 +276,8 @@ prepare_distribcell()
 void
 count_cell_instances(int32_t univ_indx)
 {
-  for (int32_t cell_indx : universes[univ_indx]->cells_) {
-    Cell& c = *cells[cell_indx];
+  for (int32_t cell_indx : model::universes[univ_indx]->cells_) {
+    Cell& c = *model::cells[cell_indx];
     ++c.n_instances_;
 
     if (c.type_ == FILL_UNIVERSE) {
@@ -300,13 +300,13 @@ int
 count_universe_instances(int32_t search_univ, int32_t target_univ_id)
 {
   //  If this is the target, it can't contain itself.
-  if (universes[search_univ]->id_ == target_univ_id) {
+  if (model::universes[search_univ]->id_ == target_univ_id) {
     return 1;
   }
 
   int count {0};
-  for (int32_t cell_indx : universes[search_univ]->cells_) {
-    Cell& c = *cells[cell_indx];
+  for (int32_t cell_indx : model::universes[search_univ]->cells_) {
+    Cell& c = *model::cells[cell_indx];
 
     if (c.type_ == FILL_UNIVERSE) {
       int32_t next_univ = c.fill_;
@@ -338,7 +338,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
   // write to the path and return.
   for (int32_t cell_indx : search_univ.cells_) {
     if ((cell_indx == target_cell) && (offset == target_offset)) {
-      Cell& c = *cells[cell_indx];
+      Cell& c = *model::cells[cell_indx];
       path << "c" << c.id_;
       return path.str();
     }
@@ -350,7 +350,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
   std::vector<std::int32_t>::const_reverse_iterator cell_it
        {search_univ.cells_.crbegin()};
   for (; cell_it != search_univ.cells_.crend(); ++cell_it) {
-    Cell& c = *cells[*cell_it];
+    Cell& c = *model::cells[*cell_it];
 
     // Material cells don't contain other cells so ignore them.
     if (c.type_ != FILL_MATERIAL) {
@@ -370,14 +370,14 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
   }
 
   // Add the cell to the path string.
-  Cell& c = *cells[*cell_it];
+  Cell& c = *model::cells[*cell_it];
   path << "c" << c.id_ << "->";
 
   if (c.type_ == FILL_UNIVERSE) {
     // Recurse into the fill cell.
     offset += c.offset_[map];
     path << distribcell_path_inner(target_cell, map, target_offset,
-                                   *universes[c.fill_], offset);
+                                   *model::universes[c.fill_], offset);
     return path.str();
   } else {
     // Recurse into the lattice cell.
@@ -390,7 +390,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
         offset = temp_offset;
         path << "(" << lat.index_to_string(it.indx_) << ")->";
         path << distribcell_path_inner(target_cell, map, target_offset,
-                                       *universes[*it], offset);
+                                       *model::universes[*it], offset);
         return path.str();
       }
     }
@@ -401,7 +401,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
 std::string
 distribcell_path(int32_t target_cell, int32_t map, int32_t target_offset)
 {
-  auto& root_univ = *universes[openmc_root_universe];
+  auto& root_univ = *model::universes[openmc_root_universe];
   return distribcell_path_inner(target_cell, map, target_offset, root_univ, 0);
 }
 
@@ -412,8 +412,8 @@ maximum_levels(int32_t univ)
 {
   int levels_below {0};
 
-  for (int32_t cell_indx : universes[univ]->cells_) {
-    Cell& c = *cells[cell_indx];
+  for (int32_t cell_indx : model::universes[univ]->cells_) {
+    Cell& c = *model::cells[cell_indx];
     if (c.type_ == FILL_UNIVERSE) {
       int32_t next_univ = c.fill_;
       levels_below = std::max(levels_below, maximum_levels(next_univ));
@@ -435,14 +435,14 @@ maximum_levels(int32_t univ)
 void
 free_memory_geometry_c()
 {
-  for (Cell* c : cells) {delete c;}
-  cells.clear();
-  cell_map.clear();
-  n_cells = 0;
+  for (Cell* c : model::cells) {delete c;}
+  model::cells.clear();
+  model::cell_map.clear();
+  model::n_cells = 0;
 
-  for (Universe* u : universes) {delete u;}
-  universes.clear();
-  universe_map.clear();
+  for (Universe* u : model::universes) {delete u;}
+  model::universes.clear();
+  model::universe_map.clear();
 
   for (Lattice* lat : lattices) {delete lat;}
   lattices.clear();

@@ -22,10 +22,10 @@ void
 DistribcellFilter::initialize()
 {
   // Convert the cell ID to an index of the global array.
-  auto search = cell_map.find(cell_);
-  if (search != cell_map.end()) {
+  auto search = model::cell_map.find(cell_);
+  if (search != model::cell_map.end()) {
     cell_ = search->second;
-    n_bins_ = cells[cell_]->n_instances_;
+    n_bins_ = model::cells[cell_]->n_instances_;
   } else {
     std::stringstream err_msg;
     err_msg << "Could not find cell " << cell_
@@ -39,9 +39,9 @@ DistribcellFilter::get_all_bins(const Particle* p, int estimator,
                                 FilterMatch& match) const
 {
   int offset = 0;
-  auto distribcell_index = cells[cell_]->distribcell_index_;
+  auto distribcell_index = model::cells[cell_]->distribcell_index_;
   for (int i = 0; i < p->n_coord; i++) {
-    auto& c {*cells[p->coord[i].cell]};
+    auto& c {*model::cells[p->coord[i].cell]};
     if (c.type_ == FILL_UNIVERSE) {
       offset += c.offset_[distribcell_index];
     } else if (c.type_ == FILL_LATTICE) {
@@ -66,13 +66,13 @@ void
 DistribcellFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
-  write_dataset(filter_group, "bins", cells[cell_]->id_);
+  write_dataset(filter_group, "bins", model::cells[cell_]->id_);
 }
 
 std::string
 DistribcellFilter::text_label(int bin) const
 {
-  auto map = cells[cell_]->distribcell_index_;
+  auto map = model::cells[cell_]->distribcell_index_;
   //TODO: off-by-one
   auto path = distribcell_path(cell_, map, bin-1);
   return "Distributed Cell " + path;

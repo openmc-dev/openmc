@@ -362,8 +362,8 @@ Plot::set_default_colors(pugi::xml_node plot_node)
   }
   if ("cell" == pl_color_by) {
     color_by_ = PlotColorBy::cells;
-    colors_.resize(n_cells);
-    for (int i = 0; i < n_cells; i++) {
+    colors_.resize(model::n_cells);
+    for (int i = 0; i < model::n_cells; i++) {
       colors_[i] = random_color();
     }
 
@@ -413,8 +413,8 @@ Plot::set_user_colors(pugi::xml_node plot_node)
     }
     // Add RGB
     if (PlotColorBy::cells == color_by_) {
-      if (cell_map.find(col_id) != cell_map.end()) {
-        col_id = cell_map[col_id];
+      if (model::cell_map.find(col_id) != model::cell_map.end()) {
+        col_id = model::cell_map[col_id];
         colors_[col_id] = user_rgb;
       } else {
         std::stringstream err_msg;
@@ -576,8 +576,8 @@ Plot::set_mask(pugi::xml_node plot_node)
       // in the cell and material arrays
       for (auto& col_id : iarray) {
         if (PlotColorBy::cells == color_by_) {
-          if (cell_map.find(col_id) != cell_map.end()) {
-            col_id  = cell_map[col_id];
+          if (model::cell_map.find(col_id) != model::cell_map.end()) {
+            col_id  = model::cell_map[col_id];
           }
           else {
             std::stringstream err_msg;
@@ -661,7 +661,7 @@ void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id)
   } else {
     if (PlotColorBy::mats == pl.color_by_) {
       // Assign color based on material
-      Cell* c = cells[p.coord[j].cell];
+      Cell* c = model::cells[p.coord[j].cell];
       if (c->type_ == FILL_UNIVERSE) {
         // If we stopped on a middle universe level, treat as if not found
         rgb = pl.not_found_;
@@ -677,7 +677,7 @@ void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id)
     } else if (PlotColorBy::cells == pl.color_by_) {
       // Assign color based on cell
       rgb = pl.colors_[p.coord[j].cell];
-      id = cells[p.coord[j].cell]->id_;
+      id = model::cells[p.coord[j].cell]->id_;
     }
   } // endif found_cell
 }

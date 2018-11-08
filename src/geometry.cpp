@@ -24,17 +24,17 @@ check_cell_overlap(Particle* p) {
 
   // Loop through each coordinate level
   for (int j = 0; j < n_coord; j++) {
-    Universe& univ = *universes[p->coord[j].universe];
+    Universe& univ = *model::universes[p->coord[j].universe];
     int n = univ.cells_.size();
 
     // Loop through each cell on this level
     for (auto index_cell : univ.cells_) {
-      Cell& c = *cells[index_cell];
+      Cell& c = *model::cells[index_cell];
       if (c.contains(p->coord[j].xyz, p->coord[j].uvw, p->surface)) {
         if (index_cell != p->coord[j].cell) {
           std::stringstream err_msg;
           err_msg << "Overlapping cells detected: " << c.id_ << ", "
-                  << cells[p->coord[j].cell]->id_ << " on universe "
+                  << model::cells[p->coord[j].cell]->id_ << " on universe "
                   << univ.id_;
           fatal_error(err_msg);
         }
@@ -71,7 +71,7 @@ find_cell(Particle* p, int search_surf) {
     search_cells = &surfaces[-search_surf-1]->neighbor_neg_;
   } else {
     // No surface was indicated, search all cells in the universe.
-    search_cells = &universes[i_universe]->cells_;
+    search_cells = &model::universes[i_universe]->cells_;
   }
 
   // Find which cell of this universe the particle is in.
@@ -81,17 +81,17 @@ find_cell(Particle* p, int search_surf) {
     i_cell = (*search_cells)[i];
 
     // Make sure the search cell is in the same universe.
-    if (cells[i_cell]->universe_ != i_universe) continue;
+    if (model::cells[i_cell]->universe_ != i_universe) continue;
 
     Position r {p->coord[p->n_coord-1].xyz};
     Direction u {p->coord[p->n_coord-1].uvw};
     int32_t surf = p->surface;
-    if (cells[i_cell]->contains(r, u, surf)) {
+    if (model::cells[i_cell]->contains(r, u, surf)) {
       p->coord[p->n_coord-1].cell = i_cell;
 
       if (settings::verbosity >= 10 || simulation::trace) {
         std::stringstream msg;
-        msg << "    Entering cell " << cells[i_cell]->id_;
+        msg << "    Entering cell " << model::cells[i_cell]->id_;
         write_message(msg, 1);
       }
       found = true;
@@ -100,7 +100,7 @@ find_cell(Particle* p, int search_surf) {
   }
 
   if (found) {
-    Cell& c {*cells[i_cell]};
+    Cell& c {*model::cells[i_cell]};
     if (c.type_ == FILL_MATERIAL) {
       //=======================================================================
       //! Found a material cell which means this is the lowest coord level.
@@ -109,7 +109,7 @@ find_cell(Particle* p, int search_surf) {
       if (c.material_.size() > 1 || c.sqrtkT_.size() > 1) {
         int offset = 0;
         for (int i = 0; i < p->n_coord; i++) {
-          Cell& c_i {*cells[p->coord[i].cell]};
+          Cell& c_i {*model::cells[p->coord[i].cell]};
           if (c_i.type_ == FILL_UNIVERSE) {
             offset += c_i.offset_[c.distribcell_index_];
           } else if (c_i.type_ == FILL_LATTICE) {
@@ -326,7 +326,7 @@ distance_to_boundary(Particle* p, double* dist, int* surface_crossed,
   for (int i = 0; i < p->n_coord; i++) {
     Position r {p->coord[i].xyz};
     Direction u {p->coord[i].uvw};
-    Cell& c {*cells[p->coord[i].cell]};
+    Cell& c {*model::cells[p->coord[i].cell]};
 
     // Find the oncoming surface in this cell and the distance to it.
     auto surface_distance = c.distance(r, u, p->surface);

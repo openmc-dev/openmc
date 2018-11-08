@@ -51,7 +51,7 @@ std::string time_stamp()
      << ":" << now->tm_min << ":" << now->tm_sec;
   return ts.str();
 }
-  
+
 //==============================================================================
 
 //===============================================================================
@@ -74,7 +74,7 @@ void print_plot() {
     if (PlotType::slice == pl.type_) {
       std::cout << "Plot Type: Slice" << "\n";
     } else if (PlotType::voxel == pl.type_) {
-      std::cout << "Plot Type: Voxel" << "\n";      
+      std::cout << "Plot Type: Voxel" << "\n";
     }
 
     // Plot parameters
@@ -98,9 +98,9 @@ void print_plot() {
     if (PlotColorBy::cells == pl.color_by_) {
       std::cout << "Coloring: Cells" << "\n";
     } else if (PlotColorBy::mats == pl.color_by_) {
-      std::cout << "Coloring: Materials" << "\n";      
+      std::cout << "Coloring: Materials" << "\n";
     }
-    
+
     if (PlotType::slice == pl.type_) {
       switch(pl.basis_) {
       case PlotBasis::xy:
@@ -122,10 +122,10 @@ void print_plot() {
     }
 
     std::cout << "\n";
-    
+
   }
 }
-  
+
 void
 print_overlap_check() {
 #ifdef OPENMC_MPI
@@ -135,7 +135,7 @@ print_overlap_check() {
                        mpi::intracomm);
 #endif
 
-  if (openmc_master) {
+  if (mpi::master) {
     header("cell overlap check summary", 1);
     std::cout << " Cell ID      No. Overlap Checks\n";
 

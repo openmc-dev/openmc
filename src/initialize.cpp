@@ -210,7 +210,7 @@ parse_command_line(int argc, char* argv[])
         }
         omp_set_num_threads(simulation::n_threads);
 #else
-        if (openmc_master)
+        if (mpi::master)
           warning("Ignoring number of threads specified on command line.");
 #endif
 

@@ -22,9 +22,17 @@
 
 namespace openmc {
 
+//==============================================================================
+// Global variables
+//==============================================================================
+
+namespace data {
+
 // Storage for the MGXS data
 std::vector<Mgxs> nuclides_MG;
 std::vector<Mgxs> macro_xs;
+
+} // namespace data
 
 //==============================================================================
 // Mgxs base-class methods

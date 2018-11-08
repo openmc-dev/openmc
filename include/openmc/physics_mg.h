@@ -10,34 +10,29 @@
 
 namespace openmc {
 
-//TODO: Remove energy_bin_avg and material_xs parameters when they reside on
+//TODO: Remove material_xs parameters when they reside on
 // the C-side this should happen after materials, physics, input, and tallies
 // are brought over
 
 //! \brief samples particle behavior after a collision event.
 //! \param p Particle to operate on
-//! \param energy_bin_avg Average energy within each energy bin
 //! \param material_xs The cross section cache for the current material
 extern "C" void
-collision_mg(Particle* p, const double* energy_bin_avg,
-     const MaterialMacroXS* material_xs);
+collision_mg(Particle* p, const MaterialMacroXS* material_xs);
 
 //! \brief samples a reaction type.
 //!
 //! Note that there is special logic when suvival biasing is turned on since
 //! fission and disappearance are treated implicitly.
 //! \param p Particle to operate on
-//! \param energy_bin_avg Average energy within each energy bin
 //! \param material_xs The cross section cache for the current material
 void
-sample_reaction(Particle* p, const double* energy_bin_avg,
-     const MaterialMacroXS* material_xs);
+sample_reaction(Particle* p, const MaterialMacroXS* material_xs);
 
 //! \brief Samples the scattering event
 //! \param p Particle to operate on
-//! \param energy_bin_avg Average energy within each energy bin
 void
-scatter(Particle* p, const double* energy_bin_avg);
+scatter(Particle* p);
 
 //! \brief Determines the average total, prompt and delayed neutrons produced
 //! from fission and creates the appropriate bank sites.

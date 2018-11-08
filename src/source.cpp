@@ -207,10 +207,10 @@ Bank SourceDistribution::sample() const
   auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());
   if (energy_ptr) {
     auto energies = xt::adapt(energy_ptr->x());
-    if (xt::any(energies > energy_max[p-1])) {
+    if (xt::any(energies > data::energy_max[p-1])) {
       fatal_error("Source energy above range of energies of at least "
                   "one cross section table");
-    } else if (xt::any(energies < energy_min[p-1])) {
+    } else if (xt::any(energies < data::energy_min[p-1])) {
       fatal_error("Source energy below range of energies of at least "
                   "one cross section table");
     }
@@ -221,7 +221,7 @@ Bank SourceDistribution::sample() const
     site.E = energy_->sample();
 
     // Resample if energy falls outside minimum or maximum particle energy
-    if (site.E < energy_max[p-1] && site.E > energy_min[p-1]) break;
+    if (site.E < data::energy_max[p-1] && site.E > data::energy_min[p-1]) break;
   }
 
   // Set delayed group

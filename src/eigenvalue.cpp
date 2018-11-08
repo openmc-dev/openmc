@@ -67,7 +67,7 @@ void calculate_generation_keff()
 
 void synchronize_bank()
 {
-  time_bank.start();
+  simulation::time_bank.start();
 
   // Get pointers to source/fission bank
   Bank* source_bank;
@@ -131,7 +131,7 @@ void synchronize_bank()
   }
   double p_sample = static_cast<double>(sites_needed) / total;
 
-  time_bank_sample.start();
+  simulation::time_bank_sample.start();
 
   // ==========================================================================
   // SAMPLE N_PARTICLES FROM FISSION BANK AND PLACE IN TEMP_SITES
@@ -204,8 +204,8 @@ void synchronize_bank()
     finish = simulation::work_index[mpi::rank + 1];
   }
 
-  time_bank_sample.stop();
-  time_bank_sendrecv.start();
+  simulation::time_bank_sample.stop();
+  simulation::time_bank_sendrecv.start();
 
 #ifdef OPENMC_MPI
   // ==========================================================================
@@ -303,8 +303,8 @@ void synchronize_bank()
   std::copy(temp_sites.data(), temp_sites.data() + settings::n_particles, source_bank);
 #endif
 
-  time_bank_sendrecv.stop();
-  time_bank.stop();
+  simulation::time_bank_sendrecv.stop();
+  simulation::time_bank.stop();
 }
 
 void calculate_average_keff()

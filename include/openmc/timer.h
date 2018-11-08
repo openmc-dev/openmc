@@ -6,6 +6,27 @@
 namespace openmc {
 
 //==============================================================================
+// Global variables
+//==============================================================================
+
+class Timer;
+
+namespace simulation {
+
+extern Timer time_active;
+extern Timer time_bank;
+extern Timer time_bank_sample;
+extern Timer time_bank_sendrecv;
+extern Timer time_finalize;
+extern Timer time_inactive;
+extern Timer time_initialize;
+extern Timer time_tallies;
+extern Timer time_total;
+extern Timer time_transport;
+
+} // namespace simulation
+
+//==============================================================================
 //! Class for measuring time elapsed
 //==============================================================================
 
@@ -33,21 +54,6 @@ private:
   std::chrono::time_point<clock> start_; //!< starting point for clock
   double elapsed_ {0.0}; //!< elasped time in [s]
 };
-
-//==============================================================================
-// Global variables
-//==============================================================================
-
-extern Timer time_active;
-extern Timer time_bank;
-extern Timer time_bank_sample;
-extern Timer time_bank_sendrecv;
-extern Timer time_finalize;
-extern Timer time_inactive;
-extern Timer time_initialize;
-extern Timer time_tallies;
-extern Timer time_total;
-extern Timer time_transport;
 
 //==============================================================================
 // Non-member functions

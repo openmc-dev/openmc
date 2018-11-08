@@ -139,8 +139,8 @@ int openmc_simulation_finalize()
   if (!simulation::initialized) return 0;
 
   // Stop active batch timer and start finalization timer
-  time_active.stop();
-  time_finalize.start();
+  simulation::time_active.stop();
+  simulation::time_finalize.start();
 
 #pragma omp parallel
   {
@@ -166,8 +166,8 @@ int openmc_simulation_finalize()
   }
 
   // Stop timers and show timing statistics
-  time_finalize.stop();
-  time_total.stop();
+  simulation::time_finalize.stop();
+  simulation::time_total.stop();
   if (mpi::master) {
     if (settings::verbosity >= 6) print_runtime();
     if (settings::verbosity >= 4) print_results();
@@ -200,7 +200,7 @@ int openmc_next_batch(int* status)
     initialize_generation();
 
     // Start timer for transport
-    time_transport.start();
+    simulation::time_transport.start();
 
     // ====================================================================
     // LOOP OVER PARTICLES
@@ -218,7 +218,7 @@ int openmc_next_batch(int* status)
     }
 
     // Accumulate time for transport
-    time_transport.stop();
+    simulation::time_transport.stop();
 
     finalize_generation();
   }
@@ -305,10 +305,10 @@ void initialize_batch()
 
   // Manage active/inactive timers and activate tallies if necessary.
   if (first_inactive) {
-    time_inactive.start();
+    simulation::time_inactive.start();
   } else if (first_active) {
-    time_inactive.stop();
-    time_active.start();
+    simulation::time_inactive.stop();
+    simulation::time_active.start();
     for (int i = 1; i <= n_tallies; ++i) {
       // TODO: change one-based index
       openmc_tally_set_active(i, true);
@@ -327,9 +327,9 @@ void initialize_batch()
 void finalize_batch()
 {
   // Reduce tallies onto master process and accumulate
-  time_tallies.start();
+  simulation::time_tallies.start();
   accumulate_tallies();
-  time_tallies.stop();
+  simulation::time_tallies.stop();
 
   // Reset global tally results
   if (simulation::current_batch <= settings::n_inactive) {

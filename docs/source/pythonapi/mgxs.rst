@@ -5,6 +5,15 @@
 Energy Groups
 -------------
 
+Module Variables
+++++++++++++++++
+
+.. autodata:: openmc.mgxs.GROUP_STRUCTURES
+    :annotation:
+
+Classes
++++++++
+
 .. autosummary::
     :toctree: generated
     :nosignatures:

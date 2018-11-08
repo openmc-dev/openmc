@@ -30,10 +30,14 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
+namespace simulation {
+
 double keff_generation;
 std::array<double, 2> k_sum;
 std::vector<double> entropy;
 xt::xtensor<double, 1> source_frac;
+
+} // namespace simulation
 
 //==============================================================================
 // Non-member functions
@@ -44,15 +48,15 @@ void calculate_generation_keff()
   auto gt = global_tallies();
 
   // Get keff for this generation by subtracting off the starting value
-  keff_generation = gt(K_TRACKLENGTH, RESULT_VALUE) - keff_generation;
+  simulation::keff_generation = gt(K_TRACKLENGTH, RESULT_VALUE) - simulation::keff_generation;
 
   double keff_reduced;
 #ifdef OPENMC_MPI
   // Combine values across all processors
-  MPI_Allreduce(&keff_generation, &keff_reduced, 1, MPI_DOUBLE,
+  MPI_Allreduce(&simulation::keff_generation, &keff_reduced, 1, MPI_DOUBLE,
     MPI_SUM, mpi::intracomm);
 #else
-  keff_reduced = keff_generation;
+  keff_reduced = simulation::keff_generation;
 #endif
 
   // Normalize single batch estimate of k
@@ -83,21 +87,21 @@ void synchronize_bank()
 
 #ifdef OPENMC_MPI
   int64_t start = 0;
-  MPI_Exscan(&n_bank, &start, 1, MPI_INT64_T, MPI_SUM, mpi::intracomm);
+  MPI_Exscan(&simulation::n_bank, &start, 1, MPI_INT64_T, MPI_SUM, mpi::intracomm);
 
   // While we would expect the value of start on rank 0 to be 0, the MPI
   // standard says that the receive buffer on rank 0 is undefined and not
   // significant
   if (mpi::rank == 0) start = 0;
 
-  int64_t finish = start + n_bank;
+  int64_t finish = start + simulation::n_bank;
   int64_t total = finish;
   MPI_Bcast(&total, 1, MPI_INT64_T, mpi::n_procs - 1, mpi::intracomm);
 
 #else
   int64_t start  = 0;
-  int64_t finish = n_bank;
-  int64_t total  = n_bank;
+  int64_t finish = simulation::n_bank;
+  int64_t total  = simulation::n_bank;
 #endif
 
   // If there are not that many particles per generation, it's possible that no
@@ -105,7 +109,7 @@ void synchronize_bank()
   // extra logic to treat this circumstance, we really want to ensure the user
   // runs enough particles to avoid this in the first place.
 
-  if (n_bank == 0) {
+  if (simulation::n_bank == 0) {
     fatal_error("No fission sites banked on MPI rank " + std::to_string(mpi::rank));
   }
 
@@ -136,7 +140,7 @@ void synchronize_bank()
   int64_t index_temp = 0;
   std::vector<Bank> temp_sites(3*simulation::work);
 
-  for (int64_t i = 0; i < n_bank; ++i) {
+  for (int64_t i = 0; i < simulation::n_bank; ++i) {
     // If there are less than n_particles particles banked, automatically add
     // int(n_particles/total) sites to temp_sites. For example, if you need
     // 1000 and 300 were banked, this would add 3 source sites per banked site
@@ -191,7 +195,7 @@ void synchronize_bank()
       // fission bank
       sites_needed = settings::n_particles - finish;
       for (int i = 0; i < sites_needed; ++i) {
-        temp_sites[index_temp] = fission_bank[n_bank - sites_needed + i];
+        temp_sites[index_temp] = fission_bank[simulation::n_bank - sites_needed + i];
         ++index_temp;
       }
     }
@@ -320,11 +324,11 @@ void calculate_average_keff()
     simulation::keff = simulation::k_generation[i];
   } else {
     // Sample mean of keff
-    k_sum[0] += simulation::k_generation[i];
-    k_sum[1] += std::pow(simulation::k_generation[i], 2);
+    simulation::k_sum[0] += simulation::k_generation[i];
+    simulation::k_sum[1] += std::pow(simulation::k_generation[i], 2);
 
     // Determine mean
-    simulation::keff = k_sum[0] / n;
+    simulation::keff = simulation::k_sum[0] / n;
 
     if (n > 1) {
       double t_value;
@@ -337,7 +341,7 @@ void calculate_average_keff()
       }
 
       // Standard deviation of the sample mean of k
-      simulation::keff_std = t_value * std::sqrt((k_sum[1]/n -
+      simulation::keff_std = t_value * std::sqrt((simulation::k_sum[1]/n -
         std::pow(simulation::keff, 2)) / (n - 1));
     }
   }
@@ -503,7 +507,7 @@ void shannon_entropy()
   // Get source weight in each mesh bin
   bool sites_outside;
   xt::xtensor<double, 1> p = m->count_sites(
-    n_bank, fission_bank, 0, nullptr, &sites_outside);
+    simulation::n_bank, fission_bank, 0, nullptr, &sites_outside);
 
   // display warning message if there were sites outside entropy box
   if (sites_outside) {
@@ -523,7 +527,7 @@ void shannon_entropy()
     }
 
     // Add value to vector
-    entropy.push_back(H);
+    simulation::entropy.push_back(H);
   }
 }
 
@@ -536,7 +540,7 @@ void ufs_count_sites()
     // distributed so that effectively the production of fission sites is not
     // biased
 
-    auto s = xt::view(source_frac, xt::all());
+    auto s = xt::view(simulation::source_frac, xt::all());
     s = m->volume_frac_;
 
   } else {
@@ -547,7 +551,7 @@ void ufs_count_sites()
 
     // count number of source sites in each ufs mesh cell
     bool sites_outside;
-    source_frac = m->count_sites(simulation::work, source_bank, 0, nullptr,
+    simulation::source_frac = m->count_sites(simulation::work, source_bank, 0, nullptr,
       &sites_outside);
 
     // Check for sites outside of the mesh
@@ -558,12 +562,12 @@ void ufs_count_sites()
 #ifdef OPENMC_MPI
     // Send source fraction to all processors
     int n_bins = xt::prod(m->shape_)();
-    MPI_Bcast(source_frac.data(), n_bins, MPI_DOUBLE, 0, mpi::intracomm);
+    MPI_Bcast(simulation::source_frac.data(), n_bins, MPI_DOUBLE, 0, mpi::intracomm);
 #endif
 
     // Normalize to total weight to get fraction of source in each cell
-    double total = xt::sum(source_frac)();
-    source_frac /= total;
+    double total = xt::sum(simulation::source_frac)();
+    simulation::source_frac /= total;
 
     // Since the total starting weight is not equal to n_particles, we need to
     // renormalize the weight of the source sites
@@ -585,8 +589,8 @@ double ufs_get_weight(const Particle* p)
     fatal_error("Source site outside UFS mesh!");
   }
 
-  if (source_frac(mesh_bin) != 0.0) {
-    return m->volume_frac_ / source_frac(mesh_bin);
+  if (simulation::source_frac(mesh_bin) != 0.0) {
+    return m->volume_frac_ / simulation::source_frac(mesh_bin);
   } else {
     return 1.0;
   }
@@ -598,7 +602,7 @@ extern "C" void write_eigenvalue_hdf5(hid_t group)
   write_dataset(group, "generations_per_batch", settings::gen_per_batch);
   write_dataset(group, "k_generation", simulation::k_generation);
   if (settings::entropy_on) {
-    write_dataset(group, "entropy", entropy);
+    write_dataset(group, "entropy", simulation::entropy);
   }
   write_dataset(group, "k_col_abs", simulation::k_col_abs);
   write_dataset(group, "k_col_tra", simulation::k_col_tra);
@@ -615,7 +619,7 @@ extern "C" void read_eigenvalue_hdf5(hid_t group)
   simulation::k_generation.resize(n);
   read_dataset(group, "k_generation", simulation::k_generation);
   if (settings::entropy_on) {
-    read_dataset(group, "entropy", entropy);
+    read_dataset(group, "entropy", simulation::entropy);
   }
   read_dataset(group, "k_col_abs", simulation::k_col_abs);
   read_dataset(group, "k_col_tra", simulation::k_col_tra);
@@ -628,14 +632,14 @@ extern "C" void read_eigenvalue_hdf5(hid_t group)
 
 extern "C" double entropy_c(int i)
 {
-  return entropy.at(i - 1);
+  return simulation::entropy.at(i - 1);
 }
 
 extern "C" void entropy_clear()
 {
-  entropy.clear();
+  simulation::entropy.clear();
 }
 
-extern "C" void k_sum_reset() { k_sum.fill(0.0); }
+extern "C" void k_sum_reset() { simulation::k_sum.fill(0.0); }
 
 } // namespace openmc

@@ -320,11 +320,11 @@ void restart_set_keff()
 {
   if (simulation::restart_batch > settings::n_inactive) {
     for (int i = settings::n_inactive; i < simulation::restart_batch; ++i) {
-      k_sum[0] += simulation::k_generation[i];
-      k_sum[1] += std::pow(simulation::k_generation[i], 2);
+      simulation::k_sum[0] += simulation::k_generation[i];
+      simulation::k_sum[1] += std::pow(simulation::k_generation[i], 2);
     }
     int n = settings::gen_per_batch*n_realizations;
-    simulation::keff = k_sum[0] / n;
+    simulation::keff = simulation::k_sum[0] / n;
   } else {
     simulation::keff = simulation::k_generation.back();
   }

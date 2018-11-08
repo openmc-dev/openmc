@@ -104,7 +104,7 @@ int openmc_simulation_init()
   // will potentially populate k_generation and entropy)
   simulation::current_batch = 0;
   simulation::k_generation.clear();
-  entropy.clear();
+  simulation::entropy.clear();
   simulation::need_depletion_rx = false;
 
   // If this is a restart run, load the state point data and binary source
@@ -384,13 +384,13 @@ void initialize_generation()
 {
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
     // Reset number of fission bank sites
-    n_bank = 0;
+    simulation::n_bank = 0;
 
     // Count source sites if using uniform fission source weighting
     if (settings::ufs_on) ufs_count_sites();
 
     // Store current value of tracklength k
-    keff_generation = global_tallies()(K_TRACKLENGTH, RESULT_VALUE);
+    simulation::keff_generation = global_tallies()(K_TRACKLENGTH, RESULT_VALUE);
   }
 }
 

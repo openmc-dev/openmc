@@ -9,6 +9,7 @@
 #include "openmc/geometry.h"
 #include "openmc/cell.h"
 #include "openmc/material.h"
+#include "openmc/message_passing.h"
 #include "openmc/string_utils.h"
 #include "openmc/mesh.h"
 #include "openmc/output.h"
@@ -243,7 +244,7 @@ Plot::set_bg_color(pugi::xml_node plot_node)
   if (check_for_node(plot_node, "background")) {
     std::vector<int> bg_rgb = get_node_array<int>(plot_node, "background");
     if (PlotType::voxel == type_) {
-      if (openmc_master) {
+      if (mpi::master) {
         std::stringstream err_msg;
         err_msg << "Background color ignored in voxel plot "
                 << id_;
@@ -384,7 +385,7 @@ void
 Plot::set_user_colors(pugi::xml_node plot_node)
 {
   if (!plot_node.select_nodes("color").empty() && PlotType::voxel == type_) {
-    if (openmc_master) {
+    if (mpi::master) {
       std::stringstream err_msg;
       err_msg << "Color specifications ignored in voxel plot "
               << id_;
@@ -552,7 +553,7 @@ Plot::set_mask(pugi::xml_node plot_node)
 
   if (!mask_nodes.empty()) {
     if (PlotType::voxel == type_) {
-      if (openmc_master) {
+      if (mpi::master) {
         std::stringstream wrn_msg;
         wrn_msg << "Mask ignored in voxel plot " << id_;
         warning(wrn_msg);

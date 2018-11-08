@@ -113,7 +113,7 @@ write_source_bank(hid_t group_id, Bank* source_bank)
 
 #else
 
-  if (openmc_master) {
+  if (mpi::master) {
     // Create dataset big enough to hold all source sites
     hsize_t dims[] {static_cast<hsize_t>(settings::n_particles)};
     hid_t dspace = H5Screate_simple(1, dims, nullptr);

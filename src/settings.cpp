@@ -17,6 +17,7 @@
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/mesh.h"
+#include "openmc/message_passing.h"
 #include "openmc/output.h"
 #include "openmc/random_lcg.h"
 #include "openmc/simulation.h"
@@ -231,7 +232,7 @@ void read_settings_xml()
 
   // To this point, we haven't displayed any output since we didn't know what
   // the verbosity is. Now that we checked for it, show the title if necessary
-  if (openmc_master) {
+  if (mpi::master) {
     if (verbosity >= 2) title();
   }
   write_message("Reading settings XML file...", 5);
@@ -398,7 +399,7 @@ void read_settings_xml()
       omp_set_num_threads(simulation::n_threads);
     }
 #else
-    if (openmc_master) warning("OpenMC was not compiled with OpenMP support; "
+    if (mpi::master) warning("OpenMC was not compiled with OpenMP support; "
       "ignoring number of threads.");
 #endif
   }

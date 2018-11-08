@@ -318,9 +318,9 @@ Bank sample_external_source()
 
   // If running in MG, convert site % E to group
   if (!settings::run_CE) {
-    site.E = lower_bound_index(rev_energy_bins.begin(), rev_energy_bins.end(),
-                               site.E);
-    site.E = num_energy_groups - site.E;
+    site.E = lower_bound_index(data::rev_energy_bins.begin(),
+      data::rev_energy_bins.end(), site.E);
+    site.E = data::num_energy_groups - site.E;
   }
 
   // Set the random number generator back to the tracking stream.

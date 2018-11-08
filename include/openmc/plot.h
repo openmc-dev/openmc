@@ -18,14 +18,14 @@ namespace openmc {
 // Global variables
 //===============================================================================
 
-extern int PLOT_LEVEL_LOWEST; //!< lower bound on plot universe level
+class Plot;
 
+namespace model {
+
+extern std::vector<Plot> plots; //!< Plot instance container
 extern std::unordered_map<int, int> plot_map; //!< map of plot ids to index
 
-extern "C" int32_t n_plots; //!< number of plots in openmc run
-
-class Plot;
-extern std::vector<Plot> plots; //!< Plot instance container
+} // namespace model
 
 //===============================================================================
 // RGBColor holds color information for plotted objects
@@ -124,8 +124,7 @@ void draw_mesh_lines(Plot pl, ImageData& data);
 //! Write a ppm image to file using a plot object's image data
 //! \param[in] plot object
 //! \param[out] image data associated with the plot object
-void output_ppm(Plot pl,
-                const ImageData& data);
+void output_ppm(Plot pl, const ImageData& data);
 
 //! Get the rgb color for a given particle position in a plot
 //! \param[in] particle with position for current pixel
@@ -141,7 +140,7 @@ void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id);
 //! \param[out] dataset pointer to voxesl data
 //! \param[out] pointer to memory space of voxel data
 void voxel_init(hid_t file_id, const hsize_t* dims, hid_t* dspace,
-                           hid_t* dset, hid_t* memspace);
+                hid_t* dset, hid_t* memspace);
 
 //! Write a section of the voxel data to hdf5
 //! \param[in] voxel slice
@@ -149,7 +148,8 @@ void voxel_init(hid_t file_id, const hsize_t* dims, hid_t* dspace,
 //! \param[out] dataset pointer to voxesl data
 //! \param[out] pointer to data to write
 void voxel_write_slice(int x, hid_t dspace, hid_t dset,
-                                  hid_t memspace, void* buf);
+                       hid_t memspace, void* buf);
+
 //! Close voxel file entities
 //! \param[in] data space to close
 //! \param[in] dataset to close

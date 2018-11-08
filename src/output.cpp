@@ -62,7 +62,7 @@ void print_plot() {
 
   header("PLOTTING SUMMARY", 5);
 
-  for (auto pl : plots) {
+  for (auto pl : model::plots) {
     // Plot id
     std::cout << "Plot ID: " << pl.id_ << "\n";
     // Plot filename

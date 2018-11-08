@@ -150,7 +150,7 @@ void get_run_parameters(pugi::xml_node node_base)
     // Preallocate space for keff and entropy by generation
     int m = settings::n_max_batches * settings::gen_per_batch;
     simulation::k_generation.reserve(m);
-    entropy.reserve(m);
+    simulation::entropy.reserve(m);
 
     // Get the trigger information for keff
     if (check_for_node(node_base, "keff_trigger")) {

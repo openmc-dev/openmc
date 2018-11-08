@@ -53,7 +53,7 @@ sample_reaction(Particle* p, const double* energy_bin_avg,
       int64_t result_bank_size;
       // Get pointer to fission bank from Fortran side
       openmc_fission_bank(&result_bank, &result_bank_size);
-      create_fission_sites(p, result_bank, &n_bank, result_bank_size,
+      create_fission_sites(p, result_bank, &simulation::n_bank, result_bank_size,
                            material_xs);
     } else if ((settings::run_mode == RUN_MODE_FIXEDSOURCE) &&
                (settings::create_fission_neutrons)) {

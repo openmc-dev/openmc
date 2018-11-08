@@ -129,9 +129,9 @@ void print_plot() {
 void
 print_overlap_check() {
 #ifdef OPENMC_MPI
-  std::vector<int64_t> temp(overlap_check_count);
-  int err = MPI_Reduce(temp.data(), overlap_check_count.data(),
-                       overlap_check_count.size(), MPI_INT64_T, MPI_SUM, 0,
+  std::vector<int64_t> temp(model::overlap_check_count);
+  int err = MPI_Reduce(temp.data(), model::overlap_check_count.data(),
+                       model::overlap_check_count.size(), MPI_INT64_T, MPI_SUM, 0,
                        mpi::intracomm);
 #endif
 
@@ -142,8 +142,8 @@ print_overlap_check() {
     std::vector<int32_t> sparse_cell_ids;
     for (int i = 0; i < model::n_cells; i++) {
       std::cout << " " << std::setw(8) << model::cells[i]->id_ << std::setw(17)
-                << overlap_check_count[i] << "\n";
-      if (overlap_check_count[i] < 10) {
+                << model::overlap_check_count[i] << "\n";
+      if (model::overlap_check_count[i] < 10) {
         sparse_cell_ids.push_back(model::cells[i]->id_);
       }
     }

@@ -123,7 +123,7 @@ void create_ppm(Plot pl)
   p.initialize();
   std::copy(xyz, xyz+3, p.coord[0].xyz);
   std::copy(dir, dir+3, p.coord[0].uvw);
-  p.coord[0].universe = openmc_root_universe;
+  p.coord[0].universe = model::root_universe;
 
 #pragma omp for
   for (int y = 0; y < height; y++) {
@@ -852,7 +852,7 @@ void create_voxel(Plot pl)
   p.initialize();
   std::copy(ll.begin(), ll.begin()+ll.size(), p.coord[0].xyz);
   std::copy(dir, dir+3, p.coord[0].uvw);
-  p.coord[0].universe = openmc_root_universe;
+  p.coord[0].universe = model::root_universe;
 
   // Open binary plot file for writing
   std::ofstream of;

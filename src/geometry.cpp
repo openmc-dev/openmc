@@ -14,8 +14,21 @@
 
 namespace openmc {
 
+//==============================================================================
+// Global variables
+//==============================================================================
+
+
+namespace model {
+
+int root_universe {-1};
+
 std::vector<int64_t> overlap_check_count;
 
+} // namespace model
+
+//==============================================================================
+// Non-member functions
 //==============================================================================
 
 extern "C" bool
@@ -38,7 +51,7 @@ check_cell_overlap(Particle* p) {
                   << univ.id_;
           fatal_error(err_msg);
         }
-        ++overlap_check_count[index_cell];
+        ++model::overlap_check_count[index_cell];
       }
     }
   }
@@ -57,8 +70,8 @@ find_cell(Particle* p, int search_surf) {
   // Determine universe (if not yet set, use root universe)
   int i_universe = p->coord[p->n_coord-1].universe;
   if (i_universe == C_NONE) {
-    p->coord[p->n_coord-1].universe = openmc_root_universe;
-    i_universe = openmc_root_universe;
+    p->coord[p->n_coord-1].universe = model::root_universe;
+    i_universe = model::root_universe;
   }
 
   // If a surface was indicated, only search cells from the neighbor list of
@@ -113,7 +126,7 @@ find_cell(Particle* p, int search_surf) {
           if (c_i.type_ == FILL_UNIVERSE) {
             offset += c_i.offset_[c.distribcell_index_];
           } else if (c_i.type_ == FILL_LATTICE) {
-            Lattice& lat {*lattices[p->coord[i+1].lattice-1]};
+            Lattice& lat {*model::lattices[p->coord[i+1].lattice-1]};
             int i_xyz[3] {p->coord[i+1].lattice_x,
                           p->coord[i+1].lattice_y,
                           p->coord[i+1].lattice_z};
@@ -198,7 +211,7 @@ find_cell(Particle* p, int search_surf) {
       //========================================================================
       //! Found a lower lattice, update this coord level then search the next.
 
-      Lattice& lat {*lattices[c.fill_]};
+      Lattice& lat {*model::lattices[c.fill_]};
 
       // Determine lattice indices.
       Position r {p->coord[p->n_coord-1].xyz};
@@ -251,7 +264,7 @@ find_cell(Particle* p, int search_surf) {
 extern "C" void
 cross_lattice(Particle* p, int lattice_translation[3])
 {
-  Lattice& lat {*lattices[p->coord[p->n_coord-1].lattice-1]};
+  Lattice& lat {*model::lattices[p->coord[p->n_coord-1].lattice-1]};
 
   if (settings::verbosity >= 10 || simulation::trace) {
     std::stringstream msg;
@@ -335,7 +348,7 @@ distance_to_boundary(Particle* p, double* dist, int* surface_crossed,
 
     // Find the distance to the next lattice tile crossing.
     if (p->coord[i].lattice != F90_NONE) {
-      Lattice& lat {*lattices[p->coord[i].lattice-1]};
+      Lattice& lat {*model::lattices[p->coord[i].lattice-1]};
       std::array<int, 3> i_xyz {p->coord[i].lattice_x, p->coord[i].lattice_y,
                                 p->coord[i].lattice_z};
       //TODO: refactor so both lattice use the same position argument (which

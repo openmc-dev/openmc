@@ -1,5 +1,6 @@
-
 #include "openmc/dagmc.h"
+
+#include "openmc/cell.h"
 #include "openmc/error.h"
 #include "openmc/string_utils.h"
 #include "openmc/settings.h"
@@ -38,12 +39,12 @@ void load_dagmc_geometry()
   MB_CHK_ERR_CONT(rval);
 
   // initialize cell objects
-  n_cells = DAG->num_entities(3);
+  model::n_cells = DAG->num_entities(3);
 
   // Allocate the cell overlap count if necessary.
-  if (settings::check_overlaps) overlap_check_count.resize(n_cells, 0);
+  if (settings::check_overlaps) overlap_check_count.resize(model::n_cells, 0);
 
-  for (int i = 0; i < n_cells; i++) {
+  for (int i = 0; i < model::n_cells; i++) {
     moab::EntityHandle vol_handle = DAG->entity_by_index(3, i+1);
 
     // set cell ids using global IDs
@@ -53,18 +54,18 @@ void load_dagmc_geometry()
     c->universe_ = dagmc_univ_id; // set to zero for now
     c->fill_ = C_NONE; // no fill, single universe
 
-    cells.push_back(c);
-    cell_map[c->id_] = i;
+    model::cells.push_back(c);
+    model::cell_map[c->id_] = i;
 
     // Populate the Universe vector and dict
-    auto it = universe_map.find(dagmc_univ_id);
-    if (it == universe_map.end()) {
-      universes.push_back(new Universe());
-      universes.back()-> id_ = dagmc_univ_id;
-      universes.back()->cells_.push_back(i);
-      universe_map[dagmc_univ_id] = universes.size() - 1;
+    auto it = model::universe_map.find(dagmc_univ_id);
+    if (it == model::universe_map.end()) {
+      model::universes.push_back(new Universe());
+      model::universes.back()-> id_ = dagmc_univ_id;
+      model::universes.back()->cells_.push_back(i);
+      model::universe_map[dagmc_univ_id] = model::universes.size() - 1;
     } else {
-      universes[it->second]->cells_.push_back(i);
+      model::universes[it->second]->cells_.push_back(i);
     }
 
     if (DAG->is_implicit_complement(vol_handle)) {

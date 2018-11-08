@@ -65,8 +65,8 @@ Lattice::adjust_indices()
   // Adjust the indices for the universes array.
   for (LatticeIter it = begin(); it != end(); ++it) {
     int uid = *it;
-    auto search = universe_map.find(uid);
-    if (search != universe_map.end()) {
+    auto search = model::universe_map.find(uid);
+    if (search != model::universe_map.end()) {
       *it = search->second;
     } else {
       std::stringstream err_msg;
@@ -78,8 +78,8 @@ Lattice::adjust_indices()
 
   // Adjust the index for the outer universe.
   if (outer_ != NO_OUTER_UNIVERSE) {
-    auto search = universe_map.find(outer_);
-    if (search != universe_map.end()) {
+    auto search = model::universe_map.find(outer_);
+    if (search != model::universe_map.end()) {
       outer_ = search->second;
     } else {
       std::stringstream err_msg;
@@ -118,7 +118,7 @@ Lattice::to_hdf5(hid_t lattices_group) const
   }
 
   if (outer_ != NO_OUTER_UNIVERSE) {
-    int32_t outer_id = universes[outer_]->id_;
+    int32_t outer_id = model::universes[outer_]->id_;
     write_dataset(lat_group, "outer", outer_id);
   } else {
     write_dataset(lat_group, "outer", outer_);
@@ -370,7 +370,7 @@ RectLattice::to_hdf5_inner(hid_t lat_group) const
         for (int j = 0; j < nx; j++) {
           int indx1 = nx*ny*m + nx*k + j;
           int indx2 = nx*ny*m + nx*(ny-k-1) + j;
-          out[indx2] = universes[universes_[indx1]]->id_;
+          out[indx2] = model::universes[universes_[indx1]]->id_;
         }
       }
     }
@@ -387,7 +387,7 @@ RectLattice::to_hdf5_inner(hid_t lat_group) const
       for (int j = 0; j < nx; j++) {
         int indx1 = nx*k + j;
         int indx2 = nx*(ny-k-1) + j;
-        out[indx2] = universes[universes_[indx1]]->id_;
+        out[indx2] = model::universes[universes_[indx1]]->id_;
       }
     }
 
@@ -847,7 +847,7 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
           // This array position is never used; put a -1 to indicate this.
           out[indx] = -1;
         } else {
-          out[indx] = universes[universes_[indx]]->id_;
+          out[indx] = model::universes[universes_[indx]]->id_;
         }
       }
     }

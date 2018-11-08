@@ -21,6 +21,8 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
+namespace model {
+
 int32_t n_cells {0};
 
 std::vector<Cell*> cells;
@@ -28,6 +30,8 @@ std::unordered_map<int32_t, int32_t> cell_map;
 
 std::vector<Universe*> universes;
 std::unordered_map<int32_t, int32_t> universe_map;
+
+} // namespace model
 
 //==============================================================================
 //! Convert region specification string to integer tokens.
@@ -197,7 +201,7 @@ Universe::to_hdf5(hid_t universes_group) const
   // Write the contained cells.
   if (cells_.size() > 0) {
     std::vector<int32_t> cell_ids;
-    for (auto i_cell : cells_) cell_ids.push_back(cells[i_cell]->id_);
+    for (auto i_cell : cells_) cell_ids.push_back(model::cells[i_cell]->id_);
     write_dataset(group, "cells", cell_ids);
   }
 
@@ -209,7 +213,7 @@ Universe::to_hdf5(hid_t universes_group) const
 //==============================================================================
 
 CSGCell::CSGCell() {} // empty constructor
-  
+
 CSGCell::CSGCell(pugi::xml_node cell_node)
 {
   if (check_for_node(cell_node, "id")) {
@@ -446,7 +450,7 @@ CSGCell::to_hdf5(hid_t cell_group) const
     write_string(group, "name", name_, false);
   }
 
-  write_dataset(group, "universe", universes[universe_]->id_);
+  write_dataset(group, "universe", model::universes[universe_]->id_);
 
   // Write the region specification.
   if (!region_.empty()) {
@@ -494,7 +498,7 @@ CSGCell::to_hdf5(hid_t cell_group) const
 
   } else if (type_ == FILL_UNIVERSE) {
     write_dataset(group, "fill_type", "universe");
-    write_dataset(group, "fill", universes[fill_]->id_);
+    write_dataset(group, "fill", model::universes[fill_]->id_);
     if (translation_ != Position(0, 0, 0)) {
       write_dataset(group, "translation", translation_);
     }
@@ -609,10 +613,10 @@ DAGCell::distance(Position r, Direction u, int32_t on_surface) const
   } else {  // indicate that particle is lost
     surf_idx = -1;
   }
-  
+
   return {dist, surf_idx};
 }
-  
+
 bool DAGCell::contains(Position r, Direction u, int32_t on_surface) const
 {
   moab::ErrorCode rval;
@@ -622,7 +626,7 @@ bool DAGCell::contains(Position r, Direction u, int32_t on_surface) const
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
   rval = dagmc_ptr_->point_in_volume(vol, pnt, result, dir);
-  MB_CHK_ERR_CONT(rval);  
+  MB_CHK_ERR_CONT(rval);
   return result;
 }
 
@@ -638,23 +642,23 @@ extern "C" void
 read_cells(pugi::xml_node* node)
 {
   // Count the number of cells.
-  for (pugi::xml_node cell_node: node->children("cell")) {n_cells++;}
-  if (n_cells == 0) {
+  for (pugi::xml_node cell_node: node->children("cell")) {model::n_cells++;}
+  if (model::n_cells == 0) {
     fatal_error("No cells found in geometry.xml!");
   }
 
   // Loop over XML cell elements and populate the array.
-  cells.reserve(n_cells);
+  model::cells.reserve(model::n_cells);
   for (pugi::xml_node cell_node: node->children("cell")) {
-    cells.push_back(new CSGCell(cell_node));
+    model::cells.push_back(new CSGCell(cell_node));
   }
 
   // Fill the cell map.
-  for (int i = 0; i < cells.size(); i++) {
-    int32_t id = cells[i]->id_;
-    auto search = cell_map.find(id);
-    if (search == cell_map.end()) {
-      cell_map[id] = i;
+  for (int i = 0; i < model::cells.size(); i++) {
+    int32_t id = model::cells[i]->id_;
+    auto search = model::cell_map.find(id);
+    if (search == model::cell_map.end()) {
+      model::cell_map[id] = i;
     } else {
       std::stringstream err_msg;
       err_msg << "Two or more cells use the same unique ID: " << id;
@@ -663,22 +667,22 @@ read_cells(pugi::xml_node* node)
   }
 
   // Populate the Universe vector and map.
-  for (int i = 0; i < cells.size(); i++) {
-    int32_t uid = cells[i]->universe_;
-    auto it = universe_map.find(uid);
-    if (it == universe_map.end()) {
-      universes.push_back(new Universe());
-      universes.back()->id_ = uid;
-      universes.back()->cells_.push_back(i);
-      universe_map[uid] = universes.size() - 1;
+  for (int i = 0; i < model::cells.size(); i++) {
+    int32_t uid = model::cells[i]->universe_;
+    auto it = model::universe_map.find(uid);
+    if (it == model::universe_map.end()) {
+      model::universes.push_back(new Universe());
+      model::universes.back()->id_ = uid;
+      model::universes.back()->cells_.push_back(i);
+      model::universe_map[uid] = model::universes.size() - 1;
     } else {
-      universes[it->second]->cells_.push_back(i);
+      model::universes[it->second]->cells_.push_back(i);
     }
   }
-  universes.shrink_to_fit();
+  model::universes.shrink_to_fit();
 
   // Allocate the cell overlap count if necessary.
-  if (settings::check_overlaps) overlap_check_count.resize(n_cells, 0);
+  if (settings::check_overlaps) overlap_check_count.resize(model::n_cells, 0);
 }
 
 //==============================================================================
@@ -688,9 +692,9 @@ read_cells(pugi::xml_node* node)
 extern "C" int
 openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n)
 {
-  if (index >= 1 && index <= cells.size()) {
+  if (index >= 1 && index <= model::cells.size()) {
     //TODO: off-by-one
-    Cell& c {*cells[index - 1]};
+    Cell& c {*model::cells[index - 1]};
     *type = c.type_;
     if (c.type_ == FILL_MATERIAL) {
       *indices = c.material_.data();
@@ -710,9 +714,9 @@ extern "C" int
 openmc_cell_set_fill(int32_t index, int type, int32_t n,
                      const int32_t* indices)
 {
-  if (index >= 1 && index <= cells.size()) {
+  if (index >= 1 && index <= model::cells.size()) {
     //TODO: off-by-one
-    Cell& c {*cells[index - 1]};
+    Cell& c {*model::cells[index - 1]};
     if (type == FILL_MATERIAL) {
       c.type_ = FILL_MATERIAL;
       c.material_.clear();
@@ -745,9 +749,9 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
 extern "C" int
 openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance)
 {
-  if (index >= 1 && index <= cells.size()) {
+  if (index >= 1 && index <= model::cells.size()) {
     //TODO: off-by-one
-    Cell& c {*cells[index - 1]};
+    Cell& c {*model::cells[index - 1]};
 
     if (instance) {
       if (*instance >= 0 && *instance < c.sqrtkT_.size()) {
@@ -775,7 +779,7 @@ openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance)
 //==============================================================================
 
 extern "C" {
-  Cell* cell_pointer(int32_t cell_ind) {return cells[cell_ind];}
+  Cell* cell_pointer(int32_t cell_ind) {return model::cells[cell_ind];}
 
   int32_t cell_id(Cell* c) {return c->id_;}
 
@@ -785,9 +789,9 @@ extern "C" {
     c->id_ = id;
 
     // Find the index of this cell and update the cell map.
-    for (int i = 0; i < cells.size(); i++) {
-      if (cells[i] == c) {
-        cell_map[id] = i;
+    for (int i = 0; i < model::cells.size(); i++) {
+      if (model::cells[i] == c) {
+        model::cell_map[id] = i;
         break;
       }
     }
@@ -830,17 +834,17 @@ extern "C" {
 
   void extend_cells_c(int32_t n)
   {
-    cells.reserve(cells.size() + n);
+    model::cells.reserve(model::cells.size() + n);
     for (int32_t i = 0; i < n; i++) {
-      cells.push_back(new CSGCell());
+      model::cells.push_back(new CSGCell());
     }
-    n_cells = cells.size();
+    model::n_cells = model::cells.size();
   }
 
-  int32_t universe_id(int i_univ) {return universes[i_univ]->id_;}
+  int32_t universe_id(int i_univ) {return model::universes[i_univ]->id_;}
 
   void universes_to_hdf5(hid_t universes_group)
-  {for (Universe* u : universes) u->to_hdf5(universes_group);}
+  {for (Universe* u : model::universes) u->to_hdf5(universes_group);}
 }
 
 

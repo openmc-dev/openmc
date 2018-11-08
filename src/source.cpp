@@ -27,7 +27,11 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
+namespace model {
+
 std::vector<SourceDistribution> external_sources;
+
+}
 
 //==============================================================================
 // SourceDistribution implementation
@@ -299,22 +303,22 @@ Bank sample_external_source()
 
   // Determine total source strength
   double total_strength = 0.0;
-  for (auto& s : external_sources)
+  for (auto& s : model::external_sources)
     total_strength += s.strength();
 
   // Sample from among multiple source distributions
   int i = 0;
-  if (external_sources.size() > 1) {
+  if (model::external_sources.size() > 1) {
     double xi = prn()*total_strength;
     double c = 0.0;
-    for (; i < external_sources.size(); ++i) {
-      c += external_sources[i].strength();
+    for (; i < model::external_sources.size(); ++i) {
+      c += model::external_sources[i].strength();
       if (xi < c) break;
     }
   }
 
   // Sample source site from i-th source distribution
-  Bank site {external_sources[i].sample()};
+  Bank site {model::external_sources[i].sample()};
 
   // If running in MG, convert site % E to group
   if (!settings::run_CE) {
@@ -335,13 +339,13 @@ Bank sample_external_source()
 
 extern "C" void free_memory_source()
 {
-  external_sources.clear();
+  model::external_sources.clear();
 }
 
 extern "C" double total_source_strength()
 {
   double strength = 0.0;
-  for (const auto& s : external_sources) {
+  for (const auto& s : model::external_sources) {
     strength += s.strength();
   }
   return strength;

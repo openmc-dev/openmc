@@ -167,14 +167,14 @@ neighbor_lists()
 
       // This token is a surface index.  Add the cell to the surface's list.
       if (token > 0) {
-        surfaces[std::abs(token)-1]->neighbor_pos_.push_back(i);
+        model::surfaces[std::abs(token)-1]->neighbor_pos_.push_back(i);
       } else {
-        surfaces[std::abs(token)-1]->neighbor_neg_.push_back(i);
+        model::surfaces[std::abs(token)-1]->neighbor_neg_.push_back(i);
       }
     }
   }
 
-  for (Surface* surf : surfaces) {
+  for (Surface* surf : model::surfaces) {
     surf->neighbor_pos_.shrink_to_fit();
     surf->neighbor_neg_.shrink_to_fit();
   }

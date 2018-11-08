@@ -93,7 +93,7 @@ void load_dagmc_geometry()
   }
 
   // initialize surface objects
-  n_surfaces = model::DAG->num_entities(2);
+  int n_surfaces = model::DAG->num_entities(2);
   surfaces.resize(n_surfaces);
 
   for (int i = 0; i < n_surfaces; i++) {
@@ -129,8 +129,8 @@ void load_dagmc_geometry()
     }
 
     // add to global array and map
-    surfaces[i] = s;
-    surface_map[s->id_] = s->id_;
+    model::surfaces[i] = s;
+    model::surface_map[s->id_] = s->id_;
   }
 
   return;

@@ -318,7 +318,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   // Convert user IDs to surface indices.
   for (auto& r : region_) {
     if (r < OP_UNION) {
-      r = copysign(surface_map[abs(r)] + 1, r);
+      r = copysign(model::surface_map[abs(r)] + 1, r);
     }
   }
 
@@ -422,7 +422,7 @@ CSGCell::distance(Position r, Direction u, int32_t on_surface) const
     // Calculate the distance to this surface.
     // Note the off-by-one indexing
     bool coincident {token == on_surface};
-    double d {surfaces[abs(token)-1]->distance(r, u, coincident)};
+    double d {model::surfaces[abs(token)-1]->distance(r, u, coincident)};
 
     // Check if this distance is the new minimum.
     if (d < min_dist) {
@@ -468,7 +468,7 @@ CSGCell::to_hdf5(hid_t cell_group) const
       } else {
         // Note the off-by-one indexing
         region_spec << " "
-             << copysign(surfaces[abs(token)-1]->id_, token);
+             << copysign(model::surfaces[abs(token)-1]->id_, token);
       }
     }
     write_string(group, "region", region_spec.str(), false);
@@ -531,7 +531,7 @@ CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
         return false;
       } else {
         // Note the off-by-one indexing
-        bool sense = surfaces[abs(token)-1]->sense(r, u);
+        bool sense = model::surfaces[abs(token)-1]->sense(r, u);
         if (sense != (token > 0)) {return false;}
       }
     }
@@ -573,7 +573,7 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
         stack[i_stack] = false;
       } else {
         // Note the off-by-one indexing
-        bool sense = surfaces[abs(token)-1]->sense(r, u);
+        bool sense = model::surfaces[abs(token)-1]->sense(r, u);
         stack[i_stack] = (sense == (token > 0));
       }
     }

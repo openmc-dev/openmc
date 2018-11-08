@@ -187,7 +187,7 @@ prepare_distribcell()
 {
   // Find all cells listed in a DistribcellFilter.
   std::unordered_set<int32_t> distribcells;
-  for (auto& filt : tally_filters) {
+  for (auto& filt : model::tally_filters) {
     auto* distrib_filt = dynamic_cast<DistribcellFilter*>(filt.get());
     if (distrib_filt) {
       distribcells.insert(distrib_filt->cell_);

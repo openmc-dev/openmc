@@ -497,7 +497,7 @@ int openmc_get_keff(double* k_combined)
 void shannon_entropy()
 {
   // Get pointer to entropy mesh
-  auto& m = meshes[settings::index_entropy_mesh];
+  auto& m = model::meshes[settings::index_entropy_mesh];
 
   // Get pointer to fission bank
   Bank* fission_bank;
@@ -533,7 +533,7 @@ void shannon_entropy()
 
 void ufs_count_sites()
 {
-  auto &m = meshes[settings::index_ufs_mesh];
+  auto &m = model::meshes[settings::index_ufs_mesh];
 
   if (simulation::current_batch == 1 && simulation::current_gen == 1) {
     // On the first generation, just assume that the source is already evenly
@@ -579,7 +579,7 @@ void ufs_count_sites()
 
 double ufs_get_weight(const Particle* p)
 {
-  auto& m = meshes[settings::index_ufs_mesh];
+  auto& m = model::meshes[settings::index_ufs_mesh];
 
   // Determine indices on ufs mesh for current location
   // TODO: off by one

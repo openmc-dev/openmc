@@ -46,8 +46,8 @@ adjust_indices()
       for (auto it = c->material_.begin(); it != c->material_.end(); it++) {
         int32_t mid = *it;
         if (mid != MATERIAL_VOID) {
-          auto search = material_map.find(mid);
-          if (search != material_map.end()) {
+          auto search = model::material_map.find(mid);
+          if (search != model::material_map.end()) {
             *it = search->second;
           } else {
             std::stringstream err_msg;
@@ -96,9 +96,9 @@ assign_temperatures()
         c->sqrtkT_.push_back(0);
 
       } else {
-        if (materials[i_mat]->temperature_ >= 0) {
+        if (model::materials[i_mat]->temperature_ >= 0) {
           // This material has a default temperature; use that value.
-          auto T = materials[i_mat]->temperature_;
+          auto T = model::materials[i_mat]->temperature_;
           c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * T));
         } else {
           // Use the global default temperature.

@@ -18,6 +18,19 @@
 namespace openmc {
 
 //==============================================================================
+// Global variables
+//==============================================================================
+
+class RegularMesh;
+
+namespace model {
+
+extern std::vector<std::unique_ptr<RegularMesh>> meshes;
+extern std::unordered_map<int32_t, int32_t> mesh_map;
+
+} // namespace model
+
+//==============================================================================
 //! Tessellation of n-dimensional Euclidean space by congruent squares or cubes
 //==============================================================================
 
@@ -116,15 +129,6 @@ extern "C" void read_meshes(pugi::xml_node* root);
 //! Write mesh data to an HDF5 group
 //! \param[in] group HDF5 group
 extern "C" void meshes_to_hdf5(hid_t group);
-
-//==============================================================================
-// Global variables
-//==============================================================================
-
-extern std::vector<std::unique_ptr<RegularMesh>> meshes;
-
-extern std::unordered_map<int32_t, int32_t> mesh_map;
-
 
 } // namespace openmc
 

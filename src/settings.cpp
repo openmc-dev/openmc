@@ -507,12 +507,12 @@ void read_settings_xml()
   // Shannon Entropy mesh
   if (check_for_node(root, "entropy_mesh")) {
     int temp = std::stoi(get_node_value(root, "entropy_mesh"));
-    if (mesh_map.find(temp) == mesh_map.end()) {
+    if (model::mesh_map.find(temp) == model::mesh_map.end()) {
       std::stringstream msg;
       msg << "Mesh " << temp << " specified for Shannon entropy does not exist.";
       fatal_error(msg);
     }
-    index_entropy_mesh = mesh_map.at(temp);
+    index_entropy_mesh = model::mesh_map.at(temp);
 
   } else if (check_for_node(root, "entropy")) {
     warning("Specifying a Shannon entropy mesh via the <entropy> element "
@@ -521,18 +521,18 @@ void read_settings_xml()
 
     // Read entropy mesh from <entropy>
     auto node_entropy = root.child("entropy");
-    meshes.emplace_back(new RegularMesh{node_entropy});
+    model::meshes.emplace_back(new RegularMesh{node_entropy});
 
     // Set entropy mesh index
-    index_entropy_mesh = meshes.size() - 1;
+    index_entropy_mesh = model::meshes.size() - 1;
 
     // Assign ID and set mapping
-    meshes.back()->id_ = 10000;
-    mesh_map[10000] = index_entropy_mesh;
+    model::meshes.back()->id_ = 10000;
+    model::mesh_map[10000] = index_entropy_mesh;
   }
 
   if (index_entropy_mesh >= 0) {
-    auto& m = *meshes[index_entropy_mesh];
+    auto& m = *model::meshes[index_entropy_mesh];
     if (m.shape_.dimension() == 0) {
       // If the user did not specify how many mesh cells are to be used in
       // each direction, we automatically determine an appropriate number of
@@ -552,13 +552,13 @@ void read_settings_xml()
   // Uniform fission source weighting mesh
   if (check_for_node(root, "ufs_mesh")) {
     auto temp = std::stoi(get_node_value(root, "ufs_mesh"));
-    if (mesh_map.find(temp) == mesh_map.end()) {
+    if (model::mesh_map.find(temp) == model::mesh_map.end()) {
       std::stringstream msg;
       msg << "Mesh " << temp << " specified for uniform fission site method "
         "does not exist.";
       fatal_error(msg);
     }
-    index_ufs_mesh = mesh_map.at(temp);
+    index_ufs_mesh = model::mesh_map.at(temp);
 
   } else if (check_for_node(root, "uniform_fs")) {
     warning("Specifying a UFS mesh via the <uniform_fs> element "
@@ -567,14 +567,14 @@ void read_settings_xml()
 
     // Read entropy mesh from <entropy>
     auto node_ufs = root.child("uniform_fs");
-    meshes.emplace_back(new RegularMesh{node_ufs});
+    model::meshes.emplace_back(new RegularMesh{node_ufs});
 
     // Set entropy mesh index
-    index_ufs_mesh = meshes.size() - 1;
+    index_ufs_mesh = model::meshes.size() - 1;
 
     // Assign ID and set mapping
-    meshes.back()->id_ = 10001;
-    mesh_map[10001] = index_entropy_mesh;
+    model::meshes.back()->id_ = 10001;
+    model::mesh_map[10001] = index_entropy_mesh;
   }
 
   if (index_ufs_mesh >= 0) {

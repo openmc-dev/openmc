@@ -21,8 +21,8 @@ MaterialFilter::initialize()
 {
   // Convert material IDs to indices of the global array.
   for (auto& m : materials_) {
-    auto search = material_map.find(m);
-    if (search != material_map.end()) {
+    auto search = model::material_map.find(m);
+    if (search != model::material_map.end()) {
       m = search->second;
     } else {
       std::stringstream err_msg;
@@ -55,7 +55,7 @@ MaterialFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   std::vector<int32_t> material_ids;
-  for (auto c : materials_) material_ids.push_back(materials[c]->id_);
+  for (auto c : materials_) material_ids.push_back(model::materials[c]->id_);
   write_dataset(filter_group, "bins", material_ids);
 }
 
@@ -63,7 +63,7 @@ std::string
 MaterialFilter::text_label(int bin) const
 {
   //TODO: off-by-one
-  return "Material " + std::to_string(materials[materials_[bin-1]]->id_);
+  return "Material " + std::to_string(model::materials[materials_[bin-1]]->id_);
 }
 
 //==============================================================================

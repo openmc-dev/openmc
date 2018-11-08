@@ -47,7 +47,7 @@ sample_reaction(Particle* p, const double* energy_bin_avg,
   // change when sampling fission sites. The following block handles all
   // absorption (including fission)
 
-  if (materials[p->material - 1]->fissionable) {
+  if (model::materials[p->material - 1]->fissionable) {
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
       Bank* result_bank;
       int64_t result_bank_size;

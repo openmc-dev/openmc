@@ -135,7 +135,6 @@ extern "C" {
 
   // Global variables
   extern char openmc_err_msg[256];
-  extern int32_t n_materials;
   extern int n_nuclides;
   extern int32_t n_plots;
   extern int32_t n_realizations;

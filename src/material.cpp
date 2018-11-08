@@ -13,8 +13,12 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
+namespace model {
+
 std::vector<Material*> materials;
 std::unordered_map<int32_t, int32_t> material_map;
+
+} // namespace model
 
 //==============================================================================
 // Material implementation
@@ -46,16 +50,16 @@ read_materials(pugi::xml_node* node)
 {
   // Loop over XML material elements and populate the array.
   for (pugi::xml_node material_node : node->children("material")) {
-    materials.push_back(new Material(material_node));
+    model::materials.push_back(new Material(material_node));
   }
-  materials.shrink_to_fit();
+  model::materials.shrink_to_fit();
 
   // Populate the material map.
-  for (int i = 0; i < materials.size(); i++) {
-    int32_t mid = materials[i]->id_;
-    auto search = material_map.find(mid);
-    if (search == material_map.end()) {
-      material_map[mid] = i;
+  for (int i = 0; i < model::materials.size(); i++) {
+    int32_t mid = model::materials[i]->id_;
+    auto search = model::material_map.find(mid);
+    if (search == model::material_map.end()) {
+      model::material_map[mid] = i;
     } else {
       std::stringstream err_msg;
       err_msg << "Two or more materials use the same unique ID: " << mid;
@@ -71,8 +75,8 @@ read_materials(pugi::xml_node* node)
 extern "C" int
 openmc_material_get_volume(int32_t index, double* volume)
 {
-  if (index >= 1 && index <= materials.size()) {
-    Material* m = materials[index - 1];
+  if (index >= 1 && index <= model::materials.size()) {
+    Material* m = model::materials[index - 1];
     if (m->volume_ >= 0.0) {
       *volume = m->volume_;
       return 0;
@@ -91,8 +95,8 @@ openmc_material_get_volume(int32_t index, double* volume)
 extern "C" int
 openmc_material_set_volume(int32_t index, double volume)
 {
-  if (index >= 1 && index <= materials.size()) {
-    Material* m = materials[index - 1];
+  if (index >= 1 && index <= model::materials.size()) {
+    Material* m = model::materials[index - 1];
     if (volume >= 0.0) {
       m->volume_ = volume;
       return 0;
@@ -111,7 +115,7 @@ openmc_material_set_volume(int32_t index, double volume)
 //==============================================================================
 
 extern "C" {
-  Material* material_pointer(int32_t indx) {return materials[indx];}
+  Material* material_pointer(int32_t indx) {return model::materials[indx];}
 
   int32_t material_id(Material* mat) {return mat->id_;}
 
@@ -119,7 +123,7 @@ extern "C" {
   {
     mat->id_ = id;
     //TODO: off-by-one
-    material_map[id] = index - 1;
+    model::material_map[id] = index - 1;
   }
 
   bool material_fissionable(Material* mat) {return mat->fissionable;}
@@ -131,17 +135,17 @@ extern "C" {
 
   void extend_materials_c(int32_t n)
   {
-    materials.reserve(materials.size() + n);
+    model::materials.reserve(model::materials.size() + n);
     for (int32_t i = 0; i < n; i++) {
-      materials.push_back(new Material());
+      model::materials.push_back(new Material());
     }
   }
 
   void free_memory_material_c()
   {
-    for (Material *mat : materials) {delete mat;}
-    materials.clear();
-    material_map.clear();
+    for (Material *mat : model::materials) {delete mat;}
+    model::materials.clear();
+    model::material_map.clear();
   }
 }
 

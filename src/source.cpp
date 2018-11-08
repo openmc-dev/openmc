@@ -169,7 +169,7 @@ Bank SourceDistribution::sample() const
           // Determine material
           auto c = model::cells[cell_index - 1];
           int32_t mat_index = c->material_[instance];
-          auto m = materials[mat_index];
+          auto m = model::materials[mat_index];
 
           if (mat_index == MATERIAL_VOID) {
             found = false;

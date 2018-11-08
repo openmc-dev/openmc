@@ -362,22 +362,19 @@ Plot::set_default_colors(pugi::xml_node plot_node)
   }
   if ("cell" == pl_color_by) {
     color_by_ = PlotColorBy::cells;
-    colors_.resize(model::n_cells);
-    for (int i = 0; i < model::n_cells; i++) {
-      colors_[i] = random_color();
-    }
-
+    colors_.resize(model::cells.size());
   } else if("material" == pl_color_by) {
     color_by_ = PlotColorBy::mats;
-    colors_.resize(n_materials);
-    for (int i = 0; i < materials.size(); i++) {
-      colors_[i] = random_color();
-    }
+    colors_.resize(model::materials.size());
   } else {
     std::stringstream err_msg;
     err_msg << "Unsupported plot color type '" << pl_color_by
             << "' in plot " << id_;
     fatal_error(err_msg);
+  }
+
+  for (auto& c : colors_) {
+    c = random_color();
   }
 }
 
@@ -423,8 +420,8 @@ Plot::set_user_colors(pugi::xml_node plot_node)
         fatal_error(err_msg);
       }
     } else if (PlotColorBy::mats == color_by_) {
-      if (material_map.find(col_id) != material_map.end()) {
-        col_id = material_map[col_id];
+      if (model::material_map.find(col_id) != model::material_map.end()) {
+        col_id = model::material_map[col_id];
         colors_[col_id] = user_rgb;
       } else {
         std::stringstream err_msg;
@@ -586,8 +583,8 @@ Plot::set_mask(pugi::xml_node plot_node)
             fatal_error(err_msg);
           }
         } else if (PlotColorBy::mats == color_by_) {
-          if (material_map.find(col_id) != material_map.end()) {
-            col_id = material_map[col_id];
+          if (model::material_map.find(col_id) != model::material_map.end()) {
+            col_id = model::material_map[col_id];
           }
           else {
             std::stringstream err_msg;
@@ -672,7 +669,7 @@ void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id)
         id = -1;
       } else {
         rgb = pl.colors_[p.material - 1];
-        id = materials[p.material - 1]->id_;
+        id = model::materials[p.material - 1]->id_;
       }
     } else if (PlotColorBy::cells == pl.color_by_) {
       // Assign color based on cell
@@ -760,7 +757,7 @@ void draw_mesh_lines(Plot pl, ImageData& data)
   width[1] = xyz_ur_plot[1] - xyz_ll_plot[1];
   width[2] = xyz_ur_plot[2] - xyz_ll_plot[2];
 
-  auto& m = meshes[pl.index_meshlines_mesh_];
+  auto& m = model::meshes[pl.index_meshlines_mesh_];
 
   int ijk_ll[3], ijk_ur[3];
   bool in_mesh;

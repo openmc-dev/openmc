@@ -480,7 +480,7 @@ CSGCell::to_hdf5(hid_t cell_group) const
     std::vector<int32_t> mat_ids;
     for (auto i_mat : material_) {
       if (i_mat != MATERIAL_VOID) {
-        mat_ids.push_back(materials[i_mat]->id_);
+        mat_ids.push_back(model::materials[i_mat]->id_);
       } else {
         mat_ids.push_back(MATERIAL_VOID);
       }
@@ -724,7 +724,7 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
         int i_mat = indices[i];
         if (i_mat == MATERIAL_VOID) {
           c.material_.push_back(MATERIAL_VOID);
-        } else if (i_mat >= 1 && i_mat <= materials.size()) {
+        } else if (i_mat >= 1 && i_mat <= model::materials.size()) {
           //TODO: off-by-one
           c.material_.push_back(i_mat - 1);
         } else {

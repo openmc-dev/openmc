@@ -29,9 +29,12 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-std::vector<std::unique_ptr<RegularMesh>> meshes;
+namespace model {
 
+std::vector<std::unique_ptr<RegularMesh>> meshes;
 std::unordered_map<int32_t, int32_t> mesh_map;
+
+} // namespace model
 
 //==============================================================================
 // RegularMesh implementation
@@ -44,7 +47,7 @@ RegularMesh::RegularMesh(pugi::xml_node node)
     id_ = std::stoi(get_node_value(node, "id"));
 
     // Check to make sure 'id' hasn't been used
-    if (mesh_map.find(id_) != mesh_map.end()) {
+    if (model::mesh_map.find(id_) != model::mesh_map.end()) {
       fatal_error("Two or more meshes use the same unique ID: " +
         std::to_string(id_));
     }
@@ -724,11 +727,11 @@ xt::xarray<double> RegularMesh::count_sites(int64_t n, const Bank* bank,
 extern "C" int
 openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end)
 {
-  if (index_start) *index_start = meshes.size();
+  if (index_start) *index_start = model::meshes.size();
   for (int i = 0; i < n; ++i) {
-    meshes.emplace_back(new RegularMesh{});
+    model::meshes.emplace_back(new RegularMesh{});
   }
-  if (index_end) *index_end = meshes.size() - 1;
+  if (index_end) *index_end = model::meshes.size() - 1;
 
   return 0;
 }
@@ -737,8 +740,8 @@ openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end)
 extern "C" int
 openmc_get_mesh_index(int32_t id, int32_t* index)
 {
-  auto pair = mesh_map.find(id);
-  if (pair == mesh_map.end()) {
+  auto pair = model::mesh_map.find(id);
+  if (pair == model::mesh_map.end()) {
     set_errmsg("No mesh exists with ID=" + std::to_string(id) + ".");
     return OPENMC_E_INVALID_ID;
   }
@@ -750,11 +753,11 @@ openmc_get_mesh_index(int32_t id, int32_t* index)
 extern "C" int
 openmc_mesh_get_id(int32_t index, int32_t* id)
 {
-  if (index < 0 || index >= meshes.size()) {
+  if (index < 0 || index >= model::meshes.size()) {
     set_errmsg("Index in meshes array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  *id = meshes[index]->id_;
+  *id = model::meshes[index]->id_;
   return 0;
 }
 
@@ -762,12 +765,12 @@ openmc_mesh_get_id(int32_t index, int32_t* id)
 extern "C" int
 openmc_mesh_set_id(int32_t index, int32_t id)
 {
-  if (index < 0 || index >= meshes.size()) {
+  if (index < 0 || index >= model::meshes.size()) {
     set_errmsg("Index in meshes array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  meshes[index]->id_ = id;
-  mesh_map[id] = index;
+  model::meshes[index]->id_ = id;
+  model::mesh_map[id] = index;
   return 0;
 }
 
@@ -775,12 +778,12 @@ openmc_mesh_set_id(int32_t index, int32_t id)
 extern "C" int
 openmc_mesh_get_dimension(int32_t index, int** dims, int* n)
 {
-  if (index < 0 || index >= meshes.size()) {
+  if (index < 0 || index >= model::meshes.size()) {
     set_errmsg("Index in meshes array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  *dims = meshes[index]->shape_.data();
-  *n = meshes[index]->n_dimension_;
+  *dims = model::meshes[index]->shape_.data();
+  *n = model::meshes[index]->n_dimension_;
   return 0;
 }
 
@@ -788,14 +791,14 @@ openmc_mesh_get_dimension(int32_t index, int** dims, int* n)
 extern "C" int
 openmc_mesh_set_dimension(int32_t index, int n, const int* dims)
 {
-  if (index < 0 || index >= meshes.size()) {
+  if (index < 0 || index >= model::meshes.size()) {
     set_errmsg("Index in meshes array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
   // Copy dimension
   std::vector<std::size_t> shape = {static_cast<std::size_t>(n)};
-  auto& m = meshes[index];
+  auto& m = model::meshes[index];
   m->shape_ = xt::adapt(dims, n, xt::no_ownership(), shape);
   m->n_dimension_ = m->shape_.size();
 
@@ -806,12 +809,12 @@ openmc_mesh_set_dimension(int32_t index, int n, const int* dims)
 extern "C" int
 openmc_mesh_get_params(int32_t index, double** ll, double** ur, double** width, int* n)
 {
-  if (index < 0 || index >= meshes.size()) {
+  if (index < 0 || index >= model::meshes.size()) {
     set_errmsg("Index in meshes array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  auto& m = meshes[index];
+  auto& m = model::meshes[index];
   if (m->lower_left_.dimension() == 0) {
     set_errmsg("Mesh parameters have not been set.");
     return OPENMC_E_ALLOCATE;
@@ -829,12 +832,12 @@ extern "C" int
 openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
                        const double* width)
 {
-  if (index < 0 || index >= meshes.size()) {
+  if (index < 0 || index >= model::meshes.size()) {
     set_errmsg("Index in meshes array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  auto& m = meshes[index];
+  auto& m = model::meshes[index];
   std::vector<std::size_t> shape = {static_cast<std::size_t>(n)};
   if (ll && ur) {
     m->lower_left_ = xt::adapt(ll, n, xt::no_ownership(), shape);
@@ -864,10 +867,10 @@ void read_meshes(pugi::xml_node* root)
 {
   for (auto node : root->children("mesh")) {
     // Read mesh and add to vector
-    meshes.emplace_back(new RegularMesh{node});
+    model::meshes.emplace_back(new RegularMesh{node});
 
     // Map ID to position in vector
-    mesh_map[meshes.back()->id_] = meshes.size() - 1;
+    model::mesh_map[model::meshes.back()->id_] = model::meshes.size() - 1;
   }
 }
 
@@ -875,13 +878,13 @@ void meshes_to_hdf5(hid_t group)
 {
   // Write number of meshes
   hid_t meshes_group = create_group(group, "meshes");
-  int32_t n_meshes = meshes.size();
+  int32_t n_meshes = model::meshes.size();
   write_attribute(meshes_group, "n_meshes", n_meshes);
 
   if (n_meshes > 0) {
     // Write IDs of meshes
     std::vector<int> ids;
-    for (const auto& m : meshes) {
+    for (const auto& m : model::meshes) {
       m->to_hdf5(meshes_group);
       ids.push_back(m->id_);
     }
@@ -896,9 +899,9 @@ void meshes_to_hdf5(hid_t group)
 //==============================================================================
 
 extern "C" {
-  int n_meshes() { return meshes.size(); }
+  int n_meshes() { return model::meshes.size(); }
 
-  RegularMesh* mesh_ptr(int i) { return meshes.at(i).get(); }
+  RegularMesh* mesh_ptr(int i) { return model::meshes.at(i).get(); }
 
   int32_t mesh_id(RegularMesh* m) { return m->id_; }
 
@@ -936,8 +939,8 @@ extern "C" {
 
   void free_memory_mesh()
   {
-    meshes.clear();
-    mesh_map.clear();
+    model::meshes.clear();
+    model::mesh_map.clear();
   }
 }
 

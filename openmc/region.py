@@ -475,7 +475,7 @@ class Complement(Region):
     >>> xr = openmc.XPlane(x0=10.0)
     >>> yl = openmc.YPlane(y0=-10.0)
     >>> yr = openmc.YPlane(y0=10.0)
-    >>> inside_box = +xl & -xr & +yl & -yl
+    >>> inside_box = +xl & -xr & +yl & -yr
     >>> outside_box = ~inside_box
     >>> type(outside_box)
     <class 'openmc.region.Complement'>

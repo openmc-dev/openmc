@@ -10,12 +10,24 @@
 
 namespace openmc {
 
+//==============================================================================
+// Global variables
+//==============================================================================
+
+namespace model {
+
 extern moab::DagMC* DAG;
+
+} // namespace model
+
+//==============================================================================
+// Non-member functions
+//==============================================================================
 
 extern "C" void load_dagmc_geometry();
 extern "C" void free_memory_dagmc();
 
-}
+} // namespace openmc
 
 #endif // DAGMC
 

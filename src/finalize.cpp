@@ -78,7 +78,7 @@ int openmc_finalize()
   energy_max = {INFTY, INFTY};
   energy_min = {0.0, 0.0};
   n_tallies = 0;
-  openmc_root_universe = -1;
+  model::root_universe = -1;
   openmc_set_seed(DEFAULT_SEED);
 
   // Deallocate arrays

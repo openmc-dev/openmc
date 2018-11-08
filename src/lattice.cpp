@@ -18,9 +18,12 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-std::vector<Lattice*> lattices;
+namespace model {
 
+std::vector<Lattice*> lattices;
 std::unordered_map<int32_t, int32_t> lattice_map;
+
+}
 
 //==============================================================================
 // Lattice implementation
@@ -865,18 +868,18 @@ extern "C" void
 read_lattices(pugi::xml_node *node)
 {
   for (pugi::xml_node lat_node : node->children("lattice")) {
-    lattices.push_back(new RectLattice(lat_node));
+    model::lattices.push_back(new RectLattice(lat_node));
   }
   for (pugi::xml_node lat_node : node->children("hex_lattice")) {
-    lattices.push_back(new HexLattice(lat_node));
+    model::lattices.push_back(new HexLattice(lat_node));
   }
 
   // Fill the lattice map.
-  for (int i_lat = 0; i_lat < lattices.size(); i_lat++) {
-    int id = lattices[i_lat]->id_;
-    auto in_map = lattice_map.find(id);
-    if (in_map == lattice_map.end()) {
-      lattice_map[id] = i_lat;
+  for (int i_lat = 0; i_lat < model::lattices.size(); i_lat++) {
+    int id = model::lattices[i_lat]->id_;
+    auto in_map = model::lattice_map.find(id);
+    if (in_map == model::lattice_map.end()) {
+      model::lattice_map[id] = i_lat;
     } else {
       std::stringstream err_msg;
       err_msg << "Two or more lattices use the same unique ID: " << id;
@@ -890,7 +893,7 @@ read_lattices(pugi::xml_node *node)
 //==============================================================================
 
 extern "C" {
-  Lattice* lattice_pointer(int lat_ind) {return lattices[lat_ind];}
+  Lattice* lattice_pointer(int lat_ind) {return model::lattices[lat_ind];}
 
   int32_t lattice_id(Lattice *lat) {return lat->id_;}
 }

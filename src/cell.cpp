@@ -509,7 +509,7 @@ CSGCell::to_hdf5(hid_t cell_group) const
 
   } else if (type_ == FILL_LATTICE) {
     write_dataset(group, "fill_type", "lattice");
-    write_dataset(group, "lattice", lattices[fill_]->id_);
+    write_dataset(group, "lattice", model::lattices[fill_]->id_);
   }
 
   close_group(group);
@@ -682,7 +682,7 @@ read_cells(pugi::xml_node* node)
   model::universes.shrink_to_fit();
 
   // Allocate the cell overlap count if necessary.
-  if (settings::check_overlaps) overlap_check_count.resize(model::n_cells, 0);
+  if (settings::check_overlaps) model::overlap_check_count.resize(model::n_cells, 0);
 }
 
 //==============================================================================

@@ -138,9 +138,7 @@ extern "C" {
   extern int n_nuclides;
   extern int32_t n_realizations;
   extern int32_t n_sab_tables;
-  extern int32_t n_sources;
   extern int32_t n_tallies;
-  extern int32_t n_universes;
 
   // Variables that are shared by necessity (can be removed from public header
   // later)

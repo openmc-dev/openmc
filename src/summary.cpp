@@ -19,7 +19,7 @@ write_geometry(hid_t file_id) {
 #endif
 
   write_attribute(geom_group, "n_cells", model::cells.size());
-  write_attribute(geom_group, "n_surfaces", surfaces.size());
+  write_attribute(geom_group, "n_surfaces", model::surfaces.size());
   write_attribute(geom_group, "n_universes", model::universes.size());
   write_attribute(geom_group, "n_lattices", model::lattices.size());
 
@@ -28,7 +28,7 @@ write_geometry(hid_t file_id) {
   close_group(cells_group);
 
   auto surfaces_group = create_group(geom_group, "surfaces");
-  for (Surface* surf : surfaces) surf->to_hdf5(surfaces_group);
+  for (Surface* surf : model::surfaces) surf->to_hdf5(surfaces_group);
   close_group(surfaces_group);
 
   auto universes_group = create_group(geom_group, "universes");

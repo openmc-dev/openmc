@@ -79,9 +79,9 @@ find_cell(Particle* p, int search_surf) {
   // the positive or negative side of the surface should be searched.
   const std::vector<int>* search_cells;
   if (search_surf > 0) {
-    search_cells = &surfaces[search_surf-1]->neighbor_pos_;
+    search_cells = &model::surfaces[search_surf-1]->neighbor_pos_;
   } else if (search_surf < 0) {
-    search_cells = &surfaces[-search_surf-1]->neighbor_neg_;
+    search_cells = &model::surfaces[-search_surf-1]->neighbor_neg_;
   } else {
     // No surface was indicated, search all cells in the universe.
     search_cells = &model::universes[i_universe]->cells_;
@@ -390,7 +390,7 @@ distance_to_boundary(Particle* p, double* dist, int* surface_crossed,
           *surface_crossed = level_surf_cross;
         } else {
           Position r_hit = r + d_surf * u;
-          Surface& surf {*surfaces[std::abs(level_surf_cross)-1]};
+          Surface& surf {*model::surfaces[std::abs(level_surf_cross)-1]};
           Direction norm = surf.normal(r_hit);
           if (u.dot(norm) > 0) {
             *surface_crossed = std::abs(level_surf_cross);

@@ -347,8 +347,8 @@ contains
     call read_surfaces(root % ptr)
 
     ! Allocate surfaces array
-    allocate(surfaces(n_surfaces))
-    do i = 1, n_surfaces
+    allocate(surfaces(surfaces_size()))
+    do i = 1, size(surfaces)
       surfaces(i) % ptr = surface_pointer(i - 1);
 
       if (surfaces(i) % bc() /= BC_TRANSMIT) boundary_exists = .true.
@@ -505,9 +505,9 @@ contains
     integer :: i
 
     ! Allocate surfaces array
-    allocate(surfaces(n_surfaces))
+    allocate(surfaces(surfaces_size()))
 
-    do i = 1, n_surfaces
+    do i = 1, size(surfaces)
       surfaces(i) % ptr = surface_pointer(i - 1);
     end do
 

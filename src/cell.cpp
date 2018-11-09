@@ -649,7 +649,7 @@ read_cells(pugi::xml_node* node)
 
   // Loop over XML cell elements and populate the array.
   model::cells.reserve(model::n_cells);
-  for (pugi::xml_node cell_node: node->children("cell")) {
+  for (pugi::xml_node cell_node : node->children("cell")) {
     model::cells.push_back(new CSGCell(cell_node));
   }
 
@@ -682,7 +682,9 @@ read_cells(pugi::xml_node* node)
   model::universes.shrink_to_fit();
 
   // Allocate the cell overlap count if necessary.
-  if (settings::check_overlaps) model::overlap_check_count.resize(model::n_cells, 0);
+  if (settings::check_overlaps) {
+    model::overlap_check_count.resize(model::cells.size(), 0);
+  }
 }
 
 //==============================================================================

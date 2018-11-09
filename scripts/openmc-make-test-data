@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 """
-Download ENDF/B-VII.1 ENDF and ACE files from NNDC and generate a full HDF5
-library with incident neutron, incident photon, and thermal scattering data.
-This data is used for OpenMC's regression test suite.
+Download ENDF/B-VII.1 ENDF and ACE files from NNDC and WMP files from GitHub and
+generate a full HDF5 library with incident neutron, incident photon, thermal
+scattering data, and windowed multipole data. This data is used for OpenMC's
+regression test suite.
 """
 
 import glob
@@ -19,12 +20,14 @@ from openmc._utils import download
 
 base_ace = 'http://www.nndc.bnl.gov/endf/b7.1/aceFiles/'
 base_endf = 'http://www.nndc.bnl.gov/endf/b7.1/zips/'
+base_wmp = 'https://github.com/mit-crpg/WMP_Library/releases/download/v1.1/'
 files = [
     (base_ace, 'ENDF-B-VII.1-neutron-293.6K.tar.gz', '9729a17eb62b75f285d8a7628ace1449'),
     (base_ace, 'ENDF-B-VII.1-tsl.tar.gz', 'e17d827c92940a30f22f096d910ea186'),
     (base_endf, 'ENDF-B-VII.1-neutrons.zip', 'e5d7f441fc4c92893322c24d1725e29c'),
     (base_endf, 'ENDF-B-VII.1-photoat.zip', '5192f94e61f0b385cf536f448ffab4a4'),
-    (base_endf, 'ENDF-B-VII.1-atomic_relax.zip', 'fddb6035e7f2b6931e51a58fc754bd10')
+    (base_endf, 'ENDF-B-VII.1-atomic_relax.zip', 'fddb6035e7f2b6931e51a58fc754bd10'),
+    (base_wmp, 'WMP_Library_v1.1.tar.gz', '8523895928dd6ba63fba803e3a45d4f3')
 ]
 
 
@@ -36,12 +39,12 @@ def fix_zaid(table, old, new):
     with open(filename, 'w') as fh:
         fh.write(text)
 
-
+pwd = Path.cwd()
+output_dir = pwd / 'nndc_hdf5'
 os.makedirs('nndc_hdf5/photon', exist_ok=True)
 
 with tempfile.TemporaryDirectory() as tmpdir:
-    # Save current working directory and temporarily change dir
-    pwd = os.getcwd()
+    # Temporarily change dir
     os.chdir(tmpdir)
 
     # =========================================================================
@@ -98,7 +101,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
             data.add_elastic_0K_from_endf(endf_filename)
 
         # Determine filename
-        outfile = os.path.join('nndc_hdf5', data.name + '.h5')
+        outfile = output_dir / (data.name + '.h5')
         data.export_to_hdf5(outfile, 'w', 'earliest')
 
         # Register with library
@@ -113,7 +116,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
         data = openmc.data.ThermalScattering.from_ace(f)
 
         # Determine filename
-        outfile = os.path.join('nndc_hdf5', data.name + '.h5')
+        outfile = output_dir / (data.name + '.h5')
         data.export_to_hdf5(outfile, 'w', 'earliest')
 
         # Register with library
@@ -127,23 +130,35 @@ with tempfile.TemporaryDirectory() as tmpdir:
         print('Generating HDF5 file for Z={} ({})...'.format(z, element))
 
         # Generate instance of IncidentPhoton
-        photo_file = os.path.join('photoat', 'photoat-{:03}_{}_000.endf'.format(z, element))
-        atom_file = os.path.join('atomic_relax', 'atom-{:03}_{}_000.endf'.format(z, element))
+        photo_file = Path('photoat') / 'photoat-{:03}_{}_000.endf'.format(z, element)
+        atom_file = Path('atomic_relax') / 'atom-{:03}_{}_000.endf'.format(z, element)
         data = openmc.data.IncidentPhoton.from_endf(photo_file, atom_file)
 
         # Write HDF5 file and register it
-        outfile = os.path.join('nndc_hdf5', 'photon', element + '.h5')
+        outfile = output_dir / 'photon' / (element + '.h5')
         data.export_to_hdf5(outfile, 'w', 'earliest')
         library.register_file(outfile)
 
-    library.export_to_xml(os.path.join('nndc_hdf5', 'cross_sections.xml'))
+    # =========================================================================
+    # WINDOWED MULTIPOLE DATA
+
+    # Move data into output directory
+    os.rename('WMP_Library', str(output_dir / 'wmp'))
+
+    # Add multipole data to library
+    for f in sorted(glob.glob('{}/wmp/*.h5'.format(output_dir))):
+        print('Registering WMP file {}...'.format(f))
+        library.register_file(f)
+
+    library.export_to_xml(output_dir / 'cross_sections.xml')
 
     # =========================================================================
     # CREATE TARBALL AND MOVE BACK
 
-    test_tar = os.path.join(pwd, 'nndc_hdf5_test.tar.xz')
-    with tarfile.open(test_tar, 'w:xz') as txz:
+    print('Creating compressed archive...')
+    test_tar = pwd / 'nndc_hdf5_test.tar.xz'
+    with tarfile.open(str(test_tar), 'w:xz') as txz:
         txz.add('nndc_hdf5')
 
     # Change back to original directory
-    os.chdir(pwd)
+    os.chdir(str(pwd))

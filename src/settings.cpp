@@ -63,7 +63,6 @@ bool dagmc                   {false};
 
 std::string path_cross_sections;
 std::string path_input;
-std::string path_multipole;
 std::string path_output;
 std::string path_particle_restart;
 std::string path_source;
@@ -73,7 +72,7 @@ std::string path_statepoint;
 int32_t index_entropy_mesh {-1};
 int32_t index_ufs_mesh {-1};
 int32_t index_cmfd_mesh {-1};
-  
+
 int32_t n_batches;
 int32_t n_inactive {0};
 int32_t gen_per_batch {1};
@@ -255,21 +254,6 @@ void read_settings_xml()
         " environment variable will take precendent over setting "
         "cross_sections in settings.xml.");
     path_cross_sections = get_node_value(root, "cross_sections");
-  }
-
-  // Look for deprecated windowed_multipole file in settings.xml
-  if (run_mode != RUN_MODE_PLOTTING) {
-    if (check_for_node(root, "multipole_library")) {
-      warning("Setting multipole_library in settings.xml has been "
-          "deprecated. The multipole_library is now set in materials.xml and"
-          " the multipole_library input to materials.xml and the "
-          "OPENMC_MULTIPOLE_LIBRARY environment variable will take "
-          "precendent over setting multipole_library in settings.xml.");
-      path_multipole = get_node_value(root, "multipole_library");
-    }
-    if (!ends_with(path_multipole, "/")) {
-      path_multipole += "/";
-    }
   }
 
   if (!run_CE) {
@@ -838,9 +822,6 @@ extern "C" {
   }
   const char* path_input_c() {
     return settings::path_input.c_str();
-  }
-  const char* path_multipole_c() {
-    return settings::path_multipole.c_str();
   }
   const char* path_statepoint_c() {
     return settings::path_statepoint.c_str();

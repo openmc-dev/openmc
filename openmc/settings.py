@@ -180,7 +180,6 @@ class Settings(object):
         self._confidence_intervals = None
         self._cross_sections = None
         self._electron_treatment = None
-        self._multipole_library = None
         self._photon_transport = None
         self._ptables = None
         self._run_cmfd = None

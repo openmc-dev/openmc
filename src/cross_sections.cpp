@@ -125,21 +125,6 @@ void read_cross_sections_xml()
     settings::path_cross_sections = get_node_value(root, "cross_sections");
   }
 
-  // Find the windowed multipole library
-  if (settings::run_mode != RUN_MODE_PLOTTING) {
-    if (!check_for_node(root, "multipole_library")) {
-      // No library location specified in materials.xml, check
-      // environment variable
-      char* envvar = std::getenv("OPENMC_MULTIPOLE_LIBRARY");
-      if (envvar) settings::path_multipole = envvar;
-    } else {
-      settings::path_multipole = get_node_value(root, "multipole_library");
-    }
-    if (!ends_with(settings::path_multipole, "/")) {
-      settings::path_multipole += "/";
-    }
-  }
-
   // Now that the cross_sections.xml or mgxs.h5 has been located, read it in
   if (settings::run_CE) {
     read_ce_cross_sections_xml();

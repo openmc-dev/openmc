@@ -20,7 +20,6 @@ def test_export_to_xml(run_in_tmpdir):
     s.statepoint = {'batches': [50, 150, 500, 1000]}
     s.confidence_intervals = True
     s.cross_sections = '/path/to/cross_sections.xml'
-    s.multipole_library = '/path/to/wmp/'
     s.ptables = True
     s.run_cmfd = False
     s.seed = 17

@@ -17,7 +17,7 @@ module tally_header
 
   implicit none
   private
-  public :: configure_tallies
+  public :: allocate_tally_results
   public :: free_memory_tally
   public :: openmc_extend_tallies
   public :: openmc_get_tally_index
@@ -275,9 +275,6 @@ contains
       allocate(this % results(3, this % total_score_bins, this % n_filter_bins))
     end if
 
-    ! Initialize results array to zero
-    this % results(:,:,:) = ZERO
-
   end subroutine tally_allocate_results
 
 
@@ -392,21 +389,21 @@ contains
 ! tallies.xml file.
 !===============================================================================
 
-  subroutine configure_tallies() bind(C)
+  subroutine allocate_tally_results() bind(C)
 
     integer :: i
 
-    ! Allocate and initialize global tallies
+    ! Allocate global tallies
     if (.not. allocated(global_tallies)) then
       allocate(global_tallies(3, N_GLOBAL_TALLIES))
     end if
-    global_tallies(:,:) = ZERO
 
+    ! Allocate results arrays for tallies
     do i = 1, n_tallies
       call tallies(i) % obj % allocate_results()
     end do
 
-  end subroutine configure_tallies
+  end subroutine allocate_tally_results
 
 !===============================================================================
 ! FREE_MEMORY_TALLY deallocates global arrays defined in this module

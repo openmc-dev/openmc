@@ -14,7 +14,11 @@
 
 namespace openmc {
 
+namespace model {
+
 moab::DagMC* DAG;
+
+} // namespace model
 
 void load_dagmc_geometry()
 {
@@ -96,7 +100,7 @@ void load_dagmc_geometry()
 
   // initialize surface objects
   int n_surfaces = model::DAG->num_entities(2);
-  surfaces.resize(n_surfaces);
+  model::surfaces.resize(n_surfaces);
 
   for (int i = 0; i < n_surfaces; i++) {
     moab::EntityHandle surf_handle = model::DAG->entity_by_index(2, i+1);

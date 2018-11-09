@@ -30,11 +30,11 @@ or using pip (recommended)::
     pip install -e .[test]
 
 It is also assumed that you have cross section data available that is pointed to
-by the :envvar:`OPENMC_CROSS_SECTIONS` and :envvar:`OPENMC_MULTIPOLE_LIBRARY`
-environment variables. Furthermore, to run unit tests for the :mod:`openmc.data`
-module, it is necessary to have ENDF/B-VII.1 data available and pointed to by
-the :envvar:`OPENMC_ENDF_DATA` environment variable. All data sources can be
-obtained using the ``tools/ci/travis-before-script.sh`` script.
+by the :envvar:`OPENMC_CROSS_SECTIONS` environment variables. Furthermore, to
+run unit tests for the :mod:`openmc.data` module, it is necessary to have
+ENDF/B-VII.1 data available and pointed to by the :envvar:`OPENMC_ENDF_DATA`
+environment variable. All data sources can be obtained using the
+``tools/ci/travis-before-script.sh`` script.
 
 To execute the test suite, go to the ``tests/`` directory and run::
 

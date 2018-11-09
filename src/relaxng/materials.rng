@@ -161,12 +161,5 @@
         </data>
       </element>
     </optional>
-    <optional>
-      <element name="multipole_library">
-        <data type="string">
-          <param name="maxLength">255</param>
-        </data>
-      </element>
-    </optional>
   </interleave>
 </element>

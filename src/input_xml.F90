@@ -2276,9 +2276,8 @@ contains
         end if
       end do
       if (.not. mp_found) call warning("Windowed multipole functionality is &
-           &turned on, but no multipole libraries were found.  Set the &
-           &<multipole_library> element in settings.xml or the &
-           &OPENMC_MULTIPOLE_LIBRARY environment variable.")
+           &turned on, but no multipole libraries were found. Make sure that &
+           &windowed multipole data is present in your cross_sections.xml file.")
     end if
 
     call already_read % clear()
@@ -2302,34 +2301,14 @@ contains
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
 
-    interface
-      function path_multipole_c() result(ptr) bind(C)
-        import C_PTR
-        type(C_PTR) :: ptr
-      end function
-    end interface
-
     associate (nuc => nuclides(i_table))
 
+      ! Look for WMP data in cross_sections.xml
       if (library_present(LIBRARY_WMP, to_lower(nuc % name))) then
-        ! If WMP data is listed in cross_sections.xml, prefer that
         filename = library_path(LIBRARY_WMP, to_lower(nuc % name))
       else
-        ! Otherwise, we rely on the OPENMC_MULTIPOLE_LIBRARY environment
-        ! variable. This is a bit hacky, but we just assume that the file will be
-        ! ZZZAAAmM.h5.
-
-        call c_f_pointer(path_multipole_c(), string, [255])
-        path_multipole = to_f_string(string)
-
-        if (nuc % metastable > 0) then
-          filename = trim(path_multipole) // trim(zero_padded(nuc % Z, 3)) // &
-               trim(zero_padded(nuc % A, 3)) // 'm' // &
-               trim(to_str(nuc % metastable)) // ".h5"
-        else
-          filename = trim(path_multipole) // trim(zero_padded(nuc % Z, 3)) // &
-               trim(zero_padded(nuc % A, 3)) // ".h5"
-        end if
+        nuc % mp_present = .false.
+        return
       end if
 
       ! Check if Multipole library exists and is readable

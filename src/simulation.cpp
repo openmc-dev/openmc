@@ -25,10 +25,10 @@ extern "C" bool cmfd_on;
 
 extern "C" void accumulate_tallies();
 extern "C" void allocate_banks();
+extern "C" void allocate_tally_results();
 extern "C" void check_triggers();
 extern "C" void cmfd_init_batch();
 extern "C" void cmfd_tally_init();
-extern "C" void configure_tallies();
 extern "C" void execute_cmfd();
 extern "C" void init_tally_routines();
 extern "C" void join_bank_from_threads();
@@ -92,7 +92,7 @@ int openmc_simulation_init()
   allocate_banks();
 
   // Allocate tally results arrays if they're not allocated yet
-  configure_tallies();
+  allocate_tally_results();
 
   // Activate the CMFD tallies
   cmfd_tally_init();
@@ -106,6 +106,7 @@ int openmc_simulation_init()
   simulation::k_generation.clear();
   simulation::entropy.clear();
   simulation::need_depletion_rx = false;
+  openmc_reset();
 
   // If this is a restart run, load the state point data and binary source
   // file

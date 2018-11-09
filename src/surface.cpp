@@ -1294,6 +1294,8 @@ extern "C" {
     model::surfaces.clear();
     model::surface_map.clear();
   }
+
+  int surfaces_size() { return model::surfaces.size(); }
 }
 
 } // namespace openmc

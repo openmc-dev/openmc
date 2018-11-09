@@ -140,7 +140,7 @@ print_overlap_check() {
     std::cout << " Cell ID      No. Overlap Checks\n";
 
     std::vector<int32_t> sparse_cell_ids;
-    for (int i = 0; i < model::n_cells; i++) {
+    for (int i = 0; i < model::cells.size(); i++) {
       std::cout << " " << std::setw(8) << model::cells[i]->id_ << std::setw(17)
                 << model::overlap_check_count[i] << "\n";
       if (model::overlap_check_count[i] < 10) {

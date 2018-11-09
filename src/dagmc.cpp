@@ -41,9 +41,6 @@ void load_dagmc_geometry()
   // initialize cell objects
   model::n_cells = model::DAG->num_entities(3);
 
-  // Allocate the cell overlap count if necessary.
-  if (settings::check_overlaps) model::overlap_check_count.resize(model::n_cells, 0);
-
   for (int i = 0; i < model::n_cells; i++) {
     moab::EntityHandle vol_handle = model::DAG->entity_by_index(3, i+1);
 
@@ -90,6 +87,11 @@ void load_dagmc_geometry()
       err_msg << "Volume " << c->id_ << " has no material assignment.";
       fatal_error(err_msg.str());
     }
+  }
+
+  // Allocate the cell overlap count if necessary.
+  if (settings::check_overlaps) {
+    model::overlap_check_count.resize(model::cells.size(), 0);
   }
 
   // initialize surface objects

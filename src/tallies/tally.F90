@@ -3792,11 +3792,6 @@ contains
 
     ! Accumulate on master only unless run is not reduced then do it on all
     if (master .or. (.not. reduce_tallies)) then
-      ! Accumulate results for each tally
-      do i = 1, active_tallies % size()
-        call tallies(active_tallies % data(i)) % obj % accumulate()
-      end do
-
       if (run_mode == MODE_EIGENVALUE) then
         if (current_batch > n_inactive) then
           ! Accumulate products of different estimators of k
@@ -3819,6 +3814,11 @@ contains
              global_tallies(RESULT_SUM_SQ, i) + val*val
       end do
     end if
+
+    ! Accumulate results for each tally
+    do i = 1, active_tallies % size()
+      call tallies(active_tallies % data(i)) % obj % accumulate()
+    end do
 
   end subroutine accumulate_tallies
 

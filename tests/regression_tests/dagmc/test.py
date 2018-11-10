@@ -3,7 +3,7 @@ import openmc.capi
 from openmc.stats import Box
 
 import pytest
-from tests.testing_harness import HashedPyAPITestHarness
+from tests.testing_harness import PyAPITestHarness
 
 pytestmark = pytest.mark.skipif(
     not openmc.capi.dagmc_enabled,
@@ -45,5 +45,5 @@ def test_dagmc():
     mats = openmc.Materials([u235, water])
     model.materials = mats
 
-    harness = HashedPyAPITestHarness('statepoint.5.h5', model=model)
+    harness = PyAPITestHarness('statepoint.5.h5', model=model)
     harness.main()

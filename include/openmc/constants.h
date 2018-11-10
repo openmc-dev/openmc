@@ -432,6 +432,12 @@ constexpr int RUN_MODE_PLOTTING    {3};
 constexpr int RUN_MODE_PARTICLE    {4};
 constexpr int RUN_MODE_VOLUME      {5};
 
+// ============================================================================
+// CMFD CONSTANTS
+
+// For non-accelerated regions on coarse mesh overlay
+constexpr int CMFD_NOACCEL {99999};
+
 } // namespace openmc
 
 #endif // OPENMC_CONSTANTS_H

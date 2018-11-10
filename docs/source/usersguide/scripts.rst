@@ -149,17 +149,6 @@ the following optional arguments:
              and processing the data may require as much as 40 GB of additional
              free disk space.
 
-.. _scripts_multipole:
-
------------------------------
-``openmc-get-multipole-data``
------------------------------
-
-This script downloads and extracts windowed multipole data based on
-ENDF/B-VII.1. It has the following optional arguments:
-
--b, --batch     Suppress standard in
-
 .. _scripts_nndc:
 
 ------------------------

@@ -1,5 +1,3 @@
-//TODO remove
-#include <iostream>
 #include <vector>
 
 #include "openmc/cmfd_solver.h"
@@ -11,8 +9,6 @@ namespace openmc {
 //==============================================================================
 // Global variables
 //==============================================================================
-
-// TODO check which variables actually necessary
 
 std::vector<int> indptr;
 
@@ -179,7 +175,7 @@ int cmfd_linsolver_2g(double* A_data, double* b, double* x, double tol) {
         for (int icol = d1idx + 2; icol < indptr[irow + 1]; icol++)
           tmp1 += A_data[icol] * x[indices[icol]];
         for (int icol = d2idx + 1; icol < indptr[irow + 2]; icol++)
-          tmp1 += A_data[icol] * x[indices[icol]];
+          tmp2 += A_data[icol] * x[indices[icol]];
 
         // Adjust with RHS vector
         tmp1 = b[irow] - tmp1;

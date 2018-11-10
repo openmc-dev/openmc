@@ -18,8 +18,10 @@ import numpy as np
 # Line below is added to suppress warnings when using numpy.divide to
 # divide by numpy arrays that contain entries with zero
 np.seterr(divide='ignore', invalid='ignore')
+import numpy.ctypeslib as npct
 from scipy import sparse
 import time
+from ctypes import c_int, c_double
 # See if mpi4py module can be imported, define have_mpi global variable
 try:
     from mpi4py import MPI
@@ -32,6 +34,20 @@ from openmc._xml import clean_indentation  #TODO Remove
 from openmc.checkvalue import (check_type, check_length, check_value,
                                check_greater_than, check_less_than)
 from openmc.exceptions import OpenMCError
+
+
+# Define input type for numpy arrays that will be passed into C++ functions
+# Must be an int or double array, with single dimension that is contiguous
+array_1d_int = npct.ndpointer(dtype=np.int32, ndim=1, flags='CONTIGUOUS')
+array_1d_dble = npct.ndpointer(dtype=np.double, ndim=1, flags='CONTIGUOUS')
+
+# Setup the return types and argument types for C++ functions
+openmc.capi._dll.openmc_initialize_linsolver.restype = None
+openmc.capi._dll.openmc_initialize_linsolver.argtypes = [array_1d_int, c_int,
+    array_1d_int, c_int, c_int, c_double, array_1d_int, array_1d_int]
+openmc.capi._dll.openmc_run_linsolver.restype = c_int
+openmc.capi._dll.openmc_run_linsolver.argtypes = [array_1d_dble, array_1d_dble,
+    array_1d_dble, c_double]
 
 """
 --------------
@@ -758,6 +774,9 @@ class CMFDRun(object):
     k_cmfd : list of floats
         List of CMFD k-effectives, stored for each generation that CMFD is
         invoked
+    spectral : float
+        Optional spectral radius that can be used to accelerate the convergence
+        of Gauss-Seidel iterations during CMFD power iteration.
     resnb : numpy.ndarray
         Residual from solving neutron balance equations
     time_cmfd : float
@@ -798,9 +817,11 @@ class CMFDRun(object):
         self._cmfd_stol = 1.e-8
         self._cmfd_reset = []
         self._cmfd_write_matrices = False
+        self._cmfd_spectral = 0.0
+        self._gauss_seidel_tolerance = [1.e-10, 1.e-5]
 
         # External variables used during runtime but users cannot control
-        self._indices = np.zeros(4, dtype=int)
+        self._indices = np.zeros(4, dtype=np.int32)
         self._egrid = None
         self._albedo = None
         self._coremap = None
@@ -852,12 +873,12 @@ class CMFDRun(object):
         self._notlast_y_accel = None
         self._notfirst_z_accel = None
         self._notlast_z_accel = None
-        self._adj_reflector_left = None
-        self._adj_reflector_right = None
-        self._adj_reflector_back = None
-        self._adj_reflector_front = None
-        self._adj_reflector_bottom = None
-        self._adj_reflector_top = None
+        self._is_adj_ref_left = None
+        self._is_adj_ref_right = None
+        self._is_adj_ref_back = None
+        self._is_adj_ref_front = None
+        self._is_adj_ref_bottom = None
+        self._is_adj_ref_top = None
         self._accel_idxs = None
         self._accel_neig_left_idxs = None
         self._accel_neig_right_idxs = None
@@ -867,6 +888,8 @@ class CMFDRun(object):
         self._accel_neig_top_idxs = None
         self._loss_row = None
         self._loss_col = None
+        self._prod_row = None
+        self._prod_col = None
         self._intracomm = None
 
 
@@ -923,12 +946,20 @@ class CMFDRun(object):
         return self._cmfd_stol
 
     @property
+    def cmfd_spectral(self):
+        return self._cmfd_spectral
+
+    @property
     def cmfd_reset(self):
         return self._cmfd_reset
 
     @property
     def cmfd_write_matrices(self):
         return self._cmfd_write_matrices
+
+    @property
+    def gauss_seidel_tolerance(self):
+        return self._gauss_seidel_tolerance
 
     @cmfd_begin.setter
     def cmfd_begin(self, cmfd_begin):
@@ -1039,6 +1070,11 @@ class CMFDRun(object):
         check_type('CMFD fission source tolerance', cmfd_stol, Real)
         self._cmfd_stol = cmfd_stol
 
+    @cmfd_spectral.setter
+    def cmfd_spectral(self, spectral):
+        check_type('CMFD spectral radius', spectral, Real)
+        self._cmfd_spectral = spectral
+
     @cmfd_reset.setter
     def cmfd_reset(self, cmfd_reset):
         check_type('tally reset batches', cmfd_reset, Iterable, Integral)
@@ -1049,7 +1085,14 @@ class CMFDRun(object):
         check_type('CMFD write matrices', cmfd_write_matrices, bool)
         self._cmfd_write_matrices = cmfd_write_matrices
 
-    def run(self, omp_num_threads=None, intracomm=None, vectorized=True):
+    @gauss_seidel_tolerance.setter
+    def gauss_seidel_tolerance(self, gauss_seidel_tolerance):
+        check_type('CMFD Gauss-Seidel tolerance', gauss_seidel_tolerance,
+                   Iterable, Real)
+        check_length('Gauss-Seidel tolerance', gauss_seidel_tolerance, 2)
+        self._gauss_seidel_tolerance = gauss_seidel_tolerance
+
+    def run(self, omp_num_threads=None, intracomm=None, vectorized=True, cpp_solver=False):
         """Public method to run OpenMC with CMFD
 
         This method is called by user to run CMFD once instance variables of
@@ -1071,6 +1114,8 @@ class CMFDRun(object):
         elif intracomm is None and have_mpi:
             self._intracomm = MPI.COMM_WORLD
 
+        self._cpp_solver = cpp_solver
+
         # Check number of OpenMP threads is valid input and initialize C API
         if omp_num_threads is not None:
             check_type('OpenMP num threads', omp_num_threads, Integral)
@@ -1089,6 +1134,10 @@ class CMFDRun(object):
 
         # Compute and store row and column indices used to build CMFD matrices
         self._precompute_matrix_indices()
+
+        # Initialize all variables used for linear solver in C++
+        if self._cpp_solver:
+            self._initialize_linsolver()
 
         # Initialize simulation
         openmc.capi.simulation_init()
@@ -1119,6 +1168,23 @@ class CMFDRun(object):
 
         # Finalize and free memory
         openmc.capi.finalize()
+
+    def _initialize_linsolver(self):
+        # Determine number of rows in CMFD matrix
+        ng = self._indices[3]
+        n = self._mat_dim*ng
+
+        # Create temp loss matrix to pass row/col indices to C++ linear solver
+        temp_data = np.ones(len(self._loss_row))
+        temp_loss = sparse.csr_matrix((temp_data, (self._loss_row, self._loss_col)),
+                                      shape=(n, n))
+
+        # Pass coremap as 1-d array of 32-bit integers
+        coremap = np.swapaxes(self._coremap, 0, 2).flatten().astype(np.int32)
+
+        return openmc.capi._dll.openmc_initialize_linsolver(temp_loss.indptr,
+            len(temp_loss.indptr), temp_loss.indices, len(temp_loss.indices), n,
+            self._cmfd_spectral, self._indices, coremap)
 
     def _write_cmfd_output(self):
         """Write CMFD output to buffer at the end of each batch"""
@@ -1935,6 +2001,12 @@ class CMFDRun(object):
         # Get problem size
         n = loss.shape[0]
 
+        # Set up tolerances for C++ solver
+        if self._cpp_solver:
+            atoli = self._gauss_seidel_tolerance[0]
+            rtoli = self._gauss_seidel_tolerance[1]
+            toli = rtoli * 100
+
         # Set up flux vectors, intital guess set to 1
         phi_n = np.ones((n,))
         phi_o = np.ones((n,))
@@ -1942,7 +2014,6 @@ class CMFDRun(object):
         # Set up source vectors
         s_n = np.zeros((n,))
         s_o = np.zeros((n,))
-        serr_v = np.zeros((n,))
 
         # Set initial guess
         k_n = openmc.capi.keff_temp()[0]
@@ -1975,8 +2046,13 @@ class CMFDRun(object):
             # Normalize source vector
             s_o /= k_lo
 
-            # Compute new flux vector with scipy sparse solver
-            phi_n = sparse.linalg.spsolve(loss, s_o)
+            # Compute new flux with either C++ solver or scipy sparse solver
+            if self._cpp_solver:
+                innerits = openmc.capi._dll.openmc_run_linsolver(loss.data,
+                    s_o, phi_n, toli)
+            else:
+                phi_n = sparse.linalg.spsolve(loss, s_o)
+                innerits = 0
 
             # Compute new source vector
             s_n = prod.dot(phi_n)
@@ -1991,7 +2067,8 @@ class CMFDRun(object):
             s_o *= k_lo
 
             # Check convergence
-            iconv, norm_n = self._check_convergence(s_n, s_o, k_n, k_o, i+1)
+            iconv, norm_n = self._check_convergence(s_n, s_o, k_n, k_o, i+1,
+                                                    innerits=innerits)
 
             # If converged, calculate dominance ratio and break from loop
             if iconv:
@@ -2004,7 +2081,11 @@ class CMFDRun(object):
             k_lo = k_ln
             norm_o = norm_n
 
-    def _check_convergence(self, s_n, s_o, k_n, k_o, iter):
+            # Update tolerance for inner iterations
+            if self._cpp_solver:
+                toli = max(atoli, rtoli*norm_n)
+
+    def _check_convergence(self, s_n, s_o, k_n, k_o, iter, innerits=0):
         """Checks the convergence of the CMFD problem
 
         Parameters
@@ -2044,14 +2125,19 @@ class CMFDRun(object):
             str2 = 'k-eff: {:0.8f}'.format(k_n)
             str3 = 'k-error:  {0:.5E}'.format(kerr)
             str4 = 'src-error:  {0:.5E}'.format(serr)
-            print('{0:8s}{1:20s}{2:25s}{3:s}'.format(str1, str2, str3, str4))
+            if innerits:
+                str5 = '  {:d}'.format(innerits)
+                print('{0:8s}{1:20s}{2:25s}{3:s}{4:s}'.format(str1, str2, str3,
+                                                              str4, str5))
+            else:
+                print('{0:8s}{1:20s}{2:25s}{3:s}'.format(str1, str2, str3, str4))
             sys.stdout.flush()
 
         return iconv, serr
 
     def _set_coremap(self):
         """Sets the core mapping information. All regions marked with zero
-        are set to CMFD_NO_ACCEL, while all regions marked with 1 are set to a
+        are set to CMFD_NOACCEL, while all regions marked with 1 are set to a
         unique index that maps each fuel region to a row number when building
         CMFD matrices
 
@@ -2485,8 +2571,8 @@ class CMFDRun(object):
                 mode='constant', constant_values=_CMFD_NOACCEL)[:,:,1:]
 
         # Create empty row and column vectors to store for loss matrix
-        row = np.array([], dtype=int)
-        col = np.array([], dtype=int)
+        row = np.array([])
+        col = np.array([])
 
         # Store all indices used to populate production and loss matrix
         self._accel_idxs = np.where(self._coremap != _CMFD_NOACCEL)

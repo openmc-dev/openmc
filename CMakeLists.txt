@@ -384,6 +384,7 @@ add_library(libopenmc SHARED
   src/dagmc.cpp
   src/cell.cpp
   src/cmfd_execute.cpp
+  src/cmfd_solver.cpp
   src/distribution.cpp
   src/distribution_angle.cpp
   src/distribution_energy.cpp

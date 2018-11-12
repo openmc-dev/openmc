@@ -1092,7 +1092,7 @@ class CMFDRun(object):
         check_length('Gauss-Seidel tolerance', gauss_seidel_tolerance, 2)
         self._gauss_seidel_tolerance = gauss_seidel_tolerance
 
-    def run(self, omp_num_threads=None, intracomm=None, vectorized=True, cpp_solver=False):
+    def run(self, omp_num_threads=None, intracomm=None):
         """Public method to run OpenMC with CMFD
 
         This method is called by user to run CMFD once instance variables of
@@ -1114,8 +1114,6 @@ class CMFDRun(object):
         elif intracomm is None and have_mpi:
             self._intracomm = MPI.COMM_WORLD
 
-        self._cpp_solver = cpp_solver
-
         # Check number of OpenMP threads is valid input and initialize C API
         if omp_num_threads is not None:
             check_type('OpenMP num threads', omp_num_threads, Integral)
@@ -1136,8 +1134,7 @@ class CMFDRun(object):
         self._precompute_matrix_indices()
 
         # Initialize all variables used for linear solver in C++
-        if self._cpp_solver:
-            self._initialize_linsolver()
+        self._initialize_linsolver()
 
         # Initialize simulation
         openmc.capi.simulation_init()
@@ -1151,7 +1148,7 @@ class CMFDRun(object):
 
             # Perform CMFD calculation if on
             if self._cmfd_on:
-                self._execute_cmfd(vectorized)
+                self._execute_cmfd()
 
                 # Write CMFD output if CMFD on for current batch
                 if openmc.capi.master():
@@ -1335,7 +1332,7 @@ class CMFDRun(object):
         if self._n_cmfd_resets > 0 and current_batch in self._cmfd_reset:
             self._cmfd_tally_reset()
 
-    def _execute_cmfd(self, vectorized):
+    def _execute_cmfd(self):
         """Runs CMFD calculation on master node"""
         # Run CMFD on single processor on master
         if openmc.capi.master():
@@ -1343,10 +1340,10 @@ class CMFDRun(object):
             time_start_cmfd = time.time()
 
             # Create CMFD data from OpenMC tallies
-            self._set_up_cmfd(vectorized=vectorized)
+            self._set_up_cmfd()
 
             # Call solver
-            self._cmfd_solver_execute(vectorized=vectorized)
+            self._cmfd_solver_execute()
 
             # Store k-effective
             self._k_cmfd.append(self._keff)
@@ -1357,7 +1354,7 @@ class CMFDRun(object):
                 self._cmfd_solver_execute(adjoint=True)
 
             # Calculate fission source
-            self._calc_fission_source(vectorized=vectorized)
+            self._calc_fission_source()
 
         # Calculate weight factors
         self._cmfd_reweight(True)
@@ -1379,14 +1376,8 @@ class CMFDRun(object):
         for tally_id in self._cmfd_tally_ids:
             tallies[tally_id].reset()
 
-    def _set_up_cmfd(self, vectorized=True):
+    def _set_up_cmfd(self):
         """Configures CMFD object for a CMFD eigenvalue calculation
-
-        Parameters
-        ----------
-        vectorized : bool
-            Whether to compute dhat and dtilde using a vectorized numpy approach
-            or with traditional for loops
 
         """
         # Calculate all cross sections based on reaction rates from last batch
@@ -1399,27 +1390,18 @@ class CMFDRun(object):
         self._neutron_balance()
 
         # Calculate dtilde
-        if vectorized:
-            self._compute_dtilde_vectorized()
-        else:
-            self._compute_dtilde()
+        self._compute_dtilde()
 
         # Calculate dhat
-        if vectorized:
-            self._compute_dhat_vectorized()
-        else:
-            self._compute_dhat()
+        self._compute_dhat()
 
-    def _cmfd_solver_execute(self, adjoint=False, vectorized=True):
+    def _cmfd_solver_execute(self, adjoint=False):
         """Sets up and runs power iteration solver for CMFD
 
         Parameters
         ----------
         adjoint : bool
             Whether or not to run an adjoint calculation
-        vectorized : bool
-            Whether to build CMFD matrices using a vectorized numpy approach
-            or with traditional for loops
 
         """
         # Check for physical adjoint
@@ -1429,7 +1411,7 @@ class CMFDRun(object):
         time_start_buildcmfd = time.time()
 
         # Build loss and production matrices
-        loss, prod = self._build_matrices(physical_adjoint, vectorized)
+        loss, prod = self._build_matrices(physical_adjoint)
 
         # Check for mathematical adjoint calculation
         if adjoint and self._cmfd_adjoint_type == 'math':
@@ -1517,25 +1499,12 @@ class CMFDRun(object):
         # Save matrix in scipy format
         sparse.save_npz(base_filename, matrix)
 
-    def _calc_fission_source(self, vectorized=True):
+    def _calc_fission_source(self):
         """Calculates CMFD fission source from CMFD flux. If a coremap is
         defined, there will be a discrepancy between the spatial indices in the
         variables ``phi`` and ``nfissxs``, so ``phi`` needs to be mapped to the
         spatial indices of the cross sections. This can be done in a vectorized
         numpy manner or with for loops
-
-        Parameters
-        ----------
-        vectorized : bool
-            Whether to compute CMFD fission source in a vectorized manner or by
-            looping over all spatial regions and energy groups. This distinction
-            is made because ``phi`` does not correspond to the same spatial
-            domain as ``nfissxs``
-
-        Returns
-        -------
-        bool
-            Whether or not the other filter is a subset of this filter
 
         """
         # Extract number of groups and number of accelerated regions
@@ -1550,53 +1519,30 @@ class CMFDRun(object):
 
         # Compute cmfd_src in a vecotorized manner by phi to the spatial indices
         # of the actual problem so that cmfd_flux can be multiplied by nfissxs
-        if vectorized:
-            # Calculate volume
-            vol = np.product(self._hxyz, axis=3)
 
-            # Reshape phi by number of groups
-            phi = self._phi.reshape((n, ng))
+        # Calculate volume
+        vol = np.product(self._hxyz, axis=3)
 
-            # Extract indices of coremap that are accelerated
-            idx = self._accel_idxs
+        # Reshape phi by number of groups
+        phi = self._phi.reshape((n, ng))
 
-            # Initialize CMFD flux map that maps phi to actual spatial and
-            # group indices of problem
-            cmfd_flux = np.zeros((nx, ny, nz, ng))
+        # Extract indices of coremap that are accelerated
+        idx = self._accel_idxs
 
-            # Loop over all groups and set CMFD flux based on indices of
-            # coremap and values of phi
-            for g in range(ng):
-                phi_g = phi[:,g]
-                cmfd_flux[idx + (g,)]  = phi_g[self._coremap[idx]]
+        # Initialize CMFD flux map that maps phi to actual spatial and
+        # group indices of problem
+        cmfd_flux = np.zeros((nx, ny, nz, ng))
 
-            # Compute fission source
-            cmfd_src = np.sum(self._nfissxs[:,:,:,:,:] * \
-                       cmfd_flux[:,:,:,:,np.newaxis], axis=3) * \
-                       vol[:,:,:,np.newaxis]
+        # Loop over all groups and set CMFD flux based on indices of
+        # coremap and values of phi
+        for g in range(ng):
+            phi_g = phi[:,g]
+            cmfd_flux[idx + (g,)]  = phi_g[self._coremap[idx]]
 
-        # Otherwise compute cmfd_src by looping over all groups and spatial
-        # regions
-        else:
-            cmfd_src = np.zeros((nx, ny, nz, ng))
-            for k in range(nz):
-                for j in range(ny):
-                    for i in range(nx):
-                        for g in range(ng):
-                            # Cycle through if non-accelerated region
-                            if self._coremap[i,j,k] == _CMFD_NOACCEL:
-                                continue
-
-                            # Calculate volume
-                            vol = np.product(self._hxyz[i,j,k])
-
-                            # Get index in matrix
-                            idx = self._indices_to_matrix(i, j, k, 0, ng)
-
-                            # Compute fission source
-                            cmfd_src[i,j,k,g] = np.sum(
-                                self._nfissxs[i,j,k,:,g] \
-                                * self._phi[idx:idx+ng]) * vol
+        # Compute fission source
+        cmfd_src = np.sum(self._nfissxs[:,:,:,:,:] * \
+                   cmfd_flux[:,:,:,:,np.newaxis], axis=3) * \
+                   vol[:,:,:,np.newaxis]
 
         # Normalize source such that it sums to 1.0
         self._cmfd_src = cmfd_src / np.sum(cmfd_src)
@@ -1773,16 +1719,13 @@ class CMFDRun(object):
 
         return sites_outside[0]
 
-    def _build_matrices(self, adjoint, vectorized):
+    def _build_matrices(self, adjoint):
         """Build loss and production matrices and write these matrices
 
         Parameters
         ----------
         adjoint : bool
             Whether or not to run an adjoint calculation
-        vectorized : bool
-            Whether to build CMFD matrices using a vectorized numpy approach
-            or with traditional for loops
 
         Returns
         -------
@@ -1793,12 +1736,8 @@ class CMFDRun(object):
 
         """
         # Build loss and production matrices
-        if vectorized:
-            loss = self._build_loss_matrix_vectorized(adjoint)
-            prod = self._build_prod_matrix_vectorized(adjoint)
-        else:
-            loss = self._build_loss_matrix(adjoint)
-            prod = self._build_prod_matrix(adjoint)
+        loss = self._build_loss_matrix(adjoint)
+        prod = self._build_prod_matrix(adjoint)
 
         # Write out matrices
         if self._cmfd_write_matrices:
@@ -1841,7 +1780,7 @@ class CMFDRun(object):
 
         return loss, prod
 
-    def _build_loss_matrix_vectorized(self, adjoint):
+    def _build_loss_matrix(self, adjoint):
         # Extract spatial and energy indices and define matrix dimension
         ng = self._indices[3]
         n = self._mat_dim*ng
@@ -1954,7 +1893,7 @@ class CMFDRun(object):
         loss = sparse.csr_matrix((data, (self._loss_row, self._loss_col)), shape=(n, n))
         return loss
 
-    def _build_prod_matrix_vectorized(self, adjoint):
+    def _build_prod_matrix(self, adjoint):
         # Extract spatial and energy indices and define matrix dimension
         ng = self._indices[3]
         n = self._mat_dim*ng
@@ -2002,10 +1941,9 @@ class CMFDRun(object):
         n = loss.shape[0]
 
         # Set up tolerances for C++ solver
-        if self._cpp_solver:
-            atoli = self._gauss_seidel_tolerance[0]
-            rtoli = self._gauss_seidel_tolerance[1]
-            toli = rtoli * 100
+        atoli = self._gauss_seidel_tolerance[0]
+        rtoli = self._gauss_seidel_tolerance[1]
+        toli = rtoli * 100
 
         # Set up flux vectors, intital guess set to 1
         phi_n = np.ones((n,))
@@ -2047,12 +1985,8 @@ class CMFDRun(object):
             s_o /= k_lo
 
             # Compute new flux with either C++ solver or scipy sparse solver
-            if self._cpp_solver:
-                innerits = openmc.capi._dll.openmc_run_linsolver(loss.data,
-                    s_o, phi_n, toli)
-            else:
-                phi_n = sparse.linalg.spsolve(loss, s_o)
-                innerits = 0
+            innerits = openmc.capi._dll.openmc_run_linsolver(loss.data,
+                                                             s_o, phi_n, toli)
 
             # Compute new source vector
             s_n = prod.dot(phi_n)
@@ -2068,7 +2002,7 @@ class CMFDRun(object):
 
             # Check convergence
             iconv, norm_n = self._check_convergence(s_n, s_o, k_n, k_o, i+1,
-                                                    innerits=innerits)
+                                                    innerits)
 
             # If converged, calculate dominance ratio and break from loop
             if iconv:
@@ -2082,10 +2016,9 @@ class CMFDRun(object):
             norm_o = norm_n
 
             # Update tolerance for inner iterations
-            if self._cpp_solver:
-                toli = max(atoli, rtoli*norm_n)
+            toli = max(atoli, rtoli*norm_n)
 
-    def _check_convergence(self, s_n, s_o, k_n, k_o, iter, innerits=0):
+    def _check_convergence(self, s_n, s_o, k_n, k_o, iter, innerits):
         """Checks the convergence of the CMFD problem
 
         Parameters
@@ -2100,6 +2033,8 @@ class CMFDRun(object):
             K-effective from previous iteration
         iter: int
             Iteration number
+        innerits: int
+            Number of iterations required for convergence in inner GS loop
 
         Returns
         -------
@@ -2125,12 +2060,9 @@ class CMFDRun(object):
             str2 = 'k-eff: {:0.8f}'.format(k_n)
             str3 = 'k-error:  {0:.5E}'.format(kerr)
             str4 = 'src-error:  {0:.5E}'.format(serr)
-            if innerits:
-                str5 = '  {:d}'.format(innerits)
-                print('{0:8s}{1:20s}{2:25s}{3:s}{4:s}'.format(str1, str2, str3,
-                                                              str4, str5))
-            else:
-                print('{0:8s}{1:20s}{2:25s}{3:s}'.format(str1, str2, str3, str4))
+            str5 = '  {:d}'.format(innerits)
+            print('{0:8s}{1:20s}{2:25s}{3:s}{4:s}'.format(str1, str2, str3,
+                                                          str4, str5))
             sys.stdout.flush()
 
         return iconv, serr
@@ -2667,7 +2599,7 @@ class CMFDRun(object):
         self._prod_row = row
         self._prod_col = col
 
-    def _compute_dtilde_vectorized(self):
+    def _compute_dtilde(self):
         """Computes the diffusion coupling coefficient using a vectorized numpy
         approach. Aggregate values for the dtilde multidimensional array are
         populated by first defining values on the problem boundary, and then for
@@ -2927,7 +2859,7 @@ class CMFDRun(object):
              (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dz),
              (2.0 * D * neig_D) / (neig_dz * D + dz * neig_D))
 
-    def _compute_dhat_vectorized(self):
+    def _compute_dhat(self):
         """Computes the nonlinear coupling coefficient using a vectorized numpy
         approach. Aggregate values for the dhat multidimensional array are
         populated by first defining values on the problem boundary, and then for
@@ -3217,425 +3149,3 @@ class CMFDRun(object):
             # Set all tallies to be active from beginning
             tally.active = True
 
-    def _build_loss_matrix(self, adjoint):
-        """Creates matrix representing loss of neutrons. This method uses for
-        loops to loop over all spatial indices and energy groups for easier
-        readability. Matrix is returned in CSR format by populating all entries
-        with a numpy array and later converting to CSR format
-
-        Parameters
-        ----------
-        adjoint : bool
-            Whether or not to run an adjoint calculation
-
-        Returns
-        -------
-        loss : scipy.sparse.spmatrix
-            Sparse matrix storing elements of CMFD loss matrix
-
-        """
-        # Extract spatial and energy indices and define matrix dimension
-        nx = self._indices[0]
-        ny = self._indices[1]
-        nz = self._indices[2]
-        ng = self._indices[3]
-        n = self._mat_dim*ng
-
-        # Allocate matrix
-        loss = np.zeros((n, n))
-
-        # Create single vector of these indices for boundary calculation
-        nxyz = np.array([[0,nx-1], [0,ny-1], [0,nz-1]])
-
-        # Allocate leakage coefficients in front of cell flux
-        jo = np.zeros((6,))
-
-        for irow in range(n):
-            # Get indices for row in matrix
-            i,j,k,g = self._matrix_to_indices(irow, nx, ny, nz, ng)
-
-            # Retrieve cell data
-            totxs = self._totalxs[i,j,k,g]
-            scattxsgg = self._scattxs[i,j,k,g,g]
-            dtilde = self._dtilde[i,j,k,g,:]
-            hxyz = self._hxyz[i,j,k,:]
-            dhat = self._dhat[i,j,k,g,:]
-
-            # Create boundary vector
-            bound = np.repeat([i,j,k], 2)
-
-            # Begin loop over leakages
-            for l in range(6):
-                # Define (x,y,z) and (-,+) indices
-                xyz_idx = int(l/2)  # x=0, y=1, z=2
-                dir_idx = l % 2     # -=0, +=1
-
-                # Calculate spatial indices of neighbor
-                neig_idx = [i,j,k]  # Begin with i,j,k
-                shift_idx = 2*(l % 2) - 1 # shift neig by -1 or +1
-                neig_idx[xyz_idx] += shift_idx
-
-                # Check for global boundary
-                if bound[l] != nxyz[xyz_idx, dir_idx]:
-
-                    # Check that neighbor is not reflector
-                    if self._coremap[tuple(neig_idx)] != _CMFD_NOACCEL:
-                        # Compute leakage coefficient for neighbor
-                        jn = -1.0 * dtilde[l] + shift_idx*dhat[l]
-
-                        # Get neighbor matrix index
-                        neig_mat_idx = self._indices_to_matrix(neig_idx[0], \
-                                neig_idx[1], neig_idx[2], g, ng)
-                        # Compute value and record to bank
-                        val = jn/hxyz[xyz_idx]
-                        loss[irow, neig_mat_idx] = val
-
-                # Compute leakage coefficient for target
-                jo[l] = shift_idx*dtilde[l] + dhat[l]
-
-                # Calculate net leakage coefficient for target
-                jnet = (jo[1] - jo[0])/hxyz[0] + (jo[3] - jo[2])/hxyz[1] + \
-                    (jo[5] - jo[4])/hxyz[2]
-
-                # Calculate loss of neutrons
-                val = jnet + totxs - scattxsgg
-                loss[irow, irow] = val
-
-                # Begin loop over off diagonal in-scattering
-                for h in range(ng):
-                    # Cycle though if h=g, value already banked in removal xs
-                    if h == g:
-                        continue
-
-                    # Get neighbor matrix index
-                    scatt_mat_idx = self._indices_to_matrix(i,j,k, h, ng)
-
-                    # Check for adjoint
-                    if adjoint:
-                        # Get scattering macro xs, transposed!
-                        scattxshg = self._scattxs[i, j, k, g, h]
-                    else:
-                        # Get scattering macro xs
-                        scattxshg = self._scattxs[i, j, k, h, g]
-
-                    # Negate the scattering xs
-                    val = -1.0*scattxshg
-
-                    # Record value in matrix
-                    loss[irow, scatt_mat_idx] = val
-
-        # Convert matrix to csr matrix in order to use scipy sparse solver
-        loss = sparse.csr_matrix(loss)
-        return loss
-
-    def _build_prod_matrix(self, adjoint):
-        """Creates matrix representing production of neutrons. This method uses for
-        loops to loop over all spatial indices and energy groups for easier
-        readability. Matrix is returned in CSR format by populating all entries
-        with a numpy array and later converting to CSR format
-
-        Parameters
-        ----------
-        adjoint : bool
-            Whether or not to run an adjoint calculation
-
-        Returns
-        -------
-        loss : scipy.sparse.spmatrix
-            Sparse matrix storing elements of CMFD production matrix
-
-        """
-        # Extract spatial and energy indices and define matrix dimension
-        nx = self._indices[0]
-        ny = self._indices[1]
-        nz = self._indices[2]
-        ng = self._indices[3]
-        n = self._mat_dim*ng
-
-        # Allocate matrix
-        prod = np.zeros((n, n))
-
-        for irow in range(n):
-            # Get indices for row in matrix
-            i,j,k,g = self._matrix_to_indices(irow, nx, ny, nz, ng)
-
-            # Check if at a reflector
-            if self._coremap[i,j,k] == _CMFD_NOACCEL:
-                continue
-
-            # Loop around all other groups
-            for h in range(ng):
-                # Get matrix column location
-                hmat_idx = self._indices_to_matrix(i,j,k, h, ng)
-                # Check for adjoint and bank val
-                if adjoint:
-                    # Get nu-fission cross section from cell, transposed!
-                    nfissxs = self._nfissxs[i, j, k, g, h]
-                else:
-                    # Get nu-fission cross section from cell
-                    nfissxs = self._nfissxs[i, j, k, h, g]
-
-                # Set as value to be recorded
-                val = nfissxs
-
-                # record value in matrix
-                prod[irow, hmat_idx] = val
-
-        # Convert matrix to csr matrix in order to use scipy sparse solver
-        prod = sparse.csr_matrix(prod)
-
-        return prod
-
-    def _matrix_to_indices(self, irow, nx, ny, nz, ng):
-        """Converts matrix index in CMFD matrices to spatial and group indices
-        of actual problem, based on values from coremap
-
-        Parameters
-        ----------
-        irow : int
-            Row in CMFD matrix
-        nx : int
-            Total number of mesh cells in problem in x direction
-        ny : int
-            Total number of mesh cells in problem in y direction
-        nz : int
-            Total number of mesh cells in problem in z direction
-        ng : int
-            Total number of energy groups in problem
-
-        Returns
-        -------
-        i : int
-            Corresponding x-index in CMFD problem
-        j : int
-            Corresponding y-index in CMFD problem
-        k : int
-            Corresponding z-index in CMFD problem
-        g : int
-            Corresponding group in CMFD problem
-
-        """
-        g = irow % ng
-        # Get indices from coremap
-        spatial_idx = np.where(self._coremap == int(irow/ng))
-        i = spatial_idx[0][0]
-        j = spatial_idx[1][0]
-        k = spatial_idx[2][0]
-
-        return i, j, k, g
-
-    def _indices_to_matrix(self, i, j, k, g, ng):
-        """Takes (i,j,k,g) indices and computes location in CMFD matrix
-
-        Parameters
-        ----------
-        i : int
-            Corresponding x-index in CMFD problem
-        j : int
-            Corresponding y-index in CMFD problem
-        k : int
-            Corresponding z-index in CMFD problem
-        g : int
-            Corresponding group in CMFD problem
-        ng : int
-            Total number of energy groups in problem
-
-        Returns
-        -------
-        matidx : int
-            Row in CMFD matrix
-
-        """
-        # Get matrix index from coremap
-        matidx = ng*(self._coremap[i,j,k]) + g
-        return matidx
-
-    def _compute_dtilde(self):
-        """Computes the diffusion coupling coefficient by looping over all
-        spatial regions and energy groups
-
-        """
-        # Get maximum of spatial and group indices
-        nx = self._indices[0]
-        ny = self._indices[1]
-        nz = self._indices[2]
-        ng = self._indices[3]
-
-        # Create single vector of these indices for boundary calculation
-        nxyz = np.array([[0,nx-1], [0,ny-1], [0,nz-1]])
-
-        # Get boundary condition information
-        albedo = self._albedo
-
-        # Loop over group and spatial indices
-        for k in range(nz):
-            for j in range(ny):
-                for i in range(nx):
-                    for g in range(ng):
-                        # Cycle if non-accelration region
-                        if self._coremap[i,j,k] == _CMFD_NOACCEL:
-                            continue
-
-                        # Get cell data
-                        cell_dc = self._diffcof[i,j,k,g]
-                        cell_hxyz = self._hxyz[i,j,k,:]
-
-                        # Setup of vector to identify boundary conditions
-                        bound = np.repeat([i,j,k], 2)
-
-                        # Begin loop around sides of cell for leakage
-                        for l in range(6):
-                            xyz_idx = int(l/2)  # x=0, y=1, z=2
-                            dir_idx = l % 2     # -=0, +=1
-
-                            # Check if at boundary
-                            if bound[l] == nxyz[xyz_idx, dir_idx]:
-                                # Compute dtilde with albedo boundary condition
-                                dtilde = (2*cell_dc*(1-albedo[l]))/ \
-                                    (4*cell_dc*(1+albedo[l]) + \
-                                    (1-albedo[l])*cell_hxyz[xyz_idx])
-
-                                # Check for zero flux albedo
-                                if abs(albedo[l] - _ZERO_FLUX) < _TINY_BIT:
-                                    dtilde = 2*cell_dc / cell_hxyz[xyz_idx]
-
-                            else:  # Not at a boundary
-                                shift_idx = 2*(l % 2) - 1 # shift neig by -1 or +1
-
-                                # Compute neighboring cell indices
-                                neig_idx = [i,j,k]  # Begin with i,j,k
-                                neig_idx[xyz_idx] += shift_idx
-
-                                # Get neighbor cell data
-                                neig_dc = self._diffcof[tuple(neig_idx) + (g,)]
-                                neig_hxyz = self._hxyz[tuple(neig_idx)]
-
-                                # Check for fuel-reflector interface
-                                if (self._coremap[tuple(neig_idx)] ==
-                                         _CMFD_NOACCEL):
-                                    # Get albedo
-                                    ref_albedo = self._get_reflector_albedo(l,g,i,j,k)
-                                    dtilde = (2*cell_dc*(1-ref_albedo))/(4*cell_dc*(1+ \
-                                             ref_albedo)+(1-ref_albedo)*cell_hxyz[xyz_idx])
-
-                                else:  # Not next to a reflector
-                                    # Compute dtilde to neighbor cell
-                                    dtilde = (2*cell_dc*neig_dc)/(neig_hxyz[xyz_idx]*cell_dc + \
-                                             cell_hxyz[xyz_idx]*neig_dc)
-
-                            # Record dtilde
-                            self._dtilde[i, j, k, g, l] = dtilde
-
-    def _compute_dhat(self):
-        """Computes the nonlinear coupling coefficient by looping over all
-        spatial regions and energy groups
-
-        """
-        # Get maximum of spatial and group indices
-        nx = self._indices[0]
-        ny = self._indices[1]
-        nz = self._indices[2]
-        ng = self._indices[3]
-
-        # Create single vector of these indices for boundary calculation
-        nxyz = np.array([[0,nx-1], [0,ny-1], [0,nz-1]])
-
-        # Loop over group and spatial indices
-        for k in range(nz):
-            for j in range(ny):
-                for i in range(nx):
-                    for g in range(ng):
-                        # Cycle if non-accelration region
-                        if self._coremap[i,j,k] == _CMFD_NOACCEL:
-                            continue
-
-                        # Get cell data
-                        cell_dtilde = self._dtilde[i,j,k,g,:]
-                        cell_flux = self._flux[i,j,k,g]/np.product(self._hxyz[i,j,k,:])
-                        current = self._current[i,j,k,:,g]
-
-                        # Setup of vector to identify boundary conditions
-                        bound = np.repeat([i,j,k], 2)
-
-                        # Begin loop around sides of cell for leakage
-                        for l in range(6):
-                            xyz_idx = int(l/2)  # x=0, y=1, z=2
-                            dir_idx = l % 2     # -=0, +=1
-                            shift_idx = 2*(l % 2) - 1 # shift neig by -1 or +1
-
-                            # Calculate net current on l face (divided by surf area)
-                            net_current = shift_idx*(current[2*l] - current[2*l+1]) / \
-                                np.product(self._hxyz[i,j,k,:]) * self._hxyz[i,j,k,xyz_idx]
-
-                            # Check if at boundary
-                            if bound[l] == nxyz[xyz_idx, dir_idx]:
-                                # Compute dhat
-                                dhat = (net_current - shift_idx*cell_dtilde[l]*cell_flux) / \
-                                     cell_flux
-
-                            else:  # Not at a boundary
-                                # Compute neighboring cell indices
-                                neig_idx = [i,j,k]  # Begin with i,j,k
-                                neig_idx[xyz_idx] += shift_idx
-
-                                # Get neigbor flux
-                                neig_flux = self._flux[tuple(neig_idx)+(g,)] / \
-                                            np.product(self._hxyz[tuple(neig_idx)])
-
-                                # Check for fuel-reflector interface
-                                if (self._coremap[tuple(neig_idx)] ==
-                                         _CMFD_NOACCEL):
-                                    # Compute dhat
-                                    dhat = (net_current - shift_idx*cell_dtilde[l]*cell_flux) / \
-                                         cell_flux
-
-                                else:  # not a fuel-reflector interface
-                                    # Compute dhat
-                                    dhat = (net_current + shift_idx*cell_dtilde[l]* \
-                                        (neig_flux - cell_flux))/(neig_flux + cell_flux)
-
-                            # Record dhat
-                            self._dhat[i, j, k, g, l] = dhat
-
-                            # check for dhat reset
-                            if self._dhat_reset:
-                                self._dhat[i, j, k, g, l] = 0.0
-
-        # Write that dhats are zero
-        if self._dhat_reset and openmc.capi.settings.verbosity >= 8 and \
-                openmc.capi.master():
-            print(' Dhats reset to zero')
-            sys.stdout.flush()
-
-    def _get_reflector_albedo(self, l, g, i, j, k):
-        """Calculates the albedo to the reflector by returning ratio of
-        incoming to outgoing ratio
-
-        Parameters
-        ----------
-        l : int
-            leakage index, see _CURRENTS for map between leakage index and leakage
-            direction
-        g : int
-            index of energy group
-        i : int
-            index of mesh location in x-direction
-        j : int
-            index of mesh location in y-direction
-        k : int
-            index of mesh location in z-direction
-
-        Returns
-        -------
-        float
-            reflector albedo
-
-        """
-        # Get partial currents from object
-        current = self._current[i,j,k,:,g]
-
-        # Calculate albedo
-        if current[2*l] < 1.0e-10:
-            return 1.0
-        else:
-          return current[2*l+1]/current[2*l]

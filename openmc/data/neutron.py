@@ -641,10 +641,10 @@ class IncidentNeutron(EqualityMixin):
         data.reactions[1] = total
 
         if np.count_nonzero(absorption_xs) > 0:
-            absorption = Reaction(27)
+            absorption = Reaction(101)
             absorption.xs[strT] = Tabulated1D(energy, absorption_xs)
             absorption.redundant = True
-            data.reactions[27] = absorption
+            data.reactions[101] = absorption
 
         # Read each reaction
         n_reaction = ace.nxs[4] + 1

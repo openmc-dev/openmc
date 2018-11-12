@@ -653,6 +653,9 @@ class IncidentNeutron(EqualityMixin):
         n_reaction = ace.nxs[4] + 1
         for i in range(n_reaction):
             rx = Reaction.from_ace(ace, i)
+            # Don't include gas production / damage cross sections
+            if 200 < rx.mt < 219 or rx.mt == 444:
+                continue
             data.reactions[rx.mt] = rx
 
         # Some photon production reactions may be assigned to MTs that don't

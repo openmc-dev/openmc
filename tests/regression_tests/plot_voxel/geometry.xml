@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<geometry>
+
+  <surface id="1" type="z-cylinder" coeffs="0 0 2" />
+  <surface id="2" type="z-cylinder" coeffs="0 0 5" />
+  <surface id="3" type="z-cylinder" coeffs="0 0 10" boundary="vacuum" />
+  <surface id="4" type="y-plane" coeffs="5" boundary="vacuum" />
+
+  <cell id="1" material="1" region="  -1 -4" />
+  <cell id="2" material="3" region="1 -2 -4" />
+  <cell id="3" material="2" region="2 -3 -4" />
+
+</geometry>

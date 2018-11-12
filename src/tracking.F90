@@ -17,7 +17,6 @@ module tracking
   use nuclide_header
   use particle_header
   use physics,            only: collision
-  use physics_mg,         only: collision_mg
   use random_lcg,         only: prn, prn_set_stream
   use settings
   use simulation_header
@@ -33,13 +32,23 @@ module tracking
 
   implicit none
 
+  interface
+    subroutine collision_mg(p, energy_bin_avg, material_xs) bind(C)
+      import Particle, C_DOUBLE, MaterialMacroXS
+      type(Particle),            intent(inout) :: p
+      real(C_DOUBLE),            intent(in)    :: energy_bin_avg(*)
+      type(MaterialMacroXS),     intent(in)    :: material_xs
+    end subroutine collision_mg
+
+  end interface
+
 contains
 
 !===============================================================================
 ! TRANSPORT encompasses the main logic for moving a particle through geometry.
 !===============================================================================
 
-  subroutine transport(p)
+  subroutine transport(p) bind(C)
 
     type(Particle), intent(inout) :: p
 
@@ -226,7 +235,7 @@ contains
         if (run_CE) then
           call collision(p)
         else
-          call collision_mg(p)
+          call collision_mg(p, energy_bin_avg, material_xs)
         end if
 
         ! Score collision estimator tallies -- this is done after a collision
@@ -278,8 +287,7 @@ contains
       ! Check for secondary particles if this particle is dead
       if (.not. p % alive) then
         if (p % n_secondary > 0) then
-          call particle_from_source(p, p % secondary_bank(p % n_secondary), &
-                                    run_CE, energy_bin_avg)
+          call particle_from_source(p, p % secondary_bank(p % n_secondary))
           p % n_secondary = p % n_secondary - 1
           n_event = 0
 
@@ -313,7 +321,9 @@ contains
     real(8) :: norm       ! "norm" of surface normal
     real(8) :: xyz(3)     ! Saved global coordinate
     integer :: i_surface  ! index in surfaces
+#ifdef DAGMC
     integer :: i_cell     ! index of new cell
+#endif
     logical :: rotational ! if rotational periodic BC applied
     logical :: found      ! particle found in universe?
     class(Surface), pointer :: surf

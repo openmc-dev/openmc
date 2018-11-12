@@ -2,7 +2,6 @@ module surface_header
 
   use, intrinsic :: ISO_C_BINDING
 
-  use dict_header, only: DictIntInt
   use hdf5_interface
 
   implicit none
@@ -83,9 +82,6 @@ module surface_header
 
   type(Surface), allocatable, target :: surfaces(:)
 
-  ! Dictionary that maps user IDs to indices in 'surfaces'
-  type(DictIntInt) :: surface_dict
-
 contains
 
   pure function surface_id(this) result(id)
@@ -128,7 +124,6 @@ contains
 
   subroutine free_memory_surfaces()
     if (allocated(surfaces)) deallocate(surfaces)
-    call surface_dict % clear()
     call free_memory_surfaces_c()
   end subroutine free_memory_surfaces
 

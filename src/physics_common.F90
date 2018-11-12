@@ -1,33 +1,20 @@
 module physics_common
 
-  use constants
+  use, intrinsic :: ISO_C_BINDING
+
   use particle_header,        only: Particle
-  use random_lcg,             only: prn
-  use settings,               only: weight_cutoff, weight_survive
 
   implicit none
 
-contains
-
 !===============================================================================
-! RUSSIAN_ROULETTE
+! RUSSIAN_ROULETTE FROM C
 !===============================================================================
 
-  subroutine russian_roulette(p)
-
-    type(Particle), intent(inout) :: p
-
-    if (p % wgt < weight_cutoff) then
-      if (prn() < p % wgt / weight_survive) then
-        p % wgt = weight_survive
-        p % last_wgt = p % wgt
-      else
-        p % wgt = ZERO
-        p % last_wgt = ZERO
-        p % alive = .false.
-      end if
-    end if
-
-  end subroutine russian_roulette
+  interface
+    subroutine russian_roulette(p) bind(C)
+      import Particle
+      type(Particle), intent(inout) :: p
+    end subroutine russian_roulette
+  end interface
 
 end module physics_common

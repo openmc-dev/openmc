@@ -264,17 +264,17 @@ void initialize_source()
     }
 
     // Read in the source bank
-    read_source_bank(file_id, work_index.data(), source_bank);
+    read_source_bank(file_id, source_bank);
 
     // Close file
     file_close(file_id);
 
   } else {
     // Generation source sites from specified distribution in user input
-    for (int64_t i = 0; i < openmc_work; ++i) {
+    for (int64_t i = 0; i < simulation::work; ++i) {
       // initialize random number seed
-      int64_t id = openmc_total_gen*settings::n_particles +
-        work_index[openmc::mpi::rank] + i + 1;
+      int64_t id = simulation::total_gen*settings::n_particles +
+        simulation::work_index[mpi::rank] + i + 1;
       set_particle_seed(id);
 
       // sample external source distribution
@@ -287,12 +287,10 @@ void initialize_source()
     write_message("Writing out initial source...", 5);
     std::string filename = settings::path_output + "initial_source.h5";
     hid_t file_id = file_open(filename, 'w', true);
-    write_source_bank(file_id, work_index.data(), source_bank);
+    write_source_bank(file_id, source_bank);
     file_close(file_id);
   }
 }
-
-extern "C" double* rev_energy_bins_ptr();
 
 Bank sample_external_source()
 {
@@ -320,11 +318,8 @@ Bank sample_external_source()
 
   // If running in MG, convert site % E to group
   if (!settings::run_CE) {
-    // Get pointer to rev_energy_bins array on Fortran side
-    double* rev_energy_bins = rev_energy_bins_ptr();
-
-    int n = num_energy_groups + 1;
-    site.E = lower_bound_index(rev_energy_bins, rev_energy_bins + n, site.E);
+    site.E = lower_bound_index(rev_energy_bins.begin(), rev_energy_bins.end(),
+                               site.E);
     site.E = num_energy_groups - site.E;
   }
 
@@ -352,11 +347,7 @@ extern "C" double total_source_strength()
   return strength;
 }
 
-// Needed in fill_source_bank_fixedsource
-extern "C" int overall_generation();
-
-//! Fill source bank at end of generation for fixed source simulations
-extern "C" void fill_source_bank_fixedsource()
+void fill_source_bank_fixedsource()
 {
   if (settings::path_source.empty()) {
     // Get pointer to source bank
@@ -364,10 +355,10 @@ extern "C" void fill_source_bank_fixedsource()
     int64_t n;
     openmc_source_bank(&source_bank, &n);
 
-    for (int64_t i = 0; i < openmc_work; ++i) {
+    for (int64_t i = 0; i < simulation::work; ++i) {
       // initialize random number seed
-      int64_t id = (openmc_total_gen + overall_generation()) *
-        settings::n_particles + work_index[openmc::mpi::rank] + i + 1;
+      int64_t id = (simulation::total_gen + overall_generation()) *
+        settings::n_particles + simulation::work_index[mpi::rank] + i + 1;
       set_particle_seed(id);
 
       // sample external source distribution

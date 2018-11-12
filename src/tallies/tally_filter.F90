@@ -7,26 +7,14 @@ module tally_filter
   use tally_filter_header
 
   ! Inherit other filters
-  use tally_filter_azimuthal
-  use tally_filter_cell
-  use tally_filter_cellborn
-  use tally_filter_cellfrom
   use tally_filter_delayedgroup
   use tally_filter_distribcell
   use tally_filter_energy
-  use tally_filter_energyfunc
   use tally_filter_legendre
-  use tally_filter_material
   use tally_filter_mesh
   use tally_filter_meshsurface
-  use tally_filter_mu
   use tally_filter_particle
-  use tally_filter_polar
   use tally_filter_sph_harm
-  use tally_filter_sptl_legendre
-  use tally_filter_surface
-  use tally_filter_universe
-  use tally_filter_zernike
 
   implicit none
 
@@ -114,6 +102,14 @@ contains
 
     character(:), allocatable :: type_
 
+    interface
+      function allocate_filter(type) result(ptr) bind(C)
+        import C_CHAR, C_PTR
+        character(kind=C_CHAR), intent(in)        :: type(*)
+        type(C_PTR)                               :: ptr
+      end function allocate_filter
+    end interface
+
     ! Convert C string to Fortran string
     type_ = to_f_string(type)
 
@@ -131,7 +127,7 @@ contains
         case ('cellborn')
           allocate(CellbornFilter :: filters(index) % obj)
         case ('cellfrom')
-          allocate(CellfromFilter :: filters(index) % obj)
+          allocate(CellFromFilter :: filters(index) % obj)
         case ('delayedgroup')
           allocate(DelayedGroupFilter :: filters(index) % obj)
         case ('distribcell')
@@ -172,6 +168,13 @@ contains
           err = E_UNASSIGNED
           call set_errmsg("Unknown filter type: " // trim(type_))
         end select
+
+        filters(index) % obj % ptr = allocate_filter(type)
+        if (.not. c_associated(filters(index) % obj % ptr)) then
+          err = E_UNASSIGNED
+          call set_errmsg("Could not allocate C++ tally filter")
+        end if
+
       end if
     else
       err = E_OUT_OF_BOUNDS

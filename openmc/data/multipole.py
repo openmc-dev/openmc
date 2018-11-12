@@ -4,7 +4,7 @@ from math import exp, erf, pi, sqrt
 import h5py
 import numpy as np
 
-from . import WMP_VERSION
+from . import WMP_VERSION, WMP_VERSION_MAJOR
 from .data import K_BOLTZMANN
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
@@ -133,6 +133,8 @@ class WindowedMultipole(EqualityMixin):
 
     Parameters
     ----------
+    name : str
+        Name of the nuclide using the GND naming convention
 
     Attributes
     ----------
@@ -171,7 +173,8 @@ class WindowedMultipole(EqualityMixin):
         a/E + b/sqrt(E) + c + d sqrt(E) + ...
 
     """
-    def __init__(self):
+    def __init__(self, name):
+        self.name = name
         self.spacing = None
         self.sqrtAWR = None
         self.E_min = None
@@ -180,6 +183,10 @@ class WindowedMultipole(EqualityMixin):
         self.windows = None
         self.broaden_poly = None
         self.curvefit = None
+
+    @property
+    def name(self):
+        return self._name
 
     @property
     def fit_order(self):
@@ -220,6 +227,11 @@ class WindowedMultipole(EqualityMixin):
     @property
     def curvefit(self):
         return self._curvefit
+
+    @name.setter
+    def name(self, name):
+        cv.check_type('name', name, str)
+        self._name = name
 
     @spacing.setter
     def spacing(self, spacing):
@@ -322,17 +334,25 @@ class WindowedMultipole(EqualityMixin):
             group = group_or_filename
         else:
             h5file = h5py.File(group_or_filename, 'r')
-            try:
-                version = h5file['version'].value.decode()
-            except AttributeError:
-                version = h5file['version'].value[0].decode()
-            if version != WMP_VERSION:
-                raise ValueError('The given WMP data uses version '
-                    + version + ' whereas your installation of the OpenMC '
-                    'Python API expects version ' + WMP_VERSION)
-            group = h5file['nuclide']
 
-        out = cls()
+            # Make sure version matches
+            if 'version' in h5file.attrs:
+                major, minor = h5file.attrs['version']
+                if major != WMP_VERSION_MAJOR:
+                    raise IOError(
+                        'WMP data format uses version {}. {} whereas your '
+                        'installation of the OpenMC Python API expects version '
+                        '{}.x.'.format(major, minor, WMP_VERSION_MAJOR))
+            else:
+                raise IOError(
+                    'WMP data does not indicate a version. Your installation of '
+                    'the OpenMC Python API expects version {}.x data.'
+                    .format(WMP_VERSION_MAJOR))
+
+            group = list(h5file.values())[0]
+
+        name = group.name[1:]
+        out = cls(name)
 
         # Read scalars.
 
@@ -478,13 +498,16 @@ class WindowedMultipole(EqualityMixin):
         fun = np.vectorize(lambda x: self._evaluate(x, T))
         return fun(E)
 
-    def export_to_hdf5(self, path, libver='earliest'):
+    def export_to_hdf5(self, path, mode='a', libver='earliest'):
         """Export windowed multipole data to an HDF5 file.
 
         Parameters
         ----------
         path : str
             Path to write HDF5 file to
+        mode : {'r', r+', 'w', 'x', 'a'}
+            Mode that is used to open the HDF5 file. This is the second argument
+            to the :class:`h5py.File` constructor.
         libver : {'earliest', 'latest'}
             Compatibility mode for the HDF5 file. 'latest' will produce files
             that are less backwards compatible but have performance benefits.
@@ -492,12 +515,11 @@ class WindowedMultipole(EqualityMixin):
         """
 
         # Open file and write version.
-        with h5py.File(path, 'w', libver=libver) as f:
-            f.create_dataset('version', (1, ), dtype='S10')
-            f['version'][:] = WMP_VERSION.encode('ASCII')
+        with h5py.File(path, mode, libver=libver) as f:
+            f.attrs['filetype'] = np.string_('data_wmp')
+            f.attrs['version'] = np.array(WMP_VERSION)
 
-            # Make a nuclide group.
-            g = f.create_group('nuclide')
+            g = f.create_group(self.name)
 
             # Write scalars.
             g.create_dataset('spacing', data=np.array(self.spacing))

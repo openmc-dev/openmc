@@ -51,8 +51,8 @@ module cmfd_header
     real(8), allocatable :: hxyz(:,:,:,:)
 
     ! Source distributions
-    real(8), allocatable :: cmfd_src(:,:,:,:)
-    real(8), allocatable :: openmc_src(:,:,:,:)
+    real(C_DOUBLE), allocatable :: cmfd_src(:,:,:,:)
+    real(C_DOUBLE), allocatable :: openmc_src(:,:,:,:)
 
     ! Source sites in each mesh box
     real(C_DOUBLE), allocatable :: sourcecounts(:,:)
@@ -143,7 +143,7 @@ module cmfd_header
   logical, public :: cmfd_run_adjoint = .false.
 
   ! CMFD run logicals
-  logical, public :: cmfd_on = .false.
+  logical(C_BOOL), public, bind(C) :: cmfd_on = .false.
 
   ! CMFD display info
   character(len=25), public :: cmfd_display = 'balance'

@@ -476,7 +476,7 @@ CSGCell::to_hdf5(hid_t cell_group) const
     std::vector<int32_t> mat_ids;
     for (auto i_mat : material_) {
       if (i_mat != MATERIAL_VOID) {
-        mat_ids.push_back(materials[i_mat]->id);
+        mat_ids.push_back(materials[i_mat]->id_);
       } else {
         mat_ids.push_back(MATERIAL_VOID);
       }
@@ -649,6 +649,19 @@ read_cells(pugi::xml_node* node)
     cells.push_back(new CSGCell(cell_node));
   }
 
+  // Fill the cell map.
+  for (int i = 0; i < cells.size(); i++) {
+    int32_t id = cells[i]->id_;
+    auto search = cell_map.find(id);
+    if (search == cell_map.end()) {
+      cell_map[id] = i;
+    } else {
+      std::stringstream err_msg;
+      err_msg << "Two or more cells use the same unique ID: " << id;
+      fatal_error(err_msg);
+    }
+  }
+
   // Populate the Universe vector and map.
   for (int i = 0; i < cells.size(); i++) {
     int32_t uid = cells[i]->universe_;
@@ -766,7 +779,19 @@ extern "C" {
 
   int32_t cell_id(Cell* c) {return c->id_;}
 
-  void cell_set_id(Cell* c, int32_t id) {c->id_ = id;}
+  void
+  cell_set_id(Cell* c, int32_t id)
+  {
+    c->id_ = id;
+
+    // Find the index of this cell and update the cell map.
+    for (int i = 0; i < cells.size(); i++) {
+      if (cells[i] == c) {
+        cell_map[id] = i;
+        break;
+      }
+    }
+  }
 
   int cell_type(Cell* c) {return c->type_;}
 
@@ -789,10 +814,6 @@ extern "C" {
 
   int32_t cell_fill(Cell* c) {return c->fill_;}
 
-  int32_t cell_n_instances(Cell* c) {return c->n_instances_;}
-
-  int cell_distribcell_index(Cell* c) {return c->distribcell_index_;}
-
   int cell_material_size(Cell* c) {return c->material_.size();}
 
   //TODO: off-by-one
@@ -806,8 +827,6 @@ extern "C" {
   int cell_sqrtkT_size(Cell* c) {return c->sqrtkT_.size();}
 
   double cell_sqrtkT(Cell* c, int i) {return c->sqrtkT_[i];}
-
-  int32_t cell_offset(Cell* c, int map) {return c->offset_[map];}
 
   void extend_cells_c(int32_t n)
   {

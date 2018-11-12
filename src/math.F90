@@ -10,12 +10,7 @@ module math
   public :: t_percentile
   public :: calc_pn
   public :: calc_rn
-  public :: calc_zn
-  public :: calc_zn_rad
-  public :: evaluate_legendre
   public :: rotate_angle
-  public :: maxwell_spectrum
-  public :: watt_spectrum
   public :: faddeeva
   public :: w_derivative
   public :: broaden_wmp_polynomials
@@ -42,16 +37,6 @@ module math
       real(C_DOUBLE), intent(out) :: pnx(n + 1)
     end subroutine calc_pn
 
-    pure function evaluate_legendre_c_intfc(n, data, x) &
-         bind(C, name='evaluate_legendre_c') result(val)
-      use ISO_C_BINDING
-      implicit none
-      integer(C_INT), value, intent(in) :: n
-      real(C_DOUBLE), intent(in) :: data(n)
-      real(C_DOUBLE), value, intent(in) :: x
-      real(C_DOUBLE) :: val
-    end function evaluate_legendre_c_intfc
-
     pure subroutine calc_rn(n, uvw, rn) bind(C, name='calc_rn_c')
       use ISO_C_BINDING
       implicit none
@@ -60,23 +45,6 @@ module math
       real(C_DOUBLE), intent(out) :: rn(2 * n + 1)
     end subroutine calc_rn
 
-    pure subroutine calc_zn(n, rho, phi, zn) bind(C, name='calc_zn_c')
-      use ISO_C_BINDING
-      implicit none
-      integer(C_INT), value, intent(in) :: n
-      real(C_DOUBLE), value, intent(in) :: rho
-      real(C_DOUBLE), value, intent(in) :: phi
-      real(C_DOUBLE), intent(out) :: zn(((n + 1) * (n + 2)) / 2)
-    end subroutine calc_zn
-
-    pure subroutine calc_zn_rad(n, rho, zn_rad) bind(C, name='calc_zn_rad_c')
-      use ISO_C_BINDING
-      implicit none
-      integer(C_INT), value, intent(in) :: n
-      real(C_DOUBLE), value, intent(in) :: rho
-      real(C_DOUBLE), intent(out) :: zn_rad((n / 2) + 1)
-    end subroutine calc_zn_rad
-
     subroutine rotate_angle_c_intfc(uvw, mu, phi) bind(C, name='rotate_angle_c')
       use ISO_C_BINDING
       implicit none
@@ -84,23 +52,6 @@ module math
       real(C_DOUBLE), value, intent(in)    :: mu
       real(C_DOUBLE), optional, intent(in) :: phi
     end subroutine rotate_angle_c_intfc
-
-    function maxwell_spectrum(T) bind(C, name='maxwell_spectrum_c') &
-         result(E_out)
-      use ISO_C_BINDING
-      implicit none
-      real(C_DOUBLE), value, intent(in) :: T
-      real(C_DOUBLE) :: E_out
-    end function maxwell_spectrum
-
-    function watt_spectrum(a, b) bind(C, name='watt_spectrum_c') &
-         result(E_out)
-      use ISO_C_BINDING
-      implicit none
-      real(C_DOUBLE), value, intent(in) :: a
-      real(C_DOUBLE), value, intent(in) :: b
-      real(C_DOUBLE) :: E_out
-    end function watt_spectrum
 
     subroutine broaden_wmp_polynomials(E, dopp, n, factors) &
            bind(C, name='broaden_wmp_polynomials_c')
@@ -156,20 +107,6 @@ module math
   end interface
 
 contains
-
-!===============================================================================
-! EVALUATE_LEGENDRE Find the value of f(x) given a set of Legendre coefficients
-! and the value of x
-!===============================================================================
-
-  pure function evaluate_legendre(data, x) result(val) bind(C)
-    real(C_DOUBLE), intent(in) :: data(:)
-    real(C_DOUBLE), intent(in) :: x
-    real(C_DOUBLE)             :: val
-
-    val = evaluate_legendre_c_intfc(size(data) - 1, data, x)
-
-  end function evaluate_legendre
 
 !===============================================================================
 ! ROTATE_ANGLE rotates direction cosines through a polar angle whose cosine is

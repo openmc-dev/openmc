@@ -17,6 +17,9 @@ module constants
   ! HDF5 data format
   integer, parameter :: HDF5_VERSION(2) = [1, 0]
 
+  ! WMP data format
+  integer, parameter :: WMP_VERSION(2) = [1, 1]
+
   ! Version numbers for binary files
   integer, parameter :: VERSION_STATEPOINT(2)       = [17, 0]
   integer, parameter :: VERSION_PARTICLE_RESTART(2) = [2, 0]
@@ -25,7 +28,6 @@ module constants
   integer, parameter :: VERSION_VOLUME(2)           = [1, 0]
   integer, parameter :: VERSION_VOXEL(2)            = [1, 0]
   integer, parameter :: VERSION_MGXS_LIBRARY(2)     = [1, 0]
-  character(10), parameter :: VERSION_MULTIPOLE     = "v1.0"
 
   ! ============================================================================
   ! ADJUSTABLE PARAMETERS

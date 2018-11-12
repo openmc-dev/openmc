@@ -5,13 +5,14 @@
 #include <iomanip>  // for setw
 #include <iostream>
 #include <sstream>
+#include <ctime>
 
 #include "openmc/cell.h"
 #include "openmc/geometry.h"
 #include "openmc/message_passing.h"
 #include "openmc/capi.h"
 #include "openmc/settings.h"
-
+#include "openmc/plot.h"
 
 namespace openmc {
 
@@ -35,13 +36,97 @@ header(const char* msg, int level) {
 
   // Print header based on verbosity level.
   if (settings::verbosity >= level) {
-    std::cout << out.str() << std::endl << std::endl;
+    std::cout << out.str() << "\n\n";
   }
 }
 
+std::string time_stamp()
+{
+  int base_year = 1990;
+  std::stringstream ts;
+  std::time_t t = std::time(0);   // get time now
+  std::tm* now = std::localtime(&t);
+  ts << now->tm_year + base_year << "-" << now->tm_mon
+     << "-" << now->tm_mday << " " << now->tm_hour
+     << ":" << now->tm_min << ":" << now->tm_sec;
+  return ts.str();
+}
+  
 //==============================================================================
 
-extern "C" void
+//===============================================================================
+// PRINT_PLOT displays selected options for plotting
+//===============================================================================
+
+void print_plot() {
+
+  header("PLOTTING SUMMARY", 5);
+
+  for (auto pl : plots) {
+    // Plot id
+    std::cout << "Plot ID: " << pl.id_ << "\n";
+    // Plot filename
+    std::cout << "Plot file: " << pl.path_plot_ << "\n";
+    // Plot level
+    std::cout << "Universe depth: " << pl.level_ << "\n";
+
+    // Plot type
+    if (PlotType::slice == pl.type_) {
+      std::cout << "Plot Type: Slice" << "\n";
+    } else if (PlotType::voxel == pl.type_) {
+      std::cout << "Plot Type: Voxel" << "\n";      
+    }
+
+    // Plot parameters
+    std::cout << "Origin: " << pl.origin_[0] << " "
+              << pl.origin_[1] << " "
+              << pl.origin_[2] << "\n";
+
+    if (PlotType::slice == pl.type_) {
+      std::cout << std::setprecision(4)
+                << "Width: "
+                << pl.width_[0] << " "
+                << pl.width_[1] << "\n";
+    } else if (PlotType::voxel == pl.type_) {
+      std::cout << std::setprecision(4)
+                << "Width: "
+                << pl.width_[0] << " "
+                << pl.width_[1] << " "
+                << pl.width_[2] << "\n";
+    }
+
+    if (PlotColorBy::cells == pl.color_by_) {
+      std::cout << "Coloring: Cells" << "\n";
+    } else if (PlotColorBy::mats == pl.color_by_) {
+      std::cout << "Coloring: Materials" << "\n";      
+    }
+    
+    if (PlotType::slice == pl.type_) {
+      switch(pl.basis_) {
+      case PlotBasis::xy:
+        std::cout <<  "Basis: XY" << "\n";
+        break;
+      case PlotBasis::xz:
+        std::cout <<  "Basis: XZ" << "\n";
+        break;
+      case PlotBasis::yz:
+        std::cout <<  "Basis: YZ" << "\n";
+        break;
+      }
+      std::cout << "Pixels: " << pl.pixels_[0] << " "
+                << pl.pixels_[1] << " " << "\n";
+    } else if (PlotType::voxel == pl.type_) {
+      std::cout << "Voxels: " << pl.pixels_[0] << " "
+                << pl.pixels_[1] << " "
+                << pl.pixels_[2] << "\n";
+    }
+
+    std::cout << "\n";
+    
+  }
+}
+  
+void
 print_overlap_check() {
 #ifdef OPENMC_MPI
   std::vector<int64_t> temp(overlap_check_count);

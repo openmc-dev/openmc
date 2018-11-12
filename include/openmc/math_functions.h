@@ -22,7 +22,7 @@ namespace openmc {
 //! @return The requested percentile
 //==============================================================================
 
-extern "C" double normal_percentile_c(double p);
+extern "C" double normal_percentile(double p);
 
 //==============================================================================
 //! Calculate the percentile of the Student's t distribution with a specified
@@ -58,7 +58,7 @@ extern "C" void calc_pn_c(int n, double x, double pnx[]);
 //!   evaluated at x
 //==============================================================================
 
-extern "C" double evaluate_legendre_c(int n, const double data[], double x);
+extern "C" double evaluate_legendre(int n, const double data[], double x);
 
 //==============================================================================
 //! Calculate the n-th order real spherical harmonics for a given angle (in
@@ -90,7 +90,7 @@ extern "C" void calc_rn_c(int n, const double uvw[3], double rn[]);
 //!   evaluated at rho and phi.
 //==============================================================================
 
-extern "C" void calc_zn_c(int n, double rho, double phi, double zn[]);
+extern "C" void calc_zn(int n, double rho, double phi, double zn[]);
 
 //==============================================================================
 //! Calculate only the even radial components of n-th order modified Zernike
@@ -113,7 +113,7 @@ extern "C" void calc_zn_c(int n, double rho, double phi, double zn[]);
 //!   evaluated at rho and phi when m = 0.
 //==============================================================================
 
-extern "C" void calc_zn_rad_c(int n, double rho, double zn_rad[]);
+extern "C" void calc_zn_rad(int n, double rho, double zn_rad[]);
 
 //==============================================================================
 //! Rotate the direction cosines through a polar angle whose cosine is mu and
@@ -144,7 +144,7 @@ Direction rotate_angle(Direction u, double mu, double* phi);
 //! @result The sampled outgoing energy
 //==============================================================================
 
-extern "C" double maxwell_spectrum_c(double T);
+extern "C" double maxwell_spectrum(double T);
 
 //==============================================================================
 //! Samples an energy from a Watt energy-dependent fission distribution.
@@ -159,7 +159,7 @@ extern "C" double maxwell_spectrum_c(double T);
 //! @result The sampled outgoing energy
 //==============================================================================
 
-extern "C" double watt_spectrum_c(double a, double b);
+extern "C" double watt_spectrum(double a, double b);
 
 //==============================================================================
 //! Doppler broadens the windowed multipole curvefit.

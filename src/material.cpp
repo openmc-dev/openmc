@@ -23,7 +23,7 @@ std::unordered_map<int32_t, int32_t> material_map;
 Material::Material(pugi::xml_node node)
 {
   if (check_for_node(node, "id")) {
-    id = std::stoi(get_node_value(node, "id"));
+    id_ = std::stoi(get_node_value(node, "id"));
   } else {
     fatal_error("Must specify id of material in materials XML file.");
   }
@@ -52,7 +52,7 @@ read_materials(pugi::xml_node* node)
 
   // Populate the material map.
   for (int i = 0; i < materials.size(); i++) {
-    int32_t mid = materials[i]->id;
+    int32_t mid = materials[i]->id_;
     auto search = material_map.find(mid);
     if (search == material_map.end()) {
       material_map[mid] = i;
@@ -78,7 +78,7 @@ openmc_material_get_volume(int32_t index, double* volume)
       return 0;
     } else {
       std::stringstream msg;
-      msg << "Volume for material with ID=" << m->id << " not set.";
+      msg << "Volume for material with ID=" << m->id_ << " not set.";
       set_errmsg(msg);
       return OPENMC_E_UNASSIGNED;
     }
@@ -113,13 +113,20 @@ openmc_material_set_volume(int32_t index, double volume)
 extern "C" {
   Material* material_pointer(int32_t indx) {return materials[indx];}
 
-  int32_t material_id(Material* mat) {return mat->id;}
+  int32_t material_id(Material* mat) {return mat->id_;}
 
   void material_set_id(Material* mat, int32_t id, int32_t index)
   {
-    mat->id = id;
+    mat->id_ = id;
     //TODO: off-by-one
     material_map[id] = index - 1;
+  }
+
+  bool material_fissionable(Material* mat) {return mat->fissionable;}
+
+  void material_set_fissionable(Material* mat, bool fissionable)
+  {
+    mat->fissionable = fissionable;
   }
 
   void extend_materials_c(int32_t n)

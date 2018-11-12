@@ -1954,7 +1954,7 @@ class CMFDRun(object):
         s_o = np.zeros((n,))
 
         # Set initial guess
-        k_n = openmc.capi.keff_temp()[0]
+        k_n = openmc.capi.keff()[0]
         k_o = k_n
         dw = self._cmfd_shift
         k_s = k_o + dw
@@ -2306,7 +2306,7 @@ class CMFDRun(object):
         num_accel = self._mat_dim
 
         # Get openmc k-effective
-        keff = openmc.capi.keff_temp()[0]
+        keff = openmc.capi.keff()[0]
 
         # Define leakage in each mesh cell and energy group
         leakage = ((self._current[:,:,:,_CURRENTS['out_right'],:] - \

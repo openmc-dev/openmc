@@ -90,7 +90,8 @@ contains
         end if
       end do NUCLIDE_LOOP
 
-      mat % fissionable = query_fissionable_c(mat % n_nuclides, mat % nuclide)
+      call mat % set_fissionable( &
+           logical(query_fissionable_c(mat % n_nuclides, mat % nuclide)))
 
     end do MATERIAL_LOOP
 
@@ -125,13 +126,9 @@ contains
 
       name = trim(mat % name) // C_NULL_CHAR
 
-      ! Do not read materials which we do not actually use in the problem to
-      ! reduce storage
-      if (allocated(kTs(i_mat) % data)) then
-        call create_macro_xs_c(name, mat % n_nuclides, mat % nuclide, &
-             kTs(i_mat) % size(), kTs(i_mat) % data, mat % atom_density, &
-             temperature_tolerance, temperature_method)
-      end if
+      call create_macro_xs_c(name, mat % n_nuclides, mat % nuclide, &
+           kTs(i_mat) % size(), kTs(i_mat) % data, mat % atom_density, &
+           temperature_tolerance, temperature_method)
     end do
 
   end subroutine create_macro_xs

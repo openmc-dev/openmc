@@ -18,7 +18,6 @@ option(profile  "Compile with profiling flags"                   OFF)
 option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
-option(mpif08   "Use Fortran 2008 MPI interface"                 OFF)
 option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
 
 # Maximum number of nested coordinates levels
@@ -132,7 +131,7 @@ elseif(CMAKE_Fortran_COMPILER_ID STREQUAL Intel)
   # Intel compiler options
   list(APPEND f90flags -fpp -std08 -assume byterecl -traceback)
   if(debug)
-    list(APPEND f90flags -g -warn -ftrapuv -fp-stack-check
+    list(APPEND f90flags -g -warn -fp-stack-check
       "-check all" -fpe0 -O0)
     list(APPEND ldflags -g)
   endif()
@@ -345,10 +344,6 @@ add_library(libopenmc SHARED
   src/photon_physics.F90
   src/physics_common.F90
   src/physics.F90
-  src/physics_mg.F90
-  src/plot.F90
-  src/plot_header.F90
-  src/progress_header.F90
   src/pugixml/pugixml_f.F90
   src/random_lcg.F90
   src/reaction_header.F90
@@ -375,26 +370,14 @@ add_library(libopenmc SHARED
   src/tallies/tally_derivative_header.F90
   src/tallies/tally_filter.F90
   src/tallies/tally_filter_header.F90
-  src/tallies/tally_filter_azimuthal.F90
-  src/tallies/tally_filter_cell.F90
-  src/tallies/tally_filter_cellborn.F90
-  src/tallies/tally_filter_cellfrom.F90
   src/tallies/tally_filter_delayedgroup.F90
   src/tallies/tally_filter_distribcell.F90
   src/tallies/tally_filter_energy.F90
-  src/tallies/tally_filter_energyfunc.F90
   src/tallies/tally_filter_legendre.F90
-  src/tallies/tally_filter_material.F90
   src/tallies/tally_filter_mesh.F90
   src/tallies/tally_filter_meshsurface.F90
-  src/tallies/tally_filter_mu.F90
   src/tallies/tally_filter_particle.F90
-  src/tallies/tally_filter_polar.F90
   src/tallies/tally_filter_sph_harm.F90
-  src/tallies/tally_filter_sptl_legendre.F90
-  src/tallies/tally_filter_surface.F90
-  src/tallies/tally_filter_universe.F90
-  src/tallies/tally_filter_zernike.F90
   src/tallies/tally_header.F90
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90
@@ -408,6 +391,7 @@ add_library(libopenmc SHARED
   src/distribution_spatial.cpp
   src/eigenvalue.cpp
   src/endf.cpp
+  src/error.cpp
   src/initialize.cpp
   src/finalize.cpp
   src/geometry.cpp
@@ -423,8 +407,11 @@ add_library(libopenmc SHARED
   src/nuclide.cpp
   src/output.cpp
   src/particle.cpp
+  src/physics_common.cpp
+  src/physics_mg.cpp
   src/plot.cpp
   src/position.cpp
+  src/progress_bar.cpp
   src/pugixml/pugixml_c.cpp
   src/random_lcg.cpp
   src/reaction.cpp
@@ -441,9 +428,33 @@ add_library(libopenmc SHARED
   src/string_functions.cpp
   src/summary.cpp
   src/surface.cpp
+  src/tallies/filter.cpp
+  src/tallies/filter_azimuthal.cpp
+  src/tallies/filter_cellborn.cpp
+  src/tallies/filter_cellfrom.cpp
+  src/tallies/filter_cell.cpp
+  src/tallies/filter_delayedgroup.cpp
+  src/tallies/filter_distribcell.cpp
+  src/tallies/filter_energyfunc.cpp
+  src/tallies/filter_energy.cpp
+  src/tallies/filter_legendre.cpp
+  src/tallies/filter_material.cpp
+  src/tallies/filter_mesh.cpp
+  src/tallies/filter_meshsurface.cpp
+  src/tallies/filter_mu.cpp
+  src/tallies/filter_particle.cpp
+  src/tallies/filter_polar.cpp
+  src/tallies/filter_sph_harm.cpp
+  src/tallies/filter_sptl_legendre.cpp
+  src/tallies/filter_surface.cpp
+  src/tallies/filter_universe.cpp
+  src/tallies/filter_zernike.cpp
+  src/tallies/tally.cpp
+  src/timer.cpp
   src/thermal.cpp
   src/xml_interface.cpp
-  src/xsdata.cpp)
+  src/xsdata.cpp
+  src/tallies/tally.cpp)
 
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc
@@ -470,9 +481,6 @@ if (HDF5_IS_PARALLEL)
 endif()
 if (MPI_ENABLED)
   target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
-  if (mpif08)
-    target_compile_definitions(libopenmc PRIVATE -DOPENMC_MPIF08)
-  endif()
 endif()
 
 # Set git SHA1 hash as a compile definition

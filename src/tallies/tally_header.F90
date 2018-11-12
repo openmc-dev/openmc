@@ -136,10 +136,10 @@ module tally_header
   ! global tally, it can cause a higher cache miss rate due to
   ! invalidation. Thus, we use threadprivate variables to accumulate global
   ! tallies and then reduce at the end of a generation.
-  real(C_DOUBLE), public :: global_tally_collision   = ZERO
-  real(C_DOUBLE), public :: global_tally_absorption  = ZERO
-  real(C_DOUBLE), public :: global_tally_tracklength = ZERO
-  real(C_DOUBLE), public :: global_tally_leakage     = ZERO
+  real(C_DOUBLE), public, bind(C) :: global_tally_collision
+  real(C_DOUBLE), public, bind(C) :: global_tally_absorption
+  real(C_DOUBLE), public, bind(C) :: global_tally_tracklength
+  real(C_DOUBLE), public, bind(C) :: global_tally_leakage
 !$omp threadprivate(global_tally_collision, global_tally_absorption, &
 !$omp&              global_tally_tracklength, global_tally_leakage)
 
@@ -153,7 +153,7 @@ module tally_header
 
   ! Normalization for statistics
   integer(C_INT32_T), public, bind(C) :: n_realizations = 0 ! # of independent realizations
-  real(8), public :: total_weight       ! total starting particle weight in realization
+  real(C_DOUBLE), public, bind(C) :: total_weight       ! total starting particle weight in realization
 
 contains
 
@@ -344,7 +344,7 @@ contains
         this % estimator = ESTIMATOR_ANALOG
       type is (SphericalHarmonicsFilter)
         j = FILTER_SPH_HARMONICS
-        if (filt % cosine == COSINE_SCATTER) then
+        if (filt % cosine() == COSINE_SCATTER) then
           this % estimator = ESTIMATOR_ANALOG
         end if
       type is (SpatialLegendreFilter)
@@ -392,7 +392,7 @@ contains
 ! tallies.xml file.
 !===============================================================================
 
-  subroutine configure_tallies()
+  subroutine configure_tallies() bind(C)
 
     integer :: i
 
@@ -413,6 +413,13 @@ contains
 !===============================================================================
 
   subroutine free_memory_tally()
+    interface
+      subroutine free_memory_tally_c() bind(C)
+      end subroutine free_memory_tally_c
+    end interface
+
+    call free_memory_tally_c()
+
     n_tallies = 0
     if (allocated(tallies)) deallocate(tallies)
     call tally_dict % clear()
@@ -681,14 +688,19 @@ contains
     ! allows a user to obtain in-memory tally results from Python directly.
     integer(C_INT32_T), intent(in), value :: index
     type(C_PTR),        intent(out) :: ptr
-    integer(C_INT),     intent(out) :: shape_(3)
+    integer(C_SIZE_T),  intent(out) :: shape_(3)
     integer(C_INT) :: err
 
     if (index >= 1 .and. index <= size(tallies)) then
       associate (t => tallies(index) % obj)
         if (allocated(t % results)) then
           ptr = C_LOC(t % results(1,1,1))
-          shape_(:) = shape(t % results)
+
+          ! Note that shape is reversed since it is assumed to be used from
+          ! C/C++ code
+          shape_(1) = size(t % results, 3)
+          shape_(2) = size(t % results, 2)
+          shape_(3) = size(t % results, 1)
           err = 0
         else
           err = E_ALLOCATE

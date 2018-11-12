@@ -1,8 +1,55 @@
 module timer_header
 
+  use, intrinsic :: ISO_C_BINDING
+
   use constants, only: ZERO
 
   implicit none
+
+  interface
+    function time_active_elapsed() result(t) bind(C)
+      import C_DOUBLE
+      real(C_DOUBLE) :: t
+    end function
+    function time_bank_elapsed() result(t) bind(C)
+      import C_DOUBLE
+      real(C_DOUBLE) :: t
+    end function
+    function time_bank_sample_elapsed() result(t) bind(C)
+      import C_DOUBLE
+      real(C_DOUBLE) :: t
+    end function
+    function time_bank_sendrecv_elapsed() result(t) bind(C)
+      import C_DOUBLE
+      real(C_DOUBLE) :: t
+    end function
+    function time_finalize_elapsed() result(t) bind(C)
+      import C_DOUBLE
+      real(C_DOUBLE) :: t
+    end function
+    function time_inactive_elapsed() result(t) bind(C)
+      import C_DOUBLE
+      real(C_DOUBLE) :: t
+    end function
+    function time_initialize_elapsed() result(t) bind(C)
+      import C_DOUBLE
+      real(C_DOUBLE) :: t
+    end function
+    function time_tallies_elapsed() result(t) bind(C)
+      import C_DOUBLE
+      real(C_DOUBLE) :: t
+    end function
+    function time_total_elapsed() result(t) bind(C)
+      import C_DOUBLE
+      real(C_DOUBLE) :: t
+    end function
+    function time_transport_elapsed() result(t) bind(C)
+      import C_DOUBLE
+      real(C_DOUBLE) :: t
+    end function
+    subroutine reset_timers() bind(C)
+    end subroutine
+  end interface
 
 !===============================================================================
 ! TIMER represents a timer that can be started and stopped to measure how long
@@ -25,18 +72,7 @@ module timer_header
   ! ============================================================================
   ! TIMING VARIABLES
 
-  type(Timer) :: time_total         ! timer for total run
-  type(Timer) :: time_initialize    ! timer for initialization
   type(Timer) :: time_read_xs       ! timer for reading cross sections
-  type(Timer) :: time_unionize      ! timer for material xs-energy grid union
-  type(Timer) :: time_bank          ! timer for fission bank synchronization
-  type(Timer) :: time_bank_sample   ! timer for fission bank sampling
-  type(Timer) :: time_bank_sendrecv ! timer for fission bank SEND/RECV
-  type(Timer) :: time_tallies       ! timer for accumulate tallies
-  type(Timer) :: time_inactive      ! timer for inactive batches
-  type(Timer) :: time_active        ! timer for active batches
-  type(Timer) :: time_transport     ! timer for transport only
-  type(Timer) :: time_finalize      ! timer for finalization
 
 contains
 
@@ -100,5 +136,13 @@ contains
     self % start_counts = 0
     self % elapsed      = ZERO
   end subroutine timer_reset
+
+!===============================================================================
+! RESET_TIMERS resets timers on the Fortran side
+!===============================================================================
+
+  subroutine reset_timers_f() bind(C)
+    call time_read_xs % reset()
+  end subroutine
 
 end module timer_header

@@ -22,12 +22,12 @@ module input_xml
   use mgxs_data,        only: create_macro_xs, read_mgxs
   use mgxs_interface
   use nuclide_header
-  use output,           only: title, header, print_plot
+  use multipole_header
+  use output,           only: title, header
   use photon_header
-  use plot_header
   use random_lcg,       only: prn
   use surface_header
-  use set_header,       only: SetChar
+  use set_header,       only: SetChar, SetInt
   use settings
   use stl_vector,       only: VectorInt, VectorReal, VectorChar
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
@@ -59,12 +59,8 @@ module input_xml
       integer(C_INT32_T), intent(in), value :: univ_indx
     end subroutine count_cell_instances
 
-    subroutine prepare_distribcell_c(cell_list, n) &
-         bind(C, name="prepare_distribcell")
-      import C_INT32_T, C_INT
-      integer(C_INT),     intent(in), value :: n
-      integer(C_INT32_T), intent(in)        :: cell_list(n)
-    end subroutine prepare_distribcell_c
+    subroutine prepare_distribcell() bind(C)
+    end subroutine prepare_distribcell
 
     subroutine read_surfaces(node_ptr) bind(C)
       import C_PTR
@@ -100,6 +96,14 @@ module input_xml
       integer(C_INT)                        :: n
     end function maximum_levels
 
+    subroutine read_plots(node_ptr) bind(C)
+      import C_PTR
+      type(C_PTR) :: node_ptr
+    end subroutine read_plots
+
+    subroutine print_plot() bind(C)
+    end subroutine print_plot
+
     subroutine set_particle_energy_bounds(particle, E_min, E_max) bind(C)
       import C_INT, C_DOUBLE
       integer(C_INT), value :: particle
@@ -115,7 +119,7 @@ contains
 ! geometry, materials, and tallies.
 !===============================================================================
 
-  subroutine read_input_xml()
+  subroutine read_input_xml() bind(C)
 
     type(VectorReal), allocatable :: nuc_temps(:) ! List of T to read for each nuclide
     type(VectorReal), allocatable :: sab_temps(:) ! List of T to read for each S(a,b)
@@ -210,123 +214,13 @@ contains
 
     integer :: i
     integer :: n
-    integer, allocatable :: temp_int_array(:)
-    integer :: n_tracks
     type(XMLNode) :: root
-    type(XMLNode) :: node_sp
     type(XMLNode) :: node_res_scat
     type(XMLNode) :: node_vol
     type(XMLNode), allocatable :: node_vol_list(:)
 
     ! Get proper XMLNode type given pointer
     root % ptr = root_ptr
-
-    if (run_mode == MODE_EIGENVALUE) then
-      ! Preallocate space for keff and entropy by generation
-      call k_generation % reserve(n_max_batches*gen_per_batch)
-    end if
-
-    ! Particle tracks
-    if (check_for_node(root, "track")) then
-      ! Make sure that there are three values per particle
-      n_tracks = node_word_count(root, "track")
-      if (mod(n_tracks, 3) /= 0) then
-        call fatal_error("Number of integers specified in 'track' is not &
-             &divisible by 3.  Please provide 3 integers per particle to be &
-             &tracked.")
-      end if
-
-      ! Allocate space and get list of tracks
-      allocate(temp_int_array(n_tracks))
-      call get_node_array(root, "track", temp_int_array)
-
-      ! Reshape into track_identifiers
-      allocate(track_identifiers(3, n_tracks/3))
-      track_identifiers = reshape(temp_int_array, [3, n_tracks/3])
-    end if
-
-    ! Check if the user has specified to write state points
-    if (check_for_node(root, "state_point")) then
-
-      ! Get pointer to state_point node
-      node_sp = root % child("state_point")
-
-      ! Determine number of batches at which to store state points
-      if (check_for_node(node_sp, "batches")) then
-        n_state_points = node_word_count(node_sp, "batches")
-      else
-        n_state_points = 0
-      end if
-
-      if (n_state_points > 0) then
-        ! User gave specific batches to write state points
-        allocate(temp_int_array(n_state_points))
-        call get_node_array(node_sp, "batches", temp_int_array)
-        do i = 1, n_state_points
-          call statepoint_batch % add(temp_int_array(i))
-        end do
-        deallocate(temp_int_array)
-      else
-        ! If neither were specified, write state point at last batch
-        n_state_points = 1
-        call statepoint_batch % add(n_batches)
-      end if
-    else
-      ! If no <state_point> tag was present, by default write state point at
-      ! last batch only
-      n_state_points = 1
-      call statepoint_batch % add(n_batches)
-    end if
-
-    ! Check if the user has specified to write source points
-    if (check_for_node(root, "source_point")) then
-
-      ! Get pointer to source_point node
-      node_sp = root % child("source_point")
-
-      ! Determine number of batches at which to store source points
-      if (check_for_node(node_sp, "batches")) then
-        n_source_points = node_word_count(node_sp, "batches")
-      else
-        n_source_points = 0
-      end if
-
-      if (n_source_points > 0) then
-        ! User gave specific batches to write source points
-        allocate(temp_int_array(n_source_points))
-        call get_node_array(node_sp, "batches", temp_int_array)
-        do i = 1, n_source_points
-          call sourcepoint_batch % add(temp_int_array(i))
-        end do
-        deallocate(temp_int_array)
-      else
-        ! If neither were specified, write source points with state points
-        n_source_points = n_state_points
-        do i = 1, n_state_points
-          call sourcepoint_batch % add(statepoint_batch % get_item(i))
-        end do
-      end if
-    else
-      ! If no <source_point> tag was present, by default we keep source bank in
-      ! statepoint file and write it out at statepoints intervals
-      n_source_points = n_state_points
-      do i = 1, n_state_points
-        call sourcepoint_batch % add(statepoint_batch % get_item(i))
-      end do
-    end if
-
-    ! If source is not seperate and is to be written out in the statepoint file,
-    ! make sure that the sourcepoint batch numbers are contained in the
-    ! statepoint list
-    if (.not. source_separate) then
-      do i = 1, n_source_points
-        if (.not. statepoint_batch % contains(sourcepoint_batch % &
-             get_item(i))) then
-          call fatal_error('Sourcepoint batches are not a subset&
-               & of statepoint batches.')
-        end if
-      end do
-    end if
 
     ! Resonance scattering parameters
     if (check_for_node(root, "resonance_scattering")) then
@@ -363,7 +257,7 @@ contains
 
   subroutine read_geometry_dagmc()
 
-    integer :: i, j
+    integer :: i
     integer :: univ_id
     integer :: n_cells_in_univ
     logical :: file_exists
@@ -395,7 +289,6 @@ contains
       if (.not. cells_in_univ_dict % has(univ_id)) then
         n_universes = n_universes + 1
         n_cells_in_univ = 1
-        call universe_dict % set(univ_id, n_universes)
         call univ_ids % push_back(univ_id)
       else
         n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
@@ -473,9 +366,6 @@ contains
       surfaces(i) % ptr = surface_pointer(i - 1);
 
       if (surfaces(i) % bc() /= BC_TRANSMIT) boundary_exists = .true.
-
-      ! Add surface to dictionary
-      call surface_dict % set(surfaces(i) % id(), i)
     end do
 
     ! Check to make sure a boundary condition was applied to at least one
@@ -565,7 +455,6 @@ contains
       if (.not. cells_in_univ_dict % has(univ_id)) then
         n_universes = n_universes + 1
         n_cells_in_univ = 1
-        call universe_dict % set(univ_id, n_universes - 1)
         call univ_ids % push_back(univ_id)
       else
         n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
@@ -634,8 +523,6 @@ contains
 
     do i = 1, n_surfaces
       surfaces(i) % ptr = surface_pointer(i - 1);
-      ! Add surface to dictionary
-      call surface_dict % set(surfaces(i) % id(), i)
     end do
 
   end subroutine allocate_surfaces
@@ -1332,7 +1219,11 @@ contains
 
     ! Read derivative attributes.
     do i = 1, size(node_deriv_list)
+!$omp parallel
+!$omp critical (ReadTallyDeriv)
       call tally_derivs(i) % from_xml(node_deriv_list(i))
+!$omp end critical (ReadTallyDeriv)
+!$omp end parallel
 
       ! Update tally derivative dictionary
       call tally_deriv_dict % set(tally_derivs(i) % id, i)
@@ -2146,26 +2037,10 @@ contains
 
   subroutine read_plots_xml()
 
-    integer :: i, j
-    integer :: n_cols, col_id, n_comp, n_masks, n_meshlines
-    integer :: meshid
-    integer(C_INT) :: err, idx
-    integer, allocatable :: iarray(:)
     logical :: file_exists              ! does plots.xml file exist?
     character(MAX_LINE_LEN) :: filename ! absolute path to plots.xml
-    character(MAX_LINE_LEN) :: temp_str
-    character(MAX_WORD_LEN) :: meshtype
-    type(ObjectPlot), pointer :: pl => null()
     type(XMLDocument) :: doc
     type(XMLNode) :: root
-    type(XMLNode) :: node_plot
-    type(XMLNode) :: node_col
-    type(XMLNode) :: node_mask
-    type(XMLNode) :: node_meshlines
-    type(XMLNode), allocatable :: node_plot_list(:)
-    type(XMLNode), allocatable :: node_col_list(:)
-    type(XMLNode), allocatable :: node_mask_list(:)
-    type(XMLNode), allocatable :: node_meshline_list(:)
 
     ! Check if plots.xml exists
     filename = trim(path_input) // "plots.xml"
@@ -2182,425 +2057,7 @@ contains
     call doc % load_file(filename)
     root = doc % document_element()
 
-    ! Get list pointer to XML <plot>
-    call get_node_list(root, "plot", node_plot_list)
-
-    ! Allocate plots array
-    n_plots = size(node_plot_list)
-    allocate(plots(n_plots))
-
-    READ_PLOTS: do i = 1, n_plots
-      pl => plots(i)
-
-      ! Get pointer to plot XML node
-      node_plot = node_plot_list(i)
-
-      ! Copy data into plots
-      if (check_for_node(node_plot, "id")) then
-        call get_node_value(node_plot, "id", pl % id)
-      else
-        call fatal_error("Must specify plot id in plots XML file.")
-      end if
-
-      ! Check to make sure 'id' hasn't been used
-      if (plot_dict % has(pl % id)) then
-        call fatal_error("Two or more plots use the same unique ID: " &
-             // to_str(pl % id))
-      end if
-
-      ! Copy plot type
-      temp_str = 'slice'
-      if (check_for_node(node_plot, "type")) &
-           call get_node_value(node_plot, "type", temp_str)
-      temp_str = to_lower(temp_str)
-      select case (trim(temp_str))
-      case ("slice")
-        pl % type = PLOT_TYPE_SLICE
-      case ("voxel")
-        pl % type = PLOT_TYPE_VOXEL
-      case default
-        call fatal_error("Unsupported plot type '" // trim(temp_str) &
-             // "' in plot " // trim(to_str(pl % id)))
-      end select
-
-      ! Set output file path
-      filename = "plot_" // trim(to_str(pl % id))
-      if (check_for_node(node_plot, "filename")) &
-           call get_node_value(node_plot, "filename", filename)
-      select case (pl % type)
-      case (PLOT_TYPE_SLICE)
-        pl % path_plot = trim(path_input) // trim(filename) // ".ppm"
-      case (PLOT_TYPE_VOXEL)
-        pl % path_plot = trim(path_input) // trim(filename) // ".h5"
-      end select
-
-      ! Copy plot pixel size
-      if (pl % type == PLOT_TYPE_SLICE) then
-        if (node_word_count(node_plot, "pixels") == 2) then
-          call get_node_array(node_plot, "pixels", pl % pixels(1:2))
-        else
-          call fatal_error("<pixels> must be length 2 in slice plot " &
-               // trim(to_str(pl % id)))
-        end if
-      else if (pl % type == PLOT_TYPE_VOXEL) then
-        if (node_word_count(node_plot, "pixels") == 3) then
-          call get_node_array(node_plot, "pixels", pl % pixels(1:3))
-        else
-          call fatal_error("<pixels> must be length 3 in voxel plot " &
-               // trim(to_str(pl % id)))
-        end if
-      end if
-
-      ! Copy plot background color
-      if (check_for_node(node_plot, "background")) then
-        if (pl % type == PLOT_TYPE_VOXEL) then
-          if (master) call warning("Background color ignored in voxel plot " &
-               // trim(to_str(pl % id)))
-        end if
-        if (node_word_count(node_plot, "background") == 3) then
-          call get_node_array(node_plot, "background", pl % not_found % rgb)
-        else
-          call fatal_error("Bad background RGB in plot " &
-               // trim(to_str(pl % id)))
-        end if
-      else
-        pl % not_found % rgb = (/ 255, 255, 255 /)
-      end if
-
-      ! Copy plot basis
-      if (pl % type == PLOT_TYPE_SLICE) then
-        temp_str = 'xy'
-        if (check_for_node(node_plot, "basis")) &
-             call get_node_value(node_plot, "basis", temp_str)
-        temp_str = to_lower(temp_str)
-        select case (trim(temp_str))
-        case ("xy")
-          pl % basis = PLOT_BASIS_XY
-        case ("xz")
-          pl % basis = PLOT_BASIS_XZ
-        case ("yz")
-          pl % basis = PLOT_BASIS_YZ
-        case default
-          call fatal_error("Unsupported plot basis '" // trim(temp_str) &
-               // "' in plot " // trim(to_str(pl % id)))
-        end select
-      end if
-
-      ! Copy plotting origin
-      if (node_word_count(node_plot, "origin") == 3) then
-        call get_node_array(node_plot, "origin", pl % origin)
-      else
-        call fatal_error("Origin must be length 3 in plot " &
-             // trim(to_str(pl % id)))
-      end if
-
-      ! Copy plotting width
-      if (pl % type == PLOT_TYPE_SLICE) then
-        if (node_word_count(node_plot, "width") == 2) then
-          call get_node_array(node_plot, "width", pl % width(1:2))
-        else
-          call fatal_error("<width> must be length 2 in slice plot " &
-               // trim(to_str(pl % id)))
-        end if
-      else if (pl % type == PLOT_TYPE_VOXEL) then
-        if (node_word_count(node_plot, "width") == 3) then
-          call get_node_array(node_plot, "width", pl % width(1:3))
-        else
-          call fatal_error("<width> must be length 3 in voxel plot " &
-               // trim(to_str(pl % id)))
-        end if
-      end if
-
-      ! Copy plot cell universe level
-      if (check_for_node(node_plot, "level")) then
-        call get_node_value(node_plot, "level", pl % level)
-
-        if (pl % level < 0) then
-          call fatal_error("Bad universe level in plot " &
-               // trim(to_str(pl % id)))
-        end if
-      else
-        pl % level = PLOT_LEVEL_LOWEST
-      end if
-
-      ! Copy plot color type and initialize all colors randomly
-      temp_str = "cell"
-      if (check_for_node(node_plot, "color_by")) &
-           call get_node_value(node_plot, "color_by", temp_str)
-      temp_str = to_lower(temp_str)
-      select case (trim(temp_str))
-      case ("cell")
-
-        pl % color_by = PLOT_COLOR_CELLS
-        allocate(pl % colors(n_cells))
-        do j = 1, n_cells
-          pl % colors(j) % rgb(1) = int(prn()*255)
-          pl % colors(j) % rgb(2) = int(prn()*255)
-          pl % colors(j) % rgb(3) = int(prn()*255)
-        end do
-
-      case ("material")
-
-        pl % color_by = PLOT_COLOR_MATS
-        allocate(pl % colors(n_materials))
-        do j = 1, n_materials
-          pl % colors(j) % rgb(1) = int(prn()*255)
-          pl % colors(j) % rgb(2) = int(prn()*255)
-          pl % colors(j) % rgb(3) = int(prn()*255)
-        end do
-
-      case default
-        call fatal_error("Unsupported plot color type '" // trim(temp_str) &
-             // "' in plot " // trim(to_str(pl % id)))
-      end select
-
-      ! Get the number of <color> nodes and get a list of them
-      call get_node_list(node_plot, "color", node_col_list)
-      n_cols = size(node_col_list)
-
-      ! Copy user specified colors
-      if (n_cols /= 0) then
-
-        if (pl % type == PLOT_TYPE_VOXEL) then
-          if (master) call warning("Color specifications ignored in voxel &
-               &plot " // trim(to_str(pl % id)))
-        end if
-
-        do j = 1, n_cols
-
-          ! Get pointer to color spec XML node
-          node_col = node_col_list(j)
-
-          ! Check and make sure 3 values are specified for RGB
-          if (node_word_count(node_col, "rgb") /= 3) then
-            call fatal_error("Bad RGB in plot " &
-                 // trim(to_str(pl % id)))
-          end if
-
-          ! Ensure that there is an id for this color specification
-          if (check_for_node(node_col, "id")) then
-            call get_node_value(node_col, "id", col_id)
-          else
-            call fatal_error("Must specify id for color specification in &
-                 &plot " // trim(to_str(pl % id)))
-          end if
-
-          ! Add RGB
-          if (pl % color_by == PLOT_COLOR_CELLS) then
-
-            if (cell_dict % has(col_id)) then
-              col_id = cell_dict % get(col_id)
-              call get_node_array(node_col, "rgb", pl % colors(col_id) % rgb)
-            else
-              call fatal_error("Could not find cell " // trim(to_str(col_id)) &
-                   // " specified in plot " // trim(to_str(pl % id)))
-            end if
-
-          else if (pl % color_by == PLOT_COLOR_MATS) then
-
-            if (material_dict % has(col_id)) then
-              col_id = material_dict % get(col_id)
-              call get_node_array(node_col, "rgb", pl % colors(col_id) % rgb)
-            else
-              call fatal_error("Could not find material " &
-                   // trim(to_str(col_id)) // " specified in plot " &
-                   // trim(to_str(pl % id)))
-            end if
-
-          end if
-        end do
-      end if
-
-      ! Deal with meshlines
-      call get_node_list(node_plot, "meshlines", node_meshline_list)
-      n_meshlines = size(node_meshline_list)
-      if (n_meshlines /= 0) then
-
-        if (pl % type == PLOT_TYPE_VOXEL) then
-          call warning("Meshlines ignored in voxel plot " &
-               // trim(to_str(pl % id)))
-        end if
-
-        select case(n_meshlines)
-          case (0)
-            ! Skip if no meshlines are specified
-          case (1)
-
-            ! Get pointer to meshlines
-            node_meshlines = node_meshline_list(1)
-
-            ! Check mesh type
-            if (check_for_node(node_meshlines, "meshtype")) then
-              call get_node_value(node_meshlines, "meshtype", meshtype)
-            else
-              call fatal_error("Must specify a meshtype for meshlines &
-                   &specification in plot " // trim(to_str(pl % id)))
-            end if
-
-            ! Ensure that there is a linewidth for this meshlines specification
-            if (check_for_node(node_meshlines, "linewidth")) then
-              call get_node_value(node_meshlines, "linewidth", &
-                   pl % meshlines_width)
-            else
-              call fatal_error("Must specify a linewidth for meshlines &
-                   &specification in plot " // trim(to_str(pl % id)))
-            end if
-
-            ! Check for color
-            if (check_for_node(node_meshlines, "color")) then
-
-              ! Check and make sure 3 values are specified for RGB
-              if (node_word_count(node_meshlines, "color") /= 3) then
-                call fatal_error("Bad RGB for meshlines color in plot " &
-                     // trim(to_str(pl % id)))
-              end if
-
-              call get_node_array(node_meshlines, "color", &
-                   pl % meshlines_color % rgb)
-            else
-
-              pl % meshlines_color % rgb = (/ 0, 0, 0 /)
-
-            end if
-
-            ! Set mesh based on type
-            select case (trim(meshtype))
-            case ('ufs')
-
-              if (index_ufs_mesh < 0) then
-                call fatal_error("No UFS mesh for meshlines on plot " &
-                     // trim(to_str(pl % id)))
-              end if
-
-              pl % index_meshlines_mesh = index_ufs_mesh
-
-            case ('cmfd')
-
-              if (.not. cmfd_run) then
-                call fatal_error("Need CMFD run to plot CMFD mesh for &
-                     &meshlines on plot " // trim(to_str(pl % id)))
-              end if
-
-              pl % index_meshlines_mesh = index_cmfd_mesh
-
-            case ('entropy')
-
-              if (index_entropy_mesh < 0) then
-                call fatal_error("No entropy mesh for meshlines on plot " &
-                     // trim(to_str(pl % id)))
-              end if
-
-              pl % index_meshlines_mesh = index_entropy_mesh
-
-            case ('tally')
-
-              ! Ensure that there is a mesh id if the type is tally
-              if (check_for_node(node_meshlines, "id")) then
-                call get_node_value(node_meshlines, "id", meshid)
-              else
-                call fatal_error("Must specify a mesh id for meshlines tally &
-                     &mesh specification in plot " // trim(to_str(pl % id)))
-              end if
-
-              ! Check if the specified tally mesh exists
-              err = openmc_get_mesh_index(meshid, idx)
-              if (err /= 0) then
-                call fatal_error("Could not find mesh " &
-                     // trim(to_str(meshid)) // " specified in meshlines for &
-                     &plot " // trim(to_str(pl % id)))
-              end if
-              pl % index_meshlines_mesh = idx
-
-            case default
-              call fatal_error("Invalid type for meshlines on plot " &
-                    // trim(to_str(pl % id)) // ": " // trim(meshtype))
-            end select
-
-          case default
-            call fatal_error("Mutliple meshlines specified in plot " &
-                 // trim(to_str(pl % id)))
-        end select
-
-      end if
-
-      ! Deal with masks
-      call get_node_list(node_plot, "mask", node_mask_list)
-      n_masks = size(node_mask_list)
-      if (n_masks /= 0) then
-
-        if (pl % type == PLOT_TYPE_VOXEL) then
-          if (master) call warning("Mask ignored in voxel plot " &
-               // trim(to_str(pl % id)))
-        end if
-
-        select case(n_masks)
-          case default
-            call fatal_error("Mutliple masks specified in plot " &
-                 // trim(to_str(pl % id)))
-          case (1)
-
-            ! Get pointer to mask
-            node_mask = node_mask_list(1)
-
-            ! Determine how many components there are and allocate
-            n_comp = 0
-            n_comp = node_word_count(node_mask, "components")
-            if (n_comp == 0) then
-              call fatal_error("Missing <components> in mask of plot " &
-                   // trim(to_str(pl % id)))
-            end if
-            allocate(iarray(n_comp))
-            call get_node_array(node_mask, "components", iarray)
-
-            ! First we need to change the user-specified identifiers to indices
-            ! in the cell and material arrays
-            do j=1, n_comp
-              col_id = iarray(j)
-
-              if (pl % color_by == PLOT_COLOR_CELLS) then
-
-                if (cell_dict % has(col_id)) then
-                  iarray(j) = cell_dict % get(col_id)
-                else
-                  call fatal_error("Could not find cell " &
-                       // trim(to_str(col_id)) // " specified in the mask in &
-                       &plot " // trim(to_str(pl % id)))
-                end if
-
-              else if (pl % color_by == PLOT_COLOR_MATS) then
-
-                if (material_dict % has(col_id)) then
-                  iarray(j) = material_dict % get(col_id)
-                else
-                  call fatal_error("Could not find material " &
-                       // trim(to_str(col_id)) // " specified in the mask in &
-                       &plot " // trim(to_str(pl % id)))
-                end if
-
-              end if
-            end do
-
-            ! Alter colors based on mask information
-            do j = 1, size(pl % colors)
-              if (.not. any(j == iarray)) then
-                if (check_for_node(node_mask, "background")) then
-                  call get_node_array(node_mask, "background", pl % colors(j) % rgb)
-                else
-                  pl % colors(j) % rgb(:) = [255, 255, 255]
-                end if
-              end if
-            end do
-
-            deallocate(iarray)
-
-        end select
-
-      end if
-
-      ! Add plot to dictionary
-      call plot_dict % set(pl % id, i)
-
-    end do READ_PLOTS
+    call read_plots(root % ptr)
 
     ! Close plots XML file
     call doc % clear()
@@ -2724,6 +2181,13 @@ contains
     integer(HID_T) :: file_id
     character(len=MAX_WORD_LEN), allocatable :: names(:)
 
+    interface
+      subroutine read_mg_cross_sections_header_c(file_id) bind(C)
+        import HID_T
+        integer(HID_T), value :: file_id
+      end subroutine
+    end interface
+
     ! Check if MGXS Library exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
     if (.not. file_exists) then
@@ -2770,6 +2234,9 @@ contains
     do i = 1, num_energy_groups
       energy_bin_avg(i) = HALF * (energy_bins(i) + energy_bins(i + 1))
     end do
+
+    ! Set up energy bins on C++ side
+    call read_mg_cross_sections_header_c(file_id)
 
     ! Get the minimum and maximum energies
     energy_min(NEUTRON) = energy_bins(num_energy_groups + 1)
@@ -2986,7 +2453,7 @@ contains
 
         ! Check if material is fissionable
         if (nuclides(materials(i) % nuclide(j)) % fissionable) then
-          materials(i) % fissionable = .true.
+          call materials(i) % set_fissionable(.true.)
         end if
       end do
 
@@ -3110,7 +2577,9 @@ contains
 
     logical :: file_exists                 ! Does multipole library exist?
     character(7) :: readable               ! Is multipole library readable?
-    character(MAX_FILE_LEN) :: filename  ! Path to multipole xs library
+    character(MAX_FILE_LEN) :: filename    ! Path to multipole xs library
+    integer(HID_T) :: file_id
+    integer(HID_T) :: group_id
 
     ! For the time being, and I know this is a bit hacky, we just assume
     ! that the file will be ZZZAAAmM.h5.
@@ -3136,45 +2605,24 @@ contains
       end if
 
       ! Display message
-      call write_message("Loading Multipole XS table: " // filename, 6)
+      call write_message("Loading Windowed Multipole XS from " // filename, 6)
 
+      ! Open file and make sure version is sufficient
+      file_id = file_open(filename, 'r')
+      call check_wmp_version(file_id)
+
+      ! Read nuclide data from HDF5
+      group_id = open_group(file_id, nuc % name)
       allocate(nuc % multipole)
-
-      ! Call the read routine
-      call nuc % multipole % from_hdf5(filename)
+      call nuc % multipole % from_hdf5(group_id)
       nuc % mp_present = .true.
+
+      ! Close the group and file.
+      call close_group(group_id)
+      call file_close(file_id)
 
     end associate
 
   end subroutine read_multipole_data
-
-!===============================================================================
-! PREPARE_DISTRIBCELL initializes any distribcell filters present and sets the
-! offsets for distribcells
-!===============================================================================
-
-  subroutine prepare_distribcell()
-
-    integer :: i, j
-    type(SetInt)  :: cell_list  ! distribcells to track
-    integer(C_INT32_T), allocatable :: cell_list_c(:)
-
-    ! Find all cells listed in a distribcell filter.
-    do i = 1, n_tallies
-      do j = 1, size(tallies(i) % obj % filter)
-        select type(filt => filters(tallies(i) % obj % filter(j)) % obj)
-        type is (DistribcellFilter)
-          call cell_list % add(filt % cell)
-        end select
-      end do
-    end do
-
-    allocate(cell_list_c(cell_list % size()))
-    do i = 1, cell_list % size()
-      cell_list_c(i) = cell_list % get_item(i) - 1
-    end do
-    call prepare_distribcell_c(cell_list_c, cell_list % size())
-
-  end subroutine prepare_distribcell
 
 end module input_xml

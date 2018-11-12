@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+
+import struct
+import sys
+from argparse import ArgumentParser
+
+import numpy as np
+import h5py
+import vtk
+
+
+def main():
+    # Process command line arguments
+    parser = ArgumentParser()
+    parser.add_argument('voxel_file', help='Path to voxel file')
+    parser.add_argument('-o', '--output', action='store',
+                        default='plot', help='Path to output VTK file.')
+    args = parser.parse_args()
+
+    # Read data from voxel file
+    fh = h5py.File(args.voxel_file, 'r')
+    dimension = fh.attrs['num_voxels']
+    width = fh.attrs['voxel_width']
+    lower_left = fh.attrs['lower_left']
+    voxel_data = fh['data'].value
+
+    nx, ny, nz = dimension
+    upper_right = lower_left + width*dimension
+    
+    grid = vtk.vtkImageData()
+    grid.SetDimensions(nx+1, ny+1, nz+1)
+    grid.SetOrigin(*lower_left)
+    grid.SetSpacing(*width)
+    
+    data = vtk.vtkDoubleArray()
+    data.SetName("id")
+    data.SetNumberOfTuples(nx*ny*nz)
+    for x in range(nx):
+        sys.stdout.write(" {}%\r".format(int(x/nx*100)))
+        sys.stdout.flush()
+        for y in range(ny):
+            for z in range(nz):
+                i = z*nx*ny + y*nx + x
+                data.SetValue(i, voxel_data[x, y, z])
+    grid.GetCellData().AddArray(data)
+
+    writer = vtk.vtkXMLImageDataWriter()
+    if vtk.vtkVersion.GetVTKMajorVersion() > 5:
+        writer.SetInputData(grid)
+    else:
+        writer.SetInput(grid)
+    if not args.output.endswith(".vti"):
+        args.output += ".vti"
+    writer.SetFileName(args.output)
+    writer.Write()
+
+if __name__ == '__main__':
+    main()

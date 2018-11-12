@@ -1840,10 +1840,10 @@ class XSdata(object):
                     mu = np.linspace(-1, 1, xsdata.num_orders)
                     # Evaluate the legendre on the mu grid
                     for imu in range(len(mu)):
-                        new_data[..., imu] = \
-                            np.sum((l + 0.5) * eval_legendre(l, mu[imu]) *
-                                   orig_data[..., l]
-                                   for l in range(self.num_orders))
+                        for l in range(self.num_orders):
+                            new_data[..., imu] += (
+                                 (l + 0.5) * eval_legendre(l, mu[imu]) *
+                                 orig_data[..., l])
 
                 elif target_format == 'histogram':
                     # This code uses the vectorized integration capabilities
@@ -1857,11 +1857,10 @@ class XSdata(object):
                         mu_fine = np.linspace(mu[h_bin], mu[h_bin + 1], _NMU)
                         table_fine = np.zeros(new_data.shape[:-1] + (_NMU,))
                         for imu in range(len(mu_fine)):
-                            table_fine[..., imu] = \
-                                np.sum((l + 0.5) *
-                                       eval_legendre(l, mu_fine[imu]) *
-                                       orig_data[..., l]
-                                       for l in range(self.num_orders))
+                            for l in range(self.num_orders):
+                                table_fine[..., imu] += ((l + 0.5)
+                                     * eval_legendre(l, mu_fine[imu]) *
+                                     orig_data[..., l])
                         new_data[..., h_bin] = simps(table_fine, mu_fine)
 
             elif self.scatter_format == 'tabular':

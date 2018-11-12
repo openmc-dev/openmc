@@ -7,6 +7,8 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <unordered_set>
+#include <vector>
 
 #include "pugixml.hpp"
 
@@ -59,30 +61,33 @@ extern std::string path_statepoint;       //!< path to a statepoint file
 
 extern "C" int32_t index_entropy_mesh;  //!< Index of entropy mesh in global mesh array
 extern "C" int32_t index_ufs_mesh;      //!< Index of UFS mesh in global mesh array
-
+extern "C" int32_t index_cmfd_mesh;     //!< Index of CMFD mesh in global mesh array
+ 
 extern "C" int32_t n_batches;      //!< number of (inactive+active) batches
 extern "C" int32_t n_inactive;     //!< number of inactive batches
 extern "C" int32_t gen_per_batch;  //!< number of generations per batch
 extern "C" int64_t n_particles;    //!< number of particles per generation
 
 extern "C" int electron_treatment;       //!< how to treat secondary electrons
-extern "C" double energy_cutoff[4];      //!< Energy cutoff in [eV] for each particle type
+extern "C" std::array<double, 4> energy_cutoff;      //!< Energy cutoff in [eV] for each particle type
 extern "C" int legendre_to_tabular_points; //!< number of points to convert Legendres
 extern "C" int max_order;                //!< Maximum Legendre order for multigroup data
 extern "C" int n_log_bins;               //!< number of bins for logarithmic energy grid
 extern "C" int n_max_batches;            //!< Maximum number of batches
-
 extern "C" int res_scat_method;          //!< resonance upscattering method
 extern "C" double res_scat_energy_min;   //!< Min energy in [eV] for res. upscattering
 extern "C" double res_scat_energy_max;   //!< Max energy in [eV] for res. upscattering
 extern "C" int run_mode;                 //!< Run mode (eigenvalue, fixed src, etc.)
+extern std::unordered_set<int> sourcepoint_batch; //!< Batches when source should be written
+extern std::unordered_set<int> statepoint_batch; //!< Batches when state should be written
 extern "C" int temperature_method;       //!< method for choosing temperatures
 extern "C" double temperature_tolerance; //!< Tolerance in [K] on choosing temperatures
 extern "C" double temperature_default;   //!< Default T in [K]
-extern "C" double temperature_range[2];  //!< Min/max T in [K] over which to load xs
+extern "C" std::array<double, 2> temperature_range;  //!< Min/max T in [K] over which to load xs
 extern "C" int trace_batch;              //!< Batch to trace particle on
 extern "C" int trace_gen;                //!< Generation to trace particle on
 extern "C" int64_t trace_particle;       //!< Particle ID to enable trace on
+extern std::vector<std::array<int, 3>> track_identifiers; //!< Particle numbers for writing tracks
 extern "C" int trigger_batch_interval;   //!< Batch interval for triggers
 extern "C" int verbosity;                //!< How verbose to make output
 extern "C" double weight_cutoff;         //!< Weight cutoff for Russian roulette

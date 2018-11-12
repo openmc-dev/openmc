@@ -9,6 +9,14 @@
 namespace openmc {
 
 //==============================================================================
+// Global variable definitions
+//==============================================================================
+
+std::vector<double> energy_bins;
+std::vector<double> energy_bin_avg;
+std::vector<double> rev_energy_bins;
+
+//==============================================================================
 // Mgxs data loading interface methods
 //==============================================================================
 
@@ -84,6 +92,26 @@ create_macro_xs_c(const char* mat_name, int n_nuclides, const int i_nuclides[],
 }
 
 //==============================================================================
+
+void read_mg_cross_sections_header_c(hid_t file_id)
+{
+  ensure_exists(file_id, "energy_groups", true);
+  read_attribute(file_id, "energy_groups", num_energy_groups);
+
+  ensure_exists(file_id, "group structure", true);
+  read_attribute(file_id, "group structure", rev_energy_bins);
+
+  // Reverse energy bins
+  std::copy(rev_energy_bins.crbegin(), rev_energy_bins.crend(),
+    std::back_inserter(energy_bins));
+
+  // Create average energies
+  for (int i = 0; i < energy_bins.size() - 1; ++i) {
+    energy_bin_avg.push_back(0.5*(energy_bins[i] + energy_bins[i+1]));
+  }
+}
+
+//==============================================================================
 // Mgxs tracking/transport/tallying interface methods
 //==============================================================================
 
@@ -93,36 +121,6 @@ calculate_xs_c(int i_mat, int gin, double sqrtkT, const double uvw[3],
 {
   macro_xs[i_mat - 1].calculate_xs(gin - 1, sqrtkT, uvw, total_xs, abs_xs,
        nu_fiss_xs);
-}
-
-//==============================================================================
-
-void
-sample_scatter_c(int i_mat, int gin, int& gout, double& mu, double& wgt,
-                 double uvw[3])
-{
-  int gout_c = gout - 1;
-  macro_xs[i_mat - 1].sample_scatter(gin - 1, gout_c, mu, wgt);
-
-  // adjust return value for fortran indexing
-  gout = gout_c + 1;
-
-  // Rotate the angle
-  rotate_angle_c(uvw, mu, nullptr);
-}
-
-//==============================================================================
-
-void
-sample_fission_energy_c(int i_mat, int gin, int& dg, int& gout)
-{
-  int dg_c = 0;
-  int gout_c = 0;
-  macro_xs[i_mat - 1].sample_fission_energy(gin - 1, dg_c, gout_c);
-
-  // adjust return values for fortran indexing
-  dg = dg_c + 1;
-  gout = gout_c + 1;
 }
 
 //==============================================================================

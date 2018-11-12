@@ -71,7 +71,7 @@ def current_batch():
         Current batch of the simulation
 
     """
-    return c_int.in_dll(_dll, 'openmc_current_batch').value
+    return c_int.in_dll(_dll, 'current_batch').value
 
 
 def finalize():
@@ -220,8 +220,8 @@ def keff():
         return tuple(k)
     else:
         # Otherwise, return the tracklength estimator
-        mean = c_double.in_dll(_dll, 'openmc_keff').value
-        std_dev = c_double.in_dll(_dll, 'openmc_keff_std').value \
+        mean = c_double.in_dll(_dll, 'keff').value
+        std_dev = c_double.in_dll(_dll, 'keff_std').value \
                   if n > 1 else np.inf
         return (mean, std_dev)
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from collections import Mapping
+from collections.abc import Mapping
 import os
 from math import log
 

@@ -62,6 +62,7 @@ constexpr int MAX_SAMPLE {100000};
 
 // Maximum number of words in a single line, length of line, and length of
 // single word
+constexpr int MAX_LINE_LEN {250};
 constexpr int MAX_WORD_LEN {150};
 
 // Maximum number of external source spatial resamples to encounter before an
@@ -314,9 +315,9 @@ constexpr int MG_GET_XS_CHI_DELAYED        {14};
 // TALLY-RELATED CONSTANTS
 
 // Tally result entries
-constexpr int RESULT_VALUE  {1};
-constexpr int RESULT_SUM    {2};
-constexpr int RESULT_SUM_SQ {3};
+constexpr int RESULT_VALUE  {0};
+constexpr int RESULT_SUM    {1};
+constexpr int RESULT_SUM_SQ {2};
 
 // Tally type
 // TODO: Convert to enum
@@ -407,10 +408,11 @@ constexpr int RELATIVE_ERROR     {2};
 constexpr int STANDARD_DEVIATION {3};
 
 // Global tally parameters
-constexpr int K_COLLISION   {1};
-constexpr int K_ABSORPTION  {2};
-constexpr int K_TRACKLENGTH {3};
-constexpr int LEAKAGE       {4};
+constexpr int N_GLOBAL_TALLIES {4};
+constexpr int K_COLLISION   {0};
+constexpr int K_ABSORPTION  {1};
+constexpr int K_TRACKLENGTH {2};
+constexpr int LEAKAGE       {3};
 
 // Differential tally independent variables
 constexpr int DIFF_DENSITY {1};
@@ -418,6 +420,7 @@ constexpr int DIFF_NUCLIDE_DENSITY {2};
 constexpr int DIFF_TEMPERATURE {3};
 
 constexpr int C_NONE {-1};
+constexpr int F90_NONE {0}; //TODO: replace usage of this with C_NONE
 
 // Interpolation rules
 enum class Interpolation {

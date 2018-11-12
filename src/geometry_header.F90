@@ -59,20 +59,6 @@ module geometry_header
       integer(C_INT32_T)             :: fill
     end function cell_fill_c
 
-    function cell_n_instances_c(cell_ptr) bind(C, name='cell_n_instances') &
-         result(n_instances)
-      import C_PTR, C_INT32_T
-      type(C_PTR), intent(in), value :: cell_ptr
-      integer(C_INT32_T)             :: n_instances
-    end function cell_n_instances_c
-
-    function cell_distribcell_index_c(cell_ptr) &
-         bind(C, name='cell_distribcell_index') result(distribcell_index)
-      import C_PTR, C_INT
-      type(C_PTR), intent(in), value :: cell_ptr
-      integer(C_INT)                 :: distribcell_index
-    end function cell_distribcell_index_c
-
     function cell_material_size_c(cell_ptr) bind(C, name='cell_material_size') &
          result(n)
       import C_PTR, C_INT
@@ -103,14 +89,6 @@ module geometry_header
       real(C_DOUBLE)                    :: sqrtkT
     end function cell_sqrtkT_c
 
-    function cell_offset_c(cell_ptr, map) bind(C, name="cell_offset") &
-         result(offset)
-      import C_PTR, C_INT, C_INT32_T
-      type(C_PTR),    intent(in), value :: cell_ptr
-      integer(C_INT), intent(in), value :: map
-      integer(C_INT32_T)                :: offset
-    end function cell_offset_c
-
     function lattice_pointer(lat_ind) bind(C) result(ptr)
       import C_PTR, C_INT32_T
       integer(C_INT32_T), intent(in), value :: lat_ind
@@ -122,23 +100,6 @@ module geometry_header
       type(C_PTR), intent(in), value :: lat_ptr
       integer(C_INT32_T)             :: id
     end function lattice_id_c
-
-    function lattice_are_valid_indices_c(lat_ptr, i_xyz) &
-         bind(C, name='lattice_are_valid_indices') result (is_valid)
-      import C_PTR, C_INT, C_BOOL
-      type(C_PTR),    intent(in), value :: lat_ptr
-      integer(C_INT), intent(in)        :: i_xyz(3)
-      logical(C_BOOL)                   :: is_valid
-    end function lattice_are_valid_indices_c
-
-    function lattice_offset_c(lat_ptr, map, i_xyz) &
-         bind(C, name='lattice_offset') result(offset)
-      import C_PTR, C_INT, C_INT32_T
-      type(C_PTR),    intent(in), value :: lat_ptr
-      integer(C_INT), intent(in), value :: map
-      integer(C_INT), intent(in)        :: i_xyz(3)
-      integer(C_INT32_T)                :: offset
-    end function lattice_offset_c
 
     subroutine extend_cells_c(n) bind(C)
       import C_INT32_t
@@ -154,8 +115,6 @@ module geometry_header
     type(C_PTR) :: ptr
   contains
     procedure :: id => lattice_id
-    procedure :: are_valid_indices => lattice_are_valid_indices
-    procedure :: offset => lattice_offset
   end type Lattice
 
 !===============================================================================
@@ -176,13 +135,10 @@ module geometry_header
     procedure :: type => cell_type
     procedure :: universe => cell_universe
     procedure :: fill => cell_fill
-    procedure :: n_instances => cell_n_instances
-    procedure :: distribcell_index => cell_distribcell_index
     procedure :: material_size => cell_material_size
     procedure :: material => cell_material
     procedure :: sqrtkT_size => cell_sqrtkT_size
     procedure :: sqrtkT => cell_sqrtkT
-    procedure :: offset => cell_offset
 
   end type Cell
 
@@ -197,7 +153,6 @@ module geometry_header
 
   ! Dictionaries which map user IDs to indices in the global arrays
   type(DictIntInt) :: cell_dict
-  type(DictIntInt) :: universe_dict
   type(DictIntInt) :: lattice_dict
 
 contains
@@ -207,21 +162,6 @@ contains
     integer(C_INT32_T)         :: id
     id = lattice_id_c(this % ptr)
   end function lattice_id
-
-  function lattice_are_valid_indices(this, i_xyz) result (is_valid)
-    class(Lattice), intent(in) :: this
-    integer(C_INT), intent(in) :: i_xyz(3)
-    logical(C_BOOL)            :: is_valid
-    is_valid = lattice_are_valid_indices_c(this % ptr, i_xyz)
-  end function lattice_are_valid_indices
-
-  function lattice_offset(this, map, i_xyz) result(offset)
-    class(Lattice), intent(in) :: this
-    integer(C_INT), intent(in) :: map
-    integer(C_INT), intent(in) :: i_xyz(3)
-    integer(C_INT32_T)         :: offset
-    offset = lattice_offset_c(this % ptr, map, i_xyz)
-  end function lattice_offset
 
 !===============================================================================
 
@@ -255,18 +195,6 @@ contains
     fill = cell_fill_c(this % ptr)
   end function cell_fill
 
-  function cell_n_instances(this) result(n_instances)
-    class(Cell), intent(in) :: this
-    integer(C_INT32_T)      :: n_instances
-    n_instances = cell_n_instances_c(this % ptr)
-  end function cell_n_instances
-
-  function cell_distribcell_index(this) result(distribcell_index)
-    class(Cell), intent(in) :: this
-    integer(C_INT)          :: distribcell_index
-    distribcell_index = cell_distribcell_index_c(this % ptr)
-  end function cell_distribcell_index
-
   function cell_material_size(this) result(n)
     class(Cell), intent(in) :: this
     integer(C_INT)          :: n
@@ -292,13 +220,6 @@ contains
     real(C_DOUBLE)          :: sqrtkT
     sqrtkT = cell_sqrtkT_c(this % ptr, i)
   end function cell_sqrtkT
-
-  function cell_offset(this, map) result(offset)
-    class(Cell), intent(in)    :: this
-    integer(C_INT), intent(in) :: map
-    integer(C_INT32_T)         :: offset
-    offset = cell_offset_c(this % ptr, map)
-  end function cell_offset
 
 !===============================================================================
 ! GET_TEMPERATURES returns a list of temperatures that each nuclide/S(a,b) table
@@ -383,7 +304,6 @@ contains
     if (allocated(lattices)) deallocate(lattices)
 
     call cell_dict % clear()
-    call universe_dict % clear()
     call lattice_dict % clear()
 
   end subroutine free_memory_geometry

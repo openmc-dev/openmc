@@ -90,7 +90,7 @@ Maxwell::Maxwell(pugi::xml_node node)
 
 double Maxwell::sample() const
 {
-  return maxwell_spectrum_c(theta_);
+  return maxwell_spectrum(theta_);
 }
 
 //==============================================================================
@@ -110,7 +110,7 @@ Watt::Watt(pugi::xml_node node)
 
 double Watt::sample() const
 {
-  return watt_spectrum_c(a_, b_);
+  return watt_spectrum(a_, b_);
 }
 
 //==============================================================================

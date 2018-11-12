@@ -24,8 +24,9 @@ extern std::unordered_map<int32_t, int32_t> material_map;
 class Material
 {
 public:
-  int32_t id; //!< Unique ID
+  int32_t id_; //!< Unique ID
   double volume_ {-1.0}; //!< Volume in [cm^3]
+  bool fissionable {false}; //!< Does this material contain fissionable nuclides
 
   //! \brief Default temperature for cells containing this material.
   //!

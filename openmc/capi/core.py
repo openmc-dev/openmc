@@ -226,23 +226,6 @@ def keff():
         return (mean, std_dev)
 
 
-# TODO Remove
-def keff_temp():
-    """Return the calculated tracklength k-eigenvalue and its standard deviation.
-
-    Returns
-    -------
-    tuple
-        Mean k-eigenvalue and standard deviation of the mean
-
-    """
-    n = openmc.capi.num_realizations()
-    mean = c_double.in_dll(_dll, 'keff').value
-    std_dev = c_double.in_dll(_dll, 'keff_std').value \
-              if n > 1 else np.inf
-    return (mean, std_dev)
-
-
 def master():
     """Return whether processor is master processor or not.
 

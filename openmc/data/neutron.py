@@ -375,13 +375,15 @@ class IncidentNeutron(EqualityMixin):
         self.energy['0K'] = x
         self[2].xs['0K'] = Tabulated1D(x, y)
 
-    def get_reaction_components(self, mt):
+    def get_reaction_components(self, mt, exclude_self=False):
         """Determine what reactions make up redundant reaction.
 
         Parameters
         ----------
         mt : int
             ENDF MT number of the reaction to find components of.
+        exclude_self : bool
+            Whether to exclude the original MT number when finding components
 
         Returns
         -------
@@ -390,7 +392,7 @@ class IncidentNeutron(EqualityMixin):
             have cross sections provided.
 
         """
-        if mt in self.reactions:
+        if mt in self.reactions and not exclude_self:
             return [mt]
         elif mt in SUM_RULES:
             mts = SUM_RULES[mt]
@@ -693,6 +695,14 @@ class IncidentNeutron(EqualityMixin):
                 # Determine redundant cross section
                 rx = data._get_redundant_reaction(mt, mts)
                 data.reactions[mt] = rx
+
+
+        # Make sure redundant cross sections that are present in an ACE file get
+        # marked as such
+        for rx in data:
+            mts = data.get_reaction_components(rx.mt, exclude_self=True)
+            if mts:
+                rx.redundant = True
 
         # Read unresolved resonance probability tables
         urr = ProbabilityTables.from_ace(ace)

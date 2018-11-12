@@ -15,7 +15,7 @@ module constants
        VERSION(3) = [VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE]
 
   ! HDF5 data format
-  integer, parameter :: HDF5_VERSION(2) = [1, 0]
+  integer, parameter :: HDF5_VERSION(2) = [2, 0]
 
   ! WMP data format
   integer, parameter :: WMP_VERSION(2) = [1, 1]

@@ -696,20 +696,10 @@ contains
             end if
           end do
 
-          ! Skip total inelastic level scattering, gas production cross sections
-          ! (MT=200+), etc.
-          if (rx % MT == N_LEVEL .or. rx % MT == N_NONELASTIC) cycle
+          ! Skip gas production cross sections (MT=200+), etc.
           if (rx % MT > N_5N2P .and. rx % MT < N_P0) cycle
 
-          ! Skip level cross sections if total is available
-          if (rx % MT >= N_P0 .and. rx % MT <= N_PC .and. find(MTs, N_P) /= -1) cycle
-          if (rx % MT >= N_D0 .and. rx % MT <= N_DC .and. find(MTs, N_D) /= -1) cycle
-          if (rx % MT >= N_T0 .and. rx % MT <= N_TC .and. find(MTs, N_T) /= -1) cycle
-          if (rx % MT >= N_3HE0 .and. rx % MT <= N_3HEC .and. find(MTs, N_3HE) /= -1) cycle
-          if (rx % MT >= N_A0 .and. rx % MT <= N_AC .and. find(MTs, N_A) /= -1) cycle
-          if (rx % MT >= N_2N0 .and. rx % MT <= N_2NC .and. find(MTs, N_2N) /= -1) cycle
-
-          ! Skip redundant reactions, which are used for photon production
+          ! Skip any reaction that has been marked as redundant
           if (rx % redundant) cycle
 
           ! Add contribution to total cross section

@@ -257,7 +257,7 @@ contains
       else
         retval  = (MT >= MISC .and. MT /= 27)
       end if
-    elseif (MT < 200) then
+    elseif (MT <= 200) then
       retval = (.not. is_disappearance(MT))
     else
       retval = .false.

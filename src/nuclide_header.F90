@@ -6,7 +6,8 @@ module nuclide_header
   use algorithm,              only: sort, find, binary_search
   use constants
   use dict_header,            only: DictIntInt, DictCharInt
-  use endf,                   only: reaction_name, is_fission, is_disappearance
+  use endf,                   only: reaction_name, is_fission, is_disappearance, &
+                                    is_inelastic_scatter
   use endf_header,            only: Function1D, Polynomial, Tabulated1D
   use error
   use hdf5_interface
@@ -529,12 +530,7 @@ contains
 
       ! Add the reaction index to the scattering array if this is an inelastic
       ! scatter reaction
-      if (MTs % data(i) /= N_FISSION .and. MTs % data(i) /= N_F .and. &
-           MTs % data(i) /= N_NF .and. MTs % data(i) /= N_2NF .and. &
-           MTs % data(i) /= N_3NF .and. MTs % data(i) < 200 .and. &
-           MTs % data(i) /= N_LEVEL .and. MTs % data(i) /= ELASTIC .and. &
-           .not. this % reactions(i) % redundant) then
-
+      if (is_inelastic_scatter(MTs % data(i))) then
         call index_inelastic_scatter % push_back(i)
       end if
 

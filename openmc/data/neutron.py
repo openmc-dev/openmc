@@ -375,15 +375,13 @@ class IncidentNeutron(EqualityMixin):
         self.energy['0K'] = x
         self[2].xs['0K'] = Tabulated1D(x, y)
 
-    def get_reaction_components(self, mt, exclude_self=False):
+    def get_reaction_components(self, mt):
         """Determine what reactions make up redundant reaction.
 
         Parameters
         ----------
         mt : int
             ENDF MT number of the reaction to find components of.
-        exclude_self : bool
-            Whether to exclude the original MT number when finding components
 
         Returns
         -------
@@ -392,24 +390,14 @@ class IncidentNeutron(EqualityMixin):
             have cross sections provided.
 
         """
-        if mt in self.reactions and not exclude_self:
-            return [mt]
-        elif mt in SUM_RULES:
-            mts = SUM_RULES[mt]
+        mts = []
+        if mt in SUM_RULES:
+            for mt_i in SUM_RULES[mt]:
+                mts += self.get_reaction_components(mt_i)
+        if mts:
+            return mts
         else:
-            return []
-        complete = False
-        while not complete:
-            new_mts = []
-            complete = True
-            for i, mt_i in enumerate(mts):
-                if mt_i in self.reactions:
-                    new_mts.append(mt_i)
-                elif mt_i in SUM_RULES:
-                    new_mts += SUM_RULES[mt_i]
-                    complete = False
-            mts = new_mts
-        return mts
+            return [mt] if mt in self else []
 
     def export_to_hdf5(self, path, mode='a', libver='earliest'):
         """Export incident neutron data to an HDF5 file.
@@ -700,12 +688,11 @@ class IncidentNeutron(EqualityMixin):
                 rx = data._get_redundant_reaction(mt, mts)
                 data.reactions[mt] = rx
 
-
         # Make sure redundant cross sections that are present in an ACE file get
         # marked as such
         for rx in data:
-            mts = data.get_reaction_components(rx.mt, exclude_self=True)
-            if mts:
+            mts = data.get_reaction_components(rx.mt)
+            if mts != [rx.mt]:
                 rx.redundant = True
 
         # Read unresolved resonance probability tables

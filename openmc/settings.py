@@ -226,7 +226,7 @@ class Settings(object):
         self._create_fission_neutrons = None
         self._log_grid_bins = None
 
-        self._dagmc = None
+        self._dagmc = False
 
     @property
     def run_mode(self):
@@ -959,7 +959,7 @@ class Settings(object):
             elem.text = str(self._log_grid_bins)
 
     def _create_dagmc_subelement(self, root):
-        if self._dagmc is not None:
+        if self._dagmc:
             elem = ET.SubElement(root, "dagmc")
             elem.text = str(self._dagmc).lower()
 

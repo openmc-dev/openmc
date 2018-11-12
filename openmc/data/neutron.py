@@ -459,11 +459,12 @@ class IncidentNeutron(EqualityMixin):
         rxs_group = g.create_group('reactions')
         for rx in self.reactions.values():
             # Skip writing redundant reaction if it doesn't have photon
-            # production or is a summed transmutation reaction
+            # production or is a summed transmutation reaction. MT=4 is also
+            # sometimes needed for probability tables.
             if rx.redundant:
                 photon_rx = any(p.particle == 'photon' for p in rx.products)
                 transmutation_rx = (rx.mt in (16, 103, 104, 105, 106, 107))
-                if not (photon_rx or transmutation_rx):
+                if not (photon_rx or transmutation_rx or rx.mt == 4):
                     continue
 
             rx_group = rxs_group.create_group('reaction_{:03}'.format(rx.mt))

@@ -518,7 +518,7 @@ class Sum(EqualityMixin):
     """
 
     def __init__(self, functions):
-        self.functions = functions
+        self.functions = list(functions)
 
     def __call__(self, x):
         return sum(f(x) for f in self.functions)

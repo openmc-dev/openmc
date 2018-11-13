@@ -21,7 +21,6 @@ cache:
   directories:
   - $HOME/nndc_hdf5
   - $HOME/endf-b-vii.1
-  - $HOME/WMP_Library
 env:
   global:
     - FC=gfortran

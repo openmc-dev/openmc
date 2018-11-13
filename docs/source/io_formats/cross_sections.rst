@@ -25,9 +25,10 @@ node. For example,
 ``<library>`` Element
 ---------------------
 
-The ``<library>`` element indicates where an HDF5 cross section file is located,
-whether it contains incident neutron or thermal scattering data, and what
-materials are listed within. It has the following attributes:
+The ``<library>`` element indicates where an HDF5 data file is located, whether
+it contains incident neutron, incident photon, thermal scattering, or windowed
+multipole data, and what materials are listed within. It has the following
+attributes:
 
   :materials:
 
@@ -48,4 +49,5 @@ materials are listed within. It has the following attributes:
     directory containing the ``cross_sections.xml`` file.
 
   :type:
-    The type of data contained in the file, either 'neutron' or 'thermal'.
+    The type of data contained in the file. Accepted values are 'neutron',
+    'thermal', 'photon', and 'wmp'.

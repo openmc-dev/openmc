@@ -502,11 +502,7 @@ class IncidentNeutron(EqualityMixin):
             # Make sure version matches
             if 'version' in h5file.attrs:
                 major, minor = h5file.attrs['version']
-                if major != HDF5_VERSION_MAJOR:
-                    raise IOError(
-                        'HDF5 data format uses version {}.{} whereas your '
-                        'installation of the OpenMC Python API expects version '
-                        '{}.x.'.format(major, minor, HDF5_VERSION_MAJOR))
+                # For now all versions of HDF5 data can be read
             else:
                 raise IOError(
                     'HDF5 data does not indicate a version. Your installation of '

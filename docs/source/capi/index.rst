@@ -333,12 +333,14 @@ Functions
    :return: Return status (negative if an error occurred)
    :rtype: int
 
-.. c:function:: int openmc_material_set_density(int32_t index, double density)
+.. c:function:: int openmc_material_set_density(int32_t index, double density, const char* units)
 
    Set the density of a material.
 
    :param int32_t index: Index in the materials array
-   :param double density: Density of the material in atom/b-cm
+   :param double density: Density of the material
+   :param units: Units for density
+   :type units: const char*
    :return: Return status (negative if an error occurs)
    :rtype: int
 

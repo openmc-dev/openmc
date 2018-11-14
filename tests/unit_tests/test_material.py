@@ -154,7 +154,6 @@ def test_materials(run_in_tmpdir):
 
     mats = openmc.Materials([m1, m2])
     mats.cross_sections = '/some/fake/cross_sections.xml'
-    mats.multipole_library = '/some/awesome/mp_lib/'
     mats.export_to_xml()
 
 
@@ -200,7 +199,6 @@ def test_from_xml(run_in_tmpdir):
 
     mats = openmc.Materials([m1, m2, m3])
     mats.cross_sections = 'fake_path.xml'
-    mats.multipole_library = 'fake_multipole/'
     mats.export_to_xml()
 
     # Regenerate materials from XML

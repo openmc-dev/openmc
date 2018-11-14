@@ -52,7 +52,6 @@ extern "C" bool dagmc;                   //!< indicator of DAGMC geometry
 // Paths to various files
 extern std::string path_cross_sections;   //!< path to cross_sections.xml
 extern std::string path_input;            //!< directory where main .xml files resides
-extern std::string path_multipole;        //!< directory containing multipole files
 extern std::string path_output;           //!< directory where output files are written
 extern std::string path_particle_restart; //!< path to a particle restart file
 extern std::string path_source;
@@ -62,7 +61,7 @@ extern std::string path_statepoint;       //!< path to a statepoint file
 extern "C" int32_t index_entropy_mesh;  //!< Index of entropy mesh in global mesh array
 extern "C" int32_t index_ufs_mesh;      //!< Index of UFS mesh in global mesh array
 extern "C" int32_t index_cmfd_mesh;     //!< Index of CMFD mesh in global mesh array
- 
+
 extern "C" int32_t n_batches;      //!< number of (inactive+active) batches
 extern "C" int32_t n_inactive;     //!< number of inactive batches
 extern "C" int32_t gen_per_batch;  //!< number of generations per batch
@@ -77,6 +76,7 @@ extern "C" int n_max_batches;            //!< Maximum number of batches
 extern "C" int res_scat_method;          //!< resonance upscattering method
 extern "C" double res_scat_energy_min;   //!< Min energy in [eV] for res. upscattering
 extern "C" double res_scat_energy_max;   //!< Max energy in [eV] for res. upscattering
+extern std::vector<std::string> res_scat_nuclides;  //!< Nuclides using res. upscattering treatment
 extern "C" int run_mode;                 //!< Run mode (eigenvalue, fixed src, etc.)
 extern std::unordered_set<int> sourcepoint_batch; //!< Batches when source should be written
 extern std::unordered_set<int> statepoint_batch; //!< Batches when state should be written

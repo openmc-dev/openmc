@@ -9,7 +9,7 @@
 #include "openmc/geometry.h"
 #include "openmc/cell.h"
 #include "openmc/material.h"
-#include "openmc/string_functions.h"
+#include "openmc/string_utils.h"
 #include "openmc/mesh.h"
 #include "openmc/output.h"
 #include "openmc/hdf5_interface.h"

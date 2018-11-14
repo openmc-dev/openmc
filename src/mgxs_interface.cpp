@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "openmc/cross_sections.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
 
@@ -108,6 +109,20 @@ void read_mg_cross_sections_header_c(hid_t file_id)
   // Create average energies
   for (int i = 0; i < energy_bins.size() - 1; ++i) {
     energy_bin_avg.push_back(0.5*(energy_bins[i] + energy_bins[i+1]));
+  }
+
+  // Add entries into libraries for MG data
+  auto names = group_names(file_id);
+  if (names.empty()) {
+    fatal_error("At least one MGXS data set must be present in mgxs "
+      "library file!");
+  }
+
+  for (auto& name : names) {
+    Library lib {};
+    lib.type_ = Library::Type::neutron;
+    lib.materials_.push_back(name);
+    data::libraries.push_back(lib);
   }
 }
 

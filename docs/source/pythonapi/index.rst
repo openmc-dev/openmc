@@ -22,7 +22,7 @@ there are many substantial benefits to using the Python API, including:
 - Ability to plot individual universes as geometry is being created
 - A :math:`k_\text{eff}` search function (:func:`openmc.search_for_keff`)
 - Random sphere packing for generating TRISO particle locations
-  (:func:`openmc.model.pack_trisos`)
+  (:func:`openmc.model.pack_spheres`)
 - Ability to create materials based on natural elements or uranium enrichment
 
 For those new to Python, there are many good tutorials available online. We

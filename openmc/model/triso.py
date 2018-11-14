@@ -882,21 +882,21 @@ def _create_container(region, sphere_radius):
             if p1.surface.x0 > p2.surface.x0:
                 p1, p2 = p2, p1
             length = p2.surface.x0 - p1.surface.x0
-            center = (length/2, cyl.surface.y0, cyl.surface.z0)
+            center = (p1.surface.x0 + length/2, cyl.surface.y0, cyl.surface.z0)
 
         # Calculate the parameters for a cylinder along the y-axis
         elif axis == 'y':
             if p1.surface.y0 > p2.surface.y0:
                 p1, p2 = p2, p1
             length = p2.surface.y0 - p1.surface.y0
-            center = (cyl.surface.x0, length/2, cyl.surface.z0)
+            center = (cyl.surface.x0, p1.surface.y0 + length/2, cyl.surface.z0)
 
         # Calculate the parameters for a cylinder along the z-axis
         else:
             if p1.surface.z0 > p2.surface.z0:
                 p1, p2 = p2, p1
             length = p2.surface.z0 - p1.surface.z0
-            center = (cyl.surface.x0, cyl.surface.y0, length/2)
+            center = (cyl.surface.x0, cyl.surface.y0, p1.surface.z0 + length/2)
 
         # Make sure the half-spaces are on the correct side of the surfaces
         if cyl.side != '-' or p1.side != '+' or p2.side != '-':
@@ -1424,23 +1424,3 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
         _close_random_pack(domain, spheres, contraction_rate)
 
     return spheres + domain.center
-
-def create_trisos(outer_radius, fill, centers):
-    """Create TRISO particles at the given coordinates.
-
-    Parameters
-    ----------
-    outer_radius : float
-        Outer radius of TRISO particle
-    fill : openmc.Universe
-        Universe which contains all layers of the TRISO particle
-    centers : Iterable of float
-        Cartesian coordinates of the centers of the TRISO particles in cm
-
-    Returns
-    -------
-    list of openmc.model.TRISO
-        List of TRISO particles in the domain.
-
-    """
-    return [TRISO(outer_radius, fill, c) for c in centers]

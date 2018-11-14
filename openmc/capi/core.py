@@ -52,7 +52,7 @@ _dll.openmc_simulation_init.restype = c_int
 _dll.openmc_simulation_init.errcheck = _error_handler
 _dll.openmc_simulation_finalize.restype = c_int
 _dll.openmc_simulation_finalize.errcheck = _error_handler
-_dll.openmc_statepoint_write.argtypes = [POINTER(c_char_p), POINTER(c_bool)]
+_dll.openmc_statepoint_write.argtypes = [c_char_p, POINTER(c_bool)]
 _dll.openmc_statepoint_write.restype = c_int
 _dll.openmc_statepoint_write.errcheck = _error_handler
 

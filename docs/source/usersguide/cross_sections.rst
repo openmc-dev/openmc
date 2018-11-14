@@ -41,11 +41,6 @@ following environment variables are used:
   user has not specified :attr:`Materials.cross_sections` (equivalently, the
   :ref:`cross_sections` in :ref:`materials.xml <io_materials>`).
 
-:envvar:`OPENMC_MULTIPOLE_LIBRARY`
-  Indicates the path to a directory containing windowed multipole data if the
-  user has not specified :attr:`Materials.multipole_library` (equivalently, the
-  :ref:`multipole_library` in :ref:`materials.xml <io_materials>`)
-
 :envvar:`OPENMC_MG_CROSS_SECTIONS`
   Indicates the path to the an :ref:`HDF5 file <io_mgxs_library>` that contains
   multi-group cross sections if the user has not specified
@@ -306,12 +301,12 @@ Windowed Multipole Data
 -----------------------
 
 OpenMC is capable of using windowed multipole data for on-the-fly Doppler
-broadening. While such data is not yet available for all nuclides, an
-experimental multipole library is available that contains data for 70
-nuclides. To obtain this library, you can run :ref:`scripts_multipole` which
-will download and extract it into a ``wmp`` directory. Once the library has been
-downloaded, set the :envvar:`OPENMC_MULTIPOLE_LIBRARY` environment variable (or
-the :attr:`Materials.multipole_library` attribute) to the ``wmp`` directory.
+broadening. A comprehensive multipole data library containing all nuclides in
+ENDF/B-VII.1 is available on `GitHub
+<https://github.com/mit-crpg/WMP_Library>`_. To obtain this library, download
+and unpack an archive (.zip or .tag.gz) from GitHub. Once unpacked, you can use
+the :class:`openmc.data.DataLibrary` class to register the .h5 files as
+described in :ref:`create_xs_library`.
 
 --------------------------
 Multi-Group Cross Sections

@@ -53,19 +53,21 @@ class TRISOTestHarness(PyAPITestHarness):
         c5 = openmc.Cell(fill=opyc, region=+spheres[3])
         inner_univ = openmc.Universe(cells=[c1, c2, c3, c4, c5])
 
-        outer_radius = 422.5*1e-4
-        trisos = openmc.model.pack_trisos(
-            radius=outer_radius, fill=inner_univ, domain_shape='cube',
-            domain_length=1., domain_center=(0., 0., 0.), n_particles=100)
-
-        # Define box to contain lattice
+        # Define box to contain lattice and to pack TRISO particles in
         min_x = openmc.XPlane(x0=-0.5, boundary_type='reflective')
         max_x = openmc.XPlane(x0=0.5, boundary_type='reflective')
         min_y = openmc.YPlane(y0=-0.5, boundary_type='reflective')
         max_y = openmc.YPlane(y0=0.5, boundary_type='reflective')
         min_z = openmc.ZPlane(z0=-0.5, boundary_type='reflective')
         max_z = openmc.ZPlane(z0=0.5, boundary_type='reflective')
-        box = openmc.Cell(region=+min_x & -max_x & +min_y & -max_y & +min_z & -max_z)
+        box_region = +min_x & -max_x & +min_y & -max_y & +min_z & -max_z
+        box = openmc.Cell(region=box_region)
+
+        outer_radius = 422.5*1e-4
+        centers = openmc.model.pack_spheres(radius=outer_radius,
+            region=box_region, num_spheres=100)
+        trisos = [openmc.model.TRISO(outer_radius, inner_univ, c)
+            for c in centers]
 
         # Create lattice
         ll, ur = box.region.bounding_box

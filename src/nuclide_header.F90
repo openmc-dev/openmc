@@ -363,6 +363,16 @@ contains
     type(VectorInt) :: temps_to_read
     type(VectorInt) :: index_inelastic_scatter
 
+    interface
+      subroutine nuclide_from_hdf5_c(group) bind(C)
+        import HID_T
+        integer(HID_T), value :: group
+      end subroutine
+    end interface
+
+    ! Read data on C++ side
+    call nuclide_from_hdf5_c(group_id)
+
     ! Get name of nuclide from group
     this % name = get_name(group_id)
 

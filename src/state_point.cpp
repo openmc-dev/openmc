@@ -8,6 +8,7 @@
 #include "xtensor/xbuilder.hpp" // for empty_like
 #include "xtensor/xview.hpp"
 
+#include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/eigenvalue.h"
@@ -70,16 +71,13 @@ write_source_point(const char* filename)
   }
 
   // Get pointer to source bank and write to file
-  Bank* source_bank;
-  int64_t n;
-  openmc_source_bank(&source_bank, &n);
-  write_source_bank(file_id, source_bank);
+  write_source_bank(file_id);
 
   if (mpi::master || parallel) file_close(file_id);
 }
 
 void
-write_source_bank(hid_t group_id, Bank* source_bank)
+write_source_bank(hid_t group_id)
 {
   hid_t banktype = h5banktype();
 
@@ -103,7 +101,7 @@ write_source_bank(hid_t group_id, Bank* source_bank)
   H5Pset_dxpl_mpio(plist, H5FD_MPIO_COLLECTIVE);
 
   // Write data to file in parallel
-  H5Dwrite(dset, banktype, memspace, dspace, plist, source_bank);
+  H5Dwrite(dset, banktype, memspace, dspace, plist, simulation::source_bank.data());
 
   // Free resources
   H5Sclose(dspace);
@@ -122,7 +120,8 @@ write_source_bank(hid_t group_id, Bank* source_bank)
 
     // Save source bank sites since the souce_bank array is overwritten below
 #ifdef OPENMC_MPI
-    std::vector<Bank> temp_source {source_bank, source_bank + simulation::work};
+    std::vector<Bank> temp_source {simulation::source_bank.begin(),
+      simulation::source_bank.begin() + simulation::work};
 #endif
 
     for (int i = 0; i < mpi::n_procs; ++i) {
@@ -134,7 +133,7 @@ write_source_bank(hid_t group_id, Bank* source_bank)
 #ifdef OPENMC_MPI
       // Receive source sites from other processes
       if (i > 0)
-        MPI_Recv(source_bank, count[0], mpi::bank, i, i,
+        MPI_Recv(source_bank.data(), count[0], mpi::bank, i, i,
                  mpi::intracomm, MPI_STATUS_IGNORE);
 #endif
 
@@ -144,7 +143,8 @@ write_source_bank(hid_t group_id, Bank* source_bank)
       H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
       // Write data to hyperslab
-      H5Dwrite(dset, banktype, memspace, dspace, H5P_DEFAULT, source_bank);
+      H5Dwrite(dset, banktype, memspace, dspace, H5P_DEFAULT,
+        simulation::source_bank.data());
 
       H5Sclose(memspace);
       H5Sclose(dspace);
@@ -155,12 +155,12 @@ write_source_bank(hid_t group_id, Bank* source_bank)
 
 #ifdef OPENMC_MPI
     // Restore state of source bank
-    std::copy(temp_source.begin(), temp_source.end(), source_bank);
+    std::copy(temp_source.begin(), temp_source.end(), source_bank.begin());
 #endif
   } else {
 #ifdef OPENMC_MPI
-    MPI_Send(source_bank, simulation::work, mpi::bank, 0, mpi::rank,
-             mpi::intracomm);
+    MPI_Send(simulation::source_bank.data(), simulation::work, mpi::bank,
+      0, mpi::rank, mpi::intracomm);
 #endif
   }
 #endif
@@ -169,7 +169,7 @@ write_source_bank(hid_t group_id, Bank* source_bank)
 }
 
 
-void read_source_bank(hid_t group_id, Bank* source_bank)
+void read_source_bank(hid_t group_id)
 {
   hid_t banktype = h5banktype();
 
@@ -197,10 +197,10 @@ void read_source_bank(hid_t group_id, Bank* source_bank)
     // Read data in parallel
   hid_t plist = H5Pcreate(H5P_DATASET_XFER);
   H5Pset_dxpl_mpio(plist, H5FD_MPIO_COLLECTIVE);
-  H5Dread(dset, banktype, memspace, dspace, plist, source_bank);
+  H5Dread(dset, banktype, memspace, dspace, plist, simulation::source_bank.data());
   H5Pclose(plist);
 #else
-  H5Dread(dset, banktype, memspace, dspace, H5P_DEFAULT, source_bank);
+  H5Dread(dset, banktype, memspace, dspace, H5P_DEFAULT, simulation::source_bank.data());
 #endif
 
   // Close all ids

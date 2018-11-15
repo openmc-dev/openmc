@@ -2,8 +2,6 @@ module bank_header
 
   use, intrinsic :: ISO_C_BINDING
 
-  use error, only: E_ALLOCATE, set_errmsg
-
   implicit none
 
 !===============================================================================
@@ -21,70 +19,58 @@ module bank_header
     integer(C_INT) :: particle      ! particle type (neutron, photon, etc.)
   end type Bank
 
-  ! Source and fission bank
-  type(Bank), allocatable, target :: source_bank(:)
-  type(Bank), allocatable, target :: fission_bank(:)
-#ifdef _OPENMP
-  type(Bank), allocatable, target :: master_fission_bank(:)
-#endif
-
   integer(C_INT64_T), bind(C) :: n_bank       ! # of sites in fission bank
+!$omp threadprivate(n_bank)
 
-!$omp threadprivate(fission_bank, n_bank)
+  interface
+    function openmc_fission_bank(ptr, n) result(err) bind(C)
+      import C_PTR, C_INT64_T, C_INT
+      type(C_PTR), intent(out) :: ptr
+      integer(C_INT64_T), intent(out) :: n
+      integer(C_INT) :: err
+    end function
 
-contains
+    function fission_bank_delayed_group(i) result(g) bind(C)
+      import C_INT64_T, C_INT
+      integer(C_INT64_T), value :: i
+      integer(C_INT) :: g
+    end function
 
-!===============================================================================
-! FREE_MEMORY_BANK deallocates global arrays defined in this module
-!===============================================================================
+    function fission_bank_E(i) result(E) bind(C, name='fission_bank_E')
+      import C_INT64_T, C_DOUBLE
+      integer(C_INT64_T), value :: i
+      real(C_DOUBLE) :: E
+    end function
 
-  subroutine free_memory_bank()
+    function fission_bank_wgt(i) result(wgt) bind(C)
+      import C_INT64_T, C_DOUBLE
+      integer(C_INT64_T), value :: i
+      real(C_DOUBLE) :: wgt
+    end function
 
-    ! Deallocate fission and source bank and entropy
-!$omp parallel
-    if (allocated(fission_bank)) deallocate(fission_bank)
-!$omp end parallel
-#ifdef _OPENMP
-    if (allocated(master_fission_bank)) deallocate(master_fission_bank)
-#endif
-    if (allocated(source_bank)) deallocate(source_bank)
+    subroutine source_bank_xyz(i, xyz) bind(C)
+      import C_INT64_T, C_DOUBLE
+      integer(C_INT64_T), value :: i
+      real(C_DOUBLE), intent(in) :: xyz(*)
+    end subroutine
 
-  end subroutine free_memory_bank
+    function source_bank_E(i) result(E) bind(C, name='source_bank_E')
+      import C_INT64_T, C_DOUBLE
+      integer(C_INT64_T), value :: i
+      real(C_DOUBLE) :: E
+    end function
 
-!===============================================================================
-!                               C API FUNCTIONS
-!===============================================================================
+    function source_bank_wgt(i) result(wgt) bind(C)
+      import C_INT64_T, C_DOUBLE
+      integer(C_INT64_T), value :: i
+      real(C_DOUBLE) :: wgt
+    end function
 
-  function openmc_source_bank(ptr, n) result(err) bind(C)
-    ! Return a pointer to the source bank
-    type(C_PTR), intent(out) :: ptr
-    integer(C_INT64_T), intent(out) :: n
-    integer(C_INT) :: err
-
-    if (.not. allocated(source_bank)) then
-      err = E_ALLOCATE
-      call set_errmsg("Source bank has not been allocated.")
-    else
-      err = 0
-      ptr = C_LOC(source_bank)
-      n = size(source_bank)
-    end if
-  end function openmc_source_bank
-
-  function openmc_fission_bank(ptr, n) result(err) bind(C)
-    ! Return a pointer to the source bank
-    type(C_PTR), intent(out) :: ptr
-    integer(C_INT64_T), intent(out) :: n
-    integer(C_INT) :: err
-
-    if (.not. allocated(fission_bank)) then
-      err = E_ALLOCATE
-      call set_errmsg("Fission bank has not been allocated.")
-    else
-      err = 0
-      ptr = C_LOC(fission_bank)
-      n = size(fission_bank)
-    end if
-  end function openmc_fission_bank
+    subroutine source_bank_set_wgt(i, wgt) bind(C)
+      import C_INT64_T, C_DOUBLE
+      integer(C_INT64_T), value :: i
+      real(C_DOUBLE), value :: wgt
+    end subroutine
+  end interface
 
 end module bank_header

@@ -5,6 +5,7 @@
 #include "xtensor/xtensor.hpp"
 #include "xtensor/xview.hpp"
 
+#include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
@@ -68,13 +69,6 @@ void calculate_generation_keff()
 void synchronize_bank()
 {
   simulation::time_bank.start();
-
-  // Get pointers to source/fission bank
-  Bank* source_bank;
-  Bank* fission_bank;
-  int64_t n;
-  openmc_source_bank(&source_bank, &n);
-  openmc_fission_bank(&fission_bank, &n);
 
   // In order to properly understand the fission bank algorithm, you need to
   // think of the fission and source bank as being one global array divided
@@ -147,14 +141,14 @@ void synchronize_bank()
     // and the remaining 100 would be randomly sampled.
     if (total < settings::n_particles) {
       for (int64_t j = 1; j <= settings::n_particles / total; ++j) {
-        temp_sites[index_temp] = fission_bank[i];
+        temp_sites[index_temp] = simulation::fission_bank[i];
         ++index_temp;
       }
     }
 
     // Randomly sample sites needed
     if (prn() < p_sample) {
-      temp_sites[index_temp] = fission_bank[i];
+      temp_sites[index_temp] = simulation::fission_bank[i];
       ++index_temp;
     }
   }
@@ -195,7 +189,8 @@ void synchronize_bank()
       // fission bank
       sites_needed = settings::n_particles - finish;
       for (int i = 0; i < sites_needed; ++i) {
-        temp_sites[index_temp] = fission_bank[simulation::n_bank - sites_needed + i];
+        int i_bank = simulation::n_bank - sites_needed + i;
+        temp_sites[index_temp] = simulation::fission_bank[i_bank];
         ++index_temp;
       }
     }
@@ -300,7 +295,8 @@ void synchronize_bank()
   MPI_Waitall(n_request, requests.data(), MPI_STATUSES_IGNORE);
 
 #else
-  std::copy(temp_sites.data(), temp_sites.data() + settings::n_particles, source_bank);
+  std::copy(temp_sites.data(), temp_sites.data() + settings::n_particles,
+    simulation::source_bank.begin());
 #endif
 
   simulation::time_bank_sendrecv.stop();
@@ -346,6 +342,46 @@ void calculate_average_keff()
     }
   }
 }
+
+#ifdef _OPENMP
+void join_bank_from_threads()
+{
+  // Initialize the total number of fission bank sites
+  int64_t total = 0;
+
+#pragma omp parallel
+  {
+    // Copy thread fission bank sites to one shared copy
+#pragma omp for ordered schedule(static)
+    for (int i = 0; i < simulation::n_threads; ++i) {
+#pragma omp ordered
+      {
+        std::copy(
+          &simulation::fission_bank[0],
+          &simulation::fission_bank[0] + simulation::n_bank,
+          &simulation::master_fission_bank[total]
+        );
+        total += simulation::n_bank;
+      }
+    }
+
+    // Make sure all threads have made it to this point
+#pragma omp barrier
+
+    // Now copy the shared fission bank sites back to the master thread's copy.
+    if (simulation::thread_id == 0) {
+      simulation::n_bank = total;
+      std::copy(
+        &simulation::master_fission_bank[0],
+        &simulation::master_fission_bank[0] + simulation::n_bank,
+        &simulation::fission_bank[0]
+      );
+    } else {
+      simulation::n_bank = 0;
+    }
+  }
+}
+#endif
 
 int openmc_get_keff(double* k_combined)
 {
@@ -499,15 +535,10 @@ void shannon_entropy()
   // Get pointer to entropy mesh
   auto& m = model::meshes[settings::index_entropy_mesh];
 
-  // Get pointer to fission bank
-  Bank* fission_bank;
-  int64_t n;
-  openmc_fission_bank(&fission_bank, &n);
-
   // Get source weight in each mesh bin
   bool sites_outside;
-  xt::xtensor<double, 1> p = m->count_sites(
-    simulation::n_bank, fission_bank, 0, nullptr, &sites_outside);
+  xt::xtensor<double, 1> p = m->count_sites(simulation::n_bank,
+    simulation::fission_bank.data(), 0, nullptr, &sites_outside);
 
   // display warning message if there were sites outside entropy box
   if (sites_outside) {
@@ -544,15 +575,10 @@ void ufs_count_sites()
     s = m->volume_frac_;
 
   } else {
-    // Get pointer to source bank
-    Bank* source_bank;
-    int64_t n;
-    openmc_source_bank(&source_bank, &n);
-
     // count number of source sites in each ufs mesh cell
     bool sites_outside;
-    simulation::source_frac = m->count_sites(simulation::work, source_bank, 0, nullptr,
-      &sites_outside);
+    simulation::source_frac = m->count_sites(simulation::work,
+      simulation::source_bank.data(), 0, nullptr, &sites_outside);
 
     // Check for sites outside of the mesh
     if (mpi::master && sites_outside) {
@@ -572,7 +598,7 @@ void ufs_count_sites()
     // Since the total starting weight is not equal to n_particles, we need to
     // renormalize the weight of the source sites
     for (int i = 0; i < simulation::work; ++i) {
-      source_bank[i].wgt *= settings::n_particles / total;
+      simulation::source_bank[i].wgt *= settings::n_particles / total;
     }
   }
 }

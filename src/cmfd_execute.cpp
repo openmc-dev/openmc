@@ -5,6 +5,7 @@
 #include "xtensor/xarray.hpp"
 #include "xtensor/xio.hpp"
 
+#include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
@@ -18,14 +19,10 @@ extern "C" void
 cmfd_populate_sourcecounts(int n_energy, const double* energies,
   double* source_counts, bool* outside)
 {
-  // Get pointer to source bank
-  Bank* source_bank;
-  int64_t n;
-  openmc_source_bank(&source_bank, &n);
-
   // Get source counts in each mesh bin / energy bin
   auto& m = model::meshes.at(settings::index_cmfd_mesh);
-  xt::xarray<double> counts = m->count_sites(simulation::work, source_bank, n_energy, energies, outside);
+  xt::xarray<double> counts = m->count_sites(simulation::work,
+    simulation::source_bank.data(), n_energy, energies, outside);
 
   // Copy data from the xarray into the source counts array
   std::copy(counts.begin(), counts.end(), source_counts);

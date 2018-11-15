@@ -5,10 +5,31 @@
 #define OPENMC_NUCLIDE_H
 
 #include <array>
+#include <vector>
+
+#include <hdf5.h>
 
 #include "openmc/constants.h"
 
 namespace openmc {
+
+//===============================================================================
+// Data for a nuclide
+//===============================================================================
+
+class Nuclide {
+public:
+  // Constructors
+  Nuclide(hid_t group);
+
+  // Data members
+  std::string name_; //! Name of nuclide, e.g. "U235"
+  int Z_; //! Atomic number
+  int A_; //! Mass number
+  int metastable_; //! Metastable state
+  double awr_; //! Atomic weight ratio
+
+};
 
 //==============================================================================
 // Global variables
@@ -20,6 +41,8 @@ namespace data {
 // that of the ParticleType enum
 extern std::array<double, 2> energy_min;
 extern std::array<double, 2> energy_max;
+
+extern std::vector<Nuclide> nuclides;
 
 } // namespace data
 

@@ -381,6 +381,7 @@ add_library(libopenmc SHARED
   src/tallies/tally_header.F90
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90
+  src/bank.cpp
   src/dagmc.cpp
   src/cell.cpp
   src/cmfd_execute.cpp

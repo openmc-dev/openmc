@@ -1,6 +1,7 @@
 module physics
 
   use algorithm,              only: binary_search
+  use bank_header
   use constants
   use endf,                   only: reaction_name
   use error,                  only: fatal_error, warning, write_message
@@ -86,7 +87,11 @@ contains
     integer :: i_nuclide    ! index in nuclides array
     integer :: i_nuc_mat    ! index in material's nuclides array
     integer :: i_reaction   ! index in nuc % reactions array
+    integer(C_INT) :: err
+    integer(C_INT64_T) :: n
     type(Nuclide), pointer :: nuc
+    type(C_PTR) :: ptr
+    type(Bank), pointer :: fission_bank(:)
 
     call sample_nuclide(p, 'total  ', i_nuclide, i_nuc_mat)
 
@@ -103,6 +108,10 @@ contains
 
     if (nuc % fissionable) then
       if (run_mode == MODE_EIGENVALUE) then
+        ! Get fission bank pointer
+        err = openmc_fission_bank(ptr, n)
+        call c_f_pointer(ptr, fission_bank, [n])
+
         call sample_fission(i_nuclide, p % E, i_reaction)
         call create_fission_sites(p, i_nuclide, i_reaction, fission_bank, n_bank)
       elseif (run_mode == MODE_FIXEDSOURCE .and. create_fission_neutrons) then

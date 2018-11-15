@@ -26,6 +26,8 @@
 #include "openmc/tallies/filter_universe.h"
 #include "openmc/tallies/filter_zernike.h"
 
+// explicit template instantiation definition
+template class std::vector<openmc::FilterMatch>;
 
 namespace openmc {
 

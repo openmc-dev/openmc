@@ -29,7 +29,7 @@ public:
 // Without an explicit instantiation of vector<FilterMatch>, the Intel compiler
 // will complain about the threadprivate directive on filter_matches. Note that
 // this has to happen *outside* of the openmc namespace
-template class std::vector<openmc::FilterMatch>;
+extern template class std::vector<openmc::FilterMatch>;
 
 namespace openmc {
 

@@ -409,6 +409,7 @@ add_library(libopenmc SHARED
   src/nuclide.cpp
   src/output.cpp
   src/particle.cpp
+  src/photon.cpp
   src/physics_common.cpp
   src/physics_mg.cpp
   src/plot.cpp

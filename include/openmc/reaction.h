@@ -4,6 +4,7 @@
 #ifndef OPENMC_REACTION_H
 #define OPENMC_REACTION_H
 
+#include <string>
 #include <vector>
 
 #include "hdf5.h"
@@ -38,6 +39,12 @@ public:
   std::vector<TemperatureXS> xs_; //!< Cross section at each temperature
   std::vector<ReactionProduct> products_; //!< Reaction products
 };
+
+//==============================================================================
+// Non-member functions
+//==============================================================================
+
+std::string reaction_name(int mt);
 
 //==============================================================================
 // Fortran compatibility functions

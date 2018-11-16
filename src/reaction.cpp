@@ -275,14 +275,6 @@ std::string reaction_name(int mt)
 // Fortran compatibility functions
 //==============================================================================
 
-Reaction* reaction_from_hdf5(hid_t group, int* temperatures, int n)
-{
-  std::vector<int> temps {temperatures, temperatures + n};
-  return new Reaction{group, temps};
-}
-
-void reaction_delete(Reaction* rx) { delete rx; }
-
 int reaction_mt(Reaction* rx) { return rx->mt_; }
 
 double reaction_q_value(Reaction* rx) { return rx->q_value_; }

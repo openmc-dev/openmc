@@ -22,7 +22,7 @@ module reaction_header
     logical(C_BOOL) :: scatter_in_cm           ! scattering system in center-of-mass?
     logical(C_BOOL) :: redundant               ! redundant reaction?
   contains
-    procedure :: from_hdf5
+    procedure :: init
     procedure :: mt_
     procedure :: q_value_
     procedure :: scatter_in_cm_
@@ -40,11 +40,10 @@ module reaction_header
   end type Reaction
 
   interface
-    function reaction_from_hdf5(group, temperatures, n) result(ptr) bind(C)
-      import C_PTR, HID_T, C_INT
-      integer(HID_T), value :: group
-      integer(C_INT), intent(in) :: temperatures
-      integer(C_INT), value :: n
+    function nuclide_reaction(nuc_ptr, i_rx) result(ptr) bind(C)
+      import C_PTR, C_INT
+      type(C_PTR), value :: nuc_ptr
+      integer(C_INT), value :: i_rx
       type(C_PTR) :: ptr
     end function
 
@@ -148,27 +147,17 @@ module reaction_header
 
 contains
 
-  subroutine from_hdf5(this, group_id, temperatures)
+  subroutine init(this, nuc_ptr, i_rx)
     class(Reaction), intent(inout) :: this
-    integer(HID_T),  intent(in)    :: group_id
-    type(VectorInt), intent(in)    :: temperatures
+    type(C_PTR), intent(in) :: nuc_ptr
+    integer(C_INT), intent(in) :: i_rx
 
-    integer(C_INT) :: dummy
-    integer(C_INT) :: n
-
-    n = temperatures % size()
-    if (n > 0) then
-      this % ptr = reaction_from_hdf5(group_id, temperatures % data(1), n)
-    else
-      ! In this case, temperatures % data(1) doesn't exist, so we just pass a
-      ! dummy value
-      this % ptr = reaction_from_hdf5(group_id, dummy, n)
-    end if
+    this % ptr = nuclide_reaction(nuc_ptr, i_rx)
     this % MT = reaction_mt(this % ptr)
     this % Q_value = reaction_q_value(this % ptr)
     this % scatter_in_cm = reaction_scatter_in_cm(this % ptr)
     this % redundant = reaction_redundant(this % ptr)
-  end subroutine from_hdf5
+  end subroutine
 
   function mt_(this) result(mt)
     class(Reaction), intent(in) :: this

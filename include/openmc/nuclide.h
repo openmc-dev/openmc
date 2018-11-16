@@ -5,11 +5,13 @@
 #define OPENMC_NUCLIDE_H
 
 #include <array>
+#include <memory> // for unique_ptr
 #include <vector>
 
 #include <hdf5.h>
 
 #include "openmc/constants.h"
+#include "openmc/reaction.h"
 
 namespace openmc {
 
@@ -20,7 +22,7 @@ namespace openmc {
 class Nuclide {
 public:
   // Constructors
-  Nuclide(hid_t group);
+  Nuclide(hid_t group, const double* temperature, int n);
 
   // Data members
   std::string name_; //! Name of nuclide, e.g. "U235"
@@ -28,7 +30,7 @@ public:
   int A_; //! Mass number
   int metastable_; //! Metastable state
   double awr_; //! Atomic weight ratio
-
+  std::vector<std::unique_ptr<Reaction>> reactions_; //! Reactions
 };
 
 //==============================================================================
@@ -42,7 +44,7 @@ namespace data {
 extern std::array<double, 2> energy_min;
 extern std::array<double, 2> energy_max;
 
-extern std::vector<Nuclide> nuclides;
+extern std::vector<std::unique_ptr<Nuclide>> nuclides;
 
 } // namespace data
 

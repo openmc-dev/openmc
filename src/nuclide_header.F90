@@ -105,6 +105,8 @@ module nuclide_header
     class(Function1D), allocatable :: fission_q_prompt ! fragments and prompt neutrons, gammas
     class(Function1D), allocatable :: fission_q_recov  ! fragments, neutrons, gammas, betas
 
+    type(C_PTR) :: ptr
+
   contains
     procedure :: assign_0K_elastic_scattering
     procedure :: clear => nuclide_clear
@@ -312,18 +314,6 @@ contains
     class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
     integer :: i
 
-    interface
-      subroutine reaction_delete(rx) bind(C)
-        import C_PTR
-        type(C_PTR), value :: rx
-      end subroutine reaction_delete
-    end interface
-
-    do i = 1, size(this % reactions)
-      call reaction_delete(this % reactions(i) % ptr)
-    end do
-    deallocate(this % reactions)
-
     if (associated(this % multipole)) deallocate(this % multipole)
 
   end subroutine nuclide_clear
@@ -364,14 +354,17 @@ contains
     type(VectorInt) :: index_inelastic_scatter
 
     interface
-      subroutine nuclide_from_hdf5_c(group) bind(C)
-        import HID_T
+      function nuclide_from_hdf5_c(group, temperature, n) result(ptr) bind(C)
+        import HID_T, C_DOUBLE, C_INT, C_PTR
         integer(HID_T), value :: group
-      end subroutine
+        real(C_DOUBLE), intent(in) :: temperature(*)
+        integer(C_INT), value :: n
+        type(C_PTR) :: ptr
+      end function
     end interface
 
     ! Read data on C++ side
-    call nuclide_from_hdf5_c(group_id)
+    this % ptr = nuclide_from_hdf5_c(group_id, temperature % data(1), temperature % size())
 
     ! Get name of nuclide from group
     this % name = get_name(group_id)
@@ -523,7 +516,8 @@ contains
       rx_group = open_group(rxs_group, 'reaction_' // trim(&
            zero_padded(MTs % data(i), 3)))
 
-      call this % reactions(i) % from_hdf5(rx_group, temps_to_read)
+      ! Set pointer for each reaction
+      call this % reactions(i) % init(this % ptr, i)
 
       ! Check for 0K elastic scattering
       if (this % reactions(i) % MT == 2) then
@@ -1583,6 +1577,9 @@ contains
     interface
       subroutine library_clear() bind(C)
       end subroutine
+
+      subroutine nuclides_clear() bind(C)
+      end subroutine
     end interface
 
     ! Deallocate cross section data, listings, and cache
@@ -1592,6 +1589,7 @@ contains
         call nuclides(i) % clear()
       end do
       deallocate(nuclides)
+      call nuclides_clear()
     end if
     n_nuclides = 0
 

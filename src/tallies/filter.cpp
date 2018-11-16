@@ -63,8 +63,7 @@ free_memory_tally_c()
 //==============================================================================
 
 extern "C" {
-  FilterMatch* filter_match_pointer(int indx)
-  {return &simulation::filter_matches[indx];}
+  // filter_match_point moved to simulation.cpp
 
   void
   filter_match_bins_push_back(FilterMatch* match, int val)

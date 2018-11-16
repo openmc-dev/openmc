@@ -565,4 +565,10 @@ extern "C" void k_generation_clear() { simulation::k_generation.clear(); }
 extern "C" void k_generation_reserve(int i) { simulation::k_generation.reserve(i); }
 extern "C" int64_t work_index(int rank) { return simulation::work_index[rank]; }
 
+// This function was moved here to get around a bug on macOS whereby an invalid
+// pointer is returned for the threadprivate filter_matches
+extern "C" FilterMatch* filter_match_pointer(int indx) {
+  return &simulation::filter_matches[indx];
+}
+
 } // namespace openmc

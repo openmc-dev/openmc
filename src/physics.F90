@@ -212,68 +212,6 @@ contains
   end subroutine sample_photon_reaction
 
 !===============================================================================
-! SAMPLE_NUCLIDE
-!===============================================================================
-
-  subroutine sample_nuclide(p, base, i_nuclide, i_nuc_mat) bind(C)
-
-    type(Particle), intent(in) :: p
-    integer(C_INT), value      :: base      ! which reaction to sample based on
-    integer(C_INT), intent(out) :: i_nuclide
-    integer(C_INT), intent(out) :: i_nuc_mat
-
-    real(8) :: prob
-    real(8) :: cutoff
-    real(8) :: atom_density ! atom density of nuclide in atom/b-cm
-    real(8) :: sigma        ! microscopic total xs for nuclide
-    type(Material), pointer :: mat
-
-    ! Get pointer to current material
-    mat => materials(p % material)
-
-    ! Sample cumulative distribution function
-    select case (base)
-    case (SCORE_TOTAL)
-      cutoff = prn() * material_xs % total
-    case (SCORE_SCATTER)
-      cutoff = prn() * (material_xs % total - material_xs % absorption)
-    case (SCORE_FISSION)
-      cutoff = prn() * material_xs % fission
-    end select
-
-    i_nuc_mat = 0
-    prob = ZERO
-    do while (prob < cutoff)
-      i_nuc_mat = i_nuc_mat + 1
-
-      ! Check to make sure that a nuclide was sampled
-      if (i_nuc_mat > mat % n_nuclides) then
-        call particle_write_restart(p)
-        call fatal_error("Did not sample any nuclide during collision.")
-      end if
-
-      ! Find atom density
-      i_nuclide    = mat % nuclide(i_nuc_mat)
-      atom_density = mat % atom_density(i_nuc_mat)
-
-      ! Determine microscopic cross section
-      select case (base)
-      case (SCORE_TOTAL)
-        sigma = atom_density * micro_xs(i_nuclide) % total
-      case (SCORE_SCATTER)
-        sigma = atom_density * (micro_xs(i_nuclide) % total - &
-             micro_xs(i_nuclide) % absorption)
-      case (SCORE_FISSION)
-        sigma = atom_density * micro_xs(i_nuclide) % fission
-      end select
-
-      ! Increment probability to compare to cutoff
-      prob = prob + sigma
-    end do
-
-  end subroutine sample_nuclide
-
-!===============================================================================
 ! SAMPLE_ELEMENT
 !===============================================================================
 

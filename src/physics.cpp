@@ -397,57 +397,69 @@ void sample_positron_reaction(Particle* p)
   p->alive = false;
 }
 
-// void sample_nuclide(Particle* p, int mt, int i_nuclide, int i_nuc_mat)
-// {
-//   // Get pointer to current material
-//   mat => materials(p->material)
+void sample_nuclide(const Particle* p, int mt, int* i_nuclide, int* i_nuc_mat)
+{
+  // Sample cumulative distribution function
+  double cutoff;
+  switch (mt) {
+  case SCORE_TOTAL:
+    cutoff = prn() * simulation::material_xs.total;
+    break;
+  case SCORE_SCATTER:
+    cutoff = prn() * (simulation::material_xs.total -
+      simulation::material_xs.absorption);
+    break;
+  case SCORE_FISSION:
+    cutoff = prn() * simulation::material_xs.fission;
+    break;
+  }
 
-//   // Sample cumulative distribution function
-//   select case (base)
-//   case ('total')
-//     cutoff = prn() * material_xs % total
-//   case ('scatter')
-//     cutoff = prn() * (material_xs % total - material_xs % absorption)
-//   case ('fission')
-//     cutoff = prn() * material_xs % fission
-//   end select
+  // Get pointers to nuclide/density arrays
+  int* nuclides;
+  double* densities;
+  int n;
+  openmc_material_get_densities(p->material, &nuclides, &densities, &n);
 
-//   i_nuc_mat = 0
-//   prob = 0.0
-//   do while (prob < cutoff)
-//     i_nuc_mat = i_nuc_mat + 1
+  *i_nuc_mat = 0;
+  double prob = 0.0;
+  while (prob < cutoff) {
+    // Check to make sure that a nuclide was sampled
+    if (*i_nuc_mat > n) {
+      p->write_restart();
+      fatal_error("Did not sample any nuclide during collision.");
+    }
 
-//     // Check to make sure that a nuclide was sampled
-//     if (i_nuc_mat > mat % n_nuclides) {
-//       particle_write_restart(p)
-//       fatal_error("Did not sample any nuclide during collision.")
-//     }
+    // Find atom density
+    *i_nuclide = nuclides[*i_nuc_mat];
+    double atom_density = densities[*i_nuc_mat];
 
-//     // Find atom density
-//     i_nuclide    = mat % nuclide(i_nuc_mat)
-//     atom_density = mat % atom_density(i_nuc_mat)
+    // Determine microscopic cross section
+    double sigma;
+    switch (mt) {
+    case SCORE_TOTAL:
+      sigma = atom_density * simulation::micro_xs[*i_nuclide-1].total;
+      break;
+    case SCORE_SCATTER:
+      sigma = atom_density * (simulation::micro_xs[*i_nuclide-1].total -
+        simulation::micro_xs[*i_nuclide-1].absorption);
+        break;
+    case SCORE_FISSION:
+      sigma = atom_density * simulation::micro_xs[*i_nuclide-1].fission;
+      break;
+    }
 
-//     // Determine microscopic cross section
-//     select case (base)
-//     case ('total')
-//       sigma = atom_density * micro_xs(i_nuclide) % total
-//     case ('scatter')
-//       sigma = atom_density * (micro_xs(i_nuclide) % total - &
-//             micro_xs(i_nuclide) % absorption)
-//     case ('fission')
-//       sigma = atom_density * micro_xs(i_nuclide) % fission
-//     end select
+    // Increment probability to compare to cutoff
+    prob += sigma;
 
-//     // Increment probability to compare to cutoff
-//     prob = prob + sigma
-//   end do
-// }
+    ++(*i_nuc_mat);
+  }
+}
 
 // void sample_element(Particle* p)
 // {
 //   associate (mat => materials(p->material))
 //     // Sample cumulative distribution function
-//     cutoff = prn() * material_xs % total
+//     cutoff = prn() * simulation::material_xs.total
 
 //     i = 0
 //     prob = 0.0

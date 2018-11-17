@@ -35,91 +35,6 @@ module physics
 contains
 
 !===============================================================================
-! SAMPLE_NEUTRON_REACTION samples a nuclide based on the macroscopic cross
-! sections for each nuclide within a material and then samples a reaction for
-! that nuclide and calls the appropriate routine to process the physics. Note
-! that there is special logic when suvival biasing is turned on since fission
-! and disappearance are treated implicitly.
-!===============================================================================
-
-  subroutine sample_neutron_reaction(p) bind(C)
-
-    type(Particle), intent(inout) :: p
-
-    integer :: i_nuclide    ! index in nuclides array
-    integer :: i_nuc_mat    ! index in material's nuclides array
-    integer :: i_reaction   ! index in nuc % reactions array
-    integer(C_INT) :: err
-    integer(C_INT64_T) :: n
-    type(Nuclide), pointer :: nuc
-    type(C_PTR) :: ptr
-    type(Bank), pointer :: fission_bank(:)
-
-    call sample_nuclide(p, 'total  ', i_nuclide, i_nuc_mat)
-
-    ! Get pointer to table
-    nuc => nuclides(i_nuclide)
-
-    ! Save which nuclide particle had collision with
-    p % event_nuclide = i_nuclide
-
-    ! Create fission bank sites. Note that while a fission reaction is sampled,
-    ! it never actually "happens", i.e. the weight of the particle does not
-    ! change when sampling fission sites. The following block handles all
-    ! absorption (including fission)
-
-    if (nuc % fissionable) then
-      if (run_mode == MODE_EIGENVALUE) then
-        ! Get fission bank pointer
-        err = openmc_fission_bank(ptr, n)
-        call c_f_pointer(ptr, fission_bank, [n])
-
-        call sample_fission(i_nuclide, p % E, i_reaction)
-        call create_fission_sites(p, i_nuclide, i_reaction, fission_bank, n_bank)
-      elseif (run_mode == MODE_FIXEDSOURCE .and. create_fission_neutrons) then
-        call sample_fission(i_nuclide, p % E, i_reaction)
-        call create_fission_sites(p, i_nuclide, i_reaction, &
-             p % secondary_bank, p % n_secondary)
-      end if
-    end if
-
-    ! Create secondary photons
-    if (photon_transport) then
-      call prn_set_stream(STREAM_PHOTON)
-      call sample_secondary_photons(p, i_nuclide)
-      call prn_set_stream(STREAM_TRACKING)
-    end if
-
-    ! If survival biasing is being used, the following subroutine adjusts the
-    ! weight of the particle. Otherwise, it checks to see if absorption occurs
-
-    if (micro_xs(i_nuclide) % absorption > ZERO) then
-      call absorption(p, i_nuclide)
-    else
-      p % absorb_wgt = ZERO
-    end if
-    if (.not. p % alive) return
-
-    ! Sample a scattering reaction and determine the secondary energy of the
-    ! exiting neutron
-    call scatter(p, i_nuclide, i_nuc_mat)
-
-    ! Advance URR seed stream 'N' times after energy changes
-    if (p % E /= p % last_E) then
-      call prn_set_stream(STREAM_URR_PTABLE)
-      call advance_prn_seed(size(nuclides, kind=8))
-      call prn_set_stream(STREAM_TRACKING)
-    end if
-
-    ! Play russian roulette if survival biasing is turned on
-    if (survival_biasing) then
-      call russian_roulette(p)
-      if (.not. p % alive) return
-    end if
-
-  end subroutine sample_neutron_reaction
-
-!===============================================================================
 ! SAMPLE_PHOTON_REACTION samples an element based on the macroscopic cross
 ! sections for each nuclide within a material and then samples a reaction for
 ! that element and calls the appropriate routine to process the physics.
@@ -362,12 +277,12 @@ contains
 ! SAMPLE_NUCLIDE
 !===============================================================================
 
-  subroutine sample_nuclide(p, base, i_nuclide, i_nuc_mat)
+  subroutine sample_nuclide(p, base, i_nuclide, i_nuc_mat) bind(C)
 
     type(Particle), intent(in) :: p
-    character(7),   intent(in) :: base      ! which reaction to sample based on
-    integer, intent(out)       :: i_nuclide
-    integer, intent(out)       :: i_nuc_mat
+    integer(C_INT), value      :: base      ! which reaction to sample based on
+    integer(C_INT), intent(out) :: i_nuclide
+    integer(C_INT), intent(out) :: i_nuc_mat
 
     real(8) :: prob
     real(8) :: cutoff
@@ -380,11 +295,11 @@ contains
 
     ! Sample cumulative distribution function
     select case (base)
-    case ('total')
+    case (SCORE_TOTAL)
       cutoff = prn() * material_xs % total
-    case ('scatter')
+    case (SCORE_SCATTER)
       cutoff = prn() * (material_xs % total - material_xs % absorption)
-    case ('fission')
+    case (SCORE_FISSION)
       cutoff = prn() * material_xs % fission
     end select
 
@@ -405,12 +320,12 @@ contains
 
       ! Determine microscopic cross section
       select case (base)
-      case ('total')
+      case (SCORE_TOTAL)
         sigma = atom_density * micro_xs(i_nuclide) % total
-      case ('scatter')
+      case (SCORE_SCATTER)
         sigma = atom_density * (micro_xs(i_nuclide) % total - &
              micro_xs(i_nuclide) % absorption)
-      case ('fission')
+      case (SCORE_FISSION)
         sigma = atom_density * micro_xs(i_nuclide) % fission
       end select
 
@@ -467,10 +382,10 @@ contains
 ! SAMPLE_FISSION
 !===============================================================================
 
-  subroutine sample_fission(i_nuclide, E, i_reaction)
-    integer, intent(in)  :: i_nuclide  ! index in nuclides array
-    real(8), intent(in)  :: E          ! incident neutron energy
-    integer, intent(out) :: i_reaction ! index in nuc % reactions array
+  function sample_fission(i_nuclide, E) result (i_reaction) bind(C)
+    integer(C_INT), value :: i_nuclide  ! index in nuclides array
+    real(C_DOUBLE), value  :: E          ! incident neutron energy
+    integer(C_INT) :: i_reaction ! index in nuc % reactions array
 
     integer :: i
     integer :: i_grid
@@ -529,7 +444,7 @@ contains
       if (prob > cutoff) exit FISSION_REACTION_LOOP
     end do FISSION_REACTION_LOOP
 
-  end subroutine sample_fission
+  end function sample_fission
 
 !===============================================================================
 ! SAMPLE_PHOTON_PRODUCT
@@ -594,9 +509,9 @@ contains
 ! ABSORPTION
 !===============================================================================
 
-  subroutine absorption(p, i_nuclide)
+  subroutine absorption(p, i_nuclide) bind(C)
     type(Particle), intent(inout) :: p
-    integer,        intent(in)    :: i_nuclide
+    integer(C_INT), value         :: i_nuclide
 
     if (survival_biasing) then
       ! Determine weight absorbed in survival biasing
@@ -634,10 +549,10 @@ contains
 ! SCATTER
 !===============================================================================
 
-  subroutine scatter(p, i_nuclide, i_nuc_mat)
+  subroutine scatter(p, i_nuclide, i_nuc_mat) bind(C)
     type(Particle), intent(inout) :: p
-    integer,        intent(in)    :: i_nuclide
-    integer,        intent(in)    :: i_nuc_mat
+    integer(C_INT), value    :: i_nuclide
+    integer(C_INT), value    :: i_nuc_mat
 
     integer :: i
     integer :: j
@@ -1138,121 +1053,13 @@ contains
   end subroutine sample_cxs_target_velocity
 
 !===============================================================================
-! CREATE_FISSION_SITES determines the average total, prompt, and delayed
-! neutrons produced from fission and creates appropriate bank sites.
-!===============================================================================
-
-  subroutine create_fission_sites(p, i_nuclide, i_reaction, bank_array, size_bank)
-    type(Particle), intent(inout) :: p
-    integer,        intent(in)    :: i_nuclide
-    integer,        intent(in)    :: i_reaction
-    type(Bank),     intent(inout) :: bank_array(:)
-    integer(8),     intent(inout) :: size_bank
-
-    integer :: nu_d(MAX_DELAYED_GROUPS) ! number of delayed neutrons born
-    integer :: i                        ! loop index
-    integer :: nu                       ! actual number of neutrons produced
-    real(8) :: nu_t                     ! total nu
-    real(8) :: weight                   ! weight adjustment for ufs method
-    type(Nuclide),  pointer :: nuc
-
-    interface
-      function ufs_get_weight(p) result(weight) bind(C)
-        import Particle, C_DOUBLE
-        type(Particle), intent(in) :: p
-        real(C_DOUBLE) :: WEIGHT
-      end function
-    end interface
-
-    ! Get pointers
-    nuc => nuclides(i_nuclide)
-
-    ! TODO: Heat generation from fission
-
-    ! If uniform fission source weighting is turned on, we increase of decrease
-    ! the expected number of fission sites produced
-
-    if (ufs) then
-      weight = ufs_get_weight(p)
-    else
-      weight = ONE
-    end if
-
-    ! Determine expected number of neutrons produced
-    nu_t = p % wgt / keff * weight * micro_xs(i_nuclide) % nu_fission / &
-         micro_xs(i_nuclide) % total
-
-    ! Sample number of neutrons produced
-    if (prn() > nu_t - int(nu_t)) then
-      nu = int(nu_t)
-    else
-      nu = int(nu_t) + 1
-    end if
-
-    ! Check for bank size getting hit. For fixed source calculations, this is a
-    ! fatal error. For eigenvalue calculations, it just means that k-effective
-    ! was too high for a single batch.
-    if (size_bank + nu > size(bank_array)) then
-      if (run_mode == MODE_FIXEDSOURCE) then
-        call fatal_error("Secondary particle bank size limit reached. If you &
-             &are running a subcritical multiplication problem, k-effective &
-             &may be too close to one.")
-      else
-        if (master) call warning("Maximum number of sites in fission bank &
-             &reached. This can result in irreproducible results using different &
-             &numbers of processes/threads.")
-      end if
-    end if
-
-    ! Bank source neutrons
-    if (nu == 0 .or. size_bank == size(bank_array)) return
-
-    ! Initialize counter of delayed neutrons encountered for each delayed group
-    ! to zero.
-    nu_d(:) = 0
-
-    p % fission = .true. ! Fission neutrons will be banked
-    do i = int(size_bank,4) + 1, int(min(size_bank + nu, int(size(bank_array),8)),4)
-      ! Bank source neutrons by copying particle data
-      bank_array(i) % xyz = p % coord(1) % xyz
-
-      ! Set particle as neutron
-      bank_array(i) % particle = NEUTRON
-
-      ! Set weight of fission bank site
-      bank_array(i) % wgt = ONE/weight
-
-      ! Sample delayed group and angle/energy for fission reaction
-      call sample_fission_neutron(nuc, nuc % reactions(i_reaction), &
-           p % E, bank_array(i))
-
-      ! Set delayed group on particle too
-      p % delayed_group = bank_array(i) % delayed_group
-
-      ! Increment the number of neutrons born delayed
-      if (p % delayed_group > 0) then
-        nu_d(p % delayed_group) = nu_d(p % delayed_group) + 1
-      end if
-    end do
-
-    ! increment number of bank sites
-    size_bank = min(size_bank + nu, int(size(bank_array),8))
-
-    ! Store total and delayed weight banked for analog fission tallies
-    p % n_bank   = nu
-    p % wgt_bank = nu/weight
-    p % n_delayed_bank(:) = nu_d(:)
-
-  end subroutine create_fission_sites
-
-!===============================================================================
 ! SAMPLE_FISSION_NEUTRON
 !===============================================================================
 
-  subroutine sample_fission_neutron(nuc, rxn, E_in, site)
-    type(Nuclide),  intent(in)    :: nuc
-    type(Reaction), intent(in)    :: rxn
-    real(8),        intent(in)    :: E_in
+  subroutine sample_fission_neutron(i_nuc, i_rx, E_in, site) bind(C)
+    integer(C_INT), value    :: i_nuc
+    integeR(C_INT), value    :: i_rx
+    real(C_DOUBLE), value    :: E_in
     type(Bank),     intent(inout) :: site
 
     integer :: group        ! index on nu energy grid / precursor group
@@ -1265,6 +1072,8 @@ contains
     real(8) :: prob         ! cumulative probability
     real(8) :: mu           ! cosine of scattering angle
     real(8) :: phi          ! azimuthal angle
+
+    associate (nuc => nuclides(i_nuc), rxn => nuclides(i_nuc) % reactions(i_rx))
 
     ! Sample cosine of angle -- fission neutrons are always emitted
     ! isotropically. Sometimes in ACE data, fission reactions actually have
@@ -1351,6 +1160,8 @@ contains
       end do
     end if
 
+    end associate
+
   end subroutine sample_fission_neutron
 
 !===============================================================================
@@ -1422,9 +1233,9 @@ contains
 ! SAMPLE_SECONDARY_PHOTONS
 !===============================================================================
 
-  subroutine sample_secondary_photons(p, i_nuclide)
+  subroutine sample_secondary_photons(p, i_nuclide) bind(C)
     type(Particle), intent(inout) :: p
-    integer, intent(in)           :: i_nuclide
+    integer(C_INT), value         :: i_nuclide
 
     integer :: i_reaction   ! index in nuc % reactions array
     integer :: i_product    ! index in nuc % reactions % products array

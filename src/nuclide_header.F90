@@ -186,7 +186,7 @@ module nuclide_header
 
   ! Cross section caches
   type(NuclideMicroXS), allocatable, target :: micro_xs(:)  ! Cache for each nuclide
-  type(MaterialMacroXS)             :: material_xs  ! Cache for current material
+  type(MaterialMacroXS), bind(C)            :: material_xs  ! Cache for current material
 !$omp threadprivate(micro_xs, material_xs)
 
   ! Minimum/maximum energies
@@ -231,6 +231,11 @@ contains
     logical :: b
 
     b = library_present_c(type, to_c_string(name))
+  end function
+
+  function micro_xs_ptr() result(ptr) bind(C)
+    type(C_PTR) :: ptr
+    ptr = C_LOC(micro_xs(1))
   end function
 
 !===============================================================================

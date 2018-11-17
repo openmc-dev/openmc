@@ -6,6 +6,7 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/message_passing.h"
+#include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/particle.h"
 #include "openmc/random_lcg.h"
@@ -100,6 +101,7 @@ int openmc_simulation_init()
 
   // Call Fortran initialization
   simulation_init_f();
+  set_micro_xs();
 
   // Reset global variables -- this is done before loading state point (as that
   // will potentially populate k_generation and entropy)

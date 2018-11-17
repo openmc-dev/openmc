@@ -256,8 +256,8 @@ create_fission_sites(Particle* p, int i_nuclide, int i_rx, Bank* bank_array,
 //       // Create Compton electron
 //       E_electron = (alpha - alpha_out)*MASS_ELECTRON_EV - e_b
 //       mu_electron = (alpha - alpha_out*mu) &
-//             / std::sqrt(alpha**2 + alpha_out**2 - TWO*alpha*alpha_out*mu)
-//       phi = TWO*PI*prn()
+//             / std::sqrt(alpha**2 + alpha_out**2 - 2.0*alpha*alpha_out*mu)
+//       phi = 2.0*PI*prn()
 //       uvw = rotate_angle(p->coord(1) % uvw, mu_electron, phi)
 //       particle_create_secondary(p, uvw, E_electron, ELECTRON, true)
 
@@ -302,18 +302,18 @@ create_fission_sites(Particle* p, int i_nuclide, int i_rx, Bank* bank_array,
 //           SAMPLE_MU: do
 //             r = prn()
 //             if (FOUR * (1.0 - r) * r >= prn()) {
-//               rel_vel = std::sqrt(E_electron * (E_electron + TWO * MASS_ELECTRON_EV))&
+//               rel_vel = std::sqrt(E_electron * (E_electron + 2.0 * MASS_ELECTRON_EV))&
 //                     / (E_electron + MASS_ELECTRON_EV)
-//               mu = (TWO * r + rel_vel - 1.0) / &
-//                     (TWO * rel_vel * r - rel_vel + 1.0)
+//               mu = (2.0 * r + rel_vel - 1.0) / &
+//                     (2.0 * rel_vel * r - rel_vel + 1.0)
 //               exit SAMPLE_MU
 //             }
 //           end do SAMPLE_MU
 
-//           phi = TWO*PI*prn()
+//           phi = 2.0*PI*prn()
 //           uvw(1) = mu
-//           uvw(2) = std::sqrt(1.0 - mu*mu)*cos(phi)
-//           uvw(3) = std::sqrt(1.0 - mu*mu)*sin(phi)
+//           uvw(2) = std::sqrt(1.0 - mu*mu)*std::cos(phi)
+//           uvw(3) = std::sqrt(1.0 - mu*mu)*std::sin(phi)
 
 //           // Create secondary electron
 //           particle_create_secondary(p, uvw, E_electron, ELECTRON, &
@@ -354,40 +354,48 @@ create_fission_sites(Particle* p, int i_nuclide, int i_rx, Bank* bank_array,
 //   end associate
 // }
 
-// void sample_electron_reaction(Particle* p)
-// {
-//   // TODO: create reaction types
+void sample_electron_reaction(Particle* p)
+{
+  // TODO: create reaction types
 
-//   if (electron_treatment == ELECTRON_TTB) {
-//     thick_target_bremsstrahlung(p, E_lost)
-//   }
+  if (settings::electron_treatment == ELECTRON_TTB) {
+    double E_lost;
+    thick_target_bremsstrahlung(p, &E_lost);
+  }
 
-//   p->E = 0.0
-//   p->alive = false
-// }
+  p->E = 0.0;
+  p->alive = false;
+}
 
-// void sample_positron_reaction(Particle* p)
-// {
-//   // TODO: create reaction types
+void sample_positron_reaction(Particle* p)
+{
+  // TODO: create reaction types
 
-//   if (electron_treatment == ELECTRON_TTB) {
-//     thick_target_bremsstrahlung(p, E_lost)
-//   }
+  if (settings::electron_treatment == ELECTRON_TTB) {
+    double E_lost;
+    thick_target_bremsstrahlung(p, &E_lost);
+  }
 
-//   // Sample angle isotropically
-//   mu = TWO*prn() - 1.0
-//   phi = TWO*PI*prn()
-//   uvw(1) = mu
-//   uvw(2) = std::sqrt(1.0 - mu*mu)*cos(phi)
-//   uvw(3) = std::sqrt(1.0 - mu*mu)*sin(phi)
+  // Sample angle isotropically
+  double mu = 2.0*prn() - 1.0;
+  double phi = 2.0*PI*prn();
+  std::array<double, 3> uvw;
+  uvw[0] = mu;
+  uvw[1] = std::sqrt(1.0 - mu*mu)*std::cos(phi);
+  uvw[2] = std::sqrt(1.0 - mu*mu)*std::sin(phi);
 
-//   // Create annihilation photon pair traveling in opposite directions
-//   particle_create_secondary(p, uvw, MASS_ELECTRON_EV, PHOTON, true)
-//   particle_create_secondary(p, -uvw, MASS_ELECTRON_EV, PHOTON, true)
+  // Create annihilation photon pair traveling in opposite directions
+  int photon = static_cast<int>(ParticleType::photon);
+  p->create_secondary(uvw.data(), MASS_ELECTRON_EV, photon, true);
 
-//   p->E = 0.0
-//   p->alive = false
-// }
+  uvw[0] = -uvw[0];
+  uvw[1] = -uvw[1];
+  uvw[2] = -uvw[2];
+  p->create_secondary(uvw.data(), MASS_ELECTRON_EV, photon, true);
+
+  p->E = 0.0;
+  p->alive = false;
+}
 
 // void sample_nuclide(Particle* p, int mt, int i_nuclide, int i_nuc_mat)
 // {
@@ -686,10 +694,10 @@ create_fission_sites(Particle* p, int i_nuclide, int i_rx, Bank* bank_array,
 //     if (mat % has_isotropic_nuclides) {
 //       if (materials(p->material) % p0(i_nuc_mat)) {
 //         // Sample isotropic-in-lab outgoing direction
-//         uvw_new(1) = TWO * prn() - 1.0
-//         phi = TWO * PI * prn()
-//         uvw_new(2) = cos(phi) * std::sqrt(1.0 - uvw_new(1)*uvw_new(1))
-//         uvw_new(3) = sin(phi) * std::sqrt(1.0 - uvw_new(1)*uvw_new(1))
+//         uvw_new(1) = 2.0 * prn() - 1.0
+//         phi = 2.0 * PI * prn()
+//         uvw_new(2) = std::cos(phi) * std::sqrt(1.0 - uvw_new(1)*uvw_new(1))
+//         uvw_new(3) = std::sin(phi) * std::sqrt(1.0 - uvw_new(1)*uvw_new(1))
 //         p->mu = dot_product(uvw_old, uvw_new)
 
 //         // Change direction of particle
@@ -912,7 +920,7 @@ create_fission_sites(Particle* p, int i_nuclide, int i_rx, Bank* bank_array,
 
 //           // perform rejection sampling on cosine between
 //           // neutron and target velocities
-//           mu = (E_t + awr * (E - E_rel)) / (TWO * std::sqrt(awr * E * E_t))
+//           mu = (E_t + awr * (E - E_rel)) / (2.0 * std::sqrt(awr * E * E_t))
 
 //           if (abs(mu) < 1.0) {
 //             // set and accept target velocity
@@ -932,7 +940,7 @@ create_fission_sites(Particle* p, int i_nuclide, int i_rx, Bank* bank_array,
 //   awr = nuc % awr
 
 //   beta_vn = std::sqrt(awr * E / kT)
-//   alpha = 1.0/(1.0 + std::sqrt(pi)*beta_vn/TWO)
+//   alpha = 1.0/(1.0 + std::sqrt(pi)*beta_vn/2.0)
 
 //   do
 //     // Sample two random numbers
@@ -951,7 +959,7 @@ create_fission_sites(Particle* p, int i_nuclide, int i_rx, Bank* bank_array,
 //       // e^(-y^2). This can be done with sampling scheme C61 from the Monte
 //       // Carlo sampler
 
-//       c = cos(PI/TWO * prn())
+//       c = std::cos(PI/2.0 * prn())
 //       beta_vt_sq = -std::log(r1) - std::log(r2)*c*c
 //     }
 
@@ -959,7 +967,7 @@ create_fission_sites(Particle* p, int i_nuclide, int i_rx, Bank* bank_array,
 //     beta_vt = std::sqrt(beta_vt_sq)
 
 //     // Sample cosine of angle between neutron and target velocity
-//     mu = TWO*prn() - 1.0
+//     mu = 2.0*prn() - 1.0
 
 //     // Determine rejection probability
 //     accept_prob = std::sqrt(beta_vn*beta_vn + beta_vt_sq - 2*beta_vn*beta_vt*mu) &
@@ -983,13 +991,13 @@ create_fission_sites(Particle* p, int i_nuclide, int i_rx, Bank* bank_array,
 //   // isotropically. Sometimes in ACE data, fission reactions actually have
 //   // an angular distribution listed, but for those that do, it's simply just
 //   // a uniform distribution in mu
-//   mu = TWO * prn() - 1.0
+//   mu = 2.0 * prn() - 1.0
 
 //   // Sample azimuthal angle uniformly in [0,2*pi)
-//   phi = TWO*PI*prn()
+//   phi = 2.0*PI*prn()
 //   site % uvw(1) = mu
-//   site % uvw(2) = std::sqrt(1.0 - mu*mu) * cos(phi)
-//   site % uvw(3) = std::sqrt(1.0 - mu*mu) * sin(phi)
+//   site % uvw(2) = std::sqrt(1.0 - mu*mu) * std::cos(phi)
+//   site % uvw(3) = std::sqrt(1.0 - mu*mu) * std::sin(phi)
 
 //   // Determine total nu, delayed nu, and delayed neutron fraction
 //   nu_t = nuc % nu(E_in, EMISSION_TOTAL)
@@ -1080,7 +1088,7 @@ create_fission_sites(Particle* p, int i_nuclide, int i_rx, Bank* bank_array,
 
 //     // determine outgoing energy in lab
 //     A = nuc%awr
-//     E = E_cm + (E_in + TWO * mu * (A+1.0) * std::sqrt(E_in * E_cm)) &
+//     E = E_cm + (E_in + 2.0 * mu * (A+1.0) * std::sqrt(E_in * E_cm)) &
 //           / ((A+1.0)*(A+1.0))
 
 //     // determine outgoing angle in lab

@@ -16,7 +16,7 @@ namespace openmc {
 extern "C" void collision(Particle* p);
 
 //! Samples an incident neutron reaction
-extern "C" void sample_neutron_reaction(Particle* p);
+void sample_neutron_reaction(Particle* p);
 
 //! Samples an element based on the macroscopic cross sections for each nuclide
 //! within a material and then samples a reaction for that element and calls the
@@ -27,20 +27,20 @@ extern "C" void sample_photon_reaction(Particle* p);
 //! (electron_treatment = ELECTRON_LED) or creates secondary bremsstrahlung
 //! photons from electron deflections with charged particles (electron_treatment
 //! = ELECTRON_TTB).
-extern "C" void sample_electron_reaction(Particle* p);
+void sample_electron_reaction(Particle* p);
 
 //! Terminates the particle and either deposits all energy locally
 //! (electron_treatment = ELECTRON_LED) or creates secondary bremsstrahlung
 //! photons from electron deflections with charged particles (electron_treatment
 //! = ELECTRON_TTB). Two annihilation photons of energy MASS_ELECTRON_EV (0.511
 //! MeV) are created and travel in opposite directions.
-extern "C" void sample_positron_reaction(Particle* p);
+void sample_positron_reaction(Particle* p);
 
 extern "C" void sample_nuclide(const Particle* p, int mt, int* i_nuclide, int* i_nuc_mat);
 
 //! Determine the average total, prompt, and delayed neutrons produced from
 //! fission and creates appropriate bank sites.
-extern "C" void create_fission_sites(Particle* p, int i_nuclide, int i_rx,
+void create_fission_sites(Particle* p, int i_nuclide, int i_rx,
   Bank* bank_array, int64_t* bank_size, int64_t bank_capacity);
 
 // void sample_element(Particle* p);
@@ -69,6 +69,8 @@ extern "C" void sample_fission_neutron(int i_nuclide, int i_rx, double E_in, Ban
 // void inelastic_scatter(int i_nuclide, const Reaction& rx, Particle* p);
 
 extern "C" void sample_secondary_photons(Particle* p, int i_nuclide);
+
+extern "C" void thick_target_bremsstrahlung(Particle* p, double* E_lost);
 
 } // namespace openmc
 

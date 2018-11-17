@@ -36,7 +36,7 @@ void sample_electron_reaction(Particle* p);
 //! MeV) are created and travel in opposite directions.
 void sample_positron_reaction(Particle* p);
 
-extern "C" void sample_nuclide(const Particle* p, int mt, int* i_nuclide, int* i_nuc_mat);
+void sample_nuclide(const Particle* p, int mt, int* i_nuclide, int* i_nuc_mat);
 
 //! Determine the average total, prompt, and delayed neutrons produced from
 //! fission and creates appropriate bank sites.

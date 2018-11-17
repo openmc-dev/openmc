@@ -25,52 +25,14 @@ module physics
 
   implicit none
 
+  interface
+    subroutine collision(p) bind(C)
+      import Particle
+      type(Particle), intent(inout) :: p
+    end subroutine
+  end interface
+
 contains
-
-!===============================================================================
-! COLLISION samples a nuclide and reaction and then calls the appropriate
-! routine for that reaction
-!===============================================================================
-
-  subroutine collision(p)
-
-    type(Particle), intent(inout) :: p
-
-    ! Add to collision counter for particle
-    p % n_collision = p % n_collision + 1
-
-    ! Sample reaction for the material the particle is in
-    if (p % type == NEUTRON) then
-      call sample_neutron_reaction(p)
-    else if (p % type == PHOTON) then
-      call sample_photon_reaction(p)
-    else if (p % type == ELECTRON) then
-      call sample_electron_reaction(p)
-    else if (p % type == POSITRON) then
-      call sample_positron_reaction(p)
-    end if
-
-    ! Kill particle if energy falls below cutoff
-    if (p % E < energy_cutoff(p % type)) then
-      p % alive = .false.
-      p % wgt = ZERO
-      p % last_wgt = ZERO
-    end if
-
-    ! Display information about collision
-    if (verbosity >= 10 .or. trace) then
-      if (p % type == NEUTRON) then
-        call write_message("    " // trim(reaction_name(p % event_MT)) &
-             &// " with " // trim(adjustl(nuclides(p % event_nuclide) % name)) &
-             &// ". Energy = " // trim(to_str(p % E)) // " eV.")
-      else
-        call write_message("    " // trim(reaction_name(p % event_MT)) &
-             &// " with " // trim(adjustl(elements(p % event_nuclide) % name)) &
-             &// ". Energy = " // trim(to_str(p % E)) // " eV.")
-      end if
-    end if
-
-  end subroutine collision
 
 !===============================================================================
 ! SAMPLE_NEUTRON_REACTION samples a nuclide based on the macroscopic cross
@@ -80,7 +42,7 @@ contains
 ! and disappearance are treated implicitly.
 !===============================================================================
 
-  subroutine sample_neutron_reaction(p)
+  subroutine sample_neutron_reaction(p) bind(C)
 
     type(Particle), intent(inout) :: p
 
@@ -163,7 +125,7 @@ contains
 ! that element and calls the appropriate routine to process the physics.
 !===============================================================================
 
-  subroutine sample_photon_reaction(p)
+  subroutine sample_photon_reaction(p) bind(C)
     type(Particle), intent(inout) :: p
 
     integer :: i_shell      ! index in subshells
@@ -341,7 +303,7 @@ contains
 ! (electron_treatment = ELECTRON_TTB).
 !===============================================================================
 
-  subroutine sample_electron_reaction(p)
+  subroutine sample_electron_reaction(p) bind(C)
     type(Particle), intent(inout) :: p
 
     real(8) :: E_lost  ! energy lost to bremsstrahlung photons
@@ -365,7 +327,7 @@ contains
 ! MASS_ELECTRON_EV (0.511 MeV) are created and travel in opposite directions.
 !===============================================================================
 
-  subroutine sample_positron_reaction(p)
+  subroutine sample_positron_reaction(p) bind(C)
     type(Particle), intent(inout) :: p
 
     real(8) :: mu     ! scattering cosine

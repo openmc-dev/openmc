@@ -36,17 +36,22 @@ extern "C" void sample_electron_reaction(Particle* p);
 //! MeV) are created and travel in opposite directions.
 extern "C" void sample_positron_reaction(Particle* p);
 
-// void sample_nuclide(Particle* p, int mt, int i_nuclide, int i_nuc_mat);
+extern "C" void sample_nuclide(const Particle* p, int mt, int* i_nuclide, int* i_nuc_mat);
+
+//! Determine the average total, prompt, and delayed neutrons produced from
+//! fission and creates appropriate bank sites.
+extern "C" void create_fission_sites(Particle* p, int i_nuclide, int i_rx,
+  Bank* bank_array, int64_t* bank_size, int64_t bank_capacity);
 
 // void sample_element(Particle* p);
 
-// int sample_fission(int i_nuclide, double E);
+extern "C" int sample_fission(int i_nuclide, double E);
 
 // void sample_photon_product(int i_nuclide, double E, int* i_rx, int* i_product);
 
-// void absorption(Particle* p, int i_nuclide);
+extern "C" void absorption(Particle* p, int i_nuclide);
 
-// void scatter(Particle*, int i_nuclide, int i_nuc_mat);
+extern "C" void scatter(Particle*, int i_nuclide, int i_nuc_mat);
 
 // void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, double* E,
 //   Direction* u, double* mu_lab, double* wgt);
@@ -59,11 +64,11 @@ extern "C" void sample_positron_reaction(Particle* p);
 // void sample_cxs_target_velocity(int i_nuclide, Direction* v_target, double E, Direction u,
 //   double kT);
 
-// void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Bank* site);
+extern "C" void sample_fission_neutron(int i_nuclide, int i_rx, double E_in, Bank* site);
 
 // void inelastic_scatter(int i_nuclide, const Reaction& rx, Particle* p);
 
-// void sample_secondary_photons(Particle* p, int i_nuclide);
+extern "C" void sample_secondary_photons(Particle* p, int i_nuclide);
 
 } // namespace openmc
 

@@ -30,23 +30,12 @@ public:
   int A_; //! Mass number
   int metastable_; //! Metastable state
   double awr_; //! Atomic weight ratio
+  bool fissionable_ {false}; //! Whether nuclide is fissionable
   std::vector<std::unique_ptr<Reaction>> reactions_; //! Reactions
+
+private:
+  void create_derived();
 };
-
-//==============================================================================
-// Global variables
-//==============================================================================
-
-namespace data {
-
-// Minimum/maximum transport energy for each particle type. Order corresponds to
-// that of the ParticleType enum
-extern std::array<double, 2> energy_min;
-extern std::array<double, 2> energy_max;
-
-extern std::vector<std::unique_ptr<Nuclide>> nuclides;
-
-} // namespace data
 
 //===============================================================================
 //! Cached microscopic cross sections for a particular nuclide at the current
@@ -91,19 +80,49 @@ struct NuclideMicroXS {
 // particle is traveling through
 //===============================================================================
 
-  struct MaterialMacroXS {
-    double total;         //!< macroscopic total xs
-    double absorption;    //!< macroscopic absorption xs
-    double fission;       //!< macroscopic fission xs
-    double nu_fission;    //!< macroscopic production xs
-    double photon_prod;   //!< macroscopic photon production xs
+struct MaterialMacroXS {
+  double total;         //!< macroscopic total xs
+  double absorption;    //!< macroscopic absorption xs
+  double fission;       //!< macroscopic fission xs
+  double nu_fission;    //!< macroscopic production xs
+  double photon_prod;   //!< macroscopic photon production xs
 
-    // Photon cross sections
-    double coherent;        //!< macroscopic coherent xs
-    double incoherent;      //!< macroscopic incoherent xs
-    double photoelectric;   //!< macroscopic photoelectric xs
-    double pair_production; //!< macroscopic pair production xs
-  };
+  // Photon cross sections
+  double coherent;        //!< macroscopic coherent xs
+  double incoherent;      //!< macroscopic incoherent xs
+  double photoelectric;   //!< macroscopic photoelectric xs
+  double pair_production; //!< macroscopic pair production xs
+};
+
+//==============================================================================
+// Global variables
+//==============================================================================
+
+namespace data {
+
+// Minimum/maximum transport energy for each particle type. Order corresponds to
+// that of the ParticleType enum
+extern std::array<double, 2> energy_min;
+extern std::array<double, 2> energy_max;
+
+extern std::vector<std::unique_ptr<Nuclide>> nuclides;
+
+} // namespace data
+
+namespace simulation {
+
+// Cross section caches
+extern NuclideMicroXS* micro_xs;
+extern "C" MaterialMacroXS material_xs;
+#pragma omp threadprivate(micro_xs, material_xs)
+
+} // namespace simulation
+
+//==============================================================================
+// Fortran compatibility
+//==============================================================================
+
+void set_micro_xs();
 
 } // namespace openmc
 

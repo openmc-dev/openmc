@@ -1,6 +1,7 @@
 #include "openmc/nuclide.h"
 
 #include "openmc/container_util.h"
+#include "openmc/endf.h"
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/message_passing.h"
@@ -17,13 +18,15 @@ namespace openmc {
 //==============================================================================
 
 namespace data {
-
 std::array<double, 2> energy_min {0.0, 0.0};
 std::array<double, 2> energy_max {INFTY, INFTY};
-
 std::vector<std::unique_ptr<Nuclide>> nuclides;
-
 } // namespace data
+
+namespace simulation {
+NuclideMicroXS* micro_xs;
+MaterialMacroXS material_xs;
+} // namespace simulation
 
 //==============================================================================
 // Nuclide implementation
@@ -152,6 +155,19 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n)
   }
   close_group(rxs_group);
 
+  this->create_derived();
+}
+
+void Nuclide::create_derived()
+{
+  for (const auto& rx : reactions_) {
+    // Skip redundant reactions
+    if (rx->redundant_) continue;
+
+    if (is_fission(rx->mt_)) {
+      fissionable_ = true;
+    }
+  }
 }
 
 //==============================================================================
@@ -177,5 +193,15 @@ extern "C" Reaction* nuclide_reaction(Nuclide* nuc, int i_rx)
 }
 
 extern "C" void nuclides_clear() { data::nuclides.clear(); }
+
+
+extern "C" NuclideMicroXS* micro_xs_ptr();
+void set_micro_xs()
+{
+#pragma omp parallel
+  {
+    simulation::micro_xs = micro_xs_ptr();
+  }
+}
 
 } // namespace openmc

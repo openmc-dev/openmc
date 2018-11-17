@@ -1,14 +1,19 @@
 #include "openmc/physics.h"
 
+#include "openmc/bank.h"
+#include "openmc/constants.h"
+#include "openmc/eigenvalue.h"
 #include "openmc/error.h"
+#include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
+#include "openmc/physics_common.h"
 #include "openmc/random_lcg.h"
 #include "openmc/reaction.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 
-#include <algorithm> // for max
+#include <algorithm> // for max, min
 #include <cmath> // for sqrt, exp, log
 #include <sstream>
 
@@ -60,70 +65,147 @@ void collision(Particle* p)
   }
 }
 
-// void sample_neutron_reaction(Particle* p)
-// {
-//   sample_nuclide(p, 'total  ', i_nuclide, i_nuc_mat)
+void sample_neutron_reaction(Particle* p)
+{
+  int i_nuclide;
+  int i_nuc_mat;
+  sample_nuclide(p, SCORE_TOTAL, &i_nuclide, &i_nuc_mat);
 
-//   // Get pointer to table
-//   nuc => nuclides(i_nuclide)
+  // Save which nuclide particle had collision with
+  p->event_nuclide = i_nuclide;
 
-//   // Save which nuclide particle had collision with
-//   p->event_nuclide = i_nuclide
+  // Create fission bank sites. Note that while a fission reaction is sampled,
+  // it never actually "happens", i.e. the weight of the particle does not
+  // change when sampling fission sites. The following block handles all
+  // absorption (including fission)
 
-//   // Create fission bank sites. Note that while a fission reaction is sampled,
-//   // it never actually "happens", i.e. the weight of the particle does not
-//   // change when sampling fission sites. The following block handles all
-//   // absorption (including fission)
+  const auto& nuc {data::nuclides[i_nuclide-1]};
 
-//   if (nuc % fissionable) {
-//     if (run_mode == MODE_EIGENVALUE) {
-//       // Get fission bank pointer
-//       err = openmc_fission_bank(ptr, n)
-//       c_f_pointer(ptr, fission_bank, [n])
+  if (nuc->fissionable_) {
+    int i_rx = sample_fission(i_nuclide, p->E);
+    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+      create_fission_sites(p, i_nuclide, i_rx, simulation::fission_bank.data(),
+        &simulation::n_bank, simulation::fission_bank.size());
+    } else if (settings::run_mode == RUN_MODE_FIXEDSOURCE &&
+      settings::create_fission_neutrons) {
+      create_fission_sites(p, i_nuclide, i_rx, p->secondary_bank,
+        &p->n_secondary, MAX_SECONDARY);
+    }
+  }
 
-//       sample_fission(i_nuclide, p->E, i_reaction)
-//       create_fission_sites(p, i_nuclide, i_reaction, fission_bank, n_bank)
-//     } else if (run_mode == MODE_FIXEDSOURCE && create_fission_neutrons) {
-//       sample_fission(i_nuclide, p->E, i_reaction)
-//       create_fission_sites(p, i_nuclide, i_reaction, &
-//             p->secondary_bank, p->n_secondary)
-//     }
-//   }
+  // Create secondary photons
+  if (settings::photon_transport) {
+    prn_set_stream(STREAM_PHOTON);
+    sample_secondary_photons(p, i_nuclide);
+    prn_set_stream(STREAM_TRACKING);
+  }
 
-//   // Create secondary photons
-//   if (photon_transport) {
-//     prn_set_stream(STREAM_PHOTON)
-//     sample_secondary_photons(p, i_nuclide)
-//     prn_set_stream(STREAM_TRACKING)
-//   }
+  // If survival biasing is being used, the following subroutine adjusts the
+  // weight of the particle. Otherwise, it checks to see if absorption occurs
 
-//   // If survival biasing is being used, the following subroutine adjusts the
-//   // weight of the particle. Otherwise, it checks to see if absorption occurs
+  if (simulation::micro_xs[i_nuclide-1].absorption > 0.0) {
+    absorption(p, i_nuclide);
+  } else {
+    p->absorb_wgt = 0.0;
+  }
+  if (!p->alive) return;
 
-//   if (micro_xs(i_nuclide) % absorption > 0.0) {
-//     absorption(p, i_nuclide)
-//   } else {
-//     p->absorb_wgt = 0.0
-//   }
-//   if (!p->alive) return
+  // Sample a scattering reaction and determine the secondary energy of the
+  // exiting neutron
+  scatter(p, i_nuclide, i_nuc_mat);
 
-//   // Sample a scattering reaction and determine the secondary energy of the
-//   // exiting neutron
-//   scatter(p, i_nuclide, i_nuc_mat)
+  // Advance URR seed stream 'N' times after energy changes
+  if (p->E != p->last_E) {
+    prn_set_stream(STREAM_URR_PTABLE);
+    advance_prn_seed(data::nuclides.size());
+    prn_set_stream(STREAM_TRACKING);
+  }
 
-//   // Advance URR seed stream 'N' times after energy changes
-//   if (p->E /= p->last_E) {
-//     prn_set_stream(STREAM_URR_PTABLE)
-//     advance_prn_seed(size(nuclides, kind=8))
-//     prn_set_stream(STREAM_TRACKING)
-//   }
+  // Play russian roulette if survival biasing is turned on
+  if (settings::survival_biasing) {
+    russian_roulette(p);
+    if (!p->alive) return;
+  }
+}
 
-//   // Play russian roulette if survival biasing is turned on
-//   if (survival_biasing) {
-//     russian_roulette(p)
-//     if (!p->alive) return
-//   }
-// }
+void
+create_fission_sites(Particle* p, int i_nuclide, int i_rx, Bank* bank_array,
+  int64_t* size_bank, int64_t bank_capacity)
+{
+  // TODO: Heat generation from fission
+
+  // If uniform fission source weighting is turned on, we increase or decrease
+  // the expected number of fission sites produced
+  double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
+
+  // Determine the expected number of neutrons produced
+  double nu_t = p->wgt / simulation::keff * weight * simulation::micro_xs[
+    i_nuclide-1].nu_fission / simulation::micro_xs[i_nuclide-1].total;
+
+  // Sample the number of neutrons produced
+  int nu = static_cast<int>(nu_t);
+  if (prn() <= (nu_t - nu)) ++nu;
+
+  // Check for the bank size getting hit. For fixed source calculations, this
+  // is a fatal error; for eigenvalue calculations, it just means that k-eff
+  // was too high for a single batch.
+  if (*size_bank + nu > bank_capacity) {
+    if (settings::run_mode == RUN_MODE_FIXEDSOURCE) {
+      throw std::runtime_error{"Secondary particle bank size limit reached."
+           " If you are running a subcritical multiplication problem,"
+           " k-effective may be too close to one."};
+    } else {
+      if (mpi::master) {
+        warning("Maximum number of sites in fission bank reached. This can"
+          " result in irreproducible results using different numbers of"
+          " processes/threads.");
+      }
+    }
+  }
+
+  // Begin banking the source neutrons
+  // First, if our bank is full then don't continue
+  if (nu == 0 || *size_bank == bank_capacity) return;
+
+  // Initialize the counter of delayed neutrons encountered for each delayed
+  // group.
+  double nu_d[MAX_DELAYED_GROUPS] = {0.};
+
+  p->fission = true;
+  for (size_t i = *size_bank; i < std::min(*size_bank + nu, bank_capacity); ++i) {
+    // Bank source neutrons by copying the particle data
+    bank_array[i].xyz[0] = p->coord[0].xyz[0];
+    bank_array[i].xyz[1] = p->coord[0].xyz[1];
+    bank_array[i].xyz[2] = p->coord[0].xyz[2];
+
+    // Set that the bank particle is a neutron
+    bank_array[i].particle = static_cast<int>(ParticleType::neutron);
+
+    // Set the weight of the fission bank site
+    bank_array[i].wgt = 1. / weight;
+
+    // Sample delayed group and angle/energy for fission reaction
+    sample_fission_neutron(i_nuclide, i_rx, p->E, &bank_array[i]);
+
+    // Set the delayed group on the particle as well
+    p->delayed_group = bank_array[i].delayed_group;
+
+    // Increment the number of neutrons born delayed
+    if (p->delayed_group > 0) {
+      nu_d[p->delayed_group-1]++;
+    }
+  }
+
+  // Increment number of bank sites
+  *size_bank = std::min(*size_bank + nu, bank_capacity);
+
+  // Store the total weight banked for analog fission tallies
+  p->n_bank = nu;
+  p->wgt_bank = nu / weight;
+  for (size_t d = 0; d < MAX_DELAYED_GROUPS; d++) {
+    p->n_delayed_bank[d] = nu_d[d];
+  }
+}
 
 // void sample_photon_reaction(Particle* p)
 // {

@@ -212,68 +212,6 @@ contains
   end subroutine sample_photon_reaction
 
 !===============================================================================
-! SAMPLE_ELECTRON_REACTION terminates the particle and either deposits all
-! energy locally (electron_treatment = ELECTRON_LED) or creates secondary
-! bremsstrahlung photons from electron deflections with charged particles
-! (electron_treatment = ELECTRON_TTB).
-!===============================================================================
-
-  subroutine sample_electron_reaction(p) bind(C)
-    type(Particle), intent(inout) :: p
-
-    real(8) :: E_lost  ! energy lost to bremsstrahlung photons
-
-    ! TODO: create reaction types
-
-    if (electron_treatment == ELECTRON_TTB) then
-      call thick_target_bremsstrahlung(p, E_lost)
-    end if
-
-    p % E = ZERO
-    p % alive = .false.
-
-  end subroutine sample_electron_reaction
-
-!===============================================================================
-! SAMPLE_POSITRON_REACTION terminates the particle and either deposits all
-! energy locally (electron_treatment = ELECTRON_LED) or creates secondary
-! bremsstrahlung photons from electron deflections with charged particles
-! (electron_treatment = ELECTRON_TTB). Two annihilation photons of energy
-! MASS_ELECTRON_EV (0.511 MeV) are created and travel in opposite directions.
-!===============================================================================
-
-  subroutine sample_positron_reaction(p) bind(C)
-    type(Particle), intent(inout) :: p
-
-    real(8) :: mu     ! scattering cosine
-    real(8) :: phi    ! azimuthal angle
-    real(8) :: uvw(3) ! new direction
-
-    real(8) :: E_lost  ! energy lost to bremsstrahlung photons
-
-    ! TODO: create reaction types
-
-    if (electron_treatment == ELECTRON_TTB) then
-      call thick_target_bremsstrahlung(p, E_lost)
-    end if
-
-    ! Sample angle isotropically
-    mu = TWO*prn() - ONE
-    phi = TWO*PI*prn()
-    uvw(1) = mu
-    uvw(2) = sqrt(ONE - mu*mu)*cos(phi)
-    uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
-
-    ! Create annihilation photon pair traveling in opposite directions
-    call particle_create_secondary(p, uvw, MASS_ELECTRON_EV, PHOTON, .true._C_BOOL)
-    call particle_create_secondary(p, -uvw, MASS_ELECTRON_EV, PHOTON, .true._C_BOOL)
-
-    p % E = ZERO
-    p % alive = .false.
-
-  end subroutine sample_positron_reaction
-
-!===============================================================================
 ! SAMPLE_NUCLIDE
 !===============================================================================
 

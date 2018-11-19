@@ -10,7 +10,7 @@ extern "C" void
 write_geometry(hid_t file_id) {
 
   auto geom_group = create_group(file_id, "geometry");
-  
+
 #ifdef DAGMC
   if (settings::dagmc) {
     write_attribute(geom_group, "dagmc", 1);
@@ -18,25 +18,25 @@ write_geometry(hid_t file_id) {
   }
 #endif
 
-  write_attribute(geom_group, "n_cells", cells.size());
-  write_attribute(geom_group, "n_surfaces", surfaces.size());
-  write_attribute(geom_group, "n_universes", universes.size());
-  write_attribute(geom_group, "n_lattices", lattices.size());
+  write_attribute(geom_group, "n_cells", model::cells.size());
+  write_attribute(geom_group, "n_surfaces", model::surfaces.size());
+  write_attribute(geom_group, "n_universes", model::universes.size());
+  write_attribute(geom_group, "n_lattices", model::lattices.size());
 
   auto cells_group = create_group(geom_group, "cells");
-  for (Cell* c : cells) c->to_hdf5(cells_group);
+  for (Cell* c : model::cells) c->to_hdf5(cells_group);
   close_group(cells_group);
 
   auto surfaces_group = create_group(geom_group, "surfaces");
-  for (Surface* surf : surfaces) surf->to_hdf5(surfaces_group);
+  for (Surface* surf : model::surfaces) surf->to_hdf5(surfaces_group);
   close_group(surfaces_group);
 
   auto universes_group = create_group(geom_group, "universes");
-  for (Universe* u : universes) u->to_hdf5(universes_group);
+  for (Universe* u : model::universes) u->to_hdf5(universes_group);
   close_group(universes_group);
 
   auto lattices_group = create_group(geom_group, "lattices");
-  for (Lattice* lat : lattices) lat->to_hdf5(lattices_group);
+  for (Lattice* lat : model::lattices) lat->to_hdf5(lattices_group);
   close_group(lattices_group);
 
   close_group(geom_group);

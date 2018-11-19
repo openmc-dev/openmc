@@ -39,15 +39,20 @@ constexpr int32_t OP_UNION        {std::numeric_limits<int32_t>::max() - 4};
 // Global variables
 //==============================================================================
 
+class Cell;
+class Universe;
+
+namespace model {
+
 extern "C" int32_t n_cells;
 
-class Cell;
 extern std::vector<Cell*> cells;
 extern std::unordered_map<int32_t, int32_t> cell_map;
 
-class Universe;
 extern std::vector<Universe*> universes;
 extern std::unordered_map<int32_t, int32_t> universe_map;
+
+} // namespace model
 
 //==============================================================================
 //! A geometry primitive that fills all space and contains cells.
@@ -145,13 +150,13 @@ public:
 
   virtual ~Cell() {}
 };
- 
+
 class CSGCell : public Cell
 {
 public:
 
   CSGCell();
-  
+
   explicit CSGCell(pugi::xml_node cell_node);
 
   bool
@@ -163,7 +168,7 @@ public:
   void to_hdf5(hid_t group_id) const;
 
 
-  
+
 protected:
   bool contains_simple(Position r, Direction u, int32_t on_surface) const;
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
@@ -183,6 +188,6 @@ public:
 
 };
 #endif
- 
+
 } // namespace openmc
 #endif // OPENMC_CELL_H

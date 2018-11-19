@@ -54,8 +54,8 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   if (err) return err;
 
   // Start total and initialization timer
-  time_total.start();
-  time_initialize.start();
+  simulation::time_total.start();
+  simulation::time_initialize.start();
 
 #ifdef _OPENMP
   // If OMP_SCHEDULE is not set, default to a static schedule
@@ -79,7 +79,7 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   if (settings::particle_restart_run) settings::run_mode = RUN_MODE_PARTICLE;
 
   // Stop initialization timer
-  time_initialize.stop();
+  simulation::time_initialize.stop();
 
   return 0;
 }
@@ -210,7 +210,7 @@ parse_command_line(int argc, char* argv[])
         }
         omp_set_num_threads(simulation::n_threads);
 #else
-        if (openmc_master)
+        if (mpi::master)
           warning("Ignoring number of threads specified on command line.");
 #endif
 

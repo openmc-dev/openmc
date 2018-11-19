@@ -20,8 +20,8 @@ MeshFilter::from_xml(pugi::xml_node node)
   }
 
   auto id = bins_[0];
-  auto search = mesh_map.find(id);
-  if (search != mesh_map.end()) {
+  auto search = model::mesh_map.find(id);
+  if (search != model::mesh_map.end()) {
     set_mesh(search->second);
   } else{
     std::stringstream err_msg;
@@ -35,14 +35,14 @@ MeshFilter::get_all_bins(const Particle* p, int estimator, FilterMatch& match)
 const
 {
   if (estimator != ESTIMATOR_TRACKLENGTH) {
-    auto bin = meshes[mesh_]->get_bin(p->coord[0].xyz);
+    auto bin = model::meshes[mesh_]->get_bin(p->coord[0].xyz);
     if (bin >= 0) {
       //TODO: off-by-one
       match.bins_.push_back(bin);
       match.weights_.push_back(1.0);
     }
   } else {
-    meshes[mesh_]->bins_crossed(p, match.bins_, match.weights_);
+    model::meshes[mesh_]->bins_crossed(p, match.bins_, match.weights_);
   }
 }
 
@@ -50,13 +50,13 @@ void
 MeshFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
-  write_dataset(filter_group, "bins", meshes[mesh_]->id_);
+  write_dataset(filter_group, "bins", model::meshes[mesh_]->id_);
 }
 
 std::string
 MeshFilter::text_label(int bin) const
 {
-  auto& mesh = *meshes[mesh_];
+  auto& mesh = *model::meshes[mesh_];
   int n_dim = mesh.n_dimension_;
 
   int ijk[n_dim];
@@ -76,7 +76,7 @@ MeshFilter::set_mesh(int32_t mesh)
 {
   mesh_ = mesh;
   n_bins_ = 1;
-  for (auto dim : meshes[mesh_]->shape_) n_bins_ *= dim;
+  for (auto dim : model::meshes[mesh_]->shape_) n_bins_ *= dim;
 }
 
 //==============================================================================
@@ -123,7 +123,7 @@ openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh)
   }
 
   // Check the mesh index.
-  if (index_mesh < 0 || index_mesh >= meshes.size()) {
+  if (index_mesh < 0 || index_mesh >= model::meshes.size()) {
     set_errmsg("Index in 'meshes' array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }

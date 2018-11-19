@@ -15,12 +15,16 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
+namespace data {
+
 extern std::vector<Mgxs> nuclides_MG;
 extern std::vector<Mgxs> macro_xs;
 extern "C" int num_energy_groups;
 extern std::vector<double> energy_bins;
 extern std::vector<double> energy_bin_avg;
 extern std::vector<double> rev_energy_bins;
+
+} // namespace data
 
 //==============================================================================
 // Mgxs data loading interface methods

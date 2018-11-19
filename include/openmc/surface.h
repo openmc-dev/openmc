@@ -32,12 +32,14 @@ extern "C" const int BC_PERIODIC;
 // Global variables
 //==============================================================================
 
-extern "C" int32_t n_surfaces;
-
 class Surface;
-extern std::vector<Surface*> surfaces;
 
+namespace model {
+
+extern std::vector<Surface*> surfaces;
 extern std::map<int, int> surface_map;
+
+} // namespace model
 
 //==============================================================================
 //! Coordinates for an axis-aligned cube that bounds a geometric object.

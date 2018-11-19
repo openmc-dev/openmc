@@ -31,9 +31,13 @@ enum class LatticeType {
 //==============================================================================
 
 class Lattice;
-extern std::vector<Lattice*> lattices;
 
+namespace model {
+
+extern std::vector<Lattice*> lattices;
 extern std::unordered_map<int32_t, int32_t> lattice_map;
+
+} // namespace model
 
 //==============================================================================
 //! \class Lattice

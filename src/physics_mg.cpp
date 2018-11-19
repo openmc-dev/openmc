@@ -21,14 +21,13 @@
 namespace openmc {
 
 void
-collision_mg(Particle* p, const double* energy_bin_avg,
-             const MaterialMacroXS* material_xs)
+collision_mg(Particle* p, const MaterialMacroXS* material_xs)
 {
   // Add to the collision counter for the particle
   p->n_collision++;
 
   // Sample the reaction type
-  sample_reaction(p, energy_bin_avg, material_xs);
+  sample_reaction(p, material_xs);
 
   // Display information about collision
   if ((settings::verbosity >= 10) || (simulation::trace)) {
@@ -39,21 +38,20 @@ collision_mg(Particle* p, const double* energy_bin_avg,
 }
 
 void
-sample_reaction(Particle* p, const double* energy_bin_avg,
-                const MaterialMacroXS* material_xs)
+sample_reaction(Particle* p, const MaterialMacroXS* material_xs)
 {
   // Create fission bank sites. Note that while a fission reaction is sampled,
   // it never actually "happens", i.e. the weight of the particle does not
   // change when sampling fission sites. The following block handles all
   // absorption (including fission)
 
-  if (materials[p->material - 1]->fissionable) {
+  if (model::materials[p->material - 1]->fissionable) {
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
       Bank* result_bank;
       int64_t result_bank_size;
       // Get pointer to fission bank from Fortran side
       openmc_fission_bank(&result_bank, &result_bank_size);
-      create_fission_sites(p, result_bank, &n_bank, result_bank_size,
+      create_fission_sites(p, result_bank, &simulation::n_bank, result_bank_size,
                            material_xs);
     } else if ((settings::run_mode == RUN_MODE_FIXEDSOURCE) &&
                (settings::create_fission_neutrons)) {
@@ -72,7 +70,7 @@ sample_reaction(Particle* p, const double* energy_bin_avg,
   if (!p->alive) return;
 
   // Sample a scattering event to determine the energy of the exiting neutron
-  scatter(p, energy_bin_avg);
+  scatter(p);
 
   // Play Russian roulette if survival biasing is turned on
   if (settings::survival_biasing) {
@@ -82,14 +80,14 @@ sample_reaction(Particle* p, const double* energy_bin_avg,
 }
 
 void
-scatter(Particle* p, const double* energy_bin_avg)
+scatter(Particle* p)
 {
   // Adjust indices for Fortran to C++ indexing
   // TODO: Remove when no longer needed
   int gin = p->last_g - 1;
   int gout = p->g - 1;
   int i_mat = p->material - 1;
-  macro_xs[i_mat].sample_scatter(gin, gout, p->mu, p->wgt);
+  data::macro_xs[i_mat].sample_scatter(gin, gout, p->mu, p->wgt);
 
   // Adjust return value for fortran indexing
   // TODO: Remove when no longer needed
@@ -99,7 +97,7 @@ scatter(Particle* p, const double* energy_bin_avg)
   rotate_angle_c(p->coord[0].uvw, p->mu, nullptr);
 
   // Update energy value for downstream compatability (in tallying)
-  p->E = energy_bin_avg[gout];
+  p->E = data::energy_bin_avg[gout];
 
   // Set event component
   p->event = EVENT_SCATTER;
@@ -180,7 +178,7 @@ create_fission_sites(Particle* p, Bank* bank_array, int64_t* size_bank,
     // the energy in the fission bank
     int dg;
     int gout;
-    macro_xs[p->material - 1].sample_fission_energy(p->g - 1, dg, gout);
+    data::macro_xs[p->material - 1].sample_fission_energy(p->g - 1, dg, gout);
     bank_array[i].E = static_cast<double>(gout + 1);
     bank_array[i].delayed_group = dg + 1;
 

@@ -78,9 +78,14 @@ module surface_header
 
   end type Surface
 
-  integer(C_INT32_T), bind(C) :: n_surfaces  ! # of surfaces
-
   type(Surface), allocatable, target :: surfaces(:)
+
+  interface
+    function surfaces_size() result(sz) bind(C)
+      import C_INT
+      integer(C_INT) :: sz
+    end function
+  end interface
 
 contains
 

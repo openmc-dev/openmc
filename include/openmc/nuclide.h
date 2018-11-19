@@ -11,7 +11,9 @@
 #include <hdf5.h>
 
 #include "openmc/constants.h"
+#include "openmc/endf.h"
 #include "openmc/reaction.h"
+#include "openmc/reaction_product.h"
 
 namespace openmc {
 
@@ -21,8 +23,13 @@ namespace openmc {
 
 class Nuclide {
 public:
+  using EmissionMode = ReactionProduct::EmissionMode;
+
   // Constructors
   Nuclide(hid_t group, const double* temperature, int n);
+
+  // Methods
+  double nu(double E, EmissionMode mode, int group=0);
 
   // Data members
   std::string name_; //! Name of nuclide, e.g. "U235"
@@ -30,7 +37,14 @@ public:
   int A_; //! Mass number
   int metastable_; //! Metastable state
   double awr_; //! Atomic weight ratio
+  std::vector<double> kTs_; //! temperatures in eV (k*T)
+
   bool fissionable_ {false}; //! Whether nuclide is fissionable
+  bool has_partial_fission_ {false}; //! has partial fission reactions?
+  std::vector<Reaction*> fission_rx_; //! Fission reactions
+  int n_precursor_ {0}; //! Number of delayed neutron precursors
+  std::unique_ptr<Function1D> total_nu_; //! Total neutron yield
+
   std::vector<std::unique_ptr<Reaction>> reactions_; //! Reactions
 
 private:

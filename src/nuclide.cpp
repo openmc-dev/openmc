@@ -52,7 +52,6 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n)
     temps_available.push_back(T / K_BOLTZMANN);
   }
   std::sort(temps_available.begin(), temps_available.end());
-  close_group(kT_group);
 
   // If only one temperature is available, revert to nearest temperature
   if (temps_available.size() == 1 && settings::temperature_method == TEMPERATURE_INTERPOLATION) {
@@ -144,6 +143,15 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n)
   // Sort temperatures to read
   std::sort(temps_to_read.begin(), temps_to_read.end());
 
+  // Determine exact kT values
+  for (const auto& T : temps_to_read) {
+    std::string dset {std::to_string(T) + "K"};
+    double kT;
+    read_dataset(kT_group, dset.c_str(), kT);
+    kTs_.push_back(kT);
+  }
+  close_group(kT_group);
+
   // Read reactions
   hid_t rxs_group = open_group(group, "reactions");
   for (auto name : group_names(rxs_group)) {
@@ -155,17 +163,92 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n)
   }
   close_group(rxs_group);
 
+  // Check for nu-total
+  if (object_exists(group, "total_nu")) {
+    // Read total nu data
+    hid_t nu_group = open_group(group, "total_nu");
+    hid_t nu_dset = open_dataset(nu_group, "yield");
+    std::string func_type;
+    read_attribute(nu_dset, "type", func_type);
+    if (func_type == "Tabulated1D") {
+      total_nu_ = std::make_unique<Tabulated1D>(nu_dset);
+    } else if (func_type == "Polynomial") {
+      total_nu_ = std::make_unique<Polynomial>(nu_dset);
+    }
+    close_dataset(nu_dset);
+    close_group(nu_group);
+  }
+
   this->create_derived();
 }
 
 void Nuclide::create_derived()
 {
-  for (const auto& rx : reactions_) {
-    // Skip redundant reactions
-    if (rx->redundant_) continue;
+  for (int i = 0; i < reactions_.size(); ++i) {
+    const auto& rx {reactions_[i]};
 
-    if (is_fission(rx->mt_)) {
-      fissionable_ = true;
+    for (int t = 0; t < kTs_.size(); ++t) {
+      // Skip redundant reactions
+      if (rx->redundant_) continue;
+
+      if (is_fission(rx->mt_)) {
+        fissionable_ = true;
+
+        // Keep track of fission reactions
+        if (t == 0) {
+          fission_rx_.push_back(rx.get());
+          if (rx->mt_ == N_F) has_partial_fission_ = true;
+        }
+      }
+    }
+  }
+
+  // Determine number of delayed neutron precursors
+  if (fissionable_) {
+    for (const auto& product : fission_rx_[0]->products_) {
+      if (product.emission_mode_ == EmissionMode::delayed) {
+        ++n_precursor_;
+      }
+    }
+  }
+}
+
+double Nuclide::nu(double E, EmissionMode mode, int group)
+{
+  if (!fissionable_) return 0.0;
+
+  switch (mode) {
+  case EmissionMode::prompt:
+    return (*fission_rx_[0]->products_[0].yield_)(E);
+  case EmissionMode::delayed:
+    if (n_precursor_ > 0) {
+      auto rx = fission_rx_[0];
+      if (group >= 1 && group < rx->products_.size()) {
+        // If delayed group specified, determine yield immediately
+        return (*rx->products_[group].yield_)(E);
+      } else {
+        double nu {0.0};
+
+        for (int i = 1; i < rx->products_.size(); ++i) {
+          // Skip any non-neutron products
+          const auto& product = rx->products_[i];
+          if (product.particle_ != ParticleType::neutron) continue;
+
+          // Evaluate yield
+          if (product.emission_mode_ == EmissionMode::delayed) {
+            nu += (*product.yield_)(E);
+          }
+        }
+        return nu;
+      }
+    } else {
+      return 0.0;
+    }
+  case EmissionMode::total:
+    if (total_nu_) {
+      return (*total_nu_)(E);
+    } else {
+      return (*fission_rx_[0]->products_[0].yield_)(E);
     }
   }
 }

@@ -20,8 +20,8 @@ UniverseFilter::initialize()
 {
   // Convert universe IDs to indices of the global array.
   for (auto& u : universes_) {
-    auto search = universe_map.find(u);
-    if (search != universe_map.end()) {
+    auto search = model::universe_map.find(u);
+    if (search != model::universe_map.end()) {
       u = search->second;
     } else {
       std::stringstream err_msg;
@@ -56,7 +56,7 @@ UniverseFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   std::vector<int32_t> universe_ids;
-  for (auto u : universes_) universe_ids.push_back(universes[u]->id_);
+  for (auto u : universes_) universe_ids.push_back(model::universes[u]->id_);
   write_dataset(filter_group, "bins", universe_ids);
 }
 
@@ -64,7 +64,7 @@ std::string
 UniverseFilter::text_label(int bin) const
 {
   //TODO: off-by-one
-  return "Universe " + std::to_string(universes[universes_[bin-1]]->id_);
+  return "Universe " + std::to_string(model::universes[universes_[bin-1]]->id_);
 }
 
 } // namespace openmc

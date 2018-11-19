@@ -21,8 +21,8 @@ CellFilter::initialize()
 {
   // Convert cell IDs to indices of the global array.
   for (auto& c : cells_) {
-    auto search = cell_map.find(c);
-    if (search != cell_map.end()) {
+    auto search = model::cell_map.find(c);
+    if (search != model::cell_map.end()) {
       c = search->second;
     } else {
       std::stringstream err_msg;
@@ -56,7 +56,7 @@ CellFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   std::vector<int32_t> cell_ids;
-  for (auto c : cells_) cell_ids.push_back(cells[c]->id_);
+  for (auto c : cells_) cell_ids.push_back(model::cells[c]->id_);
   write_dataset(filter_group, "bins", cell_ids);
 }
 
@@ -64,7 +64,7 @@ std::string
 CellFilter::text_label(int bin) const
 {
   //TODO: off-by-one
-  return "Cell " + std::to_string(cells[cells_[bin-1]]->id_);
+  return "Cell " + std::to_string(model::cells[cells_[bin-1]]->id_);
 }
 
 //==============================================================================

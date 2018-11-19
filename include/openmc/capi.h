@@ -135,17 +135,10 @@ extern "C" {
 
   // Global variables
   extern char openmc_err_msg[256];
-  extern int32_t n_cells;
-  extern int32_t n_lattices;
-  extern int32_t n_materials;
   extern int n_nuclides;
-  extern int32_t n_plots;
   extern int32_t n_realizations;
   extern int32_t n_sab_tables;
-  extern int32_t n_sources;
-  extern int32_t n_surfaces;
   extern int32_t n_tallies;
-  extern int32_t n_universes;
 
   // Variables that are shared by necessity (can be removed from public header
   // later)

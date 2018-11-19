@@ -33,10 +33,9 @@ module tracking
   implicit none
 
   interface
-    subroutine collision_mg(p, energy_bin_avg, material_xs) bind(C)
+    subroutine collision_mg(p, material_xs) bind(C)
       import Particle, C_DOUBLE, MaterialMacroXS
       type(Particle),            intent(inout) :: p
-      real(C_DOUBLE),            intent(in)    :: energy_bin_avg(*)
       type(MaterialMacroXS),     intent(in)    :: material_xs
     end subroutine collision_mg
 
@@ -235,7 +234,7 @@ contains
         if (run_CE) then
           call collision(p)
         else
-          call collision_mg(p, energy_bin_avg, material_xs)
+          call collision_mg(p, material_xs)
         end if
 
         ! Score collision estimator tallies -- this is done after a collision

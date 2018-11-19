@@ -82,13 +82,13 @@ void sample_neutron_reaction(Particle* p)
   const auto& nuc {data::nuclides[i_nuclide-1]};
 
   if (nuc->fissionable_) {
-    int i_rx = sample_fission(i_nuclide, p->E);
+    Reaction* rx = sample_fission(i_nuclide, p->E);
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      create_fission_sites(p, i_nuclide, i_rx, simulation::fission_bank.data(),
+      create_fission_sites(p, i_nuclide, rx, simulation::fission_bank.data(),
         &simulation::n_bank, simulation::fission_bank.size());
     } else if (settings::run_mode == RUN_MODE_FIXEDSOURCE &&
       settings::create_fission_neutrons) {
-      create_fission_sites(p, i_nuclide, i_rx, p->secondary_bank,
+      create_fission_sites(p, i_nuclide, rx, p->secondary_bank,
         &p->n_secondary, MAX_SECONDARY);
     }
   }
@@ -129,7 +129,7 @@ void sample_neutron_reaction(Particle* p)
 }
 
 void
-create_fission_sites(Particle* p, int i_nuclide, int i_rx, Bank* bank_array,
+create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx, Bank* bank_array,
   int64_t* size_bank, int64_t bank_capacity)
 {
   // TODO: Heat generation from fission
@@ -185,7 +185,7 @@ create_fission_sites(Particle* p, int i_nuclide, int i_rx, Bank* bank_array,
     bank_array[i].wgt = 1. / weight;
 
     // Sample delayed group and angle/energy for fission reaction
-    sample_fission_neutron(i_nuclide, i_rx, p->E, &bank_array[i]);
+    sample_fission_neutron(i_nuclide, rx, p->E, &bank_array[i]);
 
     // Set the delayed group on the particle as well
     p->delayed_group = bank_array[i].delayed_group;
@@ -485,58 +485,48 @@ void sample_nuclide(const Particle* p, int mt, int* i_nuclide, int* i_nuc_mat)
 //   end associate
 // }
 
-// int sample_fission(int i_nuclide, double E)
-// {
-//   // Get pointer to nuclide
-//   nuc => nuclides(i_nuclide)
+Reaction* sample_fission(int i_nuclide, double E)
+{
+  // Get pointer to nuclide
+  const auto& nuc {data::nuclides[i_nuclide-1]};
 
-//   // If we're in the URR, by default use the first fission reaction. We also
-//   // default to the first reaction if we know that there are no partial fission
-//   // reactions
-//   if (micro_xs(i_nuclide) % use_ptable || &
-//         !nuc % has_partial_fission) {
-//     i_reaction = nuc % index_fission(1)
-//     return
-//   }
+  // If we're in the URR, by default use the first fission reaction. We also
+  // default to the first reaction if we know that there are no partial fission
+  // reactions
+  if (simulation::micro_xs[i_nuclide-1].use_ptable || !nuc->has_partial_fission_) {
+    return nuc->fission_rx_[0];
+  }
 
-//   // Check to see if we are in a windowed multipole range.  WMP only supports
-//   // the first fission reaction.
-//   if (nuc % mp_present) {
-//     if (E >= nuc % multipole % E_min && &
-//           E <= nuc % multipole % E_max) {
-//       i_reaction = nuc % index_fission(1)
-//       return
-//     }
-//   }
+  // Check to see if we are in a windowed multipole range.  WMP only supports
+  // the first fission reaction.
+  // if (nuc % mp_present) {
+  //   if (E >= nuc % multipole % E_min && &
+  //         E <= nuc % multipole % E_max) {
+  //     return nuc->fission_rx_[0];
+  //   }
+  // }
 
-//   // Get grid index and interpolatoin factor and sample fission cdf
-//   i_temp = micro_xs(i_nuclide) % index_temp
-//   i_grid = micro_xs(i_nuclide) % index_grid
-//   f      = micro_xs(i_nuclide) % interp_factor
-//   cutoff = prn() * micro_xs(i_nuclide) % fission
-//   prob   = 0.0
+  // Get grid index and interpolatoin factor and sample fission cdf
+  int i_temp = simulation::micro_xs[i_nuclide-1].index_temp;
+  int i_grid = simulation::micro_xs[i_nuclide-1].index_grid;
+  double f = simulation::micro_xs[i_nuclide-1].interp_factor;
+  double cutoff = prn() * simulation::micro_xs[i_nuclide-1].fission;
+  double prob = 0.0;
 
-//   // Loop through each partial fission reaction type
+  // Loop through each partial fission reaction type
+  for (auto& rx : nuc->reactions_) {
+    // if energy is below threshold for this reaction, skip it
+    int threshold = rx->xs_[i_temp-1].threshold;
+    if (i_grid < threshold) continue;
 
-//   FISSION_REACTION_LOOP: do i = 1, nuc % n_fission
-//     i_reaction = nuc % index_fission(i)
+    // add to cumulative probability
+    prob += (1.0 - f) * rx->xs_[i_temp-1].value[i_grid - threshold]
+            + f*rx->xs_[i_temp].value[i_grid - threshold + 1];
 
-//     associate (rx => nuc % reactions(i_reaction))
-//       // if energy is below threshold for this reaction, skip it
-//       threshold = rx % xs_threshold(i_temp)
-//       if (i_grid < threshold) cycle
-
-//       // add to cumulative probability
-//       prob = prob + ((1.0 - f) * rx % xs(i_temp, i_grid - threshold + 1) &
-//             + f*(rx % xs(i_temp, i_grid - threshold + 2)))
-//     end associate
-
-//     // Create fission bank sites if fission occurs
-//     if (prob > cutoff) exit FISSION_REACTION_LOOP
-//   end do FISSION_REACTION_LOOP
-
-// end subroutine sample_fission
-// }
+    // Create fission bank sites if fission occurs
+    if (prob > cutoff) break;
+  }
+}
 
 // void sample_photon_product(int i_nuclide, double E, int* i_rx, int* i_product);
 // {
@@ -997,93 +987,96 @@ void sample_nuclide(const Particle* p, int mt, int* i_nuclide, int* i_nuc_mat)
 //   v_target = vt * rotate_angle(uvw, mu)
 // }
 
-// void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Bank* site)
-// {
-//   // Sample cosine of angle -- fission neutrons are always emitted
-//   // isotropically. Sometimes in ACE data, fission reactions actually have
-//   // an angular distribution listed, but for those that do, it's simply just
-//   // a uniform distribution in mu
-//   mu = 2.0 * prn() - 1.0
+void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Bank* site)
+{
+  // Sample cosine of angle -- fission neutrons are always emitted
+  // isotropically. Sometimes in ACE data, fission reactions actually have
+  // an angular distribution listed, but for those that do, it's simply just
+  // a uniform distribution in mu
+  double mu = 2.0 * prn() - 1.0;
 
-//   // Sample azimuthal angle uniformly in [0,2*pi)
-//   phi = 2.0*PI*prn()
-//   site % uvw(1) = mu
-//   site % uvw(2) = std::sqrt(1.0 - mu*mu) * std::cos(phi)
-//   site % uvw(3) = std::sqrt(1.0 - mu*mu) * std::sin(phi)
+  // Sample azimuthal angle uniformly in [0,2*pi)
+  double phi = 2.0*PI*prn();
+  site->uvw[0] = mu;
+  site->uvw[1] = std::sqrt(1.0 - mu*mu) * std::cos(phi);
+  site->uvw[2] = std::sqrt(1.0 - mu*mu) * std::sin(phi);
 
-//   // Determine total nu, delayed nu, and delayed neutron fraction
-//   nu_t = nuc % nu(E_in, EMISSION_TOTAL)
-//   nu_d = nuc % nu(E_in, EMISSION_DELAYED)
-//   beta = nu_d / nu_t
+  // Determine total nu, delayed nu, and delayed neutron fraction
+  const auto& nuc {data::nuclides[i_nuclide-1]};
+  double nu_t = nuc->nu(E_in, Nuclide::EmissionMode::total);
+  double nu_d = nuc->nu(E_in, Nuclide::EmissionMode::delayed);
+  double beta = nu_d / nu_t;
 
-//   if (prn() < beta) {
-//     // ====================================================================
-//     // DELAYED NEUTRON SAMPLED
+  if (prn() < beta) {
+    // ====================================================================
+    // DELAYED NEUTRON SAMPLED
 
-//     // sampled delayed precursor group
-//     xi = prn()*nu_d
-//     prob = 0.0
-//     do group = 1, nuc % n_precursor
+    // sampled delayed precursor group
+    double xi = prn()*nu_d;
+    double prob = 0.0;
+    int group;
+    for (group = 1; group < nuc->n_precursor_; ++group) {
+      // determine delayed neutron precursor yield for group j
+      double yield = (*rx->products_[group].yield_)(E_in);
 
-//       // determine delayed neutron precursor yield for group j
-//       yield = rxn % product_yield(1 + group, E_in)
+      // Check if this group is sampled
+      prob += yield;
+      if (xi < prob) break;
+    }
 
-//       // Check if this group is sampled
-//       prob = prob + yield
-//       if (xi < prob) exit
-//     end do
+    // if the sum of the probabilities is slightly less than one and the
+    // random number is greater, j will be greater than nuc %
+    // n_precursor -- check for this condition
+    group = std::min(group, nuc->n_precursor_);
 
-//     // if the sum of the probabilities is slightly less than one and the
-//     // random number is greater, j will be greater than nuc %
-//     // n_precursor -- check for this condition
-//     group = min(group, nuc % n_precursor)
+    // set the delayed group for the particle born from fission
+    site->delayed_group = group;
 
-//     // set the delayed group for the particle born from fission
-//     site % delayed_group = group
+    int n_sample = 0;
+    while (true) {
+      // sample from energy/angle distribution -- note that mu has already been
+      // sampled above and doesn't need to be resampled
+      rx->products_[group].sample(E_in, site->E, mu);
 
-//     n_sample = 0
-//     do
-//       // sample from energy/angle distribution -- note that mu has already been
-//       // sampled above and doesn't need to be resampled
-//       rxn % product_sample(1 + group, E_in, site % E, mu)
+      // resample if energy is greater than maximum neutron energy
+      constexpr int neutron = static_cast<int>(ParticleType::neutron);
+      if (site->E < data::energy_max[neutron]) break;
 
-//       // resample if energy is greater than maximum neutron energy
-//       if (site % E < energy_max(NEUTRON)) exit
+      // check for large number of resamples
+      ++n_sample;
+      if (n_sample == MAX_SAMPLE) {
+        // particle_write_restart(p)
+        fatal_error("Resampled energy distribution maximum number of times "
+          "for nuclide " + nuc->name_);
+      }
+    }
 
-//       // check for large number of resamples
-//       n_sample = n_sample + 1
-//       if (n_sample == MAX_SAMPLE) {
-//         // particle_write_restart(p)
-//         fatal_error("Resampled energy distribution maximum number of " &
-//               // "times for nuclide " // nuc % name)
-//       }
-//     end do
+  } else {
+    // ====================================================================
+    // PROMPT NEUTRON SAMPLED
 
-//   } else {
-//     // ====================================================================
-//     // PROMPT NEUTRON SAMPLED
+    // set the delayed group for the particle born from fission to 0
+    site->delayed_group = 0;
 
-//     // set the delayed group for the particle born from fission to 0
-//     site % delayed_group = 0
+    // sample from prompt neutron energy distribution
+    int n_sample = 0;
+    while (true) {
+      rx->products_[0].sample(E_in, site->E, mu);
 
-//     // sample from prompt neutron energy distribution
-//     n_sample = 0
-//     do
-//       rxn % product_sample(1, E_in, site % E, mu)
+      // resample if energy is greater than maximum neutron energy
+      constexpr int neutron = static_cast<int>(ParticleType::neutron);
+      if (site->E < data::energy_max[neutron]) break;
 
-//       // resample if energy is greater than maximum neutron energy
-//       if (site % E < energy_max(NEUTRON)) exit
-
-//       // check for large number of resamples
-//       n_sample = n_sample + 1
-//       if (n_sample == MAX_SAMPLE) {
-//         // particle_write_restart(p)
-//         fatal_error("Resampled energy distribution maximum number of " &
-//               // "times for nuclide " // nuc % name)
-//       }
-//     end do
-//   }
-// }
+      // check for large number of resamples
+      ++n_sample;
+      if (n_sample == MAX_SAMPLE) {
+        // particle_write_restart(p)
+        fatal_error("Resampled energy distribution maximum number of times "
+          "for nuclide " + nuc->name_);
+      }
+    }
+  }
+}
 
 // void inelastic_scatter(int i_nuclide, const Reaction& rx, Particle* p)
 // {

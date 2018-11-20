@@ -10,19 +10,86 @@ import pytest
 import scipy.spatial
 
 
+_RADIUS = 0.1
 _PACKING_FRACTION = 0.35
-_RADIUS = 4.25e-2
-domain_params = [
-    {'shape': 'cube', 'length': 0.75, 'radius': 0., 'volume': 0.75**3},
-    {'shape': 'cylinder', 'length': 0.5, 'radius': 0.5, 'volume': 0.5*pi*0.5**2},
-    {'shape': 'sphere', 'length': 0., 'radius': 0.5, 'volume': 4/3*pi*0.5**3}
+_PARAMS = [
+    {'shape': 'rectangular_prism', 'volume': 1**3},
+    {'shape': 'x_cylinder', 'volume': 1*pi*1**2},
+    {'shape': 'y_cylinder', 'volume': 1*pi*1**2},
+    {'shape': 'z_cylinder', 'volume': 1*pi*1**2},
+    {'shape': 'sphere', 'volume': 4/3*pi*1**3},
+    {'shape': 'spherical_shell', 'volume': 4/3*pi*(1**3 - 0.5**3)}
 ]
 
 
-@pytest.fixture(scope='module', params=domain_params,
-                ids=['cube', 'cylinder', 'sphere'])
-def domain(request):
+@pytest.fixture(scope='module', params=_PARAMS)
+def container(request):
     return request.param
+
+
+@pytest.fixture(scope='module')
+def centers(request, container):
+    return request.getfixturevalue('centers_' + container['shape'])
+
+
+@pytest.fixture(scope='module')
+def centers_rectangular_prism():
+    min_x = openmc.XPlane(x0=0)
+    max_x = openmc.XPlane(x0=1)
+    min_y = openmc.YPlane(y0=0)
+    max_y = openmc.YPlane(y0=1)
+    min_z = openmc.ZPlane(z0=0)
+    max_z = openmc.ZPlane(z0=1)
+    region = +min_x & -max_x & +min_y & -max_y & +min_z & -max_z
+    return openmc.model.pack_spheres(radius=_RADIUS, region=region,
+        pf=_PACKING_FRACTION, initial_pf=0.2)
+
+
+@pytest.fixture(scope='module')
+def centers_x_cylinder():
+    cylinder = openmc.XCylinder(R=1, y0=1, z0=2)
+    min_x = openmc.XPlane(x0=0)
+    max_x = openmc.XPlane(x0=1)
+    region = +min_x & -max_x & -cylinder
+    return openmc.model.pack_spheres(radius=_RADIUS, region=region,
+        pf=_PACKING_FRACTION, initial_pf=0.2)
+
+
+@pytest.fixture(scope='module')
+def centers_y_cylinder():
+    cylinder = openmc.YCylinder(R=1, x0=1, z0=2)
+    min_y = openmc.YPlane(y0=0)
+    max_y = openmc.YPlane(y0=1)
+    region = +min_y & -max_y & -cylinder
+    return openmc.model.pack_spheres(radius=_RADIUS, region=region,
+        pf=_PACKING_FRACTION, initial_pf=0.2)
+
+
+@pytest.fixture(scope='module')
+def centers_z_cylinder():
+    cylinder = openmc.ZCylinder(R=1, x0=1, y0=2)
+    min_z = openmc.ZPlane(z0=0)
+    max_z = openmc.ZPlane(z0=1)
+    region = +min_z & -max_z & -cylinder
+    return openmc.model.pack_spheres(radius=_RADIUS, region=region,
+        pf=_PACKING_FRACTION, initial_pf=0.2)
+
+
+@pytest.fixture(scope='module')
+def centers_sphere():
+    sphere = openmc.Sphere(R=1, x0=1, y0=2, z0=3)
+    region = -sphere
+    return openmc.model.pack_spheres(radius=_RADIUS, region=region,
+        pf=_PACKING_FRACTION, initial_pf=0.2)
+
+
+@pytest.fixture(scope='module')
+def centers_spherical_shell():
+    sphere = openmc.Sphere(R=1, x0=1, y0=2, z0=3)
+    inner_sphere = openmc.Sphere(R=0.5, x0=1, y0=2, z0=3)
+    region = -sphere & +inner_sphere
+    return openmc.model.pack_spheres(radius=_RADIUS, region=region,
+        pf=_PACKING_FRACTION, initial_pf=0.2)
 
 
 @pytest.fixture(scope='module')
@@ -33,76 +100,96 @@ def triso_universe():
     return univ
 
 
-@pytest.fixture(scope='module')
-def trisos(domain, triso_universe):
-    trisos = openmc.model.pack_trisos(
-        radius=_RADIUS,
-        fill=triso_universe,
-        domain_shape=domain['shape'],
-        domain_length=domain['length'],
-        domain_radius=domain['radius'],
-        domain_center=(0., 0., 0.),
-        initial_packing_fraction=0.2,
-        packing_fraction=_PACKING_FRACTION
-    )
-    return trisos
-
-
-def test_overlap(trisos):
-    """Check that no TRISO particles overlap."""
-    centers = [t.center for t in trisos]
-
+def test_overlap(centers):
+    """Check that none of the spheres in the packed configuration overlap."""
     # Create KD tree for quick nearest neighbor search
     tree = scipy.spatial.cKDTree(centers)
 
-    # Find distance to nearest neighbor for all particles
+    # Find distance to nearest neighbor for all spheres
     d = tree.query(centers, k=2)[0]
 
-    # Get the smallest distance between any two particles
+    # Get the smallest distance between any two spheres
     d_min = min(d[:, 1])
     assert d_min > 2*_RADIUS or d_min == pytest.approx(2*_RADIUS)
 
 
-def test_contained(trisos, domain):
-    """Make sure all particles are entirely contained within the domain."""
-    if domain['shape'] == 'cube':
-        x = max(np.hstack([abs(t.center) for t in trisos])) + _RADIUS
-        assert x < 0.5*domain['length'] or x == pytest.approx(0.5*domain['length'])
-
-    elif domain['shape'] == 'cylinder':
-        r = max([norm(t.center[0:2]) for t in trisos]) + _RADIUS
-        z = max([abs(t.center[2]) for t in trisos]) + _RADIUS
-        assert r < domain['radius'] or r == pytest.approx(domain['radius'])
-        assert z < 0.5*domain['length'] or z == pytest.approx(0.5*domain['length'])
-
-    elif domain['shape'] == 'sphere':
-        r = max([norm(t.center) for t in trisos]) + _RADIUS
-        assert r < domain['radius'] or r == pytest.approx(domain['radius'])
+def test_contained_rectangular_prism(centers_rectangular_prism):
+    """Make sure all spheres are entirely contained within the domain."""
+    d_max = np.amax(centers_rectangular_prism) + _RADIUS
+    d_min = np.amin(centers_rectangular_prism) - _RADIUS
+    assert d_max < 1 or d_max == pytest.approx(1)
+    assert d_min > 0 or d_min == pytest.approx(0)
 
 
-def test_packing_fraction(trisos, domain):
+def test_contained_x_cylinder(centers_x_cylinder):
+    """Make sure all spheres are entirely contained within the domain."""
+    d = np.linalg.norm(centers_x_cylinder[:,[1,2]] - [1, 2], axis=1)
+    r_max = max(d) + _RADIUS
+    x_max = max(centers_x_cylinder[:,0]) + _RADIUS
+    x_min = min(centers_x_cylinder[:,0]) - _RADIUS
+    assert r_max < 1 or r_max == pytest.approx(1)
+    assert x_max < 1 or x_max == pytest.approx(1)
+    assert x_min > 0 or x_min == pytest.approx(0)
+
+
+def test_contained_y_cylinder(centers_y_cylinder):
+    """Make sure all spheres are entirely contained within the domain."""
+    d = np.linalg.norm(centers_y_cylinder[:,[0,2]] - [1, 2], axis=1)
+    r_max = max(d) + _RADIUS
+    y_max = max(centers_y_cylinder[:,1]) + _RADIUS
+    y_min = min(centers_y_cylinder[:,1]) - _RADIUS
+    assert r_max < 1 or r_max == pytest.approx(1)
+    assert y_max < 1 or y_max == pytest.approx(1)
+    assert y_min > 0 or y_min == pytest.approx(0)
+
+
+def test_contained_z_cylinder(centers_z_cylinder):
+    """Make sure all spheres are entirely contained within the domain."""
+    d = np.linalg.norm(centers_z_cylinder[:,[0,1]] - [1, 2], axis=1)
+    r_max = max(d) + _RADIUS
+    z_max = max(centers_z_cylinder[:,2]) + _RADIUS
+    z_min = min(centers_z_cylinder[:,2]) - _RADIUS
+    assert r_max < 1 or r_max == pytest.approx(1)
+    assert z_max < 1 or z_max == pytest.approx(1)
+    assert z_min > 0 or z_min == pytest.approx(0)
+
+
+def test_contained_sphere(centers_sphere):
+    """Make sure all spheres are entirely contained within the domain."""
+    d = np.linalg.norm(centers_sphere - [1, 2, 3], axis=1)
+    r_max = max(d) + _RADIUS
+    assert r_max < 1 or r_max == pytest.approx(1)
+
+
+def test_contained_spherical_shell(centers_spherical_shell):
+    """Make sure all spheres are entirely contained within the domain."""
+    d = np.linalg.norm(centers_spherical_shell - [1, 2, 3], axis=1)
+    r_max = max(d) + _RADIUS
+    r_min = min(d) - _RADIUS
+    assert r_max < 1 or r_max == pytest.approx(1)
+    assert r_min > 0.5 or r_min == pytest.approx(0.5)
+
+
+def test_packing_fraction(container, centers):
     """Check that the actual PF is close to the requested PF."""
-    pf = len(trisos)*4/3*pi*_RADIUS**3/domain['volume']
+    pf = len(centers) * 4/3 * pi *_RADIUS**3 / container['volume']
     assert pf == pytest.approx(_PACKING_FRACTION, rel=1e-2)
 
 
-def test_n_particles(triso_universe):
-    """Check that the function returns the correct number of particles"""
-    trisos = openmc.model.pack_trisos(
-        radius=_RADIUS, fill=triso_universe, domain_shape='cube',
-        domain_length=1.0, n_particles=800
+def test_num_spheres():
+    """Check that the function returns the correct number of spheres"""
+    centers = openmc.model.pack_spheres(
+        radius=_RADIUS, region=-openmc.Sphere(R=1), num_spheres=50
     )
-    assert len(trisos) == 800
+    assert len(centers) == 50
     
 
-def test_triso_lattice(triso_universe):
-    trisos = openmc.model.pack_trisos(
-        radius=_RADIUS, fill=triso_universe, domain_shape='cube',
-        domain_length=1.0, domain_center=(0., 0., 0.), packing_fraction=0.2
-    )
+def test_triso_lattice(triso_universe, centers_rectangular_prism):
+    trisos = [openmc.model.TRISO(_RADIUS, triso_universe, c)
+              for c in centers_rectangular_prism]
 
-    lower_left = np.array((-.5, -.5, -.5))
-    upper_right = np.array((.5, .5, .5))
+    lower_left = np.array((0, 0, 0))
+    upper_right = np.array((1, 1, 1))
     shape = (3, 3, 3)
     pitch = (upper_right - lower_left)/shape
     background = openmc.Material()
@@ -112,50 +199,29 @@ def test_triso_lattice(triso_universe):
     )
 
 
-def test_domain_input(triso_universe):
-    # Invalid domain shape
+def test_container_input(triso_universe):
+    # Invalid container shape
     with pytest.raises(ValueError):
-        trisos = openmc.model.pack_trisos(
-            radius=1, fill=triso_universe, n_particles=100,
-            domain_shape='circle'
+        centers = openmc.model.pack_spheres(
+            radius=_RADIUS, region=+openmc.Sphere(R=1), num_spheres=100
         )
-    # Don't specify domain length on a cube
-    with pytest.raises(ValueError):
-        trisos = openmc.model.pack_trisos(
-            radius=1, fill=triso_universe, n_particles=100,
-            domain_shape='cube'
-        )
-    # Don't specify domain radius on a sphere
-    with pytest.raises(ValueError):
-        trisos = openmc.model.pack_trisos(
-            radius=1, fill=triso_universe, n_particles=100,
-            domain_shape='sphere'
-        )
-    
 
-def test_packing_fraction_input(triso_universe):
-    # Provide neither packing fraction nor number of particles
+
+def test_packing_fraction_input():
+    # Provide neither packing fraction nor number of spheres
     with pytest.raises(ValueError):
-        trisos = openmc.model.pack_trisos(
-            radius=1, fill=triso_universe, domain_shape='cube',
-            domain_length=10
+        centers = openmc.model.pack_spheres(
+            radius=_RADIUS, region=-openmc.Sphere(R=1)
         )
-    # Provide both packing fraction and number of particles
-    with pytest.raises(ValueError):
-        trisos = openmc.model.pack_trisos(
-            radius=1, fill=triso_universe, domain_shape='cube',
-            domain_length=10, n_particles=100, packing_fraction=0.2
-        )
+
     # Specify a packing fraction that is too high for CRP
     with pytest.raises(ValueError):
-        trisos = openmc.model.pack_trisos(
-            radius=1, fill=triso_universe, domain_shape='cube',
-            domain_length=10, packing_fraction=1
+        centers = openmc.model.pack_spheres(
+            radius=_RADIUS, region=-openmc.Sphere(R=1), pf=1
         )
+
     # Specify a packing fraction that is too high for RSP
     with pytest.raises(ValueError):
-        trisos = openmc.model.pack_trisos(
-            radius=1, fill=triso_universe, domain_shape='cube',
-            domain_length=10, packing_fraction=0.5,
-            initial_packing_fraction=0.4
+        centers = openmc.model.pack_spheres(
+            radius=_RADIUS, region=-openmc.Sphere(R=1), pf=0.5, initial_pf=0.4
         )

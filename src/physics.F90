@@ -314,46 +314,6 @@ contains
   end subroutine sample_photon_product
 
 !===============================================================================
-! ABSORPTION
-!===============================================================================
-
-  subroutine absorption(p, i_nuclide) bind(C)
-    type(Particle), intent(inout) :: p
-    integer(C_INT), value         :: i_nuclide
-
-    if (survival_biasing) then
-      ! Determine weight absorbed in survival biasing
-      p % absorb_wgt = p % wgt * micro_xs(i_nuclide) % absorption / &
-           micro_xs(i_nuclide) % total
-
-      ! Adjust weight of particle by probability of absorption
-      p % wgt = p % wgt - p % absorb_wgt
-      p % last_wgt = p % wgt
-
-      ! Score implicit absorption estimate of keff
-      if (run_mode == MODE_EIGENVALUE) then
-        global_tally_absorption = global_tally_absorption + p % absorb_wgt * &
-             micro_xs(i_nuclide) % nu_fission / micro_xs(i_nuclide) % absorption
-      end if
-    else
-      ! See if disappearance reaction happens
-      if (micro_xs(i_nuclide) % absorption > &
-           prn() * micro_xs(i_nuclide) % total) then
-        ! Score absorption estimate of keff
-        if (run_mode == MODE_EIGENVALUE) then
-          global_tally_absorption = global_tally_absorption + p % wgt * &
-               micro_xs(i_nuclide) % nu_fission / micro_xs(i_nuclide) % absorption
-        end if
-
-        p % alive = .false.
-        p % event = EVENT_ABSORB
-        p % event_MT = N_DISAPPEAR
-      end if
-    end if
-
-  end subroutine absorption
-
-!===============================================================================
 ! SCATTER
 !===============================================================================
 

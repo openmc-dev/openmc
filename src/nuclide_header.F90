@@ -317,7 +317,6 @@ contains
 
   subroutine nuclide_clear(this)
     class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
-    integer :: i
 
     if (associated(this % multipole)) deallocate(this % multipole)
 

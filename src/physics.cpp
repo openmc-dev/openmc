@@ -12,6 +12,7 @@
 #include "openmc/reaction.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/tallies/tally.h"
 
 #include <algorithm> // for max, min
 #include <cmath> // for sqrt, exp, log
@@ -534,10 +535,10 @@ Reaction* sample_fission(int i_nuclide, double E)
 //   associate (nuc => nuclides(i_nuclide))
 
 //     // Get grid index and interpolation factor and sample photon production cdf
-//     i_temp = micro_xs(i_nuclide) % index_temp
-//     i_grid = micro_xs(i_nuclide) % index_grid
-//     f      = micro_xs(i_nuclide) % interp_factor
-//     cutoff = prn() * micro_xs(i_nuclide) % photon_prod
+//     i_temp = simulation::micro_xs[i_nuclide-1].index_temp
+//     i_grid = simulation::micro_xs[i_nuclide-1].index_grid
+//     f      = simulation::micro_xs[i_nuclide-1].interp_factor
+//     cutoff = prn() * simulation::micro_xs[i_nuclide-1].photon_prod
 //     prob   = 0.0
 
 //     // Loop through each reaction type
@@ -568,38 +569,38 @@ Reaction* sample_fission(int i_nuclide, double E)
 //   i_product = last_valid_product
 // }
 
-// void absorption(Particle* p, int i_nuclide)
-// {
-//   if (survival_biasing) {
-//     // Determine weight absorbed in survival biasing
-//     p->absorb_wgt = p->wgt * micro_xs(i_nuclide) % absorption / &
-//           micro_xs(i_nuclide) % total
+void absorption(Particle* p, int i_nuclide)
+{
+  if (settings::survival_biasing) {
+    // Determine weight absorbed in survival biasing
+    p->absorb_wgt = p->wgt * simulation::micro_xs[i_nuclide-1].absorption /
+          simulation::micro_xs[i_nuclide-1].total;
 
-//     // Adjust weight of particle by probability of absorption
-//     p->wgt = p->wgt - p->absorb_wgt
-//     p->last_wgt = p->wgt
+    // Adjust weight of particle by probability of absorption
+    p->wgt -= p->absorb_wgt;
+    p->last_wgt = p->wgt;
 
-//     // Score implicit absorption estimate of keff
-//     if (run_mode == MODE_EIGENVALUE) {
-//       global_tally_absorption = global_tally_absorption + p->absorb_wgt * &
-//             micro_xs(i_nuclide) % nu_fission / micro_xs(i_nuclide) % absorption
-//     }
-//   } else {
-//     // See if disappearance reaction happens
-//     if (micro_xs(i_nuclide) % absorption > &
-//           prn() * micro_xs(i_nuclide) % total) {
-//       // Score absorption estimate of keff
-//       if (run_mode == MODE_EIGENVALUE) {
-//         global_tally_absorption = global_tally_absorption + p->wgt * &
-//               micro_xs(i_nuclide) % nu_fission / micro_xs(i_nuclide) % absorption
-//       }
+    // Score implicit absorption estimate of keff
+    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+      global_tally_absorption += p->absorb_wgt * simulation::micro_xs[
+        i_nuclide-1].nu_fission / simulation::micro_xs[i_nuclide-1].absorption;
+    }
+  } else {
+    // See if disappearance reaction happens
+    if (simulation::micro_xs[i_nuclide-1].absorption >
+        prn() * simulation::micro_xs[i_nuclide-1].total) {
+      // Score absorption estimate of keff
+      if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+        global_tally_absorption += p->wgt * simulation::micro_xs[
+          i_nuclide-1].nu_fission / simulation::micro_xs[i_nuclide-1].absorption;
+      }
 
-//       p->alive = false
-//       p->event = EVENT_ABSORB
-//       p->event_MT = N_DISAPPEAR
-//     }
-//   }
-// }
+      p->alive = false;
+      p->event = EVENT_ABSORB;
+      p->event_MT = N_DISAPPEAR;
+    }
+  }
+}
 
 // void scatter(Particle*, int i_nuclide, int i_nuc_mat)
 // {
@@ -608,22 +609,22 @@ Reaction* sample_fission(int i_nuclide, double E)
 
 //   // Get pointer to nuclide and grid index/interpolation factor
 //   nuc    => nuclides(i_nuclide)
-//   i_temp =  micro_xs(i_nuclide) % index_temp
-//   i_grid =  micro_xs(i_nuclide) % index_grid
-//   f      =  micro_xs(i_nuclide) % interp_factor
+//   i_temp =  simulation::micro_xs[i_nuclide-1].index_temp
+//   i_grid =  simulation::micro_xs[i_nuclide-1].index_grid
+//   f      =  simulation::micro_xs[i_nuclide-1].interp_factor
 
 //   // For tallying purposes, this routine might be called directly. In that
 //   // case, we need to sample a reaction via the cutoff variable
-//   cutoff = prn() * (micro_xs(i_nuclide) % total - &
-//         micro_xs(i_nuclide) % absorption)
+//   cutoff = prn() * (micro_xs[i_nuclide-1].total - &
+//         simulation::micro_xs[i_nuclide-1].absorption)
 //   sampled = false
 
 //   // Calculate elastic cross section if it wasn't precalculated
-//   if (micro_xs(i_nuclide) % elastic == CACHE_INVALID) {
+//   if (micro_xs[i_nuclide-1].elastic == CACHE_INVALID) {
 //     nuc % calculate_elastic_xs(micro_xs(i_nuclide))
 //   }
 
-//   prob = micro_xs(i_nuclide) % elastic - micro_xs(i_nuclide) % thermal
+//   prob = simulation::micro_xs[i_nuclide-1].elastic - simulation::micro_xs[i_nuclide-1].thermal
 //   if (prob > cutoff) {
 //     // =======================================================================
 //     // NON-S(A,B) ELASTIC SCATTERING
@@ -632,7 +633,7 @@ Reaction* sample_fission(int i_nuclide, double E)
 //     if (nuc % mp_present) {
 //       kT = p->sqrtkT**2
 //     } else {
-//       kT = nuc % kTs(micro_xs(i_nuclide) % index_temp)
+//       kT = nuc % kTs(micro_xs[i_nuclide-1].index_temp)
 //     }
 
 //     // Perform collision physics for elastic scattering
@@ -643,12 +644,12 @@ Reaction* sample_fission(int i_nuclide, double E)
 //     sampled = true
 //   }
 
-//   prob = micro_xs(i_nuclide) % elastic
+//   prob = simulation::micro_xs[i_nuclide-1].elastic
 //   if (prob > cutoff && !sampled) {
 //     // =======================================================================
 //     // S(A,B) SCATTERING
 
-//     sab_scatter(i_nuclide, micro_xs(i_nuclide) % index_sab, p->E, &
+//     sab_scatter(i_nuclide, simulation::micro_xs[i_nuclide-1].index_sab, p->E, &
 //                       p->coord(1) % uvw, p->mu)
 
 //     p->event_MT = ELASTIC
@@ -722,9 +723,9 @@ Reaction* sample_fission(int i_nuclide, double E)
 //   v_n = vel * uvw
 
 //   // Sample velocity of target nucleus
-//   if (!micro_xs(i_nuclide) % use_ptable) {
+//   if (!micro_xs[i_nuclide-1].use_ptable) {
 //     sample_target_velocity(nuc, v_t, E, uvw, v_n, wgt, &
-//           micro_xs(i_nuclide) % elastic, kT)
+//           simulation::micro_xs[i_nuclide-1].elastic, kT)
 //   } else {
 //     v_t = 0.0
 //   }
@@ -1129,8 +1130,8 @@ void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Bank
 // void sample_secondary_photons(Particle* p, int i_nuclide)
 // {
 //   // Sample the number of photons produced
-//   nu_t =  p->wgt * micro_xs(i_nuclide) % photon_prod / &
-//         micro_xs(i_nuclide) % total
+//   nu_t =  p->wgt * simulation::micro_xs[i_nuclide-1].photon_prod / &
+//         simulation::micro_xs[i_nuclide-1].total
 //   if (prn() > nu_t - int(nu_t)) {
 //     nu = int(nu_t)
 //   } else {

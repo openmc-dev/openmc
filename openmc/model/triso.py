@@ -8,7 +8,6 @@ from collections.abc import Iterable
 from heapq import heappush, heappop
 from math import pi, sin, cos, floor, log10, sqrt
 from numbers import Real
-from operator import attrgetter
 from random import uniform, gauss
 
 import numpy as np
@@ -158,10 +157,7 @@ class _Container(metaclass=ABCMeta):
 
     @center.setter
     def center(self, center):
-        if np.asarray(center).size != 3:
-            raise ValueError('Unable to set domain center to {} since it must '
-                             'be of length 3'.format(center))
-        self._center = [float(x) for x in center]
+        self._center = center
 
     def mesh_cell(self, p):
         """Calculate the index of the cell in a mesh overlaid on the domain in
@@ -199,6 +195,20 @@ class _Container(metaclass=ABCMeta):
         r = [[a/self.cell_length[i] for a in [p[i]-d, p[i], p[i]+d]]
              for i in range(3)]
         return list(itertools.product(*({int(x) for x in y} for y in r)))
+
+    @abstractmethod
+    def from_region(self, region, sphere_radius):
+        """Create a container to pack spheres in based on a region.
+
+        Parameters
+        ----------
+        region : openmc.Region
+            Region to create container from.
+        sphere_radius : float
+            Outer radius of spheres.
+
+        """
+        pass
 
     @abstractmethod
     def random_point(self):
@@ -268,7 +278,7 @@ class _RectangularPrism(_Container):
         Length in x-, y-, and z- directions of each cell in mesh overlaid on
         domain.
     limits : list of float
-        Maximum distance from center in x-, y-, or z-direction where sphere
+        Minimum and maximum distance in x-, y-, and z-direction where sphere
         center can be placed.
     volume : float
         Volume of the container.
@@ -296,9 +306,11 @@ class _RectangularPrism(_Container):
     @property
     def limits(self):
         if self._limits is None:
-            self._limits = [self.width/2 - self.sphere_radius,
-                            self.depth/2 - self.sphere_radius,
-                            self.height/2 - self.sphere_radius]
+            c = self.center
+            r = self.sphere_radius
+            x, y, z = self.width/2, self.depth/2, self.height/2
+            self._limits = [[c[0] - x + r, c[1] - y + r, c[2] - z + r],
+                            [c[0] + x - r, c[1] + y - r, c[2] + z - r]]
         return self._limits
 
     @property
@@ -335,11 +347,50 @@ class _RectangularPrism(_Container):
     def limits(self, limits):
         self._limits = limits
 
+    @classmethod
+    def from_region(self, region, sphere_radius):
+        check_type('region', region, openmc.Region)
+
+        # Assume the simplest case where the prism volume is the intersection
+        # of the half-spaces of six planes
+        if not isinstance(region, openmc.Intersection):
+            raise ValueError
+
+        if any(not isinstance(node, openmc.Halfspace) for node in region):
+            raise ValueError
+
+        if len(region) != 6:
+            raise ValueError
+
+        # Sort half-spaces by surface type
+        px1, px2, py1, py2, pz1, pz2 = sorted(region, key=lambda x: x.surface.type)
+
+        # Make sure the region consists of the correct surfaces
+        if (not isinstance(px1.surface, openmc.XPlane) or
+            not isinstance(px2.surface, openmc.XPlane) or
+            not isinstance(py1.surface, openmc.YPlane) or
+            not isinstance(py2.surface, openmc.YPlane) or
+            not isinstance(pz1.surface, openmc.ZPlane) or
+            not isinstance(pz2.surface, openmc.ZPlane)):
+            raise ValueError
+
+        # Make sure the half-spaces are on the correct side of the surfaces
+        ll, ur = region.bounding_box
+        if any(x in ll or x in ur for x in (-np.inf, np.inf)):
+            raise ValueError
+
+        # Calculate the parameters for the container
+        width, depth, height = ur - ll
+        center = ll + [width/2, depth/2, height/2]
+
+        # The region is the volume of a rectangular prism, so create container
+        return _RectangularPrism(width, depth, height, sphere_radius, center)
+
     def random_point(self):
-        x_max, y_max, z_max = self.limits
-        return [uniform(-x_max, x_max),
-                uniform(-y_max, y_max),
-                uniform(-z_max, z_max)]
+        ll, ul = self.limits
+        return [uniform(ll[0], ul[0]),
+                uniform(ll[1], ul[1]),
+                uniform(ll[2], ul[2])]
 
     def repel_spheres(self, p, q, d, d_new):
         # Moving each sphere distance 's' away from the other along the line
@@ -354,8 +405,8 @@ class _RectangularPrism(_Container):
         # Enforce the rigid boundary by moving each sphere back along the
         # surface normal until it is completely within the container if it
         # overlaps the surface
-        p[:] = np.clip(p, [-x for x in self.limits], self.limits)
-        q[:] = np.clip(q, [-x for x in self.limits], self.limits)
+        p[:] = np.clip(p, self.limits[0], self.limits[1])
+        q[:] = np.clip(q, self.limits[0], self.limits[1])
 
 
 class _Cylinder(_Container):
@@ -396,8 +447,8 @@ class _Cylinder(_Container):
         Length in x-, y-, and z- directions of each cell in mesh overlaid on
         domain.
     limits : list of float
-        Maximum radial distance and maximum distance from center in z-direction
-        where sphere center can be placed.
+        Maximum radial distance and minimum and maximum distance in the
+        direction parallel to the axis where sphere center can be placed.
     volume : float
         Volume of the container.
 
@@ -436,8 +487,10 @@ class _Cylinder(_Container):
     @property
     def limits(self):
         if self._limits is None:
-            self._limits = [self.radius - self.sphere_radius,
-                            self.length/2 - self.sphere_radius]
+            z0 = self.center[self.shift[2]]
+            z = self.length/2
+            r = self.sphere_radius
+            self._limits = [[z0 - z + r], [z0 + z - r, self.radius - r]]
         return self._limits
 
     @property
@@ -476,15 +529,72 @@ class _Cylinder(_Container):
     def limits(self, limits):
         self._limits = limits
 
+    @classmethod
+    def from_region(self, region, sphere_radius):
+        check_type('region', region, openmc.Region)
+
+        # Assume the simplest case where the cylinder volume is the
+        # intersection of the half-spaces of a cylinder and two planes
+        if not isinstance(region, openmc.Intersection):
+            raise ValueError
+
+        if any(not isinstance(node, openmc.Halfspace) for node in region):
+            raise ValueError
+
+        if len(region) != 3:
+            raise ValueError
+
+        # Identify the axis that the cylinder lies along
+        axis = region[0].surface.type[0]
+
+        # Make sure the region is composed of a cylinder and two planes on the
+        # same axis
+        count = Counter(node.surface.type for node in region)
+        if count[axis + '-cylinder'] != 1 or count[axis + '-plane'] != 2:
+            raise ValueError
+
+        # Sort the half-spaces by surface type
+        cyl, p1, p2 = sorted(region, key=lambda x: x.surface.type)
+
+        # Calculate the parameters for a cylinder along the x-axis
+        if axis == 'x':
+            if p1.surface.x0 > p2.surface.x0:
+                p1, p2 = p2, p1
+            length = p2.surface.x0 - p1.surface.x0
+            center = (p1.surface.x0 + length/2, cyl.surface.y0, cyl.surface.z0)
+
+        # Calculate the parameters for a cylinder along the y-axis
+        elif axis == 'y':
+            if p1.surface.y0 > p2.surface.y0:
+                p1, p2 = p2, p1
+            length = p2.surface.y0 - p1.surface.y0
+            center = (cyl.surface.x0, p1.surface.y0 + length/2, cyl.surface.z0)
+
+        # Calculate the parameters for a cylinder along the z-axis
+        else:
+            if p1.surface.z0 > p2.surface.z0:
+                p1, p2 = p2, p1
+            length = p2.surface.z0 - p1.surface.z0
+            center = (cyl.surface.x0, cyl.surface.y0, p1.surface.z0 + length/2)
+
+        # Make sure the half-spaces are on the correct side of the surfaces
+        if cyl.side != '-' or p1.side != '+' or p2.side != '-':
+            raise ValueError
+
+        radius = cyl.surface.r
+
+        # The region is the volume of a cylinder, so create container
+        return _Cylinder(length, radius, axis, sphere_radius, center)
+
     def random_point(self):
-        r_max, z_max = self.limits
-        r = sqrt(uniform(0, r_max**2))
+        ll, ul = self.limits
+        r = sqrt(uniform(0, ul[1]**2))
         t = uniform(0, 2*pi)
         i, j, k = self.shift
         p = [None]*3
-        p[i] = r*cos(t)
-        p[j] = r*sin(t)
-        p[k] = uniform(-z_max, z_max)
+        p[i] = r*cos(t) + self.center[i]
+        p[j] = r*sin(t) + self.center[j]
+        p[k] = uniform(ll[0], ul[0])
         return p
 
     def repel_spheres(self, p, q, d, d_new):
@@ -500,119 +610,24 @@ class _Cylinder(_Container):
         # Enforce the rigid boundary by moving each sphere back along the
         # surface normal until it is completely within the container if it
         # overlaps the surface
-        r_max, z_max = self.limits
+        ll, ul = self.limits
+        c = self.center
         i, j, k = self.shift
 
-        r = sqrt(p[i]**2 + p[j]**2)
-        if r > r_max:
-            p[i] *= r_max/r
-            p[j] *= r_max/r
-        p[k] = np.clip(p[k], -z_max, z_max)
+        r = sqrt((p[i] - c[i])**2 + (p[j] - c[j])**2)
+        if r > ul[1]:
+            p[i] = (p[i] - c[i])*ul[1]/r + c[i]
+            p[j] = (p[j] - c[j])*ul[1]/r + c[j]
+        p[k] = np.clip(p[k], ll[0], ul[0])
 
-        r = sqrt(q[i]**2 + q[j]**2)
-        if r > r_max:
-            q[i] *= r_max/r
-            q[j] *= r_max/r
-        q[k] = np.clip(q[k], -z_max, z_max)
-
-
-class _Sphere(_Container):
-    """Spherical container in which to pack spheres.
-
-    Parameters
-    ----------
-    radius : float
-        Radius of the spherical container.
-    center : Iterable of float
-        Cartesian coordinates of the center of the container. Default is
-        (0., 0., 0.)
-
-    Attributes
-    ----------
-    radius : float
-        Radius of the spherical container.
-    sphere_radius : float
-        Radius of spheres to be packed in container.
-    center : list of float
-        Cartesian coordinates of the center of the container. Default is
-        (0., 0., 0.)
-    cell_length : list of float
-        Length in x-, y-, and z- directions of each cell in mesh overlaid on
-        domain.
-    limits : list of float
-        Maximum radial distance where sphere center can be placed.
-    volume : float
-        Volume of the container.
-
-    """
-
-    def __init__(self, radius, sphere_radius, center=(0., 0., 0.)):
-        super().__init__(sphere_radius, center)
-        self.radius = radius
-
-    @property
-    def radius(self):
-        return self._radius
-
-    @property
-    def limits(self):
-        if self._limits is None:
-            self._limits = [self.radius - self.sphere_radius]
-        return self._limits
-
-    @property
-    def cell_length(self):
-        if self._cell_length is None:
-            mesh_length = 3*[2*self.radius]
-            self._cell_length = [x/int(x/(4*self.sphere_radius))
-                                 for x in mesh_length]
-        return self._cell_length
-
-    @property
-    def volume(self):
-        return 4/3*pi*self.radius**3
-
-    @radius.setter
-    def radius(self, radius):
-        self._radius = float(radius)
-        self._limits = None
-        self._cell_length = None
-
-    @limits.setter
-    def limits(self, limits):
-        self._limits = limits
-
-    def random_point(self):
-        r_max = self.limits[0]
-        x = (gauss(0, 1), gauss(0, 1), gauss(0, 1))
-        r = (uniform(0, r_max**3)**(1/3) / sqrt(x[0]**2 + x[1]**2 + x[2]**2))
-        return [r*s for s in x]
-
-    def repel_spheres(self, p, q, d, d_new):
-        # Moving each sphere distance 's' away from the other along the line
-        # joining the sphere centers will ensure their final distance is
-        # equal to the outer diameter
-        s = (d_new - d)/2
-
-        v = (p - q)/d
-        p += s*v
-        q -= s*v
-
-        # Enforce the rigid boundary by moving each sphere back along the
-        # surface normal until it is completely within the container if it
-        # overlaps the surface
-        r_max = self.limits[0]
-
-        r = sqrt(p[0]**2 + p[1]**2 + p[2]**2)
-        if r > r_max:
-            p *= r_max/r
-
-        r = sqrt(q[0]**2 + q[1]**2 + q[2]**2)
-        if r > r_max:
-            q *= r_max/r
+        r = sqrt((q[i] - c[i])**2 + (q[j] - c[j])**2)
+        if r > ul[1]:
+            q[i] = (q[i] - c[i])*ul[1]/r + c[i]
+            q[j] = (q[j] - c[j])*ul[1]/r + c[j]
+        q[k] = np.clip(q[k], ll[0], ul[0])
 
 
-class _SphericalShell(_Sphere):
+class _SphericalShell(_Container):
     """Spherical shell container in which to pack spheres.
 
     Parameters
@@ -640,8 +655,7 @@ class _SphericalShell(_Sphere):
         Length in x-, y-, and z- directions of each cell in mesh overlaid on
         domain.
     limits : list of float
-        Maximum radial distance and minimum radial distance where sphere
-        center can be placed.
+        Minimum and maximum radial distance where sphere center can be placed.
     volume : float
         Volume of the container.
 
@@ -649,8 +663,13 @@ class _SphericalShell(_Sphere):
 
     def __init__(self, radius, inner_radius, sphere_radius,
                  center=(0., 0., 0.)):
-        super().__init__(radius, sphere_radius, center)
+        super().__init__(sphere_radius, center)
+        self.radius = radius
         self.inner_radius = inner_radius
+
+    @property
+    def radius(self):
+        return self._radius
 
     @property
     def inner_radius(self):
@@ -659,13 +678,31 @@ class _SphericalShell(_Sphere):
     @property
     def limits(self):
         if self._limits is None:
-            self._limits = [self.radius - self.sphere_radius,
-                            self.inner_radius + self.sphere_radius]
+            r_max = self.radius - self.sphere_radius
+            if self.inner_radius == 0:
+                r_min = 0
+            else:
+                r_min = self.inner_radius + self.sphere_radius
+            self._limits = [[r_min], [r_max]]
         return self._limits
+
+    @property
+    def cell_length(self):
+        if self._cell_length is None:
+            mesh_length = 3*[2*self.radius]
+            self._cell_length = [x/int(x/(4*self.sphere_radius))
+                                 for x in mesh_length]
+        return self._cell_length
 
     @property
     def volume(self):
         return 4/3*pi*(self.radius**3 - self.inner_radius**3)
+
+    @radius.setter
+    def radius(self, radius):
+        self._radius = float(radius)
+        self._limits = None
+        self._cell_length = None
 
     @inner_radius.setter
     def inner_radius(self, inner_radius):
@@ -676,11 +713,58 @@ class _SphericalShell(_Sphere):
     def limits(self, limits):
         self._limits = limits
 
+    @classmethod
+    def from_region(self, region, sphere_radius):
+        check_type('region', region, openmc.Region)
+
+        # First check if the region is the volume inside a sphere. Assume the
+        # simplest case where the sphere volume is the negative half-space of a
+        # sphere.
+        if (isinstance(region, openmc.Halfspace)
+            and isinstance(region.surface, openmc.Sphere)
+            and region.side == '-'):
+
+            # The region is the volume of a sphere, so create container
+            radius = region.surface.r
+            center = (region.surface.x0, region.surface.y0, region.surface.z0)
+
+            return _SphericalShell(radius, 0., sphere_radius, center)
+
+        # Next check for a spherical shell volume. Assume the simplest case
+        # where the spherical shell volume is the intersection of the
+        # half-spaces of two spheres.
+        if not isinstance(region, openmc.Intersection):
+            raise ValueError
+
+        if any(not isinstance(node, openmc.Halfspace) for node in region):
+            raise ValueError
+
+        if len(region) != 2:
+            raise ValueError
+
+        if any(not isinstance(node.surface, openmc.Sphere) for node in region):
+            raise ValueError
+
+        s1, s2 = sorted(region, key=lambda x: x.surface.r)
+        radius = s2.surface.r
+        inner_radius = s1.surface.r
+        center = (s1.surface.x0, s1.surface.y0, s1.surface.z0)
+
+        if center != (s2.surface.x0, s2.surface.y0, s2.surface.z0):
+            raise ValueError
+
+        if s1.side != '+' or s2.side != '-':
+            raise ValueError
+
+        # The region is the volume of a spherical shell, so create container
+        return _SphericalShell(radius, inner_radius, sphere_radius, center)
+
     def random_point(self):
-        r_max, r_min = self.limits
-        x = (gauss(0, 1), gauss(0, 1), gauss(0, 1))
-        r = (uniform(r_min**3, r_max**3)**(1/3)/sqrt(x[0]**2 + x[1]**2 + x[2]**2))
-        return [r*s for s in x]
+        c = self.center
+        ll, ul = self.limits
+        x, y, z = (gauss(0, 1), gauss(0, 1), gauss(0, 1))
+        r = (uniform(ll[0]**3, ul[0]**3)**(1/3)/sqrt(x**2 + y**2 + z**2))
+        return [r*x + c[0],  r*y + c[1], r*z + c[2]]
 
     def repel_spheres(self, p, q, d, d_new):
         # Moving each sphere distance 's' away from the other along the line
@@ -695,19 +779,20 @@ class _SphericalShell(_Sphere):
         # Enforce the rigid boundary by moving each sphere back along the
         # surface normal until it is completely within the container if it
         # overlaps the surface
-        r_max, r_min = self.limits
+        c = self.center
+        ll, ul = self.limits
 
-        r = sqrt(p[0]**2 + p[1]**2 + p[2]**2)
-        if r > r_max:
-            p *= r_max/r
-        elif r < r_min:
-            p *= r_min/r
+        r = sqrt((p[0] - c[0])**2 + (p[1] - c[1])**2 + (p[2] - c[2])**2)
+        if r > ul[0]:
+            p[:] = (p - c)*ul[0]/r + c
+        elif r < ll[0]:
+            p[:] = (p - c)*ll[0]/r + c
 
-        r = sqrt(q[0]**2 + q[1]**2 + q[2]**2)
-        if r > r_max:
-            q *= r_max/r
-        elif r < r_min:
-            q *= r_min/r
+        r = sqrt((q[0] - c[0])**2 + (q[1] - c[1])**2 + (q[2] - c[2])**2)
+        if r > ul[0]:
+            q[:] = (q - c)*ul[0]/r + c
+        elif r < ll[0]:
+            q[:] = (q - c)*ll[0]/r + c
 
 
 def create_triso_lattice(trisos, lower_left, pitch, shape, background):
@@ -781,193 +866,6 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background):
     lattice.outer = openmc.Universe(cells=[background_cell])
 
     return lattice
-
-
-def _create_container(region, sphere_radius):
-    """Create a container to pack spheres in using the region to determine the
-    container shape.
-
-    Parameters
-    ----------
-    region : openmc.Region
-        Container in which the spheres are packed. Supported shapes are
-        rectangular_prism, cylinder, sphere, and spherical shell.
-    sphere_radius : float
-        Outer radius of spheres.
-
-    Returns
-    -------
-    domain : openmc.model._Container
-        Container in which to pack spheres.
-
-    """
-
-    def rectangular_prism():
-        # Assume the simplest case where the prism volume is the intersection
-        # of the half-spaces of six planes
-        if not isinstance(region, openmc.Intersection):
-            return None
-
-        if any(not isinstance(node, openmc.Halfspace) for node in region):
-            return None
-
-        if len(region) != 6:
-            return None
-
-        # Sort half-spaces by surface type
-        px1, px2, py1, py2, pz1, pz2 = sorted(region, key=attrgetter('surface.type'))
-
-        # Make sure the region consists of the correct surfaces
-        if (not isinstance(px1.surface, openmc.XPlane) or
-            not isinstance(px2.surface, openmc.XPlane) or
-            not isinstance(py1.surface, openmc.YPlane) or
-            not isinstance(py2.surface, openmc.YPlane) or
-            not isinstance(pz1.surface, openmc.ZPlane) or
-            not isinstance(pz2.surface, openmc.ZPlane)):
-            return None
-
-        # Secondary sorting by location of the plane
-        if px1.surface.x0 > px2.surface.x0:
-            px1, px2 = px2, px1
-
-        if py1.surface.y0 > py2.surface.y0:
-            py1, py2 = py2, py1
-
-        if pz1.surface.z0 > pz2.surface.z0:
-            pz1, pz2 = pz2, pz1
-
-        # Make sure the half-spaces are on the correct side of the surfaces
-        if (px1.side != '+' or px2.side != '-' or
-            py1.side != '+' or py2.side != '-' or
-            pz1.side != '+' or pz2.side != '-'):
-            return None
-
-        # Calculate the parameters for the container
-        width = px2.surface.x0 - px1.surface.x0
-        depth = py2.surface.y0 - py1.surface.y0
-        height = pz2.surface.z0 - pz1.surface.z0
-        center = (px1.surface.x0 + width/2,
-                  py1.surface.y0 + depth/2,
-                  pz1.surface.z0 + height/2)
-
-        # The region is the volume of a rectangular prism, so create container
-        return _RectangularPrism(width, depth, height, sphere_radius, center)
-
-    def cylinder():
-        # Assume the simplest case where the cylinder volume is the
-        # intersection of the half-spaces of a cylinder and two planes
-        if not isinstance(region, openmc.Intersection):
-            return None
-
-        if any(not isinstance(node, openmc.Halfspace) for node in region):
-            return None
-
-        if len(region) != 3:
-            return None
-
-        # Identify the axis that the cylinder lies along
-        axis = region[0].surface.type[0]
-
-        # Make sure the region is composed of a cylinder and two planes on the
-        # same axis
-        count = Counter((node.surface.type for node in region))
-        if count[axis + '-cylinder'] != 1 or count[axis + '-plane'] != 2:
-            return None
-
-        # Sort the half-spaces by surface type
-        cyl, p1, p2 = sorted(region, key=attrgetter('surface.type'))
-
-        # Calculate the parameters for a cylinder along the x-axis
-        if axis == 'x':
-            if p1.surface.x0 > p2.surface.x0:
-                p1, p2 = p2, p1
-            length = p2.surface.x0 - p1.surface.x0
-            center = (p1.surface.x0 + length/2, cyl.surface.y0, cyl.surface.z0)
-
-        # Calculate the parameters for a cylinder along the y-axis
-        elif axis == 'y':
-            if p1.surface.y0 > p2.surface.y0:
-                p1, p2 = p2, p1
-            length = p2.surface.y0 - p1.surface.y0
-            center = (cyl.surface.x0, p1.surface.y0 + length/2, cyl.surface.z0)
-
-        # Calculate the parameters for a cylinder along the z-axis
-        else:
-            if p1.surface.z0 > p2.surface.z0:
-                p1, p2 = p2, p1
-            length = p2.surface.z0 - p1.surface.z0
-            center = (cyl.surface.x0, cyl.surface.y0, p1.surface.z0 + length/2)
-
-        # Make sure the half-spaces are on the correct side of the surfaces
-        if cyl.side != '-' or p1.side != '+' or p2.side != '-':
-            return None
-
-        radius = cyl.surface.r
-
-        # The region is the volume of a cylinder, so create container
-        return _Cylinder(length, radius, axis, sphere_radius, center)
-
-    def sphere():
-        # Assume the simplest case where the sphere volume is the negative
-        # half-space of a sphere
-        if not isinstance(region, openmc.Halfspace):
-            return None
-
-        if not isinstance(region.surface, openmc.Sphere):
-            return None
-
-        if region.side != '-':
-            return None
-
-        radius = region.surface.r
-        center = (region.surface.x0, region.surface.y0, region.surface.z0)
-
-        # The region is the volume of a sphere, so create container
-        return _Sphere(radius, sphere_radius, center)
-
-    def spherical_shell():
-        # Assume the simplest case where the spherical shell volume is the
-        # intersection of the half-spaces of two spheres
-        if not isinstance(region, openmc.Intersection):
-            return None
-
-        if any(not isinstance(node, openmc.Halfspace) for node in region):
-            return None
-
-        if len(region) != 2:
-            return None
-
-        if any(not isinstance(node.surface, openmc.Sphere) for node in region):
-            return None
-
-        s1, s2 = sorted(region, key=attrgetter('surface.r'))
-        radius = s2.surface.r
-        inner_radius = s1.surface.r
-        center = (s1.surface.x0, s1.surface.y0, s1.surface.z0)
-
-        if center != (s2.surface.x0, s2.surface.y0, s2.surface.z0):
-            return None
-
-        if s1.side != '+' or s2.side != '-':
-            return None
-
-        # The region is the volume of a spherical shell, so create container
-        return _SphericalShell(radius, inner_radius, sphere_radius, center)
-
-    check_type('region', region, openmc.Region)
-
-    # Check whether the region matches any of the supported container shapes
-    # and create the container if it does
-    shapes = [rectangular_prism, cylinder, sphere, spherical_shell]
-    for shape in shapes:
-        container = shape()
-        if container:
-            return container
-
-    msg = ('Could not translate region {} into a container: supported '
-           'container shapes are rectangular prism, cylinder, sphere, '
-           'and spherical shell.'.format(region))
-    raise ValueError(msg)
 
 
 def _random_sequential_pack(domain, num_spheres):
@@ -1374,7 +1272,17 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
     random.seed(seed)
 
     # Create container with the correct shape based on the supplied region
-    domain = _create_container(region, radius)
+    domain = None
+    for cls in _Container.__subclasses__():
+        try:
+            domain = cls.from_region(region, radius)
+        except ValueError:
+            pass
+
+    if not domain:
+        raise ValueError('Could not map region {} to a container: supported '
+                         'container shapes are rectangular prism, cylinder, '
+                         'sphere, and spherical shell.'.format(region))
 
     # Determine the packing fraction/number of spheres
     volume = 4/3*pi*radius**3
@@ -1410,7 +1318,8 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
     # Recalculate the limits for the initial random sequential packing using
     # the desired final sphere radius to ensure spheres are fully contained
     # within the domain during the close random pack
-    domain.limits = [x + initial_radius - radius for x in domain.limits]
+    domain.limits = [[x - initial_radius + radius for x in domain.limits[0]],
+                     [x + initial_radius - radius for x in domain.limits[1]]]
 
     # Generate non-overlapping spheres for an initial inner radius using
     # random sequential packing algorithm
@@ -1423,4 +1332,4 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
         domain.sphere_radius = radius
         _close_random_pack(domain, spheres, contraction_rate)
 
-    return spheres + domain.center
+    return spheres

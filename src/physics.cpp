@@ -4,6 +4,7 @@
 #include "openmc/constants.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
+#include "openmc/math_functions.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
@@ -1127,33 +1128,36 @@ void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Bank
 //   }
 // }
 
-// void sample_secondary_photons(Particle* p, int i_nuclide)
-// {
-//   // Sample the number of photons produced
-//   nu_t =  p->wgt * simulation::micro_xs[i_nuclide-1].photon_prod / &
-//         simulation::micro_xs[i_nuclide-1].total
-//   if (prn() > nu_t - int(nu_t)) {
-//     nu = int(nu_t)
-//   } else {
-//     nu = int(nu_t) + 1
-//   }
+void sample_secondary_photons(Particle* p, int i_nuclide)
+{
+  // Sample the number of photons produced
+  double y_t = p->wgt * simulation::micro_xs[i_nuclide-1].photon_prod /
+    simulation::micro_xs[i_nuclide-1].total;
+  int y = static_cast<int>(y_t);
+  if (prn() <= y_t - y) ++y;
 
-//   // Sample each secondary photon
-//   do i = 1, nu
+  // Sample each secondary photon
+  for (int i = 0; i < y; ++i) {
+    // Sample the reaction and product
+    int i_rx;
+    int i_product;
+    sample_photon_product(i_nuclide, p->E, &i_rx, &i_product);
 
-//     // Sample the reaction and product
-//     sample_photon_product(i_nuclide, p->E, i_reaction, i_product)
+    // Sample the outgoing energy and angle
+    auto& rx = data::nuclides[i_nuclide-1]->reactions_[i_rx-1];
+    double E;
+    double mu;
+    rx->products_[i_product-1].sample(p->E, E, mu);
 
-//     // Sample the outgoing energy and angle
-//     nuclides(i_nuclide) % reactions(i_reaction) % &
-//           product_sample(i_product, p->E, E, mu)
+    // Sample the new direction
+    double uvw[3];
+    std::copy(p->coord[0].uvw, p->coord[0].uvw + 3, uvw);
+    rotate_angle_c(uvw, mu, nullptr);
 
-//     // Sample the new direction
-//     uvw = rotate_angle(p->coord(1) % uvw, mu)
-
-//     // Create the secondary photon
-//     particle_create_secondary(p, uvw, E, PHOTON, run_CE=true)
-//   end do
-// }
+    // Create the secondary photon
+    int photon = static_cast<int>(ParticleType::photon);
+    p->create_secondary(uvw, E, photon, true);
+  }
+}
 
 } // namespace openmc

@@ -258,11 +258,11 @@ contains
 ! SAMPLE_PHOTON_PRODUCT
 !===============================================================================
 
-  subroutine sample_photon_product(i_nuclide, E, i_reaction, i_product)
-    integer, intent(in)  :: i_nuclide  ! index in nuclides array
-    real(8), intent(in)  :: E          ! energy of neutron
-    integer, intent(out) :: i_reaction ! index in nuc % reactions array
-    integer, intent(out) :: i_product  ! index in reaction % products array
+  subroutine sample_photon_product(i_nuclide, E, i_reaction, i_product) bind(C)
+    integer(C_INT), value  :: i_nuclide  ! index in nuclides array
+    real(C_DOUBLE), value  :: E          ! energy of neutron
+    integer(C_INT), intent(out) :: i_reaction ! index in nuc % reactions array
+    integer(C_INT), intent(out) :: i_product  ! index in reaction % products array
 
     integer :: i_grid
     integer :: i_temp
@@ -884,51 +884,5 @@ contains
     end if
 
   end subroutine inelastic_scatter
-
-!===============================================================================
-! SAMPLE_SECONDARY_PHOTONS
-!===============================================================================
-
-  subroutine sample_secondary_photons(p, i_nuclide) bind(C)
-    type(Particle), intent(inout) :: p
-    integer(C_INT), value         :: i_nuclide
-
-    integer :: i_reaction   ! index in nuc % reactions array
-    integer :: i_product    ! index in nuc % reactions % products array
-
-    real(8) :: nu_t
-    real(8) :: mu
-    real(8) :: E
-    real(8) :: uvw(3)
-    integer :: nu
-    integer :: i
-
-    ! Sample the number of photons produced
-    nu_t =  p % wgt * micro_xs(i_nuclide) % photon_prod / &
-         micro_xs(i_nuclide) % total
-    if (prn() > nu_t - int(nu_t)) then
-      nu = int(nu_t)
-    else
-      nu = int(nu_t) + 1
-    end if
-
-    ! Sample each secondary photon
-    do i = 1, nu
-
-      ! Sample the reaction and product
-      call sample_photon_product(i_nuclide, p % E, i_reaction, i_product)
-
-      ! Sample the outgoing energy and angle
-      call nuclides(i_nuclide) % reactions(i_reaction) % &
-           product_sample(i_product, p % E, E, mu)
-
-      ! Sample the new direction
-      uvw = rotate_angle(p % coord(1) % uvw, mu)
-
-      ! Create the secondary photon
-      call particle_create_secondary(p, uvw, E, PHOTON, run_CE=.true._C_BOOL)
-    end do
-
-  end subroutine sample_secondary_photons
 
 end module physics

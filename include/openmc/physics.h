@@ -47,7 +47,7 @@ void create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
 
 Reaction* sample_fission(int i_nuclide, double E);
 
-// void sample_photon_product(int i_nuclide, double E, int* i_rx, int* i_product);
+extern "C" void sample_photon_product(int i_nuclide, double E, int* i_rx, int* i_product);
 
 void absorption(Particle* p, int i_nuclide);
 
@@ -68,7 +68,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Bank
 
 // void inelastic_scatter(int i_nuclide, const Reaction& rx, Particle* p);
 
-extern "C" void sample_secondary_photons(Particle* p, int i_nuclide);
+void sample_secondary_photons(Particle* p, int i_nuclide);
 
 extern "C" void thick_target_bremsstrahlung(Particle* p, double* E_lost);
 

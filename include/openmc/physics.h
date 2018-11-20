@@ -47,7 +47,7 @@ void create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
 
 Reaction* sample_fission(int i_nuclide, double E);
 
-extern "C" void sample_photon_product(int i_nuclide, double E, int* i_rx, int* i_product);
+void sample_photon_product(int i_nuclide, double E, int* i_rx, int* i_product);
 
 void absorption(Particle* p, int i_nuclide);
 

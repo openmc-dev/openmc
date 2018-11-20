@@ -530,45 +530,38 @@ Reaction* sample_fission(int i_nuclide, double E)
   }
 }
 
-// void sample_photon_product(int i_nuclide, double E, int* i_rx, int* i_product);
-// {
-//   // Get pointer to nuclide
-//   associate (nuc => nuclides(i_nuclide))
+void sample_photon_product(int i_nuclide, double E, int* i_rx, int* i_product)
+{
+  // Get grid index and interpolation factor and sample photon production cdf
+  int i_temp = simulation::micro_xs[i_nuclide-1].index_temp;
+  int i_grid = simulation::micro_xs[i_nuclide-1].index_grid;
+  double f = simulation::micro_xs[i_nuclide-1].interp_factor;
+  double cutoff = prn() * simulation::micro_xs[i_nuclide-1].photon_prod;
+  double prob = 0.0;
 
-//     // Get grid index and interpolation factor and sample photon production cdf
-//     i_temp = simulation::micro_xs[i_nuclide-1].index_temp
-//     i_grid = simulation::micro_xs[i_nuclide-1].index_grid
-//     f      = simulation::micro_xs[i_nuclide-1].interp_factor
-//     cutoff = prn() * simulation::micro_xs[i_nuclide-1].photon_prod
-//     prob   = 0.0
+  // Loop through each reaction type
+  const auto& nuc {data::nuclides[i_nuclide-1]};
+  for (int i = 0; i < nuc->reactions_.size(); ++i) {
+    const auto& rx = nuc->reactions_[i];
+    int threshold = rx->xs_[i_temp-1].threshold;
 
-//     // Loop through each reaction type
-//     REACTION_LOOP: do i_reaction = 1, size(nuc % reactions)
-//       associate (rx => nuc % reactions(i_reaction))
-//         threshold = rx % xs_threshold(i_temp)
+    // if energy is below threshold for this reaction, skip it
+    if (i_grid < threshold) continue;
 
-//         // if energy is below threshold for this reaction, skip it
-//         if (i_grid < threshold) cycle
+    for (int j = 0; j < rx->products_.size(); ++j) {
+      if (rx->products_[j].particle_ == ParticleType::photon) {
+        // add to cumulative probability
+        double yield = (*rx->products_[j].yield_)(E);
+        prob += ((1.0 - f) * rx->xs_[i_temp-1].value[i_grid - threshold]
+          + f*(rx->xs_[i_temp-1].value[i_grid - threshold + 1])) * yield;
 
-//         do i_product = 1, rx % products_size()
-//           if (rx % product_particle(i_product) == PHOTON) {
-//             // add to cumulative probability
-//             yield = rx % product_yield(i_product, E)
-//             prob = prob + ((1.0 - f) * rx % xs(i_temp, i_grid - threshold + 1) &
-//                   + f*(rx % xs(i_temp, i_grid - threshold + 2))) * yield
-
-//             if (prob > cutoff) return
-//             last_valid_reaction = i_reaction
-//             last_valid_product = i_product
-//           }
-//         end do
-//       end associate
-//     end do REACTION_LOOP
-//   end associate
-
-//   i_reaction = last_valid_reaction
-//   i_product = last_valid_product
-// }
+        *i_rx = i;
+        *i_product = j;
+        if (prob > cutoff) return;
+      }
+    }
+  }
+}
 
 void absorption(Particle* p, int i_nuclide)
 {
@@ -1144,10 +1137,10 @@ void sample_secondary_photons(Particle* p, int i_nuclide)
     sample_photon_product(i_nuclide, p->E, &i_rx, &i_product);
 
     // Sample the outgoing energy and angle
-    auto& rx = data::nuclides[i_nuclide-1]->reactions_[i_rx-1];
+    auto& rx = data::nuclides[i_nuclide-1]->reactions_[i_rx];
     double E;
     double mu;
-    rx->products_[i_product-1].sample(p->E, E, mu);
+    rx->products_[i_product].sample(p->E, E, mu);
 
     // Sample the new direction
     double uvw[3];

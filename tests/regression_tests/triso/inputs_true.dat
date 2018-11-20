@@ -5,7 +5,7 @@
   <cell id="15" material="15" region="10 -11" universe="9" />
   <cell id="16" material="16" region="11 -12" universe="9" />
   <cell id="17" material="17" region="12" universe="9" />
-  <cell fill="10" id="134" region="122 -123 124 -125 126 -127" universe="0" />
+  <cell fill="10" id="18" region="13 -14 15 -16 17 -18" universe="0" />
   <cell fill="9" id="135" region="-128" translation="-0.0014062011817633224 -0.015257747167296776 -0.09184766966024316" universe="35" />
   <cell fill="9" id="136" region="-129" translation="0.10909902639777394 -0.004179177767328068 -0.046240930185910245" universe="23" />
   <cell fill="9" id="137" region="-130" translation="0.13878336652768952 -0.06900710536877097 -0.03848821497485455" universe="18" />
@@ -220,12 +220,12 @@
   <surface coeffs="0.0 0.0 0.0 0.03125" id="10" type="sphere" />
   <surface coeffs="0.0 0.0 0.0 0.03475" id="11" type="sphere" />
   <surface coeffs="0.0 0.0 0.0 0.03825" id="12" type="sphere" />
-  <surface boundary="reflective" coeffs="-0.5" id="122" type="x-plane" />
-  <surface boundary="reflective" coeffs="0.5" id="123" type="x-plane" />
-  <surface boundary="reflective" coeffs="-0.5" id="124" type="y-plane" />
-  <surface boundary="reflective" coeffs="0.5" id="125" type="y-plane" />
-  <surface boundary="reflective" coeffs="-0.5" id="126" type="z-plane" />
-  <surface boundary="reflective" coeffs="0.5" id="127" type="z-plane" />
+  <surface boundary="reflective" coeffs="-0.5" id="13" type="x-plane" />
+  <surface boundary="reflective" coeffs="0.5" id="14" type="x-plane" />
+  <surface boundary="reflective" coeffs="-0.5" id="15" type="y-plane" />
+  <surface boundary="reflective" coeffs="0.5" id="16" type="y-plane" />
+  <surface boundary="reflective" coeffs="-0.5" id="17" type="z-plane" />
+  <surface boundary="reflective" coeffs="0.5" id="18" type="z-plane" />
   <surface coeffs="-0.0014062011817633224 -0.015257747167296776 -0.09184766966024316 0.04225" id="128" type="sphere" />
   <surface coeffs="0.10909902639777394 -0.004179177767328068 -0.046240930185910245 0.04225" id="129" type="sphere" />
   <surface coeffs="0.13878336652768952 -0.06900710536877097 -0.03848821497485455 0.04225" id="130" type="sphere" />

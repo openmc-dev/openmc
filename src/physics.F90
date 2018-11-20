@@ -255,65 +255,6 @@ contains
   end function sample_element
 
 !===============================================================================
-! SAMPLE_PHOTON_PRODUCT
-!===============================================================================
-
-  subroutine sample_photon_product(i_nuclide, E, i_reaction, i_product) bind(C)
-    integer(C_INT), value  :: i_nuclide  ! index in nuclides array
-    real(C_DOUBLE), value  :: E          ! energy of neutron
-    integer(C_INT), intent(out) :: i_reaction ! index in nuc % reactions array
-    integer(C_INT), intent(out) :: i_product  ! index in reaction % products array
-
-    integer :: i_grid
-    integer :: i_temp
-    integer :: threshold
-    integer :: last_valid_reaction
-    integer :: last_valid_product
-    real(8) :: f
-    real(8) :: prob
-    real(8) :: cutoff
-    real(8) :: yield
-
-    ! Get pointer to nuclide
-    associate (nuc => nuclides(i_nuclide))
-
-      ! Get grid index and interpolation factor and sample photon production cdf
-      i_temp = micro_xs(i_nuclide) % index_temp
-      i_grid = micro_xs(i_nuclide) % index_grid
-      f      = micro_xs(i_nuclide) % interp_factor
-      cutoff = prn() * micro_xs(i_nuclide) % photon_prod
-      prob   = ZERO
-
-      ! Loop through each reaction type
-      REACTION_LOOP: do i_reaction = 1, size(nuc % reactions)
-        associate (rx => nuc % reactions(i_reaction))
-          threshold = rx % xs_threshold(i_temp)
-
-          ! if energy is below threshold for this reaction, skip it
-          if (i_grid < threshold) cycle
-
-          do i_product = 1, rx % products_size()
-            if (rx % product_particle(i_product) == PHOTON) then
-              ! add to cumulative probability
-              yield = rx % product_yield(i_product, E)
-              prob = prob + ((ONE - f) * rx % xs(i_temp, i_grid - threshold + 1) &
-                   + f*(rx % xs(i_temp, i_grid - threshold + 2))) * yield
-
-              if (prob > cutoff) return
-              last_valid_reaction = i_reaction
-              last_valid_product = i_product
-            end if
-          end do
-        end associate
-      end do REACTION_LOOP
-    end associate
-
-    i_reaction = last_valid_reaction
-    i_product = last_valid_product
-
-  end subroutine sample_photon_product
-
-!===============================================================================
 ! SCATTER
 !===============================================================================
 

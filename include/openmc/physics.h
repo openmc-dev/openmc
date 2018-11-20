@@ -49,7 +49,7 @@ Reaction* sample_fission(int i_nuclide, double E);
 
 // void sample_photon_product(int i_nuclide, double E, int* i_rx, int* i_product);
 
-extern "C" void absorption(Particle* p, int i_nuclide);
+void absorption(Particle* p, int i_nuclide);
 
 extern "C" void scatter(Particle*, int i_nuclide, int i_nuc_mat);
 

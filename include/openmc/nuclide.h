@@ -17,19 +17,35 @@
 
 namespace openmc {
 
+//==============================================================================
+// Constants
+//==============================================================================
+
+constexpr double CACHE_INVALID {-1.0};
+
 //===============================================================================
 // Data for a nuclide
 //===============================================================================
 
 class Nuclide {
 public:
+  // Types, aliases
   using EmissionMode = ReactionProduct::EmissionMode;
+  struct EnergyGrid {
+    std::vector<int> grid_index;
+    std::vector<double> energy;
+  };
 
   // Constructors
   Nuclide(hid_t group, const double* temperature, int n);
 
   // Methods
-  double nu(double E, EmissionMode mode, int group=0);
+  double nu(double E, EmissionMode mode, int group=0) const;
+  void calculate_elastic_xs(int i_nuclide) const;
+
+  //! Determines the microscopic 0K elastic cross section at a trial relative
+  //! energy used in resonance scattering
+  double elastic_xs_0K(double E) const;
 
   // Data members
   std::string name_; //! Name of nuclide, e.g. "U235"
@@ -38,6 +54,7 @@ public:
   int metastable_; //! Metastable state
   double awr_; //! Atomic weight ratio
   std::vector<double> kTs_; //! temperatures in eV (k*T)
+  std::vector<EnergyGrid> grid_; //! Energy grid at each temperature
 
   bool fissionable_ {false}; //! Whether nuclide is fissionable
   bool has_partial_fission_ {false}; //! has partial fission reactions?
@@ -45,7 +62,14 @@ public:
   int n_precursor_ {0}; //! Number of delayed neutron precursors
   std::unique_ptr<Function1D> total_nu_; //! Total neutron yield
 
+  // Resonance scattering information
+  bool resonant_ {false};
+  std::vector<double> energy_0K_;
+  std::vector<double> elastic_0K_;
+  std::vector<double> xs_cdf_;
+
   std::vector<std::unique_ptr<Reaction>> reactions_; //! Reactions
+  std::vector<int> index_inelastic_scatter_;
 
 private:
   void create_derived();

@@ -2,6 +2,7 @@
 #define OPENMC_PHYSICS_H
 
 #include "openmc/bank.h"
+#include "openmc/nuclide.h"
 #include "openmc/particle.h"
 #include "openmc/position.h"
 #include "openmc/reaction.h"
@@ -51,22 +52,33 @@ void sample_photon_product(int i_nuclide, double E, int* i_rx, int* i_product);
 
 void absorption(Particle* p, int i_nuclide);
 
-extern "C" void scatter(Particle*, int i_nuclide, int i_nuc_mat);
+void scatter(Particle*, int i_nuclide, int i_nuc_mat);
 
-// void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, double* E,
-//   Direction* u, double* mu_lab, double* wgt);
+//! Treats the elastic scattering of a neutron with a target.
+void elastic_scatter(int i_nuclide, const Reaction* rx, double kT, double* E,
+  double* uvw, double* mu_lab, double* wgt);
 
-// void sab_scatter(int i_nuclide, int i_sab, double* E, Direction* u, double* mu);
+extern "C" void sab_scatter(int i_nuclide, int i_sab, double* E,
+  double* uvw, double* mu);
 
-// void sample_target_velocity(int i_nuclide, Direction* v_target, double E, Direction u,
-//   Direction v_neut, double* wgt, double xs_eff, double kT);
+//! samples the target velocity. The constant cross section free gas model is
+//! the default method. Methods for correctly accounting for the energy
+//! dependence of cross sections in treating resonance elastic scattering such
+//! as the DBRC, WCM, and a new, accelerated scheme are also implemented here.
+Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
+   Direction v_neut, double xs_eff, double kT, double* wgt);
 
-// void sample_cxs_target_velocity(int i_nuclide, Direction* v_target, double E, Direction u,
-//   double kT);
+//! samples a target velocity based on the free gas scattering formulation, used
+//! by most Monte Carlo codes, in which cross section is assumed to be constant
+//! in energy. Excellent documentation for this method can be found in
+//! FRA-TM-123.
+Direction sample_cxs_target_velocity(double awr, double E, Direction u, double kT);
 
 void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Bank* site);
 
-// void inelastic_scatter(int i_nuclide, const Reaction& rx, Particle* p);
+//! handles all reactions with a single secondary neutron (other than fission),
+//! i.e. level scattering, (n,np), (n,na), etc.
+void inelastic_scatter(const Nuclide* nuc, const Reaction* rx, Particle* p);
 
 void sample_secondary_photons(Particle* p, int i_nuclide);
 

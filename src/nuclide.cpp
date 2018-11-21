@@ -5,6 +5,7 @@
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/message_passing.h"
+#include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/string_utils.h"
 
@@ -143,14 +144,26 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n)
   // Sort temperatures to read
   std::sort(temps_to_read.begin(), temps_to_read.end());
 
-  // Determine exact kT values
+  hid_t energy_group = open_group(group, "energy");
   for (const auto& T : temps_to_read) {
     std::string dset {std::to_string(T) + "K"};
+
+    // Determine exact kT values
     double kT;
     read_dataset(kT_group, dset.c_str(), kT);
     kTs_.push_back(kT);
+
+    // Read energy grid
+    grid_.emplace_back();
+    read_dataset(energy_group, dset.c_str(), grid_.back().energy);
   }
   close_group(kT_group);
+
+  // Check for 0K energy grid
+  if (object_exists(energy_group, "0K")) {
+    read_dataset(energy_group, "0K", energy_0K_);
+  }
+  close_group(energy_group);
 
   // Read reactions
   hid_t rxs_group = open_group(group, "reactions");
@@ -158,7 +171,21 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n)
     if (starts_with(name, "reaction_")) {
       hid_t rx_group = open_group(rxs_group, name.c_str());
       reactions_.push_back(std::make_unique<Reaction>(rx_group, temps_to_read));
+
+      // Check for 0K elastic scattering
+      if (reactions_.back()->mt_ == ELASTIC) {
+        if (object_exists(rx_group, "0K")) {
+          hid_t temp_group = open_group(rx_group, "0K");
+          read_dataset(temp_group, "xs", elastic_0K_);
+          close_group(temp_group);
+        }
+      }
       close_group(rx_group);
+
+      // Determine reaction indices for inelastic scattering reactions
+      if (is_inelastic_scatter(reactions_.back()->mt_)) {
+        index_inelastic_scatter_.push_back(reactions_.size() - 1);
+      }
     }
   }
   close_group(rxs_group);
@@ -211,9 +238,52 @@ void Nuclide::create_derived()
       }
     }
   }
+
+  if (settings::res_scat_on) {
+    // Determine if this nuclide should be treated as a resonant scatterer
+    if (!settings::res_scat_nuclides.empty()) {
+      // If resonant nuclides were specified, check the list explicitly
+      for (const auto& name : settings::res_scat_nuclides) {
+        if (name_ == name) {
+          resonant_ = true;
+
+          // Make sure nuclide has 0K data
+          if (energy_0K_.empty()) {
+            fatal_error("Cannot treat " + name_ + " as a resonant scatterer "
+              "because 0 K elastic scattering data is not present.");
+          }
+          break;
+        }
+      }
+    } else {
+      // Otherwise, assume that any that have 0 K elastic scattering data are
+      // resonant
+      resonant_ = !energy_0K_.empty();
+    }
+
+    if (resonant_) {
+      // Build CDF for 0K elastic scattering
+      double xs_cdf_sum = 0.0;
+      xs_cdf_.resize(energy_0K_.size());
+      xs_cdf_[0] = 0.0;
+
+      const auto& E = energy_0K_;
+      auto& xs = elastic_0K_;
+      for (int i = 0; i < E.size() - 1; ++i) {
+        // Negative cross sections result in a CDF that is not monotonically
+        // increasing. Set all negative xs values to zero.
+        if (xs[i] < 0.0) xs[i] = 0.0;
+
+        // build xs cdf
+        xs_cdf_sum += (std::sqrt(E[i])*xs[i] + std::sqrt(E[i+1])*xs[i+1])
+              / 2.0 * (E[i+1] - E[i]);
+        xs_cdf_[i] = xs_cdf_sum;
+      }
+    }
+  }
 }
 
-double Nuclide::nu(double E, EmissionMode mode, int group)
+double Nuclide::nu(double E, EmissionMode mode, int group) const
 {
   if (!fissionable_) return 0.0;
 
@@ -251,6 +321,43 @@ double Nuclide::nu(double E, EmissionMode mode, int group)
       return (*fission_rx_[0]->products_[0].yield_)(E);
     }
   }
+}
+
+void Nuclide::calculate_elastic_xs(int i_nuclide) const
+{
+  // Get temperature index, grid index, and interpolation factor
+  auto& micro = simulation::micro_xs[i_nuclide-1];
+  int i_temp = micro.index_temp - 1;
+  int i_grid = micro.index_grid - 1;
+  double f = micro.interp_factor;
+
+  if (i_temp >= 0) {
+    const auto& xs = reactions_[0]->xs_[i_temp].value;
+    micro.elastic = (1.0 - f)*xs[i_grid] + f*xs[i_grid + 1];
+  }
+}
+
+double Nuclide::elastic_xs_0K(double E) const
+{
+  // Determine index on nuclide energy grid
+  int i_grid;
+  if (E < energy_0K_.front()) {
+    i_grid = 0;
+  } else if (E > energy_0K_.back()) {
+    i_grid = energy_0K_.size() - 2;
+  } else {
+    i_grid = lower_bound_index(energy_0K_.begin(), energy_0K_.end(), E);
+  }
+
+  // check for rare case where two energy points are the same
+  if (energy_0K_[i_grid] == energy_0K_[i_grid+1]) ++i_grid;
+
+  // calculate interpolation factor
+  double f = (E - energy_0K_[i_grid]) /
+    (energy_0K_[i_grid + 1] - energy_0K_[i_grid]);
+
+  // Calculate microscopic nuclide elastic cross section
+  return (1.0 - f)*elastic_0K_[i_grid] + f*elastic_0K_[i_grid + 1];
 }
 
 //==============================================================================

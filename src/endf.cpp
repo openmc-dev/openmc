@@ -45,6 +45,35 @@ bool is_fission(int mt)
   return mt == 18 || mt == 19 || mt == 20 || mt == 21 || mt == 38;
 }
 
+bool is_disappearance(int mt)
+{
+  if (mt >= N_DISAPPEAR && mt <= N_DA) {
+    return true;
+  } else if (mt >= N_P0 && mt <= N_AC) {
+    return true;
+  } else if (mt == N_TA || mt == N_DT || mt == N_P3HE || mt == N_D3HE
+    || mt == N_3HEA || mt == N_3P) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool is_inelastic_scatter(int mt)
+{
+  if (mt < 100) {
+    if (is_fission(mt)) {
+      return false;
+    } else {
+      return mt >= MISC && mt != 27;
+    }
+  } else if (mt <= 200) {
+    return !is_disappearance(mt);
+  } else {
+    return false;
+  }
+}
+
 //==============================================================================
 // Polynomial implementation
 //==============================================================================

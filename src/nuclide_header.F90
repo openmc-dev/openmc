@@ -1556,4 +1556,23 @@ contains
     end if
   end function openmc_nuclide_name
 
+  function nuclide_wmp_present(i_nuclide) result(b) bind(C)
+    integer(C_INT), value :: i_nuclide
+    logical(C_BOOL) :: b
+    b = nuclides(i_nuclide) % mp_present
+  end function
+
+  function nuclide_wmp_emin(i_nuclide) result(E) bind(C)
+    integer(C_INT), value :: i_nuclide
+    real(C_DOUBLE) :: E
+    E = nuclides(i_nuclide) % multipole % E_min
+  end function
+
+  function nuclide_wmp_emax(i_nuclide) result(E) bind(C)
+    integer(C_INT), value :: i_nuclide
+    real(C_DOUBLE) :: E
+    E = nuclides(i_nuclide) % multipole % E_max
+  end function
+
+
 end module nuclide_header

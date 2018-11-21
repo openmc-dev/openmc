@@ -160,7 +160,11 @@ extern "C" MaterialMacroXS material_xs;
 // Fortran compatibility
 //==============================================================================
 
-void set_micro_xs();
+extern "C" void set_micro_xs();
+extern "C" bool nuclide_wmp_present(int i_nuclide);
+extern "C" double nuclide_wmp_emin(int i_nuclide);
+extern "C" double nuclide_wmp_emax(int i_nuclide);
+
 
 } // namespace openmc
 

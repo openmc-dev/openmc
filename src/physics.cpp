@@ -505,12 +505,11 @@ Reaction* sample_fission(int i_nuclide, double E)
 
   // Check to see if we are in a windowed multipole range.  WMP only supports
   // the first fission reaction.
-  // if (nuc % mp_present) {
-  //   if (E >= nuc % multipole % E_min && &
-  //         E <= nuc % multipole % E_max) {
-  //     return nuc->fission_rx_[0];
-  //   }
-  // }
+  if (nuclide_wmp_present(i_nuclide)) {
+    if (E >= nuclide_wmp_emin(i_nuclide) && E <= nuclide_wmp_emax(i_nuclide)) {
+      return nuc->fission_rx_[0];
+    }
+  }
 
   // Get grid index and interpolatoin factor and sample fission cdf
   int i_temp = simulation::micro_xs[i_nuclide-1].index_temp - 1;
@@ -628,12 +627,8 @@ void scatter(Particle* p, int i_nuclide, int i_nuc_mat)
     // NON-S(A,B) ELASTIC SCATTERING
 
     // Determine temperature
-    double kT;
-    // if (nuc % mp_present) {
-    //   kT = p->sqrtkT**2
-    // } else {
-      kT = nuc->kTs_[i_temp];
-    // }
+    double kT = nuclide_wmp_present(i_nuclide) ?
+      p->sqrtkT*p->sqrtkT : nuc->kTs_[i_temp];
 
     // Perform collision physics for elastic scattering
     elastic_scatter(i_nuclide, nuc->reactions_[0].get(), kT,

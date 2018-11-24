@@ -403,7 +403,7 @@ contains
       ! the lower universes.
 
       p % n_coord = 1
-      call find_cell(p, found)
+      call find_cell(p, found, .true.)
       if (.not. found) then
         call particle_mark_as_lost(p, "Couldn't find particle after reflecting&
              & from surface " // trim(to_str(surf % id())) // ".")
@@ -458,7 +458,7 @@ contains
 
       ! Figure out what cell particle is in now
       p % n_coord = 1
-      call find_cell(p, found)
+      call find_cell(p, found, .true.)
       if (.not. found) then
         call particle_mark_as_lost(p, "Couldn't find particle after hitting &
              &periodic boundary on surface " // trim(to_str(surf % id())) &
@@ -495,7 +495,7 @@ contains
     end if
 #endif
 
-    call find_cell(p, found, p % surface)
+    call find_cell(p, found, .true.)
     if (found) return
 
     ! ==========================================================================

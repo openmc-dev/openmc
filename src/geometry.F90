@@ -89,13 +89,13 @@ contains
 ! as it's within the geometry
 !===============================================================================
 
-  subroutine find_cell(p, found, search_surf)
+  subroutine find_cell(p, found, use_neighbor_lists)
     type(Particle),    intent(inout) :: p
     logical,           intent(inout) :: found
-    integer, optional, intent(in)    :: search_surf
+    logical, optional, intent(in)    :: use_neighbor_lists
 
-    if (present(search_surf)) then
-      found = find_cell_c(p, logical(.true., kind=C_BOOL))
+    if (present(use_neighbor_lists)) then
+      found = find_cell_c(p, logical(use_neighbor_lists, kind=C_BOOL))
     else
       found = find_cell_c(p, logical(.false., kind=C_BOOL))
     end if

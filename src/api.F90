@@ -59,7 +59,6 @@ contains
   subroutine free_memory() bind(C)
 
     use bank_header
-    use cmfd_header
     use geometry_header
     use material_header
     use photon_header
@@ -102,9 +101,6 @@ contains
 #ifdef DAGMC
     call free_memory_dagmc()
 #endif
-
-    ! Deallocate CMFD
-    call deallocate_cmfd(cmfd)
 
   end subroutine free_memory
 

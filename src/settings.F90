@@ -115,9 +115,6 @@ module settings
   real(C_DOUBLE), bind(C) :: res_scat_energy_min
   real(C_DOUBLE), bind(C) :: res_scat_energy_max
 
-  ! Is CMFD active
-  logical(C_BOOL), bind(C) :: cmfd_run
-
   ! No reduction at end of batch
   logical(C_BOOL), bind(C) :: reduce_tallies
 

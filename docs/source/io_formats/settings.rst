@@ -362,16 +362,6 @@ or sub-elements:
   .. note:: This element is not used in the multi-group :ref:`energy_mode`.
 
 ----------------------
-``<run_cmfd>`` Element
-----------------------
-
-The ``<run_cmfd>`` element indicates whether or not CMFD acceleration should be
-turned on or off. This element has no attributes or sub-elements and can be set
-to either "false" or "true".
-
-  *Default*: false
-
-----------------------
 ``<run_mode>`` Element
 ----------------------
 

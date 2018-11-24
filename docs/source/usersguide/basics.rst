@@ -43,10 +43,6 @@ described below.
      This file gives specifications for producing slice or voxel plots of the
      geometry.
 
-   :ref:`io_cmfd`
-     This file specifies execution parameters for coarse mesh finite difference
-     (CMFD) acceleration.
-
 eXtensible Markup Language (XML)
 --------------------------------
 

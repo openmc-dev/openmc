@@ -260,11 +260,6 @@
       </element>
     </optional>
     <optional>
-      <element name="run_cmfd">
-        <data type="boolean"/>
-      </element>
-    </optional>
-    <optional>
       <element name="run_mode">
         <data type="string"/>
       </element>

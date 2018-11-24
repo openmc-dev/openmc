@@ -5,6 +5,5 @@
   <documentElement localName="settings" uri="src/relaxng/settings.rnc"/>
   <documentElement localName="tallies" uri="src/relaxng/tallies.rnc"/>
   <documentElement localName="plots" uri="src/relaxng/plots.rnc"/>
-  <documentElement localName="cmfd" uri="src/relaxng/cmfd.rnc"/>
   <documentElement localName="cross_sections" uri="src/relaxng/cross_sections.rnc"/>
 </locatingRules>

@@ -55,7 +55,7 @@ contains
 !===============================================================================
 
   function openmc_statepoint_write(filename, write_source) result(err) bind(C)
-    type(C_PTR),     intent(in), optional :: filename
+    type(C_PTR),     value                :: filename
     logical(C_BOOL), intent(in), optional :: write_source
     integer(C_INT) :: err
 
@@ -91,7 +91,7 @@ contains
     err = 0
 
     ! Set the filename
-    if (present(filename)) then
+    if (c_associated(filename)) then
       call c_f_pointer(filename, string, [MAX_FILE_LEN])
       filename_ = to_f_string(string)
     else

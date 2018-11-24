@@ -2,7 +2,6 @@ import sys
 from collections import OrderedDict
 from collections.abc import Iterable, Mapping, MutableMapping
 from io import StringIO
-from itertools import chain
 from math import log10
 from numbers import Integral, Real
 import os
@@ -86,9 +85,6 @@ class IncidentNeutron(EqualityMixin):
         Resonance parameters
     resonance_covariance : openmc.data.ResonanceCovariance or None
         Covariance for resonance parameters
-    redundant_reactions : collections.OrderedDict
-        Contains redundant cross sections, e.g., the total cross section. The keys
-        are the MT values and the values are Reaction objects.
     temperatures : list of str
         List of string representations the temperatures of the target nuclide
         in the data set.  The temperatures are strings of the temperature,
@@ -113,18 +109,15 @@ class IncidentNeutron(EqualityMixin):
         self.energy = {}
         self._fission_energy = None
         self.reactions = OrderedDict()
-        self.redundant_reactions = OrderedDict()
         self._urr = {}
         self._resonances = None
 
     def __contains__(self, mt):
-        return mt in self.reactions or mt in self.redundant_reactions
+        return mt in self.reactions
 
     def __getitem__(self, mt):
         if mt in self.reactions:
             return self.reactions[mt]
-        elif mt in self.redundant_reactions:
-            return self.redundant_reactions[mt]
         else:
             raise KeyError('No reaction with MT={}.'.format(mt))
 
@@ -169,10 +162,6 @@ class IncidentNeutron(EqualityMixin):
     @property
     def resonance_covariance(self):
         return self._resonance_covariance
-
-    @property
-    def redundant_reactions(self):
-        return self._redundant_reactions
 
     @property
     def urr(self):
@@ -237,11 +226,6 @@ class IncidentNeutron(EqualityMixin):
                       res_cov.ResonanceCovariances)
         self._resonance_covariance = resonance_covariance
 
-    @redundant_reactions.setter
-    def redundant_reactions(self, redundant_reactions):
-        cv.check_type('redundant reactions', redundant_reactions, Mapping)
-        self._redundant_reactions = redundant_reactions
-
     @urr.setter
     def urr(self, urr):
         cv.check_type('probability table dictionary', urr, MutableMapping)
@@ -288,7 +272,7 @@ class IncidentNeutron(EqualityMixin):
         self.energy[strT] = data.energy[strT]
 
         # Add normal and redundant reactions
-        for mt in chain(data.reactions, data.redundant_reactions):
+        for mt in data.reactions:
             if mt in self:
                 self[mt].xs[strT] = data[mt].xs[strT]
             else:
@@ -406,24 +390,14 @@ class IncidentNeutron(EqualityMixin):
             have cross sections provided.
 
         """
-        if mt in self.reactions:
-            return [mt]
-        elif mt in SUM_RULES:
-            mts = SUM_RULES[mt]
+        mts = []
+        if mt in SUM_RULES:
+            for mt_i in SUM_RULES[mt]:
+                mts += self.get_reaction_components(mt_i)
+        if mts:
+            return mts
         else:
-            return []
-        complete = False
-        while not complete:
-            new_mts = []
-            complete = True
-            for i, mt_i in enumerate(mts):
-                if mt_i in self.reactions:
-                    new_mts.append(mt_i)
-                elif mt_i in SUM_RULES:
-                    new_mts += SUM_RULES[mt_i]
-                    complete = False
-            mts = new_mts
-        return mts
+            return [mt] if mt in self else []
 
     def export_to_hdf5(self, path, mode='a', libver='earliest'):
         """Export incident neutron data to an HDF5 file.
@@ -446,7 +420,7 @@ class IncidentNeutron(EqualityMixin):
                                       'originated from an ENDF file.')
 
         # Open file and write version
-        f = h5py.File(path, mode, libver=libver)
+        f = h5py.File(str(path), mode, libver=libver)
         f.attrs['filetype'] = np.string_('data_neutron')
         f.attrs['version'] = np.array(HDF5_VERSION)
 
@@ -472,6 +446,15 @@ class IncidentNeutron(EqualityMixin):
         # Write reaction data
         rxs_group = g.create_group('reactions')
         for rx in self.reactions.values():
+            # Skip writing redundant reaction if it doesn't have photon
+            # production or is a summed transmutation reaction. MT=4 is also
+            # sometimes needed for probability tables.
+            if rx.redundant:
+                photon_rx = any(p.particle == 'photon' for p in rx.products)
+                transmutation_rx = (rx.mt in (16, 103, 104, 105, 106, 107))
+                if not (photon_rx or transmutation_rx or rx.mt == 4):
+                    continue
+
             rx_group = rxs_group.create_group('reaction_{:03}'.format(rx.mt))
             rx.to_hdf5(rx_group)
 
@@ -479,12 +462,6 @@ class IncidentNeutron(EqualityMixin):
             if len(rx.derived_products) > 0 and 'total_nu' not in g:
                 tgroup = g.create_group('total_nu')
                 rx.derived_products[0].to_hdf5(tgroup)
-
-        # Write redundant reaction data only for reactions with photon production
-        for rx in self.redundant_reactions.values():
-            if any(p.particle == 'photon' for p in rx.products):
-                rx_group = rxs_group.create_group('reaction_{:03}'.format(rx.mt))
-                rx.to_hdf5(rx_group)
 
         # Write unresolved resonance probability tables
         if self.urr:
@@ -520,16 +497,12 @@ class IncidentNeutron(EqualityMixin):
         if isinstance(group_or_filename, h5py.Group):
             group = group_or_filename
         else:
-            h5file = h5py.File(group_or_filename, 'r')
+            h5file = h5py.File(str(group_or_filename), 'r')
 
             # Make sure version matches
             if 'version' in h5file.attrs:
                 major, minor = h5file.attrs['version']
-                if major != HDF5_VERSION_MAJOR:
-                    raise IOError(
-                        'HDF5 data format uses version {}.{} whereas your '
-                        'installation of the OpenMC Python API expects version '
-                        '{}.x.'.format(major, minor, HDF5_VERSION_MAJOR))
+                # For now all versions of HDF5 data can be read
             else:
                 raise IOError(
                     'HDF5 data does not indicate a version. Your installation of '
@@ -561,10 +534,7 @@ class IncidentNeutron(EqualityMixin):
         for name, obj in sorted(rxs_group.items()):
             if name.startswith('reaction_'):
                 rx = Reaction.from_hdf5(obj, data.energy)
-                if rx.redundant:
-                    data.redundant_reactions[rx.mt] = rx
-                else:
-                    data.reactions[rx.mt] = rx
+                data.reactions[rx.mt] = rx
 
                 # Read total nu data if available
                 if rx.mt in (18, 19, 20, 21, 38) and 'total_nu' in group:
@@ -577,7 +547,8 @@ class IncidentNeutron(EqualityMixin):
             if mt_sum not in data:
                 rxs = [data[mt] for mt in SUM_RULES[mt_sum] if mt in data]
                 if len(rxs) > 0:
-                    data.redundant_reactions[mt_sum] = rx = Reaction(mt_sum)
+                    data.reactions[mt_sum] = rx = Reaction(mt_sum)
+                    rx.redundant = True
                     if rx.mt == 18 and 'total_nu' in group:
                         tgroup = group['total_nu']
                         rx.derived_products.append(Product.from_hdf5(tgroup))
@@ -654,18 +625,21 @@ class IncidentNeutron(EqualityMixin):
         total = Reaction(1)
         total.xs[strT] = Tabulated1D(energy, total_xs)
         total.redundant = True
-        data.redundant_reactions[1] = total
+        data.reactions[1] = total
 
         if np.count_nonzero(absorption_xs) > 0:
-            absorption = Reaction(27)
+            absorption = Reaction(101)
             absorption.xs[strT] = Tabulated1D(energy, absorption_xs)
             absorption.redundant = True
-            data.redundant_reactions[27] = absorption
+            data.reactions[101] = absorption
 
         # Read each reaction
         n_reaction = ace.nxs[4] + 1
         for i in range(n_reaction):
             rx = Reaction.from_ace(ace, i)
+            # Don't include gas production / damage cross sections
+            if 200 < rx.mt < 219 or rx.mt == 444:
+                continue
             data.reactions[rx.mt] = rx
 
         # Some photon production reactions may be assigned to MTs that don't
@@ -683,23 +657,39 @@ class IncidentNeutron(EqualityMixin):
                     continue
 
                 # Create redundant reaction with appropriate cross section
-                rx = Reaction(mt)
                 mts = data.get_reaction_components(mt)
                 if len(mts) == 0:
                     warn('Photon production is present for MT={} but no '
                          'reaction components exist.'.format(mt))
                     continue
 
-                xss = [data.reactions[mt_i].xs[strT] for mt_i in mts]
-                idx = min([xs._threshold_idx if hasattr(xs, '_threshold_idx')
-                           else 0 for xs in xss])
-                rx.xs[strT] = Tabulated1D(energy[idx:], Sum(xss)(energy[idx:]))
-                rx.xs[strT]._threshold_idx = idx
-                rx.redundant = True
+                # Determine redundant cross section
+                rx = data._get_redundant_reaction(mt, mts)
+                rx.products += _get_photon_products_ace(ace, rx)
+                data.reactions[mt] = rx
+
+        # For transmutation reactions, sometimes only individual levels are
+        # present in an ACE file, e.g. MT=600-649 instead of the summation
+        # MT=103. In this case, if a user wants to tally (n,p), OpenMC doesn't
+        # know about the total cross section. Here, we explicitly create a
+        # redundant reaction for this purpose.
+        for mt in (16, 103, 104, 105, 106, 107):
+            if mt not in data:
+                # Determine if any individual levels are present
+                mts = data.get_reaction_components(mt)
+                if len(mts) == 0:
+                    continue
 
                 # Determine redundant cross section
-                rx.products += _get_photon_products_ace(ace, rx)
-                data.redundant_reactions[mt] = rx
+                rx = data._get_redundant_reaction(mt, mts)
+                data.reactions[mt] = rx
+
+        # Make sure redundant cross sections that are present in an ACE file get
+        # marked as such
+        for rx in data:
+            mts = data.get_reaction_components(rx.mt)
+            if mts != [rx.mt]:
+                rx.redundant = True
 
         # Read unresolved resonance probability tables
         urr = ProbabilityTables.from_ace(ace)
@@ -842,3 +832,33 @@ class IncidentNeutron(EqualityMixin):
                 data[2].xs['0K'] = xs
 
         return data
+
+    def _get_redundant_reaction(self, mt, mts):
+        """Create redundant reaction from its components
+
+        Parameters
+        ----------
+        mt : int
+            MT value of the desired reaction
+        mts : iterable of int
+            MT values of its components
+
+        Returns
+        -------
+        openmc.Reaction
+            Redundant reaction
+
+        """
+        # Get energy grid
+        strT = self.temperatures[0]
+        energy = self.energy[strT]
+
+        rx = Reaction(mt)
+        xss = [self.reactions[mt_i].xs[strT] for mt_i in mts]
+        idx = min([xs._threshold_idx if hasattr(xs, '_threshold_idx')
+                   else 0 for xs in xss])
+        rx.xs[strT] = Tabulated1D(energy[idx:], Sum(xss)(energy[idx:]))
+        rx.xs[strT]._threshold_idx = idx
+        rx.redundant = True
+
+        return rx

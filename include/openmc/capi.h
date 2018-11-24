@@ -60,7 +60,7 @@ extern "C" {
   int openmc_material_get_id(int32_t index, int32_t* id);
   int openmc_material_get_fissionable(int32_t index, bool* fissionable);
   int openmc_material_get_volume(int32_t index, double* volume);
-  int openmc_material_set_density(int32_t index, double density);
+  int openmc_material_set_density(int32_t index, double density, const char* units);
   int openmc_material_set_densities(int32_t index, int n, const char** name, const double* density);
   int openmc_material_set_id(int32_t index, int32_t id);
   int openmc_material_set_volume(int32_t index, double volume);
@@ -135,17 +135,10 @@ extern "C" {
 
   // Global variables
   extern char openmc_err_msg[256];
-  extern int32_t n_cells;
-  extern int32_t n_lattices;
-  extern int32_t n_materials;
   extern int n_nuclides;
-  extern int32_t n_plots;
   extern int32_t n_realizations;
   extern int32_t n_sab_tables;
-  extern int32_t n_sources;
-  extern int32_t n_surfaces;
   extern int32_t n_tallies;
-  extern int32_t n_universes;
 
   // Variables that are shared by necessity (can be removed from public header
   // later)

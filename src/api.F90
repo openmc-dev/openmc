@@ -79,6 +79,9 @@ contains
 
       subroutine free_memory_mesh() bind(C)
       end subroutine free_memory_mesh
+
+      subroutine free_memory_settings() bind(C)
+      end subroutine free_memory_settings
     end interface
 
     call free_memory_geometry()

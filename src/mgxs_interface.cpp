@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "openmc/cross_sections.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
 
@@ -12,9 +13,13 @@ namespace openmc {
 // Global variable definitions
 //==============================================================================
 
+namespace data {
+
 std::vector<double> energy_bins;
 std::vector<double> energy_bin_avg;
 std::vector<double> rev_energy_bins;
+
+} // namesapce data
 
 //==============================================================================
 // Mgxs data loading interface methods
@@ -43,7 +48,7 @@ add_mgxs_c(hid_t file_id, const char* name, int energy_groups,
   Mgxs mg(xs_grp, energy_groups, delayed_groups, temperature, tolerance,
           max_order, legendre_to_tabular, legendre_to_tabular_points, method);
 
-  nuclides_MG.push_back(mg);
+  data::nuclides_MG.push_back(mg);
   close_group(xs_grp);
 }
 
@@ -54,7 +59,7 @@ query_fissionable_c(int n_nuclides, const int i_nuclides[])
 {
   bool result = false;
   for (int n = 0; n < n_nuclides; n++) {
-    if (nuclides_MG[i_nuclides[n] - 1].fissionable) result = true;
+    if (data::nuclides_MG[i_nuclides[n] - 1].fissionable) result = true;
   }
   return result;
 }
@@ -78,16 +83,16 @@ create_macro_xs_c(const char* mat_name, int n_nuclides, const int i_nuclides[],
     // material
     std::vector<Mgxs*> mgxs_ptr(n_nuclides);
     for (int n = 0; n < n_nuclides; n++) {
-      mgxs_ptr[n] = &nuclides_MG[i_nuclides[n] - 1];
+      mgxs_ptr[n] = &data::nuclides_MG[i_nuclides[n] - 1];
     }
 
     Mgxs macro(mat_name, temperature, mgxs_ptr, atom_densities_vec,
          tolerance, method);
-    macro_xs.emplace_back(macro);
+    data::macro_xs.emplace_back(macro);
   } else {
     // Preserve the ordering of materials by including a blank entry
     Mgxs macro;
-    macro_xs.emplace_back(macro);
+    data::macro_xs.emplace_back(macro);
   }
 }
 
@@ -96,18 +101,32 @@ create_macro_xs_c(const char* mat_name, int n_nuclides, const int i_nuclides[],
 void read_mg_cross_sections_header_c(hid_t file_id)
 {
   ensure_exists(file_id, "energy_groups", true);
-  read_attribute(file_id, "energy_groups", num_energy_groups);
+  read_attribute(file_id, "energy_groups", data::num_energy_groups);
 
   ensure_exists(file_id, "group structure", true);
-  read_attribute(file_id, "group structure", rev_energy_bins);
+  read_attribute(file_id, "group structure", data::rev_energy_bins);
 
   // Reverse energy bins
-  std::copy(rev_energy_bins.crbegin(), rev_energy_bins.crend(),
-    std::back_inserter(energy_bins));
+  std::copy(data::rev_energy_bins.crbegin(), data::rev_energy_bins.crend(),
+    std::back_inserter(data::energy_bins));
 
   // Create average energies
-  for (int i = 0; i < energy_bins.size() - 1; ++i) {
-    energy_bin_avg.push_back(0.5*(energy_bins[i] + energy_bins[i+1]));
+  for (int i = 0; i < data::energy_bins.size() - 1; ++i) {
+    data::energy_bin_avg.push_back(0.5*(data::energy_bins[i] + data::energy_bins[i+1]));
+  }
+
+  // Add entries into libraries for MG data
+  auto names = group_names(file_id);
+  if (names.empty()) {
+    fatal_error("At least one MGXS data set must be present in mgxs "
+      "library file!");
+  }
+
+  for (auto& name : names) {
+    Library lib {};
+    lib.type_ = Library::Type::neutron;
+    lib.materials_.push_back(name);
+    data::libraries.push_back(lib);
   }
 }
 
@@ -119,7 +138,7 @@ void
 calculate_xs_c(int i_mat, int gin, double sqrtkT, const double uvw[3],
      double& total_xs, double& abs_xs, double& nu_fiss_xs)
 {
-  macro_xs[i_mat - 1].calculate_xs(gin - 1, sqrtkT, uvw, total_xs, abs_xs,
+  data::macro_xs[i_mat - 1].calculate_xs(gin - 1, sqrtkT, uvw, total_xs, abs_xs,
        nu_fiss_xs);
 }
 
@@ -144,7 +163,7 @@ get_nuclide_xs_c(int index, int xstype, int gin, int* gout, double* mu, int* dg)
   } else {
     dg_c_p = dg;
   }
-  return nuclides_MG[index - 1].get_xs(xstype, gin - 1, gout_c_p, mu, dg_c_p);
+  return data::nuclides_MG[index - 1].get_xs(xstype, gin - 1, gout_c_p, mu, dg_c_p);
 }
 
 //==============================================================================
@@ -168,7 +187,7 @@ get_macro_xs_c(int index, int xstype, int gin, int* gout, double* mu, int* dg)
   } else {
     dg_c_p = dg;
   }
-  return macro_xs[index - 1].get_xs(xstype, gin - 1, gout_c_p, mu, dg_c_p);
+  return data::macro_xs[index - 1].get_xs(xstype, gin - 1, gout_c_p, mu, dg_c_p);
 }
 
 //==============================================================================
@@ -177,7 +196,7 @@ void
 set_nuclide_angle_index_c(int index, const double uvw[3])
 {
   // Update the values
-  nuclides_MG[index - 1].set_angle_index(uvw);
+  data::nuclides_MG[index - 1].set_angle_index(uvw);
 }
 
 //==============================================================================
@@ -186,7 +205,7 @@ void
 set_macro_angle_index_c(int index, const double uvw[3])
 {
   // Update the values
-  macro_xs[index - 1].set_angle_index(uvw);
+  data::macro_xs[index - 1].set_angle_index(uvw);
 }
 
 //==============================================================================
@@ -195,7 +214,7 @@ void
 set_nuclide_temperature_index_c(int index, double sqrtkT)
 {
   // Update the values
-  nuclides_MG[index - 1].set_temperature_index(sqrtkT);
+  data::nuclides_MG[index - 1].set_temperature_index(sqrtkT);
 }
 
 //==============================================================================
@@ -210,7 +229,7 @@ get_name_c(int index, int name_len, char* name)
   std::strcpy(name, str.c_str());
 
   // Now get the data and copy to the C-string
-  str = nuclides_MG[index - 1].name;
+  str = data::nuclides_MG[index - 1].name;
   std::strcpy(name, str.c_str());
 
   // Finally, remove the null terminator
@@ -222,7 +241,7 @@ get_name_c(int index, int name_len, char* name)
 double
 get_awr_c(int index)
 {
-  return nuclides_MG[index - 1].awr;
+  return data::nuclides_MG[index - 1].awr;
 }
 
 } // namespace openmc

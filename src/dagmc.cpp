@@ -1,7 +1,8 @@
-
 #include "openmc/dagmc.h"
+
+#include "openmc/cell.h"
 #include "openmc/error.h"
-#include "openmc/string_functions.h"
+#include "openmc/string_utils.h"
 #include "openmc/settings.h"
 #include "openmc/geometry.h"
 
@@ -13,20 +14,24 @@
 
 namespace openmc {
 
+namespace model {
+
 moab::DagMC* DAG;
+
+} // namespace model
 
 void load_dagmc_geometry()
 {
-  if (!DAG) {
-    DAG = new moab::DagMC();
+  if (!model::DAG) {
+    model::DAG = new moab::DagMC();
   }
 
   int32_t dagmc_univ_id = 0; // universe is always 0 for DAGMC
 
-  moab::ErrorCode rval = DAG->load_file("dagmc.h5m");
+  moab::ErrorCode rval = model::DAG->load_file("dagmc.h5m");
   MB_CHK_ERR_CONT(rval);
 
-  rval = DAG->init_OBBTree();
+  rval = model::DAG->init_OBBTree();
   MB_CHK_ERR_CONT(rval);
 
   std::vector<std::string> prop_keywords;
@@ -34,48 +39,45 @@ void load_dagmc_geometry()
   prop_keywords.push_back("boundary");
 
   std::map<std::string, std::string> ph;
-  DAG->parse_properties(prop_keywords, ph, ":");
+  model::DAG->parse_properties(prop_keywords, ph, ":");
   MB_CHK_ERR_CONT(rval);
 
   // initialize cell objects
-  n_cells = DAG->num_entities(3);
+  model::n_cells = model::DAG->num_entities(3);
 
-  // Allocate the cell overlap count if necessary.
-  if (settings::check_overlaps) overlap_check_count.resize(n_cells, 0);
-
-  for (int i = 0; i < n_cells; i++) {
-    moab::EntityHandle vol_handle = DAG->entity_by_index(3, i+1);
+  for (int i = 0; i < model::n_cells; i++) {
+    moab::EntityHandle vol_handle = model::DAG->entity_by_index(3, i+1);
 
     // set cell ids using global IDs
     DAGCell* c = new DAGCell();
-    c->id_ = DAG->id_by_index(3, i+1);
-    c->dagmc_ptr_ = DAG;
+    c->id_ = model::DAG->id_by_index(3, i+1);
+    c->dagmc_ptr_ = model::DAG;
     c->universe_ = dagmc_univ_id; // set to zero for now
     c->fill_ = C_NONE; // no fill, single universe
 
-    cells.push_back(c);
-    cell_map[c->id_] = i;
+    model::cells.push_back(c);
+    model::cell_map[c->id_] = i;
 
     // Populate the Universe vector and dict
-    auto it = universe_map.find(dagmc_univ_id);
-    if (it == universe_map.end()) {
-      universes.push_back(new Universe());
-      universes.back()-> id_ = dagmc_univ_id;
-      universes.back()->cells_.push_back(i);
-      universe_map[dagmc_univ_id] = universes.size() - 1;
+    auto it = model::universe_map.find(dagmc_univ_id);
+    if (it == model::universe_map.end()) {
+      model::universes.push_back(new Universe());
+      model::universes.back()-> id_ = dagmc_univ_id;
+      model::universes.back()->cells_.push_back(i);
+      model::universe_map[dagmc_univ_id] = model::universes.size() - 1;
     } else {
-      universes[it->second]->cells_.push_back(i);
+      model::universes[it->second]->cells_.push_back(i);
     }
 
-    if (DAG->is_implicit_complement(vol_handle)) {
+    if (model::DAG->is_implicit_complement(vol_handle)) {
       // assuming implicit complement is void for now
       c->material_.push_back(MATERIAL_VOID);
       continue;
     }
 
-    if (DAG->has_prop(vol_handle, "mat")){
+    if (model::DAG->has_prop(vol_handle, "mat")){
       std::string mat_value;
-      rval = DAG->prop_value(vol_handle, "mat", mat_value);
+      rval = model::DAG->prop_value(vol_handle, "mat", mat_value);
       MB_CHK_ERR_CONT(rval);
       to_lower(mat_value);
 
@@ -91,21 +93,26 @@ void load_dagmc_geometry()
     }
   }
 
+  // Allocate the cell overlap count if necessary.
+  if (settings::check_overlaps) {
+    model::overlap_check_count.resize(model::cells.size(), 0);
+  }
+
   // initialize surface objects
-  n_surfaces = DAG->num_entities(2);
-  surfaces.resize(n_surfaces);
+  int n_surfaces = model::DAG->num_entities(2);
+  model::surfaces.resize(n_surfaces);
 
   for (int i = 0; i < n_surfaces; i++) {
-    moab::EntityHandle surf_handle = DAG->entity_by_index(2, i+1);
+    moab::EntityHandle surf_handle = model::DAG->entity_by_index(2, i+1);
 
     // set cell ids using global IDs
     DAGSurface* s = new DAGSurface();
-    s->id_ = DAG->id_by_index(2, i+1);
-    s->dagmc_ptr_ = DAG;
+    s->id_ = model::DAG->id_by_index(2, i+1);
+    s->dagmc_ptr_ = model::DAG;
 
-    if (DAG->has_prop(surf_handle, "boundary")) {
+    if (model::DAG->has_prop(surf_handle, "boundary")) {
       std::string bc_value;
-      rval = DAG->prop_value(surf_handle, "boundary", bc_value);
+      rval = model::DAG->prop_value(surf_handle, "boundary", bc_value);
       MB_CHK_ERR_CONT(rval);
       to_lower(bc_value);
 
@@ -128,8 +135,8 @@ void load_dagmc_geometry()
     }
 
     // add to global array and map
-    surfaces[i] = s;
-    surface_map[s->id_] = s->id_;
+    model::surfaces[i] = s;
+    model::surface_map[s->id_] = s->id_;
   }
 
   return;
@@ -137,7 +144,7 @@ void load_dagmc_geometry()
 
 void free_memory_dagmc()
 {
-  delete DAG;
+  delete model::DAG;
 }
 
 }

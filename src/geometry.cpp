@@ -14,8 +14,21 @@
 
 namespace openmc {
 
+//==============================================================================
+// Global variables
+//==============================================================================
+
+
+namespace model {
+
+int root_universe {-1};
+
 std::vector<int64_t> overlap_check_count;
 
+} // namespace model
+
+//==============================================================================
+// Non-member functions
 //==============================================================================
 
 extern "C" bool
@@ -24,21 +37,21 @@ check_cell_overlap(Particle* p) {
 
   // Loop through each coordinate level
   for (int j = 0; j < n_coord; j++) {
-    Universe& univ = *universes[p->coord[j].universe];
+    Universe& univ = *model::universes[p->coord[j].universe];
     int n = univ.cells_.size();
 
     // Loop through each cell on this level
     for (auto index_cell : univ.cells_) {
-      Cell& c = *cells[index_cell];
+      Cell& c = *model::cells[index_cell];
       if (c.contains(p->coord[j].xyz, p->coord[j].uvw, p->surface)) {
         if (index_cell != p->coord[j].cell) {
           std::stringstream err_msg;
           err_msg << "Overlapping cells detected: " << c.id_ << ", "
-                  << cells[p->coord[j].cell]->id_ << " on universe "
+                  << model::cells[p->coord[j].cell]->id_ << " on universe "
                   << univ.id_;
           fatal_error(err_msg);
         }
-        ++overlap_check_count[index_cell];
+        ++model::overlap_check_count[index_cell];
       }
     }
   }
@@ -57,8 +70,8 @@ find_cell(Particle* p, int search_surf) {
   // Determine universe (if not yet set, use root universe)
   int i_universe = p->coord[p->n_coord-1].universe;
   if (i_universe == C_NONE) {
-    p->coord[p->n_coord-1].universe = openmc_root_universe;
-    i_universe = openmc_root_universe;
+    p->coord[p->n_coord-1].universe = model::root_universe;
+    i_universe = model::root_universe;
   }
 
   // If a surface was indicated, only search cells from the neighbor list of
@@ -66,12 +79,12 @@ find_cell(Particle* p, int search_surf) {
   // the positive or negative side of the surface should be searched.
   const std::vector<int>* search_cells;
   if (search_surf > 0) {
-    search_cells = &surfaces[search_surf-1]->neighbor_pos_;
+    search_cells = &model::surfaces[search_surf-1]->neighbor_pos_;
   } else if (search_surf < 0) {
-    search_cells = &surfaces[-search_surf-1]->neighbor_neg_;
+    search_cells = &model::surfaces[-search_surf-1]->neighbor_neg_;
   } else {
     // No surface was indicated, search all cells in the universe.
-    search_cells = &universes[i_universe]->cells_;
+    search_cells = &model::universes[i_universe]->cells_;
   }
 
   // Find which cell of this universe the particle is in.
@@ -81,17 +94,17 @@ find_cell(Particle* p, int search_surf) {
     i_cell = (*search_cells)[i];
 
     // Make sure the search cell is in the same universe.
-    if (cells[i_cell]->universe_ != i_universe) continue;
+    if (model::cells[i_cell]->universe_ != i_universe) continue;
 
     Position r {p->coord[p->n_coord-1].xyz};
     Direction u {p->coord[p->n_coord-1].uvw};
     int32_t surf = p->surface;
-    if (cells[i_cell]->contains(r, u, surf)) {
+    if (model::cells[i_cell]->contains(r, u, surf)) {
       p->coord[p->n_coord-1].cell = i_cell;
 
       if (settings::verbosity >= 10 || simulation::trace) {
         std::stringstream msg;
-        msg << "    Entering cell " << cells[i_cell]->id_;
+        msg << "    Entering cell " << model::cells[i_cell]->id_;
         write_message(msg, 1);
       }
       found = true;
@@ -100,7 +113,7 @@ find_cell(Particle* p, int search_surf) {
   }
 
   if (found) {
-    Cell& c {*cells[i_cell]};
+    Cell& c {*model::cells[i_cell]};
     if (c.type_ == FILL_MATERIAL) {
       //=======================================================================
       //! Found a material cell which means this is the lowest coord level.
@@ -109,11 +122,11 @@ find_cell(Particle* p, int search_surf) {
       if (c.material_.size() > 1 || c.sqrtkT_.size() > 1) {
         int offset = 0;
         for (int i = 0; i < p->n_coord; i++) {
-          Cell& c_i {*cells[p->coord[i].cell]};
+          Cell& c_i {*model::cells[p->coord[i].cell]};
           if (c_i.type_ == FILL_UNIVERSE) {
             offset += c_i.offset_[c.distribcell_index_];
           } else if (c_i.type_ == FILL_LATTICE) {
-            Lattice& lat {*lattices[p->coord[i+1].lattice-1]};
+            Lattice& lat {*model::lattices[p->coord[i+1].lattice-1]};
             int i_xyz[3] {p->coord[i+1].lattice_x,
                           p->coord[i+1].lattice_y,
                           p->coord[i+1].lattice_z};
@@ -198,7 +211,7 @@ find_cell(Particle* p, int search_surf) {
       //========================================================================
       //! Found a lower lattice, update this coord level then search the next.
 
-      Lattice& lat {*lattices[c.fill_]};
+      Lattice& lat {*model::lattices[c.fill_]};
 
       // Determine lattice indices.
       Position r {p->coord[p->n_coord-1].xyz};
@@ -251,7 +264,7 @@ find_cell(Particle* p, int search_surf) {
 extern "C" void
 cross_lattice(Particle* p, int lattice_translation[3])
 {
-  Lattice& lat {*lattices[p->coord[p->n_coord-1].lattice-1]};
+  Lattice& lat {*model::lattices[p->coord[p->n_coord-1].lattice-1]};
 
   if (settings::verbosity >= 10 || simulation::trace) {
     std::stringstream msg;
@@ -326,7 +339,7 @@ distance_to_boundary(Particle* p, double* dist, int* surface_crossed,
   for (int i = 0; i < p->n_coord; i++) {
     Position r {p->coord[i].xyz};
     Direction u {p->coord[i].uvw};
-    Cell& c {*cells[p->coord[i].cell]};
+    Cell& c {*model::cells[p->coord[i].cell]};
 
     // Find the oncoming surface in this cell and the distance to it.
     auto surface_distance = c.distance(r, u, p->surface);
@@ -335,7 +348,7 @@ distance_to_boundary(Particle* p, double* dist, int* surface_crossed,
 
     // Find the distance to the next lattice tile crossing.
     if (p->coord[i].lattice != F90_NONE) {
-      Lattice& lat {*lattices[p->coord[i].lattice-1]};
+      Lattice& lat {*model::lattices[p->coord[i].lattice-1]};
       std::array<int, 3> i_xyz {p->coord[i].lattice_x, p->coord[i].lattice_y,
                                 p->coord[i].lattice_z};
       //TODO: refactor so both lattice use the same position argument (which
@@ -377,7 +390,7 @@ distance_to_boundary(Particle* p, double* dist, int* surface_crossed,
           *surface_crossed = level_surf_cross;
         } else {
           Position r_hit = r + d_surf * u;
-          Surface& surf {*surfaces[std::abs(level_surf_cross)-1]};
+          Surface& surf {*model::surfaces[std::abs(level_surf_cross)-1]};
           Direction norm = surf.normal(r_hit);
           if (u.dot(norm) > 0) {
             *surface_crossed = std::abs(level_surf_cross);

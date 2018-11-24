@@ -5,7 +5,6 @@ ENV FC=/usr/bin/mpif90 CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx \
     PATH=/opt/openmc/bin:/opt/NJOY2016/build:$PATH \
     LD_LIBRARY_PATH=/opt/openmc/lib:$LD_LIBRARY_PATH \
     OPENMC_CROSS_SECTIONS=/root/nndc_hdf5/cross_sections.xml \
-    OPENMC_MULTIPOLE_LIBRARY=/root/WMP_Library \
     OPENMC_ENDF_DATA=/root/endf-b-vii.1
 
 # Install dependencies from Debian package manager

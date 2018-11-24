@@ -333,7 +333,7 @@ class WindowedMultipole(EqualityMixin):
         if isinstance(group_or_filename, h5py.Group):
             group = group_or_filename
         else:
-            h5file = h5py.File(group_or_filename, 'r')
+            h5file = h5py.File(str(group_or_filename), 'r')
 
             # Make sure version matches
             if 'version' in h5file.attrs:
@@ -515,7 +515,7 @@ class WindowedMultipole(EqualityMixin):
         """
 
         # Open file and write version.
-        with h5py.File(path, mode, libver=libver) as f:
+        with h5py.File(str(path), mode, libver=libver) as f:
             f.attrs['filetype'] = np.string_('data_wmp')
             f.attrs['version'] = np.array(WMP_VERSION)
 

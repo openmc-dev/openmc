@@ -279,11 +279,11 @@ class FissionEnergyRelease(EqualityMixin):
                 # the delayed neutron fraction is so small that the difference
                 # is negligible. MT=18 (n, fission) might not be available so
                 # try MT=19 (n, f) as well.
-                if 18 in incident_neutron.reactions:
+                if 18 in incident_neutron and not incident_neutron[18].redundant:
                     nu = [p.yield_ for p in incident_neutron[18].products
                           if p.particle == 'neutron'
                           and p.emission_mode in ('prompt', 'total')]
-                elif 19 in incident_neutron.reactions:
+                elif 19 in incident_neutron:
                     nu = [p.yield_ for p in incident_neutron[19].products
                           if p.particle == 'neutron'
                           and p.emission_mode in ('prompt', 'total')]

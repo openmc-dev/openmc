@@ -1,25 +1,23 @@
 import os
+import pathlib
 
 import numpy as np
 import pytest
 import openmc.data
-pytestmark = pytest.mark.skipif(
-    'OPENMC_MULTIPOLE_LIBRARY' not in os.environ,
-    reason='OPENMC_MULTIPOLE_LIBRARY environment variable must be set')
 
 
 @pytest.fixture(scope='module')
 def u235():
-    directory = os.environ['OPENMC_MULTIPOLE_LIBRARY']
-    filename = os.path.join(directory, '092235.h5')
-    return openmc.data.WindowedMultipole.from_hdf5(filename)
+    directory = pathlib.Path(os.environ['OPENMC_CROSS_SECTIONS']).parent
+    u235 = directory / 'wmp' / '092235.h5'
+    return openmc.data.WindowedMultipole.from_hdf5(u235)
 
 
 @pytest.fixture(scope='module')
 def b10():
-    directory = os.environ['OPENMC_MULTIPOLE_LIBRARY']
-    filename = os.path.join(directory, '005010.h5')
-    return openmc.data.WindowedMultipole.from_hdf5(filename)
+    directory = pathlib.Path(os.environ['OPENMC_CROSS_SECTIONS']).parent
+    b10 = directory / 'wmp' / '005010.h5'
+    return openmc.data.WindowedMultipole.from_hdf5(b10)
 
 
 def test_evaluate(u235):

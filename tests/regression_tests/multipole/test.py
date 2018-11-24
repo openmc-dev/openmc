@@ -74,9 +74,6 @@ class MultipoleTestHarness(PyAPITestHarness):
         return outstr
 
 
-@pytest.mark.skipif('OPENMC_MULTIPOLE_LIBRARY' not in os.environ,
-                    reason='OPENMC_MULTIPOLE_LIBRARY environment variable '
-                    'must be set')
 def test_multipole():
     model = make_model()
     harness = MultipoleTestHarness('statepoint.5.h5', model)

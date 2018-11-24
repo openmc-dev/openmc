@@ -18,6 +18,8 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
+namespace simulation {
+
 extern double keff_generation; //!<  Single-generation k on each processor
 extern std::array<double, 2> k_sum; //!< Used to reduce sum and sum_sq
 extern std::vector<double> entropy; //!< Shannon entropy at each generation
@@ -25,6 +27,8 @@ extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS
 
 extern "C" int64_t n_bank;
 #pragma omp threadprivate(n_bank)
+
+} // namespace simulation
 
 //==============================================================================
 // Non-member functions

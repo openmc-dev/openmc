@@ -1,3 +1,4 @@
+import hashlib
 import os.path
 from pathlib import Path
 from urllib.parse import urlparse
@@ -6,13 +7,15 @@ from urllib.request import urlopen
 _BLOCK_SIZE = 16384
 
 
-def download(url):
+def download(url, checksum=None):
     """Download file from a URL
 
     Parameters
     ----------
     url : str
         URL from which to download
+    checksum : str or None
+        MD5 checksum to check against
 
     Returns
     -------
@@ -46,4 +49,13 @@ def download(url):
                 downloaded, downloaded * 100. / file_size)
             print(status + '\b'*len(status), end='')
         print('')
+
+    if checksum is not None:
+        downloadsum = hashlib.md5(open(basename, 'rb').read()).hexdigest()
+        if downloadsum != checksum:
+            raise IOError("MD5 checksum for {} does not match. If this is your first "
+                          "time receiving this message, please re-run the script. "
+                          "Otherwise, please contact OpenMC developers by emailing "
+                          "openmc-users@googlegroups.com.".format(basename))
+
     return basename

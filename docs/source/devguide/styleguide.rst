@@ -237,6 +237,26 @@ are written differently by convention (e.g., ``E`` for energy). Data members of
 classes (but not structs) additionally have trailing underscores (e.g.,
 ``a_class_member_``).
 
+The following conventions are used for variables with short names:
+
+- ``d`` stands for "distance"
+- ``E`` stands for "energy"
+- ``p`` stands for "particle"
+- ``r`` stands for "position"
+- ``rx`` stands for "reaction"
+- ``u`` stands for "direction"
+- ``xs`` stands for "cross section"
+
+All classes and non-member functions should be declared within the ``openmc``
+namespace. Global variables must be declared in a namespace nested within the
+``openmc`` namespace. The following sub-namespaces are in use:
+
+- ``openmc::data``: Fundamental nuclear data (cross sections, multigroup data,
+  decay constants, etc.)
+- ``openmc::model``: Variables related to geometry, materials, and tallies
+- ``openmc::settings``: Global settings / options
+- ``openmc::simulation``: Variables used only during a simulation
+
 Accessors and mutators (get and set functions) may be named like
 variables. These often correspond to actual member variables, but this is not
 required. For example, ``int count()`` and ``void set_count(int count)``.

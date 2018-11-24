@@ -21,7 +21,6 @@ def test_export_to_xml(run_in_tmpdir):
     s.confidence_intervals = True
     s.cross_sections = '/path/to/cross_sections.xml'
     s.ptables = True
-    s.run_cmfd = False
     s.seed = 17
     s.survival_biasing = True
     s.cutoff = {'weight': 0.25, 'weight_avg': 0.5, 'energy': 1.0e-5}

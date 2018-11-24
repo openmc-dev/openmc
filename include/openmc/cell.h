@@ -103,6 +103,9 @@ public:
   std::vector<std::int32_t> rpn_;
   bool simple_;  //!< Does the region contain only intersections?
 
+  //! \brief Neighboring cells in the same universe.
+  std::vector<int> neighbors;
+
   Position translation_ {0, 0, 0}; //!< Translation vector for filled universe
 
   //! \brief Rotational tranfsormation of the filled universe.

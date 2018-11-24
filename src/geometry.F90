@@ -28,11 +28,11 @@ module geometry
       type(Particle), intent(in) :: p
     end subroutine check_cell_overlap
 
-    function find_cell_c(p, search_surf) &
+    function find_cell_c(p, use_neighbor_lists) &
          bind(C, name="find_cell") result(found)
       import Particle, C_INT, C_BOOL
       type(Particle),  intent(inout)        :: p
-      integer(C_INT),  intent(in), value    :: search_surf
+      logical(C_BOOL), intent(in), value    :: use_neighbor_lists
       logical(C_BOOL)                       :: found
     end function find_cell_c
 
@@ -95,9 +95,9 @@ contains
     integer, optional, intent(in)    :: search_surf
 
     if (present(search_surf)) then
-      found = find_cell_c(p, search_surf)
+      found = find_cell_c(p, logical(.true., kind=C_BOOL))
     else
-      found = find_cell_c(p, 0)
+      found = find_cell_c(p, logical(.false., kind=C_BOOL))
     end if
 
   end subroutine find_cell

@@ -3,8 +3,6 @@ module input_xml
   use, intrinsic :: ISO_C_BINDING
 
   use algorithm,        only: find
-  use cmfd_input,       only: configure_cmfd
-  use cmfd_header,      only: index_cmfd_mesh
   use constants
   use dict_header,      only: DictIntInt, DictCharInt, DictEntryCI
   use endf,             only: reaction_name
@@ -152,8 +150,6 @@ contains
 
     ! Initialize distribcell_filters
     call prepare_distribcell()
-
-    if (cmfd_run) call configure_cmfd()
 
     if (run_mode == MODE_PLOTTING) then
       ! Read plots.xml if it exists

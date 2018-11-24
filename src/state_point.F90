@@ -14,7 +14,6 @@ module state_point
   use, intrinsic :: ISO_C_BINDING
 
   use bank_header,        only: Bank
-  use cmfd_header
   use constants
   use endf,               only: reaction_name
   use error,              only: fatal_error, warning, write_message
@@ -64,7 +63,7 @@ contains
     integer :: i_xs
     integer, allocatable :: id_array(:)
     integer(HID_T) :: file_id
-    integer(HID_T) :: cmfd_group, tallies_group, tally_group, &
+    integer(HID_T) :: tallies_group, tally_group, &
                       filters_group, filter_group, derivs_group, &
                       deriv_group, runtime_group
     character(MAX_WORD_LEN), allocatable :: str_array(:)
@@ -169,23 +168,6 @@ contains
       ! Write out information for eigenvalue run
       if (run_mode == MODE_EIGENVALUE) then
         call write_eigenvalue_hdf5(file_id)
-
-        ! Write out CMFD info
-        if (cmfd_on) then
-          call write_attribute(file_id, "cmfd_on", 1)
-
-          cmfd_group = create_group(file_id, "cmfd")
-          call write_dataset(cmfd_group, "indices", cmfd % indices)
-          call write_dataset(cmfd_group, "k_cmfd", cmfd % k_cmfd)
-          call write_dataset(cmfd_group, "cmfd_src", cmfd % cmfd_src)
-          call write_dataset(cmfd_group, "cmfd_entropy", cmfd % entropy)
-          call write_dataset(cmfd_group, "cmfd_balance", cmfd % balance)
-          call write_dataset(cmfd_group, "cmfd_dominance", cmfd % dom)
-          call write_dataset(cmfd_group, "cmfd_srccmp", cmfd % src_cmp)
-          call close_group(cmfd_group)
-        else
-          call write_attribute(file_id, "cmfd_on", 0)
-        end if
       end if
 
       tallies_group = create_group(file_id, "tallies")
@@ -413,13 +395,6 @@ contains
       end if
       call write_dataset(runtime_group, "accumulating tallies", &
            time_tallies_elapsed())
-      if (cmfd_run) then
-        call write_dataset(runtime_group, "CMFD", time_cmfd % get_value())
-        call write_dataset(runtime_group, "CMFD building matrices", &
-             time_cmfdbuild % get_value())
-        call write_dataset(runtime_group, "CMFD solving matrices", &
-             time_cmfdsolve % get_value())
-      end if
       call write_dataset(runtime_group, "total", time_total_elapsed())
       call close_group(runtime_group)
 
@@ -453,7 +428,6 @@ contains
     integer, allocatable :: array(:)
     integer(C_INT64_T) :: seed
     integer(HID_T) :: file_id
-    integer(HID_T) :: cmfd_group
     integer(HID_T) :: tallies_group
     integer(HID_T) :: tally_group
     logical :: source_present
@@ -548,26 +522,6 @@ contains
 
       ! Take maximum of statepoint n_inactive and input n_inactive
       n_inactive = max(n_inactive, int_array(1))
-
-      ! Read in to see if CMFD was on
-      call read_attribute(int_array(1), file_id, "cmfd_on")
-
-      ! Read in CMFD info
-      if (int_array(1) == 1) then
-        cmfd_group = open_group(file_id, "cmfd")
-        call read_dataset(cmfd % indices, cmfd_group, "indices")
-        call read_dataset(cmfd % k_cmfd(1:restart_batch), cmfd_group, "k_cmfd")
-        call read_dataset(cmfd % cmfd_src, cmfd_group, "cmfd_src")
-        call read_dataset(cmfd % entropy(1:restart_batch), cmfd_group, &
-             "cmfd_entropy")
-        call read_dataset(cmfd % balance(1:restart_batch), cmfd_group, &
-             "cmfd_balance")
-        call read_dataset(cmfd % dom(1:restart_batch), cmfd_group, &
-             "cmfd_dominance")
-        call read_dataset(cmfd % src_cmp(1:restart_batch), cmfd_group, &
-             "cmfd_srccmp")
-        call close_group(cmfd_group)
-      end if
     end if
 
     ! Read number of realizations for global tallies

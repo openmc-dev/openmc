@@ -19,7 +19,6 @@ Input Files
    settings
    tallies
    plots
-   cmfd
 
 ----------
 Data Files

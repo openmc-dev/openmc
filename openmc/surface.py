@@ -62,7 +62,7 @@ class Surface(IDManagerMixin):
         self.boundary_type = boundary_type
 
         # A dictionary of the quadratic surface coefficients
-        # Key        - coefficeint name
+        # Key      - coefficient name
         # Value    - coefficient value
         self._coefficients = {}
 
@@ -1661,7 +1661,7 @@ class Quadric(Surface):
     a, b, c, d, e, f, g, h, j, k : float, optional
         coefficients for the surface. All default to 0.
     name : str, optional
-        Name of the sphere. If not specified, the name will be the empty string.
+        Name of the surface. If not specified, the name will be the empty string.
 
     Attributes
     ----------

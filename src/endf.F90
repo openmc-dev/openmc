@@ -229,7 +229,7 @@ contains
     integer, intent(in) :: MT
     logical             :: dis
 
-    if (MT >= N_GAMMA .and. MT <= N_DA) then
+    if (MT >= N_DISAPPEAR .and. MT <= N_DA) then
       dis = .true.
     elseif (MT >= N_P0 .and. MT <= N_AC) then
       dis = .true.
@@ -242,25 +242,27 @@ contains
   end function is_disappearance
 
 !===============================================================================
-! IS_SCATTER determines if a given MT number is that of a scattering event
+! IS_INELASTIC_SCATTER determines if a given MT number is that of an inelastic
+! scattering event
 !===============================================================================
 
-  function is_scatter(MT) result(scatter_event)
+  function is_inelastic_scatter(MT) result(retval)
 
     integer, intent(in) :: MT
-    logical             :: scatter_event
+    logical             :: retval
 
     if (MT < 100) then
-      if (MT == N_FISSION .or. MT == N_F .or. MT == N_NF .or. MT == N_2NF &
-           .or. MT == N_3NF) then
-        scatter_event = .false.
+      if (is_fission(MT)) then
+        retval = .false.
       else
-        scatter_event = .true.
+        retval  = (MT >= MISC .and. MT /= 27)
       end if
+    elseif (MT <= 200) then
+      retval = (.not. is_disappearance(MT))
     else
-      scatter_event = .false.
+      retval = .false.
     end if
 
-  end function is_scatter
+  end function
 
 end module endf

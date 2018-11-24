@@ -20,8 +20,8 @@ SurfaceFilter::initialize()
 {
   // Convert surface IDs to indices of the global array.
   for (auto& s : surfaces_) {
-    auto search = surface_map.find(s);
-    if (search != surface_map.end()) {
+    auto search = model::surface_map.find(s);
+    if (search != model::surface_map.end()) {
       s = search->second;
     } else {
       std::stringstream err_msg;
@@ -58,7 +58,7 @@ SurfaceFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   std::vector<int32_t> surface_ids;
-  for (auto c : surfaces_) surface_ids.push_back(surfaces[c]->id_);
+  for (auto c : surfaces_) surface_ids.push_back(model::surfaces[c]->id_);
   write_dataset(filter_group, "bins", surface_ids);
 }
 
@@ -66,7 +66,7 @@ std::string
 SurfaceFilter::text_label(int bin) const
 {
   //TODO: off-by-one
-  return "Surface " + std::to_string(surfaces[surfaces_[bin-1]]->id_);
+  return "Surface " + std::to_string(model::surfaces[surfaces_[bin-1]]->id_);
 }
 
 } // namespace openmc

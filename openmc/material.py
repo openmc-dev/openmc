@@ -989,18 +989,12 @@ class Materials(cv.CheckedList):
         continuous-energy calculations and
         :envvar:`OPENMC_MG_CROSS_SECTIONS` will be used for multi-group
         calculations to find the path to the HDF5 cross section file.
-    multipole_library : str
-        Indicates the path to a directory containing a windowed multipole
-        cross section library. If it is not set, the
-        :envvar:`OPENMC_MULTIPOLE_LIBRARY` environment variable will be used. A
-        multipole library is optional.
 
     """
 
     def __init__(self, materials=None):
         super().__init__(Material, 'materials collection')
         self._cross_sections = None
-        self._multipole_library = None
 
         if materials is not None:
             self += materials
@@ -1009,19 +1003,10 @@ class Materials(cv.CheckedList):
     def cross_sections(self):
         return self._cross_sections
 
-    @property
-    def multipole_library(self):
-        return self._multipole_library
-
     @cross_sections.setter
     def cross_sections(self, cross_sections):
         cv.check_type('cross sections', cross_sections, str)
         self._cross_sections = cross_sections
-
-    @multipole_library.setter
-    def multipole_library(self, multipole_library):
-        cv.check_type('cross sections', multipole_library, str)
-        self._multipole_library = multipole_library
 
     def append(self, material):
         """Append material to collection
@@ -1060,11 +1045,6 @@ class Materials(cv.CheckedList):
             element = ET.SubElement(root_element, "cross_sections")
             element.text = str(self._cross_sections)
 
-    def _create_multipole_library_subelement(self, root_element):
-        if self._multipole_library is not None:
-            element = ET.SubElement(root_element, "multipole_library")
-            element.text = str(self._multipole_library)
-
     def export_to_xml(self, path='materials.xml'):
         """Export material collection to an XML file.
 
@@ -1077,7 +1057,6 @@ class Materials(cv.CheckedList):
 
         root_element = ET.Element("materials")
         self._create_cross_sections_subelement(root_element)
-        self._create_multipole_library_subelement(root_element)
         self._create_material_subelements(root_element)
 
         # Clean the indentation in the file to be user-readable
@@ -1114,8 +1093,5 @@ class Materials(cv.CheckedList):
         xs = tree.find('cross_sections')
         if xs is not None:
             materials.cross_sections = xs.text
-        mpl = tree.find('multipole_library')
-        if mpl is not None:
-            materials.multipole_library = mpl.text
 
         return materials

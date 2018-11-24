@@ -362,7 +362,7 @@ member_names(hid_t group_id, H5O_type_t type)
     char buffer[size];
     H5Lget_name_by_idx(group_id, ".", H5_INDEX_NAME, H5_ITER_INC, i,
                        buffer, size, H5P_DEFAULT);
-    names.emplace_back(&buffer[0], size);
+    names.emplace_back(&buffer[0]);
   }
   return names;
 }

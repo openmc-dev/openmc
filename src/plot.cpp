@@ -9,7 +9,8 @@
 #include "openmc/geometry.h"
 #include "openmc/cell.h"
 #include "openmc/material.h"
-#include "openmc/string_functions.h"
+#include "openmc/message_passing.h"
+#include "openmc/string_utils.h"
 #include "openmc/mesh.h"
 #include "openmc/output.h"
 #include "openmc/hdf5_interface.h"
@@ -20,18 +21,22 @@
 namespace openmc {
 
 //==============================================================================
+// Constants
+//==============================================================================
+
+const RGBColor WHITE {255, 255, 255};
+constexpr int PLOT_LEVEL_LOWEST {-1}; //!< lower bound on plot universe level
+
+//==============================================================================
 // Global variables
 //==============================================================================
 
-int PLOT_LEVEL_LOWEST = -1;
-
-std::unordered_map<int, int> plot_map;
-
-int n_plots;
+namespace model {
 
 std::vector<Plot> plots;
+std::unordered_map<int, int> plot_map;
 
-const RGBColor WHITE = {255, 255, 255};
+} // namespace model
 
 //==============================================================================
 // RUN_PLOT controls the logic for making one or many plots
@@ -42,7 +47,7 @@ int openmc_plot_geometry()
 {
   int err;
 
-  for (auto pl : plots) {
+  for (auto pl : model::plots) {
     std::stringstream ss;
     ss << "Processing plot " << pl.id_ << ": "
        << pl.path_plot_ << "...";
@@ -63,11 +68,10 @@ int openmc_plot_geometry()
 void
 read_plots(pugi::xml_node* plots_node)
 {
-  n_plots = 0;
   for (auto node : plots_node->children("plot")) {
     Plot pl(node);
-    plots.push_back(pl);
-    plot_map[pl.id_] = n_plots++;
+    model::plots.push_back(pl);
+    model::plot_map[pl.id_] = model::plots.size() - 1;
   }
 }
 
@@ -122,7 +126,7 @@ void create_ppm(Plot pl)
   p.initialize();
   std::copy(xyz, xyz+3, p.coord[0].xyz);
   std::copy(dir, dir+3, p.coord[0].uvw);
-  p.coord[0].universe = openmc_root_universe;
+  p.coord[0].universe = model::root_universe;
 
 #pragma omp for
   for (int y = 0; y < height; y++) {
@@ -155,7 +159,7 @@ Plot::set_id(pugi::xml_node plot_node)
   }
 
   // Check to make sure 'id' hasn't been used
-  if (plot_map.find(id_) != plot_map.end()) {
+  if (model::plot_map.find(id_) != model::plot_map.end()) {
     std::stringstream err_msg;
     err_msg << "Two or more plots use the same unique ID: " << id_;
     fatal_error(err_msg.str());
@@ -243,7 +247,7 @@ Plot::set_bg_color(pugi::xml_node plot_node)
   if (check_for_node(plot_node, "background")) {
     std::vector<int> bg_rgb = get_node_array<int>(plot_node, "background");
     if (PlotType::voxel == type_) {
-      if (openmc_master) {
+      if (mpi::master) {
         std::stringstream err_msg;
         err_msg << "Background color ignored in voxel plot "
                 << id_;
@@ -361,22 +365,19 @@ Plot::set_default_colors(pugi::xml_node plot_node)
   }
   if ("cell" == pl_color_by) {
     color_by_ = PlotColorBy::cells;
-    colors_.resize(n_cells);
-    for (int i = 0; i < n_cells; i++) {
-      colors_[i] = random_color();
-    }
-
+    colors_.resize(model::cells.size());
   } else if("material" == pl_color_by) {
     color_by_ = PlotColorBy::mats;
-    colors_.resize(n_materials);
-    for (int i = 0; i < materials.size(); i++) {
-      colors_[i] = random_color();
-    }
+    colors_.resize(model::materials.size());
   } else {
     std::stringstream err_msg;
     err_msg << "Unsupported plot color type '" << pl_color_by
             << "' in plot " << id_;
     fatal_error(err_msg);
+  }
+
+  for (auto& c : colors_) {
+    c = random_color();
   }
 }
 
@@ -384,7 +385,7 @@ void
 Plot::set_user_colors(pugi::xml_node plot_node)
 {
   if (!plot_node.select_nodes("color").empty() && PlotType::voxel == type_) {
-    if (openmc_master) {
+    if (mpi::master) {
       std::stringstream err_msg;
       err_msg << "Color specifications ignored in voxel plot "
               << id_;
@@ -412,8 +413,8 @@ Plot::set_user_colors(pugi::xml_node plot_node)
     }
     // Add RGB
     if (PlotColorBy::cells == color_by_) {
-      if (cell_map.find(col_id) != cell_map.end()) {
-        col_id = cell_map[col_id];
+      if (model::cell_map.find(col_id) != model::cell_map.end()) {
+        col_id = model::cell_map[col_id];
         colors_[col_id] = user_rgb;
       } else {
         std::stringstream err_msg;
@@ -422,8 +423,8 @@ Plot::set_user_colors(pugi::xml_node plot_node)
         fatal_error(err_msg);
       }
     } else if (PlotColorBy::mats == color_by_) {
-      if (material_map.find(col_id) != material_map.end()) {
-        col_id = material_map[col_id];
+      if (model::material_map.find(col_id) != model::material_map.end()) {
+        col_id = model::material_map[col_id];
         colors_[col_id] = user_rgb;
       } else {
         std::stringstream err_msg;
@@ -552,7 +553,7 @@ Plot::set_mask(pugi::xml_node plot_node)
 
   if (!mask_nodes.empty()) {
     if (PlotType::voxel == type_) {
-      if (openmc_master) {
+      if (mpi::master) {
         std::stringstream wrn_msg;
         wrn_msg << "Mask ignored in voxel plot " << id_;
         warning(wrn_msg);
@@ -575,8 +576,8 @@ Plot::set_mask(pugi::xml_node plot_node)
       // in the cell and material arrays
       for (auto& col_id : iarray) {
         if (PlotColorBy::cells == color_by_) {
-          if (cell_map.find(col_id) != cell_map.end()) {
-            col_id  = cell_map[col_id];
+          if (model::cell_map.find(col_id) != model::cell_map.end()) {
+            col_id  = model::cell_map[col_id];
           }
           else {
             std::stringstream err_msg;
@@ -585,8 +586,8 @@ Plot::set_mask(pugi::xml_node plot_node)
             fatal_error(err_msg);
           }
         } else if (PlotColorBy::mats == color_by_) {
-          if (material_map.find(col_id) != material_map.end()) {
-            col_id = material_map[col_id];
+          if (model::material_map.find(col_id) != model::material_map.end()) {
+            col_id = model::material_map[col_id];
           }
           else {
             std::stringstream err_msg;
@@ -660,7 +661,7 @@ void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id)
   } else {
     if (PlotColorBy::mats == pl.color_by_) {
       // Assign color based on material
-      Cell* c = cells[p.coord[j].cell];
+      Cell* c = model::cells[p.coord[j].cell];
       if (c->type_ == FILL_UNIVERSE) {
         // If we stopped on a middle universe level, treat as if not found
         rgb = pl.not_found_;
@@ -671,12 +672,12 @@ void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id)
         id = -1;
       } else {
         rgb = pl.colors_[p.material - 1];
-        id = materials[p.material - 1]->id_;
+        id = model::materials[p.material - 1]->id_;
       }
     } else if (PlotColorBy::cells == pl.color_by_) {
       // Assign color based on cell
       rgb = pl.colors_[p.coord[j].cell];
-      id = cells[p.coord[j].cell]->id_;
+      id = model::cells[p.coord[j].cell]->id_;
     }
   } // endif found_cell
 }
@@ -759,7 +760,7 @@ void draw_mesh_lines(Plot pl, ImageData& data)
   width[1] = xyz_ur_plot[1] - xyz_ll_plot[1];
   width[2] = xyz_ur_plot[2] - xyz_ll_plot[2];
 
-  auto& m = meshes[pl.index_meshlines_mesh_];
+  auto& m = model::meshes[pl.index_meshlines_mesh_];
 
   int ijk_ll[3], ijk_ur[3];
   bool in_mesh;
@@ -851,7 +852,7 @@ void create_voxel(Plot pl)
   p.initialize();
   std::copy(ll.begin(), ll.begin()+ll.size(), p.coord[0].xyz);
   std::copy(dir, dir+3, p.coord[0].uvw);
-  p.coord[0].universe = openmc_root_universe;
+  p.coord[0].universe = model::root_universe;
 
   // Open binary plot file for writing
   std::ofstream of;

@@ -17,6 +17,18 @@
 namespace openmc {
 
 //==============================================================================
+// Global variables
+//==============================================================================
+
+class SourceDistribution;
+
+namespace model {
+
+extern std::vector<SourceDistribution> external_sources;
+
+} // namespace model
+
+//==============================================================================
 //! External source distribution
 //==============================================================================
 
@@ -39,12 +51,6 @@ private:
   UPtrAngle angle_; //!< Angular distribution
   UPtrDist energy_; //!< Energy distribution
 };
-
-//==============================================================================
-// Global variables
-//==============================================================================
-
-extern std::vector<SourceDistribution> external_sources;
 
 //==============================================================================
 // Functions

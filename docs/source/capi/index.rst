@@ -333,12 +333,14 @@ Functions
    :return: Return status (negative if an error occurred)
    :rtype: int
 
-.. c:function:: int openmc_material_set_density(int32_t index, double density)
+.. c:function:: int openmc_material_set_density(int32_t index, double density, const char* units)
 
    Set the density of a material.
 
    :param int32_t index: Index in the materials array
-   :param double density: Density of the material in atom/b-cm
+   :param double density: Density of the material
+   :param units: Units for density
+   :type units: const char*
    :return: Return status (negative if an error occurs)
    :rtype: int
 
@@ -463,13 +465,15 @@ Functions
    :return: Return status (negative if an error occurred)
    :rtype: int
 
-.. c:function:: int openmc_statepoint_write(const char filename[])
+.. c:function:: int openmc_statepoint_write(const char filename[], const bool* write_source)
 
    Write a statepoint file
 
    :param filename: Name of file to create. If a null pointer is passed, a
                     filename is assigned automatically.
    :type filename: const char[]
+   :param write_source: Whether to include the source bank
+   :type write_source: const bool*
    :return: Return status (negative if an error occurs)
    :rtype: int
 

@@ -17,6 +17,7 @@
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/mesh.h"
+#include "openmc/message_passing.h"
 #include "openmc/output.h"
 #include "openmc/random_lcg.h"
 #include "openmc/simulation.h"
@@ -63,7 +64,6 @@ bool dagmc                   {false};
 
 std::string path_cross_sections;
 std::string path_input;
-std::string path_multipole;
 std::string path_output;
 std::string path_particle_restart;
 std::string path_source;
@@ -73,7 +73,7 @@ std::string path_statepoint;
 int32_t index_entropy_mesh {-1};
 int32_t index_ufs_mesh {-1};
 int32_t index_cmfd_mesh {-1};
-  
+
 int32_t n_batches;
 int32_t n_inactive {0};
 int32_t gen_per_batch {1};
@@ -88,6 +88,7 @@ int n_max_batches;
 int res_scat_method {RES_SCAT_ARES};
 double res_scat_energy_min {0.01};
 double res_scat_energy_max {1000.0};
+std::vector<std::string> res_scat_nuclides;
 int run_mode {-1};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
@@ -150,7 +151,7 @@ void get_run_parameters(pugi::xml_node node_base)
     // Preallocate space for keff and entropy by generation
     int m = settings::n_max_batches * settings::gen_per_batch;
     simulation::k_generation.reserve(m);
-    entropy.reserve(m);
+    simulation::entropy.reserve(m);
 
     // Get the trigger information for keff
     if (check_for_node(node_base, "keff_trigger")) {
@@ -187,7 +188,7 @@ void read_settings_xml()
   using namespace pugi;
 
   // Check if settings.xml exists
-  std::string filename = std::string(path_input) + "settings.xml";
+  std::string filename = path_input + "settings.xml";
   if (!file_exists(filename)) {
     if (run_mode != RUN_MODE_PLOTTING) {
       std::stringstream msg;
@@ -231,7 +232,7 @@ void read_settings_xml()
 
   // To this point, we haven't displayed any output since we didn't know what
   // the verbosity is. Now that we checked for it, show the title if necessary
-  if (openmc_master) {
+  if (mpi::master) {
     if (verbosity >= 2) title();
   }
   write_message("Reading settings XML file...", 5);
@@ -254,21 +255,6 @@ void read_settings_xml()
         " environment variable will take precendent over setting "
         "cross_sections in settings.xml.");
     path_cross_sections = get_node_value(root, "cross_sections");
-  }
-
-  // Look for deprecated windowed_multipole file in settings.xml
-  if (run_mode != RUN_MODE_PLOTTING) {
-    if (check_for_node(root, "multipole_library")) {
-      warning("Setting multipole_library in settings.xml has been "
-          "deprecated. The multipole_library is now set in materials.xml and"
-          " the multipole_library input to materials.xml and the "
-          "OPENMC_MULTIPOLE_LIBRARY environment variable will take "
-          "precendent over setting multipole_library in settings.xml.");
-      path_multipole = get_node_value(root, "multipole_library");
-    }
-    if (!ends_with(path_multipole, "/")) {
-      path_multipole += "/";
-    }
   }
 
   if (!run_CE) {
@@ -413,7 +399,7 @@ void read_settings_xml()
       omp_set_num_threads(simulation::n_threads);
     }
 #else
-    if (openmc_master) warning("OpenMC was not compiled with OpenMP support; "
+    if (mpi::master) warning("OpenMC was not compiled with OpenMP support; "
       "ignoring number of threads.");
 #endif
   }
@@ -430,17 +416,17 @@ void read_settings_xml()
 
   // Get point to list of <source> elements and make sure there is at least one
   for (pugi::xml_node node : root.children("source")) {
-    external_sources.emplace_back(node);
+    model::external_sources.emplace_back(node);
   }
 
   // If no source specified, default to isotropic point source at origin with Watt spectrum
-  if (external_sources.empty()) {
+  if (model::external_sources.empty()) {
     SourceDistribution source {
       UPtrSpace{new SpatialPoint({0.0, 0.0, 0.0})},
       UPtrAngle{new Isotropic()},
       UPtrDist{new Watt(0.988, 2.249e-6)}
     };
-    external_sources.push_back(std::move(source));
+    model::external_sources.push_back(std::move(source));
   }
 
   // Check if we want to write out source
@@ -521,12 +507,12 @@ void read_settings_xml()
   // Shannon Entropy mesh
   if (check_for_node(root, "entropy_mesh")) {
     int temp = std::stoi(get_node_value(root, "entropy_mesh"));
-    if (mesh_map.find(temp) == mesh_map.end()) {
+    if (model::mesh_map.find(temp) == model::mesh_map.end()) {
       std::stringstream msg;
       msg << "Mesh " << temp << " specified for Shannon entropy does not exist.";
       fatal_error(msg);
     }
-    index_entropy_mesh = mesh_map.at(temp);
+    index_entropy_mesh = model::mesh_map.at(temp);
 
   } else if (check_for_node(root, "entropy")) {
     warning("Specifying a Shannon entropy mesh via the <entropy> element "
@@ -535,18 +521,18 @@ void read_settings_xml()
 
     // Read entropy mesh from <entropy>
     auto node_entropy = root.child("entropy");
-    meshes.emplace_back(new RegularMesh{node_entropy});
+    model::meshes.emplace_back(new RegularMesh{node_entropy});
 
     // Set entropy mesh index
-    index_entropy_mesh = meshes.size() - 1;
+    index_entropy_mesh = model::meshes.size() - 1;
 
     // Assign ID and set mapping
-    meshes.back()->id_ = 10000;
-    mesh_map[10000] = index_entropy_mesh;
+    model::meshes.back()->id_ = 10000;
+    model::mesh_map[10000] = index_entropy_mesh;
   }
 
   if (index_entropy_mesh >= 0) {
-    auto& m = *meshes[index_entropy_mesh];
+    auto& m = *model::meshes[index_entropy_mesh];
     if (m.shape_.dimension() == 0) {
       // If the user did not specify how many mesh cells are to be used in
       // each direction, we automatically determine an appropriate number of
@@ -566,13 +552,13 @@ void read_settings_xml()
   // Uniform fission source weighting mesh
   if (check_for_node(root, "ufs_mesh")) {
     auto temp = std::stoi(get_node_value(root, "ufs_mesh"));
-    if (mesh_map.find(temp) == mesh_map.end()) {
+    if (model::mesh_map.find(temp) == model::mesh_map.end()) {
       std::stringstream msg;
       msg << "Mesh " << temp << " specified for uniform fission site method "
         "does not exist.";
       fatal_error(msg);
     }
-    index_ufs_mesh = mesh_map.at(temp);
+    index_ufs_mesh = model::mesh_map.at(temp);
 
   } else if (check_for_node(root, "uniform_fs")) {
     warning("Specifying a UFS mesh via the <uniform_fs> element "
@@ -581,14 +567,14 @@ void read_settings_xml()
 
     // Read entropy mesh from <entropy>
     auto node_ufs = root.child("uniform_fs");
-    meshes.emplace_back(new RegularMesh{node_ufs});
+    model::meshes.emplace_back(new RegularMesh{node_ufs});
 
     // Set entropy mesh index
-    index_ufs_mesh = meshes.size() - 1;
+    index_ufs_mesh = model::meshes.size() - 1;
 
     // Assign ID and set mapping
-    meshes.back()->id_ = 10001;
-    mesh_map[10001] = index_entropy_mesh;
+    model::meshes.back()->id_ = 10001;
+    model::mesh_map[10001] = index_entropy_mesh;
   }
 
   if (index_ufs_mesh >= 0) {
@@ -749,7 +735,10 @@ void read_settings_xml()
         "lower resonance scattering energy bound.");
     }
 
-    // TODO: Get resonance scattering nuclides
+    // Get resonance scattering nuclides
+    if (check_for_node(node_res_scat, "nuclides")) {
+      res_scat_nuclides = get_node_array<std::string>(node_res_scat, "nuclides");
+    }
   }
 
   // TODO: Get volume calculations
@@ -817,22 +806,38 @@ void read_settings_xml()
 //==============================================================================
 
 extern "C" {
-  const char* openmc_path_input() {
+  bool res_scat_nuclides_empty() {
+    return settings::res_scat_nuclides.empty();
+  }
+
+  int res_scat_nuclides_size() {
+    return settings::res_scat_nuclides.size();
+  }
+
+  bool res_scat_nuclides_cmp(int i, const char* name) {
+    return settings::res_scat_nuclides[i - 1] == name;
+  }
+
+  const char* path_cross_sections_c() {
+    return settings::path_cross_sections.c_str();
+  }
+  const char* path_input_c() {
     return settings::path_input.c_str();
   }
-  const char* openmc_path_statepoint() {
+  const char* path_statepoint_c() {
     return settings::path_statepoint.c_str();
   }
-  const char* openmc_path_sourcepoint() {
+  const char* path_sourcepoint_c() {
     return settings::path_sourcepoint.c_str();
   }
-  const char* openmc_path_particle_restart() {
+  const char* path_particle_restart_c() {
     return settings::path_particle_restart.c_str();
   }
 
-  void free_memory_settings_c() {
+  void free_memory_settings() {
     settings::statepoint_batch.clear();
     settings::sourcepoint_batch.clear();
+    settings::res_scat_nuclides.clear();
   }
 }
 

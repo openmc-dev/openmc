@@ -37,7 +37,7 @@ Functions
    :template: myfunction.rst
 
    openmc.model.create_triso_lattice
-   openmc.model.pack_trisos
+   openmc.model.pack_spheres
 
 Model Container
 ---------------

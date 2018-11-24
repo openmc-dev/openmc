@@ -6,7 +6,7 @@ module tally_header
   use error
   use dict_header,         only: DictIntInt
   use hdf5_interface,      only: HID_T, HSIZE_T
-  use message_passing,     only: n_procs
+  use message_passing,     only: n_procs, master
   use nuclide_header,      only: nuclide_dict
   use settings,            only: reduce_tallies, run_mode
   use stl_vector,          only: VectorInt
@@ -17,7 +17,7 @@ module tally_header
 
   implicit none
   private
-  public :: configure_tallies
+  public :: allocate_tally_results
   public :: free_memory_tally
   public :: openmc_extend_tallies
   public :: openmc_get_tally_index
@@ -182,25 +182,27 @@ contains
       this % n_realizations = this % n_realizations + n_procs
     end if
 
-    ! Calculate total source strength for normalization
-    if (run_mode == MODE_FIXEDSOURCE) then
-      total_source = total_source_strength()
-    else
-      total_source = ONE
-    end if
+    if (master .or. (.not. reduce_tallies)) then
+      ! Calculate total source strength for normalization
+      if (run_mode == MODE_FIXEDSOURCE) then
+        total_source = total_source_strength()
+      else
+        total_source = ONE
+      end if
 
-    ! Accumulate each result
-    do j = 1, size(this % results, 3)
-      do i = 1, size(this % results, 2)
-        val = this % results(RESULT_VALUE, i, j)/total_weight * total_source
-        this % results(RESULT_VALUE, i, j) = ZERO
+      ! Accumulate each result
+      do j = 1, size(this % results, 3)
+        do i = 1, size(this % results, 2)
+          val = this % results(RESULT_VALUE, i, j)/total_weight * total_source
+          this % results(RESULT_VALUE, i, j) = ZERO
 
-        this % results(RESULT_SUM, i, j) = &
-             this % results(RESULT_SUM, i, j) + val
-        this % results(RESULT_SUM_SQ, i, j) = &
-             this % results(RESULT_SUM_SQ, i, j) + val*val
+          this % results(RESULT_SUM, i, j) = &
+              this % results(RESULT_SUM, i, j) + val
+          this % results(RESULT_SUM_SQ, i, j) = &
+              this % results(RESULT_SUM_SQ, i, j) + val*val
+        end do
       end do
-    end do
+    end if
   end subroutine tally_accumulate
 
   subroutine tally_write_results_hdf5(this, group_id)
@@ -274,9 +276,6 @@ contains
     else
       allocate(this % results(3, this % total_score_bins, this % n_filter_bins))
     end if
-
-    ! Initialize results array to zero
-    this % results(:,:,:) = ZERO
 
   end subroutine tally_allocate_results
 
@@ -392,21 +391,21 @@ contains
 ! tallies.xml file.
 !===============================================================================
 
-  subroutine configure_tallies() bind(C)
+  subroutine allocate_tally_results() bind(C)
 
     integer :: i
 
-    ! Allocate and initialize global tallies
+    ! Allocate global tallies
     if (.not. allocated(global_tallies)) then
       allocate(global_tallies(3, N_GLOBAL_TALLIES))
     end if
-    global_tallies(:,:) = ZERO
 
+    ! Allocate results arrays for tallies
     do i = 1, n_tallies
       call tallies(i) % obj % allocate_results()
     end do
 
-  end subroutine configure_tallies
+  end subroutine allocate_tally_results
 
 !===============================================================================
 ! FREE_MEMORY_TALLY deallocates global arrays defined in this module

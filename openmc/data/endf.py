@@ -348,7 +348,7 @@ def get_evaluations(filename):
 
     """
     evaluations = []
-    with open(filename, 'r') as fh:
+    with open(str(filename), 'r') as fh:
         while True:
             pos = fh.tell()
             line = fh.readline()

@@ -13,9 +13,13 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-extern "C" int openmc_root_universe;
+namespace model {
+
+extern "C" int root_universe;
 
 extern std::vector<int64_t> overlap_check_count;
+
+} // namespace model
 
 //==============================================================================
 //! Check for overlapping cells at a particle's position.

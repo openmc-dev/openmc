@@ -51,7 +51,7 @@ std::string time_stamp()
      << ":" << now->tm_min << ":" << now->tm_sec;
   return ts.str();
 }
-  
+
 //==============================================================================
 
 //===============================================================================
@@ -62,7 +62,7 @@ void print_plot() {
 
   header("PLOTTING SUMMARY", 5);
 
-  for (auto pl : plots) {
+  for (auto pl : model::plots) {
     // Plot id
     std::cout << "Plot ID: " << pl.id_ << "\n";
     // Plot filename
@@ -74,7 +74,7 @@ void print_plot() {
     if (PlotType::slice == pl.type_) {
       std::cout << "Plot Type: Slice" << "\n";
     } else if (PlotType::voxel == pl.type_) {
-      std::cout << "Plot Type: Voxel" << "\n";      
+      std::cout << "Plot Type: Voxel" << "\n";
     }
 
     // Plot parameters
@@ -98,9 +98,9 @@ void print_plot() {
     if (PlotColorBy::cells == pl.color_by_) {
       std::cout << "Coloring: Cells" << "\n";
     } else if (PlotColorBy::mats == pl.color_by_) {
-      std::cout << "Coloring: Materials" << "\n";      
+      std::cout << "Coloring: Materials" << "\n";
     }
-    
+
     if (PlotType::slice == pl.type_) {
       switch(pl.basis_) {
       case PlotBasis::xy:
@@ -122,29 +122,29 @@ void print_plot() {
     }
 
     std::cout << "\n";
-    
+
   }
 }
-  
+
 void
 print_overlap_check() {
 #ifdef OPENMC_MPI
-  std::vector<int64_t> temp(overlap_check_count);
-  int err = MPI_Reduce(temp.data(), overlap_check_count.data(),
-                       overlap_check_count.size(), MPI_INT64_T, MPI_SUM, 0,
+  std::vector<int64_t> temp(model::overlap_check_count);
+  int err = MPI_Reduce(temp.data(), model::overlap_check_count.data(),
+                       model::overlap_check_count.size(), MPI_INT64_T, MPI_SUM, 0,
                        mpi::intracomm);
 #endif
 
-  if (openmc_master) {
+  if (mpi::master) {
     header("cell overlap check summary", 1);
     std::cout << " Cell ID      No. Overlap Checks\n";
 
     std::vector<int32_t> sparse_cell_ids;
-    for (int i = 0; i < n_cells; i++) {
-      std::cout << " " << std::setw(8) << cells[i]->id_ << std::setw(17)
-                << overlap_check_count[i] << "\n";
-      if (overlap_check_count[i] < 10) {
-        sparse_cell_ids.push_back(cells[i]->id_);
+    for (int i = 0; i < model::cells.size(); i++) {
+      std::cout << " " << std::setw(8) << model::cells[i]->id_ << std::setw(17)
+                << model::overlap_check_count[i] << "\n";
+      if (model::overlap_check_count[i] < 10) {
+        sparse_cell_ids.push_back(model::cells[i]->id_);
       }
     }
 

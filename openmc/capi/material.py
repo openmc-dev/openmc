@@ -35,7 +35,7 @@ _dll.openmc_material_get_densities.errcheck = _error_handler
 _dll.openmc_material_get_volume.argtypes = [c_int32, POINTER(c_double)]
 _dll.openmc_material_get_volume.restype = c_int
 _dll.openmc_material_get_volume.errcheck = _error_handler
-_dll.openmc_material_set_density.argtypes = [c_int32, c_double]
+_dll.openmc_material_set_density.argtypes = [c_int32, c_double, c_char_p]
 _dll.openmc_material_set_density.restype = c_int
 _dll.openmc_material_set_density.errcheck = _error_handler
 _dll.openmc_material_set_densities.argtypes = [
@@ -178,16 +178,18 @@ class Material(_FortranObjectWithID):
         """
         _dll.openmc_material_add_nuclide(self._index, name.encode(), density)
 
-    def set_density(self, density):
+    def set_density(self, density, units='atom/b-cm'):
         """Set density of a material.
 
         Parameters
         ----------
         density : float
-            Density in atom/b-cm
+            Density
+        units : {'atom/b-cm', 'g/cm3'}
+            Units for density
 
         """
-        _dll.openmc_material_set_density(self._index, density)
+        _dll.openmc_material_set_density(self._index, density, units.encode())
 
     def set_densities(self, nuclides, densities):
         """Set the densities of a list of nuclides in a material

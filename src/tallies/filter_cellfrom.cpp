@@ -22,7 +22,7 @@ std::string
 CellFromFilter::text_label(int bin) const
 {
   //TODO: off-by-one
-  return "Cell from " + std::to_string(cells[cells_[bin-1]]->id_);
+  return "Cell from " + std::to_string(model::cells[cells_[bin-1]]->id_);
 }
 
 } // namespace openmc

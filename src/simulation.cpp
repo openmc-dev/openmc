@@ -25,10 +25,10 @@ extern "C" bool cmfd_on;
 
 extern "C" void accumulate_tallies();
 extern "C" void allocate_banks();
+extern "C" void allocate_tally_results();
 extern "C" void check_triggers();
 extern "C" void cmfd_init_batch();
 extern "C" void cmfd_tally_init();
-extern "C" void configure_tallies();
 extern "C" void execute_cmfd();
 extern "C" void init_tally_routines();
 extern "C" void join_bank_from_threads();
@@ -81,7 +81,7 @@ int openmc_simulation_init()
   // Allocate array for matching filter bins
 #pragma omp parallel
   {
-    filter_matches.resize(n_filters);
+    simulation::filter_matches.resize(model::tally_filters.size());
   }
 
   // Set up tally procedure pointers
@@ -92,7 +92,7 @@ int openmc_simulation_init()
   allocate_banks();
 
   // Allocate tally results arrays if they're not allocated yet
-  configure_tallies();
+  allocate_tally_results();
 
   // Activate the CMFD tallies
   cmfd_tally_init();
@@ -104,8 +104,9 @@ int openmc_simulation_init()
   // will potentially populate k_generation and entropy)
   simulation::current_batch = 0;
   simulation::k_generation.clear();
-  entropy.clear();
+  simulation::entropy.clear();
   simulation::need_depletion_rx = false;
+  openmc_reset();
 
   // If this is a restart run, load the state point data and binary source
   // file
@@ -139,12 +140,12 @@ int openmc_simulation_finalize()
   if (!simulation::initialized) return 0;
 
   // Stop active batch timer and start finalization timer
-  time_active.stop();
-  time_finalize.start();
+  simulation::time_active.stop();
+  simulation::time_finalize.start();
 
 #pragma omp parallel
   {
-    filter_matches.clear();
+    simulation::filter_matches.clear();
   }
 
   // Deallocate Fortran variables, set tallies to inactive
@@ -166,8 +167,8 @@ int openmc_simulation_finalize()
   }
 
   // Stop timers and show timing statistics
-  time_finalize.stop();
-  time_total.stop();
+  simulation::time_finalize.stop();
+  simulation::time_total.stop();
   if (mpi::master) {
     if (settings::verbosity >= 6) print_runtime();
     if (settings::verbosity >= 4) print_results();
@@ -200,7 +201,7 @@ int openmc_next_batch(int* status)
     initialize_generation();
 
     // Start timer for transport
-    time_transport.start();
+    simulation::time_transport.start();
 
     // ====================================================================
     // LOOP OVER PARTICLES
@@ -218,7 +219,7 @@ int openmc_next_batch(int* status)
     }
 
     // Accumulate time for transport
-    time_transport.stop();
+    simulation::time_transport.stop();
 
     finalize_generation();
   }
@@ -305,10 +306,10 @@ void initialize_batch()
 
   // Manage active/inactive timers and activate tallies if necessary.
   if (first_inactive) {
-    time_inactive.start();
+    simulation::time_inactive.start();
   } else if (first_active) {
-    time_inactive.stop();
-    time_active.start();
+    simulation::time_inactive.stop();
+    simulation::time_active.start();
     for (int i = 1; i <= n_tallies; ++i) {
       // TODO: change one-based index
       openmc_tally_set_active(i, true);
@@ -327,9 +328,9 @@ void initialize_batch()
 void finalize_batch()
 {
   // Reduce tallies onto master process and accumulate
-  time_tallies.start();
+  simulation::time_tallies.start();
   accumulate_tallies();
-  time_tallies.stop();
+  simulation::time_tallies.stop();
 
   // Reset global tally results
   if (simulation::current_batch <= settings::n_inactive) {
@@ -384,13 +385,13 @@ void initialize_generation()
 {
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
     // Reset number of fission bank sites
-    n_bank = 0;
+    simulation::n_bank = 0;
 
     // Count source sites if using uniform fission source weighting
     if (settings::ufs_on) ufs_count_sites();
 
     // Store current value of tracklength k
-    keff_generation = global_tallies()(K_TRACKLENGTH, RESULT_VALUE);
+    simulation::keff_generation = global_tallies()(K_TRACKLENGTH, RESULT_VALUE);
   }
 }
 
@@ -563,5 +564,11 @@ extern "C" int k_generation_size() { return simulation::k_generation.size(); }
 extern "C" void k_generation_clear() { simulation::k_generation.clear(); }
 extern "C" void k_generation_reserve(int i) { simulation::k_generation.reserve(i); }
 extern "C" int64_t work_index(int rank) { return simulation::work_index[rank]; }
+
+// This function was moved here to get around a bug on macOS whereby an invalid
+// pointer is returned for the threadprivate filter_matches
+extern "C" FilterMatch* filter_match_pointer(int indx) {
+  return &simulation::filter_matches[indx];
+}
 
 } // namespace openmc

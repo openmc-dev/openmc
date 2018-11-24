@@ -17,14 +17,22 @@
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_lcg.h"
-#include "openmc/string_functions.h"
+#include "openmc/string_utils.h"
 
 
 namespace openmc {
 
+//==============================================================================
+// Global variables
+//==============================================================================
+
+namespace data {
+
 // Storage for the MGXS data
 std::vector<Mgxs> nuclides_MG;
 std::vector<Mgxs> macro_xs;
+
+} // namespace data
 
 //==============================================================================
 // Mgxs base-class methods

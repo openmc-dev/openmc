@@ -52,17 +52,13 @@ class DataLibrary(EqualityMixin):
             Path to the file to be registered.
 
         """
-        with h5py.File(filename, 'r') as h5file:
+        # Support pathlib
+        # TODO: Remove when support is Python 3.6+ only
+        filename = str(filename)
 
-            materials = []
-            if 'filetype' in h5file.attrs:
-                filetype = h5file.attrs['filetype'].decode().lstrip('data_')
-            else:
-                filetype = 'neutron'
-            for name in h5file:
-                if name.startswith('c_'):
-                    filetype = 'thermal'
-                materials.append(name)
+        with h5py.File(filename, 'r') as h5file:
+            filetype = h5file.attrs['filetype'].decode()[5:]
+            materials = list(h5file)
 
         library = {'path': filename, 'type': filetype, 'materials': materials}
         self.libraries.append(library)
@@ -84,7 +80,7 @@ class DataLibrary(EqualityMixin):
         if common_dir == '':
             common_dir = '.'
 
-        if os.path.relpath(common_dir, os.path.dirname(path)) != '.':
+        if os.path.relpath(common_dir, os.path.dirname(str(path))) != '.':
             dir_element = ET.SubElement(root, "directory")
             dir_element.text = os.path.realpath(common_dir)
 
@@ -99,7 +95,7 @@ class DataLibrary(EqualityMixin):
 
         # Write XML file
         tree = ET.ElementTree(root)
-        tree.write(path, xml_declaration=True, encoding='utf-8',
+        tree.write(str(path), xml_declaration=True, encoding='utf-8',
                    method='xml')
 
     @classmethod
@@ -131,7 +127,9 @@ class DataLibrary(EqualityMixin):
             raise ValueError("Either path or OPENMC_CROSS_SECTIONS "
                              "environmental variable must be set")
 
-        check_type('path', path, str)
+        # Convert to string to support pathlib
+        # TODO: Remove when support is Python 3.6+ only
+        path = str(path)
 
         tree = ET.parse(path)
         root = tree.getroot()

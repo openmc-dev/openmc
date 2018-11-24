@@ -113,9 +113,6 @@ class DiffTallyTestHarness(PyAPITestHarness):
         return df.to_csv(None, columns=cols, index=False, float_format='%.7e')
 
 
-@pytest.mark.skipif('OPENMC_MULTIPOLE_LIBRARY' not in os.environ,
-                    reason='OPENMC_MULTIPOLE_LIBRARY environment variable '
-                    'must be set')
 def test_diff_tally():
     harness = DiffTallyTestHarness('statepoint.3.h5')
     harness.main()

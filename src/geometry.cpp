@@ -32,7 +32,8 @@ std::vector<int64_t> overlap_check_count;
 //==============================================================================
 
 extern "C" bool
-check_cell_overlap(Particle* p) {
+check_cell_overlap(Particle* p)
+{
   int n_coord = p->n_coord;
 
   // Loop through each coordinate level
@@ -61,29 +62,13 @@ check_cell_overlap(Particle* p) {
 
 //==============================================================================
 
-extern "C" bool
-find_cell(Particle* p, int search_surf) {
-  for (int i = p->n_coord; i < MAX_COORD; i++) {
-    p->coord[i].reset();
-  }
-
-  // Determine universe (if not yet set, use root universe)
-  int i_universe = p->coord[p->n_coord-1].universe;
-  if (i_universe == C_NONE) {
-    p->coord[p->n_coord-1].universe = model::root_universe;
-    i_universe = model::root_universe;
-  }
-
-  // If a surface was indicated, only search cells from the neighbor list of
-  // that surface.  The surface index is signed, and the sign signifies whether
-  // the positive or negative side of the surface should be searched.
-  const std::vector<int>* search_cells;
-  if (search_surf > 0) {
-    search_cells = &model::surfaces[search_surf-1]->neighbor_pos_;
-  } else if (search_surf < 0) {
-    search_cells = &model::surfaces[-search_surf-1]->neighbor_neg_;
-  } else {
-    // No surface was indicated, search all cells in the universe.
+bool
+find_cell_inner(Particle* p, const std::vector<int>* search_cells)
+{
+  // If a set of cells to search was not specified, search all cells in this
+  // universe.
+  if (!search_cells) {
+    int i_universe = p->coord[p->n_coord-1].universe;
     search_cells = &model::universes[i_universe]->cells_;
   }
 
@@ -94,6 +79,7 @@ find_cell(Particle* p, int search_surf) {
     i_cell = (*search_cells)[i];
 
     // Make sure the search cell is in the same universe.
+    int i_universe = p->coord[p->n_coord-1].universe;
     if (model::cells[i_cell]->universe_ != i_universe) continue;
 
     Position r {p->coord[p->n_coord-1].xyz};
@@ -205,7 +191,7 @@ find_cell(Particle* p, int search_surf) {
 
       // Update the coordinate level and recurse.
       ++p->n_coord;
-      return find_cell(p, 0);
+      return find_cell_inner(p, nullptr);
 
     } else if (c.type_ == FILL_LATTICE) {
       //========================================================================
@@ -252,11 +238,54 @@ find_cell(Particle* p, int search_surf) {
 
       // Update the coordinate level and recurse.
       ++p->n_coord;
-      return find_cell(p, 0);
+      return find_cell_inner(p, nullptr);
     }
   }
 
   return found;
+}
+
+//==============================================================================
+
+extern "C" bool
+find_cell(Particle* p, bool use_neighbor_lists)
+{
+  // Determine universe (if not yet set, use root universe).
+  int i_universe = p->coord[p->n_coord-1].universe;
+  if (i_universe == C_NONE) {
+    p->coord[0].universe = model::root_universe;
+    p->n_coord = 1;
+    i_universe = model::root_universe;
+  }
+
+  // Reset all the deeper coordinate levels.
+  for (int i = p->n_coord; i < MAX_COORD; i++) {
+    p->coord[i].reset();
+  }
+
+  if (use_neighbor_lists) {
+    // Get the cell this particle was in previously.
+    auto coord_lvl = p->n_coord - 1;
+    auto i_cell = p->coord[coord_lvl].cell;
+    Cell& c {*model::cells[i_cell]};
+
+    // Search for the particle in that cell's neighbor list.  Return if we
+    // found the particle.
+    std::vector<int>* search_cells = &c.neighbors;
+    bool found = find_cell_inner(p, search_cells);
+    if (found) return found;
+
+    // The particle could not be found in the neighbor list.  Try searching all
+    // cells in this universe, and update the neighbor list if we find a new
+    // neighboring cell.
+    found = find_cell_inner(p, nullptr);
+    if (found) c.neighbors.push_back(p->coord[coord_lvl].cell);
+    return found;
+
+  } else {
+    // Search all cells in this universe for the particle.
+    return find_cell_inner(p, nullptr);
+  }
 }
 
 //==============================================================================

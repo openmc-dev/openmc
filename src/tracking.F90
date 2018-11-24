@@ -195,7 +195,6 @@ contains
         end do
         p % last_n_coord = p % n_coord
 
-        p % coord(p % n_coord) % cell = C_NONE
         if (any(lattice_translation /= 0)) then
           ! Particle crosses lattice boundary
           p % surface = ERROR_INT

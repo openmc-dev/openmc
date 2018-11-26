@@ -269,7 +269,7 @@ void synchronize_bank()
       // asynchronous receive for the source sites
 
       requests.emplace_back();
-      MPI_Irecv(&source_bank[index_local], static_cast<int>(n), mpi::bank,
+      MPI_Irecv(&simulation::source_bank[index_local], static_cast<int>(n), mpi::bank,
             neighbor, neighbor, mpi::intracomm, &requests.back());
 
     } else {
@@ -278,7 +278,7 @@ void synchronize_bank()
 
       index_temp = start - bank_position[mpi::rank];
       std::copy(&temp_sites[index_temp], &temp_sites[index_temp + n],
-        &source_bank[index_local]);
+        &simulation::source_bank[index_local]);
     }
 
     // Increment all indices

@@ -133,7 +133,7 @@ write_source_bank(hid_t group_id)
 #ifdef OPENMC_MPI
       // Receive source sites from other processes
       if (i > 0)
-        MPI_Recv(source_bank.data(), count[0], mpi::bank, i, i,
+        MPI_Recv(simulation::source_bank.data(), count[0], mpi::bank, i, i,
                  mpi::intracomm, MPI_STATUS_IGNORE);
 #endif
 
@@ -155,7 +155,7 @@ write_source_bank(hid_t group_id)
 
 #ifdef OPENMC_MPI
     // Restore state of source bank
-    std::copy(temp_source.begin(), temp_source.end(), source_bank.begin());
+    std::copy(temp_source.begin(), temp_source.end(), simulation::source_bank.begin());
 #endif
   } else {
 #ifdef OPENMC_MPI

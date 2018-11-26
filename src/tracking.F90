@@ -221,7 +221,7 @@ contains
                material_xs % nu_fission / material_xs % total
         end if
 
-        ! score surface current tallies -- this has to be done before the collision
+        ! Score surface current tallies -- this has to be done before the collision
         ! since the direction of the particle will change and we need to use the
         ! pre-collision direction to figure out what mesh surfaces were crossed
 

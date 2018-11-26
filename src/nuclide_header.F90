@@ -243,7 +243,7 @@ contains
                                minmax, master, i_nuclide)
     class(Nuclide),   intent(inout) :: this
     integer(HID_T),   intent(in)    :: group_id
-    type(VectorReal), intent(in)    :: temperature ! list of desired temperatures
+    type(VectorReal), intent(in), target    :: temperature ! list of desired temperatures
     integer,          intent(inout) :: method
     real(8),          intent(in)    :: tolerance
     real(8),          intent(in)    :: minmax(2)  ! range of temperatures
@@ -276,14 +276,19 @@ contains
       function nuclide_from_hdf5_c(group, temperature, n) result(ptr) bind(C)
         import HID_T, C_DOUBLE, C_INT, C_PTR
         integer(HID_T), value :: group
-        real(C_DOUBLE), intent(in) :: temperature(*)
+        type(C_PTR), value :: temperature
         integer(C_INT), value :: n
         type(C_PTR) :: ptr
       end function
     end interface
 
     ! Read data on C++ side
-    this % ptr = nuclide_from_hdf5_c(group_id, temperature % data(1), temperature % size())
+    if (temperature % size() > 0) then
+      this % ptr = nuclide_from_hdf5_c(group_id, C_LOC(temperature % data(1)), &
+           temperature % size())
+    else
+      this % ptr = nuclide_from_hdf5_c(group_id, C_NULL_PTR, 0)
+    end if
 
     ! Get name of nuclide from group
     this % name = get_name(group_id)

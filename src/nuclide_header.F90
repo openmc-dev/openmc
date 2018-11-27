@@ -759,6 +759,7 @@ contains
     ! Calculate nu-fission cross section
     do t = 1, n_temperature
       if (this % fissionable) then
+        n_grid = size(this % grid(t) % energy)
         do i = 1, n_grid
           this % xs(t) % value(XS_NU_FISSION,i) = &
                this % nu(this % grid(t) % energy(i), EMISSION_TOTAL) * &

@@ -69,6 +69,8 @@ bool is_inelastic_scatter(int mt)
     }
   } else if (mt <= 200) {
     return !is_disappearance(mt);
+  } else if (mt >= N_2N0 && mt <= N_2NC) {
+    return true;
   } else {
     return false;
   }

@@ -3900,7 +3900,7 @@ class ScatterMatrixXS(MatrixMGXS):
 
             if self.formulation == 'simple':
                 if self.scatter_format == 'legendre':
-                    # If using P0 correction subtract P2 scatter from the diag.
+                    # If using P0 correction subtract P1 scatter from the diag.
                     if self.correction == 'P0' and self.legendre_order == 0:
                         scatter_p0 = self.tallies[self.rxn_type].get_slice(
                             filters=[openmc.LegendreFilter],

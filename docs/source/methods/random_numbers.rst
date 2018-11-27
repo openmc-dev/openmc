@@ -58,7 +58,7 @@ relationship:
 
     \xi_{i+k} = g^k \xi_i + c \frac{g^k - 1}{g - 1} \mod M
 
-Note that :eq:`lcg-skipahead` has the same general form as \eqref{eq:lcg}, so
+Note that equation :eq:`lcg-skipahead` has the same general form as equation :eq:`lcg`, so
 the idea is to determine the new multiplicative and additive constants in
 :math:`O(\log_2 N)` operations.
 

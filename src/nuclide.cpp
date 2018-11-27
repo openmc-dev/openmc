@@ -173,7 +173,8 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n)
       reactions_.push_back(std::make_unique<Reaction>(rx_group, temps_to_read));
 
       // Check for 0K elastic scattering
-      if (reactions_.back()->mt_ == ELASTIC) {
+      const auto& rx = reactions_.back();
+      if (rx->mt_ == ELASTIC) {
         if (object_exists(rx_group, "0K")) {
           hid_t temp_group = open_group(rx_group, "0K");
           read_dataset(temp_group, "xs", elastic_0K_);
@@ -183,7 +184,7 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n)
       close_group(rx_group);
 
       // Determine reaction indices for inelastic scattering reactions
-      if (is_inelastic_scatter(reactions_.back()->mt_)) {
+      if (is_inelastic_scatter(rx->mt_) && !rx->redundant_) {
         index_inelastic_scatter_.push_back(reactions_.size() - 1);
       }
     }

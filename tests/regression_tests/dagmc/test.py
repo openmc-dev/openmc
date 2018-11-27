@@ -6,7 +6,7 @@ import pytest
 from tests.testing_harness import PyAPITestHarness
 
 pytestmark = pytest.mark.skipif(
-    not openmc.capi.dagmc_enabled,
+    not openmc.capi._dagmc_enabled(),
     reason="DAGMC CAD geometry is not enabled.")
 
 def test_dagmc():
@@ -22,7 +22,7 @@ def test_dagmc():
     model.settings.source = source
 
     model.settings.dagmc = True
-    
+
     # tally
     tally = openmc.Tally()
     tally.scores = ['total']

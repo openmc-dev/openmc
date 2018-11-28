@@ -551,12 +551,14 @@ void sample_photon_product(int i_nuclide, double E, int* i_rx, int* i_product)
     // if energy is below threshold for this reaction, skip it
     if (i_grid < threshold) continue;
 
+    // Evaluate neutron cross section
+    double xs = ((1.0 - f) * rx->xs_[i_temp-1].value[i_grid - threshold]
+      + f*(rx->xs_[i_temp-1].value[i_grid - threshold + 1]));
+
     for (int j = 0; j < rx->products_.size(); ++j) {
       if (rx->products_[j].particle_ == ParticleType::photon) {
         // add to cumulative probability
-        double yield = (*rx->products_[j].yield_)(E);
-        prob += ((1.0 - f) * rx->xs_[i_temp-1].value[i_grid - threshold]
-          + f*(rx->xs_[i_temp-1].value[i_grid - threshold + 1])) * yield;
+        prob += (*rx->products_[j].yield_)(E) * xs;
 
         *i_rx = i;
         *i_product = j;

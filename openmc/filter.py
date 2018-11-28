@@ -610,11 +610,32 @@ class MeshFilter(Filter):
         self.mesh = mesh
         self.id = filter_id
 
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        elif len(self.bins) != len(other.bins):
+            return False
+        elif self.mesh.type != other.mesh.type:
+            return False
+        elif self.mesh.dimension != other.mesh.dimension:
+            return False
+        elif not np.allclose(self.mesh.lower_left, other.mesh.lower_left):
+            return False
+        elif not np.allclose(self.mesh.upper_right, other.mesh.upper_right):
+            return False   
+        else:
+            return True
+
     def __repr__(self):
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
         return string
+
+    def __hash__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tBins', self.mesh.lower_left)
+        return hash(string)            
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):

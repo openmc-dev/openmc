@@ -239,7 +239,7 @@ class Maxwell(Univariate):
 
 
 class Watt(Univariate):
-    r"""Watt fission energy spectrum.
+    """Watt fission energy spectrum.
 
     The Watt fission energy spectrum is characterized by two parameters
     :math:`a` and :math:`b` and has density function :math:`p(E) dE = c e^{-E/a}
@@ -306,6 +306,163 @@ class Watt(Univariate):
         element = ET.Element(element_name)
         element.set("type", "watt")
         element.set("parameters", '{} {}'.format(self.a, self.b))
+        return element
+
+class Gaussian(Univariate):
+    """Gaussian energy spectrum.
+
+    The Gaussian energy spectrum is characterized by two parameters
+    :math:`\mu` and :math:`\sigma` and has density function :math:
+    `p(E) dE = 1/\sigma\sqrt{\pi} * e^{(E-\mu/\sigma}`
+
+    Parameters
+    ----------
+    mean : float
+        Mean of the Gaussian distribution in units of eV
+    std_dev : float
+        Standard deviation of the Gaussian distribution in units of eV
+
+    Attributes
+    ----------
+    mean : flo1at
+        Mean of the Gaussian distribution in units of eV
+    std_dev : float
+        Standard deviation of the Gaussian distribution in units of eV
+    """
+
+    def __init__(self, mean=14.08e6, std_dev=4.74636e5):
+        super().__init__()
+        self.mean = mean
+        self.std_dev = std_dev
+
+    def __len__(self):
+        return 2
+
+    @property
+    def mean(self):
+        return self._mean
+
+    @property
+    def std_dev(self):
+        return self._std_dev
+
+    @mean.setter
+    def mean(self, mean):
+        cv.check_type('Gaussian mean', mean, Real)
+        cv.check_greater_than('Gaussian mean', mean, 0.0)
+        self._mean = mean
+
+    @std_dev.setter
+    def std_dev(self, std_dev):
+        cv.check_type('Gaussian std_dev', std_dev, Real)
+        cv.check_greater_than('Gaussian std_dev', std_dev, 0.0)
+        self._std_dev = std_dev
+
+    def to_xml_element(self, element_name):
+        """Return XML representation of the Watt distribution
+
+        Parameters
+        ----------
+        element_name : str
+            XML element name
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing Watt distribution data
+
+        """
+        element = ET.Element(element_name)
+        element.set("type", "gaussian")
+        element.set("parameters", '{} {}'.format(self.mean, self.std_dev))
+        return element
+
+class Muir(Univariate):
+    """Muir energy spectrum.
+
+    The Muir energy spectrum is a Gaussian spectrum, but for 
+    convenience reasons allows the user 3 parameters to define
+    the distribution, e0 the mean energy of particles, the mass
+    of reactants m_rat, and the ion temperature kt. 
+
+    Parameters
+    ----------
+    e0 : float
+        Mean of the Muir distribution in units of eV
+    m_rat : float
+        Ratio of the sum of the masses of the reaction inputs to an 
+        AMU
+    kt : float
+         Ion temperature for the Muir distribution in units of eV
+
+    Attributes
+    ----------
+    e0 : float
+        Mean of the Muir distribution in units of eV
+    m_rat : float
+        Ratio of the sum of the masses of the reaction inputs to an 
+        AMU
+    kt : float
+         Ion temperature for the Muir distribution in units of eV
+
+    """
+
+    def __init__(self, e0=14.08e6, m_rat = 5., kt = 20000.):
+        super().__init__()
+        self.e0 = e0
+        self.m_rat = m_rat
+        self.kt = kt
+
+    def __len__(self):
+        return 3
+
+    @property
+    def e0(self):
+        return self._e0
+
+    @property
+    def m_rat(self):
+        return self._m_rat
+
+    @property
+    def kt(self):
+        return self._kt
+
+    @e0.setter
+    def e0(self, e0):
+        cv.check_type('Muir e0', e0, Real)
+        cv.check_greater_than('Muir e0', e0, 0.0)
+        self._e0 = e0
+
+    @m_rat.setter
+    def m_rat(self, m_rat):
+        cv.check_type('Muir m_rat', m_rat, Real)
+        cv.check_greater_than('Muir m_rat', m_rat, 0.0)
+        self._m_rat = m_rat
+
+    @kt.setter
+    def kt(self, kt):
+        cv.check_type('Muir kt', kt, Real)
+        cv.check_greater_than('Muir kt', kt, 0.0)
+        self._kt = kt
+
+    def to_xml_element(self, element_name):
+        """Return XML representation of the Watt distribution
+
+        Parameters
+        ----------
+        element_name : str
+            XML element name
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing Watt distribution data
+
+        """
+        element = ET.Element(element_name)
+        element.set("type", "gaussian")
+        element.set("parameters", '{} {} {}'.format(self.mean, self.std_dev, self.kt))
         return element
 
 

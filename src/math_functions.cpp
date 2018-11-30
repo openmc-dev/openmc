@@ -674,6 +674,35 @@ double maxwell_spectrum(double T) {
 }
 
 
+double gaussian_spectrum(double mean, double standard_deviation) {
+  double r2 = 1.01;
+  double v1 = 0.;
+  double v2 = 0.;
+  
+  // perhaps there should be a limit to the number of resamples
+  while ( r2 > 1 ) {
+    v1 = 2 * prn() - 1.;
+    v2 = 2 * prn() - 1.;
+    double r = std::pow(v1,2) + std::pow(v2,2);
+    r2 = std::pow(r,2);
+    if ( r2 < 1 ) {
+      double z1 = v1 * std::sqrt(-2.0 * std::log(r2)/r2);
+      double z2 = v2 * std::sqrt(-2.0 * std::log(r2)/r2); 
+      // sample each side of the bell curve
+      double z = 0;
+      if ( prn() <= 0.5 ) z = z1;
+      else z = z2;
+      return mean + standard_deviation*z;
+    }
+  }
+}
+
+double muir_spectrum(double e0, double m_rat, double kt) {
+  double sigma = std::sqrt(4.*e0*kt/m_rat);
+  return gaussian_spectrum(e0,sigma);
+}  
+
+
 double watt_spectrum(double a, double b) {
   double w = maxwell_spectrum(a);
   double E_out = w + 0.25 * a * a * b + (2. * prn() - 1.) * std::sqrt(a * a * b * w);

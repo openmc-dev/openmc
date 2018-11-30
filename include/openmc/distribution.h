@@ -99,6 +99,45 @@ private:
 };
 
 //==============================================================================
+//! Gaussian (fusion) spectrum with form 1/std_dev*sqrt(pi) exp (-(e-E0)/std_dev)^2
+//==============================================================================
+
+class Gaussian : public Distribution {
+public:
+  explicit Gaussian(pugi::xml_node node);
+  Gaussian(double mean, double std_dev) : mean_{mean}, std_dev_{std_dev} { };
+
+  //! Sample a value from the distribution
+  //! \return Sampled value
+  double sample() const;
+private:
+  double mean_;    //!< middle of distribution [eV]
+  double std_dev_; //!< standard deviation [eV]
+};
+
+//==============================================================================
+//! Muit (fusion) spectrum derived from Gaussian with extra params e0 is mean
+//! std dev is sqrt(4*e0*kt/m)
+//==============================================================================
+
+class Muir : public Distribution {
+public:
+  explicit Muir(pugi::xml_node node);
+  Muir(double e0, double m_rat, double kt) : e0_{e0}, m_rat_{m_rat}, kt_{kt} { };
+
+  //! Sample a value from the distribution
+  //! \return Sampled value
+  double sample() const;
+private:
+  // example DT fusion m_rat = 5 (D = 2 + T = 3)
+  // ion temp = 20000 eV
+  // mean neutron energy 14.08e6 eV
+  double e0_;    //!< mean neutron energy [eV]
+  double m_rat_; //!< ratio of reactant masses relative to atomic mass unit
+  double kt_;    //!< ion temperature [ev]
+};
+
+//==============================================================================
 //! Histogram or linear-linear interpolated tabular distribution
 //==============================================================================
 

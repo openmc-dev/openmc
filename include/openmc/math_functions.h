@@ -162,6 +162,38 @@ extern "C" double maxwell_spectrum(double T);
 extern "C" double watt_spectrum(double a, double b);
 
 //==============================================================================
+//! Samples an energy from the Gaussian energy-dependent fission distribution.
+//!
+//! Samples from a Gaussian spectrum with a given mean and standard deviation
+//! The PDF is defined as s(x) = (1/sigma*sqrt(2) * e-((mu-x)/sigma)^2
+//! Its sampled according to 
+//! http://www-pdg.lbl.gov/2009/reviews/rpp2009-rev-monte-carlo-techniques.pdf
+//! section 33.4.4
+//!
+//! @param mean mean of the Gaussian distribution
+//! @param std_dev standard deviation of the Gaussian distribution
+//! @result The sampled outgoing energy
+//==============================================================================
+
+extern "C" double gaussian_spectrum(double mean, double std_dev);
+
+//==============================================================================
+//! Samples an energy from the Muir (Gaussian) energy-dependent distribution.
+//!
+//! This is another form of the Gaussian distribution but with more easily 
+//! modifyable parameters
+//!
+//! @param e0 peak neutron energy [ev]
+//! @param m_rat ratio of the fusion reactants to AMU
+//! @param kt the ion temperature of the reactants [ev]
+//! @result The sampled outgoing energy
+//==============================================================================
+
+extern "C" double muir_spectrum(double e0, double m_rat, double kt);
+
+
+
+//==============================================================================
 //! Doppler broadens the windowed multipole curvefit.
 //!
 //! The curvefit is a polynomial of the form a/E + b/sqrt(E) + c + d sqrt(E)...

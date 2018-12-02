@@ -327,7 +327,7 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
 void Nuclide::calculate_elastic_xs(int i_nuclide) const
 {
   // Get temperature index, grid index, and interpolation factor
-  auto& micro = simulation::micro_xs[i_nuclide-1];
+  auto& micro = simulation::micro_xs[i_nuclide];
   int i_temp = micro.index_temp - 1;
   int i_grid = micro.index_grid - 1;
   double f = micro.interp_factor;

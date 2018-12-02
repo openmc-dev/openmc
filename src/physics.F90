@@ -265,7 +265,7 @@ contains
     type(C_PTR) :: ptr
 
     ! Sample from C++ side
-    ptr = C_LOC(micro_xs(i_nuclide))
+    ptr = C_LOC(micro_xs(i_nuclide + 1))
     call sab_tables(i_sab) % sample(ptr, E, E_out, mu)
 
     ! Set energy to outgoing, change direction of particle

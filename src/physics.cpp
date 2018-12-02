@@ -32,7 +32,7 @@ namespace openmc {
 void collision(Particle* p)
 {
   // Add to collision counter for particle
-  ++p->n_collision;
+  ++(p->n_collision);
 
   // Sample reaction for the material the particle is in
   switch (static_cast<ParticleType>(p->type)) {
@@ -78,14 +78,15 @@ void sample_neutron_reaction(Particle* p)
   sample_nuclide(p, SCORE_TOTAL, &i_nuclide, &i_nuc_mat);
 
   // Save which nuclide particle had collision with
-  p->event_nuclide = i_nuclide;
+  // TODO: off-by-one
+  p->event_nuclide = i_nuclide + 1;
 
   // Create fission bank sites. Note that while a fission reaction is sampled,
   // it never actually "happens", i.e. the weight of the particle does not
   // change when sampling fission sites. The following block handles all
   // absorption (including fission)
 
-  const auto& nuc {data::nuclides[i_nuclide-1]};
+  const auto& nuc {data::nuclides[i_nuclide]};
 
   if (nuc->fissionable_) {
     Reaction* rx = sample_fission(i_nuclide, p->E);
@@ -109,7 +110,7 @@ void sample_neutron_reaction(Particle* p)
   // If survival biasing is being used, the following subroutine adjusts the
   // weight of the particle. Otherwise, it checks to see if absorption occurs
 
-  if (simulation::micro_xs[i_nuclide-1].absorption > 0.0) {
+  if (simulation::micro_xs[i_nuclide].absorption > 0.0) {
     absorption(p, i_nuclide);
   } else {
     p->absorb_wgt = 0.0;
@@ -146,7 +147,7 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx, Bank* bank_
 
   // Determine the expected number of neutrons produced
   double nu_t = p->wgt / simulation::keff * weight * simulation::micro_xs[
-    i_nuclide-1].nu_fission / simulation::micro_xs[i_nuclide-1].total;
+    i_nuclide].nu_fission / simulation::micro_xs[i_nuclide].total;
 
   // Sample the number of neutrons produced
   int nu = static_cast<int>(nu_t);
@@ -212,6 +213,8 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx, Bank* bank_
     p->n_delayed_bank[d] = nu_d[d];
   }
 }
+
+// TODO: Finish converting photon physics functions
 
 // void sample_photon_reaction(Particle* p)
 // {
@@ -436,21 +439,22 @@ void sample_nuclide(const Particle* p, int mt, int* i_nuclide, int* i_nuc_mat)
     }
 
     // Find atom density
-    *i_nuclide = nuclides[*i_nuc_mat];
+    // TODO: off-by-one
+    *i_nuclide = nuclides[*i_nuc_mat] - 1;
     double atom_density = densities[*i_nuc_mat];
 
     // Determine microscopic cross section
     double sigma;
     switch (mt) {
     case SCORE_TOTAL:
-      sigma = atom_density * simulation::micro_xs[*i_nuclide-1].total;
+      sigma = atom_density * simulation::micro_xs[*i_nuclide].total;
       break;
     case SCORE_SCATTER:
-      sigma = atom_density * (simulation::micro_xs[*i_nuclide-1].total -
-        simulation::micro_xs[*i_nuclide-1].absorption);
+      sigma = atom_density * (simulation::micro_xs[*i_nuclide].total -
+        simulation::micro_xs[*i_nuclide].absorption);
         break;
     case SCORE_FISSION:
-      sigma = atom_density * simulation::micro_xs[*i_nuclide-1].fission;
+      sigma = atom_density * simulation::micro_xs[*i_nuclide].fission;
       break;
     }
 
@@ -460,6 +464,8 @@ void sample_nuclide(const Particle* p, int mt, int* i_nuclide, int* i_nuc_mat)
     ++(*i_nuc_mat);
   }
 }
+
+// TODO: Finish converting photon physics functions
 
 // void sample_element(Particle* p)
 // {
@@ -494,12 +500,12 @@ void sample_nuclide(const Particle* p, int mt, int* i_nuclide, int* i_nuc_mat)
 Reaction* sample_fission(int i_nuclide, double E)
 {
   // Get pointer to nuclide
-  const auto& nuc {data::nuclides[i_nuclide-1]};
+  const auto& nuc {data::nuclides[i_nuclide]};
 
   // If we're in the URR, by default use the first fission reaction. We also
   // default to the first reaction if we know that there are no partial fission
   // reactions
-  if (simulation::micro_xs[i_nuclide-1].use_ptable || !nuc->has_partial_fission_) {
+  if (simulation::micro_xs[i_nuclide].use_ptable || !nuc->has_partial_fission_) {
     return nuc->fission_rx_[0];
   }
 
@@ -512,10 +518,10 @@ Reaction* sample_fission(int i_nuclide, double E)
   }
 
   // Get grid index and interpolatoin factor and sample fission cdf
-  int i_temp = simulation::micro_xs[i_nuclide-1].index_temp - 1;
-  int i_grid = simulation::micro_xs[i_nuclide-1].index_grid;
-  double f = simulation::micro_xs[i_nuclide-1].interp_factor;
-  double cutoff = prn() * simulation::micro_xs[i_nuclide-1].fission;
+  int i_temp = simulation::micro_xs[i_nuclide].index_temp - 1;
+  int i_grid = simulation::micro_xs[i_nuclide].index_grid;
+  double f = simulation::micro_xs[i_nuclide].interp_factor;
+  double cutoff = prn() * simulation::micro_xs[i_nuclide].fission;
   double prob = 0.0;
 
   // Loop through each partial fission reaction type
@@ -536,24 +542,25 @@ Reaction* sample_fission(int i_nuclide, double E)
 void sample_photon_product(int i_nuclide, double E, int* i_rx, int* i_product)
 {
   // Get grid index and interpolation factor and sample photon production cdf
-  int i_temp = simulation::micro_xs[i_nuclide-1].index_temp;
-  int i_grid = simulation::micro_xs[i_nuclide-1].index_grid;
-  double f = simulation::micro_xs[i_nuclide-1].interp_factor;
-  double cutoff = prn() * simulation::micro_xs[i_nuclide-1].photon_prod;
+  // TODO: off-by-one
+  int i_temp = simulation::micro_xs[i_nuclide].index_temp - 1;
+  int i_grid = simulation::micro_xs[i_nuclide].index_grid;
+  double f = simulation::micro_xs[i_nuclide].interp_factor;
+  double cutoff = prn() * simulation::micro_xs[i_nuclide].photon_prod;
   double prob = 0.0;
 
   // Loop through each reaction type
-  const auto& nuc {data::nuclides[i_nuclide-1]};
+  const auto& nuc {data::nuclides[i_nuclide]};
   for (int i = 0; i < nuc->reactions_.size(); ++i) {
     const auto& rx = nuc->reactions_[i];
-    int threshold = rx->xs_[i_temp-1].threshold;
+    int threshold = rx->xs_[i_temp].threshold;
 
     // if energy is below threshold for this reaction, skip it
     if (i_grid < threshold) continue;
 
     // Evaluate neutron cross section
-    double xs = ((1.0 - f) * rx->xs_[i_temp-1].value[i_grid - threshold]
-      + f*(rx->xs_[i_temp-1].value[i_grid - threshold + 1]));
+    double xs = ((1.0 - f) * rx->xs_[i_temp].value[i_grid - threshold]
+      + f*(rx->xs_[i_temp].value[i_grid - threshold + 1]));
 
     for (int j = 0; j < rx->products_.size(); ++j) {
       if (rx->products_[j].particle_ == ParticleType::photon) {
@@ -572,8 +579,8 @@ void absorption(Particle* p, int i_nuclide)
 {
   if (settings::survival_biasing) {
     // Determine weight absorbed in survival biasing
-    p->absorb_wgt = p->wgt * simulation::micro_xs[i_nuclide-1].absorption /
-          simulation::micro_xs[i_nuclide-1].total;
+    p->absorb_wgt = p->wgt * simulation::micro_xs[i_nuclide].absorption /
+          simulation::micro_xs[i_nuclide].total;
 
     // Adjust weight of particle by probability of absorption
     p->wgt -= p->absorb_wgt;
@@ -582,16 +589,16 @@ void absorption(Particle* p, int i_nuclide)
     // Score implicit absorption estimate of keff
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
       global_tally_absorption += p->absorb_wgt * simulation::micro_xs[
-        i_nuclide-1].nu_fission / simulation::micro_xs[i_nuclide-1].absorption;
+        i_nuclide].nu_fission / simulation::micro_xs[i_nuclide].absorption;
     }
   } else {
     // See if disappearance reaction happens
-    if (simulation::micro_xs[i_nuclide-1].absorption >
-        prn() * simulation::micro_xs[i_nuclide-1].total) {
+    if (simulation::micro_xs[i_nuclide].absorption >
+        prn() * simulation::micro_xs[i_nuclide].total) {
       // Score absorption estimate of keff
       if (settings::run_mode == RUN_MODE_EIGENVALUE) {
         global_tally_absorption += p->wgt * simulation::micro_xs[
-          i_nuclide-1].nu_fission / simulation::micro_xs[i_nuclide-1].absorption;
+          i_nuclide].nu_fission / simulation::micro_xs[i_nuclide].absorption;
       }
 
       p->alive = false;
@@ -607,8 +614,8 @@ void scatter(Particle* p, int i_nuclide, int i_nuc_mat)
   Direction u_old {p->coord[0].uvw};
 
   // Get pointer to nuclide and grid index/interpolation factor
-  const auto& nuc {data::nuclides[i_nuclide-1]};
-  const auto& micro {simulation::micro_xs[i_nuclide-1]};
+  const auto& nuc {data::nuclides[i_nuclide]};
+  const auto& micro {simulation::micro_xs[i_nuclide]};
   int i_temp =  micro.index_temp - 1;
   int i_grid =  micro.index_grid - 1;
   double f = micro.interp_factor;
@@ -709,7 +716,7 @@ void elastic_scatter(int i_nuclide, const Reaction* rx, double kT, double* E,
   double* uvw, double* mu_lab, double* wgt)
 {
   // get pointer to nuclide
-  const auto& nuc {data::nuclides[i_nuclide-1]};
+  const auto& nuc {data::nuclides[i_nuclide]};
 
   double vel = std::sqrt(*E);
   double awr = nuc->awr_;
@@ -720,9 +727,9 @@ void elastic_scatter(int i_nuclide, const Reaction* rx, double kT, double* E,
 
   // Sample velocity of target nucleus
   Direction v_t {};
-  if (!simulation::micro_xs[i_nuclide-1].use_ptable) {
+  if (!simulation::micro_xs[i_nuclide].use_ptable) {
     v_t = sample_target_velocity(nuc.get(), *E, u, v_n,
-      simulation::micro_xs[i_nuclide-1].elastic, kT, wgt);
+      simulation::micro_xs[i_nuclide].elastic, kT, wgt);
   }
 
   // Velocity of center-of-mass
@@ -943,8 +950,8 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
         }
       }
     }
-  }
-  }
+  } // case RES_SCAT_ARES, RES_SCAT_DBRC
+  } // switch (sampling_method)
 }
 
 Direction
@@ -1013,7 +1020,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Bank
   site->uvw[2] = std::sqrt(1.0 - mu*mu) * std::sin(phi);
 
   // Determine total nu, delayed nu, and delayed neutron fraction
-  const auto& nuc {data::nuclides[i_nuclide-1]};
+  const auto& nuc {data::nuclides[i_nuclide]};
   double nu_t = nuc->nu(E_in, Nuclide::EmissionMode::total);
   double nu_d = nuc->nu(E_in, Nuclide::EmissionMode::delayed);
   double beta = nu_d / nu_t;
@@ -1142,8 +1149,8 @@ void inelastic_scatter(const Nuclide* nuc, const Reaction* rx, Particle* p)
 void sample_secondary_photons(Particle* p, int i_nuclide)
 {
   // Sample the number of photons produced
-  double y_t = p->wgt * simulation::micro_xs[i_nuclide-1].photon_prod /
-    simulation::micro_xs[i_nuclide-1].total;
+  double y_t = p->wgt * simulation::micro_xs[i_nuclide].photon_prod /
+    simulation::micro_xs[i_nuclide].total;
   int y = static_cast<int>(y_t);
   if (prn() <= y_t - y) ++y;
 
@@ -1155,7 +1162,7 @@ void sample_secondary_photons(Particle* p, int i_nuclide)
     sample_photon_product(i_nuclide, p->E, &i_rx, &i_product);
 
     // Sample the outgoing energy and angle
-    auto& rx = data::nuclides[i_nuclide-1]->reactions_[i_rx];
+    auto& rx = data::nuclides[i_nuclide]->reactions_[i_rx];
     double E;
     double mu;
     rx->products_[i_product].sample(p->E, E, mu);

@@ -247,6 +247,10 @@ openmp
   Enables shared-memory parallelism using the OpenMP API. The Fortran compiler
   being used must support OpenMP. (Default: on)
 
+dagmc
+  Enables use of CAD-based DAGMC_ geometries. Please see the note about DAGMC in
+  the optional dependencies list for more information on this feature.(Default: off)
+  
 coverage
   Compile and link code instrumented for coverage analysis. This is typically
   used in conjunction with gcov_.

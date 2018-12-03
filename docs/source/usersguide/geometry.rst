@@ -398,3 +398,22 @@ if needed, lattices, the last step is to create an instance of
 
 .. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
 .. _quadratic surfaces: http://en.wikipedia.org/wiki/Quadric
+
+--------------------------
+Using a DAGMC CAD Model
+--------------------------
+
+A DAGMC run can be enabled in OpenMC by setting the ``dagmc`` property to
+``True`` in the model settings either via the Python ``openmc.settings``
+module::
+
+  settings = openmc.Settings()
+  settings.dagmc = True
+
+or in the `settings.xml <../io_formats/settings.html>`_ file::
+
+  <dagmc>true</dagmc>
+
+With ``dagmc`` set to true, OpenMC will load the DAGMC model (named
+``dagmc.h5m``) when initializing a simulation. If a `geometry.xml
+<../io_formats/geometry.html>`_ is present, it will be ignored.

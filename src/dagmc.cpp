@@ -2,6 +2,7 @@
 
 #include "openmc/cell.h"
 #include "openmc/error.h"
+#include "openmc/file_utils.h"
 #include "openmc/string_utils.h"
 #include "openmc/settings.h"
 #include "openmc/geometry.h"
@@ -9,8 +10,14 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
+#include <fstream>
 
 #ifdef DAGMC
+
+#include "uwuw.hpp"
+#include "dagmcmetadata.hpp"
+
+#define DAGMC_FILENAME "dagmc.h5m"
 
 namespace openmc {
 
@@ -20,28 +27,65 @@ moab::DagMC* DAG;
 
 } // namespace model
 
+bool write_materials_xml(UWUW uwuw) {
+  // if there is a material library in the file,
+  // write a material.xml file
+  std::ofstream mats_xml("materials.xml");
+  // write header
+  mats_xml << "<?xml version=\"1.0\"?>\n";
+  mats_xml << "<materials>\n";
+  std::map<std::string, pyne::Material> ml = uwuw.material_library;
+  std::map<std::string, pyne::Material>::iterator it;
+  // write materials
+  for (it = ml.begin(); it != ml.end(); it++) { mats_xml << it->second.openmc("atom");  }
+  // write footer
+  mats_xml << "</materials>";
+  mats_xml.close();
+}
+
 void load_dagmc_geometry()
 {
   if (!model::DAG) {
     model::DAG = new moab::DagMC();
   }
 
-  int32_t dagmc_univ_id = 0; // universe is always 0 for DAGMC
+  // create uwuw instance
+  UWUW uwuw(DAGMC_FILENAME);
 
-  moab::ErrorCode rval = model::DAG->load_file("dagmc.h5m");
+  // check for uwuw material definitions
+  bool using_uwuw = (uwuw.material_library.size() == 0) ? false : true;
+
+  if (using_uwuw) {
+    std::cout << "Found UWUW Materials in the DAGMC geometry file." << std::endl;
+    // don't overwrite an existing materials.xml file
+    if (file_exists("materials.xml")) {
+        std::stringstream err_msg;
+        err_msg << "A materials.xml file is present along with UWUW material definitions";
+        fatal_error(err_msg.str());
+      }
+    write_materials_xml(uwuw);
+  }
+
+  int32_t dagmc_univ_id = 0; // universe is always 0 for DAGMC runs
+
+  moab::ErrorCode rval = model::DAG->load_file(DAGMC_FILENAME);
   MB_CHK_ERR_CONT(rval);
 
   rval = model::DAG->init_OBBTree();
   MB_CHK_ERR_CONT(rval);
 
-  std::vector<std::string> prop_keywords;
-  prop_keywords.push_back("mat");
-  prop_keywords.push_back("boundary");
-
-  std::map<std::string, std::string> ph;
-  model::DAG->parse_properties(prop_keywords, ph, ":");
-  MB_CHK_ERR_CONT(rval);
-
+  dagmcMetaData DMD(model::DAG);
+  if (using_uwuw) {
+    DMD.load_property_data();
+  }
+  
+  std::vector<std::string> keywords;
+  keywords.push_back("mat");
+  keywords.push_back("density");
+  keywords.push_back("boundary");
+  std::map<std::string, std::string> dum;
+  rval = model::DAG->parse_properties(keywords, dum, ":/");
+  
   // initialize cell objects
   model::n_cells = model::DAG->num_entities(3);
 
@@ -75,21 +119,37 @@ void load_dagmc_geometry()
       continue;
     }
 
-    if (model::DAG->has_prop(vol_handle, "mat")){
-      std::string mat_value;
+    std::string mat_value;
+    if (model::DAG->has_prop(vol_handle, "mat")) {
       rval = model::DAG->prop_value(vol_handle, "mat", mat_value);
       MB_CHK_ERR_CONT(rval);
-      to_lower(mat_value);
-
-      if (mat_value == "void" || mat_value == "vacuum") {
-        c->material_.push_back(MATERIAL_VOID);
-      } else {
-        c->material_.push_back(std::stoi(mat_value));
-      }
     } else {
       std::stringstream err_msg;
       err_msg << "Volume " << c->id_ << " has no material assignment.";
       fatal_error(err_msg.str());
+    }
+
+    std::string cmp_str = mat_value;
+    to_lower(cmp_str);
+    if (cmp_str.find("void") != std::string::npos   ||
+        cmp_str.find("vacuum") != std::string::npos ||
+        cmp_str.find("graveyard") != std::string::npos) {
+      c->material_.push_back(MATERIAL_VOID);
+    } else {
+      if (using_uwuw) {
+        std::string uwuw_mat = DMD.volume_material_property_data_eh[vol_handle];
+        if (uwuw.material_library.count(uwuw_mat) != 0) {
+          int matnumber = uwuw.material_library[uwuw_mat].metadata["mat_number"].asInt();
+          c->material_.push_back(matnumber);
+        } else {
+          std::stringstream err_msg;
+          err_msg << "Material with value " << mat_value << " not found ";
+          err_msg << "in the material library";
+          fatal_error(err_msg.str());
+        }
+      } else {
+        c->material_.push_back(std::stoi(mat_value));
+      }
     }
   }
 
@@ -110,12 +170,12 @@ void load_dagmc_geometry()
     s->id_ = model::DAG->id_by_index(2, i+1);
     s->dagmc_ptr_ = model::DAG;
 
+    std::string bc_value;
     if (model::DAG->has_prop(surf_handle, "boundary")) {
-      std::string bc_value;
       rval = model::DAG->prop_value(surf_handle, "boundary", bc_value);
       MB_CHK_ERR_CONT(rval);
-      to_lower(bc_value);
-
+      to_lower(bc_value);    
+    
       if (bc_value == "transmit" || bc_value == "transmission") {
         s->bc_ = BC_TRANSMIT;
       } else if (bc_value == "vacuum") {
@@ -130,7 +190,7 @@ void load_dagmc_geometry()
                 << "\" specified on surface " << s->id_;
         fatal_error(err_msg);
       }
-    } else {   // if no BC property is found, set to transmit
+    } else { // if no condition is found, set to transmit
       s->bc_ = BC_TRANSMIT;
     }
 

@@ -1,16 +1,4 @@
 <?xml version='1.0' encoding='utf-8'?>
-<materials>
-  <material depletable="true" id="40">
-    <density units="g/cc" value="11" />
-    <nuclide ao="1.0" name="U235" />
-  </material>
-  <material id="41">
-    <density units="g/cc" value="1.0" />
-    <nuclide ao="2.0" name="H1" />
-    <nuclide ao="1.0" name="O16" />
-  </material>
-</materials>
-<?xml version='1.0' encoding='utf-8'?>
 <settings>
   <run_mode>eigenvalue</run_mode>
   <particles>100</particles>

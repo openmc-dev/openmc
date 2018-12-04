@@ -38,7 +38,6 @@ def test_dagmc():
     water = openmc.Material()
     water.add_nuclide('H1', 2.0, 'ao')
     water.add_nuclide('O16', 1.0, 'ao')
-    water.add_s_alpha_beta('c_H_in_H2O')
     water.set_density('g/cc', 1.0)
     water.id = 41
 

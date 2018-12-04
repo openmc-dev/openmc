@@ -25,6 +25,8 @@ struct Position {
   Position& operator-=(double);
   Position& operator*=(Position);
   Position& operator*=(double);
+  Position& operator/=(Position);
+  Position& operator/=(double);
 
   const double& operator[](int i) const {
     switch (i) {
@@ -75,6 +77,10 @@ inline Position operator-(double a, Position b)   { return b -= a; }
 inline Position operator*(Position a, Position b) { return a *= b; }
 inline Position operator*(Position a, double b)   { return a *= b; }
 inline Position operator*(double a, Position b)   { return b *= a; }
+
+inline Position operator/(Position a, Position b) { return a /= b; }
+inline Position operator/(Position a, double b)   { return a /= b; }
+inline Position operator/(double a, Position b)   { return b /= a; }
 
 inline bool operator==(Position a, Position b)
 {return a.x == b.x && a.y == b.y && a.z == b.z;}

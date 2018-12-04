@@ -33,12 +33,20 @@ contains
     integer :: previous_run_mode
     type(Particle) :: p
 
+    interface
+      subroutine set_micro_xs() bind(C)
+      end subroutine
+    end interface
+
     err = 0
 
     ! Set verbosity high
     verbosity = 10
 
+  !$omp parallel
     allocate(micro_xs(n_nuclides))
+  !$omp end parallel
+    call set_micro_xs()
 
     ! Initialize the particle to be tracked
     call particle_initialize(p)

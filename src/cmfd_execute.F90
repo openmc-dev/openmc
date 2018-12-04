@@ -218,7 +218,7 @@ contains
   subroutine cmfd_reweight(new_weights)
 
     use algorithm,   only: binary_search
-    use bank_header, only: source_bank
+    use bank_header
     use constants,   only: ZERO, ONE
     use error,       only: warning, fatal_error
     use message_passing
@@ -230,13 +230,14 @@ contains
     integer :: ny       ! maximum number of cells in y direction
     integer :: nz       ! maximum number of cells in z direction
     integer(C_INT) :: ng       ! maximum number of energy groups
-    integer :: i        ! iteration counter
+    integer(8) :: i        ! iteration counter
     integer :: g        ! index for group
     integer :: ijk(3)   ! spatial bin location
     integer :: e_bin    ! energy bin of source particle
     integer :: mesh_bin ! mesh bin of soruce particle
     integer :: n_groups ! number of energy groups
     real(8) :: norm     ! normalization factor
+    real(C_DOUBLE) :: xyz(3)
     logical(C_BOOL) :: outside  ! any source sites outside mesh
     logical :: in_mesh  ! source site is inside mesh
 
@@ -309,21 +310,22 @@ contains
     end if
 
     ! begin loop over source bank
-    do i = 1, int(work,4)
+    do i = 1, work
 
       ! Determine spatial bin
-      call cmfd_mesh % get_indices(source_bank(i) % xyz, ijk, in_mesh)
+      call source_bank_xyz(i, xyz)
+      call cmfd_mesh % get_indices(xyz, ijk, in_mesh)
 
       ! Determine energy bin
       n_groups = size(cmfd % egrid) - 1
-      if (source_bank(i) % E < cmfd % egrid(1)) then
+      if (source_bank_E(i) < cmfd % egrid(1)) then
         e_bin = 1
         if (master) call warning('Source pt below energy grid')
-      elseif (source_bank(i) % E > cmfd % egrid(n_groups + 1)) then
+      elseif (source_bank_E(i) > cmfd % egrid(n_groups + 1)) then
         e_bin = n_groups
         if (master) call warning('Source pt above energy grid')
       else
-        e_bin = binary_search(cmfd % egrid, n_groups + 1, source_bank(i) % E)
+        e_bin = binary_search(cmfd % egrid, n_groups + 1, source_bank_E(i))
       end if
 
       ! Reverese energy bin (lowest grp is highest energy bin)
@@ -335,8 +337,8 @@ contains
       end if
 
       ! Reweight particle
-      source_bank(i) % wgt = source_bank(i) % wgt * &
-           cmfd % weightfactors(e_bin, ijk(1), ijk(2), ijk(3))
+      call source_bank_set_wgt(i, source_bank_wgt(i) * &
+           cmfd % weightfactors(e_bin, ijk(1), ijk(2), ijk(3)))
     end do
 
   end subroutine cmfd_reweight

@@ -6,9 +6,11 @@
 #include <stddef.h>
 
 #ifdef __cplusplus
+#include "openmc/bank.h"
 extern "C" {
-#endif
-
+  int openmc_fission_bank(openmc::Bank** ptr, int64_t* n);
+  int openmc_source_bank(openmc::Bank** ptr, int64_t* n);
+#else
   struct Bank {
     double wgt;
     double xyz[3];
@@ -17,6 +19,10 @@ extern "C" {
     int delayed_group;
     int particle;
   };
+
+  int openmc_fission_bank(struct Bank** ptr, int64_t* n);
+  int openmc_source_bank(struct Bank** ptr, int64_t* n);
+#endif
 
   int openmc_calculate_volumes();
   int openmc_cell_filter_get_bins(int32_t index, int32_t** cells, int32_t* n);
@@ -38,7 +44,6 @@ extern "C" {
   int openmc_filter_set_type(int32_t index, const char* type);
   int openmc_finalize();
   int openmc_find_cell(double* xyz, int32_t* index, int32_t* instance);
-  int openmc_fission_bank(struct Bank** ptr, int64_t* n);
   int openmc_get_cell_index(int32_t id, int32_t* index);
   int openmc_get_filter_index(int32_t id, int32_t* index);
   void openmc_get_filter_next_id(int32_t* id);
@@ -85,7 +90,6 @@ extern "C" {
   void openmc_set_seed(int64_t new_seed);
   int openmc_simulation_finalize();
   int openmc_simulation_init();
-  int openmc_source_bank(struct Bank** ptr, int64_t* n);
   int openmc_spatial_legendre_filter_get_order(int32_t index, int* order);
   int openmc_spatial_legendre_filter_get_params(int32_t index, int* axis, double* min, double* max);
   int openmc_spatial_legendre_filter_set_order(int32_t index, int order);

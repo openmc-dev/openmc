@@ -9,9 +9,9 @@
 
 #include "pugixml.hpp"
 
+#include "openmc/bank.h"
 #include "openmc/distribution_multi.h"
 #include "openmc/distribution_spatial.h"
-#include "openmc/capi.h"
 #include "openmc/particle.h"
 
 namespace openmc {
@@ -62,7 +62,7 @@ extern "C" void initialize_source();
 //! Sample a site from all external source distributions in proportion to their
 //! source strength
 //! \return Sampled source site
-extern "C" Bank sample_external_source();
+Bank sample_external_source();
 
 //! Fill source bank at end of generation for fixed source simulations
 void fill_source_bank_fixedsource();

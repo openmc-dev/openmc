@@ -30,10 +30,10 @@ URLS = [
 ]
 
 def main():
-    if 'OPENMC_ENDF_DATA' in os.environ:
-        endf_dir = os.environ['OPENMC_ENDF_DATA']
-    elif os.path.isdir("./decay") and os.path.isdir("./nfy") and os.path.isdir("./neutrons"):
+    if os.path.isdir('./decay') and os.path.isdir('./nfy') and os.path.isdir('./neutrons'):
         endf_dir = '.'
+    elif 'OPENMC_ENDF_DATA' in os.environ:
+        endf_dir = os.environ['OPENMC_ENDF_DATA']
     else:
         for url in URLS:
             basename = download(url)
@@ -48,6 +48,8 @@ def main():
 
     # Create a Chain
     chain = openmc.deplete.Chain()
+
+    print('Reading ENDF nuclear data from "{}"...'.format(os.path.abspath(endf_dir)))
 
     # Create dictionary mapping target to filename
     print('Processing neutron sub-library files...')
@@ -75,7 +77,7 @@ def main():
 
     for name in CASL_CHAIN:
         if name not in decay_data:
-            print("{} has not decay data?".format(name))
+            print('WARNING: {} has no decay data!'.format(name))
 
     print('Processing fission product yield sub-library files...')
     fpy_data = {}
@@ -178,22 +180,22 @@ def main():
                         # 1 for independent
                         if ifpy == 1:
                             if product not in table_yd:
-                                print("No independent fission yields found for {} in {}".format(product, parent))
+                                print('No independent fission yields found for {} in {}'.format(product, parent))
                             else:
                                 yields[product] += table_yd[product].nominal_value
                         # 2 for cumulative
                         elif ifpy == 2:
                             if product not in table_yc:
-                                print("No cumulative fission yields found for {} in {}".format(product, parent))
+                                print('No cumulative fission yields found for {} in {}'.format(product, parent))
                             else:
                                 yields[product] += table_yc[product].nominal_value
                         # -1 for stable + unstable
                         elif ifpy == -1:
                             if product not in table_yd:
-                                print("No independent fission yields found for {} in {}".format(product, parent))
+                                print('No independent fission yields found for {} in {}'.format(product, parent))
                             else:
                                 yields[product] += table_yc[product].nominal_value
-                                product_meta = "{}_m1".format(product)
+                                product_meta = '{}_m1'.format(product)
                                 if product_meta in table_yd:
                                     yields[product] += table_yc[product_meta].nominal_value
                         # 3 for special treatment with weight fractions
@@ -201,7 +203,7 @@ def main():
                             for tuple_i in CASL_CHAIN[product][3]:
                                 name_i, weight_i, ifpy_i = tuple_i
                                 if name_i not in table_yd:
-                                    print("No fission yields found for {} in {}".format(name_i, parent))
+                                    print('No fission yields found for {} in {}'.format(name_i, parent))
                                 else:
                                     if ifpy_i == 1:
                                         yields[product] += weight_i * table_yd[name_i].nominal_value

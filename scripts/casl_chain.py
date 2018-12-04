@@ -7,7 +7,18 @@
 # nuclides (category 1) and fission product nuclides (category 3).
 
 CASL_CHAIN = {
-   # Nuclide: (Is stable, CAT, IFPY, Special yield treatment)
+    # Nuclide: (Stable, CAT, IFPY, Special yield treatment)
+    # Stable: True if nuclide has no decay reactions
+    # CAT: Category of nuclides
+    #      1-Activation nuclides
+    #      2-Heavy metal nuclides
+    #      3-Fission product nuclides
+    # IFPY: Indicator of fission product yield
+    #       0-Non FPY
+    #       1-Direct FPY (-1 indicates (stable+metastable) direct FPY)
+    #       2-Cumulative FPY
+    #       3-Special treatment with weight fractions
+    # Special yield: (nuclide_i/weight_i/IFPY_i)
     'B10': (True, 1, 0, None),
     'B11': (True, 1, 0, None),
     'O16': (True, 1, 0, None),

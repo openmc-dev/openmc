@@ -25,9 +25,6 @@ extern std::array<double, 2> k_sum; //!< Used to reduce sum and sum_sq
 extern std::vector<double> entropy; //!< Shannon entropy at each generation
 extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS
 
-extern "C" int64_t n_bank;
-#pragma omp threadprivate(n_bank)
-
 } // namespace simulation
 
 //==============================================================================
@@ -35,15 +32,22 @@ extern "C" int64_t n_bank;
 //==============================================================================
 
 //! Collect/normalize the tracklength keff from each process
-extern "C" void calculate_generation_keff();
+void calculate_generation_keff();
 
 //! Calculate mean/standard deviation of keff during active generations
 //!
 //! This function sets the global variables keff and keff_std which represent
 //! the mean and standard deviation of the mean of k-effective over active
 //! generations. It also broadcasts the value from the master process.
-extern "C" void calculate_average_keff();
+void calculate_average_keff();
 
+#ifdef _OPENMP
+//! Join threadprivate fission banks into a single fission bank
+//!
+//! Note that this operation is necessarily sequential to preserve the order of
+//! the bank when using varying numbers of threads.
+void join_bank_from_threads();
+#endif
 
 //! Calculates a minimum variance estimate of k-effective
 //!
@@ -60,16 +64,16 @@ extern "C" void calculate_average_keff();
 extern "C" int openmc_get_keff(double* k_combined);
 
 //! Sample/redistribute source sites from accumulated fission sites
-extern "C" void synchronize_bank();
+void synchronize_bank();
 
 //! Calculates the Shannon entropy of the fission source distribution to assess
 //! source convergence
-extern "C" void shannon_entropy();
+void shannon_entropy();
 
 //! Determines the source fraction in each UFS mesh cell and reweights the
 //! source bank so that the sum of the weights is equal to n_particles. The
 //! 'source_frac' variable is used later to bias the production of fission sites
-extern "C" void ufs_count_sites();
+void ufs_count_sites();
 
 //! Get UFS weight corresponding to particle's location
 extern "C" double ufs_get_weight(const Particle* p);

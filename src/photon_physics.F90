@@ -540,9 +540,9 @@ contains
 ! THICK_TARGET_BREMSSTRAHLUNG
 !===============================================================================
 
-  subroutine thick_target_bremsstrahlung(p, E_lost)
+  subroutine thick_target_bremsstrahlung(p, E_lost) bind(C)
     type(Particle), intent(inout) :: p
-    real(8),        intent(inout) :: E_lost
+    real(C_DOUBLE), intent(out) :: E_lost
 
     integer :: i, j
     integer :: i_e, i_w

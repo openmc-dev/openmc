@@ -381,6 +381,7 @@ add_library(libopenmc SHARED
   src/tallies/tally_header.F90
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90
+  src/bank.cpp
   src/dagmc.cpp
   src/cell.cpp
   src/cmfd_execute.cpp
@@ -408,6 +409,8 @@ add_library(libopenmc SHARED
   src/nuclide.cpp
   src/output.cpp
   src/particle.cpp
+  src/photon.cpp
+  src/physics.cpp
   src/physics_common.cpp
   src/physics_mg.cpp
   src/plot.cpp

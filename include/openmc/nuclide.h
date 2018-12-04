@@ -5,23 +5,75 @@
 #define OPENMC_NUCLIDE_H
 
 #include <array>
+#include <memory> // for unique_ptr
+#include <vector>
+
+#include <hdf5.h>
 
 #include "openmc/constants.h"
+#include "openmc/endf.h"
+#include "openmc/reaction.h"
+#include "openmc/reaction_product.h"
 
 namespace openmc {
 
 //==============================================================================
-// Global variables
+// Constants
 //==============================================================================
 
-namespace data {
+constexpr double CACHE_INVALID {-1.0};
 
-// Minimum/maximum transport energy for each particle type. Order corresponds to
-// that of the ParticleType enum
-extern std::array<double, 2> energy_min;
-extern std::array<double, 2> energy_max;
+//===============================================================================
+// Data for a nuclide
+//===============================================================================
 
-} // namespace data
+class Nuclide {
+public:
+  // Types, aliases
+  using EmissionMode = ReactionProduct::EmissionMode;
+  struct EnergyGrid {
+    std::vector<int> grid_index;
+    std::vector<double> energy;
+  };
+
+  // Constructors
+  Nuclide(hid_t group, const double* temperature, int n);
+
+  // Methods
+  double nu(double E, EmissionMode mode, int group=0) const;
+  void calculate_elastic_xs(int i_nuclide) const;
+
+  //! Determines the microscopic 0K elastic cross section at a trial relative
+  //! energy used in resonance scattering
+  double elastic_xs_0K(double E) const;
+
+  // Data members
+  std::string name_; //! Name of nuclide, e.g. "U235"
+  int Z_; //! Atomic number
+  int A_; //! Mass number
+  int metastable_; //! Metastable state
+  double awr_; //! Atomic weight ratio
+  std::vector<double> kTs_; //! temperatures in eV (k*T)
+  std::vector<EnergyGrid> grid_; //! Energy grid at each temperature
+
+  bool fissionable_ {false}; //! Whether nuclide is fissionable
+  bool has_partial_fission_ {false}; //! has partial fission reactions?
+  std::vector<Reaction*> fission_rx_; //! Fission reactions
+  int n_precursor_ {0}; //! Number of delayed neutron precursors
+  std::unique_ptr<Function1D> total_nu_; //! Total neutron yield
+
+  // Resonance scattering information
+  bool resonant_ {false};
+  std::vector<double> energy_0K_;
+  std::vector<double> elastic_0K_;
+  std::vector<double> xs_cdf_;
+
+  std::vector<std::unique_ptr<Reaction>> reactions_; //! Reactions
+  std::vector<int> index_inelastic_scatter_;
+
+private:
+  void create_derived();
+};
 
 //===============================================================================
 //! Cached microscopic cross sections for a particular nuclide at the current
@@ -66,19 +118,53 @@ struct NuclideMicroXS {
 // particle is traveling through
 //===============================================================================
 
-  struct MaterialMacroXS {
-    double total;         //!< macroscopic total xs
-    double absorption;    //!< macroscopic absorption xs
-    double fission;       //!< macroscopic fission xs
-    double nu_fission;    //!< macroscopic production xs
-    double photon_prod;   //!< macroscopic photon production xs
+struct MaterialMacroXS {
+  double total;         //!< macroscopic total xs
+  double absorption;    //!< macroscopic absorption xs
+  double fission;       //!< macroscopic fission xs
+  double nu_fission;    //!< macroscopic production xs
+  double photon_prod;   //!< macroscopic photon production xs
 
-    // Photon cross sections
-    double coherent;        //!< macroscopic coherent xs
-    double incoherent;      //!< macroscopic incoherent xs
-    double photoelectric;   //!< macroscopic photoelectric xs
-    double pair_production; //!< macroscopic pair production xs
-  };
+  // Photon cross sections
+  double coherent;        //!< macroscopic coherent xs
+  double incoherent;      //!< macroscopic incoherent xs
+  double photoelectric;   //!< macroscopic photoelectric xs
+  double pair_production; //!< macroscopic pair production xs
+};
+
+//==============================================================================
+// Global variables
+//==============================================================================
+
+namespace data {
+
+// Minimum/maximum transport energy for each particle type. Order corresponds to
+// that of the ParticleType enum
+extern std::array<double, 2> energy_min;
+extern std::array<double, 2> energy_max;
+
+extern std::vector<std::unique_ptr<Nuclide>> nuclides;
+
+} // namespace data
+
+namespace simulation {
+
+// Cross section caches
+extern NuclideMicroXS* micro_xs;
+extern "C" MaterialMacroXS material_xs;
+#pragma omp threadprivate(micro_xs, material_xs)
+
+} // namespace simulation
+
+//==============================================================================
+// Fortran compatibility
+//==============================================================================
+
+extern "C" void set_micro_xs();
+extern "C" bool nuclide_wmp_present(int i_nuclide);
+extern "C" double nuclide_wmp_emin(int i_nuclide);
+extern "C" double nuclide_wmp_emax(int i_nuclide);
+
 
 } // namespace openmc
 

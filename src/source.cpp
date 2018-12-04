@@ -5,6 +5,7 @@
 
 #include "xtensor/xadapt.hpp"
 
+#include "openmc/bank.h"
 #include "openmc/cell.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
@@ -242,11 +243,6 @@ void initialize_source()
 {
   write_message("Initializing source particles...", 5);
 
-  // Get pointer to source bank
-  Bank* source_bank;
-  int64_t n;
-  openmc_source_bank(&source_bank, &n);
-
   if (settings::path_source != "") {
     // Read the source from a binary file instead of sampling from some
     // assumed source distribution
@@ -268,7 +264,7 @@ void initialize_source()
     }
 
     // Read in the source bank
-    read_source_bank(file_id, source_bank);
+    read_source_bank(file_id);
 
     // Close file
     file_close(file_id);
@@ -282,7 +278,7 @@ void initialize_source()
       set_particle_seed(id);
 
       // sample external source distribution
-      source_bank[i] = sample_external_source();
+      simulation::source_bank[i] = sample_external_source();
     }
   }
 
@@ -291,7 +287,7 @@ void initialize_source()
     write_message("Writing out initial source...", 5);
     std::string filename = settings::path_output + "initial_source.h5";
     hid_t file_id = file_open(filename, 'w', true);
-    write_source_bank(file_id, source_bank);
+    write_source_bank(file_id);
     file_close(file_id);
   }
 }
@@ -354,11 +350,6 @@ extern "C" double total_source_strength()
 void fill_source_bank_fixedsource()
 {
   if (settings::path_source.empty()) {
-    // Get pointer to source bank
-    Bank* source_bank;
-    int64_t n;
-    openmc_source_bank(&source_bank, &n);
-
     for (int64_t i = 0; i < simulation::work; ++i) {
       // initialize random number seed
       int64_t id = (simulation::total_gen + overall_generation()) *
@@ -366,7 +357,7 @@ void fill_source_bank_fixedsource()
       set_particle_seed(id);
 
       // sample external source distribution
-      source_bank[i] = sample_external_source();
+      simulation::source_bank[i] = sample_external_source();
     }
   }
 }

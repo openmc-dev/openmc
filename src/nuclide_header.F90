@@ -71,15 +71,7 @@ module nuclide_header
     ! Microscopic cross sections
     type(SumXS), allocatable :: xs(:)
 
-    ! Resonance scattering info
-    logical              :: resonant = .false. ! resonant scatterer?
-    real(8), allocatable :: energy_0K(:)  ! energy grid for 0K xs
-    real(8), allocatable :: elastic_0K(:) ! Microscopic elastic cross section
-    real(8), allocatable :: xs_cdf(:) ! CDF of v_rel times cross section
-
     ! Fission information
-    logical :: has_partial_fission = .false. ! nuclide has partial fission reactions?
-    integer :: n_fission = 0                 ! # of fission reactions
     integer :: n_precursor = 0               ! # of delayed neutron precursors
     integer, allocatable :: index_fission(:) ! indices in reactions
     class(Function1D), allocatable :: total_nu
@@ -95,7 +87,6 @@ module nuclide_header
 
     ! Reactions
     type(Reaction), allocatable :: reactions(:)
-    integer, allocatable :: index_inelastic_scatter(:)
 
     ! Array that maps MT values to index in reactions; used at tally-time. Note
     ! that ENDF-102 does not assign any MT values above 891.
@@ -105,8 +96,9 @@ module nuclide_header
     class(Function1D), allocatable :: fission_q_prompt ! fragments and prompt neutrons, gammas
     class(Function1D), allocatable :: fission_q_recov  ! fragments, neutrons, gammas, betas
 
+    type(C_PTR) :: ptr
+
   contains
-    procedure :: assign_0K_elastic_scattering
     procedure :: clear => nuclide_clear
     procedure :: from_hdf5 => nuclide_from_hdf5
     procedure :: init_grid => nuclide_init_grid
@@ -184,7 +176,7 @@ module nuclide_header
 
   ! Cross section caches
   type(NuclideMicroXS), allocatable, target :: micro_xs(:)  ! Cache for each nuclide
-  type(MaterialMacroXS)             :: material_xs  ! Cache for current material
+  type(MaterialMacroXS), bind(C)            :: material_xs  ! Cache for current material
 !$omp threadprivate(micro_xs, material_xs)
 
   ! Minimum/maximum energies
@@ -231,78 +223,10 @@ contains
     b = library_present_c(type, to_c_string(name))
   end function
 
-!===============================================================================
-! ASSIGN_0K_ELASTIC_SCATTERING
-!===============================================================================
-
-  subroutine assign_0K_elastic_scattering(this)
-    class(Nuclide), intent(inout) :: this
-
-    integer :: i
-    real(8) :: xs_cdf_sum
-
-    interface
-      function res_scat_nuclides_empty() result(empty) bind(C)
-        import C_BOOL
-        logical(C_BOOL) :: empty
-      end function
-
-      function res_scat_nuclides_size() result(n) bind(C)
-        import C_INT
-        integer(C_INT) :: n
-      end function
-
-      function res_scat_nuclides_cmp(i, name) result(b) bind(C)
-        import C_INT, C_CHAR, C_BOOL
-        integer(C_INT), value :: i
-        character(kind=C_CHAR), intent(in) :: name(*)
-        logical(C_BOOL) :: b
-      end function
-    end interface
-
-    this % resonant = .false.
-    if (.not. res_scat_nuclides_empty()) then
-      ! If resonant nuclides were specified, check the list explicitly
-      do i = 1, res_scat_nuclides_size()
-        if (res_scat_nuclides_cmp(i, to_c_string(this % name))) then
-          this % resonant = .true.
-
-          ! Make sure nuclide has 0K data
-          if (.not. allocated(this % energy_0K)) then
-            call fatal_error("Cannot treat " // trim(this % name) // " as a &
-                 &resonant scatterer because 0 K elastic scattering data is &
-                 &not present.")
-          end if
-
-          exit
-        end if
-      end do
-    else
-      ! Otherwise, assume that any that have 0 K elastic scattering data are
-      ! resonant
-      this % resonant = allocated(this % energy_0K)
-    end if
-
-    if (this % resonant) then
-      ! Build CDF for 0K elastic scattering
-      xs_cdf_sum = ZERO
-      allocate(this % xs_cdf(0:size(this % energy_0K)))
-      this % xs_cdf(0) = ZERO
-
-      associate (E => this % energy_0K, xs => this % elastic_0K)
-        do i = 1, size(E) - 1
-          ! Negative cross sections result in a CDF that is not monotonically
-          ! increasing. Set all negative xs values to zero.
-          if (xs(i) < ZERO) xs(i) = ZERO
-
-          ! build xs cdf
-          xs_cdf_sum = xs_cdf_sum + (sqrt(E(i))*xs(i) + sqrt(E(i+1))*xs(i+1))&
-               / TWO * (E(i+1) - E(i))
-          this % xs_cdf(i) = xs_cdf_sum
-        end do
-      end associate
-    end if
-  end subroutine assign_0K_elastic_scattering
+  function micro_xs_ptr() result(ptr) bind(C)
+    type(C_PTR) :: ptr
+    ptr = C_LOC(micro_xs(1))
+  end function
 
 !===============================================================================
 ! NUCLIDE_CLEAR resets and deallocates data in Nuclide
@@ -310,19 +234,6 @@ contains
 
   subroutine nuclide_clear(this)
     class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
-    integer :: i
-
-    interface
-      subroutine reaction_delete(rx) bind(C)
-        import C_PTR
-        type(C_PTR), value :: rx
-      end subroutine reaction_delete
-    end interface
-
-    do i = 1, size(this % reactions)
-      call reaction_delete(this % reactions(i) % ptr)
-    end do
-    deallocate(this % reactions)
 
     if (associated(this % multipole)) deallocate(this % multipole)
 
@@ -332,7 +243,7 @@ contains
                                minmax, master, i_nuclide)
     class(Nuclide),   intent(inout) :: this
     integer(HID_T),   intent(in)    :: group_id
-    type(VectorReal), intent(in)    :: temperature ! list of desired temperatures
+    type(VectorReal), intent(in), target    :: temperature ! list of desired temperatures
     integer,          intent(inout) :: method
     real(8),          intent(in)    :: tolerance
     real(8),          intent(in)    :: minmax(2)  ! range of temperatures
@@ -347,7 +258,6 @@ contains
     integer(HID_T) :: kT_group
     integer(HID_T) :: rxs_group
     integer(HID_T) :: rx_group
-    integer(HID_T) :: xs, temp_group
     integer(HID_T) :: total_nu
     integer(HID_T) :: fer_group                 ! fission_energy_release group
     integer(HID_T) :: fer_dset
@@ -361,7 +271,24 @@ contains
     real(8) :: temp_actual
     type(VectorInt) :: MTs
     type(VectorInt) :: temps_to_read
-    type(VectorInt) :: index_inelastic_scatter
+
+    interface
+      function nuclide_from_hdf5_c(group, temperature, n) result(ptr) bind(C)
+        import HID_T, C_DOUBLE, C_INT, C_PTR
+        integer(HID_T), value :: group
+        type(C_PTR), value :: temperature
+        integer(C_INT), value :: n
+        type(C_PTR) :: ptr
+      end function
+    end interface
+
+    ! Read data on C++ side
+    if (temperature % size() > 0) then
+      this % ptr = nuclide_from_hdf5_c(group_id, C_LOC(temperature % data(1)), &
+           temperature % size())
+    else
+      this % ptr = nuclide_from_hdf5_c(group_id, C_NULL_PTR, 0)
+    end if
 
     ! Get name of nuclide from group
     this % name = get_name(group_id)
@@ -487,15 +414,6 @@ contains
       call read_dataset(this % grid(i) % energy, energy_dset)
       call close_dataset(energy_dset)
     end do
-
-    ! Check for 0K energy grid
-    if (object_exists(energy_group, '0K')) then
-      energy_dset = open_dataset(energy_group, '0K')
-      call get_shape(energy_dset, dims)
-      allocate(this % energy_0K(int(dims(1), 4)))
-      call read_dataset(this % energy_0K, energy_dset)
-      call close_dataset(energy_dset)
-    end if
     call close_group(energy_group)
 
     ! Get MT values based on group names
@@ -513,35 +431,12 @@ contains
       rx_group = open_group(rxs_group, 'reaction_' // trim(&
            zero_padded(MTs % data(i), 3)))
 
-      call this % reactions(i) % from_hdf5(rx_group, temps_to_read)
-
-      ! Check for 0K elastic scattering
-      if (this % reactions(i) % MT == 2) then
-        if (object_exists(rx_group, '0K')) then
-          temp_group = open_group(rx_group, '0K')
-          xs = open_dataset(temp_group, 'xs')
-          call get_shape(xs, dims)
-          allocate(this % elastic_0K(int(dims(1), 4)))
-          call read_dataset(this % elastic_0K, xs)
-          call close_dataset(xs)
-          call close_group(temp_group)
-        end if
-      end if
-
-      ! Add the reaction index to the scattering array if this is an inelastic
-      ! scatter reaction
-      if (is_inelastic_scatter(MTs % data(i))) then
-        call index_inelastic_scatter % push_back(i)
-      end if
+      ! Set pointer for each reaction
+      call this % reactions(i) % init(this % ptr, i)
 
       call close_group(rx_group)
     end do
     call close_group(rxs_group)
-
-    ! Recast to a regular array to save space
-    allocate(this % index_inelastic_scatter(index_inelastic_scatter % size()))
-    this % index_inelastic_scatter = &
-         index_inelastic_scatter % data(1: index_inelastic_scatter % size())
 
     ! Read unresolved resonance probability tables if present
     if (object_exists(group_id, 'urr')) then
@@ -718,7 +613,6 @@ contains
               allocate(this % index_fission(1))
             elseif (rx % MT == N_F) then
               allocate(this % index_fission(PARTIAL_FISSION_MAX))
-              this % has_partial_fission = .true.
             end if
           end if
 
@@ -738,7 +632,6 @@ contains
             if (t == 1) then
               i_fission = i_fission + 1
               this % index_fission(i_fission) = i
-              this % n_fission = this % n_fission + 1
             end if
           end if  ! fission
         end do  ! temperature
@@ -1354,45 +1247,6 @@ contains
   end subroutine multipole_deriv_eval
 
 !===============================================================================
-! 0K_ELASTIC_XS determines the microscopic 0K elastic cross section
-! for a given nuclide at the trial relative energy used in resonance scattering
-!===============================================================================
-
-  pure function elastic_xs_0K(E, nuc) result(xs_out)
-    real(8),       intent(in) :: E      ! trial energy
-    type(Nuclide), intent(in) :: nuc    ! target nuclide at temperature
-    real(8)                   :: xs_out ! 0K xs at trial energy
-
-    integer :: i_grid ! index on nuclide energy grid
-    integer :: n_grid
-    real(8) :: f      ! interp factor on nuclide energy grid
-
-    ! Determine index on nuclide energy grid
-    n_grid = size(nuc % energy_0K)
-    if (E < nuc % energy_0K(1)) then
-      i_grid = 1
-    elseif (E > nuc % energy_0K(n_grid)) then
-      i_grid = n_grid - 1
-    else
-      i_grid = binary_search(nuc % energy_0K, n_grid, E)
-    end if
-
-    ! check for rare case where two energy points are the same
-    if (nuc % energy_0K(i_grid) == nuc % energy_0K(i_grid+1)) then
-      i_grid = i_grid + 1
-    end if
-
-    ! calculate interpolation factor
-    f = (E - nuc % energy_0K(i_grid)) &
-         & / (nuc % energy_0K(i_grid + 1) - nuc % energy_0K(i_grid))
-
-    ! Calculate microscopic nuclide elastic cross section
-    xs_out = (ONE - f) * nuc % elastic_0K(i_grid) &
-         & + f * nuc % elastic_0K(i_grid + 1)
-
-  end function elastic_xs_0K
-
-!===============================================================================
 ! CALCULATE_URR_XS determines cross sections in the unresolved resonance range
 ! from probability tables
 !===============================================================================
@@ -1573,6 +1427,9 @@ contains
     interface
       subroutine library_clear() bind(C)
       end subroutine
+
+      subroutine nuclides_clear() bind(C)
+      end subroutine
     end interface
 
     ! Deallocate cross section data, listings, and cache
@@ -1582,6 +1439,7 @@ contains
         call nuclides(i) % clear()
       end do
       deallocate(nuclides)
+      call nuclides_clear()
     end if
     n_nuclides = 0
 
@@ -1666,9 +1524,6 @@ contains
         call nuclide_dict % set(to_lower(name_), n)
         n_nuclides = n
 
-        ! Assign resonant scattering data
-        if (res_scat_on) call nuclides(n) % assign_0K_elastic_scattering()
-
         ! Initialize nuclide grid
         call nuclides(n) % init_grid(energy_min(NEUTRON), &
              energy_max(NEUTRON), n_log_bins)
@@ -1705,5 +1560,24 @@ contains
       call set_errmsg("Memory for nuclides has not been allocated yet.")
     end if
   end function openmc_nuclide_name
+
+  function nuclide_wmp_present(i_nuclide) result(b) bind(C)
+    integer(C_INT), value :: i_nuclide
+    logical(C_BOOL) :: b
+    b = nuclides(i_nuclide + 1) % mp_present
+  end function
+
+  function nuclide_wmp_emin(i_nuclide) result(E) bind(C)
+    integer(C_INT), value :: i_nuclide
+    real(C_DOUBLE) :: E
+    E = nuclides(i_nuclide + 1) % multipole % E_min
+  end function
+
+  function nuclide_wmp_emax(i_nuclide) result(E) bind(C)
+    integer(C_INT), value :: i_nuclide
+    real(C_DOUBLE) :: E
+    E = nuclides(i_nuclide + 1) % multipole % E_max
+  end function
+
 
 end module nuclide_header

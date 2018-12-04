@@ -5,6 +5,7 @@
 
 #include "xtensor/xarray.hpp"
 
+#include "openmc/bank.h"
 #include "openmc/constants.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
@@ -47,12 +48,8 @@ sample_reaction(Particle* p, const MaterialMacroXS* material_xs)
 
   if (model::materials[p->material - 1]->fissionable) {
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      Bank* result_bank;
-      int64_t result_bank_size;
-      // Get pointer to fission bank from Fortran side
-      openmc_fission_bank(&result_bank, &result_bank_size);
-      create_fission_sites(p, result_bank, &simulation::n_bank, result_bank_size,
-                           material_xs);
+      create_fission_sites(p, simulation::fission_bank.data(), &simulation::n_bank,
+                           simulation::fission_bank.size(), material_xs);
     } else if ((settings::run_mode == RUN_MODE_FIXEDSOURCE) &&
                (settings::create_fission_neutrons)) {
       create_fission_sites(p, p->secondary_bank, &(p->n_secondary),

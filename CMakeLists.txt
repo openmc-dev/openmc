@@ -417,6 +417,7 @@ add_library(libopenmc SHARED
   src/position.cpp
   src/progress_bar.cpp
   src/pugixml/pugixml_c.cpp
+  src/urr.cpp
   src/random_lcg.cpp
   src/reaction.cpp
   src/reaction_product.cpp

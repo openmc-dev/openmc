@@ -14,6 +14,7 @@
 #include "openmc/endf.h"
 #include "openmc/reaction.h"
 #include "openmc/reaction_product.h"
+#include "urr.h"
 
 namespace openmc {
 
@@ -67,6 +68,11 @@ public:
   std::vector<double> energy_0K_;
   std::vector<double> elastic_0K_;
   std::vector<double> xs_cdf_;
+
+  // Unresolved resonance range information
+  bool urr_present_ {false};
+  int urr_inelastic_ {C_NONE};
+  std::vector<UrrData> urr_data_;
 
   std::vector<std::unique_ptr<Reaction>> reactions_; //! Reactions
   std::vector<int> index_inelastic_scatter_;

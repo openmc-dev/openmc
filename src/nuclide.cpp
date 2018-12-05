@@ -191,6 +191,47 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n)
   }
   close_group(rxs_group);
 
+  // Read unresolved resonance probability tables if present
+  if (object_exists(group, "urr")) {
+    urr_present_ = true;
+    urr_data_.resize(temps_to_read.size());
+
+    for (int i = 0; i < temps_to_read.size(); i++) {
+      // Get temperature as a string
+      std::string temp_str {std::to_string(temps_to_read[i]) + "K"};
+
+      // Read probability tables for i-th temperature
+      hid_t urr_group = open_group(group, ("urr/" + temp_str).c_str());
+      urr_data_[i].from_hdf5(urr_group);
+      close_group(urr_group);
+
+      // Check for negative values
+      if (xt::any(urr_data_[i].prob_ < 0.) && mpi::master) {
+        warning("Negative value(s) found on probability table for nuclide " +
+                name_ + " at " + temp_str);
+      }
+    }
+
+    // If the inelastic competition flag indicates that the inelastic cross
+    // section should be determined from a normal reaction cross section, we
+    // need to get the index of the reaction.
+    if (temps_to_read.size() > 0) {
+      if (urr_data_[0].inelastic_flag_ > 0) {
+        for (int i = 0; i < reactions_.size(); i++) {
+          if (reactions_[i]->mt_ == urr_data_[0].inelastic_flag_) {
+            urr_inelastic_ = i;
+          }
+        }
+
+        // Abort if no corresponding inelastic reaction was found
+        if (urr_inelastic_ == C_NONE) {
+          fatal_error("Could no find inelastic reaction specified on "
+                      "unresolved resonance probability table.");
+        }
+      }
+    }
+  }
+
   // Check for nu-total
   if (object_exists(group, "total_nu")) {
     // Read total nu data

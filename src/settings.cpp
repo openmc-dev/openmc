@@ -5,7 +5,9 @@
 #include <sstream>
 #include <string>
 
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"

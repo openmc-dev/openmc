@@ -121,7 +121,7 @@ def find_material(xyz):
     _dll.openmc_find_cell((c_double*3)(*xyz), index, instance)
 
     mats = openmc.capi.Cell(index=index.value).fill
-    if isinstance(mats, openmc.capi.Material):
+    if isinstance(mats, (openmc.capi.Material, type(None))):
         return mats
     else:
         return mats[instance.value]

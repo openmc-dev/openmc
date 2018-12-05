@@ -8,14 +8,13 @@ from openmc.mgxs.mdgxs import *
 GROUP_STRUCTURES = {}
 """Dictionary of commonly used energy group structures, including "CASMO-X" (where X
 is 2, 4, 8, 16, 25, 40 or 70) from the CASMO_ lattice physics code and other commonly
-used activation energy group structures "VITAMIN-J-175", "TRIPOLI-315", "CCFE-709" 
-and "UKAEA-1102"
+used activation_ energy group structures "VITAMIN-J-175", "TRIPOLI-315", "CCFE-709_" 
+and "UKAEA-1102_"
 
 .. _CASMO: https://www.studsvik.com/SharepointFiles/CASMO-5%20Development%20and%20Applications.pdf
-.. _activation groups http://www.ccfe.ac.uk/assets/Documents/easy/CCFE-R(11)11.pdf page 170
-.. _activation groups https://fispact.ukaea.uk/wiki/Keyword:GETXS
-.. _CCFE-709 https://fispact.ukaea.uk/wiki/CCFE-709_group_structure 
-.. _UKAEA-1102 https://fispact.ukaea.uk/wiki/UKAEA-1102_group_structure
+.. _activation: https://fispact.ukaea.uk/wiki/Keyword:GETXS
+.. _CCFE-709: https://fispact.ukaea.uk/wiki/CCFE-709_group_structure 
+.. _UKAEA-1102: https://fispact.ukaea.uk/wiki/UKAEA-1102_group_structure
 """
 
 GROUP_STRUCTURES['CASMO-2'] = np.array([

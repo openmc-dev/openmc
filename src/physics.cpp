@@ -1057,7 +1057,8 @@ void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Bank
       rx->products_[group].sample(E_in, site->E, mu);
 
       // resample if energy is greater than maximum neutron energy
-      constexpr int neutron = static_cast<int>(ParticleType::neutron);
+      // TODO: off-by-one
+      constexpr int neutron = static_cast<int>(ParticleType::neutron) - 1;
       if (site->E < data::energy_max[neutron]) break;
 
       // check for large number of resamples
@@ -1082,7 +1083,8 @@ void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Bank
       rx->products_[0].sample(E_in, site->E, mu);
 
       // resample if energy is greater than maximum neutron energy
-      constexpr int neutron = static_cast<int>(ParticleType::neutron);
+      // TODO: off-by-one
+      constexpr int neutron = static_cast<int>(ParticleType::neutron) - 1;
       if (site->E < data::energy_max[neutron]) break;
 
       // check for large number of resamples

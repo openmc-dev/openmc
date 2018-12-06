@@ -627,7 +627,7 @@ void scatter(Particle* p, int i_nuclide, int i_nuc_mat)
 
   // Calculate elastic cross section if it wasn't precalculated
   if (micro.elastic == CACHE_INVALID) {
-    nuc->calculate_elastic_xs(i_nuclide);
+    nuc->calculate_elastic_xs();
   }
 
   double prob = micro.elastic - micro.thermal;

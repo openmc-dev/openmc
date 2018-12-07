@@ -23,7 +23,6 @@ module nuclide_header
   use stl_vector,             only: VectorInt, VectorReal
   use string
   use simulation_header,      only: need_depletion_rx
-  use urr_header,             only: UrrData
 
   implicit none
 
@@ -75,11 +74,6 @@ module nuclide_header
     integer :: n_precursor = 0               ! # of delayed neutron precursors
     integer, allocatable :: index_fission(:) ! indices in reactions
     class(Function1D), allocatable :: total_nu
-
-    ! Unresolved resonance data
-    logical                :: urr_present = .false.
-    integer                :: urr_inelastic
-    type(UrrData), allocatable :: urr_data(:)
 
     ! Multipole data
     logical                       :: mp_present = .false.
@@ -199,12 +193,13 @@ module nuclide_header
       type(C_PTR) :: path
     end function
 
-    subroutine nuclide_calculate_urr_xs_c(i_nuclide, i_temp, E) &
+    subroutine nuclide_calculate_urr_xs_c(use_mp, i_nuclide, i_temp, E) &
          bind(C, name='nuclide_calculate_urr_xs')
-      import C_INT, C_DOUBLE
-      integer(C_INT), value, intent(in) :: i_nuclide
-      integer(C_INT), value, intent(in) :: i_temp
-      real(C_DOUBLE), value, intent(in) :: E
+      import C_BOOL, C_INT, C_DOUBLE
+      logical(C_BOOL), value, intent(in) :: use_mp
+      integer(C_INT),  value, intent(in) :: i_nuclide
+      integer(C_INT),  value, intent(in) :: i_temp
+      real(C_DOUBLE),  value, intent(in) :: E
     end subroutine nuclide_calculate_urr_xs_c
   end interface
 
@@ -261,7 +256,7 @@ contains
     integer :: i
     integer :: i_closest
     integer :: n_temperature
-    integer(HID_T) :: urr_group, nu_group
+    integer(HID_T) :: nu_group
     integer(HID_T) :: energy_group, energy_dset
     integer(HID_T) :: kT_group
     integer(HID_T) :: rxs_group
@@ -445,47 +440,6 @@ contains
       call close_group(rx_group)
     end do
     call close_group(rxs_group)
-
-    ! Read unresolved resonance probability tables if present
-    if (object_exists(group_id, 'urr')) then
-      this % urr_present = .true.
-      allocate(this % urr_data(n_temperature))
-
-      do i = 1, n_temperature
-        ! Get temperature as a string
-        temp_str = trim(to_str(temps_to_read % data(i))) // "K"
-
-        ! Read probability tables for i-th temperature
-        urr_group = open_group(group_id, 'urr/' // trim(temp_str))
-        call this % urr_data(i) % from_hdf5(urr_group)
-        call close_group(urr_group)
-
-        ! Check for negative values
-        if (any(this % urr_data(i) % prob < ZERO) .and. master) then
-          call warning("Negative value(s) found on probability table &
-               &for nuclide " // this % name // " at " // trim(temp_str))
-        end if
-      end do
-
-      ! if the inelastic competition flag indicates that the inelastic cross
-      ! section should be determined from a normal reaction cross section, we
-      ! need to get the index of the reaction
-      if (n_temperature > 0) then
-        if (this % urr_data(1) % inelastic_flag > 0) then
-          do i = 1, size(this % reactions)
-            if (this % reactions(i) % MT == this % urr_data(1) % inelastic_flag) then
-              this % urr_inelastic = i
-            end if
-          end do
-
-          ! Abort if no corresponding inelastic reaction was found
-          if (this % urr_inelastic == NONE) then
-            call fatal_error("Could not find inelastic reaction specified on &
-                 &unresolved resonance probability table.")
-          end if
-        end if
-      end if
-    end if
 
     ! Check for nu-total
     if (object_exists(group_id, 'total_nu')) then
@@ -784,7 +738,7 @@ contains
     real(8), intent(in) :: sab_frac    ! fraction of atoms affected by S(a,b)
     type(NuclideMicroXS), intent(inout) :: micro_xs ! Cross section cache
 
-    logical :: use_mp ! true if XS can be calculated with windowed multipole
+    logical(C_BOOL) :: use_mp ! true if XS can be calculated with windowed multipole
     integer :: i_temp ! index for temperature
     integer :: i_grid ! index on nuclide energy grid
     integer :: i_low  ! lower logarithmic mapping index
@@ -839,7 +793,7 @@ contains
       ! 1. physics.F90 - scatter - For inelastic scatter.
       ! 2. physics.F90 - sample_fission - For partial fissions.
       ! 3. tally.F90 - score_general - For tallying on MTxxx reactions.
-      ! 4. nuclide_header.F90 - calculate_urr_xs - For unresolved purposes.
+      ! 4. nuclide.h - calculate_urr_xs - For unresolved purposes.
       ! It is worth noting that none of these occur in the resolved
       ! resonance range, so the value here does not matter.  index_temp is
       ! set to -1 to force a segfault in case a developer messes up and tries
@@ -982,15 +936,10 @@ contains
       call calculate_sab_xs(this, i_sab, E, sqrtkT, sab_frac, micro_xs)
     end if
 
+
     ! If the particle is in the unresolved resonance range and there are
     ! probability tables, we need to determine cross sections from the table
-
-    if (urr_ptables_on .and. this % urr_present .and. .not. use_mp) then
-      if (E > this % urr_data(i_temp) % energy(1) .and. E < this % &
-           urr_data(i_temp) % energy(this % urr_data(i_temp) % n_energy)) then
-        call nuclide_calculate_urr_xs_c(this % i_nuclide, i_temp, E)
-      end if
-    end if
+    call nuclide_calculate_urr_xs_c(use_mp, this % i_nuclide, i_temp, E)
 
     micro_xs % last_E = E
     micro_xs % last_sqrtkT = sqrtkT

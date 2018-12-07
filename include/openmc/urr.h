@@ -20,6 +20,7 @@ public:
   int inelastic_flag_;            // inelastic competition flag
   int absorption_flag_;           // other absorption flag
   bool multiply_smooth_;          // multiply by smooth cross section?
+  int n_energy_;                  // number of energy points
   xt::xtensor<double, 1> energy_; // incident energies
   xt::xtensor<double, 3> prob_;   // Actual probability tables
 

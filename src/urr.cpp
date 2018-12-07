@@ -27,6 +27,7 @@ UrrData::from_hdf5(hid_t group_id)
     interp_ = Interpolation::log_log;
   }
 
+  // read the metadata
   read_attribute(group_id, "inelastic", inelastic_flag_);
   read_attribute(group_id, "absorption", absorption_flag_);
   int temp_multiply_smooth;
@@ -38,7 +39,7 @@ UrrData::from_hdf5(hid_t group_id)
   hsize_t dims[1];
   get_shape(dset, dims);
   close_dataset(dset);
-  // n_energy_ = static_cast<int>(dims[0]);
+  n_energy_ = static_cast<int>(dims[0]);
   energy_ = xt::xtensor<double, 1>({dims[0]}, 0.);
   read_dataset_as_shape(group_id, "energy", energy_);
 

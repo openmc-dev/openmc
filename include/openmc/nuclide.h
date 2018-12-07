@@ -175,9 +175,8 @@ extern "C" void set_micro_xs();
 extern "C" bool nuclide_wmp_present(int i_nuclide);
 extern "C" double nuclide_wmp_emin(int i_nuclide);
 extern "C" double nuclide_wmp_emax(int i_nuclide);
-extern "C" void nuclide_calculate_urr_xs(const int i_nuclide,
+extern "C" void nuclide_calculate_urr_xs(const bool use_mp, const int i_nuclide,
                                          const int i_temp, const double E);
-
 
 } // namespace openmc
 

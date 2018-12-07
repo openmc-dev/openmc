@@ -361,7 +361,6 @@ add_library(libopenmc SHARED
   src/timer_header.F90
   src/tracking.F90
   src/track_output.F90
-  src/urr_header.F90
   src/vector_header.F90
   src/volume_calc.F90
   src/volume_header.F90

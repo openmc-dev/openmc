@@ -576,9 +576,17 @@ void set_micro_xs()
 }
 
 extern "C" void
-nuclide_calculate_urr_xs(const int i_nuclide, const int i_temp, const double E)
+nuclide_calculate_urr_xs(const bool use_mp, const int i_nuclide,
+                         const int i_temp, const double E)
 {
-  data::nuclides[i_nuclide - 1]->calculate_urr_xs(i_temp - 1, E);
+  Nuclide* nuc = data::nuclides[i_nuclide - 1].get();
+  if (settings::urr_ptables_on && (nuc->urr_present_ && !use_mp)) {
+    if ((E > nuc->urr_data_[i_temp - 1].energy_(0)) &&
+        (E < nuc->urr_data_[i_temp - 1].energy_(
+                       nuc->urr_data_[i_temp - 1].n_energy_ - 1))) {
+      nuc->calculate_urr_xs(i_temp - 1, E);
+    }
+  }
 }
 
 } // namespace openmc

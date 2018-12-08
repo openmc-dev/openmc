@@ -193,14 +193,13 @@ module nuclide_header
       type(C_PTR) :: path
     end function
 
-    subroutine nuclide_calculate_urr_xs_c(use_mp, i_nuclide, i_temp, E) &
-         bind(C, name='nuclide_calculate_urr_xs')
+    subroutine nuclide_calculate_urr_xs(use_mp, i_nuclide, i_temp, E) bind(C)
       import C_BOOL, C_INT, C_DOUBLE
       logical(C_BOOL), value, intent(in) :: use_mp
       integer(C_INT),  value, intent(in) :: i_nuclide
       integer(C_INT),  value, intent(in) :: i_temp
       real(C_DOUBLE),  value, intent(in) :: E
-    end subroutine nuclide_calculate_urr_xs_c
+    end subroutine nuclide_calculate_urr_xs
   end interface
 
 contains
@@ -939,7 +938,7 @@ contains
 
     ! If the particle is in the unresolved resonance range and there are
     ! probability tables, we need to determine cross sections from the table
-    call nuclide_calculate_urr_xs_c(use_mp, this % i_nuclide, i_temp, E)
+    call nuclide_calculate_urr_xs(use_mp, this % i_nuclide, i_temp, E)
 
     micro_xs % last_E = E
     micro_xs % last_sqrtkT = sqrtkT

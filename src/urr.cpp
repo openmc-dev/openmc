@@ -4,28 +4,12 @@
 
 namespace openmc {
 
-void
-UrrData::from_hdf5(hid_t group_id)
+UrrData::UrrData(hid_t group_id)
 {
   // Read interpolation and other flags
   int interp_temp;
   read_attribute(group_id, "interpolation", interp_temp);
-  switch (interp_temp) {
-  case static_cast<int>(Interpolation::histogram):
-    interp_ = Interpolation::histogram;
-    break;
-  case static_cast<int>(Interpolation::lin_lin):
-    interp_ = Interpolation::lin_lin;
-    break;
-  case static_cast<int>(Interpolation::lin_log):
-    interp_ = Interpolation::lin_log;
-    break;
-  case static_cast<int>(Interpolation::log_lin):
-    interp_ = Interpolation::log_lin;
-    break;
-  case static_cast<int>(Interpolation::log_log):
-    interp_ = Interpolation::log_log;
-  }
+  interp_ = static_cast<Interpolation>(interp_temp);
 
   // read the metadata
   read_attribute(group_id, "inelastic", inelastic_flag_);

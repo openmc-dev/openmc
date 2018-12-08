@@ -107,7 +107,7 @@ public:
 
   //! \brief Determines cross sections in the unresolved resonance range
   //! from probability tables.
-  void calculate_urr_xs(const int i_temp, const double E);
+  void calculate_urr_xs(int i_temp, double E);
 
   // Data members
   std::string name_; //! Name of nuclide, e.g. "U235"
@@ -175,8 +175,8 @@ extern "C" void set_micro_xs();
 extern "C" bool nuclide_wmp_present(int i_nuclide);
 extern "C" double nuclide_wmp_emin(int i_nuclide);
 extern "C" double nuclide_wmp_emax(int i_nuclide);
-extern "C" void nuclide_calculate_urr_xs(const bool use_mp, const int i_nuclide,
-                                         const int i_temp, const double E);
+extern "C" void nuclide_calculate_urr_xs(bool use_mp, int i_nuclide,
+                                         int i_temp, double E);
 
 } // namespace openmc
 

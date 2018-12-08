@@ -271,7 +271,6 @@ void read_dataset(hid_t obj_id, const char* name, xt::xarray<T>& arr, bool indep
   close_dataset(dset);
 }
 
-
 template <typename T, std::size_t N>
 void read_dataset_as_shape(hid_t obj_id, const char* name,
                            xt::xtensor<T, N>& arr, bool indep=false)

@@ -16,17 +16,16 @@ namespace openmc {
 
 class UrrData{
 public:
-  Interpolation interp_;          // interpolation type
-  int inelastic_flag_;            // inelastic competition flag
-  int absorption_flag_;           // other absorption flag
-  bool multiply_smooth_;          // multiply by smooth cross section?
-  int n_energy_;                  // number of energy points
-  xt::xtensor<double, 1> energy_; // incident energies
-  xt::xtensor<double, 3> prob_;   // Actual probability tables
+  Interpolation interp_;          //!< interpolation type
+  int inelastic_flag_;            //!< inelastic competition flag
+  int absorption_flag_;           //!< other absorption flag
+  bool multiply_smooth_;          //!< multiply by smooth cross section?
+  int n_energy_;                  //!< number of energy points
+  xt::xtensor<double, 1> energy_; //!< incident energies
+  xt::xtensor<double, 3> prob_;   //!< Actual probability tables
 
   //! \brief Load the URR data from the provided HDF5 group
-  void
-  from_hdf5(hid_t group_id);
+  explicit UrrData(hid_t group_id);
 };
 
 } // namespace openmc

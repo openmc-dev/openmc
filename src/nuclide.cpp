@@ -196,7 +196,7 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n, int i_nuclide)
   // Read unresolved resonance probability tables if present
   if (object_exists(group, "urr")) {
     urr_present_ = true;
-    urr_data_.resize(temps_to_read.size());
+    urr_data_.reserve(temps_to_read.size());
 
     for (int i = 0; i < temps_to_read.size(); i++) {
       // Get temperature as a string
@@ -204,7 +204,7 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n, int i_nuclide)
 
       // Read probability tables for i-th temperature
       hid_t urr_group = open_group(group, ("urr/" + temp_str).c_str());
-      urr_data_[i].from_hdf5(urr_group);
+      urr_data_.emplace_back(urr_group);
       close_group(urr_group);
 
       // Check for negative values
@@ -404,25 +404,22 @@ double Nuclide::elastic_xs_0K(double E) const
   return (1.0 - f)*elastic_0K_[i_grid] + f*elastic_0K_[i_grid + 1];
 }
 
-void Nuclide::calculate_urr_xs(const int i_temp, const double E)
+void Nuclide::calculate_urr_xs(int i_temp, double E)
 {
   auto& micro = simulation::micro_xs[i_nuclide_];
   micro.use_ptable = true;
 
   // Create a shorthand for the URR data
-  UrrData* urr = &(urr_data_[i_temp]);
+  const auto& urr = urr_data_[i_temp];
 
   // Determine the energy table
   int i_energy = 0;
-  while (true) {
-    if (E < urr->energy_(i_energy + 1)) {break;}
-    i_energy++;
-  }
+  while(E >= urr.energy_(i_energy + 1)) {++i_energy;};
 
   // Sample the probability table using the cumulative distribution
 
   // Random nmbers for the xs calculation are sampled from a separate stream.
-  // This guarantees the rnadomness and, at the same time, makes sure we
+  // This guarantees the randomness and, at the same time, makes sure we
   // reuse random numbers for the same nuclide at different temperatures,
   // therefore preserving correlation of temperature in probability tables.
   prn_set_stream(STREAM_URR_PTABLE);
@@ -432,15 +429,10 @@ void Nuclide::calculate_urr_xs(const int i_temp, const double E)
   prn_set_stream(STREAM_TRACKING);
 
   int i_low = 0;
-  while (true) {
-    if (urr->prob_(i_energy, URR_CUM_PROB, i_low) > r) {break;}
-    i_low++;
-  }
+  while (urr.prob_(i_energy, URR_CUM_PROB, i_low) <= r) {++i_low;};
+
   int i_up = 0;
-  while (true) {
-    if (urr->prob_(i_energy + 1, URR_CUM_PROB, i_up) > r) {break;}
-    i_up++;
-  }
+  while (urr.prob_(i_energy + 1, URR_CUM_PROB, i_up) <= r) {++i_up;};
 
   // Determine elastic, fission, and capture cross sections from the
   // probability table
@@ -448,51 +440,51 @@ void Nuclide::calculate_urr_xs(const int i_temp, const double E)
   double fission = 0.;
   double capture = 0.;
   double f;
-  if (urr->interp_ == Interpolation::lin_lin) {
+  if (urr.interp_ == Interpolation::lin_lin) {
     // Determine the interpolation factor on the table
-    f = (E - urr->energy_(i_energy)) /
-         (urr->energy_(i_energy + 1) - urr->energy_(i_energy));
+    f = (E - urr.energy_(i_energy)) /
+         (urr.energy_(i_energy + 1) - urr.energy_(i_energy));
 
-    elastic = (1. - f) * urr->prob_(i_energy, URR_ELASTIC, i_low) +
-         f * urr->prob_(i_energy + 1, URR_ELASTIC, i_up);
-    fission = (1. - f) * urr->prob_(i_energy, URR_FISSION, i_low) +
-         f * urr->prob_(i_energy + 1, URR_FISSION, i_up);
-    capture = (1. - f) * urr->prob_(i_energy, URR_N_GAMMA, i_low) +
-         f * urr->prob_(i_energy + 1, URR_N_GAMMA, i_up);
-  } else if (urr->interp_ == Interpolation::log_log) {
+    elastic = (1. - f) * urr.prob_(i_energy, URR_ELASTIC, i_low) +
+         f * urr.prob_(i_energy + 1, URR_ELASTIC, i_up);
+    fission = (1. - f) * urr.prob_(i_energy, URR_FISSION, i_low) +
+         f * urr.prob_(i_energy + 1, URR_FISSION, i_up);
+    capture = (1. - f) * urr.prob_(i_energy, URR_N_GAMMA, i_low) +
+         f * urr.prob_(i_energy + 1, URR_N_GAMMA, i_up);
+  } else if (urr.interp_ == Interpolation::log_log) {
     // Determine interpolation factor on the table
-    f = std::log(E / urr->energy_(i_energy)) /
-         std::log(urr->energy_(i_energy + 1) / urr->energy_(i_energy));
+    f = std::log(E / urr.energy_(i_energy)) /
+         std::log(urr.energy_(i_energy + 1) / urr.energy_(i_energy));
 
     // Calculate the elastic cross section/factor
-    if ((urr->prob_(i_energy, URR_ELASTIC, i_low) > 0.) &&
-        (urr->prob_(i_energy + 1, URR_ELASTIC, i_up) > 0.)) {
+    if ((urr.prob_(i_energy, URR_ELASTIC, i_low) > 0.) &&
+        (urr.prob_(i_energy + 1, URR_ELASTIC, i_up) > 0.)) {
       elastic =
            std::exp((1. - f) *
-                    std::log(urr->prob_(i_energy, URR_ELASTIC, i_low)) +
-                    f * std::log(urr->prob_(i_energy + 1, URR_ELASTIC, i_up)));
+                    std::log(urr.prob_(i_energy, URR_ELASTIC, i_low)) +
+                    f * std::log(urr.prob_(i_energy + 1, URR_ELASTIC, i_up)));
     } else {
       elastic = 0.;
     }
 
     // Calculate the fission cross section/factor
-    if ((urr->prob_(i_energy, URR_FISSION, i_low) > 0.) &&
-        (urr->prob_(i_energy + 1, URR_FISSION, i_up) > 0.)) {
+    if ((urr.prob_(i_energy, URR_FISSION, i_low) > 0.) &&
+        (urr.prob_(i_energy + 1, URR_FISSION, i_up) > 0.)) {
       fission =
            std::exp((1. - f) *
-                    std::log(urr->prob_(i_energy, URR_FISSION, i_low)) +
-                    f * std::log(urr->prob_(i_energy + 1, URR_FISSION, i_up)));
+                    std::log(urr.prob_(i_energy, URR_FISSION, i_low)) +
+                    f * std::log(urr.prob_(i_energy + 1, URR_FISSION, i_up)));
     } else {
       fission = 0.;
     }
 
     // Calculate the capture cross section/factor
-    if ((urr->prob_(i_energy, URR_N_GAMMA, i_low) > 0.) &&
-        (urr->prob_(i_energy + 1, URR_N_GAMMA, i_up) > 0.)) {
+    if ((urr.prob_(i_energy, URR_N_GAMMA, i_low) > 0.) &&
+        (urr.prob_(i_energy + 1, URR_N_GAMMA, i_up) > 0.)) {
       capture =
            std::exp((1. - f) *
-                    std::log(urr->prob_(i_energy, URR_N_GAMMA, i_low)) +
-                    f * std::log(urr->prob_(i_energy + 1, URR_N_GAMMA, i_up)));
+                    std::log(urr.prob_(i_energy, URR_N_GAMMA, i_low)) +
+                    f * std::log(urr.prob_(i_energy + 1, URR_N_GAMMA, i_up)));
     } else {
       capture = 0.;
     }
@@ -500,7 +492,7 @@ void Nuclide::calculate_urr_xs(const int i_temp, const double E)
 
   // Determine the treatment of inelastic scattering
   double inelastic = 0.;
-  if (urr->inelastic_flag_ != C_NONE) {
+  if (urr.inelastic_flag_ != C_NONE) {
     // get interpolation factor
     f = micro.interp_factor;
 
@@ -514,7 +506,7 @@ void Nuclide::calculate_urr_xs(const int i_temp, const double E)
   }
 
   // Multiply by smooth cross-section if needed
-  if (urr->multiply_smooth_) {
+  if (urr.multiply_smooth_) {
     calculate_elastic_xs();
     elastic *= micro.elastic;
     capture *= (micro.absorption - micro.fission);
@@ -576,8 +568,7 @@ void set_micro_xs()
 }
 
 extern "C" void
-nuclide_calculate_urr_xs(const bool use_mp, const int i_nuclide,
-                         const int i_temp, const double E)
+nuclide_calculate_urr_xs(bool use_mp, int i_nuclide, int i_temp, double E)
 {
   Nuclide* nuc = data::nuclides[i_nuclide - 1].get();
   if (settings::urr_ptables_on && (nuc->urr_present_ && !use_mp)) {

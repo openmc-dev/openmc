@@ -15,9 +15,9 @@
 namespace openmc {
 
 #ifdef DAGMC
-bool dagmc_enabled = true;
+const bool dagmc_enabled = true;
 #else
-bool dagmc_enabled = false;
+const bool dagmc_enabled = false;
 #endif
 
 }
@@ -27,7 +27,7 @@ bool dagmc_enabled = false;
 #include "uwuw.hpp"
 #include "dagmcmetadata.hpp"
 
-#define DAGMC_FILENAME "dagmc.h5m"
+const std::string DAGMC_FILENAME = "dagmc.h5m";
 
 namespace openmc {
 
@@ -39,7 +39,7 @@ moab::DagMC* DAG;
 
 
 std::string get_uwuw_materials_xml() {
-  UWUW uwuw(DAGMC_FILENAME);
+  UWUW uwuw(DAGMC_FILENAME.c_str());
 
   std::stringstream ss;
   if (uwuw.material_library.size() != 0) {
@@ -93,7 +93,7 @@ void load_dagmc_geometry()
   }
 
   // create uwuw instance
-  UWUW uwuw(DAGMC_FILENAME);
+  UWUW uwuw(DAGMC_FILENAME.c_str());
 
   // check for uwuw material definitions
   bool using_uwuw = (uwuw.material_library.size() == 0) ? false : true;
@@ -111,7 +111,7 @@ void load_dagmc_geometry()
 
   int32_t dagmc_univ_id = 0; // universe is always 0 for DAGMC runs
 
-  moab::ErrorCode rval = model::DAG->load_file(DAGMC_FILENAME);
+  moab::ErrorCode rval = model::DAG->load_file(DAGMC_FILENAME.c_str());
   MB_CHK_ERR_CONT(rval);
 
   rval = model::DAG->init_OBBTree();

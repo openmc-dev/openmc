@@ -38,9 +38,4 @@ class UWUWTest(PyAPITestHarness):
 
 def test_uwuw():
     harness = UWUWTest('statepoint.5.h5')
-    harness._build_inputs()
-    harness._run_openmc()
-    results = harness._get_results()
-    harness._write_results(results)
-    harness._compare_results()
-    harness._cleanup()
+    harness.main()

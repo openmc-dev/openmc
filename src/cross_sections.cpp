@@ -2,6 +2,9 @@
 
 #include "openmc/constants.h"
 #include "openmc/container_util.h"
+#ifdef DAGMC
+#include "openmc/dagmc.h"
+#endif
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/settings.h"
@@ -81,14 +84,27 @@ extern "C" void read_mg_cross_sections_header();
 
 void read_cross_sections_xml()
 {
-  // Check if materials.xml exists
+  pugi::xml_document doc;
   std::string filename = settings::path_input + "materials.xml";
-  if (!file_exists(filename)) {
-    fatal_error("Material XML file '" + filename + "' does not exist.");
+#ifdef DAGMC
+  std::string s;
+  if (settings::dagmc) {
+    s = get_uwuw_materials_xml();
   }
 
+  if(s != "") {
+    doc.load_file(s.c_str());
+  } else {
+#endif
+    // Check if materials.xml exists
+    if (!file_exists(filename)) {
+      fatal_error("Material XML file '" + filename + "' does not exist.");
+    }
+
+#ifdef DAGMC
+  }
+#endif
   // Parse materials.xml file
-  pugi::xml_document doc;
   doc.load_file(filename.c_str());
   auto root = doc.document_element();
 

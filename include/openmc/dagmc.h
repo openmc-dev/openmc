@@ -26,15 +26,10 @@ extern moab::DagMC* DAG;
 
 extern "C" void load_dagmc_geometry();
 extern "C" void free_memory_dagmc();
-
+extern "C" pugi::xml_document* read_uwuw_materials();
+std::string get_uwuw_materials_xml();
 } // namespace openmc
 
 #endif // DAGMC
 
 #endif // OPENMC_DAGMC_H
-
-#ifdef DAGMC
-extern "C" constexpr bool dagmc_enabled = true;
-#else
-extern "C" constexpr bool dagmc_enabled = false;
-#endif

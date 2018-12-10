@@ -12,6 +12,16 @@
 #include <algorithm>
 #include <fstream>
 
+namespace openmc {
+
+#ifdef DAGMC
+bool dagmc_enabled = true;
+#else
+bool dagmc_enabled = false;
+#endif
+
+}
+
 #ifdef DAGMC
 
 #include "uwuw.hpp"
@@ -27,20 +37,53 @@ moab::DagMC* DAG;
 
 } // namespace model
 
-bool write_materials_xml(UWUW uwuw) {
-  // if there is a material library in the file,
-  // write a material.xml file
-  std::ofstream mats_xml("materials.xml");
-  // write header
-  mats_xml << "<?xml version=\"1.0\"?>\n";
-  mats_xml << "<materials>\n";
-  std::map<std::string, pyne::Material> ml = uwuw.material_library;
-  std::map<std::string, pyne::Material>::iterator it;
-  // write materials
-  for (it = ml.begin(); it != ml.end(); it++) { mats_xml << it->second.openmc("atom");  }
-  // write footer
-  mats_xml << "</materials>";
-  mats_xml.close();
+
+std::string get_uwuw_materials_xml() {
+  UWUW uwuw(DAGMC_FILENAME);
+
+  std::stringstream ss;
+  if (uwuw.material_library.size() != 0) {
+    // write header
+    ss << "<?xml version=\"1.0\"?>\n";
+    ss << "<materials>\n";
+    std::map<std::string, pyne::Material> ml = uwuw.material_library;
+    std::map<std::string, pyne::Material>::iterator it;
+    // write materials
+    for (it = ml.begin(); it != ml.end(); it++) {
+      ss << it->second.openmc("atom");
+    }
+    // write footer
+    ss << "</materials>";
+  }
+
+  return ss.str();
+}
+
+pugi::xml_document* read_uwuw_materials() {
+  pugi::xml_document* doc = NULL;
+
+  std::string ss = get_uwuw_materials_xml();
+  if(ss != "") {
+    doc = new pugi::xml_document();
+    pugi::xml_parse_result result = doc->load_string(ss.c_str());
+  }
+
+  return doc;
+}
+
+bool write_uwuw_materials_xml() {
+  bool found_mats;
+  std::string ss = get_uwuw_materials_xml();
+    // if there is a material library in the file
+  if (ss != "") {
+    // write a material.xml file
+    std::ofstream mats_xml("materials.xml");
+    mats_xml << get_uwuw_materials_xml();
+    mats_xml.close();
+    found_mats = true;
+  }
+
+  return found_mats;
 }
 
 void load_dagmc_geometry()
@@ -63,7 +106,7 @@ void load_dagmc_geometry()
         err_msg << "A materials.xml file is present along with UWUW material definitions";
         fatal_error(err_msg.str());
       }
-    write_materials_xml(uwuw);
+    //    write_materials_xml(uwuw);
   }
 
   int32_t dagmc_univ_id = 0; // universe is always 0 for DAGMC runs
@@ -78,14 +121,14 @@ void load_dagmc_geometry()
   if (using_uwuw) {
     DMD.load_property_data();
   }
-  
+
   std::vector<std::string> keywords;
   keywords.push_back("mat");
   keywords.push_back("density");
   keywords.push_back("boundary");
   std::map<std::string, std::string> dum;
   rval = model::DAG->parse_properties(keywords, dum, ":/");
-  
+
   // initialize cell objects
   model::n_cells = model::DAG->num_entities(3);
 
@@ -174,8 +217,8 @@ void load_dagmc_geometry()
     if (model::DAG->has_prop(surf_handle, "boundary")) {
       rval = model::DAG->prop_value(surf_handle, "boundary", bc_value);
       MB_CHK_ERR_CONT(rval);
-      to_lower(bc_value);    
-    
+      to_lower(bc_value);
+
       if (bc_value == "transmit" || bc_value == "transmission") {
         s->bc_ = BC_TRANSMIT;
       } else if (bc_value == "vacuum") {
@@ -206,6 +249,7 @@ void free_memory_dagmc()
 {
   delete model::DAG;
 }
+
 
 }
 #endif

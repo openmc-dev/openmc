@@ -16,6 +16,8 @@ namespace openmc {
 
 namespace model {
 
+extern "C" const bool dagmc_enabled;
+
 extern moab::DagMC* DAG;
 
 } // namespace model

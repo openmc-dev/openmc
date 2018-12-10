@@ -20,6 +20,8 @@ namespace openmc {
 // Global variable declarations
 //==============================================================================
 
+extern "C" const bool dagmc_enabled;
+
 namespace settings {
 
 // Boolean flags

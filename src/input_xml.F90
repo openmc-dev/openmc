@@ -522,7 +522,7 @@ contains
 
 #ifdef DAGMC
     if (dagmc) then
-       doc % ptr = read_uwuw_materials()
+      doc % ptr = read_uwuw_materials()
     end if
 
     if (.not. c_associated(doc % ptr)) then
@@ -534,7 +534,7 @@ contains
     if (.not. file_exists) then
       call fatal_error("Material XML file '" // trim(filename) // "' does not &
            &exist!")
-   end if
+    end if
 
     ! Parse materials.xml file
     call doc % load_file(filename)

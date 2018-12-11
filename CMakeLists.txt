@@ -361,7 +361,6 @@ add_library(libopenmc SHARED
   src/timer_header.F90
   src/tracking.F90
   src/track_output.F90
-  src/urr_header.F90
   src/vector_header.F90
   src/volume_calc.F90
   src/volume_header.F90
@@ -417,6 +416,7 @@ add_library(libopenmc SHARED
   src/position.cpp
   src/progress_bar.cpp
   src/pugixml/pugixml_c.cpp
+  src/urr.cpp
   src/random_lcg.cpp
   src/reaction.cpp
   src/reaction_product.cpp

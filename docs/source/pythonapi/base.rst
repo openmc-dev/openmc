@@ -201,6 +201,10 @@ Various classes may be created when performing tally slicing and/or arithmetic:
 Coarse Mesh Finite Difference Acceleration
 ------------------------------------------
 
+CMFD is implemented in OpenMC and allows users to accelerate fission source
+convergence during inactive neutron batches. To run CMFD, the CMFDRun class
+should be used.
+
 .. autosummary::
    :toctree: generated
    :nosignatures:
@@ -208,33 +212,6 @@ Coarse Mesh Finite Difference Acceleration
 
    openmc.CMFDMesh
    openmc.CMFDRun
-
-CMFD is implemented in OpenMC and allows users to accelerate fission source
-convergence during inactive neutron batches. To run CMFD, the CMFDRun class should
-be used. The following properties can be set through the CMFDRun class:
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-   :template: myfunction.rst
-
-   openmc.CMFDRun.cmfd_begin
-   openmc.CMFDRun.dhat_reset
-   openmc.CMFDRun.cmfd_display
-   openmc.CMFDRun.cmfd_downscatter
-   openmc.CMFDRun.cmfd_feedback
-   openmc.CMFDRun.cmfd_ktol
-   openmc.CMFDRun.cmfd_mesh
-   openmc.CMFDRun.norm
-   openmc.CMFDRun.cmfd_adjoint_type
-   openmc.CMFDRun.cmfd_power_monitor
-   openmc.CMFDRun.cmfd_run_adjoint
-   openmc.CMFDRun.cmfd_shift
-   openmc.CMFDRun.cmfd_stol
-   openmc.CMFDRun.cmfd_spectral
-   openmc.CMFDRun.cmfd_reset
-   openmc.CMFDRun.cmfd_write_matrices
-   openmc.CMFDRun.gauss_seidel_tolerance
 
 At the minimum, a CMFD mesh needs to be specified in order to run CMFD. Once
 these properties are set, an OpenMC simulation can be run with CMFD turned on

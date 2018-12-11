@@ -23,7 +23,4 @@
   </mesh>
   <entropy_mesh>10</entropy_mesh>
 
-  <!-- Run CMFD -->
-  <run_cmfd>true</run_cmfd>
-
 </settings>

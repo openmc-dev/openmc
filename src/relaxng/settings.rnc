@@ -59,8 +59,6 @@ element settings {
 
   element dagmc { xsd:boolean }? &
 
-  element run_cmfd { xsd:boolean }? &
-
   element run_mode { xsd:string }? &
 
   element seed { xsd:positiveInteger }? &

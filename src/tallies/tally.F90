@@ -3,6 +3,7 @@ module tally
   use, intrinsic :: ISO_C_BINDING
 
   use algorithm,        only: binary_search
+  use bank_header
   use constants
   use dict_header,      only: EMPTY
   use error,            only: fatal_error
@@ -687,7 +688,7 @@ contains
             do k = 1, p % n_bank
 
               ! get the delayed group
-              g = fission_bank(n_bank - p % n_bank + k) % delayed_group
+              g = fission_bank_delayed_group(n_bank - p % n_bank + k)
 
               ! Case for tallying delayed emissions
               if (g /= 0) then
@@ -697,8 +698,8 @@ contains
                      reactions(nuclides(p % event_nuclide) % index_fission(1)))
 
                   ! determine score based on bank site weight and keff.
-                  score = score + keff * fission_bank(n_bank - p % n_bank + k) &
-                       % wgt * rxn % product_decay_rate(1 + g) * flux
+                  score = score + keff * fission_bank_wgt(n_bank - p % n_bank + k) &
+                       * rxn % product_decay_rate(1 + g) * flux
                 end associate
 
                 ! if the delayed group filter is present, tally to corresponding
@@ -1843,7 +1844,7 @@ contains
             do k = 1, p % n_bank
 
               ! get the delayed group
-              g = fission_bank(n_bank - p % n_bank + k) % delayed_group
+              g = fission_bank_delayed_group(n_bank - p % n_bank + k)
 
               ! Case for tallying delayed emissions
               if (g /= 0) then
@@ -1851,13 +1852,13 @@ contains
                 ! determine score based on bank site weight and keff.
                 if (i_nuclide > 0) then
                   score = score + keff * atom_density * &
-                       fission_bank(n_bank - p % n_bank + k) % wgt * &
+                       fission_bank_wgt(n_bank - p % n_bank + k) * &
                        get_nuclide_xs_c(i_nuclide, MG_GET_XS_DECAY_RATE, p_g, DG=d) * &
                        get_nuclide_xs_c(i_nuclide, MG_GET_XS_FISSION, p_g) / &
                        get_macro_xs_c(p % material, MG_GET_XS_FISSION, p_g) * flux
                 else
                   score = score + keff * &
-                       fission_bank(n_bank - p % n_bank + k) % wgt * &
+                       fission_bank_wgt(n_bank - p % n_bank + k) * &
                        get_macro_xs_c(p % material, MG_GET_XS_DECAY_RATE, p_g, DG=d) * flux
                 end if
 
@@ -2375,10 +2376,10 @@ contains
       do k = 1, p % n_bank
 
         ! get the delayed group
-        g = fission_bank(n_bank - p % n_bank + k) % delayed_group
+        g = fission_bank_delayed_group(n_bank - p % n_bank + k)
 
         ! determine score based on bank site weight and keff
-        score = keff * fission_bank(n_bank - p % n_bank + k) % wgt
+        score = keff * fission_bank_wgt(n_bank - p % n_bank + k)
 
         ! Add derivative information for differential tallies.  Note that the
         ! i_nuclide and atom_density arguments do not matter since this is an
@@ -2390,7 +2391,7 @@ contains
         if (.not. run_CE .and. eo_filt % matches_transport_groups) then
 
           ! determine outgoing energy group from fission bank
-          g_out = int(fission_bank(n_bank - p % n_bank + k) % E)
+          g_out = int(fission_bank_E(n_bank - p % n_bank + k))
 
           ! modify the value so that g_out = 1 corresponds to the highest
           ! energy bin
@@ -2403,10 +2404,9 @@ contains
 
           ! determine outgoing energy from fission bank
           if (run_CE) then
-            E_out = fission_bank(n_bank - p % n_bank + k) % E
+            E_out = fission_bank_E(n_bank - p % n_bank + k)
           else
-            E_out = energy_bin_avg(int(fission_bank(n_bank - p % n_bank + k) &
-                 % E))
+            E_out = energy_bin_avg(int(fission_bank_E(n_bank - p % n_bank + k)))
           end if
 
           ! If this outgoing energy falls within the energyout filter's range,

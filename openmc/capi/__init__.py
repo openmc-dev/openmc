@@ -38,8 +38,11 @@ else:
     from unittest.mock import Mock
     _dll = Mock()
 
-dagmc_enabled = bool(c_bool.in_dll(_dll, "dagmc_enabled"))
-    
+
+def _dagmc_enabled():
+    return c_bool.in_dll(_dll, "dagmc_enabled").value
+
+
 from .error import *
 from .core import *
 from .nuclide import *

@@ -1041,4 +1041,21 @@ contains
 
   end subroutine bremsstrahlung_init
 
+!===============================================================================
+! Fortran compatibility
+!===============================================================================
+
+  function material_isotropic(i_material, i_nuc_mat) result(iso) bind(C)
+    integer(C_INT), value :: i_material
+    integer(C_INT), value :: i_nuc_mat
+    logical(C_BOOL) :: iso
+
+    iso = .false.
+    associate (mat => materials(i_material))
+      if (mat % has_isotropic_nuclides) then
+        iso = mat % p0(i_nuc_mat)
+      end if
+    end associate
+  end function
+
 end module material_header

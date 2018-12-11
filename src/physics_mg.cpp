@@ -5,6 +5,7 @@
 
 #include "xtensor/xarray.hpp"
 
+#include "openmc/bank.h"
 #include "openmc/constants.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
@@ -21,13 +22,13 @@
 namespace openmc {
 
 void
-collision_mg(Particle* p, const MaterialMacroXS* material_xs)
+collision_mg(Particle* p)
 {
   // Add to the collision counter for the particle
   p->n_collision++;
 
   // Sample the reaction type
-  sample_reaction(p, material_xs);
+  sample_reaction(p);
 
   // Display information about collision
   if ((settings::verbosity >= 10) || (simulation::trace)) {
@@ -38,7 +39,7 @@ collision_mg(Particle* p, const MaterialMacroXS* material_xs)
 }
 
 void
-sample_reaction(Particle* p, const MaterialMacroXS* material_xs)
+sample_reaction(Particle* p)
 {
   // Create fission bank sites. Note that while a fission reaction is sampled,
   // it never actually "happens", i.e. the weight of the particle does not
@@ -47,23 +48,20 @@ sample_reaction(Particle* p, const MaterialMacroXS* material_xs)
 
   if (model::materials[p->material - 1]->fissionable) {
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      Bank* result_bank;
-      int64_t result_bank_size;
-      // Get pointer to fission bank from Fortran side
-      openmc_fission_bank(&result_bank, &result_bank_size);
-      create_fission_sites(p, result_bank, &simulation::n_bank, result_bank_size,
-                           material_xs);
+      create_fission_sites(
+        p, simulation::fission_bank.data(), &simulation::n_bank,
+        simulation::fission_bank.size());
     } else if ((settings::run_mode == RUN_MODE_FIXEDSOURCE) &&
                (settings::create_fission_neutrons)) {
       create_fission_sites(p, p->secondary_bank, &(p->n_secondary),
-                           MAX_SECONDARY, material_xs);
+                           MAX_SECONDARY);
     }
   }
 
   // If survival biasing is being used, the following subroutine adjusts the
   // weight of the particle. Otherwise, it checks to see if absorption occurs.
-  if (material_xs->absorption > 0.) {
-    absorption(p, material_xs);
+  if (simulation::material_xs.absorption > 0.) {
+    absorption(p);
   } else {
     p->absorb_wgt = 0.;
   }
@@ -105,7 +103,7 @@ scatter(Particle* p)
 
 void
 create_fission_sites(Particle* p, Bank* bank_array, int64_t* size_bank,
-     int64_t bank_array_size, const MaterialMacroXS* material_xs)
+     int64_t bank_array_size)
 {
   // TODO: Heat generation from fission
 
@@ -114,8 +112,8 @@ create_fission_sites(Particle* p, Bank* bank_array, int64_t* size_bank,
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
-  double nu_t = p->wgt / simulation::keff * weight * material_xs->nu_fission /
-       material_xs->total;
+  double nu_t = p->wgt / simulation::keff * weight *
+       simulation::material_xs.nu_fission / simulation::material_xs.total;
 
   // Sample the number of neutrons produced
   int nu = static_cast<int>(nu_t);
@@ -203,11 +201,12 @@ create_fission_sites(Particle* p, Bank* bank_array, int64_t* size_bank,
 }
 
 void
-absorption(Particle* p, const MaterialMacroXS* material_xs)
+absorption(Particle* p)
 {
   if (settings::survival_biasing) {
     // Determine weight absorbed in survival biasing
-    p->absorb_wgt = p->wgt * material_xs->absorption / material_xs->total;
+    p->absorb_wgt = p->wgt *
+         simulation::material_xs.absorption / simulation::material_xs.total;
 
     // Adjust weight of particle by the probability of absorption
     p->wgt -= p->absorb_wgt;
@@ -215,13 +214,15 @@ absorption(Particle* p, const MaterialMacroXS* material_xs)
 
     // Score implicit absorpion estimate of keff
 #pragma omp atomic
-    global_tally_absorption += p->absorb_wgt * material_xs->nu_fission /
-         material_xs->absorption;
+    global_tally_absorption += p->absorb_wgt *
+         simulation::material_xs.nu_fission /
+         simulation::material_xs.absorption;
   } else {
-    if (material_xs->absorption > prn() * material_xs->total) {
+    if (simulation::material_xs.absorption >
+        prn() * simulation::material_xs.total) {
 #pragma omp atomic
-      global_tally_absorption += p->wgt * material_xs->nu_fission /
-           material_xs->absorption;
+      global_tally_absorption += p->wgt * simulation::material_xs.nu_fission /
+           simulation::material_xs.absorption;
       p->alive = false;
       p->event = EVENT_ABSORB;
     }

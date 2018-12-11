@@ -1,10 +1,12 @@
 #include "openmc/simulation.h"
 
+#include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/container_util.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/message_passing.h"
+#include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/particle.h"
 #include "openmc/random_lcg.h"
@@ -15,6 +17,8 @@
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
 
+#include <omp.h>
+
 #include <algorithm>
 #include <string>
 
@@ -22,11 +26,9 @@ namespace openmc {
 
 // data/functions from Fortran side
 extern "C" void accumulate_tallies();
-extern "C" void allocate_banks();
 extern "C" void allocate_tally_results();
 extern "C" void check_triggers();
 extern "C" void init_tally_routines();
-extern "C" void join_bank_from_threads();
 extern "C" void load_state_point();
 extern "C" void print_batch_keff();
 extern "C" void print_columns();
@@ -91,6 +93,7 @@ int openmc_simulation_init()
 
   // Call Fortran initialization
   simulation_init_f();
+  set_micro_xs();
 
   // Reset global variables -- this is done before loading state point (as that
   // will potentially populate k_generation and entropy)
@@ -272,6 +275,36 @@ int thread_id;  //!< ID of a given thread
 // Non-member functions
 //==============================================================================
 
+void allocate_banks()
+{
+  // Allocate source bank
+  simulation::source_bank.resize(simulation::work);
+
+  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+#ifdef _OPENMP
+    // If OpenMP is being used, each thread needs its own private fission
+    // bank. Since the private fission banks need to be combined at the end of
+    // a generation, there is also a 'master_fission_bank' that is used to
+    // collect the sites from each thread.
+
+    simulation::n_threads = omp_get_max_threads();
+
+#pragma omp parallel
+    {
+      simulation::thread_id = omp_get_thread_num();
+      if (simulation::thread_id == 0) {
+        simulation::fission_bank.resize(3*simulation::work);
+      } else {
+        simulation::fission_bank.resize(3*simulation::work / simulation::n_threads);
+      }
+    }
+    simulation::master_fission_bank.resize(3*simulation::work);
+#else
+    simulation::fission_bank.resize(3*simulation::work);
+#endif
+  }
+}
+
 void initialize_batch()
 {
   // Increment current batch
@@ -438,13 +471,8 @@ void finalize_generation()
 
 void initialize_history(Particle* p, int64_t index_source)
 {
-  // Get pointer to source bank
-  Bank* source_bank;
-  int64_t n;
-  openmc_source_bank(&source_bank, &n);
-
   // set defaults
-  p->from_source(&source_bank[index_source - 1]);
+  p->from_source(&simulation::source_bank[index_source - 1]);
 
   // set identifier for particle
   p->id = simulation::work_index[mpi::rank] + index_source;

@@ -22,6 +22,17 @@ Interpolation int2interp(int i);
 //! \return Whether corresponding reaction is a fission reaction
 bool is_fission(int MT);
 
+//! Determine if a given MT number is that of a disappearance reaction, i.e., a
+//! reaction with no neutron in the exit channel
+//! \param[in] MT ENDF MT value
+//! \return Whether corresponding reaction is a disappearance reaction
+bool is_disappearance(int MT);
+
+//! Determine if a given MT number is that of an inelastic scattering reaction
+//! \param[in] MT ENDF MT value
+//! \return Whether corresponding reaction is an inelastic scattering reaction
+bool is_inelastic_scatter(int MT);
+
 //==============================================================================
 //! Abstract one-dimensional function
 //==============================================================================

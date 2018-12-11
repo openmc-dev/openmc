@@ -56,6 +56,9 @@ extern "C" int thread_id;  //!< ID of a given thread
 // Functions
 //==============================================================================
 
+//! Allocate space for source and fission banks
+void allocate_banks();
+
 //! Determine number of particles to transport per process
 void calculate_work();
 

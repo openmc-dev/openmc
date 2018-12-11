@@ -33,10 +33,9 @@ module tracking
   implicit none
 
   interface
-    subroutine collision_mg(p, material_xs) bind(C)
-      import Particle, C_DOUBLE, MaterialMacroXS
+    subroutine collision_mg(p) bind(C)
+      import Particle, C_DOUBLE
       type(Particle),            intent(inout) :: p
-      type(MaterialMacroXS),     intent(in)    :: material_xs
     end subroutine collision_mg
 
   end interface
@@ -221,7 +220,7 @@ contains
                material_xs % nu_fission / material_xs % total
         end if
 
-        ! score surface current tallies -- this has to be done before the collision
+        ! Score surface current tallies -- this has to be done before the collision
         ! since the direction of the particle will change and we need to use the
         ! pre-collision direction to figure out what mesh surfaces were crossed
 
@@ -234,7 +233,7 @@ contains
         if (run_CE) then
           call collision(p)
         else
-          call collision_mg(p, material_xs)
+          call collision_mg(p)
         end if
 
         ! Score collision estimator tallies -- this is done after a collision

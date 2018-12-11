@@ -130,6 +130,16 @@ contains
     real(8), allocatable :: matrix(:,:)
     real(8), allocatable :: dcs(:,:)
 
+    interface
+      subroutine photon_from_hdf5_c(group) bind(C)
+        import HID_T
+        integer(HID_T), value :: group
+      end subroutine
+    end interface
+
+    ! Read element data on C++ side
+    call photon_from_hdf5_c(group_id)
+
     ! Get name of nuclide from group
     this % name = get_name(group_id)
 

@@ -257,12 +257,12 @@ constexpr int LIBRARY_PHOTON {3};
 constexpr int LIBRARY_MULTIGROUP {4};
 
 // Probability table parameters
-constexpr int URR_CUM_PROB {1};
-constexpr int URR_TOTAL    {2};
-constexpr int URR_ELASTIC  {3};
-constexpr int URR_FISSION  {4};
-constexpr int URR_N_GAMMA  {5};
-constexpr int URR_HEATING  {6};
+constexpr int URR_CUM_PROB {0};
+constexpr int URR_TOTAL    {1};
+constexpr int URR_ELASTIC  {2};
+constexpr int URR_FISSION  {3};
+constexpr int URR_N_GAMMA  {4};
+constexpr int URR_HEATING  {5};
 
 // Maximum number of partial fission reactions
 constexpr int PARTIAL_FISSION_MAX {4};
@@ -424,7 +424,7 @@ constexpr int F90_NONE {0}; //TODO: replace usage of this with C_NONE
 
 // Interpolation rules
 enum class Interpolation {
-  histogram, lin_lin, lin_log, log_lin, log_log
+  histogram = 1, lin_lin = 2, lin_log = 3, log_lin = 4, log_log = 5
 };
 
 // Run modes

@@ -5,6 +5,7 @@
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/message_passing.h"
+#include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/string_utils.h"
@@ -33,7 +34,7 @@ MaterialMacroXS material_xs;
 // Nuclide implementation
 //==============================================================================
 
-Nuclide::Nuclide(hid_t group, const double* temperature, int n)
+Nuclide::Nuclide(hid_t group, const double* temperature, int n, int i_nuclide)
 {
   // Get name of nuclide from group, removing leading '/'
   name_ = object_name(group).substr(1);
@@ -42,6 +43,7 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n)
   read_attribute(group, "A", A_);
   read_attribute(group, "metastable", metastable_);
   read_attribute(group, "atomic_weight_ratio", awr_);
+  i_nuclide_ = i_nuclide;
 
   // Determine temperatures available
   hid_t kT_group = open_group(group, "kTs");
@@ -191,6 +193,47 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n)
   }
   close_group(rxs_group);
 
+  // Read unresolved resonance probability tables if present
+  if (object_exists(group, "urr")) {
+    urr_present_ = true;
+    urr_data_.reserve(temps_to_read.size());
+
+    for (int i = 0; i < temps_to_read.size(); i++) {
+      // Get temperature as a string
+      std::string temp_str {std::to_string(temps_to_read[i]) + "K"};
+
+      // Read probability tables for i-th temperature
+      hid_t urr_group = open_group(group, ("urr/" + temp_str).c_str());
+      urr_data_.emplace_back(urr_group);
+      close_group(urr_group);
+
+      // Check for negative values
+      if (xt::any(urr_data_[i].prob_ < 0.) && mpi::master) {
+        warning("Negative value(s) found on probability table for nuclide " +
+                name_ + " at " + temp_str);
+      }
+    }
+
+    // If the inelastic competition flag indicates that the inelastic cross
+    // section should be determined from a normal reaction cross section, we
+    // need to get the index of the reaction.
+    if (temps_to_read.size() > 0) {
+      if (urr_data_[0].inelastic_flag_ > 0) {
+        for (int i = 0; i < reactions_.size(); i++) {
+          if (reactions_[i]->mt_ == urr_data_[0].inelastic_flag_) {
+            urr_inelastic_ = i;
+          }
+        }
+
+        // Abort if no corresponding inelastic reaction was found
+        if (urr_inelastic_ == C_NONE) {
+          fatal_error("Could no find inelastic reaction specified on "
+                      "unresolved resonance probability table.");
+        }
+      }
+    }
+  }
+
   // Check for nu-total
   if (object_exists(group, "total_nu")) {
     // Read total nu data
@@ -324,10 +367,10 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
   }
 }
 
-void Nuclide::calculate_elastic_xs(int i_nuclide) const
+void Nuclide::calculate_elastic_xs() const
 {
   // Get temperature index, grid index, and interpolation factor
-  auto& micro = simulation::micro_xs[i_nuclide];
+  auto& micro = simulation::micro_xs[i_nuclide_];
   int i_temp = micro.index_temp - 1;
   int i_grid = micro.index_grid - 1;
   double f = micro.interp_factor;
@@ -361,6 +404,134 @@ double Nuclide::elastic_xs_0K(double E) const
   return (1.0 - f)*elastic_0K_[i_grid] + f*elastic_0K_[i_grid + 1];
 }
 
+void Nuclide::calculate_urr_xs(int i_temp, double E)
+{
+  auto& micro = simulation::micro_xs[i_nuclide_];
+  micro.use_ptable = true;
+
+  // Create a shorthand for the URR data
+  const auto& urr = urr_data_[i_temp];
+
+  // Determine the energy table
+  int i_energy = 0;
+  while(E >= urr.energy_(i_energy + 1)) {++i_energy;};
+
+  // Sample the probability table using the cumulative distribution
+
+  // Random nmbers for the xs calculation are sampled from a separate stream.
+  // This guarantees the randomness and, at the same time, makes sure we
+  // reuse random numbers for the same nuclide at different temperatures,
+  // therefore preserving correlation of temperature in probability tables.
+  prn_set_stream(STREAM_URR_PTABLE);
+  //TODO: to maintain the same random number stream as the Fortran code this
+  //replaces, the seed is set with i_nuclide_ + 1 instead of i_nuclide_
+  double r = future_prn(static_cast<int64_t>(i_nuclide_ + 1));
+  prn_set_stream(STREAM_TRACKING);
+
+  int i_low = 0;
+  while (urr.prob_(i_energy, URR_CUM_PROB, i_low) <= r) {++i_low;};
+
+  int i_up = 0;
+  while (urr.prob_(i_energy + 1, URR_CUM_PROB, i_up) <= r) {++i_up;};
+
+  // Determine elastic, fission, and capture cross sections from the
+  // probability table
+  double elastic = 0.;
+  double fission = 0.;
+  double capture = 0.;
+  double f;
+  if (urr.interp_ == Interpolation::lin_lin) {
+    // Determine the interpolation factor on the table
+    f = (E - urr.energy_(i_energy)) /
+         (urr.energy_(i_energy + 1) - urr.energy_(i_energy));
+
+    elastic = (1. - f) * urr.prob_(i_energy, URR_ELASTIC, i_low) +
+         f * urr.prob_(i_energy + 1, URR_ELASTIC, i_up);
+    fission = (1. - f) * urr.prob_(i_energy, URR_FISSION, i_low) +
+         f * urr.prob_(i_energy + 1, URR_FISSION, i_up);
+    capture = (1. - f) * urr.prob_(i_energy, URR_N_GAMMA, i_low) +
+         f * urr.prob_(i_energy + 1, URR_N_GAMMA, i_up);
+  } else if (urr.interp_ == Interpolation::log_log) {
+    // Determine interpolation factor on the table
+    f = std::log(E / urr.energy_(i_energy)) /
+         std::log(urr.energy_(i_energy + 1) / urr.energy_(i_energy));
+
+    // Calculate the elastic cross section/factor
+    if ((urr.prob_(i_energy, URR_ELASTIC, i_low) > 0.) &&
+        (urr.prob_(i_energy + 1, URR_ELASTIC, i_up) > 0.)) {
+      elastic =
+           std::exp((1. - f) *
+                    std::log(urr.prob_(i_energy, URR_ELASTIC, i_low)) +
+                    f * std::log(urr.prob_(i_energy + 1, URR_ELASTIC, i_up)));
+    } else {
+      elastic = 0.;
+    }
+
+    // Calculate the fission cross section/factor
+    if ((urr.prob_(i_energy, URR_FISSION, i_low) > 0.) &&
+        (urr.prob_(i_energy + 1, URR_FISSION, i_up) > 0.)) {
+      fission =
+           std::exp((1. - f) *
+                    std::log(urr.prob_(i_energy, URR_FISSION, i_low)) +
+                    f * std::log(urr.prob_(i_energy + 1, URR_FISSION, i_up)));
+    } else {
+      fission = 0.;
+    }
+
+    // Calculate the capture cross section/factor
+    if ((urr.prob_(i_energy, URR_N_GAMMA, i_low) > 0.) &&
+        (urr.prob_(i_energy + 1, URR_N_GAMMA, i_up) > 0.)) {
+      capture =
+           std::exp((1. - f) *
+                    std::log(urr.prob_(i_energy, URR_N_GAMMA, i_low)) +
+                    f * std::log(urr.prob_(i_energy + 1, URR_N_GAMMA, i_up)));
+    } else {
+      capture = 0.;
+    }
+  }
+
+  // Determine the treatment of inelastic scattering
+  double inelastic = 0.;
+  if (urr.inelastic_flag_ != C_NONE) {
+    // get interpolation factor
+    f = micro.interp_factor;
+
+    // Determine inelastic scattering cross section
+    Reaction* rx = reactions_[urr_inelastic_].get();
+    int xs_index = micro.index_grid - rx->xs_[i_temp].threshold;
+    if (xs_index >= 0) {
+      inelastic = (1. - f) * rx->xs_[i_temp].value[xs_index] +
+           f * rx->xs_[i_temp].value[xs_index + 1];
+    }
+  }
+
+  // Multiply by smooth cross-section if needed
+  if (urr.multiply_smooth_) {
+    calculate_elastic_xs();
+    elastic *= micro.elastic;
+    capture *= (micro.absorption - micro.fission);
+    fission *= micro.fission;
+  }
+
+  // Check for negative values
+  if (elastic < 0.) {elastic = 0.;}
+  if (fission < 0.) {fission = 0.;}
+  if (capture < 0.) {capture = 0.;}
+
+  // Set elastic, absorption, fission, and total x/s. Note that the total x/s
+  // is calculated as a sum of partials instead of the table-provided value
+  micro.elastic = elastic;
+  micro.absorption = capture + fission;
+  micro.fission = fission;
+  micro.total = elastic + inelastic + capture + fission;
+
+  // Determine nu-fission cross-section
+  if (fissionable_) {
+    micro.nu_fission = nu(E, EmissionMode::total) * micro.fission;
+  }
+
+}
+
 //==============================================================================
 // Fortran compatibility functions
 //==============================================================================
@@ -374,7 +545,8 @@ set_particle_energy_bounds(int particle, double E_min, double E_max)
 
 extern "C" Nuclide* nuclide_from_hdf5_c(hid_t group, const double* temperature, int n)
 {
-  data::nuclides.push_back(std::make_unique<Nuclide>(group, temperature, n));
+  data::nuclides.push_back(std::make_unique<Nuclide>(group, temperature, n,
+                                                     data::nuclides.size()));
   return data::nuclides.back().get();
 }
 
@@ -392,6 +564,19 @@ void set_micro_xs()
 #pragma omp parallel
   {
     simulation::micro_xs = micro_xs_ptr();
+  }
+}
+
+extern "C" void
+nuclide_calculate_urr_xs(bool use_mp, int i_nuclide, int i_temp, double E)
+{
+  Nuclide* nuc = data::nuclides[i_nuclide - 1].get();
+  if (settings::urr_ptables_on && (nuc->urr_present_ && !use_mp)) {
+    if ((E > nuc->urr_data_[i_temp - 1].energy_(0)) &&
+        (E < nuc->urr_data_[i_temp - 1].energy_(
+                       nuc->urr_data_[i_temp - 1].n_energy_ - 1))) {
+      nuc->calculate_urr_xs(i_temp - 1, E);
+    }
   }
 }
 

@@ -273,6 +273,33 @@ void read_dataset(hid_t obj_id, const char* name, xt::xarray<T>& arr, bool indep
 
 
 template <typename T, std::size_t N>
+void read_dataset(hid_t obj_id, const char* name, xt::xtensor<T, N>& arr, bool indep=false)
+{
+  // Open dataset and read array
+  hid_t dset = open_dataset(obj_id, name);
+
+  // Get shape of dataset
+  std::vector<hsize_t> hsize_t_shape = object_shape(dset);
+  close_dataset(dset);
+
+  // cast from hsize_t to size_t
+  std::vector<size_t> shape(hsize_t_shape.size());
+  for (int i = 0; i < shape.size(); i++) {
+    shape[i] = static_cast<size_t>(hsize_t_shape[i]);
+  }
+
+  // Allocate new xarray to read data into
+  xt::xarray<T> xarr(shape);
+
+  // Read data from the dataset
+  read_dataset(obj_id, name, xarr);
+
+  // Copy into xtensor
+  arr = xarr;
+
+}
+
+template <typename T, std::size_t N>
 void read_dataset_as_shape(hid_t obj_id, const char* name,
                            xt::xtensor<T, N>& arr, bool indep=false)
 {

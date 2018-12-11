@@ -18,23 +18,14 @@ UrrData::UrrData(hid_t group_id)
   read_attribute(group_id, "multiply_smooth", temp_multiply_smooth);
   multiply_smooth_ = (temp_multiply_smooth == 1);
 
-  // read the enrgies at which tables exist
-  hid_t dset = open_dataset(group_id, "energy");
-  hsize_t dims[1];
-  get_shape(dset, dims);
-  close_dataset(dset);
-  n_energy_ = static_cast<int>(dims[0]);
-  energy_ = xt::xtensor<double, 1>({dims[0]}, 0.);
-  read_dataset_as_shape(group_id, "energy", energy_);
+  // read the energies at which tables exist
+  read_dataset(group_id, "energy", energy_);
+
+  // Set n_energy_
+  n_energy_ = energy_.shape()[0];
 
   // Read URR tables
-  dset = open_dataset(group_id, "table");
-  hsize_t dims3[3];
-  get_shape(dset, dims3);
-  close_dataset(dset);
-  xt::xarray<double> temp_arr({dims3[0], dims3[1], dims3[2]}, 0.);
-  read_dataset(group_id, "table", temp_arr);
-  prob_ = temp_arr;
+  read_dataset(group_id, "table", prob_);
 }
 
 }

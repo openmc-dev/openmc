@@ -43,5 +43,11 @@ public:
   explicit Material(pugi::xml_node material_node);
 };
 
+//==============================================================================
+// Fortran compatibility
+//==============================================================================
+
+extern "C" bool material_isotropic(int i_material, int i_nuc_mat);
+
 } // namespace openmc
 #endif // OPENMC_MATERIAL_H

@@ -2109,9 +2109,6 @@ contains
           call close_group(group_id)
           call file_close(file_id)
 
-          ! Assign resonant scattering data
-          if (res_scat_on) call nuclides(i_nuclide) % assign_0K_elastic_scattering()
-
           ! Determine if minimum/maximum energy for this nuclide is greater/less
           ! than the previous
           if (size(nuclides(i_nuclide) % grid) >= 1) then
@@ -2293,7 +2290,6 @@ contains
     logical :: file_exists                 ! Does multipole library exist?
     character(7) :: readable               ! Is multipole library readable?
     character(MAX_FILE_LEN) :: filename    ! Path to multipole xs library
-    character(kind=C_CHAR), pointer :: string(:)
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
 

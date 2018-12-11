@@ -81,6 +81,9 @@ contains
 
       subroutine free_memory_settings() bind(C)
       end subroutine free_memory_settings
+
+      subroutine free_memory_bank() bind(C)
+      end subroutine free_memory_bank
     end interface
 
     call free_memory_geometry()

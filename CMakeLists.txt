@@ -354,7 +354,6 @@ add_library(libopenmc SHARED
   src/timer_header.F90
   src/tracking.F90
   src/track_output.F90
-  src/urr_header.F90
   src/vector_header.F90
   src/volume_calc.F90
   src/volume_header.F90
@@ -374,6 +373,7 @@ add_library(libopenmc SHARED
   src/tallies/tally_header.F90
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90
+  src/bank.cpp
   src/dagmc.cpp
   src/cell.cpp
   src/cmfd_solver.cpp
@@ -401,12 +401,15 @@ add_library(libopenmc SHARED
   src/nuclide.cpp
   src/output.cpp
   src/particle.cpp
+  src/photon.cpp
+  src/physics.cpp
   src/physics_common.cpp
   src/physics_mg.cpp
   src/plot.cpp
   src/position.cpp
   src/progress_bar.cpp
   src/pugixml/pugixml_c.cpp
+  src/urr.cpp
   src/random_lcg.cpp
   src/reaction.cpp
   src/reaction_product.cpp

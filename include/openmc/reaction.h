@@ -4,6 +4,7 @@
 #ifndef OPENMC_REACTION_H
 #define OPENMC_REACTION_H
 
+#include <string>
 #include <vector>
 
 #include "hdf5.h"
@@ -40,12 +41,16 @@ public:
 };
 
 //==============================================================================
+// Non-member functions
+//==============================================================================
+
+std::string reaction_name(int mt);
+
+//==============================================================================
 // Fortran compatibility functions
 //==============================================================================
 
 extern "C" {
-  Reaction* reaction_from_hdf5(hid_t group, int* temperatures, int n);
-  void reaction_delete(Reaction* rx);
   int reaction_mt(Reaction* rx);
   double reaction_q_value(Reaction* rx);
   bool reaction_scatter_in_cm(Reaction* rx);

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <sstream>
 
+#include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
@@ -184,17 +185,12 @@ Particle::write_restart() const
     write_dataset(file_id, "id", id);
     write_dataset(file_id, "type", type);
 
-    // Get pointer to source bank
-    Bank* src;
-    int64_t n;
-    openmc_source_bank(&src, &n);
-
     int64_t i = simulation::current_work;
-    write_dataset(file_id, "weight", src[i-1].wgt);
-    write_dataset(file_id, "energy", src[i-1].E);
+    write_dataset(file_id, "weight", simulation::source_bank[i-1].wgt);
+    write_dataset(file_id, "energy", simulation::source_bank[i-1].E);
     hsize_t dims[] {3};
-    write_double(file_id, 1, dims, "xyz", src[i-1].xyz, false);
-    write_double(file_id, 1, dims, "uvw", src[i-1].uvw, false);
+    write_double(file_id, 1, dims, "xyz", simulation::source_bank[i-1].xyz, false);
+    write_double(file_id, 1, dims, "uvw", simulation::source_bank[i-1].uvw, false);
 
     // Close file
     file_close(file_id);

@@ -5,7 +5,9 @@
 #include <sstream>
 #include <string>
 
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -801,18 +803,6 @@ void read_settings_xml()
 //==============================================================================
 
 extern "C" {
-  bool res_scat_nuclides_empty() {
-    return settings::res_scat_nuclides.empty();
-  }
-
-  int res_scat_nuclides_size() {
-    return settings::res_scat_nuclides.size();
-  }
-
-  bool res_scat_nuclides_cmp(int i, const char* name) {
-    return settings::res_scat_nuclides[i - 1] == name;
-  }
-
   const char* path_cross_sections_c() {
     return settings::path_cross_sections.c_str();
   }

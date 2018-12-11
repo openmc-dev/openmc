@@ -34,16 +34,14 @@ module state_point
   implicit none
 
   interface
-    subroutine write_source_bank(group_id, bank_) bind(C)
-      import HID_T, C_INT64_T, Bank
+    subroutine write_source_bank(group_id) bind(C)
+      import HID_T
       integer(HID_T), value :: group_id
-      type(Bank), intent(in) :: bank_(*)
     end subroutine write_source_bank
 
-    subroutine read_source_bank(group_id, bank_) bind(C)
-      import HID_T, C_INT64_T, Bank
+    subroutine read_source_bank(group_id) bind(C)
+      import HID_T
       integer(HID_T), value :: group_id
-      type(Bank), intent(out) :: bank_(*)
     end subroutine read_source_bank
   end interface
 
@@ -412,7 +410,7 @@ contains
       if (master .or. parallel) then
         file_id = file_open(filename_, 'a', parallel=.true.)
       end if
-      call write_source_bank(file_id, source_bank)
+      call write_source_bank(file_id)
       if (master .or. parallel) call file_close(file_id)
     end if
   end function openmc_statepoint_write
@@ -588,8 +586,8 @@ contains
         file_id = file_open(path_source_point, 'r', parallel=.true.)
       end if
 
-      ! Write out source
-      call read_source_bank(file_id, source_bank)
+      ! Read source
+      call read_source_bank(file_id)
 
     end if
 

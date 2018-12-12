@@ -348,5 +348,15 @@ int openmc_run_linsolver(const double* A_data, const double* b, double* x,
   }
 }
 
+//==============================================================================
+// Fortran compatibility
+//==============================================================================
+
+extern "C" void free_memory_cmfd()
+{
+  cmfd::indptr.clear();
+  cmfd::indices.clear();
+}
+
 
 } // namespace openmc

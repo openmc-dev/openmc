@@ -25,19 +25,19 @@ def test_cmfd_feed_ng():
 
     # Create output string of all CMFD results to pass into testing harness
     outstr = 'cmfd indices\n'
-    outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run._indices])
+    outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run.indices])
     outstr += '\nk cmfd\n'
-    outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run._k_cmfd])
+    outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run.k_cmfd])
     outstr += '\ncmfd entropy\n'
-    outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run._entropy])
+    outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run.entropy])
     outstr += '\ncmfd balance\n'
-    outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run._balance])
+    outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run.balance])
     outstr += '\ncmfd dominance ratio\n'
-    outstr += '\n'.join(['{0:10.3E}'.format(x) for x in cmfd_run._dom])
+    outstr += '\n'.join(['{0:10.3E}'.format(x) for x in cmfd_run.dom])
     outstr += '\ncmfd openmc source comparison\n'
-    outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run._src_cmp])
+    outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run.src_cmp])
     outstr += '\ncmfd source\n'
-    cmfdsrc = np.reshape(cmfd_run._cmfd_src, np.product(cmfd_run._indices),
+    cmfdsrc = np.reshape(cmfd_run._cmfd_src, np.product(cmfd_run.indices),
                          order='F')
     outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfdsrc])
     outstr += '\n'

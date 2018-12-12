@@ -252,6 +252,10 @@ class CMFDRun(object):
              CMFD problem
           * "math" - Create adjoint matrices mathematically as the transpose of
              loss and production CMFD matrices
+    indices : numpy.ndarray
+        Stores spatial and group dimensions as [nx, ny, nz, ng]
+    cmfd_src : numpy.ndarray
+        CMFD source distribution calculated from solving CMFD equations
     entropy : list of floats
         "Shannon entropy" from cmfd fission source, stored for each generation
         that CMFD is invoked
@@ -444,6 +448,14 @@ class CMFDRun(object):
         return self._gauss_seidel_tolerance
 
     @property
+    def indices(self):
+        return self._indices
+
+    @property
+    def cmfd_src(self):
+        return self._cmfd_src
+
+    @property
     def dom(self):
         return self._dom
 
@@ -555,7 +567,7 @@ class CMFDRun(object):
     def adjoint_type(self, adjoint_type):
         check_type('CMFD adjoint type', adjoint_type, str)
         check_value('CMFD adjoint type', adjoint_type,
-                    ['math', 'phyical'])
+                    ['math', 'physical'])
         self._adjoint_type = adjoint_type
 
     @power_monitor.setter
@@ -1005,7 +1017,7 @@ class CMFDRun(object):
                 # Get all data entries for particular row in matrix
                 data = matrix.data[matrix.indptr[row]:matrix.indptr[row+1]]
                 for i in range(len(cols)):
-                    fh.write('({:3d}, {:3d}): {:0.8f}\n'.format(
+                    fh.write('{:3d}, {:3d}, {:0.8f}\n'.format(
                         row, cols[i], data[i]))
 
         # Save matrix in scipy format
@@ -1572,8 +1584,9 @@ class CMFDRun(object):
         kerr = abs(k_o - k_n) / k_n
 
         # Calculate max error in source
-        serr = np.sqrt(np.sum(np.where(s_n > 0, ((s_n-s_o) / s_n)**2, 0))
-                       / len(s_n))
+        with np.errstate(divide='ignore', invalid='ignore'):
+            serr = np.sqrt(np.sum(np.where(s_n > 0, ((s_n-s_o) / s_n)**2, 0))
+                           / len(s_n))
 
         # Check for convergence
         iconv = kerr < self._cmfd_ktol and serr < self._stol

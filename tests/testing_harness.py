@@ -165,6 +165,15 @@ class CMFDTestHarness(TestHarness):
         finally:
             self._cleanup()
 
+    def _cleanup(self):
+        """Delete output files for numpy matrices and flux vectors."""
+        super()._cleanup()
+        output = ['loss.npz', 'loss.dat', 'prod.npz', 'prod.dat',
+                  'fluxvec.npy', 'fluxvec.dat']
+        for f in output:
+            if os.path.exists(f):
+                os.remove(f)
+
 
 class ParticleRestartTestHarness(TestHarness):
     """Specialized TestHarness for running OpenMC particle restart tests."""

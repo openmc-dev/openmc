@@ -37,6 +37,8 @@ _dll.broaden_wmp_polynomials_c.restype = None
 _dll.broaden_wmp_polynomials_c.argtypes = [c_double, c_double, c_int,
                                            ndpointer(c_double)]
 
+_dll.normal_variate.restype = c_double
+_dll.normal_variate.argtypes = [c_double, c_double]
 
 def t_percentile(p, df):
     """ Calculate the percentile of the Student's t distribution with a
@@ -251,6 +253,26 @@ def watt_spectrum(a, b):
     """
 
     return _dll.watt_spectrum(a, b)
+
+
+def normal_variate(mean_value, std_dev):
+    """ Samples an energy from the Normal distribution.
+
+    Parameters
+    ----------
+    mean_value : float
+        Mean of the Normal distribution 
+    std_dev : float
+        Standard deviation of the normal distribution
+
+    Returns
+    -------
+    float
+        Sampled outgoing normally distributed value
+
+    """
+
+    return _dll.normal_variate(mean_value, std_dev)
 
 
 def broaden_wmp_polynomials(E, dopp, n):

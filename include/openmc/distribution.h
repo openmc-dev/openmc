@@ -99,24 +99,24 @@ private:
 };
 
 //==============================================================================
-//! Gaussian (fusion) spectrum with form 1/std_dev*sqrt(pi) exp (-(e-E0)/std_dev)^2
+//! Normal distributions with form 1/2*std_dev*sqrt(pi) exp (-(e-E0)/2*std_dev)^2
 //==============================================================================
 
-class Gaussian : public Distribution {
+class Normal : public Distribution {
 public:
-  explicit Gaussian(pugi::xml_node node);
-  Gaussian(double mean, double std_dev) : mean_{mean}, std_dev_{std_dev} { };
+  explicit Normal(pugi::xml_node node);
+  Normal(double mean_value, double std_dev) : mean_value_{mean_value}, std_dev_{std_dev} { };
 
   //! Sample a value from the distribution
   //! \return Sampled value
   double sample() const;
 private:
-  double mean_;    //!< middle of distribution [eV]
+  double mean_value_;    //!< middle of distribution [eV]
   double std_dev_; //!< standard deviation [eV]
 };
 
 //==============================================================================
-//! Muit (fusion) spectrum derived from Gaussian with extra params e0 is mean
+//! Muir (fusion) spectrum derived from Normal with extra params e0 is mean
 //! std dev is sqrt(4*e0*kt/m)
 //==============================================================================
 
@@ -134,7 +134,7 @@ private:
   // mean neutron energy 14.08e6 eV
   double e0_;    //!< mean neutron energy [eV]
   double m_rat_; //!< ratio of reactant masses relative to atomic mass unit
-  double kt_;    //!< ion temperature [ev]
+  double kt_;    //!< ion temperature [eV]
 };
 
 //==============================================================================

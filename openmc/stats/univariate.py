@@ -239,7 +239,7 @@ class Maxwell(Univariate):
 
 
 class Watt(Univariate):
-    """Watt fission energy spectrum.
+    r"""Watt fission energy spectrum.
 
     The Watt fission energy spectrum is characterized by two parameters
     :math:`a` and :math:`b` and has density function :math:`p(E) dE = c e^{-E/a}
@@ -308,58 +308,58 @@ class Watt(Univariate):
         element.set("parameters", '{} {}'.format(self.a, self.b))
         return element
 
-class Gaussian(Univariate):
-    """Gaussian energy spectrum.
+class Normal(Univariate):
+    r"""Normally distributed sampling.
 
-    The Gaussian energy spectrum is characterized by two parameters
+    The Normal Distribution is characterized by two parameters
     :math:`\mu` and :math:`\sigma` and has density function :math:
-    `p(E) dE = 1/\sigma\sqrt{\pi} * e^{(E-\mu/\sigma}`
+    `p(X) dX = 1/\2*sigma\sqrt{\pi} * e^{(X-\mu/\2*sigma}`
 
     Parameters
     ----------
-    mean : float
-        Mean of the Gaussian distribution in units of eV
+    mean_value : float
+        Mean value of the  distribution [dimensionless]
     std_dev : float
-        Standard deviation of the Gaussian distribution in units of eV
+        Standard deviation of the Normal distribution [dimensionsless]
 
     Attributes
     ----------
-    mean : flo1at
-        Mean of the Gaussian distribution in units of eV
+    mean_value : float
+        Mean of the Normal distribution [dimensionless]
     std_dev : float
-        Standard deviation of the Gaussian distribution in units of eV
+        Standard deviation of the Normal distribution [dimensionless]
     """
 
-    def __init__(self, mean=14.08e6, std_dev=4.74636e5):
+    def __init__(self, mean_value, std_dev):
         super().__init__()
-        self.mean = mean
+        self.mean_value = mean_value
         self.std_dev = std_dev
 
     def __len__(self):
         return 2
 
     @property
-    def mean(self):
-        return self._mean
+    def mean_value(self):
+        return self._mean_value
 
     @property
     def std_dev(self):
         return self._std_dev
 
-    @mean.setter
-    def mean(self, mean):
-        cv.check_type('Gaussian mean', mean, Real)
-        cv.check_greater_than('Gaussian mean', mean, 0.0)
-        self._mean = mean
+    @mean_value.setter
+    def mean_value(self, mean_value):
+        cv.check_type('Normal mean_value', mean_value, Real)
+        cv.check_greater_than('Normal mean_value', mean_value, 0.0)
+        self._mean_value = mean_value
 
     @std_dev.setter
     def std_dev(self, std_dev):
-        cv.check_type('Gaussian std_dev', std_dev, Real)
-        cv.check_greater_than('Gaussian std_dev', std_dev, 0.0)
+        cv.check_type('Normal std_dev', std_dev, Real)
+        cv.check_greater_than('Normal std_dev', std_dev, 0.0)
         self._std_dev = std_dev
 
     def to_xml_element(self, element_name):
-        """Return XML representation of the Watt distribution
+        """Return XML representation of the Normal distribution
 
         Parameters
         ----------
@@ -373,8 +373,8 @@ class Gaussian(Univariate):
 
         """
         element = ET.Element(element_name)
-        element.set("type", "gaussian")
-        element.set("parameters", '{} {}'.format(self.mean, self.std_dev))
+        element.set("type", "normal")
+        element.set("parameters", '{} {}'.format(self.mean_value, self.std_dev))
         return element
 
 class Muir(Univariate):
@@ -461,8 +461,8 @@ class Muir(Univariate):
 
         """
         element = ET.Element(element_name)
-        element.set("type", "gaussian")
-        element.set("parameters", '{} {} {}'.format(self.mean, self.std_dev, self.kt))
+        element.set("type", "muir")
+        element.set("parameters", '{} {} {}'.format(self._e0, self._m_rat, self._kt))
         return element
 
 

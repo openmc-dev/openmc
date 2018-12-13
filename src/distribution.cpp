@@ -114,22 +114,22 @@ double Watt::sample() const
 }
 
 //==============================================================================
-// Gaussian implementation
+// Normal implementation
 //==============================================================================
-Gaussian::Gaussian(pugi::xml_node node) 
+Normal::Normal(pugi::xml_node node) 
 {
   auto params = get_node_array<double>(node,"parameters");
   if (params.size() != 2)
-    openmc::fatal_error("Gaussian energy distribution must have two "
+    openmc::fatal_error("Normal energy distribution must have two "
                         "parameters specified.");
 
-  mean_ = params.at(0);
+  mean_value_ = params.at(0);
   std_dev_ = params.at(1);
 }
 
-double Gaussian::sample() const
+double Normal::sample() const
 {
-  return gaussian_spectrum(mean_, std_dev_);
+  return normal_variate(mean_value_, std_dev_);
 }
 
 //==============================================================================
@@ -296,7 +296,7 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
   } else if (type == "watt") {
     dist = UPtrDist{new Watt(node)};
   } else if (type == "gaussian") {
-    dist = UPtrDist{new Gaussian(node)};
+    dist = UPtrDist{new Normal(node)};
   } else if (type == "muir") {
     dist = UPtrDist{new Muir(node)};
   } else if (type == "discrete") {

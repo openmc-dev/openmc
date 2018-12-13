@@ -205,6 +205,25 @@ def test_watt_spectrum():
     assert ref_val == test_val
 
 
+def test_normal_dist():
+    settings = openmc.capi.settings
+    settings.seed = 1
+    a = 14.08
+    b = 0.0
+    ref_val = 14.08
+    test_val = openmc.capi.math.normal_variate(a, b)
+
+    assert ref_val == test_val
+
+    settings.seed = 1
+    a = 14.08
+    b = 1.0
+    ref_val = 16.436645416691427
+    test_val = openmc.capi.math.normal_variate(a, b)
+
+    assert ref_val == test_val
+
+
 def test_broaden_wmp_polynomials():
     # Two branches of the code to worry about, beta > 6 and otherwise
     # beta = sqrtE * dopp

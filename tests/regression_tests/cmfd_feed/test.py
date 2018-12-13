@@ -1,5 +1,5 @@
 from tests.testing_harness import CMFDTestHarness
-import openmc
+from openmc import cmfd
 import numpy as np
 import scipy.sparse
 
@@ -13,14 +13,14 @@ def test_cmfd_physical_adjoint():
 
     """
     # Initialize and set CMFD mesh
-    cmfd_mesh = openmc.CMFDMesh()
+    cmfd_mesh = cmfd.CMFDMesh()
     cmfd_mesh.lower_left = -10.0, -1.0, -1.0
     cmfd_mesh.upper_right = 10.0, 1.0, 1.0
     cmfd_mesh.dimension = 10, 1, 1
     cmfd_mesh.albedo = 0.0, 0.0, 1.0, 1.0, 1.0, 1.0
 
     # Initialize and run CMFDRun object
-    cmfd_run = openmc.CMFDRun()
+    cmfd_run = cmfd.CMFDRun()
     cmfd_run.mesh = cmfd_mesh
     cmfd_run.begin = 5
     cmfd_run.feedback = True
@@ -41,14 +41,14 @@ def test_cmfd_math_adjoint():
 
     """
     # Initialize and set CMFD mesh
-    cmfd_mesh = openmc.CMFDMesh()
+    cmfd_mesh = cmfd.CMFDMesh()
     cmfd_mesh.lower_left = -10.0, -1.0, -1.0
     cmfd_mesh.upper_right = 10.0, 1.0, 1.0
     cmfd_mesh.dimension = 10, 1, 1
     cmfd_mesh.albedo = 0.0, 0.0, 1.0, 1.0, 1.0, 1.0
 
     # Initialize and run CMFDRun object
-    cmfd_run = openmc.CMFDRun()
+    cmfd_run = cmfd.CMFDRun()
     cmfd_run.mesh = cmfd_mesh
     cmfd_run.begin = 5
     cmfd_run.feedback = True
@@ -68,14 +68,14 @@ def test_cmfd_write_matrices():
 
     """
     # Initialize and set CMFD mesh
-    cmfd_mesh = openmc.CMFDMesh()
+    cmfd_mesh = cmfd.CMFDMesh()
     cmfd_mesh.lower_left = -10.0, -1.0, -1.0
     cmfd_mesh.upper_right = 10.0, 1.0, 1.0
     cmfd_mesh.dimension = 10, 1, 1
     cmfd_mesh.albedo = 0.0, 0.0, 1.0, 1.0, 1.0, 1.0
 
     # Initialize and run CMFDRun object
-    cmfd_run = openmc.CMFDRun()
+    cmfd_run = cmfd.CMFDRun()
     cmfd_run.mesh = cmfd_mesh
     cmfd_run.begin = 5
     cmfd_run.display = {'dominance': True}
@@ -114,14 +114,14 @@ def test_cmfd_write_matrices():
 def test_cmfd_feed():
     """ Test 1 group CMFD solver with CMFD feedback"""
     # Initialize and set CMFD mesh
-    cmfd_mesh = openmc.CMFDMesh()
+    cmfd_mesh = cmfd.CMFDMesh()
     cmfd_mesh.lower_left = -10.0, -1.0, -1.0
     cmfd_mesh.upper_right = 10.0, 1.0, 1.0
     cmfd_mesh.dimension = 10, 1, 1
     cmfd_mesh.albedo = 0.0, 0.0, 1.0, 1.0, 1.0, 1.0
 
     # Initialize and run CMFDRun object
-    cmfd_run = openmc.CMFDRun()
+    cmfd_run = cmfd.CMFDRun()
     cmfd_run.mesh = cmfd_mesh
     cmfd_run.begin = 5
     cmfd_run.display = {'dominance': True}

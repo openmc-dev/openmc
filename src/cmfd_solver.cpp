@@ -356,6 +356,8 @@ extern "C" void free_memory_cmfd()
 {
   cmfd::indptr.clear();
   cmfd::indices.clear();
+  // Resize indexmap to be an empty array
+  cmfd::indexmap.resize({0});
 }
 
 

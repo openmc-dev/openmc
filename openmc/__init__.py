@@ -20,7 +20,6 @@ from openmc.trigger import *
 from openmc.tally_derivative import *
 from openmc.tallies import *
 from openmc.mgxs_library import *
-from openmc.cmfd import *
 from openmc.executor import *
 from openmc.statepoint import *
 from openmc.summary import *

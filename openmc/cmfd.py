@@ -19,7 +19,7 @@ from ctypes import c_int, c_double
 import numpy as np
 from scipy import sparse
 
-from openmc.capi import _dll, core, settings, filter, mesh, tally
+import openmc.capi
 from openmc.checkvalue import (check_type, check_length, check_value,
                                check_greater_than, check_less_than)
 from openmc.exceptions import OpenMCError
@@ -639,9 +639,10 @@ class CMFDRun(object):
 
         # Check keyword arguments and pass to C API init function
         if 'openmc_args' in kwargs:
-            core.init(args=kwargs['openmc_args'], intracomm=self._intracomm)
+            openmc.capi.init(args=kwargs['openmc_args'],
+                             intracomm=self._intracomm)
         else:
-            core.init(intracomm=self._intracomm)
+            openmc.capi.init(intracomm=self._intracomm)
 
         # Configure CMFD parameters and tallies
         self._configure_cmfd()
@@ -659,7 +660,7 @@ class CMFDRun(object):
         self._initialize_linsolver()
 
         # Initialize simulation
-        core.simulation_init()
+        openmc.capi.simulation_init()
 
         status = 0
         while status == 0:
@@ -667,24 +668,24 @@ class CMFDRun(object):
             self._cmfd_init_batch()
 
             # Run next batch
-            status = core.next_batch()
+            status = openmc.capi.next_batch()
 
             # Perform CMFD calculation if on
             if self._cmfd_on:
                 self._execute_cmfd()
 
                 # Write CMFD output if CMFD on for current batch
-                if core.master():
+                if openmc.capi.master():
                     self._write_cmfd_output()
 
         # Finalize simuation
-        core.simulation_finalize()
+        openmc.capi.simulation_finalize()
 
         # Print out CMFD timing statistics
         self._write_cmfd_timing_stats()
 
         # Finalize and free memory
-        core.finalize()
+        openmc.capi.finalize()
 
     def _initialize_linsolver(self):
         # Determine number of rows in CMFD matrix
@@ -704,7 +705,7 @@ class CMFDRun(object):
         args = temp_loss.indptr, len(temp_loss.indptr), \
             temp_loss.indices, len(temp_loss.indices), n, \
             self._spectral, self._indices, coremap
-        return _dll.openmc_initialize_linsolver(*args)
+        return openmc.capi._dll.openmc_initialize_linsolver(*args)
 
     def _write_cmfd_output(self):
         """Write CMFD output to buffer at the end of each batch"""
@@ -726,7 +727,7 @@ class CMFDRun(object):
 
     def _write_cmfd_timing_stats(self):
         """Write CMFD timing stats to buffer after finalizing simulation"""
-        if core.master():
+        if openmc.capi.master():
             outstr = ("=====================>     "
                       "CMFD TIMING STATISTICS     <====================\n\n"
                       "   Time in CMFD                    =  {:.5E} seconds\n"
@@ -752,7 +753,7 @@ class CMFDRun(object):
     def _read_cmfd_input(self):
         """Sets values of additional instance variables based on user input"""
         # Print message to user and flush output to stdout
-        if settings.verbosity >= 7 and core.master():
+        if openmc.capi.settings.verbosity >= 7 and openmc.capi.master():
             print(' Configuring CMFD parameters for simulation')
             sys.stdout.flush()
 
@@ -766,7 +767,7 @@ class CMFDRun(object):
             self._indices[i] = n
 
         # Check if in continuous energy mode
-        if not settings.run_CE:
+        if not openmc.capi.settings.run_CE:
             raise OpenMCError('CMFD must be run in continuous energy mode')
 
         # Set number of energy groups
@@ -847,7 +848,7 @@ class CMFDRun(object):
         """Handles CMFD options at the beginning of each batch"""
         # Get current batch through C API
         # Add 1 as next_batch has not been called yet
-        current_batch = core.current_batch() + 1
+        current_batch = openmc.capi.current_batch() + 1
 
         # Check to activate CMFD diffusion and possible feedback
         if self._begin == current_batch:
@@ -860,7 +861,7 @@ class CMFDRun(object):
     def _execute_cmfd(self):
         """Runs CMFD calculation on master node"""
         # Run CMFD on single processor on master
-        if core.master():
+        if openmc.capi.master():
             # Start CMFD timer
             time_start_cmfd = time.time()
 
@@ -874,7 +875,7 @@ class CMFDRun(object):
             self._k_cmfd.append(self._keff)
 
             # Check to perform adjoint on last batch
-            if (core.current_batch() == settings.batches
+            if (openmc.capi.current_batch() == openmc.capi.settings.batches
                     and self._run_adjoint):
                 self._cmfd_solver_execute(adjoint=True)
 
@@ -885,19 +886,19 @@ class CMFDRun(object):
         self._cmfd_reweight(True)
 
         # Stop CMFD timer
-        if core.master():
+        if openmc.capi.master():
             time_stop_cmfd = time.time()
             self._time_cmfd += time_stop_cmfd - time_start_cmfd
 
     def _cmfd_tally_reset(self):
         """Resets all CMFD tallies in memory"""
         # Print message
-        if settings.verbosity >= 6 and core.master():
+        if openmc.capi.settings.verbosity >= 6 and openmc.capi.master():
             print(' CMFD tallies reset')
             sys.stdout.flush()
 
         # Reset CMFD tallies
-        tallies = tally.tallies
+        tallies = openmc.capi.tallies
         for tally_id in self._tally_ids:
             tallies[tally_id].reset()
 
@@ -1073,7 +1074,7 @@ class CMFDRun(object):
         self._cmfd_src = cmfd_src / np.sum(cmfd_src)
 
         # Compute entropy
-        if settings.entropy_on:
+        if openmc.capi.settings.entropy_on:
             # Compute source times log_2(source)
             source = self._cmfd_src[self._cmfd_src > 0] \
                 * np.log(self._cmfd_src[self._cmfd_src > 0])/np.log(2)
@@ -1113,12 +1114,12 @@ class CMFDRun(object):
             outside = self._count_bank_sites()
 
             # Check and raise error if source sites exist outside of CMFD mesh
-            if core.master() and outside:
+            if openmc.capi.master() and outside:
                 raise OpenMCError('Source sites outside of the CMFD mesh')
 
             # Have master compute weight factors, ignore any zeros in
             # sourcecounts or cmfd_src
-            if core.master():
+            if openmc.capi.master():
                 # Compute normalization factor
                 norm = np.sum(self._sourcecounts) / np.sum(self._cmfd_src)
 
@@ -1150,13 +1151,13 @@ class CMFDRun(object):
                 self._weightfactors = self._intracomm.bcast(
                                       self._weightfactors)
 
-            m = mesh.meshes[self._mesh_id]
+            m = openmc.capi.meshes[self._mesh_id]
             energy = self._egrid
             ng = self._indices[3]
 
             # Get xyz locations and energies of all particles in source bank
-            source_xyz = core.source_bank()['xyz']
-            source_energies = core.source_bank()['E']
+            source_xyz = openmc.capi.source_bank()['xyz']
+            source_energies = openmc.capi.source_bank()['E']
 
             # Convert xyz location to the CMFD mesh index
             mesh_ijk = np.floor((source_xyz-m.lower_left)/m.width).astype(int)
@@ -1174,13 +1175,13 @@ class CMFDRun(object):
 
             # Determine weight factor of each particle based on its mesh index
             # and energy bin and updates its weight
-            core.source_bank()['wgt'] *= self._weightfactors[
+            openmc.capi.source_bank()['wgt'] *= self._weightfactors[
                     mesh_ijk[:,0], mesh_ijk[:,1], mesh_ijk[:,2], energy_bins]
 
-            if core.master() and np.any(source_energies < energy[0]):
+            if openmc.capi.master() and np.any(source_energies < energy[0]):
                 print(' WARNING: Source pt below energy grid')
                 sys.stdout.flush()
-            if core.master() and np.any(source_energies > energy[-1]):
+            if openmc.capi.master() and np.any(source_energies > energy[-1]):
                 print(' WARNING: Source pt above energy grid')
                 sys.stdout.flush()
 
@@ -1194,8 +1195,8 @@ class CMFDRun(object):
 
         """
         # Initialize variables
-        m = mesh.meshes[self._mesh_id]
-        bank = core.source_bank()
+        m = openmc.capi.meshes[self._mesh_id]
+        bank = openmc.capi.source_bank()
         energy = self._egrid
         sites_outside = np.zeros(1, dtype=bool)
         ng = self._indices[3]
@@ -1204,8 +1205,8 @@ class CMFDRun(object):
         count = np.zeros(self._sourcecounts.shape)
 
         # Get xyz locations and energies of each particle in source bank
-        source_xyz = core.source_bank()['xyz']
-        source_energies = core.source_bank()['E']
+        source_xyz = openmc.capi.source_bank()['xyz']
+        source_energies = openmc.capi.source_bank()['E']
 
         # Convert xyz location to mesh index and ravel index to scalar
         mesh_locations = np.floor((source_xyz - m.lower_left) / m.width)
@@ -1490,7 +1491,7 @@ class CMFDRun(object):
         s_o = np.zeros((n,))
 
         # Set initial guess
-        k_n = core.keff()[0]
+        k_n = openmc.capi.keff()[0]
         k_o = k_n
         dw = self._w_shift
         k_s = k_o + dw
@@ -1521,7 +1522,8 @@ class CMFDRun(object):
             s_o /= k_lo
 
             # Compute new flux with C++ solver
-            innerits = _dll.openmc_run_linsolver(loss.data, s_o, phi_n, toli)
+            innerits = openmc.capi._dll.openmc_run_linsolver(loss.data, s_o,
+                                                             phi_n, toli)
 
             # Compute new source vector
             s_n = prod.dot(phi_n)
@@ -1592,7 +1594,7 @@ class CMFDRun(object):
         iconv = kerr < self._cmfd_ktol and serr < self._stol
 
         # Print out to user
-        if self._power_monitor and core.master():
+        if self._power_monitor and openmc.capi.master():
             str1 = ' {:d}:'.format(iter)
             str2 = 'k-eff: {:0.8f}'.format(k_n)
             str3 = 'k-error:  {:.5E}'.format(kerr)
@@ -1644,13 +1646,13 @@ class CMFDRun(object):
         self._openmc_src.fill(0.)
 
         # Set mesh widths
-        self._hxyz[:,:,:,:] = mesh.meshes[self._mesh_id].width
+        self._hxyz[:,:,:,:] = openmc.capi.meshes[self._mesh_id].width
 
         # Reset keff_bal to zero
         self._keff_bal = 0.
 
         # Get tallies in-memory
-        tallies = tally.tallies
+        tallies = openmc.capi.tallies
 
         # Ravel coremap as 1d array similar to how tally data is arranged
         coremap = np.ravel(self._coremap.swapaxes(0, 2))
@@ -1855,7 +1857,7 @@ class CMFDRun(object):
         num_accel = self._mat_dim
 
         # Get openmc k-effective
-        keff = core.keff()[0]
+        keff = openmc.capi.keff()[0]
 
         # Define leakage in each mesh cell and energy group
         leakage = (((self._current[:,:,:,_CURRENTS['out_right'],:] -
@@ -2655,7 +2657,7 @@ class CMFDRun(object):
     def _create_cmfd_tally(self):
         """Creates all tallies in-memory that are used to solve CMFD problem"""
         # Create Mesh object based on CMFDMesh, stored internally
-        cmfd_mesh = mesh.Mesh()
+        cmfd_mesh = openmc.capi.Mesh()
         # Store id of Mesh object
         self._mesh_id = cmfd_mesh.id
         # Set dimension and parameters of Mesh object
@@ -2665,29 +2667,29 @@ class CMFDRun(object):
                                  width=self._mesh.width)
 
         # Create Mesh Filter object, stored internally
-        mesh_filter = filter.MeshFilter()
+        mesh_filter = openmc.capi.MeshFilter()
         # Set mesh for Mesh Filter
         mesh_filter.mesh = cmfd_mesh
 
         # Set up energy filters, if applicable
         if self._energy_filters:
             # Create Energy Filter object, stored internally
-            energy_filter = filter.EnergyFilter()
+            energy_filter = openmc.capi.EnergyFilter()
             # Set bins for Energy Filter
             energy_filter.bins = self._egrid
 
             # Create Energy Out Filter object, stored internally
-            energyout_filter = filter.EnergyoutFilter()
+            energyout_filter = openmc.capi.EnergyoutFilter()
             # Set bins for Energy Filter
             energyout_filter.bins = self._egrid
 
         # Create Mesh Surface Filter object, stored internally
-        meshsurface_filter = filter.MeshSurfaceFilter()
+        meshsurface_filter = openmc.capi.MeshSurfaceFilter()
         # Set mesh for Mesh Surface Filter
         meshsurface_filter.mesh = cmfd_mesh
 
         # Create Legendre Filter object, stored internally
-        legendre_filter = filter.LegendreFilter()
+        legendre_filter = openmc.capi.LegendreFilter()
         # Set order for Legendre Filter
         legendre_filter.order = 1
 
@@ -2695,7 +2697,7 @@ class CMFDRun(object):
         n_tallies = 4
         self._tally_ids = []
         for i in range(n_tallies):
-            cmfd_tally = tally.Tally()
+            cmfd_tally = openmc.capi.Tally()
             # Set nuclide bins
             cmfd_tally.nuclides = ['total']
             self._tally_ids.append(cmfd_tally.id)

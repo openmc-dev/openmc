@@ -318,16 +318,16 @@ class Normal(Univariate):
     Parameters
     ----------
     mean_value : float
-        Mean value of the  distribution [dimensionless]
+        Mean value of the  distribution
     std_dev : float
-        Standard deviation of the Normal distribution [dimensionsless]
+        Standard deviation of the Normal distribution
 
     Attributes
     ----------
     mean_value : float
-        Mean of the Normal distribution [dimensionless]
+        Mean of the Normal distribution 
     std_dev : float
-        Standard deviation of the Normal distribution [dimensionless]
+        Standard deviation of the Normal distribution 
     """
 
     def __init__(self, mean_value, std_dev):

@@ -674,32 +674,30 @@ double maxwell_spectrum(double T) {
 }
 
 
-double gaussian_spectrum(double mean, double standard_deviation) {
-  double r2 = 1.01;
-  double v1 = 0.;
-  double v2 = 0.;
-  
+double normal_variate(double mean, double standard_deviation) {
   // perhaps there should be a limit to the number of resamples
-  while ( r2 > 1 ) {
+  while ( true ) {
+    double v1 = 0.;
+    double v2 = 0.;
+
     v1 = 2 * prn() - 1.;
     v2 = 2 * prn() - 1.;
-    double r = std::pow(v1,2) + std::pow(v2,2);
-    r2 = std::pow(r,2);
-    if ( r2 < 1 ) {
-      double z1 = v1 * std::sqrt(-2.0 * std::log(r2)/r2);
-      double z2 = v2 * std::sqrt(-2.0 * std::log(r2)/r2); 
-      // sample each side of the bell curve
-      double z = 0;
-      if ( prn() <= 0.5 ) z = z1;
-      else z = z2;
+    
+    double r = std::pow(v1, 2) + std::pow(v2, 2);
+    double r2 = std::pow(r, 2);
+    if (r2 < 1) {
+      double z = std::sqrt(-2.0 * std::log(r2)/r2);
+      z *= (prn() <= 0.5) ? v1 : v2;
       return mean + standard_deviation*z;
     }
   }
 }
 
 double muir_spectrum(double e0, double m_rat, double kt) {
-  double sigma = std::sqrt(4.*e0*kt/m_rat);
-  return gaussian_spectrum(e0,sigma);
+  // note sigma here is a factor of 2 shy of equation
+  // 8 in https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
+  double sigma = std::sqrt(2.*e0*kt/m_rat);
+  return normal_variate(e0, sigma);
 }  
 
 

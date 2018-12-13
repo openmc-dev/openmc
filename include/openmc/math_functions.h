@@ -164,8 +164,8 @@ extern "C" double watt_spectrum(double a, double b);
 //==============================================================================
 //! Samples an energy from the Gaussian energy-dependent fission distribution.
 //!
-//! Samples from a Gaussian spectrum with a given mean and standard deviation
-//! The PDF is defined as s(x) = (1/sigma*sqrt(2) * e-((mu-x)/sigma)^2
+//! Samples from a Normal distribution with a given mean and standard deviation
+//! The PDF is defined as s(x) = (1/2*sigma*sqrt(2) * e-((mu-x)/2*sigma)^2
 //! Its sampled according to 
 //! http://www-pdg.lbl.gov/2009/reviews/rpp2009-rev-monte-carlo-techniques.pdf
 //! section 33.4.4
@@ -175,12 +175,14 @@ extern "C" double watt_spectrum(double a, double b);
 //! @result The sampled outgoing energy
 //==============================================================================
 
-extern "C" double gaussian_spectrum(double mean, double std_dev);
+extern "C" double normal_variate(double mean, double std_dev);
 
 //==============================================================================
 //! Samples an energy from the Muir (Gaussian) energy-dependent distribution.
 //!
 //! This is another form of the Gaussian distribution but with more easily 
+//! https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
+//!  
 //! modifyable parameters
 //!
 //! @param e0 peak neutron energy [ev]

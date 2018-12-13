@@ -1,15 +1,20 @@
 from numbers import Real
 from math import exp, erf, pi, sqrt
 
+import os
 import h5py
 import numpy as np
+from scipy.signal import find_peaks
 
 import openmc.checkvalue as cv
 from ..exceptions import DataError
 from ..mixin import EqualityMixin
 from . import WMP_VERSION, WMP_VERSION_MAJOR
 from .data import K_BOLTZMANN
+from .neutron import IncidentNeutron
+from .resonance import ResonanceRange
 
+import vectfit as m
 
 # Constants that determine which value to access
 _MP_EA = 0       # Pole
@@ -24,6 +29,8 @@ _FIT_S = 0       # Scattering
 _FIT_A = 1       # Absorption
 _FIT_F = 2       # Fission
 
+# Upper temperature limit
+TEMPERATURE_LIMIT = 3000
 
 def _faddeeva(z):
     r"""Evaluate the complex Faddeeva function.
@@ -88,7 +95,7 @@ def _broaden_wmp_polynomials(E, dopp, n):
 
     Returns
     -------
-    numpy.ndarray
+    np.ndarray
         The value of each Doppler-broadened curvefit polynomial term.
 
     """
@@ -128,6 +135,229 @@ def _broaden_wmp_polynomials(E, dopp, n):
 
     return factors
 
+def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
+                n_iter_vf=30, log=False, path_plot=None):
+    r"""Generate multipole data from point-wise cross sections.
+
+    Parameters
+    ----------
+    energy : np.ndarray
+        Energy array.
+    cs_xs : np.ndarray
+        Point-wise cross sections to be fitted.
+    mts : Iterable of Integral
+        Reaction list.
+    rtol : Real, optional
+        Relative error tolerance.
+    atol : Real, optional
+        Absolute error tolerance.
+    orders : Iterable of Integral, optional
+        A list of orders (number of poles) to be searched.
+    n_iter_vf : Integral, optional
+        Number of maximum VF iterations.
+    log : Bool, optional
+        Whether to print log.
+    path_plot : str, optional
+        Path to save the figures.
+
+    Returns
+    -------
+    Tuple
+        (poles, residues).
+
+    """
+
+    MIN_CROSS_SECTION = 1e-7
+    N_FINER = 10
+
+    ne = energy.size
+    nmt = len(mts)
+    if ce_xs.shape != (nmt, ne):
+        raise ValueError('Inconsistent cross section data.')
+
+    # construct test data: interpolate xs with finer grids
+    ne_test = (ne-1)*N_FINER + 1
+    test_energy = np.interp(np.arange(ne_test),
+                            np.arange(ne_test, step=N_FINER), energy)
+    test_energy[[0, -1]] = energy[[0, -1]] # avoid numerical issue
+    test_xs_ref = np.zeros((nmt, ne_test))
+    for i in range(nmt):
+        test_xs_ref[i] = np.interp(test_energy, energy, ce_xs[i])
+
+    if log:
+        print("Energy: {} to {} ({} points)".format(energy[0], energy[-1], ne))
+    # inputs
+    f = ce_xs * energy # sigma*E
+    s = np.sqrt(energy) # sqrt(E)
+    test_s = np.sqrt(test_energy)
+    weight = 1.0/f
+    # very small cross sections can lead to huge weights which harm accuracy
+    for i in range(nmt):
+        if np.all(ce_xs[i]<=MIN_CROSS_SECTION):
+            weight[i] = 1.0
+        elif np.any(ce_xs[i]<=MIN_CROSS_SECTION):
+            weight[i, ce_xs[i]<=MIN_CROSS_SECTION] = \
+               max(weight[i, ce_xs[i]>MIN_CROSS_SECTION])
+
+    # order search
+    peaks, _ = find_peaks(ce_xs[0]+ce_xs[1])
+    n_peaks = peaks.size
+    if orders is not None:
+        # make sure orders are even integers
+        orders = list(set([int(i/2)*2 for i in orders if i>=2]))
+    else:
+        lowest_order = max(2, 2*n_peaks)
+        highest_order = max(200, 4*n_peaks)
+        orders = list(range(lowest_order, highest_order+1, 2))
+
+    if log:
+        print("Found {} peaks".format(n_peaks))
+        print("Fitting orders from {} to {}".format(orders[0], orders[-1]))
+
+    found_ideal = False
+    n_discarded = 0 # for accelation, number of discarded searches
+    best_quality = best_ratio = -np.inf
+    for i, order in enumerate(orders):
+        if log:
+            print("Order={} {}/{}".format(order, i, len(orders)))
+        # initial guessed poles
+        poles = np.linspace(s[0], s[-1], order/2)
+        poles = poles + poles*0.01j
+        poles = np.sort(np.append(poles, np.conj(poles)))
+
+        found_better = False
+        # fitting iteration
+        for i_vf in range(n_iter_vf):
+            if log:
+                print("VF iteration {}/{}".format(i_vf+1, n_iter_vf))
+
+            # call vf
+            poles, residues, cf, f_fit, rms = m.vectfit(f, s, poles, weight)
+
+            # convert real pole to conjugate pairs
+            n_real_poles = 0
+            new_poles = []
+            for p in poles:
+                p_r, p_i = np.real(p), np.imag(p)
+                if p_r > s[0] and p_r < s[-1] and p_i == 0.:
+                    new_poles += [p_r+p_r*0.01j, p_r-p_r*0.01j]
+                    n_real_poles += 1
+                else:
+                    new_poles += [p]
+            new_poles = np.array(new_poles)
+            # re-calculate residues if poles changed
+            if n_real_poles > 0:
+                new_poles, residues, cf, f_fit, rms = \
+                      m.vectfit(f, s, new_poles, weight, skip_pole=True)
+
+            # assess the result on test grid
+            test_xs = m.evaluate(test_s, new_poles, residues)/test_energy
+            abserr = np.abs(test_xs - test_xs_ref)
+            relerr = abserr/test_xs_ref
+            if np.any(np.isnan(abserr)):
+                maxre, ratio, ratio2 = np.inf, -np.inf, -np.inf
+            elif np.all(abserr <= atol):
+                maxre, ratio, ratio2 = 0., 1., 1.
+            else:
+                maxre = np.max(relerr[abserr > atol])
+                ratio = np.sum((relerr<rtol) | (abserr<atol)) / relerr.size
+                ratio2 = np.sum((relerr<10*rtol) | (abserr<atol)) / relerr.size
+
+            quality = 100*(ratio+ratio2-min(0.1*maxre, 1)-5e-4*new_poles.size)
+
+            if np.any(test_xs < -atol):
+                quality = -np.inf
+
+            if log:
+                print("  Max relative error: {:.3f}%".format(maxre*100))
+                print("  Satisfaction: {:.1f}%, {:.1f}%".format(ratio*100, ratio2*100))
+                print("  Quality: {:.2f}".format(quality))
+
+            if quality > best_quality:
+                if log:
+                    print("  Best by far!")
+                found_better = True
+                best_quality, best_ratio = quality, ratio
+                best_poles, best_residues = new_poles, residues
+                best_test_xs, best_relerr = test_xs, relerr
+                if ratio >= 1.0:
+                    if log:
+                        print("Found ideal results. Stop!")
+                    found_ideal = True
+                    break
+            else:
+                if log:
+                    print("  Discarded!")
+
+        if found_ideal:
+            break
+
+        # acceleration
+        if found_better:
+            n_discarded = 0
+        else:
+            if order > max(2*n_peaks, 50) and best_ratio > 0.7:
+                n_discarded += 1
+                if n_discarded >= 10 or (n_discarded >= 5 and best_ratio > 0.9):
+                    if log:
+                        print("Couldn't get better results. Stop!")
+                    break
+
+    # merge conjugate poles
+    real_idx = conj_idx = []
+    found_conj = False
+    for i, p in enumerate(best_poles):
+        if found_conj:
+            found_conj = False
+            continue
+        if np.imag(p) == 0.:
+            real_idx.append(i)
+        else:
+            if i < best_poles.size and np.conj(p) == best_poles[i+1]:
+                found_conj = True
+                conj_idx.append(i)
+            else:
+                raise RuntimeError("Complex poles are not conjugate!")
+    if log:
+        print("Found {} real poles and {} conjugate complex pairs.".format(
+               len(real_idx), len(conj_idx)))
+    mp_poles = best_poles[real_idx+conj_idx]
+    mp_residues = np.concatenate((best_residues[:, real_idx],
+                                  best_residues[:, conj_idx]*2), axis=1)/1j
+    if log:
+        print("Final number of poles: {}".format(mp_poles.size))
+
+    if path_plot:
+        import matplotlib
+        matplotlib.use("agg")
+        import matplotlib.pyplot as plt
+        if not os.path.exists(path_plot):
+            os.makedirs(path_plot)
+        for i, mt in enumerate(mts):
+            fig, ax1 = plt.subplots()
+            lns1 = ax1.loglog(test_energy, test_xs_ref[i], 'g', label="ACE xs")
+            lns2 = ax1.loglog(test_energy, best_test_xs[i], 'b', label="VF xs")
+            ax2 = ax1.twinx()
+            lns3 = ax2.loglog(test_energy, best_relerr[i], 'r',
+                              label="Relative error", alpha=0.5)
+            lns = lns1 + lns2 + lns3
+            labels = [l.get_label() for l in lns]
+            ax1.legend(lns, labels, loc='best')
+            ax1.set_xlabel('energy (eV)')
+            ax1.set_ylabel('cross section (b)', color='b')
+            ax1.tick_params('y', colors='b')
+            ax2.set_ylabel('relative error', color='r')
+            ax2.tick_params('y', colors='r')
+
+            plt.title("MT {} vectfitted with {} poles".format(mt, mp_poles.size))
+            fig.tight_layout()
+            figfile = os.path.join(path_plot, "{}_vf.png".format(mt))
+            plt.savefig(figfile)
+            plt.close()
+            if log:
+                print("Plot figure: {}".format(figfile))
+
+    return (mp_poles, mp_residues)
 
 class WindowedMultipole(EqualityMixin):
     """Resonant cross sections represented in the windowed multipole format.
@@ -390,6 +620,158 @@ class WindowedMultipole(EqualityMixin):
             h5file.close()
 
         return out
+
+    @classmethod
+    def from_vectfit(cls, endf_file, error=1e-3, njoy_error=5e-4, log=False,
+                     path=None, **kwargs):
+        """Generate windowed multipole neutron data via Vector Fitting.
+
+        Parameters
+        ----------
+        endf_file : str
+            Path to ENDF evaluation
+        error : float, optional
+            Fractional error tolerance for data fitting
+        njoy_error : float, optional
+            Fractional error tolerance for processing point-wise data with NJOY
+        log : bool, optional
+            Whether to display log
+        path : str, optional
+            Path to save the figures.
+        **kwargs
+            Keyword arguments passed to :func:`openmc.data.multipole._vectfit_xs`
+
+        Returns
+        -------
+        openmc.data.WindowedMultipole
+            Resonant cross sections represented in the windowed multipole
+            format.
+
+        """
+
+        # ======================================================================
+        # PREPARE POINT-WISE XS
+
+        # make 0K ACE data using njoy
+        if log:
+            print("Running NJOY to get 0K point-wise data...")
+        nuc_ce = IncidentNeutron.from_njoy(endf_file, temperatures=[0.0],
+                        error=njoy_error, broadr=False, heatr=False, purr=False)
+
+        if log:
+            print("Parsing cross section within resolved resonance range...")
+        # RRR bound
+        endf_res = IncidentNeutron.from_endf(endf_file).resonances
+
+        rrr_bound_energy = nuc_ce.energy['0K'][-1]
+        try:
+            rrr = endf_res.resolved
+        except:
+            rrr = None
+        # if resolved resonance parameters exist
+        if rrr is not None and hasattr(rrr, 'energy_max') and \
+             type(rrr) is not ResonanceRange:
+            rrr_bound_energy = rrr.energy_max
+        else:
+            try:
+                # set rrr bound as lower bound of unresolved
+                rrr_bound_energy = endf_res.unresolved.energy_min
+            except:
+                pass
+        rrr_bound_idx = np.searchsorted(nuc_ce.energy['0K'], rrr_bound_energy,
+                                        side='right') - 1
+
+        # first threshold
+        first_threshold_idx = float("inf")
+        first_threshold_mt = None
+        for mt in nuc_ce.reactions:
+            if hasattr(nuc_ce.reactions[mt].xs['0K'], '_threshold_idx'):
+                threshold_idx = nuc_ce.reactions[mt].xs['0K']._threshold_idx
+                if 0 < threshold_idx < first_threshold_idx:
+                    first_threshold_idx = threshold_idx
+                    first_threshold_mt = mt
+
+        # lower of RRR bound and first threshold
+        e_max_idx = min(rrr_bound_idx, first_threshold_idx)
+
+        if log:
+            print("RRR idx: {}, first threshold idx: {}".format(rrr_bound_idx,
+                  first_threshold_idx))
+
+        # parse energy and summed cross sections
+        energy = nuc_ce.energy['0K'][:e_max_idx+1]
+        E_min, E_max = energy[0], energy[-1]
+        n_points = energy.size
+
+        total_xs = nuc_ce[1].xs['0K'](energy)
+        if 2 in nuc_ce:
+            elastic_xs = nuc_ce[2].xs['0K'](energy)
+        else:
+            elastic_xs = np.zeros_like(total_xs)
+        if 27 in nuc_ce:
+            absorption_xs = nuc_ce[27].xs['0K'](energy)
+        else:
+            absorption_xs = np.zeros_like(total_xs)
+        fissionable = False
+        if 18 in nuc_ce:
+            fission_xs = nuc_ce[18].xs['0K'](energy)
+            fissionable = True
+
+        # make vectors
+        if fissionable:
+            ce_xs = np.vstack((elastic_xs, absorption_xs, fission_xs))
+            mts = [2, 27, 18]
+        else:
+            ce_xs = np.vstack((elastic_xs, absorption_xs))
+            mts = [2, 27]
+
+        if log:
+            print("  MTs: {}, Energy range: {:e} to {:e} eV ({} points)".format(
+                  mts, E_min, E_max, n_points))
+
+        # ======================================================================
+        # PERFORM VECTOR FITTING
+
+        alpha = nuc_ce.atomic_weight_ratio/(K_BOLTZMANN*TEMPERATURE_LIMIT)
+
+        # divide into pieces for complex nuclides
+        peaks, _ = find_peaks(total_xs)
+        n_peaks = peaks.size
+        if n_peaks > 300 or n_points > 50000 or n_peaks * n_points > 100*30000:
+            n_pieces = max(5, n_peaks // 80,  n_points // 5000)
+        else:
+            n_pieces = 1
+        piece_width = (sqrt(E_max) - sqrt(E_min)) / n_pieces
+
+        # VF piece by piece
+        for i_piece in range(n_pieces):
+            if log:
+                print("Piece {}/{}".format(i_piece+1, n_pieces))
+            # start E of this piece
+            e_bound = (sqrt(E_min) + piece_width*(i_piece-0.5))**2
+            if i_piece == 0 or sqrt(alpha*e_bound) < 4.0:
+                e_start = E_min
+                e_start_idx = 0
+            else:
+                e_start = max(E_min, (sqrt(alpha*e_bound)-4.0)**2/alpha)
+                e_start_idx = np.searchsorted(energy, e_start, side='right') - 1
+            # end E of this piece
+            e_bound = (sqrt(E_min) + piece_width*(i_piece+1))**2
+            e_end = min(E_max, (sqrt(alpha*e_bound) + 4.0)**2/alpha)
+            e_end_idx = np.searchsorted(energy, e_end, side='left') + 1
+            piece_range = range(e_start_idx, min(e_end_idx+1, n_points))
+
+            # fitting xs
+            if path:
+                path_plot = os.path.join(path, "{}".format(i_piece+1))
+            else:
+                path_plot = None
+            poles, residues = _vectfit_xs(energy[piece_range],
+                   ce_xs[:, piece_range], mts, rtol=error, log=log,
+                   path_plot=path_plot, **kwargs)
+
+        # ======================================================================
+        # WINDOWING
 
     def _evaluate(self, E, T):
         """Compute scattering, absorption, and fission cross sections.

@@ -1,5 +1,6 @@
 from openmc.arithmetic import *
 from openmc.cell import *
+from openmc.checkvalue import *
 from openmc.mesh import *
 from openmc.element import *
 from openmc.geometry import *

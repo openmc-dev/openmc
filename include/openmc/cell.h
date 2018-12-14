@@ -11,6 +11,7 @@
 #include "pugixml.hpp"
 
 #include "openmc/constants.h"
+#include "openmc/neighbor_list.h"
 #include "openmc/position.h"
 
 #ifdef DAGMC
@@ -104,7 +105,7 @@ public:
   bool simple_;  //!< Does the region contain only intersections?
 
   //! \brief Neighboring cells in the same universe.
-  std::vector<int> neighbors;
+  NeighborList neighbors;
 
   Position translation_ {0, 0, 0}; //!< Translation vector for filled universe
 

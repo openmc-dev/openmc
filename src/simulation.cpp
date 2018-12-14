@@ -4,6 +4,7 @@
 #include "openmc/container_util.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
+#include "openmc/geometry_aux.h"
 #include "openmc/message_passing.h"
 #include "openmc/output.h"
 #include "openmc/particle.h"
@@ -449,6 +450,9 @@ void finalize_generation()
     // For fixed-source mode, we need to sample the external source
     fill_source_bank_fixedsource();
   }
+
+  // Clean up neighbor lists
+  geometry_finalize_generation();
 }
 
 void initialize_history(Particle* p, int64_t index_source)

@@ -63,39 +63,58 @@ check_cell_overlap(Particle* p)
 //==============================================================================
 
 bool
-find_cell_inner(Particle* p, const std::vector<int>* search_cells)
+find_cell_inner(Particle* p, NeighborList* neighbor_list)
 {
-  // If a set of cells to search was not specified, search all cells in this
-  // universe.
-  if (!search_cells) {
-    int i_universe = p->coord[p->n_coord-1].universe;
-    search_cells = &model::universes[i_universe]->cells_;
-  }
-
-  // Find which cell of this universe the particle is in.
+  // Find which cell of this universe the particle is in.  Use the neighbor list
+  // to shorten the search if one was provided.
   bool found = false;
   int32_t i_cell;
-  for (int i = 0; i < search_cells->size(); i++) {
-    i_cell = (*search_cells)[i];
+  if (neighbor_list) {
+    for (auto it = neighbor_list->begin(); it != neighbor_list->end(); ++it) {
+      i_cell = *it;
 
-    // Make sure the search cell is in the same universe.
-    int i_universe = p->coord[p->n_coord-1].universe;
-    if (model::cells[i_cell]->universe_ != i_universe) continue;
+      // Make sure the search cell is in the same universe.
+      int i_universe = p->coord[p->n_coord-1].universe;
+      if (model::cells[i_cell]->universe_ != i_universe) continue;
 
-    Position r {p->coord[p->n_coord-1].xyz};
-    Direction u {p->coord[p->n_coord-1].uvw};
-    int32_t surf = p->surface;
-    if (model::cells[i_cell]->contains(r, u, surf)) {
-      p->coord[p->n_coord-1].cell = i_cell;
-
-      if (settings::verbosity >= 10 || simulation::trace) {
-        std::stringstream msg;
-        msg << "    Entering cell " << model::cells[i_cell]->id_;
-        write_message(msg, 1);
+      // Check if this cell contains the particle.
+      Position r {p->coord[p->n_coord-1].xyz};
+      Direction u {p->coord[p->n_coord-1].uvw};
+      auto surf = p->surface;
+      if (model::cells[i_cell]->contains(r, u, surf)) {
+        p->coord[p->n_coord-1].cell = i_cell;
+        found = true;
+        break;
       }
-      found = true;
-      break;
     }
+
+  } else {
+    int i_universe = p->coord[p->n_coord-1].universe;
+    const auto& cells {model::universes[i_universe]->cells_};
+    for (auto it = cells.begin(); it != cells.end(); it++) {
+      i_cell = *it;
+
+      // Make sure the search cell is in the same universe.
+      int i_universe = p->coord[p->n_coord-1].universe;
+      if (model::cells[i_cell]->universe_ != i_universe) continue;
+
+      // Check if this cell contains the particle.
+      Position r {p->coord[p->n_coord-1].xyz};
+      Direction u {p->coord[p->n_coord-1].uvw};
+      auto surf = p->surface;
+      if (model::cells[i_cell]->contains(r, u, surf)) {
+        p->coord[p->n_coord-1].cell = i_cell;
+        found = true;
+        break;
+      }
+    }
+  }
+
+  // Announce the cell that the particle is entering.
+  if (found && (settings::verbosity >= 10 || simulation::trace)) {
+    std::stringstream msg;
+    msg << "    Entering cell " << model::cells[i_cell]->id_;
+    write_message(msg, 1);
   }
 
   if (found) {
@@ -271,15 +290,14 @@ find_cell(Particle* p, bool use_neighbor_lists)
 
     // Search for the particle in that cell's neighbor list.  Return if we
     // found the particle.
-    std::vector<int>* search_cells = &c.neighbors;
-    bool found = find_cell_inner(p, search_cells);
+    bool found = find_cell_inner(p, &c.neighbors);
     if (found) return found;
 
     // The particle could not be found in the neighbor list.  Try searching all
     // cells in this universe, and update the neighbor list if we find a new
     // neighboring cell.
     found = find_cell_inner(p, nullptr);
-    if (found) c.neighbors.push_back(p->coord[coord_lvl].cell);
+    if (found) c.neighbors.push(p->coord[coord_lvl].cell);
     return found;
 
   } else {

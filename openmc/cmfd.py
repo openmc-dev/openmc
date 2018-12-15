@@ -53,8 +53,7 @@ _CURRENTS = {
 
 
 class CMFDMesh(object):
-    """A structured Cartesian mesh used for Coarse Mesh Finite Difference
-    (CMFD) acceleration.
+    """"A structured  Cartesian mesh used for CMFD acceleration.
 
     Attributes
     ----------
@@ -188,10 +187,7 @@ class CMFDMesh(object):
 
 
 class CMFDRun(object):
-    r"""Class to run openmc with CMFD acceleration through the C API. Running
-    openmc in this manner obviates the need for defining CMFD parameters
-    through a cmfd.xml file. Instead, all input parameters should be passed
-    through the CMFDRun instance.
+    r"""Class for running CMFD acceleration through the C API.
 
     Attributes
     ----------
@@ -623,11 +619,8 @@ class CMFDRun(object):
         intracomm : mpi4py.MPI.Intracomm or None
             MPI intercommunicator to pass through C API. Set to MPI.COMM_WORLD
             by default
-
-        Keyword arguments
-        -----------------
-        openmc_args : list of str
-            Arguments to pass to ``openmc.capi.init()``, as a list
+        **kwargs
+            All keyword arguments are passed to :func:`openmc.capi.init`.
 
         """
         # Store intracomm for part of CMFD routine where MPI reduce and
@@ -637,12 +630,8 @@ class CMFDRun(object):
         elif intracomm is None and have_mpi:
             self._intracomm = MPI.COMM_WORLD
 
-        # Check keyword arguments and pass to C API init function
-        if 'openmc_args' in kwargs:
-            openmc.capi.init(args=kwargs['openmc_args'],
-                             intracomm=self._intracomm)
-        else:
-            openmc.capi.init(intracomm=self._intracomm)
+        # Run and pass arguments to C API init function
+        openmc.capi.init(intracomm=self._intracomm, **kwargs)
 
         # Configure CMFD parameters and tallies
         self._configure_cmfd()
@@ -710,19 +699,19 @@ class CMFDRun(object):
     def _write_cmfd_output(self):
         """Write CMFD output to buffer at the end of each batch"""
         # Display CMFD k-effective
-        str1 = '{:>11s}CMFD k:    {:0.5f}'.format('', self._k_cmfd[-1])
+        outstr = '{:>11s}CMFD k:    {:0.5f}'.format('', self._k_cmfd[-1])
         # Display value of additional fields based on display dict
-        str2 = '\n'
+        outstr += '\n'
         if self._display['dominance']:
-            str2 += '{:>11s}Dom Rat:   {:0.5f}\n'.format('', self._dom[-1])
+            outstr += '{:>11s}Dom Rat:   {:0.5f}\n'.format('', self._dom[-1])
         if self._display['entropy']:
-            str2 += '{:>11s}CMFD Ent:  {:0.5f}\n'.format('', self._entropy[-1])
+            outstr += '{:>11s}CMFD Ent:  {:0.5f}\n'.format('', self._entropy[-1])
         if self._display['source']:
-            str2 += '{:>11s}RMS Src:   {:0.5f}\n'.format('', self._src_cmp[-1])
+            outstr += '{:>11s}RMS Src:   {:0.5f}\n'.format('', self._src_cmp[-1])
         if self._display['balance']:
-            str2 += '{:>11s}RMS Bal:   {:0.5f}\n'.format('', self._balance[-1])
+            outstr += '{:>11s}RMS Bal:   {:0.5f}\n'.format('', self._balance[-1])
 
-        print('{:s}{:s}'.format(str1, str2), end='')
+        print('{:s}'.format(outstr))
         sys.stdout.flush()
 
     def _write_cmfd_timing_stats(self):

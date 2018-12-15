@@ -35,14 +35,20 @@ public:
   using suffix_iter = std::forward_list<value_type>::iterator;
   using iterator = NeighborListIter<value_type, prefix_iter, suffix_iter>;
 
+  //! Attempt to add an element.
+  //
+  //! If the relevant OpenMP lock is currently owned by another thread, this
+  //! function will return without actually modifying the data.  It is assumed
+  //! that returning the transport calculation and possibly re-adding the
+  //! element later is faster than waiting on the lock to be released.
   void push(int new_elem)
   {
     // Try to acquire the lock.
     std::unique_lock<ThreadMutex> lock(mutex_, std::try_to_lock);
     if (lock) {
-      // Make sure this element isn't already in the suffix.  Don't check the
-      // prefix because we don't expect this function to be called if the "new"
-      // element is already there.
+      // It is possible another thread already added this element to the suffix
+      // while this thread was searching for a cell so make sure the given
+      // element isn't a duplicate before adding it.
       if (std::find(suffix_.cbegin(), suffix_.cend(), new_elem)
           == suffix_.cend()) {
         suffix_.push_front(new_elem);
@@ -50,6 +56,12 @@ public:
     }
   }
 
+  //! Move data from the linked-list suffix to the consecutive vector prefix.
+  //
+  //! The consecutive data slightly improves runtime (likely due to cache
+  //! locality).  Note that this function is not guaranteed threadsafe---the
+  //! caller is responsible for making sure only one thread at a time calls this
+  //! function.
   void make_consecutive()
   {
     while (!suffix_.empty()) {
@@ -76,8 +88,11 @@ template <typename T_value, typename T_prefix_iter, typename T_suffix_iter>
 class NeighborListIter
 {
 public:
+  // Construct from a prefix iterator.
   NeighborListIter(NeighborList* nl, T_prefix_iter it)
   {
+    // If we were given an iterator to the end of the prefix, immediately switch
+    // over to suffix mode.
     base_ = nl;
     if (it != base_->prefix_.end()) {
       in_prefix_ = true;
@@ -88,6 +103,7 @@ public:
     }
   }
 
+  // Construct from a suffix iterator.
   NeighborListIter(NeighborList* nl, T_suffix_iter it)
   {
     in_prefix_ = false;
@@ -139,11 +155,13 @@ public:
 private:
   NeighborList* base_;
 
+  // This type essentially wraps the implementation for two different external
+  // iterators.  A union is used to contain one iterator or the other, and the
+  // in_prefix_ flag indicates which version of that union is valid.
   union {
     T_prefix_iter prefix_iter_;
     T_suffix_iter suffix_iter_;
   };
-
   bool in_prefix_;
 };
 

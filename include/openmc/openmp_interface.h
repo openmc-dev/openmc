@@ -7,43 +7,70 @@
 
 namespace openmc {
 
+//==============================================================================
+//! An object used to prevent concurrent access to a piece of data.
+//
+//! This type meets the C++ "Lockable" requirements.
+//==============================================================================
+
 class ThreadMutex
 {
-
-#ifdef _OPENMP
-//==============================================================================
-// Implementation for when OpenMP is actually defined.
-
 public:
   ThreadMutex()
-  {omp_init_lock(&mutex_);}
+  {
+    #ifdef _OPEMP
+      omp_init_lock(&mutex_);
+    #endif
+  }
 
   ~ThreadMutex()
-  {omp_destroy_lock(&mutex_);}
+  {
+    #ifdef _OPEMP
+      omp_destroy_lock(&mutex_);
+    #endif
+  }
 
+  // Mutexes cannot be copied.  We need to explicitly delete the copy
+  // constructor and copy assignment operator to ensure the compiler doesn't
+  // "help" us by implicitly trying to copy the underlying mutexes.
+  ThreadMutex(const ThreadMutex&) = delete;
+  ThreadMutex& operator= (const ThreadMutex&) = delete;
+
+  //! Lock the mutex.
+  //
+  //! This function blocks execution until the lock succeeds.
   void lock()
-  {omp_set_lock(&mutex_);}
+  {
+    #ifdef _OPEMP
+      omp_set_lock(&mutex_);
+    #endif
+  }
 
-  bool try_lock()
-  {return omp_test_lock(&mutex_);}
+  //! Try to lock the mutex and indicate success.
+  //
+  //! This function does not block.  It returns immediately and gives false if
+  //! the lock is unavailable.
+  bool try_lock() noexcept
+  {
+    #ifdef _OPEMP
+      return omp_test_lock(&mutex_);
+    #else
+      return true;
+    #endif
+  }
 
-  void unlock()
-  {omp_unset_lock(&mutex_);}
+  //! Unlock the mutex.
+  void unlock() noexcept
+  {
+    #ifdef _OPEMP
+      omp_unset_lock(&mutex_);
+    #endif
+  }
 
 private:
-  omp_lock_t mutex_;
-
-#else
-//==============================================================================
-// Empty implementation for when OpenMP is not defined.
-
-public:
-  ThreadMutex() {}
-  ~ThreadMutex() = default;
-  void lock() {}
-  bool try_lock() {return true;}
-  void unlock() {}
-#endif
+  #ifdef _OPEMP
+    omp_lock_t mutex_;
+  #endif
 };
 
 } // namespace openmc

@@ -185,7 +185,8 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         test_xs_ref[i] = np.interp(test_energy, energy, ce_xs[i])
 
     if log:
-        print("Energy: {} to {} ({} points)".format(energy[0], energy[-1], ne))
+        print("Energy: {:.3e} to {:.3e} eV ({} points)".format(
+              energy[0], energy[-1], ne))
     # inputs
     f = ce_xs * energy # sigma*E
     s = np.sqrt(energy) # sqrt(E)
@@ -239,7 +240,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
             new_poles = []
             for p in poles:
                 p_r, p_i = np.real(p), np.imag(p)
-                if p_r > s[0] and p_r < s[-1] and p_i == 0.:
+                if (s[0] <= p_r <= s[-1]) and p_i == 0.:
                     new_poles += [p_r+p_r*0.01j, p_r-p_r*0.01j]
                     n_real_poles += 1
                 else:
@@ -247,13 +248,15 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
             new_poles = np.array(new_poles)
             # re-calculate residues if poles changed
             if n_real_poles > 0:
+                if log:
+                    print("  # real poles: {}".format(n_real_poles))
                 new_poles, residues, cf, f_fit, rms = \
                       m.vectfit(f, s, new_poles, weight, skip_pole=True)
 
             # assess the result on test grid
-            test_xs = m.evaluate(test_s, new_poles, residues)/test_energy
+            test_xs = m.evaluate(test_s, new_poles, residues) / test_energy
             abserr = np.abs(test_xs - test_xs_ref)
-            relerr = abserr/test_xs_ref
+            relerr = abserr / test_xs_ref
             if np.any(np.isnan(abserr)):
                 maxre, ratio, ratio2 = np.inf, -np.inf, -np.inf
             elif np.all(abserr <= atol):
@@ -269,6 +272,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
                 quality = -np.inf
 
             if log:
+                print("  # poles: {}".format(new_poles.size))
                 print("  Max relative error: {:.3f}%".format(maxre*100))
                 print("  Satisfaction: {:.1f}%, {:.1f}%".format(ratio*100, ratio2*100))
                 print("  Quality: {:.2f}".format(quality))
@@ -280,7 +284,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
                 best_quality, best_ratio = quality, ratio
                 best_poles, best_residues = new_poles, residues
                 best_test_xs, best_relerr = test_xs, relerr
-                if ratio >= 1.0:
+                if best_ratio >= 1.0:
                     if log:
                         print("Found ideal results. Stop!")
                     found_ideal = True
@@ -304,7 +308,8 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
                     break
 
     # merge conjugate poles
-    real_idx = conj_idx = []
+    real_idx = []
+    conj_idx = []
     found_conj = False
     for i, p in enumerate(best_poles):
         if found_conj:
@@ -695,7 +700,7 @@ class WindowedMultipole(EqualityMixin):
         e_max_idx = min(rrr_bound_idx, first_threshold_idx)
 
         if log:
-            print("RRR idx: {}, first threshold idx: {}".format(rrr_bound_idx,
+            print("  RRR idx: {}, first threshold idx: {}".format(rrr_bound_idx,
                   first_threshold_idx))
 
         # parse energy and summed cross sections
@@ -711,7 +716,12 @@ class WindowedMultipole(EqualityMixin):
         if 27 in nuc_ce:
             absorption_xs = nuc_ce[27].xs['0K'](energy)
         else:
-            absorption_xs = np.zeros_like(total_xs)
+            if 101 in nuc_ce:
+                absorption_xs = nuc_ce[101].xs['0K'](energy)
+                if 18 in nuc_ce:
+                    absorption_xs += nuc_ce[18].xs['0K'](energy)
+            else:
+                absorption_xs = np.zeros_like(total_xs)
         fissionable = False
         if 18 in nuc_ce:
             fission_xs = nuc_ce[18].xs['0K'](energy)
@@ -726,8 +736,9 @@ class WindowedMultipole(EqualityMixin):
             mts = [2, 27]
 
         if log:
-            print("  MTs: {}, Energy range: {:e} to {:e} eV ({} points)".format(
-                  mts, E_min, E_max, n_points))
+            print("  MTs: {})".format(mts))
+            print("  Energy range: {:.3e} to {:.3e} eV ({} points)".format(
+                  E_min, E_max, n_points))
 
         # ======================================================================
         # PERFORM VECTOR FITTING
@@ -746,7 +757,7 @@ class WindowedMultipole(EqualityMixin):
         # VF piece by piece
         for i_piece in range(n_pieces):
             if log:
-                print("Piece {}/{}".format(i_piece+1, n_pieces))
+                print("Processing piece {}/{}...".format(i_piece+1, n_pieces))
             # start E of this piece
             e_bound = (sqrt(E_min) + piece_width*(i_piece-0.5))**2
             if i_piece == 0 or sqrt(alpha*e_bound) < 4.0:
@@ -759,16 +770,15 @@ class WindowedMultipole(EqualityMixin):
             e_bound = (sqrt(E_min) + piece_width*(i_piece+1))**2
             e_end = min(E_max, (sqrt(alpha*e_bound) + 4.0)**2/alpha)
             e_end_idx = np.searchsorted(energy, e_end, side='left') + 1
-            piece_range = range(e_start_idx, min(e_end_idx+1, n_points))
+            e_idx = range(e_start_idx, min(e_end_idx+1, n_points))
 
             # fitting xs
             if path:
                 path_plot = os.path.join(path, "{}".format(i_piece+1))
             else:
                 path_plot = None
-            poles, residues = _vectfit_xs(energy[piece_range],
-                   ce_xs[:, piece_range], mts, rtol=error, log=log,
-                   path_plot=path_plot, **kwargs)
+            p, r = _vectfit_xs(energy[e_idx], ce_xs[:, e_idx], mts, rtol=error,
+                               log=log, path_plot=path_plot, **kwargs)
 
         # ======================================================================
         # WINDOWING

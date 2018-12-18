@@ -63,14 +63,14 @@ check_cell_overlap(Particle* p)
 //==============================================================================
 
 bool
-find_cell_inner(Particle* p, NeighborList* neighbor_list)
+find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 {
   // Find which cell of this universe the particle is in.  Use the neighbor list
   // to shorten the search if one was provided.
   bool found = false;
   int32_t i_cell;
   if (neighbor_list) {
-    for (auto it = neighbor_list->begin(); it != neighbor_list->end(); ++it) {
+    for (auto it = neighbor_list->cbegin(); it != neighbor_list->cend(); ++it) {
       i_cell = *it;
 
       // Make sure the search cell is in the same universe.
@@ -91,7 +91,7 @@ find_cell_inner(Particle* p, NeighborList* neighbor_list)
   } else {
     int i_universe = p->coord[p->n_coord-1].universe;
     const auto& cells {model::universes[i_universe]->cells_};
-    for (auto it = cells.begin(); it != cells.end(); it++) {
+    for (auto it = cells.cbegin(); it != cells.cend(); it++) {
       i_cell = *it;
 
       // Make sure the search cell is in the same universe.
@@ -290,14 +290,14 @@ find_cell(Particle* p, bool use_neighbor_lists)
 
     // Search for the particle in that cell's neighbor list.  Return if we
     // found the particle.
-    bool found = find_cell_inner(p, &c.neighbors);
+    bool found = find_cell_inner(p, &c.neighbors_);
     if (found) return found;
 
     // The particle could not be found in the neighbor list.  Try searching all
     // cells in this universe, and update the neighbor list if we find a new
     // neighboring cell.
     found = find_cell_inner(p, nullptr);
-    if (found) c.neighbors.push(p->coord[coord_lvl].cell);
+    if (found) c.neighbors_.push(p->coord[coord_lvl].cell);
     return found;
 
   } else {

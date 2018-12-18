@@ -89,15 +89,6 @@ distribcell_path(int32_t target_cell, int32_t map, int32_t target_offset);
 extern "C" int maximum_levels(int32_t univ);
 
 //==============================================================================
-//! Perform any geometry operations that should be done between generations.
-//!
-//! Currently, this just includes converting cell neighbor linked lists into
-//! vectors, but similar optimizations could be added here in the future.
-//==============================================================================
-
-void geometry_finalize_generation();
-
-//==============================================================================
 //! Deallocates global vectors and maps for cells, universes, and lattices.
 //==============================================================================
 

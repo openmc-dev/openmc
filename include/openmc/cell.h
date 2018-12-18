@@ -105,7 +105,7 @@ public:
   bool simple_;  //!< Does the region contain only intersections?
 
   //! \brief Neighboring cells in the same universe.
-  NeighborList neighbors;
+  NeighborList neighbors_;
 
   Position translation_ {0, 0, 0}; //!< Translation vector for filled universe
 

@@ -53,9 +53,6 @@ module geometry
       integer(C_INT), intent(out)   :: next_level
     end subroutine distance_to_boundary
 
-    subroutine neighbor_lists() bind(C)
-    end subroutine neighbor_lists
-
 #ifdef DAGMC
 
     function next_cell_c(current_cell, surface_crossed) &
@@ -97,7 +94,7 @@ contains
     if (present(use_neighbor_lists)) then
       found = find_cell_c(p, logical(use_neighbor_lists, kind=C_BOOL))
     else
-      found = find_cell_c(p, logical(.false., kind=C_BOOL))
+      found = find_cell_c(p, .false._C_BOOL)
     end if
 
   end subroutine find_cell

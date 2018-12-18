@@ -9,7 +9,6 @@ module input_xml
   use dict_header,      only: DictIntInt, DictCharInt, DictEntryCI
   use endf,             only: reaction_name
   use error,            only: fatal_error, warning, write_message, openmc_err_msg
-  use geometry,         only: neighbor_lists
   use geometry_header
 #ifdef DAGMC
   use dagmc_header
@@ -132,7 +131,7 @@ contains
     call read_materials_xml()
     call read_geometry_xml()
 
-    ! Set up neighbor lists, convert user IDs -> indices, assign temperatures
+    ! Convert user IDs -> indices, assign temperatures
     call finalize_geometry(nuc_temps, sab_temps)
 
     if (run_mode /= MODE_PLOTTING) then
@@ -181,12 +180,6 @@ contains
     ! Perform some final operations to set up the geometry
     call adjust_indices()
     call count_cell_instances(root_universe)
-
-    ! After reading input and basic geometry setup is complete, build lists of
-    ! neighboring cells for efficient tracking
-    if (.not. dagmc) then
-      call neighbor_lists()
-    end if
 
     ! Assign temperatures to cells that don't have temperatures already assigned
     call assign_temperatures()
@@ -2297,7 +2290,6 @@ contains
     logical :: file_exists                 ! Does multipole library exist?
     character(7) :: readable               ! Is multipole library readable?
     character(MAX_FILE_LEN) :: filename    ! Path to multipole xs library
-    character(kind=C_CHAR), pointer :: string(:)
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
 

@@ -96,6 +96,8 @@ class Operator(TransportOperator):
         Reaction rates from the last operator step.
     burnable_mats : list of str
         All burnable material IDs
+    heavy_metal : float
+        Initial heavy metal inventory
     local_mats : list of str
         All burnable material IDs being managed by a single process
     prev_res : ResultsList
@@ -226,6 +228,8 @@ class Operator(TransportOperator):
         model_nuclides = set()
         volume = OrderedDict()
 
+        self.heavy_metal = 0.0
+
         # Iterate once through the geometry to get dictionaries
         for mat in self.geometry.get_all_materials().values():
             for nuclide in mat.get_nuclides():
@@ -236,6 +240,7 @@ class Operator(TransportOperator):
                     raise RuntimeError("Volume not specified for depletable "
                                        "material with ID={}.".format(mat.id))
                 volume[str(mat.id)] = mat.volume
+                self.heavy_metal += mat.get_heavy_metal_mass()
 
         # Make sure there are burnable materials
         if not burnable_mats:

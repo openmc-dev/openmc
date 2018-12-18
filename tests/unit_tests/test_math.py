@@ -213,7 +213,7 @@ def test_normal_dist():
     ref_val = 14.08
     test_val = openmc.capi.math.normal_variate(a, b)
 
-    assert ref_val == test_val
+    assert ref_val == pytest.approx(test_val)
 
     settings.seed = 1
     a = 14.08
@@ -221,7 +221,7 @@ def test_normal_dist():
     ref_val = 16.436645416691427
     test_val = openmc.capi.math.normal_variate(a, b)
 
-    assert ref_val == test_val
+    assert ref_val == pytest.approx(test_val)
 
 
 def test_broaden_wmp_polynomials():

@@ -185,8 +185,28 @@ class Operator(TransportOperator):
 
         return copy.deepcopy(op_result)
 
+    def _differentiate_burnable_mats(self):
+        """Assign distribmats for each burnable material
+
+        """
+
+        # Count the number of instances for each cell and material
+        self.geometry.determine_paths(instances_only=True)
+
+        # Extract all burnable materials which have multiple instances
+        distribmats = set(
+            [mat for mat in self.geometry.get_all_materials().values()
+             if mat.depletable and mat.num_instances > 1])
+
+        if distribmats:
+            # Assign distribmats to cells
+            for cell in self.geometry.get_all_material_cells().values():
+                if cell.fill in distribmats and cell.num_instances > 1:
+                    cell.fill = [cell.fill.clone()
+                                 for i in range(cell.num_instances)]
+
     def _get_burnable_mats(self):
-        """Determine depletable materials, volumes, and nuclids
+        """Determine depletable materials, volumes, and nuclides
 
         Returns
         -------
@@ -198,6 +218,10 @@ class Operator(TransportOperator):
             Nuclides in order of how they'll appear in the simulation.
 
         """
+
+        # Automatically distribute burnable materials
+        self._differentiate_burnable_mats()
+
         burnable_mats = set()
         model_nuclides = set()
         volume = OrderedDict()

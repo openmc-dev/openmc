@@ -747,6 +747,21 @@ class Material(IDManagerMixin):
             raise ValueError("Volume must be set in order to determine mass.")
         return self.volume*self.get_mass_density(nuclide)
 
+    def get_heavy_metal_mass(self):
+        """Return mass of heavy metal nuclides.
+
+        Returns
+        -------
+        float
+            Mass in [g]
+
+        """
+        mass = 0.0
+        for nuc, _, _ in self._nuclides:
+            if openmc.data.zam(nuc)[0] > 90:
+                mass += self.get_mass(nuc)
+        return mass
+
     def clone(self, memo=None):
         """Create a copy of this material with a new unique ID.
 

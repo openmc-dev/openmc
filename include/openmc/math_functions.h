@@ -181,9 +181,8 @@ extern "C" double normal_variate(double mean, double std_dev);
 //! Samples an energy from the Muir (Gaussian) energy-dependent distribution.
 //!
 //! This is another form of the Gaussian distribution but with more easily 
+//! modifiable parameters
 //! https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
-//!  
-//! modifyable parameters
 //!
 //! @param e0 peak neutron energy [eV]
 //! @param m_rat ratio of the fusion reactants to AMU

@@ -312,8 +312,8 @@ class Normal(Univariate):
     r"""Normally distributed sampling.
 
     The Normal Distribution is characterized by two parameters
-    :math:`\mu` and :math:`\sigma` and has density function :math:
-    `p(X) dX = 1/\2*sigma\sqrt{\pi} * e^{(X-\mu/\2*sigma}`
+    :math:`\mu` and :math:`\sigma` and has density function 
+    :math:`p(X) dX = 1/\2*sigma\sqrt{\pi} * e^{(X-\mu/\2*sigma}`
 
     Parameters
     ----------

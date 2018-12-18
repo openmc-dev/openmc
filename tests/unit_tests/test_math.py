@@ -4,6 +4,7 @@ import scipy as sp
 import openmc
 import openmc.capi
 
+import pytest
 
 def test_t_percentile():
     # Permutations include 1 DoF, 2 DoF, and > 2 DoF

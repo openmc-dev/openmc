@@ -677,11 +677,8 @@ double maxwell_spectrum(double T) {
 double normal_variate(double mean, double standard_deviation) {
   // perhaps there should be a limit to the number of resamples
   while ( true ) {
-    double v1 = 0.;
-    double v2 = 0.;
-
-    v1 = 2 * prn() - 1.;
-    v2 = 2 * prn() - 1.;
+    double v1 = 2 * prn() - 1.;
+    double v2 = 2 * prn() - 1.;
     
     double r = std::pow(v1, 2) + std::pow(v2, 2);
     double r2 = std::pow(r, 2);

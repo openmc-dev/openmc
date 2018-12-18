@@ -295,7 +295,7 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
     dist = UPtrDist{new Maxwell(node)};
   } else if (type == "watt") {
     dist = UPtrDist{new Watt(node)};
-  } else if (type == "gaussian") {
+  } else if (type == "normal") {
     dist = UPtrDist{new Normal(node)};
   } else if (type == "muir") {
     dist = UPtrDist{new Muir(node)};

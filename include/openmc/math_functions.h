@@ -185,9 +185,9 @@ extern "C" double normal_variate(double mean, double std_dev);
 //!  
 //! modifyable parameters
 //!
-//! @param e0 peak neutron energy [ev]
+//! @param e0 peak neutron energy [eV]
 //! @param m_rat ratio of the fusion reactants to AMU
-//! @param kt the ion temperature of the reactants [ev]
+//! @param kt the ion temperature of the reactants [eV]
 //! @result The sampled outgoing energy
 //==============================================================================
 

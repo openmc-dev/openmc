@@ -758,7 +758,7 @@ class Material(IDManagerMixin):
         """
         mass = 0.0
         for nuc, _, _ in self._nuclides:
-            if openmc.data.zam(nuc)[0] > 90:
+            if openmc.data.zam(nuc)[0] >= 90:
                 mass += self.get_mass(nuc)
         return mass
 

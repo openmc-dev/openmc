@@ -2258,6 +2258,8 @@ contains
           call write_message("Maximum neutron transport energy: " // &
                trim(to_str(energy_max(NEUTRON))) // " eV for " // &
                trim(adjustl(nuclides(i) % name)), 7)
+          if (master .and. energy_max(NEUTRON) < 20.E6) call warning("Maximum &
+               &neutron energy is below 20 MeV. This may bias the results.")
           exit
         end if
       end if
@@ -2272,9 +2274,10 @@ contains
           exit
         end if
       end do
-      if (.not. mp_found) call warning("Windowed multipole functionality is &
-           &turned on, but no multipole libraries were found. Make sure that &
-           &windowed multipole data is present in your cross_sections.xml file.")
+      if (master .and. .not. mp_found) call warning("Windowed multipole &
+           &functionality is turned on, but no multipole libraries were found. &
+           &Make sure that windowed multipole data is present in your &
+           &cross_sections.xml file.")
     end if
 
     call already_read % clear()

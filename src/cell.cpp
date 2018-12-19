@@ -318,7 +318,12 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   // Convert user IDs to surface indices.
   for (auto& r : region_) {
     if (r < OP_UNION) {
-      r = copysign(model::surface_map[abs(r)] + 1, r);
+      const auto& it {model::surface_map.find(abs(r))};
+      if (it == model::surface_map.end()) {
+        throw std::runtime_error{"Invalid surface ID " + std::to_string(abs(r))
+          + " specified in region for cell " + std::to_string(id_) + "."};
+      }
+      r = copysign(it->second + 1, r);
     }
   }
 

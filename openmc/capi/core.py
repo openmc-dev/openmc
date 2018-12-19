@@ -141,6 +141,7 @@ def find_material(xyz):
     else:
         return mats[instance.value]
 
+
 def hard_reset():
     """Reset tallies, timers, and pseudo-random number generator state."""
     _dll.openmc_hard_reset()
@@ -330,7 +331,7 @@ def statepoint_write(filename=None, write_source=True):
 
 
 @contextmanager
-def run_in_memory(intracomm=None):
+def run_in_memory(**kwargs):
     """Provides context manager for calling OpenMC shared library functions.
 
     This function is intended to be used in a 'with' statement and ensures that
@@ -346,11 +347,11 @@ def run_in_memory(intracomm=None):
 
     Parameters
     ----------
-    intracomm : mpi4py.MPI.Intracomm or None
-        MPI intracommunicator
+    **kwargs
+        All keyword arguments are passed to :func:`init`.
 
     """
-    init(intracomm=intracomm)
+    init(**kwargs)
     try:
         yield
     finally:

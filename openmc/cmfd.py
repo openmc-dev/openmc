@@ -608,7 +608,7 @@ class CMFDRun(object):
         check_length('Gauss-Seidel tolerance', gauss_seidel_tolerance, 2)
         self._gauss_seidel_tolerance = gauss_seidel_tolerance
 
-    def run(self, intracomm=None, **kwargs):
+    def run(self, **kwargs):
         """Run OpenMC with coarse mesh finite difference acceleration
 
         This method is called by user to run CMFD once instance variables of
@@ -616,65 +616,61 @@ class CMFDRun(object):
 
         Parameters
         ----------
-        intracomm : mpi4py.MPI.Intracomm or None
-            MPI intercommunicator to pass through C API. Set to MPI.COMM_WORLD
-            by default
         **kwargs
-            All keyword arguments are passed to :func:`openmc.capi.init`.
+            All keyword arguments are passed to
+            :func:`openmc.capi.run_in_memory`.
 
         """
         # Store intracomm for part of CMFD routine where MPI reduce and
         # broadcast calls are made
-        if intracomm is not None:
-            self._intracomm = intracomm
-        elif intracomm is None and have_mpi:
+        if 'intracomm' in kwargs.keys() and kwargs['intracomm'] is not None:
+            self._intracomm = kwargs['intracomm']
+        elif have_mpi:
             self._intracomm = MPI.COMM_WORLD
 
-        # Run and pass arguments to C API init function
-        openmc.capi.init(intracomm=self._intracomm, **kwargs)
+        # Run and pass arguments to C API run_in_memory function
+        with openmc.capi.run_in_memory(**kwargs):
+            # Configure CMFD parameters and tallies
+            self._configure_cmfd()
 
-        # Configure CMFD parameters and tallies
-        self._configure_cmfd()
+            # Set up CMFD coremap
+            self._set_coremap()
 
-        # Set up CMFD coremap
-        self._set_coremap()
+            # Compute and store array indices used to build cross section
+            # arrays
+            self._precompute_array_indices()
 
-        # Compute and store array indices used to build cross section arrays
-        self._precompute_array_indices()
+            # Compute and store row and column indices used to build CMFD
+            # matrices
+            self._precompute_matrix_indices()
 
-        # Compute and store row and column indices used to build CMFD matrices
-        self._precompute_matrix_indices()
+            # Initialize all variables used for linear solver in C++
+            self._initialize_linsolver()
 
-        # Initialize all variables used for linear solver in C++
-        self._initialize_linsolver()
+            # Initialize simulation
+            openmc.capi.simulation_init()
 
-        # Initialize simulation
-        openmc.capi.simulation_init()
+            status = 0
+            while status == 0:
+                # Initialize CMFD batch
+                self._cmfd_init_batch()
 
-        status = 0
-        while status == 0:
-            # Initialize CMFD batch
-            self._cmfd_init_batch()
+                # Run next batch
+                status = openmc.capi.next_batch()
 
-            # Run next batch
-            status = openmc.capi.next_batch()
+                # Perform CMFD calculation if on
+                if self._cmfd_on:
+                    self._execute_cmfd()
 
-            # Perform CMFD calculation if on
-            if self._cmfd_on:
-                self._execute_cmfd()
+                    # Write CMFD output if CMFD on for current batch
+                    if openmc.capi.master():
+                        self._write_cmfd_output()
 
-                # Write CMFD output if CMFD on for current batch
-                if openmc.capi.master():
-                    self._write_cmfd_output()
+            # Finalize simuation
+            openmc.capi.simulation_finalize()
 
-        # Finalize simuation
-        openmc.capi.simulation_finalize()
-
-        # Print out CMFD timing statistics
-        self._write_cmfd_timing_stats()
-
-        # Finalize and free memory
-        openmc.capi.finalize()
+            # Print out CMFD timing statistics
+            self._write_cmfd_timing_stats()
 
     def _initialize_linsolver(self):
         # Determine number of rows in CMFD matrix
@@ -703,15 +699,19 @@ class CMFDRun(object):
         # Display value of additional fields based on display dict
         outstr += '\n'
         if self._display['dominance']:
-            outstr += '{:>11s}Dom Rat:   {:0.5f}\n'.format('', self._dom[-1])
+            outstr += ('{:>11s}Dom Rat:   {:0.5f}\n'
+                       .format('', self._dom[-1]))
         if self._display['entropy']:
-            outstr += '{:>11s}CMFD Ent:  {:0.5f}\n'.format('', self._entropy[-1])
+            outstr += ('{:>11s}CMFD Ent:  {:0.5f}\n'
+                       .format('', self._entropy[-1]))
         if self._display['source']:
-            outstr += '{:>11s}RMS Src:   {:0.5f}\n'.format('', self._src_cmp[-1])
+            outstr += ('{:>11s}RMS Src:   {:0.5f}\n'
+                       .format('', self._src_cmp[-1]))
         if self._display['balance']:
-            outstr += '{:>11s}RMS Bal:   {:0.5f}\n'.format('', self._balance[-1])
+            outstr += ('{:>11s}RMS Bal:   {:0.5f}\n'
+                       .format('', self._balance[-1]))
 
-        print('{:s}'.format(outstr))
+        print(outstr)
         sys.stdout.flush()
 
     def _write_cmfd_timing_stats(self):
@@ -926,12 +926,29 @@ class CMFDRun(object):
         # Start timer for build
         time_start_buildcmfd = time.time()
 
-        # Build loss and production matrices
-        loss, prod = self._build_matrices(physical_adjoint)
+        # Build the loss and production matrices
+        if not adjoint:
+            # Build matrices without adjoint calculation
+            loss = self._build_loss_matrix(False)
+            prod = self._build_prod_matrix(False)
+        else:
+            # Build adjoint matrices by running adjoint calculation
+            if self._adjoint_type == 'physical':
+                loss = self._build_loss_matrix(True)
+                prod = self._build_prod_matrix(True)
+            # Build adjoint matrices as transpose of non-adjoint matrices
+            else:
+                loss = self._build_loss_matrix(False).transpose()
+                prod = self._build_prod_matrix(False).transpose()
 
-        # Check for mathematical adjoint calculation
-        if adjoint and self._adjoint_type == 'math':
-            loss, prod = self._compute_adjoint(loss, prod)
+        # Write out the matrices.
+        if self._write_matrices:
+            if not adjoint:
+                self._write_matrix(loss, 'loss')
+                self._write_matrix(prod, 'prod')
+            else:
+                self._write_matrix(loss, 'adj_loss')
+                self._write_matrix(prod, 'adj_prod')
 
         # Stop timer for build
         time_stop_buildcmfd = time.time()
@@ -1236,67 +1253,6 @@ class CMFDRun(object):
             self._sourcecounts = count
 
         return sites_outside[0]
-
-    def _build_matrices(self, adjoint):
-        """Build loss and production matrices and write these matrices
-
-        Parameters
-        ----------
-        adjoint : bool
-            Whether or not to run an adjoint calculation
-
-        Returns
-        -------
-        loss : scipy.sparse.spmatrix
-            Sparse matrix storing elements of CMFD loss matrix
-        prod : scipy.sparse.spmatrix
-            Sparse matrix storing elements of CMFD production matrix
-
-        """
-        # Build loss and production matrices
-        loss = self._build_loss_matrix(adjoint)
-        prod = self._build_prod_matrix(adjoint)
-
-        # Write out matrices
-        if self._write_matrices:
-            if adjoint:
-                self._write_matrix(loss, 'adj_loss')
-                self._write_matrix(prod, 'adj_prod')
-            else:
-                self._write_matrix(loss, 'loss')
-                self._write_matrix(prod, 'prod')
-
-        return loss, prod
-
-    def _compute_adjoint(self, loss, prod):
-        """Computes a mathematical adjoint of the CMFD problem by transposing
-        production and loss matrices passed in as arguments
-
-        Parameters
-        ----------
-        loss : scipy.sparse.spmatrix
-            Sparse matrix storing elements of CMFD loss matrix
-        prod : scipy.sparse.spmatrix
-            Sparse matrix storing elements of CMFD production matrix
-
-        Returns
-        -------
-        loss : scipy.sparse.spmatrix
-            Sparse matrix storing elements of adjoint CMFD loss matrix
-        prod : scipy.sparse.spmatrix
-            Sparse matrix storing elements of adjoint CMFD production matrix
-
-        """
-        # Transpose matrices
-        loss = np.transpose(loss)
-        prod = np.transpose(prod)
-
-        # Write out matrices
-        if self._write_matrices:
-            self._write_matrix(loss, 'adj_loss')
-            self._write_matrix(prod, 'adj_prod')
-
-        return loss, prod
 
     def _build_loss_matrix(self, adjoint):
         # Extract spatial and energy indices and define matrix dimension

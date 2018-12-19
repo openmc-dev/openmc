@@ -133,9 +133,30 @@ class HashedTestHarness(TestHarness):
 class CMFDTestHarness(TestHarness):
     """Specialized TestHarness for running OpenMC CMFD tests."""
 
-    def __init__(self, statepoint_name, cmfd_results=None):
+    def __init__(self, statepoint_name, cmfd_run):
         self._sp_name = statepoint_name
-        self._cmfd_results = cmfd_results
+        self._create_cmfd_result_str(cmfd_run)
+
+    def _create_cmfd_result_str(self, cmfd_run):
+        """Create CMFD result string from variables of CMFDRun instance"""
+        outstr = 'cmfd indices\n'
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run.indices])
+        outstr += '\nk cmfd\n'
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run.k_cmfd])
+        outstr += '\ncmfd entropy\n'
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run.entropy])
+        outstr += '\ncmfd balance\n'
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run.balance])
+        outstr += '\ncmfd dominance ratio\n'
+        outstr += '\n'.join(['{0:10.3E}'.format(x) for x in cmfd_run.dom])
+        outstr += '\ncmfd openmc source comparison\n'
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run.src_cmp])
+        outstr += '\ncmfd source\n'
+        cmfdsrc = np.reshape(cmfd_run.cmfd_src, np.product(cmfd_run.indices),
+                             order='F')
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfdsrc])
+        outstr += '\n'
+        self._cmfdrun_results = outstr
 
     def execute_test(self):
         """Don't call _run_openmc as OpenMC will be called through C API for
@@ -145,7 +166,7 @@ class CMFDTestHarness(TestHarness):
         try:
             self._test_output_created()
             results = self._get_results()
-            results += self._cmfd_results
+            results += self._cmfdrun_results
             self._write_results(results)
             self._compare_results()
         finally:
@@ -159,7 +180,7 @@ class CMFDTestHarness(TestHarness):
         try:
             self._test_output_created()
             results = self._get_results()
-            results += self._cmfd_results
+            results += self._cmfdrun_results
             self._write_results(results)
             self._overwrite_results()
         finally:

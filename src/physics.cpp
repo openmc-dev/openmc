@@ -782,16 +782,20 @@ void elastic_scatter(int i_nuclide, const Reaction* rx, double kT, double* E,
   if (std::abs(*mu_lab) > 1.0) *mu_lab = std::copysign(1.0, *mu_lab);
 }
 
-// void sab_scatter(int i_nuclide, int i_sab, double* E, Direction* u, double* mu)
-// {
-//   // Sample from C++ side
-//   ptr = C_LOC(micro_xs(i_nuclide))
-//   sab_tables(i_sab) % sample(ptr, E, E_out, mu)
+void sab_scatter(int i_nuclide, int i_sab, double* E, double* uvw, double* mu)
+{
+  // Determine temperature index
+  const auto& micro {simulation::micro_xs[i_nuclide]};
+  int i_temp = micro.index_temp_sab;
 
-//   // Set energy to outgoing, change direction of particle
-//   E = E_out
-//   uvw = rotate_angle(uvw, mu)
-// }
+  // Sample energy and angle
+  double E_out;
+  data::thermal_scatt[i_sab]->data_[i_temp].sample(micro, *E, &E_out, mu);
+
+  // Set energy to outgoing, change direction of particle
+  *E = E_out;
+  rotate_angle_c(uvw, *mu, nullptr);
+}
 
 Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
   Direction v_neut, double xs_eff, double kT, double* wgt)

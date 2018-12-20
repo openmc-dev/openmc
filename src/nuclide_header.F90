@@ -32,7 +32,6 @@ module nuclide_header
 !===============================================================================
 
   type EnergyGrid
-    integer, allocatable :: grid_index(:) ! log grid mapping indices
     real(8), allocatable :: energy(:)     ! energy values corresponding to xs
   end type EnergyGrid
 
@@ -95,7 +94,6 @@ module nuclide_header
   contains
     procedure :: clear => nuclide_clear
     procedure :: from_hdf5 => nuclide_from_hdf5
-    procedure :: init_grid => nuclide_init_grid
     procedure :: nu    => nuclide_nu
     procedure, private :: create_derived => nuclide_create_derived
     procedure :: calculate_xs => nuclide_calculate_xs
@@ -192,14 +190,6 @@ module nuclide_header
       character(kind=C_CHAR), intent(in) :: name(*)
       type(C_PTR) :: path
     end function
-
-    subroutine nuclide_calculate_urr_xs(use_mp, i_nuclide, i_temp, E) bind(C)
-      import C_BOOL, C_INT, C_DOUBLE
-      logical(C_BOOL), value, intent(in) :: use_mp
-      integer(C_INT),  value, intent(in) :: i_nuclide
-      integer(C_INT),  value, intent(in) :: i_temp
-      real(C_DOUBLE),  value, intent(in) :: E
-    end subroutine nuclide_calculate_urr_xs
   end interface
 
 contains
@@ -683,51 +673,13 @@ contains
 
   end function nuclide_nu
 
-  subroutine nuclide_init_grid(this, E_min, E_max, M)
-    class(Nuclide), intent(inout) :: this
-    real(8), intent(in) :: E_min           ! Minimum energy in eV
-    real(8), intent(in) :: E_max           ! Maximum energy in eV
-    integer, intent(in) :: M               ! Number of equally log-spaced bins
-
-    integer :: i, j, k               ! Loop indices
-    integer :: t                     ! temperature index
-    real(8) :: spacing
-    real(8), allocatable :: umesh(:) ! Equally log-spaced energy grid
-
-    ! Determine equal-logarithmic energy spacing
-    spacing = log(E_max/E_min)/M
-
-    ! Create equally log-spaced energy grid
-    allocate(umesh(0:M))
-    umesh(:) = [(i*spacing, i=0, M)]
-
-    do t = 1, size(this % grid)
-      ! Allocate logarithmic mapping for nuclide
-      allocate(this % grid(t) % grid_index(0:M))
-
-      ! Determine corresponding indices in nuclide grid to energies on
-      ! equal-logarithmic grid
-      j = 1
-      do k = 0, M
-        do while (log(this % grid(t) % energy(j + 1)/E_min) <= umesh(k))
-          ! Ensure that for isotopes where maxval(this % energy) << E_max
-          ! that there are no out-of-bounds issues.
-          if (j + 1 == size(this % grid(t) % energy)) exit
-          j = j + 1
-        end do
-        this % grid(t) % grid_index(k) = j
-      end do
-    end do
-
-  end subroutine nuclide_init_grid
-
 !===============================================================================
 ! NUCLIDE_CALCULATE_XS determines microscopic cross sections for the nuclide
 ! at the energy of the given particle
 !===============================================================================
 
   subroutine nuclide_calculate_xs(this, i_sab, E, i_log_union, sqrtkT, &
-                                  sab_frac, micro_xs)
+                                  sab_frac)
     class(Nuclide), intent(in) :: this ! Nuclide object
     integer, intent(in) :: i_sab       ! index into sab_tables array
     real(8), intent(in) :: E           ! energy
@@ -735,214 +687,19 @@ contains
                                        ! material union energy grid
     real(8), intent(in) :: sqrtkT      ! square root of kT, material dependent
     real(8), intent(in) :: sab_frac    ! fraction of atoms affected by S(a,b)
-    type(NuclideMicroXS), intent(inout) :: micro_xs ! Cross section cache
 
-    logical(C_BOOL) :: use_mp ! true if XS can be calculated with windowed multipole
-    integer :: i_temp ! index for temperature
-    integer :: i_grid ! index on nuclide energy grid
-    integer :: i_low  ! lower logarithmic mapping index
-    integer :: i_high ! upper logarithmic mapping index
-    integer :: i_rxn  ! reaction index
-    integer :: j      ! index in DEPLETION_RX
-    integer :: threshold ! threshold energy index
-    real(8) :: f      ! interp factor on nuclide energy grid
-    real(8) :: kT     ! temperature in eV
-    real(8) :: sig_s, sig_a, sig_f ! Intermediate multipole variables
+    interface
+      subroutine nuclide_calculate_xs_c(i_sab, E, i_log_union, sqrtkT, sab_frac) bind(C)
+        import C_INT, C_DOUBLE
+        integer(C_INT), value :: i_sab
+        real(C_DOUBLE), value :: E
+        integer(C_INT), value :: i_log_union
+        real(C_DOUBLE), value :: sqrtkT
+        real(C_DOUBLE), value :: sab_frac
+      end subroutine
+    end interface
 
-    ! Initialize cached cross sections to zero
-    micro_xs % elastic         = CACHE_INVALID
-    micro_xs % thermal         = ZERO
-    micro_xs % thermal_elastic = ZERO
-
-    ! Check to see if there is multipole data present at this energy
-    use_mp = .false.
-    if (this % mp_present) then
-      if (E >= this % multipole % E_min .and. &
-           E <= this % multipole % E_max) then
-        use_mp = .true.
-      end if
-    end if
-
-    ! Evaluate multipole or interpolate
-    if (use_mp) then
-      ! Call multipole kernel
-      call multipole_eval(this % multipole, E, sqrtkT, sig_s, sig_a, sig_f)
-
-      micro_xs % total = sig_s + sig_a
-      micro_xs % elastic = sig_s
-      micro_xs % absorption = sig_a
-      micro_xs % fission = sig_f
-
-      if (this % fissionable) then
-        micro_xs % nu_fission = sig_f * this % nu(E, EMISSION_TOTAL)
-      else
-        micro_xs % nu_fission = ZERO
-      end if
-
-      if (need_depletion_rx) then
-        ! Initialize all reaction cross sections to zero
-        micro_xs % reaction(:) = ZERO
-
-        ! Only non-zero reaction is (n,gamma)
-        micro_xs % reaction(1) = sig_a - sig_f
-      end if
-
-      ! Ensure these values are set
-      ! Note, the only time either is used is in one of 4 places:
-      ! 1. physics.F90 - scatter - For inelastic scatter.
-      ! 2. physics.F90 - sample_fission - For partial fissions.
-      ! 3. tally.F90 - score_general - For tallying on MTxxx reactions.
-      ! 4. nuclide.h - calculate_urr_xs - For unresolved purposes.
-      ! It is worth noting that none of these occur in the resolved
-      ! resonance range, so the value here does not matter.  index_temp is
-      ! set to -1 to force a segfault in case a developer messes up and tries
-      ! to use it with multipole.
-      micro_xs % index_temp    = -1
-      micro_xs % index_grid    = 0
-      micro_xs % interp_factor = ZERO
-
-    else
-      ! Find the appropriate temperature index.
-      kT = sqrtkT**2
-      select case (temperature_method)
-      case (TEMPERATURE_NEAREST)
-        i_temp = minloc(abs(this % kTs - kT), dim=1)
-
-      case (TEMPERATURE_INTERPOLATION)
-        ! Find temperatures that bound the actual temperature
-        do i_temp = 1, size(this % kTs) - 1
-          if (this % kTs(i_temp) <= kT .and. kT < this % kTs(i_temp + 1)) exit
-        end do
-
-        ! Randomly sample between temperature i and i+1
-        f = (kT - this % kTs(i_temp)) / &
-             (this % kTs(i_temp + 1) - this % kTs(i_temp))
-        if (f > prn()) i_temp = i_temp + 1
-      end select
-
-      associate (grid => this % grid(i_temp), xs => this % xs(i_temp))
-        ! Determine the energy grid index using a logarithmic mapping to
-        ! reduce the energy range over which a binary search needs to be
-        ! performed
-
-        if (E < grid % energy(1)) then
-          i_grid = 1
-        elseif (E > grid % energy(size(grid % energy))) then
-          i_grid = size(grid % energy) - 1
-        else
-          ! Determine bounding indices based on which equal log-spaced
-          ! interval the energy is in
-          i_low  = grid % grid_index(i_log_union)
-          i_high = grid % grid_index(i_log_union + 1) + 1
-
-          ! Perform binary search over reduced range
-          i_grid = binary_search(grid % energy(i_low:i_high), &
-               i_high - i_low + 1, E) + i_low - 1
-        end if
-
-        ! check for rare case where two energy points are the same
-        if (grid % energy(i_grid) == grid % energy(i_grid + 1)) &
-             i_grid = i_grid + 1
-
-        ! calculate interpolation factor
-        f = (E - grid % energy(i_grid)) / &
-             (grid % energy(i_grid + 1) - grid % energy(i_grid))
-
-        micro_xs % index_temp    = i_temp
-        micro_xs % index_grid    = i_grid
-        micro_xs % interp_factor = f
-
-        ! Calculate microscopic nuclide total cross section
-        micro_xs % total = (ONE - f) * xs % value(XS_TOTAL,i_grid) &
-             + f * xs % value(XS_TOTAL,i_grid + 1)
-
-        ! Calculate microscopic nuclide absorption cross section
-        micro_xs % absorption = (ONE - f) * xs % value(XS_ABSORPTION, &
-             i_grid) + f * xs % value(XS_ABSORPTION,i_grid + 1)
-
-        if (this % fissionable) then
-          ! Calculate microscopic nuclide total cross section
-          micro_xs % fission = (ONE - f) * xs % value(XS_FISSION,i_grid) &
-               + f * xs % value(XS_FISSION,i_grid + 1)
-
-          ! Calculate microscopic nuclide nu-fission cross section
-          micro_xs % nu_fission = (ONE - f) * xs % value(XS_NU_FISSION, &
-               i_grid) + f * xs % value(XS_NU_FISSION,i_grid + 1)
-        else
-          micro_xs % fission         = ZERO
-          micro_xs % nu_fission      = ZERO
-        end if
-
-        ! Calculate microscopic nuclide photon production cross section
-        micro_xs % photon_prod = (ONE - f) * xs % value(XS_PHOTON_PROD,i_grid) &
-             + f * xs % value(XS_PHOTON_PROD,i_grid + 1)
-      end associate
-
-      ! Depletion-related reactions
-      if (need_depletion_rx) then
-        ! Initialize all reaction cross sections to zero
-        micro_xs % reaction(:) = ZERO
-
-        ! Physics says that (n,gamma) is not a threshold reaction, so we don't
-        ! need to specifically check its threshold index
-        i_rxn = this % reaction_index(DEPLETION_RX(1))
-        if (i_rxn > 0) then
-          associate (rx => this % reactions(i_rxn))
-          threshold = rx % xs_threshold(i_temp)
-          micro_xs % reaction(1) = (ONE - f) * &
-               rx % xs(i_temp, i_grid - threshold + 1) + &
-               f * rx % xs(i_temp, i_grid - threshold + 2)
-          end associate
-        end if
-
-        ! Loop over remaining depletion reactions
-        do j = 2, 6
-          ! If reaction is present and energy is greater than threshold, set the
-          ! reaction xs appropriately
-          i_rxn = this % reaction_index(DEPLETION_RX(j))
-          if (i_rxn > 0) then
-            associate (rx => this % reactions(i_rxn))
-              threshold = rx % xs_threshold(i_temp)
-              if (i_grid >= threshold) then
-                micro_xs % reaction(j) = (ONE - f) * &
-                     rx % xs(i_temp, i_grid - threshold + 1) + &
-                     f * rx % xs(i_temp, i_grid - threshold + 2)
-              elseif (j >= 4) then
-                ! One can show that the the threshold for (n,(x+1)n) is always
-                ! higher than the threshold for (n,xn). Thus, if we are below
-                ! the threshold for, e.g., (n,2n), there is no reason to check
-                ! the threshold for (n,3n) and (n,4n).
-                exit
-              end if
-            end associate
-          end if
-        end do
-      end if
-    end if
-
-    ! Initialize sab treatment to false
-    micro_xs % index_sab = NONE
-    micro_xs % sab_frac = ZERO
-
-    ! Initialize URR probability table treatment to false
-    micro_xs % use_ptable = .false.
-
-    ! If there is S(a,b) data for this nuclide, we need to set the sab_scatter
-    ! and sab_elastic cross sections and correct the total and elastic cross
-    ! sections.
-
-    if (i_sab > 0) then
-      call calculate_sab_xs(this, i_sab, E, sqrtkT, sab_frac, micro_xs)
-    end if
-
-
-    ! If the particle is in the unresolved resonance range and there are
-    ! probability tables, we need to determine cross sections from the table
-    call nuclide_calculate_urr_xs(use_mp, this % i_nuclide, i_temp, E)
-
-    micro_xs % last_E = E
-    micro_xs % last_sqrtkT = sqrtkT
-
+    call nuclide_calculate_xs_c(i_sab, E, i_log_union, sqrtkT, sab_frac)
   end subroutine nuclide_calculate_xs
 
 !===============================================================================
@@ -972,49 +729,6 @@ contains
       end associate
     end if
   end subroutine nuclide_calculate_elastic_xs
-
-!===============================================================================
-! CALCULATE_SAB_XS determines the elastic and inelastic scattering
-! cross-sections in the thermal energy range. These cross sections replace a
-! fraction of whatever data were taken from the normal Nuclide table.
-!===============================================================================
-
-  subroutine calculate_sab_xs(this, i_sab, E, sqrtkT, sab_frac, micro_xs)
-    class(Nuclide), intent(in) :: this ! Nuclide object
-    integer, intent(in) :: i_sab     ! index into sab_tables array
-    real(8), intent(in) :: E         ! energy
-    real(8), intent(in) :: sqrtkT    ! temperature
-    real(8), intent(in) :: sab_frac  ! fraction of atoms affected by S(a,b)
-    type(NuclideMicroXS), intent(inout) :: micro_xs ! Cross section cache
-
-    integer(C_INT) :: i_temp    ! temperature index
-    real(C_DOUBLE) :: inelastic ! S(a,b) inelastic cross section
-    real(C_DOUBLE) :: elastic   ! S(a,b) elastic cross section
-
-    ! Set flag that S(a,b) treatment should be used for scattering
-    micro_xs % index_sab = i_sab
-
-    ! Calculate the S(a,b) cross section
-    call sab_tables(i_sab) % calculate_xs(E, sqrtkT, i_temp, elastic, inelastic)
-
-    ! Store the S(a,b) cross sections.
-    micro_xs % thermal = sab_frac * (elastic + inelastic)
-    micro_xs % thermal_elastic = sab_frac * elastic
-
-    ! Calculate free atom elastic cross section
-    call this % calculate_elastic_xs(micro_xs)
-
-    ! Correct total and elastic cross sections
-    micro_xs % total = micro_xs % total + micro_xs % thermal - &
-         sab_frac *  micro_xs % elastic
-    micro_xs % elastic = micro_xs % thermal + (ONE - sab_frac) * &
-         micro_xs % elastic
-
-    ! Save temperature index and thermal fraction
-    micro_xs % index_temp_sab = i_temp
-    micro_xs % sab_frac = sab_frac
-
-  end subroutine calculate_sab_xs
 
 !===============================================================================
 ! MULTIPOLE_EVAL evaluates the windowed multipole equations for cross
@@ -1333,10 +1047,6 @@ contains
         ! Add entry to nuclide dictionary
         call nuclide_dict % set(to_lower(name_), n)
         n_nuclides = n
-
-        ! Initialize nuclide grid
-        call nuclides(n) % init_grid(energy_min(NEUTRON), &
-             energy_max(NEUTRON), n_log_bins)
       else
         err = E_DATA
         call set_errmsg("Nuclide '" // trim(name_) // "' is not present &

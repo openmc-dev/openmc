@@ -249,28 +249,4 @@ contains
 
   end function sample_element
 
-!===============================================================================
-! SAB_SCATTER performs thermal scattering of a particle with a bound scatterer
-! according to a specified S(a,b) table.
-!===============================================================================
-
-  subroutine sab_scatter(i_nuclide, i_sab, E, uvw, mu) bind(C)
-    integer(C_INT), value     :: i_nuclide ! index in micro_xs
-    integer(C_INT), value     :: i_sab     ! index in sab_tables
-    real(C_DOUBLE), intent(inout)  :: E         ! incoming/outgoing energy
-    real(C_DOUBLE), intent(inout)  :: uvw(3)    ! directional cosines
-    real(C_DOUBLE), intent(out)    :: mu        ! scattering cosine
-
-    real(C_DOUBLE) :: E_out
-    type(C_PTR) :: ptr
-
-    ! Sample from C++ side
-    ptr = C_LOC(micro_xs(i_nuclide + 1))
-    call sab_tables(i_sab) % sample(ptr, E, E_out, mu)
-
-    ! Set energy to outgoing, change direction of particle
-    E = E_out
-    uvw = rotate_angle(uvw, mu)
-  end subroutine sab_scatter
-
 end module physics

@@ -623,7 +623,7 @@ class CMFDRun(object):
         """
         # Store intracomm for part of CMFD routine where MPI reduce and
         # broadcast calls are made
-        if 'intracomm' in kwargs.keys() and kwargs['intracomm'] is not None:
+        if 'intracomm' in kwargs and kwargs['intracomm'] is not None:
             self._intracomm = kwargs['intracomm']
         elif have_mpi:
             self._intracomm = MPI.COMM_WORLD

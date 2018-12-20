@@ -21,10 +21,8 @@ module sab_header
     type(C_PTR) :: ptr
   contains
     procedure :: from_hdf5
-    procedure :: calculate_xs
     procedure :: free
     procedure :: has_nuclide
-    procedure :: sample
     procedure :: threshold
   end type SAlphaBeta
 
@@ -46,17 +44,6 @@ module sab_header
       type(C_PTR) :: ptr
     end function
 
-    subroutine sab_calculate_xs(ptr, E, sqrtkT, i_temp, elastic, &
-         inelastic) bind(C)
-      import C_PTR, C_DOUBLE, C_INT
-      type(C_PTR), value :: ptr
-      real(C_DOUBLE), value :: E
-      real(C_DOUBLE), value :: sqrtkT
-      integer(C_INT), intent(out) :: i_temp
-      real(C_DOUBLE), intent(out) :: elastic
-      real(C_DOUBLE), intent(out) :: inelastic
-    end subroutine
-
     subroutine sab_free(ptr) bind(C)
       import C_PTR
       type(C_PTR), value :: ptr
@@ -68,15 +55,6 @@ module sab_header
       character(kind=C_CHAR), intent(in) :: name(*)
       logical(C_BOOL) :: val
     end function
-
-    subroutine sab_sample(ptr, micro_xs, E_in, E_out, mu) bind(C)
-      import C_PTR, C_INT, C_DOUBLE
-      type(C_PTR), value :: ptr
-      type(C_PTR), value :: micro_xs
-      real(C_DOUBLE), value :: E_in
-      real(C_DOUBLE), intent(out) :: E_out
-      real(C_DOUBLE), intent(out) :: mu
-    end subroutine
 
     function sab_threshold(ptr) result(threshold) bind(C)
       import C_PTR, C_double
@@ -109,22 +87,6 @@ contains
     end if
   end subroutine from_hdf5
 
-!===============================================================================
-! SAB_CALCULATE_XS determines the elastic and inelastic scattering
-! cross-sections in the thermal energy range.
-!===============================================================================
-
-  subroutine calculate_xs(this, E, sqrtkT, i_temp, elastic, inelastic)
-    class(SAlphaBeta), intent(in) :: this ! S(a,b) object
-    real(C_DOUBLE), intent(in) :: E          ! energy
-    real(C_DOUBLE), intent(in) :: sqrtkT     ! temperature
-    integer, intent(out) :: i_temp    ! index in the S(a,b)'s temperature
-    real(C_DOUBLE), intent(out) :: elastic   ! thermal elastic cross section
-    real(C_DOUBLE), intent(out) :: inelastic ! thermal inelastic cross section
-
-    call sab_calculate_xs(this % ptr, E, sqrtkT, i_temp, elastic, inelastic)
-  end subroutine
-
   subroutine free(this)
     class(SAlphaBeta), intent(inout) :: this
     call sab_free(this % ptr)
@@ -137,16 +99,6 @@ contains
 
     val = sab_has_nuclide(this % ptr, to_c_string(name))
   end function
-
-  subroutine sample(this, micro_xs, E_in, E_out, mu)
-    class(SAlphaBeta), intent(in) :: this
-    type(C_PTR), value :: micro_xs
-    real(C_DOUBLE), value :: E_in
-    real(C_DOUBLE), intent(out) :: E_out
-    real(C_DOUBLE), intent(out) :: mu
-
-    call sab_sample(this % ptr, micro_xs, E_in, E_out, mu)
-  end subroutine
 
   function threshold(this)
     class(SAlphaBeta), intent(in) :: this

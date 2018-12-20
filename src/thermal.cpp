@@ -21,6 +21,14 @@
 namespace openmc {
 
 //==============================================================================
+// Global variables
+//==============================================================================
+
+namespace data {
+std::vector<std::unique_ptr<ThermalScattering>> thermal_scatt;
+}
+
+//==============================================================================
 // ThermalScattering implementation
 //==============================================================================
 
@@ -359,11 +367,11 @@ ThermalData::ThermalData(hid_t group, int secondary_mode)
 }
 
 void
-ThermalData::sample(const NuclideMicroXS* micro_xs, double E,
+ThermalData::sample(const NuclideMicroXS& micro_xs, double E,
                     double* E_out, double* mu)
 {
   // Determine whether inelastic or elastic scattering will occur
-  if (prn() < micro_xs->thermal_elastic / micro_xs->thermal) {
+  if (prn() < micro_xs.thermal_elastic / micro_xs.thermal) {
     // elastic scattering
 
     // Get index and interpolation factor for elastic grid
@@ -590,18 +598,10 @@ sab_from_hdf5(hid_t group, const double* temperature, int n,
   std::vector<double> T {temperature, temperature + n};
 
   // Create new object and return it
-  return new ThermalScattering{group, T, method, tolerance, minmax};
-}
+  data::thermal_scatt.push_back(std::make_unique<ThermalScattering>(
+    group, T, method, tolerance, minmax));
 
-void sab_calculate_xs(ThermalScattering* data, double E, double sqrtkT,
-  int* i_temp, double* elastic, double* inelastic)
-{
-  // Calculate cross section
-  int t;
-  data->calculate_xs(E, sqrtkT, &t, elastic, inelastic);
-
-  // Fortran needs index plus one
-  *i_temp = t + 1;
+  return data::thermal_scatt.back().get();
 }
 
 void sab_free(ThermalScattering* data) { delete data; }
@@ -609,13 +609,6 @@ void sab_free(ThermalScattering* data) { delete data; }
 bool sab_has_nuclide(ThermalScattering* data, const char* name)
 {
   return data->has_nuclide(name);
-}
-
-void sab_sample(ThermalScattering* data, const NuclideMicroXS* micro_xs,
-  double E_in, double* E_out, double* mu)
-{
-  int i_temp = micro_xs->index_temp_sab;
-  data->data_[i_temp - 1].sample(micro_xs, E_in, E_out, mu);
 }
 
 double sab_threshold(ThermalScattering* data) { return data->threshold(); }

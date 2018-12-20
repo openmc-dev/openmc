@@ -446,7 +446,7 @@ contains
            .or. i_sab /= micro_xs(i_nuclide) % index_sab &
            .or. sab_frac /= micro_xs(i_nuclide) % sab_frac) then
         call nuclides(i_nuclide) % calculate_xs(i_sab, p % E, i_grid, &
-             p % sqrtkT, sab_frac, micro_xs(i_nuclide))
+             p % sqrtkT, sab_frac)
       end if
 
       ! ======================================================================

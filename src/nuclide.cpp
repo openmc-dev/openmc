@@ -10,6 +10,7 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
+#include "openmc/thermal.h"
 
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xview.hpp"
@@ -683,7 +684,13 @@ void Nuclide::calculate_xs(int i_sab, double E, int i_log_union,
 
   // If the particle is in the unresolved resonance range and there are
   // probability tables, we need to determine cross sections from the table
-  this->calculate_urr_xs(i_temp, E);
+  if (settings::urr_ptables_on && urr_present_ && !use_mp) {
+    int n = urr_data_[i_temp].n_energy_;
+    if ((E > urr_data_[i_temp].energy_(0)) &&
+        (E < urr_data_[i_temp].energy_(n-1))) {
+      this->calculate_urr_xs(i_temp, E);
+    }
+  }
 
   micro_xs.last_E = E;
   micro_xs.last_sqrtkT = sqrtkT;
@@ -700,7 +707,7 @@ void Nuclide::calculate_sab_xs(int i_sab, double E, double sqrtkT, double sab_fr
   int i_temp;
   double elastic;
   double inelastic;
-  //data::sab_tables[i_sab]->calculate_xs(E, sqrtkT, &i_temp, &elastic, &inelastic);
+  data::thermal_scatt[i_sab]->calculate_xs(E, sqrtkT, &i_temp, &elastic, &inelastic);
 
   // Store the S(a,b) cross sections.
   micro.thermal = sab_frac * (elastic + inelastic);
@@ -869,6 +876,12 @@ extern "C" Reaction* nuclide_reaction(Nuclide* nuc, int i_rx)
   return nuc->reactions_[i_rx-1].get();
 }
 
+extern "C" void nuclide_calculate_xs_c(Nuclide* nuc, int i_sab, double E,
+  int i_log_union, double sqrtkT, double sab_frac)
+{
+  nuc->calculate_xs(i_sab, E, i_log_union, sqrtkT, sab_frac);
+}
+
 extern "C" void nuclides_clear() { data::nuclides.clear(); }
 
 
@@ -878,19 +891,6 @@ void set_micro_xs()
 #pragma omp parallel
   {
     simulation::micro_xs = micro_xs_ptr();
-  }
-}
-
-extern "C" void
-nuclide_calculate_urr_xs(bool use_mp, int i_nuclide, int i_temp, double E)
-{
-  Nuclide* nuc = data::nuclides[i_nuclide - 1].get();
-  if (settings::urr_ptables_on && (nuc->urr_present_ && !use_mp)) {
-    if ((E > nuc->urr_data_[i_temp - 1].energy_(0)) &&
-        (E < nuc->urr_data_[i_temp - 1].energy_(
-                       nuc->urr_data_[i_temp - 1].n_energy_ - 1))) {
-      nuc->calculate_urr_xs(i_temp - 1, E);
-    }
   }
 }
 

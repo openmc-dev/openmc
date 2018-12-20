@@ -247,7 +247,7 @@ class Operator(TransportOperator):
                     raise RuntimeError("Volume not specified for depletable "
                                        "material with ID={}.".format(mat.id))
                 volume[str(mat.id)] = mat.volume
-                self.heavy_metal += mat.get_heavy_metal_mass()
+                self.heavy_metal += mat.fissionable_mass
 
         # Make sure there are burnable materials
         if not burnable_mats:

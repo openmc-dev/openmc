@@ -249,15 +249,11 @@ class Material(IDManagerMixin):
 
     @property
     def fissionable_mass(self):
-        if self.volume is None:
-            raise ValueError("Volume must be set in order to determine mass.")
-        density = 0.0
-        for nuc, atoms_per_cc in self.get_nuclide_atom_densities().values():
-            Z = openmc.data.zam(nuc)[0]
-            if Z >= 90:
-                density += 1e24 * atoms_per_cc * openmc.data.atomic_mass(nuc) \
-                           / openmc.data.AVOGADRO
-        return density*self.volume
+        mass = 0.0
+        for nuc, _, _ in self._nuclides:
+            if openmc.data.zam(nuc)[0] >= 90:
+                mass += self.get_mass(nuc)
+        return mass
 
     @classmethod
     def from_hdf5(cls, group):
@@ -746,22 +742,6 @@ class Material(IDManagerMixin):
         if self.volume is None:
             raise ValueError("Volume must be set in order to determine mass.")
         return self.volume*self.get_mass_density(nuclide)
-
-    @property
-    def get_heavy_metal_mass(self):
-        """Return mass of heavy metal nuclides.
-
-        Returns
-        -------
-        float
-            Mass in [g]
-
-        """
-        mass = 0.0
-        for nuc, _, _ in self._nuclides:
-            if openmc.data.zam(nuc)[0] >= 90:
-                mass += self.get_mass(nuc)
-        return mass
 
     def clone(self, memo=None):
         """Create a copy of this material with a new unique ID.

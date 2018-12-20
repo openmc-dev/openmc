@@ -70,6 +70,8 @@ class Operator(TransportOperator):
         Results from a previous depletion calculation. If this argument is
         specified, the depletion calculation will start from the latest state
         in the previous results.
+    diff_burnable_mats : bool, optional
+        Whether to differentiate burnable materials with multiple instances
 
     Attributes
     ----------
@@ -102,13 +104,17 @@ class Operator(TransportOperator):
         All burnable material IDs being managed by a single process
     prev_res : ResultsList
         Results from a previous depletion calculation
+    diff_burnable_mats : bool
+        Whether to differentiate burnable materials with multiple instances
 
     """
-    def __init__(self, geometry, settings, chain_file=None, prev_results=None):
+    def __init__(self, geometry, settings, chain_file=None, prev_results=None,
+                 diff_burnable_mats=True):
         super().__init__(chain_file)
         self.round_number = False
         self.settings = settings
         self.geometry = geometry
+        self.diff_burnable_mats = diff_burnable_mats
 
         if prev_results != None:
             # Reload volumes into geometry
@@ -221,8 +227,9 @@ class Operator(TransportOperator):
 
         """
 
-        # Automatically distribute burnable materials
-        self._differentiate_burnable_mats()
+        if self.diff_burnable_mats:
+            # Automatically distribute burnable materials
+            self._differentiate_burnable_mats()
 
         burnable_mats = set()
         model_nuclides = set()

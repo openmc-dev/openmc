@@ -76,6 +76,25 @@ bool is_inelastic_scatter(int mt)
   }
 }
 
+std::unique_ptr<Function1D>
+read_function(hid_t group, const char* name)
+{
+  hid_t dset = open_dataset(group, name);
+  std::string func_type;
+  read_attribute(dset, "type", func_type);
+  std::unique_ptr<Function1D> func;
+  if (func_type == "Tabulated1D") {
+    func = std::make_unique<Tabulated1D>(dset);
+  } else if (func_type == "Polynomial") {
+    func = std::make_unique<Polynomial>(dset);
+  } else {
+    throw std::runtime_error{"Unknown function type " + func_type +
+      " for dataset " + object_name(dset)};
+  }
+  close_dataset(dset);
+  return func;
+}
+
 //==============================================================================
 // Polynomial implementation
 //==============================================================================

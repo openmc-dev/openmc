@@ -8,7 +8,11 @@
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/string_utils.h"
+
+#include "xtensor/xbuilder.hpp"
+#include "xtensor/xview.hpp"
 
 #include <algorithm> // for sort
 #include <string> // for to_string, stoi
@@ -234,20 +238,20 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n, int i_nuclide)
     }
   }
 
-  // Check for nu-total
+  // Check for total nu data
   if (object_exists(group, "total_nu")) {
     // Read total nu data
     hid_t nu_group = open_group(group, "total_nu");
-    hid_t nu_dset = open_dataset(nu_group, "yield");
-    std::string func_type;
-    read_attribute(nu_dset, "type", func_type);
-    if (func_type == "Tabulated1D") {
-      total_nu_ = std::make_unique<Tabulated1D>(nu_dset);
-    } else if (func_type == "Polynomial") {
-      total_nu_ = std::make_unique<Polynomial>(nu_dset);
-    }
-    close_dataset(nu_dset);
+    total_nu_ = read_function(nu_group, "yield");
     close_group(nu_group);
+  }
+
+  // Read fission energy release data if present
+  if (object_exists(group, "fission_energy_release")) {
+    hid_t fer_group = open_group(group, "fission_energy_release");
+    fission_q_prompt_ = read_function(fer_group, "q_prompt");
+    fission_q_recov_ = read_function(fer_group, "q_recoverable");
+    close_group(fer_group);
   }
 
   this->create_derived();
@@ -255,15 +259,53 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n, int i_nuclide)
 
 void Nuclide::create_derived()
 {
+  for (const auto& grid : grid_) {
+    // Allocate and initialize cross section
+    std::array<size_t, 2> shape {grid.energy.size(), 5};
+    xs_.emplace_back(shape, 0.0);
+  }
+
+  reaction_index_.fill(-1);
   for (int i = 0; i < reactions_.size(); ++i) {
     const auto& rx {reactions_[i]};
 
+    // Set entry in direct address table for reaction
+    reaction_index_[rx->mt_] = i;
+
     for (int t = 0; t < kTs_.size(); ++t) {
+      // TODO: off-by-one
+      int j = rx->xs_[t].threshold - 1;
+      int n = rx->xs_[t].value.size();
+      auto xs = xt::adapt(rx->xs_[t].value);
+
+      for (const auto& p : rx->products_) {
+        if (p.particle_ == ParticleType::photon) {
+          auto pprod = xt::view(xs_[t], xt::range(j, j+n), XS_PHOTON_PROD);
+          for (int k = 0; k < n; ++k) {
+            double E = grid_[t].energy[k+j];
+            pprod[k] += xs[k] * (*p.yield_)(E);
+          }
+        }
+      }
+
       // Skip redundant reactions
       if (rx->redundant_) continue;
 
+      // Add contribution to total cross section
+      auto total = xt::view(xs_[t], xt::range(j,j+n), XS_TOTAL);
+      total += xs;
+
+      // Add contribution to absorption cross section
+      auto absorption = xt::view(xs_[t], xt::range(j,j+n), XS_ABSORPTION);
+      if (is_disappearance(rx->mt_)) {
+        absorption += xs;
+      }
+
       if (is_fission(rx->mt_)) {
         fissionable_ = true;
+        auto fission = xt::view(xs_[t], xt::range(j,j+n), XS_FISSION);
+        fission += xs;
+        absorption += xs;
 
         // Keep track of fission reactions
         if (t == 0) {
@@ -279,6 +321,18 @@ void Nuclide::create_derived()
     for (const auto& product : fission_rx_[0]->products_) {
       if (product.emission_mode_ == EmissionMode::delayed) {
         ++n_precursor_;
+      }
+    }
+  }
+
+  // Calculate nu-fission cross section
+  for (int t = 0; t < kTs_.size(); ++t) {
+    if (fissionable_) {
+      int n = grid_[t].energy.size();
+      for (int i = 0; i < n; ++i) {
+        double E = grid_[t].energy[i];
+        xs_[t](i, XS_NU_FISSION) = nu(E, EmissionMode::total)
+          * xs_[t](i, XS_FISSION);
       }
     }
   }
@@ -323,6 +377,33 @@ void Nuclide::create_derived()
               / 2.0 * (E[i+1] - E[i]);
         xs_cdf_[i] = xs_cdf_sum;
       }
+    }
+  }
+}
+
+void Nuclide::init_grid(double E_min, double E_max, int M)
+{
+  // Determine equal-logarithmic energy spacing
+  double spacing = std::log(E_max/E_min)/M;
+
+  // Create equally log-spaced energy grid
+  auto umesh = xt::linspace(0.0, M*spacing, M+1);
+
+  for (auto& grid : grid_) {
+    // Resize array for storing grid indices
+    grid.grid_index.resize(M + 1);
+
+    // Determine corresponding indices in nuclide grid to energies on
+    // equal-logarithmic grid
+    int j = 0;
+    for (int k = 0; k <= M; ++k) {
+      while (std::log(grid.energy[j]/E_min) <= umesh(k)) {
+        // Ensure that for isotopes where maxval(grid.energy) << E_max that
+        // there are no out-of-bounds issues.
+        if (j == grid.energy.size()) break;
+        ++j;
+      }
+      grid.grid_index[k] = j;
     }
   }
 }
@@ -404,7 +485,240 @@ double Nuclide::elastic_xs_0K(double E) const
   return (1.0 - f)*elastic_0K_[i_grid] + f*elastic_0K_[i_grid + 1];
 }
 
-void Nuclide::calculate_urr_xs(int i_temp, double E)
+void Nuclide::calculate_xs(int i_sab, double E, int i_log_union,
+  double sqrtkT, double sab_frac)
+{
+  auto& micro_xs = simulation::micro_xs[i_nuclide_];
+
+  // Initialize cached cross sections to zero
+  micro_xs.elastic = CACHE_INVALID;
+  micro_xs.thermal = 0.0;
+  micro_xs.thermal_elastic = 0.0;
+
+  // Check to see if there is multipole data present at this energy
+  bool use_mp = false;
+  if (nuclide_wmp_present(i_nuclide_)) {
+    use_mp = (E >= nuclide_wmp_emin(i_nuclide_) &&
+              E <= nuclide_wmp_emax(i_nuclide_));
+  }
+
+  int i_temp = -1;
+
+  // Evaluate multipole or interpolate
+  if (use_mp) {
+    // Call multipole kernel
+    double sig_s, sig_a, sig_f;
+    //multipole_eval(this % multipole, E, sqrtkT, sig_s, sig_a, sig_f)
+
+    micro_xs.total = sig_s + sig_a;
+    micro_xs.elastic = sig_s;
+    micro_xs.absorption = sig_a;
+    micro_xs.fission = sig_f;
+    micro_xs.nu_fission = fissionable_ ?
+      sig_f * this->nu(E, EmissionMode::total) : 0.0;
+
+    if (simulation::need_depletion_rx) {
+      // Only non-zero reaction is (n,gamma)
+      micro_xs.reaction[0] = sig_a - sig_f;
+
+      // Set all other reaction cross sections to zero
+      for (int i = 1; i < DEPLETION_RX.size(); ++i) {
+        micro_xs.reaction[i] = 0.0;
+      }
+    }
+
+    // Ensure these values are set
+    // Note, the only time either is used is in one of 4 places:
+    // 1. physics.cpp - scatter - For inelastic scatter.
+    // 2. physics.cpp - sample_fission - For partial fissions.
+    // 3. tally.F90 - score_general - For tallying on MTxxx reactions.
+    // 4. nuclide.cpp - calculate_urr_xs - For unresolved purposes.
+    // It is worth noting that none of these occur in the resolved
+    // resonance range, so the value here does not matter.  index_temp is
+    // set to -1 to force a segfault in case a developer messes up and tries
+    // to use it with multipole.
+    micro_xs.index_temp = -1;
+    micro_xs.index_grid = 0;
+    micro_xs.interp_factor = 0.0;
+
+  } else {
+    // Find the appropriate temperature index.
+    double kT = sqrtkT*sqrtkT;
+    double f;
+    switch (settings::temperature_method) {
+    case TEMPERATURE_NEAREST:
+      {
+        double max_diff = INFTY;
+        for (int t = 0; t < kTs_.size(); ++t) {
+          if (std::abs(kTs_[t] - kT) < max_diff) {
+            i_temp = t;
+          }
+        }
+      }
+      break;
+
+    case TEMPERATURE_INTERPOLATION:
+      // Find temperatures that bound the actual temperature
+      for (i_temp = 0; i_temp < kTs_.size() - 1; ++i_temp) {
+        if (kTs_[i_temp] <= kT && kT < kTs_[i_temp + 1]) break;
+      }
+
+      // Randomly sample between temperature i and i+1
+      f = (kT - kTs_[i_temp]) / (kTs_[i_temp + 1] - kTs_[i_temp]);
+      if (f > prn()) ++i_temp;
+      break;
+    }
+
+    // Determine the energy grid index using a logarithmic mapping to
+    // reduce the energy range over which a binary search needs to be
+    // performed
+
+    const auto& grid {grid_[i_temp]};
+    const auto& xs {xs_[i_temp]};
+
+    int i_grid;
+    if (E < grid.energy.front()) {
+      i_grid = 0;
+    } else if (E > grid.energy.back()) {
+      i_grid = grid.energy.size() - 2;
+    } else {
+      // Determine bounding indices based on which equal log-spaced
+      // interval the energy is in
+      int i_low  = grid.grid_index[i_log_union];
+      int i_high = grid.grid_index[i_log_union + 1] + 1;
+
+      // Perform binary search over reduced range
+      i_grid = lower_bound_index(&grid.energy[i_low], &grid.energy[i_high], E) - 1;
+    }
+
+    // check for rare case where two energy points are the same
+    if (grid.energy[i_grid] == grid.energy[i_grid + 1]) ++i_grid;
+
+    // calculate interpolation factor
+    f = (E - grid.energy[i_grid]) /
+      (grid.energy[i_grid + 1]- grid.energy[i_grid]);
+
+    micro_xs.index_temp = i_temp;
+    micro_xs.index_grid = i_grid;
+    micro_xs.interp_factor = f;
+
+    // Calculate microscopic nuclide total cross section
+    micro_xs.total = (1.0 - f)*xs(i_grid,XS_TOTAL)
+          + f*xs(i_grid + 1,XS_TOTAL);
+
+    // Calculate microscopic nuclide absorption cross section
+    micro_xs.absorption = (1.0 - f)*xs(i_grid,XS_ABSORPTION)
+      + f*xs(i_grid + 1,XS_ABSORPTION);
+
+    if (fissionable_) {
+      // Calculate microscopic nuclide total cross section
+      micro_xs.fission = (1.0 - f)*xs(i_grid,XS_FISSION)
+            + f*xs(i_grid + 1,XS_FISSION);
+
+      // Calculate microscopic nuclide nu-fission cross section
+      micro_xs.nu_fission = (1.0 - f)*xs(i_grid,XS_NU_FISSION)
+        + f*xs(i_grid + 1,XS_NU_FISSION);
+    } else {
+      micro_xs.fission = 0.0;
+      micro_xs.nu_fission = 0.0;
+    }
+
+    // Calculate microscopic nuclide photon production cross section
+    micro_xs.photon_prod = (1.0 - f)*xs(i_grid,XS_PHOTON_PROD)
+      + f*xs(i_grid + 1,XS_PHOTON_PROD);
+
+    // Depletion-related reactions
+    if (simulation::need_depletion_rx) {
+      // Initialize all reaction cross sections to zero
+      for (double& xs_i : micro_xs.reaction) {
+        xs_i = 0.0;
+      }
+
+      for (int j = 0; j < DEPLETION_RX.size(); ++j) {
+        // If reaction is present and energy is greater than threshold, set the
+        // reaction xs appropriately
+        int i_rx = reaction_index_[DEPLETION_RX[j]];
+
+        const auto& rx = reactions_[i_rx];
+        const auto& rx_xs = rx->xs_[i_temp].value;
+
+        if (i_rx >= 0) {
+          // Physics says that (n,gamma) is not a threshold reaction, so we don't
+          // need to specifically check its threshold index
+          if (j == 0) {
+            micro_xs.reaction[0] = (1.0 - f)*rx_xs[i_grid]
+              + f*rx_xs[i_grid + 1];
+            continue;
+          }
+
+          // TODO: off-by-one
+          int threshold = rx->xs_[i_temp].threshold - 1;
+          if (i_grid >= threshold) {
+            micro_xs.reaction[j] = (1.0 - f)*rx_xs[i_grid - threshold] +
+              f*rx_xs[i_grid - threshold + 1];
+          } else if (j >= 3) {
+            // One can show that the the threshold for (n,(x+1)n) is always
+            // higher than the threshold for (n,xn). Thus, if we are below
+            // the threshold for, e.g., (n,2n), there is no reason to check
+            // the threshold for (n,3n) and (n,4n).
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // Initialize sab treatment to false
+  micro_xs.index_sab = -1;
+  micro_xs.sab_frac = 0.0;
+
+  // Initialize URR probability table treatment to false
+  micro_xs.use_ptable = false;
+
+  // If there is S(a,b) data for this nuclide, we need to set the sab_scatter
+  // and sab_elastic cross sections and correct the total and elastic cross
+  // sections.
+
+  if (i_sab >= 0) this->calculate_sab_xs(i_sab, E, sqrtkT, sab_frac);
+
+  // If the particle is in the unresolved resonance range and there are
+  // probability tables, we need to determine cross sections from the table
+  this->calculate_urr_xs(i_temp, E);
+
+  micro_xs.last_E = E;
+  micro_xs.last_sqrtkT = sqrtkT;
+}
+
+void Nuclide::calculate_sab_xs(int i_sab, double E, double sqrtkT, double sab_frac)
+{
+  auto& micro {simulation::micro_xs[i_nuclide_]};
+
+  // Set flag that S(a,b) treatment should be used for scattering
+  micro.index_sab = i_sab;
+
+  // Calculate the S(a,b) cross section
+  int i_temp;
+  double elastic;
+  double inelastic;
+  //data::sab_tables[i_sab]->calculate_xs(E, sqrtkT, &i_temp, &elastic, &inelastic);
+
+  // Store the S(a,b) cross sections.
+  micro.thermal = sab_frac * (elastic + inelastic);
+  micro.thermal_elastic = sab_frac * elastic;
+
+  // Calculate free atom elastic cross section
+  this->calculate_elastic_xs();
+
+  // Correct total and elastic cross sections
+  micro.total = micro.total + micro.thermal - sab_frac*micro.elastic;
+  micro.elastic = micro.thermal + (1.0 - sab_frac)*micro.elastic;
+
+  // Save temperature index and thermal fraction
+  micro.index_temp_sab = i_temp;
+  micro.sab_frac = sab_frac;
+}
+
+void Nuclide::calculate_urr_xs(int i_temp, double E) const
 {
   auto& micro = simulation::micro_xs[i_nuclide_];
   micro.use_ptable = true;
@@ -414,7 +728,7 @@ void Nuclide::calculate_urr_xs(int i_temp, double E)
 
   // Determine the energy table
   int i_energy = 0;
-  while(E >= urr.energy_(i_energy + 1)) {++i_energy;};
+  while (E >= urr.energy_(i_energy + 1)) {++i_energy;};
 
   // Sample the probability table using the cumulative distribution
 

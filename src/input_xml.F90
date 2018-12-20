@@ -2258,7 +2258,7 @@ contains
           call write_message("Maximum neutron transport energy: " // &
                trim(to_str(energy_max(NEUTRON))) // " eV for " // &
                trim(adjustl(nuclides(i) % name)), 7)
-          if (master .and. energy_max(NEUTRON) < 20.E6) call warning("Maximum &
+          if (master .and. energy_max(NEUTRON) < 20.e6) call warning("Maximum &
                &neutron energy is below 20 MeV. This may bias the results.")
           exit
         end if

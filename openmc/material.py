@@ -747,6 +747,7 @@ class Material(IDManagerMixin):
             raise ValueError("Volume must be set in order to determine mass.")
         return self.volume*self.get_mass_density(nuclide)
 
+    @property
     def get_heavy_metal_mass(self):
         """Return mass of heavy metal nuclides.
 

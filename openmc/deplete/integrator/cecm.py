@@ -47,7 +47,7 @@ def cecm(operator, timesteps, power=None, power_density=None, print_out=True):
     """
     if power is None:
         if power_density is None:
-            raise RuntimeError(
+            raise ValueError(
                 "Neither power nor power density was specified.")
         if not isinstance(power_density, Iterable):
             power = power_density*operator.heavy_metal

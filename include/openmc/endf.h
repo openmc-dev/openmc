@@ -4,6 +4,7 @@
 #ifndef OPENMC_ENDF_H
 #define OPENMC_ENDF_H
 
+#include <memory>
 #include <vector>
 
 #include "hdf5.h"
@@ -98,6 +99,7 @@ private:
   std::vector<double> factors_;     //!< Partial sums of structure factors [eV-b]
 };
 
+std::unique_ptr<Function1D> read_function(hid_t group, const char* name);
 
 } // namespace openmc
 

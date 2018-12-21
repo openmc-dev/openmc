@@ -193,6 +193,8 @@ extern "C" MaterialMacroXS material_xs;
 //==============================================================================
 
 extern "C" void set_micro_xs();
+extern "C" void nuclide_multipole_eval(int i_nuclide, double E, double sqrtkT,
+  double* sig_s, double* sig_a, double* sig_f);
 extern "C" bool nuclide_wmp_present(int i_nuclide);
 extern "C" double nuclide_wmp_emin(int i_nuclide);
 extern "C" double nuclide_wmp_emax(int i_nuclide);

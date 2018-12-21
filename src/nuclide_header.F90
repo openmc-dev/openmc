@@ -1048,6 +1048,9 @@ contains
         ! Add entry to nuclide dictionary
         call nuclide_dict % set(to_lower(name_), n)
         n_nuclides = n
+
+        ! Initialize nuclide grid
+        call nuclides(n) % init_grid()
       else
         err = E_DATA
         call set_errmsg("Nuclide '" // trim(name_) // "' is not present &
@@ -1099,5 +1102,17 @@ contains
     real(C_DOUBLE) :: E
     E = nuclides(i_nuclide + 1) % multipole % E_max
   end function
+
+  subroutine nuclide_multipole_eval(i_nuclide, E, sqrtkT, sig_s, sig_a, sig_f) bind(C)
+    integer(C_INT), value :: i_nuclide
+    real(C_DOUBLE), value :: E
+    real(C_DOUBLE), value :: sqrtkT
+    real(C_DOUBLE), intent(out) :: sig_s
+    real(C_DOUBLE), intent(out) :: sig_a
+    real(C_DOUBLE), intent(out) :: sig_f
+
+    call multipole_eval(nuclides(i_nuclide + 1) % multipole, E, sqrtkT, &
+         sig_s, sig_a, sig_f)
+  end subroutine
 
 end module nuclide_header

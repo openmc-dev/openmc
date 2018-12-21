@@ -520,7 +520,7 @@ void Nuclide::calculate_xs(int i_sab, double E, int i_log_union,
   if (use_mp) {
     // Call multipole kernel
     double sig_s, sig_a, sig_f;
-    //multipole_eval(this % multipole, E, sqrtkT, sig_s, sig_a, sig_f)
+    nuclide_multipole_eval(i_nuclide_, E, sqrtkT, &sig_s, &sig_a, &sig_f);
 
     micro_xs.total = sig_s + sig_a;
     micro_xs.elastic = sig_s;
@@ -651,11 +651,10 @@ void Nuclide::calculate_xs(int i_sab, double E, int i_log_union,
         // If reaction is present and energy is greater than threshold, set the
         // reaction xs appropriately
         int i_rx = reaction_index_[DEPLETION_RX[j]];
-
-        const auto& rx = reactions_[i_rx];
-        const auto& rx_xs = rx->xs_[i_temp].value;
-
         if (i_rx >= 0) {
+          const auto& rx = reactions_[i_rx];
+          const auto& rx_xs = rx->xs_[i_temp].value;
+
           // Physics says that (n,gamma) is not a threshold reaction, so we don't
           // need to specifically check its threshold index
           if (j == 0) {

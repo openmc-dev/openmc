@@ -958,7 +958,7 @@ contains
         else
           if (i_nuclide > 0) then
             if (micro_xs(i_nuclide) % elastic == CACHE_INVALID) then
-              call nuclides(i_nuclide) % calculate_elastic_xs(micro_xs(i_nuclide))
+              call nuclides(i_nuclide) % calculate_elastic_xs()
             end if
             score = micro_xs(i_nuclide) % elastic * atom_density * flux
           else
@@ -971,7 +971,7 @@ contains
                 ! Get index in nuclides array
                 i_nuc = materials(p % material) % nuclide(l)
                 if (micro_xs(i_nuc) % elastic == CACHE_INVALID) then
-                  call nuclides(i_nuc) % calculate_elastic_xs(micro_xs(i_nuc))
+                  call nuclides(i_nuc) % calculate_elastic_xs()
                 end if
 
                 score = score + micro_xs(i_nuc) % elastic * atom_density_ * flux
@@ -1126,7 +1126,7 @@ contains
               if (m /= 0) then
                 ! Retrieve temperature and energy grid index and interpolation
                 ! factor
-                i_temp = micro_xs(i_nuclide) % index_temp
+                i_temp = micro_xs(i_nuclide) % index_temp + 1
                 if (i_temp > 0) then
                   i_energy = micro_xs(i_nuclide) % index_grid
                   f = micro_xs(i_nuclide) % interp_factor
@@ -1159,7 +1159,7 @@ contains
                   if (m /= 0) then
                     ! Retrieve temperature and energy grid index and
                     ! interpolation factor
-                    i_temp = micro_xs(i_nuc) % index_temp
+                    i_temp = micro_xs(i_nuc) % index_temp + 1
                     if (i_temp > 0) then
                       i_energy = micro_xs(i_nuc) % index_grid
                       f = micro_xs(i_nuc) % interp_factor

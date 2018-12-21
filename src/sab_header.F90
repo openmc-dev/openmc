@@ -21,7 +21,6 @@ module sab_header
     type(C_PTR) :: ptr
   contains
     procedure :: from_hdf5
-    procedure :: free
     procedure :: has_nuclide
     procedure :: threshold
   end type SAlphaBeta
@@ -44,9 +43,7 @@ module sab_header
       type(C_PTR) :: ptr
     end function
 
-    subroutine sab_free(ptr) bind(C)
-      import C_PTR
-      type(C_PTR), value :: ptr
+    subroutine sab_clear() bind(C)
     end subroutine
 
     function sab_has_nuclide(ptr, name) result(val) bind(C)
@@ -87,11 +84,6 @@ contains
     end if
   end subroutine from_hdf5
 
-  subroutine free(this)
-    class(SAlphaBeta), intent(inout) :: this
-    call sab_free(this % ptr)
-  end subroutine
-
   function has_nuclide(this, name) result(val)
     class(SAlphaBeta), intent(in) :: this
     character(len=*), intent(in) :: name
@@ -111,14 +103,9 @@ contains
 !===============================================================================
 
   subroutine free_memory_sab()
-    integer :: i
     n_sab_tables = 0
-    if (allocated(sab_tables)) then
-      do i = 1, size(sab_tables)
-        call sab_tables(i) % free()
-      end do
-      deallocate(sab_tables)
-    end if
+    call sab_clear()
+    if (allocated(sab_tables)) deallocate(sab_tables)
     call sab_dict % clear()
   end subroutine free_memory_sab
 

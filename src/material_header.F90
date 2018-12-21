@@ -443,7 +443,7 @@ contains
       ! Calculate microscopic cross section for this nuclide
       if (p % E /= micro_xs(i_nuclide) % last_E &
            .or. p % sqrtkT /= micro_xs(i_nuclide) % last_sqrtkT &
-           .or. i_sab /= micro_xs(i_nuclide) % index_sab &
+           .or. i_sab /= micro_xs(i_nuclide) % index_sab + 1 &
            .or. sab_frac /= micro_xs(i_nuclide) % sab_frac) then
         call nuclides(i_nuclide) % calculate_xs(i_sab, p % E, i_grid, &
              p % sqrtkT, sab_frac)

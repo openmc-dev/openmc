@@ -137,18 +137,6 @@ public:
   std::vector<ThermalData> data_;
 };
 
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
-extern "C" {
-  ThermalScattering* sab_from_hdf5(hid_t group, const double* temperature,
-    int n, int method, double tolerance, const double* minmax);
-  void sab_free(ThermalScattering* data);
-  bool sab_has_nuclide(ThermalScattering* data, const char* name);
-  double sab_threshold(ThermalScattering* data);
-}
-
 } // namespace openmc
 
 #endif // OPENMC_THERMAL_H

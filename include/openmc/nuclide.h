@@ -98,10 +98,7 @@ public:
   Nuclide(hid_t group, const double* temperature, int n, int i_nuclide);
 
   //! Initialize logarithmic grid for energy searches
-  //! \param E_min Minimum energy in [eV]
-  //! \param E_max Maximum energy in [eV]
-  //! \param M Number of equally log-spaced bins
-  void init_grid(double E_min, double E_max, int M);
+  void init_grid();
 
   void calculate_xs(int i_sab, double E, int i_log_union,
     double sqrtkT, double sab_frac);
@@ -160,11 +157,11 @@ public:
 private:
   void create_derived();
 
-  static constexpr int XS_TOTAL {0};
-  static constexpr int XS_ABSORPTION {1};
-  static constexpr int XS_FISSION {2};
-  static constexpr int XS_NU_FISSION {3};
-  static constexpr int XS_PHOTON_PROD {4};
+  static int XS_TOTAL;
+  static int XS_ABSORPTION;
+  static int XS_FISSION;
+  static int XS_NU_FISSION;
+  static int XS_PHOTON_PROD;
 };
 
 //==============================================================================

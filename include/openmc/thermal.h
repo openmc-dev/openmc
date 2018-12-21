@@ -103,8 +103,7 @@ private:
 
 class ThermalScattering {
 public:
-  ThermalScattering(hid_t group, const std::vector<double>& temperature, int method,
-                    double tolerance, const double* minmax);
+  ThermalScattering(hid_t group, const std::vector<double>& temperature);
 
   //! Determine inelastic/elastic cross section at given energy
   //!

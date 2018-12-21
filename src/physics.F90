@@ -13,7 +13,6 @@ module physics
                                     thick_target_bremsstrahlung
   use physics_common
   use random_lcg,             only: prn
-  use sab_header,             only: sab_tables
   use settings
   use simulation_header
   use tally_header

@@ -18,11 +18,9 @@ module nuclide_header
   use message_passing
   use random_lcg,             only: prn, future_prn, prn_set_stream
   use reaction_header,        only: Reaction
-  use sab_header,             only: SAlphaBeta, sab_tables
   use settings
   use stl_vector,             only: VectorInt, VectorReal
   use string
-  use simulation_header,      only: need_depletion_rx
 
   implicit none
 
@@ -1101,6 +1099,5 @@ contains
     real(C_DOUBLE) :: E
     E = nuclides(i_nuclide + 1) % multipole % E_max
   end function
-
 
 end module nuclide_header

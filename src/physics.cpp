@@ -518,7 +518,7 @@ Reaction* sample_fission(int i_nuclide, double E)
   }
 
   // Get grid index and interpolatoin factor and sample fission cdf
-  int i_temp = simulation::micro_xs[i_nuclide].index_temp - 1;
+  int i_temp = simulation::micro_xs[i_nuclide].index_temp;
   int i_grid = simulation::micro_xs[i_nuclide].index_grid;
   double f = simulation::micro_xs[i_nuclide].interp_factor;
   double cutoff = prn() * simulation::micro_xs[i_nuclide].fission;
@@ -542,8 +542,7 @@ Reaction* sample_fission(int i_nuclide, double E)
 void sample_photon_product(int i_nuclide, double E, int* i_rx, int* i_product)
 {
   // Get grid index and interpolation factor and sample photon production cdf
-  // TODO: off-by-one
-  int i_temp = simulation::micro_xs[i_nuclide].index_temp - 1;
+  int i_temp = simulation::micro_xs[i_nuclide].index_temp;
   int i_grid = simulation::micro_xs[i_nuclide].index_grid;
   double f = simulation::micro_xs[i_nuclide].interp_factor;
   double cutoff = prn() * simulation::micro_xs[i_nuclide].photon_prod;
@@ -616,7 +615,7 @@ void scatter(Particle* p, int i_nuclide, int i_nuc_mat)
   // Get pointer to nuclide and grid index/interpolation factor
   const auto& nuc {data::nuclides[i_nuclide]};
   const auto& micro {simulation::micro_xs[i_nuclide]};
-  int i_temp =  micro.index_temp - 1;
+  int i_temp =  micro.index_temp;
   int i_grid =  micro.index_grid - 1;
   double f = micro.interp_factor;
 

@@ -39,7 +39,14 @@ MaterialMacroXS material_xs;
 // Nuclide implementation
 //==============================================================================
 
+int Nuclide::XS_TOTAL {0};
+int Nuclide::XS_ABSORPTION {1};
+int Nuclide::XS_FISSION {2};
+int Nuclide::XS_NU_FISSION {3};
+int Nuclide::XS_PHOTON_PROD {4};
+
 Nuclide::Nuclide(hid_t group, const double* temperature, int n, int i_nuclide)
+  : i_nuclide_{i_nuclide}
 {
   // Get name of nuclide from group, removing leading '/'
   name_ = object_name(group).substr(1);
@@ -48,7 +55,6 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n, int i_nuclide)
   read_attribute(group, "A", A_);
   read_attribute(group, "metastable", metastable_);
   read_attribute(group, "atomic_weight_ratio", awr_);
-  i_nuclide_ = i_nuclide;
 
   // Determine temperatures available
   hid_t kT_group = open_group(group, "kTs");
@@ -382,8 +388,13 @@ void Nuclide::create_derived()
   }
 }
 
-void Nuclide::init_grid(double E_min, double E_max, int M)
+void Nuclide::init_grid()
 {
+  int neutron = static_cast<int>(ParticleType::neutron) - 1;
+  double E_min = data::energy_min[neutron];
+  double E_max = data::energy_max[neutron];
+  int M = settings::n_log_bins;
+
   // Determine equal-logarithmic energy spacing
   double spacing = std::log(E_max/E_min)/M;
 
@@ -398,10 +409,10 @@ void Nuclide::init_grid(double E_min, double E_max, int M)
     // equal-logarithmic grid
     int j = 0;
     for (int k = 0; k <= M; ++k) {
-      while (std::log(grid.energy[j]/E_min) <= umesh(k)) {
+      while (std::log(grid.energy[j + 1]/E_min) <= umesh(k)) {
         // Ensure that for isotopes where maxval(grid.energy) << E_max that
         // there are no out-of-bounds issues.
-        if (j == grid.energy.size()) break;
+        if (j + 1 == grid.energy.size()) break;
         ++j;
       }
       grid.grid_index[k] = j;
@@ -453,7 +464,7 @@ void Nuclide::calculate_elastic_xs() const
 {
   // Get temperature index, grid index, and interpolation factor
   auto& micro = simulation::micro_xs[i_nuclide_];
-  int i_temp = micro.index_temp - 1;
+  int i_temp = micro.index_temp;
   int i_grid = micro.index_grid - 1;
   double f = micro.interp_factor;
 
@@ -589,7 +600,7 @@ void Nuclide::calculate_xs(int i_sab, double E, int i_log_union,
       int i_high = grid.grid_index[i_log_union + 1] + 1;
 
       // Perform binary search over reduced range
-      i_grid = lower_bound_index(&grid.energy[i_low], &grid.energy[i_high], E) - 1;
+      i_grid = i_low + lower_bound_index(&grid.energy[i_low], &grid.energy[i_high], E);
     }
 
     // check for rare case where two energy points are the same
@@ -600,7 +611,8 @@ void Nuclide::calculate_xs(int i_sab, double E, int i_log_union,
       (grid.energy[i_grid + 1]- grid.energy[i_grid]);
 
     micro_xs.index_temp = i_temp;
-    micro_xs.index_grid = i_grid;
+    // TODO: off-by-one
+    micro_xs.index_grid = i_grid + 1;
     micro_xs.interp_factor = f;
 
     // Calculate microscopic nuclide total cross section
@@ -871,6 +883,8 @@ extern "C" Nuclide* nuclide_from_hdf5_c(hid_t group, const double* temperature, 
   return data::nuclides.back().get();
 }
 
+extern "C" void nuclide_init_grid_c(Nuclide* nuc) { nuc->init_grid(); }
+
 extern "C" Reaction* nuclide_reaction(Nuclide* nuc, int i_rx)
 {
   return nuc->reactions_[i_rx-1].get();
@@ -882,10 +896,15 @@ extern "C" void nuclide_calculate_xs_c(Nuclide* nuc, int i_sab, double E,
   nuc->calculate_xs(i_sab, E, i_log_union, sqrtkT, sab_frac);
 }
 
+extern "C" void nuclide_calculate_elastic_xs_c(Nuclide* nuc)
+{
+  nuc->calculate_elastic_xs();
+}
+
 extern "C" void nuclides_clear() { data::nuclides.clear(); }
 
-
 extern "C" NuclideMicroXS* micro_xs_ptr();
+
 void set_micro_xs()
 {
 #pragma omp parallel

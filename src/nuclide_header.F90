@@ -94,6 +94,7 @@ module nuclide_header
   contains
     procedure :: clear => nuclide_clear
     procedure :: from_hdf5 => nuclide_from_hdf5
+    procedure :: init_grid => nuclide_init_grid
     procedure :: nu    => nuclide_nu
     procedure, private :: create_derived => nuclide_create_derived
     procedure :: calculate_xs => nuclide_calculate_xs
@@ -673,6 +674,17 @@ contains
 
   end function nuclide_nu
 
+  subroutine nuclide_init_grid(this)
+    class(nuclide), intent(inout) :: this
+    interface
+      subroutine nuclide_init_grid_c(ptr) bind(C)
+        import C_PTR
+        type(C_PTR), value :: ptr
+      end subroutine
+    end interface
+    call nuclide_init_grid_c(this % ptr)
+  end subroutine
+
 !===============================================================================
 ! NUCLIDE_CALCULATE_XS determines microscopic cross sections for the nuclide
 ! at the energy of the given particle
@@ -689,8 +701,9 @@ contains
     real(8), intent(in) :: sab_frac    ! fraction of atoms affected by S(a,b)
 
     interface
-      subroutine nuclide_calculate_xs_c(i_sab, E, i_log_union, sqrtkT, sab_frac) bind(C)
-        import C_INT, C_DOUBLE
+      subroutine nuclide_calculate_xs_c(ptr, i_sab, E, i_log_union, sqrtkT, sab_frac) bind(C)
+        import C_PTR, C_INT, C_DOUBLE
+        type(C_PTR), value :: ptr
         integer(C_INT), value :: i_sab
         real(C_DOUBLE), value :: E
         integer(C_INT), value :: i_log_union
@@ -699,7 +712,7 @@ contains
       end subroutine
     end interface
 
-    call nuclide_calculate_xs_c(i_sab, E, i_log_union, sqrtkT, sab_frac)
+    call nuclide_calculate_xs_c(this % ptr, i_sab - 1, E, i_log_union, sqrtkT, sab_frac)
   end subroutine nuclide_calculate_xs
 
 !===============================================================================
@@ -709,25 +722,15 @@ contains
 ! to calculate it early to adjust the total cross section correctly.
 !===============================================================================
 
-  subroutine nuclide_calculate_elastic_xs(this, micro_xs)
+  subroutine nuclide_calculate_elastic_xs(this)
     class(Nuclide),       intent(in)    :: this
-    type(NuclideMicroXS), intent(inout) :: micro_xs ! Cross section cache
-
-    integer :: i_temp
-    integer :: i_grid
-    real(8) :: f
-
-    ! Get temperature index, grid index, and interpolation factor
-    i_temp =  micro_xs % index_temp
-    i_grid =  micro_xs % index_grid
-    f      =  micro_xs % interp_factor
-
-    if (i_temp > 0) then
-      associate (rx => this % reactions(1))
-        micro_xs % elastic = (ONE - f) * rx % xs(i_temp, i_grid) + &
-             f * rx % xs(i_temp, i_grid + 1)
-      end associate
-    end if
+    interface
+      subroutine nuclide_calculate_elastic_xs_c(ptr) bind(C)
+        import C_PTR
+        type(C_PTR), value :: ptr
+      end subroutine
+    end interface
+    call nuclide_calculate_elastic_xs_c(this % ptr)
   end subroutine nuclide_calculate_elastic_xs
 
 !===============================================================================

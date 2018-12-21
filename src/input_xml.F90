@@ -2157,6 +2157,9 @@ contains
     end if
 
     ! Set up logarithmic grid for nuclides
+    do i = 1, size(nuclides)
+      call nuclides(i) % init_grid()
+    end do
     log_spacing = log(energy_max(NEUTRON)/energy_min(NEUTRON)) / n_log_bins
 
     do i = 1, size(materials)

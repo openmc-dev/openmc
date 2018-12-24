@@ -13,7 +13,6 @@ module input_xml
   use dagmc_header
 #endif
   use hdf5_interface
-  use list_header,      only: ListChar, ListInt, ListReal
   use material_header
   use mesh_header
   use message_passing
@@ -25,7 +24,7 @@ module input_xml
   use photon_header
   use random_lcg,       only: prn
   use surface_header
-  use set_header,       only: SetChar, SetInt
+  use set_header,       only: SetChar
   use settings
   use stl_vector,       only: VectorInt, VectorReal, VectorChar
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
@@ -291,8 +290,7 @@ contains
 
   subroutine read_geometry_xml()
 
-    integer :: i
-    integer :: n, n_rlats, n_hlats
+    integer :: i, n
     integer :: univ_id
     integer :: n_cells_in_univ
     real(8) :: phi, theta, psi
@@ -300,14 +298,10 @@ contains
     logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
     type(Cell),     pointer :: c
-    class(Lattice), pointer :: lat
     type(XMLDocument) :: doc
     type(XMLNode) :: root
     type(XMLNode) :: node_cell
-    type(XMLNode) :: node_lat
     type(XMLNode), allocatable :: node_cell_list(:)
-    type(XMLNode), allocatable :: node_rlat_list(:)
-    type(XMLNode), allocatable :: node_hlat_list(:)
     type(VectorInt) :: univ_ids      ! List of all universe IDs
     type(DictIntInt) :: cells_in_univ_dict ! Used to count how many cells each
                                            ! universe contains
@@ -449,39 +443,6 @@ contains
     ! READ LATTICES FROM GEOMETRY.XML
 
     call read_lattices(root % ptr)
-
-    ! Get pointer to list of XML <lattice>
-    call get_node_list(root, "lattice", node_rlat_list)
-    call get_node_list(root, "hex_lattice", node_hlat_list)
-
-    ! Allocate lattices array
-    n_rlats = size(node_rlat_list)
-    n_hlats = size(node_hlat_list)
-    allocate(lattices(n_rlats + n_hlats))
-
-    RECT_LATTICES: do i = 1, n_rlats
-      lat => lattices(i)
-      lat % ptr = lattice_pointer(i - 1)
-
-      ! Get pointer to i-th lattice
-      node_lat = node_rlat_list(i)
-
-      ! Add lattice to dictionary
-      call lattice_dict % set(lat % id(), i)
-
-    end do RECT_LATTICES
-
-    HEX_LATTICES: do i = 1, n_hlats
-      lat => lattices(n_rlats + i)
-      lat % ptr = lattice_pointer(n_rlats + i - 1)
-
-      ! Get pointer to i-th lattice
-      node_lat = node_hlat_list(i)
-
-      ! Add lattice to dictionary
-      call lattice_dict % set(lat % id(), n_rlats + i)
-
-    end do HEX_LATTICES
 
     ! ==========================================================================
     ! SETUP UNIVERSES

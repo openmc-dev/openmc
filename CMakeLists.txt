@@ -323,7 +323,6 @@ add_library(libopenmc SHARED
   src/list_header.F90
   src/material_header.F90
   src/math.F90
-  src/matrix_header.F90
   src/mesh_header.F90
   src/message_passing.F90
   src/mgxs_data.F90
@@ -365,7 +364,6 @@ add_library(libopenmc SHARED
   src/tallies/tally_filter_delayedgroup.F90
   src/tallies/tally_filter_distribcell.F90
   src/tallies/tally_filter_energy.F90
-  src/tallies/tally_filter_legendre.F90
   src/tallies/tally_filter_mesh.F90
   src/tallies/tally_filter_meshsurface.F90
   src/tallies/tally_filter_particle.F90

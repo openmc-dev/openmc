@@ -133,35 +133,67 @@ class HashedTestHarness(TestHarness):
 class CMFDTestHarness(TestHarness):
     """Specialized TestHarness for running OpenMC CMFD tests."""
 
-    def _get_results(self):
-        """Digest info in the statepoint and return as a string."""
+    def __init__(self, statepoint_name, cmfd_run):
+        self._sp_name = statepoint_name
+        self._create_cmfd_result_str(cmfd_run)
 
-        # Write out the eigenvalue and tallies.
-        outstr = super()._get_results()
+    def _create_cmfd_result_str(self, cmfd_run):
+        """Create CMFD result string from variables of CMFDRun instance"""
+        outstr = 'cmfd indices\n'
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run.indices])
+        outstr += '\nk cmfd\n'
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run.k_cmfd])
+        outstr += '\ncmfd entropy\n'
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run.entropy])
+        outstr += '\ncmfd balance\n'
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run.balance])
+        outstr += '\ncmfd dominance ratio\n'
+        outstr += '\n'.join(['{0:10.3E}'.format(x) for x in cmfd_run.dom])
+        outstr += '\ncmfd openmc source comparison\n'
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run.src_cmp])
+        outstr += '\ncmfd source\n'
+        cmfdsrc = np.reshape(cmfd_run.cmfd_src, np.product(cmfd_run.indices),
+                             order='F')
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfdsrc])
+        outstr += '\n'
+        self._cmfdrun_results = outstr
 
-        # Read the statepoint file.
-        statepoint = glob.glob(self._sp_name)[0]
-        with openmc.StatePoint(statepoint) as sp:
-            # Write out CMFD data.
-            outstr += 'cmfd indices\n'
-            outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_indices])
-            outstr += '\nk cmfd\n'
-            outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.k_cmfd])
-            outstr += '\ncmfd entropy\n'
-            outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_entropy])
-            outstr += '\ncmfd balance\n'
-            outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_balance])
-            outstr += '\ncmfd dominance ratio\n'
-            outstr += '\n'.join(['{0:10.3E}'.format(x) for x in sp.cmfd_dominance])
-            outstr += '\ncmfd openmc source comparison\n'
-            outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_srccmp])
-            outstr += '\ncmfd source\n'
-            cmfdsrc = np.reshape(sp.cmfd_src, np.product(sp.cmfd_indices),
-                                 order='F')
-            outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfdsrc])
-            outstr += '\n'
+    def execute_test(self):
+        """Don't call _run_openmc as OpenMC will be called through C API for
+        CMFD tests, and write CMFD results that were passsed as argument
 
-        return outstr
+        """
+        try:
+            self._test_output_created()
+            results = self._get_results()
+            results += self._cmfdrun_results
+            self._write_results(results)
+            self._compare_results()
+        finally:
+            self._cleanup()
+
+    def update_results(self):
+        """Don't call _run_openmc as OpenMC will be called through C API for
+        CMFD tests, and write CMFD results that were passsed as argument
+
+        """
+        try:
+            self._test_output_created()
+            results = self._get_results()
+            results += self._cmfdrun_results
+            self._write_results(results)
+            self._overwrite_results()
+        finally:
+            self._cleanup()
+
+    def _cleanup(self):
+        """Delete output files for numpy matrices and flux vectors."""
+        super()._cleanup()
+        output = ['loss.npz', 'loss.dat', 'prod.npz', 'prod.dat',
+                  'fluxvec.npy', 'fluxvec.dat']
+        for f in output:
+            if os.path.exists(f):
+                os.remove(f)
 
 
 class ParticleRestartTestHarness(TestHarness):

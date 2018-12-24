@@ -1,5 +1,6 @@
 from openmc.arithmetic import *
 from openmc.cell import *
+from openmc.checkvalue import *
 from openmc.mesh import *
 from openmc.element import *
 from openmc.geometry import *
@@ -20,7 +21,6 @@ from openmc.trigger import *
 from openmc.tally_derivative import *
 from openmc.tallies import *
 from openmc.mgxs_library import *
-from openmc.cmfd import *
 from openmc.executor import *
 from openmc.statepoint import *
 from openmc.summary import *

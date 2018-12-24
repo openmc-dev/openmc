@@ -130,17 +130,6 @@ Constructing Tallies
    openmc.Tally
    openmc.Tallies
 
-Coarse Mesh Finite Difference Acceleration
-------------------------------------------
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-   :template: myclass.rst
-
-   openmc.CMFDMesh
-   openmc.CMFD
-
 Geometry Plotting
 -----------------
 
@@ -183,7 +172,7 @@ The following classes and functions are used for functional expansion reconstruc
 .. autosummary::
    :toctree: generated
    :nosignatures:
-   :template: myclass.rst 
+   :template: myclass.rst
 
    openmc.ZernikeRadial
 
@@ -208,3 +197,32 @@ Various classes may be created when performing tally slicing and/or arithmetic:
    openmc.arithmetic.AggregateScore
    openmc.arithmetic.AggregateNuclide
    openmc.arithmetic.AggregateFilter
+
+Coarse Mesh Finite Difference Acceleration
+------------------------------------------
+
+CMFD is implemented in OpenMC and allows users to accelerate fission source
+convergence during inactive neutron batches. To run CMFD, the CMFDRun class
+should be used, and :mod:`from openmc import cmfd` should be included at the
+top of the Python input file. Additionally, this class has a dependence on the
+C API.
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.CMFDMesh
+   openmc.CMFDRun
+
+At the minimum, a CMFD mesh needs to be specified in order to run CMFD. Once
+these properties are set, an OpenMC simulation can be run with CMFD turned on
+with the function:
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
+   openmc.CMFDRun.run
+

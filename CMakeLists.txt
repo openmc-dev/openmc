@@ -309,13 +309,6 @@ add_library(libopenmc SHARED
   src/bank_header.F90
   src/api.F90
   src/dagmc_header.F90
-  src/cmfd_data.F90
-  src/cmfd_execute.F90
-  src/cmfd_header.F90
-  src/cmfd_input.F90
-  src/cmfd_loss_operator.F90
-  src/cmfd_prod_operator.F90
-  src/cmfd_solver.F90
   src/constants.F90
   src/dict_header.F90
   src/eigenvalue.F90
@@ -383,7 +376,7 @@ add_library(libopenmc SHARED
   src/bank.cpp
   src/dagmc.cpp
   src/cell.cpp
-  src/cmfd_execute.cpp
+  src/cmfd_solver.cpp
   src/cross_sections.cpp
   src/distribution.cpp
   src/distribution_angle.cpp

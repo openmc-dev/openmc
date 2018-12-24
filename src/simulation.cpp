@@ -25,14 +25,9 @@
 namespace openmc {
 
 // data/functions from Fortran side
-extern "C" bool cmfd_on;
-
 extern "C" void accumulate_tallies();
 extern "C" void allocate_tally_results();
 extern "C" void check_triggers();
-extern "C" void cmfd_init_batch();
-extern "C" void cmfd_tally_init();
-extern "C" void execute_cmfd();
 extern "C" void init_tally_routines();
 extern "C" void load_state_point();
 extern "C" void print_batch_keff();
@@ -95,9 +90,6 @@ int openmc_simulation_init()
 
   // Allocate tally results arrays if they're not allocated yet
   allocate_tally_results();
-
-  // Activate the CMFD tallies
-  cmfd_tally_init();
 
   // Call Fortran initialization
   simulation_init_f();
@@ -349,11 +341,6 @@ void initialize_batch()
     }
   }
 
-  // check CMFD initialize batch
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-    if (settings::cmfd_run) cmfd_init_batch();
-  }
-
   // Add user tallies to active tallies list
   setup_active_tallies();
 }
@@ -373,8 +360,6 @@ void finalize_batch()
   }
 
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-    // Perform CMFD calculation if on
-    if (cmfd_on) execute_cmfd();
     // Write batch output
     if (mpi::master && settings::verbosity >= 7) print_batch_keff();
   }

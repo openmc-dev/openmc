@@ -3,7 +3,6 @@ module output
   use, intrinsic :: ISO_C_BINDING
   use, intrinsic :: ISO_FORTRAN_ENV
 
-  use cmfd_header
   use constants
   use eigenvalue,      only: openmc_get_keff
   use endf,            only: reaction_name
@@ -290,30 +289,12 @@ contains
     write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "   k    "
     if (entropy_on) write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "Entropy "
     write(UNIT=ou, FMT='(A20,3X)', ADVANCE='NO') "     Average k      "
-    if (cmfd_run) then
-      write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') " CMFD k "
-      select case(trim(cmfd_display))
-        case('entropy')
-          write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "CMFD Ent"
-        case('balance')
-          write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "RMS Bal "
-        case('source')
-          write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "RMS Src "
-        case('dominance')
-          write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "Dom Rat "
-      end select
-    end if
     write(UNIT=ou, FMT=*)
 
     write(UNIT=ou, FMT='(2X,A9,3X)', ADVANCE='NO') "========="
     write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
     if (entropy_on) write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
     write(UNIT=ou, FMT='(A20,3X)', ADVANCE='NO') "===================="
-    if (cmfd_run) then
-      write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
-      if (cmfd_display /= '') &
-           write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
-    end if
     write(UNIT=ou, FMT=*)
 
   end subroutine print_columns
@@ -386,26 +367,6 @@ contains
       write(UNIT=OUTPUT_UNIT, FMT='(23X)', ADVANCE='NO')
     end if
 
-    ! write out cmfd keff if it is active and other display info
-    if (cmfd_on) then
-      write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-           cmfd % k_cmfd(current_batch)
-      select case(trim(cmfd_display))
-        case('entropy')
-          write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-               cmfd % entropy(current_batch)
-        case('balance')
-          write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-               cmfd % balance(current_batch)
-        case('source')
-          write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-               cmfd % src_cmp(current_batch)
-        case('dominance')
-          write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-               cmfd % dom(current_batch)
-      end select
-    end if
-
     ! next line
     write(UNIT=OUTPUT_UNIT, FMT=*)
 
@@ -442,11 +403,6 @@ contains
       write(ou,100) "    SEND/RECV source sites", time_bank_sendrecv_elapsed()
     end if
     write(ou,100) "  Time accumulating tallies", time_tallies_elapsed()
-    if (cmfd_run) write(ou,100) "  Time in CMFD", time_cmfd % elapsed
-    if (cmfd_run) write(ou,100) "    Building matrices", &
-                  time_cmfdbuild % elapsed
-    if (cmfd_run) write(ou,100) "    Solving matrices", &
-                  time_cmfdsolve % elapsed
     write(ou,100) "Total time for finalization", time_finalize_elapsed()
     write(ou,100) "Total time elapsed", time_total_elapsed()
 

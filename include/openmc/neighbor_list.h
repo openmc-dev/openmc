@@ -39,7 +39,15 @@ public:
       // while this thread was searching for a cell so make sure the given
       // element isn't a duplicate before adding it.
       if (std::find(list_.cbegin(), list_.cend(), new_elem) == list_.cend()) {
-        list_.push_front(new_elem);
+        // Find the end of the list and add the the new element there.
+        if (!list_.empty()) {
+          auto it1 = list_.cbegin();
+          auto it2 = ++list_.cbegin();
+          while (it2 != list_.cend()) it1 = it2++;
+          list_.insert_after(it1, new_elem);
+        } else {
+          list_.push_front(new_elem);
+        }
       }
     }
   }

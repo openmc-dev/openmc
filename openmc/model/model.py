@@ -25,8 +25,6 @@ class Model(object):
         Settings information
     tallies : openmc.Tallies, optional
         Tallies information
-    cmfd : openmc.CMFD, optional
-        CMFD information
     plots : openmc.Plots, optional
         Plot information
 
@@ -40,19 +38,16 @@ class Model(object):
         Settings information
     tallies : openmc.Tallies
         Tallies information
-    cmfd : openmc.CMFD
-        CMFD information
     plots : openmc.Plots
         Plot information
 
     """
 
     def __init__(self, geometry=None, materials=None, settings=None,
-                 tallies=None, cmfd=None, plots=None):
+                 tallies=None, plots=None):
         self.geometry = openmc.Geometry()
         self.materials = openmc.Materials()
         self.settings = openmc.Settings()
-        self.cmfd = cmfd
         self.tallies = openmc.Tallies()
         self.plots = openmc.Plots()
 
@@ -82,10 +77,6 @@ class Model(object):
     @property
     def tallies(self):
         return self._tallies
-
-    @property
-    def cmfd(self):
-        return self._cmfd
 
     @property
     def plots(self):
@@ -120,11 +111,6 @@ class Model(object):
             del self._tallies[:]
             for tally in tallies:
                 self._tallies.append(tally)
-
-    @cmfd.setter
-    def cmfd(self, cmfd):
-        check_type('cmfd', cmfd, (openmc.CMFD, type(None)))
-        self._cmfd = cmfd
 
     @plots.setter
     def plots(self, plots):
@@ -196,8 +182,6 @@ class Model(object):
 
         if self.tallies:
             self.tallies.export_to_xml()
-        if self.cmfd is not None:
-            self.cmfd.export_to_xml()
         if self.plots:
             self.plots.export_to_xml()
 

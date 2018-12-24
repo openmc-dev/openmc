@@ -20,6 +20,13 @@ class _Bank(Structure):
                 ('delayed_group', c_int)]
 
 
+# Define input type for numpy arrays that will be passed into C++ functions
+# Must be an int or double array, with single dimension that is contiguous
+_array_1d_int = np.ctypeslib.ndpointer(dtype=np.int32, ndim=1,
+                                       flags='CONTIGUOUS')
+_array_1d_dble = np.ctypeslib.ndpointer(dtype=np.double, ndim=1,
+                                        flags='CONTIGUOUS')
+
 _dll.openmc_calculate_volumes.restype = c_int
 _dll.openmc_calculate_volumes.errcheck = _error_handler
 _dll.openmc_finalize.restype = c_int
@@ -36,6 +43,10 @@ _dll.openmc_init.errcheck = _error_handler
 _dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
 _dll.openmc_get_keff.restype = c_int
 _dll.openmc_get_keff.errcheck = _error_handler
+_init_linsolver_argtypes = [_array_1d_int, c_int, _array_1d_int, c_int, c_int,
+                            c_double, _array_1d_int, _array_1d_int]
+_dll.openmc_initialize_linsolver.argtypes = _init_linsolver_argtypes
+_dll.openmc_initialize_linsolver.restype = None
 _dll.openmc_next_batch.argtypes = [POINTER(c_int)]
 _dll.openmc_next_batch.restype = c_int
 _dll.openmc_next_batch.errcheck = _error_handler
@@ -45,6 +56,10 @@ _dll.openmc_run.restype = c_int
 _dll.openmc_run.errcheck = _error_handler
 _dll.openmc_reset.restype = c_int
 _dll.openmc_reset.errcheck = _error_handler
+_run_linsolver_argtypes = [_array_1d_dble, _array_1d_dble, _array_1d_dble,
+                           c_double]
+_dll.openmc_run_linsolver.argtypes = _run_linsolver_argtypes
+_dll.openmc_run_linsolver.restype = c_int
 _dll.openmc_source_bank.argtypes = [POINTER(POINTER(_Bank)), POINTER(c_int64)]
 _dll.openmc_source_bank.restype = c_int
 _dll.openmc_source_bank.errcheck = _error_handler
@@ -125,6 +140,7 @@ def find_material(xyz):
         return mats
     else:
         return mats[instance.value]
+
 
 def hard_reset():
     """Reset tallies, timers, and pseudo-random number generator state."""
@@ -315,7 +331,7 @@ def statepoint_write(filename=None, write_source=True):
 
 
 @contextmanager
-def run_in_memory(intracomm=None):
+def run_in_memory(**kwargs):
     """Provides context manager for calling OpenMC shared library functions.
 
     This function is intended to be used in a 'with' statement and ensures that
@@ -331,11 +347,11 @@ def run_in_memory(intracomm=None):
 
     Parameters
     ----------
-    intracomm : mpi4py.MPI.Intracomm or None
-        MPI intracommunicator
+    **kwargs
+        All keyword arguments are passed to :func:`init`.
 
     """
-    init(intracomm=intracomm)
+    init(**kwargs)
     try:
         yield
     finally:

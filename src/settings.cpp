@@ -689,11 +689,6 @@ void read_settings_xml()
     }
   }
 
-  // Check for cmfd run
-  if (check_for_node(root, "run_cmfd")) {
-    cmfd_run = get_node_value_bool(root, "run_cmfd");
-  }
-
   // Resonance scattering parameters
   if (check_for_node(root, "resonance_scattering")) {
     xml_node node_res_scat = root.child("resonance_scattering");

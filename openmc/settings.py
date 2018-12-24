@@ -90,8 +90,6 @@ class Settings(object):
         indicates what nuclides the method should be applied to. In its absence,
         the method will be applied to all nuclides with 0 K elastic scattering
         data present.
-    run_cmfd : bool
-        Indicate if coarse mesh finite difference acceleration is to be used
     run_mode : {'eigenvalue', 'fixed source', 'plot', 'volume', 'particle restart'}
         The type of calculation to perform (default is 'eigenvalue')
     seed : int
@@ -182,7 +180,6 @@ class Settings(object):
         self._electron_treatment = None
         self._photon_transport = None
         self._ptables = None
-        self._run_cmfd = None
         self._seed = None
         self._survival_biasing = None
 
@@ -278,10 +275,6 @@ class Settings(object):
     @property
     def photon_transport(self):
         return self._photon_transport
-
-    @property
-    def run_cmfd(self):
-        return self._run_cmfd
 
     @property
     def seed(self):
@@ -527,11 +520,6 @@ class Settings(object):
     def ptables(self, ptables):
         cv.check_type('probability tables', ptables, bool)
         self._ptables = ptables
-
-    @run_cmfd.setter
-    def run_cmfd(self, run_cmfd):
-        cv.check_type('run_cmfd', run_cmfd, bool)
-        self._run_cmfd = run_cmfd
 
     @seed.setter
     def seed(self, seed):
@@ -830,11 +818,6 @@ class Settings(object):
             element = ET.SubElement(root, "ptables")
             element.text = str(self._ptables).lower()
 
-    def _create_run_cmfd_subelement(self, root):
-        if self._run_cmfd is not None:
-            element = ET.SubElement(root, "run_cmfd")
-            element.text = str(self._run_cmfd).lower()
-
     def _create_seed_subelement(self, root):
         if self._seed is not None:
             element = ET.SubElement(root, "seed")
@@ -991,7 +974,6 @@ class Settings(object):
         self._create_max_order_subelement(root_element)
         self._create_photon_transport_subelement(root_element)
         self._create_ptables_subelement(root_element)
-        self._create_run_cmfd_subelement(root_element)
         self._create_seed_subelement(root_element)
         self._create_survival_biasing_subelement(root_element)
         self._create_cutoff_subelement(root_element)

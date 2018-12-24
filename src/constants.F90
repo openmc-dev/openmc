@@ -440,18 +440,6 @@ module constants
        ELECTRON_TTB     = 2    ! Thick Target Bremsstrahlung
 
   !=============================================================================
-  ! CMFD CONSTANTS
-
-  ! for non-accelerated regions on coarse mesh overlay
-  integer, parameter :: CMFD_NOACCEL = 99999
-
-  ! constant to represent a zero flux "albedo"
-  real(8), parameter :: ZERO_FLUX = 999.0_8
-
-  ! constant for writing out no residual
-  real(8), parameter :: CMFD_NORES = 99999.0_8
-
-  !=============================================================================
   ! DELAYED NEUTRON PRECURSOR CONSTANTS
 
   ! Since cross section libraries come with different numbers of delayed groups

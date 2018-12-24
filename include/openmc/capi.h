@@ -124,6 +124,31 @@ extern "C" {
   int openmc_zernike_filter_set_params(int32_t index, const double* x,
                                        const double* y, const double* r);
 
+  //! Sets the fixed variables that are used for CMFD linear solver
+  //! \param[in] CSR format index pointer array of loss matrix
+  //! \param[in] length of indptr
+  //! \param[in] CSR format index array of loss matrix
+  //! \param[in] number of non-zero elements in CMFD loss matrix
+  //! \param[in] dimension n of nxn CMFD loss matrix
+  //! \param[in] spectral radius of CMFD matrices and tolerances
+  //! \param[in] indices storing spatial and energy dimensions of CMFD problem
+  //! \param[in] coremap for problem, storing accelerated regions
+  extern "C" void openmc_initialize_linsolver(const int* indptr, int len_indptr,
+                                              const int* indices, int n_elements,
+                                              int dim, double spectral,
+                                              const int* cmfd_indices,
+                                              const int* map);
+
+  //! Runs a Gauss Seidel linear solver to solve CMFD matrix equations
+  //! linear solver
+  //! \param[in] CSR format data array of coefficient matrix
+  //! \param[in] right hand side vector
+  //! \param[out] unknown vector
+  //! \param[in] tolerance on final error
+  //! \return number of inner iterations required to reach convergence
+  extern "C" int openmc_run_linsolver(const double* A_data, const double* b,
+                                      double* x, double tol);
+
   // Error codes
   extern int OPENMC_E_UNASSIGNED;
   extern int OPENMC_E_ALLOCATE;

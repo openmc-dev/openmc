@@ -59,7 +59,6 @@ contains
   subroutine free_memory() bind(C)
 
     use bank_header
-    use cmfd_header
     use geometry_header
     use material_header
     use photon_header
@@ -85,6 +84,9 @@ contains
 
       subroutine free_memory_bank() bind(C)
       end subroutine free_memory_bank
+
+      subroutine free_memory_cmfd() bind(C)
+      end subroutine free_memory_cmfd
     end interface
 
     call free_memory_geometry()
@@ -102,12 +104,10 @@ contains
     call free_memory_tally_filter()
     call free_memory_tally_derivative()
     call free_memory_bank()
+    call free_memory_cmfd()
 #ifdef DAGMC
     call free_memory_dagmc()
 #endif
-
-    ! Deallocate CMFD
-    call deallocate_cmfd(cmfd)
 
   end subroutine free_memory
 

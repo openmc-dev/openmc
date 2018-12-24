@@ -10,7 +10,6 @@ module tally_filter
   use tally_filter_delayedgroup
   use tally_filter_distribcell
   use tally_filter_energy
-  use tally_filter_legendre
   use tally_filter_mesh
   use tally_filter_meshsurface
   use tally_filter_particle

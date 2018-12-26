@@ -487,6 +487,25 @@ read_dataset(hid_t obj_id, const char* name, hid_t mem_type_id,
   if (name) H5Dclose(dset);
 }
 
+template<>
+void read_dataset(hid_t dset, xt::xarray<std::complex<double>>& arr, bool indep)
+{
+  // Get shape of dataset
+  std::vector<hsize_t> shape = object_shape(dset);
+
+  // Allocate new array to read data into
+  std::size_t size = 1;
+  for (const auto x : shape)
+    size *= x;
+  std::vector<std::complex<double>> buffer(size);
+
+  // Read data from attribute
+  read_complex(dset, nullptr, buffer.data(), indep);
+
+  // Adapt into xarray
+  arr = xt::adapt(buffer, shape);
+}
+
 
 void
 read_double(hid_t obj_id, const char* name, double* buffer, bool indep)
@@ -756,6 +775,8 @@ using_mpio_device(hid_t obj_id)
 }
 
 // Specializations of the H5TypeMap template struct
+template<>
+const hid_t H5TypeMap<bool>::type_id = H5T_NATIVE_INT8;
 template<>
 const hid_t H5TypeMap<int>::type_id = H5T_NATIVE_INT;
 template<>

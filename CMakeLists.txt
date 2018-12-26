@@ -447,9 +447,9 @@ add_library(libopenmc SHARED
   src/tallies/tally.cpp
   src/timer.cpp
   src/thermal.cpp
+  src/wmp.cpp
   src/xml_interface.cpp
-  src/xsdata.cpp
-  src/tallies/tally.cpp)
+  src/xsdata.cpp)
 
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc

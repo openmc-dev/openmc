@@ -253,14 +253,17 @@ void read_dataset(hid_t dset, xt::xarray<T>& arr, bool indep=false)
   std::size_t size = 1;
   for (const auto x : shape)
     size *= x;
-  std::vector<T> buffer(size);
+  T* buffer = new T[size];
 
   // Read data from attribute
-  read_dataset(dset, nullptr, H5TypeMap<T>::type_id, buffer.data(), indep);
+  read_dataset(dset, nullptr, H5TypeMap<T>::type_id, buffer, indep);
 
   // Adapt into xarray
-  arr = xt::adapt(buffer, shape);
+  arr = xt::adapt(buffer, size, xt::acquire_ownership(), shape);
 }
+
+template<>
+void read_dataset(hid_t dset, xt::xarray<std::complex<double>>& arr, bool indep);
 
 template <typename T>
 void read_dataset(hid_t obj_id, const char* name, xt::xarray<T>& arr, bool indep=false)

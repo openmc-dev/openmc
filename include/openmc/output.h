@@ -6,6 +6,8 @@
 
 #include <string>
 
+#include "openmc/particle.h"
+
 namespace openmc {
 
 //==============================================================================
@@ -17,9 +19,8 @@ namespace openmc {
 
 void header(const char* msg, int level);
 
-
 //==============================================================================
-//! Retrieve a time stamp
+//! Retrieve a time stamp.
 //!
 //! \return current time stamp (format: "yyyy-mm-dd hh:mm:ss")
 //==============================================================================
@@ -27,7 +28,13 @@ void header(const char* msg, int level);
 std::string time_stamp();
 
 //==============================================================================
-//! Display plot information
+//! Display the attributes of a particle.
+//==============================================================================
+
+extern "C" void print_particle(Particle* p);
+
+//==============================================================================
+//! Display plot information.
 //==============================================================================
 
 extern "C" void print_plot();

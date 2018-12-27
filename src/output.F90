@@ -37,6 +37,11 @@ module output
       integer(C_INT), value :: i
       real(C_DOUBLE) :: h
     end function
+
+    subroutine print_particle(p) bind(C)
+      import Particle
+      type(Particle), intent(in) :: p
+    end subroutine
   end interface
 
 contains
@@ -206,77 +211,6 @@ contains
     end if
 
   end subroutine print_usage
-
-!===============================================================================
-! PRINT_PARTICLE displays the attributes of a particle
-!===============================================================================
-
-  subroutine print_particle(p)
-    type(Particle), intent(in) :: p
-
-    integer :: i ! index for coordinate levels
-    type(Cell),       pointer :: c
-    class(Lattice),   pointer :: l
-
-    ! display type of particle
-    select case (p % type)
-    case (NEUTRON)
-      write(ou,*) 'Neutron ' // to_str(p % id)
-    case (PHOTON)
-      write(ou,*) 'Photon ' // to_str(p % id)
-    case (ELECTRON)
-      write(ou,*) 'Electron ' // to_str(p % id)
-    case default
-      write(ou,*) 'Unknown Particle ' // to_str(p % id)
-    end select
-
-    ! loop through each level of universes
-    do i = 1, p % n_coord
-      ! Print level
-      write(ou,*) '  Level ' // trim(to_str(i - 1))
-
-      ! Print cell for this level
-      if (p % coord(i) % cell /= C_NONE) then
-        c => cells(p % coord(i) % cell + 1)
-        write(ou,*) '    Cell             = ' // trim(to_str(c % id()))
-      end if
-
-      ! Print universe for this level
-      if (p % coord(i) % universe /= NONE) then
-        write(ou,*) '    Universe         = ' &
-             // trim(to_str(universe_id(p % coord(i) % universe)))
-      end if
-
-      ! Print information on lattice
-      if (p % coord(i) % lattice /= NONE) then
-        l => lattices(p % coord(i) % lattice)
-        write(ou,*) '    Lattice          = ' // trim(to_str(l % id()))
-        write(ou,*) '    Lattice position = (' // trim(to_str(&
-             p % coord(i) % lattice_x)) // ',' // trim(to_str(&
-             p % coord(i) % lattice_y)) // ')'
-      end if
-
-      ! Print local coordinates
-      write(ou,'(1X,A,3ES12.4)') '    xyz = ', p % coord(i) % xyz
-      write(ou,'(1X,A,3ES12.4)') '    uvw = ', p % coord(i) % uvw
-    end do
-
-    ! Print surface
-    if (p % surface /= ERROR_INT) then
-      write(ou,*) '  Surface = ' // to_str(sign(surfaces(i)%id(), p % surface))
-    end if
-
-    ! Display weight, energy, grid index, and interpolation factor
-    write(ou,*) '  Weight = ' // to_str(p % wgt)
-    if (run_CE) then
-      write(ou,*) '  Energy = ' // to_str(p % E)
-    else
-      write(ou,*) '  Energy Group = ' // to_str(p % g)
-    end if
-    write(ou,*) '  Delayed Group = ' // to_str(p % delayed_group)
-    write(ou,*)
-
-  end subroutine print_particle
 
 !===============================================================================
 ! PRINT_COLUMNS displays a header listing what physical values will displayed

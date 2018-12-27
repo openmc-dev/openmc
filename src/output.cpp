@@ -7,14 +7,19 @@
 #include <sstream>
 #include <ctime>
 
-#include "openmc/cell.h"
-#include "openmc/geometry.h"
-#include "openmc/message_passing.h"
 #include "openmc/capi.h"
-#include "openmc/settings.h"
+#include "openmc/cell.h"
+#include "openmc/constants.h"
+#include "openmc/geometry.h"
+#include "openmc/lattice.h"
+#include "openmc/message_passing.h"
 #include "openmc/plot.h"
+#include "openmc/settings.h"
+#include "openmc/surface.h"
 
 namespace openmc {
+
+//==============================================================================
 
 void
 header(const char* msg, int level) {
@@ -40,6 +45,8 @@ header(const char* msg, int level) {
   }
 }
 
+//==============================================================================
+
 std::string time_stamp()
 {
   int base_year = 1990;
@@ -54,12 +61,75 @@ std::string time_stamp()
 
 //==============================================================================
 
-//===============================================================================
-// PRINT_PLOT displays selected options for plotting
-//===============================================================================
+extern "C" void print_particle(Particle* p)
+{
+  // Display particle type and ID.
+  switch (p->type) {
+    case static_cast<int>(ParticleType::neutron):
+      std::cout << "Neutron ";
+      break;
+    case static_cast<int>(ParticleType::photon):
+      std::cout << "Photon ";
+      break;
+    case static_cast<int>(ParticleType::electron):
+      std::cout << "Electron ";
+      break;
+    case static_cast<int>(ParticleType::positron):
+      std::cout << "Positron ";
+      break;
+    default:
+      std::cout << "Unknown Particle ";
+  }
+  std::cout << p->id << "\n";
 
-void print_plot() {
+  // Display particle geometry hierarchy.
+  for (auto i = 0; i < p->n_coord; i++) {
+    std::cout << "  Level " << i << "\n";
 
+    if (p->coord[i].cell != C_NONE) {
+      const Cell& c {*model::cells[p->coord[i].cell]};
+      std::cout << "    Cell             = " << c.id_ << "\n";
+    }
+
+    if (p->coord[i].universe != C_NONE) {
+      const Universe& u {*model::universes[p->coord[i].universe]};
+      std::cout << "    Universe         = " << u.id_ << "\n";
+    }
+
+    if (p->coord[i].lattice != F90_NONE) {
+      const Lattice& lat {*model::lattices[p->coord[i].lattice]};
+      std::cout << "    Lattice          = " << lat.id_ << "\n";
+      std::cout << "    Lattice position = (" << p->coord[i].lattice_x
+                << "," << p->coord[i].lattice_y << ","
+                << p->coord[i].lattice_z << ")\n";
+    }
+
+    std::cout << "    xyz = " << p->coord[i].xyz[0] << " "
+              << p->coord[i].xyz[1] << " " << p->coord[i].xyz[2] << "\n";
+    std::cout << "    uvw = " << p->coord[i].uvw[0] << " "
+              << p->coord[i].uvw[1] << " " << p->coord[i].uvw[2] << "\n";
+  }
+
+  // Display miscellaneous info.
+  if (p->surface != ERROR_INT) {
+    const Surface& surf {*model::surfaces[std::abs(p->surface)-1]};
+    std::cout << "  Surface = " << std::copysign(surf.id_, p->surface) << "\n";
+  }
+  std::cout << "  Weight = " << p->wgt << "\n";
+  if (settings::run_CE) {
+    std::cout << "  Energy = " << p->E << "\n";
+  } else {
+    std::cout << "  Energy Group = " << p->g << "\n";
+  }
+  std::cout << "  Delayed Group = " << p->delayed_group << "\n";
+
+  std::cout << "\n";
+}
+
+//==============================================================================
+
+void print_plot()
+{
   header("PLOTTING SUMMARY", 5);
 
   for (auto pl : model::plots) {
@@ -126,14 +196,17 @@ void print_plot() {
   }
 }
 
+//==============================================================================
+
 void
-print_overlap_check() {
-#ifdef OPENMC_MPI
-  std::vector<int64_t> temp(model::overlap_check_count);
-  int err = MPI_Reduce(temp.data(), model::overlap_check_count.data(),
-                       model::overlap_check_count.size(), MPI_INT64_T, MPI_SUM, 0,
-                       mpi::intracomm);
-#endif
+print_overlap_check()
+{
+  #ifdef OPENMC_MPI
+    std::vector<int64_t> temp(model::overlap_check_count);
+    int err = MPI_Reduce(temp.data(), model::overlap_check_count.data(),
+                         model::overlap_check_count.size(), MPI_INT64_T,
+                         MPI_SUM, 0, mpi::intracomm);
+  #endif
 
   if (mpi::master) {
     header("cell overlap check summary", 1);

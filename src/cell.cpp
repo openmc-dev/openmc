@@ -804,22 +804,20 @@ extern "C" {
     }
   }
 
-  int cell_type(Cell* c) {return c->type_;}
-
-#ifdef DAGMC
-
+  #ifdef DAGMC
   int32_t next_cell(DAGCell* cur_cell, DAGSurface* surf_xed )
   {
-    moab::EntityHandle surf = surf_xed->dagmc_ptr_->entity_by_id(2,surf_xed->id_);
-    moab::EntityHandle vol = cur_cell->dagmc_ptr_->entity_by_id(3,cur_cell->id_);
+    moab::EntityHandle surf =
+      surf_xed->dagmc_ptr_->entity_by_id(2,surf_xed->id_);
+    moab::EntityHandle vol =
+      cur_cell->dagmc_ptr_->entity_by_id(3,cur_cell->id_);
 
     moab::EntityHandle new_vol;
     cur_cell->dagmc_ptr_->next_vol(surf, vol, new_vol);
 
     return cur_cell->dagmc_ptr_->index_by_handle(new_vol);
   }
-
-#endif
+  #endif
 
   int32_t cell_universe(Cell* c) {return c->universe_;}
 

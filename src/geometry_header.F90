@@ -3,11 +3,9 @@ module geometry_header
   use, intrinsic :: ISO_C_BINDING
 
   use algorithm,       only: find
-  use constants,       only: HALF, TWO, THREE, INFINITY, K_BOLTZMANN, &
-                             MATERIAL_VOID
-  use dict_header,     only: DictCharInt, DictIntInt
-  use hdf5_interface,  only: HID_T
-  use material_header, only: Material, materials, material_dict, n_materials
+  use constants,       only: K_BOLTZMANN, MATERIAL_VOID
+  use dict_header,     only: DictIntInt
+  use material_header, only: Material, materials
   use nuclide_header
   use sab_header
   use stl_vector,      only: VectorReal
@@ -39,12 +37,6 @@ module geometry_header
       type(C_PTR),        intent(in), value :: cell_ptr
       integer(C_INT32_T), intent(in), value :: id
     end subroutine cell_set_id_c
-
-    function cell_type_c(cell_ptr) bind(C, name='cell_type') result(type)
-      import C_PTR, C_INT
-      type(C_PTR), intent(in), value :: cell_ptr
-      integer(C_INT)                 :: type
-    end function cell_type_c
 
     function cell_universe_c(cell_ptr) bind(C, name='cell_universe') &
          result(universe)
@@ -89,33 +81,11 @@ module geometry_header
       real(C_DOUBLE)                    :: sqrtkT
     end function cell_sqrtkT_c
 
-    function lattice_pointer(lat_ind) bind(C) result(ptr)
-      import C_PTR, C_INT32_T
-      integer(C_INT32_T), intent(in), value :: lat_ind
-      type(C_PTR)                           :: ptr
-    end function lattice_pointer
-
-    function lattice_id_c(lat_ptr) bind(C, name='lattice_id') result(id)
-      import C_PTR, C_INT32_T
-      type(C_PTR), intent(in), value :: lat_ptr
-      integer(C_INT32_T)             :: id
-    end function lattice_id_c
-
     subroutine extend_cells_c(n) bind(C)
       import C_INT32_t
       integer(C_INT32_T), intent(in), value :: n
     end subroutine extend_cells_c
   end interface
-
-!===============================================================================
-! LATTICE abstract type for ordered array of universes.
-!===============================================================================
-
-  type :: Lattice
-    type(C_PTR) :: ptr
-  contains
-    procedure :: id => lattice_id
-  end type Lattice
 
 !===============================================================================
 ! CELL defines a closed volume by its bounding surfaces
@@ -132,7 +102,6 @@ module geometry_header
 
     procedure :: id => cell_id
     procedure :: set_id => cell_set_id
-    procedure :: type => cell_type
     procedure :: universe => cell_universe
     procedure :: fill => cell_fill
     procedure :: material_size => cell_material_size
@@ -149,19 +118,11 @@ module geometry_header
   integer(C_INT32_T), bind(C) :: n_universes ! # of universes
 
   type(Cell),             allocatable, target :: cells(:)
-  type(Lattice),          allocatable, target :: lattices(:)
 
   ! Dictionaries which map user IDs to indices in the global arrays
   type(DictIntInt) :: cell_dict
-  type(DictIntInt) :: lattice_dict
 
 contains
-
-  function lattice_id(this) result(id)
-    class(Lattice), intent(in) :: this
-    integer(C_INT32_T)         :: id
-    id = lattice_id_c(this % ptr)
-  end function lattice_id
 
 !===============================================================================
 
@@ -176,12 +137,6 @@ contains
     integer(C_INT32_T), intent(in) :: id
     call cell_set_id_c(this % ptr, id)
   end subroutine cell_set_id
-
-  function cell_type(this) result(type)
-    class(Cell), intent(in) :: this
-    integer(C_INT)          :: type
-    type = cell_type_c(this % ptr)
-  end function cell_type
 
   function cell_universe(this) result(universe)
     class(Cell), intent(in) :: this
@@ -301,10 +256,8 @@ contains
     n_universes = 0
 
     if (allocated(cells)) deallocate(cells)
-    if (allocated(lattices)) deallocate(lattices)
 
     call cell_dict % clear()
-    call lattice_dict % clear()
 
   end subroutine free_memory_geometry
 

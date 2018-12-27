@@ -93,6 +93,9 @@ module tally_filter_header
   type, public, extends(TallyFilter) :: EnergyFunctionFilter
   end type
 
+  type, public, extends(TallyFilter) :: LegendreFilter
+  end type
+
   type, public, extends(TallyFilter) :: MaterialFilter
   end type
 

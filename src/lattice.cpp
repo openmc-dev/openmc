@@ -888,14 +888,4 @@ read_lattices(pugi::xml_node *node)
   }
 }
 
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
-extern "C" {
-  Lattice* lattice_pointer(int lat_ind) {return model::lattices[lat_ind];}
-
-  int32_t lattice_id(Lattice *lat) {return lat->id_;}
-}
-
 } // namespace openmc

@@ -509,9 +509,8 @@ void Nuclide::calculate_xs(int i_sab, double E, int i_log_union,
 
   // Check to see if there is multipole data present at this energy
   bool use_mp = false;
-  if (nuclide_wmp_present(i_nuclide_)) {
-    use_mp = (E >= nuclide_wmp_emin(i_nuclide_) &&
-              E <= nuclide_wmp_emax(i_nuclide_));
+  if (multipole_) {
+    use_mp = (E >= multipole_->E_min_ && E <= multipole_->E_max_);
   }
 
   int i_temp = -1;
@@ -520,7 +519,7 @@ void Nuclide::calculate_xs(int i_sab, double E, int i_log_union,
   if (use_mp) {
     // Call multipole kernel
     double sig_s, sig_a, sig_f;
-    nuclide_multipole_eval(i_nuclide_, E, sqrtkT, &sig_s, &sig_a, &sig_f);
+    std::tie(sig_s, sig_a, sig_f) = multipole_->evaluate(E, sqrtkT);
 
     micro_xs.total = sig_s + sig_a;
     micro_xs.elastic = sig_s;
@@ -898,6 +897,23 @@ extern "C" void nuclide_calculate_xs_c(Nuclide* nuc, int i_sab, double E,
 extern "C" void nuclide_calculate_elastic_xs_c(Nuclide* nuc)
 {
   nuc->calculate_elastic_xs();
+}
+
+extern "C" void nuclide_load_multipole(Nuclide* nuc, hid_t group)
+{
+  nuc->multipole_ = std::make_unique<WindowedMultipole>(group);
+}
+
+extern "C" void multipole_deriv_eval(Nuclide* nuc, double E, double sqrtkT,
+  double* sig_s, double* sig_a, double* sig_f)
+{
+  std::tie(*sig_s, *sig_a, *sig_f) = nuc->multipole_->evaluate_deriv(E, sqrtkT);
+}
+
+extern "C" bool multipole_in_range(Nuclide* nuc, double E)
+{
+  return nuc->multipole_ && E >= nuc->multipole_->E_min_&&
+    E <= nuc->multipole_->E_max_;
 }
 
 extern "C" void nuclides_clear() { data::nuclides.clear(); }

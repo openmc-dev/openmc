@@ -511,8 +511,8 @@ Reaction* sample_fission(int i_nuclide, double E)
 
   // Check to see if we are in a windowed multipole range.  WMP only supports
   // the first fission reaction.
-  if (nuclide_wmp_present(i_nuclide)) {
-    if (E >= nuclide_wmp_emin(i_nuclide) && E <= nuclide_wmp_emax(i_nuclide)) {
+  if (nuc->multipole_) {
+    if (E >= nuc->multipole_->E_min_ && E <= nuc->multipole_->E_max_) {
       return nuc->fission_rx_[0];
     }
   }
@@ -635,8 +635,7 @@ void scatter(Particle* p, int i_nuclide, int i_nuc_mat)
     // NON-S(A,B) ELASTIC SCATTERING
 
     // Determine temperature
-    double kT = nuclide_wmp_present(i_nuclide) ?
-      p->sqrtkT*p->sqrtkT : nuc->kTs_[i_temp];
+    double kT = nuc->multipole_ ? p->sqrtkT*p->sqrtkT : nuc->kTs_[i_temp];
 
     // Perform collision physics for elastic scattering
     elastic_scatter(i_nuclide, nuc->reactions_[0].get(), kT,

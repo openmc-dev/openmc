@@ -14,7 +14,8 @@
 #include "openmc/endf.h"
 #include "openmc/reaction.h"
 #include "openmc/reaction_product.h"
-#include "urr.h"
+#include "openmc/urr.h"
+#include "openmc/wmp.h"
 
 namespace openmc {
 
@@ -130,6 +131,9 @@ public:
   std::vector<EnergyGrid> grid_; //!< Energy grid at each temperature
   std::vector<xt::xtensor<double, 2>> xs_; //!< Cross sections at each temperature
 
+  // Multipole data
+  std::unique_ptr<WindowedMultipole> multipole_;
+
   // Fission data
   bool fissionable_ {false}; //!< Whether nuclide is fissionable
   bool has_partial_fission_ {false}; //!< has partial fission reactions?
@@ -193,11 +197,6 @@ extern "C" MaterialMacroXS material_xs;
 //==============================================================================
 
 extern "C" void set_micro_xs();
-extern "C" void nuclide_multipole_eval(int i_nuclide, double E, double sqrtkT,
-  double* sig_s, double* sig_a, double* sig_f);
-extern "C" bool nuclide_wmp_present(int i_nuclide);
-extern "C" double nuclide_wmp_emin(int i_nuclide);
-extern "C" double nuclide_wmp_emax(int i_nuclide);
 extern "C" void nuclide_calculate_urr_xs(bool use_mp, int i_nuclide,
                                          int i_temp, double E);
 

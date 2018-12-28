@@ -294,11 +294,9 @@ endif()
 # faddeeva library
 #===============================================================================
 
-add_library(faddeeva STATIC vendor/faddeeva/Faddeeva.c)
-target_compile_options(faddeeva PRIVATE ${cflags})
-set_target_properties(faddeeva PROPERTIES
-  C_STANDARD 99
-  C_STANDARD_REQUIRED ON)
+add_library(faddeeva STATIC vendor/faddeeva/Faddeeva.cc)
+target_include_directories(faddeeva PUBLIC vendor/faddeeva/)
+target_compile_options(faddeeva PRIVATE ${cxxflags})
 
 #===============================================================================
 # libopenmc

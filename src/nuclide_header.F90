@@ -64,9 +64,7 @@ module nuclide_header
     type(SumXS), allocatable :: xs(:)
 
     ! Fission information
-    integer :: n_precursor = 0               ! # of delayed neutron precursors
     integer, allocatable :: index_fission(:) ! indices in reactions
-    class(Function1D), allocatable :: total_nu
 
     ! Multipole data
     logical :: mp_present = .false.
@@ -249,7 +247,6 @@ contains
     integer(HID_T) :: kT_group
     integer(HID_T) :: rxs_group
     integer(HID_T) :: rx_group
-    integer(HID_T) :: total_nu
     integer(HID_T) :: fer_group                 ! fission_energy_release group
     integer(HID_T) :: fer_dset
     integer(HSIZE_T) :: j
@@ -429,25 +426,6 @@ contains
     end do
     call close_group(rxs_group)
 
-    ! Check for nu-total
-    if (object_exists(group_id, 'total_nu')) then
-      nu_group = open_group(group_id, 'total_nu')
-
-      ! Read total nu data
-      total_nu = open_dataset(nu_group, 'yield')
-      call read_attribute(temp_str, total_nu, 'type')
-      select case (temp_str)
-      case ('Tabulated1D')
-        allocate(Tabulated1D :: this % total_nu)
-      case ('Polynomial')
-        allocate(Polynomial :: this % total_nu)
-      end select
-      call this % total_nu % from_hdf5(total_nu)
-      call close_dataset(total_nu)
-
-      call close_group(nu_group)
-    end if
-
     ! Read fission energy release data if present
     if (object_exists(group_id, 'fission_energy_release')) then
       fer_group = open_group(group_id, 'fission_energy_release')
@@ -588,17 +566,6 @@ contains
       end associate  ! rx
     end do ! reactions
 
-    ! Determine number of delayed neutron precursors
-    if (this % fissionable) then
-      associate (rx => this % reactions(this % index_fission(1)))
-        do i = 1, rx % products_size()
-          if (rx % product_emission_mode(i) == EMISSION_DELAYED) then
-            this % n_precursor = this % n_precursor + 1
-          end if
-        end do
-      end associate
-    end if
-
     ! Calculate nu-fission cross section
     do t = 1, n_temperature
       if (this % fissionable) then
@@ -623,53 +590,22 @@ contains
     integer, optional, intent(in) :: group
     real(8)                       :: nu
 
-    integer :: i
+    interface
+      pure function nuclide_nu_c(ptr, E, emission_mode, group) result(nu) bind(C)
+        import C_PTR, C_DOUBLE, C_INT
+        type(C_PTR), value, intent(in) :: ptr
+        real(C_DOUBLE), value, intent(in) :: E
+        integer(C_INT), value, intent(in) :: emission_mode
+        integer(C_INT), value, intent(in) :: group
+        real(C_DOUBLE) :: nu
+      end function
+    end interface
 
-    if (.not. this % fissionable) then
-      nu = ZERO
-      return
+    if (present(group)) then
+      nu = nuclide_nu_c(this % ptr, E, emission_mode, group)
+    else
+      nu = nuclide_nu_c(this % ptr, E, emission_mode, 0)
     end if
-
-    select case (emission_mode)
-    case (EMISSION_PROMPT)
-      associate (rx => this % reactions(this % index_fission(1)))
-        nu = rx % product_yield(1, E)
-      end associate
-
-    case (EMISSION_DELAYED)
-      if (this % n_precursor > 0) then
-        associate(rx => this % reactions(this % index_fission(1)))
-          if (present(group) .and. group < rx % products_size()) then
-            ! If delayed group specified, determine yield immediately
-            nu = rx % product_yield(1 + group, E)
-          else
-            nu = ZERO
-
-            do i = 2, rx % products_size()
-              ! Skip any non-neutron products
-              if (rx % product_particle(i) /= NEUTRON) exit
-
-              ! Evaluate yield
-              if (rx % product_emission_mode(i) == EMISSION_DELAYED) then
-                nu = nu + rx % product_yield(i, E)
-              end if
-            end do
-          end if
-        end associate
-      else
-        nu = ZERO
-      end if
-
-    case (EMISSION_TOTAL)
-      if (allocated(this % total_nu)) then
-        nu = this % total_nu % evaluate(E)
-      else
-        associate (rx => this % reactions(this % index_fission(1)))
-          nu = rx % product_yield(1, E)
-        end associate
-      end if
-    end select
-
   end function nuclide_nu
 
   subroutine nuclide_init_grid(this)

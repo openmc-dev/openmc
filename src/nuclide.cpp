@@ -899,6 +899,11 @@ extern "C" void nuclide_calculate_elastic_xs_c(Nuclide* nuc)
   nuc->calculate_elastic_xs();
 }
 
+extern "C" double nuclide_nu_c(Nuclide* nuc, double E, int emission_mode, int group)
+{
+  return nuc->nu(E, static_cast<Nuclide::EmissionMode>(emission_mode - 1), group);
+}
+
 extern "C" void nuclide_load_multipole(Nuclide* nuc, hid_t group)
 {
   nuc->multipole_ = std::make_unique<WindowedMultipole>(group);

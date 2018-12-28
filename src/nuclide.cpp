@@ -904,6 +904,16 @@ extern "C" double nuclide_nu_c(Nuclide* nuc, double E, int emission_mode, int gr
   return nuc->nu(E, static_cast<Nuclide::EmissionMode>(emission_mode - 1), group);
 }
 
+extern "C" double nuclide_fission_q_prompt(Nuclide* nuc, double E)
+{
+  return nuc->fission_q_prompt_ ? (*nuc->fission_q_prompt_)(E) : 0.0;
+}
+
+extern "C" double nuclide_fission_q_recov(Nuclide* nuc, double E)
+{
+  return nuc->fission_q_recov_ ? (*nuc->fission_q_recov_)(E) : 0.0;
+}
+
 extern "C" void nuclide_load_multipole(Nuclide* nuc, hid_t group)
 {
   nuc->multipole_ = std::make_unique<WindowedMultipole>(group);

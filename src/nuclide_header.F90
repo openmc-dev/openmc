@@ -76,10 +76,6 @@ module nuclide_header
     ! that ENDF-102 does not assign any MT values above 891.
     integer :: reaction_index(891)
 
-    ! Fission energy release
-    class(Function1D), allocatable :: fission_q_prompt ! fragments and prompt neutrons, gammas
-    class(Function1D), allocatable :: fission_q_recov  ! fragments, neutrons, gammas, betas
-
     type(C_PTR) :: ptr
 
   contains
@@ -197,6 +193,20 @@ module nuclide_header
       type(C_PTR), value :: ptr
       real(C_DOUBLE), value :: E
       logical(C_BOOL) :: b
+    end function
+
+    function nuclide_fission_q_prompt(ptr, E) result(q) bind(C)
+      import C_PTR, C_DOUBLE
+      type(C_PTR), value :: ptr
+      real(C_DOUBLE), value :: E
+      real(C_DOUBLE) :: q
+    end function
+
+    function nuclide_fission_q_recov(ptr, E) result(q) bind(C)
+      import C_PTR, C_DOUBLE
+      type(C_PTR), value :: ptr
+      real(C_DOUBLE), value :: E
+      real(C_DOUBLE) :: q
     end function
   end interface
 
@@ -425,43 +435,6 @@ contains
       call close_group(rx_group)
     end do
     call close_group(rxs_group)
-
-    ! Read fission energy release data if present
-    if (object_exists(group_id, 'fission_energy_release')) then
-      fer_group = open_group(group_id, 'fission_energy_release')
-
-      ! Q-PROMPT
-      fer_dset = open_dataset(fer_group, 'q_prompt')
-      call read_attribute(temp_str, fer_dset, 'type')
-      if (temp_str == 'Polynomial') then
-        allocate(Polynomial :: this % fission_q_prompt)
-        call this % fission_q_prompt % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
-      else if (temp_str == 'Tabulated1D') then
-        allocate(Tabulated1D :: this % fission_q_prompt)
-        call this % fission_q_prompt % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
-      else
-        call fatal_error('Unrecognized fission prompt energy release format.')
-      end if
-
-      ! Q-RECOV
-      fer_dset = open_dataset(fer_group, 'q_recoverable')
-      call read_attribute(temp_str, fer_dset, 'type')
-      if (temp_str == 'Polynomial') then
-        allocate(Polynomial :: this % fission_q_recov)
-        call this % fission_q_recov % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
-      else if (temp_str == 'Tabulated1D') then
-        allocate(Tabulated1D :: this % fission_q_recov)
-        call this % fission_q_recov % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
-      else
-        call fatal_error('Unrecognized fission recoverable energy release format.')
-      end if
-
-      call close_group(fer_group)
-    end if
 
     ! Create derived cross section data
     call this % create_derived()

@@ -11,10 +11,6 @@ module nuclide_header
   use endf_header,            only: Function1D, Polynomial, Tabulated1D
   use error
   use hdf5_interface
-  use math,                   only: faddeeva, w_derivative, &
-                                    broaden_wmp_polynomials
-  use multipole_header,       only: MP_EA, MP_RS, MP_RA, MP_RF, &
-                                    FIT_S, FIT_A, FIT_F, MultipoleArray
   use message_passing
   use random_lcg,             only: prn, future_prn, prn_set_stream
   use reaction_header,        only: Reaction
@@ -73,8 +69,7 @@ module nuclide_header
     class(Function1D), allocatable :: total_nu
 
     ! Multipole data
-    logical                       :: mp_present = .false.
-    type(MultipoleArray), pointer :: multipole => null()
+    logical :: mp_present = .false.
 
     ! Reactions
     type(Reaction), allocatable :: reactions(:)
@@ -90,7 +85,6 @@ module nuclide_header
     type(C_PTR) :: ptr
 
   contains
-    procedure :: clear => nuclide_clear
     procedure :: from_hdf5 => nuclide_from_hdf5
     procedure :: init_grid => nuclide_init_grid
     procedure :: nu    => nuclide_nu
@@ -189,6 +183,23 @@ module nuclide_header
       character(kind=C_CHAR), intent(in) :: name(*)
       type(C_PTR) :: path
     end function
+
+    subroutine multipole_deriv_eval(ptr, E, sqrtkT, sig_s, sig_a, sig_f) bind(C)
+      import C_PTR, C_DOUBLE
+      type(C_PTR), value :: ptr
+      real(C_DOUBLE), value :: E
+      real(C_DOUBLE), value :: sqrtkT
+      real(C_DOUBLE), intent(out) :: sig_s
+      real(C_DOUBLE), intent(out) :: sig_a
+      real(C_DOUBLE), intent(out) :: sig_f
+    end subroutine
+
+    function multipole_in_range(ptr, E) result(b) bind(C)
+      import C_PTR, C_DOUBLE, C_BOOL
+      type(C_PTR), value :: ptr
+      real(C_DOUBLE), value :: E
+      logical(C_BOOL) :: b
+    end function
   end interface
 
 contains
@@ -218,17 +229,6 @@ contains
     type(C_PTR) :: ptr
     ptr = C_LOC(micro_xs(1))
   end function
-
-!===============================================================================
-! NUCLIDE_CLEAR resets and deallocates data in Nuclide
-!===============================================================================
-
-  subroutine nuclide_clear(this)
-    class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
-
-    if (associated(this % multipole)) deallocate(this % multipole)
-
-  end subroutine nuclide_clear
 
   subroutine nuclide_from_hdf5(this, group_id, temperature, method, tolerance, &
                                minmax, master, i_nuclide)
@@ -732,192 +732,6 @@ contains
   end subroutine nuclide_calculate_elastic_xs
 
 !===============================================================================
-! MULTIPOLE_EVAL evaluates the windowed multipole equations for cross
-! sections in the resolved resonance regions
-!===============================================================================
-
-  subroutine multipole_eval(multipole, E, sqrtkT, sig_s, sig_a, sig_f)
-    type(MultipoleArray), intent(in) :: multipole ! The windowed multipole
-                                                  !  object to process.
-    real(8), intent(in)              :: E         ! The energy at which to
-                                                  !  evaluate the cross section
-    real(8), intent(in)              :: sqrtkT    ! The temperature in the form
-                                                  !  sqrt(kT), at which
-                                                  !  to evaluate the XS.
-    real(8), intent(out)             :: sig_s     ! Scattering cross section
-    real(8), intent(out)             :: sig_a     ! Absorption cross section
-    real(8), intent(out)             :: sig_f     ! Fission cross section
-    complex(8) :: psi_chi  ! The value of the psi-chi function for the
-                           !  asymptotic form
-    complex(8) :: c_temp   ! complex temporary variable
-    complex(8) :: w_val    ! The faddeeva function evaluated at Z
-    complex(8) :: Z        ! sqrt(atomic weight ratio / kT) * (sqrt(E) - pole)
-    real(8) :: broadened_polynomials(multipole % fit_order + 1)
-    real(8) :: sqrtE       ! sqrt(E), eV
-    real(8) :: invE        ! 1/E, eV
-    real(8) :: dopp        ! sqrt(atomic weight ratio / kT) = 1 / (2 sqrt(xi))
-    real(8) :: temp        ! real temporary value
-    integer :: i_pole      ! index of pole
-    integer :: i_poly      ! index of curvefit
-    integer :: i_window    ! index of window
-    integer :: startw      ! window start pointer (for poles)
-    integer :: endw        ! window end pointer
-
-    ! ==========================================================================
-    ! Bookkeeping
-
-    ! Define some frequently used variables.
-    sqrtE = sqrt(E)
-    invE = ONE / E
-
-    ! Locate us.
-    i_window = floor((sqrtE - sqrt(multipole % E_min)) / multipole % spacing &
-         + ONE)
-    startw = multipole % windows(1, i_window)
-    endw = multipole % windows(2, i_window)
-
-    ! Initialize the ouptut cross sections.
-    sig_s = ZERO
-    sig_a = ZERO
-    sig_f = ZERO
-
-    ! ==========================================================================
-    ! Add the contribution from the curvefit polynomial.
-
-    if (sqrtkT /= ZERO .and. multipole % broaden_poly(i_window) == 1) then
-      ! Broaden the curvefit.
-      dopp = multipole % sqrtAWR / sqrtkT
-      call broaden_wmp_polynomials(E, dopp, multipole % fit_order + 1, &
-           broadened_polynomials)
-      do i_poly = 1, multipole % fit_order+1
-        sig_s = sig_s + multipole % curvefit(FIT_S, i_poly, i_window) &
-             * broadened_polynomials(i_poly)
-        sig_a = sig_a + multipole % curvefit(FIT_A, i_poly, i_window) &
-             * broadened_polynomials(i_poly)
-        if (multipole % fissionable) then
-          sig_f = sig_f + multipole % curvefit(FIT_F, i_poly, i_window) &
-               * broadened_polynomials(i_poly)
-        end if
-      end do
-    else ! Evaluate as if it were a polynomial
-      temp = invE
-      do i_poly = 1, multipole % fit_order+1
-        sig_s = sig_s + multipole % curvefit(FIT_S, i_poly, i_window) * temp
-        sig_a = sig_a + multipole % curvefit(FIT_A, i_poly, i_window) * temp
-        if (multipole % fissionable) then
-          sig_f = sig_f + multipole % curvefit(FIT_F, i_poly, i_window) * temp
-        end if
-        temp = temp * sqrtE
-      end do
-    end if
-
-    ! ==========================================================================
-    ! Add the contribution from the poles in this window.
-
-    if (sqrtkT == ZERO) then
-      ! If at 0K, use asymptotic form.
-      do i_pole = startw, endw
-        psi_chi = -ONEI / (multipole % data(MP_EA, i_pole) - sqrtE)
-        c_temp = psi_chi / E
-        sig_s = sig_s + real(multipole % data(MP_RS, i_pole) * c_temp)
-        sig_a = sig_a + real(multipole % data(MP_RA, i_pole) * c_temp)
-        if (multipole % fissionable) then
-          sig_f = sig_f + real(multipole % data(MP_RF, i_pole) * c_temp)
-        end if
-      end do
-    else
-      ! At temperature, use Faddeeva function-based form.
-      dopp = multipole % sqrtAWR / sqrtkT
-      if (endw >= startw) then
-        do i_pole = startw, endw
-          Z = (sqrtE - multipole % data(MP_EA, i_pole)) * dopp
-          w_val = faddeeva(Z) * dopp * invE * SQRT_PI
-          sig_s = sig_s + real(multipole % data(MP_RS, i_pole) * w_val)
-          sig_a = sig_a + real(multipole % data(MP_RA, i_pole) * w_val)
-          if (multipole % fissionable) then
-            sig_f = sig_f + real(multipole % data(MP_RF, i_pole) * w_val)
-          end if
-        end do
-      end if
-    end if
-  end subroutine multipole_eval
-
-!===============================================================================
-! MULTIPOLE_DERIV_EVAL evaluates the windowed multipole equations for the
-! derivative of cross sections in the resolved resonance regions with respect to
-! temperature.
-!===============================================================================
-
-  subroutine multipole_deriv_eval(multipole, E, sqrtkT, sig_s, sig_a, sig_f)
-    type(MultipoleArray), intent(in) :: multipole ! The windowed multipole
-                                                  !  object to process.
-    real(8), intent(in)              :: E         ! The energy at which to
-                                                  !  evaluate the cross section
-    real(8), intent(in)              :: sqrtkT    ! The temperature in the form
-                                                  !  sqrt(kT), at which to
-                                                  !  evaluate the XS.
-    real(8), intent(out)             :: sig_s     ! Scattering cross section
-    real(8), intent(out)             :: sig_a     ! Absorption cross section
-    real(8), intent(out)             :: sig_f     ! Fission cross section
-    complex(8) :: w_val    ! The faddeeva function evaluated at Z
-    complex(8) :: Z        ! sqrt(atomic weight ratio / kT) * (sqrt(E) - pole)
-    real(8) :: sqrtE       ! sqrt(E), eV
-    real(8) :: invE        ! 1/E, eV
-    real(8) :: dopp        ! sqrt(atomic weight ratio / kT)
-    integer :: i_pole      ! index of pole
-    integer :: i_window    ! index of window
-    integer :: startw      ! window start pointer (for poles)
-    integer :: endw        ! window end pointer
-    real(8) :: T
-
-    ! ==========================================================================
-    ! Bookkeeping
-
-    ! Define some frequently used variables.
-    sqrtE = sqrt(E)
-    invE = ONE / E
-    T = sqrtkT**2 / K_BOLTZMANN
-
-    if (sqrtkT == ZERO) call fatal_error("Windowed multipole temperature &
-         &derivatives are not implemented for 0 Kelvin cross sections.")
-
-    ! Locate us
-    i_window = floor((sqrtE - sqrt(multipole % E_min)) / multipole % spacing &
-         + ONE)
-    startw = multipole % windows(1, i_window)
-    endw = multipole % windows(2, i_window)
-
-    ! Initialize the ouptut cross sections.
-    sig_s = ZERO
-    sig_a = ZERO
-    sig_f = ZERO
-
-    ! TODO Polynomials: Some of the curvefit polynomials Doppler broaden so
-    ! rigorously we should be computing the derivative of those.  But in
-    ! practice, those derivatives are only large at very low energy and they
-    ! have no effect on reactor calculations.
-
-    ! ==========================================================================
-    ! Add the contribution from the poles in this window.
-
-    dopp = multipole % sqrtAWR / sqrtkT
-    if (endw >= startw) then
-      do i_pole = startw, endw
-        Z = (sqrtE - multipole % data(MP_EA, i_pole)) * dopp
-        w_val = -invE * SQRT_PI * HALF * w_derivative(Z, 2)
-        sig_s = sig_s + real(multipole % data(MP_RS, i_pole) * w_val)
-        sig_a = sig_a + real(multipole % data(MP_RA, i_pole) * w_val)
-        if (multipole % fissionable) then
-          sig_f = sig_f + real(multipole % data(MP_RF, i_pole) * w_val)
-        end if
-      end do
-      sig_s = -HALF*multipole % sqrtAWR / sqrt(K_BOLTZMANN) * T**(-1.5) * sig_s
-      sig_a = -HALF*multipole % sqrtAWR / sqrt(K_BOLTZMANN) * T**(-1.5) * sig_a
-      sig_f = -HALF*multipole % sqrtAWR / sqrt(K_BOLTZMANN) * T**(-1.5) * sig_f
-    end if
-  end subroutine multipole_deriv_eval
-
-!===============================================================================
 ! CHECK_DATA_VERSION checks for the right version of nuclear data within HDF5
 ! files
 !===============================================================================
@@ -947,8 +761,6 @@ contains
 !===============================================================================
 
   subroutine free_memory_nuclide()
-    integer :: i
-
     interface
       subroutine library_clear() bind(C)
       end subroutine
@@ -960,9 +772,6 @@ contains
     ! Deallocate cross section data, listings, and cache
     if (allocated(nuclides)) then
       ! First call the clear routines
-      do i = 1, size(nuclides)
-        call nuclides(i) % clear()
-      end do
       deallocate(nuclides)
       call nuclides_clear()
     end if
@@ -1084,35 +893,5 @@ contains
       call set_errmsg("Memory for nuclides has not been allocated yet.")
     end if
   end function openmc_nuclide_name
-
-  function nuclide_wmp_present(i_nuclide) result(b) bind(C)
-    integer(C_INT), value :: i_nuclide
-    logical(C_BOOL) :: b
-    b = nuclides(i_nuclide + 1) % mp_present
-  end function
-
-  function nuclide_wmp_emin(i_nuclide) result(E) bind(C)
-    integer(C_INT), value :: i_nuclide
-    real(C_DOUBLE) :: E
-    E = nuclides(i_nuclide + 1) % multipole % E_min
-  end function
-
-  function nuclide_wmp_emax(i_nuclide) result(E) bind(C)
-    integer(C_INT), value :: i_nuclide
-    real(C_DOUBLE) :: E
-    E = nuclides(i_nuclide + 1) % multipole % E_max
-  end function
-
-  subroutine nuclide_multipole_eval(i_nuclide, E, sqrtkT, sig_s, sig_a, sig_f) bind(C)
-    integer(C_INT), value :: i_nuclide
-    real(C_DOUBLE), value :: E
-    real(C_DOUBLE), value :: sqrtkT
-    real(C_DOUBLE), intent(out) :: sig_s
-    real(C_DOUBLE), intent(out) :: sig_a
-    real(C_DOUBLE), intent(out) :: sig_f
-
-    call multipole_eval(nuclides(i_nuclide + 1) % multipole, E, sqrtkT, &
-         sig_s, sig_a, sig_f)
-  end subroutine
 
 end module nuclide_header

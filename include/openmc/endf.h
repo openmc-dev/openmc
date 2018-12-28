@@ -99,6 +99,10 @@ private:
   std::vector<double> factors_;     //!< Partial sums of structure factors [eV-b]
 };
 
+//! Read 1D function from HDF5 dataset
+//! \param[in] group HDF5 group containing dataset
+//! \param[in] name Name of dataset
+//! \return Unique pointer to 1D function
 std::unique_ptr<Function1D> read_function(hid_t group, const char* name);
 
 } // namespace openmc

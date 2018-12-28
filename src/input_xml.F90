@@ -2256,6 +2256,14 @@ contains
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
 
+    interface
+      subroutine nuclide_load_multipole(ptr, group) bind(C)
+        import C_PTR, HID_T
+        type(C_PTR), value :: ptr
+        integer(HID_T), value :: group
+      end subroutine
+    end interface
+
     associate (nuc => nuclides(i_table))
 
       ! Look for WMP data in cross_sections.xml
@@ -2286,12 +2294,11 @@ contains
 
       ! Read nuclide data from HDF5
       group_id = open_group(file_id, nuc % name)
-      allocate(nuc % multipole)
-      call nuc % multipole % from_hdf5(group_id)
       nuc % mp_present = .true.
-
-      ! Close the group and file.
+      call nuclide_load_multipole(nuc % ptr, group_id)
       call close_group(group_id)
+
+      ! Close the file
       call file_close(file_id)
 
     end associate

@@ -11,9 +11,6 @@ module math
   public :: calc_pn
   public :: calc_rn
   public :: rotate_angle
-  public :: faddeeva
-  public :: w_derivative
-  public :: broaden_wmp_polynomials
   public :: spline
   public :: spline_interpolate
   public :: spline_integrate
@@ -53,16 +50,6 @@ module math
       real(C_DOUBLE), optional, intent(in) :: phi
     end subroutine rotate_angle_c_intfc
 
-    subroutine broaden_wmp_polynomials(E, dopp, n, factors) &
-           bind(C, name='broaden_wmp_polynomials_c')
-      use ISO_C_BINDING
-      implicit none
-      real(C_DOUBLE), value, intent(in) :: E
-      real(C_DOUBLE), value, intent(in) :: dopp
-      integer(C_INT), value, intent(in) :: n
-      real(C_DOUBLE), intent(inout) :: factors(n)
-    end subroutine broaden_wmp_polynomials
-
     subroutine spline(n, x, y, z) bind(C, name='spline_c')
       use ISO_C_BINDING
       implicit none
@@ -96,14 +83,6 @@ module math
       real(C_DOUBLE), value, intent(in) :: xb
       real(C_DOUBLE)                    :: s
     end function spline_integrate
-
-    function faddeeva_w(z, relerr) bind(C, name='Faddeeva_w') result(w)
-      use ISO_C_BINDING
-      implicit none
-      complex(C_DOUBLE_COMPLEX), value :: z
-      real(C_DOUBLE),            value :: relerr
-      complex(C_DOUBLE_COMPLEX)        :: w
-    end function faddeeva_w
   end interface
 
 contains
@@ -125,55 +104,5 @@ contains
     call rotate_angle_c_intfc(uvw, mu, phi)
 
   end function rotate_angle
-
-!===============================================================================
-! FADDEEVA the Faddeeva function, using Stephen Johnson's implementation
-!===============================================================================
-
-  function faddeeva(z) result(wv) bind(C)
-    complex(C_DOUBLE_COMPLEX), intent(in) :: z  ! The point to evaluate Z at
-    complex(C_DOUBLE_COMPLEX)             :: wv ! The resulting w(z) value
-    real(C_DOUBLE) :: relerr ! Target relative error in inner loop of MIT
-                             !  Faddeeva
-
-    ! Technically, the value we want is given by the equation:
-    ! w(z) = I/Pi * Integrate[Exp[-t^2]/(z-t), {t, -Infinity, Infinity}]
-    ! as shown in Equation 63 from Hwang, R. N. "A rigorous pole
-    ! representation of multilevel cross sections and its practical
-    ! applications." Nuclear Science and Engineering 96.3 (1987): 192-209.
-    !
-    ! The MIT Faddeeva function evaluates w(z) = exp(-z^2)erfc(-iz). These
-    ! two forms of the Faddeeva function are related by a transformation.
-    !
-    ! If we call the integral form w_int, and the function form w_fun:
-    ! For imag(z) > 0, w_int(z) = w_fun(z)
-    ! For imag(z) < 0, w_int(z) = -conjg(w_fun(conjg(z)))
-
-    ! Note that faddeeva_w will interpret zero as machine epsilon
-
-    relerr = ZERO
-    if (aimag(z) > ZERO) then
-      wv = faddeeva_w(z, relerr)
-    else
-      wv = -conjg(faddeeva_w(conjg(z), relerr))
-    end if
-
-  end function faddeeva
-
-  recursive function w_derivative(z, order) result(wv) bind(C)
-    complex(C_DOUBLE_COMPLEX), intent(in) :: z ! The point to evaluate Z at
-    integer(C_INT),            intent(in) :: order
-    complex(C_DOUBLE_COMPLEX)     :: wv     ! The resulting w(z) value
-
-    select case(order)
-    case (0)
-      wv = faddeeva(z)
-    case (1)
-      wv = -TWO * z * faddeeva(z) + TWO * ONEI / SQRT_PI
-    case default
-      wv = -TWO * z * w_derivative(z, order-1) &
-           - TWO * (order-1) * w_derivative(z, order-2)
-    end select
-  end function w_derivative
 
 end module math

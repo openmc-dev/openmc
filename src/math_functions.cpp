@@ -1,5 +1,7 @@
 #include "openmc/math_functions.h"
 
+#include "Faddeeva.hh"
+
 namespace openmc {
 
 //==============================================================================
@@ -682,7 +684,8 @@ double watt_spectrum(double a, double b) {
 }
 
 
-void broaden_wmp_polynomials_c(double E, double dopp, int n, double factors[]) {
+void broaden_wmp_polynomials(double E, double dopp, int n, double factors[])
+{
   // Factors is already pre-allocated
   double sqrtE = std::sqrt(E);
   double beta = sqrtE * dopp;
@@ -815,6 +818,40 @@ double spline_integrate_c(int n, const double x[], const double y[],
   }
 
   return s;
+}
+
+std::complex<double> faddeeva(std::complex<double> z)
+{
+  // Technically, the value we want is given by the equation:
+  // w(z) = I/pi * Integrate[Exp[-t^2]/(z-t), {t, -Infinity, Infinity}]
+  // as shown in Equation 63 from Hwang, R. N. "A rigorous pole
+  // representation of multilevel cross sections and its practical
+  // applications." Nucl. Sci. Eng. 96.3 (1987): 192-209.
+  //
+  // The MIT Faddeeva function evaluates w(z) = exp(-z^2)erfc(-iz). These
+  // two forms of the Faddeeva function are related by a transformation.
+  //
+  // If we call the integral form w_int, and the function form w_fun:
+  // For imag(z) > 0, w_int(z) = w_fun(z)
+  // For imag(z) < 0, w_int(z) = -conjg(w_fun(conjg(z)))
+
+  // Note that Faddeeva::w will interpret zero as machine epsilon
+  return z.imag() > 0.0 ? Faddeeva::w(z) :
+    -std::conj(Faddeeva::w(std::conj(z)));
+}
+
+std::complex<double> w_derivative(std::complex<double> z, int order)
+{
+  using namespace std::complex_literals;
+  switch (order) {
+  case 0:
+    return faddeeva(z);
+  case 1:
+    return -2.0*z*faddeeva(z) + 2.0i / SQRT_PI;
+  default:
+    return -2.0*z*w_derivative(z, order-1)
+      - 2.0*(order-1)*w_derivative(z, order-2);
+  }
 }
 
 } // namespace openmc

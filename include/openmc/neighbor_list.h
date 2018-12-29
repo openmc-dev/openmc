@@ -30,10 +30,10 @@ public:
   // function will return without actually modifying the data.  It has been
   // found that returning the transport calculation and possibly re-adding the
   // element later is slightly faster than waiting on the lock to be released.
-  void push(int new_elem)
+  void push_back(int new_elem)
   {
     // Try to acquire the lock.
-    std::unique_lock<ThreadMutex> lock(mutex_, std::try_to_lock);
+    std::unique_lock<OpenMPMutex> lock(mutex_, std::try_to_lock);
     if (lock) {
       // It is possible another thread already added this element to the list
       // while this thread was searching for a cell so make sure the given
@@ -61,7 +61,7 @@ public:
 
 private:
   std::forward_list<value_type> list_;
-  ThreadMutex mutex_;
+  OpenMPMutex mutex_;
 };
 
 } // namespace openmc

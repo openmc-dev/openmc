@@ -109,7 +109,7 @@ class Operator(TransportOperator):
 
     """
     def __init__(self, geometry, settings, chain_file=None, prev_results=None,
-                 diff_burnable_mats=True):
+                 diff_burnable_mats=False):
         super().__init__(chain_file)
         self.round_number = False
         self.settings = settings

@@ -11,6 +11,7 @@
 #include "pugixml.hpp"
 
 #include "openmc/constants.h"
+#include "openmc/neighbor_list.h"
 #include "openmc/position.h"
 
 #ifdef DAGMC
@@ -103,6 +104,9 @@ public:
   std::vector<std::int32_t> rpn_;
   bool simple_;  //!< Does the region contain only intersections?
 
+  //! \brief Neighboring cells in the same universe.
+  NeighborList neighbors_;
+
   Position translation_ {0, 0, 0}; //!< Translation vector for filled universe
 
   //! \brief Rotational tranfsormation of the filled universe.
@@ -151,10 +155,11 @@ public:
   virtual ~Cell() {}
 };
 
+//==============================================================================
+
 class CSGCell : public Cell
 {
 public:
-
   CSGCell();
 
   explicit CSGCell(pugi::xml_node cell_node);
@@ -167,12 +172,12 @@ public:
 
   void to_hdf5(hid_t group_id) const;
 
-
-
 protected:
   bool contains_simple(Position r, Direction u, int32_t on_surface) const;
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
 };
+
+//==============================================================================
 
 #ifdef DAGMC
 class DAGCell : public Cell
@@ -181,11 +186,12 @@ public:
   moab::DagMC* dagmc_ptr_;
   DAGCell();
 
-  std::pair<double, int32_t> distance(Position r, Direction u, int32_t on_surface) const;
   bool contains(Position r, Direction u, int32_t on_surface) const;
 
-  void to_hdf5(hid_t group_id) const;
+  std::pair<double, int32_t>
+  distance(Position r, Direction u, int32_t on_surface) const;
 
+  void to_hdf5(hid_t group_id) const;
 };
 #endif
 

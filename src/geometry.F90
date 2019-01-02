@@ -28,11 +28,11 @@ module geometry
       type(Particle), intent(in) :: p
     end subroutine check_cell_overlap
 
-    function find_cell_c(p, search_surf) &
+    function find_cell_c(p, use_neighbor_lists) &
          bind(C, name="find_cell") result(found)
       import Particle, C_INT, C_BOOL
       type(Particle),  intent(inout)        :: p
-      integer(C_INT),  intent(in), value    :: search_surf
+      logical(C_BOOL), intent(in), value    :: use_neighbor_lists
       logical(C_BOOL)                       :: found
     end function find_cell_c
 
@@ -52,9 +52,6 @@ module geometry
       integer(C_INT), intent(out)   :: lattice_translation(3)
       integer(C_INT), intent(out)   :: next_level
     end subroutine distance_to_boundary
-
-    subroutine neighbor_lists() bind(C)
-    end subroutine neighbor_lists
 
 #ifdef DAGMC
 
@@ -89,15 +86,15 @@ contains
 ! as it's within the geometry
 !===============================================================================
 
-  subroutine find_cell(p, found, search_surf)
+  subroutine find_cell(p, found, use_neighbor_lists)
     type(Particle),    intent(inout) :: p
     logical,           intent(inout) :: found
-    integer, optional, intent(in)    :: search_surf
+    logical, optional, intent(in)    :: use_neighbor_lists
 
-    if (present(search_surf)) then
-      found = find_cell_c(p, search_surf)
+    if (present(use_neighbor_lists)) then
+      found = find_cell_c(p, logical(use_neighbor_lists, kind=C_BOOL))
     else
-      found = find_cell_c(p, 0)
+      found = find_cell_c(p, .false._C_BOOL)
     end if
 
   end subroutine find_cell

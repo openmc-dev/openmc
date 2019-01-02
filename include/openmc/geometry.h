@@ -33,16 +33,15 @@ check_cell_overlap(Particle* p);
 //!
 //! \param p A particle to be located.  This function will populate the
 //!   geometry-dependent data fields of the particle.
-//! \param search_surf A surface that the particle is expected to be on.  This
-//!   value should be the signed, 1-based index of a surface.  If positive, the
-//!   cells on the positive half-space of the surface will be searched.  If
-//!   negative, the negative half-space will be searched.
+//! \param use_neighbor_lists If true, neighbor lists will be used to accelerate
+//!   the geometry search, but this only works if the cell attribute of the
+//!   particle's lowest coordinate level is valid and meaningful.
 //! \return True if the particle's location could be found and ascribed to a
 //!   valid geometry coordinate stack.
 //==============================================================================
 
 extern "C" bool
-find_cell(Particle* p, int search_surf);
+find_cell(Particle* p, bool use_neighbor_lists);
 
 //==============================================================================
 //! Move a particle into a new lattice tile.

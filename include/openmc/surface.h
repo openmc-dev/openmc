@@ -66,9 +66,6 @@ public:
   int bc_;                    //!< Boundary condition
   std::string name_;          //!< User-defined name
 
-  std::vector<int> neighbor_pos_; //!< List of cells on positive side
-  std::vector<int> neighbor_neg_; //!< List of cells on negative side
-
   explicit Surface(pugi::xml_node surf_node);
   Surface();
 

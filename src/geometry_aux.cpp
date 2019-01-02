@@ -156,33 +156,6 @@ find_root_universe()
 //==============================================================================
 
 void
-neighbor_lists()
-{
-  write_message("Building neighboring cells lists for each surface...", 6);
-
-  for (int i = 0; i < model::cells.size(); i++) {
-    for (auto token : model::cells[i]->region_) {
-      // Skip operator tokens.
-      if (std::abs(token) >= OP_UNION) continue;
-
-      // This token is a surface index.  Add the cell to the surface's list.
-      if (token > 0) {
-        model::surfaces[std::abs(token)-1]->neighbor_pos_.push_back(i);
-      } else {
-        model::surfaces[std::abs(token)-1]->neighbor_neg_.push_back(i);
-      }
-    }
-  }
-
-  for (Surface* surf : model::surfaces) {
-    surf->neighbor_pos_.shrink_to_fit();
-    surf->neighbor_neg_.shrink_to_fit();
-  }
-}
-
-//==============================================================================
-
-void
 prepare_distribcell()
 {
   // Find all cells listed in a DistribcellFilter.

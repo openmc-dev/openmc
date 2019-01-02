@@ -32,12 +32,6 @@ extern "C" void assign_temperatures();
 
 extern "C" int32_t find_root_universe();
 
-//!=============================================================================
-//! Build a list of neighboring cells to each surface to speed up tracking.
-//!=============================================================================
-
-extern "C" void neighbor_lists();
-
 //==============================================================================
 //! Populate all data structures needed for distribcells.
 //==============================================================================

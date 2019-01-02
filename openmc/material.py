@@ -249,11 +249,15 @@ class Material(IDManagerMixin):
 
     @property
     def fissionable_mass(self):
-        mass = 0.0
-        for nuc, _, _ in self._nuclides:
-            if openmc.data.zam(nuc)[0] >= 90:
-                mass += self.get_mass(nuc)
-        return mass
+        if self.volume is None:
+            raise ValueError("Volume must be set in order to determine mass.")
+        density = 0.0
+        for nuc, atoms_per_cc in self.get_nuclide_atom_densities().values():
+            Z = openmc.data.zam(nuc)[0]
+            if Z >= 90:
+                density += 1e24 * atoms_per_cc * openmc.data.atomic_mass(nuc) \
+                           / openmc.data.AVOGADRO
+        return density*self.volume
 
     @classmethod
     def from_hdf5(cls, group):
@@ -715,9 +719,9 @@ class Material(IDManagerMixin):
         """
         mass_density = 0.0
         for nuc, atoms_per_cc in self.get_nuclide_atom_densities().values():
-            density_i = 1e24 * atoms_per_cc * openmc.data.atomic_mass(nuc) \
-                        / openmc.data.AVOGADRO
             if nuclide is None or nuclide == nuc:
+                density_i = 1e24 * atoms_per_cc * openmc.data.atomic_mass(nuc) \
+                            / openmc.data.AVOGADRO
                 mass_density += density_i
         return mass_density
 

@@ -35,9 +35,6 @@ module constants
   ! NOTE: This is the only section of the constants module that should ever be
   ! adjusted. Modifying constants in other sections may cause the code to fail.
 
-  ! Monoatomic ideal-gas scattering treatment threshold
-  real(8), parameter :: FREE_GAS_THRESHOLD = 400.0_8
-
   ! Significance level for confidence intervals
   real(8), parameter :: CONFIDENCE_LEVEL = 0.95_8
 
@@ -62,11 +59,6 @@ module constants
   integer, parameter :: MAX_LINE_LEN    = 250
   integer, parameter :: MAX_WORD_LEN    = 150
   integer, parameter :: MAX_FILE_LEN    = 255
-
-  ! Maximum number of external source spatial resamples to encounter before an
-  ! error is thrown.
-  integer, parameter :: EXTSRC_REJECT_THRESHOLD = 10000
-  real(8), parameter :: EXTSRC_REJECT_FRACTION = 0.05
 
   ! ============================================================================
   ! PHYSICAL CONSTANTS
@@ -113,14 +105,6 @@ module constants
   integer(C_INT), bind(C, name="BC_REFLECT") :: BC_REFLECT
   integer(C_INT), bind(C, name="BC_PERIODIC") :: BC_PERIODIC
 
-  ! Logical operators for cell definitions
-  integer, parameter ::              &
-       OP_LEFT_PAREN   = huge(0),     & ! Left parentheses
-       OP_RIGHT_PAREN  = huge(0) - 1, & ! Right parentheses
-       OP_COMPLEMENT   = huge(0) - 2, & ! Complement operator (~)
-       OP_INTERSECTION = huge(0) - 3, & ! Intersection operator
-       OP_UNION        = huge(0) - 4    ! Union operator (^)
-
   ! Cell fill types
   integer, parameter ::  &
        FILL_MATERIAL = 1, & ! Cell with a specified material
@@ -132,15 +116,6 @@ module constants
 
   ! Void material
   integer, parameter :: MATERIAL_VOID = -1
-
-  ! Flag to say that the outside of a lattice is not defined
-  integer, parameter :: NO_OUTER_UNIVERSE = -1
-
-  ! Maximum number of lost particles
-  integer, parameter :: MAX_LOST_PARTICLES = 10
-
-  ! Maximum number of lost particles, relative to the total number of particles
-  real(8), parameter :: REL_MAX_LOST_PARTICLES = 1e-6_8
 
   ! ============================================================================
   ! CROSS SECTION RELATED CONSTANTS
@@ -170,17 +145,6 @@ module constants
 
   ! Number of mu bins to use when converting Legendres to tabular type
   integer, parameter :: DEFAULT_NMU = 33
-
-  ! Secondary energy mode for S(a,b) inelastic scattering
-  integer, parameter :: &
-       SAB_SECONDARY_EQUAL  = 0, & ! Equally-likely outgoing energy bins
-       SAB_SECONDARY_SKEWED = 1, & ! Skewed outgoing energy bins
-       SAB_SECONDARY_CONT   = 2    ! Continuous, linear-linear interpolation
-
-  ! Elastic mode for S(a,b) elastic scattering
-  integer, parameter :: &
-       SAB_ELASTIC_DISCRETE = 3, & ! Sample from discrete cosines
-       SAB_ELASTIC_EXACT    = 4    ! Exact treatment for coherent elastic
 
   ! Reaction types
   integer, parameter :: &
@@ -241,15 +205,6 @@ module constants
        LIBRARY_MULTIGROUP = 4, &
        LIBRARY_WMP = 5
 
-  ! Probability table parameters
-  integer, parameter :: &
-       URR_CUM_PROB = 1, &
-       URR_TOTAL    = 2, &
-       URR_ELASTIC  = 3, &
-       URR_FISSION  = 4, &
-       URR_N_GAMMA  = 5, &
-       URR_HEATING  = 6
-
   ! Maximum number of partial fission reactions
   integer, parameter :: PARTIAL_FISSION_MAX = 4
 
@@ -257,13 +212,6 @@ module constants
   integer, parameter :: &
        TEMPERATURE_NEAREST = 1, &
        TEMPERATURE_INTERPOLATION = 2
-
-  ! Resonance elastic scattering methods
-  integer, parameter :: &
-       RES_SCAT_ARES = 1, &
-       RES_SCAT_DBRC = 2, &
-       RES_SCAT_WCM = 3, &
-       RES_SCAT_CXS = 4
 
   ! ============================================================================
   ! TALLY-RELATED CONSTANTS

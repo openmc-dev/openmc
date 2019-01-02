@@ -37,7 +37,7 @@ public:
   Timer() {};
 
   //! Start running the timer
-  void start ();
+  void start();
 
   //! Get total elapsed time in seconds
   //! \return Elapsed time in [s]
@@ -52,7 +52,7 @@ public:
 private:
   bool running_ {false}; //!< is timer running?
   std::chrono::time_point<clock> start_; //!< starting point for clock
-  double elapsed_ {0.0}; //!< elasped time in [s]
+  double elapsed_ {0.0}; //!< elapsed time in [s]
 };
 
 //==============================================================================

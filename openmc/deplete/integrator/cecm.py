@@ -7,7 +7,7 @@ from .cram import deplete
 from ..results import Results
 
 
-def cecm(operator, timesteps, power, print_out=True):
+def cecm(operator, timesteps, power=None, power_density=None, print_out=True):
     r"""Deplete using the CE/CM algorithm.
 
     Implements the second order `CE/CM predictor-corrector algorithm
@@ -31,16 +31,29 @@ def cecm(operator, timesteps, power, print_out=True):
         The operator object to simulate on.
     timesteps : iterable of float
         Array of timesteps in units of [s]. Note that values are not cumulative.
-    power : float or iterable of float
+    power : float or iterable of float, optional
         Power of the reactor in [W]. A single value indicates that the power is
         constant over all timesteps. An iterable indicates potentially different
         power levels for each timestep. For a 2D problem, the power can be given
         in [W/cm] as long as the "volume" assigned to a depletion material is
-        actually an area in [cm^2].
+        actually an area in [cm^2]. Either `power` or `power_density` must be
+        specified.
+    power_density : float or iterable of float, optional
+        Power density of the reactor in [W/gHM]. It is multiplied by initial
+        heavy metal inventory to get total power if `power` is not speficied.
     print_out : bool, optional
         Whether or not to print out time.
 
     """
+    if power is None:
+        if power_density is None:
+            raise ValueError(
+                "Neither power nor power density was specified.")
+        if not isinstance(power_density, Iterable):
+            power = power_density*operator.heavy_metal
+        else:
+            power = [i*operator.heavy_metal for i in power_density]
+
     if not isinstance(power, Iterable):
         power = [power]*len(timesteps)
 

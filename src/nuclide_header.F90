@@ -685,8 +685,8 @@ contains
 
   subroutine nuclide_init_grid(this, E_min, E_max, M)
     class(Nuclide), intent(inout) :: this
-    real(8), intent(in) :: E_min           ! Minimum energy in MeV
-    real(8), intent(in) :: E_max           ! Maximum energy in MeV
+    real(8), intent(in) :: E_min           ! Minimum energy in eV
+    real(8), intent(in) :: E_max           ! Maximum energy in eV
     integer, intent(in) :: M               ! Number of equally log-spaced bins
 
     integer :: i, j, k               ! Loop indices

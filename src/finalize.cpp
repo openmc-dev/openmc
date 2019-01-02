@@ -23,6 +23,10 @@ int openmc_finalize()
   // Clear results
   openmc_reset();
 
+  // Reset timers
+  reset_timers();
+  reset_timers_f();
+
   // Reset global variables
   settings::assume_separate = false;
   settings::check_overlaps = false;
@@ -115,10 +119,6 @@ int openmc_reset()
   simulation::k_abs_tra = 0.0;
   simulation::k_sum = {0.0, 0.0};
 
-  // Reset timers
-  reset_timers();
-  reset_timers_f();
-
   return 0;
 }
 
@@ -126,6 +126,8 @@ int openmc_hard_reset()
 {
   // Reset all tallies and timers
   openmc_reset();
+  reset_timers();
+  reset_timers_f();
 
   // Reset total generations and keff guess
   simulation::keff = 1.0;

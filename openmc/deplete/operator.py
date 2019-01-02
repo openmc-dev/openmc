@@ -70,6 +70,8 @@ class Operator(TransportOperator):
         Results from a previous depletion calculation. If this argument is
         specified, the depletion calculation will start from the latest state
         in the previous results.
+    diff_burnable_mats : bool, optional
+        Whether to differentiate burnable materials with multiple instances
 
     Attributes
     ----------
@@ -96,17 +98,23 @@ class Operator(TransportOperator):
         Reaction rates from the last operator step.
     burnable_mats : list of str
         All burnable material IDs
+    heavy_metal : float
+        Initial heavy metal inventory
     local_mats : list of str
         All burnable material IDs being managed by a single process
     prev_res : ResultsList
         Results from a previous depletion calculation
+    diff_burnable_mats : bool
+        Whether to differentiate burnable materials with multiple instances
 
     """
-    def __init__(self, geometry, settings, chain_file=None, prev_results=None):
+    def __init__(self, geometry, settings, chain_file=None, prev_results=None,
+                 diff_burnable_mats=False):
         super().__init__(chain_file)
         self.round_number = False
         self.settings = settings
         self.geometry = geometry
+        self.diff_burnable_mats = diff_burnable_mats
 
         if prev_results != None:
             # Reload volumes into geometry
@@ -185,8 +193,28 @@ class Operator(TransportOperator):
 
         return copy.deepcopy(op_result)
 
+    def _differentiate_burnable_mats(self):
+        """Assign distribmats for each burnable material
+
+        """
+
+        # Count the number of instances for each cell and material
+        self.geometry.determine_paths(instances_only=True)
+
+        # Extract all burnable materials which have multiple instances
+        distribmats = set(
+            [mat for mat in self.geometry.get_all_materials().values()
+             if mat.depletable and mat.num_instances > 1])
+
+        if distribmats:
+            # Assign distribmats to cells
+            for cell in self.geometry.get_all_material_cells().values():
+                if cell.fill in distribmats and cell.num_instances > 1:
+                    cell.fill = [cell.fill.clone()
+                                 for i in range(cell.num_instances)]
+
     def _get_burnable_mats(self):
-        """Determine depletable materials, volumes, and nuclids
+        """Determine depletable materials, volumes, and nuclides
 
         Returns
         -------
@@ -198,9 +226,16 @@ class Operator(TransportOperator):
             Nuclides in order of how they'll appear in the simulation.
 
         """
+
+        if self.diff_burnable_mats:
+            # Automatically distribute burnable materials
+            self._differentiate_burnable_mats()
+
         burnable_mats = set()
         model_nuclides = set()
         volume = OrderedDict()
+
+        self.heavy_metal = 0.0
 
         # Iterate once through the geometry to get dictionaries
         for mat in self.geometry.get_all_materials().values():
@@ -212,6 +247,7 @@ class Operator(TransportOperator):
                     raise RuntimeError("Volume not specified for depletable "
                                        "material with ID={}.".format(mat.id))
                 volume[str(mat.id)] = mat.volume
+                self.heavy_metal += mat.fissionable_mass
 
         # Make sure there are burnable materials
         if not burnable_mats:

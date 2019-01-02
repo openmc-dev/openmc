@@ -719,9 +719,9 @@ class Material(IDManagerMixin):
         """
         mass_density = 0.0
         for nuc, atoms_per_cc in self.get_nuclide_atom_densities().values():
-            density_i = 1e24 * atoms_per_cc * openmc.data.atomic_mass(nuc) \
-                        / openmc.data.AVOGADRO
             if nuclide is None or nuclide == nuc:
+                density_i = 1e24 * atoms_per_cc * openmc.data.atomic_mass(nuc) \
+                            / openmc.data.AVOGADRO
                 mass_density += density_i
         return mass_density
 

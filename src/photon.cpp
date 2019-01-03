@@ -9,10 +9,12 @@ namespace openmc {
 //==============================================================================
 
 namespace data {
-
 std::vector<PhotonInteraction> elements;
-
 } // namespace data
+
+namespace simulation {
+ElementMicroXS* micro_photon_xs;
+} // namespace simulation
 
 //==============================================================================
 // PhotonInteraction implementation

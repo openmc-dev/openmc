@@ -6,6 +6,7 @@
 
 #include <array>
 #include <memory> // for unique_ptr
+#include <unordered_map>
 #include <vector>
 
 #include <hdf5.h>
@@ -180,6 +181,7 @@ extern std::array<double, 2> energy_min;
 extern std::array<double, 2> energy_max;
 
 extern std::vector<std::unique_ptr<Nuclide>> nuclides;
+extern std::unordered_map<std::string, int> nuclide_map;
 
 } // namespace data
 

@@ -29,6 +29,7 @@ namespace data {
 std::array<double, 2> energy_min {0.0, 0.0};
 std::array<double, 2> energy_max {INFTY, INFTY};
 std::vector<std::unique_ptr<Nuclide>> nuclides;
+std::unordered_map<std::string, int> nuclide_map;
 } // namespace data
 
 namespace simulation {

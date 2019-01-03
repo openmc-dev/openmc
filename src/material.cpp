@@ -2,6 +2,7 @@
 
 #include <algorithm> // for min, max
 #include <cmath>
+#include <iterator>
 #include <string>
 #include <sstream>
 
@@ -9,12 +10,15 @@
 #include "xtensor/xoperation.hpp"
 #include "xtensor/xview.hpp"
 
+#include "openmc/cross_sections.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
+#include "openmc/thermal.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -41,6 +45,239 @@ Material::Material(pugi::xml_node node)
   } else {
     fatal_error("Must specify id of material in materials XML file.");
   }
+
+  if (check_for_node(node, "name")) {
+    name_ = get_node_value(node, "name");
+  }
+
+  if (check_for_node(node, "depletable")) {
+    depletable_ = get_node_value_bool(node, "depletable");
+  }
+
+  bool sum_density {false};
+  pugi::xml_node density_node = node.child("density");
+  if (density_node) {
+    std::string units = get_node_value(density_node, "units");
+    if (units == "sum") {
+      sum_density = true;
+    } else if (units == "macro") {
+      if (check_for_node(density_node, "value")) {
+        density_ = std::stod(get_node_value(density_node, "value"));
+      } else {
+        density_ = 1.0;
+      }
+    } else {
+      double val = std::stod(get_node_value(density_node, "value"));
+      if (val <= 0.0) {
+        fatal_error("Need to specify a positive density on material "
+          + std::to_string(id_) + ".");
+      }
+
+      if (units == "g/cc" || units == "g/cm3") {
+        density_ = -val;
+      } else if (units == "kg/m3") {
+        density_ = -1.0e-3 * val;
+      } else if (units == "atom/b-cm") {
+        density_ = val;
+      } else if (units == "atom/cc" || units == "atom/cm3") {
+        density_ = 1.0e-24 * val;
+      } else {
+        fatal_error("Unknown units '" + units + "' specified on material "
+          + std::to_string(id_) + ".");
+      }
+    }
+  } else {
+    fatal_error("Must specify <density> element in material "
+      + std::to_string(id_) + ".");
+  }
+
+  if (node.child("element")) {
+    fatal_error("Unable to add an element to material " + std::to_string(id_) +
+      " since the element option has been removed from the xml input. "
+      "Elements can only be added via the Python API, which will expand "
+      "elements into their natural nuclides.");
+  }
+
+  // =======================================================================
+  // READ AND PARSE <nuclide> TAGS
+
+  // Check to ensure material has at least one nuclide
+  if (!check_for_node(node, "nuclide") && !check_for_node(node, "macroscopic")) {
+    fatal_error("No macroscopic data or nuclides specified on material "
+      + std::to_string(id_));
+  }
+
+  // Create list of macroscopic x/s based on those specified, just treat
+  // them as nuclides. This is all really a facade so the user thinks they
+  // are entering in macroscopic data but the code treats them the same
+  // as nuclides internally.
+  // Get pointer list of XML <macroscopic>
+  auto node_macros = node.children("macroscopic");
+  int num_macros = std::distance(node_macros.begin(), node_macros.end());
+
+  std::vector<std::string> names;
+  std::vector<double> densities;
+  if (settings::run_CE && num_macros > 0) {
+    fatal_error("Macroscopic can not be used in continuous-energy mode.");
+  } else if (num_macros > 1) {
+    fatal_error("Only one macroscopic object permitted per material, "
+      + std::to_string(id_));
+  } else if (num_macros == 1) {
+    pugi::xml_node node_nuc = *node_macros.begin();
+
+    // Check for empty name on nuclide
+    if (!check_for_node(node_nuc, "name")) {
+      fatal_error("No name specified on macroscopic data in material "
+        + std::to_string(id_));
+    }
+
+    // store nuclide name
+    std::string name = get_node_value(node_nuc, "name", false, true);
+    names.push_back(name);
+
+    // Set density for macroscopic data
+    if (units == 'macro') {
+      densities.push_back(1.0);
+    } else {
+      fatal_error("Units can only be macro for macroscopic data " + name);
+    }
+  } else {
+    // Create list of nuclides based on those specified
+    for (auto node_nuc  : node.children("nuclide")) {
+      // Check for empty name on nuclide
+      if (!check_for_node(node_nuc, "name")) {
+        fatal_error("No name specified on nuclide in material "
+          + std::to_string(id_));
+      }
+
+      // store nuclide name
+      std::string name = get_node_value(node_nuc, "name", false, true);
+      names.push_back(name);
+
+      // Check if no atom/weight percents were specified or if both atom and
+      // weight percents were specified
+      if (units == 'macro') {
+        densities.push_back(1.0);
+      } else {
+        bool has_ao = check_for_node(node_nuc, "ao");
+        bool has_wo = check_for_node(node_nuc, "wo");
+
+        if (!has_ao && !has_wo) {
+          fatal_error("No atom or weight percent specified for nuclide: " + name);
+        } else if (has_ao && has_wo) {
+          fatal_error("Cannot specify both atom and weight percents for a "
+            "nuclide: " + name);
+        }
+
+        // Copy atom/weight percents
+        if (has_ao) {
+          densities.push_back(std::stod(get_node_value(node_nuc, "ao")));
+        } else {
+          densities.push_back(-std::stod(get_node_value(node_nuc, "wo")));
+        }
+      }
+    }
+  }
+
+  // =======================================================================
+  // READ AND PARSE <isotropic> element
+
+  std::vector<std::string> iso_lab;
+  if (check_for_node(node, "isotropic")) {
+    iso_lab = get_node_array<std::string>(node, "isotropic");
+  }
+
+  // ========================================================================
+  // COPY NUCLIDES TO ARRAYS IN MATERIAL
+
+  // allocate arrays in Material object
+  // n = names % size()
+  // mat % n_nuclides = n
+  // allocate(mat % names(n))
+  // allocate(mat % nuclide(n))
+  // allocate(mat % element(n))
+  // allocate(mat % atom_density(n))
+  auto n = names.size();
+  nuclide_ = xt::empty<int>(n);
+  atom_density_ = xt::empty<double>(n);
+
+  for (int i = 0; i < names.size(); ++i) {
+    const auto& name {names[i]};
+
+    // Check that this nuclide is listed in the cross_sections.xml file
+    LibraryKey key {Library::Type::neutron, name};
+    if (data::library_map.find(key) == data::library_map.end()) {
+      fatal_error("Could not find nuclide " + name + " in cross_sections.xml.");
+    }
+
+    // If this nuclide hasn't been encountered yet, we need to add its name
+    // and alias to the nuclide_dict
+    if (data::nuclide_map.find(name) == data::nuclide_map.end()) {
+      int index = data::nuclide_map.size();
+      data::nuclide_map[name] = index;
+      nuclide_(i) = index;
+    } else {
+      nuclide_(i) = data::nuclide_map[name];
+    }
+
+    // If the corresponding element hasn't been encountered yet and photon
+    // transport will be used, we need to add its symbol to the element_dict
+    if (settings::photon_transport) {
+      element_ = xt::empty<int>(n);
+
+      int pos = name.find_first_of("0123456789");
+      std::string element = name.substr(pos);
+
+      // Make sure photon cross section data is available
+      LibraryKey key {Library::Type::photon, element};
+      if (data::library_map.find(key) == data::library_map.end()) {
+        fatal_error("Could not find element " + element
+          + " in cross_sections.xml.");
+      }
+
+      if (data::element_map.find(element) == data::element_map.end()) {
+        int index = data::element_map.size();
+        data::element_map[element] = index;
+        element_(i) = index;
+      } else {
+        element_(i) = data::element_map[element];
+      }
+    }
+
+    // Copy name and atom/weight percent
+    //mat % names(j) = name
+    atom_density_(i) = densities[i];
+  }
+
+  if (settings::run_CE) {
+    // By default, isotropic-in-lab is not used
+    if (list_iso_lab % size() > 0) {
+      mat % has_isotropic_nuclides = .true.
+      allocate(mat % p0(n))
+      mat % p0(:) = .false.
+
+      // Apply isotropic-in-lab treatment to specified nuclides
+      do j = 1, list_iso_lab % size()
+        do k = 1, n
+          if (names % data(k) == list_iso_lab % data(j)) {
+            mat % p0(k) = .true.
+          }
+        end do
+      end do
+    }
+  }
+
+  // Check to make sure either all atom percents or all weight percents are
+  // given
+  if (!(all(mat % atom_density >= ZERO) || &
+        all(mat % atom_density <= ZERO))) {
+    fatal_error("Cannot mix atom and weight percents in material " &
+          // to_str(mat % id()))
+  }
+
+  // Determine density if it is a sum value
+  if (sum_density) mat % density = sum(mat % atom_density)
+
 
   if (check_for_node(node, "temperature")) {
     temperature_ = std::stod(get_node_value(node, "temperature"));
@@ -238,6 +475,129 @@ void Material::init_bremsstrahlung()
 
     // Use logarithm of number yield since it is log-log interpolated
     ttb->yield = xt::where(ttb->yield > 0.0, xt::log(ttb->yield), -500.0);
+  }
+}
+
+void Material::calculate_xs(const Particle& p) const
+{
+  // Set all material macroscopic cross sections to zero
+  simulation::material_xs.total = 0.0;
+  simulation::material_xs.absorption = 0.0;
+  simulation::material_xs.fission = 0.0;
+  simulation::material_xs.nu_fission = 0.0;
+
+  if (p.type == static_cast<int>(ParticleType::neutron)) {
+    this->calculate_neutron_xs(p);
+  } else if (p.type == static_cast<int>(ParticleType::photon)) {
+    this->calculate_photon_xs(p);
+  }
+}
+
+void Material::calculate_neutron_xs(const Particle& p) const
+{
+  // TODO: off-by-one
+  int neutron = static_cast<int>(ParticleType::neutron) - 1;
+
+  // Find energy index on energy grid
+  int i_grid = std::log(p.E/data::energy_min[neutron])/simulation::log_spacing;
+
+  // Determine if this material has S(a,b) tables
+  bool check_sab = (i_sab_tables_.size() > 0);
+
+  // Initialize position in i_sab_nuclides
+  int j = 0;
+
+  // Add contribution from each nuclide in material
+  for (int i = 0; i < nuclide_.size(); ++i) {
+    // ======================================================================
+    // CHECK FOR S(A,B) TABLE
+
+    int i_sab = 0;
+    double sab_frac = 0.0;
+
+    // Check if this nuclide matches one of the S(a,b) tables specified.
+    // This relies on i_sab_nuclides being in sorted order
+    if (check_sab) {
+      if (i == i_sab_nuclides_(j)) {
+        // Get index in sab_tables
+        i_sab = i_sab_tables_(j);
+        sab_frac = sab_fracs_(j);
+
+        // If particle energy is greater than the highest energy for the
+        // S(a,b) table, then don't use the S(a,b) table
+        if (p.E > data::thermal_scatt[i_sab]->threshold()) i_sab = 0;
+
+        // Increment position in i_sab_nuclides
+        ++j;
+
+        // Don't check for S(a,b) tables if there are no more left
+        if (j == i_sab_tables_.size()) check_sab = false;
+      }
+    }
+
+    // ======================================================================
+    // CALCULATE MICROSCOPIC CROSS SECTION
+
+    // Determine microscopic cross sections for this nuclide
+    int i_nuclide = nuclide_[i];
+
+    // Calculate microscopic cross section for this nuclide
+    const auto& micro {simulation::micro_xs[i_nuclide]};
+    if (p.E != micro.last_E
+        || p.sqrtkT != micro.last_sqrtkT
+        || i_sab != micro.index_sab
+        || sab_frac != micro.sab_frac) {
+      data::nuclides[i_nuclide]->calculate_xs(i_sab, p.E, i_grid,
+        p.sqrtkT, sab_frac);
+    }
+
+    // ======================================================================
+    // ADD TO MACROSCOPIC CROSS SECTION
+
+    // Copy atom density of nuclide in material
+    double atom_density = atom_density_(i);
+
+    // Add contributions to cross sections
+    simulation::material_xs.total += atom_density * micro.total;
+    simulation::material_xs.absorption += atom_density * micro.absorption;
+    simulation::material_xs.fission += atom_density * micro.fission;
+    simulation::material_xs.nu_fission += atom_density * micro.nu_fission;
+  }
+}
+
+void Material::calculate_photon_xs(const Particle& p) const
+{
+  simulation::material_xs.coherent = 0.0;
+  simulation::material_xs.incoherent = 0.0;
+  simulation::material_xs.photoelectric = 0.0;
+  simulation::material_xs.pair_production = 0.0;
+
+  // Add contribution from each nuclide in material
+  for (int i = 0; i < nuclide_.size(); ++i) {
+    // ========================================================================
+    // CALCULATE MICROSCOPIC CROSS SECTION
+
+    // Determine microscopic cross sections for this nuclide
+    int i_element = element_(i);
+
+    // Calculate microscopic cross section for this nuclide
+    const auto& micro {simulation::micro_photon_xs[i_element]};
+    if (p.E != micro.last_E) {
+      data::elements[i_element].calculate_xs(p.E);
+    }
+
+    // ========================================================================
+    // ADD TO MACROSCOPIC CROSS SECTION
+
+    // Copy atom density of nuclide in material
+    double atom_density = atom_density_(i);
+
+    // Add contributions to material macroscopic cross sections
+    simulation::material_xs.total += atom_density * micro.total;
+    simulation::material_xs.coherent += atom_density * micro.coherent;
+    simulation::material_xs.incoherent += atom_density * micro.incoherent;
+    simulation::material_xs.photoelectric += atom_density * micro.photoelectric;
+    simulation::material_xs.pair_production += atom_density * micro.pair_production;
   }
 }
 

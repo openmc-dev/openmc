@@ -2,10 +2,12 @@
 #define OPENMC_MATERIAL_H
 
 #include <memory> // for unique_ptr
+#include <string>
 #include <unordered_map>
 #include <vector>
 
 #include "pugixml.hpp"
+#include "xtensor/xtensor.hpp"
 
 #include "openmc/bremsstrahlung.h"
 #include "openmc/particle.h"
@@ -32,9 +34,26 @@ extern std::unordered_map<int32_t, int32_t> material_map;
 class Material
 {
 public:
+  // Constructors
+  Material() {};
+  explicit Material(pugi::xml_node material_node);
+
+  // Methods
+  void calculate_xs(const Particle& p) const;
+
+  //! Initialize bremsstrahlung data
+  void init_bremsstrahlung();
+
+  // Data
   int32_t id_; //!< Unique ID
+  std::string name_; //!< Name of material
+  xt::xtensor<int, 1> nuclide_; //!< Indices in nuclides vector
+  xt::xtensor<int, 1> element_; //!< Indices in elements vector
+  xt::xtensor<double, 1> atom_density_; //!< Nuclide atom density in [atom/b-cm]
+  double density_; //!< Total atom density in [atom/b-cm]
   double volume_ {-1.0}; //!< Volume in [cm^3]
-  bool fissionable {false}; //!< Does this material contain fissionable nuclides
+  bool fissionable_ {false}; //!< Does this material contain fissionable nuclides
+  bool depletable_ {false}; //!< Is the material depletable?
 
   //! \brief Default temperature for cells containing this material.
   //!
@@ -43,12 +62,9 @@ public:
 
   std::unique_ptr<Bremsstrahlung> ttb_;
 
-  Material() {};
-
-  explicit Material(pugi::xml_node material_node);
-
-  //! Initialize bremsstrahlung data
-  void init_bremsstrahlung();
+private:
+  void calculate_neutron_xs(const Particle& p) const;
+  void calculate_photon_xs(const Particle& p) const;
 };
 
 //==============================================================================

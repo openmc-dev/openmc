@@ -1,9 +1,13 @@
 #ifndef OPENMC_PHOTON_H
 #define OPENMC_PHOTON_H
 
+#include "openmc/endf.h"
+
 #include <hdf5.h>
+#include "xtensor/xtensor.hpp"
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace openmc {
@@ -11,6 +15,24 @@ namespace openmc {
 //==============================================================================
 //! Photon interaction data for a single element
 //==============================================================================
+
+class ElectronSubshell {
+public:
+  // Constructors
+  ElectronSubshell() { };
+
+  int index_subshell;  //!< index in SUBSHELLS
+  int threshold;
+  double n_electrons;
+  double binding_energy;
+  xt::xtensor<double, 1> cross_section;
+
+  // Transition data
+  int n_transitions;
+  xt::xtensor<int, 2> transition_subshells;
+  xt::xtensor<double, 1> transition_energy;
+  xt::xtensor<double, 1> transition_probability;
+};
 
 class PhotonInteraction {
 public:
@@ -20,6 +42,40 @@ public:
   // Data members
   std::string name_; //! Name of element, e.g. "Zr"
   int Z_; //! Atomic number
+
+  // Microscopic cross sections
+  xt::xtensor<double, 1> energy_;
+  xt::xtensor<double, 1> coherent_;
+  xt::xtensor<double, 1> incoherent_;
+  xt::xtensor<double, 1> photoelectric_total_;
+  xt::xtensor<double, 1> pair_production_total_;
+  xt::xtensor<double, 1> pair_production_electron_;
+  xt::xtensor<double, 1> pair_production_nuclear_;
+
+  // Form factors
+  Tabulated1D incoherent_form_factor_;
+  Tabulated1D coherent_int_form_factor_;
+  Tabulated1D coherent_anomalous_real_;
+  Tabulated1D coherent_anomalous_imag_;
+
+  // Photoionization and atomic relaxation data
+  std::unordered_map<int, int> shell_map_; // Given a shell designator, e.g. 3, this
+                                           // dictionary gives an index in shells_
+  std::vector<ElectronSubshell> shells_;
+
+  // Compton profile data
+  xt::xtensor<double, 2> profile_pdf_;
+  xt::xtensor<double, 2> profile_cdf_;
+  xt::xtensor<double, 1> binding_energy_;
+  xt::xtensor<double, 1> electron_pdf_;
+
+  // Stopping power data
+  double I_; // mean excitation energy
+  xt::xtensor<double, 1> stopping_power_collision_;
+  xt::xtensor<double, 1> stopping_power_radiative_;
+
+  // Bremsstrahlung scaled DCS
+  xt::xtensor<double, 2> dcs_;
 };
 
 //==============================================================================
@@ -43,7 +99,14 @@ struct ElementMicroXS {
 //==============================================================================
 
 namespace data {
+
+extern xt::xtensor<double, 1> compton_profile_pz; //! Compton profile momentum grid
+extern xt::xtensor<double, 1> ttb_e_grid; //! energy T of incident electron in [eV]
+extern xt::xtensor<double, 1> ttb_k_grid; //! reduced energy W/T of emitted photon
+
+//! Photon interaction data for each element
 extern std::vector<PhotonInteraction> elements;
+
 } // namespace data
 
 namespace simulation {

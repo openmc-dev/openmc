@@ -617,7 +617,7 @@ void calc_zn_rad(int n, double rho, double zn_rad[]) {
 }
 
 
-void rotate_angle_c(double uvw[3], double mu, double* phi) {
+void rotate_angle_c(double uvw[3], double mu, const double* phi) {
   // Copy original directional cosines
   double u0 = uvw[0]; // original cosine in x direction
   double v0 = uvw[1]; // original cosine in y direction

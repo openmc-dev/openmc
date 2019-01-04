@@ -2,12 +2,14 @@
 #define OPENMC_PHOTON_H
 
 #include "openmc/endf.h"
+#include "openmc/particle.h"
 
 #include <hdf5.h>
 #include "xtensor/xtensor.hpp"
 
 #include <string>
 #include <unordered_map>
+#include <utility> // for pair
 #include <vector>
 
 namespace openmc {
@@ -38,6 +40,17 @@ class PhotonInteraction {
 public:
   // Constructors
   PhotonInteraction(hid_t group);
+
+  // Methods
+  void compton_scatter(double alpha, bool doppler, double* alpha_out,
+    double* mu, int* i_shell) const;
+
+  double rayleigh_scatter(double alpha) const;
+
+  void pair_production(double alpha, double* E_electron, double* E_positron,
+    double* mu_electron, double* mu_positron) const;
+
+  void atomic_relaxation(const ElectronSubshell& shell, Particle& p) const;
 
   // Data members
   std::string name_; //! Name of element, e.g. "Zr"
@@ -76,6 +89,9 @@ public:
 
   // Bremsstrahlung scaled DCS
   xt::xtensor<double, 2> dcs_;
+
+private:
+  void compton_doppler(double alpha, double mu, double* E_out, int* i_shell) const;
 };
 
 //==============================================================================
@@ -93,6 +109,14 @@ struct ElementMicroXS {
   double photoelectric; //!< microscopic photoelectric xs
   double pair_production; //!< microscopic pair production xs
 };
+
+//==============================================================================
+// Non-member functions
+//==============================================================================
+
+std::pair<double, double> klein_nishina(double alpha);
+
+void thick_target_bremsstrahlung(Particle& p, double* E_lost);
 
 //==============================================================================
 // Global variables

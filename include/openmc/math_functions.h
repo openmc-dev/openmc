@@ -129,7 +129,7 @@ extern "C" void calc_zn_rad(int n, double rho, double zn_rad[]);
 //!   is passed
 //==============================================================================
 
-extern "C" void rotate_angle_c(double uvw[3], double mu, double* phi);
+extern "C" void rotate_angle_c(double uvw[3], double mu, const double* phi);
 
 Direction rotate_angle(Direction u, double mu, double* phi);
 

@@ -3,12 +3,17 @@
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"
+#include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
 
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xoperation.hpp"
 #include "xtensor/xview.hpp"
+
+#include <array>
+#include <cmath>
+#include <tuple> // for tie
 
 namespace openmc {
 
@@ -107,7 +112,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     shells_.emplace_back();
 
     // Create mapping from designator to index
-    int j = 0;
+    int j = 1;
     for (const auto& subshell : SUBSHELLS) {
       if (designator == subshell) {
         shell_map_[j] = i;
@@ -126,8 +131,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     // Read subshell cross section
     dset = open_dataset(tgroup, "xs");
     read_attribute(dset, "threshold_idx", j);
-    // TODO: off-by-one
-    shell.threshold = j - 1;
+    shell.threshold = j;
     close_dataset(dset);
     read_dataset(tgroup, "xs", shell.cross_section);
 
@@ -151,6 +155,8 @@ PhotonInteraction::PhotonInteraction(hid_t group)
         shell.transition_probability = xt::view(matrix, xt::all(), 3);
         shell.transition_probability /= xt::sum(shell.transition_probability)();
       }
+    } else {
+      shell.n_transitions = 0;
     }
     close_group(tgroup);
   }
@@ -276,6 +282,517 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   pair_production_total_ = xt::where(pair_production_total_ > 0.0,
     xt::log(pair_production_total_), -500.0);
 }
+
+void PhotonInteraction::compton_scatter(double alpha, bool doppler,
+  double* alpha_out, double* mu, int* i_shell) const
+{
+  double form_factor_xmax = 0.0;
+  while (true) {
+    // Sample Klein-Nishina distribution for trial energy and angle
+    std::tie(*alpha_out, *mu) = klein_nishina(alpha);
+
+    // Note that the parameter used here does not correspond exactly to the
+    // momentum transfer q in ENDF-102 Eq. (27.2). Rather, this is the
+    // parameter as defined by Hubbell, where the actual data comes from
+    double x = MASS_ELECTRON_EV/PLANCK_C*alpha*std::sqrt(0.5*(1.0 - *mu));
+
+    // Calculate S(x, Z) and S(x_max, Z)
+    double form_factor_x = incoherent_form_factor_(x);
+    if (form_factor_xmax == 0.0) {
+      form_factor_xmax = incoherent_form_factor_(MASS_ELECTRON_EV/PLANCK_C*alpha);
+    }
+
+    // Perform rejection on form factor
+    if (prn() < form_factor_x / form_factor_xmax) {
+      if (doppler) {
+        double E_out;
+        this->compton_doppler(alpha, *mu, &E_out, i_shell);
+        *alpha_out = E_out/MASS_ELECTRON_EV;
+      } else {
+        *i_shell = -1;
+      }
+      break;
+    }
+  }
+}
+
+void PhotonInteraction::compton_doppler(double alpha, double mu,
+  double* E_out, int* i_shell) const
+{
+  auto n = data::compton_profile_pz.size();
+
+  int shell; // index for shell
+  while (true) {
+    // Sample electron shell
+    double rn = prn();
+    double c = 0.0;
+    for (shell = 0; shell < electron_pdf_.size(); ++shell) {
+      c += electron_pdf_(shell);
+      if (rn < c) break;
+    }
+
+    // Determine binding energy of shell
+    double E_b = binding_energy_(shell);
+
+    // Determine p_z,max
+    double E = alpha*MASS_ELECTRON_EV;
+    if (E < E_b) {
+      *E_out = alpha/(1 + alpha*(1 - mu))*MASS_ELECTRON_EV;
+      break;
+    }
+
+    double pz_max = -FINE_STRUCTURE*(E_b - (E - E_b)*alpha*(1.0 - mu)) /
+      std::sqrt(2.0*E*(E - E_b)*(1.0 - mu) + E_b*E_b);
+    if (pz_max < 0.0) {
+      *E_out = alpha/(1 + alpha*(1 - mu))*MASS_ELECTRON_EV;
+      break;
+    }
+
+    // Determine profile cdf value corresponding to p_z,max
+    double c_max;
+    if (pz_max > data::compton_profile_pz(n - 1)) {
+      c_max = profile_cdf_(shell, n - 1);
+    } else {
+      int i = lower_bound_index(data::compton_profile_pz.cbegin(),
+        data::compton_profile_pz.cend(), pz_max);
+      double pz_l = data::compton_profile_pz(i);
+      double pz_r = data::compton_profile_pz(i + 1);
+      double p_l = profile_pdf_(shell, i);
+      double p_r = profile_pdf_(shell, i + 1);
+      double c_l = profile_cdf_(shell, i);
+      if (pz_l == pz_r) {
+        c_max = c_l;
+      } else if (p_l == p_r) {
+        c_max = c_l + (pz_max - pz_l)*p_l;
+      } else {
+        double m = (p_l - p_r)/(pz_l - pz_r);
+        c_max = c_l + (std::pow((m*(pz_max - pz_l) + p_l), 2) - p_l*p_l)/(2.0*m);
+      }
+    }
+
+    // Sample value on bounded cdf
+    c = prn()*c_max;
+
+    // Determine pz corresponding to sampled cdf value
+    auto cdf_shell = xt::view(profile_cdf_, shell, xt::all());
+    int i = lower_bound_index(cdf_shell.cbegin(), cdf_shell.cend(), c);
+    double pz_l = data::compton_profile_pz(i);
+    double pz_r = data::compton_profile_pz(i + 1);
+    double p_l = profile_pdf_(shell, i);
+    double p_r = profile_pdf_(shell, i + 1);
+    double c_l = profile_cdf_(shell, i);
+    double pz;
+    if (pz_l == pz_r) {
+      pz = pz_l;
+    } else if (p_l == p_r) {
+      pz = pz_l + (c - c_l)/p_l;
+    } else {
+      double m = (p_l - p_r)/(pz_l - pz_r);
+      pz = pz_l + (std::sqrt(p_l*p_l + 2.0*m*(c - c_l)) - p_l)/m;
+    }
+
+    // Determine outgoing photon energy corresponding to electron momentum
+    // (solve Eq. 39 in LA-UR-04-0487 for E')
+    double momentum_sq = std::pow((pz/FINE_STRUCTURE), 2);
+    double f = 1.0 + alpha*(1.0 - mu);
+    double a = momentum_sq - f*f;
+    double b = 2.0*E*(f - momentum_sq*mu);
+    c = E*E*(momentum_sq - 1.0);
+
+    double quad = b*b - 4.0*a*c;
+    if (quad < 0) {
+      *E_out = alpha/(1 + alpha*(1 - mu))*MASS_ELECTRON_EV;
+      break;
+    }
+    quad = std::sqrt(quad);
+    double E_out1 = -(b + quad)/(2.0*a);
+    double E_out2 = -(b - quad)/(2.0*a);
+
+    // Determine solution to quadratic equation that is positive
+    if (E_out1 > 0.0) {
+      if (E_out2 > 0.0) {
+        // If both are positive, pick one at random
+        *E_out = prn() < 0.5 ? E_out1 : E_out2;
+      } else {
+        *E_out = E_out1;
+      }
+    } else {
+      if (E_out2 > 0.0) {
+        *E_out = E_out2;
+      } else {
+        // No positive solution -- resample
+        continue;
+      }
+    }
+    if (*E_out < E - E_b) break;
+  }
+
+  *i_shell = shell;
+}
+
+double PhotonInteraction::rayleigh_scatter(double alpha) const
+{
+  double mu;
+  while (true) {
+    // Determine maximum value of x^2
+    double x2_max = std::pow(MASS_ELECTRON_EV/PLANCK_C*alpha, 2);
+
+    // Determine F(x^2_max, Z)
+    double F_max = coherent_int_form_factor_(x2_max);
+
+    // Sample cumulative distribution
+    double F = prn()*F_max;
+
+    // Determine x^2 corresponding to F
+    const auto& x {coherent_int_form_factor_.x()};
+    const auto& y {coherent_int_form_factor_.y()};
+    int i = lower_bound_index(y.cbegin(), y.cend(), F);
+    double r = (F - y[i]) / (y[i+1] - y[i]);
+    double x2 = x[i] + r*(x[i+1] - x[i]);
+
+    // Calculate mu
+    mu = 1.0 - 2.0*x2/x2_max;
+
+    if (prn() < 0.5*(1.0 + mu*mu)) break;
+  }
+  return mu;
+}
+
+void PhotonInteraction::pair_production(double alpha, double* E_electron,
+  double* E_positron, double* mu_electron, double* mu_positron) const
+{
+  constexpr double r[] {
+    122.81, 73.167, 69.228, 67.301, 64.696, 61.228,
+    57.524, 54.033, 50.787, 47.851, 46.373, 45.401,
+    44.503, 43.815, 43.074, 42.321, 41.586, 40.953,
+    40.524, 40.256, 39.756, 39.144, 38.462, 37.778,
+    37.174, 36.663, 35.986, 35.317, 34.688, 34.197,
+    33.786, 33.422, 33.068, 32.740, 32.438, 32.143,
+    31.884, 31.622, 31.438, 31.142, 30.950, 30.758,
+    30.561, 30.285, 30.097, 29.832, 29.581, 29.411,
+    29.247, 29.085, 28.930, 28.721, 28.580, 28.442,
+    28.312, 28.139, 27.973, 27.819, 27.675, 27.496,
+    27.285, 27.093, 26.911, 26.705, 26.516, 26.304,
+    26.108, 25.929, 25.730, 25.577, 25.403, 25.245,
+    25.100, 24.941, 24.790, 24.655, 24.506, 24.391,
+    24.262, 24.145, 24.039, 23.922, 23.813, 23.712,
+    23.621, 23.523, 23.430, 23.331, 23.238, 23.139,
+    23.048, 22.967, 22.833, 22.694, 22.624, 22.545,
+    22.446, 22.358, 22.264};
+
+  // The reduced screening radius r is the ratio of the screening radius to
+  // the Compton wavelength of the electron, where the screening radius is
+  // obtained under the assumption that the Coulomb field of the nucleus is
+  // exponentially screened by atomic electrons. This allows us to use a
+  // simplified atomic form factor and analytical approximations of the
+  // screening functions in the pair production DCS instead of computing the
+  // screening functions numerically. The reduced screening radii above for
+  // Z = 1-99 come from F. Salvat, J. M. Fernández-Varea, and J. Sempau,
+  // "PENELOPE-2011: A Code System for Monte Carlo Simulation of Electron and
+  // Photon Transport," OECD-NEA, Issy-les-Moulineaux, France (2011).
+
+  // Compute the minimum and maximum values of the electron reduced energy,
+  // i.e. the fraction of the photon energy that is given to the electron
+  double e_min = 1.0/alpha;
+  double e_max = 1.0 - 1.0/alpha;
+
+  // Compute the high-energy Coulomb correction
+  double a = Z_ / FINE_STRUCTURE;
+  double c = a*a*(1.0/(1.0 + a*a) + 0.202059 + a*a*(-0.03693 + a*a*(0.00835 +
+    a*a*(-0.00201 + a*a*(0.00049 +  a*a*(-0.00012 + a*a*0.00003))))));
+
+  // The analytical approximation of the DCS underestimates the cross section
+  // at low energies. The correction factor f compensates for this.
+  double q = std::sqrt(2.0/alpha);
+  double f = q*(-0.1774 - 12.10*a + 11.18*a*a)
+    + q*q*(8.523 + 73.26*a - 44.41*a*a)
+    + q*q*q*(-13.52 - 121.1*a + 96.41*a*a)
+    + q*q*q*q*(8.946 + 62.05*a - 63.41*a*a);
+
+  // Calculate phi_1(1/2) and phi_2(1/2). The unnormalized PDF for the reduced
+  // energy is given by p = 2*(1/2 - e)^2*phi_1(e) + phi_2(e), where phi_1 and
+  // phi_2 are non-negative and maximum at e = 1/2.
+  double b = 2.0*r[Z_]/alpha;
+  double t1 = 2.0*std::log(1.0 + b*b);
+  double t2 = b*std::atan(1.0/b);
+  double t3 = b*b*(4.0 - 4.0*t2 - 3.0*std::log(1.0 + 1.0/(b*b)));
+  double t4 = 4.0*std::log(r[Z_]) - 4.0*c + f;
+  double phi1_max = 7.0/3.0 - t1 - 6.0*t2 - t3 + t4;
+  double phi2_max = 11.0/6.0 - t1 - 3.0*t2 + 0.5*t3 + t4;
+
+  // To aid sampling, the unnormalized PDF can be expressed as
+  // p = u_1*U_1(e)*pi_1(e) + u_2*U_2(e)*pi_2(e), where pi_1 and pi_2 are
+  // normalized PDFs on the interval (e_min, e_max) from which values of e can
+  // be sampled using the inverse transform method, and
+  // U_1 = phi_1(e)/phi_1(1/2) and U_2 = phi_2(e)/phi_2(1/2) are valid
+  // rejection functions. The reduced energy can now be sampled using a
+  // combination of the composition and rejection methods.
+  double u1 = 2.0/3.0*std::pow(0.5 - 1.0/alpha, 2)*phi1_max;
+  double u2 = phi2_max;
+  double e;
+  while (true) {
+    double rn = prn();
+
+    // Sample the index i in (1, 2) using the point probabilities
+    // p(1) = u_1/(u_1 + u_2) and p(2) = u_2/(u_1 + u_2)
+    int i;
+    if (prn() < u1/(u1 + u2)) {
+      i = 1;
+
+      // Sample e from pi_1 using the inverse transform method
+      e = rn >= 0.5 ?
+        0.5 + (0.5 - 1.0/alpha)*std::pow(2.0*rn - 1.0, 1.0/3.0) :
+        0.5 - (0.5 - 1.0/alpha)*std::pow(1.0 - 2.0*rn, 1.0/3.0);
+    } else {
+      i = 2;
+
+      // Sample e from pi_2 using the inverse transform method
+      e = 1.0/alpha + (0.5 - 1.0/alpha)*2.0*rn;
+    }
+
+    // Calculate phi_i(e) and deliver e if rn <= U_i(e)
+    b = r[Z_]/(2.0*alpha*e*(1.0 - e));
+    t1 = 2.0*std::log(1.0 + b*b);
+    t2 = b*std::atan(1.0/b);
+    t3 = b*b*(4.0 - 4.0*t2 - 3.0*std::log(1.0 + 1.0/(b*b)));
+    if (i == 1) {
+      double phi1 = 7.0/3.0 - t1 - 6.0*t2 - t3 + t4;
+      if (prn() <= phi1/phi1_max) break;
+    } else {
+      double phi2 = 11.0/6.0 - t1 - 3.0*t2 + 0.5*t3 + t4;
+      if (prn() <= phi2/phi2_max) break;
+    }
+  }
+
+  // Compute the kinetic energy of the electron and the positron
+  *E_electron = (alpha*e - 1.0)*MASS_ELECTRON_EV;
+  *E_positron = (alpha*(1.0 - e) - 1.0)*MASS_ELECTRON_EV;
+
+  // Sample the scattering angle of the electron. The cosine of the polar
+  // angle of the direction relative to the incident photon is sampled from
+  // p(mu) = C/(1 - beta*mu)^2 using the inverse transform method.
+  double beta = std::sqrt(*E_electron*(*E_electron + 2.0*MASS_ELECTRON_EV))
+    / (*E_electron + MASS_ELECTRON_EV)  ;
+  double rn = 2.0*prn() - 1.0;
+  *mu_electron = (rn + beta)/(rn*beta + 1.0);
+
+  // Sample the scattering angle of the positron
+  beta = std::sqrt(*E_positron*(*E_positron + 2.0*MASS_ELECTRON_EV))
+    / (*E_positron + MASS_ELECTRON_EV);
+  rn = 2.0*prn() - 1.0;
+  *mu_positron = (rn + beta)/(rn*beta + 1.0);
+}
+
+void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particle& p) const
+{
+  // If no transitions, assume fluorescent photon from captured free electron
+  if (shell.n_transitions == 0) {
+    double mu = 2.0*prn() - 1.0;
+    double phi = 2.0*PI*prn();
+    std::array<double, 3> uvw;
+    uvw[0] = mu;
+    uvw[1] = std::sqrt(1.0 - mu*mu)*std::cos(phi);
+    uvw[2] = std::sqrt(1.0 - mu*mu)*std::sin(phi);
+    double E = shell.binding_energy;
+    int photon = static_cast<int>(ParticleType::photon);
+    p.create_secondary(uvw.data(), E, photon, true);
+    return;
+  }
+
+  // Sample transition
+  double rn = prn();
+  double c = 0.0;
+  int i_transition;
+  for (i_transition = 0; i_transition < shell.n_transitions; ++i_transition) {
+    c += shell.transition_probability(i_transition);
+    if (rn < c) break;
+  }
+
+  // Get primary and secondary subshell designators
+  int primary = shell.transition_subshells(i_transition, 0);
+  int secondary = shell.transition_subshells(i_transition, 1);
+
+  // Sample angle isotropically
+  double mu = 2.0*prn() - 1.0;
+  double phi = 2.0*PI*prn();
+  std::array<double, 3> uvw;
+  uvw[0] = mu;
+  uvw[1] = std::sqrt(1.0 - mu*mu)*std::cos(phi);
+  uvw[2] = std::sqrt(1.0 - mu*mu)*std::sin(phi);
+
+  // Get the transition energy
+  double E = shell.transition_energy(i_transition);
+
+  if (secondary != 0) {
+    // Non-radiative transition -- Auger/Coster-Kronig effect
+
+    // Create auger electron
+    int electron = static_cast<int>(ParticleType::electron);
+    p.create_secondary(uvw.data(), E, electron, true);
+
+    // Fill hole left by emitted auger electron
+    int i_hole = shell_map_.at(secondary);
+    const auto& hole = shells_[i_hole];
+    this->atomic_relaxation(hole, p);
+  } else {
+    // Radiative transition -- get X-ray energy
+
+    // Create fluorescent photon
+    int photon = static_cast<int>(ParticleType::photon);
+    p.create_secondary(uvw.data(), E, photon, true);
+  }
+
+  // Fill hole created by electron transitioning to the photoelectron hole
+  int i_hole = shell_map_.at(primary);
+  const auto& hole = shells_[i_hole];
+  this->atomic_relaxation(hole, p);
+}
+
+//==============================================================================
+// Non-member functions
+//==============================================================================
+
+std::pair<double, double> klein_nishina(double alpha)
+{
+  double alpha_out, mu;
+  double beta = 1.0 + 2.0*alpha;
+  if (alpha < 3.0) {
+    // Kahn's rejection method
+    double t = beta/(beta + 8.0);
+    double x;
+    while (true) {
+      if (prn() < t) {
+        // Left branch of flow chart
+        double r = 2.0*prn();
+        x = 1.0 + alpha*r;
+        if (prn() < 4.0/x*(1.0 - 1.0/x)) {
+          mu = 1 - r;
+          break;
+        }
+      } else {
+        // Right branch of flow chart
+        x = beta/(1.0 + 2.0*alpha*prn());
+        mu = 1.0 + (1.0 - x)/alpha;
+        if (prn() < 0.5*(mu*mu + 1.0/x)) break;
+      }
+    }
+    alpha_out = alpha/x;
+
+  } else {
+    // Koblinger's direct method
+    double gamma = 1.0 - std::pow(beta, -2);
+    double s = prn()*(4.0/alpha + 0.5*gamma +
+      (1.0 - (1.0 + beta)/(alpha*alpha))*std::log(beta));
+    if (s <= 2.0/alpha) {
+      // For first term, x = 1 + 2ar
+      // Therefore, a' = a/(1 + 2ar)
+      alpha_out = alpha/(1.0 + 2.0*alpha*prn());
+    } else if (s <= 4.0/alpha) {
+      // For third term, x = beta/(1 + 2ar)
+      // Therefore, a' = a(1 + 2ar)/beta
+      alpha_out = alpha*(1.0 + 2.0*alpha*prn())/beta;
+    } else if (s <= 4.0/alpha + 0.5*gamma) {
+      // For fourth term, x = 1/sqrt(1 - gamma*r)
+      // Therefore, a' = a*sqrt(1 - gamma*r)
+      alpha_out = alpha*std::sqrt(1.0 - gamma*prn());
+    } else {
+      // For third term, x = beta^r
+      // Therefore, a' = a/beta^r
+      alpha_out = alpha/std::pow(beta, prn());
+    }
+
+    // Calculate cosine of scattering angle based on basic relation
+    mu = 1.0 + 1.0/alpha - 1.0/alpha_out;
+  }
+  return {alpha_out, mu};
+}
+
+// void thick_target_bremsstrahlung(Particle& p, double* E_lost)
+// {
+//   if (p.material == MATERIAL_VOID) return;
+
+//   // TODO: off-by-one
+//   int photon = static_cast<int>(ParticleType::photon) - 1;
+//   if (p.E < settings::energy_cutoff[photon]) return;
+
+//   // // Get bremsstrahlung data for this material and particle type
+//   if (p.type == static_cast<int>(ParticleType::positron)) {
+//     mat => ttb(p.material) % positron;
+//   } else {
+//     mat => ttb(p.material) % electron;
+//   }
+
+//   double e = std::log(p.E);
+//   auto n_e = data::ttb_e_grid
+
+//   // Find the lower bounding index of the incident electron energy
+//   int j = lower_bound_index(data::ttb_e_grid.cbegin(), data::ttb_e_grid.cend(), e);
+//   if (j == n_e - 1) --j;
+
+//   // Get the interpolation bounds
+//   double e_l = data::ttb_e_grid(j);
+//   double e_r = data::ttb_e_grid(j+1);
+//   double y_l = mat % yield(j);
+//   double y_r = mat % yield(j+1);
+
+//   // Calculate the interpolation weight w_j+1 of the bremsstrahlung energy PDF
+//   // interpolated in log energy, which can be interpreted as the probability
+//   // of index j+1
+//   double f = (e - e_l)/(e_r - e_l);
+
+//   // Get the photon number yield for the given energy using linear
+//   // interpolation on a log-log scale
+//   double y = std::exp(y_l + (y_r - y_l)*f);
+
+//   // Sample number of secondary bremsstrahlung photons
+//   int n = y + prn();
+
+//   *E_lost = 0.0;
+//   if (n == 0) return;
+
+//   // Sample index of the tabulated PDF in the energy grid, j or j+1
+//   double c_max;
+//   if (prn() <= f || j == 0) {
+//     int i_e = j + 1;
+
+//     // Interpolate the maximum value of the CDF at the incoming particle
+//     // energy on a log-log scale
+//     double p_l = mat % pdf(i_e-1, i_e);
+//     double p_r = mat % pdf(i_e, i_e);
+//     double c_l = mat % cdf(i_e-1, i_e);
+//     double a = std::log(p_r/p_l)/(e_r - e_l) + 1.0;
+//     c_max = c_l + std::exp(e_l)*p_l/a*(std::exp(a*(e - e_l)) - 1.0);
+//   } else {
+//     int i_e = j;
+
+//     // Maximum value of the CDF
+//     c_max = mat % cdf(i_e, i_e)
+//   }
+
+//   // Sample the energies of the emitted photons
+//   for (int i = 0; i < n; ++i) {
+//     // Generate a random number r and determine the index i for which
+//     // cdf(i) <= r*cdf,max <= cdf(i+1)
+//     double c = prn()*c_max;
+//     int i_w = lower_bound_index(mat % cdf(:i_e,i_e), c)
+
+//     // Sample the photon energy
+//     double w_l = data::ttb_e_grid(i_w);
+//     double w_r = data::ttb_e_grid(i_w+1);
+//     double p_l = mat % pdf(i_w, i_e);
+//     double p_r = mat % pdf(i_w+1, i_e);
+//     double c_l = mat % cdf(i_w, i_e);
+//     double a = std::log(p_r/p_l)/(w_r - w_l) + 1.0;
+//     double w = std::exp(w_l)*std::pow(a*(c - c_l)/(std::exp(w_l)*p_l) + 1.0, 1.0/a);
+
+//     if (w > settings::energy_cutoff[photon]) {
+//       // Create secondary photon
+//       int photon = static_cast<int>(ParticleType::photon);
+//       p.create_secondary(p.coord[0].uvw, w, photon, true);
+//       *E_lost += w;
+//     }
+//   }
+// }
 
 //==============================================================================
 // Fortran compatibility

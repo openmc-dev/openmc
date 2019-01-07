@@ -313,7 +313,7 @@ class Normal(Univariate):
 
     The Normal Distribution is characterized by two parameters
     :math:`\mu` and :math:`\sigma` and has density function 
-    :math:`p(X) dX = 1/\2*sigma\sqrt{\pi} * e^{(X-\mu/\2*sigma}`
+    :math:`p(X) dX = 1/(\sqrt{2\pi}\sigma) e^{-(X-\mu)^2/(2\sigma^2)}`
 
     Parameters
     ----------

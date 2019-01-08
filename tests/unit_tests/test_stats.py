@@ -177,3 +177,25 @@ def test_point():
     assert elem.tag == 'space'
     assert elem.attrib['type'] == 'point'
     assert elem.find('parameters') is not None
+
+def test_normal():
+    mean = 10.0
+    std_dev = 2.0
+    d = openmc.stats.Normal(mean,std_dev)
+    assert d.mean_value == pytest.approx(mean)
+    assert d.std_dev == pytest.approx(std_dev)
+    assert len(d) == 2
+    elem = d.to_xml_element('distribution')
+    assert elem.attrib['type'] == 'normal'
+
+def test_muir():
+    mean = 10.0
+    mass = 5.0
+    temp = 20000.
+    d = openmc.stats.Muir(mean,mass,temp)
+    assert d.e0 == pytest.approx(mean)
+    assert d.m_rat == pytest.approx(mass)
+    assert d.kt == pytest.approx(temp)
+    assert len(d) == 3
+    elem = d.to_xml_element('energy')
+    assert elem.attrib['type'] == 'muir'

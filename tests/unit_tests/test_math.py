@@ -4,6 +4,7 @@ import scipy as sp
 import openmc
 import openmc.capi
 
+import pytest
 
 def test_t_percentile():
     # Permutations include 1 DoF, 2 DoF, and > 2 DoF
@@ -203,6 +204,25 @@ def test_watt_spectrum():
     test_val = openmc.capi.math.watt_spectrum(a, b)
 
     assert ref_val == test_val
+
+
+def test_normal_dist():
+    settings = openmc.capi.settings
+    settings.seed = 1
+    a = 14.08
+    b = 0.0
+    ref_val = 14.08
+    test_val = openmc.capi.math.normal_variate(a, b)
+
+    assert ref_val == pytest.approx(test_val)
+
+    settings.seed = 1
+    a = 14.08
+    b = 1.0
+    ref_val = 16.436645416691427
+    test_val = openmc.capi.math.normal_variate(a, b)
+
+    assert ref_val == pytest.approx(test_val)
 
 
 def test_broaden_wmp_polynomials():

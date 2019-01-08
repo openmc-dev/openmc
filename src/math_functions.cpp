@@ -674,6 +674,30 @@ double maxwell_spectrum(double T) {
 }
 
 
+double normal_variate(double mean, double standard_deviation) {
+  // perhaps there should be a limit to the number of resamples
+  while ( true ) {
+    double v1 = 2 * prn() - 1.;
+    double v2 = 2 * prn() - 1.;
+    
+    double r = std::pow(v1, 2) + std::pow(v2, 2);
+    double r2 = std::pow(r, 2);
+    if (r2 < 1) {
+      double z = std::sqrt(-2.0 * std::log(r2)/r2);
+      z *= (prn() <= 0.5) ? v1 : v2;
+      return mean + standard_deviation*z;
+    }
+  }
+}
+
+double muir_spectrum(double e0, double m_rat, double kt) {
+  // note sigma here is a factor of 2 shy of equation
+  // 8 in https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
+  double sigma = std::sqrt(2.*e0*kt/m_rat);
+  return normal_variate(e0, sigma);
+}  
+
+
 double watt_spectrum(double a, double b) {
   double w = maxwell_spectrum(a);
   double E_out = w + 0.25 * a * a * b + (2. * prn() - 1.) * std::sqrt(a * a * b * w);

@@ -90,10 +90,10 @@ def predictor(operator, timesteps, power=None, power_density=None,
                 # Scale reaction rates by ratio of powers
                 power_res = operator.prev_res[-1].power
                 ratio_power = p / power_res
-                op_results[0].rates[0] *= ratio_power[0]
+                op_results[0].rates *= ratio_power[0]
 
             # Deplete for full timestep
-            x_end = deplete(chain, x[0], op_results[0], dt, print_out)
+            x_end = deplete(chain, x[0], op_results[0].rates, dt, print_out)
 
             # Advance time, update vector
             t += dt

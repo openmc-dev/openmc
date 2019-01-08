@@ -95,10 +95,10 @@ def cecm(operator, timesteps, power=None, power_density=None, print_out=True):
                 # Scale reaction rates by ratio of powers
                 power_res = operator.prev_res[-1].power
                 ratio_power = p / power_res
-                op_results[0].rates[0] *= ratio_power[0]
+                op_results[0].rates *= ratio_power[0]
 
             # Deplete for first half of timestep
-            x_middle = deplete(chain, x[0], op_results[0], dt/2, print_out)
+            x_middle = deplete(chain, x[0], op_results[0].rates, dt/2, print_out)
 
             # Get middle-of-timestep reaction rates
             x.append(x_middle)
@@ -106,7 +106,7 @@ def cecm(operator, timesteps, power=None, power_density=None, print_out=True):
 
             # Deplete for full timestep using beginning-of-step materials
             # and middle-of-timestep reaction rates
-            x_end = deplete(chain, x[0], op_results[1], dt, print_out)
+            x_end = deplete(chain, x[0], op_results[1].rates, dt, print_out)
 
             # Create results, write to disk
             Results.save(operator, x, op_results, [t, t + dt], p, i_res + i)

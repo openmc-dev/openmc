@@ -39,7 +39,8 @@ ElementMicroXS* micro_photon_xs;
 // PhotonInteraction implementation
 //==============================================================================
 
-PhotonInteraction::PhotonInteraction(hid_t group)
+PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
+  : i_element_{i_element}
 {
   // Get name of nuclide from group, removing leading '/'
   name_ = object_name(group).substr(1);
@@ -430,6 +431,66 @@ void PhotonInteraction::compton_doppler(double alpha, double mu,
   *i_shell = shell;
 }
 
+void PhotonInteraction::calculate_xs(double E) const
+{
+  // Perform binary search on the element energy grid in order to determine
+  // which points to interpolate between
+  int n_grid = energy_.size();
+  double log_E = std::log(E);
+  int i_grid;
+  if (log_E <= energy_[0]) {
+    i_grid = 0;
+  } else if (log_E > energy_(n_grid - 1)) {
+    i_grid = n_grid - 2;
+  } else {
+    // We use upper_bound_index here because sometimes photons are created with
+    // energies that exactly match a grid point
+    i_grid = upper_bound_index(energy_.cbegin(), energy_.cend(), log_E);
+  }
+
+  // check for case where two energy points are the same
+  if (energy_(i_grid) == energy_(i_grid+1)) ++i_grid;
+
+  // calculate interpolation factor
+  double f = (log_E - energy_(i_grid)) / (energy_(i_grid+1) - energy_(i_grid));
+
+  auto& xs {simulation::micro_photon_xs[i_element_]};
+  xs.index_grid = i_grid;
+  xs.interp_factor = f;
+
+  // Calculate microscopic coherent cross section
+  xs.coherent = std::exp(coherent_(i_grid) +
+    f*(coherent_(i_grid+1) - coherent_(i_grid)));
+
+  // Calculate microscopic incoherent cross section
+  xs.incoherent = std::exp(incoherent_(i_grid) +
+    f*(incoherent_(i_grid+1) - incoherent_(i_grid)));
+
+  // Calculate microscopic photoelectric cross section
+  xs.photoelectric = 0.0;
+  for (const auto& shell : shells_) {
+    // Check threshold of reaction
+    int i_start = shell.threshold;
+    if (i_grid < i_start) continue;
+
+    // Evaluation subshell photoionization cross section
+    xs.photoelectric +=
+      std::exp(shell.cross_section(i_grid-i_start) +
+      f*(shell.cross_section(i_grid+1-i_start) -
+      shell.cross_section(i_grid-i_start)));
+  }
+
+  // Calculate microscopic pair production cross section
+  xs.pair_production = std::exp(
+    pair_production_total_(i_grid) + f*(
+    pair_production_total_(i_grid+1) -
+    pair_production_total_(i_grid)));
+
+  // Calculate microscopic total cross section
+  xs.total = xs.coherent + xs.incoherent + xs.photoelectric + xs.pair_production;
+  xs.last_E = E;
+}
+
 double PhotonInteraction::rayleigh_scatter(double alpha) const
 {
   double mu;
@@ -800,7 +861,12 @@ std::pair<double, double> klein_nishina(double alpha)
 
 extern "C" void photon_from_hdf5_c(hid_t group)
 {
-  data::elements.emplace_back(group);
+  data::elements.emplace_back(group, data::elements.size());
+}
+
+extern "C" void photon_calculate_xs(int i_element, double E)
+{
+  data::elements[i_element - 1].calculate_xs(E);
 }
 
 } // namespace openmc

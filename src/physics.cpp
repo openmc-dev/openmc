@@ -297,8 +297,7 @@ void sample_photon_reaction(Particle* p)
   if (prob_after > cutoff) {
     for (const auto& shell : element.shells_) {
       // Get grid index and interpolation factor
-      // TODO: off-by-one
-      int i_grid = micro.index_grid - 1;
+      int i_grid = micro.index_grid;
       double f = micro.interp_factor;
 
       // Check threshold of reaction

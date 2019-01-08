@@ -1,166 +1,153 @@
-""" The EPC-RK4 integrator.
-
-Implements the EPC-RK4 algorithm.
-"""
+"""The EPC-RK4 integrator."""
 
 import copy
-import os
-import time
+from collections.abc import Iterable
 
-from mpi4py import MPI
+from .cram import deplete
+from ..results import Results
 
-from .cram import CRAM48
-from .save_results import save_results
 
-def epc_rk4(operator, print_out=True):
-    """ Performs integration of an operator using the EPC-RK4 algorithm.
+# Functions to form the special matrix for depletion
+def _rk4_f1(chain, rates):
+     return 1/2 * chain.form_matrix(rates)
+
+def _rk4_f4(chain, rates):
+     return 1/6 * chain.form_matrix(rates[0]) + \
+            1/3 * chain.form_matrix(rates[1]) + \
+            1/3 * chain.form_matrix(rates[2]) + \
+            1/6 * chain.form_matrix(rates[3])
+
+def epc_rk4(operator, timesteps, power=None, power_density=None, print_out=True):
+    r"""Deplete using the EPC-RK4 algorithm.
+
+    Implements an extended predictor-corrector algorithm with traditional
+    Runge-Kutta 4 method.
+    This algorithm is mathematically defined as:
+
+    .. math::
+        F_1 = h A(y_0)
+
+        y_1 &= \text{expm}(1/2 F_1) y_0
+
+        F_2 &= h A(y_1)
+
+        y_2 &= \text{expm}(1/2 F_2) y_0
+
+        F_3 &= h A(y_2)
+
+        y_3 &= \text{expm}(F_3) y_0
+
+        F_4 &= h A(y_3)
+
+        y_4 &= \text{expm}(1/6 F_1 + 1/3 F_2 + 1/3 F_3 + 1/6 F_4) y_0
 
     Parameters
     ----------
-    operator : Operator
+    operator : openmc.deplete.TransportOperator
         The operator object to simulate on.
+    timesteps : iterable of float
+        Array of timesteps in units of [s]. Note that values are not cumulative.
+    power : float or iterable of float, optional
+        Power of the reactor in [W]. A single value indicates that the power is
+        constant over all timesteps. An iterable indicates potentially different
+        power levels for each timestep. For a 2D problem, the power can be given
+        in [W/cm] as long as the "volume" assigned to a depletion material is
+        actually an area in [cm^2]. Either `power` or `power_density` must be
+        specified.
+    power_density : float or iterable of float, optional
+        Power density of the reactor in [W/gHM]. It is multiplied by initial
+        heavy metal inventory to get total power if `power` is not speficied.
     print_out : bool, optional
         Whether or not to print out time.
+
     """
+    if power is None:
+        if power_density is None:
+            raise ValueError(
+                "Neither power nor power density was specified.")
+        if not isinstance(power_density, Iterable):
+            power = power_density*operator.heavy_metal
+        else:
+            power = [i*operator.heavy_metal for i in power_density]
 
-    # Save current directory
-    dir_home = os.getcwd()
-
-    # Move to folder
-    os.makedirs(operator.settings.output_dir, exist_ok=True)
-    os.chdir(operator.settings.output_dir)
+    if not isinstance(power, Iterable):
+        power = [power]*len(timesteps)
 
     # Generate initial conditions
-    vec = operator.initial_condition()
+    with operator as vec:
+        # Initialize time and starting index
+        if operator.prev_res is None:
+            t = 0.0
+            i_res = 0
+        else:
+            t = operator.prev_res[-1].time[-1]
+            i_res = len(operator.prev_res)
 
-    n_mats = len(vec)
+        chain = operator.chain
 
-    t = 0.0
+        # Initialize starting index for saving results
+        if operator.prev_res is None:
+            i_res = 0
+        else:
+            i_res = len(operator.prev_res)
 
-    for i, dt in enumerate(operator.settings.dt_vec):
-        # Create vectors
+        for i, (dt, p) in enumerate(zip(timesteps, power)):
+            # Get beginning-of-timestep concentrations and reaction rates
+            # Avoid doing first transport run if already done in previous
+            # calculation
+            if i > 0 or operator.prev_res is None:
+                x = [copy.deepcopy(vec)]
+                op_results = [operator(x[0], p)]
+
+            else:
+                # Get initial concentration
+                x = [operator.prev_res[-1].data[0]]
+
+                # Get rates
+                op_results = [operator.prev_res[-1]]
+                op_results[0].rates = op_results[0].rates[0]
+
+                # Set first stage value of keff
+                op_results[0].k = op_results[0].k[0]
+
+                # Scale reaction rates by ratio of powers
+                power_res = operator.prev_res[-1].power
+                ratio_power = p / power_res
+                op_results[0].rates *= ratio_power[0]
+
+            # Step 1: deplete with matrix 1/2*A(y0)
+            x_new = deplete(chain, x[0], op_results[0].rates, dt, print_out,
+                            matrix_func=_rk4_f1)
+            x.append(x_new)
+            op_results.append(operator(x[1], p))
+
+            # Step 2: deplete with matrix 1/2*A(y1)
+            x_new = deplete(chain, x[0], op_results[1].rates, dt, print_out,
+                            matrix_func=_rk4_f1)
+            x.append(x_new)
+            op_results.append(operator(x[2], p))
+
+            # Step 3: deplete with matrix A(y2)
+            x_new = deplete(chain, x[0], op_results[2].rates, dt, print_out)
+            x.append(x_new)
+            op_results.append(operator(x[3], p))
+
+            # Step 4: deplete with two matrix exponentials
+            rates = list(zip(op_results[0].rates, op_results[1].rates,
+                             op_results[2].rates, op_results[3].rates))
+            x_end = deplete(chain, x[0], rates, dt, print_out,
+                            matrix_func=_rk4_f4)
+
+            # Create results, write to disk
+            Results.save(operator, x, op_results, [t, t + dt], p, i_res + i)
+
+            # Advance time, update vector
+            t += dt
+            vec = copy.deepcopy(x_end)
+
+        # Perform one last simulation
         x = [copy.deepcopy(vec)]
-        seeds = []
-        eigvls = []
-        rates_array = []
-
-        eigvl, rates, seed = operator.eval(x[0])
-
-        eigvls.append(eigvl)
-        seeds.append(seed)
-        rates_array.append(copy.deepcopy(rates))
-
-        x_result = []
-
-        t_start = time.time()
-        for mat in range(n_mats):
-            # Form matrix
-            f0 = operator.form_matrix(rates_array[0], mat)
-
-            x_new = CRAM48(1/2 * f0, x[0][mat], dt)
-
-            x_result.append(x_new)
-
-        t_end = time.time()
-        if MPI.COMM_WORLD.rank == 0:
-            if print_out:
-                print("Time to matexp: ", t_end - t_start)
-
-        x.append(x_result)
-
-        eigvl, rates, seed = operator.eval(x[1])
-
-        eigvls.append(eigvl)
-        seeds.append(seed)
-        rates_array.append(copy.deepcopy(rates))
-
-        x_result = []
-
-        t_start = time.time()
-        for mat in range(n_mats):
-            # Form matrix
-            f1 = operator.form_matrix(rates_array[1], mat)
-
-            x_new = CRAM48(1/2 * f1, x[0][mat], dt)
-
-            x_result.append(x_new)
-
-        t_end = time.time()
-        if MPI.COMM_WORLD.rank == 0:
-            if print_out:
-                print("Time to matexp: ", t_end - t_start)
-
-        x.append(x_result)
-
-        eigvl, rates, seed = operator.eval(x[2])
-
-        eigvls.append(eigvl)
-        seeds.append(seed)
-        rates_array.append(copy.deepcopy(rates))
-
-        x_result = []
-
-        t_start = time.time()
-        for mat in range(n_mats):
-            # Form matrix
-            f2 = operator.form_matrix(rates_array[2], mat)
-
-            x_new = CRAM48(f2, x[0][mat], dt)
-
-            x_result.append(x_new)
-
-        t_end = time.time()
-        if MPI.COMM_WORLD.rank == 0:
-            if print_out:
-                print("Time to matexp: ", t_end - t_start)
-
-        x.append(x_result)
-
-        eigvl, rates, seed = operator.eval(x[3])
-
-        eigvls.append(eigvl)
-        seeds.append(seed)
-        rates_array.append(copy.deepcopy(rates))
-
-        x_result = []
-
-        t_start = time.time()
-        for mat in range(n_mats):
-            # Form matrix
-            f0 = operator.form_matrix(rates_array[0], mat)
-            f1 = operator.form_matrix(rates_array[1], mat)
-            f2 = operator.form_matrix(rates_array[2], mat)
-            f3 = operator.form_matrix(rates_array[3], mat)
-
-            x_new = CRAM48(1/6*f0 + 1/3*f1 + 1/3*f2 + 1/6*f3, x[0][mat], dt)
-
-            x_result.append(x_new)
-
-        t_end = time.time()
-        if MPI.COMM_WORLD.rank == 0:
-            if print_out:
-                print("Time to matexp: ", t_end - t_start)
+        op_results = [operator(x[0], power[-1])]
 
         # Create results, write to disk
-        save_results(operator, x, rates_array, eigvls, seeds, [t, t + dt], i)
-
-        t += dt
-        vec = copy.deepcopy(x_result)
-
-    # Perform one last simulation
-    x = [copy.deepcopy(vec)]
-    seeds = []
-    eigvls = []
-    rates_array = []
-    eigvl, rates, seed = operator.eval(x[0])
-
-    eigvls.append(eigvl)
-    seeds.append(seed)
-    rates_array.append(rates)
-
-    # Create results, write to disk
-    save_results(operator, x, rates_array, eigvls, seeds, [t, t],
-                 len(operator.settings.dt_vec))
-
-    # Return to origin
-    os.chdir(dir_home)
+        Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps))

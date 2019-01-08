@@ -59,19 +59,15 @@ def cecm(operator, timesteps, power=None, power_density=None, print_out=True):
 
     # Generate initial conditions
     with operator as vec:
-        chain = operator.chain
-
-        # Initialize time
+        # Initialize time and starting index
         if operator.prev_res is None:
             t = 0.0
-        else:
-            t = operator.prev_res[-1].time[-1]
-
-        # Initialize starting index for saving results
-        if operator.prev_res is None:
             i_res = 0
         else:
+            t = operator.prev_res[-1].time[-1]
             i_res = len(operator.prev_res)
+
+        chain = operator.chain
 
         for i, (dt, p) in enumerate(zip(timesteps, power)):
             # Get beginning-of-timestep concentrations and reaction rates

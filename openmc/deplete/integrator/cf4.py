@@ -8,19 +8,20 @@ from ..results import Results
 
 
 # Functions to form the special matrix for depletion
-def mf1(chain, rates):
+def _cf4_f1(chain, rates):
      return 1/2 * chain.form_matrix(rates)
 
-def mf3(chain, rates):
-     return -1/2 * chain.form_matrix(rates[0]) + chain.form_matrix(rates[1])
+def _cf4_f2(chain, rates):
+     return -1/2 * chain.form_matrix(rates[0]) + \
+                   chain.form_matrix(rates[1])
 
-def mf4(chain, rates):
+def _cf4_f3(chain, rates):
      return  1/4  * chain.form_matrix(rates[0]) + \
              1/6  * chain.form_matrix(rates[1]) + \
              1/6  * chain.form_matrix(rates[2]) + \
             -1/12 * chain.form_matrix(rates[3])
 
-def mf5(chain, rates):
+def _cf4_f4(chain, rates):
      return -1/12 * chain.form_matrix(rates[0]) + \
              1/6  * chain.form_matrix(rates[1]) + \
              1/6  * chain.form_matrix(rates[2]) + \
@@ -29,7 +30,7 @@ def mf5(chain, rates):
 def cf4(operator, timesteps, power=None, power_density=None, print_out=True):
     r"""Deplete using the CF4 algorithm.
 
-    Implements the fourth order commutator-free Lie algorithm.
+    Implements the fourth order [commutator-free Lie algorithm]_.
     This algorithm is mathematically defined as:
 
     .. math::
@@ -69,6 +70,12 @@ def cf4(operator, timesteps, power=None, power_density=None, print_out=True):
     print_out : bool, optional
         Whether or not to print out time.
 
+    References
+    ----------
+    .. [commutator-free Lie algorithm]
+       Celledoni, E., Marthinsen, A. and Owren, B., 2003. Commutator-free Lie
+       group methods. Future Generation Computer Systems, 19(3), pp.341-352.
+
     """
     if power is None:
         if power_density is None:
@@ -84,19 +91,15 @@ def cf4(operator, timesteps, power=None, power_density=None, print_out=True):
 
     # Generate initial conditions
     with operator as vec:
-        chain = operator.chain
-
-        # Initialize time
+        # Initialize time and starting index
         if operator.prev_res is None:
             t = 0.0
-        else:
-            t = operator.prev_res[-1].time[-1]
-
-        # Initialize starting index for saving results
-        if operator.prev_res is None:
             i_res = 0
         else:
+            t = operator.prev_res[-1].time[-1]
             i_res = len(operator.prev_res)
+
+        chain = operator.chain
 
         for i, (dt, p) in enumerate(zip(timesteps, power)):
             # Get beginning-of-timestep concentrations and reaction rates
@@ -124,20 +127,20 @@ def cf4(operator, timesteps, power=None, power_density=None, print_out=True):
 
             # Step 1: deplete with matrix 1/2*A(y0)
             x_new = deplete(chain, x[0], op_results[0].rates, dt, print_out,
-                            matrix_func=mf1)
+                            matrix_func=_cf4_f1)
             x.append(x_new)
             op_results.append(operator(x[1], p))
 
             # Step 2: deplete with matrix 1/2*A(y1)
             x_new = deplete(chain, x[0], op_results[1].rates, dt, print_out,
-                            matrix_func=mf1)
+                            matrix_func=_cf4_f1)
             x.append(x_new)
             op_results.append(operator(x[2], p))
 
             # Step 3: deplete with matrix -1/2*A(y0)+A(y2)
             rates = list(zip(op_results[0].rates, op_results[2].rates))
             x_new = deplete(chain, x[1], rates, dt, print_out,
-                            matrix_func=mf3)
+                            matrix_func=_cf4_f2)
             x.append(x_new)
             op_results.append(operator(x[3], p))
 
@@ -145,9 +148,9 @@ def cf4(operator, timesteps, power=None, power_density=None, print_out=True):
             rates = list(zip(op_results[0].rates, op_results[1].rates,
                              op_results[2].rates, op_results[3].rates))
             x_end = deplete(chain, x[0], rates, dt, print_out,
-                            matrix_func=mf4)
+                            matrix_func=_cf4_f3)
             x_end = deplete(chain, x_end, rates, dt, print_out,
-                            matrix_func=mf5)
+                            matrix_func=_cf4_f4)
 
             # Create results, write to disk
             Results.save(operator, x, op_results, [t, t + dt], p, i_res + i)

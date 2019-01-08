@@ -1,199 +1,181 @@
-""" The CE/LI CFQ4 integrator.
-
-Implements the CE/LI Predictor-Corrector algorithm using commutator free
-high order integrators.
-
-This algorithm is mathematically defined as:
-
-.. math:
-    y' = A(y, t) y(t)
-    A_p = A(y_n, t_n)
-    y_p = expm(A_p h) y_n
-    A_c = A(y_p, t_n)
-    A(t) = t/dt * A_c + (dt - t)/dt * A_p
-
-Here, A(t) is integrated using the fourth order algorithm described below.
-
-From
-----
-    Thalhammer, Mechthild. "A fourth-order commutator-free exponential
-    integrator for nonautonomous differential equations." SIAM journal on
-    numerical analysis 44.2 (2006): 851-864.
-"""
+"""The SI-CE/LI CFQ4 integrator."""
 
 import copy
-import os
-import time
+from collections.abc import Iterable
 
-from mpi4py import MPI
+from .cram import deplete
+from ..results import Results
 
-from .cram import CRAM48
-from .save_results import save_results
 
-def celi_cfq4_imp(operator, print_out=True):
-    """ Performs integration of an operator using the CE/LI CFQ4 algorithm.
+# Functions to form the special matrix for depletion
+def _celi_f1(chain, rates):
+     return 1/12 * chain.form_matrix(rates[0]) + \
+            5/12 * chain.form_matrix(rates[1])
+
+def _celi_f2(chain, rates):
+     return 5/12 * chain.form_matrix(rates[0]) + \
+            1/12 * chain.form_matrix(rates[1])
+
+def si_celi(operator, timesteps, power=None, power_density=None, print_out=True):
+    r"""Deplete using the SI-CE/LI CFQ4 algorithm.
+
+    Implements the Stochastic Implicit CE/LI Predictor-Corrector algorithm using
+    the [fourth order commutator-free integrator]_.
+
+    The CE/LI algorithm is mathematically defined as:
+
+    .. math:
+        y' = A(y, t) y(t)
+        A_p = A(y_n, t_n)
+        y_p = expm(A_p h) y_n
+        A_c = A(y_p, t_n)
+        A(t) = t/dt * A_c + (dt - t)/dt * A_p
+
+    Here, A(t) is integrated using the fourth order algorithm CFQ4.
 
     Parameters
     ----------
-    operator : Operator
+    operator : openmc.deplete.TransportOperator
         The operator object to simulate on.
+    timesteps : iterable of float
+        Array of timesteps in units of [s]. Note that values are not cumulative.
+    power : float or iterable of float, optional
+        Power of the reactor in [W]. A single value indicates that the power is
+        constant over all timesteps. An iterable indicates potentially different
+        power levels for each timestep. For a 2D problem, the power can be given
+        in [W/cm] as long as the "volume" assigned to a depletion material is
+        actually an area in [cm^2]. Either `power` or `power_density` must be
+        specified.
+    power_density : float or iterable of float, optional
+        Power density of the reactor in [W/gHM]. It is multiplied by initial
+        heavy metal inventory to get total power if `power` is not speficied.
     print_out : bool, optional
         Whether or not to print out time.
+
+    References
+    ----------
+    .. [fourth order commutator-free integrator]
+       Thalhammer, Mechthild. "A fourth-order commutator-free exponential
+       integrator for nonautonomous differential equations." SIAM journal on
+       numerical analysis 44.2 (2006): 851-864.
     """
+    if power is None:
+        if power_density is None:
+            raise ValueError(
+                "Neither power nor power density was specified.")
+        if not isinstance(power_density, Iterable):
+            power = power_density*operator.heavy_metal
+        else:
+            power = [i*operator.heavy_metal for i in power_density]
 
-    m = 10
-
-    # Save current directory
-    dir_home = os.getcwd()
-
-    # Move to folder
-    os.makedirs(operator.settings.output_dir, exist_ok=True)
-    os.chdir(operator.settings.output_dir)
+    if not isinstance(power, Iterable):
+        power = [power]*len(timesteps)
 
     # Generate initial conditions
-    vec = operator.initial_condition()
+    with operator as vec:
+        # Initialize time and starting index
+        if operator.prev_res is None:
+            t = 0.0
+            i_res = 0
+        else:
+            t = operator.prev_res[-1].time[-1]
+            i_res = len(operator.prev_res)
 
-    # Compute initial rates
-    x = copy.deepcopy(vec)
+        op_results = None
+        x = [copy.deepcopy(vec)]
+        for i, (dt, p) in enumerate(zip(timesteps, power)):
+            # run the inner loop
+            x, t, op_results = si_celi_inner(operator, x, op_results, p
+                                             i, i_res, t, dt, print_out)
 
-    operator.settings.particles *= m
-    eigvl_bos, rates, seed = operator.eval(vec)
-    operator.settings.particles = int(operator.settings.particles / m)
+        # Create results for last point, write to disk
+        Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps))
 
-    rates_bos = copy.deepcopy(rates)
-
-    t = 0.0
-
-    for i, dt in enumerate(operator.settings.dt_vec):
-        vec, t, rates_eos, eigvl_bos = celi_cfq4_imp_inner(operator, vec, rates_bos, eigvl_bos, i, t, dt, print_out)
-        rates_bos = copy.deepcopy(rates_eos)
-
-    # Perform one last simulation
-    x = [copy.deepcopy(vec)]
-    seeds = [0]
-    eigvls = [eigvl_bos]
-    rates_array = [copy.deepcopy(rates_bos)]
-
-    # Create results, write to disk
-    save_results(operator, x, rates_array, eigvls, seeds, [t, t],
-                 len(operator.settings.dt_vec))
-
-    # Return to origin
-    os.chdir(dir_home)
-
-def celi_cfq4_imp_inner(operator, vec, rates_bos, eigvl_bos, i, t, dt, print_out):
-    """ The inner loop of CE/LI CFQ4.
+def si_celi_inner(operator, x, op_results, p, i, i_res, t, dt, print_out):
+    """ The inner loop of SI-CE/LI CFQ4.
 
     Parameters
     ----------
     operator : Operator
         The operator object to simulate on.
-    vec : list of numpy.array
+    x : list of nuclide vector
         Nuclide vector, beginning of time.
-    i : Int
+    op_results : list of OperatorResult
+        Operator result at BOS.
+    p : float
+        Power of the reactor in [W]
+    i : int
         Current iteration number.
-    t : Float
+    i_res : int
+        Starting index, for restart calculation.
+    t : float
         Time at start of step.
-    dt : Float
+    dt : float
         Time step.
     print_out : bool
         Whether or not to print out time.
 
     Returns
     -------
-    x_result : list of numpy.array
+    list of nuclide vector (numpy.array)
         Nuclide vector, end of time.
-    Float
+    float
         Next time
-    ReactionRates
-        Reaction rates from beginning of step.
+    list of OperatorResult
+        Operator result at end of time.
     """
 
-    m = 10
+    m = 10 # stage number
 
-    n_mats = len(vec)
+    # Get the concentrations and reaction rates for the first
+    # beginning-of-timestep (BOS)
+    # Compute with s (stage number) times as many neutrons for statistics
+    # reasons if no previous calculation results loaded
+    if i == 0:
+        if operator.prev_res is None:
+            operator.settings.particles *= m
+            op_results = [operator(x[0], p)]
+            operator.settings.particles //= m
+        else:
+            # Get initial concentration
+            x = [operator.prev_res[-1].data[0]]
 
-    # Create vectors
-    x = [copy.deepcopy(vec)]
-    seeds = []
-    eigvls = []
-    rates_array = []
+            # Get rates
+            op_results = [operator.prev_res[-1]]
+            op_results[0].rates = op_results[0].rates[0]
 
-    eigvls.append(eigvl_bos)
-    seeds.append(0)
-    rates_array.append(copy.deepcopy(rates_bos))
+            # Set first stage value of keff
+            op_results[0].k = op_results[0].k[0]
+
+            # Scale reaction rates by ratio of powers
+            power_res = operator.prev_res[-1].power
+            ratio_power = p / power_res
+            op_results[0].rates *= ratio_power[0]
+
+    chain = operator.chain
 
     # Deplete to end
-    x_result = []
-
-    t_start = time.time()
-    for mat in range(n_mats):
-        # Form matrix
-        f = operator.form_matrix(rates_array[0], mat)
-
-        x_new = CRAM48(f, x[0][mat], dt)
-
-        x_result.append(x_new)
-
-    t_end = time.time()
-    if MPI.COMM_WORLD.rank == 0:
-        if print_out:
-            print("Time to matexp: ", t_end - t_start)
-
-    x.append(copy.deepcopy(x_result))
-
-    eigvl_bar = 0.0
-    rates_bar = []
+    x_new = deplete(chain, x[0], op_results[0].rates, dt, print_out)
+    x.append(x_new)
 
     for j in range(0, m + 1):
-        eigvl, rates, seed = operator.eval(x_result)
+        op_res = operator.eval(x_new, p)
 
         if j <= 1:
-            rates_bar = copy.deepcopy(rates)
-            eigvl_bar = eigvl
+            op_res_bar = copy.deepcopy(op_res)
         else:
-            rates_bar.rates = 1/j * rates.rates + (1 - 1/j) * rates_bar.rates
-            eigvl_bar = 1/j * eigvl + (1 - 1/j) * eigvl_bar
+            op_res_bar.rates = 1/j * op_res.rates + (1 - 1/j) * op_res_bar.rates
+            op_res_bar.k = 1/j * op_res.k + (1 - 1/j) * op_res_bar.k
 
-        x_result = []
-
-        t_start = time.time()
-        for mat in range(n_mats):
-            # Form matrices
-            f1 = dt * operator.form_matrix(rates_array[0], mat)
-            f2 = dt * operator.form_matrix(rates_bar, mat)
-
-            # Perform commutator-free integral
-            x_new = copy.deepcopy(x[0][mat])
-
-            # Compute linearly interpolated f at points
-            # A{1,2} = f(1/2 -/+ sqrt(3)/6)
-            # Then
-            # a{1,2} = 1/4 +/- sqrt(3)/6
-            # m1 = a2 * A1 + a1 * A2
-            # m2 = a1 * A1 + a2 * A2
-            m1 = 1/12 * (f1 + 5 * f2)
-            m2 = 1/12 * (5 * f1 + f2)
-
-            x_new = CRAM48(m2, x_new, 1.0)
-            x_new = CRAM48(m1, x_new, 1.0)
-
-            x_result.append(x_new)
-
-        t_end = time.time()
-        if MPI.COMM_WORLD.rank == 0:
-            if print_out:
-                print("Time to matexp: ", t_end - t_start)
-
-    eigvls.append(eigvl_bar)
-    seeds.append(0)
-    rates_array.append(copy.deepcopy(rates_bar))
-
-    # print(len(eigvls))
-    # print(len(seeds))
-    # print(len(rates_array))
+        rates = list(zip(op_results[0].rates, op_res_bar.rates))
+        x_new = deplete(chain, x[0], rates, dt, print_out,
+                        matrix_func=_celi_f1)
+        x_new = deplete(chain, x_new, rates, dt, print_out,
+                        matrix_func=_celi_f2)
 
     # Create results, write to disk
-    save_results(operator, x, rates_array, eigvls, seeds, [t, t + dt], i)
+    op_results.append(op_res_bar)
+    Results.save(operator, x, op_results, [t, t + dt], p, i+i_res)
 
-    return x_result, t + dt, copy.deepcopy(rates_bar), eigvl_bar
+    # return updated time and vectors
+    return [copy.deepcopy(x_new)], t + dt, [copy.deepcopy(op_res_bar)]

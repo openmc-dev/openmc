@@ -31,15 +31,12 @@ constexpr int FIT_F {2}; // Fission
 
 class WindowedMultipole {
 public:
-  // Types, aliases
-  using cdouble = std::complex<double>;
-
   // Constructors, destructors
   WindowedMultipole(hid_t group);
 
   // Methods
 
-  //! Evaluate the windowed multipole equations for cross sections in the
+  //! \brief Evaluate the windowed multipole equations for cross sections in the
   //! resolved resonance regions
   //!
   //! \param E Incident neutron energy in [eV]
@@ -47,8 +44,9 @@ public:
   //! \return Tuple of elastic scattering, absorption, and fission cross sections in [b]
   std::tuple<double, double, double> evaluate(double E, double sqrtkT);
 
-  //! Evaluates the windowed multipole equations for the derivative of cross
-  //! sections in the resolved resonance regions with respect to temperature.
+  //! \brief Evaluates the windowed multipole equations for the derivative of
+  //! cross sections in the resolved resonance regions with respect to
+  //! temperature.
   //!
   //! \param E Incident neutron energy in [eV]
   //! \param sqrtkT Square root of temperature times Boltzmann constant
@@ -59,7 +57,7 @@ public:
   // Data members
   std::string name_; //!< Name of nuclide
   bool fissionable_; //!< Is the nuclide fissionable?
-  xt::xtensor<cdouble, 2> data_; //!< Poles and residues
+  xt::xtensor<std::complex<double>, 2> data_; //!< Poles and residues
   double sqrt_awr_; //!< Square root of atomic weight ratio
   double E_min_; //!< Minimum energy in [eV]
   double E_max_; //!< Maximum energy in [eV]

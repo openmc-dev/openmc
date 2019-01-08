@@ -144,7 +144,7 @@ WindowedMultipole::evaluate_deriv(double E, double sqrtkT)
 
   if (sqrtkT == 0.0) {
     fatal_error("Windowed multipole temperature derivatives are not implemented"
-      "for 0 Kelvin cross sections.");
+      " for 0 Kelvin cross sections.");
   }
 
   // Locate us

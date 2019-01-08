@@ -513,8 +513,6 @@ void Nuclide::calculate_xs(int i_sab, double E, int i_log_union,
     use_mp = (E >= multipole_->E_min_ && E <= multipole_->E_max_);
   }
 
-  int i_temp = -1;
-
   // Evaluate multipole or interpolate
   if (use_mp) {
     // Call multipole kernel
@@ -556,13 +554,16 @@ void Nuclide::calculate_xs(int i_sab, double E, int i_log_union,
     // Find the appropriate temperature index.
     double kT = sqrtkT*sqrtkT;
     double f;
+    int i_temp = -1;
     switch (settings::temperature_method) {
     case TEMPERATURE_NEAREST:
       {
         double max_diff = INFTY;
         for (int t = 0; t < kTs_.size(); ++t) {
-          if (std::abs(kTs_[t] - kT) < max_diff) {
+          double diff = std::abs(kTs_[t] - kT);
+          if (diff < max_diff) {
             i_temp = t;
+            max_diff = diff;
           }
         }
       }
@@ -615,29 +616,29 @@ void Nuclide::calculate_xs(int i_sab, double E, int i_log_union,
     micro_xs.interp_factor = f;
 
     // Calculate microscopic nuclide total cross section
-    micro_xs.total = (1.0 - f)*xs(i_grid,XS_TOTAL)
-          + f*xs(i_grid + 1,XS_TOTAL);
+    micro_xs.total = (1.0 - f)*xs(i_grid, XS_TOTAL)
+          + f*xs(i_grid + 1, XS_TOTAL);
 
     // Calculate microscopic nuclide absorption cross section
-    micro_xs.absorption = (1.0 - f)*xs(i_grid,XS_ABSORPTION)
-      + f*xs(i_grid + 1,XS_ABSORPTION);
+    micro_xs.absorption = (1.0 - f)*xs(i_grid, XS_ABSORPTION)
+      + f*xs(i_grid + 1, XS_ABSORPTION);
 
     if (fissionable_) {
       // Calculate microscopic nuclide total cross section
-      micro_xs.fission = (1.0 - f)*xs(i_grid,XS_FISSION)
-            + f*xs(i_grid + 1,XS_FISSION);
+      micro_xs.fission = (1.0 - f)*xs(i_grid, XS_FISSION)
+            + f*xs(i_grid + 1, XS_FISSION);
 
       // Calculate microscopic nuclide nu-fission cross section
-      micro_xs.nu_fission = (1.0 - f)*xs(i_grid,XS_NU_FISSION)
-        + f*xs(i_grid + 1,XS_NU_FISSION);
+      micro_xs.nu_fission = (1.0 - f)*xs(i_grid, XS_NU_FISSION)
+        + f*xs(i_grid + 1, XS_NU_FISSION);
     } else {
       micro_xs.fission = 0.0;
       micro_xs.nu_fission = 0.0;
     }
 
     // Calculate microscopic nuclide photon production cross section
-    micro_xs.photon_prod = (1.0 - f)*xs(i_grid,XS_PHOTON_PROD)
-      + f*xs(i_grid + 1,XS_PHOTON_PROD);
+    micro_xs.photon_prod = (1.0 - f)*xs(i_grid, XS_PHOTON_PROD)
+      + f*xs(i_grid + 1, XS_PHOTON_PROD);
 
     // Depletion-related reactions
     if (simulation::need_depletion_rx) {
@@ -680,7 +681,7 @@ void Nuclide::calculate_xs(int i_sab, double E, int i_log_union,
   }
 
   // Initialize sab treatment to false
-  micro_xs.index_sab = -1;
+  micro_xs.index_sab = C_NONE;
   micro_xs.sab_frac = 0.0;
 
   // Initialize URR probability table treatment to false
@@ -695,10 +696,10 @@ void Nuclide::calculate_xs(int i_sab, double E, int i_log_union,
   // If the particle is in the unresolved resonance range and there are
   // probability tables, we need to determine cross sections from the table
   if (settings::urr_ptables_on && urr_present_ && !use_mp) {
-    int n = urr_data_[i_temp].n_energy_;
-    if ((E > urr_data_[i_temp].energy_(0)) &&
-        (E < urr_data_[i_temp].energy_(n-1))) {
-      this->calculate_urr_xs(i_temp, E);
+    int n = urr_data_[micro_xs.index_temp].n_energy_;
+    if ((E > urr_data_[micro_xs.index_temp].energy_(0)) &&
+        (E < urr_data_[micro_xs.index_temp].energy_(n-1))) {
+      this->calculate_urr_xs(micro_xs.index_temp, E);
     }
   }
 

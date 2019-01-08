@@ -20,6 +20,8 @@ Univariate Probability Distributions
    openmc.stats.Tabular
    openmc.stats.Legendre
    openmc.stats.Mixture
+   openmc.stats.Normal
+   openmc.stats.Muir
 
 Angular Distributions
 ---------------------

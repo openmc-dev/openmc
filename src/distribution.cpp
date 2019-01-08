@@ -114,6 +114,45 @@ double Watt::sample() const
 }
 
 //==============================================================================
+// Normal implementation
+//==============================================================================
+Normal::Normal(pugi::xml_node node) 
+{
+  auto params = get_node_array<double>(node,"parameters");
+  if (params.size() != 2)
+    openmc::fatal_error("Normal energy distribution must have two "
+                        "parameters specified.");
+
+  mean_value_ = params.at(0);
+  std_dev_ = params.at(1);
+}
+
+double Normal::sample() const
+{
+  return normal_variate(mean_value_, std_dev_);
+}
+
+//==============================================================================
+// Muir implementation
+//==============================================================================
+Muir::Muir(pugi::xml_node node) 
+{
+  auto params = get_node_array<double>(node,"parameters");
+  if (params.size() != 3)
+    openmc::fatal_error("Muir energy distribution must have three "
+                        "parameters specified.");
+
+  e0_ = params.at(0);
+  m_rat_ = params.at(1);
+  kt_ = params.at(2);
+}
+
+double Muir::sample() const
+{
+  return muir_spectrum(e0_, m_rat_, kt_);
+}
+
+//==============================================================================
 // Tabular implementation
 //==============================================================================
 
@@ -256,6 +295,10 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
     dist = UPtrDist{new Maxwell(node)};
   } else if (type == "watt") {
     dist = UPtrDist{new Watt(node)};
+  } else if (type == "normal") {
+    dist = UPtrDist{new Normal(node)};
+  } else if (type == "muir") {
+    dist = UPtrDist{new Muir(node)};
   } else if (type == "discrete") {
     dist = UPtrDist{new Discrete(node)};
   } else if (type == "tabular") {

@@ -487,6 +487,14 @@ contains
     integer :: i_element     ! index into elements array
     real(8) :: atom_density  ! atom density of a nuclide
 
+    interface
+      subroutine photon_calculate_xs(i_element, E) bind(C)
+        import C_INT, C_DOUBLE
+        integer(C_INT), value :: i_element
+        real(C_DOUBLE), value :: E
+      end subroutine
+    end interface
+
     material_xs % coherent        = ZERO
     material_xs % incoherent      = ZERO
     material_xs % photoelectric   = ZERO
@@ -502,8 +510,7 @@ contains
 
       ! Calculate microscopic cross section for this nuclide
       if (p % E /= micro_photon_xs(i_element) % last_E) then
-        call elements(i_element) % calculate_xs(&
-             p % E, micro_photon_xs(i_element))
+        call photon_calculate_xs(i_element, p % E)
       end if
 
       ! ========================================================================

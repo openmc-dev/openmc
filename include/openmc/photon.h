@@ -39,9 +39,11 @@ public:
 class PhotonInteraction {
 public:
   // Constructors
-  PhotonInteraction(hid_t group);
+  PhotonInteraction(hid_t group, int i_element);
 
   // Methods
+  void calculate_xs(double E) const;
+
   void compton_scatter(double alpha, bool doppler, double* alpha_out,
     double* mu, int* i_shell) const;
 
@@ -53,8 +55,9 @@ public:
   void atomic_relaxation(const ElectronSubshell& shell, Particle& p) const;
 
   // Data members
-  std::string name_; //! Name of element, e.g. "Zr"
-  int Z_; //! Atomic number
+  std::string name_; //!< Name of element, e.g. "Zr"
+  int Z_; //!< Atomic number
+  int i_element_; //!< Index in global elements vector
 
   // Microscopic cross sections
   xt::xtensor<double, 1> energy_;
@@ -72,8 +75,8 @@ public:
   Tabulated1D coherent_anomalous_imag_;
 
   // Photoionization and atomic relaxation data
-  std::unordered_map<int, int> shell_map_; // Given a shell designator, e.g. 3, this
-                                           // dictionary gives an index in shells_
+  std::unordered_map<int, int> shell_map_; //!< Given a shell designator, e.g. 3, this
+                                           //!< dictionary gives an index in shells_
   std::vector<ElectronSubshell> shells_;
 
   // Compton profile data

@@ -14,7 +14,7 @@ import scipy.sparse.linalg as sla
 from .. import comm
 
 
-def deplete(chain, x, rates, dt, print_out):
+def deplete(chain, x, rates, dt, print_out=True, matrix_func=None):
     """Deplete materials using given reaction rates for a specified time
 
     Parameters
@@ -27,8 +27,10 @@ def deplete(chain, x, rates, dt, print_out):
         Reaction rates (from transport operator)
     dt : float
         Time in [s] to deplete for
-    print_out : bool
+    print_out : bool, optional
         Whether to show elapsed time
+    maxtrix_func : function, optional
+        Function to form the depletion matrix
 
     Returns
     -------
@@ -40,7 +42,7 @@ def deplete(chain, x, rates, dt, print_out):
 
     # Use multiprocessing pool to distribute work
     with Pool() as pool:
-        iters = zip(repeat(chain), x, rates, repeat(dt))
+        iters = zip(repeat(chain), x, rates, repeat(dt), repeat(matrix_func))
         x_result = list(pool.starmap(_cram_wrapper, iters))
 
     t_end = time.time()
@@ -51,7 +53,7 @@ def deplete(chain, x, rates, dt, print_out):
     return x_result
 
 
-def _cram_wrapper(chain, n0, rates, dt):
+def _cram_wrapper(chain, n0, rates, dt, matrix_func=None):
     """Wraps depletion matrix creation / CRAM solve for multiprocess execution
 
     Parameters
@@ -64,13 +66,19 @@ def _cram_wrapper(chain, n0, rates, dt):
         2D array indexed by nuclide then by cell.
     dt : float
         Time to integrate to.
+    maxtrix_func : function, optional
+        Function to form the depletion matrix
 
     Returns
     -------
     numpy.array
         Results of the matrix exponent.
     """
-    A = chain.form_matrix(rates)
+
+    if matrix_func is None:
+        A = chain.form_matrix(rates)
+    else:
+        A = matrix_func(chain, rates)
     return CRAM48(A, n0, dt)
 
 

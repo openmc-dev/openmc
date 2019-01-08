@@ -95,6 +95,30 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
 }
 
 void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
+		 double &c3, double &c4, double &c5, bool strict_count)
+{  
+  // Check the given number of coefficients.
+  std::string coeffs = get_node_value(surf_node, "coeffs");
+  int n_words = word_count(coeffs);
+
+  if (n_words != 5 && strict_count ) {
+    std::stringstream err_msg;
+    err_msg << "Surface " << surf_id << " expects 5 coeffs but was given "
+	    << n_words;
+    fatal_error(err_msg);
+  } else if (n_words != 5 && !strict_count ) {
+    // fall back to reading the 4 type
+    read_coeffs(surf_node, surf_id, c1, c2, c3, c4);
+  }
+
+  // Parse the coefficients.
+  int stat = sscanf(coeffs.c_str(), "%lf %lf %lf %lf %lf", &c1, &c2, &c3, &c4, &c5);
+  if (stat != 5 && strict_count ) {
+      fatal_error("Something went wrong reading surface coeffs");
+  } 
+}
+
+void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
                  double &c3, double &c4, double &c5, double &c6, double &c7,
                  double &c8, double &c9, double &c10)
 {
@@ -789,12 +813,19 @@ void SurfaceSphere::to_hdf5_inner(hid_t group_id) const
 // and offset3 should correspond with i1, i2, and i3, respectively.
 template<int i1, int i2, int i3> double
 axis_aligned_cone_evaluate(Position r, double offset1,
-                           double offset2, double offset3, double radius_sq)
+                           double offset2, double offset3, double radius_sq,
+			   int up)
 {
   const double r1 = r[i1] - offset1;
   const double r2 = r[i2] - offset2;
   const double r3 = r[i3] - offset3;
-  return r2*r2 + r3*r3 - radius_sq*r1*r1;
+  if (up == 1) {
+    return ( r1 < 0 ) ? 1. : r2*r2 + r3*r3 - radius_sq*r1*r1;
+  } else if ( up == -1 ) {
+    return ( r1 > 0 ) ? 1. : r2*r2 + r3*r3 - radius_sq*r1*r1;
+  } else {
+    return r2*r2 + r3*r3 - radius_sq*r1*r1;
+  }
 }
 
 // The first template parameter indicates which axis the cone is aligned to.
@@ -872,12 +903,12 @@ axis_aligned_cone_normal(Position r, double offset1, double offset2,
 SurfaceXCone::SurfaceXCone(pugi::xml_node surf_node)
   : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
+  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_, up_, false);
 }
 
 double SurfaceXCone::evaluate(Position r) const
 {
-  return axis_aligned_cone_evaluate<0, 1, 2>(r, x0_, y0_, z0_, radius_sq_);
+  return axis_aligned_cone_evaluate<0, 1, 2>(r, x0_, y0_, z0_, radius_sq_, up_);
 }
 
 double SurfaceXCone::distance(Position r, Direction u, bool coincident) const
@@ -894,7 +925,7 @@ Direction SurfaceXCone::normal(Position r) const
 void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-cone", false);
-  std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
+  std::array<double, 5> coeffs {{x0_, y0_, z0_, radius_sq_, up_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -905,12 +936,12 @@ void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
 SurfaceYCone::SurfaceYCone(pugi::xml_node surf_node)
   : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
+  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_, up_, false);
 }
 
 double SurfaceYCone::evaluate(Position r) const
 {
-  return axis_aligned_cone_evaluate<1, 0, 2>(r, y0_, x0_, z0_, radius_sq_);
+  return axis_aligned_cone_evaluate<1, 0, 2>(r, y0_, x0_, z0_, radius_sq_, up_);
 }
 
 double SurfaceYCone::distance(Position r, Direction u, bool coincident) const
@@ -927,7 +958,7 @@ Direction SurfaceYCone::normal(Position r) const
 void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-cone", false);
-  std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
+  std::array<double, 5> coeffs {{x0_, y0_, z0_, radius_sq_, up_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -938,12 +969,12 @@ void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
 SurfaceZCone::SurfaceZCone(pugi::xml_node surf_node)
   : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
+  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_, up_, false);
 }
 
 double SurfaceZCone::evaluate(Position r) const
 {
-  return axis_aligned_cone_evaluate<2, 0, 1>(r, z0_, x0_, y0_, radius_sq_);
+  return axis_aligned_cone_evaluate<2, 0, 1>(r, z0_, x0_, y0_, radius_sq_, up_);
 }
 
 double SurfaceZCone::distance(Position r, Direction u, bool coincident) const
@@ -960,7 +991,7 @@ Direction SurfaceZCone::normal(Position r) const
 void SurfaceZCone::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-cone", false);
-  std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
+  std::array<double, 5> coeffs {{x0_, y0_, z0_, radius_sq_, up_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 

@@ -88,6 +88,19 @@ void read_plots_xml()
   }
 }
 
+void write_ids(xt::xtensor<int,2> ids) {
+
+  // create a binary file with ID information
+  std::string fname = "plot_ids.binary";
+  std::ofstream of;
+
+  of.open(fname);
+
+  for (auto id : ids) { of << id; }
+
+  of.close();
+}
+
 //==============================================================================
 // CREATE_PPM creates an image based on user input from a plots.xml <plot>
 // specification in the portable pixmap format (PPM)
@@ -104,6 +117,8 @@ void create_ppm(Plot pl)
 
   ImageData data;
   data.resize({width, height});
+  xt::xtensor<int, 2> ids;
+  ids.resize({width, height});
 
   int in_i, out_i;
   Position r;
@@ -150,6 +165,7 @@ void create_ppm(Plot pl)
       p.r()[in_i] = r[in_i] + in_pixel * x;
       position_rgb(p, pl, rgb, id);
       data(x,y) = rgb;
+      ids(x,y) = id;
     }
   }
 }
@@ -158,6 +174,9 @@ void create_ppm(Plot pl)
 
   // write ppm data to file
   output_ppm(pl, data);
+
+  // write ids to binary file
+  write_ids(ids);
 }
 
 void

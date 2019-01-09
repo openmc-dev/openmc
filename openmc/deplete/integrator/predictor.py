@@ -61,7 +61,7 @@ def predictor(operator, timesteps, power=None, power_density=None,
             i_res = 0
         else:
             t = operator.prev_res[-1].time[-1]
-            i_res = len(operator.prev_res)
+            i_res = len(operator.prev_res) - 1
 
         chain = operator.chain
 

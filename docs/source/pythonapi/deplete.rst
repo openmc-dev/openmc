@@ -6,8 +6,8 @@
 
 .. module:: openmc.deplete
 
-Two functions are provided that implement different time-integration algorithms
-for depletion calculations.
+Several functions are provided that implement different time-integration
+algorithms for depletion calculations.
 
 .. autosummary::
    :toctree: generated
@@ -16,6 +16,10 @@ for depletion calculations.
 
    integrator.predictor
    integrator.cecm
+   integrator.cf4
+   integrator.epc_rk4
+   integrator.si_celi
+   integrator.si_leqi
 
 Each of these functions expects a "transport operator" to be passed. An operator
 specific to OpenMC is available using the following class:

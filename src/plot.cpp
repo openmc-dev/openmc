@@ -88,15 +88,23 @@ void read_plots_xml()
   }
 }
 
-void write_ids(xt::xtensor<int,2> ids) {
+void
+write_ids(const Plot& pl, xt::xtensor<int,2> ids) {
 
   // create a binary file with ID information
   std::string fname = "plot_ids.binary";
   std::ofstream of;
 
-  of.open(fname);
-
-  for (auto id : ids) { of << id; }
+  of.open(fname, std::ios::binary);
+  of.write((char*) &(pl.pixels_[0]), sizeof(int));
+  of.write((char*) &(pl.pixels_[1]), sizeof(int));
+  of.write((char*) &(pl.width_[0]), sizeof(double));
+  of.write((char*) &(pl.width_[1]), sizeof(double));
+  for (int y = 0; y < pl.pixels_[1]; y++) {
+    for (int x = 0; x < pl.pixels_[0]; x++) {
+      of.write((char*) &(ids(x,y)), sizeof(int));
+    }
+  }
 
   of.close();
 }
@@ -176,7 +184,7 @@ void create_ppm(Plot pl)
   output_ppm(pl, data);
 
   // write ids to binary file
-  write_ids(ids);
+  write_ids(pl, ids);
 }
 
 void

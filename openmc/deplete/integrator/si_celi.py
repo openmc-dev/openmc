@@ -86,14 +86,16 @@ def si_celi(operator, timesteps, power=None, power_density=None,
             i_res = len(operator.prev_res)
 
         # Get the concentrations and reaction rates for the first
-        # beginning-of-timestep (BOS)
-        # Compute with s (stage number) times as many neutrons for statistics
-        # reasons if no previous calculation results loaded
+        # beginning-of-timestep (BOS). Compute with m (stage number) times as
+        # many neutrons as later simulations for statistics reasons if no
+        # previous calculation results present
         if operator.prev_res is None:
             x = [copy.deepcopy(vec)]
-            operator.settings.particles *= m
+            if hasattr(operator, "settings"):
+                operator.settings.particles *= m
             op_results = [operator(x[0], power[0])]
-            operator.settings.particles //= m
+            if hasattr(operator, "settings"):
+                operator.settings.particles //= m
         else:
             # Get initial concentration
             x = [operator.prev_res[-1].data[0]]

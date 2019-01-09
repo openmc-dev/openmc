@@ -2,6 +2,7 @@
 #define OPENMC_THERMAL_H
 
 #include <cstddef>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -28,6 +29,16 @@ constexpr int SAB_ELASTIC_INCOHERENT {3}; // Incoherent elastic scattering
 constexpr int SAB_ELASTIC_COHERENT   {4}; // Coherent elastic scattering (Bragg edges)
 
 //==============================================================================
+// Global variables
+//==============================================================================
+
+class ThermalScattering;
+
+namespace data {
+extern std::vector<std::unique_ptr<ThermalScattering>> thermal_scatt;
+}
+
+//==============================================================================
 //! Secondary angle-energy data for thermal neutron scattering at a single
 //! temperature
 //==============================================================================
@@ -37,7 +48,7 @@ public:
   ThermalData(hid_t group, int secondary_mode);
 
   // Sample an outgoing energy and angle
-  void sample(const NuclideMicroXS* micro_xs, double E_in,
+  void sample(const NuclideMicroXS& micro_xs, double E_in,
               double* E_out, double* mu);
 private:
   //! Secondary energy/angle distributions for inelastic thermal scattering
@@ -92,8 +103,7 @@ private:
 
 class ThermalScattering {
 public:
-  ThermalScattering(hid_t group, const std::vector<double>& temperature, int method,
-                    double tolerance, const double* minmax);
+  ThermalScattering(hid_t group, const std::vector<double>& temperature);
 
   //! Determine inelastic/elastic cross section at given energy
   //!
@@ -112,7 +122,7 @@ public:
   bool has_nuclide(const char* name) const;
 
   // Sample an outgoing energy and angle
-  void sample(const NuclideMicroXS* micro_xs, double E_in,
+  void sample(const NuclideMicroXS& micro_xs, double E_in,
               double* E_out, double* mu);
 
   double threshold() const { return data_[0].threshold_inelastic_; }
@@ -125,22 +135,6 @@ public:
   //! cross sections and distributions at each temperature
   std::vector<ThermalData> data_;
 };
-
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
-extern "C" {
-  ThermalScattering* sab_from_hdf5(hid_t group, const double* temperature,
-    int n, int method, double tolerance, const double* minmax);
-  void sab_calculate_xs(ThermalScattering* data, double E, double sqrtkT,
-    int* i_temp, double* elastic, double* inelastic);
-  void sab_free(ThermalScattering* data);
-  bool sab_has_nuclide(ThermalScattering* data, const char* name);
-  void sab_sample(ThermalScattering* data, const NuclideMicroXS* micro_xs,
-    double E_in, double* E_out, double* mu);
-  double sab_threshold(ThermalScattering* data);
-}
 
 } // namespace openmc
 

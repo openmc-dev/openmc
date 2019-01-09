@@ -958,7 +958,7 @@ contains
         else
           if (i_nuclide > 0) then
             if (micro_xs(i_nuclide) % elastic == CACHE_INVALID) then
-              call nuclides(i_nuclide) % calculate_elastic_xs(micro_xs(i_nuclide))
+              call nuclides(i_nuclide) % calculate_elastic_xs()
             end if
             score = micro_xs(i_nuclide) % elastic * atom_density * flux
           else
@@ -971,7 +971,7 @@ contains
                 ! Get index in nuclides array
                 i_nuc = materials(p % material) % nuclide(l)
                 if (micro_xs(i_nuc) % elastic == CACHE_INVALID) then
-                  call nuclides(i_nuc) % calculate_elastic_xs(micro_xs(i_nuc))
+                  call nuclides(i_nuc) % calculate_elastic_xs()
                 end if
 
                 score = score + micro_xs(i_nuc) % elastic * atom_density_ * flux
@@ -992,12 +992,11 @@ contains
             ! calculate fraction of absorptions that would have resulted in
             ! fission scaled by Q-value
             associate (nuc => nuclides(p % event_nuclide))
-              if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
-                   allocated(nuc % fission_q_prompt)) then
+              if (micro_xs(p % event_nuclide) % absorption > ZERO) then
                 if (score_bin == SCORE_FISS_Q_PROMPT) then
-                  xs = nuc % fission_q_prompt % evaluate(p % last_E)
+                  xs = nuclide_fission_q_prompt(nuc % ptr, p % last_E)
                 else if (score_bin == SCORE_FISS_Q_RECOV) then
-                  xs = nuc % fission_q_recov % evaluate(p % last_E)
+                  xs = nuclide_fission_q_recov(nuc % ptr, p % last_E)
                 end if
 
                 score = p % absorb_wgt * xs * flux &
@@ -1012,13 +1011,11 @@ contains
             ! particle's weight entering the collision as the estimate for
             ! the fission energy production rate
             associate (nuc => nuclides(p % event_nuclide))
-              if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
-                   allocated(nuc % fission_q_prompt)) then
-
+              if (micro_xs(p % event_nuclide) % absorption > ZERO) then
                 if (score_bin == SCORE_FISS_Q_PROMPT) then
-                  xs = nuc % fission_q_prompt % evaluate(p % last_E)
+                  xs = nuclide_fission_q_prompt(nuc % ptr, p % last_E)
                 else if (score_bin == SCORE_FISS_Q_RECOV) then
-                  xs = nuc % fission_q_recov % evaluate(p % last_E)
+                  xs = nuclide_fission_q_recov(nuc % ptr, p % last_E)
                 end if
 
                 score = p % last_wgt * xs * flux &
@@ -1031,16 +1028,13 @@ contains
         else
           if (i_nuclide > 0) then
             associate (nuc => nuclides(i_nuclide))
-              if (allocated(nuc % fission_q_prompt)) then
-
-                if (score_bin == SCORE_FISS_Q_PROMPT) then
-                  xs = nuc % fission_q_prompt % evaluate(E)
-                else if (score_bin == SCORE_FISS_Q_RECOV) then
-                  xs = nuc % fission_q_recov % evaluate(E)
-                end if
-
-                score = micro_xs(i_nuclide) % fission * atom_density * flux * xs
+              if (score_bin == SCORE_FISS_Q_PROMPT) then
+                xs = nuclide_fission_q_prompt(nuc % ptr, E)
+              else if (score_bin == SCORE_FISS_Q_RECOV) then
+                xs = nuclide_fission_q_recov(nuc % ptr, E)
               end if
+
+              score = micro_xs(i_nuclide) % fission * atom_density * flux * xs
             end associate
           else
             if (p % material /= MATERIAL_VOID) then
@@ -1049,17 +1043,14 @@ contains
                 i_nuc = materials(p % material) % nuclide(l)
 
                 associate (nuc => nuclides(i_nuc))
-                  if (allocated(nuc % fission_q_prompt)) then
-
-                    if (score_bin == SCORE_FISS_Q_PROMPT) then
-                      xs = nuc % fission_q_prompt % evaluate(E)
-                    else if (score_bin == SCORE_FISS_Q_RECOV) then
-                      xs = nuc % fission_q_recov % evaluate(E)
-                    end if
-
-                    score = score + micro_xs(i_nuc) % fission * atom_density_ &
-                         * flux * xs
+                  if (score_bin == SCORE_FISS_Q_PROMPT) then
+                    xs = nuclide_fission_q_prompt(nuc % ptr, E)
+                  else if (score_bin == SCORE_FISS_Q_RECOV) then
+                    xs = nuclide_fission_q_recov(nuc % ptr, E)
                   end if
+
+                  score = score + micro_xs(i_nuc) % fission * atom_density_ &
+                        * flux * xs
                 end associate
               end do
             end if
@@ -1126,7 +1117,7 @@ contains
               if (m /= 0) then
                 ! Retrieve temperature and energy grid index and interpolation
                 ! factor
-                i_temp = micro_xs(i_nuclide) % index_temp
+                i_temp = micro_xs(i_nuclide) % index_temp + 1
                 if (i_temp > 0) then
                   i_energy = micro_xs(i_nuclide) % index_grid
                   f = micro_xs(i_nuclide) % interp_factor
@@ -1159,7 +1150,7 @@ contains
                   if (m /= 0) then
                     ! Retrieve temperature and energy grid index and
                     ! interpolation factor
-                    i_temp = micro_xs(i_nuc) % index_temp
+                    i_temp = micro_xs(i_nuc) % index_temp + 1
                     if (i_temp > 0) then
                       i_energy = micro_xs(i_nuc) % index_grid
                       f = micro_xs(i_nuc) % interp_factor
@@ -3248,10 +3239,8 @@ contains
                 dsig_s = ZERO
                 dsig_a = ZERO
                 associate (nuc => nuclides(p % event_nuclide))
-                  if (nuc % mp_present .and. &
-                       p % last_E >= nuc % multipole % E_min .and. &
-                       p % last_E <= nuc % multipole % E_max) then
-                    call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                  if (multipole_in_range(nuc % ptr, p % last_E)) then
+                    call multipole_deriv_eval(nuc % ptr, p % last_E, &
                          p % sqrtkT, dsig_s, dsig_a, dsig_f)
                   end if
                 end associate
@@ -3275,10 +3264,8 @@ contains
 
                 dsig_s = ZERO
                 associate (nuc => nuclides(p % event_nuclide))
-                  if (nuc % mp_present .and. &
-                       p % last_E >= nuc % multipole % E_min .and. &
-                       p % last_E <= nuc % multipole % E_max) then
-                    call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                  if (multipole_in_range(nuc % ptr, p % last_E)) then
+                    call multipole_deriv_eval(nuc % ptr, p % last_E, &
                          p % sqrtkT, dsig_s, dsig_a, dsig_f)
                   end if
                 end associate
@@ -3300,10 +3287,8 @@ contains
 
                 dsig_a = ZERO
                 associate (nuc => nuclides(p % event_nuclide))
-                  if (nuc % mp_present .and. &
-                       p % last_E >= nuc % multipole % E_min .and. &
-                       p % last_E <= nuc % multipole % E_max) then
-                    call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                  if (multipole_in_range(nuc % ptr, p % last_E)) then
+                    call multipole_deriv_eval(nuc % ptr, p % last_E, &
                          p % sqrtkT, dsig_s, dsig_a, dsig_f)
                   end if
                 end associate
@@ -3325,10 +3310,8 @@ contains
 
                 dsig_f = ZERO
                 associate (nuc => nuclides(p % event_nuclide))
-                  if (nuc % mp_present .and. &
-                       p % last_E >= nuc % multipole % E_min .and. &
-                       p % last_E <= nuc % multipole % E_max) then
-                    call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                  if (multipole_in_range(nuc % ptr, p % last_E)) then
+                    call multipole_deriv_eval(nuc % ptr, p % last_E, &
                          p % sqrtkT, dsig_s, dsig_a, dsig_f)
                   end if
                 end associate
@@ -3350,10 +3333,8 @@ contains
 
                 dsig_f = ZERO
                 associate (nuc => nuclides(p % event_nuclide))
-                  if (nuc % mp_present .and. &
-                       p % last_E >= nuc % multipole % E_min .and. &
-                       p % last_E <= nuc % multipole % E_max) then
-                    call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                  if (multipole_in_range(nuc % ptr, p % last_E)) then
+                    call multipole_deriv_eval(nuc % ptr, p % last_E, &
                          p % sqrtkT, dsig_s, dsig_a, dsig_f)
                   end if
                 end associate
@@ -3386,11 +3367,9 @@ contains
               associate(mat => materials(p % material))
                 do l = 1, mat % n_nuclides
                   associate (nuc => nuclides(mat % nuclide(l)))
-                    if (nuc % mp_present .and. &
-                         p % last_E >= nuc % multipole % E_min .and. &
-                         p % last_E <= nuc % multipole % E_max .and. &
+                    if (multipole_in_range(nuc % ptr, p % last_E) .and. &
                          micro_xs(mat % nuclide(l)) % total > ZERO) then
-                      call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                      call multipole_deriv_eval(nuc % ptr, p % last_E, &
                            p % sqrtkT, dsig_s, dsig_a, dsig_f)
                       cum_dsig = cum_dsig + (dsig_s + dsig_a) &
                            * mat % atom_density(l)
@@ -3405,10 +3384,8 @@ contains
               dsig_s = ZERO
               dsig_a = ZERO
               associate (nuc => nuclides(i_nuclide))
-                if (nuc % mp_present .and. &
-                     p % last_E >= nuc % multipole % E_min .and. &
-                     p % last_E <= nuc % multipole % E_max) then
-                  call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                if (multipole_in_range(nuc % ptr, p % last_E)) then
+                  call multipole_deriv_eval(nuc % ptr, p % last_E, &
                        p % sqrtkT, dsig_s, dsig_a, dsig_f)
                 end if
               end associate
@@ -3426,12 +3403,10 @@ contains
               associate(mat => materials(p % material))
                 do l = 1, mat % n_nuclides
                   associate (nuc => nuclides(mat % nuclide(l)))
-                    if (nuc % mp_present .and. &
-                         p % last_E >= nuc % multipole % E_min .and. &
-                         p % last_E <= nuc % multipole % E_max .and. &
+                    if (multipole_in_range(nuc % ptr, p % last_E) .and. &
                          (micro_xs(mat % nuclide(l)) % total &
                          - micro_xs(mat % nuclide(l)) % absorption) > ZERO) then
-                      call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                      call multipole_deriv_eval(nuc % ptr, p % last_E, &
                            p % sqrtkT, dsig_s, dsig_a, dsig_f)
                       cum_dsig = cum_dsig + dsig_s * mat % atom_density(l)
                     end if
@@ -3445,10 +3420,8 @@ contains
                  then
               dsig_s = ZERO
               associate (nuc => nuclides(i_nuclide))
-                if (nuc % mp_present .and. &
-                     p % last_E >= nuc % multipole % E_min .and. &
-                     p % last_E <= nuc % multipole % E_max) then
-                  call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                if (multipole_in_range(nuc % ptr, p % last_E)) then
+                  call multipole_deriv_eval(nuc % ptr, p % last_E, &
                        p % sqrtkT, dsig_s, dsig_a, dsig_f)
                 end if
               end associate
@@ -3467,11 +3440,9 @@ contains
               associate(mat => materials(p % material))
                 do l = 1, mat % n_nuclides
                   associate (nuc => nuclides(mat % nuclide(l)))
-                    if (nuc % mp_present .and. &
-                         p % last_E >= nuc % multipole % E_min .and. &
-                         p % last_E <= nuc % multipole % E_max .and. &
+                    if (multipole_in_range(nuc % ptr, p % last_E) .and. &
                          micro_xs(mat % nuclide(l)) % absorption > ZERO) then
-                      call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                      call multipole_deriv_eval(nuc % ptr, p % last_E, &
                            p % sqrtkT, dsig_s, dsig_a, dsig_f)
                       cum_dsig = cum_dsig + dsig_a * mat % atom_density(l)
                     end if
@@ -3484,10 +3455,8 @@ contains
                  .and. material_xs % absorption > ZERO) then
               dsig_a = ZERO
               associate (nuc => nuclides(i_nuclide))
-                if (nuc % mp_present .and. &
-                     p % last_E >= nuc % multipole % E_min .and. &
-                     p % last_E <= nuc % multipole % E_max) then
-                  call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                if (multipole_in_range(nuc % ptr, p % last_E)) then
+                  call multipole_deriv_eval(nuc % ptr, p % last_E, &
                        p % sqrtkT, dsig_s, dsig_a, dsig_f)
                 end if
               end associate
@@ -3505,11 +3474,9 @@ contains
               associate(mat => materials(p % material))
                 do l = 1, mat % n_nuclides
                   associate (nuc => nuclides(mat % nuclide(l)))
-                    if (nuc % mp_present .and. &
-                         p % last_E >= nuc % multipole % E_min .and. &
-                         p % last_E <= nuc % multipole % E_max .and. &
+                    if (multipole_in_range(nuc % ptr, p % last_E) .and. &
                          micro_xs(mat % nuclide(l)) % fission > ZERO) then
-                      call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                      call multipole_deriv_eval(nuc % ptr, p % last_E, &
                            p % sqrtkT, dsig_s, dsig_a, dsig_f)
                       cum_dsig = cum_dsig + dsig_f * mat % atom_density(l)
                     end if
@@ -3522,10 +3489,8 @@ contains
                  .and. material_xs % fission > ZERO) then
               dsig_f = ZERO
               associate (nuc => nuclides(i_nuclide))
-                if (nuc % mp_present .and. &
-                     p % last_E >= nuc % multipole % E_min .and. &
-                     p % last_E <= nuc % multipole % E_max) then
-                  call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                if (multipole_in_range(nuc % ptr, p % last_E)) then
+                  call multipole_deriv_eval(nuc % ptr, p % last_E, &
                        p % sqrtkT, dsig_s, dsig_a, dsig_f)
                 end if
               end associate
@@ -3543,11 +3508,9 @@ contains
               associate(mat => materials(p % material))
                 do l = 1, mat % n_nuclides
                   associate (nuc => nuclides(mat % nuclide(l)))
-                    if (nuc % mp_present .and. &
-                         p % last_E >= nuc % multipole % E_min .and. &
-                         p % last_E <= nuc % multipole % E_max .and. &
+                    if (multipole_in_range(nuc % ptr, p % last_E) .and. &
                          micro_xs(mat % nuclide(l)) % nu_fission > ZERO) then
-                      call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                      call multipole_deriv_eval(nuc % ptr, p % last_E, &
                            p % sqrtkT, dsig_s, dsig_a, dsig_f)
                       cum_dsig = cum_dsig + dsig_f * mat % atom_density(l) &
                            * micro_xs(mat % nuclide(l)) % nu_fission &
@@ -3562,10 +3525,8 @@ contains
                  .and. material_xs % nu_fission > ZERO) then
               dsig_f = ZERO
               associate (nuc => nuclides(i_nuclide))
-                if (nuc % mp_present .and. &
-                     p % last_E >= nuc % multipole % E_min .and. &
-                     p % last_E <= nuc % multipole % E_max) then
-                  call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                if (multipole_in_range(nuc % ptr, p % last_E)) then
+                  call multipole_deriv_eval(nuc % ptr, p % last_E, &
                        p % sqrtkT, dsig_s, dsig_a, dsig_f)
                 end if
               end associate
@@ -3634,13 +3595,11 @@ contains
             if (mat % id() == deriv % diff_material) then
               do l=1, mat % n_nuclides
                 associate (nuc => nuclides(mat % nuclide(l)))
-                  if (nuc % mp_present .and. &
-                       p % E >= nuc % multipole % E_min .and. &
-                       p % E <= nuc % multipole % E_max) then
+                  if (multipole_in_range(nuc % ptr, p % E)) then
                     ! phi is proportional to e^(-Sigma_tot * dist)
                     ! (1 / phi) * (d_phi / d_T) = - (d_Sigma_tot / d_T) * dist
                     ! (1 / phi) * (d_phi / d_T) = - N (d_sigma_tot / d_T) * dist
-                    call multipole_deriv_eval(nuc % multipole, p % E, &
+                    call multipole_deriv_eval(nuc % ptr, p % E, &
                          p % sqrtkT, dsig_s, dsig_a, dsig_f)
                     deriv % flux_deriv = deriv % flux_deriv &
                          - distance * (dsig_s + dsig_a) * mat % atom_density(l)
@@ -3721,13 +3680,11 @@ contains
               do l=1, mat % n_nuclides
                 associate (nuc => nuclides(mat % nuclide(l)))
                   if (mat % nuclide(l) == p % event_nuclide .and. &
-                       nuc % mp_present .and. &
-                       p % last_E >= nuc % multipole % E_min .and. &
-                       p % last_E <= nuc % multipole % E_max) then
+                       multipole_in_range(nuc % ptr, p % last_E)) then
                     ! phi is proportional to Sigma_s
                     ! (1 / phi) * (d_phi / d_T) = (d_Sigma_s / d_T) / Sigma_s
                     ! (1 / phi) * (d_phi / d_T) = (d_sigma_s / d_T) / sigma_s
-                    call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                    call multipole_deriv_eval(nuc % ptr, p % last_E, &
                          p % sqrtkT, dsig_s, dsig_a, dsig_f)
                     deriv % flux_deriv = deriv % flux_deriv + dsig_s&
                          / (micro_xs(mat % nuclide(l)) % total &

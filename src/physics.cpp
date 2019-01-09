@@ -511,14 +511,14 @@ Reaction* sample_fission(int i_nuclide, double E)
 
   // Check to see if we are in a windowed multipole range.  WMP only supports
   // the first fission reaction.
-  if (nuclide_wmp_present(i_nuclide)) {
-    if (E >= nuclide_wmp_emin(i_nuclide) && E <= nuclide_wmp_emax(i_nuclide)) {
+  if (nuc->multipole_) {
+    if (E >= nuc->multipole_->E_min_ && E <= nuc->multipole_->E_max_) {
       return nuc->fission_rx_[0];
     }
   }
 
   // Get grid index and interpolatoin factor and sample fission cdf
-  int i_temp = simulation::micro_xs[i_nuclide].index_temp - 1;
+  int i_temp = simulation::micro_xs[i_nuclide].index_temp;
   int i_grid = simulation::micro_xs[i_nuclide].index_grid;
   double f = simulation::micro_xs[i_nuclide].interp_factor;
   double cutoff = prn() * simulation::micro_xs[i_nuclide].fission;
@@ -542,8 +542,7 @@ Reaction* sample_fission(int i_nuclide, double E)
 void sample_photon_product(int i_nuclide, double E, int* i_rx, int* i_product)
 {
   // Get grid index and interpolation factor and sample photon production cdf
-  // TODO: off-by-one
-  int i_temp = simulation::micro_xs[i_nuclide].index_temp - 1;
+  int i_temp = simulation::micro_xs[i_nuclide].index_temp;
   int i_grid = simulation::micro_xs[i_nuclide].index_grid;
   double f = simulation::micro_xs[i_nuclide].interp_factor;
   double cutoff = prn() * simulation::micro_xs[i_nuclide].photon_prod;
@@ -616,7 +615,7 @@ void scatter(Particle* p, int i_nuclide, int i_nuc_mat)
   // Get pointer to nuclide and grid index/interpolation factor
   const auto& nuc {data::nuclides[i_nuclide]};
   const auto& micro {simulation::micro_xs[i_nuclide]};
-  int i_temp =  micro.index_temp - 1;
+  int i_temp =  micro.index_temp;
   int i_grid =  micro.index_grid - 1;
   double f = micro.interp_factor;
 
@@ -636,8 +635,7 @@ void scatter(Particle* p, int i_nuclide, int i_nuc_mat)
     // NON-S(A,B) ELASTIC SCATTERING
 
     // Determine temperature
-    double kT = nuclide_wmp_present(i_nuclide) ?
-      p->sqrtkT*p->sqrtkT : nuc->kTs_[i_temp];
+    double kT = nuc->multipole_ ? p->sqrtkT*p->sqrtkT : nuc->kTs_[i_temp];
 
     // Perform collision physics for elastic scattering
     elastic_scatter(i_nuclide, nuc->reactions_[0].get(), kT,
@@ -782,16 +780,20 @@ void elastic_scatter(int i_nuclide, const Reaction* rx, double kT, double* E,
   if (std::abs(*mu_lab) > 1.0) *mu_lab = std::copysign(1.0, *mu_lab);
 }
 
-// void sab_scatter(int i_nuclide, int i_sab, double* E, Direction* u, double* mu)
-// {
-//   // Sample from C++ side
-//   ptr = C_LOC(micro_xs(i_nuclide))
-//   sab_tables(i_sab) % sample(ptr, E, E_out, mu)
+void sab_scatter(int i_nuclide, int i_sab, double* E, double* uvw, double* mu)
+{
+  // Determine temperature index
+  const auto& micro {simulation::micro_xs[i_nuclide]};
+  int i_temp = micro.index_temp_sab;
 
-//   // Set energy to outgoing, change direction of particle
-//   E = E_out
-//   uvw = rotate_angle(uvw, mu)
-// }
+  // Sample energy and angle
+  double E_out;
+  data::thermal_scatt[i_sab]->data_[i_temp].sample(micro, *E, &E_out, mu);
+
+  // Set energy to outgoing, change direction of particle
+  *E = E_out;
+  rotate_angle_c(uvw, *mu, nullptr);
+}
 
 Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
   Direction v_neut, double xs_eff, double kT, double* wgt)

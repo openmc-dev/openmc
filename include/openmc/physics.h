@@ -58,7 +58,7 @@ void scatter(Particle*, int i_nuclide, int i_nuc_mat);
 void elastic_scatter(int i_nuclide, const Reaction* rx, double kT, double* E,
   double* uvw, double* mu_lab, double* wgt);
 
-extern "C" void sab_scatter(int i_nuclide, int i_sab, double* E,
+void sab_scatter(int i_nuclide, int i_sab, double* E,
   double* uvw, double* mu);
 
 //! samples the target velocity. The constant cross section free gas model is

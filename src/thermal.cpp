@@ -21,11 +21,18 @@
 namespace openmc {
 
 //==============================================================================
+// Global variables
+//==============================================================================
+
+namespace data {
+std::vector<std::unique_ptr<ThermalScattering>> thermal_scatt;
+}
+
+//==============================================================================
 // ThermalScattering implementation
 //==============================================================================
 
-ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& temperature,
-                                     int method, double tolerance, const double* minmax)
+ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& temperature)
 {
   // Get name of table from group
   name_ = object_name(group);
@@ -65,22 +72,23 @@ ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& tem
   // temperature range was given, in which case all temperatures in the range
   // are loaded irrespective of what temperatures actually appear in the model
   std::vector<int> temps_to_read;
-  if (minmax[1] > 0.0) {
+  if (settings::temperature_range[1] > 0.0) {
     for (const auto& T : temps_available) {
-      if (minmax[0] <= T && T <= minmax[1]) {
+      if (settings::temperature_range[0] <= T &&
+          T <= settings::temperature_range[1]) {
         temps_to_read.push_back(std::round(T));
       }
     }
   }
 
-  switch (method) {
+  switch (settings::temperature_method) {
   case TEMPERATURE_NEAREST:
     // Determine actual temperatures to read
     for (const auto& T : temperature) {
 
       auto i_closest = xt::argmin(xt::abs(temps_available - T))[0];
       auto temp_actual = temps_available[i_closest];
-      if (std::abs(temp_actual - T) < tolerance) {
+      if (std::abs(temp_actual - T) < settings::temperature_tolerance) {
         if (std::find(temps_to_read.begin(), temps_to_read.end(), std::round(temp_actual))
             == temps_to_read.end()) {
           temps_to_read.push_back(std::round(temp_actual));
@@ -359,11 +367,11 @@ ThermalData::ThermalData(hid_t group, int secondary_mode)
 }
 
 void
-ThermalData::sample(const NuclideMicroXS* micro_xs, double E,
+ThermalData::sample(const NuclideMicroXS& micro_xs, double E,
                     double* E_out, double* mu)
 {
   // Determine whether inelastic or elastic scattering will occur
-  if (prn() < micro_xs->thermal_elastic / micro_xs->thermal) {
+  if (prn() < micro_xs.thermal_elastic / micro_xs.thermal) {
     // elastic scattering
 
     // Get index and interpolation factor for elastic grid
@@ -582,42 +590,28 @@ ThermalData::sample(const NuclideMicroXS* micro_xs, double E,
 // Fortran compatibility functions
 //==============================================================================
 
-ThermalScattering*
-sab_from_hdf5(hid_t group, const double* temperature, int n,
-    int method, double tolerance, const double* minmax)
+extern "C" ThermalScattering*
+sab_from_hdf5(hid_t group, const double* temperature, int n)
 {
   // Convert temperatures to a vector
   std::vector<double> T {temperature, temperature + n};
 
   // Create new object and return it
-  return new ThermalScattering{group, T, method, tolerance, minmax};
+  data::thermal_scatt.push_back(std::make_unique<ThermalScattering>(group, T));
+
+  return data::thermal_scatt.back().get();
 }
 
-void sab_calculate_xs(ThermalScattering* data, double E, double sqrtkT,
-  int* i_temp, double* elastic, double* inelastic)
+extern "C" void sab_clear() { data::thermal_scatt.clear(); }
+
+extern "C" bool sab_has_nuclide(int i_sab, const char* name)
 {
-  // Calculate cross section
-  int t;
-  data->calculate_xs(E, sqrtkT, &t, elastic, inelastic);
-
-  // Fortran needs index plus one
-  *i_temp = t + 1;
+  return data::thermal_scatt[i_sab - 1]->has_nuclide(name);
 }
 
-void sab_free(ThermalScattering* data) { delete data; }
-
-bool sab_has_nuclide(ThermalScattering* data, const char* name)
+extern "C" double sab_threshold(int i_sab)
 {
-  return data->has_nuclide(name);
+  return data::thermal_scatt[i_sab - 1]->threshold();
 }
-
-void sab_sample(ThermalScattering* data, const NuclideMicroXS* micro_xs,
-  double E_in, double* E_out, double* mu)
-{
-  int i_temp = micro_xs->index_temp_sab;
-  data->data_[i_temp - 1].sample(micro_xs, E_in, E_out, mu);
-}
-
-double sab_threshold(ThermalScattering* data) { return data->threshold(); }
 
 } // namespace openmc

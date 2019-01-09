@@ -8,9 +8,6 @@ from ..results import Results
 from ..abc import OperatorResult
 
 
-# Stage number for CE/LI
-_CELI_STAGE_M = 10
-
 # Functions to form the special matrix for depletion
 def _celi_f1(chain, rates):
      return 5/12 * chain.form_matrix(rates[0]) + \
@@ -20,7 +17,8 @@ def _celi_f2(chain, rates):
      return 1/12 * chain.form_matrix(rates[0]) + \
             5/12 * chain.form_matrix(rates[1])
 
-def si_celi(operator, timesteps, power=None, power_density=None, print_out=True):
+def si_celi(operator, timesteps, power=None, power_density=None,
+            print_out=True, m=10):
     r"""Deplete using the SI-CE/LI CFQ4 algorithm.
 
     Implements the Stochastic Implicit CE/LI Predictor-Corrector algorithm using
@@ -55,6 +53,8 @@ def si_celi(operator, timesteps, power=None, power_density=None, print_out=True)
         heavy metal inventory to get total power if `power` is not speficied.
     print_out : bool, optional
         Whether or not to print out time.
+    m : int, optional
+        Number of stages.
 
     References
     ----------
@@ -91,9 +91,9 @@ def si_celi(operator, timesteps, power=None, power_density=None, print_out=True)
         # reasons if no previous calculation results loaded
         if operator.prev_res is None:
             x = [copy.deepcopy(vec)]
-            operator.settings.particles *= _CELI_STAGE_M
+            operator.settings.particles *= m
             op_results = [operator(x[0], power[0])]
-            operator.settings.particles //= _CELI_STAGE_M
+            operator.settings.particles //= m
         else:
             # Get initial concentration
             x = [operator.prev_res[-1].data[0]]
@@ -107,17 +107,17 @@ def si_celi(operator, timesteps, power=None, power_density=None, print_out=True)
 
             # Scale reaction rates by ratio of powers
             power_res = operator.prev_res[-1].power
-            ratio_power = p / power_res
+            ratio_power = power[0] / power_res
             op_results[0].rates *= ratio_power[0]
 
         for i, (dt, p) in enumerate(zip(timesteps, power)):
             x, t, op_results = si_celi_inner(operator, x, op_results, p,
-                                             i, i_res, t, dt, print_out)
+                                             i, i_res, t, dt, print_out, m)
 
         # Create results for last point, write to disk
         Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps))
 
-def si_celi_inner(operator, x, op_results, p, i, i_res, t, dt, print_out):
+def si_celi_inner(operator, x, op_results, p, i, i_res, t, dt, print_out, m=10):
     """ The inner loop of SI-CE/LI CFQ4.
 
     Parameters
@@ -140,6 +140,8 @@ def si_celi_inner(operator, x, op_results, p, i, i_res, t, dt, print_out):
         Time step.
     print_out : bool
         Whether or not to print out time.
+    m : int, optional
+        Number of stages.
 
     Returns
     -------
@@ -157,7 +159,7 @@ def si_celi_inner(operator, x, op_results, p, i, i_res, t, dt, print_out):
     x_new = deplete(chain, x[0], op_results[0].rates, dt, print_out)
     x.append(x_new)
 
-    for j in range(_CELI_STAGE_M + 1):
+    for j in range(m + 1):
         op_res = operator(x_new, p)
 
         if j <= 1:

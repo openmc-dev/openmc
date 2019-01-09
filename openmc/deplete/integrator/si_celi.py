@@ -5,16 +5,20 @@ from collections.abc import Iterable
 
 from .cram import deplete
 from ..results import Results
+from ..abc import OperatorResult
 
+
+# Stage number for CE/LI
+_CELI_STAGE_M = 10
 
 # Functions to form the special matrix for depletion
 def _celi_f1(chain, rates):
-     return 1/12 * chain.form_matrix(rates[0]) + \
-            5/12 * chain.form_matrix(rates[1])
-
-def _celi_f2(chain, rates):
      return 5/12 * chain.form_matrix(rates[0]) + \
             1/12 * chain.form_matrix(rates[1])
+
+def _celi_f2(chain, rates):
+     return 1/12 * chain.form_matrix(rates[0]) + \
+            5/12 * chain.form_matrix(rates[1])
 
 def si_celi(operator, timesteps, power=None, power_density=None, print_out=True):
     r"""Deplete using the SI-CE/LI CFQ4 algorithm.
@@ -81,11 +85,33 @@ def si_celi(operator, timesteps, power=None, power_density=None, print_out=True)
             t = operator.prev_res[-1].time[-1]
             i_res = len(operator.prev_res)
 
-        op_results = None
-        x = [copy.deepcopy(vec)]
+        # Get the concentrations and reaction rates for the first
+        # beginning-of-timestep (BOS)
+        # Compute with s (stage number) times as many neutrons for statistics
+        # reasons if no previous calculation results loaded
+        if operator.prev_res is None:
+            x = [copy.deepcopy(vec)]
+            operator.settings.particles *= _CELI_STAGE_M
+            op_results = [operator(x[0], power[0])]
+            operator.settings.particles //= _CELI_STAGE_M
+        else:
+            # Get initial concentration
+            x = [operator.prev_res[-1].data[0]]
+
+            # Get rates
+            op_results = [operator.prev_res[-1]]
+            op_results[0].rates = op_results[0].rates[0]
+
+            # Set first stage value of keff
+            op_results[0].k = op_results[0].k[0]
+
+            # Scale reaction rates by ratio of powers
+            power_res = operator.prev_res[-1].power
+            ratio_power = p / power_res
+            op_results[0].rates *= ratio_power[0]
+
         for i, (dt, p) in enumerate(zip(timesteps, power)):
-            # run the inner loop
-            x, t, op_results = si_celi_inner(operator, x, op_results, p
+            x, t, op_results = si_celi_inner(operator, x, op_results, p,
                                              i, i_res, t, dt, print_out)
 
         # Create results for last point, write to disk
@@ -125,47 +151,21 @@ def si_celi_inner(operator, x, op_results, p, i, i_res, t, dt, print_out):
         Operator result at end of time.
     """
 
-    m = 10 # stage number
-
-    # Get the concentrations and reaction rates for the first
-    # beginning-of-timestep (BOS)
-    # Compute with s (stage number) times as many neutrons for statistics
-    # reasons if no previous calculation results loaded
-    if i == 0:
-        if operator.prev_res is None:
-            operator.settings.particles *= m
-            op_results = [operator(x[0], p)]
-            operator.settings.particles //= m
-        else:
-            # Get initial concentration
-            x = [operator.prev_res[-1].data[0]]
-
-            # Get rates
-            op_results = [operator.prev_res[-1]]
-            op_results[0].rates = op_results[0].rates[0]
-
-            # Set first stage value of keff
-            op_results[0].k = op_results[0].k[0]
-
-            # Scale reaction rates by ratio of powers
-            power_res = operator.prev_res[-1].power
-            ratio_power = p / power_res
-            op_results[0].rates *= ratio_power[0]
-
     chain = operator.chain
 
     # Deplete to end
     x_new = deplete(chain, x[0], op_results[0].rates, dt, print_out)
     x.append(x_new)
 
-    for j in range(0, m + 1):
-        op_res = operator.eval(x_new, p)
+    for j in range(_CELI_STAGE_M + 1):
+        op_res = operator(x_new, p)
 
         if j <= 1:
             op_res_bar = copy.deepcopy(op_res)
         else:
-            op_res_bar.rates = 1/j * op_res.rates + (1 - 1/j) * op_res_bar.rates
-            op_res_bar.k = 1/j * op_res.k + (1 - 1/j) * op_res_bar.k
+            rates = 1/j * op_res.rates + (1 - 1/j) * op_res_bar.rates
+            k = 1/j * op_res.k + (1 - 1/j) * op_res_bar.k
+            op_res_bar = OperatorResult(k, rates)
 
         rates = list(zip(op_results[0].rates, op_res_bar.rates))
         x_new = deplete(chain, x[0], rates, dt, print_out,
@@ -175,7 +175,7 @@ def si_celi_inner(operator, x, op_results, p, i, i_res, t, dt, print_out):
 
     # Create results, write to disk
     op_results.append(op_res_bar)
-    Results.save(operator, x, op_results, [t, t + dt], p, i+i_res)
+    Results.save(operator, x, op_results, [t, t+dt], p, i_res+i)
 
     # return updated time and vectors
-    return [copy.deepcopy(x_new)], t + dt, [copy.deepcopy(op_res_bar)]
+    return [x_new], t + dt, [op_res_bar]

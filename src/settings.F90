@@ -13,9 +13,6 @@ module settings
   ! ============================================================================
   ! CONTINUOUS-ENERGY CROSS SECTION RELATED VARIABLES
 
-  ! Unreoslved resonance probablity tables
-  logical(C_BOOL), bind(C) :: urr_ptables_on
-
   ! Default temperature and method for choosing temperatures
   integer(C_INT), bind(C) :: temperature_method
   logical(C_BOOL), bind(C) :: temperature_multipole
@@ -60,18 +57,12 @@ module settings
   logical(C_BOOL), bind(C) :: trigger_on      ! flag for turning triggers on/off
 
   logical(C_BOOL), bind(C) :: entropy_on
-  integer(C_INT32_T), bind(C) :: index_entropy_mesh
-
-  logical(C_BOOL), bind(C, name='ufs_on') :: ufs
-  integer(C_INT32_T), bind(C) :: index_ufs_mesh
 
   ! Write source at end of simulation
 
   ! Variance reduction settins
   logical(C_BOOL), bind(C) :: survival_biasing
-  real(C_DOUBLE), bind(C) :: weight_cutoff
   real(C_DOUBLE), bind(C) :: energy_cutoff(4)
-  real(C_DOUBLE), bind(C) :: weight_survive
 
   ! Mode to run in (fixed source, eigenvalue, plotting, etc)
   integer(C_INT), bind(C) :: run_mode
@@ -96,9 +87,6 @@ module settings
   ! Particle tracks
   logical(C_BOOL), bind(C) :: write_all_tracks
 
-  ! Whether create fission neutrons or not. Only applied for MODE_FIXEDSOURCE
-  logical(C_BOOL), bind(C) :: create_fission_neutrons
-
   character(MAX_FILE_LEN) :: path_input               ! Path to input file
   character(MAX_FILE_LEN) :: path_cross_sections = '' ! Path to cross_sections.xml
   character(MAX_FILE_LEN) :: path_state_point         ! Path to binary state point
@@ -108,12 +96,6 @@ module settings
 
   ! Various output options
   logical(C_BOOL), bind(C) :: output_summary
-
-  ! Resonance scattering settings
-  logical(C_BOOL), bind(C) :: res_scat_on ! is resonance scattering treated?
-  integer(C_INT), bind(C) :: res_scat_method  ! resonance scattering method
-  real(C_DOUBLE), bind(C) :: res_scat_energy_min
-  real(C_DOUBLE), bind(C) :: res_scat_energy_max
 
   ! No reduction at end of batch
   logical(C_BOOL), bind(C) :: reduce_tallies

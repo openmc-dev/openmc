@@ -14,7 +14,8 @@
 #include "openmc/endf.h"
 #include "openmc/reaction.h"
 #include "openmc/reaction_product.h"
-#include "urr.h"
+#include "openmc/urr.h"
+#include "openmc/wmp.h"
 
 namespace openmc {
 
@@ -97,6 +98,14 @@ public:
   // Constructors
   Nuclide(hid_t group, const double* temperature, int n, int i_nuclide);
 
+  //! Initialize logarithmic grid for energy searches
+  void init_grid();
+
+  void calculate_xs(int i_sab, double E, int i_log_union,
+    double sqrtkT, double sab_frac);
+
+  void calculate_sab_xs(int i_sab, double E, double sqrtkT, double sab_frac);
+
   // Methods
   double nu(double E, EmissionMode mode, int group=0) const;
   void calculate_elastic_xs() const;
@@ -107,23 +116,32 @@ public:
 
   //! \brief Determines cross sections in the unresolved resonance range
   //! from probability tables.
-  void calculate_urr_xs(int i_temp, double E);
+  void calculate_urr_xs(int i_temp, double E) const;
 
   // Data members
-  std::string name_; //! Name of nuclide, e.g. "U235"
-  int Z_; //! Atomic number
-  int A_; //! Mass number
-  int metastable_; //! Metastable state
-  double awr_; //! Atomic weight ratio
-  std::vector<double> kTs_; //! temperatures in eV (k*T)
-  std::vector<EnergyGrid> grid_; //! Energy grid at each temperature
-  int i_nuclide_; //! Index in the nuclides array
+  std::string name_; //!< Name of nuclide, e.g. "U235"
+  int Z_; //!< Atomic number
+  int A_; //!< Mass number
+  int metastable_; //!< Metastable state
+  double awr_; //!< Atomic weight ratio
+  int i_nuclide_; //!< Index in the nuclides array
 
-  bool fissionable_ {false}; //! Whether nuclide is fissionable
-  bool has_partial_fission_ {false}; //! has partial fission reactions?
-  std::vector<Reaction*> fission_rx_; //! Fission reactions
-  int n_precursor_ {0}; //! Number of delayed neutron precursors
-  std::unique_ptr<Function1D> total_nu_; //! Total neutron yield
+  // Temperature dependent cross section data
+  std::vector<double> kTs_; //!< temperatures in eV (k*T)
+  std::vector<EnergyGrid> grid_; //!< Energy grid at each temperature
+  std::vector<xt::xtensor<double, 2>> xs_; //!< Cross sections at each temperature
+
+  // Multipole data
+  std::unique_ptr<WindowedMultipole> multipole_;
+
+  // Fission data
+  bool fissionable_ {false}; //!< Whether nuclide is fissionable
+  bool has_partial_fission_ {false}; //!< has partial fission reactions?
+  std::vector<Reaction*> fission_rx_; //!< Fission reactions
+  int n_precursor_ {0}; //!< Number of delayed neutron precursors
+  std::unique_ptr<Function1D> total_nu_; //!< Total neutron yield
+  std::unique_ptr<Function1D> fission_q_prompt_; //!< Prompt fission energy release
+  std::unique_ptr<Function1D> fission_q_recov_; //!< Recoverable fission energy release
 
   // Resonance scattering information
   bool resonant_ {false};
@@ -136,11 +154,18 @@ public:
   int urr_inelastic_ {C_NONE};
   std::vector<UrrData> urr_data_;
 
-  std::vector<std::unique_ptr<Reaction>> reactions_; //! Reactions
+  std::vector<std::unique_ptr<Reaction>> reactions_; //!< Reactions
+  std::array<size_t, 892> reaction_index_; //!< Index of each reaction
   std::vector<int> index_inelastic_scatter_;
 
 private:
   void create_derived();
+
+  static int XS_TOTAL;
+  static int XS_ABSORPTION;
+  static int XS_FISSION;
+  static int XS_NU_FISSION;
+  static int XS_PHOTON_PROD;
 };
 
 //==============================================================================
@@ -172,9 +197,6 @@ extern "C" MaterialMacroXS material_xs;
 //==============================================================================
 
 extern "C" void set_micro_xs();
-extern "C" bool nuclide_wmp_present(int i_nuclide);
-extern "C" double nuclide_wmp_emin(int i_nuclide);
-extern "C" double nuclide_wmp_emax(int i_nuclide);
 extern "C" void nuclide_calculate_urr_xs(bool use_mp, int i_nuclide,
                                          int i_temp, double E);
 

@@ -294,11 +294,9 @@ endif()
 # faddeeva library
 #===============================================================================
 
-add_library(faddeeva STATIC vendor/faddeeva/Faddeeva.c)
-target_compile_options(faddeeva PRIVATE ${cflags})
-set_target_properties(faddeeva PROPERTIES
-  C_STANDARD 99
-  C_STANDARD_REQUIRED ON)
+add_library(faddeeva STATIC vendor/faddeeva/Faddeeva.cc)
+target_include_directories(faddeeva PUBLIC vendor/faddeeva/)
+target_compile_options(faddeeva PRIVATE ${cxxflags})
 
 #===============================================================================
 # libopenmc
@@ -447,9 +445,9 @@ add_library(libopenmc SHARED
   src/tallies/tally.cpp
   src/timer.cpp
   src/thermal.cpp
+  src/wmp.cpp
   src/xml_interface.cpp
-  src/xsdata.cpp
-  src/tallies/tally.cpp)
+  src/xsdata.cpp)
 
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc

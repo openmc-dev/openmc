@@ -33,9 +33,9 @@ _dll.maxwell_spectrum.argtypes = [c_double]
 _dll.watt_spectrum.restype = c_double
 _dll.watt_spectrum.argtypes = [c_double, c_double]
 
-_dll.broaden_wmp_polynomials_c.restype = None
-_dll.broaden_wmp_polynomials_c.argtypes = [c_double, c_double, c_int,
-                                           ndpointer(c_double)]
+_dll.broaden_wmp_polynomials.restype = None
+_dll.broaden_wmp_polynomials.argtypes = [c_double, c_double, c_int,
+                                         ndpointer(c_double)]
 
 _dll.normal_variate.restype = c_double
 _dll.normal_variate.argtypes = [c_double, c_double]
@@ -296,5 +296,5 @@ def broaden_wmp_polynomials(E, dopp, n):
     """
 
     factors = np.zeros(n, dtype=np.float64)
-    _dll.broaden_wmp_polynomials_c(E, dopp, n, factors)
+    _dll.broaden_wmp_polynomials(E, dopp, n, factors)
     return factors

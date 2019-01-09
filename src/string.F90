@@ -2,8 +2,7 @@ module string
 
   use, intrinsic :: ISO_C_BINDING
 
-  use constants, only: MAX_WORDS, MAX_LINE_LEN, ERROR_INT, ERROR_REAL, &
-       OP_LEFT_PAREN, OP_RIGHT_PAREN, OP_COMPLEMENT, OP_INTERSECTION, OP_UNION
+  use constants, only: MAX_WORDS, MAX_LINE_LEN, ERROR_INT, ERROR_REAL
   use error,     only: fatal_error, warning
   use stl_vector, only: VectorInt
 

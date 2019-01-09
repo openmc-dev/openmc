@@ -2023,8 +2023,10 @@ contains
     integer :: i_nuclide
     integer :: i_element
     integer :: i_sab
+    integer(C_INT) :: n
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
+    real(C_DOUBLE) :: dummy
     logical :: mp_found     ! if windowed multipole libraries were found
     character(MAX_WORD_LEN) :: name
     character(MAX_FILE_LEN) :: filename
@@ -2034,7 +2036,6 @@ contains
 
     allocate(nuclides(n_nuclides))
     allocate(elements(n_elements))
-    allocate(sab_tables(n_sab_tables))
     if (photon_transport .and. electron_treatment == ELECTRON_TTB) then
       allocate(ttb(n_materials))
     end if
@@ -2158,8 +2159,7 @@ contains
 
     ! Set up logarithmic grid for nuclides
     do i = 1, size(nuclides)
-      call nuclides(i) % init_grid(energy_min(NEUTRON), &
-           energy_max(NEUTRON), n_log_bins)
+      call nuclides(i) % init_grid()
     end do
     log_spacing = log(energy_max(NEUTRON)/energy_min(NEUTRON)) / n_log_bins
 
@@ -2184,8 +2184,14 @@ contains
 
           ! Read S(a,b) data from HDF5
           group_id = open_group(file_id, name)
-          call sab_tables(i_sab) % from_hdf5(group_id, sab_temps(i_sab), &
-               temperature_method, temperature_tolerance, temperature_range)
+          n = sab_temps(i_sab) % size()
+          if (n > 0) then
+            call sab_from_hdf5(group_id, sab_temps(i_sab) % data(1), n)
+          else
+            ! In this case, data(1) doesn't exist, so we just pass a dummy value
+            call sab_from_hdf5(group_id, dummy, n)
+          end if
+
           call close_group(group_id)
           call file_close(file_id)
 
@@ -2250,6 +2256,14 @@ contains
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
 
+    interface
+      subroutine nuclide_load_multipole(ptr, group) bind(C)
+        import C_PTR, HID_T
+        type(C_PTR), value :: ptr
+        integer(HID_T), value :: group
+      end subroutine
+    end interface
+
     associate (nuc => nuclides(i_table))
 
       ! Look for WMP data in cross_sections.xml
@@ -2280,12 +2294,11 @@ contains
 
       ! Read nuclide data from HDF5
       group_id = open_group(file_id, nuc % name)
-      allocate(nuc % multipole)
-      call nuc % multipole % from_hdf5(group_id)
       nuc % mp_present = .true.
-
-      ! Close the group and file.
+      call nuclide_load_multipole(nuc % ptr, group_id)
       call close_group(group_id)
+
+      ! Close the file
       call file_close(file_id)
 
     end associate

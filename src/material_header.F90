@@ -12,7 +12,7 @@ module material_header
   use sab_header
   use simulation_header, only: log_spacing
   use stl_vector, only: VectorReal, VectorInt
-  use string, only: to_str, to_f_string
+  use string, only: to_str, to_f_string, to_c_string
 
   implicit none
 
@@ -251,6 +251,7 @@ contains
     integer :: j            ! index over nuclides in material
     integer :: k            ! index over S(a,b) tables in material
     integer :: m            ! position for sorting
+    integer :: i_sab
     integer :: temp_nuclide ! temporary value for sorting
     integer :: temp_table   ! temporary value for sorting
     real(8) :: temp_frac    ! temporary value for sorting
@@ -266,16 +267,15 @@ contains
       ! to search through the list of nuclides for one which has a matching
       ! name
       found = .false.
-      associate (sab => sab_tables(this % i_sab_tables(k)))
-        FIND_NUCLIDE: do j = 1, size(this % nuclide)
-          if (sab % has_nuclide(nuclides(this % nuclide(j)) % name)) then
-            call i_sab_tables % push_back(this % i_sab_tables(k))
-            call i_sab_nuclides % push_back(j)
-            call sab_fracs % push_back(this % sab_fracs(k))
-            found = .true.
-          end if
-        end do FIND_NUCLIDE
-      end associate
+      i_sab = this % i_sab_tables(k)
+      FIND_NUCLIDE: do j = 1, size(this % nuclide)
+        if (sab_has_nuclide(i_sab, to_c_string(nuclides(this % nuclide(j)) % name))) then
+          call i_sab_tables % push_back(i_sab)
+          call i_sab_nuclides % push_back(j)
+          call sab_fracs % push_back(this % sab_fracs(k))
+          found = .true.
+        end if
+      end do FIND_NUCLIDE
 
       ! Check to make sure S(a,b) table matched a nuclide
       if (.not. found) then
@@ -422,7 +422,7 @@ contains
 
           ! If particle energy is greater than the highest energy for the
           ! S(a,b) table, then don't use the S(a,b) table
-          if (p % E > sab_tables(i_sab) % threshold()) then
+          if (p % E > sab_threshold(i_sab)) then
             i_sab = 0
           end if
 
@@ -443,10 +443,10 @@ contains
       ! Calculate microscopic cross section for this nuclide
       if (p % E /= micro_xs(i_nuclide) % last_E &
            .or. p % sqrtkT /= micro_xs(i_nuclide) % last_sqrtkT &
-           .or. i_sab /= micro_xs(i_nuclide) % index_sab &
+           .or. i_sab /= micro_xs(i_nuclide) % index_sab + 1 &
            .or. sab_frac /= micro_xs(i_nuclide) % sab_frac) then
         call nuclides(i_nuclide) % calculate_xs(i_sab, p % E, i_grid, &
-             p % sqrtkT, sab_frac, micro_xs(i_nuclide))
+             p % sqrtkT, sab_frac)
       end if
 
       ! ======================================================================

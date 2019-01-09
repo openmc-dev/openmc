@@ -10,9 +10,6 @@ from ..results import Results
 from ..abc import OperatorResult
 
 
-# Stage number for CE/LI
-_LEQI_STAGE_M = 10
-
 # Functions to form the special matrix for depletion
 def _leqi_f1(chain, inputs):
      f1 = chain.form_matrix(inputs[0])
@@ -44,7 +41,8 @@ def _leqi_f4(chain, inputs):
              (dt**2 + 2*dt*dt_l + dt_l**2) / (12 * dt_l * (dt + dt_l)) * f2 +
              (4 * dt * dt_l + 5 * dt_l**2) / (12 * dt_l * (dt + dt_l)) * f3)
 
-def si_leqi(operator, timesteps, power=None, power_density=None, print_out=True):
+def si_leqi(operator, timesteps, power=None, power_density=None,
+            print_out=True, m=10):
     r"""Deplete using the SI-LE/QI CFQ4 algorithm.
 
     Implements the Stochastic Implicit LE/QI Predictor-Corrector algorithm using
@@ -83,6 +81,8 @@ def si_leqi(operator, timesteps, power=None, power_density=None, print_out=True)
         heavy metal inventory to get total power if `power` is not speficied.
     print_out : bool, optional
         Whether or not to print out time.
+    m : int, optional
+        Number of stages.
 
     References
     ----------
@@ -119,9 +119,9 @@ def si_leqi(operator, timesteps, power=None, power_density=None, print_out=True)
         # reasons if no previous calculation results loaded
         if operator.prev_res is None:
             x = [copy.deepcopy(vec)]
-            operator.settings.particles *= _LEQI_STAGE_M
+            operator.settings.particles *= m
             op_results = [operator(x[0], power[0])]
-            operator.settings.particles //= _LEQI_STAGE_M
+            operator.settings.particles //= m
         else:
             # Get initial concentration
             x = [operator.prev_res[-1].data[0]]
@@ -135,8 +135,10 @@ def si_leqi(operator, timesteps, power=None, power_density=None, print_out=True)
 
             # Scale reaction rates by ratio of powers
             power_res = operator.prev_res[-1].power
-            ratio_power = p / power_res
+            ratio_power = power[0] / power_res
             op_results[0].rates *= ratio_power[0]
+
+        chain = operator.chain
 
         for i, (dt, p) in enumerate(zip(timesteps, power)):
             # Perform SI-CE/LI CFQ4 for the first step
@@ -158,7 +160,7 @@ def si_leqi(operator, timesteps, power=None, power_density=None, print_out=True)
             x.append(x_new)
 
             # Loop on inner
-            for j in range(_LEQI_STAGE_M + 1):
+            for j in range(m + 1):
                 op_res = operator(x_new, p)
 
                 if j <= 1:
@@ -169,10 +171,10 @@ def si_leqi(operator, timesteps, power=None, power_density=None, print_out=True)
                     op_res_bar = OperatorResult(k, rates)
 
                 inputs = list(zip(op_res_last.rates, op_results[0].rates,
-                                  op_res_bar.rate, repeat(dt_l), repeat(dt)))
-                x_new = deplete(chain, x[0], rates, dt, print_out,
+                                  op_res_bar.rates, repeat(dt_l), repeat(dt)))
+                x_new = deplete(chain, x[0], inputs, dt, print_out,
                                 matrix_func=_leqi_f3)
-                x_new = deplete(chain, x_new, rates, dt, print_out,
+                x_new = deplete(chain, x_new, inputs, dt, print_out,
                                 matrix_func=_leqi_f4)
 
             # Create results, write to disk

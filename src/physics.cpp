@@ -799,7 +799,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
   Direction v_neut, double xs_eff, double kT, double* wgt)
 {
   // check if nuclide is a resonant scatterer
-  int sampling_method;
+  ResScatMethod sampling_method;
   if (nuc->resonant_) {
 
     // sampling method to use
@@ -811,7 +811,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
 
     // lower resonance scattering energy bound (should be no resonances below)
     } else if (E < settings::res_scat_energy_min) {
-      sampling_method = RES_SCAT_CXS;
+      sampling_method = ResScatMethod::cxs;
     }
 
   // otherwise, use free gas model
@@ -819,31 +819,19 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
     if (E >= FREE_GAS_THRESHOLD * kT && nuc->awr_ > 1.0) {
       return {};
     } else {
-      sampling_method = RES_SCAT_CXS;
+      sampling_method = ResScatMethod::cxs;
     }
   }
 
   // use appropriate target velocity sampling method
   switch (sampling_method) {
-  case RES_SCAT_CXS:
+  case ResScatMethod::cxs:
 
     // sample target velocity with the constant cross section (cxs) approx.
     return sample_cxs_target_velocity(nuc->awr_, E, u, kT);
 
-  case RES_SCAT_WCM: {
-    // sample target velocity with the constant cross section (cxs) approx.
-    Direction v_target = sample_cxs_target_velocity(nuc->awr_, E, u, kT);
-
-    // adjust weight as prescribed by the weight correction method (wcm)
-    Direction v_rel = v_neut - v_target;
-    double E_rel = v_rel.dot(v_rel);
-    double xs_0K = nuc->elastic_xs_0K(E_rel);
-    *wgt *= xs_0K / xs_eff;
-    return v_target;
-  }
-
-  case RES_SCAT_DBRC:
-  case RES_SCAT_ARES: {
+  case ResScatMethod::dbrc:
+  case ResScatMethod::rvs: {
     double E_red = std::sqrt(nuc->awr_ * E / kT);
     double E_low = std::pow(std::max(0.0, E_red - 4.0), 2) * kT / nuc->awr_;
     double E_up = (E_red + 4.0)*(E_red + 4.0) * kT / nuc->awr_;
@@ -877,7 +865,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
       return sample_cxs_target_velocity(nuc->awr_, E, u, kT);
     }
 
-    if (sampling_method == RES_SCAT_DBRC) {
+    if (sampling_method == ResScatMethod::dbrc) {
       // interpolate xs since we're not exactly at the energy indices
       double xs_low = nuc->elastic_0K_[i_E_low];
       double m = (nuc->elastic_0K_[i_E_low + 1] - xs_low)
@@ -910,7 +898,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
         if (prn() < R) return v_target;
       }
 
-    } else if (sampling_method == RES_SCAT_ARES) {
+    } else if (sampling_method == ResScatMethod::rvs) {
       // interpolate xs CDF since we're not exactly at the energy indices
       // cdf value at lower bound attainable energy
       double m = (nuc->xs_cdf_[i_E_low] - nuc->xs_cdf_[i_E_low - 1])
@@ -952,7 +940,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
         }
       }
     }
-  } // case RES_SCAT_ARES, RES_SCAT_DBRC
+  } // case RVS, DBRC
   } // switch (sampling_method)
 }
 

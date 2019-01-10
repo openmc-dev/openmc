@@ -47,7 +47,7 @@ int openmc_finalize()
   settings::photon_transport = false;
   settings::reduce_tallies = true;
   settings::res_scat_on = false;
-  settings::res_scat_method = RES_SCAT_ARES;
+  settings::res_scat_method = ResScatMethod::rvs;
   settings::res_scat_energy_min = 0.01;
   settings::res_scat_energy_max = 1000.0;
   settings::restart_run = false;

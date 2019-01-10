@@ -10,6 +10,7 @@ module particle_restart
   use nuclide_header,   only: micro_xs, n_nuclides
   use output,           only: print_particle
   use particle_header
+  use photon_header,    only: micro_photon_xs, n_elements
   use random_lcg,       only: set_particle_seed
   use settings
   use simulation_header
@@ -45,7 +46,8 @@ contains
 
   !$omp parallel
     allocate(micro_xs(n_nuclides))
-  !$omp end parallel
+    allocate(micro_photon_xs(n_elements))
+    !$omp end parallel
     call set_micro_xs()
 
     ! Initialize the particle to be tracked

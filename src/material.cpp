@@ -56,8 +56,9 @@ Material::Material(pugi::xml_node node)
 
   bool sum_density {false};
   pugi::xml_node density_node = node.child("density");
+  std::string units;
   if (density_node) {
-    std::string units = get_node_value(density_node, "units");
+    units = get_node_value(density_node, "units");
     if (units == "sum") {
       sum_density = true;
     } else if (units == "macro") {
@@ -136,7 +137,7 @@ Material::Material(pugi::xml_node node)
     names.push_back(name);
 
     // Set density for macroscopic data
-    if (units == 'macro') {
+    if (units == "macro") {
       densities.push_back(1.0);
     } else {
       fatal_error("Units can only be macro for macroscopic data " + name);
@@ -156,7 +157,7 @@ Material::Material(pugi::xml_node node)
 
       // Check if no atom/weight percents were specified or if both atom and
       // weight percents were specified
-      if (units == 'macro') {
+      if (units == "macro") {
         densities.push_back(1.0);
       } else {
         bool has_ao = check_for_node(node_nuc, "ao");
@@ -191,15 +192,10 @@ Material::Material(pugi::xml_node node)
   // COPY NUCLIDES TO ARRAYS IN MATERIAL
 
   // allocate arrays in Material object
-  // n = names % size()
-  // mat % n_nuclides = n
-  // allocate(mat % names(n))
-  // allocate(mat % nuclide(n))
-  // allocate(mat % element(n))
-  // allocate(mat % atom_density(n))
   auto n = names.size();
-  nuclide_ = xt::empty<int>(n);
-  atom_density_ = xt::empty<double>(n);
+  nuclide_.reserve(n);
+  atom_density_ = xt::empty<double>({n});
+  if (settings::photon_transport) element_.reserve(n);
 
   for (int i = 0; i < names.size(); ++i) {
     const auto& name {names[i]};
@@ -215,16 +211,14 @@ Material::Material(pugi::xml_node node)
     if (data::nuclide_map.find(name) == data::nuclide_map.end()) {
       int index = data::nuclide_map.size();
       data::nuclide_map[name] = index;
-      nuclide_(i) = index;
+      nuclide_.push_back(index);
     } else {
-      nuclide_(i) = data::nuclide_map[name];
+      nuclide_.push_back(data::nuclide_map[name]);
     }
 
     // If the corresponding element hasn't been encountered yet and photon
     // transport will be used, we need to add its symbol to the element_dict
     if (settings::photon_transport) {
-      element_ = xt::empty<int>(n);
-
       int pos = name.find_first_of("0123456789");
       std::string element = name.substr(pos);
 
@@ -238,9 +232,9 @@ Material::Material(pugi::xml_node node)
       if (data::element_map.find(element) == data::element_map.end()) {
         int index = data::element_map.size();
         data::element_map[element] = index;
-        element_(i) = index;
+        element_.push_back(index);
       } else {
-        element_(i) = data::element_map[element];
+        element_.push_back(data::element_map[element]);
       }
     }
 
@@ -251,32 +245,30 @@ Material::Material(pugi::xml_node node)
 
   if (settings::run_CE) {
     // By default, isotropic-in-lab is not used
-    if (list_iso_lab % size() > 0) {
-      mat % has_isotropic_nuclides = .true.
-      allocate(mat % p0(n))
-      mat % p0(:) = .false.
+    if (iso_lab.size() > 0) {
+      has_isotropic_nuclides_ = true;
+      p0_.resize(n);
 
       // Apply isotropic-in-lab treatment to specified nuclides
-      do j = 1, list_iso_lab % size()
-        do k = 1, n
-          if (names % data(k) == list_iso_lab % data(j)) {
-            mat % p0(k) = .true.
+      for (const auto& nuc : iso_lab) {
+        for (int j = 0; j < names.size(); ++j) {
+          if (names[j] == nuc) {
+            p0_[j] = true;
           }
-        end do
-      end do
+        }
+      }
     }
   }
 
   // Check to make sure either all atom percents or all weight percents are
   // given
-  if (!(all(mat % atom_density >= ZERO) || &
-        all(mat % atom_density <= ZERO))) {
-    fatal_error("Cannot mix atom and weight percents in material " &
-          // to_str(mat % id()))
+  if (!(xt::all(atom_density_ >= 0.0) || xt::all(atom_density_ <= 0.0))) {
+    fatal_error("Cannot mix atom and weight percents in material "
+      + std::to_string(id_));
   }
 
   // Determine density if it is a sum value
-  if (sum_density) mat % density = sum(mat % atom_density)
+  if (sum_density) density_ = xt::sum(atom_density_)();
 
 
   if (check_for_node(node, "temperature")) {
@@ -518,10 +510,10 @@ void Material::calculate_neutron_xs(const Particle& p) const
     // Check if this nuclide matches one of the S(a,b) tables specified.
     // This relies on i_sab_nuclides being in sorted order
     if (check_sab) {
-      if (i == i_sab_nuclides_(j)) {
+      if (i == i_sab_nuclides_[j]) {
         // Get index in sab_tables
-        i_sab = i_sab_tables_(j);
-        sab_frac = sab_fracs_(j);
+        i_sab = i_sab_tables_[j];
+        sab_frac = sab_fracs_[j];
 
         // If particle energy is greater than the highest energy for the
         // S(a,b) table, then don't use the S(a,b) table
@@ -578,7 +570,7 @@ void Material::calculate_photon_xs(const Particle& p) const
     // CALCULATE MICROSCOPIC CROSS SECTION
 
     // Determine microscopic cross sections for this nuclide
-    int i_element = element_(i);
+    int i_element = element_[i];
 
     // Calculate microscopic cross section for this nuclide
     const auto& micro {simulation::micro_photon_xs[i_element]};
@@ -711,11 +703,11 @@ extern "C" {
     model::material_map[id] = index - 1;
   }
 
-  bool material_fissionable(Material* mat) {return mat->fissionable;}
+  bool material_fissionable(Material* mat) {return mat->fissionable_;}
 
   void material_set_fissionable(Material* mat, bool fissionable)
   {
-    mat->fissionable = fissionable;
+    mat->fissionable_ = fissionable;
   }
 
   void material_init_bremsstrahlung(Material* mat)

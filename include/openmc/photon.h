@@ -129,6 +129,7 @@ extern xt::xtensor<double, 1> compton_profile_pz; //! Compton profile momentum g
 
 //! Photon interaction data for each element
 extern std::vector<PhotonInteraction> elements;
+extern std::unordered_map<std::string, int> element_map;
 
 } // namespace data
 

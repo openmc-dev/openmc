@@ -47,13 +47,20 @@ public:
   // Data
   int32_t id_; //!< Unique ID
   std::string name_; //!< Name of material
-  xt::xtensor<int, 1> nuclide_; //!< Indices in nuclides vector
-  xt::xtensor<int, 1> element_; //!< Indices in elements vector
+  std::vector<int> nuclide_; //!< Indices in nuclides vector
+  std::vector<int> element_; //!< Indices in elements vector
   xt::xtensor<double, 1> atom_density_; //!< Nuclide atom density in [atom/b-cm]
   double density_; //!< Total atom density in [atom/b-cm]
   double volume_ {-1.0}; //!< Volume in [cm^3]
   bool fissionable_ {false}; //!< Does this material contain fissionable nuclides
   bool depletable_ {false}; //!< Is the material depletable?
+  bool has_isotropic_nuclides_ {false};
+  std::vector<bool> p0_; //!< Indicate which nuclides are to be treated with iso-in-lab scattering
+
+  // S(a,b) data
+  std::vector<int> i_sab_nuclides_; //!< Indices of nuclides that have S(a,b) table
+  std::vector<int> i_sab_tables_; //!< Corresponding indices in data::thermal_scatt
+  std::vector<double> sab_fracs_; //!< How often to use table
 
   //! \brief Default temperature for cells containing this material.
   //!

@@ -46,7 +46,7 @@ sample_reaction(Particle* p)
   // change when sampling fission sites. The following block handles all
   // absorption (including fission)
 
-  if (model::materials[p->material - 1]->fissionable) {
+  if (model::materials[p->material - 1]->fissionable_) {
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
       create_fission_sites(
         p, simulation::fission_bank.data(), &simulation::n_bank,

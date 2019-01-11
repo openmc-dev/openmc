@@ -119,8 +119,6 @@ struct ElementMicroXS {
 
 std::pair<double, double> klein_nishina(double alpha);
 
-void thick_target_bremsstrahlung(Particle& p, double* E_lost);
-
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -128,8 +126,6 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost);
 namespace data {
 
 extern xt::xtensor<double, 1> compton_profile_pz; //! Compton profile momentum grid
-extern xt::xtensor<double, 1> ttb_e_grid; //! energy T of incident electron in [eV]
-extern xt::xtensor<double, 1> ttb_k_grid; //! reduced energy W/T of emitted photon
 
 //! Photon interaction data for each element
 extern std::vector<PhotonInteraction> elements;

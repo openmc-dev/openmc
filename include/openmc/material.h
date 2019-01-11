@@ -1,11 +1,14 @@
 #ifndef OPENMC_MATERIAL_H
 #define OPENMC_MATERIAL_H
 
+#include <memory> // for unique_ptr
 #include <unordered_map>
 #include <vector>
 
 #include "pugixml.hpp"
 
+#include "openmc/bremsstrahlung.h"
+#include "openmc/particle.h"
 
 namespace openmc {
 
@@ -38,9 +41,14 @@ public:
   //! A negative value indicates no default temperature was specified.
   double temperature_ {-1};
 
+  std::unique_ptr<Bremsstrahlung> ttb_;
+
   Material() {};
 
   explicit Material(pugi::xml_node material_node);
+
+private:
+  void init_bremsstrahlung();
 };
 
 //==============================================================================

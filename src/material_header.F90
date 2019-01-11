@@ -1065,4 +1065,10 @@ contains
     end associate
   end function
 
+  function material_element(i_material) result(ptr) bind(C)
+    integer(C_INT), value :: i_material
+    type(C_PTR) :: ptr
+    ptr = C_LOC(materials(i_material) % element(1))
+  end function
+
 end module material_header

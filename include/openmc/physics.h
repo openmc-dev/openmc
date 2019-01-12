@@ -82,8 +82,6 @@ void inelastic_scatter(const Nuclide* nuc, const Reaction* rx, Particle* p);
 
 void sample_secondary_photons(Particle* p, int i_nuclide);
 
-extern "C" void thick_target_bremsstrahlung(Particle* p, double* E_lost);
-
 } // namespace openmc
 
 #endif // OPENMC_PHYSICS_H

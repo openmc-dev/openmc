@@ -37,6 +37,10 @@ extern xt::xtensor<double, 1> ttb_k_grid; //! reduced energy W/T of emitted phot
 
 } // namespace data
 
+//==============================================================================
+// Global variables
+//==============================================================================
+
 void thick_target_bremsstrahlung(Particle& p, double* E_lost);
 
 } // namespace openmc

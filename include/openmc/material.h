@@ -47,7 +47,7 @@ public:
 
   explicit Material(pugi::xml_node material_node);
 
-private:
+  //! Initialize bremsstrahlung data
   void init_bremsstrahlung();
 };
 
@@ -55,6 +55,7 @@ private:
 // Fortran compatibility
 //==============================================================================
 
+extern "C" int* material_element(int i_material);
 extern "C" bool material_isotropic(int i_material, int i_nuc_mat);
 
 } // namespace openmc

@@ -1,6 +1,7 @@
 #include "openmc/physics.h"
 
 #include "openmc/bank.h"
+#include "openmc/bremsstrahlung.h"
 #include "openmc/constants.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
@@ -382,7 +383,7 @@ void sample_electron_reaction(Particle* p)
 
   if (settings::electron_treatment == ELECTRON_TTB) {
     double E_lost;
-    thick_target_bremsstrahlung(p, &E_lost);
+    thick_target_bremsstrahlung(*p, &E_lost);
   }
 
   p->E = 0.0;
@@ -395,7 +396,7 @@ void sample_positron_reaction(Particle* p)
 
   if (settings::electron_treatment == ELECTRON_TTB) {
     double E_lost;
-    thick_target_bremsstrahlung(p, &E_lost);
+    thick_target_bremsstrahlung(*p, &E_lost);
   }
 
   // Sample angle isotropically

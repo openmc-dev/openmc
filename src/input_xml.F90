@@ -2034,6 +2034,15 @@ contains
     type(SetChar) :: already_read
     type(SetChar) :: element_already_read
 
+    interface
+      subroutine material_init_bremsstrahlung(ptr) bind(C)
+        import C_PTR
+        type(C_PTR), value :: ptr
+      end subroutine
+      subroutine set_log_ttb_e_grid() bind(C)
+      end subroutine
+    end interface
+
     allocate(nuclides(n_nuclides))
     allocate(elements(n_elements))
     if (photon_transport .and. electron_treatment == ELECTRON_TTB) then
@@ -2127,8 +2136,7 @@ contains
 
       ! Generate material bremsstrahlung data for electrons and positrons
       if (photon_transport .and. electron_treatment == ELECTRON_TTB) then
-        call bremsstrahlung_init(ttb(i) % electron, i, ELECTRON)
-        call bremsstrahlung_init(ttb(i) % positron, i, POSITRON)
+        call material_init_bremsstrahlung(materials(i) % ptr)
       end if
     end do
 
@@ -2155,6 +2163,7 @@ contains
 
       ! Take logarithm of energies since they are log-log interpolated
       ttb_e_grid = log(ttb_e_grid)
+      call set_log_ttb_e_grid()
     end if
 
     ! Set up logarithmic grid for nuclides

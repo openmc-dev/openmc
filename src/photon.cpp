@@ -1,5 +1,6 @@
 #include "openmc/photon.h"
 
+#include "openmc/bremsstrahlung.h"
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"
@@ -24,8 +25,6 @@ namespace openmc {
 namespace data {
 
 xt::xtensor<double, 1> compton_profile_pz;
-xt::xtensor<double, 1> ttb_e_grid;
-xt::xtensor<double, 1> ttb_k_grid;
 
 std::vector<PhotonInteraction> elements;
 
@@ -250,7 +249,7 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
         frst, xt::view(s_rad, xt::range(i_grid+1, n_e))));
 
       // Interpolate bremsstrahlung DCS at the cutoff energy and truncate
-      xt::xtensor<double, 2> dcs = xt::empty<double>({n_e - i_grid, n_k});
+      xt::xtensor<double, 2> dcs({n_e - i_grid, n_k});
       for (int i = 0; i < n_k; ++i) {
         y = std::exp(std::log(dcs_(i_grid,i)) +
               f*(std::log(dcs_(i_grid+1,i)) - std::log(dcs_(i_grid,i))));
@@ -268,6 +267,7 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
     }
 
     // Set incident particle energy grid
+    // TODO: Change to zero when xtensor is updated
     if (data::ttb_e_grid.size() == 1) {
       data::ttb_e_grid = electron_energy;
     }

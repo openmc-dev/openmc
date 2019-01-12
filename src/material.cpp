@@ -49,8 +49,6 @@ Material::Material(pugi::xml_node node)
   }
 }
 
-int* material_element(int index);
-
 void Material::init_bremsstrahlung()
 {
   // Create new object
@@ -80,12 +78,9 @@ void Material::init_bremsstrahlung()
     ttb->yield = xt::empty<double>({n_e});
 
     // Allocate temporary arrays
-    std::array<std::size_t, 1> shape {n_e};
     xt::xtensor<double, 1> stopping_power_collision({n_e}, 0.0);
     xt::xtensor<double, 1> stopping_power_radiative({n_e}, 0.0);
     xt::xtensor<double, 2> dcs({n_e, n_k}, 0.0);
-    xt::xtensor<double, 1> f({n_e}, 0.0);
-    xt::xtensor<double, 1> z({n_e}, 0.0);
 
     double Z_eq_sq = 0.0;
     double sum_density = 0.0;
@@ -154,31 +149,35 @@ void Material::init_bremsstrahlung()
       stopping_power_radiative;
 
     // Loop over photon energies
+    xt::xtensor<double, 1> f({n_e}, 0.0);
+    xt::xtensor<double, 1> z({n_e}, 0.0);
     for (int i = 0; i < n_e - 1; ++i) {
       double w = data::ttb_e_grid(i);
 
       // Loop over incident particle energies
-      for (int j = 0; j < n_e; ++j) {
+      for (int j = i; j < n_e; ++j) {
         double e = data::ttb_e_grid(j);
 
         // Reduced photon energy
         double k = w / e;
 
         // Find the lower bounding index of the reduced photon energy
-        int i_k = lower_bound_index(data::ttb_k_grid.cbegin(), data::ttb_k_grid.cend(), k);
+        int i_k = lower_bound_index(data::ttb_k_grid.cbegin(),
+          data::ttb_k_grid.cend(), k);
 
         // Get the interpolation bounds
         double k_l = data::ttb_k_grid(i_k);
         double k_r = data::ttb_k_grid(i_k + 1);
         double x_l = dcs(j, i_k);
-        double x_r = dcs(j, i_k+1);
+        double x_r = dcs(j, i_k + 1);
 
         // Find the value of the DCS using linear interpolation in reduced
         // photon energy k
-        double x = x_l + (k - k_l) * (x_r - x_l) / (k_r - k_l);
+        double x = x_l + (k - k_l)*(x_r - x_l)/(k_r - k_l);
 
         // Ratio of the velocity of the charged particle to the speed of light
-        double beta = std::sqrt(e*(e + 2.0*MASS_ELECTRON_EV)) / (e + MASS_ELECTRON_EV);
+        double beta = std::sqrt(e*(e + 2.0*MASS_ELECTRON_EV)) /
+          (e + MASS_ELECTRON_EV);
 
         // Compute the integrand of the PDF
         f(j) = x / (beta*beta * stopping_power(j) * w);
@@ -193,7 +192,7 @@ void Material::init_bremsstrahlung()
         spline_c(n, &data::ttb_e_grid(i), &f(i), &z(i));
 
         double c = 0.0;
-        for (int j = 0; j < n_e - 1; ++j) {
+        for (int j = i; j < n_e - 1; ++j) {
           c += spline_integrate_c(n, &data::ttb_e_grid(i), &f(i), &z(i),
             data::ttb_e_grid(j), data::ttb_e_grid(j+1));
 
@@ -207,7 +206,7 @@ void Material::init_bremsstrahlung()
         double x_l = std::log(f(i));
         double x_r = std::log(f(i+1));
 
-        ttb->pdf(i,i+1) = 0.5*(e_r - e_l)*(std::exp(e_l + x_l) + std::exp(e_r + x_r));
+        ttb->pdf(i+1,i) = 0.5*(e_r - e_l)*(std::exp(e_l + x_l) + std::exp(e_r + x_r));
       }
     }
 
@@ -219,7 +218,7 @@ void Material::init_bremsstrahlung()
 
       // Loop over photon energies
       double c = 0.0;
-      for (int i = 0; i < j - 1; ++i) {
+      for (int i = 0; i < j; ++i) {
         // Integrate the CDF from the PDF using the trapezoidal rule in log-log
         // space
         double w_l = std::log(data::ttb_e_grid(i));
@@ -236,7 +235,7 @@ void Material::init_bremsstrahlung()
     }
 
     // Use logarithm of number yield since it is log-log interpolated
-    ttb->yield = xt::where(ttb->yield > 0.0, ttb->yield, -500.0);
+    ttb->yield = xt::where(ttb->yield > 0.0, xt::log(ttb->yield), -500.0);
   }
 }
 
@@ -330,6 +329,11 @@ extern "C" {
   void material_set_fissionable(Material* mat, bool fissionable)
   {
     mat->fissionable = fissionable;
+  }
+
+  void material_init_bremsstrahlung(Material* mat)
+  {
+    mat->init_bremsstrahlung();
   }
 
   void extend_materials_c(int32_t n)

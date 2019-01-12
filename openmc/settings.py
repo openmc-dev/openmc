@@ -82,14 +82,13 @@ class Settings(object):
         Settings for resonance elastic scattering. Accepted keys are 'enable'
         (bool), 'method' (str), 'energy_min' (float), 'energy_max' (float), and
         'nuclides' (list). The 'method' can be set to 'dbrc' (Doppler broadening
-        rejection correction), 'wcm' (weight correction method), and 'rvs'
-        (relative velocity sampling). If not specified, 'rvs' is the default
-        method. The 'energy_min' and 'energy_max' values indicate the minimum
-        and maximum energies above and below which the resonance elastic
-        scattering method is to be applied. The 'nuclides' list indicates what
-        nuclides the method should be applied to. In its absence, the method
-        will be applied to all nuclides with 0 K elastic scattering data
-        present.
+        rejection correction) or 'rvs' (relative velocity sampling). If not
+        specified, 'rvs' is the default method. The 'energy_min' and
+        'energy_max' values indicate the minimum and maximum energies above and
+        below which the resonance elastic scattering method is to be
+        applied. The 'nuclides' list indicates what nuclides the method should
+        be applied to. In its absence, the method will be applied to all
+        nuclides with 0 K elastic scattering data present.
     run_mode : {'eigenvalue', 'fixed source', 'plot', 'volume', 'particle restart'}
         The type of calculation to perform (default is 'eigenvalue')
     seed : int

@@ -64,7 +64,7 @@ void sab_scatter(int i_nuclide, int i_sab, double* E,
 //! samples the target velocity. The constant cross section free gas model is
 //! the default method. Methods for correctly accounting for the energy
 //! dependence of cross sections in treating resonance elastic scattering such
-//! as the DBRC, WCM, and a new, accelerated scheme are also implemented here.
+//! as the DBRC and a new, accelerated scheme are also implemented here.
 Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
    Direction v_neut, double xs_eff, double kT, double* wgt);
 

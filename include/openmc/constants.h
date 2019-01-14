@@ -269,10 +269,11 @@ constexpr int PARTIAL_FISSION_MAX {4};
 
 // Resonance elastic scattering methods
 // TODO: Convert to enum
-constexpr int RES_SCAT_ARES {1};
-constexpr int RES_SCAT_DBRC {2};
-constexpr int RES_SCAT_WCM {3};
-constexpr int RES_SCAT_CXS {4};
+enum class ResScatMethod {
+  rvs, // Relative velocity sampling
+  dbrc, // Doppler broadening rejection correction
+  cxs // Constant cross section
+};
 
 // Electron treatments
 // TODO: Convert to enum

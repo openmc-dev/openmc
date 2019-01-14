@@ -373,8 +373,15 @@ contains
       end if
 
       ! Score surface currents since reflection causes the direction of the
-      ! particle to change -- artificially move the particle slightly back in
-      ! case the surface crossing is coincident with a mesh boundary
+      ! particle to change. For surface filters, we need to score the tallies
+      ! twice, once before the particle's surface attribute has changed and
+      ! once after. For mesh surface filters, we need to artificially move
+      ! the particle slightly back in case the surface crossing is coincident
+      ! with a mesh boundary
+
+      if(active_surface_tallies % size() > 0) &
+           call score_surface_tally(p, active_surface_tallies)
+
 
       if (active_meshsurf_tallies % size() > 0) then
         xyz = p % coord(1) % xyz

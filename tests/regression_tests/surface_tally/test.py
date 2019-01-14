@@ -142,8 +142,8 @@ class SurfaceTallyTestHarness(PyAPITestHarness):
         tallies_file.append(surf_tally2)
 
         # Create a net current tally on right surface using a surface filter
-        # This surface has a reflective boundary condition, but the zero
-        # net current is not picked up because particles are only tallied once
+        # This surface has a reflective boundary condition, so the net current
+        # should be zero.
         surface_filter = openmc.SurfaceFilter([3])
         surf_tally3 = openmc.Tally(name='net_right')
         surf_tally3.filters = [surface_filter, energy_filter]

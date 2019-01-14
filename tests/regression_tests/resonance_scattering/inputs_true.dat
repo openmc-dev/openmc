@@ -26,7 +26,7 @@
   </source>
   <resonance_scattering>
     <enable>true</enable>
-    <method>ares</method>
+    <method>rvs</method>
     <energy_min>1.0</energy_min>
     <energy_max>210.0</energy_max>
     <nuclides>U238 U235 Pu239</nuclides>

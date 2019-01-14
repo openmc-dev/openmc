@@ -40,7 +40,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.trace = (10, 1, 20)
     s.track = [1, 1, 1, 2, 1, 1]
     s.ufs_mesh = mesh
-    s.resonance_scattering = {'enable': True, 'method': 'ares',
+    s.resonance_scattering = {'enable': True, 'method': 'rvs',
                               'energy_min': 1.0, 'energy_max': 1000.0,
                               'nuclides': ['U235', 'U238', 'Pu239']}
     s.volume_calculations = openmc.VolumeCalculation(

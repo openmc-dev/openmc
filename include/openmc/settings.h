@@ -12,6 +12,8 @@
 
 #include "pugixml.hpp"
 
+#include "openmc/constants.h"
+
 namespace openmc {
 
 //==============================================================================
@@ -33,7 +35,7 @@ extern "C" bool output_tallies;          //!< write tallies.out?
 extern "C" bool particle_restart_run;    //!< particle restart run?
 extern "C" bool photon_transport;        //!< photon transport turned on?
 extern "C" bool reduce_tallies;          //!< reduce tallies at end of batch?
-extern "C" bool res_scat_on;             //!< use resonance upscattering method?
+extern bool res_scat_on;                 //!< use resonance upscattering method?
 extern "C" bool restart_run;             //!< restart run?
 extern "C" bool run_CE;                  //!< run with continuous-energy data?
 extern "C" bool source_latest;           //!< write latest source at each batch?
@@ -43,8 +45,8 @@ extern "C" bool survival_biasing;        //!< use survival biasing?
 extern "C" bool temperature_multipole;   //!< use multipole data?
 extern "C" bool trigger_on;              //!< tally triggers enabled?
 extern "C" bool trigger_predict;         //!< predict batches for triggers?
-extern "C" bool ufs_on;                  //!< uniform fission site method on?
-extern "C" bool urr_ptables_on;          //!< use unresolved resonance prob. tables?
+extern bool ufs_on;                  //!< uniform fission site method on?
+extern bool urr_ptables_on;          //!< use unresolved resonance prob. tables?
 extern "C" bool write_all_tracks;        //!< write track files for every particle?
 extern "C" bool write_initial_source;    //!< write out initial source file?
 extern "C" bool dagmc;                   //!< indicator of DAGMC geometry
@@ -58,9 +60,8 @@ extern std::string path_source;
 extern std::string path_sourcepoint;      //!< path to a source file
 extern std::string path_statepoint;       //!< path to a statepoint file
 
-extern "C" int32_t index_entropy_mesh;  //!< Index of entropy mesh in global mesh array
-extern "C" int32_t index_ufs_mesh;      //!< Index of UFS mesh in global mesh array
-extern "C" int32_t index_cmfd_mesh;     //!< Index of CMFD mesh in global mesh array
+extern int32_t index_entropy_mesh;  //!< Index of entropy mesh in global mesh array
+extern int32_t index_ufs_mesh;      //!< Index of UFS mesh in global mesh array
 
 extern "C" int32_t n_batches;      //!< number of (inactive+active) batches
 extern "C" int32_t n_inactive;     //!< number of inactive batches
@@ -73,9 +74,9 @@ extern "C" int legendre_to_tabular_points; //!< number of points to convert Lege
 extern "C" int max_order;                //!< Maximum Legendre order for multigroup data
 extern "C" int n_log_bins;               //!< number of bins for logarithmic energy grid
 extern "C" int n_max_batches;            //!< Maximum number of batches
-extern "C" int res_scat_method;          //!< resonance upscattering method
-extern "C" double res_scat_energy_min;   //!< Min energy in [eV] for res. upscattering
-extern "C" double res_scat_energy_max;   //!< Max energy in [eV] for res. upscattering
+extern ResScatMethod res_scat_method;          //!< resonance upscattering method
+extern double res_scat_energy_min;   //!< Min energy in [eV] for res. upscattering
+extern double res_scat_energy_max;   //!< Max energy in [eV] for res. upscattering
 extern std::vector<std::string> res_scat_nuclides;  //!< Nuclides using res. upscattering treatment
 extern "C" int run_mode;                 //!< Run mode (eigenvalue, fixed src, etc.)
 extern std::unordered_set<int> sourcepoint_batch; //!< Batches when source should be written
@@ -90,8 +91,8 @@ extern "C" int64_t trace_particle;       //!< Particle ID to enable trace on
 extern std::vector<std::array<int, 3>> track_identifiers; //!< Particle numbers for writing tracks
 extern "C" int trigger_batch_interval;   //!< Batch interval for triggers
 extern "C" int verbosity;                //!< How verbose to make output
-extern "C" double weight_cutoff;         //!< Weight cutoff for Russian roulette
-extern "C" double weight_survive;        //!< Survival weight after Russian roulette
+extern double weight_cutoff;         //!< Weight cutoff for Russian roulette
+extern double weight_survive;        //!< Survival weight after Russian roulette
 } // namespace settings
 
 //! Read settings from XML file

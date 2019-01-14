@@ -74,7 +74,6 @@ std::string path_statepoint;
 
 int32_t index_entropy_mesh {-1};
 int32_t index_ufs_mesh {-1};
-int32_t index_cmfd_mesh {-1};
 
 int32_t n_batches;
 int32_t n_inactive {0};
@@ -87,7 +86,7 @@ int legendre_to_tabular_points {C_NONE};
 int max_order {0};
 int n_log_bins {8000};
 int n_max_batches;
-int res_scat_method {RES_SCAT_ARES};
+ResScatMethod res_scat_method {ResScatMethod::rvs};
 double res_scat_energy_min {0.01};
 double res_scat_energy_max {1000.0};
 std::vector<std::string> res_scat_nuclides;
@@ -703,12 +702,10 @@ void read_settings_xml()
     // Determine what method is used
     if (check_for_node(node_res_scat, "method")) {
       auto temp = get_node_value(node_res_scat, "method", true, true);
-      if (temp == "ares") {
-        res_scat_method = RES_SCAT_ARES;
+      if (temp == "rvs") {
+        res_scat_method = ResScatMethod::rvs;
       } else if (temp == "dbrc") {
-        res_scat_method = RES_SCAT_DBRC;
-      } else if (temp == "wcm") {
-        res_scat_method = RES_SCAT_WCM;
+        res_scat_method = ResScatMethod::dbrc;
       } else {
         fatal_error("Unrecognized resonance elastic scattering method: "
           + temp + ".");

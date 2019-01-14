@@ -28,7 +28,7 @@ class ResonanceScatteringTestHarness(PyAPITestHarness):
             'enable': True,
             'energy_min': 1.0,
             'energy_max': 210.0,
-            'method': 'ares',
+            'method': 'rvs',
             'nuclides': ['U238', 'U235', 'Pu239']
         }
 

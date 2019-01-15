@@ -3,6 +3,7 @@
 #include "openmc/bremsstrahlung.h"
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/nuclide.h"
 #include "openmc/particle.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
@@ -772,14 +773,35 @@ std::pair<double, double> klein_nishina(double alpha)
 // Fortran compatibility
 //==============================================================================
 
-extern "C" void photon_from_hdf5_c(hid_t group)
+extern "C" void photon_from_hdf5(hid_t group)
 {
   data::elements.emplace_back(group, data::elements.size());
+
+  // Determine if minimum/maximum energy for this element is greater/less than
+  // the previous
+  const auto& element {data::elements.back()};
+  if (element.energy_.size() >= 1) {
+    // TODO: off-by-one
+    int photon = static_cast<int>(ParticleType::photon) - 1;
+    int n = element.energy_.size();
+    data::energy_min[photon] = std::max(data::energy_min[photon],
+      std::exp(element.energy_(1)));
+    data::energy_max[photon] = std::min(data::energy_max[photon],
+      std::exp(element.energy_(n - 1)));
+  }
 }
 
 extern "C" void photon_calculate_xs(int i_element, double E)
 {
   data::elements[i_element - 1].calculate_xs(E);
+}
+
+extern "C" void free_memory_photon_c()
+{
+  data::elements.clear();
+  data::compton_profile_pz.resize({0});
+  data::ttb_e_grid.resize({0});
+  data::ttb_k_grid.resize({0});
 }
 
 } // namespace openmc

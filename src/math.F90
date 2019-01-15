@@ -2,18 +2,12 @@ module math
 
   use, intrinsic :: ISO_C_BINDING
 
-  use constants
-  use random_lcg, only: prn
-
   implicit none
   private
   public :: t_percentile
   public :: calc_pn
   public :: calc_rn
   public :: rotate_angle
-  public :: spline
-  public :: spline_interpolate
-  public :: spline_integrate
 
   interface
 
@@ -49,40 +43,6 @@ module math
       real(C_DOUBLE), value, intent(in)    :: mu
       real(C_DOUBLE), optional, intent(in) :: phi
     end subroutine rotate_angle_c_intfc
-
-    subroutine spline(n, x, y, z) bind(C, name='spline_c')
-      use ISO_C_BINDING
-      implicit none
-      integer(C_INT), value, intent(in) :: n
-      real(C_DOUBLE), intent(in)        :: x(n)
-      real(C_DOUBLE), intent(in)        :: y(n)
-      real(C_DOUBLE), intent(in)        :: z(n)
-    end subroutine spline
-
-    function spline_interpolate(n, x, y, z, xint) &
-         bind(C, name='spline_interpolate_c') result(yint)
-      use ISO_C_BINDING
-      implicit none
-      integer(C_INT), value, intent(in) :: n
-      real(C_DOUBLE), intent(in)        :: x(n)
-      real(C_DOUBLE), intent(in)        :: y(n)
-      real(C_DOUBLE), intent(in)        :: z(n)
-      real(C_DOUBLE), value, intent(in) :: xint
-      real(C_DOUBLE)                    :: yint
-    end function spline_interpolate
-
-    function spline_integrate(n, x, y, z, xa, xb) &
-         bind(C, name='spline_integrate_c') result(s)
-      use ISO_C_BINDING
-      implicit none
-      integer(C_INT), value, intent(in) :: n
-      real(C_DOUBLE), intent(in)        :: x(n)
-      real(C_DOUBLE), intent(in)        :: y(n)
-      real(C_DOUBLE), intent(in)        :: z(n)
-      real(C_DOUBLE), value, intent(in) :: xa
-      real(C_DOUBLE), value, intent(in) :: xb
-      real(C_DOUBLE)                    :: s
-    end function spline_integrate
   end interface
 
 contains

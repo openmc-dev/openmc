@@ -331,7 +331,6 @@ add_library(libopenmc SHARED
   src/particle_header.F90
   src/particle_restart.F90
   src/photon_header.F90
-  src/photon_physics.F90
   src/physics_common.F90
   src/physics.F90
   src/pugixml/pugixml_f.F90

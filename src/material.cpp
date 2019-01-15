@@ -1,5 +1,6 @@
 #include "openmc/material.h"
 
+#include <algorithm> // for min, max
 #include <cmath>
 #include <string>
 #include <sstream>
@@ -13,6 +14,7 @@
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
 #include "openmc/search.h"
+#include "openmc/settings.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -189,11 +191,11 @@ void Material::init_bremsstrahlung()
       // Integrate the PDF using cubic spline integration over the incident
       // particle energy
       if (n > 2) {
-        spline_c(n, &data::ttb_e_grid(i), &f(i), &z(i));
+        spline(n, &data::ttb_e_grid(i), &f(i), &z(i));
 
         double c = 0.0;
         for (int j = i; j < n_e - 1; ++j) {
-          c += spline_integrate_c(n, &data::ttb_e_grid(i), &f(i), &z(i),
+          c += spline_integrate(n, &data::ttb_e_grid(i), &f(i), &z(i),
             data::ttb_e_grid(j), data::ttb_e_grid(j+1));
 
           ttb->pdf(j+1,i) = c;
@@ -263,6 +265,31 @@ read_materials(pugi::xml_node* node)
       err_msg << "Two or more materials use the same unique ID: " << mid;
       fatal_error(err_msg);
     }
+  }
+}
+
+extern "C" void read_ce_cross_sections_c()
+{
+  for (auto& mat : model::materials) {
+    // Generate material bremsstrahlung data for electrons and positrons
+    if (settings::photon_transport && settings::electron_treatment == ELECTRON_TTB) {
+      mat->init_bremsstrahlung();
+    }
+  }
+
+  if (settings::photon_transport && settings::electron_treatment == ELECTRON_TTB) {
+    // Determine if minimum/maximum energy for bremsstrahlung is greater/less
+    // than the current minimum/maximum
+    if (data::ttb_e_grid.size() >= 1) {
+      // TODO: off-by-one
+      int photon = static_cast<int>(ParticleType::photon) - 1;
+      int n_e = data::ttb_e_grid.size();
+      data::energy_min[photon] = std::max(data::energy_min[photon], data::ttb_e_grid(1));
+      data::energy_max[photon] = std::min(data::energy_max[photon], data::ttb_e_grid(n_e - 1));
+    }
+
+    // Take logarithm of energies since they are log-log interpolated
+    data::ttb_e_grid = xt::log(data::ttb_e_grid);
   }
 }
 

@@ -44,7 +44,7 @@ void sample_nuclide(const Particle* p, int mt, int* i_nuclide, int* i_nuc_mat);
 void create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
   Bank* bank_array, int64_t* bank_size, int64_t bank_capacity);
 
-extern "C" int sample_element(Particle* p);
+int sample_element(Particle* p);
 
 Reaction* sample_fission(int i_nuclide, double E);
 

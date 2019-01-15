@@ -229,10 +229,10 @@ void sample_photon_reaction(Particle* p)
 
   // Sample element within material
   int i_element = sample_element(p);
-  p->event_nuclide = i_element;
   // TODO: off-by-one
-  const auto& micro {simulation::micro_photon_xs[i_element - 1]};
-  const auto& element {data::elements[i_element - 1]};
+  p->event_nuclide = i_element + 1;
+  const auto& micro {simulation::micro_photon_xs[i_element]};
+  const auto& element {data::elements[i_element]};
 
   // Calculate photon energy over electron rest mass equivalent
   double alpha = p->E/MASS_ELECTRON_EV;
@@ -479,32 +479,43 @@ void sample_nuclide(const Particle* p, int mt, int* i_nuclide, int* i_nuc_mat)
   }
 }
 
-// int sample_element(Particle* p)
-// {
-//   // Sample cumulative distribution function
-//   double cutoff = prn() * simulation::material_xs.total;
+int sample_element(Particle* p)
+{
+  // Sample cumulative distribution function
+  double cutoff = prn() * simulation::material_xs.total;
 
-//   int i = 0;
-//   double prob = 0.0;
-//   while (prob < cutoff) {
-//     // Check to make sure that a nuclide was sampled
-//     if (i > mat % n_nuclides) {
-//       p->write_restart();
-//       fatal_error("Did not sample any element during collision.");
-//     }
+  // Get pointers to elements, densities
+  int* nuclide;
+  double* density;
+  int n;
+  openmc_material_get_densities(p->material, &nuclide, &density, &n);
+  int* element = material_element(p->material);
 
-//     // Find atom density
-//     int i_element = mat % element(i);
-//     double atom_density = mat % atom_density(i);
+  int i = 0;
+  double prob = 0.0;
+  int i_element;
+  while (prob < cutoff) {
+    // Check to make sure that a nuclide was sampled
+    if (i >= n) {
+      p->write_restart();
+      fatal_error("Did not sample any element during collision.");
+    }
 
-//     // Determine microscopic cross section
-//     double sigma = atom_density * simulation::micro_photon_xs[i_element].total;
+    // Find atom density
+    // TODO: off-by-one
+    i_element = element[i] - 1;
+    double atom_density = density[i];
 
-//     // Increment probability to compare to cutoff
-//     prob += sigma;
-//     ++i;
-//   }
-// }
+    // Determine microscopic cross section
+    double sigma = atom_density * simulation::micro_photon_xs[i_element].total;
+
+    // Increment probability to compare to cutoff
+    prob += sigma;
+    ++i;
+  }
+
+  return i_element;
+}
 
 Reaction* sample_fission(int i_nuclide, double E)
 {

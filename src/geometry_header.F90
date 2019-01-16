@@ -215,7 +215,7 @@ contains
         associate (mat => materials(i_material))
           NUC_NAMES_LOOP: do k = 1, size(mat % names)
             ! Get index in nuc_temps array
-            i_nuclide = nuclide_dict % get(to_lower(mat % names(k)))
+            i_nuclide = nuclide_dict % get(mat % names(k))
 
             ! Add temperature if it hasn't already been added
             if (find(nuc_temps(i_nuclide), temperature) == -1) then
@@ -226,7 +226,7 @@ contains
           if (present(sab_temps) .and. mat % n_sab > 0) then
             SAB_NAMES_LOOP: do k = 1, size(mat % sab_names)
               ! Get index in nuc_temps array
-              i_sab = sab_dict % get(to_lower(mat % sab_names(k)))
+              i_sab = sab_dict % get(mat % sab_names(k))
 
               ! Add temperature if it hasn't already been added
               if (find(sab_temps(i_sab), temperature) == -1) then

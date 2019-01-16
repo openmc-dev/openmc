@@ -752,20 +752,20 @@ contains
       ALL_NUCLIDES: do j = 1, mat % n_nuclides
         ! Check that this nuclide is listed in the cross_sections.xml file
         name = trim(names % data(j))
-        if (.not. library_present(LIBRARY_NEUTRON, (to_lower(name)))) then
+        if (.not. library_present(LIBRARY_NEUTRON, (name))) then
           call fatal_error("Could not find nuclide " // trim(name) &
                // " in cross_sections data file!")
         end if
 
         ! If this nuclide hasn't been encountered yet, we need to add its name
         ! and alias to the nuclide_dict
-        if (.not. nuclide_dict % has(to_lower(name))) then
+        if (.not. nuclide_dict % has(name)) then
           index_nuclide    = index_nuclide + 1
           mat % nuclide(j) = index_nuclide
 
-          call nuclide_dict % set(to_lower(name), index_nuclide)
+          call nuclide_dict % set(name, index_nuclide)
         else
-          mat % nuclide(j) = nuclide_dict % get(to_lower(name))
+          mat % nuclide(j) = nuclide_dict % get(name)
         end if
 
         ! If the corresponding element hasn't been encountered yet and photon
@@ -774,7 +774,7 @@ contains
           element = name(1:scan(name, '0123456789') - 1)
 
           ! Make sure photon cross section data is available
-          if (.not. library_present(LIBRARY_PHOTON, to_lower(element))) then
+          if (.not. library_present(LIBRARY_PHOTON, element)) then
             call fatal_error("Could not find element " // trim(element) &
                  // " in cross_sections data file!")
           end if
@@ -868,19 +868,19 @@ contains
             end if
 
             ! Check that this nuclide is listed in the cross_sections.xml file
-            if (.not. library_present(LIBRARY_THERMAL, to_lower(name))) then
+            if (.not. library_present(LIBRARY_THERMAL, name)) then
               call fatal_error("Could not find S(a,b) table " // trim(name) &
                    // " in cross_sections.xml file!")
             end if
 
             ! If this S(a,b) table hasn't been encountered yet, we need to add its
             ! name and alias to the sab_dict
-            if (.not. sab_dict % has(to_lower(name))) then
+            if (.not. sab_dict % has(name)) then
               index_sab = index_sab + 1
               mat % i_sab_tables(j) = index_sab
-              call sab_dict % set(to_lower(name), index_sab)
+              call sab_dict % set(name, index_sab)
             else
-              mat % i_sab_tables(j) = sab_dict % get(to_lower(name))
+              mat % i_sab_tables(j) = sab_dict % get(name)
             end if
           end do
         end if
@@ -1199,7 +1199,7 @@ contains
             end if
 
             ! If a specific nuclide was specified
-            word = to_lower(sarray(j))
+            word = sarray(j)
 
             ! Search through nuclides
             if (.not. nuclide_dict % has(word)) then
@@ -2052,8 +2052,8 @@ contains
         name = materials(i) % names(j)
 
         if (.not. already_read % contains(name)) then
-          filename = library_path(LIBRARY_NEUTRON, to_lower(name))
-          i_nuclide = nuclide_dict % get(to_lower(name))
+          filename = library_path(LIBRARY_NEUTRON, name)
+          i_nuclide = nuclide_dict % get(name)
 
           call write_message('Reading ' // trim(name) // ' from ' // &
                trim(filename), 6)
@@ -2089,7 +2089,7 @@ contains
           if (photon_transport) then
             if (.not. element_already_read % contains(element)) then
               ! Read photon interaction data from HDF5 photon library
-              filename = library_path(LIBRARY_PHOTON, to_lower(element))
+              filename = library_path(LIBRARY_PHOTON, element)
               i_element = element_dict % get(element)
               call write_message('Reading ' // trim(element) // ' from ' // &
                    trim(filename), 6)
@@ -2138,8 +2138,8 @@ contains
         name = materials(i) % sab_names(j)
 
         if (.not. already_read % contains(name)) then
-          filename = library_path(LIBRARY_THERMAL, to_lower(name))
-          i_sab  = sab_dict % get(to_lower(name))
+          filename = library_path(LIBRARY_THERMAL, name)
+          i_sab  = sab_dict % get(name)
 
           call write_message('Reading ' // trim(name) // ' from ' // &
                trim(filename), 6)
@@ -2233,8 +2233,8 @@ contains
     associate (nuc => nuclides(i_table))
 
       ! Look for WMP data in cross_sections.xml
-      if (library_present(LIBRARY_WMP, to_lower(nuc % name))) then
-        filename = library_path(LIBRARY_WMP, to_lower(nuc % name))
+      if (library_present(LIBRARY_WMP, nuc % name)) then
+        filename = library_path(LIBRARY_WMP, nuc % name)
       else
         nuc % mp_present = .false.
         return

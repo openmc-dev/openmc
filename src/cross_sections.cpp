@@ -136,9 +136,7 @@ void read_cross_sections_xml()
   int i = 0;
   for (const auto& lib : data::libraries) {
     for (const auto& name : lib.materials_) {
-      std::string lower_name = name;
-      to_lower(lower_name);
-      LibraryKey key {lib.type_, lower_name};
+      LibraryKey key {lib.type_, name};
       data::library_map.insert({key, i});
     }
     ++i;
@@ -146,9 +144,7 @@ void read_cross_sections_xml()
 
   // Check that 0K nuclides are listed in the cross_sections.xml file
   for (const auto& name : settings::res_scat_nuclides) {
-    std::string lower_name = name;
-    to_lower(lower_name);
-    LibraryKey key {Library::Type::neutron, lower_name};
+    LibraryKey key {Library::Type::neutron, name};
     if (data::library_map.find(key) == data::library_map.end()) {
       fatal_error("Could not find resonant scatterer " +
         name + " in cross_sections.xml file!");

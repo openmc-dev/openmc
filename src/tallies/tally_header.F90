@@ -838,7 +838,7 @@ contains
         do i = 1, n
           ! Convert C string to Fortran string
           call c_f_pointer(nuclides(i), string, [10])
-          nuclide_ = to_lower(to_f_string(string))
+          nuclide_ = to_f_string(string)
 
           select case (nuclide_)
           case ('total')

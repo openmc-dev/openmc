@@ -666,7 +666,7 @@ contains
             call move_alloc(FROM=new_density, TO=m % atom_density)
 
             ! Append new nuclide/density
-            k = nuclide_dict % get(to_lower(name_))
+            k = nuclide_dict % get(name_)
             m % nuclide(n + 1) = k
             m % atom_density(n + 1) = density
             m % density = m % density + density
@@ -810,7 +810,7 @@ contains
         do i = 1, n
           ! Convert C string to Fortran string
           call c_f_pointer(name(i), string, [10])
-          name_ = to_lower(to_f_string(string))
+          name_ = to_f_string(string)
 
           if (.not. nuclide_dict % has(name_)) then
             err = openmc_load_nuclide(string)

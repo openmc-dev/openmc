@@ -707,8 +707,8 @@ contains
     name_ = to_f_string(name)
 
     if (allocated(nuclides)) then
-      if (nuclide_dict % has(to_lower(name_))) then
-        index = nuclide_dict % get(to_lower(name_))
+      if (nuclide_dict % has(name_)) then
+        index = nuclide_dict % get(name_)
         err = 0
       else
         err = E_DATA
@@ -740,8 +740,8 @@ contains
     name_ = to_f_string(name)
 
     err = 0
-    if (.not. nuclide_dict % has(to_lower(name_))) then
-      if (library_present(LIBRARY_NEUTRON, to_lower(name_))) then
+    if (.not. nuclide_dict % has(name_)) then
+      if (library_present(LIBRARY_NEUTRON, name_)) then
         ! allocate extra space in nuclides array
         n = n_nuclides
         allocate(new_nuclides(n + 1))
@@ -749,7 +749,7 @@ contains
         call move_alloc(FROM=new_nuclides, TO=nuclides)
         n = n + 1
 
-        filename = library_path(LIBRARY_NEUTRON, to_lower(name_))
+        filename = library_path(LIBRARY_NEUTRON, name_)
 
         ! Open file and make sure version is sufficient
         file_id = file_open(filename, 'r')
@@ -764,7 +764,7 @@ contains
         call file_close(file_id)
 
         ! Add entry to nuclide dictionary
-        call nuclide_dict % set(to_lower(name_), n)
+        call nuclide_dict % set(name_, n)
         n_nuclides = n
 
         ! Initialize nuclide grid

@@ -414,6 +414,6 @@ or in the `settings.xml <../io_formats/settings.html>`_ file::
 
   <dagmc>true</dagmc>
 
-With ``dagmc`` set to true, OpenMC will load the DAGMC model (named
+With ``dagmc`` set to true, OpenMC will load the DAGMC model (from a file named
 ``dagmc.h5m``) when initializing a simulation. If a `geometry.xml
 <../io_formats/geometry.html>`_ is present, it will be ignored.

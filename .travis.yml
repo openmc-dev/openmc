@@ -17,6 +17,8 @@ addons:
       - liblapack-dev
     config:
       retries: true
+services:
+  - xvfb
 cache:
   directories:
   - $HOME/nndc_hdf5
@@ -31,7 +33,6 @@ env:
     - OPENMC_ENDF_DATA=$HOME/endf-b-vii.1
     - LD_LIBRARY_PATH=$HOME/MOAB/lib:$HOME/DAGMC/lib
     - PATH=$PATH:$HOME/NJOY2016/build
-    - DISPLAY=:99.0
     - COVERALLS_PARALLEL=true
   matrix:
     - OMP=n MPI=n PHDF5=n

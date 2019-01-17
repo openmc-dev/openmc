@@ -14,6 +14,8 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
+extern "C" const bool dagmc_enabled;
+
 namespace model {
 
 extern moab::DagMC* DAG;

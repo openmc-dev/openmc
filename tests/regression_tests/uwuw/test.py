@@ -7,7 +7,7 @@ import pytest
 from tests.testing_harness import PyAPITestHarness
 
 pytestmark = pytest.mark.skipif(
-    not openmc.capi.dagmc_enabled,
+    not openmc.capi._dagmc_enabled(),
     reason="DAGMC CAD geometry is not enabled.")
 
 class UWUWTest(PyAPITestHarness):

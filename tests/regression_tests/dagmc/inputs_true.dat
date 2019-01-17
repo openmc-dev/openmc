@@ -8,6 +8,7 @@
     <density units="g/cc" value="1.0" />
     <nuclide ao="2.0" name="H1" />
     <nuclide ao="1.0" name="O16" />
+    <sab name="c_H_in_H2O" />
   </material>
 </materials>
 <?xml version='1.0' encoding='utf-8'?>

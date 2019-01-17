@@ -249,8 +249,10 @@ openmp
 
 dagmc
   Enables use of CAD-based DAGMC_ geometries. Please see the note about DAGMC in
-  the optional dependencies list for more information on this feature.(Default: off)
-  
+  the optional dependencies list for more information on this feature. The
+  installation directory for DAGMC should also be defined as `DAGMC_ROOT` in the
+  CMake configuration command. (Default: off)
+
 coverage
   Compile and link code instrumented for coverage analysis. This is typically
   used in conjunction with gcov_.

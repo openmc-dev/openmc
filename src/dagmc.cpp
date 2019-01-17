@@ -38,11 +38,13 @@ moab::DagMC* DAG;
 } // namespace model
 
 
-std::string get_uwuw_materials_xml() {
+bool get_uwuw_materials_xml(std::string& s) {
   UWUW uwuw(DAGMC_FILENAME.c_str());
 
   std::stringstream ss;
+  bool uwuw_mats_present = false;
   if (uwuw.material_library.size() != 0) {
+    uwuw_mats_present = true;
     // write header
     ss << "<?xml version=\"1.0\"?>\n";
     ss << "<materials>\n";
@@ -54,36 +56,37 @@ std::string get_uwuw_materials_xml() {
     }
     // write footer
     ss << "</materials>";
+    s = ss.str();
   }
 
-  return ss.str();
+  return uwuw_mats_present;
 }
 
 pugi::xml_document* read_uwuw_materials() {
   pugi::xml_document* doc = NULL;
 
-  std::string ss = get_uwuw_materials_xml();
-  if(ss != "") {
+  std::string s;
+  bool found_uwuw_mats = get_uwuw_materials_xml(s);
+  if(found_uwuw_mats) {
     doc = new pugi::xml_document();
-    pugi::xml_parse_result result = doc->load_string(ss.c_str());
+    pugi::xml_parse_result result = doc->load_string(s.c_str());
   }
 
   return doc;
 }
 
 bool write_uwuw_materials_xml() {
-  bool found_mats;
-  std::string ss = get_uwuw_materials_xml();
+  std::string s;
+  bool found_uwuw_mats = get_uwuw_materials_xml(s);
     // if there is a material library in the file
-  if (ss != "") {
+  if (found_uwuw_mats) {
     // write a material.xml file
     std::ofstream mats_xml("materials.xml");
-    mats_xml << get_uwuw_materials_xml();
+    mats_xml << s;
     mats_xml.close();
-    found_mats = true;
   }
 
-  return found_mats;
+  return found_uwuw_mats;
 }
 
 void load_dagmc_geometry()

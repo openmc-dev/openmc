@@ -447,7 +447,7 @@ void sample_nuclide(const Particle* p, int mt, int* i_nuclide, int* i_nuc_mat)
   double prob = 0.0;
   while (prob < cutoff) {
     // Check to make sure that a nuclide was sampled
-    if (*i_nuc_mat > n) {
+    if (*i_nuc_mat >= n) {
       p->write_restart();
       fatal_error("Did not sample any nuclide during collision.");
     }

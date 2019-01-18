@@ -360,18 +360,15 @@ contains
     class(Material), intent(in) :: this
     type(Particle),  intent(in) :: p
 
-    ! Set all material macroscopic cross sections to zero
-    material_xs % total           = ZERO
-    material_xs % absorption      = ZERO
-    material_xs % fission         = ZERO
-    material_xs % nu_fission      = ZERO
+    interface
+      subroutine material_calculate_xs_c(ptr, p) bind(C)
+        import C_PTR, Particle
+        type(C_PTR), value :: ptr
+        type(Particle), intent(in) :: p
+      end subroutine
+    end interface
 
-    if (p % type == NEUTRON) then
-      call this % calculate_neutron_xs(p)
-    elseif (p % type == PHOTON) then
-      call this % calculate_photon_xs(p)
-    end if
-
+    call material_calculate_xs_c(this % ptr, p)
   end subroutine material_calculate_xs
 
 !===============================================================================

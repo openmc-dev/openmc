@@ -26,6 +26,7 @@ namespace openmc {
 
 namespace data {
 std::vector<std::unique_ptr<ThermalScattering>> thermal_scatt;
+std::unordered_map<std::string, int> thermal_scatt_map;
 }
 
 //==============================================================================

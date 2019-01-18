@@ -1,6 +1,6 @@
 #include "openmc/material.h"
 
-#include <algorithm> // for min, max
+#include <algorithm> // for min, max, sort
 #include <cmath>
 #include <iterator>
 #include <string>
@@ -11,6 +11,7 @@
 #include "xtensor/xview.hpp"
 
 #include "openmc/cross_sections.h"
+#include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
 #include "openmc/nuclide.h"
@@ -145,7 +146,7 @@ Material::Material(pugi::xml_node node)
     }
   } else {
     // Create list of nuclides based on those specified
-    for (auto node_nuc  : node.children("nuclide")) {
+    for (auto node_nuc : node.children("nuclide")) {
       // Check for empty name on nuclide
       if (!check_for_node(node_nuc, "name")) {
         fatal_error("No name specified on nuclide in material "
@@ -253,9 +254,7 @@ Material::Material(pugi::xml_node node)
       // Apply isotropic-in-lab treatment to specified nuclides
       for (const auto& nuc : iso_lab) {
         for (int j = 0; j < names.size(); ++j) {
-          if (names[j] == nuc) {
-            p0_[j] = true;
-          }
+          if (names[j] == nuc) p0_[j] = true;
         }
       }
     }
@@ -279,6 +278,100 @@ Material::Material(pugi::xml_node node)
   if (check_for_node(node, "volume")) {
     volume_ = std::stod(get_node_value(node, "volume"));
   }
+
+  // =======================================================================
+  // READ AND PARSE <sab> TAG FOR THERMAL SCATTERING DATA
+  if (settings::run_CE) {
+    // Loop over <sab> elements
+
+    std::vector<std::string> sab_names;
+    for (auto node_sab : node.children("sab")) {
+      // Determine name of thermal scattering table
+      if (!check_for_node(node_sab, "name")) {
+        fatal_error("Need to specify <name> for thermal scattering table.");
+      }
+      std::string name = get_node_value(node_sab, "name");
+      sab_names.push_back(name);
+
+      // Read the fraction of nuclei affected by this thermal scattering table
+      double fraction = 1.0;
+      if (check_for_node(node_sab, "fraction")) {
+        fraction = std::stod(get_node_value(node_sab, "fraction"));
+      }
+
+      // Check that the thermal scattering table is listed in the
+      // cross_sections.xml file
+      LibraryKey key {Library::Type::thermal, name};
+      if (data::library_map.find(key) == data::library_map.end()) {
+        fatal_error("Could not find thermal scattering data " + name +
+          " in cross_sections.xml file.");
+      }
+
+      // Determine index of thermal scattering data in global
+      // data::thermal_scatt array
+      int index_table;
+      if (data::thermal_scatt_map.find(name) == data::thermal_scatt_map.end()) {
+        index_table = data::thermal_scatt_map.size();
+        data::thermal_scatt_map[name] = index_table;
+      } else {
+        index_table = data::thermal_scatt_map[name];
+      }
+
+      // Add entry to thermal tables vector. For now, we put the nuclide index
+      // as zero since we don't know which nuclides the table is being applied
+      // to yet (this is assigned in init_thermal)
+      thermal_tables_.push_back({index_table, 0, fraction});
+    }
+  }
+}
+
+void Material::init_thermal()
+{
+  std::vector<ThermalTable> tables;
+
+  for (const auto& table : thermal_tables_) {
+    // In order to know which nuclide the S(a,b) table applies to, we need
+    // to search through the list of nuclides for one which has a matching
+    // name
+    bool found = false;
+    for (int j = 0; j < nuclide_.size(); ++j) {
+      const auto& name {data::nuclides[nuclide_[j]]->name_};
+      if (contains(data::thermal_scatt[table.index_table]->nuclides_, name)) {
+        tables.push_back({table.index_table, j, table.fraction});
+        found = true;
+      }
+    }
+
+    // Check to make sure thermal scattering table matched a nuclide
+    if (!found) {
+      fatal_error("Thermal scattering table " + data::thermal_scatt[
+        table.index_table]->name_  + " did not match any nuclide on material "
+        + std::to_string(id_));
+    }
+  }
+
+  // Make sure each nuclide only appears in one table.
+  for (int j = 0; j < tables.size(); ++j) {
+    for (int k = j+1; k < tables.size(); ++k) {
+      if (tables[j].index_nuclide == tables[k].index_nuclide) {
+        int index = nuclide_[tables[j].index_nuclide];
+        auto name = data::nuclides[index]->name_;
+        fatal_error(name + " in material " + std::to_string(id_) + " was found "
+          "in multiple thermal scattering tables. Each nuclide can appear in "
+          "only one table per material.");
+      }
+    }
+  }
+
+  // If there are multiple S(a,b) tables, we need to make sure that the
+  // entries in i_sab_nuclides are sorted or else they won't be applied
+  // correctly in the cross_section module.
+  std::sort(tables.begin(), tables.end(), [](ThermalTable a, ThermalTable b) {
+    return a.index_nuclide < b.index_nuclide;
+  });
+
+  // Update the list of thermal tables
+  thermal_tables_ = tables;
 }
 
 void Material::init_bremsstrahlung()
@@ -495,7 +588,7 @@ void Material::calculate_neutron_xs(const Particle& p) const
   int i_grid = std::log(p.E/data::energy_min[neutron])/simulation::log_spacing;
 
   // Determine if this material has S(a,b) tables
-  bool check_sab = (i_sab_tables_.size() > 0);
+  bool check_sab = (thermal_tables_.size() > 0);
 
   // Initialize position in i_sab_nuclides
   int j = 0;
@@ -511,10 +604,11 @@ void Material::calculate_neutron_xs(const Particle& p) const
     // Check if this nuclide matches one of the S(a,b) tables specified.
     // This relies on i_sab_nuclides being in sorted order
     if (check_sab) {
-      if (i == i_sab_nuclides_[j]) {
+      const auto& sab {thermal_tables_[j]};
+      if (i == sab.index_nuclide) {
         // Get index in sab_tables
-        i_sab = i_sab_tables_[j];
-        sab_frac = sab_fracs_[j];
+        i_sab = sab.index_table;
+        sab_frac = sab.fraction;
 
         // If particle energy is greater than the highest energy for the
         // S(a,b) table, then don't use the S(a,b) table
@@ -524,7 +618,7 @@ void Material::calculate_neutron_xs(const Particle& p) const
         ++j;
 
         // Don't check for S(a,b) tables if there are no more left
-        if (j == i_sab_tables_.size()) check_sab = false;
+        if (j == thermal_tables_.size() - 1) check_sab = false;
       }
     }
 
@@ -551,6 +645,7 @@ void Material::calculate_neutron_xs(const Particle& p) const
     double atom_density = atom_density_(i);
 
     // Add contributions to cross sections
+    const auto& macro {simulation::material_xs};
     simulation::material_xs.total += atom_density * micro.total;
     simulation::material_xs.absorption += atom_density * micro.absorption;
     simulation::material_xs.fission += atom_density * micro.fission;
@@ -714,6 +809,11 @@ extern "C" {
   void material_init_bremsstrahlung(Material* mat)
   {
     mat->init_bremsstrahlung();
+  }
+
+  void material_calculate_xs_c(Material* mat, const Particle* p)
+  {
+    mat->calculate_xs(*p);
   }
 
   void extend_materials_c(int32_t n)

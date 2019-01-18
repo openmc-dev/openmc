@@ -34,6 +34,13 @@ extern std::unordered_map<int32_t, int32_t> material_map;
 class Material
 {
 public:
+  // Types
+  struct ThermalTable {
+    int index_table; //!< Index of table in data::thermal_scatt
+    int index_nuclide; //!< Index in nuclide_
+    double fraction; //!< How often to use table
+  };
+
   // Constructors
   Material() {};
   explicit Material(pugi::xml_node material_node);
@@ -43,6 +50,9 @@ public:
 
   //! Initialize bremsstrahlung data
   void init_bremsstrahlung();
+
+  //! Initialize thermal scattering mapping
+  void init_thermal();
 
   // Data
   int32_t id_; //!< Unique ID
@@ -57,10 +67,8 @@ public:
   bool has_isotropic_nuclides_ {false};
   std::vector<bool> p0_; //!< Indicate which nuclides are to be treated with iso-in-lab scattering
 
-  // S(a,b) data
-  std::vector<int> i_sab_nuclides_; //!< Indices of nuclides that have S(a,b) table
-  std::vector<int> i_sab_tables_; //!< Corresponding indices in data::thermal_scatt
-  std::vector<double> sab_fracs_; //!< How often to use table
+  // Thermal scattering tables
+  std::vector<ThermalTable> thermal_tables_;
 
   //! \brief Default temperature for cells containing this material.
   //!

@@ -9,11 +9,10 @@ if [[ $DAGMC = 'y' ]]; then
     ./tools/ci/travis-install-dagmc.sh
 fi
 
-# Upgrade pip before doing anything else
+# Upgrade pip, pytest, numpy before doing anything else
 pip install --upgrade pip
-
-# pytest installed by default -- make sure we get latest
 pip install --upgrade pytest
+pip install --upgrade numpy
 
 # Install mpi4py for MPI configurations
 if [[ $MPI == 'y' ]]; then

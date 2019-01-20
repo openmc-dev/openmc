@@ -11,6 +11,9 @@ module nuclide_header
   use endf_header,            only: Function1D, Polynomial, Tabulated1D
   use error
   use hdf5_interface
+  use math,                   only: faddeeva, w_derivative, &
+                                    broaden_wmp_polynomials
+  use multipole_header
   use message_passing
   use random_lcg,             only: prn, future_prn, prn_set_stream
   use reaction_header,        only: Reaction
@@ -728,6 +731,8 @@ contains
     integer(C_INT) :: err
 
     integer :: n
+    logical :: file_exists
+    character(7) :: readable
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
     character(:), allocatable :: name_
@@ -751,6 +756,9 @@ contains
 
         filename = library_path(LIBRARY_NEUTRON, to_lower(name_))
 
+        call write_message('Reading ' // trim(name_) // ' from ' // &
+             trim(filename), 6)
+
         ! Open file and make sure version is sufficient
         file_id = file_open(filename, 'r')
         call check_data_version(file_id)
@@ -769,6 +777,41 @@ contains
 
         ! Initialize nuclide grid
         call nuclides(n) % init_grid()
+
+        ! Read WMP data if necessary
+        nuclides(n) % mp_present = .false.
+        if (temperature_multipole .and. &
+             library_present(LIBRARY_WMP, to_lower(name_))) then
+          filename = library_path(LIBRARY_WMP, to_lower(name_))
+
+          ! Check if Multipole library exists and is readable
+          inquire(FILE=filename, EXIST=file_exists, READ=readable)
+          if (file_exists) then
+            if (readable(1:3) == 'NO') then
+              call fatal_error("Multipole library '" // trim(filename) // "' &
+                   &is not readable! Change file permissions.")
+            end if
+
+            ! Display message
+            call write_message("Reading " // trim(name_) // " WMP data from " &
+                 // filename, 6)
+
+            ! Open file and make sure version is sufficient
+            file_id = file_open(filename, 'r')
+            call check_wmp_version(file_id)
+
+            ! Read nuclide data from HDF5
+            group_id = open_group(file_id, name_)
+            allocate(nuclides(n) % multipole)
+            call nuclides(n) % multipole % from_hdf5(group_id)
+
+            nuclides(n) % mp_present = .true.
+
+            ! Close the group and file.
+            call close_group(group_id)
+            call file_close(file_id)
+          end if
+        end if
       else
         err = E_DATA
         call set_errmsg("Nuclide '" // trim(name_) // "' is not present &

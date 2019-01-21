@@ -6,6 +6,9 @@ module simulation
   use nuclide_header,  only: micro_xs, n_nuclides
   use photon_header,   only: micro_photon_xs, n_elements
   use tally_filter_header, only: filter_matches, n_filters, filter_match_pointer
+  use summary,         only: write_summary
+  use settings,        only: output_summary
+  use message_passing, only: master
 
   implicit none
   private
@@ -19,6 +22,9 @@ contains
   subroutine simulation_init_f() bind(C)
 
     integer :: i
+
+    ! Write summary information
+    if (master .and. output_summary) call write_summary()
 
     ! Set up material nuclide index mapping
     do i = 1, n_materials

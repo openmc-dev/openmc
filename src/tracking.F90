@@ -498,8 +498,8 @@ contains
       ! set new cell value
       p % coord(1) % cell = i_cell-1 ! decrement for C++ indexing
       p % cell_instance = 1
-      p % material = cells(i_cell) % material(1)
-      p % sqrtKT = cells(i_cell) % sqrtKT(1)
+      p % material = cells(i_cell) % material(0)
+      p % sqrtKT = cells(i_cell) % sqrtKT(0)
       return
     end if
 #endif

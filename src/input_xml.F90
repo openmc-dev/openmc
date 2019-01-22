@@ -520,13 +520,16 @@ contains
     ! Display output message
     call write_message("Reading materials XML file...", 5)
 
+    doc % ptr = C_NULL_PTR
+
 #ifdef DAGMC
     if (dagmc) then
       doc % ptr = read_uwuw_materials()
     end if
+#endif
 
     if (.not. c_associated(doc % ptr)) then
-#endif
+
 
     ! Check if materials.xml exists
     filename = trim(path_input) // "materials.xml"
@@ -539,9 +542,7 @@ contains
     ! Parse materials.xml file
     call doc % load_file(filename)
 
-#ifdef DAGMC
     end if
-#endif
 
     root = doc % document_element()
     call read_materials(root % ptr)

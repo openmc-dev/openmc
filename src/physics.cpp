@@ -303,7 +303,7 @@ void sample_photon_reaction(Particle* p)
 
       // Check threshold of reaction
       int i_start = shell.threshold;
-      if (i_grid <= i_start) continue;
+      if (i_grid < i_start) continue;
 
       // Evaluation subshell photoionization cross section
       double xs = std::exp(shell.cross_section(i_grid - i_start) +

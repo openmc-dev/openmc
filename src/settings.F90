@@ -23,7 +23,6 @@ module settings
   integer(C_INT), bind(C) :: n_log_bins  ! number of bins for logarithmic grid
 
   logical(C_BOOL), bind(C) :: photon_transport
-  integer(C_INT), bind(C) :: electron_treatment
 
   ! ============================================================================
   ! MULTI-GROUP CROSS SECTION RELATED VARIABLES

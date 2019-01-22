@@ -57,9 +57,14 @@ Benchmarking
 Coupling and Multi-physics
 --------------------------
 
+- Ze-Long Zhao, Yongwei Yang, and Shuang Hong, "`Application of FLUKA and OpenMC
+  in coupled physics calculation of target and subcritical reactor for ADS
+  <https://doi.org/10.1007/s41365-018-0539-1>`_," *Nucl. Sci. Tech.*, **30**
+  (2019).
+
 - Jun Chen, Liangzhi Cao, Chuanqi Zhao, and Zhouyu Liu, "`Development of
   Subchannel Code SUBSC for high-fidelity multi-physics coupling application
-  <https://doi.org/10.1016/j.egypro.2017.08.121>`_", Energy Procedia, **127**,
+  <https://doi.org/10.1016/j.egypro.2017.08.121>`_", *Energy Procedia*, **127**,
   264-274 (2017).
 
 - Tianliang Hu, Liangzhu Cao, Hongchun Wu, Xianan Du, and Mingtao He, "`Coupled

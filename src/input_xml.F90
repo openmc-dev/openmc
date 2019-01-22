@@ -2034,11 +2034,17 @@ contains
     type(SetChar) :: already_read
     type(SetChar) :: element_already_read
 
+    interface
+      subroutine photon_from_hdf5(group) bind(C)
+        import HID_T
+        integer(HID_T), value :: group
+      end subroutine
+
+      subroutine read_ce_cross_sections_c() bind(C)
+      end subroutine
+    end interface
+
     allocate(nuclides(n_nuclides))
-    allocate(elements(n_elements))
-    if (photon_transport .and. electron_treatment == ELECTRON_TTB) then
-      allocate(ttb(n_materials))
-    end if
 
     ! Read cross sections
     do i = 1, size(materials)
@@ -2094,21 +2100,10 @@ contains
 
               ! Read element data from HDF5
               group_id = open_group(file_id, element)
-              call elements(i_element) % from_hdf5(group_id)
+
+              call photon_from_hdf5(group_id)
               call close_group(group_id)
               call file_close(file_id)
-
-              ! Determine if minimum/maximum energy for this element is
-              ! greater/less than the previous
-              if (size(elements(i_element) % energy) >= 1) then
-                energy_min(PHOTON) = max(energy_min(PHOTON), &
-                     exp(elements(i_element) % energy(1)))
-                energy_max(PHOTON) = min(energy_max(PHOTON), &
-                     exp(elements(i_element) % energy(size(elements(i_element) &
-                     % energy))))
-                call set_particle_energy_bounds(PHOTON, energy_min(PHOTON), &
-                     energy_max(PHOTON))
-              end if
 
               ! Add element to set
               call element_already_read % add(element)
@@ -2124,38 +2119,9 @@ contains
           call materials(i) % set_fissionable(.true.)
         end if
       end do
-
-      ! Generate material bremsstrahlung data for electrons and positrons
-      if (photon_transport .and. electron_treatment == ELECTRON_TTB) then
-        call bremsstrahlung_init(ttb(i) % electron, i, ELECTRON)
-        call bremsstrahlung_init(ttb(i) % positron, i, POSITRON)
-      end if
     end do
 
-    if (photon_transport .and. electron_treatment == ELECTRON_TTB) then
-      ! Deallocate element bremsstrahlung DCS and stopping power data since
-      ! only the material bremsstrahlung data is needed
-      do i = 1, size(elements)
-        if (allocated(elements(i) % stopping_power_collision)) &
-             deallocate(elements(i) % stopping_power_collision)
-        if (allocated(elements(i) % stopping_power_radiative)) &
-             deallocate(elements(i) % stopping_power_radiative)
-        if (allocated(elements(i) % dcs)) deallocate(elements(i) % dcs)
-        if (allocated(ttb_k_grid)) deallocate(ttb_k_grid)
-      end do
-
-      ! Determine if minimum/maximum energy for bremsstrahlung is greater/less
-      ! than the current minimum/maximum
-      if (size(ttb_e_grid) >= 1) then
-        energy_min(PHOTON) = max(energy_min(PHOTON), ttb_e_grid(1))
-        energy_max(PHOTON) = min(energy_max(PHOTON), ttb_e_grid(size(ttb_e_grid)))
-        call set_particle_energy_bounds(PHOTON, energy_min(PHOTON), &
-             energy_max(PHOTON))
-      end if
-
-      ! Take logarithm of energies since they are log-log interpolated
-      ttb_e_grid = log(ttb_e_grid)
-    end if
+    call read_ce_cross_sections_c()
 
     ! Set up logarithmic grid for nuclides
     do i = 1, size(nuclides)

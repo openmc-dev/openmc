@@ -48,11 +48,15 @@ public:
   // Methods
   void calculate_xs(const Particle& p) const;
 
-  //! Initialize bremsstrahlung data
-  void init_bremsstrahlung();
-
-  //! Initialize thermal scattering mapping
+  //! Assign thermal scattering tables to specific nuclides within the material
+  //! so the code knows when to apply bound thermal scattering data
   void init_thermal();
+
+  //! Finalize the material, assigning tables, normalize density, etc.
+  void finalize();
+
+  //! Set total density of the material
+  int set_density(double density, std::string units);
 
   // Data
   int32_t id_; //!< Unique ID
@@ -61,6 +65,7 @@ public:
   std::vector<int> element_; //!< Indices in elements vector
   xt::xtensor<double, 1> atom_density_; //!< Nuclide atom density in [atom/b-cm]
   double density_; //!< Total atom density in [atom/b-cm]
+  double density_gpcc_; //!< Total atom density in [g/cm^3]
   double volume_ {-1.0}; //!< Volume in [cm^3]
   bool fissionable_ {false}; //!< Does this material contain fissionable nuclides
   bool depletable_ {false}; //!< Is the material depletable?
@@ -78,6 +83,12 @@ public:
   std::unique_ptr<Bremsstrahlung> ttb_;
 
 private:
+  //! Initialize bremsstrahlung data
+  void init_bremsstrahlung();
+
+  //! Normalize density
+  void normalize_density();
+
   void calculate_neutron_xs(const Particle& p) const;
   void calculate_photon_xs(const Particle& p) const;
 };

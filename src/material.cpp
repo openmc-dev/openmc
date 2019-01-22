@@ -14,6 +14,7 @@
 #include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
+#include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
 #include "openmc/search.h"
@@ -325,6 +326,77 @@ Material::Material(pugi::xml_node node)
   }
 }
 
+void Material::finalize()
+{
+  // Set fissionable if any nuclide is fissionable
+  for (const auto& i_nuc : nuclide_) {
+    if (data::nuclides[i_nuc]->fissionable_) {
+      fissionable_ = true;
+      break;
+    }
+  }
+
+  // Generate material bremsstrahlung data for electrons and positrons
+  if (settings::photon_transport && settings::electron_treatment == ELECTRON_TTB) {
+    this->init_bremsstrahlung();
+  }
+
+  // Assign thermal scattering tables
+  this->init_thermal();
+
+  // Normalize density
+  this->normalize_density();
+}
+
+void Material::normalize_density()
+{
+  bool percent_in_atom = (atom_density_(1) > 0.0);
+  bool density_in_atom = (density_ > 0.0);
+
+  double sum_percent = 0.0;
+  for (int i = 0; i < nuclide_.size(); ++i) {
+    // determine atomic weight ratio
+    int i_nuc = nuclide_[i];
+    double awr = settings::run_CE ?
+      data::nuclides[i_nuc]->awr_ : data::nuclides_MG[i_nuc].awr;
+
+    // if given weight percent, convert all values so that they are divided
+    // by awr. thus, when a sum is done over the values, it's actually
+    // sum(w/awr)
+    if (!percent_in_atom) atom_density_(i) = -atom_density_(i) / awr;
+  }
+
+  // determine normalized atom percents. if given atom percents, this is
+  // straightforward. if given weight percents, the value is w/awr and is
+  // divided by sum(w/awr)
+  atom_density_ /= xt::sum(atom_density_)();
+
+  // Change density in g/cm^3 to atom/b-cm. Since all values are now in
+  // atom percent, the sum needs to be re-evaluated as 1/sum(x*awr)
+  if (!density_in_atom) {
+    sum_percent = 0.0;
+    for (int i = 0; i < nuclide_.size(); ++i) {
+      int i_nuc = nuclide_[i];
+      double awr = settings::run_CE ?
+        data::nuclides[i_nuc]->awr_ : data::nuclides_MG[i_nuc].awr;
+      sum_percent += atom_density_(i)*awr;
+    }
+    sum_percent = 1.0 / sum_percent;
+    density_ *= -N_AVOGADRO / MASS_NEUTRON * sum_percent;
+  }
+
+  // Calculate nuclide atom densities
+  atom_density_ *= density_;
+
+  // Calculate density in g/cm^3.
+  double density_gpcc_ = 0.0;
+  for (int i = 0; i < nuclide_.size(); ++i) {
+    int i_nuc = nuclide_[i];
+    double awr = settings::run_CE ? data::nuclides[i_nuc]->awr_ : 1.0;
+    density_gpcc_ += atom_density_(i) * awr * MASS_NEUTRON / N_AVOGADRO;
+  }
+}
+
 void Material::init_thermal()
 {
   std::vector<ThermalTable> tables;
@@ -598,11 +670,11 @@ void Material::calculate_neutron_xs(const Particle& p) const
     // ======================================================================
     // CHECK FOR S(A,B) TABLE
 
-    int i_sab = 0;
+    int i_sab = C_NONE;
     double sab_frac = 0.0;
 
     // Check if this nuclide matches one of the S(a,b) tables specified.
-    // This relies on i_sab_nuclides being in sorted order
+    // This relies on thermal_tables_ being sorted by .index_nuclide
     if (check_sab) {
       const auto& sab {thermal_tables_[j]};
       if (i == sab.index_nuclide) {
@@ -612,13 +684,13 @@ void Material::calculate_neutron_xs(const Particle& p) const
 
         // If particle energy is greater than the highest energy for the
         // S(a,b) table, then don't use the S(a,b) table
-        if (p.E > data::thermal_scatt[i_sab]->threshold()) i_sab = 0;
+        if (p.E > data::thermal_scatt[i_sab]->threshold()) i_sab = C_NONE;
 
         // Increment position in i_sab_nuclides
         ++j;
 
         // Don't check for S(a,b) tables if there are no more left
-        if (j == thermal_tables_.size() - 1) check_sab = false;
+        if (j == thermal_tables_.size()) check_sab = false;
       }
     }
 
@@ -689,6 +761,47 @@ void Material::calculate_photon_xs(const Particle& p) const
   }
 }
 
+int Material::set_density(double density, std::string units)
+{
+  if (nuclide_.empty()) {
+    set_errmsg("No nuclides exist in material yet.");
+    return OPENMC_E_ALLOCATE;
+  }
+
+  if (units == "atom/b-cm") {
+    // Set total density based on value provided
+    density_ = density;
+
+    // Determine normalized atom percents
+    double sum_percent = xt::sum(atom_density_)();
+    atom_density_ /= sum_percent;
+
+    // Recalculate nuclide atom densities based on given density
+    atom_density_ *= density;
+
+    // Calculate density in g/cm^3.
+    density_gpcc_ = 0.0;
+    for (int i = 0; i < nuclide_.size(); ++i) {
+      int i_nuc = nuclide_[i];
+      double awr = data::nuclides[i_nuc]->awr_;
+      density_gpcc_ += atom_density_(i) * awr * MASS_NEUTRON / N_AVOGADRO;
+    }
+  } else if (units == "g/cm3" || units == "g/cc") {
+    // Determine factor by which to change densities
+    double previous_density_gpcc = density_gpcc_;
+    double f = density / previous_density_gpcc;
+
+    // Update densities
+    density_gpcc_ = density;
+    density_ *= f;
+    atom_density_ *= f;
+  } else {
+    set_errmsg("Invalid units '" + units + "' specified.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+  return 0;
+}
+
 //==============================================================================
 // Non-method functions
 //==============================================================================
@@ -719,11 +832,16 @@ read_materials(pugi::xml_node* node)
 extern "C" void read_ce_cross_sections_c()
 {
   for (auto& mat : model::materials) {
-    // Generate material bremsstrahlung data for electrons and positrons
-    if (settings::photon_transport && settings::electron_treatment == ELECTRON_TTB) {
-      mat->init_bremsstrahlung();
-    }
+    mat->finalize();
   }
+
+  // Set up logarithmic grid for nuclides
+  for (auto& nuc : data::nuclides) {
+    nuc->init_grid();
+  }
+  int neutron = static_cast<int>(ParticleType::neutron) - 1;
+  simulation::log_spacing = std::log(data::energy_max[neutron] /
+    data::energy_min[neutron]) / settings::n_log_bins;
 
   if (settings::photon_transport && settings::electron_treatment == ELECTRON_TTB) {
     // Determine if minimum/maximum energy for bremsstrahlung is greater/less
@@ -759,6 +877,53 @@ openmc_material_get_volume(int32_t index, double* volume)
       set_errmsg(msg);
       return OPENMC_E_UNASSIGNED;
     }
+  } else {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+}
+
+extern "C" int
+openmc_material_set_density(int32_t index, double density, const char* units)
+{
+  if (index >= 1 && index <= model::materials.size()) {
+    return model::materials[index - 1]->set_density(density, units);
+  } else {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+}
+
+extern "C" int
+openmc_material_set_densities(int32_t index, int n, const char** name, const double* density)
+{
+  if (index >= 1 && index <= model::materials.size()) {
+    // TODO: off-by-one
+    auto& mat {model::materials[index - 1]};
+    if (n != mat->nuclide_.size()) {
+      mat->nuclide_.resize(n);
+      mat->atom_density_ = xt::zeros<double>({n});
+    }
+
+    double sum_density = 0.0;
+    for (int i = 0; i < n; ++i) {
+      std::string nuc {name[i]};
+      if (data::nuclide_map.find(nuc) == data::nuclide_map.end()) {
+        int err = openmc_load_nuclide(nuc.c_str());
+        if (err < 0) return err;
+      }
+
+      mat->nuclide_[i] = data::nuclide_map[nuc];
+      mat->atom_density_(i) = density[i];
+      sum_density += density[i];
+    }
+
+    // Set total density to the sum of the vector
+
+    int err = mat->set_density(sum_density, "atom/b-cm");
+
+    // Assign S(a,b) tables
+    mat->init_thermal();
   } else {
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
@@ -804,11 +969,6 @@ extern "C" {
   void material_set_fissionable(Material* mat, bool fissionable)
   {
     mat->fissionable_ = fissionable;
-  }
-
-  void material_init_bremsstrahlung(Material* mat)
-  {
-    mat->init_bremsstrahlung();
   }
 
   void material_calculate_xs_c(Material* mat, const Particle* p)

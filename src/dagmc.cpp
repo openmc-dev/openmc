@@ -1,6 +1,7 @@
 #include "openmc/dagmc.h"
 
 #include "openmc/cell.h"
+#include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/string_utils.h"
@@ -124,6 +125,7 @@ void load_dagmc_geometry()
     DMD.load_property_data();
   }
   std::vector<std::string> keywords;
+  keywords.push_back("temp");
   keywords.push_back("mat");
   keywords.push_back("density");
   keywords.push_back("boundary");
@@ -164,6 +166,17 @@ void load_dagmc_geometry()
       // assuming implicit complement is always void
       c->material_.push_back(MATERIAL_VOID);
       continue;
+    }
+
+    // check for temperature assignment
+    std::string temp_value;
+    if (model::DAG->has_prop(vol_handle, "temp")) {
+      rval = model::DAG->prop_value(vol_handle, "temp", temp_value);
+      MB_CHK_ERR_CONT(rval);
+      double temp = std::stod(temp_value);
+      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * temp));
+    } else {
+      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
     }
 
     // determine volume material assignment

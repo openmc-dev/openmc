@@ -129,7 +129,7 @@ extern "C" void calc_zn_rad(int n, double rho, double zn_rad[]);
 //!   is passed
 //==============================================================================
 
-extern "C" void rotate_angle_c(double uvw[3], double mu, double* phi);
+extern "C" void rotate_angle_c(double uvw[3], double mu, const double* phi);
 
 Direction rotate_angle(Direction u, double mu, double* phi);
 
@@ -167,7 +167,7 @@ extern "C" double watt_spectrum(double a, double b);
 //!
 //! Samples from a Normal distribution with a given mean and standard deviation
 //! The PDF is defined as s(x) = (1/2*sigma*sqrt(2) * e-((mu-x)/2*sigma)^2
-//! Its sampled according to 
+//! Its sampled according to
 //! http://www-pdg.lbl.gov/2009/reviews/rpp2009-rev-monte-carlo-techniques.pdf
 //! section 33.4.4
 //!
@@ -181,7 +181,7 @@ extern "C" double normal_variate(double mean, double std_dev);
 //==============================================================================
 //! Samples an energy from the Muir (Gaussian) energy-dependent distribution.
 //!
-//! This is another form of the Gaussian distribution but with more easily 
+//! This is another form of the Gaussian distribution but with more easily
 //! modifiable parameters
 //! https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
 //!
@@ -192,8 +192,6 @@ extern "C" double normal_variate(double mean, double std_dev);
 //==============================================================================
 
 extern "C" double muir_spectrum(double e0, double m_rat, double kt);
-
-
 
 //==============================================================================
 //! Doppler broadens the windowed multipole curvefit.
@@ -224,7 +222,7 @@ extern "C" void broaden_wmp_polynomials(double E, double dopp, int n, double fac
 //!   value of x.
 //==============================================================================
 
-extern "C" void spline_c(int n, const double x[], const double y[], double z[]);
+void spline(int n, const double x[], const double y[], double z[]);
 
 //==============================================================================
 //! Determine the cubic spline interpolated y-value for a given x-value.
@@ -239,8 +237,8 @@ extern "C" void spline_c(int n, const double x[], const double y[], double z[]);
 //! \return      Interpolated value
 //==============================================================================
 
-extern "C" double spline_interpolate_c(int n, const double x[], const double y[],
-                                       const double z[], double xint);
+double spline_interpolate(int n, const double x[], const double y[],
+  const double z[], double xint);
 
 //==============================================================================
 //! Evaluate the definite integral of the interpolating cubic spline between
@@ -257,9 +255,8 @@ extern "C" double spline_interpolate_c(int n, const double x[], const double y[]
 //! \return    Integral
 //==============================================================================
 
-extern "C" double spline_integrate_c(int n, const double x[], const double y[],
-                                     const double z[], double xa, double xb);
-
+double spline_integrate(int n, const double x[], const double y[],
+  const double z[], double xa, double xb);
 
 //! Evaluate the Faddeeva function
 //!

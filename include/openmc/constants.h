@@ -4,8 +4,8 @@
 #ifndef OPENMC_CONSTANTS_H
 #define OPENMC_CONSTANTS_H
 
-#include <cmath>
 #include <array>
+#include <cmath>
 #include <limits>
 #include <vector>
 
@@ -96,12 +96,12 @@ constexpr double N_AVOGADRO       {0.6022140857}; // Avogadro's number in 10^24/
 constexpr double K_BOLTZMANN      {8.6173303e-5}; // Boltzmann constant in eV/K
 
 // Electron subshell labels
-constexpr char SUBSHELLS[][4]  {
-  "K  ", "L1 ", "L2 ", "L3 ", "M1 ", "M2 ", "M3 ", "M4 ", "M5 ",
-  "N1 ", "N2 ", "N3 ", "N4 ", "N5 ", "N6 ", "N7 ", "O1 ", "O2 ",
-  "O3 ", "O4 ", "O5 ", "O6 ", "O7 ", "O8 ", "O9 ", "P1 ", "P2 ",
-  "P3 ", "P4 ", "P5 ", "P6 ", "P7 ", "P8 ", "P9 ", "P10", "P11",
-  "Q1 ", "Q2 ", "Q3 "
+constexpr std::array<const char*, 39> SUBSHELLS =  {
+  "K", "L1", "L2", "L3", "M1", "M2", "M3", "M4", "M5",
+  "N1", "N2", "N3", "N4", "N5", "N6", "N7", "O1", "O2",
+  "O3", "O4", "O5", "O6", "O7", "O8", "O9", "P1", "P2",
+  "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11",
+  "Q1", "Q2", "Q3"
 };
 
 // Void material

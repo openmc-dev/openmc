@@ -2113,21 +2113,8 @@ contains
           ! Read multipole file into the appropriate entry on the nuclides array
           if (temperature_multipole) call read_multipole_data(i_nuclide)
         end if
-
-        ! Check if material is fissionable
-        if (nuclides(materials(i) % nuclide(j)) % fissionable) then
-          call materials(i) % set_fissionable(.true.)
-        end if
       end do
     end do
-
-    call read_ce_cross_sections_c()
-
-    ! Set up logarithmic grid for nuclides
-    do i = 1, size(nuclides)
-      call nuclides(i) % init_grid()
-    end do
-    log_spacing = log(energy_max(NEUTRON)/energy_min(NEUTRON)) / n_log_bins
 
     do i = 1, size(materials)
       ! Skip materials with no S(a,b) tables
@@ -2165,10 +2152,9 @@ contains
           call already_read % add(name)
         end if
       end do
-
-      ! Associate S(a,b) tables with specific nuclides
-      call materials(i) % assign_sab_tables()
     end do
+
+    call read_ce_cross_sections_c()
 
     ! Show which nuclide results in lowest energy for neutron transport
     do i = 1, size(nuclides)

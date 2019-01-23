@@ -110,6 +110,8 @@ def leqi(operator, timesteps, power=None, power_density=None, print_out=True):
             t = operator.prev_res[-1].time[-1]
             i_res = len(operator.prev_res)
 
+        chain = operator.chain
+
         for i, (dt, p) in enumerate(zip(timesteps, power)):
             # Perform SI-CE/LI CFQ4 for the first step
             if i == 0:
@@ -149,7 +151,7 @@ def leqi(operator, timesteps, power=None, power_density=None, print_out=True):
             dt_l = dt
 
         # Perform one last simulation
-        x = [copy.deepcopy(vec)]
+        x = [copy.deepcopy(x_new)]
         op_results = [operator(x[0], power[-1])]
 
         # Create results, write to disk

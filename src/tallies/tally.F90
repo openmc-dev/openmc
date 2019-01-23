@@ -2068,7 +2068,7 @@ contains
 
       ! Find all valid bins in each filter if they have not already been found
       ! for a previous tally.
-      do j = 1, size(t % filter)
+      do j = 1, t % n_filters()
         i_filt = t % filter(j)
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins_clear()
@@ -2095,7 +2095,7 @@ contains
         filter_weight = ONE
 
         ! Determine scoring index and weight for this filter combination
-        do j = 1, size(t % filter)
+        do j = 1, t % n_filters()
           i_filt = t % filter(j)
           i_bin = filter_matches(i_filt) % i_bin
           filter_index = filter_index + (filter_matches(i_filt) &
@@ -2155,7 +2155,7 @@ contains
         ! Increment the filter bins, starting with the last filter to find the
         ! next valid bin combination
         finished = .true.
-        do j = size(t % filter), 1, -1
+        do j = t % n_filters(), 1, -1
           i_filt = t % filter(j)
           if (filter_matches(i_filt) % i_bin < filter_matches(i_filt) % &
                bins_size()) then
@@ -2214,7 +2214,7 @@ contains
 
       ! Find all valid bins in each filter if they have not already been found
       ! for a previous tally.
-      do j = 1, size(t % filter)
+      do j = 1, t % n_filters()
         i_filt = t % filter(j)
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins_clear()
@@ -2241,7 +2241,7 @@ contains
         filter_weight = ONE
 
         ! Determine scoring index and weight for this filter combination
-        do j = 1, size(t % filter)
+        do j = 1, t % n_filters()
           i_filt = t % filter(j)
           i_bin = filter_matches(i_filt) % i_bin
           filter_index = filter_index + (filter_matches(i_filt) &
@@ -2284,7 +2284,7 @@ contains
         ! Increment the filter bins, starting with the last filter to find the
         ! next valid bin combination
         finished = .true.
-        do j = size(t % filter), 1, -1
+        do j = t % n_filters(), 1, -1
           i_filt = t % filter(j)
           if (filter_matches(i_filt) % i_bin < filter_matches(i_filt) % &
                bins_size()) then
@@ -2414,7 +2414,7 @@ contains
 
           ! determine scoring index and weight for this filter combination
           i_filter = 1
-          do l = 1, size(t % filter)
+          do l = 1, t % n_filters()
             i_filter = i_filter + (filter_matches(t % filter(l)) &
                  % bins_data(filter_matches(t % filter(l)) % i_bin) - 1) * &
                  t % stride(l)
@@ -2454,7 +2454,7 @@ contains
 
                   ! determine scoring index and weight for this filter
                   ! combination
-                  do l = 1, size(t % filter)
+                  do l = 1, t % n_filters()
                     f = t % filter(l)
                     b = filter_matches(f) % i_bin
                     i_filter = i_filter + (filter_matches(f) &
@@ -2477,7 +2477,7 @@ contains
             filter_weight = ONE
 
             ! determine scoring index and weight for this filter combination
-            do l = 1, size(t % filter)
+            do l = 1, t % n_filters()
               f = t % filter(l)
               b = filter_matches(f) % i_bin
               i_filter = i_filter + (filter_matches(f) % bins_data(b) - 1) &
@@ -2526,7 +2526,7 @@ contains
 
     ! determine scoring index and weight on the modified matching bins
     filter_index = 1
-    do i = 1, size(t % filter)
+    do i = 1, t % n_filters()
       filter_index = filter_index + (filter_matches(t % filter(i)) % &
            bins_data(filter_matches(t % filter(i)) % i_bin) - 1) * t % stride(i)
     end do
@@ -2579,7 +2579,7 @@ contains
 
       ! Find all valid bins in each filter if they have not already been found
       ! for a previous tally.
-      do j = 1, size(t % filter)
+      do j = 1, t % n_filters()
         i_filt = t % filter(j)
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins_clear()
@@ -2606,7 +2606,7 @@ contains
         filter_weight = ONE
 
         ! Determine scoring index and weight for this filter combination
-        do j = 1, size(t % filter)
+        do j = 1, t % n_filters()
           i_filt = t % filter(j)
           i_bin = filter_matches(i_filt) % i_bin
           filter_index = filter_index + (filter_matches(i_filt) &
@@ -2658,7 +2658,7 @@ contains
         ! Increment the filter bins, starting with the last filter to find the
         ! next valid bin combination
         finished = .true.
-        do j = size(t % filter), 1, -1
+        do j = t % n_filters(), 1, -1
           i_filt = t % filter(j)
           if (filter_matches(i_filt) % i_bin < filter_matches(i_filt) % &
                bins_size()) then
@@ -2736,7 +2736,7 @@ contains
 
       ! Find all valid bins in each filter if they have not already been found
       ! for a previous tally.
-      do j = 1, size(t % filter)
+      do j = 1, t % n_filters()
         i_filt = t % filter(j)
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins_clear()
@@ -2763,7 +2763,7 @@ contains
         filter_weight = ONE
 
         ! Determine scoring index and weight for this filter combination
-        do j = 1, size(t % filter)
+        do j = 1, t % n_filters()
           i_filt = t % filter(j)
           i_bin = filter_matches(i_filt) % i_bin
           filter_index = filter_index + (filter_matches(i_filt) &
@@ -2815,7 +2815,7 @@ contains
         ! Increment the filter bins, starting with the last filter to find the
         ! next valid bin combination
         finished = .true.
-        do j = size(t % filter), 1, -1
+        do j = t % n_filters(), 1, -1
           i_filt = t % filter(j)
           if (filter_matches(i_filt) % i_bin < filter_matches(i_filt) % &
                bins_size()) then
@@ -2882,7 +2882,7 @@ contains
 
       ! Find all valid bins in each filter if they have not already been found
       ! for a previous tally.
-      do j = 1, size(t % filter)
+      do j = 1, t % n_filters()
         i_filt = t % filter(j)
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins_clear()
@@ -2909,7 +2909,7 @@ contains
         filter_weight = ONE
 
         ! Determine scoring index and weight for this filter combination
-        do j = 1, size(t % filter)
+        do j = 1, t % n_filters()
           i_filt = t % filter(j)
           i_bin = filter_matches(i_filt) % i_bin
           filter_index = filter_index + (filter_matches(i_filt) &
@@ -2945,7 +2945,7 @@ contains
         ! Increment the filter bins, starting with the last filter to find the
         ! next valid bin combination
         finished = .true.
-        do j = size(t % filter), 1, -1
+        do j = t % n_filters(), 1, -1
           i_filt = t % filter(j)
           if (filter_matches(i_filt) % i_bin < filter_matches(i_filt) % &
                bins_size()) then
@@ -3836,6 +3836,14 @@ contains
     integer(C_INT32_T) :: empty(0)
     character(:), allocatable :: type_
 
+    interface
+      function tally_pointer(indx) bind(C) result(ptr)
+        import C_INT, C_PTR
+        integer(C_INT), value :: indx
+        type(C_PTR)           :: ptr
+      end function
+    end interface
+
     ! Convert C string to Fortran string
     type_ = to_f_string(type)
 
@@ -3852,6 +3860,9 @@ contains
           err = E_UNASSIGNED
           call set_errmsg("Unknown tally type: " // trim(type_))
         end select
+
+        ! Assign the pointer to the C++ tally
+        tallies(index) % obj % ptr = tally_pointer(index - 1)
 
         ! When a tally is allocated, set it to have 0 filters
         err = tallies(index) % obj % set_filters(empty)

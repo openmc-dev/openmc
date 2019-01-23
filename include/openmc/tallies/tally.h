@@ -3,15 +3,35 @@
 
 #include "openmc/constants.h"
 
+#include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
 
+#include <memory> // for unique_ptr
+#include <string>
+#include <vector>
+
 namespace openmc {
+
+//==============================================================================
+//! A user-specified flux-weighted (or current) measurement.
+//==============================================================================
+
+class Tally {
+public:
+  Tally() {}
+
+  std::vector<int32_t> filters_;
+};
 
 //==============================================================================
 // Global variable declarations
 //==============================================================================
 
 extern "C" double total_weight;
+
+namespace model {
+  extern std::vector<std::unique_ptr<Tally>> tallies;
+}
 
 // Threadprivate variables
 extern "C" double global_tally_absorption;
@@ -43,6 +63,8 @@ adaptor_type<3> tally_results(int idx);
 //! Collect all tally results onto master process
 extern "C" void reduce_tally_results();
 #endif
+
+extern "C" void free_memory_tally_c();
 
 } // namespace openmc
 

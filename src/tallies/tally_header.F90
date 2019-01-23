@@ -26,7 +26,6 @@ module tally_header
   public :: openmc_tally_get_active
   public :: openmc_tally_get_estimator
   public :: openmc_tally_get_id
-  public :: openmc_tally_get_filters
   public :: openmc_tally_get_n_realizations
   public :: openmc_tally_get_nuclides
   public :: openmc_tally_get_scores
@@ -48,6 +47,8 @@ module tally_header
 !===============================================================================
 
   type, public :: TallyObject
+    type(C_PTR) :: ptr
+
     ! Basic data
 
     integer :: id                   ! user-defined identifier
@@ -57,7 +58,6 @@ module tally_header
     real(8) :: volume               ! volume of region
     logical :: active = .false.
     logical :: depletion_rx = .false. ! has depletion reactions, e.g. (n,2n)
-    integer, allocatable :: filter(:) ! index in filters array
 
     ! The stride attribute is used for determining the index in the results
     ! array for a matching_bin combination. Since multiple dimensions are
@@ -106,6 +106,8 @@ module tally_header
     procedure :: read_results_hdf5 => tally_read_results_hdf5
     procedure :: write_results_hdf5 => tally_write_results_hdf5
     procedure :: set_filters => tally_set_filters
+    procedure :: n_filters => tally_get_n_filters
+    procedure :: filter => tally_get_filter
   end type TallyObject
 
   type, public :: TallyContainer
@@ -291,6 +293,15 @@ contains
     integer :: n       ! number of filters
     integer :: stride  ! filter stride
 
+    interface
+      subroutine tally_set_filters_c(ptr, n, filter_indices) bind(C)
+        import C_PTR, C_INT, C_INT32_T
+        type(C_PTR), value :: ptr
+        integer(C_INT), value :: n
+        integer(C_INT32_T) :: filter_indices(n)
+      end subroutine
+    end interface
+
     err = 0
     this % find_filter(:) = 0
     n = size(filter_indices)
@@ -362,9 +373,10 @@ contains
     end do
 
     if (err == 0) then
-      if (allocated(this % filter)) deallocate(this % filter)
+      call tally_set_filters_c(this % ptr, n, filter_indices)
+
       if (allocated(this % stride)) deallocate(this % stride)
-      allocate(this % filter(n), this % stride(n))
+      allocate(this % stride(n))
 
       ! Filters are traversed in reverse so that the last filter has the
       ! shortest stride in memory and the first filter has the largest stride
@@ -372,7 +384,6 @@ contains
       do i = n, 1, -1
         ! Set filter and stride
         k = filter_indices(i)
-        this % filter(i) = k
         this % stride(i) = stride
 
         ! Multiply stride by number of bins in this filter
@@ -384,6 +395,34 @@ contains
     end if
 
   end function tally_set_filters
+
+  function tally_get_n_filters(this) result(n)
+    class(TallyObject) :: this
+    integer(C_INT) :: n
+    interface
+      function tally_get_n_filters_c(tally) result(n) bind(C)
+        import C_PTR, C_INT, C_INT32_T
+        type(C_PTR), value :: tally
+        integer(C_INT) :: n
+      end function
+    end interface
+    n = tally_get_n_filters_c(this % ptr)
+  end function
+
+  function tally_get_filter(this, i) result(filt)
+    class(TallyObject) :: this
+    integer(C_INT) :: i
+    integer(C_INT32_T) :: filt
+    interface
+      function tally_get_filter_c(tally, i) result(filt) bind(C)
+        import C_PTR, C_INT, C_INT32_T
+        type(C_PTR), value :: tally
+        integer(C_INT), value :: i
+        integer(C_INT32_T) :: filt
+      end function
+    end interface
+    filt = tally_get_filter_c(this % ptr, i-1)
+  end function
 
 !===============================================================================
 ! CONFIGURE_TALLIES initializes several data structures related to tallies. This
@@ -448,6 +487,14 @@ contains
 
     integer :: i
     type(TallyContainer), allocatable :: temp(:) ! temporary tallies array
+
+    interface
+      subroutine extend_tallies_c() bind(C)
+      end subroutine
+    end interface
+
+    ! Extend the C++ tallies array first
+    call extend_tallies_c()
 
     if (n_tallies == 0) then
       ! Allocate tallies array
@@ -555,31 +602,6 @@ contains
       call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_get_id
-
-
-  function openmc_tally_get_filters(index, filter_indices, n) result(err) bind(C)
-    ! Return the list of filters assigned to a tally
-    integer(C_INT32_T), value :: index
-    type(C_PTR), intent(out) :: filter_indices
-    integer(C_INT), intent(out) :: n
-    integer(C_INT) :: err
-
-    if (index >= 1 .and. index <= size(tallies)) then
-      associate (t => tallies(index) % obj)
-        if (allocated(t % filter)) then
-          filter_indices = C_LOC(t % filter(1))
-          n = size(t % filter)
-          err = 0
-        else
-          err = E_ALLOCATE
-          call set_errmsg("Tally filters have not been allocated yet.")
-        end if
-      end associate
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg('Index in tallies array is out of bounds.')
-    end if
-  end function openmc_tally_get_filters
 
 
   function openmc_tally_get_n_realizations(index, n) result(err) bind(C)

@@ -459,6 +459,7 @@ contains
     integer :: filter_index ! index in results array for filters
     integer :: score_index  ! scoring bin index
     integer :: i_nuclide    ! index in nuclides array
+    integer :: i_filt
     integer :: unit_tally   ! tallies.out file unit
     integer :: nr           ! number of realizations
     real(8) :: t_value      ! t-values for confidence intervals
@@ -557,7 +558,7 @@ contains
       ! to be used for a given tally.
 
       ! Initialize bins, filter level, and indentation
-      do h = 1, size(t % filter)
+      do h = 1, t % n_filters()
         filter_bins(t % filter(h)) = 0
       end do
       j = 1
@@ -566,7 +567,7 @@ contains
       print_bin: do
         find_bin: do
           ! Check for no filters
-          if (size(t % filter) == 0) exit find_bin
+          if (t % n_filters() == 0) exit find_bin
 
           ! Increment bin combination
           filter_bins(t % filter(j)) = filter_bins(t % filter(j)) + 1
@@ -588,12 +589,13 @@ contains
 
           else
             ! Check if this is last filter
-            if (j == size(t % filter)) exit find_bin
+            if (j == t % n_filters()) exit find_bin
 
             ! Print current filter information
+            i_filt = t % filter(j)
             write(UNIT=unit_tally, FMT='(1X,2A)') repeat(" ", indent), &
-                 trim(filters(t % filter(j)) % obj % &
-                 text_label(filter_bins(t % filter(j))))
+                 trim(filters(i_filt) % obj % &
+                 text_label(filter_bins(i_filt)))
             indent = indent + 2
             j = j + 1
           end if
@@ -601,10 +603,11 @@ contains
         end do find_bin
 
         ! Print filter information
-        if (size(t % filter) > 0) then
+        if (t % n_filters() > 0) then
+          i_filt = t % filter(j)
           write(UNIT=unit_tally, FMT='(1X,2A)') repeat(" ", indent), &
-               trim(filters(t % filter(j)) % obj % &
-               text_label(filter_bins(t % filter(j))))
+               trim(filters(i_filt) % obj % &
+               text_label(filter_bins(i_filt)))
         end if
 
         ! Determine scoring index for this bin combination -- note that unlike
@@ -612,14 +615,14 @@ contains
         ! bins below the lowest filter level will be zeros
 
         filter_index = 1
-        do h = 1, size(t % filter)
+        do h = 1, t % n_filters()
           filter_index = filter_index &
                + (max(filter_bins(t % filter(h)) ,1) - 1) * t % stride(h)
         end do
 
         ! Write results for this filter bin combination
         score_index = 0
-        if (size(t % filter) > 0) indent = indent + 2
+        if (t % n_filters() > 0) indent = indent + 2
         do n = 1, t % n_nuclide_bins
           ! Write label for nuclide
           i_nuclide = t % nuclide_bins(n)
@@ -659,7 +662,7 @@ contains
         end do
         indent = indent - 2
 
-        if (size(t % filter) == 0) exit print_bin
+        if (t % n_filters() == 0) exit print_bin
 
       end do print_bin
 

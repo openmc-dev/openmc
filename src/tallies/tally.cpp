@@ -2,6 +2,8 @@
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
+#include "openmc/error.h"
+#include "openmc/tallies/filter.h"
 #include "openmc/message_passing.h"
 
 #include "xtensor/xadapt.hpp"
@@ -16,6 +18,10 @@ namespace openmc {
 //==============================================================================
 // Global variable definitions
 //==============================================================================
+
+namespace model {
+  std::vector<std::unique_ptr<Tally>> tallies;
+}
 
 double global_tally_absorption;
 double global_tally_collision;
@@ -107,5 +113,61 @@ void reduce_tally_results()
   if (mpi::master) total_weight = weight_reduced;
 }
 #endif
+
+extern "C" void
+free_memory_tally_c()
+{
+  #pragma omp parallel
+  {
+    simulation::filter_matches.clear();
+  }
+
+  model::tally_filters.clear();
+
+  model::tallies.clear();
+}
+
+//==============================================================================
+// C-API functions
+//==============================================================================
+
+extern "C" int
+openmc_tally_get_filters(int32_t index, int32_t** indices, int* n)
+{
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  *indices = model::tallies[index-1]->filters_.data();
+  *n = model::tallies[index-1]->filters_.size();
+  return 0;
+}
+
+//==============================================================================
+// Fortran compatibility functions
+//==============================================================================
+
+extern "C" {
+  Tally* tally_pointer(int indx) {return model::tallies[indx].get();}
+
+  void
+  extend_tallies_c(int n)
+  {
+    for (int i = 0; i < n; ++i)
+      model::tallies.push_back(std::make_unique<Tally>());
+  }
+
+  void
+  tally_set_filters_c(Tally* tally, int n, int32_t filter_indices[])
+  {
+    tally->filters_.clear();
+    tally->filters_.assign(filter_indices, filter_indices + n);
+  }
+
+  int tally_get_n_filters_c(Tally* tally) {return tally->filters_.size();}
+
+  int32_t tally_get_filter_c(Tally* tally, int i) {return tally->filters_[i];}
+}
 
 } // namespace openmc

@@ -1,178 +1,156 @@
-""" The LE/QI CFQ4 integrator.
-
-Implements the LE/QI Predictor-Corrector algorithm using commutator free
-high order integrators.
-
-This algorithm is mathematically defined as:
-
-.. math:
-    y' = A(y, t) y(t)
-    A_m1 = A(y_n-1, t_n-1)
-    A_0 = A(y_n, t_n)
-    A_l(t) linear extrapolation of A_m1, A_0
-    Integrate to t_n+1 to get y_p
-    A_c = A(y_p, y_n+1)
-    A_q(t) quadratic interpolation of A_m1, A_0, A_c
-
-Here, A(t) is integrated using the fourth order algorithm described below.
-
-From
-----
-    Thalhammer, Mechthild. "A fourth-order commutator-free exponential
-    integrator for nonautonomous differential equations." SIAM journal on
-    numerical analysis 44.2 (2006): 851-864.
-
-It is initialized using the CE/LI algorithm.
-"""
+"""The LE/QI CFQ4 integrator."""
 
 import copy
-import os
-import time
+from collections.abc import Iterable
+from itertools import repeat
 
-from mpi4py import MPI
+from .celi import celi_inner
+from .cram import deplete
+from ..results import Results
+from ..abc import OperatorResult
 
-from .celi_cfq4 import celi_cfq4_inner
-from .cram import CRAM48
-from .save_results import save_results
 
-def leqi_cfq4(operator, print_out=True):
-    """ Performs integration of an operator using the LE/QI CFQ4 algorithm.
+# Functions to form the special matrix for depletion
+def _leqi_f1(chain, inputs):
+     f1 = chain.form_matrix(inputs[0])
+     f2 = chain.form_matrix(inputs[1])
+     dt_l, dt = inputs[2], inputs[3]
+     return -dt / (12 * dt_l) * f1 + (dt + 6 * dt_l) / (12 * dt_l) * f2
+
+def _leqi_f2(chain, inputs):
+     f1 = chain.form_matrix(inputs[0])
+     f2 = chain.form_matrix(inputs[1])
+     dt_l, dt = inputs[2], inputs[3]
+     return -5 * dt / (12 * dt_l) * f1 + (5 * dt + 6 * dt_l) / (12 * dt_l) * f2
+
+def _leqi_f3(chain, inputs):
+     f1 = chain.form_matrix(inputs[0])
+     f2 = chain.form_matrix(inputs[1])
+     f3 = chain.form_matrix(inputs[2])
+     dt_l, dt = inputs[3], inputs[4]
+     return (-dt**2 / (12 * dt_l * (dt + dt_l)) * f1 +
+             (dt**2 + 6*dt*dt_l + 5*dt_l**2) / (12 * dt_l * (dt + dt_l)) * f2 +
+             dt_l / (12 * (dt + dt_l)) * f3)
+
+def _leqi_f4(chain, inputs):
+     f1 = chain.form_matrix(inputs[0])
+     f2 = chain.form_matrix(inputs[1])
+     f3 = chain.form_matrix(inputs[2])
+     dt_l, dt = inputs[3], inputs[4]
+     return (-dt**2 / (12 * dt_l * (dt + dt_l)) * f1 +
+             (dt**2 + 2*dt*dt_l + dt_l**2) / (12 * dt_l * (dt + dt_l)) * f2 +
+             (4 * dt * dt_l + 5 * dt_l**2) / (12 * dt_l * (dt + dt_l)) * f3)
+
+def leqi(operator, timesteps, power=None, power_density=None, print_out=True):
+    r"""Deplete using the LE/QI CFQ4 algorithm.
+
+    Implements the LE/QI Predictor-Corrector algorithm using the [fourth order
+    commutator-free integrator]_.
+
+    The LE/QI algorithm is mathematically defined as:
+
+    .. math:
+        y' = A(y, t) y(t)
+        A_m1 = A(y_n-1, t_n-1)
+        A_0 = A(y_n, t_n)
+        A_l(t) linear extrapolation of A_m1, A_0
+        Integrate to t_n+1 to get y_p
+        A_c = A(y_p, y_n+1)
+        A_q(t) quadratic interpolation of A_m1, A_0, A_c
+
+    Here, A(t) is integrated using the fourth order algorithm CFQ4.
+
+    It is initialized using the CE/LI algorithm.
 
     Parameters
     ----------
-    operator : Operator
+    operator : openmc.deplete.TransportOperator
         The operator object to simulate on.
+    timesteps : iterable of float
+        Array of timesteps in units of [s]. Note that values are not cumulative.
+    power : float or iterable of float, optional
+        Power of the reactor in [W]. A single value indicates that the power is
+        constant over all timesteps. An iterable indicates potentially different
+        power levels for each timestep. For a 2D problem, the power can be given
+        in [W/cm] as long as the "volume" assigned to a depletion material is
+        actually an area in [cm^2]. Either `power` or `power_density` must be
+        specified.
+    power_density : float or iterable of float, optional
+        Power density of the reactor in [W/gHM]. It is multiplied by initial
+        heavy metal inventory to get total power if `power` is not speficied.
     print_out : bool, optional
         Whether or not to print out time.
+
+    References
+    ----------
+    .. [fourth order commutator-free integrator]
+       Thalhammer, Mechthild. "A fourth-order commutator-free exponential
+       integrator for nonautonomous differential equations." SIAM journal on
+       numerical analysis 44.2 (2006): 851-864.
     """
+    if power is None:
+        if power_density is None:
+            raise ValueError(
+                "Neither power nor power density was specified.")
+        if not isinstance(power_density, Iterable):
+            power = power_density*operator.heavy_metal
+        else:
+            power = [i*operator.heavy_metal for i in power_density]
 
-    # Save current directory
-    dir_home = os.getcwd()
-
-    # Move to folder
-    os.makedirs(operator.settings.output_dir, exist_ok=True)
-    os.chdir(operator.settings.output_dir)
+    if not isinstance(power, Iterable):
+        power = [power]*len(timesteps)
 
     # Generate initial conditions
-    vec = operator.initial_condition()
+    with operator as vec:
+        # Initialize time and starting index
+        if operator.prev_res is None:
+            t = 0.0
+            i_res = 0
+        else:
+            t = operator.prev_res[-1].time[-1]
+            i_res = len(operator.prev_res)
 
-    n_mats = len(vec)
+        for i, (dt, p) in enumerate(zip(timesteps, power)):
+            # Perform SI-CE/LI CFQ4 for the first step
+            if i == 0:
+                # Save results for the last step
+                dt_l = dt
+                vec, t, op_res_last = celi_inner(operator, vec, p, i, i_res,
+                                                 t, dt, print_out)
+                continue
 
-    t = 0.0
+            # Perform remaining LE/QI
+            x = [copy.deepcopy(vec)]
+            op_results = [operator(x[0], p)]
 
-    # Perform single step of CE/LI CFQ4
-    dt_l = operator.settings.dt_vec[0]
-    vec, t, rates_last = celi_cfq4_inner(operator, vec, 0, t, dt_l, print_out)
+            inputs = list(zip(op_res_last.rates, op_results[0].rates,
+                              repeat(dt_l), repeat(dt)))
+            x_new = deplete(chain, x[0], inputs, dt, print_out,
+                            matrix_func=_leqi_f1)
+            x_new = deplete(chain, x_new, inputs, dt, print_out,
+                            matrix_func=_leqi_f2)
+            x.append(x_new)
+            op_results.append(operator(x[1], p))
 
-    # Perform remaining LE/QI
-    for i, dt in enumerate(operator.settings.dt_vec[1::]):
-        # Create vectors
+            inputs = list(zip(op_res_last.rates, op_results[0].rates,
+                              op_results[1].rates, repeat(dt_l), repeat(dt)))
+            x_new = deplete(chain, x[0], inputs, dt, print_out,
+                            matrix_func=_leqi_f3)
+            x_new = deplete(chain, x_new, inputs, dt, print_out,
+                            matrix_func=_leqi_f4)
+
+            # Create results, write to disk
+            Results.save(operator, x, op_results, [t, t+dt], p, i_res+i)
+
+            # update results
+            x = [x_new]
+            op_res_last = copy.deepcopy(op_results[0])
+            t += dt
+            dt_l = dt
+
+        # Perform one last simulation
         x = [copy.deepcopy(vec)]
-        seeds = []
-        eigvls = []
-        rates_array = []
-
-        eigvl, rates, seed = operator.eval(x[0])
-
-        eigvls.append(eigvl)
-        seeds.append(seed)
-        rates_array.append(copy.deepcopy(rates))
-
-        x_result = []
-
-        t_start = time.time()
-        for mat in range(n_mats):
-            # Form matrices
-            f1 = dt * operator.form_matrix(rates_last, mat)
-            f2 = dt * operator.form_matrix(rates_array[0], mat)
-
-            # Perform commutator-free integral
-            x_new = copy.deepcopy(x[0][mat])
-
-            # Compute linearly extrapolated f at points
-            # A{1,2} = f(1/2 -/+ sqrt(3)/6)
-            # Then
-            # a{1,2} = 1/4 +/- sqrt(3)/6
-            # m1 = a2 * A1 + a1 * A2
-            # m2 = a1 * A1 + a2 * A2
-            m1 = -5 * dt / (12 * dt_l) * f1 + (5 * dt + 6 * dt_l) / (12 * dt_l) * f2
-            m2 = -dt / (12 * dt_l) * f1 + (dt + 6 * dt_l) / (12 * dt_l) * f2
-
-            x_new = CRAM48(m2, x_new, 1.0)
-            x_new = CRAM48(m1, x_new, 1.0)
-
-            x_result.append(x_new)
-
-        t_end = time.time()
-        if MPI.COMM_WORLD.rank == 0:
-            if print_out:
-                print("Time to matexp: ", t_end - t_start)
-
-        x.append(x_result)
-
-        eigvl, rates, seed = operator.eval(x[1])
-
-        eigvls.append(eigvl)
-        seeds.append(seed)
-        rates_array.append(copy.deepcopy(rates))
-
-        x_result = []
-
-        t_start = time.time()
-        for mat in range(n_mats):
-            # Form matrices
-            f1 = dt * operator.form_matrix(rates_last, mat)
-            f2 = dt * operator.form_matrix(rates_array[0], mat)
-            f3 = dt * operator.form_matrix(rates_array[1], mat)
-
-            # Perform commutator-free integral
-            x_new = copy.deepcopy(x[0][mat])
-
-            # Compute quadratically interpolated f at points
-            # A{1,2} = f(1/2 -/+ sqrt(3)/6)
-            # Then
-            # a{1,2} = 1/4 +/- sqrt(3)/6
-            # m1 = a2 * A1 + a1 * A2
-            # m2 = a1 * A1 + a2 * A2
-            m1 = (-dt**2 / (12 * dt_l * (dt + dt_l)) * f1 +
-                 (dt**2 + 2 * dt * dt_l + dt_l**2) / (12 * dt_l * (dt + dt_l)) * f2 +
-                 (4 * dt * dt_l + 5 * dt_l**2) / (12 * dt_l * (dt + dt_l)) * f3)
-            m2 = (-dt**2/(12 * dt_l * (dt + dt_l)) * f1 +
-                 (dt**2 + 6 * dt * dt_l + 5 * dt_l**2) / (12 * dt_l * (dt + dt_l)) * f2 + 
-                 dt_l / (12 * (dt + dt_l)) * f3)
-
-            x_new = CRAM48(m2, x_new, 1.0)
-            x_new = CRAM48(m1, x_new, 1.0)
-
-            x_result.append(x_new)
-
-        t_end = time.time()
-        if MPI.COMM_WORLD.rank == 0:
-            if print_out:
-                print("Time to matexp: ", t_end - t_start)
+        op_results = [operator(x[0], power[-1])]
 
         # Create results, write to disk
-        save_results(operator, x, rates_array, eigvls, seeds, [t, t + dt], i + 1)
-
-        rates_last = copy.deepcopy(rates_array[0])
-        t += dt
-        dt_l = dt
-        vec = copy.deepcopy(x_result)
-
-    # Perform one last simulation
-    x = [copy.deepcopy(vec)]
-    seeds = []
-    eigvls = []
-    rates_array = []
-    eigvl, rates, seed = operator.eval(x[0])
-
-    eigvls.append(eigvl)
-    seeds.append(seed)
-    rates_array.append(rates)
-
-    # Create results, write to disk
-    save_results(operator, x, rates_array, eigvls, seeds, [t, t],
-                 len(operator.settings.dt_vec))
-
-    # Return to origin
-    os.chdir(dir_home)
+        Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps))

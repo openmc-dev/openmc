@@ -295,7 +295,7 @@ contains
         do j = 1, m % n_nuclides
           k = m % nuclide(j)
           if (nuclides(k) % name == name_) then
-            awr = nuclides(k) % awr
+            awr = nuclide_awr(k)
             m % density = m % density + density - m % atom_density(j)
             m % density_gpcc = m % density_gpcc + (density - &
                  m % atom_density(j)) * awr * MASS_NEUTRON / N_AVOGADRO
@@ -326,7 +326,7 @@ contains
             m % atom_density(n + 1) = density
             m % density = m % density + density
             m % density_gpcc = m % density_gpcc + &
-                 density * nuclides(k) % awr * MASS_NEUTRON / N_AVOGADRO
+                 density * nuclide_awr(k) * MASS_NEUTRON / N_AVOGADRO
             m % n_nuclides = n + 1
           end if
         end if

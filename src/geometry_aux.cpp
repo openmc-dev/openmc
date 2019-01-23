@@ -6,6 +6,7 @@
 
 #include "openmc/cell.h"
 #include "openmc/constants.h"
+#include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/lattice.h"
@@ -107,6 +108,74 @@ assign_temperatures()
         }
       }
     }
+  }
+}
+
+//==============================================================================
+
+void
+get_temperatures(std::vector<std::vector<double>>& nuc_temps,
+  std::vector<std::vector<double>>& thermal_temps)
+{
+  for (const auto& cell : model::cells) {
+    // Skip non-material cells.
+    if (cell->fill_ != C_NONE) continue;
+
+    for (int j = 0; j < cell->material_.size(); ++j) {
+      // Skip void materials
+      int i_material = cell->material_[j];
+      if (i_material == MATERIAL_VOID) continue;
+
+      // Get temperature of cell (rounding to nearest integer)
+      double sqrtkT = cell->sqrtkT_.size() == 1 ?
+        cell->sqrtkT_[j] : cell->sqrtkT_[0];
+      double temperature = sqrtkT*sqrtkT / K_BOLTZMANN;
+
+      const auto& mat {model::materials[i_material]};
+      for (const auto& i_nuc : mat->nuclide_) {
+        // Add temperature if it hasn't already been added
+        if (!contains(nuc_temps[i_nuc], temperature)) {
+          nuc_temps[i_nuc].push_back(temperature);
+        }
+      }
+
+      if (mat->thermal_tables_.size() > 0) {
+        for (const auto& table : mat->thermal_tables_) {
+          // Get index in data::thermal_scatt array
+          int i_sab = table.index_table;
+
+          // Add temperature if it hasn't already been added
+          if (!contains(thermal_temps[i_sab], temperature)) {
+            thermal_temps[i_sab].push_back(temperature);
+          }
+        }
+      }
+    }
+  }
+}
+
+//==============================================================================
+
+void finalize_geometry(std::vector<std::vector<double>>& nuc_temps,
+  std::vector<std::vector<double>>& thermal_temps)
+{
+  // Perform some final operations to set up the geometry
+  adjust_indices();
+  count_cell_instances(model::root_universe);
+
+  // Assign temperatures to cells that don't have temperatures already assigned
+  assign_temperatures();
+
+  // Determine desired temperatures for each nuclide and S(a,b) table
+  get_temperatures(nuc_temps, thermal_temps);
+
+  // Check to make sure there are not too many nested coordinate levels in the
+  // geometry since the coordinate list is statically allocated for performance
+  // reasons
+  if (maximum_levels(model::root_universe) > MAX_COORD) {
+    fatal_error("Too many nested coordinate levels in the geometry. "
+      "Try increasing the maximum number of coordinate levels by "
+      "providing the CMake -Dmaxcoord= option.");
   }
 }
 

@@ -87,6 +87,9 @@ contains
 
       subroutine free_memory_cmfd() bind(C)
       end subroutine free_memory_cmfd
+
+      subroutine sab_clear() bind(C)
+      end subroutine
     end interface
 
     call free_memory_geometry()
@@ -97,7 +100,7 @@ contains
     call free_memory_nuclide()
     call free_memory_photon()
     call free_memory_settings()
-    call free_memory_sab()
+    call sab_clear()
     call free_memory_source()
     call free_memory_mesh()
     call free_memory_tally()

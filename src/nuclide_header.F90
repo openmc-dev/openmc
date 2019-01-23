@@ -79,7 +79,6 @@ module nuclide_header
     type(C_PTR) :: ptr
 
   contains
-    procedure :: from_hdf5 => nuclide_from_hdf5
     procedure :: init_grid => nuclide_init_grid
     procedure :: nu    => nuclide_nu
     procedure, private :: create_derived => nuclide_create_derived
@@ -195,6 +194,12 @@ module nuclide_header
       logical(C_BOOL) :: b
     end function
 
+    function nuclide_awr(i_nuc) result(awr) bind(C)
+      import C_INT, C_DOUBLE
+      integer(C_INT), value :: i_nuc
+      real(C_DOUBLE) :: awr
+    end function
+
     function nuclide_fission_q_prompt(ptr, E) result(q) bind(C)
       import C_PTR, C_DOUBLE
       type(C_PTR), value :: ptr
@@ -238,16 +243,14 @@ contains
     ptr = C_LOC(micro_xs(1))
   end function
 
-  subroutine nuclide_from_hdf5(this, group_id, temperature, method, tolerance, &
-                               minmax, master, i_nuclide)
-    class(Nuclide),   intent(inout) :: this
-    integer(HID_T),   intent(in)    :: group_id
-    type(VectorReal), intent(in), target    :: temperature ! list of desired temperatures
-    integer,          intent(inout) :: method
-    real(8),          intent(in)    :: tolerance
-    real(8),          intent(in)    :: minmax(2)  ! range of temperatures
-    logical(C_BOOL),  intent(in)    :: master     ! if this is the master proc
-    integer,          intent(in)    :: i_nuclide  ! Nuclide index in nuclides
+  subroutine nuclide_from_hdf5(group_id, ptr, temps, n, i_nuclide) bind(C)
+    integer(HID_T), value :: group_id
+    type(C_PTR), value :: ptr
+    type(C_PTR), value :: temps
+    integer(C_INT), value :: n
+    integer(C_INT), value :: i_nuclide
+
+    real(C_DOUBLE), pointer :: temperature(:) ! list of desired temperatures
 
     integer :: i
     integer :: i_closest
@@ -270,23 +273,11 @@ contains
     type(VectorInt) :: MTs
     type(VectorInt) :: temps_to_read
 
-    interface
-      function nuclide_from_hdf5_c(group, temperature, n) result(ptr) bind(C)
-        import HID_T, C_DOUBLE, C_INT, C_PTR
-        integer(HID_T), value :: group
-        type(C_PTR), value :: temperature
-        integer(C_INT), value :: n
-        type(C_PTR) :: ptr
-      end function
-    end interface
+    ! Get array passed
+    call c_f_pointer(temps, temperature, [n])
 
-    ! Read data on C++ side
-    if (temperature % size() > 0) then
-      this % ptr = nuclide_from_hdf5_c(group_id, C_LOC(temperature % data(1)), &
-           temperature % size())
-    else
-      this % ptr = nuclide_from_hdf5_c(group_id, C_NULL_PTR, 0)
-    end if
+    associate (this => nuclides(i_nuclide))
+    this % ptr = ptr
 
     ! Get name of nuclide from group
     this % name = get_name(group_id)
@@ -311,35 +302,35 @@ contains
     call sort(temps_available)
 
     ! If only one temperature is available, revert to nearest temperature
-    if (size(temps_available) == 1 .and. method == TEMPERATURE_INTERPOLATION) then
+    if (size(temps_available) == 1 .and. temperature_method == TEMPERATURE_INTERPOLATION) then
       if (master) then
         call warning("Cross sections for " // trim(this % name) // " are only &
              &available at one temperature. Reverting to nearest temperature &
              &method.")
       end if
-      method = TEMPERATURE_NEAREST
+      temperature_method = TEMPERATURE_NEAREST
     end if
 
     ! Determine actual temperatures to read -- start by checking whether a
     ! temperature range was given, in which case all temperatures in the range
     ! are loaded irrespective of what temperatures actually appear in the model
-    if (minmax(2) > ZERO) then
+    if (temperature_range(2) > ZERO) then
       do i = 1, size(temps_available)
         temp_actual = temps_available(i)
-        if (minmax(1) <= temp_actual .and. temp_actual <= minmax(2)) then
+        if (temperature_range(1) <= temp_actual .and. temp_actual <= temperature_range(2)) then
           call temps_to_read % push_back(nint(temp_actual))
         end if
       end do
     end if
 
-    select case (method)
+    select case (temperature_method)
     case (TEMPERATURE_NEAREST)
       ! Find nearest temperatures
-      do i = 1, temperature % size()
-        temp_desired = temperature % data(i)
+      do i = 1, n
+        temp_desired = temperature(i)
         i_closest = minloc(abs(temps_available - temp_desired), dim=1)
         temp_actual = temps_available(i_closest)
-        if (abs(temp_actual - temp_desired) < tolerance) then
+        if (abs(temp_actual - temp_desired) < temperature_tolerance) then
           if (find(temps_to_read, nint(temp_actual)) == -1) then
             call temps_to_read % push_back(nint(temp_actual))
 
@@ -362,8 +353,8 @@ contains
     case (TEMPERATURE_INTERPOLATION)
       ! If temperature interpolation or multipole is selected, get a list of
       ! bounding temperatures for each actual temperature present in the model
-      TEMP_LOOP: do i = 1, temperature % size()
-        temp_desired = temperature % data(i)
+      TEMP_LOOP: do i = 1, n
+        temp_desired = temperature(i)
 
         do j = 1, size(temps_available) - 1
           if (temps_available(j) <= temp_desired .and. &
@@ -441,6 +432,7 @@ contains
 
     ! Finalize with the nuclide index
     this % i_nuclide = i_nuclide
+    end associate
 
   end subroutine nuclide_from_hdf5
 
@@ -757,9 +749,9 @@ contains
 
         ! Read nuclide data from HDF5
         group_id = open_group(file_id, name_)
-        call nuclides(n) % from_hdf5(group_id, temperature, &
-             temperature_method, temperature_tolerance, minmax, &
-             master, n)
+        ! call nuclides(n) % from_hdf5(group_id, temperature, &
+        !      temperature_method, temperature_tolerance, minmax, &
+        !      master, n)
         call close_group(group_id)
         call file_close(file_id)
 

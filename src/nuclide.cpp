@@ -867,6 +867,28 @@ void Nuclide::calculate_urr_xs(int i_temp, double E) const
 }
 
 //==============================================================================
+// Non-member functions
+//==============================================================================
+
+void check_data_version(hid_t file_id)
+{
+  if (attribute_exists(file_id, "version")) {
+    std::vector<int> version;
+    read_attribute(file_id, "version", version);
+    if (version[0] != HDF5_VERSION[0]) {
+      fatal_error("HDF5 data format uses version " + std::to_string(version[0])
+        + "." + std::to_string(version[1]) + " whereas your installation of "
+        "OpenMC expects version " + std::to_string(HDF5_VERSION[0])
+        + ".x data.");
+    }
+  } else {
+    fatal_error("HDF5 data does not indicate a version. Your installation of "
+      "OpenMC expects version " + std::to_string(HDF5_VERSION[0]) +
+      ".x data.");
+  }
+}
+
+//==============================================================================
 // Fortran compatibility functions
 //==============================================================================
 
@@ -877,14 +899,9 @@ set_particle_energy_bounds(int particle, double E_min, double E_max)
   data::energy_max[particle - 1] = E_max;
 }
 
-extern "C" Nuclide* nuclide_from_hdf5_c(hid_t group, const double* temperature, int n)
-{
-  data::nuclides.push_back(std::make_unique<Nuclide>(group, temperature, n,
-                                                     data::nuclides.size()));
-  return data::nuclides.back().get();
-}
-
 extern "C" void nuclide_init_grid_c(Nuclide* nuc) { nuc->init_grid(); }
+
+extern "C" double nuclide_awr(int i_nuc) { return data::nuclides[i_nuc - 1]->awr_; }
 
 extern "C" Reaction* nuclide_reaction(Nuclide* nuc, int i_rx)
 {

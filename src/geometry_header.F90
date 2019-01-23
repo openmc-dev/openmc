@@ -182,18 +182,15 @@ contains
 ! temperatures to read (which may be different if interpolation is used)
 !===============================================================================
 
-  subroutine get_temperatures(nuc_temps, sab_temps)
+  subroutine get_temperatures(nuc_temps)
     type(VectorReal),            allocatable, intent(out) :: nuc_temps(:)
-    type(VectorReal),  optional, allocatable, intent(out) :: sab_temps(:)
 
     integer :: i, j, k
     integer :: i_nuclide    ! index in nuclides array
-    integer :: i_sab        ! index in S(a,b) array
     integer :: i_material
     real(8) :: temperature  ! temperature in Kelvin
 
     allocate(nuc_temps(n_nuclides))
-    if (present(sab_temps)) allocate(sab_temps(n_sab_tables))
 
     do i = 1, size(cells)
       ! Skip non-material cells.
@@ -222,18 +219,6 @@ contains
               call nuc_temps(i_nuclide) % push_back(temperature)
             end if
           end do NUC_NAMES_LOOP
-
-          if (present(sab_temps) .and. mat % n_sab > 0) then
-            SAB_NAMES_LOOP: do k = 1, size(mat % sab_names)
-              ! Get index in nuc_temps array
-              i_sab = sab_dict % get(mat % sab_names(k))
-
-              ! Add temperature if it hasn't already been added
-              if (find(sab_temps(i_sab), temperature) == -1) then
-                call sab_temps(i_sab) % push_back(temperature)
-              end if
-            end do SAB_NAMES_LOOP
-          end if
         end associate
       end do
     end do

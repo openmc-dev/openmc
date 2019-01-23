@@ -438,10 +438,9 @@ void sample_nuclide(const Particle* p, int mt, int* i_nuclide, int* i_nuc_mat)
   }
 
   // Get pointers to nuclide/density arrays
-  int* nuclides;
-  double* densities;
-  int n;
-  openmc_material_get_densities(p->material, &nuclides, &densities, &n);
+  // TODO: off-by-one
+  const auto& mat {model::materials[p->material - 1]};
+  int n = mat->nuclide_.size();
 
   *i_nuc_mat = 0;
   double prob = 0.0;
@@ -452,10 +451,9 @@ void sample_nuclide(const Particle* p, int mt, int* i_nuclide, int* i_nuc_mat)
       fatal_error("Did not sample any nuclide during collision.");
     }
 
-    // Find atom density
-    // TODO: off-by-one
-    *i_nuclide = nuclides[*i_nuc_mat] - 1;
-    double atom_density = densities[*i_nuc_mat];
+    // Get atom density
+    *i_nuclide = mat->nuclide_[*i_nuc_mat];
+    double atom_density = mat->atom_density_[*i_nuc_mat];
 
     // Determine microscopic cross section
     double sigma;

@@ -24,7 +24,7 @@ contains
 ! nuclides and sab_tables arrays
 !===============================================================================
 
-  subroutine read_mgxs()
+  subroutine read_mgxs() bind(C)
     integer                 :: i              ! index in materials array
     integer                 :: j              ! index over nuclides in material
     integer                 :: i_nuclide      ! index in nuclides array
@@ -106,7 +106,7 @@ contains
 ! CREATE_MACRO_XS generates the macroscopic xs from the microscopic input data
 !===============================================================================
 
-  subroutine create_macro_xs()
+  subroutine create_macro_xs() bind(C)
     integer                       :: i_mat ! index in materials array
     type(Material), pointer       :: mat   ! current material
     type(VectorReal), allocatable :: kTs(:)

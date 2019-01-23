@@ -97,7 +97,7 @@ extern double weight_survive;        //!< Survival weight after Russian roulette
 
 //! Read settings from XML file
 //! \param[in] root XML node for <settings>
-extern "C" void read_settings_xml();
+void read_settings_xml();
 
 extern "C" void read_settings_xml_f(pugi::xml_node_struct* root_ptr);
 

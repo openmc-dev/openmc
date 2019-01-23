@@ -5,6 +5,7 @@
 #include <cstring>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -12,20 +13,33 @@
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
+#include "openmc/cross_sections.h"
 #include "openmc/error.h"
+#include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/material.h" // TODO: remove this
 #include "openmc/message_passing.h"
+#include "openmc/nuclide.h"
+#include "openmc/output.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
+#include "openmc/thermal.h"
 #include "openmc/timer.h"
 
 // data/functions from Fortran side
+extern "C" void create_macro_xs();
+extern "C" void normalize_ao();
 extern "C" void print_usage();
 extern "C" void print_version();
 extern "C" void read_command_line();
-extern "C" void read_input_xml();
+extern "C" void read_geometry_xml();
+extern "C" void read_materials_xml();
+extern "C" void read_mgxs();
+extern "C" void read_plots_xml();
+extern "C" void read_tallies_xml();
+extern "C" void write_summary();
 
 // Paths to various files
 extern "C" {
@@ -246,6 +260,56 @@ parse_command_line(int argc, char* argv[])
   }
 
   return 0;
+}
+
+void read_input_xml()
+{
+  read_settings_xml();
+  read_cross_sections_xml();
+  read_materials_xml();
+  read_geometry_xml();
+
+  // Convert user IDs -> indices, assign temperatures
+  double_2dvec nuc_temps(data::nuclide_map.size());
+  double_2dvec thermal_temps(data::thermal_scatt_map.size());
+  finalize_geometry(nuc_temps, thermal_temps);
+
+  if (settings::run_mode != RUN_MODE_PLOTTING) {
+    simulation::time_read_xs.start();
+    if (settings::run_CE) {
+      // Read continuous-energy cross sections
+      read_ce_cross_sections(nuc_temps, thermal_temps);
+    } else {
+      // Create material macroscopic data for MGXS
+      read_mgxs();
+      create_macro_xs();
+    }
+    simulation::time_read_xs.stop();
+  }
+
+  read_tallies_xml();
+
+  // Initialize distribcell_filters
+  prepare_distribcell();
+
+  if (settings::run_mode == RUN_MODE_PLOTTING) {
+    // Read plots.xml if it exists
+    read_plots_xml();
+    if (mpi::master && settings::verbosity >= 5) print_plot();
+
+  } else {
+    // Normalize atom/weight percents
+    normalize_ao();
+
+    // Write summary information
+    if (mpi::master && settings::output_summary) write_summary();
+
+    // Warn if overlap checking is on
+    if (mpi::master && settings::check_overlaps) {
+      warning("Cell overlap checking is ON.");
+    }
+  }
+
 }
 
 } // namespace openmc

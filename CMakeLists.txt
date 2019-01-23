@@ -335,7 +335,6 @@ add_library(libopenmc SHARED
   src/random_lcg.F90
   src/reaction_header.F90
   src/relaxng
-  src/sab_header.F90
   src/set_header.F90
   src/settings.F90
   src/simulation_header.F90

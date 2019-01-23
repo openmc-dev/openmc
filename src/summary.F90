@@ -26,7 +26,7 @@ contains
 ! WRITE_SUMMARY
 !===============================================================================
 
-  subroutine write_summary()
+  subroutine write_summary() bind(C)
 
     interface
       subroutine write_geometry(file_id) bind(C)

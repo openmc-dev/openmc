@@ -16,7 +16,6 @@ module tracking
   use mgxs_interface
   use nuclide_header
   use particle_header
-  use physics,            only: collision
   use random_lcg,         only: prn, prn_set_stream
   use settings
   use simulation_header
@@ -33,11 +32,15 @@ module tracking
   implicit none
 
   interface
+    subroutine collision(p) bind(C)
+      import Particle
+      type(Particle), intent(inout) :: p
+    end subroutine
+
     subroutine collision_mg(p) bind(C)
       import Particle, C_DOUBLE
       type(Particle),            intent(inout) :: p
     end subroutine collision_mg
-
   end interface
 
 contains

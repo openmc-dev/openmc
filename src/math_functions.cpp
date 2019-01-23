@@ -617,7 +617,7 @@ void calc_zn_rad(int n, double rho, double zn_rad[]) {
 }
 
 
-void rotate_angle_c(double uvw[3], double mu, double* phi) {
+void rotate_angle_c(double uvw[3], double mu, const double* phi) {
   // Copy original directional cosines
   double u0 = uvw[0]; // original cosine in x direction
   double v0 = uvw[1]; // original cosine in y direction
@@ -681,7 +681,7 @@ double normal_variate(double mean, double standard_deviation) {
   while ( true ) {
     double v1 = 2 * prn() - 1.;
     double v2 = 2 * prn() - 1.;
-    
+
     double r = std::pow(v1, 2) + std::pow(v2, 2);
     double r2 = std::pow(r, 2);
     if (r2 < 1) {
@@ -697,7 +697,7 @@ double muir_spectrum(double e0, double m_rat, double kt) {
   // 8 in https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
   double sigma = std::sqrt(2.*e0*kt/m_rat);
   return normal_variate(e0, sigma);
-}  
+}
 
 
 double watt_spectrum(double a, double b) {
@@ -753,7 +753,7 @@ void broaden_wmp_polynomials(double E, double dopp, int n, double factors[])
 }
 
 
-void spline_c(int n, const double x[], const double y[], double z[])
+void spline(int n, const double x[], const double y[], double z[])
 {
   double c_new[n-1];
 
@@ -780,8 +780,8 @@ void spline_c(int n, const double x[], const double y[], double z[])
 }
 
 
-double spline_interpolate_c(int n, const double x[], const double y[],
-                            const double z[], double xint)
+double spline_interpolate(int n, const double x[], const double y[],
+  const double z[], double xint)
 {
   // Find the lower bounding index in x of xint
   int i = n - 1;
@@ -801,8 +801,8 @@ double spline_interpolate_c(int n, const double x[], const double y[],
 }
 
 
-double spline_integrate_c(int n, const double x[], const double y[],
-                          const double z[], double xa, double xb)
+double spline_integrate(int n, const double x[], const double y[],
+  const double z[], double xa, double xb)
 {
   // Find the lower bounding index in x of the lower limit of integration.
   int ia = n - 1;

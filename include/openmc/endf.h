@@ -78,6 +78,10 @@ public:
   //! \param[in] x independent variable
   //! \return Function evaluated at x
   double operator()(double x) const;
+
+  // Accessors
+  const std::vector<double>& x() const { return x_; }
+  const std::vector<double>& y() const { return y_; }
 private:
   std::size_t n_regions_ {0}; //!< number of interpolation regions
   std::vector<int> nbt_; //!< values separating interpolation regions

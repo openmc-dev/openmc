@@ -5,6 +5,7 @@
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/message_passing.h"
+#include "openmc/photon.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
@@ -935,12 +936,14 @@ extern "C" bool multipole_in_range(Nuclide* nuc, double E)
 extern "C" void nuclides_clear() { data::nuclides.clear(); }
 
 extern "C" NuclideMicroXS* micro_xs_ptr();
+extern "C" ElementMicroXS* micro_photon_xs_ptr();
 
 void set_micro_xs()
 {
 #pragma omp parallel
   {
     simulation::micro_xs = micro_xs_ptr();
+    simulation::micro_photon_xs = micro_photon_xs_ptr();
   }
 }
 

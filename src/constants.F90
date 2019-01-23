@@ -68,13 +68,8 @@ module constants
 
   real(8), parameter ::                      &
        PI               = 3.1415926535898_8, & ! pi
-       SQRT_PI          = 1.7724538509055_8, & ! square root of pi
        MASS_NEUTRON     = 1.00866491588_8,   & ! mass of a neutron in amu
        MASS_NEUTRON_EV  = 939.5654133e6_8,   & ! mass of a neutron in eV/c^2
-       MASS_PROTON      = 1.007276466879_8,  & ! mass of a proton in amu
-       MASS_ELECTRON_EV = 0.5109989461e6_8,  & ! electron mass energy equivalent in eV/c^2
-       FINE_STRUCTURE   = 137.035999139_8,   & ! inverse fine structure constant
-       PLANCK_C         = 1.2398419739062977e4_8,& ! Planck's constant times c in eV-Angstroms
        AMU              = 1.660539040e-27_8, & ! 1 amu in kg
        C_LIGHT          = 2.99792458e8_8,    & ! speed of light in m/s
        N_AVOGADRO       = 0.6022140857_8,    & ! Avogadro's number in 10^24/mol
@@ -83,10 +78,7 @@ module constants
        ZERO             = 0.0_8,             &
        HALF             = 0.5_8,             &
        ONE              = 1.0_8,             &
-       TWO              = 2.0_8,             &
-       THREE            = 3.0_8,             &
-       FOUR             = 4.0_8
-  complex(8), parameter :: ONEI = (ZERO, ONE)
+       TWO              = 2.0_8
 
   ! Electron subshell labels
   character(3), parameter :: SUBSHELLS(39) = [ &
@@ -184,12 +176,6 @@ module constants
   ! Flag to denote this was a macroscopic data object
   real(8), parameter :: &
        MACROSCOPIC_AWR = -TWO
-
-  ! Fission neutron emission (nu) type
-  integer, parameter ::   &
-       NU_NONE       = 0, & ! No nu values (non-fissionable)
-       NU_POLYNOMIAL = 1, & ! Nu values given by polynomial
-       NU_TABULAR    = 2    ! Nu values given by tabular distribution
 
   ! Secondary particle emission type
   integer, parameter :: &
@@ -291,11 +277,6 @@ module constants
        FILTER_ZERNIKE_RADIAL = 21, &
        FILTER_PARTICLE       = 22
 
-
-  ! Mesh types
-  integer, parameter :: &
-       MESH_REGULAR = 1
-
   ! Tally surface current directions
   integer, parameter :: &
        OUT_LEFT   = 1,   &   ! x min
@@ -381,11 +362,6 @@ module constants
        MODE_PLOTTING    = 3, & ! Plotting mode
        MODE_PARTICLE    = 4, & ! Particle restart mode
        MODE_VOLUME      = 5    ! Volume calculation mode
-
-  ! Electron treatments
-  integer, parameter :: &
-       ELECTRON_LED     = 1, & ! Local Energy Deposition
-       ELECTRON_TTB     = 2    ! Thick Target Bremsstrahlung
 
   !=============================================================================
   ! DELAYED NEUTRON PRECURSOR CONSTANTS

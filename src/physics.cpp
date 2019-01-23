@@ -1,6 +1,7 @@
 #include "openmc/physics.h"
 
 #include "openmc/bank.h"
+#include "openmc/bremsstrahlung.h"
 #include "openmc/constants.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
@@ -214,154 +215,167 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx, Bank* bank_
   }
 }
 
-// TODO: Finish converting photon physics functions
+void sample_photon_reaction(Particle* p)
+{
+  // Kill photon if below energy cutoff -- an extra check is made here because
+  // photons with energy below the cutoff may have been produced by neutrons
+  // reactions or atomic relaxation
+  int photon = static_cast<int>(ParticleType::photon) - 1;
+  if (p->E < settings::energy_cutoff[photon]) {
+    p->E = 0.0;
+    p->alive = false;
+    return;
+  }
 
-// void sample_photon_reaction(Particle* p)
-// {
-//   // Kill photon if below energy cutoff -- an extra check is made here because
-//   // photons with energy below the cutoff may have been produced by neutrons
-//   // reactions or atomic relaxation
-//   if (p->E < energy_cutoff(PHOTON)) {
-//     p->E = 0.0
-//     p->alive = false
-//     return
-//   }
+  // Sample element within material
+  int i_element = sample_element(p);
+  // TODO: off-by-one
+  p->event_nuclide = i_element + 1;
+  const auto& micro {simulation::micro_photon_xs[i_element]};
+  const auto& element {data::elements[i_element]};
 
-//   // Sample element within material
-//   i_element = sample_element(p)
-//   p->event_nuclide = i_element
+  // Calculate photon energy over electron rest mass equivalent
+  double alpha = p->E/MASS_ELECTRON_EV;
 
-//   // Calculate photon energy over electron rest mass equivalent
-//   alpha = p->E/MASS_ELECTRON_EV
+  // For tallying purposes, this routine might be called directly. In that
+  // case, we need to sample a reaction via the cutoff variable
+  double prob = 0.0;
+  double cutoff = prn() * micro.total;
 
-//   // For tallying purposes, this routine might be called directly. In that
-//   // case, we need to sample a reaction via the cutoff variable
-//   prob = 0.0
-//   cutoff = prn() * micro_photon_xs(i_element) % total
+  // Coherent (Rayleigh) scattering
+  prob += micro.coherent;
+  if (prob > cutoff) {
+    double mu = element.rayleigh_scatter(alpha);
+    rotate_angle_c(p->coord[0].uvw, mu, nullptr);
+    p->event_MT = COHERENT;
+    return;
+  }
 
-//   associate (elm => elements(i_element))
-//     // Coherent (Rayleigh) scattering
-//     prob = prob + micro_photon_xs(i_element) % coherent
-//     if (prob > cutoff) {
-//       rayleigh_scatter(elm, alpha, mu)
-//       p->coord(1) % uvw = rotate_angle(p->coord(1) % uvw, mu)
-//       p->event_MT = COHERENT
-//       return
-//     }
+  // Incoherent (Compton) scattering
+  prob += micro.incoherent;
+  if (prob > cutoff) {
+    double alpha_out, mu;
+    int i_shell;
+    element.compton_scatter(alpha, true, &alpha_out, &mu, &i_shell);
 
-//     // Incoherent (Compton) scattering
-//     prob = prob + micro_photon_xs(i_element) % incoherent
-//     if (prob > cutoff) {
-//       compton_scatter(elm, alpha, alpha_out, mu, i_shell, true)
+    // Determine binding energy of shell. The binding energy is 0.0 if
+    // doppler broadening is not used.
+    double e_b;
+    if (i_shell == -1) {
+      e_b = 0.0;
+    } else {
+      e_b = element.binding_energy_[i_shell];
+    }
 
-//       // Determine binding energy of shell. The binding energy is 0.0 if
-//       // doppler broadening is not used.
-//       if (i_shell == 0) {
-//         e_b = 0.0
-//       } else {
-//         e_b = elm % binding_energy(i_shell)
-//       }
+    // Create Compton electron
+    double E_electron = (alpha - alpha_out)*MASS_ELECTRON_EV - e_b;
+    double mu_electron = (alpha - alpha_out*mu)
+      / std::sqrt(alpha*alpha + alpha_out*alpha_out - 2.0*alpha*alpha_out*mu);
+    double phi = 2.0*PI*prn();
+    double uvw[3];
+    std::copy(p->coord[0].uvw, p->coord[0].uvw + 3, uvw);
+    rotate_angle_c(uvw, mu_electron, &phi);
+    int electron = static_cast<int>(ParticleType::electron);
+    p->create_secondary(uvw, E_electron, electron, true);
 
-//       // Create Compton electron
-//       E_electron = (alpha - alpha_out)*MASS_ELECTRON_EV - e_b
-//       mu_electron = (alpha - alpha_out*mu) &
-//             / std::sqrt(alpha**2 + alpha_out**2 - 2.0*alpha*alpha_out*mu)
-//       phi = 2.0*PI*prn()
-//       uvw = rotate_angle(p->coord(1) % uvw, mu_electron, phi)
-//       particle_create_secondary(p, uvw, E_electron, ELECTRON, true)
+    // TODO: Compton subshell data does not match atomic relaxation data
+    // Allow electrons to fill orbital and produce auger electrons
+    // and fluorescent photons
+    if (i_shell >= 0) {
+      const auto& shell = element.shells_[i_shell];
+      element.atomic_relaxation(shell, *p);
+    }
 
-//       // TODO: Compton subshell data does not match atomic relaxation data
-//       // Allow electrons to fill orbital and produce auger electrons
-//       // and fluorescent photons
-//       if (i_shell > 0) {
-//         atomic_relaxation(p, elm, i_shell)
-//       }
+    phi += PI;
+    p->E = alpha_out*MASS_ELECTRON_EV;
+    rotate_angle_c(p->coord[0].uvw, mu, &phi);
+    p->event_MT = INCOHERENT;
+    return;
+  }
 
-//       phi = phi + PI
-//       p->E = alpha_out*MASS_ELECTRON_EV
-//       p->coord(1) % uvw = rotate_angle(p->coord(1) % uvw, mu, phi)
-//       p->event_MT = INCOHERENT
-//       return
-//     }
+  // Photoelectric effect
+  double prob_after = prob + micro.photoelectric;
+  if (prob_after > cutoff) {
+    for (const auto& shell : element.shells_) {
+      // Get grid index and interpolation factor
+      int i_grid = micro.index_grid;
+      double f = micro.interp_factor;
 
-//     // Photoelectric effect
-//     prob_after = prob + micro_photon_xs(i_element) % photoelectric
-//     if (prob_after > cutoff) {
-//       do i_shell = 1, size(elm % shells)
-//         // Get grid index and interpolation factor
-//         i_grid = micro_photon_xs(i_element) % index_grid
-//         f      = micro_photon_xs(i_element) % interp_factor
+      // Check threshold of reaction
+      int i_start = shell.threshold;
+      if (i_grid < i_start) continue;
 
-//         // Check threshold of reaction
-//         i_start = elm % shells(i_shell) % threshold
-//         if (i_grid <= i_start) cycle
+      // Evaluation subshell photoionization cross section
+      double xs = std::exp(shell.cross_section(i_grid - i_start) +
+        f*(shell.cross_section(i_grid + 1 - i_start) -
+        shell.cross_section(i_grid - i_start)));
 
-//         // Evaluation subshell photoionization cross section
-//         xs = std::exp(elm % shells(i_shell) % cross_section(i_grid - i_start) + &
-//               f*(elm % shells(i_shell) % cross_section(i_grid + 1 - i_start) - &
-//               elm % shells(i_shell) % cross_section(i_grid - i_start)))
+      prob += xs;
+      if (prob > cutoff) {
+        double E_electron = p->E - shell.binding_energy;
 
-//         prob = prob + xs
-//         if (prob > cutoff) {
-//           E_electron = p->E - elm % shells(i_shell) % binding_energy
+        // Sample mu using non-relativistic Sauter distribution.
+        // See Eqns 3.19 and 3.20 in "Implementing a photon physics
+        // model in Serpent 2" by Toni Kaltiaisenaho
+        double mu;
+        while (true) {
+          double r = prn();
+          if (4.0*(1.0 - r)*r >= prn()) {
+            double rel_vel = std::sqrt(E_electron * (E_electron +
+              2.0*MASS_ELECTRON_EV)) / (E_electron + MASS_ELECTRON_EV);
+            mu = (2.0*r + rel_vel - 1.0) / (2.0*rel_vel*r - rel_vel + 1.0);
+            break;
+          }
+        }
 
-//           // Sample mu using non-relativistic Sauter distribution.
-//           // See Eqns 3.19 and 3.20 in "Implementing a photon physics
-//           // model in Serpent 2" by Toni Kaltiaisenaho
-//           SAMPLE_MU: do
-//             r = prn()
-//             if (FOUR * (1.0 - r) * r >= prn()) {
-//               rel_vel = std::sqrt(E_electron * (E_electron + 2.0 * MASS_ELECTRON_EV))&
-//                     / (E_electron + MASS_ELECTRON_EV)
-//               mu = (2.0 * r + rel_vel - 1.0) / &
-//                     (2.0 * rel_vel * r - rel_vel + 1.0)
-//               exit SAMPLE_MU
-//             }
-//           end do SAMPLE_MU
+        double phi = 2.0*PI*prn();
+        std::array<double, 3> uvw;
+        uvw[0] = mu;
+        uvw[1] = std::sqrt(1.0 - mu*mu)*std::cos(phi);
+        uvw[2] = std::sqrt(1.0 - mu*mu)*std::sin(phi);
 
-//           phi = 2.0*PI*prn()
-//           uvw(1) = mu
-//           uvw(2) = std::sqrt(1.0 - mu*mu)*std::cos(phi)
-//           uvw(3) = std::sqrt(1.0 - mu*mu)*std::sin(phi)
+        // Create secondary electron
+        int electron = static_cast<int>(ParticleType::electron);
+        p->create_secondary(uvw.data(), E_electron, electron, true);
 
-//           // Create secondary electron
-//           particle_create_secondary(p, uvw, E_electron, ELECTRON, &
-//                 run_CE=true)
+        // Allow electrons to fill orbital and produce auger electrons
+        // and fluorescent photons
+        element.atomic_relaxation(shell, *p);
+        p->event_MT = 533 + shell.index_subshell;
+        p->alive = false;
+        p->E = 0.0;
+        return;
+      }
+    }
+  }
+  prob = prob_after;
 
-//           // Allow electrons to fill orbital and produce auger electrons
-//           // and fluorescent photons
-//           atomic_relaxation(p, elm, i_shell)
-//           p->event_MT = 533 + elm % shells(i_shell) % index_subshell
-//           p->alive = false
-//           p->E = 0.0
+  // Pair production
+  prob += micro.pair_production;
+  if (prob > cutoff) {
+    double E_electron, E_positron;
+    double mu_electron, mu_positron;
+    element.pair_production(alpha, &E_electron, &E_positron,
+      &mu_electron, &mu_positron);
 
-//           return
-//         }
-//       end do
-//     }
-//     prob = prob_after
+    // Create secondary electron
+    double uvw[3];
+    std::copy(p->coord[0].uvw, p->coord[0].uvw + 3, uvw);
+    rotate_angle_c(uvw, mu_electron, nullptr);
+    int electron = static_cast<int>(ParticleType::electron);
+    p->create_secondary(uvw, E_electron, electron, true);
 
-//     // Pair production
-//     prob = prob + micro_photon_xs(i_element) % pair_production
-//     if (prob > cutoff) {
-//       pair_production(elm, alpha, E_electron, E_positron, mu_electron, &
-//             mu_positron)
+    // Create secondary positron
+    std::copy(p->coord[0].uvw, p->coord[0].uvw + 3, uvw);
+    rotate_angle_c(uvw, mu_positron, nullptr);
+    int positron = static_cast<int>(ParticleType::positron);
+    p->create_secondary(uvw, E_positron, positron, true);
 
-//       // Create secondary electron
-//       uvw = rotate_angle(p->coord(1) % uvw, mu_electron)
-//       particle_create_secondary(p, uvw, E_electron, ELECTRON, true)
-
-//       // Create secondary positron
-//       uvw = rotate_angle(p->coord(1) % uvw, mu_positron)
-//       particle_create_secondary(p, uvw, E_positron, POSITRON, true)
-
-//       p->event_MT = PAIR_PROD
-//       p->alive = false
-//       p->E = 0.0
-//     }
-
-//   end associate
-// }
+    p->event_MT = PAIR_PROD;
+    p->alive = false;
+    p->E = 0.0;
+  }
+}
 
 void sample_electron_reaction(Particle* p)
 {
@@ -369,7 +383,7 @@ void sample_electron_reaction(Particle* p)
 
   if (settings::electron_treatment == ELECTRON_TTB) {
     double E_lost;
-    thick_target_bremsstrahlung(p, &E_lost);
+    thick_target_bremsstrahlung(*p, &E_lost);
   }
 
   p->E = 0.0;
@@ -382,7 +396,7 @@ void sample_positron_reaction(Particle* p)
 
   if (settings::electron_treatment == ELECTRON_TTB) {
     double E_lost;
-    thick_target_bremsstrahlung(p, &E_lost);
+    thick_target_bremsstrahlung(*p, &E_lost);
   }
 
   // Sample angle isotropically
@@ -465,37 +479,43 @@ void sample_nuclide(const Particle* p, int mt, int* i_nuclide, int* i_nuc_mat)
   }
 }
 
-// TODO: Finish converting photon physics functions
+int sample_element(Particle* p)
+{
+  // Sample cumulative distribution function
+  double cutoff = prn() * simulation::material_xs.total;
 
-// void sample_element(Particle* p)
-// {
-//   associate (mat => materials(p->material))
-//     // Sample cumulative distribution function
-//     cutoff = prn() * simulation::material_xs.total
+  // Get pointers to elements, densities
+  int* nuclide;
+  double* density;
+  int n;
+  openmc_material_get_densities(p->material, &nuclide, &density, &n);
+  int* element = material_element(p->material);
 
-//     i = 0
-//     prob = 0.0
-//     do while (prob < cutoff)
-//       i = i + 1
+  int i = 0;
+  double prob = 0.0;
+  int i_element;
+  while (prob < cutoff) {
+    // Check to make sure that a nuclide was sampled
+    if (i >= n) {
+      p->write_restart();
+      fatal_error("Did not sample any element during collision.");
+    }
 
-//       // Check to make sure that a nuclide was sampled
-//       if (i > mat % n_nuclides) {
-//         particle_write_restart(p)
-//         fatal_error("Did not sample any element during collision.")
-//       }
+    // Find atom density
+    // TODO: off-by-one
+    i_element = element[i] - 1;
+    double atom_density = density[i];
 
-//       // Find atom density
-//       i_element    = mat % element(i)
-//       atom_density = mat % atom_density(i)
+    // Determine microscopic cross section
+    double sigma = atom_density * simulation::micro_photon_xs[i_element].total;
 
-//       // Determine microscopic cross section
-//       sigma = atom_density * micro_photon_xs(i_element) % total
+    // Increment probability to compare to cutoff
+    prob += sigma;
+    ++i;
+  }
 
-//       // Increment probability to compare to cutoff
-//       prob = prob + sigma
-//     end do
-//   end associate
-// }
+  return i_element;
+}
 
 Reaction* sample_fission(int i_nuclide, double E)
 {

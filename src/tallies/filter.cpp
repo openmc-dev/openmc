@@ -44,21 +44,6 @@ std::vector<std::unique_ptr<Filter>> tally_filters;
 } // namespace model
 
 //==============================================================================
-// Non-member functions
-//==============================================================================
-
-void
-free_memory_tally_c()
-{
-  #pragma omp parallel
-  {
-    simulation::filter_matches.clear();
-  }
-
-  model::tally_filters.clear();
-}
-
-//==============================================================================
 // Fortran compatibility functions
 //==============================================================================
 

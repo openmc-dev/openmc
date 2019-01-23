@@ -172,7 +172,7 @@ contains
           else
 
             ! Initialize bins, filter level
-            do j = 1, size(t % filter)
+            do j = 1, t % n_filters()
               call filter_matches(t % filter(j)) % bins_clear()
               call filter_matches(t % filter(j)) % bins_push_back(0)
             end do
@@ -223,7 +223,7 @@ contains
                   end if
                 end if
               end do NUCLIDE_LOOP
-              if (size(t % filter) == 0) exit FILTER_LOOP
+              if (t % n_filters() == 0) exit FILTER_LOOP
             end do FILTER_LOOP
           end if
           end associate
@@ -268,7 +268,7 @@ contains
     end select
 
     ! initialize bins array
-    do j = 1, size(t % filter)
+    do j = 1, t % n_filters()
       call filter_matches(t % filter(j)) % bins_clear()
       call filter_matches(t % filter(j)) % bins_push_back(1)
     end do
@@ -307,7 +307,7 @@ contains
         ! Left Surface
         call filter_matches(i_filter_surf) % bins_set_data(1, OUT_LEFT)
         filter_index = 1
-        do j = 1, size(t % filter)
+        do j = 1, t % n_filters()
           filter_index = filter_index + (filter_matches(t % filter(j)) % &
                bins_data(1) - 1) * t % stride(j)
         end do
@@ -323,7 +323,7 @@ contains
         ! Right Surface
         call filter_matches(i_filter_surf) % bins_set_data(1, OUT_RIGHT)
         filter_index = 1
-        do j = 1, size(t % filter)
+        do j = 1, t % n_filters()
           filter_index = filter_index + (filter_matches(t % filter(j)) % &
                bins_data(1) - 1) * t % stride(j)
         end do
@@ -339,7 +339,7 @@ contains
         ! Back Surface
         call filter_matches(i_filter_surf) % bins_set_data(1, OUT_BACK)
         filter_index = 1
-        do j = 1, size(t % filter)
+        do j = 1, t % n_filters()
           filter_index = filter_index + (filter_matches(t % filter(j)) % &
                bins_data(1) - 1) * t % stride(j)
         end do
@@ -355,7 +355,7 @@ contains
         ! Front Surface
         call filter_matches(i_filter_surf) % bins_set_data(1, OUT_FRONT)
         filter_index = 1
-        do j = 1, size(t % filter)
+        do j = 1, t % n_filters()
           filter_index = filter_index + (filter_matches(t % filter(j)) % &
                bins_data(1) - 1) * t % stride(j)
         end do
@@ -371,7 +371,7 @@ contains
         ! Bottom Surface
         call filter_matches(i_filter_surf) % bins_set_data(1, OUT_BOTTOM)
         filter_index = 1
-        do j = 1, size(t % filter)
+        do j = 1, t % n_filters()
           filter_index = filter_index + (filter_matches(t % filter(j)) % &
                bins_data(1) - 1) * t % stride(j)
         end do
@@ -387,7 +387,7 @@ contains
         ! Top Surface
         call filter_matches(i_filter_surf) % bins_set_data(1, OUT_TOP)
         filter_index = 1
-        do j = 1, size(t % filter)
+        do j = 1, t % n_filters()
           filter_index = filter_index + (filter_matches(t % filter(j)) % &
                bins_data(1) - 1) * t % stride(j)
         end do

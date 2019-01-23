@@ -93,10 +93,6 @@ extern std::vector<std::unique_ptr<Filter>> tally_filters;
 
 //==============================================================================
 
-extern "C" void free_memory_tally_c();
-
-//==============================================================================
-
 // Filter-related Fortran functions that will be called from C++
 extern "C" int verify_filter(int32_t index);
 extern "C" Filter* filter_from_f(int32_t index);

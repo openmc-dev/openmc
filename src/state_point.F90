@@ -263,11 +263,11 @@ contains
           call write_dataset(tally_group, "n_realizations", &
                tally % n_realizations)
 
-          call write_dataset(tally_group, "n_filters", size(tally % filter))
-          if (size(tally % filter) > 0) then
+          call write_dataset(tally_group, "n_filters", tally % n_filters())
+          if (tally % n_filters() > 0) then
             ! Write IDs of filters
-            allocate(id_array(size(tally % filter)))
-            do j = 1, size(tally % filter)
+            allocate(id_array(tally % n_filters()))
+            do j = 1, tally % n_filters()
               id_array(j) = filters(tally % filter(j)) % obj % id
             end do
             call write_dataset(tally_group, "filters", id_array)

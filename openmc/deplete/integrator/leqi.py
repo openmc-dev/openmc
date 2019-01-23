@@ -117,12 +117,12 @@ def leqi(operator, timesteps, power=None, power_density=None, print_out=True):
             if i == 0:
                 # Save results for the last step
                 dt_l = dt
-                vec, t, op_res_last = celi_inner(operator, vec, p, i, i_res,
+                x_new, t, op_res_last = celi_inner(operator, vec, p, i, i_res,
                                                  t, dt, print_out)
                 continue
 
             # Perform remaining LE/QI
-            x = [copy.deepcopy(vec)]
+            x = [copy.deepcopy(x_new)]
             op_results = [operator(x[0], p)]
 
             inputs = list(zip(op_res_last.rates, op_results[0].rates,
@@ -145,7 +145,6 @@ def leqi(operator, timesteps, power=None, power_density=None, print_out=True):
             Results.save(operator, x, op_results, [t, t+dt], p, i_res+i)
 
             # update results
-            x = [x_new]
             op_res_last = copy.deepcopy(op_results[0])
             t += dt
             dt_l = dt

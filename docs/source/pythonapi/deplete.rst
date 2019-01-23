@@ -16,6 +16,8 @@ algorithms for depletion calculations.
 
    integrator.predictor
    integrator.cecm
+   integrator.celi
+   integrator.leqi
    integrator.cf4
    integrator.epc_rk4
    integrator.si_celi

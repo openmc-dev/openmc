@@ -151,7 +151,7 @@ class Model(object):
 
         # Perform depletion
         check_value('method', method, ('cecm', 'predictor', 'cf4', 'epc_rk4',
-                                       'si_celi', 'si_leqi'))
+                                       'si_celi', 'si_leqi', 'celi', 'leqi'))
         getattr(dep.integrator, method)(op, timesteps, **kwargs)
 
     def export_to_xml(self):

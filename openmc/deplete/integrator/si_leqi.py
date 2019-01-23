@@ -5,41 +5,11 @@ from collections.abc import Iterable
 from itertools import repeat
 
 from .si_celi import si_celi_inner
+from .leqi import _leqi_f1, _leqi_f2, _leqi_f3, _leqi_f4
 from .cram import deplete
 from ..results import Results
 from ..abc import OperatorResult
 
-
-# Functions to form the special matrix for depletion
-def _leqi_f1(chain, inputs):
-     f1 = chain.form_matrix(inputs[0])
-     f2 = chain.form_matrix(inputs[1])
-     dt_l, dt = inputs[2], inputs[3]
-     return -dt / (12 * dt_l) * f1 + (dt + 6 * dt_l) / (12 * dt_l) * f2
-
-def _leqi_f2(chain, inputs):
-     f1 = chain.form_matrix(inputs[0])
-     f2 = chain.form_matrix(inputs[1])
-     dt_l, dt = inputs[2], inputs[3]
-     return -5 * dt / (12 * dt_l) * f1 + (5 * dt + 6 * dt_l) / (12 * dt_l) * f2
-
-def _leqi_f3(chain, inputs):
-     f1 = chain.form_matrix(inputs[0])
-     f2 = chain.form_matrix(inputs[1])
-     f3 = chain.form_matrix(inputs[2])
-     dt_l, dt = inputs[3], inputs[4]
-     return (-dt**2 / (12 * dt_l * (dt + dt_l)) * f1 +
-             (dt**2 + 6*dt*dt_l + 5*dt_l**2) / (12 * dt_l * (dt + dt_l)) * f2 +
-             dt_l / (12 * (dt + dt_l)) * f3)
-
-def _leqi_f4(chain, inputs):
-     f1 = chain.form_matrix(inputs[0])
-     f2 = chain.form_matrix(inputs[1])
-     f3 = chain.form_matrix(inputs[2])
-     dt_l, dt = inputs[3], inputs[4]
-     return (-dt**2 / (12 * dt_l * (dt + dt_l)) * f1 +
-             (dt**2 + 2*dt*dt_l + dt_l**2) / (12 * dt_l * (dt + dt_l)) * f2 +
-             (4 * dt * dt_l + 5 * dt_l**2) / (12 * dt_l * (dt + dt_l)) * f3)
 
 def si_leqi(operator, timesteps, power=None, power_density=None,
             print_out=True, m=10):

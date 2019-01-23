@@ -6,16 +6,8 @@ from collections.abc import Iterable
 from .cram import deplete
 from ..results import Results
 from ..abc import OperatorResult
+from .celi import _celi_f1, _celi_f2
 
-
-# Functions to form the special matrix for depletion
-def _celi_f1(chain, rates):
-     return 5/12 * chain.form_matrix(rates[0]) + \
-            1/12 * chain.form_matrix(rates[1])
-
-def _celi_f2(chain, rates):
-     return 1/12 * chain.form_matrix(rates[0]) + \
-            5/12 * chain.form_matrix(rates[1])
 
 def si_celi(operator, timesteps, power=None, power_density=None,
             print_out=True, m=10):

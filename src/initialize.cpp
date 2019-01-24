@@ -17,8 +17,8 @@
 #include "openmc/error.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
-#include "openmc/material.h" // TODO: remove this
 #include "openmc/message_passing.h"
+#include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/random_lcg.h"
@@ -36,7 +36,6 @@ extern "C" void print_version();
 extern "C" void read_command_line();
 extern "C" void read_geometry_xml();
 extern "C" void read_materials_xml();
-extern "C" void read_mgxs();
 extern "C" void read_plots_xml();
 extern "C" void read_tallies_xml();
 extern "C" void write_summary();

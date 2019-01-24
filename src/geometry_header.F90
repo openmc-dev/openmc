@@ -177,55 +177,6 @@ contains
   end function cell_sqrtkT
 
 !===============================================================================
-! GET_TEMPERATURES returns a list of temperatures that each nuclide/S(a,b) table
-! appears at in the model. Later, this list is used to determine the actual
-! temperatures to read (which may be different if interpolation is used)
-!===============================================================================
-
-  subroutine get_temperatures(nuc_temps)
-    type(VectorReal),            allocatable, intent(out) :: nuc_temps(:)
-
-    integer :: i, j, k
-    integer :: i_nuclide    ! index in nuclides array
-    integer :: i_material
-    real(8) :: temperature  ! temperature in Kelvin
-
-    allocate(nuc_temps(n_nuclides))
-
-    do i = 1, size(cells)
-      ! Skip non-material cells.
-      if (cells(i) % fill() /= C_NONE) cycle
-
-      do j = 1, cells(i) % material_size()
-        ! Skip void materials
-        if (cells(i) % material(j) == MATERIAL_VOID) cycle
-
-        ! Get temperature of cell (rounding to nearest integer)
-        if (cells(i) % sqrtkT_size() > 1) then
-          temperature = cells(i) % sqrtkT(j-1)**2 / K_BOLTZMANN
-        else
-          temperature = cells(i) % sqrtkT(0)**2 / K_BOLTZMANN
-        end if
-
-        i_material = cells(i) % material(j)
-
-        associate (mat => materials(i_material))
-          NUC_NAMES_LOOP: do k = 1, size(mat % names)
-            ! Get index in nuc_temps array
-            i_nuclide = nuclide_dict % get(mat % names(k))
-
-            ! Add temperature if it hasn't already been added
-            if (find(nuc_temps(i_nuclide), temperature) == -1) then
-              call nuc_temps(i_nuclide) % push_back(temperature)
-            end if
-          end do NUC_NAMES_LOOP
-        end associate
-      end do
-    end do
-
-  end subroutine get_temperatures
-
-!===============================================================================
 ! FREE_MEMORY_GEOMETRY deallocates global arrays defined in this module
 !===============================================================================
 

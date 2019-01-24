@@ -1,6 +1,8 @@
 #include "openmc/nuclide.h"
 
+#include "openmc/capi.h"
 #include "openmc/container_util.h"
+#include "openmc/cross_sections.h"
 #include "openmc/endf.h"
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
@@ -47,7 +49,7 @@ int Nuclide::XS_FISSION {2};
 int Nuclide::XS_NU_FISSION {3};
 int Nuclide::XS_PHOTON_PROD {4};
 
-Nuclide::Nuclide(hid_t group, const double* temperature, int n, int i_nuclide)
+Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nuclide)
   : i_nuclide_{i_nuclide}
 {
   // Get name of nuclide from group, removing leading '/'
@@ -82,6 +84,7 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n, int i_nuclide)
   // temperature range was given, in which case all temperatures in the range
   // are loaded irrespective of what temperatures actually appear in the model
   std::vector<int> temps_to_read;
+  int n = temperature.size();
   double T_min = n > 0 ? settings::temperature_range[0] : 0.0;
   double T_max = n > 0 ? settings::temperature_range[1] : INFTY;
   if (T_max > 0.0) {
@@ -95,8 +98,7 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n, int i_nuclide)
   switch (settings::temperature_method) {
   case TEMPERATURE_NEAREST:
     // Find nearest temperatures
-    for (int i = 0; i < n; ++i) {
-      double T_desired = temperature[i];
+    for (double T_desired : temperature) {
 
       // Determine closest temperature
       double min_delta_T = INFTY;
@@ -130,9 +132,7 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n, int i_nuclide)
   case TEMPERATURE_INTERPOLATION:
     // If temperature interpolation or multipole is selected, get a list of
     // bounding temperatures for each actual temperature present in the model
-    for (int i = 0; i < n; ++i) {
-      double T_desired = temperature[i];
-
+    for (double T_desired : temperature) {
       bool found_pair = false;
       for (int j = 0; j < temps_available.size() - 1; ++j) {
         if (temps_available[j] <= T_desired && T_desired < temps_available[j + 1]) {
@@ -886,6 +886,50 @@ void check_data_version(hid_t file_id)
       "OpenMC expects version " + std::to_string(HDF5_VERSION[0]) +
       ".x data.");
   }
+}
+
+//==============================================================================
+// C API
+//==============================================================================
+
+extern "C" void extend_nuclides();
+
+extern "C" int openmc_load_nuclide(const char* name)
+{
+  if (data::nuclide_map.find(name) == data::nuclide_map.end()) {
+    const auto& it = data::library_map.find({Library::Type::neutron, name});
+    if (it != data::library_map.end()) {
+      // Extend nuclides array on Fortran side
+      extend_nuclides();
+
+      // Get filename for library containing nuclide
+      int idx = it->second;
+      std::string& filename = data::libraries[idx].path_;
+
+      // Open file and make sure version is sufficient
+      hid_t file_id = file_open(filename, 'r');
+      check_data_version(file_id);
+
+      // Read nuclide data from HDF5
+      hid_t group = open_group(file_id, name);
+      std::vector<double> temperature;
+      int i_nuclide = data::nuclides.size();
+      data::nuclides.push_back(std::make_unique<Nuclide>(
+        group, temperature, i_nuclide));
+      close_group(group);
+      file_close(file_id);
+
+      // Add entry to nuclide dictionary
+      data::nuclide_map[name] = i_nuclide;
+
+      // Initialize nuclide grid
+      data::nuclides.back()->init_grid();
+    } else {
+      set_errmsg("Nuclide '" + std::string{name} + "' is not present in library.");
+      return OPENMC_E_DATA;
+    }
+  }
+  return 0;
 }
 
 //==============================================================================

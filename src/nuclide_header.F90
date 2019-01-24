@@ -255,13 +255,10 @@ contains
     integer :: i
     integer :: i_closest
     integer :: n_temperature
-    integer(HID_T) :: nu_group
     integer(HID_T) :: energy_group, energy_dset
     integer(HID_T) :: kT_group
     integer(HID_T) :: rxs_group
     integer(HID_T) :: rx_group
-    integer(HID_T) :: fer_group                 ! fission_energy_release group
-    integer(HID_T) :: fer_dset
     integer(HSIZE_T) :: j
     integer(HSIZE_T) :: dims(1)
     character(MAX_WORD_LEN) :: temp_str
@@ -633,31 +630,6 @@ contains
   end subroutine nuclide_calculate_elastic_xs
 
 !===============================================================================
-! CHECK_DATA_VERSION checks for the right version of nuclear data within HDF5
-! files
-!===============================================================================
-
-  subroutine check_data_version(file_id)
-    integer(HID_T), intent(in) :: file_id
-
-    integer, allocatable :: version(:)
-
-    if (attribute_exists(file_id, 'version')) then
-      call read_attribute(version, file_id, 'version')
-      if (version(1) /= HDF5_VERSION(1)) then
-        call fatal_error("HDF5 data format uses version " // trim(to_str(&
-             version(1))) // "." // trim(to_str(version(2))) // " whereas &
-             &your installation of OpenMC expects version " // trim(to_str(&
-             HDF5_VERSION(1))) // ".x data.")
-      end if
-    else
-      call fatal_error("HDF5 data does not indicate a version. Your &
-           &installation of OpenMC expects version " // trim(to_str(&
-           HDF5_VERSION(1))) // ".x data.")
-    end if
-  end subroutine check_data_version
-
-!===============================================================================
 ! FREE_MEMORY_NUCLIDE deallocates global arrays defined in this module
 !===============================================================================
 
@@ -714,63 +686,6 @@ contains
   end function openmc_get_nuclide_index
 
 
-  function openmc_load_nuclide(name) result(err) bind(C)
-    ! Load a nuclide from the cross section library
-    character(kind=C_CHAR), intent(in) :: name(*)
-    integer(C_INT) :: err
-
-    integer :: n
-    integer(HID_T) :: file_id
-    integer(HID_T) :: group_id
-    character(:), allocatable :: name_
-    character(MAX_FILE_LEN) :: filename
-    real(8) :: minmax(2) = [ZERO, INFINITY]
-    type(VectorReal) :: temperature
-    type(Nuclide), allocatable :: new_nuclides(:)
-
-    ! Copy array of C_CHARs to normal Fortran string
-    name_ = to_f_string(name)
-
-    err = 0
-    if (.not. nuclide_dict % has(name_)) then
-      if (library_present(LIBRARY_NEUTRON, name_)) then
-        ! allocate extra space in nuclides array
-        n = n_nuclides
-        allocate(new_nuclides(n + 1))
-        new_nuclides(1:n) = nuclides(:)
-        call move_alloc(FROM=new_nuclides, TO=nuclides)
-        n = n + 1
-
-        filename = library_path(LIBRARY_NEUTRON, name_)
-
-        ! Open file and make sure version is sufficient
-        file_id = file_open(filename, 'r')
-        call check_data_version(file_id)
-
-        ! Read nuclide data from HDF5
-        group_id = open_group(file_id, name_)
-        ! call nuclides(n) % from_hdf5(group_id, temperature, &
-        !      temperature_method, temperature_tolerance, minmax, &
-        !      master, n)
-        call close_group(group_id)
-        call file_close(file_id)
-
-        ! Add entry to nuclide dictionary
-        call nuclide_dict % set(name_, n)
-        n_nuclides = n
-
-        ! Initialize nuclide grid
-        call nuclides(n) % init_grid()
-      else
-        err = E_DATA
-        call set_errmsg("Nuclide '" // trim(name_) // "' is not present &
-             &in library.")
-      end if
-    end if
-
-  end function openmc_load_nuclide
-
-
   function openmc_nuclide_name(index, name) result(err) bind(C)
     ! Return the name of a nuclide with a given index
     integer(C_INT), value, intent(in) :: index
@@ -794,5 +709,17 @@ contains
       call set_errmsg("Memory for nuclides has not been allocated yet.")
     end if
   end function openmc_nuclide_name
+
+  subroutine extend_nuclides() bind(C)
+    integer :: n
+    type(Nuclide), allocatable :: new_nuclides(:)
+
+    ! allocate extra space in nuclides array
+    n = n_nuclides
+    allocate(new_nuclides(n + 1))
+    new_nuclides(1:n) = nuclides(:)
+    call move_alloc(FROM=new_nuclides, TO=nuclides)
+    n = n + 1
+  end subroutine
 
 end module nuclide_header

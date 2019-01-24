@@ -6,7 +6,7 @@ module mgxs_data
   use algorithm,       only: find
   use dict_header,     only: DictCharInt
   use error,           only: fatal_error, write_message
-  use geometry_header, only: get_temperatures, cells
+  use geometry_header, only: cells
   use hdf5_interface
   use material_header, only: Material, materials, n_materials
   use mgxs_interface
@@ -18,89 +18,6 @@ module mgxs_data
   implicit none
 
 contains
-
-!===============================================================================
-! READ_XS reads all the cross sections for the problem and stores them in
-! nuclides and sab_tables arrays
-!===============================================================================
-
-  subroutine read_mgxs() bind(C)
-    integer                 :: i              ! index in materials array
-    integer                 :: j              ! index over nuclides in material
-    integer                 :: i_nuclide      ! index in nuclides array
-    character(20)           :: name           ! name of library to load
-    type(Material), pointer :: mat
-    type(SetChar)           :: already_read
-    integer(HID_T)          :: file_id
-    logical                 :: file_exists
-    type(VectorReal), allocatable, target :: temps(:)
-    character(MAX_WORD_LEN) :: word
-    integer, allocatable    :: array(:)
-
-    ! Check if MGXS Library exists
-    inquire(FILE=path_cross_sections, EXIST=file_exists)
-    if (.not. file_exists) then
-
-      ! Could not find MGXS Library file
-      call fatal_error("Cross sections HDF5 file '" &
-           // trim(path_cross_sections) // "' does not exist!")
-    end if
-
-    call write_message("Loading cross section data...", 5)
-
-    ! Get temperatures
-    call get_temperatures(temps)
-
-    ! Open file for reading
-    file_id = file_open(path_cross_sections, 'r', parallel=.true.)
-
-    ! Read filetype
-    call read_attribute(word, file_id, "filetype")
-    if (word /= 'mgxs') then
-      call fatal_error("Provided MGXS Library is not a MGXS Library file.")
-    end if
-
-    ! Read revision number for the MGXS Library file and make sure it matches
-    ! with the current version
-    call read_attribute(array, file_id, "version")
-    if (any(array /= VERSION_MGXS_LIBRARY)) then
-      call fatal_error("MGXS Library file version does not match current &
-                       &version supported by OpenMC.")
-    end if
-
-    ! ==========================================================================
-    ! READ ALL MGXS CROSS SECTION TABLES
-
-    ! Loop over all files
-    MATERIAL_LOOP: do i = 1, n_materials
-      mat => materials(i)
-
-      NUCLIDE_LOOP: do j = 1, mat % n_nuclides
-        name = trim(mat % names(j)) // C_NULL_CHAR
-        i_nuclide = mat % nuclide(j)
-
-        if (.not. already_read % contains(name)) then
-          call add_mgxs_c(file_id, name, num_energy_groups, num_delayed_groups, &
-               temps(i_nuclide) % size(), temps(i_nuclide) % data, &
-               temperature_tolerance, max_order, &
-               logical(legendre_to_tabular, C_BOOL), &
-               legendre_to_tabular_points, temperature_method)
-
-          call already_read % add(name)
-        end if
-      end do NUCLIDE_LOOP
-
-      call mat % set_fissionable( &
-           logical(query_fissionable_c(mat % n_nuclides, mat % nuclide)))
-
-    end do MATERIAL_LOOP
-
-    call file_close(file_id)
-
-    ! Avoid some valgrind leak errors
-    call already_read % clear()
-
-  end subroutine read_mgxs
 
 !===============================================================================
 ! CREATE_MACRO_XS generates the macroscopic xs from the microscopic input data

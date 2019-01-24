@@ -7,34 +7,6 @@ module mgxs_interface
   implicit none
 
   interface
-
-    subroutine add_mgxs_c(file_id, name, energy_groups, delayed_groups, &
-         n_temps, temps, tolerance, max_order, legendre_to_tabular, &
-         legendre_to_tabular_points, method) bind(C)
-      use ISO_C_BINDING
-      import HID_T
-      implicit none
-      integer(HID_T), value, intent(in) :: file_id
-      character(kind=C_CHAR),intent(in) :: name(*)
-      integer(C_INT), value, intent(in) :: energy_groups
-      integer(C_INT), value, intent(in) :: delayed_groups
-      integer(C_INT), value, intent(in) :: n_temps
-      real(C_DOUBLE),        intent(in) :: temps(1:n_temps)
-      real(C_DOUBLE), value, intent(in) :: tolerance
-      integer(C_INT), value, intent(in) :: max_order
-      logical(C_BOOL),value, intent(in) :: legendre_to_tabular
-      integer(C_INT), value, intent(in) :: legendre_to_tabular_points
-      integer(C_INT),     intent(inout) :: method
-    end subroutine add_mgxs_c
-
-    function query_fissionable_c(n_nuclides, i_nuclides) result(result) bind(C)
-      use ISO_C_BINDING
-      implicit none
-      integer(C_INT), value, intent(in) :: n_nuclides
-      integer(C_INT),        intent(in) :: i_nuclides(1:n_nuclides)
-      logical(C_BOOL)                   :: result
-    end function query_fissionable_c
-
     subroutine create_macro_xs_c(name, n_nuclides, i_nuclides, n_temps, temps, &
          atom_densities, tolerance, method) bind(C)
       use ISO_C_BINDING
@@ -130,7 +102,7 @@ module mgxs_interface
   integer(C_INT), bind(C) :: num_energy_groups
 
   ! Number of delayed groups
-  integer(C_INT) :: num_delayed_groups
+  integer(C_INT), bind(C) :: num_delayed_groups
 
   ! Energy group structure with decreasing energy
   real(8), allocatable :: energy_bins(:)

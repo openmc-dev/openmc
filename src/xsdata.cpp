@@ -13,7 +13,9 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
+#include "openmc/mgxs_interface.h"
 #include "openmc/random_lcg.h"
+#include "openmc/settings.h"
 
 
 namespace openmc {
@@ -22,10 +24,11 @@ namespace openmc {
 // XsData class methods
 //==============================================================================
 
-XsData::XsData(size_t energy_groups, size_t num_delayed_groups, bool fissionable,
-     int scatter_format, int n_pol, int n_azi)
+XsData::XsData(bool fissionable, int scatter_format, int n_pol, int n_azi)
 {
   size_t n_ang = n_pol * n_azi;
+  size_t n_dg = data::num_delayed_groups;
+  size_t n_g = data::num_energy_groups;
 
   // check to make sure scatter format is OK before we allocate
   if (scatter_format != ANGLE_HISTOGRAM && scatter_format != ANGLE_TABULAR &&
@@ -33,7 +36,7 @@ XsData::XsData(size_t energy_groups, size_t num_delayed_groups, bool fissionable
     fatal_error("Invalid scatter_format!");
   }
   // allocate all [temperature][angle][in group] quantities
-  std::vector<size_t> shape = {n_ang, energy_groups};
+  std::vector<size_t> shape {n_ang, n_g};
   total = xt::zeros<double>(shape);
   absorption = xt::zeros<double>(shape);
   inverse_velocity = xt::zeros<double>(shape);
@@ -45,20 +48,20 @@ XsData::XsData(size_t energy_groups, size_t num_delayed_groups, bool fissionable
   }
 
   // allocate decay_rate; [temperature][angle][delayed group]
-  shape[1] = num_delayed_groups;
+  shape[1] = n_dg;
   decay_rate = xt::zeros<double>(shape);
 
   if (fissionable) {
-    shape = {n_ang, num_delayed_groups, energy_groups};
+    shape = {n_ang, n_dg, n_g};
     // allocate delayed_nu_fission; [temperature][angle][delay group][in group]
     delayed_nu_fission = xt::zeros<double>(shape);
 
     // chi_prompt; [temperature][angle][in group][out group]
-    shape = {n_ang, energy_groups, energy_groups};
+    shape = {n_ang, n_g, n_g};
     chi_prompt = xt::zeros<double>(shape);
 
     // chi_delayed; [temperature][angle][delay group][in group][out group]
-    shape = {n_ang, num_delayed_groups, energy_groups, energy_groups};
+    shape = {n_ang, n_dg, n_g, n_g};
     chi_delayed = xt::zeros<double>(shape);
   }
 
@@ -78,18 +81,15 @@ XsData::XsData(size_t energy_groups, size_t num_delayed_groups, bool fissionable
 
 void
 XsData::from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
-     int final_scatter_format, int order_data, int max_order,
-     int legendre_to_tabular_points, bool is_isotropic, int n_pol, int n_azi)
+  int final_scatter_format, int order_data, bool is_isotropic, int n_pol, int n_azi)
 {
   // Reconstruct the dimension information so it doesn't need to be passed
   size_t n_ang = n_pol * n_azi;
   size_t energy_groups = total.shape()[1];
-  size_t delayed_groups = decay_rate.shape()[1];
 
   // Set the fissionable-specific data
   if (fissionable) {
-    fission_from_hdf5(xsdata_grp, n_ang, energy_groups, delayed_groups,
-                      is_isotropic);
+    fission_from_hdf5(xsdata_grp, n_ang, is_isotropic);
   }
   // Get the non-fission-specific data
   read_nd_vector(xsdata_grp, "decay_rate", decay_rate);
@@ -97,8 +97,8 @@ XsData::from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
   read_nd_vector(xsdata_grp, "inverse-velocity", inverse_velocity);
 
   // Get scattering data
-  scatter_from_hdf5(xsdata_grp, n_ang, energy_groups, scatter_format,
-       final_scatter_format, order_data, max_order, legendre_to_tabular_points);
+  scatter_from_hdf5(xsdata_grp, n_ang, scatter_format,
+    final_scatter_format, order_data);
 
   // Check absorption to ensure it is not 0 since it is often the
   // denominator in tally methods
@@ -123,12 +123,15 @@ XsData::from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
 
 void
 XsData::fission_vector_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
-     size_t energy_groups, size_t delayed_groups, bool is_isotropic)
+  bool is_isotropic)
 {
   // Data is provided as nu-fission and chi with a beta for delayed info
 
+  size_t n_g = data::num_energy_groups;
+  size_t n_dg = data::num_delayed_groups;
+
   // Get chi
-  xt::xtensor<double, 2> temp_chi({n_ang, energy_groups}, 0.);
+  xt::xtensor<double, 2> temp_chi({n_ang, n_g}, 0.);
   read_nd_vector(xsdata_grp, "chi", temp_chi, true);
 
   // Normalize chi by summing over the outgoing groups for each incoming angle
@@ -141,7 +144,7 @@ XsData::fission_vector_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
                          xt::all());
 
   // Get nu-fission
-  xt::xtensor<double, 2> temp_nufiss({n_ang, energy_groups}, 0.);
+  xt::xtensor<double, 2> temp_nufiss({n_ang, n_g}, 0.);
   read_nd_vector(xsdata_grp, "nu-fission", temp_nufiss, true);
 
   // Get beta (strategy will depend upon the number of dimensions in beta)
@@ -151,7 +154,7 @@ XsData::fission_vector_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
   int ndim_target = 1;
   if (!is_isotropic) ndim_target += 2;
   if (beta_ndims == ndim_target) {
-    xt::xtensor<double, 2> temp_beta({n_ang, delayed_groups}, 0.);
+    xt::xtensor<double, 2> temp_beta({n_ang, n_dg}, 0.);
     read_nd_vector(xsdata_grp, "beta", temp_beta, true);
 
     // Set prompt_nu_fission = (1. - beta_total)*nu_fission
@@ -162,8 +165,7 @@ XsData::fission_vector_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
          xt::view(temp_beta, xt::all(), xt::all(), xt::newaxis()) *
          xt::view(temp_nufiss, xt::all(), xt::newaxis(), xt::all());
   } else if (beta_ndims == ndim_target + 1) {
-    xt::xtensor<double, 3> temp_beta({n_ang, delayed_groups, energy_groups},
-                                     0.);
+    xt::xtensor<double, 3> temp_beta({n_ang, n_dg, n_g}, 0.);
     read_nd_vector(xsdata_grp, "beta", temp_beta, true);
 
     // Set prompt_nu_fission = (1. - beta_total)*nu_fission
@@ -176,20 +178,22 @@ XsData::fission_vector_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
 }
 
 void
-XsData::fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
-     size_t energy_groups, size_t delayed_groups)
+XsData::fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 {
   // Data is provided separately as prompt + delayed nu-fission and chi
 
+  size_t n_g = data::num_energy_groups;
+  size_t n_dg = data::num_delayed_groups;
+
   // Get chi-prompt
-  xt::xtensor<double, 2> temp_chi_p({n_ang, energy_groups}, 0.);
+  xt::xtensor<double, 2> temp_chi_p({n_ang, n_g}, 0.);
   read_nd_vector(xsdata_grp, "chi-prompt", temp_chi_p, true);
 
   // Normalize chi by summing over the outgoing groups for each incoming angle
   temp_chi_p /= xt::view(xt::sum(temp_chi_p, {1}), xt::all(), xt::newaxis());
 
   // Get chi-delayed
-  xt::xtensor<double, 3> temp_chi_d({n_ang, delayed_groups, energy_groups}, 0.);
+  xt::xtensor<double, 3> temp_chi_d({n_ang, n_dg, n_g}, 0.);
   read_nd_vector(xsdata_grp, "chi-delayed", temp_chi_d, true);
 
   // Normalize chi by summing over the outgoing groups for each incoming angle
@@ -209,14 +213,15 @@ XsData::fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
 }
 
 void
-XsData::fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang,
-     size_t energy_groups)
+XsData::fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 {
   // No beta is provided and there is no prompt/delay distinction.
   // Therefore, the code only considers the data as prompt.
 
+  size_t n_g = data::num_energy_groups;
+
   // Get chi
-  xt::xtensor<double, 2> temp_chi({n_ang, energy_groups}, 0.);
+  xt::xtensor<double, 2> temp_chi({n_ang, n_g}, 0.);
   read_nd_vector(xsdata_grp, "chi", temp_chi, true);
 
   // Normalize chi by summing over the outgoing groups for each incoming angle
@@ -232,13 +237,15 @@ XsData::fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang,
 //==============================================================================
 
 void
-XsData::fission_matrix_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
-     size_t energy_groups, size_t delayed_groups, bool is_isotropic)
+XsData::fission_matrix_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang, bool is_isotropic)
 {
   // Data is provided as nu-fission and chi with a beta for delayed info
 
+  size_t n_g = data::num_energy_groups;
+  size_t n_dg = data::num_delayed_groups;
+
   // Get nu-fission matrix
-  xt::xtensor<double, 3> temp_matrix({n_ang, energy_groups, energy_groups}, 0.);
+  xt::xtensor<double, 3> temp_matrix({n_ang, n_g, n_g}, 0.);
   read_nd_vector(xsdata_grp, "nu-fission", temp_matrix, true);
 
   // Get beta (strategy will depend upon the number of dimensions in beta)
@@ -248,7 +255,7 @@ XsData::fission_matrix_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
   int ndim_target = 1;
   if (!is_isotropic) ndim_target += 2;
   if (beta_ndims == ndim_target) {
-    xt::xtensor<double, 2> temp_beta({n_ang, delayed_groups}, 0.);
+    xt::xtensor<double, 2> temp_beta({n_ang, n_dg}, 0.);
     read_nd_vector(xsdata_grp, "beta", temp_beta, true);
 
     xt::xtensor<double, 1> temp_beta_sum({n_ang}, 0.);
@@ -274,10 +281,10 @@ XsData::fission_matrix_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
          xt::view(temp_matrix, xt::all(), xt::newaxis(), xt::all(), xt::all());
 
   } else if (beta_ndims == ndim_target + 1) {
-    xt::xtensor<double, 3> temp_beta({n_ang, delayed_groups, energy_groups}, 0.);
+    xt::xtensor<double, 3> temp_beta({n_ang, n_dg, n_g}, 0.);
     read_nd_vector(xsdata_grp, "beta", temp_beta, true);
 
-    xt::xtensor<double, 2> temp_beta_sum({n_ang, energy_groups}, 0.);
+    xt::xtensor<double, 2> temp_beta_sum({n_ang, n_g}, 0.);
     temp_beta_sum = xt::sum(temp_beta, {1});
 
     // prompt_nu_fission is the sum of this matrix over outgoing groups and
@@ -308,13 +315,15 @@ XsData::fission_matrix_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
 }
 
 void
-XsData::fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
-     size_t energy_groups, size_t delayed_groups)
+XsData::fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 {
   // Data is provided separately as prompt + delayed nu-fission and chi
 
+  size_t n_g = data::num_energy_groups;
+  size_t n_dg = data::num_delayed_groups;
+
   // Get the prompt nu-fission matrix
-  xt::xtensor<double, 3> temp_matrix_p({n_ang, energy_groups, energy_groups}, 0.);
+  xt::xtensor<double, 3> temp_matrix_p({n_ang, n_g, n_g}, 0.);
   read_nd_vector(xsdata_grp, "prompt-nu-fission", temp_matrix_p, true);
 
   // prompt_nu_fission is the sum over outgoing groups
@@ -326,8 +335,7 @@ XsData::fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
        xt::view(prompt_nu_fission, xt::all(), xt::all(), xt::newaxis());
 
   // Get the delayed nu-fission matrix
-  xt::xtensor<double, 4> temp_matrix_d({n_ang, delayed_groups, energy_groups,
-       energy_groups}, 0.);
+  xt::xtensor<double, 4> temp_matrix_d({n_ang, n_dg, n_g, n_g}, 0.);
   read_nd_vector(xsdata_grp, "delayed-nu-fission", temp_matrix_d, true);
 
   // delayed_nu_fission is the sum over outgoing groups
@@ -340,14 +348,15 @@ XsData::fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
 }
 
 void
-XsData::fission_matrix_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang,
-     size_t energy_groups)
+XsData::fission_matrix_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 {
   // No beta is provided and there is no prompt/delay distinction.
   // Therefore, the code only considers the data as prompt.
 
+  size_t n_g = data::num_energy_groups;
+
   // Get nu-fission matrix
-  xt::xtensor<double, 3> temp_matrix({n_ang, energy_groups, energy_groups}, 0.);
+  xt::xtensor<double, 3> temp_matrix({n_ang, n_g, n_g}, 0.);
   read_nd_vector(xsdata_grp, "nu-fission", temp_matrix, true);
 
   // prompt_nu_fission is the sum over outgoing groups
@@ -362,8 +371,7 @@ XsData::fission_matrix_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang,
 //==============================================================================
 
 void
-XsData::fission_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
-     size_t delayed_groups, bool is_isotropic)
+XsData::fission_from_hdf5(hid_t xsdata_grp, size_t n_ang, bool is_isotropic)
 {
   // Get the fission and kappa_fission data xs; these are optional
   read_nd_vector(xsdata_grp, "fission", fission);
@@ -373,33 +381,29 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
   // as a nu-fission matrix or a set of chi and nu-fission vectors
   if (object_exists(xsdata_grp, "chi") ||
       object_exists(xsdata_grp, "chi-prompt")) {
-    if (delayed_groups == 0) {
-      fission_vector_no_delayed_from_hdf5(xsdata_grp, n_ang, energy_groups);
+    if (data::num_delayed_groups == 0) {
+      fission_vector_no_delayed_from_hdf5(xsdata_grp, n_ang);
     } else {
       if (object_exists(xsdata_grp, "beta")) {
-        fission_vector_beta_from_hdf5(xsdata_grp, n_ang, energy_groups,
-             delayed_groups, is_isotropic);
+        fission_vector_beta_from_hdf5(xsdata_grp, n_ang, is_isotropic);
       } else {
-        fission_vector_no_beta_from_hdf5(xsdata_grp, n_ang, energy_groups,
-             delayed_groups);
+        fission_vector_no_beta_from_hdf5(xsdata_grp, n_ang);
       }
     }
   } else {
-    if (delayed_groups == 0) {
-      fission_matrix_no_delayed_from_hdf5(xsdata_grp, n_ang, energy_groups);
+    if (data::num_delayed_groups == 0) {
+      fission_matrix_no_delayed_from_hdf5(xsdata_grp, n_ang);
     } else {
       if (object_exists(xsdata_grp, "beta")) {
-        fission_matrix_beta_from_hdf5(xsdata_grp, n_ang, energy_groups,
-             delayed_groups, is_isotropic);
+        fission_matrix_beta_from_hdf5(xsdata_grp, n_ang, is_isotropic);
       } else {
-        fission_matrix_no_beta_from_hdf5(xsdata_grp, n_ang, energy_groups,
-             delayed_groups);
+        fission_matrix_no_beta_from_hdf5(xsdata_grp, n_ang);
       }
     }
   }
 
   // Combine prompt_nu_fission and delayed_nu_fission into nu_fission
-  if (delayed_groups == 0) {
+  if (data::num_delayed_groups == 0) {
     nu_fission = prompt_nu_fission;
   } else {
     nu_fission = prompt_nu_fission + xt::sum(delayed_nu_fission, {1});
@@ -409,9 +413,8 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
 //==============================================================================
 
 void
-XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
-     int scatter_format, int final_scatter_format, int order_data,
-     int max_order, int legendre_to_tabular_points)
+XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang,
+     int scatter_format, int final_scatter_format, int order_data)
 {
   if (!object_exists(xsdata_grp, "scatter_data")) {
     fatal_error("Must provide scatter_data group!");
@@ -419,9 +422,10 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
   hid_t scatt_grp = open_group(xsdata_grp, "scatter_data");
 
   // Get the outgoing group boundary indices
-  xt::xtensor<int, 2> gmin({n_ang, energy_groups}, 0.);
+  size_t n_g = data::num_energy_groups;
+  xt::xtensor<int, 2> gmin({n_ang, n_g}, 0.);
   read_nd_vector(scatt_grp, "g_min", gmin, true);
-  xt::xtensor<int, 2> gmax({n_ang, energy_groups}, 0.);
+  xt::xtensor<int, 2> gmax({n_ang, n_g}, 0.);
   read_nd_vector(scatt_grp, "g_max", gmax, true);
 
   // Make gmin and gmax start from 0 vice 1 as they do in the library
@@ -432,7 +436,7 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
   // data.
   size_t length = order_data * xt::sum(gmax - gmin + 1)();
 
-  double_4dvec input_scatt(n_ang, double_3dvec(energy_groups));
+  double_4dvec input_scatt(n_ang, double_3dvec(n_g));
   xt::xtensor<double, 1> temp_arr({length}, 0.);
   read_nd_vector(scatt_grp, "scatter_matrix", temp_arr, true);
 
@@ -440,7 +444,7 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
   // strip off the superfluous orders if needed
   int order_dim;
   if (scatter_format == ANGLE_LEGENDRE) {
-    order_dim = std::min(order_data - 1, max_order) + 1;
+    order_dim = std::min(order_data - 1, settings::max_order) + 1;
   } else {
     order_dim = order_data;
   }
@@ -449,7 +453,7 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
   // scatt data
   size_t temp_idx = 0;
   for (size_t a = 0; a < n_ang; a++) {
-    for (size_t gin = 0; gin < energy_groups; gin++) {
+    for (size_t gin = 0; gin < n_g; gin++) {
       input_scatt[a][gin].resize(gmax(a, gin) - gmin(a, gin) + 1);
       for (size_t i_gout = 0; i_gout < input_scatt[a][gin].size(); i_gout++) {
         input_scatt[a][gin][i_gout].resize(order_dim);
@@ -463,7 +467,7 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
   }
 
   // Get multiplication matrix
-  double_3dvec temp_mult(n_ang, double_2dvec(energy_groups));
+  double_3dvec temp_mult(n_ang, double_2dvec(n_g));
   if (object_exists(scatt_grp, "multiplicity_matrix")) {
     temp_arr.resize({length / order_data});
     read_nd_vector(scatt_grp, "multiplicity_matrix", temp_arr);
@@ -471,7 +475,7 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
     // convert the flat temp_arr to a jagged array for passing to scatt data
     size_t temp_idx = 0;
     for (size_t a = 0; a < n_ang; a++) {
-      for (size_t gin = 0; gin < energy_groups; gin++) {
+      for (size_t gin = 0; gin < n_g; gin++) {
         temp_mult[a][gin].resize(gmax(a, gin) - gmin(a, gin) + 1);
         for (size_t i_gout = 0; i_gout < temp_mult[a][gin].size(); i_gout++) {
           temp_mult[a][gin][i_gout] = temp_arr[temp_idx++];
@@ -481,7 +485,7 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
   } else {
     // Use a default: multiplicities are 1.0.
     for (size_t a = 0; a < n_ang; a++) {
-      for (size_t gin = 0; gin < energy_groups; gin++) {
+      for (size_t gin = 0; gin < n_g; gin++) {
         temp_mult[a][gin].resize(gmax(a, gin) - gmin(a, gin) + 1);
         for (size_t i_gout = 0; i_gout < temp_mult[a][gin].size(); i_gout++) {
           temp_mult[a][gin][i_gout] = 1.;
@@ -504,8 +508,7 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
 
       // Now create a tabular version of legendre_scatt
       convert_legendre_to_tabular(legendre_scatt,
-           *static_cast<ScattDataTabular*>(scatter[a].get()),
-           legendre_to_tabular_points);
+           *static_cast<ScattDataTabular*>(scatter[a].get()));
 
       scatter_format = final_scatter_format;
     }

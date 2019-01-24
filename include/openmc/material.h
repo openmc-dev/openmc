@@ -93,9 +93,6 @@ private:
   void calculate_photon_xs(const Particle& p) const;
 };
 
-void read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
-  const std::vector<std::vector<double>>& thermal_temps);
-
 //==============================================================================
 // Fortran compatibility
 //==============================================================================

@@ -59,13 +59,6 @@ module tally_header
     logical :: active = .false.
     logical :: depletion_rx = .false. ! has depletion reactions, e.g. (n,2n)
 
-    ! The stride attribute is used for determining the index in the results
-    ! array for a matching_bin combination. Since multiple dimensions are
-    ! mapped onto one dimension in the results array, the stride attribute gives
-    ! the stride for a given filter type within the results array
-
-    integer, allocatable :: stride(:)
-
     ! This array provides a way to lookup what index in the filters array a
     ! certain filter is. For example, if find_filter(FILTER_CELL) > 0, then the
     ! value is the index in filters(:).
@@ -86,7 +79,6 @@ module tally_header
     ! second dimension of the array is for the combination of filters
     ! (e.g. specific cell, specific energy group, etc.)
 
-    integer :: n_filter_bins = 1
     integer :: total_score_bins
     real(C_DOUBLE), allocatable :: results(:,:,:)
 
@@ -108,6 +100,8 @@ module tally_header
     procedure :: set_filters => tally_set_filters
     procedure :: n_filters => tally_get_n_filters
     procedure :: filter => tally_get_filter
+    procedure :: stride => tally_get_stride
+    procedure :: n_filter_bins => tally_get_n_filter_bins
   end type TallyObject
 
   type, public :: TallyContainer
@@ -271,12 +265,12 @@ contains
       ! If results was already allocated but shape is wrong, then reallocate it
       ! to the correct shape
       if (this % total_score_bins /= size(this % results, 2) .or. &
-           this % n_filter_bins /= size(this % results, 3)) then
+           this % n_filter_bins() /= size(this % results, 3)) then
         deallocate(this % results)
-        allocate(this % results(3, this % total_score_bins, this % n_filter_bins))
+        allocate(this % results(3, this % total_score_bins, this % n_filter_bins()))
       end if
     else
-      allocate(this % results(3, this % total_score_bins, this % n_filter_bins))
+      allocate(this % results(3, this % total_score_bins, this % n_filter_bins()))
     end if
 
   end subroutine tally_allocate_results
@@ -374,24 +368,6 @@ contains
 
     if (err == 0) then
       call tally_set_filters_c(this % ptr, n, filter_indices)
-
-      if (allocated(this % stride)) deallocate(this % stride)
-      allocate(this % stride(n))
-
-      ! Filters are traversed in reverse so that the last filter has the
-      ! shortest stride in memory and the first filter has the largest stride
-      stride = 1
-      do i = n, 1, -1
-        ! Set filter and stride
-        k = filter_indices(i)
-        this % stride(i) = stride
-
-        ! Multiply stride by number of bins in this filter
-        stride = stride * filters(k) % obj % n_bins
-      end do
-
-      ! Set total number of filter bins
-      this % n_filter_bins = stride
     end if
 
   end function tally_set_filters
@@ -422,6 +398,34 @@ contains
       end function
     end interface
     filt = tally_get_filter_c(this % ptr, i-1)
+  end function
+
+  function tally_get_stride(this, i) result(stride)
+    class(TallyObject) :: this
+    integer(C_INT) :: i
+    integer(C_INT32_T) :: stride
+    interface
+      function tally_get_stride_c(tally, i) result(stride) bind(C)
+        import C_PTR, C_INT, C_INT32_T
+        type(C_PTR), value :: tally
+        integer(C_INT), value :: i
+        integer(C_INT32_T) :: stride
+      end function
+    end interface
+    stride = tally_get_stride_c(this % ptr, i-1)
+  end function
+
+  function tally_get_n_filter_bins(this) result(n_filter_bins)
+    class(TallyObject) :: this
+    integer(C_INT32_T) :: n_filter_bins
+    interface
+      function tally_get_n_filter_bins_c(tally) result(n_filter_bins) bind(C)
+        import C_PTR, C_INT, C_INT32_T
+        type(C_PTR), value :: tally
+        integer(C_INT32_T) :: n_filter_bins
+      end function
+    end interface
+    n_filter_bins = tally_get_n_filter_bins_c(this % ptr)
   end function
 
 !===============================================================================

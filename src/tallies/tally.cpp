@@ -28,6 +28,32 @@ double global_tally_collision;
 double global_tally_tracklength;
 double global_tally_leakage;
 
+//==============================================================================// Tally object implementation
+//==============================================================================
+
+void
+Tally::set_filters(const int32_t filter_indices[], int n)
+{
+  // Clear old data.
+  filters_.clear();
+  strides_.clear();
+
+  // Copy in the given filter indices.
+  filters_.assign(filter_indices, filter_indices + n);
+
+  // Set the strides.  Filters are traversed in reverse so that the last filter
+  // has the shortest stride in memory and the first filter has the longest
+  // stride.
+  strides_.resize(n, 0);
+  int stride = 1;
+  for (int i = n-1; i >= 0; --i) {
+    strides_[i] = stride;
+    //TODO: off-by-one
+    stride *= model::tally_filters[filters_[i]-1]->n_bins_;
+  }
+  n_filter_bins_ = stride;
+}
+
 //==============================================================================
 // Non-member functions
 //==============================================================================
@@ -132,17 +158,38 @@ free_memory_tally_c()
 //==============================================================================
 
 extern "C" int
-openmc_tally_get_filters(int32_t index, int32_t** indices, int* n)
+openmc_tally_get_filters(int32_t index, const int32_t** indices, int* n)
 {
   if (index < 1 || index > model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  *indices = model::tallies[index-1]->filters_.data();
-  *n = model::tallies[index-1]->filters_.size();
+  *indices = model::tallies[index-1]->filters().data();
+  *n = model::tallies[index-1]->filters().size();
   return 0;
 }
+
+/*
+// Declared in Fortran
+extern "C" int tally_update_find_filter(int32_t index);
+
+extern "C" int
+openmc_tally_set_filters(int32_t index, int n, const int32_t* indices)
+{
+  // Make sure the index fits in the array bounds.
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  // Set the filters.
+  model::tallies[index-1]->set_filters(indices, n);
+
+  // Update the find_filter map.
+  return tally_update_find_filter(index);
+}
+*/
 
 //==============================================================================
 // Fortran compatibility functions
@@ -158,16 +205,17 @@ extern "C" {
       model::tallies.push_back(std::make_unique<Tally>());
   }
 
-  void
-  tally_set_filters_c(Tally* tally, int n, int32_t filter_indices[])
-  {
-    tally->filters_.clear();
-    tally->filters_.assign(filter_indices, filter_indices + n);
-  }
+  void tally_set_filters_c(Tally* tally, int n, int32_t filter_indices[])
+  {tally->set_filters(filter_indices, n);}
 
-  int tally_get_n_filters_c(Tally* tally) {return tally->filters_.size();}
+  int tally_get_n_filters_c(Tally* tally) {return tally->filters().size();}
 
-  int32_t tally_get_filter_c(Tally* tally, int i) {return tally->filters_[i];}
+  int32_t tally_get_filter_c(Tally* tally, int i) {return tally->filters(i);}
+
+  int32_t tally_get_stride_c(Tally* tally, int i) {return tally->strides(i);}
+
+  int32_t tally_get_n_filter_bins_c(Tally* tally)
+  {return tally->n_filter_bins();}
 }
 
 } // namespace openmc

@@ -137,6 +137,13 @@ void read_attribute(hid_t obj_id, const char* name, T& buffer)
   read_attr(obj_id, name, H5TypeMap<T>::type_id, &buffer);
 }
 
+// array version
+template<typename T, std::size_t N> inline void
+read_attribute(hid_t obj_id, const char* name, std::array<T, N>& buffer)
+{
+  read_attr(obj_id, name, H5TypeMap<T>::type_id, buffer.data());
+}
+
 // vector version
 template<typename T>
 void read_attribute(hid_t obj_id, const char* name, std::vector<T>& vec)

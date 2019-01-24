@@ -97,7 +97,7 @@ public:
   };
 
   // Constructors
-  Nuclide(hid_t group, const double* temperature, int n, int i_nuclide);
+  Nuclide(hid_t group, const std::vector<double>& temperature, int i_nuclide);
 
   //! Initialize logarithmic grid for energy searches
   void init_grid();
@@ -173,6 +173,7 @@ private:
 // Non-member functions
 //==============================================================================
 
+//! Checks for the right version of nuclear data within HDF5 files
 void check_data_version(hid_t file_id);
 
 //==============================================================================

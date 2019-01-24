@@ -140,8 +140,7 @@ class ScattDataLegendre: public ScattData {
     // Friend convert_legendre_to_tabular so it has access to protected
     // parameters
     friend void
-    convert_legendre_to_tabular(ScattDataLegendre& leg,
-         ScattDataTabular& tab, int n_mu);
+    convert_legendre_to_tabular(ScattDataLegendre& leg, ScattDataTabular& tab);
 
   public:
 
@@ -223,8 +222,7 @@ class ScattDataTabular: public ScattData {
     // Friend convert_legendre_to_tabular so it has access to protected
     // parameters
     friend void
-    convert_legendre_to_tabular(ScattDataLegendre& leg,
-         ScattDataTabular& tab, int n_mu);
+    convert_legendre_to_tabular(ScattDataLegendre& leg, ScattDataTabular& tab);
 
   public:
 

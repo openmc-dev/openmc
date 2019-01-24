@@ -18,7 +18,6 @@ module material_header
   public :: free_memory_material
   public :: openmc_extend_materials
   public :: openmc_get_material_index
-  public :: openmc_material_add_nuclide
   public :: openmc_material_get_id
   public :: openmc_material_get_densities
   public :: openmc_material_get_volume
@@ -271,72 +270,6 @@ contains
       call set_errmsg("Memory has not been allocated for materials.")
     end if
   end function openmc_get_material_index
-
-
-  function openmc_material_add_nuclide(index, name, density) result(err) bind(C)
-    ! Add a nuclide at a specified density in atom/b-cm to a material
-    integer(C_INT32_T), value, intent(in) :: index
-    character(kind=C_CHAR) :: name(*)
-    real(C_DOUBLE), value, intent(in) :: density
-    integer(C_INT) :: err
-
-    integer :: j, k, n
-    real(8) :: awr
-    integer, allocatable :: new_nuclide(:)
-    real(8), allocatable :: new_density(:)
-    character(:), allocatable :: name_
-
-    name_ = to_f_string(name)
-
-    err = E_UNASSIGNED
-    if (index >= 1 .and. index <= size(materials)) then
-      associate (m => materials(index))
-        ! Check if nuclide is already in material
-        do j = 1, m % n_nuclides
-          k = m % nuclide(j)
-          if (nuclides(k) % name == name_) then
-            awr = nuclide_awr(k)
-            m % density = m % density + density - m % atom_density(j)
-            m % density_gpcc = m % density_gpcc + (density - &
-                 m % atom_density(j)) * awr * MASS_NEUTRON / N_AVOGADRO
-            m % atom_density(j) = density
-            err = 0
-          end if
-        end do
-
-        ! If nuclide wasn't found, extend nuclide/density arrays
-        if (err /= 0) then
-          ! If nuclide hasn't been loaded, load it now
-          err = openmc_load_nuclide(name)
-
-          if (err == 0) then
-            ! Extend arrays
-            n = m % n_nuclides
-            allocate(new_nuclide(n + 1))
-            if (n > 0) new_nuclide(1:n) = m % nuclide
-            call move_alloc(FROM=new_nuclide, TO=m % nuclide)
-
-            allocate(new_density(n + 1))
-            if (n > 0) new_density(1:n) = m % atom_density
-            call move_alloc(FROM=new_density, TO=m % atom_density)
-
-            ! Append new nuclide/density
-            k = nuclide_dict % get(name_)
-            m % nuclide(n + 1) = k
-            m % atom_density(n + 1) = density
-            m % density = m % density + density
-            m % density_gpcc = m % density_gpcc + &
-                 density * nuclide_awr(k) * MASS_NEUTRON / N_AVOGADRO
-            m % n_nuclides = n + 1
-          end if
-        end if
-      end associate
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in materials array is out of bounds.")
-    end if
-
-  end function openmc_material_add_nuclide
 
 
   function openmc_material_get_densities(index, nuclides, densities, n) &

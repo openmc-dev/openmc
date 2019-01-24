@@ -15,7 +15,6 @@ module input_xml
   use material_header
   use mesh_header
   use message_passing
-  use mgxs_data,        only: create_macro_xs, read_mgxs
   use mgxs_interface
   use nuclide_header
   use multipole_header
@@ -96,11 +95,6 @@ module input_xml
   end interface
 
 contains
-
-!===============================================================================
-! READ_INPUT_XML calls each of the separate subroutines for reading settings,
-! geometry, materials, and tallies.
-!===============================================================================
 
 !===============================================================================
 ! READ_SETTINGS_XML reads data from a settings.xml file and parses it, checking

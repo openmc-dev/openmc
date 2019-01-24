@@ -392,7 +392,7 @@ def test_restart_si_leqi(run_in_tmpdir):
 
     # Reference solution
     s1 = [2.03325094, 1.16826254]
-    s2 = [2.69291933, 0.37907772]
+    s2 = [2.92711288, 0.53753236]
 
     assert y1[1] == approx(s1[0])
     assert y2[1] == approx(s1[1])

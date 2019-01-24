@@ -12,6 +12,7 @@ import openmc.checkvalue as cv
 from openmc.plots import _SVG_COLORS
 from openmc.mixin import IDManagerMixin
 
+from .geomtrack import ElementTracker
 
 class Universe(IDManagerMixin):
     """A collection of cells that can be repeated.
@@ -513,12 +514,14 @@ class Universe(IDManagerMixin):
         return memo[self]
 
     def create_xml_subelement(self, xml_element):
+        et = ElementTracker()
         # Iterate over all Cells
         for cell_id, cell in self._cells.items():
             path = "./cell[@id='{}']".format(cell_id)
 
             # If the cell was not already written, write it
-            if xml_element.find(path) is None:
+            if cell_id not in et.cells:
+                et.add_cell(cell_id)
                 # Create XML subelement for this Cell
                 cell_element = cell.create_xml_subelement(xml_element)
 

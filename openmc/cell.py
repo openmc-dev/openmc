@@ -16,6 +16,7 @@ from openmc.region import Region, Intersection, Complement
 from openmc._xml import get_text
 from .mixin import IDManagerMixin
 
+from .geomtrack import ElementTracker
 
 class Cell(IDManagerMixin):
     r"""A region of space defined as the intersection of half-space created by
@@ -457,6 +458,7 @@ class Cell(IDManagerMixin):
         return memo[self]
 
     def create_xml_subelement(self, xml_element):
+        et = ElementTracker()
         element = ET.Element("cell")
         element.set("id", str(self.id))
 
@@ -492,10 +494,13 @@ class Cell(IDManagerMixin):
             # element for the corresponding surface if none has been created
             # thus far.
             def create_surface_elements(node, element):
+                et = ElementTracker()
                 if isinstance(node, Halfspace):
                     path = "./surface[@id='{}']".format(node.surface.id)
-                    if xml_element.find(path) is None:
+                    if node.surface.id not in et.surfaces:
+                        et.add_surface(node.surface.id)
                         xml_element.append(node.surface.to_xml_element())
+
                 elif isinstance(node, Complement):
                     create_surface_elements(node.node, element)
                 else:

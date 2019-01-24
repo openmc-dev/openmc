@@ -28,7 +28,6 @@ RUN git clone https://github.com/njoy/NJOY2016 /opt/NJOY2016 && \
     cmake -Dstatic=on .. && make 2>/dev/null && make install
 
 # Clone and install OpenMC
-RUN pip3 install --no-binary=mpi4py mpi4py
 RUN git clone https://github.com/openmc-dev/openmc.git /opt/openmc && \
     cd /opt/openmc && mkdir -p build && cd build && \
     cmake  -Doptimize=on -DHDF5_PREFER_PARALLEL=on .. && \

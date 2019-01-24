@@ -113,13 +113,19 @@ def leqi(operator, timesteps, power=None, power_density=None, print_out=True):
         chain = operator.chain
 
         for i, (dt, p) in enumerate(zip(timesteps, power)):
-            # Perform SI-CE/LI CFQ4 for the first step
+            # LE/QI needs the last step results to start
+            # Perform CE/LI CFQ4 or restore results for the first step
             if i == 0:
-                # Save results for the last step
-                dt_l = dt
-                x_new, t, op_res_last = celi_inner(operator, vec, p, i, i_res,
-                                                 t, dt, print_out)
-                continue
+                if i_res <= 1:
+                    dt_l = dt
+                    x_new, t, op_res_last = celi_inner(operator, vec, p, i,
+                                                       i_res, t, dt, print_out)
+                    continue
+                else:
+                    dt_l = t - operator.prev_res[-2].time[0]
+                    op_res_last = operator.prev_res[-2]
+                    op_res_last.rates = op_res_last.rates[0]
+                    x_new = operator.prev_res[-1].data[0]
 
             # Perform remaining LE/QI
             x = [copy.deepcopy(x_new)]

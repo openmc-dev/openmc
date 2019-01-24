@@ -113,14 +113,20 @@ def si_leqi(operator, timesteps, power=None, power_density=None,
         chain = operator.chain
 
         for i, (dt, p) in enumerate(zip(timesteps, power)):
-            # Perform SI-CE/LI CFQ4 for the first step
+            # LE/QI needs the last step results to start
+            # Perform SI-CE/LI CFQ4 or restore results for the first step
             if i == 0:
-                # Save results for the last step
-                op_res_last = copy.deepcopy(op_results[0])
                 dt_l = dt
-                x, t, op_results = si_celi_inner(operator, x, op_results, p,
-                                                 i, i_res, t, dt, print_out)
-                continue
+                if i_res <= 1:
+                    op_res_last = copy.deepcopy(op_results[0])
+                    x, t, op_results = si_celi_inner(operator, x, op_results, p,
+                                                     i, i_res, t, dt, print_out)
+                    continue
+                else:
+                    dt_l = t - operator.prev_res[-2].time[0]
+                    op_res_last = operator.prev_res[-2]
+                    op_res_last.rates = op_res_last.rates[0]
+                    x = [operator.prev_res[-1].data[0]]
 
             # Perform remaining LE/QI
             inputs = list(zip(op_res_last.rates, op_results[0].rates,

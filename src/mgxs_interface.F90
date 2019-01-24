@@ -7,20 +7,6 @@ module mgxs_interface
   implicit none
 
   interface
-    subroutine create_macro_xs_c(name, n_nuclides, i_nuclides, n_temps, temps, &
-         atom_densities, tolerance, method) bind(C)
-      use ISO_C_BINDING
-      implicit none
-      character(kind=C_CHAR),intent(in) :: name(*)
-      integer(C_INT), value, intent(in) :: n_nuclides
-      integer(C_INT),        intent(in) :: i_nuclides(1:n_nuclides)
-      integer(C_INT), value, intent(in) :: n_temps
-      real(C_DOUBLE),        intent(in) :: temps(1:n_temps)
-      real(C_DOUBLE),        intent(in) :: atom_densities(1:n_nuclides)
-      real(C_DOUBLE), value, intent(in) :: tolerance
-      integer(C_INT),     intent(inout) :: method
-    end subroutine create_macro_xs_c
-
     subroutine calculate_xs_c(i_mat, gin, sqrtkT, uvw, total_xs, abs_xs, &
          nu_fiss_xs) bind(C)
       use ISO_C_BINDING

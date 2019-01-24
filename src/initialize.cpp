@@ -29,7 +29,6 @@
 #include "openmc/timer.h"
 
 // data/functions from Fortran side
-extern "C" void create_macro_xs();
 extern "C" void normalize_ao();
 extern "C" void print_usage();
 extern "C" void print_version();

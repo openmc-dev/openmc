@@ -323,7 +323,6 @@ add_library(libopenmc SHARED
   src/math.F90
   src/mesh_header.F90
   src/message_passing.F90
-  src/mgxs_data.F90
   src/mgxs_interface.F90
   src/multipole_header.F90
   src/nuclide_header.F90

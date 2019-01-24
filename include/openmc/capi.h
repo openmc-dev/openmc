@@ -104,7 +104,7 @@ extern "C" {
   int openmc_tally_get_active(int32_t index, bool* active);
   int openmc_tally_get_estimator(int32_t index, int32_t* estimator);
   int openmc_tally_get_id(int32_t index, int32_t* id);
-  int openmc_tally_get_filters(int32_t index, int32_t** indices, int* n);
+  int openmc_tally_get_filters(int32_t index, const int32_t** indices, int* n);
   int openmc_tally_get_n_realizations(int32_t index, int32_t* n);
   int openmc_tally_get_nuclides(int32_t index, int** nuclides, int* n);
   int openmc_tally_get_scores(int32_t index, int** scores, int* n);

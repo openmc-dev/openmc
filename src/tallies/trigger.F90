@@ -177,7 +177,7 @@ contains
               call filter_matches(t % filter(j)) % bins_push_back(0)
             end do
 
-            FILTER_LOOP: do filter_index = 1, t % n_filter_bins
+            FILTER_LOOP: do filter_index = 1, t % n_filter_bins()
 
               ! Initialize score index
               score_index = trigger % score_index

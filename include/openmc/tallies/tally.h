@@ -20,7 +20,23 @@ class Tally {
 public:
   Tally() {}
 
-  std::vector<int32_t> filters_;
+  const std::vector<int32_t>& filters() {return filters_;}
+
+  int32_t filters(int i) const {return filters_[i];}
+
+  void set_filters(const int32_t filter_indices[], int n);
+
+  int32_t strides(int i) const {return strides_[i];}
+
+  int32_t n_filter_bins() const {return n_filter_bins_;}
+
+private:
+  std::vector<int32_t> filters_; //< Filter indices in global filters array
+
+  //! Index strides assigned to each filter to support 1D indexing.
+  std::vector<int32_t> strides_;
+
+  int32_t n_filter_bins_ {0};
 };
 
 //==============================================================================

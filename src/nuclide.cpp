@@ -978,11 +978,6 @@ extern "C" double nuclide_fission_q_recov(Nuclide* nuc, double E)
   return nuc->fission_q_recov_ ? (*nuc->fission_q_recov_)(E) : 0.0;
 }
 
-extern "C" void nuclide_load_multipole(Nuclide* nuc, hid_t group)
-{
-  nuc->multipole_ = std::make_unique<WindowedMultipole>(group);
-}
-
 extern "C" void multipole_deriv_eval(Nuclide* nuc, double E, double sqrtkT,
   double* sig_s, double* sig_a, double* sig_f)
 {

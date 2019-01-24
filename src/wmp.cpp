@@ -1,12 +1,19 @@
 #include "openmc/wmp.h"
 
 #include "openmc/constants.h"
+#include "openmc/cross_sections.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/math_functions.h"
+#include "openmc/nuclide.h"
 
 #include <cmath>
+#include <sstream>
 
 namespace openmc {
+
+//========================================================================
+// WindowedeMultipole implementation
+//========================================================================
 
 WindowedMultipole::WindowedMultipole(hid_t group)
 {
@@ -182,6 +189,55 @@ WindowedMultipole::evaluate_deriv(double E, double sqrtkT)
   }
 
   return std::make_tuple(sig_s, sig_a, sig_f);
+}
+
+//========================================================================
+// Non-member functions
+//========================================================================
+
+void check_wmp_version(hid_t file)
+{
+  if (attribute_exists(file, "version")) {
+    std::array<int, 2> version;
+    read_attribute(file, "version", version);
+    if (version[0] != WMP_VERSION[0]) {
+      std::stringstream msg;
+      msg << "WMP data format uses version " << version[0] << "." <<
+        version[1] << " whereas your installation of OpenMC expects version "
+        << WMP_VERSION[0] << ".x data.";
+      fatal_error(msg);
+    }
+  } else {
+    fatal_error("WMP data does not indicate a version. Your installation of "
+      "OpenMC expects version " + std::to_string(WMP_VERSION[0]) + ".x data.");
+  }
+}
+
+void read_multipole_data(int i_nuclide)
+{
+  // Look for WMP data in cross_sections.xml
+  const auto& nuc {data::nuclides[i_nuclide]};
+  auto it = data::library_map.find({Library::Type::wmp, nuc->name_});
+
+  // If no WMP library for this nuclide, just return
+  if (it == data::library_map.end()) return;
+
+  // Check if WMP library exists
+  int idx = it->second;
+  std::string& filename = data::libraries[idx].path_;
+
+  // Display message
+  write_message("Reading " + nuc->name_ + " WMP data from " + filename, 6);
+
+  // Open file and make sure version is sufficient
+  hid_t file = file_open(filename, 'r');
+  check_wmp_version(file);
+
+  // Read nuclide data from HDF5
+  hid_t group = open_group(file, nuc->name_.c_str());
+  nuc->multipole_ = std::make_unique<WindowedMultipole>(group);
+  close_group(group);
+  file_close(file);
 }
 
 } // namespace openmc

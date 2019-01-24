@@ -14,6 +14,7 @@
 #include "openmc/string_utils.h"
 #include "openmc/thermal.h"
 #include "openmc/xml_interface.h"
+#include "openmc/wmp.h"
 
 #include "pugixml.hpp"
 
@@ -160,7 +161,6 @@ void read_cross_sections_xml()
   }
 }
 
-extern "C" void read_multipole_data(int i_nuclide);
 extern "C" void nuclide_from_hdf5(hid_t group, const Nuclide* ptr,
   const double* temps, int n, int n_nuclide);
 

@@ -13,6 +13,7 @@ import openmc
 from openmc._xml import get_text
 from openmc.mixin import IDManagerMixin
 
+from .geomtrack import ElementTracker
 
 class Lattice(IDManagerMixin, metaclass=ABCMeta):
     """A repeating structure wherein each element is a universe.
@@ -754,14 +755,16 @@ class RectLattice(Lattice):
                     0 <= idx[2] < self.shape[2])
 
     def create_xml_subelement(self, xml_element):
-
+        et = ElementTracker()
         # Determine if XML element already contains subelement for this Lattice
         path = './lattice[@id=\'{0}\']'.format(self._id)
         test = xml_element.find(path)
 
         # If the element does contain the Lattice subelement, then return
-        if test is not None:
+        if self._id in et.lattices:
             return
+        else:
+            et.add_lattice(self._id)
 
         lattice_subelement = ET.Element("lattice")
         lattice_subelement.set("id", str(self._id))
@@ -1275,13 +1278,16 @@ class HexLattice(Lattice):
             return g < self.num_rings and 0 <= idx[2] < self.num_axial
 
     def create_xml_subelement(self, xml_element):
+        et = ElementTracker()
         # Determine if XML element already contains subelement for this Lattice
         path = './hex_lattice[@id=\'{0}\']'.format(self._id)
         test = xml_element.find(path)
 
         # If the element does contain the Lattice subelement, then return
-        if test is not None:
+        if self._id in et.lattices:
             return
+        else:
+            et.add_lattice(self._id)
 
         lattice_subelement = ET.Element("hex_lattice")
         lattice_subelement.set("id", str(self._id))

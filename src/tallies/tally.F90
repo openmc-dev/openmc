@@ -3865,7 +3865,7 @@ contains
         tallies(index) % obj % ptr = tally_pointer(index - 1)
 
         ! When a tally is allocated, set it to have 0 filters
-        err = tallies(index) % obj % set_filters(empty)
+        err = openmc_tally_set_filters(index, 0, empty)
       end if
     else
       err = E_OUT_OF_BOUNDS

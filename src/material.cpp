@@ -1092,20 +1092,6 @@ extern "C" {
 
   int32_t material_id(Material* mat) {return mat->id_;}
 
-  void material_set_id(Material* mat, int32_t id, int32_t index)
-  {
-    mat->id_ = id;
-    //TODO: off-by-one
-    model::material_map[id] = index - 1;
-  }
-
-  bool material_fissionable(Material* mat) {return mat->fissionable_;}
-
-  void material_set_fissionable(Material* mat, bool fissionable)
-  {
-    mat->fissionable_ = fissionable;
-  }
-
   void material_calculate_xs_c(Material* mat, const Particle* p)
   {
     mat->calculate_xs(*p);

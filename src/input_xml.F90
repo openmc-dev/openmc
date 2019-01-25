@@ -1167,10 +1167,10 @@ contains
       deallocate(temp_filter)
 
       ! Check for the presence of certain filter types
-      has_energyout = (t % energyout_filter > 0)
-      has_delayedgroup = (t % delayedgroup_filter > 0)
+      has_energyout = (t % energyout_filter() > 0)
+      has_delayedgroup = (t % delayedgroup_filter() > 0)
       has_legendre = .false.
-      has_surface = (t % surface_filter > 0)
+      has_surface = (t % surface_filter() > 0)
       has_cell = .false.
       has_cellfrom = .false.
       has_meshsurface = .false.

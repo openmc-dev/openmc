@@ -59,15 +59,6 @@ module tally_header
     logical :: active = .false.
     logical :: depletion_rx = .false. ! has depletion reactions, e.g. (n,2n)
 
-    ! We need to have quick access to some filters.  The following gives indices
-    ! for various filters that could be in the tally or -1 if they are not
-    ! present.
-    integer :: energyin_filter = -1
-    integer :: energyout_filter = -1
-    integer :: delayedgroup_filter = -1
-    integer :: surface_filter = -1
-    integer :: mesh_filter = -1
-
     ! Individual nuclides to tally
     integer              :: n_nuclide_bins = 0
     integer, allocatable :: nuclide_bins(:)
@@ -105,6 +96,11 @@ module tally_header
     procedure :: filter => tally_get_filter
     procedure :: stride => tally_get_stride
     procedure :: n_filter_bins => tally_get_n_filter_bins
+    procedure :: energyin_filter => tally_get_energyin_filter
+    procedure :: energyout_filter => tally_get_energyout_filter
+    procedure :: delayedgroup_filter => tally_get_delayedgroup_filter
+    procedure :: surface_filter => tally_get_surface_filter
+    procedure :: mesh_filter => tally_get_mesh_filter
   end type TallyObject
 
   type, public :: TallyContainer
@@ -312,21 +308,8 @@ contains
       ! Set the filter index in the tally find_filter array
       select type (filt => filters(k) % obj)
 
-      type is (SurfaceFilter)
-        this % surface_filter = i
-
-      type is (MeshFilter)
-        this % mesh_filter = i
-
-      type is (EnergyFilter)
-        this % energyin_filter = i
-
       type is (EnergyoutFilter)
-        this % energyout_filter = i
         this % estimator = ESTIMATOR_ANALOG
-
-      type is (DelayedGroupFilter)
-        this % delayedgroup_filter = i
 
       type is (LegendreFilter)
         this % estimator = ESTIMATOR_ANALOG
@@ -408,6 +391,71 @@ contains
       end function
     end interface
     n_filter_bins = tally_get_n_filter_bins_c(this % ptr)
+  end function
+
+  function tally_get_energyin_filter(this) result(filt)
+    class(TallyObject) :: this
+    integer(C_INT) :: filt
+    interface
+      function tally_get_energyin_filter_c(tally) result(filt) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: tally
+        integer(C_INT) :: filt
+      end function
+    end interface
+    filt = tally_get_energyin_filter_c(this % ptr)
+  end function
+
+  function tally_get_energyout_filter(this) result(filt)
+    class(TallyObject) :: this
+    integer(C_INT) :: filt
+    interface
+      function tally_get_energyout_filter_c(tally) result(filt) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: tally
+        integer(C_INT) :: filt
+      end function
+    end interface
+    filt = tally_get_energyout_filter_c(this % ptr)
+  end function
+
+  function tally_get_delayedgroup_filter(this) result(filt)
+    class(TallyObject) :: this
+    integer(C_INT) :: filt
+    interface
+      function tally_get_delayedgroup_filter_c(tally) result(filt) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: tally
+        integer(C_INT) :: filt
+      end function
+    end interface
+    filt = tally_get_delayedgroup_filter_c(this % ptr)
+  end function
+
+  function tally_get_surface_filter(this) result(filt)
+    class(TallyObject) :: this
+    integer(C_INT) :: filt
+    interface
+      function tally_get_surface_filter_c(tally) result(filt) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: tally
+        integer(C_INT) :: filt
+      end function
+    end interface
+    filt = tally_get_surface_filter_c(this % ptr)
+  end function
+
+  function tally_get_mesh_filter(this) result(filt)
+    class(TallyObject) :: this
+    integer(C_INT) :: filt
+    interface
+      function tally_get_mesh_filter_c(tally) result(filt) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: tally
+        integer(C_INT) :: filt
+      end function
+    end interface
+    filt = tally_get_mesh_filter_c(this % ptr)
   end function
 
 !===============================================================================

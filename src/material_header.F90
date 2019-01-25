@@ -33,21 +33,6 @@ module material_header
       integer(C_INT32_T)             :: id
     end function material_id_c
 
-    subroutine material_set_id_c(mat_ptr, id, index) &
-         bind(C, name='material_set_id')
-      import C_PTR, C_INT32_T
-      type(C_PTR),        intent(in), value :: mat_ptr
-      integer(C_INT32_T), intent(in), value :: id
-      integer(C_INT32_T), intent(in), value :: index
-    end subroutine material_set_id_c
-
-    function material_fissionable_c(mat_ptr) &
-         bind(C, name='material_fissionable') result(fissionable)
-      import C_PTR, C_BOOL
-      type(C_PTR), intent(in), value :: mat_ptr
-      logical(C_BOOL)                :: fissionable
-    end function material_fissionable_c
-
     subroutine extend_materials_c(n) bind(C)
       import C_INT32_T
       integer(C_INT32_T), intent(in), value :: n
@@ -94,8 +79,6 @@ module material_header
     logical :: depletable = .false.
   contains
     procedure :: id => material_id
-    procedure :: set_id => material_set_id
-    procedure :: fissionable => material_fissionable
     procedure :: init_nuclide_index => material_init_nuclide_index
     procedure :: calculate_xs => material_calculate_xs
   end type Material
@@ -114,19 +97,6 @@ contains
     integer(C_INT32_T)          :: id
     id = material_id_c(this % ptr)
   end function material_id
-
-  subroutine material_set_id(this, id, index)
-    class(Material),    intent(in) :: this
-    integer(C_INT32_T), intent(in) :: id
-    integer(C_INT32_T), intent(in) :: index
-    call material_set_id_c(this % ptr, id, index)
-  end subroutine material_set_id
-
-  function material_fissionable(this) result(fissionable)
-    class(Material), intent(in) :: this
-    logical(C_BOOL)             :: fissionable
-    fissionable = material_fissionable_c(this % ptr)
-  end function material_fissionable
 
 !===============================================================================
 ! INIT_NUCLIDE_INDEX creates a mapping from indices in the global nuclides(:)

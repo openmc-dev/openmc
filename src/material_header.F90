@@ -70,7 +70,6 @@ module material_header
     character(len=104)   :: name = ""       ! User-defined name
     integer              :: n_nuclides = 0  ! number of nuclides
     integer, allocatable :: nuclide(:)      ! index in nuclides array
-    integer, allocatable :: element(:)      ! index in elements array
     real(8)              :: density         ! total atom density in atom/b-cm
     real(C_DOUBLE), allocatable :: atom_density(:) ! nuclide atom density in atom/b-cm
     real(8)              :: density_gpcc    ! total density in g/cm^3
@@ -93,11 +92,6 @@ module material_header
 
     ! Does this material contain fissionable nuclides? Is it depletable?
     logical :: depletable = .false.
-
-    ! enforce isotropic scattering in lab for specific nuclides
-    logical :: has_isotropic_nuclides = .false.
-    logical, allocatable :: p0(:)
-
   contains
     procedure :: id => material_id
     procedure :: set_id => material_set_id
@@ -232,28 +226,5 @@ contains
 
     err = 0
   end function openmc_extend_materials
-
-!===============================================================================
-! Fortran compatibility
-!===============================================================================
-
-  function material_isotropic(i_material, i_nuc_mat) result(iso) bind(C)
-    integer(C_INT), value :: i_material
-    integer(C_INT), value :: i_nuc_mat
-    logical(C_BOOL) :: iso
-
-    iso = .false.
-    associate (mat => materials(i_material))
-      if (mat % has_isotropic_nuclides) then
-        iso = mat % p0(i_nuc_mat)
-      end if
-    end associate
-  end function
-
-  function material_element(i_material) result(ptr) bind(C)
-    integer(C_INT), value :: i_material
-    type(C_PTR) :: ptr
-    ptr = C_LOC(materials(i_material) % element(1))
-  end function
 
 end module material_header

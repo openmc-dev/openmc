@@ -252,7 +252,6 @@ Material::Material(pugi::xml_node node)
   if (settings::run_CE) {
     // By default, isotropic-in-lab is not used
     if (iso_lab.size() > 0) {
-      has_isotropic_nuclides_ = true;
       p0_.resize(n);
 
       // Apply isotropic-in-lab treatment to specified nuclides
@@ -458,14 +457,8 @@ void Material::init_bremsstrahlung()
   auto n_k = data::ttb_k_grid.size();
   auto n_e = data::ttb_e_grid.size();
 
-  // Get pointers to nuclides, elements, densities
-  int32_t index;
-  openmc_get_material_index(id_, &index);
-  int* nuclide_;
-  double* atom_density_;
-  int n;
-  openmc_material_get_densities(index, &nuclide_, &atom_density_, &n);
-  int* element_ = material_element(index);
+  // Determine number of elements
+  int n = element_.size();
 
   for (int particle = 0; particle < 2; ++particle) {
     // Loop over logic twice, once for electron, once for positron
@@ -497,10 +490,8 @@ void Material::init_bremsstrahlung()
     // fixed in the future.
     for (int i = 0; i < n; ++i) {
       // Get pointer to current element
-      // TODO: off-by-one
-      const auto& elm = data::elements[element_[i] - 1];
-      // TODO: off-by-one
-      double awr = data::nuclides[nuclide_[i] - 1]->awr_;
+      const auto& elm = data::elements[element_[i]];
+      double awr = data::nuclides[nuclide_[i]]->awr_;
 
       // Get atomic density and mass density of nuclide given atom/weight percent
       double atom_density = (atom_density_[0] > 0.0) ?

@@ -483,11 +483,8 @@ int sample_element(Particle* p)
   double cutoff = prn() * simulation::material_xs.total;
 
   // Get pointers to elements, densities
-  int* nuclide;
-  double* density;
-  int n;
-  openmc_material_get_densities(p->material, &nuclide, &density, &n);
-  int* element = material_element(p->material);
+  const auto& mat {model::materials[p->material - 1]};
+  int n = mat->nuclide_.size();
 
   int i = 0;
   double prob = 0.0;
@@ -500,9 +497,8 @@ int sample_element(Particle* p)
     }
 
     // Find atom density
-    // TODO: off-by-one
-    i_element = element[i] - 1;
-    double atom_density = density[i];
+    i_element = mat->element_[i];
+    double atom_density = mat->atom_density_[i];
 
     // Determine microscopic cross section
     double sigma = atom_density * simulation::micro_photon_xs[i_element].total;
@@ -710,21 +706,25 @@ void scatter(Particle* p, int i_nuclide, int i_nuc_mat)
   p->event = EVENT_SCATTER;
 
   // Sample new outgoing angle for isotropic-in-lab scattering
-  if (material_isotropic(p->material, i_nuc_mat)) {
-    // Sample isotropic-in-lab outgoing direction
-    double mu = 2.0*prn() - 1.0;
-    double phi = 2.0*PI*prn();
-    Direction u_new;
-    u_new.x = mu;
-    u_new.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
-    u_new.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
+  // TODO: off-by-one
+  const auto& mat {model::materials[p->material - 1]};
+  if (!mat->p0_.empty()) {
+    if (mat->p0_[i_nuc_mat]) {
+      // Sample isotropic-in-lab outgoing direction
+      double mu = 2.0*prn() - 1.0;
+      double phi = 2.0*PI*prn();
+      Direction u_new;
+      u_new.x = mu;
+      u_new.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
+      u_new.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
 
-    p->mu = u_old.dot(u_new);
+      p->mu = u_old.dot(u_new);
 
-    // Change direction of particle
-    p->coord[0].uvw[0] = u_new.x;
-    p->coord[0].uvw[1] = u_new.y;
-    p->coord[0].uvw[2] = u_new.z;
+      // Change direction of particle
+      p->coord[0].uvw[0] = u_new.x;
+      p->coord[0].uvw[1] = u_new.y;
+      p->coord[0].uvw[2] = u_new.z;
+    }
   }
 }
 

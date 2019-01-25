@@ -358,6 +358,12 @@ write_attribute(hid_t obj_id, const char* name, const char* buffer)
   write_attr_string(obj_id, name, buffer);
 }
 
+inline void
+write_attribute(hid_t obj_id, const char* name, const std::string& buffer)
+{
+  write_attr_string(obj_id, name, buffer.c_str());
+}
+
 template<typename T, std::size_t N> inline void
 write_attribute(hid_t obj_id, const char* name, const std::array<T, N>& buffer)
 {
@@ -396,6 +402,29 @@ write_dataset(hid_t obj_id, const char* name, const std::array<T, N>& buffer)
 {
   hsize_t dims[] {N};
   write_dataset(obj_id, 1, dims, name, H5TypeMap<T>::type_id, buffer.data(), false);
+}
+
+inline void
+write_dataset(hid_t obj_id, const char* name, const std::vector<std::string>& buffer)
+{
+  auto n {buffer.size()};
+  hsize_t dims[] {n};
+
+  // Determine length of longest string, including \0
+  size_t m = 1;
+  for (const auto& s : buffer) {
+    m = std::max(m, s.size() + 1);
+  }
+
+  // Copy data into contiguous buffer
+  char temp[n][m];
+  std::fill(temp[0], temp[0] + n*m, '\0');
+  for (int i = 0; i < n; ++i) {
+    std::copy(buffer[i].begin(), buffer[i].end(), temp[i]);
+  }
+
+  // Write 2D data
+  write_string(obj_id, 1, dims, m, name, temp[0], false);
 }
 
 template<typename T> inline void

@@ -4,6 +4,10 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/tallies/filter.h"
+#include "openmc/tallies/filter_energy.h"
+#include "openmc/tallies/filter_delayedgroup.h"
+#include "openmc/tallies/filter_surface.h"
+#include "openmc/tallies/filter_mesh.h"
 #include "openmc/message_passing.h"
 
 #include "xtensor/xadapt.hpp"
@@ -40,6 +44,31 @@ Tally::set_filters(const int32_t filter_indices[], int n)
 
   // Copy in the given filter indices.
   filters_.assign(filter_indices, filter_indices + n);
+
+  for (int i = 0; i < n; ++i) {
+    auto i_filt = filters_[i];
+    //TODO: off-by-one
+    if (i_filt < 1 || i_filt > model::tally_filters.size())
+      throw std::out_of_range("Index in tally filter array out of bounds.");
+
+    //TODO: off-by-one
+    const auto* filt = model::tally_filters[i_filt-1].get();
+
+    //TODO: off-by-one on each index
+    if (dynamic_cast<const EnergyFilter*>(filt)) {
+      if (dynamic_cast<const EnergyoutFilter*>(filt)) {
+        energyout_filter_ = i + 1;
+      } else {
+        energyin_filter_ = i + 1;
+      }
+    } else if (dynamic_cast<const DelayedGroupFilter*>(filt)) {
+      delayedgroup_filter_ = i + 1;
+    } else if (dynamic_cast<const SurfaceFilter*>(filt)) {
+      surface_filter_ = i + 1;
+    } else if (dynamic_cast<const MeshFilter*>(filt)) {
+      mesh_filter_ = i + 1;
+    }
+  }
 
   // Set the strides.  Filters are traversed in reverse so that the last filter
   // has the shortest stride in memory and the first filter has the longest
@@ -216,6 +245,21 @@ extern "C" {
 
   int32_t tally_get_n_filter_bins_c(Tally* tally)
   {return tally->n_filter_bins();}
+
+  int tally_get_energyin_filter_c(Tally* tally)
+  {return tally->energyin_filter_;}
+
+  int tally_get_energyout_filter_c(Tally* tally)
+  {return tally->energyout_filter_;}
+
+  int tally_get_delayedgroup_filter_c(Tally* tally)
+  {return tally->delayedgroup_filter_;}
+
+  int tally_get_surface_filter_c(Tally* tally)
+  {return tally->surface_filter_;}
+
+  int tally_get_mesh_filter_c(Tally* tally)
+  {return tally->mesh_filter_;}
 }
 
 } // namespace openmc

@@ -296,7 +296,7 @@ contains
 
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing .or. p % fission) then
-            if (t % energyout_filter > 0) then
+            if (t % energyout_filter() > 0) then
               ! Normally, we only need to make contributions to one scoring
               ! bin. However, in the case of fission, since multiple fission
               ! neutrons were emitted with different energies, multiple
@@ -342,7 +342,7 @@ contains
 
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing .or. p % fission) then
-            if (t % energyout_filter > 0) then
+            if (t % energyout_filter() > 0) then
               ! Normally, we only need to make contributions to one scoring
               ! bin. However, in the case of fission, since multiple fission
               ! neutrons were emitted with different energies, multiple
@@ -406,11 +406,11 @@ contains
         if (material_xs % absorption == ZERO) cycle SCORE_LOOP
 
         ! Set the delayedgroup filter index and the number of delayed group bins
-        dg_filter = t % delayedgroup_filter
+        dg_filter = t % delayedgroup_filter()
 
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing .or. p % fission) then
-            if (t % energyout_filter > 0) then
+            if (t % energyout_filter() > 0) then
               ! Normally, we only need to make contributions to one scoring
               ! bin. However, in the case of fission, since multiple fission
               ! neutrons were emitted with different energies, multiple
@@ -600,7 +600,7 @@ contains
         if (material_xs % absorption == ZERO) cycle SCORE_LOOP
 
         ! Set the delayedgroup filter index
-        dg_filter = t % delayedgroup_filter
+        dg_filter = t % delayedgroup_filter()
 
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing) then
@@ -1509,7 +1509,7 @@ contains
 
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing .or. p % fission) then
-            if (t % energyout_filter > 0) then
+            if (t % energyout_filter() > 0) then
               ! Normally, we only need to make contributions to one scoring
               ! bin. However, in the case of fission, since multiple fission
               ! neutrons were emitted with different energies, multiple
@@ -1563,7 +1563,7 @@ contains
 
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing .or. p % fission) then
-            if (t % energyout_filter > 0) then
+            if (t % energyout_filter() > 0) then
               ! Normally, we only need to make contributions to one scoring
               ! bin. However, in the case of fission, since multiple fission
               ! neutrons were emitted with different energies, multiple
@@ -1617,11 +1617,11 @@ contains
       case (SCORE_DELAYED_NU_FISSION)
 
         ! Set the delayedgroup filter index and the number of delayed group bins
-        dg_filter = t % delayedgroup_filter
+        dg_filter = t % delayedgroup_filter()
 
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing .or. p % fission) then
-            if (t % energyout_filter > 0) then
+            if (t % energyout_filter() > 0) then
               ! Normally, we only need to make contributions to one scoring
               ! bin. However, in the case of fission, since multiple fission
               ! neutrons were emitted with different energies, multiple
@@ -1760,7 +1760,7 @@ contains
       case (SCORE_DECAY_RATE)
 
         ! Set the delayedgroup filter index and the number of delayed group bins
-        dg_filter = t % delayedgroup_filter
+        dg_filter = t % delayedgroup_filter()
 
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing) then
@@ -2350,7 +2350,7 @@ contains
     integer :: g_out         ! energy group of fission bank site
 
     ! save original outgoing energy bin and score index
-    i = t % filter(t % energyout_filter)
+    i = t % filter(t % energyout_filter())
     i_bin = filter_matches(i) % i_bin
     bin_energyout = filter_matches(i) % bins_data(i_bin)
 
@@ -2429,7 +2429,7 @@ contains
         else if (score_bin == SCORE_DELAYED_NU_FISSION .and. g /= 0) then
 
           ! Get the index of delayed group filter
-          j = t % delayedgroup_filter
+          j = t % delayedgroup_filter()
 
           ! if the delayed group filter is present, tally to corresponding
           ! delayed group bin if it exists
@@ -2519,7 +2519,7 @@ contains
     integer :: filter_index  ! index for matching filter bin combination
 
     ! save original delayed group bin
-    i_filt = t % filter(t % delayedgroup_filter)
+    i_filt = t % filter(t % delayedgroup_filter())
     i_bin = filter_matches(i_filt) % i_bin
     bin_original = filter_matches(i_filt) % bins_data(i_bin)
     call filter_matches(i_filt) % bins_set_data(i_bin, d_bin)

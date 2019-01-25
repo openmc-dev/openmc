@@ -928,6 +928,9 @@ contains
     integer :: MT            ! user-specified MT for score
     logical :: file_exists   ! does tallies.xml file exist?
     integer, allocatable :: temp_filter(:) ! temporary filter indices
+    logical :: has_energyout, has_delayedgroup, has_legendre, has_surface, &
+               has_cell, has_cellfrom, has_meshsurface
+    integer :: particle_filter_index
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
     character(MAX_WORD_LEN) :: score_name
@@ -1163,6 +1166,30 @@ contains
       end if
       deallocate(temp_filter)
 
+      ! Check for the presence of certain filter types
+      has_energyout = (t % energyout_filter > 0)
+      has_delayedgroup = (t % delayedgroup_filter > 0)
+      has_legendre = .false.
+      has_surface = (t % surface_filter > 0)
+      has_cell = .false.
+      has_cellfrom = .false.
+      has_meshsurface = .false.
+      particle_filter_index = 0
+      do j = 1, t % n_filters()
+        select type (filt => filters(t % filter(j)) % obj)
+        type is (LegendreFilter)
+          has_legendre = .true.
+        type is (CellFilter)
+          has_cell = .true.
+        type is (CellfromFilter)
+          has_cellfrom = .true.
+        type is (MeshSurfaceFilter)
+          has_meshsurface = .true.
+        type is (ParticleFilter)
+          particle_filter_index = j
+        end select
+      end do
+
       ! =======================================================================
       ! READ DATA FOR NUCLIDES
 
@@ -1255,8 +1282,7 @@ contains
           ! Check if delayed group filter is used with any score besides
           ! delayed-nu-fission or decay-rate
           if ((score_name /= 'delayed-nu-fission' .and. &
-               score_name /= 'decay-rate') .and. &
-               t % find_filter(FILTER_DELAYEDGROUP) > 0) then
+               score_name /= 'decay-rate') .and. has_delayedgroup) then
             call fatal_error("Cannot tally " // trim(score_name) // " with a &
                  &delayedgroup filter.")
           end if
@@ -1270,22 +1296,21 @@ contains
             end if
 
             t % score_bins(j) = SCORE_FLUX
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+            if (has_energyout) then
               call fatal_error("Cannot tally flux with an outgoing energy &
                    &filter.")
             end if
 
           case ('total', '(n,total)')
             t % score_bins(j) = SCORE_TOTAL
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+            if (has_energyout) then
               call fatal_error("Cannot tally total reaction rate with an &
                    &outgoing energy filter.")
             end if
 
           case ('scatter')
             t % score_bins(j) = SCORE_SCATTER
-            if (t % find_filter(FILTER_ENERGYOUT) > 0 .or. &
-                 t % find_filter(FILTER_LEGENDRE) > 0) then
+            if (has_energyout .or. has_legendre) then
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
             end if
@@ -1299,8 +1324,7 @@ contains
             if (run_CE) then
               t % estimator = ESTIMATOR_ANALOG
             else
-              if (t % find_filter(FILTER_ENERGYOUT) > 0 .or. &
-                   t % find_filter(FILTER_LEGENDRE) > 0) then
+              if (has_energyout .or. has_legendre) then
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
               end if
@@ -1320,19 +1344,19 @@ contains
 
           case ('absorption')
             t % score_bins(j) = SCORE_ABSORPTION
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+            if (has_energyout) then
               call fatal_error("Cannot tally absorption rate with an outgoing &
                    &energy filter.")
             end if
           case ('fission', '18')
             t % score_bins(j) = SCORE_FISSION
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+            if (has_energyout) then
               call fatal_error("Cannot tally fission rate with an outgoing &
                    &energy filter.")
             end if
           case ('nu-fission')
             t % score_bins(j) = SCORE_NU_FISSION
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+            if (has_energyout) then
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
             end if
@@ -1340,13 +1364,13 @@ contains
             t % score_bins(j) = SCORE_DECAY_RATE
           case ('delayed-nu-fission')
             t % score_bins(j) = SCORE_DELAYED_NU_FISSION
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+            if (has_energyout) then
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
             end if
           case ('prompt-nu-fission')
             t % score_bins(j) = SCORE_PROMPT_NU_FISSION
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+            if (has_energyout) then
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
             end if
@@ -1362,12 +1386,10 @@ contains
 
             ! Check which type of current is desired: mesh currents or
             ! surface currents
-            if (t % find_filter(FILTER_SURFACE) > 0 .or. &
-                 &t % find_filter(FILTER_CELL) > 0 .or. &
-                 &t % find_filter(FILTER_CELLFROM) > 0) then
+            if (has_surface .or. has_cell .or. has_cellfrom) then
 
               ! Check to make sure that mesh surface currents are not desired as well
-              if (t % find_filter(FILTER_MESHSURFACE) > 0) then
+              if (has_meshsurface) then
                 call fatal_error("Cannot tally mesh surface currents &
                      &in the same tally as normal surface currents")
               end if
@@ -1375,7 +1397,7 @@ contains
               t % type = TALLY_SURFACE
               t % score_bins(j) = SCORE_CURRENT
 
-            else if (t % find_filter(FILTER_MESHSURFACE) > 0) then
+            else if (has_meshsurface) then
               t % score_bins(j) = SCORE_CURRENT
               t % type = TALLY_MESH_SURFACE
 
@@ -1522,7 +1544,7 @@ contains
 
         ! Check if tally is compatible with particle type
         if (photon_transport) then
-          if (t % find_filter(FILTER_PARTICLE) == 0) then
+          if (particle_filter_index == 0) then
             do j = 1, n_scores
               select case (t % score_bins(j))
               case (SCORE_INVERSE_VELOCITY)
@@ -1537,7 +1559,7 @@ contains
               end select
             end do
           else
-            select type(filt => filters(t % find_filter(FILTER_PARTICLE)) % obj)
+            select type(filt => filters(particle_filter_index) % obj)
             type is (ParticleFilter)
               do l = 1, filt % n_bins
                 if (filt % particles(l) == ELECTRON .or. filt % particles(l) == POSITRON) then
@@ -1547,8 +1569,8 @@ contains
             end select
           end if
         else
-          if (t % find_filter(FILTER_PARTICLE) > 0) then
-            select type(filt => filters(t % find_filter(FILTER_PARTICLE)) % obj)
+          if (particle_filter_index > 0) then
+            select type(filt => filters(particle_filter_index) % obj)
             type is (ParticleFilter)
               do l = 1, filt % n_bins
                 if (filt % particles(l) /= NEUTRON) then
@@ -1592,7 +1614,7 @@ contains
         if (tally_derivs(t % deriv) % variable == DIFF_NUCLIDE_DENSITY &
              .or. tally_derivs(t % deriv) % variable == DIFF_TEMPERATURE) then
           if (any(t % nuclide_bins == -1)) then
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+            if (has_energyout) then
               call fatal_error("Error on tally " // trim(to_str(t % id)) &
                    // ": Cannot use a 'nuclide_density' or 'temperature' &
                    &derivative on a tally with an outgoing energy filter and &

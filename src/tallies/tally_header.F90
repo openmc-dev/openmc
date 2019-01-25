@@ -59,11 +59,14 @@ module tally_header
     logical :: active = .false.
     logical :: depletion_rx = .false. ! has depletion reactions, e.g. (n,2n)
 
-    ! This array provides a way to lookup what index in the filters array a
-    ! certain filter is. For example, if find_filter(FILTER_CELL) > 0, then the
-    ! value is the index in filters(:).
-
-    integer :: find_filter(N_FILTER_TYPES) = 0
+    ! We need to have quick access to some filters.  The following gives indices
+    ! for various filters that could be in the tally or -1 if they are not
+    ! present.
+    integer :: energyin_filter = -1
+    integer :: energyout_filter = -1
+    integer :: delayedgroup_filter = -1
+    integer :: surface_filter = -1
+    integer :: mesh_filter = -1
 
     ! Individual nuclides to tally
     integer              :: n_nuclide_bins = 0
@@ -297,7 +300,6 @@ contains
     end interface
 
     err = 0
-    this % find_filter(:) = 0
     n = size(filter_indices)
     do i = 1, n
       k = filter_indices(i)
@@ -309,61 +311,41 @@ contains
 
       ! Set the filter index in the tally find_filter array
       select type (filt => filters(k) % obj)
-      type is (DistribcellFilter)
-        j = FILTER_DISTRIBCELL
-      type is (CellFilter)
-        j = FILTER_CELL
-      type is (CellFromFilter)
-        j = FILTER_CELLFROM
-      type is (CellbornFilter)
-        j = FILTER_CELLBORN
-      type is (MaterialFilter)
-        j = FILTER_MATERIAL
-      type is (UniverseFilter)
-        j = FILTER_UNIVERSE
+
       type is (SurfaceFilter)
-        j = FILTER_SURFACE
+        this % surface_filter = i
+
       type is (MeshFilter)
-        j = FILTER_MESH
-      type is (MeshSurfaceFilter)
-        j = FILTER_MESHSURFACE
+        this % mesh_filter = i
+
       type is (EnergyFilter)
-        j = FILTER_ENERGYIN
+        this % energyin_filter = i
+
       type is (EnergyoutFilter)
-        j = FILTER_ENERGYOUT
+        this % energyout_filter = i
         this % estimator = ESTIMATOR_ANALOG
+
       type is (DelayedGroupFilter)
-        j = FILTER_DELAYEDGROUP
-      type is (MuFilter)
-        j = FILTER_MU
-        this % estimator = ESTIMATOR_ANALOG
-      type is (PolarFilter)
-        j = FILTER_POLAR
-      type is (AzimuthalFilter)
-        j = FILTER_AZIMUTHAL
-      type is (EnergyFunctionFilter)
-        j = FILTER_ENERGYFUNCTION
+        this % delayedgroup_filter = i
+
       type is (LegendreFilter)
-        j = FILTER_LEGENDRE
         this % estimator = ESTIMATOR_ANALOG
+
       type is (SphericalHarmonicsFilter)
-        j = FILTER_SPH_HARMONICS
         if (filt % cosine() == COSINE_SCATTER) then
           this % estimator = ESTIMATOR_ANALOG
         end if
+
       type is (SpatialLegendreFilter)
-        j = FILTER_SPTL_LEGENDRE
         this % estimator = ESTIMATOR_COLLISION
+
       type is (ZernikeFilter)
-        j = FILTER_ZERNIKE
         this % estimator = ESTIMATOR_COLLISION
+
       type is (ZernikeRadialFilter)
-        j = FILTER_ZERNIKE_RADIAL
         this % estimator = ESTIMATOR_COLLISION
-      type is (ParticleFilter)
-        j = FILTER_PARTICLE
+
       end select
-      this % find_filter(j) = i
     end do
 
     if (err == 0) then

@@ -260,8 +260,8 @@ contains
     type(RegularMesh) :: m        ! surface current mesh
 
     ! Get pointer to mesh
-    i_filter_mesh = t % filter(t % find_filter(FILTER_MESH))
-    i_filter_surf = t % filter(t % find_filter(FILTER_SURFACE))
+    i_filter_mesh = t % mesh_filter
+    i_filter_surf = t % surface_filter
     select type(filt => filters(i_filter_mesh) % obj)
     type is (MeshFilter)
       m = meshes(filt % mesh())
@@ -274,7 +274,7 @@ contains
     end do
 
     ! determine how many energyin bins there are
-    i_filter_ein = t % find_filter(FILTER_ENERGYIN)
+    i_filter_ein = t % energyin_filter
     if (i_filter_ein > 0) then
       print_ebin = .true.
       n = filters(t % filter(i_filter_ein)) % obj % n_bins

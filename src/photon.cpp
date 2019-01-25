@@ -792,6 +792,8 @@ extern "C" void photon_from_hdf5(hid_t group)
   }
 }
 
+extern "C" int elements_size() { return data::element_map.size(); }
+
 extern "C" void photon_calculate_xs(int i_element, double E)
 {
   data::elements[i_element - 1].calculate_xs(E);

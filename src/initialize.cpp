@@ -30,7 +30,6 @@
 #include "openmc/timer.h"
 
 // data/functions from Fortran side
-extern "C" void normalize_ao();
 extern "C" void print_usage();
 extern "C" void print_version();
 extern "C" void read_command_line();
@@ -296,9 +295,6 @@ void read_input_xml()
     if (mpi::master && settings::verbosity >= 5) print_plot();
 
   } else {
-    // Normalize atom/weight percents
-    normalize_ao();
-
     // Write summary information
     if (mpi::master && settings::output_summary) write_summary();
 

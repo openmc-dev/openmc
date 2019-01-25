@@ -29,6 +29,7 @@ module input_xml
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
                               starts_with, ends_with, split_string, &
                               zero_padded, to_c_string
+  use summary,          only: write_summary
   use tally
   use tally_header,     only: openmc_extend_tallies
   use tally_derivative_header
@@ -156,6 +157,9 @@ contains
     else
       ! Normalize atom/weight percents
       call normalize_ao()
+
+      ! Write summary information
+      if (master .and. output_summary) call write_summary()
 
       ! Warn if overlap checking is on
       if (master .and. check_overlaps) &

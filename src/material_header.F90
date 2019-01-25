@@ -17,11 +17,7 @@ module material_header
   private
   public :: free_memory_material
   public :: openmc_extend_materials
-  public :: openmc_get_material_index
-  public :: openmc_material_get_id
-  public :: openmc_material_get_densities
   public :: openmc_material_get_volume
-  public :: openmc_material_set_id
   public :: material_pointer
 
   interface
@@ -51,13 +47,6 @@ module material_header
       type(C_PTR), intent(in), value :: mat_ptr
       logical(C_BOOL)                :: fissionable
     end function material_fissionable_c
-
-    subroutine material_set_fissionable_c(mat_ptr, fissionable) &
-         bind(C, name='material_set_fissionable')
-      import C_PTR, C_BOOL
-      type(C_PTR),        intent(in), value :: mat_ptr
-      logical(C_BOOL),    intent(in), value :: fissionable
-    end subroutine material_set_fissionable_c
 
     subroutine extend_materials_c(n) bind(C)
       import C_INT32_T
@@ -113,7 +102,6 @@ module material_header
     procedure :: id => material_id
     procedure :: set_id => material_set_id
     procedure :: fissionable => material_fissionable
-    procedure :: set_fissionable => material_set_fissionable
     procedure :: init_nuclide_index => material_init_nuclide_index
     procedure :: calculate_xs => material_calculate_xs
   end type Material
@@ -145,12 +133,6 @@ contains
     logical(C_BOOL)             :: fissionable
     fissionable = material_fissionable_c(this % ptr)
   end function material_fissionable
-
-  subroutine material_set_fissionable(this, fissionable)
-    class(Material),intent(in) :: this
-    logical,        intent(in) :: fissionable
-    call material_set_fissionable_c(this % ptr, logical(fissionable, C_BOOL))
-  end subroutine material_set_fissionable
 
 !===============================================================================
 ! INIT_NUCLIDE_INDEX creates a mapping from indices in the global nuclides(:)
@@ -250,103 +232,6 @@ contains
 
     err = 0
   end function openmc_extend_materials
-
-  function openmc_get_material_index(id, index) result(err) bind(C)
-    ! Returns the index in the materials array of a material with a given ID
-    integer(C_INT32_T), value :: id
-    integer(C_INT32_T), intent(out) :: index
-    integer(C_INT) :: err
-
-    if (allocated(materials)) then
-      if (material_dict % has(id)) then
-        index = material_dict % get(id)
-        err = 0
-      else
-        err = E_INVALID_ID
-        call set_errmsg("No material exists with ID=" // trim(to_str(id)) // ".")
-      end if
-    else
-      err = E_ALLOCATE
-      call set_errmsg("Memory has not been allocated for materials.")
-    end if
-  end function openmc_get_material_index
-
-
-  function openmc_material_get_densities(index, nuclides, densities, n) &
-       result(err) bind(C)
-    ! returns an array of nuclide densities in a material
-    integer(C_INT32_T), value :: index
-    type(C_PTR),        intent(out) :: nuclides
-    type(C_PTR),        intent(out) :: densities
-    integer(C_INT),     intent(out) :: n
-    integer(C_INT) :: err
-
-    if (index >= 1 .and. index <= size(materials)) then
-      associate (m => materials(index))
-        if (allocated(m % atom_density)) then
-          nuclides = C_LOC(m % nuclide(1))
-          densities = C_LOC(m % atom_density(1))
-          n = size(m % atom_density)
-          err = 0
-        else
-          err = E_ALLOCATE
-          call set_errmsg("Material atom density array has not been allocated.")
-        end if
-      end associate
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in materials array is out of bounds.")
-    end if
-  end function openmc_material_get_densities
-
-
-  function openmc_material_get_id(index, id) result(err) bind(C)
-    ! returns the ID of a material
-    integer(C_INT32_T), value       :: index
-    integer(C_INT32_T), intent(out) :: id
-    integer(C_INT) :: err
-
-    if (index >= 1 .and. index <= size(materials)) then
-      id = materials(index) % id()
-      err = 0
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in materials array is out of bounds.")
-    end if
-  end function openmc_material_get_id
-
-
-  function openmc_material_get_fissionable(index, fissionable) result(err) bind(C)
-    ! returns whether a material is fissionable
-    integer(C_INT32_T), value :: index
-    logical(C_BOOL), intent(out) :: fissionable
-    integer(C_INT) :: err
-
-    if (index >= 1 .and. index <= size(materials)) then
-      fissionable = materials(index) % fissionable()
-      err = 0
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in materials array is out of bounds.")
-    end if
-  end function openmc_material_get_fissionable
-
-
-  function openmc_material_set_id(index, id) result(err) bind(C)
-    ! Set the ID of a material
-    integer(C_INT32_T), value, intent(in) :: index
-    integer(C_INT32_T), value, intent(in) :: id
-    integer(C_INT) :: err
-
-    if (index >= 1 .and. index <= n_materials) then
-      call materials(index) % set_id(id, index)
-      call material_dict % set(id, index)
-      err = 0
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in materials array is out of bounds.")
-    end if
-  end function openmc_material_set_id
 
 !===============================================================================
 ! Fortran compatibility

@@ -892,6 +892,19 @@ read_materials(pugi::xml_node* node)
 //==============================================================================
 
 extern "C" int
+openmc_get_material_index(int32_t id, int32_t* index)
+{
+  auto it = model::material_map.find(id);
+  if (it == model::material_map.end()) {
+    set_errmsg("No material exists with ID=" + std::to_string(id) + ".");
+    return OPENMC_E_INVALID_ID;
+  } else {
+    *index = it->second;
+    return 0;
+  }
+}
+
+extern "C" int
 openmc_material_add_nuclide(int32_t index, const char* name, double density)
 {
   int err = 0;
@@ -936,6 +949,50 @@ openmc_material_add_nuclide(int32_t index, const char* name, double density)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
   return err;
+}
+
+extern "C" int
+openmc_material_get_densities(int32_t index, int** nuclides, double** densities, int* n)
+{
+  if (index >= 1 && index <= model::materials.size()) {
+    auto& mat = model::materials[index - 1];
+    if (!mat->nuclide_.empty()) {
+      *nuclides = mat->nuclide_.data();
+      *densities = mat->atom_density_.data();
+      *n = mat->nuclide_.size();
+      return 0;
+    } else {
+      set_errmsg("Material atom density array has not been allocated.");
+      return OPENMC_E_ALLOCATE;
+    }
+  } else {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+}
+
+extern "C" int
+openmc_material_get_fissionable(int32_t index, bool* fissionable)
+{
+  if (index >= 1 && index <= model::materials.size()) {
+    *fissionable = model::materials[index - 1]->fissionable_;
+    return 0;
+  } else {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+}
+
+extern "C" int
+openmc_material_get_id(int32_t index, int32_t* id)
+{
+  if (index >= 1 && index <= model::materials.size()) {
+    *id = model::materials[index - 1]->id_;
+    return 0;
+  } else {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
 }
 
 extern "C" int
@@ -999,6 +1056,18 @@ openmc_material_set_densities(int32_t index, int n, const char** name, const dou
 
     // Assign S(a,b) tables
     mat->init_thermal();
+  } else {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+}
+
+extern "C" int
+openmc_material_set_id(int32_t index, int32_t id)
+{
+  if (index >= 1 && index <= model::materials.size()) {
+    model::materials[index - 1]->id_ = id;
+    model::material_map[id] = index - 1;
   } else {
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;

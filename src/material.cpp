@@ -14,6 +14,7 @@
 #include "openmc/cross_sections.h"
 #include "openmc/container_util.h"
 #include "openmc/error.h"
+#include "openmc/hdf5_interface.h"
 #include "openmc/math_functions.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
@@ -802,6 +803,61 @@ int Material::set_density(double density, std::string units)
     return OPENMC_E_INVALID_ARGUMENT;
   }
   return 0;
+}
+
+void Material::to_hdf5(hid_t group) const
+{
+  hid_t material_group = create_group(group, "material " + std::to_string(id_));
+
+  write_attribute(material_group, "depletable", static_cast<int>(depletable_));
+  if (volume_ > 0.0) {
+    write_attribute(material_group, "volume", volume_);
+  }
+  write_dataset(material_group, "name", name_);
+  write_dataset(material_group, "atom_density", density_);
+
+  // Copy nuclide/macro name for each nuclide to vector
+  std::vector<std::string> nuc_names;
+  std::vector<std::string> macro_names;
+  std::vector<double> nuc_densities;
+  if (settings::run_CE) {
+    for (int i = 0; i < nuclide_.size(); ++i) {
+      int i_nuc = nuclide_[i];
+      nuc_names.push_back(data::nuclides[i_nuc]->name_);
+      nuc_densities.push_back(atom_density_(i));
+    }
+  } else {
+    for (int i = 0; i < nuclide_.size(); ++i) {
+      int i_nuc = nuclide_[i_nuc];
+      if (data::nuclides_MG[i_nuc].awr != MACROSCOPIC_AWR) {
+        nuc_names.push_back(data::nuclides_MG[i_nuc].name);
+        nuc_densities.push_back(atom_density_(i));
+      } else {
+        macro_names.push_back(data::nuclides_MG[i_nuc].name);
+      }
+    }
+  }
+
+  // Write vector to 'nuclides'
+  if (!nuc_names.empty()) {
+    write_dataset(material_group, "nuclides", nuc_names);
+    write_dataset(material_group, "nuclide_densities", nuc_densities);
+  }
+
+  // Write vector to 'macroscopics'
+  if (!macro_names.empty()) {
+    write_dataset(material_group, "macroscopics", macro_names);
+  }
+
+  if (!thermal_tables_.empty()) {
+    std::vector<std::string> sab_names;
+    for (const auto& table : thermal_tables_) {
+      sab_names.push_back(data::thermal_scatt[table.index_table]->name_);
+    }
+    write_dataset(material_group, "sab_names", sab_names);
+  }
+
+  close_group(material_group);
 }
 
 //==============================================================================

@@ -25,6 +25,7 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
+#include "openmc/summary.h"
 #include "openmc/thermal.h"
 #include "openmc/timer.h"
 
@@ -37,7 +38,6 @@ extern "C" void read_geometry_xml();
 extern "C" void read_materials_xml();
 extern "C" void read_plots_xml();
 extern "C" void read_tallies_xml();
-extern "C" void write_summary();
 
 // Paths to various files
 extern "C" {

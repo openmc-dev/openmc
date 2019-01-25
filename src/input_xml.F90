@@ -388,22 +388,18 @@ contains
   subroutine read_materials_xml() bind(C)
     integer :: i              ! loop index for materials
     integer :: j              ! loop index for nuclides
-    integer :: k              ! loop index
     integer :: n              ! number of nuclides
     integer :: index_nuclide  ! index in nuclides
     integer :: index_element  ! index in elements
     integer :: index_sab      ! index in sab_tables
     logical :: file_exists    ! does materials.xml exist?
     character(20)           :: name         ! name of nuclide, e.g. U235
-    character(3)            :: element      ! name of element, e.g. Zr
     character(MAX_WORD_LEN) :: units        ! units on density
     character(MAX_LINE_LEN) :: filename     ! absolute path to materials.xml
-    character(MAX_WORD_LEN), allocatable :: sarray(:)
     real(8)                 :: val          ! value entered for density
     real(8)                 :: temp_dble    ! temporary double prec. real
     logical                 :: sum_density  ! density is sum of nuclide densities
     type(VectorChar)        :: names        ! temporary list of nuclide names
-    type(VectorChar)        :: list_iso_lab ! temporary list of isotropic lab scatterers
     type(VectorReal)        :: densities    ! temporary list of nuclide densities
     type(Material), pointer :: mat => null()
     type(XMLDocument) :: doc
@@ -624,19 +620,6 @@ contains
         end do INDIVIDUAL_NUCLIDES
       end if
 
-      ! =======================================================================
-      ! READ AND PARSE <isotropic> element
-
-      if (check_for_node(node_mat, "isotropic")) then
-        n = node_word_count(node_mat, "isotropic")
-        allocate(sarray(n))
-        call get_node_array(node_mat, "isotropic", sarray)
-        do j = 1, n
-          call list_iso_lab % push_back(sarray(j))
-        end do
-        deallocate(sarray)
-      end if
-
       ! ========================================================================
       ! COPY NUCLIDES TO ARRAYS IN MATERIAL
 
@@ -645,7 +628,6 @@ contains
       mat % n_nuclides = n
       allocate(mat % names(n))
       allocate(mat % nuclide(n))
-      allocate(mat % element(n))
       allocate(mat % atom_density(n))
 
       ALL_NUCLIDES: do j = 1, mat % n_nuclides
@@ -667,50 +649,11 @@ contains
           mat % nuclide(j) = nuclide_dict % get(name)
         end if
 
-        ! If the corresponding element hasn't been encountered yet and photon
-        ! transport will be used, we need to add its symbol to the element_dict
-        if (photon_transport) then
-          element = name(1:scan(name, '0123456789') - 1)
-
-          ! Make sure photon cross section data is available
-          if (.not. library_present(LIBRARY_PHOTON, element)) then
-            call fatal_error("Could not find element " // trim(element) &
-                 // " in cross_sections data file!")
-          end if
-
-          if (.not. element_dict % has(element)) then
-            index_element = index_element + 1
-            mat % element(j) = index_element
-
-            call element_dict % set(element, index_element)
-          else
-            mat % element(j) = element_dict % get(element)
-          end if
-        end if
-
         ! Copy name and atom/weight percent
         mat % names(j) = name
         mat % atom_density(j) = densities % data(j)
 
       end do ALL_NUCLIDES
-
-      if (run_CE) then
-        ! By default, isotropic-in-lab is not used
-        if (list_iso_lab % size() > 0) then
-          mat % has_isotropic_nuclides = .true.
-          allocate(mat % p0(n))
-          mat % p0(:) = .false.
-
-          ! Apply isotropic-in-lab treatment to specified nuclides
-          do j = 1, list_iso_lab % size()
-            do k = 1, n
-              if (names % data(k) == list_iso_lab % data(j)) then
-                mat % p0(k) = .true.
-              end if
-            end do
-          end do
-        end if
-      end if
 
       ! Check to make sure either all atom percents or all weight percents are
       ! given
@@ -726,7 +669,6 @@ contains
       ! Clear lists
       call names % clear()
       call densities % clear()
-      call list_iso_lab % clear()
 
       ! Add material to dictionary
       call material_dict % set(mat % id(), i)

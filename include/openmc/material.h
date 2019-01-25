@@ -73,7 +73,6 @@ public:
   double volume_ {-1.0}; //!< Volume in [cm^3]
   bool fissionable_ {false}; //!< Does this material contain fissionable nuclides
   bool depletable_ {false}; //!< Is the material depletable?
-  bool has_isotropic_nuclides_ {false};
   std::vector<bool> p0_; //!< Indicate which nuclides are to be treated with iso-in-lab scattering
 
   // Thermal scattering tables

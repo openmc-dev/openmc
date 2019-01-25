@@ -53,6 +53,9 @@ public:
   //! so the code knows when to apply bound thermal scattering data
   void init_thermal();
 
+  //! Set up mapping between global nuclides vector and indices in nuclide_
+  void init_nuclide_index();
+
   //! Finalize the material, assigning tables, normalize density, etc.
   void finalize();
 
@@ -74,6 +77,12 @@ public:
   bool fissionable_ {false}; //!< Does this material contain fissionable nuclides
   bool depletable_ {false}; //!< Is the material depletable?
   std::vector<bool> p0_; //!< Indicate which nuclides are to be treated with iso-in-lab scattering
+
+  // To improve performance of tallying, we store an array (direct address
+  // table) that indicates for each nuclide in data::nuclides the index of the
+  // corresponding nuclide in the nuclide_ vector. If it is not present in the
+  // material, the entry is set to -1.
+  std::vector<int> mat_nuclide_index_;
 
   // Thermal scattering tables
   std::vector<ThermalTable> thermal_tables_;

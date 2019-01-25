@@ -16,6 +16,11 @@ module material_header
 
   private
   public :: free_memory_material
+  public :: material_nuclide
+  public :: material_nuclide_size
+  public :: material_nuclide_index
+  public :: material_atom_density
+  public :: material_density_gpcc
   public :: openmc_extend_materials
   public :: openmc_material_get_volume
   public :: material_pointer
@@ -32,6 +37,39 @@ module material_header
       type(C_PTR), intent(in), value :: mat_ptr
       integer(C_INT32_T)             :: id
     end function material_id_c
+
+    function material_nuclide(i_mat, idx) bind(C) result(nuc)
+      import C_INT32_T, C_INT
+      integer(C_INT32_T), value :: i_mat
+      integer(C_INT), value :: idx
+      integer(C_INT) :: nuc
+    end function
+
+    function material_nuclide_size(i_mat) bind(C) result(n)
+      import C_INT32_T, C_INT
+      integer(C_INT32_T), value :: i_mat
+      integer(C_INT) :: n
+    end function
+
+    function material_nuclide_index(i_mat, i_nuc) bind(C) result(idx)
+      import C_INT32_T, C_INT
+      integer(C_INT32_T), value :: i_mat
+      integer(C_INT), value :: i_nuc
+      integer(C_INT) :: idx
+    end function
+
+    function material_atom_density(i_mat, idx) bind(C) result(density)
+      import C_INT32_T, C_INT, C_DOUBLE
+      integer(C_INT32_T), value :: i_mat
+      integer(C_INT), value :: idx
+      real(C_DOUBLE) :: density
+    end function
+
+    function material_density_gpcc(i_mat) bind(C) result(density)
+      import C_INT32_T, C_DOUBLE
+      integer(C_INT32_T), value :: i_mat
+      real(C_DOUBLE) :: density
+    end function
 
     subroutine extend_materials_c(n) bind(C)
       import C_INT32_T
@@ -52,43 +90,14 @@ module material_header
 
   type, public :: Material
     type(C_PTR) :: ptr
-    character(len=104)   :: name = ""       ! User-defined name
-    integer              :: n_nuclides = 0  ! number of nuclides
-    integer, allocatable :: nuclide(:)      ! index in nuclides array
-    real(8)              :: density         ! total atom density in atom/b-cm
-    real(C_DOUBLE), allocatable :: atom_density(:) ! nuclide atom density in atom/b-cm
-    real(8)              :: density_gpcc    ! total density in g/cm^3
-
-    ! To improve performance of tallying, we store an array (direct address
-    ! table) that indicates for each nuclide in the global nuclides(:) array the
-    ! index of the corresponding nuclide in the Material % nuclide(:) array. If
-    ! it is not present in the material, the entry is set to zero.
-    integer, allocatable :: mat_nuclide_index(:)
-
-    ! S(a,b) data
-    integer              :: n_sab = 0         ! number of S(a,b) tables
-    integer, allocatable :: i_sab_nuclides(:) ! index of corresponding nuclide
-    integer, allocatable :: i_sab_tables(:)   ! index in sab_tables
-    real(8), allocatable :: sab_fracs(:)      ! how often to use S(a,b)
-
-    ! Temporary names read during initialization
-    character(20), allocatable :: names(:)     ! isotope names
-    character(20), allocatable :: sab_names(:) ! name of S(a,b) table
-
-    ! Does this material contain fissionable nuclides? Is it depletable?
-    logical :: depletable = .false.
   contains
     procedure :: id => material_id
-    procedure :: init_nuclide_index => material_init_nuclide_index
     procedure :: calculate_xs => material_calculate_xs
   end type Material
 
   integer(C_INT32_T), public, bind(C) :: n_materials ! # of materials
 
   type(Material), public, allocatable, target :: materials(:)
-
-  ! Dictionary that maps user IDs to indices in 'materials'
-  type(DictIntInt), public :: material_dict
 
 contains
 
@@ -97,28 +106,6 @@ contains
     integer(C_INT32_T)          :: id
     id = material_id_c(this % ptr)
   end function material_id
-
-!===============================================================================
-! INIT_NUCLIDE_INDEX creates a mapping from indices in the global nuclides(:)
-! array to the Material % nuclides array
-!===============================================================================
-
-  subroutine material_init_nuclide_index(this)
-    class(Material), intent(inout) :: this
-
-    integer :: i
-
-    ! Allocate nuclide index array and set to zeros
-    if (allocated(this % mat_nuclide_index)) &
-         deallocate(this % mat_nuclide_index)
-    allocate(this % mat_nuclide_index(n_nuclides))
-    this % mat_nuclide_index(:) = 0
-
-    ! Assign entries in the index array
-    do i = 1, this % n_nuclides
-      this % mat_nuclide_index(this % nuclide(i)) = i
-    end do
-  end subroutine material_init_nuclide_index
 
 !===============================================================================
 ! MATERIAL_CALCULATE_XS determines the macroscopic cross sections for the
@@ -152,7 +139,6 @@ contains
     call free_memory_material_c()
     n_materials = 0
     if (allocated(materials)) deallocate(materials)
-    call material_dict % clear()
   end subroutine free_memory_material
 
 !===============================================================================

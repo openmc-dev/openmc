@@ -943,6 +943,8 @@ set_particle_energy_bounds(int particle, double E_min, double E_max)
   data::energy_max[particle - 1] = E_max;
 }
 
+extern "C" int nuclides_size() { return data::nuclide_map.size(); }
+
 extern "C" void nuclide_init_grid_c(Nuclide* nuc) { nuc->init_grid(); }
 
 extern "C" double nuclide_awr(int i_nuc) { return data::nuclides[i_nuc - 1]->awr_; }

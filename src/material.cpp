@@ -1,6 +1,6 @@
 #include "openmc/material.h"
 
-#include <algorithm> // for min, max, sort
+#include <algorithm> // for min, max, sort, fill
 #include <cmath>
 #include <iterator>
 #include <string>
@@ -630,6 +630,15 @@ void Material::init_bremsstrahlung()
   }
 }
 
+void Material::init_nuclide_index()
+{
+  mat_nuclide_index_.resize(data::nuclides.size());
+  std::fill(mat_nuclide_index_.begin(), mat_nuclide_index_.end(), -1);
+  for (int i = 0; i < nuclide_.size(); ++i) {
+    mat_nuclide_index_[nuclide_[i]] = i;
+  }
+}
+
 void Material::calculate_xs(const Particle& p) const
 {
   // Set all material macroscopic cross sections to zero
@@ -1091,6 +1100,31 @@ extern "C" {
   Material* material_pointer(int32_t indx) {return model::materials[indx];}
 
   int32_t material_id(Material* mat) {return mat->id_;}
+
+  int material_nuclide(int32_t i_mat, int idx)
+  {
+    return model::materials[i_mat - 1]->nuclide_[idx - 1] + 1;
+  }
+
+  int material_nuclide_size(int32_t i_mat)
+  {
+    return model::materials[i_mat - 1]->nuclide_.size();
+  }
+
+  double material_atom_density(int32_t i_mat, int idx)
+  {
+    return model::materials[i_mat - 1]->atom_density_(idx - 1);
+  }
+
+  double material_density_gpcc(int32_t i_mat)
+  {
+    return model::materials[i_mat - 1]->density_gpcc_;
+  }
+
+  int material_nuclide_index(int32_t i_mat, int i_nuc)
+  {
+    return model::materials[i_mat - 1]->mat_nuclide_index_[i_nuc - 1] + 1;
+  }
 
   void material_calculate_xs_c(Material* mat, const Particle* p)
   {

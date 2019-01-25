@@ -40,6 +40,16 @@ module tally_header
   public :: openmc_tally_set_scores
   public :: openmc_tally_set_type
 
+  interface
+    function openmc_tally_set_filters(index, n, filter_indices) result(err) bind(C)
+      import C_INT32_T, C_INT
+      integer(C_INT32_T), value, intent(in) :: index
+      integer(C_INT), value, intent(in) :: n
+      integer(C_INT32_T), intent(in) :: filter_indices(n)
+      integer(C_INT) :: err
+    end function openmc_tally_set_filters
+  end interface
+
 !===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to
 ! tally in is given by the TallyFilters and the results are stored in a
@@ -91,7 +101,6 @@ module tally_header
     procedure :: allocate_results => tally_allocate_results
     procedure :: read_results_hdf5 => tally_read_results_hdf5
     procedure :: write_results_hdf5 => tally_write_results_hdf5
-    procedure :: set_filters => tally_set_filters
     procedure :: n_filters => tally_get_n_filters
     procedure :: filter => tally_get_filter
     procedure :: stride => tally_get_stride
@@ -273,69 +282,6 @@ contains
     end if
 
   end subroutine tally_allocate_results
-
-
-  function tally_set_filters(this, filter_indices) result(err)
-    class(TallyObject), intent(inout) :: this
-    integer(C_INT32_T), intent(in) :: filter_indices(:)
-    integer(C_INT) :: err
-
-    integer :: i       ! index in this % filter/stride
-    integer :: j       ! index in this % find_filter
-    integer :: k       ! index in global filters array
-    integer :: n       ! number of filters
-    integer :: stride  ! filter stride
-
-    interface
-      subroutine tally_set_filters_c(ptr, n, filter_indices) bind(C)
-        import C_PTR, C_INT, C_INT32_T
-        type(C_PTR), value :: ptr
-        integer(C_INT), value :: n
-        integer(C_INT32_T) :: filter_indices(n)
-      end subroutine
-    end interface
-
-    err = 0
-    n = size(filter_indices)
-    do i = 1, n
-      k = filter_indices(i)
-      if (k < 1 .or. k > n_filters) then
-        err = E_OUT_OF_BOUNDS
-        call set_errmsg("Index in tally filter array out of bounds.")
-        exit
-      end if
-
-      ! Set the filter index in the tally find_filter array
-      select type (filt => filters(k) % obj)
-
-      type is (EnergyoutFilter)
-        this % estimator = ESTIMATOR_ANALOG
-
-      type is (LegendreFilter)
-        this % estimator = ESTIMATOR_ANALOG
-
-      type is (SphericalHarmonicsFilter)
-        if (filt % cosine() == COSINE_SCATTER) then
-          this % estimator = ESTIMATOR_ANALOG
-        end if
-
-      type is (SpatialLegendreFilter)
-        this % estimator = ESTIMATOR_COLLISION
-
-      type is (ZernikeFilter)
-        this % estimator = ESTIMATOR_COLLISION
-
-      type is (ZernikeRadialFilter)
-        this % estimator = ESTIMATOR_COLLISION
-
-      end select
-    end do
-
-    if (err == 0) then
-      call tally_set_filters_c(this % ptr, n, filter_indices)
-    end if
-
-  end function tally_set_filters
 
   function tally_get_n_filters(this) result(n)
     class(TallyObject) :: this
@@ -798,28 +744,6 @@ contains
       call set_errmsg("Index in tally array is out of bounds.")
     end if
   end function openmc_tally_set_estimator
-
-
-  function openmc_tally_set_filters(index, n, filter_indices) result(err) bind(C)
-    ! Set the list of filters for a tally
-    integer(C_INT32_T), value, intent(in) :: index
-    integer(C_INT), value, intent(in) :: n
-    integer(C_INT32_T), intent(in) :: filter_indices(n)
-    integer(C_INT) :: err
-
-    err = 0
-    if (index >= 1 .and. index <= n_tallies) then
-      if (allocated(tallies(index) % obj)) then
-        err = tallies(index) % obj % set_filters(filter_indices)
-      else
-        err = E_ALLOCATE
-        call set_errmsg("Tally type has not been set yet.")
-      end if
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg('Index in tallies array is out of bounds.')
-    end if
-  end function openmc_tally_set_filters
 
 
   function openmc_tally_set_active(index, active) result(err) bind(C)

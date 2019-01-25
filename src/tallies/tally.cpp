@@ -199,10 +199,6 @@ openmc_tally_get_filters(int32_t index, const int32_t** indices, int* n)
   return 0;
 }
 
-/*
-// Declared in Fortran
-extern "C" int tally_update_find_filter(int32_t index);
-
 extern "C" int
 openmc_tally_set_filters(int32_t index, int n, const int32_t* indices)
 {
@@ -213,12 +209,16 @@ openmc_tally_set_filters(int32_t index, int n, const int32_t* indices)
   }
 
   // Set the filters.
-  model::tallies[index-1]->set_filters(indices, n);
+  try {
+    //TODO: off-by-one
+    model::tallies[index-1]->set_filters(indices, n);
+  } catch (const std::out_of_range& ex) {
+    set_errmsg(ex.what());
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
 
-  // Update the find_filter map.
-  return tally_update_find_filter(index);
+  return 0;
 }
-*/
 
 //==============================================================================
 // Fortran compatibility functions

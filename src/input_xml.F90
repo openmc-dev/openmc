@@ -1190,6 +1190,26 @@ contains
         end select
       end do
 
+      ! Change the tally estimator if a filter demands it
+      do j = 1, t % n_filters()
+        select type (filt => filters(t % filter(j)) % obj)
+        type is (EnergyoutFilter)
+          t % estimator = ESTIMATOR_ANALOG
+        type is (LegendreFilter)
+          t % estimator = ESTIMATOR_ANALOG
+        type is (SphericalHarmonicsFilter)
+          if (filt % cosine() == COSINE_SCATTER) then
+            t % estimator = ESTIMATOR_ANALOG
+          end if
+        type is (SpatialLegendreFilter)
+          t % estimator = ESTIMATOR_COLLISION
+        type is (ZernikeFilter)
+          t % estimator = ESTIMATOR_COLLISION
+        type is (ZernikeRadialFilter)
+          t % estimator = ESTIMATOR_COLLISION
+        end select
+      end do
+
       ! =======================================================================
       ! READ DATA FOR NUCLIDES
 

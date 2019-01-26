@@ -2,8 +2,6 @@ module tally_derivative_header
 
   use, intrinsic :: ISO_C_BINDING
 
-  use dict_header, only: DictIntInt
-
   implicit none
 
 !===============================================================================
@@ -18,9 +16,6 @@ module tally_derivative_header
     integer(C_INT) :: diff_nuclide
     real(C_DOUBLE) :: flux_deriv
   end type TallyDerivative
-
-  ! Dictionary that maps user IDs to indices in 'tally_derivs'
-  type(DictIntInt), public :: tally_deriv_dict
 
   interface
     function n_tally_derivs() result(n) bind(C)

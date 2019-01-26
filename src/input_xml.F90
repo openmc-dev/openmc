@@ -947,7 +947,6 @@ contains
     type(XMLNode), allocatable :: node_tal_list(:)
     type(XMLNode), allocatable :: node_filt_list(:)
     type(XMLNode), allocatable :: node_trigger_list(:)
-    type(XMLNode), allocatable :: node_deriv_list(:)
     type(DictEntryCI) :: elem
     type(TallyDerivative), pointer :: deriv
 
@@ -1003,11 +1002,6 @@ contains
     ! READ DATA FOR DERIVATIVES
 
     call read_tally_derivatives(root % ptr)
-
-    do i = 0, n_tally_derivs() - 1
-      deriv => tally_deriv_c(i)
-      call tally_deriv_dict % set(deriv % id, i)
-    end do
 
     ! ==========================================================================
     ! READ FILTER DATA

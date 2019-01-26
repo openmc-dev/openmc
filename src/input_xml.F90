@@ -1004,9 +1004,8 @@ contains
 
     call read_tally_derivatives(root % ptr)
 
-    call get_node_list(root, "derivative", node_deriv_list)
-    do i = 1, size(node_deriv_list)
-      deriv => tally_deriv_c(i - 1)
+    do i = 0, n_tally_derivs() - 1
+      deriv => tally_deriv_c(i)
       call tally_deriv_dict % set(deriv % id, i)
     end do
 
@@ -1599,8 +1598,8 @@ contains
         call get_node_value(node_tal, "derivative", deriv_id)
 
         ! Find the derivative with the given id, and store it's index.
-        do j = 1, n_tally_derivs()
-          deriv => tally_deriv_c(j - 1)
+        do j = 0, n_tally_derivs() - 1
+          deriv => tally_deriv_c(j)
           if (deriv % id == deriv_id) then
             call t % set_deriv(j)
             ! Only analog or collision estimators are supported for differential
@@ -1618,7 +1617,7 @@ contains
           end if
         end do
 
-        deriv => tally_deriv_c(t % deriv() - 1)
+        deriv => tally_deriv_c(t % deriv())
         if (deriv % variable == DIFF_NUCLIDE_DENSITY &
              .or. deriv % variable == DIFF_TEMPERATURE) then
           if (any(t % nuclide_bins == -1)) then

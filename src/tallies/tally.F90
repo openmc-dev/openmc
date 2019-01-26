@@ -1184,7 +1184,7 @@ contains
       !#########################################################################
       ! Add derivative information on score for differential tallies.
 
-      if (t % deriv() /= NONE) then
+      if (t % deriv() /= C_NONE) then
         call apply_derivative_to_score(p, t, i_nuclide, atom_density, &
              score_bin, score)
       end if
@@ -2375,7 +2375,7 @@ contains
         ! Add derivative information for differential tallies.  Note that the
         ! i_nuclide and atom_density arguments do not matter since this is an
         ! analog estimator.
-        if (t % deriv() /= NONE) then
+        if (t % deriv() /= C_NONE) then
           call apply_derivative_to_score(p, t, 0, ZERO, SCORE_NU_FISSION, score)
         end if
 
@@ -3006,7 +3006,7 @@ contains
     ! perturbated variable.
 
     !associate(deriv => tally_derivs(t % deriv()))
-    deriv => tally_deriv_c(t % deriv() - 1)
+    deriv => tally_deriv_c(t % deriv())
       flux_deriv = deriv % flux_deriv
 
       !select case (tally_derivs(t % deriv()) % variable)
@@ -3568,9 +3568,9 @@ contains
     ! A void material cannot be perturbed so it will not affect flux derivatives
     if (p % material == MATERIAL_VOID) return
 
-    do i = 1, n_tally_derivs()
+    do i = 0, n_tally_derivs() - 1
       !associate(deriv => tally_derivs(i))
-      deriv => tally_deriv_c(i - 1)
+      deriv => tally_deriv_c(i)
         select case (deriv % variable)
 
         case (DIFF_DENSITY)
@@ -3644,9 +3644,9 @@ contains
     ! A void material cannot be perturbed so it will not affect flux derivatives
     if (p % material == MATERIAL_VOID) return
 
-    do i = 1, n_tally_derivs()
+    do i = 0, n_tally_derivs() - 1
       !associate(deriv => tally_derivs(i))
-      deriv => tally_deriv_c(i - 1)
+      deriv => tally_deriv_c(i)
         select case (deriv % variable)
 
         case (DIFF_DENSITY)
@@ -3720,8 +3720,8 @@ contains
   subroutine zero_flux_derivs()
     integer :: i
     type(TallyDerivative), pointer :: deriv
-    do i = 1, n_tally_derivs()
-      deriv => tally_deriv_c(i - 1)
+    do i = 0, n_tally_derivs() - 1
+      deriv => tally_deriv_c(i)
       deriv % flux_deriv = ZERO
     end do
   end subroutine zero_flux_derivs

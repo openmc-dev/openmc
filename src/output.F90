@@ -531,9 +531,9 @@ contains
       endif
 
       ! Write derivative information.
-      if (t % deriv() /= NONE) then
+      if (t % deriv() /= C_NONE) then
         !associate(deriv => tally_derivs(t % deriv()))
-        deriv => tally_deriv_c(t % deriv() - 1)
+        deriv => tally_deriv_c(t % deriv())
           select case (deriv % variable)
           case (DIFF_DENSITY)
             write(unit=unit_tally, fmt="(' Density derivative  Material ',A)") &

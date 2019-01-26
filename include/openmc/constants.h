@@ -367,24 +367,6 @@ constexpr int NO_BIN_FOUND {-1};
 constexpr int FILTER_UNIVERSE       {1};
 constexpr int FILTER_MATERIAL       {2};
 constexpr int FILTER_CELL           {3};
-constexpr int FILTER_CELLBORN       {4};
-constexpr int FILTER_SURFACE        {5};
-constexpr int FILTER_MESH           {6};
-constexpr int FILTER_ENERGYIN       {7};
-constexpr int FILTER_ENERGYOUT      {8};
-constexpr int FILTER_DISTRIBCELL    {9};
-constexpr int FILTER_MU             {10};
-constexpr int FILTER_POLAR          {11};
-constexpr int FILTER_AZIMUTHAL      {12};
-constexpr int FILTER_DELAYEDGROUP   {13};
-constexpr int FILTER_ENERGYFUNCTION {14};
-constexpr int FILTER_CELLFROM       {15};
-constexpr int FILTER_MESHSURFACE    {16};
-constexpr int FILTER_LEGENDRE       {17};
-constexpr int FILTER_SPH_HARMONICS  {18};
-constexpr int FILTER_SPTL_LEGENDRE  {19};
-constexpr int FILTER_ZERNIKE        {20};
-constexpr int FILTER_PARTICLE       {21};
 
 // Mesh types
 constexpr int MESH_REGULAR {1};
@@ -414,11 +396,6 @@ constexpr int K_COLLISION   {0};
 constexpr int K_ABSORPTION  {1};
 constexpr int K_TRACKLENGTH {2};
 constexpr int LEAKAGE       {3};
-
-// Differential tally independent variables
-constexpr int DIFF_DENSITY {1};
-constexpr int DIFF_NUCLIDE_DENSITY {2};
-constexpr int DIFF_TEMPERATURE {3};
 
 // Miscellaneous
 constexpr int C_NONE {-1};

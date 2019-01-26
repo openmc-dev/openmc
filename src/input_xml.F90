@@ -949,6 +949,13 @@ contains
     type(XMLNode), allocatable :: node_deriv_list(:)
     type(DictEntryCI) :: elem
 
+    interface
+      subroutine read_tally_derivatives(node_ptr) bind(C)
+        import C_PTR
+        type(C_PTR) :: node_ptr
+      end subroutine
+    end interface
+
     ! Check if tallies.xml exists
     filename = trim(path_input) // "tallies.xml"
     inquire(FILE=filename, EXIST=file_exists)
@@ -998,6 +1005,8 @@ contains
 
     ! ==========================================================================
     ! READ DATA FOR DERIVATIVES
+
+    call read_tally_derivatives(root % ptr)
 
     ! Get pointer list to XML <derivative> nodes and allocate global array.
     ! The array is threadprivate so it must be allocated in parallel.

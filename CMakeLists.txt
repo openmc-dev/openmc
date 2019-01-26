@@ -419,6 +419,7 @@ add_library(libopenmc SHARED
   src/string_utils.cpp
   src/summary.cpp
   src/surface.cpp
+  src/tallies/derivative.cpp
   src/tallies/filter.cpp
   src/tallies/filter_azimuthal.cpp
   src/tallies/filter_cellborn.cpp

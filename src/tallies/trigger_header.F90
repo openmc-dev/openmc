@@ -2,7 +2,7 @@ module trigger_header
 
   use, intrinsic :: ISO_C_BINDING
 
-  use constants, only: NONE, N_FILTER_TYPES, ZERO
+  use constants, only: NONE, ZERO
 
   implicit none
   private

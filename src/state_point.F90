@@ -254,7 +254,7 @@ contains
           ! Write the name for this tally
           call write_dataset(tally_group, "name", tally % name)
 
-          select case(tally % estimator)
+          select case(tally % estimator())
           case (ESTIMATOR_ANALOG)
             call write_dataset(tally_group, "estimator", "analog")
           case (ESTIMATOR_TRACKLENGTH)

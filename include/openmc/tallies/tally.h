@@ -30,6 +30,11 @@ public:
 
   int32_t n_filter_bins() const {return n_filter_bins_;}
 
+  //! Event type that contributes to this tally
+  int estimator_ {ESTIMATOR_TRACKLENGTH};
+
+  bool active_ {false};
+
   // We need to have quick access to some filters.  The following gives indices
   // for various filters that could be in the tally or C_NONE if they are not
   // present.
@@ -58,6 +63,13 @@ extern "C" double total_weight;
 
 namespace model {
   extern std::vector<std::unique_ptr<Tally>> tallies;
+
+  extern std::vector<int> active_analog_tallies;
+  extern std::vector<int> active_tracklength_tallies;
+  extern std::vector<int> active_meshsurf_tallies;
+  extern std::vector<int> active_collision_tallies;
+  extern std::vector<int> active_tallies;
+  extern std::vector<int> active_surface_tallies;
 }
 
 // Threadprivate variables

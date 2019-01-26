@@ -47,7 +47,21 @@ module tally_header
       integer(C_INT), value, intent(in) :: n
       integer(C_INT32_T), intent(in) :: filter_indices(n)
       integer(C_INT) :: err
-    end function openmc_tally_set_filters
+    end function
+
+    function openmc_tally_set_active(index, active) result(err) bind(C)
+      import C_INT32_T, C_BOOL, C_INT
+      integer(C_INT32_T), value, intent(in) :: index
+      logical(C_BOOL),    value, intent(in) :: active
+      integer(C_INT) :: err
+    end function
+
+    function openmc_tally_get_active(index, active) result(err) bind(C)
+      import C_INT32_T, C_BOOL, C_INT
+      integer(C_INT32_T), value    :: index
+      logical(C_BOOL), intent(out) :: active
+      integer(C_INT) :: err
+    end function
   end interface
 
 !===============================================================================
@@ -64,9 +78,9 @@ module tally_header
     integer :: id                   ! user-defined identifier
     character(len=104) :: name = "" ! user-defined name
     integer :: type = TALLY_VOLUME  ! volume, surface current
-    integer :: estimator = ESTIMATOR_TRACKLENGTH ! collision, track-length
+    !integer :: estimator = ESTIMATOR_TRACKLENGTH ! collision, track-length
     real(8) :: volume               ! volume of region
-    logical :: active = .false.
+    !logical :: active = .false.
     logical :: depletion_rx = .false. ! has depletion reactions, e.g. (n,2n)
 
     ! Individual nuclides to tally
@@ -98,6 +112,8 @@ module tally_header
     procedure :: allocate_results => tally_allocate_results
     procedure :: read_results_hdf5 => tally_read_results_hdf5
     procedure :: write_results_hdf5 => tally_write_results_hdf5
+    procedure :: estimator => tally_get_estimator
+    procedure :: set_estimator => tally_set_estimator
     procedure :: n_filters => tally_get_n_filters
     procedure :: filter => tally_get_filter
     procedure :: stride => tally_get_stride
@@ -281,6 +297,32 @@ contains
     end if
 
   end subroutine tally_allocate_results
+
+  function tally_get_estimator(this) result(e)
+    class(TallyObject) :: this
+    integer(C_INT) :: e
+    interface
+      function tally_get_estimator_c(tally) result(e) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: tally
+        integer(C_INT) :: e
+      end function
+    end interface
+    e = tally_get_estimator_c(this % ptr)
+  end function
+
+  subroutine tally_set_estimator(this, e)
+    class(TallyObject) :: this
+    integer(C_INT) :: e
+    interface
+      subroutine tally_set_estimator_c(tally, e) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: tally
+        integer(C_INT), value :: e
+      end subroutine
+    end interface
+    call tally_set_estimator_c(this % ptr, e)
+  end subroutine
 
   function tally_get_n_filters(this) result(n)
     class(TallyObject) :: this
@@ -561,22 +603,6 @@ contains
   end function openmc_global_tallies
 
 
-  function openmc_tally_get_active(index, active) result(err) bind(C)
-    ! Return whether a tally is active
-    integer(C_INT32_T), value    :: index
-    logical(C_BOOL), intent(out) :: active
-    integer(C_INT) :: err
-
-    if (index >= 1 .and. index <= size(tallies)) then
-      active = tallies(index) % obj % active
-      err = 0
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg('Index in tallies array is out of bounds.')
-    end if
-  end function openmc_tally_get_active
-
-
   function openmc_tally_get_estimator(index, estimator) result(err) bind(C)
     ! Return the type of estimator of a tally
     integer(C_INT32_T), value    :: index
@@ -584,7 +610,7 @@ contains
     integer(C_INT) :: err
 
     if (index >= 1 .and. index <= size(tallies)) then
-      estimator = tallies(index) % obj % estimator
+      estimator = tallies(index) % obj % estimator()
       err = 0
     else
       err = E_OUT_OF_BOUNDS
@@ -755,11 +781,11 @@ contains
     if (index >= 1 .and. index <= size(tallies)) then
       select case (estimator_)
       case ('analog')
-        tallies(index) % obj % estimator = ESTIMATOR_ANALOG
+        call tallies(index) % obj % set_estimator(ESTIMATOR_ANALOG)
       case ('tracklength')
-        tallies(index) % obj % estimator = ESTIMATOR_TRACKLENGTH
+        call tallies(index) % obj % set_estimator(ESTIMATOR_TRACKLENGTH)
       case ('collision')
-        tallies(index) % obj % estimator = ESTIMATOR_COLLISION
+        call tallies(index) % obj % set_estimator(ESTIMATOR_COLLISION)
       case default
         err = E_INVALID_ARGUMENT
         call set_errmsg("Unknown tally estimator: " // trim(estimator_))
@@ -769,27 +795,6 @@ contains
       call set_errmsg("Index in tally array is out of bounds.")
     end if
   end function openmc_tally_set_estimator
-
-
-  function openmc_tally_set_active(index, active) result(err) bind(C)
-    ! Set the ID of a tally
-    integer(C_INT32_T), value, intent(in) :: index
-    logical(C_BOOL),    value, intent(in) :: active
-    integer(C_INT) :: err
-
-    if (index >= 1 .and. index <= n_tallies) then
-      if (allocated(tallies(index) % obj)) then
-        tallies(index) % obj % active = active
-        err = 0
-      else
-        err = E_ALLOCATE
-        call set_errmsg("Tally type has not been set yet.")
-      end if
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg('Index in tallies array is out of bounds.')
-    end if
-  end function openmc_tally_set_active
 
 
   function openmc_tally_set_id(index, id) result(err) bind(C)

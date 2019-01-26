@@ -26,6 +26,13 @@ namespace openmc {
 
 namespace model {
   std::vector<std::unique_ptr<Tally>> tallies;
+
+  std::vector<int> active_analog_tallies;
+  std::vector<int> active_tracklength_tallies;
+  std::vector<int> active_meshsurf_tallies;
+  std::vector<int> active_collision_tallies;
+  std::vector<int> active_tallies;
+  std::vector<int> active_surface_tallies;
 }
 
 double global_tally_absorption;
@@ -189,6 +196,28 @@ free_memory_tally_c()
 //==============================================================================
 
 extern "C" int
+openmc_tally_get_active(int32_t index, bool* active)
+{
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  //TODO: off-by-one
+  *active = model::tallies[index-1]->active_;
+}
+
+extern "C" int
+openmc_tally_set_active(int32_t index, bool active)
+{
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  //TODO: off-by-one
+  model::tallies[index-1]->active_ = active;
+}
+
+extern "C" int
 openmc_tally_get_filters(int32_t index, const int32_t** indices, int* n)
 {
   if (index < 1 || index > model::tallies.size()) {
@@ -196,6 +225,7 @@ openmc_tally_get_filters(int32_t index, const int32_t** indices, int* n)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
+  //TODO: off-by-one
   *indices = model::tallies[index-1]->filters().data();
   *n = model::tallies[index-1]->filters().size();
   return 0;
@@ -235,6 +265,10 @@ extern "C" {
     for (int i = 0; i < n; ++i)
       model::tallies.push_back(std::make_unique<Tally>());
   }
+
+  int tally_get_estimator_c(Tally* tally) {return tally->estimator_;}
+
+  void tally_set_estimator_c(Tally* tally, int e) {tally->estimator_ = e;}
 
   void tally_set_filters_c(Tally* tally, int n, int32_t filter_indices[])
   {tally->set_filters(filter_indices, n);}

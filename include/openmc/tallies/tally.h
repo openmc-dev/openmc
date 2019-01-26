@@ -30,6 +30,8 @@ public:
 
   int32_t n_filter_bins() const {return n_filter_bins_;}
 
+  int type_ {TALLY_VOLUME}; //!< volume, surface current
+
   //! Event type that contributes to this tally
   int estimator_ {ESTIMATOR_TRACKLENGTH};
 
@@ -64,12 +66,12 @@ extern "C" double total_weight;
 namespace model {
   extern std::vector<std::unique_ptr<Tally>> tallies;
 
+  extern std::vector<int> active_tallies;
   extern std::vector<int> active_analog_tallies;
   extern std::vector<int> active_tracklength_tallies;
-  extern std::vector<int> active_meshsurf_tallies;
   extern std::vector<int> active_collision_tallies;
-  extern std::vector<int> active_tallies;
-  extern std::vector<int> active_surface_tallies;
+  //extern std::vector<int> active_meshsurf_tallies;
+  //extern std::vector<int> active_surface_tallies;
 }
 
 // Threadprivate variables

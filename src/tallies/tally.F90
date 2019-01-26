@@ -2066,9 +2066,9 @@ contains
     ! A loop over all tallies is necessary because we need to simultaneously
     ! determine different filter bins for the same tally in order to score to it
 
-    TALLY_LOOP: do i = 1, active_analog_tallies % size()
+    TALLY_LOOP: do i = 1, active_analog_tallies_size()
       ! Get index of tally and pointer to tally
-      i_tally = active_analog_tallies % data(i)
+      i_tally = active_analog_tallies_data(i)
       associate (t => tallies(i_tally) % obj)
 
       ! Find all valid bins in each filter if they have not already been found
@@ -2212,9 +2212,9 @@ contains
     ! A loop over all tallies is necessary because we need to simultaneously
     ! determine different filter bins for the same tally in order to score to it
 
-    TALLY_LOOP: do i = 1, active_analog_tallies % size()
+    TALLY_LOOP: do i = 1, active_analog_tallies_size()
       ! Get index of tally and pointer to tally
-      i_tally = active_analog_tallies % data(i)
+      i_tally = active_analog_tallies_data(i)
       associate (t => tallies(i_tally) % obj)
 
       ! Find all valid bins in each filter if they have not already been found
@@ -2577,9 +2577,9 @@ contains
     ! A loop over all tallies is necessary because we need to simultaneously
     ! determine different filter bins for the same tally in order to score to it
 
-    TALLY_LOOP: do i = 1, active_tracklength_tallies % size()
+    TALLY_LOOP: do i = 1, active_tracklength_tallies_size()
       ! Get index of tally and pointer to tally
-      i_tally = active_tracklength_tallies % data(i)
+      i_tally = active_tracklength_tallies_data(i)
       associate (t => tallies(i_tally) % obj)
 
       ! Find all valid bins in each filter if they have not already been found
@@ -2734,9 +2734,9 @@ contains
     ! A loop over all tallies is necessary because we need to simultaneously
     ! determine different filter bins for the same tally in order to score to it
 
-    TALLY_LOOP: do i = 1, active_collision_tallies % size()
+    TALLY_LOOP: do i = 1, active_collision_tallies_size()
       ! Get index of tally and pointer to tally
-      i_tally = active_collision_tallies % data(i)
+      i_tally = active_collision_tallies_data(i)
       associate (t => tallies(i_tally) % obj)
 
       ! Find all valid bins in each filter if they have not already been found
@@ -3774,8 +3774,8 @@ contains
     end if
 
     ! Accumulate results for each tally
-    do i = 1, active_tallies % size()
-      call tallies(active_tallies % data(i)) % obj % accumulate()
+    do i = 1, active_tallies_size()
+      call tallies(active_tallies_data(i)) % obj % accumulate()
     end do
 
   end subroutine accumulate_tallies
@@ -3790,10 +3790,13 @@ contains
     integer(C_INT) :: err
     logical(C_BOOL) :: active
 
-    call active_tallies % clear()
-    call active_analog_tallies % clear()
-    call active_collision_tallies % clear()
-    call active_tracklength_tallies % clear()
+    interface
+      subroutine setup_active_tallies_c() bind(C)
+      end subroutine
+    end interface
+
+    call setup_active_tallies_c()
+
     call active_surface_tallies % clear()
     call active_meshsurf_tallies % clear()
 
@@ -3801,21 +3804,10 @@ contains
       associate (t => tallies(i) % obj)
         err = openmc_tally_get_active(i, active)
         if (active) then
-          ! Add tally to active tallies
-          call active_tallies % push_back(i)
-
           ! Check what type of tally this is and add it to the appropriate list
-          if (t % type == TALLY_VOLUME) then
-            if (t % estimator() == ESTIMATOR_ANALOG) then
-              call active_analog_tallies % push_back(i)
-            elseif (t % estimator() == ESTIMATOR_TRACKLENGTH) then
-              call active_tracklength_tallies % push_back(i)
-            elseif (t % estimator() == ESTIMATOR_COLLISION) then
-              call active_collision_tallies % push_back(i)
-            end if
-          elseif (t % type == TALLY_MESH_SURFACE) then
+          if (t % type() == TALLY_MESH_SURFACE) then
             call active_meshsurf_tallies % push_back(i)
-          elseif (t % type == TALLY_SURFACE) then
+          elseif (t % type() == TALLY_SURFACE) then
             call active_surface_tallies % push_back(i)
           end if
 

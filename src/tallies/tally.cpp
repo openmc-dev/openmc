@@ -27,12 +27,12 @@ namespace openmc {
 namespace model {
   std::vector<std::unique_ptr<Tally>> tallies;
 
+  std::vector<int> active_tallies;
   std::vector<int> active_analog_tallies;
   std::vector<int> active_tracklength_tallies;
-  std::vector<int> active_meshsurf_tallies;
   std::vector<int> active_collision_tallies;
-  std::vector<int> active_tallies;
-  std::vector<int> active_surface_tallies;
+  //std::vector<int> active_meshsurf_tallies;
+  //std::vector<int> active_surface_tallies;
 }
 
 double global_tally_absorption;
@@ -178,6 +178,48 @@ void reduce_tally_results()
 #endif
 
 extern "C" void
+setup_active_tallies_c()
+{
+  model::active_tallies.clear();
+  model::active_analog_tallies.clear();
+  model::active_tracklength_tallies.clear();
+  model::active_collision_tallies.clear();
+  //model::active_meshsurf_tallies.clear();
+  //model::active_surface_tallies.clear();
+
+  //TODO: off-by-one all through here
+  for (auto i = 0; i < model::tallies.size(); ++i) {
+    const auto& tally {*model::tallies[i]};
+
+    if (tally.active_) {
+      model::active_tallies.push_back(i + 1);
+      switch (tally.type_) {
+
+      case TALLY_VOLUME:
+        switch (tally.estimator_) {
+          case ESTIMATOR_ANALOG:
+            model::active_analog_tallies.push_back(i + 1);
+            break;
+          case ESTIMATOR_TRACKLENGTH:
+            model::active_tracklength_tallies.push_back(i + 1);
+            break;
+          case ESTIMATOR_COLLISION:
+            model::active_collision_tallies.push_back(i + 1);
+        }
+        break;
+
+      //case TALLY_MESH_SURFACE:
+      //  model::active_meshsurf_tallies.push_back(i + 1);
+      //  break;
+
+      //case TALLY_SURFACE:
+      //  model::active_surface_tallies.push_back(i + 1);
+      }
+    }
+  }
+}
+
+extern "C" void
 free_memory_tally_c()
 {
   #pragma omp parallel
@@ -189,11 +231,50 @@ free_memory_tally_c()
   model::tally_filters.clear();
 
   model::tallies.clear();
+
+  model::active_tallies.clear();
+  model::active_analog_tallies.clear();
+  model::active_tracklength_tallies.clear();
+  model::active_collision_tallies.clear();
+  //model::active_meshsurf_tallies.clear();
+  //model::active_surface_tallies.clear();
 }
 
 //==============================================================================
 // C-API functions
 //==============================================================================
+
+extern "C" int
+openmc_tally_get_type(int32_t index, int32_t* type)
+{
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  //TODO: off-by-one
+  *type = model::tallies[index-1]->type_;
+}
+
+extern "C" int
+openmc_tally_set_type(int32_t index, const char* type)
+{
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  if (strcmp(type, "volume") == 0) {
+    model::tallies[index-1]->type_ = TALLY_VOLUME;
+  } else if (strcmp(type, "mesh-surface") == 0) {
+    model::tallies[index-1]->type_ = TALLY_MESH_SURFACE;
+  } else if (strcmp(type, "surface") == 0) {
+    model::tallies[index-1]->type_ = TALLY_SURFACE;
+  } else {
+    std::stringstream errmsg;
+    errmsg << "Unknown tally type: " << type;
+    set_errmsg(errmsg);
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+}
 
 extern "C" int
 openmc_tally_get_active(int32_t index, bool* active)
@@ -265,6 +346,34 @@ extern "C" {
     for (int i = 0; i < n; ++i)
       model::tallies.push_back(std::make_unique<Tally>());
   }
+
+  int active_tallies_data(int i)
+  {return model::active_tallies[i-1];}
+
+  int active_tallies_size()
+  {return model::active_tallies.size();}
+
+  int active_analog_tallies_data(int i)
+  {return model::active_analog_tallies[i-1];}
+
+  int active_analog_tallies_size()
+  {return model::active_analog_tallies.size();}
+
+  int active_tracklength_tallies_data(int i)
+  {return model::active_tracklength_tallies[i-1];}
+
+  int active_tracklength_tallies_size()
+  {return model::active_tracklength_tallies.size();}
+
+  int active_collision_tallies_data(int i)
+  {return model::active_collision_tallies[i-1];}
+
+  int active_collision_tallies_size()
+  {return model::active_collision_tallies.size();}
+
+  int tally_get_type_c(Tally* tally) {return tally->type_;}
+
+  void tally_set_type_c(Tally* tally, int type) {tally->type_ = type;}
 
   int tally_get_estimator_c(Tally* tally) {return tally->estimator_;}
 

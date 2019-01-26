@@ -16,29 +16,6 @@ module tally_header
   use trigger_header,      only: TriggerObject
 
   implicit none
-  private
-  public :: allocate_tally_results
-  public :: free_memory_tally
-  public :: openmc_extend_tallies
-  public :: openmc_get_tally_index
-  public :: openmc_get_tally_next_id
-  public :: openmc_global_tallies
-  public :: openmc_tally_get_active
-  public :: openmc_tally_get_estimator
-  public :: openmc_tally_get_id
-  public :: openmc_tally_get_n_realizations
-  public :: openmc_tally_get_nuclides
-  public :: openmc_tally_get_scores
-  public :: openmc_tally_get_type
-  public :: openmc_tally_reset
-  public :: openmc_tally_results
-  public :: openmc_tally_set_active
-  public :: openmc_tally_set_estimator
-  public :: openmc_tally_set_filters
-  public :: openmc_tally_set_id
-  public :: openmc_tally_set_nuclides
-  public :: openmc_tally_set_scores
-  public :: openmc_tally_set_type
 
   interface
     function openmc_tally_set_filters(index, n, filter_indices) result(err) bind(C)
@@ -62,6 +39,50 @@ module tally_header
       logical(C_BOOL), intent(out) :: active
       integer(C_INT) :: err
     end function
+
+    function active_tallies_size() result(size) bind(C)
+      import C_INT
+      integer(C_INT) :: size
+    end function
+
+    function active_tallies_data(i) result(tally) bind(C)
+      import C_INT
+      integer(C_INT), value :: i
+      integer(C_INT) :: tally
+    end function
+
+    function active_analog_tallies_size() result(size) bind(C)
+      import C_INT
+      integer(C_INT) :: size
+    end function
+
+    function active_analog_tallies_data(i) result(tally) bind(C)
+      import C_INT
+      integer(C_INT), value :: i
+      integer(C_INT) :: tally
+    end function
+
+    function active_tracklength_tallies_size() result(size) bind(C)
+      import C_INT
+      integer(C_INT) :: size
+    end function
+
+    function active_tracklength_tallies_data(i) result(tally) bind(C)
+      import C_INT
+      integer(C_INT), value :: i
+      integer(C_INT) :: tally
+    end function
+
+    function active_collision_tallies_size() result(size) bind(C)
+      import C_INT
+      integer(C_INT) :: size
+    end function
+
+    function active_collision_tallies_data(i) result(tally) bind(C)
+      import C_INT
+      integer(C_INT), value :: i
+      integer(C_INT) :: tally
+    end function
   end interface
 
 !===============================================================================
@@ -77,10 +98,7 @@ module tally_header
 
     integer :: id                   ! user-defined identifier
     character(len=104) :: name = "" ! user-defined name
-    integer :: type = TALLY_VOLUME  ! volume, surface current
-    !integer :: estimator = ESTIMATOR_TRACKLENGTH ! collision, track-length
     real(8) :: volume               ! volume of region
-    !logical :: active = .false.
     logical :: depletion_rx = .false. ! has depletion reactions, e.g. (n,2n)
 
     ! Individual nuclides to tally
@@ -112,6 +130,8 @@ module tally_header
     procedure :: allocate_results => tally_allocate_results
     procedure :: read_results_hdf5 => tally_read_results_hdf5
     procedure :: write_results_hdf5 => tally_write_results_hdf5
+    procedure :: type => tally_get_type
+    procedure :: set_type => tally_set_type
     procedure :: estimator => tally_get_estimator
     procedure :: set_estimator => tally_set_estimator
     procedure :: n_filters => tally_get_n_filters
@@ -163,11 +183,7 @@ module tally_header
 !$omp&              global_tally_tracklength, global_tally_leakage)
 
   ! Active tally lists
-  type(VectorInt), public :: active_analog_tallies
-  type(VectorInt), public :: active_tracklength_tallies
   type(VectorInt), public :: active_meshsurf_tallies
-  type(VectorInt), public :: active_collision_tallies
-  type(VectorInt), public :: active_tallies
   type(VectorInt), public :: active_surface_tallies
 
   ! Normalization for statistics
@@ -297,6 +313,32 @@ contains
     end if
 
   end subroutine tally_allocate_results
+
+  function tally_get_type(this) result(t)
+    class(TallyObject) :: this
+    integer(C_INT) :: t
+    interface
+      function tally_get_type_c(tally) result(t) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: tally
+        integer(C_INT) :: t
+      end function
+    end interface
+    t = tally_get_type_c(this % ptr)
+  end function
+
+  subroutine tally_set_type(this, t)
+    class(TallyObject) :: this
+    integer(C_INT) :: t
+    interface
+      subroutine tally_set_type_c(tally, t) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: tally
+        integer(C_INT), value :: t
+      end subroutine
+    end interface
+    call tally_set_type_c(this % ptr, t)
+  end subroutine
 
   function tally_get_estimator(this) result(e)
     class(TallyObject) :: this
@@ -513,12 +555,8 @@ contains
     if (allocated(global_tallies)) deallocate(global_tallies)
 
     ! Deallocate tally node lists
-    call active_analog_tallies % clear()
-    call active_tracklength_tallies % clear()
     call active_meshsurf_tallies % clear()
-    call active_collision_tallies % clear()
     call active_surface_tallies % clear()
-    call active_tallies % clear()
   end subroutine free_memory_tally
 
 !===============================================================================
@@ -699,22 +737,6 @@ contains
       call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_get_scores
-
-
-  function openmc_tally_get_type(index, type) result(err) bind(C)
-    ! Return the type of a tally
-    integer(C_INT32_T), value    :: index
-    integer(C_INT32_T), intent(out) :: type
-    integer(C_INT) :: err
-
-    if (index >= 1 .and. index <= size(tallies)) then
-      type = tallies(index) % obj % type
-      err = 0
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg('Index in tallies array is out of bounds.')
-    end if
-  end function openmc_tally_get_type
 
 
   function openmc_tally_reset(index) result(err) bind(C)
@@ -1046,37 +1068,6 @@ contains
       call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_set_scores
-
-
-  function openmc_tally_set_type(index, type) result(err) bind(C)
-    ! Update the type of a tally that is already allocated
-    integer(C_INT32_T), value, intent(in) :: index
-    character(kind=C_CHAR), intent(in) :: type(*)
-    integer(C_INT) :: err
-
-    character(:), allocatable :: type_
-
-    ! Convert C string to Fortran string
-    type_ = to_f_string(type)
-
-    err = 0
-    if (index >= 1 .and. index <= size(tallies)) then
-      select case (type_)
-      case ('volume')
-        tallies(index) % obj % type = TALLY_VOLUME
-      case ('mesh-surface')
-        tallies(index) % obj % type = TALLY_MESH_SURFACE
-      case ('surface')
-        tallies(index) % obj % type = TALLY_SURFACE
-      case default
-        err = E_INVALID_ARGUMENT
-        call set_errmsg("Unknown tally type: " // trim(type_))
-      end select
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in tally array is out of bounds.")
-    end if
-  end function openmc_tally_set_type
 
 
   subroutine openmc_get_tally_next_id(id) bind(C)

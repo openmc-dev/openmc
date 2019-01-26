@@ -125,7 +125,7 @@ contains
 
 
       case (SCORE_FLUX)
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           ! All events score to a flux bin. We actually use a collision
           ! estimator in place of an analog one since there is no way to count
           ! 'events' exactly for the flux
@@ -150,7 +150,7 @@ contains
 
 
       case (SCORE_TOTAL)
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           ! All events will score to the total reaction rate. We can just
           ! use the weight of the particle entering the collision as the
           ! score
@@ -172,7 +172,7 @@ contains
 
 
       case (SCORE_INVERSE_VELOCITY)
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           ! All events score to an inverse velocity bin. We actually use a
           ! collision estimator in place of an analog one since there is no way
           ! to count 'events' exactly for the inverse velocity
@@ -197,7 +197,7 @@ contains
 
 
       case (SCORE_SCATTER)
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           ! Skip any event where the particle didn't scatter
           if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
           ! Since only scattering events make it here, again we can use
@@ -239,7 +239,7 @@ contains
 
 
       case (SCORE_ABSORPTION)
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           if (survival_biasing) then
             ! No absorption events actually occur if survival biasing is on --
             ! just use weight absorbed in survival biasing
@@ -265,7 +265,7 @@ contains
 
         if (material_xs % absorption == ZERO) cycle SCORE_LOOP
 
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           if (survival_biasing) then
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
@@ -299,7 +299,7 @@ contains
 
         if (material_xs % absorption == ZERO) cycle SCORE_LOOP
 
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           if (survival_biasing .or. p % fission) then
             if (t % energyout_filter() > 0) then
               ! Normally, we only need to make contributions to one scoring
@@ -345,7 +345,7 @@ contains
 
         if (material_xs % absorption == ZERO) cycle SCORE_LOOP
 
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           if (survival_biasing .or. p % fission) then
             if (t % energyout_filter() > 0) then
               ! Normally, we only need to make contributions to one scoring
@@ -413,7 +413,7 @@ contains
         ! Set the delayedgroup filter index and the number of delayed group bins
         dg_filter = t % delayedgroup_filter()
 
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           if (survival_biasing .or. p % fission) then
             if (t % energyout_filter() > 0) then
               ! Normally, we only need to make contributions to one scoring
@@ -607,7 +607,7 @@ contains
         ! Set the delayedgroup filter index
         dg_filter = t % delayedgroup_filter()
 
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           if (survival_biasing) then
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
@@ -890,7 +890,7 @@ contains
 
         score = ZERO
 
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           if (survival_biasing) then
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
@@ -955,7 +955,7 @@ contains
         score = ONE
 
       case (ELASTIC)
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           ! Check if event MT matches
           if (p % event_MT /= ELASTIC) cycle SCORE_LOOP
           score = p % last_wgt * flux
@@ -991,7 +991,7 @@ contains
 
         score = ZERO
 
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           if (survival_biasing) then
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
@@ -1063,7 +1063,7 @@ contains
         end if
 
       case (N_2N, N_3N, N_4N, N_GAMMA, N_P, N_A)
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           ! Check if event MT matches
           if (p % event_MT /= score_bin) cycle SCORE_LOOP
           score = p % last_wgt * flux
@@ -1102,7 +1102,7 @@ contains
         end if
 
       case default
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           ! Any other score is assumed to be a MT number. Thus, we just need
           ! to check if it matches the MT number of the event
           if (p % event_MT /= score_bin) cycle SCORE_LOOP
@@ -1228,8 +1228,8 @@ contains
                                     ! to tally with.
 
     ! Set the direction and group to use with get_xs
-    if (t % estimator == ESTIMATOR_ANALOG .or. &
-         t % estimator == ESTIMATOR_COLLISION) then
+    if (t % estimator() == ESTIMATOR_ANALOG .or. &
+         t % estimator() == ESTIMATOR_COLLISION) then
 
       if (survival_biasing) then
 
@@ -1289,7 +1289,7 @@ contains
 
 
       case (SCORE_FLUX)
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           ! All events score to a flux bin. We actually use a collision
           ! estimator in place of an analog one since there is no way to count
           ! 'events' exactly for the flux
@@ -1310,7 +1310,7 @@ contains
 
 
       case (SCORE_TOTAL)
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           ! All events will score to the total reaction rate. We can just
           ! use the weight of the particle entering the collision as the
           ! score
@@ -1339,8 +1339,8 @@ contains
 
 
       case (SCORE_INVERSE_VELOCITY)
-        if (t % estimator == ESTIMATOR_ANALOG .or. &
-             t % estimator == ESTIMATOR_COLLISION) then
+        if (t % estimator() == ESTIMATOR_ANALOG .or. &
+             t % estimator() == ESTIMATOR_COLLISION) then
           ! All events score to an inverse velocity bin. We actually use a
           ! collision estimator in place of an analog one since there is no way
           ! to count 'events' exactly for the inverse velocity
@@ -1375,7 +1375,7 @@ contains
 
 
       case (SCORE_SCATTER)
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           ! Skip any event where the particle didn't scatter
           if (p % event /= EVENT_SCATTER) then
             cycle SCORE_LOOP
@@ -1413,7 +1413,7 @@ contains
 
 
       case (SCORE_NU_SCATTER)
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           ! Skip any event where the particle didn't scatter
           if (p % event /= EVENT_SCATTER) then
             cycle SCORE_LOOP
@@ -1448,7 +1448,7 @@ contains
 
 
       case (SCORE_ABSORPTION)
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           if (survival_biasing) then
             ! No absorption events actually occur if survival biasing is on --
             ! just use weight absorbed in survival biasing
@@ -1477,7 +1477,7 @@ contains
 
       case (SCORE_FISSION)
 
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           if (survival_biasing) then
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
@@ -1512,7 +1512,7 @@ contains
 
       case (SCORE_NU_FISSION)
 
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           if (survival_biasing .or. p % fission) then
             if (t % energyout_filter() > 0) then
               ! Normally, we only need to make contributions to one scoring
@@ -1566,7 +1566,7 @@ contains
 
       case (SCORE_PROMPT_NU_FISSION)
 
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           if (survival_biasing .or. p % fission) then
             if (t % energyout_filter() > 0) then
               ! Normally, we only need to make contributions to one scoring
@@ -1624,7 +1624,7 @@ contains
         ! Set the delayedgroup filter index and the number of delayed group bins
         dg_filter = t % delayedgroup_filter()
 
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           if (survival_biasing .or. p % fission) then
             if (t % energyout_filter() > 0) then
               ! Normally, we only need to make contributions to one scoring
@@ -1767,7 +1767,7 @@ contains
         ! Set the delayedgroup filter index and the number of delayed group bins
         dg_filter = t % delayedgroup_filter()
 
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           if (survival_biasing) then
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
@@ -1944,7 +1944,7 @@ contains
 
       case (SCORE_KAPPA_FISSION)
 
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator() == ESTIMATOR_ANALOG) then
           if (survival_biasing) then
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
@@ -2078,7 +2078,7 @@ contains
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins_clear()
           call filter_matches(i_filt) % weights_clear()
-          call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
+          call filters(i_filt) % obj % get_all_bins(p, t % estimator(), &
                filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
@@ -2224,7 +2224,7 @@ contains
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins_clear()
           call filter_matches(i_filt) % weights_clear()
-          call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
+          call filters(i_filt) % obj % get_all_bins(p, t % estimator(), &
                filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
@@ -2589,7 +2589,7 @@ contains
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins_clear()
           call filter_matches(i_filt) % weights_clear()
-          call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
+          call filters(i_filt) % obj % get_all_bins(p, t % estimator(), &
                filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
@@ -2746,7 +2746,7 @@ contains
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins_clear()
           call filter_matches(i_filt) % weights_clear()
-          call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
+          call filters(i_filt) % obj % get_all_bins(p, t % estimator(), &
                filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
@@ -2892,7 +2892,7 @@ contains
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins_clear()
           call filter_matches(i_filt) % weights_clear()
-          call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
+          call filters(i_filt) % obj % get_all_bins(p, t % estimator(), &
                filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
@@ -3026,7 +3026,7 @@ contains
       ! (1 / c) * (d_c / d_rho) = 1 / rho
 
       case (DIFF_DENSITY)
-        select case (t % estimator)
+        select case (t % estimator())
 
         case (ESTIMATOR_ANALOG)
 
@@ -3089,7 +3089,7 @@ contains
       ! where i is the perturbed nuclide.
 
       case (DIFF_NUCLIDE_DENSITY)
-        select case (t % estimator)
+        select case (t % estimator())
 
         case (ESTIMATOR_ANALOG)
 
@@ -3226,7 +3226,7 @@ contains
       ! resonance range and requires multipole data.
 
       case (DIFF_TEMPERATURE)
-        select case (t % estimator)
+        select case (t % estimator())
 
         case (ESTIMATOR_ANALOG)
 
@@ -3786,7 +3786,9 @@ contains
 
   subroutine setup_active_tallies() bind(C)
 
-    integer :: i ! loop counter
+    integer :: i
+    integer(C_INT) :: err
+    logical(C_BOOL) :: active
 
     call active_tallies % clear()
     call active_analog_tallies % clear()
@@ -3797,17 +3799,18 @@ contains
 
     do i = 1, n_tallies
       associate (t => tallies(i) % obj)
-        if (t % active) then
+        err = openmc_tally_get_active(i, active)
+        if (active) then
           ! Add tally to active tallies
           call active_tallies % push_back(i)
 
           ! Check what type of tally this is and add it to the appropriate list
           if (t % type == TALLY_VOLUME) then
-            if (t % estimator == ESTIMATOR_ANALOG) then
+            if (t % estimator() == ESTIMATOR_ANALOG) then
               call active_analog_tallies % push_back(i)
-            elseif (t % estimator == ESTIMATOR_TRACKLENGTH) then
+            elseif (t % estimator() == ESTIMATOR_TRACKLENGTH) then
               call active_tracklength_tallies % push_back(i)
-            elseif (t % estimator == ESTIMATOR_COLLISION) then
+            elseif (t % estimator() == ESTIMATOR_COLLISION) then
               call active_collision_tallies % push_back(i)
             end if
           elseif (t % type == TALLY_MESH_SURFACE) then

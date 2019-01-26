@@ -1174,19 +1174,19 @@ contains
       do j = 1, t % n_filters()
         select type (filt => filters(t % filter(j)) % obj)
         type is (EnergyoutFilter)
-          t % estimator = ESTIMATOR_ANALOG
+          call t % set_estimator(ESTIMATOR_ANALOG)
         type is (LegendreFilter)
-          t % estimator = ESTIMATOR_ANALOG
+          call t % set_estimator(ESTIMATOR_ANALOG)
         type is (SphericalHarmonicsFilter)
           if (filt % cosine() == COSINE_SCATTER) then
-            t % estimator = ESTIMATOR_ANALOG
+            call t % set_estimator(ESTIMATOR_ANALOG)
           end if
         type is (SpatialLegendreFilter)
-          t % estimator = ESTIMATOR_COLLISION
+          call t % set_estimator(ESTIMATOR_COLLISION)
         type is (ZernikeFilter)
-          t % estimator = ESTIMATOR_COLLISION
+          call t % set_estimator(ESTIMATOR_COLLISION)
         type is (ZernikeRadialFilter)
-          t % estimator = ESTIMATOR_COLLISION
+          call t % set_estimator(ESTIMATOR_COLLISION)
         end select
       end do
 
@@ -1312,7 +1312,7 @@ contains
             t % score_bins(j) = SCORE_SCATTER
             if (has_energyout .or. has_legendre) then
               ! Set tally estimator to analog
-              t % estimator = ESTIMATOR_ANALOG
+              call t % set_estimator(ESTIMATOR_ANALOG)
             end if
 
           case ('nu-scatter')
@@ -1322,11 +1322,11 @@ contains
             ! (MG mode has all data available without a collision being
             ! necessary)
             if (run_CE) then
-              t % estimator = ESTIMATOR_ANALOG
+              call t % set_estimator(ESTIMATOR_ANALOG)
             else
               if (has_energyout .or. has_legendre) then
                 ! Set tally estimator to analog
-                t % estimator = ESTIMATOR_ANALOG
+                call t % set_estimator(ESTIMATOR_ANALOG)
               end if
             end if
 
@@ -1358,7 +1358,7 @@ contains
             t % score_bins(j) = SCORE_NU_FISSION
             if (has_energyout) then
               ! Set tally estimator to analog
-              t % estimator = ESTIMATOR_ANALOG
+              call t % set_estimator(ESTIMATOR_ANALOG)
             end if
           case ('decay-rate')
             t % score_bins(j) = SCORE_DECAY_RATE
@@ -1366,13 +1366,13 @@ contains
             t % score_bins(j) = SCORE_DELAYED_NU_FISSION
             if (has_energyout) then
               ! Set tally estimator to analog
-              t % estimator = ESTIMATOR_ANALOG
+              call t % set_estimator(ESTIMATOR_ANALOG)
             end if
           case ('prompt-nu-fission')
             t % score_bins(j) = SCORE_PROMPT_NU_FISSION
             if (has_energyout) then
               ! Set tally estimator to analog
-              t % estimator = ESTIMATOR_ANALOG
+              call t % set_estimator(ESTIMATOR_ANALOG)
             end if
           case ('kappa-fission')
             t % score_bins(j) = SCORE_KAPPA_FISSION
@@ -1563,7 +1563,7 @@ contains
             type is (ParticleFilter)
               do l = 1, filt % n_bins
                 if (filt % particles(l) == ELECTRON .or. filt % particles(l) == POSITRON) then
-                  t % estimator = ESTIMATOR_ANALOG
+                  call t % set_estimator(ESTIMATOR_ANALOG)
                 end if
               end do
             end select
@@ -1598,8 +1598,8 @@ contains
             call t % set_deriv(j)
             ! Only analog or collision estimators are supported for differential
             ! tallies.
-            if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-              t % estimator = ESTIMATOR_COLLISION
+            if (t % estimator() == ESTIMATOR_TRACKLENGTH) then
+              call t % set_estimator(ESTIMATOR_COLLISION)
             end if
             ! We found the derivative we were looking for; exit the do loop.
             exit
@@ -1807,29 +1807,29 @@ contains
         call get_node_value(node_tal, "estimator", temp_str)
         select case(trim(temp_str))
         case ('analog')
-          t % estimator = ESTIMATOR_ANALOG
+          call t % set_estimator(ESTIMATOR_ANALOG)
 
         case ('tracklength', 'track-length', 'pathlength', 'path-length')
           ! If the estimator was set to an analog estimator, this means the
           ! tally needs post-collision information
-          if (t % estimator == ESTIMATOR_ANALOG) then
+          if (t % estimator() == ESTIMATOR_ANALOG) then
             call fatal_error("Cannot use track-length estimator for tally " &
                  // to_str(t % id))
           end if
 
           ! Set estimator to track-length estimator
-          t % estimator = ESTIMATOR_TRACKLENGTH
+          call t % set_estimator(ESTIMATOR_TRACKLENGTH)
 
         case ('collision')
           ! If the estimator was set to an analog estimator, this means the
           ! tally needs post-collision information
-          if (t % estimator == ESTIMATOR_ANALOG) then
+          if (t % estimator() == ESTIMATOR_ANALOG) then
             call fatal_error("Cannot use collision estimator for tally " &
                  // to_str(t % id))
           end if
 
           ! Set estimator to collision estimator
-          t % estimator = ESTIMATOR_COLLISION
+          call t % set_estimator(ESTIMATOR_COLLISION)
 
         case default
           call fatal_error("Invalid estimator '" // trim(temp_str) &

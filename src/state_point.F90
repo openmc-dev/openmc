@@ -346,7 +346,7 @@ contains
       call write_dataset(file_id, "global_tallies", global_tallies)
 
       ! Write tallies
-      if (active_tallies % size() > 0) then
+      if (active_tallies_size() > 0) then
         ! Indicate that tallies are on
         call write_attribute(file_id, "tallies_present", 1)
 

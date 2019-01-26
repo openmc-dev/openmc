@@ -166,7 +166,7 @@ contains
           trigger % variance = ZERO
 
           ! Mesh current tally triggers require special treatment
-          if (t % type == TALLY_MESH_SURFACE) then
+          if (t % type() == TALLY_MESH_SURFACE) then
             call compute_tally_current(t, trigger)
 
           else

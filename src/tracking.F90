@@ -86,7 +86,7 @@ contains
     endif
 
     ! Every particle starts with no accumulated flux derivative.
-    if (active_tallies % size() > 0) call zero_flux_derivs()
+    if (active_tallies_size() > 0) call zero_flux_derivs()
 
     EVENT_LOOP: do
       ! Set the random number stream
@@ -172,7 +172,7 @@ contains
       end do
 
       ! Score track-length tallies
-      if (active_tracklength_tallies % size() > 0) then
+      if (active_tracklength_tallies_size() > 0) then
         call score_tracklength_tally(p, distance)
       end if
 
@@ -183,7 +183,7 @@ contains
       end if
 
       ! Score flux derivative accumulators for differential tallies.
-      if (active_tallies % size() > 0) call score_track_derivative(p, distance)
+      if (active_tallies_size() > 0) call score_track_derivative(p, distance)
 
       if (d_collision > d_boundary) then
         ! ====================================================================
@@ -241,8 +241,8 @@ contains
         ! Score collision estimator tallies -- this is done after a collision
         ! has occurred rather than before because we need information on the
         ! outgoing energy for any tallies with an outgoing energy filter
-        if (active_collision_tallies % size() > 0) call score_collision_tally(p)
-        if (active_analog_tallies % size() > 0) call score_analog_tally(p)
+        if (active_collision_tallies_size() > 0) call score_collision_tally(p)
+        if (active_analog_tallies_size() > 0) call score_analog_tally(p)
 
         ! Reset banked weight during collision
         p % n_bank   = 0
@@ -273,7 +273,7 @@ contains
         end do
 
         ! Score flux derivative accumulators for differential tallies.
-        if (active_tallies % size() > 0) call score_collision_derivative(p)
+        if (active_tallies_size() > 0) call score_collision_derivative(p)
       end if
 
       ! If particle has too many events, display warning and kill it

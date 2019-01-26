@@ -1394,12 +1394,12 @@ contains
                      &in the same tally as normal surface currents")
               end if
 
-              t % type = TALLY_SURFACE
+              call t % set_type(TALLY_SURFACE)
               t % score_bins(j) = SCORE_CURRENT
 
             else if (has_meshsurface) then
               t % score_bins(j) = SCORE_CURRENT
-              t % type = TALLY_MESH_SURFACE
+              call t % set_type(TALLY_MESH_SURFACE)
 
               ! Check to make sure that current is the only desired response
               ! for this tally

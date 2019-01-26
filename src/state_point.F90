@@ -177,9 +177,9 @@ contains
       ! Write information for derivatives.
       if (n_tally_derivs() > 0) then
         derivs_group = create_group(tallies_group, "derivatives")
-        do i = 1, n_tally_derivs()
+        do i = 0, n_tally_derivs() - 1
           !associate(deriv => tally_derivs(i))
-          deriv => tally_deriv_c(i - 1)
+          deriv => tally_deriv_c(i)
             deriv_group = create_group(derivs_group, "derivative " &
                  // trim(to_str(deriv % id)))
             select case (deriv % variable)
@@ -305,8 +305,8 @@ contains
           deallocate(str_array)
 
           ! Write derivative information.
-          if (tally % deriv() /= NONE) then
-            deriv => tally_deriv_c(tally % deriv() - 1)
+          if (tally % deriv() /= C_NONE) then
+            deriv => tally_deriv_c(tally % deriv())
             call write_dataset(tally_group, "derivative", &
                  deriv % id)
           end if

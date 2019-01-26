@@ -3,6 +3,7 @@
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_delayedgroup.h"
@@ -175,6 +176,7 @@ free_memory_tally_c()
   #pragma omp parallel
   {
     simulation::filter_matches.clear();
+    model::tally_derivs.clear();
   }
 
   model::tally_filters.clear();
@@ -260,6 +262,10 @@ extern "C" {
 
   int tally_get_mesh_filter_c(Tally* tally)
   {return tally->mesh_filter_;}
+
+  int tally_get_deriv_c(Tally* tally) {return tally->deriv_;}
+
+  int tally_set_deriv_c(Tally* tally, int deriv) {tally->deriv_ = deriv;}
 }
 
 } // namespace openmc

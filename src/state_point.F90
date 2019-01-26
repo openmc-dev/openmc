@@ -28,7 +28,7 @@ module state_point
   use string,             only: to_str, count_digits, zero_padded, to_f_string
   use tally_header
   use tally_filter_header
-  use tally_derivative_header, only: tally_derivs
+  use tally_derivative_header
   use timer_header
 
   implicit none
@@ -69,6 +69,7 @@ contains
     character(len=:, kind=C_CHAR), allocatable :: filename_
     character(MAX_WORD_LEN, kind=C_CHAR) :: temp_name
     logical :: parallel
+    type(TallyDerivative), pointer :: deriv
 
     interface
       subroutine meshes_to_hdf5(group) bind(C)
@@ -174,10 +175,11 @@ contains
       call meshes_to_hdf5(tallies_group)
 
       ! Write information for derivatives.
-      if (size(tally_derivs) > 0) then
+      if (n_tally_derivs() > 0) then
         derivs_group = create_group(tallies_group, "derivatives")
-        do i = 1, size(tally_derivs)
-          associate(deriv => tally_derivs(i))
+        do i = 1, n_tally_derivs()
+          !associate(deriv => tally_derivs(i))
+          deriv => tally_deriv_c(i - 1)
             deriv_group = create_group(derivs_group, "derivative " &
                  // trim(to_str(deriv % id)))
             select case (deriv % variable)
@@ -200,7 +202,7 @@ contains
                    &state_point.F90.")
             end select
             call close_group(deriv_group)
-          end associate
+          !end associate
         end do
         call close_group(derivs_group)
       end if
@@ -303,9 +305,10 @@ contains
           deallocate(str_array)
 
           ! Write derivative information.
-          if (tally % deriv /= NONE) then
+          if (tally % deriv() /= NONE) then
+            deriv => tally_deriv_c(tally % deriv() - 1)
             call write_dataset(tally_group, "derivative", &
-                 tally_derivs(tally % deriv) % id)
+                 deriv % id)
           end if
 
           ! Write scores.

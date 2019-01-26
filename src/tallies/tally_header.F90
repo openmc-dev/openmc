@@ -93,9 +93,6 @@ module tally_header
     integer                           :: n_triggers = 0  ! # of triggers
     type(TriggerObject),  allocatable :: triggers(:)     ! Array of triggers
 
-    ! Index for the TallyDerivative for differential tallies.
-    integer :: deriv = NONE
-
   contains
     procedure :: accumulate => tally_accumulate
     procedure :: allocate_results => tally_allocate_results
@@ -110,6 +107,8 @@ module tally_header
     procedure :: delayedgroup_filter => tally_get_delayedgroup_filter
     procedure :: surface_filter => tally_get_surface_filter
     procedure :: mesh_filter => tally_get_mesh_filter
+    procedure :: deriv => tally_get_deriv
+    procedure :: set_deriv => tally_set_deriv
   end type TallyObject
 
   type, public :: TallyContainer
@@ -403,6 +402,32 @@ contains
     end interface
     filt = tally_get_mesh_filter_c(this % ptr)
   end function
+
+  function tally_get_deriv(this) result(deriv)
+    class(TallyObject) :: this
+    integer(C_INT) :: deriv
+    interface
+      function tally_get_deriv_c(tally) result(deriv) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: tally
+        integer(C_INT) :: deriv
+      end function
+    end interface
+    deriv = tally_get_deriv_c(this % ptr)
+  end function
+
+  subroutine tally_set_deriv(this, deriv)
+    class(TallyObject) :: this
+    integer(C_INT) :: deriv
+    interface
+      subroutine tally_set_deriv_c(tally, deriv) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: tally
+        integer(C_INT), value :: deriv
+      end subroutine
+    end interface
+    call tally_set_deriv_c(this % ptr, deriv)
+  end subroutine
 
 !===============================================================================
 ! CONFIGURE_TALLIES initializes several data structures related to tallies. This

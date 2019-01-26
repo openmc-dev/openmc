@@ -39,8 +39,10 @@ public:
   int surface_filter_ {C_NONE};
   int mesh_filter_ {C_NONE};
 
+  int deriv_ {F90_NONE}; //!< Index of a TallyDerivative object for diff tallies.
+
 private:
-  std::vector<int32_t> filters_; //< Filter indices in global filters array
+  std::vector<int32_t> filters_; //!< Filter indices in global filters array
 
   //! Index strides assigned to each filter to support 1D indexing.
   std::vector<int32_t> strides_;

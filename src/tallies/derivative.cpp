@@ -102,14 +102,12 @@ read_tally_derivatives(pugi::xml_node* node)
     fatal_error("Differential tallies not supported in multi-group mode");
 }
 
-/*
 //! Set the flux derivatives on differential tallies to zero.
 extern "C" void
-zero_flux_derivs_c()
+zero_flux_derivs()
 {
   for (auto& deriv : model::tally_derivs) deriv.flux_deriv = 0.;
 }
-*/
 
 //==============================================================================
 // Fortran interop

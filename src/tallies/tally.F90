@@ -46,6 +46,11 @@ module tally
     end subroutine score_analog_tally_
   end interface
 
+  interface
+    subroutine zero_flux_derivs() bind(C)
+    end subroutine
+  end interface
+
 contains
 
 !===============================================================================
@@ -3712,19 +3717,6 @@ contains
       !end associate
     end do
   end subroutine score_collision_derivative
-
-!===============================================================================
-! ZERO_FLUX_DERIVS Set the flux derivatives on differential tallies to zero.
-!===============================================================================
-
-  subroutine zero_flux_derivs()
-    integer :: i
-    type(TallyDerivative), pointer :: deriv
-    do i = 0, n_tally_derivs() - 1
-      deriv => tally_deriv_c(i)
-      deriv % flux_deriv = ZERO
-    end do
-  end subroutine zero_flux_derivs
 
 !===============================================================================
 ! ACCUMULATE_TALLIES accumulates the sum of the contributions from each history

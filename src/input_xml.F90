@@ -913,6 +913,7 @@ contains
     integer :: l             ! loop over bins
     integer :: filter_id     ! user-specified identifier for filter
     integer :: tally_id      ! user-specified identifier for filter
+    integer :: deriv_id
     integer :: i_filt        ! index in filters array
     integer :: i_elem        ! index of entry in dictionary
     integer :: n             ! size of arrays in mesh specification
@@ -948,6 +949,7 @@ contains
     type(XMLNode), allocatable :: node_trigger_list(:)
     type(XMLNode), allocatable :: node_deriv_list(:)
     type(DictEntryCI) :: elem
+    type(TallyDerivative), pointer :: deriv
 
     interface
       subroutine read_tally_derivatives(node_ptr) bind(C)
@@ -960,12 +962,6 @@ contains
     filename = trim(path_input) // "tallies.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
-      ! We need to allocate tally_derivs to avoid segfaults.  Also needs to be
-      ! done in parallel because tally derivs are threadprivate.
-!$omp parallel
-      allocate(tally_derivs(0))
-!$omp end parallel
-
       ! Since a tallies.xml file is optional, no error is issued here
       return
     end if
@@ -1008,28 +1004,10 @@ contains
 
     call read_tally_derivatives(root % ptr)
 
-    ! Get pointer list to XML <derivative> nodes and allocate global array.
-    ! The array is threadprivate so it must be allocated in parallel.
     call get_node_list(root, "derivative", node_deriv_list)
-!$omp parallel
-    allocate(tally_derivs(size(node_deriv_list)))
-!$omp end parallel
-
-    ! Make sure this is not an MG run.
-    if (.not. run_CE .and. size(node_deriv_list) > 0) then
-      call fatal_error("Differential tallies not supported in multi-group mode")
-    end if
-
-    ! Read derivative attributes.
     do i = 1, size(node_deriv_list)
-!$omp parallel
-!$omp critical (ReadTallyDeriv)
-      call tally_derivs(i) % from_xml(node_deriv_list(i))
-!$omp end critical (ReadTallyDeriv)
-!$omp end parallel
-
-      ! Update tally derivative dictionary
-      call tally_deriv_dict % set(tally_derivs(i) % id, i)
+      deriv => tally_deriv_c(i - 1)
+      call tally_deriv_dict % set(deriv % id, i)
     end do
 
     ! ==========================================================================
@@ -1618,13 +1596,13 @@ contains
 
       ! Check for a tally derivative.
       if (check_for_node(node_tal, "derivative")) then
-        ! Temporarily store the derivative id.
-        call get_node_value(node_tal, "derivative", t % deriv)
+        call get_node_value(node_tal, "derivative", deriv_id)
 
         ! Find the derivative with the given id, and store it's index.
-        do j = 1, size(tally_derivs)
-          if (tally_derivs(j) % id == t % deriv) then
-            t % deriv = j
+        do j = 1, n_tally_derivs()
+          deriv => tally_deriv_c(j - 1)
+          if (deriv % id == deriv_id) then
+            call t % set_deriv(j)
             ! Only analog or collision estimators are supported for differential
             ! tallies.
             if (t % estimator == ESTIMATOR_TRACKLENGTH) then
@@ -1633,15 +1611,16 @@ contains
             ! We found the derivative we were looking for; exit the do loop.
             exit
           end if
-          if (j == size(tally_derivs)) then
+          if (j == n_tally_derivs()) then
             call fatal_error("Could not find derivative " &
-                 // trim(to_str(t % deriv)) // " specified on tally " &
+                 // trim(to_str(deriv_id)) // " specified on tally " &
                  // trim(to_str(t % id)))
           end if
         end do
 
-        if (tally_derivs(t % deriv) % variable == DIFF_NUCLIDE_DENSITY &
-             .or. tally_derivs(t % deriv) % variable == DIFF_TEMPERATURE) then
+        deriv => tally_deriv_c(t % deriv() - 1)
+        if (deriv % variable == DIFF_NUCLIDE_DENSITY &
+             .or. deriv % variable == DIFF_TEMPERATURE) then
           if (any(t % nuclide_bins == -1)) then
             if (has_energyout) then
               call fatal_error("Error on tally " // trim(to_str(t % id)) &

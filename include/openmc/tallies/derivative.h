@@ -12,7 +12,7 @@
 
 namespace openmc {
 
-struct TallyDerivative {
+extern "C" struct TallyDerivative {
   int id;  //!< User-defined identifier
   int variable;  //!< Independent variable (like temperature)
   int diff_material;  //!< Material this derivative is applied to

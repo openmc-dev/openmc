@@ -66,7 +66,6 @@ contains
     use settings
     use simulation_header
     use surface_header
-    use tally_derivative_header
     use tally_filter_header
     use tally_header
     use trigger_header
@@ -102,7 +101,6 @@ contains
     call free_memory_mesh()
     call free_memory_tally()
     call free_memory_tally_filter()
-    call free_memory_tally_derivative()
     call free_memory_bank()
     call free_memory_cmfd()
 #ifdef DAGMC

@@ -17,7 +17,7 @@ module tally
   use settings
   use simulation_header
   use string,           only: to_str
-  use tally_derivative_header, only: tally_derivs
+  use tally_derivative_header
   use tally_filter
   use tally_header
 
@@ -1184,7 +1184,7 @@ contains
       !#########################################################################
       ! Add derivative information on score for differential tallies.
 
-      if (t % deriv /= NONE) then
+      if (t % deriv() /= NONE) then
         call apply_derivative_to_score(p, t, i_nuclide, atom_density, &
              score_bin, score)
       end if
@@ -2375,7 +2375,7 @@ contains
         ! Add derivative information for differential tallies.  Note that the
         ! i_nuclide and atom_density arguments do not matter since this is an
         ! analog estimator.
-        if (t % deriv /= NONE) then
+        if (t % deriv() /= NONE) then
           call apply_derivative_to_score(p, t, 0, ZERO, SCORE_NU_FISSION, score)
         end if
 
@@ -2992,6 +2992,7 @@ contains
     integer,           intent(in)    :: score_bin
     real(8),           intent(inout) :: score
 
+    type(TallyDerivative), pointer :: deriv
     integer :: l
     logical :: scoring_diff_nuclide
     real(8) :: flux_deriv
@@ -3004,10 +3005,12 @@ contains
     ! where (1/f * d_f/d_p) is the (logarithmic) flux derivative and p is the
     ! perturbated variable.
 
-    associate(deriv => tally_derivs(t % deriv))
+    !associate(deriv => tally_derivs(t % deriv()))
+    deriv => tally_deriv_c(t % deriv() - 1)
       flux_deriv = deriv % flux_deriv
 
-      select case (tally_derivs(t % deriv) % variable)
+      !select case (tally_derivs(t % deriv()) % variable)
+      select case (deriv % variable)
 
       !=========================================================================
       ! Density derivative:
@@ -3546,7 +3549,7 @@ contains
                  &analog and collision estimators.")
         end select
       end select
-    end associate
+    !end associate
   end subroutine apply_derivative_to_score
 
 !===============================================================================
@@ -3558,14 +3561,16 @@ contains
     type(Particle), intent(in) :: p
     real(8),        intent(in) :: distance ! Neutron flight distance
 
+    type(TallyDerivative), pointer :: deriv
     integer :: i, l
     real(8) :: dsig_s, dsig_a, dsig_f
 
     ! A void material cannot be perturbed so it will not affect flux derivatives
     if (p % material == MATERIAL_VOID) return
 
-    do i = 1, size(tally_derivs)
-      associate(deriv => tally_derivs(i))
+    do i = 1, n_tally_derivs()
+      !associate(deriv => tally_derivs(i))
+      deriv => tally_deriv_c(i - 1)
         select case (deriv % variable)
 
         case (DIFF_DENSITY)
@@ -3609,7 +3614,7 @@ contains
             end if
           end associate
         end select
-      end associate
+      !end associate
     end do
   end subroutine score_track_derivative
 
@@ -3632,14 +3637,16 @@ contains
   subroutine score_collision_derivative(p)
     type(Particle), intent(in) :: p
 
+    type(TallyDerivative), pointer :: deriv
     integer :: i, j, l
     real(8) :: dsig_s, dsig_a, dsig_f
 
     ! A void material cannot be perturbed so it will not affect flux derivatives
     if (p % material == MATERIAL_VOID) return
 
-    do i = 1, size(tally_derivs)
-      associate(deriv => tally_derivs(i))
+    do i = 1, n_tally_derivs()
+      !associate(deriv => tally_derivs(i))
+      deriv => tally_deriv_c(i - 1)
         select case (deriv % variable)
 
         case (DIFF_DENSITY)
@@ -3702,7 +3709,7 @@ contains
             end if
           end associate
         end select
-      end associate
+      !end associate
     end do
   end subroutine score_collision_derivative
 
@@ -3712,8 +3719,10 @@ contains
 
   subroutine zero_flux_derivs()
     integer :: i
-    do i = 1, size(tally_derivs)
-      tally_derivs(i) % flux_deriv = ZERO
+    type(TallyDerivative), pointer :: deriv
+    do i = 1, n_tally_derivs()
+      deriv => tally_deriv_c(i - 1)
+      deriv % flux_deriv = ZERO
     end do
   end subroutine zero_flux_derivs
 

@@ -33,12 +33,12 @@ TallyDerivative::TallyDerivative(pugi::xml_node node)
   if (id <= 0)
     fatal_error("<derivative> IDs must be an integer greater than zero");
 
-  std::string variable = get_node_value(node, "variable");
+  std::string variable_str = get_node_value(node, "variable");
 
-  if (variable == "density") {
+  if (variable_str == "density") {
     variable = DIFF_DENSITY;
 
-  } else if (variable == "nuclide_density") {
+  } else if (variable_str == "nuclide_density") {
     variable = DIFF_NUCLIDE_DENSITY;
 
     std::string nuclide_name = get_node_value(node, "nuclide");
@@ -46,7 +46,8 @@ TallyDerivative::TallyDerivative(pugi::xml_node node)
     for (auto i = 0; i < data::nuclides.size(); ++i) {
       if (data::nuclides[i]->name_ == nuclide_name) {
         found = true;
-        diff_nuclide = i;
+        //TODO: off-by-one
+        diff_nuclide = i + 1;
       }
     }
     if (!found) {
@@ -56,12 +57,13 @@ TallyDerivative::TallyDerivative(pugi::xml_node node)
       fatal_error(out);
     }
 
-  } else if (variable == "temperature") {
+  } else if (variable_str == "temperature") {
     variable = DIFF_TEMPERATURE;
 
   } else {
     std::stringstream out;
-    out << "Unrecognized variable \"" << variable << "\" on derivative " << id;
+    out << "Unrecognized variable \"" << variable_str
+        << "\" on derivative " << id;
     fatal_error(out);
   }
 
@@ -98,6 +100,27 @@ read_tally_derivatives(pugi::xml_node* node)
   // Make sure derivatives were not requested for an MG run.
   if (!settings::run_CE && !model::tally_derivs.empty())
     fatal_error("Differential tallies not supported in multi-group mode");
+}
+
+/*
+//! Set the flux derivatives on differential tallies to zero.
+extern "C" void
+zero_flux_derivs_c()
+{
+  for (auto& deriv : model::tally_derivs) deriv.flux_deriv = 0.;
+}
+*/
+
+//==============================================================================
+// Fortran interop
+//==============================================================================
+
+extern "C" int n_tally_derivs() {return model::tally_derivs.size();}
+
+extern "C" TallyDerivative*
+tally_deriv_c(int i)
+{
+  return &(model::tally_derivs[i]);
 }
 
 }// namespace openmc

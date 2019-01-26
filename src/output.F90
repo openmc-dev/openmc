@@ -471,6 +471,7 @@ contains
                                                            ! to be applied at write-time
     integer, allocatable :: filter_bins(:)
     character(MAX_WORD_LEN) :: temp_name
+    type(TallyDerivative), pointer :: deriv
 
     ! Skip if there are no tallies
     if (n_tallies == 0) return
@@ -530,8 +531,9 @@ contains
       endif
 
       ! Write derivative information.
-      if (t % deriv /= NONE) then
-        associate(deriv => tally_derivs(t % deriv))
+      if (t % deriv() /= NONE) then
+        !associate(deriv => tally_derivs(t % deriv()))
+        deriv => tally_deriv_c(t % deriv() - 1)
           select case (deriv % variable)
           case (DIFF_DENSITY)
             write(unit=unit_tally, fmt="(' Density derivative  Material ',A)") &
@@ -548,7 +550,7 @@ contains
             call fatal_error("Differential tally dependent variable for tally "&
                  // trim(to_str(t % id)) // " not defined in output.F90.")
           end select
-        end associate
+        !end associate
       end if
 
       ! WARNING: Admittedly, the logic for moving for printing results is

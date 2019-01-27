@@ -49,12 +49,9 @@ bool get_uwuw_materials_xml(std::string& s) {
     // write header
     ss << "<?xml version=\"1.0\"?>\n";
     ss << "<materials>\n";
-    std::map<std::string, pyne::Material> ml = uwuw.material_library;
-    std::map<std::string, pyne::Material>::iterator it;
+    std::map<std::string, pyne::Material> mat_lib = uwuw.material_library;
     // write materials
-    for (it = ml.begin(); it != ml.end(); it++) {
-      ss << it->second.openmc("atom");
-    }
+    for (auto mat : mat_lib) { ss << mat.second.openmc("atom"); }
     // write footer
     ss << "</materials>";
     s = ss.str();
@@ -68,11 +65,10 @@ pugi::xml_document* read_uwuw_materials() {
 
   std::string s;
   bool found_uwuw_mats = get_uwuw_materials_xml(s);
-  if(found_uwuw_mats) {
+  if (found_uwuw_mats) {
     doc = new pugi::xml_document();
     pugi::xml_parse_result result = doc->load_string(s.c_str());
   }
-
   return doc;
 }
 
@@ -132,6 +128,7 @@ void load_dagmc_geometry()
   std::map<std::string, std::string> dum;
   std::string delimiters =  ":/";
   rval = model::DAG->parse_properties(keywords, dum, delimiters.c_str());
+  MB_CHK_ERR_CONT(rval);
 
   /// Cells (Volumes) \\\
 
@@ -207,7 +204,7 @@ void load_dagmc_geometry()
         } else {
           std::stringstream err_msg;
           err_msg << "Material with value " << mat_value << " not found ";
-          err_msg << "in the material library";
+          err_msg << "in the UWUW material library";
           fatal_error(err_msg.str());
         }
       } else {

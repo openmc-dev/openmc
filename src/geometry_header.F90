@@ -5,9 +5,7 @@ module geometry_header
   use algorithm,       only: find
   use constants,       only: K_BOLTZMANN, MATERIAL_VOID
   use dict_header,     only: DictIntInt
-  use material_header, only: Material, materials
   use nuclide_header
-  use sab_header
   use stl_vector,      only: VectorReal
   use string,          only: to_lower
 

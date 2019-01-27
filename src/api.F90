@@ -62,7 +62,6 @@ contains
     use geometry_header
     use material_header
     use photon_header
-    use sab_header
     use settings
     use simulation_header
     use surface_header
@@ -74,6 +73,9 @@ contains
 
     interface
       subroutine free_memory_source() bind(C)
+      end subroutine
+
+      subroutine free_memory_material() bind(C)
       end subroutine
 
       subroutine free_memory_mesh() bind(C)

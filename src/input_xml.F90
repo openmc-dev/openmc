@@ -949,6 +949,8 @@ contains
     type(XMLNode), allocatable :: node_trigger_list(:)
     type(DictEntryCI) :: elem
     type(TallyDerivative), pointer :: deriv
+    integer, allocatable :: nuclide_bins(:)
+    logical :: all_nuclides
 
     interface
       subroutine read_tally_derivatives(node_ptr) bind(C)
@@ -1193,6 +1195,7 @@ contains
       ! =======================================================================
       ! READ DATA FOR NUCLIDES
 
+      all_nuclides = .false.
       if (check_for_node(node_tal, "nuclides")) then
 
         ! Allocate a temporary string array for nuclides and copy values over
@@ -1201,27 +1204,23 @@ contains
 
         if (trim(sarray(1)) == 'all') then
           ! Handle special case <nuclides>all</nuclides>
-          allocate(t % nuclide_bins(n_nuclides + 1))
+          allocate(nuclide_bins(n_nuclides + 1))
 
           ! Set bins to 1, 2, 3, ..., n_nuclides, -1
-          t % nuclide_bins(1:n_nuclides) = &
-               (/ (j, j=1, n_nuclides) /)
-          t % nuclide_bins(n_nuclides + 1) = -1
-
-          ! Set number of nuclide bins
-          t % n_nuclide_bins = n_nuclides + 1
+          nuclide_bins(1:n_nuclides) = (/ (j, j=1, n_nuclides) /)
+          nuclide_bins(n_nuclides + 1) = -1
 
           ! Set flag so we can treat this case specially
-          t % all_nuclides = .true.
+          all_nuclides = .true.
         else
           ! Any other case, e.g. <nuclides>U-235 Pu-239</nuclides>
           n_words = node_word_count(node_tal, "nuclides")
-          allocate(t % nuclide_bins(n_words))
+          allocate(nuclide_bins(n_words))
           do j = 1, n_words
 
             ! Check if total material was specified
             if (trim(sarray(j)) == 'total') then
-              t % nuclide_bins(j) = -1
+              nuclide_bins(j) = -1
               cycle
             end if
 
@@ -1236,11 +1235,8 @@ contains
             end if
 
             ! Set bin to index in nuclides array
-            t % nuclide_bins(j) = nuclide_dict % get(word)
+            nuclide_bins(j) = nuclide_dict % get(word)
           end do
-
-          ! Set number of nuclide bins
-          t % n_nuclide_bins = n_words
         end if
 
         ! Deallocate temporary string array
@@ -1249,10 +1245,13 @@ contains
       else
         ! No <nuclides> were specified -- create only one bin will be added
         ! for the total material.
-        allocate(t % nuclide_bins(1))
-        t % nuclide_bins(1) = -1
-        t % n_nuclide_bins = 1
+        allocate(nuclide_bins(1))
+        nuclide_bins(1) = -1
       end if
+
+      ! Set the tally nuclides array
+      call t % set_nuclide_bins(nuclide_bins, all_nuclides)
+      deallocate(nuclide_bins)
 
       ! =======================================================================
       ! READ DATA FOR SCORES
@@ -1290,7 +1289,7 @@ contains
           select case (trim(score_name))
           case ('flux')
             ! Prohibit user from tallying flux for an individual nuclide
-            if (.not. (t % n_nuclide_bins == 1 .and. &
+            if (.not. (t % n_nuclide_bins() == 1 .and. &
                  t % nuclide_bins(1) == -1)) then
               call fatal_error("Cannot tally flux for an individual nuclide.")
             end if
@@ -1614,8 +1613,8 @@ contains
         deriv => tally_deriv_c(t % deriv())
         if (deriv % variable == DIFF_NUCLIDE_DENSITY &
              .or. deriv % variable == DIFF_TEMPERATURE) then
-          if (any(t % nuclide_bins == -1)) then
-            if (has_energyout) then
+          do j = 1, t % n_nuclide_bins()
+            if (has_energyout .and. t % nuclide_bins(j) == -1) then
               call fatal_error("Error on tally " // trim(to_str(t % id)) &
                    // ": Cannot use a 'nuclide_density' or 'temperature' &
                    &derivative on a tally with an outgoing energy filter and &
@@ -1626,7 +1625,7 @@ contains
               ! (e.g. pertrubing moderator but only tallying fuel), but this
               ! case would be hard to check for by only reading inputs.
             end if
-          end if
+          end do
         end if
       end if
 

@@ -333,6 +333,20 @@ openmc_tally_set_filters(int32_t index, int n, const int32_t* indices)
   return 0;
 }
 
+extern "C" int
+openmc_tally_get_nuclides(int32_t index, int** nuclides, int* n)
+{
+  // Make sure the index fits in the array bounds.
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  //TODO: off-by-one
+  *n = model::tallies[index-1]->nuclides_.size();
+  *nuclides = model::tallies[index-1]->nuclides_.data();
+}
+
 //==============================================================================
 // Fortran compatibility functions
 //==============================================================================
@@ -390,6 +404,22 @@ extern "C" {
 
   int32_t tally_get_n_filter_bins_c(Tally* tally)
   {return tally->n_filter_bins();}
+
+  int tally_get_n_nuclide_bins_c(Tally* tally)
+  {return tally->nuclides_.size();}
+
+  int tally_get_nuclide_bins_c(Tally* tally, int i)
+  {return tally->nuclides_[i-1];}
+
+  void
+  tally_set_nuclide_bins_c(Tally* tally, int n, int bins[], bool all_nuclides)
+  {
+    tally->nuclides_.clear();
+    tally->nuclides_.assign(bins, bins + n);
+    tally->all_nuclides_ = all_nuclides;
+  }
+
+  bool tally_get_all_nuclides_c(Tally* tally) {return tally->all_nuclides_;}
 
   int tally_get_energyin_filter_c(Tally* tally)
   {return tally->energyin_filter_;}

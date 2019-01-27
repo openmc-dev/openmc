@@ -20,6 +20,9 @@ class Tally {
 public:
   Tally() {}
 
+  //----------------------------------------------------------------------------
+  // Methods for getting and setting filter/stride data.
+
   const std::vector<int32_t>& filters() {return filters_;}
 
   int32_t filters(int i) const {return filters_[i];}
@@ -30,12 +33,25 @@ public:
 
   int32_t n_filter_bins() const {return n_filter_bins_;}
 
+  //----------------------------------------------------------------------------
+  // Major public data members.
+
   int type_ {TALLY_VOLUME}; //!< volume, surface current
 
   //! Event type that contributes to this tally
   int estimator_ {ESTIMATOR_TRACKLENGTH};
 
+  //! Whether this tally is currently being updated
   bool active_ {false};
+
+  //! Index of each nuclide to be tallied.  -1 indicates total material.
+  std::vector<int> nuclides_;
+
+  //! True if this tally has a bin for every nuclide in the problem
+  bool all_nuclides_ {false};
+
+  //----------------------------------------------------------------------------
+  // Miscellaneous public members.
 
   // We need to have quick access to some filters.  The following gives indices
   // for various filters that could be in the tally or C_NONE if they are not
@@ -49,6 +65,9 @@ public:
   int deriv_ {C_NONE}; //!< Index of a TallyDerivative object for diff tallies.
 
 private:
+  //----------------------------------------------------------------------------
+  // Private data.
+
   std::vector<int32_t> filters_; //!< Filter indices in global filters array
 
   //! Index strides assigned to each filter to support 1D indexing.

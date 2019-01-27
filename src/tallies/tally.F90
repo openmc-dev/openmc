@@ -2114,12 +2114,12 @@ contains
 
         ! Check for nuclide bins
         k = 0
-        NUCLIDE_LOOP: do while (k < t % n_nuclide_bins)
+        NUCLIDE_LOOP: do while (k < t % n_nuclide_bins())
 
           ! Increment the index in the list of nuclide bins
           k = k + 1
 
-          if (t % all_nuclides) then
+          if (t % all_nuclides()) then
             ! In the case that the user has requested to tally all nuclides, we
             ! can take advantage of the fact that we know exactly how nuclide
             ! bins correspond to nuclide indices.
@@ -2259,7 +2259,7 @@ contains
         ! Nuclide logic
 
         ! Check for nuclide bins
-        NUCLIDE_LOOP: do k = 1, t % n_nuclide_bins
+        NUCLIDE_LOOP: do k = 1, t % n_nuclide_bins()
           ! Get index of nuclide in nuclides array
           i_nuclide = t % nuclide_bins(k)
 
@@ -2623,13 +2623,13 @@ contains
         ! ======================================================================
         ! Nuclide logic
 
-        if (t % all_nuclides) then
+        if (t % all_nuclides()) then
           if (p % material /= MATERIAL_VOID) then
             call score_all_nuclides(p, t, flux * filter_weight, filter_index)
           end if
         else
 
-          NUCLIDE_BIN_LOOP: do k = 1, t % n_nuclide_bins
+          NUCLIDE_BIN_LOOP: do k = 1, t % n_nuclide_bins()
             ! Get index of nuclide in nuclides array
             i_nuclide = t % nuclide_bins(k)
 
@@ -2780,13 +2780,13 @@ contains
         ! ======================================================================
         ! Nuclide logic
 
-        if (t % all_nuclides) then
+        if (t % all_nuclides()) then
           if (p % material /= MATERIAL_VOID) then
             call score_all_nuclides(p, t, flux * filter_weight, filter_index)
           end if
         else
 
-          NUCLIDE_BIN_LOOP: do k = 1, t % n_nuclide_bins
+          NUCLIDE_BIN_LOOP: do k = 1, t % n_nuclide_bins()
             ! Get index of nuclide in nuclides array
             i_nuclide = t % nuclide_bins(k)
 

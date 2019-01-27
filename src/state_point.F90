@@ -277,8 +277,8 @@ contains
           end if
 
           ! Set up nuclide bin array and then write
-          allocate(str_array(tally % n_nuclide_bins))
-          NUCLIDE_LOOP: do j = 1, tally % n_nuclide_bins
+          allocate(str_array(tally % n_nuclide_bins()))
+          NUCLIDE_LOOP: do j = 1, tally % n_nuclide_bins()
             if (tally % nuclide_bins(j) > 0) then
               if (run_CE) then
                 i_xs = index(nuclides(tally % nuclide_bins(j)) % name, '.')

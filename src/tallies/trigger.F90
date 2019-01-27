@@ -183,7 +183,7 @@ contains
               score_index = trigger % score_index
 
               ! Initialize score bin index
-              NUCLIDE_LOOP: do n = 1, t % n_nuclide_bins
+              NUCLIDE_LOOP: do n = 1, t % n_nuclide_bins()
 
                 call get_trigger_uncertainty(std_dev, rel_err, &
                      score_index, filter_index, t)

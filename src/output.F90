@@ -625,7 +625,7 @@ contains
         ! Write results for this filter bin combination
         score_index = 0
         if (t % n_filters() > 0) indent = indent + 2
-        do n = 1, t % n_nuclide_bins
+        do n = 1, t % n_nuclide_bins()
           ! Write label for nuclide
           i_nuclide = t % nuclide_bins(n)
           if (i_nuclide == -1) then

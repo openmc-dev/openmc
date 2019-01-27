@@ -1056,6 +1056,7 @@ openmc_material_set_densities(int32_t index, int n, const char** name, const dou
 
     // Assign S(a,b) tables
     mat->init_thermal();
+    return 0;
   } else {
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
@@ -1068,6 +1069,7 @@ openmc_material_set_id(int32_t index, int32_t id)
   if (index >= 1 && index <= model::materials.size()) {
     model::materials[index - 1]->id_ = id;
     model::material_map[id] = index - 1;
+    return 0;
   } else {
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
@@ -1092,14 +1094,25 @@ openmc_material_set_volume(int32_t index, double volume)
   }
 }
 
+extern "C" int
+openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
+{
+  if (index_start) *index_start = model::materials.size();
+  if (index_end) *index_end = model::materials.size() + n - 1;
+  for (int32_t i = 0; i < n; i++) {
+    model::materials.push_back(new Material());
+  }
+  return 0;
+}
+
 //==============================================================================
 // Fortran compatibility functions
 //==============================================================================
 
 extern "C" {
-  Material* material_pointer(int32_t indx) {return model::materials[indx];}
+  size_t n_materials() { return model::materials.size(); }
 
-  int32_t material_id(Material* mat) {return mat->id_;}
+  int32_t material_id(int32_t i_mat) {return model::materials[i_mat - 1]->id_;}
 
   int material_nuclide(int32_t i_mat, int idx)
   {
@@ -1126,20 +1139,12 @@ extern "C" {
     return model::materials[i_mat - 1]->mat_nuclide_index_[i_nuc - 1] + 1;
   }
 
-  void material_calculate_xs_c(Material* mat, const Particle* p)
+  void material_calculate_xs(const Particle* p)
   {
-    mat->calculate_xs(*p);
+    model::materials[p->material - 1]->calculate_xs(*p);
   }
 
-  void extend_materials_c(int32_t n)
-  {
-    model::materials.reserve(model::materials.size() + n);
-    for (int32_t i = 0; i < n; i++) {
-      model::materials.push_back(new Material());
-    }
-  }
-
-  void free_memory_material_c()
+  void free_memory_material()
   {
     for (Material *mat : model::materials) {delete mat;}
     model::materials.clear();

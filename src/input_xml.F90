@@ -17,7 +17,6 @@ module input_xml
   use message_passing
   use mgxs_interface
   use nuclide_header
-  use multipole_header
   use output,           only: title, header
   use photon_header
   use random_lcg,       only: prn
@@ -386,13 +385,10 @@ contains
   end subroutine allocate_cells
 
   subroutine read_materials_xml() bind(C)
-    integer :: i              ! loop index for materials
     logical :: file_exists    ! does materials.xml exist?
     character(MAX_LINE_LEN) :: filename     ! absolute path to materials.xml
-    type(Material), pointer :: mat => null()
     type(XMLDocument) :: doc
     type(XMLNode) :: root
-    type(XMLNode), allocatable :: node_mat_list(:)
 
     interface
       function nuclides_size() bind(C) result(n)
@@ -422,17 +418,6 @@ contains
     root = doc % document_element()
 
     call read_materials(root % ptr)
-
-    ! Get pointer to list of XML <material>
-    call get_node_list(root, "material", node_mat_list)
-
-    ! Allocate materials array
-    n_materials = size(node_mat_list)
-    allocate(materials(n_materials))
-
-    do i = 1, n_materials
-      materials(i) % ptr = material_pointer(i - 1)
-    end do
 
     ! Set total number of nuclides and elements
     n_nuclides = nuclides_size()

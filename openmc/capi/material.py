@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from ctypes import c_int, c_int32, c_double, c_char_p, POINTER
+from ctypes import c_int, c_int32, c_double, c_char_p, POINTER, c_size_t
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -48,6 +48,8 @@ _dll.openmc_material_set_id.errcheck = _error_handler
 _dll.openmc_material_set_volume.argtypes = [c_int32, c_double]
 _dll.openmc_material_set_volume.restype = c_int
 _dll.openmc_material_set_volume.errcheck = _error_handler
+_dll.n_materials.argtypes = []
+_dll.n_materials.restype = c_size_t
 
 
 class Material(_FortranObjectWithID):
@@ -228,7 +230,7 @@ class _MaterialMapping(Mapping):
             yield Material(index=i + 1).id
 
     def __len__(self):
-        return c_int32.in_dll(_dll, 'n_materials').value
+        return _dll.n_materials()
 
     def __repr__(self):
         return repr(dict(self))

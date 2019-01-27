@@ -22,6 +22,8 @@ class FilterMatch
 public:
   std::vector<int> bins_;
   std::vector<double> weights_;
+  int i_bin_;
+  bool bins_present_ {false};
 };
 
 } // namespace openmc

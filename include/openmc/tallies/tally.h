@@ -23,7 +23,7 @@ public:
   //----------------------------------------------------------------------------
   // Methods for getting and setting filter/stride data.
 
-  const std::vector<int32_t>& filters() {return filters_;}
+  const std::vector<int32_t>& filters() const {return filters_;}
 
   int32_t filters(int i) const {return filters_[i];}
 

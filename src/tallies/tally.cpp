@@ -3,13 +3,15 @@
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/message_passing.h"
+#include "openmc/nuclide.h"
+#include "openmc/settings.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_delayedgroup.h"
 #include "openmc/tallies/filter_surface.h"
 #include "openmc/tallies/filter_mesh.h"
-#include "openmc/message_passing.h"
 
 #include "xtensor/xadapt.hpp"
 #include "xtensor/xbuilder.hpp" // for empty_like
@@ -19,6 +21,27 @@
 #include <cstddef>
 
 namespace openmc {
+
+//==============================================================================
+// Functions defined in Fortran
+//==============================================================================
+
+extern "C" void
+score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
+  int i_nuclide, double atom_density, double flux);
+
+extern "C" void
+score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
+  int i_nuclide, double atom_density, double flux);
+
+extern "C" void
+score_all_nuclides(Particle* p, int i_tally, double flux, int filter_index);
+
+extern "C" int material_nuclide_index(int i_material, int i_nuclide);
+
+extern "C" double material_atom_density(int i_material, int i);
+
+extern "C" int tally_get_n_score_bins(int i_tally);
 
 //==============================================================================
 // Global variable definitions
@@ -119,6 +142,139 @@ adaptor_type<3> tally_results(int idx)
   std::size_t size {shape[0] * shape[1] * shape[2]};
   return xt::adapt(results, size, xt::no_ownership(), shape);
 }
+
+//! Score tallies using a 1 / Sigma_t estimate of the flux.
+//
+//! This is triggered after every collision.  It is invalid for tallies that
+//! require post-collison information because it can score reactions that didn't
+//! actually occur, and we don't a priori know what the outcome will be for
+//! reactions that we didn't sample.
+
+extern "C" void
+score_collision_tally(Particle* p)
+{
+  // Determine the collision estimate of the flux
+  double flux;
+  if (!settings::survival_biasing) {
+    flux = p->last_wgt / simulation::material_xs.total;
+  } else {
+    flux = (p->last_wgt + p->absorb_wgt) / simulation::material_xs.total;
+  }
+
+  for (auto i_tally : model::active_collision_tallies) {
+    //TODO: off-by-one
+    const Tally& tally {*model::tallies[i_tally-1]};
+    auto n_score_bins = tally_get_n_score_bins(i_tally);
+
+    //--------------------------------------------------------------------------
+    // Loop through all relevant filters and find the filter bins and weights
+    // for this event.
+
+    // Find all valid bins in each filter if they have not already been found
+    // for a previous tally.
+    for (auto i_filt : tally.filters()) {
+      //TODO: off-by-one
+      auto& match {simulation::filter_matches[i_filt-1]};
+      if (!match.bins_present_) {
+        match.bins_.clear();
+        match.weights_.clear();
+        //TODO: off-by-one
+        model::tally_filters[i_filt-1]
+          ->get_all_bins(p, tally.estimator_, match);
+        match.bins_present_ = true;
+      }
+
+      // If there are no valid bins for this filter, then there is nothing to
+      // score so we can move on to the next tally.
+      if (match.bins_.size() == 0) goto next_tally;
+
+      // Set the index of the bin used in the first filter combination
+      match.i_bin_ = 1;
+    }
+
+    //--------------------------------------------------------------------------
+    // Loop over filter bins and nuclide bins
+
+    for (bool filter_loop_done = false; !filter_loop_done; ) {
+
+      //------------------------------------------------------------------------
+      // Filter logic
+
+      // Determine scoring index and weight for the current filter combination
+      int filter_index = 1;
+      double filter_weight = 1.;
+      for (auto i = 0; i < tally.filters().size(); ++i) {
+        auto i_filt = tally.filters(i);
+        //TODO: off-by-one
+        auto& match {simulation::filter_matches[i_filt-1]};
+        auto i_bin = match.i_bin_;
+        //TODO: off-by-one
+        filter_index += (match.bins_[i_bin-1] - 1) * tally.strides(i);
+        filter_weight *= match.weights_[i_bin-1];
+      }
+
+      //------------------------------------------------------------------------
+      // Nuclide logic
+
+      if (tally.all_nuclides_) {
+        score_all_nuclides(p, i_tally, flux*filter_weight, filter_index);
+      } else {
+        for (auto i = 0; i < tally.nuclides_.size(); ++i) {
+          auto i_nuclide = tally.nuclides_[i];
+
+          double atom_density = 0.;
+          if (i_nuclide > 0) {
+            auto j = material_nuclide_index(p->material, i_nuclide);
+            if (j == 0) continue;
+            atom_density = material_atom_density(p->material, j);
+          }
+
+          //TODO: consider replacing this "if" with pointers or templates
+          if (settings::run_CE) {
+            score_general_ce(p, i_tally, i*n_score_bins, filter_index,
+              i_nuclide, atom_density, flux*filter_weight);
+          } else {
+            score_general_mg(p, i_tally, i*n_score_bins, filter_index,
+              i_nuclide, atom_density, flux*filter_weight);
+          }
+        }
+      }
+
+      //------------------------------------------------------------------------
+      // Further filter logic
+
+      // Increment the filter bins, starting with the last filter to find the
+      // next valid bin combination
+      filter_loop_done = true;
+      for (int i = tally.filters().size()-1; i >= 0; --i) {
+        auto i_filt = tally.filters(i);
+        //TODO: off-by-one
+        auto& match {simulation::filter_matches[i_filt-1]};
+        if (match.i_bin_ < match.bins_.size()) {
+          ++match.i_bin_;
+          filter_loop_done = false;
+          break;
+        } else {
+          match.i_bin_ = 1;
+        }
+      }
+    }
+
+    // If the user has specified that we can assume all tallies are spatially
+    // separate, this implies that once a tally has been scored to, we needn't
+    // check the others. This cuts down on overhead when there are many
+    // tallies specified
+    if (settings::assume_separate) break;
+
+next_tally:
+    ;
+  }
+
+  // Reset all the filter matches for the next tally event.
+  for (auto& match : simulation::filter_matches)
+    match.bins_present_ = false;
+}
+
 
 #ifdef OPENMC_MPI
 void reduce_tally_results()
@@ -253,6 +409,8 @@ openmc_tally_get_type(int32_t index, int32_t* type)
   }
   //TODO: off-by-one
   *type = model::tallies[index-1]->type_;
+
+  return 0;
 }
 
 extern "C" int
@@ -274,6 +432,8 @@ openmc_tally_set_type(int32_t index, const char* type)
     set_errmsg(errmsg);
     return OPENMC_E_INVALID_ARGUMENT;
   }
+
+  return 0;
 }
 
 extern "C" int
@@ -285,6 +445,8 @@ openmc_tally_get_active(int32_t index, bool* active)
   }
   //TODO: off-by-one
   *active = model::tallies[index-1]->active_;
+
+  return 0;
 }
 
 extern "C" int
@@ -296,6 +458,8 @@ openmc_tally_set_active(int32_t index, bool active)
   }
   //TODO: off-by-one
   model::tallies[index-1]->active_ = active;
+
+  return 0;
 }
 
 extern "C" int
@@ -345,6 +509,8 @@ openmc_tally_get_nuclides(int32_t index, int** nuclides, int* n)
   //TODO: off-by-one
   *n = model::tallies[index-1]->nuclides_.size();
   *nuclides = model::tallies[index-1]->nuclides_.data();
+
+  return 0;
 }
 
 //==============================================================================

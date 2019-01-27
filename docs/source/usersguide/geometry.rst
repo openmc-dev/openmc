@@ -400,12 +400,14 @@ if needed, lattices, the last step is to create an instance of
 .. _quadratic surfaces: http://en.wikipedia.org/wiki/Quadric
 
 --------------------------
-Using a DAGMC CAD Model
+Using CAD-based Geometry
 --------------------------
 
-A DAGMC run can be enabled in OpenMC by setting the ``dagmc`` property to
-``True`` in the model settings either via the Python ``openmc.settings``
-module::
+OpenMC relies on the Direct Accelerated Geometry Monte Carlo toolkit (`DAGMC
+<https://svalinn.github.io/DAGMC/>`_) to represent CAD-based geometry in a
+surface mesh format. A DAGMC run can be enabled in OpenMC by setting the
+``dagmc`` property to ``True`` in the model Settings either via the Python
+``openmc.settings`` module::
 
   settings = openmc.Settings()
   settings.dagmc = True
@@ -414,6 +416,14 @@ or in the `settings.xml <../io_formats/settings.html>`_ file::
 
   <dagmc>true</dagmc>
 
-With ``dagmc`` set to true, OpenMC will load the DAGMC model (from a file named
-``dagmc.h5m``) when initializing a simulation. If a `geometry.xml
-<../io_formats/geometry.html>`_ is present, it will be ignored.
+With ``dagmc`` set to true, OpenMC will load the DAGMC model (from a local file
+named ``dagmc.h5m``) when initializing a simulation. If a `geometry.xml
+<../io_formats/geometry.html>`_ is present as well, it will be ignored.
+
+  **Note:** DAGMC geometries used in OpenMC are currently required to be clean,
+  meaning that all surfaces have been `imprinted and merged
+  <https://svalinn.github.io/DAGMC/usersguide/trelis_workflow.html>`_
+  successfully and that the model is `watertight
+  <https://svalinn.github.io/DAGMC/usersguide/tools.html#make-watertight>`_. Future
+  implementations of DAGMC geometry will support small volume overlaps and
+  un-merged surfaces.

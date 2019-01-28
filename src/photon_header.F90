@@ -3,11 +3,8 @@ module photon_header
   use, intrinsic :: ISO_C_BINDING
 
   use constants
-  use dict_header,      only: DictCharInt
 
   integer :: n_elements       ! Number of photon cross section tables
-
-  type(DictCharInt) :: element_dict
 
 !===============================================================================
 ! ELEMENTMICROXS contains cached microscopic photon cross sections for a
@@ -42,7 +39,6 @@ contains
 
     ! Deallocate photon cross section data
     n_elements = 0
-    call element_dict % clear()
   end subroutine free_memory_photon
 
   function micro_photon_xs_ptr() result(ptr) bind(C)

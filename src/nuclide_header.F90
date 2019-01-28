@@ -5,7 +5,7 @@ module nuclide_header
 
   use algorithm,              only: sort, find, binary_search
   use constants
-  use dict_header,            only: DictIntInt, DictCharInt
+  use dict_header,            only: DictIntInt
   use endf,                   only: reaction_name, is_fission, is_disappearance, &
                                     is_inelastic_scatter
   use endf_header,            only: Function1D, Polynomial, Tabulated1D
@@ -150,7 +150,6 @@ module nuclide_header
   ! Nuclear data for each nuclide
   type(Nuclide), allocatable, target :: nuclides(:)
   integer(C_INT), bind(C) :: n_nuclides
-  type(DictCharInt) :: nuclide_dict
 
   ! Cross section caches
   type(NuclideMicroXS), allocatable, target :: micro_xs(:)  ! Cache for each nuclide
@@ -212,6 +211,12 @@ module nuclide_header
       type(C_PTR), value :: ptr
       real(C_DOUBLE), value :: E
       real(C_DOUBLE) :: q
+    end function
+
+    function nuclide_map_get(name) result(idx) bind(C)
+      import C_CHAR, C_INT
+      character(kind=C_CHAR), intent(in) :: name(*)
+      integer(C_INT) :: idx
     end function
   end interface
 
@@ -650,7 +655,6 @@ contains
     end if
     n_nuclides = 0
 
-    call nuclide_dict % clear()
     call library_clear()
 
   end subroutine free_memory_nuclide
@@ -670,11 +674,10 @@ contains
     ! Copy array of C_CHARs to normal Fortran string
     name_ = to_f_string(name)
 
+    err = 0
     if (allocated(nuclides)) then
-      if (nuclide_dict % has(name_)) then
-        index = nuclide_dict % get(name_)
-        err = 0
-      else
+      index = nuclide_map_get(name)
+      if (index == -1) then
         err = E_DATA
         call set_errmsg("No nuclide named '" // trim(name_) // &
              "' has been loaded.")

@@ -391,7 +391,7 @@ void Material::normalize_density()
   atom_density_ *= density_;
 
   // Calculate density in g/cm^3.
-  double density_gpcc_ = 0.0;
+  density_gpcc_ = 0.0;
   for (int i = 0; i < nuclide_.size(); ++i) {
     int i_nuc = nuclide_[i];
     double awr = settings::run_CE ? data::nuclides[i_nuc]->awr_ : 1.0;

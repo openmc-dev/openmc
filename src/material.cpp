@@ -352,10 +352,9 @@ void Material::finalize()
 
 void Material::normalize_density()
 {
-  bool percent_in_atom = (atom_density_(1) > 0.0);
+  bool percent_in_atom = (atom_density_(0) > 0.0);
   bool density_in_atom = (density_ > 0.0);
 
-  double sum_percent = 0.0;
   for (int i = 0; i < nuclide_.size(); ++i) {
     // determine atomic weight ratio
     int i_nuc = nuclide_[i];
@@ -376,7 +375,7 @@ void Material::normalize_density()
   // Change density in g/cm^3 to atom/b-cm. Since all values are now in
   // atom percent, the sum needs to be re-evaluated as 1/sum(x*awr)
   if (!density_in_atom) {
-    sum_percent = 0.0;
+    double sum_percent = 0.0;
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
       double awr = settings::run_CE ?
@@ -384,7 +383,7 @@ void Material::normalize_density()
       sum_percent += atom_density_(i)*awr;
     }
     sum_percent = 1.0 / sum_percent;
-    density_ *= -N_AVOGADRO / MASS_NEUTRON * sum_percent;
+    density_ = -density_ * N_AVOGADRO / MASS_NEUTRON * sum_percent;
   }
 
   // Calculate nuclide atom densities

@@ -203,7 +203,7 @@ Material::Material(pugi::xml_node node)
   atom_density_ = xt::empty<double>({n});
   if (settings::photon_transport) element_.reserve(n);
 
-  for (int i = 0; i < names.size(); ++i) {
+  for (int i = 0; i < n; ++i) {
     const auto& name {names[i]};
 
     // Check that this nuclide is listed in the cross_sections.xml file
@@ -244,8 +244,7 @@ Material::Material(pugi::xml_node node)
       }
     }
 
-    // Copy name and atom/weight percent
-    //mat % names(j) = name
+    // Copy atom/weight percent
     atom_density_(i) = densities[i];
   }
 
@@ -255,9 +254,12 @@ Material::Material(pugi::xml_node node)
       p0_.resize(n);
 
       // Apply isotropic-in-lab treatment to specified nuclides
-      for (const auto& nuc : iso_lab) {
-        for (int j = 0; j < names.size(); ++j) {
-          if (names[j] == nuc) p0_[j] = true;
+      for (int j = 0; j < n; ++j) {
+        for (const auto& nuc : iso_lab) {
+          if (names[j] == nuc) {
+            p0_[j] = true;
+            break;
+          }
         }
       }
     }

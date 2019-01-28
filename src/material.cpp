@@ -226,7 +226,7 @@ Material::Material(pugi::xml_node node)
     // transport will be used, we need to add its symbol to the element_dict
     if (settings::photon_transport) {
       int pos = name.find_first_of("0123456789");
-      std::string element = name.substr(pos);
+      std::string element = name.substr(0, pos);
 
       // Make sure photon cross section data is available
       LibraryKey key {Library::Type::photon, element};
@@ -689,7 +689,7 @@ void Material::calculate_neutron_xs(const Particle& p) const
         // S(a,b) table, then don't use the S(a,b) table
         if (p.E > data::thermal_scatt[i_sab]->threshold()) i_sab = C_NONE;
 
-        // Increment position in i_sab_nuclides
+        // Increment position in thermal_tables_
         ++j;
 
         // Don't check for S(a,b) tables if there are no more left

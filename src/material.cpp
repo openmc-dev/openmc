@@ -633,7 +633,9 @@ void Material::init_bremsstrahlung()
 
 void Material::init_nuclide_index()
 {
-  mat_nuclide_index_.resize(data::nuclides.size());
+  int n = settings::run_CE ?
+    data::nuclides.size() : data::nuclides_MG.size();
+  mat_nuclide_index_.resize(n);
   std::fill(mat_nuclide_index_.begin(), mat_nuclide_index_.end(), -1);
   for (int i = 0; i < nuclide_.size(); ++i) {
     mat_nuclide_index_[nuclide_[i]] = i;
@@ -829,7 +831,7 @@ void Material::to_hdf5(hid_t group) const
     }
   } else {
     for (int i = 0; i < nuclide_.size(); ++i) {
-      int i_nuc = nuclide_[i_nuc];
+      int i_nuc = nuclide_[i];
       if (data::nuclides_MG[i_nuc].awr != MACROSCOPIC_AWR) {
         nuc_names.push_back(data::nuclides_MG[i_nuc].name);
         nuc_densities.push_back(atom_density_(i));

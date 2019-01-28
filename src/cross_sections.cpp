@@ -229,7 +229,7 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
 
         // Check if elemental data has been read, if needed
         int pos = name.find_first_of("0123456789");
-        std::string element = name.substr(pos);
+        std::string element = name.substr(0, pos);
         if (settings::photon_transport) {
           if (already_read.find(element) == already_read.end()) {
             // Read photon interaction data from HDF5 photon library
@@ -275,9 +275,6 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
   }
 
   for (auto& mat : model::materials) {
-    // Skip materials with no S(a,b) tables
-    if (mat->thermal_tables_.empty()) continue;
-
     for (const auto& table : mat->thermal_tables_) {
       // Get name of S(a,b) table
       int i_table = table.index_table;
@@ -305,12 +302,11 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
         already_read.insert(name);
       }
     } // thermal_tables_
+
+    // Finish setting up materials (normalizing densities, etc.)
+    mat->finalize();
   } // materials
 
-  // Finish setting up materials (normalizing densities, etc.)
-  for (auto& mat : model::materials) {
-    mat->finalize();
-  }
 
   // Set up logarithmic grid for nuclides
   for (auto& nuc : data::nuclides) {

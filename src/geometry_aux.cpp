@@ -139,15 +139,13 @@ get_temperatures(std::vector<std::vector<double>>& nuc_temps,
         }
       }
 
-      if (mat->thermal_tables_.size() > 0) {
-        for (const auto& table : mat->thermal_tables_) {
-          // Get index in data::thermal_scatt array
-          int i_sab = table.index_table;
+      for (const auto& table : mat->thermal_tables_) {
+        // Get index in data::thermal_scatt array
+        int i_sab = table.index_table;
 
-          // Add temperature if it hasn't already been added
-          if (!contains(thermal_temps[i_sab], temperature)) {
-            thermal_temps[i_sab].push_back(temperature);
-          }
+        // Add temperature if it hasn't already been added
+        if (!contains(thermal_temps[i_sab], temperature)) {
+          thermal_temps[i_sab].push_back(temperature);
         }
       }
     }

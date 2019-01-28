@@ -992,7 +992,17 @@ extern "C" bool multipole_in_range(Nuclide* nuc, double E)
     E <= nuc->multipole_->E_max_;
 }
 
-extern "C" void nuclides_clear() { data::nuclides.clear(); }
+extern "C" void nuclides_clear()
+{
+  data::nuclides.clear();
+  data::nuclide_map.clear();
+}
+
+extern "C" int nuclide_map_get(const char* name)
+{
+  auto it = data::nuclide_map.find(name);
+  return it == data::nuclide_map.end() ? -1 : it->second + 1;
+}
 
 extern "C" NuclideMicroXS* micro_xs_ptr();
 extern "C" ElementMicroXS* micro_photon_xs_ptr();

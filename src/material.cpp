@@ -899,7 +899,7 @@ openmc_get_material_index(int32_t id, int32_t* index)
     set_errmsg("No material exists with ID=" + std::to_string(id) + ".");
     return OPENMC_E_INVALID_ID;
   } else {
-    *index = it->second;
+    *index = it->second + 1;
     return 0;
   }
 }
@@ -1097,8 +1097,8 @@ openmc_material_set_volume(int32_t index, double volume)
 extern "C" int
 openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
 {
-  if (index_start) *index_start = model::materials.size();
-  if (index_end) *index_end = model::materials.size() + n - 1;
+  if (index_start) *index_start = model::materials.size() + 1;
+  if (index_end) *index_end = model::materials.size() + n;
   for (int32_t i = 0; i < n; i++) {
     model::materials.push_back(new Material());
   }

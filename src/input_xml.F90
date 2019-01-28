@@ -731,14 +731,15 @@ contains
             word = sarray(j)
 
             ! Search through nuclides
-            if (.not. nuclide_dict % has(word)) then
+            k = nuclide_map_get(to_c_string(word))
+            if (k == -1) then
               call fatal_error("Could not find the nuclide " &
                    // trim(word) // " specified in tally " &
                    // trim(to_str(t % id)) // " in any material.")
             end if
 
             ! Set bin to index in nuclides array
-            t % nuclide_bins(j) = nuclide_dict % get(word)
+            t % nuclide_bins(j) = k
           end do
 
           ! Set number of nuclide bins

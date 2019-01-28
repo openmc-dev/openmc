@@ -54,8 +54,8 @@ namespace model {
   std::vector<int> active_analog_tallies;
   std::vector<int> active_tracklength_tallies;
   std::vector<int> active_collision_tallies;
-  //std::vector<int> active_meshsurf_tallies;
-  //std::vector<int> active_surface_tallies;
+  std::vector<int> active_meshsurf_tallies;
+  std::vector<int> active_surface_tallies;
 }
 
 double global_tally_absorption;
@@ -404,6 +404,130 @@ next_tally:
     match.bins_present_ = false;
 }
 
+//! Score surface or mesh-surface tallies for particle currents.
+
+static void
+score_surface_tally_inner(Particle* p, const std::vector<int>& tallies)
+{
+  // No collision, so no weight change when survival biasing
+  double flux = p->wgt;
+
+  for (auto i_tally : tallies) {
+    //TODO: off-by-one
+    const Tally& tally {*model::tallies[i_tally-1]};
+    auto n_score_bins = tally_get_n_score_bins(i_tally);
+    auto results = tally_results(i_tally);
+
+    //--------------------------------------------------------------------------
+    // Loop through all relevant filters and find the filter bins and weights
+    // for this event.
+
+    // Find all valid bins in each filter if they have not already been found
+    // for a previous tally.
+    for (auto i_filt : tally.filters()) {
+      //TODO: off-by-one
+      auto& match {simulation::filter_matches[i_filt-1]};
+      if (!match.bins_present_) {
+        match.bins_.clear();
+        match.weights_.clear();
+        //TODO: off-by-one
+        model::tally_filters[i_filt-1]
+          ->get_all_bins(p, tally.estimator_, match);
+        match.bins_present_ = true;
+      }
+
+      // If there are no valid bins for this filter, then there is nothing to
+      // score so we can move on to the next tally.
+      if (match.bins_.size() == 0) goto next_tally;
+
+      // Set the index of the bin used in the first filter combination
+      match.i_bin_ = 1;
+    }
+
+    //--------------------------------------------------------------------------
+    // Loop over filter bins and nuclide bins
+
+    for (bool filter_loop_done = false; !filter_loop_done; ) {
+
+      //------------------------------------------------------------------------
+      // Filter logic
+
+      // Determine scoring index and weight for the current filter combination
+      int filter_index = 1;
+      double filter_weight = 1.;
+      for (auto i = 0; i < tally.filters().size(); ++i) {
+        auto i_filt = tally.filters(i);
+        //TODO: off-by-one
+        auto& match {simulation::filter_matches[i_filt-1]};
+        auto i_bin = match.i_bin_;
+        //TODO: off-by-one
+        filter_index += (match.bins_[i_bin-1] - 1) * tally.strides(i);
+        filter_weight *= match.weights_[i_bin-1];
+      }
+
+      //------------------------------------------------------------------------
+      // Scoring loop
+
+      // There is only one score type for current tallies so there is no need
+      // for a further scoring function.
+      double score = flux * filter_weight;
+      for (auto score_index = 1; score_index < n_score_bins+1; ++score_index) {
+        //TODO: off-by-one
+        #pragma omp atomic
+        results(filter_index-1, score_index-1, RESULT_VALUE) += score;
+      }
+
+      //------------------------------------------------------------------------
+      // Further filter logic
+
+      // Increment the filter bins, starting with the last filter to find the
+      // next valid bin combination
+      filter_loop_done = true;
+      for (int i = tally.filters().size()-1; i >= 0; --i) {
+        auto i_filt = tally.filters(i);
+        //TODO: off-by-one
+        auto& match {simulation::filter_matches[i_filt-1]};
+        if (match.i_bin_ < match.bins_.size()) {
+          ++match.i_bin_;
+          filter_loop_done = false;
+          break;
+        } else {
+          match.i_bin_ = 1;
+        }
+      }
+    }
+
+    // If the user has specified that we can assume all tallies are spatially
+    // separate, this implies that once a tally has been scored to, we needn't
+    // check the others. This cuts down on overhead when there are many
+    // tallies specified
+    if (settings::assume_separate) break;
+
+next_tally:
+    ;
+  }
+
+  // Reset all the filter matches for the next tally event.
+  for (auto& match : simulation::filter_matches)
+    match.bins_present_ = false;
+}
+
+//! Score mesh-surface tallies for particle currents.
+
+extern "C" void
+score_meshsurface_tally(Particle* p)
+{
+  score_surface_tally_inner(p, model::active_meshsurf_tallies);
+}
+
+//! Score surface tallies for particle currents.
+
+extern "C" void
+score_surface_tally(Particle* p)
+{
+  score_surface_tally_inner(p, model::active_surface_tallies);
+}
+
 
 #ifdef OPENMC_MPI
 void reduce_tally_results()
@@ -469,8 +593,8 @@ setup_active_tallies_c()
   model::active_analog_tallies.clear();
   model::active_tracklength_tallies.clear();
   model::active_collision_tallies.clear();
-  //model::active_meshsurf_tallies.clear();
-  //model::active_surface_tallies.clear();
+  model::active_meshsurf_tallies.clear();
+  model::active_surface_tallies.clear();
 
   //TODO: off-by-one all through here
   for (auto i = 0; i < model::tallies.size(); ++i) {
@@ -493,12 +617,12 @@ setup_active_tallies_c()
         }
         break;
 
-      //case TALLY_MESH_SURFACE:
-      //  model::active_meshsurf_tallies.push_back(i + 1);
-      //  break;
+      case TALLY_MESH_SURFACE:
+        model::active_meshsurf_tallies.push_back(i + 1);
+        break;
 
-      //case TALLY_SURFACE:
-      //  model::active_surface_tallies.push_back(i + 1);
+      case TALLY_SURFACE:
+        model::active_surface_tallies.push_back(i + 1);
       }
     }
   }
@@ -668,17 +792,17 @@ extern "C" {
   int active_analog_tallies_size()
   {return model::active_analog_tallies.size();}
 
-  int active_tracklength_tallies_data(int i)
-  {return model::active_tracklength_tallies[i-1];}
-
   int active_tracklength_tallies_size()
   {return model::active_tracklength_tallies.size();}
 
-  int active_collision_tallies_data(int i)
-  {return model::active_collision_tallies[i-1];}
-
   int active_collision_tallies_size()
   {return model::active_collision_tallies.size();}
+
+  int active_meshsurf_tallies_size()
+  {return model::active_meshsurf_tallies.size();}
+
+  int active_surface_tallies_size()
+  {return model::active_surface_tallies.size();}
 
   int tally_get_type_c(Tally* tally) {return tally->type_;}
 

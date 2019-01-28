@@ -74,9 +74,8 @@ void collision(Particle* p)
 
 void sample_neutron_reaction(Particle* p)
 {
-  int i_nuclide;
-  int i_nuc_mat;
-  sample_nuclide(p, SCORE_TOTAL, &i_nuclide, &i_nuc_mat);
+  // Sample a nuclide within the material
+  int i_nuclide = sample_nuclide(p);
 
   // Save which nuclide particle had collision with
   // TODO: off-by-one
@@ -120,7 +119,7 @@ void sample_neutron_reaction(Particle* p)
 
   // Sample a scattering reaction and determine the secondary energy of the
   // exiting neutron
-  scatter(p, i_nuclide, i_nuc_mat);
+  scatter(p, i_nuclide);
 
   // Advance URR seed stream 'N' times after energy changes
   if (p->E != p->last_E) {
@@ -420,61 +419,30 @@ void sample_positron_reaction(Particle* p)
   p->alive = false;
 }
 
-void sample_nuclide(const Particle* p, int mt, int* i_nuclide, int* i_nuc_mat)
+int sample_nuclide(const Particle* p)
 {
   // Sample cumulative distribution function
-  double cutoff;
-  switch (mt) {
-  case SCORE_TOTAL:
-    cutoff = prn() * simulation::material_xs.total;
-    break;
-  case SCORE_SCATTER:
-    cutoff = prn() * (simulation::material_xs.total -
-      simulation::material_xs.absorption);
-    break;
-  case SCORE_FISSION:
-    cutoff = prn() * simulation::material_xs.fission;
-    break;
-  }
+  double cutoff = prn() * simulation::material_xs.total;
 
   // Get pointers to nuclide/density arrays
   // TODO: off-by-one
   const auto& mat {model::materials[p->material - 1]};
   int n = mat->nuclide_.size();
 
-  *i_nuc_mat = 0;
   double prob = 0.0;
-  while (prob < cutoff) {
-    // Check to make sure that a nuclide was sampled
-    if (*i_nuc_mat >= n) {
-      p->write_restart();
-      fatal_error("Did not sample any nuclide during collision.");
-    }
-
+  for (int i = 0; i < n; ++i) {
     // Get atom density
-    *i_nuclide = mat->nuclide_[*i_nuc_mat];
-    double atom_density = mat->atom_density_[*i_nuc_mat];
-
-    // Determine microscopic cross section
-    double sigma;
-    switch (mt) {
-    case SCORE_TOTAL:
-      sigma = atom_density * simulation::micro_xs[*i_nuclide].total;
-      break;
-    case SCORE_SCATTER:
-      sigma = atom_density * (simulation::micro_xs[*i_nuclide].total -
-        simulation::micro_xs[*i_nuclide].absorption);
-        break;
-    case SCORE_FISSION:
-      sigma = atom_density * simulation::micro_xs[*i_nuclide].fission;
-      break;
-    }
+    int i_nuclide = mat->nuclide_[i];
+    double atom_density = mat->atom_density_[i];
 
     // Increment probability to compare to cutoff
-    prob += sigma;
-
-    ++(*i_nuc_mat);
+    prob += atom_density * simulation::micro_xs[i_nuclide].total;
+    if (prob >= cutoff) return i_nuclide;
   }
+
+  // If we reach here, no nuclide was sampled
+  p->write_restart();
+  throw std::runtime_error{"Did not sample any nuclide during collision."};
 }
 
 int sample_element(Particle* p)
@@ -621,7 +589,7 @@ void absorption(Particle* p, int i_nuclide)
   }
 }
 
-void scatter(Particle* p, int i_nuclide, int i_nuc_mat)
+void scatter(Particle* p, int i_nuclide)
 {
   // copy incoming direction
   Direction u_old {p->coord[0].uvw};
@@ -709,6 +677,7 @@ void scatter(Particle* p, int i_nuclide, int i_nuc_mat)
   // TODO: off-by-one
   const auto& mat {model::materials[p->material - 1]};
   if (!mat->p0_.empty()) {
+    int i_nuc_mat = mat->mat_nuclide_index_[i_nuclide];
     if (mat->p0_[i_nuc_mat]) {
       // Sample isotropic-in-lab outgoing direction
       double mu = 2.0*prn() - 1.0;

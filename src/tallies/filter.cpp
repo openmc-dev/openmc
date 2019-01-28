@@ -50,6 +50,14 @@ std::vector<std::unique_ptr<Filter>> tally_filters;
 extern "C" {
   // filter_match_point moved to simulation.cpp
 
+  int
+  filter_match_get_i_bin(FilterMatch* match)
+  {return match->i_bin_;}
+
+  void
+  filter_match_set_i_bin(FilterMatch* match, int i)
+  {match->i_bin_ = i;}
+
   void
   filter_match_bins_push_back(FilterMatch* match, int val)
   {match->bins_.push_back(val);}

@@ -46,6 +46,12 @@ module tally
   end interface
 
   interface
+    subroutine score_tracklength_tally(p, distance) bind(C)
+      import Particle, C_DOUBLE
+      type(Particle) :: p
+      real(C_DOUBLE), value :: distance
+    end subroutine
+
     subroutine score_collision_tally(p) bind(C)
       import Particle
       type(Particle) :: p
@@ -2100,7 +2106,7 @@ contains
         if (filter_matches(i_filt) % bins_size() == 0) cycle TALLY_LOOP
 
         ! Set the index of the bin used in the first filter combination
-        filter_matches(i_filt) % i_bin = 1
+        call filter_matches(i_filt) % set_i_bin(1)
       end do
 
       ! ========================================================================
@@ -2115,7 +2121,7 @@ contains
         ! Determine scoring index and weight for this filter combination
         do j = 1, t % n_filters()
           i_filt = t % filter(j)
-          i_bin = filter_matches(i_filt) % i_bin
+          i_bin = filter_matches(i_filt) % i_bin()
           filter_index = filter_index + (filter_matches(i_filt) &
                % bins_data(i_bin) - 1) * t % stride(j)
           filter_weight = filter_weight * filter_matches(i_filt) &
@@ -2175,13 +2181,13 @@ contains
         finished = .true.
         do j = t % n_filters(), 1, -1
           i_filt = t % filter(j)
-          if (filter_matches(i_filt) % i_bin < filter_matches(i_filt) % &
+          if (filter_matches(i_filt) % i_bin() < filter_matches(i_filt) % &
                bins_size()) then
-            filter_matches(i_filt) % i_bin = filter_matches(i_filt) % i_bin + 1
+            call filter_matches(i_filt) % set_i_bin(filter_matches(i_filt) % i_bin() + 1)
             finished = .false.
             exit
           else
-            filter_matches(i_filt) % i_bin = 1
+            call filter_matches(i_filt) % set_i_bin(1)
           end if
         end do
 
@@ -2246,7 +2252,7 @@ contains
         if (filter_matches(i_filt) % bins_size() == 0) cycle TALLY_LOOP
 
         ! Set the index of the bin used in the first filter combination
-        filter_matches(i_filt) % i_bin = 1
+        call filter_matches(i_filt) % set_i_bin(1)
       end do
 
       ! ========================================================================
@@ -2261,7 +2267,7 @@ contains
         ! Determine scoring index and weight for this filter combination
         do j = 1, t % n_filters()
           i_filt = t % filter(j)
-          i_bin = filter_matches(i_filt) % i_bin
+          i_bin = filter_matches(i_filt) % i_bin()
           filter_index = filter_index + (filter_matches(i_filt) &
                % bins_data(i_bin) - 1) * t % stride(j)
           filter_weight = filter_weight * filter_matches(i_filt) &
@@ -2304,13 +2310,13 @@ contains
         finished = .true.
         do j = t % n_filters(), 1, -1
           i_filt = t % filter(j)
-          if (filter_matches(i_filt) % i_bin < filter_matches(i_filt) % &
+          if (filter_matches(i_filt) % i_bin() < filter_matches(i_filt) % &
                bins_size()) then
-            filter_matches(i_filt) % i_bin = filter_matches(i_filt) % i_bin + 1
+            call filter_matches(i_filt) % set_i_bin(filter_matches(i_filt) % i_bin() + 1)
             finished = .false.
             exit
           else
-            filter_matches(i_filt) % i_bin = 1
+            call filter_matches(i_filt) % set_i_bin(1)
           end if
         end do
 
@@ -2369,7 +2375,7 @@ contains
 
     ! save original outgoing energy bin and score index
     i = t % filter(t % energyout_filter())
-    i_bin = filter_matches(i) % i_bin
+    i_bin = filter_matches(i) % i_bin()
     bin_energyout = filter_matches(i) % bins_data(i_bin)
 
     ! declare the energyout filter type
@@ -2434,7 +2440,7 @@ contains
           i_filter = 1
           do l = 1, t % n_filters()
             i_filter = i_filter + (filter_matches(t % filter(l)) &
-                 % bins_data(filter_matches(t % filter(l)) % i_bin) - 1) * &
+                 % bins_data(filter_matches(t % filter(l)) % i_bin()) - 1) * &
                  t % stride(l)
           end do
 
@@ -2474,7 +2480,7 @@ contains
                   ! combination
                   do l = 1, t % n_filters()
                     f = t % filter(l)
-                    b = filter_matches(f) % i_bin
+                    b = filter_matches(f) % i_bin()
                     i_filter = i_filter + (filter_matches(f) &
                          % bins_data(b) - 1) * t % stride(l)
                     filter_weight = filter_weight * filter_matches(f) &
@@ -2497,7 +2503,7 @@ contains
             ! determine scoring index and weight for this filter combination
             do l = 1, t % n_filters()
               f = t % filter(l)
-              b = filter_matches(f) % i_bin
+              b = filter_matches(f) % i_bin()
               i_filter = i_filter + (filter_matches(f) % bins_data(b) - 1) &
                    * t % stride(l)
               filter_weight = filter_weight * filter_matches(f) &
@@ -2538,7 +2544,7 @@ contains
 
     ! save original delayed group bin
     i_filt = t % filter(t % delayedgroup_filter())
-    i_bin = filter_matches(i_filt) % i_bin
+    i_bin = filter_matches(i_filt) % i_bin()
     bin_original = filter_matches(i_filt) % bins_data(i_bin)
     call filter_matches(i_filt) % bins_set_data(i_bin, d_bin)
 
@@ -2546,7 +2552,7 @@ contains
     filter_index = 1
     do i = 1, t % n_filters()
       filter_index = filter_index + (filter_matches(t % filter(i)) % &
-           bins_data(filter_matches(t % filter(i)) % i_bin) - 1) * t % stride(i)
+           bins_data(filter_matches(t % filter(i)) % i_bin()) - 1) * t % stride(i)
     end do
 
 !$omp atomic
@@ -2557,157 +2563,6 @@ contains
     call filter_matches(i_filt) % bins_set_data(i_bin, bin_original)
 
   end subroutine score_fission_delayed_dg
-
-!===============================================================================
-! SCORE_TRACKLENGTH_TALLY calculates fluxes and reaction rates based on the
-! track-length estimate of the flux. This is triggered at every event (surface
-! crossing, lattice crossing, or collision) and thus cannot be done for tallies
-! that require post-collision information.
-!===============================================================================
-
-  subroutine score_tracklength_tally(p, distance)
-
-    type(Particle), intent(in) :: p
-    real(8),        intent(in) :: distance
-
-    integer :: i
-    integer :: i_tally
-    integer :: i_filt
-    integer :: i_bin
-    integer :: j                    ! loop index for scoring bins
-    integer :: k                    ! loop index for nuclide bins
-    integer :: filter_index         ! single index for single bin
-    integer :: i_nuclide            ! index in nuclides array (from bins)
-    real(8) :: flux                 ! tracklength estimate of flux
-    real(8) :: atom_density         ! atom density of single nuclide in atom/b-cm
-    real(8) :: filter_weight        ! combined weight of all filters
-    logical :: finished             ! found all valid bin combinations
-    type(Material),    pointer :: mat
-
-    ! Determine track-length estimate of flux
-    flux = p % wgt * distance
-
-    ! A loop over all tallies is necessary because we need to simultaneously
-    ! determine different filter bins for the same tally in order to score to it
-
-    TALLY_LOOP: do i = 1, active_tracklength_tallies_size()
-      ! Get index of tally and pointer to tally
-      i_tally = active_tracklength_tallies_data(i)
-      associate (t => tallies(i_tally) % obj)
-
-      ! Find all valid bins in each filter if they have not already been found
-      ! for a previous tally.
-      do j = 1, t % n_filters()
-        i_filt = t % filter(j)
-        if (.not. filter_matches(i_filt) % bins_present) then
-          call filter_matches(i_filt) % bins_clear()
-          call filter_matches(i_filt) % weights_clear()
-          call filters(i_filt) % obj % get_all_bins(p, t % estimator(), &
-               filter_matches(i_filt))
-          filter_matches(i_filt) % bins_present = .true.
-        end if
-        ! If there are no valid bins for this filter, then there is nothing to
-        ! score and we can move on to the next tally.
-        if (filter_matches(i_filt) % bins_size() == 0) cycle TALLY_LOOP
-
-        ! Set the index of the bin used in the first filter combination
-        filter_matches(i_filt) % i_bin = 1
-      end do
-
-      ! ========================================================================
-      ! Loop until we've covered all valid bins on each of the filters.
-
-      FILTER_LOOP: do
-
-        ! Reset scoring index and weight
-        filter_index = 1
-        filter_weight = ONE
-
-        ! Determine scoring index and weight for this filter combination
-        do j = 1, t % n_filters()
-          i_filt = t % filter(j)
-          i_bin = filter_matches(i_filt) % i_bin
-          filter_index = filter_index + (filter_matches(i_filt) &
-               % bins_data(i_bin) - 1) * t % stride(j)
-          filter_weight = filter_weight * filter_matches(i_filt) &
-               % weights_data(i_bin)
-        end do
-
-        ! ======================================================================
-        ! Nuclide logic
-
-        if (t % all_nuclides()) then
-          if (p % material /= MATERIAL_VOID) then
-            call score_all_nuclides(p, i_tally, flux * filter_weight, filter_index)
-          end if
-        else
-
-          NUCLIDE_BIN_LOOP: do k = 1, t % n_nuclide_bins()
-            ! Get index of nuclide in nuclides array
-            i_nuclide = t % nuclide_bins(k)
-
-            if (i_nuclide > 0) then
-              if (p % material /= MATERIAL_VOID) then
-                ! Get pointer to current material
-                mat => materials(p % material)
-
-                ! Determine index of nuclide in Material % atom_density array
-                j = mat % mat_nuclide_index(i_nuclide)
-                if (j == 0) cycle NUCLIDE_BIN_LOOP
-
-                ! Copy corresponding atom density
-                atom_density = mat % atom_density(j)
-              else
-                atom_density = ZERO
-              end if
-            end if
-
-            ! Determine score for each bin
-            call score_general(p, i_tally, (k-1)*t % n_score_bins, filter_index, &
-                 i_nuclide, atom_density, flux * filter_weight)
-
-          end do NUCLIDE_BIN_LOOP
-
-        end if
-
-        ! ======================================================================
-        ! Filter logic
-
-        ! Increment the filter bins, starting with the last filter to find the
-        ! next valid bin combination
-        finished = .true.
-        do j = t % n_filters(), 1, -1
-          i_filt = t % filter(j)
-          if (filter_matches(i_filt) % i_bin < filter_matches(i_filt) % &
-               bins_size()) then
-            filter_matches(i_filt) % i_bin = filter_matches(i_filt) % i_bin + 1
-            finished = .false.
-            exit
-          else
-            filter_matches(i_filt) % i_bin = 1
-          end if
-        end do
-
-        ! Once we have finished all valid bins for each of the filters, exit
-        ! the loop.
-        if (finished) exit FILTER_LOOP
-
-      end do FILTER_LOOP
-
-      ! If the user has specified that we can assume all tallies are spatially
-      ! separate, this implies that once a tally has been scored to, we needn't
-      ! check the others. This cuts down on overhead when there are many
-      ! tallies specified
-
-      if (assume_separate) exit TALLY_LOOP
-
-      end associate
-    end do TALLY_LOOP
-
-    ! Reset filter matches flag
-    filter_matches(:) % bins_present = .false.
-
-  end subroutine score_tracklength_tally
 
 !===============================================================================
 ! score_surface_tally is called at every surface crossing and can be used to
@@ -2757,7 +2612,7 @@ contains
         if (filter_matches(i_filt) % bins_size() == 0) cycle TALLY_LOOP
 
         ! Set the index of the bin used in the first filter combination
-        filter_matches(i_filt) % i_bin = 1
+        call filter_matches(i_filt) % set_i_bin(1)
       end do
 
       ! ========================================================================
@@ -2772,7 +2627,7 @@ contains
         ! Determine scoring index and weight for this filter combination
         do j = 1, t % n_filters()
           i_filt = t % filter(j)
-          i_bin = filter_matches(i_filt) % i_bin
+          i_bin = filter_matches(i_filt) % i_bin()
           filter_index = filter_index + (filter_matches(i_filt) &
                % bins_data(i_bin) - 1) * t % stride(j)
           filter_weight = filter_weight * filter_matches(i_filt) &
@@ -2808,13 +2663,13 @@ contains
         finished = .true.
         do j = t % n_filters(), 1, -1
           i_filt = t % filter(j)
-          if (filter_matches(i_filt) % i_bin < filter_matches(i_filt) % &
+          if (filter_matches(i_filt) % i_bin() < filter_matches(i_filt) % &
                bins_size()) then
-            filter_matches(i_filt) % i_bin = filter_matches(i_filt) % i_bin + 1
+            call filter_matches(i_filt) % set_i_bin(filter_matches(i_filt) % i_bin() + 1)
             finished = .false.
             exit
           else
-            filter_matches(i_filt) % i_bin = 1
+            call filter_matches(i_filt) % set_i_bin(1)
           end if
         end do
 

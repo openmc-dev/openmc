@@ -36,13 +36,12 @@ module tally_filter_header
   type, public :: TallyFilterMatch
     type(C_PTR) :: ptr
 
-    ! Index of the bin and weight being used in the current filter combination
-    integer          :: i_bin
-
     ! Indicates whether all valid bins for this filter have been found
     logical          :: bins_present = .false.
 
   contains
+    procedure :: i_bin
+    procedure :: set_i_bin
     procedure :: bins_push_back
     procedure :: weights_push_back
     procedure :: bins_clear
@@ -149,6 +148,32 @@ contains
 !===============================================================================
 ! TallyFilterMatch implementation
 !===============================================================================
+
+  function i_bin(this) result(i)
+    class(TallyFilterMatch) :: this
+    integer :: i
+    interface
+      function filter_match_get_i_bin(ptr) result(i) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: ptr
+        integer(C_INT) :: i
+      end function
+    end interface
+    i = filter_match_get_i_bin(this % ptr)
+  end function
+
+  subroutine set_i_bin(this, i)
+    class(TallyFilterMatch) :: this
+    integer :: i
+    interface
+      subroutine filter_match_set_i_bin(ptr, i) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: ptr
+        integer(C_INT), value :: i
+      end subroutine
+    end interface
+    call filter_match_set_i_bin(this % ptr, i)
+  end subroutine
 
   subroutine bins_push_back(this, val)
     class(TallyFilterMatch), intent(inout) :: this

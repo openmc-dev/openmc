@@ -57,6 +57,16 @@ module tally
       type(Particle) :: p
     end subroutine
 
+    subroutine score_meshsurface_tally(p) bind(C)
+      import Particle
+      type(Particle) :: p
+    end subroutine
+
+    subroutine score_surface_tally(p) bind(C)
+      import Particle
+      type(Particle) :: p
+    end subroutine
+
     subroutine zero_flux_derivs() bind(C)
     end subroutine
   end interface
@@ -2565,137 +2575,6 @@ contains
   end subroutine score_fission_delayed_dg
 
 !===============================================================================
-! score_surface_tally is called at every surface crossing and can be used to
-! tally total or partial currents between two cells
-!===============================================================================
-
-  subroutine score_surface_tally(p, tally_vec)
-    type(Particle), intent(in)  :: p
-    type(VectorInt), intent(in) :: tally_vec
-
-    integer :: i
-    integer :: i_tally
-    integer :: i_filt
-    integer :: i_bin
-    integer :: q                    ! loop index for scoring bins
-    integer :: k                    ! working index for expand and score
-    integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
-    integer :: score_index          ! scoring bin index
-    integer :: j                    ! loop index for scoring bins
-    integer :: filter_index         ! single index for single bin
-    real(8) :: flux                 ! collision estimate of flux
-    real(8) :: filter_weight        ! combined weight of all filters
-    real(8) :: score                ! analog tally score
-    logical :: finished             ! found all valid bin combinations
-
-    ! No collision, so no weight change when survival biasing
-    flux = p % wgt
-
-    TALLY_LOOP: do i = 1, tally_vec % size()
-      ! Get index of tally and pointer to tally
-      i_tally = tally_vec % data(i)
-      associate (t => tallies(i_tally) % obj)
-
-      ! Find all valid bins in each filter if they have not already been found
-      ! for a previous tally.
-      do j = 1, t % n_filters()
-        i_filt = t % filter(j)
-        if (.not. filter_matches(i_filt) % bins_present) then
-          call filter_matches(i_filt) % bins_clear()
-          call filter_matches(i_filt) % weights_clear()
-          call filters(i_filt) % obj % get_all_bins(p, t % estimator(), &
-               filter_matches(i_filt))
-          filter_matches(i_filt) % bins_present = .true.
-        end if
-        ! If there are no valid bins for this filter, then there is nothing to
-        ! score and we can move on to the next tally.
-        if (filter_matches(i_filt) % bins_size() == 0) cycle TALLY_LOOP
-
-        ! Set the index of the bin used in the first filter combination
-        call filter_matches(i_filt) % set_i_bin(1)
-      end do
-
-      ! ========================================================================
-      ! Loop until we've covered all valid bins on each of the filters.
-
-      FILTER_LOOP: do
-
-        ! Reset scoring index and weight
-        filter_index = 1
-        filter_weight = ONE
-
-        ! Determine scoring index and weight for this filter combination
-        do j = 1, t % n_filters()
-          i_filt = t % filter(j)
-          i_bin = filter_matches(i_filt) % i_bin()
-          filter_index = filter_index + (filter_matches(i_filt) &
-               % bins_data(i_bin) - 1) * t % stride(j)
-          filter_weight = filter_weight * filter_matches(i_filt) &
-               % weights_data(i_bin)
-        end do
-
-        ! Determine score
-        score = flux * filter_weight
-
-        ! Currently only one score type
-        k = 0
-        SCORE_LOOP: do q = 1, t % n_score_bins
-          k = k + 1
-
-          ! determine what type of score bin
-          score_bin = t % score_bins(q)
-
-          ! determine scoring bin index, no offset from nuclide bins
-          score_index = q
-
-          ! Expand score if necessary and add to tally results.
-!$omp atomic
-          t % results(RESULT_VALUE, score_index, filter_index) = &
-               t % results(RESULT_VALUE, score_index, filter_index) + score
-
-        end do SCORE_LOOP
-
-        ! ======================================================================
-        ! Filter logic
-
-        ! Increment the filter bins, starting with the last filter to find the
-        ! next valid bin combination
-        finished = .true.
-        do j = t % n_filters(), 1, -1
-          i_filt = t % filter(j)
-          if (filter_matches(i_filt) % i_bin() < filter_matches(i_filt) % &
-               bins_size()) then
-            call filter_matches(i_filt) % set_i_bin(filter_matches(i_filt) % i_bin() + 1)
-            finished = .false.
-            exit
-          else
-            call filter_matches(i_filt) % set_i_bin(1)
-          end if
-        end do
-
-        ! Once we have finished all valid bins for each of the filters, exit
-        ! the loop.
-        if (finished) exit FILTER_LOOP
-
-      end do FILTER_LOOP
-
-      end associate
-
-      ! If the user has specified that we can assume all tallies are spatially
-      ! separate, this implies that once a tally has been scored to, we needn't
-      ! check the others. This cuts down on overhead when there are many
-      ! tallies specified
-
-      if (assume_separate) exit TALLY_LOOP
-
-    end do TALLY_LOOP
-
-    ! Reset filter matches flag
-    filter_matches(:) % bins_present = .false.
-
-  end subroutine score_surface_tally
-
-!===============================================================================
 ! APPLY_DERIVATIVE_TO_SCORE multiply the given score by its relative derivative
 !===============================================================================
 
@@ -3508,20 +3387,10 @@ contains
 
     call setup_active_tallies_c()
 
-    call active_surface_tallies % clear()
-    call active_meshsurf_tallies % clear()
-
     do i = 1, n_tallies
       associate (t => tallies(i) % obj)
         err = openmc_tally_get_active(i, active)
         if (active) then
-          ! Check what type of tally this is and add it to the appropriate list
-          if (t % type() == TALLY_MESH_SURFACE) then
-            call active_meshsurf_tallies % push_back(i)
-          elseif (t % type() == TALLY_SURFACE) then
-            call active_surface_tallies % push_back(i)
-          end if
-
           ! Check if tally contains depletion reactions and if so, set flag
           if (t % depletion_rx) need_depletion_rx = .true.
         end if

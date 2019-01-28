@@ -75,21 +75,19 @@ module tally_header
       integer(C_INT) :: size
     end function
 
-    function active_tracklength_tallies_data(i) result(tally) bind(C)
-      import C_INT
-      integer(C_INT), value :: i
-      integer(C_INT) :: tally
-    end function
-
     function active_collision_tallies_size() result(size) bind(C)
       import C_INT
       integer(C_INT) :: size
     end function
 
-    function active_collision_tallies_data(i) result(tally) bind(C)
+    function active_meshsurf_tallies_size() result(size) bind(C)
       import C_INT
-      integer(C_INT), value :: i
-      integer(C_INT) :: tally
+      integer(C_INT) :: size
+    end function
+
+    function active_surface_tallies_size() result(size) bind(C)
+      import C_INT
+      integer(C_INT) :: size
     end function
   end interface
 
@@ -188,10 +186,6 @@ module tally_header
   real(C_DOUBLE), public, bind(C) :: global_tally_leakage
 !$omp threadprivate(global_tally_collision, global_tally_absorption, &
 !$omp&              global_tally_tracklength, global_tally_leakage)
-
-  ! Active tally lists
-  type(VectorInt), public :: active_meshsurf_tallies
-  type(VectorInt), public :: active_surface_tallies
 
   ! Normalization for statistics
   integer(C_INT32_T), public, bind(C) :: n_realizations = 0 ! # of independent realizations
@@ -621,10 +615,6 @@ contains
     largest_tally_id = 0
 
     if (allocated(global_tallies)) deallocate(global_tallies)
-
-    ! Deallocate tally node lists
-    call active_meshsurf_tallies % clear()
-    call active_surface_tallies % clear()
   end subroutine free_memory_tally
 
 !===============================================================================

@@ -89,8 +89,8 @@ namespace model {
   extern std::vector<int> active_analog_tallies;
   extern std::vector<int> active_tracklength_tallies;
   extern std::vector<int> active_collision_tallies;
-  //extern std::vector<int> active_meshsurf_tallies;
-  //extern std::vector<int> active_surface_tallies;
+  extern std::vector<int> active_meshsurf_tallies;
+  extern std::vector<int> active_surface_tallies;
 }
 
 // Threadprivate variables

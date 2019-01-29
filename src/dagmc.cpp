@@ -159,12 +159,6 @@ void load_dagmc_geometry()
       model::universes[it->second]->cells_.push_back(i);
     }
 
-    if (model::DAG->is_implicit_complement(vol_handle)) {
-      // assuming implicit complement is always void
-      c->material_.push_back(MATERIAL_VOID);
-      continue;
-    }
-
     // check for temperature assignment
     std::string temp_value;
     if (model::DAG->has_prop(vol_handle, "temp")) {
@@ -174,6 +168,21 @@ void load_dagmc_geometry()
       c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * temp));
     } else {
       c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
+    }
+
+    // MATERIALS
+
+    if (model::DAG->is_implicit_complement(vol_handle)) {
+      if (model::DAG->has_prop(vol_handle, "mat")) {
+        // if the implicit complement has been assigned a material, use it
+        std::string comp_mat = DMD.volume_material_property_data_eh[vol_handle];
+        int mat_number = uwuw.material_library[comp_mat].metadata["mat_number"].asInt();
+        c->material_.push_back(mat_number);
+      } else {
+        // if no material is found, the implicit complement is void
+        c->material_.push_back(MATERIAL_VOID);
+      }
+      continue;
     }
 
     // determine volume material assignment
@@ -199,8 +208,8 @@ void load_dagmc_geometry()
         // lookup material in uwuw if the were present
         std::string uwuw_mat = DMD.volume_material_property_data_eh[vol_handle];
         if (uwuw.material_library.count(uwuw_mat) != 0) {
-          int matnumber = uwuw.material_library[uwuw_mat].metadata["mat_number"].asInt();
-          c->material_.push_back(matnumber);
+          int mat_number = uwuw.material_library[uwuw_mat].metadata["mat_number"].asInt();
+          c->material_.push_back(mat_number);
         } else {
           std::stringstream err_msg;
           err_msg << "Material with value " << mat_value << " not found ";

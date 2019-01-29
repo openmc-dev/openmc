@@ -176,6 +176,7 @@ void load_dagmc_geometry()
       if (model::DAG->has_prop(vol_handle, "mat")) {
         // if the implicit complement has been assigned a material, use it
         std::string comp_mat = DMD.volume_material_property_data_eh[vol_handle];
+        // Note: material numbers are set by UWUW
         int mat_number = uwuw.material_library[comp_mat].metadata["mat_number"].asInt();
         c->material_.push_back(mat_number);
       } else {
@@ -208,6 +209,7 @@ void load_dagmc_geometry()
         // lookup material in uwuw if the were present
         std::string uwuw_mat = DMD.volume_material_property_data_eh[vol_handle];
         if (uwuw.material_library.count(uwuw_mat) != 0) {
+          // Note: material numbers are set by UWUW
           int mat_number = uwuw.material_library[uwuw_mat].metadata["mat_number"].asInt();
           c->material_.push_back(mat_number);
         } else {

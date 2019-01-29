@@ -202,27 +202,20 @@ Coarse Mesh Finite Difference Acceleration
 ------------------------------------------
 
 CMFD is implemented in OpenMC and allows users to accelerate fission source
-convergence during inactive neutron batches. To run CMFD, the CMFDRun class
-should be used, and :mod:`from openmc import cmfd` should be included at the
-top of the Python input file. Additionally, this class has a dependence on the
-C API.
+convergence during inactive neutron batches. To use CMFD, the
+:class:`openmc.cmfd.CMFDRun` class executes OpenMC through the C API, solving
+the CMFD system between fission generations and modifying the source weights.
+Note that the :mod:`openmc.cmfd` module is not imported by default with the
+:mod:`openmc` namespace and needs to be imported explicitly.
 
 .. autosummary::
    :toctree: generated
    :nosignatures:
    :template: myclass.rst
 
-   openmc.CMFDMesh
-   openmc.CMFDRun
+   openmc.cmfd.CMFDMesh
+   openmc.cmfd.CMFDRun
 
-At the minimum, a CMFD mesh needs to be specified in order to run CMFD. Once
-these properties are set, an OpenMC simulation can be run with CMFD turned on
-with the function:
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-   :template: myfunction.rst
-
-   openmc.CMFDRun.run
-
+At the minimum, a CMFD mesh needs to be specified in order to run CMFD. Once the
+mesh and other optional properties are set, a simulation can be run with CMFD
+turned on using :meth:`openmc.cmfd.CMFDRun.run`.

@@ -53,7 +53,7 @@ _CURRENTS = {
 
 
 class CMFDMesh(object):
-    """"A structured  Cartesian mesh used for CMFD acceleration.
+    """A structured Cartesian mesh used for CMFD acceleration.
 
     Attributes
     ----------
@@ -199,14 +199,16 @@ class CMFDRun(object):
     display : dict
         Dictionary indicating which CMFD results to output. Note that CMFD
         k-effective will always be outputted. Acceptable keys are:
-          * "balance" - Whether to output RMS [%] of the resdiual from the
-            neutron balance equation on CMFD tallies (bool)
-          * "dominance" - Whether to output the estimated dominance ratio from
-            the CMFD iterations (bool)
-          * "entropy" - Whether to output the *entropy* of the CMFD predicted
-            fission source (bool)
-          * "source" - Whether to ouput the RMS [%] between the OpenMC fission
-            source and CMFD fission source (bool)
+
+        * "balance" - Whether to output RMS [%] of the resdiual from the
+          neutron balance equation on CMFD tallies (bool)
+        * "dominance" - Whether to output the estimated dominance ratio from
+          the CMFD iterations (bool)
+        * "entropy" - Whether to output the *entropy* of the CMFD predicted
+          fission source (bool)
+        * "source" - Whether to ouput the RMS [%] between the OpenMC fission
+          source and CMFD fission source (bool)
+
     downscatter : bool
         Indicate whether an effective downscatter cross section should be used
         when using 2-group CMFD.
@@ -215,7 +217,7 @@ class CMFDRun(object):
         of fission source neutrons on the next OpenMC batch. Defaults to False.
     cmfd_ktol : float
         Tolerance on the eigenvalue when performing CMFD power iteration
-    mesh : openmc.CMFDMesh
+    mesh : openmc.cmfd.CMFDMesh
         Structured mesh to be used for acceleration
     norm : float
         Normalization factor applied to the CMFD fission source distribution
@@ -244,16 +246,17 @@ class CMFDRun(object):
         ``run_adjoint`` must be true for an adjoint calculation to be
         perfomed. Options are:
 
-          * "physical" - Create adjoint matrices from physical parameters of
-             CMFD problem
-          * "math" - Create adjoint matrices mathematically as the transpose of
-             loss and production CMFD matrices
+        * "physical" - Create adjoint matrices from physical parameters of
+          CMFD problem
+        * "math" - Create adjoint matrices mathematically as the transpose of
+          loss and production CMFD matrices
+
     indices : numpy.ndarray
         Stores spatial and group dimensions as [nx, ny, nz, ng]
     cmfd_src : numpy.ndarray
         CMFD source distribution calculated from solving CMFD equations
     entropy : list of floats
-        "Shannon entropy" from cmfd fission source, stored for each generation
+        "Shannon entropy" from CMFD fission source, stored for each generation
         that CMFD is invoked
     balance : list of floats
         RMS of neutron balance equations, stored for each generation that CMFD

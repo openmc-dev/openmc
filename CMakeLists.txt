@@ -318,7 +318,6 @@ add_library(libopenmc SHARED
   src/hdf5_interface.F90
   src/initialize.F90
   src/input_xml.F90
-  src/list_header.F90
   src/material_header.F90
   src/math.F90
   src/mesh_header.F90
@@ -333,7 +332,6 @@ add_library(libopenmc SHARED
   src/random_lcg.F90
   src/reaction_header.F90
   src/relaxng
-  src/set_header.F90
   src/settings.F90
   src/simulation_header.F90
   src/simulation.F90

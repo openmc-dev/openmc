@@ -5,14 +5,11 @@ module nuclide_header
 
   use algorithm,              only: sort, find, binary_search
   use constants
-  use dict_header,            only: DictIntInt
-  use endf,                   only: reaction_name, is_fission, is_disappearance, &
-                                    is_inelastic_scatter
+  use endf,                   only: is_fission, is_disappearance
   use endf_header,            only: Function1D, Polynomial, Tabulated1D
   use error
   use hdf5_interface
   use message_passing
-  use random_lcg,             only: prn, future_prn, prn_set_stream
   use reaction_header,        only: Reaction
   use settings
   use stl_vector,             only: VectorInt, VectorReal
@@ -65,9 +62,6 @@ module nuclide_header
 
     ! Fission information
     integer, allocatable :: index_fission(:) ! indices in reactions
-
-    ! Multipole data
-    logical :: mp_present = .false.
 
     ! Reactions
     type(Reaction), allocatable :: reactions(:)

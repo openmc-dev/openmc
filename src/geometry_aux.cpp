@@ -60,6 +60,71 @@ void read_geometry_xml()
   model::root_universe = find_root_universe();
 }
 
+  struct  CellCountStorage {
+  private:
+    CellCountStorage() {}
+    CellCountStorage(CellCountStorage& c) {}
+    CellCountStorage(const CellCountStorage& c) {}
+
+    static CellCountStorage* instance_;
+
+    std::map<int32_t, std::map<int32_t, int>> counts;
+
+  public:
+
+    static CellCountStorage* instance() {
+      if (instance_ == nullptr)
+        instance_ = new CellCountStorage;
+
+      return instance_;
+    }
+
+    void clear() {
+      if (instance_ != nullptr) {
+        delete instance_;
+        instance_ = nullptr;
+      }
+    }
+
+    void set_cell_count_for_univ(int32_t univ, int32_t cell, int count) {
+      counts[univ][cell] = count;
+    }
+
+    void increment_count_for_univ(int32_t univ, int32_t cell) {
+      if (has_count(univ,cell)) {
+        counts[univ][cell] += 1;
+      } else {
+        counts[univ][cell] = 1;
+      }
+    }
+
+    bool has_count(int32_t univ, int32_t cell) {
+      return counts.count(univ) && counts[univ].count(cell);
+    }
+
+    bool has_count(int32_t univ) {
+      return counts.count(univ);
+    }
+
+    void absorb_b_into_a(int32_t a, int32_t b) {
+      std::map<int32_t, int> b_map = counts[b];
+
+      for (auto it : b_map) {
+        if (has_count(a, it.first)) {
+          counts[a][it.first] += it.second;
+        } else {
+          counts[a][it.first] = it.second;
+        }
+      }
+    }
+
+    std::map<int32_t, int> get_count(int32_t univ) {
+      return counts[univ];
+    }
+  };
+
+CellCountStorage* CellCountStorage::instance_ = nullptr;
+
 //==============================================================================
 
 void
@@ -395,19 +460,31 @@ prepare_distribcell()
 void
 count_cell_instances(int32_t univ_indx)
 {
-  for (int32_t cell_indx : model::universes[univ_indx]->cells_) {
-    Cell& c = *model::cells[cell_indx];
-    ++c.n_instances_;
+  CellCountStorage* counter = CellCountStorage::instance();
 
-    if (c.type_ == FILL_UNIVERSE) {
-      // This cell contains another universe.  Recurse into that universe.
-      count_cell_instances(c.fill_);
+  if (counter->has_count(univ_indx)) {
+    std::map<int32_t, int> univ_counts = counter->get_count(univ_indx);
+    for(auto it : univ_counts) {
+      Cell& c = *model::cells[it.first];
+      c.n_instances_ += it.second;
+    }
+  } else {
+    for (int32_t cell_indx : model::universes[univ_indx]->cells_) {
+      Cell& c = *model::cells[cell_indx];
+      ++c.n_instances_;
+      counter->increment_count_for_univ(univ_indx, cell_indx);
 
-    } else if (c.type_ == FILL_LATTICE) {
-      // This cell contains a lattice.  Recurse into the lattice universes.
-      Lattice& lat = *model::lattices[c.fill_];
-      for (auto it = lat.begin(); it != lat.end(); ++it) {
-        count_cell_instances(*it);
+      if (c.type_ == FILL_UNIVERSE) {
+        // This cell contains another universe.  Recurse into that universe.
+        count_cell_instances(c.fill_);
+        counter->absorb_b_into_a(univ_indx, c.fill_);
+      } else if (c.type_ == FILL_LATTICE) {
+        // This cell contains a lattice.  Recurse into the lattice universes.
+        Lattice& lat = *model::lattices[c.fill_];
+        for (auto it = lat.begin(); it != lat.end(); ++it) {
+          count_cell_instances(*it);
+          counter->absorb_b_into_a(univ_indx, *it);
+        }
       }
     }
   }

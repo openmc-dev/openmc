@@ -123,7 +123,68 @@ void read_geometry_xml()
     }
   };
 
+  struct  LevelCountStorage {
+  private:
+    LevelCountStorage() {}
+    LevelCountStorage(LevelCountStorage& c) {}
+    LevelCountStorage(const LevelCountStorage& c) {}
+
+    static LevelCountStorage* instance_;
+
+    std::map<int32_t, int> counts;
+
+  public:
+
+    static LevelCountStorage* instance() {
+      if (instance_ == nullptr)
+        instance_ = new LevelCountStorage;
+
+      return instance_;
+    }
+
+    void clear() {
+      if (instance_ != nullptr) {
+        delete instance_;
+        instance_ = nullptr;
+      }
+    }
+
+    void set_cell_count_for_univ(int32_t univ, int count) {
+      counts[univ] = count;
+    }
+
+    void increment_count_for_univ(int32_t univ) {
+      if (has_count(univ)) {
+        counts[univ] += 1;
+      } else {
+        counts[univ] = 1;
+      }
+    }
+
+    bool has_count(int32_t univ) {
+      return counts.count(univ);
+    }
+
+    void absorb_b_into_a(int32_t a, int32_t b) {
+
+      if (has_count(a)) {
+        counts[a] += counts[b];
+      } else {
+        counts[a] = counts[b];
+      }
+    }
+
+    void set_count(int32_t univ, int count) {
+      counts[univ] = count;
+    }
+
+    int get_count(int32_t univ) {
+      return counts[univ];
+    }
+  };
+
 CellCountStorage* CellCountStorage::instance_ = nullptr;
+LevelCountStorage* LevelCountStorage::instance_ = nullptr;
 
 //==============================================================================
 
@@ -606,6 +667,12 @@ distribcell_path(int32_t target_cell, int32_t map, int32_t target_offset)
 int
 maximum_levels(int32_t univ)
 {
+  LevelCountStorage* counter = LevelCountStorage::instance();
+
+  if (counter->has_count(univ)) {
+    return counter->get_count(univ);
+  }
+
   int levels_below {0};
 
   for (int32_t cell_indx : model::universes[univ]->cells_) {
@@ -623,6 +690,7 @@ maximum_levels(int32_t univ)
   }
 
   ++levels_below;
+  counter->set_count(univ, levels_below);
   return levels_below;
 }
 

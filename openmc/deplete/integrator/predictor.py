@@ -55,19 +55,15 @@ def predictor(operator, timesteps, power=None, power_density=None,
 
     # Generate initial conditions
     with operator as vec:
-        chain = operator.chain
-
-        # Initialize time
+        # Initialize time and starting index
         if operator.prev_res is None:
             t = 0.0
-        else:
-            t = operator.prev_res[-1].time[-1]
-
-        # Initialize starting index for saving results
-        if operator.prev_res is None:
             i_res = 0
         else:
+            t = operator.prev_res[-1].time[-1]
             i_res = len(operator.prev_res) - 1
+
+        chain = operator.chain
 
         for i, (dt, p) in enumerate(zip(timesteps, power)):
             # Get beginning-of-timestep concentrations and reaction rates
@@ -90,10 +86,10 @@ def predictor(operator, timesteps, power=None, power_density=None,
                 # Scale reaction rates by ratio of powers
                 power_res = operator.prev_res[-1].power
                 ratio_power = p / power_res
-                op_results[0].rates[0] *= ratio_power[0]
+                op_results[0].rates *= ratio_power[0]
 
             # Deplete for full timestep
-            x_end = deplete(chain, x[0], op_results[0], dt, print_out)
+            x_end = deplete(chain, x[0], op_results[0].rates, dt, print_out)
 
             # Advance time, update vector
             t += dt

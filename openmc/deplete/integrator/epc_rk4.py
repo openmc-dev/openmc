@@ -1,4 +1,4 @@
-"""The CE/CM integrator."""
+"""The EPC-RK4 integrator."""
 
 import copy
 from collections.abc import Iterable
@@ -7,25 +7,39 @@ from .cram import deplete
 from ..results import Results
 
 
-def cecm(operator, timesteps, power=None, power_density=None, print_out=True):
-    r"""Deplete using the CE/CM algorithm.
+# Functions to form the special matrix for depletion
+def _rk4_f1(chain, rates):
+    return 1/2 * chain.form_matrix(rates)
 
-    Implements the second order `CE/CM predictor-corrector algorithm
-    <https://doi.org/10.13182/NSE14-92>`_.
+def _rk4_f4(chain, rates):
+    return 1/6 * chain.form_matrix(rates[0]) + \
+           1/3 * chain.form_matrix(rates[1]) + \
+           1/3 * chain.form_matrix(rates[2]) + \
+           1/6 * chain.form_matrix(rates[3])
 
-    "CE/CM" stands for constant extrapolation on predictor and constant
-    midpoint on corrector. This algorithm is mathematically defined as:
+def epc_rk4(operator, timesteps, power=None, power_density=None, print_out=True):
+    r"""Deplete using the EPC-RK4 algorithm.
+
+    Implements an extended predictor-corrector algorithm with traditional
+    Runge-Kutta 4 method.
+    This algorithm is mathematically defined as:
 
     .. math::
-        y' &= A(y, t) y(t)
+        F_1 &= h A(y_0)
 
-        A_p &= A(y_n, t_n)
+        y_1 &= \text{expm}(1/2 F_1) y_0
 
-        y_m &= \text{expm}(A_p h/2) y_n
+        F_2 &= h A(y_1)
 
-        A_c &= A(y_m, t_n + h/2)
+        y_2 &= \text{expm}(1/2 F_2) y_0
 
-        y_{n+1} &= \text{expm}(A_c h) y_n
+        F_3 &= h A(y_2)
+
+        y_3 &= \text{expm}(F_3) y_0
+
+        F_4 &= h A(y_3)
+
+        y_4 &= \text{expm}(1/6 F_1 + 1/3 F_2 + 1/3 F_3 + 1/6 F_4) y_0
 
     Parameters
     ----------
@@ -95,16 +109,28 @@ def cecm(operator, timesteps, power=None, power_density=None, print_out=True):
                 ratio_power = p / power_res
                 op_results[0].rates *= ratio_power[0]
 
-            # Deplete for first half of timestep
-            x_middle = deplete(chain, x[0], op_results[0].rates, dt/2, print_out)
+            # Step 1: deplete with matrix 1/2*A(y0)
+            x_new = deplete(chain, x[0], op_results[0].rates, dt, print_out,
+                            matrix_func=_rk4_f1)
+            x.append(x_new)
+            op_results.append(operator(x[1], p))
 
-            # Get middle-of-timestep reaction rates
-            x.append(x_middle)
-            op_results.append(operator(x_middle, p))
+            # Step 2: deplete with matrix 1/2*A(y1)
+            x_new = deplete(chain, x[0], op_results[1].rates, dt, print_out,
+                            matrix_func=_rk4_f1)
+            x.append(x_new)
+            op_results.append(operator(x[2], p))
 
-            # Deplete for full timestep using beginning-of-step materials
-            # and middle-of-timestep reaction rates
-            x_end = deplete(chain, x[0], op_results[1].rates, dt, print_out)
+            # Step 3: deplete with matrix A(y2)
+            x_new = deplete(chain, x[0], op_results[2].rates, dt, print_out)
+            x.append(x_new)
+            op_results.append(operator(x[3], p))
+
+            # Step 4: deplete with matrix 1/6*A(y0)+1/3*A(y1)+1/3*A(y2)+1/6*A(y3)
+            rates = list(zip(op_results[0].rates, op_results[1].rates,
+                             op_results[2].rates, op_results[3].rates))
+            x_end = deplete(chain, x[0], rates, dt, print_out,
+                            matrix_func=_rk4_f4)
 
             # Create results, write to disk
             Results.save(operator, x, op_results, [t, t + dt], p, i_res + i)

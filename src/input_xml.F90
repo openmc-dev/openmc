@@ -124,9 +124,9 @@ contains
     type(VectorReal), allocatable :: sab_temps(:) ! List of T to read for each S(a,b)
 
     call read_settings_xml()
-    call read_geometry_xml()
     call read_cross_sections_xml()
     call read_materials_xml()
+    call read_geometry_xml()
 
     ! Convert user IDs -> indices, assign temperatures
     call finalize_geometry(nuc_temps, sab_temps)

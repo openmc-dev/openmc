@@ -29,6 +29,12 @@ class ElementTracker:
         def add_universe(self, universe_id):
             self.update("universe", universe_id)
 
+        def reset(self):
+            self.cells = set()
+            self.surfaces = set()
+            self.lattices = set()
+            self.universes = set()
+
     instance = None
 
     def __init__(self):

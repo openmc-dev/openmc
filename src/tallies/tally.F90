@@ -51,6 +51,11 @@ module tally
       type(Particle), intent(in) :: p
     end subroutine
 
+    subroutine score_analog_tally_mg(p) bind(C)
+      import Particle
+      type(Particle), intent(in) :: p
+    end subroutine
+
     subroutine score_tracklength_tally(p, distance) bind(C)
       import Particle, C_DOUBLE
       type(Particle) :: p
@@ -2076,141 +2081,6 @@ contains
 
     end associate
   end subroutine score_all_nuclides
-
-!===============================================================================
-! SCORE_ANALOG_TALLY keeps track of how many events occur in a specified cell,
-! energy range, etc. Note that since these are "analog" tallies, they are only
-! triggered at every collision, not every event
-!===============================================================================
-
-  subroutine score_analog_tally_mg(p)
-
-    type(Particle), intent(in) :: p
-
-    integer :: i, j
-    integer :: i_tally
-    integer :: i_filt
-    integer :: i_bin
-    integer :: k                    ! loop index for nuclide bins
-    integer :: filter_index         ! single index for single bin
-    integer :: i_nuclide            ! index in nuclides array
-    real(8) :: filter_weight        ! combined weight of all filters
-    real(8) :: atom_density
-    logical :: finished             ! found all valid bin combinations
-    type(Material),    pointer :: mat
-
-    ! A loop over all tallies is necessary because we need to simultaneously
-    ! determine different filter bins for the same tally in order to score to it
-
-    TALLY_LOOP: do i = 1, active_analog_tallies_size()
-      ! Get index of tally and pointer to tally
-      i_tally = active_analog_tallies_data(i)
-      associate (t => tallies(i_tally) % obj)
-
-      ! Find all valid bins in each filter if they have not already been found
-      ! for a previous tally.
-      do j = 1, t % n_filters()
-        i_filt = t % filter(j)
-        if (.not. filter_matches(i_filt) % bins_present) then
-          call filter_matches(i_filt) % bins_clear()
-          call filter_matches(i_filt) % weights_clear()
-          call filters(i_filt) % obj % get_all_bins(p, t % estimator(), &
-               filter_matches(i_filt))
-          filter_matches(i_filt) % bins_present = .true.
-        end if
-        ! If there are no valid bins for this filter, then there is nothing to
-        ! score and we can move on to the next tally.
-        if (filter_matches(i_filt) % bins_size() == 0) cycle TALLY_LOOP
-
-        ! Set the index of the bin used in the first filter combination
-        call filter_matches(i_filt) % set_i_bin(1)
-      end do
-
-      ! ========================================================================
-      ! Loop until we've covered all valid bins on each of the filters.
-
-      FILTER_LOOP: do
-
-        ! Reset scoring index and weight
-        filter_index = 1
-        filter_weight = ONE
-
-        ! Determine scoring index and weight for this filter combination
-        do j = 1, t % n_filters()
-          i_filt = t % filter(j)
-          i_bin = filter_matches(i_filt) % i_bin()
-          filter_index = filter_index + (filter_matches(i_filt) &
-               % bins_data(i_bin) - 1) * t % stride(j)
-          filter_weight = filter_weight * filter_matches(i_filt) &
-               % weights_data(i_bin)
-        end do
-
-        ! ======================================================================
-        ! Nuclide logic
-
-        ! Check for nuclide bins
-        NUCLIDE_LOOP: do k = 1, t % n_nuclide_bins()
-          ! Get index of nuclide in nuclides array
-          i_nuclide = t % nuclide_bins(k)
-
-          if (i_nuclide > 0) then
-            if (p % material /= MATERIAL_VOID) then
-              ! Get pointer to current material
-              mat => materials(p % material)
-
-              ! Determine index of nuclide in Material % atom_density array
-              j = mat % mat_nuclide_index(i_nuclide)
-              if (j == 0) cycle NUCLIDE_LOOP
-
-              ! Copy corresponding atom density
-              atom_density = mat % atom_density(j)
-            end if
-          else
-            atom_density = ZERO
-          end if
-
-          call score_general(p, i_tally, (k-1)*t % n_score_bins, filter_index, &
-               i_nuclide, atom_density, filter_weight)
-        end do NUCLIDE_LOOP
-
-        ! ======================================================================
-        ! Filter logic
-
-        ! Increment the filter bins, starting with the last filter to find the
-        ! next valid bin combination
-        finished = .true.
-        do j = t % n_filters(), 1, -1
-          i_filt = t % filter(j)
-          if (filter_matches(i_filt) % i_bin() < filter_matches(i_filt) % &
-               bins_size()) then
-            call filter_matches(i_filt) % set_i_bin(filter_matches(i_filt) % i_bin() + 1)
-            finished = .false.
-            exit
-          else
-            call filter_matches(i_filt) % set_i_bin(1)
-          end if
-        end do
-
-        ! Once we have finished all valid bins for each of the filters, exit
-        ! the loop.
-        if (finished) exit FILTER_LOOP
-
-      end do FILTER_LOOP
-
-      ! If the user has specified that we can assume all tallies are spatially
-      ! separate, this implies that once a tally has been scored to, we needn't
-      ! check the others. This cuts down on overhead when there are many
-      ! tallies specified
-
-      if (assume_separate) exit TALLY_LOOP
-
-      end associate
-    end do TALLY_LOOP
-
-    ! Reset filter matches flag
-    filter_matches(:) % bins_present = .false.
-
-  end subroutine score_analog_tally_mg
 
 !===============================================================================
 ! SCORE_FISSION_EOUT handles a special case where we need to store neutron

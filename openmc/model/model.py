@@ -134,7 +134,7 @@ class Model(object):
         chain_file : str, optional
             Path to the depletion chain XML file.  Defaults to the
             :envvar:`OPENMC_DEPLETE_CHAIN` environment variable if it exists.
-        method : string
+        method : str
              Integration method used for depletion (e.g., 'cecm', 'predictor')
         **kwargs
             Keyword arguments passed to integration function (e.g.,

@@ -7,7 +7,9 @@
 .. module:: openmc.deplete
 
 Several functions are provided that implement different time-integration
-algorithms for depletion calculations.
+algorithms for depletion calculations, which are described in detail in Colin
+Josey's thesis, `Development and analysis of high order neutron
+transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
 
 .. autosummary::
    :toctree: generated

@@ -14,18 +14,10 @@ def si_celi(operator, timesteps, power=None, power_density=None,
     r"""Deplete using the SI-CE/LI CFQ4 algorithm.
 
     Implements the Stochastic Implicit CE/LI Predictor-Corrector algorithm using
-    the [fourth order commutator-free integrator]_.
+    the `fourth order commutator-free integrator <https://doi.org/10.1137/05063042>`_.
 
-    The CE/LI algorithm is mathematically defined as:
-
-    .. math:
-        y' = A(y, t) y(t)
-        A_p = A(y_n, t_n)
-        y_p = expm(A_p h) y_n
-        A_c = A(y_p, t_n)
-        A(t) = t/dt * A_c + (dt - t)/dt * A_p
-
-    Here, A(t) is integrated using the fourth order algorithm CFQ4.
+    Detailed algorithm can be found in Section 3.2 in `Colin Josey's thesis
+    <http://hdl.handle.net/1721.1/113721>`_.
 
     Parameters
     ----------
@@ -47,13 +39,6 @@ def si_celi(operator, timesteps, power=None, power_density=None,
         Whether or not to print out time.
     m : int, optional
         Number of stages.
-
-    References
-    ----------
-    .. [fourth order commutator-free integrator]
-       Thalhammer, Mechthild. "A fourth-order commutator-free exponential
-       integrator for nonautonomous differential equations." SIAM journal on
-       numerical analysis 44.2 (2006): 851-864.
     """
     if power is None:
         if power_density is None:
@@ -110,6 +95,7 @@ def si_celi(operator, timesteps, power=None, power_density=None,
 
         # Create results for last point, write to disk
         Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps))
+
 
 def si_celi_inner(operator, x, op_results, p, i, i_res, t, dt, print_out, m=10):
     """ The inner loop of SI-CE/LI CFQ4.

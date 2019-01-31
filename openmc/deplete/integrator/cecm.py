@@ -11,8 +11,10 @@ def cecm(operator, timesteps, power=None, power_density=None, print_out=True):
     r"""Deplete using the CE/CM algorithm.
 
     Implements the second order `CE/CM predictor-corrector algorithm
-    <https://doi.org/10.13182/NSE14-92>`_.  This algorithm is mathematically
-    defined as:
+    <https://doi.org/10.13182/NSE14-92>`_.
+
+    "CE/CM" stands for constant extrapolation on predictor and constant
+    midpoint on corrector. This algorithm is mathematically defined as:
 
     .. math::
         y' &= A(y, t) y(t)

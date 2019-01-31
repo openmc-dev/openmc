@@ -143,7 +143,7 @@ adaptor_type<3> tally_results(int idx)
   return xt::adapt(results, size, xt::no_ownership(), shape);
 }
 
-//! Score tallies based on a simple count of events.
+//! Score tallies based on a simple count of events (for continuous energy).
 //
 //! Analog tallies ar etriggered at every collision, not every event.
 
@@ -210,7 +210,9 @@ score_analog_tally_ce(Particle* p)
           auto i_nuclide = tally.nuclides_[i];
 
           // Tally this event in the present nuclide bin if that bin represents
-          // the event nuclide or the total material.
+          // the event nuclide or the total material.  Note that the i_nuclide
+          // and flux arguments for score_general are not used for analog
+          // tallies.
           if (i_nuclide == p->event_nuclide || i_nuclide == -1)
             score_general_ce(p, i_tally, i*n_score_bins, filter_index,
               -1, -1., filter_weight);
@@ -219,8 +221,6 @@ score_analog_tally_ce(Particle* p)
         // In the case that the user has requested to tally all nuclides, we
         // can take advantage of the fact that we know exactly how nuclide
         // bins correspond to nuclide indices.  First, tally the nuclide.
-        // Note that the i_nuclide and flux arguments for score_general are
-        // not used for analog tallies.
         auto i = p->event_nuclide;
         score_general_ce(p, i_tally, i*n_score_bins, filter_index,
           -1, -1., filter_weight);
@@ -229,6 +229,117 @@ score_analog_tally_ce(Particle* p)
         i = tally.nuclides_.size();
         score_general_ce(p, i_tally, i*n_score_bins, filter_index,
           -1, -1., filter_weight);
+      }
+
+      //------------------------------------------------------------------------
+      // Further filter logic
+
+      // Increment the filter bins, starting with the last filter to find the
+      // next valid bin combination
+      filter_loop_done = true;
+      for (int i = tally.filters().size()-1; i >= 0; --i) {
+        auto i_filt = tally.filters(i);
+        //TODO: off-by-one
+        auto& match {simulation::filter_matches[i_filt-1]};
+        if (match.i_bin_ < match.bins_.size()) {
+          ++match.i_bin_;
+          filter_loop_done = false;
+          break;
+        } else {
+          match.i_bin_ = 1;
+        }
+      }
+    }
+
+    // If the user has specified that we can assume all tallies are spatially
+    // separate, this implies that once a tally has been scored to, we needn't
+    // check the others. This cuts down on overhead when there are many
+    // tallies specified
+    if (settings::assume_separate) break;
+
+next_tally:
+    ;
+  }
+
+  // Reset all the filter matches for the next tally event.
+  for (auto& match : simulation::filter_matches)
+    match.bins_present_ = false;
+}
+
+//! Score tallies based on a simple count of events (for multigroup).
+//
+//! Analog tallies ar etriggered at every collision, not every event.
+
+extern "C" void
+score_analog_tally_mg(Particle* p)
+{
+  for (auto i_tally : model::active_analog_tallies) {
+    //TODO: off-by-one
+    const Tally& tally {*model::tallies[i_tally-1]};
+    auto n_score_bins = tally_get_n_score_bins(i_tally);
+
+    //--------------------------------------------------------------------------
+    // Loop through all relevant filters and find the filter bins and weights
+    // for this event.
+
+    // Find all valid bins in each filter if they have not already been found
+    // for a previous tally.
+    for (auto i_filt : tally.filters()) {
+      //TODO: off-by-one
+      auto& match {simulation::filter_matches[i_filt-1]};
+      if (!match.bins_present_) {
+        match.bins_.clear();
+        match.weights_.clear();
+        //TODO: off-by-one
+        model::tally_filters[i_filt-1]
+          ->get_all_bins(p, tally.estimator_, match);
+        match.bins_present_ = true;
+      }
+
+      // If there are no valid bins for this filter, then there is nothing to
+      // score so we can move on to the next tally.
+      if (match.bins_.size() == 0) goto next_tally;
+
+      // Set the index of the bin used in the first filter combination
+      match.i_bin_ = 1;
+    }
+
+    //--------------------------------------------------------------------------
+    // Loop over filter bins and nuclide bins
+
+    for (bool filter_loop_done = false; !filter_loop_done; ) {
+
+      //------------------------------------------------------------------------
+      // Filter logic
+
+      // Determine scoring index and weight for the current filter combination
+      int filter_index = 1;
+      double filter_weight = 1.;
+      for (auto i = 0; i < tally.filters().size(); ++i) {
+        auto i_filt = tally.filters(i);
+        //TODO: off-by-one
+        auto& match {simulation::filter_matches[i_filt-1]};
+        auto i_bin = match.i_bin_;
+        //TODO: off-by-one
+        filter_index += (match.bins_[i_bin-1] - 1) * tally.strides(i);
+        filter_weight *= match.weights_[i_bin-1];
+      }
+
+      //------------------------------------------------------------------------
+      // Nuclide logic
+
+      for (auto i = 0; i < tally.nuclides_.size(); ++i) {
+        auto i_nuclide = tally.nuclides_[i];
+
+        double atom_density = 0.;
+        if (i_nuclide > 0) {
+          auto j = material_nuclide_index(p->material, i_nuclide);
+          if (j == 0) continue;
+          atom_density = material_atom_density(p->material, j);
+        }
+
+        score_general_mg(p, i_tally, i*n_score_bins, filter_index,
+          i_nuclide, atom_density, filter_weight);
       }
 
       //------------------------------------------------------------------------

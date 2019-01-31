@@ -407,12 +407,12 @@ OpenMC relies on the Direct Accelerated Geometry Monte Carlo toolkit (`DAGMC
 <https://svalinn.github.io/DAGMC/>`_) to represent CAD-based geometry in a
 surface mesh format. A DAGMC run can be enabled in OpenMC by setting the
 ``dagmc`` property to ``True`` in the model Settings either via the Python
-``openmc.settings`` module::
+:class:`openmc.settings` Python class::
 
   settings = openmc.Settings()
   settings.dagmc = True
 
-or in the `settings.xml <../io_formats/settings.html>`_ file::
+or in the :ref:`settings.xml <io_settings>` file::
 
   <dagmc>true</dagmc>
 

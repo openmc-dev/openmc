@@ -93,8 +93,8 @@ you care. This element has the following attributes/sub-elements:
 --------------------------------
 
 When the DAGMC mode is enabled, the OpenMC geometry will be read from the file
-``dagmc.h5m``. If a `geometry.xml <../io_formats/geometry.html>`_ file is
-present with ``dagmc`` set to ``True``, it will be ignored.
+``dagmc.h5m``. If a :ref:`geometry.xml <io_geometry>` file is present with
+``dagmc`` set to ``true``, it will be ignored.
 
 --------------------------------
 ``<electron_treatment>`` Element

@@ -529,14 +529,12 @@ contains
 #endif
 
     if (.not. c_associated(doc % ptr)) then
-
-
-    ! Check if materials.xml exists
-    filename = trim(path_input) // "materials.xml"
-    inquire(FILE=filename, EXIST=file_exists)
-    if (.not. file_exists) then
-      call fatal_error("Material XML file '" // trim(filename) // "' does not &
-           &exist!")
+      ! Check if materials.xml exists
+      filename = trim(path_input) // "materials.xml"
+      inquire(FILE=filename, EXIST=file_exists)
+      if (.not. file_exists) then
+        call fatal_error("Material XML file '" // trim(filename) // "' does not &
+             &exist!")
     end if
 
     ! Parse materials.xml file

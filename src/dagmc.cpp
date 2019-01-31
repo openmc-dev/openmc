@@ -49,7 +49,7 @@ bool get_uwuw_materials_xml(std::string& s) {
     // write header
     ss << "<?xml version=\"1.0\"?>\n";
     ss << "<materials>\n";
-    std::map<std::string, pyne::Material> mat_lib = uwuw.material_library;
+    const auto& mat_lib = uwuw.material_library;
     // write materials
     for (auto mat : mat_lib) { ss << mat.second.openmc("atom"); }
     // write footer
@@ -61,7 +61,7 @@ bool get_uwuw_materials_xml(std::string& s) {
 }
 
 pugi::xml_document* read_uwuw_materials() {
-  pugi::xml_document* doc = NULL;
+  pugi::xml_document* doc = nullptr;
 
   std::string s;
   bool found_uwuw_mats = get_uwuw_materials_xml(s);
@@ -98,11 +98,11 @@ void load_dagmc_geometry()
   UWUW uwuw(DAGMC_FILENAME.c_str());
 
   // check for uwuw material definitions
-  bool using_uwuw = (uwuw.material_library.size() == 0) ? false : true;
+  bool using_uwuw = !uwuw.material_library.empty();
 
   // notify user if UWUW materials are going to be used
   if (using_uwuw) {
-    std::cout << "Found UWUW Materials in the DAGMC geometry file." << std::endl;
+    std::cout << "Found UWUW Materials in the DAGMC geometry file.\n";
   }
 
   int32_t dagmc_univ_id = 0; // universe is always 0 for DAGMC runs
@@ -120,13 +120,9 @@ void load_dagmc_geometry()
   if (using_uwuw) {
     DMD.load_property_data();
   }
-  std::vector<std::string> keywords;
-  keywords.push_back("temp");
-  keywords.push_back("mat");
-  keywords.push_back("density");
-  keywords.push_back("boundary");
+  std::vector<std::string> keywords {"temp", "mat", "density", "boundary"};
   std::map<std::string, std::string> dum;
-  std::string delimiters =  ":/";
+  std::string delimiters = ":/";
   rval = model::DAG->parse_properties(keywords, dum, delimiters.c_str());
   MB_CHK_ERR_CONT(rval);
 
@@ -216,7 +212,7 @@ void load_dagmc_geometry()
           std::stringstream err_msg;
           err_msg << "Material with value " << mat_value << " not found ";
           err_msg << "in the UWUW material library";
-          fatal_error(err_msg.str());
+          fatal_error(err_msg);
         }
       } else {
         // if not using UWUW materials, we'll find this material

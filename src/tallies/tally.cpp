@@ -86,18 +86,10 @@ Tally::set_filters(const int32_t filter_indices[], int n)
     const auto* filt = model::tally_filters[i_filt-1].get();
 
     //TODO: off-by-one on each index
-    if (dynamic_cast<const EnergyFilter*>(filt)) {
-      if (dynamic_cast<const EnergyoutFilter*>(filt)) {
-        energyout_filter_ = i + 1;
-      } else {
-        energyin_filter_ = i + 1;
-      }
+    if (dynamic_cast<const EnergyoutFilter*>(filt)) {
+      energyout_filter_ = i + 1;
     } else if (dynamic_cast<const DelayedGroupFilter*>(filt)) {
       delayedgroup_filter_ = i + 1;
-    } else if (dynamic_cast<const SurfaceFilter*>(filt)) {
-      surface_filter_ = i + 1;
-    } else if (dynamic_cast<const MeshFilter*>(filt)) {
-      mesh_filter_ = i + 1;
     }
   }
 
@@ -1021,9 +1013,6 @@ extern "C" {
   int active_tallies_size()
   {return model::active_tallies.size();}
 
-  int active_analog_tallies_data(int i)
-  {return model::active_analog_tallies[i-1];}
-
   int active_analog_tallies_size()
   {return model::active_analog_tallies.size();}
 
@@ -1075,20 +1064,11 @@ extern "C" {
 
   bool tally_get_all_nuclides_c(Tally* tally) {return tally->all_nuclides_;}
 
-  int tally_get_energyin_filter_c(Tally* tally)
-  {return tally->energyin_filter_;}
-
   int tally_get_energyout_filter_c(Tally* tally)
   {return tally->energyout_filter_;}
 
   int tally_get_delayedgroup_filter_c(Tally* tally)
   {return tally->delayedgroup_filter_;}
-
-  int tally_get_surface_filter_c(Tally* tally)
-  {return tally->surface_filter_;}
-
-  int tally_get_mesh_filter_c(Tally* tally)
-  {return tally->mesh_filter_;}
 
   int tally_get_deriv_c(Tally* tally) {return tally->deriv_;}
 

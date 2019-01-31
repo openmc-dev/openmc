@@ -359,8 +359,6 @@ add_library(libopenmc SHARED
   src/tallies/tally_filter_delayedgroup.F90
   src/tallies/tally_filter_distribcell.F90
   src/tallies/tally_filter_energy.F90
-  src/tallies/tally_filter_mesh.F90
-  src/tallies/tally_filter_meshsurface.F90
   src/tallies/tally_filter_particle.F90
   src/tallies/tally_filter_sph_harm.F90
   src/tallies/tally_header.F90
@@ -442,6 +440,7 @@ add_library(libopenmc SHARED
   src/tallies/filter_universe.cpp
   src/tallies/filter_zernike.cpp
   src/tallies/tally.cpp
+  src/tallies/trigger.cpp
   src/timer.cpp
   src/thermal.cpp
   src/wmp.cpp

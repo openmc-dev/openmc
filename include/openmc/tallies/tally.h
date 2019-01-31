@@ -56,11 +56,8 @@ public:
   // We need to have quick access to some filters.  The following gives indices
   // for various filters that could be in the tally or C_NONE if they are not
   // present.
-  int energyin_filter_ {C_NONE};
   int energyout_filter_ {C_NONE};
   int delayedgroup_filter_ {C_NONE};
-  int surface_filter_ {C_NONE};
-  int mesh_filter_ {C_NONE};
 
   int deriv_ {C_NONE}; //!< Index of a TallyDerivative object for diff tallies.
 

@@ -1152,9 +1152,9 @@ contains
       has_energyout = (t % energyout_filter() > 0)
       has_delayedgroup = (t % delayedgroup_filter() > 0)
       has_legendre = .false.
-      has_surface = (t % surface_filter() > 0)
       has_cell = .false.
       has_cellfrom = .false.
+      has_surface = .false.
       has_meshsurface = .false.
       particle_filter_index = 0
       do j = 1, t % n_filters()
@@ -1165,6 +1165,8 @@ contains
           has_cell = .true.
         type is (CellfromFilter)
           has_cellfrom = .true.
+        type is (SurfaceFilter)
+          has_surface = .true.
         type is (MeshSurfaceFilter)
           has_meshsurface = .true.
         type is (ParticleFilter)

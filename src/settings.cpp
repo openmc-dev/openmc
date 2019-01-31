@@ -25,6 +25,7 @@
 #include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/string_utils.h"
+#include "openmc/tallies/trigger.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -105,13 +106,6 @@ int trigger_batch_interval {1};
 int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
-
-// TODO: Move to separate file
-struct KTrigger {
-  int type;
-  double threshold;
-};
-extern "C" KTrigger keff_trigger;
 
 } // namespace settings
 

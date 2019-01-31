@@ -54,30 +54,6 @@ extern "C" {
   filter_match_get_i_bin(FilterMatch* match)
   {return match->i_bin_;}
 
-  void
-  filter_match_set_i_bin(FilterMatch* match, int i)
-  {match->i_bin_ = i;}
-
-  void
-  filter_match_bins_push_back(FilterMatch* match, int val)
-  {match->bins_.push_back(val);}
-
-  void
-  filter_match_weights_push_back(FilterMatch* match, double val)
-  {match->weights_.push_back(val);}
-
-  void
-  filter_match_bins_clear(FilterMatch* match)
-  {match->bins_.clear();}
-
-  void
-  filter_match_weights_clear(FilterMatch* match)
-  {match->weights_.clear();}
-
-  int
-  filter_match_bins_size(FilterMatch* match)
-  {return match->bins_.size();}
-
   int
   filter_match_bins_data(FilterMatch* match, int indx)
   {return match->bins_[indx-1];}

@@ -64,12 +64,6 @@ module tally_header
       integer(C_INT) :: size
     end function
 
-    function active_analog_tallies_data(i) result(tally) bind(C)
-      import C_INT
-      integer(C_INT), value :: i
-      integer(C_INT) :: tally
-    end function
-
     function active_tracklength_tallies_size() result(size) bind(C)
       import C_INT
       integer(C_INT) :: size
@@ -143,11 +137,8 @@ module tally_header
     procedure :: nuclide_bins => tally_get_nuclide_bins
     procedure :: set_nuclide_bins => tally_set_nuclide_bins
     procedure :: all_nuclides => tally_get_all_nuclides
-    procedure :: energyin_filter => tally_get_energyin_filter
     procedure :: energyout_filter => tally_get_energyout_filter
     procedure :: delayedgroup_filter => tally_get_delayedgroup_filter
-    procedure :: surface_filter => tally_get_surface_filter
-    procedure :: mesh_filter => tally_get_mesh_filter
     procedure :: deriv => tally_get_deriv
     procedure :: set_deriv => tally_set_deriv
   end type TallyObject
@@ -484,19 +475,6 @@ contains
     all_nuc = tally_get_all_nuclides_c(this % ptr)
   end function
 
-  function tally_get_energyin_filter(this) result(filt)
-    class(TallyObject) :: this
-    integer(C_INT) :: filt
-    interface
-      function tally_get_energyin_filter_c(tally) result(filt) bind(C)
-        import C_PTR, C_INT
-        type(C_PTR), value :: tally
-        integer(C_INT) :: filt
-      end function
-    end interface
-    filt = tally_get_energyin_filter_c(this % ptr)
-  end function
-
   function tally_get_energyout_filter(this) result(filt)
     class(TallyObject) :: this
     integer(C_INT) :: filt
@@ -521,32 +499,6 @@ contains
       end function
     end interface
     filt = tally_get_delayedgroup_filter_c(this % ptr)
-  end function
-
-  function tally_get_surface_filter(this) result(filt)
-    class(TallyObject) :: this
-    integer(C_INT) :: filt
-    interface
-      function tally_get_surface_filter_c(tally) result(filt) bind(C)
-        import C_PTR, C_INT
-        type(C_PTR), value :: tally
-        integer(C_INT) :: filt
-      end function
-    end interface
-    filt = tally_get_surface_filter_c(this % ptr)
-  end function
-
-  function tally_get_mesh_filter(this) result(filt)
-    class(TallyObject) :: this
-    integer(C_INT) :: filt
-    interface
-      function tally_get_mesh_filter_c(tally) result(filt) bind(C)
-        import C_PTR, C_INT
-        type(C_PTR), value :: tally
-        integer(C_INT) :: filt
-      end function
-    end interface
-    filt = tally_get_mesh_filter_c(this % ptr)
   end function
 
   function tally_get_deriv(this) result(deriv)

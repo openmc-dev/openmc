@@ -35,18 +35,8 @@ module tally_filter_header
 
   type, public :: TallyFilterMatch
     type(C_PTR) :: ptr
-
-    ! Indicates whether all valid bins for this filter have been found
-    logical          :: bins_present = .false.
-
   contains
     procedure :: i_bin
-    procedure :: set_i_bin
-    procedure :: bins_push_back
-    procedure :: weights_push_back
-    procedure :: bins_clear
-    procedure :: weights_clear
-    procedure :: bins_size
     procedure :: bins_data
     procedure :: weights_data
     procedure :: bins_set_data
@@ -96,6 +86,12 @@ module tally_filter_header
   end type
 
   type, public, extends(TallyFilter) :: MaterialFilter
+  end type
+
+  type, public, extends(TallyFilter) :: MeshFilter
+  end type
+
+  type, public, extends(TallyFilter) :: MeshSurfaceFilter
   end type
 
   type, public, extends(TallyFilter) :: MuFilter
@@ -161,80 +157,6 @@ contains
     end interface
     i = filter_match_get_i_bin(this % ptr)
   end function
-
-  subroutine set_i_bin(this, i)
-    class(TallyFilterMatch) :: this
-    integer :: i
-    interface
-      subroutine filter_match_set_i_bin(ptr, i) bind(C)
-        import C_PTR, C_INT
-        type(C_PTR), value :: ptr
-        integer(C_INT), value :: i
-      end subroutine
-    end interface
-    call filter_match_set_i_bin(this % ptr, i)
-  end subroutine
-
-  subroutine bins_push_back(this, val)
-    class(TallyFilterMatch), intent(inout) :: this
-    integer,                 intent(in)    :: val
-    interface
-      subroutine filter_match_bins_push_back(ptr, val) bind(C)
-        import C_PTR, C_INT
-        type(C_PTR),                value :: ptr
-        integer(C_INT), intent(in), value :: val
-      end subroutine
-    end interface
-    call filter_match_bins_push_back(this % ptr, val)
-  end subroutine bins_push_back
-
-  subroutine weights_push_back(this, val)
-    class(TallyFilterMatch), intent(inout) :: this
-    real(8),                 intent(in)    :: val
-    interface
-      subroutine filter_match_weights_push_back(ptr, val) bind(C)
-        import C_PTR, C_DOUBLE
-        type(C_PTR),                value :: ptr
-        real(C_DOUBLE), intent(in), value :: val
-      end subroutine
-    end interface
-    call filter_match_weights_push_back(this % ptr, val)
-  end subroutine weights_push_back
-
-  subroutine bins_clear(this)
-    class(TallyFilterMatch), intent(inout) :: this
-    interface
-      subroutine filter_match_bins_clear(ptr) bind(C)
-        import C_PTR
-        type(C_PTR), value :: ptr
-      end subroutine
-    end interface
-    call filter_match_bins_clear(this % ptr)
-  end subroutine bins_clear
-
-  subroutine weights_clear(this)
-    class(TallyFilterMatch), intent(inout) :: this
-    interface
-      subroutine filter_match_weights_clear(ptr) bind(C)
-        import C_PTR
-        type(C_PTR), value :: ptr
-      end subroutine
-    end interface
-    call filter_match_weights_clear(this % ptr)
-  end subroutine weights_clear
-
-  function bins_size(this) result(len)
-    class(TallyFilterMatch), intent(inout) :: this
-    integer                                :: len
-    interface
-      function filter_match_bins_size(ptr) bind(C) result(len)
-        import C_PTR, C_INT
-        type(C_PTR), value :: ptr
-        integer(C_INT)     :: len
-      end function
-    end interface
-    len = filter_match_bins_size(this % ptr)
-  end function bins_size
 
   function bins_data(this, indx) result(val)
     class(TallyFilterMatch), intent(inout) :: this

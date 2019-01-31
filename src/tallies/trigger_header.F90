@@ -11,13 +11,13 @@ module trigger_header
 ! TRIGGEROBJECT stores the variance, relative error and standard deviation
 ! for some user-specified trigger.
 !===============================================================================
-  type, public :: TriggerObject
-    integer            :: type          ! "variance", "std_dev" or "rel_err"
-    real(8)            :: threshold     ! a convergence threshold
-    integer            :: score_index   ! the index of the score
-    real(8)            :: variance = ZERO ! temp variance container
-    real(8)            :: std_dev  = ZERO ! temp std. dev. container
-    real(8)            :: rel_err  = ZERO ! temp rel. err. container
+  type, public, bind(C) :: TriggerObject
+    integer(C_INT) :: type          ! "variance", "std_dev" or "rel_err"
+    real(C_DOUBLE) :: threshold     ! a convergence threshold
+    integer(C_INT) :: score_index   ! the index of the score
+    real(C_DOUBLE) :: variance = ZERO ! temp variance container
+    real(C_DOUBLE) :: std_dev  = ZERO ! temp std. dev. container
+    real(C_DOUBLE) :: rel_err  = ZERO ! temp rel. err. container
   end type TriggerObject
 
 !===============================================================================

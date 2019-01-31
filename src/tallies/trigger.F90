@@ -2,26 +2,31 @@ module trigger
 
   use, intrinsic :: ISO_C_BINDING
 
-#ifdef OPENMC_MPI
-  use message_passing
-#endif
-
   use constants
   use eigenvalue,     only: openmc_get_keff
   use endf,           only: reaction_name
   use error,          only: warning, write_message
   use string,         only: to_str
-  use mesh_header,    only: RegularMesh, meshes
   use message_passing, only: master
   use settings
   use simulation_header
   use trigger_header
   use tally,          only: TallyObject
-  use tally_filter_mesh, only: MeshFilter
-  use tally_filter_header, only: filter_matches, filters
   use tally_header, only: tallies, n_tallies
 
   implicit none
+
+  interface
+    subroutine get_tally_uncertainty(i_tally, score_index, filter_index, &
+         std_dev, rel_err) bind(C)
+      import C_INT, C_DOUBLE
+      integer(C_INT), value :: i_tally
+      integer(C_INT), value :: score_index
+      integer(C_INT), value :: filter_index
+      real(C_DOUBLE) :: std_dev
+      real(C_DOUBLE) :: rel_err
+    end subroutine
+  end interface
 
 contains
 
@@ -171,22 +176,10 @@ contains
       TRIGGER_LOOP: do s = 1, t % n_triggers
         associate (trigger => t % triggers(s))
 
-        ! Initialize trigger uncertainties to zero
-        trigger % std_dev = ZERO
-        trigger % rel_err = ZERO
-        trigger % variance = ZERO
-
-        ! Mesh current tally triggers require special treatment
-        if (t % type() == TALLY_MESH_SURFACE) then
-          call compute_tally_current(t, trigger)
-
-        else
-
-          ! Initialize bins, filter level
-          do j = 1, t % n_filters()
-            call filter_matches(t % filter(j)) % bins_clear()
-            call filter_matches(t % filter(j)) % bins_push_back(0)
-          end do
+          ! Initialize trigger uncertainties to zero
+          trigger % std_dev = ZERO
+          trigger % rel_err = ZERO
+          trigger % variance = ZERO
 
           FILTER_LOOP: do filter_index = 1, t % n_filter_bins()
 
@@ -196,8 +189,8 @@ contains
             ! Initialize score bin index
             NUCLIDE_LOOP: do n = 1, t % n_nuclide_bins()
 
-              call get_trigger_uncertainty(std_dev, rel_err, &
-                   score_index, filter_index, t)
+              call get_tally_uncertainty(i, score_index, filter_index, &
+                   std_dev, rel_err)
 
               if (trigger % variance < variance) then
                 trigger % variance = std_dev ** 2
@@ -236,217 +229,10 @@ contains
             end do NUCLIDE_LOOP
             if (t % n_filters() == 0) exit FILTER_LOOP
           end do FILTER_LOOP
-        end if
         end associate
       end do TRIGGER_LOOP
       end associate
     end do TALLY_LOOP
   end subroutine check_tally_triggers
-
-!===============================================================================
-! COMPUTE_TALLY_CURRENT computes the current for a mesh current tally with
-! precision trigger(s).
-!===============================================================================
-
-  subroutine compute_tally_current(t, trigger)
-    type(TallyObject),   intent(in)    :: t        ! mesh current tally
-    type(TriggerObject), intent(inout) :: trigger  ! mesh current tally trigger
-
-    integer :: i                    ! mesh index
-    integer :: j                    ! loop index for tally filters
-    integer :: ijk(3)               ! indices of mesh cells
-    integer :: n_dim                ! number of mesh dimensions
-    integer :: n_cells              ! number of mesh cells
-    integer :: l                    ! index for energy
-    integer :: i_filter_mesh        ! index for mesh filter
-    integer :: i_filter_ein         ! index for incoming energy filter
-    integer :: i_filter_surf        ! index for surface filter
-    integer :: n                    ! number of incoming energy bins
-    integer :: filter_index         ! index in results array for filters
-    logical :: print_ebin           ! should incoming energy bin be displayed?
-    real(8) :: rel_err  = ZERO      ! temporary relative error of result
-    real(8) :: std_dev  = ZERO      ! temporary standard deviration of result
-    type(RegularMesh) :: m        ! surface current mesh
-
-    ! Get pointer to mesh
-    i_filter_mesh = t % mesh_filter()
-    i_filter_surf = t % surface_filter()
-    select type(filt => filters(i_filter_mesh) % obj)
-    type is (MeshFilter)
-      m = meshes(filt % mesh())
-    end select
-
-    ! initialize bins array
-    do j = 1, t % n_filters()
-      call filter_matches(t % filter(j)) % bins_clear()
-      call filter_matches(t % filter(j)) % bins_push_back(1)
-    end do
-
-    ! determine how many energyin bins there are
-    i_filter_ein = t % energyin_filter()
-    if (i_filter_ein > 0) then
-      print_ebin = .true.
-      n = filters(t % filter(i_filter_ein)) % obj % n_bins
-      i_filter_ein = t % filter(i_filter_ein)
-    else
-      print_ebin = .false.
-      n = 1
-    end if
-
-    ! Get the dimensions and number of cells in the mesh
-    n_dim = m % n_dimension()
-    n_cells = 1
-    do j = 1, n_dim
-      n_cells = n_cells * m % dimension(j)
-    end do
-
-    ! Loop over all the mesh cells
-    do i = 1, n_cells
-
-      ! Get the indices for this cell
-      call m % get_indices_from_bin(i, ijk)
-      call filter_matches(i_filter_mesh) % bins_set_data(1, i)
-
-      do l = 1, n
-
-        if (print_ebin) then
-          call filter_matches(i_filter_ein) % bins_set_data(1, l)
-        end if
-
-        ! Left Surface
-        call filter_matches(i_filter_surf) % bins_set_data(1, OUT_LEFT)
-        filter_index = 1
-        do j = 1, t % n_filters()
-          filter_index = filter_index + (filter_matches(t % filter(j)) % &
-               bins_data(1) - 1) * t % stride(j)
-        end do
-        call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
-        if (trigger % std_dev < std_dev) then
-          trigger % std_dev = std_dev
-        end if
-        if (trigger % rel_err < rel_err) then
-          trigger % rel_err = rel_err
-        end if
-        trigger % variance = std_dev**2
-
-        ! Right Surface
-        call filter_matches(i_filter_surf) % bins_set_data(1, OUT_RIGHT)
-        filter_index = 1
-        do j = 1, t % n_filters()
-          filter_index = filter_index + (filter_matches(t % filter(j)) % &
-               bins_data(1) - 1) * t % stride(j)
-        end do
-        call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
-        if (trigger % std_dev < std_dev) then
-          trigger % std_dev = std_dev
-        end if
-        if (trigger % rel_err < rel_err) then
-          trigger % rel_err = rel_err
-        end if
-        trigger % variance = trigger % std_dev**2
-
-        ! Back Surface
-        call filter_matches(i_filter_surf) % bins_set_data(1, OUT_BACK)
-        filter_index = 1
-        do j = 1, t % n_filters()
-          filter_index = filter_index + (filter_matches(t % filter(j)) % &
-               bins_data(1) - 1) * t % stride(j)
-        end do
-        call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
-        if (trigger % std_dev < std_dev) then
-          trigger % std_dev = std_dev
-        end if
-        if (trigger % rel_err < rel_err) then
-          trigger % rel_err = rel_err
-        end if
-        trigger % variance = trigger % std_dev**2
-
-        ! Front Surface
-        call filter_matches(i_filter_surf) % bins_set_data(1, OUT_FRONT)
-        filter_index = 1
-        do j = 1, t % n_filters()
-          filter_index = filter_index + (filter_matches(t % filter(j)) % &
-               bins_data(1) - 1) * t % stride(j)
-        end do
-        call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
-        if (trigger % std_dev < std_dev) then
-          trigger % std_dev = std_dev
-        end if
-        if (trigger % rel_err < rel_err) then
-          trigger % rel_err = rel_err
-        end if
-        trigger % variance = trigger % std_dev**2
-
-        ! Bottom Surface
-        call filter_matches(i_filter_surf) % bins_set_data(1, OUT_BOTTOM)
-        filter_index = 1
-        do j = 1, t % n_filters()
-          filter_index = filter_index + (filter_matches(t % filter(j)) % &
-               bins_data(1) - 1) * t % stride(j)
-        end do
-        call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
-        if (trigger % std_dev < std_dev) then
-          trigger % std_dev = std_dev
-        end if
-        if (trigger % rel_err < rel_err) then
-          trigger % rel_err = rel_err
-        end if
-        trigger % variance = trigger % std_dev**2
-
-        ! Top Surface
-        call filter_matches(i_filter_surf) % bins_set_data(1, OUT_TOP)
-        filter_index = 1
-        do j = 1, t % n_filters()
-          filter_index = filter_index + (filter_matches(t % filter(j)) % &
-               bins_data(1) - 1) * t % stride(j)
-        end do
-        call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
-        if (trigger % std_dev < std_dev) then
-          trigger % std_dev = std_dev
-        end if
-        if (trigger % rel_err < rel_err) then
-          trigger % rel_err = rel_err
-        end if
-        trigger % variance = trigger % std_dev**2
-
-      end do
-    end do
-
-  end subroutine compute_tally_current
-
-!===============================================================================
-! GET_TRIGGER_UNCERTAINTY computes the standard deviation and relative error
-! for a single tally bin for CHECK_TALLY_TRIGGERS.
-!===============================================================================
-
-  subroutine get_trigger_uncertainty(std_dev, rel_err, score_index, &
-       filter_index, t)
-
-    real(8), intent(inout)     :: std_dev         ! tally standard deviation
-    real(8), intent(inout)     :: rel_err         ! tally relative error
-    integer, intent(in)        :: score_index     ! tally results score index
-    integer, intent(in)        :: filter_index    ! tally results filter index
-    type(TallyObject), intent(in) :: t            ! tally
-
-    integer :: n               ! number of realizations
-    real(8) :: mean            ! tally mean
-    real(8) :: tally_sum, tally_sum_sq     ! results for a single tally bin
-
-    n = t % n_realizations
-    tally_sum = t % results(RESULT_SUM, score_index, filter_index)
-    tally_sum_sq = t % results(RESULT_SUM_SQ, score_index, filter_index)
-
-    ! Compute the tally mean and standard deviation
-    mean    = tally_sum / n
-    std_dev = sqrt((tally_sum_sq / n - mean * mean) / (n - 1))
-
-    ! Compute the relative error if the mean is non-zero
-    if (mean == ZERO) then
-      rel_err = ZERO
-    else
-      rel_err = std_dev / mean
-    end if
-
-  end subroutine get_trigger_uncertainty
 
 end module trigger

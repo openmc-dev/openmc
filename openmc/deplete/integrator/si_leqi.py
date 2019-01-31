@@ -16,22 +16,10 @@ def si_leqi(operator, timesteps, power=None, power_density=None,
     r"""Deplete using the SI-LE/QI CFQ4 algorithm.
 
     Implements the Stochastic Implicit LE/QI Predictor-Corrector algorithm using
-    the [fourth order commutator-free integrator]_.
+    the `fourth order commutator-free integrator <https://doi.org/10.1137/05063042>`_.
 
-    The LE/QI algorithm is mathematically defined as:
-
-    .. math:
-        y' = A(y, t) y(t)
-        A_m1 = A(y_n-1, t_n-1)
-        A_0 = A(y_n, t_n)
-        A_l(t) linear extrapolation of A_m1, A_0
-        Integrate to t_n+1 to get y_p
-        A_c = A(y_p, y_n+1)
-        A_q(t) quadratic interpolation of A_m1, A_0, A_c
-
-    Here, A(t) is integrated using the fourth order algorithm CFQ4.
-
-    It is initialized using the CE/LI algorithm.
+    Detailed algorithm can be found in Section 3.2 in `Colin Josey's thesis
+    <http://hdl.handle.net/1721.1/113721>`_.
 
     Parameters
     ----------
@@ -53,13 +41,6 @@ def si_leqi(operator, timesteps, power=None, power_density=None,
         Whether or not to print out time.
     m : int, optional
         Number of stages.
-
-    References
-    ----------
-    .. [fourth order commutator-free integrator]
-       Thalhammer, Mechthild. "A fourth-order commutator-free exponential
-       integrator for nonautonomous differential equations." SIAM journal on
-       numerical analysis 44.2 (2006): 851-864.
     """
     if power is None:
         if power_density is None:

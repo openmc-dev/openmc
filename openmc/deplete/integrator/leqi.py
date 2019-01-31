@@ -7,58 +7,72 @@ from itertools import repeat
 from .celi import celi_inner
 from .cram import deplete
 from ..results import Results
-from ..abc import OperatorResult
 
 
 # Functions to form the special matrix for depletion
 def _leqi_f1(chain, inputs):
-     f1 = chain.form_matrix(inputs[0])
-     f2 = chain.form_matrix(inputs[1])
-     dt_l, dt = inputs[2], inputs[3]
-     return -dt / (12 * dt_l) * f1 + (dt + 6 * dt_l) / (12 * dt_l) * f2
+    f1 = chain.form_matrix(inputs[0])
+    f2 = chain.form_matrix(inputs[1])
+    dt_l, dt = inputs[2], inputs[3]
+    return -dt / (12 * dt_l) * f1 + (dt + 6 * dt_l) / (12 * dt_l) * f2
 
 def _leqi_f2(chain, inputs):
-     f1 = chain.form_matrix(inputs[0])
-     f2 = chain.form_matrix(inputs[1])
-     dt_l, dt = inputs[2], inputs[3]
-     return -5 * dt / (12 * dt_l) * f1 + (5 * dt + 6 * dt_l) / (12 * dt_l) * f2
+    f1 = chain.form_matrix(inputs[0])
+    f2 = chain.form_matrix(inputs[1])
+    dt_l, dt = inputs[2], inputs[3]
+    return -5 * dt / (12 * dt_l) * f1 + (5 * dt + 6 * dt_l) / (12 * dt_l) * f2
 
 def _leqi_f3(chain, inputs):
-     f1 = chain.form_matrix(inputs[0])
-     f2 = chain.form_matrix(inputs[1])
-     f3 = chain.form_matrix(inputs[2])
-     dt_l, dt = inputs[3], inputs[4]
-     return (-dt**2 / (12 * dt_l * (dt + dt_l)) * f1 +
-             (dt**2 + 6*dt*dt_l + 5*dt_l**2) / (12 * dt_l * (dt + dt_l)) * f2 +
-             dt_l / (12 * (dt + dt_l)) * f3)
+    f1 = chain.form_matrix(inputs[0])
+    f2 = chain.form_matrix(inputs[1])
+    f3 = chain.form_matrix(inputs[2])
+    dt_l, dt = inputs[3], inputs[4]
+    return -dt**2 / (12 * dt_l * (dt + dt_l)) * f1 + \
+           (dt**2 + 6*dt*dt_l + 5*dt_l**2) / (12 * dt_l * (dt + dt_l)) * f2 + \
+           dt_l / (12 * (dt + dt_l)) * f3
 
 def _leqi_f4(chain, inputs):
-     f1 = chain.form_matrix(inputs[0])
-     f2 = chain.form_matrix(inputs[1])
-     f3 = chain.form_matrix(inputs[2])
-     dt_l, dt = inputs[3], inputs[4]
-     return (-dt**2 / (12 * dt_l * (dt + dt_l)) * f1 +
-             (dt**2 + 2*dt*dt_l + dt_l**2) / (12 * dt_l * (dt + dt_l)) * f2 +
-             (4 * dt * dt_l + 5 * dt_l**2) / (12 * dt_l * (dt + dt_l)) * f3)
+    f1 = chain.form_matrix(inputs[0])
+    f2 = chain.form_matrix(inputs[1])
+    f3 = chain.form_matrix(inputs[2])
+    dt_l, dt = inputs[3], inputs[4]
+    return -dt**2 / (12 * dt_l * (dt + dt_l)) * f1 + \
+           (dt**2 + 2*dt*dt_l + dt_l**2) / (12 * dt_l * (dt + dt_l)) * f2 + \
+           (4 * dt * dt_l + 5 * dt_l**2) / (12 * dt_l * (dt + dt_l)) * f3
 
 def leqi(operator, timesteps, power=None, power_density=None, print_out=True):
     r"""Deplete using the LE/QI CFQ4 algorithm.
 
-    Implements the LE/QI Predictor-Corrector algorithm using the [fourth order
-    commutator-free integrator]_.
+    Implements the LE/QI Predictor-Corrector algorithm using the `fourth order
+    commutator-free integrator <https://doi.org/10.1137/05063042>`_.
 
-    The LE/QI algorithm is mathematically defined as:
+    "LE/QI" stands for linear extrapolation on predictor and quadratic
+    interpolation on corrector. This algorithm is mathematically defined as:
 
-    .. math:
-        y' = A(y, t) y(t)
-        A_m1 = A(y_n-1, t_n-1)
-        A_0 = A(y_n, t_n)
-        A_l(t) linear extrapolation of A_m1, A_0
-        Integrate to t_n+1 to get y_p
-        A_c = A(y_p, y_n+1)
-        A_q(t) quadratic interpolation of A_m1, A_0, A_c
+    .. math::
+        y' &= A(y, t) y(t)
 
-    Here, A(t) is integrated using the fourth order algorithm CFQ4.
+        A_{last} &= A(y_{n-1}, t_n - h_1)
+
+        A_0 &= A(y_n, t_n)
+
+        F_1 &= \frac{-h_2^2}{12h_1} A_{last} + \frac{h_2(6h_1+h_2)}{12h_1} A_0
+
+        F_2 &= \frac{-5h_2^2}{12h_1} A_{last} + \frac{h_2(6h_1+5h_2)}{12h_1} A_0
+
+        y_p &= \text{expm}(F_2) \text{expm}(F_1) y_n
+
+        A_1 &= A(y_p, t_n + h_2)
+
+        F_3 &= \frac{-h_2^3}{12 h_1 (h_1 + h_2)} A_{last} +
+              \frac{h_2 (5 h_1^2 + 6 h_2 h_1 + h_2^2)}{12 h_1 (h_1 + h_2)} A_0 +
+              \frac{h_2 h_1)}{12 (h_1 + h_2)} A_1
+
+        F_4 &= \frac{-h_2^3}{12 h_1 (h_1 + h_2)} A_{last} +
+              \frac{h_2 (h_1^2 + 2 h_2 h_1 + h_2^2)}{12 h_1 (h_1 + h_2)} A_0 +
+              \frac{h_2 (5 h_1^2 + 4 h_2 h_1)}{12 h_1 (h_1 + h_2)} A_1
+
+        y_{n+1} &= \text{expm}(F_4) \text{expm}(F_3) y_n
 
     It is initialized using the CE/LI algorithm.
 
@@ -80,13 +94,6 @@ def leqi(operator, timesteps, power=None, power_density=None, print_out=True):
         heavy metal inventory to get total power if `power` is not speficied.
     print_out : bool, optional
         Whether or not to print out time.
-
-    References
-    ----------
-    .. [fourth order commutator-free integrator]
-       Thalhammer, Mechthild. "A fourth-order commutator-free exponential
-       integrator for nonautonomous differential equations." SIAM journal on
-       numerical analysis 44.2 (2006): 851-864.
     """
     if power is None:
         if power_density is None:

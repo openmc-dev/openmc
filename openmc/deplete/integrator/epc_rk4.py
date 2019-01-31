@@ -9,13 +9,13 @@ from ..results import Results
 
 # Functions to form the special matrix for depletion
 def _rk4_f1(chain, rates):
-     return 1/2 * chain.form_matrix(rates)
+    return 1/2 * chain.form_matrix(rates)
 
 def _rk4_f4(chain, rates):
-     return 1/6 * chain.form_matrix(rates[0]) + \
-            1/3 * chain.form_matrix(rates[1]) + \
-            1/3 * chain.form_matrix(rates[2]) + \
-            1/6 * chain.form_matrix(rates[3])
+    return 1/6 * chain.form_matrix(rates[0]) + \
+           1/3 * chain.form_matrix(rates[1]) + \
+           1/3 * chain.form_matrix(rates[2]) + \
+           1/6 * chain.form_matrix(rates[3])
 
 def epc_rk4(operator, timesteps, power=None, power_density=None, print_out=True):
     r"""Deplete using the EPC-RK4 algorithm.
@@ -25,7 +25,7 @@ def epc_rk4(operator, timesteps, power=None, power_density=None, print_out=True)
     This algorithm is mathematically defined as:
 
     .. math::
-        F_1 = h A(y_0)
+        F_1 &= h A(y_0)
 
         y_1 &= \text{expm}(1/2 F_1) y_0
 
@@ -85,12 +85,6 @@ def epc_rk4(operator, timesteps, power=None, power_density=None, print_out=True)
 
         chain = operator.chain
 
-        # Initialize starting index for saving results
-        if operator.prev_res is None:
-            i_res = 0
-        else:
-            i_res = len(operator.prev_res)
-
         for i, (dt, p) in enumerate(zip(timesteps, power)):
             # Get beginning-of-timestep concentrations and reaction rates
             # Avoid doing first transport run if already done in previous
@@ -132,7 +126,7 @@ def epc_rk4(operator, timesteps, power=None, power_density=None, print_out=True)
             x.append(x_new)
             op_results.append(operator(x[3], p))
 
-            # Step 4: deplete with two matrix exponentials
+            # Step 4: deplete with matrix 1/6*A(y0)+1/3*A(y1)+1/3*A(y2)+1/6*A(y3)
             rates = list(zip(op_results[0].rates, op_results[1].rates,
                              op_results[2].rates, op_results[3].rates))
             x_end = deplete(chain, x[0], rates, dt, print_out,

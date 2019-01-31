@@ -9,32 +9,33 @@ from ..results import Results
 
 # Functions to form the special matrix for depletion
 def _cf4_f1(chain, rates):
-     return 1/2 * chain.form_matrix(rates)
+    return 1/2 * chain.form_matrix(rates)
 
 def _cf4_f2(chain, rates):
-     return -1/2 * chain.form_matrix(rates[0]) + \
-                   chain.form_matrix(rates[1])
+    return -1/2 * chain.form_matrix(rates[0]) + \
+                  chain.form_matrix(rates[1])
 
 def _cf4_f3(chain, rates):
-     return  1/4  * chain.form_matrix(rates[0]) + \
-             1/6  * chain.form_matrix(rates[1]) + \
-             1/6  * chain.form_matrix(rates[2]) + \
-            -1/12 * chain.form_matrix(rates[3])
+    return  1/4  * chain.form_matrix(rates[0]) + \
+            1/6  * chain.form_matrix(rates[1]) + \
+            1/6  * chain.form_matrix(rates[2]) + \
+           -1/12 * chain.form_matrix(rates[3])
 
 def _cf4_f4(chain, rates):
-     return -1/12 * chain.form_matrix(rates[0]) + \
-             1/6  * chain.form_matrix(rates[1]) + \
-             1/6  * chain.form_matrix(rates[2]) + \
-             1/4  * chain.form_matrix(rates[3])
+    return -1/12 * chain.form_matrix(rates[0]) + \
+            1/6  * chain.form_matrix(rates[1]) + \
+            1/6  * chain.form_matrix(rates[2]) + \
+            1/4  * chain.form_matrix(rates[3])
 
 def cf4(operator, timesteps, power=None, power_density=None, print_out=True):
     r"""Deplete using the CF4 algorithm.
 
-    Implements the fourth order [commutator-free Lie algorithm]_.
+    Implements the fourth order `commutator-free Lie algorithm
+    <https://doi.org/10.1016/S0167-739X(02)00161-9>`_.
     This algorithm is mathematically defined as:
 
     .. math::
-        F_1 = h A(y_0)
+        F_1 &= h A(y_0)
 
         y_1 &= \text{expm}(1/2 F_1) y_0
 
@@ -69,13 +70,6 @@ def cf4(operator, timesteps, power=None, power_density=None, print_out=True):
         heavy metal inventory to get total power if `power` is not speficied.
     print_out : bool, optional
         Whether or not to print out time.
-
-    References
-    ----------
-    .. [commutator-free Lie algorithm]
-       Celledoni, E., Marthinsen, A. and Owren, B., 2003. Commutator-free Lie
-       group methods. Future Generation Computer Systems, 19(3), pp.341-352.
-
     """
     if power is None:
         if power_density is None:
@@ -129,20 +123,20 @@ def cf4(operator, timesteps, power=None, power_density=None, print_out=True):
             x_new = deplete(chain, x[0], op_results[0].rates, dt, print_out,
                             matrix_func=_cf4_f1)
             x.append(x_new)
-            op_results.append(operator(x[1], p))
+            op_results.append(operator(x_new, p))
 
             # Step 2: deplete with matrix 1/2*A(y1)
             x_new = deplete(chain, x[0], op_results[1].rates, dt, print_out,
                             matrix_func=_cf4_f1)
             x.append(x_new)
-            op_results.append(operator(x[2], p))
+            op_results.append(operator(x_new, p))
 
             # Step 3: deplete with matrix -1/2*A(y0)+A(y2)
             rates = list(zip(op_results[0].rates, op_results[2].rates))
             x_new = deplete(chain, x[1], rates, dt, print_out,
                             matrix_func=_cf4_f2)
             x.append(x_new)
-            op_results.append(operator(x[3], p))
+            op_results.append(operator(x_new, p))
 
             # Step 4: deplete with two matrix exponentials
             rates = list(zip(op_results[0].rates, op_results[1].rates,

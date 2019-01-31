@@ -5,35 +5,38 @@ from collections.abc import Iterable
 
 from .cram import deplete
 from ..results import Results
-from ..abc import OperatorResult
 
 
 # Functions to form the special matrix for depletion
 def _celi_f1(chain, rates):
-     return 5/12 * chain.form_matrix(rates[0]) + \
-            1/12 * chain.form_matrix(rates[1])
+    return 5/12 * chain.form_matrix(rates[0]) + \
+           1/12 * chain.form_matrix(rates[1])
 
 def _celi_f2(chain, rates):
-     return 1/12 * chain.form_matrix(rates[0]) + \
-            5/12 * chain.form_matrix(rates[1])
+    return 1/12 * chain.form_matrix(rates[0]) + \
+           5/12 * chain.form_matrix(rates[1])
 
 def celi(operator, timesteps, power=None, power_density=None,
          print_out=True):
     r"""Deplete using the CE/LI CFQ4 algorithm.
 
-    Implements the CE/LI Predictor-Corrector algorithm using the [fourth order
-    commutator-free integrator]_.
+    Implements the CE/LI Predictor-Corrector algorithm using the `fourth order
+    commutator-free integrator <https://doi.org/10.1137/05063042>`_.
 
-    The CE/LI algorithm is mathematically defined as:
+    "CE/LI" stands for constant extrapolation on predictor and linear
+    interpolation on corrector. This algorithm is mathematically defined as:
 
-    .. math:
-        y' = A(y, t) y(t)
-        A_p = A(y_n, t_n)
-        y_p = expm(A_p h) y_n
-        A_c = A(y_p, t_n)
-        A(t) = t/dt * A_c + (dt - t)/dt * A_p
+    .. math::
+        y' &= A(y, t) y(t)
 
-    Here, A(t) is integrated using the fourth order algorithm CFQ4.
+        A_0 &= A(y_n, t_n)
+
+        y_p &= \text{expm}(h A_0) y_n
+
+        A_1 &= A(y_p, t_n + h)
+
+        y_{n+1} &= \text{expm}(\frac{h}{12} A_0 + \frac{5h}{12} A1)
+                   \text{expm}(\frac{5h}{12} A_0 + \frac{h}{12} A1) y_n
 
     Parameters
     ----------
@@ -53,13 +56,6 @@ def celi(operator, timesteps, power=None, power_density=None,
         heavy metal inventory to get total power if `power` is not speficied.
     print_out : bool, optional
         Whether or not to print out time.
-
-    References
-    ----------
-    .. [fourth order commutator-free integrator]
-       Thalhammer, Mechthild. "A fourth-order commutator-free exponential
-       integrator for nonautonomous differential equations." SIAM journal on
-       numerical analysis 44.2 (2006): 851-864.
     """
     if power is None:
         if power_density is None:

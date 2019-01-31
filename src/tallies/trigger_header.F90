@@ -14,7 +14,6 @@ module trigger_header
   type, public :: TriggerObject
     integer            :: type          ! "variance", "std_dev" or "rel_err"
     real(8)            :: threshold     ! a convergence threshold
-    character(len=52)  :: score_name    ! the name of the score
     integer            :: score_index   ! the index of the score
     real(8)            :: variance = ZERO ! temp variance container
     real(8)            :: std_dev  = ZERO ! temp std. dev. container

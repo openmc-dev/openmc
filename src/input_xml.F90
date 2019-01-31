@@ -1728,10 +1728,7 @@ contains
                 call trigger_scores % next_entry(elem, i_elem)
                 if (i_elem == 0) exit
 
-                score_name = trim(elem % key)
-
                 ! Store the score name and index in the trigger
-                t % triggers(trig_ind) % score_name = score_name
                 t % triggers(trig_ind) % score_index = elem % value
 
                 ! Set the trigger convergence threshold type
@@ -1758,7 +1755,6 @@ contains
             else
 
               ! Store the score name and index
-              t % triggers(trig_ind) % score_name = trim(score_name)
               t % triggers(trig_ind) % score_index = &
                    trigger_scores % get(trim(score_name))
 

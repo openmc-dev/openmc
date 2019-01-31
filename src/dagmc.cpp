@@ -8,6 +8,13 @@
 #include "openmc/settings.h"
 #include "openmc/geometry.h"
 
+#ifdef DAGMC
+
+#include "uwuw.hpp"
+#include "dagmcmetadata.hpp"
+
+#endif
+
 #include <string>
 #include <sstream>
 #include <algorithm>
@@ -24,9 +31,6 @@ const bool dagmc_enabled = false;
 }
 
 #ifdef DAGMC
-
-#include "uwuw.hpp"
-#include "dagmcmetadata.hpp"
 
 const std::string DAGMC_FILENAME = "dagmc.h5m";
 

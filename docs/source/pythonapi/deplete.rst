@@ -6,8 +6,10 @@
 
 .. module:: openmc.deplete
 
-Two functions are provided that implement different time-integration algorithms
-for depletion calculations.
+Several functions are provided that implement different time-integration
+algorithms for depletion calculations, which are described in detail in Colin
+Josey's thesis, `Development and analysis of high order neutron
+transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
 
 .. autosummary::
    :toctree: generated
@@ -16,6 +18,12 @@ for depletion calculations.
 
    integrator.predictor
    integrator.cecm
+   integrator.celi
+   integrator.leqi
+   integrator.cf4
+   integrator.epc_rk4
+   integrator.si_celi
+   integrator.si_leqi
 
 Each of these functions expects a "transport operator" to be passed. An operator
 specific to OpenMC is available using the following class:

@@ -905,6 +905,7 @@ extern "C" int openmc_load_nuclide(const char* name)
       // Get filename for library containing nuclide
       int idx = it->second;
       std::string& filename = data::libraries[idx].path_;
+      write_message("Reading " + std::string{name} + " from " + filename, 6);
 
       // Open file and make sure version is sufficient
       hid_t file_id = file_open(filename, 'r');
@@ -924,6 +925,9 @@ extern "C" int openmc_load_nuclide(const char* name)
 
       // Initialize nuclide grid
       data::nuclides.back()->init_grid();
+
+      // Read multipole file into the appropriate entry on the nuclides array
+      if (settings::temperature_multipole) read_multipole_data(i_nuclide);
     } else {
       set_errmsg("Nuclide '" + std::string{name} + "' is not present in library.");
       return OPENMC_E_DATA;

@@ -1,4 +1,4 @@
-"""The CE/CM integrator."""
+"""The CF4 integrator."""
 
 import copy
 from collections.abc import Iterable
@@ -7,25 +7,50 @@ from .cram import deplete
 from ..results import Results
 
 
-def cecm(operator, timesteps, power=None, power_density=None, print_out=True):
-    r"""Deplete using the CE/CM algorithm.
+# Functions to form the special matrix for depletion
+def _cf4_f1(chain, rates):
+    return 1/2 * chain.form_matrix(rates)
 
-    Implements the second order `CE/CM predictor-corrector algorithm
-    <https://doi.org/10.13182/NSE14-92>`_.
+def _cf4_f2(chain, rates):
+    return -1/2 * chain.form_matrix(rates[0]) + \
+                  chain.form_matrix(rates[1])
 
-    "CE/CM" stands for constant extrapolation on predictor and constant
-    midpoint on corrector. This algorithm is mathematically defined as:
+def _cf4_f3(chain, rates):
+    return  1/4  * chain.form_matrix(rates[0]) + \
+            1/6  * chain.form_matrix(rates[1]) + \
+            1/6  * chain.form_matrix(rates[2]) + \
+           -1/12 * chain.form_matrix(rates[3])
+
+def _cf4_f4(chain, rates):
+    return -1/12 * chain.form_matrix(rates[0]) + \
+            1/6  * chain.form_matrix(rates[1]) + \
+            1/6  * chain.form_matrix(rates[2]) + \
+            1/4  * chain.form_matrix(rates[3])
+
+def cf4(operator, timesteps, power=None, power_density=None, print_out=True):
+    r"""Deplete using the CF4 algorithm.
+
+    Implements the fourth order `commutator-free Lie algorithm
+    <https://doi.org/10.1016/S0167-739X(02)00161-9>`_.
+    This algorithm is mathematically defined as:
 
     .. math::
-        y' &= A(y, t) y(t)
+        F_1 &= h A(y_0)
 
-        A_p &= A(y_n, t_n)
+        y_1 &= \text{expm}(1/2 F_1) y_0
 
-        y_m &= \text{expm}(A_p h/2) y_n
+        F_2 &= h A(y_1)
 
-        A_c &= A(y_m, t_n + h/2)
+        y_2 &= \text{expm}(1/2 F_2) y_0
 
-        y_{n+1} &= \text{expm}(A_c h) y_n
+        F_3 &= h A(y_2)
+
+        y_3 &= \text{expm}(-1/2 F_1 + F_3) y_1
+
+        F_4 &= h A(y_3)
+
+        y_4 &= \text{expm}( 1/4  F_1 + 1/6 F_2 + 1/6 F_3 - 1/12 F_4)
+               \text{expm}(-1/12 F_1 + 1/6 F_2 + 1/6 F_3 + 1/4  F_4) y_0
 
     Parameters
     ----------
@@ -45,7 +70,6 @@ def cecm(operator, timesteps, power=None, power_density=None, print_out=True):
         heavy metal inventory to get total power if `power` is not speficied.
     print_out : bool, optional
         Whether or not to print out time.
-
     """
     if power is None:
         if power_density is None:
@@ -95,16 +119,32 @@ def cecm(operator, timesteps, power=None, power_density=None, print_out=True):
                 ratio_power = p / power_res
                 op_results[0].rates *= ratio_power[0]
 
-            # Deplete for first half of timestep
-            x_middle = deplete(chain, x[0], op_results[0].rates, dt/2, print_out)
+            # Step 1: deplete with matrix 1/2*A(y0)
+            x_new = deplete(chain, x[0], op_results[0].rates, dt, print_out,
+                            matrix_func=_cf4_f1)
+            x.append(x_new)
+            op_results.append(operator(x_new, p))
 
-            # Get middle-of-timestep reaction rates
-            x.append(x_middle)
-            op_results.append(operator(x_middle, p))
+            # Step 2: deplete with matrix 1/2*A(y1)
+            x_new = deplete(chain, x[0], op_results[1].rates, dt, print_out,
+                            matrix_func=_cf4_f1)
+            x.append(x_new)
+            op_results.append(operator(x_new, p))
 
-            # Deplete for full timestep using beginning-of-step materials
-            # and middle-of-timestep reaction rates
-            x_end = deplete(chain, x[0], op_results[1].rates, dt, print_out)
+            # Step 3: deplete with matrix -1/2*A(y0)+A(y2)
+            rates = list(zip(op_results[0].rates, op_results[2].rates))
+            x_new = deplete(chain, x[1], rates, dt, print_out,
+                            matrix_func=_cf4_f2)
+            x.append(x_new)
+            op_results.append(operator(x_new, p))
+
+            # Step 4: deplete with two matrix exponentials
+            rates = list(zip(op_results[0].rates, op_results[1].rates,
+                             op_results[2].rates, op_results[3].rates))
+            x_end = deplete(chain, x[0], rates, dt, print_out,
+                            matrix_func=_cf4_f3)
+            x_end = deplete(chain, x_end, rates, dt, print_out,
+                            matrix_func=_cf4_f4)
 
             # Create results, write to disk
             Results.save(operator, x, op_results, [t, t + dt], p, i_res + i)

@@ -52,7 +52,7 @@ void collision(Particle* p)
   }
 
   // Kill particle if energy falls below cutoff
-  if (p->E < settings::energy_cutoff[p->type - 1]) {
+  if (p->E < settings::energy_cutoff[p->type]) {
     p->alive = false;
     p->wgt = 0.0;
     p->last_wgt = 0.0;
@@ -219,7 +219,7 @@ void sample_photon_reaction(Particle* p)
   // Kill photon if below energy cutoff -- an extra check is made here because
   // photons with energy below the cutoff may have been produced by neutrons
   // reactions or atomic relaxation
-  int photon = static_cast<int>(ParticleType::photon) - 1;
+  int photon = static_cast<int>(ParticleType::photon);
   if (p->E < settings::energy_cutoff[photon]) {
     p->E = 0.0;
     p->alive = false;
@@ -1034,8 +1034,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Bank
       rx->products_[group].sample(E_in, site->E, mu);
 
       // resample if energy is greater than maximum neutron energy
-      // TODO: off-by-one
-      constexpr int neutron = static_cast<int>(ParticleType::neutron) - 1;
+      constexpr int neutron = static_cast<int>(ParticleType::neutron);
       if (site->E < data::energy_max[neutron]) break;
 
       // check for large number of resamples
@@ -1060,8 +1059,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Bank
       rx->products_[0].sample(E_in, site->E, mu);
 
       // resample if energy is greater than maximum neutron energy
-      // TODO: off-by-one
-      constexpr int neutron = static_cast<int>(ParticleType::neutron) - 1;
+      constexpr int neutron = static_cast<int>(ParticleType::neutron);
       if (site->E < data::energy_max[neutron]) break;
 
       // check for large number of resamples

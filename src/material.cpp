@@ -659,8 +659,7 @@ void Material::calculate_xs(const Particle& p) const
 
 void Material::calculate_neutron_xs(const Particle& p) const
 {
-  // TODO: off-by-one
-  int neutron = static_cast<int>(ParticleType::neutron) - 1;
+  int neutron = static_cast<int>(ParticleType::neutron);
 
   // Find energy index on energy grid
   int i_grid = std::log(p.E/data::energy_min[neutron])/simulation::log_spacing;

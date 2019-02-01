@@ -223,7 +223,7 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
     }
 
     // Truncate the bremsstrahlung data at the cutoff energy
-    int photon = static_cast<int>(ParticleType::photon) - 1;
+    int photon = static_cast<int>(ParticleType::photon);
     const auto& E {electron_energy};
     double cutoff = settings::energy_cutoff[photon];
     if (cutoff > E(0)) {
@@ -782,8 +782,7 @@ extern "C" void photon_from_hdf5(hid_t group)
   // the previous
   const auto& element {data::elements.back()};
   if (element.energy_.size() >= 1) {
-    // TODO: off-by-one
-    int photon = static_cast<int>(ParticleType::photon) - 1;
+    int photon = static_cast<int>(ParticleType::photon);
     int n = element.energy_.size();
     data::energy_min[photon] = std::max(data::energy_min[photon],
       std::exp(element.energy_(1)));

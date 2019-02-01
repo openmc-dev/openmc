@@ -189,88 +189,89 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
       // all key/value pairs in nuclide_map
       std::string& name = nuclide_names[i_nuc];
 
-      if (already_read.find(name) == already_read.end()) {
-        LibraryKey key {Library::Type::neutron, name};
-        int idx = data::library_map[key];
-        std::string& filename = data::libraries[idx].path_;
+      // If we've already read this nuclide, skip it
+      if (already_read.find(name) != already_read.end()) continue;
 
-        write_message("Reading " + name + " from " + filename, 6);
+      LibraryKey key {Library::Type::neutron, name};
+      int idx = data::library_map[key];
+      std::string& filename = data::libraries[idx].path_;
 
-        // Open file and make sure version is sufficient
-        hid_t file_id = file_open(filename, 'r');
-        check_data_version(file_id);
+      write_message("Reading " + name + " from " + filename, 6);
 
-        // Read nuclide data from HDF5
-        hid_t group = open_group(file_id, name.c_str());
-        int i_nuclide = data::nuclides.size();
-        data::nuclides.push_back(std::make_unique<Nuclide>(
-          group, nuc_temps[i_nuc], i_nuclide));
+      // Open file and make sure version is sufficient
+      hid_t file_id = file_open(filename, 'r');
+      check_data_version(file_id);
 
-        // Read from Fortran too
-        nuclide_from_hdf5(group, data::nuclides.back().get(),
-          &nuc_temps[i_nuc].front(), nuc_temps[i_nuc].size(), i_nuclide + 1);
+      // Read nuclide data from HDF5
+      hid_t group = open_group(file_id, name.c_str());
+      int i_nuclide = data::nuclides.size();
+      data::nuclides.push_back(std::make_unique<Nuclide>(
+        group, nuc_temps[i_nuc], i_nuclide));
 
-        close_group(group);
-        file_close(file_id);
+      // Read from Fortran too
+      nuclide_from_hdf5(group, data::nuclides.back().get(),
+        &nuc_temps[i_nuc].front(), nuc_temps[i_nuc].size(), i_nuclide + 1);
 
-        // Determine if minimum/maximum energy for this nuclide is greater/less
-        // than the previous
-        if (data::nuclides[i_nuclide]->grid_.size() >= 1) {
-          // TODO: off-by-one
-          int neutron = static_cast<int>(ParticleType::neutron) - 1;
-          data::energy_min[neutron] = std::max(data::energy_min[neutron],
-            data::nuclides[i_nuclide]->grid_[0].energy.front());
-          data::energy_max[neutron] = std::min(data::energy_max[neutron],
-            data::nuclides[i_nuclide]->grid_[0].energy.back());
-        }
+      close_group(group);
+      file_close(file_id);
 
-        // Add name and alias to dictionary
-        already_read.insert(name);
-
-        // Check if elemental data has been read, if needed
-        int pos = name.find_first_of("0123456789");
-        std::string element = name.substr(0, pos);
-        if (settings::photon_transport) {
-          if (already_read.find(element) == already_read.end()) {
-            // Read photon interaction data from HDF5 photon library
-            LibraryKey key {Library::Type::photon, element};
-            int idx = data::library_map[key];
-            std::string& filename = data::libraries[idx].path_;
-            int i_element = data::element_map[element];
-            write_message("Reading " + element + " from " + filename, 6);
-
-            // Open file and make sure version is sufficient
-            hid_t file_id = file_open(filename, 'r');
-            check_data_version(file_id);
-
-            // Read element data from HDF5
-            hid_t group = open_group(file_id, element.c_str());
-            data::elements.emplace_back(group, data::elements.size());
-
-            // Determine if minimum/maximum energy for this element is greater/less than
-            // the previous
-            const auto& elem {data::elements.back()};
-            if (elem.energy_.size() >= 1) {
-              // TODO: off-by-one
-              int photon = static_cast<int>(ParticleType::photon) - 1;
-              int n = elem.energy_.size();
-              data::energy_min[photon] = std::max(data::energy_min[photon],
-                std::exp(elem.energy_(1)));
-              data::energy_max[photon] = std::min(data::energy_max[photon],
-                std::exp(elem.energy_(n - 1)));
-            }
-
-            close_group(group);
-            file_close(file_id);
-
-            // Add element to set
-            already_read.insert(element);
-          }
-        }
-
-        // Read multipole file into the appropriate entry on the nuclides array
-        if (settings::temperature_multipole) read_multipole_data(i_nuclide);
+      // Determine if minimum/maximum energy for this nuclide is greater/less
+      // than the previous
+      if (data::nuclides[i_nuclide]->grid_.size() >= 1) {
+        // TODO: off-by-one
+        int neutron = static_cast<int>(ParticleType::neutron) - 1;
+        data::energy_min[neutron] = std::max(data::energy_min[neutron],
+          data::nuclides[i_nuclide]->grid_[0].energy.front());
+        data::energy_max[neutron] = std::min(data::energy_max[neutron],
+          data::nuclides[i_nuclide]->grid_[0].energy.back());
       }
+
+      // Add name and alias to dictionary
+      already_read.insert(name);
+
+      // Check if elemental data has been read, if needed
+      int pos = name.find_first_of("0123456789");
+      std::string element = name.substr(0, pos);
+      if (settings::photon_transport) {
+        if (already_read.find(element) == already_read.end()) {
+          // Read photon interaction data from HDF5 photon library
+          LibraryKey key {Library::Type::photon, element};
+          int idx = data::library_map[key];
+          std::string& filename = data::libraries[idx].path_;
+          int i_element = data::element_map[element];
+          write_message("Reading " + element + " from " + filename, 6);
+
+          // Open file and make sure version is sufficient
+          hid_t file_id = file_open(filename, 'r');
+          check_data_version(file_id);
+
+          // Read element data from HDF5
+          hid_t group = open_group(file_id, element.c_str());
+          data::elements.emplace_back(group, data::elements.size());
+
+          // Determine if minimum/maximum energy for this element is greater/less than
+          // the previous
+          const auto& elem {data::elements.back()};
+          if (elem.energy_.size() >= 1) {
+            // TODO: off-by-one
+            int photon = static_cast<int>(ParticleType::photon) - 1;
+            int n = elem.energy_.size();
+            data::energy_min[photon] = std::max(data::energy_min[photon],
+              std::exp(elem.energy_(1)));
+            data::energy_max[photon] = std::min(data::energy_max[photon],
+              std::exp(elem.energy_(n - 1)));
+          }
+
+          close_group(group);
+          file_close(file_id);
+
+          // Add element to set
+          already_read.insert(element);
+        }
+      }
+
+      // Read multipole file into the appropriate entry on the nuclides array
+      if (settings::temperature_multipole) read_multipole_data(i_nuclide);
     }
   }
 
@@ -312,6 +313,7 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
   for (auto& nuc : data::nuclides) {
     nuc->init_grid();
   }
+  // TODO: off-by-one
   int neutron = static_cast<int>(ParticleType::neutron) - 1;
   simulation::log_spacing = std::log(data::energy_max[neutron] /
     data::energy_min[neutron]) / settings::n_log_bins;

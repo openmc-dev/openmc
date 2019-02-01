@@ -723,7 +723,6 @@ void Material::calculate_neutron_xs(const Particle& p) const
     double atom_density = atom_density_(i);
 
     // Add contributions to cross sections
-    const auto& macro {simulation::material_xs};
     simulation::material_xs.total += atom_density * micro.total;
     simulation::material_xs.absorption += atom_density * micro.absorption;
     simulation::material_xs.fission += atom_density * micro.fission;

@@ -166,3 +166,236 @@ def test_restart_cecm_predictor(run_in_tmpdir):
 
     assert y1[2] == approx(s2[0])
     assert y2[2] == approx(s2[1])
+
+
+def test_restart_cf4(run_in_tmpdir):
+    """Integral regression test of integrator algorithm using CF4."""
+
+    op = dummy_operator.DummyOperator()
+    output_dir = "test_restart_cf4"
+    op.output_dir = output_dir
+
+    # Perform simulation
+    dt = [0.75]
+    power = 1.0
+    openmc.deplete.cf4(op, dt, power, print_out=False)
+
+    # Load the files
+    prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+
+    # Re-create depletion operator and load previous results
+    op = dummy_operator.DummyOperator(prev_res)
+    op.output_dir = output_dir
+
+    # Perform restarts simulation
+    openmc.deplete.cf4(op, dt, power, print_out=False)
+
+    # Load the files
+    res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+
+    _, y1 = res.get_atoms("1", "1")
+    _, y2 = res.get_atoms("1", "2")
+
+    # Reference solution
+    s1 = [2.06101629, 1.37783588]
+    s2 = [2.57241318, 2.63731630]
+
+    assert y1[1] == approx(s1[0])
+    assert y2[1] == approx(s1[1])
+
+    assert y1[3] == approx(s2[0])
+    assert y2[3] == approx(s2[1])
+
+
+def test_restart_epc_rk4(run_in_tmpdir):
+    """Integral regression test of integrator algorithm using EPC-RK4."""
+
+    op = dummy_operator.DummyOperator()
+    output_dir = "test_restart_epc_rk4"
+    op.output_dir = output_dir
+
+    # Perform simulation
+    dt = [0.75]
+    power = 1.0
+    openmc.deplete.epc_rk4(op, dt, power, print_out=False)
+
+    # Load the files
+    prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+
+    # Re-create depletion operator and load previous results
+    op = dummy_operator.DummyOperator(prev_res)
+    op.output_dir = output_dir
+
+    # Perform restarts simulation
+    openmc.deplete.epc_rk4(op, dt, power, print_out=False)
+
+    # Load the files
+    res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+
+    _, y1 = res.get_atoms("1", "1")
+    _, y2 = res.get_atoms("1", "2")
+
+    # Reference solution
+    s1 = [2.01978516, 1.42038037]
+    s2 = [2.05246421, 3.06177191]
+
+    assert y1[1] == approx(s1[0])
+    assert y2[1] == approx(s1[1])
+
+    assert y1[3] == approx(s2[0])
+    assert y2[3] == approx(s2[1])
+
+
+def test_restart_celi(run_in_tmpdir):
+    """Integral regression test of integrator algorithm using CELI."""
+
+    op = dummy_operator.DummyOperator()
+    output_dir = "test_restart_celi"
+    op.output_dir = output_dir
+
+    # Perform simulation
+    dt = [0.75]
+    power = 1.0
+    openmc.deplete.celi(op, dt, power, print_out=False)
+
+    # Load the files
+    prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+
+    # Re-create depletion operator and load previous results
+    op = dummy_operator.DummyOperator(prev_res)
+    op.output_dir = output_dir
+
+    # Perform restarts simulation
+    openmc.deplete.celi(op, dt, power, print_out=False)
+
+    # Load the files
+    res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+
+    _, y1 = res.get_atoms("1", "1")
+    _, y2 = res.get_atoms("1", "2")
+
+    # Reference solution
+    s1 = [1.82078767, 0.97122898]
+    s2 = [2.68441779, 0.05125966]
+
+    assert y1[1] == approx(s1[0])
+    assert y2[1] == approx(s1[1])
+
+    assert y1[3] == approx(s2[0])
+    assert y2[3] == approx(s2[1])
+
+
+def test_restart_leqi(run_in_tmpdir):
+    """Integral regression test of integrator algorithm using LEQI."""
+
+    op = dummy_operator.DummyOperator()
+    output_dir = "test_restart_leqi"
+    op.output_dir = output_dir
+
+    # Perform simulation
+    dt = [0.75]
+    power = 1.0
+    openmc.deplete.leqi(op, dt, power, print_out=False)
+
+    # Load the files
+    prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+
+    # Re-create depletion operator and load previous results
+    op = dummy_operator.DummyOperator(prev_res)
+    op.output_dir = output_dir
+
+    # Perform restarts simulation
+    openmc.deplete.leqi(op, dt, power, print_out=False)
+
+    # Load the files
+    res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+
+    _, y1 = res.get_atoms("1", "1")
+    _, y2 = res.get_atoms("1", "2")
+
+    # Reference solution
+    s1 = [1.82078767, 0.97122898]
+    s2 = [2.74526197, 0.23339915]
+
+    assert y1[1] == approx(s1[0])
+    assert y2[1] == approx(s1[1])
+
+    assert y1[3] == approx(s2[0])
+    assert y2[3] == approx(s2[1])
+
+def test_restart_si_celi(run_in_tmpdir):
+    """Integral regression test of integrator algorithm using SI-CELI."""
+
+    op = dummy_operator.DummyOperator()
+    output_dir = "test_restart_si_celi"
+    op.output_dir = output_dir
+
+    # Perform simulation
+    dt = [0.75]
+    power = 1.0
+    openmc.deplete.si_celi(op, dt, power, print_out=False)
+
+    # Load the files
+    prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+
+    # Re-create depletion operator and load previous results
+    op = dummy_operator.DummyOperator(prev_res)
+    op.output_dir = output_dir
+
+    # Perform restarts simulation
+    openmc.deplete.si_celi(op, dt, power, print_out=False)
+
+    # Load the files
+    res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+
+    _, y1 = res.get_atoms("1", "1")
+    _, y2 = res.get_atoms("1", "2")
+
+    # Reference solution
+    s1 = [2.03325094, 1.16826254]
+    s2 = [2.69291933, 0.37907772]
+
+    assert y1[1] == approx(s1[0])
+    assert y2[1] == approx(s1[1])
+
+    assert y1[3] == approx(s2[0])
+    assert y2[3] == approx(s2[1])
+
+
+def test_restart_si_leqi(run_in_tmpdir):
+    """Integral regression test of integrator algorithm using SI-LEQI."""
+
+    op = dummy_operator.DummyOperator()
+    output_dir = "test_restart_si_leqi"
+    op.output_dir = output_dir
+
+    # Perform simulation
+    dt = [0.75]
+    power = 1.0
+    openmc.deplete.si_leqi(op, dt, power, print_out=False)
+
+    # Load the files
+    prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+
+    # Re-create depletion operator and load previous results
+    op = dummy_operator.DummyOperator(prev_res)
+    op.output_dir = output_dir
+
+    # Perform restarts simulation
+    openmc.deplete.si_leqi(op, dt, power, print_out=False)
+
+    # Load the files
+    res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+
+    _, y1 = res.get_atoms("1", "1")
+    _, y2 = res.get_atoms("1", "2")
+
+    # Reference solution
+    s1 = [2.03325094, 1.16826254]
+    s2 = [2.92711288, 0.53753236]
+
+    assert y1[1] == approx(s1[0])
+    assert y2[1] == approx(s1[1])
+
+    assert y1[3] == approx(s2[0])
+    assert y2[3] == approx(s2[1])

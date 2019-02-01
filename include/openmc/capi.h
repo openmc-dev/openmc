@@ -7,6 +7,7 @@
 
 #ifdef __cplusplus
 #include "openmc/bank.h"
+
 extern "C" {
   int openmc_fission_bank(openmc::Bank** ptr, int64_t* n);
   int openmc_source_bank(openmc::Bank** ptr, int64_t* n);

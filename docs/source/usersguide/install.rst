@@ -159,7 +159,17 @@ Prerequisites
           sudo apt install mpich libmpich-dev
           sudo apt install openmpi-bin libopenmpi-dev
 
+    * DAGMC_ toolkit for simulation using CAD-based geometries
+
+      OpenMC supports particle tracking in CAD-based geometries via the Direct
+      Accelerated Geometry Monte Carlo (DAGMC) toolkit (`installation
+      instructions
+      <https://svalinn.github.io/DAGMC/install/dag_multiple.html>`_). For use in
+      OpenMC, only the ``MOAB_DIR`` and ``BUILD_TALLY`` variables need to be
+      specified in the CMake configuration step.
+    |
     * git_ version control software for obtaining source code
+
 
 .. _gfortran: http://gcc.gnu.org/wiki/GFortran
 .. _gcc: https://gcc.gnu.org/
@@ -167,6 +177,7 @@ Prerequisites
 .. _OpenMPI: http://www.open-mpi.org
 .. _MPICH: http://www.mpich.org
 .. _HDF5: https://www.hdfgroup.org/solutions/hdf5/
+.. _DAGMC: https://svalinn.github.io/DAGMC/index.html
 
 Obtaining the Source
 --------------------
@@ -235,6 +246,12 @@ optimize
 openmp
   Enables shared-memory parallelism using the OpenMP API. The Fortran compiler
   being used must support OpenMP. (Default: on)
+
+dagmc
+  Enables use of CAD-based DAGMC_ geometries. Please see the note about DAGMC in
+  the optional dependencies list for more information on this feature. The
+  installation directory for DAGMC should also be defined as `DAGMC_ROOT` in the
+  CMake configuration command. (Default: off)
 
 coverage
   Compile and link code instrumented for coverage analysis. This is typically

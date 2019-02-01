@@ -2,6 +2,10 @@
 #ifndef OPENMC_DAGMC_H
 #define OPENMC_DAGMC_H
 
+namespace openmc {
+extern "C" const bool dagmc_enabled;
+}
+
 #ifdef DAGMC
 
 #include "DagMC.hpp"
@@ -9,10 +13,6 @@
 #include "openmc/surface.h"
 
 namespace openmc {
-
-//==============================================================================
-// Global variables
-//==============================================================================
 
 namespace model {
 
@@ -26,15 +26,11 @@ extern moab::DagMC* DAG;
 
 extern "C" void load_dagmc_geometry();
 extern "C" void free_memory_dagmc();
+extern "C" pugi::xml_document* read_uwuw_materials();
+bool get_uwuw_materials_xml(std::string& s);
 
 } // namespace openmc
 
 #endif // DAGMC
 
 #endif // OPENMC_DAGMC_H
-
-#ifdef DAGMC
-extern "C" constexpr bool dagmc_enabled = true;
-#else
-extern "C" constexpr bool dagmc_enabled = false;
-#endif

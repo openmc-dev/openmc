@@ -89,6 +89,14 @@ you care. This element has the following attributes/sub-elements:
     *Default*: 0.0
 
 --------------------------------
+``<dagmc>`` Element
+--------------------------------
+
+When the DAGMC mode is enabled, the OpenMC geometry will be read from the file
+``dagmc.h5m``. If a :ref:`geometry.xml <io_geometry>` file is present with
+``dagmc`` set to ``true``, it will be ignored.
+
+--------------------------------
 ``<electron_treatment>`` Element
 --------------------------------
 

@@ -398,3 +398,32 @@ if needed, lattices, the last step is to create an instance of
 
 .. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
 .. _quadratic surfaces: http://en.wikipedia.org/wiki/Quadric
+
+--------------------------
+Using CAD-based Geometry
+--------------------------
+
+OpenMC relies on the Direct Accelerated Geometry Monte Carlo toolkit (`DAGMC
+<https://svalinn.github.io/DAGMC/>`_) to represent CAD-based geometry in a
+surface mesh format. A DAGMC run can be enabled in OpenMC by setting the
+``dagmc`` property to ``True`` in the model Settings either via the Python
+:class:`openmc.settings` Python class::
+
+  settings = openmc.Settings()
+  settings.dagmc = True
+
+or in the :ref:`settings.xml <io_settings>` file::
+
+  <dagmc>true</dagmc>
+
+With ``dagmc`` set to true, OpenMC will load the DAGMC model (from a local file
+named ``dagmc.h5m``) when initializing a simulation. If a `geometry.xml
+<../io_formats/geometry.html>`_ is present as well, it will be ignored.
+
+  **Note:** DAGMC geometries used in OpenMC are currently required to be clean,
+  meaning that all surfaces have been `imprinted and merged
+  <https://svalinn.github.io/DAGMC/usersguide/trelis_workflow.html>`_
+  successfully and that the model is `watertight
+  <https://svalinn.github.io/DAGMC/usersguide/tools.html#make-watertight>`_. Future
+  implementations of DAGMC geometry will support small volume overlaps and
+  un-merged surfaces.

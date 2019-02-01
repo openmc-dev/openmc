@@ -392,7 +392,7 @@ void Nuclide::create_derived()
 
 void Nuclide::init_grid()
 {
-  int neutron = static_cast<int>(ParticleType::neutron) - 1;
+  int neutron = static_cast<int>(ParticleType::neutron);
   double E_min = data::energy_min[neutron];
   double E_max = data::energy_max[neutron];
   int M = settings::n_log_bins;
@@ -939,8 +939,8 @@ extern "C" int openmc_load_nuclide(const char* name)
 extern "C" void
 set_particle_energy_bounds(int particle, double E_min, double E_max)
 {
-  data::energy_min[particle - 1] = E_min;
-  data::energy_max[particle - 1] = E_max;
+  data::energy_min[particle] = E_min;
+  data::energy_max[particle] = E_max;
 }
 
 extern "C" int nuclides_size() { return data::nuclide_map.size(); }

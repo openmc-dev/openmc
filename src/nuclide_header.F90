@@ -150,11 +150,6 @@ module nuclide_header
   type(MaterialMacroXS), bind(C)            :: material_xs  ! Cache for current material
 !$omp threadprivate(micro_xs, material_xs)
 
-  ! Minimum/maximum energies
-  real(8) :: energy_min(2) = [ZERO, ZERO]
-  real(8) :: energy_max(2) = [INFINITY, INFINITY]
-
-
   interface
     function library_present_c(type, name) result(b) bind(C, name='library_present')
       import C_INT, C_CHAR, C_BOOL

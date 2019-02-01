@@ -1456,10 +1456,8 @@ contains
     call read_mg_cross_sections_header_c(file_id)
 
     ! Get the minimum and maximum energies
-    energy_min(NEUTRON) = energy_bins(num_energy_groups + 1)
-    energy_max(NEUTRON) = energy_bins(1)
-    call set_particle_energy_bounds(NEUTRON, energy_min(NEUTRON), &
-         energy_max(NEUTRON))
+    call set_particle_energy_bounds(NEUTRON, &
+         energy_bins(num_energy_groups + 1), energy_bins(1))
 
     ! Close MGXS HDF5 file
     call file_close(file_id)

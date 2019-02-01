@@ -30,12 +30,10 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
 {
   if (p.material == MATERIAL_VOID) return;
 
-  // TODO: off-by-one
-  int photon = static_cast<int>(ParticleType::photon) - 1;
+  int photon = static_cast<int>(ParticleType::photon);
   if (p.E < settings::energy_cutoff[photon]) return;
 
   // Get bremsstrahlung data for this material and particle type
-  // TODO: off-by-one
   BremsstrahlungData* mat;
   if (p.type == static_cast<int>(ParticleType::positron)) {
     mat = &model::materials[p.material -1]->ttb_->positron;

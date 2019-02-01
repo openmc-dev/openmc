@@ -8,6 +8,7 @@ void
 ParticleFilter::from_xml(pugi::xml_node node)
 {
   particles_ = get_node_array<int>(node, "bins");
+  for (auto& p : particles_) --p;
   n_bins_ = particles_.size();
 }
 
@@ -34,8 +35,7 @@ ParticleFilter::to_statepoint(hid_t filter_group) const
 std::string
 ParticleFilter::text_label(int bin) const
 {
-  //TODO: off-by-one
-  return "Particle " + std::to_string(particles_[bin-1]);
+  return "Particle " + std::to_string(particles_[bin]);
 }
 
 //==============================================================================
@@ -43,6 +43,6 @@ ParticleFilter::text_label(int bin) const
 //==============================================================================
 
 extern "C" int particle_filter_particles(ParticleFilter* filt, int i)
-{return filt->particles_[i-1];}
+{return filt->particles_[i];}
 
 } // namespace openmc

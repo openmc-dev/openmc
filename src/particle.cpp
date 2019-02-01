@@ -203,11 +203,6 @@ Particle::write_restart() const
 
 void reset_coord(LocalCoord* c) { c->reset(); }
 void particle_clear(Particle* p) { p->clear(); }
-void particle_create_secondary(Particle* p, const double* uvw, double E,
-                               int type, bool run_CE)
-{
-  p->create_secondary(uvw, E, type, run_CE);
-}
 void particle_initialize(Particle* p) { p->initialize(); }
 void particle_from_source(Particle* p, const Bank* src)
 {

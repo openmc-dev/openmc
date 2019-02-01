@@ -16,6 +16,7 @@
 #include "openmc/timer.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/tallies/trigger.h"
 
 #include <omp.h>
 
@@ -27,7 +28,6 @@ namespace openmc {
 // data/functions from Fortran side
 extern "C" void accumulate_tallies();
 extern "C" void allocate_tally_results();
-extern "C" void check_triggers();
 extern "C" void init_tally_routines();
 extern "C" void load_state_point();
 extern "C" void print_batch_keff();

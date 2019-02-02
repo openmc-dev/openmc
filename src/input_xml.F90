@@ -36,7 +36,6 @@ module input_xml
   use tally_filter_header
   use tally_filter
   use timer_header,     only: time_read_xs
-  use trigger_header
   use volume_header
   use xml_interface
 
@@ -915,17 +914,12 @@ contains
     integer :: tally_id      ! user-specified identifier for filter
     integer :: deriv_id
     integer :: i_filt        ! index in filters array
-    integer :: i_elem        ! index of entry in dictionary
     integer :: n             ! size of arrays in mesh specification
     integer :: n_words       ! number of words read
     integer :: n_filter      ! number of filters
     integer :: n_scores      ! number of scores
-    integer :: n_user_trig   ! number of user-specified tally triggers
-    integer :: trig_ind      ! index of triggers array for each tally
-    integer :: user_trig_ind ! index of user-specified triggers for each tally
     integer :: i_start, i_end
     integer(C_INT) :: err
-    real(8) :: threshold     ! trigger convergence threshold
     integer :: MT            ! user-specified MT for score
     logical :: file_exists   ! does tallies.xml file exist?
     integer, allocatable :: temp_filter(:) ! temporary filter indices
@@ -937,22 +931,25 @@ contains
     character(MAX_WORD_LEN) :: score_name
     character(MAX_WORD_LEN) :: temp_str
     character(MAX_WORD_LEN), allocatable :: sarray(:)
-    type(DictCharInt) :: trigger_scores
     type(TallyFilterContainer), pointer :: f
     type(XMLDocument) :: doc
     type(XMLNode) :: root
     type(XMLNode) :: node_tal
     type(XMLNode) :: node_filt
-    type(XMLNode) :: node_trigger
     type(XMLNode), allocatable :: node_tal_list(:)
     type(XMLNode), allocatable :: node_filt_list(:)
-    type(XMLNode), allocatable :: node_trigger_list(:)
-    type(DictEntryCI) :: elem
     type(TallyDerivative), pointer :: deriv
     integer, allocatable :: nuclide_bins(:)
     logical :: all_nuclides
 
     interface
+      subroutine tally_init_triggers(tally_ptr, i_tally, xml_node) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: tally_ptr
+        integer(C_INT), value :: i_tally
+        type(C_PTR) :: xml_node
+      end subroutine
+
       subroutine read_tally_derivatives(node_ptr) bind(C)
         import C_PTR
         type(C_PTR) :: node_ptr
@@ -1262,15 +1259,6 @@ contains
         n_words = node_word_count(node_tal, "scores")
         allocate(sarray(n_words))
         call get_node_array(node_tal, "scores", sarray)
-
-        ! Append the score to the list of possible trigger scores
-        do j = 1, n_words
-          sarray(j) = to_lower(sarray(j))
-          score_name = trim(sarray(j))
-
-          if (trigger_on) call trigger_scores % set(trim(score_name), j)
-
-        end do
         n_scores = n_words
 
         ! Allocate score storage accordingly
@@ -1633,166 +1621,7 @@ contains
 
       ! If settings.xml trigger is turned on, create tally triggers
       if (trigger_on) then
-
-        ! Get list of trigger nodes for this tally
-        call get_node_list(node_tal, "trigger", node_trigger_list)
-
-        ! Initialize the number of triggers
-        n_user_trig = size(node_trigger_list)
-
-        ! Count the number of triggers needed for all scores including "all"
-        t % n_triggers = 0
-        COUNT_TRIGGERS: do user_trig_ind = 1, n_user_trig
-
-          ! Get pointer to trigger node
-          node_trigger = node_trigger_list(user_trig_ind)
-
-          ! Get scores for this trigger
-          if (check_for_node(node_trigger, "scores")) then
-            n_words = node_word_count(node_trigger, "scores")
-            allocate(sarray(n_words))
-            call get_node_array(node_trigger, "scores", sarray)
-          else
-            n_words = 1
-            allocate(sarray(n_words))
-            sarray(1) = "all"
-          end if
-
-          ! Count the number of scores for this trigger
-          do j = 1, n_words
-            score_name = trim(to_lower(sarray(j)))
-
-            if (score_name == "all") then
-              t % n_triggers = t % n_triggers + trigger_scores % size()
-            else
-              t % n_triggers = t % n_triggers + 1
-            end if
-
-          end do
-
-          deallocate(sarray)
-
-        end do COUNT_TRIGGERS
-
-        ! Allocate array of triggers for this tally
-        if (t % n_triggers > 0) then
-          allocate(t % triggers(t % n_triggers))
-        end if
-
-        ! Initialize overall trigger index for this tally to zero
-        trig_ind = 1
-
-        ! Create triggers for all scores specified on each trigger
-        TRIGGER_LOOP: do user_trig_ind = 1, n_user_trig
-
-          ! Get pointer to trigger node
-          node_trigger = node_trigger_list(user_trig_ind)
-
-          ! Get the trigger type - "variance", "std_dev" or "rel_err"
-          if (check_for_node(node_trigger, "type")) then
-            call get_node_value(node_trigger, "type", temp_str)
-            temp_str = to_lower(temp_str)
-          else
-            call fatal_error("Must specify trigger type for tally " // &
-                 trim(to_str(t % id)) // " in tally XML file.")
-          end if
-
-          ! Get the convergence threshold for the trigger
-          if (check_for_node(node_trigger, "threshold")) then
-            call get_node_value(node_trigger, "threshold", threshold)
-          else
-            call fatal_error("Must specify trigger threshold for tally " // &
-                 trim(to_str(t % id)) // " in tally XML file.")
-          end if
-
-          ! Get list scores for this trigger
-          if (check_for_node(node_trigger, "scores")) then
-            n_words = node_word_count(node_trigger, "scores")
-            allocate(sarray(n_words))
-            call get_node_array(node_trigger, "scores", sarray)
-          else
-            n_words = 1
-            allocate(sarray(n_words))
-            sarray(1) = "all"
-          end if
-
-          ! Create a trigger for each score
-          SCORE_LOOP: do j = 1, n_words
-            score_name = trim(to_lower(sarray(j)))
-
-            ! Expand "all" to include TriggerObjects for each score in tally
-            if (score_name == "all") then
-
-              ! Loop over all tally scores
-              i_elem = 0
-              do
-                ! Move to next score
-                call trigger_scores % next_entry(elem, i_elem)
-                if (i_elem == 0) exit
-
-                ! Store the score name and index in the trigger
-                t % triggers(trig_ind) % score_index = elem % value
-
-                ! Set the trigger convergence threshold type
-                select case (temp_str)
-                case ('std_dev')
-                  t % triggers(trig_ind) % type = STANDARD_DEVIATION
-                case ('variance')
-                  t % triggers(trig_ind) % type = VARIANCE
-                case ('rel_err')
-                  t % triggers(trig_ind) % type = RELATIVE_ERROR
-                case default
-                  call fatal_error("Unknown trigger type " // &
-                       trim(temp_str) // " in tally " // trim(to_str(t % id)))
-                end select
-
-                ! Store the trigger convergence threshold
-                t % triggers(trig_ind) % threshold = threshold
-
-                ! Increment the overall trigger index
-                trig_ind = trig_ind + 1
-              end do
-
-            ! Scores other than the "all" placeholder
-            else
-
-              ! Store the score name and index
-              t % triggers(trig_ind) % score_index = &
-                   trigger_scores % get(trim(score_name))
-
-              ! Check if an invalid score was set for the trigger
-              if (t % triggers(trig_ind) % score_index == 0) then
-                call fatal_error("The trigger score " // trim(score_name) // &
-                     " is not set for tally " // trim(to_str(t % id)))
-              end if
-
-              ! Store the trigger convergence threshold
-              t % triggers(trig_ind) % threshold = threshold
-
-              ! Set the trigger convergence threshold type
-              select case (temp_str)
-              case ('std_dev')
-                t % triggers(trig_ind) % type = STANDARD_DEVIATION
-              case ('variance')
-                t % triggers(trig_ind) % type = VARIANCE
-              case ('rel_err')
-                t % triggers(trig_ind) % type = RELATIVE_ERROR
-              case default
-                call fatal_error("Unknown trigger type " // trim(temp_str) // &
-                     " in tally " // trim(to_str(t % id)))
-              end select
-
-              ! Increment the overall trigger index
-              trig_ind = trig_ind + 1
-            end if
-          end do SCORE_LOOP
-
-          ! Deallocate the list of tally scores used to create triggers
-          deallocate(sarray)
-        end do TRIGGER_LOOP
-
-        ! Deallocate dictionary of scores/indices used to populate triggers
-        call trigger_scores % clear()
+        call tally_init_triggers(t % ptr, i_start + i - 1, node_tal % ptr)
       end if
 
       ! =======================================================================

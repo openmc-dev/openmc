@@ -13,7 +13,6 @@ module tally_header
   use string,              only: to_lower, to_f_string, str_to_int, to_str
   use tally_filter_header, only: TallyFilterContainer, filters, n_filters
   use tally_filter
-  use trigger_header,      only: TriggerObject
 
   implicit none
 
@@ -115,10 +114,6 @@ module tally_header
 
     ! Number of realizations of tally random variables
     integer :: n_realizations = 0
-
-    ! Tally precision triggers
-    integer                           :: n_triggers = 0  ! # of triggers
-    type(TriggerObject),  allocatable :: triggers(:)     ! Array of triggers
 
   contains
     procedure :: accumulate => tally_accumulate

@@ -51,8 +51,6 @@ module settings
   integer(C_INT32_T), bind(C) :: gen_per_batch ! # of generations per batch
 
   integer(C_INT), bind(C) :: n_max_batches             ! max # of batches
-  integer(C_INT), bind(C, name='trigger_batch_interval') :: n_batch_interval      ! batch interval for triggers
-  logical(C_BOOL), bind(C, name='trigger_predict') :: pred_batches   ! predict batches for triggers
   logical(C_BOOL), bind(C) :: trigger_on      ! flag for turning triggers on/off
 
   logical(C_BOOL), bind(C) :: entropy_on

@@ -2,6 +2,7 @@
 #define OPENMC_TALLIES_TALLY_H
 
 #include "openmc/constants.h"
+#include "openmc/tallies/trigger.h"
 
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
@@ -34,6 +35,11 @@ public:
   int32_t n_filter_bins() const {return n_filter_bins_;}
 
   //----------------------------------------------------------------------------
+  // Other methods.
+
+  void init_triggers(pugi::xml_node node, int i_tally);
+
+  //----------------------------------------------------------------------------
   // Major public data members.
 
   int type_ {TALLY_VOLUME}; //!< volume, surface current
@@ -58,6 +64,8 @@ public:
   // present.
   int energyout_filter_ {C_NONE};
   int delayedgroup_filter_ {C_NONE};
+
+  std::vector<Trigger> triggers_;
 
   int deriv_ {C_NONE}; //!< Index of a TallyDerivative object for diff tallies.
 

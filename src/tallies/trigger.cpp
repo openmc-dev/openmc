@@ -14,6 +14,18 @@
 
 namespace openmc {
 
+//==============================================================================
+// Global variable definitions
+//==============================================================================
+
+namespace settings {
+  KTrigger keff_trigger;
+}
+
+//==============================================================================
+// Non-memeber functions
+//==============================================================================
+
 static std::pair<double, double>
 get_tally_uncertainty(int i_tally, int score_index, int filter_index)
 {
@@ -32,10 +44,6 @@ get_tally_uncertainty(int i_tally, int score_index, int filter_index)
   return {std_dev, rel_err};
 }
 
-// Functions defined in F90.
-extern "C" int n_tally_triggers(int i_tally);
-extern "C" Trigger* get_tally_trigger(int i_tally, int i_trig);
-
 //! Finds the limiting limiting tally trigger.
 //
 //! param[out] ratio The uncertainty/threshold ratio for the most limiting
@@ -49,17 +57,15 @@ check_tally_triggers(double& ratio, int& tally_id, int& score)
   ratio = 0.;
   //TODO: off-by-one
   for (auto i_tally = 1; i_tally < model::tallies.size()+1; ++i_tally) {
-    const Tally& t {*model::tallies[i_tally-1]};
+    //TODO: can I mike trigger and t const?
+    Tally& t {*model::tallies[i_tally-1]};
 
     // Ignore tallies with less than two realizations.
     int n_reals;
     int err = openmc_tally_get_n_realizations(i_tally, &n_reals);
     if (n_reals < 2) continue;
 
-    //TODO: off-by-one
-    for (auto i_trig = 1; i_trig < n_tally_triggers(i_tally)+1; ++i_trig) {
-      auto& trigger {*get_tally_trigger(i_tally, i_trig)};
-
+    for (auto& trigger : t.triggers_) {
       trigger.std_dev = 0.;
       trigger.rel_err = 0.;
       trigger.variance = 0.;

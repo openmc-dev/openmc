@@ -272,12 +272,6 @@ module constants
        OUT_TOP    = 11,  &   ! z max
        IN_TOP     = 12       ! z max
 
-  ! Tally trigger types and threshold
-  integer, parameter :: &
-       VARIANCE           = 1, &
-       RELATIVE_ERROR     = 2, &
-       STANDARD_DEVIATION = 3
-
   ! Global tally parameters
   integer, parameter :: N_GLOBAL_TALLIES = 4
   integer, parameter :: &

@@ -12,6 +12,7 @@
 #include "openmc/tallies/filter_delayedgroup.h"
 #include "openmc/tallies/filter_surface.h"
 #include "openmc/tallies/filter_mesh.h"
+#include "openmc/xml_interface.h"
 
 #include "xtensor/xadapt.hpp"
 #include "xtensor/xbuilder.hpp" // for empty_like
@@ -19,6 +20,8 @@
 
 #include <array>
 #include <cstddef>
+#include <sstream>
+#include <string>
 
 namespace openmc {
 
@@ -63,7 +66,8 @@ double global_tally_collision;
 double global_tally_tracklength;
 double global_tally_leakage;
 
-//==============================================================================// Tally object implementation
+//==============================================================================
+// Tally object implementation
 //==============================================================================
 
 void
@@ -104,6 +108,88 @@ Tally::set_filters(const int32_t filter_indices[], int n)
     stride *= model::tally_filters[filters_[i]-1]->n_bins_;
   }
   n_filter_bins_ = stride;
+}
+
+void
+Tally::init_triggers(pugi::xml_node node, int i_tally)
+{
+  //TODO: use id_ attribute when it's available in C++
+  int id_;
+  auto err = openmc_tally_get_id(i_tally, &id_);
+
+  for (auto trigger_node: node.children("trigger")) {
+    // Read the trigger type.
+    int trigger_type;
+    if (check_for_node(trigger_node, "type")) {
+      auto type_str = get_node_value(trigger_node, "type");
+      if (type_str == "std_dev") {
+        trigger_type = STANDARD_DEVIATION;
+      } else if (type_str == "variance") {
+        trigger_type = VARIANCE;
+      } else if (type_str == "rel_err") {
+        trigger_type = RELATIVE_ERROR;
+      } else {
+        std::stringstream msg;
+        msg << "Unknown trigger type \"" << type_str << "\" in tally "  << id_;
+        fatal_error(msg);
+      }
+    } else {
+      std::stringstream msg;
+      msg << "Must specify trigger type for tally " << id_
+          << " in tally XML file";
+      fatal_error(msg);
+    }
+
+    // Read the trigger threshold.
+    double threshold;
+    if (check_for_node(trigger_node, "threshold")) {
+      threshold = std::stod(get_node_value(trigger_node, "threshold"));
+    } else {
+      std::stringstream msg;
+      msg << "Must specify trigger threshold for tally " << id_
+          << " in tally XML file";
+      fatal_error(msg);
+    }
+
+    // Read the trigger scores.
+    std::vector<std::string> trigger_scores;
+    if (check_for_node(trigger_node, "scores")) {
+      trigger_scores = get_node_array<std::string>(trigger_node, "scores");
+    } else {
+      trigger_scores.push_back("all");
+    }
+
+    //TODO: change this when tally scores are moved to C++
+    // Get access to the tally's scores.
+    int* tally_scores;
+    int n_tally_scores;
+    auto err = openmc_tally_get_scores(i_tally, &tally_scores, &n_tally_scores);
+
+    // Parse the trigger scores and populate the triggers_ vector.
+    for (auto score_str : trigger_scores) {
+      if (score_str == "all") {
+        triggers_.reserve(triggers_.size() + n_tally_scores);
+        for (auto i_score = 0; i_score < n_tally_scores; ++i_score) {
+          //TODO: off-by-one
+          triggers_.emplace_back(trigger_type, threshold, i_score+1);
+        }
+      } else {
+        int i_score = 0;
+        for (; i_score < n_tally_scores; ++i_score) {
+          if (reaction_name(tally_scores[i_score]) == score_str) break;
+        }
+        if (i_score == n_tally_scores) {
+          std::stringstream msg;
+          msg << "Could not find the score \"" << score_str << "\" in tally "
+              << id_ << " but it was listed in a trigger on that tally";
+          fatal_error(msg);
+        }
+        //TODO: off-by-one
+        triggers_.emplace_back(trigger_type, threshold, i_score+1);
+        std::cout << i_score+1 << "\n";
+      }
+    }
+  }
 }
 
 //==============================================================================
@@ -1069,6 +1155,9 @@ extern "C" {
 
   int tally_get_delayedgroup_filter_c(Tally* tally)
   {return tally->delayedgroup_filter_;}
+
+  void tally_init_triggers(Tally* tally, int i_tally, pugi::xml_node* node)
+  {tally->init_triggers(*node, i_tally);}
 
   int tally_get_deriv_c(Tally* tally) {return tally->deriv_;}
 

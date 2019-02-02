@@ -68,7 +68,6 @@ contains
     use surface_header
     use tally_filter_header
     use tally_header
-    use trigger_header
     use volume_header
 
     interface

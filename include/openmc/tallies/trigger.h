@@ -8,29 +8,27 @@
 namespace openmc {
 
 //==============================================================================
-// Structs
+// Type definitions
 //==============================================================================
+
+enum class TriggerMetric {
+  variance, relative_error, standard_deviation, not_active
+};
 
 //! Stops the simulation early if a desired tally uncertainty is reached.
 
 struct Trigger
 {
-  Trigger(int type_, double threshold_, int score_index_)
-    : type(type_), threshold(threshold_), score_index(score_index_) {}
-
-  int type;  //!< variance, std_dev, or rel_err
+  TriggerMetric metric;
   double threshold;  //!< uncertainty value below which trigger is satisfied
   int score_index;  //!< index of the relevant score in the tally's arrays
-  double variance {0.};
-  double std_dev {0.};
-  double rel_err {0.};
 };
 
 //! Stops the simulation early if a desired k-effective uncertainty is reached.
 
 struct KTrigger
 {
-  int type {0};
+  TriggerMetric metric {TriggerMetric::not_active};
   double threshold {0.};
 };
 

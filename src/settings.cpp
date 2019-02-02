@@ -155,11 +155,11 @@ void get_run_parameters(pugi::xml_node node_base)
       if (check_for_node(node_keff_trigger, "type")) {
         auto temp = get_node_value(node_keff_trigger, "type", true, true);
         if (temp == "std_dev") {
-          keff_trigger.type = STANDARD_DEVIATION;
+          keff_trigger.metric = TriggerMetric::standard_deviation;
         } else if (temp == "variance") {
-          keff_trigger.type = VARIANCE;
+          keff_trigger.metric = TriggerMetric::variance;
         } else if (temp == "rel_err") {
-          keff_trigger.type = RELATIVE_ERROR;
+          keff_trigger.metric = TriggerMetric::relative_error;
         } else {
           fatal_error("Unrecognized keff trigger type " + temp);
         }

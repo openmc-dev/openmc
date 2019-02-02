@@ -385,11 +385,6 @@ constexpr int IN_BOTTOM  {10}; // z min
 constexpr int OUT_TOP    {11}; // z max
 constexpr int IN_TOP     {12}; // z max
 
-// Tally trigger types and threshold
-constexpr int VARIANCE           {1};
-constexpr int RELATIVE_ERROR     {2};
-constexpr int STANDARD_DEVIATION {3};
-
 // Global tally parameters
 constexpr int N_GLOBAL_TALLIES {4};
 constexpr int K_COLLISION   {0};

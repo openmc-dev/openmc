@@ -119,15 +119,15 @@ Tally::init_triggers(pugi::xml_node node, int i_tally)
 
   for (auto trigger_node: node.children("trigger")) {
     // Read the trigger type.
-    int trigger_type;
+    TriggerMetric metric;
     if (check_for_node(trigger_node, "type")) {
       auto type_str = get_node_value(trigger_node, "type");
       if (type_str == "std_dev") {
-        trigger_type = STANDARD_DEVIATION;
+        metric = TriggerMetric::standard_deviation;
       } else if (type_str == "variance") {
-        trigger_type = VARIANCE;
+        metric = TriggerMetric::variance;
       } else if (type_str == "rel_err") {
-        trigger_type = RELATIVE_ERROR;
+        metric = TriggerMetric::relative_error;
       } else {
         std::stringstream msg;
         msg << "Unknown trigger type \"" << type_str << "\" in tally "  << id_;
@@ -170,8 +170,7 @@ Tally::init_triggers(pugi::xml_node node, int i_tally)
       if (score_str == "all") {
         triggers_.reserve(triggers_.size() + n_tally_scores);
         for (auto i_score = 0; i_score < n_tally_scores; ++i_score) {
-          //TODO: off-by-one
-          triggers_.emplace_back(trigger_type, threshold, i_score+1);
+          triggers_.push_back({metric, threshold, i_score});
         }
       } else {
         int i_score = 0;
@@ -184,9 +183,7 @@ Tally::init_triggers(pugi::xml_node node, int i_tally)
               << id_ << " but it was listed in a trigger on that tally";
           fatal_error(msg);
         }
-        //TODO: off-by-one
-        triggers_.emplace_back(trigger_type, threshold, i_score+1);
-        std::cout << i_score+1 << "\n";
+        triggers_.push_back({metric, threshold, i_score});
       }
     }
   }

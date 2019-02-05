@@ -61,5 +61,9 @@ void print_generation();
 
 void print_batch_keff();
 
+//! Display time elapsed for various stages of a run
+
+void print_runtime();
+
 } // namespace openmc
 #endif // OPENMC_OUTPUT_H

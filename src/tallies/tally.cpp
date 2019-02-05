@@ -530,6 +530,46 @@ Tally::set_scores(std::vector<std::string> scores)
 }
 
 void
+Tally::set_nuclides(pugi::xml_node node)
+{
+  // By default, we tally just the total material rates.
+  if (!check_for_node(node, "nuclides")) {
+    nuclides_.push_back(-1);
+    return;
+  }
+
+  if (get_node_value(node, "nuclides") == "all") {
+    // This tally should bin every nuclide in the problem.  It should also bin
+    // the total material rates.  To achieve this, set the nuclides_ vector to
+    // 1, 2, 3, ..., -1.
+    nuclides_.reserve(data::nuclides.size() + 1);
+    //TODO: off-by-one
+    for (auto i = 1; i < data::nuclides.size()+1; ++i)
+      nuclides_.push_back(i);
+    nuclides_.push_back(-1);
+    all_nuclides_ = true;
+
+  } else {
+    // The user provided specifics nuclides.  Parse it as an array with either
+    // "total" or a nuclide name like "U-235" in each position.
+    auto words = get_node_array<std::string>(node, "nuclides");
+    for (auto word : words) {
+      if (word == "total") {
+        nuclides_.push_back(-1);
+      } else {
+        auto search = data::nuclide_map.find(word);
+        if (search == data::nuclide_map.end())
+          fatal_error("Could not find the nuclide " + word
+            + " specified in tally " + std::to_string(id_)
+            + " in any material");
+        //TODO: off-by-one
+        nuclides_.push_back(search->second + 1);
+      }
+    }
+  }
+}
+
+void
 Tally::init_triggers(pugi::xml_node node, int i_tally)
 {
   for (auto trigger_node: node.children("trigger")) {
@@ -1329,8 +1369,11 @@ extern "C" {
   int tally_get_delayedgroup_filter_c(Tally* tally)
   {return tally->delayedgroup_filter_;}
 
-  void tally_init_scores(Tally* tally, pugi::xml_node* node)
+  void tally_set_scores(Tally* tally, pugi::xml_node* node)
   {tally->set_scores(*node);}
+
+  void tally_set_nuclides(Tally* tally, pugi::xml_node* node)
+  {tally->set_nuclides(*node);}
 
   void tally_init_triggers(Tally* tally, int i_tally, pugi::xml_node* node)
   {tally->init_triggers(*node, i_tally);}

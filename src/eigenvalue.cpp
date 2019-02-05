@@ -622,7 +622,7 @@ double ufs_get_weight(const Particle* p)
   }
 }
 
-extern "C" void write_eigenvalue_hdf5(hid_t group)
+void write_eigenvalue_hdf5(hid_t group)
 {
   write_dataset(group, "n_inactive", settings::n_inactive);
   write_dataset(group, "generations_per_batch", settings::gen_per_batch);

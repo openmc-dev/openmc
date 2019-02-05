@@ -532,6 +532,8 @@ Tally::set_scores(std::vector<std::string> scores)
 void
 Tally::set_nuclides(pugi::xml_node node)
 {
+  nuclides_.clear();
+
   // By default, we tally just the total material rates.
   if (!check_for_node(node, "nuclides")) {
     nuclides_.push_back(-1);
@@ -1232,6 +1234,52 @@ openmc_tally_set_scores(int32_t index, int n, const char** scores)
 }
 
 extern "C" int
+openmc_tally_get_nuclides(int32_t index, int** nuclides, int* n)
+{
+  // Make sure the index fits in the array bounds.
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  //TODO: off-by-one
+  *n = model::tallies[index-1]->nuclides_.size();
+  *nuclides = model::tallies[index-1]->nuclides_.data();
+
+  return 0;
+}
+
+extern "C" int
+openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides)
+{
+  // Make sure the index fits in the array bounds.
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  std::vector<std::string> words(nuclides, nuclides+n);
+  std::vector<int> nucs;
+  for (auto word : words){
+    if (word == "total") {
+      nucs.push_back(-1);
+    } else {
+      auto search = data::nuclide_map.find(word);
+      if (search == data::nuclide_map.end()) {
+        set_errmsg("Nuclide \"" + word  + "\" has not been loaded yet");
+        return OPENMC_E_DATA;
+      }
+      nucs.push_back(search->second);
+    }
+  }
+
+  //TODO: off-by-one
+  model::tallies[index-1]->nuclides_ = nucs;
+
+  return 0;
+}
+
+extern "C" int
 openmc_tally_get_filters(int32_t index, const int32_t** indices, int* n)
 {
   if (index < 1 || index > model::tallies.size()) {
@@ -1262,22 +1310,6 @@ openmc_tally_set_filters(int32_t index, int n, const int32_t* indices)
     set_errmsg(ex.what());
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-
-  return 0;
-}
-
-extern "C" int
-openmc_tally_get_nuclides(int32_t index, int** nuclides, int* n)
-{
-  // Make sure the index fits in the array bounds.
-  if (index < 1 || index > model::tallies.size()) {
-    set_errmsg("Index in tallies array is out of bounds.");
-    return OPENMC_E_OUT_OF_BOUNDS;
-  }
-
-  //TODO: off-by-one
-  *n = model::tallies[index-1]->nuclides_.size();
-  *nuclides = model::tallies[index-1]->nuclides_.data();
 
   return 0;
 }
@@ -1352,16 +1384,6 @@ extern "C" {
 
   int tally_get_nuclide_bins_c(Tally* tally, int i)
   {return tally->nuclides_[i-1];}
-
-  void
-  tally_set_nuclide_bins_c(Tally* tally, int n, int bins[], bool all_nuclides)
-  {
-    tally->nuclides_.clear();
-    tally->nuclides_.assign(bins, bins + n);
-    tally->all_nuclides_ = all_nuclides;
-  }
-
-  bool tally_get_all_nuclides_c(Tally* tally) {return tally->all_nuclides_;}
 
   int tally_get_energyout_filter_c(Tally* tally)
   {return tally->energyout_filter_;}

@@ -98,10 +98,6 @@ module tally_header
     character(len=104) :: name = "" ! user-defined name
     real(8) :: volume               ! volume of region
 
-    ! Values to score, e.g. flux, absorption, etc.
-    !integer              :: n_score_bins = 0
-    !integer, allocatable :: score_bins_(:)
-
     ! Results for each bin -- the first dimension of the array is for scores
     ! (e.g. flux, total reaction rate, fission reaction rate, etc.) and the
     ! second dimension of the array is for the combination of filters
@@ -133,8 +129,6 @@ module tally_header
     procedure :: n_filter_bins => tally_get_n_filter_bins
     procedure :: n_nuclide_bins => tally_get_n_nuclide_bins
     procedure :: nuclide_bins => tally_get_nuclide_bins
-    procedure :: set_nuclide_bins => tally_set_nuclide_bins
-    procedure :: all_nuclides => tally_get_all_nuclides
     procedure :: energyout_filter => tally_get_energyout_filter
     procedure :: delayedgroup_filter => tally_get_delayedgroup_filter
     procedure :: deriv => tally_get_deriv
@@ -279,12 +273,6 @@ contains
 
   subroutine tally_allocate_results(this)
     class(TallyObject), intent(inout) :: this
-    integer, parameter :: default_nuclide_bins(1) = (/-1/)
-
-    ! If no nuclides were specified, add a single bin for total material
-    if (this % n_nuclide_bins() == 0) then
-      call this % set_nuclide_bins(default_nuclide_bins)
-    end if
 
     ! Set total number of filter and scoring bins
     this % total_score_bins = this % n_score_bins() * this % n_nuclide_bins()
@@ -503,41 +491,6 @@ contains
       end function
     end interface
     nuclide = tally_get_nuclide_bins_c(this % ptr, i)
-  end function
-
-  subroutine tally_set_nuclide_bins(this, bins, all_nuclides)
-    class(TallyObject) :: this
-    integer :: bins(:)
-    logical, optional :: all_nuclides
-    logical(C_BOOL) :: all_
-    interface
-      subroutine tally_set_nuclide_bins_c(this, n, bins, all_nuclides) bind(C)
-        import C_PTR, C_INT, C_BOOL
-        type(C_PTR), value :: this
-        integer(C_INT), value :: n
-        integer(C_INT) :: bins(n)
-        logical(C_BOOL), value :: all_nuclides
-      end subroutine
-    end interface
-    if (present(all_nuclides)) then
-      all_ = logical(all_nuclides, kind=C_BOOL)
-    else
-      all_ = .false._C_BOOL
-    end if
-    call tally_set_nuclide_bins_c(this % ptr, size(bins), bins, all_)
-  end subroutine
-
-  function tally_get_all_nuclides(this) result(all_nuc)
-    class(TallyObject) :: this
-    logical(C_BOOL) :: all_nuc
-    interface
-      function tally_get_all_nuclides_c(tally) result(all_nuc) bind(C)
-        import C_PTR, C_BOOL
-        type(C_PTR), value :: tally
-        logical(C_BOOL) :: all_nuc
-      end function
-    end interface
-    all_nuc = tally_get_all_nuclides_c(this % ptr)
   end function
 
   function tally_get_energyout_filter(this) result(filt)
@@ -872,56 +825,6 @@ contains
       call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_set_id
-
-
-  function openmc_tally_set_nuclides(index, n, nuclides) result(err) bind(C)
-    ! Sets the nuclides in the tally which results should be scored for
-    integer(C_INT32_T), value  :: index
-    integer(C_INT), value      :: n
-    type(C_PTR),    intent(in) :: nuclides(n)
-    integer(C_INT) :: err
-
-    integer, allocatable :: bins(:)
-    integer :: i
-    integer :: idx
-    character(C_CHAR), pointer :: string(:)
-    character(len=:, kind=C_CHAR), allocatable :: nuclide_
-
-    err = E_UNASSIGNED
-    if (index >= 1 .and. index <= size(tallies)) then
-      associate (t => tallies(index) % obj)
-        allocate(bins(n))
-
-        do i = 1, n
-          ! Convert C string to Fortran string
-          call c_f_pointer(nuclides(i), string, [10])
-          nuclide_ = to_f_string(string)
-
-          select case (nuclide_)
-          case ('total')
-            bins(i) = -1
-          case default
-            idx = nuclide_map_get(to_c_string(nuclide_))
-            if (idx /= -1) then
-              bins(i) = idx - 1
-            else
-              err = E_DATA
-              call set_errmsg("Nuclide '" // trim(to_f_string(string)) // &
-                   "' has not been loaded yet.")
-              return
-            end if
-          end select
-        end do
-
-        call t % set_nuclide_bins(bins)
-
-        err = 0
-      end associate
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg('Index in tallies array is out of bounds.')
-    end if
-  end function openmc_tally_set_nuclides
 
 
   subroutine openmc_get_tally_next_id(id) bind(C)

@@ -3,6 +3,7 @@
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/settings.h"
@@ -43,10 +44,6 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
 
 extern "C" void
 score_all_nuclides(Particle* p, int i_tally, double flux, int filter_index);
-
-extern "C" int material_nuclide_index(int i_material, int i_nuclide);
-
-extern "C" double material_atom_density(int i_material, int i);
 
 //==============================================================================
 // Global variable definitions
@@ -729,9 +726,13 @@ score_analog_tally_mg(Particle* p)
 
         double atom_density = 0.;
         if (i_nuclide > 0) {
-          auto j = material_nuclide_index(p->material, i_nuclide);
-          if (j == 0) continue;
-          atom_density = material_atom_density(p->material, j);
+          //TODO: off-by-one
+          auto j = model::materials[p->material-1]
+            ->mat_nuclide_index_[i_nuclide-1];
+          if (j == C_NONE) continue;
+          //atom_density = material_atom_density(p->material, j);
+          //TODO: off-by-one
+          atom_density = model::materials[p->material-1]->atom_density_(j);
         }
 
         score_general_mg(p, i_tally, i*tally.scores_.size(), filter_index,
@@ -791,9 +792,13 @@ score_tracklength_tally(Particle* p, double distance)
           double atom_density = 0.;
           if (i_nuclide > 0) {
             if (p->material != MATERIAL_VOID) {
-              auto j = material_nuclide_index(p->material, i_nuclide);
-              if (j == 0) continue;
-              atom_density = material_atom_density(p->material, j);
+              //TODO: off-by-one
+              auto j = model::materials[p->material-1]
+                ->mat_nuclide_index_[i_nuclide-1];
+              if (j == C_NONE) continue;
+              //atom_density = material_atom_density(p->material, j);
+              //TODO: off-by-one
+              atom_density = model::materials[p->material-1]->atom_density_(j);
             }
           }
 
@@ -867,9 +872,13 @@ score_collision_tally(Particle* p)
 
           double atom_density = 0.;
           if (i_nuclide > 0) {
-            auto j = material_nuclide_index(p->material, i_nuclide);
-            if (j == 0) continue;
-            atom_density = material_atom_density(p->material, j);
+            //TODO: off-by-one
+            auto j = model::materials[p->material-1]
+              ->mat_nuclide_index_[i_nuclide-1];
+            if (j == C_NONE) continue;
+            //atom_density = material_atom_density(p->material, j);
+            //TODO: off-by-one
+            atom_density = model::materials[p->material-1]->atom_density_(j);
           }
 
           //TODO: consider replacing this "if" with pointers or templates

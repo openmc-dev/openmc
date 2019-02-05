@@ -278,7 +278,7 @@ class Tally(_FortranObjectWithID):
         nucs = POINTER(c_int)()
         n = c_int()
         _dll.openmc_tally_get_nuclides(self._index, nucs, n)
-        return [Nuclide(nucs[i]).name if nucs[i] > 0 else 'total'
+        return [Nuclide(nucs[i]+1).name if nucs[i] >= 0 else 'total'
                 for i in range(n.value)]
 
     @nuclides.setter

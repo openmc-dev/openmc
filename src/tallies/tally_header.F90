@@ -903,7 +903,7 @@ contains
           case default
             idx = nuclide_map_get(to_c_string(nuclide_))
             if (idx /= -1) then
-              bins(i) = idx
+              bins(i) = idx - 1
             else
               err = E_DATA
               call set_errmsg("Nuclide '" // trim(to_f_string(string)) // &

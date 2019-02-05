@@ -632,9 +632,9 @@ contains
           else
             if (run_CE) then
               write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
-                   trim(nuclides(i_nuclide) % name)
+                   trim(nuclides(i_nuclide+1) % name)
             else
-              call get_name_c(i_nuclide, len(temp_name), temp_name)
+              call get_name_c(i_nuclide+1, len(temp_name), temp_name)
               write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
                    trim(temp_name)
             end if

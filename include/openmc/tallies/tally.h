@@ -42,6 +42,8 @@ public:
   //----------------------------------------------------------------------------
   // Major public data members.
 
+  int id_; //!< user-defined identifier
+
   int type_ {TALLY_VOLUME}; //!< volume, surface current
 
   //! Event type that contributes to this tally

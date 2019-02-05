@@ -1212,7 +1212,7 @@ contains
 
           else
             call fatal_error("Invalid score type on tally " &
-                 // to_str(t % id) // ".")
+                 // to_str(t % id()) // ".")
           end if
         end if
 
@@ -2367,7 +2367,7 @@ contains
 
           case default
             call fatal_error('Tally derivative not defined for a score on &
-                 &tally ' // trim(to_str(t % id)))
+                 &tally ' // trim(to_str(t % id())))
           end select
 
         case (ESTIMATOR_COLLISION)
@@ -2388,7 +2388,7 @@ contains
 
           case default
             call fatal_error('Tally derivative not defined for a score on &
-                 &tally ' // trim(to_str(t % id)))
+                 &tally ' // trim(to_str(t % id())))
           end select
 
         case default
@@ -2438,7 +2438,7 @@ contains
 
           case default
             call fatal_error('Tally derivative not defined for a score on &
-                 &tally ' // trim(to_str(t % id)))
+                 &tally ' // trim(to_str(t % id())))
           end select
 
         case (ESTIMATOR_COLLISION)
@@ -2525,7 +2525,7 @@ contains
 
           case default
             call fatal_error('Tally derivative not defined for a score on &
-                 &tally ' // trim(to_str(t % id)))
+                 &tally ' // trim(to_str(t % id())))
           end select
 
         case default
@@ -2678,7 +2678,7 @@ contains
 
           case default
             call fatal_error('Tally derivative not defined for a score on &
-                 &tally ' // trim(to_str(t % id)))
+                 &tally ' // trim(to_str(t % id())))
           end select
 
         case (ESTIMATOR_COLLISION)
@@ -2867,7 +2867,7 @@ contains
 
           case default
             call fatal_error('Tally derivative not defined for a score on &
-                 &tally ' // trim(to_str(t % id)))
+                 &tally ' // trim(to_str(t % id())))
           end select
 
         case default

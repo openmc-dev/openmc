@@ -238,7 +238,7 @@ contains
         ! Write array of tally IDs
         allocate(id_array(n_tallies))
         do i = 1, n_tallies
-          id_array(i) = tallies(i) % obj % id
+          id_array(i) = tallies(i) % obj % id()
         end do
         call write_attribute(tallies_group, "ids", id_array)
         deallocate(id_array)
@@ -249,7 +249,7 @@ contains
           ! Get pointer to tally
           associate (tally => tallies(i) % obj)
           tally_group = create_group(tallies_group, "tally " // &
-               trim(to_str(tally % id)))
+               trim(to_str(tally % id())))
 
           ! Write the name for this tally
           call write_dataset(tally_group, "name", tally % name)
@@ -357,7 +357,7 @@ contains
           associate (tally => tallies(i) % obj)
             ! Write sum and sum_sq for each bin
             tally_group = open_group(tallies_group, "tally " &
-                 // to_str(tally % id))
+                 // to_str(tally % id()))
             call tally % write_results_hdf5(tally_group)
             call close_group(tally_group)
           end associate
@@ -560,7 +560,7 @@ contains
           associate (t => tallies(i) % obj)
             ! Read sum, sum_sq, and N for each bin
             tally_group = open_group(tallies_group, "tally " // &
-                 trim(to_str(t % id)))
+                 trim(to_str(t % id())))
             call t % read_results_hdf5(tally_group)
             call read_dataset(t % n_realizations, tally_group, &
                  "n_realizations")

@@ -1133,7 +1133,7 @@ contains
           else
             call fatal_error("Could not find filter " &
                  // trim(to_str(temp_filter(j))) // " specified on tally " &
-                 // trim(to_str(t % id)))
+                 // trim(to_str(t % id())))
           end if
 
           ! Store the index of the filter
@@ -1230,7 +1230,7 @@ contains
             if (.not. nuclide_dict % has(word)) then
               call fatal_error("Could not find the nuclide " &
                    // trim(word) // " specified in tally " &
-                   // trim(to_str(t % id)) // " in any material.")
+                   // trim(to_str(t % id())) // " in any material.")
             end if
 
             ! Set bin to index in nuclides array
@@ -1526,7 +1526,7 @@ contains
             if (t % score_bins(j) == t % score_bins(k)) then
               call fatal_error("Duplicate score of type '" // trim(&
                    reaction_name(t % score_bins(j))) // "' found in tally " &
-                   // trim(to_str(t % id)))
+                   // trim(to_str(t % id())))
             end if
           end do
         end do
@@ -1573,7 +1573,7 @@ contains
         end if
       else
         call fatal_error("No <scores> specified on tally " &
-             // trim(to_str(t % id)) // ".")
+             // trim(to_str(t % id())) // ".")
       end if
 
       ! Check for a tally derivative.
@@ -1596,7 +1596,7 @@ contains
           if (j == n_tally_derivs()) then
             call fatal_error("Could not find derivative " &
                  // trim(to_str(deriv_id)) // " specified on tally " &
-                 // trim(to_str(t % id)))
+                 // trim(to_str(t % id())))
           end if
         end do
 
@@ -1605,7 +1605,7 @@ contains
              .or. deriv % variable == DIFF_TEMPERATURE) then
           do j = 1, t % n_nuclide_bins()
             if (has_energyout .and. t % nuclide_bins(j) == -1) then
-              call fatal_error("Error on tally " // trim(to_str(t % id)) &
+              call fatal_error("Error on tally " // trim(to_str(t % id())) &
                    // ": Cannot use a 'nuclide_density' or 'temperature' &
                    &derivative on a tally with an outgoing energy filter and &
                    &'total' nuclide rate. Instead, tally each nuclide in the &
@@ -1640,7 +1640,7 @@ contains
           ! tally needs post-collision information
           if (t % estimator() == ESTIMATOR_ANALOG) then
             call fatal_error("Cannot use track-length estimator for tally " &
-                 // to_str(t % id))
+                 // to_str(t % id()))
           end if
 
           ! Set estimator to track-length estimator
@@ -1651,7 +1651,7 @@ contains
           ! tally needs post-collision information
           if (t % estimator() == ESTIMATOR_ANALOG) then
             call fatal_error("Cannot use collision estimator for tally " &
-                 // to_str(t % id))
+                 // to_str(t % id()))
           end if
 
           ! Set estimator to collision estimator
@@ -1659,7 +1659,7 @@ contains
 
         case default
           call fatal_error("Invalid estimator '" // trim(temp_str) &
-               // "' on tally " // to_str(t % id))
+               // "' on tally " // to_str(t % id()))
         end select
       end if
 

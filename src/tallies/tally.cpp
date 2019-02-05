@@ -236,10 +236,6 @@ Tally::set_filters(const int32_t filter_indices[], int n)
 void
 Tally::init_triggers(pugi::xml_node node, int i_tally)
 {
-  //TODO: use id_ attribute when it's available in C++
-  int id_;
-  auto err = openmc_tally_get_id(i_tally, &id_);
-
   for (auto trigger_node: node.children("trigger")) {
     // Read the trigger type.
     TriggerMetric metric;
@@ -942,6 +938,10 @@ extern "C" {
 
   int active_surface_tallies_size()
   {return model::active_surface_tallies.size();}
+
+  int tally_get_id_c(Tally* tally) {return tally->id_;}
+
+  void tally_set_id_c(Tally* tally, int id) {tally->id_ = id;}
 
   int tally_get_type_c(Tally* tally) {return tally->type_;}
 

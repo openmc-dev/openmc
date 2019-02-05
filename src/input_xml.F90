@@ -679,7 +679,7 @@ contains
           end if
 
           ! Store the index of the filter
-          temp_filter(j) = i_filt
+          temp_filter(j) = i_filt - 1
         end do
 
         ! Set the filters
@@ -691,7 +691,7 @@ contains
       has_energyout = (t % energyout_filter() > 0)
       particle_filter_index = 0
       do j = 1, t % n_filters()
-        select type (filt => filters(t % filter(j)) % obj)
+        select type (filt => filters(t % filter(j) + 1) % obj)
         type is (ParticleFilter)
           particle_filter_index = j
         end select
@@ -699,7 +699,7 @@ contains
 
       ! Change the tally estimator if a filter demands it
       do j = 1, t % n_filters()
-        select type (filt => filters(t % filter(j)) % obj)
+        select type (filt => filters(t % filter(j) + 1) % obj)
         type is (EnergyoutFilter)
           call t % set_estimator(ESTIMATOR_ANALOG)
         type is (LegendreFilter)

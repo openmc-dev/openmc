@@ -467,7 +467,7 @@ contains
 
               ! Check if the delayed group filter is present
               if (dg_filter > 0) then
-                select type(filt => filters(t % filter(dg_filter)) % obj)
+                select type(filt => filters(t % filter(dg_filter) + 1) % obj)
                 type is (DelayedGroupFilter)
 
                   ! Loop over all delayed group bins and tally to them
@@ -512,7 +512,7 @@ contains
 
             ! Check if the delayed group filter is present
             if (dg_filter > 0) then
-              select type(filt => filters(t % filter(dg_filter)) % obj)
+              select type(filt => filters(t % filter(dg_filter) + 1) % obj)
               type is (DelayedGroupFilter)
 
                 ! Loop over all delayed group bins and tally to them
@@ -544,7 +544,7 @@ contains
 
             ! Check if the delayed group filter is present
             if (dg_filter > 0) then
-              select type(filt => filters(t % filter(dg_filter)) % obj)
+              select type(filt => filters(t % filter(dg_filter) + 1) % obj)
               type is (DelayedGroupFilter)
 
                 ! Loop over all delayed group bins and tally to them
@@ -577,7 +577,7 @@ contains
 
             ! Check if the delayed group filter is present
             if (dg_filter > 0) then
-              select type(filt => filters(t % filter(dg_filter)) % obj)
+              select type(filt => filters(t % filter(dg_filter) + 1) % obj)
               type is (DelayedGroupFilter)
 
                 ! Loop over all nuclides in the current material
@@ -650,7 +650,7 @@ contains
 
               ! Check if the delayed group filter is present
               if (dg_filter > 0) then
-                select type(filt => filters(t % filter(dg_filter)) % obj)
+                select type(filt => filters(t % filter(dg_filter) + 1) % obj)
                 type is (DelayedGroupFilter)
 
                   ! Loop over all delayed group bins and tally to them
@@ -745,7 +745,7 @@ contains
                 if (dg_filter > 0) then
 
                   ! declare the delayed group filter type
-                  select type(filt => filters(t % filter(dg_filter)) % obj)
+                  select type(filt => filters(t % filter(dg_filter) + 1) % obj)
                   type is (DelayedGroupFilter)
 
                     ! loop over delayed group bins until the corresponding bin
@@ -775,7 +775,7 @@ contains
 
             ! Check if the delayed group filter is present
             if (dg_filter > 0) then
-              select type(filt => filters(t % filter(dg_filter)) % obj)
+              select type(filt => filters(t % filter(dg_filter) + 1) % obj)
               type is (DelayedGroupFilter)
 
                 ! Loop over all delayed group bins and tally to them
@@ -829,7 +829,7 @@ contains
 
             ! Check if the delayed group filter is present
             if (dg_filter > 0) then
-              select type(filt => filters(t % filter(dg_filter)) % obj)
+              select type(filt => filters(t % filter(dg_filter) + 1) % obj)
               type is (DelayedGroupFilter)
 
                 ! Loop over all nuclides in the current material
@@ -1677,7 +1677,7 @@ contains
             if (get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g) > ZERO) then
 
               if (dg_filter > 0) then
-                select type(filt => filters(t % filter(dg_filter)) % obj)
+                select type(filt => filters(t % filter(dg_filter) + 1) % obj)
                 type is (DelayedGroupFilter)
 
                   ! Loop over all delayed group bins and tally to them
@@ -1726,7 +1726,7 @@ contains
 
             ! Check if the delayed group filter is present
             if (dg_filter > 0) then
-              select type(filt => filters(t % filter(dg_filter)) % obj)
+              select type(filt => filters(t % filter(dg_filter) + 1) % obj)
               type is (DelayedGroupFilter)
 
                 ! Loop over all delayed group bins and tally to them
@@ -1762,7 +1762,7 @@ contains
 
           ! Check if the delayed group filter is present
           if (dg_filter > 0) then
-            select type(filt => filters(t % filter(dg_filter)) % obj)
+            select type(filt => filters(t % filter(dg_filter) + 1) % obj)
             type is (DelayedGroupFilter)
 
               ! Loop over all delayed group bins and tally to them
@@ -1809,7 +1809,7 @@ contains
             if (get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g) > ZERO) then
 
               if (dg_filter > 0) then
-                select type(filt => filters(t % filter(dg_filter)) % obj)
+                select type(filt => filters(t % filter(dg_filter) + 1) % obj)
                 type is (DelayedGroupFilter)
 
                   ! Loop over all delayed group bins and tally to them
@@ -1897,7 +1897,7 @@ contains
                 if (dg_filter > 0) then
 
                   ! declare the delayed group filter type
-                  select type(filt => filters(t % filter(dg_filter)) % obj)
+                  select type(filt => filters(t % filter(dg_filter) + 1) % obj)
                   type is (DelayedGroupFilter)
 
                     ! loop over delayed group bins until the corresponding bin
@@ -1930,7 +1930,7 @@ contains
 
           ! Check if the delayed group filter is present
           if (dg_filter > 0) then
-            select type(filt => filters(t % filter(dg_filter)) % obj)
+            select type(filt => filters(t % filter(dg_filter) + 1) % obj)
             type is (DelayedGroupFilter)
 
               ! Loop over all delayed group bins and tally to them
@@ -2109,7 +2109,7 @@ contains
     integer :: g_out         ! energy group of fission bank site
 
     ! save original outgoing energy bin and score index
-    i = t % filter(t % energyout_filter())
+    i = t % filter(t % energyout_filter()) + 1
     i_bin = filter_matches(i) % i_bin()
     bin_energyout = filter_matches(i) % bins_data(i_bin)
 
@@ -2174,8 +2174,8 @@ contains
           ! determine scoring index and weight for this filter combination
           i_filter = 1
           do l = 1, t % n_filters()
-            i_filter = i_filter + (filter_matches(t % filter(l)) &
-                 % bins_data(filter_matches(t % filter(l)) % i_bin()) - 1) * &
+            i_filter = i_filter + (filter_matches(t % filter(l) + 1) &
+                 % bins_data(filter_matches(t % filter(l) + 1) % i_bin()) - 1) * &
                  t % stride(l)
           end do
 
@@ -2195,7 +2195,7 @@ contains
           if (j > 0) then
 
             ! declare the delayed group filter type
-            select type(dg_filt => filters(t % filter(j)) % obj)
+            select type(dg_filt => filters(t % filter(j) + 1) % obj)
             type is (DelayedGroupFilter)
 
               ! loop over delayed group bins until the corresponding bin is
@@ -2214,7 +2214,7 @@ contains
                   ! determine scoring index and weight for this filter
                   ! combination
                   do l = 1, t % n_filters()
-                    f = t % filter(l)
+                    f = t % filter(l) + 1
                     b = filter_matches(f) % i_bin()
                     i_filter = i_filter + (filter_matches(f) &
                          % bins_data(b) - 1) * t % stride(l)
@@ -2237,7 +2237,7 @@ contains
 
             ! determine scoring index and weight for this filter combination
             do l = 1, t % n_filters()
-              f = t % filter(l)
+              f = t % filter(l) + 1
               b = filter_matches(f) % i_bin()
               i_filter = i_filter + (filter_matches(f) % bins_data(b) - 1) &
                    * t % stride(l)
@@ -2278,7 +2278,7 @@ contains
     integer :: filter_index  ! index for matching filter bin combination
 
     ! save original delayed group bin
-    i_filt = t % filter(t % delayedgroup_filter())
+    i_filt = t % filter(t % delayedgroup_filter()) + 1
     i_bin = filter_matches(i_filt) % i_bin()
     bin_original = filter_matches(i_filt) % bins_data(i_bin)
     call filter_matches(i_filt) % bins_set_data(i_bin, d_bin)
@@ -2286,8 +2286,8 @@ contains
     ! determine scoring index and weight on the modified matching bins
     filter_index = 1
     do i = 1, t % n_filters()
-      filter_index = filter_index + (filter_matches(t % filter(i)) % &
-           bins_data(filter_matches(t % filter(i)) % i_bin()) - 1) * t % stride(i)
+      filter_index = filter_index + (filter_matches(t % filter(i) + 1) % &
+           bins_data(filter_matches(t % filter(i) + 1) % i_bin()) - 1) * t % stride(i)
     end do
 
 !$omp atomic

@@ -91,14 +91,11 @@ public:
     // Find all valid bins in each relevant filter if they have not already been
     // found for this event.
     for (auto i_filt : tally_.filters()) {
-      //TODO: off-by-one
-      auto& match {simulation::filter_matches[i_filt-1]};
+      auto& match {simulation::filter_matches[i_filt]};
       if (!match.bins_present_) {
         match.bins_.clear();
         match.weights_.clear();
-        //TODO: off-by-one
-        model::tally_filters[i_filt-1]
-          ->get_all_bins(p, tally_.estimator_, match);
+        model::tally_filters[i_filt]->get_all_bins(p, tally_.estimator_, match);
         match.bins_present_ = true;
       }
 
@@ -138,8 +135,7 @@ public:
     bool done_looping = true;
     for (int i = tally_.filters().size()-1; i >= 0; --i) {
       auto i_filt = tally_.filters(i);
-      //TODO: off-by-one
-      auto& match {simulation::filter_matches[i_filt-1]};
+      auto& match {simulation::filter_matches[i_filt]};
       if (match.i_bin_< match.bins_.size()) {
         // The bin for this filter can be incremented.  Increment it and do not
         // touch any of the remaining filters.
@@ -176,8 +172,7 @@ private:
     weight_ = 1.;
     for (auto i = 0; i < tally_.filters().size(); ++i) {
       auto i_filt = tally_.filters(i);
-      //TODO: off-by-one
-      auto& match {simulation::filter_matches[i_filt-1]};
+      auto& match {simulation::filter_matches[i_filt]};
       auto i_bin = match.i_bin_;
       //TODO: off-by-one
       index_ += (match.bins_[i_bin-1] - 1) * tally_.strides(i);
@@ -360,14 +355,11 @@ Tally::set_filters(const int32_t filter_indices[], int n)
 
   for (int i = 0; i < n; ++i) {
     auto i_filt = filters_[i];
-    //TODO: off-by-one
-    if (i_filt < 1 || i_filt > model::tally_filters.size())
+    if (i_filt < 0 || i_filt >= model::tally_filters.size())
       throw std::out_of_range("Index in tally filter array out of bounds.");
 
-    //TODO: off-by-one
-    const auto* filt = model::tally_filters[i_filt-1].get();
-
     //TODO: off-by-one on each index
+    const auto* filt = model::tally_filters[i_filt].get();
     if (dynamic_cast<const EnergyoutFilter*>(filt)) {
       energyout_filter_ = i + 1;
     } else if (dynamic_cast<const DelayedGroupFilter*>(filt)) {
@@ -382,8 +374,7 @@ Tally::set_filters(const int32_t filter_indices[], int n)
   int stride = 1;
   for (int i = n-1; i >= 0; --i) {
     strides_[i] = stride;
-    //TODO: off-by-one
-    stride *= model::tally_filters[filters_[i]-1]->n_bins_;
+    stride *= model::tally_filters[filters_[i]]->n_bins_;
   }
   n_filter_bins_ = stride;
 }
@@ -415,8 +406,7 @@ Tally::set_scores(std::vector<std::string> scores)
   bool surface_present = false;
   bool meshsurface_present = false;
   for (auto i_filt : filters_) {
-    //TODO: off-by-one
-    const auto* filt {model::tally_filters[i_filt-1].get()};
+    const auto* filt {model::tally_filters[i_filt].get()};
     if (dynamic_cast<const LegendreFilter*>(filt)) {
       legendre_present = true;
     } else if (dynamic_cast<const CellFromFilter*>(filt)) {

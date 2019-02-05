@@ -31,7 +31,6 @@ extern "C" void allocate_tally_results();
 extern "C" void check_triggers();
 extern "C" void init_tally_routines();
 extern "C" void load_state_point();
-extern "C" void print_results();
 extern "C" void setup_active_tallies();
 extern "C" void simulation_init_f();
 extern "C" void simulation_finalize_f();

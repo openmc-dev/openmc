@@ -11,8 +11,7 @@ module math
 
   interface
 
-    pure function t_percentile(p, df) bind(C, name='t_percentile_c') &
-         result(t)
+    pure function t_percentile(p, df) bind(C) result(t)
       use ISO_C_BINDING
       implicit none
       real(C_DOUBLE), value, intent(in) :: p

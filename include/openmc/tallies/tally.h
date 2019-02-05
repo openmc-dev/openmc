@@ -61,7 +61,7 @@ public:
   std::vector<int> scores_; //!< Filter integrands (e.g. flux, fission)
 
   //! Index of each nuclide to be tallied.  -1 indicates total material.
-  std::vector<int> nuclides_;
+  std::vector<int> nuclides_ {-1};
 
   //! True if this tally has a bin for every nuclide in the problem
   bool all_nuclides_ {false};

@@ -7,17 +7,76 @@
 #include <sstream>
 #include <ctime>
 
+#include <omp.h>
+
 #include "openmc/capi.h"
 #include "openmc/cell.h"
 #include "openmc/constants.h"
+#include "openmc/eigenvalue.h"
 #include "openmc/geometry.h"
 #include "openmc/lattice.h"
 #include "openmc/message_passing.h"
 #include "openmc/plot.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/surface.h"
 
 namespace openmc {
+
+//==============================================================================
+
+void title()
+{
+  std::cout <<
+    "                                %%%%%%%%%%%%%%%\n" <<
+    "                           %%%%%%%%%%%%%%%%%%%%%%%%\n" <<
+    "                        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n" <<
+    "                      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n" <<
+    "                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n" <<
+    "                   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n" <<
+    "                                    %%%%%%%%%%%%%%%%%%%%%%%%\n" <<
+    "                                     %%%%%%%%%%%%%%%%%%%%%%%%\n" <<
+    "                 ###############      %%%%%%%%%%%%%%%%%%%%%%%%\n" <<
+    "                ##################     %%%%%%%%%%%%%%%%%%%%%%%\n" <<
+    "                ###################     %%%%%%%%%%%%%%%%%%%%%%%\n" <<
+    "                ####################     %%%%%%%%%%%%%%%%%%%%%%\n" <<
+    "                #####################     %%%%%%%%%%%%%%%%%%%%%\n" <<
+    "                ######################     %%%%%%%%%%%%%%%%%%%%\n" <<
+    "                #######################     %%%%%%%%%%%%%%%%%%\n" <<
+    "                 #######################     %%%%%%%%%%%%%%%%%\n" <<
+    "                 ######################     %%%%%%%%%%%%%%%%%\n" <<
+    "                  ####################     %%%%%%%%%%%%%%%%%\n" <<
+    "                    #################     %%%%%%%%%%%%%%%%%\n" <<
+    "                     ###############     %%%%%%%%%%%%%%%%\n" <<
+    "                       ############     %%%%%%%%%%%%%%%\n" <<
+    "                          ########     %%%%%%%%%%%%%%\n" <<
+    "                                      %%%%%%%%%%%\n";
+
+  // Write version information
+  std::cout <<
+    "                   | The OpenMC Monte Carlo Code\n" <<
+    "         Copyright | 2011-2019 MIT and OpenMC contributors\n" <<
+    "           License | http://openmc.readthedocs.io/en/latest/license.html\n" <<
+    "           Version | " << VERSION_MAJOR << '.' << VERSION_MINOR << '.'
+    << VERSION_RELEASE << '\n';
+#ifdef GIT_SHA1
+  std::cout << "          Git SHA1 | " << GIT_SHA1 << '\n';
+#endif
+
+  // Write the date and time
+  std::cout << "         Date/Time | " << time_stamp() << '\n';
+
+#ifdef OPENMC_MPI
+  // Write number of processors
+  std::cout << "     MPI Processes | " << mpi::n_procs << '\n';
+#endif
+
+#ifdef _OPENMP
+  // Write number of OpenMP threads
+  std::cout << "    OpenMC Threads | " << omp_get_max_threads() << '\n';
+#endif
+  std::cout << '\n';
+}
 
 //==============================================================================
 
@@ -49,13 +108,9 @@ header(const char* msg, int level) {
 
 std::string time_stamp()
 {
-  int base_year = 1990;
   std::stringstream ts;
-  std::time_t t = std::time(0);   // get time now
-  std::tm* now = std::localtime(&t);
-  ts << now->tm_year + base_year << "-" << now->tm_mon
-     << "-" << now->tm_mday << " " << now->tm_hour
-     << ":" << now->tm_min << ":" << now->tm_sec;
+  std::time_t t = std::time(nullptr);   // get time now
+  ts << std::put_time(std::localtime(&t), "%Y-%m-%d %H:%M:%S");
   return ts.str();
 }
 
@@ -228,6 +283,109 @@ print_overlap_check()
     }
     std::cout << "\n";
   }
+}
+
+//==============================================================================
+
+void print_usage()
+{
+  if (mpi::master) {
+    std::cout <<
+      "Usage: openmc [options] [directory]\n\n"
+      "Options:\n"
+      "  -c, --volume           Run in stochastic volume calculation mode\n"
+      "  -g, --geometry-debug   Run with geometry debugging on\n"
+      "  -n, --particles        Number of particles per generation\n"
+      "  -p, --plot             Run in plotting mode\n"
+      "  -r, --restart          Restart a previous run from a state point\n"
+      "                         or a particle restart file\n"
+      "  -s, --threads          Number of OpenMP threads\n"
+      "  -t, --track            Write tracks for all particles\n"
+      "  -v, --version          Show version information\n"
+      "  -h, --help             Show this message\n";
+  }
+}
+
+//==============================================================================
+
+void print_version()
+{
+  if (mpi::master) {
+    std::cout << "OpenMC version " << VERSION_MAJOR << '.' << VERSION_MINOR
+      << '.' << VERSION_RELEASE << '\n';
+#ifdef GIT_SHA1
+    std::cout << "Git SHA1: " << GIT_SHA1 << '\n';
+#endif
+    std::cout << "Copyright (c) 2011-2019 Massachusetts Institute of "
+      "Technology and OpenMC contributors\nMIT/X license at "
+      "<http://openmc.readthedocs.io/en/latest/license.html>\n";
+  }
+}
+
+//==============================================================================
+
+void print_columns()
+{
+  if (settings::entropy_on) {
+    std::cout <<
+      "  Bat./Gen.      k       Entropy         Average k \n"
+      "  =========   ========   ========   ====================\n";
+  } else {
+    std::cout <<
+      "  Bat./Gen.      k            Average k\n"
+      "  =========   ========   ====================\n";
+  }
+}
+
+//==============================================================================
+
+void print_generation()
+{
+  // Determine overall generation and number of active generations
+  int i = overall_generation() - 1;
+  int n = simulation::current_batch > settings::n_inactive ?
+    settings::gen_per_batch*n_realizations + simulation::current_gen : 0;
+
+  // write out information batch and option independent output
+  std::cout << "  "  << std::setw(9) <<  std::to_string(simulation::current_batch)
+    + "/" + std::to_string(simulation::current_gen) << "   " <<
+    std::fixed << std::setw(8) << std::setprecision(5) << simulation::k_generation[i];
+
+  // write out entropy info
+  if (settings::entropy_on) std::cout << "   " <<
+    std::fixed << std::setw(8) << std::setprecision(5) << simulation::entropy[i];
+
+  if (n > 1) {
+    std::cout << "   " <<
+      std::fixed << std::setw(8) << std::setprecision(5) << simulation::keff << " +/-" <<
+      std::fixed << std::setw(8) << std::setprecision(5) << simulation::keff_std;
+  }
+  std::cout << '\n';
+}
+
+//==============================================================================
+
+void print_batch_keff()
+{
+  // Determine overall generation and number of active generations
+  int i = simulation::current_batch*settings::gen_per_batch - 1;
+  int n = n_realizations*settings::gen_per_batch;
+
+  // write out information batch and option independent output
+  std::cout << "  "  << std::setw(9) <<  std::to_string(simulation::current_batch)
+    + "/" + std::to_string(settings::gen_per_batch) << "   " <<
+    std::fixed << std::setw(8) << std::setprecision(5) << simulation::k_generation[i];
+
+  // write out entropy info
+  if (settings::entropy_on) std::cout << "   " <<
+    std::fixed << std::setw(8) << std::setprecision(5) << simulation::entropy[i];
+
+  if (n > 1) {
+    std::cout << "   " <<
+      std::fixed << std::setw(8) << std::setprecision(5) << simulation::keff << " +/-" <<
+      std::fixed << std::setw(8) << std::setprecision(5) << simulation::keff_std;
+  }
+  std::cout << '\n';
 }
 
 } // namespace openmc

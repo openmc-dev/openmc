@@ -67,6 +67,129 @@ double global_tally_tracklength;
 double global_tally_leakage;
 
 //==============================================================================
+//! An iterator over all combinations of a tally's matching filter bins.
+//
+//! This iterator handles two distinct tasks.  First, it maps the N-dimensional
+//! space created by the indices of N filters onto a 1D sequence.  In other
+//! words, it provides a single number that uniquely identifies a combination of
+//! bins for many filters.  Second, it handles the task of finding each all
+//! valid combinations of filter bins given that each filter can have 1 or 2 or
+//! many bins that are valid for the current tally event.
+//==============================================================================
+
+class FilterBinIter
+{
+public:
+  FilterBinIter(const Tally& tally, Particle* p, bool end)
+    : tally_{tally}
+  {
+    // Handle the special case for an iterator that points to the end.
+    if (end) {
+      index_ = -1;
+      return;
+    }
+
+    // Find all valid bins in each relevant filter if they have not already been
+    // found for this event.
+    for (auto i_filt : tally_.filters()) {
+      //TODO: off-by-one
+      auto& match {simulation::filter_matches[i_filt-1]};
+      if (!match.bins_present_) {
+        match.bins_.clear();
+        match.weights_.clear();
+        //TODO: off-by-one
+        model::tally_filters[i_filt-1]
+          ->get_all_bins(p, tally_.estimator_, match);
+        match.bins_present_ = true;
+      }
+
+      // If there are no valid bins for this filter, then there are no valid
+      // filter bin combinations so all iterators are end iterators.
+      if (match.bins_.size() == 0) {
+        index_ = -1;
+        return;
+      }
+
+      // Set the index of the bin used in the first filter combination
+      match.i_bin_ = 1;
+    }
+
+    // Compute the initial index and weight.
+    compute_index_weight();
+  }
+
+  bool
+  operator==(const FilterBinIter& other)
+  {
+    return index_ == other.index_;
+  }
+
+  bool
+  operator!=(const FilterBinIter& other)
+  {
+    return !(*this == other);
+  }
+
+  FilterBinIter&
+  operator++()
+  {
+    // Find the next valid combination of filter bins.  To do this, we search
+    // backwards through the filters until we find the first filter whose bins
+    // can be incremented.
+    bool done_looping = true;
+    for (int i = tally_.filters().size()-1; i >= 0; --i) {
+      auto i_filt = tally_.filters(i);
+      //TODO: off-by-one
+      auto& match {simulation::filter_matches[i_filt-1]};
+      if (match.i_bin_< match.bins_.size()) {
+        // The bin for this filter can be incremented.  Increment it and do not
+        // touch any of the remaining filters.
+        ++match.i_bin_;
+        done_looping = false;
+        break;
+      } else {
+        // This bin cannot be incremented so reset it and continue to the next
+        // filter.
+        match.i_bin_ = 1;
+      }
+    }
+
+    if (done_looping) {
+      // We have visited every valid combination.  All done!
+      index_ = -1;
+    } else {
+      // The loop found a new valid combination.  Compute the corresponding
+      // index and weight.
+      compute_index_weight();
+    }
+
+    return *this;
+  }
+
+  int index_ {1};
+  double weight_ {1.};
+
+private:
+  void
+  compute_index_weight()
+  {
+    index_ = 1;
+    weight_ = 1.;
+    for (auto i = 0; i < tally_.filters().size(); ++i) {
+      auto i_filt = tally_.filters(i);
+      //TODO: off-by-one
+      auto& match {simulation::filter_matches[i_filt-1]};
+      auto i_bin = match.i_bin_;
+      //TODO: off-by-one
+      index_ += (match.bins_[i_bin-1] - 1) * tally_.strides(i);
+      weight_ *= match.weights_[i_bin-1];
+    }
+  }
+
+  const Tally& tally_;
+};
+
+//==============================================================================
 // Tally object implementation
 //==============================================================================
 
@@ -230,56 +353,19 @@ score_analog_tally_ce(Particle* p)
     const Tally& tally {*model::tallies[i_tally-1]};
     auto n_score_bins = tally_get_n_score_bins(i_tally);
 
-    //--------------------------------------------------------------------------
-    // Loop through all relevant filters and find the filter bins and weights
-    // for this event.
+    // Initialize an iterator over valid filter bin combinations.  If there are
+    // no valid combinations, use a continue statement to ensure we skip the
+    // assume_separate break below.
+    auto filter_iter = FilterBinIter(tally, p, false);
+    auto end = FilterBinIter(tally, nullptr, true);
+    if (filter_iter == end) continue;
 
-    // Find all valid bins in each filter if they have not already been found
-    // for a previous tally.
-    for (auto i_filt : tally.filters()) {
-      //TODO: off-by-one
-      auto& match {simulation::filter_matches[i_filt-1]};
-      if (!match.bins_present_) {
-        match.bins_.clear();
-        match.weights_.clear();
-        //TODO: off-by-one
-        model::tally_filters[i_filt-1]
-          ->get_all_bins(p, tally.estimator_, match);
-        match.bins_present_ = true;
-      }
+    // Loop over filter bins.
+    for (; filter_iter != end; ++filter_iter) {
+      auto filter_index = filter_iter.index_;
+      auto filter_weight = filter_iter.weight_;
 
-      // If there are no valid bins for this filter, then there is nothing to
-      // score so we can move on to the next tally.
-      if (match.bins_.size() == 0) goto next_tally;
-
-      // Set the index of the bin used in the first filter combination
-      match.i_bin_ = 1;
-    }
-
-    //--------------------------------------------------------------------------
-    // Loop over filter bins and nuclide bins
-
-    for (bool filter_loop_done = false; !filter_loop_done; ) {
-
-      //------------------------------------------------------------------------
-      // Filter logic
-
-      // Determine scoring index and weight for the current filter combination
-      int filter_index = 1;
-      double filter_weight = 1.;
-      for (auto i = 0; i < tally.filters().size(); ++i) {
-        auto i_filt = tally.filters(i);
-        //TODO: off-by-one
-        auto& match {simulation::filter_matches[i_filt-1]};
-        auto i_bin = match.i_bin_;
-        //TODO: off-by-one
-        filter_index += (match.bins_[i_bin-1] - 1) * tally.strides(i);
-        filter_weight *= match.weights_[i_bin-1];
-      }
-
-      //------------------------------------------------------------------------
-      // Nuclide logic
-
+      // Loop over nuclide bins.
       if (!tally.all_nuclides_) {
         for (auto i = 0; i < tally.nuclides_.size(); ++i) {
           auto i_nuclide = tally.nuclides_[i];
@@ -292,6 +378,7 @@ score_analog_tally_ce(Particle* p)
             score_general_ce(p, i_tally, i*n_score_bins, filter_index,
               -1, -1., filter_weight);
         }
+
       } else {
         // In the case that the user has requested to tally all nuclides, we
         // can take advantage of the fact that we know exactly how nuclide
@@ -305,25 +392,6 @@ score_analog_tally_ce(Particle* p)
         score_general_ce(p, i_tally, i*n_score_bins, filter_index,
           -1, -1., filter_weight);
       }
-
-      //------------------------------------------------------------------------
-      // Further filter logic
-
-      // Increment the filter bins, starting with the last filter to find the
-      // next valid bin combination
-      filter_loop_done = true;
-      for (int i = tally.filters().size()-1; i >= 0; --i) {
-        auto i_filt = tally.filters(i);
-        //TODO: off-by-one
-        auto& match {simulation::filter_matches[i_filt-1]};
-        if (match.i_bin_ < match.bins_.size()) {
-          ++match.i_bin_;
-          filter_loop_done = false;
-          break;
-        } else {
-          match.i_bin_ = 1;
-        }
-      }
     }
 
     // If the user has specified that we can assume all tallies are spatially
@@ -331,9 +399,6 @@ score_analog_tally_ce(Particle* p)
     // check the others. This cuts down on overhead when there are many
     // tallies specified
     if (settings::assume_separate) break;
-
-next_tally:
-    ;
   }
 
   // Reset all the filter matches for the next tally event.
@@ -353,56 +418,19 @@ score_analog_tally_mg(Particle* p)
     const Tally& tally {*model::tallies[i_tally-1]};
     auto n_score_bins = tally_get_n_score_bins(i_tally);
 
-    //--------------------------------------------------------------------------
-    // Loop through all relevant filters and find the filter bins and weights
-    // for this event.
+    // Initialize an iterator over valid filter bin combinations.  If there are
+    // no valid combinations, use a continue statement to ensure we skip the
+    // assume_separate break below.
+    auto filter_iter = FilterBinIter(tally, p, false);
+    auto end = FilterBinIter(tally, nullptr, true);
+    if (filter_iter == end) continue;
 
-    // Find all valid bins in each filter if they have not already been found
-    // for a previous tally.
-    for (auto i_filt : tally.filters()) {
-      //TODO: off-by-one
-      auto& match {simulation::filter_matches[i_filt-1]};
-      if (!match.bins_present_) {
-        match.bins_.clear();
-        match.weights_.clear();
-        //TODO: off-by-one
-        model::tally_filters[i_filt-1]
-          ->get_all_bins(p, tally.estimator_, match);
-        match.bins_present_ = true;
-      }
+    // Loop over filter bins.
+    for (; filter_iter != end; ++filter_iter) {
+      auto filter_index = filter_iter.index_;
+      auto filter_weight = filter_iter.weight_;
 
-      // If there are no valid bins for this filter, then there is nothing to
-      // score so we can move on to the next tally.
-      if (match.bins_.size() == 0) goto next_tally;
-
-      // Set the index of the bin used in the first filter combination
-      match.i_bin_ = 1;
-    }
-
-    //--------------------------------------------------------------------------
-    // Loop over filter bins and nuclide bins
-
-    for (bool filter_loop_done = false; !filter_loop_done; ) {
-
-      //------------------------------------------------------------------------
-      // Filter logic
-
-      // Determine scoring index and weight for the current filter combination
-      int filter_index = 1;
-      double filter_weight = 1.;
-      for (auto i = 0; i < tally.filters().size(); ++i) {
-        auto i_filt = tally.filters(i);
-        //TODO: off-by-one
-        auto& match {simulation::filter_matches[i_filt-1]};
-        auto i_bin = match.i_bin_;
-        //TODO: off-by-one
-        filter_index += (match.bins_[i_bin-1] - 1) * tally.strides(i);
-        filter_weight *= match.weights_[i_bin-1];
-      }
-
-      //------------------------------------------------------------------------
-      // Nuclide logic
-
+      // Loop over nuclide bins.
       for (auto i = 0; i < tally.nuclides_.size(); ++i) {
         auto i_nuclide = tally.nuclides_[i];
 
@@ -416,25 +444,6 @@ score_analog_tally_mg(Particle* p)
         score_general_mg(p, i_tally, i*n_score_bins, filter_index,
           i_nuclide, atom_density, filter_weight);
       }
-
-      //------------------------------------------------------------------------
-      // Further filter logic
-
-      // Increment the filter bins, starting with the last filter to find the
-      // next valid bin combination
-      filter_loop_done = true;
-      for (int i = tally.filters().size()-1; i >= 0; --i) {
-        auto i_filt = tally.filters(i);
-        //TODO: off-by-one
-        auto& match {simulation::filter_matches[i_filt-1]};
-        if (match.i_bin_ < match.bins_.size()) {
-          ++match.i_bin_;
-          filter_loop_done = false;
-          break;
-        } else {
-          match.i_bin_ = 1;
-        }
-      }
     }
 
     // If the user has specified that we can assume all tallies are spatially
@@ -442,9 +451,6 @@ score_analog_tally_mg(Particle* p)
     // check the others. This cuts down on overhead when there are many
     // tallies specified
     if (settings::assume_separate) break;
-
-next_tally:
-    ;
   }
 
   // Reset all the filter matches for the next tally event.
@@ -469,59 +475,23 @@ score_tracklength_tally(Particle* p, double distance)
     const Tally& tally {*model::tallies[i_tally-1]};
     auto n_score_bins = tally_get_n_score_bins(i_tally);
 
-    //--------------------------------------------------------------------------
-    // Loop through all relevant filters and find the filter bins and weights
-    // for this event.
+    // Initialize an iterator over valid filter bin combinations.  If there are
+    // no valid combinations, use a continue statement to ensure we skip the
+    // assume_separate break below.
+    auto filter_iter = FilterBinIter(tally, p, false);
+    auto end = FilterBinIter(tally, nullptr, true);
+    if (filter_iter == end) continue;
 
-    // Find all valid bins in each filter if they have not already been found
-    // for a previous tally.
-    for (auto i_filt : tally.filters()) {
-      //TODO: off-by-one
-      auto& match {simulation::filter_matches[i_filt-1]};
-      if (!match.bins_present_) {
-        match.bins_.clear();
-        match.weights_.clear();
-        //TODO: off-by-one
-        model::tally_filters[i_filt-1]
-          ->get_all_bins(p, tally.estimator_, match);
-        match.bins_present_ = true;
-      }
+    // Loop over filter bins.
+    for (; filter_iter != end; ++filter_iter) {
+      auto filter_index = filter_iter.index_;
+      auto filter_weight = filter_iter.weight_;
 
-      // If there are no valid bins for this filter, then there is nothing to
-      // score so we can move on to the next tally.
-      if (match.bins_.size() == 0) goto next_tally;
-
-      // Set the index of the bin used in the first filter combination
-      match.i_bin_ = 1;
-    }
-
-    //--------------------------------------------------------------------------
-    // Loop over filter bins and nuclide bins
-
-    for (bool filter_loop_done = false; !filter_loop_done; ) {
-
-      //------------------------------------------------------------------------
-      // Filter logic
-
-      // Determine scoring index and weight for the current filter combination
-      int filter_index = 1;
-      double filter_weight = 1.;
-      for (auto i = 0; i < tally.filters().size(); ++i) {
-        auto i_filt = tally.filters(i);
-        //TODO: off-by-one
-        auto& match {simulation::filter_matches[i_filt-1]};
-        auto i_bin = match.i_bin_;
-        //TODO: off-by-one
-        filter_index += (match.bins_[i_bin-1] - 1) * tally.strides(i);
-        filter_weight *= match.weights_[i_bin-1];
-      }
-
-      //------------------------------------------------------------------------
-      // Nuclide logic
-
+      // Loop over nuclide bins.
       if (tally.all_nuclides_) {
         if (p->material != MATERIAL_VOID)
           score_all_nuclides(p, i_tally, flux*filter_weight, filter_index);
+
       } else {
         for (auto i = 0; i < tally.nuclides_.size(); ++i) {
           auto i_nuclide = tally.nuclides_[i];
@@ -546,24 +516,6 @@ score_tracklength_tally(Particle* p, double distance)
         }
       }
 
-      //------------------------------------------------------------------------
-      // Further filter logic
-
-      // Increment the filter bins, starting with the last filter to find the
-      // next valid bin combination
-      filter_loop_done = true;
-      for (int i = tally.filters().size()-1; i >= 0; --i) {
-        auto i_filt = tally.filters(i);
-        //TODO: off-by-one
-        auto& match {simulation::filter_matches[i_filt-1]};
-        if (match.i_bin_ < match.bins_.size()) {
-          ++match.i_bin_;
-          filter_loop_done = false;
-          break;
-        } else {
-          match.i_bin_ = 1;
-        }
-      }
     }
 
     // If the user has specified that we can assume all tallies are spatially
@@ -571,9 +523,6 @@ score_tracklength_tally(Particle* p, double distance)
     // check the others. This cuts down on overhead when there are many
     // tallies specified
     if (settings::assume_separate) break;
-
-next_tally:
-    ;
   }
 
   // Reset all the filter matches for the next tally event.
@@ -605,58 +554,22 @@ score_collision_tally(Particle* p)
     const Tally& tally {*model::tallies[i_tally-1]};
     auto n_score_bins = tally_get_n_score_bins(i_tally);
 
-    //--------------------------------------------------------------------------
-    // Loop through all relevant filters and find the filter bins and weights
-    // for this event.
+    // Initialize an iterator over valid filter bin combinations.  If there are
+    // no valid combinations, use a continue statement to ensure we skip the
+    // assume_separate break below.
+    auto filter_iter = FilterBinIter(tally, p, false);
+    auto end = FilterBinIter(tally, nullptr, true);
+    if (filter_iter == end) continue;
 
-    // Find all valid bins in each filter if they have not already been found
-    // for a previous tally.
-    for (auto i_filt : tally.filters()) {
-      //TODO: off-by-one
-      auto& match {simulation::filter_matches[i_filt-1]};
-      if (!match.bins_present_) {
-        match.bins_.clear();
-        match.weights_.clear();
-        //TODO: off-by-one
-        model::tally_filters[i_filt-1]
-          ->get_all_bins(p, tally.estimator_, match);
-        match.bins_present_ = true;
-      }
+    // Loop over filter bins.
+    for (; filter_iter != end; ++filter_iter) {
+      auto filter_index = filter_iter.index_;
+      auto filter_weight = filter_iter.weight_;
 
-      // If there are no valid bins for this filter, then there is nothing to
-      // score so we can move on to the next tally.
-      if (match.bins_.size() == 0) goto next_tally;
-
-      // Set the index of the bin used in the first filter combination
-      match.i_bin_ = 1;
-    }
-
-    //--------------------------------------------------------------------------
-    // Loop over filter bins and nuclide bins
-
-    for (bool filter_loop_done = false; !filter_loop_done; ) {
-
-      //------------------------------------------------------------------------
-      // Filter logic
-
-      // Determine scoring index and weight for the current filter combination
-      int filter_index = 1;
-      double filter_weight = 1.;
-      for (auto i = 0; i < tally.filters().size(); ++i) {
-        auto i_filt = tally.filters(i);
-        //TODO: off-by-one
-        auto& match {simulation::filter_matches[i_filt-1]};
-        auto i_bin = match.i_bin_;
-        //TODO: off-by-one
-        filter_index += (match.bins_[i_bin-1] - 1) * tally.strides(i);
-        filter_weight *= match.weights_[i_bin-1];
-      }
-
-      //------------------------------------------------------------------------
-      // Nuclide logic
-
+      // Loop over nuclide bins.
       if (tally.all_nuclides_) {
         score_all_nuclides(p, i_tally, flux*filter_weight, filter_index);
+
       } else {
         for (auto i = 0; i < tally.nuclides_.size(); ++i) {
           auto i_nuclide = tally.nuclides_[i];
@@ -678,25 +591,6 @@ score_collision_tally(Particle* p)
           }
         }
       }
-
-      //------------------------------------------------------------------------
-      // Further filter logic
-
-      // Increment the filter bins, starting with the last filter to find the
-      // next valid bin combination
-      filter_loop_done = true;
-      for (int i = tally.filters().size()-1; i >= 0; --i) {
-        auto i_filt = tally.filters(i);
-        //TODO: off-by-one
-        auto& match {simulation::filter_matches[i_filt-1]};
-        if (match.i_bin_ < match.bins_.size()) {
-          ++match.i_bin_;
-          filter_loop_done = false;
-          break;
-        } else {
-          match.i_bin_ = 1;
-        }
-      }
     }
 
     // If the user has specified that we can assume all tallies are spatially
@@ -704,9 +598,6 @@ score_collision_tally(Particle* p)
     // check the others. This cuts down on overhead when there are many
     // tallies specified
     if (settings::assume_separate) break;
-
-next_tally:
-    ;
   }
 
   // Reset all the filter matches for the next tally event.
@@ -728,56 +619,19 @@ score_surface_tally_inner(Particle* p, const std::vector<int>& tallies)
     auto n_score_bins = tally_get_n_score_bins(i_tally);
     auto results = tally_results(i_tally);
 
-    //--------------------------------------------------------------------------
-    // Loop through all relevant filters and find the filter bins and weights
-    // for this event.
+    // Initialize an iterator over valid filter bin combinations.  If there are
+    // no valid combinations, use a continue statement to ensure we skip the
+    // assume_separate break below.
+    auto filter_iter = FilterBinIter(tally, p, false);
+    auto end = FilterBinIter(tally, nullptr, true);
+    if (filter_iter == end) continue;
 
-    // Find all valid bins in each filter if they have not already been found
-    // for a previous tally.
-    for (auto i_filt : tally.filters()) {
-      //TODO: off-by-one
-      auto& match {simulation::filter_matches[i_filt-1]};
-      if (!match.bins_present_) {
-        match.bins_.clear();
-        match.weights_.clear();
-        //TODO: off-by-one
-        model::tally_filters[i_filt-1]
-          ->get_all_bins(p, tally.estimator_, match);
-        match.bins_present_ = true;
-      }
+    // Loop over filter bins.
+    for (; filter_iter != end; ++filter_iter) {
+      auto filter_index = filter_iter.index_;
+      auto filter_weight = filter_iter.weight_;
 
-      // If there are no valid bins for this filter, then there is nothing to
-      // score so we can move on to the next tally.
-      if (match.bins_.size() == 0) goto next_tally;
-
-      // Set the index of the bin used in the first filter combination
-      match.i_bin_ = 1;
-    }
-
-    //--------------------------------------------------------------------------
-    // Loop over filter bins and nuclide bins
-
-    for (bool filter_loop_done = false; !filter_loop_done; ) {
-
-      //------------------------------------------------------------------------
-      // Filter logic
-
-      // Determine scoring index and weight for the current filter combination
-      int filter_index = 1;
-      double filter_weight = 1.;
-      for (auto i = 0; i < tally.filters().size(); ++i) {
-        auto i_filt = tally.filters(i);
-        //TODO: off-by-one
-        auto& match {simulation::filter_matches[i_filt-1]};
-        auto i_bin = match.i_bin_;
-        //TODO: off-by-one
-        filter_index += (match.bins_[i_bin-1] - 1) * tally.strides(i);
-        filter_weight *= match.weights_[i_bin-1];
-      }
-
-      //------------------------------------------------------------------------
-      // Scoring loop
-
+      // Loop over scores.
       // There is only one score type for current tallies so there is no need
       // for a further scoring function.
       double score = flux * filter_weight;
@@ -786,25 +640,6 @@ score_surface_tally_inner(Particle* p, const std::vector<int>& tallies)
         #pragma omp atomic
         results(filter_index-1, score_index-1, RESULT_VALUE) += score;
       }
-
-      //------------------------------------------------------------------------
-      // Further filter logic
-
-      // Increment the filter bins, starting with the last filter to find the
-      // next valid bin combination
-      filter_loop_done = true;
-      for (int i = tally.filters().size()-1; i >= 0; --i) {
-        auto i_filt = tally.filters(i);
-        //TODO: off-by-one
-        auto& match {simulation::filter_matches[i_filt-1]};
-        if (match.i_bin_ < match.bins_.size()) {
-          ++match.i_bin_;
-          filter_loop_done = false;
-          break;
-        } else {
-          match.i_bin_ = 1;
-        }
-      }
     }
 
     // If the user has specified that we can assume all tallies are spatially
@@ -812,9 +647,6 @@ score_surface_tally_inner(Particle* p, const std::vector<int>& tallies)
     // check the others. This cuts down on overhead when there are many
     // tallies specified
     if (settings::assume_separate) break;
-
-next_tally:
-    ;
   }
 
   // Reset all the filter matches for the next tally event.
@@ -955,8 +787,8 @@ free_memory_tally_c()
   model::active_analog_tallies.clear();
   model::active_tracklength_tallies.clear();
   model::active_collision_tallies.clear();
-  //model::active_meshsurf_tallies.clear();
-  //model::active_surface_tallies.clear();
+  model::active_meshsurf_tallies.clear();
+  model::active_surface_tallies.clear();
 }
 
 //==============================================================================

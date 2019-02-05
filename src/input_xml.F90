@@ -17,7 +17,6 @@ module input_xml
   use message_passing
   use mgxs_interface
   use nuclide_header
-  use output,           only: title, header
   use photon_header
   use random_lcg,       only: prn
   use surface_header

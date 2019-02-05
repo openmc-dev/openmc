@@ -26,6 +26,7 @@ namespace openmc {
 
 namespace data {
 std::vector<std::unique_ptr<ThermalScattering>> thermal_scatt;
+std::unordered_map<std::string, int> thermal_scatt_map;
 }
 
 //==============================================================================
@@ -602,7 +603,11 @@ sab_from_hdf5(hid_t group, const double* temperature, int n)
   return data::thermal_scatt.back().get();
 }
 
-extern "C" void sab_clear() { data::thermal_scatt.clear(); }
+extern "C" void sab_clear()
+{
+  data::thermal_scatt.clear();
+  data::thermal_scatt_map.clear();
+}
 
 extern "C" bool sab_has_nuclide(int i_sab, const char* name)
 {

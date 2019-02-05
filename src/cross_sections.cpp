@@ -7,13 +7,22 @@
 #endif
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/hdf5_interface.h"
+#include "openmc/material.h"
+#include "openmc/message_passing.h"
+#include "openmc/nuclide.h"
+#include "openmc/photon.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/string_utils.h"
+#include "openmc/thermal.h"
 #include "openmc/xml_interface.h"
+#include "openmc/wmp.h"
 
 #include "pugixml.hpp"
 
 #include <cstdlib> // for getenv
+#include <unordered_set>
 
 namespace openmc {
 
@@ -154,9 +163,7 @@ void read_cross_sections_xml()
   int i = 0;
   for (const auto& lib : data::libraries) {
     for (const auto& name : lib.materials_) {
-      std::string lower_name = name;
-      to_lower(lower_name);
-      LibraryKey key {lib.type_, lower_name};
+      LibraryKey key {lib.type_, name};
       data::library_map.insert({key, i});
     }
     ++i;
@@ -164,12 +171,215 @@ void read_cross_sections_xml()
 
   // Check that 0K nuclides are listed in the cross_sections.xml file
   for (const auto& name : settings::res_scat_nuclides) {
-    std::string lower_name = name;
-    to_lower(lower_name);
-    LibraryKey key {Library::Type::neutron, lower_name};
+    LibraryKey key {Library::Type::neutron, name};
     if (data::library_map.find(key) == data::library_map.end()) {
       fatal_error("Could not find resonant scatterer " +
         name + " in cross_sections.xml file!");
+    }
+  }
+}
+
+extern "C" void nuclide_from_hdf5(hid_t group, const Nuclide* ptr,
+  const double* temps, int n, int n_nuclide);
+
+void
+read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
+  const std::vector<std::vector<double>>& thermal_temps)
+{
+  std::unordered_set<std::string> already_read;
+
+  // Construct a vector of nuclide names because we haven't loaded nuclide data
+  // yet, but we need to know the name of the i-th nuclide
+  std::vector<std::string> nuclide_names(data::nuclide_map.size());
+  std::vector<std::string> thermal_names(data::thermal_scatt_map.size());
+  for (const auto& kv : data::nuclide_map) {
+    nuclide_names[kv.second] = kv.first;
+  }
+  for (const auto& kv : data::thermal_scatt_map) {
+    thermal_names[kv.second] = kv.first;
+  }
+
+  // Read cross sections
+  for (const auto& mat : model::materials) {
+    for (int i_nuc : mat->nuclide_) {
+      // Find name of corresponding nuclide. Because we haven't actually loaded
+      // data, we don't have the name available, so instead we search through
+      // all key/value pairs in nuclide_map
+      std::string& name = nuclide_names[i_nuc];
+
+      // If we've already read this nuclide, skip it
+      if (already_read.find(name) != already_read.end()) continue;
+
+      LibraryKey key {Library::Type::neutron, name};
+      int idx = data::library_map[key];
+      std::string& filename = data::libraries[idx].path_;
+
+      write_message("Reading " + name + " from " + filename, 6);
+
+      // Open file and make sure version is sufficient
+      hid_t file_id = file_open(filename, 'r');
+      check_data_version(file_id);
+
+      // Read nuclide data from HDF5
+      hid_t group = open_group(file_id, name.c_str());
+      int i_nuclide = data::nuclides.size();
+      data::nuclides.push_back(std::make_unique<Nuclide>(
+        group, nuc_temps[i_nuc], i_nuclide));
+
+      // Read from Fortran too
+      nuclide_from_hdf5(group, data::nuclides.back().get(),
+        &nuc_temps[i_nuc].front(), nuc_temps[i_nuc].size(), i_nuclide + 1);
+
+      close_group(group);
+      file_close(file_id);
+
+      // Determine if minimum/maximum energy for this nuclide is greater/less
+      // than the previous
+      if (data::nuclides[i_nuclide]->grid_.size() >= 1) {
+        int neutron = static_cast<int>(ParticleType::neutron);
+        data::energy_min[neutron] = std::max(data::energy_min[neutron],
+          data::nuclides[i_nuclide]->grid_[0].energy.front());
+        data::energy_max[neutron] = std::min(data::energy_max[neutron],
+          data::nuclides[i_nuclide]->grid_[0].energy.back());
+      }
+
+      // Add name and alias to dictionary
+      already_read.insert(name);
+
+      // Check if elemental data has been read, if needed
+      int pos = name.find_first_of("0123456789");
+      std::string element = name.substr(0, pos);
+      if (settings::photon_transport) {
+        if (already_read.find(element) == already_read.end()) {
+          // Read photon interaction data from HDF5 photon library
+          LibraryKey key {Library::Type::photon, element};
+          int idx = data::library_map[key];
+          std::string& filename = data::libraries[idx].path_;
+          int i_element = data::element_map[element];
+          write_message("Reading " + element + " from " + filename, 6);
+
+          // Open file and make sure version is sufficient
+          hid_t file_id = file_open(filename, 'r');
+          check_data_version(file_id);
+
+          // Read element data from HDF5
+          hid_t group = open_group(file_id, element.c_str());
+          data::elements.emplace_back(group, data::elements.size());
+
+          // Determine if minimum/maximum energy for this element is greater/less than
+          // the previous
+          const auto& elem {data::elements.back()};
+          if (elem.energy_.size() >= 1) {
+            int photon = static_cast<int>(ParticleType::photon);
+            int n = elem.energy_.size();
+            data::energy_min[photon] = std::max(data::energy_min[photon],
+              std::exp(elem.energy_(1)));
+            data::energy_max[photon] = std::min(data::energy_max[photon],
+              std::exp(elem.energy_(n - 1)));
+          }
+
+          close_group(group);
+          file_close(file_id);
+
+          // Add element to set
+          already_read.insert(element);
+        }
+      }
+
+      // Read multipole file into the appropriate entry on the nuclides array
+      if (settings::temperature_multipole) read_multipole_data(i_nuclide);
+    }
+  }
+
+  for (auto& mat : model::materials) {
+    for (const auto& table : mat->thermal_tables_) {
+      // Get name of S(a,b) table
+      int i_table = table.index_table;
+      std::string& name = thermal_names[i_table];
+
+      if (already_read.find(name) == already_read.end()) {
+        LibraryKey key {Library::Type::thermal, name};
+        int idx = data::library_map[key];
+        std::string& filename = data::libraries[idx].path_;
+
+        write_message("Reading " + name + " from " + filename, 6);
+
+        // Open file and make sure version matches
+        hid_t file_id = file_open(filename, 'r');
+        check_data_version(file_id);
+
+        // Read thermal scattering data from HDF5
+        hid_t group = open_group(file_id, name.c_str());
+        data::thermal_scatt.push_back(std::make_unique<ThermalScattering>(
+          group, thermal_temps[i_table]));
+        close_group(group);
+        file_close(file_id);
+
+        // Add name to dictionary
+        already_read.insert(name);
+      }
+    } // thermal_tables_
+
+    // Finish setting up materials (normalizing densities, etc.)
+    mat->finalize();
+  } // materials
+
+
+  // Set up logarithmic grid for nuclides
+  for (auto& nuc : data::nuclides) {
+    nuc->init_grid();
+  }
+  int neutron = static_cast<int>(ParticleType::neutron);
+  simulation::log_spacing = std::log(data::energy_max[neutron] /
+    data::energy_min[neutron]) / settings::n_log_bins;
+
+  if (settings::photon_transport && settings::electron_treatment == ELECTRON_TTB) {
+    // Determine if minimum/maximum energy for bremsstrahlung is greater/less
+    // than the current minimum/maximum
+    if (data::ttb_e_grid.size() >= 1) {
+      int photon = static_cast<int>(ParticleType::photon);
+      int n_e = data::ttb_e_grid.size();
+      data::energy_min[photon] = std::max(data::energy_min[photon], data::ttb_e_grid(1));
+      data::energy_max[photon] = std::min(data::energy_max[photon], data::ttb_e_grid(n_e - 1));
+    }
+
+    // Take logarithm of energies since they are log-log interpolated
+    data::ttb_e_grid = xt::log(data::ttb_e_grid);
+  }
+
+  // Show which nuclide results in lowest energy for neutron transport
+  for (const auto& nuc : data::nuclides) {
+    // If a nuclide is present in a material that's not used in the model, its
+    // grid has not been allocated
+    if (nuc->grid_.size() > 0) {
+      double max_E = nuc->grid_[0].energy.back();
+      int neutron = static_cast<int>(ParticleType::neutron);
+      if (max_E == data::energy_max[neutron]) {
+        write_message("Maximum neutron transport energy: " +
+          std::to_string(data::energy_max[neutron]) + " eV for " +
+          nuc->name_, 7);
+        if (mpi::master && data::energy_max[neutron] < 20.0e6) {
+          warning("Maximum neutron energy is below 20 MeV. This may bias "
+            " the results.");
+        }
+        break;
+      }
+    }
+  }
+
+  // If the user wants multipole, make sure we found a multipole library.
+  if (settings::temperature_multipole) {
+    bool mp_found = false;
+    for (const auto& nuc : data::nuclides) {
+      if (nuc->multipole_) {
+        mp_found = true;
+        break;
+      }
+    }
+    if (mpi::master && !mp_found) {
+      warning("Windowed multipole functionality is turned on, but no multipole "
+        "libraries were found. Make sure that windowed multipole data is "
+        "present in your cross_sections.xml file.");
     }
   }
 }

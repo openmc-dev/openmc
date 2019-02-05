@@ -1,10 +1,19 @@
 #include "openmc/mgxs_interface.h"
 
 #include <string>
+#include <unordered_set>
 
+#include "openmc/cell.h"
 #include "openmc/cross_sections.h"
+#include "openmc/container_util.h"
 #include "openmc/error.h"
+#include "openmc/file_utils.h"
+#include "openmc/geometry_aux.h"
+#include "openmc/hdf5_interface.h"
+#include "openmc/material.h"
 #include "openmc/math_functions.h"
+#include "openmc/nuclide.h"
+#include "openmc/settings.h"
 
 
 namespace openmc {
@@ -25,75 +34,152 @@ std::vector<double> rev_energy_bins;
 // Mgxs data loading interface methods
 //==============================================================================
 
-void
-add_mgxs_c(hid_t file_id, const char* name, int energy_groups,
-     int delayed_groups, int n_temps, const double temps[],  double tolerance,
-     int max_order, bool legendre_to_tabular, int legendre_to_tabular_points,
-     int& method)
+void read_mgxs()
 {
-  // Convert temps to a vector for the from_hdf5 function
-  std::vector<double> temperature(temps, temps + n_temps);
+  // Check if MGXS Library exists
+  if (!file_exists(settings::path_cross_sections)) {
+    // Could not find MGXS Library file
+    fatal_error("Cross sections HDF5 file '" + settings::path_cross_sections +
+      "' does not exist.");
+  }
 
+  write_message("Loading cross section data...", 5);
+
+  // Get temperatures
+  std::vector<std::vector<double>> nuc_temps(data::nuclide_map.size());
+  std::vector<std::vector<double>> dummy;
+  get_temperatures(nuc_temps, dummy);
+
+  // Open file for reading
+  hid_t file_id = file_open(settings::path_cross_sections, 'r');
+
+  // Read filetype
+  std::string type;
+  read_attribute(file_id, "filetype", type);
+  if (type != "mgxs") {
+    fatal_error("Provided MGXS Library is not a MGXS Library file.");
+  }
+
+  // Read revision number for the MGXS Library file and make sure it matches
+  // with the current version
+  std::array<int, 2> array;
+  read_attribute(file_id, "version", array);
+  if (array != VERSION_MGXS_LIBRARY) {
+    fatal_error("MGXS Library file version does not match current version "
+      "supported by OpenMC.");
+  }
+
+  // ==========================================================================
+  // READ ALL MGXS CROSS SECTION TABLES
+
+  std::unordered_set<std::string> already_read;
+
+  // Build vector of nuclide names
+  std::vector<std::string> nuclide_names(data::nuclide_map.size());
+  for (const auto& kv : data::nuclide_map) {
+    nuclide_names[kv.second] = kv.first;
+  }
+
+  // Loop over all files
+  for (const auto& mat : model::materials) {
+    for (int i_nuc : mat->nuclide_) {
+      std::string& name = nuclide_names[i_nuc];
+
+      if (already_read.find(name) == already_read.end()) {
+        add_mgxs(file_id, name, nuc_temps[i_nuc]);
+        already_read.insert(name);
+      }
+
+      if (data::nuclides_MG[i_nuc].fissionable) {
+        mat->fissionable_ = true;
+      }
+    }
+  }
+
+  file_close(file_id);
+}
+
+//==============================================================================
+
+void
+add_mgxs(hid_t file_id, const std::string& name,
+  const std::vector<double>& temperature)
+{
   write_message("Loading " + std::string(name) + " data...", 6);
 
   // Check to make sure cross section set exists in the library
   hid_t xs_grp;
-  if (object_exists(file_id, name)) {
-    xs_grp = open_group(file_id, name);
+  if (object_exists(file_id, name.c_str())) {
+    xs_grp = open_group(file_id, name.c_str());
   } else {
     fatal_error("Data for " + std::string(name) + " does not exist in "
                 + "provided MGXS Library");
   }
 
-  Mgxs mg(xs_grp, energy_groups, delayed_groups, temperature, tolerance,
-          max_order, legendre_to_tabular, legendre_to_tabular_points, method);
-
-  data::nuclides_MG.push_back(mg);
+  data::nuclides_MG.emplace_back(xs_grp, temperature);
   close_group(xs_grp);
 }
 
 //==============================================================================
 
-bool
-query_fissionable_c(int n_nuclides, const int i_nuclides[])
+void create_macro_xs()
 {
-  bool result = false;
-  for (int n = 0; n < n_nuclides; n++) {
-    if (data::nuclides_MG[i_nuclides[n] - 1].fissionable) result = true;
+  // Get temperatures to read for each material
+  auto kTs = get_mat_kTs();
+
+  // Force all nuclides in a material to be the same representation.
+  // Therefore type(nuclides[mat->nuclide_[0]]) dictates type(macroxs).
+  // At the same time, we will find the scattering type, as that will dictate
+  // how we allocate the scatter object within macroxs.
+  for (int i = 0; i < model::materials.size(); ++i) {
+    if (kTs[i].size() > 0) {
+      // Convert atom_densities to a vector
+      Material* mat = model::materials[i];
+      std::vector<double> atom_densities(mat->atom_density_.begin(),
+        mat->atom_density_.end());
+
+      // Build array of pointers to nuclides_MG's Mgxs objects needed for this
+      // material
+      std::vector<Mgxs*> mgxs_ptr;
+      for (int i_nuclide : mat->nuclide_) {
+        mgxs_ptr.push_back(&data::nuclides_MG[i_nuclide]);
+      }
+
+      data::macro_xs.emplace_back(mat->name_, kTs[i], mgxs_ptr, atom_densities);
+    } else {
+      // Preserve the ordering of materials by including a blank entry
+      data::macro_xs.emplace_back();
+    }
   }
-  return result;
 }
 
 //==============================================================================
 
-void
-create_macro_xs_c(const char* mat_name, int n_nuclides, const int i_nuclides[],
-     int n_temps, const double temps[], const double atom_densities[],
-     double tolerance, int& method)
+std::vector<std::vector<double>> get_mat_kTs()
 {
-  if (n_temps > 0) {
-    // // Convert temps to a vector
-    std::vector<double> temperature(temps, temps + n_temps);
+  std::vector<std::vector<double>> kTs(model::materials.size());
 
-    // Convert atom_densities to a vector
-    std::vector<double> atom_densities_vec(atom_densities,
-         atom_densities + n_nuclides);
+  for (const auto& cell : model::cells) {
+    // Skip non-material cells
+    if (cell->fill_ != C_NONE) continue;
 
-    // Build array of pointers to nuclides_MG's Mgxs objects needed for this
-    // material
-    std::vector<Mgxs*> mgxs_ptr(n_nuclides);
-    for (int n = 0; n < n_nuclides; n++) {
-      mgxs_ptr[n] = &data::nuclides_MG[i_nuclides[n] - 1];
+    for (int j = 0; j < cell->material_.size(); ++j) {
+      // Skip void materials
+      int i_material = cell->material_[j];
+      if (i_material == MATERIAL_VOID) continue;
+
+      // Get temperature of cell (rounding to nearest integer)
+      double sqrtkT = cell->sqrtkT_.size() == 1 ?
+        cell->sqrtkT_[j] : cell->sqrtkT_[0];
+      double kT = sqrtkT * sqrtkT;
+
+      // Add temperature if it hasn't already been added
+      if (!contains(kTs[i_material], kT)) {
+        kTs[i_material].push_back(kT);
+      }
     }
-
-    Mgxs macro(mat_name, temperature, mgxs_ptr, atom_densities_vec,
-         tolerance, method);
-    data::macro_xs.emplace_back(macro);
-  } else {
-    // Preserve the ordering of materials by including a blank entry
-    Mgxs macro;
-    data::macro_xs.emplace_back(macro);
   }
+  return kTs;
 }
 
 //==============================================================================

@@ -1,10 +1,10 @@
 module tally_derivative_header
 
   use constants
-  use dict_header, only: DictIntInt, EMPTY
+  use dict_header, only: DictIntInt
   use error, only: fatal_error
-  use nuclide_header, only: nuclide_dict
-  use string, only: to_str, to_lower
+  use nuclide_header, only: nuclide_map_get
+  use string, only: to_str, to_lower, to_c_string
   use xml_interface
 
   implicit none
@@ -74,9 +74,8 @@ contains
       this % variable = DIFF_NUCLIDE_DENSITY
 
       call get_node_value(node, "nuclide", word)
-      word = trim(to_lower(word))
-      val = nuclide_dict % get(word)
-      if (val == EMPTY) then
+      val = nuclide_map_get(to_c_string(word))
+      if (val == -1) then
         call fatal_error("Could not find the nuclide " &
              // trim(word) // " specified in derivative " &
              // trim(to_str(this % id)) // " in any material.")

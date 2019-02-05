@@ -5,15 +5,11 @@ module nuclide_header
 
   use algorithm,              only: sort, find, binary_search
   use constants
-  use dict_header,            only: DictIntInt, DictCharInt
-  use endf,                   only: reaction_name, is_fission, is_disappearance, &
-                                    is_inelastic_scatter
+  use endf,                   only: is_fission, is_disappearance
   use endf_header,            only: Function1D, Polynomial, Tabulated1D
   use error
   use hdf5_interface
   use message_passing
-  use multipole_header
-  use random_lcg,             only: prn, future_prn, prn_set_stream
   use reaction_header,        only: Reaction
   use settings
   use stl_vector,             only: VectorInt, VectorReal
@@ -67,9 +63,6 @@ module nuclide_header
     ! Fission information
     integer, allocatable :: index_fission(:) ! indices in reactions
 
-    ! Multipole data
-    logical :: mp_present = .false.
-
     ! Reactions
     type(Reaction), allocatable :: reactions(:)
 
@@ -80,7 +73,6 @@ module nuclide_header
     type(C_PTR) :: ptr
 
   contains
-    procedure :: from_hdf5 => nuclide_from_hdf5
     procedure :: init_grid => nuclide_init_grid
     procedure :: nu    => nuclide_nu
     procedure, private :: create_derived => nuclide_create_derived
@@ -152,17 +144,11 @@ module nuclide_header
   ! Nuclear data for each nuclide
   type(Nuclide), allocatable, target :: nuclides(:)
   integer(C_INT), bind(C) :: n_nuclides
-  type(DictCharInt) :: nuclide_dict
 
   ! Cross section caches
   type(NuclideMicroXS), allocatable, target :: micro_xs(:)  ! Cache for each nuclide
   type(MaterialMacroXS), bind(C)            :: material_xs  ! Cache for current material
 !$omp threadprivate(micro_xs, material_xs)
-
-  ! Minimum/maximum energies
-  real(8) :: energy_min(2) = [ZERO, ZERO]
-  real(8) :: energy_max(2) = [INFINITY, INFINITY]
-
 
   interface
     function library_present_c(type, name) result(b) bind(C, name='library_present')
@@ -196,6 +182,12 @@ module nuclide_header
       logical(C_BOOL) :: b
     end function
 
+    function nuclide_awr(i_nuc) result(awr) bind(C)
+      import C_INT, C_DOUBLE
+      integer(C_INT), value :: i_nuc
+      real(C_DOUBLE) :: awr
+    end function
+
     function nuclide_fission_q_prompt(ptr, E) result(q) bind(C)
       import C_PTR, C_DOUBLE
       type(C_PTR), value :: ptr
@@ -208,6 +200,12 @@ module nuclide_header
       type(C_PTR), value :: ptr
       real(C_DOUBLE), value :: E
       real(C_DOUBLE) :: q
+    end function
+
+    function nuclide_map_get(name) result(idx) bind(C)
+      import C_CHAR, C_INT
+      character(kind=C_CHAR), intent(in) :: name(*)
+      integer(C_INT) :: idx
     end function
   end interface
 
@@ -239,27 +237,22 @@ contains
     ptr = C_LOC(micro_xs(1))
   end function
 
-  subroutine nuclide_from_hdf5(this, group_id, temperature, method, tolerance, &
-                               minmax, master, i_nuclide)
-    class(Nuclide),   intent(inout) :: this
-    integer(HID_T),   intent(in)    :: group_id
-    type(VectorReal), intent(in), target    :: temperature ! list of desired temperatures
-    integer,          intent(inout) :: method
-    real(8),          intent(in)    :: tolerance
-    real(8),          intent(in)    :: minmax(2)  ! range of temperatures
-    logical(C_BOOL),  intent(in)    :: master     ! if this is the master proc
-    integer,          intent(in)    :: i_nuclide  ! Nuclide index in nuclides
+  subroutine nuclide_from_hdf5(group_id, ptr, temps, n, i_nuclide) bind(C)
+    integer(HID_T), value :: group_id
+    type(C_PTR), value :: ptr
+    type(C_PTR), value :: temps
+    integer(C_INT), value :: n
+    integer(C_INT), value :: i_nuclide
+
+    real(C_DOUBLE), pointer :: temperature(:) ! list of desired temperatures
 
     integer :: i
     integer :: i_closest
     integer :: n_temperature
-    integer(HID_T) :: nu_group
     integer(HID_T) :: energy_group, energy_dset
     integer(HID_T) :: kT_group
     integer(HID_T) :: rxs_group
     integer(HID_T) :: rx_group
-    integer(HID_T) :: fer_group                 ! fission_energy_release group
-    integer(HID_T) :: fer_dset
     integer(HSIZE_T) :: j
     integer(HSIZE_T) :: dims(1)
     character(MAX_WORD_LEN) :: temp_str
@@ -271,23 +264,11 @@ contains
     type(VectorInt) :: MTs
     type(VectorInt) :: temps_to_read
 
-    interface
-      function nuclide_from_hdf5_c(group, temperature, n) result(ptr) bind(C)
-        import HID_T, C_DOUBLE, C_INT, C_PTR
-        integer(HID_T), value :: group
-        type(C_PTR), value :: temperature
-        integer(C_INT), value :: n
-        type(C_PTR) :: ptr
-      end function
-    end interface
+    ! Get array passed
+    call c_f_pointer(temps, temperature, [n])
 
-    ! Read data on C++ side
-    if (temperature % size() > 0) then
-      this % ptr = nuclide_from_hdf5_c(group_id, C_LOC(temperature % data(1)), &
-           temperature % size())
-    else
-      this % ptr = nuclide_from_hdf5_c(group_id, C_NULL_PTR, 0)
-    end if
+    associate (this => nuclides(i_nuclide))
+    this % ptr = ptr
 
     ! Get name of nuclide from group
     this % name = get_name(group_id)
@@ -312,35 +293,35 @@ contains
     call sort(temps_available)
 
     ! If only one temperature is available, revert to nearest temperature
-    if (size(temps_available) == 1 .and. method == TEMPERATURE_INTERPOLATION) then
+    if (size(temps_available) == 1 .and. temperature_method == TEMPERATURE_INTERPOLATION) then
       if (master) then
         call warning("Cross sections for " // trim(this % name) // " are only &
              &available at one temperature. Reverting to nearest temperature &
              &method.")
       end if
-      method = TEMPERATURE_NEAREST
+      temperature_method = TEMPERATURE_NEAREST
     end if
 
     ! Determine actual temperatures to read -- start by checking whether a
     ! temperature range was given, in which case all temperatures in the range
     ! are loaded irrespective of what temperatures actually appear in the model
-    if (minmax(2) > ZERO) then
+    if (temperature_range(2) > ZERO) then
       do i = 1, size(temps_available)
         temp_actual = temps_available(i)
-        if (minmax(1) <= temp_actual .and. temp_actual <= minmax(2)) then
+        if (temperature_range(1) <= temp_actual .and. temp_actual <= temperature_range(2)) then
           call temps_to_read % push_back(nint(temp_actual))
         end if
       end do
     end if
 
-    select case (method)
+    select case (temperature_method)
     case (TEMPERATURE_NEAREST)
       ! Find nearest temperatures
-      do i = 1, temperature % size()
-        temp_desired = temperature % data(i)
+      do i = 1, n
+        temp_desired = temperature(i)
         i_closest = minloc(abs(temps_available - temp_desired), dim=1)
         temp_actual = temps_available(i_closest)
-        if (abs(temp_actual - temp_desired) < tolerance) then
+        if (abs(temp_actual - temp_desired) < temperature_tolerance) then
           if (find(temps_to_read, nint(temp_actual)) == -1) then
             call temps_to_read % push_back(nint(temp_actual))
 
@@ -363,8 +344,8 @@ contains
     case (TEMPERATURE_INTERPOLATION)
       ! If temperature interpolation or multipole is selected, get a list of
       ! bounding temperatures for each actual temperature present in the model
-      TEMP_LOOP: do i = 1, temperature % size()
-        temp_desired = temperature % data(i)
+      TEMP_LOOP: do i = 1, n
+        temp_desired = temperature(i)
 
         do j = 1, size(temps_available) - 1
           if (temps_available(j) <= temp_desired .and. &
@@ -442,6 +423,7 @@ contains
 
     ! Finalize with the nuclide index
     this % i_nuclide = i_nuclide
+    end associate
 
   end subroutine nuclide_from_hdf5
 
@@ -642,31 +624,6 @@ contains
   end subroutine nuclide_calculate_elastic_xs
 
 !===============================================================================
-! CHECK_DATA_VERSION checks for the right version of nuclear data within HDF5
-! files
-!===============================================================================
-
-  subroutine check_data_version(file_id)
-    integer(HID_T), intent(in) :: file_id
-
-    integer, allocatable :: version(:)
-
-    if (attribute_exists(file_id, 'version')) then
-      call read_attribute(version, file_id, 'version')
-      if (version(1) /= HDF5_VERSION(1)) then
-        call fatal_error("HDF5 data format uses version " // trim(to_str(&
-             version(1))) // "." // trim(to_str(version(2))) // " whereas &
-             &your installation of OpenMC expects version " // trim(to_str(&
-             HDF5_VERSION(1))) // ".x data.")
-      end if
-    else
-      call fatal_error("HDF5 data does not indicate a version. Your &
-           &installation of OpenMC expects version " // trim(to_str(&
-           HDF5_VERSION(1))) // ".x data.")
-    end if
-  end subroutine check_data_version
-
-!===============================================================================
 ! FREE_MEMORY_NUCLIDE deallocates global arrays defined in this module
 !===============================================================================
 
@@ -687,7 +644,6 @@ contains
     end if
     n_nuclides = 0
 
-    call nuclide_dict % clear()
     call library_clear()
 
   end subroutine free_memory_nuclide
@@ -707,11 +663,10 @@ contains
     ! Copy array of C_CHARs to normal Fortran string
     name_ = to_f_string(name)
 
+    err = 0
     if (allocated(nuclides)) then
-      if (nuclide_dict % has(to_lower(name_))) then
-        index = nuclide_dict % get(to_lower(name_))
-        err = 0
-      else
+      index = nuclide_map_get(name)
+      if (index == -1) then
         err = E_DATA
         call set_errmsg("No nuclide named '" // trim(name_) // &
              "' has been loaded.")
@@ -721,69 +676,6 @@ contains
       call set_errmsg("Memory for nuclides has not been allocated.")
     end if
   end function openmc_get_nuclide_index
-
-
-  function openmc_load_nuclide(name) result(err) bind(C)
-    ! Load a nuclide from the cross section library
-    character(kind=C_CHAR), intent(in) :: name(*)
-    integer(C_INT) :: err
-
-    integer :: n
-    integer(HID_T) :: file_id
-    integer(HID_T) :: group_id
-    character(:), allocatable :: name_
-    character(MAX_FILE_LEN) :: filename
-    real(8) :: minmax(2) = [ZERO, INFINITY]
-    type(VectorReal) :: temperature
-    type(Nuclide), allocatable :: new_nuclides(:)
-
-    ! Copy array of C_CHARs to normal Fortran string
-    name_ = to_f_string(name)
-
-    err = 0
-    if (.not. nuclide_dict % has(to_lower(name_))) then
-      if (library_present(LIBRARY_NEUTRON, to_lower(name_))) then
-        ! allocate extra space in nuclides array
-        n = n_nuclides
-        allocate(new_nuclides(n + 1))
-        new_nuclides(1:n) = nuclides(:)
-        call move_alloc(FROM=new_nuclides, TO=nuclides)
-        n = n + 1
-
-        filename = library_path(LIBRARY_NEUTRON, to_lower(name_))
-
-        call write_message('Reading ' // trim(name_) // ' from ' // &
-             trim(filename), 6)
-
-        ! Open file and make sure version is sufficient
-        file_id = file_open(filename, 'r')
-        call check_data_version(file_id)
-
-        ! Read nuclide data from HDF5
-        group_id = open_group(file_id, name_)
-        call nuclides(n) % from_hdf5(group_id, temperature, &
-             temperature_method, temperature_tolerance, minmax, &
-             master, n)
-        call close_group(group_id)
-        call file_close(file_id)
-
-        ! Add entry to nuclide dictionary
-        call nuclide_dict % set(to_lower(name_), n)
-        n_nuclides = n
-
-        ! Initialize nuclide grid
-        call nuclides(n) % init_grid()
-
-        ! Read multipole file into the appropriate entry on the nuclides array
-        if (temperature_multipole) call read_multipole_data(n)
-      else
-        err = E_DATA
-        call set_errmsg("Nuclide '" // trim(name_) // "' is not present &
-             &in library.")
-      end if
-    end if
-
-  end function openmc_load_nuclide
 
 
   function openmc_nuclide_name(index, name) result(err) bind(C)
@@ -810,64 +702,16 @@ contains
     end if
   end function openmc_nuclide_name
 
-  subroutine read_multipole_data(i_table)
+  subroutine extend_nuclides() bind(C)
+    integer :: n
+    type(Nuclide), allocatable :: new_nuclides(:)
 
-    integer, intent(in) :: i_table  ! index in nuclides/sab_tables
-
-    logical :: file_exists                 ! Does multipole library exist?
-    character(7) :: readable               ! Is multipole library readable?
-    character(MAX_FILE_LEN) :: filename    ! Path to multipole xs library
-    integer(HID_T) :: file_id
-    integer(HID_T) :: group_id
-
-    interface
-      subroutine nuclide_load_multipole(ptr, group) bind(C)
-        import C_PTR, HID_T
-        type(C_PTR), value :: ptr
-        integer(HID_T), value :: group
-      end subroutine
-    end interface
-
-    associate (nuc => nuclides(i_table))
-
-      ! Look for WMP data in cross_sections.xml
-      if (library_present(LIBRARY_WMP, to_lower(nuc % name))) then
-        filename = library_path(LIBRARY_WMP, to_lower(nuc % name))
-      else
-        nuc % mp_present = .false.
-        return
-      end if
-
-      ! Check if Multipole library exists and is readable
-      inquire(FILE=filename, EXIST=file_exists, READ=readable)
-      if (.not. file_exists) then
-        nuc % mp_present = .false.
-        return
-      elseif (readable(1:3) == 'NO') then
-        call fatal_error("Multipole library '" // trim(filename) // "' is not &
-             &readable! Change file permissions with chmod command.")
-      end if
-
-      ! Display message
-      call write_message("Reading " // trim(nuc % name) // " WMP data from " &
-           // filename, 6)
-
-      ! Open file and make sure version is sufficient
-      file_id = file_open(filename, 'r')
-      call check_wmp_version(file_id)
-
-      ! Read nuclide data from HDF5
-      group_id = open_group(file_id, nuc % name)
-      nuc % mp_present = .true.
-      call nuclide_load_multipole(nuc % ptr, group_id)
-      call close_group(group_id)
-
-      ! Close the file
-      call file_close(file_id)
-
-    end associate
-
-  end subroutine read_multipole_data
-
+    ! allocate extra space in nuclides array
+    n = n_nuclides
+    allocate(new_nuclides(n + 1))
+    new_nuclides(1:n) = nuclides(:)
+    call move_alloc(FROM=new_nuclides, TO=nuclides)
+    n = n + 1
+  end subroutine
 
 end module nuclide_header

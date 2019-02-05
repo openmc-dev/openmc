@@ -62,6 +62,11 @@ Coupling and Multi-physics
   <https://doi.org/10.1007/s41365-018-0539-1>`_," *Nucl. Sci. Tech.*, **30**
   (2019).
 
+- April Novak, Paul Romano, Brycen Wendt, Ron Rahaman, Elia Merzari, Leslie
+  Kerby, Cody Permann, Richard Martineau, and Rachel N. Slaybaugh, "Preliminary
+  Coupling of OpenMC and Nek5000 within the MOOSE Framework," *Proc. PHYSOR*,
+  Cancun, Mexico, Apr. 22-26 (2018).
+
 - Jun Chen, Liangzhi Cao, Chuanqi Zhao, and Zhouyu Liu, "`Development of
   Subchannel Code SUBSC for high-fidelity multi-physics coupling application
   <https://doi.org/10.1016/j.egypro.2017.08.121>`_", *Energy Procedia*, **127**,
@@ -129,6 +134,10 @@ Geometry and Visualization
 Miscellaneous
 -------------
 
+- Amanda L. Lund and Paul K. Romano, "`Implementation and Validation of Photon
+  Transport in OpenMC <https://doi.org/10.2172/1490825>`_", Argonne National
+  Laboratory, Technical Report ANL/MCS-TM-381 (2018).
+
 - Bruno Merk, Dzianis Litskevich, R. Gregg, and A. R. Mount, "`Demand driven
   salt clean-up in a molten salt fast reactor -- Defining a priority list
   <https://doi.org/10.1371/journal.pone.0192020>`_", *PLOS One*, **13**,
@@ -190,6 +199,10 @@ Miscellaneous
 ------------------------------------
 Multi-group Cross Section Generation
 ------------------------------------
+
+- Changho Lee and Yeon Sang Jung, "Verification of the Cross Section Library
+  Generated Using OpenMC and MC\ :sup:`2`-3 for PROTEUS," *Proc. PHYSOR*, Cancun,
+  Mexico, Apr. 22-26 (2018).
 
 - Zhaoyuan Liu, Kord Smith, Benoit Forget, and Javier Ortensi, "`Cumulative
   migration method for computing rigorous diffusion coefficients and transport
@@ -454,3 +467,21 @@ Depletion
 - Kai Huang, Hongchun Wu, Yunzhao Li, and Liangzhi Cao, "Generalized depletion
   chain simplification based of significance analysis," *Proc. PHYSOR*, Sun
   Valley, Idaho, May 1-5, 2016.
+
+--------------------
+Sensitivity Analysis
+--------------------
+
+- Xingjie Peng, Jingang Liang, Benoit Forget, and Kord Smith, "`Calculation of
+  adjoint-weighted reactor kinetics parameters in OpenMC
+  <https://doi.org/10.1016/j.anucene.2019.01.007>`_", *Ann. Nucl. Energy*,
+  **128**, 231-235 (2019).
+
+- Zeyun Wu, Jingang Liang, Xingjie Peng, and Hany S. Abdel-Khalik, "`GPT-Free
+  Sensitivity Analysis for Monte Carlo Models
+  <https://doi.org/10.1080/00295450.2018.1556062>`_", *Nucl. Technol.* (2019).
+
+- Xingjie Peng, Jingang Liang, Abdulla Alhajri, Benoit Forget, and Kord Smith,
+  "`Development of continuous-energy sensitivity analysis capability in OpenMC
+  <https://doi.org/10.1016/j.anucene.2017.06.061>`_", *Ann. Nucl. Energy*,
+  **110**, 362-383 (2017).

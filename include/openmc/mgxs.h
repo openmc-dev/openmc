@@ -57,34 +57,25 @@ class Mgxs {
     //! @param in_fissionable Is this item fissionable or not.
     //! @param in_scatter_format Denotes whether Legendre, Tabular, or
     //!   Histogram scattering is used.
-    //! @param in_num_groups Number of energy groups.
-    //! @param in_num_delayed_groups Number of delayed groups.
     //! @param in_is_isotropic Is this an isotropic or angular with respect to
     //!   the incoming particle.
     //! @param in_polar Polar angle grid.
     //! @param in_azimuthal Azimuthal angle grid.
     void
     init(const std::string& in_name, double in_awr, const std::vector<double>& in_kTs,
-         bool in_fissionable, int in_scatter_format, int in_num_groups,
-         int in_num_delayed_groups, bool in_is_isotropic,
+         bool in_fissionable, int in_scatter_format, bool in_is_isotropic,
          const std::vector<double>& in_polar, const std::vector<double>& in_azimuthal);
 
     //! \brief Initializes the Mgxs object metadata from the HDF5 file
     //!
     //! @param xs_id HDF5 group id for the cross section data.
-    //! @param in_num_groups Number of energy groups.
-    //! @param in_num_delayed_groups Number of delayed groups.
     //! @param temperature Temperatures to read.
-    //! @param tolerance Tolerance of temperature selection method.
     //! @param temps_to_read Resultant list of temperatures in the library
     //!   to read which correspond to the requested temperatures.
     //! @param order_dim Resultant dimensionality of the scattering order.
-    //! @param method Method of choosing nearest temperatures.
     void
-    metadata_from_hdf5(hid_t xs_id, int in_num_groups,
-         int in_num_delayed_groups, const std::vector<double>& temperature,
-         double tolerance, std::vector<int>& temps_to_read, int& order_dim,
-         int& method);
+    metadata_from_hdf5(hid_t xs_id, const std::vector<double>& temperature,
+         std::vector<int>& temps_to_read, int& order_dim);
 
     //! \brief Performs the actual act of combining the microscopic data for a
     //!   single temperature.
@@ -118,21 +109,8 @@ class Mgxs {
     //! \brief Constructor that loads the Mgxs object from the HDF5 file
     //!
     //! @param xs_id HDF5 group id for the cross section data.
-    //! @param energy_groups Number of energy groups.
-    //! @param delayed_groups Number of delayed groups.
     //! @param temperature Temperatures to read.
-    //! @param tolerance Tolerance of temperature selection method.
-    //! @param max_order Maximum order requested by the user;
-    //!   this is only used for Legendre scattering.
-    //! @param legendre_to_tabular Flag to denote if any Legendre provided
-    //!   should be converted to a Tabular representation.
-    //! @param legendre_to_tabular_points If a conversion is requested, this
-    //!   provides the number of points to use in the tabular representation.
-    //! @param method Method of choosing nearest temperatures.
-    Mgxs(hid_t xs_id, int energy_groups,
-         int delayed_groups, const std::vector<double>& temperature, double tolerance,
-         int max_order, bool legendre_to_tabular,
-         int legendre_to_tabular_points, int& method);
+    Mgxs(hid_t xs_id, const std::vector<double>& temperature);
 
     //! \brief Constructor that initializes and populates all data to build a
     //!   macroscopic cross section from microscopic cross section.
@@ -141,11 +119,8 @@ class Mgxs {
     //! @param mat_kTs temperatures (in units of eV) that data is needed.
     //! @param micros Microscopic objects to combine.
     //! @param atom_densities Atom densities of those microscopic quantities.
-    //! @param tolerance Tolerance of temperature selection method.
-    //! @param method Method of choosing nearest temperatures.
     Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
-         const std::vector<Mgxs*>& micros, const std::vector<double>& atom_densities,
-         double tolerance, int& method);
+         const std::vector<Mgxs*>& micros, const std::vector<double>& atom_densities);
 
     //! \brief Provides a cross section value given certain parameters
     //!

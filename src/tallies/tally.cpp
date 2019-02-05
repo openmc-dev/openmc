@@ -562,8 +562,7 @@ Tally::set_nuclides(pugi::xml_node node)
           fatal_error("Could not find the nuclide " + word
             + " specified in tally " + std::to_string(id_)
             + " in any material");
-        //TODO: off-by-one
-        nuclides_.push_back(search->second + 1);
+        nuclides_.push_back(search->second);
       }
     }
   }
@@ -705,7 +704,8 @@ score_analog_tally_ce(Particle* p)
           // the event nuclide or the total material.  Note that the i_nuclide
           // and flux arguments for score_general are not used for analog
           // tallies.
-          if (i_nuclide == p->event_nuclide || i_nuclide == -1)
+          //TODO: off-by-one
+          if (i_nuclide == p->event_nuclide-1 || i_nuclide == -1)
             score_general_ce(p, i_tally, i*tally.scores_.size(), filter_index,
               -1, -1., filter_weight);
         }
@@ -765,10 +765,10 @@ score_analog_tally_mg(Particle* p)
         auto i_nuclide = tally.nuclides_[i];
 
         double atom_density = 0.;
-        if (i_nuclide > 0) {
+        if (i_nuclide >= 0) {
           //TODO: off-by-one
           auto j = model::materials[p->material-1]
-            ->mat_nuclide_index_[i_nuclide-1];
+            ->mat_nuclide_index_[i_nuclide];
           if (j == C_NONE) continue;
           //atom_density = material_atom_density(p->material, j);
           //TODO: off-by-one
@@ -830,11 +830,11 @@ score_tracklength_tally(Particle* p, double distance)
           auto i_nuclide = tally.nuclides_[i];
 
           double atom_density = 0.;
-          if (i_nuclide > 0) {
+          if (i_nuclide >= 0) {
             if (p->material != MATERIAL_VOID) {
               //TODO: off-by-one
               auto j = model::materials[p->material-1]
-                ->mat_nuclide_index_[i_nuclide-1];
+                ->mat_nuclide_index_[i_nuclide];
               if (j == C_NONE) continue;
               //atom_density = material_atom_density(p->material, j);
               //TODO: off-by-one
@@ -911,10 +911,10 @@ score_collision_tally(Particle* p)
           auto i_nuclide = tally.nuclides_[i];
 
           double atom_density = 0.;
-          if (i_nuclide > 0) {
+          if (i_nuclide >= 0) {
             //TODO: off-by-one
             auto j = model::materials[p->material-1]
-              ->mat_nuclide_index_[i_nuclide-1];
+              ->mat_nuclide_index_[i_nuclide];
             if (j == C_NONE) continue;
             //atom_density = material_atom_density(p->material, j);
             //TODO: off-by-one

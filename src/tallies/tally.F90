@@ -196,8 +196,8 @@ contains
           end if
 
         else
-          if (i_nuclide > 0) then
-            score = micro_xs(i_nuclide) % total * atom_density * flux
+          if (i_nuclide >= 0) then
+            score = micro_xs(i_nuclide+1) % total * atom_density * flux
           else
             score = material_xs % total * flux
           end if
@@ -239,9 +239,9 @@ contains
           score = p % last_wgt * flux
 
         else
-          if (i_nuclide > 0) then
-            score = (micro_xs(i_nuclide) % total &
-                 - micro_xs(i_nuclide) % absorption) * atom_density * flux
+          if (i_nuclide >= 0) then
+            score = (micro_xs(i_nuclide+1) % total &
+                 - micro_xs(i_nuclide+1) % absorption) * atom_density * flux
           else
             score = (material_xs % total - material_xs % absorption) * flux
           end if
@@ -286,8 +286,8 @@ contains
           end if
 
         else
-          if (i_nuclide > 0) then
-            score = micro_xs(i_nuclide) % absorption * atom_density * flux
+          if (i_nuclide >= 0) then
+            score = micro_xs(i_nuclide+1) % absorption * atom_density * flux
           else
             score = material_xs % absorption * flux
           end if
@@ -320,8 +320,8 @@ contains
           end if
 
         else
-          if (i_nuclide > 0) then
-            score = micro_xs(i_nuclide) % fission * atom_density * flux
+          if (i_nuclide >= 0) then
+            score = micro_xs(i_nuclide+1) % fission * atom_density * flux
           else
             score = material_xs % fission * flux
           end if
@@ -366,8 +366,8 @@ contains
           end if
 
         else
-          if (i_nuclide > 0) then
-            score = micro_xs(i_nuclide) % nu_fission * atom_density * flux
+          if (i_nuclide >= 0) then
+            score = micro_xs(i_nuclide+1) % nu_fission * atom_density * flux
           else
             score = material_xs % nu_fission * flux
           end if
@@ -414,8 +414,8 @@ contains
           end if
 
         else
-          if (i_nuclide > 0) then
-              score = micro_xs(i_nuclide) % fission * nuclides(i_nuclide) % &
+          if (i_nuclide >= 0) then
+              score = micro_xs(i_nuclide+1) % fission * nuclides(i_nuclide+1) % &
                    nu(E, EMISSION_PROMPT) * atom_density * flux
           else
 
@@ -540,7 +540,7 @@ contains
         else
 
           ! Check if tally is on a single nuclide
-          if (i_nuclide > 0) then
+          if (i_nuclide >= 0) then
 
             ! Check if the delayed group filter is present
             if (dg_filter > 0) then
@@ -555,10 +555,10 @@ contains
                   d = filt % groups(d_bin)
 
                   ! Compute the yield for this delayed group
-                  yield = nuclides(i_nuclide) % nu(E, EMISSION_DELAYED, d)
+                  yield = nuclides(i_nuclide+1) % nu(E, EMISSION_DELAYED, d)
 
                   ! Compute the score and tally to bin
-                  score = micro_xs(i_nuclide) % fission * yield * &
+                  score = micro_xs(i_nuclide+1) % fission * yield * &
                        atom_density * flux
                   call score_fission_delayed_dg(t, d_bin, score, score_index)
                 end do
@@ -568,7 +568,7 @@ contains
 
               ! If the delayed group filter is not present, compute the score
               ! by multiplying the delayed-nu-fission macro xs by the flux
-              score = micro_xs(i_nuclide) % fission * nuclides(i_nuclide) % &
+              score = micro_xs(i_nuclide+1) % fission * nuclides(i_nuclide+1) % &
                    nu(E, EMISSION_DELAYED) * atom_density * flux
             end if
 
@@ -771,7 +771,7 @@ contains
         else
 
           ! Check if tally is on a single nuclide
-          if (i_nuclide > 0) then
+          if (i_nuclide >= 0) then
 
             ! Check if the delayed group filter is present
             if (dg_filter > 0) then
@@ -786,13 +786,13 @@ contains
                   d = filt % groups(d_bin)
 
                   ! Compute the yield for this delayed group
-                  yield = nuclides(i_nuclide) % nu(E, EMISSION_DELAYED, d)
+                  yield = nuclides(i_nuclide+1) % nu(E, EMISSION_DELAYED, d)
 
-                  associate (rxn => nuclides(i_nuclide) % &
-                       reactions(nuclides(i_nuclide) % index_fission(1)))
+                  associate (rxn => nuclides(i_nuclide+1) % &
+                       reactions(nuclides(i_nuclide+1) % index_fission(1)))
 
                     ! Compute the score and tally to bin
-                    score = micro_xs(i_nuclide) % fission * yield * flux * &
+                    score = micro_xs(i_nuclide+1) % fission * yield * flux * &
                          atom_density * rxn % product_decay_rate(1 + d)
                   end associate
 
@@ -817,8 +817,8 @@ contains
                 ! array to be exceeded. Hence, we use the size of this array
                 ! and not the MAX_DELAYED_GROUPS constant for this loop.
                 do d = 1, rxn % products_size() - 2
-                  score = score + micro_xs(i_nuclide) % fission * flux * &
-                       nuclides(i_nuclide) % nu(E, EMISSION_DELAYED) * &
+                  score = score + micro_xs(i_nuclide+1) % fission * flux * &
+                       nuclides(i_nuclide+1) % nu(E, EMISSION_DELAYED) * &
                        atom_density * rxn % product_decay_rate(1 + d)
                 end do
               end associate
@@ -954,11 +954,11 @@ contains
           end if
 
         else
-          if (i_nuclide > 0) then
-            associate (nuc => nuclides(i_nuclide))
+          if (i_nuclide >= 0) then
+            associate (nuc => nuclides(i_nuclide+1))
               if (nuc % fissionable) then
                 score = nuc % reactions(nuc % index_fission(1)) % Q_value * &
-                     micro_xs(i_nuclide) % fission * atom_density * flux
+                     micro_xs(i_nuclide+1) % fission * atom_density * flux
               end if
             end associate
           else
@@ -994,11 +994,11 @@ contains
           score = p % last_wgt * flux
 
         else
-          if (i_nuclide > 0) then
-            if (micro_xs(i_nuclide) % elastic == CACHE_INVALID) then
-              call nuclides(i_nuclide) % calculate_elastic_xs()
+          if (i_nuclide >= 0) then
+            if (micro_xs(i_nuclide+1) % elastic == CACHE_INVALID) then
+              call nuclides(i_nuclide+1) % calculate_elastic_xs()
             end if
-            score = micro_xs(i_nuclide) % elastic * atom_density * flux
+            score = micro_xs(i_nuclide+1) % elastic * atom_density * flux
           else
             score = ZERO
             if (p % material /= MATERIAL_VOID) then
@@ -1064,15 +1064,15 @@ contains
           end if
 
         else
-          if (i_nuclide > 0) then
-            associate (nuc => nuclides(i_nuclide))
+          if (i_nuclide >= 0) then
+            associate (nuc => nuclides(i_nuclide+1))
               if (score_bin == SCORE_FISS_Q_PROMPT) then
                 xs = nuclide_fission_q_prompt(nuc % ptr, E)
               else if (score_bin == SCORE_FISS_Q_RECOV) then
                 xs = nuclide_fission_q_recov(nuc % ptr, E)
               end if
 
-              score = micro_xs(i_nuclide) % fission * atom_density * flux * xs
+              score = micro_xs(i_nuclide+1) % fission * atom_density * flux * xs
             end associate
           else
             if (p % material /= MATERIAL_VOID) then
@@ -1118,8 +1118,8 @@ contains
             m = 6
           end select
 
-          if (i_nuclide > 0) then
-            score = micro_xs(i_nuclide) % reaction(m) * atom_density * flux
+          if (i_nuclide >= 0) then
+            score = micro_xs(i_nuclide+1) % reaction(m) * atom_density * flux
           else
             score = ZERO
             if (p % material /= MATERIAL_VOID) then
@@ -1148,17 +1148,17 @@ contains
             ! Set default score
             score = ZERO
 
-            if (i_nuclide > 0) then
-              m = nuclides(i_nuclide) % reaction_index(score_bin)
+            if (i_nuclide >= 0) then
+              m = nuclides(i_nuclide+1) % reaction_index(score_bin)
               if (m /= 0) then
                 ! Retrieve temperature and energy grid index and interpolation
                 ! factor
-                i_temp = micro_xs(i_nuclide) % index_temp + 1
+                i_temp = micro_xs(i_nuclide+1) % index_temp + 1
                 if (i_temp > 0) then
-                  i_energy = micro_xs(i_nuclide) % index_grid
-                  f = micro_xs(i_nuclide) % interp_factor
+                  i_energy = micro_xs(i_nuclide+1) % index_grid
+                  f = micro_xs(i_nuclide+1) % interp_factor
 
-                  associate (rx => nuclides(i_nuclide) % reactions(m))
+                  associate (rx => nuclides(i_nuclide+1) % reactions(m))
                     threshold = rx % xs_threshold(i_temp)
                     if (i_energy >= threshold) then
                       score = ((ONE - f) * rx % xs(i_temp, i_energy - &
@@ -1300,10 +1300,10 @@ contains
     call set_macro_angle_index_c(p % material, p_uvw)
 
     ! Do same for nucxs, point it to the microscopic nuclide data of interest
-    if (i_nuclide > 0) then
+    if (i_nuclide >= 0) then
       ! And since we haven't calculated this temperature index yet, do so now
-      call set_nuclide_temperature_index_c(i_nuclide, p % sqrtkT)
-      call set_nuclide_angle_index_c(i_nuclide, p_uvw)
+      call set_nuclide_temperature_index_c(i_nuclide+1, p % sqrtkT)
+      call set_nuclide_angle_index_c(i_nuclide+1, p_uvw)
     end if
 
     i = 0
@@ -1356,15 +1356,15 @@ contains
             score = p % last_wgt
           end if
 
-          if (i_nuclide > 0) then
+          if (i_nuclide >= 0) then
             score = score * flux * atom_density * &
-                 get_nuclide_xs_c(i_nuclide, MG_GET_XS_TOTAL, p_g) / &
+                 get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_TOTAL, p_g) / &
                  get_macro_xs_c(p % material, MG_GET_XS_TOTAL, p_g)
           end if
 
         else
-          if (i_nuclide > 0) then
-            score = get_nuclide_xs_c(i_nuclide, MG_GET_XS_TOTAL, p_g) * &
+          if (i_nuclide >= 0) then
+            score = get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_TOTAL, p_g) * &
                  atom_density * flux
           else
             score = material_xs % total * flux
@@ -1386,8 +1386,8 @@ contains
             score = p % last_wgt
           end if
 
-          if (i_nuclide > 0) then
-            score = score * flux * get_nuclide_xs_c(i_nuclide, &
+          if (i_nuclide >= 0) then
+            score = score * flux * get_nuclide_xs_c(i_nuclide+1, &
                  MG_GET_XS_INVERSE_VELOCITY, p_g) / &
                  get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
           else
@@ -1398,8 +1398,8 @@ contains
 
         else
 
-          if (i_nuclide > 0) then
-            score = flux * get_nuclide_xs_c(i_nuclide, &
+          if (i_nuclide >= 0) then
+            score = flux * get_nuclide_xs_c(i_nuclide+1, &
                  MG_GET_XS_INVERSE_VELOCITY, p_g)
           else
             score = flux * get_macro_xs_c(p % material, &
@@ -1423,18 +1423,18 @@ contains
           ! Since we transport based on material data, the angle selected
           ! was not selected from the f(mu) for the nuclide.  Therefore
           ! adjust the score by the actual probability for that nuclide.
-          if (i_nuclide > 0) then
+          if (i_nuclide >= 0) then
             score = score * atom_density * &
-                 get_nuclide_xs_c(i_nuclide, MG_GET_XS_SCATTER_FMU_MULT, &
+                 get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_SCATTER_FMU_MULT, &
                                   p % last_g, p % g, MU=p % mu) / &
                  get_macro_xs_c(p % material, MG_GET_XS_SCATTER_FMU_MULT, &
                                 p % last_g, p % g, MU=p % mu)
           end if
 
         else
-          if (i_nuclide > 0) then
+          if (i_nuclide >= 0) then
             score = atom_density * flux * &
-                 get_nuclide_xs_c(i_nuclide, MG_GET_XS_SCATTER_MULT, &
+                 get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_SCATTER_MULT, &
                                   p_g, MU=p % mu)
           else
             ! Get the scattering x/s and take away
@@ -1461,18 +1461,18 @@ contains
           ! Since we transport based on material data, the angle selected
           ! was not selected from the f(mu) for the nuclide.  Therefore
           ! adjust the score by the actual probability for that nuclide.
-          if (i_nuclide > 0) then
+          if (i_nuclide >= 0) then
             score = score * atom_density * &
-                 get_nuclide_xs_c(i_nuclide, MG_GET_XS_SCATTER_FMU, &
+                 get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_SCATTER_FMU, &
                                 p % last_g, p % g, MU=p % mu) / &
                  get_macro_xs_c(p % material, MG_GET_XS_SCATTER_FMU, &
                                 p % last_g, p % g, MU=p % mu)
           end if
 
         else
-          if (i_nuclide > 0) then
+          if (i_nuclide >= 0) then
             score = atom_density * flux * &
-                 get_nuclide_xs_c(i_nuclide, MG_GET_XS_SCATTER, p_g)
+                 get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_SCATTER, p_g)
           else
             ! Get the scattering x/s, which includes multiplication
             score = flux * &
@@ -1494,15 +1494,15 @@ contains
             ! can just use the particle's weight entering the collision
             score = p % last_wgt * flux
           end if
-          if (i_nuclide > 0) then
+          if (i_nuclide >= 0) then
             score = score * atom_density * &
-                 get_nuclide_xs_c(i_nuclide, MG_GET_XS_ABSORPTION, p_g) / &
+                 get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_ABSORPTION, p_g) / &
                  get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
           end if
         else
-          if (i_nuclide > 0) then
+          if (i_nuclide >= 0) then
             score = atom_density * flux * &
-                 get_nuclide_xs_c(i_nuclide, MG_GET_XS_ABSORPTION, p_g)
+                 get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_ABSORPTION, p_g)
           else
             score = material_xs % absorption * flux
           end if
@@ -1525,9 +1525,9 @@ contains
             ! fission reaction rate
             score = p % last_wgt * flux
           end if
-          if (i_nuclide > 0) then
+          if (i_nuclide >= 0) then
             score = score * atom_density * &
-                 get_nuclide_xs_c(i_nuclide, MG_GET_XS_FISSION, p_g) / &
+                 get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_FISSION, p_g) / &
                  get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
           else
             score = score * &
@@ -1535,8 +1535,8 @@ contains
                  get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
           end if
         else
-          if (i_nuclide > 0) then
-            score = get_nuclide_xs_c(i_nuclide, MG_GET_XS_FISSION, p_g) * &
+          if (i_nuclide >= 0) then
+            score = get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_FISSION, p_g) * &
                  atom_density * flux
           else
             score = get_macro_xs_c(p % material, MG_GET_XS_FISSION, p_g) * flux
@@ -1563,9 +1563,9 @@ contains
             ! calculate fraction of absorptions that would have resulted in
             ! nu-fission
             score = p % absorb_wgt * flux
-            if (i_nuclide > 0) then
+            if (i_nuclide >= 0) then
               score = score * atom_density * &
-                   get_nuclide_xs_c(i_nuclide, MG_GET_XS_NU_FISSION, p_g) / &
+                   get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_NU_FISSION, p_g) / &
                    get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
             else
               score = score * &
@@ -1581,16 +1581,16 @@ contains
             ! bank. Since this was weighted by 1/keff, we multiply by keff
             ! to get the proper score.
             score = keff * p % wgt_bank * flux
-            if (i_nuclide > 0) then
+            if (i_nuclide >= 0) then
               score = score * atom_density * &
-                   get_nuclide_xs_c(i_nuclide, MG_GET_XS_FISSION, p_g) / &
+                   get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_FISSION, p_g) / &
                    get_macro_xs_c(p % material, MG_GET_XS_FISSION, p_g)
             end if
           end if
 
         else
-          if (i_nuclide > 0) then
-            score = get_nuclide_xs_c(i_nuclide, MG_GET_XS_NU_FISSION, p_g) * &
+          if (i_nuclide >= 0) then
+            score = get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_NU_FISSION, p_g) * &
                  atom_density * flux
           else
             score = get_macro_xs_c(p % material, MG_GET_XS_NU_FISSION, p_g) * flux
@@ -1617,9 +1617,9 @@ contains
             ! calculate fraction of absorptions that would have resulted in
             ! nu-fission
             score = p % absorb_wgt * flux
-            if (i_nuclide > 0) then
+            if (i_nuclide >= 0) then
               score = score * atom_density * &
-                   get_nuclide_xs_c(i_nuclide, MG_GET_XS_PROMPT_NU_FISSION, p_g) / &
+                   get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_PROMPT_NU_FISSION, p_g) / &
                    get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
             else
               score = score * &
@@ -1636,16 +1636,16 @@ contains
             ! to get the proper score.
             score = keff * p % wgt_bank * (ONE - sum(p % n_delayed_bank) &
                  / real(p % n_bank, 8)) * flux
-            if (i_nuclide > 0) then
+            if (i_nuclide >= 0) then
               score = score * atom_density * &
-                   get_nuclide_xs_c(i_nuclide, MG_GET_XS_FISSION, p_g) / &
+                   get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_FISSION, p_g) / &
                    get_macro_xs_c(p % material, MG_GET_XS_FISSION, p_g)
             end if
           end if
 
         else
-          if (i_nuclide > 0) then
-            score = get_nuclide_xs_c(i_nuclide, MG_GET_XS_PROMPT_NU_FISSION, p_g) * &
+          if (i_nuclide >= 0) then
+            score = get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_PROMPT_NU_FISSION, p_g) * &
                  atom_density * flux
           else
             score = get_macro_xs_c(p % material, MG_GET_XS_PROMPT_NU_FISSION, p_g) * flux
@@ -1688,9 +1688,9 @@ contains
                     d = filt % groups(d_bin)
 
                     score = p % absorb_wgt * flux
-                    if (i_nuclide > 0) then
+                    if (i_nuclide >= 0) then
                       score = score * &
-                           get_nuclide_xs_c(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION, p_g, DG=d) / &
+                           get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_DELAYED_NU_FISSION, p_g, DG=d) / &
                            get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
                     else
                       score = score * &
@@ -1704,9 +1704,9 @@ contains
                 end select
               else
                 score = p % absorb_wgt * flux
-                if (i_nuclide > 0) then
+                if (i_nuclide >= 0) then
                   score = score * &
-                       get_nuclide_xs_c(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION, p_g) / &
+                       get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_DELAYED_NU_FISSION, p_g) / &
                        get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
                 else
                   score = score * &
@@ -1739,9 +1739,9 @@ contains
                   score = keff * p % wgt_bank / p % n_bank * &
                        p % n_delayed_bank(d) * flux
 
-                  if (i_nuclide > 0) then
+                  if (i_nuclide >= 0) then
                     score = score * atom_density * &
-                         get_nuclide_xs_c(i_nuclide, MG_GET_XS_FISSION, p_g) / &
+                         get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_FISSION, p_g) / &
                          get_macro_xs_c(p % material, MG_GET_XS_FISSION, p_g)
                   end if
 
@@ -1751,9 +1751,9 @@ contains
               end select
             else
               score = keff * p % wgt_bank / p % n_bank * sum(p % n_delayed_bank) * flux
-              if (i_nuclide > 0) then
+              if (i_nuclide >= 0) then
                 score = score * atom_density * &
-                     get_nuclide_xs_c(i_nuclide, MG_GET_XS_FISSION, p_g) / &
+                     get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_FISSION, p_g) / &
                      get_macro_xs_c(p % material, MG_GET_XS_FISSION, p_g)
               end if
             end if
@@ -1772,9 +1772,9 @@ contains
                 ! Get the delayed group for this bin
                 d = filt % groups(d_bin)
 
-                if (i_nuclide > 0) then
+                if (i_nuclide >= 0) then
                   score = atom_density * flux * &
-                       get_nuclide_xs_c(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION, p_g, DG=d)
+                       get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_DELAYED_NU_FISSION, p_g, DG=d)
                 else
                   score = flux * &
                        get_macro_xs_c(p % material, MG_GET_XS_DELAYED_NU_FISSION, p_g, DG=d)
@@ -1785,9 +1785,9 @@ contains
               cycle SCORE_LOOP
             end select
           else
-            if (i_nuclide > 0) then
+            if (i_nuclide >= 0) then
               score = atom_density * flux * &
-                   get_nuclide_xs_c(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION, p_g)
+                   get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_DELAYED_NU_FISSION, p_g)
 
             else
               score = flux * &
@@ -1820,10 +1820,10 @@ contains
                     d = filt % groups(d_bin)
 
                     score = p % absorb_wgt * flux
-                    if (i_nuclide > 0) then
+                    if (i_nuclide >= 0) then
                       score = score * &
-                           get_nuclide_xs_c(i_nuclide, MG_GET_XS_DECAY_RATE, p_g, DG=d) * &
-                           get_nuclide_xs_c(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION, p_g, DG=d) / &
+                           get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_DECAY_RATE, p_g, DG=d) * &
+                           get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_DELAYED_NU_FISSION, p_g, DG=d) / &
                            get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
                     else
                       score = score * &
@@ -1845,10 +1845,10 @@ contains
                 ! the fraction of the delayed-nu-fission xs to the absorption xs
                 ! for all delayed groups.
                 do d = 1, num_delayed_groups
-                  if (i_nuclide > 0) then
+                  if (i_nuclide >= 0) then
                     score = score + p % absorb_wgt * flux * &
-                         get_nuclide_xs_c(i_nuclide, MG_GET_XS_DECAY_RATE, p_g, DG=d) * &
-                         get_nuclide_xs_c(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION, p_g, DG=d) / &
+                         get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_DECAY_RATE, p_g, DG=d) * &
+                         get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_DELAYED_NU_FISSION, p_g, DG=d) / &
                          get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
                   else
                     score = score + p % absorb_wgt * flux * &
@@ -1880,11 +1880,11 @@ contains
               if (g /= 0) then
 
                 ! determine score based on bank site weight and keff.
-                if (i_nuclide > 0) then
+                if (i_nuclide >= 0) then
                   score = score + keff * atom_density * &
                        fission_bank_wgt(n_bank - p % n_bank + k) * &
-                       get_nuclide_xs_c(i_nuclide, MG_GET_XS_DECAY_RATE, p_g, DG=d) * &
-                       get_nuclide_xs_c(i_nuclide, MG_GET_XS_FISSION, p_g) / &
+                       get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_DECAY_RATE, p_g, DG=d) * &
+                       get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_FISSION, p_g) / &
                        get_macro_xs_c(p % material, MG_GET_XS_FISSION, p_g) * flux
                 else
                   score = score + keff * &
@@ -1940,10 +1940,10 @@ contains
                 ! Get the delayed group for this bin
                 d = filt % groups(d_bin)
 
-                if (i_nuclide > 0) then
+                if (i_nuclide >= 0) then
                   score = atom_density * flux * &
-                       get_nuclide_xs_c(i_nuclide, MG_GET_XS_DECAY_RATE, p_g, DG=d) * &
-                       get_nuclide_xs_c(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION, p_g, DG=d)
+                       get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_DECAY_RATE, p_g, DG=d) * &
+                       get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_DELAYED_NU_FISSION, p_g, DG=d)
                 else
                   score = flux * &
                        get_macro_xs_c(p % material, MG_GET_XS_DECAY_RATE, p_g, DG=d) * &
@@ -1962,10 +1962,10 @@ contains
             ! the fraction of the delayed-nu-fission xs to the absorption xs
             ! for all delayed groups.
             do d = 1, num_delayed_groups
-              if (i_nuclide > 0) then
+              if (i_nuclide >= 0) then
                 score = score + atom_density * flux * &
-                     get_nuclide_xs_c(i_nuclide, MG_GET_XS_DECAY_RATE, p_g, DG=d) * &
-                     get_nuclide_xs_c(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION, p_g, DG=d)
+                     get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_DECAY_RATE, p_g, DG=d) * &
+                     get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_DELAYED_NU_FISSION, p_g, DG=d)
               else
                 score = score + flux * &
                      get_macro_xs_c(p % material, MG_GET_XS_DECAY_RATE, p_g, DG=d) * &
@@ -1992,9 +1992,9 @@ contains
             ! fission reaction rate
             score = p % last_wgt * flux
           end if
-          if (i_nuclide > 0) then
+          if (i_nuclide >= 0) then
             score = score * atom_density * &
-                 get_nuclide_xs_c(i_nuclide, MG_GET_XS_KAPPA_FISSION, p_g) / &
+                 get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_KAPPA_FISSION, p_g) / &
                  get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
           else
             score = score * &
@@ -2002,8 +2002,8 @@ contains
                  get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
           end if
         else
-          if (i_nuclide > 0) then
-            score = get_nuclide_xs_c(i_nuclide, MG_GET_XS_KAPPA_FISSION, p_g) * &
+          if (i_nuclide >= 0) then
+            score = get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_KAPPA_FISSION, p_g) * &
                  atom_density * flux
           else
             score = flux * &
@@ -2054,11 +2054,11 @@ contains
 
       ! Determine index in nuclides array and atom density for i-th nuclide in
       ! current material
-      i_nuclide = material_nuclide(p % material, i)
+      i_nuclide = material_nuclide(p % material, i) - 1
       atom_density = material_atom_density(p % material, i)
 
       ! Determine score for each bin
-      call score_general(p, i_tally, (i_nuclide-1)*t % n_score_bins(), filter_index, &
+      call score_general(p, i_tally, i_nuclide*t % n_score_bins(), filter_index, &
            i_nuclide, atom_density, flux)
 
     end do NUCLIDE_LOOP
@@ -2437,7 +2437,7 @@ contains
         case (ESTIMATOR_COLLISION)
           scoring_diff_nuclide = &
                (material_id(p % material) == deriv % diff_material) &
-               .and. (i_nuclide == deriv % diff_nuclide)
+               .and. (i_nuclide+1 == deriv % diff_nuclide)
 
           select case (score_bin)
 
@@ -2694,14 +2694,14 @@ contains
                  .and. material_xs % total > ZERO) then
               dsig_s = ZERO
               dsig_a = ZERO
-              associate (nuc => nuclides(i_nuclide))
+              associate (nuc => nuclides(i_nuclide+1))
                 if (multipole_in_range(nuc % ptr, p % last_E)) then
                   call multipole_deriv_eval(nuc % ptr, p % last_E, &
                        p % sqrtkT, dsig_s, dsig_a, dsig_f)
                 end if
               end associate
               score = score * (flux_deriv &
-                   + (dsig_s + dsig_a) / micro_xs(i_nuclide) % total)
+                   + (dsig_s + dsig_a) / micro_xs(i_nuclide+1) % total)
             else
               score = score * flux_deriv
             end if
@@ -2729,15 +2729,15 @@ contains
                  .and. (material_xs % total - material_xs % absorption) > ZERO)&
                  then
               dsig_s = ZERO
-              associate (nuc => nuclides(i_nuclide))
+              associate (nuc => nuclides(i_nuclide+1))
                 if (multipole_in_range(nuc % ptr, p % last_E)) then
                   call multipole_deriv_eval(nuc % ptr, p % last_E, &
                        p % sqrtkT, dsig_s, dsig_a, dsig_f)
                 end if
               end associate
               score = score * (flux_deriv + dsig_s &
-                   / (micro_xs(i_nuclide) % total &
-                   - micro_xs(i_nuclide) % absorption))
+                   / (micro_xs(i_nuclide+1) % total &
+                   - micro_xs(i_nuclide+1) % absorption))
             else
               score = score * flux_deriv
             end if
@@ -2763,14 +2763,14 @@ contains
             else if (material_id(p % material) == deriv % diff_material &
                  .and. material_xs % absorption > ZERO) then
               dsig_a = ZERO
-              associate (nuc => nuclides(i_nuclide))
+              associate (nuc => nuclides(i_nuclide+1))
                 if (multipole_in_range(nuc % ptr, p % last_E)) then
                   call multipole_deriv_eval(nuc % ptr, p % last_E, &
                        p % sqrtkT, dsig_s, dsig_a, dsig_f)
                 end if
               end associate
               score = score * (flux_deriv &
-                   + dsig_a / micro_xs(i_nuclide) % absorption)
+                   + dsig_a / micro_xs(i_nuclide+1) % absorption)
             else
               score = score * flux_deriv
             end if
@@ -2796,14 +2796,14 @@ contains
             else if (material_id(p % material) == deriv % diff_material &
                  .and. material_xs % fission > ZERO) then
               dsig_f = ZERO
-              associate (nuc => nuclides(i_nuclide))
+              associate (nuc => nuclides(i_nuclide+1))
                 if (multipole_in_range(nuc % ptr, p % last_E)) then
                   call multipole_deriv_eval(nuc % ptr, p % last_E, &
                        p % sqrtkT, dsig_s, dsig_a, dsig_f)
                 end if
               end associate
               score = score * (flux_deriv &
-                   + dsig_f / micro_xs(i_nuclide) % fission)
+                   + dsig_f / micro_xs(i_nuclide+1) % fission)
             else
               score = score * flux_deriv
             end if
@@ -2831,14 +2831,14 @@ contains
             else if (material_id(p % material) == deriv % diff_material &
                  .and. material_xs % nu_fission > ZERO) then
               dsig_f = ZERO
-              associate (nuc => nuclides(i_nuclide))
+              associate (nuc => nuclides(i_nuclide+1))
                 if (multipole_in_range(nuc % ptr, p % last_E)) then
                   call multipole_deriv_eval(nuc % ptr, p % last_E, &
                        p % sqrtkT, dsig_s, dsig_a, dsig_f)
                 end if
               end associate
               score = score * (flux_deriv &
-                   + dsig_f / micro_xs(i_nuclide) % fission)
+                   + dsig_f / micro_xs(i_nuclide+1) % fission)
             else
               score = score * flux_deriv
             end if

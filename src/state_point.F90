@@ -279,16 +279,16 @@ contains
           ! Set up nuclide bin array and then write
           allocate(str_array(tally % n_nuclide_bins()))
           NUCLIDE_LOOP: do j = 1, tally % n_nuclide_bins()
-            if (tally % nuclide_bins(j) > 0) then
+            if (tally % nuclide_bins(j) >= 0) then
               if (run_CE) then
-                i_xs = index(nuclides(tally % nuclide_bins(j)) % name, '.')
+                i_xs = index(nuclides(tally % nuclide_bins(j)+1) % name, '.')
                 if (i_xs > 0) then
-                  str_array(j) = nuclides(tally % nuclide_bins(j)) % name(1 : i_xs-1)
+                  str_array(j) = nuclides(tally % nuclide_bins(j)+1) % name(1 : i_xs-1)
                 else
-                  str_array(j) = nuclides(tally % nuclide_bins(j)) % name
+                  str_array(j) = nuclides(tally % nuclide_bins(j)+1) % name
                 end if
               else
-                call get_name_c(tally % nuclide_bins(j), len(temp_name), &
+                call get_name_c(tally % nuclide_bins(j)+1, len(temp_name), &
                                 temp_name)
                 i_xs = index(temp_name, '.')
                 if (i_xs > 0) then

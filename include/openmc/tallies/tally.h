@@ -25,6 +25,8 @@ public:
 
   void set_scores(std::vector<std::string> scores);
 
+  void set_nuclides(pugi::xml_node node);
+
   //----------------------------------------------------------------------------
   // Methods for getting and setting filter/stride data.
 
@@ -40,8 +42,6 @@ public:
 
   //----------------------------------------------------------------------------
   // Other methods.
-
-  void init_scores(pugi::xml_node node);
 
   void init_triggers(pugi::xml_node node, int i_tally);
 

@@ -447,7 +447,6 @@ contains
 
     integer :: i             ! loop over user-specified tallies
     integer :: j             ! loop over words
-    integer :: k             ! another loop index
     integer :: l             ! loop over bins
     integer :: filter_id     ! user-specified identifier for filter
     integer :: tally_id      ! user-specified identifier for filter
@@ -456,20 +455,14 @@ contains
     integer :: n             ! size of arrays in mesh specification
     integer :: n_words       ! number of words read
     integer :: n_filter      ! number of filters
-    integer :: n_scores      ! number of scores
     integer :: i_start, i_end
     integer(C_INT) :: err
-    integer :: MT            ! user-specified MT for score
     logical :: file_exists   ! does tallies.xml file exist?
     integer, allocatable :: temp_filter(:) ! temporary filter indices
-    logical :: has_energyout, has_delayedgroup, has_legendre, has_surface, &
-               has_cell, has_cellfrom, has_meshsurface
+    logical :: has_energyout
     integer :: particle_filter_index
     character(MAX_LINE_LEN) :: filename
-    character(MAX_WORD_LEN) :: word
-    character(MAX_WORD_LEN) :: score_name
     character(MAX_WORD_LEN) :: temp_str
-    character(MAX_WORD_LEN), allocatable :: sarray(:)
     type(TallyFilterContainer), pointer :: f
     type(XMLDocument) :: doc
     type(XMLNode) :: root
@@ -478,11 +471,15 @@ contains
     type(XMLNode), allocatable :: node_tal_list(:)
     type(XMLNode), allocatable :: node_filt_list(:)
     type(TallyDerivative), pointer :: deriv
-    integer, allocatable :: nuclide_bins(:)
-    logical :: all_nuclides
 
     interface
-      subroutine tally_init_scores(tally_ptr, xml_node) bind(C)
+      subroutine tally_set_scores(tally_ptr, xml_node) bind(C)
+        import C_PTR
+        type(C_PTR), value :: tally_ptr
+        type(C_PTR) :: xml_node
+      end subroutine
+
+      subroutine tally_set_nuclides(tally_ptr, xml_node) bind(C)
         import C_PTR
         type(C_PTR), value :: tally_ptr
         type(C_PTR) :: xml_node
@@ -692,25 +689,9 @@ contains
 
       ! Check for the presence of certain filter types
       has_energyout = (t % energyout_filter() > 0)
-      has_delayedgroup = (t % delayedgroup_filter() > 0)
-      has_legendre = .false.
-      has_cell = .false.
-      has_cellfrom = .false.
-      has_surface = .false.
-      has_meshsurface = .false.
       particle_filter_index = 0
       do j = 1, t % n_filters()
         select type (filt => filters(t % filter(j)) % obj)
-        type is (LegendreFilter)
-          has_legendre = .true.
-        type is (CellFilter)
-          has_cell = .true.
-        type is (CellfromFilter)
-          has_cellfrom = .true.
-        type is (SurfaceFilter)
-          has_surface = .true.
-        type is (MeshSurfaceFilter)
-          has_meshsurface = .true.
         type is (ParticleFilter)
           particle_filter_index = j
         end select
@@ -739,69 +720,12 @@ contains
       ! =======================================================================
       ! READ DATA FOR NUCLIDES
 
-      all_nuclides = .false.
-      if (check_for_node(node_tal, "nuclides")) then
-
-        ! Allocate a temporary string array for nuclides and copy values over
-        allocate(sarray(node_word_count(node_tal, "nuclides")))
-        call get_node_array(node_tal, "nuclides", sarray)
-
-        if (trim(sarray(1)) == 'all') then
-          ! Handle special case <nuclides>all</nuclides>
-          allocate(nuclide_bins(n_nuclides + 1))
-
-          ! Set bins to 1, 2, 3, ..., n_nuclides, -1
-          nuclide_bins(1:n_nuclides) = (/ (j, j=1, n_nuclides) /)
-          nuclide_bins(n_nuclides + 1) = -1
-
-          ! Set flag so we can treat this case specially
-          all_nuclides = .true.
-        else
-          ! Any other case, e.g. <nuclides>U-235 Pu-239</nuclides>
-          n_words = node_word_count(node_tal, "nuclides")
-          allocate(nuclide_bins(n_words))
-          do j = 1, n_words
-
-            ! Check if total material was specified
-            if (trim(sarray(j)) == 'total') then
-              nuclide_bins(j) = -1
-              cycle
-            end if
-
-            ! If a specific nuclide was specified
-            word = sarray(j)
-
-            ! Search through nuclides
-            k = nuclide_map_get(to_c_string(word))
-            if (k == -1) then
-              call fatal_error("Could not find the nuclide " &
-                   // trim(word) // " specified in tally " &
-                   // trim(to_str(t % id())) // " in any material.")
-            end if
-
-            ! Set bin to index in nuclides array
-            nuclide_bins(j) = k
-          end do
-        end if
-
-        ! Deallocate temporary string array
-        deallocate(sarray)
-
-      else
-        ! No <nuclides> were specified -- create only one bin will be added
-        ! for the total material.
-        allocate(nuclide_bins(1))
-        nuclide_bins(1) = -1
-      end if
-
-      ! Set the tally nuclides array
-      call t % set_nuclide_bins(nuclide_bins, all_nuclides)
-      deallocate(nuclide_bins)
+      call tally_set_nuclides(t % ptr, node_tal % ptr)
 
       ! =======================================================================
       ! READ DATA FOR SCORES
 
-      call tally_init_scores(t % ptr, node_tal % ptr)
+      call tally_set_scores(t % ptr, node_tal % ptr)
 
       if (check_for_node(node_tal, "scores")) then
         n_words = node_word_count(node_tal, "scores")
@@ -809,7 +733,7 @@ contains
         ! Check if tally is compatible with particle type
         if (photon_transport) then
           if (particle_filter_index == 0) then
-            do j = 1, n_scores
+            do j = 1, t % n_score_bins()
               select case (t % score_bins(j))
               case (SCORE_INVERSE_VELOCITY)
                 call fatal_error("Particle filter must be used with photon &

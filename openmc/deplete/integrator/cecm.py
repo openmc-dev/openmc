@@ -11,8 +11,10 @@ def cecm(operator, timesteps, power=None, power_density=None, print_out=True):
     r"""Deplete using the CE/CM algorithm.
 
     Implements the second order `CE/CM predictor-corrector algorithm
-    <https://doi.org/10.13182/NSE14-92>`_.  This algorithm is mathematically
-    defined as:
+    <https://doi.org/10.13182/NSE14-92>`_.
+
+    "CE/CM" stands for constant extrapolation on predictor and constant
+    midpoint on corrector. This algorithm is mathematically defined as:
 
     .. math::
         y' &= A(y, t) y(t)
@@ -59,19 +61,15 @@ def cecm(operator, timesteps, power=None, power_density=None, print_out=True):
 
     # Generate initial conditions
     with operator as vec:
-        chain = operator.chain
-
-        # Initialize time
+        # Initialize time and starting index
         if operator.prev_res is None:
             t = 0.0
-        else:
-            t = operator.prev_res[-1].time[-1]
-
-        # Initialize starting index for saving results
-        if operator.prev_res is None:
             i_res = 0
         else:
+            t = operator.prev_res[-1].time[-1]
             i_res = len(operator.prev_res)
+
+        chain = operator.chain
 
         for i, (dt, p) in enumerate(zip(timesteps, power)):
             # Get beginning-of-timestep concentrations and reaction rates
@@ -95,10 +93,10 @@ def cecm(operator, timesteps, power=None, power_density=None, print_out=True):
                 # Scale reaction rates by ratio of powers
                 power_res = operator.prev_res[-1].power
                 ratio_power = p / power_res
-                op_results[0].rates[0] *= ratio_power[0]
+                op_results[0].rates *= ratio_power[0]
 
             # Deplete for first half of timestep
-            x_middle = deplete(chain, x[0], op_results[0], dt/2, print_out)
+            x_middle = deplete(chain, x[0], op_results[0].rates, dt/2, print_out)
 
             # Get middle-of-timestep reaction rates
             x.append(x_middle)
@@ -106,7 +104,7 @@ def cecm(operator, timesteps, power=None, power_density=None, print_out=True):
 
             # Deplete for full timestep using beginning-of-step materials
             # and middle-of-timestep reaction rates
-            x_end = deplete(chain, x[0], op_results[1], dt, print_out)
+            x_end = deplete(chain, x[0], op_results[1].rates, dt, print_out)
 
             # Create results, write to disk
             Results.save(operator, x, op_results, [t, t + dt], p, i_res + i)

@@ -125,6 +125,10 @@ class Operator(TransportOperator):
         else:
             self.prev_res = None
 
+        # Differentiate burnable materials with multiple instances
+        if self.diff_burnable_mats:
+            self._differentiate_burnable_mats()
+
         # Clear out OpenMC, create task lists, distribute
         openmc.reset_auto_ids()
         self.burnable_mats, volume, nuclides = self._get_burnable_mats()
@@ -226,10 +230,6 @@ class Operator(TransportOperator):
             Nuclides in order of how they'll appear in the simulation.
 
         """
-
-        if self.diff_burnable_mats:
-            # Automatically distribute burnable materials
-            self._differentiate_burnable_mats()
 
         burnable_mats = set()
         model_nuclides = set()

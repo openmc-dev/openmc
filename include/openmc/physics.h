@@ -37,7 +37,12 @@ void sample_electron_reaction(Particle* p);
 //! MeV) are created and travel in opposite directions.
 void sample_positron_reaction(Particle* p);
 
-void sample_nuclide(const Particle* p, int mt, int* i_nuclide, int* i_nuc_mat);
+//! Sample a nuclide based on their total cross sections and densities within
+//! the current material
+//!
+//! \param[in] p Particle
+//! \return Index in the data::nuclides vector
+int sample_nuclide(const Particle* p);
 
 //! Determine the average total, prompt, and delayed neutrons produced from
 //! fission and creates appropriate bank sites.
@@ -52,7 +57,7 @@ void sample_photon_product(int i_nuclide, double E, int* i_rx, int* i_product);
 
 void absorption(Particle* p, int i_nuclide);
 
-void scatter(Particle*, int i_nuclide, int i_nuc_mat);
+void scatter(Particle*, int i_nuclide);
 
 //! Treats the elastic scattering of a neutron with a target.
 void elastic_scatter(int i_nuclide, const Reaction* rx, double kT, double* E,

@@ -5,9 +5,7 @@ module geometry_header
   use algorithm,       only: find
   use constants,       only: K_BOLTZMANN, MATERIAL_VOID
   use dict_header,     only: DictIntInt
-  use material_header, only: Material, materials
   use nuclide_header
-  use sab_header
   use stl_vector,      only: VectorReal
   use string,          only: to_lower
 
@@ -175,70 +173,6 @@ contains
     real(C_DOUBLE)          :: sqrtkT
     sqrtkT = cell_sqrtkT_c(this % ptr, i)
   end function cell_sqrtkT
-
-!===============================================================================
-! GET_TEMPERATURES returns a list of temperatures that each nuclide/S(a,b) table
-! appears at in the model. Later, this list is used to determine the actual
-! temperatures to read (which may be different if interpolation is used)
-!===============================================================================
-
-  subroutine get_temperatures(nuc_temps, sab_temps)
-    type(VectorReal),            allocatable, intent(out) :: nuc_temps(:)
-    type(VectorReal),  optional, allocatable, intent(out) :: sab_temps(:)
-
-    integer :: i, j, k
-    integer :: i_nuclide    ! index in nuclides array
-    integer :: i_sab        ! index in S(a,b) array
-    integer :: i_material
-    real(8) :: temperature  ! temperature in Kelvin
-
-    allocate(nuc_temps(n_nuclides))
-    if (present(sab_temps)) allocate(sab_temps(n_sab_tables))
-
-    do i = 1, size(cells)
-      ! Skip non-material cells.
-      if (cells(i) % fill() /= C_NONE) cycle
-
-      do j = 1, cells(i) % material_size()
-        ! Skip void materials
-        if (cells(i) % material(j) == MATERIAL_VOID) cycle
-
-        ! Get temperature of cell (rounding to nearest integer)
-        if (cells(i) % sqrtkT_size() > 1) then
-          temperature = cells(i) % sqrtkT(j-1)**2 / K_BOLTZMANN
-        else
-          temperature = cells(i) % sqrtkT(0)**2 / K_BOLTZMANN
-        end if
-
-        i_material = cells(i) % material(j)
-
-        associate (mat => materials(i_material))
-          NUC_NAMES_LOOP: do k = 1, size(mat % names)
-            ! Get index in nuc_temps array
-            i_nuclide = nuclide_dict % get(to_lower(mat % names(k)))
-
-            ! Add temperature if it hasn't already been added
-            if (find(nuc_temps(i_nuclide), temperature) == -1) then
-              call nuc_temps(i_nuclide) % push_back(temperature)
-            end if
-          end do NUC_NAMES_LOOP
-
-          if (present(sab_temps) .and. mat % n_sab > 0) then
-            SAB_NAMES_LOOP: do k = 1, size(mat % sab_names)
-              ! Get index in nuc_temps array
-              i_sab = sab_dict % get(to_lower(mat % sab_names(k)))
-
-              ! Add temperature if it hasn't already been added
-              if (find(sab_temps(i_sab), temperature) == -1) then
-                call sab_temps(i_sab) % push_back(temperature)
-              end if
-            end do SAB_NAMES_LOOP
-          end if
-        end associate
-      end do
-    end do
-
-  end subroutine get_temperatures
 
 !===============================================================================
 ! FREE_MEMORY_GEOMETRY deallocates global arrays defined in this module

@@ -13,6 +13,11 @@ module dagmc_header
     subroutine free_memory_dagmc() bind(C)
     end subroutine free_memory_dagmc
 
+    function read_uwuw_materials() result(doc) bind(C)
+      import C_PTR
+      type(C_PTR) :: doc
+    end function read_uwuw_materials
+
   end interface
 
 end module dagmc_header

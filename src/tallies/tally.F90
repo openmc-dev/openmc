@@ -8,6 +8,7 @@ module tally
   use dict_header,      only: EMPTY
   use error,            only: fatal_error
   use geometry_header
+  use material_header
   use math,             only: t_percentile
   use message_passing
   use mgxs_interface
@@ -422,13 +423,13 @@ contains
 
             ! Loop over all nuclides in the current material
             if (p % material /= MATERIAL_VOID) then
-              do l = 1, materials(p % material) % n_nuclides
+              do l = 1, material_nuclide_size(p % material)
 
                 ! Get atom density
-                atom_density_ = materials(p % material) % atom_density(l)
+                atom_density_ = material_atom_density(p % material, l)
 
                 ! Get index in nuclides array
-                i_nuc = materials(p % material) % nuclide(l)
+                i_nuc = material_nuclide(p % material, l)
 
                 ! Accumulate the contribution from each nuclide
                 score = score + micro_xs(i_nuc) % fission * nuclides(i_nuc) % &
@@ -581,13 +582,13 @@ contains
 
                 ! Loop over all nuclides in the current material
                 if (p % material /= MATERIAL_VOID) then
-                  do l = 1, materials(p % material) % n_nuclides
+                  do l = 1, material_nuclide_size(p % material)
 
                     ! Get atom density
-                    atom_density_ = materials(p % material) % atom_density(l)
+                    atom_density_ = material_atom_density(p % material, l)
 
                     ! Get index in nuclides array
-                    i_nuc = materials(p % material) % nuclide(l)
+                    i_nuc = material_nuclide(p % material, l)
 
                     ! Loop over all delayed group bins and tally to them
                     ! individually
@@ -615,13 +616,13 @@ contains
 
               ! Loop over all nuclides in the current material
               if (p % material /= MATERIAL_VOID) then
-                do l = 1, materials(p % material) % n_nuclides
+                do l = 1, material_nuclide_size(p % material)
 
                   ! Get atom density
-                  atom_density_ = materials(p % material) % atom_density(l)
+                  atom_density_ = material_atom_density(p % material, l)
 
                   ! Get index in nuclides array
-                  i_nuc = materials(p % material) % nuclide(l)
+                  i_nuc = material_nuclide(p % material, l)
 
                   ! Accumulate the contribution from each nuclide
                   score = score + micro_xs(i_nuc) % fission * nuclides(i_nuc) %&
@@ -833,13 +834,13 @@ contains
 
                 ! Loop over all nuclides in the current material
                 if (p % material /= MATERIAL_VOID) then
-                  do l = 1, materials(p % material) % n_nuclides
+                  do l = 1, material_nuclide_size(p % material)
 
                     ! Get atom density
-                    atom_density_ = materials(p % material) % atom_density(l)
+                    atom_density_ = material_atom_density(p % material, l)
 
                     ! Get index in nuclides array
-                    i_nuc = materials(p % material) % nuclide(l)
+                    i_nuc = material_nuclide(p % material, l)
 
                     if (nuclides(i_nuc) % fissionable) then
 
@@ -878,13 +879,13 @@ contains
 
               ! Loop over all nuclides in the current material
               if (p % material /= MATERIAL_VOID) then
-                do l = 1, materials(p % material) % n_nuclides
+                do l = 1, material_nuclide_size(p % material)
 
                   ! Get atom density
-                  atom_density_ = materials(p % material) % atom_density(l)
+                  atom_density_ = material_atom_density(p % material, l)
 
                   ! Get index in nuclides array
-                  i_nuc = materials(p % material) % nuclide(l)
+                  i_nuc = material_nuclide(p % material, l)
 
                   if (nuclides(i_nuc) % fissionable) then
 
@@ -964,10 +965,10 @@ contains
             if (p % material == MATERIAL_VOID) then
               score = ZERO
             else
-              do l = 1, materials(p % material) % n_nuclides
+              do l = 1, material_nuclide_size(p % material)
                 ! Determine atom density and index of nuclide
-                atom_density_ = materials(p % material) % atom_density(l)
-                i_nuc = materials(p % material) % nuclide(l)
+                atom_density_ = material_atom_density(p % material, l)
+                i_nuc = material_nuclide(p % material, l)
 
                 ! If nuclide is fissionable, accumulate kappa fission
                 associate(nuc => nuclides(i_nuc))
@@ -1001,12 +1002,12 @@ contains
           else
             score = ZERO
             if (p % material /= MATERIAL_VOID) then
-              do l = 1, materials(p % material) % n_nuclides
+              do l = 1, material_nuclide_size(p % material)
                 ! Get atom density
-                atom_density_ = materials(p % material) % atom_density(l)
+                atom_density_ = material_atom_density(p % material, l)
 
                 ! Get index in nuclides array
-                i_nuc = materials(p % material) % nuclide(l)
+                i_nuc = material_nuclide(p % material, l)
                 if (micro_xs(i_nuc) % elastic == CACHE_INVALID) then
                   call nuclides(i_nuc) % calculate_elastic_xs()
                 end if
@@ -1075,9 +1076,9 @@ contains
             end associate
           else
             if (p % material /= MATERIAL_VOID) then
-              do l = 1, materials(p % material) % n_nuclides
-                atom_density_ = materials(p % material) % atom_density(l)
-                i_nuc = materials(p % material) % nuclide(l)
+              do l = 1, material_nuclide_size(p % material)
+                atom_density_ = material_atom_density(p % material, l)
+                i_nuc = material_nuclide(p % material, l)
 
                 associate (nuc => nuclides(i_nuc))
                   if (score_bin == SCORE_FISS_Q_PROMPT) then
@@ -1122,13 +1123,11 @@ contains
           else
             score = ZERO
             if (p % material /= MATERIAL_VOID) then
-              associate (mat => materials(p % material))
-                do l = 1, materials(p % material) % n_nuclides
-                  i_nuc = mat % nuclide(l)
-                  atom_density_ = mat % atom_density(l)
+                do l = 1, material_nuclide_size(p % material)
+                  i_nuc = material_nuclide(p % material, l)
+                  atom_density_ = material_atom_density(p % material, l)
                   score = score + micro_xs(i_nuc) % reaction(m) * atom_density_ * flux
                 end do
-              end associate
             end if
           end if
         end if
@@ -1176,12 +1175,12 @@ contains
 
             else
               if (p % material /= MATERIAL_VOID) then
-                do l = 1, materials(p % material) % n_nuclides
+                do l = 1, material_nuclide_size(p % material)
                   ! Get atom density
-                  atom_density_ = materials(p % material) % atom_density(l)
+                  atom_density_ = material_atom_density(p % material, l)
 
                   ! Get index in nuclides array
-                  i_nuc = materials(p % material) % nuclide(l)
+                  i_nuc = material_nuclide(p % material, l)
 
                   m = nuclides(i_nuc) % reaction_index(score_bin)
                   if (m /= 0) then
@@ -2045,23 +2044,18 @@ contains
     integer :: i             ! loop index for nuclides in material
     integer :: i_nuclide     ! index in nuclides array
     real(8) :: atom_density  ! atom density of single nuclide in atom/b-cm
-    type(Material),    pointer :: mat
 
     associate (t => tallies(i_tally) % obj)
-
-    ! Get pointer to current material. We need this in order to determine what
-    ! nuclides are in the material
-    mat => materials(p % material)
 
     ! ==========================================================================
     ! SCORE ALL INDIVIDUAL NUCLIDE REACTION RATES
 
-    NUCLIDE_LOOP: do i = 1, mat % n_nuclides
+    NUCLIDE_LOOP: do i = 1, material_nuclide_size(p % material)
 
       ! Determine index in nuclides array and atom density for i-th nuclide in
       ! current material
-      i_nuclide = mat % nuclide(i)
-      atom_density = mat % atom_density(i)
+      i_nuclide = material_nuclide(p % material, i)
+      atom_density = material_atom_density(p % material, i)
 
       ! Determine score for each bin
       call score_general(p, i_tally, (i_nuclide-1)*t % n_score_bins(), filter_index, &
@@ -2320,6 +2314,7 @@ contains
 
     type(TallyDerivative), pointer :: deriv
     integer :: l
+    integer :: i_nuc
     logical :: scoring_diff_nuclide
     real(8) :: flux_deriv
     real(8) :: dsig_s, dsig_a, dsig_f, cum_dsig
@@ -2358,9 +2353,9 @@ contains
 
           case (SCORE_TOTAL, SCORE_SCATTER, SCORE_ABSORPTION, SCORE_FISSION, &
                 SCORE_NU_FISSION)
-            if (materials(p % material) % id() == deriv % diff_material) then
+            if (material_id(p % material) == deriv % diff_material) then
               score = score * (flux_deriv + ONE &
-                   / materials(p % material) % density_gpcc)
+                   / material_density_gpcc(p % material))
             else
               score = score * flux_deriv
             end if
@@ -2379,9 +2374,9 @@ contains
 
           case (SCORE_TOTAL, SCORE_SCATTER, SCORE_ABSORPTION, SCORE_FISSION, &
                 SCORE_NU_FISSION)
-            if (materials(p % material) % id() == deriv % diff_material) then
+            if (material_id(p % material) == deriv % diff_material) then
               score = score * (flux_deriv + ONE &
-                   / materials(p % material) % density_gpcc)
+                   / material_density_gpcc(p % material))
             else
               score = score * flux_deriv
             end if
@@ -2421,17 +2416,15 @@ contains
 
           case (SCORE_TOTAL, SCORE_SCATTER, SCORE_ABSORPTION, SCORE_FISSION, &
                 SCORE_NU_FISSION)
-            if (materials(p % material) % id() == deriv % diff_material &
+            if (material_id(p % material) == deriv % diff_material &
                  .and. p % event_nuclide == deriv % diff_nuclide) then
-              associate(mat => materials(p % material))
                 ! Search for the index of the perturbed nuclide.
-                do l = 1, mat % n_nuclides
-                  if (mat % nuclide(l) == deriv % diff_nuclide) exit
+                do l = 1, material_nuclide_size(p % material)
+                  if (material_nuclide(p % material, l) == deriv % diff_nuclide) exit
                 end do
 
                 score = score * (flux_deriv &
-                     + ONE / mat % atom_density(l))
-              end associate
+                     + ONE / material_atom_density(p % material, l))
             else
               score = score * flux_deriv
             end if
@@ -2443,7 +2436,7 @@ contains
 
         case (ESTIMATOR_COLLISION)
           scoring_diff_nuclide = &
-               (materials(p % material) % id() == deriv % diff_material) &
+               (material_id(p % material) == deriv % diff_material) &
                .and. (i_nuclide == deriv % diff_nuclide)
 
           select case (score_bin)
@@ -2453,7 +2446,7 @@ contains
 
           case (SCORE_TOTAL)
             if (i_nuclide == -1 .and. &
-                 materials(p % material) % id() == deriv % diff_material .and. &
+                 material_id(p % material) == deriv % diff_material .and. &
                  material_xs % total /= ZERO) then
               score = score * (flux_deriv &
                    + micro_xs(deriv % diff_nuclide) % total &
@@ -2467,7 +2460,7 @@ contains
 
           case (SCORE_SCATTER)
             if (i_nuclide == -1 .and. &
-                 materials(p % material) % id() == deriv % diff_material .and. &
+                 material_id(p % material) == deriv % diff_material .and. &
                  material_xs % total - material_xs % absorption /= ZERO) then
               score = score * (flux_deriv &
                    + (micro_xs(deriv % diff_nuclide) % total &
@@ -2483,7 +2476,7 @@ contains
 
           case (SCORE_ABSORPTION)
             if (i_nuclide == -1 .and. &
-                 materials(p % material) % id() == deriv % diff_material .and. &
+                 material_id(p % material) == deriv % diff_material .and. &
                  material_xs % absorption /= ZERO) then
               score = score * (flux_deriv &
                    + micro_xs(deriv % diff_nuclide) % absorption &
@@ -2497,7 +2490,7 @@ contains
 
           case (SCORE_FISSION)
             if (i_nuclide == -1 .and. &
-                 materials(p % material) % id() == deriv % diff_material .and. &
+                 material_id(p % material) == deriv % diff_material .and. &
                  material_xs % fission /= ZERO) then
               score = score * (flux_deriv &
                    + micro_xs(deriv % diff_nuclide) % fission &
@@ -2511,7 +2504,7 @@ contains
 
           case (SCORE_NU_FISSION)
             if (i_nuclide == -1 .and. &
-                 materials(p % material) % id() == deriv % diff_material .and. &
+                 material_id(p % material) == deriv % diff_material .and. &
                  material_xs % nu_fission /= ZERO) then
               score = score * (flux_deriv &
                    + micro_xs(deriv % diff_nuclide) % nu_fission &
@@ -2557,12 +2550,11 @@ contains
             score = score * flux_deriv
 
           case (SCORE_TOTAL)
-            if (materials(p % material) % id() == deriv % diff_material .and. &
+            if (material_id(p % material) == deriv % diff_material .and. &
                  micro_xs(p % event_nuclide) % total > ZERO) then
-              associate(mat => materials(p % material))
                 ! Search for the index of the perturbed nuclide.
-                do l = 1, mat % n_nuclides
-                  if (mat % nuclide(l) == p % event_nuclide) exit
+                do l = 1, material_nuclide_size(p % material)
+                  if (material_nuclide(p % material, l) == p % event_nuclide) exit
                 end do
 
                 dsig_s = ZERO
@@ -2574,21 +2566,19 @@ contains
                   end if
                 end associate
                 score = score * (flux_deriv &
-                     + (dsig_s + dsig_a) * mat % atom_density(l) &
+                     + (dsig_s + dsig_a) * material_atom_density(p % material, l) &
                      / material_xs % total)
-              end associate
             else
               score = score * flux_deriv
             end if
 
           case (SCORE_SCATTER)
-            if (materials(p % material) % id() == deriv % diff_material .and. &
+            if (material_id(p % material) == deriv % diff_material .and. &
                  (micro_xs(p % event_nuclide) % total &
                  - micro_xs(p % event_nuclide) % absorption) > ZERO) then
-              associate(mat => materials(p % material))
                 ! Search for the index of the perturbed nuclide.
-                do l = 1, mat % n_nuclides
-                  if (mat % nuclide(l) == p % event_nuclide) exit
+                do l = 1, material_nuclide_size(p % material)
+                  if (material_nuclide(p % material, l) == p % event_nuclide) exit
                 end do
 
                 dsig_s = ZERO
@@ -2598,20 +2588,18 @@ contains
                          p % sqrtkT, dsig_s, dsig_a, dsig_f)
                   end if
                 end associate
-                score = score * (flux_deriv + dsig_s * mat % atom_density(l) / &
+                score = score * (flux_deriv + dsig_s * material_atom_density(p % material, l) / &
                      (material_xs % total - material_xs % absorption))
-              end associate
             else
               score = score * flux_deriv
             end if
 
           case (SCORE_ABSORPTION)
-            if (materials(p % material) % id() == deriv % diff_material .and. &
+            if (material_id(p % material) == deriv % diff_material .and. &
                  micro_xs(p % event_nuclide) % absorption > ZERO) then
-              associate(mat => materials(p % material))
                 ! Search for the index of the perturbed nuclide.
-                do l = 1, mat % n_nuclides
-                  if (mat % nuclide(l) == p % event_nuclide) exit
+                do l = 1, material_nuclide_size(p % material)
+                  if (material_nuclide(p % material, l) == p % event_nuclide) exit
                 end do
 
                 dsig_a = ZERO
@@ -2621,20 +2609,18 @@ contains
                          p % sqrtkT, dsig_s, dsig_a, dsig_f)
                   end if
                 end associate
-                score = score * (flux_deriv + dsig_a * mat % atom_density(l) &
+                score = score * (flux_deriv + dsig_a * material_atom_density(p % material, l) &
                                               / material_xs % absorption)
-              end associate
             else
               score = score * flux_deriv
             end if
 
           case (SCORE_FISSION)
-            if (materials(p % material) % id() == deriv % diff_material .and. &
+            if (material_id(p % material) == deriv % diff_material .and. &
                  micro_xs(p % event_nuclide) % fission > ZERO) then
-              associate(mat => materials(p % material))
                 ! Search for the index of the perturbed nuclide.
-                do l = 1, mat % n_nuclides
-                  if (mat % nuclide(l) == p % event_nuclide) exit
+                do l = 1, material_nuclide_size(p % material)
+                  if (material_nuclide(p % material, l) == p % event_nuclide) exit
                 end do
 
                 dsig_f = ZERO
@@ -2645,19 +2631,17 @@ contains
                   end if
                 end associate
                 score = score * (flux_deriv &
-                     + dsig_f * mat % atom_density(l) / material_xs % fission)
-              end associate
+                     + dsig_f * material_atom_density(p % material, l) / material_xs % fission)
             else
               score = score * flux_deriv
             end if
 
           case (SCORE_NU_FISSION)
-            if (materials(p % material) % id() == deriv % diff_material .and. &
+            if (material_id(p % material) == deriv % diff_material .and. &
                  micro_xs(p % event_nuclide) % nu_fission > ZERO) then
-              associate(mat => materials(p % material))
                 ! Search for the index of the perturbed nuclide.
-                do l = 1, mat % n_nuclides
-                  if (mat % nuclide(l) == p % event_nuclide) exit
+                do l = 1, material_nuclide_size(p % material)
+                  if (material_nuclide(p % material, l) == p % event_nuclide) exit
                 end do
 
                 dsig_f = ZERO
@@ -2668,10 +2652,9 @@ contains
                   end if
                 end associate
                 score = score * (flux_deriv &
-                     + dsig_f * mat % atom_density(l) / material_xs % nu_fission&
+                     + dsig_f * material_atom_density(p % material, l) / material_xs % nu_fission&
                      * micro_xs(p % event_nuclide) % nu_fission &
                      / micro_xs(p % event_nuclide) % fission)
-              end associate
             else
               score = score * flux_deriv
             end if
@@ -2690,25 +2673,24 @@ contains
 
           case (SCORE_TOTAL)
             if (i_nuclide == -1 .and. &
-                 materials(p % material) % id() == deriv % diff_material .and. &
+                 material_id(p % material) == deriv % diff_material .and. &
                  material_xs % total > ZERO) then
               cum_dsig = ZERO
-              associate(mat => materials(p % material))
-                do l = 1, mat % n_nuclides
-                  associate (nuc => nuclides(mat % nuclide(l)))
+                do l = 1, material_nuclide_size(p % material)
+                  i_nuc = material_nuclide(p % material, l)
+                  associate (nuc => nuclides(i_nuc))
                     if (multipole_in_range(nuc % ptr, p % last_E) .and. &
-                         micro_xs(mat % nuclide(l)) % total > ZERO) then
+                         micro_xs(i_nuc) % total > ZERO) then
                       call multipole_deriv_eval(nuc % ptr, p % last_E, &
                            p % sqrtkT, dsig_s, dsig_a, dsig_f)
                       cum_dsig = cum_dsig + (dsig_s + dsig_a) &
-                           * mat % atom_density(l)
+                           * material_atom_density(p % material, l)
                     end if
                   end associate
                 end do
-              end associate
               score = score * (flux_deriv &
                    + cum_dsig / material_xs % total)
-            else if (materials(p % material) % id() == deriv % diff_material &
+            else if (material_id(p % material) == deriv % diff_material &
                  .and. material_xs % total > ZERO) then
               dsig_s = ZERO
               dsig_a = ZERO
@@ -2726,25 +2708,24 @@ contains
 
           case (SCORE_SCATTER)
             if (i_nuclide == -1 .and. &
-                 materials(p % material) % id() == deriv % diff_material .and. &
+                 material_id(p % material) == deriv % diff_material .and. &
                  (material_xs % total - material_xs % absorption) > ZERO) then
               cum_dsig = ZERO
-              associate(mat => materials(p % material))
-                do l = 1, mat % n_nuclides
-                  associate (nuc => nuclides(mat % nuclide(l)))
+                do l = 1, material_nuclide_size(p % material)
+                  i_nuc = material_nuclide(p % material, l)
+                  associate (nuc => nuclides(i_nuc))
                     if (multipole_in_range(nuc % ptr, p % last_E) .and. &
-                         (micro_xs(mat % nuclide(l)) % total &
-                         - micro_xs(mat % nuclide(l)) % absorption) > ZERO) then
+                         (micro_xs(i_nuc) % total &
+                         - micro_xs(i_nuc) % absorption) > ZERO) then
                       call multipole_deriv_eval(nuc % ptr, p % last_E, &
                            p % sqrtkT, dsig_s, dsig_a, dsig_f)
-                      cum_dsig = cum_dsig + dsig_s * mat % atom_density(l)
+                      cum_dsig = cum_dsig + dsig_s * material_atom_density(p % material, l)
                     end if
                   end associate
                 end do
-              end associate
               score = score * (flux_deriv + cum_dsig &
                    / (material_xs % total - material_xs % absorption))
-            else if ( materials(p % material) % id() == deriv % diff_material &
+            else if ( material_id(p % material) == deriv % diff_material &
                  .and. (material_xs % total - material_xs % absorption) > ZERO)&
                  then
               dsig_s = ZERO
@@ -2763,24 +2744,23 @@ contains
 
           case (SCORE_ABSORPTION)
             if (i_nuclide == -1 .and. &
-                 materials(p % material) % id() == deriv % diff_material .and. &
+                 material_id(p % material) == deriv % diff_material .and. &
                  material_xs % absorption > ZERO) then
               cum_dsig = ZERO
-              associate(mat => materials(p % material))
-                do l = 1, mat % n_nuclides
-                  associate (nuc => nuclides(mat % nuclide(l)))
+                do l = 1, material_nuclide_size(p % material)
+                  i_nuc = material_nuclide(p % material, l)
+                  associate (nuc => nuclides(i_nuc))
                     if (multipole_in_range(nuc % ptr, p % last_E) .and. &
-                         micro_xs(mat % nuclide(l)) % absorption > ZERO) then
+                         micro_xs(i_nuc) % absorption > ZERO) then
                       call multipole_deriv_eval(nuc % ptr, p % last_E, &
                            p % sqrtkT, dsig_s, dsig_a, dsig_f)
-                      cum_dsig = cum_dsig + dsig_a * mat % atom_density(l)
+                      cum_dsig = cum_dsig + dsig_a * material_atom_density(p % material, l)
                     end if
                   end associate
                 end do
-              end associate
               score = score * (flux_deriv &
                    + cum_dsig / material_xs % absorption)
-            else if (materials(p % material) % id() == deriv % diff_material &
+            else if (material_id(p % material) == deriv % diff_material &
                  .and. material_xs % absorption > ZERO) then
               dsig_a = ZERO
               associate (nuc => nuclides(i_nuclide))
@@ -2797,24 +2777,23 @@ contains
 
           case (SCORE_FISSION)
             if (i_nuclide == -1 .and. &
-                 materials(p % material) % id() == deriv % diff_material .and. &
+                 material_id(p % material) == deriv % diff_material .and. &
                  material_xs % fission > ZERO) then
               cum_dsig = ZERO
-              associate(mat => materials(p % material))
-                do l = 1, mat % n_nuclides
-                  associate (nuc => nuclides(mat % nuclide(l)))
+                do l = 1, material_nuclide_size(p % material)
+                  i_nuc = material_nuclide(p % material, l)
+                  associate (nuc => nuclides(i_nuc))
                     if (multipole_in_range(nuc % ptr, p % last_E) .and. &
-                         micro_xs(mat % nuclide(l)) % fission > ZERO) then
+                         micro_xs(i_nuc) % fission > ZERO) then
                       call multipole_deriv_eval(nuc % ptr, p % last_E, &
                            p % sqrtkT, dsig_s, dsig_a, dsig_f)
-                      cum_dsig = cum_dsig + dsig_f * mat % atom_density(l)
+                      cum_dsig = cum_dsig + dsig_f * material_atom_density(p % material, l)
                     end if
                   end associate
                 end do
-              end associate
               score = score * (flux_deriv &
                    + cum_dsig / material_xs % fission)
-            else if (materials(p % material) % id() == deriv % diff_material &
+            else if (material_id(p % material) == deriv % diff_material &
                  .and. material_xs % fission > ZERO) then
               dsig_f = ZERO
               associate (nuc => nuclides(i_nuclide))
@@ -2831,26 +2810,25 @@ contains
 
           case (SCORE_NU_FISSION)
             if (i_nuclide == -1 .and. &
-                 materials(p % material) % id() == deriv % diff_material .and. &
+                 material_id(p % material) == deriv % diff_material .and. &
                  material_xs % nu_fission > ZERO) then
               cum_dsig = ZERO
-              associate(mat => materials(p % material))
-                do l = 1, mat % n_nuclides
-                  associate (nuc => nuclides(mat % nuclide(l)))
+                do l = 1, material_nuclide_size(p % material)
+                  i_nuc = material_nuclide(p % material, l)
+                  associate (nuc => nuclides(i_nuc))
                     if (multipole_in_range(nuc % ptr, p % last_E) .and. &
-                         micro_xs(mat % nuclide(l)) % nu_fission > ZERO) then
+                         micro_xs(i_nuc) % nu_fission > ZERO) then
                       call multipole_deriv_eval(nuc % ptr, p % last_E, &
                            p % sqrtkT, dsig_s, dsig_a, dsig_f)
-                      cum_dsig = cum_dsig + dsig_f * mat % atom_density(l) &
-                           * micro_xs(mat % nuclide(l)) % nu_fission &
-                           / micro_xs(mat % nuclide(l)) % fission
+                      cum_dsig = cum_dsig + dsig_f * material_atom_density(p % material, l) &
+                           * micro_xs(i_nuc) % nu_fission &
+                           / micro_xs(i_nuc) % fission
                     end if
                   end associate
                 end do
-              end associate
               score = score * (flux_deriv &
                    + cum_dsig / material_xs % nu_fission)
-            else if (materials(p % material) % id() == deriv % diff_material &
+            else if (material_id(p % material) == deriv % diff_material &
                  .and. material_xs % nu_fission > ZERO) then
               dsig_f = ZERO
               associate (nuc => nuclides(i_nuclide))
@@ -2900,32 +2878,27 @@ contains
         select case (deriv % variable)
 
         case (DIFF_DENSITY)
-          associate (mat => materials(p % material))
-            if (mat % id() == deriv % diff_material) then
+            if (material_id(p % material) == deriv % diff_material) then
               ! phi is proportional to e^(-Sigma_tot * dist)
               ! (1 / phi) * (d_phi / d_rho) = - (d_Sigma_tot / d_rho) * dist
               ! (1 / phi) * (d_phi / d_rho) = - Sigma_tot / rho * dist
               deriv % flux_deriv = deriv % flux_deriv &
-                   - distance * material_xs % total / mat % density_gpcc
+                    - distance * material_xs % total / material_density_gpcc(p % material)
             end if
-          end associate
 
         case (DIFF_NUCLIDE_DENSITY)
-          associate (mat => materials(p % material))
-            if (mat % id() == deriv % diff_material) then
+            if (material_id(p % material) == deriv % diff_material) then
               ! phi is proportional to e^(-Sigma_tot * dist)
               ! (1 / phi) * (d_phi / d_N) = - (d_Sigma_tot / d_N) * dist
               ! (1 / phi) * (d_phi / d_N) = - sigma_tot * dist
               deriv % flux_deriv = deriv % flux_deriv &
                    - distance * micro_xs(deriv % diff_nuclide) % total
             end if
-          end associate
 
         case (DIFF_TEMPERATURE)
-          associate (mat => materials(p % material))
-            if (mat % id() == deriv % diff_material) then
-              do l=1, mat % n_nuclides
-                associate (nuc => nuclides(mat % nuclide(l)))
+            if (material_id(p % material) == deriv % diff_material) then
+              do l=1, material_nuclide_size(p % material)
+                associate (nuc => nuclides(material_nuclide(p % material, l)))
                   if (multipole_in_range(nuc % ptr, p % E)) then
                     ! phi is proportional to e^(-Sigma_tot * dist)
                     ! (1 / phi) * (d_phi / d_T) = - (d_Sigma_tot / d_T) * dist
@@ -2933,12 +2906,11 @@ contains
                     call multipole_deriv_eval(nuc % ptr, p % E, &
                          p % sqrtkT, dsig_s, dsig_a, dsig_f)
                     deriv % flux_deriv = deriv % flux_deriv &
-                         - distance * (dsig_s + dsig_a) * mat % atom_density(l)
+                         - distance * (dsig_s + dsig_a) * material_atom_density(p % material, l)
                   end if
                 end associate
               end do
             end if
-          end associate
         end select
       !end associate
     end do
@@ -2964,7 +2936,7 @@ contains
     type(Particle), intent(in) :: p
 
     type(TallyDerivative), pointer :: deriv
-    integer :: i, j, l
+    integer :: i, j, l, i_nuc
     real(8) :: dsig_s, dsig_a, dsig_f
 
     ! A void material cannot be perturbed so it will not affect flux derivatives
@@ -2976,26 +2948,23 @@ contains
         select case (deriv % variable)
 
         case (DIFF_DENSITY)
-          associate (mat => materials(p % material))
-            if (mat % id() == deriv % diff_material) then
+            if (material_id(p % material) == deriv % diff_material) then
               ! phi is proportional to Sigma_s
               ! (1 / phi) * (d_phi / d_rho) = (d_Sigma_s / d_rho) / Sigma_s
               ! (1 / phi) * (d_phi / d_rho) = 1 / rho
               deriv % flux_deriv = deriv % flux_deriv &
-                   + ONE / mat % density_gpcc
+                   + ONE / material_density_gpcc(p % material)
             end if
-          end associate
 
         case (DIFF_NUCLIDE_DENSITY)
-          associate (mat => materials(p % material))
-            if (mat % id() == deriv % diff_material &
+            if (material_id(p % material) == deriv % diff_material &
                  .and. p % event_nuclide == deriv % diff_nuclide) then
               ! Find the index in this material for the diff_nuclide.
-              do j = 1, mat % n_nuclides
-                if (mat % nuclide(j) == deriv % diff_nuclide) exit
+              do j = 1, material_nuclide_size(p % material)
+                if (material_nuclide(p % material, j) == deriv % diff_nuclide) exit
               end do
               ! Make sure we found the nuclide.
-              if (mat % nuclide(j) /= deriv % diff_nuclide) then
+              if (material_nuclide(p % material, j) /= deriv % diff_nuclide) then
                 call fatal_error("Couldn't find the right nuclide.")
               end if
               ! phi is proportional to Sigma_s
@@ -3003,16 +2972,15 @@ contains
               ! (1 / phi) * (d_phi / d_N) = sigma_s / Sigma_s
               ! (1 / phi) * (d_phi / d_N) = 1 / N
               deriv % flux_deriv = deriv % flux_deriv &
-                   + ONE / mat % atom_density(j)
+                   + ONE / material_atom_density(p % material, j)
             end if
-          end associate
 
         case (DIFF_TEMPERATURE)
-          associate (mat => materials(p % material))
-            if (mat % id() == deriv % diff_material) then
-              do l=1, mat % n_nuclides
-                associate (nuc => nuclides(mat % nuclide(l)))
-                  if (mat % nuclide(l) == p % event_nuclide .and. &
+            if (material_id(p % material) == deriv % diff_material) then
+              do l=1, material_nuclide_size(p % material)
+                i_nuc = material_nuclide(p % material, l)
+                associate (nuc => nuclides(i_nuc))
+                  if (i_nuc == p % event_nuclide .and. &
                        multipole_in_range(nuc % ptr, p % last_E)) then
                     ! phi is proportional to Sigma_s
                     ! (1 / phi) * (d_phi / d_T) = (d_Sigma_s / d_T) / Sigma_s
@@ -3020,8 +2988,8 @@ contains
                     call multipole_deriv_eval(nuc % ptr, p % last_E, &
                          p % sqrtkT, dsig_s, dsig_a, dsig_f)
                     deriv % flux_deriv = deriv % flux_deriv + dsig_s&
-                         / (micro_xs(mat % nuclide(l)) % total &
-                         - micro_xs(mat % nuclide(l)) % absorption)
+                         / (micro_xs(i_nuc) % total &
+                         - micro_xs(i_nuc) % absorption)
                     ! Note that this is an approximation!  The real scattering
                     ! cross section is Sigma_s(E'->E, uvw'->uvw) =
                     ! Sigma_s(E') * P(E'->E, uvw'->uvw).  We are assuming that
@@ -3033,7 +3001,6 @@ contains
                 end associate
               end do
             end if
-          end associate
         end select
       !end associate
     end do
@@ -3179,21 +3146,5 @@ contains
       call set_errmsg("Index in tallies array is out of bounds.")
     end if
   end function openmc_tally_allocate
-
-!===============================================================================
-! Functions for C++ interop
-!===============================================================================
-
-  function material_nuclide_index(i_material, i_nuclide) result(i) bind(C)
-    integer(C_INT), value :: i_material, i_nuclide
-    integer(C_INT) :: i
-    i = materials(i_material) % mat_nuclide_index(i_nuclide)
-  end function
-
-  function material_atom_density(i_material, i) result(dens) bind(C)
-    integer(C_INT), value :: i_material, i
-    real(C_DOUBLE) :: dens
-    dens = materials(i_material) % atom_density(i)
-  end function
 
 end module tally

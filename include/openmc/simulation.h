@@ -30,7 +30,7 @@ extern "C" double keff_std;      //!< standard deviation of average k
 extern "C" double k_col_abs;     //!< sum over batches of k_collision * k_absorption
 extern "C" double k_col_tra;     //!< sum over batches of k_collision * k_tracklength
 extern "C" double k_abs_tra;     //!< sum over batches of k_absorption * k_tracklength
-extern "C" double log_spacing;   //!< lethargy spacing for energy grid searches
+extern double log_spacing;       //!< lethargy spacing for energy grid searches
 extern "C" int n_lost_particles; //!< cumulative number of lost particles
 extern "C" bool need_depletion_rx; //!< need to calculate depletion rx?
 extern "C" int restart_batch;   //!< batch at which a restart job resumed

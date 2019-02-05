@@ -28,6 +28,7 @@ namespace data {
 xt::xtensor<double, 1> compton_profile_pz;
 
 std::vector<PhotonInteraction> elements;
+std::unordered_map<std::string, int> element_map;
 
 } // namespace data
 
@@ -222,7 +223,7 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
     }
 
     // Truncate the bremsstrahlung data at the cutoff energy
-    int photon = static_cast<int>(ParticleType::photon) - 1;
+    int photon = static_cast<int>(ParticleType::photon);
     const auto& E {electron_energy};
     double cutoff = settings::energy_cutoff[photon];
     if (cutoff > E(0)) {
@@ -781,8 +782,7 @@ extern "C" void photon_from_hdf5(hid_t group)
   // the previous
   const auto& element {data::elements.back()};
   if (element.energy_.size() >= 1) {
-    // TODO: off-by-one
-    int photon = static_cast<int>(ParticleType::photon) - 1;
+    int photon = static_cast<int>(ParticleType::photon);
     int n = element.energy_.size();
     data::energy_min[photon] = std::max(data::energy_min[photon],
       std::exp(element.energy_(1)));
@@ -790,6 +790,8 @@ extern "C" void photon_from_hdf5(hid_t group)
       std::exp(element.energy_(n - 1)));
   }
 }
+
+extern "C" int elements_size() { return data::element_map.size(); }
 
 extern "C" void photon_calculate_xs(int i_element, double E)
 {

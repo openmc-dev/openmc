@@ -11,7 +11,7 @@ module tracking
   use geometry,           only: next_cell
 #endif
 
-  use material_header,    only: materials, Material
+  use material_header,    only: material_calculate_xs
   use message_passing
   use mgxs_interface
   use nuclide_header
@@ -131,7 +131,7 @@ contains
             ! If the material is the same as the last material and the
             ! temperature hasn't changed, we don't need to lookup cross
             ! sections again.
-            call materials(p % material) % calculate_xs(p)
+            call material_calculate_xs(p)
           end if
         else
           ! Get the MG data
@@ -497,7 +497,7 @@ contains
       p % coord(1) % cell = i_cell-1 ! decrement for C++ indexing
       p % cell_instance = 1
       p % material = cells(i_cell) % material(1)
-      p % sqrtKT = cells(i_cell) % sqrtKT(1)
+      p % sqrtKT = cells(i_cell) % sqrtKT(0)
       return
     end if
 #endif

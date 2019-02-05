@@ -2,7 +2,6 @@ module simulation
 
   use, intrinsic :: ISO_C_BINDING
 
-  use material_header, only: n_materials, materials
   use nuclide_header,  only: micro_xs, n_nuclides
   use photon_header,   only: micro_photon_xs, n_elements
   use tally_filter_header, only: filter_matches, n_filters, filter_match_pointer
@@ -19,11 +18,6 @@ contains
   subroutine simulation_init_f() bind(C)
 
     integer :: i
-
-    ! Set up material nuclide index mapping
-    do i = 1, n_materials
-      call materials(i) % init_nuclide_index()
-    end do
 
 !$omp parallel
     ! Allocate array for microscopic cross section cache
@@ -46,12 +40,7 @@ contains
 
   subroutine simulation_finalize_f() bind(C)
 
-    integer :: i       ! loop index
-
     ! Free up simulation-specific memory
-    do i = 1, n_materials
-      deallocate(materials(i) % mat_nuclide_index)
-    end do
 !$omp parallel
     deallocate(micro_xs, micro_photon_xs, filter_matches)
 !$omp end parallel

@@ -16,7 +16,6 @@ using namespace openmc;
 
 // Functions defined in Fortran
 extern "C" void free_memory();
-extern "C" void reset_timers_f();
 
 int openmc_finalize()
 {
@@ -25,7 +24,6 @@ int openmc_finalize()
 
   // Reset timers
   reset_timers();
-  reset_timers_f();
 
   // Reset global variables
   settings::assume_separate = false;
@@ -127,7 +125,6 @@ int openmc_hard_reset()
   // Reset all tallies and timers
   openmc_reset();
   reset_timers();
-  reset_timers_f();
 
   // Reset total generations and keff guess
   simulation::keff = 1.0;

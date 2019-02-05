@@ -1,6 +1,8 @@
 #include "openmc/nuclide.h"
 
+#include "openmc/capi.h"
 #include "openmc/container_util.h"
+#include "openmc/cross_sections.h"
 #include "openmc/endf.h"
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
@@ -29,6 +31,7 @@ namespace data {
 std::array<double, 2> energy_min {0.0, 0.0};
 std::array<double, 2> energy_max {INFTY, INFTY};
 std::vector<std::unique_ptr<Nuclide>> nuclides;
+std::unordered_map<std::string, int> nuclide_map;
 } // namespace data
 
 namespace simulation {
@@ -46,7 +49,7 @@ int Nuclide::XS_FISSION {2};
 int Nuclide::XS_NU_FISSION {3};
 int Nuclide::XS_PHOTON_PROD {4};
 
-Nuclide::Nuclide(hid_t group, const double* temperature, int n, int i_nuclide)
+Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nuclide)
   : i_nuclide_{i_nuclide}
 {
   // Get name of nuclide from group, removing leading '/'
@@ -81,6 +84,7 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n, int i_nuclide)
   // temperature range was given, in which case all temperatures in the range
   // are loaded irrespective of what temperatures actually appear in the model
   std::vector<int> temps_to_read;
+  int n = temperature.size();
   double T_min = n > 0 ? settings::temperature_range[0] : 0.0;
   double T_max = n > 0 ? settings::temperature_range[1] : INFTY;
   if (T_max > 0.0) {
@@ -94,8 +98,7 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n, int i_nuclide)
   switch (settings::temperature_method) {
   case TEMPERATURE_NEAREST:
     // Find nearest temperatures
-    for (int i = 0; i < n; ++i) {
-      double T_desired = temperature[i];
+    for (double T_desired : temperature) {
 
       // Determine closest temperature
       double min_delta_T = INFTY;
@@ -129,9 +132,7 @@ Nuclide::Nuclide(hid_t group, const double* temperature, int n, int i_nuclide)
   case TEMPERATURE_INTERPOLATION:
     // If temperature interpolation or multipole is selected, get a list of
     // bounding temperatures for each actual temperature present in the model
-    for (int i = 0; i < n; ++i) {
-      double T_desired = temperature[i];
-
+    for (double T_desired : temperature) {
       bool found_pair = false;
       for (int j = 0; j < temps_available.size() - 1; ++j) {
         if (temps_available[j] <= T_desired && T_desired < temps_available[j + 1]) {
@@ -391,7 +392,7 @@ void Nuclide::create_derived()
 
 void Nuclide::init_grid()
 {
-  int neutron = static_cast<int>(ParticleType::neutron) - 1;
+  int neutron = static_cast<int>(ParticleType::neutron);
   double E_min = data::energy_min[neutron];
   double E_max = data::energy_max[neutron];
   int M = settings::n_log_bins;
@@ -866,24 +867,91 @@ void Nuclide::calculate_urr_xs(int i_temp, double E) const
 }
 
 //==============================================================================
+// Non-member functions
+//==============================================================================
+
+void check_data_version(hid_t file_id)
+{
+  if (attribute_exists(file_id, "version")) {
+    std::vector<int> version;
+    read_attribute(file_id, "version", version);
+    if (version[0] != HDF5_VERSION[0]) {
+      fatal_error("HDF5 data format uses version " + std::to_string(version[0])
+        + "." + std::to_string(version[1]) + " whereas your installation of "
+        "OpenMC expects version " + std::to_string(HDF5_VERSION[0])
+        + ".x data.");
+    }
+  } else {
+    fatal_error("HDF5 data does not indicate a version. Your installation of "
+      "OpenMC expects version " + std::to_string(HDF5_VERSION[0]) +
+      ".x data.");
+  }
+}
+
+//==============================================================================
+// C API
+//==============================================================================
+
+extern "C" void extend_nuclides();
+
+extern "C" int openmc_load_nuclide(const char* name)
+{
+  if (data::nuclide_map.find(name) == data::nuclide_map.end()) {
+    const auto& it = data::library_map.find({Library::Type::neutron, name});
+    if (it != data::library_map.end()) {
+      // Extend nuclides array on Fortran side
+      extend_nuclides();
+
+      // Get filename for library containing nuclide
+      int idx = it->second;
+      std::string& filename = data::libraries[idx].path_;
+      write_message("Reading " + std::string{name} + " from " + filename, 6);
+
+      // Open file and make sure version is sufficient
+      hid_t file_id = file_open(filename, 'r');
+      check_data_version(file_id);
+
+      // Read nuclide data from HDF5
+      hid_t group = open_group(file_id, name);
+      std::vector<double> temperature;
+      int i_nuclide = data::nuclides.size();
+      data::nuclides.push_back(std::make_unique<Nuclide>(
+        group, temperature, i_nuclide));
+      close_group(group);
+      file_close(file_id);
+
+      // Add entry to nuclide dictionary
+      data::nuclide_map[name] = i_nuclide;
+
+      // Initialize nuclide grid
+      data::nuclides.back()->init_grid();
+
+      // Read multipole file into the appropriate entry on the nuclides array
+      if (settings::temperature_multipole) read_multipole_data(i_nuclide);
+    } else {
+      set_errmsg("Nuclide '" + std::string{name} + "' is not present in library.");
+      return OPENMC_E_DATA;
+    }
+  }
+  return 0;
+}
+
+//==============================================================================
 // Fortran compatibility functions
 //==============================================================================
 
 extern "C" void
 set_particle_energy_bounds(int particle, double E_min, double E_max)
 {
-  data::energy_min[particle - 1] = E_min;
-  data::energy_max[particle - 1] = E_max;
+  data::energy_min[particle] = E_min;
+  data::energy_max[particle] = E_max;
 }
 
-extern "C" Nuclide* nuclide_from_hdf5_c(hid_t group, const double* temperature, int n)
-{
-  data::nuclides.push_back(std::make_unique<Nuclide>(group, temperature, n,
-                                                     data::nuclides.size()));
-  return data::nuclides.back().get();
-}
+extern "C" int nuclides_size() { return data::nuclide_map.size(); }
 
 extern "C" void nuclide_init_grid_c(Nuclide* nuc) { nuc->init_grid(); }
+
+extern "C" double nuclide_awr(int i_nuc) { return data::nuclides[i_nuc - 1]->awr_; }
 
 extern "C" Reaction* nuclide_reaction(Nuclide* nuc, int i_rx)
 {
@@ -916,11 +984,6 @@ extern "C" double nuclide_fission_q_recov(Nuclide* nuc, double E)
   return nuc->fission_q_recov_ ? (*nuc->fission_q_recov_)(E) : 0.0;
 }
 
-extern "C" void nuclide_load_multipole(Nuclide* nuc, hid_t group)
-{
-  nuc->multipole_ = std::make_unique<WindowedMultipole>(group);
-}
-
 extern "C" void multipole_deriv_eval(Nuclide* nuc, double E, double sqrtkT,
   double* sig_s, double* sig_a, double* sig_f)
 {
@@ -933,7 +996,17 @@ extern "C" bool multipole_in_range(Nuclide* nuc, double E)
     E <= nuc->multipole_->E_max_;
 }
 
-extern "C" void nuclides_clear() { data::nuclides.clear(); }
+extern "C" void nuclides_clear()
+{
+  data::nuclides.clear();
+  data::nuclide_map.clear();
+}
+
+extern "C" int nuclide_map_get(const char* name)
+{
+  auto it = data::nuclide_map.find(name);
+  return it == data::nuclide_map.end() ? -1 : it->second + 1;
+}
 
 extern "C" NuclideMicroXS* micro_xs_ptr();
 extern "C" ElementMicroXS* micro_photon_xs_ptr();

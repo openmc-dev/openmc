@@ -15,8 +15,6 @@ module simulation_header
   ! Number of lost particles
   integer(C_INT), bind(C) :: n_lost_particles
 
-  real(C_DOUBLE), bind(C) :: log_spacing ! spacing on logarithmic grid
-
   ! ============================================================================
   ! SIMULATION VARIABLES
 

@@ -16,7 +16,9 @@
 
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
+#include "openmc/mgxs_interface.h"
 #include "openmc/random_lcg.h"
+#include "openmc/settings.h"
 #include "openmc/string_utils.h"
 
 
@@ -41,7 +43,7 @@ std::vector<Mgxs> macro_xs;
 void
 Mgxs::init(const std::string& in_name, double in_awr,
      const std::vector<double>& in_kTs, bool in_fissionable, int in_scatter_format,
-     int in_num_groups, int in_num_delayed_groups, bool in_is_isotropic,
+     bool in_is_isotropic,
      const std::vector<double>& in_polar, const std::vector<double>& in_azimuthal)
 {
   // Set the metadata
@@ -51,8 +53,8 @@ Mgxs::init(const std::string& in_name, double in_awr,
   kTs = xt::adapt(in_kTs);
   fissionable = in_fissionable;
   scatter_format = in_scatter_format;
-  num_groups = in_num_groups;
-  num_delayed_groups = in_num_delayed_groups;
+  num_groups = data::num_energy_groups;
+  num_delayed_groups = data::num_delayed_groups;
   xs.resize(in_kTs.size());
   is_isotropic = in_is_isotropic;
   n_pol = in_polar.size();
@@ -73,9 +75,8 @@ Mgxs::init(const std::string& in_name, double in_awr,
 //==============================================================================
 
 void
-Mgxs::metadata_from_hdf5(hid_t xs_id, int in_num_groups,
-     int in_num_delayed_groups, const std::vector<double>& temperature,
-     double tolerance, std::vector<int>& temps_to_read, int& order_dim, int& method)
+Mgxs::metadata_from_hdf5(hid_t xs_id, const std::vector<double>& temperature,
+     std::vector<int>& temps_to_read, int& order_dim)
 {
   // get name
   char char_name[MAX_WORD_LEN];
@@ -114,20 +115,20 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, int in_num_groups,
 
   // If only one temperature is available, lets just use nearest temperature
   // interpolation
-  if ((num_temps == 1) && (method == TEMPERATURE_INTERPOLATION)) {
+  if ((num_temps == 1) && (settings::temperature_method == TEMPERATURE_INTERPOLATION)) {
     warning("Cross sections for " + strtrim(name) + " are only available " +
             "at one temperature.  Reverting to the nearest temperature " +
             "method.");
-    method = TEMPERATURE_NEAREST;
+    settings::temperature_method = TEMPERATURE_NEAREST;
   }
 
-  switch(method) {
+  switch(settings::temperature_method) {
     case TEMPERATURE_NEAREST:
       // Determine actual temperatures to read
       for (const auto& T : temperature) {
         auto i_closest = xt::argmin(xt::abs(available_temps - T))[0];
         double temp_actual = available_temps[i_closest];
-        if (std::fabs(temp_actual - T) < tolerance) {
+        if (std::fabs(temp_actual - T) < settings::temperature_tolerance) {
           if (std::find(temps_to_read.begin(), temps_to_read.end(), std::round(temp_actual))
               == temps_to_read.end()) {
             temps_to_read.push_back(std::round(temp_actual));
@@ -276,39 +277,34 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, int in_num_groups,
 
   // Finally use this data to initialize the MGXS Object
   init(in_name, in_awr, in_kTs, in_fissionable, in_scatter_format,
-       in_num_groups, in_num_delayed_groups, in_is_isotropic, in_polar,
+       in_is_isotropic, in_polar,
        in_azimuthal);
 }
 
 //==============================================================================
 
-Mgxs::Mgxs(hid_t xs_id, int energy_groups, int delayed_groups,
-     const std::vector<double>& temperature, double tolerance, int max_order,
-     bool legendre_to_tabular, int legendre_to_tabular_points, int& method)
+Mgxs::Mgxs(hid_t xs_id, const std::vector<double>& temperature)
 {
   // Call generic data gathering routine (will populate the metadata)
   int order_data;
   std::vector<int> temps_to_read;
-  metadata_from_hdf5(xs_id, energy_groups, delayed_groups, temperature,
-       tolerance, temps_to_read, order_data, method);
+  metadata_from_hdf5(xs_id, temperature, temps_to_read, order_data);
 
   // Set number of energy and delayed groups
   int final_scatter_format = scatter_format;
-  if (legendre_to_tabular) {
+  if (settings::legendre_to_tabular) {
     if (scatter_format == ANGLE_LEGENDRE) final_scatter_format = ANGLE_TABULAR;
   }
 
   // Load the more specific XsData information
   for (int t = 0; t < temps_to_read.size(); t++) {
-    xs[t] = XsData(energy_groups, delayed_groups, fissionable,
-                   final_scatter_format, n_pol, n_azi);
+    xs[t] = XsData(fissionable, final_scatter_format, n_pol, n_azi);
     // Get the temperature as a string and then open the HDF5 group
     std::string temp_str = std::to_string(temps_to_read[t]) + "K";
     hid_t xsdata_grp = open_group(xs_id, temp_str.c_str());
 
     xs[t].from_hdf5(xsdata_grp, fissionable, scatter_format,
-                    final_scatter_format, order_data, max_order,
-                    legendre_to_tabular_points, is_isotropic, n_pol, n_azi);
+                    final_scatter_format, order_data, is_isotropic, n_pol, n_azi);
     close_group(xsdata_grp);
 
   } // end temperature loop
@@ -320,8 +316,7 @@ Mgxs::Mgxs(hid_t xs_id, int energy_groups, int delayed_groups,
 //==============================================================================
 
 Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
-     const std::vector<Mgxs*>& micros, const std::vector<double>& atom_densities,
-     double tolerance, int& method)
+     const std::vector<Mgxs*>& micros, const std::vector<double>& atom_densities)
 {
   // Get the minimum data needed to initialize:
   // Dont need awr, but lets just initialize it anyways
@@ -341,13 +336,12 @@ Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
   std::vector<double> in_azimuthal = micros[0]->azimuthal;
 
   init(in_name, in_awr, mat_kTs, in_fissionable, in_scatter_format,
-       in_num_groups, in_num_delayed_groups, in_is_isotropic, in_polar,
-       in_azimuthal);
+       in_is_isotropic, in_polar, in_azimuthal);
 
   // Create the xs data for each temperature
   for (int t = 0; t < mat_kTs.size(); t++) {
-    xs[t] = XsData(in_num_groups, in_num_delayed_groups, in_fissionable,
-       in_scatter_format, in_polar.size(), in_azimuthal.size());
+    xs[t] = XsData(in_fissionable, in_scatter_format, in_polar.size(),
+      in_azimuthal.size());
 
     // Find the right temperature index to use
     double temp_desired = mat_kTs[t];
@@ -357,13 +351,13 @@ Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
     std::vector<int> micro_t(micros.size(), 0);
     std::vector<double> micro_t_interp(micros.size(), 0.);
     for (int m = 0; m < micros.size(); m++) {
-      switch(method) {
+      switch(settings::temperature_method) {
       case TEMPERATURE_NEAREST:
         {
           micro_t[m] = xt::argmin(xt::abs(micros[m]->kTs - temp_desired))[0];
           auto temp_actual = micros[m]->kTs[micro_t[m]];
 
-          if (std::abs(temp_actual - temp_desired) >= K_BOLTZMANN * tolerance) {
+          if (std::abs(temp_actual - temp_desired) >= K_BOLTZMANN * settings::temperature_tolerance) {
             std::stringstream msg;
             msg << "MGXS Library does not contain cross section for " << name
               << " at or near " << std::round(temp_desired / K_BOLTZMANN) << "K.";
@@ -395,7 +389,7 @@ Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
     // If we are doing nearest temperature interpolation, then we don't need
     // to do the 2nd temperature
     int num_interp_points = 2;
-    if (method == TEMPERATURE_NEAREST) num_interp_points = 1;
+    if (settings::temperature_method == TEMPERATURE_NEAREST) num_interp_points = 1;
     for (int interp_point = 0; interp_point < num_interp_points; interp_point++) {
       std::vector<double> interp(micros.size());
       std::vector<double> temp_indices(micros.size());

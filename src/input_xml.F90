@@ -15,27 +15,22 @@ module input_xml
   use material_header
   use mesh_header
   use message_passing
-  use mgxs_data,        only: create_macro_xs, read_mgxs
   use mgxs_interface
   use nuclide_header
-  use multipole_header
   use output,           only: title, header
   use photon_header
   use random_lcg,       only: prn
   use surface_header
-  use set_header,       only: SetChar
   use settings
   use stl_vector,       only: VectorInt, VectorReal, VectorChar
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
                               starts_with, ends_with, split_string, &
                               zero_padded, to_c_string
-  use summary,          only: write_summary
   use tally
   use tally_header,     only: openmc_extend_tallies
   use tally_derivative_header
   use tally_filter_header
   use tally_filter
-  use timer_header,     only: time_read_xs
   use volume_header
   use xml_interface
 
@@ -43,19 +38,10 @@ module input_xml
   save
 
   interface
-    subroutine adjust_indices() bind(C)
-    end subroutine adjust_indices
-
-    subroutine assign_temperatures() bind(C)
-    end subroutine assign_temperatures
-
     subroutine count_cell_instances(univ_indx) bind(C)
       import C_INT32_T
       integer(C_INT32_T), intent(in), value :: univ_indx
     end subroutine count_cell_instances
-
-    subroutine prepare_distribcell() bind(C)
-    end subroutine prepare_distribcell
 
     subroutine read_surfaces(node_ptr) bind(C)
       import C_PTR
@@ -66,9 +52,6 @@ module input_xml
       import C_PTR
       type(C_PTR) :: node_ptr
     end subroutine read_cells
-
-    subroutine read_cross_sections_xml() bind(C)
-    end subroutine
 
     subroutine read_lattices(node_ptr) bind(C)
       import C_PTR
@@ -99,9 +82,6 @@ module input_xml
       type(C_PTR) :: node_ptr
     end subroutine read_plots
 
-    subroutine print_plot() bind(C)
-    end subroutine print_plot
-
     subroutine set_particle_energy_bounds(particle, E_min, E_max) bind(C)
       import C_INT, C_DOUBLE
       integer(C_INT), value :: particle
@@ -111,86 +91,6 @@ module input_xml
   end interface
 
 contains
-
-!===============================================================================
-! READ_INPUT_XML calls each of the separate subroutines for reading settings,
-! geometry, materials, and tallies.
-!===============================================================================
-
-  subroutine read_input_xml() bind(C)
-
-    type(VectorReal), allocatable :: nuc_temps(:) ! List of T to read for each nuclide
-    type(VectorReal), allocatable :: sab_temps(:) ! List of T to read for each S(a,b)
-
-    call read_settings_xml()
-    call read_cross_sections_xml()
-    call read_materials_xml()
-    call read_geometry_xml()
-
-    ! Convert user IDs -> indices, assign temperatures
-    call finalize_geometry(nuc_temps, sab_temps)
-
-    if (run_mode /= MODE_PLOTTING) then
-      call time_read_xs % start()
-      if (run_CE) then
-        ! Read continuous-energy cross sections
-        call read_ce_cross_sections(nuc_temps, sab_temps)
-      else
-        ! Create material macroscopic data for MGXS
-        call read_mgxs()
-        call create_macro_xs()
-      end if
-      call time_read_xs % stop()
-    end if
-
-    call read_tallies_xml()
-
-    ! Initialize distribcell_filters
-    call prepare_distribcell()
-
-    if (run_mode == MODE_PLOTTING) then
-      ! Read plots.xml if it exists
-      call read_plots_xml()
-      if (master .and. verbosity >= 5) call print_plot()
-
-    else
-      ! Normalize atom/weight percents
-      call normalize_ao()
-
-      ! Write summary information
-      if (master .and. output_summary) call write_summary()
-
-      ! Warn if overlap checking is on
-      if (master .and. check_overlaps) &
-           call warning("Cell overlap checking is ON.")
-    end if
-
-  end subroutine read_input_xml
-
-  subroutine finalize_geometry(nuc_temps, sab_temps)
-    type(VectorReal),            allocatable, intent(out) :: nuc_temps(:)
-    type(VectorReal),  optional, allocatable, intent(out) :: sab_temps(:)
-
-    ! Perform some final operations to set up the geometry
-    call adjust_indices()
-    call count_cell_instances(root_universe)
-
-    ! Assign temperatures to cells that don't have temperatures already assigned
-    call assign_temperatures()
-
-    ! Determine desired temperatures for each nuclide and S(a,b) table
-    call get_temperatures(nuc_temps, sab_temps)
-
-    ! Check to make sure there are not too many nested coordinate levels in the
-    ! geometry since the coordinate list is statically allocated for performance
-    ! reasons
-    if (maximum_levels(root_universe) > MAX_COORD) then
-      call fatal_error("Too many nested coordinate levels in the geometry. &
-           &Try increasing the maximum number of coordinate levels by &
-           &providing the CMake -Dmaxcoord= option.")
-    end if
-
-  end subroutine finalize_geometry
 
 !===============================================================================
 ! READ_SETTINGS_XML reads data from a settings.xml file and parses it, checking
@@ -280,7 +180,7 @@ contains
 ! for errors and placing properly-formatted data in the right data structures
 !===============================================================================
 
-  subroutine read_geometry_xml()
+  subroutine read_geometry_xml() bind(C)
 
     integer :: i, n
     integer :: univ_id
@@ -482,417 +382,56 @@ contains
     end do
   end subroutine allocate_cells
 
-  subroutine read_materials_xml()
-    integer :: i              ! loop index for materials
-    integer :: j              ! loop index for nuclides
-    integer :: k              ! loop index
-    integer :: n              ! number of nuclides
-    integer :: n_sab          ! number of sab tables for a material
-    integer :: index_nuclide  ! index in nuclides
-    integer :: index_element  ! index in elements
-    integer :: index_sab      ! index in sab_tables
+  subroutine read_materials_xml() bind(C)
     logical :: file_exists    ! does materials.xml exist?
-    character(20)           :: name         ! name of nuclide, e.g. U235
-    character(3)            :: element      ! name of element, e.g. Zr
-    character(MAX_WORD_LEN) :: units        ! units on density
     character(MAX_LINE_LEN) :: filename     ! absolute path to materials.xml
-    character(MAX_WORD_LEN), allocatable :: sarray(:)
-    real(8)                 :: val          ! value entered for density
-    real(8)                 :: temp_dble    ! temporary double prec. real
-    logical                 :: sum_density  ! density is sum of nuclide densities
-    type(VectorChar)        :: names        ! temporary list of nuclide names
-    type(VectorChar)        :: list_iso_lab ! temporary list of isotropic lab scatterers
-    type(VectorReal)        :: densities    ! temporary list of nuclide densities
-    type(Material), pointer :: mat => null()
     type(XMLDocument) :: doc
     type(XMLNode) :: root
-    type(XMLNode) :: node_mat
-    type(XMLNode) :: node_dens
-    type(XMLNode) :: node_nuc
-    type(XMLNode) :: node_sab
-    type(XMLNode), allocatable :: node_mat_list(:)
-    type(XMLNode), allocatable :: node_nuc_list(:)
-    type(XMLNode), allocatable :: node_ele_list(:)
-    type(XMLNode), allocatable :: node_macro_list(:)
-    type(XMLNode), allocatable :: node_sab_list(:)
+
+    interface
+      function nuclides_size() bind(C) result(n)
+        import C_INT
+        integer(C_INT) :: n
+      end function
+
+      function elements_size() bind(C) result(n)
+        import C_INT
+        integer(C_INT) :: n
+      end function
+    end interface
 
     ! Display output message
     call write_message("Reading materials XML file...", 5)
 
-    ! Check if materials.xml exists
-    filename = trim(path_input) // "materials.xml"
-    inquire(FILE=filename, EXIST=file_exists)
-    if (.not. file_exists) then
-      call fatal_error("Material XML file '" // trim(filename) // "' does not &
-           &exist!")
+    doc % ptr = C_NULL_PTR
+
+#ifdef DAGMC
+    if (dagmc) then
+      doc % ptr = read_uwuw_materials()
+    end if
+#endif
+
+    if (.not. c_associated(doc % ptr)) then
+      ! Check if materials.xml exists
+      filename = trim(path_input) // "materials.xml"
+      inquire(FILE=filename, EXIST=file_exists)
+      if (.not. file_exists) then
+        call fatal_error("Material XML file '" // trim(filename) // "' does not &
+             &exist!")
     end if
 
     ! Parse materials.xml file
     call doc % load_file(filename)
-    root = doc % document_element()
 
+    end if
+
+    root = doc % document_element()
     call read_materials(root % ptr)
 
-    ! Get pointer to list of XML <material>
-    call get_node_list(root, "material", node_mat_list)
-
-    ! Allocate materials array
-    n_materials = size(node_mat_list)
-    allocate(materials(n_materials))
-
-    ! Initialize count for number of nuclides/S(a,b) tables
-    index_nuclide = 0
-    index_element = 0
-    index_sab = 0
-
-    do i = 1, n_materials
-      mat => materials(i)
-
-      mat % ptr = material_pointer(i - 1)
-
-      ! Get pointer to i-th material node
-      node_mat = node_mat_list(i)
-
-      ! Check if material is depletable
-      if (check_for_node(node_mat, "depletable")) then
-        call get_node_value(node_mat, "depletable", mat % depletable)
-      end if
-
-      ! Copy material name
-      if (check_for_node(node_mat, "name")) then
-        call get_node_value(node_mat, "name", mat % name)
-      end if
-
-      ! Get pointer to density element
-      if (check_for_node(node_mat, "density")) then
-        node_dens = node_mat % child("density")
-      else
-        call fatal_error("Must specify density element in material " &
-             // trim(to_str(mat % id())))
-      end if
-
-      ! Copy units
-      call get_node_value(node_dens, "units", units)
-
-      ! If the units is 'sum', then the total density of the material is taken
-      ! to be the sum of the atom fractions listed on the nuclides
-      if (units == 'sum') then
-        sum_density = .true.
-
-      else if (units == 'macro') then
-        if (check_for_node(node_dens, "value")) then
-          call get_node_value(node_dens, "value", val)
-        else
-          val = ONE
-        end if
-
-        ! Set density
-        mat % density = val
-
-        sum_density = .false.
-
-      else
-        call get_node_value(node_dens, "value", val)
-
-        ! Check for erroneous density
-        sum_density = .false.
-        if (val <= ZERO) then
-          call fatal_error("Need to specify a positive density on material " &
-               // trim(to_str(mat % id())) // ".")
-        end if
-
-        ! Adjust material density based on specified units
-        select case(to_lower(units))
-        case ('g/cc', 'g/cm3')
-          mat % density = -val
-        case ('kg/m3')
-          mat % density = -0.001_8 * val
-        case ('atom/b-cm')
-          mat % density = val
-        case ('atom/cm3', 'atom/cc')
-          mat % density = 1.0e-24_8 * val
-        case default
-          call fatal_error("Unkwown units '" // trim(units) &
-               // "' specified on material " // trim(to_str(mat % id())))
-        end select
-      end if
-
-      ! Issue error if elements are provided
-      call get_node_list(node_mat, "element", node_ele_list)
-
-      if (size(node_ele_list) > 0) then
-        call fatal_error("Unable to add an element to material " &
-             // trim(to_str(mat % id())) // " since the element option has &
-             &been removed from the xml input. Elements can only be added via &
-             &the Python API, which will expand elements into their natural &
-             &nuclides.")
-      end if
-
-      ! =======================================================================
-      ! READ AND PARSE <nuclide> TAGS
-
-      ! Check to ensure material has at least one nuclide
-      if (.not. check_for_node(node_mat, "nuclide") .and. &
-           .not. check_for_node(node_mat, "macroscopic")) then
-        call fatal_error("No macroscopic data or nuclides specified on &
-             &material " // trim(to_str(mat % id())))
-      end if
-
-      ! Create list of macroscopic x/s based on those specified, just treat
-      ! them as nuclides. This is all really a facade so the user thinks they
-      ! are entering in macroscopic data but the code treats them the same
-      ! as nuclides internally.
-      ! Get pointer list of XML <macroscopic>
-      call get_node_list(node_mat, "macroscopic", node_macro_list)
-      if (run_CE .and. (size(node_macro_list) > 0)) then
-        call fatal_error("Macroscopic can not be used in continuous-energy&
-                         & mode!")
-      else if (size(node_macro_list) > 1) then
-        call fatal_error("Only one macroscopic object permitted per material, " &
-             // trim(to_str(mat % id())))
-      else if (size(node_macro_list) == 1) then
-
-        node_nuc = node_macro_list(1)
-
-        ! Check for empty name on nuclide
-        if (.not. check_for_node(node_nuc, "name")) then
-          call fatal_error("No name specified on macroscopic data in material " &
-               // trim(to_str(mat % id())))
-        end if
-
-        ! store nuclide name
-        call get_node_value(node_nuc, "name", name)
-        name = trim(name)
-
-        ! save name to list
-        call names % push_back(name)
-
-        ! Set density for macroscopic data
-        if (units == 'macro') then
-          call densities % push_back(ONE)
-        else
-          call fatal_error("Units can only be macro for macroscopic data " &
-               // trim(name))
-        end if
-      else
-
-        ! Get pointer list of XML <nuclide>
-        call get_node_list(node_mat, "nuclide", node_nuc_list)
-
-        ! Create list of nuclides based on those specified
-        INDIVIDUAL_NUCLIDES: do j = 1, size(node_nuc_list)
-          ! Combine nuclide identifier and cross section and copy into names
-          node_nuc = node_nuc_list(j)
-
-          ! Check for empty name on nuclide
-          if (.not. check_for_node(node_nuc, "name")) then
-            call fatal_error("No name specified on nuclide in material " &
-                 // trim(to_str(mat % id())))
-          end if
-
-          ! store nuclide name
-          call get_node_value(node_nuc, "name", name)
-          name = trim(name)
-
-          ! save name to list
-          call names % push_back(name)
-
-          ! Check if no atom/weight percents were specified or if both atom and
-          ! weight percents were specified
-          if (units == 'macro') then
-            call densities % push_back(ONE)
-          else
-            if (.not. check_for_node(node_nuc, "ao") .and. &
-                 .not. check_for_node(node_nuc, "wo")) then
-              call fatal_error("No atom or weight percent specified for &
-                   &nuclide" // trim(name))
-            elseif (check_for_node(node_nuc, "ao") .and. &
-                    check_for_node(node_nuc, "wo")) then
-              call fatal_error("Cannot specify both atom and weight percents &
-                   &for a nuclide: " // trim(name))
-            end if
-
-            ! Copy atom/weight percents
-            if (check_for_node(node_nuc, "ao")) then
-              call get_node_value(node_nuc, "ao", temp_dble)
-              call densities % push_back(temp_dble)
-            else
-              call get_node_value(node_nuc, "wo", temp_dble)
-              call densities % push_back(-temp_dble)
-            end if
-          end if
-        end do INDIVIDUAL_NUCLIDES
-      end if
-
-      ! =======================================================================
-      ! READ AND PARSE <isotropic> element
-
-      if (check_for_node(node_mat, "isotropic")) then
-        n = node_word_count(node_mat, "isotropic")
-        allocate(sarray(n))
-        call get_node_array(node_mat, "isotropic", sarray)
-        do j = 1, n
-          call list_iso_lab % push_back(sarray(j))
-        end do
-        deallocate(sarray)
-      end if
-
-      ! ========================================================================
-      ! COPY NUCLIDES TO ARRAYS IN MATERIAL
-
-      ! allocate arrays in Material object
-      n = names % size()
-      mat % n_nuclides = n
-      allocate(mat % names(n))
-      allocate(mat % nuclide(n))
-      allocate(mat % element(n))
-      allocate(mat % atom_density(n))
-
-      ALL_NUCLIDES: do j = 1, mat % n_nuclides
-        ! Check that this nuclide is listed in the cross_sections.xml file
-        name = trim(names % data(j))
-        if (.not. library_present(LIBRARY_NEUTRON, (to_lower(name)))) then
-          call fatal_error("Could not find nuclide " // trim(name) &
-               // " in cross_sections data file!")
-        end if
-
-        ! If this nuclide hasn't been encountered yet, we need to add its name
-        ! and alias to the nuclide_dict
-        if (.not. nuclide_dict % has(to_lower(name))) then
-          index_nuclide    = index_nuclide + 1
-          mat % nuclide(j) = index_nuclide
-
-          call nuclide_dict % set(to_lower(name), index_nuclide)
-        else
-          mat % nuclide(j) = nuclide_dict % get(to_lower(name))
-        end if
-
-        ! If the corresponding element hasn't been encountered yet and photon
-        ! transport will be used, we need to add its symbol to the element_dict
-        if (photon_transport) then
-          element = name(1:scan(name, '0123456789') - 1)
-
-          ! Make sure photon cross section data is available
-          if (.not. library_present(LIBRARY_PHOTON, to_lower(element))) then
-            call fatal_error("Could not find element " // trim(element) &
-                 // " in cross_sections data file!")
-          end if
-
-          if (.not. element_dict % has(element)) then
-            index_element = index_element + 1
-            mat % element(j) = index_element
-
-            call element_dict % set(element, index_element)
-          else
-            mat % element(j) = element_dict % get(element)
-          end if
-        end if
-
-        ! Copy name and atom/weight percent
-        mat % names(j) = name
-        mat % atom_density(j) = densities % data(j)
-
-      end do ALL_NUCLIDES
-
-      if (run_CE) then
-        ! By default, isotropic-in-lab is not used
-        if (list_iso_lab % size() > 0) then
-          mat % has_isotropic_nuclides = .true.
-          allocate(mat % p0(n))
-          mat % p0(:) = .false.
-
-          ! Apply isotropic-in-lab treatment to specified nuclides
-          do j = 1, list_iso_lab % size()
-            do k = 1, n
-              if (names % data(k) == list_iso_lab % data(j)) then
-                mat % p0(k) = .true.
-              end if
-            end do
-          end do
-        end if
-      end if
-
-      ! Check to make sure either all atom percents or all weight percents are
-      ! given
-      if (.not. (all(mat % atom_density >= ZERO) .or. &
-           all(mat % atom_density <= ZERO))) then
-        call fatal_error("Cannot mix atom and weight percents in material " &
-             // to_str(mat % id()))
-      end if
-
-      ! Determine density if it is a sum value
-      if (sum_density) mat % density = sum(mat % atom_density)
-
-      ! Clear lists
-      call names % clear()
-      call densities % clear()
-      call list_iso_lab % clear()
-
-      ! =======================================================================
-      ! READ AND PARSE <sab> TAG FOR S(a,b) DATA
-      if (run_CE) then
-        ! Get pointer list to XML <sab>
-        call get_node_list(node_mat, "sab", node_sab_list)
-
-        n_sab = size(node_sab_list)
-        if (n_sab > 0) then
-          ! Set number of S(a,b) tables
-          mat % n_sab = n_sab
-
-          ! Allocate names and indices for nuclides and tables -- for now we
-          ! allocate these as the number of S(a,b) tables listed. Since a single
-          ! table might apply to multiple nuclides, they are resized later if a
-          ! table is indeed applied to multiple nuclides.
-          allocate(mat % sab_names(n_sab))
-          allocate(mat % i_sab_tables(n_sab))
-          allocate(mat % sab_fracs(n_sab))
-
-          do j = 1, n_sab
-            ! Get pointer to S(a,b) table
-            node_sab = node_sab_list(j)
-
-            ! Determine name of S(a,b) table
-            if (.not. check_for_node(node_sab, "name")) then
-              call fatal_error("Need to specify <name> for S(a,b) table.")
-            end if
-            call get_node_value(node_sab, "name", name)
-            name = trim(name)
-            mat % sab_names(j) = name
-
-            ! Read the fraction of nuclei affected by this S(a,b) table
-            if (check_for_node(node_sab, "fraction")) then
-              call get_node_value(node_sab, "fraction", mat % sab_fracs(j))
-            else
-              mat % sab_fracs(j) = ONE
-            end if
-
-            ! Check that this nuclide is listed in the cross_sections.xml file
-            if (.not. library_present(LIBRARY_THERMAL, to_lower(name))) then
-              call fatal_error("Could not find S(a,b) table " // trim(name) &
-                   // " in cross_sections.xml file!")
-            end if
-
-            ! If this S(a,b) table hasn't been encountered yet, we need to add its
-            ! name and alias to the sab_dict
-            if (.not. sab_dict % has(to_lower(name))) then
-              index_sab = index_sab + 1
-              mat % i_sab_tables(j) = index_sab
-              call sab_dict % set(to_lower(name), index_sab)
-            else
-              mat % i_sab_tables(j) = sab_dict % get(to_lower(name))
-            end if
-          end do
-        end if
-      end if
-
-      ! Add material to dictionary
-      call material_dict % set(mat % id(), i)
-    end do
-
-    ! Set total number of nuclides and S(a,b) tables
-    n_nuclides = index_nuclide
-    n_elements = index_element
-    n_sab_tables = index_sab
+    ! Set total number of nuclides and elements
+    n_nuclides = nuclides_size()
+    n_elements = elements_size()
+    allocate(nuclides(n_nuclides))
 
     ! Close materials XML file
     call doc % clear()
@@ -904,7 +443,7 @@ contains
 ! for errors and placing properly-formatted data in the right data structures
 !===============================================================================
 
-  subroutine read_tallies_xml()
+  subroutine read_tallies_xml() bind(C)
 
     integer :: i             ! loop over user-specified tallies
     integer :: j             ! loop over words
@@ -1230,17 +769,18 @@ contains
             end if
 
             ! If a specific nuclide was specified
-            word = to_lower(sarray(j))
+            word = sarray(j)
 
             ! Search through nuclides
-            if (.not. nuclide_dict % has(word)) then
+            k = nuclide_map_get(to_c_string(word))
+            if (k == -1) then
               call fatal_error("Could not find the nuclide " &
                    // trim(word) // " specified in tally " &
                    // trim(to_str(t % id())) // " in any material.")
             end if
 
             ! Set bin to index in nuclides array
-            nuclide_bins(j) = nuclide_dict % get(word)
+            nuclide_bins(j) = k
           end do
         end if
 
@@ -1410,7 +950,7 @@ contains
 ! READ_PLOTS_XML reads data from a plots.xml file
 !===============================================================================
 
-  subroutine read_plots_xml()
+  subroutine read_plots_xml() bind(C)
 
     logical :: file_exists              ! does plots.xml file exist?
     character(MAX_LINE_LEN) :: filename ! absolute path to plots.xml
@@ -1511,348 +1051,12 @@ contains
     call read_mg_cross_sections_header_c(file_id)
 
     ! Get the minimum and maximum energies
-    energy_min(NEUTRON) = energy_bins(num_energy_groups + 1)
-    energy_max(NEUTRON) = energy_bins(1)
-    call set_particle_energy_bounds(NEUTRON, energy_min(NEUTRON), &
-         energy_max(NEUTRON))
+    call set_particle_energy_bounds(NEUTRON, &
+         energy_bins(num_energy_groups + 1), energy_bins(1))
 
     ! Close MGXS HDF5 file
     call file_close(file_id)
 
   end subroutine read_mg_cross_sections_header
-
-!===============================================================================
-! NORMALIZE_AO Normalize the nuclide atom percents
-!===============================================================================
-
-  subroutine normalize_ao()
-    integer :: i               ! index in materials array
-    integer :: j               ! index over nuclides in material
-    real(8) :: sum_percent     ! summation
-    real(8) :: awr             ! atomic weight ratio
-    real(8) :: x               ! atom percent
-    logical :: percent_in_atom ! nuclides specified in atom percent?
-    logical :: density_in_atom ! density specified in atom/b-cm?
-
-    do i = 1, size(materials)
-      associate (mat => materials(i))
-        percent_in_atom = (mat % atom_density(1) > ZERO)
-        density_in_atom = (mat % density > ZERO)
-
-        sum_percent = ZERO
-        do j = 1, size(mat % nuclide)
-          ! determine atomic weight ratio
-          if (run_CE) then
-            awr = nuclides(mat % nuclide(j)) % awr
-          else
-            awr = get_awr_c(mat % nuclide(j))
-          end if
-
-          ! if given weight percent, convert all values so that they are divided
-          ! by awr. thus, when a sum is done over the values, it's actually
-          ! sum(w/awr)
-          if (.not. percent_in_atom) then
-            mat % atom_density(j) = -mat % atom_density(j) / awr
-          end if
-        end do
-
-        ! determine normalized atom percents. if given atom percents, this is
-        ! straightforward. if given weight percents, the value is w/awr and is
-        ! divided by sum(w/awr)
-        sum_percent = sum(mat % atom_density)
-        mat % atom_density = mat % atom_density / sum_percent
-
-        ! Change density in g/cm^3 to atom/b-cm. Since all values are now in
-        ! atom percent, the sum needs to be re-evaluated as 1/sum(x*awr)
-        if (.not. density_in_atom) then
-          sum_percent = ZERO
-          do j = 1, mat % n_nuclides
-            if (run_CE) then
-              awr = nuclides(mat % nuclide(j)) % awr
-            else
-              awr = get_awr_c(mat % nuclide(j))
-            end if
-            x = mat % atom_density(j)
-            sum_percent = sum_percent + x*awr
-          end do
-          sum_percent = ONE / sum_percent
-          mat%density = -mat % density * N_AVOGADRO &
-               / MASS_NEUTRON * sum_percent
-        end if
-
-        ! Calculate nuclide atom densities
-        mat % atom_density = mat % density * mat % atom_density
-
-        ! Calculate density in g/cm^3.
-        mat % density_gpcc = ZERO
-        do j = 1, mat % n_nuclides
-          if (run_CE) then
-            awr = nuclides(mat % nuclide(j)) % awr
-          else
-            awr = ONE
-          end if
-          mat % density_gpcc = mat % density_gpcc &
-               + mat % atom_density(j) * awr * MASS_NEUTRON / N_AVOGADRO
-        end do
-      end associate
-    end do
-
-  end subroutine normalize_ao
-
-  subroutine read_ce_cross_sections(nuc_temps, sab_temps)
-    type(VectorReal), intent(in)     :: nuc_temps(:)
-    type(VectorReal), intent(in)     :: sab_temps(:)
-
-    integer :: i, j
-    integer :: i_nuclide
-    integer :: i_element
-    integer :: i_sab
-    integer(C_INT) :: n
-    integer(HID_T) :: file_id
-    integer(HID_T) :: group_id
-    real(C_DOUBLE) :: dummy
-    logical :: mp_found     ! if windowed multipole libraries were found
-    character(MAX_WORD_LEN) :: name
-    character(MAX_FILE_LEN) :: filename
-    character(3) :: element
-    type(SetChar) :: already_read
-    type(SetChar) :: element_already_read
-
-    interface
-      subroutine photon_from_hdf5(group) bind(C)
-        import HID_T
-        integer(HID_T), value :: group
-      end subroutine
-
-      subroutine read_ce_cross_sections_c() bind(C)
-      end subroutine
-    end interface
-
-    allocate(nuclides(n_nuclides))
-
-    ! Read cross sections
-    do i = 1, size(materials)
-      do j = 1, size(materials(i) % names)
-        name = materials(i) % names(j)
-
-        if (.not. already_read % contains(name)) then
-          filename = library_path(LIBRARY_NEUTRON, to_lower(name))
-          i_nuclide = nuclide_dict % get(to_lower(name))
-
-          call write_message('Reading ' // trim(name) // ' from ' // &
-               trim(filename), 6)
-
-          ! Open file and make sure version is sufficient
-          file_id = file_open(filename, 'r')
-          call check_data_version(file_id)
-
-          ! Read nuclide data from HDF5
-          group_id = open_group(file_id, name)
-          call nuclides(i_nuclide) % from_hdf5(group_id, nuc_temps(i_nuclide), &
-               temperature_method, temperature_tolerance, temperature_range, &
-               master, i_nuclide)
-          call close_group(group_id)
-          call file_close(file_id)
-
-          ! Determine if minimum/maximum energy for this nuclide is greater/less
-          ! than the previous
-          if (size(nuclides(i_nuclide) % grid) >= 1) then
-            energy_min(NEUTRON) = max(energy_min(NEUTRON), &
-                 nuclides(i_nuclide) % grid(1) % energy(1))
-            energy_max(NEUTRON) = min(energy_max(NEUTRON), nuclides(i_nuclide) % &
-                 grid(1) % energy(size(nuclides(i_nuclide) % grid(1) % energy)))
-            call set_particle_energy_bounds(NEUTRON, energy_min(NEUTRON), &
-                 energy_max(NEUTRON))
-          end if
-
-          ! Add name and alias to dictionary
-          call already_read % add(name)
-
-          ! Check if elemental data has been read, if needed
-          element = name(1:scan(name, '0123456789') - 1)
-          if (photon_transport) then
-            if (.not. element_already_read % contains(element)) then
-              ! Read photon interaction data from HDF5 photon library
-              filename = library_path(LIBRARY_PHOTON, to_lower(element))
-              i_element = element_dict % get(element)
-              call write_message('Reading ' // trim(element) // ' from ' // &
-                   trim(filename), 6)
-
-              ! Open file and make sure version is sufficient
-              file_id = file_open(filename, 'r')
-              call check_data_version(file_id)
-
-              ! Read element data from HDF5
-              group_id = open_group(file_id, element)
-
-              call photon_from_hdf5(group_id)
-              call close_group(group_id)
-              call file_close(file_id)
-
-              ! Add element to set
-              call element_already_read % add(element)
-            end if
-          end if
-
-          ! Read multipole file into the appropriate entry on the nuclides array
-          if (temperature_multipole) call read_multipole_data(i_nuclide)
-        end if
-
-        ! Check if material is fissionable
-        if (nuclides(materials(i) % nuclide(j)) % fissionable) then
-          call materials(i) % set_fissionable(.true.)
-        end if
-      end do
-    end do
-
-    call read_ce_cross_sections_c()
-
-    ! Set up logarithmic grid for nuclides
-    do i = 1, size(nuclides)
-      call nuclides(i) % init_grid()
-    end do
-    log_spacing = log(energy_max(NEUTRON)/energy_min(NEUTRON)) / n_log_bins
-
-    do i = 1, size(materials)
-      ! Skip materials with no S(a,b) tables
-      if (.not. allocated(materials(i) % sab_names)) cycle
-
-      do j = 1, size(materials(i) % sab_names)
-        ! Get name of S(a,b) table
-        name = materials(i) % sab_names(j)
-
-        if (.not. already_read % contains(name)) then
-          filename = library_path(LIBRARY_THERMAL, to_lower(name))
-          i_sab  = sab_dict % get(to_lower(name))
-
-          call write_message('Reading ' // trim(name) // ' from ' // &
-               trim(filename), 6)
-
-          ! Open file and make sure version matches
-          file_id = file_open(filename, 'r')
-          call check_data_version(file_id)
-
-          ! Read S(a,b) data from HDF5
-          group_id = open_group(file_id, name)
-          n = sab_temps(i_sab) % size()
-          if (n > 0) then
-            call sab_from_hdf5(group_id, sab_temps(i_sab) % data(1), n)
-          else
-            ! In this case, data(1) doesn't exist, so we just pass a dummy value
-            call sab_from_hdf5(group_id, dummy, n)
-          end if
-
-          call close_group(group_id)
-          call file_close(file_id)
-
-          ! Add name to dictionary
-          call already_read % add(name)
-        end if
-      end do
-
-      ! Associate S(a,b) tables with specific nuclides
-      call materials(i) % assign_sab_tables()
-    end do
-
-    ! Show which nuclide results in lowest energy for neutron transport
-    do i = 1, size(nuclides)
-      ! If a nuclide is present in a material that's not used in the model, its
-      ! grid has not been allocated
-      if (size(nuclides(i) % grid) > 0) then
-        if (nuclides(i) % grid(1) % energy(size(nuclides(i) % grid(1) % energy)) &
-             == energy_max(NEUTRON)) then
-          call write_message("Maximum neutron transport energy: " // &
-               trim(to_str(energy_max(NEUTRON))) // " eV for " // &
-               trim(adjustl(nuclides(i) % name)), 7)
-          if (master .and. energy_max(NEUTRON) < 20.e6) call warning("Maximum &
-               &neutron energy is below 20 MeV. This may bias the results.")
-          exit
-        end if
-      end if
-    end do
-
-    ! If the user wants multipole, make sure we found a multipole library.
-    if (temperature_multipole) then
-      mp_found = .false.
-      do i = 1, size(nuclides)
-        if (nuclides(i) % mp_present) then
-          mp_found = .true.
-          exit
-        end if
-      end do
-      if (master .and. .not. mp_found) call warning("Windowed multipole &
-           &functionality is turned on, but no multipole libraries were found. &
-           &Make sure that windowed multipole data is present in your &
-           &cross_sections.xml file.")
-    end if
-
-    call already_read % clear()
-    call element_already_read % clear()
-
-  end subroutine read_ce_cross_sections
-
-!===============================================================================
-! READ_MULTIPOLE_DATA checks for the existence of a multipole library in the
-! directory and loads it using multipole_read
-!===============================================================================
-
-  subroutine read_multipole_data(i_table)
-
-    integer, intent(in) :: i_table  ! index in nuclides/sab_tables
-
-    logical :: file_exists                 ! Does multipole library exist?
-    character(7) :: readable               ! Is multipole library readable?
-    character(MAX_FILE_LEN) :: filename    ! Path to multipole xs library
-    integer(HID_T) :: file_id
-    integer(HID_T) :: group_id
-
-    interface
-      subroutine nuclide_load_multipole(ptr, group) bind(C)
-        import C_PTR, HID_T
-        type(C_PTR), value :: ptr
-        integer(HID_T), value :: group
-      end subroutine
-    end interface
-
-    associate (nuc => nuclides(i_table))
-
-      ! Look for WMP data in cross_sections.xml
-      if (library_present(LIBRARY_WMP, to_lower(nuc % name))) then
-        filename = library_path(LIBRARY_WMP, to_lower(nuc % name))
-      else
-        nuc % mp_present = .false.
-        return
-      end if
-
-      ! Check if Multipole library exists and is readable
-      inquire(FILE=filename, EXIST=file_exists, READ=readable)
-      if (.not. file_exists) then
-        nuc % mp_present = .false.
-        return
-      elseif (readable(1:3) == 'NO') then
-        call fatal_error("Multipole library '" // trim(filename) // "' is not &
-             &readable! Change file permissions with chmod command.")
-      end if
-
-      ! Display message
-      call write_message("Reading " // trim(nuc % name) // " WMP data from " &
-           // filename, 6)
-
-      ! Open file and make sure version is sufficient
-      file_id = file_open(filename, 'r')
-      call check_wmp_version(file_id)
-
-      ! Read nuclide data from HDF5
-      group_id = open_group(file_id, nuc % name)
-      nuc % mp_present = .true.
-      call nuclide_load_multipole(nuc % ptr, group_id)
-      call close_group(group_id)
-
-      ! Close the file
-      call file_close(file_id)
-
-    end associate
-
-  end subroutine read_multipole_data
 
 end module input_xml

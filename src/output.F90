@@ -522,9 +522,9 @@ contains
 
       ! Write header block
       if (t % name == "") then
-        call header("TALLY " // trim(to_str(t % id)), 1, unit=unit_tally)
+        call header("TALLY " // trim(to_str(t % id())), 1, unit=unit_tally)
       else
-        call header("TALLY " // trim(to_str(t % id)) // ": " &
+        call header("TALLY " // trim(to_str(t % id())) // ": " &
              // trim(t % name), 1, unit=unit_tally)
       endif
 
@@ -546,7 +546,7 @@ contains
                  &A)") to_str(deriv % diff_material)
           case default
             call fatal_error("Differential tally dependent variable for tally "&
-                 // trim(to_str(t % id)) // " not defined in output.F90.")
+                 // trim(to_str(t % id())) // " not defined in output.F90.")
           end select
         !end associate
       end if

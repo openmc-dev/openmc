@@ -95,7 +95,6 @@ module tally_header
 
     ! Basic data
 
-    integer :: id                   ! user-defined identifier
     character(len=104) :: name = "" ! user-defined name
     real(8) :: volume               ! volume of region
     logical :: depletion_rx = .false. ! has depletion reactions, e.g. (n,2n)
@@ -120,6 +119,8 @@ module tally_header
     procedure :: allocate_results => tally_allocate_results
     procedure :: read_results_hdf5 => tally_read_results_hdf5
     procedure :: write_results_hdf5 => tally_write_results_hdf5
+    procedure :: id => tally_get_id
+    procedure :: set_id => tally_set_id
     procedure :: type => tally_get_type
     procedure :: set_type => tally_set_type
     procedure :: estimator => tally_get_estimator
@@ -299,6 +300,32 @@ contains
     end if
 
   end subroutine tally_allocate_results
+
+  function tally_get_id(this) result(t)
+    class(TallyObject) :: this
+    integer(C_INT) :: t
+    interface
+      function tally_get_id_c(tally) result(t) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: tally
+        integer(C_INT) :: t
+      end function
+    end interface
+    t = tally_get_id_c(this % ptr)
+  end function
+
+  subroutine tally_set_id(this, t)
+    class(TallyObject) :: this
+    integer(C_INT) :: t
+    interface
+      subroutine tally_set_id_c(tally, t) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: tally
+        integer(C_INT), value :: t
+      end subroutine
+    end interface
+    call tally_set_id_c(this % ptr, t)
+  end subroutine
 
   function tally_get_type(this) result(t)
     class(TallyObject) :: this
@@ -669,7 +696,7 @@ contains
     integer(C_INT) :: err
 
     if (index >= 1 .and. index <= size(tallies)) then
-      id = tallies(index) % obj % id
+      id = tallies(index) % obj % id()
       err = 0
     else
       err = E_OUT_OF_BOUNDS
@@ -812,7 +839,7 @@ contains
                // to_str(id))
           err = E_INVALID_ID
         else
-          tallies(index) % obj % id = id
+          call tallies(index) % obj % set_id(id)
           call tally_dict % set(id, index)
           if (id > largest_tally_id) largest_tally_id = id
 

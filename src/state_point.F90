@@ -270,7 +270,7 @@ contains
             ! Write IDs of filters
             allocate(id_array(tally % n_filters()))
             do j = 1, tally % n_filters()
-              id_array(j) = filters(tally % filter(j)) % obj % id
+              id_array(j) = filters(tally % filter(j) + 1) % obj % id
             end do
             call write_dataset(tally_group, "filters", id_array)
             deallocate(id_array)

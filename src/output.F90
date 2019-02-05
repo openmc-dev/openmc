@@ -559,7 +559,7 @@ contains
 
       ! Initialize bins, filter level, and indentation
       do h = 1, t % n_filters()
-        filter_bins(t % filter(h)) = 0
+        filter_bins(t % filter(h) + 1) = 0
       end do
       j = 1
       indent = 0
@@ -570,17 +570,17 @@ contains
           if (t % n_filters() == 0) exit find_bin
 
           ! Increment bin combination
-          filter_bins(t % filter(j)) = filter_bins(t % filter(j)) + 1
+          filter_bins(t % filter(j) + 1) = filter_bins(t % filter(j) + 1) + 1
 
           ! =================================================================
           ! REACHED END OF BINS FOR THIS FILTER, MOVE TO NEXT FILTER
 
-          if (filter_bins(t % filter(j)) > &
-               filters(t % filter(j)) % obj % n_bins) then
+          if (filter_bins(t % filter(j) + 1) > &
+               filters(t % filter(j) + 1) % obj % n_bins) then
             ! If this is the first filter, then exit
             if (j == 1) exit print_bin
 
-            filter_bins(t % filter(j)) = 0
+            filter_bins(t % filter(j) + 1) = 0
             j = j - 1
             indent = indent - 2
 
@@ -592,7 +592,7 @@ contains
             if (j == t % n_filters()) exit find_bin
 
             ! Print current filter information
-            i_filt = t % filter(j)
+            i_filt = t % filter(j) + 1
             write(UNIT=unit_tally, FMT='(1X,2A)') repeat(" ", indent), &
                  trim(filters(i_filt) % obj % &
                  text_label(filter_bins(i_filt)))
@@ -604,7 +604,7 @@ contains
 
         ! Print filter information
         if (t % n_filters() > 0) then
-          i_filt = t % filter(j)
+          i_filt = t % filter(j) + 1
           write(UNIT=unit_tally, FMT='(1X,2A)') repeat(" ", indent), &
                trim(filters(i_filt) % obj % &
                text_label(filter_bins(i_filt)))
@@ -617,7 +617,7 @@ contains
         filter_index = 1
         do h = 1, t % n_filters()
           filter_index = filter_index &
-               + (max(filter_bins(t % filter(h)) ,1) - 1) * t % stride(h)
+               + (max(filter_bins(t % filter(h)+1) ,1) - 1) * t % stride(h)
         end do
 
         ! Write results for this filter bin combination

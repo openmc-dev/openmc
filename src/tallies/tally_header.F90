@@ -97,11 +97,10 @@ module tally_header
 
     character(len=104) :: name = "" ! user-defined name
     real(8) :: volume               ! volume of region
-    logical :: depletion_rx = .false. ! has depletion reactions, e.g. (n,2n)
 
     ! Values to score, e.g. flux, absorption, etc.
-    integer              :: n_score_bins = 0
-    integer, allocatable :: score_bins(:)
+    !integer              :: n_score_bins = 0
+    !integer, allocatable :: score_bins_(:)
 
     ! Results for each bin -- the first dimension of the array is for scores
     ! (e.g. flux, total reaction rate, fission reaction rate, etc.) and the
@@ -125,6 +124,9 @@ module tally_header
     procedure :: set_type => tally_set_type
     procedure :: estimator => tally_get_estimator
     procedure :: set_estimator => tally_set_estimator
+    procedure :: depletion_rx => tally_get_depletion_rx
+    procedure :: n_score_bins => tally_get_n_score_bins
+    procedure :: score_bins => tally_get_score_bin
     procedure :: n_filters => tally_get_n_filters
     procedure :: filter => tally_get_filter
     procedure :: stride => tally_get_stride
@@ -285,7 +287,7 @@ contains
     end if
 
     ! Set total number of filter and scoring bins
-    this % total_score_bins = this % n_score_bins * this % n_nuclide_bins()
+    this % total_score_bins = this % n_score_bins() * this % n_nuclide_bins()
 
     if (allocated(this % results)) then
       ! If results was already allocated but shape is wrong, then reallocate it
@@ -378,6 +380,47 @@ contains
     end interface
     call tally_set_estimator_c(this % ptr, e)
   end subroutine
+
+  function tally_get_depletion_rx(this) result(drx)
+    class(TallyObject) :: this
+    logical(C_BOOL) :: drx
+    interface
+      function tally_get_depletion_rx_c(tally) result(drx) bind(C)
+        import C_PTR, C_BOOL
+        type(C_PTR), value :: tally
+        logical(C_BOOl) :: drx
+      end function
+    end interface
+    drx = tally_get_depletion_rx_c(this % ptr)
+  end function
+
+  function tally_get_n_score_bins(this) result(n)
+    class(TallyObject) :: this
+    integer(C_INT) :: n
+    interface
+      function tally_get_n_scores_c(tally) result(n) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: tally
+        integer(C_INT) :: n
+      end function
+    end interface
+    n = tally_get_n_scores_c(this % ptr)
+  end function
+
+  function tally_get_score_bin(this, i) result(filt)
+    class(TallyObject) :: this
+    integer(C_INT) :: i
+    integer(C_INT32_T) :: filt
+    interface
+      function tally_get_score_c(tally, i) result(filt) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: tally
+        integer(C_INT), value :: i
+        integer(C_INT) :: filt
+      end function
+    end interface
+    filt = tally_get_score_c(this % ptr, i-1)
+  end function
 
   function tally_get_n_filters(this) result(n)
     class(TallyObject) :: this
@@ -721,31 +764,6 @@ contains
   end function openmc_tally_get_n_realizations
 
 
-  function openmc_tally_get_scores(index, scores, n) result(err) bind(C)
-    ! Return the list of nuclides assigned to a tally
-    integer(C_INT32_T), value :: index
-    type(C_PTR), intent(out) :: scores
-    integer(C_INT), intent(out) :: n
-    integer(C_INT) :: err
-
-    if (index >= 1 .and. index <= size(tallies)) then
-      associate (t => tallies(index) % obj)
-        if (allocated(t % score_bins)) then
-          scores = C_LOC(t % score_bins(1))
-          n = size(t % score_bins)
-          err = 0
-        else
-          err = E_ALLOCATE
-          call set_errmsg("Tally scores have not been allocated yet.")
-        end if
-      end associate
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg('Index in tallies array is out of bounds.')
-    end if
-  end function openmc_tally_get_scores
-
-
   function openmc_tally_reset(index) result(err) bind(C)
     ! Reset tally results and number of realizations
     integer(C_INT32_T), intent(in), value :: index
@@ -902,180 +920,6 @@ contains
       call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_set_nuclides
-
-
-  function openmc_tally_set_scores(index, n, scores) result(err) bind(C)
-    ! Sets the scores in the tally
-    integer(C_INT32_T), value  :: index
-    integer(C_INT), value      :: n
-    type(C_PTR),    intent(in) :: scores(n)
-    integer(C_INT) :: err
-
-    integer :: i
-    integer :: MT
-    character(C_CHAR), pointer :: string(:)
-    character(len=:, kind=C_CHAR), allocatable :: score_
-    logical :: depletion_rx
-
-    err = E_UNASSIGNED
-    depletion_rx = .false.
-    if (index >= 1 .and. index <= size(tallies)) then
-      associate (t => tallies(index) % obj)
-        if (allocated(t % score_bins)) deallocate(t % score_bins)
-        allocate(t % score_bins(n))
-        t % n_score_bins = n
-
-        do i = 1, n
-          ! Convert C string to Fortran string
-          call c_f_pointer(scores(i), string, [20])
-          score_ = to_lower(to_f_string(string))
-
-          select case (score_)
-          case ('flux')
-            t % score_bins(i) = SCORE_FLUX
-          case ('total', '(n,total)')
-            t % score_bins(i) = SCORE_TOTAL
-          case ('scatter')
-            t % score_bins(i) = SCORE_SCATTER
-          case ('nu-scatter')
-            t % score_bins(i) = SCORE_NU_SCATTER
-          case ('(n,2n)')
-            t % score_bins(i) = N_2N
-            depletion_rx = .true.
-          case ('(n,3n)')
-            t % score_bins(i) = N_3N
-            depletion_rx = .true.
-          case ('(n,4n)')
-            t % score_bins(i) = N_4N
-            depletion_rx = .true.
-          case ('absorption')
-            t % score_bins(i) = SCORE_ABSORPTION
-          case ('fission', '18')
-            t % score_bins(i) = SCORE_FISSION
-          case ('nu-fission')
-            t % score_bins(i) = SCORE_NU_FISSION
-          case ('decay-rate')
-            t % score_bins(i) = SCORE_DECAY_RATE
-          case ('delayed-nu-fission')
-            t % score_bins(i) = SCORE_DELAYED_NU_FISSION
-          case ('prompt-nu-fission')
-            t % score_bins(i) = SCORE_PROMPT_NU_FISSION
-          case ('kappa-fission')
-            t % score_bins(i) = SCORE_KAPPA_FISSION
-          case ('inverse-velocity')
-            t % score_bins(i) = SCORE_INVERSE_VELOCITY
-          case ('fission-q-prompt')
-            t % score_bins(i) = SCORE_FISS_Q_PROMPT
-          case ('fission-q-recoverable')
-            t % score_bins(i) = SCORE_FISS_Q_RECOV
-          case ('current')
-            t % score_bins(i) = SCORE_CURRENT
-          case ('events')
-            t % score_bins(i) = SCORE_EVENTS
-          case ('elastic', '(n,elastic)')
-            t % score_bins(i) = ELASTIC
-          case ('(n,2nd)')
-            t % score_bins(i) = N_2ND
-          case ('(n,na)')
-            t % score_bins(i) = N_2NA
-          case ('(n,n3a)')
-            t % score_bins(i) = N_N3A
-          case ('(n,2na)')
-            t % score_bins(i) = N_2NA
-          case ('(n,3na)')
-            t % score_bins(i) = N_3NA
-          case ('(n,np)')
-            t % score_bins(i) = N_NP
-          case ('(n,n2a)')
-            t % score_bins(i) = N_N2A
-          case ('(n,2n2a)')
-            t % score_bins(i) = N_2N2A
-          case ('(n,nd)')
-            t % score_bins(i) = N_ND
-          case ('(n,nt)')
-            t % score_bins(i) = N_NT
-          case ('(n,nHe-3)')
-            t % score_bins(i) = N_N3HE
-          case ('(n,nd2a)')
-            t % score_bins(i) = N_ND2A
-          case ('(n,nt2a)')
-            t % score_bins(i) = N_NT2A
-          case ('(n,3nf)')
-            t % score_bins(i) = N_3NF
-          case ('(n,2np)')
-            t % score_bins(i) = N_2NP
-          case ('(n,3np)')
-            t % score_bins(i) = N_3NP
-          case ('(n,n2p)')
-            t % score_bins(i) = N_N2P
-          case ('(n,npa)')
-            t % score_bins(i) = N_NPA
-          case ('(n,n1)')
-            t % score_bins(i) = N_N1
-          case ('(n,nc)')
-            t % score_bins(i) = N_NC
-          case ('(n,gamma)')
-            t % score_bins(i) = N_GAMMA
-            depletion_rx = .true.
-          case ('(n,p)')
-            t % score_bins(i) = N_P
-            depletion_rx = .true.
-          case ('(n,d)')
-            t % score_bins(i) = N_D
-          case ('(n,t)')
-            t % score_bins(i) = N_T
-          case ('(n,3He)')
-            t % score_bins(i) = N_3HE
-          case ('(n,a)')
-            t % score_bins(i) = N_A
-            depletion_rx = .true.
-          case ('(n,2a)')
-            t % score_bins(i) = N_2A
-          case ('(n,3a)')
-            t % score_bins(i) = N_3A
-          case ('(n,2p)')
-            t % score_bins(i) = N_2P
-          case ('(n,pa)')
-            t % score_bins(i) = N_PA
-          case ('(n,t2a)')
-            t % score_bins(i) = N_T2A
-          case ('(n,d2a)')
-            t % score_bins(i) = N_D2A
-          case ('(n,pd)')
-            t % score_bins(i) = N_PD
-          case ('(n,pt)')
-            t % score_bins(i) = N_PT
-          case ('(n,da)')
-            t % score_bins(i) = N_DA
-          case default
-            ! Assume that user has specified an MT number
-            MT = int(str_to_int(score_))
-
-            if (MT /= ERROR_INT) then
-              ! Specified score was an integer
-              if (MT > 1) then
-                t % score_bins(i) = MT
-              else
-                err = E_INVALID_ARGUMENT
-                call set_errmsg("Negative MT number cannot be used as a score.")
-              end if
-
-            else
-              err = E_INVALID_ARGUMENT
-              call set_errmsg("Unknown score: " // trim(score_) // ".")
-            end if
-
-          end select
-        end do
-
-        err = 0
-        t % depletion_rx = depletion_rx
-      end associate
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg('Index in tallies array is out of bounds.')
-    end if
-  end function openmc_tally_set_scores
 
 
   subroutine openmc_get_tally_next_id(id) bind(C)

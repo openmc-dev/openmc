@@ -21,6 +21,10 @@ class Tally {
 public:
   Tally() {}
 
+  void set_scores(pugi::xml_node node);
+
+  void set_scores(std::vector<std::string> scores);
+
   //----------------------------------------------------------------------------
   // Methods for getting and setting filter/stride data.
 
@@ -37,6 +41,8 @@ public:
   //----------------------------------------------------------------------------
   // Other methods.
 
+  void init_scores(pugi::xml_node node);
+
   void init_triggers(pugi::xml_node node, int i_tally);
 
   //----------------------------------------------------------------------------
@@ -52,6 +58,8 @@ public:
   //! Whether this tally is currently being updated
   bool active_ {false};
 
+  std::vector<int> scores_; //!< Filter integrands (e.g. flux, fission)
+
   //! Index of each nuclide to be tallied.  -1 indicates total material.
   std::vector<int> nuclides_;
 
@@ -66,6 +74,8 @@ public:
   // present.
   int energyout_filter_ {C_NONE};
   int delayedgroup_filter_ {C_NONE};
+
+  bool depletion_rx_ {false}; //!< Has depletion reactions (e.g. (n,2n))
 
   std::vector<Trigger> triggers_;
 

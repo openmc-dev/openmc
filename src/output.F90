@@ -641,7 +641,7 @@ contains
           end if
 
           indent = indent + 2
-          do k = 1, t % n_score_bins
+          do k = 1, t % n_score_bins()
             score_index = score_index + 1
 
             associate(r => t % results(RESULT_SUM:RESULT_SUM_SQ, :, :))

@@ -636,7 +636,7 @@ void Material::init_nuclide_index()
   int n = settings::run_CE ?
     data::nuclides.size() : data::nuclides_MG.size();
   mat_nuclide_index_.resize(n);
-  std::fill(mat_nuclide_index_.begin(), mat_nuclide_index_.end(), -1);
+  std::fill(mat_nuclide_index_.begin(), mat_nuclide_index_.end(), C_NONE);
   for (int i = 0; i < nuclide_.size(); ++i) {
     mat_nuclide_index_[nuclide_[i]] = i;
   }
@@ -1133,11 +1133,6 @@ extern "C" {
   double material_density_gpcc(int32_t i_mat)
   {
     return model::materials[i_mat - 1]->density_gpcc_;
-  }
-
-  int material_nuclide_index(int32_t i_mat, int i_nuc)
-  {
-    return model::materials[i_mat - 1]->mat_nuclide_index_[i_nuc - 1] + 1;
   }
 
   void material_calculate_xs(const Particle* p)

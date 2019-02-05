@@ -9,19 +9,23 @@
 #include <ctime>
 
 #include <omp.h>
+#include "xtensor/xview.hpp"
 
 #include "openmc/capi.h"
 #include "openmc/cell.h"
 #include "openmc/constants.h"
 #include "openmc/eigenvalue.h"
+#include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/lattice.h"
+#include "openmc/math_functions.h"
 #include "openmc/message_passing.h"
 #include "openmc/plot.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/surface.h"
 #include "openmc/timer.h"
+#include "openmc/tallies/tally.h"
 
 namespace openmc {
 
@@ -102,7 +106,7 @@ header(const char* msg, int level) {
 
   // Print header based on verbosity level.
   if (settings::verbosity >= level) {
-    std::cout << out.str() << "\n\n";
+    std::cout << '\n' << out.str() << "\n\n";
   }
 }
 
@@ -491,6 +495,86 @@ void print_runtime()
 
   // Restore state of cout
   std::cout.flags(f);
+}
+
+//==============================================================================
+
+void print_results()
+{
+  // Save state of cout
+  auto f {std::cout.flags()};
+
+  // display header block for results
+  header("Results", 4);
+
+  // Calculate t-value for confidence intervals
+  int n = n_realizations;
+  double alpha, t_n1, t_n3;
+  if (settings::confidence_intervals) {
+    alpha = 1.0 - CONFIDENCE_LEVEL;
+    t_n1 = t_percentile(1.0 - alpha/2.0, n - 1);
+    t_n3 = t_percentile(1.0 - alpha/2.0, n - 3);
+  } else {
+    t_n1 = 1.0;
+    t_n3 = 1.0;
+  }
+
+  // Set formatting for floats
+  std::cout << std::fixed << std::setprecision(5);
+
+  // write global tallies
+  auto gt = global_tallies();
+  double mean, stdev;
+  if (n > 1) {
+    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+      std::tie(mean, stdev) = mean_stdev(&gt(K_COLLISION, 0), n);
+      std::cout << " k-effective (Collision)     = "
+        << mean << " +/- " << t_n1 * stdev << '\n';
+      std::tie(mean, stdev) = mean_stdev(&gt(K_TRACKLENGTH, 0), n);
+      std::cout << " k-effective (Track-length)  = "
+        << mean << " +/- " << t_n1 * stdev << '\n';
+      std::tie(mean, stdev) = mean_stdev(&gt(K_ABSORPTION, 0), n);
+      std::cout << " k-effective (Absorption)    = "
+        << mean << " +/- " << t_n1 * stdev << '\n';
+      if (n > 3) {
+        double k_combined[2];
+        openmc_get_keff(k_combined);
+        std::cout << " Combined k-effective        = "
+          << k_combined[0] << " +/- " << t_n3 * k_combined[1] << '\n';
+      }
+    }
+    std::tie(mean, stdev) = mean_stdev(&gt(LEAKAGE, 0), n);
+    std::cout << " Leakage Fraction            = "
+      << mean << " +/- " << t_n1 * stdev << '\n';
+  } else {
+    if (mpi::master) warning("Could not compute uncertainties -- only one "
+      "active batch simulated!");
+
+    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+      std::cout << " k-effective (Collision)    = "
+        << gt(K_COLLISION, RESULT_SUM) / n << '\n';
+      std::cout << " k-effective (Track-length) = "
+        << gt(K_TRACKLENGTH, RESULT_SUM) / n << '\n';
+      std::cout << " k-effective (Absorption)   = "
+        << gt(K_ABSORPTION, RESULT_SUM) / n << '\n';
+    }
+    std::cout << " Leakage Fraction           = "
+      << gt(LEAKAGE, RESULT_SUM) / n << '\n';
+  }
+  std::cout << '\n';
+
+  // Restore state of cout
+  std::cout.flags(f);
+}
+
+//==============================================================================
+
+std::pair<double, double> mean_stdev(const double* x, int n)
+{
+  double mean = x[RESULT_SUM] / n;
+  double stdev = n > 1 ? std::sqrt((x[RESULT_SUM_SQ]/n
+    - mean*mean)/(n - 1)) : 0.0;
+  return {mean, stdev};
 }
 
 } // namespace openmc

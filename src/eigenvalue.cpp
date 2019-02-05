@@ -331,7 +331,7 @@ void calculate_average_keff()
       if (settings::confidence_intervals) {
         // Calculate t-value for confidence intervals
         double alpha = 1.0 - CONFIDENCE_LEVEL;
-        t_value = t_percentile_c(1.0 - alpha/2.0, n - 1);
+        t_value = t_percentile(1.0 - alpha/2.0, n - 1);
       } else {
         t_value = 1.0;
       }

@@ -51,294 +51,172 @@ contains
 ! OPENMC_STATEPOINT_WRITE writes an HDF5 statepoint file to disk
 !===============================================================================
 
-  function openmc_statepoint_write(filename, write_source) result(err) bind(C)
-    type(C_PTR),     value                :: filename
-    logical(C_BOOL), intent(in), optional :: write_source
-    integer(C_INT) :: err
+  subroutine statepoint_write_f(file_id) bind(C)
+    integer(HID_T), value :: file_id
 
-    logical :: write_source_
     integer :: i, j
     integer :: i_xs
     integer, allocatable :: id_array(:)
-    integer(HID_T) :: file_id
     integer(HID_T) :: tallies_group, tally_group, &
                       filters_group, filter_group, derivs_group, &
-                      deriv_group, runtime_group
+                      deriv_group
     character(MAX_WORD_LEN), allocatable :: str_array(:)
-    character(C_CHAR), pointer :: string(:)
-    character(len=:, kind=C_CHAR), allocatable :: filename_
     character(MAX_WORD_LEN, kind=C_CHAR) :: temp_name
-    logical :: parallel
 
-    interface
-      subroutine meshes_to_hdf5(group) bind(C)
-        import HID_T
-        integer(HID_T), value :: group
-      end subroutine
-      subroutine write_eigenvalue_hdf5(group) bind(C)
-        import HID_T
-        integer(HID_T), value :: group
-      end subroutine
-      subroutine write_tally_results_nr(file_id) bind(C)
-        import HID_T
-        integer(HID_T), value :: file_id
-      end subroutine
-    end interface
+    ! Open tallies group
+    tallies_group = open_group(file_id, "tallies")
 
-    err = 0
-
-    ! Set the filename
-    if (c_associated(filename)) then
-      call c_f_pointer(filename, string, [MAX_FILE_LEN])
-      filename_ = to_f_string(string)
-    else
-      ! Set filename for state point
-      filename_ = trim(path_output) // 'statepoint.' // &
-           & zero_padded(current_batch, count_digits(n_max_batches))
-      filename_ = trim(filename_) // '.h5'
+    ! Write information for derivatives.
+    if (size(tally_derivs) > 0) then
+      derivs_group = create_group(tallies_group, "derivatives")
+      do i = 1, size(tally_derivs)
+        associate(deriv => tally_derivs(i))
+          deriv_group = create_group(derivs_group, "derivative " &
+               // trim(to_str(deriv % id)))
+          select case (deriv % variable)
+          case (DIFF_DENSITY)
+            call write_dataset(deriv_group, "independent variable", "density")
+            call write_dataset(deriv_group, "material", deriv % diff_material)
+          case (DIFF_NUCLIDE_DENSITY)
+            call write_dataset(deriv_group, "independent variable", &
+                 "nuclide_density")
+            call write_dataset(deriv_group, "material", deriv % diff_material)
+            call write_dataset(deriv_group, "nuclide", &
+                 nuclides(deriv % diff_nuclide) % name)
+          case (DIFF_TEMPERATURE)
+            call write_dataset(deriv_group, "independent variable", &
+                 "temperature")
+            call write_dataset(deriv_group, "material", deriv % diff_material)
+          case default
+            call fatal_error("Independent variable for derivative " &
+                 // trim(to_str(deriv % id)) // " not defined in &
+                 &state_point.F90.")
+          end select
+          call close_group(deriv_group)
+        end associate
+      end do
+      call close_group(derivs_group)
     end if
 
-    ! Determine whether or not to write the source bank
-    if (present(write_source)) then
-      write_source_ = write_source
-    else
-      write_source_ = .true.
+    ! Write number of filters
+    filters_group = create_group(tallies_group, "filters")
+    call write_attribute(filters_group, "n_filters", n_filters)
+
+    if (n_filters > 0) then
+      ! Write IDs of filters
+      allocate(id_array(n_filters))
+      do i = 1, n_filters
+        id_array(i) = filters(i) % obj % id
+      end do
+      call write_attribute(filters_group, "ids", id_array)
+      deallocate(id_array)
+
+      ! Write filter information
+      FILTER_LOOP: do i = 1, n_filters
+        filter_group = create_group(filters_group, "filter " // &
+             trim(to_str(filters(i) % obj % id)))
+        call filters(i) % obj % to_statepoint(filter_group)
+        call close_group(filter_group)
+      end do FILTER_LOOP
     end if
 
-    ! Write message
-    call write_message("Creating state point " // trim(filename_) // "...", 5)
-
-    if (master) then
-      ! Create statepoint file
-      file_id = file_open(filename_, 'w')
-
-      ! Write file type
-      call write_attribute(file_id, "filetype", "statepoint")
-
-      ! Write revision number for state point file
-      call write_attribute(file_id, "version", VERSION_STATEPOINT)
-
-      ! Write OpenMC version
-      call write_attribute(file_id, "openmc_version", VERSION)
-#ifdef GIT_SHA1
-      call write_attribute(file_id, "git_sha1", GIT_SHA1)
-#endif
-
-      ! Write current date and time
-      call write_attribute(file_id, "date_and_time", time_stamp())
-
-      ! Write path to input
-      call write_attribute(file_id, "path", path_input)
-
-      ! Write out random number seed
-      call write_dataset(file_id, "seed", openmc_get_seed())
-
-      ! Write run information
-      if (run_CE) then
-        call write_dataset(file_id, "energy_mode", "continuous-energy")
-      else
-        call write_dataset(file_id, "energy_mode", "multi-group")
-      end if
-      select case(run_mode)
-      case (MODE_FIXEDSOURCE)
-        call write_dataset(file_id, "run_mode", "fixed source")
-      case (MODE_EIGENVALUE)
-        call write_dataset(file_id, "run_mode", "eigenvalue")
-      end select
-      if (photon_transport) then
-        call write_attribute(file_id, "photon_transport", 1)
-      else
-        call write_attribute(file_id, "photon_transport", 0)
-      end if
-      call write_dataset(file_id, "n_particles", n_particles)
-      call write_dataset(file_id, "n_batches", n_batches)
-
-      ! Write out current batch number
-      call write_dataset(file_id, "current_batch", current_batch)
-
-      ! Indicate whether source bank is stored in statepoint
-      if (write_source_) then
-        call write_attribute(file_id, "source_present", 1)
-      else
-        call write_attribute(file_id, "source_present", 0)
-      end if
-
-      ! Write out information for eigenvalue run
-      if (run_mode == MODE_EIGENVALUE) then
-        call write_eigenvalue_hdf5(file_id)
-      end if
-
-      tallies_group = create_group(file_id, "tallies")
-
-      ! Write meshes
-      call meshes_to_hdf5(tallies_group)
-
-      ! Write information for derivatives.
-      if (size(tally_derivs) > 0) then
-        derivs_group = create_group(tallies_group, "derivatives")
-        do i = 1, size(tally_derivs)
-          associate(deriv => tally_derivs(i))
-            deriv_group = create_group(derivs_group, "derivative " &
-                 // trim(to_str(deriv % id)))
-            select case (deriv % variable)
-            case (DIFF_DENSITY)
-              call write_dataset(deriv_group, "independent variable", "density")
-              call write_dataset(deriv_group, "material", deriv % diff_material)
-            case (DIFF_NUCLIDE_DENSITY)
-              call write_dataset(deriv_group, "independent variable", &
-                   "nuclide_density")
-              call write_dataset(deriv_group, "material", deriv % diff_material)
-              call write_dataset(deriv_group, "nuclide", &
-                   nuclides(deriv % diff_nuclide) % name)
-            case (DIFF_TEMPERATURE)
-              call write_dataset(deriv_group, "independent variable", &
-                   "temperature")
-              call write_dataset(deriv_group, "material", deriv % diff_material)
-            case default
-              call fatal_error("Independent variable for derivative " &
-                   // trim(to_str(deriv % id)) // " not defined in &
-                   &state_point.F90.")
-            end select
-            call close_group(deriv_group)
-          end associate
-        end do
-        call close_group(derivs_group)
-      end if
-
-      ! Write number of filters
-      filters_group = create_group(tallies_group, "filters")
-      call write_attribute(filters_group, "n_filters", n_filters)
-
-      if (n_filters > 0) then
-        ! Write IDs of filters
-        allocate(id_array(n_filters))
-        do i = 1, n_filters
-          id_array(i) = filters(i) % obj % id
-        end do
-        call write_attribute(filters_group, "ids", id_array)
-        deallocate(id_array)
-
-        ! Write filter information
-        FILTER_LOOP: do i = 1, n_filters
-          filter_group = create_group(filters_group, "filter " // &
-               trim(to_str(filters(i) % obj % id)))
-          call filters(i) % obj % to_statepoint(filter_group)
-          call close_group(filter_group)
-        end do FILTER_LOOP
-      end if
-
-      call close_group(filters_group)
+    call close_group(filters_group)
 
       ! Write number of tallies
-      call write_attribute(tallies_group, "n_tallies", n_tallies)
+    call write_attribute(tallies_group, "n_tallies", n_tallies)
 
-      if (n_tallies > 0) then
-        ! Write array of tally IDs
-        allocate(id_array(n_tallies))
-        do i = 1, n_tallies
-          id_array(i) = tallies(i) % obj % id
-        end do
-        call write_attribute(tallies_group, "ids", id_array)
-        deallocate(id_array)
+    if (n_tallies > 0) then
+      ! Write array of tally IDs
+      allocate(id_array(n_tallies))
+      do i = 1, n_tallies
+        id_array(i) = tallies(i) % obj % id
+      end do
+      call write_attribute(tallies_group, "ids", id_array)
+      deallocate(id_array)
 
-        ! Write all tally information except results
-        TALLY_METADATA: do i = 1, n_tallies
+      ! Write all tally information except results
+      TALLY_METADATA: do i = 1, n_tallies
 
-          ! Get pointer to tally
-          associate (tally => tallies(i) % obj)
-          tally_group = create_group(tallies_group, "tally " // &
-               trim(to_str(tally % id)))
+        ! Get pointer to tally
+        associate (tally => tallies(i) % obj)
+        tally_group = create_group(tallies_group, "tally " // &
+             trim(to_str(tally % id)))
 
-          ! Write the name for this tally
-          call write_dataset(tally_group, "name", tally % name)
+        ! Write the name for this tally
+        call write_dataset(tally_group, "name", tally % name)
 
-          select case(tally % estimator)
-          case (ESTIMATOR_ANALOG)
-            call write_dataset(tally_group, "estimator", "analog")
-          case (ESTIMATOR_TRACKLENGTH)
-            call write_dataset(tally_group, "estimator", "tracklength")
-          case (ESTIMATOR_COLLISION)
-            call write_dataset(tally_group, "estimator", "collision")
-          end select
-          call write_dataset(tally_group, "n_realizations", &
-               tally % n_realizations)
+        select case(tally % estimator)
+        case (ESTIMATOR_ANALOG)
+          call write_dataset(tally_group, "estimator", "analog")
+        case (ESTIMATOR_TRACKLENGTH)
+          call write_dataset(tally_group, "estimator", "tracklength")
+        case (ESTIMATOR_COLLISION)
+          call write_dataset(tally_group, "estimator", "collision")
+        end select
+        call write_dataset(tally_group, "n_realizations", &
+             tally % n_realizations)
 
-          call write_dataset(tally_group, "n_filters", size(tally % filter))
-          if (size(tally % filter) > 0) then
-            ! Write IDs of filters
-            allocate(id_array(size(tally % filter)))
-            do j = 1, size(tally % filter)
-              id_array(j) = filters(tally % filter(j)) % obj % id
-            end do
-            call write_dataset(tally_group, "filters", id_array)
-            deallocate(id_array)
-          end if
+        call write_dataset(tally_group, "n_filters", size(tally % filter))
+        if (size(tally % filter) > 0) then
+          ! Write IDs of filters
+          allocate(id_array(size(tally % filter)))
+          do j = 1, size(tally % filter)
+            id_array(j) = filters(tally % filter(j)) % obj % id
+          end do
+          call write_dataset(tally_group, "filters", id_array)
+          deallocate(id_array)
+        end if
 
-          ! Set up nuclide bin array and then write
-          allocate(str_array(tally % n_nuclide_bins))
-          NUCLIDE_LOOP: do j = 1, tally % n_nuclide_bins
-            if (tally % nuclide_bins(j) > 0) then
-              if (run_CE) then
-                i_xs = index(nuclides(tally % nuclide_bins(j)) % name, '.')
-                if (i_xs > 0) then
-                  str_array(j) = nuclides(tally % nuclide_bins(j)) % name(1 : i_xs-1)
-                else
-                  str_array(j) = nuclides(tally % nuclide_bins(j)) % name
-                end if
+        ! Set up nuclide bin array and then write
+        allocate(str_array(tally % n_nuclide_bins))
+        NUCLIDE_LOOP: do j = 1, tally % n_nuclide_bins
+          if (tally % nuclide_bins(j) > 0) then
+            if (run_CE) then
+              i_xs = index(nuclides(tally % nuclide_bins(j)) % name, '.')
+              if (i_xs > 0) then
+                str_array(j) = nuclides(tally % nuclide_bins(j)) % name(1 : i_xs-1)
               else
-                call get_name_c(tally % nuclide_bins(j), len(temp_name), &
-                                temp_name)
-                i_xs = index(temp_name, '.')
-                if (i_xs > 0) then
-                  str_array(j) = trim(temp_name(1 : i_xs-1))
-                else
-                  str_array(j) = trim(temp_name)
-                end if
+                str_array(j) = nuclides(tally % nuclide_bins(j)) % name
               end if
             else
-              str_array(j) = 'total'
+              call get_name_c(tally % nuclide_bins(j), len(temp_name), &
+                              temp_name)
+              i_xs = index(temp_name, '.')
+              if (i_xs > 0) then
+                str_array(j) = trim(temp_name(1 : i_xs-1))
+              else
+                str_array(j) = trim(temp_name)
+              end if
             end if
-          end do NUCLIDE_LOOP
-          call write_dataset(tally_group, "nuclides", str_array)
-          deallocate(str_array)
-
-          ! Write derivative information.
-          if (tally % deriv /= NONE) then
-            call write_dataset(tally_group, "derivative", &
-                 tally_derivs(tally % deriv) % id)
+          else
+            str_array(j) = 'total'
           end if
+        end do NUCLIDE_LOOP
+        call write_dataset(tally_group, "nuclides", str_array)
+        deallocate(str_array)
 
-          ! Write scores.
-          call write_dataset(tally_group, "n_score_bins", tally % n_score_bins)
-          allocate(str_array(size(tally % score_bins)))
-          do j = 1, size(tally % score_bins)
-            str_array(j) = reaction_name(tally % score_bins(j))
-          end do
-          call write_dataset(tally_group, "score_bins", str_array)
+        ! Write derivative information.
+        if (tally % deriv /= NONE) then
+          call write_dataset(tally_group, "derivative", &
+               tally_derivs(tally % deriv) % id)
+        end if
 
-          deallocate(str_array)
+        ! Write scores.
+        call write_dataset(tally_group, "n_score_bins", tally % n_score_bins)
+        allocate(str_array(size(tally % score_bins)))
+        do j = 1, size(tally % score_bins)
+          str_array(j) = reaction_name(tally % score_bins(j))
+        end do
+        call write_dataset(tally_group, "score_bins", str_array)
 
-          call close_group(tally_group)
-          end associate
-        end do TALLY_METADATA
+        deallocate(str_array)
 
-      end if
-
-      call close_group(tallies_group)
+        call close_group(tally_group)
+        end associate
+      end do TALLY_METADATA
     end if
 
-    ! Check for the no-tally-reduction method
-    if (.not. reduce_tallies) then
-      ! If using the no-tally-reduction method, we need to collect tally
-      ! results before writing them to the state point file.
-
-      call write_tally_results_nr(file_id)
-
-    elseif (master) then
-
-      ! Write number of global realizations
-      call write_dataset(file_id, "n_realizations", n_realizations)
-
+    if (reduce_tallies) then
       ! Write global tallies
       call write_dataset(file_id, "global_tallies", global_tallies)
 
@@ -346,8 +224,6 @@ contains
       if (active_tallies % size() > 0) then
         ! Indicate that tallies are on
         call write_attribute(file_id, "tallies_present", 1)
-
-        tallies_group = open_group(file_id, "tallies")
 
         ! Write all tally results
         TALLY_RESULTS: do i = 1, n_tallies
@@ -359,61 +235,14 @@ contains
             call close_group(tally_group)
           end associate
         end do TALLY_RESULTS
-
-        call close_group(tallies_group)
       else
         ! Indicate tallies are off
         call write_attribute(file_id, "tallies_present", 0)
       end if
-
-
-      ! Write out the runtime metrics.
-      runtime_group = create_group(file_id, "runtime")
-      call write_dataset(runtime_group, "total initialization", &
-           time_initialize_elapsed())
-      call write_dataset(runtime_group, "reading cross sections", &
-           time_read_xs_elapsed())
-      call write_dataset(runtime_group, "simulation", &
-           time_inactive_elapsed() + time_active_elapsed())
-      call write_dataset(runtime_group, "transport", &
-           time_transport_elapsed())
-      if (run_mode == MODE_EIGENVALUE) then
-        call write_dataset(runtime_group, "inactive batches", &
-             time_inactive_elapsed())
-      end if
-      call write_dataset(runtime_group, "active batches", &
-           time_active_elapsed())
-      if (run_mode == MODE_EIGENVALUE) then
-        call write_dataset(runtime_group, "synchronizing fission bank", &
-             time_bank_elapsed())
-        call write_dataset(runtime_group, "sampling source sites", &
-             time_bank_sample_elapsed())
-        call write_dataset(runtime_group, "SEND-RECV source sites", &
-             time_bank_sendrecv_elapsed())
-      end if
-      call write_dataset(runtime_group, "accumulating tallies", &
-           time_tallies_elapsed())
-      call write_dataset(runtime_group, "total", time_total_elapsed())
-      call close_group(runtime_group)
-
-      call file_close(file_id)
     end if
 
-#ifdef PHDF5
-    parallel = .true.
-#else
-    parallel = .false.
-#endif
-
-    ! Write the source bank if desired
-    if (write_source_) then
-      if (master .or. parallel) then
-        file_id = file_open(filename_, 'a', parallel=.true.)
-      end if
-      call write_source_bank(file_id)
-      if (master .or. parallel) call file_close(file_id)
-    end if
-  end function openmc_statepoint_write
+    call close_group(tallies_group)
+  end subroutine
 
 !===============================================================================
 ! LOAD_STATE_POINT

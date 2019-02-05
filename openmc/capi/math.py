@@ -6,8 +6,8 @@ from numpy.ctypeslib import ndpointer
 from . import _dll
 
 
-_dll.t_percentile_c.restype = c_double
-_dll.t_percentile_c.argtypes = [c_double, c_int]
+_dll.t_percentile.restype = c_double
+_dll.t_percentile.argtypes = [c_double, c_int]
 
 _dll.calc_pn_c.restype = None
 _dll.calc_pn_c.argtypes = [c_int, c_double, ndpointer(c_double)]
@@ -58,7 +58,7 @@ def t_percentile(p, df):
 
     """
 
-    return _dll.t_percentile_c(p, df)
+    return _dll.t_percentile(p, df)
 
 
 def calc_pn(n, x):
@@ -261,7 +261,7 @@ def normal_variate(mean_value, std_dev):
     Parameters
     ----------
     mean_value : float
-        Mean of the Normal distribution 
+        Mean of the Normal distribution
     std_dev : float
         Standard deviation of the normal distribution
 

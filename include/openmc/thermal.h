@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "xtensor/xtensor.hpp"
@@ -36,6 +37,7 @@ class ThermalScattering;
 
 namespace data {
 extern std::vector<std::unique_ptr<ThermalScattering>> thermal_scatt;
+extern std::unordered_map<std::string, int> thermal_scatt_map;
 }
 
 //==============================================================================

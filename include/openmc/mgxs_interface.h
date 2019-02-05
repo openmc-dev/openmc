@@ -20,6 +20,7 @@ namespace data {
 extern std::vector<Mgxs> nuclides_MG;
 extern std::vector<Mgxs> macro_xs;
 extern "C" int num_energy_groups;
+extern "C" int num_delayed_groups;
 extern std::vector<double> energy_bins;
 extern std::vector<double> energy_bin_avg;
 extern std::vector<double> rev_energy_bins;
@@ -30,19 +31,15 @@ extern std::vector<double> rev_energy_bins;
 // Mgxs data loading interface methods
 //==============================================================================
 
-extern "C" void
-add_mgxs_c(hid_t file_id, const char* name, int energy_groups,
-     int delayed_groups, int n_temps, const double temps[], double tolerance,
-     int max_order, bool legendre_to_tabular, int legendre_to_tabular_points,
-     int& method);
+void read_mgxs();
 
-extern "C" bool
-query_fissionable_c(int n_nuclides, const int i_nuclides[]);
+void
+add_mgxs(hid_t file_id, const std::string& name,
+     const std::vector<double>& temperature);
 
-extern "C" void
-create_macro_xs_c(const char* mat_name, int n_nuclides, const int i_nuclides[],
-     int n_temps, const double temps[], const double atom_densities[],
-     double tolerance, int& method);
+void create_macro_xs();
+
+std::vector<std::vector<double>> get_mat_kTs();
 
 extern "C" void read_mg_cross_sections_header_c(hid_t file_id);
 

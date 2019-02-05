@@ -122,10 +122,10 @@ module constants
 
   ! Particle type
   integer, parameter :: &
-       NEUTRON  = 1, &
-       PHOTON   = 2, &
-       ELECTRON = 3, &
-       POSITRON = 4
+       NEUTRON  = 0, &
+       PHOTON   = 1, &
+       ELECTRON = 2, &
+       POSITRON = 3
 
   ! Angular distribution type
   integer, parameter :: &

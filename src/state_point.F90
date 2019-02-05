@@ -372,7 +372,7 @@ contains
       call write_dataset(runtime_group, "total initialization", &
            time_initialize_elapsed())
       call write_dataset(runtime_group, "reading cross sections", &
-           time_read_xs % get_value())
+           time_read_xs_elapsed())
       call write_dataset(runtime_group, "simulation", &
            time_inactive_elapsed() + time_active_elapsed())
       call write_dataset(runtime_group, "transport", &

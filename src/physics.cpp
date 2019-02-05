@@ -52,7 +52,7 @@ void collision(Particle* p)
   }
 
   // Kill particle if energy falls below cutoff
-  if (p->E < settings::energy_cutoff[p->type - 1]) {
+  if (p->E < settings::energy_cutoff[p->type]) {
     p->alive = false;
     p->wgt = 0.0;
     p->last_wgt = 0.0;
@@ -74,9 +74,8 @@ void collision(Particle* p)
 
 void sample_neutron_reaction(Particle* p)
 {
-  int i_nuclide;
-  int i_nuc_mat;
-  sample_nuclide(p, SCORE_TOTAL, &i_nuclide, &i_nuc_mat);
+  // Sample a nuclide within the material
+  int i_nuclide = sample_nuclide(p);
 
   // Save which nuclide particle had collision with
   // TODO: off-by-one
@@ -120,7 +119,7 @@ void sample_neutron_reaction(Particle* p)
 
   // Sample a scattering reaction and determine the secondary energy of the
   // exiting neutron
-  scatter(p, i_nuclide, i_nuc_mat);
+  scatter(p, i_nuclide);
 
   // Advance URR seed stream 'N' times after energy changes
   if (p->E != p->last_E) {
@@ -220,7 +219,7 @@ void sample_photon_reaction(Particle* p)
   // Kill photon if below energy cutoff -- an extra check is made here because
   // photons with energy below the cutoff may have been produced by neutrons
   // reactions or atomic relaxation
-  int photon = static_cast<int>(ParticleType::photon) - 1;
+  int photon = static_cast<int>(ParticleType::photon);
   if (p->E < settings::energy_cutoff[photon]) {
     p->E = 0.0;
     p->alive = false;
@@ -420,63 +419,30 @@ void sample_positron_reaction(Particle* p)
   p->alive = false;
 }
 
-void sample_nuclide(const Particle* p, int mt, int* i_nuclide, int* i_nuc_mat)
+int sample_nuclide(const Particle* p)
 {
   // Sample cumulative distribution function
-  double cutoff;
-  switch (mt) {
-  case SCORE_TOTAL:
-    cutoff = prn() * simulation::material_xs.total;
-    break;
-  case SCORE_SCATTER:
-    cutoff = prn() * (simulation::material_xs.total -
-      simulation::material_xs.absorption);
-    break;
-  case SCORE_FISSION:
-    cutoff = prn() * simulation::material_xs.fission;
-    break;
-  }
+  double cutoff = prn() * simulation::material_xs.total;
 
   // Get pointers to nuclide/density arrays
-  int* nuclides;
-  double* densities;
-  int n;
-  openmc_material_get_densities(p->material, &nuclides, &densities, &n);
+  // TODO: off-by-one
+  const auto& mat {model::materials[p->material - 1]};
+  int n = mat->nuclide_.size();
 
-  *i_nuc_mat = 0;
   double prob = 0.0;
-  while (prob < cutoff) {
-    // Check to make sure that a nuclide was sampled
-    if (*i_nuc_mat > n) {
-      p->write_restart();
-      fatal_error("Did not sample any nuclide during collision.");
-    }
-
-    // Find atom density
-    // TODO: off-by-one
-    *i_nuclide = nuclides[*i_nuc_mat] - 1;
-    double atom_density = densities[*i_nuc_mat];
-
-    // Determine microscopic cross section
-    double sigma;
-    switch (mt) {
-    case SCORE_TOTAL:
-      sigma = atom_density * simulation::micro_xs[*i_nuclide].total;
-      break;
-    case SCORE_SCATTER:
-      sigma = atom_density * (simulation::micro_xs[*i_nuclide].total -
-        simulation::micro_xs[*i_nuclide].absorption);
-        break;
-    case SCORE_FISSION:
-      sigma = atom_density * simulation::micro_xs[*i_nuclide].fission;
-      break;
-    }
+  for (int i = 0; i < n; ++i) {
+    // Get atom density
+    int i_nuclide = mat->nuclide_[i];
+    double atom_density = mat->atom_density_[i];
 
     // Increment probability to compare to cutoff
-    prob += sigma;
-
-    ++(*i_nuc_mat);
+    prob += atom_density * simulation::micro_xs[i_nuclide].total;
+    if (prob >= cutoff) return i_nuclide;
   }
+
+  // If we reach here, no nuclide was sampled
+  p->write_restart();
+  throw std::runtime_error{"Did not sample any nuclide during collision."};
 }
 
 int sample_element(Particle* p)
@@ -485,11 +451,8 @@ int sample_element(Particle* p)
   double cutoff = prn() * simulation::material_xs.total;
 
   // Get pointers to elements, densities
-  int* nuclide;
-  double* density;
-  int n;
-  openmc_material_get_densities(p->material, &nuclide, &density, &n);
-  int* element = material_element(p->material);
+  const auto& mat {model::materials[p->material - 1]};
+  int n = mat->nuclide_.size();
 
   int i = 0;
   double prob = 0.0;
@@ -502,9 +465,8 @@ int sample_element(Particle* p)
     }
 
     // Find atom density
-    // TODO: off-by-one
-    i_element = element[i] - 1;
-    double atom_density = density[i];
+    i_element = mat->element_[i];
+    double atom_density = mat->atom_density_[i];
 
     // Determine microscopic cross section
     double sigma = atom_density * simulation::micro_photon_xs[i_element].total;
@@ -627,7 +589,7 @@ void absorption(Particle* p, int i_nuclide)
   }
 }
 
-void scatter(Particle* p, int i_nuclide, int i_nuc_mat)
+void scatter(Particle* p, int i_nuclide)
 {
   // copy incoming direction
   Direction u_old {p->coord[0].uvw};
@@ -712,21 +674,26 @@ void scatter(Particle* p, int i_nuclide, int i_nuc_mat)
   p->event = EVENT_SCATTER;
 
   // Sample new outgoing angle for isotropic-in-lab scattering
-  if (material_isotropic(p->material, i_nuc_mat)) {
-    // Sample isotropic-in-lab outgoing direction
-    double mu = 2.0*prn() - 1.0;
-    double phi = 2.0*PI*prn();
-    Direction u_new;
-    u_new.x = mu;
-    u_new.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
-    u_new.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
+  // TODO: off-by-one
+  const auto& mat {model::materials[p->material - 1]};
+  if (!mat->p0_.empty()) {
+    int i_nuc_mat = mat->mat_nuclide_index_[i_nuclide];
+    if (mat->p0_[i_nuc_mat]) {
+      // Sample isotropic-in-lab outgoing direction
+      double mu = 2.0*prn() - 1.0;
+      double phi = 2.0*PI*prn();
+      Direction u_new;
+      u_new.x = mu;
+      u_new.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
+      u_new.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
 
-    p->mu = u_old.dot(u_new);
+      p->mu = u_old.dot(u_new);
 
-    // Change direction of particle
-    p->coord[0].uvw[0] = u_new.x;
-    p->coord[0].uvw[1] = u_new.y;
-    p->coord[0].uvw[2] = u_new.z;
+      // Change direction of particle
+      p->coord[0].uvw[0] = u_new.x;
+      p->coord[0].uvw[1] = u_new.y;
+      p->coord[0].uvw[2] = u_new.z;
+    }
   }
 }
 
@@ -1067,8 +1034,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Bank
       rx->products_[group].sample(E_in, site->E, mu);
 
       // resample if energy is greater than maximum neutron energy
-      // TODO: off-by-one
-      constexpr int neutron = static_cast<int>(ParticleType::neutron) - 1;
+      constexpr int neutron = static_cast<int>(ParticleType::neutron);
       if (site->E < data::energy_max[neutron]) break;
 
       // check for large number of resamples
@@ -1093,8 +1059,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Bank
       rx->products_[0].sample(E_in, site->E, mu);
 
       // resample if energy is greater than maximum neutron energy
-      // TODO: off-by-one
-      constexpr int neutron = static_cast<int>(ParticleType::neutron) - 1;
+      constexpr int neutron = static_cast<int>(ParticleType::neutron);
       if (site->E < data::energy_max[neutron]) break;
 
       // check for large number of resamples

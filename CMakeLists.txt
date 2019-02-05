@@ -318,14 +318,11 @@ add_library(libopenmc SHARED
   src/hdf5_interface.F90
   src/initialize.F90
   src/input_xml.F90
-  src/list_header.F90
   src/material_header.F90
   src/math.F90
   src/mesh_header.F90
   src/message_passing.F90
-  src/mgxs_data.F90
   src/mgxs_interface.F90
-  src/multipole_header.F90
   src/nuclide_header.F90
   src/output.F90
   src/particle_header.F90
@@ -335,15 +332,12 @@ add_library(libopenmc SHARED
   src/random_lcg.F90
   src/reaction_header.F90
   src/relaxng
-  src/sab_header.F90
-  src/set_header.F90
   src/settings.F90
   src/simulation_header.F90
   src/simulation.F90
   src/state_point.F90
   src/stl_vector.F90
   src/string.F90
-  src/summary.F90
   src/surface_header.F90
   src/timer_header.F90
   src/tracking.F90

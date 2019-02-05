@@ -5,6 +5,7 @@
 #include "openmc/container_util.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
+#include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
@@ -91,6 +92,11 @@ int openmc_simulation_init()
   // Allocate tally results arrays if they're not allocated yet
   allocate_tally_results();
 
+  // Set up material nuclide index mapping
+  for (auto& mat : model::materials) {
+    mat->init_nuclide_index();
+  }
+
   // Call Fortran initialization
   simulation_init_f();
   set_micro_xs();
@@ -144,6 +150,9 @@ int openmc_simulation_finalize()
   }
 
   // Deallocate Fortran variables, set tallies to inactive
+  for (auto& mat : model::materials) {
+    mat->mat_nuclide_index_.clear();
+  }
   simulation_finalize_f();
 
   // Increment total number of generations

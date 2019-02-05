@@ -24,50 +24,42 @@ class XsData {
   private:
     //! \brief Reads scattering data from the HDF5 file
     void
-    scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
-         int scatter_format, int final_scatter_format, int order_data,
-         int max_order, int legendre_to_tabular_points);
+    scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang,
+     int scatter_format, int final_scatter_format, int order_data);
 
     //! \brief Reads fission data from the HDF5 file
     void
-    fission_from_hdf5(hid_t xsdata_grp, size_t n_ang, size_t energy_groups,
-         size_t delayed_groups, bool is_isotropic);
+    fission_from_hdf5(hid_t xsdata_grp, size_t n_ang, bool is_isotropic);
 
     //! \brief Reads fission data formatted as chi and nu-fission vectors from
     //  the HDF5 file when beta is provided.
     void
-    fission_vector_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
-         size_t energy_groups, size_t delayed_groups, bool is_isotropic);
+    fission_vector_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang, bool is_isotropic);
 
     //! \brief Reads fission data formatted as chi and nu-fission vectors from
     //  the HDF5 file when beta is not provided.
     void
-    fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
-         size_t energy_groups, size_t delayed_groups);
+    fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang);
 
     //! \brief Reads fission data formatted as chi and nu-fission vectors from
     //  the HDF5 file when no delayed data is provided.
     void
-    fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang,
-         size_t energy_groups);
+    fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang);
 
     //! \brief Reads fission data formatted as a nu-fission matrix from
     //  the HDF5 file when beta is provided.
     void
-    fission_matrix_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
-         size_t energy_groups, size_t delayed_groups, bool is_isotropic);
+    fission_matrix_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang, bool is_isotropic);
 
     //! \brief Reads fission data formatted as a nu-fission matrix from
     //  the HDF5 file when beta is not provided.
     void
-    fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
-         size_t energy_groups, size_t delayed_groups);
+    fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang);
 
     //! \brief Reads fission data formatted as a nu-fission matrix from
     //  the HDF5 file when no delayed data is provided.
     void
-    fission_matrix_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang,
-         size_t energy_groups);
+    fission_matrix_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang);
 
   public:
 
@@ -106,8 +98,7 @@ class XsData {
     //! @param scatter_format The scattering representation of the file.
     //! @param n_pol Number of polar angles.
     //! @param n_azi Number of azimuthal angles.
-    XsData(size_t num_groups, size_t num_delayed_groups, bool fissionable,
-           int scatter_format, int n_pol, int n_azi);
+    XsData(bool fissionable, int scatter_format, int n_pol, int n_azi);
 
     //! \brief Loads the XsData object from the HDF5 file
     //!
@@ -118,20 +109,13 @@ class XsData {
     //!   this is different from scatter_format if converting a Legendre to
     //!   a tabular representation.
     //! @param order_data The dimensionality of the scattering data in the file.
-    //! @param max_order Maximum order requested by the user;
-    //!   this is only used for Legendre scattering.
-    //! @param legendre_to_tabular Flag to denote if any Legendre provided
-    //!   should be converted to a Tabular representation.
-    //! @param legendre_to_tabular_points If a conversion is requested, this
-    //!   provides the number of points to use in the tabular representation.
     //! @param is_isotropic Is this an isotropic or angular with respect to
     //!   the incoming particle.
     //! @param n_pol Number of polar angles.
     //! @param n_azi Number of azimuthal angles.
     void
     from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
-         int final_scatter_format, int order_data, int max_order,
-         int legendre_to_tabular_points, bool is_isotropic, int n_pol,
+         int final_scatter_format, int order_data, bool is_isotropic, int n_pol,
          int n_azi);
 
     //! \brief Combines the microscopic data to a macroscopic object.

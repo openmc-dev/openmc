@@ -6,7 +6,7 @@
 
 #include <cstdint>
 #include <string>
-
+#include <vector>
 
 namespace openmc {
 
@@ -14,13 +14,38 @@ namespace openmc {
 //! Replace Universe, Lattice, and Material IDs with indices.
 //==============================================================================
 
-extern "C" void adjust_indices();
+void adjust_indices();
 
 //==============================================================================
 //! Assign defaults to cells with undefined temperatures.
 //==============================================================================
 
-extern "C" void assign_temperatures();
+void assign_temperatures();
+
+//==============================================================================
+//! \brief Obtain a list of temperatures that each nuclide/thermal scattering
+//! table appears at in the model. Later, this list is used to determine the
+//! actual temperatures to read (which may be different if interpolation is
+//! used)
+//!
+//! \param[out] nuc_temps  Vector of temperatures for each nuclide
+//! \param[out] thermal_temps Vector of tempratures for each thermal scattering
+//!   table
+//==============================================================================
+
+void get_temperatures(std::vector<std::vector<double>>& nuc_temps,
+  std::vector<std::vector<double>>& thermal_temps);
+
+//==============================================================================
+//! \brief Perform final setup for geometry
+//!
+//! \param[out] nuc_temps  Vector of temperatures for each nuclide
+//! \param[out] thermal_temps Vector of tempratures for each thermal scattering
+//!   table
+//==============================================================================
+
+void finalize_geometry(std::vector<std::vector<double>>& nuc_temps,
+  std::vector<std::vector<double>>& thermal_temps);
 
 //==============================================================================
 //! Figure out which Universe is the root universe.
@@ -36,7 +61,7 @@ extern "C" int32_t find_root_universe();
 //! Populate all data structures needed for distribcells.
 //==============================================================================
 
-extern "C" void prepare_distribcell();
+void prepare_distribcell();
 
 //==============================================================================
 //! Recursively search through the geometry and count cell instances.

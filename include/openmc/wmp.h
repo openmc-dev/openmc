@@ -4,6 +4,7 @@
 #include "hdf5.h"
 #include "xtensor/xtensor.hpp"
 
+#include <array>
 #include <complex>
 #include <string>
 #include <tuple>
@@ -24,6 +25,9 @@ constexpr int MP_RF {3}; // Residue fission
 constexpr int FIT_S {0}; // Scattering
 constexpr int FIT_A {1}; // Absorption
 constexpr int FIT_F {2}; // Fission
+
+// Multipole HDF5 file version
+constexpr std::array<int, 2> WMP_VERSION {1, 1};
 
 //========================================================================
 // Windowed multipole data
@@ -67,6 +71,21 @@ public:
   xt::xtensor<double, 3> curvefit_; //!< Fitting function (reaction, coeff index, window index)
   xt::xtensor<bool, 1> broaden_poly_; //!< Whether to broaden curvefit
 };
+
+//========================================================================
+// Non-member functions
+//========================================================================
+
+//! Check to make sure WMP library data version matches
+//!
+//! \param[in] file  HDF5 file object
+void check_wmp_version(hid_t file);
+
+//! \brief Checks for the existence of a multipole library in the directory and
+//! loads it
+//!
+//! \param[in] i_nuclide  Index in global nuclides array
+void read_multipole_data(int i_nuclide);
 
 } // namespace openmc
 

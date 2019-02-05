@@ -13,7 +13,7 @@ module volume_calc
   use hdf5_interface, only: file_open, file_close, write_attribute, &
        create_group, close_group, write_dataset, HID_T
   use output,       only: header, time_stamp
-  use material_header, only: materials
+  use material_header
   use message_passing
   use nuclide_header, only: nuclides
   use particle_header
@@ -215,7 +215,7 @@ contains
         i_material = p % material
         if (i_material /= MATERIAL_VOID) then
           do i_domain = 1, size(this % domain_id)
-            if (materials(i_material) % id() == this % domain_id(i_domain)) then
+            if (material_id(i_material) == this % domain_id(i_domain)) then
               call check_hit(i_domain, i_material, indices, hits, n_mat)
             end if
           end do
@@ -328,16 +328,14 @@ contains
           i_material = master_indices(i_domain) % data(j)
           if (i_material == MATERIAL_VOID) cycle
 
-          associate (mat => materials(i_material))
-            do k = 1, size(mat % nuclide)
-              ! Accumulate nuclide density
-              i_nuclide = mat % nuclide(k)
-              atoms(1, i_nuclide) = atoms(1, i_nuclide) + &
-                   mat % atom_density(k) * f
-              atoms(2, i_nuclide) = atoms(2, i_nuclide) + &
-                   mat % atom_density(k)**2 * var_f
-            end do
-          end associate
+          do k = 1, material_nuclide_size(i_material)
+            ! Accumulate nuclide density
+            i_nuclide = material_nuclide(i_material, k)
+            atoms(1, i_nuclide) = atoms(1, i_nuclide) + &
+                  material_atom_density(i_material, k) * f
+            atoms(2, i_nuclide) = atoms(2, i_nuclide) + &
+                  material_atom_density(i_material, k)**2 * var_f
+          end do
         end do
 
         ! Determine volume

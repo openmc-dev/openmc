@@ -1,16 +1,38 @@
 #include "openmc/dagmc.h"
 
 #include "openmc/cell.h"
+#include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/file_utils.h"
 #include "openmc/string_utils.h"
 #include "openmc/settings.h"
 #include "openmc/geometry.h"
 
+#ifdef DAGMC
+
+#include "uwuw.hpp"
+#include "dagmcmetadata.hpp"
+
+#endif
+
 #include <string>
 #include <sstream>
 #include <algorithm>
+#include <fstream>
+
+namespace openmc {
 
 #ifdef DAGMC
+const bool dagmc_enabled = true;
+#else
+const bool dagmc_enabled = false;
+#endif
+
+}
+
+#ifdef DAGMC
+
+const std::string DAGMC_FILENAME = "dagmc.h5m";
 
 namespace openmc {
 
@@ -20,27 +42,95 @@ moab::DagMC* DAG;
 
 } // namespace model
 
+
+bool get_uwuw_materials_xml(std::string& s) {
+  UWUW uwuw(DAGMC_FILENAME.c_str());
+
+  std::stringstream ss;
+  bool uwuw_mats_present = false;
+  if (uwuw.material_library.size() != 0) {
+    uwuw_mats_present = true;
+    // write header
+    ss << "<?xml version=\"1.0\"?>\n";
+    ss << "<materials>\n";
+    const auto& mat_lib = uwuw.material_library;
+    // write materials
+    for (auto mat : mat_lib) { ss << mat.second.openmc("atom"); }
+    // write footer
+    ss << "</materials>";
+    s = ss.str();
+  }
+
+  return uwuw_mats_present;
+}
+
+pugi::xml_document* read_uwuw_materials() {
+  pugi::xml_document* doc = nullptr;
+
+  std::string s;
+  bool found_uwuw_mats = get_uwuw_materials_xml(s);
+  if (found_uwuw_mats) {
+    doc = new pugi::xml_document();
+    pugi::xml_parse_result result = doc->load_string(s.c_str());
+  }
+  return doc;
+}
+
+bool write_uwuw_materials_xml() {
+  std::string s;
+  bool found_uwuw_mats = get_uwuw_materials_xml(s);
+    // if there is a material library in the file
+  if (found_uwuw_mats) {
+    // write a material.xml file
+    std::ofstream mats_xml("materials.xml");
+    mats_xml << s;
+    mats_xml.close();
+  }
+
+  return found_uwuw_mats;
+}
+
 void load_dagmc_geometry()
 {
   if (!model::DAG) {
     model::DAG = new moab::DagMC();
   }
 
-  int32_t dagmc_univ_id = 0; // universe is always 0 for DAGMC
+  /// Materials \\\
 
-  moab::ErrorCode rval = model::DAG->load_file("dagmc.h5m");
+  // create uwuw instance
+  UWUW uwuw(DAGMC_FILENAME.c_str());
+
+  // check for uwuw material definitions
+  bool using_uwuw = !uwuw.material_library.empty();
+
+  // notify user if UWUW materials are going to be used
+  if (using_uwuw) {
+    std::cout << "Found UWUW Materials in the DAGMC geometry file.\n";
+  }
+
+  int32_t dagmc_univ_id = 0; // universe is always 0 for DAGMC runs
+
+  // load the DAGMC geometry
+  moab::ErrorCode rval = model::DAG->load_file(DAGMC_FILENAME.c_str());
   MB_CHK_ERR_CONT(rval);
 
+  // initialize acceleration data structures
   rval = model::DAG->init_OBBTree();
   MB_CHK_ERR_CONT(rval);
 
-  std::vector<std::string> prop_keywords;
-  prop_keywords.push_back("mat");
-  prop_keywords.push_back("boundary");
-
-  std::map<std::string, std::string> ph;
-  model::DAG->parse_properties(prop_keywords, ph, ":");
+  // parse model metadata
+  dagmcMetaData DMD(model::DAG);
+  if (using_uwuw) {
+    DMD.load_property_data();
+  }
+  std::vector<std::string> keywords {"temp", "mat", "density", "boundary"};
+  std::map<std::string, std::string> dum;
+  std::string delimiters = ":/";
+  rval = model::DAG->parse_properties(keywords, dum, delimiters.c_str());
   MB_CHK_ERR_CONT(rval);
+
+  /// Cells (Volumes) \\\
 
   // initialize cell objects
   model::n_cells = model::DAG->num_entities(3);
@@ -69,34 +159,79 @@ void load_dagmc_geometry()
       model::universes[it->second]->cells_.push_back(i);
     }
 
+    // check for temperature assignment
+    std::string temp_value;
+    if (model::DAG->has_prop(vol_handle, "temp")) {
+      rval = model::DAG->prop_value(vol_handle, "temp", temp_value);
+      MB_CHK_ERR_CONT(rval);
+      double temp = std::stod(temp_value);
+      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * temp));
+    } else {
+      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
+    }
+
+    // MATERIALS
+
     if (model::DAG->is_implicit_complement(vol_handle)) {
-      // assuming implicit complement is void for now
-      c->material_.push_back(MATERIAL_VOID);
+      if (model::DAG->has_prop(vol_handle, "mat")) {
+        // if the implicit complement has been assigned a material, use it
+        std::string comp_mat = DMD.volume_material_property_data_eh[vol_handle];
+        // Note: material numbers are set by UWUW
+        int mat_number = uwuw.material_library[comp_mat].metadata["mat_number"].asInt();
+        c->material_.push_back(mat_number);
+      } else {
+        // if no material is found, the implicit complement is void
+        c->material_.push_back(MATERIAL_VOID);
+      }
       continue;
     }
 
-    if (model::DAG->has_prop(vol_handle, "mat")){
-      std::string mat_value;
+    // determine volume material assignment
+    std::string mat_value;
+    if (model::DAG->has_prop(vol_handle, "mat")) {
       rval = model::DAG->prop_value(vol_handle, "mat", mat_value);
       MB_CHK_ERR_CONT(rval);
-      to_lower(mat_value);
-
-      if (mat_value == "void" || mat_value == "vacuum") {
-        c->material_.push_back(MATERIAL_VOID);
-      } else {
-        c->material_.push_back(std::stoi(mat_value));
-      }
     } else {
       std::stringstream err_msg;
       err_msg << "Volume " << c->id_ << " has no material assignment.";
       fatal_error(err_msg.str());
     }
+
+    std::string cmp_str = mat_value;
+    to_lower(cmp_str);
+    // material void checks
+    if (cmp_str.find("void") != std::string::npos   ||
+        cmp_str.find("vacuum") != std::string::npos ||
+        cmp_str.find("graveyard") != std::string::npos) {
+      c->material_.push_back(MATERIAL_VOID);
+    } else {
+      if (using_uwuw) {
+        // lookup material in uwuw if the were present
+        std::string uwuw_mat = DMD.volume_material_property_data_eh[vol_handle];
+        if (uwuw.material_library.count(uwuw_mat) != 0) {
+          // Note: material numbers are set by UWUW
+          int mat_number = uwuw.material_library[uwuw_mat].metadata["mat_number"].asInt();
+          c->material_.push_back(mat_number);
+        } else {
+          std::stringstream err_msg;
+          err_msg << "Material with value " << mat_value << " not found ";
+          err_msg << "in the UWUW material library";
+          fatal_error(err_msg);
+        }
+      } else {
+        // if not using UWUW materials, we'll find this material
+        // later in the materials.xml
+        c->material_.push_back(std::stoi(mat_value));
+      }
+    }
   }
 
-  // Allocate the cell overlap count if necessary.
+  // allocate the cell overlap count if necessary
   if (settings::check_overlaps) {
     model::overlap_check_count.resize(model::cells.size(), 0);
   }
+
+  /// Surfaces \\\
 
   // initialize surface objects
   int n_surfaces = model::DAG->num_entities(2);
@@ -110,8 +245,9 @@ void load_dagmc_geometry()
     s->id_ = model::DAG->id_by_index(2, i+1);
     s->dagmc_ptr_ = model::DAG;
 
+    // set BCs
+    std::string bc_value;
     if (model::DAG->has_prop(surf_handle, "boundary")) {
-      std::string bc_value;
       rval = model::DAG->prop_value(surf_handle, "boundary", bc_value);
       MB_CHK_ERR_CONT(rval);
       to_lower(bc_value);
@@ -130,7 +266,8 @@ void load_dagmc_geometry()
                 << "\" specified on surface " << s->id_;
         fatal_error(err_msg);
       }
-    } else {   // if no BC property is found, set to transmit
+    } else {
+      // if no condition is found, set to transmit
       s->bc_ = BC_TRANSMIT;
     }
 
@@ -146,6 +283,7 @@ void free_memory_dagmc()
 {
   delete model::DAG;
 }
+
 
 }
 #endif

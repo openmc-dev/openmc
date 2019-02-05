@@ -10,6 +10,7 @@
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_lcg.h"
+#include "openmc/settings.h"
 
 namespace openmc {
 
@@ -850,10 +851,10 @@ ScattDataTabular::combine(const std::vector<ScattData*>& those_scatts,
 //==============================================================================
 
 void
-convert_legendre_to_tabular(ScattDataLegendre& leg, ScattDataTabular& tab,
-                            int n_mu)
+convert_legendre_to_tabular(ScattDataLegendre& leg, ScattDataTabular& tab)
 {
   // See if the user wants us to figure out how many points to use
+  int n_mu = settings::legendre_to_tabular_points;
   if (n_mu == C_NONE) {
     // then we will use 2 pts if its P0, or the default if a higher order
     // TODO use an error minimization algorithm that also picks n_mu

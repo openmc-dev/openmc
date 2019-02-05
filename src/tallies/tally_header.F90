@@ -7,10 +7,10 @@ module tally_header
   use dict_header,         only: DictIntInt
   use hdf5_interface,      only: HID_T, HSIZE_T
   use message_passing,     only: n_procs, master
-  use nuclide_header,      only: nuclide_dict
+  use nuclide_header,      only: nuclide_map_get
   use settings,            only: reduce_tallies, run_mode
   use stl_vector,          only: VectorInt
-  use string,              only: to_lower, to_f_string, str_to_int, to_str
+  use string,              only: to_lower, to_f_string, str_to_int, to_str, to_c_string
   use tally_filter_header, only: TallyFilterContainer, filters, n_filters
   use tally_filter
 
@@ -883,6 +883,7 @@ contains
 
     integer, allocatable :: bins(:)
     integer :: i
+    integer :: idx
     character(C_CHAR), pointer :: string(:)
     character(len=:, kind=C_CHAR), allocatable :: nuclide_
 
@@ -894,14 +895,15 @@ contains
         do i = 1, n
           ! Convert C string to Fortran string
           call c_f_pointer(nuclides(i), string, [10])
-          nuclide_ = to_lower(to_f_string(string))
+          nuclide_ = to_f_string(string)
 
           select case (nuclide_)
           case ('total')
             bins(i) = -1
           case default
-            if (nuclide_dict % has(nuclide_)) then
-              bins(i) = nuclide_dict % get(nuclide_)
+            idx = nuclide_map_get(to_c_string(nuclide_))
+            if (idx /= -1) then
+              bins(i) = idx
             else
               err = E_DATA
               call set_errmsg("Nuclide '" // trim(to_f_string(string)) // &

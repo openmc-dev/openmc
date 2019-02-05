@@ -174,14 +174,11 @@ Bank SourceDistribution::sample() const
           // Determine material
           auto c = model::cells[cell_index - 1];
           int32_t mat_index = c->material_[instance];
-          auto m = model::materials[mat_index];
 
           if (mat_index == MATERIAL_VOID) {
             found = false;
           } else {
-            bool fissionable;
-            openmc_material_get_fissionable(mat_index + 1, &fissionable);
-            if (!fissionable) found = false;
+            if (!model::materials[mat_index]->fissionable_) found = false;
           }
         }
       }
@@ -212,10 +209,10 @@ Bank SourceDistribution::sample() const
   auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());
   if (energy_ptr) {
     auto energies = xt::adapt(energy_ptr->x());
-    if (xt::any(energies > data::energy_max[p-1])) {
+    if (xt::any(energies > data::energy_max[p])) {
       fatal_error("Source energy above range of energies of at least "
                   "one cross section table");
-    } else if (xt::any(energies < data::energy_min[p-1])) {
+    } else if (xt::any(energies < data::energy_min[p])) {
       fatal_error("Source energy below range of energies of at least "
                   "one cross section table");
     }
@@ -226,7 +223,7 @@ Bank SourceDistribution::sample() const
     site.E = energy_->sample();
 
     // Resample if energy falls outside minimum or maximum particle energy
-    if (site.E < data::energy_max[p-1] && site.E > data::energy_min[p-1]) break;
+    if (site.E < data::energy_max[p] && site.E > data::energy_min[p]) break;
   }
 
   // Set delayed group

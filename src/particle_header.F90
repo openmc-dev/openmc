@@ -115,15 +115,6 @@ module particle_header
       type(Particle), intent(inout) :: p
     end subroutine particle_clear
 
-    subroutine particle_create_secondary(p, uvw, E, type, run_CE) bind(C)
-      import Particle, C_DOUBLE, C_INT, C_BOOL
-      type(Particle), intent(inout) :: p
-      real(C_DOUBLE), intent(in)    :: uvw(3)
-      real(C_DOUBLE), value         :: E
-      integer(C_INT), value         :: type
-      logical(C_BOOL), value        :: run_CE
-    end subroutine particle_create_secondary
-
     subroutine particle_initialize(p) bind(C)
       import Particle
       type(Particle), intent(inout) :: p

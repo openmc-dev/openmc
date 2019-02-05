@@ -302,16 +302,7 @@ int reaction_product_emission_mode(Reaction* rx, int product)
 
 int reaction_product_particle(Reaction* rx, int product)
 {
-  switch (rx->products_[product - 1].particle_) {
-  case ParticleType::neutron:
-    return 1;
-  case ParticleType::photon:
-    return 2;
-  case ParticleType::electron:
-    return 3;
-  case ParticleType::positron:
-    return 4;
-  }
+  return static_cast<int>(rx->products_[product - 1].particle_);
 }
 
 void reaction_product_sample(Reaction* rx, int product, double E_in, double* E_out, double* mu)

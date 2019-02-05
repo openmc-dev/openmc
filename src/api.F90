@@ -62,7 +62,6 @@ contains
     use geometry_header
     use material_header
     use photon_header
-    use sab_header
     use settings
     use simulation_header
     use surface_header
@@ -72,6 +71,9 @@ contains
 
     interface
       subroutine free_memory_source() bind(C)
+      end subroutine
+
+      subroutine free_memory_material() bind(C)
       end subroutine
 
       subroutine free_memory_mesh() bind(C)
@@ -85,6 +87,9 @@ contains
 
       subroutine free_memory_cmfd() bind(C)
       end subroutine free_memory_cmfd
+
+      subroutine sab_clear() bind(C)
+      end subroutine
     end interface
 
     call free_memory_geometry()
@@ -95,7 +100,7 @@ contains
     call free_memory_nuclide()
     call free_memory_photon()
     call free_memory_settings()
-    call free_memory_sab()
+    call sab_clear()
     call free_memory_source()
     call free_memory_mesh()
     call free_memory_tally()

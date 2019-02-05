@@ -37,7 +37,7 @@ extern "C" void print_particle(Particle* p);
 //! Display plot information.
 //==============================================================================
 
-extern "C" void print_plot();
+void print_plot();
 
 //==============================================================================
 //! Display information regarding cell overlap checking.

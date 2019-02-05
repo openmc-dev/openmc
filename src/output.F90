@@ -31,12 +31,6 @@ module output
   integer :: eu = ERROR_UNIT
 
   interface
-    function entropy(i) result(h) bind(C, name='entropy_c')
-      import C_INT, C_DOUBLE
-      integer(C_INT), value :: i
-      real(C_DOUBLE) :: h
-    end function
-
     subroutine print_particle(p) bind(C)
       import Particle
       type(Particle), intent(in) :: p
@@ -98,77 +92,6 @@ contains
     end if
 
   end subroutine header
-
-!===============================================================================
-! PRINT_RUNTIME displays the total time elapsed for the entire run, for
-! initialization, for computation, and for intergeneration synchronization.
-!===============================================================================
-
-  subroutine print_runtime() bind(C)
-
-    integer       :: n_active
-    real(8)       :: speed_inactive  ! # of neutrons/second in inactive batches
-    real(8)       :: speed_active    ! # of neutrons/second in active batches
-    character(15) :: string
-
-    ! display header block
-    call header("Timing Statistics", 6)
-
-    ! display time elapsed for various sections
-    write(ou,100) "Total time for initialization", time_initialize_elapsed()
-    write(ou,100) "  Reading cross sections", time_read_xs_elapsed()
-    write(ou,100) "Total time in simulation", time_inactive_elapsed() + &
-         time_active_elapsed()
-    write(ou,100) "  Time in transport only", time_transport_elapsed()
-    if (run_mode == MODE_EIGENVALUE) then
-      write(ou,100) "  Time in inactive batches", time_inactive_elapsed()
-    end if
-    write(ou,100) "  Time in active batches", time_active_elapsed()
-    if (run_mode == MODE_EIGENVALUE) then
-      write(ou,100) "  Time synchronizing fission bank", time_bank_elapsed()
-      write(ou,100) "    Sampling source sites", time_bank_sample_elapsed()
-      write(ou,100) "    SEND/RECV source sites", time_bank_sendrecv_elapsed()
-    end if
-    write(ou,100) "  Time accumulating tallies", time_tallies_elapsed()
-    write(ou,100) "Total time for finalization", time_finalize_elapsed()
-    write(ou,100) "Total time elapsed", time_total_elapsed()
-
-    ! Calculate particle rate in active/inactive batches
-    n_active = current_batch - n_inactive
-    if (restart_run) then
-      if (restart_batch < n_inactive) then
-        speed_inactive = real(n_particles * (n_inactive - restart_batch) * &
-             gen_per_batch) / time_inactive_elapsed()
-        speed_active = real(n_particles * n_active * gen_per_batch) / &
-             time_active_elapsed()
-      else
-        speed_inactive = ZERO
-        speed_active = real(n_particles * (n_batches - restart_batch) * &
-             gen_per_batch) / time_active_elapsed()
-      end if
-    else
-      if (n_inactive > 0) then
-        speed_inactive = real(n_particles * n_inactive * gen_per_batch) / &
-             time_inactive_elapsed()
-      end if
-      speed_active = real(n_particles * n_active * gen_per_batch) / &
-           time_active_elapsed()
-    end if
-
-    ! display calculation rate
-    if (.not. (restart_run .and. (restart_batch >= n_inactive)) &
-         .and. n_inactive > 0) then
-      string = to_str(speed_inactive)
-      write(ou,101) "Calculation Rate (inactive)", trim(string)
-    end if
-    string = to_str(speed_active)
-    write(ou,101) "Calculation Rate (active)", trim(string)
-
-    ! format for write statements
-100 format (1X,A,T36,"= ",ES11.4," seconds")
-101 format (1X,A,T36,"=  ",A," particles/second")
-
-  end subroutine print_runtime
 
 !===============================================================================
 ! PRINT_RESULTS displays various estimates of k-effective as well as the global

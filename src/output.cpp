@@ -2,7 +2,8 @@
 
 #include <algorithm>  // for std::transform
 #include <cstring>  // for strlen
-#include <iomanip>  // for setw
+#include <iomanip>  // for setw, setprecision
+#include <ios> // for fixed, scientific, left
 #include <iostream>
 #include <sstream>
 #include <ctime>
@@ -20,6 +21,7 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/surface.h"
+#include "openmc/timer.h"
 
 namespace openmc {
 
@@ -341,51 +343,154 @@ void print_columns()
 
 void print_generation()
 {
+  // Save state of cout
+  auto f {std::cout.flags()};
+
   // Determine overall generation and number of active generations
   int i = overall_generation() - 1;
   int n = simulation::current_batch > settings::n_inactive ?
     settings::gen_per_batch*n_realizations + simulation::current_gen : 0;
 
+  // Set format for values
+  std::cout << std::fixed << std::setprecision(5);
+
   // write out information batch and option independent output
   std::cout << "  "  << std::setw(9) <<  std::to_string(simulation::current_batch)
-    + "/" + std::to_string(simulation::current_gen) << "   " <<
-    std::fixed << std::setw(8) << std::setprecision(5) << simulation::k_generation[i];
+    + "/" + std::to_string(simulation::current_gen) << "   " << std::setw(8)
+    << simulation::k_generation[i];
 
   // write out entropy info
-  if (settings::entropy_on) std::cout << "   " <<
-    std::fixed << std::setw(8) << std::setprecision(5) << simulation::entropy[i];
+  if (settings::entropy_on) {
+    std::cout << "   " << std::setw(8) << simulation::entropy[i];
+  }
 
   if (n > 1) {
-    std::cout << "   " <<
-      std::fixed << std::setw(8) << std::setprecision(5) << simulation::keff << " +/-" <<
-      std::fixed << std::setw(8) << std::setprecision(5) << simulation::keff_std;
+    std::cout << "   " << std::setw(8) << simulation::keff << " +/-"
+      << std::setw(8) << simulation::keff_std;
   }
   std::cout << '\n';
+
+  // Restore state of cout
+  std::cout.flags(f);
 }
 
 //==============================================================================
 
 void print_batch_keff()
 {
+  // Save state of cout
+  auto f {std::cout.flags()};
+
   // Determine overall generation and number of active generations
   int i = simulation::current_batch*settings::gen_per_batch - 1;
   int n = n_realizations*settings::gen_per_batch;
 
+  // Set format for values
+  std::cout << std::fixed << std::setprecision(5);
+
   // write out information batch and option independent output
   std::cout << "  "  << std::setw(9) <<  std::to_string(simulation::current_batch)
-    + "/" + std::to_string(settings::gen_per_batch) << "   " <<
-    std::fixed << std::setw(8) << std::setprecision(5) << simulation::k_generation[i];
+    + "/" + std::to_string(settings::gen_per_batch) << "   " << std::setw(8)
+    << simulation::k_generation[i];
 
   // write out entropy info
-  if (settings::entropy_on) std::cout << "   " <<
-    std::fixed << std::setw(8) << std::setprecision(5) << simulation::entropy[i];
+  if (settings::entropy_on) {
+    std::cout << "   " << std::setw(8) << simulation::entropy[i];
+  }
 
   if (n > 1) {
-    std::cout << "   " <<
-      std::fixed << std::setw(8) << std::setprecision(5) << simulation::keff << " +/-" <<
-      std::fixed << std::setw(8) << std::setprecision(5) << simulation::keff_std;
+    std::cout << "   " << std::setw(8) << simulation::keff << " +/-"
+      << std::setw(8) << simulation::keff_std;
   }
   std::cout << '\n';
+
+  // Restore state of cout
+  std::cout.flags(f);
+}
+
+//==============================================================================
+
+void show_time(const char* label, double value)
+{
+  std::cout << " " << std::setw(33) << std::left << label << " = "
+    << std::setw(10) << std::right << value << " seconds\n";
+}
+
+void show_rate(const char* label, double value)
+{
+  std::cout << " " << std::setw(33) << std::left << label << " = " <<
+    value << " particles/second\n";
+}
+
+void print_runtime()
+{
+  using namespace simulation;
+
+  // display header block
+  header("Timing Statistics", 6);
+
+  // Save state of cout
+  auto f {std::cout.flags()};
+
+  // display time elapsed for various sections
+  std::cout << std::scientific << std::setprecision(4);
+  show_time("Total time for initialization", time_initialize.elapsed());
+  show_time("  Reading cross sections", time_read_xs.elapsed());
+  show_time("Total time in simulation", time_inactive.elapsed() +
+    time_active.elapsed());
+  show_time("  Time in transport only", time_transport.elapsed());
+  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    show_time("  Time in inactive batches", time_inactive.elapsed());
+  }
+  show_time("  Time in active batches", time_active.elapsed());
+  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    show_time("  Time synchronizing fission bank", time_bank.elapsed());
+    show_time("    Sampling source sites", time_bank_sample.elapsed());
+    show_time("    SEND/RECV source sites", time_bank_sendrecv.elapsed());
+  }
+  show_time("  Time accumulating tallies", time_tallies.elapsed());
+  show_time("Total time for finalization", time_finalize.elapsed());
+  show_time("Total time elapsed", time_total.elapsed());
+
+  // Restore state of cout
+  std::cout.flags(f);
+
+  // Calculate particle rate in active/inactive batches
+  int n_active = simulation::current_batch - settings::n_inactive;
+  double speed_inactive;
+  double speed_active;
+  if (settings::restart_run) {
+    if (simulation::restart_batch < settings::n_inactive) {
+      speed_inactive = (settings::n_particles * (settings::n_inactive
+        - simulation::restart_batch) * settings::gen_per_batch)
+        / time_inactive.elapsed();
+      speed_active = (settings::n_particles * n_active
+        * settings::gen_per_batch) / time_active.elapsed();
+    } else {
+      speed_inactive = 0.0;
+      speed_active = (settings::n_particles * (settings::n_batches
+        - simulation::restart_batch) * settings::gen_per_batch)
+        / time_active.elapsed();
+    }
+  } else {
+    if (settings::n_inactive > 0) {
+      speed_inactive = (settings::n_particles * settings::n_inactive
+        * settings::gen_per_batch) / time_inactive.elapsed();
+    }
+    speed_active = (settings::n_particles * n_active * settings::gen_per_batch)
+      / time_active.elapsed();
+  }
+
+  // display calculation rate
+  std::cout << std::setprecision(6) << std::showpoint;
+  if (!(settings::restart_run && (simulation::restart_batch >= settings::n_inactive))
+      && settings::n_inactive > 0) {
+    show_rate("Calculation Rate (inactive)", speed_inactive);
+  }
+  show_rate("Calculation Rate (active)", speed_active);
+
+  // Restore state of cout
+  std::cout.flags(f);
 }
 
 } // namespace openmc

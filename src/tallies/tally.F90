@@ -142,7 +142,7 @@ contains
     ! Pre-collision energy of particle
     E = p % last_E
 
-    SCORE_LOOP: do i = 1, t % n_score_bins
+    SCORE_LOOP: do i = 1, t % n_score_bins()
 
       ! determine what type of score bin
       score_bin = t % score_bins(i)
@@ -1308,7 +1308,7 @@ contains
     end if
 
     i = 0
-    SCORE_LOOP: do q = 1, t % n_score_bins
+    SCORE_LOOP: do q = 1, t % n_score_bins()
       i = i + 1
 
       ! determine what type of score bin
@@ -2064,7 +2064,7 @@ contains
       atom_density = mat % atom_density(i)
 
       ! Determine score for each bin
-      call score_general(p, i_tally, (i_nuclide-1)*t % n_score_bins, filter_index, &
+      call score_general(p, i_tally, (i_nuclide-1)*t % n_score_bins(), filter_index, &
            i_nuclide, atom_density, flux)
 
     end do NUCLIDE_LOOP
@@ -2076,7 +2076,7 @@ contains
     atom_density = ZERO
 
     ! Determine score for each bin
-    call score_general(p, i_tally, n_nuclides*t % n_score_bins, filter_index, &
+    call score_general(p, i_tally, n_nuclides*t % n_score_bins(), filter_index, &
          i_nuclide, atom_density, flux)
 
     end associate
@@ -3123,7 +3123,7 @@ contains
         err = openmc_tally_get_active(i, active)
         if (active) then
           ! Check if tally contains depletion reactions and if so, set flag
-          if (t % depletion_rx) need_depletion_rx = .true.
+          if (t % depletion_rx()) need_depletion_rx = .true.
         end if
       end associate
     end do
@@ -3194,12 +3194,6 @@ contains
     integer(C_INT), value :: i_material, i
     real(C_DOUBLE) :: dens
     dens = materials(i_material) % atom_density(i)
-  end function
-
-  function tally_get_n_score_bins(i_tally) result(n) bind(C)
-    integer(C_INT), value :: i_tally
-    integer(C_INT) :: n
-    n = tallies(i_tally) % obj % n_score_bins
   end function
 
 end module tally

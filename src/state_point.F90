@@ -312,9 +312,9 @@ contains
           end if
 
           ! Write scores.
-          call write_dataset(tally_group, "n_score_bins", tally % n_score_bins)
-          allocate(str_array(size(tally % score_bins)))
-          do j = 1, size(tally % score_bins)
+          call write_dataset(tally_group, "n_score_bins", tally % n_score_bins())
+          allocate(str_array(tally % n_score_bins()))
+          do j = 1, tally % n_score_bins()
             str_array(j) = reaction_name(tally % score_bins(j))
           end do
           call write_dataset(tally_group, "score_bins", str_array)

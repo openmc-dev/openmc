@@ -8,10 +8,14 @@
 #include "openmc/settings.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
-#include "openmc/tallies/filter_energy.h"
+#include "openmc/tallies/filter_cell.h"
+#include "openmc/tallies/filter_cellfrom.h"
 #include "openmc/tallies/filter_delayedgroup.h"
-#include "openmc/tallies/filter_surface.h"
+#include "openmc/tallies/filter_energy.h"
+#include "openmc/tallies/filter_legendre.h"
 #include "openmc/tallies/filter_mesh.h"
+#include "openmc/tallies/filter_meshsurface.h"
+#include "openmc/tallies/filter_surface.h"
 #include "openmc/xml_interface.h"
 
 #include "xtensor/xadapt.hpp"
@@ -43,8 +47,6 @@ score_all_nuclides(Particle* p, int i_tally, double flux, int filter_index);
 extern "C" int material_nuclide_index(int i_material, int i_nuclide);
 
 extern "C" double material_atom_density(int i_material, int i);
-
-extern "C" int tally_get_n_score_bins(int i_tally);
 
 //==============================================================================
 // Global variable definitions
@@ -189,6 +191,162 @@ private:
   const Tally& tally_;
 };
 
+int
+score_str_to_int(std::string score_str)
+{
+  if (score_str == "flux")
+    return SCORE_FLUX;
+
+  if (score_str == "total" || score_str == "(n,total)")
+    return SCORE_TOTAL;
+
+  if (score_str == "scatter")
+    return SCORE_SCATTER;
+
+  if (score_str == "nu-scatter")
+    return SCORE_NU_SCATTER;
+
+  if (score_str == "absorption")
+    return SCORE_ABSORPTION;
+
+  if (score_str == "fission" || score_str == "18")
+    return SCORE_FISSION;
+
+  if (score_str == "nu-fission")
+    return SCORE_NU_FISSION;
+
+  if (score_str == "decay-rate")
+    return SCORE_DECAY_RATE;
+
+  if (score_str == "delayed-nu-fission")
+    return SCORE_DELAYED_NU_FISSION;
+
+  if (score_str == "prompt-nu-fission")
+    return SCORE_PROMPT_NU_FISSION;
+
+  if (score_str == "kappa-fission")
+    return SCORE_KAPPA_FISSION;
+
+  if (score_str == "inverse-velocity")
+    return SCORE_INVERSE_VELOCITY;
+
+  if (score_str == "fission-q-prompt")
+    return SCORE_FISS_Q_PROMPT;
+
+  if (score_str == "fission-q-recoverable")
+    return SCORE_FISS_Q_RECOV;
+
+  if (score_str == "current")
+    return SCORE_CURRENT;
+
+  if (score_str == "events")
+    return SCORE_EVENTS;
+
+  if (score_str == "elastic" || score_str == "(n,elastic)")
+    return ELASTIC;
+
+  if (score_str == "n2n" || score_str == "(n,2n)")
+    return N_2N;
+
+  if (score_str == "n3n" || score_str == "(n,3n)")
+    return N_3N;
+
+  if (score_str == "n4n" || score_str == "(n,4n)")
+    return N_4N;
+
+  if (score_str == "(n,2nd)")
+    return N_2ND;
+  if (score_str == "(n,na)")
+    return N_2NA;
+  if (score_str == "(n,n3a)")
+    return N_N3A;
+  if (score_str == "(n,2na)")
+    return N_2NA;
+  if (score_str == "(n,3na)")
+    return N_3NA;
+  if (score_str == "(n,np)")
+    return N_NP;
+  if (score_str == "(n,n2a)")
+    return N_N2A;
+  if (score_str == "(n,2n2a)")
+    return N_2N2A;
+  if (score_str == "(n,nd)")
+    return N_ND;
+  if (score_str == "(n,nt)")
+    return N_NT;
+  if (score_str == "(n,nHe-3)")
+    return N_N3HE;
+  if (score_str == "(n,nd2a)")
+    return N_ND2A;
+  if (score_str == "(n,nt2a)")
+    return N_NT2A;
+  if (score_str == "(n,3nf)")
+    return N_3NF;
+  if (score_str == "(n,2np)")
+    return N_2NP;
+  if (score_str == "(n,3np)")
+    return N_3NP;
+  if (score_str == "(n,n2p)")
+    return N_N2P;
+  if (score_str == "(n,npa)")
+    return N_NPA;
+  if (score_str == "(n,n1)")
+    return N_N1;
+  if (score_str == "(n,nc)")
+    return N_NC;
+  if (score_str == "(n,gamma)")
+    return N_GAMMA;
+  if (score_str == "(n,p)")
+    return N_P;
+  if (score_str == "(n,d)")
+    return N_D;
+  if (score_str == "(n,t)")
+    return N_T;
+  if (score_str == "(n,3He)")
+    return N_3HE;
+  if (score_str == "(n,a)")
+    return N_A;
+  if (score_str == "(n,2a)")
+    return N_2A;
+  if (score_str == "(n,3a)")
+    return N_3A;
+  if (score_str == "(n,2p)")
+    return N_2P;
+  if (score_str == "(n,pa)")
+    return N_PA;
+  if (score_str == "(n,t2a)")
+    return N_T2A;
+  if (score_str == "(n,d2a)")
+    return N_D2A;
+  if (score_str == "(n,pd)")
+    return N_PD;
+  if (score_str == "(n,pt)")
+    return N_PT;
+  if (score_str == "(n,da)")
+    return N_DA;
+
+  // So far we have not identified this score string.  Check to see if it is a
+  // deprecated score.
+  if (score_str.rfind("scatter-", 0) == 0
+      || score_str.rfind("nu-scatter-", 0) == 0
+      || score_str.rfind("total-y", 0) == 0
+      || score_str.rfind("flux-y", 0) == 0)
+    fatal_error(score_str + " is no longer an available score");
+
+
+  // Assume the given string is a reaction MT number.  Make sure it's a natural
+  // number then return.
+  int MT;
+  try {
+    MT = std::stoi(score_str);
+  } catch (const std::invalid_argument& ex) {
+    throw std::invalid_argument("Invalid tally score \"" + score_str + "\"");
+  }
+  if (MT < 1)
+    throw std::invalid_argument("Invalid tally score \"" + score_str + "\"");
+  return MT;
+}
+
 //==============================================================================
 // Tally object implementation
 //==============================================================================
@@ -231,6 +389,147 @@ Tally::set_filters(const int32_t filter_indices[], int n)
     stride *= model::tally_filters[filters_[i]-1]->n_bins_;
   }
   n_filter_bins_ = stride;
+}
+
+void
+Tally::set_scores(pugi::xml_node node)
+{
+  if (!check_for_node(node, "scores"))
+    fatal_error("No scores specified on tally " + std::to_string(id_));
+
+  auto scores = get_node_array<std::string>(node, "scores");
+  set_scores(scores);
+}
+
+void
+Tally::set_scores(std::vector<std::string> scores)
+{
+  // Reset state and prepare for the new scores.
+  scores_.clear();
+  depletion_rx_ = false;
+  scores_.reserve(scores.size());
+
+  // Check for the presence of certain restrictive filters.
+  bool energyout_present = energyout_filter_ != C_NONE;
+  //bool delayedgroup_present = false;
+  bool legendre_present = false;
+  bool cell_present = false;
+  bool cellfrom_present = false;
+  bool surface_present = false;
+  bool meshsurface_present = false;
+  for (auto i_filt : filters_) {
+    //TODO: off-by-one
+    const auto* filt {model::tally_filters[i_filt-1].get()};
+    if (dynamic_cast<const LegendreFilter*>(filt)) {
+      legendre_present = true;
+    } else if (dynamic_cast<const CellFromFilter*>(filt)) {
+      cellfrom_present = true;
+    } else if (dynamic_cast<const CellFilter*>(filt)) {
+      cell_present = true;
+    } else if (dynamic_cast<const SurfaceFilter*>(filt)) {
+      surface_present = true;
+    } else if (dynamic_cast<const MeshSurfaceFilter*>(filt)) {
+      meshsurface_present = true;
+    }
+  }
+
+  // Iterate over the given scores.
+  for (auto score_str : scores) {
+    // Make sure a delayed group filter wasn't used with an incompatible score.
+    bool has_delayedgroup = delayedgroup_filter_ != C_NONE;
+    if (delayedgroup_filter_ != C_NONE) {
+      if (score_str != "delayed-nu-fission" && score_str != "decay-rate")
+        fatal_error("Cannot tally " + score_str + "with a delayedgroup filter");
+    }
+
+    auto score = score_str_to_int(score_str);
+
+    switch (score) {
+    case SCORE_FLUX:
+      if (!nuclides_.empty())
+        if (!(nuclides_.size() == 1 && nuclides_[0] == -1))
+          fatal_error("Cannot tally flux for an individual nuclide.");
+      if (energyout_present)
+        fatal_error("Cannot tally flux with an outgoing energy filter.");
+      break;
+
+    case SCORE_TOTAL:
+    case SCORE_ABSORPTION:
+    case SCORE_FISSION:
+      if (energyout_present)
+        fatal_error("Cannot tally " + score_str + " reaction rate with an "
+          "outgoing energy filter");
+      break;
+
+    case SCORE_SCATTER:
+      if (legendre_present)
+        estimator_ = ESTIMATOR_ANALOG;
+    case SCORE_NU_FISSION:
+    case SCORE_DELAYED_NU_FISSION:
+    case SCORE_PROMPT_NU_FISSION:
+      if (energyout_present)
+        estimator_ = ESTIMATOR_ANALOG;
+      break;
+
+    case SCORE_NU_SCATTER:
+      if (settings::run_CE) {
+        estimator_ = ESTIMATOR_ANALOG;
+      } else {
+        if (energyout_present || legendre_present)
+          estimator_ = ESTIMATOR_ANALOG;
+      }
+      break;
+
+    case N_2N:
+    case N_3N:
+    case N_4N:
+    case N_GAMMA:
+    case N_P:
+    case N_A:
+      depletion_rx_ = true;
+      break;
+
+    case SCORE_CURRENT:
+      // Check which type of current is desired: mesh or surface currents.
+      if (surface_present || cell_present || cellfrom_present) {
+        if (meshsurface_present)
+          fatal_error("Cannot tally mesh surface currents in the same tally as "
+            "normal surface currents");
+        type_ = TALLY_SURFACE;
+      } else if (meshsurface_present) {
+        type_ = TALLY_MESH_SURFACE;
+      } else {
+        fatal_error("Cannot tally currents without surface type filters");
+      }
+      break;
+    }
+
+    scores_.push_back(score);
+  }
+
+  // Make sure that no duplicate scores exist.
+  for (auto it1 = scores_.begin(); it1 != scores_.end(); ++it1) {
+    for (auto it2 = it1 + 1; it2 != scores_.end(); ++it2) {
+      if (*it1 == *it2)
+        fatal_error("Duplicate score of type \"" + reaction_name(*it1)
+          + "\" found in tally " + std::to_string(id_));
+    }
+  }
+
+  // Make sure all scores are compatible with multigroup mode.
+  if (!settings::run_CE) {
+    for (auto sc : scores_)
+      if (sc > 0)
+        fatal_error("Cannot tally " + reaction_name(sc) + " reaction rate "
+          "in multi-group mode");
+  }
+
+  // Make sure current scores are not mixed in with volumetric scores.
+  if (type_ == TALLY_SURFACE || type_ == TALLY_MESH_SURFACE) {
+    if (scores_.size() != 1)
+      fatal_error("Cannot tally other scores in the same tally as surface "
+        "currents");
+  }
 }
 
 void
@@ -347,7 +646,6 @@ score_analog_tally_ce(Particle* p)
   for (auto i_tally : model::active_analog_tallies) {
     //TODO: off-by-one
     const Tally& tally {*model::tallies[i_tally-1]};
-    auto n_score_bins = tally_get_n_score_bins(i_tally);
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -371,7 +669,7 @@ score_analog_tally_ce(Particle* p)
           // and flux arguments for score_general are not used for analog
           // tallies.
           if (i_nuclide == p->event_nuclide || i_nuclide == -1)
-            score_general_ce(p, i_tally, i*n_score_bins, filter_index,
+            score_general_ce(p, i_tally, i*tally.scores_.size(), filter_index,
               -1, -1., filter_weight);
         }
 
@@ -380,12 +678,12 @@ score_analog_tally_ce(Particle* p)
         // can take advantage of the fact that we know exactly how nuclide
         // bins correspond to nuclide indices.  First, tally the nuclide.
         auto i = p->event_nuclide;
-        score_general_ce(p, i_tally, i*n_score_bins, filter_index,
+        score_general_ce(p, i_tally, i*tally.scores_.size(), filter_index,
           -1, -1., filter_weight);
 
         // Now tally the total material.
         i = tally.nuclides_.size();
-        score_general_ce(p, i_tally, i*n_score_bins, filter_index,
+        score_general_ce(p, i_tally, i*tally.scores_.size(), filter_index,
           -1, -1., filter_weight);
       }
     }
@@ -412,7 +710,6 @@ score_analog_tally_mg(Particle* p)
   for (auto i_tally : model::active_analog_tallies) {
     //TODO: off-by-one
     const Tally& tally {*model::tallies[i_tally-1]};
-    auto n_score_bins = tally_get_n_score_bins(i_tally);
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -437,7 +734,7 @@ score_analog_tally_mg(Particle* p)
           atom_density = material_atom_density(p->material, j);
         }
 
-        score_general_mg(p, i_tally, i*n_score_bins, filter_index,
+        score_general_mg(p, i_tally, i*tally.scores_.size(), filter_index,
           i_nuclide, atom_density, filter_weight);
       }
     }
@@ -469,7 +766,6 @@ score_tracklength_tally(Particle* p, double distance)
   for (auto i_tally : model::active_tracklength_tallies) {
     //TODO: off-by-one
     const Tally& tally {*model::tallies[i_tally-1]};
-    auto n_score_bins = tally_get_n_score_bins(i_tally);
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -503,10 +799,10 @@ score_tracklength_tally(Particle* p, double distance)
 
           //TODO: consider replacing this "if" with pointers or templates
           if (settings::run_CE) {
-            score_general_ce(p, i_tally, i*n_score_bins, filter_index,
+            score_general_ce(p, i_tally, i*tally.scores_.size(), filter_index,
               i_nuclide, atom_density, flux*filter_weight);
           } else {
-            score_general_mg(p, i_tally, i*n_score_bins, filter_index,
+            score_general_mg(p, i_tally, i*tally.scores_.size(), filter_index,
               i_nuclide, atom_density, flux*filter_weight);
           }
         }
@@ -548,7 +844,6 @@ score_collision_tally(Particle* p)
   for (auto i_tally : model::active_collision_tallies) {
     //TODO: off-by-one
     const Tally& tally {*model::tallies[i_tally-1]};
-    auto n_score_bins = tally_get_n_score_bins(i_tally);
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -579,10 +874,10 @@ score_collision_tally(Particle* p)
 
           //TODO: consider replacing this "if" with pointers or templates
           if (settings::run_CE) {
-            score_general_ce(p, i_tally, i*n_score_bins, filter_index,
+            score_general_ce(p, i_tally, i*tally.scores_.size(), filter_index,
               i_nuclide, atom_density, flux*filter_weight);
           } else {
-            score_general_mg(p, i_tally, i*n_score_bins, filter_index,
+            score_general_mg(p, i_tally, i*tally.scores_.size(), filter_index,
               i_nuclide, atom_density, flux*filter_weight);
           }
         }
@@ -612,7 +907,6 @@ score_surface_tally_inner(Particle* p, const std::vector<int>& tallies)
   for (auto i_tally : tallies) {
     //TODO: off-by-one
     const Tally& tally {*model::tallies[i_tally-1]};
-    auto n_score_bins = tally_get_n_score_bins(i_tally);
     auto results = tally_results(i_tally);
 
     // Initialize an iterator over valid filter bin combinations.  If there are
@@ -631,7 +925,8 @@ score_surface_tally_inner(Particle* p, const std::vector<int>& tallies)
       // There is only one score type for current tallies so there is no need
       // for a further scoring function.
       double score = flux * filter_weight;
-      for (auto score_index = 1; score_index < n_score_bins+1; ++score_index) {
+      for (auto score_index = 1; score_index < tally.scores_.size()+1;
+           ++score_index) {
         //TODO: off-by-one
         #pragma omp atomic
         results(filter_index-1, score_index-1, RESULT_VALUE) += score;
@@ -854,6 +1149,40 @@ openmc_tally_set_active(int32_t index, bool active)
 }
 
 extern "C" int
+openmc_tally_get_scores(int32_t index, int** scores, int* n)
+{
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  //TODO: off-by-one
+  *scores = model::tallies[index-1]->scores_.data();
+  *n = model::tallies[index-1]->scores_.size();
+  return 0;
+}
+
+extern "C" int
+openmc_tally_set_scores(int32_t index, int n, const char** scores)
+{
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  std::vector<std::string> scores_str(scores, scores+n);
+  try {
+    //TODO: off-by-one
+    model::tallies[index-1]->set_scores(scores_str);
+  } catch (const std::invalid_argument& ex) {
+    set_errmsg(ex.what());
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  return 0;
+}
+
+extern "C" int
 openmc_tally_get_filters(int32_t index, const int32_t** indices, int* n)
 {
   if (index < 1 || index > model::tallies.size()) {
@@ -951,6 +1280,12 @@ extern "C" {
 
   void tally_set_estimator_c(Tally* tally, int e) {tally->estimator_ = e;}
 
+  bool tally_get_depletion_rx_c(Tally* tally) {return tally->depletion_rx_;}
+
+  int tally_get_n_scores_c(Tally* tally) {return tally->scores_.size();}
+
+  int tally_get_score_c(Tally* tally, int i) {return tally->scores_[i];}
+
   void tally_set_filters_c(Tally* tally, int n, int32_t filter_indices[])
   {tally->set_filters(filter_indices, n);}
 
@@ -984,6 +1319,9 @@ extern "C" {
 
   int tally_get_delayedgroup_filter_c(Tally* tally)
   {return tally->delayedgroup_filter_;}
+
+  void tally_init_scores(Tally* tally, pugi::xml_node* node)
+  {tally->set_scores(*node);}
 
   void tally_init_triggers(Tally* tally, int i_tally, pugi::xml_node* node)
   {tally->init_triggers(*node, i_tally);}

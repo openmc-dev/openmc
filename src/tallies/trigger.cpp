@@ -97,11 +97,8 @@ check_tally_triggers(double& ratio, int& tally_id, int& score)
           // If this is the most uncertain value, set the output variables.
           if (this_ratio > ratio) {
             ratio = this_ratio;
-            int* scores;
-            int junk;
-            err = openmc_tally_get_scores(i_tally, &scores, &junk);
-            score = scores[trigger.score_index];
-            err = openmc_tally_get_id(i_tally, &tally_id);
+            score = t.scores_[trigger.score_index];
+            tally_id = t.id_;
           }
         }
       }

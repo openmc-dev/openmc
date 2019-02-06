@@ -3,10 +3,9 @@ module nuclide_header
   use, intrinsic :: ISO_FORTRAN_ENV
   use, intrinsic :: ISO_C_BINDING
 
-  use algorithm,              only: sort, find, binary_search
+  use algorithm,              only: sort, find
   use constants
   use endf,                   only: is_fission, is_disappearance
-  use endf_header,            only: Function1D, Polynomial, Tabulated1D
   use error
   use hdf5_interface
   use message_passing

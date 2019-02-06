@@ -22,11 +22,10 @@ module state_point
   use nuclide_header,     only: nuclides
   use settings
   use simulation_header
-  use string,             only: to_str, zero_padded
+  use string,             only: to_str
   use tally_header
   use tally_filter_header
   use tally_derivative_header, only: tally_derivs
-  use timer_header
 
   implicit none
 

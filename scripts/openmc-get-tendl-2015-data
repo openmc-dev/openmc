@@ -101,7 +101,7 @@ for f in files:
    if f not in files_complete:
        continue
 
-    Extract files
+    # Extract files
 
    suffix = ''
    with tarfile.open(f, 'r') as tgz:

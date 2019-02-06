@@ -44,6 +44,10 @@ extern "C" void
 score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
   int i_nuclide, double atom_density, double flux);
 
+extern "C" void
+apply_derivative_to_score(Particle* p, int i_tally, int i_nuclide,
+  double atom_density, int score_bin, double* score);
+
 extern "C" int
 energy_filter_search(const EnergyFilter* filt, double val);
 
@@ -697,6 +701,147 @@ score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index)
 
   // Reset the original delayed group bin
   dg_match.bins_[i_bin-1] = original_bin;
+}
+
+//! Helper function for nu-fission tallies with energyout filters.
+//
+//! In this case, we may need to score to multiple bins if there were multiple
+//! neutrons produced with different energies.
+
+extern "C" void
+score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
+{
+  //TODO: off-by-one
+  const Tally& tally {*model::tallies[i_tally-1]};
+  auto results = tally_results(i_tally);
+  auto i_eout_filt = tally.filters()[tally.energyout_filter_-1];
+  auto i_bin = simulation::filter_matches[i_eout_filt].i_bin_;
+  auto bin_energyout = simulation::filter_matches[i_eout_filt].bins_[i_bin-1];
+
+  const EnergyoutFilter& eo_filt
+    {*dynamic_cast<EnergyoutFilter*>(model::tally_filters[i_eout_filt].get())};
+
+  // Note that the score below is weighted by keff. Since the creation of
+  // fission sites is weighted such that it is expected to create n_particles
+  // sites, we need to multiply the score by keff to get the true nu-fission
+  // rate. Otherwise, the sum of all nu-fission rates would be ~1.0.
+
+  // loop over number of particles banked
+  for (auto i = 0; i < p->n_bank; ++i) {
+    auto i_bank = simulation::n_bank - p->n_bank + i;
+    const auto& bank = simulation::fission_bank[i_bank];
+
+    // get the delayed group
+    auto g = bank.delayed_group;
+
+    // determine score based on bank site weight and keff
+    double score = simulation::keff * bank.wgt;
+
+    // Add derivative information for differential tallies.  Note that the
+    // i_nuclide and atom_density arguments do not matter since this is an
+    // analog estimator.
+    if (tally.deriv_ != C_NONE)
+      apply_derivative_to_score(p, i_tally, 0, 0., SCORE_NU_FISSION, &score);
+
+    if (!settings::run_CE && eo_filt.matches_transport_groups_) {
+
+      // determine outgoing energy group from fission bank
+      auto g_out = static_cast<int>(bank.E);
+
+      // modify the value so that g_out = 1 corresponds to the highest energy
+      // bin
+      g_out = eo_filt.n_bins_ - g_out + 1;
+
+      // change outgoing energy bin
+      simulation::filter_matches[i_eout_filt].bins_[i_bin-1] = g_out;
+
+    } else {
+
+      double E_out;
+      if (settings::run_CE) {
+        E_out = bank.E;
+      } else {
+        E_out = data::energy_bin_avg[static_cast<int>(bank.E)];
+      }
+
+      //TODO: do this without the extern "C" function
+      auto i_match = energy_filter_search(&eo_filt, E_out);
+      if (i_match == -1) continue;
+      simulation::filter_matches[i_eout_filt].bins_[i_bin-1] = i_match;
+
+    }
+
+    // Case for tallying prompt neutrons
+    if (score_bin == SCORE_NU_FISSION
+      || (score_bin == SCORE_PROMPT_NU_FISSION && g == 0)) {
+
+      // Find the filter scoring index for this filter combination
+      //TODO: should this include a weight?
+      int filter_index = 1;
+      for (auto j = 0; j < tally.filters().size(); ++j) {
+        auto i_filt = tally.filters(j);
+        auto& match {simulation::filter_matches[i_filt]};
+        auto i_bin = match.i_bin_;
+        filter_index += (match.bins_[i_bin-1] - 1) * tally.strides(j);
+      }
+
+      // Update tally results
+      #pragma omp atomic
+      results(filter_index-1, i_score-1, RESULT_VALUE) += score;
+
+    } else if (score_bin == SCORE_DELAYED_NU_FISSION && g != 0) {
+
+      // Get the index of the delayed group filter
+      auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_-1];
+
+      // If the delayed group filter is present, tally to corresponding delayed
+      // group bin if it exists
+      if (i_dg_filt >= 0) {
+        const DelayedGroupFilter& dg_filt {*dynamic_cast<DelayedGroupFilter*>(
+          model::tally_filters[i_dg_filt].get())};
+
+        // Loop over delayed group bins until the corresponding bin is found
+        for (auto d_bin = 0; d_bin < dg_filt.n_bins_; ++d_bin) {
+          if (dg_filt.groups_[d_bin] == g) {
+            // Find the filter index and weight for this filter combination
+            int filter_index = 1;
+            double filter_weight = 1.;
+            for (auto j = 0; j < tally.filters().size(); ++j) {
+              auto i_filt = tally.filters(j);
+              auto& match {simulation::filter_matches[i_filt]};
+              auto i_bin = match.i_bin_;
+              filter_index += (match.bins_[i_bin-1] - 1) * tally.strides(j);
+              filter_weight *= match.weights_[i_bin-1];
+            }
+
+            score_fission_delayed_dg(i_tally, d_bin+1, score*filter_weight, 
+              i_score);
+          }
+        }
+
+      // If the delayed group filter is not present, add score to tally
+      } else {
+
+        // Find the filter index and weight for this filter combination
+        int filter_index = 1;
+        double filter_weight = 1.;
+        for (auto j = 0; j < tally.filters().size(); ++j) {
+          auto i_filt = tally.filters(j);
+          auto& match {simulation::filter_matches[i_filt]};
+          auto i_bin = match.i_bin_;
+          filter_index += (match.bins_[i_bin-1] - 1) * tally.strides(j);
+          filter_weight *= match.weights_[i_bin-1];
+        }
+
+        // Update tally results
+        #pragma omp atomic
+        results(filter_index-1, i_score-1, RESULT_VALUE) += score*filter_weight;
+      }
+    }
+  }
+
+  // Reset outgoing energy bin and score index
+  simulation::filter_matches[i_eout_filt].bins_[i_bin-1] = bin_energyout;
 }
 
 //! Tally rates for when the user requests a tally on all nuclides.

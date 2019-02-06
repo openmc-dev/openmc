@@ -311,7 +311,6 @@ add_library(libopenmc SHARED
   src/dict_header.F90
   src/eigenvalue.F90
   src/endf.F90
-  src/endf_header.F90
   src/error.F90
   src/geometry.F90
   src/geometry_header.F90

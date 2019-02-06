@@ -2,7 +2,7 @@ module string
 
   use, intrinsic :: ISO_C_BINDING
 
-  use constants, only: MAX_WORDS, MAX_LINE_LEN, ERROR_INT, ERROR_REAL
+  use constants, only: ERROR_INT, ERROR_REAL
   use error,     only: fatal_error, warning
   use stl_vector, only: VectorInt
 
@@ -13,81 +13,6 @@ module string
   end interface
 
 contains
-
-!===============================================================================
-! SPLIT_STRING takes a sentence and splits it into separate words much like the
-! Python string.split() method.
-!
-! Arguments:
-!   string = input line
-!   words  = array of words
-!   n      = total number of words
-!===============================================================================
-
-  subroutine split_string(string, words, n)
-    character(*), intent(in)  :: string
-    character(*), intent(out) :: words(MAX_WORDS)
-    integer,      intent(out) :: n
-
-    character(1)  :: chr     ! current character
-    integer       :: i       ! current index
-    integer       :: i_start ! starting index of word
-    integer       :: i_end   ! ending index of word
-
-    i_start = 0
-    i_end = 0
-    n = 0
-    do i = 1, len_trim(string)
-      chr = string(i:i)
-
-      ! Note that ACHAR(9) is a horizontal tab
-      if ((i_start == 0) .and. (chr /= ' ') .and. (chr /= achar(9))) then
-        i_start = i
-      end if
-      if (i_start > 0) then
-        if ((chr == ' ') .or. (chr == achar(9))) i_end = i - 1
-        if (i == len_trim(string))   i_end = i
-        if (i_end > 0) then
-          n = n + 1
-          if (i_end - i_start + 1 > len(words(n))) then
-            call warning("The word '" // string(i_start:i_end) &
-                 // "' is longer than the space allocated for it.")
-          end if
-          words(n) = string(i_start:i_end)
-          ! reset indices
-          i_start = 0
-          i_end = 0
-        end if
-      end if
-    end do
-
-  end subroutine split_string
-
-!===============================================================================
-! CONCATENATE takes an array of words and concatenates them together in one
-! string with a single space between words
-!
-! Arguments:
-!   words   = array of words
-!   n_words = total number of words
-!   string  = concatenated string
-!===============================================================================
-
-  pure function concatenate(words, n_words) result(string)
-
-    integer,        intent(in)  :: n_words
-    character(*),   intent(in)  :: words(n_words)
-    character(MAX_LINE_LEN)     :: string
-
-    integer :: i ! index
-
-    string = words(1)
-    if (n_words == 1) return
-    do i = 2, n_words
-      string = trim(string) // ' ' // words(i)
-    end do
-
-  end function concatenate
 
 !===============================================================================
 ! TO_LOWER converts a string to all lower case characters
@@ -299,23 +224,6 @@ contains
     if (ioError > 0) num = ERROR_INT
 
   end function str_to_int
-
-!===============================================================================
-! STR_TO_REAL converts an arbitrary string to a real(8)
-!===============================================================================
-
-  pure function str_to_real(string) result(num)
-
-    character(*), intent(in) :: string
-    real(8)                  :: num
-
-    integer :: ioError
-
-    ! Read string
-    read(UNIT=string, FMT=*, IOSTAT=ioError) num
-    if (ioError > 0) num = ERROR_REAL
-
-  end function str_to_real
 
 !===============================================================================
 ! REAL_TO_STR converts a real(8) to a string based on how large the value is and

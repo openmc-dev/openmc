@@ -2,14 +2,12 @@ module tally
 
   use, intrinsic :: ISO_C_BINDING
 
-  use algorithm,        only: binary_search
   use bank_header
   use constants
   use dict_header,      only: EMPTY
   use error,            only: fatal_error
   use geometry_header
   use material_header
-  use math,             only: t_percentile
   use message_passing
   use mgxs_interface
   use nuclide_header

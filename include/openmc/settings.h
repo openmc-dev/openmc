@@ -25,12 +25,12 @@ namespace settings {
 // Boolean flags
 extern "C" bool assume_separate;         //!< assume tallies are spatially separate?
 extern "C" bool check_overlaps;          //!< check overlaps in geometry?
-extern "C" bool cmfd_run;                //!< use CMFD?
 extern "C" bool confidence_intervals;    //!< use confidence intervals for results?
 extern "C" bool create_fission_neutrons; //!< create fission neutrons (fixed source)?
+extern "C" bool dagmc;                   //!< indicator of DAGMC geometry
 extern "C" bool entropy_on;              //!< calculate Shannon entropy?
 extern "C" bool legendre_to_tabular;     //!< convert Legendre distributions to tabular?
-extern "C" bool output_summary;          //!< write summary.h5?
+extern bool output_summary;              //!< write summary.h5?
 extern "C" bool output_tallies;          //!< write tallies.out?
 extern "C" bool particle_restart_run;    //!< particle restart run?
 extern "C" bool photon_transport;        //!< photon transport turned on?
@@ -49,7 +49,6 @@ extern bool ufs_on;                  //!< uniform fission site method on?
 extern bool urr_ptables_on;          //!< use unresolved resonance prob. tables?
 extern "C" bool write_all_tracks;        //!< write track files for every particle?
 extern "C" bool write_initial_source;    //!< write out initial source file?
-extern "C" bool dagmc;                   //!< indicator of DAGMC geometry
 
 // Paths to various files
 extern std::string path_cross_sections;   //!< path to cross_sections.xml

@@ -50,11 +50,7 @@ void fatal_error(const std::stringstream& message)
   fatal_error(message.str());
 }
 
-inline
-void warning(const std::string& message)
-{
-  warning_from_c(message.c_str(), message.length());
-}
+void warning(const std::string& message);
 
 inline
 void warning(const std::stringstream& message)

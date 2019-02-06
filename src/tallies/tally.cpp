@@ -42,9 +42,6 @@ extern "C" void
 score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
   int i_nuclide, double atom_density, double flux);
 
-extern "C" void
-score_all_nuclides(Particle* p, int i_tally, double flux, int filter_index);
-
 //==============================================================================
 // Global variable definitions
 //==============================================================================
@@ -661,6 +658,44 @@ adaptor_type<3> tally_results(int idx)
   // Adapt array into xtensor with no ownership
   std::size_t size {shape[0] * shape[1] * shape[2]};
   return xt::adapt(results, size, xt::no_ownership(), shape);
+}
+
+//! Tally rates for when the user requests a tally on all nuclides.
+
+void
+score_all_nuclides(Particle* p, int i_tally, double flux, int filter_index)
+{
+  //TODO: off-by-one
+  const Tally& tally {*model::tallies[i_tally-1]};
+  const Material& material {*model::materials[p->material-1]};
+
+  // Score all individual nuclide reaction rates.
+  for (auto i = 0; i < material.nuclide_.size(); ++i) {
+    auto i_nuclide = material.nuclide_[i];
+    auto atom_density = material.atom_density_(i);
+
+    //TODO: consider replacing this "if" with pointers or templates
+    if (settings::run_CE) {
+      score_general_ce(p, i_tally, i_nuclide*tally.scores_.size(), filter_index,
+        i_nuclide, atom_density, flux);
+    } else {
+      score_general_mg(p, i_tally, i_nuclide*tally.scores_.size(), filter_index,
+        i_nuclide, atom_density, flux);
+    }
+  }
+
+  // Score total material reaction rates.
+  int i_nuclide = -1;
+  double atom_density = 0.;
+  auto n_nuclides = data::nuclides.size();
+  //TODO: consider replacing this "if" with pointers or templates
+  if (settings::run_CE) {
+    score_general_ce(p, i_tally, n_nuclides*tally.scores_.size(), filter_index,
+      i_nuclide, atom_density, flux);
+  } else {
+    score_general_mg(p, i_tally, n_nuclides*tally.scores_.size(), filter_index,
+      i_nuclide, atom_density, flux);
+  }
 }
 
 //! Score tallies based on a simple count of events (for continuous energy).

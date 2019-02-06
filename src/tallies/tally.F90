@@ -47,6 +47,14 @@ module tally
   end interface
 
   interface
+    subroutine score_fission_delayed_dg(i_tally, d_bin, score, score_index) bind(C)
+      import C_INT, C_DOUBLE
+      integer(C_INT), value :: i_tally
+      integer(C_INT), value :: d_bin
+      real(C_DOUBLE), value :: score
+      integer(C_INT), value :: score_index
+    end subroutine
+
     subroutine score_analog_tally_ce(p) bind(C)
       import Particle
       type(Particle), intent(in) :: p
@@ -340,7 +348,7 @@ contains
               ! neutrons were emitted with different energies, multiple
               ! outgoing energy bins may have been scored to. The following
               ! logic treats this special case and results to multiple bins
-              call score_fission_eout(p, t, score_index, score_bin)
+              call score_fission_eout(p, i_tally, score_index, score_bin)
               cycle SCORE_LOOP
             end if
           end if
@@ -386,7 +394,7 @@ contains
               ! neutrons were emitted with different energies, multiple
               ! outgoing energy bins may have been scored to. The following
               ! logic treats this special case and results to multiple bins
-              call score_fission_eout(p, t, score_index, score_bin)
+              call score_fission_eout(p, i_tally, score_index, score_bin)
               cycle SCORE_LOOP
             end if
           end if
@@ -454,7 +462,7 @@ contains
               ! neutrons were emitted with different energies, multiple
               ! outgoing energy bins may have been scored to. The following
               ! logic treats this special case and results to multiple bins
-              call score_fission_eout(p, t, score_index, score_bin)
+              call score_fission_eout(p, i_tally, score_index, score_bin)
               cycle SCORE_LOOP
             end if
           end if
@@ -485,7 +493,7 @@ contains
                     score = p % absorb_wgt * yield &
                          * micro_xs(p % event_nuclide) % fission &
                          / micro_xs(p % event_nuclide) % absorption * flux
-                    call score_fission_delayed_dg(t, d_bin, score, score_index)
+                    call score_fission_delayed_dg(i_tally, d_bin, score, score_index)
                   end do
                   cycle SCORE_LOOP
                 end select
@@ -526,7 +534,7 @@ contains
                   score = keff * p % wgt_bank / p % n_bank * &
                        p % n_delayed_bank(d) * flux
 
-                  call score_fission_delayed_dg(t, d_bin, score, score_index)
+                  call score_fission_delayed_dg(i_tally, d_bin, score, score_index)
                 end do
                 cycle SCORE_LOOP
               end select
@@ -560,7 +568,7 @@ contains
                   ! Compute the score and tally to bin
                   score = micro_xs(i_nuclide+1) % fission * yield * &
                        atom_density * flux
-                  call score_fission_delayed_dg(t, d_bin, score, score_index)
+                  call score_fission_delayed_dg(i_tally, d_bin, score, score_index)
                 end do
                 cycle SCORE_LOOP
               end select
@@ -603,7 +611,7 @@ contains
                       ! Compute the score and tally to bin
                       score = micro_xs(i_nuc) % fission * yield &
                            * atom_density_ * flux
-                      call score_fission_delayed_dg(t, d_bin, score, &
+                      call score_fission_delayed_dg(i_tally, d_bin, score, &
                            score_index)
                     end do
                   end do
@@ -676,7 +684,7 @@ contains
                     end associate
 
                     ! Tally to bin
-                    call score_fission_delayed_dg(t, d_bin, score, score_index)
+                    call score_fission_delayed_dg(i_tally, d_bin, score, score_index)
                   end do
                   cycle SCORE_LOOP
                 end select
@@ -756,7 +764,7 @@ contains
                       ! check whether the delayed group of the particle is equal
                       ! to the delayed group of this bin
                       if (d == g) then
-                        call score_fission_delayed_dg(t, d_bin, score, &
+                        call score_fission_delayed_dg(i_tally, d_bin, score, &
                                                       score_index)
                       end if
                     end do
@@ -797,7 +805,7 @@ contains
                   end associate
 
                   ! Tally to bin
-                  call score_fission_delayed_dg(t, d_bin, score, score_index)
+                  call score_fission_delayed_dg(i_tally, d_bin, score, score_index)
                 end do
                 cycle SCORE_LOOP
               end select
@@ -865,7 +873,7 @@ contains
                         end associate
 
                         ! Tally to bin
-                        call score_fission_delayed_dg(t, d_bin, score, &
+                        call score_fission_delayed_dg(i_tally, d_bin, score, &
                                                       score_index)
                       end do
                     end if
@@ -1554,7 +1562,7 @@ contains
               ! neutrons were emitted with different energies, multiple
               ! outgoing energy bins may have been scored to. The following
               ! logic treats this special case and results to multiple bins
-              call score_fission_eout(p, t, score_index, score_bin)
+              call score_fission_eout(p, i_tally, score_index, score_bin)
               cycle SCORE_LOOP
             end if
           end if
@@ -1608,7 +1616,7 @@ contains
               ! neutrons were emitted with different energies, multiple
               ! outgoing energy bins may have been scored to. The following
               ! logic treats this special case and results to multiple bins
-              call score_fission_eout(p, t, score_index, score_bin)
+              call score_fission_eout(p, i_tally, score_index, score_bin)
               cycle SCORE_LOOP
             end if
           end if
@@ -1666,7 +1674,7 @@ contains
               ! neutrons were emitted with different energies, multiple
               ! outgoing energy bins may have been scored to. The following
               ! logic treats this special case and results to multiple bins
-              call score_fission_eout(p, t, score_index, score_bin)
+              call score_fission_eout(p, i_tally, score_index, score_bin)
               cycle SCORE_LOOP
             end if
           end if
@@ -1698,7 +1706,7 @@ contains
                            get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
                     end if
 
-                    call score_fission_delayed_dg(t, d_bin, score, score_index)
+                    call score_fission_delayed_dg(i_tally, d_bin, score, score_index)
                   end do
                   cycle SCORE_LOOP
                 end select
@@ -1745,7 +1753,7 @@ contains
                          get_macro_xs_c(p % material, MG_GET_XS_FISSION, p_g)
                   end if
 
-                  call score_fission_delayed_dg(t, d_bin, score, score_index)
+                  call score_fission_delayed_dg(i_tally, d_bin, score, score_index)
                 end do
                 cycle SCORE_LOOP
               end select
@@ -1780,7 +1788,7 @@ contains
                        get_macro_xs_c(p % material, MG_GET_XS_DELAYED_NU_FISSION, p_g, DG=d)
                 end if
 
-                call score_fission_delayed_dg(t, d_bin, score, score_index)
+                call score_fission_delayed_dg(i_tally, d_bin, score, score_index)
               end do
               cycle SCORE_LOOP
             end select
@@ -1832,7 +1840,7 @@ contains
                            get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
                     end if
 
-                    call score_fission_delayed_dg(t, d_bin, score, score_index)
+                    call score_fission_delayed_dg(i_tally, d_bin, score, score_index)
                   end do
                   cycle SCORE_LOOP
                 end select
@@ -1908,7 +1916,7 @@ contains
                       ! check whether the delayed group of the particle is equal
                       ! to the delayed group of this bin
                       if (d == g) then
-                        call score_fission_delayed_dg(t, d_bin, score, &
+                        call score_fission_delayed_dg(i_tally, d_bin, score, &
                              score_index)
                       end if
                     end do
@@ -1950,7 +1958,7 @@ contains
                        get_macro_xs_c(p % material, MG_GET_XS_DELAYED_NU_FISSION, p_g, DG=d)
                 end if
 
-                call score_fission_delayed_dg(t, d_bin, score, score_index)
+                call score_fission_delayed_dg(i_tally, d_bin, score, score_index)
               end do
               cycle SCORE_LOOP
             end select
@@ -2036,10 +2044,10 @@ contains
 ! neutrons produced with different energies.
 !===============================================================================
 
-  subroutine score_fission_eout(p, t, i_score, score_bin)
+  subroutine score_fission_eout(p, i_tally, i_score, score_bin)
 
     type(Particle), intent(in)       :: p
-    type(TallyObject), intent(inout) :: t
+    integer, intent(in)              :: i_tally
     integer, intent(in)              :: i_score ! index for score
     integer, intent(in)              :: score_bin
 
@@ -2060,6 +2068,8 @@ contains
     real(8) :: score         ! actual score
     real(8) :: E_out         ! energy of fission bank site
     integer :: g_out         ! energy group of fission bank site
+
+    associate (t => tallies(i_tally) % obj)
 
     ! save original outgoing energy bin and score index
     i = t % filter(t % energyout_filter()) + 1
@@ -2175,7 +2185,7 @@ contains
                          % weights_data(b)
                   end do
 
-                  call score_fission_delayed_dg(t, d_bin, &
+                  call score_fission_delayed_dg(i_tally, d_bin, &
                        score * filter_weight, i_score)
                 end if
               end do
@@ -2210,47 +2220,9 @@ contains
     ! reset outgoing energy bin and score index
     call filter_matches(i) % bins_set_data(i_bin, bin_energyout)
 
+    end associate
+
   end subroutine score_fission_eout
-
-!===============================================================================
-! SCORE_FISSION_DELAYED_DG helper function used to increment the tally when a
-! delayed group filter is present.
-!===============================================================================
-
-  subroutine score_fission_delayed_dg(t, d_bin, score, score_index)
-
-    type(TallyObject), intent(inout) :: t
-    integer, intent(in)              :: d_bin       ! delayed group bin index
-    real(8), intent(in)              :: score       ! actual score
-    integer, intent(in)              :: score_index ! index for score
-
-    integer :: i             ! loop over tally filters
-    integer :: i_filt        ! index in filters array
-    integer :: i_bin         ! index of matching filter bin
-    integer :: bin_original  ! original bin index
-    integer :: filter_index  ! index for matching filter bin combination
-
-    ! save original delayed group bin
-    i_filt = t % filter(t % delayedgroup_filter()) + 1
-    i_bin = filter_matches(i_filt) % i_bin()
-    bin_original = filter_matches(i_filt) % bins_data(i_bin)
-    call filter_matches(i_filt) % bins_set_data(i_bin, d_bin)
-
-    ! determine scoring index and weight on the modified matching bins
-    filter_index = 1
-    do i = 1, t % n_filters()
-      filter_index = filter_index + (filter_matches(t % filter(i) + 1) % &
-           bins_data(filter_matches(t % filter(i) + 1) % i_bin()) - 1) * t % stride(i)
-    end do
-
-!$omp atomic
-    t % results(RESULT_VALUE, score_index, filter_index) = &
-         t % results(RESULT_VALUE, score_index, filter_index) + score
-
-    ! reset original delayed group bin
-    call filter_matches(i_filt) % bins_set_data(i_bin, bin_original)
-
-  end subroutine score_fission_delayed_dg
 
 !===============================================================================
 ! APPLY_DERIVATIVE_TO_SCORE multiply the given score by its relative derivative

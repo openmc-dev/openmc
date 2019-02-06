@@ -120,7 +120,7 @@ extern "C" bool energy_filter_matches_transport_groups(EnergyFilter* filt)
 {return filt->matches_transport_groups_;}
 
 extern "C" int
-energy_filter_search(EnergyFilter* filt, double val)
+energy_filter_search(const EnergyFilter* filt, double val)
 {
   if (val < filt->bins_.front() || val > filt->bins_.back()) {
     return -1;

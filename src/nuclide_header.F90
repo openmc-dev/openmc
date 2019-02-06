@@ -703,15 +703,13 @@ contains
   end function openmc_nuclide_name
 
   subroutine extend_nuclides() bind(C)
-    integer :: n
     type(Nuclide), allocatable :: new_nuclides(:)
 
     ! allocate extra space in nuclides array
-    n = n_nuclides
-    allocate(new_nuclides(n + 1))
-    new_nuclides(1:n) = nuclides(:)
+    allocate(new_nuclides(n_nuclides + 1))
+    new_nuclides(1:n_nuclides) = nuclides(:)
     call move_alloc(FROM=new_nuclides, TO=nuclides)
-    n = n + 1
+    n_nuclides = n_nuclides + 1
   end subroutine
 
 end module nuclide_header

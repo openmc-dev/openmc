@@ -3,6 +3,8 @@
 import os
 from collections import defaultdict
 import sys
+import tarfile
+import zipfile
 import glob
 import argparse
 from string import digits
@@ -106,7 +108,7 @@ for f in files:
     # unfortunatly which is incompatible with the standard python zipfile library
     # therefore the following system command is used
 
-    os.system('unzip ' + f + ' -o -d fendl-3.1d') 
+    os.system('unzip -o ' + f + ' -d fendl-3.1d') 
 
 
 # # ==============================================================================
@@ -114,7 +116,7 @@ for f in files:
 
 # Get a list of all ACE files
 neutron_files = glob.glob(os.path.join('fendl-3.1d', 'fendl31d_ACE', '*'))
-print('neutron_files', neutron_files)
+
 # Create output directory if it doesn't exist
 if not os.path.isdir(args.destination):
     os.mkdir(args.destination)

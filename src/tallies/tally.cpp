@@ -5,8 +5,10 @@
 #include "openmc/error.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
+#include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_cell.h"
@@ -41,6 +43,9 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
 extern "C" void
 score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
   int i_nuclide, double atom_density, double flux);
+
+extern "C" int
+energy_filter_search(const EnergyFilter* filt, double val);
 
 //==============================================================================
 // Global variable definitions
@@ -658,6 +663,40 @@ adaptor_type<3> tally_results(int idx)
   // Adapt array into xtensor with no ownership
   std::size_t size {shape[0] * shape[1] * shape[2]};
   return xt::adapt(results, size, xt::no_ownership(), shape);
+}
+
+//! Helper function used to increment tallies with a delayed group filter.
+
+extern "C" void
+score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index)
+{
+  // Save the original delayed group bin
+  //TODO: off-by-one
+  const Tally& tally {*model::tallies[i_tally-1]};
+  auto i_filt = tally.filters(tally.delayedgroup_filter_-1);
+  auto& dg_match {simulation::filter_matches[i_filt]};
+  auto i_bin = dg_match.i_bin_;
+  auto original_bin = dg_match.bins_[i_bin-1];
+  dg_match.bins_[i_bin-1] = d_bin;
+
+  // Determine the filter scoring index
+  auto filter_index = 1;
+  for (auto i = 0; i < tally.filters().size(); ++i) {
+    auto i_filt = tally.filters(i);
+    auto& match {simulation::filter_matches[i_filt]};
+    auto i_bin = match.i_bin_;
+    //TODO: off-by-one
+    filter_index += (match.bins_[i_bin-1] - 1) * tally.strides(i);
+  }
+
+  // Update the tally result
+  auto results = tally_results(i_tally);
+  //TODO: off-by-one
+  #pragma omp atomic
+  results(filter_index-1, score_index-1, RESULT_VALUE) += score;
+
+  // Reset the original delayed group bin
+  dg_match.bins_[i_bin-1] = original_bin;
 }
 
 //! Tally rates for when the user requests a tally on all nuclides.

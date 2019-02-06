@@ -134,7 +134,7 @@ void load_dagmc_geometry()
 
   // initialize cell objects
   model::n_cells = model::DAG->num_entities(3);
-
+  moab::EntityHandle graveyard = 0;
   for (int i = 0; i < model::n_cells; i++) {
     moab::EntityHandle vol_handle = model::DAG->entity_by_index(3, i+1);
 
@@ -199,6 +199,11 @@ void load_dagmc_geometry()
 
     std::string cmp_str = mat_value;
     to_lower(cmp_str);
+
+    if (cmp_str.find("graveyard") != std::string::npos) {
+      graveyard = vol_handle;
+    }
+
     // material void checks
     if (cmp_str.find("void") != std::string::npos   ||
         cmp_str.find("vacuum") != std::string::npos ||
@@ -229,6 +234,11 @@ void load_dagmc_geometry()
   // allocate the cell overlap count if necessary
   if (settings::check_overlaps) {
     model::overlap_check_count.resize(model::cells.size(), 0);
+  }
+
+  if (!graveyard) {
+    std::cout << "WARNING: No graveyard volume found in the DagMC model.\n";
+    std::cout << "This may result in lost particles and rapid simulation failure.\n";
   }
 
   /// Surfaces \\\
@@ -269,6 +279,17 @@ void load_dagmc_geometry()
     } else {
       // if no condition is found, set to transmit
       s->bc_ = BC_TRANSMIT;
+    }
+
+    // graveyard check
+    moab::Range parent_vols;
+    rval = model::DAG->moab_instance()->get_parent_meshsets(surf_handle, parent_vols);
+    MB_CHK_ERR_CONT(rval);
+
+    // if this surface belongs to the graveyard
+    if (graveyard && parent_vols.find(graveyard) != parent_vols.end()) {
+      // set BC to vacuum
+      s->bc_ = BC_VACUUM;
     }
 
     // add to global array and map

@@ -55,6 +55,14 @@ module tally
       integer(C_INT), value :: score_index
     end subroutine
 
+    subroutine score_fission_eout(p, i_tally, i_score, score_bin) bind(C)
+      import Particle, C_INT
+      type(Particle)         :: p
+      integer(C_INT), value :: i_tally
+      integer(C_INT), value :: i_score
+      integer(C_INT), value :: score_bin
+    end subroutine
+
     subroutine score_analog_tally_ce(p) bind(C)
       import Particle
       type(Particle), intent(in) :: p
@@ -1229,7 +1237,7 @@ contains
       ! Add derivative information on score for differential tallies.
 
       if (t % deriv() /= C_NONE) then
-        call apply_derivative_to_score(p, t, i_nuclide, atom_density, &
+        call apply_derivative_to_score(p, i_tally, i_nuclide, atom_density, &
              score_bin, score)
       end if
 
@@ -2038,204 +2046,17 @@ contains
   end subroutine score_general_mg
 
 !===============================================================================
-! SCORE_FISSION_EOUT handles a special case where we need to store neutron
-! production rate with an outgoing energy filter (think of a fission matrix). In
-! this case, we may need to score to multiple bins if there were multiple
-! neutrons produced with different energies.
-!===============================================================================
-
-  subroutine score_fission_eout(p, i_tally, i_score, score_bin)
-
-    type(Particle), intent(in)       :: p
-    integer, intent(in)              :: i_tally
-    integer, intent(in)              :: i_score ! index for score
-    integer, intent(in)              :: score_bin
-
-    integer :: i             ! index of outgoing energy filter
-    integer :: j             ! index of delayedgroup filter
-    integer :: d             ! delayed group
-    integer :: g             ! another delayed group
-    integer :: d_bin         ! delayed group bin index
-    integer :: k             ! loop index for bank sites
-    integer :: l             ! loop index for tally filters
-    integer :: f             ! index in filters array
-    integer :: b             ! index of filter bin
-    integer :: i_match       ! matching bin index on energyout filter
-    integer :: i_bin         ! index of matching filter bin
-    integer :: bin_energyout ! original outgoing energy bin
-    integer :: i_filter      ! index for matching filter bin combination
-    real(8) :: filter_weight ! combined weight of all filters
-    real(8) :: score         ! actual score
-    real(8) :: E_out         ! energy of fission bank site
-    integer :: g_out         ! energy group of fission bank site
-
-    associate (t => tallies(i_tally) % obj)
-
-    ! save original outgoing energy bin and score index
-    i = t % filter(t % energyout_filter()) + 1
-    i_bin = filter_matches(i) % i_bin()
-    bin_energyout = filter_matches(i) % bins_data(i_bin)
-
-    ! declare the energyout filter type
-    select type(eo_filt => filters(i) % obj)
-    type is (EnergyoutFilter)
-
-      ! Since the creation of fission sites is weighted such that it is
-      ! expected to create n_particles sites, we need to multiply the
-      ! score by keff to get the true nu-fission rate. Otherwise, the sum
-      ! of all nu-fission rates would be ~1.0.
-
-      ! loop over number of particles banked
-      do k = 1, p % n_bank
-
-        ! get the delayed group
-        g = fission_bank_delayed_group(n_bank - p % n_bank + k)
-
-        ! determine score based on bank site weight and keff
-        score = keff * fission_bank_wgt(n_bank - p % n_bank + k)
-
-        ! Add derivative information for differential tallies.  Note that the
-        ! i_nuclide and atom_density arguments do not matter since this is an
-        ! analog estimator.
-        if (t % deriv() /= C_NONE) then
-          call apply_derivative_to_score(p, t, 0, ZERO, SCORE_NU_FISSION, score)
-        end if
-
-        if (.not. run_CE .and. eo_filt % matches_transport_groups) then
-
-          ! determine outgoing energy group from fission bank
-          g_out = int(fission_bank_E(n_bank - p % n_bank + k))
-
-          ! modify the value so that g_out = 1 corresponds to the highest
-          ! energy bin
-          g_out = eo_filt % n_bins - g_out + 1
-
-          ! change outgoing energy bin
-          call filter_matches(i) % bins_set_data(i_bin, g_out)
-
-        else
-
-          ! determine outgoing energy from fission bank
-          if (run_CE) then
-            E_out = fission_bank_E(n_bank - p % n_bank + k)
-          else
-            E_out = energy_bin_avg(int(fission_bank_E(n_bank - p % n_bank + k)))
-          end if
-
-          ! If this outgoing energy falls within the energyout filter's range,
-          ! set the appropriate filter_matches bin.
-          i_match = eo_filt % search(E_out)
-          if (i_match == -1) cycle
-          call filter_matches(i) % bins_set_data(i_bin, i_match)
-
-        end if
-
-        ! Case for tallying prompt neutrons
-        if (score_bin == SCORE_NU_FISSION .or. &
-             (score_bin == SCORE_PROMPT_NU_FISSION .and. g == 0)) then
-
-          ! determine scoring index and weight for this filter combination
-          i_filter = 1
-          do l = 1, t % n_filters()
-            i_filter = i_filter + (filter_matches(t % filter(l) + 1) &
-                 % bins_data(filter_matches(t % filter(l) + 1) % i_bin()) - 1) * &
-                 t % stride(l)
-          end do
-
-          ! Add score to tally
-!$omp atomic
-          t % results(RESULT_VALUE, i_score, i_filter) = &
-               t % results(RESULT_VALUE, i_score, i_filter) + score
-
-        ! Case for tallying delayed emissions
-        else if (score_bin == SCORE_DELAYED_NU_FISSION .and. g /= 0) then
-
-          ! Get the index of delayed group filter
-          j = t % delayedgroup_filter()
-
-          ! if the delayed group filter is present, tally to corresponding
-          ! delayed group bin if it exists
-          if (j > 0) then
-
-            ! declare the delayed group filter type
-            select type(dg_filt => filters(t % filter(j) + 1) % obj)
-            type is (DelayedGroupFilter)
-
-              ! loop over delayed group bins until the corresponding bin is
-              ! found
-              do d_bin = 1, dg_filt % n_bins
-                d = dg_filt % groups(d_bin)
-
-                ! check whether the delayed group of the particle is equal to
-                ! the delayed group of this bin
-                if (d == g) then
-
-                  ! Reset scoring index and filter weight
-                  i_filter = 1
-                  filter_weight = ONE
-
-                  ! determine scoring index and weight for this filter
-                  ! combination
-                  do l = 1, t % n_filters()
-                    f = t % filter(l) + 1
-                    b = filter_matches(f) % i_bin()
-                    i_filter = i_filter + (filter_matches(f) &
-                         % bins_data(b) - 1) * t % stride(l)
-                    filter_weight = filter_weight * filter_matches(f) &
-                         % weights_data(b)
-                  end do
-
-                  call score_fission_delayed_dg(i_tally, d_bin, &
-                       score * filter_weight, i_score)
-                end if
-              end do
-            end select
-
-          ! if the delayed group filter is not present, add score to tally
-          else
-
-            ! Reset scoring index and filter weight
-            i_filter = 1
-            filter_weight = ONE
-
-            ! determine scoring index and weight for this filter combination
-            do l = 1, t % n_filters()
-              f = t % filter(l) + 1
-              b = filter_matches(f) % i_bin()
-              i_filter = i_filter + (filter_matches(f) % bins_data(b) - 1) &
-                   * t % stride(l)
-              filter_weight = filter_weight * filter_matches(f) &
-                   % weights_data(b)
-            end do
-
-            ! Add score to tally
-!$omp atomic
-            t % results(RESULT_VALUE, i_score, i_filter) = &
-                 t % results(RESULT_VALUE, i_score, i_filter) + score * filter_weight
-          end if
-        end if
-      end do
-    end select
-
-    ! reset outgoing energy bin and score index
-    call filter_matches(i) % bins_set_data(i_bin, bin_energyout)
-
-    end associate
-
-  end subroutine score_fission_eout
-
-!===============================================================================
 ! APPLY_DERIVATIVE_TO_SCORE multiply the given score by its relative derivative
 !===============================================================================
 
-  subroutine apply_derivative_to_score(p, t, i_nuclide, atom_density, &
-                                       score_bin, score)
-    type(Particle),    intent(in)    :: p
-    type(TallyObject), intent(in)    :: t
-    integer,           intent(in)    :: i_nuclide
-    real(8),           intent(in)    :: atom_density   ! atom/b-cm
-    integer,           intent(in)    :: score_bin
-    real(8),           intent(inout) :: score
+  subroutine apply_derivative_to_score(p, i_tally, i_nuclide, atom_density, &
+                                       score_bin, score) bind(C)
+    type(Particle),        intent(in)    :: p
+    integer(C_INT), value, intent(in)    :: i_tally
+    integer(C_INT), value, intent(in)    :: i_nuclide
+    real(C_DOUBLE), value, intent(in)    :: atom_density   ! atom/b-cm
+    integer(C_INT), value, intent(in)    :: score_bin
+    real(C_DOUBLE),        intent(inout) :: score
 
     type(TallyDerivative), pointer :: deriv
     integer :: l
@@ -2243,6 +2064,8 @@ contains
     logical :: scoring_diff_nuclide
     real(8) :: flux_deriv
     real(8) :: dsig_s, dsig_a, dsig_f, cum_dsig
+
+    associate (t => tallies(i_tally) % obj)
 
     if (score == ZERO) return
 
@@ -2778,7 +2601,7 @@ contains
                  &analog and collision estimators.")
         end select
       end select
-    !end associate
+    end associate
   end subroutine apply_derivative_to_score
 
 !===============================================================================

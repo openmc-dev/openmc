@@ -131,6 +131,7 @@ def test_nuclide_mapping(capi_init):
 
 
 def test_load_nuclide(capi_init):
+    openmc.capi.load_nuclide('H3')
     openmc.capi.load_nuclide('Pu239')
     with pytest.raises(exc.DataError):
         openmc.capi.load_nuclide('Pu3')

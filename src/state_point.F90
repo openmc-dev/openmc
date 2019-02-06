@@ -13,7 +13,6 @@ module state_point
 
   use, intrinsic :: ISO_C_BINDING
 
-  use bank_header,        only: Bank
   use constants
   use endf,               only: reaction_name
   use error,              only: fatal_error, warning, write_message
@@ -21,29 +20,15 @@ module state_point
   use message_passing
   use mgxs_interface
   use nuclide_header,     only: nuclides
-  use output,             only: time_stamp
-  use random_lcg,         only: openmc_get_seed, openmc_set_seed
   use settings
   use simulation_header
-  use string,             only: to_str, count_digits, zero_padded, to_f_string
+  use string,             only: to_str, zero_padded
   use tally_header
   use tally_filter_header
   use tally_derivative_header, only: tally_derivs
   use timer_header
 
   implicit none
-
-  interface
-    subroutine write_source_bank(group_id) bind(C)
-      import HID_T
-      integer(HID_T), value :: group_id
-    end subroutine write_source_bank
-
-    subroutine read_source_bank(group_id) bind(C)
-      import HID_T
-      integer(HID_T), value :: group_id
-    end subroutine read_source_bank
-  end interface
 
 contains
 
@@ -248,181 +233,39 @@ contains
 ! LOAD_STATE_POINT
 !===============================================================================
 
-  subroutine load_state_point() bind(C)
+  subroutine load_state_point_f(file_id) bind(C)
+    integer(HID_T), value :: file_id
 
     integer :: i
-    integer :: int_array(3)
-    integer, allocatable :: array(:)
-    integer(C_INT64_T) :: seed
-    integer(HID_T) :: file_id
+    integer :: temp
     integer(HID_T) :: tallies_group
     integer(HID_T) :: tally_group
-    logical :: source_present
-    character(MAX_WORD_LEN) :: word
 
-    interface
-      subroutine read_eigenvalue_hdf5(group) bind(C)
-        import HID_T
-        integer(HID_T), value :: group
-      end subroutine
+    ! Read global tally data
+    call read_dataset(global_tallies, file_id, "global_tallies")
 
-      subroutine restart_set_keff() bind(C)
-      end subroutine
-    end interface
+    ! Check if tally results are present
+    call read_attribute(temp, file_id, "tallies_present")
 
-    ! Write message
-    call write_message("Loading state point " // trim(path_state_point) &
-         // "...", 5)
+    ! Read in sum and sum squared
+    if (temp == 1) then
+      tallies_group = open_group(file_id, "tallies")
 
-    ! Open file for reading
-    file_id = file_open(path_state_point, 'r', parallel=.true.)
+      TALLY_RESULTS: do i = 1, n_tallies
+        associate (t => tallies(i) % obj)
+          ! Read sum, sum_sq, and N for each bin
+          tally_group = open_group(tallies_group, "tally " // &
+                trim(to_str(t % id)))
+          call t % read_results_hdf5(tally_group)
+          call read_dataset(t % n_realizations, tally_group, &
+                "n_realizations")
+          call close_group(tally_group)
+        end associate
+      end do TALLY_RESULTS
 
-    ! Read filetype
-    call read_attribute(word, file_id, "filetype")
-    if (word /= 'statepoint') then
-      call fatal_error("OpenMC tried to restart from a non-statepoint file.")
+      call close_group(tallies_group)
     end if
 
-    ! Read revision number for state point file and make sure it matches with
-    ! current version
-    call read_attribute(array, file_id, "version")
-    if (any(array /= VERSION_STATEPOINT)) then
-      call fatal_error("State point version does not match current version &
-           &in OpenMC.")
-    end if
-
-    ! Read and overwrite random number seed
-    call read_dataset(seed, file_id, "seed")
-    call openmc_set_seed(seed)
-
-    ! It is not impossible for a state point to be generated from a CE run but
-    ! to be loaded in to an MG run (or vice versa), check to prevent that.
-    call read_dataset(word, file_id, "energy_mode")
-    if (word == "multi-group" .and. run_CE) then
-      call fatal_error("State point file is from multi-group run but &
-                       & current run is continous-energy!")
-    else if (word == "continuous-energy" .and. .not. run_CE) then
-      call fatal_error("State point file is from continuous-energy run but &
-                       & current run is multi-group!")
-    end if
-
-    ! Read and overwrite run information except number of batches
-    call read_dataset(word, file_id, "run_mode")
-    select case(word)
-    case ('fixed source')
-      run_mode = MODE_FIXEDSOURCE
-    case ('eigenvalue')
-      run_mode = MODE_EIGENVALUE
-    end select
-    call read_attribute(int_array(1), file_id, "photon_transport")
-    if (int_array(1) == 1) then
-      photon_transport = .true.
-    else
-      photon_transport = .false.
-    end if
-    call read_dataset(n_particles, file_id, "n_particles")
-    call read_dataset(int_array(1), file_id, "n_batches")
-
-    ! Take maximum of statepoint n_batches and input n_batches
-    n_batches = max(n_batches, int_array(1))
-
-    ! Read batch number to restart at
-    call read_dataset(restart_batch, file_id, "current_batch")
-
-    ! Check for source in statepoint if needed
-    call read_attribute(int_array(1), file_id, "source_present")
-    if (int_array(1) == 1) then
-      source_present = .true.
-    else
-      source_present = .false.
-    end if
-
-    if (restart_batch > n_batches) then
-      call fatal_error("The number batches specified in settings.xml is fewer &
-           & than the number of batches in the given statepoint file.")
-    end if
-
-    ! Read information specific to eigenvalue run
-    if (run_mode == MODE_EIGENVALUE) then
-      call read_dataset(int_array(1), file_id, "n_inactive")
-      call read_eigenvalue_hdf5(file_id)
-
-      ! Take maximum of statepoint n_inactive and input n_inactive
-      n_inactive = max(n_inactive, int_array(1))
-    end if
-
-    ! Read number of realizations for global tallies
-    call read_dataset(n_realizations, file_id, "n_realizations", indep=.true.)
-
-    ! Set k_sum, keff, and current_batch based on whether restart file is part
-    ! of active cycle or inactive cycle
-    call restart_set_keff()
-    current_batch = restart_batch
-
-    ! Check to make sure source bank is present
-    if (path_source_point == path_state_point .and. .not. source_present) then
-      call fatal_error("Source bank must be contained in statepoint restart &
-           &file")
-    end if
-
-    ! Read tallies to master. If we are using Parallel HDF5, all processes
-    ! need to be included in the HDF5 calls.
-#ifdef PHDF5
-    if (.true.) then
-#else
-    if (master) then
-#endif
-      ! Read global tally data
-      call read_dataset(global_tallies, file_id, "global_tallies")
-
-      ! Check if tally results are present
-      call read_attribute(int_array(1), file_id, "tallies_present")
-
-      ! Read in sum and sum squared
-      if (int_array(1) == 1) then
-        tallies_group = open_group(file_id, "tallies")
-
-        TALLY_RESULTS: do i = 1, n_tallies
-          associate (t => tallies(i) % obj)
-            ! Read sum, sum_sq, and N for each bin
-            tally_group = open_group(tallies_group, "tally " // &
-                 trim(to_str(t % id)))
-            call t % read_results_hdf5(tally_group)
-            call read_dataset(t % n_realizations, tally_group, &
-                 "n_realizations")
-            call close_group(tally_group)
-          end associate
-        end do TALLY_RESULTS
-
-        call close_group(tallies_group)
-      end if
-    end if
-
-    ! Read source if in eigenvalue mode
-    if (run_mode == MODE_EIGENVALUE) then
-
-      ! Check if source was written out separately
-      if (.not. source_present) then
-
-        ! Close statepoint file
-        call file_close(file_id)
-
-        ! Write message
-        call write_message("Loading source file " // trim(path_source_point) &
-             // "...", 5)
-
-        ! Open source file
-        file_id = file_open(path_source_point, 'r', parallel=.true.)
-      end if
-
-      ! Read source
-      call read_source_bank(file_id)
-
-    end if
-
-    ! Close file
-    call file_close(file_id)
-
-  end subroutine load_state_point
+  end subroutine load_state_point_f
 
 end module state_point

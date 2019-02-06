@@ -248,25 +248,6 @@ contains
   end function ends_with
 
 !===============================================================================
-! COUNT_DIGITS returns the number of digits needed to represent the input
-! integer.
-!===============================================================================
-
-  pure function count_digits(num) result(n_digits)
-    integer, intent(in) :: num
-    integer             :: n_digits
-
-    n_digits = 1
-    do while (num / 10**(n_digits) /= 0 .and. abs(num / 10 **(n_digits-1)) /= 1&
-              &.and. n_digits /= 10)
-      ! Note that 10 digits is the maximum needed to represent an integer(4) so
-      ! the loop automatically exits when n_digits = 10.
-      n_digits = n_digits + 1
-    end do
-
-  end function count_digits
-
-!===============================================================================
 ! INT4_TO_STR converts an integer(4) to a string.
 !===============================================================================
 

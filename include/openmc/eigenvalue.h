@@ -83,6 +83,10 @@ extern "C" double ufs_get_weight(const Particle* p);
 //! \param[in] group HDF5 group
 void write_eigenvalue_hdf5(hid_t group);
 
+//! Read data related to k-eigenvalue from statepoint
+//! \param[in] group HDF5 group
+void read_eigenvalue_hdf5(hid_t group);
+
 } // namespace openmc
 
 #endif // OPENMC_EIGENVALUE_H

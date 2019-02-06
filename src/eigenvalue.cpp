@@ -638,7 +638,7 @@ void write_eigenvalue_hdf5(hid_t group)
   write_dataset(group, "k_combined", k_combined);
 }
 
-extern "C" void read_eigenvalue_hdf5(hid_t group)
+void read_eigenvalue_hdf5(hid_t group)
 {
   read_dataset(group, "generations_per_batch", settings::gen_per_batch);
   int n = simulation::restart_batch*settings::gen_per_batch;

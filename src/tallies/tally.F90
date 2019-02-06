@@ -2030,53 +2030,6 @@ contains
   end subroutine score_general_mg
 
 !===============================================================================
-! SCORE_ALL_NUCLIDES tallies individual nuclide reaction rates specifically when
-! the user requests <nuclides>all</nuclides>.
-!===============================================================================
-
-  subroutine score_all_nuclides(p, i_tally, flux, filter_index) bind(C)
-
-    type(Particle), intent(in) :: p
-    integer(C_INT), intent(in), value :: i_tally
-    real(C_DOUBLE), intent(in), value :: flux
-    integer(C_INT), intent(in), value :: filter_index
-
-    integer :: i             ! loop index for nuclides in material
-    integer :: i_nuclide     ! index in nuclides array
-    real(8) :: atom_density  ! atom density of single nuclide in atom/b-cm
-
-    associate (t => tallies(i_tally) % obj)
-
-    ! ==========================================================================
-    ! SCORE ALL INDIVIDUAL NUCLIDE REACTION RATES
-
-    NUCLIDE_LOOP: do i = 1, material_nuclide_size(p % material)
-
-      ! Determine index in nuclides array and atom density for i-th nuclide in
-      ! current material
-      i_nuclide = material_nuclide(p % material, i) - 1
-      atom_density = material_atom_density(p % material, i)
-
-      ! Determine score for each bin
-      call score_general(p, i_tally, i_nuclide*t % n_score_bins(), filter_index, &
-           i_nuclide, atom_density, flux)
-
-    end do NUCLIDE_LOOP
-
-    ! ==========================================================================
-    ! SCORE TOTAL MATERIAL REACTION RATES
-
-    i_nuclide = -1
-    atom_density = ZERO
-
-    ! Determine score for each bin
-    call score_general(p, i_tally, n_nuclides*t % n_score_bins(), filter_index, &
-         i_nuclide, atom_density, flux)
-
-    end associate
-  end subroutine score_all_nuclides
-
-!===============================================================================
 ! SCORE_FISSION_EOUT handles a special case where we need to store neutron
 ! production rate with an outgoing energy filter (think of a fission matrix). In
 ! this case, we may need to score to multiple bins if there were multiple

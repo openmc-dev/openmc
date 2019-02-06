@@ -97,16 +97,16 @@ for f in files:
 # ==============================================================================
 # EXTRACT FILES FROM TGZ
 
-#for f in files:
-#    if f not in files_complete:
-#        continue
+for f in files:
+   if f not in files_complete:
+       continue
 
-    # Extract files
+    Extract files
 
-#    suffix = ''
-#    with tarfile.open(f, 'r') as tgz:
-#        print('Extracting {0}...'.format(f))
-#        tgz.extractall(path=os.path.join('tendl-2015', suffix))
+   suffix = ''
+   with tarfile.open(f, 'r') as tgz:
+       print('Extracting {0}...'.format(f))
+       tgz.extractall(path=os.path.join('tendl-2015', suffix))
 
 
 # ==============================================================================

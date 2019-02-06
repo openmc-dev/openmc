@@ -772,8 +772,8 @@ contains
               ! for all delayed groups.
               score = ZERO
 
-              associate (rxn => nuclides(p % event_nuclide) % &
-                   reactions(nuclides(p % event_nuclide) % index_fission(1)))
+              associate (rxn => nuclides(i_nuclide) % &
+                   reactions(nuclides(i_nuclide) % index_fission(1)))
 
                 ! We need to be careful not to overshoot the number of delayed
                 ! groups since this could cause the range of the rxn % products
@@ -781,7 +781,7 @@ contains
                 ! and not the MAX_DELAYED_GROUPS constant for this loop.
                 do d = 1, rxn % products_size() - 2
                   score = score + micro_xs(i_nuclide) % fission * flux * &
-                       nuclides(i_nuclide) % nu(E, EMISSION_DELAYED) * &
+                       nuclides(i_nuclide) % nu(E, EMISSION_DELAYED, d) * &
                        atom_density * rxn % product_decay_rate(1 + d)
                 end do
               end associate
@@ -864,7 +864,7 @@ contains
 
                         ! Accumulate the contribution from each nuclide
                         score = score + micro_xs(i_nuc) % fission &
-                             * nuclides(i_nuc) % nu(E, EMISSION_DELAYED) &
+                             * nuclides(i_nuc) % nu(E, EMISSION_DELAYED, d) &
                              * atom_density_ * flux &
                              * rxn % product_decay_rate(1 + d)
                       end do

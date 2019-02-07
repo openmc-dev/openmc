@@ -59,6 +59,18 @@ module tally
       real(C_DOUBLE), intent(in), value :: flux
     end subroutine
 
+    subroutine score_general_mg_c(p, i_tally, start_index, filter_index, &
+         i_nuclide, atom_density, flux) bind(C)
+      import Particle, C_INT, C_DOUBLE
+      type(Particle), intent(in) :: p
+      integer(C_INT), intent(in), value :: i_tally
+      integer(C_INT), intent(in), value :: start_index
+      integer(C_INT), intent(in), value :: filter_index
+      integer(C_INT), intent(in), value :: i_nuclide
+      real(C_DOUBLE), intent(in), value :: atom_density
+      real(C_DOUBLE), intent(in), value :: flux
+    end subroutine
+
     subroutine score_fission_delayed_dg(i_tally, d_bin, score, score_index) bind(C)
       import C_INT, C_DOUBLE
       integer(C_INT), value :: i_tally
@@ -206,6 +218,9 @@ contains
       call set_nuclide_angle_index_c(i_nuclide+1, p_uvw)
     end if
 
+    call score_general_mg_c(p, i_tally, start_index, filter_index, i_nuclide, &
+         atom_density, flux)
+
     i = 0
     SCORE_LOOP: do q = 1, t % n_score_bins()
       i = i + 1
@@ -223,279 +238,35 @@ contains
 
 
       case (SCORE_FLUX)
-        if (t % estimator() == ESTIMATOR_ANALOG) then
-          ! All events score to a flux bin. We actually use a collision
-          ! estimator in place of an analog one since there is no way to count
-          ! 'events' exactly for the flux
-
-          if (survival_biasing) then
-            ! We need to account for the fact that some weight was already
-            ! absorbed
-            score = p % last_wgt + p % absorb_wgt
-          else
-            score = p % last_wgt
-          end if
-          score = score / material_xs % total * flux
-
-        else
-          ! For flux, we need no cross section
-          score = flux
-        end if
+        cycle SCORE_LOOP
 
 
       case (SCORE_TOTAL)
-        if (t % estimator() == ESTIMATOR_ANALOG) then
-          ! All events will score to the total reaction rate. We can just
-          ! use the weight of the particle entering the collision as the
-          ! score
-          if (survival_biasing) then
-            ! We need to account for the fact that some weight was already
-            ! absorbed
-            score = p % last_wgt + p % absorb_wgt
-          else
-            score = p % last_wgt
-          end if
-
-          if (i_nuclide >= 0) then
-            score = score * flux * atom_density * &
-                 get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_TOTAL, p_g) / &
-                 get_macro_xs_c(p % material, MG_GET_XS_TOTAL, p_g)
-          end if
-
-        else
-          if (i_nuclide >= 0) then
-            score = get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_TOTAL, p_g) * &
-                 atom_density * flux
-          else
-            score = material_xs % total * flux
-          end if
-        end if
+        cycle SCORE_LOOP
 
 
       case (SCORE_INVERSE_VELOCITY)
-        if (t % estimator() == ESTIMATOR_ANALOG .or. &
-             t % estimator() == ESTIMATOR_COLLISION) then
-          ! All events score to an inverse velocity bin. We actually use a
-          ! collision estimator in place of an analog one since there is no way
-          ! to count 'events' exactly for the inverse velocity
-          if (survival_biasing) then
-            ! We need to account for the fact that some weight was already
-            ! absorbed
-            score = p % last_wgt + p % absorb_wgt
-          else
-            score = p % last_wgt
-          end if
-
-          if (i_nuclide >= 0) then
-            score = score * flux * get_nuclide_xs_c(i_nuclide+1, &
-                 MG_GET_XS_INVERSE_VELOCITY, p_g) / &
-                 get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
-          else
-            score = score * flux * get_macro_xs_c(p % material, &
-                 MG_GET_XS_INVERSE_VELOCITY, p_g) / &
-                 get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
-          end if
-
-        else
-
-          if (i_nuclide >= 0) then
-            score = flux * get_nuclide_xs_c(i_nuclide+1, &
-                 MG_GET_XS_INVERSE_VELOCITY, p_g)
-          else
-            score = flux * get_macro_xs_c(p % material, &
-                 MG_GET_XS_INVERSE_VELOCITY, p_g)
-          end if
-        end if
+        cycle SCORE_LOOP
 
 
       case (SCORE_SCATTER)
-        if (t % estimator() == ESTIMATOR_ANALOG) then
-          ! Skip any event where the particle didn't scatter
-          if (p % event /= EVENT_SCATTER) then
-            cycle SCORE_LOOP
-          end if
-
-          ! Since only scattering events make it here, again we can use
-          ! the weight entering the collision as the estimator for the
-          ! reaction rate
-          score = p % last_wgt * flux
-
-          ! Since we transport based on material data, the angle selected
-          ! was not selected from the f(mu) for the nuclide.  Therefore
-          ! adjust the score by the actual probability for that nuclide.
-          if (i_nuclide >= 0) then
-            score = score * atom_density * &
-                 get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_SCATTER_FMU_MULT, &
-                                  p % last_g, p % g, MU=p % mu) / &
-                 get_macro_xs_c(p % material, MG_GET_XS_SCATTER_FMU_MULT, &
-                                p % last_g, p % g, MU=p % mu)
-          end if
-
-        else
-          if (i_nuclide >= 0) then
-            score = atom_density * flux * &
-                 get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_SCATTER_MULT, &
-                                  p_g, MU=p % mu)
-          else
-            ! Get the scattering x/s and take away
-            ! the multiplication baked in to sigS
-            score = flux * &
-                 get_macro_xs_c(p % material, MG_GET_XS_SCATTER_MULT, &
-                                p_g, MU=p % mu)
-          end if
-        end if
+        cycle SCORE_LOOP
 
 
       case (SCORE_NU_SCATTER)
-        if (t % estimator() == ESTIMATOR_ANALOG) then
-          ! Skip any event where the particle didn't scatter
-          if (p % event /= EVENT_SCATTER) then
-            cycle SCORE_LOOP
-          end if
-
-          ! For scattering production, we need to use the pre-collision
-          ! weight times the multiplicity as the estimate for the number of
-          ! neutrons exiting a reaction with neutrons in the exit channel
-          score = p % wgt * flux
-
-          ! Since we transport based on material data, the angle selected
-          ! was not selected from the f(mu) for the nuclide.  Therefore
-          ! adjust the score by the actual probability for that nuclide.
-          if (i_nuclide >= 0) then
-            score = score * atom_density * &
-                 get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_SCATTER_FMU, &
-                                p % last_g, p % g, MU=p % mu) / &
-                 get_macro_xs_c(p % material, MG_GET_XS_SCATTER_FMU, &
-                                p % last_g, p % g, MU=p % mu)
-          end if
-
-        else
-          if (i_nuclide >= 0) then
-            score = atom_density * flux * &
-                 get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_SCATTER, p_g)
-          else
-            ! Get the scattering x/s, which includes multiplication
-            score = flux * &
-                   get_macro_xs_c(p % material, MG_GET_XS_SCATTER, p_g)
-          end if
-        end if
+        cycle SCORE_LOOP
 
 
       case (SCORE_ABSORPTION)
-        if (t % estimator() == ESTIMATOR_ANALOG) then
-          if (survival_biasing) then
-            ! No absorption events actually occur if survival biasing is on --
-            ! just use weight absorbed in survival biasing
-            score = p % absorb_wgt * flux
-          else
-            ! Skip any event where the particle wasn't absorbed
-            if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
-            ! All fission and absorption events will contribute here, so we
-            ! can just use the particle's weight entering the collision
-            score = p % last_wgt * flux
-          end if
-          if (i_nuclide >= 0) then
-            score = score * atom_density * &
-                 get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_ABSORPTION, p_g) / &
-                 get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
-          end if
-        else
-          if (i_nuclide >= 0) then
-            score = atom_density * flux * &
-                 get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_ABSORPTION, p_g)
-          else
-            score = material_xs % absorption * flux
-          end if
-        end if
+        cycle SCORE_LOOP
 
 
       case (SCORE_FISSION)
-
-        if (t % estimator() == ESTIMATOR_ANALOG) then
-          if (survival_biasing) then
-            ! No fission events occur if survival biasing is on -- need to
-            ! calculate fraction of absorptions that would have resulted in
-            ! fission
-            score = p % absorb_wgt * flux
-          else
-            ! Skip any non-absorption events
-            if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
-            ! All fission events will contribute, so again we can use
-            ! particle's weight entering the collision as the estimate for the
-            ! fission reaction rate
-            score = p % last_wgt * flux
-          end if
-          if (i_nuclide >= 0) then
-            score = score * atom_density * &
-                 get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_FISSION, p_g) / &
-                 get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
-          else
-            score = score * &
-                 get_macro_xs_c(p % material, MG_GET_XS_FISSION, p_g) / &
-                 get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
-          end if
-        else
-          if (i_nuclide >= 0) then
-            score = get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_FISSION, p_g) * &
-                 atom_density * flux
-          else
-            score = get_macro_xs_c(p % material, MG_GET_XS_FISSION, p_g) * flux
-          end if
-        end if
+        cycle SCORE_LOOP
 
 
       case (SCORE_NU_FISSION)
-
-        if (t % estimator() == ESTIMATOR_ANALOG) then
-          if (survival_biasing .or. p % fission) then
-            if (t % energyout_filter() > 0) then
-              ! Normally, we only need to make contributions to one scoring
-              ! bin. However, in the case of fission, since multiple fission
-              ! neutrons were emitted with different energies, multiple
-              ! outgoing energy bins may have been scored to. The following
-              ! logic treats this special case and results to multiple bins
-              call score_fission_eout(p, i_tally, score_index, score_bin)
-              cycle SCORE_LOOP
-            end if
-          end if
-          if (survival_biasing) then
-            ! No fission events occur if survival biasing is on -- need to
-            ! calculate fraction of absorptions that would have resulted in
-            ! nu-fission
-            score = p % absorb_wgt * flux
-            if (i_nuclide >= 0) then
-              score = score * atom_density * &
-                   get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_NU_FISSION, p_g) / &
-                   get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
-            else
-              score = score * &
-                   get_macro_xs_c(p % material, MG_GET_XS_NU_FISSION, p_g) / &
-                   get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
-            end if
-          else
-            ! Skip any non-fission events
-            if (.not. p % fission) cycle SCORE_LOOP
-            ! If there is no outgoing energy filter, than we only need to
-            ! score to one bin. For the score to be 'analog', we need to
-            ! score the number of particles that were banked in the fission
-            ! bank. Since this was weighted by 1/keff, we multiply by keff
-            ! to get the proper score.
-            score = keff * p % wgt_bank * flux
-            if (i_nuclide >= 0) then
-              score = score * atom_density * &
-                   get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_FISSION, p_g) / &
-                   get_macro_xs_c(p % material, MG_GET_XS_FISSION, p_g)
-            end if
-          end if
-
-        else
-          if (i_nuclide >= 0) then
-            score = get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_NU_FISSION, p_g) * &
-                 atom_density * flux
-          else
-            score = get_macro_xs_c(p % material, MG_GET_XS_NU_FISSION, p_g) * flux
-          end if
-        end if
+        cycle SCORE_LOOP
 
 
       case (SCORE_PROMPT_NU_FISSION)

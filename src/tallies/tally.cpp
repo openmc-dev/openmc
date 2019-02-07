@@ -38,10 +38,6 @@ namespace openmc {
 //==============================================================================
 
 extern "C" void
-score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
-  int i_nuclide, double atom_density, double flux);
-
-extern "C" void
 score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
   int i_nuclide, double atom_density, double flux);
 
@@ -53,6 +49,19 @@ extern "C" int
 energy_filter_search(const EnergyFilter* filt, double val);
 
 extern "C" double get_precursor_decay_rate(int i_nuclide, int d);
+
+//==============================================================================
+// MG mode helper functions
+//TODO: move these or remove the need for them
+//==============================================================================
+
+double
+get_nuclide_xs(int index, int xstype, int gin)
+{return get_nuclide_xs_c(index, xstype, gin, nullptr, nullptr, nullptr);}
+
+double
+get_macro_xs(int index, int xstype, int gin)
+{return get_macro_xs_c(index, xstype, gin, nullptr, nullptr, nullptr);}
 
 //==============================================================================
 // Global variable definitions
@@ -926,7 +935,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
         if (settings::survival_biasing) {
           // We need to account for the fact that some weight was already
           // absorbed
-          score = (p->last_wgt + p->absorb_wgt);
+          score = p->last_wgt + p->absorb_wgt;
         } else {
           score = p->last_wgt;
         }
@@ -1746,6 +1755,323 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
     if (tally.deriv_ != C_NONE)
       apply_derivative_to_score(p, i_tally, i_nuclide, atom_density, score_bin,
         &score);
+
+    // Update tally results
+    #pragma omp atomic
+    results(filter_index-1, score_index, RESULT_VALUE) += score;
+  }
+}
+
+extern "C" void
+score_general_mg_c(Particle* p, int i_tally, int start_index, int filter_index,
+  int i_nuclide, double atom_density, double flux)
+{
+  //TODO: off-by-one
+  const Tally& tally {*model::tallies[i_tally-1]};
+  auto results = tally_results(i_tally);
+
+  // Set the direction and group to use with get_xs
+  double* p_uvw;
+  int p_g;
+  if (tally.estimator_ == ESTIMATOR_ANALOG
+    || tally.estimator_ == ESTIMATOR_COLLISION) {
+
+    if (settings::survival_biasing) {
+
+      // Then we either are alive and had a scatter (and so g changed),
+      // or are dead and g did not change
+      if (p->alive) {
+        p_uvw = p->last_uvw;
+        p_g = p->last_g;
+      } else {
+        p_uvw = p->coord[p->n_coord-1].uvw;
+        p_g = p->g;
+      }
+    } else if (p->event == EVENT_SCATTER) {
+
+      // Then the energy group has been changed by the scattering routine
+      // meaning gin is now in p % last_g
+      p_uvw = p->last_uvw;
+      p_g = p->last_g;
+    } else {
+
+      // No scatter, no change in g.
+      p_uvw = p->coord[p->n_coord-1].uvw;
+      p_g = p->g;
+    }
+  } else {
+
+    // No actual collision so g has not changed.
+    p_uvw = p->coord[p->n_coord-1].uvw;
+    p_g = p->g;
+  }
+
+  //TODO: set_macro_angle_index
+  //TODO: set_nuclide_temperature_index
+  //TODO: est_nuclide_angle_index
+
+  for (auto i = 0; i < tally.scores_.size(); ++i) {
+    auto score_bin = tally.scores_[i];
+    auto score_index = start_index + i;
+
+    double score;
+
+    switch (score_bin) {
+
+
+    case SCORE_FLUX:
+      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+        // All events score to a flux bin. We actually use a collision estimator
+        // in place of an analog one since there is no way to count 'events'
+        // exactly for the flux
+        if (settings::survival_biasing) {
+          // We need to account for the fact that some weight was already
+          // absorbed
+          score = p->last_wgt + p->absorb_wgt;
+        } else {
+          score = p->last_wgt;
+        }
+        score *= flux / simulation::material_xs.total;
+      } else {
+        score = flux;
+      }
+      break;
+
+
+    case SCORE_TOTAL:
+      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+        // All events will score to the total reaction rate. We can just use
+        // use the weight of the particle entering the collision as the score
+        if (settings::survival_biasing) {
+          // We need to account for the fact that some weight was already
+          // absorbed
+          score = p->last_wgt + p->absorb_wgt;
+        } else {
+          score = p->last_wgt;
+        }
+        //TODO: should flux be multiplied in above instead of below?
+        if (i_nuclide >= 0) {
+          score *= flux * atom_density
+            * get_nuclide_xs(i_nuclide+1, MG_GET_XS_TOTAL, p_g)
+            / get_macro_xs(p->material, MG_GET_XS_TOTAL, p_g);
+        }
+      } else {
+        if (i_nuclide >= 0) {
+          score = get_nuclide_xs(i_nuclide+1, MG_GET_XS_TOTAL, p_g)
+            * atom_density * flux;
+        } else {
+          score = simulation::material_xs.total * flux;
+        }
+      }
+      break;
+
+
+    case SCORE_INVERSE_VELOCITY:
+      if (tally.estimator_ == ESTIMATOR_ANALOG
+        || tally.estimator_ == ESTIMATOR_COLLISION) {
+        // All events score to an inverse velocity bin. We actually use a
+        // collision estimator in place of an analog one since there is no way
+        // to count 'events' exactly for the inverse velocity
+        if (settings::survival_biasing) {
+          // We need to account for the fact that some weight was already
+          // absorbed
+          score = p->last_wgt + p->absorb_wgt;
+        } else {
+          score = p->last_wgt;
+        }
+        if (i_nuclide >= 0) {
+          score *= flux
+            * get_nuclide_xs(i_nuclide+1, MG_GET_XS_INVERSE_VELOCITY, p_g)
+            / get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g);
+        } else {
+          score *= flux
+            * get_macro_xs(p->material, MG_GET_XS_INVERSE_VELOCITY, p_g)
+            / get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g);
+        }
+      } else {
+        if (i_nuclide >= 0) {
+          score = flux
+            * get_nuclide_xs(i_nuclide+1, MG_GET_XS_INVERSE_VELOCITY, p_g);
+        } else {
+          score = flux
+            * get_macro_xs(p->material, MG_GET_XS_INVERSE_VELOCITY, p_g);
+        }
+      }
+      break;
+
+
+    case SCORE_SCATTER:
+      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+        // Skip any event where the particle didn't scatter
+        if (p->event != EVENT_SCATTER) continue;
+        // Since only scattering events make it here, again we can use the
+        // weight entering the collision as the estimator for the reaction rate
+        score = p->last_wgt * flux;
+        if (i_nuclide >= 0) {
+          score *= atom_density
+            * get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_SCATTER_FMU_MULT,
+                               p->last_g, &p->g, &p->mu, nullptr)
+            / get_macro_xs_c(p->material, MG_GET_XS_SCATTER_FMU_MULT,
+                             p->last_g, &p->g, &p->mu, nullptr);
+        }
+      } else {
+        if (i_nuclide >= 0) {
+          score = atom_density * flux * get_nuclide_xs_c(
+            i_nuclide+1, MG_GET_XS_SCATTER_MULT, p_g, nullptr, &p->mu, nullptr);
+        } else {
+          score = flux * get_macro_xs_c(
+            p->material, MG_GET_XS_SCATTER_MULT, p_g, nullptr, &p->mu, nullptr);
+        }
+      }
+      break;
+
+
+    case SCORE_NU_SCATTER:
+      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+        // Skip any event where the particle didn't scatter
+        if (p->event != EVENT_SCATTER) continue;
+        // For scattering production, we need to use the pre-collision weight
+        // times the multiplicity as the estimate for the number of neutrons
+        // exiting a reaction with neutrons in the exit channel
+        score = p->wgt * flux;
+        // Since we transport based on material data, the angle selected
+        // was not selected from the f(mu) for the nuclide.  Therefore
+        // adjust the score by the actual probability for that nuclide.
+        if (i_nuclide >= 0) {
+          score *= atom_density
+            * get_nuclide_xs_c(i_nuclide+1, MG_GET_XS_SCATTER_FMU,
+                               p->last_g, &p->g, &p->mu, nullptr)
+            / get_macro_xs_c(p->material, MG_GET_XS_SCATTER_FMU,
+                             p->last_g, &p->g, &p->mu, nullptr);
+        }
+      } else {
+        if (i_nuclide >= 0) {
+          score = atom_density * flux * get_nuclide_xs(
+            i_nuclide+1, MG_GET_XS_SCATTER, p_g);
+        } else {
+          score = flux * get_macro_xs(p->material, MG_GET_XS_SCATTER, p_g);
+        }
+      }
+      break;
+
+
+    case SCORE_ABSORPTION:
+      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+        if (settings::survival_biasing) {
+          // No absorption events actually occur if survival biasing is on --
+          // just use weight absorbed in survival biasing
+          score = p->absorb_wgt * flux;
+        } else {
+          // Skip any event where the particle wasn't absorbed
+          if (p->event == EVENT_SCATTER) continue;
+          // All fission and absorption events will contribute here, so we
+          // can just use the particle's weight entering the collision
+          score = p->last_wgt * flux;
+        }
+        if (i_nuclide >= 0) {
+          score *= atom_density
+            * get_nuclide_xs(i_nuclide+1, MG_GET_XS_ABSORPTION, p_g)
+            / get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g);
+        }
+      } else {
+        if (i_nuclide >= 0) {
+          score = atom_density * flux
+            * get_nuclide_xs(i_nuclide+1, MG_GET_XS_ABSORPTION, p_g);
+        } else {
+          score = simulation::material_xs.absorption * flux;
+        }
+      }
+      break;
+
+
+    case SCORE_FISSION:
+      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+        if (settings::survival_biasing) {
+          // No fission events occur if survival biasing is on -- need to
+          // calculate fraction of absorptions that would have resulted in
+          // fission
+          score = p->absorb_wgt * flux;
+        } else {
+          // Skip any non-absorption events
+          if (p->event == EVENT_SCATTER) continue;
+          // All fission events will contribute, so again we can use particle's
+          // weight entering the collision as the estimate for the fission
+          // reaction rate
+          score = p->last_wgt * flux;
+        }
+        if (i_nuclide >= 0) {
+          score *= atom_density
+            * get_nuclide_xs(i_nuclide+1, MG_GET_XS_FISSION, p_g)
+            / get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g);
+        } else {
+          score *=
+            get_macro_xs(p->material, MG_GET_XS_FISSION, p_g)
+            / get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g);
+        }
+      } else {
+        if (i_nuclide >= 0) {
+          score = get_nuclide_xs(i_nuclide+1, MG_GET_XS_FISSION, p_g)
+            * atom_density * flux;
+        } else {
+          score = get_macro_xs(p->material, MG_GET_XS_FISSION, p_g) * flux;
+        }
+      }
+      break;
+
+
+    case SCORE_NU_FISSION:
+      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+        if (settings::survival_biasing || p->fission) {
+          if (tally.energyout_filter_ > 0) {
+            // Fission has multiple outgoing neutrons so this helper function
+            // is used to handle scoring the multiple filter bins.
+            score_fission_eout(p, i_tally, score_index+1, score_bin);
+            continue;
+          }
+        }
+        if (settings::survival_biasing) {
+          // No fission events occur if survival biasing is on -- need to
+          // calculate fraction of absorptions that would have resulted in
+          // nu-fission
+          score = p->absorb_wgt * flux;
+          if (i_nuclide >= 0) {
+            score *= atom_density
+              * get_nuclide_xs(i_nuclide+1, MG_GET_XS_NU_FISSION, p_g)
+              / get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g);
+          } else {
+            score *=
+              get_macro_xs(p->material, MG_GET_XS_NU_FISSION, p_g)
+              / get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g);
+          }
+        } else {
+          // Skip any non-fission events
+          if (!p->fission) continue;
+          // If there is no outgoing energy filter, than we only need to score
+          // to one bin. For the score to be 'analog', we need to score the
+          // number of particles that were banked in the fission bank. Since
+          // this was weighted by 1/keff, we multiply by keff to get the proper
+          // score.
+          score = simulation::keff * p->wgt_bank * flux;
+          if (i_nuclide >= 0) {
+            score *= atom_density
+              * get_nuclide_xs(i_nuclide+1, MG_GET_XS_FISSION, p_g)
+              / get_macro_xs(p->material, MG_GET_XS_FISSION, p_g);
+          }
+        }
+      } else {
+        if (i_nuclide >= 0) {
+          score = get_nuclide_xs(i_nuclide+1, MG_GET_XS_NU_FISSION, p_g)
+            * atom_density * flux;
+        } else {
+          score = get_macro_xs(p->material, MG_GET_XS_NU_FISSION, p_g) * flux;
+        }
+      }
+      break;
+
+
+    default:
+      continue;
+    }
 
     // Update tally results
     #pragma omp atomic

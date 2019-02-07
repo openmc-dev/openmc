@@ -63,14 +63,14 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node) {
   n_samples_ = std::stoi(get_node_value(node, "samples"));
 }
 
-void VolumeCalculation::check_hit(int i_domain, int i_material,
-  int_2dvec& indices, int_2dvec& hits) const {
+void VolumeCalculation::check_hit(int i_material, std::vector<int>& indices,
+  std::vector<int>& hits) const {
 
   // Check if this material was previously hit and if so, increment count
   bool already_hit = false;
-  for (int j = 0; j < indices[i_domain].size(); j++) {
-    if (indices[i_domain][j] == i_material) {
-      hits[i_domain][j]++;
+  for (int j = 0; j < indices.size(); j++) {
+    if (indices[j] == i_material) {
+      hits[j]++;
       already_hit = true;
     }
   }
@@ -78,23 +78,17 @@ void VolumeCalculation::check_hit(int i_domain, int i_material,
   // If the material was not previously hit, append an entry to the material
   // indices and hits lists
   if (!already_hit) {
-    indices[i_domain].push_back(i_material);
-    hits[i_domain].push_back(1);
+    indices.push_back(i_material);
+    hits.push_back(1);
   }
 }
 
-// Stochastically determin the volume of a set of domains along with the
-// average number densities of nuclides within the domain
-// @param volumes volume mean/stdev in each domain
-// @param i_nuclides indices in nuclides array
-// @param n_atoms total # of atoms of each nuclide
-// @param n_atoms_uncertainty uncertainty of total # of atoms
 std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 {
   // Shared data that is collected from all threads
   int n = domain_ids_.size();
-  int_2dvec master_indices(n); // List of material indices for each domain
-  int_2dvec master_hits(n); // Number of hits for each material in each domain
+  std::vector<std::vector<int>> master_indices(n); // List of material indices for each domain
+  std::vector<std::vector<int>> master_hits(n); // Number of hits for each material in each domain
 
   // Divide work over MPI processes
   int min_samples = n_samples_ / mpi::n_procs;
@@ -112,8 +106,8 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 #pragma omp parallel
   {
     // Variables that are private to each thread
-    int_2dvec indices(n);
-    int_2dvec hits(n);
+    std::vector<std::vector<int>> indices(n);
+    std::vector<std::vector<int>> hits(n);
     Particle p;
     p.initialize();
 
@@ -143,7 +137,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         if (i_material != MATERIAL_VOID) {
           for (int i_domain = 0; i_domain < n; i_domain++) {
             if (model::materials[i_material]->id_ == domain_ids_[i_domain]) {
-              this->check_hit(i_domain, i_material, indices, hits);
+              this->check_hit(i_material, indices[i_domain], hits[i_domain]);
             }
           }
         }
@@ -151,7 +145,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         for (int level = 0; level < p.n_coord; ++level) {
           for (int i_domain=0; i_domain < n; i_domain++) {
             if (model::cells[p.coord[level].cell]->id_ == domain_ids_[i_domain]) {
-              this->check_hit(i_domain, i_material, indices, hits);
+              this->check_hit(i_material, indices[i_domain], hits[i_domain]);
             }
           }
         }
@@ -159,7 +153,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         for (int level = 0; level < p.n_coord; ++level) {
           for (int i_domain = 0; i_domain < n; ++i_domain) {
             if (model::universes[p.coord[level].universe]->id_ == domain_ids_[i_domain]) {
-              check_hit(i_domain, i_material, indices, hits);
+              check_hit(i_material, indices[i_domain], hits[i_domain]);
             }
           }
         }
@@ -296,7 +290,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
   return results;
 }
 
-void VolumeCalculation::write_volume(const std::string& filename,
+void VolumeCalculation::to_hdf5(const std::string& filename,
   const std::vector<Result>& results) const
 {
   // Create HDF5 file
@@ -407,7 +401,7 @@ int openmc_calculate_volumes() {
       // Write volumes to HDF5 file
       std::string filename = settings::path_output + "volume_"
         + std::to_string(i+1) + ".h5";
-      vol_calc.write_volume(filename, results);
+      vol_calc.to_hdf5(filename, results);
     }
 
   }
@@ -421,5 +415,9 @@ int openmc_calculate_volumes() {
 
   return 0;
 }
+
+//==============================================================================
+// Fortran compatibility
+//==============================================================================
 
 extern "C" void free_memory_volume() { openmc::model::volume_calcs.clear(); }

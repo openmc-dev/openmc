@@ -2,10 +2,7 @@ module reaction_header
 
   use, intrinsic :: ISO_C_BINDING
 
-  use constants,      only: MAX_WORD_LEN
   use hdf5_interface
-  use stl_vector,     only: VectorInt
-  use string,         only: to_str, starts_with
 
   implicit none
   private

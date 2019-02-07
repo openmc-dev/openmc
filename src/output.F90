@@ -4,7 +4,6 @@ module output
   use, intrinsic :: ISO_FORTRAN_ENV
 
   use constants
-  use eigenvalue,      only: openmc_get_keff
   use endf,            only: reaction_name
   use error,           only: fatal_error, warning
   use geometry_header
@@ -12,7 +11,7 @@ module output
   use message_passing, only: master, n_procs
   use mgxs_interface
   use nuclide_header
-  use particle_header, only: LocalCoord, Particle
+  use particle_header, only: Particle
   use settings
   use simulation_header
   use surface_header,  only: surfaces
@@ -37,22 +36,6 @@ module output
   end interface
 
 contains
-
-!===============================================================================
-! TIME_STAMP returns the current date and time in a formatted string
-!===============================================================================
-
-  function time_stamp() result(current_time)
-
-    character(19) :: current_time ! ccyy-mm-dd hh:mm:ss
-    character(8)  :: date_        ! ccyymmdd
-    character(10) :: time_        ! hhmmss.sss
-
-    call date_and_time(DATE=date_, TIME=time_)
-    current_time = date_(1:4) // "-" // date_(5:6) // "-" // date_(7:8) // &
-         " " // time_(1:2) // ":" // time_(3:4) // ":" // time_(5:6)
-
-  end function time_stamp
 
 !===============================================================================
 ! HEADER displays a header block according to a specified level. If no level is

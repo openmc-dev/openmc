@@ -74,7 +74,8 @@ contains
     call set_particle_seed(particle_seed)
 
     ! Transport neutron
-    call transport(p)
+    ! FIXME
+    !call transport(p)
 
     ! Write output if particle made it
     call print_particle(p)

@@ -1135,11 +1135,6 @@ extern "C" {
     return model::materials[i_mat - 1]->density_gpcc_;
   }
 
-  void material_calculate_xs(const Particle* p)
-  {
-    model::materials[p->material - 1]->calculate_xs(*p);
-  }
-
   void free_memory_material()
   {
     for (Material *mat : model::materials) {delete mat;}

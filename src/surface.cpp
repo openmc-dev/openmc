@@ -340,7 +340,7 @@ bool SurfaceXPlane::periodic_translate(const PeriodicSurface* other,
                                        Position& r,  Direction& u) const
 {
   Direction other_n = other->normal(r);
-  if (other_n.x == 1 and other_n.y == 0 and other_n.z == 0) {
+  if (other_n.x == 1 && other_n.y == 0 && other_n.z == 0) {
     r.x = x0_;
     return false;
   } else {
@@ -397,11 +397,11 @@ void SurfaceYPlane::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-bool SurfaceYPlane::periodic_translate(const PeriodicSurface *other,
+bool SurfaceYPlane::periodic_translate(const PeriodicSurface* other,
                                        Position& r, Direction& u) const
 {
   Direction other_n = other->normal(r);
-  if (other_n.x == 0 and other_n.y == 1 and other_n.z == 0) {
+  if (other_n.x == 0 && other_n.y == 1 && other_n.z == 0) {
     // The periodic partner is also aligned along y.  Just change the y coord.
     r.y = y0_;
     return false;

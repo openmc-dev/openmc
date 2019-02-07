@@ -805,12 +805,12 @@ extern "C" {
   }
 
   #ifdef DAGMC
-  int32_t next_cell(DAGCell* cur_cell, DAGSurface* surf_xed )
+  int32_t next_cell(DAGCell* cur_cell, DAGSurface* surf_xed)
   {
     moab::EntityHandle surf =
-      surf_xed->dagmc_ptr_->entity_by_id(2,surf_xed->id_);
+      surf_xed->dagmc_ptr_->entity_by_id(2, surf_xed->id_);
     moab::EntityHandle vol =
-      cur_cell->dagmc_ptr_->entity_by_id(3,cur_cell->id_);
+      cur_cell->dagmc_ptr_->entity_by_id(3, cur_cell->id_);
 
     moab::EntityHandle new_vol;
     cur_cell->dagmc_ptr_->next_vol(surf, vol, new_vol);

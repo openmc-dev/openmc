@@ -11,86 +11,15 @@ module tally
   use message_passing
   use mgxs_interface
   use nuclide_header
-  use particle_header,  only: LocalCoord, Particle
   use settings
   use simulation_header
-  use string,           only: to_str
   use tally_derivative_header
   use tally_filter
   use tally_header
 
   implicit none
 
-  procedure(score_analog_tally_), pointer :: score_analog_tally => null()
-
-  abstract interface
-    subroutine score_analog_tally_(p)
-      import Particle
-      type(Particle), intent(in) :: p
-    end subroutine score_analog_tally_
-  end interface
-
-  interface
-    subroutine score_analog_tally_ce(p) bind(C)
-      import Particle
-      type(Particle), intent(in) :: p
-    end subroutine
-
-    subroutine score_analog_tally_mg(p) bind(C)
-      import Particle
-      type(Particle), intent(in) :: p
-    end subroutine
-
-    subroutine score_tracklength_tally(p, distance) bind(C)
-      import Particle, C_DOUBLE
-      type(Particle) :: p
-      real(C_DOUBLE), value :: distance
-    end subroutine
-
-    subroutine score_collision_tally(p) bind(C)
-      import Particle
-      type(Particle) :: p
-    end subroutine
-
-    subroutine score_meshsurface_tally(p) bind(C)
-      import Particle
-      type(Particle) :: p
-    end subroutine
-
-    subroutine score_surface_tally(p) bind(C)
-      import Particle
-      type(Particle) :: p
-    end subroutine
-
-    subroutine score_track_derivative(p, distance) bind(C)
-      import Particle, C_DOUBLE
-      type(Particle) :: p
-      real(C_DOUBLE), value :: distance
-    end subroutine
-
-    subroutine score_collision_derivative(p) bind(C)
-      import Particle
-      type(Particle) :: p
-    end subroutine
-
-    subroutine zero_flux_derivs() bind(C)
-    end subroutine
-  end interface
-
 contains
-
-!===============================================================================
-! INIT_TALLY_ROUTINES Sets the procedure pointers needed for minimizing code
-! with the CE and MG modes.
-!===============================================================================
-
-  subroutine init_tally_routines() bind(C)
-    if (run_CE) then
-      score_analog_tally => score_analog_tally_ce
-    else
-      score_analog_tally => score_analog_tally_mg
-    end if
-  end subroutine init_tally_routines
 
 !===============================================================================
 ! ACCUMULATE_TALLIES accumulates the sum of the contributions from each history

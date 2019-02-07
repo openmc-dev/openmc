@@ -3,8 +3,7 @@ module string
   use, intrinsic :: ISO_C_BINDING
 
   use constants, only: ERROR_INT, ERROR_REAL
-  use error,     only: fatal_error, warning
-  use stl_vector, only: VectorInt
+  use error,     only: fatal_error
 
   implicit none
 

@@ -338,7 +338,6 @@ add_library(libopenmc SHARED
   src/stl_vector.F90
   src/string.F90
   src/surface_header.F90
-  src/timer_header.F90
   src/tracking.F90
   src/track_output.F90
   src/vector_header.F90

@@ -1,13 +1,11 @@
 module geometry
 
   use constants
-  use error,                  only: fatal_error, warning, write_message
   use geometry_header
   use particle_header
   use simulation_header
   use settings
   use surface_header
-  use stl_vector,             only: VectorInt
   use string,                 only: to_str
 
   use, intrinsic :: ISO_C_BINDING

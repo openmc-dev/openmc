@@ -69,7 +69,6 @@ contains
     use tally_filter_header
     use tally_header
     use trigger_header
-    use volume_header
 
     interface
       subroutine free_memory_source() bind(C)
@@ -89,6 +88,9 @@ contains
 
       subroutine free_memory_cmfd() bind(C)
       end subroutine free_memory_cmfd
+
+      subroutine free_memory_volume() bind(C)
+      end subroutine
 
       subroutine sab_clear() bind(C)
       end subroutine

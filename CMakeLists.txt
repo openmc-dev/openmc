@@ -342,8 +342,6 @@ add_library(libopenmc SHARED
   src/tracking.F90
   src/track_output.F90
   src/vector_header.F90
-  src/volume_calc.F90
-  src/volume_header.F90
   src/xml_interface.F90
   src/tallies/tally.F90
   src/tallies/tally_derivative_header.F90
@@ -436,6 +434,7 @@ add_library(libopenmc SHARED
   src/tallies/tally.cpp
   src/timer.cpp
   src/thermal.cpp
+  src/volume_calc.cpp
   src/wmp.cpp
   src/xml_interface.cpp
   src/xsdata.cpp)

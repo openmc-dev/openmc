@@ -25,6 +25,7 @@
 #include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/string_utils.h"
+#include "openmc/volume_calc.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -727,7 +728,10 @@ void read_settings_xml()
     }
   }
 
-  // TODO: Get volume calculations
+  // Get volume calculations
+  for (pugi::xml_node node_vol : root.children("volume_calc")) {
+    model::volume_calcs.emplace_back(node_vol);
+  }
 
   // Get temperature settings
   if (check_for_node(root, "temperature_default")) {
@@ -782,9 +786,6 @@ void read_settings_xml()
       create_fission_neutrons = get_node_value_bool(root, "create_fission_neutrons");
     }
   }
-
-  // Read remaining settings from Fortran side
-  read_settings_xml_f(root.internal_object());
 }
 
 //==============================================================================

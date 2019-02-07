@@ -44,28 +44,34 @@ args = parser.parse_args()
 
 
 
-library = 'tendl'
+library = 'tendl' #this could be added as an argument to allow different libraries to be downloaded 
 ace_files_dir = '-'.join([library,args.release,'ace'])
 
 
+# This dictionary contains all the unique information about each release. This can be exstened to accommodated new releases
 release_details = {'2015': {'base_url': 'https://tendl.web.psi.ch/tendl_2015//tar_files/',
                             'files': ['ACE-n.tgz'],
                             'neutron_files': os.path.join(ace_files_dir, 'neutron_file', '*', '*', 'lib', 'endf', '*-n.ace'),
-                            'metastables': os.path.join(ace_files_dir, 'neutron_file', '*', '*', 'lib', 'endf', '*m-n.ace')
+                            'metastables': os.path.join(ace_files_dir, 'neutron_file', '*', '*', 'lib', 'endf', '*m-n.ace'),
+                            'compressed_file_size': '5.1 GB',
+                            'uncompressed_file_size': '40 GB'
                             },
                    '2017': {'base_url': 'https://tendl.web.psi.ch/tendl_2017/tar_files/',
                             'files': ['tendl17c.tar.bz2'],
                             'neutron_files': os.path.join(ace_files_dir, 'ace-17', '*'),
-                            'metastables': os.path.join(ace_files_dir, 'ace-17', '*m')
+                            'metastables': os.path.join(ace_files_dir, 'ace-17', '*m'),
+                            'compressed_file_size': '2.1 GB',
+                            'uncompressed_file_size': '14 GB'
                            }
                   }
 
 download_warning = """
-WARNING: This script will download  GB of data depending on which release you chose. 
-Extracting and processing the data requires several tens of GB of additional free disk space.
+WARNING: This script will download {} of data . 
+Extracting and processing the data requires {} of additional free disk space.
 
 Are you sure you want to continue? ([y]/n)
-"""
+""".format(release_details[args.release]['compressed_file_size'],
+           release_details[args.release]['uncompressed_file_size'])
 
 response = input(download_warning) if not args.batch else 'y'
 if response.lower().startswith('n'):
@@ -74,7 +80,7 @@ if response.lower().startswith('n'):
 block_size = 16384
 
 # ==============================================================================
-# DOWNLOAD FILES FROM OECD SITE
+# DOWNLOAD FILES FROM WEBSITE
 
 files_complete = []
 for f in release_details[args.release]['files']:
@@ -131,7 +137,7 @@ for f in release_details[args.release]['files']:
 # ==============================================================================
 # CHANGE ZAID FOR METASTABLES
 
-metastables = glob.glob(release_details[args.release['metastables']])
+metastables = glob.glob(release_details[args.release]['metastables'])
 for path in metastables:
     print('    Fixing {} (ensure metastable)...'.format(path))
     text = open(path, 'r').read()
@@ -146,7 +152,7 @@ for path in metastables:
 # GENERATE HDF5 LIBRARY -- NEUTRON FILES
 
 # Get a list of all ACE files
-neutron_files = glob.glob(release_details[args.release['neutron_files']])
+neutron_files = glob.glob(release_details[args.release]['neutron_files'])
 
 # Create output directory if it doesn't exist
 if not os.path.isdir(args.destination):
@@ -157,7 +163,7 @@ library = openmc.data.DataLibrary()
 for filename in sorted(neutron_files):
 
     # this is a fix for the TENDL-2017 release where the B10 ACE file which has an error on one of the values
-    if args.release == '2017' and os.path.basename(filename) == 'B010':
+    if library == 'tendl' and args.release == '2017' and os.path.basename(filename) == 'B010':
         text = open(filename, 'r').read()
         if text[423:428] == '86843':
             print('Manual fix for incorrect value in ACE file') # see OpenMC user group issue for more details

@@ -467,7 +467,7 @@ Mgxs::get_xs(int xstype, int gin, int* gout, double* mu, int* dg)
         val = xs_t->delayed_nu_fission(a, *dg, gin);
       } else {
         val = 0.;
-        for (int d = 0; d < xs_t->delayed_nu_fission.shape()[2]; d++) {
+        for (int d = 0; d < xs_t->delayed_nu_fission.shape()[1]; d++) {
           val += xs_t->delayed_nu_fission(a, d, gin);
         }
       }

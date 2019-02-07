@@ -736,6 +736,9 @@ contains
           ! Check if tally is on a single nuclide
           if (i_nuclide > 0) then
 
+            ! Ignore non-fissionable nuclides
+            if (.not. nuclides(i_nuclide) % fissionable) cycle SCORE_LOOP
+
             ! Check if the delayed group filter is present
             if (dg_filter > 0) then
               select type(filt => filters(t % filter(dg_filter)) % obj)

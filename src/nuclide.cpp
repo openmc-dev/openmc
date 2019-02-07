@@ -274,7 +274,7 @@ void Nuclide::create_derived()
     xs_.emplace_back(shape, 0.0);
   }
 
-  reaction_index_.fill(-1);
+  reaction_index_.fill(C_NONE);
   for (int i = 0; i < reactions_.size(); ++i) {
     const auto& rx {reactions_[i]};
 

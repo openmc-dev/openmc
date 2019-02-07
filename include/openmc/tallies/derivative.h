@@ -35,6 +35,13 @@ void
 apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
   double atom_density, int score_bin, double& score);
 
+void score_collision_derivative(const Particle* p);
+
+void score_track_derivative(const Particle* p, double distance);
+
+//! Set the flux derivatives on differential tallies to zero.
+void zero_flux_derivs();
+
 } // namespace openmc
 
 //==============================================================================

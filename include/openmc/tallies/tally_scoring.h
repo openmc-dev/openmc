@@ -50,6 +50,16 @@ private:
 // Non-member functions
 //==============================================================================
 
+void score_collision_tally(const Particle* p);
+
+void score_analog_tally_ce(const Particle* p);
+
+void score_analog_tally_mg(const Particle* p);
+
+void score_tracklength_tally(const Particle* p, double distance);
+
+void score_surface_tally(const Particle* p, const std::vector<int>& tallies);
+
 } // namespace openmc
 
 #endif // OPENMC_TALLIES_TALLY_SCORING_H

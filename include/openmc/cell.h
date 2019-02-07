@@ -195,5 +195,13 @@ public:
 };
 #endif
 
+//==============================================================================
+// Non-member functions
+//==============================================================================
+
+#ifdef DAGMC
+int32_t next_cell(DAGCell* cur_cell, DAGSurface* surf_xed);
+#endif
+
 } // namespace openmc
 #endif // OPENMC_CELL_H

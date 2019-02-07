@@ -5,6 +5,8 @@
 
 module track_output
 
+  use, intrinsic :: ISO_C_BINDING
+
   use constants
   use hdf5_interface
   use particle_header, only: Particle
@@ -34,7 +36,7 @@ contains
 ! information
 !===============================================================================
 
-  subroutine initialize_particle_track()
+  subroutine initialize_particle_track() bind(C)
     allocate(tracks(1))
   end subroutine initialize_particle_track
 
@@ -42,7 +44,7 @@ contains
 ! WRITE_PARTICLE_TRACK copies particle position to an array.
 !===============================================================================
 
-  subroutine write_particle_track(p)
+  subroutine write_particle_track(p) bind(C)
     type(Particle), intent(in)  :: p
     real(8), allocatable :: new_coords(:, :)
 
@@ -71,7 +73,7 @@ contains
 ! secondary particle
 !===============================================================================
 
-  subroutine add_particle_track()
+  subroutine add_particle_track() bind(C)
     type(TrackCoordinates), allocatable :: new_tracks(:)
 
     integer :: i
@@ -92,7 +94,7 @@ contains
 ! FINALIZE_PARTICLE_TRACK writes the particle track array to disk.
 !===============================================================================
 
-  subroutine finalize_particle_track(p)
+  subroutine finalize_particle_track(p) bind(C)
     type(Particle), intent(in)  :: p
 
     integer :: i

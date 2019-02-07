@@ -12,7 +12,7 @@ namespace openmc {
 
 //! \brief samples particle behavior after a collision event.
 //! \param p Particle to operate on
-extern "C" void
+void
 collision_mg(Particle* p);
 
 //! \brief samples a reaction type.

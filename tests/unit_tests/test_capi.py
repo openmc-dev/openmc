@@ -130,12 +130,6 @@ def test_nuclide_mapping(capi_init):
         assert name == nuc.name
 
 
-def test_load_nuclide(capi_init):
-    openmc.capi.load_nuclide('Pu239')
-    with pytest.raises(exc.DataError):
-        openmc.capi.load_nuclide('Pu3')
-
-
 def test_settings(capi_init):
     settings = openmc.capi.settings
     assert settings.batches == 10
@@ -393,3 +387,10 @@ def test_restart(capi_init):
 
     # Compare the keff values.
     assert keff0 == pytest.approx(keff1)
+
+
+def test_load_nuclide(capi_init):
+    openmc.capi.load_nuclide('H3')
+    openmc.capi.load_nuclide('Pu239')
+    with pytest.raises(exc.DataError):
+        openmc.capi.load_nuclide('Pu3')

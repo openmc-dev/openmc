@@ -390,7 +390,11 @@ def test_restart(capi_init):
 
 
 def test_load_nuclide(capi_init):
+    # load multiple nuclides
     openmc.capi.load_nuclide('H3')
+    assert 'H3' in openmc.capi.nuclides
     openmc.capi.load_nuclide('Pu239')
+    assert 'Pu239' in openmc.capi.nuclides
+    # load non-existent nuclide
     with pytest.raises(exc.DataError):
         openmc.capi.load_nuclide('Pu3')

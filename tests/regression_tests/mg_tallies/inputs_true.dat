@@ -58,27 +58,27 @@
   </filter>
   <tally id="1">
     <filters>5</filters>
-    <scores>total absorption flux fission nu-fission</scores>
+    <scores>total absorption fission nu-fission inverse-velocity prompt-nu-fission delayed-nu-fission kappa-fission events decay-rate flux</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="2">
     <filters>5</filters>
-    <scores>total absorption flux fission nu-fission</scores>
+    <scores>total absorption fission nu-fission inverse-velocity prompt-nu-fission delayed-nu-fission kappa-fission events decay-rate flux</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="3">
     <filters>6 1</filters>
-    <scores>total absorption flux fission nu-fission scatter nu-scatter</scores>
+    <scores>total absorption fission nu-fission inverse-velocity prompt-nu-fission delayed-nu-fission kappa-fission events decay-rate flux scatter nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="4">
     <filters>6 1</filters>
-    <scores>total absorption flux fission nu-fission</scores>
+    <scores>total absorption fission nu-fission inverse-velocity prompt-nu-fission delayed-nu-fission kappa-fission events decay-rate flux</scores>
     <estimator>collision</estimator>
   </tally>
   <tally id="5">
     <filters>6 1</filters>
-    <scores>total absorption flux fission nu-fission</scores>
+    <scores>total absorption fission nu-fission inverse-velocity prompt-nu-fission delayed-nu-fission kappa-fission events decay-rate flux</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="6">
@@ -87,17 +87,17 @@
   </tally>
   <tally id="7">
     <filters>6 3</filters>
-    <scores>total absorption flux fission nu-fission scatter nu-scatter</scores>
+    <scores>total absorption fission nu-fission inverse-velocity prompt-nu-fission delayed-nu-fission kappa-fission events decay-rate flux scatter nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="8">
     <filters>6 3</filters>
-    <scores>total absorption flux fission nu-fission</scores>
+    <scores>total absorption fission nu-fission inverse-velocity prompt-nu-fission delayed-nu-fission kappa-fission events decay-rate flux</scores>
     <estimator>collision</estimator>
   </tally>
   <tally id="9">
     <filters>6 3</filters>
-    <scores>total absorption flux fission nu-fission</scores>
+    <scores>total absorption fission nu-fission inverse-velocity prompt-nu-fission delayed-nu-fission kappa-fission events decay-rate flux</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="10">
@@ -107,31 +107,31 @@
   <tally id="11">
     <filters>5</filters>
     <nuclides>mat_1</nuclides>
-    <scores>total absorption fission nu-fission</scores>
+    <scores>total absorption fission nu-fission inverse-velocity prompt-nu-fission delayed-nu-fission kappa-fission events decay-rate</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="12">
     <filters>5</filters>
     <nuclides>mat_1</nuclides>
-    <scores>total absorption fission nu-fission</scores>
+    <scores>total absorption fission nu-fission inverse-velocity prompt-nu-fission delayed-nu-fission kappa-fission events decay-rate</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="13">
     <filters>6 1</filters>
     <nuclides>mat_1</nuclides>
-    <scores>total absorption fission nu-fission scatter nu-scatter</scores>
+    <scores>total absorption fission nu-fission inverse-velocity prompt-nu-fission delayed-nu-fission kappa-fission events decay-rate scatter nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="14">
     <filters>6 1</filters>
     <nuclides>mat_1</nuclides>
-    <scores>total absorption fission nu-fission</scores>
+    <scores>total absorption fission nu-fission inverse-velocity prompt-nu-fission delayed-nu-fission kappa-fission events decay-rate</scores>
     <estimator>collision</estimator>
   </tally>
   <tally id="15">
     <filters>6 1</filters>
     <nuclides>mat_1</nuclides>
-    <scores>total absorption fission nu-fission</scores>
+    <scores>total absorption fission nu-fission inverse-velocity prompt-nu-fission delayed-nu-fission kappa-fission events decay-rate</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="16">
@@ -142,19 +142,19 @@
   <tally id="17">
     <filters>6 3</filters>
     <nuclides>mat_1</nuclides>
-    <scores>total absorption fission nu-fission scatter nu-scatter</scores>
+    <scores>total absorption fission nu-fission inverse-velocity prompt-nu-fission delayed-nu-fission kappa-fission events decay-rate scatter nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="18">
     <filters>6 3</filters>
     <nuclides>mat_1</nuclides>
-    <scores>total absorption fission nu-fission</scores>
+    <scores>total absorption fission nu-fission inverse-velocity prompt-nu-fission delayed-nu-fission kappa-fission events decay-rate</scores>
     <estimator>collision</estimator>
   </tally>
   <tally id="19">
     <filters>6 3</filters>
     <nuclides>mat_1</nuclides>
-    <scores>total absorption fission nu-fission</scores>
+    <scores>total absorption fission nu-fission inverse-velocity prompt-nu-fission delayed-nu-fission kappa-fission events decay-rate</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="20">

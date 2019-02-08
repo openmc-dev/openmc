@@ -92,7 +92,7 @@ XsData::from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
     fission_from_hdf5(xsdata_grp, n_ang, is_isotropic);
   }
   // Get the non-fission-specific data
-  read_nd_vector(xsdata_grp, "decay_rate", decay_rate);
+  read_nd_vector(xsdata_grp, "decay rate", decay_rate);
   read_nd_vector(xsdata_grp, "absorption", absorption, true);
   read_nd_vector(xsdata_grp, "inverse-velocity", inverse_velocity);
 

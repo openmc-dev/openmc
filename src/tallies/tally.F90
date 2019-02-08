@@ -1352,11 +1352,11 @@ contains
           if (i_nuclide > 0) then
             score = score * flux * get_nuclide_xs_c(i_nuclide, &
                  MG_GET_XS_INVERSE_VELOCITY, p_g) / &
-                 get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
+                 get_macro_xs_c(p % material, MG_GET_XS_TOTAL, p_g)
           else
             score = score * flux * get_macro_xs_c(p % material, &
                  MG_GET_XS_INVERSE_VELOCITY, p_g) / &
-                 get_macro_xs_c(p % material, MG_GET_XS_ABSORPTION, p_g)
+                 get_macro_xs_c(p % material, MG_GET_XS_TOTAL, p_g)
           end if
 
         else
@@ -1846,13 +1846,13 @@ contains
                 if (i_nuclide > 0) then
                   score = score + keff * atom_density * &
                        fission_bank_wgt(n_bank - p % n_bank + k) * &
-                       get_nuclide_xs_c(i_nuclide, MG_GET_XS_DECAY_RATE, p_g, DG=d) * &
+                       get_nuclide_xs_c(i_nuclide, MG_GET_XS_DECAY_RATE, p_g, DG=g) * &
                        get_nuclide_xs_c(i_nuclide, MG_GET_XS_FISSION, p_g) / &
                        get_macro_xs_c(p % material, MG_GET_XS_FISSION, p_g) * flux
                 else
                   score = score + keff * &
                        fission_bank_wgt(n_bank - p % n_bank + k) * &
-                       get_macro_xs_c(p % material, MG_GET_XS_DECAY_RATE, p_g, DG=d) * flux
+                       get_macro_xs_c(p % material, MG_GET_XS_DECAY_RATE, p_g, DG=g) * flux
                 end if
 
                 ! if the delayed group filter is present, tally to corresponding

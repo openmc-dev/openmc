@@ -377,7 +377,8 @@
   </tally>
   <tally id="5">
     <filters>4</filters>
-    <scores>delayed-nu-fission</scores>
+    <nuclides>U235 O16 total</nuclides>
+    <scores>delayed-nu-fission decay-rate</scores>
   </tally>
   <tally id="6">
     <filters>5</filters>
@@ -440,50 +441,50 @@
   </tally>
   <tally id="20">
     <filters>13</filters>
-    <scores>absorption delayed-nu-fission events fission inverse-velocity kappa-fission (n,2n) (n,n1) (n,gamma) nu-fission scatter elastic total prompt-nu-fission fission-q-prompt fission-q-recoverable</scores>
+    <scores>absorption delayed-nu-fission events fission inverse-velocity kappa-fission (n,2n) (n,n1) (n,gamma) nu-fission scatter elastic total prompt-nu-fission fission-q-prompt fission-q-recoverable decay-rate</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="21">
     <filters>13</filters>
-    <scores>absorption delayed-nu-fission events fission inverse-velocity kappa-fission (n,2n) (n,n1) (n,gamma) nu-fission scatter elastic total prompt-nu-fission fission-q-prompt fission-q-recoverable</scores>
-    <estimator>analog</estimator>
+    <nuclides>U235 O16 total</nuclides>
+    <scores>absorption delayed-nu-fission events fission inverse-velocity kappa-fission (n,2n) (n,n1) (n,gamma) nu-fission scatter elastic total prompt-nu-fission fission-q-prompt fission-q-recoverable decay-rate</scores>
+    <estimator>tracklength</estimator>
   </tally>
   <tally id="22">
     <filters>13</filters>
-    <scores>absorption delayed-nu-fission events fission inverse-velocity kappa-fission (n,2n) (n,n1) (n,gamma) nu-fission scatter elastic total prompt-nu-fission fission-q-prompt fission-q-recoverable</scores>
-    <estimator>collision</estimator>
-  </tally>
-  <tally id="23">
-    <filters>14</filters>
-    <scores>flux</scores>
-    <estimator>tracklength</estimator>
-  </tally>
-  <tally id="24">
-    <filters>14</filters>
-    <scores>flux</scores>
+    <scores>absorption delayed-nu-fission events fission inverse-velocity kappa-fission (n,2n) (n,n1) (n,gamma) nu-fission scatter elastic total prompt-nu-fission fission-q-prompt fission-q-recoverable decay-rate</scores>
     <estimator>analog</estimator>
   </tally>
+  <tally id="23">
+    <filters>13</filters>
+    <nuclides>U235 O16 total</nuclides>
+    <scores>absorption delayed-nu-fission events fission inverse-velocity kappa-fission (n,2n) (n,n1) (n,gamma) nu-fission scatter elastic total prompt-nu-fission fission-q-prompt fission-q-recoverable decay-rate</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="24">
+    <filters>13</filters>
+    <scores>absorption delayed-nu-fission events fission inverse-velocity kappa-fission (n,2n) (n,n1) (n,gamma) nu-fission scatter elastic total prompt-nu-fission fission-q-prompt fission-q-recoverable decay-rate</scores>
+    <estimator>collision</estimator>
+  </tally>
   <tally id="25">
-    <filters>14</filters>
-    <scores>flux</scores>
+    <filters>13</filters>
+    <nuclides>U235 O16 total</nuclides>
+    <scores>absorption delayed-nu-fission events fission inverse-velocity kappa-fission (n,2n) (n,n1) (n,gamma) nu-fission scatter elastic total prompt-nu-fission fission-q-prompt fission-q-recoverable decay-rate</scores>
     <estimator>collision</estimator>
   </tally>
   <tally id="26">
-    <filters>13</filters>
-    <nuclides>U235 total</nuclides>
-    <scores>total</scores>
+    <filters>14</filters>
+    <scores>flux</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="27">
-    <filters>13</filters>
-    <nuclides>U235 total</nuclides>
-    <scores>total</scores>
+    <filters>14</filters>
+    <scores>flux</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="28">
-    <filters>13</filters>
-    <nuclides>U235 total</nuclides>
-    <scores>total</scores>
+    <filters>14</filters>
+    <scores>flux</scores>
     <estimator>collision</estimator>
   </tally>
   <tally id="29">

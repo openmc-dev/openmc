@@ -77,7 +77,7 @@ class XsData {
     // [angle][delayed group]
     xt::xtensor<double, 2> decay_rate;
     // delayed_nu_fission has the following dimensions:
-    // [angle][incoming group][delayed group]
+    // [angle][delayed group][incoming group]
     xt::xtensor<double, 3> delayed_nu_fission;
     // chi_prompt has the following dimensions:
     // [angle][incoming group][outgoing group]

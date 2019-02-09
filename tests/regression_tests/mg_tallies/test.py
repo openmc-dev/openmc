@@ -12,26 +12,37 @@ def create_library():
     # Instantiate the energy group data and file object
     groups = openmc.mgxs.EnergyGroups(group_edges=[0.0, 0.625, 20.0e6])
 
-    mg_cross_sections_file = openmc.MGXSLibrary(groups)
+    mg_cross_sections_file = openmc.MGXSLibrary(groups, 6)
 
     # Make the base, isotropic data
-    nu = [2.50, 2.50]
+    nu = np.array([2.50, 2.50])
     fiss = np.array([0.002817, 0.097])
-    capture = [0.008708, 0.02518]
-    absorption = np.add(capture, fiss)
+    capture = np.array([0.008708, 0.02518])
+    absorption = capture + fiss
     scatter = np.array(
         [[[0.31980, 0.06694], [0.004555, -0.0003972]],
          [[0.00000, 0.00000], [0.424100, 0.05439000]]])
-    total = [0.33588, 0.54628]
-    chi = [1., 0.]
+    total = np.array([0.33588, 0.54628])
+    chi = np.array([1., 0.])
+    decay_rate = np.array([0.013336, 0.032739, 0.12078, 0.30278, 0.84949,
+                           2.853])
+    delayed_yield = np.array([0.00055487, 0.00286407, 0.00273429, 0.0061305,
+                              0.00251342, 0.00105286])
+    inv_vel = 1.0 / np.array([1.4e9, 4.4e5])
 
-    mat_1 = openmc.XSdata('mat_1', groups)
+
+    mat_1 = openmc.XSdata('mat_1', groups, num_delayed_groups=6)
     mat_1.order = 1
-    mat_1.set_nu_fission(np.multiply(nu, fiss))
+    mat_1.set_fission(fiss)
+    mat_1.set_kappa_fission(fiss * 200e6)
+    mat_1.set_nu_fission(nu * fiss)
+    mat_1.set_beta(delayed_yield / 2.5)
+    mat_1.set_decay_rate(decay_rate)
     mat_1.set_absorption(absorption)
     mat_1.set_scatter_matrix(scatter)
     mat_1.set_total(total)
     mat_1.set_chi(chi)
+    mat_1.set_inverse_velocity(inv_vel)
     mg_cross_sections_file.add_xsdata(mat_1)
 
     # Write the file
@@ -69,14 +80,18 @@ def test_mg_tallies():
 
     nuclides = model.xs_data
 
-    scores = {False: ['total', 'absorption', 'flux', 'fission', 'nu-fission'],
-              True: ['total', 'absorption', 'fission', 'nu-fission']}
+    scores_with_nuclides = [
+      'total', 'absorption', 'fission', 'nu-fission', 'inverse-velocity',
+      'prompt-nu-fission', 'delayed-nu-fission', 'kappa-fission', 'events',
+      'decay-rate']
+    scores_without_nuclides = scores_with_nuclides + ['flux']
 
-    for do_nuclides in [False, True]:
+    for do_nuclides, scores in ((False, scores_without_nuclides),
+                                (True, scores_with_nuclides)):
         t = openmc.Tally()
         t.filters = [mesh_filter]
         t.estimator = 'analog'
-        t.scores = scores[do_nuclides]
+        t.scores = scores
         if do_nuclides:
             t.nuclides = nuclides
         model.tallies.append(t)
@@ -84,7 +99,7 @@ def test_mg_tallies():
         t = openmc.Tally()
         t.filters = [mesh_filter]
         t.estimator = 'tracklength'
-        t.scores = scores[do_nuclides]
+        t.scores = scores
         if do_nuclides:
             t.nuclides = nuclides
         model.tallies.append(t)
@@ -102,7 +117,7 @@ def test_mg_tallies():
             t = openmc.Tally()
             t.filters = [mat_filter, e_filter]
             t.estimator = 'analog'
-            t.scores = scores[do_nuclides] + ['scatter', 'nu-scatter']
+            t.scores = scores + ['scatter', 'nu-scatter']
             if do_nuclides:
                 t.nuclides = nuclides
             model.tallies.append(t)
@@ -110,7 +125,7 @@ def test_mg_tallies():
             t = openmc.Tally()
             t.filters = [mat_filter, e_filter]
             t.estimator = 'collision'
-            t.scores = scores[do_nuclides]
+            t.scores = scores
             if do_nuclides:
                 t.nuclides = nuclides
             model.tallies.append(t)
@@ -118,7 +133,7 @@ def test_mg_tallies():
             t = openmc.Tally()
             t.filters = [mat_filter, e_filter]
             t.estimator = 'tracklength'
-            t.scores = scores[do_nuclides]
+            t.scores = scores
             if do_nuclides:
                 t.nuclides = nuclides
             model.tallies.append(t)

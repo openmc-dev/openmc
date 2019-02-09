@@ -1337,8 +1337,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
               // rxn.products_ array to be exceeded. Hence, we use the size
               // of this array and not the MAX_DELAYED_GROUPS constant for
               // this loop.
-              for (auto d = 0; d < rxn.products_.size() - 2; ++d)
-              {
+              for (auto d = 0; d < rxn.products_.size() - 2; ++d) {
                 auto yield
                   = nuc.nu(E, ReactionProduct::EmissionMode::delayed, d+1);
                 auto rate = rxn.products_[d+1].decay_rate_;
@@ -1367,7 +1366,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
               const auto& nuc {*data::nuclides[p->event_nuclide-1]};
               const auto& rxn {*nuc.fission_rx_[0]};
               auto rate = rxn.products_[g].decay_rate_;
-              //score += simulation::keff * bank.wgt * rate * flux;
+              score += simulation::keff * bank.wgt * rate * flux;
               if (tally.delayedgroup_filter_ > 0) {
                 auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_-1];
                 const DelayedGroupFilter& filt
@@ -1388,6 +1387,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
       } else {
         if (i_nuclide >= 0) {
           const auto& nuc {*data::nuclides[i_nuclide]};
+          if (!nuc.fissionable_) continue;
           const auto& rxn {*nuc.fission_rx_[0]};
           if (tally.delayedgroup_filter_ > 0) {
             auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_-1];
@@ -1412,8 +1412,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
             // rxn.products_ array to be exceeded. Hence, we use the size
             // of this array and not the MAX_DELAYED_GROUPS constant for
             // this loop.
-            for (auto d = 0; d < rxn.products_.size() - 2; ++d)
-            {
+            for (auto d = 0; d < rxn.products_.size() - 2; ++d) {
               auto yield
                 = nuc.nu(E, ReactionProduct::EmissionMode::delayed, d+1);
               auto rate = rxn.products_[d+1].decay_rate_;
@@ -1465,8 +1464,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
                   // rxn.products_ array to be exceeded. Hence, we use the size
                   // of this array and not the MAX_DELAYED_GROUPS constant for
                   // this loop.
-                  for (auto d = 0; d < rxn.products_.size() - 2; ++d)
-                  {
+                  for (auto d = 0; d < rxn.products_.size() - 2; ++d) {
                     auto yield
                       = nuc.nu(E, ReactionProduct::EmissionMode::delayed, d+1);
                     auto rate = rxn.products_[d+1].decay_rate_;
@@ -1882,11 +1880,11 @@ score_general_mg_c(Particle* p, int i_tally, int start_index, int filter_index,
         if (i_nuclide >= 0) {
           score *= flux
             * get_nuclide_xs(i_nuclide+1, MG_GET_XS_INVERSE_VELOCITY, p_g)
-            / get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g);
+            / get_macro_xs(p->material, MG_GET_XS_TOTAL, p_g);
         } else {
           score *= flux
             * get_macro_xs(p->material, MG_GET_XS_INVERSE_VELOCITY, p_g)
-            / get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g);
+            / get_macro_xs(p->material, MG_GET_XS_TOTAL, p_g);
         }
       } else {
         if (i_nuclide >= 0) {

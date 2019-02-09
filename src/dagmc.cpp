@@ -175,10 +175,22 @@ void load_dagmc_geometry()
     if (model::DAG->is_implicit_complement(vol_handle)) {
       if (model::DAG->has_prop(vol_handle, "mat")) {
         // if the implicit complement has been assigned a material, use it
-        std::string comp_mat = DMD.volume_material_property_data_eh[vol_handle];
-        // Note: material numbers are set by UWUW
-        int mat_number = uwuw.material_library[comp_mat].metadata["mat_number"].asInt();
-        c->material_.push_back(mat_number);
+        if (using_uwuw) {
+          std::string comp_mat = DMD.volume_material_property_data_eh[vol_handle];
+          // Note: material numbers are set by UWUW
+          int mat_number = uwuw.material_library[comp_mat].metadata["mat_number"].asInt();
+          c->material_.push_back(mat_number);
+        } else {
+          std::string mat_value;
+          rval= model::DAG->prop_value(vol_handle, "mat", mat_value);
+          MB_CHK_ERR_CONT(rval);
+          // remove _comp
+          std::string _comp = "_comp";
+          size_t _comp_pos = mat_value.find(_comp);
+          if (_comp_pos != std::string::npos) { mat_value.erase(_comp_pos, _comp.length()); }
+          // assign IC material by id
+          c->material_.push_back(std::stoi(mat_value));
+        }
       } else {
         // if no material is found, the implicit complement is void
         c->material_.push_back(MATERIAL_VOID);

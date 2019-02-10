@@ -24,22 +24,9 @@ module tally
 
   implicit none
 
-  procedure(score_general_),      pointer :: score_general => null()
   procedure(score_analog_tally_), pointer :: score_analog_tally => null()
 
   abstract interface
-    subroutine score_general_(p, i_tally, start_index, filter_index, i_nuclide, &
-                              atom_density, flux)
-      import Particle, C_INT, C_DOUBLE
-      type(Particle), intent(in)        :: p
-      integer(C_INT), intent(in), value :: i_tally
-      integer(C_INT), intent(in), value :: start_index
-      integer(C_INT), intent(in), value :: i_nuclide
-      integer(C_INT), intent(in), value :: filter_index   ! for % results
-      real(C_DOUBLE), intent(in), value :: flux           ! flux estimate
-      real(C_DOUBLE), intent(in), value :: atom_density   ! atom/b-cm
-    end subroutine score_general_
-
     subroutine score_analog_tally_(p)
       import Particle
       type(Particle), intent(in) :: p
@@ -47,46 +34,6 @@ module tally
   end interface
 
   interface
-    subroutine score_general_ce(p, i_tally, start_index, filter_index, &
-         i_nuclide, atom_density, flux) bind(C)
-      import Particle, C_INT, C_DOUBLE
-      type(Particle), intent(in) :: p
-      integer(C_INT), intent(in), value :: i_tally
-      integer(C_INT), intent(in), value :: start_index
-      integer(C_INT), intent(in), value :: filter_index
-      integer(C_INT), intent(in), value :: i_nuclide
-      real(C_DOUBLE), intent(in), value :: atom_density
-      real(C_DOUBLE), intent(in), value :: flux
-    end subroutine
-
-    subroutine score_general_mg(p, i_tally, start_index, filter_index, &
-         i_nuclide, atom_density, flux) bind(C)
-      import Particle, C_INT, C_DOUBLE
-      type(Particle), intent(in) :: p
-      integer(C_INT), intent(in), value :: i_tally
-      integer(C_INT), intent(in), value :: start_index
-      integer(C_INT), intent(in), value :: filter_index
-      integer(C_INT), intent(in), value :: i_nuclide
-      real(C_DOUBLE), intent(in), value :: atom_density
-      real(C_DOUBLE), intent(in), value :: flux
-    end subroutine
-
-    subroutine score_fission_delayed_dg(i_tally, d_bin, score, score_index) bind(C)
-      import C_INT, C_DOUBLE
-      integer(C_INT), value :: i_tally
-      integer(C_INT), value :: d_bin
-      real(C_DOUBLE), value :: score
-      integer(C_INT), value :: score_index
-    end subroutine
-
-    subroutine score_fission_eout(p, i_tally, i_score, score_bin) bind(C)
-      import Particle, C_INT
-      type(Particle)         :: p
-      integer(C_INT), value :: i_tally
-      integer(C_INT), value :: i_score
-      integer(C_INT), value :: score_bin
-    end subroutine
-
     subroutine score_analog_tally_ce(p) bind(C)
       import Particle
       type(Particle), intent(in) :: p
@@ -131,21 +78,11 @@ contains
 
   subroutine init_tally_routines() bind(C)
     if (run_CE) then
-      score_general      => score_general_ce
       score_analog_tally => score_analog_tally_ce
     else
-      score_general      => score_general_mg
       score_analog_tally => score_analog_tally_mg
     end if
   end subroutine init_tally_routines
-
-!===============================================================================
-! SCORE_GENERAL* adds scores to the tally array for the given filter and
-! nuclide.  This function is called by all volume tallies.  For analog tallies,
-! the flux estimate depends on the score type so the flux argument is really
-! just used for filter weights.  The atom_density argument is not used for
-! analog tallies.
-!===============================================================================
 
 !===============================================================================
 ! APPLY_DERIVATIVE_TO_SCORE multiply the given score by its relative derivative

@@ -38,10 +38,6 @@ namespace openmc {
 //==============================================================================
 
 extern "C" void
-score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
-  int i_nuclide, double atom_density, double flux);
-
-extern "C" void
 apply_derivative_to_score(Particle* p, int i_tally, int i_nuclide,
   double atom_density, int score_bin, double* score);
 
@@ -683,7 +679,7 @@ adaptor_type<3> tally_results(int idx)
 
 //! Helper function used to increment tallies with a delayed group filter.
 
-extern "C" void
+void
 score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index)
 {
   // Save the original delayed group bin
@@ -709,7 +705,7 @@ score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index)
   auto results = tally_results(i_tally);
   //TODO: off-by-one
   #pragma omp atomic
-  results(filter_index-1, score_index-1, RESULT_VALUE) += score;
+  results(filter_index-1, score_index, RESULT_VALUE) += score;
 
   // Reset the original delayed group bin
   dg_match.bins_[i_bin-1] = original_bin;
@@ -720,7 +716,7 @@ score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index)
 //! In this case, we may need to score to multiple bins if there were multiple
 //! neutrons produced with different energies.
 
-extern "C" void
+void
 score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
 {
   //TODO: off-by-one
@@ -799,7 +795,7 @@ score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
 
       // Update tally results
       #pragma omp atomic
-      results(filter_index-1, i_score-1, RESULT_VALUE) += score;
+      results(filter_index-1, i_score, RESULT_VALUE) += score;
 
     } else if (score_bin == SCORE_DELAYED_NU_FISSION && g != 0) {
 
@@ -847,7 +843,7 @@ score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
 
         // Update tally results
         #pragma omp atomic
-        results(filter_index-1, i_score-1, RESULT_VALUE) += score*filter_weight;
+        results(filter_index-1, i_score, RESULT_VALUE) += score*filter_weight;
       }
     }
   }
@@ -856,7 +852,13 @@ score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
   simulation::filter_matches[i_eout_filt].bins_[i_bin-1] = bin_energyout;
 }
 
-extern "C" void
+//! Update tally results for continuous-energy tallies with any estimator.
+//
+//! For analog tallies, the flux estimate depends on the score type so the flux
+//! argument is really just used for filter weights.  The atom_density argument
+//! is not used for analog tallies.
+
+void
 score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
   int i_nuclide, double atom_density, double flux)
 {
@@ -874,7 +876,6 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
     double score;
 
     //TODO: off-by-one throughout on p->event_nuclide
-    //TODO: off-by-one throughout on score_index in calls to score_fission_eout
     //TODO: off-by-one throughout on p->material
 
     switch (score_bin) {
@@ -1054,7 +1055,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
           if (tally.energyout_filter_ > 0) {
             // Fission has multiple outgoing neutrons so this helper function
             // is used to handle scoring the multiple filter bins.
-            score_fission_eout(p, i_tally, score_index+1, score_bin);
+            score_fission_eout(p, i_tally, score_index, score_bin);
             continue;
           }
         }
@@ -1097,7 +1098,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
           if (tally.energyout_filter_ > 0) {
             // Fission has multiple outgoing neutrons so this helper function
             // is used to handle scoring the multiple filter bins.
-            score_fission_eout(p, i_tally, score_index+1, score_bin);
+            score_fission_eout(p, i_tally, score_index, score_bin);
             continue;
           }
         }
@@ -1159,7 +1160,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
           if (tally.energyout_filter_ > 0) {
             // Fission has multiple outgoing neutrons so this helper function
             // is used to handle scoring the multiple filter bins.
-            score_fission_eout(p, i_tally, score_index+1, score_bin);
+            score_fission_eout(p, i_tally, score_index, score_bin);
             continue;
           }
         }
@@ -1183,7 +1184,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
                   * simulation::micro_xs[p->event_nuclide-1].fission
                   / simulation::micro_xs[p->event_nuclide-1].absorption * flux;
                 score_fission_delayed_dg(i_tally, d_bin+1, score,
-                  score_index+1);
+                  score_index);
               }
               continue;
             } else {
@@ -1217,7 +1218,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
               auto d = filt.groups_[d_bin];
               score = simulation::keff * p->wgt_bank / p->n_bank
                 * p->n_delayed_bank[d-1] * flux;
-              score_fission_delayed_dg(i_tally, d_bin+1, score, score_index+1);
+              score_fission_delayed_dg(i_tally, d_bin+1, score, score_index);
             }
             continue;
           } else {
@@ -1242,7 +1243,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
                 ->nu(E, ReactionProduct::EmissionMode::delayed, d);
               score = simulation::micro_xs[i_nuclide].fission * yield
                 * atom_density * flux;
-              score_fission_delayed_dg(i_tally, d_bin+1, score, score_index+1);
+              score_fission_delayed_dg(i_tally, d_bin+1, score, score_index);
             }
             continue;
           } else {
@@ -1272,7 +1273,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
                   score = simulation::micro_xs[j_nuclide].fission * yield
                     * atom_density * flux;
                   score_fission_delayed_dg(i_tally, d_bin+1, score,
-                    score_index+1);
+                    score_index);
                 }
               }
             }
@@ -1323,7 +1324,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
                   / simulation::micro_xs[p->event_nuclide-1].absorption
                   * rate * flux;
                 score_fission_delayed_dg(i_tally, d_bin+1, score,
-                  score_index+1);
+                  score_index);
               }
               continue;
             } else {
@@ -1377,7 +1378,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
                   auto d = filt.groups_[d_bin];
                   if (d == g)
                     score_fission_delayed_dg(i_tally, d_bin+1, score,
-                      score_index+1);
+                      score_index);
                 }
                 score = 0.;
               }
@@ -1402,7 +1403,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
               auto rate = rxn.products_[d].decay_rate_;
               score = simulation::micro_xs[i_nuclide].fission * yield * flux
                 * atom_density * rate;
-              score_fission_delayed_dg(i_tally, d_bin+1, score, score_index+1);
+              score_fission_delayed_dg(i_tally, d_bin+1, score, score_index);
             }
             continue;
           } else {
@@ -1443,7 +1444,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
                     score = simulation::micro_xs[j_nuclide].fission * yield
                       * flux * atom_density * rate;
                     score_fission_delayed_dg(i_tally, d_bin+1, score,
-                      score_index+1);
+                      score_index);
                   }
                 }
               }
@@ -1760,7 +1761,12 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
   }
 }
 
-extern "C" void
+//! Update tally results for multigroup tallies with any estimator.
+//
+//! For analog tallies, the flux estimate depends on the score type so the flux
+//! argument is really just used for filter weights.
+
+void
 score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
   int i_nuclide, double atom_density, double flux)
 {
@@ -1768,7 +1774,6 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
   const Tally& tally {*model::tallies[i_tally-1]};
   auto results = tally_results(i_tally);
 
-  //TODO: off-by-one throughout on score_index in calls to score_fission_eout
   //TODO: off-by-one throughout on p->material
 
   // Set the direction and group to use with get_xs
@@ -2033,7 +2038,7 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
           if (tally.energyout_filter_ > 0) {
             // Fission has multiple outgoing neutrons so this helper function
             // is used to handle scoring the multiple filter bins.
-            score_fission_eout(p, i_tally, score_index+1, score_bin);
+            score_fission_eout(p, i_tally, score_index, score_bin);
             continue;
           }
         }
@@ -2083,7 +2088,7 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
           if (tally.energyout_filter_ > 0) {
             // Fission has multiple outgoing neutrons so this helper function
             // is used to handle scoring the multiple filter bins.
-            score_fission_eout(p, i_tally, score_index+1, score_bin);
+            score_fission_eout(p, i_tally, score_index, score_bin);
             continue;
           }
         }
@@ -2137,7 +2142,7 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
           if (tally.energyout_filter_ > 0) {
             // Fission has multiple outgoing neutrons so this helper function
             // is used to handle scoring the multiple filter bins.
-            score_fission_eout(p, i_tally, score_index+1, score_bin);
+            score_fission_eout(p, i_tally, score_index, score_bin);
             continue;
           }
         }
@@ -2167,7 +2172,7 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
                     / get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g);
                 }
                 score_fission_delayed_dg(i_tally, d_bin+1, score,
-                  score_index+1);
+                  score_index);
               }
               continue;
             } else {
@@ -2211,7 +2216,7 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
                   * get_nuclide_xs(i_nuclide+1, MG_GET_XS_FISSION, p_g)
                   / get_macro_xs(p->material, MG_GET_XS_FISSION, p_g);
               }
-              score_fission_delayed_dg(i_tally, d_bin+1, score, score_index+1);
+              score_fission_delayed_dg(i_tally, d_bin+1, score, score_index);
             }
             continue;
           } else {
@@ -2245,7 +2250,7 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
                 * get_macro_xs_c(p->material, MG_GET_XS_DELAYED_NU_FISSION,
                                  p_g, nullptr, nullptr, &d);
             }
-            score_fission_delayed_dg(i_tally, d_bin+1, score, score_index+1);
+            score_fission_delayed_dg(i_tally, d_bin+1, score, score_index);
           }
           continue;
         } else {
@@ -2293,7 +2298,7 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
                     / get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g);
                 }
                 score_fission_delayed_dg(i_tally, d_bin+1, score,
-                  score_index+1);
+                  score_index);
               }
               continue;
             } else {
@@ -2358,7 +2363,7 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
                   auto d = filt.groups_[d_bin];
                   if (d == g)
                     score_fission_delayed_dg(i_tally, d_bin+1, score,
-                      score_index+1);
+                      score_index);
                 }
                 score = 0.;
               }
@@ -2388,7 +2393,7 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
                 * get_macro_xs_c(p->material, MG_GET_XS_DELAYED_NU_FISSION,
                                  p_g, nullptr, nullptr, &d);
             }
-            score_fission_delayed_dg(i_tally, d_bin+1, score, score_index+1);
+            score_fission_delayed_dg(i_tally, d_bin+1, score, score_index);
           }
           continue;
         } else {
@@ -2805,11 +2810,11 @@ score_surface_tally_inner(Particle* p, const std::vector<int>& tallies)
       // There is only one score type for current tallies so there is no need
       // for a further scoring function.
       double score = flux * filter_weight;
-      for (auto score_index = 1; score_index < tally.scores_.size()+1;
+      for (auto score_index = 0; score_index < tally.scores_.size();
            ++score_index) {
         //TODO: off-by-one
         #pragma omp atomic
-        results(filter_index-1, score_index-1, RESULT_VALUE) += score;
+        results(filter_index-1, score_index, RESULT_VALUE) += score;
       }
     }
 

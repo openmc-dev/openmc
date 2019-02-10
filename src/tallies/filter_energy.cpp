@@ -113,24 +113,6 @@ EnergyoutFilter::text_label(int bin) const
 }
 
 //==============================================================================
-// Fortran interoperability
-//==============================================================================
-
-extern "C" bool energy_filter_matches_transport_groups(EnergyFilter* filt)
-{return filt->matches_transport_groups_;}
-
-extern "C" int
-energy_filter_search(const EnergyFilter* filt, double val)
-{
-  if (val < filt->bins_.front() || val > filt->bins_.back()) {
-    return -1;
-  } else {
-    //TODO: off-by-one
-    return lower_bound_index(filt->bins_.begin(), filt->bins_.end(), val) + 1;
-  }
-}
-
-//==============================================================================
 // C-API functions
 //==============================================================================
 

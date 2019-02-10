@@ -231,7 +231,7 @@ calculate_xs_c(int i_mat, int gin, double sqrtkT, const double uvw[3],
 //==============================================================================
 
 double
-get_nuclide_xs_c(int index, int xstype, int gin, int* gout, double* mu, int* dg)
+get_nuclide_xs(int index, int xstype, int gin, int* gout, double* mu, int* dg)
 {
   int gout_c;
   int* gout_c_p;
@@ -255,7 +255,7 @@ get_nuclide_xs_c(int index, int xstype, int gin, int* gout, double* mu, int* dg)
 //==============================================================================
 
 double
-get_macro_xs_c(int index, int xstype, int gin, int* gout, double* mu, int* dg)
+get_macro_xs(int index, int xstype, int gin, int* gout, double* mu, int* dg)
 {
   int gout_c;
   int* gout_c_p;
@@ -274,33 +274,6 @@ get_macro_xs_c(int index, int xstype, int gin, int* gout, double* mu, int* dg)
     dg_c_p = dg;
   }
   return data::macro_xs[index - 1].get_xs(xstype, gin - 1, gout_c_p, mu, dg_c_p);
-}
-
-//==============================================================================
-
-void
-set_nuclide_angle_index_c(int index, const double uvw[3])
-{
-  // Update the values
-  data::nuclides_MG[index - 1].set_angle_index(uvw);
-}
-
-//==============================================================================
-
-void
-set_macro_angle_index_c(int index, const double uvw[3])
-{
-  // Update the values
-  data::macro_xs[index - 1].set_angle_index(uvw);
-}
-
-//==============================================================================
-
-void
-set_nuclide_temperature_index_c(int index, double sqrtkT)
-{
-  // Update the values
-  data::nuclides_MG[index - 1].set_temperature_index(sqrtkT);
 }
 
 //==============================================================================

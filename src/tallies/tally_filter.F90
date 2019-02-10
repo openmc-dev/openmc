@@ -7,9 +7,7 @@ module tally_filter
   use tally_filter_header
 
   ! Inherit other filters
-  use tally_filter_delayedgroup
   use tally_filter_distribcell
-  use tally_filter_energy
   use tally_filter_particle
   use tally_filter_sph_harm
 

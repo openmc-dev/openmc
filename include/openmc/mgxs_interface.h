@@ -51,20 +51,19 @@ extern "C" void
 calculate_xs_c(int i_mat, int gin, double sqrtkT, const double uvw[3],
      double& total_xs, double& abs_xs, double& nu_fiss_xs);
 
-extern "C" double
-get_nuclide_xs_c(int index, int xstype, int gin, int* gout, double* mu, int* dg);
+double
+get_nuclide_xs(int index, int xstype, int gin, int* gout, double* mu, int* dg);
 
-extern "C" double
-get_macro_xs_c(int index, int xstype, int gin, int* gout, double* mu, int* dg);
+inline double
+get_nuclide_xs(int index, int xstype, int gin)
+{return get_nuclide_xs(index, xstype, gin, nullptr, nullptr, nullptr);}
 
-extern "C" void
-set_nuclide_angle_index_c(int index, const double uvw[3]);
+double
+get_macro_xs(int index, int xstype, int gin, int* gout, double* mu, int* dg);
 
-extern "C" void
-set_macro_angle_index_c(int index, const double uvw[3]);
-
-extern "C" void
-set_nuclide_temperature_index_c(int index, double sqrtkT);
+inline double
+get_macro_xs(int index, int xstype, int gin)
+{return get_macro_xs(index, xstype, gin, nullptr, nullptr, nullptr);}
 
 //==============================================================================
 // General Mgxs methods

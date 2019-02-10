@@ -4,7 +4,6 @@ from numbers import Real
 import itertools
 import os
 import re
-import shutil
 import tempfile
 from warnings import warn
 
@@ -13,6 +12,7 @@ import h5py
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
+from openmc.stats import Discrete, Tabular
 from . import HDF5_VERSION, HDF5_VERSION_MAJOR
 from .data import K_BOLTZMANN, ATOMIC_SYMBOL, EV_PER_MEV, NATURAL_ABUNDANCE
 from .ace import Table, get_table, Library
@@ -20,46 +20,50 @@ from .angle_energy import AngleEnergy
 from .function import Tabulated1D
 from .correlated import CorrelatedAngleEnergy
 from .njoy import make_ace_thermal
-from openmc.stats import Discrete, Tabular
 
 
 _THERMAL_NAMES = {
     'c_Al27': ('al', 'al27', 'al-27'),
-    'c_Be': ('be', 'be-metal', 'be-met'),
+    'c_Al_in_Sapphire': ('asap00',),
+    'c_Be': ('be', 'be-metal', 'be-met', 'be00'),
     'c_BeO': ('beo',),
-    'c_Be_in_BeO': ('bebeo', 'be-beo', 'be-o', 'be/o'),
+    'c_Be_in_BeO': ('bebeo', 'be-beo', 'be-o', 'be/o', 'bbeo00'),
     'c_C6H6': ('benz', 'c6h6'),
     'c_C_in_SiC': ('csic', 'c-sic'),
-    'c_Ca_in_CaH2': ('cah',),
-    'c_D_in_D2O': ('dd2o', 'd-d2o', 'hwtr', 'hw'),
+    'c_Ca_in_CaH2': ('cah', 'cah00'),
+    'c_D_in_D2O': ('dd2o', 'd-d2o', 'hwtr', 'hw', 'dhw00'),
     'c_Fe56': ('fe', 'fe56', 'fe-56'),
-    'c_Graphite': ('graph', 'grph', 'gr'),
+    'c_Graphite': ('graph', 'grph', 'gr', 'gr00'),
     'c_Graphite_10p': ('grph10',),
     'c_Graphite_30p': ('grph30',),
-    'c_H_in_CaH2': ('hcah2',),
-    'c_H_in_CH2': ('hch2', 'poly', 'pol', 'h-poly'),
+    'c_H_in_CaH2': ('hcah2', 'hca00'),
+    'c_H_in_CH2': ('hch2', 'poly', 'pol', 'h-poly', 'pol00'),
     'c_H_in_CH4_liquid': ('lch4', 'lmeth'),
     'c_H_in_CH4_solid': ('sch4', 'smeth'),
-    'c_H_in_H2O': ('hh2o', 'h-h2o', 'lwtr', 'lw'),
-    'c_H_in_H2O_solid': ('hice', 'h-ice'),
+    'c_H_in_H2O': ('hh2o', 'h-h2o', 'lwtr', 'lw', 'lw00'),
+    'c_H_in_H2O_solid': ('hice', 'h-ice', 'ice00'),
     'c_H_in_C5O2H8': ('lucite', 'c5o2h8', 'h-luci'),
+    'c_H_in_Mesitylene': ('mesi00',),
+    'c_H_in_Toluene': ('tol00',),
     'c_H_in_YH2': ('hyh2', 'h-yh2'),
-    'c_H_in_ZrH': ('hzrh', 'h-zrh', 'h-zr', 'h/zr', 'hzr'),
-    'c_Mg24': ('mg', 'mg24'),
-    'c_O_in_BeO': ('obeo', 'o-beo', 'o-be', 'o/be'),
-    'c_O_in_D2O': ('od2o', 'o-d2o'),
+    'c_H_in_ZrH': ('hzrh', 'h-zrh', 'h-zr', 'h/zr', 'hzr', 'hzr00'),
+    'c_Mg24': ('mg', 'mg24', 'mg00'),
+    'c_O_in_Sapphire': ('osap00',),
+    'c_O_in_BeO': ('obeo', 'o-beo', 'o-be', 'o/be', 'obeo00'),
+    'c_O_in_D2O': ('od2o', 'o-d2o', 'ohw00'),
     'c_O_in_H2O_ice': ('oice', 'o-ice'),
-    'c_O_in_UO2': ('ouo2', 'o-uo2', 'o2-u', 'o2/u'),
+    'c_O_in_UO2': ('ouo2', 'o-uo2', 'o2-u', 'o2/u', 'ouo200'),
     'c_N_in_UN': ('n-un',),
-    'c_ortho_D': ('orthod', 'orthoD', 'dortho'),
-    'c_ortho_H': ('orthoh', 'orthoH', 'hortho'),
+    'c_ortho_D': ('orthod', 'orthoD', 'dortho', 'od200'),
+    'c_ortho_H': ('orthoh', 'orthoH', 'hortho', 'oh200'),
+    'c_Si28': ('si00',),
     'c_Si_in_SiC': ('sisic', 'si-sic'),
     'c_SiO2_alpha': ('sio2', 'sio2a'),
     'c_SiO2_beta': ('sio2b',),
-    'c_para_D': ('parad', 'paraD', 'dpara'),
-    'c_para_H': ('parah', 'paraH', 'hpara'),
+    'c_para_D': ('parad', 'paraD', 'dpara', 'pd200'),
+    'c_para_H': ('parah', 'paraH', 'hpara', 'ph200'),
     'c_U_in_UN': ('u-un',),
-    'c_U_in_UO2': ('uuo2', 'u-uo2', 'u-o2', 'u/o2'),
+    'c_U_in_UO2': ('uuo2', 'u-uo2', 'u-o2', 'u/o2', 'uuo200'),
     'c_Y_in_YH2': ('yyh2', 'y-yh2'),
     'c_Zr_in_ZrH': ('zrzrh', 'zr-zrh', 'zr-h', 'zr/h')
 }
@@ -85,34 +89,34 @@ def get_thermal_name(name):
         for proper_name, names in _THERMAL_NAMES.items():
             if name.lower() in names:
                 return proper_name
+
+        # Make an educated guess?? This actually works well for
+        # JEFF-3.2 which stupidly uses names like lw00.32t,
+        # lw01.32t, etc. for different temperatures
+
+        # First, construct a list of all the values/keys in the names
+        # dictionary
+        all_names = itertools.chain(_THERMAL_NAMES.keys(),
+                                    *_THERMAL_NAMES.values())
+
+        matches = get_close_matches(name, all_names, cutoff=0.5)
+        if matches:
+            # Figure out the key for the corresponding match
+            match = matches[0]
+            if match not in _THERMAL_NAMES:
+                for key, value_list in _THERMAL_NAMES.items():
+                    if match in value_list:
+                        match = key
+                        break
+
+            warn('Thermal scattering material "{}" is not recognized. '
+                    'Assigning a name of {}.'.format(name, match))
+            return match
         else:
-            # Make an educated guess?? This actually works well for
-            # JEFF-3.2 which stupidly uses names like lw00.32t,
-            # lw01.32t, etc. for different temperatures
-
-            # First, construct a list of all the values/keys in the names
-            # dictionary
-            all_names = itertools.chain(_THERMAL_NAMES.keys(),
-                                        *_THERMAL_NAMES.values())
-
-            matches = get_close_matches(name, all_names, cutoff=0.5)
-            if len(matches) > 0:
-                # Figure out the key for the corresponding match
-                match = matches[0]
-                if match not in _THERMAL_NAMES:
-                    for key, value_list in _THERMAL_NAMES.items():
-                        if match in value_list:
-                            match = key
-                            break
-
-                warn('Thermal scattering material "{}" is not recognized. '
-                     'Assigning a name of {}.'.format(name, match))
-                return match
-            else:
-                # OK, we give up. Just use the ACE name.
-                warn('Thermal scattering material "{0}" is not recognized. '
-                     'Assigning a name of c_{0}.'.format(name))
-                return 'c_' + name
+            # OK, we give up. Just use the ACE name.
+            warn('Thermal scattering material "{0}" is not recognized. '
+                    'Assigning a name of c_{0}.'.format(name))
+            return 'c_' + name
 
 
 class CoherentElastic(EqualityMixin):

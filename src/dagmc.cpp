@@ -249,8 +249,8 @@ void load_dagmc_geometry()
   }
 
   if (!graveyard) {
-    warning("No graveyard volume found in the DagMC model.");
-    warning("This may result in lost particles and rapid simulation failure.");
+    warning("No graveyard volume found in the DagMC model."
+            "This may result in lost particles and rapid simulation failure.");
   }
 
   /// Surfaces \\\

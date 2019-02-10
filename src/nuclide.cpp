@@ -893,6 +893,8 @@ void check_data_version(hid_t file_id)
 //==============================================================================
 
 extern "C" void extend_nuclides();
+extern "C" void nuclide_from_hdf5(hid_t group, const Nuclide* ptr,
+  const double* temps, int n, int n_nuclide);
 
 extern "C" int openmc_load_nuclide(const char* name)
 {
@@ -917,6 +919,11 @@ extern "C" int openmc_load_nuclide(const char* name)
       int i_nuclide = data::nuclides.size();
       data::nuclides.push_back(std::make_unique<Nuclide>(
         group, temperature, i_nuclide));
+
+      // Read from Fortran too
+      nuclide_from_hdf5(group, data::nuclides.back().get(),
+        &temperature.front(), temperature.size(), i_nuclide + 1);
+
       close_group(group);
       file_close(file_id);
 

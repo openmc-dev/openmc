@@ -65,6 +65,17 @@ module tally
       type(Particle) :: p
     end subroutine
 
+    subroutine score_track_derivative(p, distance) bind(C)
+      import Particle, C_DOUBLE
+      type(Particle) :: p
+      real(C_DOUBLE), value :: distance
+    end subroutine
+
+    subroutine score_collision_derivative(p) bind(C)
+      import Particle
+      type(Particle) :: p
+    end subroutine
+
     subroutine zero_flux_derivs() bind(C)
     end subroutine
   end interface
@@ -642,156 +653,6 @@ contains
       end select
     end associate
   end subroutine apply_derivative_to_score
-
-!===============================================================================
-! SCORE_TRACK_DERIVATIVE Adjust flux derivatives on differential tallies to
-! account for a neutron travelling through a perturbed material.
-!===============================================================================
-
-  subroutine score_track_derivative(p, distance)
-    type(Particle), intent(in) :: p
-    real(8),        intent(in) :: distance ! Neutron flight distance
-
-    type(TallyDerivative), pointer :: deriv
-    integer :: i, l
-    real(8) :: dsig_s, dsig_a, dsig_f
-
-    ! A void material cannot be perturbed so it will not affect flux derivatives
-    if (p % material == MATERIAL_VOID) return
-
-    do i = 0, n_tally_derivs() - 1
-      !associate(deriv => tally_derivs(i))
-      deriv => tally_deriv_c(i)
-        select case (deriv % variable)
-
-        case (DIFF_DENSITY)
-            if (material_id(p % material) == deriv % diff_material) then
-              ! phi is proportional to e^(-Sigma_tot * dist)
-              ! (1 / phi) * (d_phi / d_rho) = - (d_Sigma_tot / d_rho) * dist
-              ! (1 / phi) * (d_phi / d_rho) = - Sigma_tot / rho * dist
-              deriv % flux_deriv = deriv % flux_deriv &
-                    - distance * material_xs % total / material_density_gpcc(p % material)
-            end if
-
-        case (DIFF_NUCLIDE_DENSITY)
-            if (material_id(p % material) == deriv % diff_material) then
-              ! phi is proportional to e^(-Sigma_tot * dist)
-              ! (1 / phi) * (d_phi / d_N) = - (d_Sigma_tot / d_N) * dist
-              ! (1 / phi) * (d_phi / d_N) = - sigma_tot * dist
-              deriv % flux_deriv = deriv % flux_deriv &
-                   - distance * micro_xs(deriv % diff_nuclide) % total
-            end if
-
-        case (DIFF_TEMPERATURE)
-            if (material_id(p % material) == deriv % diff_material) then
-              do l=1, material_nuclide_size(p % material)
-                associate (nuc => nuclides(material_nuclide(p % material, l)))
-                  if (multipole_in_range(nuc % ptr, p % E)) then
-                    ! phi is proportional to e^(-Sigma_tot * dist)
-                    ! (1 / phi) * (d_phi / d_T) = - (d_Sigma_tot / d_T) * dist
-                    ! (1 / phi) * (d_phi / d_T) = - N (d_sigma_tot / d_T) * dist
-                    call multipole_deriv_eval(nuc % ptr, p % E, &
-                         p % sqrtkT, dsig_s, dsig_a, dsig_f)
-                    deriv % flux_deriv = deriv % flux_deriv &
-                         - distance * (dsig_s + dsig_a) * material_atom_density(p % material, l)
-                  end if
-                end associate
-              end do
-            end if
-        end select
-      !end associate
-    end do
-  end subroutine score_track_derivative
-
-!===============================================================================
-! SCORE_COLLISION_DERIVATIVE Adjust flux derivatives on differential tallies to
-! account for a neutron scattering in the perturbed material.  Note that this
-! subroutine will be called after absorption events in addition to scattering
-! events, but any flux derivatives scored after an absorption will never be
-! tallied.  This is because the order of operations is
-! 1. Particle is moved.
-! 2. score_track_derivative is called.
-! 3. Collision physics are computed, and the particle is labeled absorbed.
-! 4. Analog- and collision-estimated tallies are scored.
-! 5. This subroutine is called.
-! 6. Particle is killed and no more tallies are scored.
-! Hence, it is safe to assume that only derivative of the scattering cross
-! section need to be computed here.
-!===============================================================================
-
-  subroutine score_collision_derivative(p)
-    type(Particle), intent(in) :: p
-
-    type(TallyDerivative), pointer :: deriv
-    integer :: i, j, l, i_nuc
-    real(8) :: dsig_s, dsig_a, dsig_f
-
-    ! A void material cannot be perturbed so it will not affect flux derivatives
-    if (p % material == MATERIAL_VOID) return
-
-    do i = 0, n_tally_derivs() - 1
-      !associate(deriv => tally_derivs(i))
-      deriv => tally_deriv_c(i)
-        select case (deriv % variable)
-
-        case (DIFF_DENSITY)
-            if (material_id(p % material) == deriv % diff_material) then
-              ! phi is proportional to Sigma_s
-              ! (1 / phi) * (d_phi / d_rho) = (d_Sigma_s / d_rho) / Sigma_s
-              ! (1 / phi) * (d_phi / d_rho) = 1 / rho
-              deriv % flux_deriv = deriv % flux_deriv &
-                   + ONE / material_density_gpcc(p % material)
-            end if
-
-        case (DIFF_NUCLIDE_DENSITY)
-            if (material_id(p % material) == deriv % diff_material &
-                 .and. p % event_nuclide == deriv % diff_nuclide) then
-              ! Find the index in this material for the diff_nuclide.
-              do j = 1, material_nuclide_size(p % material)
-                if (material_nuclide(p % material, j) == deriv % diff_nuclide) exit
-              end do
-              ! Make sure we found the nuclide.
-              if (material_nuclide(p % material, j) /= deriv % diff_nuclide) then
-                call fatal_error("Couldn't find the right nuclide.")
-              end if
-              ! phi is proportional to Sigma_s
-              ! (1 / phi) * (d_phi / d_N) = (d_Sigma_s / d_N) / Sigma_s
-              ! (1 / phi) * (d_phi / d_N) = sigma_s / Sigma_s
-              ! (1 / phi) * (d_phi / d_N) = 1 / N
-              deriv % flux_deriv = deriv % flux_deriv &
-                   + ONE / material_atom_density(p % material, j)
-            end if
-
-        case (DIFF_TEMPERATURE)
-            if (material_id(p % material) == deriv % diff_material) then
-              do l=1, material_nuclide_size(p % material)
-                i_nuc = material_nuclide(p % material, l)
-                associate (nuc => nuclides(i_nuc))
-                  if (i_nuc == p % event_nuclide .and. &
-                       multipole_in_range(nuc % ptr, p % last_E)) then
-                    ! phi is proportional to Sigma_s
-                    ! (1 / phi) * (d_phi / d_T) = (d_Sigma_s / d_T) / Sigma_s
-                    ! (1 / phi) * (d_phi / d_T) = (d_sigma_s / d_T) / sigma_s
-                    call multipole_deriv_eval(nuc % ptr, p % last_E, &
-                         p % sqrtkT, dsig_s, dsig_a, dsig_f)
-                    deriv % flux_deriv = deriv % flux_deriv + dsig_s&
-                         / (micro_xs(i_nuc) % total &
-                         - micro_xs(i_nuc) % absorption)
-                    ! Note that this is an approximation!  The real scattering
-                    ! cross section is Sigma_s(E'->E, uvw'->uvw) =
-                    ! Sigma_s(E') * P(E'->E, uvw'->uvw).  We are assuming that
-                    ! d_P(E'->E, uvw'->uvw) / d_T = 0 and only computing
-                    ! d_S(E') / d_T.  Using this approximation in the vicinity
-                    ! of low-energy resonances causes errors (~2-5% for PWR
-                    ! pincell eigenvalue derivatives).
-                  end if
-                end associate
-              end do
-            end if
-        end select
-      !end associate
-    end do
-  end subroutine score_collision_derivative
 
 !===============================================================================
 ! ACCUMULATE_TALLIES accumulates the sum of the contributions from each history

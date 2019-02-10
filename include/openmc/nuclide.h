@@ -176,6 +176,8 @@ private:
 //! Checks for the right version of nuclear data within HDF5 files
 void check_data_version(hid_t file_id);
 
+extern "C" bool multipole_in_range(const Nuclide* nuc, double E);
+
 //==============================================================================
 // Global variables
 //==============================================================================

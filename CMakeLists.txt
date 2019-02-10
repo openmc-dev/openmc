@@ -350,9 +350,7 @@ add_library(libopenmc SHARED
   src/tallies/tally_derivative_header.F90
   src/tallies/tally_filter.F90
   src/tallies/tally_filter_header.F90
-  src/tallies/tally_filter_delayedgroup.F90
   src/tallies/tally_filter_distribcell.F90
-  src/tallies/tally_filter_energy.F90
   src/tallies/tally_filter_particle.F90
   src/tallies/tally_filter_sph_harm.F90
   src/tallies/tally_header.F90

@@ -79,6 +79,15 @@ module tally_filter_header
   type, public, extends(CellFilter) :: CellFromFilter
   end type
 
+  type, public, extends(TallyFilter) :: DelayedGroupFilter
+  end type
+
+  type, public, extends(TallyFilter) :: EnergyFilter
+  end type
+
+  type, public, extends(EnergyFilter) :: EnergyoutFilter
+  end type
+
   type, public, extends(TallyFilter) :: EnergyFunctionFilter
   end type
 

@@ -63,124 +63,6 @@ double global_tally_collision;
 double global_tally_tracklength;
 double global_tally_leakage;
 
-//==============================================================================
-//! An iterator over all combinations of a tally's matching filter bins.
-//
-//! This iterator handles two distinct tasks.  First, it maps the N-dimensional
-//! space created by the indices of N filters onto a 1D sequence.  In other
-//! words, it provides a single number that uniquely identifies a combination of
-//! bins for many filters.  Second, it handles the task of finding each all
-//! valid combinations of filter bins given that each filter can have 1 or 2 or
-//! many bins that are valid for the current tally event.
-//==============================================================================
-
-class FilterBinIter
-{
-public:
-  FilterBinIter(const Tally& tally, Particle* p, bool end)
-    : tally_{tally}
-  {
-    // Handle the special case for an iterator that points to the end.
-    if (end) {
-      index_ = -1;
-      return;
-    }
-
-    // Find all valid bins in each relevant filter if they have not already been
-    // found for this event.
-    for (auto i_filt : tally_.filters()) {
-      auto& match {simulation::filter_matches[i_filt]};
-      if (!match.bins_present_) {
-        match.bins_.clear();
-        match.weights_.clear();
-        model::tally_filters[i_filt]->get_all_bins(p, tally_.estimator_, match);
-        match.bins_present_ = true;
-      }
-
-      // If there are no valid bins for this filter, then there are no valid
-      // filter bin combinations so all iterators are end iterators.
-      if (match.bins_.size() == 0) {
-        index_ = -1;
-        return;
-      }
-
-      // Set the index of the bin used in the first filter combination
-      match.i_bin_ = 1;
-    }
-
-    // Compute the initial index and weight.
-    compute_index_weight();
-  }
-
-  bool
-  operator==(const FilterBinIter& other)
-  {
-    return index_ == other.index_;
-  }
-
-  bool
-  operator!=(const FilterBinIter& other)
-  {
-    return !(*this == other);
-  }
-
-  FilterBinIter&
-  operator++()
-  {
-    // Find the next valid combination of filter bins.  To do this, we search
-    // backwards through the filters until we find the first filter whose bins
-    // can be incremented.
-    bool done_looping = true;
-    for (int i = tally_.filters().size()-1; i >= 0; --i) {
-      auto i_filt = tally_.filters(i);
-      auto& match {simulation::filter_matches[i_filt]};
-      if (match.i_bin_< match.bins_.size()) {
-        // The bin for this filter can be incremented.  Increment it and do not
-        // touch any of the remaining filters.
-        ++match.i_bin_;
-        done_looping = false;
-        break;
-      } else {
-        // This bin cannot be incremented so reset it and continue to the next
-        // filter.
-        match.i_bin_ = 1;
-      }
-    }
-
-    if (done_looping) {
-      // We have visited every valid combination.  All done!
-      index_ = -1;
-    } else {
-      // The loop found a new valid combination.  Compute the corresponding
-      // index and weight.
-      compute_index_weight();
-    }
-
-    return *this;
-  }
-
-  int index_ {1};
-  double weight_ {1.};
-
-private:
-  void
-  compute_index_weight()
-  {
-    index_ = 1;
-    weight_ = 1.;
-    for (auto i = 0; i < tally_.filters().size(); ++i) {
-      auto i_filt = tally_.filters(i);
-      auto& match {simulation::filter_matches[i_filt]};
-      auto i_bin = match.i_bin_;
-      //TODO: off-by-one
-      index_ += (match.bins_[i_bin-1] - 1) * tally_.strides(i);
-      weight_ *= match.weights_[i_bin-1];
-    }
-  }
-
-  const Tally& tally_;
-};
-
 int
 score_str_to_int(std::string score_str)
 {
@@ -340,6 +222,12 @@ score_str_to_int(std::string score_str)
 //==============================================================================
 // Tally object implementation
 //==============================================================================
+
+void
+Tally::init_from_xml(pugi::xml_node node)
+{
+  if (check_for_node(node, "name")) name_ = get_node_value(node, "name");
+}
 
 void
 Tally::set_filters(const int32_t filter_indices[], int n)
@@ -629,6 +517,123 @@ Tally::init_triggers(pugi::xml_node node, int i_tally)
         triggers_.push_back({metric, threshold, i_score});
       }
     }
+  }
+}
+
+//==============================================================================
+// FilterBinIter implementation
+//==============================================================================
+
+FilterBinIter::FilterBinIter(const Tally& tally, Particle* p)
+  : tally_{tally}
+{
+  // Find all valid bins in each relevant filter if they have not already been
+  // found for this event.
+  for (auto i_filt : tally_.filters()) {
+    auto& match {simulation::filter_matches[i_filt]};
+    if (!match.bins_present_) {
+      match.bins_.clear();
+      match.weights_.clear();
+      model::tally_filters[i_filt]->get_all_bins(p, tally_.estimator_, match);
+      match.bins_present_ = true;
+    }
+
+    // If there are no valid bins for this filter, then there are no valid
+    // filter bin combinations so all iterators are end iterators.
+    if (match.bins_.size() == 0) {
+      index_ = -1;
+      return;
+    }
+
+    // Set the index of the bin used in the first filter combination
+    match.i_bin_ = 1;
+  }
+
+  // Compute the initial index and weight.
+  compute_index_weight();
+}
+
+FilterBinIter::FilterBinIter(const Tally& tally, bool end)
+  : tally_{tally}
+{
+  // Handle the special case for an iterator that points to the end.
+  if (end) {
+    index_ = -1;
+    return;
+  }
+
+  for (auto i_filt : tally_.filters()) {
+    auto& match {simulation::filter_matches[i_filt]};
+    if (!match.bins_present_) {
+      match.bins_.clear();
+      match.weights_.clear();
+      for (auto i = 0; i < model::tally_filters[i_filt]->n_bins_; ++i) {
+        // TODO: off-by-one
+        match.bins_.push_back(i+1);
+        match.weights_.push_back(1.0);
+      }
+      match.bins_present_ = true;
+    }
+
+    if (match.bins_.size() == 0) {
+      index_ = -1;
+      return;
+    }
+
+    match.i_bin_ = 1;
+  }
+
+  // Compute the initial index and weight.
+  compute_index_weight();
+}
+
+FilterBinIter&
+FilterBinIter::operator++()
+{
+  // Find the next valid combination of filter bins.  To do this, we search
+  // backwards through the filters until we find the first filter whose bins
+  // can be incremented.
+  bool done_looping = true;
+  for (int i = tally_.filters().size()-1; i >= 0; --i) {
+    auto i_filt = tally_.filters(i);
+    auto& match {simulation::filter_matches[i_filt]};
+    if (match.i_bin_< match.bins_.size()) {
+      // The bin for this filter can be incremented.  Increment it and do not
+      // touch any of the remaining filters.
+      ++match.i_bin_;
+      done_looping = false;
+      break;
+    } else {
+      // This bin cannot be incremented so reset it and continue to the next
+      // filter.
+      match.i_bin_ = 1;
+    }
+  }
+
+  if (done_looping) {
+    // We have visited every valid combination.  All done!
+    index_ = -1;
+  } else {
+    // The loop found a new valid combination.  Compute the corresponding
+    // index and weight.
+    compute_index_weight();
+  }
+
+  return *this;
+}
+
+void
+FilterBinIter::compute_index_weight()
+{
+  index_ = 1;
+  weight_ = 1.;
+  for (auto i = 0; i < tally_.filters().size(); ++i) {
+    auto i_filt = tally_.filters(i);
+    auto& match {simulation::filter_matches[i_filt]};
+    auto i_bin = match.i_bin_;
+    //TODO: off-by-one
+    index_ += (match.bins_[i_bin-1] - 1) * tally_.strides(i);
+    weight_ *= match.weights_[i_bin-1];
   }
 }
 
@@ -2511,8 +2516,8 @@ score_analog_tally_ce(Particle* p)
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
-    auto filter_iter = FilterBinIter(tally, p, false);
-    auto end = FilterBinIter(tally, nullptr, true);
+    auto filter_iter = FilterBinIter(tally, p);
+    auto end = FilterBinIter(tally, true);
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2576,8 +2581,8 @@ score_analog_tally_mg(Particle* p)
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
-    auto filter_iter = FilterBinIter(tally, p, false);
-    auto end = FilterBinIter(tally, nullptr, true);
+    auto filter_iter = FilterBinIter(tally, p);
+    auto end = FilterBinIter(tally, true);
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2636,8 +2641,8 @@ score_tracklength_tally(Particle* p, double distance)
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
-    auto filter_iter = FilterBinIter(tally, p, false);
-    auto end = FilterBinIter(tally, nullptr, true);
+    auto filter_iter = FilterBinIter(tally, p);
+    auto end = FilterBinIter(tally, true);
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2718,8 +2723,8 @@ score_collision_tally(Particle* p)
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
-    auto filter_iter = FilterBinIter(tally, p, false);
-    auto end = FilterBinIter(tally, nullptr, true);
+    auto filter_iter = FilterBinIter(tally, p);
+    auto end = FilterBinIter(tally, true);
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2786,8 +2791,8 @@ score_surface_tally_inner(Particle* p, const std::vector<int>& tallies)
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
-    auto filter_iter = FilterBinIter(tally, p, false);
-    auto end = FilterBinIter(tally, nullptr, true);
+    auto filter_iter = FilterBinIter(tally, p);
+    auto end = FilterBinIter(tally, true);
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -3171,6 +3176,9 @@ extern "C" {
 
   int active_surface_tallies_size()
   {return model::active_surface_tallies.size();}
+
+  void tally_init_from_xml(Tally* tally, pugi::xml_node* node)
+  {tally->init_from_xml(*node);}
 
   int tally_get_id_c(Tally* tally) {return tally->id_;}
 

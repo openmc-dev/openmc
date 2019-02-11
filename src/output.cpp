@@ -2,27 +2,37 @@
 
 #include <algorithm>  // for std::transform
 #include <cstring>  // for strlen
-#include <iomanip>  // for setw
-#include <iostream>
-#include <sstream>
 #include <ctime>
+#include <iomanip>  // for setw, setprecision
+#include <ios>  // for left
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <unordered_map>
 
 #include "openmc/capi.h"
 #include "openmc/cell.h"
 #include "openmc/constants.h"
+#include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/lattice.h"
+#include "openmc/math_functions.h"
 #include "openmc/message_passing.h"
+#include "openmc/mgxs_interface.h"
+#include "openmc/nuclide.h"
 #include "openmc/plot.h"
+#include "openmc/reaction.h"
 #include "openmc/settings.h"
 #include "openmc/surface.h"
+#include "openmc/tallies/derivative.h"
+#include "openmc/tallies/tally.h"
 
 namespace openmc {
 
 //==============================================================================
 
-void
-header(const char* msg, int level) {
+std::string
+header(const char* msg) {
   // Determine how many times to repeat the '=' character.
   int n_prefix = (63 - strlen(msg)) / 2;
   int n_suffix = n_prefix;
@@ -39,10 +49,18 @@ header(const char* msg, int level) {
   out << ">     " << upper << "     <";
   for (int i = 0; i < n_suffix; i++) out << '=';
 
+  return out.str();
+}
+
+std::string header(const std::string& msg) {return header(msg.c_str());}
+
+void
+header(const char* msg, int level) {
+  auto out = header(msg);
+
   // Print header based on verbosity level.
-  if (settings::verbosity >= level) {
-    std::cout << out.str() << "\n\n";
-  }
+  if (settings::verbosity >= level)
+    std::cout << out << "\n\n";
 }
 
 //==============================================================================
@@ -227,6 +245,154 @@ print_overlap_check()
       std::cout << " " << id;
     }
     std::cout << "\n";
+  }
+}
+
+//==============================================================================
+
+std::pair<double, double>
+mean_stdev(double sum, double sum_sq, int n)
+{
+  double mean, std_dev;
+  mean = sum / n;
+  if (n > 1) {
+    std_dev = std::sqrt((sum_sq / n - mean*mean) / (n - 1));
+  } else {
+    std_dev = 0;
+  }
+  return {mean, std_dev};
+}
+
+const std::unordered_map<int, const char*> score_names = {
+  {SCORE_FLUX,               "Flux"},
+  {SCORE_TOTAL,              "Total Reaction Rate"},
+  {SCORE_SCATTER,            "Scattering Rate"},
+  {SCORE_NU_SCATTER,         "Scattering Production Rate"},
+  {SCORE_ABSORPTION,         "Absorption Rate"},
+  {SCORE_FISSION,            "Fission Rate"},
+  {SCORE_NU_FISSION,         "Nu-Fission Rate"},
+  {SCORE_KAPPA_FISSION,      "Kappa-Fission Rate"},
+  {SCORE_EVENTS,             "Events"},
+  {SCORE_DECAY_RATE,         "Decay Rate"},
+  {SCORE_DELAYED_NU_FISSION, "Delayed-Nu-Fission Rate"},
+  {SCORE_PROMPT_NU_FISSION,  "Prompt-Nu-Fission Rate"},
+  {SCORE_INVERSE_VELOCITY,   "Flux-Weighted Inverse Velocity"},
+  {SCORE_FISS_Q_PROMPT,      "Prompt fission power"},
+  {SCORE_FISS_Q_RECOV,       "Recoverable fission power"},
+  {SCORE_CURRENT,            "Current"},
+};
+
+//! Create an ASCII output file showing all tally results.
+
+extern "C" void
+write_tallies()
+{
+  if (model::tallies.empty()) return;
+
+  // Open the tallies.out file.
+  std::ofstream tallies_out;
+  tallies_out.open("tallies.out", std::ios::out | std::ios::trunc);
+  tallies_out << std::setprecision(6);
+
+  // Loop over each tally.
+  for (auto i_tally = 0; i_tally < model::tallies.size(); ++i_tally) {
+    const auto& tally {*model::tallies[i_tally]};
+    auto results = tally_results(i_tally+1);
+    // TODO: get this directly from the tally object when it's been translated
+    int32_t n_realizations;
+    auto err = openmc_tally_get_n_realizations(i_tally+1, &n_realizations);
+
+    // Calculate t-value for confidence intervals
+    double t_value = 1;
+    if (settings::confidence_intervals) {
+      auto alpha = 1 - CONFIDENCE_LEVEL;
+      t_value = t_percentile_c(1 - alpha*0.5, n_realizations - 1);
+    }
+
+    // Write header block.
+    std::string tally_header("TALLY " + std::to_string(tally.id_));
+    if (!tally.name_.empty()) tally_header += ": " + tally.name_;
+    tallies_out << "\n" << header(tally_header) << "\n\n";
+
+    // Write derivative information.
+    if (tally.deriv_ != C_NONE) {
+      const auto& deriv {model::tally_derivs[tally.deriv_]};
+      switch (deriv.variable) {
+      case DIFF_DENSITY:
+        tallies_out << " Density derivative  Material "
+          << std::to_string(deriv.diff_material) << "\n";
+        break;
+      case DIFF_NUCLIDE_DENSITY:
+        tallies_out << " Nuclide density derivative  Material "
+          << std::to_string(deriv.diff_material) << "  Nuclide "
+          // TODO: off-by-one
+          << data::nuclides[deriv.diff_nuclide-1]->name_ << "\n";
+        break;
+      case DIFF_TEMPERATURE:
+        tallies_out << " Temperature derivative  Material "
+          << std::to_string(deriv.diff_material) << "\n";
+        break;
+      default:
+        fatal_error("Differential tally dependent variable for tally "
+          + std::to_string(tally.id_) + " not defined in output.cpp");
+      }
+    }
+
+    // Loop over all filter bin combinations.
+    auto filter_iter = FilterBinIter(tally, false);
+    auto end = FilterBinIter(tally, true);
+    for (; filter_iter != end; ++filter_iter) {
+      auto filter_index = filter_iter.index_;
+
+      // Print info about this combination of filter bins.  The stride check
+      // prevents redundant output.
+      int indent = 0;
+      for (auto i = 0; i < tally.filters().size(); ++i) {
+        if ((filter_index-1) % tally.strides(i) == 0) {
+          auto i_filt = tally.filters(i);
+          const auto& filt {*model::tally_filters[i_filt]};
+          auto& match {simulation::filter_matches[i_filt]};
+          tallies_out << std::string(indent+1, ' ')
+            << filt.text_label(match.i_bin_) << "\n";
+        }
+        indent += 2;
+      }
+
+      // Loop over all nuclide and score combinations.
+      int score_index = 0;
+      for (auto i_nuclide : tally.nuclides_) {
+        // Write label for this nuclide bin.
+        if (i_nuclide == -1) {
+          tallies_out << std::string(indent+1, ' ') << "Total Material\n";
+        } else {
+          if (settings::run_CE) {
+            tallies_out << std::string(indent+1, ' ')
+              << data::nuclides[i_nuclide]->name_ << "\n";
+          } else {
+            tallies_out << std::string(indent+1, ' ')
+              << data::nuclides_MG[i_nuclide].name << "\n";
+          }
+        }
+
+        // Write the score, mean, and uncertainty.
+        indent += 2;
+        for (auto score : tally.scores_) {
+          std::string score_name = score > 0 ? reaction_name(score)
+            : score_names.at(score);
+          double mean, stdev;
+          //TODO: off-by-one
+          std::tie(mean, stdev) = mean_stdev(
+            results(filter_index-1, score_index, RESULT_SUM),
+            results(filter_index-1, score_index, RESULT_SUM_SQ),
+            n_realizations);
+          tallies_out << std::string(indent+1, ' ')  << std::left
+            << std::setw(36) << score_name << " " << mean << " +/- "
+            << t_value * stdev << "\n";
+          score_index += 1;
+        }
+        indent -= 2;
+      }
+    }
   }
 }
 

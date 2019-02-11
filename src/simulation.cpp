@@ -144,11 +144,6 @@ int openmc_simulation_finalize()
   simulation::time_active.stop();
   simulation::time_finalize.start();
 
-#pragma omp parallel
-  {
-    simulation::filter_matches.clear();
-  }
-
   // Deallocate Fortran variables, set tallies to inactive
   for (auto& mat : model::materials) {
     mat->mat_nuclide_index_.clear();
@@ -164,6 +159,11 @@ int openmc_simulation_finalize()
 
   // Write tally results to tallies.out
   if (settings::output_tallies && mpi::master) write_tallies();
+
+#pragma omp parallel
+  {
+    simulation::filter_matches.clear();
+  }
 
   // Deactivate all tallies
   for (int i = 1; i <= n_tallies; ++i) {

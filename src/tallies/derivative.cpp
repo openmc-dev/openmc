@@ -2,6 +2,7 @@
 #include "openmc/material.h"
 #include "openmc/nuclide.h"
 #include "openmc/settings.h"
+#include "openmc/tallies/tally.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/xml_interface.h"
 
@@ -103,6 +104,209 @@ read_tally_derivatives(pugi::xml_node* node)
   // Make sure derivatives were not requested for an MG run.
   if (!settings::run_CE && !model::tally_derivs.empty())
     fatal_error("Differential tallies not supported in multi-group mode");
+}
+
+extern "C" void
+apply_derivative_to_score_c(Particle* p, int i_tally, int i_nuclide,
+  double atom_density, int score_bin, double* score)
+{
+  //TODO: off-by-one
+  const Tally& tally {*model::tallies[i_tally-1]};
+
+  if (*score == 0) return;
+
+  // If our score was previously c then the new score is
+  // c * (1/f * d_f/d_p + 1/c * d_c/d_p)
+  // where (1/f * d_f/d_p) is the (logarithmic) flux derivative and p is the
+  // perturbated variable.
+
+  const auto& deriv {model::tally_derivs[tally.deriv_]};
+  auto flux_deriv = deriv.flux_deriv;
+
+  // Handle special cases where we know that d_c/d_p must be zero.
+  if (score_bin == SCORE_FLUX) {
+    *score *= flux_deriv;
+    return;
+  } else if (p->material == MATERIAL_VOID) {
+    *score *= flux_deriv;
+    return;
+  }
+  //TODO: off-by-one
+  const Material& material {*model::materials[p->material-1]};
+  if (material.id_ != deriv.diff_material) {
+    *score *= flux_deriv;
+    return;
+  }
+
+  switch (deriv.variable) {
+
+  //============================================================================
+  // Density derivative:
+  // c = Sigma_MT
+  // c = sigma_MT * N
+  // c = sigma_MT * rho * const
+  // d_c / d_rho = sigma_MT * const
+  // (1 / c) * (d_c / d_rho) = 1 / rho
+
+  case DIFF_DENSITY:
+    switch (tally.estimator_) {
+
+    case ESTIMATOR_ANALOG:
+    case ESTIMATOR_COLLISION:
+      switch (score_bin) {
+
+      case SCORE_TOTAL:
+      case SCORE_SCATTER:
+      case SCORE_ABSORPTION:
+      case SCORE_FISSION:
+      case SCORE_NU_FISSION:
+        *score *= flux_deriv + 1. / material.density_gpcc_;
+        break;
+
+      default:
+        fatal_error("Tally derivative not defined for a score on tally "
+          + std::to_string(tally.id_));
+      }
+      break;
+
+    default:
+      fatal_error("Differential tallies are only implemented for analog and "
+        "collision estimators.");
+    }
+    break;
+
+  //============================================================================
+  // Nuclide density derivative:
+  // If we are scoring a reaction rate for a single nuclide then
+  // c = Sigma_MT_i
+  // c = sigma_MT_i * N_i
+  // d_c / d_N_i = sigma_MT_i
+  // (1 / c) * (d_c / d_N_i) = 1 / N_i
+  // If the score is for the total material (i_nuclide = -1)
+  // c = Sum_i(Sigma_MT_i)
+  // d_c / d_N_i = sigma_MT_i
+  // (1 / c) * (d_c / d_N) = sigma_MT_i / Sigma_MT
+  // where i is the perturbed nuclide.
+
+  case DIFF_NUCLIDE_DENSITY:
+    //TODO: off-by-one throughout on diff_nuclide
+    switch (tally.estimator_) {
+
+    case ESTIMATOR_ANALOG:
+      if (p->event_nuclide != deriv.diff_nuclide) {
+        *score *= flux_deriv;
+        return;
+      }
+
+      switch (score_bin) {
+
+      case SCORE_TOTAL:
+      case SCORE_SCATTER:
+      case SCORE_ABSORPTION:
+      case SCORE_FISSION:
+      case SCORE_NU_FISSION:
+        {
+          // Find the index of the perturbed nuclide.
+          int i;
+          for (i = 0; i < material.nuclide_.size(); ++i)
+            if (material.nuclide_[i] == deriv.diff_nuclide - 1) break;
+          *score *= flux_deriv + 1. / material.atom_density_(i);
+        }
+        break;
+
+      default:
+        fatal_error("Tally derivative not defined for a score on tally "
+          + std::to_string(tally.id_));
+      }
+      break;
+
+    case ESTIMATOR_COLLISION:
+      switch (score_bin) {
+
+      case SCORE_TOTAL:
+        if (i_nuclide == -1 && simulation::material_xs.total) {
+          *score *= flux_deriv
+            + simulation::micro_xs[deriv.diff_nuclide-1].total
+            / simulation::material_xs.total;
+        } else if (i_nuclide == deriv.diff_nuclide-1
+                   && simulation::micro_xs[i_nuclide].total) {
+          *score *= flux_deriv + 1. / atom_density;
+        } else {
+          *score *= flux_deriv;
+        }
+        break;
+
+      case SCORE_SCATTER:
+        if (i_nuclide == -1 && (simulation::material_xs.total
+                                - simulation::material_xs.absorption)) {
+          *score *= flux_deriv
+            + (simulation::micro_xs[deriv.diff_nuclide-1].total
+            - simulation::micro_xs[deriv.diff_nuclide-1].absorption)
+            / (simulation::material_xs.total
+            - simulation::material_xs.absorption);
+        } else if (i_nuclide == deriv.diff_nuclide-1) {
+          *score *= flux_deriv + 1. / atom_density;
+        } else {
+          *score *= flux_deriv;
+        }
+        break;
+
+      case SCORE_ABSORPTION:
+        if (i_nuclide == -1 && simulation::material_xs.absorption) {
+          *score *= flux_deriv
+            + simulation::micro_xs[deriv.diff_nuclide-1].absorption
+            / simulation::material_xs.absorption;
+        } else if (i_nuclide == deriv.diff_nuclide-1
+                   && simulation::micro_xs[i_nuclide].absorption) {
+          *score *= flux_deriv + 1. / atom_density;
+        } else {
+          *score *= flux_deriv;
+        }
+        break;
+
+      case SCORE_FISSION:
+        if (i_nuclide == -1 && simulation::material_xs.fission) {
+          *score *= flux_deriv
+            + simulation::micro_xs[deriv.diff_nuclide-1].fission
+            / simulation::material_xs.fission;
+        } else if (i_nuclide == deriv.diff_nuclide-1
+                   && simulation::micro_xs[i_nuclide].fission) {
+          *score *= flux_deriv + 1. / atom_density;
+        } else {
+          *score *= flux_deriv;
+        }
+        break;
+
+      case SCORE_NU_FISSION:
+        if (i_nuclide == -1 && simulation::material_xs.nu_fission) {
+          *score *= flux_deriv
+            + simulation::micro_xs[deriv.diff_nuclide-1].nu_fission
+            / simulation::material_xs.nu_fission;
+        } else if (i_nuclide == deriv.diff_nuclide-1
+                   && simulation::micro_xs[i_nuclide].nu_fission) {
+          *score *= flux_deriv + 1. / atom_density;
+        } else {
+          *score *= flux_deriv;
+        }
+        break;
+
+      default:
+        fatal_error("Tally derivative not defined for a score on tally "
+          + std::to_string(tally.id_));
+      }
+      break;
+
+    default:
+      fatal_error("Differential tallies are only implemented for analog and "
+        "collision estimators.");
+    }
+    break;
+
+  //============================================================================
+
+  case DIFF_TEMPERATURE:
+    break;
+  }
 }
 
 //! Adjust diff tally flux derivatives for a particle tracking event.

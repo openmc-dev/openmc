@@ -115,6 +115,22 @@ contains
     real(8) :: flux_deriv
     real(8) :: dsig_s, dsig_a, dsig_f, cum_dsig
 
+    interface
+      subroutine apply_derivative_to_score_c(p, i_tally, i_nuclide, &
+           atom_density, score_bin, score) bind(C)
+        import Particle, C_INT, C_DOUBLE
+        type(Particle),        intent(in)    :: p
+        integer(C_INT), value, intent(in)    :: i_tally
+        integer(C_INT), value, intent(in)    :: i_nuclide
+        real(C_DOUBLE), value, intent(in)    :: atom_density
+        integer(C_INT), value, intent(in)    :: score_bin
+        real(C_DOUBLE),        intent(inout) :: score
+      end subroutine
+    end interface
+
+    call apply_derivative_to_score_c(p, i_tally, i_nuclide, atom_density, &
+         score_bin, score)
+
     associate (t => tallies(i_tally) % obj)
 
     if (score == ZERO) return
@@ -128,201 +144,26 @@ contains
     deriv => tally_deriv_c(t % deriv())
       flux_deriv = deriv % flux_deriv
 
+    if (p % material == MATERIAL_VOID) then
+      return
+    else if (material_id(p % material) /= deriv % diff_material) then
+      return
+    end if
+
+    if (deriv % variable == DIFF_NUCLIDE_DENSITY) then
+      if (t % estimator() == ESTIMATOR_ANALOG) then
+        if (p % event_nuclide /= deriv % diff_nuclide) return
+      end if
+    end if
+
       !select case (tally_derivs(t % deriv()) % variable)
       select case (deriv % variable)
 
-      !=========================================================================
-      ! Density derivative:
-      ! c = Sigma_MT
-      ! c = sigma_MT * N
-      ! c = sigma_MT * rho * const
-      ! d_c / d_rho = sigma_MT * const
-      ! (1 / c) * (d_c / d_rho) = 1 / rho
-
       case (DIFF_DENSITY)
-        select case (t % estimator())
-
-        case (ESTIMATOR_ANALOG)
-
-          select case (score_bin)
-
-          case (SCORE_FLUX)
-            score = score * flux_deriv
-
-          case (SCORE_TOTAL, SCORE_SCATTER, SCORE_ABSORPTION, SCORE_FISSION, &
-                SCORE_NU_FISSION)
-            if (material_id(p % material) == deriv % diff_material) then
-              score = score * (flux_deriv + ONE &
-                   / material_density_gpcc(p % material))
-            else
-              score = score * flux_deriv
-            end if
-
-          case default
-            call fatal_error('Tally derivative not defined for a score on &
-                 &tally ' // trim(to_str(t % id())))
-          end select
-
-        case (ESTIMATOR_COLLISION)
-
-          select case (score_bin)
-
-          case (SCORE_FLUX)
-            score = score * flux_deriv
-
-          case (SCORE_TOTAL, SCORE_SCATTER, SCORE_ABSORPTION, SCORE_FISSION, &
-                SCORE_NU_FISSION)
-            if (material_id(p % material) == deriv % diff_material) then
-              score = score * (flux_deriv + ONE &
-                   / material_density_gpcc(p % material))
-            else
-              score = score * flux_deriv
-            end if
-
-          case default
-            call fatal_error('Tally derivative not defined for a score on &
-                 &tally ' // trim(to_str(t % id())))
-          end select
-
-        case default
-            call fatal_error("Differential tallies are only implemented for &
-                 &analog and collision estimators.")
-        end select
-
-      !=========================================================================
-      ! Nuclide density derivative:
-      ! If we are scoring a reaction rate for a single nuclide then
-      ! c = Sigma_MT_i
-      ! c = sigma_MT_i * N_i
-      ! d_c / d_N_i = sigma_MT_i
-      ! (1 / c) * (d_c / d_N_i) = 1 / N_i
-      ! If the score is for the total material (i_nuclide = -1)
-      ! c = Sum_i(Sigma_MT_i)
-      ! d_c / d_N_i = sigma_MT_i
-      ! (1 / c) * (d_c / d_N) = sigma_MT_i / Sigma_MT
-      ! where i is the perturbed nuclide.
+        return
 
       case (DIFF_NUCLIDE_DENSITY)
-        select case (t % estimator())
-
-        case (ESTIMATOR_ANALOG)
-
-          select case (score_bin)
-
-          case (SCORE_FLUX)
-            score = score * flux_deriv
-
-          case (SCORE_TOTAL, SCORE_SCATTER, SCORE_ABSORPTION, SCORE_FISSION, &
-                SCORE_NU_FISSION)
-            if (material_id(p % material) == deriv % diff_material &
-                 .and. p % event_nuclide == deriv % diff_nuclide) then
-                ! Search for the index of the perturbed nuclide.
-                do l = 1, material_nuclide_size(p % material)
-                  if (material_nuclide(p % material, l) == deriv % diff_nuclide) exit
-                end do
-
-                score = score * (flux_deriv &
-                     + ONE / material_atom_density(p % material, l))
-            else
-              score = score * flux_deriv
-            end if
-
-          case default
-            call fatal_error('Tally derivative not defined for a score on &
-                 &tally ' // trim(to_str(t % id())))
-          end select
-
-        case (ESTIMATOR_COLLISION)
-          scoring_diff_nuclide = &
-               (material_id(p % material) == deriv % diff_material) &
-               .and. (i_nuclide+1 == deriv % diff_nuclide)
-
-          select case (score_bin)
-
-          case (SCORE_FLUX)
-            score = score * flux_deriv
-
-          case (SCORE_TOTAL)
-            if (i_nuclide == -1 .and. &
-                 material_id(p % material) == deriv % diff_material .and. &
-                 material_xs % total /= ZERO) then
-              score = score * (flux_deriv &
-                   + micro_xs(deriv % diff_nuclide) % total &
-                   / material_xs % total)
-            else if (scoring_diff_nuclide .and. &
-                 micro_xs(deriv % diff_nuclide) % total /= ZERO) then
-              score = score * (flux_deriv + ONE / atom_density)
-            else
-              score = score * flux_deriv
-            end if
-
-          case (SCORE_SCATTER)
-            if (i_nuclide == -1 .and. &
-                 material_id(p % material) == deriv % diff_material .and. &
-                 material_xs % total - material_xs % absorption /= ZERO) then
-              score = score * (flux_deriv &
-                   + (micro_xs(deriv % diff_nuclide) % total &
-                   - micro_xs(deriv % diff_nuclide) % absorption) &
-                   / (material_xs % total - material_xs % absorption))
-            else if (scoring_diff_nuclide .and. &
-                 (micro_xs(deriv % diff_nuclide) % total &
-                 - micro_xs(deriv % diff_nuclide) % absorption) /= ZERO) then
-              score = score * (flux_deriv + ONE / atom_density)
-            else
-              score = score * flux_deriv
-            end if
-
-          case (SCORE_ABSORPTION)
-            if (i_nuclide == -1 .and. &
-                 material_id(p % material) == deriv % diff_material .and. &
-                 material_xs % absorption /= ZERO) then
-              score = score * (flux_deriv &
-                   + micro_xs(deriv % diff_nuclide) % absorption &
-                   / material_xs % absorption )
-            else if (scoring_diff_nuclide .and. &
-                 micro_xs(deriv % diff_nuclide) % absorption /= ZERO) then
-              score = score * (flux_deriv + ONE / atom_density)
-            else
-              score = score * flux_deriv
-            end if
-
-          case (SCORE_FISSION)
-            if (i_nuclide == -1 .and. &
-                 material_id(p % material) == deriv % diff_material .and. &
-                 material_xs % fission /= ZERO) then
-              score = score * (flux_deriv &
-                   + micro_xs(deriv % diff_nuclide) % fission &
-                   / material_xs % fission)
-            else if (scoring_diff_nuclide .and. &
-                 micro_xs(deriv % diff_nuclide) % fission /= ZERO) then
-              score = score * (flux_deriv + ONE / atom_density)
-            else
-              score = score * flux_deriv
-            end if
-
-          case (SCORE_NU_FISSION)
-            if (i_nuclide == -1 .and. &
-                 material_id(p % material) == deriv % diff_material .and. &
-                 material_xs % nu_fission /= ZERO) then
-              score = score * (flux_deriv &
-                   + micro_xs(deriv % diff_nuclide) % nu_fission &
-                   / material_xs % nu_fission)
-            else if (scoring_diff_nuclide .and. &
-                 micro_xs(deriv % diff_nuclide) % nu_fission /= ZERO) then
-              score = score * (flux_deriv + ONE / atom_density)
-            else
-              score = score * flux_deriv
-            end if
-
-          case default
-            call fatal_error('Tally derivative not defined for a score on &
-                 &tally ' // trim(to_str(t % id())))
-          end select
-
-        case default
-            call fatal_error("Differential tallies are only implemented for &
-                 &analog and collision estimators.")
-        end select
+        return
 
       !=========================================================================
       ! Temperature derivative:
@@ -345,7 +186,7 @@ contains
           select case (score_bin)
 
           case (SCORE_FLUX)
-            score = score * flux_deriv
+            !score = score * flux_deriv
 
           case (SCORE_TOTAL)
             if (material_id(p % material) == deriv % diff_material .and. &
@@ -467,7 +308,8 @@ contains
           select case (score_bin)
 
           case (SCORE_FLUX)
-            score = score * flux_deriv
+            !score = score * flux_deriv
+            return
 
           case (SCORE_TOTAL)
             if (i_nuclide == -1 .and. &

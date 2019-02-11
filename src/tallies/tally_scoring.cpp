@@ -45,7 +45,7 @@ FilterBinIter::FilterBinIter(const Tally& tally, Particle* p)
     }
 
     // Set the index of the bin used in the first filter combination
-    match.i_bin_ = 1;
+    match.i_bin_ = 0;
   }
 
   // Compute the initial index and weight.
@@ -79,7 +79,7 @@ FilterBinIter::FilterBinIter(const Tally& tally, bool end)
       return;
     }
 
-    match.i_bin_ = 1;
+    match.i_bin_ = 0;
   }
 
   // Compute the initial index and weight.
@@ -96,7 +96,7 @@ FilterBinIter::operator++()
   for (int i = tally_.filters().size()-1; i >= 0; --i) {
     auto i_filt = tally_.filters(i);
     auto& match {simulation::filter_matches[i_filt]};
-    if (match.i_bin_< match.bins_.size()) {
+    if (match.i_bin_ < match.bins_.size()-1) {
       // The bin for this filter can be incremented.  Increment it and do not
       // touch any of the remaining filters.
       ++match.i_bin_;
@@ -105,7 +105,7 @@ FilterBinIter::operator++()
     } else {
       // This bin cannot be incremented so reset it and continue to the next
       // filter.
-      match.i_bin_ = 1;
+      match.i_bin_ = 0;
     }
   }
 
@@ -131,8 +131,8 @@ FilterBinIter::compute_index_weight()
     auto& match {simulation::filter_matches[i_filt]};
     auto i_bin = match.i_bin_;
     //TODO: off-by-one
-    index_ += (match.bins_[i_bin-1] - 1) * tally_.strides(i);
-    weight_ *= match.weights_[i_bin-1];
+    index_ += (match.bins_[i_bin] - 1) * tally_.strides(i);
+    weight_ *= match.weights_[i_bin];
   }
 }
 
@@ -150,8 +150,8 @@ score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index)
   auto i_filt = tally.filters(tally.delayedgroup_filter_);
   auto& dg_match {simulation::filter_matches[i_filt]};
   auto i_bin = dg_match.i_bin_;
-  auto original_bin = dg_match.bins_[i_bin-1];
-  dg_match.bins_[i_bin-1] = d_bin;
+  auto original_bin = dg_match.bins_[i_bin];
+  dg_match.bins_[i_bin] = d_bin;
 
   // Determine the filter scoring index
   auto filter_index = 1;
@@ -160,7 +160,7 @@ score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index)
     auto& match {simulation::filter_matches[i_filt]};
     auto i_bin = match.i_bin_;
     //TODO: off-by-one
-    filter_index += (match.bins_[i_bin-1] - 1) * tally.strides(i);
+    filter_index += (match.bins_[i_bin] - 1) * tally.strides(i);
   }
 
   // Update the tally result
@@ -170,7 +170,7 @@ score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index)
   results(filter_index-1, score_index, RESULT_VALUE) += score;
 
   // Reset the original delayed group bin
-  dg_match.bins_[i_bin-1] = original_bin;
+  dg_match.bins_[i_bin] = original_bin;
 }
 
 //! Helper function for nu-fission tallies with energyout filters.
@@ -185,7 +185,7 @@ score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
   auto results = tally_results(i_tally);
   auto i_eout_filt = tally.filters()[tally.energyout_filter_];
   auto i_bin = simulation::filter_matches[i_eout_filt].i_bin_;
-  auto bin_energyout = simulation::filter_matches[i_eout_filt].bins_[i_bin-1];
+  auto bin_energyout = simulation::filter_matches[i_eout_filt].bins_[i_bin];
 
   const EnergyoutFilter& eo_filt
     {*dynamic_cast<EnergyoutFilter*>(model::tally_filters[i_eout_filt].get())};
@@ -222,7 +222,7 @@ score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
       g_out = eo_filt.n_bins_ - g_out + 1;
 
       // change outgoing energy bin
-      simulation::filter_matches[i_eout_filt].bins_[i_bin-1] = g_out;
+      simulation::filter_matches[i_eout_filt].bins_[i_bin] = g_out;
 
     } else {
 
@@ -240,7 +240,7 @@ score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
         //TODO: off-by-one
         auto i_match = lower_bound_index(eo_filt.bins_.begin(),
           eo_filt.bins_.end(), E_out) + 1;
-        simulation::filter_matches[i_eout_filt].bins_[i_bin-1] = i_match;
+        simulation::filter_matches[i_eout_filt].bins_[i_bin] = i_match;
       }
 
     }
@@ -256,7 +256,7 @@ score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
         auto i_filt = tally.filters(j);
         auto& match {simulation::filter_matches[i_filt]};
         auto i_bin = match.i_bin_;
-        filter_index += (match.bins_[i_bin-1] - 1) * tally.strides(j);
+        filter_index += (match.bins_[i_bin] - 1) * tally.strides(j);
       }
 
       // Update tally results
@@ -284,8 +284,8 @@ score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
               auto i_filt = tally.filters(j);
               auto& match {simulation::filter_matches[i_filt]};
               auto i_bin = match.i_bin_;
-              filter_index += (match.bins_[i_bin-1] - 1) * tally.strides(j);
-              filter_weight *= match.weights_[i_bin-1];
+              filter_index += (match.bins_[i_bin] - 1) * tally.strides(j);
+              filter_weight *= match.weights_[i_bin];
             }
 
             score_fission_delayed_dg(i_tally, d_bin+1, score*filter_weight,
@@ -303,8 +303,8 @@ score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
           auto i_filt = tally.filters(j);
           auto& match {simulation::filter_matches[i_filt]};
           auto i_bin = match.i_bin_;
-          filter_index += (match.bins_[i_bin-1] - 1) * tally.strides(j);
-          filter_weight *= match.weights_[i_bin-1];
+          filter_index += (match.bins_[i_bin] - 1) * tally.strides(j);
+          filter_weight *= match.weights_[i_bin];
         }
 
         // Update tally results
@@ -315,7 +315,7 @@ score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
   }
 
   // Reset outgoing energy bin and score index
-  simulation::filter_matches[i_eout_filt].bins_[i_bin-1] = bin_energyout;
+  simulation::filter_matches[i_eout_filt].bins_[i_bin] = bin_energyout;
 }
 
 //! Update tally results for continuous-energy tallies with any estimator.

@@ -19,28 +19,6 @@ module tally_filter_header
   public :: openmc_filter_set_id
   public :: openmc_get_filter_index
   public :: openmc_get_filter_next_id
-  public :: filter_match_pointer
-
-  interface
-    function filter_match_pointer(indx) bind(C) result(ptr)
-      import C_PTR, C_INT
-      integer(C_INT), intent(in), value :: indx
-      type(C_PTR)                       :: ptr
-    end function filter_match_pointer
-  end interface
-
-!===============================================================================
-! TALLYFILTERMATCH stores every valid bin and weight for a filter
-!===============================================================================
-
-  type, public :: TallyFilterMatch
-    type(C_PTR) :: ptr
-  contains
-    procedure :: i_bin
-    procedure :: bins_data
-    procedure :: weights_data
-    procedure :: bins_set_data
-  end type TallyFilterMatch
 
 !===============================================================================
 ! TALLYFILTER describes a filter that limits what events score to a tally. For
@@ -54,9 +32,7 @@ module tally_filter_header
     type(C_PTR) :: ptr
   contains
     procedure :: from_xml
-    procedure :: get_all_bins
     procedure :: to_statepoint
-    procedure :: text_label
     procedure :: initialize
     procedure :: n_bins_cpp
     procedure :: from_xml_cpp
@@ -138,8 +114,6 @@ module tally_filter_header
   integer(C_INT32_T), public, bind(C) :: n_filters = 0 ! # of filters
 
   type(TallyFilterContainer), public, allocatable, target :: filters(:)
-  type(TallyFilterMatch), public, allocatable :: filter_matches(:)
-!$omp threadprivate(filter_matches)
 
   ! Dictionary that maps user IDs to indices in 'filters'
   type(DictIntInt), public :: filter_dict
@@ -151,68 +125,6 @@ module tally_filter_header
 contains
 
 !===============================================================================
-! TallyFilterMatch implementation
-!===============================================================================
-
-  function i_bin(this) result(i)
-    class(TallyFilterMatch) :: this
-    integer :: i
-    interface
-      function filter_match_get_i_bin(ptr) result(i) bind(C)
-        import C_PTR, C_INT
-        type(C_PTR), value :: ptr
-        integer(C_INT) :: i
-      end function
-    end interface
-    i = filter_match_get_i_bin(this % ptr)
-  end function
-
-  function bins_data(this, indx) result(val)
-    class(TallyFilterMatch), intent(inout) :: this
-    integer,                 intent(in)    :: indx
-    integer                                :: val
-    interface
-      function filter_match_bins_data(ptr, indx) bind(C) result(val)
-        import C_PTR, C_INT
-        type(C_PTR),                value :: ptr
-        integer(C_INT), intent(in), value :: indx
-        integer(C_INT)                    :: val
-      end function
-    end interface
-    val = filter_match_bins_data(this % ptr, indx)
-  end function bins_data
-
-  function weights_data(this, indx) result(val)
-    class(TallyFilterMatch), intent(inout) :: this
-    integer,                 intent(in)    :: indx
-    real(8)                                :: val
-    interface
-      function filter_match_weights_data(ptr, indx) bind(C) result(val)
-        import C_PTR, C_INT, C_DOUBLE
-        type(C_PTR),                value :: ptr
-        integer(C_INT), intent(in), value :: indx
-        real(C_DOUBLE)                    :: val
-      end function
-    end interface
-    val = filter_match_weights_data(this % ptr, indx)
-  end function weights_data
-
-  subroutine bins_set_data(this, indx, val)
-    class(TallyFilterMatch), intent(inout) :: this
-    integer,                 intent(in)    :: indx
-    integer,                 intent(in)    :: val
-    interface
-      subroutine filter_match_bins_set_data(ptr, indx, val) bind(C)
-        import C_PTR, C_INT
-        type(C_PTR),    value             :: ptr
-        integer(C_INT), value, intent(in) :: indx
-        integer(C_INT), value, intent(in) :: val
-      end subroutine
-    end interface
-    call filter_match_bins_set_data(this % ptr, indx, val)
-  end subroutine bins_set_data
-
-!===============================================================================
 ! TallyFilter implementation
 !===============================================================================
 
@@ -222,23 +134,6 @@ contains
     call this % from_xml_cpp(node)
     this % n_bins = this % n_bins_cpp()
   end subroutine from_xml
-
-  subroutine get_all_bins(this, p, estimator, match)
-    class(TallyFilter),     intent(in)    :: this
-    type(Particle),         intent(in)    :: p
-    integer,                intent(in)    :: estimator
-    type(TallyFilterMatch), intent(inout) :: match
-    interface
-      subroutine filter_get_all_bins(filt, p, estimator, match) bind(C)
-        import C_PTR, Particle, C_INT
-        type(C_PTR),                value :: filt
-        type(Particle), intent(in)        :: p
-        integer(C_INT), intent(in), value :: estimator
-        type(C_PTR),                value :: match
-      end subroutine filter_get_all_bins
-    end interface
-    call filter_get_all_bins(this % ptr, p, estimator, match % ptr)
-  end subroutine get_all_bins
 
   subroutine to_statepoint(this, filter_group)
     class(TallyFilter), intent(in) :: this
@@ -252,28 +147,6 @@ contains
     end interface
     call filter_to_statepoint(this % ptr, filter_group)
   end subroutine to_statepoint
-
-  function text_label(this, bin) result(label)
-    class(TallyFilter), intent(in) :: this
-    integer,            intent(in) :: bin
-    character(MAX_LINE_LEN)        :: label
-    character(kind=C_CHAR)         :: label_(MAX_LINE_LEN+1)
-    integer :: i
-    interface
-      subroutine filter_text_label(filt, bin, label) bind(C)
-        import C_PTR, C_INT, C_CHAR
-        type(C_PTR), value     :: filt
-        integer(C_INT), value  :: bin
-        character(kind=C_CHAR) :: label(*)
-      end subroutine filter_text_label
-    end interface
-    call filter_text_label(this % ptr, bin, label_)
-    label = " "
-    do i = 1, MAX_LINE_LEN
-      if (label_(i) == C_NULL_CHAR) exit
-      label(i:i) = label_(i)
-    end do
-  end function text_label
 
   subroutine initialize(this)
     class(TallyFilter), intent(inout) :: this

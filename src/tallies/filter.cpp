@@ -50,22 +50,6 @@ std::vector<std::unique_ptr<Filter>> tally_filters;
 extern "C" {
   // filter_match_point moved to simulation.cpp
 
-  int
-  filter_match_get_i_bin(FilterMatch* match)
-  {return match->i_bin_;}
-
-  int
-  filter_match_bins_data(FilterMatch* match, int indx)
-  {return match->bins_[indx-1];}
-
-  double
-  filter_match_weights_data(FilterMatch* match, int indx)
-  {return match->weights_[indx-1];}
-
-  void
-  filter_match_bins_set_data(FilterMatch* match, int indx, int val)
-  {match->bins_[indx-1] = val;}
-
   Filter*
   allocate_filter(const char* type)
   {

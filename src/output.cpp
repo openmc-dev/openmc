@@ -355,7 +355,8 @@ write_tallies()
           const auto& filt {*model::tally_filters[i_filt]};
           auto& match {simulation::filter_matches[i_filt]};
           tallies_out << std::string(indent+1, ' ')
-            << filt.text_label(match.i_bin_) << "\n";
+            // TODO: off-by-one
+            << filt.text_label(match.i_bin_+1) << "\n";
         }
         indent += 2;
       }

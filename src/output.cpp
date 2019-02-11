@@ -299,7 +299,7 @@ write_tallies()
   // Loop over each tally.
   for (auto i_tally = 0; i_tally < model::tallies.size(); ++i_tally) {
     const auto& tally {*model::tallies[i_tally]};
-    auto results = tally_results(i_tally+1);
+    auto results = tally_results(i_tally);
     // TODO: get this directly from the tally object when it's been translated
     int32_t n_realizations;
     auto err = openmc_tally_get_n_realizations(i_tally+1, &n_realizations);

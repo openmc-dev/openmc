@@ -249,10 +249,11 @@ void write_tally_results_nr(hid_t file_id)
     write_dataset(file_id, "global_tallies", gt);
   }
 
-  for (int i = 1; i <= n_tallies; ++i) {
+  for (int i = 0; i < n_tallies; ++i) {
     // Skip any tallies that are not active
     bool active;
-    openmc_tally_get_active(i, &active);
+    // TODO: off-by-one
+    openmc_tally_get_active(i+1, &active);
     if (!active) continue;
 
     if (mpi::master && !object_exists(file_id, "tallies_present")) {
@@ -270,7 +271,8 @@ void write_tally_results_nr(hid_t file_id)
     if (mpi::master) {
       // Open group for tally
       int id;
-      openmc_tally_get_id(i, &id);
+      // TODO: off-by-one
+      openmc_tally_get_id(i+1, &id);
       std::string groupname {"tally " + std::to_string(id)};
       hid_t tally_group = open_group(tallies_group, groupname.c_str());
 

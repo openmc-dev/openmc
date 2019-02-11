@@ -152,7 +152,7 @@ contains
 
     ! Accumulate results for each tally
     do i = 1, active_tallies_size()
-      call tallies(active_tallies_data(i)) % obj % accumulate()
+      call tallies(active_tallies_data(i)+1) % obj % accumulate()
     end do
 
   end subroutine accumulate_tallies

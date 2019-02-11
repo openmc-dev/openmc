@@ -146,9 +146,8 @@ void
 score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index)
 {
   // Save the original delayed group bin
-  //TODO: off-by-one
-  const Tally& tally {*model::tallies[i_tally-1]};
-  auto i_filt = tally.filters(tally.delayedgroup_filter_-1);
+  const Tally& tally {*model::tallies[i_tally]};
+  auto i_filt = tally.filters(tally.delayedgroup_filter_);
   auto& dg_match {simulation::filter_matches[i_filt]};
   auto i_bin = dg_match.i_bin_;
   auto original_bin = dg_match.bins_[i_bin-1];
@@ -182,10 +181,9 @@ score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index)
 void
 score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
 {
-  //TODO: off-by-one
-  const Tally& tally {*model::tallies[i_tally-1]};
+  const Tally& tally {*model::tallies[i_tally]};
   auto results = tally_results(i_tally);
-  auto i_eout_filt = tally.filters()[tally.energyout_filter_-1];
+  auto i_eout_filt = tally.filters()[tally.energyout_filter_];
   auto i_bin = simulation::filter_matches[i_eout_filt].i_bin_;
   auto bin_energyout = simulation::filter_matches[i_eout_filt].bins_[i_bin-1];
 
@@ -268,7 +266,7 @@ score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
     } else if (score_bin == SCORE_DELAYED_NU_FISSION && g != 0) {
 
       // Get the index of the delayed group filter
-      auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_-1];
+      auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
 
       // If the delayed group filter is present, tally to corresponding delayed
       // group bin if it exists
@@ -330,8 +328,7 @@ void
 score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
   int i_nuclide, double atom_density, double flux)
 {
-  //TODO: off-by-one
-  const Tally& tally {*model::tallies[i_tally-1]};
+  const Tally& tally {*model::tallies[i_tally]};
   auto results = tally_results(i_tally);
 
   // Get the pre-collision energy of the particle.
@@ -520,7 +517,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
       if (simulation::material_xs.absorption == 0) continue;
       if (tally.estimator_ == ESTIMATOR_ANALOG) {
         if (settings::survival_biasing || p->fission) {
-          if (tally.energyout_filter_ > 0) {
+          if (tally.energyout_filter_ != C_NONE) {
             // Fission has multiple outgoing neutrons so this helper function
             // is used to handle scoring the multiple filter bins.
             score_fission_eout(p, i_tally, score_index, score_bin);
@@ -563,7 +560,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
       if (simulation::material_xs.absorption == 0) continue;
       if (tally.estimator_ == ESTIMATOR_ANALOG) {
         if (settings::survival_biasing || p->fission) {
-          if (tally.energyout_filter_ > 0) {
+          if (tally.energyout_filter_ != C_NONE) {
             // Fission has multiple outgoing neutrons so this helper function
             // is used to handle scoring the multiple filter bins.
             score_fission_eout(p, i_tally, score_index, score_bin);
@@ -625,7 +622,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
       if (simulation::material_xs.absorption == 0) continue;
       if (tally.estimator_ == ESTIMATOR_ANALOG) {
         if (settings::survival_biasing || p->fission) {
-          if (tally.energyout_filter_ > 0) {
+          if (tally.energyout_filter_ != C_NONE) {
             // Fission has multiple outgoing neutrons so this helper function
             // is used to handle scoring the multiple filter bins.
             score_fission_eout(p, i_tally, score_index, score_bin);
@@ -638,8 +635,8 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
           // delayed-nu-fission
           if (simulation::micro_xs[p->event_nuclide-1].absorption > 0
             && data::nuclides[p->event_nuclide-1]->fissionable_) {
-            if (tally.delayedgroup_filter_ > 0) {
-              auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_-1];
+            if (tally.delayedgroup_filter_ != C_NONE) {
+              auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
               const DelayedGroupFilter& filt
                 {*dynamic_cast<DelayedGroupFilter*>(
                 model::tally_filters[i_dg_filt].get())};
@@ -676,8 +673,8 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
           // score. Loop over the neutrons produced from fission and check which
           // ones are delayed. If a delayed neutron is encountered, add its
           // contribution to the fission bank to the score.
-          if (tally.delayedgroup_filter_ > 0) {
-            auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_-1];
+          if (tally.delayedgroup_filter_ != C_NONE) {
+            auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
             const DelayedGroupFilter& filt
               {*dynamic_cast<DelayedGroupFilter*>(
               model::tally_filters[i_dg_filt].get())};
@@ -699,8 +696,8 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
         }
       } else {
         if (i_nuclide >= 0) {
-          if (tally.delayedgroup_filter_ > 0) {
-            auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_-1];
+          if (tally.delayedgroup_filter_ != C_NONE) {
+            auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
             const DelayedGroupFilter& filt
               {*dynamic_cast<DelayedGroupFilter*>(
               model::tally_filters[i_dg_filt].get())};
@@ -723,8 +720,8 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
               * atom_density * flux;
           }
         } else {
-          if (tally.delayedgroup_filter_ > 0) {
-            auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_-1];
+          if (tally.delayedgroup_filter_ != C_NONE) {
+            auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
             const DelayedGroupFilter& filt
               {*dynamic_cast<DelayedGroupFilter*>(
               model::tally_filters[i_dg_filt].get())};
@@ -776,8 +773,8 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
           if (simulation::micro_xs[p->event_nuclide-1].absorption > 0
             && nuc.fissionable_) {
             const auto& rxn {*nuc.fission_rx_[0]};
-            if (tally.delayedgroup_filter_ > 0) {
-              auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_-1];
+            if (tally.delayedgroup_filter_ != C_NONE) {
+              auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
               const DelayedGroupFilter& filt
                 {*dynamic_cast<DelayedGroupFilter*>(
                 model::tally_filters[i_dg_filt].get())};
@@ -836,8 +833,8 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
               const auto& rxn {*nuc.fission_rx_[0]};
               auto rate = rxn.products_[g].decay_rate_;
               score += simulation::keff * bank.wgt * rate * flux;
-              if (tally.delayedgroup_filter_ > 0) {
-                auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_-1];
+              if (tally.delayedgroup_filter_ != C_NONE) {
+                auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
                 const DelayedGroupFilter& filt
                   {*dynamic_cast<DelayedGroupFilter*>(
                   model::tally_filters[i_dg_filt].get())};
@@ -858,8 +855,8 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
           const auto& nuc {*data::nuclides[i_nuclide]};
           if (!nuc.fissionable_) continue;
           const auto& rxn {*nuc.fission_rx_[0]};
-          if (tally.delayedgroup_filter_ > 0) {
-            auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_-1];
+          if (tally.delayedgroup_filter_ != C_NONE) {
+            auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
             const DelayedGroupFilter& filt
               {*dynamic_cast<DelayedGroupFilter*>(
               model::tally_filters[i_dg_filt].get())};
@@ -890,8 +887,8 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
             }
           }
         } else {
-          if (tally.delayedgroup_filter_ > 0) {
-            auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_-1];
+          if (tally.delayedgroup_filter_ != C_NONE) {
+            auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
             const DelayedGroupFilter& filt
               {*dynamic_cast<DelayedGroupFilter*>(
               model::tally_filters[i_dg_filt].get())};
@@ -1238,8 +1235,7 @@ void
 score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
   int i_nuclide, double atom_density, double flux)
 {
-  //TODO: off-by-one
-  const Tally& tally {*model::tallies[i_tally-1]};
+  const Tally& tally {*model::tallies[i_tally]};
   auto results = tally_results(i_tally);
 
   //TODO: off-by-one throughout on p->material
@@ -1503,7 +1499,7 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
     case SCORE_NU_FISSION:
       if (tally.estimator_ == ESTIMATOR_ANALOG) {
         if (settings::survival_biasing || p->fission) {
-          if (tally.energyout_filter_ > 0) {
+          if (tally.energyout_filter_ != C_NONE) {
             // Fission has multiple outgoing neutrons so this helper function
             // is used to handle scoring the multiple filter bins.
             score_fission_eout(p, i_tally, score_index, score_bin);
@@ -1553,7 +1549,7 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
     case SCORE_PROMPT_NU_FISSION:
       if (tally.estimator_ == ESTIMATOR_ANALOG) {
         if (settings::survival_biasing || p->fission) {
-          if (tally.energyout_filter_ > 0) {
+          if (tally.energyout_filter_ != C_NONE) {
             // Fission has multiple outgoing neutrons so this helper function
             // is used to handle scoring the multiple filter bins.
             score_fission_eout(p, i_tally, score_index, score_bin);
@@ -1607,7 +1603,7 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
     case SCORE_DELAYED_NU_FISSION:
       if (tally.estimator_ == ESTIMATOR_ANALOG) {
         if (settings::survival_biasing || p->fission) {
-          if (tally.energyout_filter_ > 0) {
+          if (tally.energyout_filter_ != C_NONE) {
             // Fission has multiple outgoing neutrons so this helper function
             // is used to handle scoring the multiple filter bins.
             score_fission_eout(p, i_tally, score_index, score_bin);
@@ -1619,8 +1615,8 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
           // calculate fraction of absorptions that would have resulted in
           // delayed-nu-fission
           if (get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g) > 0) {
-            if (tally.delayedgroup_filter_ > 0) {
-              auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_-1];
+            if (tally.delayedgroup_filter_ != C_NONE) {
+              auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
               const DelayedGroupFilter& filt
                 {*dynamic_cast<DelayedGroupFilter*>(
                 model::tally_filters[i_dg_filt].get())};
@@ -1669,8 +1665,8 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
           // score. Loop over the neutrons produced from fission and check which
           // ones are delayed. If a delayed neutron is encountered, add its
           // contribution to the fission bank to the score.
-          if (tally.delayedgroup_filter_ > 0) {
-            auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_-1];
+          if (tally.delayedgroup_filter_ != C_NONE) {
+            auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
             const DelayedGroupFilter& filt
               {*dynamic_cast<DelayedGroupFilter*>(
               model::tally_filters[i_dg_filt].get())};
@@ -1701,8 +1697,8 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
           }
         }
       } else {
-        if (tally.delayedgroup_filter_ > 0) {
-          auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_-1];
+        if (tally.delayedgroup_filter_ != C_NONE) {
+          auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
           const DelayedGroupFilter& filt
             {*dynamic_cast<DelayedGroupFilter*>(
             model::tally_filters[i_dg_filt].get())};
@@ -1741,8 +1737,8 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
           // calculate fraction of absorptions that would have resulted in
           // delayed-nu-fission
           if (get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g) > 0) {
-            if (tally.delayedgroup_filter_ > 0) {
-              auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_-1];
+            if (tally.delayedgroup_filter_ != C_NONE) {
+              auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
               const DelayedGroupFilter& filt
                 {*dynamic_cast<DelayedGroupFilter*>(
                 model::tally_filters[i_dg_filt].get())};
@@ -1821,8 +1817,8 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
                   * get_macro_xs(p->material, MG_GET_XS_DECAY_RATE, p_g,
                                  nullptr, nullptr, &g);
               }
-              if (tally.delayedgroup_filter_ > 0) {
-                auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_-1];
+              if (tally.delayedgroup_filter_ != C_NONE) {
+                auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
                 const DelayedGroupFilter& filt
                   {*dynamic_cast<DelayedGroupFilter*>(
                   model::tally_filters[i_dg_filt].get())};
@@ -1837,11 +1833,11 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
               }
             }
           }
-          if (tally.delayedgroup_filter_ > 0) continue;
+          if (tally.delayedgroup_filter_ != C_NONE) continue;
         }
       } else {
-        if (tally.delayedgroup_filter_ > 0) {
-          auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_-1];
+        if (tally.delayedgroup_filter_ != C_NONE) {
+          auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
           const DelayedGroupFilter& filt
             {*dynamic_cast<DelayedGroupFilter*>(
             model::tally_filters[i_dg_filt].get())};
@@ -1943,8 +1939,7 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
 void
 score_all_nuclides(Particle* p, int i_tally, double flux, int filter_index)
 {
-  //TODO: off-by-one
-  const Tally& tally {*model::tallies[i_tally-1]};
+  const Tally& tally {*model::tallies[i_tally]};
   const Material& material {*model::materials[p->material-1]};
 
   // Score all individual nuclide reaction rates.
@@ -1984,8 +1979,7 @@ extern "C" void
 score_analog_tally_ce(Particle* p)
 {
   for (auto i_tally : model::active_analog_tallies) {
-    //TODO: off-by-one
-    const Tally& tally {*model::tallies[i_tally-1]};
+    const Tally& tally {*model::tallies[i_tally]};
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2049,8 +2043,7 @@ extern "C" void
 score_analog_tally_mg(Particle* p)
 {
   for (auto i_tally : model::active_analog_tallies) {
-    //TODO: off-by-one
-    const Tally& tally {*model::tallies[i_tally-1]};
+    const Tally& tally {*model::tallies[i_tally]};
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2109,8 +2102,7 @@ score_tracklength_tally(Particle* p, double distance)
   double flux = p->wgt * distance;
 
   for (auto i_tally : model::active_tracklength_tallies) {
-    //TODO: off-by-one
-    const Tally& tally {*model::tallies[i_tally-1]};
+    const Tally& tally {*model::tallies[i_tally]};
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2191,8 +2183,7 @@ score_collision_tally(Particle* p)
   }
 
   for (auto i_tally : model::active_collision_tallies) {
-    //TODO: off-by-one
-    const Tally& tally {*model::tallies[i_tally-1]};
+    const Tally& tally {*model::tallies[i_tally]};
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2258,8 +2249,7 @@ score_surface_tally_inner(Particle* p, const std::vector<int>& tallies)
   double flux = p->wgt;
 
   for (auto i_tally : tallies) {
-    //TODO: off-by-one
-    const Tally& tally {*model::tallies[i_tally-1]};
+    const Tally& tally {*model::tallies[i_tally]};
     auto results = tally_results(i_tally);
 
     // Initialize an iterator over valid filter bin combinations.  If there are

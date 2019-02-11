@@ -106,8 +106,8 @@ read_tally_derivatives(pugi::xml_node* node)
     fatal_error("Differential tallies not supported in multi-group mode");
 }
 
-extern "C" void
-apply_derivative_to_score_c(Particle* p, int i_tally, int i_nuclide,
+void
+apply_derivative_to_score(Particle* p, int i_tally, int i_nuclide,
   double atom_density, int score_bin, double* score)
 {
   //TODO: off-by-one
@@ -303,8 +303,268 @@ apply_derivative_to_score_c(Particle* p, int i_tally, int i_nuclide,
     break;
 
   //============================================================================
+  // Temperature derivative:
+  // If we are scoring a reaction rate for a single nuclide then
+  // c = Sigma_MT_i
+  // c = sigma_MT_i * N_i
+  // d_c / d_T = (d_sigma_Mt_i / d_T) * N_i
+  // (1 / c) * (d_c / d_T) = (d_sigma_MT_i / d_T) / sigma_MT_i
+  // If the score is for the total material (i_nuclide = -1)
+  // (1 / c) * (d_c / d_T) = Sum_i((d_sigma_MT_i / d_T) * N_i) / Sigma_MT_i
+  // where i is the perturbed nuclide.  The d_sigma_MT_i / d_T term is
+  // computed by multipole_deriv_eval.  It only works for the resolved
+  // resonance range and requires multipole data.
 
   case DIFF_TEMPERATURE:
+    switch (tally.estimator_) {
+
+    case ESTIMATOR_ANALOG:
+      {
+        // Find the index of the event nuclide.
+        int i;
+        for (i = 0; i < material.nuclide_.size(); ++i)
+          if (material.nuclide_[i] == p->event_nuclide-1) break;
+
+        const auto& nuc {*data::nuclides[p->event_nuclide-1]};
+        if (!multipole_in_range(&nuc, p->last_E)) {
+          *score *= flux_deriv;
+          break;
+        }
+
+        switch (score_bin) {
+
+        case SCORE_TOTAL:
+          if (simulation::micro_xs[p->event_nuclide-1].total) {
+            double dsig_s, dsig_a, dsig_f;
+            std::tie(dsig_s, dsig_a, dsig_f)
+              = nuc.multipole_->evaluate_deriv(p->last_E, p->sqrtkT);
+            *score *= flux_deriv + (dsig_s + dsig_a) * material.atom_density_(i)
+              / simulation::material_xs.total;
+          } else {
+            *score *= flux_deriv;
+          }
+          break;
+
+        case SCORE_SCATTER:
+          if (simulation::micro_xs[p->event_nuclide-1].total
+              - simulation::micro_xs[p->event_nuclide-1].absorption) {
+            double dsig_s, dsig_a, dsig_f;
+            std::tie(dsig_s, dsig_a, dsig_f)
+              = nuc.multipole_->evaluate_deriv(p->last_E, p->sqrtkT);
+            *score *= flux_deriv + dsig_s * material.atom_density_(i)
+              / (simulation::material_xs.total
+              - simulation::material_xs.absorption);
+          } else {
+            *score *= flux_deriv;
+          }
+          break;
+
+        case SCORE_ABSORPTION:
+          if (simulation::micro_xs[p->event_nuclide-1].absorption) {
+            double dsig_s, dsig_a, dsig_f;
+            std::tie(dsig_s, dsig_a, dsig_f)
+              = nuc.multipole_->evaluate_deriv(p->last_E, p->sqrtkT);
+            *score *= flux_deriv + dsig_a * material.atom_density_(i)
+              / simulation::material_xs.absorption;
+          } else {
+            *score *= flux_deriv;
+          }
+          break;
+
+        case SCORE_FISSION:
+          if (simulation::micro_xs[p->event_nuclide-1].fission) {
+            double dsig_s, dsig_a, dsig_f;
+            std::tie(dsig_s, dsig_a, dsig_f)
+              = nuc.multipole_->evaluate_deriv(p->last_E, p->sqrtkT);
+            *score *= flux_deriv + dsig_f * material.atom_density_(i)
+              / simulation::material_xs.fission;
+          } else {
+            *score *= flux_deriv;
+          }
+          break;
+
+        case SCORE_NU_FISSION:
+          if (simulation::micro_xs[p->event_nuclide-1].fission) {
+            double nu = simulation::micro_xs[p->event_nuclide-1].nu_fission
+              / simulation::micro_xs[p->event_nuclide-1].fission;
+            double dsig_s, dsig_a, dsig_f;
+            std::tie(dsig_s, dsig_a, dsig_f)
+              = nuc.multipole_->evaluate_deriv(p->last_E, p->sqrtkT);
+            *score *= flux_deriv + nu * dsig_f * material.atom_density_(i)
+              / simulation::material_xs.nu_fission;
+          } else {
+            *score *= flux_deriv;
+          }
+          break;
+
+        default:
+          fatal_error("Tally derivative not defined for a score on tally "
+            + std::to_string(tally.id_));
+        }
+      }
+      break;
+
+    case ESTIMATOR_COLLISION:
+      if (i_nuclide != -1) {
+        const auto& nuc {*data::nuclides[i_nuclide]};
+        if (!multipole_in_range(&nuc, p->last_E)) {
+          *score *= flux_deriv;
+          return;
+        }
+      }
+
+      switch (score_bin) {
+
+      case SCORE_TOTAL:
+        if (i_nuclide == -1 && simulation::material_xs.total) {
+          double cum_dsig = 0;
+          for (auto i = 0; i < material.nuclide_.size(); ++i) {
+            auto i_nuc = material.nuclide_[i];
+            const auto& nuc {*data::nuclides[i_nuc]};
+            if (multipole_in_range(&nuc, p->last_E)
+                && simulation::micro_xs[i_nuc].total) {
+              double dsig_s, dsig_a, dsig_f;
+              std::tie(dsig_s, dsig_a, dsig_f)
+                = nuc.multipole_->evaluate_deriv(p->last_E, p->sqrtkT);
+              cum_dsig += (dsig_s + dsig_a) * material.atom_density_(i);
+            }
+          }
+          *score *= flux_deriv + cum_dsig / simulation::material_xs.total;
+        } else if (simulation::micro_xs[i_nuclide].total) {
+          const auto& nuc {*data::nuclides[i_nuclide]};
+          double dsig_s, dsig_a, dsig_f;
+          std::tie(dsig_s, dsig_a, dsig_f)
+            = nuc.multipole_->evaluate_deriv(p->last_E, p->sqrtkT);
+          *score *= flux_deriv
+            + (dsig_s + dsig_a) / simulation::micro_xs[i_nuclide].total;
+        } else {
+          *score *= flux_deriv;
+        }
+        break;
+
+      case SCORE_SCATTER:
+        if (i_nuclide == -1 && (simulation::material_xs.total
+            - simulation::material_xs.absorption)) {
+          double cum_dsig = 0;
+          for (auto i = 0; i < material.nuclide_.size(); ++i) {
+            auto i_nuc = material.nuclide_[i];
+            const auto& nuc {*data::nuclides[i_nuc]};
+            if (multipole_in_range(&nuc, p->last_E)
+                && (simulation::micro_xs[i_nuc].total
+                - simulation::micro_xs[i_nuc].absorption)) {
+              double dsig_s, dsig_a, dsig_f;
+              std::tie(dsig_s, dsig_a, dsig_f)
+                = nuc.multipole_->evaluate_deriv(p->last_E, p->sqrtkT);
+              cum_dsig += dsig_s * material.atom_density_(i);
+            }
+          }
+          *score *= flux_deriv + cum_dsig / (simulation::material_xs.total
+            - simulation::material_xs.absorption);
+        } else if (simulation::micro_xs[i_nuclide].total
+                   - simulation::micro_xs[i_nuclide].absorption) {
+          const auto& nuc {*data::nuclides[i_nuclide]};
+          double dsig_s, dsig_a, dsig_f;
+          std::tie(dsig_s, dsig_a, dsig_f)
+            = nuc.multipole_->evaluate_deriv(p->last_E, p->sqrtkT);
+          *score *= flux_deriv + dsig_s / (simulation::micro_xs[i_nuclide].total
+            - simulation::micro_xs[i_nuclide].absorption);
+        } else {
+          *score *= flux_deriv;
+        }
+        break;
+
+      case SCORE_ABSORPTION:
+        if (i_nuclide == -1 && simulation::material_xs.absorption) {
+          double cum_dsig = 0;
+          for (auto i = 0; i < material.nuclide_.size(); ++i) {
+            auto i_nuc = material.nuclide_[i];
+            const auto& nuc {*data::nuclides[i_nuc]};
+            if (multipole_in_range(&nuc, p->last_E)
+                && simulation::micro_xs[i_nuc].absorption) {
+              double dsig_s, dsig_a, dsig_f;
+              std::tie(dsig_s, dsig_a, dsig_f)
+                = nuc.multipole_->evaluate_deriv(p->last_E, p->sqrtkT);
+              cum_dsig += dsig_a * material.atom_density_(i);
+            }
+          }
+          *score *= flux_deriv + cum_dsig / simulation::material_xs.absorption;
+        } else if (simulation::micro_xs[i_nuclide].absorption) {
+          const auto& nuc {*data::nuclides[i_nuclide]};
+          double dsig_s, dsig_a, dsig_f;
+          std::tie(dsig_s, dsig_a, dsig_f)
+            = nuc.multipole_->evaluate_deriv(p->last_E, p->sqrtkT);
+          *score *= flux_deriv
+            + dsig_a / simulation::micro_xs[i_nuclide].absorption;
+        } else {
+          *score *= flux_deriv;
+        }
+        break;
+
+      case SCORE_FISSION:
+        if (i_nuclide == -1 && simulation::material_xs.fission) {
+          double cum_dsig = 0;
+          for (auto i = 0; i < material.nuclide_.size(); ++i) {
+            auto i_nuc = material.nuclide_[i];
+            const auto& nuc {*data::nuclides[i_nuc]};
+            if (multipole_in_range(&nuc, p->last_E)
+                && simulation::micro_xs[i_nuc].fission) {
+              double dsig_s, dsig_a, dsig_f;
+              std::tie(dsig_s, dsig_a, dsig_f)
+                = nuc.multipole_->evaluate_deriv(p->last_E, p->sqrtkT);
+              cum_dsig += dsig_f * material.atom_density_(i);
+            }
+          }
+          *score *= flux_deriv + cum_dsig / simulation::material_xs.fission;
+        } else if (simulation::micro_xs[i_nuclide].fission) {
+          const auto& nuc {*data::nuclides[i_nuclide]};
+          double dsig_s, dsig_a, dsig_f;
+          std::tie(dsig_s, dsig_a, dsig_f)
+            = nuc.multipole_->evaluate_deriv(p->last_E, p->sqrtkT);
+          *score *= flux_deriv
+            + dsig_f / simulation::micro_xs[i_nuclide].fission;
+        } else {
+          *score *= flux_deriv;
+        }
+        break;
+
+      case SCORE_NU_FISSION:
+        if (i_nuclide == -1 && simulation::material_xs.nu_fission) {
+          double cum_dsig = 0;
+          for (auto i = 0; i < material.nuclide_.size(); ++i) {
+            auto i_nuc = material.nuclide_[i];
+            const auto& nuc {*data::nuclides[i_nuc]};
+            if (multipole_in_range(&nuc, p->last_E)
+                && simulation::micro_xs[i_nuc].fission) {
+              double nu = simulation::micro_xs[i_nuc].nu_fission
+                / simulation::micro_xs[i_nuc].fission;
+              double dsig_s, dsig_a, dsig_f;
+              std::tie(dsig_s, dsig_a, dsig_f)
+                = nuc.multipole_->evaluate_deriv(p->last_E, p->sqrtkT);
+              cum_dsig += nu * dsig_f * material.atom_density_(i);
+            }
+          }
+          *score *= flux_deriv + cum_dsig / simulation::material_xs.nu_fission;
+        } else if (simulation::micro_xs[i_nuclide].fission) {
+          const auto& nuc {*data::nuclides[i_nuclide]};
+          double dsig_s, dsig_a, dsig_f;
+          std::tie(dsig_s, dsig_a, dsig_f)
+            = nuc.multipole_->evaluate_deriv(p->last_E, p->sqrtkT);
+          *score *= flux_deriv
+            + dsig_f / simulation::micro_xs[i_nuclide].fission;
+        } else {
+          *score *= flux_deriv;
+        }
+        break;
+
+      default:
+        break;
+      }
+      break;
+
+    default:
+      fatal_error("Differential tallies are only implemented for analog and "
+        "collision estimators.");
+    }
     break;
   }
 }
@@ -344,7 +604,6 @@ score_track_derivative(Particle* p, double distance)
     case DIFF_TEMPERATURE:
       for (auto i = 0; i < material.nuclide_.size(); ++i) {
         const auto& nuc {*data::nuclides[material.nuclide_[i]]};
-        //TODO: off-by-one
         if (multipole_in_range(&nuc, p->last_E)) {
           // phi is proportional to e^(-Sigma_tot * dist)
           // (1 / phi) * (d_phi / d_T) = - (d_Sigma_tot / d_T) * dist
@@ -427,7 +686,7 @@ score_collision_derivative(Particle* p)
           deriv.flux_deriv += dsig_s / (micro_xs.total - micro_xs.absorption);
           // Note that this is an approximation!  The real scattering cross
           // section is
-          // Sigma_s(E'->E, uvw'->uvw) = Sigma_s(E') * P(E'->E, uvw'->uvw). 
+          // Sigma_s(E'->E, uvw'->uvw) = Sigma_s(E') * P(E'->E, uvw'->uvw).
           // We are assuming that d_P(E'->E, uvw'->uvw) / d_T = 0 and only
           // computing d_S(E') / d_T.  Using this approximation in the vicinity
           // of low-energy resonances causes errors (~2-5% for PWR pincell

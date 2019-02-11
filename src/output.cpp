@@ -25,7 +25,9 @@
 #include "openmc/settings.h"
 #include "openmc/surface.h"
 #include "openmc/tallies/derivative.h"
+#include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/tallies/tally_scoring.h"
 
 namespace openmc {
 

@@ -430,6 +430,7 @@ add_library(libopenmc SHARED
   src/tallies/filter_universe.cpp
   src/tallies/filter_zernike.cpp
   src/tallies/tally.cpp
+  src/tallies/tally_scoring.cpp
   src/tallies/trigger.cpp
   src/timer.cpp
   src/thermal.cpp

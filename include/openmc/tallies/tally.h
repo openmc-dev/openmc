@@ -2,7 +2,6 @@
 #define OPENMC_TALLIES_TALLY_H
 
 #include "openmc/constants.h"
-#include "openmc/tallies/filter.h"
 #include "openmc/tallies/trigger.h"
 
 #include "pugixml.hpp"
@@ -96,41 +95,6 @@ private:
   std::vector<int32_t> strides_;
 
   int32_t n_filter_bins_ {0};
-};
-
-//==============================================================================
-//! An iterator over all combinations of a tally's matching filter bins.
-//
-//! This iterator handles two distinct tasks.  First, it maps the N-dimensional
-//! space created by the indices of N filters onto a 1D sequence.  In other
-//! words, it provides a single number that uniquely identifies a combination of
-//! bins for many filters.  Second, it handles the task of finding each all
-//! valid combinations of filter bins given that each filter can have 1 or 2 or
-//! many bins that are valid for the current tally event.
-//==============================================================================
-
-class FilterBinIter
-{
-public:
-  FilterBinIter(const Tally& tally, Particle* p);
-
-  FilterBinIter(const Tally& tally, bool end);
-
-  bool operator==(const FilterBinIter& other) const
-  {return index_ == other.index_;}
-
-  bool operator!=(const FilterBinIter& other) const
-  {return !(*this == other);}
-
-  FilterBinIter& operator++();
-
-  int index_ {1};
-  double weight_ {1.};
-
-private:
-  void compute_index_weight();
-
-  const Tally& tally_;
 };
 
 //==============================================================================

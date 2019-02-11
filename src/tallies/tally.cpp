@@ -38,10 +38,6 @@ namespace openmc {
 // Functions defined in Fortran
 //==============================================================================
 
-extern "C" void
-apply_derivative_to_score(Particle* p, int i_tally, int i_nuclide,
-  double atom_density, int score_bin, double* score);
-
 extern "C" int
 energy_filter_search(const EnergyFilter* filt, double val);
 

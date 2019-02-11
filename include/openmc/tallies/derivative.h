@@ -1,6 +1,8 @@
 #ifndef OPENMC_TALLIES_DERIVATIVE_H
 #define OPENMC_TALLIES_DERIVATIVE_H
 
+#include "openmc/particle.h"
+
 #include <unordered_map>
 #include <vector>
 
@@ -22,6 +24,16 @@ extern "C" struct TallyDerivative {
   TallyDerivative() {}
   TallyDerivative(pugi::xml_node node);
 };
+
+//==============================================================================
+// Non-method functions
+//==============================================================================
+
+//! Scale the given score by its logarithmic derivative
+
+void
+apply_derivative_to_score(Particle* p, int i_tally, int i_nuclide,
+  double atom_density, int score_bin, double* score);
 
 } // namespace openmc
 

@@ -473,6 +473,12 @@ contains
     type(TallyDerivative), pointer :: deriv
 
     interface
+      subroutine tally_init_from_xml(tally_ptr, xml_node) bind(C)
+        import C_PTR
+        type(C_PTR), value :: tally_ptr
+        type(C_PTR) :: xml_node
+      end subroutine
+
       subroutine tally_set_scores(tally_ptr, xml_node) bind(C)
         import C_PTR
         type(C_PTR), value :: tally_ptr
@@ -629,6 +635,8 @@ contains
 
       ! Get pointer to tally xml node
       node_tal = node_tal_list(i)
+
+      call tally_init_from_xml(t % ptr, node_tal % ptr)
 
       ! Copy and set tally id
       if (check_for_node(node_tal, "id")) then

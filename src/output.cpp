@@ -2,11 +2,12 @@
 
 #include <algorithm>  // for std::transform
 #include <cstring>  // for strlen
-#include <iomanip>  // for setw, setprecision
+#include <ctime> // for time, localtime
+#include <iomanip>  // for setw, setprecision, put_time
 #include <ios> // for fixed, scientific, left
 #include <iostream>
 #include <sstream>
-#include <ctime>
+#include <utility> // for pair
 
 #include <omp.h>
 #include "xtensor/xview.hpp"
@@ -414,16 +415,20 @@ void print_batch_keff()
 
 //==============================================================================
 
-void show_time(const char* label, double value)
+void show_time(const char* label, double secs, int indent_level=0)
 {
-  std::cout << " " << std::setw(33) << std::left << label << " = "
-    << std::setw(10) << std::right << value << " seconds\n";
+  for (int i = 0; i < indent_level; ++i) {
+    std::cout << "  ";
+  }
+  int width = 33 - indent_level*2;
+  std::cout << " " << std::setw(width) << std::left << label << " = "
+    << std::setw(10) << std::right << secs << " seconds\n";
 }
 
-void show_rate(const char* label, double value)
+void show_rate(const char* label, double particles_per_sec)
 {
   std::cout << " " << std::setw(33) << std::left << label << " = " <<
-    value << " particles/second\n";
+    particles_per_sec << " particles/second\n";
 }
 
 void print_runtime()
@@ -439,20 +444,20 @@ void print_runtime()
   // display time elapsed for various sections
   std::cout << std::scientific << std::setprecision(4);
   show_time("Total time for initialization", time_initialize.elapsed());
-  show_time("  Reading cross sections", time_read_xs.elapsed());
+  show_time("Reading cross sections", time_read_xs.elapsed(), 1);
   show_time("Total time in simulation", time_inactive.elapsed() +
     time_active.elapsed());
-  show_time("  Time in transport only", time_transport.elapsed());
+  show_time("Time in transport only", time_transport.elapsed(), 1);
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-    show_time("  Time in inactive batches", time_inactive.elapsed());
+    show_time("Time in inactive batches", time_inactive.elapsed(), 1);
   }
-  show_time("  Time in active batches", time_active.elapsed());
+  show_time("Time in active batches", time_active.elapsed(), 1);
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-    show_time("  Time synchronizing fission bank", time_bank.elapsed());
-    show_time("    Sampling source sites", time_bank_sample.elapsed());
-    show_time("    SEND/RECV source sites", time_bank_sendrecv.elapsed());
+    show_time("Time synchronizing fission bank", time_bank.elapsed(), 1);
+    show_time("Sampling source sites", time_bank_sample.elapsed(), 2);
+    show_time("SEND/RECV source sites", time_bank_sendrecv.elapsed(), 2);
   }
-  show_time("  Time accumulating tallies", time_tallies.elapsed());
+  show_time("Time accumulating tallies", time_tallies.elapsed(), 1);
   show_time("Total time for finalization", time_finalize.elapsed());
   show_time("Total time elapsed", time_total.elapsed());
 
@@ -495,6 +500,16 @@ void print_runtime()
 
   // Restore state of cout
   std::cout.flags(f);
+}
+
+//==============================================================================
+
+std::pair<double, double> mean_stdev(const double* x, int n)
+{
+  double mean = x[RESULT_SUM] / n;
+  double stdev = n > 1 ? std::sqrt((x[RESULT_SUM_SQ]/n
+    - mean*mean)/(n - 1)) : 0.0;
+  return {mean, stdev};
 }
 
 //==============================================================================
@@ -565,16 +580,6 @@ void print_results()
 
   // Restore state of cout
   std::cout.flags(f);
-}
-
-//==============================================================================
-
-std::pair<double, double> mean_stdev(const double* x, int n)
-{
-  double mean = x[RESULT_SUM] / n;
-  double stdev = n > 1 ? std::sqrt((x[RESULT_SUM_SQ]/n
-    - mean*mean)/(n - 1)) : 0.0;
-  return {mean, stdev};
 }
 
 } // namespace openmc

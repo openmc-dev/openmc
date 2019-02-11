@@ -114,11 +114,9 @@ openmc_statepoint_write(const char* filename, bool* write_source)
   if (!settings::reduce_tallies) {
     // If using the no-tally-reduction method, we need to collect tally
     // results before writing them to the state point file.
-
     write_tally_results_nr(file_id);
 
   } else if (mpi::master) {
-
     // Write number of global realizations
     write_dataset(file_id, "n_realizations", n_realizations);
 

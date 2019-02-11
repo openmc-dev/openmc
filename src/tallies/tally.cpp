@@ -233,12 +233,12 @@ Tally::set_filters(const int32_t filter_indices[], int n)
     if (i_filt < 0 || i_filt >= model::tally_filters.size())
       throw std::out_of_range("Index in tally filter array out of bounds.");
 
-    //TODO: off-by-one on each index
+    // Keep track of indices for special filters.
     const auto* filt = model::tally_filters[i_filt].get();
     if (dynamic_cast<const EnergyoutFilter*>(filt)) {
-      energyout_filter_ = i + 1;
+      energyout_filter_ = i;
     } else if (dynamic_cast<const DelayedGroupFilter*>(filt)) {
-      delayedgroup_filter_ = i + 1;
+      delayedgroup_filter_ = i;
     }
   }
 
@@ -274,7 +274,6 @@ Tally::set_scores(std::vector<std::string> scores)
 
   // Check for the presence of certain restrictive filters.
   bool energyout_present = energyout_filter_ != C_NONE;
-  //bool delayedgroup_present = false;
   bool legendre_present = false;
   bool cell_present = false;
   bool cellfrom_present = false;
@@ -531,7 +530,8 @@ adaptor_type<3> tally_results(int idx)
   // Get pointer to tally results
   double* results;
   std::array<std::size_t, 3> shape;
-  openmc_tally_results(idx, &results, shape.data());
+  // TODO: off-by-one
+  openmc_tally_results(idx+1, &results, shape.data());
 
   // Adapt array into xtensor with no ownership
   std::size_t size {shape[0] * shape[1] * shape[2]};
@@ -541,10 +541,11 @@ adaptor_type<3> tally_results(int idx)
 #ifdef OPENMC_MPI
 void reduce_tally_results()
 {
-  for (int i = 1; i <= n_tallies; ++i) {
+  for (int i = 0; i < n_tallies; ++i) {
     // Skip any tallies that are not active
     bool active;
-    openmc_tally_get_active(i, &active);
+    // TODO: off-by-one
+    openmc_tally_get_active(i+1, &active);
     if (!active) continue;
 
     // Get view of accumulated tally values
@@ -605,33 +606,32 @@ setup_active_tallies_c()
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
 
-  //TODO: off-by-one all through here
   for (auto i = 0; i < model::tallies.size(); ++i) {
     const auto& tally {*model::tallies[i]};
 
     if (tally.active_) {
-      model::active_tallies.push_back(i + 1);
+      model::active_tallies.push_back(i);
       switch (tally.type_) {
 
       case TALLY_VOLUME:
         switch (tally.estimator_) {
           case ESTIMATOR_ANALOG:
-            model::active_analog_tallies.push_back(i + 1);
+            model::active_analog_tallies.push_back(i);
             break;
           case ESTIMATOR_TRACKLENGTH:
-            model::active_tracklength_tallies.push_back(i + 1);
+            model::active_tracklength_tallies.push_back(i);
             break;
           case ESTIMATOR_COLLISION:
-            model::active_collision_tallies.push_back(i + 1);
+            model::active_collision_tallies.push_back(i);
         }
         break;
 
       case TALLY_MESH_SURFACE:
-        model::active_meshsurf_tallies.push_back(i + 1);
+        model::active_meshsurf_tallies.push_back(i);
         break;
 
       case TALLY_SURFACE:
-        model::active_surface_tallies.push_back(i + 1);
+        model::active_surface_tallies.push_back(i);
       }
     }
   }
@@ -915,9 +915,6 @@ extern "C" {
 
   int tally_get_energyout_filter_c(Tally* tally)
   {return tally->energyout_filter_;}
-
-  int tally_get_delayedgroup_filter_c(Tally* tally)
-  {return tally->delayedgroup_filter_;}
 
   void tally_set_scores(Tally* tally, pugi::xml_node* node)
   {tally->set_scores(*node);}

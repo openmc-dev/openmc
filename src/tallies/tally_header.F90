@@ -130,7 +130,6 @@ module tally_header
     procedure :: n_nuclide_bins => tally_get_n_nuclide_bins
     procedure :: nuclide_bins => tally_get_nuclide_bins
     procedure :: energyout_filter => tally_get_energyout_filter
-    procedure :: delayedgroup_filter => tally_get_delayedgroup_filter
     procedure :: deriv => tally_get_deriv
     procedure :: set_deriv => tally_set_deriv
   end type TallyObject
@@ -504,19 +503,6 @@ contains
       end function
     end interface
     filt = tally_get_energyout_filter_c(this % ptr)
-  end function
-
-  function tally_get_delayedgroup_filter(this) result(filt)
-    class(TallyObject) :: this
-    integer(C_INT) :: filt
-    interface
-      function tally_get_delayedgroup_filter_c(tally) result(filt) bind(C)
-        import C_PTR, C_INT
-        type(C_PTR), value :: tally
-        integer(C_INT) :: filt
-      end function
-    end interface
-    filt = tally_get_delayedgroup_filter_c(this % ptr)
   end function
 
   function tally_get_deriv(this) result(deriv)

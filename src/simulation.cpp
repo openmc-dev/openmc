@@ -546,7 +546,7 @@ void calculate_work()
 #ifdef OPENMC_MPI
 void broadcast_results() {
   // Broadcast tally results so that each process has access to results
-  for (int i = 1; i <= n_tallies; ++i) {
+  for (int i = 0; i < n_tallies; ++i) {
     // Create a new datatype that consists of all values for a given filter
     // bin and then use that to broadcast. This is done to minimize the
     // chance of the 'count' argument of MPI_BCAST exceeding 2**31

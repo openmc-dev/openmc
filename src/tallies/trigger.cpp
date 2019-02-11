@@ -30,7 +30,8 @@ static std::pair<double, double>
 get_tally_uncertainty(int i_tally, int score_index, int filter_index)
 {
   int n;
-  int err = openmc_tally_get_n_realizations(i_tally, &n);
+  //TODO: off-by-one
+  int err = openmc_tally_get_n_realizations(i_tally+1, &n);
 
   auto results = tally_results(i_tally);
   auto sum = results(filter_index, score_index, RESULT_SUM);
@@ -54,13 +55,13 @@ void
 check_tally_triggers(double& ratio, int& tally_id, int& score)
 {
   ratio = 0.;
-  //TODO: off-by-one
-  for (auto i_tally = 1; i_tally < model::tallies.size()+1; ++i_tally) {
-    const Tally& t {*model::tallies[i_tally-1]};
+  for (auto i_tally = 0; i_tally < model::tallies.size(); ++i_tally) {
+    const Tally& t {*model::tallies[i_tally]};
 
     // Ignore tallies with less than two realizations.
     int n_reals;
-    int err = openmc_tally_get_n_realizations(i_tally, &n_reals);
+    //TODO: off-by-one
+    int err = openmc_tally_get_n_realizations(i_tally+1, &n_reals);
     if (n_reals < 2) continue;
 
     for (const auto& trigger : t.triggers_) {

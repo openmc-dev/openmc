@@ -5,7 +5,6 @@
 #define OPENMC_OUTPUT_H
 
 #include <string>
-#include <utility> // for pair
 
 #include "openmc/particle.h"
 
@@ -56,9 +55,6 @@ void print_runtime();
 
 //! Display results for global tallies including k-effective estimators
 void print_results();
-
-//! Calculate the mean and standard deviation for a tally result
-std::pair<double, double> mean_stdev(const double* x, int n);
 
 } // namespace openmc
 #endif // OPENMC_OUTPUT_H

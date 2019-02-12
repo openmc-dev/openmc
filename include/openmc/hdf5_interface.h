@@ -229,6 +229,19 @@ void read_dataset(hid_t obj_id, const char* name, T& buffer, bool indep=false)
   read_dataset(obj_id, name, H5TypeMap<T>::type_id, &buffer, indep);
 }
 
+// overload for std::string
+inline void
+read_dataset(hid_t obj_id, const char* name, std::string& str, bool indep=false)
+{
+  // Create buffer to read data into
+  auto n = attribute_typesize(obj_id, name);
+  char buffer[n];
+
+  // Read attribute and set string
+  read_string(obj_id, name, n, buffer, indep);
+  str = std::string{buffer, n};
+}
+
 template <typename T>
 void read_dataset(hid_t dset, std::vector<T>& vec, bool indep=false)
 {

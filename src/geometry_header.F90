@@ -2,12 +2,8 @@ module geometry_header
 
   use, intrinsic :: ISO_C_BINDING
 
-  use algorithm,       only: find
-  use constants,       only: K_BOLTZMANN, MATERIAL_VOID
   use dict_header,     only: DictIntInt
   use nuclide_header
-  use stl_vector,      only: VectorReal
-  use string,          only: to_lower
 
   implicit none
 

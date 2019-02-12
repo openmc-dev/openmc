@@ -34,7 +34,7 @@ extern "C" double normal_percentile(double p);
 //! \return The requested percentile
 //==============================================================================
 
-extern "C" double t_percentile_c(double p, int df);
+extern "C" double t_percentile(double p, int df);
 
 //==============================================================================
 //! Calculate the n-th order Legendre polynomials at the value of x.

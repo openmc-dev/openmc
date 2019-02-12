@@ -637,7 +637,6 @@ free_memory_tally_c()
 {
   #pragma omp parallel
   {
-    simulation::filter_matches.clear();
     model::tally_derivs.clear();
   }
 

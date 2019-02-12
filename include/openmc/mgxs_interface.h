@@ -52,14 +52,16 @@ calculate_xs_c(int i_mat, int gin, double sqrtkT, const double uvw[3],
      double& total_xs, double& abs_xs, double& nu_fiss_xs);
 
 double
-get_nuclide_xs(int index, int xstype, int gin, int* gout, double* mu, int* dg);
+get_nuclide_xs(int index, int xstype, int gin, const int* gout,
+  const double* mu, const int* dg);
 
 inline double
 get_nuclide_xs(int index, int xstype, int gin)
 {return get_nuclide_xs(index, xstype, gin, nullptr, nullptr, nullptr);}
 
 double
-get_macro_xs(int index, int xstype, int gin, int* gout, double* mu, int* dg);
+get_macro_xs(int index, int xstype, int gin, const int* gout,
+  const double* mu, const int* dg);
 
 inline double
 get_macro_xs(int index, int xstype, int gin)

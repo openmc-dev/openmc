@@ -23,7 +23,7 @@ namespace openmc {
 // FilterBinIter implementation
 //==============================================================================
 
-FilterBinIter::FilterBinIter(const Tally& tally, Particle* p)
+FilterBinIter::FilterBinIter(const Tally& tally, const Particle* p)
   : tally_{tally}
 {
   // Find all valid bins in each relevant filter if they have not already been
@@ -179,7 +179,7 @@ score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index)
 //! neutrons produced with different energies.
 
 void
-score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
+score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
 {
   const Tally& tally {*model::tallies[i_tally]};
   auto results = tally_results(i_tally);
@@ -210,7 +210,7 @@ score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
     // i_nuclide and atom_density arguments do not matter since this is an
     // analog estimator.
     if (tally.deriv_ != C_NONE)
-      apply_derivative_to_score(p, i_tally, 0, 0., SCORE_NU_FISSION, &score);
+      apply_derivative_to_score(p, i_tally, 0, 0., SCORE_NU_FISSION, score);
 
     if (!settings::run_CE && eo_filt.matches_transport_groups_) {
 
@@ -325,8 +325,8 @@ score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
 //! is not used for analog tallies.
 
 void
-score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
-  int i_nuclide, double atom_density, double flux)
+score_general_ce(const Particle* p, int i_tally, int start_index,
+  int filter_index, int i_nuclide, double atom_density, double flux)
 {
   const Tally& tally {*model::tallies[i_tally]};
   auto results = tally_results(i_tally);
@@ -1218,7 +1218,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
     // Add derivative information on score for differnetial tallies.
     if (tally.deriv_ != C_NONE)
       apply_derivative_to_score(p, i_tally, i_nuclide, atom_density, score_bin,
-        &score);
+        score);
 
     // Update tally results
     #pragma omp atomic
@@ -1232,8 +1232,8 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
 //! argument is really just used for filter weights.
 
 void
-score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
-  int i_nuclide, double atom_density, double flux)
+score_general_mg(const Particle* p, int i_tally, int start_index,
+  int filter_index, int i_nuclide, double atom_density, double flux)
 {
   const Tally& tally {*model::tallies[i_tally]};
   auto results = tally_results(i_tally);
@@ -1241,7 +1241,7 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
   //TODO: off-by-one throughout on p->material
 
   // Set the direction and group to use with get_xs
-  double* p_uvw;
+  const double* p_uvw;
   int p_g;
   if (tally.estimator_ == ESTIMATOR_ANALOG
     || tally.estimator_ == ESTIMATOR_COLLISION) {
@@ -1937,7 +1937,8 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
 //! Tally rates for when the user requests a tally on all nuclides.
 
 void
-score_all_nuclides(Particle* p, int i_tally, double flux, int filter_index)
+score_all_nuclides(const Particle* p, int i_tally, double flux,
+  int filter_index)
 {
   const Tally& tally {*model::tallies[i_tally]};
   const Material& material {*model::materials[p->material-1]};
@@ -1976,7 +1977,7 @@ score_all_nuclides(Particle* p, int i_tally, double flux, int filter_index)
 //! Analog tallies ar etriggered at every collision, not every event.
 
 extern "C" void
-score_analog_tally_ce(Particle* p)
+score_analog_tally_ce(const Particle* p)
 {
   for (auto i_tally : model::active_analog_tallies) {
     const Tally& tally {*model::tallies[i_tally]};
@@ -2040,7 +2041,7 @@ score_analog_tally_ce(Particle* p)
 //! Analog tallies ar etriggered at every collision, not every event.
 
 extern "C" void
-score_analog_tally_mg(Particle* p)
+score_analog_tally_mg(const Particle* p)
 {
   for (auto i_tally : model::active_analog_tallies) {
     const Tally& tally {*model::tallies[i_tally]};
@@ -2096,7 +2097,7 @@ score_analog_tally_mg(Particle* p)
 //! information.
 
 extern "C" void
-score_tracklength_tally(Particle* p, double distance)
+score_tracklength_tally(const Particle* p, double distance)
 {
   // Determine the tracklength estimate of the flux
   double flux = p->wgt * distance;
@@ -2172,7 +2173,7 @@ score_tracklength_tally(Particle* p, double distance)
 //! since collisions do not occur in voids.
 
 extern "C" void
-score_collision_tally(Particle* p)
+score_collision_tally(const Particle* p)
 {
   // Determine the collision estimate of the flux
   double flux;
@@ -2243,7 +2244,7 @@ score_collision_tally(Particle* p)
 //! Score surface or mesh-surface tallies for particle currents.
 
 static void
-score_surface_tally_inner(Particle* p, const std::vector<int>& tallies)
+score_surface_tally_inner(const Particle* p, const std::vector<int>& tallies)
 {
   // No collision, so no weight change when survival biasing
   double flux = p->wgt;
@@ -2291,7 +2292,7 @@ score_surface_tally_inner(Particle* p, const std::vector<int>& tallies)
 //! Score mesh-surface tallies for particle currents.
 
 extern "C" void
-score_meshsurface_tally(Particle* p)
+score_meshsurface_tally(const Particle* p)
 {
   score_surface_tally_inner(p, model::active_meshsurf_tallies);
 }
@@ -2299,7 +2300,7 @@ score_meshsurface_tally(Particle* p)
 //! Score surface tallies for particle currents.
 
 extern "C" void
-score_surface_tally(Particle* p)
+score_surface_tally(const Particle* p)
 {
   score_surface_tally_inner(p, model::active_surface_tallies);
 }

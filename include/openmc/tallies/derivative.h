@@ -14,7 +14,7 @@
 
 namespace openmc {
 
-extern "C" struct TallyDerivative {
+struct TallyDerivative {
   int id;  //!< User-defined identifier
   int variable;  //!< Independent variable (like temperature)
   int diff_material;  //!< Material this derivative is applied to
@@ -32,8 +32,8 @@ extern "C" struct TallyDerivative {
 //! Scale the given score by its logarithmic derivative
 
 void
-apply_derivative_to_score(Particle* p, int i_tally, int i_nuclide,
-  double atom_density, int score_bin, double* score);
+apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
+  double atom_density, int score_bin, double& score);
 
 } // namespace openmc
 
@@ -46,18 +46,19 @@ apply_derivative_to_score(Particle* p, int i_tally, int i_nuclide,
 extern template class std::vector<openmc::TallyDerivative>;
 
 namespace openmc {
-  namespace model {
-    extern std::vector<TallyDerivative> tally_derivs;
-    #pragma omp threadprivate(tally_derivs)
 
-    extern std::unordered_map<int, int> tally_deriv_map;
-  }
+namespace model {
+extern std::vector<TallyDerivative> tally_derivs;
+#pragma omp threadprivate(tally_derivs)
+extern std::unordered_map<int, int> tally_deriv_map;
+} // namespace model
 
-  // Independent variables
-  //TODO: convert to enum
-  constexpr int DIFF_DENSITY {1};
-  constexpr int DIFF_NUCLIDE_DENSITY {2};
-  constexpr int DIFF_TEMPERATURE {3};
-}
+// Independent variables
+//TODO: convert to enum
+constexpr int DIFF_DENSITY {1};
+constexpr int DIFF_NUCLIDE_DENSITY {2};
+constexpr int DIFF_TEMPERATURE {3};
+
+} // namespace openmc
 
 #endif // OPENMC_TALLIES_DERIVATIVE_H

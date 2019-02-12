@@ -128,7 +128,7 @@ extern "C" void read_meshes(pugi::xml_node* root);
 
 //! Write mesh data to an HDF5 group
 //! \param[in] group HDF5 group
-extern "C" void meshes_to_hdf5(hid_t group);
+void meshes_to_hdf5(hid_t group);
 
 } // namespace openmc
 

@@ -111,14 +111,6 @@ contains
 
   end subroutine warning
 
-  subroutine warning_from_c(message, message_len) bind(C)
-    integer(C_INT),         intent(in), value :: message_len
-    character(kind=C_CHAR), intent(in)        :: message(message_len)
-    character(message_len+1)                  :: message_out
-    write(message_out, *) message
-    call warning(message_out)
-  end subroutine
-
 !===============================================================================
 ! FATAL_ERROR alerts the user that an error has been encountered and displays a
 ! message about the particular problem. Errors are considered 'fatal' and hence
@@ -208,14 +200,6 @@ contains
 
   end subroutine fatal_error
 
-  subroutine fatal_error_from_c(message, message_len) bind(C)
-    integer(C_INT),         intent(in), value :: message_len
-    character(kind=C_CHAR), intent(in)        :: message(message_len)
-    character(message_len+1)                  :: message_out
-    write(message_out, *) message
-    call fatal_error(message_out)
-  end subroutine
-
 !===============================================================================
 ! WRITE_MESSAGE displays an informational message to the log file and the
 ! standard output stream.
@@ -270,15 +254,5 @@ contains
     end if
 
   end subroutine write_message
-
-  subroutine write_message_from_c(message, message_len, level) bind(C)
-    integer(C_INT),         intent(in), value :: message_len
-    character(kind=C_CHAR), intent(in)        :: message(message_len)
-    integer(C_INT),         intent(in), value :: level
-    character(message_len+1)                  :: message_out
-    ! Using * in the internal write adds an extra space at the beginning
-    write(message_out, *) message
-    call write_message(message_out(2:), level)
-  end subroutine write_message_from_c
 
 end module error

@@ -17,15 +17,13 @@ module input_xml
   use message_passing
   use mgxs_interface
   use nuclide_header
-  use output,           only: title, header
   use photon_header
   use random_lcg,       only: prn
   use surface_header
   use settings
   use stl_vector,       only: VectorInt, VectorReal, VectorChar
-  use string,           only: to_lower, to_str, str_to_int, str_to_real, &
-                              starts_with, ends_with, split_string, &
-                              zero_padded, to_c_string
+  use string,           only: to_lower, to_str, str_to_int, &
+                              starts_with, ends_with, to_c_string
   use tally
   use tally_header,     only: openmc_extend_tallies
   use tally_derivative_header

@@ -39,9 +39,9 @@ namespace settings {
 // Default values for boolean flags
 bool assume_separate         {false};
 bool check_overlaps          {false};
-bool cmfd_run                {false};
 bool confidence_intervals    {false};
 bool create_fission_neutrons {true};
+bool dagmc                   {false};
 bool entropy_on              {false};
 bool legendre_to_tabular     {true};
 bool output_summary          {true};
@@ -63,7 +63,6 @@ bool ufs_on                  {false};
 bool urr_ptables_on          {true};
 bool write_all_tracks        {false};
 bool write_initial_source    {false};
-bool dagmc                   {false};
 
 std::string path_cross_sections;
 std::string path_input;

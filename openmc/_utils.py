@@ -7,7 +7,7 @@ from urllib.request import urlopen
 _BLOCK_SIZE = 16384
 
 
-def download(url, checksum=None):
+def download(url, checksum=None, context=None):
     """Download file from a URL
 
     Parameters
@@ -16,6 +16,8 @@ def download(url, checksum=None):
         URL from which to download
     checksum : str or None
         MD5 checksum to check against
+    context : ssl.SSLContext instance or None
+        For example ssl._create_unverified_context()
 
     Returns
     -------
@@ -23,7 +25,7 @@ def download(url, checksum=None):
         Name of file written locally
 
     """
-    req = urlopen(url)
+    req = urlopen(url, context=context)
 
     # Get file size from header
     file_size = req.length

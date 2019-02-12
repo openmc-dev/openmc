@@ -417,9 +417,7 @@ void print_batch_keff()
 
 void show_time(const char* label, double secs, int indent_level=0)
 {
-  for (int i = 0; i < indent_level; ++i) {
-    std::cout << "  ";
-  }
+  std::cout << std::string(2*indent_level, ' ');
   int width = 33 - indent_level*2;
   std::cout << " " << std::setw(width) << std::left << label << " = "
     << std::setw(10) << std::right << secs << " seconds\n";

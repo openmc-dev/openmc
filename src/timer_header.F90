@@ -4,57 +4,6 @@ module timer_header
 
   use constants, only: ZERO
 
-  implicit none
-
-  interface
-    function time_active_elapsed() result(t) bind(C)
-      import C_DOUBLE
-      real(C_DOUBLE) :: t
-    end function
-    function time_bank_elapsed() result(t) bind(C)
-      import C_DOUBLE
-      real(C_DOUBLE) :: t
-    end function
-    function time_bank_sample_elapsed() result(t) bind(C)
-      import C_DOUBLE
-      real(C_DOUBLE) :: t
-    end function
-    function time_bank_sendrecv_elapsed() result(t) bind(C)
-      import C_DOUBLE
-      real(C_DOUBLE) :: t
-    end function
-    function time_finalize_elapsed() result(t) bind(C)
-      import C_DOUBLE
-      real(C_DOUBLE) :: t
-    end function
-    function time_inactive_elapsed() result(t) bind(C)
-      import C_DOUBLE
-      real(C_DOUBLE) :: t
-    end function
-    function time_initialize_elapsed() result(t) bind(C)
-      import C_DOUBLE
-      real(C_DOUBLE) :: t
-    end function
-    function time_read_xs_elapsed() result(t) bind(C)
-      import C_DOUBLE
-      real(C_DOUBLE) :: t
-    end function
-    function time_tallies_elapsed() result(t) bind(C)
-      import C_DOUBLE
-      real(C_DOUBLE) :: t
-    end function
-    function time_total_elapsed() result(t) bind(C)
-      import C_DOUBLE
-      real(C_DOUBLE) :: t
-    end function
-    function time_transport_elapsed() result(t) bind(C)
-      import C_DOUBLE
-      real(C_DOUBLE) :: t
-    end function
-    subroutine reset_timers() bind(C)
-    end subroutine
-  end interface
-
 !===============================================================================
 ! TIMER represents a timer that can be started and stopped to measure how long
 ! different routines run. The intrinsic routine system_clock is used to measure
@@ -72,9 +21,6 @@ module timer_header
     procedure :: stop      => timer_stop
     procedure :: reset     => timer_reset
   end type Timer
-
-  ! ============================================================================
-  ! TIMING VARIABLES
 
 contains
 

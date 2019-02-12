@@ -1,6 +1,7 @@
 #include "openmc/state_point.h"
 
 #include <algorithm>
+#include <cstdint> // for int64_t
 #include <iomanip> // for setfill, setw
 #include <string>
 #include <vector>
@@ -14,12 +15,291 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/mesh.h"
 #include "openmc/message_passing.h"
+#include "openmc/output.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/timer.h"
 
 namespace openmc {
+
+extern "C" void statepoint_write_f(hid_t file_id);
+extern "C" void load_state_point_f(hid_t file_id);
+
+extern "C" int
+openmc_statepoint_write(const char* filename, bool* write_source)
+{
+  // Set the filename
+  std::string filename_;
+  if (filename) {
+    filename_ = filename;
+  } else {
+    // Determine width for zero padding
+    int w = std::to_string(settings::n_max_batches).size();
+
+    // Set filename for state point
+    std::stringstream ss;
+    ss << settings::path_output << "statepoint." << std::setfill('0')
+      << std::setw(w) << simulation::current_batch << ".h5";
+    filename_ = ss.str();
+  }
+
+  // Determine whether or not to write the source bank
+  bool write_source_ = write_source ? *write_source : true;
+
+  // Write message
+  write_message("Creating state point " + filename_ + "...", 5);
+
+  hid_t file_id;
+  if (mpi::master) {
+    // Create statepoint file
+    file_id = file_open(filename_, 'w');
+
+    // Write file type
+    write_attribute(file_id, "filetype", "statepoint");
+
+    // Write revision number for state point file
+    write_attribute(file_id, "version", VERSION_STATEPOINT);
+
+    // Write OpenMC version
+    write_attribute(file_id, "openmc_version", VERSION);
+#ifdef GIT_SHA1
+    write_attribute(file_id, "git_sha1", GIT_SHA1);
+#endif
+
+    // Write current date and time
+    write_attribute(file_id, "date_and_time", time_stamp());
+
+    // Write path to input
+    write_attribute(file_id, "path", settings::path_input);
+
+    // Write out random number seed
+    write_dataset(file_id, "seed", openmc_get_seed());
+
+    // Write run information
+    write_dataset(file_id, "energy_mode", settings::run_CE ?
+      "continuous-energy" : "multi-group");
+    switch (settings::run_mode) {
+    case RUN_MODE_FIXEDSOURCE:
+      write_dataset(file_id, "run_mode", "fixed source");
+      break;
+    case RUN_MODE_EIGENVALUE:
+      write_dataset(file_id, "run_mode", "eigenvalue");
+      break;
+    }
+    write_attribute(file_id, "photon_transport", settings::photon_transport);
+    write_dataset(file_id, "n_particles", settings::n_particles);
+    write_dataset(file_id, "n_batches", settings::n_batches);
+
+    // Write out current batch number
+    write_dataset(file_id, "current_batch", simulation::current_batch);
+
+    // Indicate whether source bank is stored in statepoint
+    write_attribute(file_id, "source_present", write_source_);
+
+    // Write out information for eigenvalue run
+    if (settings::run_mode == RUN_MODE_EIGENVALUE) write_eigenvalue_hdf5(file_id);
+
+    // Write tally-related data
+    hid_t tallies_group = create_group(file_id, "tallies");
+    meshes_to_hdf5(tallies_group);
+    statepoint_write_f(file_id);
+    close_group(tallies_group);
+  }
+
+  // Check for the no-tally-reduction method
+  if (!settings::reduce_tallies) {
+    // If using the no-tally-reduction method, we need to collect tally
+    // results before writing them to the state point file.
+    write_tally_results_nr(file_id);
+
+  } else if (mpi::master) {
+    // Write number of global realizations
+    write_dataset(file_id, "n_realizations", n_realizations);
+
+    // Write out the runtime metrics.
+    using namespace simulation;
+    hid_t runtime_group = create_group(file_id, "runtime");
+    write_dataset(runtime_group, "total initialization",  time_initialize.elapsed());
+    write_dataset(runtime_group, "reading cross sections", time_read_xs.elapsed());
+    write_dataset(runtime_group, "simulation", time_inactive.elapsed()
+      + time_active.elapsed());
+    write_dataset(runtime_group, "transport", time_transport.elapsed());
+    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+      write_dataset(runtime_group, "inactive batches", time_inactive.elapsed());
+    }
+    write_dataset(runtime_group, "active batches", time_active.elapsed());
+    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+      write_dataset(runtime_group, "synchronizing fission bank", time_bank.elapsed());
+      write_dataset(runtime_group, "sampling source sites", time_bank_sample.elapsed());
+      write_dataset(runtime_group, "SEND-RECV source sites", time_bank_sendrecv.elapsed());
+    }
+    write_dataset(runtime_group, "accumulating tallies", time_tallies.elapsed());
+    write_dataset(runtime_group, "total", time_total.elapsed());
+    close_group(runtime_group);
+
+    file_close(file_id);
+  }
+
+#ifdef PHDF5
+  bool parallel = true;
+#else
+  bool parallel = false;
+#endif
+
+  // Write the source bank if desired
+  if (write_source_) {
+    if (mpi::master || parallel) file_id = file_open(filename_, 'a', true);
+    write_source_bank(file_id);
+    if (mpi::master || parallel) file_close(file_id);
+  }
+
+  return 0;
+}
+
+void restart_set_keff()
+{
+  if (simulation::restart_batch > settings::n_inactive) {
+    for (int i = settings::n_inactive; i < simulation::restart_batch; ++i) {
+      simulation::k_sum[0] += simulation::k_generation[i];
+      simulation::k_sum[1] += std::pow(simulation::k_generation[i], 2);
+    }
+    int n = settings::gen_per_batch*n_realizations;
+    simulation::keff = simulation::k_sum[0] / n;
+  } else {
+    simulation::keff = simulation::k_generation.back();
+  }
+}
+
+void load_state_point()
+{
+  // Write message
+  write_message("Loading state point " + settings::path_statepoint + "...", 5);
+
+  // Open file for reading
+  hid_t file_id = file_open(settings::path_statepoint.c_str(), 'r', true);
+
+  // Read filetype
+  std::string word;
+  read_attribute(file_id, "filetype", word);
+  if (word != "statepoint") {
+    fatal_error("OpenMC tried to restart from a non-statepoint file.");
+  }
+
+  // Read revision number for state point file and make sure it matches with
+  // current version
+  std::array<int, 2> array;
+  read_attribute(file_id, "version", array);
+  if (array != VERSION_STATEPOINT) {
+    fatal_error("State point version does not match current version in OpenMC.");
+  }
+
+  // Read and overwrite random number seed
+  int64_t seed;
+  read_dataset(file_id, "seed", seed);
+  openmc_set_seed(seed);
+
+  // It is not impossible for a state point to be generated from a CE run but
+  // to be loaded in to an MG run (or vice versa), check to prevent that.
+  read_dataset(file_id, "energy_mode", word);
+  if (word == "multi-group" && settings::run_CE) {
+    fatal_error("State point file is from multigroup run but current run is "
+      "continous energy.");
+  } else if (word == "continuous-energy" && !settings::run_CE) {
+    fatal_error("State point file is from continuous-energy run but current "
+      "run is multigroup!");
+  }
+
+  // Read and overwrite run information except number of batches
+  read_dataset(file_id, "run_mode", word);
+  if (word == "fixed source") {
+    settings::run_mode = RUN_MODE_FIXEDSOURCE;
+  } else if (word == "eigenvalue") {
+    settings::run_mode = RUN_MODE_EIGENVALUE;
+  }
+  read_attribute(file_id, "photon_transport", settings::photon_transport);
+  read_dataset(file_id, "n_particles", settings::n_particles);
+  int temp;
+  read_dataset(file_id, "n_batches", temp);
+
+  // Take maximum of statepoint n_batches and input n_batches
+  settings::n_batches = std::max(settings::n_batches, temp);
+
+  // Read batch number to restart at
+  read_dataset(file_id, "current_batch", simulation::restart_batch);
+
+  // Check for source in statepoint if needed
+  bool source_present;
+  read_attribute(file_id, "source_present", source_present);
+
+  if (simulation::restart_batch > settings::n_batches) {
+    fatal_error("The number batches specified in settings.xml is fewer "
+      " than the number of batches in the given statepoint file.");
+  }
+
+  // Read information specific to eigenvalue run
+  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    read_dataset(file_id, "n_inactive", temp);
+    read_eigenvalue_hdf5(file_id);
+
+    // Take maximum of statepoint n_inactive and input n_inactive
+    settings::n_inactive = std::max(settings::n_inactive, temp);
+  }
+
+  // Read number of realizations for global tallies
+  read_dataset(file_id, "n_realizations", n_realizations);
+
+  // Set k_sum, keff, and current_batch based on whether restart file is part
+  // of active cycle or inactive cycle
+  restart_set_keff();
+  simulation::current_batch = simulation::restart_batch;
+
+  // Check to make sure source bank is present
+  if (settings::path_sourcepoint == settings::path_statepoint &&
+      !source_present) {
+    fatal_error("Source bank must be contained in statepoint restart file");
+  }
+
+  // Read tallies to master. If we are using Parallel HDF5, all processes
+  // need to be included in the HDF5 calls.
+#ifdef PHDF5
+  if (true) {
+#else
+  if (mpi::master) {
+#endif
+    // Read tally results
+    load_state_point_f(file_id);
+  }
+
+  // Read source if in eigenvalue mode
+  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+
+    // Check if source was written out separately
+    if (!source_present) {
+
+      // Close statepoint file
+      file_close(file_id);
+
+      // Write message
+      write_message("Loading source file " + settings::path_sourcepoint
+        + "...", 5);
+
+      // Open source file
+      file_id = file_open(settings::path_source.c_str(), 'r', true);
+    }
+
+    // Read source
+    read_source_bank(file_id);
+
+  }
+
+  // Close file
+  file_close(file_id);
+}
+
 
 hid_t h5banktype() {
   // Create type for array of 3 reals
@@ -313,20 +593,6 @@ void write_tally_results_nr(hid_t file_id)
       // Indicate that tallies are off
       write_dataset(file_id, "tallies_present", 0);
     }
-  }
-}
-
-void restart_set_keff()
-{
-  if (simulation::restart_batch > settings::n_inactive) {
-    for (int i = settings::n_inactive; i < simulation::restart_batch; ++i) {
-      simulation::k_sum[0] += simulation::k_generation[i];
-      simulation::k_sum[1] += std::pow(simulation::k_generation[i], 2);
-    }
-    int n = settings::gen_per_batch*n_realizations;
-    simulation::keff = simulation::k_sum[0] / n;
-  } else {
-    simulation::keff = simulation::k_generation.back();
   }
 }
 

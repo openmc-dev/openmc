@@ -72,6 +72,8 @@ public:
 
   virtual void initialize() {}
 
+  int32_t id_;
+
   int n_bins_;
 };
 

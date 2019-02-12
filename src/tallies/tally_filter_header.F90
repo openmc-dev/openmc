@@ -27,10 +27,10 @@ module tally_filter_header
 !===============================================================================
 
   type, public, abstract :: TallyFilter
-    integer :: id
     integer :: n_bins = 0
     type(C_PTR) :: ptr
   contains
+    procedure :: id => filter_get_id_f90
     procedure :: from_xml
     procedure :: to_statepoint
     procedure :: initialize
@@ -127,6 +127,19 @@ contains
 !===============================================================================
 ! TallyFilter implementation
 !===============================================================================
+
+  function filter_get_id_f90(this) result(id)
+    class(TallyFilter) :: this
+    integer(C_INT32_T) :: id
+    interface
+      function filter_get_id(filt) result(id) bind(C)
+        import C_PTR, C_INT32_T
+        type(C_PTR), value :: filt
+        integer(C_INT32_T) :: id
+      end function
+    end interface
+    id = filter_get_id(this % ptr)
+  end function
 
   subroutine from_xml(this, node)
     class(TallyFilter), intent(inout) :: this
@@ -285,7 +298,7 @@ contains
     integer(C_INT) :: err
 
     if (index >= 1 .and. index <= n_filters) then
-      id = filters(index) % obj % id
+      id = filters(index) % obj % id()
       err = 0
     else
       err = E_OUT_OF_BOUNDS
@@ -300,9 +313,17 @@ contains
     integer(C_INT32_T), value, intent(in) :: id
     integer(C_INT) :: err
 
+    interface
+      subroutine filter_set_id(filt, id) bind(C)
+        import C_PTR, C_INT32_T
+        type(C_PTR), value :: filt
+        integer(C_INT32_T), value :: id
+      end subroutine
+    end interface
+
     if (index >= 1 .and. index <= n_filters) then
       if (allocated(filters(index) % obj)) then
-        filters(index) % obj % id = id
+        call filter_set_id(filters(index) % obj % ptr, id)
         call filter_dict % set(id, index)
         if (id > largest_filter_id) largest_filter_id = id
 

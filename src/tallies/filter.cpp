@@ -104,6 +104,10 @@ extern "C" {
     return model::tally_filters.back().get();
   }
 
+  int32_t filter_get_id(Filter* filt) {return filt->id_;}
+
+  void filter_set_id(Filter* filt, int32_t id) {filt->id_ = id;}
+
   void filter_from_xml(Filter* filt, pugi::xml_node* node)
   {filt->from_xml(*node);}
 

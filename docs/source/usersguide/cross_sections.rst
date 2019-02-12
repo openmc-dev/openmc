@@ -10,15 +10,16 @@ or multi-group mode.
 
 In continuous-energy mode, OpenMC uses a native `HDF5
 <https://support.hdfgroup.org/HDF5/>`_ format (see :ref:`io_nuclear_data`) to
-store all nuclear data. If you have ACE format data that was produced with
-NJOY_, such as that distributed with MCNP_ or Serpent_, it can be converted to
-the HDF5 format using the :ref:`scripts_ace` script (or :ref:`using the Python
-API <create_xs_library>`).  Several sources provide openly available ACE data as
-described below and can be easily converted using the provided scripts. The
-TALYS-based evaluated nuclear data library, TENDL_, is also available in ACE
-format. In addition to tabulated cross sections in the HDF5 files, OpenMC relies
-on :ref:`windowed multipole <windowed_multipole>` data to perform on-the-fly
-Doppler broadening.
+store all nuclear data. Pregenerated HDF5 libraries can be found at
+https://openmc.mcs.anl.gov; unless you have specific data needs, it is highly
+recommended to use one of the pregenerated libraries. Alternatively, if you have
+ACE format data that was produced with NJOY_, such as that distributed with
+MCNP_ or Serpent_, it can be converted to the HDF5 format using the :ref:`using
+the Python API <create_xs_library>`. Several sources provide openly available
+ACE data including the `ENDF/B`_, JEFF_, and TENDL_
+libraries. In addition to tabulated cross sections in the HDF5 files, OpenMC
+relies on :ref:`windowed multipole <windowed_multipole>` data to perform
+on-the-fly Doppler broadening.
 
 In multi-group mode, OpenMC utilizes an HDF5-based library format which can be
 used to describe nuclide- or material-specific quantities.
@@ -56,85 +57,16 @@ profile (``.profile`` or ``.bashrc`` in bash_).
 Continuous-Energy Cross Sections
 --------------------------------
 
-Using ENDF/B-VII.1 Cross Sections from NNDC
--------------------------------------------
+Using Pregenerated Libraries
+----------------------------
 
-The NNDC_ provides ACE data from the ENDF/B-VII.1 neutron and thermal scattering
-sublibraries at room temperature processed using NJOY_. To use this data with
-OpenMC, the :ref:`scripts_nndc` script can be used to automatically download and
-extract the ACE data, fix any deficiencies, and create an HDF5 library:
-
-.. code-block:: sh
-
-    openmc-get-nndc-data
-
-At this point, you should set the :envvar:`OPENMC_CROSS_SECTIONS` environment
-variable to the absolute path of the file ``nndc_hdf5/cross_sections.xml``. This
-cross section set is used by the test suite.
-
-Using JEFF Cross Sections from OECD/NEA
----------------------------------------
-
-The NEA_ provides processed ACE data from the JEFF_ library. To use this data
-with OpenMC, the :ref:`scripts_jeff` script can be used to automatically
-download and extract the ACE data, fix any deficiencies, and create an HDF5
-library.
-
-.. code-block:: sh
-
-    openmc-get-jeff-data
-
-At this point, you should set the :envvar:`OPENMC_CROSS_SECTIONS` environment
-variable to the absolute path of the file ``jeff-3.2-hdf5/cross_sections.xml``.
-
-Using Cross Sections from MCNP
-------------------------------
-
-OpenMC provides two scripts (:ref:`scripts_mcnp70` and :ref:`scripts_mcnp71`)
-that will automatically convert ENDF/B-VII.0 and ENDF/B-VII.1 ACE data that is
-provided with MCNP5 or MCNP6. To convert the ENDF/B-VII.0 ACE files
-(``endf70[a-k]`` and ``endf70sab``) into the native HDF5 format, run the
-following:
-
-.. code-block:: sh
-
-    openmc-convert-mcnp70-data /path/to/mcnpdata/
-
-where ``/path/to/mcnpdata`` is the directory containing the ``endf70[a-k]``
-files.
-
-To convert the ENDF/B-VII.1 ACE files (the endf71x and ENDF71SaB libraries), use
-the following script:
-
-.. code-block:: sh
-
-    openmc-convert-mcnp71-data /path/to/mcnpdata
-
-where ``/path/to/mcnpdata`` is the directory containing the ``endf71x`` and
-``ENDF71SaB`` directories.
-
-.. _other_cross_sections:
-
-Using Other Cross Sections
---------------------------
-
-If you have a library of ACE format cross sections other than those listed above
-that you need to convert to OpenMC's HDF5 format, the :ref:`scripts_ace` script
-can be used. There are four different ways you can specify ACE libraries that
-are to be converted:
-
-1. List each ACE library as a positional argument. This is very useful in
-   conjunction with the usual shell utilities (ls, find, etc.).
-2. Use the ``--xml`` option to specify a pre-v0.9 cross_sections.xml file.
-3. Use the ``--xsdir`` option to specify a MCNP xsdir file.
-4. Use the ``--xsdata`` option to specify a Serpent xsdata file.
-
-The script does not use any extra information from cross_sections.xml/ xsdir/
-xsdata files to determine whether the nuclide is metastable. Instead, the
-``--metastable`` argument can be used to specify whether the ZAID naming
-convention follows the NNDC data convention (1000*Z + A + 300 + 100*m), or the
-MCNP data convention (essentially the same as NNDC, except that the first
-metastable state of Am242 is 95242 and the ground state is 95642).
+Various evaluated nuclear data libraries have been processed into the HDF5
+format required by OpenMC and can be found at https://openmc.mcs.anl.gov. You
+can find both libraries generated by the OpenMC development team as well as
+libraries based on ACE files distributed elsewhere. To use these libraries,
+download the archive file, unpack it, and then set your
+:envvar:`OPENMC_CROSS_SECTIONS` environment variable to the absolute path of
+the ``cross_sections.xml`` file contained in the unpacked directory.
 
 .. _create_xs_library:
 
@@ -201,7 +133,7 @@ If you need to create a nuclear data library and you do not already have
 suitable ACE files or you need to further customize the data (for example,
 adding more temperatures), the :meth:`IncidentNeutron.from_njoy` and
 :meth:`ThermalScattering.from_njoy` methods can be used to create data instances
-by directly running NJOY. Both methods require that you pass the name of ENDF
+by directly running NJOY_. Both methods require that you pass the name of ENDF
 file(s) that are passed on to NJOY. For example, to generate data for Zr-92::
 
   zr92 = openmc.data.IncidentNeutron.from_njoy('n-040_Zr_092.endf')
@@ -235,8 +167,10 @@ Enabling Resonance Scattering Treatments
 In order for OpenMC to correctly treat elastic scattering in heavy nuclides
 where low-lying resonances might be present (see
 :ref:`energy_dependent_xs_model`), the elastic scattering cross section at 0 K
-must be present. To add the 0 K elastic scattering cross section to existing
-:class:`IncidentNeutron` instance, you can use the
+must be present. If the data you are using was generated via
+:meth:`IncidentNeutron.from_njoy`, you will already have 0 K elastic scattering
+cross sections available. Otherwise, to add 0 K elastic scattering cross
+sections to an existing :class:`IncidentNeutron` instance, you can use the
 :meth:`IncidentNeutron.add_elastic_0K_from_endf` method which requires an ENDF
 file for the nuclide you are modifying::
 
@@ -260,21 +194,15 @@ Photon interaction data is needed to run OpenMC with photon transport enabled.
 Some of this data, namely bremsstrahlung cross sections from `Seltzer and
 Berger`_, stopping powers from the `NIST ESTAR database`_, and Compton profiles
 calculated by `Biggs et al.`_ and available in the Geant4 G4EMLOW data file, is
-distributed with OpenMC. The rest is available from the NNDC, which provides
+distributed with OpenMC. The rest is available from the NNDC_, which provides
 ENDF data from the photo-atomic and atomic relaxation sublibraries of the
-ENDF/B-VII.1 library. By default, the :ref:`scripts_nndc` script will download
-the ENDF data in addition to the neutron and thermal scattering data, extract
-it, combine it with the data from other sources, and convert it to an HDF5
-library. Alternatively, the :ref:`scripts_photon` script can be used to
-download the photon data on its own and create the HDF5 library:
+ENDF/B-VII.1 library.
 
-.. code-block:: sh
-
-    openmc-get-photon-data
-
-As with neutrons and thermal scattering, it is possible to use the Python API
-directly to convert photon interaction data from an ENDF or ACE file to an HDF5
-file. The :class:`openmc.data.IncidentPhoton` class contains an
+Most of the pregenerated HDF5 libraries available at https://openmc.mcs.anl.gov
+already have photon interaction data included. If you are building a data
+library yourself, it is possible to use the Python API directly to convert
+photon interaction data from an ENDF or ACE file to an HDF5 file. The
+:class:`openmc.data.IncidentPhoton` class contains an
 :meth:`IncidentPhoton.from_ace` method that will generate photon data from an
 ACE table and an :meth:`IncidentPhoton.export_to_hdf5` method that writes the
 data to an HDF5 file:
@@ -285,7 +213,7 @@ data to an HDF5 file:
   u.export_to_hdf5('U.h5')
 
 Similarly, the :meth:`IncidentPhoton.from_endf` method can be used to read
-photon data from an ENDF file. In the case, both the photo-atomic and atomic
+photon data from an ENDF file. In this case, both the photo-atomic and atomic
 relaxation sublibrary files are required:
 
 ::
@@ -308,6 +236,11 @@ and unpack an archive (.zip or .tag.gz) from GitHub. Once unpacked, you can use
 the :class:`openmc.data.DataLibrary` class to register the .h5 files as
 described in :ref:`create_xs_library`.
 
+The `official ENDF/B-VII.1 HDF5 library
+<https://openmc.mcs.anl.gov/official-data-libraries/>`_ includes the windowed
+multipole library, so if you are using this library, the windowed multipole data
+will already be available to you.
+
 --------------------------
 Multi-Group Cross Sections
 --------------------------
@@ -322,13 +255,13 @@ to the absolute path of the file library expected to used most frequently.
 For an example of how to create a multi-group library, see
 :ref:`notebook_mg_mode_part_i`.
 
-.. _NJOY: https://njoy.github.io/NJOY2016/
-.. _NNDC: http://www.nndc.bnl.gov/endf/b7.1/acefiles.html
-.. _NEA: http://www.oecd-nea.org
-.. _JEFF: https://www.oecd-nea.org/dbforms/data/eva/evatapes/jeff_32/
-.. _MCNP: http://mcnp.lanl.gov
+.. _NJOY: http://www.njoy21.io/
+.. _NNDC: https://www.nndc.bnl.gov/endf
+.. _MCNP: https://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
-.. _TENDL: https://tendl.web.psi.ch/tendl_2015/tendl2015.html
-.. _Seltzer and Berger: https://www.sciencedirect.com/science/article/pii/0092640X86900148?via%3Dihub
+.. _ENDF/B: https://www.nndc.bnl.gov/endf/b7.1/acefiles.html
+.. _JEFF: http://www.oecd-nea.org/dbdata/jeff/jeff33/
+.. _TENDL: https://tendl.web.psi.ch/tendl_2017/tendl2017.html
+.. _Seltzer and Berger: https://doi.org/10.1016/0092-640X(86)90014-8
 .. _NIST ESTAR database: https://physics.nist.gov/PhysRefData/Star/Text/ESTAR.html
-.. _Biggs et al.: https://www.sciencedirect.com/science/article/pii/0092640X75900303
+.. _Biggs et al.: https://doi.org/10.1016/0092-640X(75)90030-3

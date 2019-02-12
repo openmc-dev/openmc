@@ -72,7 +72,7 @@ sub-elements:
     default Gnome viewer, IrfanView, etc.).  The "voxel" plot type produces a
     binary datafile containing voxel grid positioning and the cell or material
     (specified by the ``color`` tag) at the center of each voxel. These
-    datafiles can be processed into 3D SILO files using the :ref:`scripts_voxel`
+    datafiles can be processed into VTK files using the :ref:`scripts_voxel`
     script provided with OpenMC, and subsequently viewed with a 3D viewer such
     as VISIT or Paraview. See the :ref:`io_voxel` for information about the
     datafile structure.
@@ -82,7 +82,7 @@ sub-elements:
               the PNG format can often times reduce the file size by orders of
               magnitude without any loss of image quality. Likewise,
               high-resolution voxel files produced by OpenMC can be quite large,
-              but the equivalent SILO files will be significantly smaller.
+              but the equivalent VTK files will be significantly smaller.
 
     *Default*: "slice"
 

@@ -16,8 +16,6 @@ contains
 
   subroutine simulation_init_f() bind(C)
 
-    integer :: i
-
 !$omp parallel
     ! Allocate array for microscopic cross section cache
     allocate(micro_xs(n_nuclides))

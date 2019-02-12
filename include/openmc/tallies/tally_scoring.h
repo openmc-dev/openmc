@@ -22,7 +22,7 @@ class FilterBinIter
 public:
 
   //! Construct an iterator over bins that match a given particle's state.
-  FilterBinIter(const Tally& tally, Particle* p);
+  FilterBinIter(const Tally& tally, const Particle* p);
 
   //! Construct an iterator over all filter bin combinations.
   //

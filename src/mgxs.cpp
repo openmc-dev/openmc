@@ -424,7 +424,8 @@ Mgxs::combine(const std::vector<Mgxs*>& micros, const std::vector<double>& scala
 //==============================================================================
 
 double
-Mgxs::get_xs(int xstype, int gin, int* gout, double* mu, int* dg)
+Mgxs::get_xs(int xstype, int gin, const int* gout, const double* mu,
+  const int* dg)
 {
   // This method assumes that the temperature and angle indices are set
 #ifdef _OPENMP

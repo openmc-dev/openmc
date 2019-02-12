@@ -17,8 +17,7 @@ enum class TriggerMetric {
 
 //! Stops the simulation early if a desired tally uncertainty is reached.
 
-struct Trigger
-{
+struct Trigger {
   TriggerMetric metric;  //!< The type of uncertainty (e.g. std dev) measured
   double threshold;  //!< Uncertainty value below which trigger is satisfied
   int score_index;  //!< Index of the relevant score in the tally's arrays

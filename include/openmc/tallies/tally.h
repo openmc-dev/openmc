@@ -104,15 +104,17 @@ private:
 extern "C" double total_weight;
 
 namespace model {
-  extern std::vector<std::unique_ptr<Tally>> tallies;
 
-  extern std::vector<int> active_tallies;
-  extern std::vector<int> active_analog_tallies;
-  extern std::vector<int> active_tracklength_tallies;
-  extern std::vector<int> active_collision_tallies;
-  extern std::vector<int> active_meshsurf_tallies;
-  extern std::vector<int> active_surface_tallies;
-}
+extern std::vector<std::unique_ptr<Tally>> tallies;
+
+extern std::vector<int> active_tallies;
+extern std::vector<int> active_analog_tallies;
+extern std::vector<int> active_tracklength_tallies;
+extern std::vector<int> active_collision_tallies;
+extern std::vector<int> active_meshsurf_tallies;
+extern std::vector<int> active_surface_tallies;
+
+} // namespace model
 
 // Threadprivate variables
 extern "C" double global_tally_absorption;

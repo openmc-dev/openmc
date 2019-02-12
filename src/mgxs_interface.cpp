@@ -231,12 +231,13 @@ calculate_xs_c(int i_mat, int gin, double sqrtkT, const double uvw[3],
 //==============================================================================
 
 double
-get_nuclide_xs(int index, int xstype, int gin, int* gout, double* mu, int* dg)
+get_nuclide_xs(int index, int xstype, int gin, const int* gout,
+  const double* mu, const int* dg)
 {
   int gout_c;
-  int* gout_c_p;
+  const int* gout_c_p;
   int dg_c;
-  int* dg_c_p;
+  const int* dg_c_p;
   if (gout != nullptr) {
     gout_c = *gout - 1;
     gout_c_p = &gout_c;
@@ -255,12 +256,13 @@ get_nuclide_xs(int index, int xstype, int gin, int* gout, double* mu, int* dg)
 //==============================================================================
 
 double
-get_macro_xs(int index, int xstype, int gin, int* gout, double* mu, int* dg)
+get_macro_xs(int index, int xstype, int gin, const int* gout,
+  const double* mu, const int* dg)
 {
   int gout_c;
-  int* gout_c_p;
+  const int* gout_c_p;
   int dg_c;
-  int* dg_c_p;
+  const int* dg_c_p;
   if (gout != nullptr) {
     gout_c = *gout - 1;
     gout_c_p = &gout_c;

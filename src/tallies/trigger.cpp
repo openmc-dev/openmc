@@ -26,7 +26,7 @@ namespace settings {
 // Non-member functions
 //==============================================================================
 
-static std::pair<double, double>
+std::pair<double, double>
 get_tally_uncertainty(int i_tally, int score_index, int filter_index)
 {
   int n;
@@ -87,6 +87,7 @@ check_tally_triggers(double& ratio, int& tally_id, int& score)
               break;
             case TriggerMetric::relative_error:
               uncertainty = rel_err;
+              break;
           }
 
           // Compute the uncertainty / threshold ratio.

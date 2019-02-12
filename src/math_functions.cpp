@@ -60,7 +60,7 @@ double normal_percentile(double p) {
 }
 
 
-double t_percentile_c(double p, int df){
+double t_percentile(double p, int df){
   double t;
 
   if (df == 1) {

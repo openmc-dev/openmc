@@ -86,13 +86,8 @@ module settings
 
   character(MAX_FILE_LEN) :: path_input               ! Path to input file
   character(MAX_FILE_LEN) :: path_cross_sections = '' ! Path to cross_sections.xml
-  character(MAX_FILE_LEN) :: path_state_point         ! Path to binary state point
-  character(MAX_FILE_LEN) :: path_source_point        ! Path to binary source point
   character(MAX_FILE_LEN) :: path_particle_restart    ! Path to particle restart
   character(MAX_FILE_LEN) :: path_output = ''         ! Path to output directory
-
-  ! Various output options
-  logical(C_BOOL), bind(C) :: output_summary
 
   ! No reduction at end of batch
   logical(C_BOOL), bind(C) :: reduce_tallies

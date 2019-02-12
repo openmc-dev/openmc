@@ -47,10 +47,8 @@ def generate_initial_number_density():
     fuel_dict['U238'] = 2.21371e22
     fuel_dict['O16'] = 4.62954e22
     fuel_dict['O17'] = 1.127684e20
-    fuel_dict['I135'] = 1.0e10
     fuel_dict['Xe135'] = 1.0e10
     fuel_dict['Xe136'] = 1.0e10
-    fuel_dict['Cs135'] = 1.0e10
     fuel_dict['Gd156'] = 1.0e10
     fuel_dict['Gd157'] = 1.0e10
     # fuel_dict['O18'] = 9.51352e19 # Does not exist in ENDF71, merged into 17
@@ -62,10 +60,8 @@ def generate_initial_number_density():
     fuel_gd_dict['Gd156'] = 3.95517E+10
     fuel_gd_dict['Gd157'] = 1.08156e20
     fuel_gd_dict['O16'] = 4.64035e22
-    fuel_dict['I135'] = 1.0e10
     fuel_dict['Xe136'] = 1.0e10
     fuel_dict['Xe135'] = 1.0e10
-    fuel_dict['Cs135'] = 1.0e10
     # There are a whole bunch of 1e-10 stuff here.
 
     # Concentration to be used for cladding

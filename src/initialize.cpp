@@ -30,8 +30,6 @@
 #include "openmc/timer.h"
 
 // data/functions from Fortran side
-extern "C" void print_usage();
-extern "C" void print_version();
 extern "C" void read_command_line();
 extern "C" void read_geometry_xml();
 extern "C" void read_materials_xml();

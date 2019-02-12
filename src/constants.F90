@@ -14,20 +14,9 @@ module constants
   integer, parameter :: &
        VERSION(3) = [VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE]
 
-  ! HDF5 data format
-  integer, parameter :: HDF5_VERSION(2) = [2, 0]
-
-  ! WMP data format
-  integer, parameter :: WMP_VERSION(2) = [1, 1]
-
   ! Version numbers for binary files
-  integer, parameter :: VERSION_STATEPOINT(2)       = [17, 0]
-  integer, parameter :: VERSION_PARTICLE_RESTART(2) = [2, 0]
   integer, parameter :: VERSION_TRACK(2)            = [2, 0]
-  integer, parameter :: VERSION_SUMMARY(2)          = [6, 0]
   integer, parameter :: VERSION_VOLUME(2)           = [1, 0]
-  integer, parameter :: VERSION_VOXEL(2)            = [1, 0]
-  integer, parameter :: VERSION_MGXS_LIBRARY(2)     = [1, 0]
 
   ! ============================================================================
   ! ADJUSTABLE PARAMETERS
@@ -41,21 +30,14 @@ module constants
   ! Used for surface current tallies
   real(8), parameter :: TINY_BIT = 1e-8_8
 
-  ! User for precision in geometry
-  real(C_DOUBLE), bind(C, name='FP_PRECISION') :: FP_PRECISION = 1e-14_8
-  real(C_DOUBLE), bind(C, name='FP_REL_PRECISION') :: FP_REL_PRECISION = 1e-5_8
-  real(C_DOUBLE), bind(C, name='FP_COINCIDENT') :: FP_COINCIDENT = 1e-12_8
-
   ! Maximum number of collisions/crossings
   integer, parameter :: MAX_EVENTS = 1000000
-  integer, parameter :: MAX_SAMPLE = 100000
 
   ! Maximum number of secondary particles created
   integer, parameter :: MAX_SECONDARY = 1000
 
   ! Maximum number of words in a single line, length of line, and length of
   ! single word
-  integer, parameter :: MAX_WORDS       = 500
   integer, parameter :: MAX_LINE_LEN    = 250
   integer, parameter :: MAX_WORD_LEN    = 150
   integer, parameter :: MAX_FILE_LEN    = 255
@@ -70,9 +52,7 @@ module constants
        PI               = 3.1415926535898_8, & ! pi
        MASS_NEUTRON     = 1.00866491588_8,   & ! mass of a neutron in amu
        MASS_NEUTRON_EV  = 939.5654133e6_8,   & ! mass of a neutron in eV/c^2
-       AMU              = 1.660539040e-27_8, & ! 1 amu in kg
        C_LIGHT          = 2.99792458e8_8,    & ! speed of light in m/s
-       N_AVOGADRO       = 0.6022140857_8,    & ! Avogadro's number in 10^24/mol
        K_BOLTZMANN      = 8.6173303e-5_8,    & ! Boltzmann constant in eV/K
        INFINITY         = huge(0.0_8),       & ! positive infinity
        ZERO             = 0.0_8,             &
@@ -112,31 +92,12 @@ module constants
   ! ============================================================================
   ! CROSS SECTION RELATED CONSTANTS
 
-  ! Interpolation flag
-  integer, parameter ::   &
-       HISTOGRAM     = 1, & ! y is constant in x
-       LINEAR_LINEAR = 2, & ! y is linear in x
-       LINEAR_LOG    = 3, & ! y is linear in ln(x)
-       LOG_LINEAR    = 4, & ! ln(y) is linear in x
-       LOG_LOG       = 5    ! ln(y) is linear in ln(x)
-
   ! Particle type
   integer, parameter :: &
        NEUTRON  = 0, &
        PHOTON   = 1, &
        ELECTRON = 2, &
        POSITRON = 3
-
-  ! Angular distribution type
-  integer, parameter :: &
-       ANGLE_ISOTROPIC = 1, & ! Isotropic angular distribution (CE)
-       ANGLE_32_EQUI   = 2, & ! 32 equiprobable bins (CE)
-       ANGLE_TABULAR   = 3, & ! Tabular angular distribution (CE or MG)
-       ANGLE_LEGENDRE  = 4, & ! Legendre angular distribution (MG)
-       ANGLE_HISTOGRAM = 5    ! Histogram angular distribution (MG)
-
-  ! Number of mu bins to use when converting Legendres to tabular type
-  integer, parameter :: DEFAULT_NMU = 33
 
   ! Reaction types
   integer, parameter :: &
@@ -173,23 +134,11 @@ module constants
        MGXS_ISOTROPIC   = 1, & ! Isotropically Weighted Data
        MGXS_ANGLE       = 2    ! Data by Angular Bins
 
-  ! Flag to denote this was a macroscopic data object
-  real(8), parameter :: &
-       MACROSCOPIC_AWR = -TWO
-
   ! Secondary particle emission type
   integer, parameter :: &
        EMISSION_PROMPT = 1,  & ! Prompt emission of secondary particle
        EMISSION_DELAYED = 2, & ! Delayed emission of secondary particle
        EMISSION_TOTAL = 3      ! Yield represents total emission (prompt + delayed)
-
-  ! Library types
-  integer, parameter :: &
-       LIBRARY_NEUTRON = 1, &
-       LIBRARY_THERMAL = 2, &
-       LIBRARY_PHOTON = 3, &
-       LIBRARY_MULTIGROUP = 4, &
-       LIBRARY_WMP = 5
 
   ! Maximum number of partial fission reactions
   integer, parameter :: PARTIAL_FISSION_MAX = 4

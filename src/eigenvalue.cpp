@@ -331,7 +331,7 @@ void calculate_average_keff()
       if (settings::confidence_intervals) {
         // Calculate t-value for confidence intervals
         double alpha = 1.0 - CONFIDENCE_LEVEL;
-        t_value = t_percentile_c(1.0 - alpha/2.0, n - 1);
+        t_value = t_percentile(1.0 - alpha/2.0, n - 1);
       } else {
         t_value = 1.0;
       }
@@ -622,7 +622,7 @@ double ufs_get_weight(const Particle* p)
   }
 }
 
-extern "C" void write_eigenvalue_hdf5(hid_t group)
+void write_eigenvalue_hdf5(hid_t group)
 {
   write_dataset(group, "n_inactive", settings::n_inactive);
   write_dataset(group, "generations_per_batch", settings::gen_per_batch);
@@ -638,7 +638,7 @@ extern "C" void write_eigenvalue_hdf5(hid_t group)
   write_dataset(group, "k_combined", k_combined);
 }
 
-extern "C" void read_eigenvalue_hdf5(hid_t group)
+void read_eigenvalue_hdf5(hid_t group)
 {
   read_dataset(group, "generations_per_batch", settings::gen_per_batch);
   int n = simulation::restart_batch*settings::gen_per_batch;

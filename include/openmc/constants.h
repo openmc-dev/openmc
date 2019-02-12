@@ -28,6 +28,7 @@ constexpr std::array<int, 3> VERSION {VERSION_MAJOR, VERSION_MINOR, VERSION_RELE
 constexpr int HDF5_VERSION[] {2, 0};
 
 // Version numbers for binary files
+constexpr std::array<int, 2> VERSION_STATEPOINT {17, 0};
 constexpr std::array<int, 2> VERSION_PARTICLE_RESTART {2, 0};
 constexpr std::array<int, 2> VERSION_TRACK {2, 0};
 constexpr std::array<int, 2> VERSION_SUMMARY {6, 0};

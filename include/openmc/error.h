@@ -9,11 +9,6 @@
 
 namespace openmc {
 
-extern "C" void fatal_error_from_c(const char* message, int message_len);
-extern "C" void warning_from_c(const char* message, int message_len);
-extern "C" void write_message_from_c(const char* message, int message_len,
-                                     int level);
-
 inline void
 set_errmsg(const char* message)
 {
@@ -32,17 +27,7 @@ set_errmsg(const std::stringstream& message)
   std::strcpy(openmc_err_msg, message.str().c_str());
 }
 
-inline
-void fatal_error(const char* message)
-{
-  fatal_error_from_c(message, std::strlen(message));
-}
-
-inline
-void fatal_error(const std::string& message)
-{
-  fatal_error_from_c(message.c_str(), message.length());
-}
+[[noreturn]] void fatal_error(const std::string& message, int err=-1);
 
 inline
 void fatal_error(const std::stringstream& message)
@@ -51,10 +36,12 @@ void fatal_error(const std::stringstream& message)
 }
 
 inline
-void warning(const std::string& message)
+void fatal_error(const char* message)
 {
-  warning_from_c(message.c_str(), message.length());
+  fatal_error({message, std::strlen(message)});
 }
+
+void warning(const std::string& message);
 
 inline
 void warning(const std::stringstream& message)
@@ -62,17 +49,7 @@ void warning(const std::stringstream& message)
   warning(message.str());
 }
 
-inline
-void write_message(const char* message, int level)
-{
-  write_message_from_c(message, std::strlen(message), level);
-}
-
-inline
-void write_message(const std::string& message, int level)
-{
-  write_message_from_c(message.c_str(), message.length(), level);
-}
+void write_message(const std::string& message, int level);
 
 inline
 void write_message(const std::stringstream& message, int level)

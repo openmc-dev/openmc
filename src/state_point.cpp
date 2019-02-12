@@ -17,9 +17,12 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
+#include "openmc/mgxs_interface.h"
+#include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/timer.h"
@@ -101,13 +104,135 @@ openmc_statepoint_write(const char* filename, bool* write_source)
     write_attribute(file_id, "source_present", write_source_);
 
     // Write out information for eigenvalue run
-    if (settings::run_mode == RUN_MODE_EIGENVALUE) write_eigenvalue_hdf5(file_id);
+    if (settings::run_mode == RUN_MODE_EIGENVALUE)
+      write_eigenvalue_hdf5(file_id);
 
-    // Write tally-related data
     hid_t tallies_group = create_group(file_id, "tallies");
+
+    // Write meshes
     meshes_to_hdf5(tallies_group);
-    statepoint_write_f(file_id);
+
+    // Write information for derivatives
+    if (!model::tally_derivs.empty()) {
+      hid_t derivs_group = create_group(tallies_group, "derivatives");
+      for (const auto& deriv : model::tally_derivs) {
+        hid_t deriv_group = create_group(derivs_group,
+          "derivative " + std::to_string(deriv.id));
+        write_dataset(deriv_group, "material", deriv.diff_material);
+        if (deriv.variable == DIFF_DENSITY) {
+          write_dataset(deriv_group, "independent variable", "density");
+        } else if (deriv.variable == DIFF_NUCLIDE_DENSITY) {
+          write_dataset(deriv_group, "independent variable", "nuclide_density");
+          //TODO: off-by-one
+          write_dataset(deriv_group, "nuclide",
+            data::nuclides[deriv.diff_nuclide-1]->name_);
+        } else if (deriv.variable == DIFF_TEMPERATURE) {
+          write_dataset(deriv_group, "independent variable", "temperature");
+        } else {
+          fatal_error("Independent variable for derivative "
+            + std::to_string(deriv.id) + " not defined in state_point.cpp");
+        }
+        close_group(deriv_group);
+      }
+      close_group(derivs_group);
+    }
+
+    // Write information for filters
+    hid_t filters_group = create_group(tallies_group, "filters");
+    write_attribute(filters_group, "n_filters", model::tally_filters.size());
+    if (!model::tally_filters.empty()) {
+      // Write filter IDs
+      std::vector<int32_t> filter_ids;
+      filter_ids.reserve(model::tally_filters.size());
+      for (const auto& filt : model::tally_filters)
+        filter_ids.push_back(filt->id_);
+      write_attribute(filters_group, "ids", filter_ids);
+
+      // Write info for each filter
+      for (const auto& filt : model::tally_filters) {
+        hid_t filter_group = create_group(filters_group,
+          "filter " + std::to_string(filt->id_));
+        filt->to_statepoint(filter_group);
+        close_group(filter_group);
+      }
+    }
+    close_group(filters_group);
+
+    // Write information for tallies
+    write_attribute(tallies_group, "n_tallies", model::tallies.size());
+    if (!model::tallies.empty()) {
+      // Write tally IDs
+      std::vector<int32_t> tally_ids;
+      tally_ids.reserve(model::tallies.size());
+      for (const auto& tally : model::tallies)
+        tally_ids.push_back(tally->id_);
+      write_attribute(tallies_group, "ids", tally_ids);
+
+      // Write all tally information except results
+      //TODO: use these two lines when openmc_get_n_realizations isn't needed
+      //for (const auto& tally_ptr : model::tallies) {
+      //  const auto& tally {*tally_ptr};
+      for (auto i_tally = 0; i_tally < model::tallies.size(); ++i_tally) {
+        const auto& tally {*model::tallies[i_tally]};
+        hid_t tally_group = create_group(tallies_group,
+          "tally " + std::to_string(tally.id_));
+
+        write_dataset(tally_group, "name",  tally.name_);
+
+        if (tally.estimator_ == ESTIMATOR_ANALOG) {
+          write_dataset(tally_group, "estimator", "analog");
+        } else if (tally.estimator_ == ESTIMATOR_TRACKLENGTH) {
+          write_dataset(tally_group, "estimator", "tracklength");
+        } else if (tally.estimator_ == ESTIMATOR_COLLISION) {
+          write_dataset(tally_group, "estimator", "collision");
+        }
+
+        // TODO: get this directly from the tally object when it's moved to C++
+        int32_t n_realizations;
+        auto err = openmc_tally_get_n_realizations(i_tally+1, &n_realizations);
+        write_dataset(tally_group, "n_realizations", n_realizations);
+
+        // Write the ID of each filter attached to this tally
+        write_dataset(tally_group, "n_filters", tally.filters().size());
+        if (!tally.filters().empty()) {
+          std::vector<int32_t> filter_ids;
+          filter_ids.reserve(tally.filters().size());
+          for (auto i_filt : tally.filters())
+            filter_ids.push_back(model::tally_filters[i_filt]->id_);
+          write_dataset(tally_group, "filters", filter_ids);
+        }
+
+        // Write the nuclides this tally scores
+        std::vector<std::string> nuclides;
+        for (auto i_nuclide : tally.nuclides_) {
+          if (i_nuclide == -1) {
+            nuclides.push_back("total");
+          } else {
+            if (settings::run_CE) {
+              nuclides.push_back(data::nuclides[i_nuclide]->name_);
+            } else {
+              nuclides.push_back(data::nuclides_MG[i_nuclide].name);
+            }
+          }
+        }
+        write_dataset(tally_group, "nuclides", nuclides);
+
+        if (tally.deriv_ != C_NONE) write_dataset(tally_group, "derivative",
+          model::tally_derivs[tally.deriv_].id);
+
+        // Write the tally score bins
+        std::vector<std::string> scores;
+        for (auto sc : tally.scores_) scores.push_back(reaction_name(sc));
+        write_dataset(tally_group, "n_score_bins", scores.size());
+        write_dataset(tally_group, "score_bins", scores);
+
+        close_group(tally_group);
+      }
+
+    }
+
     close_group(tallies_group);
+    statepoint_write_f(file_id);
   }
 
   // Check for the no-tally-reduction method

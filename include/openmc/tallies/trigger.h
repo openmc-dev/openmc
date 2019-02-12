@@ -19,9 +19,9 @@ enum class TriggerMetric {
 
 struct Trigger
 {
-  TriggerMetric metric;
-  double threshold;  //!< uncertainty value below which trigger is satisfied
-  int score_index;  //!< index of the relevant score in the tally's arrays
+  TriggerMetric metric;  //!< The type of uncertainty (e.g. std dev) measured
+  double threshold;  //!< Uncertainty value below which trigger is satisfied
+  int score_index;  //!< Index of the relevant score in the tally's arrays
 };
 
 //! Stops the simulation early if a desired k-effective uncertainty is reached.

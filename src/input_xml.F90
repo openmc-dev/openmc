@@ -828,7 +828,8 @@ contains
 
       ! If settings.xml trigger is turned on, create tally triggers
       if (trigger_on) then
-        call tally_init_triggers(t % ptr, i_start + i - 1, node_tal % ptr)
+        !TODO: off-by-one
+        call tally_init_triggers(t % ptr, i_start + i - 1 - 1, node_tal % ptr)
       end if
 
       ! =======================================================================

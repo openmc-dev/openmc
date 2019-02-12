@@ -23,7 +23,7 @@ namespace settings {
 }
 
 //==============================================================================
-// Non-memeber functions
+// Non-member functions
 //==============================================================================
 
 static std::pair<double, double>
@@ -44,7 +44,7 @@ get_tally_uncertainty(int i_tally, int score_index, int filter_index)
   return {std_dev, rel_err};
 }
 
-//! Finds the limiting limiting tally trigger.
+//! Find the limiting limiting tally trigger.
 //
 //! param[out] ratio The uncertainty/threshold ratio for the most limiting
 //!   tally trigger
@@ -107,7 +107,7 @@ check_tally_triggers(double& ratio, int& tally_id, int& score)
   }
 }
 
-//! Computes the uncertainty/threshold ratio for the eigenvalue trigger.
+//! Compute the uncertainty/threshold ratio for the eigenvalue trigger.
 
 double
 check_keff_trigger()

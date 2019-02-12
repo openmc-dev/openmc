@@ -50,11 +50,11 @@ public:
   //----------------------------------------------------------------------------
   // Major public data members.
 
-  int id_; //!< user-defined identifier
+  int id_; //!< User-defined identifier
 
-  std::string name_; //!< user-defined name
+  std::string name_; //!< User-defined name
 
-  int type_ {TALLY_VOLUME}; //!< volume, surface current
+  int type_ {TALLY_VOLUME}; //!< e.g. volume, surface current
 
   //! Event type that contributes to this tally
   int estimator_ {ESTIMATOR_TRACKLENGTH};

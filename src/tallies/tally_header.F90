@@ -125,7 +125,6 @@ module tally_header
     procedure :: score_bins => tally_get_score_bin
     procedure :: n_filters => tally_get_n_filters
     procedure :: filter => tally_get_filter
-    procedure :: stride => tally_get_stride
     procedure :: n_filter_bins => tally_get_n_filter_bins
     procedure :: n_nuclide_bins => tally_get_n_nuclide_bins
     procedure :: nuclide_bins => tally_get_nuclide_bins
@@ -435,21 +434,6 @@ contains
       end function
     end interface
     filt = tally_get_filter_c(this % ptr, i-1)
-  end function
-
-  function tally_get_stride(this, i) result(stride)
-    class(TallyObject) :: this
-    integer(C_INT) :: i
-    integer(C_INT32_T) :: stride
-    interface
-      function tally_get_stride_c(tally, i) result(stride) bind(C)
-        import C_PTR, C_INT, C_INT32_T
-        type(C_PTR), value :: tally
-        integer(C_INT), value :: i
-        integer(C_INT32_T) :: stride
-      end function
-    end interface
-    stride = tally_get_stride_c(this % ptr, i-1)
   end function
 
   function tally_get_n_filter_bins(this) result(n_filter_bins)

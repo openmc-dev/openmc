@@ -478,25 +478,20 @@ Tally::init_triggers(pugi::xml_node node, int i_tally)
       trigger_scores.push_back("all");
     }
 
-    //TODO: change this when tally scores are moved to C++
-    // Get access to the tally's scores.
-    int* tally_scores;
-    int n_tally_scores;
-    auto err = openmc_tally_get_scores(i_tally, &tally_scores, &n_tally_scores);
-
     // Parse the trigger scores and populate the triggers_ vector.
+    const auto& tally {*model::tallies[i_tally]};
     for (auto score_str : trigger_scores) {
       if (score_str == "all") {
-        triggers_.reserve(triggers_.size() + n_tally_scores);
-        for (auto i_score = 0; i_score < n_tally_scores; ++i_score) {
+        triggers_.reserve(triggers_.size() + tally.scores_.size());
+        for (auto i_score = 0; i_score < tally.scores_.size(); ++i_score) {
           triggers_.push_back({metric, threshold, i_score});
         }
       } else {
         int i_score = 0;
-        for (; i_score < n_tally_scores; ++i_score) {
-          if (reaction_name(tally_scores[i_score]) == score_str) break;
+        for (; i_score < tally.scores_.size(); ++i_score) {
+          if (reaction_name(tally.scores_[i_score]) == score_str) break;
         }
-        if (i_score == n_tally_scores) {
+        if (i_score == tally.scores_.size()) {
           std::stringstream msg;
           msg << "Could not find the score \"" << score_str << "\" in tally "
               << id_ << " but it was listed in a trigger on that tally";
@@ -901,8 +896,6 @@ extern "C" {
   int tally_get_n_filters_c(Tally* tally) {return tally->filters().size();}
 
   int32_t tally_get_filter_c(Tally* tally, int i) {return tally->filters(i);}
-
-  int32_t tally_get_stride_c(Tally* tally, int i) {return tally->strides(i);}
 
   int32_t tally_get_n_filter_bins_c(Tally* tally)
   {return tally->n_filter_bins();}

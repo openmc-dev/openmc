@@ -90,7 +90,7 @@ contains
       ! Write IDs of filters
       allocate(id_array(n_filters))
       do i = 1, n_filters
-        id_array(i) = filters(i) % obj % id
+        id_array(i) = filters(i) % obj % id()
       end do
       call write_attribute(filters_group, "ids", id_array)
       deallocate(id_array)
@@ -98,7 +98,7 @@ contains
       ! Write filter information
       FILTER_LOOP: do i = 1, n_filters
         filter_group = create_group(filters_group, "filter " // &
-             trim(to_str(filters(i) % obj % id)))
+             trim(to_str(filters(i) % obj % id())))
         call filters(i) % obj % to_statepoint(filter_group)
         call close_group(filter_group)
       end do FILTER_LOOP
@@ -145,7 +145,7 @@ contains
           ! Write IDs of filters
           allocate(id_array(tally % n_filters()))
           do j = 1, tally % n_filters() 
-            id_array(j) = filters(tally % filter(j) + 1) % obj % id
+            id_array(j) = filters(tally % filter(j) + 1) % obj % id()
           end do
           call write_dataset(tally_group, "filters", id_array)
           deallocate(id_array)

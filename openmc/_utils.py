@@ -29,7 +29,6 @@ def download(url, checksum=None, **kwargs):
 
     """
     req = urlopen(url, **kwargs)
-    print(kwargs)
     # Get file size from header
     file_size = req.length
 

@@ -16,8 +16,7 @@ def download(url, checksum=None, **kwargs):
         URL from which to download
     checksum : str or None
         MD5 checksum to check against
-    **kwargs : dict
-        Keyword arguments passed to :func:urllib.request.urlopen
+    Keyword arguments passed to :func:urllib.request.urlopen
 
     Returns
     -------

@@ -29,7 +29,6 @@ module input_xml
   use tally_derivative_header
   use tally_filter_header
   use tally_filter
-  use trigger_header
   use volume_header
   use xml_interface
 
@@ -446,53 +445,67 @@ contains
 
     integer :: i             ! loop over user-specified tallies
     integer :: j             ! loop over words
-    integer :: k             ! another loop index
     integer :: l             ! loop over bins
     integer :: filter_id     ! user-specified identifier for filter
     integer :: tally_id      ! user-specified identifier for filter
+    integer :: deriv_id
     integer :: i_filt        ! index in filters array
-    integer :: i_elem        ! index of entry in dictionary
     integer :: n             ! size of arrays in mesh specification
     integer :: n_words       ! number of words read
     integer :: n_filter      ! number of filters
-    integer :: n_scores      ! number of scores
-    integer :: n_user_trig   ! number of user-specified tally triggers
-    integer :: trig_ind      ! index of triggers array for each tally
-    integer :: user_trig_ind ! index of user-specified triggers for each tally
     integer :: i_start, i_end
     integer(C_INT) :: err
-    real(8) :: threshold     ! trigger convergence threshold
-    integer :: MT            ! user-specified MT for score
     logical :: file_exists   ! does tallies.xml file exist?
     integer, allocatable :: temp_filter(:) ! temporary filter indices
+    logical :: has_energyout
+    integer :: particle_filter_index
     character(MAX_LINE_LEN) :: filename
-    character(MAX_WORD_LEN) :: word
-    character(MAX_WORD_LEN) :: score_name
     character(MAX_WORD_LEN) :: temp_str
-    character(MAX_WORD_LEN), allocatable :: sarray(:)
-    type(DictCharInt) :: trigger_scores
     type(TallyFilterContainer), pointer :: f
     type(XMLDocument) :: doc
     type(XMLNode) :: root
     type(XMLNode) :: node_tal
     type(XMLNode) :: node_filt
-    type(XMLNode) :: node_trigger
     type(XMLNode), allocatable :: node_tal_list(:)
     type(XMLNode), allocatable :: node_filt_list(:)
-    type(XMLNode), allocatable :: node_trigger_list(:)
-    type(XMLNode), allocatable :: node_deriv_list(:)
-    type(DictEntryCI) :: elem
+    type(TallyDerivative), pointer :: deriv
+
+    interface
+      subroutine tally_init_from_xml(tally_ptr, xml_node) bind(C)
+        import C_PTR
+        type(C_PTR), value :: tally_ptr
+        type(C_PTR) :: xml_node
+      end subroutine
+
+      subroutine tally_set_scores(tally_ptr, xml_node) bind(C)
+        import C_PTR
+        type(C_PTR), value :: tally_ptr
+        type(C_PTR) :: xml_node
+      end subroutine
+
+      subroutine tally_set_nuclides(tally_ptr, xml_node) bind(C)
+        import C_PTR
+        type(C_PTR), value :: tally_ptr
+        type(C_PTR) :: xml_node
+      end subroutine
+
+      subroutine tally_init_triggers(tally_ptr, i_tally, xml_node) bind(C)
+        import C_PTR, C_INT
+        type(C_PTR), value :: tally_ptr
+        integer(C_INT), value :: i_tally
+        type(C_PTR) :: xml_node
+      end subroutine
+
+      subroutine read_tally_derivatives(node_ptr) bind(C)
+        import C_PTR
+        type(C_PTR) :: node_ptr
+      end subroutine
+    end interface
 
     ! Check if tallies.xml exists
     filename = trim(path_input) // "tallies.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
-      ! We need to allocate tally_derivs to avoid segfaults.  Also needs to be
-      ! done in parallel because tally derivs are threadprivate.
-!$omp parallel
-      allocate(tally_derivs(0))
-!$omp end parallel
-
       ! Since a tallies.xml file is optional, no error is issued here
       return
     end if
@@ -533,29 +546,7 @@ contains
     ! ==========================================================================
     ! READ DATA FOR DERIVATIVES
 
-    ! Get pointer list to XML <derivative> nodes and allocate global array.
-    ! The array is threadprivate so it must be allocated in parallel.
-    call get_node_list(root, "derivative", node_deriv_list)
-!$omp parallel
-    allocate(tally_derivs(size(node_deriv_list)))
-!$omp end parallel
-
-    ! Make sure this is not an MG run.
-    if (.not. run_CE .and. size(node_deriv_list) > 0) then
-      call fatal_error("Differential tallies not supported in multi-group mode")
-    end if
-
-    ! Read derivative attributes.
-    do i = 1, size(node_deriv_list)
-!$omp parallel
-!$omp critical (ReadTallyDeriv)
-      call tally_derivs(i) % from_xml(node_deriv_list(i))
-!$omp end critical (ReadTallyDeriv)
-!$omp end parallel
-
-      ! Update tally derivative dictionary
-      call tally_deriv_dict % set(tally_derivs(i) % id, i)
-    end do
+    call read_tally_derivatives(root % ptr)
 
     ! ==========================================================================
     ! READ FILTER DATA
@@ -643,6 +634,8 @@ contains
       ! Get pointer to tally xml node
       node_tal = node_tal_list(i)
 
+      call tally_init_from_xml(t % ptr, node_tal % ptr)
+
       ! Copy and set tally id
       if (check_for_node(node_tal, "id")) then
         call get_node_value(node_tal, "id", tally_id)
@@ -688,11 +681,11 @@ contains
           else
             call fatal_error("Could not find filter " &
                  // trim(to_str(temp_filter(j))) // " specified on tally " &
-                 // trim(to_str(t % id)))
+                 // trim(to_str(t % id())))
           end if
 
           ! Store the index of the filter
-          temp_filter(j) = i_filt
+          temp_filter(j) = i_filt - 1
         end do
 
         ! Set the filters
@@ -700,368 +693,53 @@ contains
       end if
       deallocate(temp_filter)
 
+      ! Check for the presence of certain filter types
+      has_energyout = (t % energyout_filter() > 0)
+      particle_filter_index = 0
+      do j = 1, t % n_filters()
+        select type (filt => filters(t % filter(j) + 1) % obj)
+        type is (ParticleFilter)
+          particle_filter_index = j
+        end select
+      end do
+
+      ! Change the tally estimator if a filter demands it
+      do j = 1, t % n_filters()
+        select type (filt => filters(t % filter(j) + 1) % obj)
+        type is (EnergyoutFilter)
+          call t % set_estimator(ESTIMATOR_ANALOG)
+        type is (LegendreFilter)
+          call t % set_estimator(ESTIMATOR_ANALOG)
+        type is (SphericalHarmonicsFilter)
+          if (filt % cosine() == COSINE_SCATTER) then
+            call t % set_estimator(ESTIMATOR_ANALOG)
+          end if
+        type is (SpatialLegendreFilter)
+          call t % set_estimator(ESTIMATOR_COLLISION)
+        type is (ZernikeFilter)
+          call t % set_estimator(ESTIMATOR_COLLISION)
+        type is (ZernikeRadialFilter)
+          call t % set_estimator(ESTIMATOR_COLLISION)
+        end select
+      end do
+
       ! =======================================================================
       ! READ DATA FOR NUCLIDES
 
-      if (check_for_node(node_tal, "nuclides")) then
-
-        ! Allocate a temporary string array for nuclides and copy values over
-        allocate(sarray(node_word_count(node_tal, "nuclides")))
-        call get_node_array(node_tal, "nuclides", sarray)
-
-        if (trim(sarray(1)) == 'all') then
-          ! Handle special case <nuclides>all</nuclides>
-          allocate(t % nuclide_bins(n_nuclides + 1))
-
-          ! Set bins to 1, 2, 3, ..., n_nuclides, -1
-          t % nuclide_bins(1:n_nuclides) = &
-               (/ (j, j=1, n_nuclides) /)
-          t % nuclide_bins(n_nuclides + 1) = -1
-
-          ! Set number of nuclide bins
-          t % n_nuclide_bins = n_nuclides + 1
-
-          ! Set flag so we can treat this case specially
-          t % all_nuclides = .true.
-        else
-          ! Any other case, e.g. <nuclides>U-235 Pu-239</nuclides>
-          n_words = node_word_count(node_tal, "nuclides")
-          allocate(t % nuclide_bins(n_words))
-          do j = 1, n_words
-
-            ! Check if total material was specified
-            if (trim(sarray(j)) == 'total') then
-              t % nuclide_bins(j) = -1
-              cycle
-            end if
-
-            ! If a specific nuclide was specified
-            word = sarray(j)
-
-            ! Search through nuclides
-            k = nuclide_map_get(to_c_string(word))
-            if (k == -1) then
-              call fatal_error("Could not find the nuclide " &
-                   // trim(word) // " specified in tally " &
-                   // trim(to_str(t % id)) // " in any material.")
-            end if
-
-            ! Set bin to index in nuclides array
-            t % nuclide_bins(j) = k
-          end do
-
-          ! Set number of nuclide bins
-          t % n_nuclide_bins = n_words
-        end if
-
-        ! Deallocate temporary string array
-        deallocate(sarray)
-
-      else
-        ! No <nuclides> were specified -- create only one bin will be added
-        ! for the total material.
-        allocate(t % nuclide_bins(1))
-        t % nuclide_bins(1) = -1
-        t % n_nuclide_bins = 1
-      end if
+      call tally_set_nuclides(t % ptr, node_tal % ptr)
 
       ! =======================================================================
       ! READ DATA FOR SCORES
 
+      call tally_set_scores(t % ptr, node_tal % ptr)
+
       if (check_for_node(node_tal, "scores")) then
         n_words = node_word_count(node_tal, "scores")
-        allocate(sarray(n_words))
-        call get_node_array(node_tal, "scores", sarray)
-
-        ! Append the score to the list of possible trigger scores
-        do j = 1, n_words
-          sarray(j) = to_lower(sarray(j))
-          score_name = trim(sarray(j))
-
-          if (trigger_on) call trigger_scores % set(trim(score_name), j)
-
-        end do
-        n_scores = n_words
-
-        ! Allocate score storage accordingly
-        allocate(t % score_bins(n_scores))
-
-        ! Check the validity of the scores and their filters
-        do j = 1, n_scores
-          score_name = sarray(j)
-
-          ! Check if delayed group filter is used with any score besides
-          ! delayed-nu-fission or decay-rate
-          if ((score_name /= 'delayed-nu-fission' .and. &
-               score_name /= 'decay-rate') .and. &
-               t % find_filter(FILTER_DELAYEDGROUP) > 0) then
-            call fatal_error("Cannot tally " // trim(score_name) // " with a &
-                 &delayedgroup filter.")
-          end if
-
-          select case (trim(score_name))
-          case ('flux')
-            ! Prohibit user from tallying flux for an individual nuclide
-            if (.not. (t % n_nuclide_bins == 1 .and. &
-                 t % nuclide_bins(1) == -1)) then
-              call fatal_error("Cannot tally flux for an individual nuclide.")
-            end if
-
-            t % score_bins(j) = SCORE_FLUX
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              call fatal_error("Cannot tally flux with an outgoing energy &
-                   &filter.")
-            end if
-
-          case ('total', '(n,total)')
-            t % score_bins(j) = SCORE_TOTAL
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              call fatal_error("Cannot tally total reaction rate with an &
-                   &outgoing energy filter.")
-            end if
-
-          case ('scatter')
-            t % score_bins(j) = SCORE_SCATTER
-            if (t % find_filter(FILTER_ENERGYOUT) > 0 .or. &
-                 t % find_filter(FILTER_LEGENDRE) > 0) then
-              ! Set tally estimator to analog
-              t % estimator = ESTIMATOR_ANALOG
-            end if
-
-          case ('nu-scatter')
-            t % score_bins(j) = SCORE_NU_SCATTER
-
-            ! Set tally estimator to analog for CE mode
-            ! (MG mode has all data available without a collision being
-            ! necessary)
-            if (run_CE) then
-              t % estimator = ESTIMATOR_ANALOG
-            else
-              if (t % find_filter(FILTER_ENERGYOUT) > 0 .or. &
-                   t % find_filter(FILTER_LEGENDRE) > 0) then
-                ! Set tally estimator to analog
-                t % estimator = ESTIMATOR_ANALOG
-              end if
-            end if
-
-          case ('n2n', '(n,2n)')
-            t % score_bins(j) = N_2N
-            t % depletion_rx = .true.
-
-          case ('n3n', '(n,3n)')
-            t % score_bins(j) = N_3N
-            t % depletion_rx = .true.
-
-          case ('n4n', '(n,4n)')
-            t % score_bins(j) = N_4N
-            t % depletion_rx = .true.
-
-          case ('absorption')
-            t % score_bins(j) = SCORE_ABSORPTION
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              call fatal_error("Cannot tally absorption rate with an outgoing &
-                   &energy filter.")
-            end if
-          case ('fission', '18')
-            t % score_bins(j) = SCORE_FISSION
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              call fatal_error("Cannot tally fission rate with an outgoing &
-                   &energy filter.")
-            end if
-          case ('nu-fission')
-            t % score_bins(j) = SCORE_NU_FISSION
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              ! Set tally estimator to analog
-              t % estimator = ESTIMATOR_ANALOG
-            end if
-          case ('decay-rate')
-            t % score_bins(j) = SCORE_DECAY_RATE
-          case ('delayed-nu-fission')
-            t % score_bins(j) = SCORE_DELAYED_NU_FISSION
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              ! Set tally estimator to analog
-              t % estimator = ESTIMATOR_ANALOG
-            end if
-          case ('prompt-nu-fission')
-            t % score_bins(j) = SCORE_PROMPT_NU_FISSION
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              ! Set tally estimator to analog
-              t % estimator = ESTIMATOR_ANALOG
-            end if
-          case ('kappa-fission')
-            t % score_bins(j) = SCORE_KAPPA_FISSION
-          case ('inverse-velocity')
-            t % score_bins(j) = SCORE_INVERSE_VELOCITY
-          case ('fission-q-prompt')
-            t % score_bins(j) = SCORE_FISS_Q_PROMPT
-          case ('fission-q-recoverable')
-            t % score_bins(j) = SCORE_FISS_Q_RECOV
-          case ('current')
-
-            ! Check which type of current is desired: mesh currents or
-            ! surface currents
-            if (t % find_filter(FILTER_SURFACE) > 0 .or. &
-                 &t % find_filter(FILTER_CELL) > 0 .or. &
-                 &t % find_filter(FILTER_CELLFROM) > 0) then
-
-              ! Check to make sure that mesh surface currents are not desired as well
-              if (t % find_filter(FILTER_MESHSURFACE) > 0) then
-                call fatal_error("Cannot tally mesh surface currents &
-                     &in the same tally as normal surface currents")
-              end if
-
-              t % type = TALLY_SURFACE
-              t % score_bins(j) = SCORE_CURRENT
-
-            else if (t % find_filter(FILTER_MESHSURFACE) > 0) then
-              t % score_bins(j) = SCORE_CURRENT
-              t % type = TALLY_MESH_SURFACE
-
-              ! Check to make sure that current is the only desired response
-              ! for this tally
-              if (n_words > 1) then
-                call fatal_error("Cannot tally other scores in the &
-                     &same tally as surface currents")
-              end if
-            else
-                call fatal_error("Cannot tally currents without surface &
-                     &type filters")
-            end if
-
-          case ('events')
-            t % score_bins(j) = SCORE_EVENTS
-          case ('elastic', '(n,elastic)')
-            t % score_bins(j) = ELASTIC
-          case ('(n,2nd)')
-            t % score_bins(j) = N_2ND
-          case ('(n,na)')
-            t % score_bins(j) = N_2NA
-          case ('(n,n3a)')
-            t % score_bins(j) = N_N3A
-          case ('(n,2na)')
-            t % score_bins(j) = N_2NA
-          case ('(n,3na)')
-            t % score_bins(j) = N_3NA
-          case ('(n,np)')
-            t % score_bins(j) = N_NP
-          case ('(n,n2a)')
-            t % score_bins(j) = N_N2A
-          case ('(n,2n2a)')
-            t % score_bins(j) = N_2N2A
-          case ('(n,nd)')
-            t % score_bins(j) = N_ND
-          case ('(n,nt)')
-            t % score_bins(j) = N_NT
-          case ('(n,nHe-3)')
-            t % score_bins(j) = N_N3HE
-          case ('(n,nd2a)')
-            t % score_bins(j) = N_ND2A
-          case ('(n,nt2a)')
-            t % score_bins(j) = N_NT2A
-          case ('(n,3nf)')
-            t % score_bins(j) = N_3NF
-          case ('(n,2np)')
-            t % score_bins(j) = N_2NP
-          case ('(n,3np)')
-            t % score_bins(j) = N_3NP
-          case ('(n,n2p)')
-            t % score_bins(j) = N_N2P
-          case ('(n,npa)')
-            t % score_bins(j) = N_NPA
-          case ('(n,n1)')
-            t % score_bins(j) = N_N1
-          case ('(n,nc)')
-            t % score_bins(j) = N_NC
-          case ('(n,gamma)')
-            t % score_bins(j) = N_GAMMA
-            t % depletion_rx = .true.
-          case ('(n,p)')
-            t % score_bins(j) = N_P
-            t % depletion_rx = .true.
-          case ('(n,d)')
-            t % score_bins(j) = N_D
-          case ('(n,t)')
-            t % score_bins(j) = N_T
-          case ('(n,3He)')
-            t % score_bins(j) = N_3HE
-          case ('(n,a)')
-            t % score_bins(j) = N_A
-            t % depletion_rx = .true.
-          case ('(n,2a)')
-            t % score_bins(j) = N_2A
-          case ('(n,3a)')
-            t % score_bins(j) = N_3A
-          case ('(n,2p)')
-            t % score_bins(j) = N_2P
-          case ('(n,pa)')
-            t % score_bins(j) = N_PA
-          case ('(n,t2a)')
-            t % score_bins(j) = N_T2A
-          case ('(n,d2a)')
-            t % score_bins(j) = N_D2A
-          case ('(n,pd)')
-            t % score_bins(j) = N_PD
-          case ('(n,pt)')
-            t % score_bins(j) = N_PT
-          case ('(n,da)')
-            t % score_bins(j) = N_DA
-
-          case default
-            ! First look for deprecated scores
-            if (starts_with(trim(score_name), 'scatter-') .or. &
-                 starts_with(trim(score_name), 'nu-scatter-') .or. &
-                 starts_with(trim(score_name), 'total-y') .or. &
-                 starts_with(trim(score_name), 'flux-y')) then
-              call fatal_error(trim(score_name) // " is no longer available.")
-            end if
-
-            ! Assume that user has specified an MT number
-            MT = int(str_to_int(score_name))
-
-            if (MT /= ERROR_INT) then
-              ! Specified score was an integer
-              if (MT > 1) then
-                t % score_bins(j) = MT
-              else
-                call fatal_error("Invalid MT on <scores>: " // trim(score_name))
-              end if
-
-            else
-              ! Specified score was not an integer
-              call fatal_error("Unknown scoring function: " // trim(score_name))
-            end if
-
-          end select
-
-          ! Do a check at the end (instead of for every case) to make sure
-          ! the tallies are compatible with MG mode where we have less detailed
-          ! nuclear data
-          if (.not. run_CE .and. t % score_bins(j) > 0) then
-            call fatal_error("Cannot tally " // trim(score_name) // &
-                             " reaction rate in multi-group mode")
-          end if
-        end do
-
-        t % n_score_bins = n_scores
-
-        ! Deallocate temporary string array of scores
-        deallocate(sarray)
-
-        ! Check that no duplicate scores exist
-        do j = 1, n_scores - 1
-          do k = j + 1, n_scores
-            if (t % score_bins(j) == t % score_bins(k)) then
-              call fatal_error("Duplicate score of type '" // trim(&
-                   reaction_name(t % score_bins(j))) // "' found in tally " &
-                   // trim(to_str(t % id)))
-            end if
-          end do
-        end do
 
         ! Check if tally is compatible with particle type
         if (photon_transport) then
-          if (t % find_filter(FILTER_PARTICLE) == 0) then
-            do j = 1, n_scores
+          if (particle_filter_index == 0) then
+            do j = 1, t % n_score_bins()
               select case (t % score_bins(j))
               case (SCORE_INVERSE_VELOCITY)
                 call fatal_error("Particle filter must be used with photon &
@@ -1075,18 +753,18 @@ contains
               end select
             end do
           else
-            select type(filt => filters(t % find_filter(FILTER_PARTICLE)) % obj)
+            select type(filt => filters(particle_filter_index) % obj)
             type is (ParticleFilter)
               do l = 1, filt % n_bins
                 if (filt % particles(l) == ELECTRON .or. filt % particles(l) == POSITRON) then
-                  t % estimator = ESTIMATOR_ANALOG
+                  call t % set_estimator(ESTIMATOR_ANALOG)
                 end if
               end do
             end select
           end if
         else
-          if (t % find_filter(FILTER_PARTICLE) > 0) then
-            select type(filt => filters(t % find_filter(FILTER_PARTICLE)) % obj)
+          if (particle_filter_index > 0) then
+            select type(filt => filters(particle_filter_index) % obj)
             type is (ParticleFilter)
               do l = 1, filt % n_bins
                 if (filt % particles(l) /= NEUTRON) then
@@ -1100,38 +778,39 @@ contains
         end if
       else
         call fatal_error("No <scores> specified on tally " &
-             // trim(to_str(t % id)) // ".")
+             // trim(to_str(t % id())) // ".")
       end if
 
       ! Check for a tally derivative.
       if (check_for_node(node_tal, "derivative")) then
-        ! Temporarily store the derivative id.
-        call get_node_value(node_tal, "derivative", t % deriv)
+        call get_node_value(node_tal, "derivative", deriv_id)
 
         ! Find the derivative with the given id, and store it's index.
-        do j = 1, size(tally_derivs)
-          if (tally_derivs(j) % id == t % deriv) then
-            t % deriv = j
+        do j = 0, n_tally_derivs() - 1
+          deriv => tally_deriv_c(j)
+          if (deriv % id == deriv_id) then
+            call t % set_deriv(j)
             ! Only analog or collision estimators are supported for differential
             ! tallies.
-            if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-              t % estimator = ESTIMATOR_COLLISION
+            if (t % estimator() == ESTIMATOR_TRACKLENGTH) then
+              call t % set_estimator(ESTIMATOR_COLLISION)
             end if
             ! We found the derivative we were looking for; exit the do loop.
             exit
           end if
-          if (j == size(tally_derivs)) then
+          if (j == n_tally_derivs()) then
             call fatal_error("Could not find derivative " &
-                 // trim(to_str(t % deriv)) // " specified on tally " &
-                 // trim(to_str(t % id)))
+                 // trim(to_str(deriv_id)) // " specified on tally " &
+                 // trim(to_str(t % id())))
           end if
         end do
 
-        if (tally_derivs(t % deriv) % variable == DIFF_NUCLIDE_DENSITY &
-             .or. tally_derivs(t % deriv) % variable == DIFF_TEMPERATURE) then
-          if (any(t % nuclide_bins == -1)) then
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              call fatal_error("Error on tally " // trim(to_str(t % id)) &
+        deriv => tally_deriv_c(t % deriv())
+        if (deriv % variable == DIFF_NUCLIDE_DENSITY &
+             .or. deriv % variable == DIFF_TEMPERATURE) then
+          do j = 1, t % n_nuclide_bins()
+            if (has_energyout .and. t % nuclide_bins(j) == -1) then
+              call fatal_error("Error on tally " // trim(to_str(t % id())) &
                    // ": Cannot use a 'nuclide_density' or 'temperature' &
                    &derivative on a tally with an outgoing energy filter and &
                    &'total' nuclide rate. Instead, tally each nuclide in the &
@@ -1141,176 +820,14 @@ contains
               ! (e.g. pertrubing moderator but only tallying fuel), but this
               ! case would be hard to check for by only reading inputs.
             end if
-          end if
+          end do
         end if
       end if
 
       ! If settings.xml trigger is turned on, create tally triggers
       if (trigger_on) then
-
-        ! Get list of trigger nodes for this tally
-        call get_node_list(node_tal, "trigger", node_trigger_list)
-
-        ! Initialize the number of triggers
-        n_user_trig = size(node_trigger_list)
-
-        ! Count the number of triggers needed for all scores including "all"
-        t % n_triggers = 0
-        COUNT_TRIGGERS: do user_trig_ind = 1, n_user_trig
-
-          ! Get pointer to trigger node
-          node_trigger = node_trigger_list(user_trig_ind)
-
-          ! Get scores for this trigger
-          if (check_for_node(node_trigger, "scores")) then
-            n_words = node_word_count(node_trigger, "scores")
-            allocate(sarray(n_words))
-            call get_node_array(node_trigger, "scores", sarray)
-          else
-            n_words = 1
-            allocate(sarray(n_words))
-            sarray(1) = "all"
-          end if
-
-          ! Count the number of scores for this trigger
-          do j = 1, n_words
-            score_name = trim(to_lower(sarray(j)))
-
-            if (score_name == "all") then
-              t % n_triggers = t % n_triggers + trigger_scores % size()
-            else
-              t % n_triggers = t % n_triggers + 1
-            end if
-
-          end do
-
-          deallocate(sarray)
-
-        end do COUNT_TRIGGERS
-
-        ! Allocate array of triggers for this tally
-        if (t % n_triggers > 0) then
-          allocate(t % triggers(t % n_triggers))
-        end if
-
-        ! Initialize overall trigger index for this tally to zero
-        trig_ind = 1
-
-        ! Create triggers for all scores specified on each trigger
-        TRIGGER_LOOP: do user_trig_ind = 1, n_user_trig
-
-          ! Get pointer to trigger node
-          node_trigger = node_trigger_list(user_trig_ind)
-
-          ! Get the trigger type - "variance", "std_dev" or "rel_err"
-          if (check_for_node(node_trigger, "type")) then
-            call get_node_value(node_trigger, "type", temp_str)
-            temp_str = to_lower(temp_str)
-          else
-            call fatal_error("Must specify trigger type for tally " // &
-                 trim(to_str(t % id)) // " in tally XML file.")
-          end if
-
-          ! Get the convergence threshold for the trigger
-          if (check_for_node(node_trigger, "threshold")) then
-            call get_node_value(node_trigger, "threshold", threshold)
-          else
-            call fatal_error("Must specify trigger threshold for tally " // &
-                 trim(to_str(t % id)) // " in tally XML file.")
-          end if
-
-          ! Get list scores for this trigger
-          if (check_for_node(node_trigger, "scores")) then
-            n_words = node_word_count(node_trigger, "scores")
-            allocate(sarray(n_words))
-            call get_node_array(node_trigger, "scores", sarray)
-          else
-            n_words = 1
-            allocate(sarray(n_words))
-            sarray(1) = "all"
-          end if
-
-          ! Create a trigger for each score
-          SCORE_LOOP: do j = 1, n_words
-            score_name = trim(to_lower(sarray(j)))
-
-            ! Expand "all" to include TriggerObjects for each score in tally
-            if (score_name == "all") then
-
-              ! Loop over all tally scores
-              i_elem = 0
-              do
-                ! Move to next score
-                call trigger_scores % next_entry(elem, i_elem)
-                if (i_elem == 0) exit
-
-                score_name = trim(elem % key)
-
-                ! Store the score name and index in the trigger
-                t % triggers(trig_ind) % score_name = score_name
-                t % triggers(trig_ind) % score_index = elem % value
-
-                ! Set the trigger convergence threshold type
-                select case (temp_str)
-                case ('std_dev')
-                  t % triggers(trig_ind) % type = STANDARD_DEVIATION
-                case ('variance')
-                  t % triggers(trig_ind) % type = VARIANCE
-                case ('rel_err')
-                  t % triggers(trig_ind) % type = RELATIVE_ERROR
-                case default
-                  call fatal_error("Unknown trigger type " // &
-                       trim(temp_str) // " in tally " // trim(to_str(t % id)))
-                end select
-
-                ! Store the trigger convergence threshold
-                t % triggers(trig_ind) % threshold = threshold
-
-                ! Increment the overall trigger index
-                trig_ind = trig_ind + 1
-              end do
-
-            ! Scores other than the "all" placeholder
-            else
-
-              ! Store the score name and index
-              t % triggers(trig_ind) % score_name = trim(score_name)
-              t % triggers(trig_ind) % score_index = &
-                   trigger_scores % get(trim(score_name))
-
-              ! Check if an invalid score was set for the trigger
-              if (t % triggers(trig_ind) % score_index == 0) then
-                call fatal_error("The trigger score " // trim(score_name) // &
-                     " is not set for tally " // trim(to_str(t % id)))
-              end if
-
-              ! Store the trigger convergence threshold
-              t % triggers(trig_ind) % threshold = threshold
-
-              ! Set the trigger convergence threshold type
-              select case (temp_str)
-              case ('std_dev')
-                t % triggers(trig_ind) % type = STANDARD_DEVIATION
-              case ('variance')
-                t % triggers(trig_ind) % type = VARIANCE
-              case ('rel_err')
-                t % triggers(trig_ind) % type = RELATIVE_ERROR
-              case default
-                call fatal_error("Unknown trigger type " // trim(temp_str) // &
-                     " in tally " // trim(to_str(t % id)))
-              end select
-
-              ! Increment the overall trigger index
-              trig_ind = trig_ind + 1
-            end if
-          end do SCORE_LOOP
-
-          ! Deallocate the list of tally scores used to create triggers
-          deallocate(sarray)
-        end do TRIGGER_LOOP
-
-        ! Deallocate dictionary of scores/indices used to populate triggers
-        call trigger_scores % clear()
+        !TODO: off-by-one
+        call tally_init_triggers(t % ptr, i_start + i - 1 - 1, node_tal % ptr)
       end if
 
       ! =======================================================================
@@ -1322,33 +839,33 @@ contains
         call get_node_value(node_tal, "estimator", temp_str)
         select case(trim(temp_str))
         case ('analog')
-          t % estimator = ESTIMATOR_ANALOG
+          call t % set_estimator(ESTIMATOR_ANALOG)
 
         case ('tracklength', 'track-length', 'pathlength', 'path-length')
           ! If the estimator was set to an analog estimator, this means the
           ! tally needs post-collision information
-          if (t % estimator == ESTIMATOR_ANALOG) then
+          if (t % estimator() == ESTIMATOR_ANALOG) then
             call fatal_error("Cannot use track-length estimator for tally " &
-                 // to_str(t % id))
+                 // to_str(t % id()))
           end if
 
           ! Set estimator to track-length estimator
-          t % estimator = ESTIMATOR_TRACKLENGTH
+          call t % set_estimator(ESTIMATOR_TRACKLENGTH)
 
         case ('collision')
           ! If the estimator was set to an analog estimator, this means the
           ! tally needs post-collision information
-          if (t % estimator == ESTIMATOR_ANALOG) then
+          if (t % estimator() == ESTIMATOR_ANALOG) then
             call fatal_error("Cannot use collision estimator for tally " &
-                 // to_str(t % id))
+                 // to_str(t % id()))
           end if
 
           ! Set estimator to collision estimator
-          t % estimator = ESTIMATOR_COLLISION
+          call t % set_estimator(ESTIMATOR_COLLISION)
 
         case default
           call fatal_error("Invalid estimator '" // trim(temp_str) &
-               // "' on tally " // to_str(t % id))
+               // "' on tally " // to_str(t % id()))
         end select
       end if
 

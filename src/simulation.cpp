@@ -17,6 +17,7 @@
 #include "openmc/timer.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/tallies/trigger.h"
 
 #include <omp.h>
 
@@ -28,7 +29,6 @@ namespace openmc {
 // data/functions from Fortran side
 extern "C" void accumulate_tallies();
 extern "C" void allocate_tally_results();
-extern "C" void check_triggers();
 extern "C" void init_tally_routines();
 extern "C" void setup_active_tallies();
 extern "C" void simulation_init_f();
@@ -138,11 +138,6 @@ int openmc_simulation_finalize()
   simulation::time_active.stop();
   simulation::time_finalize.start();
 
-#pragma omp parallel
-  {
-    simulation::filter_matches.clear();
-  }
-
   // Deallocate Fortran variables, set tallies to inactive
   for (auto& mat : model::materials) {
     mat->mat_nuclide_index_.clear();
@@ -158,6 +153,11 @@ int openmc_simulation_finalize()
 
   // Write tally results to tallies.out
   if (settings::output_tallies && mpi::master) write_tallies();
+
+#pragma omp parallel
+  {
+    simulation::filter_matches.clear();
+  }
 
   // Deactivate all tallies
   for (int i = 1; i <= n_tallies; ++i) {
@@ -540,7 +540,7 @@ void calculate_work()
 #ifdef OPENMC_MPI
 void broadcast_results() {
   // Broadcast tally results so that each process has access to results
-  for (int i = 1; i <= n_tallies; ++i) {
+  for (int i = 0; i < n_tallies; ++i) {
     // Create a new datatype that consists of all values for a given filter
     // bin and then use that to broadcast. This is done to minimize the
     // chance of the 'count' argument of MPI_BCAST exceeding 2**31

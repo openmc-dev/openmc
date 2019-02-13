@@ -156,6 +156,7 @@ def test_tally_mapping(capi_init):
 
 def test_tally(capi_init):
     t = openmc.capi.tallies[1]
+    assert t.type == 'volume'
     assert len(t.filters) == 2
     assert isinstance(t.filters[0], openmc.capi.MaterialFilter)
     assert isinstance(t.filters[1], openmc.capi.EnergyFilter)

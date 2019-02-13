@@ -11,7 +11,6 @@ module material_header
   public :: material_id
   public :: material_nuclide
   public :: material_nuclide_size
-  public :: material_nuclide_index
   public :: material_atom_density
   public :: material_density_gpcc
 
@@ -38,13 +37,6 @@ module material_header
       import C_INT32_T, C_INT
       integer(C_INT32_T), value :: i_mat
       integer(C_INT) :: n
-    end function
-
-    function material_nuclide_index(i_mat, i_nuc) bind(C) result(idx)
-      import C_INT32_T, C_INT
-      integer(C_INT32_T), value :: i_mat
-      integer(C_INT), value :: i_nuc
-      integer(C_INT) :: idx
     end function
 
     function material_atom_density(i_mat, idx) bind(C) result(density)

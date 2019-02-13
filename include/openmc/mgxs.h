@@ -134,7 +134,8 @@ class Mgxs {
     //! @param dg delayed group index; use nullptr if irrelevant.
     //! @return Requested cross section value.
     double
-    get_xs(int xstype, int gin, int* gout, double* mu, int* dg);
+    get_xs(int xstype, int gin, const int* gout, const double* mu,
+      const int* dg);
 
     //! \brief Samples the fission neutron energy and if prompt or delayed.
     //!

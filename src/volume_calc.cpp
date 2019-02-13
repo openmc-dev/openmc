@@ -24,6 +24,7 @@
 #include <algorithm> // for copy
 #include <cmath> // for pow, sqrt
 #include <sstream>
+#include <unordered_set>
 
 namespace openmc {
 
@@ -58,6 +59,15 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node) {
   lower_left_ = get_node_array<double>(node, "lower_left");
   upper_right_ = get_node_array<double>(node, "upper_right");
   n_samples_ = std::stoi(get_node_value(node, "samples"));
+
+  // Ensure there are no duplicates by copying elements to a set and then
+  // comparing the length with the original vector
+  std::unordered_set<int> unique_ids(domain_ids_.cbegin(), domain_ids_.cend());
+  if (unique_ids.size() != domain_ids_.size()) {
+    throw std::runtime_error{"Domain IDs for a volume calculation "
+      "must be unique."};
+  }
+
 }
 
 std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
@@ -79,7 +89,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
     i_end = i_start + min_samples;
   }
 
-#pragma omp parallel
+  #pragma omp parallel
   {
     // Variables that are private to each thread
     std::vector<std::vector<int>> indices(n);
@@ -90,7 +100,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
     prn_set_stream(STREAM_VOLUME);
 
     // Sample locations and count hits
-#pragma omp for
+    #pragma omp for
     for (int i = i_start; i < i_end; i++) {
       set_particle_seed(i);
 
@@ -114,6 +124,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
           for (int i_domain = 0; i_domain < n; i_domain++) {
             if (model::materials[i_material]->id_ == domain_ids_[i_domain]) {
               this->check_hit(i_material, indices[i_domain], hits[i_domain]);
+              break;
             }
           }
         }
@@ -122,6 +133,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
           for (int i_domain=0; i_domain < n; i_domain++) {
             if (model::cells[p.coord[level].cell]->id_ == domain_ids_[i_domain]) {
               this->check_hit(i_material, indices[i_domain], hits[i_domain]);
+              break;
             }
           }
         }
@@ -130,6 +142,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
           for (int i_domain = 0; i_domain < n; ++i_domain) {
             if (model::universes[p.coord[level].universe]->id_ == domain_ids_[i_domain]) {
               check_hit(i_material, indices[i_domain], hits[i_domain]);
+              break;
             }
           }
         }
@@ -141,9 +154,9 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
     // so we have to manually reduce them
 
 #ifdef _OPENMP
-#pragma omp for ordered schedule(static)
+    #pragma omp for ordered schedule(static)
     for (int i = 0; i < omp_get_num_threads(); ++i) {
-#pragma omp ordered
+      #pragma omp ordered
       for (int i_domain = 0; i_domain < n; ++i_domain) {
         for (int j = 0; j < indices[i_domain].size(); ++j) {
           // Check if this material has been added to the master list and if so,

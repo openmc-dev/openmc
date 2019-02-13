@@ -17,10 +17,7 @@ def download(url, checksum=None, **kwargs):
     checksum : str or None
         MD5 checksum to check against
     **kwargs : dict
-        Optional arguements passed to urlopen()
-        context: ssl.SSLContext object
-            Describes the various SSL options,
-            e.g. context=ssl._create_unverified_context()
+        Keyword arguments passed to :func:urllib.request.urlopen
 
     Returns
     -------

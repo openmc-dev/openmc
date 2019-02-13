@@ -40,7 +40,8 @@ std::vector<VolumeCalculation> volume_calcs;
 // VolumeCalculation implementation
 //==============================================================================
 
-VolumeCalculation::VolumeCalculation(pugi::xml_node node) {
+VolumeCalculation::VolumeCalculation(pugi::xml_node node)
+{
   // Read domain type (cell, material or universe)
   std::string domain_type = get_node_value(node, "domain_type");
   if (domain_type == "cell") {
@@ -179,6 +180,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
     }
 #else
     master_indices = indices;
+    master_hits = hits;
 #endif
 
     prn_set_stream(STREAM_TRACKING);

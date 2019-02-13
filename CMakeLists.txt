@@ -323,7 +323,6 @@ add_library(libopenmc SHARED
   src/message_passing.F90
   src/mgxs_interface.F90
   src/nuclide_header.F90
-  src/output.F90
   src/particle_header.F90
   src/particle_restart.F90
   src/photon_header.F90

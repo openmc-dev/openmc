@@ -7,7 +7,7 @@ from urllib.request import urlopen
 _BLOCK_SIZE = 16384
 
 
-def download(url, checksum=None):
+def download(url, checksum=None, **kwargs):
     """Download file from a URL
 
     Parameters
@@ -16,6 +16,7 @@ def download(url, checksum=None):
         URL from which to download
     checksum : str or None
         MD5 checksum to check against
+    Keyword arguments passed to :func:urllib.request.urlopen
 
     Returns
     -------
@@ -23,8 +24,7 @@ def download(url, checksum=None):
         Name of file written locally
 
     """
-    req = urlopen(url)
-
+    req = urlopen(url, **kwargs)
     # Get file size from header
     file_size = req.length
 

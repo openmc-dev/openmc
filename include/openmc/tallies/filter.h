@@ -22,6 +22,8 @@ class FilterMatch
 public:
   std::vector<int> bins_;
   std::vector<double> weights_;
+  int i_bin_;
+  bool bins_present_ {false};
 };
 
 } // namespace openmc
@@ -70,6 +72,8 @@ public:
 
   virtual void initialize() {}
 
+  int32_t id_;
+
   int n_bins_;
 };
 
@@ -90,10 +94,6 @@ extern "C" int32_t n_filters;
 extern std::vector<std::unique_ptr<Filter>> tally_filters;
 
 } // namespace model
-
-//==============================================================================
-
-extern "C" void free_memory_tally_c();
 
 //==============================================================================
 

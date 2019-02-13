@@ -274,7 +274,7 @@ void Nuclide::create_derived()
     xs_.emplace_back(shape, 0.0);
   }
 
-  reaction_index_.fill(-1);
+  reaction_index_.fill(C_NONE);
   for (int i = 0; i < reactions_.size(); ++i) {
     const auto& rx {reactions_[i]};
 
@@ -997,7 +997,7 @@ extern "C" void multipole_deriv_eval(Nuclide* nuc, double E, double sqrtkT,
   std::tie(*sig_s, *sig_a, *sig_f) = nuc->multipole_->evaluate_deriv(E, sqrtkT);
 }
 
-extern "C" bool multipole_in_range(Nuclide* nuc, double E)
+extern "C" bool multipole_in_range(const Nuclide* nuc, double E)
 {
   return nuc->multipole_ && E >= nuc->multipole_->E_min_&&
     E <= nuc->multipole_->E_max_;

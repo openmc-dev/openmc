@@ -201,30 +201,10 @@ module constants
   integer, parameter :: NO_BIN_FOUND = -1
 
   ! Tally filter and map types
-  integer, parameter :: N_FILTER_TYPES = 22
   integer, parameter :: &
        FILTER_UNIVERSE       = 1,  &
        FILTER_MATERIAL       = 2,  &
-       FILTER_CELL           = 3,  &
-       FILTER_CELLBORN       = 4,  &
-       FILTER_SURFACE        = 5,  &
-       FILTER_MESH           = 6,  &
-       FILTER_ENERGYIN       = 7,  &
-       FILTER_ENERGYOUT      = 8,  &
-       FILTER_DISTRIBCELL    = 9,  &
-       FILTER_MU             = 10, &
-       FILTER_POLAR          = 11, &
-       FILTER_AZIMUTHAL      = 12, &
-       FILTER_DELAYEDGROUP   = 13, &
-       FILTER_ENERGYFUNCTION = 14, &
-       FILTER_CELLFROM       = 15, &
-       FILTER_MESHSURFACE    = 16, &
-       FILTER_LEGENDRE       = 17, &
-       FILTER_SPH_HARMONICS  = 18, &
-       FILTER_SPTL_LEGENDRE  = 19, &
-       FILTER_ZERNIKE        = 20, &
-       FILTER_ZERNIKE_RADIAL = 21, &
-       FILTER_PARTICLE       = 22
+       FILTER_CELL           = 3
 
   ! Tally surface current directions
   integer, parameter :: &
@@ -240,12 +220,6 @@ module constants
        IN_BOTTOM  = 10,  &   ! z min
        OUT_TOP    = 11,  &   ! z max
        IN_TOP     = 12       ! z max
-
-  ! Tally trigger types and threshold
-  integer, parameter :: &
-       VARIANCE           = 1, &
-       RELATIVE_ERROR     = 2, &
-       STANDARD_DEVIATION = 3
 
   ! Global tally parameters
   integer, parameter :: N_GLOBAL_TALLIES = 4

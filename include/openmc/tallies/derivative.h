@@ -22,7 +22,7 @@ struct TallyDerivative {
   double flux_deriv;  //!< Derivative of the current particle's weight
 
   TallyDerivative() {}
-  TallyDerivative(pugi::xml_node node);
+  explicit TallyDerivative(pugi::xml_node node);
 };
 
 //==============================================================================

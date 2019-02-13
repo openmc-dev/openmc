@@ -24,6 +24,7 @@ module tracking
   use tally_header
   use tally,              only: score_analog_tally, score_tracklength_tally, &
                                 score_collision_tally, score_surface_tally, &
+                                score_meshsurface_tally, &
                                 score_track_derivative, zero_flux_derivs, &
                                 score_collision_derivative
   use track_output,       only: initialize_particle_track, write_particle_track, &
@@ -86,7 +87,7 @@ contains
     endif
 
     ! Every particle starts with no accumulated flux derivative.
-    if (active_tallies % size() > 0) call zero_flux_derivs()
+    if (active_tallies_size() > 0) call zero_flux_derivs()
 
     EVENT_LOOP: do
       ! Set the random number stream
@@ -172,7 +173,7 @@ contains
       end do
 
       ! Score track-length tallies
-      if (active_tracklength_tallies % size() > 0) then
+      if (active_tracklength_tallies_size() > 0) then
         call score_tracklength_tally(p, distance)
       end if
 
@@ -183,7 +184,7 @@ contains
       end if
 
       ! Score flux derivative accumulators for differential tallies.
-      if (active_tallies % size() > 0) call score_track_derivative(p, distance)
+      if (active_tallies_size() > 0) call score_track_derivative(p, distance)
 
       if (d_collision > d_boundary) then
         ! ====================================================================
@@ -210,8 +211,7 @@ contains
           p % event = EVENT_SURFACE
         end if
         ! Score cell to cell partial currents
-        if(active_surface_tallies % size() > 0) &
-             call score_surface_tally(p, active_surface_tallies)
+        if (active_surface_tallies_size() > 0) call score_surface_tally(p)
       else
         ! ====================================================================
         ! PARTICLE HAS COLLISION
@@ -226,8 +226,7 @@ contains
         ! since the direction of the particle will change and we need to use the
         ! pre-collision direction to figure out what mesh surfaces were crossed
 
-        if (active_meshsurf_tallies % size() > 0) &
-             call score_surface_tally(p, active_meshsurf_tallies)
+        if (active_meshsurf_tallies_size() > 0) call score_meshsurface_tally(p)
 
         ! Clear surface component
         p % surface = ERROR_INT
@@ -241,8 +240,8 @@ contains
         ! Score collision estimator tallies -- this is done after a collision
         ! has occurred rather than before because we need information on the
         ! outgoing energy for any tallies with an outgoing energy filter
-        if (active_collision_tallies % size() > 0) call score_collision_tally(p)
-        if (active_analog_tallies % size() > 0) call score_analog_tally(p)
+        if (active_collision_tallies_size() > 0) call score_collision_tally(p)
+        if (active_analog_tallies_size() > 0) call score_analog_tally(p)
 
         ! Reset banked weight during collision
         p % n_bank   = 0
@@ -273,7 +272,7 @@ contains
         end do
 
         ! Score flux derivative accumulators for differential tallies.
-        if (active_tallies % size() > 0) call score_collision_derivative(p)
+        if (active_tallies_size() > 0) call score_collision_derivative(p)
       end if
 
       ! If particle has too many events, display warning and kill it
@@ -346,12 +345,12 @@ contains
       ! forward slightly so that if the mesh boundary is on the surface, it is
       ! still processed
 
-      if (active_meshsurf_tallies % size() > 0) then
+      if (active_meshsurf_tallies_size() > 0) then
         ! TODO: Find a better solution to score surface currents than
         ! physically moving the particle forward slightly
 
         p % coord(1) % xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
-        call score_surface_tally(p, active_meshsurf_tallies)
+        call score_meshsurface_tally(p)
       end if
 
       ! Score to global leakage tally
@@ -382,14 +381,13 @@ contains
       ! the particle slightly back in case the surface crossing is coincident
       ! with a mesh boundary
 
-      if(active_surface_tallies % size() > 0) &
-           call score_surface_tally(p, active_surface_tallies)
+      if (active_surface_tallies_size() > 0) call score_surface_tally(p)
 
 
-      if (active_meshsurf_tallies % size() > 0) then
+      if (active_meshsurf_tallies_size() > 0) then
         xyz = p % coord(1) % xyz
         p % coord(1) % xyz = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
-        call score_surface_tally(p, active_meshsurf_tallies)
+        call score_meshsurface_tally(p)
         p % coord(1) % xyz = xyz
       end if
 
@@ -443,10 +441,10 @@ contains
       ! Score surface currents since reflection causes the direction of the
       ! particle to change -- artificially move the particle slightly back in
       ! case the surface crossing is coincident with a mesh boundary
-      if (active_meshsurf_tallies % size() > 0) then
+      if (active_meshsurf_tallies_size() > 0) then
         xyz = p % coord(1) % xyz
         p % coord(1) % xyz = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
-        call score_surface_tally(p, active_meshsurf_tallies)
+        call score_meshsurface_tally(p)
         p % coord(1) % xyz = xyz
       end if
 

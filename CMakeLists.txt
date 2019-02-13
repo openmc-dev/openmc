@@ -346,16 +346,10 @@ add_library(libopenmc SHARED
   src/tallies/tally_derivative_header.F90
   src/tallies/tally_filter.F90
   src/tallies/tally_filter_header.F90
-  src/tallies/tally_filter_delayedgroup.F90
   src/tallies/tally_filter_distribcell.F90
-  src/tallies/tally_filter_energy.F90
-  src/tallies/tally_filter_mesh.F90
-  src/tallies/tally_filter_meshsurface.F90
   src/tallies/tally_filter_particle.F90
   src/tallies/tally_filter_sph_harm.F90
   src/tallies/tally_header.F90
-  src/tallies/trigger.F90
-  src/tallies/trigger_header.F90
   src/bank.cpp
   src/bremsstrahlung.cpp
   src/dagmc.cpp
@@ -409,6 +403,7 @@ add_library(libopenmc SHARED
   src/string_utils.cpp
   src/summary.cpp
   src/surface.cpp
+  src/tallies/derivative.cpp
   src/tallies/filter.cpp
   src/tallies/filter_azimuthal.cpp
   src/tallies/filter_cellborn.cpp
@@ -431,6 +426,8 @@ add_library(libopenmc SHARED
   src/tallies/filter_universe.cpp
   src/tallies/filter_zernike.cpp
   src/tallies/tally.cpp
+  src/tallies/tally_scoring.cpp
+  src/tallies/trigger.cpp
   src/timer.cpp
   src/thermal.cpp
   src/volume_calc.cpp

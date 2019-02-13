@@ -48,11 +48,4 @@ DelayedGroupFilter::text_label(int bin) const
   return "Delayed Group " + std::to_string(groups_[bin-1]);
 }
 
-//==============================================================================
-// Fortran interoperability
-//==============================================================================
-
-extern "C" int delayedgroup_filter_groups(DelayedGroupFilter* filt, int i)
-{return filt->groups_[i-1];}
-
 } // namespace openmc

@@ -26,10 +26,10 @@ namespace openmc {
 
 constexpr double CACHE_INVALID {-1.0};
 
-//===============================================================================
+//==============================================================================
 //! Cached microscopic cross sections for a particular nuclide at the current
 //! energy
-//===============================================================================
+//==============================================================================
 
 struct NuclideMicroXS {
   // Microscopic cross sections in barns
@@ -64,10 +64,10 @@ struct NuclideMicroXS {
                             //!< * temperature (eV))
 };
 
-//===============================================================================
+//==============================================================================
 // MATERIALMACROXS contains cached macroscopic cross sections for the material a
 // particle is traveling through
-//===============================================================================
+//==============================================================================
 
 struct MaterialMacroXS {
   double total;         //!< macroscopic total xs
@@ -83,9 +83,9 @@ struct MaterialMacroXS {
   double pair_production; //!< macroscopic pair production xs
 };
 
-//===============================================================================
+//==============================================================================
 // Data for a nuclide
-//===============================================================================
+//==============================================================================
 
 class Nuclide {
 public:
@@ -175,6 +175,8 @@ private:
 
 //! Checks for the right version of nuclear data within HDF5 files
 void check_data_version(hid_t file_id);
+
+extern "C" bool multipole_in_range(const Nuclide* nuc, double E);
 
 //==============================================================================
 // Global variables

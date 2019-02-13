@@ -23,11 +23,6 @@ module simulation_header
   integer(C_INT), bind(C) :: total_gen         ! total number of generations simulated
   logical(C_BOOL), bind(C) :: need_depletion_rx ! need to calculate depletion reaction rx?
 
-  ! ============================================================================
-  ! TALLY PRECISION TRIGGER VARIABLES
-
-  logical(C_BOOL), bind(C) :: satisfy_triggers  ! whether triggers are satisfied
-
   integer(C_INT64_T), bind(C) :: work         ! number of particles per processor
 
   ! ============================================================================

@@ -25,6 +25,7 @@
 #include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/string_utils.h"
+#include "openmc/tallies/trigger.h"
 #include "openmc/volume_calc.h"
 #include "openmc/xml_interface.h"
 
@@ -106,13 +107,6 @@ int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
 
-// TODO: Move to separate file
-struct KTrigger {
-  int type;
-  double threshold;
-};
-extern "C" KTrigger keff_trigger;
-
 } // namespace settings
 
 //==============================================================================
@@ -161,11 +155,11 @@ void get_run_parameters(pugi::xml_node node_base)
       if (check_for_node(node_keff_trigger, "type")) {
         auto temp = get_node_value(node_keff_trigger, "type", true, true);
         if (temp == "std_dev") {
-          keff_trigger.type = STANDARD_DEVIATION;
+          keff_trigger.metric = TriggerMetric::standard_deviation;
         } else if (temp == "variance") {
-          keff_trigger.type = VARIANCE;
+          keff_trigger.metric = TriggerMetric::variance;
         } else if (temp == "rel_err") {
-          keff_trigger.type = RELATIVE_ERROR;
+          keff_trigger.metric = TriggerMetric::relative_error;
         } else {
           fatal_error("Unrecognized keff trigger type " + temp);
         }

@@ -44,58 +44,11 @@ std::vector<std::unique_ptr<Filter>> tally_filters;
 } // namespace model
 
 //==============================================================================
-// Non-member functions
-//==============================================================================
-
-void
-free_memory_tally_c()
-{
-  #pragma omp parallel
-  {
-    simulation::filter_matches.clear();
-  }
-
-  model::tally_filters.clear();
-}
-
-//==============================================================================
 // Fortran compatibility functions
 //==============================================================================
 
 extern "C" {
   // filter_match_point moved to simulation.cpp
-
-  void
-  filter_match_bins_push_back(FilterMatch* match, int val)
-  {match->bins_.push_back(val);}
-
-  void
-  filter_match_weights_push_back(FilterMatch* match, double val)
-  {match->weights_.push_back(val);}
-
-  void
-  filter_match_bins_clear(FilterMatch* match)
-  {match->bins_.clear();}
-
-  void
-  filter_match_weights_clear(FilterMatch* match)
-  {match->weights_.clear();}
-
-  int
-  filter_match_bins_size(FilterMatch* match)
-  {return match->bins_.size();}
-
-  int
-  filter_match_bins_data(FilterMatch* match, int indx)
-  {return match->bins_[indx-1];}
-
-  double
-  filter_match_weights_data(FilterMatch* match, int indx)
-  {return match->weights_[indx-1];}
-
-  void
-  filter_match_bins_set_data(FilterMatch* match, int indx, int val)
-  {match->bins_[indx-1] = val;}
 
   Filter*
   allocate_filter(const char* type)
@@ -150,6 +103,10 @@ extern "C" {
     }
     return model::tally_filters.back().get();
   }
+
+  int32_t filter_get_id(Filter* filt) {return filt->id_;}
+
+  void filter_set_id(Filter* filt, int32_t id) {filt->id_ = id;}
 
   void filter_from_xml(Filter* filt, pugi::xml_node* node)
   {filt->from_xml(*node);}

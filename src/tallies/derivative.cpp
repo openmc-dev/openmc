@@ -87,7 +87,7 @@ read_tally_derivatives(pugi::xml_node* node)
   #pragma omp parallel
   {
     for (auto deriv_node : node->children("derivative"))
-      model::tally_derivs.push_back(deriv_node);
+      model::tally_derivs.emplace_back(deriv_node);
   }
 
   // Fill the derivative map.

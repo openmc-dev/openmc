@@ -44,16 +44,13 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node) {
   std::string domain_type = get_node_value(node, "domain_type");
   if (domain_type == "cell") {
     domain_type_ = FILTER_CELL;
-  }
-  else if (domain_type == "material") {
+  } else if (domain_type == "material") {
     domain_type_ = FILTER_MATERIAL;
-  }
-  else if (domain_type == "universe") {
+  } else if (domain_type == "universe") {
     domain_type_ = FILTER_UNIVERSE;
-  }
-  else {
+  } else {
     fatal_error(std::string("Unrecognized domain type for stochastic "
-      "volume calculation:" + domain_type));
+      "volume calculation: " + domain_type));
   }
 
   // Read domain IDs, bounding corodinates and number of samples
@@ -61,26 +58,6 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node) {
   lower_left_ = get_node_array<double>(node, "lower_left");
   upper_right_ = get_node_array<double>(node, "upper_right");
   n_samples_ = std::stoi(get_node_value(node, "samples"));
-}
-
-void VolumeCalculation::check_hit(int i_material, std::vector<int>& indices,
-  std::vector<int>& hits) const {
-
-  // Check if this material was previously hit and if so, increment count
-  bool already_hit = false;
-  for (int j = 0; j < indices.size(); j++) {
-    if (indices[j] == i_material) {
-      hits[j]++;
-      already_hit = true;
-    }
-  }
-
-  // If the material was not previously hit, append an entry to the material
-  // indices and hits lists
-  if (!already_hit) {
-    indices.push_back(i_material);
-    hits.push_back(1);
-  }
 }
 
 std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
@@ -97,8 +74,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
   if (mpi::rank < remainder) {
     i_start = (min_samples + 1)*mpi::rank;
     i_end = i_start + min_samples + 1;
-  }
-  else {
+  } else {
     i_start = (min_samples + 1)*remainder + (mpi::rank - remainder)*min_samples;
     i_end = i_start + min_samples;
   }
@@ -113,8 +89,8 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 
     prn_set_stream(STREAM_VOLUME);
 
-    // Samples locations and count hits
-  #pragma omp for
+    // Sample locations and count hits
+#pragma omp for
     for (int i = i_start; i < i_end; i++) {
       set_particle_seed(i);
 
@@ -160,7 +136,6 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       }
     }
 
-    // Reduce hits onto master thread
     // At this point, each thread has its own pair of index/hits lists and we now
     // need to reduce them. OpenMP is not nearly smart enough to do this on its own,
     // so we have to manually reduce them
@@ -190,12 +165,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       }
     }
 #else
-    for (int i_domain = 0; i_domain < n; ++i_domain) {
-      for (int j = 0; j < indices[i_domain].size(); ++j) {
-        master_indices[i_domain].push_back(indices[i_domain][j]);
-        master_hits[i_domain].push_back(hits[i_domain][j]);
-      }
-    }
+    master_indices = indices;
 #endif
 
     prn_set_stream(STREAM_TRACKING);
@@ -219,8 +189,8 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
     auto n_nuc = data::nuclides.size();
     xt::xtensor<double, 2> atoms({n_nuc, 2}, 0.0);
 
-    if (mpi::master) {
 #ifdef OPENMC_MPI
+    if (mpi::master) {
       for (int j = 1; j < mpi::n_procs; j++) {
         int q;
         MPI_Recv(&q, 1, MPI_INTEGER, j, 0, mpi::intracomm, MPI_STATUS_IGNORE);
@@ -230,12 +200,25 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
           for (int m = 0; m < master_indices[i_domain].size(); ++m) {
             if (buffer[2*k] == master_indices[i_domain][m]) {
               master_hits[i_domain][m] += buffer[2*k + 1];
+              break;
             }
           }
         }
       }
+    } else {
+      int q = master_indices[i_domain].size();
+      int buffer[2*q];
+      for (int k = 0; k < q; ++k) {
+        buffer[2*k] = master_indices[i_domain][k];
+        buffer[2*k + 1] = master_hits[i_domain][k];
+      }
+
+      MPI_Send(&q, 1, MPI_INTEGER, 0, 0, mpi::intracomm);
+      MPI_Send(&buffer[0], 2*q, MPI_INTEGER, 0, 1, mpi::intracomm);
+    }
 #endif
 
+    if (mpi::master) {
       int total_hits = 0;
       for (int j = 0; j < master_indices[i_domain].size(); ++j) {
         total_hits += master_hits[i_domain][j];
@@ -272,18 +255,6 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
           result.uncertainty.push_back(stdev);
         }
       }
-    } else {
-#ifdef OPENMC_MPI
-      int q = master_indices[i_domain].size();
-      int buffer[2*q];
-      for (int k = 0; k < q; ++k) {
-        buffer[2*k] = master_indices[i_domain][k];
-        buffer[2*k + 1] = master_hits[i_domain][k];
-      }
-
-      MPI_Send(&q, 1, MPI_INTEGER, 0, 0, mpi::intracomm);
-      MPI_Send(&buffer[0], 2*q, MPI_INTEGER, 0, 1, mpi::intracomm);
-#endif
     }
   }
 
@@ -353,6 +324,27 @@ void VolumeCalculation::to_hdf5(const std::string& filename,
   }
 
   file_close(file_id);
+}
+
+void VolumeCalculation::check_hit(int i_material, std::vector<int>& indices,
+  std::vector<int>& hits) const
+{
+
+  // Check if this material was previously hit and if so, increment count
+  bool already_hit = false;
+  for (int j = 0; j < indices.size(); j++) {
+    if (indices[j] == i_material) {
+      hits[j]++;
+      already_hit = true;
+    }
+  }
+
+  // If the material was not previously hit, append an entry to the material
+  // indices and hits lists
+  if (!already_hit) {
+    indices.push_back(i_material);
+    hits.push_back(1);
+  }
 }
 
 } // namespace openmc

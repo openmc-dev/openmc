@@ -2,10 +2,8 @@ module input_xml
 
   use, intrinsic :: ISO_C_BINDING
 
-  use algorithm,        only: find
   use constants
   use dict_header,      only: DictIntInt, DictCharInt, DictEntryCI
-  use endf,             only: reaction_name
   use error,            only: fatal_error, warning, write_message, openmc_err_msg
   use geometry_header
 #ifdef DAGMC
@@ -320,11 +318,6 @@ contains
     type(XMLNode) :: root
 
     interface
-      function nuclides_size() bind(C) result(n)
-        import C_INT
-        integer(C_INT) :: n
-      end function
-
       function elements_size() bind(C) result(n)
         import C_INT
         integer(C_INT) :: n
@@ -360,9 +353,7 @@ contains
     call read_materials(root % ptr)
 
     ! Set total number of nuclides and elements
-    n_nuclides = nuclides_size()
     n_elements = elements_size()
-    allocate(nuclides(n_nuclides))
 
     ! Close materials XML file
     call doc % clear()

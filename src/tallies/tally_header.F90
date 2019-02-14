@@ -7,7 +7,6 @@ module tally_header
   use dict_header,         only: DictIntInt
   use hdf5_interface,      only: HID_T, HSIZE_T
   use message_passing,     only: n_procs, master
-  use nuclide_header,      only: nuclide_map_get
   use settings,            only: reduce_tallies, run_mode
   use stl_vector,          only: VectorInt
   use string,              only: to_lower, to_f_string, str_to_int, to_str, to_c_string

@@ -61,6 +61,7 @@ contains
     use bank_header
     use geometry_header
     use material_header
+    use nuclide_header
     use photon_header
     use settings
     use simulation_header

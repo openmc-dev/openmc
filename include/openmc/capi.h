@@ -83,7 +83,7 @@ extern "C" {
   int openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh);
   int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
   int openmc_next_batch(int* status);
-  int openmc_nuclide_name(int index, char** name);
+  int openmc_nuclide_name(int index, const char** name);
   int openmc_particle_restart();
   int openmc_plot_geometry();
   int openmc_reset();
@@ -165,7 +165,6 @@ extern "C" {
 
   // Global variables
   extern char openmc_err_msg[256];
-  extern int n_nuclides;
   extern int32_t n_realizations;
   extern int32_t n_sab_tables;
   extern int32_t n_tallies;

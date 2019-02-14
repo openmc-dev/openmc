@@ -82,11 +82,6 @@ module geometry_header
 
   type Cell
     type(C_PTR) :: ptr
-
-    ! Rotation matrix and translation vector
-    real(8), allocatable :: rotation(:)
-    real(8), allocatable :: rotation_matrix(:,:)
-
   contains
 
     procedure :: id => cell_id

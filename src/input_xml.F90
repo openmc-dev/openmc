@@ -217,41 +217,6 @@ contains
              // to_str(c % id()))
       end if
 
-      ! Rotation matrix
-      if (check_for_node(node_cell, "rotation")) then
-        ! Rotations can only be applied to cells that are being filled with
-        ! another universe
-        if (c % fill() == C_NONE) then
-          call fatal_error("Cannot apply a rotation to cell " // trim(to_str(&
-               &c % id())) // " because it is not filled with another universe")
-        end if
-
-        ! Read number of rotation parameters
-        n = node_word_count(node_cell, "rotation")
-        if (n /= 3) then
-          call fatal_error("Incorrect number of rotation parameters on cell " &
-               // to_str(c % id()))
-        end if
-
-        ! Copy rotation angles in x,y,z directions
-        allocate(c % rotation(3))
-        call get_node_array(node_cell, "rotation", c % rotation)
-        phi   = -c % rotation(1) * PI/180.0_8
-        theta = -c % rotation(2) * PI/180.0_8
-        psi   = -c % rotation(3) * PI/180.0_8
-
-        ! Calculate rotation matrix based on angles given
-        allocate(c % rotation_matrix(3,3))
-        c % rotation_matrix = reshape((/ &
-             cos(theta)*cos(psi), cos(theta)*sin(psi), -sin(theta), &
-             -cos(phi)*sin(psi) + sin(phi)*sin(theta)*cos(psi), &
-             cos(phi)*cos(psi) + sin(phi)*sin(theta)*sin(psi), &
-             sin(phi)*cos(theta), &
-             sin(phi)*sin(psi) + cos(phi)*sin(theta)*cos(psi), &
-             -sin(phi)*cos(psi) + cos(phi)*sin(theta)*sin(psi), &
-             cos(phi)*cos(theta) /), (/ 3,3 /))
-      end if
-
       ! Add cell to dictionary
       call cell_dict % set(c % id(), i)
 

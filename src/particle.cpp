@@ -357,9 +357,11 @@ Particle::transport()
       for (int j = 0; j < n_coord - 1; ++j) {
         if (coord[j + 1].rotated) {
           // If next level is rotated, apply rotation matrix
-          // FIXME
-          // coord[j + 1].uvw = matmul(cells(coord[j].cell + 1) % &
-          //       rotation_matrix, coord[j].uvw)
+          const auto& m {model::cells[coord[j].cell]->rotation_};
+          Direction u {coord[j].uvw};
+          coord[j + 1].uvw[0] = m[3]*u.x + m[4]*u.y + m[5]*u.z;
+          coord[j + 1].uvw[1] = m[6]*u.x + m[7]*u.y + m[8]*u.z;
+          coord[j + 1].uvw[2] = m[9]*u.x + m[10]*u.y + m[11]*u.z;
         } else {
           // Otherwise, copy this level's direction
           std::copy(coord[j].uvw, coord[j].uvw + 3, coord[j + 1].uvw);

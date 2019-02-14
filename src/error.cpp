@@ -33,7 +33,7 @@ void output(const std::string& message, std::ostream& out, int indent)
   while (i_start < length) {
     if (length - i_start < line_len) {
       // Remainder of message will fit on line
-      std::cerr << message.substr(i_start) << '\n';
+      out << message.substr(i_start) << '\n';
       break;
 
     } else {
@@ -42,7 +42,7 @@ void output(const std::string& message, std::ostream& out, int indent)
       auto pos = s.find_last_of(' ');
 
       // Write up to last space, or whole line if no space is present
-      std::cerr << s.substr(0, pos) << '\n' << std::setw(indent) << " ";
+      out << s.substr(0, pos) << '\n' << std::setw(indent) << " ";
 
       // Advance starting position
       i_start += (pos == std::string::npos) ? line_len : pos + 1;

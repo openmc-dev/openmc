@@ -7,31 +7,14 @@ module constants
   ! ============================================================================
   ! VERSIONING NUMBERS
 
-  ! OpenMC major, minor, and release numbers
-  integer, parameter :: VERSION_MAJOR   = 0
-  integer, parameter :: VERSION_MINOR   = 10
-  integer, parameter :: VERSION_RELEASE = 0
-  integer, parameter :: &
-       VERSION(3) = [VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE]
-
   ! Version numbers for binary files
-  integer, parameter :: VERSION_TRACK(2)            = [2, 0]
-  integer, parameter :: VERSION_VOLUME(2)           = [1, 0]
+  integer, parameter :: VERSION_TRACK(2) = [2, 0]
 
   ! ============================================================================
   ! ADJUSTABLE PARAMETERS
 
   ! NOTE: This is the only section of the constants module that should ever be
   ! adjusted. Modifying constants in other sections may cause the code to fail.
-
-  ! Significance level for confidence intervals
-  real(8), parameter :: CONFIDENCE_LEVEL = 0.95_8
-
-  ! Used for surface current tallies
-  real(8), parameter :: TINY_BIT = 1e-8_8
-
-  ! Maximum number of collisions/crossings
-  integer, parameter :: MAX_EVENTS = 1000000
 
   ! Maximum number of secondary particles created
   integer, parameter :: MAX_SECONDARY = 1000
@@ -50,23 +33,11 @@ module constants
 
   real(8), parameter ::                      &
        PI               = 3.1415926535898_8, & ! pi
-       MASS_NEUTRON     = 1.00866491588_8,   & ! mass of a neutron in amu
-       MASS_NEUTRON_EV  = 939.5654133e6_8,   & ! mass of a neutron in eV/c^2
-       C_LIGHT          = 2.99792458e8_8,    & ! speed of light in m/s
-       K_BOLTZMANN      = 8.6173303e-5_8,    & ! Boltzmann constant in eV/K
        INFINITY         = huge(0.0_8),       & ! positive infinity
        ZERO             = 0.0_8,             &
        HALF             = 0.5_8,             &
        ONE              = 1.0_8,             &
        TWO              = 2.0_8
-
-  ! Electron subshell labels
-  character(3), parameter :: SUBSHELLS(39) = [ &
-       'K  ', 'L1 ', 'L2 ', 'L3 ', 'M1 ', 'M2 ', 'M3 ', 'M4 ', 'M5 ', &
-       'N1 ', 'N2 ', 'N3 ', 'N4 ', 'N5 ', 'N6 ', 'N7 ', 'O1 ', 'O2 ', &
-       'O3 ', 'O4 ', 'O5 ', 'O6 ', 'O7 ', 'O8 ', 'O9 ', 'P1 ', 'P2 ', &
-       'P3 ', 'P4 ', 'P5 ', 'P6 ', 'P7 ', 'P8 ', 'P9 ', 'P10', 'P11', &
-       'Q1 ', 'Q2 ', 'Q3 ']
 
   ! ============================================================================
   ! GEOMETRY-RELATED CONSTANTS
@@ -99,54 +70,10 @@ module constants
        ELECTRON = 2, &
        POSITRON = 3
 
-  ! Reaction types
-  integer, parameter :: &
-       TOTAL_XS = 1,  ELASTIC = 2,   N_NONELASTIC = 3, N_LEVEL = 4, MISC  = 5,   &
-       N_2ND   = 11,  N_2N    = 16,  N_3N   = 17,  N_FISSION = 18, N_F    = 19,  &
-       N_NF    = 20,  N_2NF   = 21,  N_NA   = 22,  N_N3A   = 23,  N_2NA   = 24,  &
-       N_3NA   = 25,  N_NP    = 28,  N_N2A  = 29,  N_2N2A  = 30,  N_ND    = 32,  &
-       N_NT    = 33,  N_N3HE  = 34,  N_ND2A = 35,  N_NT2A  = 36,  N_4N    = 37,  &
-       N_3NF   = 38,  N_2NP   = 41,  N_3NP  = 42,  N_N2P   = 44,  N_NPA   = 45,  &
-       N_N1    = 51,  N_N40   = 90,  N_NC   = 91,  N_DISAPPEAR = 101, N_GAMMA = 102, &
-       N_P     = 103, N_D     = 104, N_T    = 105, N_3HE   = 106, N_A     = 107, &
-       N_2A    = 108, N_3A    = 109, N_2P   = 111, N_PA    = 112, N_T2A   = 113, &
-       N_D2A   = 114, N_PD    = 115, N_PT   = 116, N_DA    = 117, N_5N    = 152, &
-       N_6N    = 153, N_2NT   = 154, N_TA   = 155, N_4NP   = 156, N_3ND   = 157, &
-       N_NDA   = 158, N_2NPA  = 159, N_7N   = 160, N_8N    = 161, N_5NP   = 162, &
-       N_6NP   = 163, N_7NP   = 164, N_4NA  = 165, N_5NA   = 166, N_6NA   = 167, &
-       N_7NA   = 168, N_4ND   = 169, N_5ND  = 170, N_6ND   = 171, N_3NT   = 172, &
-       N_4NT   = 173, N_5NT   = 174, N_6NT  = 175, N_2N3HE = 176, N_3N3HE = 177, &
-       N_4N3HE = 178, N_3N2P  = 179, N_3N3A = 180, N_3NPA  = 181, N_DT    = 182, &
-       N_NPD   = 183, N_NPT   = 184, N_NDT  = 185, N_NP3HE = 186, N_ND3HE = 187, &
-       N_NT3HE = 188, N_NTA   = 189, N_2N2P = 190, N_P3HE  = 191, N_D3HE  = 192, &
-       N_3HEA  = 193, N_4N2P  = 194, N_4N2A = 195, N_4NPA  = 196, N_3P    = 197, &
-       N_N3P   = 198, N_3N2PA = 199, N_5N2P = 200, N_P0    = 600, N_PC    = 649, &
-       N_D0    = 650, N_DC    = 699, N_T0   = 700, N_TC    = 749, N_3HE0  = 750, &
-       N_3HEC  = 799, N_A0    = 800, N_AC   = 849, N_2N0   = 875, N_2NC   = 891, &
-       COHERENT = 502, INCOHERENT = 504, PHOTOELECTRIC = 522, &
-       PAIR_PROD_ELEC = 515, PAIR_PROD = 516, PAIR_PROD_NUC = 517
-
-  ! Depletion reactions
-  integer, parameter :: DEPLETION_RX(6) = [N_GAMMA, N_P, N_A, N_2N, N_3N, N_4N]
-
   ! MGXS Table Types
   integer, parameter :: &
        MGXS_ISOTROPIC   = 1, & ! Isotropically Weighted Data
        MGXS_ANGLE       = 2    ! Data by Angular Bins
-
-  ! Secondary particle emission type
-  integer, parameter :: &
-       EMISSION_PROMPT = 1,  & ! Prompt emission of secondary particle
-       EMISSION_DELAYED = 2, & ! Delayed emission of secondary particle
-       EMISSION_TOTAL = 3      ! Yield represents total emission (prompt + delayed)
-
-  ! Maximum number of partial fission reactions
-  integer, parameter :: PARTIAL_FISSION_MAX = 4
-
-  ! Temperature treatment method
-  integer, parameter :: &
-       TEMPERATURE_NEAREST = 1, &
-       TEMPERATURE_INTERPOLATION = 2
 
   ! ============================================================================
   ! TALLY-RELATED CONSTANTS
@@ -206,21 +133,6 @@ module constants
        FILTER_MATERIAL       = 2,  &
        FILTER_CELL           = 3
 
-  ! Tally surface current directions
-  integer, parameter :: &
-       OUT_LEFT   = 1,   &   ! x min
-       IN_LEFT    = 2,   &   ! x min
-       OUT_RIGHT  = 3,   &   ! x max
-       IN_RIGHT   = 4,   &   ! x max
-       OUT_BACK   = 5,   &   ! y min
-       IN_BACK    = 6,   &   ! y min
-       OUT_FRONT  = 7,   &   ! y max
-       IN_FRONT   = 8,   &   ! y max
-       OUT_BOTTOM = 9,   &   ! z min
-       IN_BOTTOM  = 10,  &   ! z min
-       OUT_TOP    = 11,  &   ! z max
-       IN_TOP     = 12       ! z max
-
   ! Global tally parameters
   integer, parameter :: N_GLOBAL_TALLIES = 4
   integer, parameter :: &
@@ -234,25 +146,6 @@ module constants
        DIFF_DENSITY = 1, &
        DIFF_NUCLIDE_DENSITY = 2, &
        DIFF_TEMPERATURE = 3
-
-
-  ! Mgxs::get_xs enumerated types
-  integer(C_INT), parameter :: &
-       MG_GET_XS_TOTAL              = 0, &
-       MG_GET_XS_ABSORPTION         = 1, &
-       MG_GET_XS_INVERSE_VELOCITY   = 2, &
-       MG_GET_XS_DECAY_RATE         = 3, &
-       MG_GET_XS_SCATTER            = 4, &
-       MG_GET_XS_SCATTER_MULT       = 5, &
-       MG_GET_XS_SCATTER_FMU_MULT   = 6, &
-       MG_GET_XS_SCATTER_FMU        = 7, &
-       MG_GET_XS_FISSION            = 8, &
-       MG_GET_XS_KAPPA_FISSION      = 9, &
-       MG_GET_XS_PROMPT_NU_FISSION  = 10, &
-       MG_GET_XS_DELAYED_NU_FISSION = 11, &
-       MG_GET_XS_NU_FISSION         = 12, &
-       MG_GET_XS_CHI_PROMPT         = 13, &
-       MG_GET_XS_CHI_DELAYED        = 14
 
   ! ============================================================================
   ! RANDOM NUMBER STREAM CONSTANTS

@@ -11,12 +11,10 @@ module input_xml
 #endif
   use hdf5_interface
   use material_header
-  use mesh_header
   use message_passing
   use mgxs_interface
   use nuclide_header
   use photon_header
-  use random_lcg,       only: prn
   use settings
   use stl_vector,       only: VectorInt, VectorReal, VectorChar
   use string,           only: to_lower, to_str, str_to_int, &
@@ -421,6 +419,11 @@ contains
       end subroutine
 
       subroutine read_tally_derivatives(node_ptr) bind(C)
+        import C_PTR
+        type(C_PTR) :: node_ptr
+      end subroutine
+
+      subroutine read_meshes(node_ptr) bind(C)
         import C_PTR
         type(C_PTR) :: node_ptr
       end subroutine

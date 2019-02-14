@@ -31,7 +31,7 @@ module nuclide_header
 
     ! Cross sections for depletion reactions (note that these are not stored in
     ! macroscopic cache)
-    real(C_DOUBLE) :: reaction(size(DEPLETION_RX))
+    real(C_DOUBLE) :: reaction(6)
 
     ! Indicies and factors needed to compute cross sections from the data tables
     integer(C_INT) :: index_grid        ! Index on nuclide energy grid

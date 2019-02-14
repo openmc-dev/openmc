@@ -308,7 +308,6 @@ add_library(libopenmc SHARED
   src/dagmc_header.F90
   src/constants.F90
   src/dict_header.F90
-  src/eigenvalue.F90
   src/error.F90
   src/geometry.F90
   src/geometry_header.F90
@@ -316,8 +315,6 @@ add_library(libopenmc SHARED
   src/initialize.F90
   src/input_xml.F90
   src/material_header.F90
-  src/math.F90
-  src/mesh_header.F90
   src/message_passing.F90
   src/mgxs_interface.F90
   src/nuclide_header.F90

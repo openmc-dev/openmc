@@ -83,6 +83,9 @@ void finalize_generation();
 //! Determine overall generation number
 extern "C" int overall_generation();
 
+extern "C" void simulation_init_f();
+extern "C" void simulation_finalize_f();
+
 #ifdef OPENMC_MPI
 void broadcast_results();
 #endif

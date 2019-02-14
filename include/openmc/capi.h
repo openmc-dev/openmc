@@ -84,7 +84,6 @@ extern "C" {
   int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
   int openmc_next_batch(int* status);
   int openmc_nuclide_name(int index, const char** name);
-  int openmc_particle_restart();
   int openmc_plot_geometry();
   int openmc_reset();
   int openmc_run();

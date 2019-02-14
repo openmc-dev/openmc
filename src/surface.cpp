@@ -7,8 +7,9 @@
 
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
-#include "openmc/xml_interface.h"
+#include "openmc/settings.h"
 #include "openmc/string_utils.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 
@@ -1243,59 +1244,30 @@ read_surfaces(pugi::xml_node* node)
       }
     }
   }
+
+  // Check to make sure a boundary condition was applied to at least one
+  // surface
+  bool boundary_exists = false;
+  for (const auto& surf : model::surfaces) {
+    if (surf->bc_ != BC_TRANSMIT) {
+      boundary_exists = true;
+      break;
+    }
+  }
+  if (settings::run_mode != RUN_MODE_PLOTTING && !boundary_exists) {
+    fatal_error("No boundary conditions were applied to any surfaces!");
+  }
 }
 
 //==============================================================================
 // Fortran compatibility functions
 //==============================================================================
 
-extern "C" {
-  Surface* surface_pointer(int surf_ind) {return model::surfaces[surf_ind];}
-
-  int surface_id(Surface* surf) {return surf->id_;}
-
-  int surface_bc(Surface* surf) {return surf->bc_;}
-
-  void surface_reflect(Surface* surf, double xyz[3], double uvw[3])
-  {
-    Position r {xyz};
-    Direction u {uvw};
-    u = surf->reflect(r, u);
-
-    uvw[0] = u.x;
-    uvw[1] = u.y;
-    uvw[2] = u.z;
-  }
-
-  int surface_i_periodic(PeriodicSurface* surf) {return surf->i_periodic_;}
-
-  bool
-  surface_periodic(PeriodicSurface* surf, PeriodicSurface* other, double xyz[3],
-                   double uvw[3])
-  {
-    Position r {xyz};
-    Direction u {uvw};
-    bool rotational = surf->periodic_translate(other, r, u);
-
-    // Copy back to arrays
-    xyz[0] = r.x;
-    xyz[1] = r.y;
-    xyz[2] = r.z;
-    uvw[0] = u.x;
-    uvw[1] = u.y;
-    uvw[2] = u.z;
-
-    return rotational;
-  }
-
-  void free_memory_surfaces_c()
-  {
-    for (Surface* surf : model::surfaces) {delete surf;}
-    model::surfaces.clear();
-    model::surface_map.clear();
-  }
-
-  int surfaces_size() { return model::surfaces.size(); }
+extern "C" void free_memory_surfaces()
+{
+  for (Surface* surf : model::surfaces) {delete surf;}
+  model::surfaces.clear();
+  model::surface_map.clear();
 }
 
 } // namespace openmc

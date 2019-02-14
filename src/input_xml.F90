@@ -19,7 +19,6 @@ module input_xml
   use nuclide_header
   use photon_header
   use random_lcg,       only: prn
-  use surface_header
   use settings
   use stl_vector,       only: VectorInt, VectorReal, VectorChar
   use string,           only: to_lower, to_str, str_to_int, &
@@ -116,7 +115,6 @@ contains
 
     call write_message("Reading DAGMC geometry...", 5)
     call load_dagmc_geometry()
-    call allocate_surfaces()
     call allocate_cells()
 
     ! setup universe data structs
@@ -153,7 +151,6 @@ contains
     integer :: n_cells_in_univ
     real(8) :: phi, theta, psi
     logical :: file_exists
-    logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
     type(Cell),     pointer :: c
     type(XMLDocument) :: doc
@@ -188,27 +185,7 @@ contains
     ! ==========================================================================
     ! READ SURFACES FROM GEOMETRY.XML
 
-    ! This variable is used to check whether at least one boundary condition was
-    ! applied to a surface
-    boundary_exists = .false.
-
     call read_surfaces(root % ptr)
-
-    ! Allocate surfaces array
-    allocate(surfaces(surfaces_size()))
-    do i = 1, size(surfaces)
-      surfaces(i) % ptr = surface_pointer(i - 1);
-
-      if (surfaces(i) % bc() /= BC_TRANSMIT) boundary_exists = .true.
-    end do
-
-    ! Check to make sure a boundary condition was applied to at least one
-    ! surface
-    if (run_mode /= MODE_PLOTTING) then
-      if (.not. boundary_exists) then
-        call fatal_error("No boundary conditions were applied to any surfaces!")
-      end if
-    end if
 
     ! ==========================================================================
     ! READ CELLS FROM GEOMETRY.XML
@@ -315,18 +292,6 @@ contains
     call doc % clear()
 
   end subroutine read_geometry_xml
-
-  subroutine allocate_surfaces()
-    integer :: i
-
-    ! Allocate surfaces array
-    allocate(surfaces(surfaces_size()))
-
-    do i = 1, size(surfaces)
-      surfaces(i) % ptr = surface_pointer(i - 1);
-    end do
-
-  end subroutine allocate_surfaces
 
   subroutine allocate_cells()
     integer :: i

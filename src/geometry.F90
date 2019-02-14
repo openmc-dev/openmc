@@ -5,8 +5,6 @@ module geometry
   use particle_header
   use simulation_header
   use settings
-  use surface_header
-  use string,                 only: to_str
 
   use, intrinsic :: ISO_C_BINDING
 

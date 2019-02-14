@@ -3,7 +3,8 @@ module geometry_header
   use, intrinsic :: ISO_C_BINDING
 
   use dict_header,     only: DictIntInt
-  use nuclide_header
+  use error
+  use string, only: to_str
 
   implicit none
 

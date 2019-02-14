@@ -4,13 +4,10 @@ module tally
 
   use bank_header
   use constants
-  use dict_header,      only: EMPTY
-  use error,            only: fatal_error
   use geometry_header
   use material_header
   use message_passing
   use mgxs_interface
-  use nuclide_header
   use settings
   use simulation_header
   use tally_derivative_header

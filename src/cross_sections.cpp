@@ -179,9 +179,6 @@ void read_cross_sections_xml()
   }
 }
 
-extern "C" void nuclide_from_hdf5(hid_t group, const Nuclide* ptr,
-  const double* temps, int n, int n_nuclide);
-
 void
 read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
   const std::vector<std::vector<double>>& thermal_temps)
@@ -225,10 +222,6 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
       int i_nuclide = data::nuclides.size();
       data::nuclides.push_back(std::make_unique<Nuclide>(
         group, nuc_temps[i_nuc], i_nuclide));
-
-      // Read from Fortran too
-      nuclide_from_hdf5(group, data::nuclides.back().get(),
-        &nuc_temps[i_nuc].front(), nuc_temps[i_nuc].size(), i_nuclide + 1);
 
       close_group(group);
       file_close(file_id);

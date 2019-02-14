@@ -892,18 +892,11 @@ void check_data_version(hid_t file_id)
 // C API
 //==============================================================================
 
-extern "C" void extend_nuclides();
-extern "C" void nuclide_from_hdf5(hid_t group, const Nuclide* ptr,
-  const double* temps, int n, int n_nuclide);
-
 extern "C" int openmc_load_nuclide(const char* name)
 {
   if (data::nuclide_map.find(name) == data::nuclide_map.end()) {
     const auto& it = data::library_map.find({Library::Type::neutron, name});
     if (it != data::library_map.end()) {
-      // Extend nuclides array on Fortran side
-      extend_nuclides();
-
       // Get filename for library containing nuclide
       int idx = it->second;
       std::string& filename = data::libraries[idx].path_;
@@ -919,10 +912,6 @@ extern "C" int openmc_load_nuclide(const char* name)
       int i_nuclide = data::nuclides.size();
       data::nuclides.push_back(std::make_unique<Nuclide>(
         group, temperature, i_nuclide));
-
-      // Read from Fortran too
-      nuclide_from_hdf5(group, data::nuclides.back().get(),
-        &temperature.front(), temperature.size(), i_nuclide + 1);
 
       close_group(group);
       file_close(file_id);
@@ -943,6 +932,30 @@ extern "C" int openmc_load_nuclide(const char* name)
   return 0;
 }
 
+extern "C" int
+openmc_get_nuclide_index(const char* name, int* index)
+{
+  auto it = data::nuclide_map.find(name);
+  if (it == data::nuclide_map.end()) {
+    set_errmsg("No nuclide named '" + std::string{name} + "' has been loaded.");
+    return OPENMC_E_DATA;
+  }
+  *index = it->second;
+  return 0;
+}
+
+extern "C" int
+openmc_nuclide_name(int index, const char** name)
+{
+  if (index >= 0 && index < data::nuclides.size()) {
+    *name = data::nuclides[index]->name_.data();
+    return 0;
+  } else {
+    set_errmsg("Index in nuclides vector is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+}
+
 //==============================================================================
 // Fortran compatibility functions
 //==============================================================================
@@ -956,47 +969,6 @@ set_particle_energy_bounds(int particle, double E_min, double E_max)
 
 extern "C" int nuclides_size() { return data::nuclide_map.size(); }
 
-extern "C" void nuclide_init_grid_c(Nuclide* nuc) { nuc->init_grid(); }
-
-extern "C" double nuclide_awr(int i_nuc) { return data::nuclides[i_nuc - 1]->awr_; }
-
-extern "C" Reaction* nuclide_reaction(Nuclide* nuc, int i_rx)
-{
-  return nuc->reactions_[i_rx-1].get();
-}
-
-extern "C" void nuclide_calculate_xs_c(Nuclide* nuc, int i_sab, double E,
-  int i_log_union, double sqrtkT, double sab_frac)
-{
-  nuc->calculate_xs(i_sab, E, i_log_union, sqrtkT, sab_frac);
-}
-
-extern "C" void nuclide_calculate_elastic_xs_c(Nuclide* nuc)
-{
-  nuc->calculate_elastic_xs();
-}
-
-extern "C" double nuclide_nu_c(Nuclide* nuc, double E, int emission_mode, int group)
-{
-  return nuc->nu(E, static_cast<Nuclide::EmissionMode>(emission_mode - 1), group);
-}
-
-extern "C" double nuclide_fission_q_prompt(Nuclide* nuc, double E)
-{
-  return nuc->fission_q_prompt_ ? (*nuc->fission_q_prompt_)(E) : 0.0;
-}
-
-extern "C" double nuclide_fission_q_recov(Nuclide* nuc, double E)
-{
-  return nuc->fission_q_recov_ ? (*nuc->fission_q_recov_)(E) : 0.0;
-}
-
-extern "C" void multipole_deriv_eval(Nuclide* nuc, double E, double sqrtkT,
-  double* sig_s, double* sig_a, double* sig_f)
-{
-  std::tie(*sig_s, *sig_a, *sig_f) = nuc->multipole_->evaluate_deriv(E, sqrtkT);
-}
-
 extern "C" bool multipole_in_range(const Nuclide* nuc, double E)
 {
   return nuc->multipole_ && E >= nuc->multipole_->E_min_&&
@@ -1007,12 +979,6 @@ extern "C" void nuclides_clear()
 {
   data::nuclides.clear();
   data::nuclide_map.clear();
-}
-
-extern "C" int nuclide_map_get(const char* name)
-{
-  auto it = data::nuclide_map.find(name);
-  return it == data::nuclide_map.end() ? -1 : it->second + 1;
 }
 
 extern "C" NuclideMicroXS* micro_xs_ptr();

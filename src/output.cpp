@@ -65,7 +65,7 @@ void title()
     "                     ###############     %%%%%%%%%%%%%%%%\n" <<
     "                       ############     %%%%%%%%%%%%%%%\n" <<
     "                          ########     %%%%%%%%%%%%%%\n" <<
-    "                                      %%%%%%%%%%%\n";
+    "                                      %%%%%%%%%%%\n\n";
 
   // Write version information
   std::cout <<
@@ -88,7 +88,7 @@ void title()
 
 #ifdef _OPENMP
   // Write number of OpenMP threads
-  std::cout << "    OpenMC Threads | " << omp_get_max_threads() << '\n';
+  std::cout << "    OpenMP Threads | " << omp_get_max_threads() << '\n';
 #endif
   std::cout << '\n';
 }

@@ -148,18 +148,6 @@ module constants
        DIFF_TEMPERATURE = 3
 
   ! ============================================================================
-  ! RANDOM NUMBER STREAM CONSTANTS
-
-  integer(C_INT), bind(C, name='N_STREAMS') :: N_STREAMS
-  integer(C_INT), bind(C, name='STREAM_TRACKING') :: STREAM_TRACKING
-  integer(C_INT), bind(C, name='STREAM_TALLIES') :: STREAM_TALLIES
-  integer(C_INT), bind(C, name='STREAM_SOURCE') :: STREAM_SOURCE
-  integer(C_INT), bind(C, name='STREAM_URR_PTABLE') :: STREAM_URR_PTABLE
-  integer(C_INT), bind(C, name='STREAM_VOLUME') :: STREAM_VOLUME
-  integer(C_INT), bind(C, name='STREAM_PHOTON') :: STREAM_PHOTON
-  integer(C_INT64_T), parameter :: DEFAULT_SEED = 1_8
-
-  ! ============================================================================
   ! MISCELLANEOUS CONSTANTS
 
   ! indicates that an array index hasn't been set

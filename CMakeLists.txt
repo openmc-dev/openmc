@@ -319,10 +319,8 @@ add_library(libopenmc SHARED
   src/mgxs_interface.F90
   src/nuclide_header.F90
   src/particle_header.F90
-  src/particle_restart.F90
   src/photon_header.F90
   src/pugixml/pugixml_f.F90
-  src/random_lcg.F90
   src/relaxng
   src/settings.F90
   src/simulation_header.F90
@@ -370,6 +368,7 @@ add_library(libopenmc SHARED
   src/nuclide.cpp
   src/output.cpp
   src/particle.cpp
+  src/particle_restart.cpp
   src/photon.cpp
   src/physics.cpp
   src/physics_common.cpp

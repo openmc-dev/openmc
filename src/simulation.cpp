@@ -30,8 +30,6 @@ namespace openmc {
 extern "C" void accumulate_tallies();
 extern "C" void allocate_tally_results();
 extern "C" void setup_active_tallies();
-extern "C" void simulation_init_f();
-extern "C" void simulation_finalize_f();
 extern "C" void write_tallies();
 
 } // namespace openmc

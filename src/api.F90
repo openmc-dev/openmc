@@ -64,7 +64,6 @@ contains
     use photon_header
     use settings
     use simulation_header
-    use surface_header
     use tally_filter_header
     use tally_header
 
@@ -88,6 +87,9 @@ contains
       end subroutine free_memory_cmfd
 
       subroutine free_memory_volume() bind(C)
+      end subroutine
+
+      subroutine free_memory_surfaces() bind(C)
       end subroutine
 
       subroutine sab_clear() bind(C)

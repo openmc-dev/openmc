@@ -38,6 +38,7 @@ _dll.openmc_cell_set_temperature.errcheck = _error_handler
 _dll.openmc_get_cell_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_cell_index.restype = c_int
 _dll.openmc_get_cell_index.errcheck = _error_handler
+_dll.cells_size.restype = c_int
 
 
 class Cell(_FortranObjectWithID):
@@ -156,10 +157,10 @@ class _CellMapping(Mapping):
 
     def __iter__(self):
         for i in range(len(self)):
-            yield Cell(index=i + 1).id
+            yield Cell(index=i).id
 
     def __len__(self):
-        return c_int32.in_dll(_dll, 'n_cells').value
+        return _dll.cells_size()
 
     def __repr__(self):
         return repr(dict(self))

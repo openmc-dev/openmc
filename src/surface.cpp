@@ -1061,12 +1061,11 @@ void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 
 //==============================================================================
 
-extern "C" void
-read_surfaces(pugi::xml_node* node)
+void read_surfaces(pugi::xml_node node)
 {
   // Count the number of surfaces.
   int n_surfaces = 0;
-  for (pugi::xml_node surf_node : node->children("surface")) {n_surfaces++;}
+  for (pugi::xml_node surf_node : node.children("surface")) {n_surfaces++;}
   if (n_surfaces == 0) {
     fatal_error("No surfaces found in geometry.xml!");
   }
@@ -1076,7 +1075,7 @@ read_surfaces(pugi::xml_node* node)
   {
     pugi::xml_node surf_node;
     int i_surf;
-    for (surf_node = node->child("surface"), i_surf = 0; surf_node;
+    for (surf_node = node.child("surface"), i_surf = 0; surf_node;
          surf_node = surf_node.next_sibling("surface"), i_surf++) {
       std::string surf_type = get_node_value(surf_node, "type", true, true);
 

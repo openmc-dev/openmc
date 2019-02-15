@@ -4,6 +4,7 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/geometry_aux.h"
 #include "openmc/string_utils.h"
 #include "openmc/settings.h"
 #include "openmc/geometry.h"
@@ -133,9 +134,9 @@ void load_dagmc_geometry()
   /// Cells (Volumes) \\\
 
   // initialize cell objects
-  model::n_cells = model::DAG->num_entities(3);
+  int n_cells = model::DAG->num_entities(3);
   moab::EntityHandle graveyard = 0;
-  for (int i = 0; i < model::n_cells; i++) {
+  for (int i = 0; i < n_cells; i++) {
     moab::EntityHandle vol_handle = model::DAG->entity_by_index(3, i+1);
 
     // set cell ids using global IDs
@@ -310,6 +311,20 @@ void load_dagmc_geometry()
   }
 
   return;
+}
+
+void read_geometry_dagmc()
+{
+  // Check if dagmc.h5m exists
+  std::string filename = settings::path_input + "dagmc.h5m"
+  if (!file_exists(filename)) {
+    fatal_error("Geometry DAGMC file '" + filename + "' does not exist!");
+  }
+
+  write_message("Reading DAGMC geometry...", 5);
+  load_dagmc_geometry();
+
+  model::root_universe = find_root_universe()
 }
 
 void free_memory_dagmc()

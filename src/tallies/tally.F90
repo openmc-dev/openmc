@@ -4,7 +4,6 @@ module tally
 
   use bank_header
   use constants
-  use geometry_header
   use material_header
   use message_passing
   use mgxs_interface

@@ -1,7 +1,6 @@
 module geometry
 
   use constants
-  use geometry_header
   use particle_header
   use simulation_header
   use settings

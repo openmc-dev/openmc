@@ -72,7 +72,7 @@ def test_cell(capi_init):
     cell = openmc.capi.cells[1]
     assert isinstance(cell.fill, openmc.capi.Material)
     cell.fill = openmc.capi.materials[1]
-    assert str(cell) == 'Cell[1]'
+    assert str(cell) == 'Cell[0]'
 
 
 def test_new_cell(capi_init):

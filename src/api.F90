@@ -39,7 +39,7 @@ contains
     err = E_UNASSIGNED
 
     if (found) then
-      index = p % coord(p % n_coord) % cell + 1
+      index = p % coord(p % n_coord) % cell
       instance = p % cell_instance
       err = 0
     else
@@ -59,7 +59,6 @@ contains
   subroutine free_memory() bind(C)
 
     use bank_header
-    use geometry_header
     use material_header
     use nuclide_header
     use photon_header
@@ -91,6 +90,9 @@ contains
       end subroutine
 
       subroutine free_memory_surfaces() bind(C)
+      end subroutine
+
+      subroutine free_memory_geometry() bind(C)
       end subroutine
 
       subroutine sab_clear() bind(C)

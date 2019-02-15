@@ -199,6 +199,8 @@ public:
 // Non-member functions
 //==============================================================================
 
+void read_cells(pugi::xml_node node);
+
 #ifdef DAGMC
 int32_t next_cell(DAGCell* cur_cell, DAGSurface* surf_xed);
 #endif

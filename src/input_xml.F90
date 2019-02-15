@@ -3,9 +3,7 @@ module input_xml
   use, intrinsic :: ISO_C_BINDING
 
   use constants
-  use dict_header,      only: DictIntInt, DictCharInt, DictEntryCI
   use error,            only: fatal_error, warning, write_message, openmc_err_msg
-  use geometry_header
 #ifdef DAGMC
   use dagmc_header
 #endif
@@ -30,41 +28,10 @@ module input_xml
   save
 
   interface
-    subroutine count_cell_instances(univ_indx) bind(C)
-      import C_INT32_T
-      integer(C_INT32_T), intent(in), value :: univ_indx
-    end subroutine count_cell_instances
-
-    subroutine read_surfaces(node_ptr) bind(C)
-      import C_PTR
-      type(C_PTR) :: node_ptr
-    end subroutine read_surfaces
-
-    subroutine read_cells(node_ptr) bind(C)
-      import C_PTR
-      type(C_PTR) :: node_ptr
-    end subroutine read_cells
-
-    subroutine read_lattices(node_ptr) bind(C)
-      import C_PTR
-      type(C_PTR) :: node_ptr
-    end subroutine read_lattices
-
     subroutine read_materials(node_ptr) bind(C)
       import C_PTR
       type(C_PTR) :: node_ptr
     end subroutine read_materials
-
-    function find_root_universe() bind(C) result(root)
-      import C_INT32_T
-      integer(C_INT32_T) :: root
-    end function find_root_universe
-
-    function maximum_levels(univ) bind(C) result(n)
-      import C_INT32_T, C_INT
-      integer(C_INT32_T), intent(in), value :: univ
-      integer(C_INT)                        :: n
-    end function maximum_levels
 
     subroutine read_plots(node_ptr) bind(C)
       import C_PTR
@@ -80,199 +47,6 @@ module input_xml
   end interface
 
 contains
-
-#ifdef DAGMC
-
-!===============================================================================
-! READ_GEOMETRY_DAGMC reads data from a DAGMC .h5m file, checking
-! for material properties and surface boundary conditions
-! some universe information is spoofed for now
-!===============================================================================
-
-  subroutine read_geometry_dagmc()
-
-    integer :: i
-    integer :: univ_id
-    integer :: n_cells_in_univ
-    logical :: file_exists
-    character(MAX_LINE_LEN) :: filename
-    type(Cell),     pointer :: c
-    type(VectorInt) :: univ_ids      ! List of all universe IDs
-    type(DictIntInt) :: cells_in_univ_dict ! Used to count how many cells each
-                                           ! universe contains
-
-    ! Check if dagmc.h5m exists
-    filename = trim(path_input) // "dagmc.h5m"
-    inquire(FILE=filename, EXIST=file_exists)
-    if (.not. file_exists) then
-      call fatal_error("Geometry DAGMC file '" // trim(filename) // "' does not &
-           &exist!")
-    end if
-
-    call write_message("Reading DAGMC geometry...", 5)
-    call load_dagmc_geometry()
-    call allocate_cells()
-
-    ! setup universe data structs
-    do i = 1, n_cells
-      c => cells(i)
-      ! additional metadata spoofing
-      univ_id = c % universe()
-
-      if (.not. cells_in_univ_dict % has(univ_id)) then
-        n_universes = n_universes + 1
-        n_cells_in_univ = 1
-        call univ_ids % push_back(univ_id)
-      else
-        n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
-      end if
-      call cells_in_univ_dict % set(univ_id, n_cells_in_univ)
-    end do
-
-    root_universe = find_root_universe()
-
-  end subroutine read_geometry_dagmc
-
-#endif
-
-!===============================================================================
-! READ_GEOMETRY_XML reads data from a geometry.xml file and parses it, checking
-! for errors and placing properly-formatted data in the right data structures
-!===============================================================================
-
-  subroutine read_geometry_xml() bind(C)
-
-    integer :: i, n
-    integer :: univ_id
-    integer :: n_cells_in_univ
-    real(8) :: phi, theta, psi
-    logical :: file_exists
-    character(MAX_LINE_LEN) :: filename
-    type(Cell),     pointer :: c
-    type(XMLDocument) :: doc
-    type(XMLNode) :: root
-    type(XMLNode) :: node_cell
-    type(XMLNode), allocatable :: node_cell_list(:)
-    type(VectorInt) :: univ_ids      ! List of all universe IDs
-    type(DictIntInt) :: cells_in_univ_dict ! Used to count how many cells each
-                                           ! universe contains
-#ifdef DAGMC
-    if (dagmc) then
-      call read_geometry_dagmc()
-      return
-    end if
-#endif
-
-    ! Display output message
-    call write_message("Reading geometry XML file...", 5)
-
-    ! Check if geometry.xml exists
-    filename = trim(path_input) // "geometry.xml"
-    inquire(FILE=filename, EXIST=file_exists)
-    if (.not. file_exists) then
-      call fatal_error("Geometry XML file '" // trim(filename) // "' does not &
-           &exist!")
-    end if
-
-    ! Parse geometry.xml file
-    call doc % load_file(filename)
-    root = doc % document_element()
-
-    ! ==========================================================================
-    ! READ SURFACES FROM GEOMETRY.XML
-
-    call read_surfaces(root % ptr)
-
-    ! ==========================================================================
-    ! READ CELLS FROM GEOMETRY.XML
-
-    call read_cells(root % ptr)
-
-    ! Get pointer to list of XML <cell>
-    call get_node_list(root, "cell", node_cell_list)
-
-    ! Get number of <cell> tags
-    n_cells = size(node_cell_list)
-
-    ! Check for no cells
-    if (n_cells == 0) then
-      call fatal_error("No cells found in geometry.xml!")
-    end if
-
-    ! Allocate cells array
-    allocate(cells(n_cells))
-
-    n_universes = 0
-    do i = 1, n_cells
-      c => cells(i)
-
-      c % ptr = cell_pointer(i - 1)
-
-      ! Get pointer to i-th cell node
-      node_cell = node_cell_list(i)
-
-      ! Check to make sure 'id' hasn't been used
-      if (cell_dict % has(c % id())) then
-        call fatal_error("Two or more cells use the same unique ID: " &
-             // to_str(c % id()))
-      end if
-
-      ! Add cell to dictionary
-      call cell_dict % set(c % id(), i)
-
-      ! For cells, we also need to check if there's a new universe --
-      ! also for every cell add 1 to the count of cells for the
-      ! specified universe
-      univ_id = c % universe()
-      if (.not. cells_in_univ_dict % has(univ_id)) then
-        n_universes = n_universes + 1
-        n_cells_in_univ = 1
-        call univ_ids % push_back(univ_id)
-      else
-        n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
-      end if
-      call cells_in_univ_dict % set(univ_id, n_cells_in_univ)
-
-    end do
-
-    ! ==========================================================================
-    ! READ LATTICES FROM GEOMETRY.XML
-
-    call read_lattices(root % ptr)
-
-    ! ==========================================================================
-    ! SETUP UNIVERSES
-
-    ! Allocate universes, universe cell arrays, and assign base universe
-    root_universe = find_root_universe()
-
-    ! Clear dictionary
-    call cells_in_univ_dict%clear()
-
-    ! Close geometry XML file
-    call doc % clear()
-
-  end subroutine read_geometry_xml
-
-  subroutine allocate_cells()
-    integer :: i
-    type(Cell), pointer :: c
-
-    ! Allocate cells array
-    allocate(cells(n_cells))
-
-    do i = 1, n_cells
-      c => cells(i)
-      c % ptr = cell_pointer(i - 1)
-      ! Check to make sure 'id' hasn't been used
-      if (cell_dict % has(c % id())) then
-        call fatal_error("Two or more cells use the same unique ID: " &
-               // to_str(c % id()))
-      end if
-      ! Add cell to dictionary
-      call cell_dict % set(c % id(), i)
-    end do
-  end subroutine allocate_cells
 
   subroutine read_materials_xml() bind(C)
     logical :: file_exists    ! does materials.xml exist?

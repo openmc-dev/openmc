@@ -4,10 +4,14 @@
 #include <sstream>
 #include <unordered_set>
 
+#include "pugixml.hpp"
+
 #include "openmc/cell.h"
 #include "openmc/constants.h"
 #include "openmc/container_util.h"
+#include "openmc/dagmc.h"
 #include "openmc/error.h"
+#include "openmc/file_utils.h"
 #include "openmc/geometry.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
@@ -18,6 +22,46 @@
 
 
 namespace openmc {
+
+void read_geometry_xml()
+{
+#ifdef DAGMC
+  if (settings::dagmc) {
+    read_geometry_dagmc();
+    return;
+  }
+#endif
+
+  // Display output message
+  write_message("Reading geometry XML file...", 5);
+
+  // Check if geometry.xml exists
+  std::string filename = settings::path_input + "geometry.xml";
+  if (!file_exists(filename)) {
+    fatal_error("Geometry XML file '" + filename + "' does not exist!");
+  }
+
+  // Parse settings.xml file
+  pugi::xml_document doc;
+  auto result = doc.load_file(filename.c_str());
+  if (!result) {
+    fatal_error("Error processing geometry.xml file.");
+  }
+
+  // Get root element
+  pugi::xml_node root = doc.document_element();
+
+  // Read surfaces, cells, lattice
+  read_surfaces(root);
+  read_cells(root);
+  read_lattices(root);
+
+  // ==========================================================================
+  // SETUP UNIVERSES
+
+  // Allocate universes, universe cell arrays, and assign base universe
+  model::root_universe = find_root_universe();
+}
 
 //==============================================================================
 
@@ -473,12 +517,11 @@ maximum_levels(int32_t univ)
 //==============================================================================
 
 void
-free_memory_geometry_c()
+free_memory_geometry()
 {
   for (Cell* c : model::cells) {delete c;}
   model::cells.clear();
   model::cell_map.clear();
-  model::n_cells = 0;
 
   for (Universe* u : model::universes) {delete u;}
   model::universes.clear();

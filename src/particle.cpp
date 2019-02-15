@@ -581,17 +581,21 @@ Particle::cross_surface()
 
 #ifdef DAGMC
   if (settings::dagmc) {
-    int32_t i_cell = next_cell(model::cells[last_cell[0]],
-      model::surfaces[std::abs(surface)]);
+    auto cellp = dynamic_cast<DAGCell*>(model::cells[last_cell[0]]);
+    // TODO: off-by-one
+    auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[std::abs(surface) - 1]);
+    int32_t i_cell = next_cell(cellp, surfp) - 1;
     // save material and temp
     last_material = material;
-    last_sqrtkT = sqrtKT;
+    last_sqrtkT = sqrtkT;
     // set new cell value
-    coord[0].cell = i_cell
+    coord[0].cell = i_cell;
     cell_instance = 0;
-    material = model::cells[i_cell]->material[0];
-    sqrtKT = model::cells[i_cell]->sqrtKT[0];
-    return
+    // TODO: off-by-one
+    int mat = model::cells[i_cell]->material_[0];
+    material = (mat == MATERIAL_VOID) ? mat : mat + 1;
+    sqrtkT = model::cells[i_cell]->sqrtkT_[0];
+    return;
   }
 #endif
 

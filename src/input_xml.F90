@@ -29,7 +29,6 @@ module input_xml
   use tally_derivative_header
   use tally_filter_header
   use tally_filter
-  use volume_header
   use xml_interface
 
   implicit none
@@ -55,9 +54,6 @@ module input_xml
       import C_PTR
       type(C_PTR) :: node_ptr
     end subroutine read_lattices
-
-    subroutine read_settings_xml() bind(C)
-    end subroutine read_settings_xml
 
     subroutine read_materials(node_ptr) bind(C)
       import C_PTR
@@ -89,34 +85,6 @@ module input_xml
   end interface
 
 contains
-
-!===============================================================================
-! READ_SETTINGS_XML reads data from a settings.xml file and parses it, checking
-! for errors and placing properly-formatted data in the right data structures
-!===============================================================================
-
-  subroutine read_settings_xml_f(root_ptr) bind(C)
-    type(C_PTR), value :: root_ptr
-
-    integer :: i
-    integer :: n
-    type(XMLNode) :: root
-    type(XMLNode) :: node_vol
-    type(XMLNode), allocatable :: node_vol_list(:)
-
-    ! Get proper XMLNode type given pointer
-    root % ptr = root_ptr
-
-    call get_node_list(root, "volume_calc", node_vol_list)
-    n = size(node_vol_list)
-    allocate(volume_calcs(n))
-    do i = 1, n
-      node_vol = node_vol_list(i)
-      call volume_calcs(i) % from_xml(node_vol)
-    end do
-
-  end subroutine read_settings_xml_f
-
 
 #ifdef DAGMC
 

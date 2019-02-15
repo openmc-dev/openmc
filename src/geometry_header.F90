@@ -8,12 +8,6 @@ module geometry_header
   implicit none
 
   interface
-    function universe_id(universe_ind) bind(C) result(id)
-      import C_INT, C_INT32_T
-      integer(C_INT), intent(in), value :: universe_ind
-      integer(C_INT32_T)                :: id
-    end function universe_id
-
     function cell_pointer(cell_ind) bind(C) result(ptr)
       import C_PTR, C_INT32_T
       integer(C_INT32_T), intent(in), value :: cell_ind

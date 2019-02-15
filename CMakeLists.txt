@@ -323,7 +323,6 @@ add_library(libopenmc SHARED
   src/message_passing.F90
   src/mgxs_interface.F90
   src/nuclide_header.F90
-  src/output.F90
   src/particle_header.F90
   src/particle_restart.F90
   src/photon_header.F90
@@ -338,12 +337,9 @@ add_library(libopenmc SHARED
   src/stl_vector.F90
   src/string.F90
   src/surface_header.F90
-  src/timer_header.F90
   src/tracking.F90
   src/track_output.F90
   src/vector_header.F90
-  src/volume_calc.F90
-  src/volume_header.F90
   src/xml_interface.F90
   src/tallies/tally.F90
   src/tallies/tally_derivative_header.F90
@@ -433,6 +429,7 @@ add_library(libopenmc SHARED
   src/tallies/trigger.cpp
   src/timer.cpp
   src/thermal.cpp
+  src/volume_calc.cpp
   src/wmp.cpp
   src/xml_interface.cpp
   src/xsdata.cpp)

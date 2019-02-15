@@ -8,7 +8,6 @@ module particle_restart
   use hdf5_interface,   only: file_open, file_close, read_dataset, HID_T
   use mgxs_interface,   only: energy_bin_avg
   use nuclide_header,   only: micro_xs, n_nuclides
-  use output,           only: print_particle
   use particle_header
   use photon_header,    only: micro_photon_xs, n_elements
   use random_lcg,       only: set_particle_seed
@@ -36,6 +35,11 @@ contains
 
     interface
       subroutine set_micro_xs() bind(C)
+      end subroutine
+
+      subroutine print_particle(p) bind(C)
+        import Particle
+        type(Particle), intent(in) :: p
       end subroutine
     end interface
 

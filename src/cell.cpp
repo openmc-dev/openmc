@@ -845,11 +845,6 @@ extern "C" {
     }
     model::n_cells = model::cells.size();
   }
-
-  int32_t universe_id(int i_univ) {return model::universes[i_univ]->id_;}
-
-  void universes_to_hdf5(hid_t universes_group)
-  {for (Universe* u : model::universes) u->to_hdf5(universes_group);}
 }
 
 

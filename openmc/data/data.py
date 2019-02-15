@@ -141,8 +141,8 @@ _GND_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
 def atomic_mass(isotope):
     """Return atomic mass of isotope in atomic mass units.
 
-    Atomic mass data comes from the `Atomic Mass Evaluation 2012
-    <https://www-nds.iaea.org/amdc/ame2012/AME2012-1.pdf>`_.
+    Atomic mass data comes from the `Atomic Mass Evaluation 2016
+    <https://www-nds.iaea.org/amdc/ame2016/AME2016-a.pdf>`_.
 
     Parameters
     ----------
@@ -157,8 +157,8 @@ def atomic_mass(isotope):
     """
     if not _ATOMIC_MASS:
 
-        # Load data from AME2012 file
-        mass_file = os.path.join(os.path.dirname(__file__), 'mass.mas12')
+        # Load data from AME2016 file
+        mass_file = os.path.join(os.path.dirname(__file__), 'mass16.txt')
         with open(mass_file, 'r') as ame:
             # Read lines in file starting at line 40
             for line in itertools.islice(ame, 39, None):

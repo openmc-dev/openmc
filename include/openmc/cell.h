@@ -9,14 +9,14 @@
 
 #include "hdf5.h"
 #include "pugixml.hpp"
+#ifdef DAGMC
+#include "DagMC.hpp"
+#endif
 
 #include "openmc/constants.h"
 #include "openmc/neighbor_list.h"
 #include "openmc/position.h"
-
-#ifdef DAGMC
-#include "DagMC.hpp"
-#endif
+#include "openmc/surface.h"
 
 namespace openmc {
 

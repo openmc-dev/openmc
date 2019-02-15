@@ -316,7 +316,7 @@ void load_dagmc_geometry()
 void read_geometry_dagmc()
 {
   // Check if dagmc.h5m exists
-  std::string filename = settings::path_input + "dagmc.h5m"
+  std::string filename = settings::path_input + "dagmc.h5m";
   if (!file_exists(filename)) {
     fatal_error("Geometry DAGMC file '" + filename + "' does not exist!");
   }
@@ -324,7 +324,7 @@ void read_geometry_dagmc()
   write_message("Reading DAGMC geometry...", 5);
   load_dagmc_geometry();
 
-  model::root_universe = find_root_universe()
+  model::root_universe = find_root_universe();
 }
 
 void free_memory_dagmc()

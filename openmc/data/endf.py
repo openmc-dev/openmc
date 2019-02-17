@@ -394,8 +394,14 @@ class Evaluation(object):
         self.projectile = {}
         self.reaction_list = []
 
-        # Determine MAT number for this evaluation
+        # Skip TPID record. Evaluators sometimes put in TPID records that are
+        # ill-formated because they lack MF/MT values or put them in the wrong
+        # columns.
+        if fh.tell() == 0:
+            fh.readline()
         MF = 0
+
+        # Determine MAT number for this evaluation
         while MF == 0:
             position = fh.tell()
             line = fh.readline()

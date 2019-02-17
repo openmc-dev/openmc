@@ -167,7 +167,7 @@ Prerequisites
       <https://svalinn.github.io/DAGMC/install/dag_multiple.html>`_). For use in
       OpenMC, only the ``MOAB_DIR`` and ``BUILD_TALLY`` variables need to be
       specified in the CMake configuration step.
-    |
+
     * git_ version control software for obtaining source code
 
 
@@ -476,10 +476,6 @@ as for OpenMC.
 
    `vtk <http://www.vtk.org/>`_
       The Python VTK bindings are needed to convert voxel and track files to VTK
-      format.
-
-   `silomesh <https://github.com/nhorelik/silomesh>`_
-      The silomesh package is needed to convert voxel and track files to SILO
       format.
 
    `pytest <https://docs.pytest.org>`_

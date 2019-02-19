@@ -64,10 +64,14 @@ void roulette(Particle* p, double importance_ratio) {
     p->wgt_ /= importance_ratio;
     //std::cout << p->wgt << std::endl;  
   } else {
+<<<<<<< HEAD
     //std::cout << " kill" << std::endl;
     p->alive_ = false;
     p->wgt_ = 0.;
     p->wgt_last_ = 0.;
+=======
+    p->wgt /= importance_ratio;
+>>>>>>> Updated and rebased
   }
   return;
 }

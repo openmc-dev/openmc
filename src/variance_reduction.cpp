@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 #include "openmc/variance_reduction.h"
-=======
-#include "variance_reduction.h"
->>>>>>> CPP XML read of variance reduction
 
 #include <iostream>
 #include <array>

@@ -61,6 +61,9 @@ constexpr double FP_COINCIDENT {1e-12};
 constexpr int MAX_EVENTS {1000000};
 constexpr int MAX_SAMPLE {100000};
 
+// Maximum number of particle splits
+constexpr int MAX_SPLIT {100000};
+
 // Maximum number of words in a single line, length of line, and length of
 // single word
 constexpr int MAX_LINE_LEN {250};

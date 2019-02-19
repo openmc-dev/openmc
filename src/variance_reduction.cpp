@@ -1,4 +1,4 @@
-#include "variance_reduction.h"
+#include "openmc/variance_reduction.h"
 
 #include <iostream>
 #include <array>
@@ -8,7 +8,10 @@
 #include "error.h"
 
 namespace openmc {
-
+namespace variance_reduction {
+bool importance_splitting = false;
+  bool weight_splitting = false;
+  std::vector<double> importances;
 extern "C" void
 read_variance_reduction(pugi::xml_node *node)
 {
@@ -40,7 +43,8 @@ read_variance_reduction(pugi::xml_node *node)
 void
 read_importances(pugi::xml_node *node)
 {
-  std::cout << "FOund imp" << std::endl;
+  std::cout << "Found imp" << std::endl;
 }
-  
+
+} // namespace variance_reduction 
 } // namespace openmc

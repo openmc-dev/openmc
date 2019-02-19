@@ -1,7 +1,7 @@
 #ifndef VARIANCE_REDUCTION_H
 #define VARIANCE_REDUCTION_H 1
 
-#include <map>
+#include <vector>
 #include "hdf5.h"
 
 #include "openmc/xml_interface.h"
@@ -9,12 +9,6 @@
 
 namespace openmc {
 namespace variance_reduction {
-
-  extern bool importance_splitting;
-  extern bool weight_splitting;
-  extern std::map<int,double> importances;
-
-  void read_variance_reduction(pugi::xml_node *node);
 
   void read_importances(pugi::xml_node *node);
 

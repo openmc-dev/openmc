@@ -10,6 +10,10 @@
 namespace openmc {
 namespace variance_reduction {
 
+  extern bool importance_splitting;
+  extern bool weight_splitting;
+  extern std::vector<double> importances;
+
   void read_importances(pugi::xml_node *node);
 
   void read_weight_windows(pugi::xml_node *node);

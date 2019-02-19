@@ -43,7 +43,7 @@ void split_by_ratio(Particle* p, double importance_ratio) {
   p->wgt /= float(num_splits);
   // note 1 -> n not 0->n
   for ( int i = 1 ; i < num_splits ; i++ ) {
-    p->create_secondary(p->uvw,p->E,p->type,true);
+    p->create_secondary(p->coord[0].uvw,p->E,p->type,true);
   }
 
   return;
@@ -60,7 +60,7 @@ void roulette(Particle* p, double importance_ratio) {
     p->wgt = 0.;
     p->last_wgt = 0.;
   } else {
-    p->wgt /= importance_ratio
+    p->wgt /= importance_ratio;
   }
   return;
 }
@@ -69,14 +69,19 @@ void roulette(Particle* p, double importance_ratio) {
 // WEIGHT_WINDOW - assume we have already checked cutoffs
 //==============================================================================
 
-void weight_window_split(Particle *p)
+void weight_window_split(Particle *p) {
+  bool mesh_weight = false;
+  double weight_low = 0.;
+  double weight_high = 0.;
 
-  if ( mesh_weight) 
-    get_window_from_mesh(p,weight_low,weight_weight_high);
+  /* - todo complete weight from mesh
+  if ( mesh_weight ) 
+    get_window_from_mesh(p,weight_low,weight_high);
   else
-    get_window_from_cell(p,weight_low,weight_weight_high)
-  
-  if ( p->wgt > weight_high) 
+    get_window_from_cell(p,weight_low,weight_high);
+  */
+
+  if ( p->wgt > weight_high ) {
     if ( p->wgt/weight_high > MAX_SPLIT ) {
           // long history mitigation - if the number of requested
           // splits is greater than the prescribed amount in the input
@@ -104,8 +109,8 @@ void weight_window_split(Particle *p)
     p->wgt += remaining_wgt;
     */
     split_by_ratio(p,p->wgt/weight_high);
-  else if ( p->wgt < weight_low ) {
-    roulette(p,p->wgt/weight_low)  
+  } else if ( p->wgt < weight_low ) {
+    roulette(p,p->wgt/weight_low);  
   } else {
     // do nothing we are in the window
   }
@@ -116,11 +121,11 @@ void weight_window_split(Particle *p)
 void importance_split(Particle *p){
 
   // importances can only come from cells
-  int current_cell = p->last_n_coord[p->n_coord]->cell;
-  int last_cell = p->last_n_coord[p->n_coord]->last_cell;
+  int current_cell = p->coord[p->last_n_coord].cell;
+  int last_cell = p->last_cell[p->last_n_coord];
 
   double importance_ratio = variance_reduction::importances[current_cell]/
-                            variance_reduciton::importances[last_cell];
+                            variance_reduction::importances[last_cell];
 
   if (importance_ratio > 1) 
     split_by_ratio(p, importance_ratio);
@@ -133,7 +138,7 @@ void importance_split(Particle *p){
 // VARIANCE_REDUCTION
 //==============================================================================
 
-void variance_reduction(Particle* p)
+void perform_vr(Particle* p)
 {
   // check weight cutoff
   if ( p->wgt < settings::weight_cutoff ) {
@@ -143,9 +148,9 @@ void variance_reduction(Particle* p)
     return;
   }
 
-  if ( importance_splitting ) 
+  if (variance_reduction::importance_splitting) 
     importance_split(p);
-  else 
+  else if (variance_reduction::weight_splitting)
     weight_window_split(p);
 }
 

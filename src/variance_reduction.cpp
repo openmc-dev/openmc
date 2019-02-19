@@ -5,13 +5,14 @@
 #include <cmath>
 #include <sstream>
 
-#include "error.h"
+#include "openmc/error.h"
 
 namespace openmc {
 namespace variance_reduction {
+
 bool importance_splitting = false;
-  bool weight_splitting = false;
-  std::vector<double> importances;
+bool weight_splitting = false;
+
 extern "C" void
 read_variance_reduction(pugi::xml_node *node)
 {
@@ -46,5 +47,5 @@ read_importances(pugi::xml_node *node)
   std::cout << "Found imp" << std::endl;
 }
 
-} // namespace variance_reduction 
 } // namespace openmc
+}

@@ -43,7 +43,11 @@ void split_by_ratio(Particle* p, double importance_ratio) {
   p->wgt_ /= float(num_splits);
   // note 1 -> n not 0->n
   for ( int i = 1 ; i < num_splits ; i++ ) {
+<<<<<<< HEAD
     p->create_secondary(p->u(),p->E_,p->type_);
+=======
+    p->create_secondary(p->coord[0].uvw,p->E,p->type,true);
+>>>>>>> Updated and rebased
   }
 
   return;
@@ -62,7 +66,7 @@ void roulette(Particle* p, double importance_ratio) {
     p->wgt_last_ = p->wgt_;
     //std::cout << p->last_wgt << " ";
     p->wgt_ /= importance_ratio;
-    //std::cout << p->wgt << std::endl;  
+     //std::cout << p->wgt << std::endl;  
   } else {
     //std::cout << " kill" << std::endl;
     p->alive_ = false;
@@ -76,13 +80,17 @@ void roulette(Particle* p, double importance_ratio) {
 // WEIGHT_WINDOW - assume we have already checked cutoffs
 //==============================================================================
 
-void weight_window_split(Particle *p)
+void weight_window_split(Particle *p) {
+  bool mesh_weight = false;
+  double weight_low = 0.;
+  double weight_high = 0.;
 
-  if ( mesh_weight) 
-    get_window_from_mesh(p,weight_low,weight_weight_high);
+  /* - todo complete weight from mesh
+  if ( mesh_weight ) 
+    get_window_from_mesh(p,weight_low,weight_high);
   else
     get_window_from_cell(p,weight_low,weight_high);
-
+*/
   if ( p->wgt_ > weight_high ) {
     if ( p->wgt_/weight_high > MAX_SPLIT ) {
           // long history mitigation - if the number of requested
@@ -133,7 +141,7 @@ void importance_split(Particle *p){
        ((last_cell < 0) ? (0) : (last_cell))) return;
 
   double importance_ratio = variance_reduction::importances[current_cell]/
-                            variance_reduciton::importances[last_cell];
+                            variance_reduction::importances[last_cell];
 
   if (importance_ratio > 1) 
     split_by_ratio(p, importance_ratio);
@@ -146,7 +154,7 @@ void importance_split(Particle *p){
 // VARIANCE_REDUCTION
 //==============================================================================
 
-void variance_reduction(Particle* p)
+void perform_vr(Particle* p)
 {
   // check weight cutoff
   if ( p->wgt_ < settings::weight_cutoff ) {
@@ -160,7 +168,7 @@ void variance_reduction(Particle* p)
 
   if (variance_reduction::importance_splitting) 
     importance_split(p);
-  else 
+  else if (variance_reduction::weight_splitting)
     weight_window_split(p);
 }
 

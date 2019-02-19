@@ -423,7 +423,7 @@ void print_batch_keff()
     std::cout << "   " << std::setw(8) << simulation::keff << " +/-"
       << std::setw(8) << simulation::keff_std;
   }
-  std::cout << '\n';
+  std::cout << std::endl;
 
   // Restore state of cout
   std::cout.flags(f);

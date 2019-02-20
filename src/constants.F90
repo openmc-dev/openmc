@@ -5,12 +5,6 @@ module constants
   implicit none
 
   ! ============================================================================
-  ! VERSIONING NUMBERS
-
-  ! Version numbers for binary files
-  integer, parameter :: VERSION_TRACK(2) = [2, 0]
-
-  ! ============================================================================
   ! ADJUSTABLE PARAMETERS
 
   ! NOTE: This is the only section of the constants module that should ever be

@@ -753,7 +753,6 @@ extern "C" int
 openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance)
 {
   if (index >= 0 && index < model::cells.size()) {
-    //TODO: off-by-one
     Cell& c {*model::cells[index]};
 
     if (instance) {

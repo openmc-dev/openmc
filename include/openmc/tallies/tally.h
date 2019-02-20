@@ -101,8 +101,6 @@ private:
 // Global variable declarations
 //==============================================================================
 
-extern "C" double total_weight;
-
 namespace model {
 
 extern std::vector<std::unique_ptr<Tally>> tallies;

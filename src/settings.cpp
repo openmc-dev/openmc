@@ -793,15 +793,6 @@ extern "C" {
   const char* path_input_c() {
     return settings::path_input.c_str();
   }
-  const char* path_statepoint_c() {
-    return settings::path_statepoint.c_str();
-  }
-  const char* path_sourcepoint_c() {
-    return settings::path_sourcepoint.c_str();
-  }
-  const char* path_particle_restart_c() {
-    return settings::path_particle_restart.c_str();
-  }
 
   void free_memory_settings() {
     settings::statepoint_batch.clear();

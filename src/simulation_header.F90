@@ -4,7 +4,6 @@ module simulation_header
 
   use bank_header
   use constants
-  use settings, only: gen_per_batch
   use stl_vector, only: VectorReal
 
   implicit none
@@ -40,17 +39,12 @@ module simulation_header
 
 #ifdef _OPENMP
   integer(C_INT), bind(C) :: n_threads      ! number of OpenMP threads
-  integer(C_INT), bind(C) :: thread_id      ! ID of a given thread
 #endif
 
   ! ============================================================================
   ! MISCELLANEOUS VARIABLES
 
   integer(C_INT), bind(C) :: restart_batch
-
-  logical(C_BOOL), bind(C) :: trace
-
-!$omp threadprivate(trace, thread_id)
 
   interface
     subroutine entropy_clear() bind(C)

@@ -19,9 +19,6 @@ module bank_header
     integer(C_INT) :: particle      ! particle type (neutron, photon, etc.)
   end type Bank
 
-  integer(C_INT64_T), bind(C) :: n_bank       ! # of sites in fission bank
-!$omp threadprivate(n_bank)
-
   interface
     function openmc_fission_bank(ptr, n) result(err) bind(C)
       import C_PTR, C_INT64_T, C_INT

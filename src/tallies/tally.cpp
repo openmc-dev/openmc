@@ -585,9 +585,9 @@ void reduce_tally_results()
   // We also need to determine the total starting weight of particles from the
   // last realization
   double weight_reduced;
-  MPI_Reduce(&total_weight, &weight_reduced, 1, MPI_DOUBLE, MPI_SUM,
+  MPI_Reduce(&simulation::total_weight, &weight_reduced, 1, MPI_DOUBLE, MPI_SUM,
     0, mpi::intracomm);
-  if (mpi::master) total_weight = weight_reduced;
+  if (mpi::master) simulation::total_weight = weight_reduced;
 }
 #endif
 

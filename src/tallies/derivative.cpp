@@ -569,8 +569,6 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
   }
 }
 
-//! Adjust diff tally flux derivatives for a particle tracking event.
-
 void
 score_track_derivative(const Particle* p, double distance)
 {
@@ -619,13 +617,6 @@ score_track_derivative(const Particle* p, double distance)
     }
   }
 }
-
-//! Adjust diff tally flux derivatives for a particle scattering event.
-//
-//! Note that this subroutine will be called after absorption events in
-//! addition to scattering events, but any flux derivatives scored after an
-//! absorption will never be tallied.  The paricle will be killed before any
-//! further tallies are scored.
 
 void score_collision_derivative(const Particle* p)
 {

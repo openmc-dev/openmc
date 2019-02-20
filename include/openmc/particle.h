@@ -148,10 +148,10 @@ extern "C" {
     //! \param src Source site data
     void from_source(const Bank* src);
 
-    //! Transport the particle
+    //! Transport a particle from birth to death
     void transport();
 
-    //! Cross a surface
+    //! Cross a surface and handle boundary conditions
     void cross_surface();
 
     //! mark a particle as lost and create a particle restart file

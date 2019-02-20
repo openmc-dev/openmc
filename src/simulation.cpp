@@ -312,7 +312,7 @@ void initialize_batch()
   }
 
   // Reset total starting particle weight used for normalizing tallies
-  total_weight = 0.0;
+  simulation::total_weight = 0.0;
 
   // Determine if this batch is the first inactive or active batch.
   bool first_inactive = false;

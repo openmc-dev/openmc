@@ -56,9 +56,6 @@ void read_geometry_xml()
   read_cells(root);
   read_lattices(root);
 
-  // ==========================================================================
-  // SETUP UNIVERSES
-
   // Allocate universes, universe cell arrays, and assign base universe
   model::root_universe = find_root_universe();
 }

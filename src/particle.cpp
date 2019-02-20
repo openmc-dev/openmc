@@ -149,8 +149,8 @@ Particle::transport()
   int n_event = 0;
 
   // Add paricle's starting weight to count for normalizing tallies later
-#pragma omp atomic
-  total_weight += wgt;
+  #pragma omp atomic
+  simulation::total_weight += wgt;
 
   // Force calculation of cross-sections by setting last energy to zero
   if (settings::run_CE) {
@@ -375,8 +375,8 @@ Particle::transport()
     // If particle has too many events, display warning and kill it
     ++n_event;
     if (n_event == MAX_EVENTS) {
-      if (mpi::master) warning("Particle " + std::to_string(id)
-        + " underwent maximum number of events.");
+      warning("Particle " + std::to_string(id) +
+        " underwent maximum number of events.");
       alive = false;
     }
 
@@ -533,26 +533,23 @@ Particle::cross_surface()
       std::copy(&r.x, &r.x + 3, coord[0].xyz);
     }
 
-    // Get a pointer to the partner periodic surface.  Offset the index to
-    // correct for C vs. Fortran indexing.
+    // Get a pointer to the partner periodic surface
     auto surf_p = dynamic_cast<PeriodicSurface*>(surf);
-    if (surf_p) {
-      auto other = dynamic_cast<PeriodicSurface*>(
-        model::surfaces[surf_p->i_periodic_]);
+    auto other = dynamic_cast<PeriodicSurface*>(
+      model::surfaces[surf_p->i_periodic_]);
 
-      // Adjust the particle's location and direction.
-      Position r {coord[0].xyz};
-      Direction u {coord[0].uvw};
-      bool rotational = other->periodic_translate(surf_p, r, u);
-      std::copy(&r.x, &r.x + 3, coord[0].xyz);
-      std::copy(&u.x, &u.x + 3, coord[0].uvw);
+    // Adjust the particle's location and direction.
+    Position r {coord[0].xyz};
+    Direction u {coord[0].uvw};
+    bool rotational = other->periodic_translate(surf_p, r, u);
+    std::copy(&r.x, &r.x + 3, coord[0].xyz);
+    std::copy(&u.x, &u.x + 3, coord[0].uvw);
 
-      // Reassign particle's surface
-      // TODO: off-by-one
-      surface = rotational ?
-        surf_p->i_periodic_ + 1 :
-        std::copysign(surf_p->i_periodic_ + 1, surface);
-    }
+    // Reassign particle's surface
+    // TODO: off-by-one
+    surface = rotational ?
+      surf_p->i_periodic_ + 1 :
+      std::copysign(surf_p->i_periodic_ + 1, surface);
 
     // Figure out what cell particle is in now
     n_coord = 1;
@@ -620,7 +617,7 @@ Particle::cross_surface()
     coord[0].xyz[1] += TINY_BIT * coord[0].uvw[1];
     coord[0].xyz[2] += TINY_BIT * coord[0].uvw[2];
 
-    // Couldn't find next cell anywhere// This probably means there is an actual
+    // Couldn't find next cell anywhere! This probably means there is an actual
     // undefined region in the geometry.
 
     if (!find_cell(this, false)) {

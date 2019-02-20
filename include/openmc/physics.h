@@ -14,7 +14,7 @@ namespace openmc {
 //==============================================================================
 
 //! Sample a nuclide and reaction and then calls the appropriate routine
-extern "C" void collision(Particle* p);
+void collision(Particle* p);
 
 //! Samples an incident neutron reaction
 void sample_neutron_reaction(Particle* p);

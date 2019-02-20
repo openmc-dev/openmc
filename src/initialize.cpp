@@ -31,7 +31,6 @@
 
 // data/functions from Fortran side
 extern "C" void read_command_line();
-extern "C" void read_geometry_xml();
 extern "C" void read_materials_xml();
 extern "C" void read_plots_xml();
 extern "C" void read_tallies_xml();

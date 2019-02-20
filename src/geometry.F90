@@ -1,12 +1,9 @@
 module geometry
 
   use constants
-  use geometry_header
   use particle_header
   use simulation_header
   use settings
-  use surface_header
-  use string,                 only: to_str
 
   use, intrinsic :: ISO_C_BINDING
 
@@ -50,33 +47,9 @@ module geometry
       integer(C_INT), intent(out)   :: lattice_translation(3)
       integer(C_INT), intent(out)   :: next_level
     end subroutine distance_to_boundary
-
-#ifdef DAGMC
-
-    function next_cell_c(current_cell, surface_crossed) &
-         bind(C, name="next_cell") result(new_cell)
-      import C_PTR, C_INT32_T
-      type(C_PTR), intent(in), value :: current_cell
-      type(C_PTR), intent(in), value :: surface_crossed
-      integer(C_INT32_T)             :: new_cell
-    end function next_cell_c
-
-#endif
-
   end interface
 
 contains
-
-#ifdef DAGMC
-
-  function next_cell(c, s) result(new_cell)
-    type(Cell), intent(in) :: c
-    type(Surface), intent(in) :: s
-    integer :: new_cell
-    new_cell = next_cell_c(c%ptr, s%ptr)
-  end function next_cell
-
-#endif
 
 !===============================================================================
 ! FIND_CELL determines what cell a source particle is in within a particular

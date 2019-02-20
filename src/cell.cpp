@@ -23,8 +23,6 @@ namespace openmc {
 
 namespace model {
 
-int32_t n_cells {0};
-
 std::vector<Cell*> cells;
 std::unordered_map<int32_t, int32_t> cell_map;
 
@@ -643,18 +641,18 @@ void DAGCell::to_hdf5(hid_t group_id) const { return; }
 // Non-method functions
 //==============================================================================
 
-extern "C" void
-read_cells(pugi::xml_node* node)
+void read_cells(pugi::xml_node node)
 {
   // Count the number of cells.
-  for (pugi::xml_node cell_node: node->children("cell")) {model::n_cells++;}
-  if (model::n_cells == 0) {
+  int n_cells = 0;
+  for (pugi::xml_node cell_node: node.children("cell")) {n_cells++;}
+  if (n_cells == 0) {
     fatal_error("No cells found in geometry.xml!");
   }
 
   // Loop over XML cell elements and populate the array.
-  model::cells.reserve(model::n_cells);
-  for (pugi::xml_node cell_node : node->children("cell")) {
+  model::cells.reserve(n_cells);
+  for (pugi::xml_node cell_node : node.children("cell")) {
     model::cells.push_back(new CSGCell(cell_node));
   }
 
@@ -699,9 +697,8 @@ read_cells(pugi::xml_node* node)
 extern "C" int
 openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n)
 {
-  if (index >= 1 && index <= model::cells.size()) {
-    //TODO: off-by-one
-    Cell& c {*model::cells[index - 1]};
+  if (index >= 0 && index < model::cells.size()) {
+    Cell& c {*model::cells[index]};
     *type = c.type_;
     if (c.type_ == FILL_MATERIAL) {
       *indices = c.material_.data();
@@ -721,9 +718,8 @@ extern "C" int
 openmc_cell_set_fill(int32_t index, int type, int32_t n,
                      const int32_t* indices)
 {
-  if (index >= 1 && index <= model::cells.size()) {
-    //TODO: off-by-one
-    Cell& c {*model::cells[index - 1]};
+  if (index >= 0 && index < model::cells.size()) {
+    Cell& c {*model::cells[index]};
     if (type == FILL_MATERIAL) {
       c.type_ = FILL_MATERIAL;
       c.material_.clear();
@@ -756,9 +752,8 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
 extern "C" int
 openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance)
 {
-  if (index >= 1 && index <= model::cells.size()) {
-    //TODO: off-by-one
-    Cell& c {*model::cells[index - 1]};
+  if (index >= 0 && index < model::cells.size()) {
+    Cell& c {*model::cells[index]};
 
     if (instance) {
       if (*instance >= 0 && *instance < c.sqrtkT_.size()) {
@@ -781,71 +776,78 @@ openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance)
   return 0;
 }
 
+//! Return the index in the cells array of a cell with a given ID
+extern "C" int
+openmc_get_cell_index(int32_t id, int32_t* index)
+{
+  auto it = model::cell_map.find(id);
+  if (it != model::cell_map.end()) {
+    *index = it->second;
+    return 0;
+  } else {
+    set_errmsg("No cell exists with ID=" + std::to_string(id) + ".");
+    return OPENMC_E_INVALID_ID;
+  }
+}
+
+//! Return the ID of a cell
+extern "C" int
+openmc_cell_get_id(int32_t index, int32_t* id)
+{
+  if (index >= 0 && index < model::cells.size()) {
+    *id = model::cells[index]->id_;
+    return 0;
+  } else {
+    set_errmsg("Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+}
+
+//! Set the ID of a cell
+extern "C" int
+openmc_cell_set_id(int32_t index, int32_t id)
+{
+  if (index >= 0 && index < model::cells.size()) {
+    model::cells[index]->id_ = id;
+    model::cell_map[id] = index;
+    return 0;
+  } else {
+    set_errmsg("Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+}
+
+//! Extend the cells array by n elements
+extern "C" int
+openmc_extend_cells(int32_t n, int32_t* index_start, int32_t* index_end)
+{
+  if (index_start) *index_start = model::cells.size();
+  if (index_end) *index_end = model::cells.size() + n - 1;
+  for (int32_t i = 0; i < n; i++) {
+    model::cells.push_back(new CSGCell());
+  }
+  return 0;
+}
+
+#ifdef DAGMC
+int32_t next_cell(DAGCell* cur_cell, DAGSurface* surf_xed)
+{
+  moab::EntityHandle surf =
+    surf_xed->dagmc_ptr_->entity_by_id(2, surf_xed->id_);
+  moab::EntityHandle vol =
+    cur_cell->dagmc_ptr_->entity_by_id(3, cur_cell->id_);
+
+  moab::EntityHandle new_vol;
+  cur_cell->dagmc_ptr_->next_vol(surf, vol, new_vol);
+
+  return cur_cell->dagmc_ptr_->index_by_handle(new_vol);
+}
+#endif
+
 //==============================================================================
 // Fortran compatibility functions
 //==============================================================================
 
-extern "C" {
-  Cell* cell_pointer(int32_t cell_ind) {return model::cells[cell_ind];}
-
-  int32_t cell_id(Cell* c) {return c->id_;}
-
-  void
-  cell_set_id(Cell* c, int32_t id)
-  {
-    c->id_ = id;
-
-    // Find the index of this cell and update the cell map.
-    for (int i = 0; i < model::cells.size(); i++) {
-      if (model::cells[i] == c) {
-        model::cell_map[id] = i;
-        break;
-      }
-    }
-  }
-
-  #ifdef DAGMC
-  int32_t next_cell(DAGCell* cur_cell, DAGSurface* surf_xed )
-  {
-    moab::EntityHandle surf =
-      surf_xed->dagmc_ptr_->entity_by_id(2,surf_xed->id_);
-    moab::EntityHandle vol =
-      cur_cell->dagmc_ptr_->entity_by_id(3,cur_cell->id_);
-
-    moab::EntityHandle new_vol;
-    cur_cell->dagmc_ptr_->next_vol(surf, vol, new_vol);
-
-    return cur_cell->dagmc_ptr_->index_by_handle(new_vol);
-  }
-  #endif
-
-  int32_t cell_universe(Cell* c) {return c->universe_;}
-
-  int32_t cell_fill(Cell* c) {return c->fill_;}
-
-  int cell_material_size(Cell* c) {return c->material_.size();}
-
-  //TODO: off-by-one
-  int32_t cell_material(Cell* c, int i)
-  {
-    int32_t mat = c->material_[i-1];
-    if (mat == MATERIAL_VOID) return MATERIAL_VOID;
-    return mat + 1;
-  }
-
-  int cell_sqrtkT_size(Cell* c) {return c->sqrtkT_.size();}
-
-  double cell_sqrtkT(Cell* c, int i) {return c->sqrtkT_[i];}
-
-  void extend_cells_c(int32_t n)
-  {
-    model::cells.reserve(model::cells.size() + n);
-    for (int32_t i = 0; i < n; i++) {
-      model::cells.push_back(new CSGCell());
-    }
-    model::n_cells = model::cells.size();
-  }
-}
-
+extern "C" int cells_size() { return model::cells.size(); }
 
 } // namespace openmc

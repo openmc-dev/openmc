@@ -49,7 +49,7 @@ void warning(const std::stringstream& message)
   warning(message.str());
 }
 
-void write_message(const std::string& message, int level);
+void write_message(const std::string& message, int level=0);
 
 inline
 void write_message(const std::stringstream& message, int level)

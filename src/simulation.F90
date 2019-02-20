@@ -2,7 +2,7 @@ module simulation
 
   use, intrinsic :: ISO_C_BINDING
 
-  use nuclide_header,  only: micro_xs, n_nuclides
+  use nuclide_header,  only: micro_xs, nuclides_size
   use photon_header,   only: micro_photon_xs, n_elements
 
   implicit none
@@ -18,7 +18,7 @@ contains
 
 !$omp parallel
     ! Allocate array for microscopic cross section cache
-    allocate(micro_xs(n_nuclides))
+    allocate(micro_xs(nuclides_size()))
     allocate(micro_photon_xs(n_elements))
 !$omp end parallel
 

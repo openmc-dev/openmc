@@ -9,14 +9,14 @@
 
 #include "hdf5.h"
 #include "pugixml.hpp"
+#ifdef DAGMC
+#include "DagMC.hpp"
+#endif
 
 #include "openmc/constants.h"
 #include "openmc/neighbor_list.h"
 #include "openmc/position.h"
-
-#ifdef DAGMC
-#include "DagMC.hpp"
-#endif
+#include "openmc/surface.h"
 
 namespace openmc {
 
@@ -193,6 +193,16 @@ public:
 
   void to_hdf5(hid_t group_id) const;
 };
+#endif
+
+//==============================================================================
+// Non-member functions
+//==============================================================================
+
+void read_cells(pugi::xml_node node);
+
+#ifdef DAGMC
+int32_t next_cell(DAGCell* cur_cell, DAGSurface* surf_xed);
 #endif
 
 } // namespace openmc

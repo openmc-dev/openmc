@@ -303,32 +303,23 @@ target_compile_options(faddeeva PRIVATE ${cxxflags})
 #===============================================================================
 
 add_library(libopenmc SHARED
-  src/algorithm.F90
   src/bank_header.F90
   src/api.F90
   src/dagmc_header.F90
   src/constants.F90
   src/dict_header.F90
-  src/eigenvalue.F90
-  src/endf.F90
   src/error.F90
   src/geometry.F90
-  src/geometry_header.F90
   src/hdf5_interface.F90
   src/initialize.F90
   src/input_xml.F90
   src/material_header.F90
-  src/math.F90
-  src/mesh_header.F90
   src/message_passing.F90
   src/mgxs_interface.F90
   src/nuclide_header.F90
   src/particle_header.F90
-  src/particle_restart.F90
   src/photon_header.F90
   src/pugixml/pugixml_f.F90
-  src/random_lcg.F90
-  src/reaction_header.F90
   src/relaxng
   src/settings.F90
   src/simulation_header.F90
@@ -336,8 +327,6 @@ add_library(libopenmc SHARED
   src/state_point.F90
   src/stl_vector.F90
   src/string.F90
-  src/surface_header.F90
-  src/tracking.F90
   src/track_output.F90
   src/vector_header.F90
   src/xml_interface.F90
@@ -378,6 +367,7 @@ add_library(libopenmc SHARED
   src/nuclide.cpp
   src/output.cpp
   src/particle.cpp
+  src/particle_restart.cpp
   src/photon.cpp
   src/physics.cpp
   src/physics_common.cpp

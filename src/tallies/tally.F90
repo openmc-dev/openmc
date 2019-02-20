@@ -6,7 +6,6 @@ module tally
   use constants
   use material_header
   use message_passing
-  use mgxs_interface
   use settings
   use simulation_header
   use tally_derivative_header

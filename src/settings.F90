@@ -33,7 +33,6 @@ module settings
   integer(C_INT), bind(C) :: verbosity
 
   character(MAX_FILE_LEN) :: path_input               ! Path to input file
-  character(MAX_FILE_LEN) :: path_cross_sections = '' ! Path to cross_sections.xml
 
   ! No reduction at end of batch
   logical(C_BOOL), bind(C) :: reduce_tallies

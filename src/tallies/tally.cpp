@@ -9,6 +9,7 @@
 #include "openmc/reaction_product.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/source.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_cell.h"
@@ -38,13 +39,17 @@ namespace openmc {
 
 namespace model {
   std::vector<std::unique_ptr<Tally>> tallies;
-
   std::vector<int> active_tallies;
   std::vector<int> active_analog_tallies;
   std::vector<int> active_tracklength_tallies;
   std::vector<int> active_collision_tallies;
   std::vector<int> active_meshsurf_tallies;
   std::vector<int> active_surface_tallies;
+}
+
+namespace simulation {
+  xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> global_tallies;
+  int32_t n_realizations {0};
 }
 
 double global_tally_absorption;
@@ -503,49 +508,54 @@ Tally::init_triggers(pugi::xml_node node, int i_tally)
   }
 }
 
+void Tally::init_results()
+{
+  int n_scores = scores_.size() * nuclides_.size();
+  results_ = xt::empty<double>({n_filter_bins_, n_scores, 3});
+}
+
+void Tally::accumulate()
+{
+  // Increment number of realizations
+  n_realizations_ += settings::reduce_tallies ? 1 : mpi::n_procs;
+
+  if (mpi::master || !settings::reduce_tallies) {
+    // Calculate total source strength for normalization
+    double total_source = 0.0;
+    if (settings::run_mode == RUN_MODE_FIXEDSOURCE) {
+      for (const auto& s : model::external_sources) {
+        total_source += s.strength();
+      }
+    } else {
+      total_source = 1.0;
+    }
+
+    // Accumulate each result
+    for (int i = 0; i < results_.shape()[0]; ++i) {
+      for (int j = 0; j < results_.shape()[1]; ++j) {
+        double val = results_(i, j, RESULT_VALUE) /
+          simulation::total_weight * total_source;
+        results_(i, j, RESULT_VALUE) = 0.0;
+        results_(i, j, RESULT_SUM) += val;
+        results_(i, j, RESULT_SUM_SQ) += val*val;
+      }
+    }
+  }
+}
+
 //==============================================================================
 // Non-member functions
 //==============================================================================
 
-adaptor_type<2> global_tallies()
-{
-  // Get pointer to global tallies
-  double* buffer;
-  openmc_global_tallies(&buffer);
-
-  // Adapt into xtensor
-  std::array<size_t, 2> shape = {N_GLOBAL_TALLIES, 3};
-  std::size_t size {3*N_GLOBAL_TALLIES};
-
-  return xt::adapt(buffer, size, xt::no_ownership(), shape);
-}
-
-adaptor_type<3> tally_results(int idx)
-{
-  // Get pointer to tally results
-  double* results;
-  std::array<std::size_t, 3> shape;
-  // TODO: off-by-one
-  openmc_tally_results(idx+1, &results, shape.data());
-
-  // Adapt array into xtensor with no ownership
-  std::size_t size {shape[0] * shape[1] * shape[2]};
-  return xt::adapt(results, size, xt::no_ownership(), shape);
-}
-
 #ifdef OPENMC_MPI
 void reduce_tally_results()
 {
-  for (int i = 0; i < n_tallies; ++i) {
+  for (int i_tally : model::active_tallies) {
     // Skip any tallies that are not active
-    bool active;
-    // TODO: off-by-one
-    openmc_tally_get_active(i+1, &active);
-    if (!active) continue;
+    auto& tally {model::tallies[i_tally]};
 
     // Get view of accumulated tally values
-    auto results = tally_results(i);
-    auto values_view = xt::view(results, xt::all(), xt::all(), RESULT_VALUE);
+    auto values_view = xt::view(tally->results_, xt::all(), xt::all(), RESULT_VALUE);
 
     // Make copy of tally values in contiguous array
     xt::xtensor<double, 2> values = values_view;
@@ -564,7 +574,7 @@ void reduce_tally_results()
   }
 
   // Get view of global tally values
-  auto gt = global_tallies();
+  auto& gt = simulation::global_tallies;
   auto gt_values_view = xt::view(gt, xt::all(), RESULT_VALUE);
 
   // Make copy of values in contiguous array
@@ -591,8 +601,51 @@ void reduce_tally_results()
 }
 #endif
 
-extern "C" void
-setup_active_tallies_c()
+void
+accumulate_tallies()
+{
+#ifdef OPENMC_MPI
+  // Combine tally results onto master process
+  if (settings::reduce_tallies) reduce_tally_results();
+#endif
+
+  // Increase number of realizations (only used for global tallies)
+  simulation::n_realizations += settings::reduce_tallies ? 1 : mpi::n_procs;
+
+  // Accumulate on master only unless run is not reduced then do it on all
+  if (mpi::master || !settings::reduce_tallies) {
+    auto& gt = simulation::global_tallies;
+
+    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+      if (simulation::current_batch > settings::n_inactive) {
+        // Accumulate products of different estimators of k
+        double k_col = gt(K_COLLISION, RESULT_VALUE) / simulation::total_weight;
+        double k_abs = gt(K_ABSORPTION, RESULT_VALUE) / simulation::total_weight;
+        double k_tra = gt(K_TRACKLENGTH, RESULT_VALUE) / simulation::total_weight;
+        simulation::k_col_abs += k_col * k_abs;
+        simulation::k_col_tra += k_col * k_tra;
+        simulation::k_abs_tra += k_abs * k_tra;
+      }
+    }
+
+    // Accumulate results for global tallies
+    for (int i = 0; i < N_GLOBAL_TALLIES; ++i) {
+      double val = gt(i, RESULT_VALUE)/simulation::total_weight;
+      gt(i, RESULT_VALUE) = 0.0;
+      gt(i, RESULT_SUM) += val;
+      gt(i, RESULT_SUM_SQ) += val*val;
+    }
+  }
+
+  // Accumulate results for each tally
+  for (int i_tally : model::active_tallies) {
+    auto& tally {model::tallies[i_tally]};
+    tally->accumulate();
+  }
+}
+
+void
+setup_active_tallies()
 {
   model::active_tallies.clear();
   model::active_analog_tallies.clear();
@@ -628,6 +681,9 @@ setup_active_tallies_c()
       case TALLY_SURFACE:
         model::active_surface_tallies.push_back(i);
       }
+
+      // Check if tally contains depletion reactions and if so, set flag
+      if (tally.depletion_rx_) simulation::need_depletion_rx = true;
     }
   }
 }
@@ -832,6 +888,77 @@ openmc_tally_set_filters(int32_t index, int n, const int32_t* indices)
 
   return 0;
 }
+
+//! Reset tally results and number of realizations
+extern "C" int
+openmc_tally_reset(int32_t index)
+{
+  // Make sure the index fits in the array bounds.
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  // TODO: off-by-one
+  auto& t {model::tallies[index-1]};
+  t->n_realizations_ = 0;
+  // TODO: Change to zero when xtensor is updated
+  if (t->results_.size() != 1) {
+    xt::view(t->results_, xt::all()) = 0.0;
+  }
+  return 0;
+}
+
+extern "C" int
+openmc_tally_get_n_realizations(int32_t index, int32_t* n)
+{
+  // Make sure the index fits in the array bounds.
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  // TODO: off-by-one
+  *n = model::tallies[index - 1]->n_realizations_;
+  return 0;
+}
+
+//! \brief Returns a pointer to a tally results array along with its shape. This
+//! allows a user to obtain in-memory tally results from Python directly.
+extern "C" int
+openmc_tally_results(int32_t index, double** results, size_t* shape)
+{
+  // Make sure the index fits in the array bounds.
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  // TODO: off-by-one
+  const auto& t {model::tallies[index - 1]};
+  // TODO: Change to zero when xtensor is updated
+  if (t->results_.size() == 1) {
+    set_errmsg("Tally results have not been allocated yet.");
+    return OPENMC_E_ALLOCATE;
+  }
+
+  // Set pointer to results and copy shape
+  *results = t->results_.data();
+  auto s = t->results_.shape();
+  shape[0] = s[0];
+  shape[1] = s[1];
+  shape[2] = s[2];
+  return 0;
+}
+
+extern "C" int
+openmc_global_tallies(double** ptr)
+{
+  *ptr = simulation::global_tallies.data();
+  return 0;
+}
+
+extern "C" size_t tallies_size() { return model::tallies.size(); }
 
 //==============================================================================
 // Fortran compatibility functions

@@ -319,7 +319,6 @@ add_library(libopenmc SHARED
   src/relaxng
   src/settings.F90
   src/simulation_header.F90
-  src/state_point.F90
   src/stl_vector.F90
   src/string.F90
   src/vector_header.F90

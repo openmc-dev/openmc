@@ -46,7 +46,7 @@ xt::xtensor<double, 1> source_frac;
 
 void calculate_generation_keff()
 {
-  auto gt = global_tallies();
+  const auto& gt = simulation::global_tallies;
 
   // Get keff for this generation by subtracting off the starting value
   simulation::keff_generation = gt(K_TRACKLENGTH, RESULT_VALUE) - simulation::keff_generation;
@@ -309,7 +309,7 @@ void calculate_average_keff()
   int i = overall_generation() - 1;
   int n;
   if (simulation::current_batch > settings::n_inactive) {
-    n = settings::gen_per_batch*n_realizations + simulation::current_gen;
+    n = settings::gen_per_batch*simulation::n_realizations + simulation::current_gen;
   } else {
     n = 0;
   }
@@ -390,15 +390,15 @@ int openmc_get_keff(double* k_combined)
 
   // Make sure we have at least four realizations. Notice that at the end,
   // there is a N-3 term in a denominator.
-  if (n_realizations <= 3) {
+  if (simulation::n_realizations <= 3) {
     return -1;
   }
 
   // Initialize variables
-  int64_t n = n_realizations;
+  int64_t n = simulation::n_realizations;
 
   // Copy estimates of k-effective and its variance (not variance of the mean)
-  auto gt = global_tallies();
+  const auto& gt = simulation::global_tallies;
 
   std::array<double, 3> kv {};
   xt::xtensor<double, 2> cov = xt::zeros<double>({3, 3});

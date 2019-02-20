@@ -21,6 +21,7 @@
 #include "openmc/tallies/trigger.h"
 
 #include <omp.h>
+#include "xtensor/xview.hpp"
 
 #include <algorithm>
 #include <string>
@@ -28,9 +29,6 @@
 namespace openmc {
 
 // data/functions from Fortran side
-extern "C" void accumulate_tallies();
-extern "C" void allocate_tally_results();
-extern "C" void setup_active_tallies();
 extern "C" void write_tallies();
 
 } // namespace openmc
@@ -78,7 +76,9 @@ int openmc_simulation_init()
   allocate_banks();
 
   // Allocate tally results arrays if they're not allocated yet
-  allocate_tally_results();
+  for (auto& t : model::tallies) {
+    t->init_results();
+  }
 
   // Set up material nuclide index mapping
   for (auto& mat : model::materials) {
@@ -263,6 +263,7 @@ bool need_depletion_rx {false};
 int restart_batch;
 bool satisfy_triggers {false};
 int total_gen {0};
+double total_weight;
 int64_t work;
 
 std::vector<double> k_generation;
@@ -360,9 +361,8 @@ void finalize_batch()
 
   // Reset global tally results
   if (simulation::current_batch <= settings::n_inactive) {
-    auto gt = global_tallies();
-    std::fill(gt.begin(), gt.end(), 0.0);
-    n_realizations = 0;
+    xt::view(simulation::global_tallies, xt::all()) = 0.0;
+    simulation::n_realizations = 0;
   }
 
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
@@ -415,13 +415,14 @@ void initialize_generation()
     if (settings::ufs_on) ufs_count_sites();
 
     // Store current value of tracklength k
-    simulation::keff_generation = global_tallies()(K_TRACKLENGTH, RESULT_VALUE);
+    simulation::keff_generation = simulation::global_tallies(
+      K_TRACKLENGTH, RESULT_VALUE);
   }
 }
 
 void finalize_generation()
 {
-  auto gt = global_tallies();
+  auto& gt = simulation::global_tallies;
 
   // Update global tallies with the omp private accumulation variables
 #pragma omp parallel
@@ -547,7 +548,7 @@ void broadcast_results() {
     // Create a new datatype that consists of all values for a given filter
     // bin and then use that to broadcast. This is done to minimize the
     // chance of the 'count' argument of MPI_BCAST exceeding 2**31
-    auto results = tally_results(i);
+    auto& results = model::tallies[i]->results_;
 
     auto shape = results.shape();
     int count_per_filter = shape[1] * shape[2];
@@ -559,7 +560,7 @@ void broadcast_results() {
   }
 
   // Also broadcast global tally results
-  auto gt = global_tallies();
+  auto& gt = simulation::global_tallies;
   MPI_Bcast(gt.data(), gt.size(), MPI_DOUBLE, 0, mpi::intracomm);
 
   // These guys are needed so that non-master processes can calculate the

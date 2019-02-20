@@ -12,6 +12,8 @@
 #include "openmc/timer.h"
 #include "openmc/tallies/tally.h"
 
+#include "xtensor/xview.hpp"
+
 using namespace openmc;
 
 // Functions defined in Fortran
@@ -100,17 +102,9 @@ int openmc_reset()
     openmc_tally_reset(i);
   }
 
-  // Reset global tallies (can't really use global_tallies() right now because
-  // it doesn't have any information about whether the underlying buffer was
-  // allocated)
-  n_realizations = 0;
-  double* buffer = nullptr;
-  openmc_global_tallies(&buffer);
-  if (buffer) {
-    for (int i = 0; i < 3*N_GLOBAL_TALLIES; ++i) {
-      buffer[i] = 0.0;
-    }
-  }
+  // Reset global tallies
+  simulation::n_realizations = 0;
+  xt::view(simulation::global_tallies, xt::all()) = 0.0;
 
   simulation::k_col_abs = 0.0;
   simulation::k_col_tra = 0.0;

@@ -97,22 +97,9 @@ module tally_header
     character(len=104) :: name = "" ! user-defined name
     real(8) :: volume               ! volume of region
 
-    ! Results for each bin -- the first dimension of the array is for scores
-    ! (e.g. flux, total reaction rate, fission reaction rate, etc.) and the
-    ! second dimension of the array is for the combination of filters
-    ! (e.g. specific cell, specific energy group, etc.)
-
     integer :: total_score_bins
-    real(C_DOUBLE), allocatable :: results(:,:,:)
-
-    ! Number of realizations of tally random variables
-    integer :: n_realizations = 0
 
   contains
-    procedure :: accumulate => tally_accumulate
-    procedure :: allocate_results => tally_allocate_results
-    procedure :: read_results_hdf5 => tally_read_results_hdf5
-    procedure :: write_results_hdf5 => tally_write_results_hdf5
     procedure :: id => tally_get_id
     procedure :: set_id => tally_set_id
     procedure :: type => tally_get_type
@@ -147,134 +134,7 @@ module tally_header
   ! in case the code needs to find an ID for a new tally.
   integer :: largest_tally_id
 
-  ! Global tallies
-  !   1) collision estimate of k-eff
-  !   2) absorption estimate of k-eff
-  !   3) track-length estimate of k-eff
-  !   4) leakage fraction
-
-  real(C_DOUBLE), public, allocatable, target :: global_tallies(:,:)
-
-  ! Normalization for statistics
-  integer(C_INT32_T), public, bind(C) :: n_realizations = 0 ! # of independent realizations
-  real(C_DOUBLE), public, bind(C) :: total_weight       ! total starting particle weight in realization
-
 contains
-
-!===============================================================================
-! ACCUMULATE_TALLY
-!===============================================================================
-
-  subroutine tally_accumulate(this)
-    class(TallyObject), intent(inout) :: this
-
-    integer :: i, j
-    real(C_DOUBLE) :: val
-    real(C_DOUBLE) :: total_source
-
-    interface
-      function total_source_strength() result(strength) bind(C)
-        import C_DOUBLE
-        real(C_DOUBLE) :: strength
-      end function
-    end interface
-
-    ! Increment number of realizations
-    if (reduce_tallies) then
-      this % n_realizations = this % n_realizations + 1
-    else
-      this % n_realizations = this % n_realizations + n_procs
-    end if
-
-    if (master .or. (.not. reduce_tallies)) then
-      ! Calculate total source strength for normalization
-      if (run_mode == MODE_FIXEDSOURCE) then
-        total_source = total_source_strength()
-      else
-        total_source = ONE
-      end if
-
-      ! Accumulate each result
-      do j = 1, size(this % results, 3)
-        do i = 1, size(this % results, 2)
-          val = this % results(RESULT_VALUE, i, j)/total_weight * total_source
-          this % results(RESULT_VALUE, i, j) = ZERO
-
-          this % results(RESULT_SUM, i, j) = &
-              this % results(RESULT_SUM, i, j) + val
-          this % results(RESULT_SUM_SQ, i, j) = &
-              this % results(RESULT_SUM_SQ, i, j) + val*val
-        end do
-      end do
-    end if
-  end subroutine tally_accumulate
-
-  subroutine tally_write_results_hdf5(this, group_id)
-    class(TallyObject), intent(in) :: this
-    integer(HID_T),     intent(in) :: group_id
-
-    integer(HSIZE_T) :: n_filter, n_score
-    interface
-      subroutine write_tally_results(group_id, n_filter, n_score, results) &
-           bind(C)
-        import HID_T, HSIZE_T, C_DOUBLE
-        integer(HID_T), value :: group_id
-        integer(HSIZE_T), value :: n_filter
-        integer(HSIZE_T), value :: n_score
-        real(C_DOUBLE), intent(in) :: results(*)
-      end subroutine write_tally_results
-    end interface
-
-    n_filter = size(this % results, 3)
-    n_score = size(this % results, 2)
-    call write_tally_results(group_id, n_filter, n_score, this % results)
-  end subroutine tally_write_results_hdf5
-
-  subroutine tally_read_results_hdf5(this, group_id)
-    class(TallyObject), intent(inout) :: this
-    integer(HID_T),     intent(in) :: group_id
-
-    integer(HSIZE_T) :: n_filter, n_score
-    interface
-      subroutine read_tally_results(group_id, n_filter, n_score, results) &
-           bind(C)
-        import HID_T, HSIZE_T, C_DOUBLE
-        integer(HID_T), value :: group_id
-        integer(HSIZE_T), value :: n_filter
-        integer(HSIZE_T), value :: n_score
-        real(C_DOUBLE), intent(out) :: results(*)
-      end subroutine read_tally_results
-    end interface
-
-    n_filter = size(this % results, 3)
-    n_score = size(this % results, 2)
-    call read_tally_results(group_id, n_filter, n_score, this % results)
-  end subroutine tally_read_results_hdf5
-
-!===============================================================================
-! ALLOCATE_RESULTS allocates and initializes the results component of the
-! TallyObject derived type
-!===============================================================================
-
-  subroutine tally_allocate_results(this)
-    class(TallyObject), intent(inout) :: this
-
-    ! Set total number of filter and scoring bins
-    this % total_score_bins = this % n_score_bins() * this % n_nuclide_bins()
-
-    if (allocated(this % results)) then
-      ! If results was already allocated but shape is wrong, then reallocate it
-      ! to the correct shape
-      if (this % total_score_bins /= size(this % results, 2) .or. &
-           this % n_filter_bins() /= size(this % results, 3)) then
-        deallocate(this % results)
-        allocate(this % results(3, this % total_score_bins, this % n_filter_bins()))
-      end if
-    else
-      allocate(this % results(3, this % total_score_bins, this % n_filter_bins()))
-    end if
-
-  end subroutine tally_allocate_results
 
   function tally_get_id(this) result(t)
     class(TallyObject) :: this
@@ -503,28 +363,6 @@ contains
   end subroutine
 
 !===============================================================================
-! CONFIGURE_TALLIES initializes several data structures related to tallies. This
-! is called after the basic tally data has already been read from the
-! tallies.xml file.
-!===============================================================================
-
-  subroutine allocate_tally_results() bind(C)
-
-    integer :: i
-
-    ! Allocate global tallies
-    if (.not. allocated(global_tallies)) then
-      allocate(global_tallies(3, N_GLOBAL_TALLIES))
-    end if
-
-    ! Allocate results arrays for tallies
-    do i = 1, n_tallies
-      call tallies(i) % obj % allocate_results()
-    end do
-
-  end subroutine allocate_tally_results
-
-!===============================================================================
 ! FREE_MEMORY_TALLY deallocates global arrays defined in this module
 !===============================================================================
 
@@ -540,8 +378,6 @@ contains
     if (allocated(tallies)) deallocate(tallies)
     call tally_dict % clear()
     largest_tally_id = 0
-
-    if (allocated(global_tallies)) deallocate(global_tallies)
   end subroutine free_memory_tally
 
 !===============================================================================
@@ -612,20 +448,6 @@ contains
   end function openmc_get_tally_index
 
 
-  function openmc_global_tallies(ptr) result(err) bind(C)
-    type(C_PTR), intent(out) :: ptr
-    integer(C_INT) :: err
-
-    if (.not. allocated(global_tallies)) then
-      err = E_ALLOCATE
-      call set_errmsg("Global tallies have not been allocated yet.")
-    else
-      err = 0
-      ptr = C_LOC(global_tallies)
-    end if
-  end function openmc_global_tallies
-
-
   function openmc_tally_get_estimator(index, estimator) result(err) bind(C)
     ! Return the type of estimator of a tally
     integer(C_INT32_T), value    :: index
@@ -656,71 +478,6 @@ contains
       call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_get_id
-
-
-  function openmc_tally_get_n_realizations(index, n) result(err) bind(C)
-    ! Return the number of realizations for a tally
-    integer(C_INT32_T), value       :: index
-    integer(C_INT32_T), intent(out) :: n
-    integer(C_INT) :: err
-
-    if (index >= 1 .and. index <= size(tallies)) then
-      n = tallies(index) % obj % n_realizations
-      err = 0
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg('Index in tallies array is out of bounds.')
-    end if
-  end function openmc_tally_get_n_realizations
-
-
-  function openmc_tally_reset(index) result(err) bind(C)
-    ! Reset tally results and number of realizations
-    integer(C_INT32_T), intent(in), value :: index
-    integer(C_INT) :: err
-
-    if (index >= 1 .and. index <= size(tallies)) then
-      associate (t => tallies(index) % obj)
-        t % n_realizations = 0
-        if (allocated(t % results)) t % results(:, :, :) = ZERO
-        err = 0
-      end associate
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg('Index in tallies array is out of bounds.')
-    end if
-  end function openmc_tally_reset
-
-
-  function openmc_tally_results(index, ptr, shape_) result(err) bind(C)
-    ! Returns a pointer to a tally results array along with its shape. This
-    ! allows a user to obtain in-memory tally results from Python directly.
-    integer(C_INT32_T), intent(in), value :: index
-    type(C_PTR),        intent(out) :: ptr
-    integer(C_SIZE_T),  intent(out) :: shape_(3)
-    integer(C_INT) :: err
-
-    if (index >= 1 .and. index <= size(tallies)) then
-      associate (t => tallies(index) % obj)
-        if (allocated(t % results)) then
-          ptr = C_LOC(t % results(1,1,1))
-
-          ! Note that shape is reversed since it is assumed to be used from
-          ! C/C++ code
-          shape_(1) = size(t % results, 3)
-          shape_(2) = size(t % results, 2)
-          shape_(3) = size(t % results, 1)
-          err = 0
-        else
-          err = E_ALLOCATE
-          call set_errmsg("Tally results have not been allocated yet.")
-        end if
-      end associate
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg('Index in tallies array is out of bounds.')
-    end if
-  end function openmc_tally_results
 
 
   function openmc_tally_set_estimator(index, estimator) result(err) bind(C)

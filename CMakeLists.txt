@@ -327,7 +327,6 @@ add_library(libopenmc SHARED
   src/state_point.F90
   src/stl_vector.F90
   src/string.F90
-  src/track_output.F90
   src/vector_header.F90
   src/xml_interface.F90
   src/tallies/tally.F90
@@ -419,6 +418,7 @@ add_library(libopenmc SHARED
   src/tallies/trigger.cpp
   src/timer.cpp
   src/thermal.cpp
+  src/track_output.cpp
   src/volume_calc.cpp
   src/wmp.cpp
   src/xml_interface.cpp

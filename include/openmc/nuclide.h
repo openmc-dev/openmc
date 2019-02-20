@@ -198,7 +198,7 @@ namespace simulation {
 
 // Cross section caches
 extern NuclideMicroXS* micro_xs;
-extern "C" MaterialMacroXS material_xs;
+extern MaterialMacroXS material_xs;
 #pragma omp threadprivate(micro_xs, material_xs)
 
 } // namespace simulation

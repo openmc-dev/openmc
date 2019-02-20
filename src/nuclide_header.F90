@@ -70,8 +70,7 @@ module nuclide_header
 
   ! Cross section caches
   type(NuclideMicroXS), allocatable, target :: micro_xs(:)  ! Cache for each nuclide
-  type(MaterialMacroXS), bind(C)            :: material_xs  ! Cache for current material
-!$omp threadprivate(micro_xs, material_xs)
+!$omp threadprivate(micro_xs)
 
   interface
     function nuclides_size() bind(C) result(n)

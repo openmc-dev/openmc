@@ -12,14 +12,6 @@ module initialize
       import C_PTR
       type(C_PTR) :: ptr
     end function
-    function path_output_c() result(ptr) bind(C)
-      import C_PTR
-      type(C_PTR) :: ptr
-    end function
-    function path_particle_restart_c() result(ptr) bind(C)
-      import C_PTR
-      type(C_PTR) :: ptr
-    end function
   end interface
 
 contains
@@ -46,10 +38,6 @@ contains
       path_input = to_f_string(string)
     else
       path_input = ''
-    end if
-    if (.not. is_null(path_particle_restart_c())) then
-      call c_f_pointer(path_particle_restart_c(), string, [255])
-      path_particle_restart = to_f_string(string)
     end if
   end subroutine read_command_line
 

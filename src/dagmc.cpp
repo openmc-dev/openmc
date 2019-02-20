@@ -65,16 +65,13 @@ bool get_uwuw_materials_xml(std::string& s) {
   return uwuw_mats_present;
 }
 
-pugi::xml_document* read_uwuw_materials() {
-  pugi::xml_document* doc = nullptr;
-
+bool read_uwuw_materials(pugi::xml_document& doc) {
   std::string s;
   bool found_uwuw_mats = get_uwuw_materials_xml(s);
   if (found_uwuw_mats) {
-    doc = new pugi::xml_document();
-    pugi::xml_parse_result result = doc->load_string(s.c_str());
+    pugi::xml_parse_result result = doc.load_string(s.c_str());
   }
-  return doc;
+  return found_uwuw_mats;
 }
 
 bool write_uwuw_materials_xml() {

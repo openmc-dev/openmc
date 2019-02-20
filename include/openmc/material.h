@@ -109,6 +109,13 @@ private:
 // Fortran compatibility
 //==============================================================================
 
+//! Read material data from materials.xml
+void read_materials_xml();
+
+//==============================================================================
+// Fortran compatibility
+//==============================================================================
+
 extern "C" int* material_element(int i_material);
 extern "C" bool material_isotropic(int i_material, int i_nuc_mat);
 

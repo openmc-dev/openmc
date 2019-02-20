@@ -17,10 +17,12 @@
 #include "openmc/error.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
+#include "openmc/plot.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
@@ -31,8 +33,6 @@
 
 // data/functions from Fortran side
 extern "C" void read_command_line();
-extern "C" void read_materials_xml();
-extern "C" void read_plots_xml();
 extern "C" void read_tallies_xml();
 
 // Paths to various files

@@ -304,7 +304,6 @@ target_compile_options(faddeeva PRIVATE ${cxxflags})
 add_library(libopenmc SHARED
   src/bank_header.F90
   src/api.F90
-  src/dagmc_header.F90
   src/constants.F90
   src/dict_header.F90
   src/error.F90

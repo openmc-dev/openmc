@@ -13,7 +13,9 @@
 #include "openmc/capi.h"
 #include "openmc/cross_sections.h"
 #include "openmc/container_util.h"
+#include "openmc/dagmc.h"
 #include "openmc/error.h"
+#include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/math_functions.h"
 #include "openmc/message_passing.h"
@@ -865,11 +867,34 @@ void Material::to_hdf5(hid_t group) const
 // Non-method functions
 //==============================================================================
 
-extern "C" void
-read_materials(pugi::xml_node* node)
+void read_materials_xml()
 {
+  write_message("Reading materials XML file...", 5);
+
+  pugi::xml_document doc;
+
+  bool using_dagmc_mats = false;
+#ifdef DAGMC
+  if (settings::dagmc) {
+    using_dagmc_mats = read_uwuw_materials(doc);
+  }
+#endif
+
+
+  if (!using_dagmc_mats) {
+    // Check if materials.xml exists
+    std::string filename = settings::path_input + "materials.xml";
+    if (!file_exists(filename)) {
+      fatal_error("Material XML file '" + filename + "' does not exist!");
+    }
+
+    // Parse materials.xml file and get root element
+    doc.load_file(filename.c_str());
+  }
+
   // Loop over XML material elements and populate the array.
-  for (pugi::xml_node material_node : node->children("material")) {
+  pugi::xml_node root = doc.document_element();
+  for (pugi::xml_node material_node : root.children("material")) {
     model::materials.push_back(new Material(material_node));
   }
   model::materials.shrink_to_fit();

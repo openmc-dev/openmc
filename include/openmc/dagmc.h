@@ -15,19 +15,17 @@ extern "C" const bool dagmc_enabled;
 namespace openmc {
 
 namespace model {
-
-extern moab::DagMC* DAG;
-
-} // namespace model
+  extern moab::DagMC* DAG;
+}
 
 //==============================================================================
 // Non-member functions
 //==============================================================================
 
-extern "C" void load_dagmc_geometry();
+void load_dagmc_geometry();
 extern "C" void free_memory_dagmc();
 void read_geometry_dagmc();
-extern "C" pugi::xml_document* read_uwuw_materials();
+bool read_uwuw_materials(pugi::xml_document& doc);
 bool get_uwuw_materials_xml(std::string& s);
 
 } // namespace openmc

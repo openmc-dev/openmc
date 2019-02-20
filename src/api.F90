@@ -60,8 +60,6 @@ contains
 
     use bank_header
     use material_header
-    use nuclide_header
-    use photon_header
     use settings
     use simulation_header
     use tally_filter_header
@@ -95,7 +93,16 @@ contains
       subroutine free_memory_geometry() bind(C)
       end subroutine
 
+      subroutine free_memory_photon() bind(C)
+      end subroutine
+
       subroutine sab_clear() bind(C)
+      end subroutine
+
+      subroutine library_clear() bind(C)
+      end subroutine
+
+      subroutine nuclides_clear() bind(C)
       end subroutine
     end interface
 
@@ -104,10 +111,11 @@ contains
     call free_memory_material()
     call free_memory_volume()
     call free_memory_simulation()
-    call free_memory_nuclide()
     call free_memory_photon()
     call free_memory_settings()
     call sab_clear()
+    call library_clear()
+    call nuclides_clear()
     call free_memory_source()
     call free_memory_mesh()
     call free_memory_tally()

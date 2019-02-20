@@ -155,18 +155,6 @@ module tally_header
 
   real(C_DOUBLE), public, allocatable, target :: global_tallies(:,:)
 
-  ! It is possible to protect accumulate operations on global tallies by using
-  ! an atomic update. However, when multiple threads accumulate to the same
-  ! global tally, it can cause a higher cache miss rate due to
-  ! invalidation. Thus, we use threadprivate variables to accumulate global
-  ! tallies and then reduce at the end of a generation.
-  real(C_DOUBLE), public, bind(C) :: global_tally_collision
-  real(C_DOUBLE), public, bind(C) :: global_tally_absorption
-  real(C_DOUBLE), public, bind(C) :: global_tally_tracklength
-  real(C_DOUBLE), public, bind(C) :: global_tally_leakage
-!$omp threadprivate(global_tally_collision, global_tally_absorption, &
-!$omp&              global_tally_tracklength, global_tally_leakage)
-
   ! Normalization for statistics
   integer(C_INT32_T), public, bind(C) :: n_realizations = 0 ! # of independent realizations
   real(C_DOUBLE), public, bind(C) :: total_weight       ! total starting particle weight in realization

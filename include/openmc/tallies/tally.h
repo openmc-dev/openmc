@@ -114,11 +114,15 @@ extern std::vector<int> active_surface_tallies;
 
 } // namespace model
 
-// Threadprivate variables
-extern "C" double global_tally_absorption;
-extern "C" double global_tally_collision;
-extern "C" double global_tally_tracklength;
-extern "C" double global_tally_leakage;
+// It is possible to protect accumulate operations on global tallies by using an
+// atomic update. However, when multiple threads accumulate to the same global
+// tally, it can cause a higher cache miss rate due to invalidation. Thus, we
+// use threadprivate variables to accumulate global tallies and then reduce at
+// the end of a generation.
+extern double global_tally_absorption;
+extern double global_tally_collision;
+extern double global_tally_tracklength;
+extern double global_tally_leakage;
 #pragma omp threadprivate(global_tally_absorption, global_tally_collision, \
   global_tally_tracklength, global_tally_leakage)
 

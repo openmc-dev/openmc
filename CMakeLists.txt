@@ -90,9 +90,8 @@ if(openmp)
   # Requires CMake 3.1+
   find_package(OpenMP)
   if(OPENMP_FOUND)
-    list(APPEND f90flags ${OpenMP_Fortran_FLAGS})
     list(APPEND cxxflags ${OpenMP_CXX_FLAGS})
-    list(APPEND ldflags ${OpenMP_Fortran_FLAGS})
+    list(APPEND ldflags ${OpenMP_CXX_FLAGS})
   endif()
 endif()
 
@@ -422,7 +421,7 @@ add_library(libopenmc SHARED
 
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc
-  LINKER_LANGUAGE Fortran)
+  LINKER_LANGUAGE CXX)
 
 target_include_directories(libopenmc
   PUBLIC include

@@ -104,6 +104,11 @@ contains
 
       subroutine nuclides_clear() bind(C)
       end subroutine
+
+#ifdef DAGMC
+      subroutine free_memory_dagmc() bind(C)
+      end subroutine
+#endif
     end interface
 
     call free_memory_geometry()

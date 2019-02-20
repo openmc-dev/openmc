@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <sstream>
 
+#include "pugixml.hpp"
 #include "xtensor/xarray.hpp"
 
 #include "hdf5.h"
@@ -160,9 +161,8 @@ void voxel_finalize(hid_t dspace, hid_t dset, hid_t memspace);
 // External functions
 //===============================================================================
 
-//! Read plots from plots.xml node
-//! \param[in] plot node of plots.xml
-extern "C" void read_plots(pugi::xml_node* plot_node);
+//! Read plot specifications from a plots.xml file
+void read_plots_xml();
 
 //! Create a ppm image for a plot object
 //! \param[in] plot object

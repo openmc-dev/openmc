@@ -4,9 +4,6 @@ module input_xml
 
   use constants
   use error,            only: fatal_error, warning, write_message, openmc_err_msg
-#ifdef DAGMC
-  use dagmc_header
-#endif
   use material_header
   use message_passing
   use settings
@@ -23,58 +20,7 @@ module input_xml
   implicit none
   save
 
-  interface
-    subroutine read_materials(node_ptr) bind(C)
-      import C_PTR
-      type(C_PTR) :: node_ptr
-    end subroutine read_materials
-
-    subroutine read_plots(node_ptr) bind(C)
-      import C_PTR
-      type(C_PTR) :: node_ptr
-    end subroutine read_plots
-  end interface
-
 contains
-
-  subroutine read_materials_xml() bind(C)
-    logical :: file_exists    ! does materials.xml exist?
-    character(MAX_LINE_LEN) :: filename     ! absolute path to materials.xml
-    type(XMLDocument) :: doc
-    type(XMLNode) :: root
-
-    ! Display output message
-    call write_message("Reading materials XML file...", 5)
-
-    doc % ptr = C_NULL_PTR
-
-#ifdef DAGMC
-    if (dagmc) then
-      doc % ptr = read_uwuw_materials()
-    end if
-#endif
-
-    if (.not. c_associated(doc % ptr)) then
-      ! Check if materials.xml exists
-      filename = trim(path_input) // "materials.xml"
-      inquire(FILE=filename, EXIST=file_exists)
-      if (.not. file_exists) then
-        call fatal_error("Material XML file '" // trim(filename) // "' does not &
-             &exist!")
-    end if
-
-    ! Parse materials.xml file
-    call doc % load_file(filename)
-
-    end if
-
-    root = doc % document_element()
-    call read_materials(root % ptr)
-
-    ! Close materials XML file
-    call doc % clear()
-
-  end subroutine read_materials_xml
 
 !===============================================================================
 ! READ_TALLIES_XML reads data from a tallies.xml file and parses it, checking
@@ -521,38 +467,5 @@ contains
     call doc % clear()
 
   end subroutine read_tallies_xml
-
-!===============================================================================
-! READ_PLOTS_XML reads data from a plots.xml file
-!===============================================================================
-
-  subroutine read_plots_xml() bind(C)
-
-    logical :: file_exists              ! does plots.xml file exist?
-    character(MAX_LINE_LEN) :: filename ! absolute path to plots.xml
-    type(XMLDocument) :: doc
-    type(XMLNode) :: root
-
-    ! Check if plots.xml exists
-    filename = trim(path_input) // "plots.xml"
-    inquire(FILE=filename, EXIST=file_exists)
-    if (.not. file_exists) then
-      call fatal_error("Plots XML file '" // trim(filename) &
-           // "' does not exist!")
-    end if
-
-    ! Display output message
-    call write_message("Reading plot XML file...", 5)
-
-    ! Parse plots.xml file
-    call doc % load_file(filename)
-    root = doc % document_element()
-
-    call read_plots(root % ptr)
-
-    ! Close plots XML file
-    call doc % clear()
-
-  end subroutine read_plots_xml
 
 end module input_xml

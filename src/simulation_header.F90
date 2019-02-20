@@ -30,9 +30,6 @@ module simulation_header
   ! Temporary k-effective values
   real(C_DOUBLE), bind(C) :: keff      ! average k over active batches
   real(C_DOUBLE), bind(C) :: keff_std  ! standard deviation of average k
-  real(C_DOUBLE), bind(C) :: k_col_abs ! sum over batches of k_collision * k_absorption
-  real(C_DOUBLE), bind(C) :: k_col_tra ! sum over batches of k_collision * k_tracklength
-  real(C_DOUBLE), bind(C) :: k_abs_tra ! sum over batches of k_absorption * k_tracklength
 
   ! ============================================================================
   ! PARALLEL PROCESSING VARIABLES

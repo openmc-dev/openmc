@@ -5,6 +5,7 @@
 #include "openmc/tallies/trigger.h"
 
 #include "pugixml.hpp"
+#include "xtensor/xfixed.hpp"
 #include "xtensor/xtensor.hpp"
 
 #include <memory> // for unique_ptr
@@ -47,6 +48,10 @@ public:
 
   void init_triggers(pugi::xml_node node, int i_tally);
 
+  void init_results();
+
+  void accumulate();
+
   //----------------------------------------------------------------------------
   // Major public data members.
 
@@ -62,6 +67,9 @@ public:
   //! Whether this tally is currently being updated
   bool active_ {false};
 
+  //! Number of realizations
+  int n_realizations_ {0};
+
   std::vector<int> scores_; //!< Filter integrands (e.g. flux, fission)
 
   //! Index of each nuclide to be tallied.  -1 indicates total material.
@@ -69,6 +77,12 @@ public:
 
   //! True if this tally has a bin for every nuclide in the problem
   bool all_nuclides_ {false};
+
+  //! Results for each bin -- the first dimension of the array is for scores
+  //! (e.g. flux, total reaction rate, fission reaction rate, etc.) and the
+  //! second dimension of the array is for the combination of filters
+  //! (e.g. specific cell, specific energy group, etc.)
+  xt::xtensor<double, 3> results_;
 
   //----------------------------------------------------------------------------
   // Miscellaneous public members.
@@ -102,17 +116,22 @@ private:
 //==============================================================================
 
 namespace model {
+  extern std::vector<std::unique_ptr<Tally>> tallies;
+  extern std::vector<int> active_tallies;
+  extern std::vector<int> active_analog_tallies;
+  extern std::vector<int> active_tracklength_tallies;
+  extern std::vector<int> active_collision_tallies;
+  extern std::vector<int> active_meshsurf_tallies;
+  extern std::vector<int> active_surface_tallies;
+}
 
-extern std::vector<std::unique_ptr<Tally>> tallies;
+namespace simulation {
+  //! Global tallies (such as k-effective estimators)
+  extern xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> global_tallies;
 
-extern std::vector<int> active_tallies;
-extern std::vector<int> active_analog_tallies;
-extern std::vector<int> active_tracklength_tallies;
-extern std::vector<int> active_collision_tallies;
-extern std::vector<int> active_meshsurf_tallies;
-extern std::vector<int> active_surface_tallies;
-
-} // namespace model
+  //! Number of realizations for global tallies
+  extern int32_t n_realizations;
+}
 
 // It is possible to protect accumulate operations on global tallies by using an
 // atomic update. However, when multiple threads accumulate to the same global
@@ -130,23 +149,21 @@ extern double global_tally_leakage;
 // Non-member functions
 //==============================================================================
 
+//! \brief Accumulate the sum of the contributions from each history within the
+//! batch to a new random variable
+void accumulate_tallies();
+
+//! Determine which tallies should be active
+void setup_active_tallies();
+
 // Alias for the type returned by xt::adapt(...). N is the dimension of the
 // multidimensional array
 template <std::size_t N>
 using adaptor_type = xt::xtensor_adaptor<xt::xbuffer_adaptor<double*&, xt::no_ownership>, N>;
 
-//! Get the global tallies as a multidimensional array
-//! \return Global tallies array
-adaptor_type<2> global_tallies();
-
-//! Get tally results as a multidimensional array
-//! \param idx Index in tallies array
-//! \return Tally results array
-adaptor_type<3> tally_results(int idx);
-
 #ifdef OPENMC_MPI
 //! Collect all tally results onto master process
-extern "C" void reduce_tally_results();
+void reduce_tally_results();
 #endif
 
 extern "C" void free_memory_tally_c();

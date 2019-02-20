@@ -164,7 +164,6 @@ extern "C" {
 
   // Global variables
   extern char openmc_err_msg[256];
-  extern int32_t n_realizations;
   extern int32_t n_sab_tables;
   extern int32_t n_tallies;
 

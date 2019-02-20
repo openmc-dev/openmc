@@ -370,7 +370,7 @@ void print_generation()
   // Determine overall generation and number of active generations
   int i = overall_generation() - 1;
   int n = simulation::current_batch > settings::n_inactive ?
-    settings::gen_per_batch*n_realizations + simulation::current_gen : 0;
+    settings::gen_per_batch*simulation::n_realizations + simulation::current_gen : 0;
 
   // Set format for values
   std::cout << std::fixed << std::setprecision(5);
@@ -404,7 +404,7 @@ void print_batch_keff()
 
   // Determine overall generation and number of active generations
   int i = simulation::current_batch*settings::gen_per_batch - 1;
-  int n = n_realizations*settings::gen_per_batch;
+  int n = simulation::n_realizations*settings::gen_per_batch;
 
   // Set format for values
   std::cout << std::fixed << std::setprecision(5);
@@ -538,7 +538,7 @@ void print_results()
   header("Results", 4);
 
   // Calculate t-value for confidence intervals
-  int n = n_realizations;
+  int n = simulation::n_realizations;
   double alpha, t_n1, t_n3;
   if (settings::confidence_intervals) {
     alpha = 1.0 - CONFIDENCE_LEVEL;
@@ -553,7 +553,7 @@ void print_results()
   std::cout << std::fixed << std::setprecision(5);
 
   // write global tallies
-  auto gt = global_tallies();
+  const auto& gt = simulation::global_tallies;
   double mean, stdev;
   if (n > 1) {
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
@@ -633,16 +633,12 @@ write_tallies()
   // Loop over each tally.
   for (auto i_tally = 0; i_tally < model::tallies.size(); ++i_tally) {
     const auto& tally {*model::tallies[i_tally]};
-    auto results = tally_results(i_tally);
-    // TODO: get this directly from the tally object when it's been translated
-    int32_t n_realizations;
-    auto err = openmc_tally_get_n_realizations(i_tally+1, &n_realizations);
 
     // Calculate t-value for confidence intervals
     double t_value = 1;
     if (settings::confidence_intervals) {
       auto alpha = 1 - CONFIDENCE_LEVEL;
-      t_value = t_percentile(1 - alpha*0.5, n_realizations - 1);
+      t_value = t_percentile(1 - alpha*0.5, tally.n_realizations_ - 1);
     }
 
     // Write header block.
@@ -719,7 +715,7 @@ write_tallies()
           double mean, stdev;
           //TODO: off-by-one
           std::tie(mean, stdev) = mean_stdev(
-            &results(filter_index-1, score_index, 0), n_realizations);
+            &tally.results_(filter_index-1, score_index, 0), tally.n_realizations_);
           tallies_out << std::string(indent+1, ' ')  << std::left
             << std::setw(36) << score_name << " " << mean << " +/- "
             << t_value * stdev << "\n";

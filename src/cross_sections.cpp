@@ -427,21 +427,4 @@ extern "C" void library_clear() {
   data::library_map.clear();
 }
 
-extern "C" const char* library_path(int type, const char* name) {
-  auto lib_type = static_cast<Library::Type>(type);
-  LibraryKey key {lib_type, name};
-  if (data::library_map.find(key) == data::library_map.end()) {
-    return nullptr;
-  } else {
-    auto idx = data::library_map[key];
-    return data::libraries[idx].path_.c_str();
-  }
-}
-
-extern "C" bool library_present(int type, const char* name) {
-  auto lib_type = static_cast<Library::Type>(type);
-  LibraryKey key {lib_type, name};
-  return data::library_map.find(key) != data::library_map.end();
-}
-
 } // namespace openmc

@@ -316,14 +316,11 @@ add_library(libopenmc SHARED
   src/material_header.F90
   src/message_passing.F90
   src/mgxs_interface.F90
-  src/nuclide_header.F90
   src/particle_header.F90
-  src/photon_header.F90
   src/pugixml/pugixml_f.F90
   src/relaxng
   src/settings.F90
   src/simulation_header.F90
-  src/simulation.F90
   src/state_point.F90
   src/stl_vector.F90
   src/string.F90

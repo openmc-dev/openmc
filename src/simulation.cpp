@@ -10,6 +10,7 @@
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/particle.h"
+#include "openmc/photon.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/source.h"
@@ -84,9 +85,12 @@ int openmc_simulation_init()
     mat->init_nuclide_index();
   }
 
-  // Call Fortran initialization
-  simulation_init_f();
-  set_micro_xs();
+  // Create cross section caches
+  #pragma omp parallel
+  {
+    simulation::micro_xs = new NuclideMicroXS[data::nuclides.size()];
+    simulation::micro_photon_xs = new ElementMicroXS[data::elements.size()];
+  }
 
   // Reset global variables -- this is done before loading state point (as that
   // will potentially populate k_generation and entropy)
@@ -135,7 +139,13 @@ int openmc_simulation_finalize()
   for (auto& mat : model::materials) {
     mat->mat_nuclide_index_.clear();
   }
-  simulation_finalize_f();
+
+  // Clear cross section caches
+  #pragma omp parallel
+  {
+    delete[] simulation::micro_xs;
+    delete[] simulation::micro_photon_xs;
+  }
 
   // Increment total number of generations
   simulation::total_gen += simulation::current_batch*settings::gen_per_batch;

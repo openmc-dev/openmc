@@ -11,8 +11,6 @@ module input_xml
   use material_header
   use message_passing
   use mgxs_interface
-  use nuclide_header
-  use photon_header
   use settings
   use stl_vector,       only: VectorInt, VectorReal, VectorChar
   use string,           only: to_lower, to_str, str_to_int, &
@@ -54,13 +52,6 @@ contains
     type(XMLDocument) :: doc
     type(XMLNode) :: root
 
-    interface
-      function elements_size() bind(C) result(n)
-        import C_INT
-        integer(C_INT) :: n
-      end function
-    end interface
-
     ! Display output message
     call write_message("Reading materials XML file...", 5)
 
@@ -88,9 +79,6 @@ contains
 
     root = doc % document_element()
     call read_materials(root % ptr)
-
-    ! Set total number of nuclides and elements
-    n_elements = elements_size()
 
     ! Close materials XML file
     call doc % clear()

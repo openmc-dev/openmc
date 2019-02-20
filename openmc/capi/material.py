@@ -163,7 +163,7 @@ class Material(_FortranObjectWithID):
         _dll.openmc_material_get_densities(self._index, nuclides, densities, n)
 
         # Convert to appropriate types and return
-        nuclide_list = [Nuclide(nuclides[i] + 1).name for i in range(n.value)]
+        nuclide_list = [Nuclide(nuclides[i]).name for i in range(n.value)]
         density_array = as_array(densities, (n.value,))
         return nuclide_list, density_array
 

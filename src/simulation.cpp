@@ -29,11 +29,7 @@ namespace openmc {
 // data/functions from Fortran side
 extern "C" void accumulate_tallies();
 extern "C" void allocate_tally_results();
-extern "C" void init_tally_routines();
 extern "C" void setup_active_tallies();
-extern "C" void simulation_init_f();
-extern "C" void simulation_finalize_f();
-extern "C" void transport(Particle* p);
 extern "C" void write_tallies();
 
 } // namespace openmc
@@ -75,9 +71,6 @@ int openmc_simulation_init()
   {
     simulation::filter_matches.resize(model::tally_filters.size());
   }
-
-  // Set up tally procedure pointers
-  init_tally_routines();
 
   // Allocate source bank, and for eigenvalue simulations also allocate the
   // fission bank
@@ -213,7 +206,7 @@ int openmc_next_batch(int* status)
       initialize_history(&p, simulation::current_work);
 
       // transport particle
-      transport(&p);
+      p.transport();
     }
 
     // Accumulate time for transport
@@ -319,7 +312,7 @@ void initialize_batch()
   }
 
   // Reset total starting particle weight used for normalizing tallies
-  total_weight = 0.0;
+  simulation::total_weight = 0.0;
 
   // Determine if this batch is the first inactive or active batch.
   bool first_inactive = false;

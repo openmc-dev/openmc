@@ -2,12 +2,9 @@ module material_header
 
   use, intrinsic :: ISO_C_BINDING
 
-  use particle_header, only: Particle
-
   implicit none
 
   private
-  public :: material_calculate_xs
   public :: material_id
   public :: material_nuclide
   public :: material_nuclide_size
@@ -20,11 +17,6 @@ module material_header
       integer(C_INT32_T), value :: i_mat
       integer(C_INT32_T)        :: id
     end function
-
-    subroutine material_calculate_xs(p) bind(C)
-      import Particle
-      type(Particle), intent(in) :: p
-    end subroutine
 
     function material_nuclide(i_mat, idx) bind(C) result(nuc)
       import C_INT32_T, C_INT

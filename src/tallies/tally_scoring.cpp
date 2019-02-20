@@ -1972,12 +1972,7 @@ score_all_nuclides(const Particle* p, int i_tally, double flux,
   }
 }
 
-//! Score tallies based on a simple count of events (for continuous energy).
-//
-//! Analog tallies ar etriggered at every collision, not every event.
-
-extern "C" void
-score_analog_tally_ce(const Particle* p)
+void score_analog_tally_ce(const Particle* p)
 {
   for (auto i_tally : model::active_analog_tallies) {
     const Tally& tally {*model::tallies[i_tally]};
@@ -2036,12 +2031,7 @@ score_analog_tally_ce(const Particle* p)
     match.bins_present_ = false;
 }
 
-//! Score tallies based on a simple count of events (for multigroup).
-//
-//! Analog tallies ar etriggered at every collision, not every event.
-
-extern "C" void
-score_analog_tally_mg(const Particle* p)
+void score_analog_tally_mg(const Particle* p)
 {
   for (auto i_tally : model::active_analog_tallies) {
     const Tally& tally {*model::tallies[i_tally]};
@@ -2090,13 +2080,7 @@ score_analog_tally_mg(const Particle* p)
     match.bins_present_ = false;
 }
 
-//! Score tallies using a tracklength estimate of the flux.
-//
-//! This is triggered at every event (surface crossing, lattice crossing, or
-//! collision) and thus cannot be done for tallies that require post-collision
-//! information.
-
-extern "C" void
+void
 score_tracklength_tally(const Particle* p, double distance)
 {
   // Determine the tracklength estimate of the flux
@@ -2164,16 +2148,7 @@ score_tracklength_tally(const Particle* p, double distance)
     match.bins_present_ = false;
 }
 
-//! Score tallies using a 1 / Sigma_t estimate of the flux.
-//
-//! This is triggered after every collision.  It is invalid for tallies that
-//! require post-collison information because it can score reactions that didn't
-//! actually occur, and we don't a priori know what the outcome will be for
-//! reactions that we didn't sample.  It is assumed the material is not void
-//! since collisions do not occur in voids.
-
-extern "C" void
-score_collision_tally(const Particle* p)
+void score_collision_tally(const Particle* p)
 {
   // Determine the collision estimate of the flux
   double flux;
@@ -2241,10 +2216,8 @@ score_collision_tally(const Particle* p)
     match.bins_present_ = false;
 }
 
-//! Score surface or mesh-surface tallies for particle currents.
-
-static void
-score_surface_tally_inner(const Particle* p, const std::vector<int>& tallies)
+void
+score_surface_tally(const Particle* p, const std::vector<int>& tallies)
 {
   // No collision, so no weight change when survival biasing
   double flux = p->wgt;
@@ -2287,22 +2260,6 @@ score_surface_tally_inner(const Particle* p, const std::vector<int>& tallies)
   // Reset all the filter matches for the next tally event.
   for (auto& match : simulation::filter_matches)
     match.bins_present_ = false;
-}
-
-//! Score mesh-surface tallies for particle currents.
-
-extern "C" void
-score_meshsurface_tally(const Particle* p)
-{
-  score_surface_tally_inner(p, model::active_meshsurf_tallies);
-}
-
-//! Score surface tallies for particle currents.
-
-extern "C" void
-score_surface_tally(const Particle* p)
-{
-  score_surface_tally_inner(p, model::active_surface_tallies);
 }
 
 } // namespace openmc

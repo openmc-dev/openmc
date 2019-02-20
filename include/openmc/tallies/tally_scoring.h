@@ -50,6 +50,47 @@ private:
 // Non-member functions
 //==============================================================================
 
+//! Score tallies using a 1 / Sigma_t estimate of the flux.
+//
+//! This is triggered after every collision.  It is invalid for tallies that
+//! require post-collison information because it can score reactions that didn't
+//! actually occur, and we don't a priori know what the outcome will be for
+//! reactions that we didn't sample.  It is assumed the material is not void
+//! since collisions do not occur in voids.
+//
+//! \param p The particle being tracked
+void score_collision_tally(const Particle* p);
+
+//! Score tallies based on a simple count of events (for continuous energy).
+//
+//! Analog tallies are triggered at every collision, not every event.
+//
+//! \param p The particle being tracked
+void score_analog_tally_ce(const Particle* p);
+
+//! Score tallies based on a simple count of events (for multigroup).
+//
+//! Analog tallies are triggered at every collision, not every event.
+//
+//! \param p The particle being tracked
+void score_analog_tally_mg(const Particle* p);
+
+//! Score tallies using a tracklength estimate of the flux.
+//
+//! This is triggered at every event (surface crossing, lattice crossing, or
+//! collision) and thus cannot be done for tallies that require post-collision
+//! information.
+//
+//! \param p The particle being tracked
+//! \param distance The distance in [cm] traveled by the particle
+void score_tracklength_tally(const Particle* p, double distance);
+
+//! Score surface or mesh-surface tallies for particle currents.
+//
+//! \param p The particle being tracked
+//! \param tallies A vector of tallies to score to
+void score_surface_tally(const Particle* p, const std::vector<int>& tallies);
+
 } // namespace openmc
 
 #endif // OPENMC_TALLIES_TALLY_SCORING_H

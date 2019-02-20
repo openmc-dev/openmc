@@ -23,6 +23,7 @@ _dll.openmc_load_nuclide.errcheck = _error_handler
 _dll.openmc_nuclide_name.argtypes = [c_int, POINTER(c_char_p)]
 _dll.openmc_nuclide_name.restype = c_int
 _dll.openmc_nuclide_name.errcheck = _error_handler
+_dll.nuclides_size.restype = c_int
 
 
 def load_nuclide(name):
@@ -70,12 +71,7 @@ class Nuclide(_FortranObject):
     def name(self):
         name = c_char_p()
         _dll.openmc_nuclide_name(self._index, name)
-
-        # Find blank in name
-        i = 0
-        while name.value[i:i+1] != b' ':
-            i += 1
-        return name.value[:i].decode()
+        return name.value.decode()
 
 
 class _NuclideMapping(Mapping):
@@ -91,10 +87,10 @@ class _NuclideMapping(Mapping):
 
     def __iter__(self):
         for i in range(len(self)):
-            yield Nuclide(i + 1).name
+            yield Nuclide(i).name
 
     def __len__(self):
-        return c_int.in_dll(_dll, 'n_nuclides').value
+        return _dll.nuclides_size()
 
     def __repr__(self):
         return repr(dict(self))

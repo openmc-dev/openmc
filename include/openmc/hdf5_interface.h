@@ -223,8 +223,13 @@ read_attribute(hid_t obj_id, const char* name, std::vector<std::string>& vec)
 // Templates/overloads for read_dataset and related methods
 //==============================================================================
 
-template<typename T>
-void read_dataset(hid_t obj_id, const char* name, T& buffer, bool indep=false)
+// Template for scalars. We need to be careful that the compiler does not use
+// this version of read_dataset for vectors, arrays, or other non-scalar types.
+// enable_if_t allows us to conditionally remove the function from overload
+// resolution when the type T doesn't meet a certain criterion.
+template<typename T> inline
+std::enable_if_t<std::is_scalar<std::decay_t<T>>::value>
+read_dataset(hid_t obj_id, const char* name, T& buffer, bool indep=false)
 {
   read_dataset(obj_id, name, H5TypeMap<T>::type_id, &buffer, indep);
 }
@@ -242,6 +247,14 @@ read_dataset(hid_t obj_id, const char* name, std::string& str, bool indep=false)
   str = std::string{buffer, n};
 }
 
+// array version
+template<typename T, std::size_t N> inline void
+read_dataset(hid_t dset, const char* name, std::array<T, N>& buffer, bool indep=false)
+{
+  read_dataset(dset, name, H5TypeMap<T>::type_id, buffer.data(), indep);
+}
+
+// vector version
 template <typename T>
 void read_dataset(hid_t dset, std::vector<T>& vec, bool indep=false)
 {

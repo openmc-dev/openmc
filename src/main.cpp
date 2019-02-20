@@ -5,6 +5,7 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/message_passing.h"
+#include "openmc/particle_restart.h"
 #include "openmc/settings.h"
 
 
@@ -36,7 +37,8 @@ int main(int argc, char* argv[]) {
       err = openmc_plot_geometry();
       break;
     case RUN_MODE_PARTICLE:
-      if (mpi::master) err = openmc_particle_restart();
+      if (mpi::master) run_particle_restart();
+      err = 0;
       break;
     case RUN_MODE_VOLUME:
       err = openmc_calculate_volumes();

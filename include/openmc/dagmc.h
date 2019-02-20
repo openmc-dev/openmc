@@ -26,6 +26,7 @@ extern moab::DagMC* DAG;
 
 extern "C" void load_dagmc_geometry();
 extern "C" void free_memory_dagmc();
+void read_geometry_dagmc();
 extern "C" pugi::xml_document* read_uwuw_materials();
 bool get_uwuw_materials_xml(std::string& s);
 

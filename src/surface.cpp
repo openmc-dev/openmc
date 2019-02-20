@@ -7,8 +7,9 @@
 
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
-#include "openmc/xml_interface.h"
+#include "openmc/settings.h"
 #include "openmc/string_utils.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 
@@ -340,7 +341,7 @@ bool SurfaceXPlane::periodic_translate(const PeriodicSurface* other,
                                        Position& r,  Direction& u) const
 {
   Direction other_n = other->normal(r);
-  if (other_n.x == 1 and other_n.y == 0 and other_n.z == 0) {
+  if (other_n.x == 1 && other_n.y == 0 && other_n.z == 0) {
     r.x = x0_;
     return false;
   } else {
@@ -397,11 +398,11 @@ void SurfaceYPlane::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-bool SurfaceYPlane::periodic_translate(const PeriodicSurface *other,
+bool SurfaceYPlane::periodic_translate(const PeriodicSurface* other,
                                        Position& r, Direction& u) const
 {
   Direction other_n = other->normal(r);
-  if (other_n.x == 0 and other_n.y == 1 and other_n.z == 0) {
+  if (other_n.x == 0 && other_n.y == 1 && other_n.z == 0) {
     // The periodic partner is also aligned along y.  Just change the y coord.
     r.y = y0_;
     return false;
@@ -1060,12 +1061,11 @@ void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 
 //==============================================================================
 
-extern "C" void
-read_surfaces(pugi::xml_node* node)
+void read_surfaces(pugi::xml_node node)
 {
   // Count the number of surfaces.
   int n_surfaces = 0;
-  for (pugi::xml_node surf_node : node->children("surface")) {n_surfaces++;}
+  for (pugi::xml_node surf_node : node.children("surface")) {n_surfaces++;}
   if (n_surfaces == 0) {
     fatal_error("No surfaces found in geometry.xml!");
   }
@@ -1075,7 +1075,7 @@ read_surfaces(pugi::xml_node* node)
   {
     pugi::xml_node surf_node;
     int i_surf;
-    for (surf_node = node->child("surface"), i_surf = 0; surf_node;
+    for (surf_node = node.child("surface"), i_surf = 0; surf_node;
          surf_node = surf_node.next_sibling("surface"), i_surf++) {
       std::string surf_type = get_node_value(surf_node, "type", true, true);
 
@@ -1243,59 +1243,30 @@ read_surfaces(pugi::xml_node* node)
       }
     }
   }
+
+  // Check to make sure a boundary condition was applied to at least one
+  // surface
+  bool boundary_exists = false;
+  for (const auto& surf : model::surfaces) {
+    if (surf->bc_ != BC_TRANSMIT) {
+      boundary_exists = true;
+      break;
+    }
+  }
+  if (settings::run_mode != RUN_MODE_PLOTTING && !boundary_exists) {
+    fatal_error("No boundary conditions were applied to any surfaces!");
+  }
 }
 
 //==============================================================================
 // Fortran compatibility functions
 //==============================================================================
 
-extern "C" {
-  Surface* surface_pointer(int surf_ind) {return model::surfaces[surf_ind];}
-
-  int surface_id(Surface* surf) {return surf->id_;}
-
-  int surface_bc(Surface* surf) {return surf->bc_;}
-
-  void surface_reflect(Surface* surf, double xyz[3], double uvw[3])
-  {
-    Position r {xyz};
-    Direction u {uvw};
-    u = surf->reflect(r, u);
-
-    uvw[0] = u.x;
-    uvw[1] = u.y;
-    uvw[2] = u.z;
-  }
-
-  int surface_i_periodic(PeriodicSurface* surf) {return surf->i_periodic_;}
-
-  bool
-  surface_periodic(PeriodicSurface* surf, PeriodicSurface* other, double xyz[3],
-                   double uvw[3])
-  {
-    Position r {xyz};
-    Direction u {uvw};
-    bool rotational = surf->periodic_translate(other, r, u);
-
-    // Copy back to arrays
-    xyz[0] = r.x;
-    xyz[1] = r.y;
-    xyz[2] = r.z;
-    uvw[0] = u.x;
-    uvw[1] = u.y;
-    uvw[2] = u.z;
-
-    return rotational;
-  }
-
-  void free_memory_surfaces_c()
-  {
-    for (Surface* surf : model::surfaces) {delete surf;}
-    model::surfaces.clear();
-    model::surface_map.clear();
-  }
-
-  int surfaces_size() { return model::surfaces.size(); }
+extern "C" void free_memory_surfaces()
+{
+  for (Surface* surf : model::surfaces) {delete surf;}
+  model::surfaces.clear();
+  model::surface_map.clear();
 }
 
 } // namespace openmc

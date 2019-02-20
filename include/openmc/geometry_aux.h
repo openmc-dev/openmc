@@ -10,6 +10,8 @@
 
 namespace openmc {
 
+void read_geometry_xml();
+
 //==============================================================================
 //! Replace Universe, Lattice, and Material IDs with indices.
 //==============================================================================
@@ -111,7 +113,7 @@ extern "C" int maximum_levels(int32_t univ);
 //! Deallocates global vectors and maps for cells, universes, and lattices.
 //==============================================================================
 
-extern "C" void free_memory_geometry_c();
+extern "C" void free_memory_geometry();
 
 } // namespace openmc
 #endif // OPENMC_GEOMETRY_AUX_H

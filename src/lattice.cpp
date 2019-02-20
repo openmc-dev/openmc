@@ -864,13 +864,12 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
 // Non-method functions
 //==============================================================================
 
-extern "C" void
-read_lattices(pugi::xml_node *node)
+void read_lattices(pugi::xml_node node)
 {
-  for (pugi::xml_node lat_node : node->children("lattice")) {
+  for (pugi::xml_node lat_node : node.children("lattice")) {
     model::lattices.push_back(new RectLattice(lat_node));
   }
-  for (pugi::xml_node lat_node : node->children("hex_lattice")) {
+  for (pugi::xml_node lat_node : node.children("hex_lattice")) {
     model::lattices.push_back(new HexLattice(lat_node));
   }
 

@@ -273,5 +273,11 @@ private:
   std::array<double, 2> pitch_;   //!< Lattice tile width and height
 };
 
+//==============================================================================
+// Non-member functions
+//==============================================================================
+
+void read_lattices(pugi::xml_node node);
+
 } //  namespace openmc
 #endif // OPENMC_LATTICE_H

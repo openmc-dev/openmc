@@ -569,9 +569,7 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
   }
 }
 
-//! Adjust diff tally flux derivatives for a particle tracking event.
-
-extern "C" void
+void
 score_track_derivative(const Particle* p, double distance)
 {
   // A void material cannot be perturbed so it will not affect flux derivatives.
@@ -620,15 +618,7 @@ score_track_derivative(const Particle* p, double distance)
   }
 }
 
-//! Adjust diff tally flux derivatives for a particle scattering event.
-//
-//! Note that this subroutine will be called after absorption events in
-//! addition to scattering events, but any flux derivatives scored after an
-//! absorption will never be tallied.  The paricle will be killed before any
-//! further tallies are scored.
-
-extern "C" void
-score_collision_derivative(const Particle* p)
+void score_collision_derivative(const Particle* p)
 {
   // A void material cannot be perturbed so it will not affect flux derivatives.
   if (p->material == MATERIAL_VOID) return;
@@ -698,9 +688,7 @@ score_collision_derivative(const Particle* p)
   }
 }
 
-//! Set the flux derivatives on differential tallies to zero.
-extern "C" void
-zero_flux_derivs()
+void zero_flux_derivs()
 {
   for (auto& deriv : model::tally_derivs) deriv.flux_deriv = 0.;
 }

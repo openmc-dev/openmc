@@ -10,6 +10,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
+#include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
 #include "openmc/settings.h"
@@ -88,8 +89,6 @@ Library::Library(pugi::xml_node node, const std::string& directory)
 //==============================================================================
 // Non-member functions
 //==============================================================================
-
-extern "C" void read_mg_cross_sections_header();
 
 void read_cross_sections_xml()
 {

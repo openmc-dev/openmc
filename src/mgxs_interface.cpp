@@ -24,6 +24,8 @@ namespace openmc {
 
 namespace data {
 
+int num_energy_groups;
+int num_delayed_groups;
 std::vector<double> energy_bins;
 std::vector<double> energy_bin_avg;
 std::vector<double> rev_energy_bins;
@@ -184,8 +186,19 @@ std::vector<std::vector<double>> get_mat_kTs()
 
 //==============================================================================
 
-void read_mg_cross_sections_header_c(hid_t file_id)
+void read_mg_cross_sections_header()
 {
+  // Check if MGXS Library exists
+  if (!file_exists(settings::path_cross_sections)) {
+    // Could not find MGXS Library file
+    fatal_error("Cross sections HDF5 file '" + settings::path_cross_sections +
+      "' does not exist.");
+  }
+  write_message("Reading cross sections HDF5 file...", 5);
+
+  // Open file for reading
+  hid_t file_id = file_open(settings::path_cross_sections, 'r', true);
+
   ensure_exists(file_id, "energy_groups", true);
   read_attribute(file_id, "energy_groups", data::num_energy_groups);
 
@@ -214,6 +227,14 @@ void read_mg_cross_sections_header_c(hid_t file_id)
     lib.materials_.push_back(name);
     data::libraries.push_back(lib);
   }
+
+  // Get the minimum and maximum energies
+  int neutron = static_cast<int>(ParticleType::neutron);
+  data::energy_min[neutron] = data::energy_bins.back();
+  data::energy_max[neutron] = data::energy_bins.front();
+
+  // Close MGXS HDF5 file
+  file_close(file_id);
 }
 
 //==============================================================================

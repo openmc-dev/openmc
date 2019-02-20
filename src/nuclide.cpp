@@ -960,13 +960,6 @@ openmc_nuclide_name(int index, const char** name)
 // Fortran compatibility functions
 //==============================================================================
 
-extern "C" void
-set_particle_energy_bounds(int particle, double E_min, double E_max)
-{
-  data::energy_min[particle] = E_min;
-  data::energy_max[particle] = E_max;
-}
-
 extern "C" bool multipole_in_range(const Nuclide* nuc, double E)
 {
   return nuc->multipole_ && E >= nuc->multipole_->E_min_&&

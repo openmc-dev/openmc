@@ -7,10 +7,8 @@ module input_xml
 #ifdef DAGMC
   use dagmc_header
 #endif
-  use hdf5_interface
   use material_header
   use message_passing
-  use mgxs_interface
   use settings
   use stl_vector,       only: VectorInt, VectorReal, VectorChar
   use string,           only: to_lower, to_str, str_to_int, &
@@ -35,13 +33,6 @@ module input_xml
       import C_PTR
       type(C_PTR) :: node_ptr
     end subroutine read_plots
-
-    subroutine set_particle_energy_bounds(particle, E_min, E_max) bind(C)
-      import C_INT, C_DOUBLE
-      integer(C_INT), value :: particle
-      real(C_DOUBLE), value :: E_min
-      real(C_DOUBLE), value :: E_max
-    end subroutine
   end interface
 
 contains
@@ -563,85 +554,5 @@ contains
     call doc % clear()
 
   end subroutine read_plots_xml
-
-  subroutine read_mg_cross_sections_header() bind(C)
-    integer :: i           ! loop index
-    logical :: file_exists ! does mgxs.h5 exist?
-    integer(HID_T) :: file_id
-    character(kind=C_CHAR), pointer :: string(:)
-
-    interface
-      subroutine read_mg_cross_sections_header_c(file_id) bind(C)
-        import HID_T
-        integer(HID_T), value :: file_id
-      end subroutine
-
-      function path_cross_sections_c() result(ptr) bind(C)
-        import C_PTR
-        type(C_PTR) :: ptr
-      end function
-    end interface
-
-    call c_f_pointer(path_cross_sections_c(), string, [255])
-    path_cross_sections = to_f_string(string)
-
-    ! Check if MGXS Library exists
-    inquire(FILE=path_cross_sections, EXIST=file_exists)
-    if (.not. file_exists) then
-      ! Could not find MGXS Library file
-      call fatal_error("Cross sections HDF5 file '" &
-           // trim(path_cross_sections) // "' does not exist!")
-    end if
-
-    call write_message("Reading cross sections HDF5 file...", 5)
-
-    ! Open file for reading
-    file_id = file_open(path_cross_sections, 'r', parallel=.true.)
-
-    if (attribute_exists(file_id, "energy_groups")) then
-      ! Get neutron energy group count
-      call read_attribute(num_energy_groups, file_id, "energy_groups")
-    else
-      call fatal_error("'energy_groups' attribute must exist!")
-    end if
-
-    if (attribute_exists(file_id, "delayed_groups")) then
-      ! Get neutron delayed group count
-      call read_attribute(num_delayed_groups, file_id, "delayed_groups")
-    else
-      num_delayed_groups = 0
-    end if
-
-    allocate(rev_energy_bins(num_energy_groups + 1))
-    allocate(energy_bins(num_energy_groups + 1))
-
-    if (attribute_exists(file_id, "group structure")) then
-      ! Get neutron group structure
-      call read_attribute(energy_bins, file_id, "group structure")
-    else
-      call fatal_error("'group structure' attribute must exist!")
-    end if
-
-    ! First reverse the order of energy_groups
-    rev_energy_bins = energy_bins
-    energy_bins = energy_bins(num_energy_groups + 1:1:-1)
-
-    ! Get the midpoint of the energy groups
-    allocate(energy_bin_avg(num_energy_groups))
-    do i = 1, num_energy_groups
-      energy_bin_avg(i) = HALF * (energy_bins(i) + energy_bins(i + 1))
-    end do
-
-    ! Set up energy bins on C++ side
-    call read_mg_cross_sections_header_c(file_id)
-
-    ! Get the minimum and maximum energies
-    call set_particle_energy_bounds(NEUTRON, &
-         energy_bins(num_energy_groups + 1), energy_bins(1))
-
-    ! Close MGXS HDF5 file
-    call file_close(file_id)
-
-  end subroutine read_mg_cross_sections_header
 
 end module input_xml

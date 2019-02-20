@@ -315,7 +315,6 @@ add_library(libopenmc SHARED
   src/input_xml.F90
   src/material_header.F90
   src/message_passing.F90
-  src/mgxs_interface.F90
   src/particle_header.F90
   src/pugixml/pugixml_f.F90
   src/relaxng

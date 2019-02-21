@@ -9,6 +9,7 @@
 #include "xtensor/xtensor.hpp"
 
 #include <memory> // for unique_ptr
+#include <unordered_map>
 #include <string>
 #include <vector>
 
@@ -46,7 +47,7 @@ public:
   //----------------------------------------------------------------------------
   // Other methods.
 
-  void init_triggers(pugi::xml_node node, int i_tally);
+  void init_triggers(pugi::xml_node node);
 
   void init_results();
 
@@ -123,6 +124,8 @@ namespace model {
   extern std::vector<int> active_collision_tallies;
   extern std::vector<int> active_meshsurf_tallies;
   extern std::vector<int> active_surface_tallies;
+
+  extern std::unordered_map<int, int> tally_map;
 }
 
 namespace simulation {
@@ -148,6 +151,9 @@ extern double global_tally_leakage;
 //==============================================================================
 // Non-member functions
 //==============================================================================
+
+//! Read tally specification from tallies.xml
+void read_tallies_xml();
 
 //! \brief Accumulate the sum of the contributions from each history within the
 //! batch to a new random variable

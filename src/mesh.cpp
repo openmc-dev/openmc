@@ -863,9 +863,9 @@ openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
 // Non-member functions
 //==============================================================================
 
-void read_meshes(pugi::xml_node* root)
+void read_meshes(pugi::xml_node root)
 {
-  for (auto node : root->children("mesh")) {
+  for (auto node : root.children("mesh")) {
     // Read mesh and add to vector
     model::meshes.emplace_back(new RegularMesh{node});
 

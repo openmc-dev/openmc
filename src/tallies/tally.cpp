@@ -3,9 +3,12 @@
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/file_utils.h"
 #include "openmc/message_passing.h"
+#include "openmc/mesh.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
+#include "openmc/particle.h"
 #include "openmc/reaction_product.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
@@ -19,6 +22,8 @@
 #include "openmc/tallies/filter_legendre.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/filter_meshsurface.h"
+#include "openmc/tallies/filter_particle.h"
+#include "openmc/tallies/filter_sph_harm.h"
 #include "openmc/tallies/filter_surface.h"
 #include "openmc/xml_interface.h"
 
@@ -45,6 +50,7 @@ namespace model {
   std::vector<int> active_collision_tallies;
   std::vector<int> active_meshsurf_tallies;
   std::vector<int> active_surface_tallies;
+  std::unordered_map<int, int> tally_map;
 }
 
 namespace simulation {
@@ -439,7 +445,7 @@ Tally::set_nuclides(pugi::xml_node node)
 }
 
 void
-Tally::init_triggers(pugi::xml_node node, int i_tally)
+Tally::init_triggers(pugi::xml_node node)
 {
   for (auto trigger_node: node.children("trigger")) {
     // Read the trigger type.
@@ -484,19 +490,18 @@ Tally::init_triggers(pugi::xml_node node, int i_tally)
     }
 
     // Parse the trigger scores and populate the triggers_ vector.
-    const auto& tally {*model::tallies[i_tally]};
     for (auto score_str : trigger_scores) {
       if (score_str == "all") {
-        triggers_.reserve(triggers_.size() + tally.scores_.size());
-        for (auto i_score = 0; i_score < tally.scores_.size(); ++i_score) {
+        triggers_.reserve(triggers_.size() + this->scores_.size());
+        for (auto i_score = 0; i_score < this->scores_.size(); ++i_score) {
           triggers_.push_back({metric, threshold, i_score});
         }
       } else {
         int i_score = 0;
-        for (; i_score < tally.scores_.size(); ++i_score) {
-          if (reaction_name(tally.scores_[i_score]) == score_str) break;
+        for (; i_score < this->scores_.size(); ++i_score) {
+          if (reaction_name(this->scores_[i_score]) == score_str) break;
         }
-        if (i_score == tally.scores_.size()) {
+        if (i_score == this->scores_.size()) {
           std::stringstream msg;
           msg << "Could not find the score \"" << score_str << "\" in tally "
               << id_ << " but it was listed in a trigger on that tally";
@@ -546,6 +551,317 @@ void Tally::accumulate()
 //==============================================================================
 // Non-member functions
 //==============================================================================
+
+void read_tallies_xml()
+{
+  // Check if tallies.xml exists. If not, just return since it is optional
+  std::string filename = settings::path_input + "tallies.xml";
+  if (!file_exists(filename)) return;
+
+  write_message("Reading tallies XML file...", 5);
+
+  // Parse tallies.xml file
+  pugi::xml_document doc;
+  doc.load_file(filename.c_str());
+  pugi::xml_node root = doc.document_element();
+
+  // Check for <assume_separate> setting
+  if (check_for_node(root, "assume_separate")) {
+    settings::assume_separate = get_node_value_bool(root, "assume_separate");
+  }
+
+  // Check for user meshes and allocate
+  read_meshes(root);
+
+  // We only need the mesh info for plotting
+  if (settings::run_mode == RUN_MODE_PLOTTING) return;
+
+  // Read data for tally derivatives
+  read_tally_derivatives(root);
+
+  // ==========================================================================
+  // READ FILTER DATA
+
+  // Check for user filters and allocate
+  for (auto node_filt : root.children("filter")) {
+    // Copy filter id
+    if (!check_for_node(node_filt, "id")) {
+      fatal_error("Must specify id for filter in tally XML file.");
+    }
+    int filter_id = std::stoi(get_node_value(node_filt, "id"));
+
+    // Check to make sure 'id' hasn't been used
+    if (model::filter_map.find(filter_id) != model::filter_map.end()) {
+      fatal_error("Two or more filters use the same unique ID: "
+        + std::to_string(filter_id));
+    }
+
+    // Convert filter type to lower case
+    std::string s;
+    if (check_for_node(node_filt, "type")) {
+      s = get_node_value(node_filt, "type", true);
+    }
+
+    // Make sure bins have been set
+    if (s == "energy" || s == "energyout" || s == "mu" || s == "polar"
+      || s == "azimuthal" || s == "mesh" || s == "meshsurface" || s == "universe"
+      || s == "material" || s == "cell" || s == "distribcell" || s == "cellborn"
+      || s == "cellfrom" || s == "surface" || s == "delayedgroup") {
+      if (!check_for_node(node_filt, "bins")) {
+        fatal_error("Bins not set in filter " + std::to_string(filter_id));
+      }
+    }
+
+    // Allocate according to the filter type
+    Filter* f = allocate_filter(s);
+
+    // Read filter data from XML
+    f->from_xml(node_filt);
+
+    // Set filter id
+    f->id_ = filter_id;
+    model::filter_map[filter_id] = model::tally_filters.size() - 1;
+
+    // Initialize filter
+    f->initialize();
+  }
+
+  // ==========================================================================
+  // READ TALLY DATA
+
+  // Check for user tallies
+  int n = 0;
+  for (auto node : root.children("tally")) ++n;
+  if (n == 0 && mpi::master) {
+    warning("No tallies present in tallies.xml file.");
+  }
+
+  for (auto node_tal : root.children("tally")) {
+    model::tallies.push_back(std::make_unique<Tally>());
+
+    auto& t {model::tallies.back()};
+    t->init_from_xml(node_tal);
+
+    // Copy and set tally id
+    if (!check_for_node(node_tal, "id")) {
+      fatal_error("Must specify id for tally in tally XML file.");
+    }
+    t->id_ = std::stoi(get_node_value(node_tal, "id"));
+    model::tally_map[t->id_] = model::tallies.size() - 1;
+
+    // Copy tally name
+    if (check_for_node(node_tal, "name")) {
+      t->name_ = get_node_value(node_tal, "name");
+    }
+
+    // =======================================================================
+    // READ DATA FOR FILTERS
+
+    // Check if user is using old XML format and throw an error if so
+    if (check_for_node(node_tal, "filter")) {
+      fatal_error("Tally filters must be specified independently of "
+        "tallies in a <filter> element. The <tally> element itself should "
+        "have a list of filters that apply, e.g., <filters>1 2</filters> "
+        "where 1 and 2 are the IDs of filters specified outside of "
+        "<tally>.");
+    }
+
+    // Determine number of filters
+    std::vector<int> filters;
+    if (check_for_node(node_tal, "filters")) {
+      filters = get_node_array<int>(node_tal, "filters");
+    }
+
+    // Allocate and store filter user ids
+    if (!filters.empty()) {
+      std::vector<int> filter_indices;
+      for (int filter_id : filters) {
+        // Determine if filter ID is valid
+        auto it = model::filter_map.find(filter_id);
+        if (it == model::filter_map.end()) {
+          fatal_error("Could not find filter " + std::to_string(filter_id)
+            + " specified on tally " + std::to_string(t->id_));
+        }
+
+        // Store the index of the filter
+        filter_indices.push_back(it->second);
+      }
+
+      // Set the filters
+      t->set_filters(filter_indices.data(), filter_indices.size());
+    }
+
+    // Check for the presence of certain filter types
+    bool has_energyout = t->energyout_filter_ >= 0;
+    int particle_filter_index = C_NONE;
+    for (int j = 0; j < t->filters().size(); ++j) {
+      int i_filter = t->filters(j);
+      const auto& f = model::tally_filters[i_filter].get();
+
+      auto pf = dynamic_cast<ParticleFilter*>(f);
+      if (pf) particle_filter_index = j;
+
+      // Change the tally estimator if a filter demands it
+      std::string filt_type = f->type();
+      if (filt_type == "energyout" || filt_type == "legendre") {
+        t->estimator_ = ESTIMATOR_ANALOG;
+      } else if (filt_type == "sphericalharmonics") {
+        auto sf = dynamic_cast<SphericalHarmonicsFilter*>(f);
+        if (sf->cosine_ == SphericalHarmonicsCosine::scatter) {
+          t->estimator_ = ESTIMATOR_ANALOG;
+        }
+      } else if (filt_type == "spatiallegendre" || filt_type == "zernike"
+        || filt_type == "zernikeradial") {
+        t->estimator_ = ESTIMATOR_COLLISION;
+      }
+    }
+
+    // =======================================================================
+    // READ DATA FOR NUCLIDES
+
+    t->set_nuclides(node_tal);
+
+    // =======================================================================
+    // READ DATA FOR SCORES
+
+    t->set_scores(node_tal);
+
+    if (!check_for_node(node_tal, "scores")) {
+      fatal_error("No scores specified on tally " + std::to_string(t->id_)
+        + ".");
+    }
+
+    // Check if tally is compatible with particle type
+    if (settings::photon_transport) {
+      if (particle_filter_index == C_NONE) {
+        for (int score : t->scores_) {
+          switch (score) {
+          case SCORE_INVERSE_VELOCITY:
+            fatal_error("Particle filter must be used with photon "
+              "transport on and inverse velocity score");
+            break;
+          case SCORE_FLUX:
+          case SCORE_TOTAL:
+          case SCORE_SCATTER:
+          case SCORE_NU_SCATTER:
+          case SCORE_ABSORPTION:
+          case SCORE_FISSION:
+          case SCORE_NU_FISSION:
+          case SCORE_CURRENT:
+          case SCORE_EVENTS:
+          case SCORE_DELAYED_NU_FISSION:
+          case SCORE_PROMPT_NU_FISSION:
+          case SCORE_DECAY_RATE:
+            warning("Particle filter is not used with photon transport"
+              " on and " + std::to_string(score) + " score.");
+            break;
+          }
+        }
+      } else {
+        const auto& f = model::tally_filters[particle_filter_index].get();
+        auto pf = dynamic_cast<ParticleFilter*>(f);
+        for (int p : pf->particles_) {
+          if (p == static_cast<int>(ParticleType::electron) ||
+              p == static_cast<int>(ParticleType::positron)) {
+            t->estimator_ = ESTIMATOR_ANALOG;
+          }
+        }
+      }
+    } else {
+      if (particle_filter_index >= 0) {
+        const auto& f = model::tally_filters[particle_filter_index].get();
+        auto pf = dynamic_cast<ParticleFilter*>(f);
+        for (int p : pf->particles_) {
+          if (p != static_cast<int>(ParticleType::neutron)) {
+            warning("Particle filter other than NEUTRON used with photon "
+              "transport turned off. All tallies for particle type " +
+              std::to_string(p) + " will have no scores");
+          }
+        }
+      }
+    }
+
+    // Check for a tally derivative.
+    if (check_for_node(node_tal, "derivative")) {
+      int deriv_id = std::stoi(get_node_value(node_tal, "derivative"));
+
+      // Find the derivative with the given id, and store it's index.
+      auto it = model::tally_deriv_map.find(deriv_id);
+      if (it == model::tally_deriv_map.end()) {
+        fatal_error("Could not find derivative " + std::to_string(deriv_id)
+          + " specified on tally " + std::to_string(t->id_));
+      }
+
+      t->deriv_ = it->second;
+
+      // Only analog or collision estimators are supported for differential
+      // tallies.
+      if (t->estimator_ == ESTIMATOR_TRACKLENGTH) {
+        t->estimator_ = ESTIMATOR_COLLISION;
+      }
+
+      const auto& deriv = model::tally_derivs[t->deriv_];
+      if (deriv.variable == DIFF_NUCLIDE_DENSITY
+        || deriv.variable == DIFF_TEMPERATURE) {
+        for (int i_nuc : t->nuclides_) {
+          if (has_energyout && i_nuc == -1) {
+            fatal_error("Error on tally " + std::to_string(t->id_)
+              + ": Cannot use a 'nuclide_density' or 'temperature' "
+              "derivative on a tally with an outgoing energy filter and "
+              "'total' nuclide rate. Instead, tally each nuclide in the "
+              "material individually.");
+            // Note that diff tallies with these characteristics would work
+            // correctly if no tally events occur in the perturbed material
+            // (e.g. pertrubing moderator but only tallying fuel), but this
+            // case would be hard to check for by only reading inputs.
+          }
+        }
+      }
+    }
+
+    // If settings.xml trigger is turned on, create tally triggers
+    if (settings::trigger_on) {
+      t->init_triggers(node_tal);
+    }
+
+    // =======================================================================
+    // SET TALLY ESTIMATOR
+
+    // Check if user specified estimator
+    if (check_for_node(node_tal, "estimator")) {
+      std::string est = get_node_value(node_tal, "estimator");
+      if (est == "analog") {
+        t->estimator_ = ESTIMATOR_ANALOG;
+      } else if (est == "tracklength" || est == "track-length"
+        || est == "pathlength" || est == "path-length") {
+        // If the estimator was set to an analog estimator, this means the
+        // tally needs post-collision information
+        if (t->estimator_ == ESTIMATOR_ANALOG) {
+          fatal_error("Cannot use track-length estimator for tally "
+            + std::to_string(t->id_));
+        }
+
+        // Set estimator to track-length estimator
+        t->estimator_ = ESTIMATOR_TRACKLENGTH;
+
+      } else if (est == "collision") {
+        // If the estimator was set to an analog estimator, this means the
+        // tally needs post-collision information
+        if (t->estimator_ == ESTIMATOR_ANALOG) {
+          fatal_error("Cannot use collision estimator for tally " +
+            std::to_string(t->id_));
+        }
+
+        // Set estimator to collision estimator
+        t->estimator_ = ESTIMATOR_COLLISION;
+
+      } else {
+        fatal_error("Invalid estimator '" + est + "' on tally " +
+          std::to_string(t->id_));
+      }
+    }
+  }
+}
 
 #ifdef OPENMC_MPI
 void reduce_tally_results()
@@ -1041,8 +1357,8 @@ extern "C" {
   void tally_set_nuclides(Tally* tally, pugi::xml_node* node)
   {tally->set_nuclides(*node);}
 
-  void tally_init_triggers(Tally* tally, int i_tally, pugi::xml_node* node)
-  {tally->init_triggers(*node, i_tally);}
+  // void tally_init_triggers(Tally* tally, int i_tally, pugi::xml_node* node)
+  // {tally->init_triggers(*node, i_tally);}
 
   int tally_get_deriv_c(Tally* tally) {return tally->deriv_;}
 

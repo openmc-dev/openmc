@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
-project(openmc Fortran C CXX)
+project(openmc C CXX)
 
 # Setup output directories
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -28,14 +28,9 @@ set(maxcoord 10 CACHE STRING "Maximum number of nested coordinate levels")
 #===============================================================================
 
 set(MPI_ENABLED FALSE)
-if($ENV{FC} MATCHES "(mpi[^/]*|ftn)$")
-  message("-- Detected MPI wrapper: $ENV{FC}")
+if($ENV{CXX} MATCHES "(mpi[^/]*|CC)$")
+  message("-- Detected MPI wrapper: $ENV{CXX}")
   set(MPI_ENABLED TRUE)
-endif()
-
-# Check for Fortran 2008 MPI interface
-if(MPI_ENABLED AND mpif08)
-  message("-- Using Fortran 2008 MPI bindings")
 endif()
 
 #===============================================================================
@@ -97,136 +92,6 @@ endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
-  # Make sure version is sufficient
-  execute_process(COMMAND ${CMAKE_Fortran_COMPILER} -dumpversion
-    OUTPUT_VARIABLE GCC_VERSION)
-  if(GCC_VERSION VERSION_LESS 4.9)
-    message(FATAL_ERROR "gcc version must be 4.9 or higher")
-  endif()
-
-  # GCC compiler options
-  list(APPEND f90flags -cpp -std=f2008ts -fbacktrace -O2 -fstack-arrays)
-  if(debug)
-    list(REMOVE_ITEM f90flags -O2 -fstack-arrays)
-    list(APPEND f90flags -g -Wall -Wno-unused-dummy-argument -pedantic
-      -fbounds-check -ffpe-trap=invalid,overflow,underflow)
-    list(APPEND ldflags -g)
-  endif()
-  if(profile)
-    list(APPEND f90flags -pg)
-    list(APPEND ldflags -pg)
-  endif()
-  if(optimize)
-    list(REMOVE_ITEM f90flags -O2)
-    list(APPEND f90flags -O3)
-  endif()
-  if(coverage)
-    list(APPEND f90flags -coverage)
-    list(APPEND ldflags -coverage)
-  endif()
-
-elseif(CMAKE_Fortran_COMPILER_ID STREQUAL Intel)
-  # Intel compiler options
-  list(APPEND f90flags -fpp -std08 -assume byterecl -traceback)
-  if(debug)
-    list(APPEND f90flags -g -warn -fp-stack-check
-      "-check all" -fpe0 -O0)
-    list(APPEND ldflags -g)
-  endif()
-  if(profile)
-    list(APPEND f90flags -pg)
-    list(APPEND ldflags -pg)
-  endif()
-  if(optimize)
-    list(APPEND f90flags -O3)
-  endif()
-
-elseif(CMAKE_Fortran_COMPILER_ID STREQUAL PGI)
-  # PGI Fortran compiler options
-  list(APPEND f90flags -Mpreprocess -Minform=inform -traceback)
-  add_definitions(-DNO_F2008)
-  if(debug)
-    list(APPEND f90flags -g -Mbounds -Mchkptr -Mchkstk)
-    list(APPEND ldflags -g)
-  endif()
-  if(profile)
-    list(APPEND f90flags -pg)
-    list(APPEND ldflags -pg)
-  endif()
-  if(optimize)
-    list(APPEND f90flags -fast -Mipa)
-  endif()
-
-elseif(CMAKE_Fortran_COMPILER_ID STREQUAL XL)
-  # IBM XL compiler options
-  list(APPEND f90flags -O2)
-  add_definitions(-DNO_F2008)
-  if(debug)
-    list(REMOVE_ITEM f90flags -O2)
-    list(APPEND f90flags -g -C -qflag=i:i -u -O0)
-    list(APPEND ldflags -g)
-  endif()
-  if(profile)
-    list(APPEND f90flags -p)
-    list(APPEND ldflags -p)
-  endif()
-  if(optimize)
-    list(REMOVE_ITEM f90flags -O2)
-    list(APPEND f90flags -O3)
-  endif()
-
-elseif(CMAKE_Fortran_COMPILER_ID STREQUAL Cray)
-  # Cray Fortran compiler options
-  list(APPEND f90flags -e Z -m 0)
-  if(debug)
-    list(APPEND f90flags -g -R abcnsp -O0)
-    list(APPEND ldflags -g)
-  endif()
-
-endif()
-
-if(CMAKE_C_COMPILER_ID STREQUAL GNU)
-  # GCC compiler options
-  list(APPEND cflags -O2)
-  if(debug)
-    list(REMOVE_ITEM cflags -O2)
-    list(APPEND cflags -g -Wall -pedantic -fbounds-check)
-  endif()
-  if(profile)
-    list(APPEND cflags -pg)
-  endif()
-  if(optimize)
-    list(REMOVE_ITEM cflags -O2)
-    list(APPEND cflags -O3)
-  endif()
-  if(coverage)
-    list(APPEND cflags -coverage)
-  endif()
-
-elseif(CMAKE_C_COMPILER_ID STREQUAL Intel)
-  # Intel compiler options
-  if(debug)
-    list(APPEND cflags -g -w3 -ftrapuv -fp-stack-check -O0)
-  endif()
-  if(profile)
-    list(APPEND cflags -pg)
-  endif()
-  if(optimize)
-    list(APPEND cflags -O3)
-  endif()
-
-elseif(CMAKE_C_COMPILER_ID MATCHES Clang)
-  # Clang options
-  if(debug)
-    list(APPEND cflags -g -O0 -ftrapv)
-  endif()
-  if(optimize)
-    list(APPEND cflags -O3)
-  endif()
-
-endif()
-
 list(APPEND cxxflags -std=c++14 -O2)
 if(debug)
   list(REMOVE_ITEM cxxflags -O2)
@@ -241,8 +106,6 @@ if(optimize)
 endif()
 
 # Show flags being used
-message(STATUS "Fortran flags: ${f90flags}")
-message(STATUS "C flags: ${cflags}")
 message(STATUS "C++ flags: ${cxxflags}")
 message(STATUS "Linker flags: ${ldflags}")
 
@@ -302,24 +165,6 @@ target_compile_options(faddeeva PRIVATE ${cxxflags})
 #===============================================================================
 
 add_library(libopenmc SHARED
-  src/bank_header.F90
-  src/constants.F90
-  src/dict_header.F90
-  src/error.F90
-  src/geometry.F90
-  src/hdf5_interface.F90
-  src/initialize.F90
-  src/material_header.F90
-  src/message_passing.F90
-  src/particle_header.F90
-  src/pugixml/pugixml_f.F90
-  src/relaxng
-  src/settings.F90
-  src/simulation_header.F90
-  src/stl_vector.F90
-  src/string.F90
-  src/vector_header.F90
-  src/xml_interface.F90
   src/bank.cpp
   src/bremsstrahlung.cpp
   src/dagmc.cpp
@@ -357,7 +202,6 @@ add_library(libopenmc SHARED
   src/plot.cpp
   src/position.cpp
   src/progress_bar.cpp
-  src/pugixml/pugixml_c.cpp
   src/urr.cpp
   src/random_lcg.cpp
   src/reaction.cpp
@@ -415,12 +259,8 @@ target_include_directories(libopenmc
   PUBLIC include
   PRIVATE ${HDF5_INCLUDE_DIRS})
 
-# The libopenmc library has both F90 and C++ so the compile flags must be set
-# differently depending on the language. The $<COMPILE_LANGUAGE> generator
-# expression was added in CMake 3.3
-target_compile_options(libopenmc PRIVATE
-  $<$<COMPILE_LANGUAGE:Fortran>:${f90flags}>
-  $<$<COMPILE_LANGUAGE:CXX>:${cxxflags}>)
+# Set compile flags
+target_compile_options(libopenmc PRIVATE ${cxxflags})
 
 target_compile_definitions(libopenmc PRIVATE -DMAX_COORD=${maxcoord})
 if (UNIX)

@@ -12,24 +12,8 @@ MPI_Comm intracomm;
 MPI_Datatype bank;
 #endif
 
+extern "C" bool openmc_master() { return mpi::master; }
+
 } // namespace mpi
-
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
-#ifdef OPENMC_MPI
-extern "C" void
-send_int(void* buffer, int count, int dest, int tag)
-{
-  MPI_Send(buffer, count, MPI_INTEGER, dest, tag, mpi::intracomm);
-}
-
-extern "C" void
-recv_int(void* buffer, int count, int source, int tag)
-{
-  MPI_Recv(buffer, count, MPI_INTEGER, source, tag, mpi::intracomm, MPI_STATUS_IGNORE);
-}
-#endif
 
 } // namespace openmc

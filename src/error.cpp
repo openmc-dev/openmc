@@ -11,6 +11,30 @@
 #include <iomanip> // for setw
 #include <iostream>
 
+//==============================================================================
+// Global variables / constants
+//==============================================================================
+
+// Error codes
+int OPENMC_E_UNASSIGNED {-1};
+int OPENMC_E_ALLOCATE {-2};
+int OPENMC_E_OUT_OF_BOUNDS {-3};
+int OPENMC_E_INVALID_SIZE {-4};
+int OPENMC_E_INVALID_ARGUMENT {-5};
+int OPENMC_E_INVALID_TYPE {-6};
+int OPENMC_E_INVALID_ID {-7};
+int OPENMC_E_GEOMETRY {-8};
+int OPENMC_E_DATA {-9};
+int OPENMC_E_PHYSICS {-10};
+int OPENMC_E_WARNING {1};
+
+// Error message
+char openmc_err_msg[256];
+
+//==============================================================================
+// Functions
+//==============================================================================
+
 namespace openmc {
 
 #ifdef OPENMC_MPI

@@ -32,13 +32,6 @@
 #include "openmc/thermal.h"
 #include "openmc/timer.h"
 
-// data/functions from Fortran side
-extern "C" void read_command_line();
-
-// Paths to various files
-extern "C" {
-  bool is_null(void* ptr) {return !ptr;}
-}
 
 int openmc_init(int argc, char* argv[], const void* intracomm)
 {
@@ -73,9 +66,6 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   }
 #endif
 
-  // Read command line arguments
-  read_command_line();
-
   // Initialize random number generator -- if the user specifies a seed, it
   // will be re-initialized later
   openmc_set_seed(DEFAULT_SEED);
@@ -107,11 +97,7 @@ void initialize_mpi(MPI_Comm intracomm)
   // Determine number of processes and rank for each
   MPI_Comm_size(intracomm, &mpi::n_procs);
   MPI_Comm_rank(intracomm, &mpi::rank);
-
-  // Set variable for Fortran side
-  openmc_n_procs = mpi::n_procs;
-  openmc_rank = mpi::rank;
-  openmc_master = mpi::master = (mpi::rank == 0);
+  mpi::master = (mpi::rank == 0);
 
   // Create bank datatype
   Bank b;

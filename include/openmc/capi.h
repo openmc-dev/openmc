@@ -164,14 +164,6 @@ extern "C" {
 
   // Global variables
   extern char openmc_err_msg[256];
-  extern int32_t n_sab_tables;
-  extern int32_t n_tallies;
-
-  // Variables that are shared by necessity (can be removed from public header
-  // later)
-  extern bool openmc_master;
-  extern int openmc_n_procs;
-  extern int openmc_rank;
 
 #ifdef __cplusplus
 }

@@ -94,11 +94,15 @@ extern double weight_cutoff;         //!< Weight cutoff for Russian roulette
 extern double weight_survive;        //!< Survival weight after Russian roulette
 } // namespace settings
 
+//==============================================================================
+// Functions
+//==============================================================================
+
 //! Read settings from XML file
 //! \param[in] root XML node for <settings>
 void read_settings_xml();
 
-extern "C" void read_settings_xml_f(pugi::xml_node_struct* root_ptr);
+void free_memory_settings();
 
 } // namespace openmc
 

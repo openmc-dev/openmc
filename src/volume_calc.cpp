@@ -33,7 +33,7 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-std::vector<VolumeCalculation> volume_calcs;
+  std::vector<VolumeCalculation> volume_calcs;
 }
 
 //==============================================================================
@@ -362,6 +362,11 @@ void VolumeCalculation::check_hit(int i_material, std::vector<int>& indices,
   }
 }
 
+void free_memory_volume()
+{
+  openmc::model::volume_calcs.clear();
+}
+
 } // namespace openmc
 
 //==============================================================================
@@ -422,9 +427,3 @@ int openmc_calculate_volumes() {
 
   return 0;
 }
-
-//==============================================================================
-// Fortran compatibility
-//==============================================================================
-
-extern "C" void free_memory_volume() { openmc::model::volume_calcs.clear(); }

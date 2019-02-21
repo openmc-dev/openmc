@@ -67,6 +67,8 @@ Bank sample_external_source();
 //! Fill source bank at end of generation for fixed source simulations
 void fill_source_bank_fixedsource();
 
+void free_memory_source();
+
 } // namespace openmc
 
 #endif // OPENMC_SOURCE_H

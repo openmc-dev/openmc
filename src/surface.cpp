@@ -1258,11 +1258,7 @@ void read_surfaces(pugi::xml_node node)
   }
 }
 
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
-extern "C" void free_memory_surfaces()
+void free_memory_surfaces()
 {
   for (Surface* surf : model::surfaces) {delete surf;}
   model::surfaces.clear();

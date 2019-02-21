@@ -130,6 +130,8 @@ void read_meshes(pugi::xml_node root);
 //! \param[in] group HDF5 group
 void meshes_to_hdf5(hid_t group);
 
+void free_memory_mesh();
+
 } // namespace openmc
 
 #endif // OPENMC_MESH_H

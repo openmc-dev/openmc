@@ -119,6 +119,8 @@ struct ElementMicroXS {
 
 std::pair<double, double> klein_nishina(double alpha);
 
+void free_memory_photon();
+
 //==============================================================================
 // Global variables
 //==============================================================================

@@ -163,8 +163,8 @@ int openmc_simulation_finalize()
   }
 
   // Deactivate all tallies
-  for (int i = 1; i <= n_tallies; ++i) {
-    openmc_tally_set_active(i, false);
+  for (auto& t : model::tallies) {
+    t->active_ = false;
   }
 
   // Stop timers and show timing statistics
@@ -342,9 +342,8 @@ void initialize_batch()
   } else if (first_active) {
     simulation::time_inactive.stop();
     simulation::time_active.start();
-    for (int i = 1; i <= n_tallies; ++i) {
-      // TODO: change one-based index
-      openmc_tally_set_active(i, true);
+    for (auto& t : model::tallies) {
+      t->active_ = true;
     }
   }
 
@@ -544,11 +543,11 @@ void calculate_work()
 #ifdef OPENMC_MPI
 void broadcast_results() {
   // Broadcast tally results so that each process has access to results
-  for (int i = 0; i < n_tallies; ++i) {
+  for (auto& t : model::tallies) {
     // Create a new datatype that consists of all values for a given filter
     // bin and then use that to broadcast. This is done to minimize the
     // chance of the 'count' argument of MPI_BCAST exceeding 2**31
-    auto& results = model::tallies[i]->results_;
+    auto& results = t->results_;
 
     auto shape = results.shape();
     int count_per_filter = shape[1] * shape[2];
@@ -574,6 +573,12 @@ void broadcast_results() {
 }
 
 #endif
+
+void free_memory_simulation()
+{
+  simulation::k_generation.clear();
+  simulation::entropy.clear();
+}
 
 //==============================================================================
 // Fortran compatibility

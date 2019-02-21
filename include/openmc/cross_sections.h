@@ -70,6 +70,8 @@ void read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
 //! Read cross_sections.xml and populate data libraries
 void read_ce_cross_sections_xml();
 
+void library_clear();
+
 } // namespace openmc
 
 #endif // OPENMC_CROSS_SECTIONS_H

@@ -51,6 +51,8 @@ public:
 
   void init_results();
 
+  void reset();
+
   void accumulate();
 
   //----------------------------------------------------------------------------
@@ -172,7 +174,7 @@ using adaptor_type = xt::xtensor_adaptor<xt::xbuffer_adaptor<double*&, xt::no_ow
 void reduce_tally_results();
 #endif
 
-extern "C" void free_memory_tally_c();
+void free_memory_tally();
 
 } // namespace openmc
 

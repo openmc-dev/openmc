@@ -112,6 +112,8 @@ private:
 //! Read material data from materials.xml
 void read_materials_xml();
 
+void free_memory_material();
+
 //==============================================================================
 // Fortran compatibility
 //==============================================================================

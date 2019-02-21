@@ -32,7 +32,7 @@ _dll.openmc_tally_allocate.errcheck = _error_handler
 _dll.openmc_tally_get_active.argtypes = [c_int32, POINTER(c_bool)]
 _dll.openmc_tally_get_active.restype = c_int
 _dll.openmc_tally_get_active.errcheck = _error_handler
-_dll.openmc_tally_get_estimator.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_tally_get_estimator.argtypes = [c_int32, POINTER(int32)]
 _dll.openmc_tally_get_estimator.restype = c_int
 _dll.openmc_tally_get_estimator.errcheck = _error_handler
 _dll.openmc_tally_get_id.argtypes = [c_int32, POINTER(c_int32)]
@@ -84,6 +84,7 @@ _dll.openmc_tally_set_scores.errcheck = _error_handler
 _dll.openmc_tally_set_type.argtypes = [c_int32, c_char_p]
 _dll.openmc_tally_set_type.restype = c_int
 _dll.openmc_tally_set_type.errcheck = _error_handler
+_dll.tallies_size.restype = c_size_t
 
 
 _SCORES = {
@@ -227,7 +228,7 @@ class Tally(_FortranObjectWithID):
 
     @property
     def estimator(self):
-        estimator = c_int32()
+        estimator = c_int()
         _dll.openmc_tally_get_estimator(self._index, estimator)
         return _ESTIMATORS[estimator.value]
 
@@ -387,7 +388,7 @@ class _TallyMapping(Mapping):
             yield Tally(index=i + 1).id
 
     def __len__(self):
-        return c_int32.in_dll(_dll, 'n_tallies').value
+        return _dll.tallies_size()
 
     def __repr__(self):
         return repr(dict(self))

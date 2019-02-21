@@ -31,8 +31,9 @@
 #include "xtensor/xbuilder.hpp" // for empty_like
 #include "xtensor/xview.hpp"
 
+#include <algorithm> // for max
 #include <array>
-#include <cstddef>
+#include <cstddef> // for size_t
 #include <sstream>
 #include <string>
 
@@ -517,6 +518,15 @@ void Tally::init_results()
 {
   int n_scores = scores_.size() * nuclides_.size();
   results_ = xt::empty<double>({n_filter_bins_, n_scores, 3});
+}
+
+void Tally::reset()
+{
+  n_realizations_ = 0;
+  // TODO: Change to zero when xtensor is updated
+  if (results_.size() != 1) {
+    xt::view(results_, xt::all()) = 0.0;
+  }
 }
 
 void Tally::accumulate()
@@ -1004,8 +1014,8 @@ setup_active_tallies()
   }
 }
 
-extern "C" void
-free_memory_tally_c()
+void
+free_memory_tally()
 {
   #pragma omp parallel
   {
@@ -1013,6 +1023,7 @@ free_memory_tally_c()
   }
 
   model::tally_filters.clear();
+  model::filter_map.clear();
 
   model::tallies.clear();
 
@@ -1022,11 +1033,118 @@ free_memory_tally_c()
   model::active_collision_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
+
+  model::tally_map.clear();
 }
 
 //==============================================================================
 // C-API functions
 //==============================================================================
+
+extern "C" int
+openmc_extend_tallies(int32_t n, int32_t* index_start, int32_t* index_end)
+{
+  // TODO: off-by-one
+  if (index_start) *index_start = model::tallies.size() + 1;
+  if (index_end) *index_end = model::tallies.size() + n;
+  for (int i = 0; i < n; ++i) {
+    model::tallies.push_back(std::make_unique<Tally>());
+  }
+  return 0;
+}
+
+extern "C" int
+openmc_get_tally_index(int32_t id, int32_t* index)
+{
+  auto it = model::tally_map.find(id);
+  if (it == model::tally_map.end()) {
+    set_errmsg("No tally exists with ID=" + std::to_string(id) + ".");
+    return OPENMC_E_INVALID_ID;
+  }
+
+  *index = it->second;
+  return 0;
+}
+
+extern "C" void
+openmc_get_tally_next_id(int32_t* id)
+{
+  int32_t largest_tally_id = 0;
+  for (const auto& t : model::tallies) {
+    largest_tally_id = std::max(largest_tally_id, t->id_);
+  }
+  *id = largest_tally_id + 1;
+}
+
+extern "C" int
+openmc_tally_get_estimator(int32_t index, int* estimator)
+{
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  // TODO: off-by-one
+  *estimator = model::tallies[index-1]->estimator_;
+  return 0;
+}
+
+extern "C" int
+openmc_tally_set_estimator(int32_t index, const char* estimator)
+{
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  // TODO: off-by-one
+  auto& t {model::tallies[index-1]};
+
+  std::string est = estimator;
+  if (est == "analog") {
+    t->estimator_ = ESTIMATOR_ANALOG;
+  } else if (est == "collision") {
+    t->estimator_ = ESTIMATOR_COLLISION;
+  } else if (est == "tracklength") {
+    t->estimator_ = ESTIMATOR_TRACKLENGTH;
+  } else {
+    set_errmsg("Unknown tally estimator: " + est);
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+  return 0;
+}
+
+extern "C" int
+openmc_tally_get_id(int32_t index, int32_t* id)
+{
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  // TODO: off-by-one
+  *id = model::tallies[index-1]->id_;
+  return 0;
+}
+
+extern "C" int
+openmc_tally_set_id(int32_t index, int32_t id)
+{
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  if (model::tally_map.find(id) != model::tally_map.end()) {
+    set_errmsg("Two or more tallies use the same unique ID: "
+      + std::to_string(id));
+    return OPENMC_E_INVALID_ID;
+  }
+
+  // TODO: off-by-one
+  model::tallies[index-1]->id_ = id;
+  return 0;
+}
 
 extern "C" int
 openmc_tally_get_type(int32_t index, int32_t* type)
@@ -1216,12 +1334,7 @@ openmc_tally_reset(int32_t index)
   }
 
   // TODO: off-by-one
-  auto& t {model::tallies[index-1]};
-  t->n_realizations_ = 0;
-  // TODO: Change to zero when xtensor is updated
-  if (t->results_.size() != 1) {
-    xt::view(t->results_, xt::all()) = 0.0;
-  }
+  model::tallies[index-1]->reset();
   return 0;
 }
 
@@ -1282,13 +1395,6 @@ extern "C" size_t tallies_size() { return model::tallies.size(); }
 
 extern "C" {
   Tally* tally_pointer(int indx) {return model::tallies[indx].get();}
-
-  void
-  extend_tallies_c(int n)
-  {
-    for (int i = 0; i < n; ++i)
-      model::tallies.push_back(std::make_unique<Tally>());
-  }
 
   int active_tallies_data(int i)
   {return model::active_tallies[i-1];}

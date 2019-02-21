@@ -332,10 +332,6 @@ void free_memory_source()
   model::external_sources.clear();
 }
 
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
 void fill_source_bank_fixedsource()
 {
   if (settings::path_source.empty()) {

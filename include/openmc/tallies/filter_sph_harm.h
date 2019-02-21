@@ -7,9 +7,8 @@
 
 namespace openmc {
 
-//TODO: those integer values are not needed when Fortran interop is removed
 enum class SphericalHarmonicsCosine {
-  scatter = 1, particle = 2
+  scatter, particle
 };
 
 //==============================================================================

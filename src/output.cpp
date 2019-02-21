@@ -620,7 +620,7 @@ const std::unordered_map<int, const char*> score_names = {
 
 //! Create an ASCII output file showing all tally results.
 
-extern "C" void
+void
 write_tallies()
 {
   if (model::tallies.empty()) return;

@@ -193,48 +193,4 @@ openmc_new_filter(const char* type, int32_t* index)
   return 0;
 }
 
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
-extern "C" {
-  // filter_match_point moved to simulation.cpp
-
-
-  int32_t filter_get_id(Filter* filt) {return filt->id_;}
-
-  void filter_set_id(Filter* filt, int32_t id) {filt->id_ = id;}
-
-  void filter_from_xml(Filter* filt, pugi::xml_node* node)
-  {filt->from_xml(*node);}
-
-  void
-  filter_get_all_bins(Filter* filt, Particle* p, int estimator,
-                      FilterMatch* match)
-  {
-    filt->get_all_bins(p, estimator, *match);
-  }
-
-  void filter_to_statepoint(Filter* filt, hid_t group)
-  {filt->to_statepoint(group);}
-
-  void filter_text_label(Filter* filt, int bin, char* label)
-  {
-    std::string label_str = filt->text_label(bin);
-    int i = 0;
-    for (; i < label_str.size() && i < MAX_LINE_LEN; i++)
-      label[i] = label_str[i];
-    label[i] = '\0';
-  }
-
-  void filter_initialize(Filter* filt) {filt->initialize();}
-
-  int filter_n_bins(Filter* filt) {return filt->n_bins_;}
-
-  int mesh_filter_get_mesh(MeshFilter* filt) {return filt->mesh();}
-
-  int sphharm_filter_get_cosine(SphericalHarmonicsFilter* filt)
-  {return static_cast<int>(filt->cosine_);}
-}
-
 } // namespace openmc

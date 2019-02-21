@@ -70,42 +70,4 @@ extern "C" int openmc_fission_bank(Bank** ptr, int64_t* n)
   }
 }
 
-//==============================================================================
-// Fortran compatibility
-//==============================================================================
-
-extern "C" int fission_bank_delayed_group(int64_t i) {
-  return simulation::fission_bank[i-1].delayed_group;
-}
-
-extern "C" double fission_bank_E(int64_t i) {
-  return simulation::fission_bank[i-1].E;
-}
-
-extern "C" double fission_bank_wgt(int64_t i) {
-  return simulation::fission_bank[i-1].wgt;
-}
-
-extern "C" void source_bank_xyz(int64_t i, double* xyz)
-{
-  xyz[0] = simulation::source_bank[i-1].xyz[0];
-  xyz[1] = simulation::source_bank[i-1].xyz[1];
-  xyz[2] = simulation::source_bank[i-1].xyz[2];
-}
-
-extern "C" double source_bank_E(int64_t i)
-{
-  return simulation::source_bank[i-1].E;
-}
-
-extern "C" double source_bank_wgt(int64_t i)
-{
-  return simulation::source_bank[i-1].wgt;
-}
-
-extern "C" void source_bank_set_wgt(int64_t i, double wgt)
-{
-  simulation::source_bank[i-1].wgt = wgt;
-}
-
 } // namespace openmc

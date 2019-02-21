@@ -1139,34 +1139,6 @@ openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
   return 0;
 }
 
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
-extern "C" {
-  size_t n_materials() { return model::materials.size(); }
-
-  int32_t material_id(int32_t i_mat) {return model::materials[i_mat - 1]->id_;}
-
-  int material_nuclide(int32_t i_mat, int idx)
-  {
-    return model::materials[i_mat - 1]->nuclide_[idx - 1] + 1;
-  }
-
-  int material_nuclide_size(int32_t i_mat)
-  {
-    return model::materials[i_mat - 1]->nuclide_.size();
-  }
-
-  double material_atom_density(int32_t i_mat, int idx)
-  {
-    return model::materials[i_mat - 1]->atom_density_(idx - 1);
-  }
-
-  double material_density_gpcc(int32_t i_mat)
-  {
-    return model::materials[i_mat - 1]->density_gpcc_;
-  }
-}
+extern "C" size_t n_materials() { return model::materials.size(); }
 
 } // namespace openmc

@@ -44,6 +44,10 @@ namespace model {
   std::unordered_map<int, int> filter_map;
 }
 
+//==============================================================================
+// Non-member functions
+//==============================================================================
+
 Filter*
 allocate_filter(const std::string& type)
 {
@@ -97,6 +101,28 @@ allocate_filter(const std::string& type)
   return model::tally_filters.back().get();
 }
 
+//==============================================================================
+// C API functions
+//==============================================================================
+
+extern "C" int
+openmc_filter_get_type(int32_t index, const char** type)
+{
+  int err = verify_filter(index);
+  if (err) return err;
+
+  // TODO: off-by-one
+  *type = model::tally_filters[index-1]->type().c_str();
+}
+
+extern "C" int
+openmc_new_filter(const char* type, int32_t* index)
+{
+  allocate_filter(type);
+  // TODO: off-by-one
+  *index = model::tally_filters.size();
+  return 0;
+}
 
 //==============================================================================
 // Fortran compatibility functions

@@ -40,9 +40,8 @@ extern "C" {
   int openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_extend_tallies(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_filter_get_id(int32_t index, int32_t* id);
-  int openmc_filter_get_type(int32_t index, char* type);
+  int openmc_filter_get_type(int32_t index, const char** type);
   int openmc_filter_set_id(int32_t index, int32_t id);
-  int openmc_filter_set_type(int32_t index, const char* type);
   int openmc_finalize();
   int openmc_find_cell(double* xyz, int32_t* index, int32_t* instance);
   int openmc_get_cell_index(int32_t id, int32_t* index);
@@ -82,6 +81,7 @@ extern "C" {
   int openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur, const double* width);
   int openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh);
   int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
+  int openmc_new_filter(const char* type, int32_t* index);
   int openmc_next_batch(int* status);
   int openmc_nuclide_name(int index, const char** name);
   int openmc_plot_geometry();

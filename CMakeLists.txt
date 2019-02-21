@@ -323,7 +323,6 @@ add_library(libopenmc SHARED
   src/xml_interface.F90
   src/tallies/tally.F90
   src/tallies/tally_derivative_header.F90
-  src/tallies/tally_filter.F90
   src/tallies/tally_filter_header.F90
   src/tallies/tally_filter_distribcell.F90
   src/tallies/tally_filter_particle.F90

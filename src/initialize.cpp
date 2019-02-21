@@ -28,12 +28,12 @@
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
 #include "openmc/summary.h"
+#include "openmc/tallies/tally.h"
 #include "openmc/thermal.h"
 #include "openmc/timer.h"
 
 // data/functions from Fortran side
 extern "C" void read_command_line();
-extern "C" void read_tallies_xml();
 
 // Paths to various files
 extern "C" {

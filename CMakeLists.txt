@@ -310,7 +310,6 @@ add_library(libopenmc SHARED
   src/geometry.F90
   src/hdf5_interface.F90
   src/initialize.F90
-  src/input_xml.F90
   src/material_header.F90
   src/message_passing.F90
   src/particle_header.F90

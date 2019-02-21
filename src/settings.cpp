@@ -490,7 +490,7 @@ void read_settings_xml()
   }
 
   // Read meshes
-  read_meshes(&root);
+  read_meshes(root);
 
   // Shannon Entropy mesh
   if (check_for_node(root, "entropy_mesh")) {

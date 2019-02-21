@@ -97,14 +97,6 @@ contains
 
     character(:), allocatable :: type_
 
-    interface
-      function allocate_filter(type) result(ptr) bind(C)
-        import C_CHAR, C_PTR
-        character(kind=C_CHAR), intent(in)        :: type(*)
-        type(C_PTR)                               :: ptr
-      end function allocate_filter
-    end interface
-
     ! Convert C string to Fortran string
     type_ = to_f_string(type)
 
@@ -164,7 +156,7 @@ contains
           call set_errmsg("Unknown filter type: " // trim(type_))
         end select
 
-        filters(index) % obj % ptr = allocate_filter(type)
+        !filters(index) % obj % ptr = allocate_filter(type)
         if (.not. c_associated(filters(index) % obj % ptr)) then
           err = E_UNASSIGNED
           call set_errmsg("Could not allocate C++ tally filter")

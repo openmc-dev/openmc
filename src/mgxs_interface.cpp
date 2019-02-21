@@ -202,6 +202,12 @@ void read_mg_cross_sections_header()
   ensure_exists(file_id, "energy_groups", true);
   read_attribute(file_id, "energy_groups", data::num_energy_groups);
 
+  if (attribute_exists(file_id, "delayed_groups")) {
+    read_attribute(file_id, "delayed_groups", data::num_delayed_groups);
+  } else {
+    data::num_delayed_groups = 0;
+  }
+
   ensure_exists(file_id, "group structure", true);
   read_attribute(file_id, "group structure", data::rev_energy_bins);
 

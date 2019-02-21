@@ -28,7 +28,7 @@ extern bool check_overlaps;           //!< check overlaps in geometry?
 extern bool confidence_intervals;     //!< use confidence intervals for results?
 extern bool create_fission_neutrons;  //!< create fission neutrons (fixed source)?
 extern "C" bool dagmc;                //!< indicator of DAGMC geometry
-extern bool entropy_on;               //!< calculate Shannon entropy?
+extern "C" bool entropy_on;           //!< calculate Shannon entropy?
 extern bool legendre_to_tabular;      //!< convert Legendre distributions to tabular?
 extern bool output_summary;           //!< write summary.h5?
 extern bool output_tallies;           //!< write tallies.out?
@@ -37,7 +37,7 @@ extern "C" bool photon_transport;     //!< photon transport turned on?
 extern "C" bool reduce_tallies;       //!< reduce tallies at end of batch?
 extern bool res_scat_on;              //!< use resonance upscattering method?
 extern bool restart_run;              //!< restart run?
-extern bool run_CE;                   //!< run with continuous-energy data?
+extern "C" bool run_CE;               //!< run with continuous-energy data?
 extern bool source_latest;            //!< write latest source at each batch?
 extern bool source_separate;          //!< write source to separate file?
 extern bool source_write;             //!< write source in HDF5 files?
@@ -62,10 +62,10 @@ extern std::string path_statepoint;       //!< path to a statepoint file
 extern int32_t index_entropy_mesh;  //!< Index of entropy mesh in global mesh array
 extern int32_t index_ufs_mesh;      //!< Index of UFS mesh in global mesh array
 
-extern int32_t n_batches;        //!< number of (inactive+active) batches
-extern "C" int32_t n_inactive;   //!< number of inactive batches
-extern int32_t gen_per_batch;    //!< number of generations per batch
-extern "C" int64_t n_particles;  //!< number of particles per generation
+extern "C" int32_t n_batches;      //!< number of (inactive+active) batches
+extern "C" int32_t n_inactive;     //!< number of inactive batches
+extern "C" int32_t gen_per_batch;  //!< number of generations per batch
+extern "C" int64_t n_particles;    //!< number of particles per generation
 
 extern int electron_treatment;       //!< how to treat secondary electrons
 extern std::array<double, 4> energy_cutoff;  //!< Energy cutoff in [eV] for each particle type

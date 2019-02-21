@@ -788,18 +788,4 @@ void free_memory_settings() {
   settings::res_scat_nuclides.clear();
 }
 
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
-extern "C" {
-  const char* path_cross_sections_c() {
-    return settings::path_cross_sections.c_str();
-  }
-  const char* path_input_c() {
-    return settings::path_input.c_str();
-  }
-
-}
-
 } // namespace openmc

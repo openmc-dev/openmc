@@ -38,11 +38,4 @@ ParticleFilter::text_label(int bin) const
   return "Particle " + std::to_string(particles_[bin]);
 }
 
-//==============================================================================
-// Fortran interoperability
-//==============================================================================
-
-extern "C" int particle_filter_particles(ParticleFilter* filt, int i)
-{return filt->particles_[i];}
-
 } // namespace openmc

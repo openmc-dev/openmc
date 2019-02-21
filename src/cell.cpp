@@ -844,10 +844,6 @@ int32_t next_cell(DAGCell* cur_cell, DAGSurface* surf_xed)
 }
 #endif
 
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
 extern "C" int cells_size() { return model::cells.size(); }
 
 } // namespace openmc

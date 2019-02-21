@@ -26,13 +26,6 @@
 #include <algorithm>
 #include <string>
 
-namespace openmc {
-
-// data/functions from Fortran side
-extern "C" void write_tallies();
-
-} // namespace openmc
-
 //==============================================================================
 // C API functions
 //==============================================================================
@@ -135,7 +128,7 @@ int openmc_simulation_finalize()
   simulation::time_active.stop();
   simulation::time_finalize.start();
 
-  // Deallocate Fortran variables, set tallies to inactive
+  // Clear material nuclide mapping
   for (auto& mat : model::materials) {
     mat->mat_nuclide_index_.clear();
   }
@@ -578,22 +571,6 @@ void free_memory_simulation()
 {
   simulation::k_generation.clear();
   simulation::entropy.clear();
-}
-
-//==============================================================================
-// Fortran compatibility
-//==============================================================================
-
-extern "C" double k_generation(int i) { return simulation::k_generation.at(i - 1); }
-extern "C" int k_generation_size() { return simulation::k_generation.size(); }
-extern "C" void k_generation_clear() { simulation::k_generation.clear(); }
-extern "C" void k_generation_reserve(int i) { simulation::k_generation.reserve(i); }
-extern "C" int64_t work_index(int rank) { return simulation::work_index[rank]; }
-
-// This function was moved here to get around a bug on macOS whereby an invalid
-// pointer is returned for the threadprivate filter_matches
-extern "C" FilterMatch* filter_match_pointer(int indx) {
-  return &simulation::filter_matches[indx];
 }
 
 } // namespace openmc

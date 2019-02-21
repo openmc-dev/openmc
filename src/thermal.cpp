@@ -593,30 +593,4 @@ void free_memory_thermal()
   data::thermal_scatt_map.clear();
 }
 
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
-extern "C" ThermalScattering*
-sab_from_hdf5(hid_t group, const double* temperature, int n)
-{
-  // Convert temperatures to a vector
-  std::vector<double> T {temperature, temperature + n};
-
-  // Create new object and return it
-  data::thermal_scatt.push_back(std::make_unique<ThermalScattering>(group, T));
-
-  return data::thermal_scatt.back().get();
-}
-
-extern "C" bool sab_has_nuclide(int i_sab, const char* name)
-{
-  return data::thermal_scatt[i_sab - 1]->has_nuclide(name);
-}
-
-extern "C" double sab_threshold(int i_sab)
-{
-  return data::thermal_scatt[i_sab - 1]->threshold();
-}
-
 } // namespace openmc

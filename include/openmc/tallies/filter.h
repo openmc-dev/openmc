@@ -101,7 +101,7 @@ namespace model {
 
 Filter* allocate_filter(const std::string& type);
 
-// Filter-related Fortran functions that will be called from C++
+//! Make sure index corresponds to a valid filter
 int verify_filter(int32_t index);
 
 } // namespace openmc

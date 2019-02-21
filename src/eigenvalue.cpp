@@ -652,20 +652,4 @@ void read_eigenvalue_hdf5(hid_t group)
   read_dataset(group, "k_abs_tra", simulation::k_abs_tra);
 }
 
-//==============================================================================
-// Fortran compatibility
-//==============================================================================
-
-extern "C" double entropy_c(int i)
-{
-  return simulation::entropy.at(i - 1);
-}
-
-extern "C" void entropy_clear()
-{
-  simulation::entropy.clear();
-}
-
-extern "C" void k_sum_reset() { simulation::k_sum.fill(0.0); }
-
 } // namespace openmc

@@ -703,21 +703,4 @@ Particle::write_restart() const
   } // #pragma omp critical
 }
 
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
-void reset_coord(LocalCoord* c) { c->reset(); }
-void particle_clear(Particle* p) { p->clear(); }
-void particle_initialize(Particle* p) { p->initialize(); }
-void particle_from_source(Particle* p, const Bank* src)
-{
-  p->from_source(src);
-}
-void particle_mark_as_lost(Particle* p, const char* message)
-{
-  p->mark_as_lost(message);
-}
-void particle_write_restart(Particle* p) { p->write_restart(); }
-
 } // namespace openmc

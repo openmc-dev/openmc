@@ -7,9 +7,8 @@
 
 namespace openmc {
 
-//TODO: those integer values are not needed when Fortran interop is removed
 enum class LegendreAxis {
-  x = 1, y = 2, z = 3
+  x, y, z
 };
 
 //==============================================================================

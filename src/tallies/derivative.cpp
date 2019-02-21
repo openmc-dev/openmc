@@ -693,16 +693,4 @@ void zero_flux_derivs()
   for (auto& deriv : model::tally_derivs) deriv.flux_deriv = 0.;
 }
 
-//==============================================================================
-// Fortran interop
-//==============================================================================
-
-extern "C" int n_tally_derivs() {return model::tally_derivs.size();}
-
-extern "C" TallyDerivative*
-tally_deriv_c(int i)
-{
-  return &model::tally_derivs[i];
-}
-
 }// namespace openmc

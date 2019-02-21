@@ -26,13 +26,10 @@ _dll.openmc_get_tally_index.errcheck = _error_handler
 _dll.openmc_global_tallies.argtypes = [POINTER(POINTER(c_double))]
 _dll.openmc_global_tallies.restype = c_int
 _dll.openmc_global_tallies.errcheck = _error_handler
-_dll.openmc_tally_allocate.argtypes = [c_int32, c_char_p]
-_dll.openmc_tally_allocate.restype = c_int
-_dll.openmc_tally_allocate.errcheck = _error_handler
 _dll.openmc_tally_get_active.argtypes = [c_int32, POINTER(c_bool)]
 _dll.openmc_tally_get_active.restype = c_int
 _dll.openmc_tally_get_active.errcheck = _error_handler
-_dll.openmc_tally_get_estimator.argtypes = [c_int32, POINTER(int32)]
+_dll.openmc_tally_get_estimator.argtypes = [c_int32, POINTER(c_int)]
 _dll.openmc_tally_get_estimator.restype = c_int
 _dll.openmc_tally_get_estimator.errcheck = _error_handler
 _dll.openmc_tally_get_id.argtypes = [c_int32, POINTER(c_int32)]
@@ -196,7 +193,6 @@ class Tally(_FortranObjectWithID):
 
                 index = c_int32()
                 _dll.openmc_extend_tallies(1, index, None)
-                _dll.openmc_tally_allocate(index, b'generic')
                 index = index.value
             else:
                 index = mapping[uid]._index

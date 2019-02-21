@@ -21,7 +21,7 @@ namespace openmc {
 
 class Tally {
 public:
-  Tally() {}
+  Tally();
 
   void init_from_xml(pugi::xml_node node);
 
@@ -135,7 +135,7 @@ namespace simulation {
   extern xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> global_tallies;
 
   //! Number of realizations for global tallies
-  extern int32_t n_realizations;
+  extern "C" int32_t n_realizations;
 }
 
 // It is possible to protect accumulate operations on global tallies by using an

@@ -40,7 +40,7 @@ extern "C" {
   int openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_extend_tallies(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_filter_get_id(int32_t index, int32_t* id);
-  int openmc_filter_get_type(int32_t index, const char** type);
+  int openmc_filter_get_type(int32_t index, char* type);
   int openmc_filter_set_id(int32_t index, int32_t id);
   int openmc_finalize();
   int openmc_find_cell(const double* xyz, int32_t* index, int32_t* instance);

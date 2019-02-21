@@ -224,6 +224,11 @@ score_str_to_int(std::string score_str)
 // Tally object implementation
 //==============================================================================
 
+Tally::Tally()
+{
+  this->set_filters(nullptr, 0);
+}
+
 void
 Tally::init_from_xml(pugi::xml_node node)
 {
@@ -1062,7 +1067,8 @@ openmc_get_tally_index(int32_t id, int32_t* index)
     return OPENMC_E_INVALID_ID;
   }
 
-  *index = it->second;
+  // TODO: off-by-one
+  *index = it->second + 1;
   return 0;
 }
 
@@ -1143,6 +1149,7 @@ openmc_tally_set_id(int32_t index, int32_t id)
 
   // TODO: off-by-one
   model::tallies[index-1]->id_ = id;
+  model::tally_map[id] = index - 1;
   return 0;
 }
 

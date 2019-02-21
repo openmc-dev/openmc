@@ -1,6 +1,7 @@
 #include "openmc/tallies/filter.h"
 
 #include <algorithm> // for max
+#include <cstring> // for strcpy
 #include <string>
 
 #include "openmc/capi.h"
@@ -102,6 +103,11 @@ allocate_filter(const std::string& type)
   return model::tally_filters.back().get();
 }
 
+extern "C" size_t tally_filters_size()
+{
+  return model::tally_filters.size();
+}
+
 //==============================================================================
 // C API functions
 //==============================================================================
@@ -144,13 +150,14 @@ openmc_filter_set_id(int32_t index, int32_t id)
 }
 
 extern "C" int
-openmc_filter_get_type(int32_t index, const char** type)
+openmc_filter_get_type(int32_t index, char* type)
 {
   int err = verify_filter(index);
   if (err) return err;
 
   // TODO: off-by-one
-  *type = model::tally_filters[index-1]->type().c_str();
+  std::strcpy(type, model::tally_filters[index-1]->type().c_str());
+  return 0;
 }
 
 extern "C" int

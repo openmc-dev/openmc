@@ -40,15 +40,12 @@ _dll.openmc_extend_filters.errcheck = _error_handler
 _dll.openmc_filter_get_id.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_filter_get_id.restype = c_int
 _dll.openmc_filter_get_id.errcheck = _error_handler
-_dll.openmc_filter_get_type.argtypes = [c_int32, c_char_p]
+_dll.openmc_filter_get_type.argtypes = [c_int32, POINTER(c_char_p)]
 _dll.openmc_filter_get_type.restype = c_int
 _dll.openmc_filter_get_type.errcheck = _error_handler
 _dll.openmc_filter_set_id.argtypes = [c_int32, c_int32]
 _dll.openmc_filter_set_id.restype = c_int
 _dll.openmc_filter_set_id.errcheck = _error_handler
-_dll.openmc_filter_set_type.argtypes = [c_int32, c_char_p]
-_dll.openmc_filter_set_type.restype = c_int
-_dll.openmc_filter_set_type.errcheck = _error_handler
 _dll.openmc_get_filter_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_filter_index.restype = c_int
 _dll.openmc_get_filter_index.errcheck = _error_handler
@@ -77,6 +74,9 @@ _dll.openmc_meshsurface_filter_get_mesh.errcheck = _error_handler
 _dll.openmc_meshsurface_filter_set_mesh.argtypes = [c_int32, c_int32]
 _dll.openmc_meshsurface_filter_set_mesh.restype = c_int
 _dll.openmc_meshsurface_filter_set_mesh.errcheck = _error_handler
+_dll.openmc_new_filter.argtypes = [c_char_p, POINTER(c_int32_)]
+_dll.openmc_new_filter.restype = c_int
+_dll.openmc_new_filter.errcheck = _error_handler
 _dll.openmc_spatial_legendre_filter_get_order.argtypes = [c_int32, POINTER(c_int)]
 _dll.openmc_spatial_legendre_filter_get_order.restype = c_int
 _dll.openmc_spatial_legendre_filter_get_order.errcheck = _error_handler
@@ -111,13 +111,10 @@ class Filter(_FortranObjectWithID):
                         raise AllocationError('A filter with ID={} has already '
                                               'been allocated.'.format(uid))
 
-                # Resize internal array
-                index = c_int32()
-                _dll.openmc_extend_filters(1, index, None)
-
                 # Set the filter type -- note that the filter_type attribute
                 # only exists on subclasses!
-                _dll.openmc_filter_set_type(index, cls.filter_type.encode())
+                index = c_int32()
+                _dll.openmc_new_filter(cls.filter_type.encode(), index)
                 index = index.value
             else:
                 index = mapping[uid]._index

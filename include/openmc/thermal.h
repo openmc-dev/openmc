@@ -138,6 +138,8 @@ public:
   std::vector<ThermalData> data_;
 };
 
+void free_memory_thermal();
+
 } // namespace openmc
 
 #endif // OPENMC_THERMAL_H

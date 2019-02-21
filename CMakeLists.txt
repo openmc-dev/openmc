@@ -303,7 +303,6 @@ target_compile_options(faddeeva PRIVATE ${cxxflags})
 
 add_library(libopenmc SHARED
   src/bank_header.F90
-  src/api.F90
   src/constants.F90
   src/dict_header.F90
   src/error.F90
@@ -321,13 +320,6 @@ add_library(libopenmc SHARED
   src/string.F90
   src/vector_header.F90
   src/xml_interface.F90
-  src/tallies/tally.F90
-  src/tallies/tally_derivative_header.F90
-  src/tallies/tally_filter_header.F90
-  src/tallies/tally_filter_distribcell.F90
-  src/tallies/tally_filter_particle.F90
-  src/tallies/tally_filter_sph_harm.F90
-  src/tallies/tally_header.F90
   src/bank.cpp
   src/bremsstrahlung.cpp
   src/dagmc.cpp

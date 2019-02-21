@@ -78,7 +78,7 @@ openmc_material_filter_get_bins(int32_t index, int32_t** bins, int32_t* n)
   if (err) return err;
 
   // Get a pointer to the filter and downcast.
-  auto* filt_base = filter_from_f(index);
+  const auto& filt_base = model::tally_filters[index-1].get();
   auto* filt = dynamic_cast<MaterialFilter*>(filt_base);
 
   // Check the filter type.
@@ -101,7 +101,7 @@ openmc_material_filter_set_bins(int32_t index, int32_t n, const int32_t* bins)
   if (err) return err;
 
   // Get a pointer to the filter and downcast.
-  auto* filt_base = filter_from_f(index);
+  const auto& filt_base = model::tally_filters[index-1].get();
   auto* filt = dynamic_cast<MaterialFilter*>(filt_base);
 
   // Check the filter type.
@@ -117,7 +117,6 @@ openmc_material_filter_set_bins(int32_t index, int32_t n, const int32_t* bins)
   filt->n_bins_ = filt->materials_.size();
   filt->map_.clear();
   for (int i = 0; i < n; i++) filt->map_[filt->materials_[i]] = i;
-  filter_update_n_bins(index);
   return 0;
 }
 

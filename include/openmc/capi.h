@@ -43,7 +43,7 @@ extern "C" {
   int openmc_filter_get_type(int32_t index, const char** type);
   int openmc_filter_set_id(int32_t index, int32_t id);
   int openmc_finalize();
-  int openmc_find_cell(double* xyz, int32_t* index, int32_t* instance);
+  int openmc_find_cell(const double* xyz, int32_t* index, int32_t* instance);
   int openmc_get_cell_index(int32_t id, int32_t* index);
   int openmc_get_filter_index(int32_t id, int32_t* index);
   void openmc_get_filter_next_id(int32_t* id);
@@ -102,7 +102,7 @@ extern "C" {
   int openmc_statepoint_write(const char* filename, bool* write_source);
   int openmc_tally_allocate(int32_t index, const char* type);
   int openmc_tally_get_active(int32_t index, bool* active);
-  int openmc_tally_get_estimator(int32_t index, int32_t* estimator);
+  int openmc_tally_get_estimator(int32_t index, int* estimator);
   int openmc_tally_get_id(int32_t index, int32_t* id);
   int openmc_tally_get_filters(int32_t index, const int32_t** indices, int* n);
   int openmc_tally_get_n_realizations(int32_t index, int32_t* n);

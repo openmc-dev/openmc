@@ -894,6 +894,12 @@ void meshes_to_hdf5(hid_t group)
   close_group(meshes_group);
 }
 
+void free_memory_mesh()
+{
+  model::meshes.clear();
+  model::mesh_map.clear();
+}
+
 //==============================================================================
 // Fortran compatibility
 //==============================================================================
@@ -937,11 +943,6 @@ extern "C" {
     m->get_indices_from_bin(bin, ijk);
   }
 
-  void free_memory_mesh()
-  {
-    model::meshes.clear();
-    model::mesh_map.clear();
-  }
 }
 
 

@@ -913,6 +913,13 @@ void read_materials_xml()
   }
 }
 
+void free_memory_material()
+{
+  for (Material *mat : model::materials) {delete mat;}
+  model::materials.clear();
+  model::material_map.clear();
+}
+
 //==============================================================================
 // C API
 //==============================================================================
@@ -1123,6 +1130,7 @@ openmc_material_set_volume(int32_t index, double volume)
 extern "C" int
 openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
 {
+  // TODO: off-by-one
   if (index_start) *index_start = model::materials.size() + 1;
   if (index_end) *index_end = model::materials.size() + n;
   for (int32_t i = 0; i < n; i++) {
@@ -1158,13 +1166,6 @@ extern "C" {
   double material_density_gpcc(int32_t i_mat)
   {
     return model::materials[i_mat - 1]->density_gpcc_;
-  }
-
-  void free_memory_material()
-  {
-    for (Material *mat : model::materials) {delete mat;}
-    model::materials.clear();
-    model::material_map.clear();
   }
 }
 

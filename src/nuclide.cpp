@@ -956,6 +956,12 @@ openmc_nuclide_name(int index, const char** name)
   }
 }
 
+void nuclides_clear()
+{
+  data::nuclides.clear();
+  data::nuclide_map.clear();
+}
+
 //==============================================================================
 // Fortran compatibility functions
 //==============================================================================
@@ -964,12 +970,6 @@ extern "C" bool multipole_in_range(const Nuclide* nuc, double E)
 {
   return nuc->multipole_ && E >= nuc->multipole_->E_min_&&
     E <= nuc->multipole_->E_max_;
-}
-
-extern "C" void nuclides_clear()
-{
-  data::nuclides.clear();
-  data::nuclide_map.clear();
 }
 
 } // namespace openmc

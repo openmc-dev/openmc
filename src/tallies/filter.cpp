@@ -1,5 +1,6 @@
 #include "openmc/tallies/filter.h"
 
+#include <algorithm> // for max
 #include <string>
 
 #include "openmc/capi.h"
@@ -105,6 +106,43 @@ allocate_filter(const std::string& type)
 // C API functions
 //==============================================================================
 
+int verify_filter(int32_t index)
+{
+  if (index < 1 || index > model::tally_filters.size()) {
+    set_errmsg("Filter index is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  return 0;
+}
+
+extern "C" int
+openmc_filter_get_id(int32_t index, int32_t* id)
+{
+  int err = verify_filter(index);
+  if (err) return err;
+
+  // TODO: off-by-one
+  *id = model::tally_filters[index-1]->id_;
+  return 0;
+}
+
+extern "C" int
+openmc_filter_set_id(int32_t index, int32_t id)
+{
+  int err = verify_filter(index);
+  if (err) return err;
+
+  if (model::filter_map.find(id) != model::filter_map.end()) {
+    set_errmsg("Two filters have the same ID: " + std::to_string(id));
+    return OPENMC_E_INVALID_ID;
+  }
+
+  // TODO: off-by-one
+  model::tally_filters[index-1]->id_ = id;
+  model::filter_map[id] = index - 1;
+  return 0;
+}
+
 extern "C" int
 openmc_filter_get_type(int32_t index, const char** type)
 {
@@ -113,6 +151,30 @@ openmc_filter_get_type(int32_t index, const char** type)
 
   // TODO: off-by-one
   *type = model::tally_filters[index-1]->type().c_str();
+}
+
+extern "C" int
+openmc_get_filter_index(int32_t id, int32_t* index)
+{
+  auto it = model::filter_map.find(id);
+  if (it == model::filter_map.end()) {
+    set_errmsg("No filter exists with ID=" + std::to_string(id) + ".");
+    return OPENMC_E_INVALID_ID;
+  }
+
+  // TODO: off-by-one
+  *index = it->second + 1;
+  return 0;
+}
+
+extern "C" void
+openmc_get_filter_next_id(int32_t* id)
+{
+  int32_t largest_filter_id = 0;
+  for (const auto& t : model::tally_filters) {
+    largest_filter_id = std::max(largest_filter_id, t->id_);
+  }
+  *id = largest_filter_id + 1;
 }
 
 extern "C" int

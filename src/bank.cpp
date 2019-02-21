@@ -27,6 +27,22 @@ std::vector<Bank> master_fission_bank;
 } // namespace simulation
 
 //==============================================================================
+// Non-member functions
+//==============================================================================
+
+void free_memory_bank()
+{
+  simulation::source_bank.clear();
+#pragma omp parallel
+  {
+    simulation::fission_bank.clear();
+  }
+#ifdef _OPENMP
+  simulation::master_fission_bank.clear();
+#endif
+}
+
+//==============================================================================
 // C API
 //==============================================================================
 
@@ -57,18 +73,6 @@ extern "C" int openmc_fission_bank(Bank** ptr, int64_t* n)
 //==============================================================================
 // Fortran compatibility
 //==============================================================================
-
-extern "C" void free_memory_bank()
-{
-  simulation::source_bank.clear();
-#pragma omp parallel
-  {
-    simulation::fission_bank.clear();
-  }
-#ifdef _OPENMP
-  simulation::master_fission_bank.clear();
-#endif
-}
 
 extern "C" int fission_bank_delayed_group(int64_t i) {
   return simulation::fission_bank[i-1].delayed_group;

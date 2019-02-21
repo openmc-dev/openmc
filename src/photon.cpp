@@ -771,11 +771,7 @@ std::pair<double, double> klein_nishina(double alpha)
   return {alpha_out, mu};
 }
 
-//==============================================================================
-// Fortran compatibility
-//==============================================================================
-
-extern "C" void free_memory_photon()
+void free_memory_photon()
 {
   data::elements.clear();
   data::compton_profile_pz.resize({0});

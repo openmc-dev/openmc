@@ -113,7 +113,7 @@ extern "C" int maximum_levels(int32_t univ);
 //! Deallocates global vectors and maps for cells, universes, and lattices.
 //==============================================================================
 
-extern "C" void free_memory_geometry();
+void free_memory_geometry();
 
 } // namespace openmc
 #endif // OPENMC_GEOMETRY_AUX_H

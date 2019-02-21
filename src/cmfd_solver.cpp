@@ -1,3 +1,5 @@
+#include "openmc/cmfd_solver.h"
+
 #include <vector>
 #include <cmath>
 
@@ -348,17 +350,12 @@ int openmc_run_linsolver(const double* A_data, const double* b, double* x,
   }
 }
 
-//==============================================================================
-// Fortran compatibility
-//==============================================================================
-
-extern "C" void free_memory_cmfd()
+void free_memory_cmfd()
 {
   cmfd::indptr.clear();
   cmfd::indices.clear();
   // Resize indexmap to be an empty array
   cmfd::indexmap.resize({0});
 }
-
 
 } // namespace openmc

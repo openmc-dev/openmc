@@ -782,6 +782,12 @@ void read_settings_xml()
   }
 }
 
+void free_memory_settings() {
+  settings::statepoint_batch.clear();
+  settings::sourcepoint_batch.clear();
+  settings::res_scat_nuclides.clear();
+}
+
 //==============================================================================
 // Fortran compatibility functions
 //==============================================================================
@@ -794,11 +800,6 @@ extern "C" {
     return settings::path_input.c_str();
   }
 
-  void free_memory_settings() {
-    settings::statepoint_batch.clear();
-    settings::sourcepoint_batch.clear();
-    settings::res_scat_nuclides.clear();
-  }
 }
 
 } // namespace openmc

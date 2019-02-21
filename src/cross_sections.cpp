@@ -417,11 +417,7 @@ void read_ce_cross_sections_xml()
   }
 }
 
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
-extern "C" void library_clear() {
+void library_clear() {
   data::libraries.clear();
   data::library_map.clear();
 }

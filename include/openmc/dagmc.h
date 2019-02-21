@@ -23,7 +23,7 @@ namespace model {
 //==============================================================================
 
 void load_dagmc_geometry();
-extern "C" void free_memory_dagmc();
+void free_memory_dagmc();
 void read_geometry_dagmc();
 bool read_uwuw_materials(pugi::xml_document& doc);
 bool get_uwuw_materials_xml(std::string& s);

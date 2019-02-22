@@ -617,16 +617,6 @@ void read_tallies_xml()
       s = get_node_value(node_filt, "type", true);
     }
 
-    // Make sure bins have been set
-    if (s == "energy" || s == "energyout" || s == "mu" || s == "polar"
-      || s == "azimuthal" || s == "mesh" || s == "meshsurface" || s == "universe"
-      || s == "material" || s == "cell" || s == "distribcell" || s == "cellborn"
-      || s == "cellfrom" || s == "surface" || s == "delayedgroup") {
-      if (!check_for_node(node_filt, "bins")) {
-        fatal_error("Bins not set in filter " + std::to_string(filter_id));
-      }
-    }
-
     // Allocate according to the filter type
     Filter* f = allocate_filter(s);
 

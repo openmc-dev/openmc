@@ -124,8 +124,7 @@ int verify_filter(int32_t index)
 extern "C" int
 openmc_filter_get_id(int32_t index, int32_t* id)
 {
-  int err = verify_filter(index);
-  if (err) return err;
+  if (int err = verify_filter(index)) return err;
 
   // TODO: off-by-one
   *id = model::tally_filters[index-1]->id_;
@@ -135,8 +134,7 @@ openmc_filter_get_id(int32_t index, int32_t* id)
 extern "C" int
 openmc_filter_set_id(int32_t index, int32_t id)
 {
-  int err = verify_filter(index);
-  if (err) return err;
+  if (int err = verify_filter(index)) return err;
 
   if (model::filter_map.find(id) != model::filter_map.end()) {
     set_errmsg("Two filters have the same ID: " + std::to_string(id));
@@ -152,8 +150,7 @@ openmc_filter_set_id(int32_t index, int32_t id)
 extern "C" int
 openmc_filter_get_type(int32_t index, char* type)
 {
-  int err = verify_filter(index);
-  if (err) return err;
+  if (int err = verify_filter(index)) return err;
 
   // TODO: off-by-one
   std::strcpy(type, model::tally_filters[index-1]->type().c_str());

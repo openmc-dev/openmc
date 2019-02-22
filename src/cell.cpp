@@ -424,7 +424,7 @@ CSGCell::distance(Position r, Direction u, int32_t on_surface) const
 
     // Calculate the distance to this surface.
     // Note the off-by-one indexing
-    bool coincident {token == on_surface};
+    bool coincident {std::abs(token) == std::abs(on_surface)};
     double d {model::surfaces[abs(token)-1]->distance(r, u, coincident)};
 
     // Check if this distance is the new minimum.

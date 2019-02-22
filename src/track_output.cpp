@@ -13,6 +13,10 @@
 #include <string>
 #include <vector>
 
+// Explicit vector template specialization of threadprivate variable outside of
+// the openmc namespace for the picky Intel compiler.
+template class std::vector<std::vector<openmc::Position>>;
+
 namespace openmc {
 
 //==============================================================================

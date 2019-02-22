@@ -74,8 +74,7 @@ extern "C" int
 openmc_material_filter_get_bins(int32_t index, int32_t** bins, int32_t* n)
 {
   // Make sure this is a valid index to an allocated filter.
-  int err = verify_filter(index);
-  if (err) return err;
+  if (int err = verify_filter(index)) return err;
 
   // Get a pointer to the filter and downcast.
   const auto& filt_base = model::tally_filters[index-1].get();
@@ -97,8 +96,7 @@ extern "C" int
 openmc_material_filter_set_bins(int32_t index, int32_t n, const int32_t* bins)
 {
   // Make sure this is a valid index to an allocated filter.
-  int err = verify_filter(index);
-  if (err) return err;
+  if (int err = verify_filter(index)) return err;
 
   // Get a pointer to the filter and downcast.
   const auto& filt_base = model::tally_filters[index-1].get();

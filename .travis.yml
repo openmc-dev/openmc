@@ -4,7 +4,6 @@ language: python
 addons:
   apt:
     packages:
-      - gfortran
       - mpich
       - libmpich-dev
       - libhdf5-serial-dev
@@ -21,7 +20,6 @@ cache:
   - $HOME/endf-b-vii.1
 env:
   global:
-    - FC=gfortran
     - MPI_DIR=/usr
     - HDF5_ROOT=/usr
     - OMP_NUM_THREADS=2

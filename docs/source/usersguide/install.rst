@@ -85,25 +85,12 @@ Prerequisites
 .. admonition:: Required
    :class: error
 
-    * A Fortran compiler such as gfortran_
-
-      In order to compile OpenMC, you will need to have a Fortran compiler
-      installed on your machine. Since a number of Fortran 2003/2008 features
-      are used in the code, it is recommended that you use the latest version of
-      whatever compiler you choose. For gfortran_, it is necessary to use
-      version 4.8.0 or above.
-
-      If you are using Debian or a Debian derivative such as Ubuntu, you can
-      install the gfortran compiler using the following command::
-
-          sudo apt install gfortran
-
     * A C/C++ compiler such as gcc_
 
-      OpenMC includes various source files written in C and C++,
-      respectively. These source files have been tested to work with a wide
-      variety of compilers. If you are using a Debian-based distribution, you
-      can install the g++ compiler using the following command::
+      OpenMC's core codebase is written in C++. The source files have been
+      tested to work with a wide variety of compilers. If you are using a
+      Debian-based distribution, you can install the g++ compiler using the
+      following command::
 
           sudo apt install g++
 
@@ -132,7 +119,7 @@ Prerequisites
       respectively. To link against a parallel HDF5 library, make sure to set
       the HDF5_PREFER_PARALLEL CMake option, e.g.::
 
-          FC=mpifort.mpich cmake -DHDF5_PREFER_PARALLEL=on ..
+          CXX=mpicxx.mpich cmake -DHDF5_PREFER_PARALLEL=on ..
 
       Note that the exact package names may vary depending on your particular
       distribution and version.
@@ -141,7 +128,7 @@ Prerequisites
       recommend that your HDF5 installation be built with parallel I/O
       features. An example of configuring HDF5_ is listed below::
 
-           FC=mpifort ./configure --enable-parallel
+          CC=mpicc ./configure --enable-parallel
 
       You may omit ``--enable-parallel`` if you want to compile HDF5_ in serial.
 
@@ -171,7 +158,6 @@ Prerequisites
     * git_ version control software for obtaining source code
 
 
-.. _gfortran: http://gcc.gnu.org/wiki/GFortran
 .. _gcc: https://gcc.gnu.org/
 .. _CMake: http://www.cmake.org
 .. _OpenMPI: http://www.open-mpi.org
@@ -240,11 +226,11 @@ profile
   Enables profiling using the GNU profiler, gprof.
 
 optimize
-  Enables high-optimization using compiler-dependent flags. For gfortran and
-  Intel Fortran, this compiles with -O3.
+  Enables high-optimization using compiler-dependent flags. For gcc and
+  Intel C++, this compiles with -O3.
 
 openmp
-  Enables shared-memory parallelism using the OpenMP API. The Fortran compiler
+  Enables shared-memory parallelism using the OpenMP API. The C++ compiler
   being used must support OpenMP. (Default: on)
 
 dagmc
@@ -274,14 +260,11 @@ should be used:
 Compiling with MPI
 ++++++++++++++++++
 
-To compile with MPI, set the :envvar:`FC`, :envvar:`CC`, and :envvar:`CXX`
-environment variables to the path to the MPI Fortran, C, and C++ wrappers,
-respectively. For example, in a bash shell:
+To compile with MPI, set the :envvar:`CXX` environment variable to the path to
+the MPI C++ wrapper. For example, in a bash shell:
 
 .. code-block:: sh
 
-    export FC=mpifort
-    export CC=mpicc
     export CXX=mpicxx
     cmake /path/to/openmc
 
@@ -290,12 +273,12 @@ i.e.
 
 .. code-block:: sh
 
-    FC=mpifort CC=mpicc CXX=mpicxx cmake /path/to/openmc
+    CXX=mpicxx cmake /path/to/openmc
 
 Selecting HDF5 Installation
 +++++++++++++++++++++++++++
 
-CMakeLists.txt searches for the ``h5fc`` or ``h5pfc`` HDF5 Fortran wrapper on
+CMakeLists.txt searches for the ``h5cc`` or ``h5pcc`` HDF5 C wrapper on
 your PATH environment variable and subsequently uses it to determine library
 locations and compile flags. If you have multiple installations of HDF5 or one
 that does not appear on your PATH, you can set the HDF5_ROOT environment
@@ -306,8 +289,8 @@ variable to the root directory of the HDF5 installation, e.g.
     export HDF5_ROOT=/opt/hdf5/1.8.15
     cmake /path/to/openmc
 
-This will cause CMake to search first in /opt/hdf5/1.8.15/bin for ``h5fc`` /
-``h5pfc`` before it searches elsewhere. As noted above, an environment variable
+This will cause CMake to search first in /opt/hdf5/1.8.15/bin for ``h5cc`` /
+``h5pcc`` before it searches elsewhere. As noted above, an environment variable
 can typically be set for a single command, i.e.
 
 .. code-block:: sh
@@ -359,14 +342,13 @@ control generation of vector instructions to see what configuration gives
 optimal performance for your target problem.
 
 For the first generation Knights Corner architecture, it is necessary to
-cross-compile OpenMC. If you are using the Intel Fortran compiler, it is
-necessary to specify that all objects be compiled with the ``-mmic`` flag as
-follows:
+cross-compile OpenMC. If you are using the Intel compiler, it is necessary to
+specify that all objects be compiled with the ``-mmic`` flag as follows:
 
 .. code-block:: sh
 
     mkdir build && cd build
-    FC=ifort CC=icc CXX=icpc FFLAGS=-mmic cmake -Dopenmp=on ..
+    CXX=icpc CXXFLAGS=-mmic cmake -Dopenmp=on ..
     make
 
 Note that unless an HDF5 build for the Intel Xeon Phi (Knights Corner) is

@@ -191,7 +191,8 @@ def get_table(filename, name=None):
         if lib.tables:
             return lib.tables[0]
         else:
-            raise ValueError(f'Could not find ACE table with name: {name}')
+            raise ValueError('Could not find ACE table with name: {}'
+                             .format(name))
 
 
 class Library(EqualityMixin):

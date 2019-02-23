@@ -92,7 +92,7 @@ endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-list(APPEND cxxflags -std=c++14 -O2)
+list(APPEND cxxflags -O2)
 if(debug)
   list(REMOVE_ITEM cxxflags -O2)
   list(APPEND cxxflags -g -O0)
@@ -202,15 +202,14 @@ add_library(libopenmc SHARED
   src/plot.cpp
   src/position.cpp
   src/progress_bar.cpp
-  src/urr.cpp
   src/random_lcg.cpp
   src/reaction.cpp
   src/reaction_product.cpp
+  src/scattdata.cpp
   src/secondary_correlated.cpp
   src/secondary_kalbach.cpp
   src/secondary_nbody.cpp
   src/secondary_uncorrelated.cpp
-  src/scattdata.cpp
   src/settings.cpp
   src/simulation.cpp
   src/source.cpp
@@ -246,14 +245,14 @@ add_library(libopenmc SHARED
   src/timer.cpp
   src/thermal.cpp
   src/track_output.cpp
+  src/urr.cpp
   src/volume_calc.cpp
   src/wmp.cpp
   src/xml_interface.cpp
   src/xsdata.cpp)
 
 set_target_properties(libopenmc PROPERTIES
-  OUTPUT_NAME openmc
-  LINKER_LANGUAGE CXX)
+  OUTPUT_NAME openmc)
 
 target_include_directories(libopenmc
   PUBLIC include
@@ -263,10 +262,6 @@ target_include_directories(libopenmc
 target_compile_options(libopenmc PRIVATE ${cxxflags})
 
 target_compile_definitions(libopenmc PRIVATE -DMAX_COORD=${maxcoord})
-if (UNIX)
-  # Used in progress_header.F90 for calling check_isatty
-  target_compile_definitions(libopenmc PRIVATE -DUNIX)
-endif()
 if (HDF5_IS_PARALLEL)
   target_compile_definitions(libopenmc PRIVATE -DPHDF5)
 endif()
@@ -301,6 +296,12 @@ endif()
 add_executable(openmc src/main.cpp)
 target_compile_options(openmc PRIVATE ${cxxflags})
 target_link_libraries(openmc libopenmc)
+
+# Ensure C++14 standard is used. Starting with CMake 3.8, another way this could
+# be done is using the cxx_std_14 compiler feature.
+set_target_properties(
+    openmc libopenmc faddeeva pugixml
+    PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
 
 #===============================================================================
 # Python package

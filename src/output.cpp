@@ -657,8 +657,7 @@ write_tallies()
       case DIFF_NUCLIDE_DENSITY:
         tallies_out << " Nuclide density derivative  Material "
           << std::to_string(deriv.diff_material) << "  Nuclide "
-          // TODO: off-by-one
-          << data::nuclides[deriv.diff_nuclide-1]->name_ << "\n";
+          << data::nuclides[deriv.diff_nuclide]->name_ << "\n";
         break;
       case DIFF_TEMPERATURE:
         tallies_out << " Temperature derivative  Material "

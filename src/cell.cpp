@@ -727,9 +727,8 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
         int i_mat = indices[i];
         if (i_mat == MATERIAL_VOID) {
           c.material_.push_back(MATERIAL_VOID);
-        } else if (i_mat >= 1 && i_mat <= model::materials.size()) {
-          //TODO: off-by-one
-          c.material_.push_back(i_mat - 1);
+        } else if (i_mat >= 0 && i_mat < model::materials.size()) {
+          c.material_.push_back(i_mat);
         } else {
           set_errmsg("Index in materials array is out of bounds.");
           return OPENMC_E_OUT_OF_BOUNDS;

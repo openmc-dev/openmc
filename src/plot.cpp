@@ -676,8 +676,8 @@ void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id)
         rgb = WHITE;
         id = -1;
       } else {
-        rgb = pl.colors_[p.material - 1];
-        id = model::materials[p.material - 1]->id_;
+        rgb = pl.colors_[p.material];
+        id = model::materials[p.material]->id_;
       }
     } else if (PlotColorBy::cells == pl.color_by_) {
       // Assign color based on cell

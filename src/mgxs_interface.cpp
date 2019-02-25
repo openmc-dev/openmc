@@ -251,7 +251,7 @@ void
 calculate_xs_c(int i_mat, int gin, double sqrtkT, const double uvw[3],
      double& total_xs, double& abs_xs, double& nu_fiss_xs)
 {
-  data::macro_xs[i_mat - 1].calculate_xs(gin - 1, sqrtkT, uvw, total_xs, abs_xs,
+  data::macro_xs[i_mat].calculate_xs(gin - 1, sqrtkT, uvw, total_xs, abs_xs,
        nu_fiss_xs);
 }
 
@@ -302,7 +302,7 @@ get_macro_xs(int index, int xstype, int gin, const int* gout,
   } else {
     dg_c_p = dg;
   }
-  return data::macro_xs[index - 1].get_xs(xstype, gin - 1, gout_c_p, mu, dg_c_p);
+  return data::macro_xs[index].get_xs(xstype, gin - 1, gout_c_p, mu, dg_c_p);
 }
 
 //==============================================================================

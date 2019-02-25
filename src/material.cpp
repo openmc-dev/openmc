@@ -932,7 +932,7 @@ openmc_get_material_index(int32_t id, int32_t* index)
     set_errmsg("No material exists with ID=" + std::to_string(id) + ".");
     return OPENMC_E_INVALID_ID;
   } else {
-    *index = it->second + 1;
+    *index = it->second;
     return 0;
   }
 }
@@ -941,8 +941,8 @@ extern "C" int
 openmc_material_add_nuclide(int32_t index, const char* name, double density)
 {
   int err = 0;
-  if (index >= 1 && index <= model::materials.size()) {
-    Material* m = model::materials[index - 1];
+  if (index >= 0 && index < model::materials.size()) {
+    Material* m = model::materials[index];
 
     // Check if nuclide is already in material
     for (int i = 0; i < m->nuclide_.size(); ++i) {
@@ -987,8 +987,8 @@ openmc_material_add_nuclide(int32_t index, const char* name, double density)
 extern "C" int
 openmc_material_get_densities(int32_t index, int** nuclides, double** densities, int* n)
 {
-  if (index >= 1 && index <= model::materials.size()) {
-    auto& mat = model::materials[index - 1];
+  if (index >= 0 && index < model::materials.size()) {
+    auto& mat = model::materials[index];
     if (!mat->nuclide_.empty()) {
       *nuclides = mat->nuclide_.data();
       *densities = mat->atom_density_.data();
@@ -1007,8 +1007,8 @@ openmc_material_get_densities(int32_t index, int** nuclides, double** densities,
 extern "C" int
 openmc_material_get_fissionable(int32_t index, bool* fissionable)
 {
-  if (index >= 1 && index <= model::materials.size()) {
-    *fissionable = model::materials[index - 1]->fissionable_;
+  if (index >= 0 && index < model::materials.size()) {
+    *fissionable = model::materials[index]->fissionable_;
     return 0;
   } else {
     set_errmsg("Index in materials array is out of bounds.");
@@ -1019,8 +1019,8 @@ openmc_material_get_fissionable(int32_t index, bool* fissionable)
 extern "C" int
 openmc_material_get_id(int32_t index, int32_t* id)
 {
-  if (index >= 1 && index <= model::materials.size()) {
-    *id = model::materials[index - 1]->id_;
+  if (index >= 0 && index < model::materials.size()) {
+    *id = model::materials[index]->id_;
     return 0;
   } else {
     set_errmsg("Index in materials array is out of bounds.");
@@ -1031,8 +1031,8 @@ openmc_material_get_id(int32_t index, int32_t* id)
 extern "C" int
 openmc_material_get_volume(int32_t index, double* volume)
 {
-  if (index >= 1 && index <= model::materials.size()) {
-    Material* m = model::materials[index - 1];
+  if (index >= 0 && index < model::materials.size()) {
+    Material* m = model::materials[index];
     if (m->volume_ >= 0.0) {
       *volume = m->volume_;
       return 0;
@@ -1051,8 +1051,8 @@ openmc_material_get_volume(int32_t index, double* volume)
 extern "C" int
 openmc_material_set_density(int32_t index, double density, const char* units)
 {
-  if (index >= 1 && index <= model::materials.size()) {
-    return model::materials[index - 1]->set_density(density, units);
+  if (index >= 0 && index < model::materials.size()) {
+    return model::materials[index]->set_density(density, units);
   } else {
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
@@ -1062,9 +1062,8 @@ openmc_material_set_density(int32_t index, double density, const char* units)
 extern "C" int
 openmc_material_set_densities(int32_t index, int n, const char** name, const double* density)
 {
-  if (index >= 1 && index <= model::materials.size()) {
-    // TODO: off-by-one
-    auto& mat {model::materials[index - 1]};
+  if (index >= 0 && index < model::materials.size()) {
+    auto& mat {model::materials[index]};
     if (n != mat->nuclide_.size()) {
       mat->nuclide_.resize(n);
       mat->atom_density_ = xt::zeros<double>({n});
@@ -1099,9 +1098,9 @@ openmc_material_set_densities(int32_t index, int n, const char** name, const dou
 extern "C" int
 openmc_material_set_id(int32_t index, int32_t id)
 {
-  if (index >= 1 && index <= model::materials.size()) {
-    model::materials[index - 1]->id_ = id;
-    model::material_map[id] = index - 1;
+  if (index >= 0 && index < model::materials.size()) {
+    model::materials[index]->id_ = id;
+    model::material_map[id] = index;
     return 0;
   } else {
     set_errmsg("Index in materials array is out of bounds.");
@@ -1112,8 +1111,8 @@ openmc_material_set_id(int32_t index, int32_t id)
 extern "C" int
 openmc_material_set_volume(int32_t index, double volume)
 {
-  if (index >= 1 && index <= model::materials.size()) {
-    Material* m = model::materials[index - 1];
+  if (index >= 0 && index < model::materials.size()) {
+    Material* m = model::materials[index];
     if (volume >= 0.0) {
       m->volume_ = volume;
       return 0;
@@ -1130,9 +1129,8 @@ openmc_material_set_volume(int32_t index, double volume)
 extern "C" int
 openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
 {
-  // TODO: off-by-one
-  if (index_start) *index_start = model::materials.size() + 1;
-  if (index_end) *index_end = model::materials.size() + n;
+  if (index_start) *index_start = model::materials.size();
+  if (index_end) *index_end = model::materials.size() + n - 1;
   for (int32_t i = 0; i < n; i++) {
     model::materials.push_back(new Material());
   }

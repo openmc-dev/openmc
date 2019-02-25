@@ -425,8 +425,7 @@ int sample_nuclide(const Particle* p)
   double cutoff = prn() * simulation::material_xs.total;
 
   // Get pointers to nuclide/density arrays
-  // TODO: off-by-one
-  const auto& mat {model::materials[p->material - 1]};
+  const auto& mat {model::materials[p->material]};
   int n = mat->nuclide_.size();
 
   double prob = 0.0;
@@ -451,7 +450,7 @@ int sample_element(Particle* p)
   double cutoff = prn() * simulation::material_xs.total;
 
   // Get pointers to elements, densities
-  const auto& mat {model::materials[p->material - 1]};
+  const auto& mat {model::materials[p->material]};
   int n = mat->nuclide_.size();
 
   int i = 0;
@@ -675,7 +674,7 @@ void scatter(Particle* p, int i_nuclide)
 
   // Sample new outgoing angle for isotropic-in-lab scattering
   // TODO: off-by-one
-  const auto& mat {model::materials[p->material - 1]};
+  const auto& mat {model::materials[p->material]};
   if (!mat->p0_.empty()) {
     int i_nuc_mat = mat->mat_nuclide_index_[i_nuclide];
     if (mat->p0_[i_nuc_mat]) {

@@ -42,7 +42,7 @@ void
 MaterialFilter::get_all_bins(const Particle* p, int estimator,
                              FilterMatch& match) const
 {
-  auto search = map_.find(p->material - 1);
+  auto search = map_.find(p->material);
   if (search != map_.end()) {
     //TODO: off-by-one
     match.bins_.push_back(search->second + 1);

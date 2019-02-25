@@ -107,12 +107,9 @@ class Cell(_FortranObjectWithID):
 
         if fill_type.value == 1:
             if n.value > 1:
-                #TODO: off-by-one
-                return [Material(index=i+1 if i >= 0 else i)
-                        for i in indices[:n.value]]
+                return [Material(index=i) for i in indices[:n.value]]
             else:
-                #TODO: off-by-one
-                index = indices[0] + 1 if indices[0] >= 0 else indices[0]
+                index = indices[0]
                 return Material(index=index)
         else:
             raise NotImplementedError

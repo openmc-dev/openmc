@@ -117,14 +117,11 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       // If this location is not in the geometry at all, move on to next block
       if (!find_cell(&p, false)) continue;
 
-      // TODO: off-by-one
-      int i_material = p.material == MATERIAL_VOID ? p.material : p.material - 1;
-
       if (domain_type_ == FILTER_MATERIAL) {
-        if (i_material != MATERIAL_VOID) {
+        if (p.material != MATERIAL_VOID) {
           for (int i_domain = 0; i_domain < n; i_domain++) {
-            if (model::materials[i_material]->id_ == domain_ids_[i_domain]) {
-              this->check_hit(i_material, indices[i_domain], hits[i_domain]);
+            if (model::materials[p.material]->id_ == domain_ids_[i_domain]) {
+              this->check_hit(p.material, indices[i_domain], hits[i_domain]);
               break;
             }
           }
@@ -133,7 +130,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         for (int level = 0; level < p.n_coord; ++level) {
           for (int i_domain=0; i_domain < n; i_domain++) {
             if (model::cells[p.coord[level].cell]->id_ == domain_ids_[i_domain]) {
-              this->check_hit(i_material, indices[i_domain], hits[i_domain]);
+              this->check_hit(p.material, indices[i_domain], hits[i_domain]);
               break;
             }
           }
@@ -142,7 +139,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         for (int level = 0; level < p.n_coord; ++level) {
           for (int i_domain = 0; i_domain < n; ++i_domain) {
             if (model::universes[p.coord[level].universe]->id_ == domain_ids_[i_domain]) {
-              check_hit(i_material, indices[i_domain], hits[i_domain]);
+              check_hit(p.material, indices[i_domain], hits[i_domain]);
               break;
             }
           }

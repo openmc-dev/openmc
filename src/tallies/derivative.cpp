@@ -131,8 +131,7 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
     score *= flux_deriv;
     return;
   }
-  //TODO: off-by-one
-  const Material& material {*model::materials[p->material-1]};
+  const Material& material {*model::materials[p->material]};
   if (material.id_ != deriv.diff_material) {
     score *= flux_deriv;
     return;
@@ -574,8 +573,7 @@ score_track_derivative(const Particle* p, double distance)
 {
   // A void material cannot be perturbed so it will not affect flux derivatives.
   if (p->material == MATERIAL_VOID) return;
-  //TODO: off-by-one
-  const Material& material {*model::materials[p->material-1]};
+  const Material& material {*model::materials[p->material]};
 
   for (auto& deriv : model::tally_derivs) {
     if (deriv.diff_material != material.id_) continue;
@@ -622,8 +620,7 @@ void score_collision_derivative(const Particle* p)
 {
   // A void material cannot be perturbed so it will not affect flux derivatives.
   if (p->material == MATERIAL_VOID) return;
-  //TODO: off-by-one
-  const Material& material {*model::materials[p->material-1]};
+  const Material& material {*model::materials[p->material]};
 
   for (auto& deriv : model::tally_derivs) {
     if (deriv.diff_material != material.id_) continue;

@@ -337,9 +337,6 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
 
     double score;
 
-    //TODO: off-by-one throughout on p->event_nuclide
-    //TODO: off-by-one throughout on p->material
-
     switch (score_bin) {
 
 
@@ -445,8 +442,8 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
       } else {
         // Get yield and apply to score
         auto m =
-          data::nuclides[p->event_nuclide-1]->reaction_index_[p->event_MT];
-        const auto& rxn {*data::nuclides[p->event_nuclide-1]->reactions_[m]};
+          data::nuclides[p->event_nuclide]->reaction_index_[p->event_MT];
+        const auto& rxn {*data::nuclides[p->event_nuclide]->reactions_[m]};
         score = p->last_wgt * flux * (*rxn.products_[0].yield_)(E);
       }
       break;
@@ -483,10 +480,10 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // fission
-          if (simulation::micro_xs[p->event_nuclide-1].absorption > 0) {
+          if (simulation::micro_xs[p->event_nuclide].absorption > 0) {
             score = p->absorb_wgt
-              * simulation::micro_xs[p->event_nuclide-1].fission
-              / simulation::micro_xs[p->event_nuclide-1].absorption * flux;
+              * simulation::micro_xs[p->event_nuclide].fission
+              / simulation::micro_xs[p->event_nuclide].absorption * flux;
           } else {
             score = 0.;
           }
@@ -497,8 +494,8 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
           // weight entering the collision as the estimate for the fission
           // reaction rate
           score = p->last_wgt
-            * simulation::micro_xs[p->event_nuclide-1].fission
-            / simulation::micro_xs[p->event_nuclide-1].absorption * flux;
+            * simulation::micro_xs[p->event_nuclide].fission
+            / simulation::micro_xs[p->event_nuclide].absorption * flux;
         }
       } else {
         if (i_nuclide >= 0) {
@@ -525,10 +522,10 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // nu-fission
-          if (simulation::micro_xs[p->event_nuclide-1].absorption > 0) {
+          if (simulation::micro_xs[p->event_nuclide].absorption > 0) {
             score = p->absorb_wgt
-              * simulation::micro_xs[p->event_nuclide-1].nu_fission
-              / simulation::micro_xs[p->event_nuclide-1].absorption * flux;
+              * simulation::micro_xs[p->event_nuclide].nu_fission
+              / simulation::micro_xs[p->event_nuclide].absorption * flux;
           } else {
             score = 0.;
           }
@@ -568,12 +565,12 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // prompt-nu-fission
-          if (simulation::micro_xs[p->event_nuclide-1].absorption > 0) {
+          if (simulation::micro_xs[p->event_nuclide].absorption > 0) {
             score = p->absorb_wgt
-              * simulation::micro_xs[p->event_nuclide-1].fission
-              * data::nuclides[p->event_nuclide-1]
+              * simulation::micro_xs[p->event_nuclide].fission
+              * data::nuclides[p->event_nuclide]
               ->nu(E, ReactionProduct::EmissionMode::prompt)
-              / simulation::micro_xs[p->event_nuclide-1].absorption * flux;
+              / simulation::micro_xs[p->event_nuclide].absorption * flux;
           } else {
             score = 0.;
           }
@@ -630,8 +627,8 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // delayed-nu-fission
-          if (simulation::micro_xs[p->event_nuclide-1].absorption > 0
-            && data::nuclides[p->event_nuclide-1]->fissionable_) {
+          if (simulation::micro_xs[p->event_nuclide].absorption > 0
+            && data::nuclides[p->event_nuclide]->fissionable_) {
             if (tally.delayedgroup_filter_ != C_NONE) {
               auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
               const DelayedGroupFilter& filt
@@ -640,11 +637,11 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
               // Tally each delayed group bin individually
               for (auto d_bin = 0; d_bin < filt.n_bins_; ++d_bin) {
                 auto d = filt.groups_[d_bin];
-                auto yield = data::nuclides[p->event_nuclide-1]
+                auto yield = data::nuclides[p->event_nuclide]
                   ->nu(E, ReactionProduct::EmissionMode::delayed, d);
                 score = p->absorb_wgt * yield
-                  * simulation::micro_xs[p->event_nuclide-1].fission
-                  / simulation::micro_xs[p->event_nuclide-1].absorption * flux;
+                  * simulation::micro_xs[p->event_nuclide].fission
+                  / simulation::micro_xs[p->event_nuclide].absorption * flux;
                 score_fission_delayed_dg(i_tally, d_bin+1, score,
                   score_index);
               }
@@ -654,10 +651,10 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
               // by multiplying the absorbed weight by the fraction of the
               // delayed-nu-fission xs to the absorption xs
               score = p->absorb_wgt
-                * simulation::micro_xs[p->event_nuclide-1].fission
-                * data::nuclides[p->event_nuclide-1]
+                * simulation::micro_xs[p->event_nuclide].fission
+                * data::nuclides[p->event_nuclide]
                 ->nu(E, ReactionProduct::EmissionMode::delayed)
-                / simulation::micro_xs[p->event_nuclide-1].absorption *flux;
+                / simulation::micro_xs[p->event_nuclide].absorption *flux;
             }
           }
         } else {
@@ -766,8 +763,8 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // delayed-nu-fission
-          const auto& nuc {*data::nuclides[p->event_nuclide-1]};
-          if (simulation::micro_xs[p->event_nuclide-1].absorption > 0
+          const auto& nuc {*data::nuclides[p->event_nuclide]};
+          if (simulation::micro_xs[p->event_nuclide].absorption > 0
             && nuc.fissionable_) {
             const auto& rxn {*nuc.fission_rx_[0]};
             if (tally.delayedgroup_filter_ != C_NONE) {
@@ -782,8 +779,8 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
                   = nuc.nu(E, ReactionProduct::EmissionMode::delayed, d);
                 auto rate = rxn.products_[d].decay_rate_;
                 score = p->absorb_wgt * yield
-                  * simulation::micro_xs[p->event_nuclide-1].fission
-                  / simulation::micro_xs[p->event_nuclide-1].absorption
+                  * simulation::micro_xs[p->event_nuclide].fission
+                  / simulation::micro_xs[p->event_nuclide].absorption
                   * rate * flux;
                 score_fission_delayed_dg(i_tally, d_bin+1, score,
                   score_index);
@@ -805,8 +802,8 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
                   = nuc.nu(E, ReactionProduct::EmissionMode::delayed, d+1);
                 auto rate = rxn.products_[d+1].decay_rate_;
                 score += rate * p->absorb_wgt
-                  * simulation::micro_xs[p->event_nuclide-1].fission * yield
-                  / simulation::micro_xs[p->event_nuclide-1].absorption * flux;
+                  * simulation::micro_xs[p->event_nuclide].fission * yield
+                  / simulation::micro_xs[p->event_nuclide].absorption * flux;
               }
             }
           }
@@ -826,7 +823,7 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
             const auto& bank = simulation::fission_bank[i_bank];
             auto g = bank.delayed_group;
             if (g != 0) {
-              const auto& nuc {*data::nuclides[p->event_nuclide-1]};
+              const auto& nuc {*data::nuclides[p->event_nuclide]};
               const auto& rxn {*nuc.fission_rx_[0]};
               auto rate = rxn.products_[g].decay_rate_;
               score += simulation::keff * bank.wgt * rate * flux;
@@ -953,13 +950,13 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // fission scaled by the Q-value
-          const auto& nuc {*data::nuclides[p->event_nuclide-1]};
-          if (simulation::micro_xs[p->event_nuclide-1].absorption > 0
+          const auto& nuc {*data::nuclides[p->event_nuclide]};
+          if (simulation::micro_xs[p->event_nuclide].absorption > 0
             && nuc.fissionable_) {
             const auto& rxn {*nuc.fission_rx_[0]};
             score = p->absorb_wgt * rxn.q_value_
-              * simulation::micro_xs[p->event_nuclide-1].fission
-              / simulation::micro_xs[p->event_nuclide-1].absorption * flux;
+              * simulation::micro_xs[p->event_nuclide].fission
+              / simulation::micro_xs[p->event_nuclide].absorption * flux;
           }
         } else {
           // Skip any non-absorption events
@@ -967,13 +964,13 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
           // All fission events will contribute, so again we can use particle's
           // weight entering the collision as the estimate for the fission
           // reaction rate
-          const auto& nuc {*data::nuclides[p->event_nuclide-1]};
-          if (simulation::micro_xs[p->event_nuclide-1].absorption > 0
+          const auto& nuc {*data::nuclides[p->event_nuclide]};
+          if (simulation::micro_xs[p->event_nuclide].absorption > 0
             && nuc.fissionable_) {
             const auto& rxn {*nuc.fission_rx_[0]};
             score = p->last_wgt * rxn.q_value_
-              * simulation::micro_xs[p->event_nuclide-1].fission
-              / simulation::micro_xs[p->event_nuclide-1].absorption * flux;
+              * simulation::micro_xs[p->event_nuclide].fission
+              / simulation::micro_xs[p->event_nuclide].absorption * flux;
           }
         }
       } else {
@@ -1046,8 +1043,8 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // fission scaled by the Q-value
-          const auto& nuc {*data::nuclides[p->event_nuclide-1]};
-          if (simulation::micro_xs[p->event_nuclide-1].absorption > 0) {
+          const auto& nuc {*data::nuclides[p->event_nuclide]};
+          if (simulation::micro_xs[p->event_nuclide].absorption > 0) {
             double q_value = 0.;
             if (score_bin == SCORE_FISS_Q_PROMPT) {
               if (nuc.fission_q_prompt_)
@@ -1057,8 +1054,8 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
                 q_value = (*nuc.fission_q_recov_)(p->last_E);
             }
             score = p->absorb_wgt * q_value
-              * simulation::micro_xs[p->event_nuclide-1].fission
-              / simulation::micro_xs[p->event_nuclide-1].absorption * flux;
+              * simulation::micro_xs[p->event_nuclide].fission
+              / simulation::micro_xs[p->event_nuclide].absorption * flux;
           }
         } else {
           // Skip any non-absorption events
@@ -1066,8 +1063,8 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
           // All fission events will contribute, so again we can use particle's
           // weight entering the collision as the estimate for the fission
           // reaction rate
-          const auto& nuc {*data::nuclides[p->event_nuclide-1]};
-          if (simulation::micro_xs[p->event_nuclide-1].absorption > 0) {
+          const auto& nuc {*data::nuclides[p->event_nuclide]};
+          if (simulation::micro_xs[p->event_nuclide].absorption > 0) {
             double q_value = 0.;
             if (score_bin == SCORE_FISS_Q_PROMPT) {
               if (nuc.fission_q_prompt_)
@@ -1077,8 +1074,8 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
                 q_value = (*nuc.fission_q_recov_)(p->last_E);
             }
             score = p->last_wgt * q_value
-              * simulation::micro_xs[p->event_nuclide-1].fission
-              / simulation::micro_xs[p->event_nuclide-1].absorption * flux;
+              * simulation::micro_xs[p->event_nuclide].fission
+              / simulation::micro_xs[p->event_nuclide].absorption * flux;
           }
         }
       } else {
@@ -1992,8 +1989,7 @@ void score_analog_tally_ce(const Particle* p)
           // the event nuclide or the total material.  Note that the i_nuclide
           // and flux arguments for score_general are not used for analog
           // tallies.
-          //TODO: off-by-one
-          if (i_nuclide == p->event_nuclide-1 || i_nuclide == -1)
+          if (i_nuclide == p->event_nuclide || i_nuclide == -1)
             score_general_ce(p, i_tally, i*tally.scores_.size(), filter_index,
               -1, -1., filter_weight);
         }

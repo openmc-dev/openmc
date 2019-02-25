@@ -63,10 +63,10 @@ void collision(Particle* p)
     std::stringstream msg;
     if (static_cast<ParticleType>(p->type) == ParticleType::neutron) {
       msg << "    " << reaction_name(p->event_MT) << " with " <<
-        data::nuclides[p->event_nuclide-1]->name_ << ". Energy = " << p->E << " eV.";
+        data::nuclides[p->event_nuclide]->name_ << ". Energy = " << p->E << " eV.";
     } else {
       msg << "    " << reaction_name(p->event_MT) << " with " <<
-        data::elements[p->event_nuclide-1].name_ << ". Energy = " << p->E << " eV.";
+        data::elements[p->event_nuclide].name_ << ". Energy = " << p->E << " eV.";
     }
     write_message(msg, 1);
   }
@@ -78,8 +78,7 @@ void sample_neutron_reaction(Particle* p)
   int i_nuclide = sample_nuclide(p);
 
   // Save which nuclide particle had collision with
-  // TODO: off-by-one
-  p->event_nuclide = i_nuclide + 1;
+  p->event_nuclide = i_nuclide;
 
   // Create fission bank sites. Note that while a fission reaction is sampled,
   // it never actually "happens", i.e. the weight of the particle does not
@@ -228,8 +227,7 @@ void sample_photon_reaction(Particle* p)
 
   // Sample element within material
   int i_element = sample_element(p);
-  // TODO: off-by-one
-  p->event_nuclide = i_element + 1;
+  p->event_nuclide = i_element;
   const auto& micro {simulation::micro_photon_xs[i_element]};
   const auto& element {data::elements[i_element]};
 

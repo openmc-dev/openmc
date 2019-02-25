@@ -930,7 +930,10 @@ class Material(IDManagerMixin):
         mat_id = int(elem.get('id'))
         mat = cls(mat_id)
         mat.name = elem.get('name')
-        mat.temperature = elem.get('temperature')
+        if 'temperature' in elem.attrib:
+            mat.temperature = float(elem.get('temperature'))
+        if 'volume' in elem.attrib:
+            mat.volume = float(elem.get('volume'))
         mat.depletable = bool(elem.get('depletable'))
 
         # Get each nuclide

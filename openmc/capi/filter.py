@@ -402,7 +402,7 @@ class _FilterMapping(Mapping):
 
     def __iter__(self):
         for i in range(len(self)):
-            yield _get_filter(i + 1).id
+            yield _get_filter(i).id
 
     def __len__(self):
         return _dll.tally_filters_size()

@@ -107,7 +107,7 @@ check_sptl_legendre_filter(int32_t index)
   }
 
   // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index-1].get();
+  const auto& filt_base = model::tally_filters[index].get();
   auto* filt = dynamic_cast<SpatialLegendreFilter*>(filt_base);
 
   // Check the filter type.

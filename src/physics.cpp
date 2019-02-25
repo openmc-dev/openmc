@@ -597,7 +597,7 @@ void scatter(Particle* p, int i_nuclide)
   const auto& nuc {data::nuclides[i_nuclide]};
   const auto& micro {simulation::micro_xs[i_nuclide]};
   int i_temp =  micro.index_temp;
-  int i_grid =  micro.index_grid - 1;
+  int i_grid =  micro.index_grid;
   double f = micro.interp_factor;
 
   // For tallying purposes, this routine might be called directly. In that
@@ -655,12 +655,11 @@ void scatter(Particle* p, int i_nuclide)
 
       // if energy is below threshold for this reaction, skip it
       const auto& xs {nuc->reactions_[i]->xs_[i_temp]};
-      int threshold = xs.threshold - 1;
-      if (i_grid < threshold) continue;
+      if (i_grid < xs.threshold) continue;
 
       // add to cumulative probability
-      prob += (1.0 - f)*xs.value[i_grid - threshold] +
-        f*xs.value[i_grid - threshold + 1];
+      prob += (1.0 - f)*xs.value[i_grid - xs.threshold] +
+        f*xs.value[i_grid - xs.threshold + 1];
     }
 
     // Perform collision physics for inelastic scattering

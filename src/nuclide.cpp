@@ -282,8 +282,7 @@ void Nuclide::create_derived()
     reaction_index_[rx->mt_] = i;
 
     for (int t = 0; t < kTs_.size(); ++t) {
-      // TODO: off-by-one
-      int j = rx->xs_[t].threshold - 1;
+      int j = rx->xs_[t].threshold;
       int n = rx->xs_[t].value.size();
       auto xs = xt::adapt(rx->xs_[t].value);
 
@@ -467,7 +466,7 @@ void Nuclide::calculate_elastic_xs() const
   // Get temperature index, grid index, and interpolation factor
   auto& micro = simulation::micro_xs[i_nuclide_];
   int i_temp = micro.index_temp;
-  int i_grid = micro.index_grid - 1;
+  int i_grid = micro.index_grid;
   double f = micro.interp_factor;
 
   if (i_temp >= 0) {
@@ -549,7 +548,7 @@ void Nuclide::calculate_xs(int i_sab, double E, int i_log_union,
     // set to -1 to force a segfault in case a developer messes up and tries
     // to use it with multipole.
     micro_xs.index_temp = -1;
-    micro_xs.index_grid = 0;
+    micro_xs.index_grid = -1;
     micro_xs.interp_factor = 0.0;
 
   } else {
@@ -613,8 +612,7 @@ void Nuclide::calculate_xs(int i_sab, double E, int i_log_union,
       (grid.energy[i_grid + 1]- grid.energy[i_grid]);
 
     micro_xs.index_temp = i_temp;
-    // TODO: off-by-one
-    micro_xs.index_grid = i_grid + 1;
+    micro_xs.index_grid = i_grid;
     micro_xs.interp_factor = f;
 
     // Calculate microscopic nuclide total cross section
@@ -665,8 +663,7 @@ void Nuclide::calculate_xs(int i_sab, double E, int i_log_union,
             continue;
           }
 
-          // TODO: off-by-one
-          int threshold = rx->xs_[i_temp].threshold - 1;
+          int threshold = rx->xs_[i_temp].threshold;
           if (i_grid >= threshold) {
             micro_xs.reaction[j] = (1.0 - f)*rx_xs[i_grid - threshold] +
               f*rx_xs[i_grid - threshold + 1];

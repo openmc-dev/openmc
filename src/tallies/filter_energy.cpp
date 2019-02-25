@@ -123,7 +123,7 @@ openmc_energy_filter_get_bins(int32_t index, double** energies, int32_t* n)
   if (int err = verify_filter(index)) return err;
 
   // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index-1].get();
+  const auto& filt_base = model::tally_filters[index].get();
   auto* filt = dynamic_cast<EnergyFilter*>(filt_base);
 
   // Check the filter type.
@@ -145,7 +145,7 @@ openmc_energy_filter_set_bins(int32_t index, int32_t n, const double* energies)
   if (int err = verify_filter(index)) return err;
 
   // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index-1].get();
+  const auto& filt_base = model::tally_filters[index].get();
   auto* filt = dynamic_cast<EnergyFilter*>(filt_base);
 
   // Check the filter type.

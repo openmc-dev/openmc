@@ -90,7 +90,7 @@ openmc_mesh_filter_get_mesh(int32_t index, int32_t* index_mesh)
   if (int err = verify_filter(index)) return err;
 
   // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index-1].get();
+  const auto& filt_base = model::tally_filters[index].get();
   auto* filt = dynamic_cast<MeshFilter*>(filt_base);
 
   // Check the filter type.
@@ -111,7 +111,7 @@ openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh)
   if (int err = verify_filter(index)) return err;
 
   // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index-1].get();
+  const auto& filt_base = model::tally_filters[index].get();
   auto* filt = dynamic_cast<MeshFilter*>(filt_base);
 
   // Check the filter type.

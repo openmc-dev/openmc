@@ -1039,9 +1039,8 @@ free_memory_tally()
 extern "C" int
 openmc_extend_tallies(int32_t n, int32_t* index_start, int32_t* index_end)
 {
-  // TODO: off-by-one
-  if (index_start) *index_start = model::tallies.size() + 1;
-  if (index_end) *index_end = model::tallies.size() + n;
+  if (index_start) *index_start = model::tallies.size();
+  if (index_end) *index_end = model::tallies.size() + n - 1;
   for (int i = 0; i < n; ++i) {
     model::tallies.push_back(std::make_unique<Tally>());
   }
@@ -1057,8 +1056,7 @@ openmc_get_tally_index(int32_t id, int32_t* index)
     return OPENMC_E_INVALID_ID;
   }
 
-  // TODO: off-by-one
-  *index = it->second + 1;
+  *index = it->second;
   return 0;
 }
 
@@ -1075,26 +1073,24 @@ openmc_get_tally_next_id(int32_t* id)
 extern "C" int
 openmc_tally_get_estimator(int32_t index, int* estimator)
 {
-  if (index < 1 || index > model::tallies.size()) {
+  if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  // TODO: off-by-one
-  *estimator = model::tallies[index-1]->estimator_;
+  *estimator = model::tallies[index]->estimator_;
   return 0;
 }
 
 extern "C" int
 openmc_tally_set_estimator(int32_t index, const char* estimator)
 {
-  if (index < 1 || index > model::tallies.size()) {
+  if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  // TODO: off-by-one
-  auto& t {model::tallies[index-1]};
+  auto& t {model::tallies[index]};
 
   std::string est = estimator;
   if (est == "analog") {
@@ -1113,20 +1109,19 @@ openmc_tally_set_estimator(int32_t index, const char* estimator)
 extern "C" int
 openmc_tally_get_id(int32_t index, int32_t* id)
 {
-  if (index < 1 || index > model::tallies.size()) {
+  if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  // TODO: off-by-one
-  *id = model::tallies[index-1]->id_;
+  *id = model::tallies[index]->id_;
   return 0;
 }
 
 extern "C" int
 openmc_tally_set_id(int32_t index, int32_t id)
 {
-  if (index < 1 || index > model::tallies.size()) {
+  if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
@@ -1137,21 +1132,19 @@ openmc_tally_set_id(int32_t index, int32_t id)
     return OPENMC_E_INVALID_ID;
   }
 
-  // TODO: off-by-one
-  model::tallies[index-1]->id_ = id;
-  model::tally_map[id] = index - 1;
+  model::tallies[index]->id_ = id;
+  model::tally_map[id] = index;
   return 0;
 }
 
 extern "C" int
 openmc_tally_get_type(int32_t index, int32_t* type)
 {
-  if (index < 1 || index > model::tallies.size()) {
+  if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  //TODO: off-by-one
-  *type = model::tallies[index-1]->type_;
+  *type = model::tallies[index]->type_;
 
   return 0;
 }
@@ -1159,16 +1152,16 @@ openmc_tally_get_type(int32_t index, int32_t* type)
 extern "C" int
 openmc_tally_set_type(int32_t index, const char* type)
 {
-  if (index < 1 || index > model::tallies.size()) {
+  if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
   if (strcmp(type, "volume") == 0) {
-    model::tallies[index-1]->type_ = TALLY_VOLUME;
+    model::tallies[index]->type_ = TALLY_VOLUME;
   } else if (strcmp(type, "mesh-surface") == 0) {
-    model::tallies[index-1]->type_ = TALLY_MESH_SURFACE;
+    model::tallies[index]->type_ = TALLY_MESH_SURFACE;
   } else if (strcmp(type, "surface") == 0) {
-    model::tallies[index-1]->type_ = TALLY_SURFACE;
+    model::tallies[index]->type_ = TALLY_SURFACE;
   } else {
     std::stringstream errmsg;
     errmsg << "Unknown tally type: " << type;
@@ -1182,12 +1175,11 @@ openmc_tally_set_type(int32_t index, const char* type)
 extern "C" int
 openmc_tally_get_active(int32_t index, bool* active)
 {
-  if (index < 1 || index > model::tallies.size()) {
+  if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  //TODO: off-by-one
-  *active = model::tallies[index-1]->active_;
+  *active = model::tallies[index]->active_;
 
   return 0;
 }
@@ -1195,12 +1187,11 @@ openmc_tally_get_active(int32_t index, bool* active)
 extern "C" int
 openmc_tally_set_active(int32_t index, bool active)
 {
-  if (index < 1 || index > model::tallies.size()) {
+  if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  //TODO: off-by-one
-  model::tallies[index-1]->active_ = active;
+  model::tallies[index]->active_ = active;
 
   return 0;
 }
@@ -1208,29 +1199,27 @@ openmc_tally_set_active(int32_t index, bool active)
 extern "C" int
 openmc_tally_get_scores(int32_t index, int** scores, int* n)
 {
-  if (index < 1 || index > model::tallies.size()) {
+  if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  //TODO: off-by-one
-  *scores = model::tallies[index-1]->scores_.data();
-  *n = model::tallies[index-1]->scores_.size();
+  *scores = model::tallies[index]->scores_.data();
+  *n = model::tallies[index]->scores_.size();
   return 0;
 }
 
 extern "C" int
 openmc_tally_set_scores(int32_t index, int n, const char** scores)
 {
-  if (index < 1 || index > model::tallies.size()) {
+  if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
   std::vector<std::string> scores_str(scores, scores+n);
   try {
-    //TODO: off-by-one
-    model::tallies[index-1]->set_scores(scores_str);
+    model::tallies[index]->set_scores(scores_str);
   } catch (const std::invalid_argument& ex) {
     set_errmsg(ex.what());
     return OPENMC_E_INVALID_ARGUMENT;
@@ -1243,14 +1232,13 @@ extern "C" int
 openmc_tally_get_nuclides(int32_t index, int** nuclides, int* n)
 {
   // Make sure the index fits in the array bounds.
-  if (index < 1 || index > model::tallies.size()) {
+  if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  //TODO: off-by-one
-  *n = model::tallies[index-1]->nuclides_.size();
-  *nuclides = model::tallies[index-1]->nuclides_.data();
+  *n = model::tallies[index]->nuclides_.size();
+  *nuclides = model::tallies[index]->nuclides_.data();
 
   return 0;
 }
@@ -1259,7 +1247,7 @@ extern "C" int
 openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides)
 {
   // Make sure the index fits in the array bounds.
-  if (index < 1 || index > model::tallies.size()) {
+  if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
@@ -1279,8 +1267,7 @@ openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides)
     }
   }
 
-  //TODO: off-by-one
-  model::tallies[index-1]->nuclides_ = nucs;
+  model::tallies[index]->nuclides_ = nucs;
 
   return 0;
 }
@@ -1288,14 +1275,13 @@ openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides)
 extern "C" int
 openmc_tally_get_filters(int32_t index, const int32_t** indices, int* n)
 {
-  if (index < 1 || index > model::tallies.size()) {
+  if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  //TODO: off-by-one
-  *indices = model::tallies[index-1]->filters().data();
-  *n = model::tallies[index-1]->filters().size();
+  *indices = model::tallies[index]->filters().data();
+  *n = model::tallies[index]->filters().size();
   return 0;
 }
 
@@ -1303,15 +1289,14 @@ extern "C" int
 openmc_tally_set_filters(int32_t index, int n, const int32_t* indices)
 {
   // Make sure the index fits in the array bounds.
-  if (index < 1 || index > model::tallies.size()) {
+  if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
   // Set the filters.
   try {
-    //TODO: off-by-one
-    model::tallies[index-1]->set_filters(indices, n);
+    model::tallies[index]->set_filters(indices, n);
   } catch (const std::out_of_range& ex) {
     set_errmsg(ex.what());
     return OPENMC_E_OUT_OF_BOUNDS;
@@ -1325,13 +1310,12 @@ extern "C" int
 openmc_tally_reset(int32_t index)
 {
   // Make sure the index fits in the array bounds.
-  if (index < 1 || index > model::tallies.size()) {
+  if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  // TODO: off-by-one
-  model::tallies[index-1]->reset();
+  model::tallies[index]->reset();
   return 0;
 }
 
@@ -1339,13 +1323,12 @@ extern "C" int
 openmc_tally_get_n_realizations(int32_t index, int32_t* n)
 {
   // Make sure the index fits in the array bounds.
-  if (index < 1 || index > model::tallies.size()) {
+  if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  // TODO: off-by-one
-  *n = model::tallies[index - 1]->n_realizations_;
+  *n = model::tallies[index]->n_realizations_;
   return 0;
 }
 
@@ -1355,13 +1338,12 @@ extern "C" int
 openmc_tally_results(int32_t index, double** results, size_t* shape)
 {
   // Make sure the index fits in the array bounds.
-  if (index < 1 || index > model::tallies.size()) {
+  if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  // TODO: off-by-one
-  const auto& t {model::tallies[index - 1]};
+  const auto& t {model::tallies[index]};
   // TODO: Change to zero when xtensor is updated
   if (t->results_.size() == 1) {
     set_errmsg("Tally results have not been allocated yet.");

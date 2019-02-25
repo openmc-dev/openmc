@@ -381,7 +381,7 @@ class _TallyMapping(Mapping):
 
     def __iter__(self):
         for i in range(len(self)):
-            yield Tally(index=i + 1).id
+            yield Tally(index=i).id
 
     def __len__(self):
         return _dll.tallies_size()

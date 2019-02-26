@@ -41,7 +41,5 @@ _dll.openmc_id_map.restype = c_int
 
 def image_data_for_plot(plot):
     img_data = np.zeros((plot.pixels_[0], plot.pixels_[1], 2), dtype=np.dtype('int32'))
-    print(img_data[0,0])
     out = _dll.openmc_id_map(POINTER(_Plot)(plot), img_data.ctypes.data_as(POINTER(c_int32)))
-    print(img_data[0,0])
     return img_data

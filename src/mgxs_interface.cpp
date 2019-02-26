@@ -277,7 +277,7 @@ get_nuclide_xs(int index, int xstype, int gin, const int* gout,
   } else {
     dg_c_p = dg;
   }
-  return data::nuclides_MG[index - 1].get_xs(xstype, gin - 1, gout_c_p, mu, dg_c_p);
+  return data::nuclides_MG[index].get_xs(xstype, gin - 1, gout_c_p, mu, dg_c_p);
 }
 
 //==============================================================================

@@ -1311,12 +1311,12 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
         //TODO: should flux be multiplied in above instead of below?
         if (i_nuclide >= 0) {
           score *= flux * atom_density
-            * get_nuclide_xs(i_nuclide+1, MG_GET_XS_TOTAL, p_g)
+            * get_nuclide_xs(i_nuclide, MG_GET_XS_TOTAL, p_g)
             / get_macro_xs(p->material, MG_GET_XS_TOTAL, p_g);
         }
       } else {
         if (i_nuclide >= 0) {
-          score = get_nuclide_xs(i_nuclide+1, MG_GET_XS_TOTAL, p_g)
+          score = get_nuclide_xs(i_nuclide, MG_GET_XS_TOTAL, p_g)
             * atom_density * flux;
         } else {
           score = simulation::material_xs.total * flux;
@@ -1340,7 +1340,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
         }
         if (i_nuclide >= 0) {
           score *= flux
-            * get_nuclide_xs(i_nuclide+1, MG_GET_XS_INVERSE_VELOCITY, p_g)
+            * get_nuclide_xs(i_nuclide, MG_GET_XS_INVERSE_VELOCITY, p_g)
             / get_macro_xs(p->material, MG_GET_XS_TOTAL, p_g);
         } else {
           score *= flux
@@ -1350,7 +1350,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
       } else {
         if (i_nuclide >= 0) {
           score = flux
-            * get_nuclide_xs(i_nuclide+1, MG_GET_XS_INVERSE_VELOCITY, p_g);
+            * get_nuclide_xs(i_nuclide, MG_GET_XS_INVERSE_VELOCITY, p_g);
         } else {
           score = flux
             * get_macro_xs(p->material, MG_GET_XS_INVERSE_VELOCITY, p_g);
@@ -1368,7 +1368,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
         score = p->last_wgt * flux;
         if (i_nuclide >= 0) {
           score *= atom_density
-            * get_nuclide_xs(i_nuclide+1, MG_GET_XS_SCATTER_FMU_MULT,
+            * get_nuclide_xs(i_nuclide, MG_GET_XS_SCATTER_FMU_MULT,
                              p->last_g, &p->g, &p->mu, nullptr)
             / get_macro_xs(p->material, MG_GET_XS_SCATTER_FMU_MULT,
                            p->last_g, &p->g, &p->mu, nullptr);
@@ -1376,7 +1376,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
       } else {
         if (i_nuclide >= 0) {
           score = atom_density * flux * get_nuclide_xs(
-            i_nuclide+1, MG_GET_XS_SCATTER_MULT, p_g, nullptr, &p->mu, nullptr);
+            i_nuclide, MG_GET_XS_SCATTER_MULT, p_g, nullptr, &p->mu, nullptr);
         } else {
           score = flux * get_macro_xs(
             p->material, MG_GET_XS_SCATTER_MULT, p_g, nullptr, &p->mu, nullptr);
@@ -1398,7 +1398,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
         // adjust the score by the actual probability for that nuclide.
         if (i_nuclide >= 0) {
           score *= atom_density
-            * get_nuclide_xs(i_nuclide+1, MG_GET_XS_SCATTER_FMU,
+            * get_nuclide_xs(i_nuclide, MG_GET_XS_SCATTER_FMU,
                              p->last_g, &p->g, &p->mu, nullptr)
             / get_macro_xs(p->material, MG_GET_XS_SCATTER_FMU,
                            p->last_g, &p->g, &p->mu, nullptr);
@@ -1406,7 +1406,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
       } else {
         if (i_nuclide >= 0) {
           score = atom_density * flux * get_nuclide_xs(
-            i_nuclide+1, MG_GET_XS_SCATTER, p_g);
+            i_nuclide, MG_GET_XS_SCATTER, p_g);
         } else {
           score = flux * get_macro_xs(p->material, MG_GET_XS_SCATTER, p_g);
         }
@@ -1429,13 +1429,13 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
         }
         if (i_nuclide >= 0) {
           score *= atom_density
-            * get_nuclide_xs(i_nuclide+1, MG_GET_XS_ABSORPTION, p_g)
+            * get_nuclide_xs(i_nuclide, MG_GET_XS_ABSORPTION, p_g)
             / get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g);
         }
       } else {
         if (i_nuclide >= 0) {
           score = atom_density * flux
-            * get_nuclide_xs(i_nuclide+1, MG_GET_XS_ABSORPTION, p_g);
+            * get_nuclide_xs(i_nuclide, MG_GET_XS_ABSORPTION, p_g);
         } else {
           score = simulation::material_xs.absorption * flux;
         }
@@ -1460,7 +1460,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
         }
         if (i_nuclide >= 0) {
           score *= atom_density
-            * get_nuclide_xs(i_nuclide+1, MG_GET_XS_FISSION, p_g)
+            * get_nuclide_xs(i_nuclide, MG_GET_XS_FISSION, p_g)
             / get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g);
         } else {
           score *=
@@ -1469,7 +1469,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
         }
       } else {
         if (i_nuclide >= 0) {
-          score = get_nuclide_xs(i_nuclide+1, MG_GET_XS_FISSION, p_g)
+          score = get_nuclide_xs(i_nuclide, MG_GET_XS_FISSION, p_g)
             * atom_density * flux;
         } else {
           score = get_macro_xs(p->material, MG_GET_XS_FISSION, p_g) * flux;
@@ -1495,7 +1495,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
           score = p->absorb_wgt * flux;
           if (i_nuclide >= 0) {
             score *= atom_density
-              * get_nuclide_xs(i_nuclide+1, MG_GET_XS_NU_FISSION, p_g)
+              * get_nuclide_xs(i_nuclide, MG_GET_XS_NU_FISSION, p_g)
               / get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g);
           } else {
             score *=
@@ -1513,13 +1513,13 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
           score = simulation::keff * p->wgt_bank * flux;
           if (i_nuclide >= 0) {
             score *= atom_density
-              * get_nuclide_xs(i_nuclide+1, MG_GET_XS_FISSION, p_g)
+              * get_nuclide_xs(i_nuclide, MG_GET_XS_FISSION, p_g)
               / get_macro_xs(p->material, MG_GET_XS_FISSION, p_g);
           }
         }
       } else {
         if (i_nuclide >= 0) {
-          score = get_nuclide_xs(i_nuclide+1, MG_GET_XS_NU_FISSION, p_g)
+          score = get_nuclide_xs(i_nuclide, MG_GET_XS_NU_FISSION, p_g)
             * atom_density * flux;
         } else {
           score = get_macro_xs(p->material, MG_GET_XS_NU_FISSION, p_g) * flux;
@@ -1545,7 +1545,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
           score = p->absorb_wgt * flux;
           if (i_nuclide >= 0) {
             score *= atom_density
-              * get_nuclide_xs(i_nuclide+1, MG_GET_XS_PROMPT_NU_FISSION, p_g)
+              * get_nuclide_xs(i_nuclide, MG_GET_XS_PROMPT_NU_FISSION, p_g)
               / get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g);
           } else {
             score *=
@@ -1566,13 +1566,13 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
           score = simulation::keff * p->wgt_bank * prompt_frac * flux;
           if (i_nuclide >= 0) {
             score *= atom_density
-              * get_nuclide_xs(i_nuclide+1, MG_GET_XS_FISSION, p_g)
+              * get_nuclide_xs(i_nuclide, MG_GET_XS_FISSION, p_g)
               / get_macro_xs(p->material, MG_GET_XS_FISSION, p_g);
           }
         }
       } else {
         if (i_nuclide >= 0) {
-          score = get_nuclide_xs(i_nuclide+1, MG_GET_XS_PROMPT_NU_FISSION, p_g)
+          score = get_nuclide_xs(i_nuclide, MG_GET_XS_PROMPT_NU_FISSION, p_g)
             * atom_density * flux;
         } else {
           score = get_macro_xs(p->material, MG_GET_XS_PROMPT_NU_FISSION, p_g)
@@ -1608,7 +1608,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
                 score = p->absorb_wgt * flux;
                 if (i_nuclide >= 0) {
                   score *=
-                    get_nuclide_xs(i_nuclide+1, MG_GET_XS_DELAYED_NU_FISSION,
+                    get_nuclide_xs(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION,
                       p_g, nullptr, nullptr, &d)
                     / get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g);
                 } else {
@@ -1628,7 +1628,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
               score = p->absorb_wgt * flux;
               if (i_nuclide >= 0) {
                 score *=
-                  get_nuclide_xs(i_nuclide+1, MG_GET_XS_DELAYED_NU_FISSION, p_g)
+                  get_nuclide_xs(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION, p_g)
                   / get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g);
               } else {
                 score *=
@@ -1659,7 +1659,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
                 * p->n_delayed_bank[d-1] * flux;
               if (i_nuclide >= 0) {
                 score *= atom_density
-                  * get_nuclide_xs(i_nuclide+1, MG_GET_XS_FISSION, p_g)
+                  * get_nuclide_xs(i_nuclide, MG_GET_XS_FISSION, p_g)
                   / get_macro_xs(p->material, MG_GET_XS_FISSION, p_g);
               }
               score_fission_delayed_dg(i_tally, d_bin, score, score_index);
@@ -1673,7 +1673,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
               * flux;
             if (i_nuclide >= 0) {
               score *= atom_density
-                * get_nuclide_xs(i_nuclide+1, MG_GET_XS_FISSION, p_g)
+                * get_nuclide_xs(i_nuclide, MG_GET_XS_FISSION, p_g)
                 / get_macro_xs(p->material, MG_GET_XS_FISSION, p_g);
             }
           }
@@ -1689,7 +1689,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
             auto d = filt.groups_[d_bin];
             if (i_nuclide >= 0) {
               score = flux * atom_density
-                * get_nuclide_xs(i_nuclide+1, MG_GET_XS_DELAYED_NU_FISSION,
+                * get_nuclide_xs(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION,
                                  p_g, nullptr, nullptr, &d);
             } else {
               score = flux
@@ -1702,7 +1702,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
         } else {
           if (i_nuclide >= 0) {
             score = flux * atom_density
-              * get_nuclide_xs(i_nuclide+1, MG_GET_XS_DELAYED_NU_FISSION, p_g);
+              * get_nuclide_xs(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION, p_g);
           } else {
             score = flux
               * get_macro_xs(p->material, MG_GET_XS_DELAYED_NU_FISSION, p_g);
@@ -1730,9 +1730,9 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
                 score = p->absorb_wgt * flux;
                 if (i_nuclide >= 0) {
                   score *=
-                    get_nuclide_xs(i_nuclide+1, MG_GET_XS_DECAY_RATE,
+                    get_nuclide_xs(i_nuclide, MG_GET_XS_DECAY_RATE,
                                    p_g, nullptr, nullptr, &d)
-                    * get_nuclide_xs(i_nuclide+1, MG_GET_XS_DELAYED_NU_FISSION,
+                    * get_nuclide_xs(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION,
                                      p_g, nullptr, nullptr, &d)
                     / get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g);
                 } else {
@@ -1756,9 +1756,9 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
               for (auto d = 0; d < data::num_delayed_groups; ++d) {
                 if (i_nuclide >= 0) {
                   score += p->absorb_wgt * flux
-                    * get_nuclide_xs(i_nuclide+1, MG_GET_XS_DECAY_RATE,
+                    * get_nuclide_xs(i_nuclide, MG_GET_XS_DECAY_RATE,
                                      p_g, nullptr, nullptr, &d)
-                    * get_nuclide_xs(i_nuclide+1, MG_GET_XS_DELAYED_NU_FISSION,
+                    * get_nuclide_xs(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION,
                                      p_g, nullptr, nullptr, &d)
                     / get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g);
                 } else {
@@ -1790,9 +1790,9 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
             if (g != 0) {
               if (i_nuclide >= 0) {
                 score += simulation::keff * atom_density * bank.wgt * flux
-                  * get_nuclide_xs(i_nuclide+1, MG_GET_XS_DECAY_RATE, p_g,
+                  * get_nuclide_xs(i_nuclide, MG_GET_XS_DECAY_RATE, p_g,
                                    nullptr, nullptr, &g)
-                  * get_nuclide_xs(i_nuclide+1, MG_GET_XS_FISSION, p_g)
+                  * get_nuclide_xs(i_nuclide, MG_GET_XS_FISSION, p_g)
                   / get_macro_xs(p->material, MG_GET_XS_FISSION, p_g);
               } else {
                 score += simulation::keff * bank.wgt * flux
@@ -1828,9 +1828,9 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
             auto d = filt.groups_[d_bin];
             if (i_nuclide >= 0) {
               score += atom_density * flux
-                * get_nuclide_xs(i_nuclide+1, MG_GET_XS_DECAY_RATE,
+                * get_nuclide_xs(i_nuclide, MG_GET_XS_DECAY_RATE,
                                  p_g, nullptr, nullptr, &d)
-                * get_nuclide_xs(i_nuclide+1, MG_GET_XS_DELAYED_NU_FISSION,
+                * get_nuclide_xs(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION,
                                  p_g, nullptr, nullptr, &d);
             } else {
               score += flux
@@ -1847,9 +1847,9 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
           for (auto d = 0; d < data::num_delayed_groups; ++d) {
             if (i_nuclide >= 0) {
               score += atom_density * flux
-                * get_nuclide_xs(i_nuclide+1, MG_GET_XS_DECAY_RATE,
+                * get_nuclide_xs(i_nuclide, MG_GET_XS_DECAY_RATE,
                                  p_g, nullptr, nullptr, &d)
-                * get_nuclide_xs(i_nuclide+1, MG_GET_XS_DELAYED_NU_FISSION,
+                * get_nuclide_xs(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION,
                                  p_g, nullptr, nullptr, &d);
             } else {
               score += flux
@@ -1881,7 +1881,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
         }
         if (i_nuclide >= 0) {
           score *= atom_density
-            * get_nuclide_xs(i_nuclide+1, MG_GET_XS_KAPPA_FISSION, p_g)
+            * get_nuclide_xs(i_nuclide, MG_GET_XS_KAPPA_FISSION, p_g)
             / get_macro_xs(p->material, MG_GET_XS_ABSORPTION, p_g);
         } else {
           score *=
@@ -1890,7 +1890,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
         }
       } else {
         if (i_nuclide >= 0) {
-          score = get_nuclide_xs(i_nuclide+1, MG_GET_XS_KAPPA_FISSION, p_g)
+          score = get_nuclide_xs(i_nuclide, MG_GET_XS_KAPPA_FISSION, p_g)
             * atom_density * flux;
         } else {
           score = get_macro_xs(p->material, MG_GET_XS_KAPPA_FISSION, p_g)

@@ -645,9 +645,9 @@ Plot::set_mask(pugi::xml_node plot_node)
   }
 }
 
-Plot::Plot(pugi::xml_node plot_node):
-index_meshlines_mesh_(-1)
+Plot::Plot(pugi::xml_node plot_node)
 {
+  index_meshlines_mesh_ = -1;
   set_id(plot_node);
   set_type(plot_node);
   set_output_path(plot_node);
@@ -977,6 +977,87 @@ voxel_finalize(hid_t dspace, hid_t dset, hid_t memspace)
 
 RGBColor random_color() {
   return {int(prn()*255), int(prn()*255), int(prn()*255)};
+}
+
+extern "C" int openmc_id_map(const CPlot& pl, int* data_out) {
+
+  size_t width = pl.pixels_[0];
+  size_t height = pl.pixels_[1];
+
+  double in_pixel = (pl.width_[0])/static_cast<double>(width);
+  double out_pixel = (pl.width_[1])/static_cast<double>(height);
+
+  IDData data;
+  data.resize({width, height, 2});
+
+  int in_i, out_i;
+  double xyz[3];
+  switch(pl.basis_) {
+  case PlotBasis::xy :
+    in_i = 0;
+    out_i = 1;
+    xyz[0] = pl.origin_[0] - pl.width_[0] / 2.;
+    xyz[1] = pl.origin_[1] + pl.width_[1] / 2.;
+    xyz[2] = pl.origin_[2];
+    break;
+  case PlotBasis::xz :
+    in_i = 0;
+    out_i = 2;
+    xyz[0] = pl.origin_[0] - pl.width_[0] / 2.;
+    xyz[1] = pl.origin_[1];
+    xyz[2] = pl.origin_[2] + pl.width_[1] / 2.;
+    break;
+  case PlotBasis::yz :
+    in_i = 1;
+    out_i = 2;
+    xyz[0] = pl.origin_[0];
+    xyz[1] = pl.origin_[1] - pl.width_[0] / 2.;
+    xyz[2] = pl.origin_[2] + pl.width_[1] / 2.;
+    break;
+  }
+
+  double dir[3] = {0.5, 0.5, 0.5};
+
+  //#pragma omp parallel
+{
+  Particle p;
+  p.initialize();
+  std::copy(xyz, xyz+3, p.coord[0].xyz);
+  std::copy(dir, dir+3, p.coord[0].uvw);
+  p.coord[0].universe = model::root_universe;
+  int level = pl.level_;
+  int j{};
+
+  //#pragma omp for
+  for (int y = 0; y < height; y++) {
+    p.coord[0].xyz[out_i] = xyz[out_i] - out_pixel * y;
+    p.n_coord = 1;
+    for (int x = 0; x < width; x++) {
+      p.coord[0].xyz[in_i] = xyz[in_i] + in_pixel * x;
+      // local variables
+      bool found_cell = find_cell(&p, 0);
+      j = p.n_coord - 1;
+      if (level >=0) {j = level + 1;}
+      if (!found_cell) {
+        data(x,y,0) = -1;
+        data(x,y,1) = -1;
+      } else {
+        Cell *c = model::cells[p.coord[j].cell];
+        data(x,y,0) = c->id_;
+        if (c->type_ == FILL_UNIVERSE || p.material == MATERIAL_VOID) {
+          data(x,y,1) = -1;
+        } else {
+          data(x,y,1) = model::materials[p.material - 1]->id_;
+        }
+      }
+    }
+  }
+ }
+
+  size_t i = 0;
+  for (auto v : data) { data_out[i++] = v; }
+
+  return 0;
 }
 
 } // namespace openmc

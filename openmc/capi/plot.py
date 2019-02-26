@@ -22,18 +22,11 @@ _RGBColor._fields_ = [('red', c_ushort),
 class _Plot(Structure):
     pass
 
-_Plot._fields_ = [('id_', c_int),
-                  ('type_', c_int),
-                  ('color_by_', c_int),
-                  ('origin_', _Position),
+_Plot._fields_ = [('origin_', _Position),
                   ('width_', _Position),
                   ('basis_', c_int),
                   ('pixels_', c_int*3),
-                  ('meshlines_width_', c_int),
-                  ('level_', c_int),
-                  ('index_meshlines_mesh_', c_int),
-                  ('meshlines_color_', _RGBColor),
-                  ('not_found_', _RGBColor)]
+                  ('level_', c_int)]
 
 
 _dll.openmc_id_map.argtypes= [POINTER(_Plot),]

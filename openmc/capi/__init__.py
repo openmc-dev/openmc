@@ -12,7 +12,8 @@ objects in the :mod:`openmc.capi` subpackage, for example:
 
 """
 
-from ctypes import CDLL, c_bool
+from ctypes import CDLL, c_bool, c_int
+import numpy as np
 import os
 import sys
 
@@ -42,7 +43,6 @@ else:
 def _dagmc_enabled():
     return c_bool.in_dll(_dll, "dagmc_enabled").value
 
-
 from .error import *
 from .core import *
 from .nuclide import *
@@ -53,3 +53,4 @@ from .filter import *
 from .tally import *
 from .settings import settings
 from .math import *
+from .plot import *

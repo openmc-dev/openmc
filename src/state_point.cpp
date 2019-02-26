@@ -123,7 +123,6 @@ openmc_statepoint_write(const char* filename, bool* write_source)
           write_dataset(deriv_group, "independent variable", "density");
         } else if (deriv.variable == DIFF_NUCLIDE_DENSITY) {
           write_dataset(deriv_group, "independent variable", "nuclide_density");
-          //TODO: off-by-one
           write_dataset(deriv_group, "nuclide",
             data::nuclides[deriv.diff_nuclide]->name_);
         } else if (deriv.variable == DIFF_TEMPERATURE) {

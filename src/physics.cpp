@@ -670,7 +670,6 @@ void scatter(Particle* p, int i_nuclide)
   p->event = EVENT_SCATTER;
 
   // Sample new outgoing angle for isotropic-in-lab scattering
-  // TODO: off-by-one
   const auto& mat {model::materials[p->material]};
   if (!mat->p0_.empty()) {
     int i_nuc_mat = mat->mat_nuclide_index_[i_nuclide];

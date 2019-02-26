@@ -168,11 +168,11 @@ int RegularMesh::get_bin_from_indices(const int* ijk) const
 {
   switch (n_dimension_) {
     case 1:
-      return ijk[0];
+      return ijk[0] - 1;
     case 2:
-      return (ijk[1] - 1)*shape_[0] + ijk[0];
+      return (ijk[1] - 1)*shape_[0] + ijk[0] - 1;
     case 3:
-      return ((ijk[2] - 1)*shape_[1] + (ijk[1] - 1))*shape_[0] + ijk[0];
+      return ((ijk[2] - 1)*shape_[1] + (ijk[1] - 1))*shape_[0] + ijk[0] - 1;
     default:
       throw std::runtime_error{"Invalid number of mesh dimensions"};
   }
@@ -193,14 +193,14 @@ void RegularMesh::get_indices(Position r, int* ijk, bool* in_mesh) const
 void RegularMesh::get_indices_from_bin(int bin, int* ijk) const
 {
   if (n_dimension_ == 1) {
-    ijk[0] = bin;
+    ijk[0] = bin + 1;
   } else if (n_dimension_ == 2) {
-    ijk[0] = (bin - 1) % shape_[0] + 1;
-    ijk[1] = (bin - 1) / shape_[0] + 1;
+    ijk[0] = bin % shape_[0] + 1;
+    ijk[1] = bin / shape_[0] + 1;
   } else if (n_dimension_ == 3) {
-    ijk[0] = (bin - 1) % shape_[0] + 1;
-    ijk[1] = ((bin - 1) % (shape_[0] * shape_[1])) / shape_[0] + 1;
-    ijk[2] = (bin - 1) / (shape_[0] * shape_[1]) + 1;
+    ijk[0] = bin % shape_[0] + 1;
+    ijk[1] = (bin % (shape_[0] * shape_[1])) / shape_[0] + 1;
+    ijk[2] = bin / (shape_[0] * shape_[1]) + 1;
   }
 }
 
@@ -586,7 +586,7 @@ void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins
           if (xt::all(ijk0 >= 1) && xt::all(ijk0 <= shape_)) {
             int i_surf = 4*i + 3;
             int i_mesh = get_bin_from_indices(ijk0.data());
-            int i_bin = 4*n*(i_mesh - 1) + i_surf;
+            int i_bin = 4*n*i_mesh + i_surf - 1;
 
             bins.push_back(i_bin);
           }
@@ -600,7 +600,7 @@ void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins
           if (xt::all(ijk0 >= 1) && xt::all(ijk0 <= shape_)) {
             int i_surf = 4*i + 2;
             int i_mesh = get_bin_from_indices(ijk0.data());
-            int i_bin = 4*n*(i_mesh - 1) + i_surf;
+            int i_bin = 4*n*i_mesh + i_surf - 1;
 
             bins.push_back(i_bin);
           }
@@ -612,7 +612,7 @@ void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins
           if (xt::all(ijk0 >= 1) && xt::all(ijk0 <= shape_) ){
             int i_surf = 4*i + 1;
             int i_mesh = get_bin_from_indices(ijk0.data());
-            int i_bin = 4*n*(i_mesh - 1) + i_surf;
+            int i_bin = 4*n*i_mesh + i_surf - 1;
 
             bins.push_back(i_bin);
           }
@@ -626,7 +626,7 @@ void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins
           if (xt::all(ijk0 >= 1) && xt::all(ijk0 <= shape_)) {
             int i_surf = 4*i + 4;
             int i_mesh = get_bin_from_indices(ijk0.data());
-            int i_bin = 4*n*(i_mesh - 1) + i_surf;
+            int i_bin = 4*n*i_mesh + i_surf - 1;
 
             bins.push_back(i_bin);
           }
@@ -670,8 +670,7 @@ xt::xarray<double> RegularMesh::count_sites(int64_t n, const Bank* bank,
 
   for (int64_t i = 0; i < n; ++i) {
     // determine scoring bin for entropy mesh
-    // TODO: off-by-one
-    int mesh_bin = get_bin({bank[i].xyz}) - 1;
+    int mesh_bin = get_bin({bank[i].xyz});
 
     // if outside mesh, skip particle
     if (mesh_bin < 0) {

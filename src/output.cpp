@@ -679,13 +679,12 @@ write_tallies()
       // prevents redundant output.
       int indent = 0;
       for (auto i = 0; i < tally.filters().size(); ++i) {
-        if ((filter_index-1) % tally.strides(i) == 0) {
+        if (filter_index % tally.strides(i) == 0) {
           auto i_filt = tally.filters(i);
           const auto& filt {*model::tally_filters[i_filt]};
           auto& match {simulation::filter_matches[i_filt]};
           tallies_out << std::string(indent+1, ' ')
-            // TODO: off-by-one
-            << filt.text_label(match.i_bin_+1) << "\n";
+            << filt.text_label(match.i_bin_) << "\n";
         }
         indent += 2;
       }
@@ -712,9 +711,8 @@ write_tallies()
           std::string score_name = score > 0 ? reaction_name(score)
             : score_names.at(score);
           double mean, stdev;
-          //TODO: off-by-one
           std::tie(mean, stdev) = mean_stdev(
-            &tally.results_(filter_index-1, score_index, 0), tally.n_realizations_);
+            &tally.results_(filter_index, score_index, 0), tally.n_realizations_);
           tallies_out << std::string(indent+1, ' ')  << std::left
             << std::setw(36) << score_name << " " << mean << " +/- "
             << t_value * stdev << "\n";

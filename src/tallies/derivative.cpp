@@ -656,7 +656,6 @@ void score_collision_derivative(const Particle* p)
       // Loop over the material's nuclides until we find the event nuclide.
       for (auto i_nuc : material.nuclide_) {
         const auto& nuc {*data::nuclides[i_nuc]};
-        //TODO: off-by-one
         if (i_nuc == p->event_nuclide && multipole_in_range(&nuc, p->last_E)) {
           // phi is proportional to Sigma_s
           // (1 / phi) * (d_phi / d_T) = (d_Sigma_s / d_T) / Sigma_s

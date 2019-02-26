@@ -608,8 +608,7 @@ double ufs_get_weight(const Particle* p)
   auto& m = model::meshes[settings::index_ufs_mesh];
 
   // Determine indices on ufs mesh for current location
-  // TODO: off by one
-  int mesh_bin = m->get_bin({p->coord[0].xyz}) - 1;
+  int mesh_bin = m->get_bin({p->coord[0].xyz});
   if (mesh_bin < 0) {
     p->write_restart();
     fatal_error("Source site outside UFS mesh!");

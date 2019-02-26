@@ -29,8 +29,7 @@ void
 DelayedGroupFilter::get_all_bins(const Particle* p, int estimator,
                                  FilterMatch& match) const
 {
-  //TODO: off-by-one
-  match.bins_.push_back(1);
+  match.bins_.push_back(0);
   match.weights_.push_back(1.0);
 }
 
@@ -44,8 +43,7 @@ DelayedGroupFilter::to_statepoint(hid_t filter_group) const
 std::string
 DelayedGroupFilter::text_label(int bin) const
 {
-  //TODO: off-by-one
-  return "Delayed Group " + std::to_string(groups_[bin-1]);
+  return "Delayed Group " + std::to_string(groups_[bin]);
 }
 
 } // namespace openmc

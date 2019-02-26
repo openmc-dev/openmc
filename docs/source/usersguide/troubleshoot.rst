@@ -11,26 +11,6 @@ Problems with Compilation
 If you are experiencing problems trying to compile OpenMC, first check if the
 error you are receiving is among the following options.
 
-undefined reference to \`_vtab$...
-**********************************
-
-If you see this message when trying to compile, the most likely cause is that
-you are using a compiler that does not support type-bound procedures from
-Fortran 2003. This affects any version of gfortran prior to 4.6. Downloading and
-installing the latest gfortran_ compiler should resolve this problem.
-
-gfortran: unrecognized option '-cpp'
-************************************
-
-You are probably using a version of the gfortran compiler that is too
-old. Download and install the latest version of gfortran_.
-
-f951: error: unrecognized command line option "-fbacktrace"
-***********************************************************
-
-You are probably using a version of the gfortran compiler that is too
-old. Download and install the latest version of gfortran_.
-
 -------------------------
 Problems with Simulations
 -------------------------
@@ -53,16 +33,16 @@ Now when you re-run your problem, it should report exactly where the program
 failed. If after reading the debug output, you are still unsure why the program
 failed, send an email to the OpenMC User's Group `mailing list`_.
 
-ERROR: No cross_sections.xml file was specified in settings.xml or in the CROSS_SECTIONS environment variable.
-**************************************************************************************************************
+ERROR: No cross_sections.xml file was specified in settings.xml or in the OPENMC_CROSS_SECTIONS environment variable.
+*********************************************************************************************************************
 
-OpenMC needs to know where to find cross section data for each
-nuclide. Information on what data is available and in what files is summarized
-in a cross_sections.xml file. You need to tell OpenMC where to find the
+OpenMC needs to know where to find cross section data for each nuclide.
+Information on what data is available and in what files is summarized in a
+cross_sections.xml file. You need to tell OpenMC where to find the
 cross_sections.xml file either with the :ref:`cross_sections` in settings.xml or
-with the :envvar:`CROSS_SECTIONS` environment variable. It is recommended to add
-a line in your ``.profile`` or ``.bash_profile`` setting the
-:envvar:`CROSS_SECTIONS` environment variable.
+with the :envvar:`OPENMC_CROSS_SECTIONS` environment variable. It is recommended
+to add a line in your ``.profile`` or ``.bash_profile`` setting the
+:envvar:`OPENMC_CROSS_SECTIONS` environment variable.
 
 Geometry Debugging
 ******************
@@ -121,5 +101,4 @@ using particle restart mode with the ``-s``, ``-particle``, or ``--particle``
 command-line options in conjunction with the particle restart files that are
 created when particles are lost with this error.
 
-.. _gfortran: http://gcc.gnu.org/wiki/GFortran
 .. _mailing list: https://groups.google.com/forum/?fromgroups=#!forum/openmc-users

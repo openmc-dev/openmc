@@ -25,9 +25,9 @@ namespace openmc {
 //==============================================================================
 
 // TODO: Convert to enum
-extern "C" int FILL_MATERIAL;
-extern "C" int FILL_UNIVERSE;
-extern "C" int FILL_LATTICE;
+constexpr int FILL_MATERIAL {1};
+constexpr int FILL_UNIVERSE {2};
+constexpr int FILL_LATTICE {3};
 
 // TODO: Convert to enum
 constexpr int32_t OP_LEFT_PAREN   {std::numeric_limits<int32_t>::max()};

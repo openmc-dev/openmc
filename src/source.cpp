@@ -327,22 +327,9 @@ Bank sample_external_source()
   return site;
 }
 
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
-extern "C" void free_memory_source()
+void free_memory_source()
 {
   model::external_sources.clear();
-}
-
-extern "C" double total_source_strength()
-{
-  double strength = 0.0;
-  for (const auto& s : model::external_sources) {
-    strength += s.strength();
-  }
-  return strength;
 }
 
 void fill_source_bank_fixedsource()

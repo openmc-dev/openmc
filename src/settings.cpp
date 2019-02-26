@@ -490,7 +490,7 @@ void read_settings_xml()
   }
 
   // Read meshes
-  read_meshes(&root);
+  read_meshes(root);
 
   // Shannon Entropy mesh
   if (check_for_node(root, "entropy_mesh")) {
@@ -782,32 +782,10 @@ void read_settings_xml()
   }
 }
 
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
-extern "C" {
-  const char* path_cross_sections_c() {
-    return settings::path_cross_sections.c_str();
-  }
-  const char* path_input_c() {
-    return settings::path_input.c_str();
-  }
-  const char* path_statepoint_c() {
-    return settings::path_statepoint.c_str();
-  }
-  const char* path_sourcepoint_c() {
-    return settings::path_sourcepoint.c_str();
-  }
-  const char* path_particle_restart_c() {
-    return settings::path_particle_restart.c_str();
-  }
-
-  void free_memory_settings() {
-    settings::statepoint_batch.clear();
-    settings::sourcepoint_batch.clear();
-    settings::res_scat_nuclides.clear();
-  }
+void free_memory_settings() {
+  settings::statepoint_batch.clear();
+  settings::sourcepoint_batch.clear();
+  settings::res_scat_nuclides.clear();
 }
 
 } // namespace openmc

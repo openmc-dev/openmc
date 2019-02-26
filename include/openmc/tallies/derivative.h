@@ -29,6 +29,9 @@ struct TallyDerivative {
 // Non-method functions
 //==============================================================================
 
+//! Read tally derivatives from a tallies.xml file
+void read_tally_derivatives(pugi::xml_node node);
+
 //! Scale the given score by its logarithmic derivative
 
 void

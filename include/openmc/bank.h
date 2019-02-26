@@ -42,6 +42,12 @@ extern std::vector<Bank> master_fission_bank;
 
 } // namespace simulation
 
+//==============================================================================
+// Non-member functions
+//==============================================================================
+
+void free_memory_bank();
+
 } // namespace openmc
 
 #endif // OPENMC_BANK_H

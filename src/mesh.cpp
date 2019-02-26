@@ -863,9 +863,9 @@ openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
 // Non-member functions
 //==============================================================================
 
-void read_meshes(pugi::xml_node* root)
+void read_meshes(pugi::xml_node root)
 {
-  for (auto node : root->children("mesh")) {
+  for (auto node : root.children("mesh")) {
     // Read mesh and add to vector
     model::meshes.emplace_back(new RegularMesh{node});
 
@@ -894,55 +894,12 @@ void meshes_to_hdf5(hid_t group)
   close_group(meshes_group);
 }
 
-//==============================================================================
-// Fortran compatibility
-//==============================================================================
-
-extern "C" {
-  int n_meshes() { return model::meshes.size(); }
-
-  RegularMesh* mesh_ptr(int i) { return model::meshes.at(i).get(); }
-
-  int32_t mesh_id(RegularMesh* m) { return m->id_; }
-
-  double mesh_volume_frac(RegularMesh* m) { return m->volume_frac_; }
-
-  int mesh_n_dimension(RegularMesh* m) { return m->n_dimension_; }
-
-  int mesh_dimension(RegularMesh* m, int i) { return m->shape_(i - 1); }
-
-  double mesh_lower_left(RegularMesh* m, int i) { return m->lower_left_(i - 1); }
-
-  double mesh_upper_right(RegularMesh* m, int i) { return m->upper_right_(i - 1); }
-
-  double mesh_width(RegularMesh* m, int i) { return m->width_(i - 1); }
-
-  int mesh_get_bin(RegularMesh* m, const double* xyz)
-  {
-    return m->get_bin({xyz});
-  }
-
-  int mesh_get_bin_from_indices(RegularMesh* m, const int* ijk)
-  {
-    return m->get_bin_from_indices(ijk);
-  }
-
-  void mesh_get_indices(RegularMesh* m, const double* xyz, int* ijk, bool* in_mesh)
-  {
-    m->get_indices({xyz}, ijk, in_mesh);
-  }
-
-  void mesh_get_indices_from_bin(RegularMesh* m, int bin, int* ijk)
-  {
-    m->get_indices_from_bin(bin, ijk);
-  }
-
-  void free_memory_mesh()
-  {
-    model::meshes.clear();
-    model::mesh_map.clear();
-  }
+void free_memory_mesh()
+{
+  model::meshes.clear();
+  model::mesh_map.clear();
 }
 
+extern "C" int n_meshes() { return model::meshes.size(); }
 
 } // namespace openmc

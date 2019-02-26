@@ -888,6 +888,12 @@ void check_data_version(hid_t file_id)
   }
 }
 
+extern "C" size_t
+nuclides_size()
+{
+  return data::nuclides.size();
+}
+
 //==============================================================================
 // C API
 //==============================================================================
@@ -956,41 +962,16 @@ openmc_nuclide_name(int index, const char** name)
   }
 }
 
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
-extern "C" void
-set_particle_energy_bounds(int particle, double E_min, double E_max)
-{
-  data::energy_min[particle] = E_min;
-  data::energy_max[particle] = E_max;
-}
-
-extern "C" int nuclides_size() { return data::nuclide_map.size(); }
-
-extern "C" bool multipole_in_range(const Nuclide* nuc, double E)
-{
-  return nuc->multipole_ && E >= nuc->multipole_->E_min_&&
-    E <= nuc->multipole_->E_max_;
-}
-
-extern "C" void nuclides_clear()
+void nuclides_clear()
 {
   data::nuclides.clear();
   data::nuclide_map.clear();
 }
 
-extern "C" NuclideMicroXS* micro_xs_ptr();
-extern "C" ElementMicroXS* micro_photon_xs_ptr();
-
-void set_micro_xs()
+bool multipole_in_range(const Nuclide* nuc, double E)
 {
-#pragma omp parallel
-  {
-    simulation::micro_xs = micro_xs_ptr();
-    simulation::micro_photon_xs = micro_photon_xs_ptr();
-  }
+  return nuc->multipole_ && E >= nuc->multipole_->E_min_&&
+    E <= nuc->multipole_->E_max_;
 }
 
 } // namespace openmc

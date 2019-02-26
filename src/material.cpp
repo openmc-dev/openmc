@@ -13,7 +13,9 @@
 #include "openmc/capi.h"
 #include "openmc/cross_sections.h"
 #include "openmc/container_util.h"
+#include "openmc/dagmc.h"
 #include "openmc/error.h"
+#include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/math_functions.h"
 #include "openmc/message_passing.h"
@@ -865,11 +867,34 @@ void Material::to_hdf5(hid_t group) const
 // Non-method functions
 //==============================================================================
 
-extern "C" void
-read_materials(pugi::xml_node* node)
+void read_materials_xml()
 {
+  write_message("Reading materials XML file...", 5);
+
+  pugi::xml_document doc;
+
+  bool using_dagmc_mats = false;
+#ifdef DAGMC
+  if (settings::dagmc) {
+    using_dagmc_mats = read_uwuw_materials(doc);
+  }
+#endif
+
+
+  if (!using_dagmc_mats) {
+    // Check if materials.xml exists
+    std::string filename = settings::path_input + "materials.xml";
+    if (!file_exists(filename)) {
+      fatal_error("Material XML file '" + filename + "' does not exist!");
+    }
+
+    // Parse materials.xml file and get root element
+    doc.load_file(filename.c_str());
+  }
+
   // Loop over XML material elements and populate the array.
-  for (pugi::xml_node material_node : node->children("material")) {
+  pugi::xml_node root = doc.document_element();
+  for (pugi::xml_node material_node : root.children("material")) {
     model::materials.push_back(new Material(material_node));
   }
   model::materials.shrink_to_fit();
@@ -886,6 +911,13 @@ read_materials(pugi::xml_node* node)
       fatal_error(err_msg);
     }
   }
+}
+
+void free_memory_material()
+{
+  for (Material *mat : model::materials) {delete mat;}
+  model::materials.clear();
+  model::material_map.clear();
 }
 
 //==============================================================================
@@ -1098,6 +1130,7 @@ openmc_material_set_volume(int32_t index, double volume)
 extern "C" int
 openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
 {
+  // TODO: off-by-one
   if (index_start) *index_start = model::materials.size() + 1;
   if (index_end) *index_end = model::materials.size() + n;
   for (int32_t i = 0; i < n; i++) {
@@ -1106,41 +1139,6 @@ openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
   return 0;
 }
 
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
-extern "C" {
-  size_t n_materials() { return model::materials.size(); }
-
-  int32_t material_id(int32_t i_mat) {return model::materials[i_mat - 1]->id_;}
-
-  int material_nuclide(int32_t i_mat, int idx)
-  {
-    return model::materials[i_mat - 1]->nuclide_[idx - 1] + 1;
-  }
-
-  int material_nuclide_size(int32_t i_mat)
-  {
-    return model::materials[i_mat - 1]->nuclide_.size();
-  }
-
-  double material_atom_density(int32_t i_mat, int idx)
-  {
-    return model::materials[i_mat - 1]->atom_density_(idx - 1);
-  }
-
-  double material_density_gpcc(int32_t i_mat)
-  {
-    return model::materials[i_mat - 1]->density_gpcc_;
-  }
-
-  void free_memory_material()
-  {
-    for (Material *mat : model::materials) {delete mat;}
-    model::materials.clear();
-    model::material_map.clear();
-  }
-}
+extern "C" size_t n_materials() { return model::materials.size(); }
 
 } // namespace openmc

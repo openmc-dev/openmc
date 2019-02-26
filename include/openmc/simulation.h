@@ -36,7 +36,7 @@ extern "C" bool need_depletion_rx; //!< need to calculate depletion rx?
 extern "C" int restart_batch;   //!< batch at which a restart job resumed
 extern "C" bool satisfy_triggers; //!< have tally triggers been satisfied?
 extern "C" int total_gen;        //!< total number of generations simulated
-extern "C" double total_weight;  //!< Total source weight in a batch
+extern double total_weight;  //!< Total source weight in a batch
 extern "C" int64_t work;         //!< number of particles per process
 
 extern std::vector<double> k_generation;
@@ -84,12 +84,11 @@ void finalize_generation();
 //! Determine overall generation number
 extern "C" int overall_generation();
 
-extern "C" void simulation_init_f();
-extern "C" void simulation_finalize_f();
-
 #ifdef OPENMC_MPI
 void broadcast_results();
 #endif
+
+void free_memory_simulation();
 
 } // namespace openmc
 

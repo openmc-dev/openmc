@@ -79,14 +79,14 @@ TallyDerivative::TallyDerivative(pugi::xml_node node)
 // Non-method functions
 //==============================================================================
 
-extern "C" void
-read_tally_derivatives(pugi::xml_node* node)
+void
+read_tally_derivatives(pugi::xml_node node)
 {
   // Populate the derivatives array.  This must be done in parallel because
   // the derivatives are threadprivate.
   #pragma omp parallel
   {
-    for (auto deriv_node : node->children("derivative"))
+    for (auto deriv_node : node.children("derivative"))
       model::tally_derivs.emplace_back(deriv_node);
   }
 
@@ -691,18 +691,6 @@ void score_collision_derivative(const Particle* p)
 void zero_flux_derivs()
 {
   for (auto& deriv : model::tally_derivs) deriv.flux_deriv = 0.;
-}
-
-//==============================================================================
-// Fortran interop
-//==============================================================================
-
-extern "C" int n_tally_derivs() {return model::tally_derivs.size();}
-
-extern "C" TallyDerivative*
-tally_deriv_c(int i)
-{
-  return &model::tally_derivs[i];
 }
 
 }// namespace openmc

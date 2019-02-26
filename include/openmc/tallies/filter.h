@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "openmc/hdf5_interface.h"
@@ -89,18 +90,19 @@ extern std::vector<FilterMatch> filter_matches;
 } // namespace simulation
 
 namespace model {
-
-extern "C" int32_t n_filters;
-extern std::vector<std::unique_ptr<Filter>> tally_filters;
-
-} // namespace model
+  extern "C" int32_t n_filters;
+  extern std::vector<std::unique_ptr<Filter>> tally_filters;
+  extern std::unordered_map<int, int> filter_map;
+}
 
 //==============================================================================
+// Non-member functions
+//==============================================================================
 
-// Filter-related Fortran functions that will be called from C++
-extern "C" int verify_filter(int32_t index);
-extern "C" Filter* filter_from_f(int32_t index);
-extern "C" void filter_update_n_bins(int32_t index);
+Filter* allocate_filter(const std::string& type);
+
+//! Make sure index corresponds to a valid filter
+int verify_filter(int32_t index);
 
 } // namespace openmc
 #endif // OPENMC_TALLIES_FILTER_H

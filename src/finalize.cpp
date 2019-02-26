@@ -1,21 +1,58 @@
 #include "openmc/finalize.h"
 
+#include "openmc/bank.h"
 #include "openmc/capi.h"
+#include "openmc/cmfd_solver.h"
 #include "openmc/constants.h"
+#include "openmc/cross_sections.h"
+#include "openmc/dagmc.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/geometry.h"
+#include "openmc/geometry_aux.h"
+#include "openmc/material.h"
+#include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
+#include "openmc/photon.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/source.h"
+#include "openmc/surface.h"
+#include "openmc/thermal.h"
 #include "openmc/timer.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/volume_calc.h"
+
+#include "xtensor/xview.hpp"
+
+namespace openmc {
+
+void free_memory()
+{
+  free_memory_geometry();
+  free_memory_surfaces();
+  free_memory_material();
+  free_memory_volume();
+  free_memory_simulation();
+  free_memory_photon();
+  free_memory_settings();
+  free_memory_thermal();
+  library_clear();
+  nuclides_clear();
+  free_memory_source();
+  free_memory_mesh();
+  free_memory_tally();
+  free_memory_bank();
+  free_memory_cmfd();
+#ifdef DAGMC
+  free_memory_dagmc();
+#endif
+}
+
+}
 
 using namespace openmc;
-
-// Functions defined in Fortran
-extern "C" void free_memory();
 
 int openmc_finalize()
 {
@@ -79,7 +116,6 @@ int openmc_finalize()
 
   data::energy_max = {INFTY, INFTY};
   data::energy_min = {0.0, 0.0};
-  n_tallies = 0;
   model::root_universe = -1;
   openmc_set_seed(DEFAULT_SEED);
 
@@ -96,21 +132,13 @@ int openmc_finalize()
 
 int openmc_reset()
 {
-  for (int i = 1; i <= n_tallies; ++i) {
-    openmc_tally_reset(i);
+  for (auto& t : model::tallies) {
+    t->reset();
   }
 
-  // Reset global tallies (can't really use global_tallies() right now because
-  // it doesn't have any information about whether the underlying buffer was
-  // allocated)
-  n_realizations = 0;
-  double* buffer = nullptr;
-  openmc_global_tallies(&buffer);
-  if (buffer) {
-    for (int i = 0; i < 3*N_GLOBAL_TALLIES; ++i) {
-      buffer[i] = 0.0;
-    }
-  }
+  // Reset global tallies
+  simulation::n_realizations = 0;
+  xt::view(simulation::global_tallies, xt::all()) = 0.0;
 
   simulation::k_col_abs = 0.0;
   simulation::k_col_tra = 0.0;

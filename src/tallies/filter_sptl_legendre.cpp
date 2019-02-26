@@ -107,7 +107,7 @@ check_sptl_legendre_filter(int32_t index)
   }
 
   // Get a pointer to the filter and downcast.
-  auto* filt_base = filter_from_f(index);
+  const auto& filt_base = model::tally_filters[index-1].get();
   auto* filt = dynamic_cast<SpatialLegendreFilter*>(filt_base);
 
   // Check the filter type.
@@ -161,7 +161,6 @@ openmc_spatial_legendre_filter_set_order(int32_t index, int order)
   // Update the filter.
   filt->order_ = order;
   filt->n_bins_ = order + 1;
-  filter_update_n_bins(index);
   return 0;
 }
 

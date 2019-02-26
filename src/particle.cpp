@@ -24,6 +24,7 @@
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/tally_scoring.h"
+#include "openmc/track_output.h"
 
 namespace openmc {
 
@@ -132,11 +133,6 @@ Particle::from_source(const Bank* src)
   last_E = E;
 }
 
-extern "C" void initialize_particle_track();
-extern "C" void write_particle_track(const Particle*);
-extern "C" void add_particle_track();
-extern "C" void finalize_particle_track(const Particle*);
-
 void
 Particle::transport()
 {
@@ -160,7 +156,7 @@ Particle::transport()
   }
 
   // Prepare to write out particle track.
-  if (write_track) initialize_particle_track();
+  if (write_track) add_particle_track();
 
   // Every particle starts with no accumulated flux derivative.
   if (!model::active_tallies.empty()) zero_flux_derivs();
@@ -194,7 +190,7 @@ Particle::transport()
     }
 
     // Write particle track.
-    if (write_track) write_particle_track(this);
+    if (write_track) write_particle_track(*this);
 
     if (settings::check_overlaps) check_cell_overlap(this);
 
@@ -396,8 +392,8 @@ Particle::transport()
 
   // Finish particle track output.
   if (write_track) {
-    write_particle_track(this);
-    finalize_particle_track(this);
+    write_particle_track(*this);
+    finalize_particle_track(*this);
   }
 }
 
@@ -706,22 +702,5 @@ Particle::write_restart() const
     file_close(file_id);
   } // #pragma omp critical
 }
-
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
-void reset_coord(LocalCoord* c) { c->reset(); }
-void particle_clear(Particle* p) { p->clear(); }
-void particle_initialize(Particle* p) { p->initialize(); }
-void particle_from_source(Particle* p, const Bank* src)
-{
-  p->from_source(src);
-}
-void particle_mark_as_lost(Particle* p, const char* message)
-{
-  p->mark_as_lost(message);
-}
-void particle_write_restart(Particle* p) { p->write_restart(); }
 
 } // namespace openmc

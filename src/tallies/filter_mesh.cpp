@@ -87,11 +87,10 @@ extern "C" int
 openmc_mesh_filter_get_mesh(int32_t index, int32_t* index_mesh)
 {
   // Make sure this is a valid index to an allocated filter.
-  int err = verify_filter(index);
-  if (err) return err;
+  if (int err = verify_filter(index)) return err;
 
   // Get a pointer to the filter and downcast.
-  auto* filt_base = filter_from_f(index);
+  const auto& filt_base = model::tally_filters[index-1].get();
   auto* filt = dynamic_cast<MeshFilter*>(filt_base);
 
   // Check the filter type.
@@ -109,11 +108,10 @@ extern "C" int
 openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh)
 {
   // Make sure this is a valid index to an allocated filter.
-  int err = verify_filter(index);
-  if (err) return err;
+  if (int err = verify_filter(index)) return err;
 
   // Get a pointer to the filter and downcast.
-  auto* filt_base = filter_from_f(index);
+  const auto& filt_base = model::tally_filters[index-1].get();
   auto* filt = dynamic_cast<MeshFilter*>(filt_base);
 
   // Check the filter type.
@@ -130,7 +128,6 @@ openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh)
 
   // Update the filter.
   filt->set_mesh(index_mesh);
-  filter_update_n_bins(index);
   return 0;
 }
 

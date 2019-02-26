@@ -3,12 +3,16 @@
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/file_utils.h"
 #include "openmc/message_passing.h"
+#include "openmc/mesh.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
+#include "openmc/particle.h"
 #include "openmc/reaction_product.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/source.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_cell.h"
@@ -18,6 +22,8 @@
 #include "openmc/tallies/filter_legendre.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/filter_meshsurface.h"
+#include "openmc/tallies/filter_particle.h"
+#include "openmc/tallies/filter_sph_harm.h"
 #include "openmc/tallies/filter_surface.h"
 #include "openmc/xml_interface.h"
 
@@ -25,8 +31,9 @@
 #include "xtensor/xbuilder.hpp" // for empty_like
 #include "xtensor/xview.hpp"
 
+#include <algorithm> // for max
 #include <array>
-#include <cstddef>
+#include <cstddef> // for size_t
 #include <sstream>
 #include <string>
 
@@ -38,13 +45,18 @@ namespace openmc {
 
 namespace model {
   std::vector<std::unique_ptr<Tally>> tallies;
-
   std::vector<int> active_tallies;
   std::vector<int> active_analog_tallies;
   std::vector<int> active_tracklength_tallies;
   std::vector<int> active_collision_tallies;
   std::vector<int> active_meshsurf_tallies;
   std::vector<int> active_surface_tallies;
+  std::unordered_map<int, int> tally_map;
+}
+
+namespace simulation {
+  xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> global_tallies;
+  int32_t n_realizations {0};
 }
 
 double global_tally_absorption;
@@ -211,6 +223,11 @@ score_str_to_int(std::string score_str)
 //==============================================================================
 // Tally object implementation
 //==============================================================================
+
+Tally::Tally()
+{
+  this->set_filters(nullptr, 0);
+}
 
 void
 Tally::init_from_xml(pugi::xml_node node)
@@ -434,7 +451,7 @@ Tally::set_nuclides(pugi::xml_node node)
 }
 
 void
-Tally::init_triggers(pugi::xml_node node, int i_tally)
+Tally::init_triggers(pugi::xml_node node)
 {
   for (auto trigger_node: node.children("trigger")) {
     // Read the trigger type.
@@ -479,19 +496,18 @@ Tally::init_triggers(pugi::xml_node node, int i_tally)
     }
 
     // Parse the trigger scores and populate the triggers_ vector.
-    const auto& tally {*model::tallies[i_tally]};
     for (auto score_str : trigger_scores) {
       if (score_str == "all") {
-        triggers_.reserve(triggers_.size() + tally.scores_.size());
-        for (auto i_score = 0; i_score < tally.scores_.size(); ++i_score) {
+        triggers_.reserve(triggers_.size() + this->scores_.size());
+        for (auto i_score = 0; i_score < this->scores_.size(); ++i_score) {
           triggers_.push_back({metric, threshold, i_score});
         }
       } else {
         int i_score = 0;
-        for (; i_score < tally.scores_.size(); ++i_score) {
-          if (reaction_name(tally.scores_[i_score]) == score_str) break;
+        for (; i_score < this->scores_.size(); ++i_score) {
+          if (reaction_name(this->scores_[i_score]) == score_str) break;
         }
-        if (i_score == tally.scores_.size()) {
+        if (i_score == this->scores_.size()) {
           std::stringstream msg;
           msg << "Could not find the score \"" << score_str << "\" in tally "
               << id_ << " but it was listed in a trigger on that tally";
@@ -503,49 +519,364 @@ Tally::init_triggers(pugi::xml_node node, int i_tally)
   }
 }
 
+void Tally::init_results()
+{
+  int n_scores = scores_.size() * nuclides_.size();
+  results_ = xt::empty<double>({n_filter_bins_, n_scores, 3});
+}
+
+void Tally::reset()
+{
+  n_realizations_ = 0;
+  // TODO: Change to zero when xtensor is updated
+  if (results_.size() != 1) {
+    xt::view(results_, xt::all()) = 0.0;
+  }
+}
+
+void Tally::accumulate()
+{
+  // Increment number of realizations
+  n_realizations_ += settings::reduce_tallies ? 1 : mpi::n_procs;
+
+  if (mpi::master || !settings::reduce_tallies) {
+    // Calculate total source strength for normalization
+    double total_source = 0.0;
+    if (settings::run_mode == RUN_MODE_FIXEDSOURCE) {
+      for (const auto& s : model::external_sources) {
+        total_source += s.strength();
+      }
+    } else {
+      total_source = 1.0;
+    }
+
+    // Accumulate each result
+    for (int i = 0; i < results_.shape()[0]; ++i) {
+      for (int j = 0; j < results_.shape()[1]; ++j) {
+        double val = results_(i, j, RESULT_VALUE) /
+          simulation::total_weight * total_source;
+        results_(i, j, RESULT_VALUE) = 0.0;
+        results_(i, j, RESULT_SUM) += val;
+        results_(i, j, RESULT_SUM_SQ) += val*val;
+      }
+    }
+  }
+}
+
 //==============================================================================
 // Non-member functions
 //==============================================================================
 
-adaptor_type<2> global_tallies()
+void read_tallies_xml()
 {
-  // Get pointer to global tallies
-  double* buffer;
-  openmc_global_tallies(&buffer);
+  // Check if tallies.xml exists. If not, just return since it is optional
+  std::string filename = settings::path_input + "tallies.xml";
+  if (!file_exists(filename)) return;
 
-  // Adapt into xtensor
-  std::array<size_t, 2> shape = {N_GLOBAL_TALLIES, 3};
-  std::size_t size {3*N_GLOBAL_TALLIES};
+  write_message("Reading tallies XML file...", 5);
 
-  return xt::adapt(buffer, size, xt::no_ownership(), shape);
-}
+  // Parse tallies.xml file
+  pugi::xml_document doc;
+  doc.load_file(filename.c_str());
+  pugi::xml_node root = doc.document_element();
 
-adaptor_type<3> tally_results(int idx)
-{
-  // Get pointer to tally results
-  double* results;
-  std::array<std::size_t, 3> shape;
-  // TODO: off-by-one
-  openmc_tally_results(idx+1, &results, shape.data());
+  // Check for <assume_separate> setting
+  if (check_for_node(root, "assume_separate")) {
+    settings::assume_separate = get_node_value_bool(root, "assume_separate");
+  }
 
-  // Adapt array into xtensor with no ownership
-  std::size_t size {shape[0] * shape[1] * shape[2]};
-  return xt::adapt(results, size, xt::no_ownership(), shape);
+  // Check for user meshes and allocate
+  read_meshes(root);
+
+  // We only need the mesh info for plotting
+  if (settings::run_mode == RUN_MODE_PLOTTING) return;
+
+  // Read data for tally derivatives
+  read_tally_derivatives(root);
+
+  // ==========================================================================
+  // READ FILTER DATA
+
+  // Check for user filters and allocate
+  for (auto node_filt : root.children("filter")) {
+    // Copy filter id
+    if (!check_for_node(node_filt, "id")) {
+      fatal_error("Must specify id for filter in tally XML file.");
+    }
+    int filter_id = std::stoi(get_node_value(node_filt, "id"));
+
+    // Check to make sure 'id' hasn't been used
+    if (model::filter_map.find(filter_id) != model::filter_map.end()) {
+      fatal_error("Two or more filters use the same unique ID: "
+        + std::to_string(filter_id));
+    }
+
+    // Convert filter type to lower case
+    std::string s;
+    if (check_for_node(node_filt, "type")) {
+      s = get_node_value(node_filt, "type", true);
+    }
+
+    // Allocate according to the filter type
+    Filter* f = allocate_filter(s);
+
+    // Read filter data from XML
+    f->from_xml(node_filt);
+
+    // Set filter id
+    f->id_ = filter_id;
+    model::filter_map[filter_id] = model::tally_filters.size() - 1;
+
+    // Initialize filter
+    f->initialize();
+  }
+
+  // ==========================================================================
+  // READ TALLY DATA
+
+  // Check for user tallies
+  int n = 0;
+  for (auto node : root.children("tally")) ++n;
+  if (n == 0 && mpi::master) {
+    warning("No tallies present in tallies.xml file.");
+  }
+
+  for (auto node_tal : root.children("tally")) {
+    model::tallies.push_back(std::make_unique<Tally>());
+
+    auto& t {model::tallies.back()};
+    t->init_from_xml(node_tal);
+
+    // Copy and set tally id
+    if (!check_for_node(node_tal, "id")) {
+      fatal_error("Must specify id for tally in tally XML file.");
+    }
+    t->id_ = std::stoi(get_node_value(node_tal, "id"));
+    model::tally_map[t->id_] = model::tallies.size() - 1;
+
+    // Copy tally name
+    if (check_for_node(node_tal, "name")) {
+      t->name_ = get_node_value(node_tal, "name");
+    }
+
+    // =======================================================================
+    // READ DATA FOR FILTERS
+
+    // Check if user is using old XML format and throw an error if so
+    if (check_for_node(node_tal, "filter")) {
+      fatal_error("Tally filters must be specified independently of "
+        "tallies in a <filter> element. The <tally> element itself should "
+        "have a list of filters that apply, e.g., <filters>1 2</filters> "
+        "where 1 and 2 are the IDs of filters specified outside of "
+        "<tally>.");
+    }
+
+    // Determine number of filters
+    std::vector<int> filters;
+    if (check_for_node(node_tal, "filters")) {
+      filters = get_node_array<int>(node_tal, "filters");
+    }
+
+    // Allocate and store filter user ids
+    if (!filters.empty()) {
+      std::vector<int> filter_indices;
+      for (int filter_id : filters) {
+        // Determine if filter ID is valid
+        auto it = model::filter_map.find(filter_id);
+        if (it == model::filter_map.end()) {
+          fatal_error("Could not find filter " + std::to_string(filter_id)
+            + " specified on tally " + std::to_string(t->id_));
+        }
+
+        // Store the index of the filter
+        filter_indices.push_back(it->second);
+      }
+
+      // Set the filters
+      t->set_filters(filter_indices.data(), filter_indices.size());
+    }
+
+    // Check for the presence of certain filter types
+    bool has_energyout = t->energyout_filter_ >= 0;
+    int particle_filter_index = C_NONE;
+    for (int j = 0; j < t->filters().size(); ++j) {
+      int i_filter = t->filters(j);
+      const auto& f = model::tally_filters[i_filter].get();
+
+      auto pf = dynamic_cast<ParticleFilter*>(f);
+      if (pf) particle_filter_index = j;
+
+      // Change the tally estimator if a filter demands it
+      std::string filt_type = f->type();
+      if (filt_type == "energyout" || filt_type == "legendre") {
+        t->estimator_ = ESTIMATOR_ANALOG;
+      } else if (filt_type == "sphericalharmonics") {
+        auto sf = dynamic_cast<SphericalHarmonicsFilter*>(f);
+        if (sf->cosine_ == SphericalHarmonicsCosine::scatter) {
+          t->estimator_ = ESTIMATOR_ANALOG;
+        }
+      } else if (filt_type == "spatiallegendre" || filt_type == "zernike"
+        || filt_type == "zernikeradial") {
+        t->estimator_ = ESTIMATOR_COLLISION;
+      }
+    }
+
+    // =======================================================================
+    // READ DATA FOR NUCLIDES
+
+    t->set_nuclides(node_tal);
+
+    // =======================================================================
+    // READ DATA FOR SCORES
+
+    t->set_scores(node_tal);
+
+    if (!check_for_node(node_tal, "scores")) {
+      fatal_error("No scores specified on tally " + std::to_string(t->id_)
+        + ".");
+    }
+
+    // Check if tally is compatible with particle type
+    if (settings::photon_transport) {
+      if (particle_filter_index == C_NONE) {
+        for (int score : t->scores_) {
+          switch (score) {
+          case SCORE_INVERSE_VELOCITY:
+            fatal_error("Particle filter must be used with photon "
+              "transport on and inverse velocity score");
+            break;
+          case SCORE_FLUX:
+          case SCORE_TOTAL:
+          case SCORE_SCATTER:
+          case SCORE_NU_SCATTER:
+          case SCORE_ABSORPTION:
+          case SCORE_FISSION:
+          case SCORE_NU_FISSION:
+          case SCORE_CURRENT:
+          case SCORE_EVENTS:
+          case SCORE_DELAYED_NU_FISSION:
+          case SCORE_PROMPT_NU_FISSION:
+          case SCORE_DECAY_RATE:
+            warning("Particle filter is not used with photon transport"
+              " on and " + std::to_string(score) + " score.");
+            break;
+          }
+        }
+      } else {
+        const auto& f = model::tally_filters[particle_filter_index].get();
+        auto pf = dynamic_cast<ParticleFilter*>(f);
+        for (int p : pf->particles_) {
+          if (p == static_cast<int>(ParticleType::electron) ||
+              p == static_cast<int>(ParticleType::positron)) {
+            t->estimator_ = ESTIMATOR_ANALOG;
+          }
+        }
+      }
+    } else {
+      if (particle_filter_index >= 0) {
+        const auto& f = model::tally_filters[particle_filter_index].get();
+        auto pf = dynamic_cast<ParticleFilter*>(f);
+        for (int p : pf->particles_) {
+          if (p != static_cast<int>(ParticleType::neutron)) {
+            warning("Particle filter other than NEUTRON used with photon "
+              "transport turned off. All tallies for particle type " +
+              std::to_string(p) + " will have no scores");
+          }
+        }
+      }
+    }
+
+    // Check for a tally derivative.
+    if (check_for_node(node_tal, "derivative")) {
+      int deriv_id = std::stoi(get_node_value(node_tal, "derivative"));
+
+      // Find the derivative with the given id, and store it's index.
+      auto it = model::tally_deriv_map.find(deriv_id);
+      if (it == model::tally_deriv_map.end()) {
+        fatal_error("Could not find derivative " + std::to_string(deriv_id)
+          + " specified on tally " + std::to_string(t->id_));
+      }
+
+      t->deriv_ = it->second;
+
+      // Only analog or collision estimators are supported for differential
+      // tallies.
+      if (t->estimator_ == ESTIMATOR_TRACKLENGTH) {
+        t->estimator_ = ESTIMATOR_COLLISION;
+      }
+
+      const auto& deriv = model::tally_derivs[t->deriv_];
+      if (deriv.variable == DIFF_NUCLIDE_DENSITY
+        || deriv.variable == DIFF_TEMPERATURE) {
+        for (int i_nuc : t->nuclides_) {
+          if (has_energyout && i_nuc == -1) {
+            fatal_error("Error on tally " + std::to_string(t->id_)
+              + ": Cannot use a 'nuclide_density' or 'temperature' "
+              "derivative on a tally with an outgoing energy filter and "
+              "'total' nuclide rate. Instead, tally each nuclide in the "
+              "material individually.");
+            // Note that diff tallies with these characteristics would work
+            // correctly if no tally events occur in the perturbed material
+            // (e.g. pertrubing moderator but only tallying fuel), but this
+            // case would be hard to check for by only reading inputs.
+          }
+        }
+      }
+    }
+
+    // If settings.xml trigger is turned on, create tally triggers
+    if (settings::trigger_on) {
+      t->init_triggers(node_tal);
+    }
+
+    // =======================================================================
+    // SET TALLY ESTIMATOR
+
+    // Check if user specified estimator
+    if (check_for_node(node_tal, "estimator")) {
+      std::string est = get_node_value(node_tal, "estimator");
+      if (est == "analog") {
+        t->estimator_ = ESTIMATOR_ANALOG;
+      } else if (est == "tracklength" || est == "track-length"
+        || est == "pathlength" || est == "path-length") {
+        // If the estimator was set to an analog estimator, this means the
+        // tally needs post-collision information
+        if (t->estimator_ == ESTIMATOR_ANALOG) {
+          fatal_error("Cannot use track-length estimator for tally "
+            + std::to_string(t->id_));
+        }
+
+        // Set estimator to track-length estimator
+        t->estimator_ = ESTIMATOR_TRACKLENGTH;
+
+      } else if (est == "collision") {
+        // If the estimator was set to an analog estimator, this means the
+        // tally needs post-collision information
+        if (t->estimator_ == ESTIMATOR_ANALOG) {
+          fatal_error("Cannot use collision estimator for tally " +
+            std::to_string(t->id_));
+        }
+
+        // Set estimator to collision estimator
+        t->estimator_ = ESTIMATOR_COLLISION;
+
+      } else {
+        fatal_error("Invalid estimator '" + est + "' on tally " +
+          std::to_string(t->id_));
+      }
+    }
+  }
 }
 
 #ifdef OPENMC_MPI
 void reduce_tally_results()
 {
-  for (int i = 0; i < n_tallies; ++i) {
+  for (int i_tally : model::active_tallies) {
     // Skip any tallies that are not active
-    bool active;
-    // TODO: off-by-one
-    openmc_tally_get_active(i+1, &active);
-    if (!active) continue;
+    auto& tally {model::tallies[i_tally]};
 
     // Get view of accumulated tally values
-    auto results = tally_results(i);
-    auto values_view = xt::view(results, xt::all(), xt::all(), RESULT_VALUE);
+    auto values_view = xt::view(tally->results_, xt::all(), xt::all(), RESULT_VALUE);
 
     // Make copy of tally values in contiguous array
     xt::xtensor<double, 2> values = values_view;
@@ -564,7 +895,7 @@ void reduce_tally_results()
   }
 
   // Get view of global tally values
-  auto gt = global_tallies();
+  auto& gt = simulation::global_tallies;
   auto gt_values_view = xt::view(gt, xt::all(), RESULT_VALUE);
 
   // Make copy of values in contiguous array
@@ -591,8 +922,51 @@ void reduce_tally_results()
 }
 #endif
 
-extern "C" void
-setup_active_tallies_c()
+void
+accumulate_tallies()
+{
+#ifdef OPENMC_MPI
+  // Combine tally results onto master process
+  if (settings::reduce_tallies) reduce_tally_results();
+#endif
+
+  // Increase number of realizations (only used for global tallies)
+  simulation::n_realizations += settings::reduce_tallies ? 1 : mpi::n_procs;
+
+  // Accumulate on master only unless run is not reduced then do it on all
+  if (mpi::master || !settings::reduce_tallies) {
+    auto& gt = simulation::global_tallies;
+
+    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+      if (simulation::current_batch > settings::n_inactive) {
+        // Accumulate products of different estimators of k
+        double k_col = gt(K_COLLISION, RESULT_VALUE) / simulation::total_weight;
+        double k_abs = gt(K_ABSORPTION, RESULT_VALUE) / simulation::total_weight;
+        double k_tra = gt(K_TRACKLENGTH, RESULT_VALUE) / simulation::total_weight;
+        simulation::k_col_abs += k_col * k_abs;
+        simulation::k_col_tra += k_col * k_tra;
+        simulation::k_abs_tra += k_abs * k_tra;
+      }
+    }
+
+    // Accumulate results for global tallies
+    for (int i = 0; i < N_GLOBAL_TALLIES; ++i) {
+      double val = gt(i, RESULT_VALUE)/simulation::total_weight;
+      gt(i, RESULT_VALUE) = 0.0;
+      gt(i, RESULT_SUM) += val;
+      gt(i, RESULT_SUM_SQ) += val*val;
+    }
+  }
+
+  // Accumulate results for each tally
+  for (int i_tally : model::active_tallies) {
+    auto& tally {model::tallies[i_tally]};
+    tally->accumulate();
+  }
+}
+
+void
+setup_active_tallies()
 {
   model::active_tallies.clear();
   model::active_analog_tallies.clear();
@@ -628,12 +1002,15 @@ setup_active_tallies_c()
       case TALLY_SURFACE:
         model::active_surface_tallies.push_back(i);
       }
+
+      // Check if tally contains depletion reactions and if so, set flag
+      if (tally.depletion_rx_) simulation::need_depletion_rx = true;
     }
   }
 }
 
-extern "C" void
-free_memory_tally_c()
+void
+free_memory_tally()
 {
   #pragma omp parallel
   {
@@ -641,6 +1018,7 @@ free_memory_tally_c()
   }
 
   model::tally_filters.clear();
+  model::filter_map.clear();
 
   model::tallies.clear();
 
@@ -650,11 +1028,120 @@ free_memory_tally_c()
   model::active_collision_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
+
+  model::tally_map.clear();
 }
 
 //==============================================================================
 // C-API functions
 //==============================================================================
+
+extern "C" int
+openmc_extend_tallies(int32_t n, int32_t* index_start, int32_t* index_end)
+{
+  // TODO: off-by-one
+  if (index_start) *index_start = model::tallies.size() + 1;
+  if (index_end) *index_end = model::tallies.size() + n;
+  for (int i = 0; i < n; ++i) {
+    model::tallies.push_back(std::make_unique<Tally>());
+  }
+  return 0;
+}
+
+extern "C" int
+openmc_get_tally_index(int32_t id, int32_t* index)
+{
+  auto it = model::tally_map.find(id);
+  if (it == model::tally_map.end()) {
+    set_errmsg("No tally exists with ID=" + std::to_string(id) + ".");
+    return OPENMC_E_INVALID_ID;
+  }
+
+  // TODO: off-by-one
+  *index = it->second + 1;
+  return 0;
+}
+
+extern "C" void
+openmc_get_tally_next_id(int32_t* id)
+{
+  int32_t largest_tally_id = 0;
+  for (const auto& t : model::tallies) {
+    largest_tally_id = std::max(largest_tally_id, t->id_);
+  }
+  *id = largest_tally_id + 1;
+}
+
+extern "C" int
+openmc_tally_get_estimator(int32_t index, int* estimator)
+{
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  // TODO: off-by-one
+  *estimator = model::tallies[index-1]->estimator_;
+  return 0;
+}
+
+extern "C" int
+openmc_tally_set_estimator(int32_t index, const char* estimator)
+{
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  // TODO: off-by-one
+  auto& t {model::tallies[index-1]};
+
+  std::string est = estimator;
+  if (est == "analog") {
+    t->estimator_ = ESTIMATOR_ANALOG;
+  } else if (est == "collision") {
+    t->estimator_ = ESTIMATOR_COLLISION;
+  } else if (est == "tracklength") {
+    t->estimator_ = ESTIMATOR_TRACKLENGTH;
+  } else {
+    set_errmsg("Unknown tally estimator: " + est);
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+  return 0;
+}
+
+extern "C" int
+openmc_tally_get_id(int32_t index, int32_t* id)
+{
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  // TODO: off-by-one
+  *id = model::tallies[index-1]->id_;
+  return 0;
+}
+
+extern "C" int
+openmc_tally_set_id(int32_t index, int32_t id)
+{
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  if (model::tally_map.find(id) != model::tally_map.end()) {
+    set_errmsg("Two or more tallies use the same unique ID: "
+      + std::to_string(id));
+    return OPENMC_E_INVALID_ID;
+  }
+
+  // TODO: off-by-one
+  model::tallies[index-1]->id_ = id;
+  model::tally_map[id] = index - 1;
+  return 0;
+}
 
 extern "C" int
 openmc_tally_get_type(int32_t index, int32_t* type)
@@ -833,93 +1320,70 @@ openmc_tally_set_filters(int32_t index, int n, const int32_t* indices)
   return 0;
 }
 
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
-extern "C" {
-  Tally* tally_pointer(int indx) {return model::tallies[indx].get();}
-
-  void
-  extend_tallies_c(int n)
-  {
-    for (int i = 0; i < n; ++i)
-      model::tallies.push_back(std::make_unique<Tally>());
+//! Reset tally results and number of realizations
+extern "C" int
+openmc_tally_reset(int32_t index)
+{
+  // Make sure the index fits in the array bounds.
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  int active_tallies_data(int i)
-  {return model::active_tallies[i-1];}
-
-  int active_tallies_size()
-  {return model::active_tallies.size();}
-
-  int active_analog_tallies_size()
-  {return model::active_analog_tallies.size();}
-
-  int active_tracklength_tallies_size()
-  {return model::active_tracklength_tallies.size();}
-
-  int active_collision_tallies_size()
-  {return model::active_collision_tallies.size();}
-
-  int active_meshsurf_tallies_size()
-  {return model::active_meshsurf_tallies.size();}
-
-  int active_surface_tallies_size()
-  {return model::active_surface_tallies.size();}
-
-  void tally_init_from_xml(Tally* tally, pugi::xml_node* node)
-  {tally->init_from_xml(*node);}
-
-  int tally_get_id_c(Tally* tally) {return tally->id_;}
-
-  void tally_set_id_c(Tally* tally, int id) {tally->id_ = id;}
-
-  int tally_get_type_c(Tally* tally) {return tally->type_;}
-
-  void tally_set_type_c(Tally* tally, int type) {tally->type_ = type;}
-
-  int tally_get_estimator_c(Tally* tally) {return tally->estimator_;}
-
-  void tally_set_estimator_c(Tally* tally, int e) {tally->estimator_ = e;}
-
-  bool tally_get_depletion_rx_c(Tally* tally) {return tally->depletion_rx_;}
-
-  int tally_get_n_scores_c(Tally* tally) {return tally->scores_.size();}
-
-  int tally_get_score_c(Tally* tally, int i) {return tally->scores_[i];}
-
-  void tally_set_filters_c(Tally* tally, int n, int32_t filter_indices[])
-  {tally->set_filters(filter_indices, n);}
-
-  int tally_get_n_filters_c(Tally* tally) {return tally->filters().size();}
-
-  int32_t tally_get_filter_c(Tally* tally, int i) {return tally->filters(i);}
-
-  int32_t tally_get_n_filter_bins_c(Tally* tally)
-  {return tally->n_filter_bins();}
-
-  int tally_get_n_nuclide_bins_c(Tally* tally)
-  {return tally->nuclides_.size();}
-
-  int tally_get_nuclide_bins_c(Tally* tally, int i)
-  {return tally->nuclides_[i-1];}
-
-  int tally_get_energyout_filter_c(Tally* tally)
-  {return tally->energyout_filter_;}
-
-  void tally_set_scores(Tally* tally, pugi::xml_node* node)
-  {tally->set_scores(*node);}
-
-  void tally_set_nuclides(Tally* tally, pugi::xml_node* node)
-  {tally->set_nuclides(*node);}
-
-  void tally_init_triggers(Tally* tally, int i_tally, pugi::xml_node* node)
-  {tally->init_triggers(*node, i_tally);}
-
-  int tally_get_deriv_c(Tally* tally) {return tally->deriv_;}
-
-  int tally_set_deriv_c(Tally* tally, int deriv) {tally->deriv_ = deriv;}
+  // TODO: off-by-one
+  model::tallies[index-1]->reset();
+  return 0;
 }
+
+extern "C" int
+openmc_tally_get_n_realizations(int32_t index, int32_t* n)
+{
+  // Make sure the index fits in the array bounds.
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  // TODO: off-by-one
+  *n = model::tallies[index - 1]->n_realizations_;
+  return 0;
+}
+
+//! \brief Returns a pointer to a tally results array along with its shape. This
+//! allows a user to obtain in-memory tally results from Python directly.
+extern "C" int
+openmc_tally_results(int32_t index, double** results, size_t* shape)
+{
+  // Make sure the index fits in the array bounds.
+  if (index < 1 || index > model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  // TODO: off-by-one
+  const auto& t {model::tallies[index - 1]};
+  // TODO: Change to zero when xtensor is updated
+  if (t->results_.size() == 1) {
+    set_errmsg("Tally results have not been allocated yet.");
+    return OPENMC_E_ALLOCATE;
+  }
+
+  // Set pointer to results and copy shape
+  *results = t->results_.data();
+  auto s = t->results_.shape();
+  shape[0] = s[0];
+  shape[1] = s[1];
+  shape[2] = s[2];
+  return 0;
+}
+
+extern "C" int
+openmc_global_tallies(double** ptr)
+{
+  *ptr = simulation::global_tallies.data();
+  return 0;
+}
+
+extern "C" size_t tallies_size() { return model::tallies.size(); }
 
 } // namespace openmc

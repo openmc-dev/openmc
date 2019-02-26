@@ -10,6 +10,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
+#include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
 #include "openmc/settings.h"
@@ -88,8 +89,6 @@ Library::Library(pugi::xml_node node, const std::string& directory)
 //==============================================================================
 // Non-member functions
 //==============================================================================
-
-extern "C" void read_mg_cross_sections_header();
 
 void read_cross_sections_xml()
 {
@@ -418,30 +417,9 @@ void read_ce_cross_sections_xml()
   }
 }
 
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
-extern "C" void library_clear() {
+void library_clear() {
   data::libraries.clear();
   data::library_map.clear();
-}
-
-extern "C" const char* library_path(int type, const char* name) {
-  auto lib_type = static_cast<Library::Type>(type);
-  LibraryKey key {lib_type, name};
-  if (data::library_map.find(key) == data::library_map.end()) {
-    return nullptr;
-  } else {
-    auto idx = data::library_map[key];
-    return data::libraries[idx].path_.c_str();
-  }
-}
-
-extern "C" bool library_present(int type, const char* name) {
-  auto lib_type = static_cast<Library::Type>(type);
-  LibraryKey key {lib_type, name};
-  return data::library_map.find(key) != data::library_map.end();
 }
 
 } // namespace openmc

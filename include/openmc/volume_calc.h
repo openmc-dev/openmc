@@ -1,5 +1,5 @@
-#ifndef VOLUME_CALC_H
-#define VOLUME_CALC_H
+#ifndef OPENMC_VOLUME_CALC_H
+#define OPENMC_VOLUME_CALC_H
 
 #include "openmc/position.h"
 
@@ -66,9 +66,15 @@ private:
 //==============================================================================
 
 namespace model {
-extern std::vector<VolumeCalculation> volume_calcs;
+  extern std::vector<VolumeCalculation> volume_calcs;
 }
+
+//==============================================================================
+// Non-member functions
+//==============================================================================
+
+void free_memory_volume();
 
 } // namespace openmc
 
-#endif // VOLUME_CALC_H
+#endif // OPENMC_VOLUME_CALC_H

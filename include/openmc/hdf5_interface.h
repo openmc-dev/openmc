@@ -68,7 +68,7 @@ extern "C" {
   void close_dataset(hid_t dataset_id);
   void close_group(hid_t group_id);
   int dataset_ndims(hid_t dset);
-  size_t dataset_typesize(hid_t dset);
+  size_t dataset_typesize(hid_t obj_id, const char* name);
   hid_t file_open(const char* filename, char mode, bool parallel);
   void file_close(hid_t file_id);
   void get_name(hid_t obj_id, char* name);
@@ -239,7 +239,7 @@ inline void
 read_dataset(hid_t obj_id, const char* name, std::string& str, bool indep=false)
 {
   // Create buffer to read data into
-  auto n = attribute_typesize(obj_id, name);
+  auto n = dataset_typesize(obj_id, name);
   char buffer[n];
 
   // Read attribute and set string

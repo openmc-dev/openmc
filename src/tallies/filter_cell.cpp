@@ -74,10 +74,10 @@ CellFilter::text_label(int bin) const
 extern "C" int
 openmc_cell_filter_get_bins(int32_t index, int32_t** cells, int32_t* n)
 {
-  int err = verify_filter(index);
-  if (err) return err;
+  if (int err = verify_filter(index)) return err;
 
-  auto filt = filter_from_f(index);
+  // TODO: off-by-one
+  const auto& filt = model::tally_filters[index-1].get();
   if (filt->type() != "cell") {
     set_errmsg("Tried to get cells from a non-cell filter.");
     return OPENMC_E_INVALID_TYPE;

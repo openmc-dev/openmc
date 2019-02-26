@@ -464,4 +464,32 @@ distance_to_boundary(Particle* p, double* dist, int* surface_crossed,
   }
 }
 
+//==============================================================================
+// C API
+//==============================================================================
+
+extern "C" int
+openmc_find_cell(const double* xyz, int32_t* index, int32_t* instance)
+{
+  Particle p;
+  p.initialize();
+
+  std::copy(xyz, xyz + 3, p.coord[0].xyz);
+  p.coord[0].uvw[0] = 0.0;
+  p.coord[0].uvw[1] = 0.0;
+  p.coord[0].uvw[2] = 1.0;
+
+  if (!find_cell(&p, false)) {
+    std::stringstream msg;
+    msg << "Could not find cell at position (" << xyz[0] << ", " << xyz[1]
+      << ", " << xyz[2] << ").";
+    set_errmsg(msg);
+    return OPENMC_E_GEOMETRY;
+  }
+
+  *index = p.coord[p.n_coord-1].cell;
+  *instance = p.cell_instance;
+  return 0;
+}
+
 } // namespace openmc

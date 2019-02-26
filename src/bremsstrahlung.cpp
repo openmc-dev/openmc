@@ -115,13 +115,4 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
   }
 }
 
-//==============================================================================
-// Fortran compatibility
-//==============================================================================
-
-extern "C" void set_log_ttb_e_grid()
-{
-  data::ttb_e_grid = xt::log(data::ttb_e_grid);
-}
-
 } // namespace openmc

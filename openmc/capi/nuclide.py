@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from ctypes import c_int, c_char_p, POINTER
+from ctypes import c_int, c_char_p, POINTER, c_size_t
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -23,7 +23,7 @@ _dll.openmc_load_nuclide.errcheck = _error_handler
 _dll.openmc_nuclide_name.argtypes = [c_int, POINTER(c_char_p)]
 _dll.openmc_nuclide_name.restype = c_int
 _dll.openmc_nuclide_name.errcheck = _error_handler
-_dll.nuclides_size.restype = c_int
+_dll.nuclides_size.restype = c_size_t
 
 
 def load_nuclide(name):

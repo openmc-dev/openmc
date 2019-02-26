@@ -42,9 +42,8 @@ extern "C" {
   int openmc_filter_get_id(int32_t index, int32_t* id);
   int openmc_filter_get_type(int32_t index, char* type);
   int openmc_filter_set_id(int32_t index, int32_t id);
-  int openmc_filter_set_type(int32_t index, const char* type);
   int openmc_finalize();
-  int openmc_find_cell(double* xyz, int32_t* index, int32_t* instance);
+  int openmc_find_cell(const double* xyz, int32_t* index, int32_t* instance);
   int openmc_get_cell_index(int32_t id, int32_t* index);
   int openmc_get_filter_index(int32_t id, int32_t* index);
   void openmc_get_filter_next_id(int32_t* id);
@@ -82,6 +81,7 @@ extern "C" {
   int openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur, const double* width);
   int openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh);
   int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
+  int openmc_new_filter(const char* type, int32_t* index);
   int openmc_next_batch(int* status);
   int openmc_nuclide_name(int index, const char** name);
   int openmc_plot_geometry();
@@ -102,7 +102,7 @@ extern "C" {
   int openmc_statepoint_write(const char* filename, bool* write_source);
   int openmc_tally_allocate(int32_t index, const char* type);
   int openmc_tally_get_active(int32_t index, bool* active);
-  int openmc_tally_get_estimator(int32_t index, int32_t* estimator);
+  int openmc_tally_get_estimator(int32_t index, int* estimator);
   int openmc_tally_get_id(int32_t index, int32_t* id);
   int openmc_tally_get_filters(int32_t index, const int32_t** indices, int* n);
   int openmc_tally_get_n_realizations(int32_t index, int32_t* n);
@@ -164,15 +164,6 @@ extern "C" {
 
   // Global variables
   extern char openmc_err_msg[256];
-  extern int32_t n_realizations;
-  extern int32_t n_sab_tables;
-  extern int32_t n_tallies;
-
-  // Variables that are shared by necessity (can be removed from public header
-  // later)
-  extern bool openmc_master;
-  extern int openmc_n_procs;
-  extern int openmc_rank;
 
 #ifdef __cplusplus
 }

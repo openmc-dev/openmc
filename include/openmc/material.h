@@ -106,11 +106,13 @@ private:
 };
 
 //==============================================================================
-// Fortran compatibility
+// Non-member functions
 //==============================================================================
 
-extern "C" int* material_element(int i_material);
-extern "C" bool material_isotropic(int i_material, int i_nuc_mat);
+//! Read material data from materials.xml
+void read_materials_xml();
+
+void free_memory_material();
 
 } // namespace openmc
 #endif // OPENMC_MATERIAL_H

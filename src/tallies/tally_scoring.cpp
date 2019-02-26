@@ -146,7 +146,7 @@ void
 score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index)
 {
   // Save the original delayed group bin
-  const Tally& tally {*model::tallies[i_tally]};
+  auto& tally {*model::tallies[i_tally]};
   auto i_filt = tally.filters(tally.delayedgroup_filter_);
   auto& dg_match {simulation::filter_matches[i_filt]};
   auto i_bin = dg_match.i_bin_;
@@ -164,10 +164,9 @@ score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index)
   }
 
   // Update the tally result
-  auto results = tally_results(i_tally);
-  //TODO: off-by-one
+  // TODO: off-by-one
   #pragma omp atomic
-  results(filter_index-1, score_index, RESULT_VALUE) += score;
+  tally.results_(filter_index-1, score_index, RESULT_VALUE) += score;
 
   // Reset the original delayed group bin
   dg_match.bins_[i_bin] = original_bin;
@@ -181,8 +180,7 @@ score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index)
 void
 score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
 {
-  const Tally& tally {*model::tallies[i_tally]};
-  auto results = tally_results(i_tally);
+  auto& tally {*model::tallies[i_tally]};
   auto i_eout_filt = tally.filters()[tally.energyout_filter_];
   auto i_bin = simulation::filter_matches[i_eout_filt].i_bin_;
   auto bin_energyout = simulation::filter_matches[i_eout_filt].bins_[i_bin];
@@ -261,7 +259,7 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
 
       // Update tally results
       #pragma omp atomic
-      results(filter_index-1, i_score, RESULT_VALUE) += score;
+      tally.results_(filter_index-1, i_score, RESULT_VALUE) += score;
 
     } else if (score_bin == SCORE_DELAYED_NU_FISSION && g != 0) {
 
@@ -309,7 +307,7 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
 
         // Update tally results
         #pragma omp atomic
-        results(filter_index-1, i_score, RESULT_VALUE) += score*filter_weight;
+        tally.results_(filter_index-1, i_score, RESULT_VALUE) += score*filter_weight;
       }
     }
   }
@@ -328,8 +326,7 @@ void
 score_general_ce(const Particle* p, int i_tally, int start_index,
   int filter_index, int i_nuclide, double atom_density, double flux)
 {
-  const Tally& tally {*model::tallies[i_tally]};
-  auto results = tally_results(i_tally);
+  auto& tally {*model::tallies[i_tally]};
 
   // Get the pre-collision energy of the particle.
   auto E = p->last_E;
@@ -1222,7 +1219,7 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
 
     // Update tally results
     #pragma omp atomic
-    results(filter_index-1, score_index, RESULT_VALUE) += score;
+    tally.results_(filter_index-1, score_index, RESULT_VALUE) += score;
   }
 }
 
@@ -1235,8 +1232,7 @@ void
 score_general_mg(const Particle* p, int i_tally, int start_index,
   int filter_index, int i_nuclide, double atom_density, double flux)
 {
-  const Tally& tally {*model::tallies[i_tally]};
-  auto results = tally_results(i_tally);
+  auto& tally {*model::tallies[i_tally]};
 
   //TODO: off-by-one throughout on p->material
 
@@ -1930,7 +1926,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
 
     // Update tally results
     #pragma omp atomic
-    results(filter_index-1, score_index, RESULT_VALUE) += score;
+    tally.results_(filter_index-1, score_index, RESULT_VALUE) += score;
   }
 }
 
@@ -2223,8 +2219,7 @@ score_surface_tally(const Particle* p, const std::vector<int>& tallies)
   double flux = p->wgt;
 
   for (auto i_tally : tallies) {
-    const Tally& tally {*model::tallies[i_tally]};
-    auto results = tally_results(i_tally);
+    auto& tally {*model::tallies[i_tally]};
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2246,7 +2241,7 @@ score_surface_tally(const Particle* p, const std::vector<int>& tallies)
            ++score_index) {
         //TODO: off-by-one
         #pragma omp atomic
-        results(filter_index-1, score_index, RESULT_VALUE) += score;
+        tally.results_(filter_index-1, score_index, RESULT_VALUE) += score;
       }
     }
 

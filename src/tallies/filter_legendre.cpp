@@ -21,8 +21,7 @@ LegendreFilter::get_all_bins(const Particle* p, int estimator,
   double wgt[n_bins_];
   calc_pn_c(order_, p->mu, wgt);
   for (int i = 0; i < n_bins_; i++) {
-    //TODO: off-by-one
-    match.bins_.push_back(i + 1);
+    match.bins_.push_back(i);
     match.weights_.push_back(wgt[i]);
   }
 }
@@ -37,8 +36,7 @@ LegendreFilter::to_statepoint(hid_t filter_group) const
 std::string
 LegendreFilter::text_label(int bin) const
 {
-  //TODO: off-by-one
-  return "Legendre expansion, P" + std::to_string(bin - 1);
+  return "Legendre expansion, P" + std::to_string(bin);
 }
 
 //==============================================================================

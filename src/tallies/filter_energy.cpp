@@ -43,11 +43,9 @@ const
 {
   if (p->g != F90_NONE && matches_transport_groups_) {
     if (estimator == ESTIMATOR_TRACKLENGTH) {
-      //TODO: off-by-one
-      match.bins_.push_back(data::num_energy_groups - p->g + 1);
+      match.bins_.push_back(data::num_energy_groups - p->g);
     } else {
-      //TODO: off-by-one
-      match.bins_.push_back(data::num_energy_groups - p->last_g + 1);
+      match.bins_.push_back(data::num_energy_groups - p->last_g);
     }
     match.weights_.push_back(1.0);
 
@@ -57,8 +55,7 @@ const
 
     // Bin the energy.
     if (E >= bins_.front() && E <= bins_.back()) {
-      //TODO: off-by-one
-      auto bin = lower_bound_index(bins_.begin(), bins_.end(), E) + 1;
+      auto bin = lower_bound_index(bins_.begin(), bins_.end(), E);
       match.bins_.push_back(bin);
       match.weights_.push_back(1.0);
     }
@@ -76,8 +73,7 @@ std::string
 EnergyFilter::text_label(int bin) const
 {
   std::stringstream out;
-  //TODO: off-by-one
-  out << "Incoming Energy [" << bins_[bin-1] << ", " << bins_[bin] << ")";
+  out << "Incoming Energy [" << bins_[bin] << ", " << bins_[bin+1] << ")";
   return out.str();
 }
 
@@ -90,13 +86,12 @@ EnergyoutFilter::get_all_bins(const Particle* p, int estimator,
                               FilterMatch& match) const
 {
   if (p->g != F90_NONE && matches_transport_groups_) {
-    match.bins_.push_back(data::num_energy_groups - p->g + 1);
+    match.bins_.push_back(data::num_energy_groups - p->g);
     match.weights_.push_back(1.0);
 
   } else {
     if (p->E >= bins_.front() && p->E <= bins_.back()) {
-      //TODO: off-by-one
-      auto bin = lower_bound_index(bins_.begin(), bins_.end(), p->E) + 1;
+      auto bin = lower_bound_index(bins_.begin(), bins_.end(), p->E);
       match.bins_.push_back(bin);
       match.weights_.push_back(1.0);
     }
@@ -107,8 +102,7 @@ std::string
 EnergyoutFilter::text_label(int bin) const
 {
   std::stringstream out;
-  //TODO: off-by-one
-  out << "Outgoing Energy [" << bins_[bin-1] << ", " << bins_[bin] << ")";
+  out << "Outgoing Energy [" << bins_[bin] << ", " << bins_[bin+1] << ")";
   return out.str();
 }
 

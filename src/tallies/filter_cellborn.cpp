@@ -10,8 +10,7 @@ CellbornFilter::get_all_bins(const Particle* p, int estimator,
 {
   auto search = map_.find(p->cell_born);
   if (search != map_.end()) {
-    //TODO: off-by-one
-    match.bins_.push_back(search->second + 1);
+    match.bins_.push_back(search->second);
     match.weights_.push_back(1.0);
   }
 }
@@ -19,8 +18,7 @@ CellbornFilter::get_all_bins(const Particle* p, int estimator,
 std::string
 CellbornFilter::text_label(int bin) const
 {
-  //TODO: off-by-one
-  return "Birth Cell " + std::to_string(model::cells[cells_[bin-1]]->id_);
+  return "Birth Cell " + std::to_string(model::cells[cells_[bin]]->id_);
 }
 
 } // namespace openmc

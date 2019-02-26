@@ -176,7 +176,7 @@ private:
 //! Checks for the right version of nuclear data within HDF5 files
 void check_data_version(hid_t file_id);
 
-extern "C" bool multipole_in_range(const Nuclide* nuc, double E);
+bool multipole_in_range(const Nuclide* nuc, double E);
 
 //==============================================================================
 // Global variables
@@ -198,18 +198,16 @@ namespace simulation {
 
 // Cross section caches
 extern NuclideMicroXS* micro_xs;
-extern "C" MaterialMacroXS material_xs;
+extern MaterialMacroXS material_xs;
 #pragma omp threadprivate(micro_xs, material_xs)
 
 } // namespace simulation
 
 //==============================================================================
-// Fortran compatibility
+// Non-member functions
 //==============================================================================
 
-extern "C" void set_micro_xs();
-extern "C" void nuclide_calculate_urr_xs(bool use_mp, int i_nuclide,
-                                         int i_temp, double E);
+void nuclides_clear();
 
 } // namespace openmc
 

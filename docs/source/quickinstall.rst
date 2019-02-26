@@ -91,15 +91,10 @@ installed directly from the package manager.
 
 .. code-block:: sh
 
-    sudo apt install gfortran g++ cmake libhdf5-dev
+    sudo apt install g++ cmake libhdf5-dev
 
 After the packages have been installed, follow the instructions below for
 building and installing OpenMC from source.
-
-.. note:: Before Ubuntu 15.04, the HDF5 package included in the Ubuntu Package
-          archive was not built with support for the Fortran 2003 HDF5
-          interface, which is needed by OpenMC. If you are using Ubuntu 14.10 or
-          before you will need to build HDF5 from source.
 
 -------------------------------------------
 Installing from Source on Linux or Mac OS X

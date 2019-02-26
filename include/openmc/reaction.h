@@ -46,28 +46,6 @@ public:
 
 std::string reaction_name(int mt);
 
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
-extern "C" {
-  int reaction_mt(Reaction* rx);
-  double reaction_q_value(Reaction* rx);
-  bool reaction_scatter_in_cm(Reaction* rx);
-  bool reaction_redundant(Reaction* rx);
-  double reaction_product_decay_rate(Reaction* rx, int product);
-  int reaction_product_emission_mode(Reaction* rx, int product);
-  int reaction_product_particle(Reaction* rx, int product);
-  void reaction_product_sample(Reaction* rx, int product, double E_in,
-                               double* E_out, double* mu);
-  int reaction_products_size(Reaction* rx);
-  double reaction_product_yield(Reaction* rx, int product, double E);
-  double reaction_sample_elastic_mu(Reaction* rx, double E);
-  double reaction_xs(Reaction* xs, int temperature, int energy);
-  int reaction_xs_size(Reaction* xs, int temperature);
-  int reaction_xs_threshold(Reaction* xs, int temperature);
-}
-
 } // namespace openmc
 
 #endif // OPENMC_REACTION_H

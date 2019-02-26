@@ -19,8 +19,8 @@ namespace data {
 
 extern std::vector<Mgxs> nuclides_MG;
 extern std::vector<Mgxs> macro_xs;
-extern "C" int num_energy_groups;
-extern "C" int num_delayed_groups;
+extern int num_energy_groups;
+extern int num_delayed_groups;
 extern std::vector<double> energy_bins;
 extern std::vector<double> energy_bin_avg;
 extern std::vector<double> rev_energy_bins;
@@ -41,7 +41,7 @@ void create_macro_xs();
 
 std::vector<std::vector<double>> get_mat_kTs();
 
-extern "C" void read_mg_cross_sections_header_c(hid_t file_id);
+void read_mg_cross_sections_header();
 
 //==============================================================================
 // Mgxs tracking/transport/tallying interface methods

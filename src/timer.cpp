@@ -55,22 +55,6 @@ double Timer::elapsed()
 }
 
 //==============================================================================
-// Fortran compatibility
-//==============================================================================
-
-extern "C" double time_active_elapsed() { return simulation::time_active.elapsed(); }
-extern "C" double time_bank_elapsed() { return simulation::time_bank.elapsed(); }
-extern "C" double time_bank_sample_elapsed() { return simulation::time_bank_sample.elapsed(); }
-extern "C" double time_bank_sendrecv_elapsed() { return simulation::time_bank_sendrecv.elapsed(); }
-extern "C" double time_finalize_elapsed() { return simulation::time_finalize.elapsed(); }
-extern "C" double time_inactive_elapsed() { return simulation::time_inactive.elapsed(); }
-extern "C" double time_initialize_elapsed() { return simulation::time_initialize.elapsed(); }
-extern "C" double time_read_xs_elapsed() { return simulation::time_read_xs.elapsed(); }
-extern "C" double time_tallies_elapsed() { return simulation::time_tallies.elapsed(); }
-extern "C" double time_total_elapsed() { return simulation::time_total.elapsed(); }
-extern "C" double time_transport_elapsed() { return simulation::time_transport.elapsed(); }
-
-//==============================================================================
 // Non-member functions
 //==============================================================================
 

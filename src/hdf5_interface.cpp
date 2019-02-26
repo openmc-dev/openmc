@@ -138,11 +138,13 @@ dataset_ndims(hid_t dset)
 
 
 size_t
-dataset_typesize(hid_t dset)
+dataset_typesize(hid_t obj_id, const char* name)
 {
+  hid_t dset = open_dataset(obj_id, name);
   hid_t filetype = H5Dget_type(dset);
   size_t n = H5Tget_size(filetype);
   H5Tclose(filetype);
+  close_dataset(dset);
   return n;
 }
 

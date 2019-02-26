@@ -5,14 +5,14 @@
 #include <iostream>
 #include <iomanip>
 
-#ifdef UNIX
+#if defined(__unix__) || defined(__unix) || (defined(__APPLE__) && defined(__MACH__))
 #include <unistd.h>
 #endif
 
 #define BAR_WIDTH 72
 
 bool is_terminal() {
-#ifdef UNIX
+#ifdef _POSIX_VERSION
   return isatty(STDOUT_FILENO) != 0;
 #else
   return false;

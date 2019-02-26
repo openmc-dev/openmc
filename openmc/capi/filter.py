@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 from ctypes import c_int, c_int32, c_double, c_char_p, POINTER, \
-    create_string_buffer
+    create_string_buffer, c_size_t
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -34,9 +34,6 @@ _dll.openmc_energy_filter_get_bins.errcheck = _error_handler
 _dll.openmc_energy_filter_set_bins.argtypes = [c_int32, c_int32, POINTER(c_double)]
 _dll.openmc_energy_filter_set_bins.restype = c_int
 _dll.openmc_energy_filter_set_bins.errcheck = _error_handler
-_dll.openmc_extend_filters.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int32)]
-_dll.openmc_extend_filters.restype = c_int
-_dll.openmc_extend_filters.errcheck = _error_handler
 _dll.openmc_filter_get_id.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_filter_get_id.restype = c_int
 _dll.openmc_filter_get_id.errcheck = _error_handler
@@ -46,9 +43,6 @@ _dll.openmc_filter_get_type.errcheck = _error_handler
 _dll.openmc_filter_set_id.argtypes = [c_int32, c_int32]
 _dll.openmc_filter_set_id.restype = c_int
 _dll.openmc_filter_set_id.errcheck = _error_handler
-_dll.openmc_filter_set_type.argtypes = [c_int32, c_char_p]
-_dll.openmc_filter_set_type.restype = c_int
-_dll.openmc_filter_set_type.errcheck = _error_handler
 _dll.openmc_get_filter_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_filter_index.restype = c_int
 _dll.openmc_get_filter_index.errcheck = _error_handler
@@ -77,6 +71,9 @@ _dll.openmc_meshsurface_filter_get_mesh.errcheck = _error_handler
 _dll.openmc_meshsurface_filter_set_mesh.argtypes = [c_int32, c_int32]
 _dll.openmc_meshsurface_filter_set_mesh.restype = c_int
 _dll.openmc_meshsurface_filter_set_mesh.errcheck = _error_handler
+_dll.openmc_new_filter.argtypes = [c_char_p, POINTER(c_int32)]
+_dll.openmc_new_filter.restype = c_int
+_dll.openmc_new_filter.errcheck = _error_handler
 _dll.openmc_spatial_legendre_filter_get_order.argtypes = [c_int32, POINTER(c_int)]
 _dll.openmc_spatial_legendre_filter_get_order.restype = c_int
 _dll.openmc_spatial_legendre_filter_get_order.errcheck = _error_handler
@@ -95,6 +92,7 @@ _dll.openmc_zernike_filter_get_order.errcheck = _error_handler
 _dll.openmc_zernike_filter_set_order.argtypes = [c_int32, c_int]
 _dll.openmc_zernike_filter_set_order.restype = c_int
 _dll.openmc_zernike_filter_set_order.errcheck = _error_handler
+_dll.tally_filters_size.restype = c_size_t
 
 class Filter(_FortranObjectWithID):
     __instances = WeakValueDictionary()
@@ -111,13 +109,10 @@ class Filter(_FortranObjectWithID):
                         raise AllocationError('A filter with ID={} has already '
                                               'been allocated.'.format(uid))
 
-                # Resize internal array
-                index = c_int32()
-                _dll.openmc_extend_filters(1, index, None)
-
                 # Set the filter type -- note that the filter_type attribute
                 # only exists on subclasses!
-                _dll.openmc_filter_set_type(index, cls.filter_type.encode())
+                index = c_int32()
+                _dll.openmc_new_filter(cls.filter_type.encode(), index)
                 index = index.value
             else:
                 index = mapping[uid]._index
@@ -413,7 +408,7 @@ class _FilterMapping(Mapping):
             yield _get_filter(i + 1).id
 
     def __len__(self):
-        return c_int32.in_dll(_dll, 'n_filters').value
+        return _dll.tally_filters_size()
 
     def __repr__(self):
         return repr(dict(self))

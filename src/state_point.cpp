@@ -169,11 +169,8 @@ openmc_statepoint_write(const char* filename, bool* write_source)
       write_attribute(tallies_group, "ids", tally_ids);
 
       // Write all tally information except results
-      //TODO: use these two lines when openmc_get_n_realizations isn't needed
-      //for (const auto& tally_ptr : model::tallies) {
-      //  const auto& tally {*tally_ptr};
-      for (auto i_tally = 0; i_tally < model::tallies.size(); ++i_tally) {
-        const auto& tally {*model::tallies[i_tally]};
+      for (const auto& tally_ptr : model::tallies) {
+        const auto& tally {*tally_ptr};
         hid_t tally_group = create_group(tallies_group,
           "tally " + std::to_string(tally.id_));
 
@@ -187,10 +184,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
           write_dataset(tally_group, "estimator", "collision");
         }
 
-        // TODO: get this directly from the tally object when it's moved to C++
-        int32_t n_realizations;
-        auto err = openmc_tally_get_n_realizations(i_tally+1, &n_realizations);
-        write_dataset(tally_group, "n_realizations", n_realizations);
+        write_dataset(tally_group, "n_realizations", tally.n_realizations_);
 
         // Write the ID of each filter attached to this tally
         write_dataset(tally_group, "n_filters", tally.filters().size());
@@ -231,8 +225,32 @@ openmc_statepoint_write(const char* filename, bool* write_source)
 
     }
 
+    if (settings::reduce_tallies) {
+      // Write global tallies
+      write_dataset(file_id, "global_tallies", simulation::global_tallies);
+
+      // Write tallies
+      if (model::active_tallies.size() > 0) {
+        // Indicate that tallies are on
+        write_attribute(file_id, "tallies_present", 1);
+
+        // Write all tally results
+        for (const auto& tally : model::tallies) {
+          // Write sum and sum_sq for each bin
+          std::string name = "tally " + std::to_string(tally->id_);
+          hid_t tally_group = open_group(tallies_group, name.c_str());
+          auto& results = tally->results_;
+          write_tally_results(tally_group, results.shape()[0],
+            results.shape()[1], results.data());
+          close_group(tally_group);
+        }
+      } else {
+        // Indicate tallies are off
+        write_attribute(file_id, "tallies_present", 0);
+      }
+    }
+
     close_group(tallies_group);
-    statepoint_write_f(file_id);
   }
 
   // Check for the no-tally-reduction method
@@ -243,7 +261,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
 
   } else if (mpi::master) {
     // Write number of global realizations
-    write_dataset(file_id, "n_realizations", n_realizations);
+    write_dataset(file_id, "n_realizations", simulation::n_realizations);
 
     // Write out the runtime metrics.
     using namespace simulation;
@@ -292,7 +310,7 @@ void restart_set_keff()
       simulation::k_sum[0] += simulation::k_generation[i];
       simulation::k_sum[1] += std::pow(simulation::k_generation[i], 2);
     }
-    int n = settings::gen_per_batch*n_realizations;
+    int n = settings::gen_per_batch*simulation::n_realizations;
     simulation::keff = simulation::k_sum[0] / n;
   } else {
     simulation::keff = simulation::k_generation.back();
@@ -375,7 +393,7 @@ void load_state_point()
   }
 
   // Read number of realizations for global tallies
-  read_dataset(file_id, "n_realizations", n_realizations);
+  read_dataset(file_id, "n_realizations", simulation::n_realizations);
 
   // Set k_sum, keff, and current_batch based on whether restart file is part
   // of active cycle or inactive cycle
@@ -395,8 +413,31 @@ void load_state_point()
 #else
   if (mpi::master) {
 #endif
-    // Read tally results
-    load_state_point_f(file_id);
+    // Read global tally data
+    read_dataset(file_id, "global_tallies", H5T_NATIVE_DOUBLE,
+      simulation::global_tallies.data(), false);
+
+    // Check if tally results are present
+    bool present;
+    read_attribute(file_id, "tallies_present", present);
+
+    // Read in sum and sum squared
+    if (present) {
+      hid_t tallies_group = open_group(file_id, "tallies");
+
+      for (auto& tally : model::tallies) {
+        // Read sum, sum_sq, and N for each bin
+        std::string name = "tally " + std::to_string(tally->id_);
+        hid_t tally_group = open_group(tallies_group, name.c_str());
+        auto& results = tally->results_;
+        read_tally_results(tally_group, results.shape()[0],
+          results.shape()[1], results.data());
+        read_dataset(tally_group, "n_realizations", tally->n_realizations_);
+        close_group(tally_group);
+      }
+
+      close_group(tallies_group);
+    }
   }
 
   // Read source if in eigenvalue mode
@@ -623,7 +664,7 @@ void write_tally_results_nr(hid_t file_id)
   hid_t tallies_group;
   if (mpi::master) {
     // Write number of realizations
-    write_dataset(file_id, "n_realizations", n_realizations);
+    write_dataset(file_id, "n_realizations", simulation::n_realizations);
 
     // Write number of global tallies
     write_dataset(file_id, "n_global_tallies", N_GLOBAL_TALLIES);
@@ -631,8 +672,8 @@ void write_tally_results_nr(hid_t file_id)
     tallies_group = open_group(file_id, "tallies");
   }
 
-  // Get pointer to global tallies
-  auto gt = global_tallies();
+  // Get global tallies
+  auto& gt = simulation::global_tallies;
 
 #ifdef OPENMC_MPI
   // Reduce global tallies
@@ -654,20 +695,16 @@ void write_tally_results_nr(hid_t file_id)
     write_dataset(file_id, "global_tallies", gt);
   }
 
-  for (int i = 0; i < n_tallies; ++i) {
+  for (const auto& t : model::tallies) {
     // Skip any tallies that are not active
-    bool active;
-    // TODO: off-by-one
-    openmc_tally_get_active(i+1, &active);
-    if (!active) continue;
+    if (!t->active_) continue;
 
     if (mpi::master && !object_exists(file_id, "tallies_present")) {
       write_attribute(file_id, "tallies_present", 1);
     }
 
     // Get view of accumulated tally values
-    auto results = tally_results(i);
-    auto values_view = xt::view(results, xt::all(), xt::all(),
+    auto values_view = xt::view(t->results_, xt::all(), xt::all(),
       xt::range(RESULT_SUM, RESULT_SUM_SQ + 1));
 
     // Make copy of tally values in contiguous array
@@ -675,10 +712,7 @@ void write_tally_results_nr(hid_t file_id)
 
     if (mpi::master) {
       // Open group for tally
-      int id;
-      // TODO: off-by-one
-      openmc_tally_get_id(i+1, &id);
-      std::string groupname {"tally " + std::to_string(id)};
+      std::string groupname {"tally " + std::to_string(t->id_)};
       hid_t tally_group = open_group(tallies_group, groupname.c_str());
 
       // The MPI_IN_PLACE specifier allows the master to copy values into
@@ -696,7 +730,7 @@ void write_tally_results_nr(hid_t file_id)
       }
 
       // Put in temporary tally result
-      xt::xtensor<double, 3> results_copy = xt::zeros_like(results);
+      xt::xtensor<double, 3> results_copy = xt::zeros_like(t->results_);
       auto copy_view = xt::view(results_copy, xt::all(), xt::all(),
         xt::range(RESULT_SUM, RESULT_SUM_SQ + 1));
       copy_view = values;

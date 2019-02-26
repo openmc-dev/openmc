@@ -108,7 +108,7 @@ def test_calc_zn():
     rho = 0.5
     phi = 0.5
 
-    # Reference solution from running the Fortran implementation
+    # Reference solution from running the C++ implementation
     ref_vals = np.array([
         1.00000000e+00, 2.39712769e-01, 4.38791281e-01,
         2.10367746e-01, -5.00000000e-01, 1.35075576e-01,
@@ -142,7 +142,7 @@ def test_calc_zn_rad():
     n = 10
     rho = 0.5
 
-    # Reference solution from running the Fortran implementation
+    # Reference solution from running the C++ implementation
     ref_vals = np.array([
         1.00000000e+00, -5.00000000e-01, -1.25000000e-01,
         4.37500000e-01, -2.89062500e-01,-8.98437500e-02])

@@ -10,6 +10,7 @@
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/particle.h"
+#include "openmc/photon.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/source.h"
@@ -20,19 +21,10 @@
 #include "openmc/tallies/trigger.h"
 
 #include <omp.h>
+#include "xtensor/xview.hpp"
 
 #include <algorithm>
 #include <string>
-
-namespace openmc {
-
-// data/functions from Fortran side
-extern "C" void accumulate_tallies();
-extern "C" void allocate_tally_results();
-extern "C" void setup_active_tallies();
-extern "C" void write_tallies();
-
-} // namespace openmc
 
 //==============================================================================
 // C API functions
@@ -77,16 +69,21 @@ int openmc_simulation_init()
   allocate_banks();
 
   // Allocate tally results arrays if they're not allocated yet
-  allocate_tally_results();
+  for (auto& t : model::tallies) {
+    t->init_results();
+  }
 
   // Set up material nuclide index mapping
   for (auto& mat : model::materials) {
     mat->init_nuclide_index();
   }
 
-  // Call Fortran initialization
-  simulation_init_f();
-  set_micro_xs();
+  // Create cross section caches
+  #pragma omp parallel
+  {
+    simulation::micro_xs = new NuclideMicroXS[data::nuclides.size()];
+    simulation::micro_photon_xs = new ElementMicroXS[data::elements.size()];
+  }
 
   // Reset global variables -- this is done before loading state point (as that
   // will potentially populate k_generation and entropy)
@@ -131,11 +128,17 @@ int openmc_simulation_finalize()
   simulation::time_active.stop();
   simulation::time_finalize.start();
 
-  // Deallocate Fortran variables, set tallies to inactive
+  // Clear material nuclide mapping
   for (auto& mat : model::materials) {
     mat->mat_nuclide_index_.clear();
   }
-  simulation_finalize_f();
+
+  // Clear cross section caches
+  #pragma omp parallel
+  {
+    delete[] simulation::micro_xs;
+    delete[] simulation::micro_photon_xs;
+  }
 
   // Increment total number of generations
   simulation::total_gen += simulation::current_batch*settings::gen_per_batch;
@@ -153,8 +156,8 @@ int openmc_simulation_finalize()
   }
 
   // Deactivate all tallies
-  for (int i = 1; i <= n_tallies; ++i) {
-    openmc_tally_set_active(i, false);
+  for (auto& t : model::tallies) {
+    t->active_ = false;
   }
 
   // Stop timers and show timing statistics
@@ -253,6 +256,7 @@ bool need_depletion_rx {false};
 int restart_batch;
 bool satisfy_triggers {false};
 int total_gen {0};
+double total_weight;
 int64_t work;
 
 std::vector<double> k_generation;
@@ -331,9 +335,8 @@ void initialize_batch()
   } else if (first_active) {
     simulation::time_inactive.stop();
     simulation::time_active.start();
-    for (int i = 1; i <= n_tallies; ++i) {
-      // TODO: change one-based index
-      openmc_tally_set_active(i, true);
+    for (auto& t : model::tallies) {
+      t->active_ = true;
     }
   }
 
@@ -350,9 +353,8 @@ void finalize_batch()
 
   // Reset global tally results
   if (simulation::current_batch <= settings::n_inactive) {
-    auto gt = global_tallies();
-    std::fill(gt.begin(), gt.end(), 0.0);
-    n_realizations = 0;
+    xt::view(simulation::global_tallies, xt::all()) = 0.0;
+    simulation::n_realizations = 0;
   }
 
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
@@ -405,13 +407,14 @@ void initialize_generation()
     if (settings::ufs_on) ufs_count_sites();
 
     // Store current value of tracklength k
-    simulation::keff_generation = global_tallies()(K_TRACKLENGTH, RESULT_VALUE);
+    simulation::keff_generation = simulation::global_tallies(
+      K_TRACKLENGTH, RESULT_VALUE);
   }
 }
 
 void finalize_generation()
 {
-  auto gt = global_tallies();
+  auto& gt = simulation::global_tallies;
 
   // Update global tallies with the omp private accumulation variables
 #pragma omp parallel
@@ -533,11 +536,11 @@ void calculate_work()
 #ifdef OPENMC_MPI
 void broadcast_results() {
   // Broadcast tally results so that each process has access to results
-  for (int i = 0; i < n_tallies; ++i) {
+  for (auto& t : model::tallies) {
     // Create a new datatype that consists of all values for a given filter
     // bin and then use that to broadcast. This is done to minimize the
     // chance of the 'count' argument of MPI_BCAST exceeding 2**31
-    auto results = tally_results(i);
+    auto& results = t->results_;
 
     auto shape = results.shape();
     int count_per_filter = shape[1] * shape[2];
@@ -549,7 +552,7 @@ void broadcast_results() {
   }
 
   // Also broadcast global tally results
-  auto gt = global_tallies();
+  auto& gt = simulation::global_tallies;
   MPI_Bcast(gt.data(), gt.size(), MPI_DOUBLE, 0, mpi::intracomm);
 
   // These guys are needed so that non-master processes can calculate the
@@ -564,20 +567,10 @@ void broadcast_results() {
 
 #endif
 
-//==============================================================================
-// Fortran compatibility
-//==============================================================================
-
-extern "C" double k_generation(int i) { return simulation::k_generation.at(i - 1); }
-extern "C" int k_generation_size() { return simulation::k_generation.size(); }
-extern "C" void k_generation_clear() { simulation::k_generation.clear(); }
-extern "C" void k_generation_reserve(int i) { simulation::k_generation.reserve(i); }
-extern "C" int64_t work_index(int rank) { return simulation::work_index[rank]; }
-
-// This function was moved here to get around a bug on macOS whereby an invalid
-// pointer is returned for the threadprivate filter_matches
-extern "C" FilterMatch* filter_match_pointer(int indx) {
-  return &simulation::filter_matches[indx];
+void free_memory_simulation()
+{
+  simulation::k_generation.clear();
+  simulation::entropy.clear();
 }
 
 } // namespace openmc

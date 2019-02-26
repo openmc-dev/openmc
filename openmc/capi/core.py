@@ -47,6 +47,7 @@ _init_linsolver_argtypes = [_array_1d_int, c_int, _array_1d_int, c_int, c_int,
                             c_double, _array_1d_int, _array_1d_int]
 _dll.openmc_initialize_linsolver.argtypes = _init_linsolver_argtypes
 _dll.openmc_initialize_linsolver.restype = None
+_dll.openmc_master.restype = c_bool
 _dll.openmc_next_batch.argtypes = [POINTER(c_int)]
 _dll.openmc_next_batch.restype = c_int
 _dll.openmc_next_batch.errcheck = _error_handler
@@ -251,7 +252,7 @@ def master():
         Whether is master processor or not
 
     """
-    return c_bool.in_dll(_dll, 'openmc_master').value
+    return _dll.openmc_master()
 
 
 def next_batch():

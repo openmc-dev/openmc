@@ -401,21 +401,7 @@ public:
 
 void read_surfaces(pugi::xml_node node);
 
-//==============================================================================
-// Fortran compatibility functions
-//==============================================================================
-
-extern "C" {
-  Surface* surface_pointer(int surf_ind);
-  int surface_id(Surface* surf);
-  int surface_bc(Surface* surf);
-  bool surface_sense(Surface* surf, double xyz[3], double uvw[3]);
-  void surface_reflect(Surface* surf, double xyz[3], double uvw[3]);
-  int surface_i_periodic(PeriodicSurface* surf);
-  bool surface_periodic(PeriodicSurface* surf, PeriodicSurface* other,
-                        double xyz[3], double uvw[3]);
-  void free_memory_surfaces_c();
-}
+void free_memory_surfaces();
 
 } // namespace openmc
 #endif // OPENMC_SURFACE_H

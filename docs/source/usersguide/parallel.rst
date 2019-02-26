@@ -22,16 +22,9 @@ Shared-Memory Parallelism (OpenMP)
 When using OpenMP, multiple threads will be launched and each is capable of
 simulating a particle independently of all other threads. The primary benefit of
 using OpenMP within a node is that it requires very little extra memory per
-thread. To use OpenMP, you need to pass the ``-Dopenmp=on`` flag when running
-``CMake``:
-
-.. code-block:: sh
-
-    cmake -Dopenmp=on /path/to/openmc/root
-    make
-
-The only requirement is that the Fortran compiler you use must support the
-OpenMP 3.1 or higher standard. Most recent compilers do support the use of
+thread. OpenMP can be turned on or off at configure-time; by default it is
+turned on. The only requirement is that the C++ compiler you use must support
+the OpenMP 3.1 or higher standard. Most recent compilers do support the use of
 OpenMP.
 
 To specify the number of threads at run-time, you can use the ``threads``

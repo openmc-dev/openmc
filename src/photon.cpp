@@ -176,7 +176,7 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
   read_dataset(rgroup, "J", profile_pdf_);
 
   // Get Compton profile momentum grid. By deafult, an xtensor has a size of 1.
-  // TODO: Update version of xtensor and change to 0
+  // TODO: Change to zero when xtensor is updated
   if (data::compton_profile_pz.size() == 1) {
     read_dataset(rgroup, "pz", data::compton_profile_pz);
   }
@@ -208,6 +208,7 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
     // Get energy grids used for bremsstrahlung DCS and for stopping powers
     xt::xtensor<double, 1> electron_energy;
     read_dataset(rgroup, "electron_energy", electron_energy);
+    // TODO: Change to zero when xtensor is updated
     if (data::ttb_k_grid.size() == 1) {
       read_dataset(rgroup, "photon_energy", data::ttb_k_grid);
     }
@@ -770,35 +771,7 @@ std::pair<double, double> klein_nishina(double alpha)
   return {alpha_out, mu};
 }
 
-//==============================================================================
-// Fortran compatibility
-//==============================================================================
-
-extern "C" void photon_from_hdf5(hid_t group)
-{
-  data::elements.emplace_back(group, data::elements.size());
-
-  // Determine if minimum/maximum energy for this element is greater/less than
-  // the previous
-  const auto& element {data::elements.back()};
-  if (element.energy_.size() >= 1) {
-    int photon = static_cast<int>(ParticleType::photon);
-    int n = element.energy_.size();
-    data::energy_min[photon] = std::max(data::energy_min[photon],
-      std::exp(element.energy_(1)));
-    data::energy_max[photon] = std::min(data::energy_max[photon],
-      std::exp(element.energy_(n - 1)));
-  }
-}
-
-extern "C" int elements_size() { return data::element_map.size(); }
-
-extern "C" void photon_calculate_xs(int i_element, double E)
-{
-  data::elements[i_element - 1].calculate_xs(E);
-}
-
-extern "C" void free_memory_photon_c()
+void free_memory_photon()
 {
   data::elements.clear();
   data::compton_profile_pz.resize({0});

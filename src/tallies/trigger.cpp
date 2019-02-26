@@ -29,14 +29,12 @@ namespace settings {
 std::pair<double, double>
 get_tally_uncertainty(int i_tally, int score_index, int filter_index)
 {
-  int n;
-  //TODO: off-by-one
-  int err = openmc_tally_get_n_realizations(i_tally+1, &n);
+  const auto& tally {model::tallies[i_tally]};
 
-  auto results = tally_results(i_tally);
-  auto sum = results(filter_index, score_index, RESULT_SUM);
-  auto sum_sq = results(filter_index, score_index, RESULT_SUM_SQ);
+  auto sum = tally->results_(filter_index, score_index, RESULT_SUM);
+  auto sum_sq = tally->results_(filter_index, score_index, RESULT_SUM_SQ);
 
+  int n = tally->n_realizations_;
   auto mean = sum / n;
   double std_dev = std::sqrt((sum_sq/n - mean*mean) / (n-1));
   double rel_err = (mean != 0.) ? std_dev / std::abs(mean) : 0.;
@@ -59,13 +57,10 @@ check_tally_triggers(double& ratio, int& tally_id, int& score)
     const Tally& t {*model::tallies[i_tally]};
 
     // Ignore tallies with less than two realizations.
-    int n_reals;
-    //TODO: off-by-one
-    int err = openmc_tally_get_n_realizations(i_tally+1, &n_reals);
-    if (n_reals < 2) continue;
+    if (t.n_realizations_ < 2) continue;
 
     for (const auto& trigger : t.triggers_) {
-      const auto& results = tally_results(i_tally);
+      const auto& results = t.results_;
       for (auto filter_index = 0; filter_index < results.shape()[0];
            ++filter_index) {
         for (auto score_index = 0; score_index < results.shape()[1];

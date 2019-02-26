@@ -34,8 +34,6 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False):
 
     # Use MPI wrappers when building in parallel
     if mpi:
-        os.environ['FC'] = 'mpifort' if which('mpifort') else 'mpif90'
-        os.environ['CC'] = 'mpicc'
         os.environ['CXX'] = 'mpicxx'
 
     # Tell CMake to prefer parallel HDF5 if specified
@@ -49,7 +47,7 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False):
 
     if dagmc:
         cmake_cmd.append('-Ddagmc=ON')
-        
+
     # Build and install
     cmake_cmd.append('..')
     print(' '.join(cmake_cmd))

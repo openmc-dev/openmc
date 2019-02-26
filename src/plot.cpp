@@ -1,22 +1,23 @@
+#include "openmc/plot.h"
+
 #include <fstream>
 #include <sstream>
 
-#include "openmc/plot.h"
-#include "openmc/constants.h"
-#include "openmc/settings.h"
-#include "openmc/error.h"
-#include "openmc/particle.h"
-#include "openmc/geometry.h"
 #include "openmc/cell.h"
-#include "openmc/material.h"
-#include "openmc/message_passing.h"
-#include "openmc/string_utils.h"
-#include "openmc/mesh.h"
-#include "openmc/output.h"
+#include "openmc/constants.h"
+#include "openmc/file_utils.h"
+#include "openmc/geometry.h"
+#include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
-#include "openmc/random_lcg.h"
+#include "openmc/material.h"
+#include "openmc/mesh.h"
+#include "openmc/message_passing.h"
 #include "openmc/output.h"
+#include "openmc/particle.h"
 #include "openmc/progress_bar.h"
+#include "openmc/random_lcg.h"
+#include "openmc/settings.h"
+#include "openmc/string_utils.h"
 
 namespace openmc {
 
@@ -65,10 +66,22 @@ int openmc_plot_geometry()
 }
 
 
-void
-read_plots(pugi::xml_node* plots_node)
+void read_plots_xml()
 {
-  for (auto node : plots_node->children("plot")) {
+  // Check if plots.xml exists
+  std::string filename = settings::path_input + "plots.xml";
+  if (!file_exists(filename)) {
+    fatal_error("Plots XML file '" + filename + "' does not exist!");
+  }
+
+  write_message("Reading plot XML file...", 5);
+
+  // Parse plots.xml file
+  pugi::xml_document doc;
+  doc.load_file(filename.c_str());
+
+  pugi::xml_node root = doc.document_element();
+  for (auto node : root.children("plot")) {
     Plot pl(node);
     model::plots.push_back(pl);
     model::plot_map[pl.id_] = model::plots.size() - 1;

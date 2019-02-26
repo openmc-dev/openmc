@@ -1018,7 +1018,7 @@ extern "C" int openmc_id_map(const CPlot& pl, int* data_out) {
 
   double dir[3] = {0.5, 0.5, 0.5};
 
-  //#pragma omp parallel
+#pragma omp parallel
 {
   Particle p;
   p.initialize();
@@ -1028,7 +1028,7 @@ extern "C" int openmc_id_map(const CPlot& pl, int* data_out) {
   int level = pl.level_;
   int j{};
 
-  //#pragma omp for
+#pragma omp for
   for (int y = 0; y < height; y++) {
     p.coord[0].xyz[out_i] = xyz[out_i] - out_pixel * y;
     p.n_coord = 1;

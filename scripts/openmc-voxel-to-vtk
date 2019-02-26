@@ -8,6 +8,7 @@ import numpy as np
 import h5py
 import vtk
 
+from vtk.util import numpy_support
 
 def main():
     # Process command line arguments
@@ -22,26 +23,25 @@ def main():
     dimension = fh.attrs['num_voxels']
     width = fh.attrs['voxel_width']
     lower_left = fh.attrs['lower_left']
-    voxel_data = fh['data'].value
 
     nx, ny, nz = dimension
     upper_right = lower_left + width*dimension
-    
+
     grid = vtk.vtkImageData()
     grid.SetDimensions(nx+1, ny+1, nz+1)
     grid.SetOrigin(*lower_left)
     grid.SetSpacing(*width)
-    
-    data = vtk.vtkDoubleArray()
+
+    # transpose data from OpenMC ordering (zyx) to VTK ordering (xyz)
+    # and flatten to 1-D array
+    h5data = fh['data'].value.T.flatten()
+    data = vtk.vtkIntArray()
     data.SetName("id")
-    data.SetNumberOfTuples(nx*ny*nz)
-    for x in range(nx):
-        sys.stdout.write(" {}%\r".format(int(x/nx*100)))
-        sys.stdout.flush()
-        for y in range(ny):
-            for z in range(nz):
-                i = z*nx*ny + y*nx + x
-                data.SetValue(i, voxel_data[x, y, z])
+    # pass h5data as a "hint" that no copy/allocation is necessary
+    data.SetArray(h5data, h5dara.size, True)
+    # set the data array
+    data.array = h5data
+    # add data to image grid
     grid.GetCellData().AddArray(data)
 
     writer = vtk.vtkXMLImageDataWriter()

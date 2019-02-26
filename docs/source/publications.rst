@@ -196,9 +196,14 @@ Miscellaneous
   Reaction Rate Kernel Density Estimators in OpenMC," *Trans. Am. Nucl. Soc.*,
   **109**, 683-686 (2013).
 
-------------------------------------
-Multi-group Cross Section Generation
-------------------------------------
+-----------------------------------
+Multigroup Cross Section Generation
+-----------------------------------
+
+- William Boyd, Benoit Forget, and Kord Smith, "`A single-step framework to
+  generate spatially self-shielded multi-group cross sections from Monte Carlo
+  transport simulations <https://doi.org/10.1016/j.anucene.2018.11.017>`_,"
+  *Ann. Nucl. Energy*, **125**, 261-271 (2019).
 
 - Changho Lee and Yeon Sang Jung, "Verification of the Cross Section Library
   Generated Using OpenMC and MC\ :sup:`2`-3 for PROTEUS," *Proc. PHYSOR*, Cancun,

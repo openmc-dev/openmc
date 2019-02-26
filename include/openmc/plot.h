@@ -80,18 +80,11 @@ enum class PlotColorBy {
 class CPlot {
 
 public:
-  int id_; //!< Plot ID
-  PlotType type_; //!< Plot type (Slice/Voxel)
-  PlotColorBy color_by_; //!< Plot coloring (cell/material)
   Position origin_; //!< Plot origin in geometry
   Position width_; //!< Plot width in geometry
   PlotBasis basis_; //!< Plot basis (XY/XZ/YZ)
   std::array<int, 3> pixels_; //!< Plot size in pixels
-  int meshlines_width_; //!< Width of lines added to the plot
   int level_; //!< Plot universe level
-  int index_meshlines_mesh_; //!< Index of the mesh to draw on the plot
-  RGBColor meshlines_color_; //!< Color of meshlines on the plot
-  RGBColor not_found_; //!< Plot background color
 };
 
 
@@ -119,6 +112,13 @@ private:
 
 // Members
 public:
+  int id_; //!< Plot ID
+  PlotType type_; //!< Plot type (Slice/Voxel)
+  PlotColorBy color_by_; //!< Plot coloring (cell/material)
+  int meshlines_width_; //!< Width of lines added to the plot
+  int index_meshlines_mesh_; //!< Index of the mesh to draw on the plot
+  RGBColor meshlines_color_; //!< Color of meshlines on the plot
+  RGBColor not_found_; //!< Plot background color
   std::vector<RGBColor> colors_; //!< Plot colors
   std::string path_plot_; //!< Plot output filename
 };

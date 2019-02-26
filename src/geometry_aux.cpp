@@ -60,36 +60,16 @@ void read_geometry_xml()
   model::root_universe = find_root_universe();
 }
 
-  struct  CellCountStorage {
-  private:
-    CellCountStorage() {}
-    CellCountStorage(CellCountStorage& c) {}
-    CellCountStorage(const CellCountStorage& c) {}
-
-    static CellCountStorage* instance_;
-
-    std::map<int32_t, std::map<int32_t, int>> counts;
-
-  public:
-
-    static CellCountStorage* instance() {
-      if (instance_ == nullptr)
-        instance_ = new CellCountStorage;
-
-      return instance_;
-    }
-
-    void clear() {
-      if (instance_ != nullptr) {
-        delete instance_;
-        instance_ = nullptr;
-      }
-    }
+void CellCountStorage::clear() {
+  if (instance_ != nullptr) {
+    delete instance_;
+    instance_ = nullptr;
   }
+}
 
-  void CellCountStorage::set_cell_count_for_univ(int32_t univ, int32_t cell, int count) {
+void CellCountStorage::set_cell_count_for_univ(int32_t univ, int32_t cell, int count) {
     counts[univ][cell] = count;
-  }
+}
 
   void CellCountStorage::increment_count_for_univ(int32_t univ, int32_t cell) {
     if (has_count(univ,cell)) {
@@ -99,72 +79,71 @@ void read_geometry_xml()
     }
   }
 
-  bool CellCountStorage::has_count(int32_t univ, int32_t cell) {
-    return counts.count(univ) && counts[univ].count(cell);
-  }
+bool CellCountStorage::has_count(int32_t univ, int32_t cell) {
+  return counts.count(univ) && counts[univ].count(cell);
+}
 
-  bool CellCountStorage::has_count(int32_t univ) {
-    return counts.count(univ);
-  }
+bool CellCountStorage::has_count(int32_t univ) {
+  return counts.count(univ);
+}
 
-  void CellCountStorage::absorb_b_into_a(int32_t a, int32_t b) {
-    std::map<int32_t, int> b_map = counts[b];
+void CellCountStorage::absorb_b_into_a(int32_t a, int32_t b) {
+  std::map<int32_t, int> b_map = counts[b];
 
-    for (auto it : b_map) {
-      if (has_count(a, it.first)) {
-        counts[a][it.first] += it.second;
-      } else {
-        counts[a][it.first] = it.second;
+  for (auto it : b_map) {
+    if (has_count(a, it.first)) {
+      counts[a][it.first] += it.second;
+    } else {
+      counts[a][it.first] = it.second;
       }
-    }
   }
+}
 
-  auto CellCountStorage::get_count(int32_t univ) {
+auto CellCountStorage::get_count(int32_t univ) {
     return counts[univ];
-  }
+}
 
-  void LevelCountStorage::clear() {
-    if (instance_ != nullptr) {
-      delete instance_;
-      instance_ = nullptr;
+void LevelCountStorage::clear() {
+  if (instance_ != nullptr) {
+    delete instance_;
+    instance_ = nullptr;
     }
+}
+
+void LevelCountStorage::set_cell_count_for_univ(int32_t univ, int count) {
+  counts[univ] = count;
+}
+
+void LevelCountStorage::increment_count_for_univ(int32_t univ) {
+  if (has_count(univ)) {
+    counts[univ] += 1;
+  } else {
+    counts[univ] = 1;
   }
+}
 
-  void LevelCountStorage::set_cell_count_for_univ(int32_t univ, int count) {
-    counts[univ] = count;
+bool LevelCountStorage::has_count(int32_t univ) {
+  return counts.count(univ);
+}
+
+void LevelCountStorage::absorb_b_into_a(int32_t a, int32_t b) {
+  if (has_count(a)) {
+    counts[a] += counts[b];
+  } else {
+    counts[a] = counts[b];
   }
+}
 
-  void LevelCountStorage::increment_count_for_univ(int32_t univ) {
-    if (has_count(univ)) {
-      counts[univ] += 1;
-    } else {
-      counts[univ] = 1;
-    }
-  }
+void LevelCountStorage::set_count(int32_t univ, int count) {
+  counts[univ] = count;
+}
 
-  bool LevelCountStorage::has_count(int32_t univ) {
-    return counts.count(univ);
-  }
+int LevelCountStorage::get_count(int32_t univ) {
+  return counts[univ];
+}
 
-  void LevelCountStorage::absorb_b_into_a(int32_t a, int32_t b) {
-
-    if (has_count(a)) {
-      counts[a] += counts[b];
-    } else {
-      counts[a] = counts[b];
-    }
-  }
-
-  void LevelCountStorage::set_count(int32_t univ, int count) {
-    counts[univ] = count;
-  }
-
-  int LevelCountStorage::get_count(int32_t univ) {
-    return counts[univ];
-  }
-
-  CellCountStorage* CellCountStorage::instance_ = nullptr;
-  LevelCountStorage* LevelCountStorage::instance_ = nullptr;
+CellCountStorage* CellCountStorage::instance_ = nullptr;
+LevelCountStorage* LevelCountStorage::instance_ = nullptr;
 
 //==============================================================================
 

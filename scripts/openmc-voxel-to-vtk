@@ -8,6 +8,9 @@ import numpy as np
 import h5py
 import vtk
 
+_min_version = (0,10,0)
+
+
 def main():
     # Process command line arguments
     parser = ArgumentParser()
@@ -18,6 +21,17 @@ def main():
 
     # Read data from voxel file
     fh = h5py.File(args.voxel_file, 'r')
+
+    # check version
+    version = tuple(fh.attrs['openmc_version'])
+    if version < _min_version:
+        old_version = ".".join(map(str,version))
+        min_version = ".".join(map(str,_min_version))
+        err_msg = "This voxel file was generated using OpenMC " \
+                  "version {}. Please re-generate using "\
+                  "version {} or higher.".format(old_version, min_version)
+        raise ValueError(err_msg)
+
     dimension = fh.attrs['num_voxels']
     width = fh.attrs['voxel_width']
     lower_left = fh.attrs['lower_left']
@@ -34,7 +48,6 @@ def main():
     # and flatten to 1-D array
     print("Reading and translating data...")
     h5data = fh['data'][...]
-    h5data = h5data.T.copy()
 
     data = vtk.vtkIntArray()
     data.SetName("id")

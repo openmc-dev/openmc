@@ -38,10 +38,8 @@ def main():
 
     data = vtk.vtkIntArray()
     data.SetName("id")
-    # pass h5data as a "hint" that no copy/allocation is necessary
+    # set the array using the h5data array
     data.SetArray(h5data, h5data.size, True)
-    # set the data array
-    data.array = h5data
     # add data to image grid
     grid.GetCellData().AddArray(data)
 

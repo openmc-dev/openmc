@@ -43,11 +43,7 @@ void split_by_ratio(Particle* p, double importance_ratio) {
   p->wgt_ /= float(num_splits);
   // note 1 -> n not 0->n
   for ( int i = 1 ; i < num_splits ; i++ ) {
-<<<<<<< HEAD
     p->create_secondary(p->u(),p->E_,p->type_);
-=======
-    p->create_secondary(p->coord[0].uvw,p->E,p->type,true);
->>>>>>> Updated and rebased
   }
 
   return;
@@ -140,13 +136,25 @@ void importance_split(Particle *p){
   if ( ((current_cell < 0 ) ? (0) : (current_cell)) == 
        ((last_cell < 0) ? (0) : (last_cell))) return;
 
-  double importance_ratio = variance_reduction::importances[current_cell]/
-                            variance_reduction::importances[last_cell];
+  // if we havent changed cell
+  //std::cout << p->id << " " << current_cell << " " << last_cell << std::endl;
 
-  if (importance_ratio > 1) 
+  if ( ((current_cell < 0 ) ? (0) : (current_cell)) == 
+       ((last_cell < 0) ? (0) : (last_cell))) return;
+
+  //std::cout << p->id << " " << current_cell << " " << last_cell << std::endl;
+
+  double importance_ratio = variance_reduction::importances[current_cell+1]/
+                            variance_reduction::importances[last_cell+1];
+  //std::cout << variance_reduction::importances[current_cell+1] << " ";
+  //std::cout << variance_reduction::importances[last_cell+1] << std::endl;
+  //std::cout << importance_ratio << std::endl;
+  if (importance_ratio > 1) {
     split_by_ratio(p, importance_ratio);
-  else
-    roulette(p, importance_ratio);  
+  } else if ( importance_ratio < 1 ) {
+    roulette(p, importance_ratio);
+  }  
+  return;
 }
 
 
@@ -164,7 +172,12 @@ void perform_vr(Particle* p)
     return;
   }
 
+<<<<<<< HEAD
   if (p->wgt_absorb_ == 0) return;
+=======
+  if (p->absorb_wgt == 0) return;
+
+>>>>>>> Added settings, and master vr function
 
   if (variance_reduction::importance_splitting) 
     importance_split(p);

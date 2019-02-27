@@ -884,9 +884,9 @@ void create_voxel(Plot pl)
   // Create dataset for voxel data -- note that the dimensions are reversed
   // since we want the order in the file to be z, y, x
   hsize_t dims[3];
-  dims[0] = pl.pixels_[0];
+  dims[0] = pl.pixels_[2];
   dims[1] = pl.pixels_[1];
-  dims[2] = pl.pixels_[2];
+  dims[2] = pl.pixels_[0];
   hid_t dspace, dset, memspace;
   voxel_init(file_id, &(dims[0]), &dspace, &dset, &memspace);
 
@@ -895,33 +895,33 @@ void create_voxel(Plot pl)
   ll[1] = ll[1] + vox[1] / 2.;
   ll[2] = ll[2] + vox[2] / 2.;
 
-  int data[pl.pixels_[1]][pl.pixels_[2]];
+  int data[pl.pixels_[1]][pl.pixels_[0]];
 
   ProgressBar pb;
 
   RGBColor rgb;
   int id;
-  for (int x = 0; x < pl.pixels_[0]; x++) {
-    pb.set_value(100.*(double)x/(double)(pl.pixels_[0]-1));
+  for (int z = 0; z < pl.pixels_[2]; z++) {
+    pb.set_value(100.*(double)z/(double)(pl.pixels_[2]-1));
     for (int y = 0; y < pl.pixels_[1]; y++) {
-      for (int z = 0; z < pl.pixels_[2]; z++) {
+      for (int x = 0; x < pl.pixels_[0]; x++) {
         // get voxel color
         position_rgb(p, pl, rgb, id);
         // write to plot data
-        data[y][z] = id;
-        // advance particle in z direction
-        p.coord[0].xyz[2] = p.coord[0].xyz[2] + vox[2];
+        data[y][x] = id;
+        // advance particle in x direction
+        p.coord[0].xyz[0] = p.coord[0].xyz[0] + vox[0];
       }
       // advance particle in y direction
       p.coord[0].xyz[1] = p.coord[0].xyz[1] + vox[1];
-      p.coord[0].xyz[2] = ll[2];
+      p.coord[0].xyz[0] = ll[0];
     }
-    // advance particle in x direction
-    p.coord[0].xyz[0] = p.coord[0].xyz[0] + vox[0];
+    // advance particle in z direction
+    p.coord[0].xyz[2] = p.coord[0].xyz[2] + vox[2];
     p.coord[0].xyz[1] = ll[1];
-    p.coord[0].xyz[2] = ll[2];
+    p.coord[0].xyz[0] = ll[0];
     // Write to HDF5 dataset
-    voxel_write_slice(x, dspace, dset, memspace, &(data[0]));
+    voxel_write_slice(z, dspace, dset, memspace, &(data[0]));
   }
 
   voxel_finalize(dspace, dset, memspace);

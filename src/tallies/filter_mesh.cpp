@@ -35,7 +35,7 @@ MeshFilter::get_all_bins(const Particle* p, int estimator, FilterMatch& match)
 const
 {
   if (estimator != ESTIMATOR_TRACKLENGTH) {
-    auto bin = model::meshes[mesh_]->get_bin(p->coord[0].xyz);
+    auto bin = model::meshes[mesh_]->get_bin(p->coord_[0].xyz);
     if (bin >= 0) {
       match.bins_.push_back(bin);
       match.weights_.push_back(1.0);

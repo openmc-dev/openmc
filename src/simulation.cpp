@@ -73,7 +73,7 @@ int openmc_simulation_init()
     t->init_results();
   }
 
-  // Set up material nuclide index mapping
+  // Set up.material_ nuclide index mapping
   for (auto& mat : model::materials) {
     mat->init_nuclide_index();
   }
@@ -474,29 +474,29 @@ void initialize_history(Particle* p, int64_t index_source)
   p->from_source(&simulation::source_bank[index_source - 1]);
 
   // set identifier for particle
-  p->id = simulation::work_index[mpi::rank] + index_source;
+  p->id_ = simulation::work_index[mpi::rank] + index_source;
 
   // set random number seed
   int64_t particle_seed = (simulation::total_gen + overall_generation() - 1)
-    * settings::n_particles + p->id;
+    * settings::n_particles + p->id_;
   set_particle_seed(particle_seed);
 
   // set particle trace
   simulation::trace = false;
   if (simulation::current_batch == settings::trace_batch &&
       simulation::current_gen == settings::trace_gen &&
-      p->id == settings::trace_particle) simulation::trace = true;
+      p->id_ == settings::trace_particle) simulation::trace = true;
 
   // Set particle track.
-  p->write_track = false;
+  p->write_track_ = false;
   if (settings::write_all_tracks) {
-    p->write_track = true;
+    p->write_track_ = true;
   } else if (settings::track_identifiers.size() > 0) {
     for (const auto& t : settings::track_identifiers) {
       if (simulation::current_batch == t[0] &&
           simulation::current_gen == t[1] &&
-          p->id == t[2]) {
-        p->write_track = true;
+          p->id_ == t[2]) {
+        p->write_track_ = true;
         break;
       }
     }

@@ -142,7 +142,7 @@ std::string time_stamp()
 extern "C" void print_particle(Particle* p)
 {
   // Display particle type and ID.
-  switch (p->type) {
+  switch (p->type_) {
     case static_cast<int>(ParticleType::neutron):
       std::cout << "Neutron ";
       break;
@@ -158,48 +158,48 @@ extern "C" void print_particle(Particle* p)
     default:
       std::cout << "Unknown Particle ";
   }
-  std::cout << p->id << "\n";
+  std::cout << p->id_ << "\n";
 
   // Display particle geometry hierarchy.
-  for (auto i = 0; i < p->n_coord; i++) {
+  for (auto i = 0; i < p->n_coord_; i++) {
     std::cout << "  Level " << i << "\n";
 
-    if (p->coord[i].cell != C_NONE) {
-      const Cell& c {*model::cells[p->coord[i].cell]};
+    if (p->coord_[i].cell != C_NONE) {
+      const Cell& c {*model::cells[p->coord_[i].cell]};
       std::cout << "    Cell             = " << c.id_ << "\n";
     }
 
-    if (p->coord[i].universe != C_NONE) {
-      const Universe& u {*model::universes[p->coord[i].universe]};
+    if (p->coord_[i].universe != C_NONE) {
+      const Universe& u {*model::universes[p->coord_[i].universe]};
       std::cout << "    Universe         = " << u.id_ << "\n";
     }
 
-    if (p->coord[i].lattice != F90_NONE) {
-      const Lattice& lat {*model::lattices[p->coord[i].lattice]};
+    if (p->coord_[i].lattice != F90_NONE) {
+      const Lattice& lat {*model::lattices[p->coord_[i].lattice]};
       std::cout << "    Lattice          = " << lat.id_ << "\n";
-      std::cout << "    Lattice position = (" << p->coord[i].lattice_x
-                << "," << p->coord[i].lattice_y << ","
-                << p->coord[i].lattice_z << ")\n";
+      std::cout << "    Lattice position = (" << p->coord_[i].lattice_x
+                << "," << p->coord_[i].lattice_y << ","
+                << p->coord_[i].lattice_z << ")\n";
     }
 
-    std::cout << "    xyz = " << p->coord[i].xyz[0] << " "
-              << p->coord[i].xyz[1] << " " << p->coord[i].xyz[2] << "\n";
-    std::cout << "    uvw = " << p->coord[i].uvw[0] << " "
-              << p->coord[i].uvw[1] << " " << p->coord[i].uvw[2] << "\n";
+    std::cout << "    xyz = " << p->coord_[i].xyz[0] << " "
+              << p->coord_[i].xyz[1] << " " << p->coord_[i].xyz[2] << "\n";
+    std::cout << "    uvw = " << p->coord_[i].uvw[0] << " "
+              << p->coord_[i].uvw[1] << " " << p->coord_[i].uvw[2] << "\n";
   }
 
   // Display miscellaneous info.
-  if (p->surface != ERROR_INT) {
-    const Surface& surf {*model::surfaces[std::abs(p->surface)-1]};
-    std::cout << "  Surface = " << std::copysign(surf.id_, p->surface) << "\n";
+  if (p->surface_ != ERROR_INT) {
+    const Surface& surf {*model::surfaces[std::abs(p->surface_)-1]};
+    std::cout << "  Surface = " << std::copysign(surf.id_, p->surface_) << "\n";
   }
-  std::cout << "  Weight = " << p->wgt << "\n";
+  std::cout << "  Weight = " << p->wgt_ << "\n";
   if (settings::run_CE) {
-    std::cout << "  Energy = " << p->E << "\n";
+    std::cout << "  Energy = " << p->E_ << "\n";
   } else {
-    std::cout << "  Energy Group = " << p->g << "\n";
+    std::cout << "  Energy Group = " << p->g_ << "\n";
   }
-  std::cout << "  Delayed Group = " << p->delayed_group << "\n";
+  std::cout << "  Delayed Group = " << p->delayed_group_ << "\n";
 
   std::cout << "\n";
 }

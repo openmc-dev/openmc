@@ -221,7 +221,7 @@ void load_dagmc_geometry()
       c->material_.push_back(MATERIAL_VOID);
     } else {
       if (using_uwuw) {
-        // lookup material in uwuw if the were present
+        // lookup.material_ in uwuw if the were present
         std::string uwuw_mat = DMD.volume_material_property_data_eh[vol_handle];
         if (uwuw.material_library.count(uwuw_mat) != 0) {
           // Note: material numbers are set by UWUW

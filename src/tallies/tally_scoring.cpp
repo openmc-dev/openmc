@@ -346,8 +346,8 @@ score_general_ce(const Particle* p, int i_tally, int start_index,
           score = p->last_wgt_;
         }
 
-        if (p->type_ == static_cast<int>(ParticleType::neutron) ||
-          p->type_ == static_cast<int>(ParticleType::photon)) {
+        if (p->type_ == Particle::Type::neutron ||
+          p->type_ == Particle::Type::photon) {
           score *= flux / simulation::material_xs.total;
         } else {
           score = 0.;

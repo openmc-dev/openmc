@@ -235,7 +235,7 @@ void read_mg_cross_sections_header()
   }
 
   // Get the minimum and maximum energies
-  int neutron = static_cast<int>(ParticleType::neutron);
+  int neutron = static_cast<int>(Particle::Type::neutron);
   data::energy_min[neutron] = data::energy_bins.back();
   data::energy_max[neutron] = data::energy_bins.front();
 

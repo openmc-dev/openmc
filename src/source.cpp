@@ -47,9 +47,9 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
   if (check_for_node(node, "particle")) {
     auto temp_str = get_node_value(node, "particle", true, true);
     if (temp_str == "neutron") {
-      particle_ = ParticleType::neutron;
+      particle_ = Particle::Type::neutron;
     } else if (temp_str == "photon") {
-      particle_ = ParticleType::photon;
+      particle_ = Particle::Type::photon;
       settings::photon_transport = true;
     } else {
       fatal_error(std::string("Unknown source particle type: ") + temp_str);

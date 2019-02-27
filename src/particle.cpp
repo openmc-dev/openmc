@@ -55,18 +55,18 @@ Particle::clear()
 }
 
 void
-Particle::create_secondary(const double* uvw, double E, int type, bool run_CE)
+Particle::create_secondary(const double* uvw, double E, Type type, bool run_CE)
 {
   if (n_secondary_ == MAX_SECONDARY) {
     fatal_error("Too many secondary particles created.");
   }
 
   int64_t n = n_secondary_;
-  secondary_bank_[n].particle = type_;
+  secondary_bank_[n].particle = static_cast<int>(type);
   secondary_bank_[n].wgt = wgt_;
   std::copy(coord_[0].xyz, coord_[0].xyz + 3, secondary_bank_[n].xyz);
   std::copy(uvw, uvw + 3, secondary_bank_[n].uvw);
-  secondary_bank_[n].E = E_;
+  secondary_bank_[n].E = E;
   if (!run_CE) secondary_bank_[n].E = g_;
   ++n_secondary_;
 }
@@ -78,7 +78,7 @@ Particle::initialize()
   clear();
 
   // Set particle to neutron that's alive
-  type_  = static_cast<int>(ParticleType::neutron);
+  type_  = Particle::Type::neutron;
   alive_ = true;
 
   // clear attributes
@@ -114,9 +114,9 @@ Particle::from_source(const Bank* src)
   initialize();
 
   // copy attributes from source bank site
-  type_             = src->particle;
-  wgt_              = src->wgt;
-  last_wgt_         = src->wgt;
+  type_ = static_cast<Particle::Type>(src->particle);
+  wgt_ = src->wgt;
+  last_wgt_ = src->wgt;
   std::copy(src->xyz, src->xyz + 3, coord_[0].xyz);
   std::copy(src->uvw, src->uvw + 3, coord_[0].uvw);
   std::copy(src->xyz, src->xyz + 3, last_xyz_current_);
@@ -163,7 +163,7 @@ Particle::transport()
 
   while (true) {
     // Set the random number stream
-    if (type_ == static_cast<int>(ParticleType::neutron)) {
+    if (type_ == Particle::Type::neutron) {
       prn_set_stream(STREAM_TRACKING);
     } else {
       prn_set_stream(STREAM_PHOTON);
@@ -230,8 +230,8 @@ Particle::transport()
 
     // Sample a distance to collision
     double d_collision;
-    if (type_ == static_cast<int>(ParticleType::electron) ||
-        type_ == static_cast<int>(ParticleType::positron)) {
+    if (type_ == Particle::Type::electron ||
+        type_ == Particle::Type::positron) {
       d_collision = 0.0;
     } else if (simulation::material_xs.total == 0.0) {
       d_collision = INFINITY;
@@ -257,7 +257,7 @@ Particle::transport()
 
     // Score track-length estimate of k-eff
     if (settings::run_mode == RUN_MODE_EIGENVALUE &&
-        type_ == static_cast<int>(ParticleType::neutron)) {
+        type_ == Particle::Type::neutron) {
       global_tally_tracklength += wgt_ * distance * simulation::material_xs.nu_fission;
     }
 
@@ -300,7 +300,7 @@ Particle::transport()
 
       // Score collision estimate of keff
       if (settings::run_mode == RUN_MODE_EIGENVALUE &&
-          type_ == static_cast<int>(ParticleType::neutron)) {
+          type_ == Particle::Type::neutron) {
         global_tally_collision += wgt_ * simulation::material_xs.nu_fission
           / simulation::material_xs.total;
       }
@@ -687,7 +687,7 @@ Particle::write_restart() const
         break;
     }
     write_dataset(file_id, "id", id_);
-    write_dataset(file_id, "type", type_);
+    write_dataset(file_id, "type", static_cast<int>(type_));
 
     int64_t i = simulation::current_work;
     write_dataset(file_id, "weight", simulation::source_bank[i-1].wgt);

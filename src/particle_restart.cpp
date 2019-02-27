@@ -40,7 +40,9 @@ void read_particle_restart(Particle& p, int& previous_run_mode)
     previous_run_mode = RUN_MODE_FIXEDSOURCE;
   }
   read_dataset(file_id, "id", p.id_);
-  read_dataset(file_id, "type", p.type_);
+  int type;
+  read_dataset(file_id, "type", type);
+  p.type_ = static_cast<Particle::Type>(type);
   read_dataset(file_id, "weight", p.wgt_);
   read_dataset(file_id, "energy", p.E_);
   std::array<double, 3> x;

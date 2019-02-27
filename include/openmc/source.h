@@ -45,7 +45,7 @@ public:
   // Properties
   double strength() const { return strength_; }
 private:
-  ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
+  Particle::Type particle_ {Particle::Type::neutron}; //!< Type of particle emitted
   double strength_ {1.0}; //!< Source strength
   UPtrSpace space_; //!< Spatial distribution
   UPtrAngle angle_; //!< Angular distribution

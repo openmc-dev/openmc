@@ -3,6 +3,7 @@
 
 #include <vector>
 
+#include "openmc/particle.h"
 #include "openmc/tallies/filter.h"
 
 namespace openmc {
@@ -27,7 +28,7 @@ public:
 
   std::string text_label(int bin) const override;
 
-  std::vector<int> particles_;
+  std::vector<Particle::Type> particles_;
 };
 
 } // namespace openmc

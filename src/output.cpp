@@ -143,16 +143,16 @@ extern "C" void print_particle(Particle* p)
 {
   // Display particle type and ID.
   switch (p->type_) {
-    case static_cast<int>(ParticleType::neutron):
+    case Particle::Type::neutron:
       std::cout << "Neutron ";
       break;
-    case static_cast<int>(ParticleType::photon):
+    case Particle::Type::photon:
       std::cout << "Photon ";
       break;
-    case static_cast<int>(ParticleType::electron):
+    case Particle::Type::electron:
       std::cout << "Electron ";
       break;
-    case static_cast<int>(ParticleType::positron):
+    case Particle::Type::positron:
       std::cout << "Positron ";
       break;
     default:

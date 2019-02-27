@@ -228,7 +228,7 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
       // Determine if minimum/maximum energy for this nuclide is greater/less
       // than the previous
       if (data::nuclides[i_nuclide]->grid_.size() >= 1) {
-        int neutron = static_cast<int>(ParticleType::neutron);
+        int neutron = static_cast<int>(Particle::Type::neutron);
         data::energy_min[neutron] = std::max(data::energy_min[neutron],
           data::nuclides[i_nuclide]->grid_[0].energy.front());
         data::energy_max[neutron] = std::min(data::energy_max[neutron],
@@ -262,7 +262,7 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
           // the previous
           const auto& elem {data::elements.back()};
           if (elem.energy_.size() >= 1) {
-            int photon = static_cast<int>(ParticleType::photon);
+            int photon = static_cast<int>(Particle::Type::photon);
             int n = elem.energy_.size();
             data::energy_min[photon] = std::max(data::energy_min[photon],
               std::exp(elem.energy_(1)));
@@ -321,7 +321,7 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
   for (auto& nuc : data::nuclides) {
     nuc->init_grid();
   }
-  int neutron = static_cast<int>(ParticleType::neutron);
+  int neutron = static_cast<int>(Particle::Type::neutron);
   simulation::log_spacing = std::log(data::energy_max[neutron] /
     data::energy_min[neutron]) / settings::n_log_bins;
 
@@ -329,7 +329,7 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
     // Determine if minimum/maximum energy for bremsstrahlung is greater/less
     // than the current minimum/maximum
     if (data::ttb_e_grid.size() >= 1) {
-      int photon = static_cast<int>(ParticleType::photon);
+      int photon = static_cast<int>(Particle::Type::photon);
       int n_e = data::ttb_e_grid.size();
       data::energy_min[photon] = std::max(data::energy_min[photon], data::ttb_e_grid(1));
       data::energy_max[photon] = std::min(data::energy_max[photon], data::ttb_e_grid(n_e - 1));
@@ -345,7 +345,7 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
     // grid has not been allocated
     if (nuc->grid_.size() > 0) {
       double max_E = nuc->grid_[0].energy.back();
-      int neutron = static_cast<int>(ParticleType::neutron);
+      int neutron = static_cast<int>(Particle::Type::neutron);
       if (max_E == data::energy_max[neutron]) {
         write_message("Maximum neutron transport energy: " +
           std::to_string(data::energy_max[neutron]) + " eV for " +

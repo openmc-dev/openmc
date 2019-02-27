@@ -7,8 +7,10 @@ namespace openmc {
 void
 ParticleFilter::from_xml(pugi::xml_node node)
 {
-  particles_ = get_node_array<int>(node, "bins");
-  for (auto& p : particles_) --p;
+  auto particles = get_node_array<int>(node, "bins");
+  for (auto& p : particles) {
+    particles_.push_back(static_cast<Particle::Type>(p - 1));
+  }
   n_bins_ = particles_.size();
 }
 
@@ -28,13 +30,26 @@ void
 ParticleFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
-  write_dataset(filter_group, "bins", particles_);
+  std::vector<int> particles;
+  for (auto p : particles_) {
+    particles.push_back(static_cast<int>(p) + 1);
+  }
+  write_dataset(filter_group, "bins", particles);
 }
 
 std::string
 ParticleFilter::text_label(int bin) const
 {
-  return "Particle " + std::to_string(particles_[bin]);
+  switch (particles_[bin]) {
+  case Particle::Type::neutron:
+    return "Particle: neutron";
+  case Particle::Type::photon:
+    return "Particle: photon";
+  case Particle::Type::electron:
+    return "Particle: electron";
+  case Particle::Type::positron:
+    return "Particle: positron";
+  }
 }
 
 } // namespace openmc

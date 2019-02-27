@@ -172,7 +172,7 @@ Bank SourceDistribution::sample() const
       if (space_box) {
         if (space_box->only_fissionable()) {
           // Determine material
-          auto c = model::cells[cell_index];
+          const auto& c = model::cells[cell_index];
           auto mat_index = c->material_.size() == 1
             ? c->material_[0] : c->material_[instance];
 

@@ -666,7 +666,7 @@ void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id)
   } else {
     if (PlotColorBy::mats == pl.color_by_) {
       // Assign color based on material
-      Cell* c = model::cells[p.coord[j].cell];
+      const auto& c = model::cells[p.coord[j].cell];
       if (c->type_ == FILL_UNIVERSE) {
         // If we stopped on a middle universe level, treat as if not found
         rgb = pl.not_found_;

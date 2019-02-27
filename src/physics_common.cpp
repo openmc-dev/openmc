@@ -55,12 +55,19 @@ void split_by_ratio(Particle* p, double importance_ratio) {
 
 void roulette(Particle* p, double importance_ratio) {
   // this is a kill event
-  if ( prn() >= importance_ratio) {
+  double random = prn();
+  //std::cout << random << " " << importance_ratio;
+  if ( random >= importance_ratio) {
+    //std::cout << " kill" << std::endl;
     p->alive = false;
     p->wgt = 0.;
     p->last_wgt = 0.;
   } else {
+    //std::cout << " survive " << std::endl;
+    p->last_wgt = p->wgt;
+    //std::cout << p->last_wgt << " ";
     p->wgt /= importance_ratio;
+    //std::cout << p->wgt << std::endl;
   }
   return;
 }
@@ -121,16 +128,28 @@ void weight_window_split(Particle *p) {
 void importance_split(Particle *p){
 
   // importances can only come from cells
-  int current_cell = p->coord[p->last_n_coord].cell;
-  int last_cell = p->last_cell[p->last_n_coord];
+  int current_cell = p->coord[p->n_coord-1].cell;
+  int last_cell = p->last_cell[p->last_n_coord-1];
 
-  double importance_ratio = variance_reduction::importances[current_cell]/
-                            variance_reduction::importances[last_cell];
+  // if we havent changed cell
+  //std::cout << p->id << " " << current_cell << " " << last_cell << std::endl;
 
-  if (importance_ratio > 1) 
+  if ( ((current_cell < 0 ) ? (0) : (current_cell)) == 
+       ((last_cell < 0) ? (0) : (last_cell))) return;
+
+  //std::cout << p->id << " " << current_cell << " " << last_cell << std::endl;
+
+  double importance_ratio = variance_reduction::importances[current_cell+1]/
+                            variance_reduction::importances[last_cell+1];
+  //std::cout << variance_reduction::importances[current_cell+1] << " ";
+  //std::cout << variance_reduction::importances[last_cell+1] << std::endl;
+  //std::cout << importance_ratio << std::endl;
+  if (importance_ratio > 1) {
     split_by_ratio(p, importance_ratio);
-  else
-    roulette(p, importance_ratio);  
+  } else if ( importance_ratio < 1 ) {
+    roulette(p, importance_ratio);
+  }  
+  return;
 }
 
 
@@ -147,6 +166,9 @@ void perform_vr(Particle* p)
     p->alive = false;
     return;
   }
+
+  if (p->absorb_wgt == 0) return;
+
 
   if (variance_reduction::importance_splitting) 
     importance_split(p);

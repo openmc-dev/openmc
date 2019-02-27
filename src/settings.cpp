@@ -26,6 +26,7 @@
 #include "openmc/source.h"
 #include "openmc/string_utils.h"
 #include "openmc/tallies/trigger.h"
+#include "openmc/variance_reduction.h"
 #include "openmc/volume_calc.h"
 #include "openmc/xml_interface.h"
 
@@ -104,7 +105,7 @@ int64_t trace_particle;
 std::vector<std::array<int, 3>> track_identifiers;
 int trigger_batch_interval {1};
 int verbosity {7};
-double weight_cutoff {0.25};
+double weight_cutoff {1.e-11};
 double weight_survive {1.0};
 
 } // namespace settings
@@ -413,6 +414,11 @@ void read_settings_xml()
   // Survival biasing
   if (check_for_node(root, "survival_biasing")) {
     survival_biasing = get_node_value_bool(root, "survival_biasing");
+  }
+
+  // Variance reduction
+  if (check_for_node(root, "variance_reduction")) {
+    variance_reduction::read_variance_reduction(&root);    
   }
 
   // Probability tables

@@ -385,9 +385,9 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   // just a bit for the purposes of determining if there was an intersection
   // in case the mesh surfaces coincide with lattice/geometric surfaces which
   // might produce finite-precision errors.
-  Position last_r {p->last_xyz};
-  Position r {p->coord[0].xyz};
-  Direction u {p->coord[0].uvw};
+  Position last_r {p->last_xyz_};
+  Position r {p->coord_[0].xyz};
+  Direction u {p->coord_[0].uvw};
 
   Position r0 = last_r + TINY_BIT*u;
   Position r1 = r - TINY_BIT*u;
@@ -522,9 +522,9 @@ void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins
   // Determine if the track intersects the tally mesh.
 
   // Copy the starting and ending coordinates of the particle.
-  Position r0 {p->last_xyz_current};
-  Position r1 {p->coord[0].xyz};
-  Direction u {p->coord[0].uvw};
+  Position r0 {p->last_xyz_current_};
+  Position r1 {p->coord_[0].xyz};
+  Direction u {p->coord_[0].uvw};
 
   // Determine indices for starting and ending location.
   int n = n_dimension_;

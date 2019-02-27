@@ -312,7 +312,7 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
       }
     } // thermal_tables_
 
-    // Finish setting up materials (normalizing densities, etc.)
+    // Finish setting up.material_s (normalizing densities, etc.)
     mat->finalize();
   } // materials
 

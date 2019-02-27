@@ -17,7 +17,7 @@ ParticleFilter::get_all_bins(const Particle* p, int estimator,
                              FilterMatch& match) const
 {
   for (auto i = 0; i < particles_.size(); i++) {
-    if (particles_[i] == p->type) {
+    if (particles_[i] == p->type_) {
       match.bins_.push_back(i);
       match.weights_.push_back(1.0);
     }

@@ -57,70 +57,71 @@ struct LocalCoord {
 //! State of a particle being transported through geometry
 //============================================================================
 
-struct Particle {
-  int64_t id;  //!< Unique ID
-  int type;    //!< Particle type (n, p, e, etc.)
+class Particle {
+public:
+  int64_t id_;  //!< Unique ID
+  int type_;    //!< Particle type (n, p, e, etc.)
 
-  int n_coord;                  //!< number of current coordinate levels
-  int cell_instance;            //!< offset for distributed properties
-  LocalCoord coord[MAX_COORD];  //!< coordinates for all levels
+  int n_coord_;                  //!< number of current coordinate levels
+  int cell_instance_;            //!< offset for distributed properties
+  LocalCoord coord_[MAX_COORD];  //!< coordinates for all levels
 
   // Particle coordinates before crossing a surface
-  int last_n_coord;          //!< number of current coordinates
-  int last_cell[MAX_COORD];  //!< coordinates for all levels
+  int last_n_coord_;          //!< number of current coordinates
+  int last_cell_[MAX_COORD];  //!< coordinates for all levels
 
   // Energy data
-  double E;       //!< post-collision energy in eV
-  double last_E;  //!< pre-collision energy in eV
-  int g;          //!< post-collision energy group (MG only)
-  int last_g;     //!< pre-collision energy group (MG only)
+  double E_;       //!< post-collision energy in eV
+  double last_E_;  //!< pre-collision energy in eV
+  int g_;          //!< post-collision energy group (MG only)
+  int last_g_;     //!< pre-collision energy group (MG only)
 
   // Other physical data
-  double wgt;     //!< particle weight
-  double mu;      //!< angle of scatter
-  bool alive;     //!< is particle alive?
+  double wgt_;     //!< particle weight
+  double mu_;      //!< angle of scatter
+  bool alive_;     //!< is particle alive?
 
   // Other physical data
-  double last_xyz_current[3];  //!< coordinates of the last collision or
+  double last_xyz_current_[3];  //!< coordinates of the last collision or
                                 //!< reflective/periodic surface crossing for
                                 //!< current tallies
-  double last_xyz[3];          //!< previous coordinates
-  double last_uvw[3];          //!< previous direction coordinates
-  double last_wgt;             //!< pre-collision particle weight
-  double absorb_wgt;           //!< weight absorbed for survival biasing
+  double last_xyz_[3];          //!< previous coordinates
+  double last_uvw_[3];          //!< previous direction coordinates
+  double last_wgt_;             //!< pre-collision particle weight
+  double absorb_wgt_;           //!< weight absorbed for survival biasing
 
   // What event took place
-  bool fission;       //!< did particle cause implicit fission
-  int event;          //!< scatter, absorption
-  int event_nuclide;  //!< index in nuclides array
-  int event_MT;       //!< reaction MT
-  int delayed_group;  //!< delayed group
+  bool fission_;       //!< did particle cause implicit fission
+  int event_;          //!< scatter, absorption
+  int event_nuclide_;  //!< index in nuclides array
+  int event_mt_;       //!< reaction MT
+  int delayed_group_;  //!< delayed group
 
   // Post-collision physical data
-  int n_bank;        //!< number of fission sites banked
-  double wgt_bank;   //!< weight of fission sites banked
-  int n_delayed_bank[MAX_DELAYED_GROUPS];  //!< number of delayed fission
+  int n_bank_;        //!< number of fission sites banked
+  double wgt_bank_;   //!< weight of fission sites banked
+  int n_delayed_bank_[MAX_DELAYED_GROUPS];  //!< number of delayed fission
                                             //!< sites banked
 
   // Indices for various arrays
-  int surface;        //!< index for surface particle is on
-  int cell_born;      //!< index for cell particle was born in
-  int material;       //!< index for current material
-  int last_material;  //!< index for last material
+  int surface_;        //!< index for surface particle is on
+  int cell_born_;      //!< index for cell particle was born in
+  int material_;       //!< index for current material
+  int last_material_;  //!< index for last material
 
   // Temperature of current cell
-  double sqrtkT;       //!< sqrt(k_Boltzmann * temperature) in eV
-  double last_sqrtkT;  //!< last temperature
+  double sqrtkT_;       //!< sqrt(k_Boltzmann * temperature) in eV
+  double last_sqrtkT_;  //!< last temperature
 
   // Statistical data
-  int n_collision;  //!< number of collisions
+  int n_collision_;  //!< number of collisions
 
-  // Track output
-  bool write_track {false};
+// Track output
+  bool write_track_ {false};
 
   // Secondary particles created
-  int64_t n_secondary {};
-  Bank secondary_bank[MAX_SECONDARY];
+  int64_t n_secondary_ {};
+  Bank secondary_bank_[MAX_SECONDARY];
 
   //! resets all coordinate levels for the particle
   void clear();

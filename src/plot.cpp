@@ -137,18 +137,18 @@ void create_ppm(Plot pl)
 {
   Particle p;
   p.initialize();
-  std::copy(xyz, xyz+3, p.coord[0].xyz);
-  std::copy(dir, dir+3, p.coord[0].uvw);
-  p.coord[0].universe = model::root_universe;
+  std::copy(xyz, xyz+3, p.coord_[0].xyz);
+  std::copy(dir, dir+3, p.coord_[0].uvw);
+  p.coord_[0].universe = model::root_universe;
 
 #pragma omp for
   for (int y = 0; y < height; y++) {
-    p.coord[0].xyz[out_i] = xyz[out_i] - out_pixel * y;
+    p.coord_[0].xyz[out_i] = xyz[out_i] - out_pixel * y;
     for (int x = 0; x < width; x++) {
       // local variables
       RGBColor rgb;
       int id;
-      p.coord[0].xyz[in_i] = xyz[in_i] + in_pixel * x;
+      p.coord_[0].xyz[in_i] = xyz[in_i] + in_pixel * x;
       position_rgb(p, pl, rgb, id);
       data(x,y) = rgb;
     }
@@ -648,11 +648,11 @@ index_meshlines_mesh_(-1)
 
 void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id)
 {
-  p.n_coord = 1;
+  p.n_coord_ = 1;
 
   bool found_cell = find_cell(&p, 0);
 
-  int j = p.n_coord - 1;
+  int j = p.n_coord_ - 1;
 
   if (settings::check_overlaps) {check_cell_overlap(&p);}
 
@@ -666,23 +666,23 @@ void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id)
   } else {
     if (PlotColorBy::mats == pl.color_by_) {
       // Assign color based on material
-      const auto& c = model::cells[p.coord[j].cell];
+      const auto& c = model::cells[p.coord_[j].cell];
       if (c->type_ == FILL_UNIVERSE) {
         // If we stopped on a middle universe level, treat as if not found
         rgb = pl.not_found_;
         id = -1;
-      } else if (p.material == MATERIAL_VOID) {
+      } else if (p.material_ == MATERIAL_VOID) {
         // By default, color void cells white
         rgb = WHITE;
         id = -1;
       } else {
-        rgb = pl.colors_[p.material];
-        id = model::materials[p.material]->id_;
+        rgb = pl.colors_[p.material_];
+        id = model::materials[p.material_]->id_;
       }
     } else if (PlotColorBy::cells == pl.color_by_) {
       // Assign color based on cell
-      rgb = pl.colors_[p.coord[j].cell];
-      id = model::cells[p.coord[j].cell]->id_;
+      rgb = pl.colors_[p.coord_[j].cell];
+      id = model::cells[p.coord_[j].cell]->id_;
     }
   } // endif found_cell
 }
@@ -855,9 +855,9 @@ void create_voxel(Plot pl)
   double dir[3] = {0.5, 0.5, 0.5};
   Particle p;
   p.initialize();
-  std::copy(ll.begin(), ll.begin()+ll.size(), p.coord[0].xyz);
-  std::copy(dir, dir+3, p.coord[0].uvw);
-  p.coord[0].universe = model::root_universe;
+  std::copy(ll.begin(), ll.begin()+ll.size(), p.coord_[0].xyz);
+  std::copy(dir, dir+3, p.coord_[0].uvw);
+  p.coord_[0].universe = model::root_universe;
 
   // Open binary plot file for writing
   std::ofstream of;
@@ -910,16 +910,16 @@ void create_voxel(Plot pl)
         // write to plot data
         data[y][x] = id;
         // advance particle in x direction
-        p.coord[0].xyz[0] = p.coord[0].xyz[0] + vox[0];
+        p.coord_[0].xyz[0] = p.coord_[0].xyz[0] + vox[0];
       }
       // advance particle in y direction
-      p.coord[0].xyz[1] = p.coord[0].xyz[1] + vox[1];
-      p.coord[0].xyz[0] = ll[0];
+      p.coord_[0].xyz[1] = p.coord_[0].xyz[1] + vox[1];
+      p.coord_[0].xyz[0] = ll[0];
     }
     // advance particle in z direction
-    p.coord[0].xyz[2] = p.coord[0].xyz[2] + vox[2];
-    p.coord[0].xyz[1] = ll[1];
-    p.coord[0].xyz[0] = ll[0];
+    p.coord_[0].xyz[2] = p.coord_[0].xyz[2] + vox[2];
+    p.coord_[0].xyz[1] = ll[1];
+    p.coord_[0].xyz[0] = ll[0];
     // Write to HDF5 dataset
     voxel_write_slice(z, dspace, dset, memspace, &(data[0]));
   }

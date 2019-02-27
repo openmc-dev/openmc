@@ -41,10 +41,10 @@ void
 SurfaceFilter::get_all_bins(const Particle* p, int estimator,
                             FilterMatch& match) const
 {
-  auto search = map_.find(std::abs(p->surface)-1);
+  auto search = map_.find(std::abs(p->surface_)-1);
   if (search != map_.end()) {
     match.bins_.push_back(search->second);
-    if (p->surface < 0) {
+    if (p->surface_ < 0) {
       match.weights_.push_back(-1.0);
     } else {
       match.weights_.push_back(1.0);

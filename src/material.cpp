@@ -652,9 +652,9 @@ void Material::calculate_xs(const Particle& p) const
   simulation::material_xs.fission = 0.0;
   simulation::material_xs.nu_fission = 0.0;
 
-  if (p.type == static_cast<int>(ParticleType::neutron)) {
+  if (p.type_ == static_cast<int>(ParticleType::neutron)) {
     this->calculate_neutron_xs(p);
-  } else if (p.type == static_cast<int>(ParticleType::photon)) {
+  } else if (p.type_ == static_cast<int>(ParticleType::photon)) {
     this->calculate_photon_xs(p);
   }
 }
@@ -664,7 +664,7 @@ void Material::calculate_neutron_xs(const Particle& p) const
   int neutron = static_cast<int>(ParticleType::neutron);
 
   // Find energy index on energy grid
-  int i_grid = std::log(p.E/data::energy_min[neutron])/simulation::log_spacing;
+  int i_grid = std::log(p.E_/data::energy_min[neutron])/simulation::log_spacing;
 
   // Determine if this material has S(a,b) tables
   bool check_sab = (thermal_tables_.size() > 0);
@@ -691,7 +691,7 @@ void Material::calculate_neutron_xs(const Particle& p) const
 
         // If particle energy is greater than the highest energy for the
         // S(a,b) table, then don't use the S(a,b) table
-        if (p.E > data::thermal_scatt[i_sab]->threshold()) i_sab = C_NONE;
+        if (p.E_ > data::thermal_scatt[i_sab]->threshold()) i_sab = C_NONE;
 
         // Increment position in thermal_tables_
         ++j;
@@ -709,12 +709,12 @@ void Material::calculate_neutron_xs(const Particle& p) const
 
     // Calculate microscopic cross section for this nuclide
     const auto& micro {simulation::micro_xs[i_nuclide]};
-    if (p.E != micro.last_E
-        || p.sqrtkT != micro.last_sqrtkT
+    if (p.E_ != micro.last_E
+        || p.sqrtkT_ != micro.last_sqrtkT
         || i_sab != micro.index_sab
         || sab_frac != micro.sab_frac) {
-      data::nuclides[i_nuclide]->calculate_xs(i_sab, p.E, i_grid,
-        p.sqrtkT, sab_frac);
+      data::nuclides[i_nuclide]->calculate_xs(i_sab, p.E_, i_grid,
+        p.sqrtkT_, sab_frac);
     }
 
     // ======================================================================
@@ -748,8 +748,8 @@ void Material::calculate_photon_xs(const Particle& p) const
 
     // Calculate microscopic cross section for this nuclide
     const auto& micro {simulation::micro_photon_xs[i_element]};
-    if (p.E != micro.last_E) {
-      data::elements[i_element].calculate_xs(p.E);
+    if (p.E_ != micro.last_E) {
+      data::elements[i_element].calculate_xs(p.E_);
     }
 
     // ========================================================================

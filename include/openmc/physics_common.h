@@ -12,5 +12,8 @@ namespace openmc {
 extern "C" void
 russian_roulette(Particle* p);
 
+void 
+perform_vr(Particle *p);
+
 } // namespace openmc
 #endif // OPENMC_PHYSICS_COMMON_H

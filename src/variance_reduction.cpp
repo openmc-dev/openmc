@@ -12,14 +12,24 @@ namespace variance_reduction {
 
 bool importance_splitting = false;
 bool weight_splitting = false;
+std::map<int,double> importances;
 
-extern "C" void
+void
 read_variance_reduction(pugi::xml_node *node)
 {
   int n_imp = 0; // number of importance blocks
   int n_ww = 0; // number of weight window blocks
-  for (pugi::xml_node imp_node: node->children("importance")) {n_imp++;}
-  for (pugi::xml_node ww_node: node->children("weight_window")) {n_ww++;}
+
+  *node = node->child("variance_reduction");
+
+  for (pugi::xml_node imp_node: node->children("importance")) {
+    n_imp++;
+  }
+  for (pugi::xml_node ww_node: node->children("weight_window")) {
+    n_ww++;
+  }
+
+  std::cout << n_imp << " " << n_ww << std::endl;
 
   // vr not required
   if (n_imp == 0 && n_ww == 0 ) {
@@ -32,9 +42,9 @@ read_variance_reduction(pugi::xml_node *node)
   }
   
   // read the importance node
-  if (n_imp == 1) {
+  if (n_imp > 0) {
     read_importances(node);
-  } else if ( n_ww == 1 ) {
+  } else if ( n_ww > 0 ) {
     //read_weight_windows(node);
   } 
   
@@ -44,7 +54,16 @@ read_variance_reduction(pugi::xml_node *node)
 void
 read_importances(pugi::xml_node *node)
 {
-  std::cout << "Found imp" << std::endl;
+  importance_splitting = true;
+  std::cout << "Reading Importances..." << std::endl;
+  double importance = 0.0;
+  int cell = 0;
+  for (pugi::xml_node imp_node: node->children("importance")) {
+    importance = std::stod(get_node_value(imp_node, "value"));
+    cell = std::stoi(get_node_value(imp_node, "cell"));
+    importances[cell] = importance;
+  }
+  return;
 }
 
 } // namespace openmc

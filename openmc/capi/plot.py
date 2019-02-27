@@ -70,6 +70,9 @@ class _Plot(Structure):
                 ('pixels_', c_int*3),
                 ('level_', c_int)]
 
+    def __init__(self):
+        self.level_ = -1
+
     @property
     def origin(self):
         out = [self.origin_.x, self.origin_.y, self.origin_.z]

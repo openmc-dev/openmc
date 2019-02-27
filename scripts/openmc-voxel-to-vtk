@@ -8,8 +8,6 @@ import numpy as np
 import h5py
 import vtk
 
-from vtk.util import numpy_support
-
 def main():
     # Process command line arguments
     parser = ArgumentParser()
@@ -34,11 +32,14 @@ def main():
 
     # transpose data from OpenMC ordering (zyx) to VTK ordering (xyz)
     # and flatten to 1-D array
-    h5data = fh['data'].value.T.flatten()
+    print("Reading and translating data...")
+    h5data = fh['data'][...]
+    h5data = h5data.T.copy()
+
     data = vtk.vtkIntArray()
     data.SetName("id")
     # pass h5data as a "hint" that no copy/allocation is necessary
-    data.SetArray(h5data, h5dara.size, True)
+    data.SetArray(h5data, h5data.size, True)
     # set the data array
     data.array = h5data
     # add data to image grid
@@ -52,6 +53,7 @@ def main():
     if not args.output.endswith(".vti"):
         args.output += ".vti"
     writer.SetFileName(args.output)
+    print("Writing VTK file {}...".format(args.output))
     writer.Write()
 
 if __name__ == '__main__':

@@ -33,11 +33,6 @@ constexpr int MAX_LOST_PARTICLES {10};
 // Maximum number of lost particles, relative to the total number of particles
 constexpr double REL_MAX_LOST_PARTICLES {1.0e-6};
 
-//! Particle types
-enum class ParticleType {
-  neutron, photon, electron, positron
-};
-
 struct LocalCoord {
   int cell {-1};
   int universe {-1};
@@ -59,8 +54,13 @@ struct LocalCoord {
 
 class Particle {
 public:
+  //! Particle types
+  enum class Type {
+    neutron, photon, electron, positron
+  };
+
   int64_t id_;  //!< Unique ID
-  int type_;    //!< Particle type (n, p, e, etc.)
+  Type type_;   //!< Particle type (n, p, e, etc.)
 
   int n_coord_;                  //!< number of current coordinate levels
   int cell_instance_;            //!< offset for distributed properties
@@ -134,7 +134,7 @@ public:
   //! \param E Energy of the secondary particle in [eV]
   //! \param type Particle type
   //! \param run_CE Whether continuous-energy data is being used
-  void create_secondary(const double* uvw, double E, int type, bool run_CE);
+  void create_secondary(const double* uvw, double E, Type type, bool run_CE);
 
   //! sets default attributes for a particle
   void initialize();

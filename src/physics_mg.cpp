@@ -157,7 +157,7 @@ create_fission_sites(Particle* p, Bank* bank_array, int64_t* size_bank,
     bank_array[i].xyz[2] = p->coord_[0].xyz[2];
 
     // Set that the bank particle is a neutron
-    bank_array[i].particle = static_cast<int>(ParticleType::neutron);
+    bank_array[i].particle = static_cast<int>(Particle::Type::neutron);
 
     // Set the weight of the fission bank site
     bank_array[i].wgt = 1. / weight;

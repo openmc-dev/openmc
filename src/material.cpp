@@ -652,18 +652,17 @@ void Material::calculate_xs(const Particle& p) const
   simulation::material_xs.fission = 0.0;
   simulation::material_xs.nu_fission = 0.0;
 
-  if (p.type_ == static_cast<int>(ParticleType::neutron)) {
+  if (p.type_ == Particle::Type::neutron) {
     this->calculate_neutron_xs(p);
-  } else if (p.type_ == static_cast<int>(ParticleType::photon)) {
+  } else if (p.type_ == Particle::Type::photon) {
     this->calculate_photon_xs(p);
   }
 }
 
 void Material::calculate_neutron_xs(const Particle& p) const
 {
-  int neutron = static_cast<int>(ParticleType::neutron);
-
   // Find energy index on energy grid
+  int neutron = static_cast<int>(Particle::Type::neutron);
   int i_grid = std::log(p.E_/data::energy_min[neutron])/simulation::log_spacing;
 
   // Determine if this material has S(a,b) tables

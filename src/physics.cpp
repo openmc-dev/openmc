@@ -36,23 +36,24 @@ void collision(Particle* p)
   ++(p->n_collision_);
 
   // Sample reaction for the material the particle is in
-  switch (static_cast<ParticleType>(p->type_)) {
-  case ParticleType::neutron:
+  switch (static_cast<Particle::Type>(p->type_)) {
+  case Particle::Type::neutron:
     sample_neutron_reaction(p);
     break;
-  case ParticleType::photon:
+  case Particle::Type::photon:
     sample_photon_reaction(p);
     break;
-  case ParticleType::electron:
+  case Particle::Type::electron:
     sample_electron_reaction(p);
     break;
-  case ParticleType::positron:
+  case Particle::Type::positron:
     sample_positron_reaction(p);
     break;
   }
 
   // Kill particle if energy falls below cutoff
-  if (p->E_ < settings::energy_cutoff[p->type_]) {
+  int type = static_cast<int>(p->type_);
+  if (p->E_ < settings::energy_cutoff[type]) {
     p->alive_ = false;
     p->wgt_ = 0.0;
     p->last_wgt_ = 0.0;
@@ -61,7 +62,7 @@ void collision(Particle* p)
   // Display information about collision
   if (settings::verbosity >= 10 || simulation::trace) {
     std::stringstream msg;
-    if (static_cast<ParticleType>(p->type_) == ParticleType::neutron) {
+    if (p->type_ == Particle::Type::neutron) {
       msg << "    " << reaction_name(p->event_mt_) << " with " <<
         data::nuclides[p->event_nuclide_]->name_ << ". Energy = " << p->E_ << " eV.";
     } else {
@@ -185,7 +186,7 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx, Bank* bank_
     bank_array[i].xyz[2] = p->coord_[0].xyz[2];
 
     // Set that the bank particle is a neutron
-    bank_array[i].particle = static_cast<int>(ParticleType::neutron);
+    bank_array[i].particle = static_cast<int>(Particle::Type::neutron);
 
     // Set the weight of the fission bank site
     bank_array[i].wgt = 1. / weight;
@@ -218,7 +219,7 @@ void sample_photon_reaction(Particle* p)
   // Kill photon if below energy cutoff -- an extra check is made here because
   // photons with energy below the cutoff may have been produced by neutrons
   // reactions or atomic relaxation
-  int photon = static_cast<int>(ParticleType::photon);
+  int photon = static_cast<int>(Particle::Type::photon);
   if (p->E_ < settings::energy_cutoff[photon]) {
     p->E_ = 0.0;
     p->alive_ = false;
@@ -272,8 +273,7 @@ void sample_photon_reaction(Particle* p)
     double uvw[3];
     std::copy(p->coord_[0].uvw, p->coord_[0].uvw + 3, uvw);
     rotate_angle_c(uvw, mu_electron, &phi);
-    int electron = static_cast<int>(ParticleType::electron);
-    p->create_secondary(uvw, E_electron, electron, true);
+    p->create_secondary(uvw, E_electron, Particle::Type::electron, true);
 
     // TODO: Compton subshell data does not match atomic relaxation data
     // Allow electrons to fill orbital and produce auger electrons
@@ -332,8 +332,7 @@ void sample_photon_reaction(Particle* p)
         uvw[2] = std::sqrt(1.0 - mu*mu)*std::sin(phi);
 
         // Create secondary electron
-        int electron = static_cast<int>(ParticleType::electron);
-        p->create_secondary(uvw.data(), E_electron, electron, true);
+        p->create_secondary(uvw.data(), E_electron, Particle::Type::electron, true);
 
         // Allow electrons to fill orbital and produce auger electrons
         // and fluorescent photons
@@ -359,14 +358,12 @@ void sample_photon_reaction(Particle* p)
     double uvw[3];
     std::copy(p->coord_[0].uvw, p->coord_[0].uvw + 3, uvw);
     rotate_angle_c(uvw, mu_electron, nullptr);
-    int electron = static_cast<int>(ParticleType::electron);
-    p->create_secondary(uvw, E_electron, electron, true);
+    p->create_secondary(uvw, E_electron, Particle::Type::electron, true);
 
     // Create secondary positron
     std::copy(p->coord_[0].uvw, p->coord_[0].uvw + 3, uvw);
     rotate_angle_c(uvw, mu_positron, nullptr);
-    int positron = static_cast<int>(ParticleType::positron);
-    p->create_secondary(uvw, E_positron, positron, true);
+    p->create_secondary(uvw, E_positron, Particle::Type::positron, true);
 
     p->event_mt_ = PAIR_PROD;
     p->alive_ = false;
@@ -405,13 +402,12 @@ void sample_positron_reaction(Particle* p)
   uvw[2] = std::sqrt(1.0 - mu*mu)*std::sin(phi);
 
   // Create annihilation photon pair traveling in opposite directions
-  int photon = static_cast<int>(ParticleType::photon);
-  p->create_secondary(uvw.data(), MASS_ELECTRON_EV, photon, true);
+  p->create_secondary(uvw.data(), MASS_ELECTRON_EV, Particle::Type::photon, true);
 
   uvw[0] = -uvw[0];
   uvw[1] = -uvw[1];
   uvw[2] = -uvw[2];
-  p->create_secondary(uvw.data(), MASS_ELECTRON_EV, photon, true);
+  p->create_secondary(uvw.data(), MASS_ELECTRON_EV, Particle::Type::photon, true);
 
   p->E_ = 0.0;
   p->alive_ = false;
@@ -541,7 +537,7 @@ void sample_photon_product(int i_nuclide, double E, int* i_rx, int* i_product)
       + f*(rx->xs_[i_temp].value[i_grid - threshold + 1]));
 
     for (int j = 0; j < rx->products_.size(); ++j) {
-      if (rx->products_[j].particle_ == ParticleType::photon) {
+      if (rx->products_[j].particle_ == Particle::Type::photon) {
         // add to cumulative probability
         prob += (*rx->products_[j].yield_)(E) * xs;
 
@@ -1029,7 +1025,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Bank
       rx->products_[group].sample(E_in, site->E, mu);
 
       // resample if energy is greater than maximum neutron energy
-      constexpr int neutron = static_cast<int>(ParticleType::neutron);
+      constexpr int neutron = static_cast<int>(Particle::Type::neutron);
       if (site->E < data::energy_max[neutron]) break;
 
       // check for large number of resamples
@@ -1054,7 +1050,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Bank
       rx->products_[0].sample(E_in, site->E, mu);
 
       // resample if energy is greater than maximum neutron energy
-      constexpr int neutron = static_cast<int>(ParticleType::neutron);
+      constexpr int neutron = static_cast<int>(Particle::Type::neutron);
       if (site->E < data::energy_max[neutron]) break;
 
       // check for large number of resamples
@@ -1109,8 +1105,7 @@ void inelastic_scatter(const Nuclide* nuc, const Reaction* rx, Particle* p)
   if (std::floor(yield) == yield) {
     // If yield is integral, create exactly that many secondary particles
     for (int i = 0; i < static_cast<int>(std::round(yield)) - 1; ++i) {
-      int neutron = static_cast<int>(ParticleType::neutron);
-      p->create_secondary(p->coord_[0].uvw, p->E_, neutron, true);
+      p->create_secondary(p->coord_[0].uvw, p->E_, Particle::Type::neutron, true);
     }
   } else {
     // Otherwise, change weight of particle based on yield
@@ -1145,8 +1140,7 @@ void sample_secondary_photons(Particle* p, int i_nuclide)
     rotate_angle_c(uvw, mu, nullptr);
 
     // Create the secondary photon
-    int photon = static_cast<int>(ParticleType::photon);
-    p->create_secondary(uvw, E, photon, true);
+    p->create_secondary(uvw, E, Particle::Type::photon, true);
   }
 }
 

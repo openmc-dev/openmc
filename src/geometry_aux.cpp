@@ -66,7 +66,7 @@ void
 adjust_indices()
 {
   // Adjust material/fill idices.
-  for (Cell* c : model::cells) {
+  for (auto& c : model::cells) {
     if (c->fill_ != C_NONE) {
       int32_t id = c->fill_;
       auto search_univ = model::universe_map.find(id);
@@ -102,7 +102,7 @@ adjust_indices()
   }
 
   // Change cell.universe values from IDs to indices.
-  for (Cell* c : model::cells) {
+  for (auto& c : model::cells) {
     auto search = model::universe_map.find(c->universe_);
     if (search != model::universe_map.end()) {
       c->universe_ = search->second;
@@ -115,7 +115,7 @@ adjust_indices()
   }
 
   // Change all lattice universe values from IDs to indices.
-  for (Lattice* l : model::lattices) {
+  for (auto& l : model::lattices) {
     l->adjust_indices();
   }
 }
@@ -125,7 +125,7 @@ adjust_indices()
 void
 assign_temperatures()
 {
-  for (Cell* c : model::cells) {
+  for (auto& c : model::cells) {
     // Ignore non-material cells and cells with defined temperature.
     if (c->material_.size() == 0) continue;
     if (c->sqrtkT_.size() > 0) continue;
@@ -224,12 +224,12 @@ find_root_universe()
 {
   // Find all the universes listed as a cell fill.
   std::unordered_set<int32_t> fill_univ_ids;
-  for (Cell* c : model::cells) {
+  for (const auto& c : model::cells) {
     fill_univ_ids.insert(c->fill_);
   }
 
   // Find all the universes contained in a lattice.
-  for (Lattice* lat : model::lattices) {
+  for (const auto& lat : model::lattices) {
     for (auto it = lat->begin(); it != lat->end(); ++it) {
       fill_univ_ids.insert(*it);
     }
@@ -308,7 +308,7 @@ prepare_distribcell()
   // unique distribcell array index.
   int distribcell_index = 0;
   std::vector<int32_t> target_univ_ids;
-  for (Universe* u : model::universes) {
+  for (const auto& u : model::universes) {
     for (auto cell_indx : u->cells_) {
       if (distribcells.find(cell_indx) != distribcells.end()) {
         model::cells[cell_indx]->distribcell_index_ = distribcell_index;
@@ -320,19 +320,19 @@ prepare_distribcell()
 
   // Allocate the cell and lattice offset tables.
   int n_maps = target_univ_ids.size();
-  for (Cell* c : model::cells) {
+  for (auto& c : model::cells) {
     if (c->type_ != FILL_MATERIAL) {
       c->offset_.resize(n_maps, C_NONE);
     }
   }
-  for (Lattice* lat : model::lattices) {
+  for (auto& lat : model::lattices) {
     lat->allocate_offset_table(n_maps);
   }
 
   // Fill the cell and lattice offset tables.
   for (int map = 0; map < target_univ_ids.size(); map++) {
     auto target_univ_id = target_univ_ids[map];
-    for (Universe* univ : model::universes) {
+    for (const auto& univ : model::universes) {
       int32_t offset {0};  // TODO: is this a bug?  It matches F90 implementation.
       for (int32_t cell_indx : univ->cells_) {
         Cell& c = *model::cells[cell_indx];
@@ -515,15 +515,12 @@ maximum_levels(int32_t univ)
 void
 free_memory_geometry()
 {
-  for (Cell* c : model::cells) {delete c;}
   model::cells.clear();
   model::cell_map.clear();
 
-  for (Universe* u : model::universes) {delete u;}
   model::universes.clear();
   model::universe_map.clear();
 
-  for (Lattice* lat : model::lattices) {delete lat;}
   model::lattices.clear();
   model::lattice_map.clear();
 

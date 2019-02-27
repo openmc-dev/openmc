@@ -37,7 +37,7 @@ namespace openmc {
 
 namespace model {
 
-std::vector<Material*> materials;
+std::vector<std::unique_ptr<Material>> materials;
 std::unordered_map<int32_t, int32_t> material_map;
 
 } // namespace model
@@ -895,7 +895,7 @@ void read_materials_xml()
   // Loop over XML material elements and populate the array.
   pugi::xml_node root = doc.document_element();
   for (pugi::xml_node material_node : root.children("material")) {
-    model::materials.push_back(new Material(material_node));
+    model::materials.push_back(std::make_unique<Material>(material_node));
   }
   model::materials.shrink_to_fit();
 
@@ -915,7 +915,6 @@ void read_materials_xml()
 
 void free_memory_material()
 {
-  for (Material *mat : model::materials) {delete mat;}
   model::materials.clear();
   model::material_map.clear();
 }
@@ -942,7 +941,7 @@ openmc_material_add_nuclide(int32_t index, const char* name, double density)
 {
   int err = 0;
   if (index >= 0 && index < model::materials.size()) {
-    Material* m = model::materials[index];
+    auto& m = model::materials[index];
 
     // Check if nuclide is already in material
     for (int i = 0; i < m->nuclide_.size(); ++i) {
@@ -1032,7 +1031,7 @@ extern "C" int
 openmc_material_get_volume(int32_t index, double* volume)
 {
   if (index >= 0 && index < model::materials.size()) {
-    Material* m = model::materials[index];
+    auto& m = model::materials[index];
     if (m->volume_ >= 0.0) {
       *volume = m->volume_;
       return 0;
@@ -1112,7 +1111,7 @@ extern "C" int
 openmc_material_set_volume(int32_t index, double volume)
 {
   if (index >= 0 && index < model::materials.size()) {
-    Material* m = model::materials[index];
+    auto& m {model::materials[index]};
     if (volume >= 0.0) {
       m->volume_ = volume;
       return 0;
@@ -1132,7 +1131,7 @@ openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
   if (index_start) *index_start = model::materials.size();
   if (index_end) *index_end = model::materials.size() + n - 1;
   for (int32_t i = 0; i < n; i++) {
-    model::materials.push_back(new Material());
+    model::materials.push_back(std::make_unique<Material>());
   }
   return 0;
 }

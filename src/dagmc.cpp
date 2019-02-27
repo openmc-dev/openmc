@@ -149,8 +149,8 @@ void load_dagmc_geometry()
     // Populate the Universe vector and dict
     auto it = model::universe_map.find(dagmc_univ_id);
     if (it == model::universe_map.end()) {
-      model::universes.push_back(new Universe());
-      model::universes.back()-> id_ = dagmc_univ_id;
+      model::universes.push_back(std::make_unique<Universe>());
+      model::universes.back()->id_ = dagmc_univ_id;
       model::universes.back()->cells_.push_back(i);
       model::universe_map[dagmc_univ_id] = model::universes.size() - 1;
     } else {
@@ -255,7 +255,6 @@ void load_dagmc_geometry()
 
   // initialize surface objects
   int n_surfaces = model::DAG->num_entities(2);
-  model::surfaces.resize(n_surfaces);
 
   for (int i = 0; i < n_surfaces; i++) {
     moab::EntityHandle surf_handle = model::DAG->entity_by_index(2, i+1);
@@ -303,7 +302,7 @@ void load_dagmc_geometry()
     }
 
     // add to global array and map
-    model::surfaces[i] = s;
+    model::surfaces.push_back(s);
     model::surface_map[s->id_] = s->id_;
   }
 

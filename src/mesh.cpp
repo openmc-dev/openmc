@@ -728,7 +728,7 @@ openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end)
 {
   if (index_start) *index_start = model::meshes.size();
   for (int i = 0; i < n; ++i) {
-    model::meshes.emplace_back(new RegularMesh{});
+    model::meshes.push_back(std::make_unique<RegularMesh>());
   }
   if (index_end) *index_end = model::meshes.size() - 1;
 
@@ -866,7 +866,7 @@ void read_meshes(pugi::xml_node root)
 {
   for (auto node : root.children("mesh")) {
     // Read mesh and add to vector
-    model::meshes.emplace_back(new RegularMesh{node});
+    model::meshes.push_back(std::make_unique<RegularMesh>(node));
 
     // Map ID to position in vector
     model::mesh_map[model::meshes.back()->id_] = model::meshes.size() - 1;

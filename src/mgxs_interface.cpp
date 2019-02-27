@@ -136,7 +136,7 @@ void create_macro_xs()
   for (int i = 0; i < model::materials.size(); ++i) {
     if (kTs[i].size() > 0) {
       // Convert atom_densities to a vector
-      Material* mat = model::materials[i];
+      auto& mat {model::materials[i]};
       std::vector<double> atom_densities(mat->atom_density_.begin(),
         mat->atom_density_.end());
 

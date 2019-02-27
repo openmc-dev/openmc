@@ -402,7 +402,7 @@ Particle::cross_surface()
 {
   int i_surface = std::abs(surface);
   // TODO: off-by-one
-  const auto& surf {model::surfaces[i_surface - 1]};
+  const auto& surf {model::surfaces[i_surface - 1].get()};
   if (settings::verbosity >= 10 || simulation::trace) {
     write_message("    Crossing surface " + std::to_string(surf->id_));
   }
@@ -532,7 +532,7 @@ Particle::cross_surface()
     // Get a pointer to the partner periodic surface
     auto surf_p = dynamic_cast<PeriodicSurface*>(surf);
     auto other = dynamic_cast<PeriodicSurface*>(
-      model::surfaces[surf_p->i_periodic_]);
+      model::surfaces[surf_p->i_periodic_].get());
 
     // Adjust the particle's location and direction.
     Position r {coord[0].xyz};

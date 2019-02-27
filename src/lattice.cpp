@@ -19,10 +19,8 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-
-std::vector<Lattice*> lattices;
-std::unordered_map<int32_t, int32_t> lattice_map;
-
+  std::vector<std::unique_ptr<Lattice>> lattices;
+  std::unordered_map<int32_t, int32_t> lattice_map;
 }
 
 //==============================================================================
@@ -867,10 +865,10 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
 void read_lattices(pugi::xml_node node)
 {
   for (pugi::xml_node lat_node : node.children("lattice")) {
-    model::lattices.push_back(new RectLattice(lat_node));
+    model::lattices.push_back(std::make_unique<RectLattice>(lat_node));
   }
   for (pugi::xml_node lat_node : node.children("hex_lattice")) {
-    model::lattices.push_back(new HexLattice(lat_node));
+    model::lattices.push_back(std::make_unique<HexLattice>(lat_node));
   }
 
   // Fill the lattice map.

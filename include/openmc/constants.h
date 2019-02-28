@@ -33,7 +33,7 @@ constexpr std::array<int, 2> VERSION_PARTICLE_RESTART {2, 0};
 constexpr std::array<int, 2> VERSION_TRACK {2, 0};
 constexpr std::array<int, 2> VERSION_SUMMARY {6, 0};
 constexpr std::array<int, 2> VERSION_VOLUME {1, 0};
-constexpr std::array<int, 2> VERSION_VOXEL {1, 1};
+constexpr std::array<int, 2> VERSION_VOXEL {2, 0};
 constexpr std::array<int, 2> VERSION_MGXS_LIBRARY {1, 0};
 constexpr char VERSION_MULTIPOLE[] {"v0.2"};
 

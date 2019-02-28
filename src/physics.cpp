@@ -265,15 +265,17 @@ void sample_photon_reaction(Particle* p)
     }
 
     // Create Compton electron
-    double E_electron = (alpha - alpha_out)*MASS_ELECTRON_EV - e_b;
-    double mu_electron = (alpha - alpha_out*mu)
-      / std::sqrt(alpha*alpha + alpha_out*alpha_out - 2.0*alpha*alpha_out*mu);
     double phi = 2.0*PI*prn();
-    double uvw[3];
-    std::copy(p->coord[0].uvw, p->coord[0].uvw + 3, uvw);
-    rotate_angle_c(uvw, mu_electron, &phi);
+    double E_electron = (alpha - alpha_out)*MASS_ELECTRON_EV - e_b;
     int electron = static_cast<int>(ParticleType::electron);
-    p->create_secondary(uvw, E_electron, electron, true);
+    if (E_electron >= settings::energy_cutoff[electron]) { 
+      double mu_electron = (alpha - alpha_out*mu)
+        / std::sqrt(alpha*alpha + alpha_out*alpha_out - 2.0*alpha*alpha_out*mu);
+      double uvw[3];
+      std::copy(p->coord[0].uvw, p->coord[0].uvw + 3, uvw);
+      rotate_angle_c(uvw, mu_electron, &phi);
+      p->create_secondary(uvw, E_electron, electron, true);
+    }
 
     // TODO: Compton subshell data does not match atomic relaxation data
     // Allow electrons to fill orbital and produce auger electrons

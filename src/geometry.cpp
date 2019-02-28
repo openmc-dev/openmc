@@ -466,7 +466,6 @@ extern "C" int
 openmc_find_cell(const double* xyz, int32_t* index, int32_t* instance)
 {
   Particle p;
-  p.initialize();
 
   std::copy(xyz, xyz + 3, p.coord_[0].xyz);
   p.coord_[0].uvw[0] = 0.0;

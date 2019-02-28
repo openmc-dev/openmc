@@ -104,6 +104,10 @@ _STOPPING_POWERS = {}
 # incident electron kinetic energies with key 'electron_energies', an array of
 # k reduced photon energies with key 'photon_energies', and the cross sections
 # for each element are in a 2D array with shape (n, k) stored on the key 'Z'.
+# It also stores data used for calculating the density effect correction,
+# namely, the mean excitation energy with the key 'I', number of electrons per
+# subshell with the key 'num_electrons', and binding energies with the key
+# 'ionization_energy'.
 _BREMSSTRAHLUNG = {}
 
 
@@ -352,12 +356,16 @@ class IncidentPhoton(EqualityMixin):
     atomic_relaxation : openmc.data.AtomicRelaxation or None
         Atomic relaxation data
     bremsstrahlung : dict
-        Dictionary of bremsstrahlung DCS data with keys 'electron_energy'
-        (incident electron kinetic energy values in [eV]), 'photon_energy'
-        (ratio of the energy of the emitted photon to the incident electron
-        kinetic energy), and 'dcs' (cross section values in [b]). The cross
-        sections are in scaled form: :math:`(\beta^2/Z^2) E_k (d\sigma/dE_k)`,
-        where :math:`E_k` is the energy of the emitted photon.
+        Dictionary of bremsstrahlung data with keys 'I' (mean excitation energy
+        in [eV]), 'num_electrons' (number of electrons in each subshell),
+        'ionization_energy' (ionization potential of each subshell),
+        'electron_energy' (incident electron kinetic energy values in [eV]),
+        'photon_energy' (ratio of the energy of the emitted photon to the
+        incident electron kinetic energy), and 'dcs' (cross section values in
+        [b]). The cross sections are in scaled form: :math:`(\beta^2/Z^2) E_k
+        (d\sigma/dE_k)`, where :math:`E_k` is the energy of the emitted photon.
+        A negative number of electrons in a subshell indicates conduction
+        electrons.
     compton_profiles : dict
         Dictionary of Compton profile data with keys 'num_electrons' (number of
         electrons in each subshell), 'binding_energy' (ionization potential of
@@ -600,6 +608,17 @@ class IncidentPhoton(EqualityMixin):
 
         # Load bremsstrahlung data if it has not yet been loaded
         if not _BREMSSTRAHLUNG:
+            # Add data used for density effect correction
+            filename = os.path.join(os.path.dirname(__file__), 'density_effect.h5')
+            with h5py.File(filename, 'r') as f:
+                for i in range(1, 101):
+                    group = f['{:03}'.format(i)]
+                    _BREMSSTRAHLUNG[i] = {
+                        'I': group.attrs['I'],
+                        'num_electrons': group['num_electrons'].value,
+                        'ionization_energy': group['ionization_energy'].value
+                    }
+
             filename = os.path.join(os.path.dirname(__file__), 'BREMX.DAT')
             brem = open(filename, 'r').read().split()
 
@@ -640,12 +659,12 @@ class IncidentPhoton(EqualityMixin):
                     # Get scaled DCS values (millibarns) on new energy grid
                     dcs[:,j] = cs(log_energy)
 
-                _BREMSSTRAHLUNG[i] = {'dcs': dcs}
+                _BREMSSTRAHLUNG[i]['dcs'] = dcs
 
         # Add bremsstrahlung DCS data
         data.bremsstrahlung['electron_energy'] = _BREMSSTRAHLUNG['electron_energy']
         data.bremsstrahlung['photon_energy'] = _BREMSSTRAHLUNG['photon_energy']
-        data.bremsstrahlung['dcs'] = _BREMSSTRAHLUNG[Z]['dcs']
+        data.bremsstrahlung.update(_BREMSSTRAHLUNG[Z])
 
         return data
 
@@ -770,7 +789,6 @@ class IncidentPhoton(EqualityMixin):
         # Write stopping powers
         if self.stopping_powers:
             s_group = group.create_group('stopping_powers')
-
             for key, value in self.stopping_powers.items():
                 if key == 'I':
                     s_group.attrs[key] = value
@@ -780,13 +798,11 @@ class IncidentPhoton(EqualityMixin):
         # Write bremsstrahlung
         if self.bremsstrahlung:
             brem_group = group.create_group('bremsstrahlung')
-
-            brem = self.bremsstrahlung
-            brem_group.create_dataset('electron_energy',
-                                      data=brem['electron_energy'])
-            brem_group.create_dataset('photon_energy',
-                                      data=brem['photon_energy'])
-            brem_group.create_dataset('dcs', data=brem['dcs'])
+            for key, value in self.bremsstrahlung.items():
+                if key == 'I':
+                    brem_group.attrs[key] = value
+                else:
+                    brem_group.create_dataset(key, data=value)
 
 
 class PhotonReaction(EqualityMixin):

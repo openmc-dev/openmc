@@ -233,16 +233,13 @@ class MaterialFilter(Filter):
         materials = POINTER(c_int32)()
         n = c_int32()
         _dll.openmc_material_filter_get_bins(self._index, materials, n)
-        #TODO: fix this off-by-one when materials become 0-indexed
-        return [Material(index=materials[i]+1) for i in range(n.value)]
+        return [Material(index=materials[i]) for i in range(n.value)]
 
     @bins.setter
     def bins(self, materials):
         # Get material indices as int32_t[]
         n = len(materials)
-        #TODO: fix this off-by-one when materials become 0-indexed
-        bins = (c_int32*n)(*(m._index-1 for m in materials))
-
+        bins = (c_int32*n)(*(m._index for m in materials))
         _dll.openmc_material_filter_set_bins(self._index, n, bins)
 
 
@@ -405,7 +402,7 @@ class _FilterMapping(Mapping):
 
     def __iter__(self):
         for i in range(len(self)):
-            yield _get_filter(i + 1).id
+            yield _get_filter(i).id
 
     def __len__(self):
         return _dll.tally_filters_size()

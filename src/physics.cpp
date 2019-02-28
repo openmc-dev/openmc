@@ -63,10 +63,10 @@ void collision(Particle* p)
     std::stringstream msg;
     if (static_cast<ParticleType>(p->type) == ParticleType::neutron) {
       msg << "    " << reaction_name(p->event_MT) << " with " <<
-        data::nuclides[p->event_nuclide-1]->name_ << ". Energy = " << p->E << " eV.";
+        data::nuclides[p->event_nuclide]->name_ << ". Energy = " << p->E << " eV.";
     } else {
       msg << "    " << reaction_name(p->event_MT) << " with " <<
-        data::elements[p->event_nuclide-1].name_ << ". Energy = " << p->E << " eV.";
+        data::elements[p->event_nuclide].name_ << ". Energy = " << p->E << " eV.";
     }
     write_message(msg, 1);
   }
@@ -78,8 +78,7 @@ void sample_neutron_reaction(Particle* p)
   int i_nuclide = sample_nuclide(p);
 
   // Save which nuclide particle had collision with
-  // TODO: off-by-one
-  p->event_nuclide = i_nuclide + 1;
+  p->event_nuclide = i_nuclide;
 
   // Create fission bank sites. Note that while a fission reaction is sampled,
   // it never actually "happens", i.e. the weight of the particle does not
@@ -228,8 +227,7 @@ void sample_photon_reaction(Particle* p)
 
   // Sample element within material
   int i_element = sample_element(p);
-  // TODO: off-by-one
-  p->event_nuclide = i_element + 1;
+  p->event_nuclide = i_element;
   const auto& micro {simulation::micro_photon_xs[i_element]};
   const auto& element {data::elements[i_element]};
 
@@ -425,8 +423,7 @@ int sample_nuclide(const Particle* p)
   double cutoff = prn() * simulation::material_xs.total;
 
   // Get pointers to nuclide/density arrays
-  // TODO: off-by-one
-  const auto& mat {model::materials[p->material - 1]};
+  const auto& mat {model::materials[p->material]};
   int n = mat->nuclide_.size();
 
   double prob = 0.0;
@@ -451,7 +448,7 @@ int sample_element(Particle* p)
   double cutoff = prn() * simulation::material_xs.total;
 
   // Get pointers to elements, densities
-  const auto& mat {model::materials[p->material - 1]};
+  const auto& mat {model::materials[p->material]};
   int n = mat->nuclide_.size();
 
   int i = 0;
@@ -598,7 +595,7 @@ void scatter(Particle* p, int i_nuclide)
   const auto& nuc {data::nuclides[i_nuclide]};
   const auto& micro {simulation::micro_xs[i_nuclide]};
   int i_temp =  micro.index_temp;
-  int i_grid =  micro.index_grid - 1;
+  int i_grid =  micro.index_grid;
   double f = micro.interp_factor;
 
   // For tallying purposes, this routine might be called directly. In that
@@ -656,12 +653,11 @@ void scatter(Particle* p, int i_nuclide)
 
       // if energy is below threshold for this reaction, skip it
       const auto& xs {nuc->reactions_[i]->xs_[i_temp]};
-      int threshold = xs.threshold - 1;
-      if (i_grid < threshold) continue;
+      if (i_grid < xs.threshold) continue;
 
       // add to cumulative probability
-      prob += (1.0 - f)*xs.value[i_grid - threshold] +
-        f*xs.value[i_grid - threshold + 1];
+      prob += (1.0 - f)*xs.value[i_grid - xs.threshold] +
+        f*xs.value[i_grid - xs.threshold + 1];
     }
 
     // Perform collision physics for inelastic scattering
@@ -674,8 +670,7 @@ void scatter(Particle* p, int i_nuclide)
   p->event = EVENT_SCATTER;
 
   // Sample new outgoing angle for isotropic-in-lab scattering
-  // TODO: off-by-one
-  const auto& mat {model::materials[p->material - 1]};
+  const auto& mat {model::materials[p->material]};
   if (!mat->p0_.empty()) {
     int i_nuc_mat = mat->mat_nuclide_index_[i_nuclide];
     if (mat->p0_[i_nuc_mat]) {

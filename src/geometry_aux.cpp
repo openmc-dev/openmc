@@ -85,18 +85,17 @@ adjust_indices()
       }
     } else {
       c->type_ = FILL_MATERIAL;
-      for (auto it = c->material_.begin(); it != c->material_.end(); it++) {
-        int32_t mid = *it;
-        if (mid != MATERIAL_VOID) {
-          auto search = model::material_map.find(mid);
-          if (search != model::material_map.end()) {
-            *it = search->second;
-          } else {
+      for (auto& mat_id : c->material_) {
+        if (mat_id != MATERIAL_VOID) {
+          auto search = model::material_map.find(mat_id);
+          if (search == model::material_map.end()) {
             std::stringstream err_msg;
-            err_msg << "Could not find material " << mid
+            err_msg << "Could not find material " << mat_id
                     << " specified on cell " << c->id_;
             fatal_error(err_msg);
           }
+          // Change from ID to index
+          mat_id = search->second;
         }
       }
     }

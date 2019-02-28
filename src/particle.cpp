@@ -84,8 +84,8 @@ Particle::initialize()
   // clear attributes
   surface           = 0;
   cell_born         = C_NONE;
-  material          = 0;
-  last_material     = 0;
+  material          = C_NONE;
+  last_material     = C_NONE;
   last_sqrtkT       = 0;
   wgt               = 1.0;
   last_wgt          = 1.0;
@@ -201,7 +201,7 @@ Particle::transport()
           // If the material is the same as the last material and the
           // temperature hasn't changed, we don't need to lookup cross
           // sections again.
-          model::materials[material - 1]->calculate_xs(*this);
+          model::materials[material]->calculate_xs(*this);
         }
       } else {
         // Get the MG data
@@ -346,7 +346,7 @@ Particle::transport()
 
       // Set last material to none since cross sections will need to be
       // re-evaluated
-      last_material = F90_NONE;
+      last_material = C_NONE;
 
       // Set all uvws to base level -- right now, after a collision, only the
       // base level uvws are changed
@@ -584,9 +584,7 @@ Particle::cross_surface()
     // set new cell value
     coord[0].cell = i_cell;
     cell_instance = 0;
-    // TODO: off-by-one
-    int mat = model::cells[i_cell]->material_[0];
-    material = (mat == MATERIAL_VOID) ? mat : mat + 1;
+    material = model::cells[i_cell]->material_[0];
     sqrtkT = model::cells[i_cell]->sqrtkT_[0];
     return;
   }

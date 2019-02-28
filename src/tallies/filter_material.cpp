@@ -42,10 +42,9 @@ void
 MaterialFilter::get_all_bins(const Particle* p, int estimator,
                              FilterMatch& match) const
 {
-  auto search = map_.find(p->material - 1);
+  auto search = map_.find(p->material);
   if (search != map_.end()) {
-    //TODO: off-by-one
-    match.bins_.push_back(search->second + 1);
+    match.bins_.push_back(search->second);
     match.weights_.push_back(1.0);
   }
 }
@@ -62,8 +61,7 @@ MaterialFilter::to_statepoint(hid_t filter_group) const
 std::string
 MaterialFilter::text_label(int bin) const
 {
-  //TODO: off-by-one
-  return "Material " + std::to_string(model::materials[materials_[bin-1]]->id_);
+  return "Material " + std::to_string(model::materials[materials_[bin]]->id_);
 }
 
 //==============================================================================
@@ -77,7 +75,7 @@ openmc_material_filter_get_bins(int32_t index, int32_t** bins, int32_t* n)
   if (int err = verify_filter(index)) return err;
 
   // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index-1].get();
+  const auto& filt_base = model::tally_filters[index].get();
   auto* filt = dynamic_cast<MaterialFilter*>(filt_base);
 
   // Check the filter type.
@@ -99,7 +97,7 @@ openmc_material_filter_set_bins(int32_t index, int32_t n, const int32_t* bins)
   if (int err = verify_filter(index)) return err;
 
   // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index-1].get();
+  const auto& filt_base = model::tally_filters[index].get();
   auto* filt = dynamic_cast<MaterialFilter*>(filt_base);
 
   // Check the filter type.

@@ -36,9 +36,9 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
   // Get bremsstrahlung data for this material and particle type
   BremsstrahlungData* mat;
   if (p.type == static_cast<int>(ParticleType::positron)) {
-    mat = &model::materials[p.material -1]->ttb_->positron;
+    mat = &model::materials[p.material]->ttb_->positron;
   } else {
-    mat = &model::materials[p.material -1]->ttb_->electron;
+    mat = &model::materials[p.material]->ttb_->electron;
   }
 
   double e = std::log(p.E);

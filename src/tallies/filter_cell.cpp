@@ -44,8 +44,7 @@ CellFilter::get_all_bins(const Particle* p, int estimator,
   for (int i = 0; i < p->n_coord; i++) {
     auto search = map_.find(p->coord[i].cell);
     if (search != map_.end()) {
-      //TODO: off-by-one
-      match.bins_.push_back(search->second + 1);
+      match.bins_.push_back(search->second);
       match.weights_.push_back(1.0);
     }
   }
@@ -63,8 +62,7 @@ CellFilter::to_statepoint(hid_t filter_group) const
 std::string
 CellFilter::text_label(int bin) const
 {
-  //TODO: off-by-one
-  return "Cell " + std::to_string(model::cells[cells_[bin-1]]->id_);
+  return "Cell " + std::to_string(model::cells[cells_[bin]]->id_);
 }
 
 //==============================================================================
@@ -76,8 +74,7 @@ openmc_cell_filter_get_bins(int32_t index, int32_t** cells, int32_t* n)
 {
   if (int err = verify_filter(index)) return err;
 
-  // TODO: off-by-one
-  const auto& filt = model::tally_filters[index-1].get();
+  const auto& filt = model::tally_filters[index].get();
   if (filt->type() != "cell") {
     set_errmsg("Tried to get cells from a non-cell filter.");
     return OPENMC_E_INVALID_TYPE;

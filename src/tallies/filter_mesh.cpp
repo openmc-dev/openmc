@@ -25,7 +25,7 @@ MeshFilter::from_xml(pugi::xml_node node)
     set_mesh(search->second);
   } else{
     std::stringstream err_msg;
-    err_msg << "Could not find cell " << id << " specified on tally filter.";
+    err_msg << "Could not find mesh " << id << " specified on tally filter.";
     fatal_error(err_msg);
   }
 }
@@ -37,7 +37,6 @@ const
   if (estimator != ESTIMATOR_TRACKLENGTH) {
     auto bin = model::meshes[mesh_]->get_bin(p->coord[0].xyz);
     if (bin >= 0) {
-      //TODO: off-by-one
       match.bins_.push_back(bin);
       match.weights_.push_back(1.0);
     }
@@ -90,7 +89,7 @@ openmc_mesh_filter_get_mesh(int32_t index, int32_t* index_mesh)
   if (int err = verify_filter(index)) return err;
 
   // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index-1].get();
+  const auto& filt_base = model::tally_filters[index].get();
   auto* filt = dynamic_cast<MeshFilter*>(filt_base);
 
   // Check the filter type.
@@ -111,7 +110,7 @@ openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh)
   if (int err = verify_filter(index)) return err;
 
   // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index-1].get();
+  const auto& filt_base = model::tally_filters[index].get();
   auto* filt = dynamic_cast<MeshFilter*>(filt_base);
 
   // Check the filter type.

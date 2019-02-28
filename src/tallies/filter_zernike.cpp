@@ -39,8 +39,7 @@ ZernikeFilter::get_all_bins(const Particle* p, int estimator,
     double zn[n_bins_];
     calc_zn(order_, r, theta, zn);
     for (int i = 0; i < n_bins_; i++) {
-      //TODO: off-by-one
-      match.bins_.push_back(i+1);
+      match.bins_.push_back(i);
       match.weights_.push_back(zn[i]);
     }
   }
@@ -62,9 +61,8 @@ ZernikeFilter::text_label(int bin) const
   std::stringstream out;
   for (int n = 0; n < order_+1; n++) {
     int last = (n + 1) * (n + 2) / 2;
-    //TODO: off-by-one
-    if (bin <= last) {
-      int first = last - n;
+    if (bin < last) {
+      int first = last - (n + 1);
       int m = -n + (bin - first) * 2;
       out << "Zernike expansion, Z" << n << "," << m;
       return out.str();
@@ -97,8 +95,7 @@ ZernikeRadialFilter::get_all_bins(const Particle* p, int estimator,
     double zn[n_bins_];
     calc_zn_rad(order_, r, zn);
     for (int i = 0; i < n_bins_; i++) {
-      //TODO: off-by-one
-      match.bins_.push_back(i+1);
+      match.bins_.push_back(i);
       match.weights_.push_back(zn[i]);
     }
   }
@@ -107,8 +104,7 @@ ZernikeRadialFilter::get_all_bins(const Particle* p, int estimator,
 std::string
 ZernikeRadialFilter::text_label(int bin) const
 {
-  //TODO: off-by-one
-  return "Zernike expansion, Z" + std::to_string(2*(bin-1)) + ",0";
+  return "Zernike expansion, Z" + std::to_string(2*bin) + ",0";
 }
 
 void
@@ -132,7 +128,7 @@ check_zernike_filter(int32_t index)
   }
 
   // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index-1].get();
+  const auto& filt_base = model::tally_filters[index].get();
   auto* filt = dynamic_cast<ZernikeFilter*>(filt_base);
 
   // Check the filter type.

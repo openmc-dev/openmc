@@ -53,8 +53,7 @@ SpatialLegendreFilter::get_all_bins(const Particle* p, int estimator,
     double wgt[order_ + 1];
     calc_pn_c(order_, x_norm, wgt);
     for (int i = 0; i < order_ + 1; i++) {
-      //TODO: off-by-one
-      match.bins_.push_back(i + 1);
+      match.bins_.push_back(i);
       match.weights_.push_back(wgt[i]);
     }
   }
@@ -88,8 +87,7 @@ SpatialLegendreFilter::text_label(int bin) const
   } else {
     out << "z";
   }
-  //TODO: off-by-one
-  out << " axis, P" << std::to_string(bin - 1);
+  out << " axis, P" << std::to_string(bin);
   return out.str();
 }
 
@@ -107,7 +105,7 @@ check_sptl_legendre_filter(int32_t index)
   }
 
   // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index-1].get();
+  const auto& filt_base = model::tally_filters[index].get();
   auto* filt = dynamic_cast<SpatialLegendreFilter*>(filt_base);
 
   // Check the filter type.

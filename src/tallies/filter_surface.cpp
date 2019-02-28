@@ -43,8 +43,7 @@ SurfaceFilter::get_all_bins(const Particle* p, int estimator,
 {
   auto search = map_.find(std::abs(p->surface)-1);
   if (search != map_.end()) {
-    //TODO: off-by-one
-    match.bins_.push_back(search->second + 1);
+    match.bins_.push_back(search->second);
     if (p->surface < 0) {
       match.weights_.push_back(-1.0);
     } else {
@@ -65,8 +64,7 @@ SurfaceFilter::to_statepoint(hid_t filter_group) const
 std::string
 SurfaceFilter::text_label(int bin) const
 {
-  //TODO: off-by-one
-  return "Surface " + std::to_string(model::surfaces[surfaces_[bin-1]]->id_);
+  return "Surface " + std::to_string(model::surfaces[surfaces_[bin]]->id_);
 }
 
 } // namespace openmc

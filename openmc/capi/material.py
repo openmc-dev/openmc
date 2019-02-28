@@ -227,7 +227,7 @@ class _MaterialMapping(Mapping):
 
     def __iter__(self):
         for i in range(len(self)):
-            yield Material(index=i + 1).id
+            yield Material(index=i).id
 
     def __len__(self):
         return _dll.n_materials()

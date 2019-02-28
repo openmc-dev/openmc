@@ -54,8 +54,7 @@ DistribcellFilter::get_all_bins(const Particle* p, int estimator,
       }
     }
     if (cell_ == p->coord[i].cell) {
-      //TODO: off-by-one
-      match.bins_.push_back(offset + 1);
+      match.bins_.push_back(offset);
       match.weights_.push_back(1.0);
       return;
     }
@@ -73,8 +72,7 @@ std::string
 DistribcellFilter::text_label(int bin) const
 {
   auto map = model::cells[cell_]->distribcell_index_;
-  //TODO: off-by-one
-  auto path = distribcell_path(cell_, map, bin-1);
+  auto path = distribcell_path(cell_, map, bin);
   return "Distributed Cell " + path;
 }
 

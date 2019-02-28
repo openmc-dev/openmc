@@ -215,8 +215,7 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
       // Determine lattice indices.
       Position r {p->coord_[p->n_coord_-1].xyz};
       Direction u {p->coord_[p->n_coord_-1].uvw};
-      r += TINY_BIT * u;
-      auto i_xyz = lat.get_indices(r);
+      auto i_xyz = lat.get_indices(r, u);
 
       // Store lower level coordinates.
       r = lat.get_local_position(p->coord_[p->n_coord_-1].xyz, i_xyz);

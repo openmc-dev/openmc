@@ -285,15 +285,38 @@ const
 //==============================================================================
 
 std::array<int, 3>
-RectLattice::get_indices(Position r) const
+RectLattice::get_indices(Position r, Direction u) const
 {
-  int ix {static_cast<int>(std::ceil((r.x - lower_left_.x) / pitch_.x))-1};
-  int iy {static_cast<int>(std::ceil((r.y - lower_left_.y) / pitch_.y))-1};
-  int iz;
-  if (is_3d_) {
-    iz = static_cast<int>(std::ceil((r.z - lower_left_.z) / pitch_.z))-1;
+  // Determine x index, accounting for coincidence
+  double ix_ {(r.x - lower_left_.x) / pitch_.x};
+  long ix_close {std::lround(ix_)};
+  int ix;
+  if (std::abs(ix_ - ix_close) < FP_COINCIDENT) {
+    ix = (u.x > 0) ? ix_close : ix_close - 1;
   } else {
-    iz = 0;
+    ix = std::floor(ix_);
+  }
+
+  // Determine y index, accounting for coincidence
+  double iy_ {(r.y - lower_left_.y) / pitch_.y};
+  long iy_close {std::lround(iy_)};
+  int iy;
+  if (std::abs(iy_ - iy_close) < FP_COINCIDENT) {
+    iy = (u.y > 0) ? iy_close : iy_close - 1;
+  } else {
+    iy = std::floor(iy_);
+  }
+
+  // Determine z index, accounting for coincidence
+  int iz = 0;
+  if (is_3d_) {
+    double iz_ {(r.z - lower_left_.z) / pitch_.z};
+    long iz_close {std::lround(iz_)};
+    if (std::abs(iz_ - iz_close) < FP_COINCIDENT) {
+      iz = (u.z > 0) ? iz_close : iz_close - 1;
+    } else {
+      iz = std::floor(iz_);
+    }
   }
   return {ix, iy, iz};
 }
@@ -685,8 +708,13 @@ const
 //==============================================================================
 
 std::array<int, 3>
-HexLattice::get_indices(Position r) const
+HexLattice::get_indices(Position r, Direction u) const
 {
+  // The implementation for HexLattice currently doesn't use direction
+  // information. As a result, we move the position slightly forward to
+  // determine what lattice index the particle is most likely to be in.
+  r += TINY_BIT * u;
+
   // Offset the xyz by the lattice center.
   Position r_o {r.x - center_.x, r.y - center_.y, r.z};
   if (is_3d_) {r_o.z -= center_.z;}
@@ -694,7 +722,7 @@ HexLattice::get_indices(Position r) const
   // Index the z direction.
   std::array<int, 3> out;
   if (is_3d_) {
-    out[2] = static_cast<int>(std::ceil(r_o.z / pitch_[1] + 0.5 * n_axial_))-1;
+    out[2] = std::floor(r_o.z / pitch_[1] + 0.5 * n_axial_);
   } else {
     out[2] = 0;
   }
@@ -702,9 +730,8 @@ HexLattice::get_indices(Position r) const
   // Convert coordinates into skewed bases.  The (x, alpha) basis is used to
   // find the index of the global coordinates to within 4 cells.
   double alpha = r_o.y - r_o.x / std::sqrt(3.0);
-  out[0] = static_cast<int>(std::floor(r_o.x
-                                       / (0.5*std::sqrt(3.0) * pitch_[0])));
-  out[1] = static_cast<int>(std::floor(alpha / pitch_[0]));
+  out[0] = std::floor(r_o.x / (0.5*std::sqrt(3.0) * pitch_[0]));
+  out[1] = std::floor(alpha / pitch_[0]);
 
   // Add offset to indices (the center cell is (i_x, i_alpha) = (0, 0) but
   // the array is offset so that the indices never go below 0).
@@ -737,12 +764,12 @@ HexLattice::get_indices(Position r) const
   // Select the minimum squared distance which corresponds to the cell the
   // coordinates are in.
   if (k_min == 2) {
-    out[0] += 1;
+    ++out[0];
   } else if (k_min == 3) {
-    out[1] += 1;
+    ++out[1];
   } else if (k_min == 4) {
-    out[0] += 1;
-    out[1] += 1;
+    ++out[0];
+    ++out[1];
   }
 
   return out;

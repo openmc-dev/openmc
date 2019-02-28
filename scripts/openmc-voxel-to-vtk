@@ -8,7 +8,7 @@ import numpy as np
 import h5py
 import vtk
 
-_min_version = (0,10,0)
+_min_version = (1,1)
 
 
 def main():
@@ -23,13 +23,14 @@ def main():
     fh = h5py.File(args.voxel_file, 'r')
 
     # check version
-    version = tuple(fh.attrs['openmc_version'])
+    version = tuple(fh.attrs['version'])
     if version < _min_version:
         old_version = ".".join(map(str,version))
         min_version = ".".join(map(str,_min_version))
-        err_msg = "This voxel file was generated using OpenMC " \
-                  "version {}. Please re-generate using "\
-                  "version {} or higher.".format(old_version, min_version)
+        err_msg = "This voxel file's version is {}. This script " \
+                  "only supports voxel files with version {} or " \
+                  "higher. Please generate a new voxel file using " \
+                  "a newer version of OpenMC.".format(old_version, min_version)
         raise ValueError(err_msg)
 
     dimension = fh.attrs['num_voxels']

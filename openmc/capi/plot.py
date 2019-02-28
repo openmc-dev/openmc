@@ -177,7 +177,7 @@ _dll.openmc_id_map.argtypes= [POINTER(_Plot),]
 _dll.openmc_id_map.restype = c_int
 _dll.openmc_id_map.errcheck = _error_handler
 
-def image_data_for_plot(plot):
+def id_map(plot):
     img_data = np.zeros((plot.pixels_[0], plot.pixels_[1], 2), dtype=np.dtype('int32'))
     out = _dll.openmc_id_map(POINTER(_Plot)(plot), img_data.ctypes.data_as(POINTER(c_int32)))
     return img_data

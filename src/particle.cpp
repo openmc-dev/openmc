@@ -47,11 +47,22 @@ LocalCoord::reset()
 // Particle implementation
 //==============================================================================
 
+Particle::Particle()
+{
+  // Clear coordinate lists
+  clear();
+
+  for (int& n : n_delayed_bank_) {
+    n = 0;
+  }
+}
+
 void
 Particle::clear()
 {
   // reset any coordinate levels
-  for (int i=0; i<MAX_COORD; ++i) coord_[i].reset();
+  for (auto& level : coord_) level.reset();
+  n_coord_ = 1;
 }
 
 void
@@ -72,46 +83,16 @@ Particle::create_secondary(const double* uvw, double E, Type type, bool run_CE)
 }
 
 void
-Particle::initialize()
-{
-  // Clear coordinate lists
-  clear();
-
-  // Set particle to neutron that's alive
-  type_  = Particle::Type::neutron;
-  alive_ = true;
-
-  // clear attributes
-  surface_           = 0;
-  cell_born_         = C_NONE;
-  material_          = C_NONE;
-  last_material_     = C_NONE;
-  last_sqrtkT_       = 0;
-  wgt_               = 1.0;
-  last_wgt_          = 1.0;
-  absorb_wgt_        = 0.0;
-  n_bank_            = 0;
-  wgt_bank_          = 0.0;
-  sqrtkT_            = -1.0;
-  n_collision_       = 0;
-  fission_           = false;
-  delayed_group_     = 0;
-  for (int i=0; i<MAX_DELAYED_GROUPS; ++i) {
-    n_delayed_bank_[i] = 0;
-  }
-  g_ = 0;
-
-  // Set up base level coordinates
-  coord_[0].universe = C_NONE;
-  n_coord_ = 1;
-  last_n_coord_ = 1;
-}
-
-void
 Particle::from_source(const Bank* src)
 {
-  // set defaults
-  initialize();
+  // reset some attributes
+  this->clear();
+  alive_ = true;
+  surface_ = 0;
+  cell_born_ = C_NONE;
+  material_ = C_NONE;
+  n_collision_ = 0;
+  fission_ = false;
 
   // copy attributes from source bank site
   type_ = static_cast<Particle::Type>(src->particle);

@@ -136,7 +136,6 @@ void create_ppm(Plot pl)
 #pragma omp parallel
 {
   Particle p;
-  p.initialize();
   std::copy(xyz, xyz+3, p.coord_[0].xyz);
   std::copy(dir, dir+3, p.coord_[0].uvw);
   p.coord_[0].universe = model::root_universe;
@@ -854,7 +853,6 @@ void create_voxel(Plot pl)
   // allocate and initialize particle
   double dir[3] = {0.5, 0.5, 0.5};
   Particle p;
-  p.initialize();
   std::copy(ll.begin(), ll.begin()+ll.size(), p.coord_[0].xyz);
   std::copy(dir, dir+3, p.coord_[0].uvw);
   p.coord_[0].universe = model::root_universe;

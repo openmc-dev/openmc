@@ -59,27 +59,30 @@ public:
     neutron, photon, electron, positron
   };
 
-  int64_t id_;  //!< Unique ID
-  Type type_;   //!< Particle type (n, p, e, etc.)
+  // Constructors
+  Particle();
 
-  int n_coord_;                  //!< number of current coordinate levels
+  int64_t id_;  //!< Unique ID
+  Type type_ {Type::neutron};   //!< Particle type (n, p, e, etc.)
+
+  int n_coord_ {1};              //!< number of current coordinate levels
   int cell_instance_;            //!< offset for distributed properties
   LocalCoord coord_[MAX_COORD];  //!< coordinates for all levels
 
   // Particle coordinates before crossing a surface
-  int last_n_coord_;          //!< number of current coordinates
+  int last_n_coord_ {1};      //!< number of current coordinates
   int last_cell_[MAX_COORD];  //!< coordinates for all levels
 
   // Energy data
   double E_;       //!< post-collision energy in eV
   double last_E_;  //!< pre-collision energy in eV
-  int g_;          //!< post-collision energy group (MG only)
+  int g_ {0};      //!< post-collision energy group (MG only)
   int last_g_;     //!< pre-collision energy group (MG only)
 
   // Other physical data
-  double wgt_;     //!< particle weight
+  double wgt_ {1.0};     //!< particle weight
   double mu_;      //!< angle of scatter
-  bool alive_;     //!< is particle alive?
+  bool alive_ {true};     //!< is particle alive?
 
   // Other physical data
   double last_xyz_current_[3];  //!< coordinates of the last collision or
@@ -87,36 +90,36 @@ public:
                                 //!< current tallies
   double last_xyz_[3];          //!< previous coordinates
   double last_uvw_[3];          //!< previous direction coordinates
-  double last_wgt_;             //!< pre-collision particle weight
-  double absorb_wgt_;           //!< weight absorbed for survival biasing
+  double last_wgt_ {1.0};       //!< pre-collision particle weight
+  double absorb_wgt_ {0.0};     //!< weight absorbed for survival biasing
 
   // What event took place
-  bool fission_;       //!< did particle cause implicit fission
+  bool fission_ {false}; //!< did particle cause implicit fission
   int event_;          //!< scatter, absorption
   int event_nuclide_;  //!< index in nuclides array
   int event_mt_;       //!< reaction MT
-  int delayed_group_;  //!< delayed group
+  int delayed_group_ {0};  //!< delayed group
 
   // Post-collision physical data
-  int n_bank_;        //!< number of fission sites banked
-  double wgt_bank_;   //!< weight of fission sites banked
+  int n_bank_ {0};        //!< number of fission sites banked
+  double wgt_bank_ {0.0}; //!< weight of fission sites banked
   int n_delayed_bank_[MAX_DELAYED_GROUPS];  //!< number of delayed fission
                                             //!< sites banked
 
   // Indices for various arrays
-  int surface_;        //!< index for surface particle is on
-  int cell_born_;      //!< index for cell particle was born in
-  int material_;       //!< index for current material
-  int last_material_;  //!< index for last material
+  int surface_ {0};             //!< index for surface particle is on
+  int cell_born_ {-1};      //!< index for cell particle was born in
+  int material_ {-1};       //!< index for current material
+  int last_material_ {-1};  //!< index for last material
 
   // Temperature of current cell
-  double sqrtkT_;       //!< sqrt(k_Boltzmann * temperature) in eV
-  double last_sqrtkT_;  //!< last temperature
+  double sqrtkT_ {-1.0};      //!< sqrt(k_Boltzmann * temperature) in eV
+  double last_sqrtkT_ {0.0};  //!< last temperature
 
   // Statistical data
-  int n_collision_;  //!< number of collisions
+  int n_collision_ {0};  //!< number of collisions
 
-// Track output
+  // Track output
   bool write_track_ {false};
 
   // Secondary particles created
@@ -135,9 +138,6 @@ public:
   //! \param type Particle type
   //! \param run_CE Whether continuous-energy data is being used
   void create_secondary(const double* uvw, double E, Type type, bool run_CE);
-
-  //! sets default attributes for a particle
-  void initialize();
 
   //! initialize from a source site
   //

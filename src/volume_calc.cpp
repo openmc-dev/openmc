@@ -96,7 +96,6 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
     std::vector<std::vector<int>> indices(n);
     std::vector<std::vector<int>> hits(n);
     Particle p;
-    p.initialize();
 
     prn_set_stream(STREAM_VOLUME);
 

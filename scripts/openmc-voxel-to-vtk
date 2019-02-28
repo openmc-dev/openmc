@@ -8,7 +8,7 @@ import numpy as np
 import h5py
 import vtk
 
-_min_version = (1,1)
+_min_version = (2,0)
 
 
 def main():

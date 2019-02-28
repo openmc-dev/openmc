@@ -21,8 +21,7 @@ LegendreFilter::get_all_bins(const Particle* p, int estimator,
   double wgt[n_bins_];
   calc_pn_c(order_, p->mu, wgt);
   for (int i = 0; i < n_bins_; i++) {
-    //TODO: off-by-one
-    match.bins_.push_back(i + 1);
+    match.bins_.push_back(i);
     match.weights_.push_back(wgt[i]);
   }
 }
@@ -37,8 +36,7 @@ LegendreFilter::to_statepoint(hid_t filter_group) const
 std::string
 LegendreFilter::text_label(int bin) const
 {
-  //TODO: off-by-one
-  return "Legendre expansion, P" + std::to_string(bin - 1);
+  return "Legendre expansion, P" + std::to_string(bin);
 }
 
 //==============================================================================
@@ -52,7 +50,7 @@ openmc_legendre_filter_get_order(int32_t index, int* order)
   if (int err = verify_filter(index)) return err;
 
   // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index-1].get();
+  const auto& filt_base = model::tally_filters[index].get();
   auto* filt = dynamic_cast<LegendreFilter*>(filt_base);
 
   // Check the filter type.
@@ -73,7 +71,7 @@ openmc_legendre_filter_set_order(int32_t index, int order)
   if (int err = verify_filter(index)) return err;
 
   // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index-1].get();
+  const auto& filt_base = model::tally_filters[index].get();
   auto* filt = dynamic_cast<LegendreFilter*>(filt_base);
 
   // Check the filter type.

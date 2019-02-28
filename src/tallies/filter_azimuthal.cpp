@@ -48,8 +48,7 @@ AzimuthalFilter::get_all_bins(const Particle* p, int estimator,
   }
 
   if (phi >= bins_.front() && phi <= bins_.back()) {
-    //TODO: off-by-one
-    auto bin = lower_bound_index(bins_.begin(), bins_.end(), phi) + 1;
+    auto bin = lower_bound_index(bins_.begin(), bins_.end(), phi);
     match.bins_.push_back(bin);
     match.weights_.push_back(1.0);
   }
@@ -66,8 +65,7 @@ std::string
 AzimuthalFilter::text_label(int bin) const
 {
   std::stringstream out;
-  //TODO: off-by-one
-  out << "Azimuthal Angle [" << bins_[bin-1] << ", " << bins_[bin] << ")";
+  out << "Azimuthal Angle [" << bins_[bin] << ", " << bins_[bin+1] << ")";
   return out.str();
 }
 

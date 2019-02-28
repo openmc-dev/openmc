@@ -39,8 +39,7 @@ MuFilter::get_all_bins(const Particle* p, int estimator, FilterMatch& match)
 const
 {
   if (p->mu >= bins_.front() && p->mu <= bins_.back()) {
-    //TODO: off-by-one
-    auto bin = lower_bound_index(bins_.begin(), bins_.end(), p->mu) + 1;
+    auto bin = lower_bound_index(bins_.begin(), bins_.end(), p->mu);
     match.bins_.push_back(bin);
     match.weights_.push_back(1.0);
   }
@@ -57,8 +56,7 @@ std::string
 MuFilter::text_label(int bin) const
 {
   std::stringstream out;
-  //TODO: off-by-one
-  out << "Change-in-Angle [" << bins_[bin-1] << ", " << bins_[bin] << ")";
+  out << "Change-in-Angle [" << bins_[bin] << ", " << bins_[bin+1] << ")";
   return out.str();
 }
 

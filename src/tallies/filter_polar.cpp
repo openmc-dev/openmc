@@ -47,8 +47,7 @@ const
   }
 
   if (theta >= bins_.front() && theta <= bins_.back()) {
-    //TODO: off-by-one
-    auto bin = lower_bound_index(bins_.begin(), bins_.end(), theta) + 1;
+    auto bin = lower_bound_index(bins_.begin(), bins_.end(), theta);
     match.bins_.push_back(bin);
     match.weights_.push_back(1.0);
   }
@@ -65,8 +64,7 @@ std::string
 PolarFilter::text_label(int bin) const
 {
   std::stringstream out;
-  //TODO: off-by-one
-  out << "Polar Angle [" << bins_[bin-1] << ", " << bins_[bin] << ")";
+  out << "Polar Angle [" << bins_[bin] << ", " << bins_[bin+1] << ")";
   return out.str();
 }
 

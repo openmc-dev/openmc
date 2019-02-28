@@ -44,8 +44,7 @@ UniverseFilter::get_all_bins(const Particle* p, int estimator,
   for (int i = 0; i < p->n_coord; i++) {
     auto search = map_.find(p->coord[i].universe);
     if (search != map_.end()) {
-      //TODO: off-by-one
-      match.bins_.push_back(search->second + 1);
+      match.bins_.push_back(search->second);
       match.weights_.push_back(1.0);
     }
   }
@@ -63,8 +62,7 @@ UniverseFilter::to_statepoint(hid_t filter_group) const
 std::string
 UniverseFilter::text_label(int bin) const
 {
-  //TODO: off-by-one
-  return "Universe " + std::to_string(model::universes[universes_[bin-1]]->id_);
+  return "Universe " + std::to_string(model::universes[universes_[bin]]->id_);
 }
 
 } // namespace openmc

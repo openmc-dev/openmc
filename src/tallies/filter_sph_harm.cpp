@@ -54,8 +54,8 @@ SphericalHarmonicsFilter::get_all_bins(const Particle* p, int estimator,
     // Append the matching (bin,weight) for each moment
     for (int i = 0; i < num_nm; i++) {
       match.weights_.push_back(wgt[n] * rn[j]);
-      //TODO: off-by-one
-      match.bins_.push_back(++j);
+      match.bins_.push_back(j);
+      ++j;
     }
   }
 }
@@ -77,9 +77,8 @@ SphericalHarmonicsFilter::text_label(int bin) const
 {
   std::stringstream out;
   for (int n = 0; n < order_ + 1; n++) {
-    if (bin <= (n + 1) * (n + 1)) {
-      //TODO: off-by-one
-      int m = (bin - n*n - 1) - n;
+    if (bin < (n + 1) * (n + 1)) {
+      int m = (bin - n*n) - n;
       out << "Spherical harmonic expansion, Y" << n << "," << m;
       return out.str();
     }
@@ -100,7 +99,7 @@ check_sphharm_filter(int32_t index)
   }
 
   // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index-1].get();
+  const auto& filt_base = model::tally_filters[index].get();
   auto* filt = dynamic_cast<SphericalHarmonicsFilter*>(filt_base);
 
   // Check the filter type.

@@ -988,7 +988,7 @@ extern "C" int openmc_id_map(const CPlot& pl, int* data_out) {
   double out_pixel = (pl.width_[1])/static_cast<double>(height);
 
   IDData data;
-  data.resize({width, height, 2});
+  data.resize({height, width, 2});
 
   int in_i, out_i;
   double xyz[3];
@@ -1039,15 +1039,15 @@ extern "C" int openmc_id_map(const CPlot& pl, int* data_out) {
       j = p.n_coord - 1;
       if (level >=0) {j = level + 1;}
       if (!found_cell) {
-        data(x,y,0) = -1;
-        data(x,y,1) = -1;
+        data(y,x,0) = -1;
+        data(y,x,1) = -1;
       } else {
         Cell *c = model::cells[p.coord[j].cell];
-        data(x,y,0) = c->id_;
+        data(y,x,0) = c->id_;
         if (c->type_ == FILL_UNIVERSE || p.material == MATERIAL_VOID) {
-          data(x,y,1) = -1;
+          data(y,x,1) = -1;
         } else {
-          data(x,y,1) = model::materials[p.material - 1]->id_;
+          data(y,x,1) = model::materials[p.material - 1]->id_;
         }
       }
     }

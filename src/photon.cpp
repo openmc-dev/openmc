@@ -212,6 +212,11 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
     if (data::ttb_k_grid.size() == 1) {
       read_dataset(rgroup, "photon_energy", data::ttb_k_grid);
     }
+
+    // Get data used for density effect correction
+    read_dataset(rgroup, "num_electrons", n_electrons_);
+    read_dataset(rgroup, "ionization_energy", ionization_energy_);
+    read_attribute(rgroup, "I", I_);
     close_group(rgroup);
 
     // Read stopping power data
@@ -219,7 +224,7 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
       rgroup = open_group(group, "stopping_powers");
       read_dataset(rgroup, "s_collision", stopping_power_collision_);
       read_dataset(rgroup, "s_radiative", stopping_power_radiative_);
-      read_attribute(rgroup, "I", I_);
+      //read_attribute(rgroup, "I", I_);
       close_group(rgroup);
     }
 

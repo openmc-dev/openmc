@@ -451,6 +451,161 @@ void Material::init_thermal()
   thermal_tables_ = tables;
 }
 
+double Material::density_effect_correction(double E)
+{
+  // Maximum number of iterations and convergence criterion for the
+  // Newton-Raphson method
+  constexpr int max_iter = 100;
+  constexpr double tol = 1.0e-6;
+
+  // Effective number of conduction electrons in the material
+  double n_conduction = 0.0;
+
+  // Log of the mean excitation energy of the material
+  double log_I = 0.0;
+
+  // Average electron number and average atomic weight
+  double electron_density = 0.0;
+  double mass_density = 0.0;
+
+  // Oscillator strength and square of the binding energy for each oscillator
+  // in material
+  std::vector<double> f;
+  std::vector<double> e_b_sq;
+
+  for (int i = 0; i < element_.size(); ++i) {
+    const auto& elm = data::elements[element_[i]];
+    double awr = data::nuclides[nuclide_[i]]->awr_;
+
+    // Get atomic density of nuclide given atom/weight percent
+    double atom_density = (atom_density_[0] > 0.0) ?
+      atom_density_[i] : -atom_density_[i] / awr;
+
+    electron_density += atom_density * elm.Z_;
+    mass_density += atom_density * awr * MASS_NEUTRON;
+    log_I += atom_density * elm.Z_ * std::log(elm.I_);
+
+    for (int j = 0; j < elm.n_electrons_.size(); ++j) {
+      if (elm.n_electrons_[j] < 0) {
+        n_conduction -= elm.n_electrons_[j] * atom_density;
+        continue;
+      }
+      e_b_sq.push_back(elm.ionization_energy_[j] * elm.ionization_energy_[j]);
+      f.push_back(elm.n_electrons_[j] * atom_density);
+    }
+  }
+  log_I /= electron_density;
+  n_conduction /= electron_density;
+  for (auto& f_i : f) f_i /= electron_density;
+
+  // Get density in g/cm^3 if it is given in atom/b-cm
+  double density = (density_ < 0.0) ? -density_ : mass_density / N_AVOGADRO;
+
+  // Calculate the square of the plasma energy
+  double e_p_sq = PLANCK_C * PLANCK_C * PLANCK_C * N_AVOGADRO *
+    electron_density * density / (2.0 * PI * PI * FINE_STRUCTURE *
+    MASS_ELECTRON_EV * mass_density);
+
+  // Get the total number of oscillators
+  int n = f.size();
+
+  // Calculate the Sternheimer adjustment factor using Newton's method
+  double rho = 2.0;
+  int iter;
+  for (iter = 0; iter < max_iter; ++iter) {
+    double rho_0 = rho;
+
+    // Function to find the root of and its derivative
+    double g = 0.0;
+    double gp = 0.0;
+
+    for (int i = 0; i < n; ++i) {
+      // Square of resonance energy of a bound-shell oscillator
+      double e_r_sq = e_b_sq[i] * rho * rho + 2.0 / 3.0 * f[i] * e_p_sq;
+      g += f[i] * std::log(e_r_sq);
+      gp += e_b_sq[i] * f[i] * rho / e_r_sq;
+    }
+    // Include conduction electrons
+    g += n_conduction * std::log(n_conduction * e_p_sq);
+
+    // Set the next guess: rho_n+1 = rho_n - g(rho_n)/g'(rho_n)
+    rho -= (g - 2.0 * log_I) / (2.0 * gp);
+
+    // If the initial guess is too large, rho can be negative
+    if (rho < 0.0) rho = rho_0 / 2.0;
+
+    // Check for convergence
+    if (std::abs(rho - rho_0) / rho_0 < tol) break;
+  }
+  // Did not converge
+  if (iter >= max_iter) {
+    warning("Maximum Newton-Raphson iterations exceeded.");
+    rho = 1.0e-6;
+  }
+
+  // Square of the ratio of the speed of light to the velocity of the charged
+  // particle
+  double beta_sq = E * (E + 2.0 * MASS_ELECTRON_EV) / ((E + MASS_ELECTRON_EV) *
+       (E + MASS_ELECTRON_EV));
+
+  // For nonmetals, delta = 0 for beta < beta_0, where beta_0 is obtained by
+  // setting the frequency w = 0.
+  double beta_0_sq = 0.0;
+  if (n_conduction == 0.0) {
+    for (int i = 0; i < n; ++i) {
+      beta_0_sq += f[i] * e_p_sq / (e_b_sq[i] * rho * rho);
+    }
+    beta_0_sq = 1.0 / (1.0 + beta_0_sq);
+  }
+  double delta = 0.0;
+  if (beta_sq < beta_0_sq) return delta;
+
+  // Compute the square of the frequency w^2 using Newton's method, with the
+  // initial guess of w^2 equal to beta^2 * gamma^2
+  double w_sq = E / MASS_ELECTRON_EV * (E / MASS_ELECTRON_EV + 2);
+  for (iter = 0; iter < max_iter; ++iter) {
+    double w_sq_0 = w_sq;
+
+    // Function to find the root of and its derivative
+    double g = 0.0;
+    double gp = 0.0;
+
+    for (int i = 0; i < n; ++i) {
+      double c = e_b_sq[i] * rho * rho / e_p_sq + w_sq;
+      g += f[i] / c;
+      gp -= f[i] / (c * c);
+    }
+    // Include conduction electrons
+    g += n_conduction / w_sq;
+    gp -= n_conduction / (w_sq * w_sq);
+
+    // Set the next guess: w_n+1 = w_n - g(w_n)/g'(w_n)
+    w_sq -= (g + 1.0 - 1.0 / beta_sq) / gp;
+
+    // If the initial guess is too large, w can be negative
+    if (w_sq < 0.0) w_sq = w_sq_0 / 2.0;
+
+    // Check for convergence
+    if (std::abs(w_sq - w_sq_0) / w_sq_0 < tol) break;
+  }
+  // Did not converge
+  if (iter >= max_iter) {
+    warning("Maximum Newton-Raphson iterations exceeded: setting density "
+        "effect correction to zero.");
+    return delta;
+  }
+
+  // Solve for the density effect correction
+  for (int i = 0; i < n; ++i) {
+    double l_sq = e_b_sq[i] * rho * rho / e_p_sq + 2.0 / 3.0 * f[i];
+    delta += f[i] * std::log((l_sq + w_sq)/l_sq);
+  }
+  // Include conduction electrons
+  delta += n_conduction * std::log((n_conduction + w_sq) / n_conduction);
+
+  return delta - w_sq * (1.0 - beta_sq);
+}
+
 void Material::init_bremsstrahlung()
 {
   // Create new object

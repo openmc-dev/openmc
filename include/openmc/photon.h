@@ -87,6 +87,9 @@ public:
 
   // Stopping power data
   double I_; // mean excitation energy
+  xt::xtensor<int, 1> n_electrons_;
+  xt::xtensor<double, 1> ionization_energy_;
+  // TODO: Calculate stopping powers instead of reading in
   xt::xtensor<double, 1> stopping_power_collision_;
   xt::xtensor<double, 1> stopping_power_radiative_;
 

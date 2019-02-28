@@ -95,6 +95,9 @@ public:
   std::unique_ptr<Bremsstrahlung> ttb_;
 
 private:
+  //! Calculate density effect correction
+  double density_effect_correction(double E);
+
   //! Initialize bremsstrahlung data
   void init_bremsstrahlung();
 

@@ -45,13 +45,13 @@ const
     if (estimator == ESTIMATOR_TRACKLENGTH) {
       match.bins_.push_back(data::num_energy_groups - p->g_);
     } else {
-      match.bins_.push_back(data::num_energy_groups - p->last_g_);
+      match.bins_.push_back(data::num_energy_groups - p->g_last_);
     }
     match.weights_.push_back(1.0);
 
   } else {
     // Get the pre-collision energy of the particle.
-    auto E = p->last_E_;
+    auto E = p->E_last_;
 
     // Bin the energy.
     if (E >= bins_.front() && E <= bins_.back()) {

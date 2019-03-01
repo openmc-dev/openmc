@@ -55,12 +55,12 @@ void read_particle_restart(Particle& p, int& previous_run_mode)
   }
 
   // Set particle last attributes
-  p.last_wgt_ = p.wgt_;
+  p.wgt_last_ = p.wgt_;
   p.r_last_current_ = p.r();
   p.r_last_ = p.r();
   p.u_last_ = p.u();
-  p.last_E_ = p.E_;
-  p.last_g_ = p.g_;
+  p.E_last_ = p.E_;
+  p.g_last_ = p.g_;
 
   // Close hdf5 file
   file_close(file_id);

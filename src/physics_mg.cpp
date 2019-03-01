@@ -63,7 +63,7 @@ sample_reaction(Particle* p)
   if (simulation::material_xs.absorption > 0.) {
     absorption(p);
   } else {
-    p->absorb_wgt_ = 0.;
+    p->wgt_absorb_ = 0.;
   }
   if (!p->alive_) return;
 
@@ -82,7 +82,7 @@ scatter(Particle* p)
 {
   // Adjust indices for Fortran to C++ indexing
   // TODO: Remove when no longer needed
-  int gin = p->last_g_ - 1;
+  int gin = p->g_last_ - 1;
   int gout = p->g_ - 1;
   int i_mat = p->material_;
   data::macro_xs[i_mat].sample_scatter(gin, gout, p->mu_, p->wgt_);
@@ -203,16 +203,16 @@ absorption(Particle* p)
 {
   if (settings::survival_biasing) {
     // Determine weight absorbed in survival biasing
-    p->absorb_wgt_ = p->wgt_ *
+    p->wgt_absorb_ = p->wgt_ *
          simulation::material_xs.absorption / simulation::material_xs.total;
 
     // Adjust weight of particle by the probability of absorption
-    p->wgt_ -= p->absorb_wgt_;
-    p->last_wgt_ = p->wgt_;
+    p->wgt_ -= p->wgt_absorb_;
+    p->wgt_last_ = p->wgt_;
 
     // Score implicit absorpion estimate of keff
 #pragma omp atomic
-    global_tally_absorption += p->absorb_wgt_ *
+    global_tally_absorption += p->wgt_absorb_ *
          simulation::material_xs.nu_fission /
          simulation::material_xs.absorption;
   } else {

@@ -127,11 +127,11 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
       if (c.material_.size() > 1 || c.sqrtkT_.size() > 1) {
         int offset = 0;
         for (int i = 0; i < p->n_coord_; i++) {
-          Cell& c_i {*model::cells[p->coord_[i].cell]};
+          const auto& c_i {*model::cells[p->coord_[i].cell]};
           if (c_i.type_ == FILL_UNIVERSE) {
             offset += c_i.offset_[c.distribcell_index_];
           } else if (c_i.type_ == FILL_LATTICE) {
-            Lattice& lat {*model::lattices[p->coord_[i+1].lattice-1]};
+            auto& lat {*model::lattices[p->coord_[i+1].lattice]};
             int i_xyz[3] {p->coord_[i+1].lattice_x,
                           p->coord_[i+1].lattice_y,
                           p->coord_[i+1].lattice_z};
@@ -227,7 +227,7 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
       p->coord_[p->n_coord_].uvw[2] = u.z;
 
       // Set lattice indices.
-      p->coord_[p->n_coord_].lattice = c.fill_ + 1;
+      p->coord_[p->n_coord_].lattice = c.fill_;
       p->coord_[p->n_coord_].lattice_x = i_xyz[0];
       p->coord_[p->n_coord_].lattice_y = i_xyz[1];
       p->coord_[p->n_coord_].lattice_z = i_xyz[2];
@@ -304,7 +304,7 @@ find_cell(Particle* p, bool use_neighbor_lists)
 extern "C" void
 cross_lattice(Particle* p, int lattice_translation[3])
 {
-  Lattice& lat {*model::lattices[p->coord_[p->n_coord_-1].lattice-1]};
+  auto& lat {*model::lattices[p->coord_[p->n_coord_-1].lattice]};
 
   if (settings::verbosity >= 10 || simulation::trace) {
     std::stringstream msg;
@@ -387,8 +387,8 @@ distance_to_boundary(Particle* p, double* dist, int* surface_crossed,
     level_surf_cross = surface_distance.second;
 
     // Find the distance to the next lattice tile crossing.
-    if (p->coord_[i].lattice != F90_NONE) {
-      Lattice& lat {*model::lattices[p->coord_[i].lattice-1]};
+    if (p->coord_[i].lattice != C_NONE) {
+      auto& lat {*model::lattices[p->coord_[i].lattice]};
       std::array<int, 3> i_xyz {p->coord_[i].lattice_x, p->coord_[i].lattice_y,
                                 p->coord_[i].lattice_z};
       //TODO: refactor so both lattice use the same position argument (which

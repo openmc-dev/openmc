@@ -37,7 +37,7 @@ LocalCoord::reset()
 {
   cell = C_NONE;
   universe = C_NONE;
-  lattice = 0;
+  lattice = C_NONE;
   lattice_x = 0;
   lattice_y = 0;
   rotated = false;

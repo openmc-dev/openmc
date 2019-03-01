@@ -96,7 +96,7 @@ Particle::from_source(const Bank* src)
   // copy attributes from source bank site
   type_ = src->particle;
   wgt_ = src->wgt;
-  last_wgt_ = src->wgt;
+  wgt_last_ = src->wgt;
   this->r() = src->r;
   this->u() = src->u;
   r_last_current_ = src->r;
@@ -107,10 +107,10 @@ Particle::from_source(const Bank* src)
     g_ = 0;
   } else {
     g_ = static_cast<int>(src->E);
-    last_g_ = static_cast<int>(src->E);
+    g_last_ = static_cast<int>(src->E);
     E_ = data::energy_bin_avg[g_ - 1];
   }
-  last_E_ = E_;
+  E_last_ = E_;
 }
 
 void
@@ -150,8 +150,8 @@ Particle::transport()
     }
 
     // Store pre-collision particle properties
-    last_wgt_ = wgt_;
-    last_E_ = E_;
+    wgt_last_ = wgt_;
+    E_last_ = E_;
     u_last_ = this->u();
     r_last_ = this->r();
 
@@ -177,7 +177,7 @@ Particle::transport()
     // Calculate microscopic and macroscopic cross sections
     if (material_ != MATERIAL_VOID) {
       if (settings::run_CE) {
-        if (material_ != last_material_ || sqrtkT_ != last_sqrtkT_) {
+        if (material_ != material_last_ || sqrtkT_ != sqrtkT_last_) {
           // If the material is the same as the last material and the
           // temperature hasn't changed, we don't need to lookup cross
           // sections again.
@@ -191,7 +191,7 @@ Particle::transport()
 
         // Finally, update the particle group while we have already checked
         // for if multi-group
-        last_g_ = g_;
+        g_last_ = g_;
       }
     } else {
       simulation::material_xs.total      = 0.0;
@@ -251,9 +251,9 @@ Particle::transport()
 
       // Saving previous cell data
       for (int j = 0; j < n_coord_; ++j) {
-        last_cell_[j] = coord_[j].cell;
+        cell_last_[j] = coord_[j].cell;
       }
-      last_n_coord_ = n_coord_;
+      n_coord_last_ = n_coord_;
 
       if (lattice_translation[0] != 0 || lattice_translation[1] != 0 ||
           lattice_translation[2] != 0) {
@@ -323,7 +323,7 @@ Particle::transport()
 
       // Set last material to none since cross sections will need to be
       // re-evaluated
-      last_material_ = C_NONE;
+      material_last_ = C_NONE;
 
       // Set all directions to base level -- right now, after a collision, only
       // the base level directions are changed
@@ -449,7 +449,7 @@ Particle::cross_surface()
     this->u() = u / u.norm();
 
     // Reassign particle's cell and surface
-    coord_[0].cell = last_cell_[last_n_coord_ - 1];
+    coord_[0].cell = cell_last_[n_coord_last_ - 1];
     surface_ = -surface_;
 
     // If a reflective surface is coincident with a lattice or universe
@@ -533,13 +533,13 @@ Particle::cross_surface()
 
 #ifdef DAGMC
   if (settings::dagmc) {
-    auto cellp = dynamic_cast<DAGCell*>(model::cells[last_cell_[0]]);
+    auto cellp = dynamic_cast<DAGCell*>(model::cells[cell_last_[0]]);
     // TODO: off-by-one
     auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[std::abs(surface_) - 1]);
     int32_t i_cell = next_cell(cellp, surfp) - 1;
     // save material and temp
-    last_material_ = material_;
-    last_sqrtkT_ = sqrtkT_;
+    material_last_ = material_;
+    sqrtkT_last_ = sqrtkT_;
     // set new cell value
     coord_[0].cell = i_cell;
     cell_instance_ = 0;

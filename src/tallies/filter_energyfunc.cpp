@@ -33,12 +33,12 @@ void
 EnergyFunctionFilter::get_all_bins(const Particle* p, int estimator,
                                    FilterMatch& match) const
 {
-  if (p->last_E_ >= energy_.front() && p->last_E_ <= energy_.back()) {
+  if (p->E_last_ >= energy_.front() && p->E_last_ <= energy_.back()) {
     // Search for the incoming energy bin.
-    auto i = lower_bound_index(energy_.begin(), energy_.end(), p->last_E_);
+    auto i = lower_bound_index(energy_.begin(), energy_.end(), p->E_last_);
 
     // Compute the interpolation factor between the nearest bins.
-    double f = (p->last_E_ - energy_[i]) / (energy_[i+1] - energy_[i]);
+    double f = (p->E_last_ - energy_[i]) / (energy_[i+1] - energy_[i]);
 
     // Interpolate on the lin-lin grid.
     match.bins_.push_back(0);

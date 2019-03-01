@@ -56,7 +56,7 @@ void collision(Particle* p)
   if (p->E_ < settings::energy_cutoff[type]) {
     p->alive_ = false;
     p->wgt_ = 0.0;
-    p->last_wgt_ = 0.0;
+    p->wgt_last_ = 0.0;
   }
 
   // Display information about collision
@@ -113,7 +113,7 @@ void sample_neutron_reaction(Particle* p)
   if (simulation::micro_xs[i_nuclide].absorption > 0.0) {
     absorption(p, i_nuclide);
   } else {
-    p->absorb_wgt_ = 0.0;
+    p->wgt_absorb_ = 0.0;
   }
   if (!p->alive_) return;
 
@@ -122,7 +122,7 @@ void sample_neutron_reaction(Particle* p)
   scatter(p, i_nuclide);
 
   // Advance URR seed stream 'N' times after energy changes
-  if (p->E_ != p->last_E_) {
+  if (p->E_ != p->E_last_) {
     prn_set_stream(STREAM_URR_PTABLE);
     advance_prn_seed(data::nuclides.size());
     prn_set_stream(STREAM_TRACKING);
@@ -542,16 +542,16 @@ void absorption(Particle* p, int i_nuclide)
 {
   if (settings::survival_biasing) {
     // Determine weight absorbed in survival biasing
-    p->absorb_wgt_ = p->wgt_ * simulation::micro_xs[i_nuclide].absorption /
+    p->wgt_absorb_ = p->wgt_ * simulation::micro_xs[i_nuclide].absorption /
           simulation::micro_xs[i_nuclide].total;
 
     // Adjust weight of particle by probability of absorption
-    p->wgt_ -= p->absorb_wgt_;
-    p->last_wgt_ = p->wgt_;
+    p->wgt_ -= p->wgt_absorb_;
+    p->wgt_last_ = p->wgt_;
 
     // Score implicit absorption estimate of keff
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      global_tally_absorption += p->absorb_wgt_ * simulation::micro_xs[
+      global_tally_absorption += p->wgt_absorb_ * simulation::micro_xs[
         i_nuclide].nu_fission / simulation::micro_xs[i_nuclide].absorption;
     }
   } else {

@@ -84,14 +84,14 @@ public:
   LocalCoord coord_[MAX_COORD];  //!< coordinates for all levels
 
   // Particle coordinates before crossing a surface
-  int last_n_coord_ {1};      //!< number of current coordinates
-  int last_cell_[MAX_COORD];  //!< coordinates for all levels
+  int n_coord_last_ {1};      //!< number of current coordinates
+  int cell_last_[MAX_COORD];  //!< coordinates for all levels
 
   // Energy data
   double E_;       //!< post-collision energy in eV
-  double last_E_;  //!< pre-collision energy in eV
+  double E_last_;  //!< pre-collision energy in eV
   int g_ {0};      //!< post-collision energy group (MG only)
-  int last_g_;     //!< pre-collision energy group (MG only)
+  int g_last_;     //!< pre-collision energy group (MG only)
 
   // Other physical data
   double wgt_ {1.0};     //!< particle weight
@@ -104,8 +104,8 @@ public:
                             //!< current tallies
   Position r_last_;   //!< previous coordinates
   Direction u_last_;  //!< previous direction coordinates
-  double last_wgt_ {1.0};   //!< pre-collision particle weight
-  double absorb_wgt_ {0.0}; //!< weight absorbed for survival biasing
+  double wgt_last_ {1.0};   //!< pre-collision particle weight
+  double wgt_absorb_ {0.0}; //!< weight absorbed for survival biasing
 
   // What event took place
   bool fission_ {false}; //!< did particle cause implicit fission
@@ -124,11 +124,11 @@ public:
   int surface_ {0};             //!< index for surface particle is on
   int cell_born_ {-1};      //!< index for cell particle was born in
   int material_ {-1};       //!< index for current material
-  int last_material_ {-1};  //!< index for last material
+  int material_last_ {-1};  //!< index for last material
 
   // Temperature of current cell
   double sqrtkT_ {-1.0};      //!< sqrt(k_Boltzmann * temperature) in eV
-  double last_sqrtkT_ {0.0};  //!< last temperature
+  double sqrtkT_last_ {0.0};  //!< last temperature
 
   // Statistical data
   int n_collision_ {0};  //!< number of collisions
@@ -140,15 +140,19 @@ public:
   int64_t n_secondary_ {};
   Bank secondary_bank_[MAX_SECONDARY];
 
+  // Accessors for position in global coordinates
   Position& r() { return coord_[0].r; }
   const Position& r() const { return coord_[0].r; }
 
+  // Accessors for position in local coordinates
   Position& r_local() { return coord_[n_coord_ - 1].r; }
   const Position& r_local() const { return coord_[n_coord_ - 1].r; }
 
+  // Accessors for direction in global coordinates
   Direction& u() { return coord_[0].u; }
   const Direction& u() const { return coord_[0].u; }
 
+  // Accessors for direction in local coordinates
   Direction& u_local() { return coord_[n_coord_ - 1].u; }
   const Direction& u_local() const { return coord_[n_coord_ - 1].u; }
 

@@ -146,13 +146,13 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
       }
 
       // Set the material and temperature.
-      p->last_material_ = p->material_;
+      p->material_last_ = p->material_;
       if (c.material_.size() > 1) {
         p->material_ = c.material_[p->cell_instance_];
       } else {
         p->material_ = c.material_[0];
       }
-      p->last_sqrtkT_ = p->sqrtkT_;
+      p->sqrtkT_last_ = p->sqrtkT_;
       if (c.sqrtkT_.size() > 1) {
         p->sqrtkT_ = c.sqrtkT_[p->cell_instance_];
       } else {

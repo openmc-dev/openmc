@@ -1164,8 +1164,8 @@ class CMFDRun(object):
             energy = self._egrid
             ng = self._indices[3]
 
-            # Get xyz locations and energies of all particles in source bank
-            source_xyz = openmc.capi.source_bank()['xyz']
+            # Get locations and energies of all particles in source bank
+            source_xyz = openmc.capi.source_bank()['r']
             source_energies = openmc.capi.source_bank()['E']
 
             # Convert xyz location to the CMFD mesh index
@@ -1213,8 +1213,8 @@ class CMFDRun(object):
         outside = np.zeros(1, dtype=bool)
         count = np.zeros(self._sourcecounts.shape)
 
-        # Get xyz locations and energies of each particle in source bank
-        source_xyz = openmc.capi.source_bank()['xyz']
+        # Get location and energy of each particle in source bank
+        source_xyz = openmc.capi.source_bank()['r']
         source_energies = openmc.capi.source_bank()['E']
 
         # Convert xyz location to mesh index and ravel index to scalar

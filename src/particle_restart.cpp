@@ -45,11 +45,8 @@ void read_particle_restart(Particle& p, int& previous_run_mode)
   p.type_ = static_cast<Particle::Type>(type);
   read_dataset(file_id, "weight", p.wgt_);
   read_dataset(file_id, "energy", p.E_);
-  std::array<double, 3> x;
-  read_dataset(file_id, "xyz", x);
-  std::copy(x.data(), x.data() + 3, p.coord_[0].xyz);
-  read_dataset(file_id, "uvw", x);
-  std::copy(x.data(), x.data() + 3, p.coord_[0].uvw);
+  read_dataset(file_id, "xyz", p.r());
+  read_dataset(file_id, "uvw", p.u());
 
   // Set energy group and average energy in multi-group mode
   if (!settings::run_CE) {
@@ -59,9 +56,9 @@ void read_particle_restart(Particle& p, int& previous_run_mode)
 
   // Set particle last attributes
   p.last_wgt_ = p.wgt_;
-  std::copy(p.coord_[0].xyz, p.coord_[0].xyz + 3, p.last_xyz_current_);
-  std::copy(p.coord_[0].xyz, p.coord_[0].xyz + 3, p.last_xyz_);
-  std::copy(p.coord_[0].uvw, p.coord_[0].uvw + 3, p.last_uvw_);
+  p.r_last_current_ = p.r();
+  p.r_last_ = p.r();
+  p.u_last_ = p.u();
   p.last_E_ = p.E_;
   p.last_g_ = p.g_;
 

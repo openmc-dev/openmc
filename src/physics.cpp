@@ -136,8 +136,8 @@ void sample_neutron_reaction(Particle* p)
 }
 
 void
-create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx, Bank* bank_array,
-  int64_t* size_bank, int64_t bank_capacity)
+create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
+  Particle::Bank* bank_array, int64_t* size_bank, int64_t bank_capacity)
 {
   // TODO: Heat generation from fission
 
@@ -181,12 +181,10 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx, Bank* bank_
   p->fission_ = true;
   for (size_t i = *size_bank; i < std::min(*size_bank + nu, bank_capacity); ++i) {
     // Bank source neutrons by copying the particle data
-    bank_array[i].xyz[0] = p->coord_[0].xyz[0];
-    bank_array[i].xyz[1] = p->coord_[0].xyz[1];
-    bank_array[i].xyz[2] = p->coord_[0].xyz[2];
+    bank_array[i].r = p->r();
 
     // Set that the bank particle is a neutron
-    bank_array[i].particle = static_cast<int>(Particle::Type::neutron);
+    bank_array[i].particle = Particle::Type::neutron;
 
     // Set the weight of the fission bank site
     bank_array[i].wgt = 1. / weight;
@@ -244,7 +242,7 @@ void sample_photon_reaction(Particle* p)
   prob += micro.coherent;
   if (prob > cutoff) {
     double mu = element.rayleigh_scatter(alpha);
-    rotate_angle_c(p->coord_[0].uvw, mu, nullptr);
+    p->u() = rotate_angle(p->u(), mu, nullptr);
     p->event_mt_ = COHERENT;
     return;
   }
@@ -270,10 +268,8 @@ void sample_photon_reaction(Particle* p)
     double mu_electron = (alpha - alpha_out*mu)
       / std::sqrt(alpha*alpha + alpha_out*alpha_out - 2.0*alpha*alpha_out*mu);
     double phi = 2.0*PI*prn();
-    double uvw[3];
-    std::copy(p->coord_[0].uvw, p->coord_[0].uvw + 3, uvw);
-    rotate_angle_c(uvw, mu_electron, &phi);
-    p->create_secondary(uvw, E_electron, Particle::Type::electron, true);
+    Direction u = rotate_angle(p->u(), mu_electron, &phi);
+    p->create_secondary(u, E_electron, Particle::Type::electron);
 
     // TODO: Compton subshell data does not match atomic relaxation data
     // Allow electrons to fill orbital and produce auger electrons
@@ -285,7 +281,7 @@ void sample_photon_reaction(Particle* p)
 
     phi += PI;
     p->E_ = alpha_out*MASS_ELECTRON_EV;
-    rotate_angle_c(p->coord_[0].uvw, mu, &phi);
+    p->u() = rotate_angle(p->u(), mu, &phi);
     p->event_mt_ = INCOHERENT;
     return;
   }
@@ -326,13 +322,13 @@ void sample_photon_reaction(Particle* p)
         }
 
         double phi = 2.0*PI*prn();
-        std::array<double, 3> uvw;
-        uvw[0] = mu;
-        uvw[1] = std::sqrt(1.0 - mu*mu)*std::cos(phi);
-        uvw[2] = std::sqrt(1.0 - mu*mu)*std::sin(phi);
+        Direction u;
+        u.x = mu;
+        u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
+        u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
 
         // Create secondary electron
-        p->create_secondary(uvw.data(), E_electron, Particle::Type::electron, true);
+        p->create_secondary(u, E_electron, Particle::Type::electron);
 
         // Allow electrons to fill orbital and produce auger electrons
         // and fluorescent photons
@@ -355,15 +351,12 @@ void sample_photon_reaction(Particle* p)
       &mu_electron, &mu_positron);
 
     // Create secondary electron
-    double uvw[3];
-    std::copy(p->coord_[0].uvw, p->coord_[0].uvw + 3, uvw);
-    rotate_angle_c(uvw, mu_electron, nullptr);
-    p->create_secondary(uvw, E_electron, Particle::Type::electron, true);
+    Direction u = rotate_angle(p->u(), mu_electron, nullptr);
+    p->create_secondary(u, E_electron, Particle::Type::electron);
 
     // Create secondary positron
-    std::copy(p->coord_[0].uvw, p->coord_[0].uvw + 3, uvw);
-    rotate_angle_c(uvw, mu_positron, nullptr);
-    p->create_secondary(uvw, E_positron, Particle::Type::positron, true);
+    u = rotate_angle(p->u(), mu_positron, nullptr);
+    p->create_secondary(u, E_positron, Particle::Type::positron);
 
     p->event_mt_ = PAIR_PROD;
     p->alive_ = false;
@@ -396,18 +389,14 @@ void sample_positron_reaction(Particle* p)
   // Sample angle isotropically
   double mu = 2.0*prn() - 1.0;
   double phi = 2.0*PI*prn();
-  std::array<double, 3> uvw;
-  uvw[0] = mu;
-  uvw[1] = std::sqrt(1.0 - mu*mu)*std::cos(phi);
-  uvw[2] = std::sqrt(1.0 - mu*mu)*std::sin(phi);
+  Direction u;
+  u.x = mu;
+  u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
+  u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
 
   // Create annihilation photon pair traveling in opposite directions
-  p->create_secondary(uvw.data(), MASS_ELECTRON_EV, Particle::Type::photon, true);
-
-  uvw[0] = -uvw[0];
-  uvw[1] = -uvw[1];
-  uvw[2] = -uvw[2];
-  p->create_secondary(uvw.data(), MASS_ELECTRON_EV, Particle::Type::photon, true);
+  p->create_secondary(u, MASS_ELECTRON_EV, Particle::Type::photon);
+  p->create_secondary(-u, MASS_ELECTRON_EV, Particle::Type::photon);
 
   p->E_ = 0.0;
   p->alive_ = false;
@@ -585,7 +574,7 @@ void absorption(Particle* p, int i_nuclide)
 void scatter(Particle* p, int i_nuclide)
 {
   // copy incoming direction
-  Direction u_old {p->coord_[0].uvw};
+  Direction u_old {p->u()};
 
   // Get pointer to nuclide and grid index/interpolation factor
   const auto& nuc {data::nuclides[i_nuclide]};
@@ -613,8 +602,8 @@ void scatter(Particle* p, int i_nuclide)
     double kT = nuc->multipole_ ? p->sqrtkT_*p->sqrtkT_ : nuc->kTs_[i_temp];
 
     // Perform collision physics for elastic scattering
-    elastic_scatter(i_nuclide, nuc->reactions_[0].get(), kT,
-      &p->E_, p->coord_[0].uvw, &p->mu_, &p->wgt_);
+    elastic_scatter(i_nuclide, *nuc->reactions_[0], kT,
+      p->E_, p->u(), p->mu_);
 
     p->event_mt_ = ELASTIC;
     sampled = true;
@@ -625,7 +614,7 @@ void scatter(Particle* p, int i_nuclide)
     // =======================================================================
     // S(A,B) SCATTERING
 
-    sab_scatter(i_nuclide, micro.index_sab, &p->E_, p->coord_[0].uvw, &p->mu_);
+    sab_scatter(i_nuclide, micro.index_sab, p->E_, p->u(), p->mu_);
 
     p->event_mt_ = ELASTIC;
     sampled = true;
@@ -673,39 +662,33 @@ void scatter(Particle* p, int i_nuclide)
       // Sample isotropic-in-lab outgoing direction
       double mu = 2.0*prn() - 1.0;
       double phi = 2.0*PI*prn();
-      Direction u_new;
-      u_new.x = mu;
-      u_new.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
-      u_new.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
-
-      p->mu_ = u_old.dot(u_new);
 
       // Change direction of particle
-      p->coord_[0].uvw[0] = u_new.x;
-      p->coord_[0].uvw[1] = u_new.y;
-      p->coord_[0].uvw[2] = u_new.z;
+      p->u().x = mu;
+      p->u().y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
+      p->u().z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
+      p->mu_ = u_old.dot(p->u());
     }
   }
 }
 
-void elastic_scatter(int i_nuclide, const Reaction* rx, double kT, double* E,
-  double* uvw, double* mu_lab, double* wgt)
+void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, double& E,
+  Direction& u, double& mu_lab)
 {
   // get pointer to nuclide
   const auto& nuc {data::nuclides[i_nuclide]};
 
-  double vel = std::sqrt(*E);
+  double vel = std::sqrt(E);
   double awr = nuc->awr_;
 
   // Neutron velocity in LAB
-  Direction u {uvw};
   Direction v_n = vel*u;
 
   // Sample velocity of target nucleus
   Direction v_t {};
   if (!simulation::micro_xs[i_nuclide].use_ptable) {
-    v_t = sample_target_velocity(nuc.get(), *E, u, v_n,
-      simulation::micro_xs[i_nuclide].elastic, kT, wgt);
+    v_t = sample_target_velocity(nuc.get(), E, u, v_n,
+      simulation::micro_xs[i_nuclide].elastic, kT);
   }
 
   // Velocity of center-of-mass
@@ -720,10 +703,10 @@ void elastic_scatter(int i_nuclide, const Reaction* rx, double kT, double* E,
   // Sample scattering angle, checking if it is an ncorrelated angle-energy
   // distribution
   double mu_cm;
-  auto& d = rx->products_[0].distribution_[0];
+  auto& d = rx.products_[0].distribution_[0];
   auto d_ = dynamic_cast<UncorrelatedAngleEnergy*>(d.get());
   if (d_) {
-    mu_cm = d_->angle().sample(*E);
+    mu_cm = d_->angle().sample(E);
   } else {
     mu_cm = 2.0*prn() - 1.0;
   }
@@ -739,26 +722,23 @@ void elastic_scatter(int i_nuclide, const Reaction* rx, double kT, double* E,
   // Transform back to LAB frame
   v_n += v_cm;
 
-  *E = v_n.dot(v_n);
-  vel = std::sqrt(*E);
+  E = v_n.dot(v_n);
+  vel = std::sqrt(E);
 
   // compute cosine of scattering angle in LAB frame by taking dot product of
   // neutron's pre- and post-collision angle
-  *mu_lab = u.dot(v_n) / vel;
+  mu_lab = u.dot(v_n) / vel;
 
   // Set energy and direction of particle in LAB frame
   u = v_n / vel;
-  uvw[0] = u.x;
-  uvw[1] = u.y;
-  uvw[2] = u.z;
 
   // Because of floating-point roundoff, it may be possible for mu_lab to be
   // outside of the range [-1,1). In these cases, we just set mu_lab to exactly
   // -1 or 1
-  if (std::abs(*mu_lab) > 1.0) *mu_lab = std::copysign(1.0, *mu_lab);
+  if (std::abs(mu_lab) > 1.0) mu_lab = std::copysign(1.0, mu_lab);
 }
 
-void sab_scatter(int i_nuclide, int i_sab, double* E, double* uvw, double* mu)
+void sab_scatter(int i_nuclide, int i_sab, double& E, Direction& u, double& mu)
 {
   // Determine temperature index
   const auto& micro {simulation::micro_xs[i_nuclide]};
@@ -766,15 +746,15 @@ void sab_scatter(int i_nuclide, int i_sab, double* E, double* uvw, double* mu)
 
   // Sample energy and angle
   double E_out;
-  data::thermal_scatt[i_sab]->data_[i_temp].sample(micro, *E, &E_out, mu);
+  data::thermal_scatt[i_sab]->data_[i_temp].sample(micro, E, &E_out, &mu);
 
   // Set energy to outgoing, change direction of particle
-  *E = E_out;
-  rotate_angle_c(uvw, *mu, nullptr);
+  E = E_out;
+  u = rotate_angle(u, mu, nullptr);
 }
 
 Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
-  Direction v_neut, double xs_eff, double kT, double* wgt)
+  Direction v_neut, double xs_eff, double kT)
 {
   // check if nuclide is a resonant scatterer
   ResScatMethod sampling_method;
@@ -973,7 +953,7 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT)
   return vt * rotate_angle(u, mu, nullptr);
 }
 
-void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Bank* site)
+void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Particle::Bank* site)
 {
   // Sample cosine of angle -- fission neutrons are always emitted
   // isotropically. Sometimes in ACE data, fission reactions actually have
@@ -983,9 +963,9 @@ void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Bank
 
   // Sample azimuthal angle uniformly in [0,2*pi)
   double phi = 2.0*PI*prn();
-  site->uvw[0] = mu;
-  site->uvw[1] = std::sqrt(1.0 - mu*mu) * std::cos(phi);
-  site->uvw[2] = std::sqrt(1.0 - mu*mu) * std::sin(phi);
+  site->u.x = mu;
+  site->u.y = std::sqrt(1.0 - mu*mu) * std::cos(phi);
+  site->u.z = std::sqrt(1.0 - mu*mu) * std::sin(phi);
 
   // Determine total nu, delayed nu, and delayed neutron fraction
   const auto& nuc {data::nuclides[i_nuclide]};
@@ -1098,14 +1078,14 @@ void inelastic_scatter(const Nuclide* nuc, const Reaction* rx, Particle* p)
   p->mu_ = mu;
 
   // change direction of particle
-  rotate_angle_c(p->coord_[0].uvw, mu, nullptr);
+  p->u() = rotate_angle(p->u(), mu, nullptr);
 
   // evaluate yield
   double yield = (*rx->products_[0].yield_)(E_in);
   if (std::floor(yield) == yield) {
     // If yield is integral, create exactly that many secondary particles
     for (int i = 0; i < static_cast<int>(std::round(yield)) - 1; ++i) {
-      p->create_secondary(p->coord_[0].uvw, p->E_, Particle::Type::neutron, true);
+      p->create_secondary(p->u(), p->E_, Particle::Type::neutron);
     }
   } else {
     // Otherwise, change weight of particle based on yield
@@ -1135,12 +1115,10 @@ void sample_secondary_photons(Particle* p, int i_nuclide)
     rx->products_[i_product].sample(p->E_, E, mu);
 
     // Sample the new direction
-    double uvw[3];
-    std::copy(p->coord_[0].uvw, p->coord_[0].uvw + 3, uvw);
-    rotate_angle_c(uvw, mu, nullptr);
+    Direction u = rotate_angle(p->u(), mu, nullptr);
 
     // Create the secondary photon
-    p->create_secondary(uvw, E, Particle::Type::photon, true);
+    p->create_secondary(u, E, Particle::Type::photon);
   }
 }
 

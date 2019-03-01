@@ -44,7 +44,7 @@ SphericalHarmonicsFilter::get_all_bins(const Particle* p, int estimator,
 
   // Find the Rn,m values
   double rn[n_bins_];
-  calc_rn_c(order_, p->last_uvw_, rn);
+  calc_rn(order_, p->u_last_, rn);
 
   int j = 0;
   for (int n = 0; n < order_ + 1; n++) {

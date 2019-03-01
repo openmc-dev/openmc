@@ -106,12 +106,8 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 
       p.n_coord_ = 1;
       Position xi {prn(), prn(), prn()};
-      Position r {lower_left_ + xi*(upper_right_ - lower_left_)};
-      // TODO: assign directly when xyz is Position
-      std::copy(&r.x, &r.x + 3, p.coord_[0].xyz);
-      p.coord_[0].uvw[0] = 0.5;
-      p.coord_[1].uvw[1] = 0.5;
-      p.coord_[2].uvw[2] = 0.5;
+      p.r() = lower_left_ + xi*(upper_right_ - lower_left_);
+      p.u() = {0.5, 0.5, 0.5};
 
       // If this location is not in the geometry at all, move on to next block
       if (!find_cell(&p, false)) continue;

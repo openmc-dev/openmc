@@ -42,9 +42,9 @@ AzimuthalFilter::get_all_bins(const Particle* p, int estimator,
 {
   double phi;
   if (estimator == ESTIMATOR_TRACKLENGTH) {
-    phi = std::atan2(p->coord_[0].uvw[1], p->coord_[0].uvw[0]);
+    phi = std::atan2(p->u().y, p->u().x);
   } else {
-    phi = std::atan2(p->last_uvw_[1], p->last_uvw_[0]);
+    phi = std::atan2(p->u_last_.y, p->u_last_.x);
   }
 
   if (phi >= bins_.front() && phi <= bins_.back()) {

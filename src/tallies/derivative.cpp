@@ -667,8 +667,8 @@ void score_collision_derivative(const Particle* p)
           deriv.flux_deriv += dsig_s / (micro_xs.total - micro_xs.absorption);
           // Note that this is an approximation!  The real scattering cross
           // section is
-          // Sigma_s(E'->E, uvw'->uvw) = Sigma_s(E') * P(E'->E, uvw'->uvw).
-          // We are assuming that d_P(E'->E, uvw'->uvw) / d_T = 0 and only
+          // Sigma_s(E'->E, u'->u) = Sigma_s(E') * P(E'->E, u'->u).
+          // We are assuming that d_P(E'->E, u'->u) / d_T = 0 and only
           // computing d_S(E') / d_T.  Using this approximation in the vicinity
           // of low-energy resonances causes errors (~2-5% for PWR pincell
           // eigenvalue derivatives).

@@ -92,7 +92,7 @@ scatter(Particle* p)
   p->g_ = gout + 1;
 
   // Rotate the angle
-  rotate_angle_c(p->coord_[0].uvw, p->mu_, nullptr);
+  p->u() = rotate_angle(p->u(), p->mu_, nullptr);
 
   // Update energy value for downstream compatability (in tallying)
   p->E_ = data::energy_bin_avg[gout];
@@ -102,7 +102,7 @@ scatter(Particle* p)
 }
 
 void
-create_fission_sites(Particle* p, Bank* bank_array, int64_t* size_bank,
+create_fission_sites(Particle* p, Particle::Bank* bank_array, int64_t* size_bank,
      int64_t bank_array_size)
 {
   // TODO: Heat generation from fission
@@ -152,12 +152,10 @@ create_fission_sites(Particle* p, Bank* bank_array, int64_t* size_bank,
   for (size_t i = static_cast<size_t>(*size_bank);
        i < static_cast<size_t>(std::min(*size_bank + nu, bank_array_size)); i++) {
     // Bank source neutrons by copying the particle data
-    bank_array[i].xyz[0] = p->coord_[0].xyz[0];
-    bank_array[i].xyz[1] = p->coord_[0].xyz[1];
-    bank_array[i].xyz[2] = p->coord_[0].xyz[2];
+    bank_array[i].r = p->r();
 
     // Set that the bank particle is a neutron
-    bank_array[i].particle = static_cast<int>(Particle::Type::neutron);
+    bank_array[i].particle = Particle::Type::neutron;
 
     // Set the weight of the fission bank site
     bank_array[i].wgt = 1. / weight;
@@ -168,16 +166,16 @@ create_fission_sites(Particle* p, Bank* bank_array, int64_t* size_bank,
 
     // Sample the azimuthal angle uniformly in [0, 2.pi)
     double phi = 2. * PI * prn();
-    bank_array[i].uvw[0] = mu;
-    bank_array[i].uvw[1] = std::sqrt(1. - mu * mu) * std::cos(phi);
-    bank_array[i].uvw[2] = std::sqrt(1. - mu * mu) * std::sin(phi);
+    bank_array[i].u.x = mu;
+    bank_array[i].u.y = std::sqrt(1. - mu * mu) * std::cos(phi);
+    bank_array[i].u.z = std::sqrt(1. - mu * mu) * std::sin(phi);
 
     // Sample secondary energy distribution for the fission reaction and set
     // the energy in the fission bank
     int dg;
     int gout;
     data::macro_xs[p->material_].sample_fission_energy(p->g_ - 1, dg, gout);
-    bank_array[i].E = static_cast<double>(gout + 1);
+    bank_array[i].E = gout + 1;
     bank_array[i].delayed_group = dg + 1;
 
     // Set the delayed group on the particle as well

@@ -1,5 +1,6 @@
 #include "openmc/tallies/tally_scoring.h"
 
+#include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
@@ -1223,7 +1224,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
   auto& tally {*model::tallies[i_tally]};
 
   // Set the direction and group to use with get_xs
-  const double* p_uvw;
+  Direction p_u;
   int p_g;
   if (tally.estimator_ == ESTIMATOR_ANALOG
     || tally.estimator_ == ESTIMATOR_COLLISION) {
@@ -1233,40 +1234,40 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
       // Then we either are alive and had a scatter (and so g changed),
       // or are dead and g did not change
       if (p->alive_) {
-        p_uvw = p->last_uvw_;
+        p_u = p->u_last_;
         p_g = p->last_g_;
       } else {
-        p_uvw = p->coord_[p->n_coord_-1].uvw;
+        p_u = p->u_local();
         p_g = p->g_;
       }
     } else if (p->event_ == EVENT_SCATTER) {
 
       // Then the energy group has been changed by the scattering routine
       // meaning gin is now in p % last_g
-      p_uvw = p->last_uvw_;
+      p_u = p->u_last_;
       p_g = p->last_g_;
     } else {
 
       // No scatter, no change in g.
-      p_uvw = p->coord_[p->n_coord_-1].uvw;
+      p_u = p->u_local();
       p_g = p->g_;
     }
   } else {
 
     // No actual collision so g has not changed.
-    p_uvw = p->coord_[p->n_coord_-1].uvw;
+    p_u = p->u_local();
     p_g = p->g_;
   }
 
   // To significantly reduce de-referencing, point matxs to the macroscopic
   // Mgxs for the material of interest
-  data::macro_xs[p->material_].set_angle_index(p_uvw);
+  data::macro_xs[p->material_].set_angle_index(p_u);
 
   // Do same for nucxs, point it to the microscopic nuclide data of interest
   if (i_nuclide >= 0) {
     // And since we haven't calculated this temperature index yet, do so now
     data::nuclides_MG[i_nuclide].set_temperature_index(p->sqrtkT_);
-    data::nuclides_MG[i_nuclide].set_angle_index(p_uvw);
+    data::nuclides_MG[i_nuclide].set_angle_index(p_u);
   }
 
   for (auto i = 0; i < tally.scores_.size(); ++i) {

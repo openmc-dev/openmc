@@ -248,10 +248,10 @@ void read_mg_cross_sections_header()
 //==============================================================================
 
 void
-calculate_xs_c(int i_mat, int gin, double sqrtkT, const double uvw[3],
+calculate_xs_c(int i_mat, int gin, double sqrtkT, Direction u,
      double& total_xs, double& abs_xs, double& nu_fiss_xs)
 {
-  data::macro_xs[i_mat].calculate_xs(gin - 1, sqrtkT, uvw, total_xs, abs_xs,
+  data::macro_xs[i_mat].calculate_xs(gin - 1, sqrtkT, u, total_xs, abs_xs,
        nu_fiss_xs);
 }
 

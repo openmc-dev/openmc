@@ -182,10 +182,10 @@ extern "C" void print_particle(Particle* p)
                 << p->coord_[i].lattice_z << ")\n";
     }
 
-    std::cout << "    xyz = " << p->coord_[i].xyz[0] << " "
-              << p->coord_[i].xyz[1] << " " << p->coord_[i].xyz[2] << "\n";
-    std::cout << "    uvw = " << p->coord_[i].uvw[0] << " "
-              << p->coord_[i].uvw[1] << " " << p->coord_[i].uvw[2] << "\n";
+    std::cout << "    r = (" << p->coord_[i].r.x << ", "
+              << p->coord_[i].r.y << ", " << p->coord_[i].r.z << ")\n";
+    std::cout << "    u = (" << p->coord_[i].u.x << ", "
+              << p->coord_[i].u.y << ", " << p->coord_[i].u.z << ")\n";
   }
 
   // Display miscellaneous info.

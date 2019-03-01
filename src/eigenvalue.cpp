@@ -132,7 +132,7 @@ void synchronize_bank()
 
   // Allocate temporary source bank
   int64_t index_temp = 0;
-  std::vector<Bank> temp_sites(3*simulation::work);
+  std::vector<Particle::Bank> temp_sites(3*simulation::work);
 
   for (int64_t i = 0; i < simulation::n_bank; ++i) {
     // If there are less than n_particles particles banked, automatically add
@@ -608,7 +608,7 @@ double ufs_get_weight(const Particle* p)
   auto& m = model::meshes[settings::index_ufs_mesh];
 
   // Determine indices on ufs mesh for current location
-  int mesh_bin = m->get_bin({p->coord_[0].xyz});
+  int mesh_bin = m->get_bin(p->r());
   if (mesh_bin < 0) {
     p->write_restart();
     fatal_error("Source site outside UFS mesh!");

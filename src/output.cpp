@@ -174,7 +174,7 @@ extern "C" void print_particle(Particle* p)
       std::cout << "    Universe         = " << u.id_ << "\n";
     }
 
-    if (p->coord_[i].lattice != F90_NONE) {
+    if (p->coord_[i].lattice != C_NONE) {
       const Lattice& lat {*model::lattices[p->coord_[i].lattice]};
       std::cout << "    Lattice          = " << lat.id_ << "\n";
       std::cout << "    Lattice position = (" << p->coord_[i].lattice_x

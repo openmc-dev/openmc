@@ -385,9 +385,9 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   // just a bit for the purposes of determining if there was an intersection
   // in case the mesh surfaces coincide with lattice/geometric surfaces which
   // might produce finite-precision errors.
-  Position last_r {p->last_xyz_};
-  Position r {p->coord_[0].xyz};
-  Direction u {p->coord_[0].uvw};
+  Position last_r {p->r_last_};
+  Position r {p->r()};
+  Direction u {p->u()};
 
   Position r0 = last_r + TINY_BIT*u;
   Position r1 = r - TINY_BIT*u;
@@ -522,9 +522,9 @@ void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins
   // Determine if the track intersects the tally mesh.
 
   // Copy the starting and ending coordinates of the particle.
-  Position r0 {p->last_xyz_current_};
-  Position r1 {p->coord_[0].xyz};
-  Direction u {p->coord_[0].uvw};
+  Position r0 {p->r_last_current_};
+  Position r1 {p->r()};
+  Direction u {p->u()};
 
   // Determine indices for starting and ending location.
   int n = n_dimension_;
@@ -652,7 +652,7 @@ void RegularMesh::to_hdf5(hid_t group) const
   close_group(mesh_group);
 }
 
-xt::xarray<double> RegularMesh::count_sites(int64_t n, const Bank* bank,
+xt::xarray<double> RegularMesh::count_sites(int64_t n, const Particle::Bank* bank,
   int n_energy, const double* energies, bool* outside) const
 {
   // Determine shape of array for counts
@@ -670,7 +670,7 @@ xt::xarray<double> RegularMesh::count_sites(int64_t n, const Bank* bank,
 
   for (int64_t i = 0; i < n; ++i) {
     // determine scoring bin for entropy mesh
-    int mesh_bin = get_bin({bank[i].xyz});
+    int mesh_bin = get_bin(bank[i].r);
 
     // if outside mesh, skip particle
     if (mesh_bin < 0) {

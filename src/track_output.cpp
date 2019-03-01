@@ -40,7 +40,7 @@ void add_particle_track()
 
 void write_particle_track(const Particle& p)
 {
-  tracks.back().push_back({p.coord_[0].xyz});
+  tracks.back().push_back(p.r());
 }
 
 void finalize_particle_track(const Particle& p)

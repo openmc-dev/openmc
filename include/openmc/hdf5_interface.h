@@ -332,7 +332,17 @@ void read_dataset(hid_t obj_id, const char* name, xt::xtensor<T, N>& arr, bool i
 
   // Copy into xtensor
   arr = xarr;
+}
 
+// overload for Position
+inline void
+read_dataset(hid_t obj_id, const char* name, Position& r, bool indep=false)
+{
+  std::array<double, 3> x;
+  read_dataset(obj_id, name, x, indep);
+  r.x = x[0];
+  r.y = x[1];
+  r.z = x[2];
 }
 
 template <typename T, std::size_t N>

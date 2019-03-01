@@ -41,9 +41,9 @@ const
 {
   double theta;
   if (estimator == ESTIMATOR_TRACKLENGTH) {
-    theta = std::acos(p->coord_[0].uvw[2]);
+    theta = std::acos(p->u().z);
   } else {
-    theta = std::acos(p->last_uvw_[2]);
+    theta = std::acos(p->u_last_.z);
   }
 
   if (theta >= bins_.front() && theta <= bins_.back()) {

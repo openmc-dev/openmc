@@ -35,7 +35,7 @@ scatter(Particle* p);
 //! \param size_bank Number of particles currently in the bank
 //! \param bank_array_size Allocated size of the bank
 void
-create_fission_sites(Particle* p, Bank* bank_array, int64_t* size_bank,
+create_fission_sites(Particle* p, Particle::Bank* bank_array, int64_t* size_bank,
      int64_t bank_array_size);
 
 //! \brief Handles an absorption event

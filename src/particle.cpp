@@ -66,19 +66,18 @@ Particle::clear()
 }
 
 void
-Particle::create_secondary(const double* uvw, double E, Type type, bool run_CE)
+Particle::create_secondary(Direction u, double E, Type type)
 {
   if (n_secondary_ == MAX_SECONDARY) {
     fatal_error("Too many secondary particles created.");
   }
 
   int64_t n = n_secondary_;
-  secondary_bank_[n].particle = static_cast<int>(type);
+  secondary_bank_[n].particle = type;
   secondary_bank_[n].wgt = wgt_;
-  std::copy(coord_[0].xyz, coord_[0].xyz + 3, secondary_bank_[n].xyz);
-  std::copy(uvw, uvw + 3, secondary_bank_[n].uvw);
-  secondary_bank_[n].E = E;
-  if (!run_CE) secondary_bank_[n].E = g_;
+  secondary_bank_[n].r = this->r();
+  secondary_bank_[n].u = u;
+  secondary_bank_[n].E = settings::run_CE ? E : g_;
   ++n_secondary_;
 }
 
@@ -95,14 +94,14 @@ Particle::from_source(const Bank* src)
   fission_ = false;
 
   // copy attributes from source bank site
-  type_ = static_cast<Particle::Type>(src->particle);
+  type_ = src->particle;
   wgt_ = src->wgt;
   last_wgt_ = src->wgt;
-  std::copy(src->xyz, src->xyz + 3, coord_[0].xyz);
-  std::copy(src->uvw, src->uvw + 3, coord_[0].uvw);
-  std::copy(src->xyz, src->xyz + 3, last_xyz_current_);
-  std::copy(src->xyz, src->xyz + 3, last_xyz_);
-  std::copy(src->uvw, src->uvw + 3, last_uvw_);
+  this->r() = src->r;
+  this->u() = src->u;
+  r_last_current_ = src->r;
+  r_last_ = src->r;
+  u_last_ = src->u;
   if (settings::run_CE) {
     E_ = src->E;
     g_ = 0;
@@ -153,8 +152,8 @@ Particle::transport()
     // Store pre-collision particle properties
     last_wgt_ = wgt_;
     last_E_ = E_;
-    std::copy(coord_[0].uvw, coord_[0].uvw + 3, last_uvw_);
-    std::copy(coord_[0].xyz, coord_[0].xyz + 3, last_xyz_);
+    u_last_ = this->u();
+    r_last_ = this->r();
 
     // If the cell hasn't been determined based on the particle's location,
     // initiate a search for the current cell. This generally happens at the
@@ -186,7 +185,7 @@ Particle::transport()
         }
       } else {
         // Get the MG data
-        calculate_xs_c(material_, g_, sqrtkT_, coord_[n_coord_-1].uvw,
+        calculate_xs_c(material_, g_, sqrtkT_, this->u_local(),
           simulation::material_xs.total, simulation::material_xs.absorption,
           simulation::material_xs.nu_fission);
 
@@ -225,10 +224,7 @@ Particle::transport()
 
     // Advance particle
     for (int j = 0; j < n_coord_; ++j) {
-      // TODO: use Position
-      coord_[j].xyz[0] += distance * coord_[j].uvw[0];
-      coord_[j].xyz[1] += distance * coord_[j].uvw[1];
-      coord_[j].xyz[2] += distance * coord_[j].uvw[2];
+      coord_[j].r += distance * coord_[j].u;
     }
 
     // Score track-length tallies
@@ -323,25 +319,25 @@ Particle::transport()
       fission_ = false;
 
       // Save coordinates for tallying purposes
-      std::copy(coord_[0].xyz, coord_[0].xyz + 3, last_xyz_current_);
+      r_last_current_ = this->r();
 
       // Set last material to none since cross sections will need to be
       // re-evaluated
       last_material_ = C_NONE;
 
-      // Set all uvws to base level -- right now, after a collision, only the
-      // base level uvws are changed
+      // Set all directions to base level -- right now, after a collision, only
+      // the base level directions are changed
       for (int j = 0; j < n_coord_ - 1; ++j) {
         if (coord_[j + 1].rotated) {
           // If next level is rotated, apply rotation matrix
           const auto& m {model::cells[coord_[j].cell]->rotation_};
-          Direction u {coord_[j].uvw};
-          coord_[j + 1].uvw[0] = m[3]*u.x + m[4]*u.y + m[5]*u.z;
-          coord_[j + 1].uvw[1] = m[6]*u.x + m[7]*u.y + m[8]*u.z;
-          coord_[j + 1].uvw[2] = m[9]*u.x + m[10]*u.y + m[11]*u.z;
+          const auto& u {coord_[j].u};
+          coord_[j + 1].u.x = m[3]*u.x + m[4]*u.y + m[5]*u.z;
+          coord_[j + 1].u.y = m[6]*u.x + m[7]*u.y + m[8]*u.z;
+          coord_[j + 1].u.z = m[9]*u.x + m[10]*u.y + m[11]*u.z;
         } else {
           // Otherwise, copy this level's direction
-          std::copy(coord_[j].uvw, coord_[j].uvw + 3, coord_[j + 1].uvw);
+          coord_[j+1].u = coord_[j].u;
         }
       }
 
@@ -403,10 +399,7 @@ Particle::cross_surface()
       // TODO: Find a better solution to score surface currents than
       // physically moving the particle forward slightly
 
-      // TODO: Use Position
-      coord_[0].xyz[0] += TINY_BIT * coord_[0].uvw[0];
-      coord_[0].xyz[1] += TINY_BIT * coord_[0].uvw[1];
-      coord_[0].xyz[2] += TINY_BIT * coord_[0].uvw[2];
+      this->r() += TINY_BIT * this->u();
       score_surface_tally(this, model::active_meshsurf_tallies);
     }
 
@@ -443,22 +436,17 @@ Particle::cross_surface()
 
 
     if (!model::active_meshsurf_tallies.empty()) {
-      Position r {coord_[0].xyz};
-      coord_[0].xyz[0] -= TINY_BIT * coord_[0].uvw[0];
-      coord_[0].xyz[1] -= TINY_BIT * coord_[0].uvw[1];
-      coord_[0].xyz[2] -= TINY_BIT * coord_[0].uvw[2];
+      Position r {this->r()};
+      this->r() -= TINY_BIT * this->u();
       score_surface_tally(this, model::active_meshsurf_tallies);
-      std::copy(&r.x, &r.x + 3, coord_[0].xyz);
+      this->r() = r;
     }
 
     // Reflect particle off surface
-    Direction u = surf->reflect(coord_[0].xyz, coord_[0].uvw);
+    Direction u = surf->reflect(this->r(), this->u());
 
     // Make sure new particle direction is normalized
-    double norm = u.norm();
-    coord_[0].uvw[0] = u.x/norm;
-    coord_[0].uvw[1] = u.y/norm;
-    coord_[0].uvw[2] = u.z/norm;
+    this->u() = u / u.norm();
 
     // Reassign particle's cell and surface
     coord_[0].cell = last_cell_[last_n_coord_ - 1];
@@ -476,9 +464,7 @@ Particle::cross_surface()
     }
 
     // Set previous coordinate going slightly past surface crossing
-    last_xyz_current_[0] = coord_[0].xyz[0] + TINY_BIT*coord_[0].uvw[0];
-    last_xyz_current_[1] = coord_[0].xyz[1] + TINY_BIT*coord_[0].uvw[1];
-    last_xyz_current_[2] = coord_[0].xyz[2] + TINY_BIT*coord_[0].uvw[2];
+    r_last_current_ = this->r() + TINY_BIT*this->u();
 
     // Diagnostic message
     if (settings::verbosity >= 10 || simulation::trace) {
@@ -502,12 +488,10 @@ Particle::cross_surface()
     // particle to change -- artificially move the particle slightly back in
     // case the surface crossing is coincident with a mesh boundary
     if (!model::active_meshsurf_tallies.empty()) {
-      Position r {coord_[0].xyz};
-      coord_[0].xyz[0] -= TINY_BIT * coord_[0].uvw[0];
-      coord_[0].xyz[1] -= TINY_BIT * coord_[0].uvw[1];
-      coord_[0].xyz[2] -= TINY_BIT * coord_[0].uvw[2];
+      Position r {this->r()};
+      this->r() -= TINY_BIT * this->u();
       score_surface_tally(this, model::active_meshsurf_tallies);
-      std::copy(&r.x, &r.x + 3, coord_[0].xyz);
+      this->r() = r;
     }
 
     // Get a pointer to the partner periodic surface
@@ -516,11 +500,7 @@ Particle::cross_surface()
       model::surfaces[surf_p->i_periodic_].get());
 
     // Adjust the particle's location and direction.
-    Position r {coord_[0].xyz};
-    Direction u {coord_[0].uvw};
-    bool rotational = other->periodic_translate(surf_p, r, u);
-    std::copy(&r.x, &r.x + 3, coord_[0].xyz);
-    std::copy(&u.x, &u.x + 3, coord_[0].uvw);
+    bool rotational = other->periodic_translate(surf_p, this->r(), this->u());
 
     // Reassign particle's surface
     // TODO: off-by-one
@@ -538,9 +518,7 @@ Particle::cross_surface()
     }
 
     // Set previous coordinate going slightly past surface crossing
-    last_xyz_current_[0] = coord_[0].xyz[0] + TINY_BIT * coord_[0].uvw[0];
-    last_xyz_current_[1] = coord_[0].xyz[1] + TINY_BIT * coord_[0].uvw[1];
-    last_xyz_current_[2] = coord_[0].xyz[2] + TINY_BIT * coord_[0].uvw[2];
+    r_last_current_ = this->r() + TINY_BIT*this->u();
 
     // Diagnostic message
     if (settings::verbosity >= 10 || simulation::trace) {
@@ -588,9 +566,7 @@ Particle::cross_surface()
     // forward a tiny bit it should fix the problem.
 
     n_coord_ = 1;
-    coord_[0].xyz[0] += TINY_BIT * coord_[0].uvw[0];
-    coord_[0].xyz[1] += TINY_BIT * coord_[0].uvw[1];
-    coord_[0].xyz[2] += TINY_BIT * coord_[0].uvw[2];
+    this->r() += TINY_BIT * this->u();
 
     // Couldn't find next cell anywhere! This probably means there is an actual
     // undefined region in the geometry.
@@ -673,9 +649,8 @@ Particle::write_restart() const
     int64_t i = simulation::current_work;
     write_dataset(file_id, "weight", simulation::source_bank[i-1].wgt);
     write_dataset(file_id, "energy", simulation::source_bank[i-1].E);
-    hsize_t dims[] {3};
-    write_double(file_id, 1, dims, "xyz", simulation::source_bank[i-1].xyz, false);
-    write_double(file_id, 1, dims, "uvw", simulation::source_bank[i-1].uvw, false);
+    write_dataset(file_id, "xyz", simulation::source_bank[i-1].r);
+    write_dataset(file_id, "uvw", simulation::source_bank[i-1].u);
 
     // Close file
     file_close(file_id);

@@ -9,7 +9,7 @@
 #include <sstream>
 #include <string>
 
-#include "openmc/capi.h"
+#include "openmc/position.h"
 
 namespace openmc {
 
@@ -33,15 +33,19 @@ constexpr int MAX_LOST_PARTICLES {10};
 // Maximum number of lost particles, relative to the total number of particles
 constexpr double REL_MAX_LOST_PARTICLES {1.0e-6};
 
+//==============================================================================
+// Class declarations
+//==============================================================================
+
 struct LocalCoord {
+  Position r; //!< particle position
+  Direction u; //!< particle direction
   int cell {-1};
   int universe {-1};
   int lattice {-1};
   int lattice_x {-1};
   int lattice_y {-1};
   int lattice_z {-1};
-  double xyz[3]; //!< particle position
-  double uvw[3]; //!< particle direction
   bool rotated {false};  //!< Is the level rotated?
 
   //! clear data from a single coordinate level
@@ -57,6 +61,16 @@ public:
   //! Particle types
   enum class Type {
     neutron, photon, electron, positron
+  };
+
+  //! Saved ("banked") state of a particle
+  struct Bank {
+    Position r;
+    Direction u;
+    double E;
+    double wgt;
+    int delayed_group;
+    Type particle;
   };
 
   // Constructors
@@ -85,13 +99,13 @@ public:
   bool alive_ {true};     //!< is particle alive?
 
   // Other physical data
-  double last_xyz_current_[3];  //!< coordinates of the last collision or
-                                //!< reflective/periodic surface crossing for
-                                //!< current tallies
-  double last_xyz_[3];          //!< previous coordinates
-  double last_uvw_[3];          //!< previous direction coordinates
-  double last_wgt_ {1.0};       //!< pre-collision particle weight
-  double absorb_wgt_ {0.0};     //!< weight absorbed for survival biasing
+  Position r_last_current_; //!< coordinates of the last collision or
+                            //!< reflective/periodic surface crossing for
+                            //!< current tallies
+  Position r_last_;   //!< previous coordinates
+  Direction u_last_;  //!< previous direction coordinates
+  double last_wgt_ {1.0};   //!< pre-collision particle weight
+  double absorb_wgt_ {0.0}; //!< weight absorbed for survival biasing
 
   // What event took place
   bool fission_ {false}; //!< did particle cause implicit fission
@@ -126,6 +140,18 @@ public:
   int64_t n_secondary_ {};
   Bank secondary_bank_[MAX_SECONDARY];
 
+  Position& r() { return coord_[0].r; }
+  const Position& r() const { return coord_[0].r; }
+
+  Position& r_local() { return coord_[n_coord_ - 1].r; }
+  const Position& r_local() const { return coord_[n_coord_ - 1].r; }
+
+  Direction& u() { return coord_[0].u; }
+  const Direction& u() const { return coord_[0].u; }
+
+  Direction& u_local() { return coord_[n_coord_ - 1].u; }
+  const Direction& u_local() const { return coord_[n_coord_ - 1].u; }
+
   //! resets all coordinate levels for the particle
   void clear();
 
@@ -133,11 +159,10 @@ public:
   //
   //! stores the current phase space attributes of the particle in the
   //! secondary bank and increments the number of sites in the secondary bank.
-  //! \param uvw Direction of the secondary particle
+  //! \param u Direction of the secondary particle
   //! \param E Energy of the secondary particle in [eV]
   //! \param type Particle type
-  //! \param run_CE Whether continuous-energy data is being used
-  void create_secondary(const double* uvw, double E, Type type, bool run_CE);
+  void create_secondary(Direction u, double E, Type type);
 
   //! initialize from a source site
   //

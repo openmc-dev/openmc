@@ -143,7 +143,7 @@ void load_dagmc_geometry()
     c->universe_ = dagmc_univ_id; // set to zero for now
     c->fill_ = C_NONE; // no fill, single universe
 
-    model::cells.push_back(c);
+    model::cells.emplace_back(c);
     model::cell_map[c->id_] = i;
 
     // Populate the Universe vector and dict
@@ -302,7 +302,7 @@ void load_dagmc_geometry()
     }
 
     // add to global array and map
-    model::surfaces.push_back(s);
+    model::surfaces.emplace_back(s);
     model::surface_map[s->id_] = s->id_;
   }
 

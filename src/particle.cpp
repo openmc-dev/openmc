@@ -533,9 +533,9 @@ Particle::cross_surface()
 
 #ifdef DAGMC
   if (settings::dagmc) {
-    auto cellp = dynamic_cast<DAGCell*>(model::cells[cell_last_[0]]);
+    auto cellp = dynamic_cast<DAGCell*>(model::cells[cell_last_[0]].get());
     // TODO: off-by-one
-    auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[std::abs(surface_) - 1]);
+    auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[std::abs(surface_) - 1].get());
     int32_t i_cell = next_cell(cellp, surfp) - 1;
     // save material and temp
     material_last_ = material_;

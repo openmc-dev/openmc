@@ -509,8 +509,7 @@ void Material::collision_stopping_power(double* s_col, bool positron)
   double r_e = PLANCK_C / (2.0e8 * PI * FINE_STRUCTURE * MASS_ELECTRON_EV);
 
   // Constant in expression for collision stopping power
-  double c = 2.0e24 * PI * r_e * r_e * MASS_ELECTRON_EV * N_AVOGADRO *
-    electron_density / mass_density; 
+  double c = 2.0e24 * PI * r_e * r_e * MASS_ELECTRON_EV * electron_density;
 
   // Loop over incident charged particle energies
   for (int i = 0; i < data::ttb_e_grid.size(); ++i) {
@@ -530,8 +529,8 @@ void Material::collision_stopping_power(double* s_col, bool positron)
     double F;
     if (positron) {
       double t = tau + 2.0;
-      F = 2.0 * std::log(2.0) - (beta_sq / 12.0) * (23.0 + 14.0 / t + 10.0 /
-        (t * t) + 4.0 / (t * t * t));
+      F = std::log(4.0) - (beta_sq / 12.0) * (23.0 + 14.0 / t + 10.0 / (t * t)
+        + 4.0 / (t * t * t));
     } else {
       F = (1.0 - beta_sq) * (1.0 + tau * tau / 8.0 - (2.0 * tau + 1.0) *
         std::log(2.0));
@@ -573,16 +572,11 @@ void Material::init_bremsstrahlung()
     double Z_eq_sq = 0.0;
     double sum_density = 0.0;
 
-    // Calculate the molecular DCS and the molecular total stopping power using
+    // Get the collision stopping power of the material
+    this->collision_stopping_power(&stopping_power_collision(0), positron);
+
+    // Calculate the molecular DCS and the molecular radiative stopping power using
     // Bragg's additivity rule.
-    // TODO: The collision stopping power cannot be accurately calculated using
-    // Bragg's additivity rule since the mean excitation energies and the
-    // density effect corrections cannot simply be summed together. Bragg's
-    // additivity rule fails especially when a higher-density compound is
-    // composed of elements that are in lower-density form at normal temperature
-    // and pressure (at which the NIST stopping powers are given). It will be
-    // used to approximate the collision stopping powers for now, but should be
-    // fixed in the future.
     for (int i = 0; i < n; ++i) {
       // Get pointer to current element
       const auto& elm = data::elements[element_[i]];
@@ -591,7 +585,6 @@ void Material::init_bremsstrahlung()
       // Get atomic density and mass density of nuclide given atom/weight percent
       double atom_density = (atom_density_[0] > 0.0) ?
         atom_density_[i] : -atom_density_[i] / awr;
-      double mass_density = atom_density * awr;
 
       // Calculate the "equivalent" atomic number Zeq of the material
       Z_eq_sq += atom_density * elm.Z_ * elm.Z_;
@@ -600,13 +593,8 @@ void Material::init_bremsstrahlung()
       // Accumulate material DCS
       dcs += (atom_density * elm.Z_ * elm.Z_) * elm.dcs_;
 
-      // Accumulate material collision stopping power
-      stopping_power_collision += (mass_density * MASS_NEUTRON / N_AVOGADRO)
-        * elm.stopping_power_collision_;
-
       // Accumulate material radiative stopping power
-      stopping_power_radiative += (mass_density * MASS_NEUTRON / N_AVOGADRO)
-        * elm.stopping_power_radiative_;
+      stopping_power_radiative += atom_density * elm.stopping_power_radiative_;
     }
     Z_eq_sq /= sum_density;
 
@@ -661,12 +649,13 @@ void Material::init_bremsstrahlung()
         // photon energy k
         double x = x_l + (k - k_l)*(x_r - x_l)/(k_r - k_l);
 
-        // Ratio of the velocity of the charged particle to the speed of light
-        double beta = std::sqrt(e*(e + 2.0*MASS_ELECTRON_EV)) /
-          (e + MASS_ELECTRON_EV);
+        // Square of the ratio of the speed of light to the velocity of the
+        // charged particle
+        double beta_sq = e * (e + 2.0 * MASS_ELECTRON_EV) / ((e +
+          MASS_ELECTRON_EV) * (e + MASS_ELECTRON_EV));
 
         // Compute the integrand of the PDF
-        f(j) = x / (beta*beta * stopping_power(j) * w);
+        f(j) = x / (beta_sq * stopping_power(j) * w);
       }
 
       // Number of points to integrate

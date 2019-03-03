@@ -92,22 +92,15 @@ _REACTION_NAME = {
 # is a 2D array with shape (n_shells, n_momentum_values) stored on the key Z
 _COMPTON_PROFILES = {}
 
-# Stopping powers are read from a pre-generated HDF5 file when they are first
-# needed. The dictionary stores an array of energy values at which the other
-# quantities are tabulated with the key 'energy' and for each element has the
-# mean excitation energy and arrays containing the collision stopping powers
-# and radiative stopping powers stored on the key 'Z'.
-_STOPPING_POWERS = {}
-
 # Scaled bremsstrahlung DCSs are read from a data file provided by Selzter and
 # Berger when they are first needed. The dictionary stores an array of n
 # incident electron kinetic energies with key 'electron_energies', an array of
 # k reduced photon energies with key 'photon_energies', and the cross sections
 # for each element are in a 2D array with shape (n, k) stored on the key 'Z'.
-# It also stores data used for calculating the density effect correction,
-# namely, the mean excitation energy with the key 'I', number of electrons per
-# subshell with the key 'num_electrons', and binding energies with the key
-# 'ionization_energy'.
+# It also stores data used for calculating the density effect correction and
+# stopping power, namely, the mean excitation energy with the key 'I', number
+# of electrons per subshell with the key 'num_electrons', and binding energies
+# with the key 'ionization_energy'.
 _BREMSSTRAHLUNG = {}
 
 
@@ -376,11 +369,6 @@ class IncidentPhoton(EqualityMixin):
     reactions : collections.OrderedDict
         Contains the cross sections for each photon reaction. The keys are MT
         values and the values are instances of :class:`PhotonReaction`.
-    stopping_powers : dict
-        Dictionary of stopping power data with keys 'energy' (in [eV]), 'I' (mean
-        excitation energy), 's_collision' (collision stopping power in
-        [eV cm\ :sup:`2`/g]), and 's_radiative' (radiative stopping power in
-        [eV cm\ :sup:`2`/g])
 
     """
 
@@ -389,7 +377,6 @@ class IncidentPhoton(EqualityMixin):
         self._atomic_relaxation = None
         self.reactions = OrderedDict()
         self.compton_profiles = {}
-        self.stopping_powers = {}
         self.bremsstrahlung = {}
 
     def __contains__(self, mt):
@@ -585,27 +572,6 @@ class IncidentPhoton(EqualityMixin):
         data.compton_profiles['binding_energy'] = profile['binding_energy']
         data.compton_profiles['J'] = [Tabulated1D(pz, J_k) for J_k in profile['J']]
 
-        # Load stopping power data if it has not yet been loaded
-        if not _STOPPING_POWERS:
-            filename = os.path.join(os.path.dirname(__file__), 'stopping_powers.h5')
-            with h5py.File(filename, 'r') as f:
-                # Units are in MeV; convert to eV
-                _STOPPING_POWERS['energy'] = f['energy'].value*EV_PER_MEV
-                for i in range(1, 99):
-                    group = f['{:03}'.format(i)]
-
-                    # Units are in MeV cm^2/g; convert to eV cm^2/g
-                    _STOPPING_POWERS[i] = {
-                        'I': group.attrs['I'],
-                        's_collision': group['s_collision'].value*EV_PER_MEV,
-                        's_radiative': group['s_radiative'].value*EV_PER_MEV
-                    }
-
-        # Add stopping power data
-        if Z < 99:
-            data.stopping_powers['energy'] = _STOPPING_POWERS['energy']
-            data.stopping_powers.update(_STOPPING_POWERS[Z])
-
         # Load bremsstrahlung data if it has not yet been loaded
         if not _BREMSSTRAHLUNG:
             # Add data used for density effect correction
@@ -785,15 +751,6 @@ class IncidentPhoton(EqualityMixin):
             # Create/write 2D array of profiles
             J = np.array([Jk.y for Jk in profile['J']])
             compton_group.create_dataset('J', data=J)
-
-        # Write stopping powers
-        if self.stopping_powers:
-            s_group = group.create_group('stopping_powers')
-            for key, value in self.stopping_powers.items():
-                if key == 'I':
-                    s_group.attrs[key] = value
-                else:
-                    s_group.create_dataset(key, data=value)
 
         # Write bremsstrahlung
         if self.bremsstrahlung:

@@ -1,6 +1,6 @@
 #include "openmc/mesh.h"
 
-#include <algorithm> // for copy, min
+#include <algorithm> // for copy, equal, min, min_element
 #include <cstddef> // for size_t
 #include <cmath>  // for ceil
 #include <string>
@@ -394,12 +394,11 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
 
   // Determine indices for starting and ending location.
   int n = n_dimension_;
-  xt::xtensor<int, 1> ijk0 = xt::empty<int>({n});
+  int ijk0[n], ijk1[n];
   bool start_in_mesh;
-  get_indices(r0, ijk0.data(), &start_in_mesh);
-  xt::xtensor<int, 1> ijk1 = xt::empty<int>({n});
+  get_indices(r0, ijk0, &start_in_mesh);
   bool end_in_mesh;
-  get_indices(r1, ijk1.data(), &end_in_mesh);
+  get_indices(r1, ijk1, &end_in_mesh);
 
   // Check if the track intersects any part of the mesh.
   if (!start_in_mesh && !end_in_mesh) {
@@ -419,7 +418,7 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   // We are looking for the first valid mesh bin.  Check to see if the
   // particle starts inside the mesh.
   if (!start_in_mesh) {
-    xt::xtensor<double, 1> d = xt::zeros<double>({n});
+    double d[n];
 
     // The particle does not start in the mesh.  Note that we nudged the
     // start and end coordinates by a TINY_BIT each so we will have
@@ -433,7 +432,10 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
     // bin.  MAX_SEARCH_ITER prevents an infinite loop.
     int search_iter = 0;
     int j;
-    while (xt::any(ijk0 < 1) || xt::any(ijk0 > shape_)) {
+    bool in_mesh = true;
+    for (int i = 0; i < n; ++i)
+      if (ijk0[i] < 1 || ijk0[i] > shape_[i]) in_mesh = false;
+    while (!in_mesh) {
       if (search_iter == MAX_SEARCH_ITER) {
         warning("Failed to find a mesh intersection on a tally mesh filter.");
         return;
@@ -441,62 +443,65 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
 
       for (j = 0; j < n; ++j) {
         if (std::fabs(u[j]) < FP_PRECISION) {
-          d(j) = INFTY;
+          d[j] = INFTY;
         } else if (u[j] > 0.0) {
-          double xyz_cross = lower_left_[j] + ijk0(j) * width_[j];
-          d(j) = (xyz_cross - r0[j]) / u[j];
+          double xyz_cross = lower_left_[j] + ijk0[j] * width_[j];
+          d[j] = (xyz_cross - r0[j]) / u[j];
         } else {
-          double xyz_cross = lower_left_[j] + (ijk0(j) - 1) * width_[j];
-          d(j) = (xyz_cross - r0[j]) / u[j];
+          double xyz_cross = lower_left_[j] + (ijk0[j] - 1) * width_[j];
+          d[j] = (xyz_cross - r0[j]) / u[j];
         }
       }
 
-      j = xt::argmin(d)(0);
+      j = std::min_element(d, d+n) - d;
       if (u[j] > 0.0) {
-        ++ijk0(j);
+        ++ijk0[j];
       } else {
-        --ijk0(j);
+        --ijk0[j];
       }
 
       ++search_iter;
+      in_mesh = true;
+      for (int i = 0; i < n; ++i)
+        if (ijk0[i] < 1 || ijk0[i] > shape_[i]) in_mesh = false;
     }
 
     // Advance position
-    r0 += d(j) * u;
+    r0 += d[j] * u;
   }
 
   while (true) {
     // ========================================================================
     // Compute the length of the track segment in the each mesh cell and return
 
-    if (ijk0 == ijk1) {
+    if (std::equal(ijk0, ijk0+n, ijk1)) {
       // The track ends in this cell.  Use the particle end location rather
       // than the mesh surface.
       double distance = (r1 - r0).norm();
-      bins.push_back(get_bin_from_indices(ijk0.data()));
+      bins.push_back(get_bin_from_indices(ijk0));
       lengths.push_back(distance / total_distance);
       break;
     }
 
     // The track exits this cell.  Determine the distance to the closest mesh
     // surface.
-    xt::xtensor<double, 1> d = xt::zeros<double>({n});
+    double d[n];
     for (int k = 0; k < n; ++k) {
       if (std::fabs(u[k]) < FP_PRECISION) {
-        d(k) = INFTY;
+        d[k] = INFTY;
       } else if (u[k] > 0) {
-        double xyz_cross = lower_left_[k] + ijk0(k) * width_[k];
-        d(k) = (xyz_cross - r0[k]) / u[k];
+        double xyz_cross = lower_left_[k] + ijk0[k] * width_[k];
+        d[k] = (xyz_cross - r0[k]) / u[k];
       } else {
-        double xyz_cross = lower_left_[k] + (ijk0(k) - 1) * width_[k];
-        d(k) = (xyz_cross - r0[k]) / u[k];
+        double xyz_cross = lower_left_[k] + (ijk0[k] - 1) * width_[k];
+        d[k] = (xyz_cross - r0[k]) / u[k];
       }
     }
 
     // Assign the next tally bin and the score.
-    auto j = xt::argmin(d)(0);
-    double distance = d(j);
-    bins.push_back(get_bin_from_indices(ijk0.data()));
+    auto j = std::min_element(d, d+n) - d;
+    double distance = d[j];
+    bins.push_back(get_bin_from_indices(ijk0));
     lengths.push_back(distance / total_distance);
 
     // Translate the starting coordintes by the distance to the oncoming mesh
@@ -505,14 +510,17 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
 
     // Increment the indices into the next mesh cell.
     if (u[j] > 0.0) {
-      ++ijk0(j);
+      ++ijk0[j];
     } else {
-      --ijk0(j);
+      --ijk0[j];
     }
 
     // If the next indices are invalid, then the track has left the mesh and
     // we are done.
-    if (xt::any(ijk0 < 1) || xt::any(ijk0 > shape_)) break;
+    bool in_mesh = true;
+    for (int i = 0; i < n; ++i)
+      if (ijk0[i] < 1 || ijk0[i] > shape_[i]) in_mesh = false;
+    if (!in_mesh) break;
   }
 }
 
@@ -528,12 +536,11 @@ void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins
 
   // Determine indices for starting and ending location.
   int n = n_dimension_;
-  xt::xtensor<int, 1> ijk0 = xt::empty<int>({n});
+  int ijk0[n], ijk1[n];
   bool start_in_mesh;
-  get_indices(r0, ijk0.data(), &start_in_mesh);
-  xt::xtensor<int, 1> ijk1 = xt::empty<int>({n});
+  get_indices(r0, ijk0, &start_in_mesh);
   bool end_in_mesh;
-  get_indices(r1, ijk1.data(), &end_in_mesh);
+  get_indices(r1, ijk1, &end_in_mesh);
 
   // Check if the track intersects any part of the mesh.
   if (!start_in_mesh && !end_in_mesh) {
@@ -544,7 +551,8 @@ void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins
   // Figure out which mesh cell to tally.
 
   // Calculate number of surface crossings
-  int n_cross = xt::sum(xt::abs(ijk1 - ijk0))();
+  int n_cross = 0;
+  for (int i = 0; i < n; ++i) n_cross += std::abs(ijk1[i] - ijk0[i]);
   if (n_cross == 0) return;
 
   // Bounding coordinates
@@ -579,13 +587,18 @@ void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins
       // Check whether distance is the shortest distance
       if (distance == d[i]) {
 
+        // Check whether the current indices are within the mesh bounds
+        bool in_mesh = true;
+        for (int j = 0; j < n; ++j)
+          if (ijk0[j] < 1 || ijk0[j] > shape_[j]) in_mesh = false;
+
         // Check whether particle is moving in positive i direction
         if (u[i] > 0) {
 
           // Outward current on i max surface
-          if (xt::all(ijk0 >= 1) && xt::all(ijk0 <= shape_)) {
+          if (in_mesh) {
             int i_surf = 4*i + 3;
-            int i_mesh = get_bin_from_indices(ijk0.data());
+            int i_mesh = get_bin_from_indices(ijk0);
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
             bins.push_back(i_bin);
@@ -594,12 +607,15 @@ void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins
           // Advance position
           ++ijk0[i];
           xyz_cross[i] += width_[i];
+          in_mesh = true;
+          for (int j = 0; j < n; ++j)
+            if (ijk0[j] < 1 || ijk0[j] > shape_[j]) in_mesh = false;
 
           // If the particle crossed the surface, tally the inward current on
           // i min surface
-          if (xt::all(ijk0 >= 1) && xt::all(ijk0 <= shape_)) {
+          if (in_mesh) {
             int i_surf = 4*i + 2;
-            int i_mesh = get_bin_from_indices(ijk0.data());
+            int i_mesh = get_bin_from_indices(ijk0);
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
             bins.push_back(i_bin);
@@ -609,9 +625,9 @@ void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins
           // The particle is moving in the negative i direction
 
           // Outward current on i min surface
-          if (xt::all(ijk0 >= 1) && xt::all(ijk0 <= shape_) ){
+          if (in_mesh) {
             int i_surf = 4*i + 1;
-            int i_mesh = get_bin_from_indices(ijk0.data());
+            int i_mesh = get_bin_from_indices(ijk0);
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
             bins.push_back(i_bin);
@@ -620,12 +636,15 @@ void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins
           // Advance position
           --ijk0[i];
           xyz_cross[i] -= width_[i];
+          in_mesh = true;
+          for (int j = 0; j < n; ++j)
+            if (ijk0[j] < 1 || ijk0[j] > shape_[j]) in_mesh = false;
 
           // If the particle crossed the surface, tally the inward current on
           // i max surface
-          if (xt::all(ijk0 >= 1) && xt::all(ijk0 <= shape_)) {
+          if (in_mesh) {
             int i_surf = 4*i + 4;
-            int i_mesh = get_bin_from_indices(ijk0.data());
+            int i_mesh = get_bin_from_indices(ijk0);
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
             bins.push_back(i_bin);

@@ -433,8 +433,12 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
     int search_iter = 0;
     int j;
     bool in_mesh = true;
-    for (int i = 0; i < n; ++i)
-      if (ijk0[i] < 1 || ijk0[i] > shape_[i]) in_mesh = false;
+    for (int i = 0; i < n; ++i) {
+      if (ijk0[i] < 1 || ijk0[i] > shape_[i]) {
+       in_mesh = false;
+       break;
+      }
+    }
     while (!in_mesh) {
       if (search_iter == MAX_SEARCH_ITER) {
         warning("Failed to find a mesh intersection on a tally mesh filter.");
@@ -462,8 +466,12 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
 
       ++search_iter;
       in_mesh = true;
-      for (int i = 0; i < n; ++i)
-        if (ijk0[i] < 1 || ijk0[i] > shape_[i]) in_mesh = false;
+      for (int i = 0; i < n; ++i) {
+        if (ijk0[i] < 1 || ijk0[i] > shape_[i]) {
+         in_mesh = false;
+         break;
+        }
+      }
     }
 
     // Advance position
@@ -518,8 +526,12 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
     // If the next indices are invalid, then the track has left the mesh and
     // we are done.
     bool in_mesh = true;
-    for (int i = 0; i < n; ++i)
-      if (ijk0[i] < 1 || ijk0[i] > shape_[i]) in_mesh = false;
+    for (int i = 0; i < n; ++i) {
+      if (ijk0[i] < 1 || ijk0[i] > shape_[i]) {
+        in_mesh = false;
+        break;
+      }
+    }
     if (!in_mesh) break;
   }
 }
@@ -589,8 +601,12 @@ void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins
 
         // Check whether the current indices are within the mesh bounds
         bool in_mesh = true;
-        for (int j = 0; j < n; ++j)
-          if (ijk0[j] < 1 || ijk0[j] > shape_[j]) in_mesh = false;
+        for (int j = 0; j < n; ++j) {
+          if (ijk0[j] < 1 || ijk0[j] > shape_[j]) {
+            in_mesh = false;
+            break;
+          }
+        }
 
         // Check whether particle is moving in positive i direction
         if (u[i] > 0) {
@@ -608,8 +624,12 @@ void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins
           ++ijk0[i];
           xyz_cross[i] += width_[i];
           in_mesh = true;
-          for (int j = 0; j < n; ++j)
-            if (ijk0[j] < 1 || ijk0[j] > shape_[j]) in_mesh = false;
+          for (int j = 0; j < n; ++j) {
+            if (ijk0[j] < 1 || ijk0[j] > shape_[j]) {
+              in_mesh = false;
+              break;
+            }
+          }
 
           // If the particle crossed the surface, tally the inward current on
           // i min surface
@@ -637,8 +657,12 @@ void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins
           --ijk0[i];
           xyz_cross[i] -= width_[i];
           in_mesh = true;
-          for (int j = 0; j < n; ++j)
-            if (ijk0[j] < 1 || ijk0[j] > shape_[j]) in_mesh = false;
+          for (int j = 0; j < n; ++j) {
+            if (ijk0[j] < 1 || ijk0[j] > shape_[j]) {
+              in_mesh = false;
+              break;
+            }
+          }
 
           // If the particle crossed the surface, tally the inward current on
           // i max surface

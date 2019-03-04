@@ -33,6 +33,20 @@ def test_plane():
     repr(s)
 
 
+def test_plane_from_points():
+    # Generate the plane x - y = 1 given three points
+    p1 = (0, -1, 0)
+    p2 = (1, 0, 0)
+    p3 = (1, 0, 1)
+    s = openmc.Plane.from_points(p1, p2, p3)
+
+    # Confirm correct coefficients
+    assert s.a == 1.0
+    assert s.b == -1.0
+    assert s.c == 0.0
+    assert s.d == 1.0
+
+
 def test_xplane():
     s = openmc.XPlane(x0=3., boundary_type='reflective')
     assert s.x0 == 3.
@@ -257,3 +271,17 @@ def test_quadric():
     # evaluate method
     assert s.evaluate((0., 0., 0.)) == pytest.approx(coeffs['k'])
     assert s.evaluate((1., 1., 1.)) == pytest.approx(3 + coeffs['k'])
+
+
+def test_cylinder_from_points():
+    # Generate 45-degree rotated cylinder in x-y plane with radius 1
+    p1 = (0, 0, 0)
+    p2 = (1, 1, 0)
+    s = openmc.model.cylinder_from_points(p1, p2, 1)
+
+    # Points p1 and p2 need to be inside cylinder
+    assert p1 in -s
+    assert p2 in -s
+    assert (-1, 1, 0) in +s
+    assert (1, -1, 0) in +s
+    assert (0, 0, 1.5) in +s

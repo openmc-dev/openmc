@@ -456,6 +456,38 @@ class Plane(Surface):
                 element.set("periodic_surface_id", str(self.periodic_surface.id))
         return element
 
+    @classmethod
+    def from_points(cls, p1, p2, p3, **kwargs):
+        """Return a plane given three points that pass through it.
+
+        Parameters
+        ----------
+        p1, p2, p3 : 3-tuples
+            Points that pass through the plane
+        kwargs : dict
+            Keyword arguments passed to the :class:`Plane` constructor
+
+        Returns
+        -------
+        Plane
+            Plane that passes through the three points
+
+        """
+        # Convert to numpy arrays
+        p1 = np.asarray(p1)
+        p2 = np.asarray(p2)
+        p3 = np.asarray(p3)
+
+        # Find normal vector to plane by taking cross product of two vectors
+        # connecting p1->p2 and p1->p3
+        n = np.cross(p2 - p1, p3 - p1)
+
+        # The equation of the plane will by n·(<x,y,z> - p1) = 0. Determine
+        # coefficients A, B, C, and D based on that
+        A, B, C = n
+        D = np.dot(n, p1)
+        return cls(A=A, B=B, C=C, D=D, **kwargs)
+
 
 class XPlane(Plane):
     """A plane perpendicular to the x axis of the form :math:`x - x_0 = 0`

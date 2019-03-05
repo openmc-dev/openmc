@@ -519,7 +519,7 @@ class Universe(IDManagerMixin):
             # If the cell was not already written, write it
             if memo and cell_id in memo['cells']:
                 continue
-            if memo:
+            if memo is not None:
                 memo['cells'].add(cell_id)
 
             # Create XML subelement for this Cell

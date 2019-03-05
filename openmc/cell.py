@@ -503,7 +503,7 @@ class Cell(IDManagerMixin):
                     path = "./surface[@id='{}']".format(node.surface.id)
                     if memo and node.surface.id in memo['surfaces']:
                         return
-                    if memo:
+                    if memo is not None:
                         memo['surfaces'].add(node.surface.id)
                     xml_element.append(node.surface.to_xml_element())
 

@@ -10,8 +10,6 @@ import openmc
 import openmc._xml as xml
 from openmc.checkvalue import check_type
 
-from .geomtrack import ElementTracker
-
 class Geometry(object):
     """Geometry representing a collection of surfaces, cells, and universes.
 
@@ -89,11 +87,13 @@ class Geometry(object):
         """
         # Create XML representation
 
-        et = ElementTracker()
-        et.reset()
+        memo = {'cells' : set(),
+                'surfaces' : set(),
+                'lattices' : set(),
+                'universes' : set()}
 
         root_element = ET.Element("geometry")
-        self.root_universe.create_xml_subelement(root_element)
+        self.root_universe.create_xml_subelement(root_element, memo)
 
         # Sort the elements in the file
         root_element[:] = sorted(root_element, key=lambda x: (

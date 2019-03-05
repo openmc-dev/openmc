@@ -573,7 +573,7 @@ void Material::init_bremsstrahlung()
     double sum_density = 0.0;
 
     // Get the collision stopping power of the material
-    this->collision_stopping_power(&stopping_power_collision(0), positron);
+    this->collision_stopping_power(stopping_power_collision.data(), positron);
 
     // Calculate the molecular DCS and the molecular radiative stopping power using
     // Bragg's additivity rule.
@@ -948,9 +948,9 @@ void Material::to_hdf5(hid_t group) const
 // Non-method functions
 //==============================================================================
 
-double sternheimer_adjustment(std::vector<double>& f, std::vector<double>&
-  e_b_sq, double e_p_sq, double n_conduction, double log_I, double tol, int
-  max_iter)
+double sternheimer_adjustment(const std::vector<double>& f, const
+  std::vector<double>& e_b_sq, double e_p_sq, double n_conduction, double
+  log_I, double tol, int max_iter)
 {
   // Get the total number of oscillators
   int n = f.size();
@@ -993,9 +993,9 @@ double sternheimer_adjustment(std::vector<double>& f, std::vector<double>&
   return rho;
 }
 
-double density_effect(std::vector<double>& f, std::vector<double>& e_b_sq,
-  double e_p_sq, double n_conduction, double rho, double E, double tol, int
-  max_iter)
+double density_effect(const std::vector<double>& f, const std::vector<double>&
+  e_b_sq, double e_p_sq, double n_conduction, double rho, double E, double tol,
+  int max_iter)
 {
   // Get the total number of oscillators
   int n = f.size();

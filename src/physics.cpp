@@ -271,10 +271,8 @@ void sample_photon_reaction(Particle* p)
     if (E_electron >= settings::energy_cutoff[electron]) { 
       double mu_electron = (alpha - alpha_out*mu)
         / std::sqrt(alpha*alpha + alpha_out*alpha_out - 2.0*alpha*alpha_out*mu);
-      double uvw[3];
-      std::copy(p->coord[0].uvw, p->coord[0].uvw + 3, uvw);
-      rotate_angle_c(uvw, mu_electron, &phi);
-      p->create_secondary(uvw, E_electron, electron, true);
+      Direction u = rotate_angle(p->u(), mu_electron, &phi);
+      p->create_secondary(u, E_electron, Particle::Type::electron, true);
     }
 
     // TODO: Compton subshell data does not match atomic relaxation data

@@ -467,7 +467,7 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
         if memo is None:
             memo = {}
 
-        # If no nemoize'd clone exists, instantiate one
+        # If no memoize'd clone exists, instantiate one
         if self not in memo:
             clone = deepcopy(self)
             clone.id = None
@@ -760,7 +760,7 @@ class RectLattice(Lattice):
         # If the element does contain the Lattice subelement, then return
         if memo and self._id in memo['lattices']:
             return
-        if memo:
+        if memo is not None:
             memo['lattices'].add(self._id)
 
         lattice_subelement = ET.Element("lattice")
@@ -1282,7 +1282,7 @@ class HexLattice(Lattice):
         # If the element does contain the Lattice subelement, then return
         if memo and self._id in memo['lattices']:
             return
-        if memo:
+        if memo is not None:
             memo['lattices'].add(self._id)
 
         lattice_subelement = ET.Element("hex_lattice")

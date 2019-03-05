@@ -12,8 +12,6 @@ import openmc.checkvalue as cv
 from openmc.plots import _SVG_COLORS
 from openmc.mixin import IDManagerMixin
 
-from .geomtrack import ElementTracker
-
 class Universe(IDManagerMixin):
     """A collection of cells that can be repeated.
 
@@ -513,21 +511,23 @@ class Universe(IDManagerMixin):
 
         return memo[self]
 
-    def create_xml_subelement(self, xml_element):
-        et = ElementTracker()
+    def create_xml_subelement(self, xml_element, memo=None):
         # Iterate over all Cells
         for cell_id, cell in self._cells.items():
             path = "./cell[@id='{}']".format(cell_id)
 
             # If the cell was not already written, write it
-            if cell_id not in et.cells:
-                et.add_cell(cell_id)
-                # Create XML subelement for this Cell
-                cell_element = cell.create_xml_subelement(xml_element)
+            if memo and cell_id in memo['cells']:
+                continue
+            if memo:
+                memo['cells'].add(cell_id)
 
-                # Append the Universe ID to the subelement and add to Element
-                cell_element.set("universe", str(self._id))
-                xml_element.append(cell_element)
+            # Create XML subelement for this Cell
+            cell_element = cell.create_xml_subelement(xml_element, memo)
+
+            # Append the Universe ID to the subelement and add to Element
+            cell_element.set("universe", str(self._id))
+            xml_element.append(cell_element)
 
     def _determine_paths(self, path='', instances_only=False):
         """Count the number of instances for each cell in the universe, and

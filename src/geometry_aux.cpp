@@ -166,16 +166,25 @@ get_temperatures(std::vector<std::vector<double>>& nuc_temps,
       int i_material = cell->material_[j];
       if (i_material == MATERIAL_VOID) continue;
 
-      // Get temperature of cell (rounding to nearest integer)
-      double sqrtkT = cell->sqrtkT_.size() == 1 ?
-        cell->sqrtkT_[j] : cell->sqrtkT_[0];
-      double temperature = sqrtkT*sqrtkT / K_BOLTZMANN;
+      // Get temperature(s) of cell (rounding to nearest integer)
+      std::vector<double> cell_temps;
+      if (cell->sqrtkT_.size() == 1) {
+        double sqrtkT = cell->sqrtkT_[0];
+        cell_temps.push_back(sqrtkT*sqrtkT / K_BOLTZMANN);
+      } else if (cell->sqrtkT_.size() == cell->material_.size()) {
+        double sqrtkT = cell->sqrtkT_[j];
+        cell_temps.push_back(sqrtkT*sqrtkT / K_BOLTZMANN);
+      } else {
+        for (double sqrtkT : cell->sqrtkT_)
+          cell_temps.push_back(sqrtkT*sqrtkT / K_BOLTZMANN);
+      }
 
       const auto& mat {model::materials[i_material]};
       for (const auto& i_nuc : mat->nuclide_) {
-        // Add temperature if it hasn't already been added
-        if (!contains(nuc_temps[i_nuc], temperature)) {
-          nuc_temps[i_nuc].push_back(temperature);
+        for (double temperature : cell_temps) {
+          // Add temperature if it hasn't already been added
+          if (!contains(nuc_temps[i_nuc], temperature))
+            nuc_temps[i_nuc].push_back(temperature);
         }
       }
 
@@ -183,9 +192,10 @@ get_temperatures(std::vector<std::vector<double>>& nuc_temps,
         // Get index in data::thermal_scatt array
         int i_sab = table.index_table;
 
-        // Add temperature if it hasn't already been added
-        if (!contains(thermal_temps[i_sab], temperature)) {
-          thermal_temps[i_sab].push_back(temperature);
+        for (double temperature : cell_temps) {
+          // Add temperature if it hasn't already been added
+          if (!contains(thermal_temps[i_sab], temperature))
+            thermal_temps[i_sab].push_back(temperature);
         }
       }
     }

@@ -413,7 +413,7 @@ void Nuclide::init_grid()
       while (std::log(grid.energy[j + 1]/E_min) <= umesh(k)) {
         // Ensure that for isotopes where maxval(grid.energy) << E_max that
         // there are no out-of-bounds issues.
-        if (j + 1 == grid.energy.size()) break;
+        if (j + 2 == grid.energy.size()) break;
         ++j;
       }
       grid.grid_index[k] = j;

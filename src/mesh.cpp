@@ -385,9 +385,9 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   // just a bit for the purposes of determining if there was an intersection
   // in case the mesh surfaces coincide with lattice/geometric surfaces which
   // might produce finite-precision errors.
-  Position last_r {p->last_xyz};
-  Position r {p->coord[0].xyz};
-  Direction u {p->coord[0].uvw};
+  Position last_r {p->r_last_};
+  Position r {p->r()};
+  Direction u {p->u()};
 
   Position r0 = last_r + TINY_BIT*u;
   Position r1 = r - TINY_BIT*u;
@@ -542,9 +542,9 @@ void RegularMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins
   // Determine if the track intersects the tally mesh.
 
   // Copy the starting and ending coordinates of the particle.
-  Position r0 {p->last_xyz_current};
-  Position r1 {p->coord[0].xyz};
-  Direction u {p->coord[0].uvw};
+  Position r0 {p->r_last_current_};
+  Position r1 {p->r()};
+  Direction u {p->u()};
 
   // Determine indices for starting and ending location.
   int n = n_dimension_;
@@ -695,7 +695,7 @@ void RegularMesh::to_hdf5(hid_t group) const
   close_group(mesh_group);
 }
 
-xt::xarray<double> RegularMesh::count_sites(int64_t n, const Bank* bank,
+xt::xarray<double> RegularMesh::count_sites(int64_t n, const Particle::Bank* bank,
   int n_energy, const double* energies, bool* outside) const
 {
   // Determine shape of array for counts
@@ -713,7 +713,7 @@ xt::xarray<double> RegularMesh::count_sites(int64_t n, const Bank* bank,
 
   for (int64_t i = 0; i < n; ++i) {
     // determine scoring bin for entropy mesh
-    int mesh_bin = get_bin({bank[i].xyz});
+    int mesh_bin = get_bin(bank[i].r);
 
     // if outside mesh, skip particle
     if (mesh_bin < 0) {
@@ -771,7 +771,7 @@ openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end)
 {
   if (index_start) *index_start = model::meshes.size();
   for (int i = 0; i < n; ++i) {
-    model::meshes.emplace_back(new RegularMesh{});
+    model::meshes.push_back(std::make_unique<RegularMesh>());
   }
   if (index_end) *index_end = model::meshes.size() - 1;
 
@@ -909,7 +909,7 @@ void read_meshes(pugi::xml_node root)
 {
   for (auto node : root.children("mesh")) {
     // Read mesh and add to vector
-    model::meshes.emplace_back(new RegularMesh{node});
+    model::meshes.push_back(std::make_unique<RegularMesh>(node));
 
     // Map ID to position in vector
     model::mesh_map[model::meshes.back()->id_] = model::meshes.size() - 1;

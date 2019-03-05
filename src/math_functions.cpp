@@ -8,7 +8,8 @@ namespace openmc {
 // Mathematical methods
 //==============================================================================
 
-double normal_percentile(double p) {
+double normal_percentile(double p)
+{
   constexpr double p_low = 0.02425;
   constexpr double a[6] = {-3.969683028665376e1, 2.209460984245205e2,
                            -2.759285104469687e2, 1.383577518672690e2,
@@ -60,7 +61,8 @@ double normal_percentile(double p) {
 }
 
 
-double t_percentile(double p, int df){
+double t_percentile(double p, int df)
+{
   double t;
 
   if (df == 1) {
@@ -92,7 +94,8 @@ double t_percentile(double p, int df){
 }
 
 
-void calc_pn_c(int n, double x, double pnx[]) {
+void calc_pn_c(int n, double x, double pnx[])
+{
   pnx[0] = 1.;
   if (n >= 1) {
     pnx[1] = x;
@@ -105,7 +108,8 @@ void calc_pn_c(int n, double x, double pnx[]) {
 }
 
 
-double evaluate_legendre(int n, const double data[], double x) {
+double evaluate_legendre(int n, const double data[], double x)
+{
   double pnx[n + 1];
   double val = 0.0;
   calc_pn_c(n, x, pnx);
@@ -116,16 +120,24 @@ double evaluate_legendre(int n, const double data[], double x) {
 }
 
 
-void calc_rn_c(int n, const double uvw[3], double rn[]){
+void calc_rn_c(int n, const double uvw[3], double rn[])
+{
+  Direction u {uvw};
+  calc_rn(n, u, rn);
+}
+
+
+void calc_rn(int n, Direction u, double rn[])
+{
   // rn[] is assumed to have already been allocated to the correct size
 
   // Store the cosine of the polar angle and the azimuthal angle
-  double w = uvw[2];
+  double w = u.z;
   double phi;
-  if (uvw[0] == 0.) {
+  if (u.x == 0.) {
     phi = 0.;
   } else {
-    phi = std::atan2(uvw[1], uvw[0]);
+    phi = std::atan2(u.y, u.x);
   }
 
   // Store the shorthand of 1-w * w
@@ -618,45 +630,41 @@ void calc_zn_rad(int n, double rho, double zn_rad[]) {
 
 
 void rotate_angle_c(double uvw[3], double mu, const double* phi) {
-  // Copy original directional cosines
-  double u0 = uvw[0]; // original cosine in x direction
-  double v0 = uvw[1]; // original cosine in y direction
-  double w0 = uvw[2]; // original cosine in z direction
+  Direction u = rotate_angle({uvw}, mu, phi);
+  uvw[0] = u.x;
+  uvw[1] = u.y;
+  uvw[2] = u.z;
+}
 
+
+Direction rotate_angle(Direction u, double mu, const double* phi)
+{
   // Sample azimuthal angle in [0,2pi) if none provided
   double phi_;
   if (phi != nullptr) {
     phi_ = (*phi);
   } else {
-    phi_ = 2. * PI * prn();
+    phi_ = 2.0*PI*prn();
   }
 
   // Precompute factors to save flops
   double sinphi = std::sin(phi_);
   double cosphi = std::cos(phi_);
-  double a = std::sqrt(std::fmax(0., 1. - mu * mu));
-  double b = std::sqrt(std::fmax(0., 1. - w0 * w0));
+  double a = std::sqrt(std::fmax(0., 1. - mu*mu));
+  double b = std::sqrt(std::fmax(0., 1. - u.z*u.z));
 
   // Need to treat special case where sqrt(1 - w**2) is close to zero by
   // expanding about the v component rather than the w component
   if (b > 1e-10) {
-    uvw[0] = mu * u0 + a * (u0 * w0 * cosphi - v0 * sinphi) / b;
-    uvw[1] = mu * v0 + a * (v0 * w0 * cosphi + u0 * sinphi) / b;
-    uvw[2] = mu * w0 - a * b * cosphi;
+    return {mu*u.x + a*(u.x*u.z*cosphi - u.y*sinphi) / b,
+            mu*u.y + a*(u.y*u.z*cosphi + u.x*sinphi) / b,
+            mu*u.z - a*b*cosphi};
   } else {
-    b = std::sqrt(1. - v0 * v0);
-    uvw[0] = mu * u0 + a * (u0 * v0 * cosphi + w0 * sinphi) / b;
-    uvw[1] = mu * v0 - a * b * cosphi;
-    uvw[2] = mu * w0 + a * (v0 * w0 * cosphi - u0 * sinphi) / b;
+    b = std::sqrt(1. - u.y*u.y);
+    return {mu*u.x + a*(u.x*u.y*cosphi + u.z*sinphi) / b,
+            mu*u.y - a*b*cosphi,
+            mu*u.z + a*(u.y*u.z*cosphi - u.x*sinphi) / b};
   }
-}
-
-
-Direction rotate_angle(Direction u, double mu, double* phi)
-{
-  double uvw[] {u.x, u.y, u.z};
-  rotate_angle_c(uvw, mu, phi);
-  return {uvw[0], uvw[1], uvw[2]};
 }
 
 

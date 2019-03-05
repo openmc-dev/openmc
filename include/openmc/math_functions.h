@@ -73,6 +73,8 @@ extern "C" double evaluate_legendre(int n, const double data[], double x);
 
 extern "C" void calc_rn_c(int n, const double uvw[3], double rn[]);
 
+void calc_rn(int n, Direction u, double rn[]);
+
 //==============================================================================
 //! Calculate the n-th order modified Zernike polynomial moment for a given
 //! angle (rho, theta) location on the unit disk.
@@ -131,7 +133,7 @@ extern "C" void calc_zn_rad(int n, double rho, double zn_rad[]);
 
 extern "C" void rotate_angle_c(double uvw[3], double mu, const double* phi);
 
-Direction rotate_angle(Direction u, double mu, double* phi);
+Direction rotate_angle(Direction u, double mu, const double* phi);
 
 //==============================================================================
 //! Samples an energy from the Maxwell fission distribution based on a direct

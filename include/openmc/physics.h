@@ -47,7 +47,7 @@ int sample_nuclide(const Particle* p);
 //! Determine the average total, prompt, and delayed neutrons produced from
 //! fission and creates appropriate bank sites.
 void create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
-  Bank* bank_array, int64_t* bank_size, int64_t bank_capacity);
+  Particle::Bank* bank_array, int64_t* bank_size, int64_t bank_capacity);
 
 int sample_element(Particle* p);
 
@@ -60,18 +60,18 @@ void absorption(Particle* p, int i_nuclide);
 void scatter(Particle*, int i_nuclide);
 
 //! Treats the elastic scattering of a neutron with a target.
-void elastic_scatter(int i_nuclide, const Reaction* rx, double kT, double* E,
-  double* uvw, double* mu_lab, double* wgt);
+void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, double& E,
+  Direction& u, double& mu_lab);
 
-void sab_scatter(int i_nuclide, int i_sab, double* E,
-  double* uvw, double* mu);
+void sab_scatter(int i_nuclide, int i_sab, double& E,
+  Direction& u, double& mu);
 
 //! samples the target velocity. The constant cross section free gas model is
 //! the default method. Methods for correctly accounting for the energy
 //! dependence of cross sections in treating resonance elastic scattering such
 //! as the DBRC and a new, accelerated scheme are also implemented here.
 Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
-   Direction v_neut, double xs_eff, double kT, double* wgt);
+   Direction v_neut, double xs_eff, double kT);
 
 //! samples a target velocity based on the free gas scattering formulation, used
 //! by most Monte Carlo codes, in which cross section is assumed to be constant
@@ -79,7 +79,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
 //! FRA-TM-123.
 Direction sample_cxs_target_velocity(double awr, double E, Direction u, double kT);
 
-void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Bank* site);
+void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Particle::Bank* site);
 
 //! handles all reactions with a single secondary neutron (other than fission),
 //! i.e. level scattering, (n,np), (n,na), etc.

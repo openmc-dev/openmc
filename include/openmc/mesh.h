@@ -101,7 +101,7 @@ public:
   //! \param[in] energies Array of energies
   //! \param[out] Whether any bank sites are outside the mesh
   //! \return Array indicating number of sites in each mesh/energy bin
-  xt::xarray<double> count_sites(int64_t n, const Bank* bank,
+  xt::xarray<double> count_sites(int64_t n, const Particle::Bank* bank,
     int n_energy, const double* energies, bool* outside) const;
 
   int id_ {-1};  //!< User-specified ID

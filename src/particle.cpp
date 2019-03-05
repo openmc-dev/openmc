@@ -37,7 +37,7 @@ LocalCoord::reset()
 {
   cell = C_NONE;
   universe = C_NONE;
-  lattice = 0;
+  lattice = C_NONE;
   lattice_x = 0;
   lattice_y = 0;
   rotated = false;
@@ -47,90 +47,70 @@ LocalCoord::reset()
 // Particle implementation
 //==============================================================================
 
-void
-Particle::clear()
-{
-  // reset any coordinate levels
-  for (int i=0; i<MAX_COORD; ++i) coord[i].reset();
-}
-
-void
-Particle::create_secondary(const double* uvw, double E, int type, bool run_CE)
-{
-  if (n_secondary == MAX_SECONDARY) {
-    fatal_error("Too many secondary particles created.");
-  }
-
-  int64_t n = n_secondary;
-  secondary_bank[n].particle = type;
-  secondary_bank[n].wgt = wgt;
-  std::copy(coord[0].xyz, coord[0].xyz + 3, secondary_bank[n].xyz);
-  std::copy(uvw, uvw + 3, secondary_bank[n].uvw);
-  secondary_bank[n].E = E;
-  if (!run_CE) secondary_bank[n].E = g;
-  n_secondary += 1;
-}
-
-void
-Particle::initialize()
+Particle::Particle()
 {
   // Clear coordinate lists
   clear();
 
-  // Set particle to neutron that's alive
-  type  = static_cast<int>(ParticleType::neutron);
-  alive = true;
-
-  // clear attributes
-  surface           = 0;
-  cell_born         = C_NONE;
-  material          = C_NONE;
-  last_material     = C_NONE;
-  last_sqrtkT       = 0;
-  wgt               = 1.0;
-  last_wgt          = 1.0;
-  absorb_wgt        = 0.0;
-  n_bank            = 0;
-  wgt_bank          = 0.0;
-  sqrtkT            = -1.0;
-  n_collision       = 0;
-  fission           = false;
-  delayed_group     = 0;
-  for (int i=0; i<MAX_DELAYED_GROUPS; ++i) {
-    n_delayed_bank[i] = 0;
+  for (int& n : n_delayed_bank_) {
+    n = 0;
   }
-  g = 0;
+}
 
-  // Set up base level coordinates
-  coord[0].universe = C_NONE;
-  n_coord = 1;
-  last_n_coord = 1;
+void
+Particle::clear()
+{
+  // reset any coordinate levels
+  for (auto& level : coord_) level.reset();
+  n_coord_ = 1;
+}
+
+void
+Particle::create_secondary(Direction u, double E, Type type)
+{
+  if (n_secondary_ == MAX_SECONDARY) {
+    fatal_error("Too many secondary particles created.");
+  }
+
+  int64_t n = n_secondary_;
+  secondary_bank_[n].particle = type;
+  secondary_bank_[n].wgt = wgt_;
+  secondary_bank_[n].r = this->r();
+  secondary_bank_[n].u = u;
+  secondary_bank_[n].E = settings::run_CE ? E : g_;
+  ++n_secondary_;
 }
 
 void
 Particle::from_source(const Bank* src)
 {
-  // set defaults
-  initialize();
+  // reset some attributes
+  this->clear();
+  alive_ = true;
+  surface_ = 0;
+  cell_born_ = C_NONE;
+  material_ = C_NONE;
+  n_collision_ = 0;
+  fission_ = false;
 
   // copy attributes from source bank site
-  type             = src->particle;
-  wgt              = src->wgt;
-  last_wgt         = src->wgt;
-  std::copy(src->xyz, src->xyz + 3, coord[0].xyz);
-  std::copy(src->uvw, src->uvw + 3, coord[0].uvw);
-  std::copy(src->xyz, src->xyz + 3, last_xyz_current);
-  std::copy(src->xyz, src->xyz + 3, last_xyz);
-  std::copy(src->uvw, src->uvw + 3, last_uvw);
+  type_ = src->particle;
+  wgt_ = src->wgt;
+  wgt_last_ = src->wgt;
+  this->r() = src->r;
+  this->u() = src->u;
+  r_last_current_ = src->r;
+  r_last_ = src->r;
+  u_last_ = src->u;
   if (settings::run_CE) {
-    E = src->E;
-    g = 0;
+    E_ = src->E;
+    g_ = 0;
   } else {
-    g = static_cast<int>(src->E);
-    last_g = static_cast<int>(src->E);
-    E = data::energy_bin_avg[g - 1];
+    g_ = static_cast<int>(src->E);
+    g_last_ = static_cast<int>(src->E);
+    E_ = data::energy_bin_avg[g_ - 1];
   }
-  last_E = E;
+  E_last_ = E_;
 }
 
 void
@@ -138,7 +118,7 @@ Particle::transport()
 {
   // Display message if high verbosity or trace is on
   if (settings::verbosity >= 9 || simulation::trace) {
-     write_message("Simulating Particle " + std::to_string(id));
+     write_message("Simulating Particle " + std::to_string(id_));
   }
 
   // Initialize number of events to zero
@@ -146,7 +126,7 @@ Particle::transport()
 
   // Add paricle's starting weight to count for normalizing tallies later
   #pragma omp atomic
-  simulation::total_weight += wgt;
+  simulation::total_weight += wgt_;
 
   // Force calculation of cross-sections by setting last energy to zero
   if (settings::run_CE) {
@@ -156,62 +136,62 @@ Particle::transport()
   }
 
   // Prepare to write out particle track.
-  if (write_track) add_particle_track();
+  if (write_track_) add_particle_track();
 
   // Every particle starts with no accumulated flux derivative.
   if (!model::active_tallies.empty()) zero_flux_derivs();
 
   while (true) {
     // Set the random number stream
-    if (type == static_cast<int>(ParticleType::neutron)) {
+    if (type_ == Particle::Type::neutron) {
       prn_set_stream(STREAM_TRACKING);
     } else {
       prn_set_stream(STREAM_PHOTON);
     }
 
     // Store pre-collision particle properties
-    last_wgt = wgt;
-    last_E = E;
-    std::copy(coord[0].uvw, coord[0].uvw + 3, last_uvw);
-    std::copy(coord[0].xyz, coord[0].xyz + 3, last_xyz);
+    wgt_last_ = wgt_;
+    E_last_ = E_;
+    u_last_ = this->u();
+    r_last_ = this->r();
 
     // If the cell hasn't been determined based on the particle's location,
     // initiate a search for the current cell. This generally happens at the
     // beginning of the history and again for any secondary particles
-    if (coord[n_coord - 1].cell == C_NONE) {
+    if (coord_[n_coord_ - 1].cell == C_NONE) {
       if (!find_cell(this, false)) {
         this->mark_as_lost("Could not find the cell containing particle "
-          + std::to_string(id));
+          + std::to_string(id_));
         return;
       }
 
       // set birth cell attribute
-      if (cell_born == C_NONE) cell_born = coord[n_coord - 1].cell;
+      if (cell_born_ == C_NONE) cell_born_ = coord_[n_coord_ - 1].cell;
     }
 
     // Write particle track.
-    if (write_track) write_particle_track(*this);
+    if (write_track_) write_particle_track(*this);
 
     if (settings::check_overlaps) check_cell_overlap(this);
 
     // Calculate microscopic and macroscopic cross sections
-    if (material != MATERIAL_VOID) {
+    if (material_ != MATERIAL_VOID) {
       if (settings::run_CE) {
-        if (material != last_material || sqrtkT != last_sqrtkT) {
+        if (material_ != material_last_ || sqrtkT_ != sqrtkT_last_) {
           // If the material is the same as the last material and the
           // temperature hasn't changed, we don't need to lookup cross
           // sections again.
-          model::materials[material]->calculate_xs(*this);
+          model::materials[material_]->calculate_xs(*this);
         }
       } else {
         // Get the MG data
-        calculate_xs_c(material, g, sqrtkT, coord[n_coord-1].uvw,
+        calculate_xs_c(material_, g_, sqrtkT_, this->u_local(),
           simulation::material_xs.total, simulation::material_xs.absorption,
           simulation::material_xs.nu_fission);
 
         // Finally, update the particle group while we have already checked
         // for if multi-group
-        last_g = g;
+        g_last_ = g_;
       }
     } else {
       simulation::material_xs.total      = 0.0;
@@ -230,8 +210,8 @@ Particle::transport()
 
     // Sample a distance to collision
     double d_collision;
-    if (type == static_cast<int>(ParticleType::electron) ||
-        type == static_cast<int>(ParticleType::positron)) {
+    if (type_ == Particle::Type::electron ||
+        type_ == Particle::Type::positron) {
       d_collision = 0.0;
     } else if (simulation::material_xs.total == 0.0) {
       d_collision = INFINITY;
@@ -243,11 +223,8 @@ Particle::transport()
     double distance = std::min(d_boundary, d_collision);
 
     // Advance particle
-    for (int j = 0; j < n_coord; ++j) {
-      // TODO: use Position
-      coord[j].xyz[0] += distance * coord[j].uvw[0];
-      coord[j].xyz[1] += distance * coord[j].uvw[1];
-      coord[j].xyz[2] += distance * coord[j].uvw[2];
+    for (int j = 0; j < n_coord_; ++j) {
+      coord_[j].r += distance * coord_[j].u;
     }
 
     // Score track-length tallies
@@ -257,8 +234,8 @@ Particle::transport()
 
     // Score track-length estimate of k-eff
     if (settings::run_mode == RUN_MODE_EIGENVALUE &&
-        type == static_cast<int>(ParticleType::neutron)) {
-      global_tally_tracklength += wgt * distance * simulation::material_xs.nu_fission;
+        type_ == Particle::Type::neutron) {
+      global_tally_tracklength += wgt_ * distance * simulation::material_xs.nu_fission;
     }
 
     // Score flux derivative accumulators for differential tallies.
@@ -270,25 +247,25 @@ Particle::transport()
       // ====================================================================
       // PARTICLE CROSSES SURFACE
 
-      if (next_level > 0) n_coord = next_level;
+      if (next_level > 0) n_coord_ = next_level;
 
       // Saving previous cell data
-      for (int j = 0; j < n_coord; ++j) {
-        last_cell[j] = coord[j].cell;
+      for (int j = 0; j < n_coord_; ++j) {
+        cell_last_[j] = coord_[j].cell;
       }
-      last_n_coord = n_coord;
+      n_coord_last_ = n_coord_;
 
       if (lattice_translation[0] != 0 || lattice_translation[1] != 0 ||
           lattice_translation[2] != 0) {
         // Particle crosses lattice boundary
-        surface = ERROR_INT;
+        surface_ = ERROR_INT;
         cross_lattice(this, lattice_translation);
-        event = EVENT_LATTICE;
+        event_ = EVENT_LATTICE;
       } else {
         // Particle crosses surface
-        surface = surface_crossed;
+        surface_ = surface_crossed;
         this->cross_surface();
-        event = EVENT_SURFACE;
+        event_ = EVENT_SURFACE;
       }
       // Score cell to cell partial currents
       if (!model::active_surface_tallies.empty()) {
@@ -300,8 +277,8 @@ Particle::transport()
 
       // Score collision estimate of keff
       if (settings::run_mode == RUN_MODE_EIGENVALUE &&
-          type == static_cast<int>(ParticleType::neutron)) {
-        global_tally_collision += wgt * simulation::material_xs.nu_fission
+          type_ == Particle::Type::neutron) {
+        global_tally_collision += wgt_ * simulation::material_xs.nu_fission
           / simulation::material_xs.total;
       }
 
@@ -313,7 +290,7 @@ Particle::transport()
         score_surface_tally(this, model::active_meshsurf_tallies);
 
       // Clear surface component
-      surface = ERROR_INT;
+      surface_ = ERROR_INT;
 
       if (settings::run_CE) {
         collision(this);
@@ -334,33 +311,33 @@ Particle::transport()
       }
 
       // Reset banked weight during collision
-      n_bank = 0;
-      wgt_bank = 0.0;
-      for (int& v : n_delayed_bank) v = 0;
+      n_bank_ = 0;
+      wgt_bank_ = 0.0;
+      for (int& v : n_delayed_bank_) v = 0;
 
       // Reset fission logical
-      fission = false;
+      fission_ = false;
 
       // Save coordinates for tallying purposes
-      std::copy(coord[0].xyz, coord[0].xyz + 3, last_xyz_current);
+      r_last_current_ = this->r();
 
       // Set last material to none since cross sections will need to be
       // re-evaluated
-      last_material = C_NONE;
+      material_last_ = C_NONE;
 
-      // Set all uvws to base level -- right now, after a collision, only the
-      // base level uvws are changed
-      for (int j = 0; j < n_coord - 1; ++j) {
-        if (coord[j + 1].rotated) {
+      // Set all directions to base level -- right now, after a collision, only
+      // the base level directions are changed
+      for (int j = 0; j < n_coord_ - 1; ++j) {
+        if (coord_[j + 1].rotated) {
           // If next level is rotated, apply rotation matrix
-          const auto& m {model::cells[coord[j].cell]->rotation_};
-          Direction u {coord[j].uvw};
-          coord[j + 1].uvw[0] = m[3]*u.x + m[4]*u.y + m[5]*u.z;
-          coord[j + 1].uvw[1] = m[6]*u.x + m[7]*u.y + m[8]*u.z;
-          coord[j + 1].uvw[2] = m[9]*u.x + m[10]*u.y + m[11]*u.z;
+          const auto& m {model::cells[coord_[j].cell]->rotation_};
+          const auto& u {coord_[j].u};
+          coord_[j + 1].u.x = m[3]*u.x + m[4]*u.y + m[5]*u.z;
+          coord_[j + 1].u.y = m[6]*u.x + m[7]*u.y + m[8]*u.z;
+          coord_[j + 1].u.z = m[9]*u.x + m[10]*u.y + m[11]*u.z;
         } else {
           // Otherwise, copy this level's direction
-          std::copy(coord[j].uvw, coord[j].uvw + 3, coord[j + 1].uvw);
+          coord_[j+1].u = coord_[j].u;
         }
       }
 
@@ -371,27 +348,27 @@ Particle::transport()
     // If particle has too many events, display warning and kill it
     ++n_event;
     if (n_event == MAX_EVENTS) {
-      warning("Particle " + std::to_string(id) +
+      warning("Particle " + std::to_string(id_) +
         " underwent maximum number of events.");
-      alive = false;
+      alive_ = false;
     }
 
     // Check for secondary particles if this particle is dead
-    if (!alive) {
+    if (!alive_) {
       // If no secondary particles, break out of event loop
-      if (n_secondary == 0) break;
+      if (n_secondary_ == 0) break;
 
-      this->from_source(&secondary_bank[n_secondary - 1]);
-      --n_secondary;
+      this->from_source(&secondary_bank_[n_secondary_ - 1]);
+      --n_secondary_;
       n_event = 0;
 
       // Enter new particle in particle track file
-      if (write_track) add_particle_track();
+      if (write_track_) add_particle_track();
     }
   }
 
   // Finish particle track output.
-  if (write_track) {
+  if (write_track_) {
     write_particle_track(*this);
     finalize_particle_track(*this);
   }
@@ -400,9 +377,9 @@ Particle::transport()
 void
 Particle::cross_surface()
 {
-  int i_surface = std::abs(surface);
+  int i_surface = std::abs(surface_);
   // TODO: off-by-one
-  const auto& surf {model::surfaces[i_surface - 1]};
+  const auto& surf {model::surfaces[i_surface - 1].get()};
   if (settings::verbosity >= 10 || simulation::trace) {
     write_message("    Crossing surface " + std::to_string(surf->id_));
   }
@@ -412,7 +389,7 @@ Particle::cross_surface()
     // PARTICLE LEAKS OUT OF PROBLEM
 
     // Kill particle
-    alive = false;
+    alive_ = false;
 
     // Score any surface current tallies -- note that the particle is moved
     // forward slightly so that if the mesh boundary is on the surface, it is
@@ -422,15 +399,12 @@ Particle::cross_surface()
       // TODO: Find a better solution to score surface currents than
       // physically moving the particle forward slightly
 
-      // TODO: Use Position
-      coord[0].xyz[0] += TINY_BIT * coord[0].uvw[0];
-      coord[0].xyz[1] += TINY_BIT * coord[0].uvw[1];
-      coord[0].xyz[2] += TINY_BIT * coord[0].uvw[2];
+      this->r() += TINY_BIT * this->u();
       score_surface_tally(this, model::active_meshsurf_tallies);
     }
 
     // Score to global leakage tally
-    global_tally_leakage += wgt;
+    global_tally_leakage += wgt_;
 
     // Display message
     if (settings::verbosity >= 10 || simulation::trace) {
@@ -443,8 +417,8 @@ Particle::cross_surface()
     // PARTICLE REFLECTS FROM SURFACE
 
     // Do not handle reflective boundary conditions on lower universes
-    if (n_coord != 1) {
-      this->mark_as_lost("Cannot reflect particle " + std::to_string(id) +
+    if (n_coord_ != 1) {
+      this->mark_as_lost("Cannot reflect particle " + std::to_string(id_) +
         " off surface in a lower universe.");
       return;
     }
@@ -462,32 +436,27 @@ Particle::cross_surface()
 
 
     if (!model::active_meshsurf_tallies.empty()) {
-      Position r {coord[0].xyz};
-      coord[0].xyz[0] -= TINY_BIT * coord[0].uvw[0];
-      coord[0].xyz[1] -= TINY_BIT * coord[0].uvw[1];
-      coord[0].xyz[2] -= TINY_BIT * coord[0].uvw[2];
+      Position r {this->r()};
+      this->r() -= TINY_BIT * this->u();
       score_surface_tally(this, model::active_meshsurf_tallies);
-      std::copy(&r.x, &r.x + 3, coord[0].xyz);
+      this->r() = r;
     }
 
     // Reflect particle off surface
-    Direction u = surf->reflect(coord[0].xyz, coord[0].uvw);
+    Direction u = surf->reflect(this->r(), this->u());
 
     // Make sure new particle direction is normalized
-    double norm = u.norm();
-    coord[0].uvw[0] = u.x/norm;
-    coord[0].uvw[1] = u.y/norm;
-    coord[0].uvw[2] = u.z/norm;
+    this->u() = u / u.norm();
 
     // Reassign particle's cell and surface
-    coord[0].cell = last_cell[last_n_coord - 1];
-    surface = -surface;
+    coord_[0].cell = cell_last_[n_coord_last_ - 1];
+    surface_ = -surface_;
 
     // If a reflective surface is coincident with a lattice or universe
     // boundary, it is necessary to redetermine the particle's coordinates in
     // the lower universes.
 
-    n_coord = 1;
+    n_coord_ = 1;
     if (!find_cell(this, true)) {
       this->mark_as_lost("Couldn't find particle after reflecting from surface "
         + std::to_string(surf->id_) + ".");
@@ -495,9 +464,7 @@ Particle::cross_surface()
     }
 
     // Set previous coordinate going slightly past surface crossing
-    last_xyz_current[0] = coord[0].xyz[0] + TINY_BIT*coord[0].uvw[0];
-    last_xyz_current[1] = coord[0].xyz[1] + TINY_BIT*coord[0].uvw[1];
-    last_xyz_current[2] = coord[0].xyz[2] + TINY_BIT*coord[0].uvw[2];
+    r_last_current_ = this->r() + TINY_BIT*this->u();
 
     // Diagnostic message
     if (settings::verbosity >= 10 || simulation::trace) {
@@ -510,8 +477,8 @@ Particle::cross_surface()
     // PERIODIC BOUNDARY
 
     // Do not handle periodic boundary conditions on lower universes
-    if (n_coord != 1) {
-      this->mark_as_lost("Cannot transfer particle " + std::to_string(id) +
+    if (n_coord_ != 1) {
+      this->mark_as_lost("Cannot transfer particle " + std::to_string(id_) +
         " across surface in a lower universe. Boundary conditions must be "
         "applied to root universe.");
       return;
@@ -521,34 +488,28 @@ Particle::cross_surface()
     // particle to change -- artificially move the particle slightly back in
     // case the surface crossing is coincident with a mesh boundary
     if (!model::active_meshsurf_tallies.empty()) {
-      Position r {coord[0].xyz};
-      coord[0].xyz[0] -= TINY_BIT * coord[0].uvw[0];
-      coord[0].xyz[1] -= TINY_BIT * coord[0].uvw[1];
-      coord[0].xyz[2] -= TINY_BIT * coord[0].uvw[2];
+      Position r {this->r()};
+      this->r() -= TINY_BIT * this->u();
       score_surface_tally(this, model::active_meshsurf_tallies);
-      std::copy(&r.x, &r.x + 3, coord[0].xyz);
+      this->r() = r;
     }
 
     // Get a pointer to the partner periodic surface
     auto surf_p = dynamic_cast<PeriodicSurface*>(surf);
     auto other = dynamic_cast<PeriodicSurface*>(
-      model::surfaces[surf_p->i_periodic_]);
+      model::surfaces[surf_p->i_periodic_].get());
 
     // Adjust the particle's location and direction.
-    Position r {coord[0].xyz};
-    Direction u {coord[0].uvw};
-    bool rotational = other->periodic_translate(surf_p, r, u);
-    std::copy(&r.x, &r.x + 3, coord[0].xyz);
-    std::copy(&u.x, &u.x + 3, coord[0].uvw);
+    bool rotational = other->periodic_translate(surf_p, this->r(), this->u());
 
     // Reassign particle's surface
     // TODO: off-by-one
-    surface = rotational ?
+    surface_ = rotational ?
       surf_p->i_periodic_ + 1 :
-      std::copysign(surf_p->i_periodic_ + 1, surface);
+      std::copysign(surf_p->i_periodic_ + 1, surface_);
 
     // Figure out what cell particle is in now
-    n_coord = 1;
+    n_coord_ = 1;
 
     if (!find_cell(this, true)) {
       this->mark_as_lost("Couldn't find particle after hitting periodic "
@@ -557,9 +518,7 @@ Particle::cross_surface()
     }
 
     // Set previous coordinate going slightly past surface crossing
-    last_xyz_current[0] = coord[0].xyz[0] + TINY_BIT * coord[0].uvw[0];
-    last_xyz_current[1] = coord[0].xyz[1] + TINY_BIT * coord[0].uvw[1];
-    last_xyz_current[2] = coord[0].xyz[2] + TINY_BIT * coord[0].uvw[2];
+    r_last_current_ = this->r() + TINY_BIT*this->u();
 
     // Diagnostic message
     if (settings::verbosity >= 10 || simulation::trace) {
@@ -574,18 +533,18 @@ Particle::cross_surface()
 
 #ifdef DAGMC
   if (settings::dagmc) {
-    auto cellp = dynamic_cast<DAGCell*>(model::cells[last_cell[0]]);
+    auto cellp = dynamic_cast<DAGCell*>(model::cells[cell_last_[0]].get());
     // TODO: off-by-one
-    auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[std::abs(surface) - 1]);
+    auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[std::abs(surface_) - 1].get());
     int32_t i_cell = next_cell(cellp, surfp) - 1;
     // save material and temp
-    last_material = material;
-    last_sqrtkT = sqrtkT;
+    material_last_ = material_;
+    sqrtkT_last_ = sqrtkT_;
     // set new cell value
-    coord[0].cell = i_cell;
-    cell_instance = 0;
-    material = model::cells[i_cell]->material_[0];
-    sqrtkT = model::cells[i_cell]->sqrtkT_[0];
+    coord_[0].cell = i_cell;
+    cell_instance_ = 0;
+    material_ = model::cells[i_cell]->material_[0];
+    sqrtkT_ = model::cells[i_cell]->sqrtkT_[0];
     return;
   }
 #endif
@@ -596,8 +555,8 @@ Particle::cross_surface()
   // COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
 
   // Remove lower coordinate levels and assignment of surface
-  surface = ERROR_INT;
-  n_coord = 1;
+  surface_ = ERROR_INT;
+  n_coord_ = 1;
   bool found = find_cell(this, false);
 
   if (settings::run_mode != RUN_MODE_PLOTTING && (!found)) {
@@ -606,16 +565,14 @@ Particle::cross_surface()
     // the particle is really traveling tangent to a surface, if we move it
     // forward a tiny bit it should fix the problem.
 
-    n_coord = 1;
-    coord[0].xyz[0] += TINY_BIT * coord[0].uvw[0];
-    coord[0].xyz[1] += TINY_BIT * coord[0].uvw[1];
-    coord[0].xyz[2] += TINY_BIT * coord[0].uvw[2];
+    n_coord_ = 1;
+    this->r() += TINY_BIT * this->u();
 
     // Couldn't find next cell anywhere! This probably means there is an actual
     // undefined region in the geometry.
 
     if (!find_cell(this, false)) {
-      this->mark_as_lost("After particle " + std::to_string(id) +
+      this->mark_as_lost("After particle " + std::to_string(id_) +
         " crossed surface " + std::to_string(surf->id_) +
         " it could not be located in any cell and it did not leak.");
       return;
@@ -631,7 +588,7 @@ Particle::mark_as_lost(const char* message)
   write_restart();
 
   // Increment number of lost particles
-  alive = false;
+  alive_ = false;
 #pragma omp atomic
   simulation::n_lost_particles += 1;
 
@@ -655,7 +612,7 @@ Particle::write_restart() const
   // Set up file name
   std::stringstream filename;
   filename << settings::path_output << "particle_" << simulation::current_batch
-    << '_' << id << ".h5";
+    << '_' << id_ << ".h5";
 
 #pragma omp critical (WriteParticleRestart)
   {
@@ -686,15 +643,14 @@ Particle::write_restart() const
         write_dataset(file_id, "run_mode", "particle restart");
         break;
     }
-    write_dataset(file_id, "id", id);
-    write_dataset(file_id, "type", type);
+    write_dataset(file_id, "id", id_);
+    write_dataset(file_id, "type", static_cast<int>(type_));
 
     int64_t i = simulation::current_work;
     write_dataset(file_id, "weight", simulation::source_bank[i-1].wgt);
     write_dataset(file_id, "energy", simulation::source_bank[i-1].E);
-    hsize_t dims[] {3};
-    write_double(file_id, 1, dims, "xyz", simulation::source_bank[i-1].xyz, false);
-    write_double(file_id, 1, dims, "uvw", simulation::source_bank[i-1].uvw, false);
+    write_dataset(file_id, "xyz", simulation::source_bank[i-1].r);
+    write_dataset(file_id, "uvw", simulation::source_bank[i-1].u);
 
     // Close file
     file_close(file_id);

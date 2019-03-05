@@ -29,8 +29,8 @@ ZernikeFilter::get_all_bins(const Particle* p, int estimator,
                             FilterMatch& match) const
 {
   // Determine the normalized (r,theta) coordinates.
-  double x = p->coord[0].xyz[0] - x_;
-  double y = p->coord[0].xyz[1] - y_;
+  double x = p->r().x - x_;
+  double y = p->r().y - y_;
   double r = std::sqrt(x*x + y*y) / r_;
   double theta = std::atan2(y, x);
 
@@ -86,8 +86,8 @@ ZernikeRadialFilter::get_all_bins(const Particle* p, int estimator,
                                   FilterMatch& match) const
 {
   // Determine the normalized radius coordinate.
-  double x = p->coord[0].xyz[0] - x_;
-  double y = p->coord[0].xyz[1] - y_;
+  double x = p->r().x - x_;
+  double y = p->r().y - y_;
   double r = std::sqrt(x*x + y*y) / r_;
 
   if (r <= 1.0) {

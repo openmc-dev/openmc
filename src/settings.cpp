@@ -509,7 +509,7 @@ void read_settings_xml()
 
     // Read entropy mesh from <entropy>
     auto node_entropy = root.child("entropy");
-    model::meshes.emplace_back(new RegularMesh{node_entropy});
+    model::meshes.push_back(std::make_unique<RegularMesh>(node_entropy));
 
     // Set entropy mesh index
     index_entropy_mesh = model::meshes.size() - 1;
@@ -555,7 +555,7 @@ void read_settings_xml()
 
     // Read entropy mesh from <entropy>
     auto node_ufs = root.child("uniform_fs");
-    model::meshes.emplace_back(new RegularMesh{node_ufs});
+    model::meshes.push_back(std::make_unique<RegularMesh>(node_ufs));
 
     // Set entropy mesh index
     index_ufs_mesh = model::meshes.size() - 1;

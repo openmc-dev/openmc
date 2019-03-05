@@ -25,7 +25,7 @@ void
 collision_mg(Particle* p)
 {
   // Add to the collision counter for the particle
-  p->n_collision++;
+  p->n_collision_++;
 
   // Sample the reaction type
   sample_reaction(p);
@@ -33,7 +33,7 @@ collision_mg(Particle* p)
   // Display information about collision
   if ((settings::verbosity >= 10) || (simulation::trace)) {
     std::stringstream msg;
-    msg << "    Energy Group = " << p->g;
+    msg << "    Energy Group = " << p->g_;
     write_message(msg, 1);
   }
 }
@@ -46,14 +46,14 @@ sample_reaction(Particle* p)
   // change when sampling fission sites. The following block handles all
   // absorption (including fission)
 
-  if (model::materials[p->material]->fissionable_) {
+  if (model::materials[p->material_]->fissionable_) {
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
       create_fission_sites(
         p, simulation::fission_bank.data(), &simulation::n_bank,
         simulation::fission_bank.size());
     } else if ((settings::run_mode == RUN_MODE_FIXEDSOURCE) &&
                (settings::create_fission_neutrons)) {
-      create_fission_sites(p, p->secondary_bank, &(p->n_secondary),
+      create_fission_sites(p, p->secondary_bank_, &(p->n_secondary_),
                            MAX_SECONDARY);
     }
   }
@@ -63,9 +63,9 @@ sample_reaction(Particle* p)
   if (simulation::material_xs.absorption > 0.) {
     absorption(p);
   } else {
-    p->absorb_wgt = 0.;
+    p->wgt_absorb_ = 0.;
   }
-  if (!p->alive) return;
+  if (!p->alive_) return;
 
   // Sample a scattering event to determine the energy of the exiting neutron
   scatter(p);
@@ -73,7 +73,7 @@ sample_reaction(Particle* p)
   // Play Russian roulette if survival biasing is turned on
   if (settings::survival_biasing) {
     russian_roulette(p);
-    if (!p->alive) return;
+    if (!p->alive_) return;
   }
 }
 
@@ -82,27 +82,27 @@ scatter(Particle* p)
 {
   // Adjust indices for Fortran to C++ indexing
   // TODO: Remove when no longer needed
-  int gin = p->last_g - 1;
-  int gout = p->g - 1;
-  int i_mat = p->material;
-  data::macro_xs[i_mat].sample_scatter(gin, gout, p->mu, p->wgt);
+  int gin = p->g_last_ - 1;
+  int gout = p->g_ - 1;
+  int i_mat = p->material_;
+  data::macro_xs[i_mat].sample_scatter(gin, gout, p->mu_, p->wgt_);
 
   // Adjust return value for fortran indexing
   // TODO: Remove when no longer needed
-  p->g = gout + 1;
+  p->g_ = gout + 1;
 
   // Rotate the angle
-  rotate_angle_c(p->coord[0].uvw, p->mu, nullptr);
+  p->u() = rotate_angle(p->u(), p->mu_, nullptr);
 
   // Update energy value for downstream compatability (in tallying)
-  p->E = data::energy_bin_avg[gout];
+  p->E_ = data::energy_bin_avg[gout];
 
   // Set event component
-  p->event = EVENT_SCATTER;
+  p->event_ = EVENT_SCATTER;
 }
 
 void
-create_fission_sites(Particle* p, Bank* bank_array, int64_t* size_bank,
+create_fission_sites(Particle* p, Particle::Bank* bank_array, int64_t* size_bank,
      int64_t bank_array_size)
 {
   // TODO: Heat generation from fission
@@ -112,7 +112,7 @@ create_fission_sites(Particle* p, Bank* bank_array, int64_t* size_bank,
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
-  double nu_t = p->wgt / simulation::keff * weight *
+  double nu_t = p->wgt_ / simulation::keff * weight *
        simulation::material_xs.nu_fission / simulation::material_xs.total;
 
   // Sample the number of neutrons produced
@@ -148,16 +148,14 @@ create_fission_sites(Particle* p, Bank* bank_array, int64_t* size_bank,
   // group.
   double nu_d[MAX_DELAYED_GROUPS] = {0.};
 
-  p->fission = true;
+  p->fission_ = true;
   for (size_t i = static_cast<size_t>(*size_bank);
        i < static_cast<size_t>(std::min(*size_bank + nu, bank_array_size)); i++) {
     // Bank source neutrons by copying the particle data
-    bank_array[i].xyz[0] = p->coord[0].xyz[0];
-    bank_array[i].xyz[1] = p->coord[0].xyz[1];
-    bank_array[i].xyz[2] = p->coord[0].xyz[2];
+    bank_array[i].r = p->r();
 
     // Set that the bank particle is a neutron
-    bank_array[i].particle = static_cast<int>(ParticleType::neutron);
+    bank_array[i].particle = Particle::Type::neutron;
 
     // Set the weight of the fission bank site
     bank_array[i].wgt = 1. / weight;
@@ -168,23 +166,23 @@ create_fission_sites(Particle* p, Bank* bank_array, int64_t* size_bank,
 
     // Sample the azimuthal angle uniformly in [0, 2.pi)
     double phi = 2. * PI * prn();
-    bank_array[i].uvw[0] = mu;
-    bank_array[i].uvw[1] = std::sqrt(1. - mu * mu) * std::cos(phi);
-    bank_array[i].uvw[2] = std::sqrt(1. - mu * mu) * std::sin(phi);
+    bank_array[i].u.x = mu;
+    bank_array[i].u.y = std::sqrt(1. - mu * mu) * std::cos(phi);
+    bank_array[i].u.z = std::sqrt(1. - mu * mu) * std::sin(phi);
 
     // Sample secondary energy distribution for the fission reaction and set
     // the energy in the fission bank
     int dg;
     int gout;
-    data::macro_xs[p->material].sample_fission_energy(p->g - 1, dg, gout);
-    bank_array[i].E = static_cast<double>(gout + 1);
+    data::macro_xs[p->material_].sample_fission_energy(p->g_ - 1, dg, gout);
+    bank_array[i].E = gout + 1;
     bank_array[i].delayed_group = dg + 1;
 
     // Set the delayed group on the particle as well
-    p->delayed_group = dg + 1;
+    p->delayed_group_ = dg + 1;
 
     // Increment the number of neutrons born delayed
-    if (p->delayed_group > 0) {
+    if (p->delayed_group_ > 0) {
       nu_d[dg]++;
     }
   }
@@ -193,10 +191,10 @@ create_fission_sites(Particle* p, Bank* bank_array, int64_t* size_bank,
   *size_bank = std::min(*size_bank + nu, bank_array_size);
 
   // Store the total weight banked for analog fission tallies
-  p->n_bank = nu;
-  p->wgt_bank = nu / weight;
+  p->n_bank_ = nu;
+  p->wgt_bank_ = nu / weight;
   for (size_t d = 0; d < MAX_DELAYED_GROUPS; d++) {
-    p->n_delayed_bank[d] = nu_d[d];
+    p->n_delayed_bank_[d] = nu_d[d];
   }
 }
 
@@ -205,26 +203,26 @@ absorption(Particle* p)
 {
   if (settings::survival_biasing) {
     // Determine weight absorbed in survival biasing
-    p->absorb_wgt = p->wgt *
+    p->wgt_absorb_ = p->wgt_ *
          simulation::material_xs.absorption / simulation::material_xs.total;
 
     // Adjust weight of particle by the probability of absorption
-    p->wgt -= p->absorb_wgt;
-    p->last_wgt = p->wgt;
+    p->wgt_ -= p->wgt_absorb_;
+    p->wgt_last_ = p->wgt_;
 
     // Score implicit absorpion estimate of keff
 #pragma omp atomic
-    global_tally_absorption += p->absorb_wgt *
+    global_tally_absorption += p->wgt_absorb_ *
          simulation::material_xs.nu_fission /
          simulation::material_xs.absorption;
   } else {
     if (simulation::material_xs.absorption >
         prn() * simulation::material_xs.total) {
 #pragma omp atomic
-      global_tally_absorption += p->wgt * simulation::material_xs.nu_fission /
+      global_tally_absorption += p->wgt_ * simulation::material_xs.nu_fission /
            simulation::material_xs.absorption;
-      p->alive = false;
-      p->event = EVENT_ABSORB;
+      p->alive_ = false;
+      p->event_ = EVENT_ABSORB;
     }
 
   }

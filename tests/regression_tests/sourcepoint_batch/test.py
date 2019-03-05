@@ -19,7 +19,7 @@ class SourcepointTestHarness(TestHarness):
         # Read the statepoint file.
         with StatePoint(self._sp_name) as sp:
             # Add the source information.
-            xyz = sp.source[0]['xyz']
+            xyz = sp.source[0]['r']
             outstr += ' '.join(['{0:12.6E}'.format(x) for x in xyz])
             outstr += "\n"
 

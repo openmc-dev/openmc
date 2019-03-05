@@ -765,9 +765,9 @@ void read_tallies_xml()
       } else {
         const auto& f = model::tally_filters[particle_filter_index].get();
         auto pf = dynamic_cast<ParticleFilter*>(f);
-        for (int p : pf->particles_) {
-          if (p == static_cast<int>(ParticleType::electron) ||
-              p == static_cast<int>(ParticleType::positron)) {
+        for (auto p : pf->particles_) {
+          if (p == Particle::Type::electron ||
+              p == Particle::Type::positron) {
             t->estimator_ = ESTIMATOR_ANALOG;
           }
         }
@@ -776,11 +776,11 @@ void read_tallies_xml()
       if (particle_filter_index >= 0) {
         const auto& f = model::tally_filters[particle_filter_index].get();
         auto pf = dynamic_cast<ParticleFilter*>(f);
-        for (int p : pf->particles_) {
-          if (p != static_cast<int>(ParticleType::neutron)) {
+        for (auto p : pf->particles_) {
+          if (p != Particle::Type::neutron) {
             warning("Particle filter other than NEUTRON used with photon "
               "transport turned off. All tallies for particle type " +
-              std::to_string(p) + " will have no scores");
+              std::to_string(static_cast<int>(p)) + " will have no scores");
           }
         }
       }

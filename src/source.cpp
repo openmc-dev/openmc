@@ -157,10 +157,11 @@ Particle::Bank SourceDistribution::sample() const
 
     // Sample spatial distribution
     site.r = space_->sample();
+    double xyz[] {site.r.x, site.r.y, site.r.z};
 
     // Now search to see if location exists in geometry
     int32_t cell_index, instance;
-    int err = openmc_find_cell(&site.r.x, &cell_index, &instance);
+    int err = openmc_find_cell(xyz, &cell_index, &instance);
     found = (err != OPENMC_E_GEOMETRY);
 
     // Check if spatial site is in fissionable material

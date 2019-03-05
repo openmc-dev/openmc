@@ -73,7 +73,7 @@ int openmc_simulation_init()
     t->init_results();
   }
 
-  // Set up.material_ nuclide index mapping
+  // Set up material nuclide index mapping
   for (auto& mat : model::materials) {
     mat->init_nuclide_index();
   }

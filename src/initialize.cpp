@@ -100,17 +100,17 @@ void initialize_mpi(MPI_Comm intracomm)
   mpi::master = (mpi::rank == 0);
 
   // Create bank datatype
-  Bank b;
+  Particle::Bank b;
   MPI_Aint disp[6];
-  MPI_Get_address(&b.wgt, &disp[0]);
-  MPI_Get_address(&b.xyz, &disp[1]);
-  MPI_Get_address(&b.uvw, &disp[2]);
-  MPI_Get_address(&b.E, &disp[3]);
+  MPI_Get_address(&b.r, &disp[0]);
+  MPI_Get_address(&b.u, &disp[1]);
+  MPI_Get_address(&b.E, &disp[2]);
+  MPI_Get_address(&b.wgt, &disp[3]);
   MPI_Get_address(&b.delayed_group, &disp[4]);
   MPI_Get_address(&b.particle, &disp[5]);
   for (int i = 5; i >= 0; --i) disp[i] -= disp[0];
 
-  int blocks[] {1, 3, 3, 1, 1, 1};
+  int blocks[] {3, 3, 1, 1, 1, 1};
   MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_INT};
   MPI_Type_create_struct(6, blocks, disp, types, &mpi::bank);
   MPI_Type_commit(&mpi::bank);

@@ -136,7 +136,7 @@ void create_macro_xs()
   for (int i = 0; i < model::materials.size(); ++i) {
     if (kTs[i].size() > 0) {
       // Convert atom_densities to a vector
-      Material* mat = model::materials[i];
+      auto& mat {model::materials[i]};
       std::vector<double> atom_densities(mat->atom_density_.begin(),
         mat->atom_density_.end());
 
@@ -235,7 +235,7 @@ void read_mg_cross_sections_header()
   }
 
   // Get the minimum and maximum energies
-  int neutron = static_cast<int>(ParticleType::neutron);
+  int neutron = static_cast<int>(Particle::Type::neutron);
   data::energy_min[neutron] = data::energy_bins.back();
   data::energy_max[neutron] = data::energy_bins.front();
 
@@ -248,10 +248,10 @@ void read_mg_cross_sections_header()
 //==============================================================================
 
 void
-calculate_xs_c(int i_mat, int gin, double sqrtkT, const double uvw[3],
+calculate_xs_c(int i_mat, int gin, double sqrtkT, Direction u,
      double& total_xs, double& abs_xs, double& nu_fiss_xs)
 {
-  data::macro_xs[i_mat].calculate_xs(gin - 1, sqrtkT, uvw, total_xs, abs_xs,
+  data::macro_xs[i_mat].calculate_xs(gin - 1, sqrtkT, u, total_xs, abs_xs,
        nu_fiss_xs);
 }
 

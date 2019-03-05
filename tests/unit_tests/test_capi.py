@@ -236,6 +236,7 @@ def test_source_bank(capi_run):
     source = openmc.capi.source_bank()
     assert np.all(source['E'] > 0.0)
     assert np.all(source['wgt'] == 1.0)
+    assert np.allclose(np.linalg.norm(source['u'], axis=1), 1.0)
 
 
 def test_by_batch(capi_run):

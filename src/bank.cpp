@@ -6,7 +6,7 @@
 #include <cstdint>
 
 // Explicit template instantiation definition
-template class std::vector<openmc::Bank>;
+template class std::vector<openmc::Particle::Bank>;
 
 namespace openmc {
 
@@ -18,10 +18,10 @@ namespace simulation {
 
 int64_t n_bank;
 
-std::vector<Bank> source_bank;
-std::vector<Bank> fission_bank;
+std::vector<Particle::Bank> source_bank;
+std::vector<Particle::Bank> fission_bank;
 #ifdef _OPENMP
-std::vector<Bank> master_fission_bank;
+std::vector<Particle::Bank> master_fission_bank;
 #endif
 
 } // namespace simulation
@@ -46,7 +46,7 @@ void free_memory_bank()
 // C API
 //==============================================================================
 
-extern "C" int openmc_source_bank(Bank** ptr, int64_t* n)
+extern "C" int openmc_source_bank(void** ptr, int64_t* n)
 {
   if (simulation::source_bank.size() == 0) {
     set_errmsg("Source bank has not been allocated.");
@@ -58,7 +58,7 @@ extern "C" int openmc_source_bank(Bank** ptr, int64_t* n)
   }
 }
 
-extern "C" int openmc_fission_bank(Bank** ptr, int64_t* n)
+extern "C" int openmc_fission_bank(void** ptr, int64_t* n)
 {
   if (simulation::fission_bank.size() == 0) {
     set_errmsg("Fission bank has not been allocated.");

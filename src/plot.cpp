@@ -106,49 +106,48 @@ void create_ppm(Plot pl)
   data.resize({width, height});
 
   int in_i, out_i;
-  double xyz[3];
+  Position r;
   switch(pl.basis_) {
   case PlotBasis::xy :
     in_i = 0;
     out_i = 1;
-    xyz[0] = pl.origin_[0] - pl.width_[0] / 2.;
-    xyz[1] = pl.origin_[1] + pl.width_[1] / 2.;
-    xyz[2] = pl.origin_[2];
+    r.x = pl.origin_[0] - pl.width_[0] / 2.;
+    r.y = pl.origin_[1] + pl.width_[1] / 2.;
+    r.z = pl.origin_[2];
     break;
   case PlotBasis::xz :
     in_i = 0;
     out_i = 2;
-    xyz[0] = pl.origin_[0] - pl.width_[0] / 2.;
-    xyz[1] = pl.origin_[1];
-    xyz[2] = pl.origin_[2] + pl.width_[1] / 2.;
+    r.x = pl.origin_[0] - pl.width_[0] / 2.;
+    r.y = pl.origin_[1];
+    r.z = pl.origin_[2] + pl.width_[1] / 2.;
     break;
   case PlotBasis::yz :
     in_i = 1;
     out_i = 2;
-    xyz[0] = pl.origin_[0];
-    xyz[1] = pl.origin_[1] - pl.width_[0] / 2.;
-    xyz[2] = pl.origin_[2] + pl.width_[1] / 2.;
+    r.x = pl.origin_[0];
+    r.y = pl.origin_[1] - pl.width_[0] / 2.;
+    r.z = pl.origin_[2] + pl.width_[1] / 2.;
     break;
   }
 
-  double dir[3] = {0.5, 0.5, 0.5};
+  Direction u {0.5, 0.5, 0.5};
 
 #pragma omp parallel
 {
   Particle p;
-  p.initialize();
-  std::copy(xyz, xyz+3, p.coord[0].xyz);
-  std::copy(dir, dir+3, p.coord[0].uvw);
-  p.coord[0].universe = model::root_universe;
+  p.r() = r;
+  p.u() = u;
+  p.coord_[0].universe = model::root_universe;
 
 #pragma omp for
   for (int y = 0; y < height; y++) {
-    p.coord[0].xyz[out_i] = xyz[out_i] - out_pixel * y;
+    p.r()[out_i] = r[out_i] - out_pixel * y;
     for (int x = 0; x < width; x++) {
       // local variables
       RGBColor rgb;
       int id;
-      p.coord[0].xyz[in_i] = xyz[in_i] + in_pixel * x;
+      p.r()[in_i] = r[in_i] + in_pixel * x;
       position_rgb(p, pl, rgb, id);
       data(x,y) = rgb;
     }
@@ -309,11 +308,9 @@ void
 Plot::set_origin(pugi::xml_node plot_node)
 {
   // Copy plotting origin
-  std::vector<double> pl_origin = get_node_array<double>(plot_node, "origin");
+  auto pl_origin = get_node_array<double>(plot_node, "origin");
   if (pl_origin.size() == 3) {
-    origin_[0] = pl_origin[0];
-    origin_[1] = pl_origin[1];
-    origin_[2] = pl_origin[2];
+    origin_ = pl_origin;
   } else {
     std::stringstream err_msg;
     err_msg << "Origin must be length 3 in plot "
@@ -329,8 +326,8 @@ Plot::set_width(pugi::xml_node plot_node)
   std::vector<double> pl_width = get_node_array<double>(plot_node, "width");
   if (PlotType::slice == type_) {
     if (pl_width.size() == 2) {
-      width_[0] = pl_width[0];
-      width_[1] = pl_width[1];
+      width_.x = pl_width[0];
+      width_.y = pl_width[1];
     } else {
       std::stringstream err_msg;
       err_msg << "<width> must be length 2 in slice plot "
@@ -340,9 +337,7 @@ Plot::set_width(pugi::xml_node plot_node)
   } else if (PlotType::voxel == type_) {
     if (pl_width.size() == 3) {
       pl_width = get_node_array<double>(plot_node, "width");
-      width_[0] = pl_width[0];
-      width_[1] = pl_width[1];
-      width_[2] = pl_width[2];
+      width_ = pl_width;
     } else {
       std::stringstream err_msg;
       err_msg << "<width> must be length 3 in voxel plot "
@@ -648,11 +643,11 @@ index_meshlines_mesh_(-1)
 
 void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id)
 {
-  p.n_coord = 1;
+  p.n_coord_ = 1;
 
   bool found_cell = find_cell(&p, 0);
 
-  int j = p.n_coord - 1;
+  int j = p.n_coord_ - 1;
 
   if (settings::check_overlaps) {check_cell_overlap(&p);}
 
@@ -666,23 +661,23 @@ void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id)
   } else {
     if (PlotColorBy::mats == pl.color_by_) {
       // Assign color based on material
-      Cell* c = model::cells[p.coord[j].cell];
+      const auto& c = model::cells[p.coord_[j].cell];
       if (c->type_ == FILL_UNIVERSE) {
         // If we stopped on a middle universe level, treat as if not found
         rgb = pl.not_found_;
         id = -1;
-      } else if (p.material == MATERIAL_VOID) {
+      } else if (p.material_ == MATERIAL_VOID) {
         // By default, color void cells white
         rgb = WHITE;
         id = -1;
       } else {
-        rgb = pl.colors_[p.material];
-        id = model::materials[p.material]->id_;
+        rgb = pl.colors_[p.material_];
+        id = model::materials[p.material_]->id_;
       }
     } else if (PlotColorBy::cells == pl.color_by_) {
       // Assign color based on cell
-      rgb = pl.colors_[p.coord[j].cell];
-      id = model::cells[p.coord[j].cell]->id_;
+      rgb = pl.colors_[p.coord_[j].cell];
+      id = model::cells[p.coord_[j].cell]->id_;
     }
   } // endif found_cell
 }
@@ -746,36 +741,27 @@ void draw_mesh_lines(Plot pl, ImageData& data)
     break;
   }
 
-  double xyz_ll_plot[3], xyz_ur_plot[3];
-  xyz_ll_plot[0] = pl.origin_[0];
-  xyz_ll_plot[1] = pl.origin_[1];
-  xyz_ll_plot[2] = pl.origin_[2];
+  Position ll_plot {pl.origin_};
+  Position ur_plot {pl.origin_};
 
-  xyz_ur_plot[0] = pl.origin_[0];
-  xyz_ur_plot[1] = pl.origin_[1];
-  xyz_ur_plot[2] = pl.origin_[2];
+  ll_plot[outer] -= pl.width_[0] / 2.;
+  ll_plot[inner] -= pl.width_[1] / 2.;
+  ur_plot[outer] += pl.width_[0] / 2.;
+  ur_plot[inner] += pl.width_[1] / 2.;
 
-  xyz_ll_plot[outer] = pl.origin_[outer] - pl.width_[0] / 2.;
-  xyz_ll_plot[inner] = pl.origin_[inner] - pl.width_[1] / 2.;
-  xyz_ur_plot[outer] = pl.origin_[outer] + pl.width_[0] / 2.;
-  xyz_ur_plot[inner] = pl.origin_[inner] + pl.width_[1] / 2.;
-
-  int width[3];
-  width[0] = xyz_ur_plot[0] - xyz_ll_plot[0];
-  width[1] = xyz_ur_plot[1] - xyz_ll_plot[1];
-  width[2] = xyz_ur_plot[2] - xyz_ll_plot[2];
+  Position width = ur_plot - ll_plot;
 
   auto& m = model::meshes[pl.index_meshlines_mesh_];
 
   int ijk_ll[3], ijk_ur[3];
   bool in_mesh;
-  m->get_indices(Position(xyz_ll_plot), &(ijk_ll[0]), &in_mesh);
-  m->get_indices(Position(xyz_ur_plot), &(ijk_ur[0]), &in_mesh);
+  m->get_indices(ll_plot, &(ijk_ll[0]), &in_mesh);
+  m->get_indices(ur_plot, &(ijk_ur[0]), &in_mesh);
 
   // Fortran/C++ index correction
   ijk_ur[0]++; ijk_ur[1]++; ijk_ur[2]++;
 
-  double xyz_ll[3], xyz_ur[3];
+  Position r_ll, r_ur;
   // sweep through all meshbins on this plane and draw borders
   for (int i = ijk_ll[outer]; i <= ijk_ur[outer]; i++) {
     for (int j = ijk_ll[inner]; j <= ijk_ur[inner]; j++) {
@@ -783,20 +769,20 @@ void draw_mesh_lines(Plot pl, ImageData& data)
       if (i > 0 && i <= m->shape_[outer] && j >0 && j <= m->shape_[inner] ) {
         int outrange[3], inrange[3];
         // get xyz's of lower left and upper right of this mesh cell
-        xyz_ll[outer] = m->lower_left_[outer] + m->width_[outer] * (i - 1);
-        xyz_ll[inner] = m->lower_left_[inner] + m->width_[inner] * (j - 1);
-        xyz_ur[outer] = m->lower_left_[outer] + m->width_[outer] * i;
-        xyz_ur[inner] = m->lower_left_[inner] + m->width_[inner] * j;
+        r_ll[outer] = m->lower_left_[outer] + m->width_[outer] * (i - 1);
+        r_ll[inner] = m->lower_left_[inner] + m->width_[inner] * (j - 1);
+        r_ur[outer] = m->lower_left_[outer] + m->width_[outer] * i;
+        r_ur[inner] = m->lower_left_[inner] + m->width_[inner] * j;
 
         // map the xyz ranges to pixel ranges
-        double frac = (xyz_ll[outer] - xyz_ll_plot[outer]) / width[outer];
+        double frac = (r_ll[outer] - ll_plot[outer]) / width[outer];
         outrange[0] = int(frac * double(pl.pixels_[0]));
-        frac = (xyz_ur[outer] - xyz_ll_plot[outer]) / width[outer];
+        frac = (r_ur[outer] - ll_plot[outer]) / width[outer];
         outrange[1] = int(frac * double(pl.pixels_[0]));
 
-        frac = (xyz_ur[inner] - xyz_ll_plot[inner]) / width[inner];
+        frac = (r_ur[inner] - ll_plot[inner]) / width[inner];
         inrange[0] = int((1. - frac) * (double)pl.pixels_[1]);
-        frac = (xyz_ll[inner] - xyz_ll_plot[inner]) / width[inner];
+        frac = (r_ll[inner] - ll_plot[inner]) / width[inner];
         inrange[1] = int((1. - frac) * (double)pl.pixels_[1]);
 
         // draw lines
@@ -846,18 +832,14 @@ void create_voxel(Plot pl)
   vox[2] = pl.width_[2]/(double)pl.pixels_[2];
 
   // initial particle position
-  std::array<double, 3> ll;
-  ll[0] = pl.origin_[0] - pl.width_[0] / 2.;
-  ll[1] = pl.origin_[1] - pl.width_[1] / 2.;
-  ll[2] = pl.origin_[2] - pl.width_[2] / 2.;
+  Position ll = pl.origin_ - pl.width_ / 2.;
 
   // allocate and initialize particle
-  double dir[3] = {0.5, 0.5, 0.5};
+  Direction u {0.5, 0.5, 0.5};
   Particle p;
-  p.initialize();
-  std::copy(ll.begin(), ll.begin()+ll.size(), p.coord[0].xyz);
-  std::copy(dir, dir+3, p.coord[0].uvw);
-  p.coord[0].universe = model::root_universe;
+  p.r() = ll;
+  p.u() = u;
+  p.coord_[0].universe = model::root_universe;
 
   // Open binary plot file for writing
   std::ofstream of;
@@ -891,9 +873,9 @@ void create_voxel(Plot pl)
   voxel_init(file_id, &(dims[0]), &dspace, &dset, &memspace);
 
   // move to center of voxels
-  ll[0] = ll[0] + vox[0] / 2.;
-  ll[1] = ll[1] + vox[1] / 2.;
-  ll[2] = ll[2] + vox[2] / 2.;
+  ll.x += vox[0] / 2.;
+  ll.y += vox[1] / 2.;
+  ll.z += vox[2] / 2.;
 
   int data[pl.pixels_[1]][pl.pixels_[0]];
 
@@ -910,16 +892,16 @@ void create_voxel(Plot pl)
         // write to plot data
         data[y][x] = id;
         // advance particle in x direction
-        p.coord[0].xyz[0] = p.coord[0].xyz[0] + vox[0];
+        p.r().x += vox[0];
       }
       // advance particle in y direction
-      p.coord[0].xyz[1] = p.coord[0].xyz[1] + vox[1];
-      p.coord[0].xyz[0] = ll[0];
+      p.r().y += vox[1];
+      p.r().x = ll[0];
     }
     // advance particle in z direction
-    p.coord[0].xyz[2] = p.coord[0].xyz[2] + vox[2];
-    p.coord[0].xyz[1] = ll[1];
-    p.coord[0].xyz[0] = ll[0];
+    p.r().z += vox[2];
+    p.r().y = ll[1];
+    p.r().x = ll[0];
     // Write to HDF5 dataset
     voxel_write_slice(z, dspace, dset, memspace, &(data[0]));
   }

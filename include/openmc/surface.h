@@ -1,9 +1,10 @@
 #ifndef OPENMC_SURFACE_H
 #define OPENMC_SURFACE_H
 
-#include <map>
+#include <memory>  // for unique_ptr
 #include <limits>  // For numeric_limits
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "hdf5.h"
@@ -35,10 +36,8 @@ extern "C" const int BC_PERIODIC;
 class Surface;
 
 namespace model {
-
-extern std::vector<Surface*> surfaces;
-extern std::map<int, int> surface_map;
-
+  extern std::vector<std::unique_ptr<Surface>> surfaces;
+  extern std::unordered_map<int, int> surface_map;
 } // namespace model
 
 //==============================================================================

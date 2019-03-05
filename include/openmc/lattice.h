@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cstdint>
+#include <memory> // for unique_ptr
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -33,10 +34,8 @@ enum class LatticeType {
 class Lattice;
 
 namespace model {
-
-extern std::vector<Lattice*> lattices;
-extern std::unordered_map<int32_t, int32_t> lattice_map;
-
+  extern std::vector<std::unique_ptr<Lattice>> lattices;
+  extern std::unordered_map<int32_t, int32_t> lattice_map;
 } // namespace model
 
 //==============================================================================
@@ -105,7 +104,7 @@ public:
   //! \brief Find the lattice tile indices for a given point.
   //! \param r A 3D Cartesian coordinate.
   //! \return An array containing the indices of a lattice tile.
-  virtual std::array<int, 3> get_indices(Position r) const = 0;
+  virtual std::array<int, 3> get_indices(Position r, Direction u) const = 0;
 
   //! \brief Get coordinates local to a lattice tile.
   //! \param r A 3D Cartesian coordinate.
@@ -213,7 +212,7 @@ public:
   std::pair<double, std::array<int, 3>>
   distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
 
-  std::array<int, 3> get_indices(Position r) const;
+  std::array<int, 3> get_indices(Position r, Direction u) const;
 
   Position
   get_local_position(Position r, const std::array<int, 3> i_xyz) const;
@@ -253,7 +252,7 @@ public:
   std::pair<double, std::array<int, 3>>
   distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
 
-  std::array<int, 3> get_indices(Position r) const;
+  std::array<int, 3> get_indices(Position r, Direction u) const;
 
   Position
   get_local_position(Position r, const std::array<int, 3> i_xyz) const;

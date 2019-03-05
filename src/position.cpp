@@ -78,4 +78,10 @@ Position::operator/=(double v)
   return *this;
 }
 
+Position
+Position::operator-() const
+{
+  return {-x, -y, -z};
+}
+
 } // namespace openmc

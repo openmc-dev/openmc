@@ -8,8 +8,8 @@ void
 CellFromFilter::get_all_bins(const Particle* p, int estimator,
                              FilterMatch& match) const
 {
-  for (int i = 0; i < p->last_n_coord; i++) {
-    auto search = map_.find(p->last_cell[i]);
+  for (int i = 0; i < p->n_coord_last_; i++) {
+    auto search = map_.find(p->cell_last_[i]);
     if (search != map_.end()) {
       match.bins_.push_back(search->second);
       match.weights_.push_back(1.0);

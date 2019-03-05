@@ -1150,7 +1150,7 @@ class CMFDRun(object):
                 with np.errstate(divide='ignore', invalid='ignore'):
                     self._weightfactors = (np.divide(self._cmfd_src * norm,
                                            sourcecounts, where=div_condition,
-                                           out=np.ones_like(self._cmfd_src)))
+                                           out=np.ones_like(self._cmfd_src), dtype='float16'))
 
             if not self._feedback:
                 return

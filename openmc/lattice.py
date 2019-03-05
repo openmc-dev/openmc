@@ -753,11 +753,24 @@ class RectLattice(Lattice):
                     0 <= idx[2] < self.shape[2])
 
     def create_xml_subelement(self, xml_element, memo=None):
-        # Determine if XML element already contains subelement for this Lattice
-        path = './lattice[@id=\'{0}\']'.format(self._id)
-        test = xml_element.find(path)
+        """Add the lattice xml representation to an incoming xml element
 
-        # If the element does contain the Lattice subelement, then return
+        Parameters
+        ----------
+        xml_element : xml.etree.ElementTree.Element
+            XML element to be added to
+
+        memo : dict or None
+            A dictionary containing sets of universe, lattice, cell, and surface
+            id sets already written to the xml_element. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        None
+
+        """
+        # If the element already contains the Lattice subelement, then return
         if memo and self._id in memo['lattices']:
             return
         if memo is not None:
@@ -1275,10 +1288,6 @@ class HexLattice(Lattice):
             return g < self.num_rings and 0 <= idx[2] < self.num_axial
 
     def create_xml_subelement(self, xml_element, memo=None):
-        # Determine if XML element already contains subelement for this Lattice
-        path = './hex_lattice[@id=\'{0}\']'.format(self._id)
-        test = xml_element.find(path)
-
         # If the element does contain the Lattice subelement, then return
         if memo and self._id in memo['lattices']:
             return

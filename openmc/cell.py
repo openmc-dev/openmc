@@ -456,7 +456,23 @@ class Cell(IDManagerMixin):
         return memo[self]
 
     def create_xml_subelement(self, xml_element, memo=None):
+        """Add the cell's xml representation to an incoming xml element
 
+        Parameters
+        ----------
+        xml_element : xml.etree.ElementTree.Element
+            XML element to be added to
+
+        memo : dict or None
+            A dictionary containing sets of universe, lattice, cell, and surface
+            id sets already written to the xml_element. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        None
+
+        """
         element = ET.Element("cell")
         element.set("id", str(self.id))
 
@@ -493,7 +509,6 @@ class Cell(IDManagerMixin):
             # thus far.
             def create_surface_elements(node, element, memo=None):
                 if isinstance(node, Halfspace):
-                    path = "./surface[@id='{}']".format(node.surface.id)
                     if memo and node.surface.id in memo['surfaces']:
                         return
                     if memo is not None:

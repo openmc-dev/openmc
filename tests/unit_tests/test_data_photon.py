@@ -71,10 +71,20 @@ def test_transitions(element):
         assert sum(matrix['probability']) == pytest.approx(1.0)
 
 
-@pytest.mark.parametrize('element', ['H', 'Al', 'Ag'], indirect=True)
-def test_bremsstrahlung(element):
+@pytest.mark.parametrize(
+    'element, I, i_shell, ionization_energy, num_electrons', [
+        ('H', 19.2, 0, 13.6, 1),
+        ('O', 95.0, 2, 13.62, 4),
+        ('U', 890.0, 25, 6.033, -3)
+    ],
+    indirect=['element']
+)
+def test_bremsstrahlung(element, I, i_shell, ionization_energy, num_electrons):
     brems = element.bremsstrahlung
     assert isinstance(brems, Mapping)
+    assert brems['I'] == I
+    assert brems['num_electrons'][i_shell] == num_electrons
+    assert brems['ionization_energy'][i_shell] == ionization_energy
     assert np.all(np.diff(brems['electron_energy']) > 0.0)
     assert np.all(np.diff(brems['photon_energy']) > 0.0)
     assert brems['photon_energy'][0] == 0.0
@@ -112,23 +122,6 @@ def test_reactions(element, reaction):
     assert reaction in reactions
     with pytest.raises(KeyError):
         reactions[18]
-
-
-@pytest.mark.parametrize(
-    'element, I', [
-        ('H', 19.2),
-        ('O', 95.0),
-        ('U', 890.0)
-    ],
-    indirect=['element']
-)
-def test_stopping_powers(element, I):
-    stopping_powers = element.stopping_powers
-    assert isinstance(stopping_powers, Mapping)
-    assert stopping_powers['I'] == I
-    assert np.all(np.diff(stopping_powers['energy']) > 0.0)
-    assert len(stopping_powers['s_collision']) == 200
-    assert len(stopping_powers['s_radiative']) == 200
 
 
 @pytest.mark.parametrize('element', ['Pu'], indirect=True)

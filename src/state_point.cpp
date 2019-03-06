@@ -29,9 +29,6 @@
 
 namespace openmc {
 
-extern "C" void statepoint_write_f(hid_t file_id);
-extern "C" void load_state_point_f(hid_t file_id);
-
 extern "C" int
 openmc_statepoint_write(const char* filename, bool* write_source)
 {

@@ -337,11 +337,11 @@ class CMFDRun(object):
         self._openmc_src = None
         self._sourcecounts = None
         self._weightfactors = None
-        self._entropy = None
-        self._balance = None
-        self._src_cmp = None
-        self._dom = None
-        self._k_cmfd = None
+        self._entropy = []
+        self._balance = []
+        self._src_cmp = []
+        self._dom = []
+        self._k_cmfd = []
         self._resnb = None
         self._time_cmfd = None
         self._time_cmfdbuild = None
@@ -636,8 +636,8 @@ class CMFDRun(object):
             # Configure CMFD parameters and tallies
             self._configure_cmfd()
 
-            # Set up CMFD coremap
-            self._set_coremap()
+            # Initialize all arrays used for CMFD solver
+            self._allocate_cmfd()
 
             # Compute and store array indices used to build cross section
             # arrays
@@ -731,16 +731,24 @@ class CMFDRun(object):
 
     def _configure_cmfd(self):
         """Initialize CMFD parameters and set CMFD input variables"""
-        # Read in cmfd input defined in Python
-        self._read_cmfd_input()
+        # Check if restarting simulation from statepoint file
+        if not openmc.capi.settings.restart_run:
+            # Read in cmfd input defined in Python
+            self._read_cmfd_input()
 
-        # Initialize timers
-        self._time_cmfd = 0.0
-        self._time_cmfdbuild = 0.0
-        self._time_cmfdsolve = 0.0
+            # Set up CMFD coremap
+            self._set_coremap()
 
-        # Initialize all numpy arrays used for CMFD solver
-        self._allocate_cmfd()
+            # Initialize timers
+            self._time_cmfd = 0.0
+            self._time_cmfdbuild = 0.0
+            self._time_cmfdsolve = 0.0
+
+        else:
+            # Reset CMFD parameters from statepoint file
+            # TODO implement reset_cmfd
+            path_statepoint = openmc.capi.settings.path_statepoint
+            sys.exit()
 
     def _read_cmfd_input(self):
         """Sets values of additional instance variables based on user input"""
@@ -803,38 +811,13 @@ class CMFDRun(object):
         nz = self._indices[2]
         ng = self._indices[3]
 
-        # Allocate flux, cross sections and diffusion coefficient
-        self._flux = np.zeros((nx, ny, nz, ng))
-        self._totalxs = np.zeros((nx, ny, nz, ng))
-        self._p1scattxs = np.zeros((nx, ny, nz, ng))
-        self._scattxs = np.zeros((nx, ny, nz, ng, ng))  # Incoming, outgoing
-        self._nfissxs = np.zeros((nx, ny, nz, ng, ng))  # Incoming, outgoing
-        self._diffcof = np.zeros((nx, ny, nz, ng))
-
         # Allocate dtilde and dhat
         self._dtilde = np.zeros((nx, ny, nz, ng, 6))
         self._dhat = np.zeros((nx, ny, nz, ng, 6))
 
         # Allocate dimensions for each mesh cell
         self._hxyz = np.zeros((nx, ny, nz, 3))
-
-        # Allocate surface currents
-        self._current = np.zeros((nx, ny, nz, 12, ng))
-
-        # Allocate source distributions
-        self._cmfd_src = np.zeros((nx, ny, nz, ng))
-        self._openmc_src = np.zeros((nx, ny, nz, ng))
-
-        # Allocate source weight modification variables
-        self._sourcecounts = np.zeros((nx*ny*nz, ng))
-        self._weightfactors = np.ones((nx, ny, nz, ng))
-
-        # Allocate batchwise parameters
-        self._entropy = []
-        self._balance = []
-        self._src_cmp = []
-        self._dom = []
-        self._k_cmfd = []
+        self._hxyz[:,:,:,:] = openmc.capi.meshes[self._mesh_id].width
 
     def _cmfd_init_batch(self):
         """Handles CMFD options at the beginning of each batch"""
@@ -1048,9 +1031,6 @@ class CMFDRun(object):
         ng = self._indices[3]
         n = self._mat_dim
 
-        # Reset CMFD source to 0
-        self._cmfd_src.fill(0.)
-
         # Compute cmfd_src in a vecotorized manner by phi to the spatial
         # indices of the actual problem so that cmfd_flux can be multiplied by
         # nfissxs
@@ -1117,7 +1097,7 @@ class CMFDRun(object):
             ng = self._indices[3]
 
             # Set weight factors to default 1.0
-            self._weightfactors.fill(1.0)
+            self._weightfactors = np.ones((nx, ny, nz, ng))
 
             # Count bank site in mesh and reverse due to egrid structured
             outside = self._count_bank_sites()
@@ -1150,7 +1130,7 @@ class CMFDRun(object):
                 with np.errstate(divide='ignore', invalid='ignore'):
                     self._weightfactors = (np.divide(self._cmfd_src * norm,
                                            sourcecounts, where=div_condition,
-                                           out=np.ones_like(self._cmfd_src), dtype='float16'))
+                                           out=np.ones_like(self._cmfd_src), dtype='float32'))
 
             if not self._feedback:
                 return
@@ -1208,9 +1188,11 @@ class CMFDRun(object):
         bank = openmc.capi.source_bank()
         energy = self._egrid
         sites_outside = np.zeros(1, dtype=bool)
+        nxnynz = np.prod(self._indices[0:3])
         ng = self._indices[3]
 
         outside = np.zeros(1, dtype=bool)
+        self._sourcecounts = np.zeros((nxnynz, ng))
         count = np.zeros(self._sourcecounts.shape)
 
         # Get location and energy of each particle in source bank
@@ -1588,13 +1570,6 @@ class CMFDRun(object):
         ny = self._indices[1]
         nz = self._indices[2]
         ng = self._indices[3]
-
-        # Set flux object and source distribution all to zeros
-        self._flux.fill(0.)
-        self._openmc_src.fill(0.)
-
-        # Set mesh widths
-        self._hxyz[:,:,:,:] = openmc.capi.meshes[self._mesh_id].width
 
         # Reset keff_bal to zero
         self._keff_bal = 0.
@@ -1993,7 +1968,7 @@ class CMFDRun(object):
     def _precompute_matrix_indices(self):
         """Computes the indices and row/column data used to populate CMFD CSR
         matrices. These indices are used in _build_loss_matrix and
-        _build_prod_matrix
+        _build_prod_matrix.
 
         """
         # Extract energy group indices

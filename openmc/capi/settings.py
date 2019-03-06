@@ -22,6 +22,7 @@ class _Settings(object):
     generations_per_batch = _DLLGlobal(c_int32, 'gen_per_batch')
     inactive = _DLLGlobal(c_int32, 'n_inactive')
     particles = _DLLGlobal(c_int64, 'n_particles')
+    restart_run = _DLLGlobal(c_bool, 'restart_run')
     run_CE = _DLLGlobal(c_bool, 'run_CE')
     verbosity = _DLLGlobal(c_int, 'verbosity')
 
@@ -42,6 +43,11 @@ class _Settings(object):
                 break
         else:
             raise ValueError('Invalid run mode: {}'.format(mode))
+
+    @property
+    def path_statepoint(self):
+        path = c_char_p.in_dll(_dll, 'path_statepoint').value
+        return path.decode()
 
     @property
     def seed(self):

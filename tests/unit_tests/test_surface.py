@@ -29,6 +29,10 @@ def test_plane():
     x, y, z = (4, 3, 6)
     assert s.evaluate((x, y, z)) == pytest.approx(s.a*x + s.b*y + s.c*z - s.d)
 
+    # translate method
+    st = s.translate((1.0, 0.0, 0.0))
+    assert (st.a, st.b, st.c, st.d) == (s.a, s.b, s.c, 4)
+
     # Make sure repr works
     repr(s)
 
@@ -69,6 +73,10 @@ def test_xplane():
     # evaluate method
     assert s.evaluate((5., 0., 0.)) == pytest.approx(2.)
 
+    # translate method
+    st = s.translate((1.0, 0.0, 0.0))
+    assert st.x0 == s.x0 + 1
+
     # Make sure repr works
     repr(s)
 
@@ -94,6 +102,10 @@ def test_yplane():
     # evaluate method
     assert s.evaluate((0., 0., 0.)) == pytest.approx(-3.)
 
+    # translate method
+    st = s.translate((0.0, 1.0, 0.0))
+    assert st.y0 == s.y0 + 1
+
 
 def test_zplane():
     s = openmc.ZPlane(z0=3.)
@@ -116,6 +128,10 @@ def test_zplane():
     # evaluate method
     assert s.evaluate((0., 0., 10.)) == pytest.approx(7.)
 
+    # translate method
+    st = s.translate((0.0, 0.0, 1.0))
+    assert st.z0 == s.z0 + 1
+
     # Make sure repr works
     repr(s)
 
@@ -137,6 +153,12 @@ def test_xcylinder():
 
     # evaluate method
     assert s.evaluate((0, y, z)) == pytest.approx(-r**2)
+
+    # translate method
+    st = s.translate((1.0, 1.0, 1.0))
+    assert st.y0 == s.y0 + 1
+    assert st.z0 == s.z0 + 1
+    assert st.r == s.r
 
     # Make sure repr works
     repr(s)
@@ -169,6 +191,12 @@ def test_ycylinder():
     # evaluate method
     assert s.evaluate((x, 0, z)) == pytest.approx(-r**2)
 
+    # translate method
+    st = s.translate((1.0, 1.0, 1.0))
+    assert st.x0 == s.x0 + 1
+    assert st.z0 == s.z0 + 1
+    assert st.r == s.r
+
 
 def test_zcylinder():
     x, y, r = 3, 5, 2
@@ -187,6 +215,12 @@ def test_zcylinder():
 
     # evaluate method
     assert s.evaluate((x, y, 0)) == pytest.approx(-r**2)
+
+    # translate method
+    st = s.translate((1.0, 1.0, 1.0))
+    assert st.x0 == s.x0 + 1
+    assert st.y0 == s.y0 + 1
+    assert st.r == s.r
 
     # Make sure repr works
     repr(s)
@@ -211,6 +245,13 @@ def test_sphere():
     # evaluate method
     assert s.evaluate((x, y, z)) == pytest.approx(-r**2)
 
+    # translate method
+    st = s.translate((1.0, 1.0, 1.0))
+    assert st.x0 == s.x0 + 1
+    assert st.y0 == s.y0 + 1
+    assert st.z0 == s.z0 + 1
+    assert st.r == s.r
+
     # Make sure repr works
     repr(s)
 
@@ -228,6 +269,13 @@ def cone_common(apex, r2, cls):
 
     # evaluate method -- should be zero at apex
     assert s.evaluate((x, y, z)) == pytest.approx(0.0)
+
+    # translate method
+    st = s.translate((1.0, 1.0, 1.0))
+    assert st.x0 == s.x0 + 1
+    assert st.y0 == s.y0 + 1
+    assert st.z0 == s.z0 + 1
+    assert st.r2 == s.r2
 
     # Make sure repr works
     repr(s)
@@ -271,6 +319,13 @@ def test_quadric():
     # evaluate method
     assert s.evaluate((0., 0., 0.)) == pytest.approx(coeffs['k'])
     assert s.evaluate((1., 1., 1.)) == pytest.approx(3 + coeffs['k'])
+
+    # translate method
+    st = s.translate((1.0, 1.0, 1.0))
+    for coeff in 'abcdef':
+        assert getattr(s, coeff) == getattr(st, coeff)
+    assert (st.g, st.h, st.j) == (-2, -2, -2)
+    assert st.k == s.k + 3
 
 
 def test_cylinder_from_points():

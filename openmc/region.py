@@ -229,14 +229,27 @@ class Region(metaclass=ABCMeta):
         clone : openmc.Region
             The clone of this region
 
-        Raises
-        ------
-        NotImplementedError
-            This method is not implemented for the abstract region class.
+        """
+        pass
+
+    @abstractmethod
+    def translate(self, vector, memo=None):
+        """Translate region in given direction
+
+        Parameters
+        ----------
+        vector : iterable of float
+            Direction in which region should be translated
+        memo : dict or None
+            Dictionary used for memoization
+
+        Returns
+        -------
+        openmc.Region
+            Translated region
 
         """
-        raise NotImplementedError('The clone method is not implemented for '
-                                  'the abstract region class.')
+        pass
 
 
 class Intersection(Region, MutableSequence):
@@ -352,6 +365,26 @@ class Intersection(Region, MutableSequence):
         clone[:] = [n.clone(memo) for n in self]
         return clone
 
+    def translate(self, vector, memo=None):
+        """Translate region in given direction
+
+        Parameters
+        ----------
+        vector : iterable of float
+            Direction in which region should be translated
+        memo : dict or None
+            Dictionary used for memoization
+
+        Returns
+        -------
+        openmc.Intersection
+            Translated region
+
+        """
+        if memo is None:
+            memo = {}
+        return type(self)(n.translate(vector, memo) for n in self)
+
 
 class Union(Region, MutableSequence):
     r"""Union of two or more regions.
@@ -463,6 +496,26 @@ class Union(Region, MutableSequence):
         clone = deepcopy(self)
         clone[:] = [n.clone(memo) for n in self]
         return clone
+
+    def translate(self, vector, memo=None):
+        """Translate region in given direction
+
+        Parameters
+        ----------
+        vector : iterable of float
+            Direction in which region should be translated
+        memo : dict or None
+            Dictionary used for memoization
+
+        Returns
+        -------
+        openmc.Union
+            Translated region
+
+        """
+        if memo is None:
+            memo = {}
+        return type(self)(n.translate(vector, memo) for n in self)
 
 
 class Complement(Region):
@@ -584,3 +637,23 @@ class Complement(Region):
         clone = deepcopy(self)
         clone.node = self.node.clone(memo)
         return clone
+
+    def translate(self, vector, memo=None):
+        """Translate region in given direction
+
+        Parameters
+        ----------
+        vector : iterable of float
+            Direction in which region should be translated
+        memo : dict or None
+            Dictionary used for memoization
+
+        Returns
+        -------
+        openmc.Complement
+            Translated region
+
+        """
+        if memo is None:
+            memo = {}
+        return type(self)(self.node.translate(vector, memo))

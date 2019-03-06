@@ -34,6 +34,12 @@ def test_union(reset):
     assert (6, -1, 0) not in reg2
     assert str(reg2) == '((1 | -2) 3)'
 
+    # translate method
+    regt = region.translate((2.0, 0.0, 0.0))
+    assert (-4, 0, 0) in regt
+    assert (6, 0, 0) not in regt
+    assert (8, 0, 0) in regt
+
 
 def test_intersection(reset):
     s1 = openmc.XPlane(surface_id=1, x0=5)
@@ -61,6 +67,12 @@ def test_intersection(reset):
     assert (-6, -2, 0) not in reg2
     assert str(reg2) == '((-1 2) | 3)'
 
+    # translate method
+    regt = region.translate((2.0, 0.0, 0.0))
+    assert (-4, 0, 0) not in regt
+    assert (6, 0, 0) in regt
+    assert (8, 0, 0) not in regt
+
 
 def test_complement(reset):
     zcyl = openmc.ZCylinder(surface_id=1, R=1.)
@@ -87,6 +99,12 @@ def test_complement(reset):
     assert (0, 0, 0) not in outside
     assert (0, 0, 6) not in inside
     assert (0, 0, 6) in outside
+
+    # translate method
+    inside_t = inside.translate((1.0, 1.0, 1.0))
+    ll, ur = inside_t.bounding_box
+    assert ll == pytest.approx((0., 0., -4.))
+    assert ur == pytest.approx((2., 2., 6.))
 
 
 def test_get_surfaces():

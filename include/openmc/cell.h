@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <memory> // for unique_ptr
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -44,15 +45,11 @@ class Cell;
 class Universe;
 
 namespace model {
+  extern std::vector<std::unique_ptr<Cell>> cells;
+  extern std::unordered_map<int32_t, int32_t> cell_map;
 
-extern "C" int32_t n_cells;
-
-extern std::vector<Cell*> cells;
-extern std::unordered_map<int32_t, int32_t> cell_map;
-
-extern std::vector<Universe*> universes;
-extern std::unordered_map<int32_t, int32_t> universe_map;
-
+  extern std::vector<std::unique_ptr<Universe>> universes;
+  extern std::unordered_map<int32_t, int32_t> universe_map;
 } // namespace model
 
 //==============================================================================

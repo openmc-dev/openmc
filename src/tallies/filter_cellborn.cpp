@@ -8,7 +8,7 @@ void
 CellbornFilter::get_all_bins(const Particle* p, int estimator,
                              FilterMatch& match) const
 {
-  auto search = map_.find(p->cell_born);
+  auto search = map_.find(p->cell_born_);
   if (search != map_.end()) {
     match.bins_.push_back(search->second);
     match.weights_.push_back(1.0);

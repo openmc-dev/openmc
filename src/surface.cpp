@@ -27,10 +27,8 @@ extern "C" const int BC_PERIODIC {3};
 //==============================================================================
 
 namespace model {
-
-std::vector<Surface*> surfaces;
-std::map<int, int> surface_map;
-
+  std::vector<std::unique_ptr<Surface>> surfaces;
+  std::unordered_map<int, int> surface_map;
 } // namespace model
 
 //==============================================================================
@@ -1080,40 +1078,40 @@ void read_surfaces(pugi::xml_node node)
       std::string surf_type = get_node_value(surf_node, "type", true, true);
 
       if (surf_type == "x-plane") {
-        model::surfaces.push_back(new SurfaceXPlane(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceXPlane>(surf_node));
 
       } else if (surf_type == "y-plane") {
-        model::surfaces.push_back(new SurfaceYPlane(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceYPlane>(surf_node));
 
       } else if (surf_type == "z-plane") {
-        model::surfaces.push_back(new SurfaceZPlane(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceZPlane>(surf_node));
 
       } else if (surf_type == "plane") {
-        model::surfaces.push_back(new SurfacePlane(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfacePlane>(surf_node));
 
       } else if (surf_type == "x-cylinder") {
-        model::surfaces.push_back(new SurfaceXCylinder(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceXCylinder>(surf_node));
 
       } else if (surf_type == "y-cylinder") {
-        model::surfaces.push_back(new SurfaceYCylinder(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceYCylinder>(surf_node));
 
       } else if (surf_type == "z-cylinder") {
-        model::surfaces.push_back(new SurfaceZCylinder(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceZCylinder>(surf_node));
 
       } else if (surf_type == "sphere") {
-        model::surfaces.push_back(new SurfaceSphere(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceSphere>(surf_node));
 
       } else if (surf_type == "x-cone") {
-        model::surfaces.push_back(new SurfaceXCone(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceXCone>(surf_node));
 
       } else if (surf_type == "y-cone") {
-        model::surfaces.push_back(new SurfaceYCone(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceYCone>(surf_node));
 
       } else if (surf_type == "z-cone") {
-        model::surfaces.push_back(new SurfaceZCone(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceZCone>(surf_node));
 
       } else if (surf_type == "quadric") {
-        model::surfaces.push_back(new SurfaceQuadric(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceQuadric>(surf_node));
 
       } else {
         std::stringstream err_msg;
@@ -1143,8 +1141,8 @@ void read_surfaces(pugi::xml_node node)
   for (int i_surf = 0; i_surf < model::surfaces.size(); i_surf++) {
     if (model::surfaces[i_surf]->bc_ == BC_PERIODIC) {
       // Downcast to the PeriodicSurface type.
-      Surface* surf_base = model::surfaces[i_surf];
-      PeriodicSurface* surf = dynamic_cast<PeriodicSurface*>(surf_base);
+      Surface* surf_base = model::surfaces[i_surf].get();
+      auto surf = dynamic_cast<PeriodicSurface*>(surf_base);
 
       // Make sure this surface inherits from PeriodicSurface.
       if (!surf) {
@@ -1188,8 +1186,8 @@ void read_surfaces(pugi::xml_node node)
   for (int i_surf = 0; i_surf < model::surfaces.size(); i_surf++) {
     if (model::surfaces[i_surf]->bc_ == BC_PERIODIC) {
       // Downcast to the PeriodicSurface type.
-      Surface* surf_base = model::surfaces[i_surf];
-      PeriodicSurface* surf = dynamic_cast<PeriodicSurface*>(surf_base);
+      Surface* surf_base = model::surfaces[i_surf].get();
+      auto surf = dynamic_cast<PeriodicSurface*>(surf_base);
 
       // Also try downcasting to the SurfacePlane type (which must be handled
       // differently).
@@ -1260,7 +1258,6 @@ void read_surfaces(pugi::xml_node node)
 
 void free_memory_surfaces()
 {
-  for (Surface* surf : model::surfaces) {delete surf;}
   model::surfaces.clear();
   model::surface_map.clear();
 }

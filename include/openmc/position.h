@@ -1,6 +1,7 @@
 #ifndef OPENMC_POSITION_H
 #define OPENMC_POSITION_H
 
+#include <array>
 #include <cmath> // for sqrt
 #include <stdexcept> // for out_of_range
 #include <vector>
@@ -16,7 +17,8 @@ struct Position {
   Position() = default;
   Position(double x_, double y_, double z_) : x{x_}, y{y_}, z{z_} { };
   Position(const double xyz[]) : x{xyz[0]}, y{xyz[1]}, z{xyz[2]} { };
-  Position(const std::vector<double> xyz) : x{xyz[0]}, y{xyz[1]}, z{xyz[2]} { };
+  Position(const std::vector<double>& xyz) : x{xyz[0]}, y{xyz[1]}, z{xyz[2]} { };
+  Position(const std::array<double, 3>& xyz) : x{xyz[0]}, y{xyz[1]}, z{xyz[2]} { };
 
   // Unary operators
   Position& operator+=(Position);
@@ -27,6 +29,7 @@ struct Position {
   Position& operator*=(double);
   Position& operator/=(Position);
   Position& operator/=(double);
+  Position operator-() const;
 
   const double& operator[](int i) const {
     switch (i) {

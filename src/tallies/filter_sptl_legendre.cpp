@@ -38,11 +38,11 @@ SpatialLegendreFilter::get_all_bins(const Particle* p, int estimator,
   // Get the coordinate along the axis of interest.
   double x;
   if (axis_ == LegendreAxis::x) {
-    x = p->coord[0].xyz[0];
+    x = p->r().x;
   } else if (axis_ == LegendreAxis::y) {
-    x = p->coord[0].xyz[1];
+    x = p->r().y;
   } else {
-    x = p->coord[0].xyz[2];
+    x = p->r().z;
   }
 
   if (x >= min_ && x <= max_) {

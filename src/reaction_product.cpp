@@ -22,9 +22,9 @@ ReactionProduct::ReactionProduct(hid_t group)
   std::string temp;
   read_attribute(group, "particle", temp);
   if (temp == "neutron") {
-    particle_ = ParticleType::neutron;
+    particle_ = Particle::Type::neutron;
   } else if (temp == "photon") {
-    particle_ = ParticleType::photon;
+    particle_ = Particle::Type::photon;
   }
 
   // Read emission mode and decay rate
@@ -69,13 +69,13 @@ ReactionProduct::ReactionProduct(hid_t group)
     // Determine distribution type and read data
     read_attribute(dgroup, "type", temp);
     if (temp == "uncorrelated") {
-      distribution_.emplace_back(new UncorrelatedAngleEnergy{dgroup});
+      distribution_.push_back(std::make_unique<UncorrelatedAngleEnergy>(dgroup));
     } else if (temp == "correlated") {
-      distribution_.emplace_back(new CorrelatedAngleEnergy{dgroup});
+      distribution_.push_back(std::make_unique<CorrelatedAngleEnergy>(dgroup));
     } else if (temp == "nbody") {
-      distribution_.emplace_back(new NBodyPhaseSpace{dgroup});
+      distribution_.push_back(std::make_unique<NBodyPhaseSpace>(dgroup));
     } else if (temp == "kalbach-mann") {
-      distribution_.emplace_back(new KalbachMann{dgroup});
+      distribution_.push_back(std::make_unique<KalbachMann>(dgroup));
     }
 
     close_group(dgroup);

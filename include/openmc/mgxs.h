@@ -158,12 +158,12 @@ class Mgxs {
     //!
     //! @param gin Incoming energy group.
     //! @param sqrtkT Temperature of the material.
-    //! @param uvw Incoming particle direction.
+    //! @param u Incoming particle direction.
     //! @param total_xs Resultant total cross section.
     //! @param abs_xs Resultant absorption cross section.
     //! @param nu_fiss_xs Resultant nu-fission cross section.
     void
-    calculate_xs(int gin, double sqrtkT, const double uvw[3],
+    calculate_xs(int gin, double sqrtkT, Direction u,
          double& total_xs, double& abs_xs, double& nu_fiss_xs);
 
     //! \brief Sets the temperature index in cache given a temperature
@@ -174,9 +174,9 @@ class Mgxs {
 
     //! \brief Sets the angle index in cache given a direction
     //!
-    //! @param uvw Incoming particle direction.
+    //! @param u Incoming particle direction.
     void
-    set_angle_index(const double uvw[3]);
+    set_angle_index(Direction u);
 };
 
 } // namespace openmc

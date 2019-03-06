@@ -39,29 +39,28 @@ void read_particle_restart(Particle& p, int& previous_run_mode)
   } else if (mode == "fixed source") {
     previous_run_mode = RUN_MODE_FIXEDSOURCE;
   }
-  read_dataset(file_id, "id", p.id);
-  read_dataset(file_id, "type", p.type);
-  read_dataset(file_id, "weight", p.wgt);
-  read_dataset(file_id, "energy", p.E);
-  std::array<double, 3> x;
-  read_dataset(file_id, "xyz", x);
-  std::copy(x.data(), x.data() + 3, p.coord[0].xyz);
-  read_dataset(file_id, "uvw", x);
-  std::copy(x.data(), x.data() + 3, p.coord[0].uvw);
+  read_dataset(file_id, "id", p.id_);
+  int type;
+  read_dataset(file_id, "type", type);
+  p.type_ = static_cast<Particle::Type>(type);
+  read_dataset(file_id, "weight", p.wgt_);
+  read_dataset(file_id, "energy", p.E_);
+  read_dataset(file_id, "xyz", p.r());
+  read_dataset(file_id, "uvw", p.u());
 
   // Set energy group and average energy in multi-group mode
   if (!settings::run_CE) {
-    p.g = p.E;
-    p.E = data::energy_bin_avg[p.g - 1];
+    p.g_ = p.E_;
+    p.E_ = data::energy_bin_avg[p.g_ - 1];
   }
 
   // Set particle last attributes
-  p.last_wgt = p.wgt;
-  std::copy(p.coord[0].xyz, p.coord[0].xyz + 3, p.last_xyz_current);
-  std::copy(p.coord[0].xyz, p.coord[0].xyz + 3, p.last_xyz);
-  std::copy(p.coord[0].uvw, p.coord[0].uvw + 3, p.last_uvw);
-  p.last_E = p.E;
-  p.last_g = p.g;
+  p.wgt_last_ = p.wgt_;
+  p.r_last_current_ = p.r();
+  p.r_last_ = p.r();
+  p.u_last_ = p.u();
+  p.E_last_ = p.E_;
+  p.g_last_ = p.g_;
 
   // Close hdf5 file
   file_close(file_id);
@@ -81,7 +80,6 @@ void run_particle_restart()
 
   // Initialize the particle to be tracked
   Particle p;
-  p.initialize();
 
   // Read in the restart information
   int previous_run_mode;
@@ -94,10 +92,10 @@ void run_particle_restart()
   int64_t particle_seed;
   switch (previous_run_mode) {
   case RUN_MODE_EIGENVALUE:
-    particle_seed = (simulation::total_gen + overall_generation() - 1)*settings::n_particles + p.id;
+    particle_seed = (simulation::total_gen + overall_generation() - 1)*settings::n_particles + p.id_;
     break;
   case RUN_MODE_FIXEDSOURCE:
-    particle_seed = p.id;
+    particle_seed = p.id_;
     break;
   }
   set_particle_seed(particle_seed);

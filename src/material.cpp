@@ -37,7 +37,7 @@ namespace openmc {
 
 namespace model {
 
-std::vector<Material*> materials;
+std::vector<std::unique_ptr<Material>> materials;
 std::unordered_map<int32_t, int32_t> material_map;
 
 } // namespace model
@@ -733,19 +733,18 @@ void Material::calculate_xs(const Particle& p) const
   simulation::material_xs.fission = 0.0;
   simulation::material_xs.nu_fission = 0.0;
 
-  if (p.type == static_cast<int>(ParticleType::neutron)) {
+  if (p.type_ == Particle::Type::neutron) {
     this->calculate_neutron_xs(p);
-  } else if (p.type == static_cast<int>(ParticleType::photon)) {
+  } else if (p.type_ == Particle::Type::photon) {
     this->calculate_photon_xs(p);
   }
 }
 
 void Material::calculate_neutron_xs(const Particle& p) const
 {
-  int neutron = static_cast<int>(ParticleType::neutron);
-
   // Find energy index on energy grid
-  int i_grid = std::log(p.E/data::energy_min[neutron])/simulation::log_spacing;
+  int neutron = static_cast<int>(Particle::Type::neutron);
+  int i_grid = std::log(p.E_/data::energy_min[neutron])/simulation::log_spacing;
 
   // Determine if this material has S(a,b) tables
   bool check_sab = (thermal_tables_.size() > 0);
@@ -772,7 +771,7 @@ void Material::calculate_neutron_xs(const Particle& p) const
 
         // If particle energy is greater than the highest energy for the
         // S(a,b) table, then don't use the S(a,b) table
-        if (p.E > data::thermal_scatt[i_sab]->threshold()) i_sab = C_NONE;
+        if (p.E_ > data::thermal_scatt[i_sab]->threshold()) i_sab = C_NONE;
 
         // Increment position in thermal_tables_
         ++j;
@@ -790,12 +789,12 @@ void Material::calculate_neutron_xs(const Particle& p) const
 
     // Calculate microscopic cross section for this nuclide
     const auto& micro {simulation::micro_xs[i_nuclide]};
-    if (p.E != micro.last_E
-        || p.sqrtkT != micro.last_sqrtkT
+    if (p.E_ != micro.last_E
+        || p.sqrtkT_ != micro.last_sqrtkT
         || i_sab != micro.index_sab
         || sab_frac != micro.sab_frac) {
-      data::nuclides[i_nuclide]->calculate_xs(i_sab, p.E, i_grid,
-        p.sqrtkT, sab_frac);
+      data::nuclides[i_nuclide]->calculate_xs(i_sab, p.E_, i_grid,
+        p.sqrtkT_, sab_frac);
     }
 
     // ======================================================================
@@ -829,8 +828,8 @@ void Material::calculate_photon_xs(const Particle& p) const
 
     // Calculate microscopic cross section for this nuclide
     const auto& micro {simulation::micro_photon_xs[i_element]};
-    if (p.E != micro.last_E) {
-      data::elements[i_element].calculate_xs(p.E);
+    if (p.E_ != micro.last_E) {
+      data::elements[i_element].calculate_xs(p.E_);
     }
 
     // ========================================================================
@@ -1094,7 +1093,7 @@ void read_materials_xml()
   // Loop over XML material elements and populate the array.
   pugi::xml_node root = doc.document_element();
   for (pugi::xml_node material_node : root.children("material")) {
-    model::materials.push_back(new Material(material_node));
+    model::materials.push_back(std::make_unique<Material>(material_node));
   }
   model::materials.shrink_to_fit();
 
@@ -1114,7 +1113,6 @@ void read_materials_xml()
 
 void free_memory_material()
 {
-  for (Material *mat : model::materials) {delete mat;}
   model::materials.clear();
   model::material_map.clear();
 }
@@ -1141,7 +1139,7 @@ openmc_material_add_nuclide(int32_t index, const char* name, double density)
 {
   int err = 0;
   if (index >= 0 && index < model::materials.size()) {
-    Material* m = model::materials[index];
+    auto& m = model::materials[index];
 
     // Check if nuclide is already in material
     for (int i = 0; i < m->nuclide_.size(); ++i) {
@@ -1231,7 +1229,7 @@ extern "C" int
 openmc_material_get_volume(int32_t index, double* volume)
 {
   if (index >= 0 && index < model::materials.size()) {
-    Material* m = model::materials[index];
+    auto& m = model::materials[index];
     if (m->volume_ >= 0.0) {
       *volume = m->volume_;
       return 0;
@@ -1311,7 +1309,7 @@ extern "C" int
 openmc_material_set_volume(int32_t index, double volume)
 {
   if (index >= 0 && index < model::materials.size()) {
-    Material* m = model::materials[index];
+    auto& m {model::materials[index]};
     if (volume >= 0.0) {
       m->volume_ = volume;
       return 0;
@@ -1331,7 +1329,7 @@ openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
   if (index_start) *index_start = model::materials.size();
   if (index_end) *index_end = model::materials.size() + n - 1;
   for (int32_t i = 0; i < n; i++) {
-    model::materials.push_back(new Material());
+    model::materials.push_back(std::make_unique<Material>());
   }
   return 0;
 }

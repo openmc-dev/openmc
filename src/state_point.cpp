@@ -467,19 +467,21 @@ void load_state_point()
 
 
 hid_t h5banktype() {
-  // Create type for array of 3 reals
-  hsize_t dims[] {3};
-  hid_t triplet = H5Tarray_create(H5T_NATIVE_DOUBLE, 1, dims);
+  // Create compound type for position
+  hid_t postype = H5Tcreate(H5T_COMPOUND, sizeof(struct Position));
+  H5Tinsert(postype, "x", HOFFSET(Position, x), H5T_NATIVE_DOUBLE);
+  H5Tinsert(postype, "y", HOFFSET(Position, y), H5T_NATIVE_DOUBLE);
+  H5Tinsert(postype, "z", HOFFSET(Position, z), H5T_NATIVE_DOUBLE);
 
   // Create bank datatype
-  hid_t banktype = H5Tcreate(H5T_COMPOUND, sizeof(struct Bank));
-  H5Tinsert(banktype, "wgt", HOFFSET(Bank, wgt), H5T_NATIVE_DOUBLE);
-  H5Tinsert(banktype, "xyz", HOFFSET(Bank, xyz), triplet);
-  H5Tinsert(banktype, "uvw", HOFFSET(Bank, uvw), triplet);
-  H5Tinsert(banktype, "E", HOFFSET(Bank, E), H5T_NATIVE_DOUBLE);
-  H5Tinsert(banktype, "delayed_group", HOFFSET(Bank, delayed_group), H5T_NATIVE_INT);
+  hid_t banktype = H5Tcreate(H5T_COMPOUND, sizeof(struct Particle::Bank));
+  H5Tinsert(banktype, "r", HOFFSET(Particle::Bank, r), postype);
+  H5Tinsert(banktype, "u", HOFFSET(Particle::Bank, u), postype);
+  H5Tinsert(banktype, "E", HOFFSET(Particle::Bank, E), H5T_NATIVE_DOUBLE);
+  H5Tinsert(banktype, "wgt", HOFFSET(Particle::Bank, wgt), H5T_NATIVE_DOUBLE);
+  H5Tinsert(banktype, "delayed_group", HOFFSET(Particle::Bank, delayed_group), H5T_NATIVE_INT);
 
-  H5Tclose(triplet);
+  H5Tclose(postype);
   return banktype;
 }
 
@@ -565,7 +567,7 @@ write_source_bank(hid_t group_id)
 
     // Save source bank sites since the souce_bank array is overwritten below
 #ifdef OPENMC_MPI
-    std::vector<Bank> temp_source {simulation::source_bank.begin(),
+    std::vector<Particle::Bank> temp_source {simulation::source_bank.begin(),
       simulation::source_bank.begin() + simulation::work};
 #endif
 

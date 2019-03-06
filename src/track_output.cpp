@@ -40,14 +40,14 @@ void add_particle_track()
 
 void write_particle_track(const Particle& p)
 {
-  tracks.back().push_back({p.coord[0].xyz});
+  tracks.back().push_back(p.r());
 }
 
 void finalize_particle_track(const Particle& p)
 {
   std::stringstream filename;
   filename << settings::path_output << "track_" << simulation::current_batch
-    << '_' << simulation::current_gen << '_' << p.id << ".h5";
+    << '_' << simulation::current_gen << '_' << p.id_ << ".h5";
 
   // Determine number of coordinates for each particle
   std::vector<int> n_coords;

@@ -9,7 +9,7 @@
 #include <sstream>
 #include <string>
 
-#include "openmc/capi.h"
+#include "openmc/position.h"
 
 namespace openmc {
 
@@ -33,20 +33,19 @@ constexpr int MAX_LOST_PARTICLES {10};
 // Maximum number of lost particles, relative to the total number of particles
 constexpr double REL_MAX_LOST_PARTICLES {1.0e-6};
 
-//! Particle types
-enum class ParticleType {
-  neutron, photon, electron, positron
-};
+//==============================================================================
+// Class declarations
+//==============================================================================
 
 struct LocalCoord {
+  Position r; //!< particle position
+  Direction u; //!< particle direction
   int cell {-1};
   int universe {-1};
   int lattice {-1};
   int lattice_x {-1};
   int lattice_y {-1};
   int lattice_z {-1};
-  double xyz[3]; //!< particle position
-  double uvw[3]; //!< particle direction
   bool rotated {false};  //!< Is the level rotated?
 
   //! clear data from a single coordinate level
@@ -57,70 +56,105 @@ struct LocalCoord {
 //! State of a particle being transported through geometry
 //============================================================================
 
-struct Particle {
-  int64_t id;  //!< Unique ID
-  int type;    //!< Particle type (n, p, e, etc.)
+class Particle {
+public:
+  //! Particle types
+  enum class Type {
+    neutron, photon, electron, positron
+  };
 
-  int n_coord;                  //!< number of current coordinate levels
-  int cell_instance;            //!< offset for distributed properties
-  LocalCoord coord[MAX_COORD];  //!< coordinates for all levels
+  //! Saved ("banked") state of a particle
+  struct Bank {
+    Position r;
+    Direction u;
+    double E;
+    double wgt;
+    int delayed_group;
+    Type particle;
+  };
+
+  // Constructors
+  Particle();
+
+  int64_t id_;  //!< Unique ID
+  Type type_ {Type::neutron};   //!< Particle type (n, p, e, etc.)
+
+  int n_coord_ {1};              //!< number of current coordinate levels
+  int cell_instance_;            //!< offset for distributed properties
+  LocalCoord coord_[MAX_COORD];  //!< coordinates for all levels
 
   // Particle coordinates before crossing a surface
-  int last_n_coord;          //!< number of current coordinates
-  int last_cell[MAX_COORD];  //!< coordinates for all levels
+  int n_coord_last_ {1};      //!< number of current coordinates
+  int cell_last_[MAX_COORD];  //!< coordinates for all levels
 
   // Energy data
-  double E;       //!< post-collision energy in eV
-  double last_E;  //!< pre-collision energy in eV
-  int g;          //!< post-collision energy group (MG only)
-  int last_g;     //!< pre-collision energy group (MG only)
+  double E_;       //!< post-collision energy in eV
+  double E_last_;  //!< pre-collision energy in eV
+  int g_ {0};      //!< post-collision energy group (MG only)
+  int g_last_;     //!< pre-collision energy group (MG only)
 
   // Other physical data
-  double wgt;     //!< particle weight
-  double mu;      //!< angle of scatter
-  bool alive;     //!< is particle alive?
+  double wgt_ {1.0};     //!< particle weight
+  double mu_;      //!< angle of scatter
+  bool alive_ {true};     //!< is particle alive?
 
   // Other physical data
-  double last_xyz_current[3];  //!< coordinates of the last collision or
-                                //!< reflective/periodic surface crossing for
-                                //!< current tallies
-  double last_xyz[3];          //!< previous coordinates
-  double last_uvw[3];          //!< previous direction coordinates
-  double last_wgt;             //!< pre-collision particle weight
-  double absorb_wgt;           //!< weight absorbed for survival biasing
+  Position r_last_current_; //!< coordinates of the last collision or
+                            //!< reflective/periodic surface crossing for
+                            //!< current tallies
+  Position r_last_;   //!< previous coordinates
+  Direction u_last_;  //!< previous direction coordinates
+  double wgt_last_ {1.0};   //!< pre-collision particle weight
+  double wgt_absorb_ {0.0}; //!< weight absorbed for survival biasing
 
   // What event took place
-  bool fission;       //!< did particle cause implicit fission
-  int event;          //!< scatter, absorption
-  int event_nuclide;  //!< index in nuclides array
-  int event_MT;       //!< reaction MT
-  int delayed_group;  //!< delayed group
+  bool fission_ {false}; //!< did particle cause implicit fission
+  int event_;          //!< scatter, absorption
+  int event_nuclide_;  //!< index in nuclides array
+  int event_mt_;       //!< reaction MT
+  int delayed_group_ {0};  //!< delayed group
 
   // Post-collision physical data
-  int n_bank;        //!< number of fission sites banked
-  double wgt_bank;   //!< weight of fission sites banked
-  int n_delayed_bank[MAX_DELAYED_GROUPS];  //!< number of delayed fission
+  int n_bank_ {0};        //!< number of fission sites banked
+  double wgt_bank_ {0.0}; //!< weight of fission sites banked
+  int n_delayed_bank_[MAX_DELAYED_GROUPS];  //!< number of delayed fission
                                             //!< sites banked
 
   // Indices for various arrays
-  int surface;        //!< index for surface particle is on
-  int cell_born;      //!< index for cell particle was born in
-  int material;       //!< index for current material
-  int last_material;  //!< index for last material
+  int surface_ {0};             //!< index for surface particle is on
+  int cell_born_ {-1};      //!< index for cell particle was born in
+  int material_ {-1};       //!< index for current material
+  int material_last_ {-1};  //!< index for last material
 
   // Temperature of current cell
-  double sqrtkT;       //!< sqrt(k_Boltzmann * temperature) in eV
-  double last_sqrtkT;  //!< last temperature
+  double sqrtkT_ {-1.0};      //!< sqrt(k_Boltzmann * temperature) in eV
+  double sqrtkT_last_ {0.0};  //!< last temperature
 
   // Statistical data
-  int n_collision;  //!< number of collisions
+  int n_collision_ {0};  //!< number of collisions
 
   // Track output
-  bool write_track {false};
+  bool write_track_ {false};
 
   // Secondary particles created
-  int64_t n_secondary {};
-  Bank secondary_bank[MAX_SECONDARY];
+  int64_t n_secondary_ {};
+  Bank secondary_bank_[MAX_SECONDARY];
+
+  // Accessors for position in global coordinates
+  Position& r() { return coord_[0].r; }
+  const Position& r() const { return coord_[0].r; }
+
+  // Accessors for position in local coordinates
+  Position& r_local() { return coord_[n_coord_ - 1].r; }
+  const Position& r_local() const { return coord_[n_coord_ - 1].r; }
+
+  // Accessors for direction in global coordinates
+  Direction& u() { return coord_[0].u; }
+  const Direction& u() const { return coord_[0].u; }
+
+  // Accessors for direction in local coordinates
+  Direction& u_local() { return coord_[n_coord_ - 1].u; }
+  const Direction& u_local() const { return coord_[n_coord_ - 1].u; }
 
   //! resets all coordinate levels for the particle
   void clear();
@@ -129,14 +163,10 @@ struct Particle {
   //
   //! stores the current phase space attributes of the particle in the
   //! secondary bank and increments the number of sites in the secondary bank.
-  //! \param uvw Direction of the secondary particle
+  //! \param u Direction of the secondary particle
   //! \param E Energy of the secondary particle in [eV]
   //! \param type Particle type
-  //! \param run_CE Whether continuous-energy data is being used
-  void create_secondary(const double* uvw, double E, int type, bool run_CE);
-
-  //! sets default attributes for a particle
-  void initialize();
+  void create_secondary(Direction u, double E, Type type);
 
   //! initialize from a source site
   //

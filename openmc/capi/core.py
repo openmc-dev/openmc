@@ -13,10 +13,10 @@ import openmc.capi
 
 
 class _Bank(Structure):
-    _fields_ = [('wgt', c_double),
-                ('xyz', c_double*3),
-                ('uvw', c_double*3),
+    _fields_ = [('r', c_double*3),
+                ('u', c_double*3),
                 ('E', c_double),
+                ('wgt', c_double),
                 ('delayed_group', c_int)]
 
 

@@ -47,9 +47,9 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
   if (check_for_node(node, "particle")) {
     auto temp_str = get_node_value(node, "particle", true, true);
     if (temp_str == "neutron") {
-      particle_ = ParticleType::neutron;
+      particle_ = Particle::Type::neutron;
     } else if (temp_str == "photon") {
-      particle_ = ParticleType::photon;
+      particle_ = Particle::Type::photon;
       settings::photon_transport = true;
     } else {
       fatal_error(std::string("Unknown source particle type: ") + temp_str);
@@ -140,9 +140,9 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
 }
 
 
-Bank SourceDistribution::sample() const
+Particle::Bank SourceDistribution::sample() const
 {
-  Bank site;
+  Particle::Bank site;
 
   // Set weight to one by default
   site.wgt = 1.0;
@@ -153,17 +153,15 @@ Bank SourceDistribution::sample() const
   static int n_accept = 0;
   while (!found) {
     // Set particle type
-    site.particle = static_cast<int>(particle_);
+    site.particle = particle_;
 
     // Sample spatial distribution
-    Position r = space_->sample();
-    site.xyz[0] = r.x;
-    site.xyz[1] = r.y;
-    site.xyz[2] = r.z;
+    site.r = space_->sample();
+    double xyz[] {site.r.x, site.r.y, site.r.z};
 
     // Now search to see if location exists in geometry
     int32_t cell_index, instance;
-    int err = openmc_find_cell(site.xyz, &cell_index, &instance);
+    int err = openmc_find_cell(xyz, &cell_index, &instance);
     found = (err != OPENMC_E_GEOMETRY);
 
     // Check if spatial site is in fissionable material
@@ -172,7 +170,7 @@ Bank SourceDistribution::sample() const
       if (space_box) {
         if (space_box->only_fissionable()) {
           // Determine material
-          auto c = model::cells[cell_index];
+          const auto& c = model::cells[cell_index];
           auto mat_index = c->material_.size() == 1
             ? c->material_[0] : c->material_[instance];
 
@@ -200,10 +198,7 @@ Bank SourceDistribution::sample() const
   ++n_accept;
 
   // Sample angle
-  Direction u = angle_->sample();
-  site.uvw[0] = u.x;
-  site.uvw[1] = u.y;
-  site.uvw[2] = u.z;
+  site.u = angle_->sample();
 
   // Check for monoenergetic source above maximum particle energy
   auto p = static_cast<int>(particle_);
@@ -290,7 +285,7 @@ void initialize_source()
   }
 }
 
-Bank sample_external_source()
+Particle::Bank sample_external_source()
 {
   // Set the random number generator to the source stream.
   prn_set_stream(STREAM_SOURCE);
@@ -312,7 +307,7 @@ Bank sample_external_source()
   }
 
   // Sample source site from i-th source distribution
-  Bank site {model::external_sources[i].sample()};
+  Particle::Bank site {model::external_sources[i].sample()};
 
   // If running in MG, convert site % E to group
   if (!settings::run_CE) {

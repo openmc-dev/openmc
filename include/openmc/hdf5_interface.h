@@ -282,17 +282,14 @@ void read_dataset(hid_t dset, xt::xarray<T>& arr, bool indep=false)
   // Get shape of dataset
   std::vector<hsize_t> shape = object_shape(dset);
 
-  // Allocate new array to read data into
+  // Allocate space in the array to read data into
   std::size_t size = 1;
   for (const auto x : shape)
     size *= x;
-  T* buffer = new T[size];
+  arr.resize(shape);
 
   // Read data from attribute
-  read_dataset(dset, nullptr, H5TypeMap<T>::type_id, buffer, indep);
-
-  // Adapt into xarray
-  arr = xt::adapt(buffer, size, xt::acquire_ownership(), shape);
+  read_dataset(dset, nullptr, H5TypeMap<T>::type_id, arr.data(), indep);
 }
 
 template<>
@@ -332,7 +329,17 @@ void read_dataset(hid_t obj_id, const char* name, xt::xtensor<T, N>& arr, bool i
 
   // Copy into xtensor
   arr = xarr;
+}
 
+// overload for Position
+inline void
+read_dataset(hid_t obj_id, const char* name, Position& r, bool indep=false)
+{
+  std::array<double, 3> x;
+  read_dataset(obj_id, name, x, indep);
+  r.x = x[0];
+  r.y = x[1];
+  r.z = x[2];
 }
 
 template <typename T, std::size_t N>

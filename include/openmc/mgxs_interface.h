@@ -48,7 +48,7 @@ void read_mg_cross_sections_header();
 //==============================================================================
 
 extern "C" void
-calculate_xs_c(int i_mat, int gin, double sqrtkT, const double uvw[3],
+calculate_xs_c(int i_mat, int gin, double sqrtkT, Direction u,
      double& total_xs, double& abs_xs, double& nu_fiss_xs);
 
 double

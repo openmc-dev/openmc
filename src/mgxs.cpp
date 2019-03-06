@@ -616,7 +616,7 @@ Mgxs::sample_scatter(int gin, int& gout, double& mu, double& wgt)
 //==============================================================================
 
 void
-Mgxs::calculate_xs(int gin, double sqrtkT, const double uvw[3],
+Mgxs::calculate_xs(int gin, double sqrtkT, Direction u,
      double& total_xs, double& abs_xs, double& nu_fiss_xs)
 {
   // Set our indices
@@ -626,7 +626,7 @@ Mgxs::calculate_xs(int gin, double sqrtkT, const double uvw[3],
   int tid = 0;
 #endif
   set_temperature_index(sqrtkT);
-  set_angle_index(uvw);
+  set_angle_index(u);
   XsData* xs_t = &xs[cache[tid].t];
   total_xs = xs_t->total(cache[tid].a, gin);
   abs_xs = xs_t->absorption(cache[tid].a, gin);
@@ -668,7 +668,7 @@ Mgxs::set_temperature_index(double sqrtkT)
 //==============================================================================
 
 void
-Mgxs::set_angle_index(const double uvw[3])
+Mgxs::set_angle_index(Direction u)
 {
   // See if we need to find the new index
 #ifdef _OPENMP
@@ -677,11 +677,11 @@ Mgxs::set_angle_index(const double uvw[3])
   int tid = 0;
 #endif
   if (!is_isotropic &&
-      ((uvw[0] != cache[tid].u) || (uvw[1] != cache[tid].v) ||
-       (uvw[2] != cache[tid].w))) {
-    // convert uvw to polar and azimuthal angles
-    double my_pol = std::acos(uvw[2]);
-    double my_azi = std::atan2(uvw[1], uvw[0]);
+      ((u.x != cache[tid].u) || (u.y != cache[tid].v) ||
+       (u.z != cache[tid].w))) {
+    // convert direction to polar and azimuthal angles
+    double my_pol = std::acos(u.z);
+    double my_azi = std::atan2(u.y, u.x);
 
     // Find the location, assuming equal-bin angles
     double delta_angle = PI / n_pol;
@@ -692,9 +692,9 @@ Mgxs::set_angle_index(const double uvw[3])
     cache[tid].a = n_azi * p + a;
 
     // store this direction as the last one used
-    cache[tid].u = uvw[0];
-    cache[tid].v = uvw[1];
-    cache[tid].w = uvw[2];
+    cache[tid].u = u.x;
+    cache[tid].v = u.y;
+    cache[tid].w = u.z;
   }
 }
 

@@ -20,7 +20,7 @@ namespace openmc {
 //===============================================================================
 
 class Plot;
-class PlotC;
+
 
 namespace model {
 
@@ -74,21 +74,16 @@ enum class PlotColorBy {
 //===============================================================================
 // Plot class
 //===============================================================================
-
-
-// plot class for interaction with external code
-class CPlot {
-
-public:
+struct Slice {
+  // Members
   Position origin_; //!< Plot origin in geometry
   Position width_; //!< Plot width in geometry
   PlotBasis basis_; //!< Plot basis (XY/XZ/YZ)
-  std::array<int, 3> pixels_; //!< Plot size in pixels
+  int pixels_[3]; //!< Plot size in pixels
   int level_; //!< Plot universe level
 };
 
-
-class Plot : public CPlot
+class Plot : public Slice
 {
 
 public:

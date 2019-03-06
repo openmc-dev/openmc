@@ -886,7 +886,8 @@ void create_voxel(Plot pl)
   // Write current date and time
   write_attribute(file_id, "date_and_time", time_stamp().c_str());
   hsize_t three = 3;
-  write_attribute(file_id, "num_voxels", pl.pixels_);
+  std::array<int, 3> pixels = {pl.pixels_[0], pl.pixels_[1], pl.pixels_[2]};
+  write_attribute(file_id, "num_voxels", pixels);
   write_attribute(file_id, "voxel_width", vox);
   write_attribute(file_id, "lower_left", ll);
 
@@ -979,40 +980,42 @@ RGBColor random_color() {
   return {int(prn()*255), int(prn()*255), int(prn()*255)};
 }
 
-extern "C" int openmc_id_map(const CPlot& pl, int* data_out) {
+extern "C" int openmc_id_map(void* slice, int32_t* data_out) {
 
-  size_t width = pl.pixels_[0];
-  size_t height = pl.pixels_[1];
+  auto* sl = static_cast<Slice*>(slice);
 
-  double in_pixel = (pl.width_[0])/static_cast<double>(width);
-  double out_pixel = (pl.width_[1])/static_cast<double>(height);
+  size_t width = sl->pixels_[0];
+  size_t height = sl->pixels_[1];
+
+  double in_pixel = (sl->width_[0])/static_cast<double>(width);
+  double out_pixel = (sl->width_[1])/static_cast<double>(height);
 
   IDData data;
   data.resize({height, width, 2});
 
   int in_i, out_i;
   double xyz[3];
-  switch(pl.basis_) {
+  switch(sl->basis_) {
   case PlotBasis::xy :
     in_i = 0;
     out_i = 1;
-    xyz[0] = pl.origin_[0] - pl.width_[0] / 2.;
-    xyz[1] = pl.origin_[1] + pl.width_[1] / 2.;
-    xyz[2] = pl.origin_[2];
+    xyz[0] = sl->origin_[0] - sl->width_[0] / 2. + in_pixel / 2.;
+    xyz[1] = sl->origin_[1] + sl->width_[1] / 2. - out_pixel / 2.;
+    xyz[2] = sl->origin_[2];
     break;
   case PlotBasis::xz :
     in_i = 0;
     out_i = 2;
-    xyz[0] = pl.origin_[0] - pl.width_[0] / 2.;
-    xyz[1] = pl.origin_[1];
-    xyz[2] = pl.origin_[2] + pl.width_[1] / 2.;
+    xyz[0] = sl->origin_[0] - sl->width_[0] / 2. + in_pixel / 2.;
+    xyz[1] = sl->origin_[1];
+    xyz[2] = sl->origin_[2] + sl->width_[1] / 2. - out_pixel / 2.;
     break;
   case PlotBasis::yz :
     in_i = 1;
     out_i = 2;
-    xyz[0] = pl.origin_[0];
-    xyz[1] = pl.origin_[1] - pl.width_[0] / 2.;
-    xyz[2] = pl.origin_[2] + pl.width_[1] / 2.;
+    xyz[0] = sl->origin_[0];
+    xyz[1] = sl->origin_[1] - sl->width_[0] / 2. + in_pixel / 2.;
+    xyz[2] = sl->origin_[2] + sl->width_[1] / 2. - out_pixel / 2.;
     break;
   }
 
@@ -1025,15 +1028,15 @@ extern "C" int openmc_id_map(const CPlot& pl, int* data_out) {
   std::copy(xyz, xyz+3, p.coord[0].xyz);
   std::copy(dir, dir+3, p.coord[0].uvw);
   p.coord[0].universe = model::root_universe;
-  int level = pl.level_;
+  int level = sl->level_;
   int j{};
 
 #pragma omp for
   for (int y = 0; y < height; y++) {
     p.coord[0].xyz[out_i] = xyz[out_i] - out_pixel * y;
-    p.n_coord = 1;
     for (int x = 0; x < width; x++) {
       p.coord[0].xyz[in_i] = xyz[in_i] + in_pixel * x;
+      p.n_coord = 1;
       // local variables
       bool found_cell = find_cell(&p, 0);
       j = p.n_coord - 1;

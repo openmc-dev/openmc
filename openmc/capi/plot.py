@@ -6,19 +6,18 @@ from .error import _error_handler
 
 import numpy as np
 
-class _IntThree():
-    type_ = c_int*3
-    val_ = None
-    def __init__(self, vals=None):
-        if vals and iterable(vals) and all(vals == int):
-            self.val_ = type_(vals[0], vals[1], vals[2])
-        else:
-            raise ValueError("{} is not a valid object to construct IntThree.".format(vals))
-
-    def __str__(self):
-        return "({}, {}, {})".format(self.val_[0], self.val_[1], self.val_[2])
-
 class _Position(Structure):
+    """Definition of an xyz location in space with underlying c-types
+
+    C-type Attributes
+    -----------------
+    x : c_double
+        Position's x value (default: 0.0)
+    y : c_double
+        Position's y value (default: 0.0)
+    z : c_double
+        Position's z value (default: 0.0)
+    """
     _fields_ = [('x', c_double),
                 ('y', c_double),
                 ('z', c_double)]
@@ -61,9 +60,43 @@ class _Position(Structure):
         self.z = z_val
 
     def __str__(self):
-        return "({}, {}, {})".format(self.x, self.y, self.z)
+        return "Position: ({}, {}, {})".format(self.x, self.y, self.z)
+
 
 class _Plot(Structure):
+    """A Plot structure defining a 2-D slice with underlying c-types
+
+    C-Type Attributes
+    -----------------
+    origin : openmc.capi.plot._Position
+        A position defining the origin of the plot.
+    width_ : openmc.capi.plot._Position
+        The width of the plot along the x, y, and z axes, respectively
+    basis_ : c_int
+        The axes basis of the plot view.
+    pixels_ : c_int[3]
+        The resolution of the plot in the horizontal and vertical dimensions
+    level_ : c_int
+        The universe level for the plot view
+
+    Attributes
+    ----------
+    origin : tuple or list of ndarray
+        Origin (center) of the plot
+    width : float
+        The horizontal dimension of the plot in geometry units (cm)
+    height : float
+        The vertical dimension of the plot in geometry units (cm)
+    basis : string
+        One of {'xy', 'xz', 'yz'} indicating the horizontal and vertical
+        axes of the plot.
+    hRes : float
+        The horizontal resolution of the plot in pixels
+    vRes : float
+        The vertical resolution of the plot in pixels
+    level : int
+        The universe level for the plot (default: -1 -> all universes shown)
+    """
     _fields_ = [('origin_', _Position),
                 ('width_', _Position),
                 ('basis_', c_int),
@@ -127,6 +160,7 @@ class _Plot(Structure):
     def basis(self, basis):
         if isinstance(basis, str):
             valid_bases = ('xy', 'xz', 'yz')
+            basis = basis.lower()
             if basis not in valid_bases:
                 raise ValueError("{} is not a valid plot basis.".format(basis))
 
@@ -159,25 +193,43 @@ class _Plot(Structure):
     def level(self, level):
         self.level_ = level
 
-    def __str__(self):
-        out_str = "-------"
+    def __repr__(self):
+        out_str  = "-----\n"
         out_str += "Plot:\n"
-        out_str += "-------"
-        out_str += "Origin: " + str(self.origin) + "\n"
-        out_str += "Width: " + str(self.width) + "\n"
-        out_str += "Height: " + str(self.height) + "\n"
-        out_str += "Basis: " + str(self.basis) + "\n"
-        out_str += "HRes: " + str(self.hRes) + "\n"
-        out_str += "VRes: " + str(self.vRes) + "\n"
-        out_str += "Level: " + str(self.level) + "\n"
+        out_str += "-----\n"
+        out_str += "Origin: {}\n".format(self.origin)
+        out_str += "Width: {}\n".format(self.width)
+        out_str += "Height: {}\n".format(self.height)
+        out_str += "Basis: {}\n".format(self.basis)
+        out_str += "HRes: {}\n".format(self.hRes)
+        out_str += "VRes: {}\n".format(self.vRes)
+        out_str += "Level: {}\n".format(self.level)
         return out_str
+
+    def __str__(self):
+        return self.__repr__()
 
 
 _dll.openmc_id_map.argtypes= [POINTER(_Plot),]
 _dll.openmc_id_map.restype = c_int
 _dll.openmc_id_map.errcheck = _error_handler
 
+
 def id_map(plot):
-    img_data = np.zeros((plot.pixels_[1], plot.pixels_[0], 2), dtype=np.dtype('int32'))
-    out = _dll.openmc_id_map(POINTER(_Plot)(plot), img_data.ctypes.data_as(POINTER(c_int32)))
+    """
+    Generate a 2-D map of (cell_id, material_id). Used for in-memory image generation.
+
+    Parameters
+    ----------
+    plot : An openmc.capi.plot._Plot object describing the slice of the model to
+           be generated
+
+    Returns
+    -------
+    id_map : a NumPy array with shape (vertical pixels, horizontal pixels, 2)
+             of OpenMC property ids with dtype int32
+
+    """
+    img_data = np.zeros((plot.vRes, plot.hRes, 2), dtype=np.dtype('int32'))
+    _dll.openmc_id_map(POINTER(_Plot)(plot), img_data.ctypes.data_as(POINTER(c_int32)))
     return img_data

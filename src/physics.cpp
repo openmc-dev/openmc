@@ -266,7 +266,7 @@ void sample_photon_reaction(Particle* p)
     // Create Compton electron
     double phi = 2.0*PI*prn();
     double E_electron = (alpha - alpha_out)*MASS_ELECTRON_EV - e_b;
-    int electron = static_cast<int>(ParticleType::electron);
+    int electron = static_cast<int>(Particle::Type::electron);
     if (E_electron >= settings::energy_cutoff[electron]) { 
       double mu_electron = (alpha - alpha_out*mu)
         / std::sqrt(alpha*alpha + alpha_out*alpha_out - 2.0*alpha*alpha_out*mu);

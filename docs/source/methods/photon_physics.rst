@@ -775,7 +775,7 @@ formula can be used to find the collision stopping power of the material:
     :label: material-collision-stopping-power
 
     S_{\text{col}}(T) = \frac{2 \pi r_e^2 m_e c^2}{\beta^2} N_A \frac{Z}{A_M}
-    [\ln(T^2/I^2) + ln(1 + \tau/2) + F(\tau) - \delta_F(T)],
+    [\ln(T^2/I^2) + \ln(1 + \tau/2) + F(\tau) - \delta_F(T)],
 
 where :math:`N_A` is Avogadro's number, :math:`A_M` is the molar mass,
 :math:`\tau = T/m_e`, and :math:`F(\tau)` depends on the particle type. For
@@ -797,7 +797,7 @@ while for positrons
 The density effect correction :math:`\delta_F` takes into account the reduction
 of the collision stopping power due to the polarization of the material the
 charged particle is passing through by the electric field of the particle.
-It can be evaluated using the method described by [Sternheimer]_, where the
+It can be evaluated using the method described by Sternheimer_, where the
 equation for :math:`\delta_F` is
 
 .. math::
@@ -821,14 +821,14 @@ where :math:`\bar{v}_i` is defined as
 .. math::
     :label: density-effect-nubar
 
-    \bar{\nu}_i = \nu_i \rho / \nu_p.
+    \bar{\nu}_i = h\nu_i \rho / h\nu_p.
 
 The plasma energy :math:`h\nu_p` of the medium is given by
 
 .. math::
     :label: plasma-frequency
 
-    h\nu_p = \sqrt{(hc)^2/\pi r_e \rho_m N_A Z / A},
+    h\nu_p = \sqrt{\frac{(hc)^2 r_e \rho_m N_A Z}{\pi A}},
 
 where :math:`A` is the atomic weight and :math:`\rho_m` is the density of the
 material. In :eq:`density-effect-nubar`, :math:`h\nu_i` is the oscillator
@@ -840,8 +840,8 @@ defined as
 .. math::
     :label: density-effect-li
 
-    l_i &= (\bar{v}_i^2 + 2/3f_i)^{1/2} ~~~~&\text{for}~~ \bar{v}_i > 0 \\
-    l_n &= f_n^{1/2} ~~~~&\text{for}~~ \bar{v}_n = 0,
+    l_i &= (\bar{\nu}_i^2 + 2/3f_i)^{1/2} ~~~~&\text{for}~~ \bar{\nu}_i > 0 \\
+    l_n &= f_n^{1/2} ~~~~&\text{for}~~ \bar{\nu}_n = 0,
 
 where the second case applies to conduction electrons. For a conductor,
 :math:`f_n` is given by :math:`n_c/Z`, where :math:`n_c` is the effective
@@ -1047,8 +1047,4 @@ emitted photon.
 
 .. _Salvat: http://www.oecd-nea.org/globalsearch/download.php?doc=77434
 
-.. _Sternheimer: https://journals.aps.org/prb/pdf/10.1103/PhysRevB.26.6067
-
-.. [Sternheimer] R. M. Sternheimer, S.M.Seltzer, and M.J.Berger, *Density
-   effect for the ionization loss of charged particles in various substances*,
-   Phys. Rev. B, 26, 6067–6076 (1982).
+.. _Sternheimer: https://doi.org/10.1103/PhysRevB.26.6067

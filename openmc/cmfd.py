@@ -257,7 +257,7 @@ class CMFDRun(object):
         * "math" - Create adjoint matrices mathematically as the transpose of
           loss and production CMFD matrices
 
-    window_type : {'rolling', 'fixed', 'none'}
+    window_type : {'expanding', 'rolling', 'none'}
         Specifies type of tally window scheme to use to accumulate CMFD
         tallies. Options are:
 
@@ -642,9 +642,9 @@ class CMFDRun(object):
     def window_size(self, window_size):
         check_type('CMFD window size', window_size, Integral)
         check_greater_than('CMFD window size', window_size, 0)
-        if self._window_type != 'fixed':
+        if self._window_type != 'rolling':
             warn_msg = 'Window size will have no effect on CMFD simulation ' \
-                       'unless window type is set to "fixed".'
+                       'unless window type is set to "rolling".'
             warnings.warn(warn_msg, RuntimeWarning)
         self._window_size = window_size
 
@@ -963,7 +963,7 @@ class CMFDRun(object):
         if self._window_type == 'expanding':
             self._reset_every = True
             self._window_size = 1
-        # Set parameters for fixed window
+        # Set parameters for rolling window
         elif self.window_type == 'rolling':
             self._reset_every = True
         # Set parameters for default case, with no window

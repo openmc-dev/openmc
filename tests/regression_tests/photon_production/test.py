@@ -33,7 +33,7 @@ class SourceTestHarness(PyAPITestHarness):
         source = openmc.Source()
         source.space = openmc.stats.Point((0,0,0))
         source.angle = openmc.stats.Monodirectional()
-        source.energy = openmc.stats.Discrete([14.0], [1.0])
+        source.energy = openmc.stats.Discrete([14.0e6], [1.0])
         source.particle = 'neutron'
 
         settings = openmc.Settings()

@@ -133,11 +133,17 @@ Incident Photon Data
 
 **/<element>/bremsstrahlung/**
 
+:Attributes: - **I** (*double*) -- Mean excitation energy in [eV]
+
 :Datasets: - **electron_energy** (*double[]*) -- Incident electron energy in [eV]
            - **photon_energy** (*double[]*) -- Outgoing photon energy as
              fraction of incident electron energy
            - **dcs** (*double[][]*) -- Bremsstrahlung differential cross section
              at each incident energy in [mb/eV]
+           - **ionization_energy** (*double[]*) -- Ionization potential of each
+             subshell in [eV]
+           - **num_electrons** (*int[]*) -- Number of electrons per subshell,
+             with conduction electrons indicated by a negative value
 
 **/<element>/coherent/**
 
@@ -175,13 +181,6 @@ Incident Photon Data
 **/<element>/photoelectric/**
 
 :Datasets: - **xs** (*double[]*) -- Total photoionization cross section in [b]
-
-**/<element>/stopping_powers/**
-
-:Datasets: - **I** (*double*) -- Mean excitation energy in [eV]
-           - **energy** (*double[]*) -- Energies in [eV]
-           - **s_collision** (*double[]*) -- Collision stopping power in [eV-cm\ :sup:`2`\ /g]
-           - **s_radiative** (*double[]*) -- Radiative stopping power in [eV-cm\ :sup:`2`\ /g]
 
 **/<element>/subshells/**
 

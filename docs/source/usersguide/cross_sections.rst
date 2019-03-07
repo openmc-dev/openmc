@@ -192,11 +192,11 @@ Photon Cross Sections
 
 Photon interaction data is needed to run OpenMC with photon transport enabled.
 Some of this data, namely bremsstrahlung cross sections from `Seltzer and
-Berger`_, stopping powers from the `NIST ESTAR database`_, and Compton profiles
-calculated by `Biggs et al.`_ and available in the Geant4 G4EMLOW data file, is
-distributed with OpenMC. The rest is available from the NNDC_, which provides
-ENDF data from the photo-atomic and atomic relaxation sublibraries of the
-ENDF/B-VII.1 library.
+Berger`_, mean excitation energy from the `NIST ESTAR database`_, and Compton
+profiles calculated by `Biggs et al.`_ and available in the Geant4 G4EMLOW data
+file, is distributed with OpenMC. The rest is available from the NNDC_, which
+provides ENDF data from the photo-atomic and atomic relaxation sublibraries of
+the ENDF/B-VII.1 library.
 
 Most of the pregenerated HDF5 libraries available at https://openmc.mcs.anl.gov
 already have photon interaction data included. If you are building a data

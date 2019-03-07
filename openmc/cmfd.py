@@ -720,10 +720,8 @@ class CMFDRun(object):
         # Run and pass arguments to C API run_in_memory function
         with openmc.capi.run_in_memory(**kwargs):
             self.init()
-            try:
-                yield
-            finally:
-                self.finalize()
+            yield
+            self.finalize()
 
     def iter_batches(self):
         # TODO add function description

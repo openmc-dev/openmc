@@ -21,7 +21,6 @@ namespace openmc {
 
 class Plot;
 
-
 namespace model {
 
 extern std::vector<Plot> plots; //!< Plot instance container

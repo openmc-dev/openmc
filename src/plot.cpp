@@ -982,7 +982,7 @@ RGBColor random_color() {
 
 extern "C" int openmc_id_map(void* slice, int32_t* data_out) {
 
-  auto* sl = static_cast<Slice*>(slice);
+  auto sl = static_cast<Slice*>(slice);
 
   size_t width = sl->pixels_[0];
   size_t height = sl->pixels_[1];
@@ -1024,33 +1024,32 @@ extern "C" int openmc_id_map(void* slice, int32_t* data_out) {
 #pragma omp parallel
 {
   Particle p;
-  p.initialize();
-  std::copy(xyz, xyz+3, p.coord[0].xyz);
-  std::copy(dir, dir+3, p.coord[0].uvw);
-  p.coord[0].universe = model::root_universe;
+  p.coord_[0].r = xyz;
+  p.coord_[0].u = dir;
+  p.coord_[0].universe = model::root_universe;
   int level = sl->level_;
   int j{};
 
 #pragma omp for
   for (int y = 0; y < height; y++) {
-    p.coord[0].xyz[out_i] = xyz[out_i] - out_pixel * y;
+    p.coord_[0].r[out_i] =  xyz[out_i] - out_pixel * y;
     for (int x = 0; x < width; x++) {
-      p.coord[0].xyz[in_i] = xyz[in_i] + in_pixel * x;
-      p.n_coord = 1;
+      p.coord_[0].r[in_i] = xyz[in_i] + in_pixel * x;
+      p.n_coord_ = 1;
       // local variables
       bool found_cell = find_cell(&p, 0);
-      j = p.n_coord - 1;
+      j = p.n_coord_ - 1;
       if (level >=0) {j = level + 1;}
       if (!found_cell) {
         data(y,x,0) = -1;
         data(y,x,1) = -1;
       } else {
-        Cell *c = model::cells[p.coord[j].cell];
+        Cell *c = model::cells[p.coord_[j].cell].get();
         data(y,x,0) = c->id_;
-        if (c->type_ == FILL_UNIVERSE || p.material == MATERIAL_VOID) {
+        if (c->type_ == FILL_UNIVERSE || p.material_ == MATERIAL_VOID) {
           data(y,x,1) = -1;
         } else {
-          data(y,x,1) = model::materials[p.material - 1]->id_;
+          data(y,x,1) = model::materials[p.material_]->id_;
         }
       }
     }

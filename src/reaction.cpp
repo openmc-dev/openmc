@@ -229,8 +229,10 @@ std::string reaction_name(int mt)
     return  "(n,X3He)";
   } else if (mt == 207) {
     return  "(n,Xa)";
+  } else if (mt == 301) {
+    return "heating";
   } else if (mt == 444) {
-    return  "(damage)";
+    return  "damage-energy";
   } else if (mt == COHERENT) {
     return  "coherent scatter";
   } else if (mt == INCOHERENT) {

@@ -241,7 +241,8 @@ class Region(metaclass=ABCMeta):
         vector : iterable of float
             Direction in which region should be translated
         memo : dict or None
-            Dictionary used for memoization
+            Dictionary used for memoization. This parameter is used internally
+            and should not be specified by the user.
 
         Returns
         -------
@@ -373,7 +374,8 @@ class Intersection(Region, MutableSequence):
         vector : iterable of float
             Direction in which region should be translated
         memo : dict or None
-            Dictionary used for memoization
+            Dictionary used for memoization. This parameter is used internally
+            and should not be specified by the user.
 
         Returns
         -------
@@ -505,7 +507,8 @@ class Union(Region, MutableSequence):
         vector : iterable of float
             Direction in which region should be translated
         memo : dict or None
-            Dictionary used for memoization
+            Dictionary used for memoization. This parameter is used internally
+            and should not be specified by the user.
 
         Returns
         -------
@@ -646,7 +649,8 @@ class Complement(Region):
         vector : iterable of float
             Direction in which region should be translated
         memo : dict or None
-            Dictionary used for memoization
+            Dictionary used for memoization. This parameter is used internally
+            and should not be specified by the user.
 
         Returns
         -------

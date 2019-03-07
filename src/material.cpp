@@ -505,11 +505,15 @@ void Material::collision_stopping_power(double* s_col, bool positron)
   double rho = sternheimer_adjustment(f, e_b_sq, e_p_sq, n_conduction, log_I,
     1.0e-6, 100);
 
-  // Classical elctron radius in cm
-  double r_e = PLANCK_C / (2.0e8 * PI * FINE_STRUCTURE * MASS_ELECTRON_EV);
+  // Classical electron radius in cm
+  constexpr double CM_PER_ANGSTROM {1.0e-8};
+  constexpr double r_e = CM_PER_ANGSTROM * PLANCK_C / (2.0 * PI *
+    FINE_STRUCTURE * MASS_ELECTRON_EV);
 
   // Constant in expression for collision stopping power
-  double c = 2.0e24 * PI * r_e * r_e * MASS_ELECTRON_EV * electron_density;
+  constexpr double BARN_PER_CM_SQ {1.0e24};
+  double c = BARN_PER_CM_SQ * 2.0 * PI * r_e * r_e * MASS_ELECTRON_EV *
+    electron_density;
 
   // Loop over incident charged particle energies
   for (int i = 0; i < data::ttb_e_grid.size(); ++i) {

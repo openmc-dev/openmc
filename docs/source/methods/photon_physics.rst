@@ -728,10 +728,18 @@ the cross section differential in energy loss. The total stopping power
 power :math:`S_{\text{rad}}(T)`, which refers to energy loss due to
 bremsstrahlung, and the collision stopping power :math:`S_{\text{col}}(T)`,
 which refers to the energy loss due to inelastic collisions with bound
-electrons in the material that result in ionization and excitation. To obtain
-the radiative stopping power for positrons, the radiative stopping power for
-electrons is multiplied by :eq:`positron-factor`. Currently, the collision
-stopping power for electrons is also used for positrons.
+electrons in the material that result in ionization and excitation. The
+radiative stopping power for electrons is given by
+
+.. math::
+    :label: radiative-stopping-power
+
+    S_{\text{rad}}(T) = n \frac{Z^2}{\beta^2} T \int_0^1 \chi(Z,T,\kappa)
+    d\kappa.
+
+
+To obtain the radiative stopping power for positrons,
+:eq:`radiative-stopping-power`  is multiplied by :eq:`positron-factor`.
 
 While the models for photon interactions with matter described above can safely
 assume interactions occur with free atoms, sampling the target atom based on
@@ -754,14 +762,97 @@ power is calculated using Bragg's additivity rule as
 
     S_{\text{rad}}(T) = \sum_i w_i S_{\text{rad},i}(T),
 
-where :math:`w_i` is the mass fraction of the :math:`i`-th element. The
-collision stopping power, however, is a function of certain quantities such as
-the mean excitation energy :math:`I` and the density effect correction
-:math:`\delta_F` that depend on molecular properties. These quantities cannot
-simply be summed over constituent elements in a compound, but should instead be
-calculated for the material. Currently, we use Bragg's additivity rule to
-calculate the collision stopping power as well, but this is not a good
-approximation and should be fixed in the future.
+where :math:`w_i` is the mass fraction of the :math:`i`-th element and
+:math:`S_{\text{rad},i}(T)` is found for element :math:`i` using
+:eq:`radiative-stopping-power`. The collision stopping power, however, is a
+function of certain quantities such as the mean excitation energy :math:`I` and
+the density effect correction :math:`\delta_F` that depend on molecular
+properties. These quantities cannot simply be summed over constituent elements
+in a compound, but should instead be calculated for the material. The Bethe
+formula can be used to find the collision stopping power of the material:
+
+.. math::
+    :label: material-collision-stopping-power
+
+    S_{\text{col}}(T) = \frac{2 \pi r_e^2 m_e c^2}{\beta^2} N_A \frac{Z}{A_M}
+    [\ln(T^2/I^2) + \ln(1 + \tau/2) + F(\tau) - \delta_F(T)],
+
+where :math:`N_A` is Avogadro's number, :math:`A_M` is the molar mass,
+:math:`\tau = T/m_e`, and :math:`F(\tau)` depends on the particle type. For
+electrons,
+
+.. math::
+    :label: F-electron
+
+    F_{-}(\tau) = (1 - \beta^2)[1 + \tau^2/8 - (2\tau + 1) \ln2],
+
+while for positrons
+
+.. math::
+    :label: F-positron
+
+    F_{+}(\tau) = 2\ln2 - (\beta^2/12)[23 + 14/(\tau + 2) + 10/(\tau + 2)^2 +
+    4/(\tau + 2)^3].
+
+The density effect correction :math:`\delta_F` takes into account the reduction
+of the collision stopping power due to the polarization of the material the
+charged particle is passing through by the electric field of the particle.
+It can be evaluated using the method described by Sternheimer_, where the
+equation for :math:`\delta_F` is
+
+.. math::
+    :label: density-effect-correction
+
+    \delta_F(\beta) = \sum_{i=1}^n f_i \ln[(l_i^2 + l^2)/l_i^2] -
+    l^2(1-\beta^2).
+
+Here, :math:`f_i` is the oscillator strength of the :math:`i`-th transition,
+given by :math:`f_i = n_i/Z`, where :math:`n_i` is the number of electrons in
+the :math:`i`-th subshell. The frequency :math:`l` is the solution of the
+equation
+
+.. math::
+    :label: density-effect-l
+
+    \frac{1}{\beta^2} - 1 = \sum_{i=1}^{n} \frac{f_i}{\bar{\nu}_i^2 + l^2},
+
+where :math:`\bar{v}_i` is defined as
+
+.. math::
+    :label: density-effect-nubar
+
+    \bar{\nu}_i = h\nu_i \rho / h\nu_p.
+
+The plasma energy :math:`h\nu_p` of the medium is given by
+
+.. math::
+    :label: plasma-frequency
+
+    h\nu_p = \sqrt{\frac{(hc)^2 r_e \rho_m N_A Z}{\pi A}},
+
+where :math:`A` is the atomic weight and :math:`\rho_m` is the density of the
+material. In :eq:`density-effect-nubar`, :math:`h\nu_i` is the oscillator
+energy, and :math:`\rho` is an adjustment factor introduced to give agreement
+between the experimental values of the oscillator energies and the mean
+excitation energy. The :math:`l_i` in :eq:`density-effect-correction` are
+defined as
+
+.. math::
+    :label: density-effect-li
+
+    l_i &= (\bar{\nu}_i^2 + 2/3f_i)^{1/2} ~~~~&\text{for}~~ \bar{\nu}_i > 0 \\
+    l_n &= f_n^{1/2} ~~~~&\text{for}~~ \bar{\nu}_n = 0,
+
+where the second case applies to conduction electrons. For a conductor,
+:math:`f_n` is given by :math:`n_c/Z`, where :math:`n_c` is the effective
+number of conduction electrons, and :math:`v_n = 0`. The adjustment factor
+:math:`\rho` is determined using the equation for the mean excitation energy:
+
+.. math::
+    :label: mean-excitation-energy
+
+    \ln I = \sum_{i=1}^{n-1} f_i \ln[(h\nu_i\rho)^2 + 2/3f_i(h\nu_p)^2]^{1/2} +
+    f_n \ln (h\nu_pf_n^{1/2}).
 
 .. _ttb:
 
@@ -891,6 +982,55 @@ direction of the incident charged particle, which is a reasonable approximation
 at higher energies when the bremsstrahlung radiation is emitted at small
 angles.
 
+-----------------
+Photon Production
+-----------------
+
+In coupled neutron-photon transport, a source neutron is tracked, and photons
+produced from neutron reactions are transported after the neutron's history has
+terminated. Since these secondary photons form the photon source for the
+problem, it is important to correctly describe their energy and angular
+distributions as the accuracy of the calculation relies on the accuracy of this
+source. The photon production cross section for a particular reaction :math:`i`
+and incident neutron energy :math:`E` is defined as
+
+.. math::
+    :label: photon-production-xs
+
+    \sigma_{\gamma, i}(E) = y_i(E)\sigma_i(E),
+
+where :math:`y_i(E)` is the photon yield corresponding to an incident neutron
+reaction having cross section :math:`\sigma_i(E)`.
+
+The yield of photons during neutron transport is determined as the sum of the
+photon yields from each individual reaction. In OpenMC, production of photons
+is treated in an average sense. That is, the total photon production cross
+section is used at a collision site to determine how many photons to produce
+rather than the photon production from the reaction that actually took place.
+This is partly done for convenience but also because the use of variance
+reduction techniques such as implicit capture make it difficult in practice to
+directly sample photon production from individual reactions.
+
+In OpenMC, secondary photons are created after a nuclide has been sampled in a
+neutron collision. The expected number of photons produced is
+
+.. math::
+    :label: expected-number-photons
+
+    n = w\frac{\sigma_{\gamma}(E)}{\sigma_T(E)},
+
+where :math:`w` is the weight of the neutron, :math:`\sigma_{\gamma}` is the
+photon production cross section for the sampled nuclide, and :math:`\sigma_T`
+is the total cross section for the nuclide. :math:`\lfloor n \rfloor` photons
+are created with an additional photon produced with probability :math:`n -
+\lfloor n \rfloor`. Next, a reaction is sampled for each secondary photon. The
+probability of sampling the :math:`i`-th reaction is given by
+:math:`\sigma_{\gamma, i}(E)/\sum_j\sigma_{\gamma, j}(E)`, where
+:math:`\sum_j\sigma_{\gamma, j} = \sigma_{\gamma}` is the total photon
+production cross section. The secondary angle and energy distributions
+associated with the reaction are used to sample the angle and energy of the
+emitted photon.
+
 .. _Koblinger: https://doi.org/10.13182/NSE75-A26663
 
 .. _anomalous scattering: http://pd.chem.ucl.ac.uk/pdnn/diff1/anomscat.htm
@@ -906,3 +1046,5 @@ angles.
 .. _Kaltiaisenaho: https://aaltodoc.aalto.fi/bitstream/handle/123456789/21004/master_Kaltiaisenaho_Toni_2016.pdf
 
 .. _Salvat: http://www.oecd-nea.org/globalsearch/download.php?doc=77434
+
+.. _Sternheimer: https://doi.org/10.1103/PhysRevB.26.6067

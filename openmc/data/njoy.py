@@ -72,8 +72,13 @@ broadr / %%%%%%%%%%%%%%%%%%%%%%% Doppler broaden XS %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 _TEMPLATE_HEATR = """
 heatr / %%%%%%%%%%%%%%%%%%%%%%%%% Add heating kerma %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 {nendf} {nheatr_in} {nheatr} /
-{mat} 3 /
-302 318 402 /
+{mat} 4 /
+302 318 402 444 /
+"""
+
+_TEMPLATE_GASPR = """
+gaspr / %%%%%%%%%%%%%%%%%%%%%%%%% Add gas production %%%%%%%%%%%%%%%%%%%%%%%%%%%
+{nendf} {ngaspr_in} {ngaspr} /
 """
 
 _TEMPLATE_PURR = """
@@ -211,8 +216,8 @@ def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
 
 
 def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
-             error=0.001, broadr=True, heatr=True, purr=True, acer=True,
-             **kwargs):
+             error=0.001, broadr=True, heatr=True, gaspr=True, purr=True,
+             acer=True, **kwargs):
     """Generate incident neutron ACE file from an ENDF file
 
     Parameters
@@ -234,6 +239,8 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
         Indicating whether to Doppler broaden XS when running NJOY
     heatr : bool, optional
         Indicating whether to add heating kerma when running NJOY
+    gaspr : bool, optional
+        Indicating whether to add gas production data when running NJOY
     purr : bool, optional
         Indicating whether to add probability table when running NJOY
     acer : bool, optional
@@ -284,6 +291,13 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
         nheatr = nheatr_in + 1
         commands += _TEMPLATE_HEATR
         nlast = nheatr
+
+    # gaspr
+    if gaspr:
+        ngaspr_in = nlast
+        ngaspr = ngaspr_in + 1
+        commands += _TEMPLATE_GASPR
+        nlast = ngaspr
 
     # purr
     if purr:

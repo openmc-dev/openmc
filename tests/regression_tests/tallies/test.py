@@ -165,6 +165,10 @@ def test_tallies():
     all_nuclide_tallies[3].filters = [mesh_filter]
     all_nuclide_tallies[3].nuclides = ['U235']
 
+    fusion_tally = Tally()
+    fusion_tally.scores = ['H1-production', 'H2-production', 'H3-production',
+        'He3-production', 'He4-production', 'heating', 'damage-energy']
+
     model.tallies += [
         azimuthal_tally1, azimuthal_tally2, azimuthal_tally3,
         cellborn_tally, dg_tally, energy_tally, energyout_tally,
@@ -174,5 +178,6 @@ def test_tallies():
     model.tallies += score_tallies
     model.tallies += flux_tallies
     model.tallies += all_nuclide_tallies
+    model.tallies.append(fusion_tally)
 
     harness.main()

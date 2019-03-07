@@ -197,6 +197,20 @@ score_str_to_int(std::string score_str)
     return N_PT;
   if (score_str == "(n,da)")
     return N_DA;
+  if (score_str == "(n,Xp)" || score_str == "H1-production")
+    return N_XP;
+  if (score_str == "(n,Xd)" || score_str == "H2-production")
+    return N_XD;
+  if (score_str == "(n,Xt)" || score_str == "H3-production")
+    return N_XT;
+  if (score_str == "(n,X3He)" || score_str == "He3-production")
+    return N_X3HE;
+  if (score_str == "(n,Xa)" || score_str == "He4-production")
+    return N_XA;
+  if (score_str == "heating")
+    return HEATING;
+  if (score_str == "damage-energy")
+    return DAMAGE_ENERGY;
 
   // So far we have not identified this score string.  Check to see if it is a
   // deprecated score.

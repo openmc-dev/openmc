@@ -12,8 +12,7 @@ objects in the :mod:`openmc.capi` subpackage, for example:
 
 """
 
-from ctypes import CDLL, c_bool, c_int
-import numpy as np
+from ctypes import CDLL, c_bool
 import os
 import sys
 

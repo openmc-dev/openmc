@@ -1,4 +1,4 @@
-from ctypes import c_int, c_int32, c_double, c_ushort, POINTER, Structure
+from ctypes import c_int, c_int32, c_double, Structure, POINTER
 
 from . import _dll
 from .core import _DLLGlobal
@@ -63,8 +63,8 @@ class _Position(Structure):
         return "Position: ({}, {}, {})".format(self.x, self.y, self.z)
 
 
-class _Plot(Structure):
-    """A Plot structure defining a 2-D slice with underlying c-types
+class _Slice(Structure):
+    """A structure defining a 2-D slice with underlying c-types
 
     C-Type Attributes
     -----------------
@@ -100,7 +100,7 @@ class _Plot(Structure):
     _fields_ = [('origin_', _Position),
                 ('width_', _Position),
                 ('basis_', c_int),
-                ('pixels_', c_int*3),
+                ('pixels_', 3*c_int),
                 ('level_', c_int)]
 
     def __init__(self):
@@ -210,18 +210,18 @@ class _Plot(Structure):
         return self.__repr__()
 
 
-_dll.openmc_id_map.argtypes= [POINTER(_Plot),POINTER(c_int32)]
+_dll.openmc_id_map.argtypes= [POINTER(_Slice),POINTER(c_int32)]
 _dll.openmc_id_map.restype = c_int
 _dll.openmc_id_map.errcheck = _error_handler
 
 
-def id_map(plot):
+def id_map(slice_view):
     """
     Generate a 2-D map of (cell_id, material_id). Used for in-memory image generation.
 
     Parameters
     ----------
-    plot : An openmc.capi.plot._Plot object describing the slice of the model to
+    plot : An openmc.capi.plot._Slice object describing the slice of the model to
            be generated
 
     Returns
@@ -230,7 +230,7 @@ def id_map(plot):
              of OpenMC property ids with dtype int32
 
     """
-    img_data = np.zeros((plot.vRes, plot.hRes, 2), dtype=np.dtype('int32'))
+    img_data = np.zeros((slice_view.vRes, slice_view.hRes, 2), dtype=np.dtype('int32'))
     print("Calling openmc id map")
-    _dll.openmc_id_map(POINTER(_Plot)(plot), img_data.ctypes.data_as(POINTER(c_int32)))
+    _dll.openmc_id_map(POINTER(_Slice)(slice_view), img_data.ctypes.data_as(POINTER(c_int32)))
     return img_data

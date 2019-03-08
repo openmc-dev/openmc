@@ -36,9 +36,9 @@ materials_file.export_to_xml()
 ###############################################################################
 
 # Instantiate ZCylinder surfaces
-surf1 = openmc.ZCylinder(surface_id=1, x0=0, y0=0, R=7, name='surf 1')
-surf2 = openmc.ZCylinder(surface_id=2, x0=0, y0=0, R=9, name='surf 2')
-surf3 = openmc.ZCylinder(surface_id=3, x0=0, y0=0, R=11, name='surf 3')
+surf1 = openmc.ZCylinder(surface_id=1, x0=0, y0=0, r=7, name='surf 1')
+surf2 = openmc.ZCylinder(surface_id=2, x0=0, y0=0, r=9, name='surf 2')
+surf3 = openmc.ZCylinder(surface_id=3, x0=0, y0=0, r=11, name='surf 3')
 surf3.boundary_type = 'vacuum'
 
 # Instantiate Cells

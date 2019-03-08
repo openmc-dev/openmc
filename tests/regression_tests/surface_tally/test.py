@@ -25,8 +25,8 @@ class SurfaceTallyTestHarness(PyAPITestHarness):
         materials_file.export_to_xml()
 
         # Instantiate ZCylinder surfaces
-        fuel_or = openmc.ZCylinder(surface_id=1, x0=0, y0=0, R=1, \
-             name='Fuel OR')
+        fuel_or = openmc.ZCylinder(surface_id=1, x0=0, y0=0, r=1,
+            name='Fuel OR')
         left = openmc.XPlane(surface_id=2, x0=-2, name='left')
         right = openmc.XPlane(surface_id=3, x0=2, name='right')
         bottom = openmc.YPlane(y0=-2, name='bottom')

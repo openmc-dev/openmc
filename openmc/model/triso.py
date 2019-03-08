@@ -49,7 +49,7 @@ class TRISO(openmc.Cell):
     """
 
     def __init__(self, outer_radius, fill, center=(0., 0., 0.)):
-        self._surface = openmc.Sphere(R=outer_radius)
+        self._surface = openmc.Sphere(r=outer_radius)
         super().__init__(fill=fill, region=-self._surface)
         self.center = np.asarray(center)
 

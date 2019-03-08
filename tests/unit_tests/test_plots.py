@@ -45,7 +45,7 @@ def test_repr(myplot):
 
 def test_from_geometry():
     width = 25.
-    s = openmc.Sphere(R=width/2, boundary_type='vacuum')
+    s = openmc.Sphere(r=width/2, boundary_type='vacuum')
     c = openmc.Cell(region=-s)
     univ = openmc.Universe(cells=[c])
     geom = openmc.Geometry(univ)

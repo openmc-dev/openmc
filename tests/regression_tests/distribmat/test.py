@@ -32,7 +32,7 @@ class DistribmatTestHarness(PyAPITestHarness):
         c1 = openmc.Cell(cell_id=1, fill=moderator)
         mod_univ = openmc.Universe(universe_id=1, cells=[c1])
 
-        r0 = openmc.ZCylinder(R=0.3)
+        r0 = openmc.ZCylinder(r=0.3)
         c11 = openmc.Cell(cell_id=11, region=-r0)
         c11.fill = [dense_fuel, None, light_fuel, dense_fuel]
         c12 = openmc.Cell(cell_id=12, region=+r0, fill=moderator)

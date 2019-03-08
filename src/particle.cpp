@@ -16,6 +16,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
+#include "openmc/physics_common.h"
 #include "openmc/physics.h"
 #include "openmc/physics_mg.h"
 #include "openmc/random_lcg.h"
@@ -26,6 +27,7 @@
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/track_output.h"
+#include "openmc/variance_reduction.h"
 
 namespace openmc {
 
@@ -348,6 +350,9 @@ Particle::transport()
 
       // Score flux derivative accumulators for differential tallies.
       if (!model::active_tallies.empty()) score_collision_derivative(this);
+
+      if (variance_reduction::importance_splitting)
+        perform_vr(this);
     }
 
     // If particle has too many events, display warning and kill it

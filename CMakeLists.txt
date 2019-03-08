@@ -239,12 +239,9 @@ add_library(libopenmc SHARED
   src/tallies/trigger.cpp
   src/timer.cpp
   src/thermal.cpp
-<<<<<<< HEAD
   src/track_output.cpp
   src/urr.cpp
-=======
   src/variance_reduction.cpp
->>>>>>> Updated and rebased
   src/volume_calc.cpp
   src/wmp.cpp
   src/xml_interface.cpp

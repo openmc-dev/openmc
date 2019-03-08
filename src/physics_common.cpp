@@ -169,7 +169,6 @@ void perform_vr(Particle* p)
 
   if (p->absorb_wgt == 0) return;
 
-
   if (variance_reduction::importance_splitting) 
     importance_split(p);
   else if (variance_reduction::weight_splitting)

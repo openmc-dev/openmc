@@ -105,7 +105,7 @@ int64_t trace_particle;
 std::vector<std::array<int, 3>> track_identifiers;
 int trigger_batch_interval {1};
 int verbosity {7};
-double weight_cutoff {1.e-11};
+double weight_cutoff {1.e-16};
 double weight_survive {1.0};
 
 } // namespace settings

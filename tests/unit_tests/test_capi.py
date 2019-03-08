@@ -408,7 +408,7 @@ def test_id_map(capi_init):
                              [(3, 3), (2, 2), (3, 3)]], dtype='int32')
 
     # create a plot object
-    s = openmc.capi.plot._Slice()
+    s = openmc.capi.plot._PlotBase()
     s.width = 1.26
     s.height = 1.26
     s.vRes = 3

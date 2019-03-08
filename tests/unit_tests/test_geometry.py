@@ -203,6 +203,19 @@ def test_get_by_name():
     assert not univs
 
 
+def test_hex_prism():
+    hex_prism = openmc.model.get_hexagonal_prism(edge_length=5.0,
+                                                 origin=(0.0, 0.0),
+                                                 boundary_type='reflective',
+                                                 orientation='y',
+                                                 corner_radius=0.10)
+
+    hex_prism = openmc.model.get_hexagonal_prism(edge_length=5.0,
+                                                 origin=(0.0, 0.0),
+                                                 boundary_type='reflective',
+                                                 orientation='y')
+
+
 def test_get_lattice_by_name(cell_with_lattice):
     cells, _, _, lattice = cell_with_lattice
     geom = openmc.Geometry([cells[-1]])
@@ -244,6 +257,7 @@ def test_determine_paths(cell_with_lattice):
     for i in range(4):
         assert geom.get_instances(cells[0].paths[i]) == i
         assert geom.get_instances(mats[-1].paths[i]) == i
+
 
 def test_from_xml(run_in_tmpdir, mixed_lattice_model):
     # Export model

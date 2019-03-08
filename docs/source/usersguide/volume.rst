@@ -30,7 +30,7 @@ arguments are not necessary. For example,
 
 ::
 
-   sphere = openmc.Sphere(R=10.0)
+   sphere = openmc.Sphere(r=10.0)
    cell = openm.Cell(region=-sphere)
    vol_calc = openmc.VolumeCalculation([cell], 1000000)
 

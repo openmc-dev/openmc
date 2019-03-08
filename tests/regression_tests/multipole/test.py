@@ -27,7 +27,7 @@ def make_model():
     c1 = openmc.Cell(cell_id=1, fill=moderator)
     mod_univ = openmc.Universe(universe_id=1, cells=(c1,))
 
-    r0 = openmc.ZCylinder(R=0.3)
+    r0 = openmc.ZCylinder(r=0.3)
     c11 = openmc.Cell(cell_id=11, fill=dense_fuel, region=-r0)
     c11.temperature = [500, 700, 0, 800]
     c12 = openmc.Cell(cell_id=12, fill=moderator, region=+r0)

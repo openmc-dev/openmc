@@ -78,7 +78,7 @@ struct Slice {
   Position origin_; //!< Plot origin in geometry
   Position width_; //!< Plot width in geometry
   PlotBasis basis_; //!< Plot basis (XY/XZ/YZ)
-  int pixels_[3]; //!< Plot size in pixels
+  std::array<int, 3> pixels_; //!< Plot size in pixels
   int level_; //!< Plot universe level
 };
 

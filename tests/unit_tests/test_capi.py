@@ -408,16 +408,14 @@ def test_id_map(capi_init):
                              [(3,3), (2,2), (3,3)]], dtype = 'int32')
 
     # create a plot object
-    p = openmc.capi.plot._Plot()
+    s = openmc.capi.plot._Slice()
+    s.width = 1.26
+    s.height = 1.26
+    s.vRes = 3
+    s.hRes = 3
+    s.origin = (0,0,0)
+    s.basis = 'xy'
+    s.level = -1
 
-    p.width = 1.26
-    p.height = 1.26
-    p.vRes = 3
-    p.hRes = 3
-    p.origin = (0,0,0)
-    p.basis = 'xy'
-    p.level = -1
-
-    ids = openmc.capi.plot.id_map(p)
-    print(ids)
+    ids = openmc.capi.plot.id_map(s)
     assert np.array_equal(expected_ids, ids)

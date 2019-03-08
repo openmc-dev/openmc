@@ -27,7 +27,7 @@ namespace openmc {
 
 const RGBColor WHITE {255, 255, 255};
 constexpr int PLOT_LEVEL_LOWEST {-1}; //!< lower bound on plot universe level
-
+constexpr int NOT_FOUND {-1};
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -88,27 +88,6 @@ void read_plots_xml()
   }
 }
 
-void
-write_ids(const Plot& pl, xt::xtensor<int,2> ids) {
-
-  // create a binary file with ID information
-  std::string fname = "plot_ids.binary";
-  std::ofstream of;
-
-  of.open(fname, std::ios::binary);
-  of.write((char*) &(pl.pixels_[0]), sizeof(int));
-  of.write((char*) &(pl.pixels_[1]), sizeof(int));
-  of.write((char*) &(pl.width_[0]), sizeof(double));
-  of.write((char*) &(pl.width_[1]), sizeof(double));
-  for (int y = 0; y < pl.pixels_[1]; y++) {
-    for (int x = 0; x < pl.pixels_[0]; x++) {
-      of.write((char*) &(ids(x,y)), sizeof(int));
-    }
-  }
-
-  of.close();
-}
-
 //==============================================================================
 // CREATE_PPM creates an image based on user input from a plots.xml <plot>
 // specification in the portable pixmap format (PPM)
@@ -125,8 +104,6 @@ void create_ppm(Plot pl)
 
   ImageData data;
   data.resize({width, height});
-  xt::xtensor<int, 2> ids;
-  ids.resize({width, height});
 
   int in_i, out_i;
   Position r;
@@ -173,7 +150,6 @@ void create_ppm(Plot pl)
       p.r()[in_i] = r[in_i] + in_pixel * x;
       position_rgb(p, pl, rgb, id);
       data(x,y) = rgb;
-      ids(x,y) = id;
     }
   }
 }
@@ -182,9 +158,6 @@ void create_ppm(Plot pl)
 
   // write ppm data to file
   output_ppm(pl, data);
-
-  // write ids to binary file
-  write_ids(pl, ids);
 }
 
 void
@@ -684,7 +657,7 @@ void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id)
   if (!found_cell) {
     // If no cell, revert to default color
     rgb = pl.not_found_;
-    id = -1;
+    id = NOT_FOUND;
   } else {
     if (PlotColorBy::mats == pl.color_by_) {
       // Assign color based on material
@@ -692,11 +665,11 @@ void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id)
       if (c->type_ == FILL_UNIVERSE) {
         // If we stopped on a middle universe level, treat as if not found
         rgb = pl.not_found_;
-        id = -1;
+        id = NOT_FOUND;
       } else if (p.material_ == MATERIAL_VOID) {
         // By default, color void cells white
         rgb = WHITE;
-        id = -1;
+        id = NOT_FOUND;
       } else {
         rgb = pl.colors_[p.material_];
         id = model::materials[p.material_]->id_;
@@ -886,8 +859,7 @@ void create_voxel(Plot pl)
   // Write current date and time
   write_attribute(file_id, "date_and_time", time_stamp().c_str());
   hsize_t three = 3;
-  std::array<int, 3> pixels = {pl.pixels_[0], pl.pixels_[1], pl.pixels_[2]};
-  write_attribute(file_id, "num_voxels", pixels);
+  write_attribute(file_id, "num_voxels", pl.pixels_);
   write_attribute(file_id, "voxel_width", vox);
   write_attribute(file_id, "lower_left", ll);
 
@@ -982,17 +954,24 @@ RGBColor random_color() {
 
 extern "C" int openmc_id_map(void* slice, int32_t* data_out) {
 
-  auto sl = static_cast<Slice*>(slice);
+  auto sl = reinterpret_cast<Slice*>(slice);
+  if (!sl) {
+    set_errmsg("Invalid slice pointer passed to openmc_id_map");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
 
   size_t width = sl->pixels_[0];
   size_t height = sl->pixels_[1];
 
+  // get pixel size
   double in_pixel = (sl->width_[0])/static_cast<double>(width);
   double out_pixel = (sl->width_[1])/static_cast<double>(height);
 
+  // size data array
   IDData data;
   data.resize({height, width, 2});
 
+  // setup basis indices and initial position centered on pixel
   int in_i, out_i;
   double xyz[3];
   switch(sl->basis_) {
@@ -1019,43 +998,45 @@ extern "C" int openmc_id_map(void* slice, int32_t* data_out) {
     break;
   }
 
+  // arbitrary direction
   double dir[3] = {0.5, 0.5, 0.5};
 
 #pragma omp parallel
 {
   Particle p;
-  p.coord_[0].r = xyz;
-  p.coord_[0].u = dir;
+  p.r() = xyz;
+  p.u() = dir;
   p.coord_[0].universe = model::root_universe;
   int level = sl->level_;
   int j{};
 
 #pragma omp for
   for (int y = 0; y < height; y++) {
-    p.coord_[0].r[out_i] =  xyz[out_i] - out_pixel * y;
+    p.r()[out_i] =  xyz[out_i] - out_pixel * y;
     for (int x = 0; x < width; x++) {
-      p.coord_[0].r[in_i] = xyz[in_i] + in_pixel * x;
+      p.r()[in_i] = xyz[in_i] + in_pixel * x;
       p.n_coord_ = 1;
       // local variables
       bool found_cell = find_cell(&p, 0);
       j = p.n_coord_ - 1;
       if (level >=0) {j = level + 1;}
       if (!found_cell) {
-        data(y,x,0) = -1;
-        data(y,x,1) = -1;
+        data(y,x,0) = NOT_FOUND;
+        data(y,x,1) = NOT_FOUND;
       } else {
         Cell *c = model::cells[p.coord_[j].cell].get();
         data(y,x,0) = c->id_;
         if (c->type_ == FILL_UNIVERSE || p.material_ == MATERIAL_VOID) {
-          data(y,x,1) = -1;
+          data(y,x,1) = NOT_FOUND;
         } else {
           data(y,x,1) = model::materials[p.material_]->id_;
         }
       }
-    }
-  }
- }
+    } // inner for
+  } // outer for
+ } // omp parallel
 
+  // write id data to array
   size_t i = 0;
   for (auto v : data) { data_out[i++] = v; }
 

@@ -88,7 +88,7 @@ parameters for a sphere are the :math:`x,y,z` coordinates of the center of the
 sphere and the radius of the sphere. All of these parameters can be set either
 as optional keyword arguments to the class constructor or via attributes::
 
-  sphere = openmc.Sphere(R=10.0)
+  sphere = openmc.Sphere(r=10.0)
 
   # This is equivalent
   sphere = openmc.Sphere()
@@ -98,7 +98,7 @@ Once a surface has been created, half-spaces can be obtained by applying the
 unary ``-`` or ``+`` operators, corresponding to the negative and positive
 half-spaces, respectively. For example::
 
-   >>> sphere = openmc.Sphere(R=10.0)
+   >>> sphere = openmc.Sphere(r=10.0)
    >>> inside_sphere = -sphere
    >>> outside_sphere = +sphere
    >>> type(inside_sphere)
@@ -140,10 +140,10 @@ may want to specify different behavior for particles passing through a
 surface. To specify a vacuum boundary condition, simply change the
 :attr:`Surface.boundary_type` attribute to 'vacuum'::
 
-   outer_surface = openmc.Sphere(R=100.0, boundary_type='vacuum')
+   outer_surface = openmc.Sphere(r=100.0, boundary_type='vacuum')
 
    # This is equivalent
-   outer_surface = openmc.Sphere(R=100.0)
+   outer_surface = openmc.Sphere(r=100.0)
    outer_surface.boundary_type = 'vacuum'
 
 Reflective and periodic boundary conditions can be set with the strings
@@ -154,8 +154,8 @@ can be determined automatically. For non-axis-aligned planes, it is necessary to
 specify pairs explicitly using the :attr:`Surface.periodic_surface` attribute as
 in the following example::
 
-  p1 = openmc.Plane(A=0.3, B=5.0, D=1.0, boundary_type='periodic')
-  p2 = openmc.Plane(A=0.3, B=5.0, D=-1.0, boundary_type='periodic')
+  p1 = openmc.Plane(a=0.3, b=5.0, d=1.0, boundary_type='periodic')
+  p2 = openmc.Plane(a=0.3, b=5.0, d=-1.0, boundary_type='periodic')
   p1.periodic_surface = p2
 
 Rotationally-periodic boundary conditions can be specified for a pair of

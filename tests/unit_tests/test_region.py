@@ -75,7 +75,7 @@ def test_intersection(reset):
 
 
 def test_complement(reset):
-    zcyl = openmc.ZCylinder(surface_id=1, R=1.)
+    zcyl = openmc.ZCylinder(surface_id=1, r=1.)
     z0 = openmc.ZPlane(surface_id=2, z0=-5.)
     z1 = openmc.ZPlane(surface_id=3, z0=5.)
     outside = +zcyl | -z0 | +z1

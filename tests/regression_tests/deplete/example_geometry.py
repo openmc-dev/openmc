@@ -182,14 +182,14 @@ def segment_pin(n_rings, n_wedges, r_fuel, r_gap, r_clad):
     theta = np.linspace(0, 2*math.pi, n_wedges + 1)
 
     # Compute surfaces
-    fuel_rings = [openmc.ZCylinder(x0=0, y0=0, R=r_rings[i])
+    fuel_rings = [openmc.ZCylinder(x0=0, y0=0, r=r_rings[i])
                   for i in range(n_rings)]
 
-    fuel_wedges = [openmc.Plane(A=math.cos(theta[i]), B=math.sin(theta[i]))
+    fuel_wedges = [openmc.Plane(a=math.cos(theta[i]), b=math.sin(theta[i]))
                    for i in range(n_wedges)]
 
-    gap_ring = openmc.ZCylinder(x0=0, y0=0, R=r_gap)
-    clad_ring = openmc.ZCylinder(x0=0, y0=0, R=r_clad)
+    gap_ring = openmc.ZCylinder(x0=0, y0=0, r=r_gap)
+    clad_ring = openmc.ZCylinder(x0=0, y0=0, r=r_clad)
 
     # Create cells
     fuel_cells = []

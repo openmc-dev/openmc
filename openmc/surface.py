@@ -4,6 +4,7 @@ from copy import deepcopy
 from functools import partial
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
+from warnings import warn
 
 import numpy as np
 
@@ -13,6 +14,11 @@ from openmc.mixin import IDManagerMixin
 
 
 _BOUNDARY_TYPES = ['transmission', 'vacuum', 'reflective', 'periodic']
+
+_WARNING_UPPER = """\
+"{}(...) accepts an argument named '{}', not '{}'. Future versions of OpenMC \
+will not accept the capitalized version.\
+"""
 
 
 class Surface(IDManagerMixin, metaclass=ABCMeta):
@@ -287,29 +293,29 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
             surface = Plane(surface_id, bc, A, B, C, D, name)
 
         elif surf_type == 'x-cylinder':
-            y0, z0, R = coeffs
-            surface = XCylinder(surface_id, bc, y0, z0, R, name)
+            y0, z0, r = coeffs
+            surface = XCylinder(surface_id, bc, y0, z0, r, name)
 
         elif surf_type == 'y-cylinder':
-            x0, z0, R = coeffs
-            surface = YCylinder(surface_id, bc, x0, z0, R, name)
+            x0, z0, r = coeffs
+            surface = YCylinder(surface_id, bc, x0, z0, r, name)
 
         elif surf_type == 'z-cylinder':
-            x0, y0, R = coeffs
-            surface = ZCylinder(surface_id, bc, x0, y0, R, name)
+            x0, y0, r = coeffs
+            surface = ZCylinder(surface_id, bc, x0, y0, r, name)
 
         elif surf_type == 'sphere':
-            x0, y0, z0, R = coeffs
-            surface = Sphere(surface_id, bc, x0, y0, z0, R, name)
+            x0, y0, z0, r = coeffs
+            surface = Sphere(surface_id, bc, x0, y0, z0, r, name)
 
         elif surf_type in ['x-cone', 'y-cone', 'z-cone']:
-            x0, y0, z0, R2 = coeffs
+            x0, y0, z0, r2 = coeffs
             if surf_type == 'x-cone':
-                surface = XCone(surface_id, bc, x0, y0, z0, R2, name)
+                surface = XCone(surface_id, bc, x0, y0, z0, r2, name)
             elif surf_type == 'y-cone':
-                surface = YCone(surface_id, bc, x0, y0, z0, R2, name)
+                surface = YCone(surface_id, bc, x0, y0, z0, r2, name)
             elif surf_type == 'z-cone':
-                surface = ZCone(surface_id, bc, x0, y0, z0, R2, name)
+                surface = ZCone(surface_id, bc, x0, y0, z0, r2, name)
 
         elif surf_type == 'quadric':
             a, b, c, d, e, f, g, h, j, k = coeffs
@@ -331,13 +337,13 @@ class Plane(Surface):
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
-    A : float, optional
+    a : float, optional
         The 'A' parameter for the plane. Defaults to 1.
-    B : float, optional
+    b : float, optional
         The 'B' parameter for the plane. Defaults to 0.
-    C : float, optional
+    c : float, optional
         The 'C' parameter for the plane. Defaults to 0.
-    D : float, optional
+    d : float, optional
         The 'D' parameter for the plane. Defaults to 0.
     name : str, optional
         Name of the plane. If not specified, the name will be the empty string.
@@ -370,56 +376,61 @@ class Plane(Surface):
     """
 
     _type = 'plane'
-    _coeff_keys = ('A', 'B', 'C', 'D')
+    _coeff_keys = ('a', 'b', 'c', 'd')
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 A=1., B=0., C=0., D=0., name=''):
+                 a=1., b=0., c=0., d=0., name='', **kwargs):
         super().__init__(surface_id, boundary_type, name=name)
         self._periodic_surface = None
-        self.a = A
-        self.b = B
-        self.c = C
-        self.d = D
+        self.a = a
+        self.b = b
+        self.c = c
+        self.d = d
+        for k, v in kwargs.items():
+            if k in 'ABCD':
+                warn(_WARNING_UPPER.format(type(self).__name__, k.lower(), k),
+                    FutureWarning)
+                setattr(self, k.lower(), v)
 
     @property
     def a(self):
-        return self.coefficients['A']
+        return self.coefficients['a']
 
     @property
     def b(self):
-        return self.coefficients['B']
+        return self.coefficients['b']
 
     @property
     def c(self):
-        return self.coefficients['C']
+        return self.coefficients['c']
 
     @property
     def d(self):
-        return self.coefficients['D']
+        return self.coefficients['d']
 
     @property
     def periodic_surface(self):
         return self._periodic_surface
 
     @a.setter
-    def a(self, A):
-        check_type('A coefficient', A, Real)
-        self._coefficients['A'] = A
+    def a(self, a):
+        check_type('A coefficient', a, Real)
+        self._coefficients['a'] = a
 
     @b.setter
-    def b(self, B):
-        check_type('B coefficient', B, Real)
-        self._coefficients['B'] = B
+    def b(self, b):
+        check_type('B coefficient', b, Real)
+        self._coefficients['b'] = b
 
     @c.setter
-    def c(self, C):
-        check_type('C coefficient', C, Real)
-        self._coefficients['C'] = C
+    def c(self, c):
+        check_type('C coefficient', c, Real)
+        self._coefficients['c'] = c
 
     @d.setter
-    def d(self, D):
-        check_type('D coefficient', D, Real)
-        self._coefficients['D'] = D
+    def d(self, d):
+        check_type('D coefficient', d, Real)
+        self._coefficients['d'] = d
 
     @periodic_surface.setter
     def periodic_surface(self, periodic_surface):
@@ -465,7 +476,7 @@ class Plane(Surface):
         if d == self.d:
             return self
         else:
-            return type(self)(A=self.a, B=self.b, C=self.c, D=d)
+            return type(self)(a=self.a, b=self.b, c=self.c, d=d)
 
     def to_xml_element(self):
         """Return XML representation of the surface
@@ -511,10 +522,10 @@ class Plane(Surface):
         n = np.cross(p2 - p1, p3 - p1)
 
         # The equation of the plane will by n·(<x,y,z> - p1) = 0. Determine
-        # coefficients A, B, C, and D based on that
-        A, B, C = n
-        D = np.dot(n, p1)
-        return cls(A=A, B=B, C=C, D=D, **kwargs)
+        # coefficients a, b, c, and d based on that
+        a, b, c = n
+        d = np.dot(n, p1)
+        return cls(a=a, b=b, c=c, d=d, **kwargs)
 
 
 class XPlane(Plane):
@@ -906,7 +917,7 @@ class Cylinder(Surface):
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
-    R : float, optional
+    r : float, optional
         Radius of the cylinder. Defaults to 1.
     name : str, optional
         Name of the cylinder. If not specified, the name will be the empty
@@ -930,23 +941,23 @@ class Cylinder(Surface):
 
     """
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 R=1., name=''):
+                 r=1., name=''):
         super().__init__(surface_id, boundary_type, name=name)
-        self.r = R
+        self.r = r
 
     @property
     def r(self):
-        return self.coefficients['R']
+        return self.coefficients['r']
 
     @r.setter
-    def r(self, R):
-        check_type('R coefficient', R, Real)
-        self._coefficients['R'] = R
+    def r(self, r):
+        check_type('r coefficient', r, Real)
+        self._coefficients['r'] = r
 
 
 class XCylinder(Cylinder):
     """An infinite cylinder whose length is parallel to the x-axis of the form
-    :math:`(y - y_0)^2 + (z - z_0)^2 = R^2`.
+    :math:`(y - y_0)^2 + (z - z_0)^2 = r^2`.
 
     Parameters
     ----------
@@ -961,7 +972,7 @@ class XCylinder(Cylinder):
         y-coordinate of the center of the cylinder. Defaults to 0.
     z0 : float, optional
         z-coordinate of the center of the cylinder. Defaults to 0.
-    R : float, optional
+    r : float, optional
         Radius of the cylinder. Defaults to 0.
     name : str, optional
         Name of the cylinder. If not specified, the name will be the empty
@@ -988,11 +999,14 @@ class XCylinder(Cylinder):
     """
 
     _type = 'x-cylinder'
-    _coeff_keys = ('y0', 'z0', 'R')
+    _coeff_keys = ('y0', 'z0', 'r')
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 y0=0., z0=0., R=1., name=''):
-        super().__init__(surface_id, boundary_type, R, name=name)
+                 y0=0., z0=0., r=1., name='', *, R=None):
+        if R is not None:
+            warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'), FutureWarning)
+            r = R
+        super().__init__(surface_id, boundary_type, r, name=name)
         self.y0 = y0
         self.z0 = z0
 
@@ -1058,7 +1072,7 @@ class XCylinder(Cylinder):
         Returns
         -------
         float
-            :math:`(y' - y_0)^2 + (z' - z_0)^2 - R^2`
+            :math:`(y' - y_0)^2 + (z' - z_0)^2 - r^2`
 
         """
         y = point[1] - self.y0
@@ -1085,12 +1099,12 @@ class XCylinder(Cylinder):
         else:
             y0 = self.y0 + vy
             z0 = self.z0 + vz
-            return type(self)(y0=y0, z0=z0, R=self.r)
+            return type(self)(y0=y0, z0=z0, r=self.r)
 
 
 class YCylinder(Cylinder):
     """An infinite cylinder whose length is parallel to the y-axis of the form
-    :math:`(x - x_0)^2 + (z - z_0)^2 = R^2`.
+    :math:`(x - x_0)^2 + (z - z_0)^2 = r^2`.
 
     Parameters
     ----------
@@ -1105,7 +1119,7 @@ class YCylinder(Cylinder):
         x-coordinate of the center of the cylinder. Defaults to 0.
     z0 : float, optional
         z-coordinate of the center of the cylinder. Defaults to 0.
-    R : float, optional
+    r : float, optional
         Radius of the cylinder. Defaults to 1.
     name : str, optional
         Name of the cylinder. If not specified, the name will be the empty
@@ -1132,11 +1146,14 @@ class YCylinder(Cylinder):
     """
 
     _type = 'y-cylinder'
-    _coeff_keys = ('x0', 'z0', 'R')
+    _coeff_keys = ('x0', 'z0', 'r')
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 x0=0., z0=0., R=1., name=''):
-        super().__init__(surface_id, boundary_type, R, name=name)
+                 x0=0., z0=0., r=1., name='', *, R=None):
+        if R is not None:
+            warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'), FutureWarning)
+            r = R
+        super().__init__(surface_id, boundary_type, r, name=name)
         self.x0 = x0
         self.z0 = z0
 
@@ -1202,7 +1219,7 @@ class YCylinder(Cylinder):
         Returns
         -------
         float
-            :math:`(x' - x_0)^2 + (z' - z_0)^2 - R^2`
+            :math:`(x' - x_0)^2 + (z' - z_0)^2 - r^2`
 
         """
         x = point[0] - self.x0
@@ -1229,12 +1246,12 @@ class YCylinder(Cylinder):
         else:
             x0 = self.x0 + vx
             z0 = self.z0 + vz
-            return type(self)(x0=x0, z0=z0, R=self.r)
+            return type(self)(x0=x0, z0=z0, r=self.r)
 
 
 class ZCylinder(Cylinder):
     """An infinite cylinder whose length is parallel to the z-axis of the form
-    :math:`(x - x_0)^2 + (y - y_0)^2 = R^2`.
+    :math:`(x - x_0)^2 + (y - y_0)^2 = r^2`.
 
     Parameters
     ----------
@@ -1249,7 +1266,7 @@ class ZCylinder(Cylinder):
         x-coordinate of the center of the cylinder. Defaults to 0.
     y0 : float, optional
         y-coordinate of the center of the cylinder. Defaults to 0.
-    R : float, optional
+    r : float, optional
         Radius of the cylinder. Defaults to 1.
     name : str, optional
         Name of the cylinder. If not specified, the name will be the empty
@@ -1276,11 +1293,14 @@ class ZCylinder(Cylinder):
     """
 
     _type = 'z-cylinder'
-    _coeff_keys = ('x0', 'y0', 'R')
+    _coeff_keys = ('x0', 'y0', 'r')
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 x0=0., y0=0., R=1., name=''):
-        super().__init__(surface_id, boundary_type, R, name=name)
+                 x0=0., y0=0., r=1., name='', *, R=None):
+        if R is not None:
+            warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'), FutureWarning)
+            r = R
+        super().__init__(surface_id, boundary_type, r, name=name)
         self.x0 = x0
         self.y0 = y0
 
@@ -1346,7 +1366,7 @@ class ZCylinder(Cylinder):
         Returns
         -------
         float
-            :math:`(x' - x_0)^2 + (y' - y_0)^2 - R^2`
+            :math:`(x' - x_0)^2 + (y' - y_0)^2 - r^2`
 
         """
         x = point[0] - self.x0
@@ -1373,11 +1393,11 @@ class ZCylinder(Cylinder):
         else:
             x0 = self.x0 + vx
             y0 = self.y0 + vy
-            return type(self)(x0=x0, y0=y0, R=self.r)
+            return type(self)(x0=x0, y0=y0, r=self.r)
 
 
 class Sphere(Surface):
-    """A sphere of the form :math:`(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 = R^2`.
+    """A sphere of the form :math:`(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 = r^2`.
 
     Parameters
     ----------
@@ -1394,7 +1414,7 @@ class Sphere(Surface):
         y-coordinate of the center of the sphere. Defaults to 0.
     z0 : float, optional
         z-coordinate of the center of the sphere. Defaults to 0.
-    R : float, optional
+    r : float, optional
         Radius of the sphere. Defaults to 1.
     name : str, optional
         Name of the sphere. If not specified, the name will be the empty string.
@@ -1424,15 +1444,18 @@ class Sphere(Surface):
     """
 
     _type = 'sphere'
-    _coeff_keys = ('x0', 'y0', 'z0', 'R')
+    _coeff_keys = ('x0', 'y0', 'z0', 'r')
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 x0=0., y0=0., z0=0., R=1., name=''):
+                 x0=0., y0=0., z0=0., r=1., name='', *, R=None):
+        if R is not None:
+            warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'), FutureWarning)
+            r = R
         super().__init__(surface_id, boundary_type, name=name)
         self.x0 = x0
         self.y0 = y0
         self.z0 = z0
-        self.r = R
+        self.r = r
 
     @property
     def x0(self):
@@ -1448,7 +1471,7 @@ class Sphere(Surface):
 
     @property
     def r(self):
-        return self.coefficients['R']
+        return self.coefficients['r']
 
     @x0.setter
     def x0(self, x0):
@@ -1466,9 +1489,9 @@ class Sphere(Surface):
         self._coefficients['z0'] = z0
 
     @r.setter
-    def r(self, R):
-        check_type('R coefficient', R, Real)
-        self._coefficients['R'] = R
+    def r(self, r):
+        check_type('r coefficient', r, Real)
+        self._coefficients['r'] = r
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -1515,7 +1538,7 @@ class Sphere(Surface):
         Returns
         -------
         float
-            :math:`(x' - x_0)^2 + (y' - y_0)^2 + (z' - z_0)^2 - R^2`
+            :math:`(x' - x_0)^2 + (y' - y_0)^2 + (z' - z_0)^2 - r^2`
 
         """
         x = point[0] - self.x0
@@ -1544,7 +1567,7 @@ class Sphere(Surface):
             x0 = self.x0 + vx
             y0 = self.y0 + vy
             z0 = self.z0 + vz
-            return type(self)(x0=x0, y0=y0, z0=z0, R=self.r)
+            return type(self)(x0=x0, y0=y0, z0=z0, r=self.r)
 
 
 class Cone(Surface):
@@ -1565,7 +1588,7 @@ class Cone(Surface):
         y-coordinate of the apex. Defaults to 0.
     z0 : float
         z-coordinate of the apex. Defaults to 0.
-    R2 : float
+    r2 : float
         Parameter related to the aperature. Defaults to 1.
     name : str
         Name of the cone. If not specified, the name will be the empty string.
@@ -1594,15 +1617,18 @@ class Cone(Surface):
 
     """
 
-    _coeff_keys = ('x0', 'y0', 'z0', 'R2')
+    _coeff_keys = ('x0', 'y0', 'z0', 'r2')
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 x0=0., y0=0., z0=0., R2=1., name=''):
+                 x0=0., y0=0., z0=0., r2=1., name='', *, R2=None):
+        if R2 is not None:
+            warn(_WARNING_UPPER.format(type(self).__name__, 'r2', 'R2'), FutureWarning)
+            r2 = R2
         super().__init__(surface_id, boundary_type, name=name)
         self.x0 = x0
         self.y0 = y0
         self.z0 = z0
-        self.r2 = R2
+        self.r2 = r2
 
     @property
     def x0(self):
@@ -1618,7 +1644,7 @@ class Cone(Surface):
 
     @property
     def r2(self):
-        return self.coefficients['R2']
+        return self.coefficients['r2']
 
     @x0.setter
     def x0(self, x0):
@@ -1636,9 +1662,9 @@ class Cone(Surface):
         self._coefficients['z0'] = z0
 
     @r2.setter
-    def r2(self, R2):
-        check_type('R^2 coefficient', R2, Real)
-        self._coefficients['R2'] = R2
+    def r2(self, r2):
+        check_type('r^2 coefficient', r2, Real)
+        self._coefficients['r2'] = r2
 
     def translate(self, vector):
         """Translate surface in given direction
@@ -1661,12 +1687,12 @@ class Cone(Surface):
             x0 = self.x0 + vx
             y0 = self.y0 + vy
             z0 = self.z0 + vz
-            return type(self)(x0=x0, y0=y0, z0=z0, R2=self.r2)
+            return type(self)(x0=x0, y0=y0, z0=z0, r2=self.r2)
 
 
 class XCone(Cone):
     """A cone parallel to the x-axis of the form :math:`(y - y_0)^2 + (z - z_0)^2 =
-    R^2 (x - x_0)^2`.
+    r^2 (x - x_0)^2`.
 
     Parameters
     ----------
@@ -1683,7 +1709,7 @@ class XCone(Cone):
         y-coordinate of the apex. Defaults to 0.
     z0 : float, optional
         z-coordinate of the apex. Defaults to 0.
-    R2 : float, optional
+    r2 : float, optional
         Parameter related to the aperature. Defaults to 1.
     name : str, optional
         Name of the cone. If not specified, the name will be the empty string.
@@ -1696,7 +1722,7 @@ class XCone(Cone):
         y-coordinate of the apex
     z0 : float
         z-coordinate of the apex
-    R2 : float
+    r2 : float
         Parameter related to the aperature
     boundary_type : {'transmission, 'vacuum', 'reflective'}
         Boundary condition that defines the behavior for particles hitting the
@@ -1726,7 +1752,7 @@ class XCone(Cone):
         Returns
         -------
         float
-            :math:`(y' - y_0)^2 + (z' - z_0)^2 - R^2(x' - x_0)^2`
+            :math:`(y' - y_0)^2 + (z' - z_0)^2 - r^2(x' - x_0)^2`
 
         """
         x = point[0] - self.x0
@@ -1737,7 +1763,7 @@ class XCone(Cone):
 
 class YCone(Cone):
     """A cone parallel to the y-axis of the form :math:`(x - x_0)^2 + (z - z_0)^2 =
-    R^2 (y - y_0)^2`.
+    r^2 (y - y_0)^2`.
 
     Parameters
     ----------
@@ -1754,7 +1780,7 @@ class YCone(Cone):
         y-coordinate of the apex. Defaults to 0.
     z0 : float, optional
         z-coordinate of the apex. Defaults to 0.
-    R2 : float, optional
+    r2 : float, optional
         Parameter related to the aperature. Defaults to 1.
     name : str, optional
         Name of the cone. If not specified, the name will be the empty string.
@@ -1767,7 +1793,7 @@ class YCone(Cone):
         y-coordinate of the apex
     z0 : float
         z-coordinate of the apex
-    R2 : float
+    r2 : float
         Parameter related to the aperature
     boundary_type : {'transmission, 'vacuum', 'reflective'}
         Boundary condition that defines the behavior for particles hitting the
@@ -1797,7 +1823,7 @@ class YCone(Cone):
         Returns
         -------
         float
-            :math:`(x' - x_0)^2 + (z' - z_0)^2 - R^2(y' - y_0)^2`
+            :math:`(x' - x_0)^2 + (z' - z_0)^2 - r^2(y' - y_0)^2`
 
         """
         x = point[0] - self.x0
@@ -1808,7 +1834,7 @@ class YCone(Cone):
 
 class ZCone(Cone):
     """A cone parallel to the x-axis of the form :math:`(x - x_0)^2 + (y - y_0)^2 =
-    R^2 (z - z_0)^2`.
+    r^2 (z - z_0)^2`.
 
     Parameters
     ----------
@@ -1825,7 +1851,7 @@ class ZCone(Cone):
         y-coordinate of the apex. Defaults to 0.
     z0 : float, optional
         z-coordinate of the apex. Defaults to 0.
-    R2 : float, optional
+    r2 : float, optional
         Parameter related to the aperature. Defaults to 1.
     name : str, optional
         Name of the cone. If not specified, the name will be the empty string.
@@ -1838,7 +1864,7 @@ class ZCone(Cone):
         y-coordinate of the apex
     z0 : float
         z-coordinate of the apex
-    R2 : float
+    r2 : float
         Parameter related to the aperature
     boundary_type : {'transmission, 'vacuum', 'reflective'}
         Boundary condition that defines the behavior for particles hitting the
@@ -1868,7 +1894,7 @@ class ZCone(Cone):
         Returns
         -------
         float
-            :math:`(x' - x_0)^2 + (y' - y_0)^2 - R^2(z' - z_0)^2`
+            :math:`(x' - x_0)^2 + (y' - y_0)^2 - r^2(z' - z_0)^2`
 
         """
         x = point[0] - self.x0
@@ -2080,7 +2106,7 @@ class Halfspace(Region):
     can be created from an existing Surface through the __neg__ and __pos__
     operators, as the following example demonstrates:
 
-    >>> sphere = openmc.Sphere(surface_id=1, R=10.0)
+    >>> sphere = openmc.Sphere(surface_id=1, r=10.0)
     >>> inside_sphere = -sphere
     >>> outside_sphere = +sphere
     >>> type(inside_sphere)

@@ -14,7 +14,7 @@ class SourceTestHarness(PyAPITestHarness):
         materials = openmc.Materials([mat])
         materials.export_to_xml()
 
-        cyl = openmc.XCylinder(boundary_type='vacuum', R=1.0e-6)
+        cyl = openmc.XCylinder(boundary_type='vacuum', r=1.0e-6)
         x_plane_left = openmc.XPlane(boundary_type='vacuum', x0=-1.0)
         x_plane_center = openmc.XPlane(boundary_type='transmission', x0=1.0)
         x_plane_right = openmc.XPlane(boundary_type='vacuum', x0=1.0e9)

@@ -54,9 +54,9 @@ borated_water.add_s_alpha_beta('c_H_in_H2O')
 ###############################################################################
 
 # Instantiate ZCylinder surfaces
-fuel_or = openmc.ZCylinder(surface_id=1, x0=0, y0=0, R=0.39218, name='Fuel OR')
-clad_ir = openmc.ZCylinder(surface_id=2, x0=0, y0=0, R=0.40005, name='Clad IR')
-clad_or = openmc.ZCylinder(surface_id=3, x0=0, y0=0, R=0.45720, name='Clad OR')
+fuel_or = openmc.ZCylinder(surface_id=1, x0=0, y0=0, r=0.39218, name='Fuel OR')
+clad_ir = openmc.ZCylinder(surface_id=2, x0=0, y0=0, r=0.40005, name='Clad IR')
+clad_or = openmc.ZCylinder(surface_id=3, x0=0, y0=0, r=0.45720, name='Clad OR')
 left = openmc.XPlane(surface_id=4, x0=-0.62992, name='left')
 right = openmc.XPlane(surface_id=5, x0=0.62992, name='right')
 bottom = openmc.YPlane(surface_id=6, y0=-0.62992, name='bottom')

@@ -261,7 +261,7 @@ class Intersection(Region, MutableSequence):
     following example:
 
     >>> equator = openmc.ZPlane(z0=0.0)
-    >>> earth = openmc.Sphere(R=637.1e6)
+    >>> earth = openmc.Sphere(r=637.1e6)
     >>> northern_hemisphere = -earth & +equator
     >>> southern_hemisphere = -earth & -equator
     >>> type(northern_hemisphere)
@@ -396,7 +396,7 @@ class Union(Region, MutableSequence):
     example:
 
     >>> s1 = openmc.ZPlane(z0=0.0)
-    >>> s2 = openmc.Sphere(R=637.1e6)
+    >>> s2 = openmc.Sphere(r=637.1e6)
     >>> type(-s2 | +s1)
     <class 'openmc.region.Union'>
 

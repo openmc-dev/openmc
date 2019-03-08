@@ -34,8 +34,8 @@ def test_basic():
 
 
 def test_bounding_box():
-    cyl1 = openmc.ZCylinder(R=1.0)
-    cyl2 = openmc.ZCylinder(R=2.0)
+    cyl1 = openmc.ZCylinder(r=1.0)
+    cyl2 = openmc.ZCylinder(r=2.0)
     c1 = openmc.Cell(region=-cyl1)
     c2 = openmc.Cell(region=+cyl1 & -cyl2)
 

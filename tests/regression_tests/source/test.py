@@ -14,7 +14,7 @@ class SourceTestHarness(PyAPITestHarness):
         materials = openmc.Materials([mat1])
         materials.export_to_xml()
 
-        sphere = openmc.Sphere(surface_id=1, R=10.0, boundary_type='vacuum')
+        sphere = openmc.Sphere(surface_id=1, r=10.0, boundary_type='vacuum')
         inside_sphere = openmc.Cell(cell_id=1)
         inside_sphere.region = -sphere
         inside_sphere.fill = mat1

@@ -403,9 +403,9 @@ def test_load_nuclide(capi_init):
 
 
 def test_id_map(capi_init):
-    expected_ids = np.array([[(3,3), (2,2), (3,3)],
-                             [(2,2), (1,1), (2,2)],
-                             [(3,3), (2,2), (3,3)]], dtype = 'int32')
+    expected_ids = np.array([[(3, 3), (2, 2), (3, 3)],
+                             [(2, 2), (1, 1), (2, 2)],
+                             [(3, 3), (2, 2), (3, 3)]], dtype='int32')
 
     # create a plot object
     s = openmc.capi.plot._Slice()
@@ -413,7 +413,7 @@ def test_id_map(capi_init):
     s.height = 1.26
     s.vRes = 3
     s.hRes = 3
-    s.origin = (0,0,0)
+    s.origin = (0.0, 0.0, 0.0)
     s.basis = 'xy'
     s.level = -1
 

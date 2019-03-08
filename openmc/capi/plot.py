@@ -6,6 +6,7 @@ from .error import _error_handler
 
 import numpy as np
 
+
 class _Position(Structure):
     """Definition of an xyz location in space with underlying c-types
 
@@ -179,7 +180,8 @@ class _Slice(Structure):
             self.basis_ = basis
             return
 
-        raise ValueError("{} of type {} is an invalid plot basis".format(basis, type(basis)))
+        raise ValueError("{} of type {} is an"
+                         " invalid plot basis".format(basis, type(basis)))
 
     @hRes.setter
     def hRes(self, hRes):
@@ -194,7 +196,7 @@ class _Slice(Structure):
         self.level_ = level
 
     def __repr__(self):
-        out_str  = "-----\n"
+        out_str = "-----\n"
         out_str += "Plot:\n"
         out_str += "-----\n"
         out_str += "Origin: {}\n".format(self.origin)
@@ -210,19 +212,20 @@ class _Slice(Structure):
         return self.__repr__()
 
 
-_dll.openmc_id_map.argtypes= [POINTER(_Slice),POINTER(c_int32)]
+_dll.openmc_id_map.argtypes = [POINTER(_Slice), POINTER(c_int32)]
 _dll.openmc_id_map.restype = c_int
 _dll.openmc_id_map.errcheck = _error_handler
 
 
 def id_map(slice_view):
     """
-    Generate a 2-D map of (cell_id, material_id). Used for in-memory image generation.
+    Generate a 2-D map of (cell_id, material_id). Used for in-memory image
+         generation.
 
     Parameters
     ----------
-    plot : An openmc.capi.plot._Slice object describing the slice of the model to
-           be generated
+    plot : An openmc.capi.plot._Slice object describing the slice of the model
+           to be generated
 
     Returns
     -------
@@ -230,7 +233,8 @@ def id_map(slice_view):
              of OpenMC property ids with dtype int32
 
     """
-    img_data = np.zeros((slice_view.vRes, slice_view.hRes, 2), dtype=np.dtype('int32'))
-    print("Calling openmc id map")
-    _dll.openmc_id_map(POINTER(_Slice)(slice_view), img_data.ctypes.data_as(POINTER(c_int32)))
+    img_data = np.zeros((slice_view.vRes, slice_view.hRes, 2),
+                        dtype=np.dtype('int32'))
+    _dll.openmc_id_map(POINTER(_Slice)(slice_view),
+                       img_data.ctypes.data_as(POINTER(c_int32)))
     return img_data

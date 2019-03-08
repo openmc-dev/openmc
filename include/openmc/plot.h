@@ -73,7 +73,7 @@ enum class PlotColorBy {
 //===============================================================================
 // Plot class
 //===============================================================================
-struct Slice {
+struct PlotBase {
   // Members
   Position origin_; //!< Plot origin in geometry
   Position width_; //!< Plot width in geometry
@@ -82,7 +82,7 @@ struct Slice {
   int level_; //!< Plot universe level
 };
 
-class Plot : public Slice
+class Plot : public PlotBase
 {
 
 public:

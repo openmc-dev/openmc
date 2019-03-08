@@ -952,20 +952,20 @@ RGBColor random_color() {
   return {int(prn()*255), int(prn()*255), int(prn()*255)};
 }
 
-extern "C" int openmc_id_map(void* slice, int32_t* data_out) {
+extern "C" int openmc_id_map(void* plot, int32_t* data_out) {
 
-  auto sl = reinterpret_cast<Slice*>(slice);
-  if (!sl) {
+  auto plt = reinterpret_cast<PlotBase*>(plot);
+  if (!plt) {
     set_errmsg("Invalid slice pointer passed to openmc_id_map");
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  size_t width = sl->pixels_[0];
-  size_t height = sl->pixels_[1];
+  size_t width = plt->pixels_[0];
+  size_t height = plt->pixels_[1];
 
   // get pixel size
-  double in_pixel = (sl->width_[0])/static_cast<double>(width);
-  double out_pixel = (sl->width_[1])/static_cast<double>(height);
+  double in_pixel = (plt->width_[0])/static_cast<double>(width);
+  double out_pixel = (plt->width_[1])/static_cast<double>(height);
 
   // size data array
   IDData data;
@@ -974,27 +974,27 @@ extern "C" int openmc_id_map(void* slice, int32_t* data_out) {
   // setup basis indices and initial position centered on pixel
   int in_i, out_i;
   double xyz[3];
-  switch(sl->basis_) {
+  switch(plt->basis_) {
   case PlotBasis::xy :
     in_i = 0;
     out_i = 1;
-    xyz[0] = sl->origin_[0] - sl->width_[0] / 2. + in_pixel / 2.;
-    xyz[1] = sl->origin_[1] + sl->width_[1] / 2. - out_pixel / 2.;
-    xyz[2] = sl->origin_[2];
+    xyz[0] = plt->origin_[0] - plt->width_[0] / 2. + in_pixel / 2.;
+    xyz[1] = plt->origin_[1] + plt->width_[1] / 2. - out_pixel / 2.;
+    xyz[2] = plt->origin_[2];
     break;
   case PlotBasis::xz :
     in_i = 0;
     out_i = 2;
-    xyz[0] = sl->origin_[0] - sl->width_[0] / 2. + in_pixel / 2.;
-    xyz[1] = sl->origin_[1];
-    xyz[2] = sl->origin_[2] + sl->width_[1] / 2. - out_pixel / 2.;
+    xyz[0] = plt->origin_[0] - plt->width_[0] / 2. + in_pixel / 2.;
+    xyz[1] = plt->origin_[1];
+    xyz[2] = plt->origin_[2] + plt->width_[1] / 2. - out_pixel / 2.;
     break;
   case PlotBasis::yz :
     in_i = 1;
     out_i = 2;
-    xyz[0] = sl->origin_[0];
-    xyz[1] = sl->origin_[1] - sl->width_[0] / 2. + in_pixel / 2.;
-    xyz[2] = sl->origin_[2] + sl->width_[1] / 2. - out_pixel / 2.;
+    xyz[0] = plt->origin_[0];
+    xyz[1] = plt->origin_[1] - plt->width_[0] / 2. + in_pixel / 2.;
+    xyz[2] = plt->origin_[2] + plt->width_[1] / 2. - out_pixel / 2.;
     break;
   }
 
@@ -1007,7 +1007,7 @@ extern "C" int openmc_id_map(void* slice, int32_t* data_out) {
   p.r() = xyz;
   p.u() = dir;
   p.coord_[0].universe = model::root_universe;
-  int level = sl->level_;
+  int level = plt->level_;
   int j{};
 
 #pragma omp for

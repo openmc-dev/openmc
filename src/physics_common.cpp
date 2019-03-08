@@ -172,12 +172,7 @@ void perform_vr(Particle* p)
     return;
   }
 
-<<<<<<< HEAD
   if (p->wgt_absorb_ == 0) return;
-=======
-  if (p->absorb_wgt == 0) return;
-
->>>>>>> Added settings, and master vr function
 
   if (variance_reduction::importance_splitting) 
     importance_split(p);

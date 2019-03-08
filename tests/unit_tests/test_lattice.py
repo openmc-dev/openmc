@@ -7,7 +7,7 @@ import pytest
 
 @pytest.fixture(scope='module')
 def pincell1(uo2, water):
-    cyl = openmc.ZCylinder(R=0.35)
+    cyl = openmc.ZCylinder(r=0.35)
     fuel = openmc.Cell(fill=uo2, region=-cyl)
     moderator = openmc.Cell(fill=water, region=+cyl)
 
@@ -19,7 +19,7 @@ def pincell1(uo2, water):
 
 @pytest.fixture(scope='module')
 def pincell2(uo2, water):
-    cyl = openmc.ZCylinder(R=0.4)
+    cyl = openmc.ZCylinder(r=0.4)
     fuel = openmc.Cell(fill=uo2, region=-cyl)
     moderator = openmc.Cell(fill=water, region=+cyl)
 

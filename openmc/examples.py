@@ -51,8 +51,8 @@ def pwr_pin_cell():
 
     # Instantiate ZCylinder surfaces
     pitch = 1.26
-    fuel_or = openmc.ZCylinder(x0=0, y0=0, R=0.39218, name='Fuel OR')
-    clad_or = openmc.ZCylinder(x0=0, y0=0, R=0.45720, name='Clad OR')
+    fuel_or = openmc.ZCylinder(x0=0, y0=0, r=0.39218, name='Fuel OR')
+    clad_or = openmc.ZCylinder(x0=0, y0=0, r=0.45720, name='Clad OR')
     left = openmc.XPlane(x0=-pitch/2, name='left', boundary_type='reflective')
     right = openmc.XPlane(x0=pitch/2, name='right', boundary_type='reflective')
     bottom = openmc.YPlane(y0=-pitch/2, name='bottom',
@@ -256,14 +256,14 @@ def pwr_core():
                        bot_nozzle, top_nozzle, top_fa, bot_fa)
 
     # Define surfaces.
-    s1 = openmc.ZCylinder(R=0.41, surface_id=1)
-    s2 = openmc.ZCylinder(R=0.475, surface_id=2)
-    s3 = openmc.ZCylinder(R=0.56, surface_id=3)
-    s4 = openmc.ZCylinder(R=0.62, surface_id=4)
-    s5 = openmc.ZCylinder(R=187.6, surface_id=5)
-    s6 = openmc.ZCylinder(R=209.0, surface_id=6)
-    s7 = openmc.ZCylinder(R=229.0, surface_id=7)
-    s8 = openmc.ZCylinder(R=249.0, surface_id=8, boundary_type='vacuum')
+    s1 = openmc.ZCylinder(r=0.41, surface_id=1)
+    s2 = openmc.ZCylinder(r=0.475, surface_id=2)
+    s3 = openmc.ZCylinder(r=0.56, surface_id=3)
+    s4 = openmc.ZCylinder(r=0.62, surface_id=4)
+    s5 = openmc.ZCylinder(r=187.6, surface_id=5)
+    s6 = openmc.ZCylinder(r=209.0, surface_id=6)
+    s7 = openmc.ZCylinder(r=229.0, surface_id=7)
+    s8 = openmc.ZCylinder(r=249.0, surface_id=8, boundary_type='vacuum')
 
     s31 = openmc.ZPlane(z0=-229.0, surface_id=31, boundary_type='vacuum')
     s32 = openmc.ZPlane(z0=-199.0, surface_id=32)
@@ -473,8 +473,8 @@ def pwr_assembly():
     model.materials = (fuel, clad, hot_water)
 
     # Instantiate ZCylinder surfaces
-    fuel_or = openmc.ZCylinder(x0=0, y0=0, R=0.39218, name='Fuel OR')
-    clad_or = openmc.ZCylinder(x0=0, y0=0, R=0.45720, name='Clad OR')
+    fuel_or = openmc.ZCylinder(x0=0, y0=0, r=0.39218, name='Fuel OR')
+    clad_or = openmc.ZCylinder(x0=0, y0=0, r=0.45720, name='Clad OR')
 
     # Create boundary planes to surround the geometry
     pitch = 21.42

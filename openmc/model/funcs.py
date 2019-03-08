@@ -237,16 +237,16 @@ def get_hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
         c = sqrt(3.)/3.
 
         # y = -x/sqrt(3) + a
-        upper_right = Plane(A=c, B=1., D=l+x*c+y, boundary_type=boundary_type)
+        upper_right = Plane(a=c, b=1., d=l+x*c+y, boundary_type=boundary_type)
 
         # y = x/sqrt(3) + a
-        upper_left = Plane(A=-c, B=1., D=l-x*c+y, boundary_type=boundary_type)
+        upper_left = Plane(a=-c, b=1., d=l-x*c+y, boundary_type=boundary_type)
 
         # y = x/sqrt(3) - a
-        lower_right = Plane(A=-c, B=1., D=-l-x*c+y, boundary_type=boundary_type)
+        lower_right = Plane(a=-c, b=1., d=-l-x*c+y, boundary_type=boundary_type)
 
         # y = -x/sqrt(3) - a
-        lower_left = Plane(A=c, B=1., D=-l+x*c+y, boundary_type=boundary_type)
+        lower_left = Plane(a=c, b=1., d=-l+x*c+y, boundary_type=boundary_type)
 
         prism = -right & +left & -upper_right & -upper_left & \
                 +lower_right & +lower_left
@@ -262,17 +262,17 @@ def get_hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
         c = sqrt(3.)
 
         # y = -sqrt(3)*(x - a)
-        upper_right = Plane(A=c, B=1., D=c*l+x*c+y, boundary_type=boundary_type)
+        upper_right = Plane(a=c, b=1., d=c*l+x*c+y, boundary_type=boundary_type)
 
         # y = sqrt(3)*(x + a)
-        lower_right = Plane(A=-c, B=1., D=-c*l-x*c+y,
+        lower_right = Plane(a=-c, b=1., d=-c*l-x*c+y,
                             boundary_type=boundary_type)
 
         # y = -sqrt(3)*(x + a)
-        lower_left = Plane(A=c, B=1., D=-c*l+x*c+y, boundary_type=boundary_type)
+        lower_left = Plane(a=c, b=1., d=-c*l+x*c+y, boundary_type=boundary_type)
 
         # y = sqrt(3)*(x + a)
-        upper_left = Plane(A=-c, B=1., D=c*l-x*c+y, boundary_type=boundary_type)
+        upper_left = Plane(a=-c, b=1., d=c*l-x*c+y, boundary_type=boundary_type)
 
         prism = -top & +bottom & -upper_right & +lower_right & \
                             +lower_left & -upper_left
@@ -292,8 +292,8 @@ def get_hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
         t = l - corner_radius/c
 
         # Cylinder with corner radius and boundary type pre-applied
-        cyl1 = partial(ZCylinder, R=corner_radius, boundary_type=boundary_type)
-        cyl2 = partial(ZCylinder, R=corner_radius/(2*c),
+        cyl1 = partial(ZCylinder, r=corner_radius, boundary_type=boundary_type)
+        cyl2 = partial(ZCylinder, r=corner_radius/(2*c),
                        boundary_type=boundary_type)
 
         if orientation == 'x':

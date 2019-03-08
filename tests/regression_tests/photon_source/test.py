@@ -15,19 +15,19 @@ class SourceTestHarness(PyAPITestHarness):
         materials = openmc.Materials([mat])
         materials.export_to_xml()
 
-        sphere = openmc.Sphere(R=1.0e9, boundary_type='reflective')
+        sphere = openmc.Sphere(r=1.0e9, boundary_type='reflective')
         inside_sphere = openmc.Cell()
         inside_sphere.region = -sphere
         inside_sphere.fill = mat
         geometry = openmc.Geometry([inside_sphere])
         geometry.export_to_xml()
- 
+
         source = openmc.Source()
         source.space = openmc.stats.Point((0, 0, 0))
         source.angle = openmc.stats.Isotropic()
         source.energy = openmc.stats.Discrete([10.0e6], [1.0])
         source.particle = 'photon'
- 
+
         settings = openmc.Settings()
         settings.particles = 10000
         settings.batches = 1
@@ -37,7 +37,7 @@ class SourceTestHarness(PyAPITestHarness):
         settings.run_mode = 'fixed source'
         settings.source = source
         settings.export_to_xml()
- 
+
         particle_filter = openmc.ParticleFilter('photon')
         tally = openmc.Tally()
         tally.filters = [particle_filter]

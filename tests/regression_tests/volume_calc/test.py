@@ -25,10 +25,10 @@ class VolumeTest(PyAPITestHarness):
         materials = openmc.Materials((water, fuel))
         materials.export_to_xml()
 
-        cyl = openmc.ZCylinder(1, R=1.0, boundary_type='vacuum')
-        top_sphere = openmc.Sphere(2, z0=5., R=1., boundary_type='vacuum')
+        cyl = openmc.ZCylinder(1, r=1.0, boundary_type='vacuum')
+        top_sphere = openmc.Sphere(2, z0=5., r=1., boundary_type='vacuum')
         top_plane = openmc.ZPlane(3, z0=5.)
-        bottom_sphere = openmc.Sphere(4, z0=-5., R=1., boundary_type='vacuum')
+        bottom_sphere = openmc.Sphere(4, z0=-5., r=1., boundary_type='vacuum')
         bottom_plane = openmc.ZPlane(5, z0=-5.)
 
         # Define geometry

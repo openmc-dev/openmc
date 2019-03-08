@@ -13,7 +13,7 @@ def assert_infinite_bb(s):
 
 
 def test_plane():
-    s = openmc.Plane(A=1, B=2, C=-1, D=3, name='my plane')
+    s = openmc.Plane(a=1, b=2, c=-1, d=3, name='my plane')
     assert s.a == 1
     assert s.b == 2
     assert s.c == -1
@@ -138,7 +138,7 @@ def test_zplane():
 
 def test_xcylinder():
     y, z, r = 3, 5, 2
-    s = openmc.XCylinder(y0=y, z0=z, R=r)
+    s = openmc.XCylinder(y0=y, z0=z, r=r)
     assert s.y0 == y
     assert s.z0 == z
     assert s.r == r
@@ -175,7 +175,7 @@ def test_periodic():
 
 def test_ycylinder():
     x, z, r = 3, 5, 2
-    s = openmc.YCylinder(x0=x, z0=z, R=r)
+    s = openmc.YCylinder(x0=x, z0=z, r=r)
     assert s.x0 == x
     assert s.z0 == z
     assert s.r == r
@@ -200,7 +200,7 @@ def test_ycylinder():
 
 def test_zcylinder():
     x, y, r = 3, 5, 2
-    s = openmc.ZCylinder(x0=x, y0=y, R=r)
+    s = openmc.ZCylinder(x0=x, y0=y, r=r)
     assert s.x0 == x
     assert s.y0 == y
     assert s.r == r
@@ -228,7 +228,7 @@ def test_zcylinder():
 
 def test_sphere():
     x, y, z, r = -3, 5, 6, 2
-    s = openmc.Sphere(x0=x, y0=y, z0=z, R=r)
+    s = openmc.Sphere(x0=x, y0=y, z0=z, r=r)
     assert s.x0 == x
     assert s.y0 == y
     assert s.z0 == z
@@ -258,7 +258,7 @@ def test_sphere():
 
 def cone_common(apex, r2, cls):
     x, y, z = apex
-    s = cls(x0=x, y0=y, z0=z, R2=r2)
+    s = cls(x0=x, y0=y, z0=z, r2=r2)
     assert s.x0 == x
     assert s.y0 == y
     assert s.z0 == z

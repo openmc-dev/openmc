@@ -52,7 +52,7 @@ struct RGBColor {
 };
 
 typedef xt::xtensor<RGBColor, 2> ImageData;
-typedef xt::xtensor<int32_t, 3>  IDData;
+typedef xt::xtensor<int32_t, 3>  IdData;
 
 enum class PlotType {
   slice = 1,

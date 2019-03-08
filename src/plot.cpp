@@ -968,7 +968,7 @@ extern "C" int openmc_id_map(void* plot, int32_t* data_out) {
   double out_pixel = (plt->width_[1])/static_cast<double>(height);
 
   // size data array
-  IDData data;
+  IdData data;
   data.resize({height, width, 2});
 
   // setup basis indices and initial position centered on pixel

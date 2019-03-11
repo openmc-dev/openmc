@@ -224,7 +224,7 @@ The following tables show all valid scores:
     +----------------------+---------------------------------------------------+
     |H2-production         |Total production of H2 (deuterium).                |
     +----------------------+---------------------------------------------------+
-    |H3-production         |Total production of H1 (tritium).                  |
+    |H3-production         |Total production of H3 (tritium).                  |
     +----------------------+---------------------------------------------------+
     |He3-production        |Total production of He3.                           |
     +----------------------+---------------------------------------------------+

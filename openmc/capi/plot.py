@@ -218,3 +218,26 @@ def id_map(plot):
     _dll.openmc_id_map(POINTER(_PlotBase)(plot),
                        img_data.ctypes.data_as(POINTER(c_int32)))
     return img_data
+
+
+def property_map(plot):
+    """
+    Generate a 2-D map of (cell_temperature, material_density). Used for
+         in-memory image generation.
+
+    Parameters
+    ----------
+    plot : An openmc.capi.plot._PlotBase object describing the slice of the
+           model to be generated
+
+    Returns
+    -------
+    property_map : a NumPy array with shape (vertical pixels, horizontal pixels, 2)
+             of OpenMC property ids with dtype float
+
+    """
+    prop_data = np.zeros((plot.vRes, plot.hRes, 2),
+                         dtype=np.dtype('float'))
+    _dll.openmc_property_map(POINTER(_PlotBase)(plot),
+                             prop_data.ctypes.data_as(POINTER(c_double)))
+    return prop_data

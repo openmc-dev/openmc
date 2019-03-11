@@ -419,3 +419,24 @@ def test_id_map(capi_init):
 
     ids = openmc.capi.plot.id_map(s)
     assert np.array_equal(expected_ids, ids)
+
+def test_property_map(capi_init):
+    expected_properties = np.array(
+        [[(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)],
+         [ (293.6, 6.55), (293.6, 10.29769),  (293.6, 6.55)],
+         [(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)]], dtype='float')
+
+    # create a plot object
+    s = openmc.capi.plot._PlotBase()
+    s.width = 1.26
+    s.height = 1.26
+    s.vRes = 3
+    s.hRes = 3
+    s.origin = (0.0, 0.0, 0.0)
+    s.basis = 'xy'
+    s.level = -1
+
+    properties = openmc.capi.plot.property_map(s)
+    print(properties)
+    print(expected_properties)
+    assert np.allclose(expected_properties, properties, atol=1e-04)

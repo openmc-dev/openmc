@@ -513,6 +513,9 @@ class IncidentPhoton(EqualityMixin):
                 e = data.atomic_relaxation.binding_energy[shell]
                 rx.subshell_binding_energy = e
 
+        # Add bremsstrahlung DCS data
+        data._add_bremsstrahlung()
+
         return data
 
     @classmethod
@@ -572,65 +575,8 @@ class IncidentPhoton(EqualityMixin):
         data.compton_profiles['binding_energy'] = profile['binding_energy']
         data.compton_profiles['J'] = [Tabulated1D(pz, J_k) for J_k in profile['J']]
 
-        # Load bremsstrahlung data if it has not yet been loaded
-        if not _BREMSSTRAHLUNG:
-            # Add data used for density effect correction
-            filename = os.path.join(os.path.dirname(__file__), 'density_effect.h5')
-            with h5py.File(filename, 'r') as f:
-                for i in range(1, 101):
-                    group = f['{:03}'.format(i)]
-                    _BREMSSTRAHLUNG[i] = {
-                        'I': group.attrs['I'],
-                        'num_electrons': group['num_electrons'].value,
-                        'ionization_energy': group['ionization_energy'].value
-                    }
-
-            filename = os.path.join(os.path.dirname(__file__), 'BREMX.DAT')
-            brem = open(filename, 'r').read().split()
-
-            # Incident electron kinetic energy grid in eV
-            _BREMSSTRAHLUNG['electron_energy'] = np.logspace(3, 9, 200)
-            log_energy = np.log(_BREMSSTRAHLUNG['electron_energy'])
-
-            # Get number of tabulated electron and photon energy values
-            n = int(brem[37])
-            k = int(brem[38])
-
-            # Index in data
-            p = 39
-
-            # Get log of incident electron kinetic energy values, used for
-            # cubic spline interpolation in log energy. Units are in MeV, so
-            # convert to eV.
-            logx = np.log(np.fromiter(brem[p:p+n], float, n)*EV_PER_MEV)
-            p += n
-
-            # Get reduced photon energy values
-            _BREMSSTRAHLUNG['photon_energy'] = np.fromiter(brem[p:p+k], float, k)
-            p += k
-
-            for i in range(1, 101):
-                dcs = np.empty([len(log_energy), k])
-
-                # Get the scaled cross section values for each electron energy
-                # and reduced photon energy for this Z. Units are in mb, so
-                # convert to b.
-                y = np.reshape(np.fromiter(brem[p:p+n*k], float, n*k), (n, k))*1.0e-3
-                p += k*n
-
-                for j in range(k):
-                    # Cubic spline interpolation in log energy and linear DCS
-                    cs = CubicSpline(logx, y[:,j])
-
-                    # Get scaled DCS values (millibarns) on new energy grid
-                    dcs[:,j] = cs(log_energy)
-
-                _BREMSSTRAHLUNG[i]['dcs'] = dcs
-
         # Add bremsstrahlung DCS data
-        data.bremsstrahlung['electron_energy'] = _BREMSSTRAHLUNG['electron_energy']
-        data.bremsstrahlung['photon_energy'] = _BREMSSTRAHLUNG['photon_energy']
-        data.bremsstrahlung.update(_BREMSSTRAHLUNG[Z])
+        data._add_bremsstrahlung()
 
         return data
 
@@ -760,6 +706,70 @@ class IncidentPhoton(EqualityMixin):
                     brem_group.attrs[key] = value
                 else:
                     brem_group.create_dataset(key, data=value)
+
+    def _add_bremsstrahlung(self):
+        """Add the data used in the thick-target bremsstrahlung approximation
+
+        """
+        # Load bremsstrahlung data if it has not yet been loaded
+        if not _BREMSSTRAHLUNG:
+            # Add data used for density effect correction
+            filename = os.path.join(os.path.dirname(__file__), 'density_effect.h5')
+            with h5py.File(filename, 'r') as f:
+                for i in range(1, 101):
+                    group = f['{:03}'.format(i)]
+                    _BREMSSTRAHLUNG[i] = {
+                        'I': group.attrs['I'],
+                        'num_electrons': group['num_electrons'].value,
+                        'ionization_energy': group['ionization_energy'].value
+                    }
+
+            filename = os.path.join(os.path.dirname(__file__), 'BREMX.DAT')
+            brem = open(filename, 'r').read().split()
+
+            # Incident electron kinetic energy grid in eV
+            _BREMSSTRAHLUNG['electron_energy'] = np.logspace(3, 9, 200)
+            log_energy = np.log(_BREMSSTRAHLUNG['electron_energy'])
+
+            # Get number of tabulated electron and photon energy values
+            n = int(brem[37])
+            k = int(brem[38])
+
+            # Index in data
+            p = 39
+
+            # Get log of incident electron kinetic energy values, used for
+            # cubic spline interpolation in log energy. Units are in MeV, so
+            # convert to eV.
+            logx = np.log(np.fromiter(brem[p:p+n], float, n)*EV_PER_MEV)
+            p += n
+
+            # Get reduced photon energy values
+            _BREMSSTRAHLUNG['photon_energy'] = np.fromiter(brem[p:p+k], float, k)
+            p += k
+
+            for i in range(1, 101):
+                dcs = np.empty([len(log_energy), k])
+
+                # Get the scaled cross section values for each electron energy
+                # and reduced photon energy for this Z. Units are in mb, so
+                # convert to b.
+                y = np.reshape(np.fromiter(brem[p:p+n*k], float, n*k), (n, k))*1.0e-3
+                p += k*n
+
+                for j in range(k):
+                    # Cubic spline interpolation in log energy and linear DCS
+                    cs = CubicSpline(logx, y[:,j])
+
+                    # Get scaled DCS values (millibarns) on new energy grid
+                    dcs[:,j] = cs(log_energy)
+
+                _BREMSSTRAHLUNG[i]['dcs'] = dcs
+
+        # Add bremsstrahlung DCS data
+        self.bremsstrahlung['electron_energy'] = _BREMSSTRAHLUNG['electron_energy']
+        self.bremsstrahlung['photon_energy'] = _BREMSSTRAHLUNG['photon_energy']
+        self.bremsstrahlung.update(_BREMSSTRAHLUNG[self.atomic_number])
 
 
 class PhotonReaction(EqualityMixin):

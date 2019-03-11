@@ -53,6 +53,7 @@ struct RGBColor {
 
 typedef xt::xtensor<RGBColor, 2> ImageData;
 typedef xt::xtensor<int32_t, 3>  IdData;
+typedef xt::xtensor<double, 3>  PropertyData;
 
 enum class PlotType {
   slice = 1,
@@ -73,8 +74,17 @@ enum class PlotColorBy {
 //===============================================================================
 // Plot class
 //===============================================================================
-struct PlotBase {
+class PlotBase {
+ public:
+  IdData get_id_map() const;
+  PropertyData get_property_map() const;
+
+ private:
+  template<class D, typename setter>
+    D generate_data() const;
+
   // Members
+ public:
   Position origin_; //!< Plot origin in geometry
   Position width_; //!< Plot width in geometry
   PlotBasis basis_; //!< Plot basis (XY/XZ/YZ)

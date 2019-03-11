@@ -29,6 +29,34 @@ namespace openmc {
 const RGBColor WHITE {255, 255, 255};
 constexpr int PLOT_LEVEL_LOWEST {-1}; //!< lower bound on plot universe level
 constexpr int NOT_FOUND {-1};
+
+struct id_setter {
+  void operator()(const Particle& p, IdData& ids, int y, int x, int level) {
+    Cell* c = model::cells[p.coord_[level].cell].get();
+    ids(y,x,0) = c->id_;
+    if (c->type_ == FILL_UNIVERSE || p.material_ == MATERIAL_VOID) {
+      ids(y,x,1) = NOT_FOUND;
+    } else {
+      Material* m = model::materials[p.material_].get();
+      ids(y,x,1) = m->id_;
+    }
+  }
+};
+
+struct property_setter {
+  void operator()(const Particle& p, PropertyData& props, int y, int x, int level) {
+    Cell* c = model::cells[p.coord_[level].cell].get();
+    props(y,x,0) = (p.sqrtkT_ * p.sqrtkT_) * K_BOLTZMANN;
+    if (c->type_ == FILL_UNIVERSE || p.material_ == MATERIAL_VOID) {
+      props(y,x, 1) = NOT_FOUND;
+    } else {
+      Material* m = model::materials[p.material_].get();
+      props(y,x,1) = m->density_gpcc_;
+    }
+  }
+};
+
+
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -637,6 +665,82 @@ Plot::Plot(pugi::xml_node plot_node)
   set_mask(plot_node);
 } // End Plot constructor
 
+template<class D, typename setter>
+D PlotBase::generate_data() const {
+
+  size_t width = pixels_[0];
+  size_t height = pixels_[1];
+
+  // get pixel size
+  double in_pixel = (width_[0])/static_cast<double>(width);
+  double out_pixel = (width_[1])/static_cast<double>(height);
+
+  // size data array
+  D data({height, width, 2}, NOT_FOUND);
+
+  // setup basis indices and initial position centered on pixel
+  int in_i, out_i;
+  Position xyz = origin_;
+  switch(basis_) {
+  case PlotBasis::xy :
+    in_i = 0;
+    out_i = 1;
+    break;
+  case PlotBasis::xz :
+    in_i = 0;
+    out_i = 2;
+    break;
+  case PlotBasis::yz :
+    in_i = 1;
+    out_i = 2;
+    break;
+  }
+
+  // set initial position
+  xyz[in_i] = origin_[in_i] - width_[0] / 2. + in_pixel / 2.;
+  xyz[out_i] = origin_[out_i] + width_[1] / 2. - out_pixel / 2.;
+
+  // arbitrary direction
+  Direction dir = {0.5, 0.5, 0.5};
+
+#pragma omp parallel
+{
+  Particle p;
+  p.r() = xyz;
+  p.u() = dir;
+  p.coord_[0].universe = model::root_universe;
+  int level = level_;
+  int j{};
+
+  #pragma omp for
+  for (int y = 0; y < height; y++) {
+    p.r()[out_i] =  xyz[out_i] - out_pixel * y;
+    for (int x = 0; x < width; x++) {
+      p.r()[in_i] = xyz[in_i] + in_pixel * x;
+      p.n_coord_ = 1;
+      // local variables
+      bool found_cell = find_cell(&p, 0);
+      j = p.n_coord_ - 1;
+      if (level >=0) {j = level + 1;}
+      if (found_cell) {
+        setter()(p, data, y, x, j);
+        Cell* c = model::cells[p.coord_[j].cell].get();
+      }
+    } // inner for
+  } // outer for
+ } // omp parallel
+
+ return data;
+}
+
+IdData PlotBase::get_id_map() const {
+  return generate_data<IdData, id_setter>();
+}
+
+PropertyData PlotBase::get_property_map() const {
+  return generate_data<PropertyData, property_setter>();
+}
+
 //==============================================================================
 // POSITION_RGB computes the red/green/blue values for a given plot with the
 // current particle's position
@@ -963,73 +1067,10 @@ extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  size_t width = plt->pixels_[0];
-  size_t height = plt->pixels_[1];
-
-  // get pixel size
-  double in_pixel = (plt->width_[0])/static_cast<double>(width);
-  double out_pixel = (plt->width_[1])/static_cast<double>(height);
-
-  // size data array
-  IdData data({height, width, 2}, NOT_FOUND);
-
-  // setup basis indices and initial position centered on pixel
-  int in_i, out_i;
-  Position xyz = plt->origin_;
-  switch(plt->basis_) {
-  case PlotBasis::xy :
-    in_i = 0;
-    out_i = 1;
-    break;
-  case PlotBasis::xz :
-    in_i = 0;
-    out_i = 2;
-    break;
-  case PlotBasis::yz :
-    in_i = 1;
-    out_i = 2;
-    break;
-  }
-
-  // set initial position
-  xyz[in_i] = plt->origin_[in_i] - plt->width_[0] / 2. + in_pixel / 2.;
-  xyz[out_i] = plt->origin_[out_i] + plt->width_[1] / 2. - out_pixel / 2.;
-
-  // arbitrary direction
-  Direction dir = {0.5, 0.5, 0.5};
-
-  #pragma omp parallel
-  {
-    Particle p;
-    p.r() = xyz;
-    p.u() = dir;
-    p.coord_[0].universe = model::root_universe;
-    int level = plt->level_;
-    int j{};
-
-    #pragma omp for
-    for (int y = 0; y < height; y++) {
-      p.r()[out_i] =  xyz[out_i] - out_pixel * y;
-      for (int x = 0; x < width; x++) {
-        p.r()[in_i] = xyz[in_i] + in_pixel * x;
-        p.n_coord_ = 1;
-        // local variables
-        bool found_cell = find_cell(&p, 0);
-        j = p.n_coord_ - 1;
-        if (level >=0) {j = level + 1;}
-        if (found_cell) {
-          Cell* c = model::cells[p.coord_[j].cell].get();
-          data(y,x,0) = c->id_;
-          if (c->type_ != FILL_UNIVERSE && p.material_ != MATERIAL_VOID) {
-            data(y,x,1) = model::materials[p.material_]->id_;
-          }
-        }
-      } // inner for
-    } // outer for
-  } // omp parallel
+  auto ids = plt->get_id_map();
 
   // write id data to array
-  std::copy(data.begin(), data.end(), data_out);
+  std::copy(ids.begin(), ids.end(), data_out);
 
   return 0;
 }

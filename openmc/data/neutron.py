@@ -791,16 +791,19 @@ class IncidentNeutron(EqualityMixin):
         return data
 
     @classmethod
-    def from_njoy(cls, filename, temperatures=None, **kwargs):
+    def from_njoy(cls, filename, temperatures=None, evaluation=None, **kwargs):
         """Generate incident neutron data by running NJOY.
 
         Parameters
         ----------
         filename : str
-            Path to ENDF evaluation
+            Path to ENDF file
         temperatures : iterable of float
             Temperatures in Kelvin to produce data at. If omitted, data is
             produced at room temperature (293.6 K)
+        evaluation : openmc.data.endf.Evaluation, optional
+            If the ENDF file contains multiple material evaluations, this
+            argument indicates which evaluation to use.
         **kwargs
             Keyword arguments passed to :func:`openmc.data.njoy.make_ace`
 
@@ -815,6 +818,7 @@ class IncidentNeutron(EqualityMixin):
             ace_file = os.path.join(tmpdir, 'ace')
             xsdir_file = os.path.join(tmpdir, 'xsdir')
             pendf_file = os.path.join(tmpdir, 'pendf')
+            kwargs['evaluation'] = evaluation
             make_ace(filename, temperatures, ace_file, xsdir_file,
                      pendf_file, **kwargs)
 
@@ -825,7 +829,7 @@ class IncidentNeutron(EqualityMixin):
                 data.add_temperature_from_ace(table)
 
             # Add fission energy release data
-            ev = Evaluation(filename)
+            ev = evaluation if evaluation is not None else Evaluation(filename)
             if (1, 458) in ev.section:
                 data.fission_energy = FissionEnergyRelease.from_endf(ev, data)
 

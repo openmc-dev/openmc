@@ -46,7 +46,7 @@ struct id_setter {
 struct property_setter {
   void operator()(const Particle& p, PropertyData& props, int y, int x, int level) {
     Cell* c = model::cells[p.coord_[level].cell].get();
-    props(y,x,0) = (p.sqrtkT_ * p.sqrtkT_) * K_BOLTZMANN;
+    props(y,x,0) = (p.sqrtkT_ * p.sqrtkT_) / K_BOLTZMANN;
     if (c->type_ == FILL_UNIVERSE || p.material_ == MATERIAL_VOID) {
       props(y,x, 1) = NOT_FOUND;
     } else {
@@ -1074,5 +1074,23 @@ extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
 
   return 0;
 }
+
+extern "C" int openmc_property_map(void* plot, double* data_out) {
+
+  auto plt = reinterpret_cast<PlotBase*>(plot);
+  if (!plt) {
+    set_errmsg("Invalid slice pointer passed to openmc_id_map");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  PropertyData data = plt->get_property_map();
+
+  // write id data to array
+  size_t i = 0;
+  for (auto v : data) { data_out[i++] = v; }
+
+  return 0;
+}
+
 
 } // namespace openmc

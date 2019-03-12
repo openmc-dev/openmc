@@ -72,8 +72,13 @@ broadr / %%%%%%%%%%%%%%%%%%%%%%% Doppler broaden XS %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 _TEMPLATE_HEATR = """
 heatr / %%%%%%%%%%%%%%%%%%%%%%%%% Add heating kerma %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 {nendf} {nheatr_in} {nheatr} /
-{mat} 3 /
-302 318 402 /
+{mat} 4 /
+302 318 402 444 /
+"""
+
+_TEMPLATE_GASPR = """
+gaspr / %%%%%%%%%%%%%%%%%%%%%%%%% Add gas production %%%%%%%%%%%%%%%%%%%%%%%%%%%
+{nendf} {ngaspr_in} {ngaspr} /
 """
 
 _TEMPLATE_PURR = """
@@ -186,7 +191,7 @@ def run(commands, tapein, tapeout, input_filename=None, stdout=False,
 
 
 def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
-    """Generate ACE file from an ENDF file
+    """Generate pointwise ENDF file from an ENDF file
 
     Parameters
     ----------
@@ -211,8 +216,8 @@ def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
 
 
 def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
-             error=0.001, broadr=True, heatr=True, purr=True, acer=True,
-             **kwargs):
+             error=0.001, broadr=True, heatr=True, gaspr=True, purr=True,
+             acer=True, evaluation=None, **kwargs):
     """Generate incident neutron ACE file from an ENDF file
 
     Parameters
@@ -234,10 +239,15 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
         Indicating whether to Doppler broaden XS when running NJOY
     heatr : bool, optional
         Indicating whether to add heating kerma when running NJOY
+    gaspr : bool, optional
+        Indicating whether to add gas production data when running NJOY
     purr : bool, optional
         Indicating whether to add probability table when running NJOY
     acer : bool, optional
         Indicating whether to generate ACE file when running NJOY
+    evaluation : openmc.data.endf.Evaluation, optional
+        If the ENDF file contains multiple material evaluations, this argument
+        indicates which evaluation should be used.
     **kwargs
         Keyword arguments passed to :func:`openmc.data.njoy.run`
 
@@ -247,7 +257,7 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
         If the NJOY process returns with a non-zero status
 
     """
-    ev = endf.Evaluation(filename)
+    ev = evaluation if evaluation is not None else endf.Evaluation(filename)
     mat = ev.material
     zsymam = ev.target['zsymam']
 
@@ -284,6 +294,13 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
         nheatr = nheatr_in + 1
         commands += _TEMPLATE_HEATR
         nlast = nheatr
+
+    # gaspr
+    if gaspr:
+        ngaspr_in = nlast
+        ngaspr = ngaspr_in + 1
+        commands += _TEMPLATE_GASPR
+        nlast = ngaspr
 
     # purr
     if purr:
@@ -338,7 +355,8 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
 
 
 def make_ace_thermal(filename, filename_thermal, temperatures=None,
-                     ace='ace', xsdir='xsdir', error=0.001, **kwargs):
+                     ace='ace', xsdir='xsdir', error=0.001, evaluation=None,
+                     evaluation_thermal=None, **kwargs):
     """Generate thermal scattering ACE file from ENDF files
 
     Parameters
@@ -356,6 +374,12 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
         Path of xsdir file to write
     error : float, optional
         Fractional error tolerance for NJOY processing
+    evaluation : openmc.data.endf.Evaluation, optional
+        If the ENDF neutron sublibrary file contains multiple material
+        evaluations, this argument indicates which evaluation to use.
+    evaluation_thermal : openmc.data.endf.Evaluation, optional
+        If the ENDF thermal scattering sublibrary file contains multiple
+        material evaluations, this argument indicates which evaluation to use.
     **kwargs
         Keyword arguments passed to :func:`openmc.data.njoy.run`
 
@@ -365,11 +389,12 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
         If the NJOY process returns with a non-zero status
 
     """
-    ev = endf.Evaluation(filename)
+    ev = evaluation if evaluation is not None else endf.Evaluation(filename)
     mat = ev.material
     zsymam = ev.target['zsymam']
 
-    ev_thermal = endf.Evaluation(filename_thermal)
+    ev_thermal = (evaluation_thermal if evaluation_thermal is not None
+                  else endf.Evaluation(filename_thermal))
     mat_thermal = ev_thermal.material
     zsymam_thermal = ev_thermal.target['zsymam']
 

@@ -511,4 +511,7 @@
     <scores>total</scores>
     <estimator>tracklength</estimator>
   </tally>
+  <tally id="33">
+    <scores>H1-production H2-production H3-production He3-production He4-production heating damage-energy</scores>
+  </tally>
 </tallies>

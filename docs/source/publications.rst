@@ -200,6 +200,11 @@ Miscellaneous
 Multigroup Cross Section Generation
 -----------------------------------
 
+- William Boyd, Adam Nelson, Paul K. Romano, Samuel Shaner, Benoit Forget, and
+  Kord Smith, "`Multigroup Cross-Section Generation with the OpenMC Monte Carlo
+  Particle Transport Code <https://doi.org/10.1080/00295450.2019.1571828>`_,"
+  *Nucl. Technol.* (2019).
+
 - William Boyd, Benoit Forget, and Kord Smith, "`A single-step framework to
   generate spatially self-shielded multi-group cross sections from Monte Carlo
   transport simulations <https://doi.org/10.1016/j.anucene.2018.11.017>`_,"

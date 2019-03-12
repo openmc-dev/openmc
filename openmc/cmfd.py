@@ -1045,7 +1045,7 @@ class CMFDRun(object):
 
         # Set CMFD variables not in statepoint file
         default_egrid = np.array([_ENERGY_MIN_NEUTRON, _ENERGY_MAX_NEUTRON])
-        self._energy_filters = np.array_equal(self._egrid, default_egrid)
+        self._energy_filters = not np.array_equal(self._egrid, default_egrid)
         self._n_resets = len(self._reset)
         openmc.capi.settings.run_CE = True
         self._mat_dim = np.max(self._coremap) + 1

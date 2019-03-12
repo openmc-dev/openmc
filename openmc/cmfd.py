@@ -17,9 +17,11 @@ import sys
 import time
 from ctypes import c_int, c_double
 import warnings
+import os.path
 
 import numpy as np
 from scipy import sparse
+import h5py
 
 import openmc.capi
 from openmc.checkvalue import (check_type, check_length, check_value,
@@ -767,6 +769,10 @@ class CMFDRun(object):
             # Write CMFD output if CMFD on for current batch
             if openmc.capi.master():
                 self._write_cmfd_output()
+
+        # Write CMFD data to statepoint
+        if openmc.capi.is_statepoint_batch():
+            self.statepoint_write()
         return status
 
     def finalize(self):
@@ -776,6 +782,64 @@ class CMFDRun(object):
 
         # Print out CMFD timing statistics
         self._write_cmfd_timing_stats()
+
+    def statepoint_write(self, filename=None):
+        if filename is None:
+            batch_str_len = len(str(openmc.capi.settings.batches))
+            batch_str = str(openmc.capi.current_batch()).zfill(batch_str_len)
+            filename = 'statepoint.{}.h5'.format(batch_str)
+
+        # Call C API statepoint_write if statepoint file doesn't exist
+        if not os.path.isfile(filename):
+            openmc.capi.statepoint_write(filename=filename)
+
+        # Append CMFD data to statepoint file using h5py
+        self._write_cmfd_statepoint(filename)
+
+    def _write_cmfd_statepoint(self, filename):
+        if openmc.capi.master():
+            if openmc.capi.settings.verbosity >= 5:
+                print('  Writing CMFD data to {}'.format(filename))
+                sys.stdout.flush()
+            # TODO write CMFD data to statepoint file
+            # TODO check if "cmfd" group already exists
+            with h5py.File(filename, 'a') as h5f:
+                cmfd_group = h5f.create_group("cmfd")
+                cmfd_group.attrs['cmfd_on'] = self._cmfd_on
+                cmfd_group.attrs['feedback_begin'] = self._feedback_begin
+                cmfd_group.attrs['mesh_id'] = self._mesh_id
+                cmfd_group.attrs['tally_begin'] = self._tally_begin
+                cmfd_group.attrs['time_cmfd'] = self._time_cmfd
+                cmfd_group.attrs['time_cmfdbuild'] = self._time_cmfdbuild
+                cmfd_group.attrs['time_cmfdsolve'] = self._time_cmfdsolve
+                cmfd_group.attrs['window_size'] = self._window_size
+                cmfd_group.attrs['window_type'] = self._window_type
+                cmfd_group.create_dataset('k_cmfd', data=self._k_cmfd)
+                cmfd_group.create_dataset('dom', data=self._dom)
+                cmfd_group.create_dataset('src_cmp', data=self._src_cmp)
+                cmfd_group.create_dataset('balance', data=self._balance)
+                cmfd_group.create_dataset('entropy', data=self._entropy)
+                cmfd_group.create_dataset('albedo', data=self._albedo)
+                cmfd_group.create_dataset('coremap', data=self._coremap)
+                cmfd_group.create_dataset('egrid', data=self._egrid)
+                cmfd_group.create_dataset('indices', data=self._indices)
+                cmfd_group.create_dataset('tally_ids', data=self._tally_ids)
+
+                if self._cmfd_on:
+                    cmfd_group.create_dataset('current_rate',
+                                              data=self._current_rate)
+                    cmfd_group.create_dataset('flux_rate',
+                                              data=self._flux_rate)
+                    cmfd_group.create_dataset('nfiss_rate',
+                                              data=self._nfiss_rate)
+                    cmfd_group.create_dataset('openmc_src_rate',
+                                              data=self._openmc_src_rate)
+                    cmfd_group.create_dataset('p1scatt_rate',
+                                              data=self._p1scatt_rate)
+                    cmfd_group.create_dataset('scatt_rate',
+                                              data=self._scatt_rate)
+                    cmfd_group.create_dataset('total_rate',
+                                              data=self._total_rate)
 
     def _initialize_linsolver(self):
         # Determine number of rows in CMFD matrix
@@ -841,6 +905,21 @@ class CMFDRun(object):
             # Set up CMFD coremap
             self._set_coremap()
 
+            # Extract spatial and energy indices
+            nx = self._indices[0]
+            ny = self._indices[1]
+            nz = self._indices[2]
+            ng = self._indices[3]
+
+            # Allocate parameters that need to stored for rolling window
+            self._openmc_src_rate = np.zeros((nx, ny, nz, ng, 0))
+            self._flux_rate = np.zeros((nx, ny, nz, ng, 0))
+            self._total_rate = np.zeros((nx, ny, nz, ng, 0))
+            self._p1scatt_rate = np.zeros((nx, ny, nz, ng, 0))
+            self._scatt_rate = np.zeros((nx, ny, nz, ng, ng, 0))
+            self._nfiss_rate = np.zeros((nx, ny, nz, ng, ng, 0))
+            self._current_rate = np.zeros((nx, ny, nz, 12, ng, 0))
+
             # Initialize timers
             self._time_cmfd = 0.0
             self._time_cmfdbuild = 0.0
@@ -904,8 +983,7 @@ class CMFDRun(object):
                              'feedback begin')
 
         # Set number of batches where cmfd tallies should be reset
-        if self._reset is not None:
-            self._n_resets = len(self._reset)
+        self._n_resets = len(self._reset)
 
         # Create tally objects
         self._create_cmfd_tally()
@@ -921,15 +999,6 @@ class CMFDRun(object):
         # Allocate dimensions for each mesh cell
         self._hxyz = np.zeros((nx, ny, nz, 3))
         self._hxyz[:,:,:,:] = openmc.capi.meshes[self._mesh_id].width
-
-        # Allocate parameters that need to stored for rolling window
-        self._openmc_src_rate = np.zeros((nx, ny, nz, ng, 0))
-        self._flux_rate = np.zeros((nx, ny, nz, ng, 0))
-        self._total_rate = np.zeros((nx, ny, nz, ng, 0))
-        self._p1scatt_rate = np.zeros((nx, ny, nz, ng, 0))
-        self._scatt_rate = np.zeros((nx, ny, nz, ng, ng, 0))
-        self._nfiss_rate = np.zeros((nx, ny, nz, ng, ng, 0))
-        self._current_rate = np.zeros((nx, ny, nz, 12, ng, 0))
 
         # Allocate flux, cross sections and diffusion coefficient
         self._flux = np.zeros((nx, ny, nz, ng))

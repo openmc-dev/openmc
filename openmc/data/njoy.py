@@ -191,7 +191,7 @@ def run(commands, tapein, tapeout, input_filename=None, stdout=False,
 
 
 def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
-    """Generate ACE file from an ENDF file
+    """Generate pointwise ENDF file from an ENDF file
 
     Parameters
     ----------
@@ -245,7 +245,7 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
         Indicating whether to add probability table when running NJOY
     acer : bool, optional
         Indicating whether to generate ACE file when running NJOY
-    evaluation : str, optional
+    evaluation : openmc.data.endf.Evaluation, optional
         If the ENDF file contains multiple material evaluations, this argument
         indicates which evaluation should be used.
     **kwargs

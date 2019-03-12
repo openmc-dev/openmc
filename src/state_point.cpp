@@ -321,7 +321,6 @@ openmc_load_cmfd_tallies(const int* tally_ids, const int* sp_tally_ids)
       auto& tally = model::tallies[model::tally_map[tally_ids[i]]];
       tally->init_results();
       auto& results = tally->results_;
-      std::cout << tally_ids[i] << "\n";
       read_tally_results(tally_group, results.shape()[0],
         results.shape()[1], results.data());
       read_dataset(tally_group, "n_realizations", tally->n_realizations_);

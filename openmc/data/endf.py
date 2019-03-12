@@ -66,7 +66,7 @@ SUM_RULES = {1: [2, 3],
              106: list(range(750, 800)),
              107: list(range(800, 850))}
 
-ENDF_FLOAT_RE = re.compile(r'([\s\-\+]?\d*\.\d+)([\+\-]\d+)')
+ENDF_FLOAT_RE = re.compile(r'([\s\-\+]?\d*\.\d+)([\+\-]) ?(\d+)')
 
 
 def float_endf(s):
@@ -89,12 +89,15 @@ def float_endf(s):
         The number
 
     """
-    return float(ENDF_FLOAT_RE.sub(r'\1e\2', s))
+    return float(ENDF_FLOAT_RE.sub(r'\1e\2\3', s))
 
 
-def _int_endf(s):
-    """Convert string to int. Used for INTG records where blank entries
-    indicate a 0.
+def int_endf(s):
+    """Convert string of integer number in ENDF to int.
+
+    The ENDF-6 format technically allows integers to be represented by a field
+    of all blanks. This function acts like int(s) except when s is a string of
+    all whitespace, in which case zero is returned.
 
     Parameters
     ----------
@@ -106,8 +109,7 @@ def _int_endf(s):
     integer
         The number or 0
     """
-    s = s.strip()
-    return int(s) if s else 0
+    return 0 if s.isspace() else int(s)
 
 
 def get_text_record(file_obj):
@@ -127,35 +129,35 @@ def get_text_record(file_obj):
     return file_obj.readline()[:66]
 
 
-def get_cont_record(file_obj, skipC=False):
+def get_cont_record(file_obj, skip_c=False):
     """Return data from a CONT record in an ENDF-6 file.
 
     Parameters
     ----------
     file_obj : file-like object
         ENDF-6 file to read from
-    skipC : bool
+    skip_c : bool
         Determine whether to skip the first two quantities (C1, C2) of the CONT
         record.
 
     Returns
     -------
-    list
+    tuple
         The six items within the CONT record
 
     """
     line = file_obj.readline()
-    if skipC:
+    if skip_c:
         C1 = None
         C2 = None
     else:
         C1 = float_endf(line[:11])
         C2 = float_endf(line[11:22])
-    L1 = int(line[22:33])
-    L2 = int(line[33:44])
-    N1 = int(line[44:55])
-    N2 = int(line[55:66])
-    return [C1, C2, L1, L2, N1, N2]
+    L1 = int_endf(line[22:33])
+    L2 = int_endf(line[33:44])
+    N1 = int_endf(line[44:55])
+    N2 = int_endf(line[55:66])
+    return (C1, C2, L1, L2, N1, N2)
 
 
 def get_head_record(file_obj):
@@ -168,18 +170,18 @@ def get_head_record(file_obj):
 
     Returns
     -------
-    list
+    tuple
         The six items within the HEAD record
 
     """
     line = file_obj.readline()
     ZA = int(float_endf(line[:11]))
     AWR = float_endf(line[11:22])
-    L1 = int(line[22:33])
-    L2 = int(line[33:44])
-    N1 = int(line[44:55])
-    N2 = int(line[55:66])
-    return [ZA, AWR, L1, L2, N1, N2]
+    L1 = int_endf(line[22:33])
+    L2 = int_endf(line[33:44])
+    N1 = int_endf(line[44:55])
+    N2 = int_endf(line[55:66])
+    return (ZA, AWR, L1, L2, N1, N2)
 
 
 def get_list_record(file_obj):
@@ -233,10 +235,10 @@ def get_tab1_record(file_obj):
     line = file_obj.readline()
     C1 = float_endf(line[:11])
     C2 = float_endf(line[11:22])
-    L1 = int(line[22:33])
-    L2 = int(line[33:44])
-    n_regions = int(line[44:55])
-    n_pairs = int(line[55:66])
+    L1 = int_endf(line[22:33])
+    L2 = int_endf(line[33:44])
+    n_regions = int_endf(line[44:55])
+    n_pairs = int_endf(line[55:66])
     params = [C1, C2, L1, L2]
 
     # Read the interpolation region data, namely NBT and INT
@@ -247,8 +249,8 @@ def get_tab1_record(file_obj):
         line = file_obj.readline()
         to_read = min(3, n_regions - m)
         for j in range(to_read):
-            breakpoints[m] = int(line[0:11])
-            interpolation[m] = int(line[11:22])
+            breakpoints[m] = int_endf(line[0:11])
+            interpolation[m] = int_endf(line[11:22])
             line = line[22:]
             m += 1
 
@@ -306,9 +308,9 @@ def get_intg_record(file_obj):
     """
     # determine how many items are in list and NDIGIT
     items = get_cont_record(file_obj)
-    ndigit = int(items[2])
-    npar = int(items[3])    # Number of parameters
-    nlines = int(items[4])  # Lines to read
+    ndigit = items[2]
+    npar = items[3]    # Number of parameters
+    nlines = items[4]  # Lines to read
     NROW_RULES = {2: 18, 3: 12, 4: 11, 5: 9, 6: 8}
     nrow = NROW_RULES[ndigit]
 
@@ -316,13 +318,13 @@ def get_intg_record(file_obj):
     corr = np.identity(npar)
     for i in range(nlines):
         line = file_obj.readline()
-        ii = _int_endf(line[:5]) - 1  # -1 to account for 0 indexing
-        jj = _int_endf(line[5:10]) - 1
+        ii = int_endf(line[:5]) - 1  # -1 to account for 0 indexing
+        jj = int_endf(line[5:10]) - 1
         factor = 10**ndigit
         for j in range(nrow):
             if jj+j >= ii:
                 break
-            element = _int_endf(line[11+(ndigit+1)*j:11+(ndigit+1)*(j+1)])
+            element = int_endf(line[11+(ndigit+1)*j:11+(ndigit+1)*(j+1)])
             if element > 0:
                 corr[ii, jj] = (element+0.5)/factor
             elif element < 0:
@@ -507,16 +509,7 @@ class Evaluation(object):
 
         # File numbers, reaction designations, and number of records
         for i in range(NXC):
-            line = file_obj.readline()
-            mf = int(line[22:33])
-            mt = int(line[33:44])
-            nc = int(line[44:55])
-            try:
-                mod = int(line[55:66])
-            except ValueError:
-                # In JEFF 3.2, a few isotopes of U have MOD values that are
-                # missing. This prevents failure on these isotopes.
-                mod = 0
+            _, _, mf, mt, nc, mod = get_cont_record(file_obj, skip_c=True)
             self.reaction_list.append((mf, mt, nc, mod))
 
     @property

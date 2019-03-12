@@ -220,6 +220,16 @@ The following tables show all valid scores:
     |                      |multiplicity from (n,2n), (n,3n), and (n,4n)       |
     |                      |reactions.                                         |
     +----------------------+---------------------------------------------------+
+    |H1-production         |Total production of H1.                            |
+    +----------------------+---------------------------------------------------+
+    |H2-production         |Total production of H2 (deuterium).                |
+    +----------------------+---------------------------------------------------+
+    |H3-production         |Total production of H3 (tritium).                  |
+    +----------------------+---------------------------------------------------+
+    |He3-production        |Total production of He3.                           |
+    +----------------------+---------------------------------------------------+
+    |He4-production        |Total production of He4 (alpha particles).         |
+    +----------------------+---------------------------------------------------+
 
 .. table:: **Miscellaneous scores: units are indicated for each.**
 
@@ -245,6 +255,10 @@ The following tables show all valid scores:
     +----------------------+---------------------------------------------------+
     |inverse-velocity      |The flux-weighted inverse velocity where the       |
     |                      |velocity is in units of centimeters per second.    |
+    +----------------------+---------------------------------------------------+
+    |heating               |Total neutron heating in units of eV per source    |
+    |                      |particle. This corresponds to MT=301 produced by   |
+    |                      |NJOY's HEATR module.                               |
     +----------------------+---------------------------------------------------+
     |kappa-fission         |The recoverable energy production rate due to      |
     |                      |fission. The recoverable energy is defined as the  |
@@ -280,4 +294,8 @@ The following tables show all valid scores:
     +----------------------+---------------------------------------------------+
     |decay-rate            |The delayed-nu-fission-weighted decay rate where   |
     |                      |the decay rate is in units of inverse seconds.     |
+    +----------------------+---------------------------------------------------+
+    |damage-energy         |Damage energy production in units of eV per source |
+    |                      |particle. This corresponds to MT=444 produced by   |
+    |                      |NJOY's HEATR module.                               |
     +----------------------+---------------------------------------------------+

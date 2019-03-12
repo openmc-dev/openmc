@@ -411,8 +411,8 @@ def test_id_map(capi_init):
     s = openmc.capi.plot._PlotBase()
     s.width = 1.26
     s.height = 1.26
-    s.vRes = 3
-    s.hRes = 3
+    s.v_res = 3
+    s.h_res = 3
     s.origin = (0.0, 0.0, 0.0)
     s.basis = 'xy'
     s.level = -1

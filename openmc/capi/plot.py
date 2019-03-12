@@ -23,46 +23,11 @@ class _Position(Structure):
                 ('y', c_double),
                 ('z', c_double)]
 
-    def __init__(self, vals=None):
-        if vals:
-            x = vals[0]
-            y = vals[1]
-            z = vals[2]
-        else:
-            x = 0.0
-            y = 0.0
-            z = 0.0
-
-    @property
-    def x(self):
-        return self.x
-
-    @property
-    def y(self):
-        return self.y
-
-    @property
-    def z(self):
-        return self.z
-
-    @x.setter
-    def x(self, x_val):
-        assert(isinstance(x_val, float))
-        self.x = x_val
-
-    @y.setter
-    def y(self, y_val):
-        assert(isinstance(y_val, float))
-        self.y = y_val
-
-    @z.setter
-    def z(self, z_val):
-        assert(isinstance(z_val, float))
-        self.z = z_val
+    def __repr__(self):
+        return "({}, {}, {})".format(self.x, self.y, self.z)
 
     def __str__(self):
-        return "Position: ({}, {}, {})".format(self.x, self.y, self.z)
-
+        return self.__repr__()
 
 class _PlotBase(Structure):
     """A structure defining a 2-D geometry slice with underlying c-types
@@ -91,9 +56,9 @@ class _PlotBase(Structure):
     basis : string
         One of {'xy', 'xz', 'yz'} indicating the horizontal and vertical
         axes of the plot.
-    hRes : float
+    h_res : float
         The horizontal resolution of the plot in pixels
-    vRes : float
+    v_res : float
         The vertical resolution of the plot in pixels
     level : int
         The universe level for the plot (default: -1 -> all universes shown)
@@ -132,11 +97,11 @@ class _PlotBase(Structure):
         raise ValueError("Plot basis {} is invalid".format(basis_))
 
     @property
-    def hRes(self):
+    def h_res(self):
         return self.pixels_[0]
 
     @property
-    def vRes(self):
+    def v_res(self):
         return self.pixels_[1]
 
     @property
@@ -183,30 +148,30 @@ class _PlotBase(Structure):
         raise ValueError("{} of type {} is an"
                          " invalid plot basis".format(basis, type(basis)))
 
-    @hRes.setter
-    def hRes(self, hRes):
-        self.pixels_[0] = hRes
+    @h_res.setter
+    def h_res(self, h_res):
+        self.pixels_[0] = h_res
 
-    @vRes.setter
-    def vRes(self, vRes):
-        self.pixels_[1] = vRes
+    @v_res.setter
+    def v_res(self, v_res):
+        self.pixels_[1] = v_res
 
     @level.setter
     def level(self, level):
         self.level_ = level
 
     def __repr__(self):
-        out_str = "-----\n"
-        out_str += "Plot:\n"
-        out_str += "-----\n"
-        out_str += "Origin: {}\n".format(self.origin)
-        out_str += "Width: {}\n".format(self.width)
-        out_str += "Height: {}\n".format(self.height)
-        out_str += "Basis: {}\n".format(self.basis)
-        out_str += "HRes: {}\n".format(self.hRes)
-        out_str += "VRes: {}\n".format(self.vRes)
-        out_str += "Level: {}\n".format(self.level)
-        return out_str
+        out_str = ["-----",
+                   "Plot:",
+                   "-----",
+                   "Origin: {}".format(self.origin),
+                   "Width: {}".format(self.width),
+                   "Height: {}".format(self.height),
+                   "Basis: {}".format(self.basis),
+                   "HRes: {}".format(self.h_res),
+                   "VRes: {}".format(self.v_res),
+                   "Level: {}".format(self.level)]
+        return '\n'.join(output)
 
     def __str__(self):
         return self.__repr__()
@@ -220,20 +185,21 @@ _dll.openmc_id_map.errcheck = _error_handler
 def id_map(plot):
     """
     Generate a 2-D map of (cell_id, material_id). Used for in-memory image
-         generation.
+    generation.
 
     Parameters
     ----------
-    plot : An openmc.capi.plot._PlotBase object describing the slice of the
-           model to be generated
+    plot : An openmc.capi.plot._PlotBase
+        Object describing the slice of the model to be generated
 
     Returns
     -------
-    id_map : a NumPy array with shape (vertical pixels, horizontal pixels, 2)
-             of OpenMC property ids with dtype int32
+    id_map : numpy.ndarray
+        A NumPy array with shape (vertical pixels, horizontal pixels, 2) of
+        OpenMC property ids with dtype int32
 
     """
-    img_data = np.zeros((plot.vRes, plot.hRes, 2),
+    img_data = np.zeros((plot.v_res, plot.h_res, 2),
                         dtype=np.dtype('int32'))
     _dll.openmc_id_map(POINTER(_PlotBase)(plot),
                        img_data.ctypes.data_as(POINTER(c_int32)))

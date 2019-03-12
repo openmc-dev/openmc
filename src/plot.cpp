@@ -129,57 +129,69 @@ void create_ppm(Plot pl)
   size_t width = pl.pixels_[0];
   size_t height = pl.pixels_[1];
 
-  double in_pixel = (pl.width_[0])/static_cast<double>(width);
-  double out_pixel = (pl.width_[1])/static_cast<double>(height);
+  // double in_pixel = (pl.width_[0])/static_cast<double>(width);
+  // double out_pixel = (pl.width_[1])/static_cast<double>(height);
 
-  ImageData data;
-  data.resize({width, height});
+  ImageData data({width, height}, pl.not_found_);
 
-  int in_i, out_i;
-  Position r;
-  switch(pl.basis_) {
-  case PlotBasis::xy :
-    in_i = 0;
-    out_i = 1;
-    r.x = pl.origin_[0] - pl.width_[0] / 2.;
-    r.y = pl.origin_[1] + pl.width_[1] / 2.;
-    r.z = pl.origin_[2];
-    break;
-  case PlotBasis::xz :
-    in_i = 0;
-    out_i = 2;
-    r.x = pl.origin_[0] - pl.width_[0] / 2.;
-    r.y = pl.origin_[1];
-    r.z = pl.origin_[2] + pl.width_[1] / 2.;
-    break;
-  case PlotBasis::yz :
-    in_i = 1;
-    out_i = 2;
-    r.x = pl.origin_[0];
-    r.y = pl.origin_[1] - pl.width_[0] / 2.;
-    r.z = pl.origin_[2] + pl.width_[1] / 2.;
-    break;
-  }
+//   int in_i, out_i;
+//   Position r;
+//   switch(pl.basis_) {
+//   case PlotBasis::xy :
+//     in_i = 0;
+//     out_i = 1;
+//     r.x = pl.origin_[0] - pl.width_[0] / 2.;
+//     r.y = pl.origin_[1] + pl.width_[1] / 2.;
+//     r.z = pl.origin_[2];
+//     break;
+//   case PlotBasis::xz :
+//     in_i = 0;
+//     out_i = 2;
+//     r.x = pl.origin_[0] - pl.width_[0] / 2.;
+//     r.y = pl.origin_[1];
+//     r.z = pl.origin_[2] + pl.width_[1] / 2.;
+//     break;
+//   case PlotBasis::yz :
+//     in_i = 1;
+//     out_i = 2;
+//     r.x = pl.origin_[0];
+//     r.y = pl.origin_[1] - pl.width_[0] / 2.;
+//     r.z = pl.origin_[2] + pl.width_[1] / 2.;
+//     break;
+//   }
 
-  Direction u {0.7071, 0.7071, 0.0};
+//   Direction u {0.5, 0.5, 0.5};
 
-  #pragma omp parallel
-  {
-    Particle p;
-    p.r() = r;
-    p.u() = u;
-    p.coord_[0].universe = model::root_universe;
+// #pragma omp parallel
+// {
+//   Particle p;
+//   p.r() = r;
+//   p.u() = u;
+//   p.coord_[0].universe = model::root_universe;
 
-    #pragma omp for
-    for (int y = 0; y < height; y++) {
-      p.r()[out_i] = r[out_i] - out_pixel * y;
-      for (int x = 0; x < width; x++) {
-        // local variables
-        RGBColor rgb;
-        int id;
-        p.r()[in_i] = r[in_i] + in_pixel * x;
-        position_rgb(p, pl, rgb, id);
-        data(x,y) = rgb;
+// #pragma omp for
+//   for (int y = 0; y < height; y++) {
+//     p.r()[out_i] = r[out_i] - out_pixel * y;
+//     for (int x = 0; x < width; x++) {
+//       // local variables
+//       RGBColor rgb;
+//       int id;
+//       p.r()[in_i] = r[in_i] + in_pixel * x;
+//       position_rgb(p, pl, rgb, id);
+//       data(x,y) = rgb;
+//     }
+//   }
+// }
+
+  auto ids = pl.get_id_map();
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      RGBColor color;
+      if (PlotColorBy::cells == pl.color_by_) {
+        data(x,y) = pl.colors_[model::cell_map[ids.data(y,x,0)]];
+      } else if (PlotColorBy::mats == pl.color_by_) {
+        data(x,y) = pl.colors_[model::material_map[ids.data(y,x,1)]];
       }
     }
   }

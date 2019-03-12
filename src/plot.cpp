@@ -619,8 +619,8 @@ Plot::set_mask(pugi::xml_node plot_node)
 }
 
 Plot::Plot(pugi::xml_node plot_node)
+  : index_meshlines_mesh_{-1}
 {
-  index_meshlines_mesh_ = -1;
   set_id(plot_node);
   set_type(plot_node);
   set_output_path(plot_node);
@@ -952,9 +952,9 @@ RGBColor random_color() {
   return {int(prn()*255), int(prn()*255), int(prn()*255)};
 }
 
-extern "C" int openmc_id_map(void* plot, int32_t* data_out) {
+extern "C" int openmc_id_map(const void* plot, int32_t* data_out) {
 
-  auto plt = reinterpret_cast<PlotBase*>(plot);
+  auto plt = reinterpret_cast<const PlotBase*>(plot);
   if (!plt) {
     set_errmsg("Invalid slice pointer passed to openmc_id_map");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -968,38 +968,32 @@ extern "C" int openmc_id_map(void* plot, int32_t* data_out) {
   double out_pixel = (plt->width_[1])/static_cast<double>(height);
 
   // size data array
-  IdData data;
-  data.resize({height, width, 2});
+  IdData data({height, width, 2}, NOT_FOUND);
 
   // setup basis indices and initial position centered on pixel
   int in_i, out_i;
-  double xyz[3];
+  Position xyz = plt->origin_;
   switch(plt->basis_) {
   case PlotBasis::xy :
     in_i = 0;
     out_i = 1;
-    xyz[0] = plt->origin_[0] - plt->width_[0] / 2. + in_pixel / 2.;
-    xyz[1] = plt->origin_[1] + plt->width_[1] / 2. - out_pixel / 2.;
-    xyz[2] = plt->origin_[2];
     break;
   case PlotBasis::xz :
     in_i = 0;
     out_i = 2;
-    xyz[0] = plt->origin_[0] - plt->width_[0] / 2. + in_pixel / 2.;
-    xyz[1] = plt->origin_[1];
-    xyz[2] = plt->origin_[2] + plt->width_[1] / 2. - out_pixel / 2.;
     break;
   case PlotBasis::yz :
     in_i = 1;
     out_i = 2;
-    xyz[0] = plt->origin_[0];
-    xyz[1] = plt->origin_[1] - plt->width_[0] / 2. + in_pixel / 2.;
-    xyz[2] = plt->origin_[2] + plt->width_[1] / 2. - out_pixel / 2.;
     break;
   }
 
+  // set initial position
+  xyz[in_i] = plt->origin_[in_i] - plt->width_[0] / 2. + in_pixel / 2.;
+  xyz[out_i] = plt->origin_[out_i] + plt->width_[1] / 2. - out_pixel / 2.;
+
   // arbitrary direction
-  double dir[3] = {0.5, 0.5, 0.5};
+  Direction dir = {0.5, 0.5, 0.5};
 
 #pragma omp parallel
 {
@@ -1010,7 +1004,7 @@ extern "C" int openmc_id_map(void* plot, int32_t* data_out) {
   int level = plt->level_;
   int j{};
 
-#pragma omp for
+  #pragma omp for
   for (int y = 0; y < height; y++) {
     p.r()[out_i] =  xyz[out_i] - out_pixel * y;
     for (int x = 0; x < width; x++) {
@@ -1020,15 +1014,10 @@ extern "C" int openmc_id_map(void* plot, int32_t* data_out) {
       bool found_cell = find_cell(&p, 0);
       j = p.n_coord_ - 1;
       if (level >=0) {j = level + 1;}
-      if (!found_cell) {
-        data(y,x,0) = NOT_FOUND;
-        data(y,x,1) = NOT_FOUND;
-      } else {
-        Cell *c = model::cells[p.coord_[j].cell].get();
+      if (found_cell) {
+        Cell* c = model::cells[p.coord_[j].cell].get();
         data(y,x,0) = c->id_;
-        if (c->type_ == FILL_UNIVERSE || p.material_ == MATERIAL_VOID) {
-          data(y,x,1) = NOT_FOUND;
-        } else {
+        if (c->type_ != FILL_UNIVERSE && p.material_ != MATERIAL_VOID) {
           data(y,x,1) = model::materials[p.material_]->id_;
         }
       }
@@ -1037,8 +1026,7 @@ extern "C" int openmc_id_map(void* plot, int32_t* data_out) {
  } // omp parallel
 
   // write id data to array
-  size_t i = 0;
-  for (auto v : data) { data_out[i++] = v; }
+  std::copy(data.begin(), data.end(), data_out);
 
   return 0;
 }

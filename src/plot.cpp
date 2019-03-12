@@ -28,34 +28,35 @@ namespace openmc {
 
 const RGBColor WHITE {255, 255, 255};
 constexpr int PLOT_LEVEL_LOWEST {-1}; //!< lower bound on plot universe level
-constexpr int NOT_FOUND {-1};
+constexpr int32_t NOT_FOUND {-1};
 
-struct id_setter {
-  void operator()(const Particle& p, IdData& ids, int y, int x, int level) {
-    Cell* c = model::cells[p.coord_[level].cell].get();
-    ids(y,x,0) = c->id_;
-    if (c->type_ == FILL_UNIVERSE || p.material_ == MATERIAL_VOID) {
-      ids(y,x,1) = NOT_FOUND;
-    } else {
-      Material* m = model::materials[p.material_].get();
-      ids(y,x,1) = m->id_;
-    }
+IdData::IdData(int h_res, int v_res) {
+  data = xt::xtensor<int32_t, 3>({v_res, h_res, 2}, NOT_FOUND);
+}
+
+void
+IdData::set_value(int y, int x, const Particle& p, int level) {
+  Cell* c = model::cells[p.coord_[level].cell].get();
+  data(y,x,0) = c->id_;
+  if (c->type_ != FILL_UNIVERSE && p.material_ != MATERIAL_VOID) {
+    Material* m = model::materials[p.material_].get();
+    data(y,x,1) = m->id_;
   }
-};
+}
 
-struct property_setter {
-  void operator()(const Particle& p, PropertyData& props, int y, int x, int level) {
-    Cell* c = model::cells[p.coord_[level].cell].get();
-    props(y,x,0) = (p.sqrtkT_ * p.sqrtkT_) / K_BOLTZMANN;
-    if (c->type_ == FILL_UNIVERSE || p.material_ == MATERIAL_VOID) {
-      props(y,x, 1) = NOT_FOUND;
-    } else {
-      Material* m = model::materials[p.material_].get();
-      props(y,x,1) = m->density_gpcc_;
-    }
+PropertyData::PropertyData(int h_res, int v_res) {
+  data = xt::xtensor<double, 3>({v_res, h_res, 2}, NOT_FOUND);
+}
+
+void
+PropertyData::set_value(int y, int x, const Particle& p, int level) {
+  Cell* c = model::cells[p.coord_[level].cell].get();
+  data(y,x,0) = (p.sqrtkT_ * p.sqrtkT_) / K_BOLTZMANN;
+  if (c->type_ != FILL_UNIVERSE && p.material_ != MATERIAL_VOID) {
+    Material* m = model::materials[p.material_].get();
+    data(y,x,1) = m->density_gpcc_;
   }
-};
-
+}
 
 //==============================================================================
 // Global variables
@@ -665,7 +666,7 @@ Plot::Plot(pugi::xml_node plot_node)
   set_mask(plot_node);
 } // End Plot constructor
 
-template<class D, typename setter>
+template<class D>
 D PlotBase::generate_data() const {
 
   size_t width = pixels_[0];
@@ -676,7 +677,7 @@ D PlotBase::generate_data() const {
   double out_pixel = (width_[1])/static_cast<double>(height);
 
   // size data array
-  D data({height, width, 2}, NOT_FOUND);
+  D data(width, height);
 
   // setup basis indices and initial position centered on pixel
   int in_i, out_i;
@@ -723,7 +724,7 @@ D PlotBase::generate_data() const {
       j = p.n_coord_ - 1;
       if (level >=0) {j = level + 1;}
       if (found_cell) {
-        setter()(p, data, y, x, j);
+        data.set_value(y, x, p, j);
         Cell* c = model::cells[p.coord_[j].cell].get();
       }
     } // inner for
@@ -734,11 +735,11 @@ D PlotBase::generate_data() const {
 }
 
 IdData PlotBase::get_id_map() const {
-  return generate_data<IdData, id_setter>();
+  return generate_data<IdData>();
 }
 
 PropertyData PlotBase::get_property_map() const {
-  return generate_data<PropertyData, property_setter>();
+  return generate_data<PropertyData>();
 }
 
 //==============================================================================
@@ -1070,7 +1071,7 @@ extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
   auto ids = plt->get_id_map();
 
   // write id data to array
-  std::copy(ids.begin(), ids.end(), data_out);
+  std::copy(ids.data.begin(), ids.data.end(), data_out);
 
   return 0;
 }
@@ -1086,7 +1087,7 @@ extern "C" int openmc_property_map(const void* plot, double* data_out) {
   PropertyData props = plt->get_property_map();
 
   // write id data to array
-  std::copy(props.begin(), props.end(), data_out);
+  std::copy(props.data.begin(), props.data.end(), data_out);
 
   return 0;
 }

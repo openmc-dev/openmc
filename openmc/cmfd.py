@@ -15,7 +15,7 @@ from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
 import sys
 import time
-from ctypes import c_int, c_double
+from ctypes import c_int
 import warnings
 import os.path
 
@@ -798,34 +798,34 @@ class CMFDRun(object):
 
     def _write_cmfd_statepoint(self, filename):
         if openmc.capi.master():
-            if openmc.capi.settings.verbosity >= 5:
-                print('  Writing CMFD data to {}'.format(filename))
-                sys.stdout.flush()
-            # TODO write CMFD data to statepoint file
-            # TODO check if "cmfd" group already exists
             with h5py.File(filename, 'a') as h5f:
-                cmfd_group = h5f.create_group("cmfd")
-                cmfd_group.attrs['cmfd_on'] = self._cmfd_on
-                cmfd_group.attrs['feedback_begin'] = self._feedback_begin
-                cmfd_group.attrs['mesh_id'] = self._mesh_id
-                cmfd_group.attrs['tally_begin'] = self._tally_begin
-                cmfd_group.attrs['time_cmfd'] = self._time_cmfd
-                cmfd_group.attrs['time_cmfdbuild'] = self._time_cmfdbuild
-                cmfd_group.attrs['time_cmfdsolve'] = self._time_cmfdsolve
-                cmfd_group.attrs['window_size'] = self._window_size
-                cmfd_group.attrs['window_type'] = self._window_type
-                cmfd_group.create_dataset('k_cmfd', data=self._k_cmfd)
-                cmfd_group.create_dataset('dom', data=self._dom)
-                cmfd_group.create_dataset('src_cmp', data=self._src_cmp)
-                cmfd_group.create_dataset('balance', data=self._balance)
-                cmfd_group.create_dataset('entropy', data=self._entropy)
-                cmfd_group.create_dataset('albedo', data=self._albedo)
-                cmfd_group.create_dataset('coremap', data=self._coremap)
-                cmfd_group.create_dataset('egrid', data=self._egrid)
-                cmfd_group.create_dataset('indices', data=self._indices)
-                cmfd_group.create_dataset('tally_ids', data=self._tally_ids)
-
-                if self._cmfd_on:
+                if 'cmfd' not in h5f:
+                    if openmc.capi.settings.verbosity >= 5:
+                        print(' Writing CMFD data to {}...'.format(filename))
+                        sys.stdout.flush()
+                    cmfd_group = h5f.create_group("cmfd")
+                    cmfd_group.attrs['cmfd_on'] = self._cmfd_on
+                    cmfd_group.attrs['feedback'] = self._feedback
+                    cmfd_group.attrs['feedback_begin'] = self._feedback_begin
+                    cmfd_group.attrs['mesh_id'] = self._mesh_id
+                    cmfd_group.attrs['tally_begin'] = self._tally_begin
+                    cmfd_group.attrs['time_cmfd'] = self._time_cmfd
+                    cmfd_group.attrs['time_cmfdbuild'] = self._time_cmfdbuild
+                    cmfd_group.attrs['time_cmfdsolve'] = self._time_cmfdsolve
+                    cmfd_group.attrs['window_size'] = self._window_size
+                    cmfd_group.attrs['window_type'] = self._window_type
+                    cmfd_group.create_dataset('k_cmfd', data=self._k_cmfd)
+                    cmfd_group.create_dataset('dom', data=self._dom)
+                    cmfd_group.create_dataset('src_cmp', data=self._src_cmp)
+                    cmfd_group.create_dataset('balance', data=self._balance)
+                    cmfd_group.create_dataset('entropy', data=self._entropy)
+                    cmfd_group.create_dataset('reset', data=self._reset)
+                    cmfd_group.create_dataset('albedo', data=self._albedo)
+                    cmfd_group.create_dataset('coremap', data=self._coremap)
+                    cmfd_group.create_dataset('egrid', data=self._egrid)
+                    cmfd_group.create_dataset('indices', data=self._indices)
+                    cmfd_group.create_dataset('tally_ids',
+                                              data=self._tally_ids)
                     cmfd_group.create_dataset('current_rate',
                                               data=self._current_rate)
                     cmfd_group.create_dataset('flux_rate',
@@ -840,6 +840,10 @@ class CMFDRun(object):
                                               data=self._scatt_rate)
                     cmfd_group.create_dataset('total_rate',
                                               data=self._total_rate)
+                elif openmc.settings.verbosity >= 5:
+                    print('  CMFD data not written to statepoint file'
+                          'as it already exists in {}'.format(filename))
+                    sys.stdout.flush()
 
     def _initialize_linsolver(self):
         # Determine number of rows in CMFD matrix
@@ -925,11 +929,13 @@ class CMFDRun(object):
             self._time_cmfdbuild = 0.0
             self._time_cmfdsolve = 0.0
 
+            # Initialize parameters for CMFD tally windows
+            self._set_tally_window()
+
         else:
             # Reset CMFD parameters from statepoint file
-            # TODO implement reset_cmfd
             path_statepoint = openmc.capi.settings.path_statepoint
-            sys.exit()
+            self._reset_cmfd(path_statepoint)
 
     def _read_cmfd_input(self):
         """Sets values of additional instance variables based on user input"""
@@ -988,6 +994,71 @@ class CMFDRun(object):
         # Create tally objects
         self._create_cmfd_tally()
 
+    def _reset_cmfd(self, sp_filepath):
+        with h5py.File(sp_filepath, 'r') as h5f:
+            if 'cmfd' not in h5f:
+                raise OpenMCError('Could not find CMFD parameters in ',
+                                  'file {}'.format(sp_filepath))
+            else:
+                # Overwrite CMFD values from statepoint
+                if openmc.capi.settings.verbosity >= 5:
+                    print(' Loading CMFD data from {}...'.format(sp_filepath))
+                    sys.stdout.flush()
+                self._cmfd_on = h5f['cmfd'].attrs['cmfd_on']
+                self._feedback = h5f['cmfd'].attrs['feedback']
+                self._feedback_begin = h5f['cmfd'].attrs['feedback_begin']
+                self._tally_begin = h5f['cmfd'].attrs['tally_begin']
+                self._time_cmfd = h5f['cmfd'].attrs['time_cmfd']
+                self._time_cmfdbuild = h5f['cmfd'].attrs['time_cmfdbuild']
+                self._time_cmfdsolve = h5f['cmfd'].attrs['time_cmfdsolve']
+                self._window_size = h5f['cmfd'].attrs['window_size']
+                self._window_type = h5f['cmfd'].attrs['window_type']
+                self._k_cmfd = list(h5f['cmfd']['k_cmfd'])
+                self._dom = list(h5f['cmfd']['dom'])
+                self._src_cmp = list(h5f['cmfd']['src_cmp'])
+                self._balance = list(h5f['cmfd']['balance'])
+                self._entropy = list(h5f['cmfd']['entropy'])
+                self._reset = list(h5f['cmfd']['reset'])
+                self._albedo = h5f['cmfd']['albedo'][:]
+                self._coremap = h5f['cmfd']['coremap'][:]
+                self._egrid = h5f['cmfd']['egrid'][:]
+                self._indices = h5f['cmfd']['indices'][:]
+                self._current_rate = h5f['cmfd']['current_rate'][:]
+                self._flux_rate = h5f['cmfd']['flux_rate'][:]
+                self._nfiss_rate = h5f['cmfd']['nfiss_rate'][:]
+                self._openmc_src_rate = h5f['cmfd']['openmc_src_rate'][:]
+                self._p1scatt_rate = h5f['cmfd']['p1scatt_rate'][:]
+                self._scatt_rate = h5f['cmfd']['scatt_rate'][:]
+                self._total_rate = h5f['cmfd']['total_rate'][:]
+
+                # Overwrite CMFD mesh properties
+                cmfd_mesh_name = 'mesh ' + str(h5f['cmfd'].attrs['mesh_id'])
+                cmfd_mesh = h5f['tallies']['meshes'][cmfd_mesh_name]
+                self._mesh.dimension = cmfd_mesh['dimension'][:]
+                self._mesh.lower_left = cmfd_mesh['lower_left'][:]
+                self._mesh.upper_right = cmfd_mesh['upper_right'][:]
+                self._mesh.width = cmfd_mesh['width'][:]
+
+                # Store tally ids from statepoint run
+                sp_tally_ids = list(h5f['cmfd']['tally_ids'])
+
+        # Set CMFD variables not in statepoint file
+        default_egrid = np.array([_ENERGY_MIN_NEUTRON, _ENERGY_MAX_NEUTRON])
+        self._energy_filters = np.array_equal(self._egrid, default_egrid)
+        self._n_resets = len(self._reset)
+        openmc.capi.settings.run_CE = True
+        self._mat_dim = np.max(self._coremap) + 1
+        self._reset_every = (self._window_type == 'expanding' or
+                             self._window_type == 'rolling')
+
+        # Recreate CMFD tallies in memory
+        self._create_cmfd_tally()
+
+        # Restore tally results and n_realizations from statepoint data
+        arg1 = (c_int*4)(*self._tally_ids)
+        arg2 = (c_int*4)(*sp_tally_ids)
+        openmc.capi._dll.openmc_load_cmfd_tallies(arg1, arg2)
+
     def _allocate_cmfd(self):
         """Allocates all numpy arrays and lists used in CMFD algorithm"""
         # Extract spatial and energy indices
@@ -1011,9 +1082,6 @@ class CMFDRun(object):
         # Allocate dtilde and dhat
         self._dtilde = np.zeros((nx, ny, nz, ng, 6))
         self._dhat = np.zeros((nx, ny, nz, ng, 6))
-
-        # Initialize parameters for CMFD tally windows
-        self._set_tally_window()
 
         # Set reference diffusion parameters
         if len(self._ref_d) > 0:

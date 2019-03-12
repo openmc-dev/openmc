@@ -48,7 +48,6 @@ extern "C" {
   void openmc_load_cmfd_tallies(const int tally_ids[4],
                                 const int sp_tally_ids[4]);
   int openmc_load_nuclide(const char* name);
-  bool openmc_master();
   int openmc_material_add_nuclide(int32_t index, const char name[], double density);
   int openmc_material_get_densities(int32_t index, int** nuclides, double** densities, int* n);
   int openmc_material_get_id(int32_t index, int32_t* id);

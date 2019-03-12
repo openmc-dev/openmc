@@ -1075,19 +1075,18 @@ extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
   return 0;
 }
 
-extern "C" int openmc_property_map(void* plot, double* data_out) {
+extern "C" int openmc_property_map(const void* plot, double* data_out) {
 
-  auto plt = reinterpret_cast<PlotBase*>(plot);
+  auto plt = reinterpret_cast<const PlotBase*>(plot);
   if (!plt) {
     set_errmsg("Invalid slice pointer passed to openmc_id_map");
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  PropertyData data = plt->get_property_map();
+  PropertyData props = plt->get_property_map();
 
   // write id data to array
-  size_t i = 0;
-  for (auto v : data) { data_out[i++] = v; }
+  std::copy(props.begin(), props.end(), data_out);
 
   return 0;
 }

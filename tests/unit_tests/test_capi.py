@@ -430,13 +430,11 @@ def test_property_map(capi_init):
     s = openmc.capi.plot._PlotBase()
     s.width = 1.26
     s.height = 1.26
-    s.vRes = 3
-    s.hRes = 3
+    s.v_res = 3
+    s.h_res = 3
     s.origin = (0.0, 0.0, 0.0)
     s.basis = 'xy'
     s.level = -1
 
     properties = openmc.capi.plot.property_map(s)
-    print(properties)
-    print(expected_properties)
     assert np.allclose(expected_properties, properties, atol=1e-04)

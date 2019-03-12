@@ -2,6 +2,7 @@ from collections import OrderedDict
 from collections.abc import Iterable
 from math import sqrt
 from numbers import Real
+from functools import partial
 
 from openmc import XPlane, YPlane, Plane, ZCylinder, Quadric
 from openmc.checkvalue import check_type, check_value

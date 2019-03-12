@@ -51,9 +51,30 @@ struct RGBColor {
   uint8_t red, green, blue;
 };
 
+
 typedef xt::xtensor<RGBColor, 2> ImageData;
-typedef xt::xtensor<int32_t, 3>  IdData;
-typedef xt::xtensor<double, 3>  PropertyData;
+
+struct IdData {
+  // Constructor
+  IdData(int h_res, int v_res);
+
+  // Methods
+  void set_value(int y, int x, const Particle& p, int level);
+
+  // Members
+  xt::xtensor<int32_t, 3> data;
+};
+
+struct PropertyData {
+  // Constructor
+  PropertyData(int h_res, int v_res);
+
+  // Methods
+  void set_value(int y, int x, const Particle& p, int level);
+
+  // Members
+  xt::xtensor<double, 3> data;
+};
 
 enum class PlotType {
   slice = 1,
@@ -80,7 +101,7 @@ class PlotBase {
   PropertyData get_property_map() const;
 
  private:
-  template<class D, typename setter>
+  template<class D>
     D generate_data() const;
 
   // Members

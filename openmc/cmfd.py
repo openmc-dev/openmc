@@ -789,9 +789,10 @@ class CMFDRun(object):
             batch_str = str(openmc.capi.current_batch()).zfill(batch_str_len)
             filename = 'statepoint.{}.h5'.format(batch_str)
 
-        # Call C API statepoint_write if statepoint file doesn't exist
-        if not os.path.isfile(filename):
-            openmc.capi.statepoint_write(filename=filename)
+        # Call C API statepoint_write to save source distribution with CMFD
+        # feedback
+        # TODO don't call statepoint_write in openmc if settings::cmfd_run
+        openmc.capi.statepoint_write(filename=filename)
 
         # Append CMFD data to statepoint file using h5py
         self._write_cmfd_statepoint(filename)

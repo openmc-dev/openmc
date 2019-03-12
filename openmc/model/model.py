@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+from pathlib import Path
 
 import openmc
 from openmc.checkvalue import check_type, check_value
@@ -154,27 +155,39 @@ class Model(object):
                                        'si_celi', 'si_leqi', 'celi', 'leqi'))
         getattr(dep.integrator, method)(op, timesteps, **kwargs)
 
-    def export_to_xml(self):
-        """Export model to XML files."""
+    def export_to_xml(self, directory='.'):
+        """Export model to XML files.
 
-        self.settings.export_to_xml()
+        Parameters
+        ----------
+        directory : str
+            Directory to write XML files to. If it doesn't exist already, it
+            will be created.
+
+        """
+        # Create directory if
+        d = Path(directory)
+        if not d.is_dir():
+            d.mkdir(parents=True)
+
+        self.settings.export_to_xml(d)
         if not self.settings.dagmc:
-            self.geometry.export_to_xml()
+            self.geometry.export_to_xml(d)
 
         # If a materials collection was specified, export it. Otherwise, look
         # for all materials in the geometry and use that to automatically build
         # a collection.
         if self.materials:
-            self.materials.export_to_xml()
+            self.materials.export_to_xml(d)
         else:
             materials = openmc.Materials(self.geometry.get_all_materials()
                                          .values())
-            materials.export_to_xml()
+            materials.export_to_xml(d)
 
         if self.tallies:
-            self.tallies.export_to_xml()
+            self.tallies.export_to_xml(d)
         if self.plots:
-            self.plots.export_to_xml()
+            self.plots.export_to_xml(d)
 
     def run(self, **kwargs):
         """Creates the XML files, runs OpenMC, and returns k-effective

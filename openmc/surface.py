@@ -1,7 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from copy import deepcopy
-from functools import partial
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 from warnings import warn

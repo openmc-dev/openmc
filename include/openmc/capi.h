@@ -71,7 +71,7 @@ extern "C" {
   int openmc_nuclide_name(int index, const char** name);
   int openmc_plot_geometry();
   int openmc_id_map(const void* slice, int32_t *data_out);
-  int openmc_property_map(void* slice, double *data_out);
+  int openmc_property_map(const void* slice, double *data_out);
   int openmc_reset();
   int openmc_run();
   void openmc_set_seed(int64_t new_seed);

@@ -236,7 +236,7 @@ def property_map(plot):
              of OpenMC property ids with dtype float
 
     """
-    prop_data = np.zeros((plot.vRes, plot.hRes, 2),
+    prop_data = np.zeros((plot.v_res, plot.h_res, 2),
                          dtype=np.dtype('float'))
     _dll.openmc_property_map(POINTER(_PlotBase)(plot),
                              prop_data.ctypes.data_as(POINTER(c_double)))

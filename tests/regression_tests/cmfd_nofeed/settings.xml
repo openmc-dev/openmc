@@ -23,4 +23,6 @@
   </mesh>
   <entropy_mesh>10</entropy_mesh>
 
+  <state_point batches="3 6 9" />
+
 </settings>

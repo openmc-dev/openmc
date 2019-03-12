@@ -233,6 +233,16 @@ int openmc_next_batch(int* status)
   return 0;
 }
 
+bool openmc_is_statepoint_batch() {
+  using namespace openmc;
+  using openmc::simulation::current_gen;
+
+  if (!simulation::initialized)
+    return false;
+  else
+    return contains(settings::statepoint_batch, simulation::current_batch);
+}
+
 namespace openmc {
 
 //==============================================================================

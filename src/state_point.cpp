@@ -299,6 +299,42 @@ openmc_statepoint_write(const char* filename, bool* write_source)
   return 0;
 }
 
+extern "C" void
+openmc_load_cmfd_tallies(const int* tally_ids, const int* sp_tally_ids)
+{
+  hid_t file_id = file_open(settings::path_statepoint.c_str(), 'r', true);
+
+#ifdef PHDF5
+  if (true) {
+#else
+  if (mpi::master) {
+#endif
+
+    hid_t tallies_group = open_group(file_id, "tallies");
+
+    // TODO pass this in as argument?
+    int n_tallies = 4;
+    for (int i =0; i < n_tallies; i++) {
+      std::string name = "tally " + std::to_string(sp_tally_ids[i]);
+      hid_t tally_group = open_group(tallies_group, name.c_str());
+      // Get tally from tally_ids
+      auto& tally = model::tallies[model::tally_map[tally_ids[i]]];
+      tally->init_results();
+      auto& results = tally->results_;
+      std::cout << tally_ids[i] << "\n";
+      read_tally_results(tally_group, results.shape()[0],
+        results.shape()[1], results.data());
+      read_dataset(tally_group, "n_realizations", tally->n_realizations_);
+      close_group(tally_group);
+    }
+
+    close_group(tallies_group);
+  }
+  // Close file
+  file_close(file_id);
+}
+
+
 void restart_set_keff()
 {
   if (simulation::restart_batch > settings::n_inactive) {

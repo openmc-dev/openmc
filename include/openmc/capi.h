@@ -45,6 +45,8 @@ extern "C" {
   bool openmc_is_statepoint_batch();
   int openmc_legendre_filter_get_order(int32_t index, int* order);
   int openmc_legendre_filter_set_order(int32_t index, int order);
+  void openmc_load_cmfd_tallies(const int tally_ids[4],
+                                const int sp_tally_ids[4]);
   int openmc_load_nuclide(const char* name);
   bool openmc_master();
   int openmc_material_add_nuclide(int32_t index, const char name[], double density);

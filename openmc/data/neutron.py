@@ -637,7 +637,7 @@ class IncidentNeutron(EqualityMixin):
             data.reactions[101] = absorption
 
         heating = Reaction(301)
-        heating.xs[strT] = Tabulated1D(energy, heating_number)
+        heating.xs[strT] = Tabulated1D(energy, heating_number*total_xs)
         heating.redundant = True
         data.reactions[301] = heating
 

@@ -255,13 +255,12 @@ set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc)
 
 target_include_directories(libopenmc
-  PUBLIC include
-  PRIVATE ${HDF5_INCLUDE_DIRS})
+  PUBLIC include ${HDF5_INCLUDE_DIRS})
 
 # Set compile flags
 target_compile_options(libopenmc PRIVATE ${cxxflags})
 
-target_compile_definitions(libopenmc PRIVATE -DMAX_COORD=${maxcoord})
+target_compile_definitions(libopenmc PUBLIC -DMAX_COORD=${maxcoord})
 if (HDF5_IS_PARALLEL)
   target_compile_definitions(libopenmc PRIVATE -DPHDF5)
 endif()

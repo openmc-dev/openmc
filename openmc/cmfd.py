@@ -1002,7 +1002,8 @@ class CMFDRun(object):
                                   'file {}'.format(sp_filepath))
             else:
                 # Overwrite CMFD values from statepoint
-                if openmc.capi.settings.verbosity >= 5:
+                if (openmc.capi.master() and
+                        openmc.capi.settings.verbosity >= 5):
                     print(' Loading CMFD data from {}...'.format(sp_filepath))
                     sys.stdout.flush()
                 self._cmfd_on = h5f['cmfd'].attrs['cmfd_on']

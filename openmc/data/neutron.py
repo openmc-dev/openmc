@@ -622,7 +622,7 @@ class IncidentNeutron(EqualityMixin):
         data.energy[strT] = energy
         total_xs = ace.xss[i + n_energy : i + 2*n_energy]
         absorption_xs = ace.xss[i + 2*n_energy : i + 3*n_energy]
-        heating_number = ace.xss[i + 3*n_energy : i + 4*n_energy]*EV_PER_MEV
+        heating_number = ace.xss[i + 4*n_energy : i + 5*n_energy]*EV_PER_MEV
 
         # Create redundant reactions (total, absorption, and heating)
         total = Reaction(1)

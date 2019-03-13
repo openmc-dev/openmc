@@ -4,6 +4,8 @@
 #include <fstream>
 #include <sstream>
 
+#include "xtensor/xview.hpp"
+
 #include "openmc/cell.h"
 #include "openmc/constants.h"
 #include "openmc/file_utils.h"
@@ -132,7 +134,8 @@ void create_ppm(Plot pl)
   // double in_pixel = (pl.width_[0])/static_cast<double>(width);
   // double out_pixel = (pl.width_[1])/static_cast<double>(height);
 
-  ImageData data({width, height}, pl.not_found_);
+  ImageData data({width, height});
+  xt::view(data, xt::all(), xt::all()) = pl.not_found_;
 
 //   int in_i, out_i;
 //   Position r;

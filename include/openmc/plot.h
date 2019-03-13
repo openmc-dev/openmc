@@ -88,8 +88,8 @@ enum class PlotBasis {
 };
 
 enum class PlotColorBy {
-  cells = 1,
-  mats = 2
+  cells = 0,
+  mats = 1
 };
 
 //===============================================================================

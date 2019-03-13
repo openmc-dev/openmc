@@ -135,11 +135,12 @@ void create_ppm(Plot pl)
   size_t width = pl.pixels_[0];
   size_t height = pl.pixels_[1];
 
-  ImageData data({width, height});
-  xt::view(data, xt::all(), xt::all()) = pl.not_found_;
+  ImageData data({width, height}, pl.not_found_);
 
+  // generate ids for the plot
   auto ids = pl.get_id_map();
 
+  // assign colors
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
       auto id = ids.data(y, x, pl.color_by_);

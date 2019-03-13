@@ -312,7 +312,6 @@ class CMFDRun(object):
         # Variables that users can modify
         self._tally_begin = 1
         self._feedback_begin = 1
-        self._set_reference_params = False
         self._ref_d = []
         self._dhat_reset = False
         self._display = {'balance': False, 'dominance': False,
@@ -336,6 +335,7 @@ class CMFDRun(object):
         self._intracomm = None
 
         # External variables used during runtime but users cannot control
+        self._set_reference_params = False
         self._indices = np.zeros(4, dtype=np.int32)
         self._egrid = None
         self._albedo = None

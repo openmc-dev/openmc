@@ -1,4 +1,5 @@
 from collections.abc import Iterable, MutableSequence, Mapping
+from pathlib import Path
 from numbers import Real, Integral
 import warnings
 from xml.etree import ElementTree as ET
@@ -995,6 +996,11 @@ class Settings(object):
         # Clean the indentation in the file to be user-readable
         clean_indentation(root_element)
 
+        # Check if path is a directory
+        p = Path(path)
+        if p.is_dir():
+            p /= 'settings.xml'
+
         # Write the XML Tree to the settings.xml file
         tree = ET.ElementTree(root_element)
-        tree.write(path, xml_declaration=True, encoding='utf-8', method="xml")
+        tree.write(str(p), xml_declaration=True, encoding='utf-8')

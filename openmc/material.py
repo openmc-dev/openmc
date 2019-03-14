@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from copy import deepcopy
 from numbers import Real, Integral
+from pathlib import Path
 import warnings
 from xml.etree import ElementTree as ET
 
@@ -1065,9 +1066,14 @@ class Materials(cv.CheckedList):
         # Clean the indentation in the file to be user-readable
         clean_indentation(root_element)
 
+        # Check if path is a directory
+        p = Path(path)
+        if p.is_dir():
+            p /= 'materials.xml'
+
         # Write the XML Tree to the materials.xml file
         tree = ET.ElementTree(root_element)
-        tree.write(path, xml_declaration=True, encoding='utf-8')
+        tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
     @classmethod
     def from_xml(cls, path='materials.xml'):

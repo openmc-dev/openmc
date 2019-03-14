@@ -259,7 +259,7 @@ Particle::transport()
       if (lattice_translation[0] != 0 || lattice_translation[1] != 0 ||
           lattice_translation[2] != 0) {
         // Particle crosses lattice boundary
-        surface_ = ERROR_INT;
+        surface_ = 0;
         cross_lattice(this, lattice_translation);
         event_ = EVENT_LATTICE;
       } else {
@@ -291,7 +291,7 @@ Particle::transport()
         score_surface_tally(this, model::active_meshsurf_tallies);
 
       // Clear surface component
-      surface_ = ERROR_INT;
+      surface_ = 0;
 
       if (settings::run_CE) {
         collision(this);
@@ -556,7 +556,7 @@ Particle::cross_surface()
   // COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
 
   // Remove lower coordinate levels and assignment of surface
-  surface_ = ERROR_INT;
+  surface_ = 0;
   n_coord_ = 1;
   bool found = find_cell(this, false);
 

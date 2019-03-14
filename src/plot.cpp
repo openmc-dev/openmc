@@ -1,5 +1,6 @@
 #include "openmc/plot.h"
 
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 
@@ -133,26 +134,27 @@ void create_ppm(Plot pl)
 
   Direction u {0.5, 0.5, 0.5};
 
-#pragma omp parallel
-{
-  Particle p;
-  p.r() = r;
-  p.u() = u;
-  p.coord_[0].universe = model::root_universe;
+  #pragma omp parallel
+  {
+    Particle p;
+    p.r() = r;
+    p.u() = u;
+    p.coord_[0].universe = model::root_universe;
 
-#pragma omp for
-  for (int y = 0; y < height; y++) {
-    p.r()[out_i] = r[out_i] - out_pixel * y;
-    for (int x = 0; x < width; x++) {
-      // local variables
-      RGBColor rgb;
-      int id;
-      p.r()[in_i] = r[in_i] + in_pixel * x;
-      position_rgb(p, pl, rgb, id);
-      data(x,y) = rgb;
+    #pragma omp for
+    for (int y = 0; y < height; y++) {
+      p.r()[out_i] = r[out_i] - out_pixel * y;
+      for (int x = 0; x < width; x++) {
+        // local variables
+        RGBColor rgb;
+        int id;
+        p.r()[in_i] = r[in_i] + in_pixel * x;
+        position_rgb(p, pl, rgb, id);
+        data(x,y) = rgb;
+      }
     }
   }
-}
+
   // draw mesh lines if present
   if (pl.index_meshlines_mesh_ >= 0) {draw_mesh_lines(pl, data);}
 
@@ -995,35 +997,35 @@ extern "C" int openmc_id_map(const void* plot, int32_t* data_out) {
   // arbitrary direction
   Direction dir = {0.5, 0.5, 0.5};
 
-#pragma omp parallel
-{
-  Particle p;
-  p.r() = xyz;
-  p.u() = dir;
-  p.coord_[0].universe = model::root_universe;
-  int level = plt->level_;
-  int j{};
+  #pragma omp parallel
+  {
+    Particle p;
+    p.r() = xyz;
+    p.u() = dir;
+    p.coord_[0].universe = model::root_universe;
+    int level = plt->level_;
+    int j{};
 
-  #pragma omp for
-  for (int y = 0; y < height; y++) {
-    p.r()[out_i] =  xyz[out_i] - out_pixel * y;
-    for (int x = 0; x < width; x++) {
-      p.r()[in_i] = xyz[in_i] + in_pixel * x;
-      p.n_coord_ = 1;
-      // local variables
-      bool found_cell = find_cell(&p, 0);
-      j = p.n_coord_ - 1;
-      if (level >=0) {j = level + 1;}
-      if (found_cell) {
-        Cell* c = model::cells[p.coord_[j].cell].get();
-        data(y,x,0) = c->id_;
-        if (c->type_ != FILL_UNIVERSE && p.material_ != MATERIAL_VOID) {
-          data(y,x,1) = model::materials[p.material_]->id_;
+    #pragma omp for
+    for (int y = 0; y < height; y++) {
+      p.r()[out_i] =  xyz[out_i] - out_pixel * y;
+      for (int x = 0; x < width; x++) {
+        p.r()[in_i] = xyz[in_i] + in_pixel * x;
+        p.n_coord_ = 1;
+        // local variables
+        bool found_cell = find_cell(&p, 0);
+        j = p.n_coord_ - 1;
+        if (level >=0) {j = level + 1;}
+        if (found_cell) {
+          Cell* c = model::cells[p.coord_[j].cell].get();
+          data(y,x,0) = c->id_;
+          if (c->type_ != FILL_UNIVERSE && p.material_ != MATERIAL_VOID) {
+            data(y,x,1) = model::materials[p.material_]->id_;
+          }
         }
-      }
-    } // inner for
-  } // outer for
- } // omp parallel
+      } // inner for
+    } // outer for
+  } // omp parallel
 
   // write id data to array
   std::copy(data.begin(), data.end(), data_out);

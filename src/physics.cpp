@@ -882,8 +882,9 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
     } // case RVS, DBRC
   } // switch (sampling_method)
 
-  throw std::runtime_error{"Unable to sample target velocity for "
-    "elastic scattering."};
+#ifdef __GNUC__
+  __builtin_unreachable();
+#endif
 }
 
 Direction

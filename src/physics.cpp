@@ -267,7 +267,7 @@ void sample_photon_reaction(Particle* p)
     double phi = 2.0*PI*prn();
     double E_electron = (alpha - alpha_out)*MASS_ELECTRON_EV - e_b;
     int electron = static_cast<int>(Particle::Type::electron);
-    if (E_electron >= settings::energy_cutoff[electron]) { 
+    if (E_electron >= settings::energy_cutoff[electron]) {
       double mu_electron = (alpha - alpha_out*mu)
         / std::sqrt(alpha*alpha + alpha_out*alpha_out - 2.0*alpha*alpha_out*mu);
       Direction u = rotate_angle(p->u(), mu_electron, &phi);
@@ -504,6 +504,9 @@ Reaction* sample_fission(int i_nuclide, double E)
     // Create fission bank sites if fission occurs
     if (prob > cutoff) return rx;
   }
+
+  // If we reached here, no reaction was sampled
+  throw std::runtime_error{"No fission reaction was sampled for " + nuc->name_};
 }
 
 void sample_photon_product(int i_nuclide, double E, int* i_rx, int* i_product)
@@ -901,8 +904,11 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
         }
       }
     }
-  } // case RVS, DBRC
+    } // case RVS, DBRC
   } // switch (sampling_method)
+
+  throw std::runtime_error{"Unable to sample target velocity for "
+    "elastic scattering."};
 }
 
 Direction

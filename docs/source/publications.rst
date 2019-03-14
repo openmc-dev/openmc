@@ -210,6 +210,11 @@ Multigroup Cross Section Generation
   transport simulations <https://doi.org/10.1016/j.anucene.2018.11.017>`_,"
   *Ann. Nucl. Energy*, **125**, 261-271 (2019).
 
+- Kun Zhuang, Xiaobin Tang, and Liangzhi Cao, "`Development and verification of
+  a model for generation of MSFR few-group homogenized cross-sections based on a
+  Monte Carlo code OpenMC <https://doi.org/10.1016/j.anucene.2018.09.037>`_,"
+  *Ann. Nucl. Energy*, **124**, 187-197 (2019).
+
 - Changho Lee and Yeon Sang Jung, "Verification of the Cross Section Library
   Generated Using OpenMC and MC\ :sup:`2`-3 for PROTEUS," *Proc. PHYSOR*, Cancun,
   Mexico, Apr. 22-26 (2018).

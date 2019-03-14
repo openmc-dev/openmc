@@ -1,9 +1,10 @@
 from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
-from xml.etree import ElementTree as ET
+from pathlib import Path
 import subprocess
 import sys
 import warnings
+from xml.etree import ElementTree as ET
 
 import numpy as np
 
@@ -818,6 +819,11 @@ class Plots(cv.CheckedList):
         # Clean the indentation in the file to be user-readable
         clean_indentation(self._plots_file)
 
+        # Check if path is a directory
+        p = Path(path)
+        if p.is_dir():
+            p /= 'plots.xml'
+
         # Write the XML Tree to the plots.xml file
         tree = ET.ElementTree(self._plots_file)
-        tree.write(path, xml_declaration=True, encoding='utf-8', method="xml")
+        tree.write(str(p), xml_declaration=True, encoding='utf-8')

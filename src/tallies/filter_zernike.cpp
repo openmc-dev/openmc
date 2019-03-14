@@ -65,9 +65,10 @@ ZernikeFilter::text_label(int bin) const
       int first = last - (n + 1);
       int m = -n + (bin - first) * 2;
       out << "Zernike expansion, Z" << n << "," << m;
-      return out.str();
+      break;
     }
   }
+  return out.str();
 }
 
 void

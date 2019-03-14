@@ -23,15 +23,25 @@ class _Position(Structure):
                 ('y', c_double),
                 ('z', c_double)]
 
-    def __getitem__(self, key):
-        if key == 0:
+    def __getitem__(self, idx):
+        if idx == 0:
             return self.x
-        elif key == 1:
+        elif idx == 1:
             return self.y
-        elif key == 2:
+        elif idx == 2:
             return self.z
 
-        raise ValueError("{} index is invalid for _Position".format(key))
+        raise ValueError("{} index is invalid for _Position".format(idx))
+
+    def __setitem__(self, idx, val):
+        if idx == 0:
+            self.x = val
+        elif idx == 1:
+            self.y = val
+        elif idx == 2:
+            self.z = val
+
+        raise ValueError("{} index is invalid for _Position".format(idx))
 
     def __repr__(self):
         return "({}, {}, {})".format(self.x, self.y, self.z)

@@ -454,6 +454,9 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
       return (*fission_rx_[0]->products_[0].yield_)(E);
     }
   }
+#ifdef __GNUC__
+  __builtin_unreachable();
+#endif
 }
 
 void Nuclide::calculate_elastic_xs(Particle& p) const

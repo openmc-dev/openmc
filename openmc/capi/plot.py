@@ -26,8 +26,6 @@ class _Position(Structure):
     def __repr__(self):
         return "({}, {}, {})".format(self.x, self.y, self.z)
 
-    def __str__(self):
-        return self.__repr__()
 
 class _PlotBase(Structure):
     """A structure defining a 2-D geometry slice with underlying c-types
@@ -74,16 +72,15 @@ class _PlotBase(Structure):
 
     @property
     def origin(self):
-        out = [self.origin_.x, self.origin_.y, self.origin_.z]
-        return [float(val) for val in out]
+        return self.origin_
 
     @property
     def width(self):
-        return float(self.width_.x)
+        return self.width_.x
 
     @property
     def height(self):
-        return float(self.width_.y)
+        return self.width_.y
 
     @property
     def basis(self):
@@ -94,7 +91,7 @@ class _PlotBase(Structure):
         elif self.basis_ == 3:
             return 'yz'
 
-        raise ValueError("Plot basis {} is invalid".format(basis_))
+        raise ValueError("Plot basis {} is invalid".format(self.basis_))
 
     @property
     def h_res(self):
@@ -171,10 +168,7 @@ class _PlotBase(Structure):
                    "HRes: {}".format(self.h_res),
                    "VRes: {}".format(self.v_res),
                    "Level: {}".format(self.level)]
-        return '\n'.join(output)
-
-    def __str__(self):
-        return self.__repr__()
+        return '\n'.join(out_str)
 
 
 _dll.openmc_id_map.argtypes = [POINTER(_PlotBase), POINTER(c_int32)]
@@ -189,7 +183,7 @@ def id_map(plot):
 
     Parameters
     ----------
-    plot : An openmc.capi.plot._PlotBase
+    plot : openmc.capi.plot._PlotBase
         Object describing the slice of the model to be generated
 
     Returns

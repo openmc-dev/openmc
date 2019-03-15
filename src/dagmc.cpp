@@ -138,7 +138,8 @@ void load_dagmc_geometry()
 
     // set cell ids using global IDs
     DAGCell* c = new DAGCell();
-    c->id_ = model::DAG->id_by_index(3, i+1);
+    c->dag_index_ = i+1;
+    c->id_ = model::DAG->id_by_index(3, c->dag_index_);
     c->dagmc_ptr_ = model::DAG;
     c->universe_ = dagmc_univ_id; // set to zero for now
     c->fill_ = C_NONE; // no fill, single universe
@@ -261,7 +262,8 @@ void load_dagmc_geometry()
 
     // set cell ids using global IDs
     DAGSurface* s = new DAGSurface();
-    s->id_ = model::DAG->id_by_index(2, i+1);
+    s->dag_index_ = i+1;
+    s->id_ = model::DAG->id_by_index(2, s->dag_index_);
     s->dagmc_ptr_ = model::DAG;
 
     // set BCs

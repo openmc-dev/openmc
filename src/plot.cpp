@@ -954,7 +954,8 @@ RGBColor random_color() {
   return {int(prn()*255), int(prn()*255), int(prn()*255)};
 }
 
-extern "C" int openmc_id_map(const void* plot, int32_t* data_out) {
+extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
+{
 
   auto plt = reinterpret_cast<const PlotBase*>(plot);
   if (!plt) {

@@ -9,6 +9,7 @@
 *.pyc
 
 # Python distribution
+.settings/
 dist/
 openmc.egg-info/
 

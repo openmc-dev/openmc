@@ -25,7 +25,7 @@ constexpr int VERSION_RELEASE {0};
 constexpr std::array<int, 3> VERSION {VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE};
 
 // HDF5 data format
-constexpr int HDF5_VERSION[] {2, 0};
+constexpr int HDF5_VERSION[] {2, 0};//DR change version HDF5 to work
 
 // Version numbers for binary files
 constexpr std::array<int, 2> VERSION_STATEPOINT {17, 0};

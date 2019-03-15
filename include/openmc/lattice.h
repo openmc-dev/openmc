@@ -266,6 +266,7 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
 
 private:
+  int n_hextype_;                  //!<DR type of hex lattice orientation
   int n_rings_;                   //!< Number of radial tile positions
   int n_axial_;                   //!< Number of axial tile positions
   Position center_;               //!< Global center of lattice

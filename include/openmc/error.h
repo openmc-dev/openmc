@@ -29,13 +29,13 @@ set_errmsg(const std::stringstream& message)
 
 [[noreturn]] void fatal_error(const std::string& message, int err=-1);
 
-inline
+[[noreturn]] inline
 void fatal_error(const std::stringstream& message)
 {
   fatal_error(message.str());
 }
 
-inline
+[[noreturn]] inline
 void fatal_error(const char* message)
 {
   fatal_error({message, std::strlen(message)});

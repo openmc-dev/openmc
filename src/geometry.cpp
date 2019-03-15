@@ -39,7 +39,6 @@ bool check_cell_overlap(Particle* p)
   // Loop through each coordinate level
   for (int j = 0; j < n_coord; j++) {
     Universe& univ = *model::universes[p->coord_[j].universe];
-    int n = univ.cells_.size();
 
     // Loop through each cell on this level
     for (auto index_cell : univ.cells_) {
@@ -351,7 +350,7 @@ BoundaryInfo distance_to_boundary(Particle* p)
   double d_lat = INFINITY;
   double d_surf = INFINITY;
   int32_t level_surf_cross;
-  std::array<int, 3> level_lat_trans;
+  std::array<int, 3> level_lat_trans {};
 
   // Loop over each coordinate level.
   for (int i = 0; i < p->n_coord_; i++) {

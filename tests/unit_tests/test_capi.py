@@ -400,3 +400,22 @@ def test_load_nuclide(capi_init):
     # load non-existent nuclide
     with pytest.raises(exc.DataError):
         openmc.capi.load_nuclide('Pu3')
+
+
+def test_id_map(capi_init):
+    expected_ids = np.array([[(3, 3), (2, 2), (3, 3)],
+                             [(2, 2), (1, 1), (2, 2)],
+                             [(3, 3), (2, 2), (3, 3)]], dtype='int32')
+
+    # create a plot object
+    s = openmc.capi.plot._PlotBase()
+    s.width = 1.26
+    s.height = 1.26
+    s.v_res = 3
+    s.h_res = 3
+    s.origin = (0.0, 0.0, 0.0)
+    s.basis = 'xy'
+    s.level = -1
+
+    ids = openmc.capi.plot.id_map(s)
+    assert np.array_equal(expected_ids, ids)

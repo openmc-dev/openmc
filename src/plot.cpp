@@ -132,7 +132,7 @@ void create_ppm(Plot pl)
     break;
   }
 
-  Direction u {0.5, 0.5, 0.5};
+  Direction u {0.7071, 0.7071, 0.0};
 
   #pragma omp parallel
   {
@@ -837,7 +837,7 @@ void create_voxel(Plot pl)
   Position ll = pl.origin_ - pl.width_ / 2.;
 
   // allocate and initialize particle
-  Direction u {0.5, 0.5, 0.5};
+  Direction u {0.7071, 0.7071, 0.0};
   Particle p;
   p.r() = ll;
   p.u() = u;

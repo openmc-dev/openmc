@@ -31,7 +31,7 @@ class _Position(Structure):
         elif idx == 2:
             return self.z
         else:
-            raise ValueError("{} index is invalid for _Position".format(idx))
+            raise IndexError("{} index is invalid for _Position".format(key))
 
     def __setitem__(self, idx, val):
         if idx == 0:
@@ -41,7 +41,7 @@ class _Position(Structure):
         elif idx == 2:
             self.z = val
         else:
-            raise ValueError("{} index is invalid for _Position".format(idx))
+            raise IndexError("{} index is invalid for _Position".format(idx))
 
     def __repr__(self):
         return "({}, {}, {})".format(self.x, self.y, self.z)

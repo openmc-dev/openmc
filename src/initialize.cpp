@@ -37,6 +37,10 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
 {
   using namespace openmc;
 
+
+  char cCurrentPath[256];
+
+
 #ifdef OPENMC_MPI
   // Check if intracomm was passed
   MPI_Comm comm;

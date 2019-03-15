@@ -121,7 +121,6 @@ void initialize_mpi(MPI_Comm intracomm)
 int
 parse_command_line(int argc, char* argv[])
 {
-  char buffer[256];  // buffer for reading attribute
   int last_flag = 0;
   for (int i=1; i < argc; ++i) {
     std::string arg {argv[i]};

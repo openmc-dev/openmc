@@ -97,7 +97,7 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
 
       // Determine closest temperature
       double min_delta_T = INFTY;
-      double T_actual;
+      double T_actual = 0.0;
       for (auto T : temps_available) {
         double delta_T = std::abs(T - T_desired);
         if (delta_T < min_delta_T) {

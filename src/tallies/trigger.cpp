@@ -114,7 +114,7 @@ check_keff_trigger()
   if (settings::run_mode != RUN_MODE_EIGENVALUE) return 0.;
 
   double k_combined[2];
-  int err = openmc_get_keff(k_combined);
+  openmc_get_keff(k_combined);
 
   double uncertainty = 0.;
   switch (settings::keff_trigger.metric) {

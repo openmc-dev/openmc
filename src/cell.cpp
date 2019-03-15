@@ -601,7 +601,7 @@ std::pair<double, int32_t>
 DAGCell::distance(Position r, Direction u, int32_t on_surface) const
 {
   moab::ErrorCode rval;
-  moab::EntityHandle vol = dagmc_ptr_->entity_by_id(3, id_);
+  moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, model::cell_map[id_] + 1);
   moab::EntityHandle hit_surf;
   double dist;
   double pnt[3] = {r.x, r.y, r.z};
@@ -621,7 +621,7 @@ DAGCell::distance(Position r, Direction u, int32_t on_surface) const
 bool DAGCell::contains(Position r, Direction u, int32_t on_surface) const
 {
   moab::ErrorCode rval;
-  moab::EntityHandle vol = dagmc_ptr_->entity_by_id(3, id_);
+  moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, model::cell_map[id_] + 1);
 
   int result = 0;
   double pnt[3] = {r.x, r.y, r.z};
@@ -830,9 +830,9 @@ openmc_extend_cells(int32_t n, int32_t* index_start, int32_t* index_end)
 int32_t next_cell(DAGCell* cur_cell, DAGSurface* surf_xed)
 {
   moab::EntityHandle surf =
-    surf_xed->dagmc_ptr_->entity_by_id(2, surf_xed->id_);
+    surf_xed->dagmc_ptr_->entity_by_index(2, model::surface_map[surf_xed->id_] + 1);
   moab::EntityHandle vol =
-    cur_cell->dagmc_ptr_->entity_by_id(3, cur_cell->id_);
+    cur_cell->dagmc_ptr_->entity_by_index(3, model::cell_map[cur_cell->id_] + 1);
 
   moab::EntityHandle new_vol;
   cur_cell->dagmc_ptr_->next_vol(surf, vol, new_vol);

@@ -303,7 +303,7 @@ void load_dagmc_geometry()
 
     // add to global array and map
     model::surfaces.emplace_back(s);
-    model::surface_map[s->id_] = s->id_;
+    model::surface_map[s->id_] = i;
   }
 
   return;

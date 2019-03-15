@@ -182,6 +182,7 @@ class DAGCell : public Cell
 public:
   moab::DagMC* dagmc_ptr_;
   DAGCell();
+  int32_t dag_index_;
 
   bool contains(Position r, Direction u, int32_t on_surface) const;
 

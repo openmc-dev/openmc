@@ -10,6 +10,25 @@ def test_attributes(uo2):
     assert uo2.id == 100
     assert uo2.depletable
 
+def test_nuclide_attributes():
+    test_nuclide = openmc.Nuclide('Li7')
+    assert test_nuclide.element_name == 'Li'
+    assert test_nuclide.name == 'Li7'
+    assert test_nuclide.nucleons == 7
+    assert test_nuclide.neutrons == 4
+    assert test_nuclide.protons == 3
+    test_nuclide = openmc.Nuclide('Co60m')
+    assert test_nuclide.element_name == 'Co'
+    assert test_nuclide.name == 'Co60m'
+    assert test_nuclide.nucleons == 60
+    assert test_nuclide.neutrons == 33
+    assert test_nuclide.protons == 27
+    test_nuclide = openmc.Nuclide('Ta180m')
+    assert test_nuclide.element_name == 'Ta'
+    assert test_nuclide.name == 'Ta180m'
+    assert test_nuclide.nucleons == 180
+    assert test_nuclide.neutrons == 107
+    assert test_nuclide.protons == 73
 
 def test_nuclides(uo2):
     """Test adding/removing nuclides."""

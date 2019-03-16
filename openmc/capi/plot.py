@@ -227,13 +227,14 @@ def property_map(plot):
 
     Parameters
     ----------
-    plot : An openmc.capi.plot._PlotBase object describing the slice of the
-           model to be generated
+    plot : openmc.capi.plot._PlotBase
+        Object describing the slice of the model to be generated
 
     Returns
     -------
-    property_map : a NumPy array with shape (vertical pixels, horizontal pixels, 2)
-             of OpenMC property ids with dtype float
+    property_map : numpy.ndarray
+        a NumPy array with shape (vertical pixels, horizontal pixels, 2) of
+        OpenMC property ids with dtype float
 
     """
     prop_data = np.zeros((plot.v_res, plot.h_res, 2),

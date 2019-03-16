@@ -59,4 +59,4 @@ class Nuclide(str):
 
     @property
     def neutrons(self):
-        return zam(self)[1]-zam(self)[0]
+        return self.nucleons-self.protons

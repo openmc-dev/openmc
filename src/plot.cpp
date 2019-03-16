@@ -30,8 +30,7 @@ namespace openmc {
 
 const RGBColor WHITE {255, 255, 255};
 constexpr int PLOT_LEVEL_LOWEST {-1}; //!< lower bound on plot universe level
-constexpr int32_t VOID {-2};
-constexpr int32_t NOT_FOUND {-1};
+constexpr int32_t NOT_FOUND {-2};
 
 IdData::IdData(int h_res, int v_res) {
   data = xt::xtensor<int32_t, 3>({v_res, h_res, 2}, NOT_FOUND);
@@ -42,7 +41,7 @@ IdData::set_value(int y, int x, const Particle& p, int level) {
   Cell* c = model::cells[p.coord_[level].cell].get();
   data(y,x,0) = c->id_;
   if (p.material_ == MATERIAL_VOID) {
-    data(y,x,1) = VOID;
+    data(y,x,1) = MATERIAL_VOID;
     return;
   } else if (c->type_ != FILL_UNIVERSE) {
     Material* m = model::materials[p.material_].get();
@@ -149,7 +148,7 @@ void create_ppm(Plot pl)
       if (PlotColorBy::cells == pl.color_by_) {
         data(x,y) = pl.colors_[model::cell_map[id]];
       } else if (PlotColorBy::mats == pl.color_by_) {
-        if (id == VOID) {
+        if (id == MATERIAL_VOID) {
           data(x,y) = WHITE;
           continue;
         }
@@ -750,7 +749,7 @@ void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id)
       } else if (p.material_ == MATERIAL_VOID) {
         // By default, color void cells white
         rgb = WHITE;
-        id = NOT_FOUND;
+        id = MATERIAL_VOID;
       } else {
         rgb = pl.colors_[p.material_];
         id = model::materials[p.material_]->id_;
@@ -1058,7 +1057,7 @@ extern "C" int openmc_property_map(const void* plot, double* data_out) {
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  PropertyData props = plt->get_property_map();
+  auto props = plt->get_property_map();
 
   // write id data to array
   std::copy(props.data.begin(), props.data.end(), data_out);

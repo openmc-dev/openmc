@@ -113,7 +113,15 @@ void legacy_assign_material(const std::string& mat_string,
 
   // if no material was set using a name, assign by id
   if (!mat_found_by_name) {
-    c->material_.emplace_back(std::stoi(mat_string));
+    try {
+      auto id = std::stoi(mat_string);
+      c->material_.emplace_back(id);
+    } catch (...) {
+      std::stringstream err_msg;
+      err_msg << "No material " << mat_string
+              << " found for volume (cell) " << c->id_;
+      fatal_error(err_msg);
+    }
   }
 
   if (settings::verbosity >= 10) {

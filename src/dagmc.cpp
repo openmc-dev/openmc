@@ -4,10 +4,11 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/geometry.h"
 #include "openmc/geometry_aux.h"
+#include "openmc/material.h"
 #include "openmc/string_utils.h"
 #include "openmc/settings.h"
-#include "openmc/geometry.h"
 
 #ifdef DAGMC
 
@@ -86,6 +87,34 @@ bool write_uwuw_materials_xml() {
   }
 
   return found_uwuw_mats;
+}
+
+void legacy_assign_material(const std::string& mat_string,
+                            DAGCell* c)
+{
+  bool mat_found = false;
+  // attempt to find a material with a matching name
+  for (const auto& m : model::materials) {
+    if (mat_string == m->name_) {
+      // assign the material with that name
+      if (!mat_found) {
+        mat_found = true;
+        c->material_.push_back(m->id_);
+      // report error if more than one material is found
+      } else {
+        std::stringstream err_msg;
+        err_msg << "More than one material found with name " << mat_string
+                << ". Please ensure materials have unique names if using this"
+                << " property to assign materials.";
+        fatal_error(err_msg);
+      }
+    }
+  }
+
+  // if no material was set using a name, assign by id
+  if (!mat_found) {
+    c->material_.emplace_back(std::stoi(mat_string));
+  }
 }
 
 void load_dagmc_geometry()
@@ -187,7 +216,7 @@ void load_dagmc_geometry()
           size_t _comp_pos = mat_value.find(_comp);
           if (_comp_pos != std::string::npos) { mat_value.erase(_comp_pos, _comp.length()); }
           // assign IC material by id
-          c->material_.push_back(std::stoi(mat_value));
+          legacy_assign_material(mat_value, c);
         }
       } else {
         // if no material is found, the implicit complement is void
@@ -234,9 +263,7 @@ void load_dagmc_geometry()
           fatal_error(err_msg);
         }
       } else {
-        // if not using UWUW materials, we'll find this material
-        // later in the materials.xml
-        c->material_.push_back(std::stoi(mat_value));
+        legacy_assign_material(mat_value, c);
       }
     }
   }

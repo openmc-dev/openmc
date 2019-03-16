@@ -92,13 +92,13 @@ bool write_uwuw_materials_xml() {
 void legacy_assign_material(const std::string& mat_string,
                             DAGCell* c)
 {
-  bool mat_found = false;
+  bool mat_found_by_name = false;
   // attempt to find a material with a matching name
   for (const auto& m : model::materials) {
     if (mat_string == m->name_) {
       // assign the material with that name
-      if (!mat_found) {
-        mat_found = true;
+      if (!mat_found_by_name) {
+        mat_found_by_name = true;
         c->material_.push_back(m->id_);
       // report error if more than one material is found
       } else {
@@ -112,8 +112,20 @@ void legacy_assign_material(const std::string& mat_string,
   }
 
   // if no material was set using a name, assign by id
-  if (!mat_found) {
+  if (!mat_found_by_name) {
     c->material_.emplace_back(std::stoi(mat_string));
+  }
+
+  if (settings::verbosity >= 10) {
+    Material* m = model::materials[model::material_map[c->material_[0]]].get();
+    std::stringstream msg;
+    msg << "DAGMC material " << mat_string << " was assigned";
+      if (mat_found_by_name) {
+        msg << " using material name: " << m->name_;
+      } else {
+        msg << " using material id: " << m->id_;
+      }
+    write_message(msg.str(), 10);
   }
 }
 

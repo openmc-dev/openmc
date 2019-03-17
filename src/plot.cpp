@@ -893,11 +893,11 @@ void draw_mesh_lines(Plot pl, ImageData& data)
 // CREATE_VOXEL outputs a binary file that can be input into silomesh for 3D
 // geometry visualization.  It works the same way as create_ppm by dragging a
 // particle across the geometry for the specified number of voxels. The first 3
-// int(4)'s in the binary are the number of x, y, and z voxels.  The next 3
-// real(8)'s are the widths of the voxels in the x, y, and z directions. The
-// next 3 real(8)'s are the x, y, and z coordinates of the lower left
-// point. Finally the binary is filled with entries of four int(4)'s each. Each
-// 'row' in the binary contains four int(4)'s: 3 for x,y,z position and 1 for
+// int's in the binary are the number of x, y, and z voxels.  The next 3
+// double's are the widths of the voxels in the x, y, and z directions. The
+// next 3 double's are the x, y, and z coordinates of the lower left
+// point. Finally the binary is filled with entries of four int's each. Each
+// 'row' in the binary contains four int's: 3 for x,y,z position and 1 for
 // cell or material id.  For 1 million voxels this produces a file of
 // approximately 15MB.
 // =============================================================================

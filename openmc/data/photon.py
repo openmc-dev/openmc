@@ -42,6 +42,7 @@ _REACTION_NAME = {
     516: 'Total pair production',
     517: 'Pair production, nuclear field',
     522: 'Photoelectric absorption',
+    525: 'Heating',
     526: 'Electro-atomic scattering',
     527: 'Electro-atomic bremsstrahlung',
     528: 'Electro-atomic excitation',
@@ -446,8 +447,12 @@ class IncidentPhoton(EqualityMixin):
 
         # Read each reaction
         data = cls(Z)
-        for mt in (502, 504, 515, 522):
+        for mt in (502, 504, 515, 522, 525):
             data.reactions[mt] = PhotonReaction.from_ace(ace, mt)
+
+        # Get heating cross sections [eV*barn] from factors [MeV per collision]
+        data.reactions[525].xs.y *= sum([data.reactions[mt].xs.y for mt in
+                                         (502, 504, 515, 522)]) * EV_PER_MEV
 
         # Compton profiles
         n_shell = ace.nxs[5]
@@ -643,6 +648,11 @@ class IncidentPhoton(EqualityMixin):
         # Write photoelectric cross section
         photoelec_group = group.create_group('photoelectric')
         photoelec_group.create_dataset('xs', data=self[522].xs(union_grid))
+
+        # Write heating cross section
+        if 525 in self:
+            heat_group = group.create_group('heating')
+            heat_group.create_dataset('xs', data=self[525].xs(union_grid))
 
         # Write photoionization cross sections
         shell_group = group.create_group('subshells')
@@ -885,14 +895,18 @@ class PhotonReaction(EqualityMixin):
         elif mt == 522:
             # Photoelectric
             idx = ace.jxs[1] + 3*n
+        elif mt == 525:
+            # Heating
+            idx = ace.jxs[5]
         else:
             raise ValueError('ACE photoatomic cross sections do not have '
                              'data for MT={}.'.format(mt))
 
         # Store cross section
         xs = ace.xss[idx : idx+n].copy()
-        nonzero = (xs != 0.0)
-        xs[nonzero] = np.exp(xs[nonzero])
+        if mt in (502, 504, 515, 522):
+            nonzero = (xs != 0.0)
+            xs[nonzero] = np.exp(xs[nonzero])
         rx.xs = Tabulated1D(energy, xs, [n], [5])
 
         # Get form factors for incoherent/coherent scattering

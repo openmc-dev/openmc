@@ -711,11 +711,6 @@ IdData PlotBase::get_id_map() const {
   return generate_data<IdData>();
 }
 
-xt::xtensor<int32_t, 2> PlotBase::get_cell_ids() const {
-  auto ids = get_id_map();
-  return xt::flip(xt::view(ids.data, xt::all(), xt::all(), 0), 0);
-}
-
 PropertyData PlotBase::get_property_map() const {
   return generate_data<PropertyData>();
 }
@@ -909,7 +904,6 @@ void draw_mesh_lines(Plot pl, ImageData& data)
 
 void create_voxel(Plot pl)
 {
-
   // compute voxel widths in each direction
   std::array<double, 3> vox;
   vox[0] = pl.width_[0]/(double)pl.pixels_[0];
@@ -966,10 +960,13 @@ void create_voxel(Plot pl)
     pltbase.origin_.z = ll.z + z * vox[2];
 
     // generate ids using plotbase
-    auto data = pltbase.get_cell_ids();
+    IdData ids = pltbase.get_id_map();
+
+    // select only cell ID data and flip the y-axis
+    xt::xtensor<int32_t, 2> data1 = xt::flip(xt::view(ids.data, xt::all(), xt::all(), 0), 0);
 
     // Write to HDF5 dataset
-    voxel_write_slice(z, dspace, dset, memspace, &(data(0,0)));
+    voxel_write_slice(z, dspace, dset, memspace, &(data1(0,0)));
   }
 
   voxel_finalize(dspace, dset, memspace);

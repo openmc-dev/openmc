@@ -98,8 +98,6 @@ enum class PlotColorBy {
 class PlotBase {
  public:
   IdData get_id_map() const;
-  xt::xtensor<int32_t, 2> get_cell_ids() const;
-
   PropertyData get_property_map() const;
 
  private:

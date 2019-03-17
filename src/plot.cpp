@@ -919,13 +919,6 @@ void create_voxel(Plot pl)
   // initial particle position
   Position ll = pl.origin_ - pl.width_ / 2.;
 
-  // allocate and initialize particle
-  Direction u {0.7071, 0.7071, 0.0};
-  Particle p;
-  p.r() = ll;
-  p.u() = u;
-  p.coord_[0].universe = model::root_universe;
-
   // Open binary plot file for writing
   std::ofstream of;
   std::string fname = std::string(pl.path_plot_);
@@ -957,28 +950,22 @@ void create_voxel(Plot pl)
   hid_t dspace, dset, memspace;
   voxel_init(file_id, &(dims[0]), &dspace, &dset, &memspace);
 
-  // move to center of voxels
-  ll.x += vox[0] / 2.;
-  ll.y += vox[1] / 2.;
-  ll.z += vox[2] / 2.;
-
-  int data[pl.pixels_[1]][pl.pixels_[0]];
+  PlotBase pltbase;
+  pltbase.width_ = pl.width_;
+  pltbase.origin_ = pl.origin_;
+  pltbase.basis_ = PlotBasis::xy;
+  pltbase.pixels_ = pl.pixels_;
+  pltbase.level_ = -1; // all universes for voxel files
 
   ProgressBar pb;
-
-  RGBColor rgb;
-  int id;
   for (int z = 0; z < pl.pixels_[2]; z++) {
+    // update progress bar
     pb.set_value(100.*(double)z/(double)(pl.pixels_[2]-1));
-    PlotBase pltbase;
-    pltbase.width_ = pl.width_;
-    pltbase.origin_ = pl.origin_;
-    pltbase.basis_ = PlotBasis::xy;
-    pltbase.pixels_ = pl.pixels_;
-    pltbase.level_ = pl.level_;
 
+    // update z coordinate
     pltbase.origin_.z = ll.z + z * vox[2];
 
+    // generate ids using plotbase
     auto data = pltbase.get_cell_ids();
 
     // Write to HDF5 dataset

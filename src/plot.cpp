@@ -977,7 +977,7 @@ void create_voxel(Plot pl)
     pltbase.pixels_ = pl.pixels_;
     pltbase.level_ = pl.level_;
 
-    pl.origin_.z = pl.origin_.z + z * vox[2];
+    pltbase.origin_.z = ll.z + z * vox[2];
 
     auto data = pltbase.get_cell_ids();
 

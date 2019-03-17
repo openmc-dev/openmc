@@ -711,6 +711,11 @@ IdData PlotBase::get_id_map() const {
   return generate_data<IdData>();
 }
 
+xt::xtensor<int32_t, 2> PlotBase::get_cell_ids() const {
+  auto ids = get_id_map();
+  return xt::flip(xt::view(ids.data, xt::all(), xt::all(), 0), 0);
+}
+
 PropertyData PlotBase::get_property_map() const {
   return generate_data<PropertyData>();
 }
@@ -965,30 +970,23 @@ void create_voxel(Plot pl)
   int id;
   for (int z = 0; z < pl.pixels_[2]; z++) {
     pb.set_value(100.*(double)z/(double)(pl.pixels_[2]-1));
-    for (int y = 0; y < pl.pixels_[1]; y++) {
-      for (int x = 0; x < pl.pixels_[0]; x++) {
-        // get voxel color
-        position_rgb(p, pl, rgb, id);
-        // write to plot data
-        data[y][x] = id;
-        // advance particle in x direction
-        p.r().x += vox[0];
-      }
-      // advance particle in y direction
-      p.r().y += vox[1];
-      p.r().x = ll[0];
-    }
-    // advance particle in z direction
-    p.r().z += vox[2];
-    p.r().y = ll[1];
-    p.r().x = ll[0];
+    PlotBase pltbase;
+    pltbase.width_ = pl.width_;
+    pltbase.origin_ = pl.origin_;
+    pltbase.basis_ = PlotBasis::xy;
+    pltbase.pixels_ = pl.pixels_;
+    pltbase.level_ = pl.level_;
+
+    pl.origin_.z += ll.z + z * vox[2];
+
+    auto data = pltbase.get_cell_ids();
+
     // Write to HDF5 dataset
-    voxel_write_slice(z, dspace, dset, memspace, &(data[0]));
+    voxel_write_slice(z, dspace, dset, memspace, &(data(0,0)));
   }
 
   voxel_finalize(dspace, dset, memspace);
   file_close(file_id);
-
 }
 
 void

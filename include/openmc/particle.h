@@ -111,11 +111,11 @@ struct ElementMicroXS {
 };
 
 //==============================================================================
-// MATERIALMACROXS contains cached macroscopic cross sections for the material a
+// MACROXS contains cached macroscopic cross sections for the material a
 // particle is traveling through
 //==============================================================================
 
-struct MaterialMacroXS {
+struct MacroXS {
   double total;         //!< macroscopic total xs
   double absorption;    //!< macroscopic absorption xs
   double fission;       //!< macroscopic fission xs
@@ -219,9 +219,10 @@ public:
   //==========================================================================
   // Data members
 
-  std::vector<NuclideMicroXS> micro_xs_;
-  std::vector<ElementMicroXS> micro_photon_xs_;
-  MaterialMacroXS material_xs_;
+  // Cross section caches
+  std::vector<NuclideMicroXS> neutron_xs_; //!< Microscopic neutron cross sections
+  std::vector<ElementMicroXS> photon_xs_; //!< Microscopic photon cross sections
+  MacroXS macro_xs_; //!< Macroscopic cross sections
 
   int64_t id_;  //!< Unique ID
   Type type_ {Type::neutron};   //!< Particle type (n, p, e, etc.)

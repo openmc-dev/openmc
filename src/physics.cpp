@@ -110,7 +110,7 @@ void sample_neutron_reaction(Particle* p)
   // If survival biasing is being used, the following subroutine adjusts the
   // weight of the particle. Otherwise, it checks to see if absorption occurs
 
-  if (p->micro_xs_[i_nuclide].absorption > 0.0) {
+  if (p->neutron_xs_[i_nuclide].absorption > 0.0) {
     absorption(p, i_nuclide);
   } else {
     p->wgt_absorb_ = 0.0;
@@ -146,8 +146,8 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
-  double nu_t = p->wgt_ / simulation::keff * weight * p->micro_xs_[
-    i_nuclide].nu_fission / p->micro_xs_[i_nuclide].total;
+  double nu_t = p->wgt_ / simulation::keff * weight * p->neutron_xs_[
+    i_nuclide].nu_fission / p->neutron_xs_[i_nuclide].total;
 
   // Sample the number of neutrons produced
   int nu = static_cast<int>(nu_t);
@@ -227,7 +227,7 @@ void sample_photon_reaction(Particle* p)
   // Sample element within material
   int i_element = sample_element(p);
   p->event_nuclide_ = i_element;
-  const auto& micro {p->micro_photon_xs_[i_element]};
+  const auto& micro {p->photon_xs_[i_element]};
   const auto& element {data::elements[i_element]};
 
   // Calculate photon energy over electron rest mass equivalent
@@ -408,7 +408,7 @@ void sample_positron_reaction(Particle* p)
 int sample_nuclide(const Particle* p)
 {
   // Sample cumulative distribution function
-  double cutoff = prn() * p->material_xs_.total;
+  double cutoff = prn() * p->macro_xs_.total;
 
   // Get pointers to nuclide/density arrays
   const auto& mat {model::materials[p->material_]};
@@ -421,7 +421,7 @@ int sample_nuclide(const Particle* p)
     double atom_density = mat->atom_density_[i];
 
     // Increment probability to compare to cutoff
-    prob += atom_density * p->micro_xs_[i_nuclide].total;
+    prob += atom_density * p->neutron_xs_[i_nuclide].total;
     if (prob >= cutoff) return i_nuclide;
   }
 
@@ -433,7 +433,7 @@ int sample_nuclide(const Particle* p)
 int sample_element(Particle* p)
 {
   // Sample cumulative distribution function
-  double cutoff = prn() * p->material_xs_.total;
+  double cutoff = prn() * p->macro_xs_.total;
 
   // Get pointers to elements, densities
   const auto& mat {model::materials[p->material_]};
@@ -454,7 +454,7 @@ int sample_element(Particle* p)
     double atom_density = mat->atom_density_[i];
 
     // Determine microscopic cross section
-    double sigma = atom_density * p->micro_photon_xs_[i_element].total;
+    double sigma = atom_density * p->photon_xs_[i_element].total;
 
     // Increment probability to compare to cutoff
     prob += sigma;
@@ -472,7 +472,7 @@ Reaction* sample_fission(int i_nuclide, const Particle* p)
   // If we're in the URR, by default use the first fission reaction. We also
   // default to the first reaction if we know that there are no partial fission
   // reactions
-  if (p->micro_xs_[i_nuclide].use_ptable || !nuc->has_partial_fission_) {
+  if (p->neutron_xs_[i_nuclide].use_ptable || !nuc->has_partial_fission_) {
     return nuc->fission_rx_[0];
   }
 
@@ -485,10 +485,10 @@ Reaction* sample_fission(int i_nuclide, const Particle* p)
   }
 
   // Get grid index and interpolatoin factor and sample fission cdf
-  int i_temp = p->micro_xs_[i_nuclide].index_temp;
-  int i_grid = p->micro_xs_[i_nuclide].index_grid;
-  double f = p->micro_xs_[i_nuclide].interp_factor;
-  double cutoff = prn() * p->micro_xs_[i_nuclide].fission;
+  int i_temp = p->neutron_xs_[i_nuclide].index_temp;
+  int i_grid = p->neutron_xs_[i_nuclide].index_grid;
+  double f = p->neutron_xs_[i_nuclide].interp_factor;
+  double cutoff = prn() * p->neutron_xs_[i_nuclide].fission;
   double prob = 0.0;
 
   // Loop through each partial fission reaction type
@@ -512,10 +512,10 @@ Reaction* sample_fission(int i_nuclide, const Particle* p)
 void sample_photon_product(int i_nuclide, const Particle* p, int* i_rx, int* i_product)
 {
   // Get grid index and interpolation factor and sample photon production cdf
-  int i_temp = p->micro_xs_[i_nuclide].index_temp;
-  int i_grid = p->micro_xs_[i_nuclide].index_grid;
-  double f = p->micro_xs_[i_nuclide].interp_factor;
-  double cutoff = prn() * p->micro_xs_[i_nuclide].photon_prod;
+  int i_temp = p->neutron_xs_[i_nuclide].index_temp;
+  int i_grid = p->neutron_xs_[i_nuclide].index_grid;
+  double f = p->neutron_xs_[i_nuclide].interp_factor;
+  double cutoff = prn() * p->neutron_xs_[i_nuclide].photon_prod;
   double prob = 0.0;
 
   // Loop through each reaction type
@@ -548,8 +548,8 @@ void absorption(Particle* p, int i_nuclide)
 {
   if (settings::survival_biasing) {
     // Determine weight absorbed in survival biasing
-    p->wgt_absorb_ = p->wgt_ * p->micro_xs_[i_nuclide].absorption /
-          p->micro_xs_[i_nuclide].total;
+    p->wgt_absorb_ = p->wgt_ * p->neutron_xs_[i_nuclide].absorption /
+          p->neutron_xs_[i_nuclide].total;
 
     // Adjust weight of particle by probability of absorption
     p->wgt_ -= p->wgt_absorb_;
@@ -557,17 +557,17 @@ void absorption(Particle* p, int i_nuclide)
 
     // Score implicit absorption estimate of keff
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      global_tally_absorption += p->wgt_absorb_ * p->micro_xs_[
-        i_nuclide].nu_fission / p->micro_xs_[i_nuclide].absorption;
+      global_tally_absorption += p->wgt_absorb_ * p->neutron_xs_[
+        i_nuclide].nu_fission / p->neutron_xs_[i_nuclide].absorption;
     }
   } else {
     // See if disappearance reaction happens
-    if (p->micro_xs_[i_nuclide].absorption >
-        prn() * p->micro_xs_[i_nuclide].total) {
+    if (p->neutron_xs_[i_nuclide].absorption >
+        prn() * p->neutron_xs_[i_nuclide].total) {
       // Score absorption estimate of keff
       if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-        global_tally_absorption += p->wgt_ * p->micro_xs_[
-          i_nuclide].nu_fission / p->micro_xs_[i_nuclide].absorption;
+        global_tally_absorption += p->wgt_ * p->neutron_xs_[
+          i_nuclide].nu_fission / p->neutron_xs_[i_nuclide].absorption;
       }
 
       p->alive_ = false;
@@ -584,7 +584,7 @@ void scatter(Particle* p, int i_nuclide)
 
   // Get pointer to nuclide and grid index/interpolation factor
   const auto& nuc {data::nuclides[i_nuclide]};
-  const auto& micro {p->micro_xs_[i_nuclide]};
+  const auto& micro {p->neutron_xs_[i_nuclide]};
   int i_temp =  micro.index_temp;
   int i_grid =  micro.index_grid;
   double f = micro.interp_factor;
@@ -691,9 +691,9 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT,
 
   // Sample velocity of target nucleus
   Direction v_t {};
-  if (!p->micro_xs_[i_nuclide].use_ptable) {
+  if (!p->neutron_xs_[i_nuclide].use_ptable) {
     v_t = sample_target_velocity(nuc.get(), p->E_, p->u(), v_n,
-      p->micro_xs_[i_nuclide].elastic, kT);
+      p->neutron_xs_[i_nuclide].elastic, kT);
   }
 
   // Velocity of center-of-mass
@@ -746,7 +746,7 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT,
 void sab_scatter(int i_nuclide, int i_sab, Particle* p)
 {
   // Determine temperature index
-  const auto& micro {p->micro_xs_[i_nuclide]};
+  const auto& micro {p->neutron_xs_[i_nuclide]};
   int i_temp = micro.index_temp_sab;
 
   // Sample energy and angle
@@ -1104,8 +1104,8 @@ void inelastic_scatter(const Nuclide* nuc, const Reaction* rx, Particle* p)
 void sample_secondary_photons(Particle* p, int i_nuclide)
 {
   // Sample the number of photons produced
-  double y_t = p->wgt_ * p->micro_xs_[i_nuclide].photon_prod /
-    p->micro_xs_[i_nuclide].total;
+  double y_t = p->wgt_ * p->neutron_xs_[i_nuclide].photon_prod /
+    p->neutron_xs_[i_nuclide].total;
   int y = static_cast<int>(y_t);
   if (prn() <= y_t - y) ++y;
 

@@ -33,7 +33,9 @@ GROUP_STRUCTURES = {}
    Mathematics & Computations, Supercomputing, Reactor Physics and Nuclear and
    Biological Applications, September 12-15, Avignon, France, 2005.
 .. [SAN2007] Santamarina, A. & Hfaiedh, N. (2007). The SHEM energy mesh for
-   accurate fuel depletion and BUC calculations.
+   accurate fuel depletion and BUC calculations. Proceedings of the International
+   Conference on Safety Criticality ICNC 2007, St Peterburg (Russia), Vol. I pp.
+   446-452.
 .. [HEB2008] Hébert, Alain & Santamarina, Alain. (2008). Refinement of the
    Santamarina-Hfaiedh energy mesh between 22.5 eV and 11.4 keV. International
    Conference on the Physics of Reactors 2008, PHYSOR 08. 2. 929-938.

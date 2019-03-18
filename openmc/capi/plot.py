@@ -1,4 +1,4 @@
-from ctypes import c_int, c_int32, c_double, Structure, POINTER
+from ctypes import c_int, c_size_t, c_int32, c_double, Structure, POINTER
 
 from . import _dll
 from .error import _error_handler
@@ -57,7 +57,7 @@ class _PlotBase(Structure):
         The width of the plot along the x, y, and z axes, respectively
     basis_ : c_int
         The axes basis of the plot view.
-    pixels_ : c_int[3]
+    pixels_ : c_size_t[3]
         The resolution of the plot in the horizontal and vertical dimensions
     level_ : c_int
         The universe level for the plot view
@@ -73,9 +73,9 @@ class _PlotBase(Structure):
     basis : string
         One of {'xy', 'xz', 'yz'} indicating the horizontal and vertical
         axes of the plot.
-    h_res : float
+    h_res : int
         The horizontal resolution of the plot in pixels
-    v_res : float
+    v_res : int
         The vertical resolution of the plot in pixels
     level : int
         The universe level for the plot (default: -1 -> all universes shown)
@@ -83,7 +83,7 @@ class _PlotBase(Structure):
     _fields_ = [('origin_', _Position),
                 ('width_', _Position),
                 ('basis_', c_int),
-                ('pixels_', 3*c_int),
+                ('pixels_', 3*c_size_t),
                 ('level_', c_int)]
 
     def __init__(self):

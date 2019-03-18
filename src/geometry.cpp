@@ -22,6 +22,7 @@ namespace openmc {
 namespace model {
 
 int root_universe {-1};
+int n_coord_levels;
 
 std::vector<int64_t> overlap_check_count;
 
@@ -257,7 +258,7 @@ find_cell(Particle* p, bool use_neighbor_lists)
   }
 
   // Reset all the deeper coordinate levels.
-  for (int i = p->n_coord_; i < MAX_COORD; i++) {
+  for (int i = p->n_coord_; i < p->coord_.size(); i++) {
     p->coord_[i].reset();
   }
 

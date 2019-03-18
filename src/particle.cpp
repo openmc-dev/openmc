@@ -50,7 +50,9 @@ LocalCoord::reset()
 
 Particle::Particle()
 {
-  // Clear coordinate lists
+  // Create and clear coordinate levels
+  coord_.resize(model::n_coord_levels);
+  cell_last_.resize(model::n_coord_levels);
   clear();
 
   for (int& n : n_delayed_bank_) {

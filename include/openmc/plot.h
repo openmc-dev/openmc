@@ -96,13 +96,12 @@ enum class PlotColorBy {
 //===============================================================================
 // Plot class
 //===============================================================================
-class PlotBase
-{
- public:
+class PlotBase {
+public:
   template<class T> T get_map() const;
 
   // Members
- public:
+public:
   Position origin_; //!< Plot origin in geometry
   Position width_; //!< Plot width in geometry
   PlotBasis basis_; //!< Plot basis (XY/XZ/YZ)
@@ -178,8 +177,7 @@ T PlotBase::get_map() const {
   return data;
 }
 
-class Plot : public PlotBase
-{
+class Plot : public PlotBase {
 
 public:
   // Constructor

@@ -197,7 +197,7 @@ _dll.openmc_id_map.errcheck = _error_handler
 
 def id_map(plot):
     """
-    Generate a 2-D map of (cell_id, material_id). Used for in-memory image
+    Generate a 2-D map of cell and material IDs. Used for in-memory image
     generation.
 
     Parameters
@@ -225,7 +225,7 @@ _dll.openmc_property_map.errcheck = _error_handler
 
 def property_map(plot):
     """
-    Generate a 2-D map of cell temperature and material density. Used for
+    Generate a 2-D map of cell temperatures and material densities. Used for
     in-memory image generation.
 
     Parameters

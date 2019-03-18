@@ -89,8 +89,7 @@ bool write_uwuw_materials_xml() {
   return found_uwuw_mats;
 }
 
-void legacy_assign_material(const std::string& mat_string,
-                            DAGCell* c)
+void legacy_assign_material(const std::string& mat_string, DAGCell* c)
 {
   bool mat_found_by_name = false;
   // attempt to find a material with a matching name
@@ -116,7 +115,7 @@ void legacy_assign_material(const std::string& mat_string,
     try {
       auto id = std::stoi(mat_string);
       c->material_.emplace_back(id);
-    } catch (...) {
+    } catch (const std::invalid_argument&) {
       std::stringstream err_msg;
       err_msg << "No material " << mat_string
               << " found for volume (cell) " << c->id_;
@@ -128,11 +127,11 @@ void legacy_assign_material(const std::string& mat_string,
     Material* m = model::materials[model::material_map[c->material_[0]]].get();
     std::stringstream msg;
     msg << "DAGMC material " << mat_string << " was assigned";
-      if (mat_found_by_name) {
-        msg << " using material name: " << m->name_;
-      } else {
-        msg << " using material id: " << m->id_;
-      }
+    if (mat_found_by_name) {
+      msg << " using material name: " << m->name_;
+    } else {
+      msg << " using material id: " << m->id_;
+    }
     write_message(msg.str(), 10);
   }
 }

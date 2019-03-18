@@ -51,10 +51,10 @@ struct RGBColor {
   uint8_t red, green, blue;
 };
 
-
 typedef xt::xtensor<RGBColor, 2> ImageData;
 
-struct IdData {
+struct IdData
+{
   // Constructor
   IdData(int h_res, int v_res);
 
@@ -62,10 +62,11 @@ struct IdData {
   void set_value(int y, int x, const Particle& p, int level);
 
   // Members
-  xt::xtensor<int32_t, 3> data_;
+  xt::xtensor<int32_t, 3> data_; //!< 2D array of cell & material ids
 };
 
-struct PropertyData {
+struct PropertyData
+{
   // Constructor
   PropertyData(int h_res, int v_res);
 
@@ -73,7 +74,7 @@ struct PropertyData {
   void set_value(int y, int x, const Particle& p, int level);
 
   // Members
-  xt::xtensor<double, 3> data_;
+  xt::xtensor<double, 3> data_; //!< 2D array of temperature & density data
 };
 
 enum class PlotType {
@@ -95,7 +96,9 @@ enum class PlotColorBy {
 //===============================================================================
 // Plot class
 //===============================================================================
-class PlotBase {
+class PlotBase
+{
+  // Methods
  public:
   IdData get_id_map() const;
   PropertyData get_property_map() const;

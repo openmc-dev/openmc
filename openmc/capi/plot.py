@@ -1,7 +1,6 @@
 from ctypes import c_int, c_int32, c_double, Structure, POINTER
 
 from . import _dll
-from .core import _DLLGlobal
 from .error import _error_handler
 
 import numpy as np
@@ -31,7 +30,7 @@ class _Position(Structure):
         elif idx == 2:
             return self.z
         else:
-            raise IndexError("{} index is invalid for _Position".format(key))
+            raise IndexError("{} index is invalid for _Position".format(idx))
 
     def __setitem__(self, idx, val):
         if idx == 0:

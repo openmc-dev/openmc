@@ -438,3 +438,26 @@ def test_property_map(capi_init):
 
     properties = openmc.capi.plot.property_map(s)
     assert np.allclose(expected_properties, properties, atol=1e-04)
+
+
+def test_position(capi_init):
+
+    pos = openmc.capi.plot._Position(1.0, 1.0, 1.0)
+
+    assert pos[0] == 1.0
+    assert pos[1] == 1.0
+    assert pos[2] == 1.0
+
+    pos[0] = 1.3
+    pos[1] = 1.3
+    pos[2] = 1.3
+
+    assert pos[0] == 1.3
+    assert pos[1] == 1.3
+    assert pos[2] == 1.3
+
+    with pytest.raises(IndexError) as e:
+        pos[3] = 1.3
+
+    with pytest.raises(IndexError) as e:
+        pos[-1] = 1.3

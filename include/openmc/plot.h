@@ -57,7 +57,7 @@ typedef xt::xtensor<RGBColor, 2> ImageData;
 
 struct IdData {
   // Constructor
-  IdData(int h_res, int v_res);
+  IdData(size_t h_res, size_t v_res);
 
   // Methods
   void set_value(int y, int x, const Particle& p, int level);
@@ -68,7 +68,7 @@ struct IdData {
 
 struct PropertyData {
   // Constructor
-  PropertyData(int h_res, int v_res);
+  PropertyData(size_t h_res, size_t v_res);
 
   // Methods
   void set_value(int y, int x, const Particle& p, int level);
@@ -105,7 +105,7 @@ public:
   Position origin_; //!< Plot origin in geometry
   Position width_; //!< Plot width in geometry
   PlotBasis basis_; //!< Plot basis (XY/XZ/YZ)
-  std::array<int, 3> pixels_; //!< Plot size in pixels
+  std::array<size_t, 3> pixels_; //!< Plot size in pixels
   int level_; //!< Plot universe level
 };
 

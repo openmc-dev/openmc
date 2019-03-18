@@ -6,7 +6,6 @@
 
 #include "xtensor/xview.hpp"
 
-#include "openmc/cell.h"
 #include "openmc/constants.h"
 #include "openmc/file_utils.h"
 #include "openmc/geometry.h"
@@ -137,7 +136,7 @@ void create_ppm(Plot pl)
   ImageData data({width, height}, pl.not_found_);
 
   // generate ids for the plot
-  auto ids = pl.get_id_map();
+  auto ids = pl.get_map<IdData>();
 
   // assign colors
   for (int y = 0; y < height; y++) {
@@ -639,82 +638,6 @@ Plot::Plot(pugi::xml_node plot_node)
   set_mask(plot_node);
 } // End Plot constructor
 
-template<class D>
-D PlotBase::generate_data() const {
-
-  size_t width = pixels_[0];
-  size_t height = pixels_[1];
-
-  // get pixel size
-  double in_pixel = (width_[0])/static_cast<double>(width);
-  double out_pixel = (width_[1])/static_cast<double>(height);
-
-  // size data array
-  D data(width, height);
-
-  // setup basis indices and initial position centered on pixel
-  int in_i, out_i;
-  Position xyz = origin_;
-  switch(basis_) {
-  case PlotBasis::xy :
-    in_i = 0;
-    out_i = 1;
-    break;
-  case PlotBasis::xz :
-    in_i = 0;
-    out_i = 2;
-    break;
-  case PlotBasis::yz :
-    in_i = 1;
-    out_i = 2;
-    break;
-  }
-
-  // set initial position
-  xyz[in_i] = origin_[in_i] - width_[0] / 2. + in_pixel / 2.;
-  xyz[out_i] = origin_[out_i] + width_[1] / 2. - out_pixel / 2.;
-
-  // arbitrary direction
-  Direction dir = {0.5, 0.5, 0.5};
-
-#pragma omp parallel
-{
-  Particle p;
-  p.r() = xyz;
-  p.u() = dir;
-  p.coord_[0].universe = model::root_universe;
-  int level = level_;
-  int j{};
-
-  #pragma omp for
-  for (int y = 0; y < height; y++) {
-    p.r()[out_i] =  xyz[out_i] - out_pixel * y;
-    for (int x = 0; x < width; x++) {
-      p.r()[in_i] = xyz[in_i] + in_pixel * x;
-      p.n_coord_ = 1;
-      // local variables
-      bool found_cell = find_cell(&p, 0);
-      j = p.n_coord_ - 1;
-      if (level >=0) {j = level + 1;}
-      if (found_cell) {
-        data.set_value(y, x, p, j);
-        Cell* c = model::cells[p.coord_[j].cell].get();
-      }
-    } // inner for
-  } // outer for
- } // omp parallel
-
- return data;
-}
-
-IdData PlotBase::get_id_map() const {
-  return generate_data<IdData>();
-}
-
-PropertyData PlotBase::get_property_map() const {
-  return generate_data<PropertyData>();
-}
-
 //==============================================================================
 // OUTPUT_PPM writes out a previously generated image to a PPM file
 //==============================================================================
@@ -913,7 +836,7 @@ void create_voxel(Plot pl)
     pltbase.origin_.z = ll.z + z * vox[2];
 
     // generate ids using plotbase
-    IdData ids = pltbase.get_id_map();
+    IdData ids = pltbase.get_map<IdData>();
 
     // select only cell ID data and flip the y-axis
     xt::xtensor<int32_t, 2> data1 = xt::flip(xt::view(ids.data_, xt::all(), xt::all(), 0), 0);
@@ -976,7 +899,7 @@ extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  auto ids = plt->get_id_map();
+  auto ids = plt->get_map<IdData>();
 
   // write id data to array
   std::copy(ids.data_.begin(), ids.data_.end(), data_out);
@@ -992,7 +915,7 @@ extern "C" int openmc_property_map(const void* plot, double* data_out) {
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  auto props = plt->get_property_map();
+  auto props = plt->get_map<PropertyData>();
 
   // write id data to array
   std::copy(props.data_.begin(), props.data_.end(), data_out);

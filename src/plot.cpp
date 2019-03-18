@@ -33,33 +33,33 @@ constexpr int PLOT_LEVEL_LOWEST {-1}; //!< lower bound on plot universe level
 constexpr int32_t NOT_FOUND {-2};
 
 IdData::IdData(int h_res, int v_res) {
-  data = xt::xtensor<int32_t, 3>({v_res, h_res, 2}, NOT_FOUND);
+  data_ = xt::xtensor<int32_t, 3>({v_res, h_res, 2}, NOT_FOUND);
 }
 
 void
 IdData::set_value(int y, int x, const Particle& p, int level) {
   Cell* c = model::cells[p.coord_[level].cell].get();
-  data(y,x,0) = c->id_;
+  data_(y,x,0) = c->id_;
   if (p.material_ == MATERIAL_VOID) {
-    data(y,x,1) = MATERIAL_VOID;
+    data_(y,x,1) = MATERIAL_VOID;
     return;
   } else if (c->type_ != FILL_UNIVERSE) {
     Material* m = model::materials[p.material_].get();
-    data(y,x,1) = m->id_;
+    data_(y,x,1) = m->id_;
   }
 }
 
 PropertyData::PropertyData(int h_res, int v_res) {
-  data = xt::xtensor<double, 3>({v_res, h_res, 2}, NOT_FOUND);
+  data_ = xt::xtensor<double, 3>({v_res, h_res, 2}, NOT_FOUND);
 }
 
 void
 PropertyData::set_value(int y, int x, const Particle& p, int level) {
   Cell* c = model::cells[p.coord_[level].cell].get();
-  data(y,x,0) = (p.sqrtkT_ * p.sqrtkT_) / K_BOLTZMANN;
+  data_(y,x,0) = (p.sqrtkT_ * p.sqrtkT_) / K_BOLTZMANN;
   if (c->type_ != FILL_UNIVERSE && p.material_ != MATERIAL_VOID) {
     Material* m = model::materials[p.material_].get();
-    data(y,x,1) = m->density_gpcc_;
+    data_(y,x,1) = m->density_gpcc_;
   }
 }
 
@@ -142,7 +142,7 @@ void create_ppm(Plot pl)
   // assign colors
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
-      auto id = ids.data(y, x, pl.color_by_);
+      auto id = ids.data_(y, x, pl.color_by_);
       // no setting needed if not found
       if (id == NOT_FOUND) { continue; }
       if (PlotColorBy::cells == pl.color_by_) {
@@ -963,7 +963,7 @@ void create_voxel(Plot pl)
     IdData ids = pltbase.get_id_map();
 
     // select only cell ID data and flip the y-axis
-    xt::xtensor<int32_t, 2> data1 = xt::flip(xt::view(ids.data, xt::all(), xt::all(), 0), 0);
+    xt::xtensor<int32_t, 2> data1 = xt::flip(xt::view(ids.data_, xt::all(), xt::all(), 0), 0);
 
     // Write to HDF5 dataset
     voxel_write_slice(z, dspace, dset, memspace, &(data1(0,0)));
@@ -1026,7 +1026,7 @@ extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
   auto ids = plt->get_id_map();
 
   // write id data to array
-  std::copy(ids.data.begin(), ids.data.end(), data_out);
+  std::copy(ids.data_.begin(), ids.data_.end(), data_out);
 
   return 0;
 }
@@ -1042,7 +1042,7 @@ extern "C" int openmc_property_map(const void* plot, double* data_out) {
   auto props = plt->get_property_map();
 
   // write id data to array
-  std::copy(props.data.begin(), props.data.end(), data_out);
+  std::copy(props.data_.begin(), props.data_.end(), data_out);
 
   return 0;
 }

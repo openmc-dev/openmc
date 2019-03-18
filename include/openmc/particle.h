@@ -229,11 +229,11 @@ public:
 
   int n_coord_ {1};              //!< number of current coordinate levels
   int cell_instance_;            //!< offset for distributed properties
-  LocalCoord coord_[MAX_COORD];  //!< coordinates for all levels
+  std::vector<LocalCoord> coord_; //!< coordinates for all levels
 
   // Particle coordinates before crossing a surface
   int n_coord_last_ {1};      //!< number of current coordinates
-  int cell_last_[MAX_COORD];  //!< coordinates for all levels
+  std::vector<int> cell_last_;  //!< coordinates for all levels
 
   // Energy data
   double E_;       //!< post-collision energy in eV

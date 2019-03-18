@@ -15,7 +15,8 @@ namespace openmc {
 
 namespace model {
 
-extern "C" int root_universe;
+extern int root_universe;  //!< Index of root universe
+extern int n_coord_levels; //!< Number of CSG coordinate levels
 
 extern std::vector<int64_t> overlap_check_count;
 

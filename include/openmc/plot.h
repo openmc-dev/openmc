@@ -62,7 +62,7 @@ struct IdData {
   void set_value(int y, int x, const Particle& p, int level);
 
   // Members
-  xt::xtensor<int32_t, 3> data;
+  xt::xtensor<int32_t, 3> data_;
 };
 
 struct PropertyData {
@@ -73,7 +73,7 @@ struct PropertyData {
   void set_value(int y, int x, const Particle& p, int level);
 
   // Members
-  xt::xtensor<double, 3> data;
+  xt::xtensor<double, 3> data_;
 };
 
 enum class PlotType {

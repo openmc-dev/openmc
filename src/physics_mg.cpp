@@ -60,7 +60,7 @@ sample_reaction(Particle* p)
 
   // If survival biasing is being used, the following subroutine adjusts the
   // weight of the particle. Otherwise, it checks to see if absorption occurs.
-  if (p->material_xs_.absorption > 0.) {
+  if (p->macro_xs_.absorption > 0.) {
     absorption(p);
   } else {
     p->wgt_absorb_ = 0.;
@@ -113,7 +113,7 @@ create_fission_sites(Particle* p, Particle::Bank* bank_array, int64_t* size_bank
 
   // Determine the expected number of neutrons produced
   double nu_t = p->wgt_ / simulation::keff * weight *
-       p->material_xs_.nu_fission / p->material_xs_.total;
+       p->macro_xs_.nu_fission / p->macro_xs_.total;
 
   // Sample the number of neutrons produced
   int nu = static_cast<int>(nu_t);
@@ -204,7 +204,7 @@ absorption(Particle* p)
   if (settings::survival_biasing) {
     // Determine weight absorbed in survival biasing
     p->wgt_absorb_ = p->wgt_ *
-         p->material_xs_.absorption / p->material_xs_.total;
+         p->macro_xs_.absorption / p->macro_xs_.total;
 
     // Adjust weight of particle by the probability of absorption
     p->wgt_ -= p->wgt_absorb_;
@@ -213,14 +213,14 @@ absorption(Particle* p)
     // Score implicit absorpion estimate of keff
 #pragma omp atomic
     global_tally_absorption += p->wgt_absorb_ *
-         p->material_xs_.nu_fission /
-         p->material_xs_.absorption;
+         p->macro_xs_.nu_fission /
+         p->macro_xs_.absorption;
   } else {
-    if (p->material_xs_.absorption >
-        prn() * p->material_xs_.total) {
+    if (p->macro_xs_.absorption >
+        prn() * p->macro_xs_.total) {
 #pragma omp atomic
-      global_tally_absorption += p->wgt_ * p->material_xs_.nu_fission /
-           p->material_xs_.absorption;
+      global_tally_absorption += p->wgt_ * p->macro_xs_.nu_fission /
+           p->macro_xs_.absorption;
       p->alive_ = false;
       p->event_ = EVENT_ABSORB;
     }

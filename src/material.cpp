@@ -732,10 +732,10 @@ void Material::init_nuclide_index()
 void Material::calculate_xs(Particle& p) const
 {
   // Set all material macroscopic cross sections to zero
-  p.material_xs_.total = 0.0;
-  p.material_xs_.absorption = 0.0;
-  p.material_xs_.fission = 0.0;
-  p.material_xs_.nu_fission = 0.0;
+  p.macro_xs_.total = 0.0;
+  p.macro_xs_.absorption = 0.0;
+  p.macro_xs_.fission = 0.0;
+  p.macro_xs_.nu_fission = 0.0;
 
   if (p.type_ == Particle::Type::neutron) {
     this->calculate_neutron_xs(p);
@@ -792,7 +792,7 @@ void Material::calculate_neutron_xs(Particle& p) const
     int i_nuclide = nuclide_[i];
 
     // Calculate microscopic cross section for this nuclide
-    const auto& micro {p.micro_xs_[i_nuclide]};
+    const auto& micro {p.neutron_xs_[i_nuclide]};
     if (p.E_ != micro.last_E
         || p.sqrtkT_ != micro.last_sqrtkT
         || i_sab != micro.index_sab
@@ -807,19 +807,19 @@ void Material::calculate_neutron_xs(Particle& p) const
     double atom_density = atom_density_(i);
 
     // Add contributions to cross sections
-    p.material_xs_.total += atom_density * micro.total;
-    p.material_xs_.absorption += atom_density * micro.absorption;
-    p.material_xs_.fission += atom_density * micro.fission;
-    p.material_xs_.nu_fission += atom_density * micro.nu_fission;
+    p.macro_xs_.total += atom_density * micro.total;
+    p.macro_xs_.absorption += atom_density * micro.absorption;
+    p.macro_xs_.fission += atom_density * micro.fission;
+    p.macro_xs_.nu_fission += atom_density * micro.nu_fission;
   }
 }
 
 void Material::calculate_photon_xs(Particle& p) const
 {
-  p.material_xs_.coherent = 0.0;
-  p.material_xs_.incoherent = 0.0;
-  p.material_xs_.photoelectric = 0.0;
-  p.material_xs_.pair_production = 0.0;
+  p.macro_xs_.coherent = 0.0;
+  p.macro_xs_.incoherent = 0.0;
+  p.macro_xs_.photoelectric = 0.0;
+  p.macro_xs_.pair_production = 0.0;
 
   // Add contribution from each nuclide in material
   for (int i = 0; i < nuclide_.size(); ++i) {
@@ -830,7 +830,7 @@ void Material::calculate_photon_xs(Particle& p) const
     int i_element = element_[i];
 
     // Calculate microscopic cross section for this nuclide
-    const auto& micro {p.micro_photon_xs_[i_element]};
+    const auto& micro {p.photon_xs_[i_element]};
     if (p.E_ != micro.last_E) {
       data::elements[i_element].calculate_xs(p);
     }
@@ -842,11 +842,11 @@ void Material::calculate_photon_xs(Particle& p) const
     double atom_density = atom_density_(i);
 
     // Add contributions to material macroscopic cross sections
-    p.material_xs_.total += atom_density * micro.total;
-    p.material_xs_.coherent += atom_density * micro.coherent;
-    p.material_xs_.incoherent += atom_density * micro.incoherent;
-    p.material_xs_.photoelectric += atom_density * micro.photoelectric;
-    p.material_xs_.pair_production += atom_density * micro.pair_production;
+    p.macro_xs_.total += atom_density * micro.total;
+    p.macro_xs_.coherent += atom_density * micro.coherent;
+    p.macro_xs_.incoherent += atom_density * micro.incoherent;
+    p.macro_xs_.photoelectric += atom_density * micro.photoelectric;
+    p.macro_xs_.pair_production += atom_density * micro.pair_production;
   }
 }
 

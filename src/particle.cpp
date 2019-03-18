@@ -58,8 +58,8 @@ Particle::Particle()
   }
 
   // Create microscopic cross section caches
-  micro_xs_.resize(data::nuclides.size());
-  micro_photon_xs_.resize(data::elements.size());
+  neutron_xs_.resize(data::nuclides.size());
+  photon_xs_.resize(data::elements.size());
 }
 
 void
@@ -135,7 +135,7 @@ Particle::transport()
 
   // Force calculation of cross-sections by setting last energy to zero
   if (settings::run_CE) {
-    for (auto& micro : micro_xs_) micro.last_E = 0.0;
+    for (auto& micro : neutron_xs_) micro.last_E = 0.0;
   }
 
   // Prepare to write out particle track.
@@ -189,17 +189,17 @@ Particle::transport()
       } else {
         // Get the MG data
         calculate_xs_c(material_, g_, sqrtkT_, this->u_local(),
-          material_xs_.total, material_xs_.absorption, material_xs_.nu_fission);
+          macro_xs_.total, macro_xs_.absorption, macro_xs_.nu_fission);
 
         // Finally, update the particle group while we have already checked
         // for if multi-group
         g_last_ = g_;
       }
     } else {
-      material_xs_.total      = 0.0;
-      material_xs_.absorption = 0.0;
-      material_xs_.fission    = 0.0;
-      material_xs_.nu_fission = 0.0;
+      macro_xs_.total      = 0.0;
+      macro_xs_.absorption = 0.0;
+      macro_xs_.fission    = 0.0;
+      macro_xs_.nu_fission = 0.0;
     }
 
     // Find the distance to the nearest boundary
@@ -215,10 +215,10 @@ Particle::transport()
     if (type_ == Particle::Type::electron ||
         type_ == Particle::Type::positron) {
       d_collision = 0.0;
-    } else if (material_xs_.total == 0.0) {
+    } else if (macro_xs_.total == 0.0) {
       d_collision = INFINITY;
     } else {
-      d_collision = -std::log(prn()) / material_xs_.total;
+      d_collision = -std::log(prn()) / macro_xs_.total;
     }
 
     // Select smaller of the two distances
@@ -237,7 +237,7 @@ Particle::transport()
     // Score track-length estimate of k-eff
     if (settings::run_mode == RUN_MODE_EIGENVALUE &&
         type_ == Particle::Type::neutron) {
-      global_tally_tracklength += wgt_ * distance * material_xs_.nu_fission;
+      global_tally_tracklength += wgt_ * distance * macro_xs_.nu_fission;
     }
 
     // Score flux derivative accumulators for differential tallies.
@@ -280,8 +280,8 @@ Particle::transport()
       // Score collision estimate of keff
       if (settings::run_mode == RUN_MODE_EIGENVALUE &&
           type_ == Particle::Type::neutron) {
-        global_tally_collision += wgt_ * material_xs_.nu_fission
-          / material_xs_.total;
+        global_tally_collision += wgt_ * macro_xs_.nu_fission
+          / macro_xs_.total;
       }
 
       // Score surface current tallies -- this has to be done before the collision

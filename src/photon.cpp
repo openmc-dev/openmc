@@ -452,7 +452,7 @@ void PhotonInteraction::calculate_xs(Particle& p) const
   // calculate interpolation factor
   double f = (log_E - energy_(i_grid)) / (energy_(i_grid+1) - energy_(i_grid));
 
-  auto& xs {p.micro_photon_xs_[i_element_]};
+  auto& xs {p.photon_xs_[i_element_]};
   xs.index_grid = i_grid;
   xs.interp_factor = f;
 

@@ -31,7 +31,7 @@ const RGBColor WHITE {255, 255, 255};
 constexpr int PLOT_LEVEL_LOWEST {-1}; //!< lower bound on plot universe level
 constexpr int32_t NOT_FOUND {-2};
 
-IdData::IdData(int h_res, int v_res)
+IdData::IdData(size_t h_res, size_t v_res)
   : data_({v_res, h_res, 2}, NOT_FOUND)
 { }
 
@@ -48,7 +48,7 @@ IdData::set_value(int y, int x, const Particle& p, int level) {
   }
 }
 
-PropertyData::PropertyData(int h_res, int v_res)
+PropertyData::PropertyData(size_t h_res, size_t v_res)
   : data_({v_res, h_res, 2}, NOT_FOUND)
 { }
 
@@ -807,7 +807,9 @@ void create_voxel(Plot pl)
   // Write current date and time
   write_attribute(file_id, "date_and_time", time_stamp().c_str());
   hsize_t three = 3;
-  write_attribute(file_id, "num_voxels", pl.pixels_);
+  std::array<int, 3> pixels;
+  std::copy(pl.pixels_.begin(), pl.pixels_.end(), pixels.begin());
+  write_attribute(file_id, "num_voxels", pixels);
   write_attribute(file_id, "voxel_width", vox);
   write_attribute(file_id, "lower_left", ll);
 

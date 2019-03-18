@@ -230,7 +230,7 @@ constexpr int N_XD    {204};
 constexpr int N_XT    {205};
 constexpr int N_X3HE  {206};
 constexpr int N_XA    {207};
-constexpr int HEATING {301};
+constexpr int NEUTRON_HEATING {301};
 constexpr int DAMAGE_ENERGY {444};
 constexpr int COHERENT {502};
 constexpr int INCOHERENT {504};
@@ -366,6 +366,7 @@ constexpr int SCORE_INVERSE_VELOCITY   {-13}; // flux-weighted inverse velocity
 constexpr int SCORE_FISS_Q_PROMPT      {-14}; // prompt fission Q-value
 constexpr int SCORE_FISS_Q_RECOV       {-15}; // recoverable fission Q-value
 constexpr int SCORE_DECAY_RATE         {-16}; // delayed neutron precursor decay rate
+constexpr int SCORE_HEATING            {-17}; // nuclear heating (neutron or photon)
 
 // Tally map bin finding
 constexpr int NO_BIN_FOUND {-1};

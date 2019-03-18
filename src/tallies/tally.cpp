@@ -109,6 +109,9 @@ score_str_to_int(std::string score_str)
   if (score_str == "fission-q-recoverable")
     return SCORE_FISS_Q_RECOV;
 
+  if (score_str == "heating")
+    return SCORE_HEATING;
+
   if (score_str == "current")
     return SCORE_CURRENT;
 
@@ -207,8 +210,6 @@ score_str_to_int(std::string score_str)
     return N_X3HE;
   if (score_str == "(n,Xa)" || score_str == "He4-production")
     return N_XA;
-  if (score_str == "heating")
-    return HEATING;
   if (score_str == "damage-energy")
     return DAMAGE_ENERGY;
 

@@ -60,7 +60,7 @@ struct IdData {
   IdData(size_t h_res, size_t v_res);
 
   // Methods
-  void set_value(int y, int x, const Particle& p, int level);
+  void set_value(size_t y, size_t x, const Particle& p, int level);
 
   // Members
   xt::xtensor<int32_t, 3> data_; //!< 2D array of cell & material ids
@@ -71,7 +71,7 @@ struct PropertyData {
   PropertyData(size_t h_res, size_t v_res);
 
   // Methods
-  void set_value(int y, int x, const Particle& p, int level);
+  void set_value(size_t y, size_t x, const Particle& p, int level);
 
   // Members
   xt::xtensor<double, 3> data_; //!< 2D array of temperature & density data

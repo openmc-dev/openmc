@@ -36,7 +36,7 @@ IdData::IdData(size_t h_res, size_t v_res)
 { }
 
 void
-IdData::set_value(int y, int x, const Particle& p, int level) {
+IdData::set_value(size_t y, size_t x, const Particle& p, int level) {
   Cell* c = model::cells[p.coord_[level].cell].get();
   data_(y,x,0) = c->id_;
   if (p.material_ == MATERIAL_VOID) {
@@ -53,7 +53,7 @@ PropertyData::PropertyData(size_t h_res, size_t v_res)
 { }
 
 void
-PropertyData::set_value(int y, int x, const Particle& p, int level) {
+PropertyData::set_value(size_t y, size_t x, const Particle& p, int level) {
   Cell* c = model::cells[p.coord_[level].cell].get();
   data_(y,x,0) = (p.sqrtkT_ * p.sqrtkT_) / K_BOLTZMANN;
   if (c->type_ != FILL_UNIVERSE && p.material_ != MATERIAL_VOID) {
@@ -139,8 +139,8 @@ void create_ppm(Plot pl)
   auto ids = pl.get_map<IdData>();
 
   // assign colors
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
+  for (size_t y = 0; y < height; y++) {
+    for (size_t x = 0; x < width; x++) {
       auto id = ids.data_(y, x, pl.color_by_);
       // no setting needed if not found
       if (id == NOT_FOUND) { continue; }

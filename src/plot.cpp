@@ -716,53 +716,6 @@ PropertyData PlotBase::get_property_map() const {
 }
 
 //==============================================================================
-// POSITION_RGB computes the red/green/blue values for a given plot with the
-// current particle's position
-//==============================================================================
-
-
-void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id)
-{
-  p.n_coord_ = 1;
-
-  bool found_cell = find_cell(&p, 0);
-
-  int j = p.n_coord_ - 1;
-
-  if (settings::check_overlaps) {check_cell_overlap(&p);}
-
-  // Set coordinate level if specified
-  if (pl.level_ >= 0) {j = pl.level_ + 1;}
-
-  if (!found_cell) {
-    // If no cell, revert to default color
-    rgb = pl.not_found_;
-    id = NOT_FOUND;
-  } else {
-    if (PlotColorBy::mats == pl.color_by_) {
-      // Assign color based on material
-      const auto& c = model::cells[p.coord_[j].cell];
-      if (c->type_ == FILL_UNIVERSE) {
-        // If we stopped on a middle universe level, treat as if not found
-        rgb = pl.not_found_;
-        id = NOT_FOUND;
-      } else if (p.material_ == MATERIAL_VOID) {
-        // By default, color void cells white
-        rgb = WHITE;
-        id = MATERIAL_VOID;
-      } else {
-        rgb = pl.colors_[p.material_];
-        id = model::materials[p.material_]->id_;
-      }
-    } else if (PlotColorBy::cells == pl.color_by_) {
-      // Assign color based on cell
-      rgb = pl.colors_[p.coord_[j].cell];
-      id = model::cells[p.coord_[j].cell]->id_;
-    }
-  } // endif found_cell
-}
-
-//==============================================================================
 // OUTPUT_PPM writes out a previously generated image to a PPM file
 //==============================================================================
 

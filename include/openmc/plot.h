@@ -162,13 +162,6 @@ void draw_mesh_lines(Plot pl, ImageData& data);
 //! \param[out] image data associated with the plot object
 void output_ppm(Plot pl, const ImageData& data);
 
-//! Get the rgb color for a given particle position in a plot
-//! \param[in] particle with position for current pixel
-//! \param[in] plot object
-//! \param[out] rgb color
-//! \param[out] cell or material id for particle position
-void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id);
-
 //! Initialize a voxel file
 //! \param[in] id of an open hdf5 file
 //! \param[in] dimensions of the voxel file (dx, dy, dz)

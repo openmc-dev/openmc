@@ -218,9 +218,9 @@ def id_map(plot):
     return img_data
 
 
-_dll.openmc_id_map.argtypes = [POINTER(_PlotBase), POINTER(c_double)]
-_dll.openmc_id_map.restype = c_int
-_dll.openmc_id_map.errcheck = _error_handler
+_dll.openmc_property_map.argtypes = [POINTER(_PlotBase), POINTER(c_double)]
+_dll.openmc_property_map.restype = c_int
+_dll.openmc_property_map.errcheck = _error_handler
 
 
 def property_map(plot):

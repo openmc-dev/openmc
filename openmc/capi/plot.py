@@ -223,7 +223,7 @@ def id_map(plot):
 def property_map(plot):
     """
     Generate a 2-D map of (cell_temperature, material_density). Used for
-         in-memory image generation.
+    in-memory image generation.
 
     Parameters
     ----------
@@ -233,7 +233,7 @@ def property_map(plot):
     Returns
     -------
     property_map : numpy.ndarray
-        a NumPy array with shape (vertical pixels, horizontal pixels, 2) of
+        A NumPy array with shape (vertical pixels, horizontal pixels, 2) of
         OpenMC property ids with dtype float
 
     """

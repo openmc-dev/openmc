@@ -8,12 +8,12 @@ from openmc.mgxs.mdgxs import *
 GROUP_STRUCTURES = {}
 """Dictionary of commonly used energy group structures:
 - "CASMO-X" (where X is 2, 4, 8, 16, 25, 40 or 70) from the CASMO_ lattice
-physics code
-- "XMAS-172_" designed for LWR analysis (Sartori_ 1990, Santamarina et al. 2004)
+  physics code
+- "XMAS-172_" designed for LWR analysis ([SAR1990]_, [SAN2004]_)
 - "SHEM-361_" designed for LWR analysis to eliminate self-shielding calculations
-of thermal resonances (Hfaiedh et al. 2005, Santamarina 2007, Hebert et al. 2008)
+  of thermal resonances ([HFA2005]_, [SAN2007]_, [HEB2008]_)
 - activation_ energy group structures "VITAMIN-J-175", "TRIPOLI-315",
-"CCFE-709_" and "UKAEA-1102_"
+  "CCFE-709_" and "UKAEA-1102_"
 
 .. _CASMO: https://www.studsvik.com/SharepointFiles/CASMO-5%20Development%20and%20Applications.pdf
 .. _XMAS-172: https://www-nds.iaea.org/wimsd/energy.htm
@@ -21,6 +21,22 @@ of thermal resonances (Hfaiedh et al. 2005, Santamarina 2007, Hebert et al. 2008
 .. _activation: https://fispact.ukaea.uk/wiki/Keyword:GETXS
 .. _CCFE-709: https://fispact.ukaea.uk/wiki/CCFE-709_group_structure 
 .. _UKAEA-1102: https://fispact.ukaea.uk/wiki/UKAEA-1102_group_structure
+.. [SAR1990] Sartori, E., OECD/NEA Data Bank: Standard Energy Group Structures
+   of Cross Section Libraries for Reactor Shielding, Reactor Cell and Fusion
+   Neutronics Applications: VITAMIN-J, ECCO-33, ECCO-2000 and XMAS JEF/DOC-315
+   Revision 3 - DRAFT (December 11, 1990).
+.. [SAN2004] Santamarina, A., Collignon, C., & Garat, C. (2004). French
+   calculation schemes for light water reactor analysis. United States:
+   American Nuclear Society - ANS.
+.. [HFA2005] Hfaiedh, N. & Santamarina, A., "Determination of the Optimized
+   SHEM Mesh for Neutron Transport Calculations," Proc. Top. Mtg. in
+   Mathematics & Computations, Supercomputing, Reactor Physics and Nuclear and
+   Biological Applications, September 12-15, Avignon, France, 2005.
+.. [SAN2007] Santamarina, A. & Hfaiedh, N. (2007). The SHEM energy mesh for
+   accurate fuel depletion and BUC calculations.
+.. [HEB2008] Hébert, Alain & Santamarina, Alain. (2008). Refinement of the
+   Santamarina-Hfaiedh energy mesh between 22.5 eV and 11.4 keV. International
+   Conference on the Physics of Reactors 2008, PHYSOR 08. 2. 929-938.
 """
 
 GROUP_STRUCTURES['CASMO-2'] = np.array([

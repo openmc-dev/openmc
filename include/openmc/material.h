@@ -47,7 +47,7 @@ public:
   explicit Material(pugi::xml_node material_node);
 
   // Methods
-  void calculate_xs(const Particle& p) const;
+  void calculate_xs(Particle& p) const;
 
   //! Assign thermal scattering tables to specific nuclides within the material
   //! so the code knows when to apply bound thermal scattering data
@@ -104,8 +104,8 @@ private:
   //! Normalize density
   void normalize_density();
 
-  void calculate_neutron_xs(const Particle& p) const;
-  void calculate_photon_xs(const Particle& p) const;
+  void calculate_neutron_xs(Particle& p) const;
+  void calculate_photon_xs(Particle& p) const;
 };
 
 //==============================================================================

@@ -71,13 +71,6 @@ void run_particle_restart()
   // Set verbosity high
   settings::verbosity = 10;
 
-  // Create cross section caches
-  #pragma omp parallel
-  {
-    simulation::micro_xs = new NuclideMicroXS[data::nuclides.size()];
-    simulation::micro_photon_xs = new ElementMicroXS[data::elements.size()];
-  }
-
   // Initialize the particle to be tracked
   Particle p;
 
@@ -105,13 +98,6 @@ void run_particle_restart()
 
   // Write output if particle made it
   print_particle(&p);
-
-  // Clear cross section caches
-  #pragma omp parallel
-  {
-    delete[] simulation::micro_xs;
-    delete[] simulation::micro_photon_xs;
-  }
 }
 
 } // namespace openmc

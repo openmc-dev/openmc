@@ -214,14 +214,18 @@ def id_map(plot):
     """
     img_data = np.zeros((plot.v_res, plot.h_res, 2),
                         dtype=np.dtype('int32'))
-    _dll.openmc_id_map(POINTER(_PlotBase)(plot),
-                       img_data.ctypes.data_as(POINTER(c_int32)))
+    _dll.openmc_id_map(plot, img_data.ctypes.data_as(POINTER(c_int32)))
     return img_data
+
+
+_dll.openmc_id_map.argtypes = [POINTER(_PlotBase), POINTER(c_double)]
+_dll.openmc_id_map.restype = c_int
+_dll.openmc_id_map.errcheck = _error_handler
 
 
 def property_map(plot):
     """
-    Generate a 2-D map of (cell_temperature, material_density). Used for
+    Generate a 2-D map of cell temperature and material density. Used for
     in-memory image generation.
 
     Parameters
@@ -236,8 +240,6 @@ def property_map(plot):
         OpenMC property ids with dtype float
 
     """
-    prop_data = np.zeros((plot.v_res, plot.h_res, 2),
-                         dtype=np.dtype('float'))
-    _dll.openmc_property_map(POINTER(_PlotBase)(plot),
-                             prop_data.ctypes.data_as(POINTER(c_double)))
+    prop_data = np.zeros((plot.v_res, plot.h_res, 2))
+    _dll.openmc_property_map(plot, prop_data.ctypes.data_as(POINTER(c_double)))
     return prop_data

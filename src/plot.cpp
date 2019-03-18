@@ -32,9 +32,9 @@ const RGBColor WHITE {255, 255, 255};
 constexpr int PLOT_LEVEL_LOWEST {-1}; //!< lower bound on plot universe level
 constexpr int32_t NOT_FOUND {-2};
 
-IdData::IdData(int h_res, int v_res) {
-  data_ = xt::xtensor<int32_t, 3>({v_res, h_res, 2}, NOT_FOUND);
-}
+IdData::IdData(int h_res, int v_res)
+  : data_({v_res, h_res, 2}, NOT_FOUND)
+{ }
 
 void
 IdData::set_value(int y, int x, const Particle& p, int level) {
@@ -49,9 +49,9 @@ IdData::set_value(int y, int x, const Particle& p, int level) {
   }
 }
 
-PropertyData::PropertyData(int h_res, int v_res) {
-  data_ = xt::xtensor<double, 3>({v_res, h_res, 2}, NOT_FOUND);
-}
+PropertyData::PropertyData(int h_res, int v_res)
+  : data_({v_res, h_res, 2}, NOT_FOUND)
+{ }
 
 void
 PropertyData::set_value(int y, int x, const Particle& p, int level) {

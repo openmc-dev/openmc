@@ -10,6 +10,8 @@
 #include "hdf5.h"
 #include "openmc/position.h"
 #include "openmc/constants.h"
+#include "openmc/cell.h"
+#include "openmc/geometry.h"
 #include "openmc/particle.h"
 #include "openmc/xml_interface.h"
 
@@ -96,14 +98,8 @@ enum class PlotColorBy {
 //===============================================================================
 class PlotBase
 {
-  // Methods
  public:
-  IdData get_id_map() const;
-  PropertyData get_property_map() const;
-
- private:
-  template<class D>
-    D generate_data() const;
+  template<class T> T get_map() const;
 
   // Members
  public:
@@ -113,6 +109,74 @@ class PlotBase
   std::array<int, 3> pixels_; //!< Plot size in pixels
   int level_; //!< Plot universe level
 };
+
+template<class T>
+T PlotBase::get_map() const {
+
+  size_t width = pixels_[0];
+  size_t height = pixels_[1];
+
+  // get pixel size
+  double in_pixel = (width_[0])/static_cast<double>(width);
+  double out_pixel = (width_[1])/static_cast<double>(height);
+
+  // size data array
+  T data(width, height);
+
+  // setup basis indices and initial position centered on pixel
+  int in_i, out_i;
+  Position xyz = origin_;
+  switch(basis_) {
+  case PlotBasis::xy :
+    in_i = 0;
+    out_i = 1;
+    break;
+  case PlotBasis::xz :
+    in_i = 0;
+    out_i = 2;
+    break;
+  case PlotBasis::yz :
+    in_i = 1;
+    out_i = 2;
+    break;
+  }
+
+  // set initial position
+  xyz[in_i] = origin_[in_i] - width_[0] / 2. + in_pixel / 2.;
+  xyz[out_i] = origin_[out_i] + width_[1] / 2. - out_pixel / 2.;
+
+  // arbitrary direction
+  Direction dir = {0.5, 0.5, 0.5};
+
+  #pragma omp parallel
+  {
+    Particle p;
+    p.r() = xyz;
+    p.u() = dir;
+    p.coord_[0].universe = model::root_universe;
+    int level = level_;
+    int j{};
+
+    #pragma omp for
+    for (int y = 0; y < height; y++) {
+      p.r()[out_i] =  xyz[out_i] - out_pixel * y;
+      for (int x = 0; x < width; x++) {
+        p.r()[in_i] = xyz[in_i] + in_pixel * x;
+        p.n_coord_ = 1;
+        // local variables
+        bool found_cell = find_cell(&p, 0);
+        j = p.n_coord_ - 1;
+        if (level >=0) {j = level + 1;}
+        if (found_cell) {
+          data.set_value(y, x, p, j);
+          Cell* c = model::cells[p.coord_[j].cell].get();
+        }
+      } // inner for
+    } // outer for
+  } // omp parallel
+
+  return data;
+}
 
 class Plot : public PlotBase
 {

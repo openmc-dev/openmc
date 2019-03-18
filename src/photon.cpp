@@ -97,9 +97,13 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
   close_group(rgroup);
 
   // Read heating
-  rgroup = open_group(group, "heating");
-  read_dataset(rgroup, "xs", heating_);
-  close_group(rgroup);
+  if (object_exists(group, "heating")) {
+    rgroup = open_group(group, "heating");
+    read_dataset(rgroup, "xs", heating_);
+    close_group(rgroup);
+  } else {
+    heating_ = xt::zeros_like(energy_);
+  }
 
   // Read subshell photoionization cross section and atomic relaxation data
   rgroup = open_group(group, "subshells");

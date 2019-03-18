@@ -53,8 +53,7 @@ struct RGBColor {
 
 typedef xt::xtensor<RGBColor, 2> ImageData;
 
-struct IdData
-{
+struct IdData {
   // Constructor
   IdData(int h_res, int v_res);
 
@@ -65,8 +64,7 @@ struct IdData
   xt::xtensor<int32_t, 3> data_; //!< 2D array of cell & material ids
 };
 
-struct PropertyData
-{
+struct PropertyData {
   // Constructor
   PropertyData(int h_res, int v_res);
 

@@ -145,7 +145,7 @@ T PlotBase::get_map() const {
   xyz[out_i] = origin_[out_i] + width_[1] / 2. - out_pixel / 2.;
 
   // arbitrary direction
-  Direction dir = {0.5, 0.5, 0.5};
+  Direction dir = {0.7071, 0.7071, 0.0};
 
   #pragma omp parallel
   {

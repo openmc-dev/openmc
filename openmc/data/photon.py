@@ -325,28 +325,6 @@ class AtomicRelaxation(EqualityMixin):
         # Return instance of class
         return cls(binding_energy, num_electrons, transitions)
 
-    @classmethod
-    def from_hdf5(cls, group_or_filename):
-        """Generate atomic relaxation data from HDF5 group
-
-        Parameters
-        ----------
-        group_or_filename : h5py.Group or str
-            HDF5 group containing interaction data. If given as a string, it is
-            assumed to be the filename for the HDF5 file, and the first group is
-            used to read from.
-
-        Returns
-        -------
-        openmc.data.AtomicRelaxation
-            Atomic relaxation data
-
-        """
-
-        # Return instance of class
-        return None
-        #return cls(binding_energy, num_electrons, transitions)
-
     def to_hdf5(self, group):
         raise NotImplementedError
 
@@ -773,11 +751,11 @@ class IncidentPhoton(EqualityMixin):
 
             group = list(h5file.values())[0]
 
-        atomic_number = Z = group.attrs['Z']
+        Z = group.attrs['Z']
         data = cls(Z)
 
         # Read energy grid
-        data.energy = group['energy'].value
+        data.energy = energy= group['energy'].value
         n = data.energy.size
 
         # Read coherent scattering cross section
@@ -801,58 +779,86 @@ class IncidentPhoton(EqualityMixin):
 
         # Read electron-field pair production cross section
         if 'pair_production_electron' in group:
-            rgoup = group['pair_production_eletron']
-            data.reactions[515] = Tabulated1D(energy, rgoup['xs'].value, [n], [5])
+            rgroup = group['pair_production_electron']
+            rx = PhotonReaction(515)
+            rx.xs = Tabulated1D(energy, rgroup['xs'].value, [n], [5])
+            data.reactions[515] = rx
 
         # Read nuclear-field pair production cross section
         if 'pair_production_nuclear' in group:
-            rgoup = group['pair_production_nuclear']
-            data.reactions[517] = Tabulated1D(energy, rgoup['xs'].value, [n], [5])
+            rgroup = group['pair_production_nuclear']
+            rx = PhotonReaction(517)
+            rx.xs = Tabulated1D(energy, rgroup['xs'].value, [n], [5])
+            data.reactions[517] = rx
 
         # Read photoelectric cross section
         if 'photoelectric' in group:
-            rgoup = group['photoelectric']
-            data.reactions[522] = Tabulated1D(energy, rgoup['xs'].value, [n], [5])
+            rgroup = group['photoelectric']
+            rx = PhotonReaction(522)
+            rx.xs = Tabulated1D(energy, rgroup['xs'].value, [n], [5])
+            data.reactions[522] = rx
 
         # Read heating cross section
         if 'heating' in group:
-            rgoup = group['heating']
-            data.reactions[525] = Tabulated1D(energy, rgoup['xs'].value, [n], [5])
+            rgroup = group['heating']
+            rx = PhotonReaction(525)
+            rx.xs = Tabulated1D(energy, rgroup['xs'].value, [n], [5])
+            data.reactions[525] = rx
 
         # Read photoionization cross sections and atomic relaxation
         rgroup = group['subshells']
-        data.atomic_relaxation = AtomicRelaxation.from_hdf5(rgroup)
-        designators = rgroup.attrs['designators']
-        n_shell = designators.size
-        for d in designators:
-            mt = _SUBSHELL_MT[d]
-            sub_group = rgroup[d]
+        designators = [i.decode() for i in rgroup.attrs['designators']]
+        binding_energy = {}
+        num_electrons = {}
+        transitions = {}
+        columns = ['secondary', 'tertiary', 'energy (eV)', 'probability']
+        for shell in designators:
+            mt = _SUBSHELL_MT[shell]
+            sub_group = rgroup[shell]
             xs = sub_group['xs'].value
             threshold_idx = sub_group['xs'].attrs['threshold_idx']
-            data.reactions[mt] = Tabulated1D(energy[threshold_idx:], xs,
-                                             [len(xs)], [5])
+            rx = PhotonReaction(mt)
+            rx.xs = Tabulated1D(energy[threshold_idx:], xs, [len(xs)], [5])
+            data.reactions[mt] = rx
+
+            # Read subshell binding energy and number of electrons
+            binding_energy[shell] = sub_group.attrs['binding_energy']
+            num_electrons[shell] = sub_group.attrs['num_electrons']
+
+            # Read transition data
+            if 'transitions' in sub_group:
+                t_value = sub_group['transitions'].value
+                records = []
+                secondaries = [_subshell(int(i)) for i in t_value[:, 0]]
+                for i, s in enumerate(secondaries):
+                    records.append((s, t_value[i, 1], t_value[i, 2],
+                                    t_value[i, 3]))
+                transitions[shell] = pd.DataFrame.from_records(records,
+                                                               columns=columns)
+
+        if binding_energy:
+            data.atomic_relaxation = AtomicRelaxation(binding_energy,
+                                                      num_electrons, transitions)
 
         # Read Compton profiles
         if 'compton_profiles' in group:
             rgroup = group['compton_profiles']
-            data.compton_profile['num_electrons'] = rgroup['num_electrons'].value
-            data.compton_profile['binding_energy'] = rgroup['binding_energy'].value
+            profile = data.compton_profiles
+            profile['num_electrons'] = rgroup['num_electrons'].value
+            profile['binding_energy'] = rgroup['binding_energy'].value
 
             # Get electron momentum values
             pz = rgroup['pz'].value
             J = rgroup['J'].value
-            if n_shell != J.shape[0]:
-                raise ValueError("'J' array shape is not consistent with the "
-                                 "number of shells")
             if pz.size != J.shape[1]:
                 raise ValueError("'J' array shape is not consistent with the "
                                  "'pz' array shape")
-            data.compton_profile['J'] = [Tabulated1D(pz, J[k]) for k in n_shell]
+            profile['J'] = [Tabulated1D(pz, Jk) for Jk in J]
 
         # Read bremsstrahlung
         if 'bremsstrahlung' in group:
             rgroup = group['bremsstrahlung']
-            data.bremsstrahlung['I'] = rgoup.attrs['I']
+            data.bremsstrahlung['I'] = rgroup.attrs['I']
             for key in ('dcs', 'electron_energy', 'ionization_energy',
                         'num_electrons', 'photon_energy'):
                 data.bremsstrahlung[key] = rgroup[key].value

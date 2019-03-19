@@ -279,14 +279,14 @@ void allocate_banks()
     {
       simulation::thread_id = omp_get_thread_num();
       if (simulation::thread_id == 0) {
-        simulation::fission_bank.resize(3*simulation::work);
+        simulation::fission_bank.reserve(3*simulation::work);
       } else {
-        simulation::fission_bank.resize(3*simulation::work / simulation::n_threads);
+        simulation::fission_bank.reserve(3*simulation::work / simulation::n_threads);
       }
     }
-    simulation::master_fission_bank.resize(3*simulation::work);
+    simulation::master_fission_bank.reserve(3*simulation::work);
 #else
-    simulation::fission_bank.resize(3*simulation::work);
+    simulation::fission_bank.reserve(3*simulation::work);
 #endif
   }
 }
@@ -386,8 +386,8 @@ void finalize_batch()
 void initialize_generation()
 {
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-    // Reset number of fission bank sites
-    simulation::n_bank = 0;
+    // Clear out the fission bank
+    simulation::fission_bank.clear();
 
     // Count source sites if using uniform fission source weighting
     if (settings::ufs_on) ufs_count_sites();

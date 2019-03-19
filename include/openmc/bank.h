@@ -20,15 +20,13 @@ namespace openmc {
 
 namespace simulation {
 
-extern "C" int64_t n_bank;
-
 extern std::vector<Particle::Bank> source_bank;
 extern std::vector<Particle::Bank> fission_bank;
 #ifdef _OPENMP
 extern std::vector<Particle::Bank> master_fission_bank;
 #endif
 
-#pragma omp threadprivate(fission_bank, n_bank)
+#pragma omp threadprivate(fission_bank)
 
 } // namespace simulation
 

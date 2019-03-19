@@ -16,8 +16,6 @@ namespace openmc {
 
 namespace simulation {
 
-int64_t n_bank;
-
 std::vector<Particle::Bank> source_bank;
 std::vector<Particle::Bank> fission_bank;
 #ifdef _OPENMP

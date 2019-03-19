@@ -187,7 +187,7 @@ public:
   //! \param u Direction of the secondary particle
   //! \param E Energy of the secondary particle in [eV]
   //! \param type Particle type
-  void create_secondary(Direction u, double E, Type type);
+  void create_secondary(Direction u, double E, Type type) const;
 
   //! initialize from a source site
   //
@@ -283,9 +283,6 @@ public:
 
   // Track output
   bool write_track_ {false};
-
-  // Secondary particles created
-  std::vector<Bank> secondary_bank_;
 };
 
 } // namespace openmc

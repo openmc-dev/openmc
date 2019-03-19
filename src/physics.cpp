@@ -94,7 +94,7 @@ void sample_neutron_reaction(Particle* p)
       create_fission_sites(p, i_nuclide, rx, simulation::fission_bank);
     } else if (settings::run_mode == RUN_MODE_FIXEDSOURCE &&
       settings::create_fission_neutrons) {
-      create_fission_sites(p, i_nuclide, rx, p->secondary_bank_);
+      create_fission_sites(p, i_nuclide, rx, simulation::secondary_bank);
     }
   }
 

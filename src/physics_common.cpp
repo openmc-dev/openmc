@@ -86,7 +86,7 @@ void weight_window_split(Particle *p) {
     get_window_from_mesh(p,weight_low,weight_high);
   else
     get_window_from_cell(p,weight_low,weight_high);
-*/
+  */
   if ( p->wgt_ > weight_high ) {
     if ( p->wgt_/weight_high > MAX_SPLIT ) {
           // long history mitigation - if the number of requested

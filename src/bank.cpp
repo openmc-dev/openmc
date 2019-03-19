@@ -31,7 +31,7 @@ std::vector<Particle::Bank> master_fission_bank;
 void free_memory_bank()
 {
   simulation::source_bank.clear();
-#pragma omp parallel
+  #pragma omp parallel
   {
     simulation::fission_bank.clear();
   }

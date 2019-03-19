@@ -20,7 +20,9 @@
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/trigger.h"
 
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 #include "xtensor/xview.hpp"
 
 #include <algorithm>
@@ -59,7 +61,7 @@ int openmc_simulation_init()
   calculate_work();
 
   // Allocate array for matching filter bins
-#pragma omp parallel
+  #pragma omp parallel
   {
     simulation::filter_matches.resize(model::tally_filters.size());
   }
@@ -136,7 +138,7 @@ int openmc_simulation_finalize()
   // Write tally results to tallies.out
   if (settings::output_tallies && mpi::master) write_tallies();
 
-#pragma omp parallel
+  #pragma omp parallel
   {
     simulation::filter_matches.clear();
   }
@@ -186,7 +188,7 @@ int openmc_next_batch(int* status)
     // ====================================================================
     // LOOP OVER PARTICLES
 
-#pragma omp parallel for schedule(runtime)
+    #pragma omp parallel for schedule(runtime)
     for (int64_t i_work = 1; i_work <= simulation::work; ++i_work) {
       simulation::current_work = i_work;
 
@@ -250,10 +252,6 @@ std::vector<int64_t> work_index;
 
 // Threadprivate variables
 bool trace;     //!< flag to show debug information
-#ifdef _OPENMP
-int n_threads {-1};  //!< number of OpenMP threads
-int thread_id;  //!< ID of a given thread
-#endif
 
 } // namespace simulation
 
@@ -273,15 +271,13 @@ void allocate_banks()
     // a generation, there is also a 'master_fission_bank' that is used to
     // collect the sites from each thread.
 
-    simulation::n_threads = omp_get_max_threads();
-
-#pragma omp parallel
+    #pragma omp parallel
     {
-      simulation::thread_id = omp_get_thread_num();
-      if (simulation::thread_id == 0) {
+      if (omp_get_thread_num() == 0) {
         simulation::fission_bank.reserve(3*simulation::work);
       } else {
-        simulation::fission_bank.reserve(3*simulation::work / simulation::n_threads);
+        int n_threads = omp_get_num_threads();
+        simulation::fission_bank.reserve(3*simulation::work / n_threads);
       }
     }
     simulation::master_fission_bank.reserve(3*simulation::work);
@@ -403,9 +399,9 @@ void finalize_generation()
   auto& gt = simulation::global_tallies;
 
   // Update global tallies with the omp private accumulation variables
-#pragma omp parallel
+  #pragma omp parallel
   {
-#pragma omp critical(increment_global_tallies)
+    #pragma omp critical(increment_global_tallies)
     {
       if (settings::run_mode == RUN_MODE_EIGENVALUE) {
         gt(K_COLLISION, RESULT_VALUE) += global_tally_collision;

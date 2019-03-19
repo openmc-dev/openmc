@@ -590,7 +590,7 @@ Particle::mark_as_lost(const char* message)
 
   // Increment number of lost particles
   alive_ = false;
-#pragma omp atomic
+  #pragma omp atomic
   simulation::n_lost_particles += 1;
 
   // Count the total number of simulated particles (on this processor)
@@ -615,7 +615,7 @@ Particle::write_restart() const
   filename << settings::path_output << "particle_" << simulation::current_batch
     << '_' << id_ << ".h5";
 
-#pragma omp critical (WriteParticleRestart)
+  #pragma omp critical (WriteParticleRestart)
   {
     // Create file
     hid_t file_id = file_open(filename.str(), 'w');

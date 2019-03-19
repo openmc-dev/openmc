@@ -11,7 +11,9 @@
 #include <unordered_map>
 #include <utility> // for pair
 
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 #include "xtensor/xview.hpp"
 
 #include "openmc/capi.h"

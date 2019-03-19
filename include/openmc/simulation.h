@@ -44,12 +44,8 @@ extern std::vector<int64_t> work_index;
 
 // Threadprivate variables
 extern "C" bool trace;     //!< flag to show debug information
-#ifdef _OPENMP
-extern "C" int n_threads;  //!< number of OpenMP threads
-extern "C" int thread_id;  //!< ID of a given thread
-#endif
 
-#pragma omp threadprivate(current_work, thread_id, trace)
+#pragma omp threadprivate(current_work, trace)
 
 } // namespace simulation
 

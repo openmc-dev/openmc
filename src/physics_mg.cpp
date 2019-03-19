@@ -174,22 +174,19 @@ absorption(Particle* p)
 {
   if (settings::survival_biasing) {
     // Determine weight absorbed in survival biasing
-    p->wgt_absorb_ = p->wgt_ *
-         p->macro_xs_.absorption / p->macro_xs_.total;
+    p->wgt_absorb_ = p->wgt_ * p->macro_xs_.absorption / p->macro_xs_.total;
 
     // Adjust weight of particle by the probability of absorption
     p->wgt_ -= p->wgt_absorb_;
     p->wgt_last_ = p->wgt_;
 
     // Score implicit absorpion estimate of keff
-#pragma omp atomic
-    global_tally_absorption += p->wgt_absorb_ *
-         p->macro_xs_.nu_fission /
-         p->macro_xs_.absorption;
+    #pragma omp atomic
+    global_tally_absorption += p->wgt_absorb_ * p->macro_xs_.nu_fission /
+        p->macro_xs_.absorption;
   } else {
-    if (p->macro_xs_.absorption >
-        prn() * p->macro_xs_.total) {
-#pragma omp atomic
+    if (p->macro_xs_.absorption > prn() * p->macro_xs_.total) {
+      #pragma omp atomic
       global_tally_absorption += p->wgt_ * p->macro_xs_.nu_fission /
            p->macro_xs_.absorption;
       p->alive_ = false;

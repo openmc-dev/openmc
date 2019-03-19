@@ -26,9 +26,6 @@ namespace openmc {
 // use to store the bins for delayed group tallies.
 constexpr int MAX_DELAYED_GROUPS {8};
 
-// Maximum number of secondary particles created
-constexpr int MAX_SECONDARY {1000};
-
 // Maximum number of lost particles
 constexpr int MAX_LOST_PARTICLES {10};
 

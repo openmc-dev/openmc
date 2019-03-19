@@ -4,10 +4,11 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/geometry.h"
 #include "openmc/geometry_aux.h"
+#include "openmc/material.h"
 #include "openmc/string_utils.h"
 #include "openmc/settings.h"
-#include "openmc/geometry.h"
 
 #ifdef DAGMC
 
@@ -86,6 +87,53 @@ bool write_uwuw_materials_xml() {
   }
 
   return found_uwuw_mats;
+}
+
+void legacy_assign_material(const std::string& mat_string, DAGCell* c)
+{
+  bool mat_found_by_name = false;
+  // attempt to find a material with a matching name
+  for (const auto& m : model::materials) {
+    if (mat_string == m->name_) {
+      // assign the material with that name
+      if (!mat_found_by_name) {
+        mat_found_by_name = true;
+        c->material_.push_back(m->id_);
+      // report error if more than one material is found
+      } else {
+        std::stringstream err_msg;
+        err_msg << "More than one material found with name " << mat_string
+                << ". Please ensure materials have unique names if using this"
+                << " property to assign materials.";
+        fatal_error(err_msg);
+      }
+    }
+  }
+
+  // if no material was set using a name, assign by id
+  if (!mat_found_by_name) {
+    try {
+      auto id = std::stoi(mat_string);
+      c->material_.emplace_back(id);
+    } catch (const std::invalid_argument&) {
+      std::stringstream err_msg;
+      err_msg << "No material " << mat_string
+              << " found for volume (cell) " << c->id_;
+      fatal_error(err_msg);
+    }
+  }
+
+  if (settings::verbosity >= 10) {
+    Material* m = model::materials[model::material_map[c->material_[0]]].get();
+    std::stringstream msg;
+    msg << "DAGMC material " << mat_string << " was assigned";
+    if (mat_found_by_name) {
+      msg << " using material name: " << m->name_;
+    } else {
+      msg << " using material id: " << m->id_;
+    }
+    write_message(msg.str(), 10);
+  }
 }
 
 void load_dagmc_geometry()
@@ -188,7 +236,7 @@ void load_dagmc_geometry()
           size_t _comp_pos = mat_value.find(_comp);
           if (_comp_pos != std::string::npos) { mat_value.erase(_comp_pos, _comp.length()); }
           // assign IC material by id
-          c->material_.push_back(std::stoi(mat_value));
+          legacy_assign_material(mat_value, c);
         }
       } else {
         // if no material is found, the implicit complement is void
@@ -235,9 +283,7 @@ void load_dagmc_geometry()
           fatal_error(err_msg);
         }
       } else {
-        // if not using UWUW materials, we'll find this material
-        // later in the materials.xml
-        c->material_.push_back(std::stoi(mat_value));
+        legacy_assign_material(mat_value, c);
       }
     }
   }

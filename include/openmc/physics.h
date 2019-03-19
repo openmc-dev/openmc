@@ -7,6 +7,8 @@
 #include "openmc/position.h"
 #include "openmc/reaction.h"
 
+#include <vector>
+
 namespace openmc {
 
 //==============================================================================
@@ -47,7 +49,7 @@ int sample_nuclide(const Particle* p);
 //! Determine the average total, prompt, and delayed neutrons produced from
 //! fission and creates appropriate bank sites.
 void create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
-  Particle::Bank* bank_array, int64_t* bank_size, int64_t bank_capacity);
+  std::vector<Particle::Bank>& bank);
 
 int sample_element(Particle* p);
 

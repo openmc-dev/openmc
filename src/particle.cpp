@@ -75,17 +75,14 @@ Particle::clear()
 void
 Particle::create_secondary(Direction u, double E, Type type)
 {
-  if (n_secondary_ == MAX_SECONDARY) {
-    fatal_error("Too many secondary particles created.");
-  }
+  secondary_bank_.emplace_back();
 
-  int64_t n = n_secondary_;
-  secondary_bank_[n].particle = type;
-  secondary_bank_[n].wgt = wgt_;
-  secondary_bank_[n].r = this->r();
-  secondary_bank_[n].u = u;
-  secondary_bank_[n].E = settings::run_CE ? E : g_;
-  ++n_secondary_;
+  auto& bank {secondary_bank_.back()};
+  bank.particle = type;
+  bank.wgt = wgt_;
+  bank.r = this->r();
+  bank.u = u;
+  bank.E = settings::run_CE ? E : g_;
 }
 
 void
@@ -360,10 +357,10 @@ Particle::transport()
     // Check for secondary particles if this particle is dead
     if (!alive_) {
       // If no secondary particles, break out of event loop
-      if (n_secondary_ == 0) break;
+      if (secondary_bank_.empty()) break;
 
-      this->from_source(&secondary_bank_[n_secondary_ - 1]);
-      --n_secondary_;
+      this->from_source(&secondary_bank_.back());
+      secondary_bank_.pop_back();
       n_event = 0;
 
       // Enter new particle in particle track file

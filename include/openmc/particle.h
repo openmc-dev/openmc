@@ -285,8 +285,7 @@ public:
   bool write_track_ {false};
 
   // Secondary particles created
-  int64_t n_secondary_ {};
-  Bank secondary_bank_[MAX_SECONDARY];
+  std::vector<Bank> secondary_bank_;
 };
 
 } // namespace openmc

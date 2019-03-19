@@ -192,7 +192,7 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
 
   // loop over number of particles banked
   for (auto i = 0; i < p->n_bank_; ++i) {
-    auto i_bank = simulation::n_bank - p->n_bank_ + i;
+    auto i_bank = simulation::fission_bank.size() - p->n_bank_ + i;
     const auto& bank = simulation::fission_bank[i_bank];
 
     // get the delayed group
@@ -813,7 +813,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           // contribution to the fission bank to the score.
           score = 0.;
           for (auto i = 0; i < p->n_bank_; ++i) {
-            auto i_bank = simulation::n_bank - p->n_bank_ + i;
+            auto i_bank = simulation::fission_bank.size() - p->n_bank_ + i;
             const auto& bank = simulation::fission_bank[i_bank];
             auto g = bank.delayed_group;
             if (g != 0) {
@@ -1785,7 +1785,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
           // contribution to the fission bank to the score.
           score = 0.;
           for (auto i = 0; i < p->n_bank_; ++i) {
-            auto i_bank = simulation::n_bank - p->n_bank_ + i;
+            auto i_bank = simulation::fission_bank.size() - p->n_bank_ + i;
             const auto& bank = simulation::fission_bank[i_bank];
             auto g = bank.delayed_group;
             if (g != 0) {

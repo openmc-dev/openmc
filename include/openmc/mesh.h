@@ -96,14 +96,11 @@ public:
 
   //! Count number of bank sites in each mesh bin / energy bin
   //
-  //! \param[in] n Number of bank sites
   //! \param[in] bank Array of bank sites
-  //! \param[in] n_energy Number of energies
-  //! \param[in] energies Array of energies
   //! \param[out] Whether any bank sites are outside the mesh
   //! \return Array indicating number of sites in each mesh/energy bin
-  xt::xarray<double> count_sites(int64_t n, const Particle::Bank* bank,
-    int n_energy, const double* energies, bool* outside) const;
+  xt::xarray<double> count_sites(const std::vector<Particle::Bank>& bank,
+    bool* outside) const;
 
   int id_ {-1};  //!< User-specified ID
   int n_dimension_; //!< Number of dimensions

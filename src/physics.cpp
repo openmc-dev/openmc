@@ -91,12 +91,10 @@ void sample_neutron_reaction(Particle* p)
   if (nuc->fissionable_) {
     Reaction* rx = sample_fission(i_nuclide, p);
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      create_fission_sites(p, i_nuclide, rx, simulation::fission_bank.data(),
-        &simulation::n_bank, simulation::fission_bank.size());
+      create_fission_sites(p, i_nuclide, rx, simulation::fission_bank);
     } else if (settings::run_mode == RUN_MODE_FIXEDSOURCE &&
       settings::create_fission_neutrons) {
-      create_fission_sites(p, i_nuclide, rx, p->secondary_bank_,
-        &p->n_secondary_, MAX_SECONDARY);
+      create_fission_sites(p, i_nuclide, rx, p->secondary_bank_);
     }
   }
 
@@ -137,10 +135,8 @@ void sample_neutron_reaction(Particle* p)
 
 void
 create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
-  Particle::Bank* bank_array, int64_t* size_bank, int64_t bank_capacity)
+  std::vector<Particle::Bank>& bank)
 {
-  // TODO: Heat generation from fission
-
   // If uniform fission source weighting is turned on, we increase or decrease
   // the expected number of fission sites produced
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
@@ -153,56 +149,36 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
   int nu = static_cast<int>(nu_t);
   if (prn() <= (nu_t - nu)) ++nu;
 
-  // Check for the bank size getting hit. For fixed source calculations, this
-  // is a fatal error; for eigenvalue calculations, it just means that k-eff
-  // was too high for a single batch.
-  if (*size_bank + nu > bank_capacity) {
-    if (settings::run_mode == RUN_MODE_FIXEDSOURCE) {
-      throw std::runtime_error{"Secondary particle bank size limit reached."
-           " If you are running a subcritical multiplication problem,"
-           " k-effective may be too close to one."};
-    } else {
-      if (mpi::master) {
-        warning("Maximum number of sites in fission bank reached. This can"
-          " result in irreproducible results using different numbers of"
-          " processes/threads.");
-      }
-    }
-  }
-
   // Begin banking the source neutrons
   // First, if our bank is full then don't continue
-  if (nu == 0 || *size_bank == bank_capacity) return;
+  if (nu == 0) return;
 
   // Initialize the counter of delayed neutrons encountered for each delayed
   // group.
   double nu_d[MAX_DELAYED_GROUPS] = {0.};
 
   p->fission_ = true;
-  for (size_t i = *size_bank; i < std::min(*size_bank + nu, bank_capacity); ++i) {
+  for (int i = 0; i < nu; ++i) {
+    // Create new bank site and get reference to last element
+    bank.emplace_back();
+    auto& site {bank.back()};
+
     // Bank source neutrons by copying the particle data
-    bank_array[i].r = p->r();
-
-    // Set that the bank particle is a neutron
-    bank_array[i].particle = Particle::Type::neutron;
-
-    // Set the weight of the fission bank site
-    bank_array[i].wgt = 1. / weight;
+    site.r = p->r();
+    site.particle = Particle::Type::neutron;
+    site.wgt = 1. / weight;
 
     // Sample delayed group and angle/energy for fission reaction
-    sample_fission_neutron(i_nuclide, rx, p->E_, &bank_array[i]);
+    sample_fission_neutron(i_nuclide, rx, p->E_, &site);
 
     // Set the delayed group on the particle as well
-    p->delayed_group_ = bank_array[i].delayed_group;
+    p->delayed_group_ = site.delayed_group;
 
     // Increment the number of neutrons born delayed
     if (p->delayed_group_ > 0) {
       nu_d[p->delayed_group_-1]++;
     }
   }
-
-  // Increment number of bank sites
-  *size_bank = std::min(*size_bank + nu, bank_capacity);
 
   // Store the total weight banked for analog fission tallies
   p->n_bank_ = nu;

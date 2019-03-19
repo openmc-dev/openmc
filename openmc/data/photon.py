@@ -33,6 +33,7 @@ def _subshell(i):
     else:
         return _SUBSHELLS[i - 1]
 
+_SUBSHELL_MT = {s: i + 534 for i, s in enumerate(_SUBSHELLS)}
 
 _REACTION_NAME = {
     501: 'Total photon interaction',
@@ -324,9 +325,30 @@ class AtomicRelaxation(EqualityMixin):
         # Return instance of class
         return cls(binding_energy, num_electrons, transitions)
 
+    @classmethod
+    def from_hdf5(cls, group_or_filename):
+        """Generate atomic relaxation data from HDF5 group
+
+        Parameters
+        ----------
+        group_or_filename : h5py.Group or str
+            HDF5 group containing interaction data. If given as a string, it is
+            assumed to be the filename for the HDF5 file, and the first group is
+            used to read from.
+
+        Returns
+        -------
+        openmc.data.AtomicRelaxation
+            Atomic relaxation data
+
+        """
+
+        # Return instance of class
+        return None
+        #return cls(binding_energy, num_electrons, transitions)
+
     def to_hdf5(self, group):
         raise NotImplementedError
-
 
 class IncidentPhoton(EqualityMixin):
     r"""Photon interaction data.
@@ -716,6 +738,126 @@ class IncidentPhoton(EqualityMixin):
                     brem_group.attrs[key] = value
                 else:
                     brem_group.create_dataset(key, data=value)
+
+    @classmethod
+    def from_hdf5(cls, group_or_filename):
+        """Generate photon reaction from an HDF5 group
+
+        Parameters
+        ----------
+        group_or_filename : h5py.Group or str
+            HDF5 group containing interaction data. If given as a string, it is
+            assumed to be the filename for the HDF5 file, and the first group is
+            used to read from.
+
+        Returns
+        -------
+        openmc.data.IncidentPhoton
+            Photon interaction data
+
+        """
+        if isinstance(group_or_filename, h5py.Group):
+            group = group_or_filename
+        else:
+            h5file = h5py.File(str(group_or_filename), 'r')
+
+            # Make sure version matches
+            if 'version' in h5file.attrs:
+                major, minor = h5file.attrs['version']
+                # For now all versions of HDF5 data can be read
+            else:
+                raise IOError(
+                    'HDF5 data does not indicate a version. Your installation of '
+                    'the OpenMC Python API expects version {}.x data.'
+                    .format(HDF5_VERSION_MAJOR))
+
+            group = list(h5file.values())[0]
+
+        atomic_number = Z = group.attrs['Z']
+        data = cls(Z)
+
+        # Read energy grid
+        data.energy = group['energy'].value
+        n = data.energy.size
+
+        # Read coherent scattering cross section
+        rgroup = group['coherent']
+        rx = PhotonReaction(502)
+        rx.xs = Tabulated1D(energy, rgroup['xs'].value, [n], [5])
+        if 'anomalous_real' in rgroup:
+            rx.anomalous_real = Tabulated1D.from_hdf5(rgroup['anomalous_real'])
+        if 'anomalous_imag' in rgroup:
+            rx.anomalous_imag = Tabulated1D.from_hdf5(rgroup['anomalous_imag'])
+        data.reactions[502] = rx
+
+        # Read incoherent scattering cross section
+        rgroup = group['incoherent']
+        rx = PhotonReaction(504)
+        rx.xs = Tabulated1D(energy, rgroup['xs'].value, [n], [5])
+        if 'scattering_factor' in rgroup:
+            dset = rgroup['scattering_factor']
+            rx.scattering_factor = Tabulated1D.from_hdf5(dset)
+        data.reactions[504] = rx
+
+        # Read electron-field pair production cross section
+        if 'pair_production_electron' in group:
+            rgoup = group['pair_production_eletron']
+            data.reactions[515] = Tabulated1D(energy, rgoup['xs'].value, [n], [5])
+
+        # Read nuclear-field pair production cross section
+        if 'pair_production_nuclear' in group:
+            rgoup = group['pair_production_nuclear']
+            data.reactions[517] = Tabulated1D(energy, rgoup['xs'].value, [n], [5])
+
+        # Read photoelectric cross section
+        if 'photoelectric' in group:
+            rgoup = group['photoelectric']
+            data.reactions[522] = Tabulated1D(energy, rgoup['xs'].value, [n], [5])
+
+        # Read heating cross section
+        if 'heating' in group:
+            rgoup = group['heating']
+            data.reactions[525] = Tabulated1D(energy, rgoup['xs'].value, [n], [5])
+
+        # Read photoionization cross sections and atomic relaxation
+        rgroup = group['subshells']
+        data.atomic_relaxation = AtomicRelaxation.from_hdf5(rgroup)
+        designators = rgroup.attrs['designators']
+        n_shell = designators.size
+        for d in designators:
+            mt = _SUBSHELL_MT[d]
+            sub_group = rgroup[d]
+            xs = sub_group['xs'].value
+            threshold_idx = sub_group['xs'].attrs['threshold_idx']
+            data.reactions[mt] = Tabulated1D(energy[threshold_idx:], xs,
+                                             [len(xs)], [5])
+
+        # Read Compton profiles
+        if 'compton_profiles' in group:
+            rgroup = group['compton_profiles']
+            data.compton_profile['num_electrons'] = rgroup['num_electrons'].value
+            data.compton_profile['binding_energy'] = rgroup['binding_energy'].value
+
+            # Get electron momentum values
+            pz = rgroup['pz'].value
+            J = rgroup['J'].value
+            if n_shell != J.shape[0]:
+                raise ValueError("'J' array shape is not consistent with the "
+                                 "number of shells")
+            if pz.size != J.shape[1]:
+                raise ValueError("'J' array shape is not consistent with the "
+                                 "'pz' array shape")
+            data.compton_profile['J'] = [Tabulated1D(pz, J[k]) for k in n_shell]
+
+        # Read bremsstrahlung
+        if 'bremsstrahlung' in group:
+            rgroup = group['bremsstrahlung']
+            data.bremsstrahlung['I'] = rgoup.attrs['I']
+            for key in ('dcs', 'electron_energy', 'ionization_energy',
+                        'num_electrons', 'photon_energy'):
+                data.bremsstrahlung[key] = rgroup[key].value
+
+        return data
 
     def _add_bremsstrahlung(self):
         """Add the data used in the thick-target bremsstrahlung approximation

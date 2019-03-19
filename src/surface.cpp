@@ -241,7 +241,7 @@ double
 DAGSurface::distance(Position r, Direction u, bool coincident) const
 {
   moab::ErrorCode rval;
-  moab::EntityHandle surf = dagmc_ptr_->entity_by_id(2, id_);
+  moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
   moab::EntityHandle hit_surf;
   double dist;
   double pnt[3] = {r.x, r.y, r.z};
@@ -256,7 +256,7 @@ Direction DAGSurface::normal(Position r) const
 {
   moab::ErrorCode rval;
   Direction u;
-  moab::EntityHandle surf = dagmc_ptr_->entity_by_id(2, id_);
+  moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
   rval = dagmc_ptr_->get_angle(surf, pnt, dir);
@@ -267,7 +267,7 @@ Direction DAGSurface::normal(Position r) const
 BoundingBox DAGSurface::bounding_box() const
 {
   moab::ErrorCode rval;
-  moab::EntityHandle surf = dagmc_ptr_->entity_by_id(2, id_);
+  moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
   double min[3], max[3];
   rval = dagmc_ptr_->getobb(surf, min, max);
   MB_CHK_ERR_CONT(rval);

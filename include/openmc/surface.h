@@ -131,6 +131,8 @@ class DAGSurface : public Surface
 public:
   moab::DagMC* dagmc_ptr_;
   DAGSurface();
+  int32_t dag_index_;
+
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;

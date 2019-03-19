@@ -1,7 +1,6 @@
-from ctypes import c_int, c_int32, c_double, Structure, POINTER
+from ctypes import c_int, c_size_t, c_int32, c_double, Structure, POINTER
 
 from . import _dll
-from .core import _DLLGlobal
 from .error import _error_handler
 
 import numpy as np
@@ -31,7 +30,7 @@ class _Position(Structure):
         elif idx == 2:
             return self.z
         else:
-            raise IndexError("{} index is invalid for _Position".format(key))
+            raise IndexError("{} index is invalid for _Position".format(idx))
 
     def __setitem__(self, idx, val):
         if idx == 0:
@@ -58,7 +57,7 @@ class _PlotBase(Structure):
         The width of the plot along the x, y, and z axes, respectively
     basis_ : c_int
         The axes basis of the plot view.
-    pixels_ : c_int[3]
+    pixels_ : c_size_t[3]
         The resolution of the plot in the horizontal and vertical dimensions
     level_ : c_int
         The universe level for the plot view
@@ -74,9 +73,9 @@ class _PlotBase(Structure):
     basis : string
         One of {'xy', 'xz', 'yz'} indicating the horizontal and vertical
         axes of the plot.
-    h_res : float
+    h_res : int
         The horizontal resolution of the plot in pixels
-    v_res : float
+    v_res : int
         The vertical resolution of the plot in pixels
     level : int
         The universe level for the plot (default: -1 -> all universes shown)
@@ -84,7 +83,7 @@ class _PlotBase(Structure):
     _fields_ = [('origin_', _Position),
                 ('width_', _Position),
                 ('basis_', c_int),
-                ('pixels_', 3*c_int),
+                ('pixels_', 3*c_size_t),
                 ('level_', c_int)]
 
     def __init__(self):
@@ -198,7 +197,7 @@ _dll.openmc_id_map.errcheck = _error_handler
 
 def id_map(plot):
     """
-    Generate a 2-D map of (cell_id, material_id). Used for in-memory image
+    Generate a 2-D map of cell and material IDs. Used for in-memory image
     generation.
 
     Parameters
@@ -215,6 +214,32 @@ def id_map(plot):
     """
     img_data = np.zeros((plot.v_res, plot.h_res, 2),
                         dtype=np.dtype('int32'))
-    _dll.openmc_id_map(POINTER(_PlotBase)(plot),
-                       img_data.ctypes.data_as(POINTER(c_int32)))
+    _dll.openmc_id_map(plot, img_data.ctypes.data_as(POINTER(c_int32)))
     return img_data
+
+
+_dll.openmc_property_map.argtypes = [POINTER(_PlotBase), POINTER(c_double)]
+_dll.openmc_property_map.restype = c_int
+_dll.openmc_property_map.errcheck = _error_handler
+
+
+def property_map(plot):
+    """
+    Generate a 2-D map of cell temperatures and material densities. Used for
+    in-memory image generation.
+
+    Parameters
+    ----------
+    plot : openmc.capi.plot._PlotBase
+        Object describing the slice of the model to be generated
+
+    Returns
+    -------
+    property_map : numpy.ndarray
+        A NumPy array with shape (vertical pixels, horizontal pixels, 2) of
+        OpenMC property ids with dtype float
+
+    """
+    prop_data = np.zeros((plot.v_res, plot.h_res, 2))
+    _dll.openmc_property_map(plot, prop_data.ctypes.data_as(POINTER(c_double)))
+    return prop_data

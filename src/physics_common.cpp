@@ -29,7 +29,7 @@ void russian_roulette(Particle* p)
 //==============================================================================
 
 void split_by_ratio(Particle* p, double importance_ratio) {
-  p->last_wgt = p->wgt;
+  p->wgt_last_ = p->wgt_;
   double importance_rounded = std::floor(importance_ratio);
   
   int num_splits = 0;
@@ -40,10 +40,10 @@ void split_by_ratio(Particle* p, double importance_ratio) {
   else 
     num_splits = int(std::ceil(importance_ratio));
   // calculate the tru number of splits
-  p->wgt /= float(num_splits);
+  p->wgt_ /= float(num_splits);
   // note 1 -> n not 0->n
   for ( int i = 1 ; i < num_splits ; i++ ) {
-    p->create_secondary(p->coord[0].uvw,p->E,p->type,true);
+    p->create_secondary(p->u(),p->E_,p->type_);
   }
 
   return;
@@ -59,14 +59,14 @@ void roulette(Particle* p, double importance_ratio) {
   //std::cout << random << " " << importance_ratio;
   if ( random >= importance_ratio) {
     //std::cout << " kill" << std::endl;
-    p->alive = false;
-    p->wgt = 0.;
-    p->last_wgt = 0.;
+    p->alive_ = false;
+    p->wgt_ = 0.;
+    p->wgt_last_ = 0.;
   } else {
     //std::cout << " survive " << std::endl;
-    p->last_wgt = p->wgt;
+    p->wgt_last_ = p->wgt_;
     //std::cout << p->last_wgt << " ";
-    p->wgt /= importance_ratio;
+    p->wgt_ /= importance_ratio;
     //std::cout << p->wgt << std::endl;
   }
   return;
@@ -88,8 +88,8 @@ void weight_window_split(Particle *p) {
     get_window_from_cell(p,weight_low,weight_high);
   */
 
-  if ( p->wgt > weight_high ) {
-    if ( p->wgt/weight_high > MAX_SPLIT ) {
+  if ( p->wgt_ > weight_high ) {
+    if ( p->wgt_/weight_high > MAX_SPLIT ) {
           // long history mitigation - if the number of requested
           // splits is greater than the prescribed amount in the input
           // lets say a million then we increase the effective weight
@@ -115,9 +115,9 @@ void weight_window_split(Particle *p) {
     // reset original particle to include left over weight
     p->wgt += remaining_wgt;
     */
-    split_by_ratio(p,p->wgt/weight_high);
-  } else if ( p->wgt < weight_low ) {
-    roulette(p,p->wgt/weight_low);  
+    split_by_ratio(p,p->wgt_/weight_high);
+  } else if ( p->wgt_ < weight_low ) {
+    roulette(p,p->wgt_/weight_low);  
   } else {
     // do nothing we are in the window
   }
@@ -128,8 +128,8 @@ void weight_window_split(Particle *p) {
 void importance_split(Particle *p){
 
   // importances can only come from cells
-  int current_cell = p->coord[p->n_coord-1].cell;
-  int last_cell = p->last_cell[p->last_n_coord-1];
+  int current_cell = p->coord_[p->n_coord_-1].cell;
+  int last_cell = p->cell_last_[p->n_coord_last_-1];
 
   // if we havent changed cell
   //std::cout << p->id << " " << current_cell << " " << last_cell << std::endl;
@@ -160,14 +160,14 @@ void importance_split(Particle *p){
 void perform_vr(Particle* p)
 {
   // check weight cutoff
-  if ( p->wgt < settings::weight_cutoff ) {
-    p->wgt = 0.;
-    p->last_wgt = 0.;
-    p->alive = false;
+  if ( p->wgt_ < settings::weight_cutoff ) {
+    p->wgt_ = 0.;
+    p->wgt_last_ = 0.;
+    p->alive_ = false;
     return;
   }
 
-  if (p->absorb_wgt == 0) return;
+  if (p->wgt_absorb_ == 0) return;
 
   if (variance_reduction::importance_splitting) 
     importance_split(p);

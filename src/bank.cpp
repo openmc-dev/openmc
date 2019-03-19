@@ -18,6 +18,7 @@ namespace simulation {
 
 std::vector<Particle::Bank> source_bank;
 std::vector<Particle::Bank> fission_bank;
+std::vector<Particle::Bank> secondary_bank;
 #ifdef _OPENMP
 std::vector<Particle::Bank> master_fission_bank;
 #endif

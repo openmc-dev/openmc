@@ -51,7 +51,7 @@ sample_reaction(Particle* p)
       create_fission_sites(p, simulation::fission_bank);
     } else if ((settings::run_mode == RUN_MODE_FIXEDSOURCE) &&
                (settings::create_fission_neutrons)) {
-      create_fission_sites(p, p->secondary_bank_);
+      create_fission_sites(p, simulation::secondary_bank);
     }
   }
 

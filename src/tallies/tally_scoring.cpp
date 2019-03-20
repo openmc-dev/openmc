@@ -1152,9 +1152,104 @@ score_general_ce(Particle* p, int i_tally, int start_index,
     case SCORE_HEATING:
       if (p->type_ == Particle::Type::neutron) {
         score_bin = NEUTRON_HEATING;
-        // No break here, continue to run the default neutron MT scoring
+        if (tally.estimator_ == ESTIMATOR_ANALOG) {
+          // Calculate material heating cross section
+          double macro_heating = 0.;
+          const Material& material {*model::materials[p->material_]};
+          for (auto i = 0; i < material.nuclide_.size(); ++i) {
+            auto j_nuclide = material.nuclide_[i];
+            auto atom_density = material.atom_density_(i);
+            const auto& nuc {*data::nuclides[j_nuclide]};
+            auto m = nuc.reaction_index_[score_bin];
+            if (m == C_NONE) continue;
+            const auto& rxn {*nuc.reactions_[m]};
+            auto i_temp = simulation::micro_xs[j_nuclide].index_temp;
+            if (i_temp >= 0) { // Can be false due to multipole
+              auto i_grid = simulation::micro_xs[j_nuclide].index_grid;
+              auto f = simulation::micro_xs[j_nuclide].interp_factor;
+              const auto& xs {rxn.xs_[i_temp]};
+              if (i_grid >= xs.threshold) {
+                macro_heating += ((1.0 - f) * xs.value[i_grid-xs.threshold]
+                  + f * xs.value[i_grid-xs.threshold+1]) * atom_density;
+              }
+            }
+          }
+          // All events score to an heating rate bin
+          if (settings::survival_biasing) {
+            // We need to account for the fact that some weight was already
+            // absorbed
+            score = p->wgt_last_ + p->wgt_absorb_;
+          } else {
+            score = p->wgt_last_;
+          }
+          score *= macro_heating * flux / simulation::material_xs.total;
+        } else {
+          // Calculate neutron heating cross section on-the-fly
+          score = 0.;
+          if (i_nuclide >= 0) {
+            const auto& nuc {*data::nuclides[i_nuclide]};
+            auto m = nuc.reaction_index_[score_bin];
+            if (m == C_NONE) continue;
+            const auto& rxn {*nuc.reactions_[m]};
+            auto i_temp = simulation::micro_xs[i_nuclide].index_temp;
+            if (i_temp >= 0) { // Can be false due to multipole
+              auto i_grid = simulation::micro_xs[i_nuclide].index_grid;
+              auto f = simulation::micro_xs[i_nuclide].interp_factor;
+              const auto& xs {rxn.xs_[i_temp]};
+              if (i_grid >= xs.threshold) {
+                score = ((1.0 - f) * xs.value[i_grid-xs.threshold]
+                  + f * xs.value[i_grid-xs.threshold+1]) * atom_density * flux;
+              }
+            }
+          } else {
+            if (p->material_ != MATERIAL_VOID) {
+              const Material& material {*model::materials[p->material_]};
+              for (auto i = 0; i < material.nuclide_.size(); ++i) {
+                auto j_nuclide = material.nuclide_[i];
+                auto atom_density = material.atom_density_(i);
+                const auto& nuc {*data::nuclides[j_nuclide]};
+                auto m = nuc.reaction_index_[score_bin];
+                if (m == C_NONE) continue;
+                const auto& rxn {*nuc.reactions_[m]};
+                auto i_temp = simulation::micro_xs[j_nuclide].index_temp;
+                if (i_temp >= 0) { // Can be false due to multipole
+                  auto i_grid = simulation::micro_xs[j_nuclide].index_grid;
+                  auto f = simulation::micro_xs[j_nuclide].interp_factor;
+                  const auto& xs {rxn.xs_[i_temp]};
+                  if (i_grid >= xs.threshold) {
+                    score += ((1.0 - f) * xs.value[i_grid-xs.threshold]
+                      + f * xs.value[i_grid-xs.threshold+1]) * atom_density
+                      * flux;
+                  }
+                }
+              }
+            }
+          }
+        }
       } else if (p->type_ == Particle::Type::photon) {
-        if (tally.estimator_ != ESTIMATOR_ANALOG) {
+        if (tally.estimator_ == ESTIMATOR_ANALOG) {
+          // Calculate material heating cross section
+          double macro_heating = 0.;
+          const Material& material {*model::materials[p->material_]};
+          for (auto i = 0; i < material.nuclide_.size(); ++i) {
+            auto i_element = material.element_[i];
+            auto atom_density = material.atom_density_(i);
+            auto& heating {data::elements[i_element].heating_};
+            auto i_grid = simulation::micro_photon_xs[i_element].index_grid;
+            auto f = simulation::micro_photon_xs[i_element].interp_factor;
+            macro_heating += std::exp(heating(i_grid) + f * (heating(i_grid+1) -
+              heating(i_grid))) * atom_density;
+          }
+          // All events score to an heating rate bin
+          if (settings::survival_biasing) {
+            // We need to account for the fact that some weight was already
+            // absorbed
+            score = p->wgt_last_ + p->wgt_absorb_;
+          } else {
+            score = p->wgt_last_;
+          }
+          score *= macro_heating * flux / simulation::material_xs.total;
+        } else {
           // Calculate photon heating cross section on-the-fly
           score = 0.;
           if (i_nuclide >= 0) {

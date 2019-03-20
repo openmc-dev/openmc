@@ -595,6 +595,9 @@ class IncidentPhoton(EqualityMixin):
         mode : {'r', r+', 'w', 'x', 'a'}
             Mode that is used to open the HDF5 file. This is the second argument
             to the :class:`h5py.File` constructor.
+        libver : {'earliest', 'latest'}
+            Compatibility mode for the HDF5 file. 'latest' will produce files
+            that are less backwards compatible but have performance benefits.
 
         """
         # Open file and write version
@@ -755,8 +758,8 @@ class IncidentPhoton(EqualityMixin):
         data = cls(Z)
 
         # Read energy grid
-        data.energy = energy= group['energy'].value
-        n = data.energy.size
+        energy= group['energy'].value
+        n = energy.size
 
         # Read coherent scattering cross section
         rgroup = group['coherent']
@@ -811,6 +814,8 @@ class IncidentPhoton(EqualityMixin):
         binding_energy = {}
         num_electrons = {}
         transitions = {}
+        shell_values = _SUBSHELLS.copy()
+        shell_values.insert(0, None)
         columns = ['secondary', 'tertiary', 'energy (eV)', 'probability']
         for shell in designators:
             mt = _SUBSHELL_MT[shell]
@@ -827,18 +832,16 @@ class IncidentPhoton(EqualityMixin):
 
             # Read transition data
             if 'transitions' in sub_group:
-                t_value = sub_group['transitions'].value
-                records = []
-                secondaries = [_subshell(int(i)) for i in t_value[:, 0]]
-                for i, s in enumerate(secondaries):
-                    records.append((s, t_value[i, 1], t_value[i, 2],
-                                    t_value[i, 3]))
-                transitions[shell] = pd.DataFrame.from_records(records,
-                                                               columns=columns)
+                df = pd.DataFrame(sub_group['transitions'].value,
+                                  columns=columns)
+                # Replace float indexes back to subshell strings
+                df[columns[:2]] = df[columns[:2]].replace(
+                              np.arange(float(len(shell_values))), shell_values)
+                transitions[shell] = df
 
         if binding_energy:
             data.atomic_relaxation = AtomicRelaxation(binding_energy,
-                                                      num_electrons, transitions)
+                                                     num_electrons, transitions)
 
         # Read Compton profiles
         if 'compton_profiles' in group:

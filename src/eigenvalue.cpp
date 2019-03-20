@@ -138,7 +138,7 @@ void synchronize_bank()
 
   // Allocate temporary source bank
   int64_t index_temp = 0;
-  std::vector<Particle::Bank> temp_sites(3*simulation::work);
+  std::vector<Particle::Bank> temp_sites(3*simulation::work_per_rank);
 
   for (const auto& site : simulation::fission_bank) {
     // If there are less than n_particles particles banked, automatically add
@@ -597,7 +597,7 @@ void ufs_count_sites()
 
     // Since the total starting weight is not equal to n_particles, we need to
     // renormalize the weight of the source sites
-    for (int i = 0; i < simulation::work; ++i) {
+    for (int i = 0; i < simulation::work_per_rank; ++i) {
       simulation::source_bank[i].wgt *= settings::n_particles / total;
     }
   }

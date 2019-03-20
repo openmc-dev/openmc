@@ -189,7 +189,7 @@ int openmc_next_batch(int* status)
     // LOOP OVER PARTICLES
 
     #pragma omp parallel for schedule(runtime)
-    for (int64_t i_work = 1; i_work <= simulation::work; ++i_work) {
+    for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
       simulation::current_work = i_work;
 
       // grab source particle from bank
@@ -245,7 +245,7 @@ int restart_batch;
 bool satisfy_triggers {false};
 int total_gen {0};
 double total_weight;
-int64_t work;
+int64_t work_per_rank;
 
 std::vector<double> k_generation;
 std::vector<int64_t> work_index;
@@ -262,7 +262,7 @@ bool trace;     //!< flag to show debug information
 void allocate_banks()
 {
   // Allocate source bank
-  simulation::source_bank.resize(simulation::work);
+  simulation::source_bank.resize(simulation::work_per_rank);
 
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
 #ifdef _OPENMP
@@ -274,15 +274,15 @@ void allocate_banks()
     #pragma omp parallel
     {
       if (omp_get_thread_num() == 0) {
-        simulation::fission_bank.reserve(3*simulation::work);
+        simulation::fission_bank.reserve(3*simulation::work_per_rank);
       } else {
         int n_threads = omp_get_num_threads();
-        simulation::fission_bank.reserve(3*simulation::work / n_threads);
+        simulation::fission_bank.reserve(3*simulation::work_per_rank / n_threads);
       }
     }
-    simulation::master_fission_bank.reserve(3*simulation::work);
+    simulation::master_fission_bank.reserve(3*simulation::work_per_rank);
 #else
-    simulation::fission_bank.reserve(3*simulation::work);
+    simulation::fission_bank.reserve(3*simulation::work_per_rank);
 #endif
   }
 }
@@ -507,7 +507,7 @@ void calculate_work()
     int64_t work_i = i < remainder ? min_work + 1 : min_work;
 
     // Set number of particles
-    if (mpi::rank == i) simulation::work = work_i;
+    if (mpi::rank == i) simulation::work_per_rank = work_i;
 
     // Set index into source bank for rank i
     i_bank += work_i;

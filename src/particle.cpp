@@ -594,7 +594,8 @@ Particle::mark_as_lost(const char* message)
   simulation::n_lost_particles += 1;
 
   // Count the total number of simulated particles (on this processor)
-  auto n = simulation::current_batch * settings::gen_per_batch * simulation::work;
+  auto n = simulation::current_batch * settings::gen_per_batch *
+    simulation::work_per_rank;
 
   // Abort the simulation if the maximum number of lost particles has been
   // reached

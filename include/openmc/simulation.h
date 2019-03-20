@@ -37,7 +37,7 @@ extern "C" int restart_batch;   //!< batch at which a restart job resumed
 extern "C" bool satisfy_triggers; //!< have tally triggers been satisfied?
 extern "C" int total_gen;        //!< total number of generations simulated
 extern double total_weight;  //!< Total source weight in a batch
-extern "C" int64_t work;         //!< number of particles per process
+extern int64_t work_per_rank;         //!< number of particles per MPI rank
 
 extern std::vector<double> k_generation;
 extern std::vector<int64_t> work_index;

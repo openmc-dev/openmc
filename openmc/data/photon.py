@@ -33,8 +33,6 @@ def _subshell(i):
     else:
         return _SUBSHELLS[i - 1]
 
-_SUBSHELL_MT = {s: i + 534 for i, s in enumerate(_SUBSHELLS)}
-
 _REACTION_NAME = {
     501: ('Total photon interaction', 'total'),
     502: ('Photon coherent scattering', 'coherent'),
@@ -763,71 +761,25 @@ class IncidentPhoton(EqualityMixin):
             union_grid = np.union1d(union_grid, rx.xs.x)
         group.create_dataset('energy', data=union_grid)
 
-        # Write coherent scattering cross section
-        rx = self.reactions[502]
-        coh_group = group.create_group('coherent')
-        coh_group.create_dataset('xs', data=rx.xs(union_grid))
-        if rx.scattering_factor is not None:
-            # Create integrated form factor
-            ff = deepcopy(rx.scattering_factor)
-            ff.x *= ff.x
-            ff.y *= ff.y/Z**2
-            int_ff = Tabulated1D(ff.x, ff.integral())
-            int_ff.to_hdf5(coh_group, 'integrated_scattering_factor')
-        if rx.anomalous_real is not None:
-            rx.anomalous_real.to_hdf5(coh_group, 'anomalous_real')
-        if rx.anomalous_imag is not None:
-            rx.anomalous_imag.to_hdf5(coh_group, 'anomalous_imag')
-
-        # Write incoherent scattering cross section
-        rx = self[504]
-        incoh_group = group.create_group('incoherent')
-        incoh_group.create_dataset('xs', data=rx.xs(union_grid))
-        if rx.scattering_factor is not None:
-            rx.scattering_factor.to_hdf5(incoh_group, 'scattering_factor')
-
-        # Write electron-field pair production cross section
-        if 515 in self:
-            pair_group = group.create_group('pair_production_electron')
-            pair_group.create_dataset('xs', data=self[515].xs(union_grid))
-
-        # Write nuclear-field pair production cross section
-        if 517 in self:
-            pair_group = group.create_group('pair_production_nuclear')
-            pair_group.create_dataset('xs', data=self[517].xs(union_grid))
-
-        # Write photoelectric cross section
-        photoelec_group = group.create_group('photoelectric')
-        photoelec_group.create_dataset('xs', data=self[522].xs(union_grid))
-
-        # Write heating cross section
-        if 525 in self:
-            heat_group = group.create_group('heating')
-            heat_group.create_dataset('xs', data=self[525].xs(union_grid))
-
-        # Write photoionization cross sections
+        # Write cross sections
         shell_group = group.create_group('subshells')
         designators = []
         for mt, rx in self.reactions.items():
-            if mt >= 534 and mt <= 572:
-                # Get name of subshell
-                shell = _SUBSHELLS[mt - 534]
-                designators.append(shell)
-                sub_group = shell_group.create_group(shell)
+            name, key = _REACTION_NAME[mt]
+            if mt in [502, 504, 515, 517, 522, 525]:
+                sub_group = group.create_group(key)
+            elif mt >= 534 and mt <= 572:
+                # Subshell
+                designators.append(key)
+                sub_group = shell_group.create_group(key)
 
                 # Write atomic relaxation
-                if shell in self.atomic_relaxation.subshells:
-                    self.atomic_relaxation.to_hdf5(sub_group, shell)
+                if key in self.atomic_relaxation.subshells:
+                    self.atomic_relaxation.to_hdf5(sub_group, key)
+            else:
+                continue
 
-                # Determine threshold
-                threshold = rx.xs.x[0]
-                idx = np.searchsorted(union_grid, threshold, side='right') - 1
-
-                # Interpolate cross section onto union grid and write
-                photoionization = rx.xs(union_grid[idx:])
-                sub_group.create_dataset('xs', data=photoionization)
-                assert len(union_grid) == len(photoionization) + idx
-                sub_group['xs'].attrs['threshold_idx'] = idx
+            rx.to_hdf5(sub_group, union_grid, Z)
 
         shell_group.attrs['designators'] = np.array(designators, dtype='S')
 
@@ -1149,7 +1101,7 @@ class PhotonReaction(EqualityMixin):
         mt : int
             The MT value of the reaction to get data for
         energy : Iterable of float
-            arrays of energies at which cross sections are tabulated at.
+            arrays of energies at which cross sections are tabulated at
 
         Returns
         -------
@@ -1184,3 +1136,47 @@ class PhotonReaction(EqualityMixin):
             rx.scattering_factor = Tabulated1D.from_hdf5(group['scattering_factor'])
 
         return rx
+
+    def to_hdf5(self, group, energy, Z):
+        """Write photon reaction to an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+        energy : Iterable of float
+            arrays of energies at which cross sections are tabulated at
+        Z : int
+            atomic number
+
+        """
+
+        # Write cross sections
+        if self.mt >= 534 and self.mt <= 572:
+            # Determine threshold
+            threshold = self.xs.x[0]
+            idx = np.searchsorted(energy, threshold, side='right') - 1
+
+            # Interpolate cross section onto union grid and write
+            photoionization = self.xs(energy[idx:])
+            group.create_dataset('xs', data=photoionization)
+            assert len(energy) == len(photoionization) + idx
+            group['xs'].attrs['threshold_idx'] = idx
+        else:
+            group.create_dataset('xs', data=self.xs(energy))
+
+        # Write scattering factor
+        if self.scattering_factor is not None:
+            if self.mt == 502:
+                # Create integrated form factor
+                ff = deepcopy(self.scattering_factor)
+                ff.x *= ff.x
+                ff.y *= ff.y/Z**2
+                int_ff = Tabulated1D(ff.x, ff.integral())
+                int_ff.to_hdf5(group, 'integrated_scattering_factor')
+            else:
+                self.scattering_factor.to_hdf5(group, 'scattering_factor')
+        if self.anomalous_real is not None:
+            self.anomalous_real.to_hdf5(group, 'anomalous_real')
+        if self.anomalous_imag is not None:
+            self.anomalous_imag.to_hdf5(group, 'anomalous_imag')

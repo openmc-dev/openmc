@@ -325,8 +325,69 @@ class AtomicRelaxation(EqualityMixin):
         # Return instance of class
         return cls(binding_energy, num_electrons, transitions)
 
+    @classmethod
+    def from_hdf5(cls, group):
+        """Generate atomic relaxation data from an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to read from
+
+        Returns
+        -------
+        openmc.data.AtomicRelaxation
+            Atomic relaxation data
+
+        """
+        # Create data dictionaries
+        binding_energy = {}
+        num_electrons = {}
+        transitions = {}
+
+        designators = [s.decode() for s in group.attrs['designators']]
+        shell_values = [None] + _SUBSHELLS
+        columns = ['secondary', 'tertiary', 'energy (eV)', 'probability']
+        for shell in designators:
+            # Shell group
+            sub_group = group[shell]
+
+            # Read subshell binding energy and number of electrons
+            if 'binding_energy' in sub_group.attrs:
+                binding_energy[shell] = sub_group.attrs['binding_energy']
+            if 'num_electrons' in sub_group.attrs:
+                num_electrons[shell] = sub_group.attrs['num_electrons']
+
+            # Read transition data
+            if 'transitions' in sub_group:
+                df = pd.DataFrame(sub_group['transitions'].value,
+                                  columns=columns)
+                # Replace float indexes back to subshell strings
+                df[columns[:2]] = df[columns[:2]].replace(
+                              np.arange(float(len(shell_values))), shell_values)
+                transitions[shell] = df
+
+        return cls(binding_energy, num_electrons, transitions)
+
     def to_hdf5(self, group):
-        raise NotImplementedError
+        """Write atomic relaxation data to an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+
+        """
+
+        group.attrs['mt'] = self.mt
+        if self.mt in REACTION_NAME:
+            group.attrs['label'] = np.string_(REACTION_NAME[self.mt])
+        else:
+            group.attrs['label'] = np.string_(self.mt)
+        group.attrs['Q_value'] = self.q_value
+        group.attrs['center_of_mass'] = 1 if self.center_of_mass else 0
+        group.attrs['redundant'] = 1 if self.redundant else 0
+
 
 class IncidentPhoton(EqualityMixin):
     r"""Photon interaction data.
@@ -585,141 +646,6 @@ class IncidentPhoton(EqualityMixin):
 
         return data
 
-    def export_to_hdf5(self, path, mode='a', libver='earliest'):
-        """Export incident photon data to an HDF5 file.
-
-        Parameters
-        ----------
-        path : str
-            Path to write HDF5 file to
-        mode : {'r', r+', 'w', 'x', 'a'}
-            Mode that is used to open the HDF5 file. This is the second argument
-            to the :class:`h5py.File` constructor.
-        libver : {'earliest', 'latest'}
-            Compatibility mode for the HDF5 file. 'latest' will produce files
-            that are less backwards compatible but have performance benefits.
-
-        """
-        # Open file and write version
-        f = h5py.File(str(path), mode, libver=libver)
-        f.attrs['filetype'] = np.string_('data_photon')
-        if 'version' not in f.attrs:
-            f.attrs['version'] = np.array(HDF5_VERSION)
-
-        group = f.create_group(self.name)
-        group.attrs['Z'] = Z = self.atomic_number
-
-        # Determine union energy grid
-        union_grid = np.array([])
-        for rx in self:
-            union_grid = np.union1d(union_grid, rx.xs.x)
-        group.create_dataset('energy', data=union_grid)
-
-        # Write coherent scattering cross section
-        rx = self.reactions[502]
-        coh_group = group.create_group('coherent')
-        coh_group.create_dataset('xs', data=rx.xs(union_grid))
-        if rx.scattering_factor is not None:
-            # Create integrated form factor
-            ff = deepcopy(rx.scattering_factor)
-            ff.x *= ff.x
-            ff.y *= ff.y/Z**2
-            int_ff = Tabulated1D(ff.x, ff.integral())
-            int_ff.to_hdf5(coh_group, 'integrated_scattering_factor')
-        if rx.anomalous_real is not None:
-            rx.anomalous_real.to_hdf5(coh_group, 'anomalous_real')
-        if rx.anomalous_imag is not None:
-            rx.anomalous_imag.to_hdf5(coh_group, 'anomalous_imag')
-
-        # Write incoherent scattering cross section
-        rx = self[504]
-        incoh_group = group.create_group('incoherent')
-        incoh_group.create_dataset('xs', data=rx.xs(union_grid))
-        if rx.scattering_factor is not None:
-            rx.scattering_factor.to_hdf5(incoh_group, 'scattering_factor')
-
-        # Write electron-field pair production cross section
-        if 515 in self:
-            pair_group = group.create_group('pair_production_electron')
-            pair_group.create_dataset('xs', data=self[515].xs(union_grid))
-
-        # Write nuclear-field pair production cross section
-        if 517 in self:
-            pair_group = group.create_group('pair_production_nuclear')
-            pair_group.create_dataset('xs', data=self[517].xs(union_grid))
-
-        # Write photoelectric cross section
-        photoelec_group = group.create_group('photoelectric')
-        photoelec_group.create_dataset('xs', data=self[522].xs(union_grid))
-
-        # Write heating cross section
-        if 525 in self:
-            heat_group = group.create_group('heating')
-            heat_group.create_dataset('xs', data=self[525].xs(union_grid))
-
-        # Write photoionization cross sections
-        shell_group = group.create_group('subshells')
-        designators = []
-        for mt, rx in self.reactions.items():
-            if mt >= 534 and mt <= 572:
-                # Get name of subshell
-                shell = _SUBSHELLS[mt - 534]
-                designators.append(shell)
-                sub_group = shell_group.create_group(shell)
-
-                if self.atomic_relaxation is not None:
-                    relax = self.atomic_relaxation
-                    # Write subshell binding energy and number of electrons
-                    sub_group.attrs['binding_energy'] = relax.binding_energy[shell]
-                    sub_group.attrs['num_electrons'] = relax.num_electrons[shell]
-
-                    # Write transition data with replacements
-                    if shell in relax.transitions:
-                        shell_values = _SUBSHELLS.copy()
-                        shell_values.insert(0, None)
-                        df = relax.transitions[shell].replace(
-                            shell_values, range(len(shell_values)))
-                        sub_group.create_dataset(
-                            'transitions', data=df.values.astype(float))
-
-                # Determine threshold
-                threshold = rx.xs.x[0]
-                idx = np.searchsorted(union_grid, threshold, side='right') - 1
-
-                # Interpolate cross section onto union grid and write
-                photoionization = rx.xs(union_grid[idx:])
-                sub_group.create_dataset('xs', data=photoionization)
-                assert len(union_grid) == len(photoionization) + idx
-                sub_group['xs'].attrs['threshold_idx'] = idx
-
-        shell_group.attrs['designators'] = np.array(designators, dtype='S')
-
-        # Write Compton profiles
-        if self.compton_profiles:
-            compton_group = group.create_group('compton_profiles')
-
-            profile = self.compton_profiles
-            compton_group.create_dataset('num_electrons',
-                                         data=profile['num_electrons'])
-            compton_group.create_dataset('binding_energy',
-                                         data=profile['binding_energy'])
-
-            # Get electron momentum values
-            compton_group.create_dataset('pz', data=profile['J'][0].x)
-
-            # Create/write 2D array of profiles
-            J = np.array([Jk.y for Jk in profile['J']])
-            compton_group.create_dataset('J', data=J)
-
-        # Write bremsstrahlung
-        if self.bremsstrahlung:
-            brem_group = group.create_group('bremsstrahlung')
-            for key, value in self.bremsstrahlung.items():
-                if key == 'I':
-                    brem_group.attrs[key] = value
-                else:
-                    brem_group.create_dataset(key, data=value)
-
     @classmethod
     def from_hdf5(cls, group_or_filename):
         """Generate photon reaction from an HDF5 group
@@ -808,15 +734,9 @@ class IncidentPhoton(EqualityMixin):
             rx.xs = Tabulated1D(energy, rgroup['xs'].value, [n], [5])
             data.reactions[525] = rx
 
-        # Read photoionization cross sections and atomic relaxation
         rgroup = group['subshells']
+        # Read photoionization cross sections
         designators = [i.decode() for i in rgroup.attrs['designators']]
-        binding_energy = {}
-        num_electrons = {}
-        transitions = {}
-        shell_values = _SUBSHELLS.copy()
-        shell_values.insert(0, None)
-        columns = ['secondary', 'tertiary', 'energy (eV)', 'probability']
         for shell in designators:
             mt = _SUBSHELL_MT[shell]
             sub_group = rgroup[shell]
@@ -826,22 +746,8 @@ class IncidentPhoton(EqualityMixin):
             rx.xs = Tabulated1D(energy[threshold_idx:], xs, [len(xs)], [5])
             data.reactions[mt] = rx
 
-            # Read subshell binding energy and number of electrons
-            binding_energy[shell] = sub_group.attrs['binding_energy']
-            num_electrons[shell] = sub_group.attrs['num_electrons']
-
-            # Read transition data
-            if 'transitions' in sub_group:
-                df = pd.DataFrame(sub_group['transitions'].value,
-                                  columns=columns)
-                # Replace float indexes back to subshell strings
-                df[columns[:2]] = df[columns[:2]].replace(
-                              np.arange(float(len(shell_values))), shell_values)
-                transitions[shell] = df
-
-        if binding_energy:
-            data.atomic_relaxation = AtomicRelaxation(binding_energy,
-                                                     num_electrons, transitions)
+        # Read atomic relaxation
+        data.atomic_relaxation = AtomicRelaxation.from_hdf5(rgroup)
 
         # Read Compton profiles
         if 'compton_profiles' in group:
@@ -867,6 +773,141 @@ class IncidentPhoton(EqualityMixin):
                 data.bremsstrahlung[key] = rgroup[key].value
 
         return data
+
+    def export_to_hdf5(self, path, mode='a', libver='earliest'):
+        """Export incident photon data to an HDF5 file.
+
+        Parameters
+        ----------
+        path : str
+            Path to write HDF5 file to
+        mode : {'r', r+', 'w', 'x', 'a'}
+            Mode that is used to open the HDF5 file. This is the second argument
+            to the :class:`h5py.File` constructor.
+        libver : {'earliest', 'latest'}
+            Compatibility mode for the HDF5 file. 'latest' will produce files
+            that are less backwards compatible but have performance benefits.
+
+        """
+        # Open file and write version
+        f = h5py.File(str(path), mode, libver=libver)
+        f.attrs['filetype'] = np.string_('data_photon')
+        if 'version' not in f.attrs:
+            f.attrs['version'] = np.array(HDF5_VERSION)
+
+        group = f.create_group(self.name)
+        group.attrs['Z'] = Z = self.atomic_number
+
+        # Determine union energy grid
+        union_grid = np.array([])
+        for rx in self:
+            union_grid = np.union1d(union_grid, rx.xs.x)
+        group.create_dataset('energy', data=union_grid)
+
+        # Write coherent scattering cross section
+        rx = self.reactions[502]
+        coh_group = group.create_group('coherent')
+        coh_group.create_dataset('xs', data=rx.xs(union_grid))
+        if rx.scattering_factor is not None:
+            # Create integrated form factor
+            ff = deepcopy(rx.scattering_factor)
+            ff.x *= ff.x
+            ff.y *= ff.y/Z**2
+            int_ff = Tabulated1D(ff.x, ff.integral())
+            int_ff.to_hdf5(coh_group, 'integrated_scattering_factor')
+        if rx.anomalous_real is not None:
+            rx.anomalous_real.to_hdf5(coh_group, 'anomalous_real')
+        if rx.anomalous_imag is not None:
+            rx.anomalous_imag.to_hdf5(coh_group, 'anomalous_imag')
+
+        # Write incoherent scattering cross section
+        rx = self[504]
+        incoh_group = group.create_group('incoherent')
+        incoh_group.create_dataset('xs', data=rx.xs(union_grid))
+        if rx.scattering_factor is not None:
+            rx.scattering_factor.to_hdf5(incoh_group, 'scattering_factor')
+
+        # Write electron-field pair production cross section
+        if 515 in self:
+            pair_group = group.create_group('pair_production_electron')
+            pair_group.create_dataset('xs', data=self[515].xs(union_grid))
+
+        # Write nuclear-field pair production cross section
+        if 517 in self:
+            pair_group = group.create_group('pair_production_nuclear')
+            pair_group.create_dataset('xs', data=self[517].xs(union_grid))
+
+        # Write photoelectric cross section
+        photoelec_group = group.create_group('photoelectric')
+        photoelec_group.create_dataset('xs', data=self[522].xs(union_grid))
+
+        # Write heating cross section
+        if 525 in self:
+            heat_group = group.create_group('heating')
+            heat_group.create_dataset('xs', data=self[525].xs(union_grid))
+
+        # Write photoionization cross sections
+        shell_group = group.create_group('subshells')
+        designators = []
+        shell_values = [None] + _SUBSHELLS
+        for mt, rx in self.reactions.items():
+            if mt >= 534 and mt <= 572:
+                # Get name of subshell
+                shell = _SUBSHELLS[mt - 534]
+                designators.append(shell)
+                sub_group = shell_group.create_group(shell)
+
+                if self.atomic_relaxation is not None:
+                    relax = self.atomic_relaxation
+                    # Write subshell binding energy and number of electrons
+                    sub_group.attrs['binding_energy'] = relax.binding_energy[shell]
+                    sub_group.attrs['num_electrons'] = relax.num_electrons[shell]
+
+                    # Write transition data with replacements
+                    if shell in relax.transitions:
+                        df = relax.transitions[shell].replace(
+                            shell_values, range(len(shell_values)))
+                        sub_group.create_dataset(
+                            'transitions', data=df.values.astype(float))
+
+                # Determine threshold
+                threshold = rx.xs.x[0]
+                idx = np.searchsorted(union_grid, threshold, side='right') - 1
+
+                # Interpolate cross section onto union grid and write
+                photoionization = rx.xs(union_grid[idx:])
+                sub_group.create_dataset('xs', data=photoionization)
+                assert len(union_grid) == len(photoionization) + idx
+                sub_group['xs'].attrs['threshold_idx'] = idx
+
+        shell_group.attrs['designators'] = np.array(designators, dtype='S')
+
+        # Write Compton profiles
+        if self.compton_profiles:
+            compton_group = group.create_group('compton_profiles')
+
+            profile = self.compton_profiles
+            compton_group.create_dataset('num_electrons',
+                                         data=profile['num_electrons'])
+            compton_group.create_dataset('binding_energy',
+                                         data=profile['binding_energy'])
+
+            # Get electron momentum values
+            compton_group.create_dataset('pz', data=profile['J'][0].x)
+
+            # Create/write 2D array of profiles
+            J = np.array([Jk.y for Jk in profile['J']])
+            compton_group.create_dataset('J', data=J)
+
+        # Write bremsstrahlung
+        if self.bremsstrahlung:
+            brem_group = group.create_group('bremsstrahlung')
+            for key, value in self.bremsstrahlung.items():
+                if key == 'I':
+                    brem_group.attrs[key] = value
+                else:
+                    brem_group.create_dataset(key, data=value)
+
 
     def _add_bremsstrahlung(self):
         """Add the data used in the thick-target bremsstrahlung approximation

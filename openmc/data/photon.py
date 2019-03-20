@@ -369,24 +369,28 @@ class AtomicRelaxation(EqualityMixin):
 
         return cls(binding_energy, num_electrons, transitions)
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, shell):
         """Write atomic relaxation data to an HDF5 group
 
         Parameters
         ----------
         group : h5py.Group
             HDF5 group to write to
+        shell : str
+            The subshell to write data for
 
         """
 
-        group.attrs['mt'] = self.mt
-        if self.mt in REACTION_NAME:
-            group.attrs['label'] = np.string_(REACTION_NAME[self.mt])
-        else:
-            group.attrs['label'] = np.string_(self.mt)
-        group.attrs['Q_value'] = self.q_value
-        group.attrs['center_of_mass'] = 1 if self.center_of_mass else 0
-        group.attrs['redundant'] = 1 if self.redundant else 0
+        # Write subshell binding energy and number of electrons
+        group.attrs['binding_energy'] = self.binding_energy[shell]
+        group.attrs['num_electrons'] = self.num_electrons[shell]
+
+        # Write transition data with replacements
+        if shell in self.transitions:
+            shell_values = [None] + _SUBSHELLS
+            df = self.transitions[shell].replace(
+                 shell_values, range(len(shell_values)))
+            group.create_dataset('transitions', data=df.values.astype(float))
 
 
 class IncidentPhoton(EqualityMixin):
@@ -849,7 +853,6 @@ class IncidentPhoton(EqualityMixin):
         # Write photoionization cross sections
         shell_group = group.create_group('subshells')
         designators = []
-        shell_values = [None] + _SUBSHELLS
         for mt, rx in self.reactions.items():
             if mt >= 534 and mt <= 572:
                 # Get name of subshell
@@ -857,18 +860,9 @@ class IncidentPhoton(EqualityMixin):
                 designators.append(shell)
                 sub_group = shell_group.create_group(shell)
 
-                if self.atomic_relaxation is not None:
-                    relax = self.atomic_relaxation
-                    # Write subshell binding energy and number of electrons
-                    sub_group.attrs['binding_energy'] = relax.binding_energy[shell]
-                    sub_group.attrs['num_electrons'] = relax.num_electrons[shell]
-
-                    # Write transition data with replacements
-                    if shell in relax.transitions:
-                        df = relax.transitions[shell].replace(
-                            shell_values, range(len(shell_values)))
-                        sub_group.create_dataset(
-                            'transitions', data=df.values.astype(float))
+                # Write atomic relaxation
+                if shell in self.atomic_relaxation.subshells:
+                    self.atomic_relaxation.to_hdf5(sub_group, shell)
 
                 # Determine threshold
                 threshold = rx.xs.x[0]

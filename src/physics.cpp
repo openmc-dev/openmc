@@ -95,6 +95,14 @@ void sample_neutron_reaction(Particle* p)
     } else if (settings::run_mode == RUN_MODE_FIXEDSOURCE &&
       settings::create_fission_neutrons) {
       create_fission_sites(p, i_nuclide, rx, simulation::secondary_bank);
+
+      // Make sure particle population doesn't grow out of control for
+      // subcritical multiplication problems.
+      if (simulation::secondary_bank.size() >= 10000) {
+        fatal_error("The secondary particle bank appears to be growing without "
+        "bound. You are likely running a subcritical multiplication problem "
+        "with k-effective close to or greater than one.");
+      }
     }
   }
 

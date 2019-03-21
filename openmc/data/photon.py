@@ -1174,8 +1174,7 @@ class PhotonReaction(EqualityMixin):
                 ff.y *= ff.y/Z**2
                 int_ff = Tabulated1D(ff.x, ff.integral())
                 int_ff.to_hdf5(group, 'integrated_scattering_factor')
-            else:
-                self.scattering_factor.to_hdf5(group, 'scattering_factor')
+            self.scattering_factor.to_hdf5(group, 'scattering_factor')
         if self.anomalous_real is not None:
             self.anomalous_real.to_hdf5(group, 'anomalous_real')
         if self.anomalous_imag is not None:

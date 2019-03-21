@@ -202,12 +202,7 @@ Particle::transport()
     }
 
     // Find the distance to the nearest boundary
-    double d_boundary;
-    int surface_crossed;
-    int lattice_translation[3];
-    int next_level;
-    distance_to_boundary(this, &d_boundary, &surface_crossed,
-      lattice_translation, &next_level);
+    auto boundary = distance_to_boundary(this);
 
     // Sample a distance to collision
     double d_collision;
@@ -221,7 +216,7 @@ Particle::transport()
     }
 
     // Select smaller of the two distances
-    double distance = std::min(d_boundary, d_collision);
+    double distance = std::min(boundary.distance, d_collision);
 
     // Advance particle
     for (int j = 0; j < n_coord_; ++j) {
@@ -244,11 +239,13 @@ Particle::transport()
       score_track_derivative(this, distance);
     }
 
-    if (d_collision > d_boundary) {
+    if (d_collision > boundary.distance) {
       // ====================================================================
       // PARTICLE CROSSES SURFACE
 
-      if (next_level > 0) n_coord_ = next_level;
+      // Set surface that particle is on and adjust coordinate levels
+      surface_ = boundary.surface_index;
+      n_coord_ = boundary.coord_level;
 
       // Saving previous cell data
       for (int j = 0; j < n_coord_; ++j) {
@@ -256,15 +253,14 @@ Particle::transport()
       }
       n_coord_last_ = n_coord_;
 
-      if (lattice_translation[0] != 0 || lattice_translation[1] != 0 ||
-          lattice_translation[2] != 0) {
+      if (boundary.lattice_translation[0] != 0 ||
+          boundary.lattice_translation[1] != 0 ||
+          boundary.lattice_translation[2] != 0) {
         // Particle crosses lattice boundary
-        surface_ = 0;
-        cross_lattice(this, lattice_translation);
+        cross_lattice(this, boundary);
         event_ = EVENT_LATTICE;
       } else {
         // Particle crosses surface
-        surface_ = surface_crossed;
         this->cross_surface();
         event_ = EVENT_SURFACE;
       }

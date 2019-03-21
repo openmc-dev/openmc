@@ -1278,11 +1278,9 @@ score_general_ce(Particle* p, int i_tally, int start_index,
             }
           }
         }
-        break;
-      } else {
-        // Nuclear heating of any other particles not implmented
-        break;
       }
+      // Nuclear heating of any other particles not implmented
+      break;
 
     default:
       if (tally.estimator_ == ESTIMATOR_ANALOG) {

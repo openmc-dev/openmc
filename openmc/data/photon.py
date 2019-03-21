@@ -904,7 +904,7 @@ class PhotonReaction(EqualityMixin):
     def __repr__(self):
         if self.mt in _REACTION_NAME:
             return "<Photon Reaction: MT={} {}>".format(
-                self.mt, _REACTION_NAME[self.mt])
+                self.mt, _REACTION_NAME[self.mt][0])
         else:
             return "<Photon Reaction: MT={}>".format(self.mt)
 

@@ -513,6 +513,12 @@ class IncidentPhoton(EqualityMixin):
         for mt in (502, 504, 515, 522, 525):
             data.reactions[mt] = PhotonReaction.from_ace(ace, mt)
 
+        # Get heating cross sections [eV*barn] from factors [eV per collision]
+        # by multiplying with total xs (sum of (502, 504, 515, 517, 522))
+        # but currently we cannot do this right as we miss 517)
+        data.reactions[525].xs.y *= sum([data.reactions[mt].xs.y for mt in
+                                         (502, 504, 515, 522)])
+
         # Compton profiles
         n_shell = ace.nxs[5]
         if n_shell != 0:
@@ -994,15 +1000,8 @@ class PhotonReaction(EqualityMixin):
         # Store cross section
         xs = ace.xss[idx : idx+n].copy()
         if mt == 525:
-            # Get heating cross sections [eV barn] from factors [MeV/collision]
-            # by multiplying the total xs (sum of (502, 504, 515, 522))
-            idx = ace.jxs[1] + n
-            total_xs = ace.xss[idx : idx + 4*n].copy()
-            total_xs = total_xs.reshape((4, n))
-            nonzero = (total_xs != 0.0)
-            total_xs[nonzero] = np.exp(total_xs[nonzero])
-            total_xs = total_xs.sum(axis=0)
-            xs *= total_xs * EV_PER_MEV
+            # Get heating factors in [eV per collision]
+            xs *= EV_PER_MEV
         else:
             nonzero = (xs != 0.0)
             xs[nonzero] = np.exp(xs[nonzero])

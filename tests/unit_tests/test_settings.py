@@ -36,7 +36,6 @@ def test_export_to_xml(run_in_tmpdir):
     s.tabular_legendre = {'enable': True, 'num_points': 50}
     s.temperature = {'default': 293.6, 'method': 'interpolation',
                      'multipole': True, 'range': (200., 1000.)}
-    s.threads = 8
     s.trace = (10, 1, 20)
     s.track = [1, 1, 1, 2, 1, 1]
     s.ufs_mesh = mesh

@@ -10,7 +10,7 @@
 #include "xtensor/xtensor.hpp"
 
 #include "openmc/hdf5_interface.h"
-#include "openmc/nuclide.h"
+#include "openmc/particle.h"
 
 namespace openmc {
 

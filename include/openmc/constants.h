@@ -403,8 +403,6 @@ constexpr int LEAKAGE       {3};
 // Miscellaneous
 constexpr int C_NONE {-1};
 constexpr int F90_NONE {0}; //TODO: replace usage of this with C_NONE
-constexpr int ERROR_INT {-2147483647}; // TODO: use <numeric_limits> when F90
-                                       // interop is gone
 
 // Interpolation rules
 enum class Interpolation {

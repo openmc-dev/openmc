@@ -217,14 +217,8 @@ void finalize_geometry(std::vector<std::vector<double>>& nuc_temps,
   // Determine desired temperatures for each nuclide and S(a,b) table
   get_temperatures(nuc_temps, thermal_temps);
 
-  // Check to make sure there are not too many nested coordinate levels in the
-  // geometry since the coordinate list is statically allocated for performance
-  // reasons
-  if (maximum_levels(model::root_universe) > MAX_COORD) {
-    fatal_error("Too many nested coordinate levels in the geometry. "
-      "Try increasing the maximum number of coordinate levels by "
-      "providing the CMake -Dmaxcoord= option.");
-  }
+  // Determine number of nested coordinate levels in the geometry
+  model::n_coord_levels = maximum_levels(model::root_universe);
 }
 
 //==============================================================================

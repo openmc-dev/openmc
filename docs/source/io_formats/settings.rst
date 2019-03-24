@@ -730,15 +730,6 @@ sections.
 
   *Default*: 10 K
 
----------------------
-``<threads>`` Element
----------------------
-
-The ``<threads>`` element indicates the number of OpenMP threads to be used for
-a simulation. It has no attributes and accepts a positive integer value.
-
-  *Default*: None (Determined by environment variable :envvar:`OMP_NUM_THREADS`)
-
 .. _trace:
 
 -------------------

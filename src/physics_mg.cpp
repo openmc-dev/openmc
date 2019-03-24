@@ -48,19 +48,16 @@ sample_reaction(Particle* p)
 
   if (model::materials[p->material_]->fissionable_) {
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      create_fission_sites(
-        p, simulation::fission_bank.data(), &simulation::n_bank,
-        simulation::fission_bank.size());
+      create_fission_sites(p, simulation::fission_bank);
     } else if ((settings::run_mode == RUN_MODE_FIXEDSOURCE) &&
                (settings::create_fission_neutrons)) {
-      create_fission_sites(p, p->secondary_bank_, &(p->n_secondary_),
-                           MAX_SECONDARY);
+      create_fission_sites(p, simulation::secondary_bank);
     }
   }
 
   // If survival biasing is being used, the following subroutine adjusts the
   // weight of the particle. Otherwise, it checks to see if absorption occurs.
-  if (simulation::material_xs.absorption > 0.) {
+  if (p->macro_xs_.absorption > 0.) {
     absorption(p);
   } else {
     p->wgt_absorb_ = 0.;
@@ -102,18 +99,15 @@ scatter(Particle* p)
 }
 
 void
-create_fission_sites(Particle* p, Particle::Bank* bank_array, int64_t* size_bank,
-     int64_t bank_array_size)
+create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank)
 {
-  // TODO: Heat generation from fission
-
   // If uniform fission source weighting is turned on, we increase or decrease
   // the expected number of fission sites produced
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
   double nu_t = p->wgt_ / simulation::keff * weight *
-       simulation::material_xs.nu_fission / simulation::material_xs.total;
+       p->macro_xs_.nu_fission / p->macro_xs_.total;
 
   // Sample the number of neutrons produced
   int nu = static_cast<int>(nu_t);
@@ -121,62 +115,42 @@ create_fission_sites(Particle* p, Particle::Bank* bank_array, int64_t* size_bank
     nu++;
   }
 
-  // Check for the bank size getting hit. For fixed source calculations, this
-  // is a fatal error; for eigenvalue calculations, it just means that k-eff
-  // was too high for a single batch.
-  if (*size_bank + nu > bank_array_size) {
-    if (settings::run_mode == RUN_MODE_FIXEDSOURCE) {
-      throw std::runtime_error{"Secondary particle bank size limit reached."
-           " If you are running a subcritical multiplication problem,"
-           " k-effective may be too close to one."};
-    } else {
-      if (mpi::master) {
-        std::stringstream msg;
-        msg << "Maximum number of sites in fission bank reached. This can"
-             " result in irreproducible results using different numbers of"
-             " processes/threads.";
-        warning(msg);
-      }
-    }
-  }
-
   // Begin banking the source neutrons
   // First, if our bank is full then don't continue
-  if ((nu == 0) || (*size_bank == bank_array_size)) return;
+  if (nu == 0) return;
 
   // Initialize the counter of delayed neutrons encountered for each delayed
   // group.
   double nu_d[MAX_DELAYED_GROUPS] = {0.};
 
   p->fission_ = true;
-  for (size_t i = static_cast<size_t>(*size_bank);
-       i < static_cast<size_t>(std::min(*size_bank + nu, bank_array_size)); i++) {
+  for (int i = 0; i < nu; ++i) {
+    // Create new bank site and get reference to last element
+    bank.emplace_back();
+    auto& site {bank.back()};
+
     // Bank source neutrons by copying the particle data
-    bank_array[i].r = p->r();
-
-    // Set that the bank particle is a neutron
-    bank_array[i].particle = Particle::Type::neutron;
-
-    // Set the weight of the fission bank site
-    bank_array[i].wgt = 1. / weight;
+    site.r = p->r();
+    site.particle = Particle::Type::neutron;
+    site.wgt = 1. / weight;
 
     // Sample the cosine of the angle, assuming fission neutrons are emitted
     // isotropically
-    double mu = 2. * prn() - 1.;
+    double mu = 2.*prn() - 1.;
 
     // Sample the azimuthal angle uniformly in [0, 2.pi)
     double phi = 2. * PI * prn();
-    bank_array[i].u.x = mu;
-    bank_array[i].u.y = std::sqrt(1. - mu * mu) * std::cos(phi);
-    bank_array[i].u.z = std::sqrt(1. - mu * mu) * std::sin(phi);
+    site.u.x = mu;
+    site.u.y = std::sqrt(1. - mu * mu) * std::cos(phi);
+    site.u.z = std::sqrt(1. - mu * mu) * std::sin(phi);
 
     // Sample secondary energy distribution for the fission reaction and set
     // the energy in the fission bank
     int dg;
     int gout;
     data::macro_xs[p->material_].sample_fission_energy(p->g_ - 1, dg, gout);
-    bank_array[i].E = gout + 1;
-    bank_array[i].delayed_group = dg + 1;
+    site.E = gout + 1;
+    site.delayed_group = dg + 1;
 
     // Set the delayed group on the particle as well
     p->delayed_group_ = dg + 1;
@@ -186,9 +160,6 @@ create_fission_sites(Particle* p, Particle::Bank* bank_array, int64_t* size_bank
       nu_d[dg]++;
     }
   }
-
-  // Increment number of bank sites
-  *size_bank = std::min(*size_bank + nu, bank_array_size);
 
   // Store the total weight banked for analog fission tallies
   p->n_bank_ = nu;
@@ -203,24 +174,21 @@ absorption(Particle* p)
 {
   if (settings::survival_biasing) {
     // Determine weight absorbed in survival biasing
-    p->wgt_absorb_ = p->wgt_ *
-         simulation::material_xs.absorption / simulation::material_xs.total;
+    p->wgt_absorb_ = p->wgt_ * p->macro_xs_.absorption / p->macro_xs_.total;
 
     // Adjust weight of particle by the probability of absorption
     p->wgt_ -= p->wgt_absorb_;
     p->wgt_last_ = p->wgt_;
 
     // Score implicit absorpion estimate of keff
-#pragma omp atomic
-    global_tally_absorption += p->wgt_absorb_ *
-         simulation::material_xs.nu_fission /
-         simulation::material_xs.absorption;
+    #pragma omp atomic
+    global_tally_absorption += p->wgt_absorb_ * p->macro_xs_.nu_fission /
+        p->macro_xs_.absorption;
   } else {
-    if (simulation::material_xs.absorption >
-        prn() * simulation::material_xs.total) {
-#pragma omp atomic
-      global_tally_absorption += p->wgt_ * simulation::material_xs.nu_fission /
-           simulation::material_xs.absorption;
+    if (p->macro_xs_.absorption > prn() * p->macro_xs_.total) {
+      #pragma omp atomic
+      global_tally_absorption += p->wgt_ * p->macro_xs_.nu_fission /
+           p->macro_xs_.absorption;
       p->alive_ = false;
       p->event_ = EVENT_ABSORB;
     }

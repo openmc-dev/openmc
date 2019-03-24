@@ -732,25 +732,21 @@ void RegularMesh::to_hdf5(hid_t group) const
   close_group(mesh_group);
 }
 
-xt::xarray<double> RegularMesh::count_sites(int64_t n, const Particle::Bank* bank,
-  int n_energy, const double* energies, bool* outside) const
+xt::xarray<double>
+RegularMesh::count_sites(const std::vector<Particle::Bank>& bank,
+  bool* outside) const
 {
   // Determine shape of array for counts
   std::size_t m = xt::prod(shape_)();
-  std::vector<std::size_t> shape;
-  if (n_energy > 0) {
-    shape = {m, static_cast<std::size_t>(n_energy - 1)};
-  } else {
-    shape = {m};
-  }
+  std::vector<std::size_t> shape = {m};
 
   // Create array of zeros
   xt::xarray<double> cnt {shape, 0.0};
   bool outside_ = false;
 
-  for (int64_t i = 0; i < n; ++i) {
+  for (const auto& site : bank) {
     // determine scoring bin for entropy mesh
-    int mesh_bin = get_bin(bank[i].r);
+    int mesh_bin = get_bin(site.r);
 
     // if outside mesh, skip particle
     if (mesh_bin < 0) {
@@ -758,19 +754,8 @@ xt::xarray<double> RegularMesh::count_sites(int64_t n, const Particle::Bank* ban
       continue;
     }
 
-    if (n_energy > 0) {
-      double E = bank[i].E;
-      if (E >= energies[0] && E <= energies[n_energy - 1]) {
-        // determine energy bin
-        int e_bin = lower_bound_index(energies, energies + n_energy, E);
-
-        // Add to appropriate bin
-        cnt(mesh_bin, e_bin) += bank[i].wgt;
-      }
-    } else {
-      // Add to appropriate bin
-      cnt(mesh_bin) += bank[i].wgt;
-    }
+    // Add to appropriate bin
+    cnt(mesh_bin) += site.wgt;
   }
 
   // Create copy of count data

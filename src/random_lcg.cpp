@@ -141,7 +141,7 @@ extern "C" void
 openmc_set_seed(int64_t new_seed)
 {
   seed = new_seed;
-#pragma omp parallel
+  #pragma omp parallel
   {
     for (int i = 0; i < N_STREAMS; i++) {
       prn_seed[i] = seed + i;

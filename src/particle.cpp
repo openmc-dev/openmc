@@ -15,6 +15,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
+#include "openmc/photon.h"
 #include "openmc/physics.h"
 #include "openmc/physics_mg.h"
 #include "openmc/random_lcg.h"
@@ -49,12 +50,18 @@ LocalCoord::reset()
 
 Particle::Particle()
 {
-  // Clear coordinate lists
+  // Create and clear coordinate levels
+  coord_.resize(model::n_coord_levels);
+  cell_last_.resize(model::n_coord_levels);
   clear();
 
   for (int& n : n_delayed_bank_) {
     n = 0;
   }
+
+  // Create microscopic cross section caches
+  neutron_xs_.resize(data::nuclides.size());
+  photon_xs_.resize(data::elements.size());
 }
 
 void
@@ -66,19 +73,16 @@ Particle::clear()
 }
 
 void
-Particle::create_secondary(Direction u, double E, Type type)
+Particle::create_secondary(Direction u, double E, Type type) const
 {
-  if (n_secondary_ == MAX_SECONDARY) {
-    fatal_error("Too many secondary particles created.");
-  }
+  simulation::secondary_bank.emplace_back();
 
-  int64_t n = n_secondary_;
-  secondary_bank_[n].particle = type;
-  secondary_bank_[n].wgt = wgt_;
-  secondary_bank_[n].r = this->r();
-  secondary_bank_[n].u = u;
-  secondary_bank_[n].E = settings::run_CE ? E : g_;
-  ++n_secondary_;
+  auto& bank {simulation::secondary_bank.back()};
+  bank.particle = type;
+  bank.wgt = wgt_;
+  bank.r = this->r();
+  bank.u = u;
+  bank.E = settings::run_CE ? E : g_;
 }
 
 void
@@ -130,9 +134,7 @@ Particle::transport()
 
   // Force calculation of cross-sections by setting last energy to zero
   if (settings::run_CE) {
-    for (int i = 0; i < data::nuclides.size(); ++i) {
-      simulation::micro_xs[i].last_E = 0.0;
-    }
+    for (auto& micro : neutron_xs_) micro.last_E = 0.0;
   }
 
   // Prepare to write out particle track.
@@ -186,41 +188,35 @@ Particle::transport()
       } else {
         // Get the MG data
         calculate_xs_c(material_, g_, sqrtkT_, this->u_local(),
-          simulation::material_xs.total, simulation::material_xs.absorption,
-          simulation::material_xs.nu_fission);
+          macro_xs_.total, macro_xs_.absorption, macro_xs_.nu_fission);
 
         // Finally, update the particle group while we have already checked
         // for if multi-group
         g_last_ = g_;
       }
     } else {
-      simulation::material_xs.total      = 0.0;
-      simulation::material_xs.absorption = 0.0;
-      simulation::material_xs.fission    = 0.0;
-      simulation::material_xs.nu_fission = 0.0;
+      macro_xs_.total      = 0.0;
+      macro_xs_.absorption = 0.0;
+      macro_xs_.fission    = 0.0;
+      macro_xs_.nu_fission = 0.0;
     }
 
     // Find the distance to the nearest boundary
-    double d_boundary;
-    int surface_crossed;
-    int lattice_translation[3];
-    int next_level;
-    distance_to_boundary(this, &d_boundary, &surface_crossed,
-      lattice_translation, &next_level);
+    auto boundary = distance_to_boundary(this);
 
     // Sample a distance to collision
     double d_collision;
     if (type_ == Particle::Type::electron ||
         type_ == Particle::Type::positron) {
       d_collision = 0.0;
-    } else if (simulation::material_xs.total == 0.0) {
+    } else if (macro_xs_.total == 0.0) {
       d_collision = INFINITY;
     } else {
-      d_collision = -std::log(prn()) / simulation::material_xs.total;
+      d_collision = -std::log(prn()) / macro_xs_.total;
     }
 
     // Select smaller of the two distances
-    double distance = std::min(d_boundary, d_collision);
+    double distance = std::min(boundary.distance, d_collision);
 
     // Advance particle
     for (int j = 0; j < n_coord_; ++j) {
@@ -235,7 +231,7 @@ Particle::transport()
     // Score track-length estimate of k-eff
     if (settings::run_mode == RUN_MODE_EIGENVALUE &&
         type_ == Particle::Type::neutron) {
-      global_tally_tracklength += wgt_ * distance * simulation::material_xs.nu_fission;
+      global_tally_tracklength += wgt_ * distance * macro_xs_.nu_fission;
     }
 
     // Score flux derivative accumulators for differential tallies.
@@ -243,11 +239,13 @@ Particle::transport()
       score_track_derivative(this, distance);
     }
 
-    if (d_collision > d_boundary) {
+    if (d_collision > boundary.distance) {
       // ====================================================================
       // PARTICLE CROSSES SURFACE
 
-      if (next_level > 0) n_coord_ = next_level;
+      // Set surface that particle is on and adjust coordinate levels
+      surface_ = boundary.surface_index;
+      n_coord_ = boundary.coord_level;
 
       // Saving previous cell data
       for (int j = 0; j < n_coord_; ++j) {
@@ -255,15 +253,14 @@ Particle::transport()
       }
       n_coord_last_ = n_coord_;
 
-      if (lattice_translation[0] != 0 || lattice_translation[1] != 0 ||
-          lattice_translation[2] != 0) {
+      if (boundary.lattice_translation[0] != 0 ||
+          boundary.lattice_translation[1] != 0 ||
+          boundary.lattice_translation[2] != 0) {
         // Particle crosses lattice boundary
-        surface_ = ERROR_INT;
-        cross_lattice(this, lattice_translation);
+        cross_lattice(this, boundary);
         event_ = EVENT_LATTICE;
       } else {
         // Particle crosses surface
-        surface_ = surface_crossed;
         this->cross_surface();
         event_ = EVENT_SURFACE;
       }
@@ -278,8 +275,8 @@ Particle::transport()
       // Score collision estimate of keff
       if (settings::run_mode == RUN_MODE_EIGENVALUE &&
           type_ == Particle::Type::neutron) {
-        global_tally_collision += wgt_ * simulation::material_xs.nu_fission
-          / simulation::material_xs.total;
+        global_tally_collision += wgt_ * macro_xs_.nu_fission
+          / macro_xs_.total;
       }
 
       // Score surface current tallies -- this has to be done before the collision
@@ -290,7 +287,7 @@ Particle::transport()
         score_surface_tally(this, model::active_meshsurf_tallies);
 
       // Clear surface component
-      surface_ = ERROR_INT;
+      surface_ = 0;
 
       if (settings::run_CE) {
         collision(this);
@@ -356,10 +353,10 @@ Particle::transport()
     // Check for secondary particles if this particle is dead
     if (!alive_) {
       // If no secondary particles, break out of event loop
-      if (n_secondary_ == 0) break;
+      if (simulation::secondary_bank.empty()) break;
 
-      this->from_source(&secondary_bank_[n_secondary_ - 1]);
-      --n_secondary_;
+      this->from_source(&simulation::secondary_bank.back());
+      simulation::secondary_bank.pop_back();
       n_event = 0;
 
       // Enter new particle in particle track file
@@ -555,7 +552,7 @@ Particle::cross_surface()
   // COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
 
   // Remove lower coordinate levels and assignment of surface
-  surface_ = ERROR_INT;
+  surface_ = 0;
   n_coord_ = 1;
   bool found = find_cell(this, false);
 
@@ -589,11 +586,12 @@ Particle::mark_as_lost(const char* message)
 
   // Increment number of lost particles
   alive_ = false;
-#pragma omp atomic
+  #pragma omp atomic
   simulation::n_lost_particles += 1;
 
   // Count the total number of simulated particles (on this processor)
-  auto n = simulation::current_batch * settings::gen_per_batch * simulation::work;
+  auto n = simulation::current_batch * settings::gen_per_batch *
+    simulation::work_per_rank;
 
   // Abort the simulation if the maximum number of lost particles has been
   // reached
@@ -614,7 +612,7 @@ Particle::write_restart() const
   filename << settings::path_output << "particle_" << simulation::current_batch
     << '_' << id_ << ".h5";
 
-#pragma omp critical (WriteParticleRestart)
+  #pragma omp critical (WriteParticleRestart)
   {
     // Create file
     hid_t file_id = file_open(filename.str(), 'w');

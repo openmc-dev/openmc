@@ -11,7 +11,9 @@
 #include <unordered_map>
 #include <utility> // for pair
 
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 #include "xtensor/xview.hpp"
 
 #include "openmc/capi.h"
@@ -189,7 +191,7 @@ extern "C" void print_particle(Particle* p)
   }
 
   // Display miscellaneous info.
-  if (p->surface_ != ERROR_INT) {
+  if (p->surface_ != 0) {
     const Surface& surf {*model::surfaces[std::abs(p->surface_)-1]};
     std::cout << "  Surface = " << std::copysign(surf.id_, p->surface_) << "\n";
   }

@@ -20,9 +20,6 @@ option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
 option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
 
-# Maximum number of nested coordinates levels
-set(maxcoord 10 CACHE STRING "Maximum number of nested coordinate levels")
-
 #===============================================================================
 # MPI for distributed-memory parallelism
 #===============================================================================
@@ -260,7 +257,6 @@ target_include_directories(libopenmc
 # Set compile flags
 target_compile_options(libopenmc PRIVATE ${cxxflags})
 
-target_compile_definitions(libopenmc PUBLIC -DMAX_COORD=${maxcoord})
 if (HDF5_IS_PARALLEL)
   target_compile_definitions(libopenmc PRIVATE -DPHDF5)
 endif()

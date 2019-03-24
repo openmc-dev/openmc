@@ -42,7 +42,7 @@ public:
   PhotonInteraction(hid_t group, int i_element);
 
   // Methods
-  void calculate_xs(double E) const;
+  void calculate_xs(Particle& p) const;
 
   void compton_scatter(double alpha, bool doppler, double* alpha_out,
     double* mu, int* i_shell) const;
@@ -99,22 +99,6 @@ private:
 };
 
 //==============================================================================
-//! Cached microscopic photon cross sections for a particular element at the
-//! current energy
-//==============================================================================
-
-struct ElementMicroXS {
-  int index_grid; //!< index on element energy grid
-  double last_E {0.0}; //!< last evaluated energy in [eV]
-  double interp_factor; //!< interpolation factor on energy grid
-  double total; //!< microscopic total photon xs
-  double coherent; //!< microscopic coherent xs
-  double incoherent; //!< microscopic incoherent xs
-  double photoelectric; //!< microscopic photoelectric xs
-  double pair_production; //!< microscopic pair production xs
-};
-
-//==============================================================================
 // Non-member functions
 //==============================================================================
 
@@ -135,11 +119,6 @@ extern std::vector<PhotonInteraction> elements;
 extern std::unordered_map<std::string, int> element_map;
 
 } // namespace data
-
-namespace simulation {
-extern ElementMicroXS* micro_photon_xs;
-#pragma omp threadprivate(micro_photon_xs)
-} // namespace simulation
 
 } // namespace openmc
 

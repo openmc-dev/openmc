@@ -8,6 +8,8 @@
 #include "openmc/particle.h"
 #include "openmc/nuclide.h"
 
+#include <vector>
+
 namespace openmc {
 
 //! \brief samples particle behavior after a collision event.
@@ -31,12 +33,9 @@ scatter(Particle* p);
 //! \brief Determines the average total, prompt and delayed neutrons produced
 //! from fission and creates the appropriate bank sites.
 //! \param p Particle to operate on
-//! \param bank_array The particle bank to populate
-//! \param size_bank Number of particles currently in the bank
-//! \param bank_array_size Allocated size of the bank
+//! \param bank The particle bank to populate
 void
-create_fission_sites(Particle* p, Particle::Bank* bank_array, int64_t* size_bank,
-     int64_t bank_array_size);
+create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank);
 
 //! \brief Handles an absorption event
 //! \param p Particle to operate on

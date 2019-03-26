@@ -9,6 +9,8 @@ import h5py
 import numpy as np
 import pandas as pd
 from scipy.interpolate import CubicSpline
+from scipy.integrate import quad
+from warnings import warn
 
 from openmc.mixin import EqualityMixin
 import openmc.checkvalue as cv
@@ -19,12 +21,19 @@ from .endf import Evaluation, get_head_record, get_tab1_record, get_list_record
 from .function import Tabulated1D
 
 
+# Constants
+MASS_ELECTRON_EV = 0.5109989461e6 # Electron mass energy
+PLANCK_C = 1.2398419739062977e4 # Planck's constant times c in eV-Angstroms
+FINE_STRUCTURE = 137.035999139 # Inverse fine structure constant
+CM_PER_ANGSTROM = 1.0e-8
+RE = CM_PER_ANGSTROM * PLANCK_C / (2.0 * np.pi * FINE_STRUCTURE * MASS_ELECTRON_EV)
+
+# Electron subshell labels
 _SUBSHELLS = ['K', 'L1', 'L2', 'L3', 'M1', 'M2', 'M3', 'M4', 'M5',
               'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 'O1', 'O2',
               'O3', 'O4', 'O5', 'O6', 'O7', 'O8', 'O9', 'P1', 'P2',
               'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11',
               'Q1', 'Q2', 'Q3']
-
 
 # Helper function to map designator to subshell string or None
 def _subshell(i):
@@ -648,6 +657,9 @@ class IncidentPhoton(EqualityMixin):
         # Add bremsstrahlung DCS data
         data._add_bremsstrahlung()
 
+        # Add heating cross sections
+        #data._compute_heating()
+
         return data
 
     @classmethod
@@ -876,6 +888,47 @@ class IncidentPhoton(EqualityMixin):
         self.bremsstrahlung['photon_energy'] = _BREMSSTRAHLUNG['photon_energy']
         self.bremsstrahlung.update(_BREMSSTRAHLUNG[self.atomic_number])
 
+    def _compute_heating(self):
+        """Compute heating cross sections
+
+        """
+        # Determine union energy grid
+        energy = np.array([])
+        for mt in (504, 515, 517, 522):
+            if mt not in self:
+                warn('Cross sections for MT={} do not exist. The total heating '
+                     'cross sections may be wrong'.format(mt))
+            else:
+                energy = np.union1d(energy, self[mt].xs.x)
+
+        heating_xs = np.zeros_like(energy)
+
+        if 504 in self:
+            rx = self[504]
+            def xs_mu(mu, E):
+                k = E/MASS_ELECTRON_EV
+                k_p = k/(1.0 + k*(1.0 - mu))
+                x = E * np.sqrt(0.5*(1.0 - mu)) / PLANCK_C
+                return np.pi * RE*RE * k_p/k * k_p/k * (k_p + 1.0/k_p +
+                       mu*mu - 1.0) * rx.scattering_factor(x)
+            def xs_mu_E(mu, E):
+                E_p = E/(1.0 + E/MASS_ELECTRON_EV*(1-mu))
+                return xs_mu(mu, E) * E_p
+            e_new = np.array([quad(xs_mu_E, -1, 1, args=(e,))[0]/quad(xs_mu, -1, 1, args=(e,))[0] for e in energy])
+            heating_xs += (energy - e_new)*rx.xs(energy)
+
+        if 515 in self:
+            heating_xs += (energy - 2*MASS_ELECTRON_EV)*self[515].xs(energy)
+
+        if 517 in self:
+            heating_xs += (energy - 2*MASS_ELECTRON_EV)*self[517].xs(energy)
+
+        if 522 in self:
+            heating_xs += (energy - 0.)*self[522].xs(energy)
+
+        h_rx = PhotonReaction(525)
+        h_rx.xs = Tabulated1D(energy, heating_xs, [energy.size], [5])
+        self.reactions[525] = h_rx
 
 class PhotonReaction(EqualityMixin):
     """Photon-induced reaction

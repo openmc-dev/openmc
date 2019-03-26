@@ -35,9 +35,6 @@ endif()
 #===============================================================================
 if(dagmc)
   find_package(DAGMC REQUIRED)
-  if(NOT DAGMC_FOUND)
-    message(FATAL_ERROR "Could not find DAGMC installation")
-  endif()
   link_directories(${DAGMC_LIBRARY_DIRS})
 endif()
 
@@ -63,10 +60,7 @@ if(NOT DEFINED HDF5_PREFER_PARALLEL)
   endif()
 endif()
 
-find_package(HDF5 COMPONENTS HL)
-if(NOT HDF5_FOUND)
-  message(FATAL_ERROR "Could not find HDF5")
-endif()
+find_package(HDF5 REQUIRED COMPONENTS HL)
 if(HDF5_IS_PARALLEL)
   if(NOT MPI_ENABLED)
     message(FATAL_ERROR "Parallel HDF5 must be used with MPI.")
@@ -95,7 +89,7 @@ if(debug)
   list(APPEND cxxflags -g -O0)
 endif()
 if(profile)
-  list(APPEND cxxflags -pg)
+  list(APPEND cxxflags -g -fno-omit-frame-pointer)
 endif()
 if(optimize)
   list(REMOVE_ITEM cxxflags -O2)
@@ -103,8 +97,8 @@ if(optimize)
 endif()
 
 # Show flags being used
-message(STATUS "C++ flags: ${cxxflags}")
-message(STATUS "Linker flags: ${ldflags}")
+message(STATUS "OpenMC C++ flags: ${cxxflags}")
+message(STATUS "OpenMC Linker flags: ${ldflags}")
 
 #===============================================================================
 # pugixml library
@@ -146,7 +140,7 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 # the RPATH to be used when installing, but only if it's not a system directory
 list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
 if("${isSystemDir}" STREQUAL "-1")
-   set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 endif()
 
 #===============================================================================

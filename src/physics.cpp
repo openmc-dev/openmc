@@ -883,9 +883,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
     } // case RVS, DBRC
   } // switch (sampling_method)
 
-#ifdef __GNUC__
-  __builtin_unreachable();
-#endif
+  UNREACHABLE();
 }
 
 Direction

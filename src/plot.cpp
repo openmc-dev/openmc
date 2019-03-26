@@ -693,10 +693,8 @@ void draw_mesh_lines(Plot pl, ImageData& data)
     outer = 1;
     inner = 2;
     break;
-#ifdef __GNUC__
   default:
-    __builtin_unreachable();
-#endif
+    UNREACHABLE();
   }
 
   Position ll_plot {pl.origin_};

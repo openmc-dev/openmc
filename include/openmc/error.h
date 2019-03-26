@@ -7,6 +7,12 @@
 
 #include "openmc/capi.h"
 
+#ifdef __GNUC__
+#define UNREACHABLE() __builtin_unreachable()
+#else
+#define UNREACHABLE() (void)0
+#endif
+
 namespace openmc {
 
 inline void

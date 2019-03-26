@@ -571,7 +571,10 @@ class Cell(IDManagerMixin):
         # Check for other attributes
         t = get_text(elem, 'temperature')
         if t is not None:
-            c.temperature = float(t)
+            if ' ' in t:
+                c.temperature = [float(t_i) for t_i in t.split()]
+            else:
+                c.temperature = float(t)
         for key in ('temperature', 'rotation', 'translation'):
             value = get_text(elem, key)
             if value is not None:

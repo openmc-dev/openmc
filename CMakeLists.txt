@@ -26,7 +26,7 @@ option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
 
 set(MPI_ENABLED FALSE)
 if($ENV{CXX} MATCHES "(mpi[^/]*|CC)$")
-  message("-- Detected MPI wrapper: $ENV{CXX}")
+  message(STATUS "Detected MPI wrapper: $ENV{CXX}")
   set(MPI_ENABLED TRUE)
 endif()
 
@@ -65,7 +65,7 @@ if(HDF5_IS_PARALLEL)
   if(NOT MPI_ENABLED)
     message(FATAL_ERROR "Parallel HDF5 must be used with MPI.")
   endif()
-  message("-- Using parallel HDF5")
+  message(STATUS "Using parallel HDF5")
 endif()
 
 #===============================================================================

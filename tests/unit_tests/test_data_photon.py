@@ -129,3 +129,6 @@ def test_export_to_hdf5(tmpdir, element):
     filename = str(tmpdir.join('tmp.h5'))
     element.export_to_hdf5(filename)
     assert os.path.exists(filename)
+    # Read in data from hdf5 and export again
+    element2 = openmc.data.IncidentPhoton.from_hdf5(filename)
+    element2.export_to_hdf5(filename, 'w')

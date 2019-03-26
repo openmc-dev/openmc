@@ -1163,10 +1163,10 @@ score_general_ce(Particle* p, int i_tally, int start_index,
             auto m = nuc.reaction_index_[score_bin];
             if (m == C_NONE) continue;
             const auto& rxn {*nuc.reactions_[m]};
-            auto i_temp = simulation::micro_xs[j_nuclide].index_temp;
+            auto i_temp = p->neutron_xs_[j_nuclide].index_temp;
             if (i_temp >= 0) { // Can be false due to multipole
-              auto i_grid = simulation::micro_xs[j_nuclide].index_grid;
-              auto f = simulation::micro_xs[j_nuclide].interp_factor;
+              auto i_grid = p->neutron_xs_[j_nuclide].index_grid;
+              auto f = p->neutron_xs_[j_nuclide].interp_factor;
               const auto& xs {rxn.xs_[i_temp]};
               if (i_grid >= xs.threshold) {
                 macro_heating += ((1.0 - f) * xs.value[i_grid-xs.threshold]
@@ -1182,7 +1182,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           } else {
             score = p->wgt_last_;
           }
-          score *= macro_heating * flux / simulation::material_xs.total;
+          score *= macro_heating * flux / p->macro_xs_.total;
         } else {
           // Calculate neutron heating cross section on-the-fly
           score = 0.;
@@ -1191,10 +1191,10 @@ score_general_ce(Particle* p, int i_tally, int start_index,
             auto m = nuc.reaction_index_[score_bin];
             if (m == C_NONE) continue;
             const auto& rxn {*nuc.reactions_[m]};
-            auto i_temp = simulation::micro_xs[i_nuclide].index_temp;
+            auto i_temp = p->neutron_xs_[i_nuclide].index_temp;
             if (i_temp >= 0) { // Can be false due to multipole
-              auto i_grid = simulation::micro_xs[i_nuclide].index_grid;
-              auto f = simulation::micro_xs[i_nuclide].interp_factor;
+              auto i_grid = p->neutron_xs_[i_nuclide].index_grid;
+              auto f = p->neutron_xs_[i_nuclide].interp_factor;
               const auto& xs {rxn.xs_[i_temp]};
               if (i_grid >= xs.threshold) {
                 score = ((1.0 - f) * xs.value[i_grid-xs.threshold]
@@ -1211,10 +1211,10 @@ score_general_ce(Particle* p, int i_tally, int start_index,
                 auto m = nuc.reaction_index_[score_bin];
                 if (m == C_NONE) continue;
                 const auto& rxn {*nuc.reactions_[m]};
-                auto i_temp = simulation::micro_xs[j_nuclide].index_temp;
+                auto i_temp = p->neutron_xs_[j_nuclide].index_temp;
                 if (i_temp >= 0) { // Can be false due to multipole
-                  auto i_grid = simulation::micro_xs[j_nuclide].index_grid;
-                  auto f = simulation::micro_xs[j_nuclide].interp_factor;
+                  auto i_grid = p->neutron_xs_[j_nuclide].index_grid;
+                  auto f = p->neutron_xs_[j_nuclide].interp_factor;
                   const auto& xs {rxn.xs_[i_temp]};
                   if (i_grid >= xs.threshold) {
                     score += ((1.0 - f) * xs.value[i_grid-xs.threshold]
@@ -1248,7 +1248,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           } else {
             score = p->wgt_last_;
           }
-          score *= macro_heating * flux / simulation::material_xs.total;
+          score *= macro_heating * flux / p->macro_xs_.total;
         } else {
           // Calculate photon heating cross section on-the-fly
           score = 0.;

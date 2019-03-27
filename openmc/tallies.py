@@ -217,7 +217,7 @@ class Tally(IDManagerMixin):
             f = h5py.File(self._sp_filename, 'r')
 
             # Extract Tally data from the file
-            data = f['tallies/tally {0}/results'.format(self.id)].value
+            data = f['tallies/tally {0}/results'.format(self.id)]
             sum = data[:, :, 0]
             sum_sq = data[:, :, 1]
 

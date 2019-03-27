@@ -376,8 +376,8 @@ class AtomicRelaxation(EqualityMixin):
         # Write transition data with replacements
         if shell in self.transitions:
             df = self.transitions[shell].replace(
-                 _SUBSHELLS, np.arange(float(len(_SUBSHELLS))))
-            group.create_dataset('transitions')
+                 _SUBSHELLS, range(len(_SUBSHELLS)))
+            group.create_dataset('transitions', data=df.values.astype(float))
 
 
 class IncidentPhoton(EqualityMixin):

@@ -200,8 +200,8 @@ class CoherentElastic(EqualityMixin):
             Coherent elastic scattering cross section
 
         """
-        bragg_edges = dataset.value[0, :]
-        factors = dataset.value[1, :]
+        bragg_edges = dataset[0, :]
+        factors = dataset[1, :]
         return cls(bragg_edges, factors)
 
 

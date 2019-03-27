@@ -558,12 +558,12 @@ class IncidentPhoton(EqualityMixin):
         if not _COMPTON_PROFILES:
             filename = os.path.join(os.path.dirname(__file__), 'compton_profiles.h5')
             with h5py.File(filename, 'r') as f:
-                _COMPTON_PROFILES['pz'] = f['pz'].value
+                _COMPTON_PROFILES['pz'] = f['pz'][()]
                 for i in range(1, 101):
                     group = f['{:03}'.format(i)]
-                    num_electrons = group['num_electrons'].value
-                    binding_energy = group['binding_energy'].value*EV_PER_MEV
-                    J = group['J'].value
+                    num_electrons = group['num_electrons'][()]
+                    binding_energy = group['binding_energy'][()]*EV_PER_MEV
+                    J = group['J'][()]
                     _COMPTON_PROFILES[i] = {'num_electrons': num_electrons,
                                             'binding_energy': binding_energy,
                                             'J': J}
@@ -720,8 +720,8 @@ class IncidentPhoton(EqualityMixin):
                     group = f['{:03}'.format(i)]
                     _BREMSSTRAHLUNG[i] = {
                         'I': group.attrs['I'],
-                        'num_electrons': group['num_electrons'].value,
-                        'ionization_energy': group['ionization_energy'].value
+                        'num_electrons': group['num_electrons'][()],
+                        'ionization_energy': group['ionization_energy'][()]
                     }
 
             filename = os.path.join(os.path.dirname(__file__), 'BREMX.DAT')

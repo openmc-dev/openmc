@@ -85,14 +85,14 @@ class Summary(object):
 
     def _read_nuclides(self):
         if 'nuclides/names' in self._f:
-            names = self._f['nuclides/names'].value
-            awrs = self._f['nuclides/awrs'].value
+            names = self._f['nuclides/names'][()]
+            awrs = self._f['nuclides/awrs'][()]
             for name, awr in zip(names, awrs):
                 self._nuclides[name.decode()] = awr
 
     def _read_macroscopics(self):
         if 'macroscopics/names' in self._f:
-            names = self._f['macroscopics/names'].value
+            names = self._f['macroscopics/names'][()]
             for name in names:
                 self._macroscopics = name.decode()
 
@@ -130,34 +130,34 @@ class Summary(object):
 
         for key, group in self._f['geometry/cells'].items():
             cell_id = int(key.lstrip('cell '))
-            name = group['name'].value.decode() if 'name' in group else ''
-            fill_type = group['fill_type'].value.decode()
+            name = group['name'][()].decode() if 'name' in group else ''
+            fill_type = group['fill_type'][()].decode()
 
             if fill_type == 'material':
-                fill = group['material'].value
+                fill = group['material'][()]
             elif fill_type == 'universe':
-                fill = group['fill'].value
+                fill = group['fill'][()]
             else:
-                fill = group['lattice'].value
+                fill = group['lattice'][()]
 
-            region = group['region'].value.decode() if 'region' in group else ''
+            region = group['region'][()].decode() if 'region' in group else ''
 
             # Create this Cell
             cell = openmc.Cell(cell_id=cell_id, name=name)
 
             if fill_type == 'universe':
                 if 'translation' in group:
-                    translation = group['translation'][...]
+                    translation = group['translation'][()]
                     translation = np.asarray(translation, dtype=np.float64)
                     cell.translation = translation
 
                 if 'rotation' in group:
-                    rotation = group['rotation'][...]
+                    rotation = group['rotation'][()]
                     rotation = np.asarray(rotation, dtype=np.int)
                     cell._rotation = rotation
 
             elif fill_type == 'material':
-                cell.temperature = group['temperature'][...]
+                cell.temperature = group['temperature'][()]
 
             # Store Cell fill information for after Universe/Lattice creation
             cell_fills[cell.id] = (fill_type, fill)

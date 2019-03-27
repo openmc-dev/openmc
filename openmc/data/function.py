@@ -349,8 +349,8 @@ class Tabulated1D(Function1D):
             raise ValueError("Expected an HDF5 attribute 'type' equal to '"
                              + cls.__name__ + "'")
 
-        x = dataset.value[0, :]
-        y = dataset.value[1, :]
+        x = dataset[0, :]
+        y = dataset[1, :]
         breakpoints = dataset.attrs['breakpoints']
         interpolation = dataset.attrs['interpolation']
         return cls(x, y, breakpoints, interpolation)

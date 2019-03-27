@@ -414,7 +414,7 @@ class ThermalScattering(EqualityMixin):
         kTg = group['kTs']
         kTs = []
         for temp in kTg:
-            kTs.append(kTg[temp].value)
+            kTs.append(kTg[temp][()])
         temperatures = [str(int(round(kT / K_BOLTZMANN))) + "K" for kT in kTs]
 
         table = cls(name, atomic_weight_ratio, kTs)
@@ -438,7 +438,7 @@ class ThermalScattering(EqualityMixin):
 
                 # Angular distribution
                 if 'mu_out' in elastic_group:
-                    table.elastic_mu_out[T] = elastic_group['mu_out'].value
+                    table.elastic_mu_out[T] = elastic_group['mu_out'][()]
 
             # Read thermal inelastic scattering
             if 'inelastic' in Tgroup:
@@ -446,8 +446,8 @@ class ThermalScattering(EqualityMixin):
                 table.inelastic_xs[T] = Tabulated1D.from_hdf5(
                     inelastic_group['xs'])
                 if table.secondary_mode in ('equal', 'skewed'):
-                    table.inelastic_e_out[T] = inelastic_group['energy_out'].value
-                    table.inelastic_mu_out[T] = inelastic_group['mu_out'].value
+                    table.inelastic_e_out[T] = inelastic_group['energy_out'][()]
+                    table.inelastic_mu_out[T] = inelastic_group['mu_out'][()]
                 elif table.secondary_mode == 'continuous':
                     table.inelastic_dist[T] = AngleEnergy.from_hdf5(
                         inelastic_group)

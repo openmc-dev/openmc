@@ -174,11 +174,11 @@ class Mesh(IDManagerMixin):
 
         # Read and assign mesh properties
         mesh = cls(mesh_id)
-        mesh.type = group['type'].value.decode()
-        mesh.dimension = group['dimension'].value
-        mesh.lower_left = group['lower_left'].value
-        mesh.upper_right = group['upper_right'].value
-        mesh.width = group['width'].value
+        mesh.type = group['type'][()].decode()
+        mesh.dimension = group['dimension'][()]
+        mesh.lower_left = group['lower_left'][()]
+        mesh.upper_right = group['upper_right'][()]
+        mesh.width = group['width'][()]
 
         return mesh
 

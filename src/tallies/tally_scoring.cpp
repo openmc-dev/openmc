@@ -1228,19 +1228,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
         }
       } else if (p->type_ == Particle::Type::photon) {
         if (tally.estimator_ == ESTIMATOR_ANALOG) {
-          // Calculate material heating cross section
-          double macro_heating = 0.;
-          const Material& material {*model::materials[p->material_]};
-          for (auto i = 0; i < material.nuclide_.size(); ++i) {
-            auto i_element = material.element_[i];
-            auto atom_density = material.atom_density_(i);
-            auto& heating {data::elements[i_element].heating_};
-            auto i_grid = simulation::micro_photon_xs[i_element].index_grid;
-            auto f = simulation::micro_photon_xs[i_element].interp_factor;
-            macro_heating += std::exp(heating(i_grid) + f * (heating(i_grid+1) -
-              heating(i_grid))) * atom_density;
-          }
-          // All events score to an heating rate bin
+          // Use photon energy lost for heating deposition
           if (settings::survival_biasing) {
             // We need to account for the fact that some weight was already
             // absorbed
@@ -1248,7 +1236,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           } else {
             score = p->wgt_last_;
           }
-          score *= macro_heating * flux / p->macro_xs_.total;
+          score *= (E - p->E_) * flux;
         } else {
           // Calculate photon heating cross section on-the-fly
           score = 0.;

@@ -20,18 +20,10 @@ from .function import Tabulated1D
 
 
 # Electron subshell labels
-_SUBSHELLS = ['K', 'L1', 'L2', 'L3', 'M1', 'M2', 'M3', 'M4', 'M5',
-              'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 'O1', 'O2',
-              'O3', 'O4', 'O5', 'O6', 'O7', 'O8', 'O9', 'P1', 'P2',
-              'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11',
-              'Q1', 'Q2', 'Q3']
-
-# Helper function to map designator to subshell string or None
-def _subshell(i):
-    if i == 0:
-        return None
-    else:
-        return _SUBSHELLS[i - 1]
+_SUBSHELLS = [None, 'K', 'L1', 'L2', 'L3', 'M1', 'M2', 'M3', 'M4', 'M5',
+              'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 'O1', 'O2', 'O3',
+              'O4', 'O5', 'O6', 'O7', 'O8', 'O9', 'P1', 'P2', 'P3', 'P4',
+              'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11','Q1', 'Q2', 'Q3']
 
 _REACTION_NAME = {
     501: ('Total photon interaction', 'total'),
@@ -224,7 +216,7 @@ class AtomicRelaxation(EqualityMixin):
         # Get shell designators
         n = ace.nxs[7]
         idx = ace.jxs[11]
-        shells = [_subshell(int(i)) for i in ace.xss[idx : idx+n]]
+        shells = [_SUBSHELLS[int(i)] for i in ace.xss[idx : idx+n]]
 
         # Get number of electrons for each shell
         idx = ace.jxs[12]
@@ -244,8 +236,8 @@ class AtomicRelaxation(EqualityMixin):
             if n_transitions > 0:
                 records = []
                 for j in range(n_transitions):
-                    subj = _subshell(int(ace.xss[idx]))
-                    subk = _subshell(int(ace.xss[idx + 1]))
+                    subj = _SUBSHELLS[int(ace.xss[idx])]
+                    subk = _SUBSHELLS[int(ace.xss[idx + 1])]
                     etr = ace.xss[idx + 2]*EV_PER_MEV
                     if j == 0:
                         ftr = ace.xss[idx + 3]
@@ -300,7 +292,7 @@ class AtomicRelaxation(EqualityMixin):
         # Read data for each subshell
         for i in range(n_subshells):
             params, list_items = get_list_record(file_obj)
-            subi = _subshell(int(params[0]))
+            subi = _SUBSHELLS[int(params[0])]
             n_transitions = int(params[5])
             binding_energy[subi] = list_items[0]
             num_electrons[subi] = list_items[1]
@@ -309,8 +301,8 @@ class AtomicRelaxation(EqualityMixin):
                 # Read transition data
                 records = []
                 for j in range(n_transitions):
-                    subj = _subshell(int(list_items[6*(j+1)]))
-                    subk = _subshell(int(list_items[6*(j+1) + 1]))
+                    subj = _SUBSHELLS[int(list_items[6*(j+1)])]
+                    subk = _SUBSHELLS[int(list_items[6*(j+1) + 1])]
                     etr = list_items[6*(j+1) + 2]
                     ftr = list_items[6*(j+1) + 3]
                     records.append((subj, subk, etr, ftr))
@@ -343,7 +335,6 @@ class AtomicRelaxation(EqualityMixin):
         transitions = {}
 
         designators = [s.decode() for s in group.attrs['designators']]
-        shell_values = [None] + _SUBSHELLS
         columns = ['secondary', 'tertiary', 'energy (eV)', 'probability']
         for shell in designators:
             # Shell group
@@ -361,7 +352,7 @@ class AtomicRelaxation(EqualityMixin):
                                   columns=columns)
                 # Replace float indexes back to subshell strings
                 df[columns[:2]] = df[columns[:2]].replace(
-                              np.arange(float(len(shell_values))), shell_values)
+                              np.arange(float(len(_SUBSHELLS))), _SUBSHELLS)
                 transitions[shell] = df
 
         return cls(binding_energy, num_electrons, transitions)
@@ -384,10 +375,9 @@ class AtomicRelaxation(EqualityMixin):
 
         # Write transition data with replacements
         if shell in self.transitions:
-            shell_values = [None] + _SUBSHELLS
             df = self.transitions[shell].replace(
-                 shell_values, range(len(shell_values)))
-            group.create_dataset('transitions', data=df.values.astype(float))
+                 _SUBSHELLS, np.arange(float(len(_SUBSHELLS))))
+            group.create_dataset('transitions')
 
 
 class IncidentPhoton(EqualityMixin):
@@ -572,7 +562,7 @@ class IncidentPhoton(EqualityMixin):
                 idx += n_energy
 
                 # Copy binding energy
-                shell = _subshell(d)
+                shell = _SUBSHELLS[d]
                 e = data.atomic_relaxation.binding_energy[shell]
                 rx.subshell_binding_energy = e
 

@@ -671,7 +671,7 @@ class IncidentPhoton(EqualityMixin):
         data = cls(Z)
 
         # Read energy grid
-        energy= group['energy'].value
+        energy = group['energy'].value
 
         # Read cross section data
         for mt, (name, key) in _REACTION_NAME.items():
@@ -685,7 +685,7 @@ class IncidentPhoton(EqualityMixin):
             data.reactions[mt] = PhotonReaction.from_hdf5(rgroup, mt, energy)
 
         # Check for necessary reactions
-        for mt in [502, 504, 522]:
+        for mt in (502, 504, 522):
             assert mt in data, "Reaction {} not found".format(mt)
 
         # Read atomic relaxation
@@ -793,7 +793,6 @@ class IncidentPhoton(EqualityMixin):
                     brem_group.attrs[key] = value
                 else:
                     brem_group.create_dataset(key, data=value)
-
 
     def _add_bremsstrahlung(self):
         """Add the data used in the thick-target bremsstrahlung approximation
@@ -1103,7 +1102,7 @@ class PhotonReaction(EqualityMixin):
         if 'threshold_idx' in group['xs'].attrs:
             threshold_idx = group['xs'].attrs['threshold_idx']
 
-        # Store
+        # Store cross section
         rx.xs = Tabulated1D(energy[threshold_idx:], xs, [len(xs)], [5])
 
         # Check for anomalous scattering factor

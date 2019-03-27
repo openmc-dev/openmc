@@ -348,7 +348,7 @@ class AtomicRelaxation(EqualityMixin):
 
             # Read transition data
             if 'transitions' in sub_group:
-                df = pd.DataFrame(sub_group['transitions'].value,
+                df = pd.DataFrame(sub_group['transitions'][()],
                                   columns=columns)
                 # Replace float indexes back to subshell strings
                 df[columns[:2]] = df[columns[:2]].replace(
@@ -611,12 +611,12 @@ class IncidentPhoton(EqualityMixin):
         if not _COMPTON_PROFILES:
             filename = os.path.join(os.path.dirname(__file__), 'compton_profiles.h5')
             with h5py.File(filename, 'r') as f:
-                _COMPTON_PROFILES['pz'] = f['pz'].value
+                _COMPTON_PROFILES['pz'] = f['pz'][()]
                 for i in range(1, 101):
                     group = f['{:03}'.format(i)]
-                    num_electrons = group['num_electrons'].value
-                    binding_energy = group['binding_energy'].value*EV_PER_MEV
-                    J = group['J'].value
+                    num_electrons = group['num_electrons'][()]
+                    binding_energy = group['binding_energy'][()]*EV_PER_MEV
+                    J = group['J'][()]
                     _COMPTON_PROFILES[i] = {'num_electrons': num_electrons,
                                             'binding_energy': binding_energy,
                                             'J': J}
@@ -671,7 +671,7 @@ class IncidentPhoton(EqualityMixin):
         data = cls(Z)
 
         # Read energy grid
-        energy = group['energy'].value
+        energy = group['energy'][()]
 
         # Read cross section data
         for mt, (name, key) in _REACTION_NAME.items():
@@ -695,12 +695,12 @@ class IncidentPhoton(EqualityMixin):
         if 'compton_profiles' in group:
             rgroup = group['compton_profiles']
             profile = data.compton_profiles
-            profile['num_electrons'] = rgroup['num_electrons'].value
-            profile['binding_energy'] = rgroup['binding_energy'].value
+            profile['num_electrons'] = rgroup['num_electrons'][()]
+            profile['binding_energy'] = rgroup['binding_energy'][()]
 
             # Get electron momentum values
-            pz = rgroup['pz'].value
-            J = rgroup['J'].value
+            pz = rgroup['pz'][()]
+            J = rgroup['J'][()]
             if pz.size != J.shape[1]:
                 raise ValueError("'J' array shape is not consistent with the "
                                  "'pz' array shape")
@@ -712,7 +712,7 @@ class IncidentPhoton(EqualityMixin):
             data.bremsstrahlung['I'] = rgroup.attrs['I']
             for key in ('dcs', 'electron_energy', 'ionization_energy',
                         'num_electrons', 'photon_energy'):
-                data.bremsstrahlung[key] = rgroup[key].value
+                data.bremsstrahlung[key] = rgroup[key][()]
 
         return data
 
@@ -807,8 +807,8 @@ class IncidentPhoton(EqualityMixin):
                     group = f['{:03}'.format(i)]
                     _BREMSSTRAHLUNG[i] = {
                         'I': group.attrs['I'],
-                        'num_electrons': group['num_electrons'].value,
-                        'ionization_energy': group['ionization_energy'].value
+                        'num_electrons': group['num_electrons'][()],
+                        'ionization_energy': group['ionization_energy'][()]
                     }
 
             filename = os.path.join(os.path.dirname(__file__), 'BREMX.DAT')
@@ -1093,7 +1093,7 @@ class PhotonReaction(EqualityMixin):
         rx = cls(mt)
 
         # Cross sections
-        xs = group['xs'].value
+        xs = group['xs'][()]
         # Replace zero elements to small non-zero to enable log-log
         xs[xs == 0.0] = np.exp(-500.0)
 

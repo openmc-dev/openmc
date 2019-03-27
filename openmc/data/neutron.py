@@ -521,7 +521,7 @@ class IncidentNeutron(EqualityMixin):
         kTg = group['kTs']
         kTs = []
         for temp in kTg:
-            kTs.append(kTg[temp].value)
+            kTs.append(kTg[temp][()])
 
         data = cls(name, atomic_number, mass_number, metastable,
                    atomic_weight_ratio, kTs)

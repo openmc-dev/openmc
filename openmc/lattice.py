@@ -100,14 +100,14 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
 
         """
         lattice_id = int(group.name.split('/')[-1].lstrip('lattice '))
-        name = group['name'].value.decode() if 'name' in group else ''
-        lattice_type = group['type'].value.decode()
+        name = group['name'][()].decode() if 'name' in group else ''
+        lattice_type = group['type'][()].decode()
 
         if lattice_type == 'rectangular':
             dimension = group['dimension'][...]
             lower_left = group['lower_left'][...]
             pitch = group['pitch'][...]
-            outer = group['outer'].value
+            outer = group['outer'][()]
             universe_ids = group['universes'][...]
 
             # Create the Lattice
@@ -136,13 +136,13 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
             lattice.universes = uarray
 
         elif lattice_type == 'hexagonal':
-            n_rings = group['n_rings'].value
-            n_axial = group['n_axial'].value
-            center = group['center'][...]
-            pitch = group['pitch'][...]
-            outer = group['outer'].value
+            n_rings = group['n_rings'][()]
+            n_axial = group['n_axial'][()]
+            center = group['center'][()]
+            pitch = group['pitch'][()]
+            outer = group['outer'][()]
 
-            universe_ids = group['universes'][...]
+            universe_ids = group['universes'][()]
 
             # Create the Lattice
             lattice = openmc.HexLattice(lattice_id, name)

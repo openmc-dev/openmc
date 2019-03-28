@@ -2183,7 +2183,7 @@ class XSdata(object):
         kTs_group = group['kTs']
         float_temperatures = []
         for temperature in temperatures:
-            kT = kTs_group[temperature].value
+            kT = kTs_group[temperature][()]
             float_temperatures.append(kT / openmc.data.K_BOLTZMANN)
 
         attrs = group.attrs.keys()

@@ -523,8 +523,7 @@ class IncidentPhoton(EqualityMixin):
             data.reactions[mt] = PhotonReaction.from_ace(ace, mt)
 
         # Get heating cross sections [eV*barn] from factors [eV per collision]
-        # by multiplying with total xs (sum of (502, 504, 515, 517, 522))
-        # but currently we cannot do this right as we miss 517)
+        # by multiplying with total xs (sum of (502, 504, 515, 522))
         data.reactions[525].xs.y *= sum([data.reactions[mt].xs.y for mt in
                                          (502, 504, 515, 522)])
 
@@ -658,7 +657,7 @@ class IncidentPhoton(EqualityMixin):
         data._add_bremsstrahlung()
 
         # Add heating cross sections
-        #data._compute_heating()
+        data._compute_heating()
 
         return data
 
@@ -909,12 +908,14 @@ class IncidentPhoton(EqualityMixin):
                 k = E/MASS_ELECTRON_EV
                 k_p = k/(1.0 + k*(1.0 - mu))
                 x = E * np.sqrt(0.5*(1.0 - mu)) / PLANCK_C
-                return np.pi * RE*RE * k_p/k * k_p/k * (k_p + 1.0/k_p +
+                return np.pi*RE*RE*k_p/k*k_p/k*(k_p + 1.0/k_p +
                        mu*mu - 1.0) * rx.scattering_factor(x)
             def xs_mu_E(mu, E):
                 E_p = E/(1.0 + E/MASS_ELECTRON_EV*(1-mu))
                 return xs_mu(mu, E) * E_p
-            e_new = np.array([quad(xs_mu_E, -1, 1, args=(e,))[0]/quad(xs_mu, -1, 1, args=(e,))[0] for e in energy])
+            e_new = np.array([quad(xs_mu_E, -1, 1, args=(e,), epsabs=0.0,
+                              epsrel=1.0e-3)[0] / quad(xs_mu, -1, 1, args=(e,),
+                              epsabs=0.0, epsrel=1.0e-3)[0] for e in energy])
             heating_xs += (energy - e_new)*rx.xs(energy)
 
         if 515 in self:

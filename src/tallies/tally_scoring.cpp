@@ -1247,8 +1247,8 @@ score_general_ce(Particle* p, int i_tally, int start_index,
             std::string element = name.substr(0, pos);
             int i_element = data::element_map[element];
             auto& heating {data::elements[i_element].heating_};
-            auto i_grid = simulation::micro_photon_xs[i_element].index_grid;
-            auto f = simulation::micro_photon_xs[i_element].interp_factor;
+            auto i_grid = p->photon_xs_[i_element].index_grid;
+            auto f = p->photon_xs_[i_element].interp_factor;
             score = std::exp(heating(i_grid) + f * (heating(i_grid+1) -
               heating(i_grid))) * atom_density * flux;
           } else {
@@ -1258,8 +1258,8 @@ score_general_ce(Particle* p, int i_tally, int start_index,
                 auto i_element = material.element_[i];
                 auto atom_density = material.atom_density_(i);
                 auto& heating {data::elements[i_element].heating_};
-                auto i_grid = simulation::micro_photon_xs[i_element].index_grid;
-                auto f = simulation::micro_photon_xs[i_element].interp_factor;
+                auto i_grid = p->photon_xs_[i_element].index_grid;
+                auto f = p->photon_xs_[i_element].interp_factor;
                 score += std::exp(heating(i_grid) + f * (heating(i_grid+1) -
                   heating(i_grid))) * atom_density * flux;
               }

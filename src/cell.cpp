@@ -336,6 +336,16 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     }
   }
 
+  // If this cell is simple, remove all the superfluous operator tokens.
+  if (simple_) {
+    std::vector<int32_t> stack;
+    for (auto token : rpn_) {
+      if (token < OP_UNION) stack.push_back(token);
+    }
+    rpn_ = std::vector<int32_t>(stack.rbegin(), stack.rend());
+    rpn_.shrink_to_fit();
+  }
+
   // Read the translation vector.
   if (check_for_node(cell_node, "translation")) {
     if (fill_ == C_NONE) {
@@ -522,19 +532,17 @@ bool
 CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
 {
   for (int32_t token : rpn_) {
-    if (token < OP_UNION) {
-      // If the token is not an operator, evaluate the sense of particle with
-      // respect to the surface and see if the token matches the sense. If the
-      // particle's surface attribute is set and matches the token, that
-      // overrides the determination based on sense().
-      if (token == on_surface) {
-      } else if (-token == on_surface) {
-        return false;
-      } else {
-        // Note the off-by-one indexing
-        bool sense = model::surfaces[abs(token)-1]->sense(r, u);
-        if (sense != (token > 0)) {return false;}
-      }
+    // Assume that no tokens are operators. Evaluate the sense of particle with
+    // respect to the surface and see if the token matches the sense. If the
+    // particle's surface attribute is set and matches the token, that
+    // overrides the determination based on sense().
+    if (token == on_surface) {
+    } else if (-token == on_surface) {
+      return false;
+    } else {
+      // Note the off-by-one indexing
+      bool sense = model::surfaces[abs(token)-1]->sense(r, u);
+      if (sense != (token > 0)) {return false;}
     }
   }
   return true;

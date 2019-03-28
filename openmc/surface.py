@@ -272,7 +272,7 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
         name = group['name'][()].decode() if 'name' in group else ''
         surf_type = group['type'][()].decode()
         bc = group['boundary_type'][()].decode()
-        coeffs = group['coefficients'][()]
+        coeffs = group['coefficients'][...]
 
         # Create the Surface based on its type
         if surf_type == 'x-plane':

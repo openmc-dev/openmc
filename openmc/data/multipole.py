@@ -369,7 +369,7 @@ class WindowedMultipole(EqualityMixin):
 
         out.windows = group['windows'][()]
 
-        out.broaden_poly = group['broaden_poly'][()].astype(np.bool)
+        out.broaden_poly = group['broaden_poly'][...].astype(np.bool)
         if out.broaden_poly.shape[0] != out.windows.shape[0]:
             raise ValueError(err.format('broaden_poly', 'windows'))
 

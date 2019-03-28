@@ -129,3 +129,20 @@ def test_export_to_hdf5(tmpdir, element):
     filename = str(tmpdir.join('tmp.h5'))
     element.export_to_hdf5(filename)
     assert os.path.exists(filename)
+    # Read in data from hdf5
+    element2 = openmc.data.IncidentPhoton.from_hdf5(filename)
+    # Check for some cross section and datasets of element and element2
+    energy = np.logspace(np.log10(1.0), np.log10(1.0e10), num=100)
+    for mt in (502, 504, 515, 517, 522, 541, 570):
+        xs = element[mt].xs(energy)
+        xs2 = element2[mt].xs(energy)
+        assert np.allclose(xs, xs2)
+    assert element[502].scattering_factor == element2[502].scattering_factor
+    assert element.atomic_relaxation.transitions['O3'].equals(
+           element2.atomic_relaxation.transitions['O3'])
+    assert (element.compton_profiles['binding_energy'] ==
+           element2.compton_profiles['binding_energy']).all()
+    assert (element.bremsstrahlung['electron_energy'] ==
+           element2.bremsstrahlung['electron_energy']).all()
+    # Export to hdf5 again
+    element2.export_to_hdf5(filename, 'w')

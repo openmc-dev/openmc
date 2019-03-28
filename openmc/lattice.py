@@ -104,11 +104,11 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
         lattice_type = group['type'][()].decode()
 
         if lattice_type == 'rectangular':
-            dimension = group['dimension'][()]
-            lower_left = group['lower_left'][()]
-            pitch = group['pitch'][()]
+            dimension = group['dimension'][...]
+            lower_left = group['lower_left'][...]
+            pitch = group['pitch'][...]
             outer = group['outer'][()]
-            universe_ids = group['universes'][()]
+            universe_ids = group['universes'][...]
 
             # Create the Lattice
             lattice = openmc.RectLattice(lattice_id, name)

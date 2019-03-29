@@ -710,6 +710,9 @@ const
 std::array<int, 3>
 HexLattice::get_indices(Position r, Direction u) const
 {
+  // result variables
+  int ix{}, ia{}, iz{};
+
   // The implementation for HexLattice currently doesn't use direction
   // information. As a result, we move the position slightly forward to
   // determine what lattice index the particle is most likely to be in.
@@ -719,14 +722,13 @@ HexLattice::get_indices(Position r, Direction u) const
   if (is_3d_) {r_o.z -= center_.z;}
 
   // Index the z direction.
-  std::array<int, 3> out;
   if (is_3d_) {
     double iz_ {r_o.z / pitch_[1] + 0.5 * n_axial_};
     long iz_close {std::lround(iz_)};
     if (std::abs(iz_ - iz_close) < FP_COINCIDENT) {
-      out[2] = (u.z > 0) ? iz_close : iz_close - 1;
+      iz = (u.z > 0) ? iz_close : iz_close - 1;
     } else {
-      out[2] = std::floor(iz_);
+      iz = std::floor(iz_);
     }
   }
 
@@ -734,13 +736,13 @@ HexLattice::get_indices(Position r, Direction u) const
   // Convert coordinates into skewed bases.  The (x, alpha) basis is used to
   // find the index of the global coordinates to within 4 cells.
   double alpha = r_o.y - r_o.x / std::sqrt(3.0);
-  out[0] = std::floor(r_o.x / (0.5*std::sqrt(3.0) * pitch_[0]));
-  out[1] = std::floor(alpha / pitch_[0]);
+  ix = std::floor(r_o.x / (0.5*std::sqrt(3.0) * pitch_[0]));
+  ia = std::floor(alpha / pitch_[0]);
 
   // Add offset to indices (the center cell is (i_x, i_alpha) = (0, 0) but
   // the array is offset so that the indices never go below 0).
-  out[0] += n_rings_-1;
-  out[1] += n_rings_-1;
+  ix += n_rings_-1;
+  ia += n_rings_-1;
 
   r += TINY_BIT * u;
 
@@ -756,7 +758,7 @@ HexLattice::get_indices(Position r, Direction u) const
   double d_min {INFTY};
   for (int i = 0; i < 2; i++) {
     for (int j = 0; j < 2; j++) {
-      const std::array<int, 3> i_xyz {out[0] + j, out[1] + i, 0};
+      const std::array<int, 3> i_xyz {ix + j, ia + i, 0};
       Position r_t = get_local_position(r, i_xyz);
       double d = r_t.x*r_t.x + r_t.y*r_t.y;
       if (d < d_min) {
@@ -770,15 +772,15 @@ HexLattice::get_indices(Position r, Direction u) const
   // Select the minimum squared distance which corresponds to the cell the
   // coordinates are in.
   if (k_min == 2) {
-    ++out[0];
+    ++ix;
   } else if (k_min == 3) {
-    ++out[1];
+    ++ia;
   } else if (k_min == 4) {
-    ++out[0];
-    ++out[1];
+    ++ix;
+    ++ia;
   }
 
-  return out;
+  return {ix, ia, iz};
 }
 
 //==============================================================================

@@ -199,7 +199,7 @@ void KalbachMann::sample(double E_in, double& E_out, double& mu) const
     km_r = distribution_[l].r[k];
     km_a = distribution_[l].a[k];
 
-  } else if (distribution_[l].interpolation == Interpolation::lin_lin) {
+  } else {
     // Linear-linear interpolation
     double E_l_k1 = distribution_[l].e_out[k+1];
     double p_l_k1 = distribution_[l].p[k+1];

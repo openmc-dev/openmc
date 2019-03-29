@@ -164,9 +164,8 @@ double Tabulated1D::operator()(double x) const
   Interpolation interp;
   if (n_regions_ == 0) {
     interp = Interpolation::lin_lin;
-  } else if (n_regions_ == 1) {
+  } else {
     interp = int_[0];
-  } else if (n_regions_ > 1) {
     for (int j = 0; j < n_regions_; ++j) {
       if (i < nbt_[j]) {
         interp = int_[j];

@@ -421,20 +421,11 @@ int sample_element(Particle* p)
 
   // Get pointers to elements, densities
   const auto& mat {model::materials[p->material_]};
-  int n = mat->nuclide_.size();
 
-  int i = 0;
   double prob = 0.0;
-  int i_element;
-  while (prob < cutoff) {
-    // Check to make sure that a nuclide was sampled
-    if (i >= n) {
-      p->write_restart();
-      fatal_error("Did not sample any element during collision.");
-    }
-
+  for (int i = 0; i < mat->element_.size(); ++i) {
     // Find atom density
-    i_element = mat->element_[i];
+    int i_element = mat->element_[i];
     double atom_density = mat->atom_density_[i];
 
     // Determine microscopic cross section
@@ -442,10 +433,12 @@ int sample_element(Particle* p)
 
     // Increment probability to compare to cutoff
     prob += sigma;
-    ++i;
+    if (prob > cutoff) return i_element;
   }
 
-  return i_element;
+  // If we made it here, no element was sampled
+  p->write_restart();
+  fatal_error("Did not sample any element during collision.");
 }
 
 Reaction* sample_fission(int i_nuclide, const Particle* p)
@@ -614,7 +607,7 @@ void scatter(Particle* p, int i_nuclide)
     // INELASTIC SCATTERING
 
     int j = 0;
-    int i;
+    int i = 0;
     while (prob < cutoff) {
       i = nuc->index_inelastic_scatter_[j];
       ++j;
@@ -890,9 +883,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
     } // case RVS, DBRC
   } // switch (sampling_method)
 
-#ifdef __GNUC__
-  __builtin_unreachable();
-#endif
+  UNREACHABLE();
 }
 
 Direction

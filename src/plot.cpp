@@ -80,8 +80,6 @@ std::unordered_map<int, int> plot_map;
 extern "C"
 int openmc_plot_geometry()
 {
-  int err;
-
   for (auto pl : model::plots) {
     std::stringstream ss;
     ss << "Processing plot " << pl.id_ << ": "
@@ -695,6 +693,8 @@ void draw_mesh_lines(Plot pl, ImageData& data)
     outer = 1;
     inner = 2;
     break;
+  default:
+    UNREACHABLE();
   }
 
   Position ll_plot {pl.origin_};
@@ -806,7 +806,6 @@ void create_voxel(Plot pl)
 
   // Write current date and time
   write_attribute(file_id, "date_and_time", time_stamp().c_str());
-  hsize_t three = 3;
   std::array<int, 3> pixels;
   std::copy(pl.pixels_.begin(), pl.pixels_.end(), pixels.begin());
   write_attribute(file_id, "num_voxels", pixels);

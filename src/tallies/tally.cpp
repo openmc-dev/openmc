@@ -718,7 +718,7 @@ void read_tallies_xml()
       const auto& f = model::tally_filters[i_filter].get();
 
       auto pf = dynamic_cast<ParticleFilter*>(f);
-      if (pf) particle_filter_index = j;
+      if (pf) particle_filter_index = i_filter;
 
       // Change the tally estimator if a filter demands it
       std::string filt_type = f->type();

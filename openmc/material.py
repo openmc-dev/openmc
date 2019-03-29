@@ -277,8 +277,8 @@ class Material(IDManagerMixin):
         """
         mat_id = int(group.name.split('/')[-1].lstrip('material '))
 
-        name = group['name'].value.decode() if 'name' in group else ''
-        density = group['atom_density'].value
+        name = group['name'][()].decode() if 'name' in group else ''
+        density = group['atom_density'][()]
         if 'nuclide_densities' in group:
             nuc_densities = group['nuclide_densities'][...]
 
@@ -290,7 +290,7 @@ class Material(IDManagerMixin):
 
         # Read the names of the S(a,b) tables for this Material and add them
         if 'sab_names' in group:
-            sab_tables = group['sab_names'].value
+            sab_tables = group['sab_names'][()]
             for sab_table in sab_tables:
                 name = sab_table.decode()
                 material.add_s_alpha_beta(name)
@@ -299,13 +299,13 @@ class Material(IDManagerMixin):
         material.set_density(density=density, units='atom/b-cm')
 
         if 'nuclides' in group:
-            nuclides = group['nuclides'].value
+            nuclides = group['nuclides'][()]
             # Add all nuclides to the Material
             for fullname, density in zip(nuclides, nuc_densities):
                 name = fullname.decode().strip()
                 material.add_nuclide(name, percent=density, percent_type='ao')
         if 'macroscopics' in group:
-            macroscopics = group['macroscopics'].value
+            macroscopics = group['macroscopics'][()]
             # Add all macroscopics to the Material
             for fullname in macroscopics:
                 name = fullname.decode().strip()

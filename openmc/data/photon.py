@@ -29,18 +29,10 @@ CM_PER_ANGSTROM = 1.0e-8
 RE = CM_PER_ANGSTROM * PLANCK_C / (2.0 * np.pi * FINE_STRUCTURE * MASS_ELECTRON_EV)
 
 # Electron subshell labels
-_SUBSHELLS = ['K', 'L1', 'L2', 'L3', 'M1', 'M2', 'M3', 'M4', 'M5',
-              'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 'O1', 'O2',
-              'O3', 'O4', 'O5', 'O6', 'O7', 'O8', 'O9', 'P1', 'P2',
-              'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11',
-              'Q1', 'Q2', 'Q3']
-
-# Helper function to map designator to subshell string or None
-def _subshell(i):
-    if i == 0:
-        return None
-    else:
-        return _SUBSHELLS[i - 1]
+_SUBSHELLS = [None, 'K', 'L1', 'L2', 'L3', 'M1', 'M2', 'M3', 'M4', 'M5',
+              'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 'O1', 'O2', 'O3',
+              'O4', 'O5', 'O6', 'O7', 'O8', 'O9', 'P1', 'P2', 'P3', 'P4',
+              'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11','Q1', 'Q2', 'Q3']
 
 _REACTION_NAME = {
     501: ('Total photon interaction', 'total'),
@@ -234,7 +226,7 @@ class AtomicRelaxation(EqualityMixin):
         # Get shell designators
         n = ace.nxs[7]
         idx = ace.jxs[11]
-        shells = [_subshell(int(i)) for i in ace.xss[idx : idx+n]]
+        shells = [_SUBSHELLS[int(i)] for i in ace.xss[idx : idx+n]]
 
         # Get number of electrons for each shell
         idx = ace.jxs[12]
@@ -254,8 +246,8 @@ class AtomicRelaxation(EqualityMixin):
             if n_transitions > 0:
                 records = []
                 for j in range(n_transitions):
-                    subj = _subshell(int(ace.xss[idx]))
-                    subk = _subshell(int(ace.xss[idx + 1]))
+                    subj = _SUBSHELLS[int(ace.xss[idx])]
+                    subk = _SUBSHELLS[int(ace.xss[idx + 1])]
                     etr = ace.xss[idx + 2]*EV_PER_MEV
                     if j == 0:
                         ftr = ace.xss[idx + 3]
@@ -310,7 +302,7 @@ class AtomicRelaxation(EqualityMixin):
         # Read data for each subshell
         for i in range(n_subshells):
             params, list_items = get_list_record(file_obj)
-            subi = _subshell(int(params[0]))
+            subi = _SUBSHELLS[int(params[0])]
             n_transitions = int(params[5])
             binding_energy[subi] = list_items[0]
             num_electrons[subi] = list_items[1]
@@ -319,8 +311,8 @@ class AtomicRelaxation(EqualityMixin):
                 # Read transition data
                 records = []
                 for j in range(n_transitions):
-                    subj = _subshell(int(list_items[6*(j+1)]))
-                    subk = _subshell(int(list_items[6*(j+1) + 1]))
+                    subj = _SUBSHELLS[int(list_items[6*(j+1)])]
+                    subk = _SUBSHELLS[int(list_items[6*(j+1) + 1])]
                     etr = list_items[6*(j+1) + 2]
                     ftr = list_items[6*(j+1) + 3]
                     records.append((subj, subk, etr, ftr))
@@ -353,7 +345,6 @@ class AtomicRelaxation(EqualityMixin):
         transitions = {}
 
         designators = [s.decode() for s in group.attrs['designators']]
-        shell_values = [None] + _SUBSHELLS
         columns = ['secondary', 'tertiary', 'energy (eV)', 'probability']
         for shell in designators:
             # Shell group
@@ -367,11 +358,11 @@ class AtomicRelaxation(EqualityMixin):
 
             # Read transition data
             if 'transitions' in sub_group:
-                df = pd.DataFrame(sub_group['transitions'].value,
+                df = pd.DataFrame(sub_group['transitions'][()],
                                   columns=columns)
                 # Replace float indexes back to subshell strings
                 df[columns[:2]] = df[columns[:2]].replace(
-                              np.arange(float(len(shell_values))), shell_values)
+                              np.arange(float(len(_SUBSHELLS))), _SUBSHELLS)
                 transitions[shell] = df
 
         return cls(binding_energy, num_electrons, transitions)
@@ -394,9 +385,8 @@ class AtomicRelaxation(EqualityMixin):
 
         # Write transition data with replacements
         if shell in self.transitions:
-            shell_values = [None] + _SUBSHELLS
             df = self.transitions[shell].replace(
-                 shell_values, range(len(shell_values)))
+                 _SUBSHELLS, range(len(_SUBSHELLS)))
             group.create_dataset('transitions', data=df.values.astype(float))
 
 
@@ -587,7 +577,7 @@ class IncidentPhoton(EqualityMixin):
                 idx += n_energy
 
                 # Copy binding energy
-                shell = _subshell(d)
+                shell = _SUBSHELLS[d]
                 e = data.atomic_relaxation.binding_energy[shell]
                 rx.subshell_binding_energy = e
 
@@ -636,12 +626,12 @@ class IncidentPhoton(EqualityMixin):
         if not _COMPTON_PROFILES:
             filename = os.path.join(os.path.dirname(__file__), 'compton_profiles.h5')
             with h5py.File(filename, 'r') as f:
-                _COMPTON_PROFILES['pz'] = f['pz'].value
+                _COMPTON_PROFILES['pz'] = f['pz'][()]
                 for i in range(1, 101):
                     group = f['{:03}'.format(i)]
-                    num_electrons = group['num_electrons'].value
-                    binding_energy = group['binding_energy'].value*EV_PER_MEV
-                    J = group['J'].value
+                    num_electrons = group['num_electrons'][()]
+                    binding_energy = group['binding_energy'][()]*EV_PER_MEV
+                    J = group['J'][()]
                     _COMPTON_PROFILES[i] = {'num_electrons': num_electrons,
                                             'binding_energy': binding_energy,
                                             'J': J}
@@ -744,6 +734,89 @@ class IncidentPhoton(EqualityMixin):
 
         return data
 
+    @classmethod
+    def from_hdf5(cls, group_or_filename):
+        """Generate photon reaction from an HDF5 group
+
+        Parameters
+        ----------
+        group_or_filename : h5py.Group or str
+            HDF5 group containing interaction data. If given as a string, it is
+            assumed to be the filename for the HDF5 file, and the first group is
+            used to read from.
+
+        Returns
+        -------
+        openmc.data.IncidentPhoton
+            Photon interaction data
+
+        """
+        if isinstance(group_or_filename, h5py.Group):
+            group = group_or_filename
+        else:
+            h5file = h5py.File(str(group_or_filename), 'r')
+
+            # Make sure version matches
+            if 'version' in h5file.attrs:
+                major, minor = h5file.attrs['version']
+                # For now all versions of HDF5 data can be read
+            else:
+                raise IOError(
+                    'HDF5 data does not indicate a version. Your installation '
+                    'of the OpenMC Python API expects version {}.x data.'
+                    .format(HDF5_VERSION_MAJOR))
+
+            group = list(h5file.values())[0]
+
+        Z = group.attrs['Z']
+        data = cls(Z)
+
+        # Read energy grid
+        energy = group['energy'][()]
+
+        # Read cross section data
+        for mt, (name, key) in _REACTION_NAME.items():
+            if key in group:
+                rgroup = group[key]
+            elif key in group['subshells']:
+                rgroup = group['subshells'][key]
+            else:
+                continue
+
+            data.reactions[mt] = PhotonReaction.from_hdf5(rgroup, mt, energy)
+
+        # Check for necessary reactions
+        for mt in (502, 504, 522):
+            assert mt in data, "Reaction {} not found".format(mt)
+
+        # Read atomic relaxation
+        data.atomic_relaxation = AtomicRelaxation.from_hdf5(group['subshells'])
+
+        # Read Compton profiles
+        if 'compton_profiles' in group:
+            rgroup = group['compton_profiles']
+            profile = data.compton_profiles
+            profile['num_electrons'] = rgroup['num_electrons'][()]
+            profile['binding_energy'] = rgroup['binding_energy'][()]
+
+            # Get electron momentum values
+            pz = rgroup['pz'][()]
+            J = rgroup['J'][()]
+            if pz.size != J.shape[1]:
+                raise ValueError("'J' array shape is not consistent with the "
+                                 "'pz' array shape")
+            profile['J'] = [Tabulated1D(pz, Jk) for Jk in J]
+
+        # Read bremsstrahlung
+        if 'bremsstrahlung' in group:
+            rgroup = group['bremsstrahlung']
+            data.bremsstrahlung['I'] = rgroup.attrs['I']
+            for key in ('dcs', 'electron_energy', 'ionization_energy',
+                        'num_electrons', 'photon_energy'):
+                data.bremsstrahlung[key] = rgroup[key][()]
+
+        return data
+
     def export_to_hdf5(self, path, mode='a', libver='earliest'):
         """Export incident photon data to an HDF5 file.
 
@@ -836,8 +909,8 @@ class IncidentPhoton(EqualityMixin):
                     group = f['{:03}'.format(i)]
                     _BREMSSTRAHLUNG[i] = {
                         'I': group.attrs['I'],
-                        'num_electrons': group['num_electrons'].value,
-                        'ionization_energy': group['ionization_energy'].value
+                        'num_electrons': group['num_electrons'][()],
+                        'ionization_energy': group['ionization_energy'][()]
                     }
 
             filename = os.path.join(os.path.dirname(__file__), 'BREMX.DAT')
@@ -1172,7 +1245,7 @@ class PhotonReaction(EqualityMixin):
         rx = cls(mt)
 
         # Cross sections
-        xs = group['xs'].value
+        xs = group['xs'][()]
         # Replace zero elements to small non-zero to enable log-log
         xs[xs == 0.0] = np.exp(-500.0)
 
@@ -1181,7 +1254,7 @@ class PhotonReaction(EqualityMixin):
         if 'threshold_idx' in group['xs'].attrs:
             threshold_idx = group['xs'].attrs['threshold_idx']
 
-        # Store
+        # Store cross section
         rx.xs = Tabulated1D(energy[threshold_idx:], xs, [len(xs)], [5])
 
         # Check for anomalous scattering factor

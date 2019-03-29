@@ -3,7 +3,7 @@
   <cell id="13" material="void" region="-9 10 -11" universe="9" />
   <cell id="14" material="13" region="-9 11 -12" universe="9" />
   <cell id="15" material="void" region="~(-9 10 -12)" universe="9" />
-  <surface boundary="vacuum" coeffs="0.0 0.0 1e-06" id="9" type="x-cylinder" />
+  <surface boundary="vacuum" coeffs="0.0 0.0 1.0" id="9" type="x-cylinder" />
   <surface boundary="vacuum" coeffs="-1.0" id="10" type="x-plane" />
   <surface coeffs="1.0" id="11" type="x-plane" />
   <surface boundary="vacuum" coeffs="1000000000.0" id="12" type="x-plane" />
@@ -46,5 +46,20 @@
   <tally id="1">
     <filters>1 2</filters>
     <scores>current</scores>
+  </tally>
+  <tally id="2">
+    <filters>2</filters>
+    <scores>total</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="3">
+    <filters>2</filters>
+    <scores>total</scores>
+    <estimator>collision</estimator>
+  </tally>
+  <tally id="4">
+    <filters>2</filters>
+    <scores>total</scores>
+    <estimator>analog</estimator>
   </tally>
 </tallies>

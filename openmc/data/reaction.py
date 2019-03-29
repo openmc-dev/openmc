@@ -938,7 +938,7 @@ class Reaction(EqualityMixin):
                             'Could not create reaction cross section for MT={} '
                             'at T={} because no corresponding energy grid '
                             'exists.'.format(mt, T))
-                    xs = Tgroup['xs'].value
+                    xs = Tgroup['xs'][()]
                     threshold_idx = Tgroup['xs'].attrs['threshold_idx'] - 1
                     tabulated_xs = Tabulated1D(energy[T][threshold_idx:], xs)
                     tabulated_xs._threshold_idx = threshold_idx

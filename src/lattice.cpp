@@ -732,7 +732,6 @@ HexLattice::get_indices(Position r, Direction u) const
     }
   }
 
-
   // Convert coordinates into skewed bases.  The (x, alpha) basis is used to
   // find the index of the global coordinates to within 4 cells.
   double alpha = r_o.y - r_o.x / std::sqrt(3.0);
@@ -762,9 +761,9 @@ HexLattice::get_indices(Position r, Direction u) const
       const std::array<int, 3> i_xyz {ix + j, ia + i, 0};
       Position r_t = get_local_position(r, i_xyz);
       double d = r_t.x*r_t.x + r_t.y*r_t.y;
-      bool coincident = std::abs(d - d_min) < 1.e-08;
+      bool coincident = std::abs(d - d_min) < FP_COINCIDENT;
       if (d < d_min || coincident) {
-        r_t /= r_t.norm();
+        r_t /= std::sqrt(d);
         double dp = u.x * r_t.x + u.y * r_t.y;
         if (coincident && dp > dp_min) { continue; }
         // update values

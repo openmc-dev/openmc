@@ -744,7 +744,7 @@ HexLattice::get_indices(Position r, Direction u) const
   ix += n_rings_-1;
   ia += n_rings_-1;
 
-  r += TINY_BIT * u;
+  //  r += TINY_BIT * u;
 
   // Calculate the (squared) distance between the particle and the centers of
   // the four possible cells.  Regular hexagonal tiles form a Voronoi
@@ -756,14 +756,21 @@ HexLattice::get_indices(Position r, Direction u) const
   int k {1};
   int k_min {1};
   double d_min {INFTY};
+  double dp_min {INFTY};
   for (int i = 0; i < 2; i++) {
     for (int j = 0; j < 2; j++) {
       const std::array<int, 3> i_xyz {ix + j, ia + i, 0};
       Position r_t = get_local_position(r, i_xyz);
       double d = r_t.x*r_t.x + r_t.y*r_t.y;
-      if (d < d_min) {
+      bool coincident = std::abs(d - d_min) < 1.e-08;
+      if (d < d_min || coincident) {
+        r_t /= r_t.norm();
+        double dp = u.x * r_t.x + u.y * r_t.y;
+        if (coincident && dp > dp_min) { continue; }
+        // update values
         d_min = d;
         k_min = k;
+        dp_min = dp;
       }
       k++;
     }

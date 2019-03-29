@@ -14,7 +14,7 @@ class SourceTestHarness(PyAPITestHarness):
         materials = openmc.Materials([mat])
         materials.export_to_xml()
 
-        cyl = openmc.XCylinder(boundary_type='vacuum', r=1.0e-6)
+        cyl = openmc.XCylinder(boundary_type='vacuum', r=1.0)
         x_plane_left = openmc.XPlane(boundary_type='vacuum', x0=-1.0)
         x_plane_center = openmc.XPlane(boundary_type='transmission', x0=1.0)
         x_plane_right = openmc.XPlane(boundary_type='vacuum', x0=1.0e9)
@@ -48,20 +48,37 @@ class SourceTestHarness(PyAPITestHarness):
 
         surface_filter = openmc.SurfaceFilter(cyl)
         particle_filter = openmc.ParticleFilter('photon')
-        tally = openmc.Tally()
-        tally.filters = [surface_filter, particle_filter]
-        tally.scores = ['current']
-        tallies = openmc.Tallies([tally])
+        current_tally = openmc.Tally()
+        current_tally.filters = [surface_filter, particle_filter]
+        current_tally.scores = ['current']
+        total_tally_tracklength = openmc.Tally()
+        total_tally_tracklength.filters = [particle_filter]
+        total_tally_tracklength.scores = ['total']
+        total_tally_tracklength.estimator = 'tracklength'
+        total_tally_collision = openmc.Tally()
+        total_tally_collision.filters = [particle_filter]
+        total_tally_collision.scores = ['total']
+        total_tally_collision.estimator = 'collision'
+        total_tally_analog = openmc.Tally()
+        total_tally_analog.filters = [particle_filter]
+        total_tally_analog.scores = ['total']
+        total_tally_analog.estimator = 'analog'
+        tallies = openmc.Tallies([current_tally, total_tally_tracklength,
+                                  total_tally_collision, total_tally_analog])
         tallies.export_to_xml()
 
     def _get_results(self):
         with openmc.StatePoint(self._sp_name) as sp:
             outstr = ''
-            t = sp.get_tally()
-            outstr += 'tally {}:\n'.format(t.id)
-            outstr += 'sum = {:12.6E}\n'.format(t.sum[0, 0, 0])
-            outstr += 'sum_sq = {:12.6E}\n'.format(t.sum_sq[0, 0, 0])
+            for i, tally_ind in enumerate(sp.tallies):
+                tally = sp.tallies[tally_ind]
+                results = np.zeros((tally.sum.size * 2, ))
+                results[0::2] = tally.sum.ravel()
+                results[1::2] = tally.sum_sq.ravel()
+                results = ['{0:12.6E}'.format(x) for x in results]
 
+                outstr += 'tally {}:\n'.format(i + 1)
+                outstr += '\n'.join(results) + '\n'
             return outstr
 
 

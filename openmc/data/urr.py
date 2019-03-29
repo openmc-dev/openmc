@@ -166,8 +166,8 @@ class ProbabilityTables(EqualityMixin):
         absorption_flag = group.attrs['absorption']
         multiply_smooth = bool(group.attrs['multiply_smooth'])
 
-        energy = group['energy'].value
-        table = group['table'].value
+        energy = group['energy'][()]
+        table = group['table'][()]
 
         return cls(energy, table, interpolation, inelastic_flag,
                    absorption_flag, multiply_smooth)

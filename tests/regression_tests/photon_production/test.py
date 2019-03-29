@@ -48,10 +48,14 @@ class SourceTestHarness(PyAPITestHarness):
 
         surface_filter = openmc.SurfaceFilter(cyl)
         particle_filter = openmc.ParticleFilter('photon')
-        tally = openmc.Tally()
-        tally.filters = [surface_filter, particle_filter]
-        tally.scores = ['current']
-        tallies = openmc.Tallies([tally])
+        current_tally = openmc.Tally()
+        current_tally.filters = [surface_filter, particle_filter]
+        current_tally.scores = ['current']
+        total_tally = openmc.Tally()
+        total_tally.filters = [particle_filter]
+        total_tally.scores = ['total']
+        total_tally.estimator = 'analog'
+        tallies = openmc.Tallies([current_tally, total_tally])
         tallies.export_to_xml()
 
     def _get_results(self):

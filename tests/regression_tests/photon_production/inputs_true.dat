@@ -47,4 +47,9 @@
     <filters>1 2</filters>
     <scores>current</scores>
   </tally>
+  <tally id="2">
+    <filters>2</filters>
+    <scores>total</scores>
+    <estimator>analog</estimator>
+  </tally>
 </tallies>

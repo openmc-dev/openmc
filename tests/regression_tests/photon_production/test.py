@@ -51,21 +51,34 @@ class SourceTestHarness(PyAPITestHarness):
         current_tally = openmc.Tally()
         current_tally.filters = [surface_filter, particle_filter]
         current_tally.scores = ['current']
-        total_tally = openmc.Tally()
-        total_tally.filters = [particle_filter]
-        total_tally.scores = ['total']
-        total_tally.estimator = 'analog'
-        tallies = openmc.Tallies([current_tally, total_tally])
+        total_tally_tracklength = openmc.Tally()
+        total_tally_tracklength.filters = [particle_filter]
+        total_tally_tracklength.scores = ['total']
+        total_tally_tracklength.estimator = 'tracklength'
+        total_tally_collision = openmc.Tally()
+        total_tally_collision.filters = [particle_filter]
+        total_tally_collision.scores = ['total']
+        total_tally_collision.estimator = 'collision'
+        total_tally_analog = openmc.Tally()
+        total_tally_analog.filters = [particle_filter]
+        total_tally_analog.scores = ['total']
+        total_tally_analog.estimator = 'analog'
+        tallies = openmc.Tallies([current_tally, total_tally_tracklength,
+                                  total_tally_collision, total_tally_analog])
         tallies.export_to_xml()
 
     def _get_results(self):
         with openmc.StatePoint(self._sp_name) as sp:
             outstr = ''
-            t = sp.get_tally()
-            outstr += 'tally {}:\n'.format(t.id)
-            outstr += 'sum = {:12.6E}\n'.format(t.sum[0, 0, 0])
-            outstr += 'sum_sq = {:12.6E}\n'.format(t.sum_sq[0, 0, 0])
+            for i, tally_ind in enumerate(sp.tallies):
+                tally = sp.tallies[tally_ind]
+                results = np.zeros((tally.sum.size * 2, ))
+                results[0::2] = tally.sum.ravel()
+                results[1::2] = tally.sum_sq.ravel()
+                results = ['{0:12.6E}'.format(x) for x in results]
 
+                outstr += 'tally {}:\n'.format(i + 1)
+                outstr += '\n'.join(results) + '\n'
             return outstr
 
 

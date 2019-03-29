@@ -3,6 +3,7 @@
 #include <array>
 #include <cstring>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 
 #include "xtensor/xtensor.hpp"
@@ -47,6 +48,8 @@ get_shape(hid_t obj_id, hsize_t* dims)
     dspace = H5Dget_space(obj_id);
   } else if (type == H5I_ATTR) {
     dspace = H5Aget_space(obj_id);
+  } else {
+    throw std::runtime_error{"Expected dataset or attribute in call to get_shape."};
   }
   H5Sget_simple_extent_dims(dspace, dims, nullptr);
   H5Sclose(dspace);
@@ -70,6 +73,8 @@ std::vector<hsize_t> object_shape(hid_t obj_id)
     dspace = H5Dget_space(obj_id);
   } else if (type == H5I_ATTR) {
     dspace = H5Aget_space(obj_id);
+  } else {
+    throw std::runtime_error{"Expected dataset or attribute in call to object_shape."};
   }
   int n = H5Sget_simple_extent_ndims(dspace);
 

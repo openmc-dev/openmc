@@ -800,7 +800,6 @@ HexLattice::is_valid_index(int indx) const
 {
   int nx {2*n_rings_ - 1};
   int ny {2*n_rings_ - 1};
-  int nz {n_axial_};
   int iz = indx / (nx * ny);
   int iy = (indx - nx*ny*iz) / nx;
   int ix = indx - nx*ny*iz - nx*iy;

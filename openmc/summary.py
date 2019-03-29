@@ -147,17 +147,17 @@ class Summary(object):
 
             if fill_type == 'universe':
                 if 'translation' in group:
-                    translation = group['translation'][...]
+                    translation = group['translation'][()]
                     translation = np.asarray(translation, dtype=np.float64)
                     cell.translation = translation
 
                 if 'rotation' in group:
-                    rotation = group['rotation'][...]
+                    rotation = group['rotation'][()]
                     rotation = np.asarray(rotation, dtype=np.int)
                     cell._rotation = rotation
 
             elif fill_type == 'material':
-                cell.temperature = group['temperature'][...]
+                cell.temperature = group['temperature'][()]
 
             # Store Cell fill information for after Universe/Lattice creation
             cell_fills[cell.id] = (fill_type, fill)

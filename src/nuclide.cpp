@@ -97,7 +97,7 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
 
       // Determine closest temperature
       double min_delta_T = INFTY;
-      double T_actual;
+      double T_actual = 0.0;
       for (auto T : temps_available) {
         double delta_T = std::abs(T - T_desired);
         if (delta_T < min_delta_T) {
@@ -454,9 +454,7 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
       return (*fission_rx_[0]->products_[0].yield_)(E);
     }
   }
-#ifdef __GNUC__
-  __builtin_unreachable();
-#endif
+  UNREACHABLE();
 }
 
 void Nuclide::calculate_elastic_xs(Particle& p) const

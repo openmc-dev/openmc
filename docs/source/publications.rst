@@ -59,7 +59,7 @@ Coupling and Multi-physics
 
 - Ze-Long Zhao, Yongwei Yang, and Shuang Hong, "`Application of FLUKA and OpenMC
   in coupled physics calculation of target and subcritical reactor for ADS
-  <https://doi.org/10.1007/s41365-018-0539-1>`_," *Nucl. Sci. Tech.*, **30**
+  <https://doi.org/10.1007/s41365-018-0539-1>`_," *Nucl. Sci. Tech.*, **30**: 10
   (2019).
 
 - April Novak, Paul Romano, Brycen Wendt, Ron Rahaman, Elia Merzari, Leslie
@@ -133,6 +133,11 @@ Geometry and Visualization
 -------------
 Miscellaneous
 -------------
+
+- Faisal Qayyum, Muhammad R. Ali, Awais Zahur, and R. Khan, "`Improvements in
+  methodology to determine feedback reactivity coefficients
+  <https://doi.org/10.1007/s41365-019-0588-0>`_," *Nucl. Sci. Tech.*, **30**: 63
+  (2019).
 
 - Amanda L. Lund and Paul K. Romano, "`Implementation and Validation of Photon
   Transport in OpenMC <https://doi.org/10.2172/1490825>`_", Argonne National
@@ -463,6 +468,11 @@ Parallelism
 ---------
 Depletion
 ---------
+
+- Zhao-Qing Liu, Ze-Long Zhao, Yong-Wei Yang, Yu-Cui Gao, Hai-Yan Meng, and
+  Qing-Yu Gao, "`Development and validation of depletion code system IMPC-Burnup
+  for ADS <https://doi.org/10.1007/s41365-019-0560-z>`_," *Nucl. Sci. Tech.*,
+  **30**: 44 (2019).
 
 - Colin Josey, Benoit Forget, and Kord Smith, "`High order methods for the
   integration of the Bateman equations and other problems of the form of y' =

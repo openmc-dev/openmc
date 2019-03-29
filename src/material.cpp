@@ -1283,12 +1283,11 @@ openmc_material_set_densities(int32_t index, int n, const char** name, const dou
     }
 
     // Set total density to the sum of the vector
-
     int err = mat->set_density(sum_density, "atom/b-cm");
 
     // Assign S(a,b) tables
     mat->init_thermal();
-    return 0;
+    return err;
   } else {
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;

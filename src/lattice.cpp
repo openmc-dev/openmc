@@ -713,7 +713,6 @@ HexLattice::get_indices(Position r, Direction u) const
   // The implementation for HexLattice currently doesn't use direction
   // information. As a result, we move the position slightly forward to
   // determine what lattice index the particle is most likely to be in.
-  r += TINY_BIT * u;
 
   // Offset the xyz by the lattice center.
   Position r_o {r.x - center_.x, r.y - center_.y, r.z};
@@ -722,10 +721,15 @@ HexLattice::get_indices(Position r, Direction u) const
   // Index the z direction.
   std::array<int, 3> out;
   if (is_3d_) {
-    out[2] = std::floor(r_o.z / pitch_[1] + 0.5 * n_axial_);
-  } else {
-    out[2] = 0;
+    double iz_ {r_o.z / pitch_[1] + 0.5 * n_axial_};
+    long iz_close {std::lround(iz_)};
+    if (std::abs(iz_ - iz_close) < FP_COINCIDENT) {
+      out[2] = (u.z > 0) ? iz_close : iz_close - 1;
+    } else {
+      out[2] = std::floor(iz_);
+    }
   }
+
 
   // Convert coordinates into skewed bases.  The (x, alpha) basis is used to
   // find the index of the global coordinates to within 4 cells.
@@ -737,6 +741,8 @@ HexLattice::get_indices(Position r, Direction u) const
   // the array is offset so that the indices never go below 0).
   out[0] += n_rings_-1;
   out[1] += n_rings_-1;
+
+  r += TINY_BIT * u;
 
   // Calculate the (squared) distance between the particle and the centers of
   // the four possible cells.  Regular hexagonal tiles form a Voronoi

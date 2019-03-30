@@ -765,7 +765,7 @@ HexLattice::get_indices(Position r, Direction u) const
       if (d < d_min || coincident) {
         r_t /= std::sqrt(d);
         double dp = u.x * r_t.x + u.y * r_t.y;
-        if (coincident && dp > dp_min) { continue; }
+        if (coincident && dp > dp_min) { k++; continue; }
         // update values
         d_min = d;
         k_min = k;

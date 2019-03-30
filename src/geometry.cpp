@@ -32,6 +32,10 @@ std::vector<int64_t> overlap_check_count;
 // Non-member functions
 //==============================================================================
 
+bool coincident(const double& d1, const double& d2) {
+  return std::abs(d1 - d2) < FP_COINCIDENT;
+}
+
 bool check_cell_overlap(Particle* p)
 {
   int n_coord = p->n_coord_;
@@ -396,7 +400,7 @@ BoundaryInfo distance_to_boundary(Particle* p)
     // a higher level then we need to make sure that the higher level boundary
     // is selected.  This logic must consider floating point precision.
     double& d = info.distance;
-    if (d_surf < d_lat) {
+    if (d_surf < d_lat && !coincident(d_surf, d_lat)) {
       if (d == INFINITY || (d - d_surf)/d >= FP_REL_PRECISION) {
         d = d_surf;
 

@@ -743,8 +743,6 @@ HexLattice::get_indices(Position r, Direction u) const
   ix += n_rings_-1;
   ia += n_rings_-1;
 
-  //  r += TINY_BIT * u;
-
   // Calculate the (squared) distance between the particle and the centers of
   // the four possible cells.  Regular hexagonal tiles form a Voronoi
   // tessellation so the xyz should be in the hexagonal cell that it is closest
@@ -752,39 +750,48 @@ HexLattice::get_indices(Position r, Direction u) const
   // remainders of the floor divisions above because it provides better finite
   // precision performance.  Squared distances are used becasue they are more
   // computationally efficient than normal distances.
-  int k {1};
-  int k_min {1};
+
+  // COINCIDENCE CHECK
+  // if a distance to center, d, is the same as the current minimum
+  // distance, d_min, the particle is on an edge or vertex. In this case,
+  // the dot product of the position vector and direction vector for the current
+  // indices, dp, and the dot product for the currently selected
+  // indices, dp_min, are compared. The cell the particle is moving into is kept
+  // (the cell with the lowest dot prouct as the vectors will be completely
+  // opposed if the particle is moving directly toward the center of the
+  // cell, i.e. dot product == -1)
+  int ix_delta {};
+  int ia_delta {};
   double d_min {INFTY};
   double dp_min {INFTY};
   for (int i = 0; i < 2; i++) {
     for (int j = 0; j < 2; j++) {
+      // get local coordinates
       const std::array<int, 3> i_xyz {ix + j, ia + i, 0};
       Position r_t = get_local_position(r, i_xyz);
+      // calculate distance
       double d = r_t.x*r_t.x + r_t.y*r_t.y;
-      bool coincident = std::abs(d - d_min) < FP_COINCIDENT;
-      if (d < d_min || coincident) {
+      // check for coincidence
+      bool on_boundary = std::abs(d - d_min) < FP_COINCIDENT;
+      if (d < d_min || on_boundary) {
+        // find dot product
         r_t /= std::sqrt(d);
         double dp = u.x * r_t.x + u.y * r_t.y;
-        if (coincident && dp > dp_min) { k++; continue; }
+        // do not update values if particle is on a
+        // bouncary and not moving into this cell
+        if (on_boundary && dp > dp_min) { continue; }
         // update values
         d_min = d;
-        k_min = k;
+        ix_delta = j;
+        ia_delta = i;
         dp_min = dp;
       }
-      k++;
     }
   }
 
-  // Select the minimum squared distance which corresponds to the cell the
-  // coordinates are in.
-  if (k_min == 2) {
-    ++ix;
-  } else if (k_min == 3) {
-    ++ia;
-  } else if (k_min == 4) {
-    ++ix;
-    ++ia;
-  }
+  // update indices
+  ix += ix_delta;
+  ia += ia_delta;
 
   return {ix, ia, iz};
 }

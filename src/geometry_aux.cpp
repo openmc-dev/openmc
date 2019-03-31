@@ -23,11 +23,6 @@
 
 namespace openmc {
 
-int search_denominator1 {0};
-int search_numerator1 {0};
-int search_denominator2 {0};
-int search_numerator2 {0};
-
 void read_geometry_xml()
 {
 #ifdef DAGMC
@@ -126,6 +121,41 @@ adjust_indices()
 }
 
 //==============================================================================
+//! Partition some universes with many z-planes for faster find_cell searches.
+
+void
+partition_universes()
+{
+  // Iterate over universes with more than 10 cells.  (Fewer than 10 is likely
+  // not worth partitioning.)
+  for (const auto& univ : model::universes) {
+    if (univ->cells_.size() > 10) {
+      // Collect the set of surfaces in this universe.
+      std::unordered_set<int32_t> surf_inds;
+      for (auto i_cell : univ->cells_) {
+        for (auto token : model::cells[i_cell]->rpn_) {
+          if (token < OP_UNION) surf_inds.insert(std::abs(token) - 1);
+        }
+      }
+
+      // Partition the universe if there are more than 5 z-planes.  (Fewer than
+      // five is likely no worth it.)
+      int n_zplanes = 0;
+      for (auto i_surf : surf_inds) {
+        if (dynamic_cast<const SurfaceZPlane*>(model::surfaces[i_surf].get())) {
+          ++n_zplanes;
+          if (n_zplanes > 5) {
+            univ->partitioner_ = std::make_unique<UniversePartitioner>(
+              UniversePartitioner(*univ));
+            break;
+          }
+        }
+      }
+    }
+  }
+}
+
+//==============================================================================
 
 void
 assign_temperatures()
@@ -215,6 +245,7 @@ void finalize_geometry(std::vector<std::vector<double>>& nuc_temps,
   // Perform some final operations to set up the geometry
   adjust_indices();
   count_cell_instances(model::root_universe);
+  partition_universes();
 
   // Assign temperatures to cells that don't have temperatures already assigned
   assign_temperatures();
@@ -224,28 +255,6 @@ void finalize_geometry(std::vector<std::vector<double>>& nuc_temps,
 
   // Determine number of nested coordinate levels in the geometry
   model::n_coord_levels = maximum_levels(model::root_universe);
-
-  for (const auto& univ : model::universes) {
-    if (univ->cells_.size() > 10) {
-      std::unordered_set<int32_t> surf_inds;
-      for (auto i_cell : univ->cells_) {
-        for (auto token : model::cells[i_cell]->rpn_) {
-          if (token < OP_UNION) surf_inds.insert(std::abs(token) - 1);
-        }
-      }
-      int n_zplanes = 0;
-      for (auto i_surf : surf_inds) {
-        if (dynamic_cast<const SurfaceZPlane*>(model::surfaces[i_surf].get())) {
-          ++n_zplanes;
-          if (n_zplanes > 5) {
-            univ->partitioner_ = std::make_unique<UniversePartitioner>(
-              UniversePartitioner(*univ));
-            break;
-          }
-        }
-      }
-    }
-  }
 }
 
 //==============================================================================
@@ -546,8 +555,6 @@ maximum_levels(int32_t univ)
 void
 free_memory_geometry()
 {
-  std::cout << "SEARCH EFFICIENCY = " << static_cast<double>(search_numerator1) / search_denominator1 << "\n";
-  std::cout << "SEARCH EFFICIENCY = " << static_cast<double>(search_numerator2) / search_denominator2 << "\n";
   model::cells.clear();
   model::cell_map.clear();
 

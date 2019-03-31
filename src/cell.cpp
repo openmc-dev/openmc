@@ -636,10 +636,13 @@ void DAGCell::to_hdf5(hid_t group_id) const { return; }
 #endif
 
 //==============================================================================
+// UniversePartitioner implementation
 //==============================================================================
 
 UniversePartitioner::UniversePartitioner(const Universe& univ)
 {
+  // Find all of the z-planes in this universe.  Add them to the surfs_ member.
+  // Use surf_set for O(1) searches that ensure surfs_ entries are not repeated.
   std::unordered_set<int32_t> surf_set;
   for (auto i_cell : univ.cells_) {
     for (auto token : model::cells[i_cell]->rpn_) {
@@ -656,6 +659,8 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
     }
   }
 
+  // Define a functor for comparing z-planes by their location, and use it to
+  // sort the surfs_ member.
   struct {
     bool operator()(int32_t i_surf, int32_t j_surf) const
     {
@@ -670,9 +675,10 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
   } compare_surfs;
   std::sort(surfs_.begin(), surfs_.end(), compare_surfs);
 
-  cells_.resize(surfs_.size() + 1);
-
+  // Populate the partition lists.
+  partitions_.resize(surfs_.size() + 1);
   for (auto i_cell : univ.cells_) {
+    // Find the tokens for bounding z-planes.
     int32_t min_token = 0, max_token = 0;
     double min_z, max_z;
     for (auto token : model::cells[i_cell]->rpn_) {
@@ -691,25 +697,28 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
       }
     }
 
+    // If there are no bounding z-planes, add this cell to all partitions.
     if (min_token == 0) {
-      min_token = -(surfs_.front() + 1);
-      max_token = surfs_.back() + 1;
+      for (auto& p : partitions_) p.push_back(i_cell);
+      continue;
     }
 
+    // Iterate over partitions, and add this cell to each appropriate one.
+    // Since surfs_ is sorted, we know this cell belongs to every partition
+    // between min_token and max_token.
     bool in_partition = min_token < 0;
-
     for (auto i = 0; i < surfs_.size(); ++i) {
       if (in_partition) {
-        cells_[i].push_back(i_cell);
-
-        if (max_token == -(surfs_[i] + 1))
+        partitions_[i].push_back(i_cell);
+        if (max_token == -(surfs_[i] + 1)) {
           in_partition = false;
+          break;
+        }
       } else {
         in_partition = min_token == surfs_[i] + 1;
       }
     }
-    if (in_partition)
-      cells_.back().push_back(i_cell);
+    if (in_partition) partitions_.back().push_back(i_cell);
   }
 }
 

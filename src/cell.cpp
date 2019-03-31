@@ -325,7 +325,6 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
 
   // Convert the infix region spec to RPN.
   rpn_ = generate_rpn(id_, region_);
-  rpn_.shrink_to_fit();
 
   // Check if this is a simple cell.
   simple_ = true;
@@ -338,13 +337,18 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
 
   // If this cell is simple, remove all the superfluous operator tokens.
   if (simple_) {
-    std::vector<int32_t> stack;
-    for (auto token : rpn_) {
-      if (token < OP_UNION) stack.push_back(token);
+    size_t i0 = 0;
+    size_t i1 = 0;
+    while (i1 < rpn_.size()) {
+      if (rpn_[i1] < OP_UNION) {
+        rpn_[i0] = rpn_[i1];
+        ++i0;
+      }
+      ++i1;
     }
-    rpn_ = std::vector<int32_t>(stack.rbegin(), stack.rend());
-    rpn_.shrink_to_fit();
+    rpn_.resize(i0);
   }
+  rpn_.shrink_to_fit();
 
   // Read the translation vector.
   if (check_for_node(cell_node, "translation")) {

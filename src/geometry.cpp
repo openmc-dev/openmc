@@ -11,8 +11,6 @@
 #include "openmc/simulation.h"
 #include "openmc/surface.h"
 
-#include "openmc/geometry_aux.h"
-
 
 namespace openmc {
 
@@ -71,7 +69,6 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
   bool found = false;
   int32_t i_cell;
   if (neighbor_list) {
-    ++search_numerator1;
     for (auto it = neighbor_list->cbegin(); it != neighbor_list->cend(); ++it) {
       i_cell = *it;
 
@@ -83,7 +80,6 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
       Position r {p->r_local()};
       Direction u {p->u_local()};
       auto surf = p->surface_;
-      ++search_denominator1;
       if (model::cells[i_cell]->contains(r, u, surf)) {
         p->coord_[p->n_coord_-1].cell = i_cell;
         found = true;
@@ -92,13 +88,11 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
     }
 
   } else {
-    ++search_numerator2;
     int i_universe = p->coord_[p->n_coord_-1].universe;
-    //const auto& cells {model::universes[i_universe]->cells_};
     const auto& univ {*model::universes[i_universe]};
     const auto& cells {
-      !univ.partitioner_ ?
-      model::universes[i_universe]->cells_
+      !univ.partitioner_
+      ? model::universes[i_universe]->cells_
       : univ.partitioner_->get_cells(p->r_local(), p->u_local())
     };
     for (auto it = cells.cbegin(); it != cells.cend(); it++) {
@@ -112,7 +106,6 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
       Position r {p->r_local()};
       Direction u {p->u_local()};
       auto surf = p->surface_;
-      ++search_denominator2;
       if (model::cells[i_cell]->contains(r, u, surf)) {
         p->coord_[p->n_coord_-1].cell = i_cell;
         found = true;

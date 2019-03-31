@@ -220,8 +220,8 @@ public:
 
 class SurfaceZPlane : public PeriodicSurface
 {
-  double z0_;
 public:
+  double z0_;
   explicit SurfaceZPlane(pugi::xml_node surf_node);
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;

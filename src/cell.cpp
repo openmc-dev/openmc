@@ -636,6 +636,84 @@ void DAGCell::to_hdf5(hid_t group_id) const { return; }
 #endif
 
 //==============================================================================
+//==============================================================================
+
+UniversePartitioner::UniversePartitioner(const Universe& univ)
+{
+  std::unordered_set<int32_t> surf_set;
+  for (auto i_cell : univ.cells_) {
+    for (auto token : model::cells[i_cell]->rpn_) {
+      if (token < OP_UNION) {
+        auto i_surf = std::abs(token) - 1;
+        const auto* surf = model::surfaces[i_surf].get();
+        if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf)) {
+          if (surf_set.find(i_surf) == surf_set.end()) {
+            surf_set.insert(i_surf);
+            surfs_.push_back(i_surf);
+          }
+        }
+      }
+    }
+  }
+
+  struct {
+    bool operator()(int32_t i_surf, int32_t j_surf) const
+    {
+      const auto* surf = model::surfaces[i_surf].get();
+      const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf);
+      double zi = zplane->z0_;
+      surf = model::surfaces[j_surf].get();
+      zplane = dynamic_cast<const SurfaceZPlane*>(surf);
+      double zj = zplane->z0_;
+      return zi < zj;
+    }
+  } compare_surfs;
+  std::sort(surfs_.begin(), surfs_.end(), compare_surfs);
+
+  cells_.resize(surfs_.size() + 1);
+
+  for (auto i_cell : univ.cells_) {
+    int32_t min_token = 0, max_token = 0;
+    double min_z, max_z;
+    for (auto token : model::cells[i_cell]->rpn_) {
+      if (token < OP_UNION) {
+        const auto* surf = model::surfaces[std::abs(token) - 1].get();
+        if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf)) {
+          if (min_token == 0 || zplane->z0_ < min_z) {
+            min_token = token;
+            min_z = zplane->z0_;
+          }
+          if (max_token == 0 || zplane->z0_ > max_z) {
+            max_token = token;
+            max_z = zplane->z0_;
+          }
+        }
+      }
+    }
+
+    if (min_token == 0) {
+      min_token = -(surfs_.front() + 1);
+      max_token = surfs_.back() + 1;
+    }
+
+    bool in_partition = min_token < 0;
+
+    for (auto i = 0; i < surfs_.size(); ++i) {
+      if (in_partition) {
+        cells_[i].push_back(i_cell);
+
+        if (max_token == -(surfs_[i] + 1))
+          in_partition = false;
+      } else {
+        in_partition = min_token == surfs_[i] + 1;
+      }
+    }
+    if (in_partition)
+      cells_.back().push_back(i_cell);
+  }
+}
+
+//==============================================================================
 // Non-method functions
 //==============================================================================
 

@@ -43,6 +43,7 @@ constexpr int32_t OP_UNION        {std::numeric_limits<int32_t>::max() - 4};
 
 class Cell;
 class Universe;
+class UniversePartitioner;
 
 namespace model {
   extern std::vector<std::unique_ptr<Cell>> cells;
@@ -65,6 +66,8 @@ public:
   //! \brief Write universe information to an HDF5 group.
   //! \param group_id An HDF5 group id.
   void to_hdf5(hid_t group_id) const;
+
+  std::unique_ptr<UniversePartitioner> partitioner_;
 };
 
 //==============================================================================
@@ -192,6 +195,42 @@ public:
   void to_hdf5(hid_t group_id) const;
 };
 #endif
+
+//==============================================================================
+
+class UniversePartitioner
+{
+public:
+  UniversePartitioner(const Universe& univ);
+
+  const std::vector<int32_t>& get_cells(Position r, Direction u) const
+  {return get_cells(r, u, 0, surfs_.size()-1, (surfs_.size()-1)/2);}
+
+  const std::vector<int32_t>& get_cells(Position r, Direction u,
+    int left, int right, int middle) const
+  {
+    auto i_surf = surfs_[middle];
+    const auto& surf = *model::surfaces[i_surf];
+    if (surf.sense(r, u)) {
+      int right_leaf = right - (right - middle) / 2;
+      if (right_leaf != middle) {
+        return get_cells(r, u, middle+1, right, right_leaf);
+      } else {
+        return cells_[middle+1];
+      }
+    } else {
+      int left_leaf = left + (middle - left) / 2;
+      if (left_leaf != middle) {
+        return get_cells(r, u, left, middle-1, left_leaf);
+      } else {
+        return cells_[middle];
+      }
+    }
+  }
+
+  std::vector<std::vector<int32_t>> cells_;
+  std::vector<int32_t> surfs_;
+};
 
 //==============================================================================
 // Non-member functions

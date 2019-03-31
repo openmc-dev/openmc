@@ -10,6 +10,11 @@
 
 namespace openmc {
 
+extern int search_numerator1;
+extern int search_denominator1;
+extern int search_numerator2;
+extern int search_denominator2;
+
 void read_geometry_xml();
 
 //==============================================================================

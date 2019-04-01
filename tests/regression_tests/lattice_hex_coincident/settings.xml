@@ -12,9 +12,5 @@
   <output>
     <summary>false</summary>
   </output>
-  <seed>46</seed>
-  <temperature_method>interpolation</temperature_method>
-  <resonance_scattering>
-    <enable>true</enable>
-  </resonance_scattering>
+  <seed>22</seed>
 </settings>

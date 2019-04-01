@@ -713,15 +713,11 @@ HexLattice::get_indices(Position r, Direction u) const
   // result variables
   int ix{}, ia{}, iz{};
 
-  // The implementation for HexLattice currently doesn't use direction
-  // information. As a result, we move the position slightly forward to
-  // determine what lattice index the particle is most likely to be in.
-
   // Offset the xyz by the lattice center.
   Position r_o {r.x - center_.x, r.y - center_.y, r.z};
   if (is_3d_) {r_o.z -= center_.z;}
 
-  // Index the z direction.
+  // Index the z direction. Same as in RectLattice::get_indices.
   if (is_3d_) {
     double iz_ {r_o.z / pitch_[1] + 0.5 * n_axial_};
     long iz_close {std::lround(iz_)};
@@ -752,14 +748,14 @@ HexLattice::get_indices(Position r, Direction u) const
   // computationally efficient than normal distances.
 
   // COINCIDENCE CHECK
-  // if a distance to center, d, is the same as the current minimum
-  // distance, d_min, the particle is on an edge or vertex. In this case,
-  // the dot product of the position vector and direction vector for the current
-  // indices, dp, and the dot product for the currently selected
-  // indices, dp_min, are compared. The cell the particle is moving into is kept
-  // (the cell with the lowest dot prouct as the vectors will be completely
-  // opposed if the particle is moving directly toward the center of the
-  // cell, i.e. dot product == -1)
+  // if a distance to center, d, is within the coincidence tolerance of the
+  // current minimum distance, d_min, the particle is on an edge or vertex.
+  // In this case, the dot product of the position vector and direction vector
+  // for the current indices, dp, and the dot product for the currently selected
+  // indices, dp_min, are compared. The cell which the particle is moving into
+  // is kept (i.e. the cell with the lowest dot prouct as the vectors will be
+  // completely opposed if the particle is moving directly toward the center of
+  // the cell).
   int ix_delta {};
   int ia_delta {};
   double d_min {INFTY};
@@ -774,11 +770,11 @@ HexLattice::get_indices(Position r, Direction u) const
       // check for coincidence
       bool on_boundary = std::abs(d - d_min) < FP_COINCIDENT;
       if (d < d_min || on_boundary) {
-        // find dot product
+        // normalize r_t and find dot product
         r_t /= std::sqrt(d);
         double dp = u.x * r_t.x + u.y * r_t.y;
         // do not update values if particle is on a
-        // bouncary and not moving into this cell
+        // boundary and not moving into this cell
         if (on_boundary && dp > dp_min) { continue; }
         // update values
         d_min = d;
@@ -789,7 +785,7 @@ HexLattice::get_indices(Position r, Direction u) const
     }
   }
 
-  // update indices
+  // update outgoing indices
   ix += ix_delta;
   ia += ia_delta;
 

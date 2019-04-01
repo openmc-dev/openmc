@@ -1,14 +1,14 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
   <cell id="1" material="1" region="-1 2 -3" universe="1" />
-  <cell id="2" material="3" region="1" universe="1" />
-  <cell id="3" material="6" name="coolant" region="-4 2 -3" universe="2" />
-  <cell id="4" material="7" name="zirconium_shell" region="4 -5 2 -3" universe="2" />
-  <cell id="5" material="4" name="lead_shell" region="5 -6 2 -3" universe="2" />
-  <cell id="6" material="3" name="matrix coolant surround" region="6 2 -3" universe="2" />
-  <cell id="7" material="3" universe="3" />
+  <cell id="2" material="2" region="1" universe="1" />
+  <cell id="3" material="6" region="-4 2 -3" universe="2" />
+  <cell id="4" material="7" region="4 -5 2 -3" universe="2" />
+  <cell id="5" material="4" region="5 -6 2 -3" universe="2" />
+  <cell id="6" material="2" region="6 2 -3" universe="2" />
+  <cell id="7" material="2" universe="3" />
   <cell fill="4" id="8" name="container cell" region="-7 8 -9 10 11 -12 2 -3" universe="5" />
-  <hex_lattice id="4" n_rings="2" name="regular fuel assembly">
+  <hex_lattice id="4" n_rings="2">
     <pitch>1.4</pitch>
     <outer>3</outer>
     <center>0.0 0.0</center>

@@ -325,7 +325,6 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
 
   // Convert the infix region spec to RPN.
   rpn_ = generate_rpn(id_, region_);
-  rpn_.shrink_to_fit();
 
   // Check if this is a simple cell.
   simple_ = true;
@@ -335,6 +334,21 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
       break;
     }
   }
+
+  // If this cell is simple, remove all the superfluous operator tokens.
+  if (simple_) {
+    size_t i0 = 0;
+    size_t i1 = 0;
+    while (i1 < rpn_.size()) {
+      if (rpn_[i1] < OP_UNION) {
+        rpn_[i0] = rpn_[i1];
+        ++i0;
+      }
+      ++i1;
+    }
+    rpn_.resize(i0);
+  }
+  rpn_.shrink_to_fit();
 
   // Read the translation vector.
   if (check_for_node(cell_node, "translation")) {
@@ -522,19 +536,17 @@ bool
 CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
 {
   for (int32_t token : rpn_) {
-    if (token < OP_UNION) {
-      // If the token is not an operator, evaluate the sense of particle with
-      // respect to the surface and see if the token matches the sense. If the
-      // particle's surface attribute is set and matches the token, that
-      // overrides the determination based on sense().
-      if (token == on_surface) {
-      } else if (-token == on_surface) {
-        return false;
-      } else {
-        // Note the off-by-one indexing
-        bool sense = model::surfaces[abs(token)-1]->sense(r, u);
-        if (sense != (token > 0)) {return false;}
-      }
+    // Assume that no tokens are operators. Evaluate the sense of particle with
+    // respect to the surface and see if the token matches the sense. If the
+    // particle's surface attribute is set and matches the token, that
+    // overrides the determination based on sense().
+    if (token == on_surface) {
+    } else if (-token == on_surface) {
+      return false;
+    } else {
+      // Note the off-by-one indexing
+      bool sense = model::surfaces[abs(token)-1]->sense(r, u);
+      if (sense != (token > 0)) {return false;}
     }
   }
   return true;

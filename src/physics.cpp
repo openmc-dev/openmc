@@ -56,7 +56,6 @@ void collision(Particle* p)
   if (p->E_ < settings::energy_cutoff[type]) {
     p->alive_ = false;
     p->wgt_ = 0.0;
-    p->wgt_last_ = 0.0;
   }
 
   // Display information about collision

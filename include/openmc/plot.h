@@ -138,6 +138,10 @@ T PlotBase::get_map() const {
     in_i = 1;
     out_i = 2;
     break;
+#ifdef __GNUC__
+  default:
+    __builtin_unreachable();
+#endif
   }
 
   // set initial position
@@ -168,7 +172,6 @@ T PlotBase::get_map() const {
         if (level >=0) {j = level + 1;}
         if (found_cell) {
           data.set_value(y, x, p, j);
-          Cell* c = model::cells[p.coord_[j].cell].get();
         }
       } // inner for
     } // outer for

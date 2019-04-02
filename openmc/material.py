@@ -280,7 +280,7 @@ class Material(IDManagerMixin):
         name = group['name'][()].decode() if 'name' in group else ''
         density = group['atom_density'][()]
         if 'nuclide_densities' in group:
-            nuc_densities = group['nuclide_densities'][...]
+            nuc_densities = group['nuclide_densities'][()]
 
         # Create the Material
         material = cls(mat_id, name)

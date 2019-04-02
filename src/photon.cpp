@@ -560,11 +560,6 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
   // "PENELOPE-2011: A Code System for Monte Carlo Simulation of Electron and
   // Photon Transport," OECD-NEA, Issy-les-Moulineaux, France (2011).
 
-  // Compute the minimum and maximum values of the electron reduced energy,
-  // i.e. the fraction of the photon energy that is given to the electron
-  double e_min = 1.0/alpha;
-  double e_max = 1.0 - 1.0/alpha;
-
   // Compute the high-energy Coulomb correction
   double a = Z_ / FINE_STRUCTURE;
   double c = a*a*(1.0/(1.0 + a*a) + 0.202059 + a*a*(-0.03693 + a*a*(0.00835 +

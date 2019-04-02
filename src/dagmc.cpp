@@ -142,7 +142,7 @@ void load_dagmc_geometry()
     model::DAG = new moab::DagMC();
   }
 
-  /// Materials \\\
+  // --- Materials ---
 
   // create uwuw instance
   UWUW uwuw(DAGMC_FILENAME.c_str());
@@ -176,7 +176,7 @@ void load_dagmc_geometry()
   rval = model::DAG->parse_properties(keywords, dum, delimiters.c_str());
   MB_CHK_ERR_CONT(rval);
 
-  /// Cells (Volumes) \\\
+  // --- Cells (Volumes) ---
 
   // initialize cell objects
   int n_cells = model::DAG->num_entities(3);
@@ -298,7 +298,7 @@ void load_dagmc_geometry()
             "This may result in lost particles and rapid simulation failure.");
   }
 
-  /// Surfaces \\\
+  // --- Surfaces ---
 
   // initialize surface objects
   int n_surfaces = model::DAG->num_entities(2);

@@ -283,9 +283,9 @@ print_overlap_check()
 {
   #ifdef OPENMC_MPI
     std::vector<int64_t> temp(model::overlap_check_count);
-    int err = MPI_Reduce(temp.data(), model::overlap_check_count.data(),
-                         model::overlap_check_count.size(), MPI_INT64_T,
-                         MPI_SUM, 0, mpi::intracomm);
+    MPI_Reduce(temp.data(), model::overlap_check_count.data(),
+               model::overlap_check_count.size(), MPI_INT64_T,
+               MPI_SUM, 0, mpi::intracomm);
   #endif
 
   if (mpi::master) {
@@ -482,7 +482,7 @@ void print_runtime()
 
   // Calculate particle rate in active/inactive batches
   int n_active = simulation::current_batch - settings::n_inactive;
-  double speed_inactive;
+  double speed_inactive = 0.0;
   double speed_active;
   if (settings::restart_run) {
     if (simulation::restart_batch < settings::n_inactive) {
@@ -492,7 +492,6 @@ void print_runtime()
       speed_active = (settings::n_particles * n_active
         * settings::gen_per_batch) / time_active.elapsed();
     } else {
-      speed_inactive = 0.0;
       speed_active = (settings::n_particles * (settings::n_batches
         - simulation::restart_batch) * settings::gen_per_batch)
         / time_active.elapsed();

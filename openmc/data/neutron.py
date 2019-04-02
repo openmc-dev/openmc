@@ -529,7 +529,7 @@ class IncidentNeutron(EqualityMixin):
         # Read energy grid
         e_group = group['energy']
         for temperature, dset in e_group.items():
-            data.energy[temperature] = dset.value
+            data.energy[temperature] = dset[()]
 
         # Read reaction data
         rxs_group = group['reactions']

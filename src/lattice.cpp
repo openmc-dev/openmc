@@ -717,7 +717,8 @@ HexLattice::get_indices(Position r, Direction u) const
   Position r_o {r.x - center_.x, r.y - center_.y, r.z};
   if (is_3d_) {r_o.z -= center_.z;}
 
-  // Index the z direction. Same as in RectLattice::get_indices.
+  // Index the z direction. Same as the technique used in
+  // RectLattice::get_indices.
   if (is_3d_) {
     double iz_ {r_o.z / pitch_[1] + 0.5 * n_axial_};
     long iz_close {std::lround(iz_)};
@@ -744,7 +745,7 @@ HexLattice::get_indices(Position r, Direction u) const
   // tessellation so the xyz should be in the hexagonal cell that it is closest
   // to the center of.  This method is used over a method that uses the
   // remainders of the floor divisions above because it provides better finite
-  // precision performance.  Squared distances are used becasue they are more
+  // precision performance.  Squared distances are used because they are more
   // computationally efficient than normal distances.
 
   // COINCIDENCE CHECK
@@ -753,11 +754,11 @@ HexLattice::get_indices(Position r, Direction u) const
   // In this case, the dot product of the position vector and direction vector
   // for the current indices, dp, and the dot product for the currently selected
   // indices, dp_min, are compared. The cell which the particle is moving into
-  // is kept (i.e. the cell with the lowest dot prouct as the vectors will be
+  // is kept (i.e. the cell with the lowest dot product as the vectors will be
   // completely opposed if the particle is moving directly toward the center of
   // the cell).
-  int ix_delta {};
-  int ia_delta {};
+  int ix_chg {};
+  int ia_chg {};
   double d_min {INFTY};
   double dp_min {INFTY};
   for (int i = 0; i < 2; i++) {
@@ -778,16 +779,16 @@ HexLattice::get_indices(Position r, Direction u) const
         if (on_boundary && dp > dp_min) { continue; }
         // update values
         d_min = d;
-        ix_delta = j;
-        ia_delta = i;
+        ix_chg = j;
+        ia_chg = i;
         dp_min = dp;
       }
     }
   }
 
   // update outgoing indices
-  ix += ix_delta;
-  ia += ia_delta;
+  ix += ix_chg;
+  ia += ia_chg;
 
   return {ix, ia, iz};
 }

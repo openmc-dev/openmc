@@ -16,7 +16,6 @@ particles = 1000
 time_step = 1*24*60*60 # s
 final_time = 5*24*60*60 # s
 time_steps = np.full(final_time // time_step, time_step)
-print(time_steps)
 chain_file = './chain_simple.xml'
 power = 174 # W/cm, for 2D simulations only (use W for 3D)
 

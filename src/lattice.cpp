@@ -711,16 +711,23 @@ const
 std::array<int, 3>
 HexLattice::get_indices(Position r, Direction u) const
 {
-  // result variables
-  int ix = 0;
-  int ia = 0;
-  int iz = 0;
-
   // Offset the xyz by the lattice center.
   Position r_o {r.x - center_.x, r.y - center_.y, r.z};
   if (is_3d_) {r_o.z -= center_.z;}
 
+  // Convert coordinates into skewed bases.  The (x, alpha) basis is used to
+  // find the index of the global coordinates to within 4 cells.
+  double alpha = r_o.y - r_o.x / std::sqrt(3.0);
+  int ix = std::floor(r_o.x / (0.5*std::sqrt(3.0) * pitch_[0]));
+  int ia = std::floor(alpha / pitch_[0]);
+
+  // Add offset to indices (the center cell is (i_x, i_alpha) = (0, 0) but
+  // the array is offset so that the indices never go below 0).
+  ix += n_rings_-1;
+  ia += n_rings_-1;
+
   // Index the z direction, accounting for coincidence
+  int iz{};
   if (is_3d_) {
     double iz_ {r_o.z / pitch_[1] + 0.5 * n_axial_};
     long iz_close {std::lround(iz_)};
@@ -730,17 +737,6 @@ HexLattice::get_indices(Position r, Direction u) const
       iz = std::floor(iz_);
     }
   }
-
-  // Convert coordinates into skewed bases.  The (x, alpha) basis is used to
-  // find the index of the global coordinates to within 4 cells.
-  double alpha = r_o.y - r_o.x / std::sqrt(3.0);
-  ix = std::floor(r_o.x / (0.5*std::sqrt(3.0) * pitch_[0]));
-  ia = std::floor(alpha / pitch_[0]);
-
-  // Add offset to indices (the center cell is (i_x, i_alpha) = (0, 0) but
-  // the array is offset so that the indices never go below 0).
-  ix += n_rings_-1;
-  ia += n_rings_-1;
 
   // Calculate the (squared) distance between the particle and the centers of
   // the four possible cells.  Regular hexagonal tiles form a Voronoi

@@ -9,6 +9,8 @@ def test_float_endf():
     assert endf.float_endf('6.022-23') == approx(6.022e-23)
     assert endf.float_endf(' +1.01+ 2') == approx(101.0)
     assert endf.float_endf(' -1.01- 2') == approx(-0.0101)
+    assert endf.float_endf('+ 2 . 3+ 1') == approx(23.0)
+    assert endf.float_endf('-7 .8 -1') == approx(-0.78)
 
 
 def test_int_endf():

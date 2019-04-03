@@ -210,44 +210,9 @@ public:
   explicit UniversePartitioner(const Universe& univ);
 
   //! Return the list of cells that could contain the given coordinates.
-  const std::vector<int32_t>& get_cells(Position r, Direction u) const
-  {return get_cells(r, u, 0, surfs_.size()-1, (surfs_.size()-1)/2);}
+  const std::vector<int32_t>& get_cells(Position r, Direction u) const;
 
 private:
-  //! Perform a binary search for the given coordinates.
-  //
-  //! \param left The lower search bound of the `surfs_` vector
-  //! \param right The upper search bound of the `surfs_` vector
-  //! \param middle The index of the `Surface` to test against
-  const std::vector<int32_t>&
-    get_cells(Position r, Direction u, int left, int right, int middle) const
-  {
-    // Check the sense of the coordinates for the current surface.
-    auto i_surf = surfs_[middle];
-    const auto& surf = *model::surfaces[i_surf];
-    if (surf.sense(r, u)) {
-      // The coordinates lie in the positive halfspace.  Recurse if there are
-      // more surfaces to check.  Otherwise, return the cells on the positive
-      // side of this surface.
-      int right_leaf = right - (right - middle) / 2;
-      if (right_leaf != middle) {
-        return get_cells(r, u, middle+1, right, right_leaf);
-      } else {
-        return partitions_[middle+1];
-      }
-    } else {
-      // The coordinates lie in the negative halfspace.  Recurse if there are
-      // more surfaces to check.  Otherwise, return the cells on the negative
-      // side of this surface.
-      int left_leaf = left + (middle - left) / 2;
-      if (left_leaf != middle) {
-        return get_cells(r, u, left, middle-1, left_leaf);
-      } else {
-        return partitions_[middle];
-      }
-    }
-  }
-
   //! A sorted vector of indices to surfaces that partition the universe
   std::vector<int32_t> surfs_;
 

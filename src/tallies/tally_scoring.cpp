@@ -257,8 +257,7 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
       #pragma omp atomic
       tally.results_(filter_index, i_score, RESULT_VALUE) += score;
 
-    } else if (score_bin == SCORE_DELAYED_NU_FISSION &&
-               g != 0) {
+    } else if (score_bin == SCORE_DELAYED_NU_FISSION && g != 0) {
 
       // If the delayed group filter is present, tally to corresponding delayed
       // group bin if it exists

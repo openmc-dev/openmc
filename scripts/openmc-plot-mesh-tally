@@ -230,8 +230,6 @@ class MeshPlotter(tk.Frame):
             v_ind = 2
 
         axial_ind = 3 - (h_ind + v_ind)
-        print(h_ind, v_ind)
-        print(dims)
         dims = (dims[h_ind], dims[v_ind])
 
         mesh_dim = len(self.mesh.dimension)

@@ -312,7 +312,7 @@ class Normal(Univariate):
     r"""Normally distributed sampling.
 
     The Normal Distribution is characterized by two parameters
-    :math:`\mu` and :math:`\sigma` and has density function 
+    :math:`\mu` and :math:`\sigma` and has density function
     :math:`p(X) dX = 1/(\sqrt{2\pi}\sigma) e^{-(X-\mu)^2/(2\sigma^2)}`
 
     Parameters
@@ -325,9 +325,9 @@ class Normal(Univariate):
     Attributes
     ----------
     mean_value : float
-        Mean of the Normal distribution 
+        Mean of the Normal distribution
     std_dev : float
-        Standard deviation of the Normal distribution 
+        Standard deviation of the Normal distribution
     """
 
     def __init__(self, mean_value, std_dev):
@@ -380,17 +380,17 @@ class Normal(Univariate):
 class Muir(Univariate):
     """Muir energy spectrum.
 
-    The Muir energy spectrum is a Gaussian spectrum, but for 
+    The Muir energy spectrum is a Gaussian spectrum, but for
     convenience reasons allows the user 3 parameters to define
     the distribution, e0 the mean energy of particles, the mass
-    of reactants m_rat, and the ion temperature kt. 
+    of reactants m_rat, and the ion temperature kt.
 
     Parameters
     ----------
     e0 : float
         Mean of the Muir distribution in units of eV
     m_rat : float
-        Ratio of the sum of the masses of the reaction inputs to an 
+        Ratio of the sum of the masses of the reaction inputs to an
         AMU
     kt : float
          Ion temperature for the Muir distribution in units of eV
@@ -400,7 +400,7 @@ class Muir(Univariate):
     e0 : float
         Mean of the Muir distribution in units of eV
     m_rat : float
-        Ratio of the sum of the masses of the reaction inputs to an 
+        Ratio of the sum of the masses of the reaction inputs to an
         AMU
     kt : float
          Ion temperature for the Muir distribution in units of eV
@@ -582,26 +582,27 @@ class Legendre(Univariate):
 
     def __init__(self, coefficients):
         self.coefficients = coefficients
+        self._legendre_poly = None
 
     def __call__(self, x):
-        return self._legendre_polynomial(x)
+        # Create Legendre polynomial if we haven't yet
+        if self._legendre_poly is None:
+            l = np.arange(len(self._coefficients))
+            coeffs = (2.*l + 1.)/2. * self._coefficients
+            self._legendre_poly = np.polynomial.Legendre(coeffs)
+
+        return self._legendre_poly(x)
 
     def __len__(self):
-        return len(self._legendre_polynomial.coef)
+        return len(self._coefficients)
 
     @property
     def coefficients(self):
-        poly = self._legendre_polynomial
-        l = np.arange(poly.degree() + 1)
-        return 2./(2.*l + 1.) * poly.coef
+        return self._coefficients
 
     @coefficients.setter
     def coefficients(self, coefficients):
-        cv.check_type('Legendre expansion coefficients', coefficients,
-                      Iterable, Real)
-        l = np.arange(len(coefficients))
-        coeffs = (2.*l + 1.)/2. * np.array(coefficients)
-        self._legendre_polynomial = np.polynomial.Legendre(coeffs)
+        self._coefficients = np.asarray(coefficients)
 
     def to_xml_element(self, element_name):
         raise NotImplementedError

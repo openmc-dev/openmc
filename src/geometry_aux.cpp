@@ -139,14 +139,13 @@ partition_universes()
       }
 
       // Partition the universe if there are more than 5 z-planes.  (Fewer than
-      // five is likely no worth it.)
+      // 5 is likely not worth it.)
       int n_zplanes = 0;
       for (auto i_surf : surf_inds) {
         if (dynamic_cast<const SurfaceZPlane*>(model::surfaces[i_surf].get())) {
           ++n_zplanes;
           if (n_zplanes > 5) {
-            univ->partitioner_ = std::make_unique<UniversePartitioner>(
-              UniversePartitioner(*univ));
+            univ->partitioner_ = std::make_unique<UniversePartitioner>(*univ);
             break;
           }
         }

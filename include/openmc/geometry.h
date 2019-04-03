@@ -39,7 +39,7 @@ struct BoundaryInfo {
 //! Check two distances by coincidence tolerance
 //==============================================================================
 
-bool coincident(const double& d1, const double& d2);
+bool coincident(double d1, double d2);
 
 //==============================================================================
 //! Check for overlapping cells at a particle's position.

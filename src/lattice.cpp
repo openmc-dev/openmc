@@ -6,6 +6,7 @@
 
 #include "openmc/cell.h"
 #include "openmc/error.h"
+#include "openmc/geometry.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/string_utils.h"
@@ -291,7 +292,7 @@ RectLattice::get_indices(Position r, Direction u) const
   double ix_ {(r.x - lower_left_.x) / pitch_.x};
   long ix_close {std::lround(ix_)};
   int ix;
-  if (std::abs(ix_ - ix_close) < FP_COINCIDENT) {
+  if (coincident(ix_, ix_close)) {
     ix = (u.x > 0) ? ix_close : ix_close - 1;
   } else {
     ix = std::floor(ix_);
@@ -301,7 +302,7 @@ RectLattice::get_indices(Position r, Direction u) const
   double iy_ {(r.y - lower_left_.y) / pitch_.y};
   long iy_close {std::lround(iy_)};
   int iy;
-  if (std::abs(iy_ - iy_close) < FP_COINCIDENT) {
+  if (coincident(iy_, iy_close)) {
     iy = (u.y > 0) ? iy_close : iy_close - 1;
   } else {
     iy = std::floor(iy_);
@@ -312,7 +313,7 @@ RectLattice::get_indices(Position r, Direction u) const
   if (is_3d_) {
     double iz_ {(r.z - lower_left_.z) / pitch_.z};
     long iz_close {std::lround(iz_)};
-    if (std::abs(iz_ - iz_close) < FP_COINCIDENT) {
+    if (coincident(iz_, iz_close)) {
       iz = (u.z > 0) ? iz_close : iz_close - 1;
     } else {
       iz = std::floor(iz_);
@@ -711,18 +712,19 @@ std::array<int, 3>
 HexLattice::get_indices(Position r, Direction u) const
 {
   // result variables
-  int ix{}, ia{}, iz{};
+  int ix = 0;
+  int ia = 0;
+  int iz = 0;
 
   // Offset the xyz by the lattice center.
   Position r_o {r.x - center_.x, r.y - center_.y, r.z};
   if (is_3d_) {r_o.z -= center_.z;}
 
-  // Index the z direction. Same as the technique used in
-  // RectLattice::get_indices.
+  // Index the z direction, accounting for coincidence
   if (is_3d_) {
     double iz_ {r_o.z / pitch_[1] + 0.5 * n_axial_};
     long iz_close {std::lround(iz_)};
-    if (std::abs(iz_ - iz_close) < FP_COINCIDENT) {
+    if (coincident(iz_, iz_close)) {
       iz = (u.z > 0) ? iz_close : iz_close - 1;
     } else {
       iz = std::floor(iz_);
@@ -769,14 +771,14 @@ HexLattice::get_indices(Position r, Direction u) const
       // calculate distance
       double d = r_t.x*r_t.x + r_t.y*r_t.y;
       // check for coincidence
-      bool on_boundary = std::abs(d - d_min) < FP_COINCIDENT;
+      bool on_boundary = coincident(d, d_min);
       if (d < d_min || on_boundary) {
         // normalize r_t and find dot product
         r_t /= std::sqrt(d);
         double dp = u.x * r_t.x + u.y * r_t.y;
         // do not update values if particle is on a
         // boundary and not moving into this cell
-        if (on_boundary && dp > dp_min) { continue; }
+        if (on_boundary && dp > dp_min) continue;
         // update values
         d_min = d;
         ix_chg = j;

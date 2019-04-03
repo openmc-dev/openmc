@@ -32,7 +32,7 @@ std::vector<int64_t> overlap_check_count;
 // Non-member functions
 //==============================================================================
 
-bool coincident(const double& d1, const double& d2) {
+bool coincident(double d1, double d2) {
   return std::abs(d1 - d2) < FP_COINCIDENT;
 }
 

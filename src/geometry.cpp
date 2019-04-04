@@ -396,7 +396,7 @@ BoundaryInfo distance_to_boundary(Particle* p)
     // a higher level then we need to make sure that the higher level boundary
     // is selected.  This logic must consider floating point precision.
     double& d = info.distance;
-    if (d_surf < d_lat) {
+    if (d_surf < d_lat - FP_COINCIDENT) {
       if (d == INFINITY || (d - d_surf)/d >= FP_REL_PRECISION) {
         d = d_surf;
 

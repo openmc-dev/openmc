@@ -216,24 +216,40 @@ class MeshPlotter(tk.Frame):
                 index = self.filterBoxes[f.short_name].current()
                 spec_list.append((type(f), (index,)))
 
+        dims = (self.nx, self.ny, self.nz)
+
         text = self.basisBox.get()
         if text == 'xy':
-            dims = (self.nx, self.ny)
+            h_ind = 0
+            v_ind = 1
         elif text == 'yz':
-            dims = (self.ny, self.nz)
+            h_ind = 1
+            v_ind = 2
         else:
-            dims = (self.nx, self.nz)
+            h_ind = 0
+            v_ind = 2
+
+        axial_ind = 3 - (h_ind + v_ind)
+        dims = (dims[h_ind], dims[v_ind])
+
+        mesh_dim = len(self.mesh.dimension)
+        if mesh_dim == 3:
+            mesh_indices = [0,0,0]
+        else:
+            mesh_indices = [0,0]
+
         matrix = np.zeros(dims)
         for i in range(dims[0]):
             for j in range(dims[1]):
-                if text == 'xy':
-                    meshtuple = (i + 1, j + 1, axial_level)
-                elif text == 'yz':
-                    meshtuple = (axial_level, i + 1, j + 1)
+                if mesh_dim == 3:
+                    mesh_indices[h_ind] = i + 1
+                    mesh_indices[v_ind] = j + 1
+                    mesh_indices[axial_ind] = axial_level
                 else:
-                    meshtuple = (i + 1, axial_level, j + 1)
+                    mesh_indices[0] = i + 1
+                    mesh_indices[1] = j + 1
                 filters, filter_bins = zip(*spec_list + [
-                    (type(mesh_filter), (meshtuple,))])
+                    (type(mesh_filter), (tuple(mesh_indices),))])
                 mean = selectedTally.get_values(
                     [self.scoreBox.get()], filters, filter_bins)
                 stdev = selectedTally.get_values(

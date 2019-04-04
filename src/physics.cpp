@@ -62,13 +62,15 @@ void collision(Particle* p)
   if (settings::verbosity >= 10 || simulation::trace) {
     std::stringstream msg;
     if (p->event_ == EVENT_KILL) {
-      msg << "    " << " Killed. Energy = " << p->E_ << " eV.";
+      msg << "    Killed. Energy = " << p->E_ << " eV.";
     } else if (p->type_ == Particle::Type::neutron) {
       msg << "    " << reaction_name(p->event_mt_) << " with " <<
         data::nuclides[p->event_nuclide_]->name_ << ". Energy = " << p->E_ << " eV.";
-    } else {
+    } else if (p->type_ == Particle::Type::photon) {
       msg << "    " << reaction_name(p->event_mt_) << " with " <<
         data::elements[p->event_nuclide_].name_ << ". Energy = " << p->E_ << " eV.";
+    } else {
+      msg << "    Disappeared. Energy = " << p->E_ << " eV.";
     }
     write_message(msg, 1);
   }

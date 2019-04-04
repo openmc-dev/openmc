@@ -9,6 +9,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
+#include "openmc/reaction.h"
 #include "openmc/reaction_product.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
@@ -772,7 +773,7 @@ void read_tallies_xml()
           case SCORE_PROMPT_NU_FISSION:
           case SCORE_DECAY_RATE:
             warning("Particle filter is not used with photon transport"
-              " on and " + std::to_string(score) + " score.");
+              " on and " + reaction_name(score) + " score.");
             break;
           }
         }

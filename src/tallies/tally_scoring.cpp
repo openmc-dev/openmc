@@ -1237,31 +1237,33 @@ score_general_ce(Particle* p, int i_tally, int start_index,
             score -= bank.E;
           }
           score *= p->wgt_last_ * flux;
-        } else if (p->type_ == Particle::Type::photon) {
-          // Calculate photon heating cross section on-the-fly
-          score = 0.;
-          if (i_nuclide >= 0) {
-            // Find the element corresponding to the nuclide
-            auto name = data::nuclides[i_nuclide]->name_;
-            int pos = name.find_first_of("0123456789");
-            std::string element = name.substr(0, pos);
-            int i_element = data::element_map[element];
-            auto& heating {data::elements[i_element].heating_};
-            auto i_grid = p->photon_xs_[i_element].index_grid;
-            auto f = p->photon_xs_[i_element].interp_factor;
-            score = std::exp(heating(i_grid) + f * (heating(i_grid+1) -
-              heating(i_grid))) * atom_density * flux;
-          } else {
-            if (p->material_ != MATERIAL_VOID) {
-              const Material& material {*model::materials[p->material_]};
-              for (auto i = 0; i < material.nuclide_.size(); ++i) {
-                auto i_element = material.element_[i];
-                auto atom_density = material.atom_density_(i);
-                auto& heating {data::elements[i_element].heating_};
-                auto i_grid = p->photon_xs_[i_element].index_grid;
-                auto f = p->photon_xs_[i_element].interp_factor;
-                score += std::exp(heating(i_grid) + f * (heating(i_grid+1) -
-                  heating(i_grid))) * atom_density * flux;
+        } else {
+          if (p->type_ == Particle::Type::photon) {
+            // Calculate photon heating cross section on-the-fly
+            score = 0.;
+            if (i_nuclide >= 0) {
+              // Find the element corresponding to the nuclide
+              auto name = data::nuclides[i_nuclide]->name_;
+              int pos = name.find_first_of("0123456789");
+              std::string element = name.substr(0, pos);
+              int i_element = data::element_map[element];
+              auto& heating {data::elements[i_element].heating_};
+              auto i_grid = p->photon_xs_[i_element].index_grid;
+              auto f = p->photon_xs_[i_element].interp_factor;
+              score = std::exp(heating(i_grid) + f * (heating(i_grid+1) -
+                heating(i_grid))) * atom_density * flux;
+            } else {
+              if (p->material_ != MATERIAL_VOID) {
+                const Material& material {*model::materials[p->material_]};
+                for (auto i = 0; i < material.nuclide_.size(); ++i) {
+                  auto i_element = material.element_[i];
+                  auto atom_density = material.atom_density_(i);
+                  auto& heating {data::elements[i_element].heating_};
+                  auto i_grid = p->photon_xs_[i_element].index_grid;
+                  auto f = p->photon_xs_[i_element].interp_factor;
+                  score += std::exp(heating(i_grid) + f * (heating(i_grid+1) -
+                    heating(i_grid))) * atom_density * flux;
+                }
               }
             }
           }

@@ -715,6 +715,18 @@ HexLattice::get_indices(Position r, Direction u) const
   Position r_o {r.x - center_.x, r.y - center_.y, r.z};
   if (is_3d_) {r_o.z -= center_.z;}
 
+  // Index the z direction, accounting for coincidence
+  int iz = 0;
+  if (is_3d_) {
+    double iz_ {r_o.z / pitch_[1] + 0.5 * n_axial_};
+    long iz_close {std::lround(iz_)};
+    if (coincident(iz_, iz_close)) {
+      iz = (u.z > 0) ? iz_close : iz_close - 1;
+    } else {
+      iz = std::floor(iz_);
+    }
+  }
+
   // Convert coordinates into skewed bases.  The (x, alpha) basis is used to
   // find the index of the global coordinates to within 4 cells.
   double alpha = r_o.y - r_o.x / std::sqrt(3.0);
@@ -725,18 +737,6 @@ HexLattice::get_indices(Position r, Direction u) const
   // the array is offset so that the indices never go below 0).
   ix += n_rings_-1;
   ia += n_rings_-1;
-
-  // Index the z direction, accounting for coincidence
-  int iz{};
-  if (is_3d_) {
-    double iz_ {r_o.z / pitch_[1] + 0.5 * n_axial_};
-    long iz_close {std::lround(iz_)};
-    if (coincident(iz_, iz_close)) {
-      iz = (u.z > 0) ? iz_close : iz_close - 1;
-    } else {
-      iz = std::floor(iz_);
-    }
-  }
 
   // Calculate the (squared) distance between the particle and the centers of
   // the four possible cells.  Regular hexagonal tiles form a Voronoi

@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <sstream>
+#include <set>
 #include <string>
 
 #include "openmc/capi.h"
@@ -641,28 +642,10 @@ void DAGCell::to_hdf5(hid_t group_id) const { return; }
 
 UniversePartitioner::UniversePartitioner(const Universe& univ)
 {
-  // Find all of the z-planes in this universe.  Add them to the surfs_ member.
-  // Use surf_set for O(1) searches that ensure surfs_ entries are not repeated.
-  std::unordered_set<int32_t> surf_set;
-  for (auto i_cell : univ.cells_) {
-    for (auto token : model::cells[i_cell]->rpn_) {
-      if (token < OP_UNION) {
-        auto i_surf = std::abs(token) - 1;
-        const auto* surf = model::surfaces[i_surf].get();
-        if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf)) {
-          if (surf_set.find(i_surf) == surf_set.end()) {
-            surf_set.insert(i_surf);
-            surfs_.push_back(i_surf);
-          }
-        }
-      }
-    }
-  }
-
-  // Define a lambda for comparing z-planes by their location, and use it to
-  // sort the surfs_ member.
-  std::sort(surfs_.begin(), surfs_.end(),
-    [](int32_t i_surf, int32_t j_surf) -> bool
+  // Define an ordered set of surface indices that point to z-planes.  Use a
+  // functor to to order the set by the z0_ values of the corresponding planes.
+  struct compare_surfs {
+    bool operator()(const int32_t& i_surf, const int32_t& j_surf) const
     {
       const auto* surf = model::surfaces[i_surf].get();
       const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf);
@@ -672,7 +655,24 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
       double zj = zplane->z0_;
       return zi < zj;
     }
-  );
+  };
+  std::set<int32_t, compare_surfs> surf_set;
+
+  // Find all of the z-planes in this universe.  A set is used here for the
+  // O(log(n)) insertions that will ensure entries are not repeated.
+  for (auto i_cell : univ.cells_) {
+    for (auto token : model::cells[i_cell]->rpn_) {
+      if (token < OP_UNION) {
+        auto i_surf = std::abs(token) - 1;
+        const auto* surf = model::surfaces[i_surf].get();
+        if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf))
+          surf_set.insert(i_surf);
+      }
+    }
+  }
+
+  // Populate the surfs_ vector from the ordered set.
+  surfs_.insert(surfs_.begin(), surf_set.begin(), surf_set.end());
 
   // Populate the partition lists.
   partitions_.resize(surfs_.size() + 1);
@@ -729,7 +729,7 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
     }
 
     // Add the cell to all relevant partitions.
-    for (int i = first_partition; i < last_partition + 1; ++i) {
+    for (int i = first_partition; i <= last_partition; ++i) {
       partitions_[i].push_back(i_cell);
     }
   }

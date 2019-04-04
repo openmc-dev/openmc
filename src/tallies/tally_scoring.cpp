@@ -1151,7 +1151,6 @@ score_general_ce(Particle* p, int i_tally, int start_index,
 
     case SCORE_HEATING:
       if (p->type_ == Particle::Type::neutron) {
-        score_bin = NEUTRON_HEATING;
         if (tally.estimator_ == ESTIMATOR_ANALOG) {
           // Calculate material heating cross section
           double macro_heating = 0.;
@@ -1160,7 +1159,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
             auto j_nuclide = material.nuclide_[i];
             auto atom_density = material.atom_density_(i);
             const auto& nuc {*data::nuclides[j_nuclide]};
-            auto m = nuc.reaction_index_[score_bin];
+            auto m = nuc.reaction_index_[NEUTRON_HEATING];
             if (m == C_NONE) continue;
             const auto& rxn {*nuc.reactions_[m]};
             auto i_temp = p->neutron_xs_[j_nuclide].index_temp;
@@ -1188,7 +1187,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           score = 0.;
           if (i_nuclide >= 0) {
             const auto& nuc {*data::nuclides[i_nuclide]};
-            auto m = nuc.reaction_index_[score_bin];
+            auto m = nuc.reaction_index_[NEUTRON_HEATING];
             if (m == C_NONE) continue;
             const auto& rxn {*nuc.reactions_[m]};
             auto i_temp = p->neutron_xs_[i_nuclide].index_temp;
@@ -1208,7 +1207,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
                 auto j_nuclide = material.nuclide_[i];
                 auto atom_density = material.atom_density_(i);
                 const auto& nuc {*data::nuclides[j_nuclide]};
-                auto m = nuc.reaction_index_[score_bin];
+                auto m = nuc.reaction_index_[NEUTRON_HEATING];
                 if (m == C_NONE) continue;
                 const auto& rxn {*nuc.reactions_[m]};
                 auto i_temp = p->neutron_xs_[j_nuclide].index_temp;
@@ -1226,18 +1225,19 @@ score_general_ce(Particle* p, int i_tally, int start_index,
             }
           }
         }
-      } else if (p->type_ == Particle::Type::photon) {
+      } else {
         if (tally.estimator_ == ESTIMATOR_ANALOG) {
-          // Use photon energy lost for heating deposition
-          if (settings::survival_biasing) {
-            // We need to account for the fact that some weight was already
-            // absorbed
-            score = p->wgt_last_ + p->wgt_absorb_;
-          } else {
-            score = p->wgt_last_;
+          // Score direct energy deposition in the collision
+          score = E - p->E_;
+          // We need to substract the energy of the secondary particles since
+          // they will be transported individually later
+          for (auto i = 0; i < p->n_bank_second_; ++i) {
+            auto i_bank = simulation::secondary_bank.size() - p->n_bank_second_ + i;
+            const auto& bank = simulation::secondary_bank[i_bank];
+            score -= bank.E;
           }
-          score *= (E - p->E_) * flux;
-        } else {
+          score *= p->wgt_last_ * flux;
+        } else if (p->type_ == Particle::Type::photon) {
           // Calculate photon heating cross section on-the-fly
           score = 0.;
           if (i_nuclide >= 0) {
@@ -1267,7 +1267,6 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           }
         }
       }
-      // Nuclear heating of any other particles not implmented
       break;
 
     default:

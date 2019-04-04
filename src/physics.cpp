@@ -61,7 +61,9 @@ void collision(Particle* p)
   // Display information about collision
   if (settings::verbosity >= 10 || simulation::trace) {
     std::stringstream msg;
-    if (p->type_ == Particle::Type::neutron) {
+    if (p->event_ == EVENT_KILL) {
+      msg << "    " << " Killed. Energy = " << p->E_ << " eV.";
+    } else if (p->type_ == Particle::Type::neutron) {
       msg << "    " << reaction_name(p->event_mt_) << " with " <<
         data::nuclides[p->event_nuclide_]->name_ << ". Energy = " << p->E_ << " eV.";
     } else {
@@ -226,6 +228,7 @@ void sample_photon_reaction(Particle* p)
   if (prob > cutoff) {
     double mu = element.rayleigh_scatter(alpha);
     p->u() = rotate_angle(p->u(), mu, nullptr);
+    p->event_ = EVENT_SCATTER;
     p->event_mt_ = COHERENT;
     return;
   }
@@ -268,6 +271,7 @@ void sample_photon_reaction(Particle* p)
     phi += PI;
     p->E_ = alpha_out*MASS_ELECTRON_EV;
     p->u() = rotate_angle(p->u(), mu, &phi);
+    p->event_ = EVENT_SCATTER;
     p->event_mt_ = INCOHERENT;
     return;
   }
@@ -319,6 +323,7 @@ void sample_photon_reaction(Particle* p)
         // Allow electrons to fill orbital and produce auger electrons
         // and fluorescent photons
         element.atomic_relaxation(shell, *p);
+        p->event_ = EVENT_ABSORB;
         p->event_mt_ = 533 + shell.index_subshell;
         p->alive_ = false;
         p->E_ = 0.0;
@@ -344,6 +349,7 @@ void sample_photon_reaction(Particle* p)
     u = rotate_angle(p->u(), mu_positron, nullptr);
     p->create_secondary(u, E_positron, Particle::Type::positron);
 
+    p->event_ = EVENT_ABSORB;
     p->event_mt_ = PAIR_PROD;
     p->alive_ = false;
     p->E_ = 0.0;
@@ -361,6 +367,7 @@ void sample_electron_reaction(Particle* p)
 
   p->E_ = 0.0;
   p->alive_ = false;
+  p->event_ = EVENT_ABSORB;
 }
 
 void sample_positron_reaction(Particle* p)
@@ -386,6 +393,7 @@ void sample_positron_reaction(Particle* p)
 
   p->E_ = 0.0;
   p->alive_ = false;
+  p->event_ = EVENT_ABSORB;
 }
 
 int sample_nuclide(const Particle* p)

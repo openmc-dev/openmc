@@ -733,8 +733,8 @@ class CMFDRun(object):
             yield
 
     def init(self):
-       # TODO add function description
-       # Configure CMFD parameters and tallies
+        # TODO add function description
+        # Configure CMFD parameters and tallies
         self._configure_cmfd()
 
         # Initialize all arrays used for CMFD solver

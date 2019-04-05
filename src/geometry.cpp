@@ -89,7 +89,12 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
   } else {
     int i_universe = p->coord_[p->n_coord_-1].universe;
-    const auto& cells {model::universes[i_universe]->cells_};
+    const auto& univ {*model::universes[i_universe]};
+    const auto& cells {
+      !univ.partitioner_
+      ? model::universes[i_universe]->cells_
+      : univ.partitioner_->get_cells(p->r_local(), p->u_local())
+    };
     for (auto it = cells.cbegin(); it != cells.cend(); it++) {
       i_cell = *it;
 

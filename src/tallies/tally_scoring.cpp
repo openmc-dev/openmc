@@ -1153,28 +1153,9 @@ score_general_ce(Particle* p, int i_tally, int start_index,
       score = 0.;
       if (p->type_ == Particle::Type::neutron) {
         if (tally.estimator_ == ESTIMATOR_ANALOG) {
-          // Calculate material heating cross section
-          double macro_heating = 0.;
-          const Material& material {*model::materials[p->material_]};
-          for (auto i = 0; i < material.nuclide_.size(); ++i) {
-            auto j_nuclide = material.nuclide_[i];
-            auto atom_density = material.atom_density_(i);
-            const auto& nuc {*data::nuclides[j_nuclide]};
-            auto m = nuc.reaction_index_[NEUTRON_HEATING];
-            if (m == C_NONE) continue;
-            const auto& rxn {*nuc.reactions_[m]};
-            auto i_temp = p->neutron_xs_[j_nuclide].index_temp;
-            if (i_temp >= 0) { // Can be false due to multipole
-              auto i_grid = p->neutron_xs_[j_nuclide].index_grid;
-              auto f = p->neutron_xs_[j_nuclide].interp_factor;
-              const auto& xs {rxn.xs_[i_temp]};
-              if (i_grid >= xs.threshold) {
-                macro_heating += ((1.0 - f) * xs.value[i_grid-xs.threshold]
-                  + f * xs.value[i_grid-xs.threshold+1]) * atom_density;
-              }
-            }
-          }
-          // All events score to an heating rate bin
+          // All events score to a heating tally bin. We actually use a
+          // collision estimator in place of an analog one since there is no
+          // reaction-wise heating cross section
           if (settings::survival_biasing) {
             // We need to account for the fact that some weight was already
             // absorbed
@@ -1182,7 +1163,52 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           } else {
             score = p->wgt_last_;
           }
-          score *= macro_heating * flux / p->macro_xs_.total;
+          if (i_nuclide >= 0) {
+            // Calculate nuclide heating cross section
+            double macro_heating = 0.;
+            const auto& nuc {*data::nuclides[i_nuclide]};
+            auto m = nuc.reaction_index_[NEUTRON_HEATING];
+            if (m == C_NONE) continue;
+            const auto& rxn {*nuc.reactions_[m]};
+            auto i_temp = p->neutron_xs_[i_nuclide].index_temp;
+            if (i_temp >= 0) { // Can be false due to multipole
+              auto i_grid = p->neutron_xs_[i_nuclide].index_grid;
+              auto f = p->neutron_xs_[i_nuclide].interp_factor;
+              const auto& xs {rxn.xs_[i_temp]};
+              if (i_grid >= xs.threshold) {
+                macro_heating = ((1.0 - f) * xs.value[i_grid-xs.threshold]
+                  + f * xs.value[i_grid-xs.threshold+1]) * atom_density;
+              }
+            }
+            score *= macro_heating * flux / p->neutron_xs_[i_nuclide].total;
+          } else {
+            if (p->material_ != MATERIAL_VOID) {
+              // Calculate material heating cross section
+              double macro_heating = 0.;
+              const Material& material {*model::materials[p->material_]};
+              for (auto i = 0; i < material.nuclide_.size(); ++i) {
+                auto j_nuclide = material.nuclide_[i];
+                auto atom_density = material.atom_density_(i);
+                const auto& nuc {*data::nuclides[j_nuclide]};
+                auto m = nuc.reaction_index_[NEUTRON_HEATING];
+                if (m == C_NONE) continue;
+                const auto& rxn {*nuc.reactions_[m]};
+                auto i_temp = p->neutron_xs_[j_nuclide].index_temp;
+                if (i_temp >= 0) { // Can be false due to multipole
+                  auto i_grid = p->neutron_xs_[j_nuclide].index_grid;
+                  auto f = p->neutron_xs_[j_nuclide].interp_factor;
+                  const auto& xs {rxn.xs_[i_temp]};
+                  if (i_grid >= xs.threshold) {
+                    macro_heating += ((1.0 - f) * xs.value[i_grid-xs.threshold]
+                      + f * xs.value[i_grid-xs.threshold+1]) * atom_density;
+                  }
+                }
+              }
+              score *= macro_heating * flux / p->macro_xs_.total;
+            } else {
+              score = 0.;
+            }
+          }
         } else {
           // Calculate neutron heating cross section on-the-fly
           if (i_nuclide >= 0) {

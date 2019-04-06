@@ -26,7 +26,8 @@ MASS_ELECTRON_EV = 0.5109989461e6 # Electron mass energy
 PLANCK_C = 1.2398419739062977e4 # Planck's constant times c in eV-Angstroms
 FINE_STRUCTURE = 137.035999139 # Inverse fine structure constant
 CM_PER_ANGSTROM = 1.0e-8
-RE = CM_PER_ANGSTROM * PLANCK_C / (2.0 * np.pi * FINE_STRUCTURE * MASS_ELECTRON_EV)
+# classical electron radius in cm
+R0 = CM_PER_ANGSTROM * PLANCK_C / (2.0 * np.pi * FINE_STRUCTURE * MASS_ELECTRON_EV)
 
 # Electron subshell labels
 _SUBSHELLS = [None, 'K', 'L1', 'L2', 'L3', 'M1', 'M2', 'M3', 'M4', 'M5',
@@ -961,10 +962,27 @@ class IncidentPhoton(EqualityMixin):
         self.bremsstrahlung.update(_BREMSSTRAHLUNG[self.atomic_number])
 
     def _compute_heating(self):
-        """Compute heating cross sections
+        """Compute heating cross sections (KERMA)
+
+           Photon energy is deposited as energy loss in three reactions:
+           incoherent scattering, photoelectric effect and pair production.
+           The point-wise heating cross section is calculated as:
+
+           .. math::
+               \sigma_{Hx} &= (E - \overline{E}_x(E)) \times \sigma_x(E), x \in \left \{  I, PE, PP \right\}
+
+               \overline{E}_I (E) &= \frac {\int E' \sigma_I (E,E',\mu) d\mu} {\int \sigma_I (E,E',\mu) d\mu}
+
+               \overline{E}_{PE} &= 0
+
+               \overline{E}_{PP} &= 2 m_e c^2 = 1.022 \times 10^6 eV
+
+           The differential cross section for incoherent scattering can be
+           found in the theory manual.
 
         """
-        # Determine union energy grid
+
+        # Determine a union energy grid
         energy = np.array([])
         for mt in (504, 515, 517, 522):
             if mt not in self:
@@ -977,19 +995,24 @@ class IncidentPhoton(EqualityMixin):
 
         if 504 in self:
             rx = self[504]
-            def xs_mu(mu, E):
-                k = E/MASS_ELECTRON_EV
-                k_p = k/(1.0 + k*(1.0 - mu))
-                x = E * np.sqrt(0.5*(1.0 - mu)) / PLANCK_C
-                return np.pi*RE*RE*k_p/k*k_p/k*(k_p + 1.0/k_p +
+            def dsigma_dmu(mu, E):
+                k = E / MASS_ELECTRON_EV
+                kout = k / (1.0 + k * (1.0 - mu))
+                x = E * np.sqrt(0.5 * (1.0 - mu)) / PLANCK_C
+                return np.pi * R0**2 * (kout/k)**2 * (kout/k + k/kout +
                        mu*mu - 1.0) * rx.scattering_factor(x)
-            def xs_mu_E(mu, E):
-                E_p = E/(1.0 + E/MASS_ELECTRON_EV*(1-mu))
-                return xs_mu(mu, E) * E_p
-            e_new = np.array([quad(xs_mu_E, -1, 1, args=(e,), epsabs=0.0,
-                              epsrel=1.0e-3)[0] / quad(xs_mu, -1, 1, args=(e,),
-                              epsabs=0.0, epsrel=1.0e-3)[0] for e in energy])
-            heating_xs += (energy - e_new)*rx.xs(energy)
+            def dsigma_dmu_times_eout(mu, E):
+                Eout = E / (1.0 + E / MASS_ELECTRON_EV * (1 - mu))
+                return dsigma_dmu(mu, E) * Eout
+            def average_eout(E):
+                integral_sigma   = quad(dsigma_dmu, -1.0, 1.0,
+                                        args=(E,), epsabs=0.0, epsrel=1.0e-3)[0]
+                integral_sigma_e = quad(dsigma_dmu_times_eout, -1.0, 1.0,
+                                        args=(E,), epsabs=0.0, epsrel=1.0e-3)[0]
+                return integral_sigma_e / integral_sigma
+
+            e_out = np.vectorize(lambda x: average_eout(x))(energy)
+            heating_xs += (energy - e_out) * rx.xs(energy)
 
         if 515 in self:
             heating_xs += (energy - 2*MASS_ELECTRON_EV)*self[515].xs(energy)
@@ -1000,9 +1023,9 @@ class IncidentPhoton(EqualityMixin):
         if 522 in self:
             heating_xs += (energy - 0.)*self[522].xs(energy)
 
-        h_rx = PhotonReaction(525)
-        h_rx.xs = Tabulated1D(energy, heating_xs, [energy.size], [5])
-        self.reactions[525] = h_rx
+        heat_rx = PhotonReaction(525)
+        heat_rx.xs = Tabulated1D(energy, heating_xs, [energy.size], [5])
+        self.reactions[525] = heat_rx
 
 class PhotonReaction(EqualityMixin):
     """Photon-induced reaction

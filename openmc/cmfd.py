@@ -17,7 +17,6 @@ import sys
 import time
 from ctypes import c_int
 import warnings
-import os.path
 
 import numpy as np
 from scipy import sparse

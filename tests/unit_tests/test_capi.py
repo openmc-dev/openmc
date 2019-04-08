@@ -400,3 +400,54 @@ def test_load_nuclide(capi_init):
     # load non-existent nuclide
     with pytest.raises(exc.DataError):
         openmc.capi.load_nuclide('Pu3')
+
+
+def test_id_map(capi_init):
+    expected_ids = np.array([[(3, 3), (2, 2), (3, 3)],
+                             [(2, 2), (1, 1), (2, 2)],
+                             [(3, 3), (2, 2), (3, 3)]], dtype='int32')
+
+    # create a plot object
+    s = openmc.capi.plot._PlotBase()
+    s.width = 1.26
+    s.height = 1.26
+    s.v_res = 3
+    s.h_res = 3
+    s.origin = (0.0, 0.0, 0.0)
+    s.basis = 'xy'
+    s.level = -1
+
+    ids = openmc.capi.plot.id_map(s)
+    assert np.array_equal(expected_ids, ids)
+
+def test_property_map(capi_init):
+    expected_properties = np.array(
+        [[(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)],
+         [ (293.6, 6.55), (293.6, 10.29769),  (293.6, 6.55)],
+         [(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)]], dtype='float')
+
+    # create a plot object
+    s = openmc.capi.plot._PlotBase()
+    s.width = 1.26
+    s.height = 1.26
+    s.v_res = 3
+    s.h_res = 3
+    s.origin = (0.0, 0.0, 0.0)
+    s.basis = 'xy'
+    s.level = -1
+
+    properties = openmc.capi.plot.property_map(s)
+    assert np.allclose(expected_properties, properties, atol=1e-04)
+
+
+def test_position(capi_init):
+
+    pos = openmc.capi.plot._Position(1.0, 2.0, 3.0)
+
+    assert tuple(pos) == (1.0, 2.0, 3.0)
+
+    pos[0] = 1.3
+    pos[1] = 2.3
+    pos[2] = 3.3
+
+    assert tuple(pos) == (1.3, 2.3, 3.3)

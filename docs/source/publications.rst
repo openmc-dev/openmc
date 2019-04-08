@@ -59,7 +59,7 @@ Coupling and Multi-physics
 
 - Ze-Long Zhao, Yongwei Yang, and Shuang Hong, "`Application of FLUKA and OpenMC
   in coupled physics calculation of target and subcritical reactor for ADS
-  <https://doi.org/10.1007/s41365-018-0539-1>`_," *Nucl. Sci. Tech.*, **30**
+  <https://doi.org/10.1007/s41365-018-0539-1>`_," *Nucl. Sci. Tech.*, **30**: 10
   (2019).
 
 - April Novak, Paul Romano, Brycen Wendt, Ron Rahaman, Elia Merzari, Leslie
@@ -134,6 +134,11 @@ Geometry and Visualization
 Miscellaneous
 -------------
 
+- Faisal Qayyum, Muhammad R. Ali, Awais Zahur, and R. Khan, "`Improvements in
+  methodology to determine feedback reactivity coefficients
+  <https://doi.org/10.1007/s41365-019-0588-0>`_," *Nucl. Sci. Tech.*, **30**: 63
+  (2019).
+
 - Amanda L. Lund and Paul K. Romano, "`Implementation and Validation of Photon
   Transport in OpenMC <https://doi.org/10.2172/1490825>`_", Argonne National
   Laboratory, Technical Report ANL/MCS-TM-381 (2018).
@@ -200,10 +205,20 @@ Miscellaneous
 Multigroup Cross Section Generation
 -----------------------------------
 
+- William Boyd, Adam Nelson, Paul K. Romano, Samuel Shaner, Benoit Forget, and
+  Kord Smith, "`Multigroup Cross-Section Generation with the OpenMC Monte Carlo
+  Particle Transport Code <https://doi.org/10.1080/00295450.2019.1571828>`_,"
+  *Nucl. Technol.* (2019).
+
 - William Boyd, Benoit Forget, and Kord Smith, "`A single-step framework to
   generate spatially self-shielded multi-group cross sections from Monte Carlo
   transport simulations <https://doi.org/10.1016/j.anucene.2018.11.017>`_,"
   *Ann. Nucl. Energy*, **125**, 261-271 (2019).
+
+- Kun Zhuang, Xiaobin Tang, and Liangzhi Cao, "`Development and verification of
+  a model for generation of MSFR few-group homogenized cross-sections based on a
+  Monte Carlo code OpenMC <https://doi.org/10.1016/j.anucene.2018.09.037>`_,"
+  *Ann. Nucl. Energy*, **124**, 187-197 (2019).
 
 - Changho Lee and Yeon Sang Jung, "Verification of the Cross Section Library
   Generated Using OpenMC and MC\ :sup:`2`-3 for PROTEUS," *Proc. PHYSOR*, Cancun,
@@ -453,6 +468,11 @@ Parallelism
 ---------
 Depletion
 ---------
+
+- Zhao-Qing Liu, Ze-Long Zhao, Yong-Wei Yang, Yu-Cui Gao, Hai-Yan Meng, and
+  Qing-Yu Gao, "`Development and validation of depletion code system IMPC-Burnup
+  for ADS <https://doi.org/10.1007/s41365-019-0560-z>`_," *Nucl. Sci. Tech.*,
+  **30**: 44 (2019).
 
 - Colin Josey, Benoit Forget, and Kord Smith, "`High order methods for the
   integration of the Bateman equations and other problems of the form of y' =

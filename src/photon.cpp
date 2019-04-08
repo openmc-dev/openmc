@@ -32,10 +32,6 @@ std::unordered_map<std::string, int> element_map;
 
 } // namespace data
 
-namespace simulation {
-ElementMicroXS* micro_photon_xs;
-} // namespace simulation
-
 //==============================================================================
 // PhotonInteraction implementation
 //==============================================================================
@@ -212,16 +208,12 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
     if (data::ttb_k_grid.size() == 1) {
       read_dataset(rgroup, "photon_energy", data::ttb_k_grid);
     }
-    close_group(rgroup);
 
-    // Read stopping power data
-    if (Z_ < 99) {
-      rgroup = open_group(group, "stopping_powers");
-      read_dataset(rgroup, "s_collision", stopping_power_collision_);
-      read_dataset(rgroup, "s_radiative", stopping_power_radiative_);
-      read_attribute(rgroup, "I", I_);
-      close_group(rgroup);
-    }
+    // Get data used for density effect correction
+    read_dataset(rgroup, "num_electrons", n_electrons_);
+    read_dataset(rgroup, "ionization_energy", ionization_energy_);
+    read_attribute(rgroup, "I", I_);
+    close_group(rgroup);
 
     // Truncate the bremsstrahlung data at the cutoff energy
     int photon = static_cast<int>(Particle::Type::photon);
@@ -235,26 +227,10 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
       double f = (std::log(cutoff) - std::log(E(i_grid))) /
         (std::log(E(i_grid+1)) - std::log(E(i_grid)));
 
-      // Interpolate collision stopping power at the cutoff energy and truncate
-      auto& s_col {stopping_power_collision_};
-      double y = std::exp(std::log(s_col(i_grid)) + f*(std::log(s_col(i_grid+1)) -
-        std::log(s_col(i_grid))));
-      xt::xtensor<double, 1> frst {y};
-      stopping_power_collision_ = xt::concatenate(xt::xtuple(
-        frst, xt::view(s_col, xt::range(i_grid+1, n_e))));
-
-      // Interpolate radiative stopping power at the cutoff energy and truncate
-      auto& s_rad {stopping_power_radiative_};
-      y = std::exp(std::log(s_rad(i_grid)) + f*(std::log(s_rad(i_grid+1)) -
-        std::log(s_rad(i_grid))));
-      frst(0) = y;
-      stopping_power_radiative_ = xt::concatenate(xt::xtuple(
-        frst, xt::view(s_rad, xt::range(i_grid+1, n_e))));
-
       // Interpolate bremsstrahlung DCS at the cutoff energy and truncate
       xt::xtensor<double, 2> dcs({n_e - i_grid, n_k});
       for (int i = 0; i < n_k; ++i) {
-        y = std::exp(std::log(dcs_(i_grid,i)) +
+        double y = std::exp(std::log(dcs_(i_grid,i)) +
               f*(std::log(dcs_(i_grid+1,i)) - std::log(dcs_(i_grid,i))));
         auto col_i = xt::view(dcs, xt::all(), i);
         col_i(0) = y;
@@ -264,7 +240,7 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
       }
       dcs_ = dcs;
 
-      frst(0) = cutoff;
+      xt::xtensor<double, 1> frst {cutoff};
       electron_energy = xt::concatenate(xt::xtuple(
         frst, xt::view(electron_energy, xt::range(i_grid+1, n_e))));
     }
@@ -273,6 +249,25 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
     // TODO: Change to zero when xtensor is updated
     if (data::ttb_e_grid.size() == 1) {
       data::ttb_e_grid = electron_energy;
+    }
+
+    // Calculate the radiative stopping power
+    stopping_power_radiative_ = xt::empty<double>({data::ttb_e_grid.size()});
+    for (int i = 0; i < data::ttb_e_grid.size(); ++i) {
+      // Integrate over reduced photon energy
+      double c = 0.0;
+      for (int j = 0; j < data::ttb_k_grid.size() - 1; ++j) {
+        c += 0.5 * (dcs_(i, j+1) + dcs_(i, j)) * (data::ttb_k_grid(j+1) -
+          data::ttb_k_grid(j));
+      }
+      double e = data::ttb_e_grid(i);
+
+      // Square of the ratio of the speed of light to the velocity of the
+      // charged particle
+      double beta_sq = e * (e + 2.0 * MASS_ELECTRON_EV) / ((e +
+        MASS_ELECTRON_EV) * (e + MASS_ELECTRON_EV));
+
+      stopping_power_radiative_(i) = Z_ * Z_ / beta_sq * e * c;
     }
   }
 
@@ -434,12 +429,12 @@ void PhotonInteraction::compton_doppler(double alpha, double mu,
   *i_shell = shell;
 }
 
-void PhotonInteraction::calculate_xs(double E) const
+void PhotonInteraction::calculate_xs(Particle& p) const
 {
   // Perform binary search on the element energy grid in order to determine
   // which points to interpolate between
   int n_grid = energy_.size();
-  double log_E = std::log(E);
+  double log_E = std::log(p.E_);
   int i_grid;
   if (log_E <= energy_[0]) {
     i_grid = 0;
@@ -457,7 +452,7 @@ void PhotonInteraction::calculate_xs(double E) const
   // calculate interpolation factor
   double f = (log_E - energy_(i_grid)) / (energy_(i_grid+1) - energy_(i_grid));
 
-  auto& xs {simulation::micro_photon_xs[i_element_]};
+  auto& xs {p.photon_xs_[i_element_]};
   xs.index_grid = i_grid;
   xs.interp_factor = f;
 
@@ -491,7 +486,7 @@ void PhotonInteraction::calculate_xs(double E) const
 
   // Calculate microscopic total cross section
   xs.total = xs.coherent + xs.incoherent + xs.photoelectric + xs.pair_production;
-  xs.last_E = E;
+  xs.last_E = p.E_;
 }
 
 double PhotonInteraction::rayleigh_scatter(double alpha) const
@@ -554,11 +549,6 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
   // Z = 1-99 come from F. Salvat, J. M. Fernández-Varea, and J. Sempau,
   // "PENELOPE-2011: A Code System for Monte Carlo Simulation of Electron and
   // Photon Transport," OECD-NEA, Issy-les-Moulineaux, France (2011).
-
-  // Compute the minimum and maximum values of the electron reduced energy,
-  // i.e. the fraction of the photon energy that is given to the electron
-  double e_min = 1.0/alpha;
-  double e_max = 1.0 - 1.0/alpha;
 
   // Compute the high-energy Coulomb correction
   double a = Z_ / FINE_STRUCTURE;

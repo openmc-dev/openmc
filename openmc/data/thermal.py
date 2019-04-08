@@ -200,8 +200,8 @@ class CoherentElastic(EqualityMixin):
             Coherent elastic scattering cross section
 
         """
-        bragg_edges = dataset.value[0, :]
-        factors = dataset.value[1, :]
+        bragg_edges = dataset[0, :]
+        factors = dataset[1, :]
         return cls(bragg_edges, factors)
 
 
@@ -414,7 +414,7 @@ class ThermalScattering(EqualityMixin):
         kTg = group['kTs']
         kTs = []
         for temp in kTg:
-            kTs.append(kTg[temp].value)
+            kTs.append(kTg[temp][()])
         temperatures = [str(int(round(kT / K_BOLTZMANN))) + "K" for kT in kTs]
 
         table = cls(name, atomic_weight_ratio, kTs)
@@ -438,7 +438,7 @@ class ThermalScattering(EqualityMixin):
 
                 # Angular distribution
                 if 'mu_out' in elastic_group:
-                    table.elastic_mu_out[T] = elastic_group['mu_out'].value
+                    table.elastic_mu_out[T] = elastic_group['mu_out'][()]
 
             # Read thermal inelastic scattering
             if 'inelastic' in Tgroup:
@@ -446,8 +446,8 @@ class ThermalScattering(EqualityMixin):
                 table.inelastic_xs[T] = Tabulated1D.from_hdf5(
                     inelastic_group['xs'])
                 if table.secondary_mode in ('equal', 'skewed'):
-                    table.inelastic_e_out[T] = inelastic_group['energy_out'].value
-                    table.inelastic_mu_out[T] = inelastic_group['mu_out'].value
+                    table.inelastic_e_out[T] = inelastic_group['energy_out'][()]
+                    table.inelastic_mu_out[T] = inelastic_group['mu_out'][()]
                 elif table.secondary_mode == 'continuous':
                     table.inelastic_dist[T] = AngleEnergy.from_hdf5(
                         inelastic_group)
@@ -610,7 +610,8 @@ class ThermalScattering(EqualityMixin):
         return table
 
     @classmethod
-    def from_njoy(cls, filename, filename_thermal, temperatures=None, **kwargs):
+    def from_njoy(cls, filename, filename_thermal, temperatures=None,
+                  evaluation=None, evaluation_thermal=None, **kwargs):
         """Generate incident neutron data by running NJOY.
 
         Parameters
@@ -623,6 +624,13 @@ class ThermalScattering(EqualityMixin):
             Temperatures in Kelvin to produce data at. If omitted, data is
             produced at all temperatures in the ENDF thermal scattering
             sublibrary.
+        evaluation : openmc.data.endf.Evaluation, optional
+            If the ENDF neutron sublibrary file contains multiple material
+            evaluations, this argument indicates which evaluation to use.
+        evaluation_thermal : openmc.data.endf.Evaluation, optional
+            If the ENDF thermal scattering sublibrary file contains multiple
+            material evaluations, this argument indicates which evaluation to
+            use.
         **kwargs
             Keyword arguments passed to :func:`openmc.data.njoy.make_ace_thermal`
 
@@ -636,6 +644,8 @@ class ThermalScattering(EqualityMixin):
             # Run NJOY to create an ACE library
             ace_file = os.path.join(tmpdir, 'ace')
             xsdir_file = os.path.join(tmpdir, 'xsdir')
+            kwargs['evaluation'] = evaluation
+            kwargs['evaluation_thermal'] = evaluation_thermal
             make_ace_thermal(filename, filename_thermal, temperatures,
                              ace_file, xsdir_file, **kwargs)
 

@@ -98,7 +98,7 @@ materials_file.export_to_xml()
 ###############################################################################
 
 # Instantiate ZCylinder surfaces
-fuel_or = openmc.ZCylinder(surface_id=1, x0=0, y0=0, R=0.54, name='Fuel OR')
+fuel_or = openmc.ZCylinder(surface_id=1, x0=0, y0=0, r=0.54, name='Fuel OR')
 left = openmc.XPlane(surface_id=4, x0=-0.63, name='left')
 right = openmc.XPlane(surface_id=5, x0=0.63, name='right')
 bottom = openmc.YPlane(surface_id=6, y0=-0.63, name='bottom')

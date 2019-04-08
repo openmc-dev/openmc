@@ -30,7 +30,7 @@ class PeriodicTest(PyAPITestHarness):
 
         z_min = openmc.ZPlane(5, z0=-5., boundary_type='reflective')
         z_max = openmc.ZPlane(6, z0=5., boundary_type='reflective')
-        z_cyl = openmc.ZCylinder(7, x0=-2.5, y0=2.5, R=2.0)
+        z_cyl = openmc.ZCylinder(7, x0=-2.5, y0=2.5, r=2.0)
 
         outside_cyl = openmc.Cell(1, fill=water, region=(
             +x_min & -x_max & +y_min & -y_max & +z_min & -z_max & +z_cyl))

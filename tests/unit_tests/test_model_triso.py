@@ -47,7 +47,7 @@ def centers_rectangular_prism():
 
 @pytest.fixture(scope='module')
 def centers_x_cylinder():
-    cylinder = openmc.XCylinder(R=1, y0=1, z0=2)
+    cylinder = openmc.XCylinder(r=1, y0=1, z0=2)
     min_x = openmc.XPlane(x0=0)
     max_x = openmc.XPlane(x0=1)
     region = +min_x & -max_x & -cylinder
@@ -57,7 +57,7 @@ def centers_x_cylinder():
 
 @pytest.fixture(scope='module')
 def centers_y_cylinder():
-    cylinder = openmc.YCylinder(R=1, x0=1, z0=2)
+    cylinder = openmc.YCylinder(r=1, x0=1, z0=2)
     min_y = openmc.YPlane(y0=0)
     max_y = openmc.YPlane(y0=1)
     region = +min_y & -max_y & -cylinder
@@ -67,7 +67,7 @@ def centers_y_cylinder():
 
 @pytest.fixture(scope='module')
 def centers_z_cylinder():
-    cylinder = openmc.ZCylinder(R=1, x0=1, y0=2)
+    cylinder = openmc.ZCylinder(r=1, x0=1, y0=2)
     min_z = openmc.ZPlane(z0=0)
     max_z = openmc.ZPlane(z0=1)
     region = +min_z & -max_z & -cylinder
@@ -77,7 +77,7 @@ def centers_z_cylinder():
 
 @pytest.fixture(scope='module')
 def centers_sphere():
-    sphere = openmc.Sphere(R=1, x0=1, y0=2, z0=3)
+    sphere = openmc.Sphere(r=1, x0=1, y0=2, z0=3)
     region = -sphere
     return openmc.model.pack_spheres(radius=_RADIUS, region=region,
         pf=_PACKING_FRACTION, initial_pf=0.2)
@@ -85,8 +85,8 @@ def centers_sphere():
 
 @pytest.fixture(scope='module')
 def centers_spherical_shell():
-    sphere = openmc.Sphere(R=1, x0=1, y0=2, z0=3)
-    inner_sphere = openmc.Sphere(R=0.5, x0=1, y0=2, z0=3)
+    sphere = openmc.Sphere(r=1, x0=1, y0=2, z0=3)
+    inner_sphere = openmc.Sphere(r=0.5, x0=1, y0=2, z0=3)
     region = -sphere & +inner_sphere
     return openmc.model.pack_spheres(radius=_RADIUS, region=region,
         pf=_PACKING_FRACTION, initial_pf=0.2)
@@ -94,7 +94,7 @@ def centers_spherical_shell():
 
 @pytest.fixture(scope='module')
 def triso_universe():
-    sphere = openmc.Sphere(R=_RADIUS)
+    sphere = openmc.Sphere(r=_RADIUS)
     cell = openmc.Cell(region=-sphere)
     univ = openmc.Universe(cells=[cell])
     return univ
@@ -179,10 +179,10 @@ def test_packing_fraction(container, centers):
 def test_num_spheres():
     """Check that the function returns the correct number of spheres"""
     centers = openmc.model.pack_spheres(
-        radius=_RADIUS, region=-openmc.Sphere(R=1), num_spheres=50
+        radius=_RADIUS, region=-openmc.Sphere(r=1), num_spheres=50
     )
     assert len(centers) == 50
-    
+
 
 def test_triso_lattice(triso_universe, centers_rectangular_prism):
     trisos = [openmc.model.TRISO(_RADIUS, triso_universe, c)
@@ -203,7 +203,7 @@ def test_container_input(triso_universe):
     # Invalid container shape
     with pytest.raises(ValueError):
         centers = openmc.model.pack_spheres(
-            radius=_RADIUS, region=+openmc.Sphere(R=1), num_spheres=100
+            radius=_RADIUS, region=+openmc.Sphere(r=1), num_spheres=100
         )
 
 
@@ -211,17 +211,17 @@ def test_packing_fraction_input():
     # Provide neither packing fraction nor number of spheres
     with pytest.raises(ValueError):
         centers = openmc.model.pack_spheres(
-            radius=_RADIUS, region=-openmc.Sphere(R=1)
+            radius=_RADIUS, region=-openmc.Sphere(r=1)
         )
 
     # Specify a packing fraction that is too high for CRP
     with pytest.raises(ValueError):
         centers = openmc.model.pack_spheres(
-            radius=_RADIUS, region=-openmc.Sphere(R=1), pf=1
+            radius=_RADIUS, region=-openmc.Sphere(r=1), pf=1
         )
 
     # Specify a packing fraction that is too high for RSP
     with pytest.raises(ValueError):
         centers = openmc.model.pack_spheres(
-            radius=_RADIUS, region=-openmc.Sphere(R=1), pf=0.5, initial_pf=0.4
+            radius=_RADIUS, region=-openmc.Sphere(r=1), pf=0.5, initial_pf=0.4
         )

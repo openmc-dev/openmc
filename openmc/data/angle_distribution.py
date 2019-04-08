@@ -115,7 +115,7 @@ class AngleDistribution(EqualityMixin):
             Angular distribution
 
         """
-        energy = group['energy'].value
+        energy = group['energy'][()]
         data = group['mu']
         offsets = data.attrs['offsets']
         interpolation = data.attrs['interpolation']

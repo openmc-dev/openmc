@@ -170,19 +170,19 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
 
         # If the HDF5 'type' variable matches this class's short_name, then
         # there is no overriden from_hdf5 method.  Pass the bins to __init__.
-        if group['type'].value.decode() == cls.short_name.lower():
-            out = cls(group['bins'].value, filter_id=filter_id)
-            out._num_bins = group['n_bins'].value
+        if group['type'][()].decode() == cls.short_name.lower():
+            out = cls(group['bins'][()], filter_id=filter_id)
+            out._num_bins = group['n_bins'][()]
             return out
 
         # Search through all subclasses and find the one matching the HDF5
         # 'type'.  Call that class's from_hdf5 method.
         for subclass in cls._recursive_subclasses():
-            if group['type'].value.decode() == subclass.short_name.lower():
+            if group['type'][()].decode() == subclass.short_name.lower():
                 return subclass.from_hdf5(group, **kwargs)
 
         raise ValueError("Unrecognized Filter class: '"
-                         + group['type'].value.decode() + "'")
+                         + group['type'][()].decode() + "'")
 
     @property
     def bins(self):
@@ -618,16 +618,16 @@ class MeshFilter(Filter):
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
-        if group['type'].value.decode() != cls.short_name.lower():
+        if group['type'][()].decode() != cls.short_name.lower():
             raise ValueError("Expected HDF5 data for filter type '"
                              + cls.short_name.lower() + "' but got '"
-                             + group['type'].value.decode() + " instead")
+                             + group['type'][()].decode() + " instead")
 
         if 'meshes' not in kwargs:
             raise ValueError(cls.__name__ + " requires a 'meshes' keyword "
                              "argument.")
 
-        mesh_id = group['bins'].value
+        mesh_id = group['bins'][()]
         mesh_obj = kwargs['meshes'][mesh_id]
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
@@ -1191,15 +1191,15 @@ class DistribcellFilter(Filter):
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
-        if group['type'].value.decode() != cls.short_name.lower():
+        if group['type'][()].decode() != cls.short_name.lower():
             raise ValueError("Expected HDF5 data for filter type '"
                              + cls.short_name.lower() + "' but got '"
-                             + group['type'].value.decode() + " instead")
+                             + group['type'][()].decode() + " instead")
 
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
-        out = cls(group['bins'].value, filter_id=filter_id)
-        out._num_bins = group['n_bins'].value
+        out = cls(group['bins'][()], filter_id=filter_id)
+        out._num_bins = group['n_bins'][()]
 
         return out
 
@@ -1638,13 +1638,13 @@ class EnergyFunctionFilter(Filter):
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
-        if group['type'].value.decode() != cls.short_name.lower():
+        if group['type'][()].decode() != cls.short_name.lower():
             raise ValueError("Expected HDF5 data for filter type '"
                              + cls.short_name.lower() + "' but got '"
-                             + group['type'].value.decode() + " instead")
+                             + group['type'][()].decode() + " instead")
 
-        energy = group['energy'].value
-        y = group['y'].value
+        energy = group['energy'][()]
+        y = group['y'][()]
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
         return cls(energy, y, filter_id=filter_id)

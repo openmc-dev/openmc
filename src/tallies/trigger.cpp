@@ -83,6 +83,9 @@ check_tally_triggers(double& ratio, int& tally_id, int& score)
             case TriggerMetric::relative_error:
               uncertainty = rel_err;
               break;
+            case TriggerMetric::not_active:
+              uncertainty = 0.0;
+              break;
           }
 
           // Compute the uncertainty / threshold ratio.
@@ -109,10 +112,9 @@ double
 check_keff_trigger()
 {
   if (settings::run_mode != RUN_MODE_EIGENVALUE) return 0.;
-  if (settings::keff_trigger.metric == TriggerMetric::not_active) return 0.;
 
   double k_combined[2];
-  int err = openmc_get_keff(k_combined);
+  openmc_get_keff(k_combined);
 
   double uncertainty = 0.;
   switch (settings::keff_trigger.metric) {
@@ -124,6 +126,9 @@ check_keff_trigger()
     break;
   case TriggerMetric::relative_error:
     uncertainty = k_combined[1] / k_combined[0];
+    break;
+  case TriggerMetric::not_active:
+    break;
   }
 
   double ratio = uncertainty / settings::keff_trigger.threshold;

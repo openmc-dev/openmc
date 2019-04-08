@@ -37,7 +37,7 @@ def test_fixed_source():
     mat.add_nuclide('U238', 0.0001)
     mat.set_density('g/cc', 7.5)
 
-    surf = openmc.Sphere(R=10.0, boundary_type='vacuum')
+    surf = openmc.Sphere(r=10.0, boundary_type='vacuum')
     cell = openmc.Cell(fill=mat, region=-surf)
 
     model = openmc.model.Model()

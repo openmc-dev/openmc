@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
-project(openmc CXX)
+project(openmc C CXX)
 
 # Setup output directories
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -20,16 +20,13 @@ option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
 option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
 
-# Maximum number of nested coordinates levels
-set(maxcoord 10 CACHE STRING "Maximum number of nested coordinate levels")
-
 #===============================================================================
 # MPI for distributed-memory parallelism
 #===============================================================================
 
 set(MPI_ENABLED FALSE)
 if($ENV{CXX} MATCHES "(mpi[^/]*|CC)$")
-  message("-- Detected MPI wrapper: $ENV{CXX}")
+  message(STATUS "Detected MPI wrapper: $ENV{CXX}")
   set(MPI_ENABLED TRUE)
 endif()
 
@@ -38,9 +35,6 @@ endif()
 #===============================================================================
 if(dagmc)
   find_package(DAGMC REQUIRED)
-  if(NOT DAGMC_FOUND)
-    message(FATAL_ERROR "Could not find DAGMC installation")
-  endif()
   link_directories(${DAGMC_LIBRARY_DIRS})
 endif()
 
@@ -66,15 +60,12 @@ if(NOT DEFINED HDF5_PREFER_PARALLEL)
   endif()
 endif()
 
-find_package(HDF5 COMPONENTS HL)
-if(NOT HDF5_FOUND)
-  message(FATAL_ERROR "Could not find HDF5")
-endif()
+find_package(HDF5 REQUIRED COMPONENTS C HL)
 if(HDF5_IS_PARALLEL)
   if(NOT MPI_ENABLED)
     message(FATAL_ERROR "Parallel HDF5 must be used with MPI.")
   endif()
-  message("-- Using parallel HDF5")
+  message(STATUS "Using parallel HDF5")
 endif()
 
 #===============================================================================
@@ -98,7 +89,7 @@ if(debug)
   list(APPEND cxxflags -g -O0)
 endif()
 if(profile)
-  list(APPEND cxxflags -pg)
+  list(APPEND cxxflags -g -fno-omit-frame-pointer)
 endif()
 if(optimize)
   list(REMOVE_ITEM cxxflags -O2)
@@ -106,8 +97,8 @@ if(optimize)
 endif()
 
 # Show flags being used
-message(STATUS "C++ flags: ${cxxflags}")
-message(STATUS "Linker flags: ${ldflags}")
+message(STATUS "OpenMC C++ flags: ${cxxflags}")
+message(STATUS "OpenMC Linker flags: ${ldflags}")
 
 #===============================================================================
 # pugixml library
@@ -149,7 +140,7 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 # the RPATH to be used when installing, but only if it's not a system directory
 list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
 if("${isSystemDir}" STREQUAL "-1")
-   set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 endif()
 
 #===============================================================================
@@ -255,13 +246,11 @@ set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc)
 
 target_include_directories(libopenmc
-  PUBLIC include
-  PRIVATE ${HDF5_INCLUDE_DIRS})
+  PUBLIC include ${HDF5_INCLUDE_DIRS})
 
 # Set compile flags
 target_compile_options(libopenmc PRIVATE ${cxxflags})
 
-target_compile_definitions(libopenmc PRIVATE -DMAX_COORD=${maxcoord})
 if (HDF5_IS_PARALLEL)
   target_compile_definitions(libopenmc PRIVATE -DPHDF5)
 endif()
@@ -281,8 +270,8 @@ endif()
 
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
-target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml
-                      faddeeva xtensor)
+target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
+                      pugixml faddeeva xtensor)
 
 if(dagmc)
   target_compile_definitions(libopenmc PRIVATE DAGMC)

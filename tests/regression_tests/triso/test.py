@@ -44,7 +44,7 @@ class TRISOTestHarness(PyAPITestHarness):
         graphite.add_s_alpha_beta('c_Graphite')
 
         # Create TRISO particles
-        spheres = [openmc.Sphere(R=r*1e-4)
+        spheres = [openmc.Sphere(r=r*1e-4)
                    for r in [212.5, 312.5, 347.5, 382.5]]
         c1 = openmc.Cell(fill=fuel, region=-spheres[0])
         c2 = openmc.Cell(fill=porous_carbon, region=+spheres[0] & -spheres[1])

@@ -23,7 +23,8 @@ def test_cmfd_physical_adjoint():
     # Initialize and run CMFDRun object
     cmfd_run = cmfd.CMFDRun()
     cmfd_run.mesh = cmfd_mesh
-    cmfd_run.begin = 5
+    cmfd_run.tally_begin = 5
+    cmfd_run.feedback_begin = 5
     cmfd_run.feedback = True
     cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
     cmfd_run.run_adjoint = True
@@ -52,7 +53,8 @@ def test_cmfd_math_adjoint():
     # Initialize and run CMFDRun object
     cmfd_run = cmfd.CMFDRun()
     cmfd_run.mesh = cmfd_mesh
-    cmfd_run.begin = 5
+    cmfd_run.tally_begin = 5
+    cmfd_run.feedback_begin = 5
     cmfd_run.feedback = True
     cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
     cmfd_run.run_adjoint = True
@@ -80,7 +82,8 @@ def test_cmfd_write_matrices():
     # Initialize and run CMFDRun object
     cmfd_run = cmfd.CMFDRun()
     cmfd_run.mesh = cmfd_mesh
-    cmfd_run.begin = 5
+    cmfd_run.tally_begin = 5
+    cmfd_run.feedback_begin = 5
     cmfd_run.display = {'dominance': True}
     cmfd_run.feedback = True
     cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
@@ -127,7 +130,8 @@ def test_cmfd_feed():
     # Initialize and run CMFDRun object
     cmfd_run = cmfd.CMFDRun()
     cmfd_run.mesh = cmfd_mesh
-    cmfd_run.begin = 5
+    cmfd_run.tally_begin = 5
+    cmfd_run.feedback_begin = 5
     cmfd_run.display = {'dominance': True}
     cmfd_run.feedback = True
     cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]

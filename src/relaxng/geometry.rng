@@ -294,6 +294,16 @@
               </list>
             </attribute>
           </choice>
+          <optional>
+            <choice>
+              <element name="orient">
+                <value>OX</value>
+              </element>
+              <attribute name="orient">
+                <value>OX</value>
+              </attribute>
+            </choice>
+          </optional>
           <choice>
             <element name="universes">
               <list>

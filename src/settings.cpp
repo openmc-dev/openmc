@@ -383,20 +383,8 @@ void read_settings_xml()
 
   // Number of OpenMP threads
   if (check_for_node(root, "threads")) {
-#ifdef _OPENMP
-    if (simulation::n_threads == 0) {
-      simulation::n_threads = std::stoi(get_node_value(root, "threads"));
-      if (simulation::n_threads < 1) {
-        std::stringstream msg;
-        msg << "Invalid number of threads: " << simulation::n_threads;
-        fatal_error(msg);
-      }
-      omp_set_num_threads(simulation::n_threads);
-    }
-#else
-    if (mpi::master) warning("OpenMC was not compiled with OpenMP support; "
-      "ignoring number of threads.");
-#endif
+    if (mpi::master) warning("The <threads> element has been deprecated. Use "
+      "the OMP_NUM_THREADS environment variable to set the number of threads.");
   }
 
   // ==========================================================================

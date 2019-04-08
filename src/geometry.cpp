@@ -22,6 +22,7 @@ namespace openmc {
 namespace model {
 
 int root_universe {-1};
+int n_coord_levels;
 
 std::vector<int64_t> overlap_check_count;
 
@@ -31,15 +32,13 @@ std::vector<int64_t> overlap_check_count;
 // Non-member functions
 //==============================================================================
 
-extern "C" bool
-check_cell_overlap(Particle* p)
+bool check_cell_overlap(Particle* p)
 {
   int n_coord = p->n_coord_;
 
   // Loop through each coordinate level
   for (int j = 0; j < n_coord; j++) {
     Universe& univ = *model::universes[p->coord_[j].universe];
-    int n = univ.cells_.size();
 
     // Loop through each cell on this level
     for (auto index_cell : univ.cells_) {
@@ -90,7 +89,12 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
   } else {
     int i_universe = p->coord_[p->n_coord_-1].universe;
-    const auto& cells {model::universes[i_universe]->cells_};
+    const auto& univ {*model::universes[i_universe]};
+    const auto& cells {
+      !univ.partitioner_
+      ? model::universes[i_universe]->cells_
+      : univ.partitioner_->get_cells(p->r_local(), p->u_local())
+    };
     for (auto it = cells.cbegin(); it != cells.cend(); it++) {
       i_cell = *it;
 
@@ -245,7 +249,7 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
 //==============================================================================
 
-extern "C" bool
+bool
 find_cell(Particle* p, bool use_neighbor_lists)
 {
   // Determine universe (if not yet set, use root universe).
@@ -257,7 +261,7 @@ find_cell(Particle* p, bool use_neighbor_lists)
   }
 
   // Reset all the deeper coordinate levels.
-  for (int i = p->n_coord_; i < MAX_COORD; i++) {
+  for (int i = p->n_coord_; i < p->coord_.size(); i++) {
     p->coord_[i].reset();
   }
 
@@ -287,8 +291,8 @@ find_cell(Particle* p, bool use_neighbor_lists)
 
 //==============================================================================
 
-extern "C" void
-cross_lattice(Particle* p, int lattice_translation[3])
+void
+cross_lattice(Particle* p, const BoundaryInfo& boundary)
 {
   auto& lat {*model::lattices[p->coord_[p->n_coord_-1].lattice]};
 
@@ -302,9 +306,9 @@ cross_lattice(Particle* p, int lattice_translation[3])
   }
 
   // Set the lattice indices.
-  p->coord_[p->n_coord_-1].lattice_x += lattice_translation[0];
-  p->coord_[p->n_coord_-1].lattice_y += lattice_translation[1];
-  p->coord_[p->n_coord_-1].lattice_z += lattice_translation[2];
+  p->coord_[p->n_coord_-1].lattice_x += boundary.lattice_translation[0];
+  p->coord_[p->n_coord_-1].lattice_y += boundary.lattice_translation[1];
+  p->coord_[p->n_coord_-1].lattice_z += boundary.lattice_translation[2];
   std::array<int, 3> i_xyz {p->coord_[p->n_coord_-1].lattice_x,
                             p->coord_[p->n_coord_-1].lattice_y,
                             p->coord_[p->n_coord_-1].lattice_z};
@@ -345,18 +349,13 @@ cross_lattice(Particle* p, int lattice_translation[3])
 
 //==============================================================================
 
-extern "C" void
-distance_to_boundary(Particle* p, double* dist, int* surface_crossed,
-                     int lattice_translation[3], int* next_level)
+BoundaryInfo distance_to_boundary(Particle* p)
 {
-  *dist = INFINITY;
+  BoundaryInfo info;
   double d_lat = INFINITY;
   double d_surf = INFINITY;
-  lattice_translation[0] = 0;
-  lattice_translation[1] = 0;
-  lattice_translation[2] = 0;
   int32_t level_surf_cross;
-  std::array<int, 3> level_lat_trans;
+  std::array<int, 3> level_lat_trans {};
 
   // Loop over each coordinate level.
   for (int i = 0; i < p->n_coord_; i++) {
@@ -401,43 +400,43 @@ distance_to_boundary(Particle* p, double* dist, int* surface_crossed,
     // If the boundary on this coordinate level is coincident with a boundary on
     // a higher level then we need to make sure that the higher level boundary
     // is selected.  This logic must consider floating point precision.
-    if (d_surf < d_lat) {
-      if (*dist == INFINITY || ((*dist) - d_surf)/(*dist) >= FP_REL_PRECISION) {
-        *dist = d_surf;
+    double& d = info.distance;
+    if (d_surf < d_lat - FP_COINCIDENT) {
+      if (d == INFINITY || (d - d_surf)/d >= FP_REL_PRECISION) {
+        d = d_surf;
 
         // If the cell is not simple, it is possible that both the negative and
         // positive half-space were given in the region specification. Thus, we
         // have to explicitly check which half-space the particle would be
         // traveling into if the surface is crossed
         if (c.simple_) {
-          *surface_crossed = level_surf_cross;
+          info.surface_index = level_surf_cross;
         } else {
           Position r_hit = r + d_surf * u;
           Surface& surf {*model::surfaces[std::abs(level_surf_cross)-1]};
           Direction norm = surf.normal(r_hit);
           if (u.dot(norm) > 0) {
-            *surface_crossed = std::abs(level_surf_cross);
+            info.surface_index = std::abs(level_surf_cross);
           } else {
-            *surface_crossed = -std::abs(level_surf_cross);
+            info.surface_index = -std::abs(level_surf_cross);
           }
         }
 
-        lattice_translation[0] = 0;
-        lattice_translation[1] = 0;
-        lattice_translation[2] = 0;
-        *next_level = i + 1;
+        info.lattice_translation[0] = 0;
+        info.lattice_translation[1] = 0;
+        info.lattice_translation[2] = 0;
+        info.coord_level = i + 1;
       }
     } else {
-      if (*dist == INFINITY || ((*dist) - d_lat)/(*dist) >= FP_REL_PRECISION) {
-        *dist = d_lat;
-        *surface_crossed = F90_NONE;
-        lattice_translation[0] = level_lat_trans[0];
-        lattice_translation[1] = level_lat_trans[1];
-        lattice_translation[2] = level_lat_trans[2];
-        *next_level = i + 1;
+      if (d == INFINITY || (d - d_lat)/d >= FP_REL_PRECISION) {
+        d = d_lat;
+        info.surface_index = 0;
+        info.lattice_translation = level_lat_trans;
+        info.coord_level = i + 1;
       }
     }
   }
+  return info;
 }
 
 //==============================================================================

@@ -197,6 +197,20 @@ score_str_to_int(std::string score_str)
     return N_PT;
   if (score_str == "(n,da)")
     return N_DA;
+  if (score_str == "(n,Xp)" || score_str == "H1-production")
+    return N_XP;
+  if (score_str == "(n,Xd)" || score_str == "H2-production")
+    return N_XD;
+  if (score_str == "(n,Xt)" || score_str == "H3-production")
+    return N_XT;
+  if (score_str == "(n,X3He)" || score_str == "He3-production")
+    return N_X3HE;
+  if (score_str == "(n,Xa)" || score_str == "He4-production")
+    return N_XA;
+  if (score_str == "heating")
+    return HEATING;
+  if (score_str == "damage-energy")
+    return DAMAGE_ENERGY;
 
   // So far we have not identified this score string.  Check to see if it is a
   // deprecated score.
@@ -314,7 +328,6 @@ Tally::set_scores(std::vector<std::string> scores)
   // Iterate over the given scores.
   for (auto score_str : scores) {
     // Make sure a delayed group filter wasn't used with an incompatible score.
-    bool has_delayedgroup = delayedgroup_filter_ != C_NONE;
     if (delayedgroup_filter_ != C_NONE) {
       if (score_str != "delayed-nu-fission" && score_str != "decay-rate")
         fatal_error("Cannot tally " + score_str + "with a delayedgroup filter");
@@ -704,7 +717,7 @@ void read_tallies_xml()
       const auto& f = model::tally_filters[i_filter].get();
 
       auto pf = dynamic_cast<ParticleFilter*>(f);
-      if (pf) particle_filter_index = j;
+      if (pf) particle_filter_index = i_filter;
 
       // Change the tally estimator if a filter demands it
       std::string filt_type = f->type();

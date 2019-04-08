@@ -448,11 +448,13 @@ class IncidentNeutron(EqualityMixin):
         for rx in self.reactions.values():
             # Skip writing redundant reaction if it doesn't have photon
             # production or is a summed transmutation reaction. MT=4 is also
-            # sometimes needed for probability tables.
+            # sometimes needed for probability tables. Also write gas
+            # production, heating, and damage energy production.
             if rx.redundant:
                 photon_rx = any(p.particle == 'photon' for p in rx.products)
-                transmutation_rx = (rx.mt in (16, 103, 104, 105, 106, 107))
-                if not (photon_rx or transmutation_rx or rx.mt == 4):
+                keep_mts = (4, 16, 103, 104, 105, 106, 107,
+                            203, 204, 205, 206, 207, 301, 444)
+                if not (photon_rx or rx.mt in keep_mts):
                     continue
 
             rx_group = rxs_group.create_group('reaction_{:03}'.format(rx.mt))
@@ -519,7 +521,7 @@ class IncidentNeutron(EqualityMixin):
         kTg = group['kTs']
         kTs = []
         for temp in kTg:
-            kTs.append(kTg[temp].value)
+            kTs.append(kTg[temp][()])
 
         data = cls(name, atomic_number, mass_number, metastable,
                    atomic_weight_ratio, kTs)
@@ -527,7 +529,7 @@ class IncidentNeutron(EqualityMixin):
         # Read energy grid
         e_group = group['energy']
         for temperature, dset in e_group.items():
-            data.energy[temperature] = dset.value
+            data.energy[temperature] = dset[()]
 
         # Read reaction data
         rxs_group = group['reactions']
@@ -615,13 +617,14 @@ class IncidentNeutron(EqualityMixin):
 
         # Read energy grid
         n_energy = ace.nxs[3]
-        energy = ace.xss[ace.jxs[1]:ace.jxs[1] + n_energy]*EV_PER_MEV
+        i = ace.jxs[1]
+        energy = ace.xss[i : i + n_energy]*EV_PER_MEV
         data.energy[strT] = energy
-        total_xs = ace.xss[ace.jxs[1] + n_energy:ace.jxs[1] + 2 * n_energy]
-        absorption_xs = ace.xss[ace.jxs[1] + 2 * n_energy:ace.jxs[1] +
-                                3 * n_energy]
+        total_xs = ace.xss[i + n_energy : i + 2*n_energy]
+        absorption_xs = ace.xss[i + 2*n_energy : i + 3*n_energy]
+        heating_number = ace.xss[i + 4*n_energy : i + 5*n_energy]*EV_PER_MEV
 
-        # Create redundant reactions (total and absorption)
+        # Create redundant reactions (total, absorption, and heating)
         total = Reaction(1)
         total.xs[strT] = Tabulated1D(energy, total_xs)
         total.redundant = True
@@ -633,13 +636,15 @@ class IncidentNeutron(EqualityMixin):
             absorption.redundant = True
             data.reactions[101] = absorption
 
+        heating = Reaction(301)
+        heating.xs[strT] = Tabulated1D(energy, heating_number*total_xs)
+        heating.redundant = True
+        data.reactions[301] = heating
+
         # Read each reaction
         n_reaction = ace.nxs[4] + 1
         for i in range(n_reaction):
             rx = Reaction.from_ace(ace, i)
-            # Don't include gas production / damage cross sections
-            if 200 < rx.mt < 219 or rx.mt == 444:
-                continue
             data.reactions[rx.mt] = rx
 
         # Some photon production reactions may be assigned to MTs that don't
@@ -689,6 +694,8 @@ class IncidentNeutron(EqualityMixin):
         for rx in data:
             mts = data.get_reaction_components(rx.mt)
             if mts != [rx.mt]:
+                rx.redundant = True
+            if rx.mt in (203, 204, 205, 206, 207, 444):
                 rx.redundant = True
 
         # Read unresolved resonance probability tables
@@ -784,16 +791,19 @@ class IncidentNeutron(EqualityMixin):
         return data
 
     @classmethod
-    def from_njoy(cls, filename, temperatures=None, **kwargs):
+    def from_njoy(cls, filename, temperatures=None, evaluation=None, **kwargs):
         """Generate incident neutron data by running NJOY.
 
         Parameters
         ----------
         filename : str
-            Path to ENDF evaluation
+            Path to ENDF file
         temperatures : iterable of float
             Temperatures in Kelvin to produce data at. If omitted, data is
             produced at room temperature (293.6 K)
+        evaluation : openmc.data.endf.Evaluation, optional
+            If the ENDF file contains multiple material evaluations, this
+            argument indicates which evaluation to use.
         **kwargs
             Keyword arguments passed to :func:`openmc.data.njoy.make_ace`
 
@@ -808,6 +818,7 @@ class IncidentNeutron(EqualityMixin):
             ace_file = os.path.join(tmpdir, 'ace')
             xsdir_file = os.path.join(tmpdir, 'xsdir')
             pendf_file = os.path.join(tmpdir, 'pendf')
+            kwargs['evaluation'] = evaluation
             make_ace(filename, temperatures, ace_file, xsdir_file,
                      pendf_file, **kwargs)
 
@@ -818,7 +829,7 @@ class IncidentNeutron(EqualityMixin):
                 data.add_temperature_from_ace(table)
 
             # Add fission energy release data
-            ev = Evaluation(filename)
+            ev = evaluation if evaluation is not None else Evaluation(filename)
             if (1, 458) in ev.section:
                 data.fission_energy = FissionEnergyRelease.from_endf(ev, data)
 

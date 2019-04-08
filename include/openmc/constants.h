@@ -225,6 +225,13 @@ constexpr int N_3P    {197};
 constexpr int N_N3P   {198};
 constexpr int N_3N2PA {199};
 constexpr int N_5N2P  {200};
+constexpr int N_XP    {203};
+constexpr int N_XD    {204};
+constexpr int N_XT    {205};
+constexpr int N_X3HE  {206};
+constexpr int N_XA    {207};
+constexpr int HEATING {301};
+constexpr int DAMAGE_ENERGY {444};
 constexpr int COHERENT {502};
 constexpr int INCOHERENT {504};
 constexpr int PAIR_PROD_ELEC {515};
@@ -396,8 +403,6 @@ constexpr int LEAKAGE       {3};
 // Miscellaneous
 constexpr int C_NONE {-1};
 constexpr int F90_NONE {0}; //TODO: replace usage of this with C_NONE
-constexpr int ERROR_INT {-2147483647}; // TODO: use <numeric_limits> when F90
-                                       // interop is gone
 
 // Interpolation rules
 enum class Interpolation {

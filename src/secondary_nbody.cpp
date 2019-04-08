@@ -55,6 +55,8 @@ void NBodyPhaseSpace::sample(double E_in, double& E_out, double& mu) const
     r6 = prn();
     y = -std::log(r1*r2*r3*r4) - std::log(r5) * std::pow(std::cos(PI/2.0*r6), 2);
     break;
+  default:
+    throw std::runtime_error{"N-body phase space with >5 bodies."};
   }
 
   // Now determine v and E_out

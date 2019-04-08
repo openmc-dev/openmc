@@ -121,7 +121,6 @@ void initialize_mpi(MPI_Comm intracomm)
 int
 parse_command_line(int argc, char* argv[])
 {
-  char buffer[256];  // buffer for reading attribute
   int last_flag = 0;
   for (int i=1; i < argc; ++i) {
     std::string arg {argv[i]};
@@ -196,13 +195,13 @@ parse_command_line(int argc, char* argv[])
 
 #ifdef _OPENMP
         // Read and set number of OpenMP threads
-        simulation::n_threads = std::stoi(argv[i]);
-        if (simulation::n_threads < 1) {
+        int n_threads = std::stoi(argv[i]);
+        if (n_threads < 1) {
           std::string msg {"Number of threads must be positive."};
           strcpy(openmc_err_msg, msg.c_str());
           return OPENMC_E_INVALID_ARGUMENT;
         }
-        omp_set_num_threads(simulation::n_threads);
+        omp_set_num_threads(n_threads);
 #else
         if (mpi::master)
           warning("Ignoring number of threads specified on command line.");

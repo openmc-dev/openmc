@@ -1,6 +1,8 @@
 #ifndef OPENMC_GEOMETRY_H
 #define OPENMC_GEOMETRY_H
 
+#include <array>
+#include <cmath>
 #include <cstdint>
 #include <vector>
 
@@ -15,18 +17,37 @@ namespace openmc {
 
 namespace model {
 
-extern "C" int root_universe;
+extern int root_universe;  //!< Index of root universe
+extern int n_coord_levels; //!< Number of CSG coordinate levels
 
 extern std::vector<int64_t> overlap_check_count;
 
 } // namespace model
 
 //==============================================================================
+// Information about nearest boundary crossing
+//==============================================================================
+
+struct BoundaryInfo {
+  double distance {INFINITY};   //!< distance to nearest boundary
+  int surface_index {0}; //!< if boundary is surface, index in surfaces vector
+  int coord_level;   //!< coordinate level after crossing boundary
+  std::array<int, 3> lattice_translation {}; //!< which way lattice indices will change
+};
+
+//==============================================================================
+//! Check two distances by coincidence tolerance
+//==============================================================================
+
+inline bool coincident(double d1, double d2) {
+  return std::abs(d1 - d2) < FP_COINCIDENT;
+}
+
+//==============================================================================
 //! Check for overlapping cells at a particle's position.
 //==============================================================================
 
-extern "C" bool
-check_cell_overlap(Particle* p);
+bool check_cell_overlap(Particle* p);
 
 //==============================================================================
 //! Locate a particle in the geometry tree and set its geometry data fields.
@@ -40,23 +61,19 @@ check_cell_overlap(Particle* p);
 //!   valid geometry coordinate stack.
 //==============================================================================
 
-extern "C" bool
-find_cell(Particle* p, bool use_neighbor_lists);
+bool find_cell(Particle* p, bool use_neighbor_lists);
 
 //==============================================================================
 //! Move a particle into a new lattice tile.
 //==============================================================================
 
-extern "C" void
-cross_lattice(Particle* p, int lattice_translation[3]);
+void cross_lattice(Particle* p, const BoundaryInfo& boundary);
 
 //==============================================================================
 //! Find the next boundary a particle will intersect.
 //==============================================================================
 
-extern "C" void
-distance_to_boundary(Particle* p, double* dist, int* surface_crossed,
-                     int lattice_translation[3], int* next_level);
+BoundaryInfo distance_to_boundary(Particle* p);
 
 } // namespace openmc
 

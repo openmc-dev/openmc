@@ -20,7 +20,7 @@ class ResultsList(list):
             check_filetype_version(fh, 'depletion results', _VERSION_RESULTS[0])
 
             # Get number of results stored
-            n = fh["number"].value.shape[0]
+            n = fh["number"][...].shape[0]
 
             for i in range(n):
                 self.append(Results.from_hdf5(fh, i))

@@ -12,6 +12,11 @@ adding new code in OpenMC.
 C++
 ---
 
+Indentation
+-----------
+
+Use two spaces per indentation level.
+
 Miscellaneous
 -------------
 
@@ -126,6 +131,15 @@ single declaration to avoid confusion:
 Curly braces
 ------------
 
+For a class declaration, the opening brace should be on the same line that
+lists the name of the class.
+
+.. code-block:: C++
+
+    class Matrix {
+      ...
+    };
+
 For a function definition, the opening and closing braces should each be on
 their own lines.  This helps distinguish function code from the argument list.
 If the entire function fits on one or two lines, then the braces can be on the
@@ -210,11 +224,18 @@ Use of third-party Python packages should be limited to numpy_, scipy_,
 matplotlib_, pandas_, and h5py_. Use of other third-party packages must be
 implemented as optional dependencies rather than required dependencies.
 
+Prefer pathlib_ when working with filesystem paths over functions in the os_
+module or other standard-library modules. Functions that accept arguments that
+represent a filesystem path should work with both strings and Path_ objects.
+
 .. _C++ Core Guidelines: http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
 .. _PEP8: https://www.python.org/dev/peps/pep-0008/
-.. _numpydoc: https://github.com/numpy/numpy/blob/master/doc/HOWTO_DOCUMENT.rst.txt
+.. _numpydoc: https://numpydoc.readthedocs.io/en/latest/format.html
 .. _numpy: http://www.numpy.org/
 .. _scipy: https://www.scipy.org/
 .. _matplotlib: https://matplotlib.org/
 .. _pandas: https://pandas.pydata.org/
-.. _h5py: http://www.h5py.org/
+.. _h5py: https://www.h5py.org/
+.. _pathlib: https://docs.python.org/3/library/pathlib.html
+.. _os: https://docs.python.org/3/library/os.html
+.. _Path: https://docs.python.org/3/library/pathlib.html#pathlib.Path

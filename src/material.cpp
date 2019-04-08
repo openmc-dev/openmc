@@ -451,6 +451,101 @@ void Material::init_thermal()
   thermal_tables_ = tables;
 }
 
+void Material::collision_stopping_power(double* s_col, bool positron)
+{
+  // Average electron number and average atomic weight
+  double electron_density = 0.0;
+  double mass_density = 0.0;
+
+  // Log of the mean excitation energy of the material
+  double log_I = 0.0;
+
+  // Effective number of conduction electrons in the material
+  double n_conduction = 0.0;
+
+  // Oscillator strength and square of the binding energy for each oscillator
+  // in material
+  std::vector<double> f;
+  std::vector<double> e_b_sq;
+
+  for (int i = 0; i < element_.size(); ++i) {
+    const auto& elm = data::elements[element_[i]];
+    double awr = data::nuclides[nuclide_[i]]->awr_;
+
+    // Get atomic density of nuclide given atom/weight percent
+    double atom_density = (atom_density_[0] > 0.0) ?
+      atom_density_[i] : -atom_density_[i] / awr;
+
+    electron_density += atom_density * elm.Z_;
+    mass_density += atom_density * awr * MASS_NEUTRON;
+    log_I += atom_density * elm.Z_ * std::log(elm.I_);
+
+    for (int j = 0; j < elm.n_electrons_.size(); ++j) {
+      if (elm.n_electrons_[j] < 0) {
+        n_conduction -= elm.n_electrons_[j] * atom_density;
+        continue;
+      }
+      e_b_sq.push_back(elm.ionization_energy_[j] * elm.ionization_energy_[j]);
+      f.push_back(elm.n_electrons_[j] * atom_density);
+    }
+  }
+  log_I /= electron_density;
+  n_conduction /= electron_density;
+  for (auto& f_i : f) f_i /= electron_density;
+
+  // Get density in g/cm^3 if it is given in atom/b-cm
+  double density = (density_ < 0.0) ? -density_ : mass_density / N_AVOGADRO;
+
+  // Calculate the square of the plasma energy
+  double e_p_sq = PLANCK_C * PLANCK_C * PLANCK_C * N_AVOGADRO *
+    electron_density * density / (2.0 * PI * PI * FINE_STRUCTURE *
+    MASS_ELECTRON_EV * mass_density);
+
+  // Get the Sternheimer adjustment factor
+  double rho = sternheimer_adjustment(f, e_b_sq, e_p_sq, n_conduction, log_I,
+    1.0e-6, 100);
+
+  // Classical electron radius in cm
+  constexpr double CM_PER_ANGSTROM {1.0e-8};
+  constexpr double r_e = CM_PER_ANGSTROM * PLANCK_C / (2.0 * PI *
+    FINE_STRUCTURE * MASS_ELECTRON_EV);
+
+  // Constant in expression for collision stopping power
+  constexpr double BARN_PER_CM_SQ {1.0e24};
+  double c = BARN_PER_CM_SQ * 2.0 * PI * r_e * r_e * MASS_ELECTRON_EV *
+    electron_density;
+
+  // Loop over incident charged particle energies
+  for (int i = 0; i < data::ttb_e_grid.size(); ++i) {
+    double E = data::ttb_e_grid(i);
+
+    // Get the density effect correction
+    double delta = density_effect(f, e_b_sq, e_p_sq, n_conduction, rho, E,
+      1.0e-6, 100);
+
+    // Square of the ratio of the speed of light to the velocity of the charged
+    // particle
+    double beta_sq = E * (E + 2.0 * MASS_ELECTRON_EV) / ((E + MASS_ELECTRON_EV)
+      * (E + MASS_ELECTRON_EV));
+
+    double tau = E / MASS_ELECTRON_EV;
+
+    double F;
+    if (positron) {
+      double t = tau + 2.0;
+      F = std::log(4.0) - (beta_sq / 12.0) * (23.0 + 14.0 / t + 10.0 / (t * t)
+        + 4.0 / (t * t * t));
+    } else {
+      F = (1.0 - beta_sq) * (1.0 + tau * tau / 8.0 - (2.0 * tau + 1.0) *
+        std::log(2.0));
+    }
+
+    // Calculate the collision stopping power for this energy
+    s_col[i] = c / beta_sq * (2.0 * (std::log(E) - log_I) + std::log(1.0 + tau
+      / 2.0) + F - delta);
+  }
+}
+
 void Material::init_bremsstrahlung()
 {
   // Create new object
@@ -481,16 +576,11 @@ void Material::init_bremsstrahlung()
     double Z_eq_sq = 0.0;
     double sum_density = 0.0;
 
-    // Calculate the molecular DCS and the molecular total stopping power using
+    // Get the collision stopping power of the material
+    this->collision_stopping_power(stopping_power_collision.data(), positron);
+
+    // Calculate the molecular DCS and the molecular radiative stopping power using
     // Bragg's additivity rule.
-    // TODO: The collision stopping power cannot be accurately calculated using
-    // Bragg's additivity rule since the mean excitation energies and the
-    // density effect corrections cannot simply be summed together. Bragg's
-    // additivity rule fails especially when a higher-density compound is
-    // composed of elements that are in lower-density form at normal temperature
-    // and pressure (at which the NIST stopping powers are given). It will be
-    // used to approximate the collision stopping powers for now, but should be
-    // fixed in the future.
     for (int i = 0; i < n; ++i) {
       // Get pointer to current element
       const auto& elm = data::elements[element_[i]];
@@ -499,7 +589,6 @@ void Material::init_bremsstrahlung()
       // Get atomic density and mass density of nuclide given atom/weight percent
       double atom_density = (atom_density_[0] > 0.0) ?
         atom_density_[i] : -atom_density_[i] / awr;
-      double mass_density = atom_density * awr;
 
       // Calculate the "equivalent" atomic number Zeq of the material
       Z_eq_sq += atom_density * elm.Z_ * elm.Z_;
@@ -508,13 +597,8 @@ void Material::init_bremsstrahlung()
       // Accumulate material DCS
       dcs += (atom_density * elm.Z_ * elm.Z_) * elm.dcs_;
 
-      // Accumulate material collision stopping power
-      stopping_power_collision += (mass_density * MASS_NEUTRON / N_AVOGADRO)
-        * elm.stopping_power_collision_;
-
       // Accumulate material radiative stopping power
-      stopping_power_radiative += (mass_density * MASS_NEUTRON / N_AVOGADRO)
-        * elm.stopping_power_radiative_;
+      stopping_power_radiative += atom_density * elm.stopping_power_radiative_;
     }
     Z_eq_sq /= sum_density;
 
@@ -569,12 +653,13 @@ void Material::init_bremsstrahlung()
         // photon energy k
         double x = x_l + (k - k_l)*(x_r - x_l)/(k_r - k_l);
 
-        // Ratio of the velocity of the charged particle to the speed of light
-        double beta = std::sqrt(e*(e + 2.0*MASS_ELECTRON_EV)) /
-          (e + MASS_ELECTRON_EV);
+        // Square of the ratio of the speed of light to the velocity of the
+        // charged particle
+        double beta_sq = e * (e + 2.0 * MASS_ELECTRON_EV) / ((e +
+          MASS_ELECTRON_EV) * (e + MASS_ELECTRON_EV));
 
         // Compute the integrand of the PDF
-        f(j) = x / (beta*beta * stopping_power(j) * w);
+        f(j) = x / (beta_sq * stopping_power(j) * w);
       }
 
       // Number of points to integrate
@@ -644,13 +729,13 @@ void Material::init_nuclide_index()
   }
 }
 
-void Material::calculate_xs(const Particle& p) const
+void Material::calculate_xs(Particle& p) const
 {
   // Set all material macroscopic cross sections to zero
-  simulation::material_xs.total = 0.0;
-  simulation::material_xs.absorption = 0.0;
-  simulation::material_xs.fission = 0.0;
-  simulation::material_xs.nu_fission = 0.0;
+  p.macro_xs_.total = 0.0;
+  p.macro_xs_.absorption = 0.0;
+  p.macro_xs_.fission = 0.0;
+  p.macro_xs_.nu_fission = 0.0;
 
   if (p.type_ == Particle::Type::neutron) {
     this->calculate_neutron_xs(p);
@@ -659,7 +744,7 @@ void Material::calculate_xs(const Particle& p) const
   }
 }
 
-void Material::calculate_neutron_xs(const Particle& p) const
+void Material::calculate_neutron_xs(Particle& p) const
 {
   // Find energy index on energy grid
   int neutron = static_cast<int>(Particle::Type::neutron);
@@ -707,13 +792,12 @@ void Material::calculate_neutron_xs(const Particle& p) const
     int i_nuclide = nuclide_[i];
 
     // Calculate microscopic cross section for this nuclide
-    const auto& micro {simulation::micro_xs[i_nuclide]};
+    const auto& micro {p.neutron_xs_[i_nuclide]};
     if (p.E_ != micro.last_E
         || p.sqrtkT_ != micro.last_sqrtkT
         || i_sab != micro.index_sab
         || sab_frac != micro.sab_frac) {
-      data::nuclides[i_nuclide]->calculate_xs(i_sab, p.E_, i_grid,
-        p.sqrtkT_, sab_frac);
+      data::nuclides[i_nuclide]->calculate_xs(i_sab, i_grid, sab_frac, p);
     }
 
     // ======================================================================
@@ -723,19 +807,19 @@ void Material::calculate_neutron_xs(const Particle& p) const
     double atom_density = atom_density_(i);
 
     // Add contributions to cross sections
-    simulation::material_xs.total += atom_density * micro.total;
-    simulation::material_xs.absorption += atom_density * micro.absorption;
-    simulation::material_xs.fission += atom_density * micro.fission;
-    simulation::material_xs.nu_fission += atom_density * micro.nu_fission;
+    p.macro_xs_.total += atom_density * micro.total;
+    p.macro_xs_.absorption += atom_density * micro.absorption;
+    p.macro_xs_.fission += atom_density * micro.fission;
+    p.macro_xs_.nu_fission += atom_density * micro.nu_fission;
   }
 }
 
-void Material::calculate_photon_xs(const Particle& p) const
+void Material::calculate_photon_xs(Particle& p) const
 {
-  simulation::material_xs.coherent = 0.0;
-  simulation::material_xs.incoherent = 0.0;
-  simulation::material_xs.photoelectric = 0.0;
-  simulation::material_xs.pair_production = 0.0;
+  p.macro_xs_.coherent = 0.0;
+  p.macro_xs_.incoherent = 0.0;
+  p.macro_xs_.photoelectric = 0.0;
+  p.macro_xs_.pair_production = 0.0;
 
   // Add contribution from each nuclide in material
   for (int i = 0; i < nuclide_.size(); ++i) {
@@ -746,9 +830,9 @@ void Material::calculate_photon_xs(const Particle& p) const
     int i_element = element_[i];
 
     // Calculate microscopic cross section for this nuclide
-    const auto& micro {simulation::micro_photon_xs[i_element]};
+    const auto& micro {p.photon_xs_[i_element]};
     if (p.E_ != micro.last_E) {
-      data::elements[i_element].calculate_xs(p.E_);
+      data::elements[i_element].calculate_xs(p);
     }
 
     // ========================================================================
@@ -758,11 +842,11 @@ void Material::calculate_photon_xs(const Particle& p) const
     double atom_density = atom_density_(i);
 
     // Add contributions to material macroscopic cross sections
-    simulation::material_xs.total += atom_density * micro.total;
-    simulation::material_xs.coherent += atom_density * micro.coherent;
-    simulation::material_xs.incoherent += atom_density * micro.incoherent;
-    simulation::material_xs.photoelectric += atom_density * micro.photoelectric;
-    simulation::material_xs.pair_production += atom_density * micro.pair_production;
+    p.macro_xs_.total += atom_density * micro.total;
+    p.macro_xs_.coherent += atom_density * micro.coherent;
+    p.macro_xs_.incoherent += atom_density * micro.incoherent;
+    p.macro_xs_.photoelectric += atom_density * micro.photoelectric;
+    p.macro_xs_.pair_production += atom_density * micro.pair_production;
   }
 }
 
@@ -865,6 +949,124 @@ void Material::to_hdf5(hid_t group) const
 //==============================================================================
 // Non-method functions
 //==============================================================================
+
+double sternheimer_adjustment(const std::vector<double>& f, const
+  std::vector<double>& e_b_sq, double e_p_sq, double n_conduction, double
+  log_I, double tol, int max_iter)
+{
+  // Get the total number of oscillators
+  int n = f.size();
+
+  // Calculate the Sternheimer adjustment factor using Newton's method
+  double rho = 2.0;
+  int iter;
+  for (iter = 0; iter < max_iter; ++iter) {
+    double rho_0 = rho;
+
+    // Function to find the root of and its derivative
+    double g = 0.0;
+    double gp = 0.0;
+
+    for (int i = 0; i < n; ++i) {
+      // Square of resonance energy of a bound-shell oscillator
+      double e_r_sq = e_b_sq[i] * rho * rho + 2.0 / 3.0 * f[i] * e_p_sq;
+      g += f[i] * std::log(e_r_sq);
+      gp += e_b_sq[i] * f[i] * rho / e_r_sq;
+    }
+    // Include conduction electrons
+    if (n_conduction > 0.0) {
+      g += n_conduction * std::log(n_conduction * e_p_sq);
+    }
+
+    // Set the next guess: rho_n+1 = rho_n - g(rho_n)/g'(rho_n)
+    rho -= (g - 2.0 * log_I) / (2.0 * gp);
+
+    // If the initial guess is too large, rho can be negative
+    if (rho < 0.0) rho = rho_0 / 2.0;
+
+    // Check for convergence
+    if (std::abs(rho - rho_0) / rho_0 < tol) break;
+  }
+  // Did not converge
+  if (iter >= max_iter) {
+    warning("Maximum Newton-Raphson iterations exceeded.");
+    rho = 1.0e-6;
+  }
+  return rho;
+}
+
+double density_effect(const std::vector<double>& f, const std::vector<double>&
+  e_b_sq, double e_p_sq, double n_conduction, double rho, double E, double tol,
+  int max_iter)
+{
+  // Get the total number of oscillators
+  int n = f.size();
+
+  // Square of the ratio of the speed of light to the velocity of the charged
+  // particle
+  double beta_sq = E * (E + 2.0 * MASS_ELECTRON_EV) / ((E + MASS_ELECTRON_EV) *
+       (E + MASS_ELECTRON_EV));
+
+  // For nonmetals, delta = 0 for beta < beta_0, where beta_0 is obtained by
+  // setting the frequency w = 0.
+  double beta_0_sq = 0.0;
+  if (n_conduction == 0.0) {
+    for (int i = 0; i < n; ++i) {
+      beta_0_sq += f[i] * e_p_sq / (e_b_sq[i] * rho * rho);
+    }
+    beta_0_sq = 1.0 / (1.0 + beta_0_sq);
+  }
+  double delta = 0.0;
+  if (beta_sq < beta_0_sq) return delta;
+
+  // Compute the square of the frequency w^2 using Newton's method, with the
+  // initial guess of w^2 equal to beta^2 * gamma^2
+  double w_sq = E / MASS_ELECTRON_EV * (E / MASS_ELECTRON_EV + 2);
+  int iter;
+  for (iter = 0; iter < max_iter; ++iter) {
+    double w_sq_0 = w_sq;
+
+    // Function to find the root of and its derivative
+    double g = 0.0;
+    double gp = 0.0;
+
+    for (int i = 0; i < n; ++i) {
+      double c = e_b_sq[i] * rho * rho / e_p_sq + w_sq;
+      g += f[i] / c;
+      gp -= f[i] / (c * c);
+    }
+    // Include conduction electrons
+    g += n_conduction / w_sq;
+    gp -= n_conduction / (w_sq * w_sq);
+
+    // Set the next guess: w_n+1 = w_n - g(w_n)/g'(w_n)
+    w_sq -= (g + 1.0 - 1.0 / beta_sq) / gp;
+
+    // If the initial guess is too large, w can be negative
+    if (w_sq < 0.0) w_sq = w_sq_0 / 2.0;
+
+    // Check for convergence
+    if (std::abs(w_sq - w_sq_0) / w_sq_0 < tol) break;
+  }
+  // Did not converge
+  if (iter >= max_iter) {
+    warning("Maximum Newton-Raphson iterations exceeded: setting density "
+        "effect correction to zero.");
+    return delta;
+  }
+
+  // Solve for the density effect correction
+  for (int i = 0; i < n; ++i) {
+    double l_sq = e_b_sq[i] * rho * rho / e_p_sq + 2.0 / 3.0 * f[i];
+    delta += f[i] * std::log((l_sq + w_sq)/l_sq);
+  }
+  // Include conduction electrons
+  if (n_conduction > 0.0) {
+    delta += n_conduction * std::log((n_conduction + w_sq) / n_conduction);
+  }
+
+  return delta - w_sq * (1.0 - beta_sq);
+}
 
 void read_materials_xml()
 {
@@ -1081,12 +1283,11 @@ openmc_material_set_densities(int32_t index, int n, const char** name, const dou
     }
 
     // Set total density to the sum of the vector
-
     int err = mat->set_density(sum_density, "atom/b-cm");
 
     // Assign S(a,b) tables
     mat->init_thermal();
-    return 0;
+    return err;
   } else {
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;

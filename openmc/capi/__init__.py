@@ -42,7 +42,6 @@ else:
 def _dagmc_enabled():
     return c_bool.in_dll(_dll, "dagmc_enabled").value
 
-
 from .error import *
 from .core import *
 from .nuclide import *
@@ -53,3 +52,4 @@ from .filter import *
 from .tally import *
 from .settings import settings
 from .math import *
+from .plot import *

@@ -80,9 +80,10 @@ SphericalHarmonicsFilter::text_label(int bin) const
     if (bin < (n + 1) * (n + 1)) {
       int m = (bin - n*n) - n;
       out << "Spherical harmonic expansion, Y" << n << "," << m;
-      return out.str();
+      break;
     }
   }
+  return out.str();
 }
 
 //==============================================================================

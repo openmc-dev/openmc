@@ -42,7 +42,7 @@ public:
   PhotonInteraction(hid_t group, int i_element);
 
   // Methods
-  void calculate_xs(double E) const;
+  void calculate_xs(Particle& p) const;
 
   void compton_scatter(double alpha, bool doppler, double* alpha_out,
     double* mu, int* i_shell) const;
@@ -87,7 +87,8 @@ public:
 
   // Stopping power data
   double I_; // mean excitation energy
-  xt::xtensor<double, 1> stopping_power_collision_;
+  xt::xtensor<int, 1> n_electrons_;
+  xt::xtensor<double, 1> ionization_energy_;
   xt::xtensor<double, 1> stopping_power_radiative_;
 
   // Bremsstrahlung scaled DCS
@@ -95,22 +96,6 @@ public:
 
 private:
   void compton_doppler(double alpha, double mu, double* E_out, int* i_shell) const;
-};
-
-//==============================================================================
-//! Cached microscopic photon cross sections for a particular element at the
-//! current energy
-//==============================================================================
-
-struct ElementMicroXS {
-  int index_grid; //!< index on element energy grid
-  double last_E {0.0}; //!< last evaluated energy in [eV]
-  double interp_factor; //!< interpolation factor on energy grid
-  double total; //!< microscopic total photon xs
-  double coherent; //!< microscopic coherent xs
-  double incoherent; //!< microscopic incoherent xs
-  double photoelectric; //!< microscopic photoelectric xs
-  double pair_production; //!< microscopic pair production xs
 };
 
 //==============================================================================
@@ -134,11 +119,6 @@ extern std::vector<PhotonInteraction> elements;
 extern std::unordered_map<std::string, int> element_map;
 
 } // namespace data
-
-namespace simulation {
-extern ElementMicroXS* micro_photon_xs;
-#pragma omp threadprivate(micro_photon_xs)
-} // namespace simulation
 
 } // namespace openmc
 

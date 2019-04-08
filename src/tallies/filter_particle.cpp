@@ -50,6 +50,7 @@ ParticleFilter::text_label(int bin) const
   case Particle::Type::positron:
     return "Particle: positron";
   }
+  UNREACHABLE();
 }
 
 } // namespace openmc

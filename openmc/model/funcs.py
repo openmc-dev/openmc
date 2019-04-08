@@ -2,8 +2,9 @@ from collections import OrderedDict
 from collections.abc import Iterable
 from math import sqrt
 from numbers import Real
+from functools import partial
 
-from openmc import XPlane, YPlane, Plane, ZCylinder
+from openmc import XPlane, YPlane, Plane, ZCylinder, Quadric
 from openmc.checkvalue import check_type, check_value
 import openmc.data
 
@@ -237,16 +238,16 @@ def get_hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
         c = sqrt(3.)/3.
 
         # y = -x/sqrt(3) + a
-        upper_right = Plane(A=c, B=1., D=l+x*c+y, boundary_type=boundary_type)
+        upper_right = Plane(a=c, b=1., d=l+x*c+y, boundary_type=boundary_type)
 
         # y = x/sqrt(3) + a
-        upper_left = Plane(A=-c, B=1., D=l-x*c+y, boundary_type=boundary_type)
+        upper_left = Plane(a=-c, b=1., d=l-x*c+y, boundary_type=boundary_type)
 
         # y = x/sqrt(3) - a
-        lower_right = Plane(A=-c, B=1., D=-l-x*c+y, boundary_type=boundary_type)
+        lower_right = Plane(a=-c, b=1., d=-l-x*c+y, boundary_type=boundary_type)
 
         # y = -x/sqrt(3) - a
-        lower_left = Plane(A=c, B=1., D=-l+x*c+y, boundary_type=boundary_type)
+        lower_left = Plane(a=c, b=1., d=-l+x*c+y, boundary_type=boundary_type)
 
         prism = -right & +left & -upper_right & -upper_left & \
                 +lower_right & +lower_left
@@ -262,17 +263,17 @@ def get_hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
         c = sqrt(3.)
 
         # y = -sqrt(3)*(x - a)
-        upper_right = Plane(A=c, B=1., D=c*l+x*c+y, boundary_type=boundary_type)
+        upper_right = Plane(a=c, b=1., d=c*l+x*c+y, boundary_type=boundary_type)
 
         # y = sqrt(3)*(x + a)
-        lower_right = Plane(A=-c, B=1., D=-c*l-x*c+y,
+        lower_right = Plane(a=-c, b=1., d=-c*l-x*c+y,
                             boundary_type=boundary_type)
 
         # y = -sqrt(3)*(x + a)
-        lower_left = Plane(A=c, B=1., D=-c*l+x*c+y, boundary_type=boundary_type)
+        lower_left = Plane(a=c, b=1., d=-c*l+x*c+y, boundary_type=boundary_type)
 
         # y = sqrt(3)*(x + a)
-        upper_left = Plane(A=-c, B=1., D=c*l-x*c+y, boundary_type=boundary_type)
+        upper_left = Plane(a=-c, b=1., d=c*l-x*c+y, boundary_type=boundary_type)
 
         prism = -top & +bottom & -upper_right & +lower_right & \
                             +lower_left & -upper_left
@@ -292,8 +293,8 @@ def get_hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
         t = l - corner_radius/c
 
         # Cylinder with corner radius and boundary type pre-applied
-        cyl1 = partial(ZCylinder, R=corner_radius, boundary_type=boundary_type)
-        cyl2 = partial(ZCylinder, R=corner_radius/(2*c),
+        cyl1 = partial(ZCylinder, r=corner_radius, boundary_type=boundary_type)
+        cyl2 = partial(ZCylinder, r=corner_radius/(2*c),
                        boundary_type=boundary_type)
 
         if orientation == 'x':
@@ -343,6 +344,54 @@ def get_hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
         prism = prism & ~corners
 
     return prism
+
+
+def cylinder_from_points(p1, p2, r, **kwargs):
+    """Return cylinder defined by two points passing through its center.
+
+    Parameters
+    ----------
+    p1, p2 : 3-tuples
+        Coordinates of two points that pass through the center of the cylinder
+    r : float
+        Radius of the cylinder
+    kwargs : dict
+        Keyword arguments passed to the :class:`openmc.Quadric` constructor
+
+    Returns
+    -------
+    openmc.Quadric
+        Quadric surface representing the cylinder.
+
+    """
+    # Get x, y, z coordinates of two points
+    x1, y1, z1 = p1
+    x2, y2, z2 = p2
+
+    # Define intermediate terms
+    dx = x2 - x1
+    dy = y2 - y1
+    dz = z2 - z1
+    cx = y1*z2 + y2*z1
+    cy = -(x1*z2 + x2*z1)
+    cz = x1*y2 + x2*y1
+
+    # Given p=(x,y,z), p1=(x1, y1, z1), p2=(x2, y2, z2), the equation for the
+    # cylinder can be derived as r = |(p - p1) ⨯ (p - p2)| / |p2 - p1|.
+    # Expanding out all terms and grouping according to what Quadric expects
+    # gives the following coefficients.
+    kwargs['a'] = dy*dy + dz*dz
+    kwargs['b'] = dx*dx + dz*dz
+    kwargs['c'] = dx*dx + dy*dy
+    kwargs['d'] = -2*dx*dy
+    kwargs['e'] = -2*dy*dz
+    kwargs['f'] = -2*dx*dz
+    kwargs['g'] = cy*dz - cz*dy
+    kwargs['h'] = cz*dx - cx*dz
+    kwargs['j'] = cx*dy - cy*dx
+    kwargs['k'] = -(dx*dx + dy*dy + dz*dz)*r*r
+
+    return openmc.Quadric(**kwargs)
 
 
 def subdivide(surfaces):

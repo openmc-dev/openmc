@@ -264,7 +264,7 @@ void initialize_source()
 
   } else {
     // Generation source sites from specified distribution in user input
-    for (int64_t i = 0; i < simulation::work; ++i) {
+    for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
       // initialize random number seed
       int64_t id = simulation::total_gen*settings::n_particles +
         simulation::work_index[mpi::rank] + i + 1;
@@ -330,7 +330,7 @@ void free_memory_source()
 void fill_source_bank_fixedsource()
 {
   if (settings::path_source.empty()) {
-    for (int64_t i = 0; i < simulation::work; ++i) {
+    for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
       // initialize random number seed
       int64_t id = (simulation::total_gen + overall_generation()) *
         settings::n_particles + simulation::work_index[mpi::rank] + i + 1;

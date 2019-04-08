@@ -51,7 +51,9 @@ REACTION_NAME = {1: '(n,total)', 2: '(n,elastic)', 4: '(n,level)',
                  189: '(n,nta)', 190: '(n,2n2p)', 191: '(n,p3He)',
                  192: '(n,d3He)', 193: '(n,3Hea)', 194: '(n,4n2p)',
                  195: '(n,4n2a)', 196: '(n,4npa)', 197: '(n,3p)',
-                 198: '(n,n3p)', 199: '(n,3n2pa)', 200: '(n,5n2p)', 444: '(n,damage)',
+                 198: '(n,n3p)', 199: '(n,3n2pa)', 200: '(n,5n2p)', 203: '(n,Xp)',
+                 204: '(n,Xd)', 205: '(n,Xt)', 206: '(n,X3He)', 207: '(n,Xa)',
+                 301: 'heating', 444: 'damage-energy',
                  649: '(n,pc)', 699: '(n,dc)', 749: '(n,tc)', 799: '(n,3Hec)',
                  849: '(n,ac)', 891: '(n,2nc)'}
 REACTION_NAME.update({i: '(n,n{})'.format(i - 50) for i in range(50, 91)})
@@ -936,7 +938,7 @@ class Reaction(EqualityMixin):
                             'Could not create reaction cross section for MT={} '
                             'at T={} because no corresponding energy grid '
                             'exists.'.format(mt, T))
-                    xs = Tgroup['xs'].value
+                    xs = Tgroup['xs'][()]
                     threshold_idx = Tgroup['xs'].attrs['threshold_idx'] - 1
                     tabulated_xs = Tabulated1D(energy[T][threshold_idx:], xs)
                     tabulated_xs._threshold_idx = threshold_idx
@@ -987,6 +989,10 @@ class Reaction(EqualityMixin):
 
             # Read reaction cross section
             xs = ace.xss[ace.jxs[7] + loc + 1:ace.jxs[7] + loc + 1 + n_energy]
+
+            # For damage energy production, convert to eV
+            if mt == 444:
+                xs *= EV_PER_MEV
 
             # Fix negatives -- known issue for Y89 in JEFF 3.2
             if np.any(xs < 0.0):

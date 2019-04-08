@@ -39,9 +39,9 @@ left = openmc.XPlane(surface_id=1, x0=-2, name='left')
 right = openmc.XPlane(surface_id=2, x0=2, name='right')
 bottom = openmc.YPlane(surface_id=3, y0=-2, name='bottom')
 top = openmc.YPlane(surface_id=4, y0=2, name='top')
-fuel1 = openmc.ZCylinder(surface_id=5, x0=0, y0=0, R=0.4)
-fuel2 = openmc.ZCylinder(surface_id=6, x0=0, y0=0, R=0.3)
-fuel3 = openmc.ZCylinder(surface_id=7, x0=0, y0=0, R=0.2)
+fuel1 = openmc.ZCylinder(surface_id=5, x0=0, y0=0, r=0.4)
+fuel2 = openmc.ZCylinder(surface_id=6, x0=0, y0=0, r=0.3)
+fuel3 = openmc.ZCylinder(surface_id=7, x0=0, y0=0, r=0.2)
 
 left.boundary_type = 'vacuum'
 right.boundary_type = 'vacuum'

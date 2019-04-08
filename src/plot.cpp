@@ -1,9 +1,11 @@
 #include "openmc/plot.h"
 
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 
-#include "openmc/cell.h"
+#include "xtensor/xview.hpp"
+
 #include "openmc/constants.h"
 #include "openmc/file_utils.h"
 #include "openmc/geometry.h"
@@ -27,6 +29,38 @@ namespace openmc {
 
 const RGBColor WHITE {255, 255, 255};
 constexpr int PLOT_LEVEL_LOWEST {-1}; //!< lower bound on plot universe level
+constexpr int32_t NOT_FOUND {-2};
+
+IdData::IdData(size_t h_res, size_t v_res)
+  : data_({v_res, h_res, 2}, NOT_FOUND)
+{ }
+
+void
+IdData::set_value(size_t y, size_t x, const Particle& p, int level) {
+  Cell* c = model::cells[p.coord_[level].cell].get();
+  data_(y,x,0) = c->id_;
+  if (p.material_ == MATERIAL_VOID) {
+    data_(y,x,1) = MATERIAL_VOID;
+    return;
+  } else if (c->type_ != FILL_UNIVERSE) {
+    Material* m = model::materials[p.material_].get();
+    data_(y,x,1) = m->id_;
+  }
+}
+
+PropertyData::PropertyData(size_t h_res, size_t v_res)
+  : data_({v_res, h_res, 2}, NOT_FOUND)
+{ }
+
+void
+PropertyData::set_value(size_t y, size_t x, const Particle& p, int level) {
+  Cell* c = model::cells[p.coord_[level].cell].get();
+  data_(y,x,0) = (p.sqrtkT_ * p.sqrtkT_) / K_BOLTZMANN;
+  if (c->type_ != FILL_UNIVERSE && p.material_ != MATERIAL_VOID) {
+    Material* m = model::materials[p.material_].get();
+    data_(y,x,1) = m->density_gpcc_;
+  }
+}
 
 //==============================================================================
 // Global variables
@@ -46,8 +80,6 @@ std::unordered_map<int, int> plot_map;
 extern "C"
 int openmc_plot_geometry()
 {
-  int err;
-
   for (auto pl : model::plots) {
     std::stringstream ss;
     ss << "Processing plot " << pl.id_ << ": "
@@ -99,60 +131,29 @@ void create_ppm(Plot pl)
   size_t width = pl.pixels_[0];
   size_t height = pl.pixels_[1];
 
-  double in_pixel = (pl.width_[0])/static_cast<double>(width);
-  double out_pixel = (pl.width_[1])/static_cast<double>(height);
+  ImageData data({width, height}, pl.not_found_);
 
-  ImageData data;
-  data.resize({width, height});
+  // generate ids for the plot
+  auto ids = pl.get_map<IdData>();
 
-  int in_i, out_i;
-  Position r;
-  switch(pl.basis_) {
-  case PlotBasis::xy :
-    in_i = 0;
-    out_i = 1;
-    r.x = pl.origin_[0] - pl.width_[0] / 2.;
-    r.y = pl.origin_[1] + pl.width_[1] / 2.;
-    r.z = pl.origin_[2];
-    break;
-  case PlotBasis::xz :
-    in_i = 0;
-    out_i = 2;
-    r.x = pl.origin_[0] - pl.width_[0] / 2.;
-    r.y = pl.origin_[1];
-    r.z = pl.origin_[2] + pl.width_[1] / 2.;
-    break;
-  case PlotBasis::yz :
-    in_i = 1;
-    out_i = 2;
-    r.x = pl.origin_[0];
-    r.y = pl.origin_[1] - pl.width_[0] / 2.;
-    r.z = pl.origin_[2] + pl.width_[1] / 2.;
-    break;
-  }
+  // assign colors
+  for (size_t y = 0; y < height; y++) {
+    for (size_t x = 0; x < width; x++) {
+      auto id = ids.data_(y, x, pl.color_by_);
+      // no setting needed if not found
+      if (id == NOT_FOUND) { continue; }
+      if (PlotColorBy::cells == pl.color_by_) {
+        data(x,y) = pl.colors_[model::cell_map[id]];
+      } else if (PlotColorBy::mats == pl.color_by_) {
+        if (id == MATERIAL_VOID) {
+          data(x,y) = WHITE;
+          continue;
+        }
+        data(x,y) = pl.colors_[model::material_map[id]];
+      } // color_by if-else
+    } // x for loop
+  } // y for loop
 
-  Direction u {0.5, 0.5, 0.5};
-
-#pragma omp parallel
-{
-  Particle p;
-  p.r() = r;
-  p.u() = u;
-  p.coord_[0].universe = model::root_universe;
-
-#pragma omp for
-  for (int y = 0; y < height; y++) {
-    p.r()[out_i] = r[out_i] - out_pixel * y;
-    for (int x = 0; x < width; x++) {
-      // local variables
-      RGBColor rgb;
-      int id;
-      p.r()[in_i] = r[in_i] + in_pixel * x;
-      position_rgb(p, pl, rgb, id);
-      data(x,y) = rgb;
-    }
-  }
-}
   // draw mesh lines if present
   if (pl.index_meshlines_mesh_ >= 0) {draw_mesh_lines(pl, data);}
 
@@ -618,8 +619,8 @@ Plot::set_mask(pugi::xml_node plot_node)
   }
 }
 
-Plot::Plot(pugi::xml_node plot_node):
-index_meshlines_mesh_(-1)
+Plot::Plot(pugi::xml_node plot_node)
+  : index_meshlines_mesh_{-1}
 {
   set_id(plot_node);
   set_type(plot_node);
@@ -634,53 +635,6 @@ index_meshlines_mesh_(-1)
   set_meshlines(plot_node);
   set_mask(plot_node);
 } // End Plot constructor
-
-//==============================================================================
-// POSITION_RGB computes the red/green/blue values for a given plot with the
-// current particle's position
-//==============================================================================
-
-
-void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id)
-{
-  p.n_coord_ = 1;
-
-  bool found_cell = find_cell(&p, 0);
-
-  int j = p.n_coord_ - 1;
-
-  if (settings::check_overlaps) {check_cell_overlap(&p);}
-
-  // Set coordinate level if specified
-  if (pl.level_ >= 0) {j = pl.level_ + 1;}
-
-  if (!found_cell) {
-    // If no cell, revert to default color
-    rgb = pl.not_found_;
-    id = -1;
-  } else {
-    if (PlotColorBy::mats == pl.color_by_) {
-      // Assign color based on material
-      const auto& c = model::cells[p.coord_[j].cell];
-      if (c->type_ == FILL_UNIVERSE) {
-        // If we stopped on a middle universe level, treat as if not found
-        rgb = pl.not_found_;
-        id = -1;
-      } else if (p.material_ == MATERIAL_VOID) {
-        // By default, color void cells white
-        rgb = WHITE;
-        id = -1;
-      } else {
-        rgb = pl.colors_[p.material_];
-        id = model::materials[p.material_]->id_;
-      }
-    } else if (PlotColorBy::cells == pl.color_by_) {
-      // Assign color based on cell
-      rgb = pl.colors_[p.coord_[j].cell];
-      id = model::cells[p.coord_[j].cell]->id_;
-    }
-  } // endif found_cell
-}
 
 //==============================================================================
 // OUTPUT_PPM writes out a previously generated image to a PPM file
@@ -739,6 +693,8 @@ void draw_mesh_lines(Plot pl, ImageData& data)
     outer = 1;
     inner = 2;
     break;
+  default:
+    UNREACHABLE();
   }
 
   Position ll_plot {pl.origin_};
@@ -813,18 +769,17 @@ void draw_mesh_lines(Plot pl, ImageData& data)
 // CREATE_VOXEL outputs a binary file that can be input into silomesh for 3D
 // geometry visualization.  It works the same way as create_ppm by dragging a
 // particle across the geometry for the specified number of voxels. The first 3
-// int(4)'s in the binary are the number of x, y, and z voxels.  The next 3
-// real(8)'s are the widths of the voxels in the x, y, and z directions. The
-// next 3 real(8)'s are the x, y, and z coordinates of the lower left
-// point. Finally the binary is filled with entries of four int(4)'s each. Each
-// 'row' in the binary contains four int(4)'s: 3 for x,y,z position and 1 for
+// int's in the binary are the number of x, y, and z voxels.  The next 3
+// double's are the widths of the voxels in the x, y, and z directions. The
+// next 3 double's are the x, y, and z coordinates of the lower left
+// point. Finally the binary is filled with entries of four int's each. Each
+// 'row' in the binary contains four int's: 3 for x,y,z position and 1 for
 // cell or material id.  For 1 million voxels this produces a file of
 // approximately 15MB.
 // =============================================================================
 
 void create_voxel(Plot pl)
 {
-
   // compute voxel widths in each direction
   std::array<double, 3> vox;
   vox[0] = pl.width_[0]/(double)pl.pixels_[0];
@@ -833,13 +788,6 @@ void create_voxel(Plot pl)
 
   // initial particle position
   Position ll = pl.origin_ - pl.width_ / 2.;
-
-  // allocate and initialize particle
-  Direction u {0.5, 0.5, 0.5};
-  Particle p;
-  p.r() = ll;
-  p.u() = u;
-  p.coord_[0].universe = model::root_universe;
 
   // Open binary plot file for writing
   std::ofstream of;
@@ -858,8 +806,9 @@ void create_voxel(Plot pl)
 
   // Write current date and time
   write_attribute(file_id, "date_and_time", time_stamp().c_str());
-  hsize_t three = 3;
-  write_attribute(file_id, "num_voxels", pl.pixels_);
+  std::array<int, 3> pixels;
+  std::copy(pl.pixels_.begin(), pl.pixels_.end(), pixels.begin());
+  write_attribute(file_id, "num_voxels", pixels);
   write_attribute(file_id, "voxel_width", vox);
   write_attribute(file_id, "lower_left", ll);
 
@@ -872,43 +821,33 @@ void create_voxel(Plot pl)
   hid_t dspace, dset, memspace;
   voxel_init(file_id, &(dims[0]), &dspace, &dset, &memspace);
 
-  // move to center of voxels
-  ll.x += vox[0] / 2.;
-  ll.y += vox[1] / 2.;
-  ll.z += vox[2] / 2.;
-
-  int data[pl.pixels_[1]][pl.pixels_[0]];
+  PlotBase pltbase;
+  pltbase.width_ = pl.width_;
+  pltbase.origin_ = pl.origin_;
+  pltbase.basis_ = PlotBasis::xy;
+  pltbase.pixels_ = pl.pixels_;
+  pltbase.level_ = -1; // all universes for voxel files
 
   ProgressBar pb;
-
-  RGBColor rgb;
-  int id;
   for (int z = 0; z < pl.pixels_[2]; z++) {
+    // update progress bar
     pb.set_value(100.*(double)z/(double)(pl.pixels_[2]-1));
-    for (int y = 0; y < pl.pixels_[1]; y++) {
-      for (int x = 0; x < pl.pixels_[0]; x++) {
-        // get voxel color
-        position_rgb(p, pl, rgb, id);
-        // write to plot data
-        data[y][x] = id;
-        // advance particle in x direction
-        p.r().x += vox[0];
-      }
-      // advance particle in y direction
-      p.r().y += vox[1];
-      p.r().x = ll[0];
-    }
-    // advance particle in z direction
-    p.r().z += vox[2];
-    p.r().y = ll[1];
-    p.r().x = ll[0];
+
+    // update z coordinate
+    pltbase.origin_.z = ll.z + z * vox[2];
+
+    // generate ids using plotbase
+    IdData ids = pltbase.get_map<IdData>();
+
+    // select only cell ID data and flip the y-axis
+    xt::xtensor<int32_t, 2> data1 = xt::flip(xt::view(ids.data_, xt::all(), xt::all(), 0), 0);
+
     // Write to HDF5 dataset
-    voxel_write_slice(z, dspace, dset, memspace, &(data[0]));
+    voxel_write_slice(z, dspace, dset, memspace, &(data1(0,0)));
   }
 
   voxel_finalize(dspace, dset, memspace);
   file_close(file_id);
-
 }
 
 void
@@ -951,5 +890,39 @@ voxel_finalize(hid_t dspace, hid_t dset, hid_t memspace)
 RGBColor random_color() {
   return {int(prn()*255), int(prn()*255), int(prn()*255)};
 }
+
+extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
+{
+
+  auto plt = reinterpret_cast<const PlotBase*>(plot);
+  if (!plt) {
+    set_errmsg("Invalid slice pointer passed to openmc_id_map");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  auto ids = plt->get_map<IdData>();
+
+  // write id data to array
+  std::copy(ids.data_.begin(), ids.data_.end(), data_out);
+
+  return 0;
+}
+
+extern "C" int openmc_property_map(const void* plot, double* data_out) {
+
+  auto plt = reinterpret_cast<const PlotBase*>(plot);
+  if (!plt) {
+    set_errmsg("Invalid slice pointer passed to openmc_id_map");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  auto props = plt->get_map<PropertyData>();
+
+  // write id data to array
+  std::copy(props.data_.begin(), props.data_.end(), data_out);
+
+  return 0;
+}
+
 
 } // namespace openmc

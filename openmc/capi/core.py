@@ -17,7 +17,8 @@ class _Bank(Structure):
                 ('u', c_double*3),
                 ('E', c_double),
                 ('wgt', c_double),
-                ('delayed_group', c_int)]
+                ('delayed_group', c_int),
+                ('particle', c_int)]
 
 
 # Define input type for numpy arrays that will be passed into C++ functions

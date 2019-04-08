@@ -1,4 +1,5 @@
 from collections.abc import Iterable, MutableSequence, Mapping
+from pathlib import Path
 from numbers import Real, Integral
 import warnings
 from xml.etree import ElementTree as ET
@@ -129,8 +130,6 @@ class Settings(object):
         range. 'multipole' is a boolean indicating whether or not the windowed
         multipole method should be used to evaluate resolved resonance cross
         sections.
-    threads : int
-        Number of OpenMP threads
     trace : tuple or list
         Show detailed information about a single particle, indicated by three
         integers: the batch number, generation number, and particle number
@@ -196,7 +195,6 @@ class Settings(object):
         self._statepoint = {}
         self._sourcepoint = {}
 
-        self._threads = None
         self._no_reduce = None
 
         self._verbosity = None
@@ -310,10 +308,6 @@ class Settings(object):
     @property
     def statepoint(self):
         return self._statepoint
-
-    @property
-    def threads(self):
-        return self._threads
 
     @property
     def no_reduce(self):
@@ -622,12 +616,6 @@ class Settings(object):
 
         self._temperature = temperature
 
-    @threads.setter
-    def threads(self, threads):
-        cv.check_type('number of threads', threads, Integral)
-        cv.check_greater_than('number of threads', threads, 0)
-        self._threads = threads
-
     @trace.setter
     def trace(self, trace):
         cv.check_type('trace', trace, Iterable, Integral)
@@ -884,11 +872,6 @@ class Settings(object):
                 else:
                     element.text = str(value)
 
-    def _create_threads_subelement(self, root):
-        if self._threads is not None:
-            element = ET.SubElement(root, "threads")
-            element.text = str(self._threads)
-
     def _create_trace_subelement(self, root):
         if self._trace is not None:
             element = ET.SubElement(root, "trace")
@@ -979,7 +962,6 @@ class Settings(object):
         self._create_entropy_mesh_subelement(root_element)
         self._create_trigger_subelement(root_element)
         self._create_no_reduce_subelement(root_element)
-        self._create_threads_subelement(root_element)
         self._create_verbosity_subelement(root_element)
         self._create_tabular_legendre_subelements(root_element)
         self._create_temperature_subelements(root_element)
@@ -995,6 +977,11 @@ class Settings(object):
         # Clean the indentation in the file to be user-readable
         clean_indentation(root_element)
 
+        # Check if path is a directory
+        p = Path(path)
+        if p.is_dir():
+            p /= 'settings.xml'
+
         # Write the XML Tree to the settings.xml file
         tree = ET.ElementTree(root_element)
-        tree.write(path, xml_declaration=True, encoding='utf-8', method="xml")
+        tree.write(str(p), xml_declaration=True, encoding='utf-8')

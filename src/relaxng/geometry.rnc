@@ -36,6 +36,7 @@ element geometry {
       attribute dimension { list { xsd:positiveInteger+ } }) &
     (element lower_left { list { xsd:double+ } } | attribute lower_left { list { xsd:double+ } }) &
     (element pitch { list { xsd:double+ } } | attribute pitch { list { xsd:double+ } }) &
+    (element orient { ( "OX" ) } | attribute orient { ( "OX" ) })? &
     (element universes { list { xsd:int+ } } | attribute universes { list { xsd:int+ } }) &
     (element outer { xsd:int } | attribute outer { xsd:int })?
   }*

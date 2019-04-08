@@ -249,15 +249,25 @@ public:
 
   bool are_valid_indices(const int i_xyz[3]) const;
 
+  std::pair<double, std::array<int, 3>> distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
+  //DR OX distance calculation
   std::pair<double, std::array<int, 3>>
-  distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
+    distance_ox(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
+  //DR OY distance calculation
+  std::pair<double, std::array<int, 3>>
+     distance_oy(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
 
   std::array<int, 3> get_indices(Position r, Direction u) const;
+
 
   Position
   get_local_position(Position r, const std::array<int, 3> i_xyz) const;
 
   bool is_valid_index(int indx) const;
+  //DR fill lattice with OY by default orientation
+  void fill_lattice_oy(std::vector<std::string> univ_words);
+  //DR fill lattice with OX orientation
+  void fill_lattice_ox(std::vector<std::string> univ_words);
 
   int32_t& offset(int map, const int i_xyz[3]);
 
@@ -266,9 +276,9 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
 
 private:
-  int n_hextype_;                  //!<DR type of hex lattice orientation
   int n_rings_;                   //!< Number of radial tile positions
   int n_axial_;                   //!< Number of axial tile positions
+  int hextype;					  //!DR type of hexagonal lattice orientation //0 - OY by default;1-OX
   Position center_;               //!< Global center of lattice
   std::array<double, 2> pitch_;   //!< Lattice tile width and height
 };

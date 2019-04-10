@@ -68,7 +68,7 @@ void collision(Particle* p)
         data::nuclides[p->event_nuclide_]->name_ << ". Energy = " << p->E_ << " eV.";
     } else if (p->type_ == Particle::Type::photon) {
       msg << "    " << reaction_name(p->event_mt_) << " with " <<
-        data::elements[p->event_nuclide_].name_ << ". Energy = " << p->E_ << " eV.";
+        data::nuclides[p->event_nuclide_]->name_ << ". Energy = " << p->E_ << " eV.";
     } else {
       msg << "    Disappeared. Energy = " << p->E_ << " eV.";
     }
@@ -80,9 +80,6 @@ void sample_neutron_reaction(Particle* p)
 {
   // Sample a nuclide within the material
   int i_nuclide = sample_nuclide(p);
-
-  // Save which nuclide particle had collision with
-  p->event_nuclide_ = i_nuclide;
 
   // Create fission bank sites. Note that while a fission reaction is sampled,
   // it never actually "happens", i.e. the weight of the particle does not
@@ -213,7 +210,6 @@ void sample_photon_reaction(Particle* p)
 
   // Sample element within material
   int i_element = sample_element(p);
-  p->event_nuclide_ = i_element;
   const auto& micro {p->photon_xs_[i_element]};
   const auto& element {data::elements[i_element]};
 
@@ -398,7 +394,7 @@ void sample_positron_reaction(Particle* p)
   p->event_ = EVENT_ABSORB;
 }
 
-int sample_nuclide(const Particle* p)
+int sample_nuclide(Particle* p)
 {
   // Sample cumulative distribution function
   double cutoff = prn() * p->macro_xs_.total;
@@ -415,7 +411,11 @@ int sample_nuclide(const Particle* p)
 
     // Increment probability to compare to cutoff
     prob += atom_density * p->neutron_xs_[i_nuclide].total;
-    if (prob >= cutoff) return i_nuclide;
+    if (prob >= cutoff) {
+      // Save which nuclide particle had collision with
+      p->event_nuclide_ = i_nuclide;
+      return i_nuclide;
+    }
   }
 
   // If we reach here, no nuclide was sampled
@@ -442,7 +442,12 @@ int sample_element(Particle* p)
 
     // Increment probability to compare to cutoff
     prob += sigma;
-    if (prob > cutoff) return i_element;
+    if (prob > cutoff) {
+      // Save which nuclide particle had collision with
+      p->event_nuclide_ = mat->nuclide_[i];
+
+      return i_element;
+    }
   }
 
   // If we made it here, no element was sampled

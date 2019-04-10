@@ -1177,7 +1177,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
               const auto& xs {rxn.xs_[i_temp]};
               if (i_grid >= xs.threshold) {
                 macro_heating = ((1.0 - f) * xs.value[i_grid-xs.threshold]
-                  + f * xs.value[i_grid-xs.threshold+1]) * atom_density;
+                  + f * xs.value[i_grid-xs.threshold+1]);
               }
             }
             score *= macro_heating * flux / p->neutron_xs_[i_nuclide].total;
@@ -2130,12 +2130,11 @@ void score_analog_tally_ce(Particle* p)
           auto i_nuclide = tally.nuclides_[i];
 
           // Tally this event in the present nuclide bin if that bin represents
-          // the event nuclide or the total material.  Note that the i_nuclide
-          // and flux arguments for score_general are not used for analog
-          // tallies.
+          // the event nuclide or the total material.  Note that the atomic
+          // density argument for score_general is not used for analog tallies.
           if (i_nuclide == p->event_nuclide_ || i_nuclide == -1)
             score_general_ce(p, i_tally, i*tally.scores_.size(), filter_index,
-              -1, -1., filter_weight);
+              i_nuclide, -1., filter_weight);
         }
 
       } else {

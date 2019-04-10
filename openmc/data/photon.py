@@ -161,6 +161,7 @@ class AtomicRelaxation(EqualityMixin):
         self.binding_energy = binding_energy
         self.num_electrons = num_electrons
         self.transitions = transitions
+        self._e_fluorescence = {}
 
     @property
     def binding_energy(self):
@@ -390,6 +391,41 @@ class AtomicRelaxation(EqualityMixin):
                  _SUBSHELLS, range(len(_SUBSHELLS)))
             group.create_dataset('transitions', data=df.values.astype(float))
 
+    def energy_fluorescence(self, shell):
+        """Compute expected energy of fluorescent photons for the shell
+        """
+
+        if shell not in self.binding_energy:
+            raise KeyError('Invalid shell {}.'.format(shell))
+
+        if shell in self._e_fluorescence:
+            # Already computed
+            return self._e_fluorescence[shell]
+        else:
+            e = 0.0
+            if shell not in self.transitions or self.transitions[shell].empty:
+                e = self.binding_energy[shell]
+            else:
+                df = self.transitions[shell]
+                for index, row in df.iterrows():
+                    e_row = 0.0
+                    primary = row['secondary']
+                    secondary = row['tertiary']
+                    if secondary is None:
+                        # Fluorescent photon release in radiative transition
+                        e_row += row['energy (eV)']
+                    else:
+                        # Fill pole left by auger eletron
+                        e_row += self.energy_fluorescence(secondary)
+
+                    # Fill photonelectron pole
+                    e_row += self.energy_fluorescence(primary)
+
+                    # Expected fluorescent photon energy
+                    e += e_row * row['probability']
+
+            self._e_fluorescence[shell] = e
+            return e
 
 class IncidentPhoton(EqualityMixin):
     r"""Photon interaction data.
@@ -965,20 +1001,20 @@ class IncidentPhoton(EqualityMixin):
         """Compute heating cross sections (KERMA)
 
            Photon energy is deposited as energy loss in three reactions:
-           incoherent scattering, photoelectric effect and pair production.
+           incoherent scattering, pair production and photoelectric effect.
            The point-wise heating cross section is calculated as:
 
            .. math::
-               \sigma_{Hx} &= (E - \overline{E}_x(E)) \times \sigma_x(E), x \in \left \{  I, PE, PP \right\}
+               \sigma_{Hx} &= (E - \overline{E}_x(E)) \times \sigma_x(E), x \in \left \{  I, PP, PE \right\}
 
                \overline{E}_I (E) &= \frac {\int E' \sigma_I (E,E',\mu) d\mu} {\int \sigma_I (E,E',\mu) d\mu}
 
-               \overline{E}_{PE} &= 0
-
                \overline{E}_{PP} &= 2 m_e c^2 = 1.022 \times 10^6 eV
 
-           The differential cross section for incoherent scattering can be
-           found in the theory manual.
+               \overline{E}_{PE} &= E_{fluorescent photons}
+
+           The differential cross section representation for incoherent
+           scattering can be found in the theory manual.
 
         """
 
@@ -987,41 +1023,51 @@ class IncidentPhoton(EqualityMixin):
         for mt in (504, 515, 517, 522):
             if mt not in self:
                 warn('Cross sections for MT={} do not exist. The total heating '
-                     'cross sections may be wrong'.format(mt))
+                     'to be calculated is probably incorrect'.format(mt))
             else:
                 energy = np.union1d(energy, self[mt].xs.x)
 
         heating_xs = np.zeros_like(energy)
 
+        # Incoherent scattering
         if 504 in self:
             rx = self[504]
-            def dsigma_dmu(mu, E):
+            def _dsigma_dmu(mu, E):
                 k = E / MASS_ELECTRON_EV
                 kout = k / (1.0 + k * (1.0 - mu))
                 x = E * np.sqrt(0.5 * (1.0 - mu)) / PLANCK_C
                 return np.pi * R0**2 * (kout/k)**2 * (kout/k + k/kout +
                        mu*mu - 1.0) * rx.scattering_factor(x)
-            def dsigma_dmu_times_eout(mu, E):
+            def _eout_dsigma_dmu(mu, E):
                 Eout = E / (1.0 + E / MASS_ELECTRON_EV * (1 - mu))
-                return dsigma_dmu(mu, E) * Eout
-            def average_eout(E):
-                integral_sigma   = quad(dsigma_dmu, -1.0, 1.0,
+                return Eout * _dsigma_dmu(mu, E)
+            def _eout_average(E):
+                #TODO: the integrals are currently time consuming
+                integral_sigma   = quad(_dsigma_dmu, -1.0, 1.0,
                                         args=(E,), epsabs=0.0, epsrel=1.0e-3)[0]
-                integral_sigma_e = quad(dsigma_dmu_times_eout, -1.0, 1.0,
+                integral_sigma_e = quad(_eout_dsigma_dmu, -1.0, 1.0,
                                         args=(E,), epsabs=0.0, epsrel=1.0e-3)[0]
                 return integral_sigma_e / integral_sigma
 
-            e_out = np.vectorize(lambda x: average_eout(x))(energy)
+            e_out = np.vectorize(lambda x: _eout_average(x))(energy)
             heating_xs += (energy - e_out) * rx.xs(energy)
 
+        # Pair production, electron field
         if 515 in self:
             heating_xs += (energy - 2*MASS_ELECTRON_EV)*self[515].xs(energy)
 
+        # Pair production, nuclear field
         if 517 in self:
             heating_xs += (energy - 2*MASS_ELECTRON_EV)*self[517].xs(energy)
 
+        # Photoelectric effect
         if 522 in self:
-            heating_xs += (energy - 0.)*self[522].xs(energy)
+            # Account for fluorescent photons
+            for mt, rx in self.reactions.items():
+                if mt >= 534 and mt <= 572:
+                    shell = _REACTION_NAME[mt][1]
+                    e_f = self.atomic_relaxation.energy_fluorescence(shell)
+                    heating_xs += (energy - e_f) * rx.xs(energy)
 
         heat_rx = PhotonReaction(525)
         heat_rx.xs = Tabulated1D(energy, heating_xs, [energy.size], [5])

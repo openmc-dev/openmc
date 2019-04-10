@@ -44,7 +44,7 @@ void sample_positron_reaction(Particle* p);
 //!
 //! \param[in] p Particle
 //! \return Index in the data::nuclides vector
-int sample_nuclide(const Particle* p);
+int sample_nuclide(Particle* p);
 
 //! Determine the average total, prompt, and delayed neutrons produced from
 //! fission and creates appropriate bank sites.

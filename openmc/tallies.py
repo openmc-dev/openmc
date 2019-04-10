@@ -2964,7 +2964,7 @@ class Tally(IDManagerMixin):
         tally_avg.sparse = self.sparse
         return tally_avg
 
-    def diagonalize_filter(self, new_filter):
+    def diagonalize_filter(self, new_filter, filter_position=-1):
         """Diagonalize the tally data array along a new axis of filter bins.
 
         This is a helper method for the tally arithmetic methods. This method
@@ -2979,6 +2979,9 @@ class Tally(IDManagerMixin):
         ----------
         new_filter : Filter
             The filter along which to diagonalize the data in the new
+        filter_position : int
+            Where to place the new filter in the Tally.filters list. Defaults
+            to last position.
 
         Returns
         -------
@@ -2988,6 +2991,7 @@ class Tally(IDManagerMixin):
         """
 
         cv.check_type('new_filter', new_filter, _FILTER_CLASSES)
+        cv.check_type('filter_position', filter_position, Integral)
 
         if new_filter in self.filters:
             msg = 'Unable to diagonalize Tally ID="{0}" which already ' \
@@ -2996,7 +3000,7 @@ class Tally(IDManagerMixin):
 
         # Add the new filter to a copy of this Tally
         new_tally = copy.deepcopy(self)
-        new_tally.filters.append(new_filter)
+        new_tally.filters.insert(filter_position, new_filter)
 
         # Determine "base" indices along the new "diagonal", and the factor
         # by which the "base" indices should be repeated to account for all

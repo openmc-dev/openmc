@@ -5,6 +5,7 @@ from functools import partial, reduce
 from itertools import product
 from numbers import Integral, Real
 import operator
+from pathlib import Path
 import warnings
 from xml.etree import ElementTree as ET
 
@@ -216,7 +217,7 @@ class Tally(IDManagerMixin):
             f = h5py.File(self._sp_filename, 'r')
 
             # Extract Tally data from the file
-            data = f['tallies/tally {0}/results'.format(self.id)].value
+            data = f['tallies/tally {0}/results'.format(self.id)]
             sum = data[:, :, 0]
             sum_sq = data[:, :, 1]
 
@@ -3189,7 +3190,11 @@ class Tallies(cv.CheckedList):
         # Clean the indentation in the file to be user-readable
         clean_indentation(root_element)
 
+        # Check if path is a directory
+        p = Path(path)
+        if p.is_dir():
+            p /= 'tallies.xml'
+
         # Write the XML Tree to the tallies.xml file
         tree = ET.ElementTree(root_element)
-        tree.write(path, xml_declaration=True,
-                   encoding='utf-8', method="xml")
+        tree.write(str(p), xml_declaration=True, encoding='utf-8')

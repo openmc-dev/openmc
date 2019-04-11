@@ -243,9 +243,6 @@ coverage
   Compile and link code instrumented for coverage analysis. This is typically
   used in conjunction with gcov_.
 
-maxcoord
-  Maximum number of nested coordinate levels in geometry. Defaults to 10.
-
 To set any of these options (e.g. turning on debug mode), the following form
 should be used:
 

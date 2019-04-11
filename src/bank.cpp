@@ -16,10 +16,9 @@ namespace openmc {
 
 namespace simulation {
 
-int64_t n_bank;
-
 std::vector<Particle::Bank> source_bank;
 std::vector<Particle::Bank> fission_bank;
+std::vector<Particle::Bank> secondary_bank;
 #ifdef _OPENMP
 std::vector<Particle::Bank> master_fission_bank;
 #endif
@@ -33,7 +32,7 @@ std::vector<Particle::Bank> master_fission_bank;
 void free_memory_bank()
 {
   simulation::source_bank.clear();
-#pragma omp parallel
+  #pragma omp parallel
   {
     simulation::fission_bank.clear();
   }

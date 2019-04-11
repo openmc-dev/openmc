@@ -57,7 +57,7 @@ void finalize_geometry(std::vector<std::vector<double>>& nuc_temps,
 //! \return The index of the root universe.
 //==============================================================================
 
-extern "C" int32_t find_root_universe();
+int32_t find_root_universe();
 
 //==============================================================================
 //! Populate all data structures needed for distribcells.
@@ -74,7 +74,7 @@ void prepare_distribcell();
 //!   the root universe).
 //==============================================================================
 
-extern "C" void count_cell_instances(int32_t univ_indx);
+void count_cell_instances(int32_t univ_indx);
 
 //==============================================================================
 //! Recursively search through universes and count universe instances.
@@ -84,8 +84,7 @@ extern "C" void count_cell_instances(int32_t univ_indx);
 //!   search_univ.
 //==============================================================================
 
-extern "C" int
-count_universe_instances(int32_t search_univ, int32_t target_univ_id);
+int count_universe_instances(int32_t search_univ, int32_t target_univ_id);
 
 //==============================================================================
 //! Build a character array representing the path to a distribcell instance.
@@ -107,7 +106,7 @@ distribcell_path(int32_t target_cell, int32_t map, int32_t target_offset);
 //! \return The number of coordinate levels.
 //==============================================================================
 
-extern "C" int maximum_levels(int32_t univ);
+int maximum_levels(int32_t univ);
 
 //==============================================================================
 //! Deallocates global vectors and maps for cells, universes, and lattices.

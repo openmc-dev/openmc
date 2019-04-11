@@ -45,7 +45,7 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
   auto n_e = data::ttb_e_grid.size();
 
   // Find the lower bounding index of the incident electron energy
-  int j = lower_bound_index(data::ttb_e_grid.cbegin(),
+  size_t j = lower_bound_index(data::ttb_e_grid.cbegin(),
     data::ttb_e_grid.cend(), e);
   if (j == n_e - 1) --j;
 

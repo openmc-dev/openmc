@@ -97,9 +97,14 @@ class Geometry(object):
         # Clean the indentation in the file to be user-readable
         xml.clean_indentation(root_element)
 
+        # Check if path is a directory
+        p = Path(path)
+        if p.is_dir():
+            p /= 'geometry.xml'
+
         # Write the XML Tree to the geometry.xml file
         tree = ET.ElementTree(root_element)
-        tree.write(path, xml_declaration=True, encoding='utf-8')
+        tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
     @classmethod
     def from_xml(cls, path='geometry.xml', materials=None):

@@ -59,14 +59,14 @@ private:
 //! since collisions do not occur in voids.
 //
 //! \param p The particle being tracked
-void score_collision_tally(const Particle* p);
+void score_collision_tally(Particle* p);
 
 //! Score tallies based on a simple count of events (for continuous energy).
 //
 //! Analog tallies are triggered at every collision, not every event.
 //
 //! \param p The particle being tracked
-void score_analog_tally_ce(const Particle* p);
+void score_analog_tally_ce(Particle* p);
 
 //! Score tallies based on a simple count of events (for multigroup).
 //
@@ -83,7 +83,7 @@ void score_analog_tally_mg(const Particle* p);
 //
 //! \param p The particle being tracked
 //! \param distance The distance in [cm] traveled by the particle
-void score_tracklength_tally(const Particle* p, double distance);
+void score_tracklength_tally(Particle* p, double distance);
 
 //! Score surface or mesh-surface tallies for particle currents.
 //

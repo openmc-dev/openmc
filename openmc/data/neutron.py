@@ -521,7 +521,7 @@ class IncidentNeutron(EqualityMixin):
         kTg = group['kTs']
         kTs = []
         for temp in kTg:
-            kTs.append(kTg[temp].value)
+            kTs.append(kTg[temp][()])
 
         data = cls(name, atomic_number, mass_number, metastable,
                    atomic_weight_ratio, kTs)
@@ -529,7 +529,7 @@ class IncidentNeutron(EqualityMixin):
         # Read energy grid
         e_group = group['energy']
         for temperature, dset in e_group.items():
-            data.energy[temperature] = dset.value
+            data.energy[temperature] = dset[()]
 
         # Read reaction data
         rxs_group = group['reactions']
@@ -622,7 +622,7 @@ class IncidentNeutron(EqualityMixin):
         data.energy[strT] = energy
         total_xs = ace.xss[i + n_energy : i + 2*n_energy]
         absorption_xs = ace.xss[i + 2*n_energy : i + 3*n_energy]
-        heating_number = ace.xss[i + 3*n_energy : i + 4*n_energy]*EV_PER_MEV
+        heating_number = ace.xss[i + 4*n_energy : i + 5*n_energy]*EV_PER_MEV
 
         # Create redundant reactions (total, absorption, and heating)
         total = Reaction(1)
@@ -637,7 +637,7 @@ class IncidentNeutron(EqualityMixin):
             data.reactions[101] = absorption
 
         heating = Reaction(301)
-        heating.xs[strT] = Tabulated1D(energy, heating_number)
+        heating.xs[strT] = Tabulated1D(energy, heating_number*total_xs)
         heating.redundant = True
         data.reactions[301] = heating
 

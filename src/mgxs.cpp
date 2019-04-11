@@ -329,8 +329,6 @@ Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
   // Force all of the following data to be the same; these will be verified
   // to be true later
   int in_scatter_format = micros[0]->scatter_format;
-  int in_num_groups = micros[0]->num_groups;
-  int in_num_delayed_groups = micros[0]->num_delayed_groups;
   bool in_is_isotropic = micros[0]->is_isotropic;
   std::vector<double> in_polar = micros[0]->polar;
   std::vector<double> in_azimuthal = micros[0]->azimuthal;

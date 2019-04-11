@@ -480,6 +480,7 @@ hid_t h5banktype() {
   H5Tinsert(banktype, "E", HOFFSET(Particle::Bank, E), H5T_NATIVE_DOUBLE);
   H5Tinsert(banktype, "wgt", HOFFSET(Particle::Bank, wgt), H5T_NATIVE_DOUBLE);
   H5Tinsert(banktype, "delayed_group", HOFFSET(Particle::Bank, delayed_group), H5T_NATIVE_INT);
+  H5Tinsert(banktype, "particle", HOFFSET(Particle::Bank, particle), H5T_NATIVE_INT);
 
   H5Tclose(postype);
   return banktype;
@@ -536,7 +537,7 @@ write_source_bank(hid_t group_id)
                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
   // Create another data space but for each proc individually
-  hsize_t count[] {static_cast<hsize_t>(simulation::work)};
+  hsize_t count[] {static_cast<hsize_t>(simulation::work_per_rank)};
   hid_t memspace = H5Screate_simple(1, count, nullptr);
 
   // Select hyperslab for this dataspace
@@ -568,7 +569,7 @@ write_source_bank(hid_t group_id)
     // Save source bank sites since the souce_bank array is overwritten below
 #ifdef OPENMC_MPI
     std::vector<Particle::Bank> temp_source {simulation::source_bank.begin(),
-      simulation::source_bank.begin() + simulation::work};
+      simulation::source_bank.begin() + simulation::work_per_rank};
 #endif
 
     for (int i = 0; i < mpi::n_procs; ++i) {
@@ -606,7 +607,7 @@ write_source_bank(hid_t group_id)
 #endif
   } else {
 #ifdef OPENMC_MPI
-    MPI_Send(simulation::source_bank.data(), simulation::work, mpi::bank,
+    MPI_Send(simulation::source_bank.data(), simulation::work_per_rank, mpi::bank,
       0, mpi::rank, mpi::intracomm);
 #endif
   }
@@ -624,7 +625,7 @@ void read_source_bank(hid_t group_id)
   hid_t dset = H5Dopen(group_id, "source_bank", H5P_DEFAULT);
 
   // Create another data space but for each proc individually
-  hsize_t dims[] {static_cast<hsize_t>(simulation::work)};
+  hsize_t dims[] {static_cast<hsize_t>(simulation::work_per_rank)};
   hid_t memspace = H5Screate_simple(1, dims, nullptr);
 
   // Make sure source bank is big enough

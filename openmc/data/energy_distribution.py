@@ -1144,7 +1144,7 @@ class ContinuousTabular(EnergyDistribution):
         interp_data = group['energy'].attrs['interpolation']
         energy_breakpoints = interp_data[0, :]
         energy_interpolation = interp_data[1, :]
-        energy = group['energy'].value
+        energy = group['energy'][()]
 
         data = group['distribution']
         offsets = data.attrs['offsets']

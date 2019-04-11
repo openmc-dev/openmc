@@ -92,14 +92,14 @@ class LegendreFilter(ExpansionFilter):
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
-        if group['type'].value.decode() != cls.short_name.lower():
+        if group['type'][()].decode() != cls.short_name.lower():
             raise ValueError("Expected HDF5 data for filter type '"
                              + cls.short_name.lower() + "' but got '"
-                             + group['type'].value.decode() + " instead")
+                             + group['type'][()].decode() + " instead")
 
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
-        out = cls(group['order'].value, filter_id)
+        out = cls(group['order'][()], filter_id)
 
         return out
 
@@ -198,15 +198,15 @@ class SpatialLegendreFilter(ExpansionFilter):
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
-        if group['type'].value.decode() != cls.short_name.lower():
+        if group['type'][()].decode() != cls.short_name.lower():
             raise ValueError("Expected HDF5 data for filter type '"
                              + cls.short_name.lower() + "' but got '"
-                             + group['type'].value.decode() + " instead")
+                             + group['type'][()].decode() + " instead")
 
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
-        order = group['order'].value
-        axis = group['axis'].value.decode()
-        min_, max_ = group['min'].value, group['max'].value
+        order = group['order'][()]
+        axis = group['axis'][()].decode()
+        min_, max_ = group['min'][()], group['max'][()]
 
         return cls(order, axis, min_, max_, filter_id)
 
@@ -294,15 +294,15 @@ class SphericalHarmonicsFilter(ExpansionFilter):
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
-        if group['type'].value.decode() != cls.short_name.lower():
+        if group['type'][()].decode() != cls.short_name.lower():
             raise ValueError("Expected HDF5 data for filter type '"
                              + cls.short_name.lower() + "' but got '"
-                             + group['type'].value.decode() + " instead")
+                             + group['type'][()].decode() + " instead")
 
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
-        out = cls(group['order'].value, filter_id)
-        out.cosine = group['cosine'].value.decode()
+        out = cls(group['order'][()], filter_id)
+        out.cosine = group['cosine'][()].decode()
 
         return out
 
@@ -437,14 +437,14 @@ class ZernikeFilter(ExpansionFilter):
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
-        if group['type'].value.decode() != cls.short_name.lower():
+        if group['type'][()].decode() != cls.short_name.lower():
             raise ValueError("Expected HDF5 data for filter type '"
                              + cls.short_name.lower() + "' but got '"
-                             + group['type'].value.decode() + " instead")
+                             + group['type'][()].decode() + " instead")
 
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
-        order = group['order'].value
-        x, y, r = group['x'].value, group['y'].value, group['r'].value
+        order = group['order'][()]
+        x, y, r = group['x'][()], group['y'][()], group['r'][()]
 
         return cls(order, x, y, r, filter_id)
 

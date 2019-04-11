@@ -5,7 +5,7 @@ Photon Physics
 ==============
 
 Photons, being neutral particles, behave much in the same manner as neutrons,
-traveling in straight lines and experiencing occasional collisions which change
+traveling in straight lines and experiencing occasional collisions that change
 their energy and direction. Photons undergo four basic interactions as they pass
 through matter: coherent (Rayleigh) scattering, incoherent (Compton) scattering,
 photoelectric effect, and pair/triplet production. Photons with energy in the

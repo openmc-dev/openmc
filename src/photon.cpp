@@ -32,10 +32,6 @@ std::unordered_map<std::string, int> element_map;
 
 } // namespace data
 
-namespace simulation {
-ElementMicroXS* micro_photon_xs;
-} // namespace simulation
-
 //==============================================================================
 // PhotonInteraction implementation
 //==============================================================================
@@ -433,12 +429,12 @@ void PhotonInteraction::compton_doppler(double alpha, double mu,
   *i_shell = shell;
 }
 
-void PhotonInteraction::calculate_xs(double E) const
+void PhotonInteraction::calculate_xs(Particle& p) const
 {
   // Perform binary search on the element energy grid in order to determine
   // which points to interpolate between
   int n_grid = energy_.size();
-  double log_E = std::log(E);
+  double log_E = std::log(p.E_);
   int i_grid;
   if (log_E <= energy_[0]) {
     i_grid = 0;
@@ -456,7 +452,7 @@ void PhotonInteraction::calculate_xs(double E) const
   // calculate interpolation factor
   double f = (log_E - energy_(i_grid)) / (energy_(i_grid+1) - energy_(i_grid));
 
-  auto& xs {simulation::micro_photon_xs[i_element_]};
+  auto& xs {p.photon_xs_[i_element_]};
   xs.index_grid = i_grid;
   xs.interp_factor = f;
 
@@ -490,7 +486,7 @@ void PhotonInteraction::calculate_xs(double E) const
 
   // Calculate microscopic total cross section
   xs.total = xs.coherent + xs.incoherent + xs.photoelectric + xs.pair_production;
-  xs.last_E = E;
+  xs.last_E = p.E_;
 }
 
 double PhotonInteraction::rayleigh_scatter(double alpha) const
@@ -553,11 +549,6 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
   // Z = 1-99 come from F. Salvat, J. M. Fernández-Varea, and J. Sempau,
   // "PENELOPE-2011: A Code System for Monte Carlo Simulation of Electron and
   // Photon Transport," OECD-NEA, Issy-les-Moulineaux, France (2011).
-
-  // Compute the minimum and maximum values of the electron reduced energy,
-  // i.e. the fraction of the photon energy that is given to the electron
-  double e_min = 1.0/alpha;
-  double e_max = 1.0 - 1.0/alpha;
 
   // Compute the high-energy Coulomb correction
   double a = Z_ / FINE_STRUCTURE;

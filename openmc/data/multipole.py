@@ -356,24 +356,24 @@ class WindowedMultipole(EqualityMixin):
 
         # Read scalars.
 
-        out.spacing = group['spacing'].value
-        out.sqrtAWR = group['sqrtAWR'].value
-        out.E_min = group['E_min'].value
-        out.E_max = group['E_max'].value
+        out.spacing = group['spacing'][()]
+        out.sqrtAWR = group['sqrtAWR'][()]
+        out.E_min = group['E_min'][()]
+        out.E_max = group['E_max'][()]
 
         # Read arrays.
 
         err = "WMP '{}' array shape is not consistent with the '{}' array shape"
 
-        out.data = group['data'].value
+        out.data = group['data'][()]
 
-        out.windows = group['windows'].value
+        out.windows = group['windows'][()]
 
-        out.broaden_poly = group['broaden_poly'].value.astype(np.bool)
+        out.broaden_poly = group['broaden_poly'][...].astype(np.bool)
         if out.broaden_poly.shape[0] != out.windows.shape[0]:
             raise ValueError(err.format('broaden_poly', 'windows'))
 
-        out.curvefit = group['curvefit'].value
+        out.curvefit = group['curvefit'][()]
         if out.curvefit.shape[0] != out.windows.shape[0]:
             raise ValueError(err.format('curvefit', 'windows'))
 

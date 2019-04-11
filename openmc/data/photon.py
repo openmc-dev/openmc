@@ -549,8 +549,8 @@ class IncidentPhoton(EqualityMixin):
         for mt in (502, 504, 515, 522, 525):
             data.reactions[mt] = PhotonReaction.from_ace(ace, mt)
 
-        # Get heating cross sections [eV*barn] from factors [eV per collision]
-        # by multiplying with total xs (sum of (502, 504, 515, 522))
+        # Get heating cross sections [eV-barn] from factors [eV per collision]
+        # by multiplying with total xs
         data.reactions[525].xs.y *= sum([data.reactions[mt].xs.y for mt in
                                          (502, 504, 515, 522)])
 
@@ -849,7 +849,6 @@ class IncidentPhoton(EqualityMixin):
                 else:
                     brem_group.create_dataset(key, data=value)
 
-
     def _add_bremsstrahlung(self):
         """Add the data used in the thick-target bremsstrahlung approximation
 
@@ -915,20 +914,20 @@ class IncidentPhoton(EqualityMixin):
         self.bremsstrahlung.update(_BREMSSTRAHLUNG[self.atomic_number])
 
     def _compute_heating(self):
-        """Compute heating cross sections (KERMA)
+        r"""Compute heating cross sections (KERMA)
 
            Photon energy is deposited as energy loss in three reactions:
            incoherent scattering, pair production and photoelectric effect.
            The point-wise heating cross section is calculated as:
 
            .. math::
-               \sigma_{Hx} &= (E - \overline{E}_x(E)) \times \sigma_x(E), x \in \left \{  I, PP, PE \right\}
+               \sigma_{Hx}(E) &= (E - \overline{E}_x(E)) \cdot \sigma_x(E), x \in \left\{I, PP, PE \right\}
 
-               \overline{E}_I (E) &= \frac {\int E' \sigma_I (E,E',\mu) d\mu} {\int \sigma_I (E,E',\mu) d\mu}
+               \overline{E}_I(E) &= \frac {\int E' \sigma_I (E,E',\mu) d\mu} {\int \sigma_I (E,E',\mu) d\mu}
 
                \overline{E}_{PP} &= 2 m_e c^2 = 1.022 \times 10^6 eV
 
-               \overline{E}_{PE} &= E_{fluorescent photons}
+               \overline{E}_{PE} &= E(\text{fluorescent photons})
 
            The differential cross section representation for incoherent
            scattering can be found in the theory manual.

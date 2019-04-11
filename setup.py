@@ -68,10 +68,10 @@ kwargs = {
     },
 }
 
-# If Cython is present, add resonance reconstruction capability
+# If Cython is present, add resonance reconstruction and fast float_endf
 if have_cython:
     kwargs.update({
-        'ext_modules': cythonize('openmc/data/reconstruct.pyx'),
+        'ext_modules': cythonize('openmc/data/*.pyx'),
         'include_dirs': [np.get_include()]
     })
 

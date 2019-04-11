@@ -20,6 +20,11 @@ from numpy.polynomial.polynomial import Polynomial
 from .data import ATOMIC_SYMBOL, gnd_name
 from .function import Tabulated1D, INTERPOLATION_SCHEME
 from openmc.stats.univariate import Uniform, Tabular, Legendre
+try:
+    from ._endf import float_endf
+    _CYTHON = True
+except ImportError:
+    _CYTHON = False
 
 
 _LIBRARY = {0: 'ENDF/B', 1: 'ENDF/A', 2: 'JEFF', 3: 'EFF',
@@ -69,7 +74,7 @@ SUM_RULES = {1: [2, 3],
 ENDF_FLOAT_RE = re.compile(r'([\s\-\+]?\d*\.\d+)([\+\-]) ?(\d+)')
 
 
-def float_endf(s):
+def py_float_endf(s):
     """Convert string of floating point number in ENDF to float.
 
     The ENDF-6 format uses an 'e-less' floating point number format,
@@ -90,6 +95,10 @@ def float_endf(s):
 
     """
     return float(ENDF_FLOAT_RE.sub(r'\1e\2\3', s))
+
+
+if not _CYTHON:
+    float_endf = py_float_endf
 
 
 def int_endf(s):

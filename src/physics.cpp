@@ -81,6 +81,9 @@ void sample_neutron_reaction(Particle* p)
   // Sample a nuclide within the material
   int i_nuclide = sample_nuclide(p);
 
+  // Save which nuclide particle had collision with
+  p->event_nuclide_ = i_nuclide;
+
   // Create fission bank sites. Note that while a fission reaction is sampled,
   // it never actually "happens", i.e. the weight of the particle does not
   // change when sampling fission sites. The following block handles all
@@ -394,7 +397,7 @@ void sample_positron_reaction(Particle* p)
   p->event_ = EVENT_ABSORB;
 }
 
-int sample_nuclide(Particle* p)
+int sample_nuclide(const Particle* p)
 {
   // Sample cumulative distribution function
   double cutoff = prn() * p->macro_xs_.total;
@@ -411,11 +414,7 @@ int sample_nuclide(Particle* p)
 
     // Increment probability to compare to cutoff
     prob += atom_density * p->neutron_xs_[i_nuclide].total;
-    if (prob >= cutoff) {
-      // Save which nuclide particle had collision with
-      p->event_nuclide_ = i_nuclide;
-      return i_nuclide;
-    }
+    if (prob >= cutoff) return i_nuclide;
   }
 
   // If we reach here, no nuclide was sampled
@@ -443,7 +442,7 @@ int sample_element(Particle* p)
     // Increment probability to compare to cutoff
     prob += sigma;
     if (prob > cutoff) {
-      // Save which nuclide particle had collision with
+      // Save which nuclide particle had collision with for tally purpose
       p->event_nuclide_ = mat->nuclide_[i];
 
       return i_element;

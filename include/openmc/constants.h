@@ -108,7 +108,7 @@ constexpr std::array<const char*, 39> SUBSHELLS =  {
 // Void material and nuclide
 // TODO: refactor and remove
 constexpr int MATERIAL_VOID {-1};
-constexpr int NUCLIDE_VOID  {-1};
+constexpr int NUCLIDE_NONE  {-1};
 
 // ============================================================================
 // CROSS SECTION RELATED CONSTANTS
@@ -128,7 +128,7 @@ constexpr int TEMPERATURE_INTERPOLATION {2};
 
 // Reaction types
 // TODO: Convert to enum
-constexpr int NONE_REACTION {0};
+constexpr int REACTION_NONE {0};
 constexpr int TOTAL_XS {1};
 constexpr int ELASTIC {2};
 constexpr int N_NONELASTIC {3};

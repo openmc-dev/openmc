@@ -261,7 +261,7 @@ public:
 
   // Post-collision physical data
   int n_bank_ {0};        //!< number of fission sites banked
-  int n_bank_second_ {0}; //!< number of secondary particles
+  int n_bank_second_ {0}; //!< number of secondary particles banked
   double wgt_bank_ {0.0}; //!< weight of fission sites banked
   int n_delayed_bank_[MAX_DELAYED_GROUPS];  //!< number of delayed fission
                                             //!< sites banked

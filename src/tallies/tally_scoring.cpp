@@ -261,12 +261,13 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
 
     } else if (score_bin == SCORE_DELAYED_NU_FISSION && g != 0) {
 
-      // Get the index of the delayed group filter
-      auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-
       // If the delayed group filter is present, tally to corresponding delayed
       // group bin if it exists
-      if (i_dg_filt >= 0) {
+      if (tally.delayedgroup_filter_ >= 0) {
+
+        // Get the index of the delayed group filter
+        auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
+
         const DelayedGroupFilter& dg_filt {*dynamic_cast<DelayedGroupFilter*>(
           model::tally_filters[i_dg_filt].get())};
 

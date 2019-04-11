@@ -726,89 +726,6 @@ class IncidentPhoton(EqualityMixin):
         data = cls(Z)
 
         # Read energy grid
-        energy= group['energy'].value
-
-        # Read cross section data
-        for mt, (name, key) in _REACTION_NAME.items():
-            if key in group:
-                rgroup = group[key]
-            elif key in group['subshells']:
-                rgroup = group['subshells'][key]
-            else:
-                continue
-
-            data.reactions[mt] = PhotonReaction.from_hdf5(rgroup, mt, energy)
-
-        # Check for necessary reactions
-        for mt in [502, 504, 522]:
-            assert mt in data, "reaction {} not found".format(mt)
-
-        # Read atomic relaxation
-        data.atomic_relaxation = AtomicRelaxation.from_hdf5(group['subshells'])
-
-        # Read Compton profiles
-        if 'compton_profiles' in group:
-            rgroup = group['compton_profiles']
-            profile = data.compton_profiles
-            profile['num_electrons'] = rgroup['num_electrons'].value
-            profile['binding_energy'] = rgroup['binding_energy'].value
-
-            # Get electron momentum values
-            pz = rgroup['pz'].value
-            J = rgroup['J'].value
-            if pz.size != J.shape[1]:
-                raise ValueError("'J' array shape is not consistent with the "
-                                 "'pz' array shape")
-            profile['J'] = [Tabulated1D(pz, Jk) for Jk in J]
-
-        # Read bremsstrahlung
-        if 'bremsstrahlung' in group:
-            rgroup = group['bremsstrahlung']
-            data.bremsstrahlung['I'] = rgroup.attrs['I']
-            for key in ('dcs', 'electron_energy', 'ionization_energy',
-                        'num_electrons', 'photon_energy'):
-                data.bremsstrahlung[key] = rgroup[key].value
-
-        return data
-
-    @classmethod
-    def from_hdf5(cls, group_or_filename):
-        """Generate photon reaction from an HDF5 group
-
-        Parameters
-        ----------
-        group_or_filename : h5py.Group or str
-            HDF5 group containing interaction data. If given as a string, it is
-            assumed to be the filename for the HDF5 file, and the first group is
-            used to read from.
-
-        Returns
-        -------
-        openmc.data.IncidentPhoton
-            Photon interaction data
-
-        """
-        if isinstance(group_or_filename, h5py.Group):
-            group = group_or_filename
-        else:
-            h5file = h5py.File(str(group_or_filename), 'r')
-
-            # Make sure version matches
-            if 'version' in h5file.attrs:
-                major, minor = h5file.attrs['version']
-                # For now all versions of HDF5 data can be read
-            else:
-                raise IOError(
-                    'HDF5 data does not indicate a version. Your installation '
-                    'of the OpenMC Python API expects version {}.x data.'
-                    .format(HDF5_VERSION_MAJOR))
-
-            group = list(h5file.values())[0]
-
-        Z = group.attrs['Z']
-        data = cls(Z)
-
-        # Read energy grid
         energy = group['energy'][()]
 
         # Read cross section data
@@ -889,7 +806,7 @@ class IncidentPhoton(EqualityMixin):
         designators = []
         for mt, rx in self.reactions.items():
             name, key = _REACTION_NAME[mt]
-            if mt in [502, 504, 515, 517, 522, 525]:
+            if mt in (502, 504, 515, 517, 522, 525):
                 sub_group = group.create_group(key)
             elif mt >= 534 and mt <= 572:
                 # Subshell

@@ -161,8 +161,8 @@ Particle::transport()
 
     // Reset event variables
     event_ = EVENT_KILL;
-    event_nuclide_ = NUCLIDE_VOID;
-    event_mt_ = NONE_REACTION;
+    event_nuclide_ = NUCLIDE_NONE;
+    event_mt_ = REACTION_NONE;
 
     // If the cell hasn't been determined based on the particle's location,
     // initiate a search for the current cell. This generally happens at the

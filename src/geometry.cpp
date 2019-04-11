@@ -89,7 +89,12 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
   } else {
     int i_universe = p->coord_[p->n_coord_-1].universe;
-    const auto& cells {model::universes[i_universe]->cells_};
+    const auto& univ {*model::universes[i_universe]};
+    const auto& cells {
+      !univ.partitioner_
+      ? model::universes[i_universe]->cells_
+      : univ.partitioner_->get_cells(p->r_local(), p->u_local())
+    };
     for (auto it = cells.cbegin(); it != cells.cend(); it++) {
       i_cell = *it;
 
@@ -396,7 +401,7 @@ BoundaryInfo distance_to_boundary(Particle* p)
     // a higher level then we need to make sure that the higher level boundary
     // is selected.  This logic must consider floating point precision.
     double& d = info.distance;
-    if (d_surf < d_lat) {
+    if (d_surf < d_lat - FP_COINCIDENT) {
       if (d == INFINITY || (d - d_surf)/d >= FP_REL_PRECISION) {
         d = d_surf;
 

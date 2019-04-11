@@ -43,6 +43,7 @@ constexpr int32_t OP_UNION        {std::numeric_limits<int32_t>::max() - 4};
 
 class Cell;
 class Universe;
+class UniversePartitioner;
 
 namespace model {
   extern std::vector<std::unique_ptr<Cell>> cells;
@@ -65,6 +66,8 @@ public:
   //! \brief Write universe information to an HDF5 group.
   //! \param group_id An HDF5 group id.
   void to_hdf5(hid_t group_id) const;
+
+  std::unique_ptr<UniversePartitioner> partitioner_;
 };
 
 //==============================================================================
@@ -192,6 +195,36 @@ public:
   void to_hdf5(hid_t group_id) const;
 };
 #endif
+
+//==============================================================================
+//! Speeds up geometry searches by grouping cells in a search tree.
+//
+//! Currently this object only works with universes that are divided up by a
+//! bunch of z-planes.  It could be generalized to other planes, cylinders,
+//! and spheres.
+//==============================================================================
+
+class UniversePartitioner
+{
+public:
+  explicit UniversePartitioner(const Universe& univ);
+
+  //! Return the list of cells that could contain the given coordinates.
+  const std::vector<int32_t>& get_cells(Position r, Direction u) const;
+
+private:
+  //! A sorted vector of indices to surfaces that partition the universe
+  std::vector<int32_t> surfs_;
+
+  //! Vectors listing the indices of the cells that lie within each partition
+  //
+  //! There are n+1 partitions with n surfaces.  `partitions_.front()` gives the
+  //! cells that lie on the negative side of `surfs_.front()`.
+  //! `partitions_.back()` gives the cells that lie on the positive side of
+  //! `surfs_.back()`.  Otherwise, `partitions_[i]` gives cells sandwiched
+  //! between `surfs_[i-1]` and `surfs_[i]`.
+  std::vector<std::vector<int32_t>> partitions_;
+};
 
 //==============================================================================
 // Non-member functions

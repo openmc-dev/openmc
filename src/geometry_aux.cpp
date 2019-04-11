@@ -121,6 +121,40 @@ adjust_indices()
 }
 
 //==============================================================================
+//! Partition some universes with many z-planes for faster find_cell searches.
+
+void
+partition_universes()
+{
+  // Iterate over universes with more than 10 cells.  (Fewer than 10 is likely
+  // not worth partitioning.)
+  for (const auto& univ : model::universes) {
+    if (univ->cells_.size() > 10) {
+      // Collect the set of surfaces in this universe.
+      std::unordered_set<int32_t> surf_inds;
+      for (auto i_cell : univ->cells_) {
+        for (auto token : model::cells[i_cell]->rpn_) {
+          if (token < OP_UNION) surf_inds.insert(std::abs(token) - 1);
+        }
+      }
+
+      // Partition the universe if there are more than 5 z-planes.  (Fewer than
+      // 5 is likely not worth it.)
+      int n_zplanes = 0;
+      for (auto i_surf : surf_inds) {
+        if (dynamic_cast<const SurfaceZPlane*>(model::surfaces[i_surf].get())) {
+          ++n_zplanes;
+          if (n_zplanes > 5) {
+            univ->partitioner_ = std::make_unique<UniversePartitioner>(*univ);
+            break;
+          }
+        }
+      }
+    }
+  }
+}
+
+//==============================================================================
 
 void
 assign_temperatures()
@@ -210,6 +244,7 @@ void finalize_geometry(std::vector<std::vector<double>>& nuc_temps,
   // Perform some final operations to set up the geometry
   adjust_indices();
   count_cell_instances(model::root_universe);
+  partition_universes();
 
   // Assign temperatures to cells that don't have temperatures already assigned
   assign_temperatures();

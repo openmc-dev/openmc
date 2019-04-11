@@ -278,7 +278,7 @@ public:
 private:
   int n_rings_;                   //!< Number of radial tile positions
   int n_axial_;                   //!< Number of axial tile positions
-  int hextype;					  //!DR type of hexagonal lattice orientation //0 - OY by default;1-OX
+  int hextype;                    //!DR type of hexagonal lattice orientation //0 - OY by default;1-OX
   Position center_;               //!< Global center of lattice
   std::array<double, 2> pitch_;   //!< Lattice tile width and height
 };

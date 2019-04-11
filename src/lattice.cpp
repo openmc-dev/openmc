@@ -443,8 +443,8 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
 
   //DR Check if "OX" orientation desc in node
   if (check_for_node(lat_node, "orient")) {
-	  std :: string orientation = get_node_value(lat_node, "orient");
-	  if (orientation == "OX") {hextype=1;}
+     std :: string orientation = get_node_value(lat_node, "orient");
+     if (orientation == "OX") {hextype=1;}
   }
 
   // Read the lattice center.
@@ -500,10 +500,10 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
   universes_.resize((2*n_rings_-1) * (2*n_rings_-1) * n_axial_, C_NONE);
 
   if (hextype==0) {
-	  fill_lattice_oy(univ_words);
+    fill_lattice_oy(univ_words);
   } else
   {
-	  fill_lattice_ox(univ_words);
+    fill_lattice_ox(univ_words);
   }
 
 
@@ -513,55 +513,55 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
 void
 HexLattice::fill_lattice_ox(std::vector<std::string> univ_words){
 
-	int input_index = 0;
-	  for (int m = 0; m < n_axial_; m++) {
-	    // Initialize lattice indecies.
-		int i_a = -(n_rings_ - 1);
-	    int i_y = n_rings_ - 1;
+    int input_index = 0;
+      for (int m = 0; m < n_axial_; m++) {
+        // Initialize lattice indecies.
+        int i_a = -(n_rings_ - 1);
+        int i_y = n_rings_ - 1;
 
 
-	    //DR Map upper  region of hexagonal lattice which is found in the
-	    // first n_rings-1 rows of the input.
-	    for (int k = 0; k < n_rings_-1; k++) {
+        //DR Map upper  region of hexagonal lattice which is found in the
+        // first n_rings-1 rows of the input.
+        for (int k = 0; k < n_rings_-1; k++) {
 
-	      // Iterate over the input columns.
-	      for (int j = 0; j < k+n_rings_; j++) {
-	        int indx = (2*n_rings_-1)*(2*n_rings_-1) * m
-	                    + (2*n_rings_-1) * (i_y+n_rings_-1)
-	                    + (i_a+n_rings_-1);
-	        universes_[indx] = std::stoi(univ_words[input_index]);
-	        input_index++;
-	        //DR Move to the next right neighbour cell
-	        i_a += 1;
+          // Iterate over the input columns.
+          for (int j = 0; j < k+n_rings_; j++) {
+            int indx = (2*n_rings_-1)*(2*n_rings_-1) * m
+                        + (2*n_rings_-1) * (i_y+n_rings_-1)
+                        + (i_a+n_rings_-1);
+            universes_[indx] = std::stoi(univ_words[input_index]);
+            input_index++;
+            //DR Move to the next right neighbour cell
+            i_a += 1;
 
-	      }
+          }
 
-	      // Return the lattice index to the start of the current row.
-	      i_a = -(n_rings_ - 1);
-	      i_y -= 1;
-	    }
+          // Return the lattice index to the start of the current row.
+          i_a = -(n_rings_ - 1);
+          i_y -= 1;
+        }
 
-	    // Map the lower region from the centerline of cart to down side
-	    for (int k = 0; k < n_rings_; k++) {
-	      // Walk the index to the lower-right neighbor of the last row start.
-	    	i_a = -(n_rings_ - 1) + k;
+        // Map the lower region from the centerline of cart to down side
+        for (int k = 0; k < n_rings_; k++) {
+          // Walk the index to the lower-right neighbor of the last row start.
+            i_a = -(n_rings_ - 1) + k;
 
-	      // Iterate over the input columns.
-	      for (int j = 0; j < 2*n_rings_-k-1; j++) {
-	        int indx = (2*n_rings_-1)*(2*n_rings_-1) * m
-	                    + (2*n_rings_-1) * (i_y+n_rings_-1)
-	                    + (i_a+n_rings_-1);
-	        universes_[indx] = std::stoi(univ_words[input_index]);
-	        input_index++;
-	        //DR Move to the next right neighbour cell
-	        i_a += 1;
+          // Iterate over the input columns.
+          for (int j = 0; j < 2*n_rings_-k-1; j++) {
+            int indx = (2*n_rings_-1)*(2*n_rings_-1) * m
+                        + (2*n_rings_-1) * (i_y+n_rings_-1)
+                        + (i_a+n_rings_-1);
+            universes_[indx] = std::stoi(univ_words[input_index]);
+            input_index++;
+            //DR Move to the next right neighbour cell
+            i_a += 1;
 
-	      }
+          }
 
-	      // Return lattice index to start of current row.
-	     i_y -= 1;
-	    }
-	  }
+          // Return lattice index to start of current row.
+         i_y -= 1;
+        }
+      }
 }
 
 //==============================================================================
@@ -572,87 +572,87 @@ HexLattice::fill_lattice_ox(std::vector<std::string> univ_words){
 void
 HexLattice::fill_lattice_oy(std::vector<std::string> univ_words){
 
-	int input_index = 0;
-	  for (int m = 0; m < n_axial_; m++) {
-	    // Initialize lattice indecies.
-	    int i_x = 1;
-	    int i_a = n_rings_ - 1;
+    int input_index = 0;
+      for (int m = 0; m < n_axial_; m++) {
+        // Initialize lattice indecies.
+        int i_x = 1;
+        int i_a = n_rings_ - 1;
 
-	    // Map upper triangular region of hexagonal lattice which is found in the
-	    // first n_rings-1 rows of the input.
-	    for (int k = 0; k < n_rings_-1; k++) {
-	      // Walk the index to lower-left neighbor of last row start.
-	      i_x -= 1;
+        // Map upper triangular region of hexagonal lattice which is found in the
+        // first n_rings-1 rows of the input.
+        for (int k = 0; k < n_rings_-1; k++) {
+          // Walk the index to lower-left neighbor of last row start.
+          i_x -= 1;
 
-	      // Iterate over the input columns.
-	      for (int j = 0; j < k+1; j++) {
-	        int indx = (2*n_rings_-1)*(2*n_rings_-1) * m
-	                    + (2*n_rings_-1) * (i_a+n_rings_-1)
-	                    + (i_x+n_rings_-1);
-	        universes_[indx] = std::stoi(univ_words[input_index]);
-	        input_index++;
-	        // Walk the index to the right neighbor (which is not adjacent).
-	        i_x += 2;
-	        i_a -= 1;
-	      }
+          // Iterate over the input columns.
+          for (int j = 0; j < k+1; j++) {
+            int indx = (2*n_rings_-1)*(2*n_rings_-1) * m
+                        + (2*n_rings_-1) * (i_a+n_rings_-1)
+                        + (i_x+n_rings_-1);
+            universes_[indx] = std::stoi(univ_words[input_index]);
+            input_index++;
+            // Walk the index to the right neighbor (which is not adjacent).
+            i_x += 2;
+            i_a -= 1;
+          }
 
-	      // Return the lattice index to the start of the current row.
-	      i_x -= 2 * (k+1);
-	      i_a += (k+1);
-	    }
+          // Return the lattice index to the start of the current row.
+          i_x -= 2 * (k+1);
+          i_a += (k+1);
+        }
 
-	    // Map the middle square region of the hexagonal lattice which is found in
-	    // the next 2*n_rings-1 rows of the input.
-	    for (int k = 0; k < 2*n_rings_-1; k++) {
-	      if ((k % 2) == 0) {
-	        // Walk the index to the lower-left neighbor of the last row start.
-	        i_x -= 1;
-	      } else {
-	        // Walk the index to the lower-right neighbor of the last row start.
-	        i_x += 1;
-	        i_a -= 1;
-	      }
+        // Map the middle square region of the hexagonal lattice which is found in
+        // the next 2*n_rings-1 rows of the input.
+        for (int k = 0; k < 2*n_rings_-1; k++) {
+          if ((k % 2) == 0) {
+            // Walk the index to the lower-left neighbor of the last row start.
+            i_x -= 1;
+          } else {
+            // Walk the index to the lower-right neighbor of the last row start.
+            i_x += 1;
+            i_a -= 1;
+          }
 
-	      // Iterate over the input columns.
-	      for (int j = 0; j < n_rings_ - (k % 2); j++) {
-	        int indx = (2*n_rings_-1)*(2*n_rings_-1) * m
-	                    + (2*n_rings_-1) * (i_a+n_rings_-1)
-	                    + (i_x+n_rings_-1);
-	        universes_[indx] = std::stoi(univ_words[input_index]);
-	        input_index++;
-	        // Walk the index to the right neighbor (which is not adjacent).
-	        i_x += 2;
-	        i_a -= 1;
-	      }
+          // Iterate over the input columns.
+          for (int j = 0; j < n_rings_ - (k % 2); j++) {
+            int indx = (2*n_rings_-1)*(2*n_rings_-1) * m
+                        + (2*n_rings_-1) * (i_a+n_rings_-1)
+                        + (i_x+n_rings_-1);
+            universes_[indx] = std::stoi(univ_words[input_index]);
+            input_index++;
+            // Walk the index to the right neighbor (which is not adjacent).
+            i_x += 2;
+            i_a -= 1;
+          }
 
-	      // Return the lattice index to the start of the current row.
-	      i_x -= 2*(n_rings_ - (k % 2));
-	      i_a += n_rings_ - (k % 2);
-	    }
+          // Return the lattice index to the start of the current row.
+          i_x -= 2*(n_rings_ - (k % 2));
+          i_a += n_rings_ - (k % 2);
+        }
 
-	    // Map the lower triangular region of the hexagonal lattice.
-	    for (int k = 0; k < n_rings_-1; k++) {
-	      // Walk the index to the lower-right neighbor of the last row start.
-	      i_x += 1;
-	      i_a -= 1;
+        // Map the lower triangular region of the hexagonal lattice.
+        for (int k = 0; k < n_rings_-1; k++) {
+          // Walk the index to the lower-right neighbor of the last row start.
+          i_x += 1;
+          i_a -= 1;
 
-	      // Iterate over the input columns.
-	      for (int j = 0; j < n_rings_-k-1; j++) {
-	        int indx = (2*n_rings_-1)*(2*n_rings_-1) * m
-	                    + (2*n_rings_-1) * (i_a+n_rings_-1)
-	                    + (i_x+n_rings_-1);
-	        universes_[indx] = std::stoi(univ_words[input_index]);
-	        input_index++;
-	        // Walk the index to the right neighbor (which is not adjacent).
-	        i_x += 2;
-	        i_a -= 1;
-	      }
+          // Iterate over the input columns.
+          for (int j = 0; j < n_rings_-k-1; j++) {
+            int indx = (2*n_rings_-1)*(2*n_rings_-1) * m
+                        + (2*n_rings_-1) * (i_a+n_rings_-1)
+                        + (i_x+n_rings_-1);
+            universes_[indx] = std::stoi(univ_words[input_index]);
+            input_index++;
+            // Walk the index to the right neighbor (which is not adjacent).
+            i_x += 2;
+            i_a -= 1;
+          }
 
-	      // Return lattice index to start of current row.
-	      i_x -= 2*(n_rings_ - k - 1);
-	      i_a += n_rings_ - k - 1;
-	    }
-	  }
+          // Return lattice index to start of current row.
+          i_x -= 2*(n_rings_ - k - 1);
+          i_a += n_rings_ - k - 1;
+        }
+      }
 }
 
 //==============================================================================
@@ -693,11 +693,11 @@ std::pair<double, std::array<int, 3>>
 HexLattice::distance(Position r, Direction u, const std::array<int, 3>& i_xyz)
 const
 {
-	if (hextype==0){
-		return distance_oy(r,u,i_xyz);
-	} else {
-		return distance_ox(r,u,i_xyz);
-	}
+    if (hextype==0){
+        return distance_oy(r,u,i_xyz);
+    } else {
+        return distance_ox(r,u,i_xyz);
+    }
 }
 
 //DR OX distance calculation
@@ -994,32 +994,32 @@ Position
 HexLattice::get_local_position(Position r, const std::array<int, 3> i_xyz)
 const
 {
-	 // DR for OY implementation
-	  if (hextype == 0){
-	  // x_l = x_g - (center + pitch_x*cos(30)*index_x)
-	  r.x -= center_.x + std::sqrt(3.0)/2.0 * (i_xyz[0] - n_rings_ + 1) * pitch_[0];
-	  // y_l = y_g - (center + pitch_x*index_x + pitch_y*sin(30)*index_y)
-	  r.y -= (center_.y + (i_xyz[1] - n_rings_ + 1) * pitch_[0]
-	          + (i_xyz[0] - n_rings_ + 1) * pitch_[0] / 2.0);
-	  if (is_3d_) {
-	    r.z -= center_.z - (0.5 * n_axial_ - i_xyz[2] - 0.5) * pitch_[1];
-	  }
+     // DR for OY implementation
+      if (hextype == 0){
+      // x_l = x_g - (center + pitch_x*cos(30)*index_x)
+      r.x -= center_.x + std::sqrt(3.0)/2.0 * (i_xyz[0] - n_rings_ + 1) * pitch_[0];
+      // y_l = y_g - (center + pitch_x*index_x + pitch_y*sin(30)*index_y)
+      r.y -= (center_.y + (i_xyz[1] - n_rings_ + 1) * pitch_[0]
+              + (i_xyz[0] - n_rings_ + 1) * pitch_[0] / 2.0);
+      if (is_3d_) {
+        r.z -= center_.z - (0.5 * n_axial_ - i_xyz[2] - 0.5) * pitch_[1];
+      }
 
-	  }
-	  else {// DR for OX implementation
+      }
+      else {// DR for OX implementation
 
-		  // x_l = x_g - (center + pitch_x*index_a + pitch_y*sin(30)*index_y)
-		  	    r.x -= (center_.x + (i_xyz[0] - n_rings_ + 1) * pitch_[0]
-		  	            + (i_xyz[1] - n_rings_ + 1) * pitch_[0] / 2.0);
-		  // y_l = y_g - (center + pitch_y*cos(30)*index_y)
-		    r.y -= center_.y + std::sqrt(3.0)/2.0 * (i_xyz[1] - n_rings_ + 1) * pitch_[0];
+          // x_l = x_g - (center + pitch_x*index_a + pitch_y*sin(30)*index_y)
+                  r.x -= (center_.x + (i_xyz[0] - n_rings_ + 1) * pitch_[0]
+                          + (i_xyz[1] - n_rings_ + 1) * pitch_[0] / 2.0);
+          // y_l = y_g - (center + pitch_y*cos(30)*index_y)
+            r.y -= center_.y + std::sqrt(3.0)/2.0 * (i_xyz[1] - n_rings_ + 1) * pitch_[0];
 
-		    if (is_3d_) {
-		      r.z -= center_.z - (0.5 * n_axial_ - i_xyz[2] - 0.5) * pitch_[1];
-		    }
+            if (is_3d_) {
+              r.z -= center_.z - (0.5 * n_axial_ - i_xyz[2] - 0.5) * pitch_[1];
+            }
 
-	  }
-	  return r;
+      }
+      return r;
 }
 
 //==============================================================================
@@ -1078,10 +1078,10 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
   write_dataset(lat_group, "n_rings", n_rings_);
   write_dataset(lat_group, "n_axial", n_axial_);
   if (hextype == 0){
-	  write_string(lat_group, "orientation", "oy",false);
+      write_string(lat_group, "orientation", "oy",false);
   }
   else {
-	  write_string(lat_group, "orientation", "ox",false);
+      write_string(lat_group, "orientation", "ox",false);
   }
   if (is_3d_) {
     write_dataset(lat_group, "pitch", pitch_);

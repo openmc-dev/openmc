@@ -141,7 +141,11 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
             center = group['center'][...]
             pitch = group['pitch'][...]
             outer = group['outer'].value
-            orientation = group['orientation'].value
+            #DR Temp added for compatibility with previous version
+            if ('orientation' in group.keys()):
+               orientation = group['orientation'].value
+            else:
+               orientation = "oy"
 
             universe_ids = group['universes'][...]
 
@@ -1133,14 +1137,16 @@ class HexLattice(Lattice):
         else:
             z = point[2] - self.center[2]
             iz = floor(z/self.pitch[1] + 0.5*self.num_axial)
-        if self._hextype is 0:#//DR
+        if self._hextype:#//DR
+           alpha = y - x*sqrt(3.)
+           ix = 0
+           ia = floor(-alpha/(sqrt(3.0) * self.pitch[0]))
+           iy = floor(y/(sqrt(0.75) * self.pitch[0]))
+        else:
            alpha = y - x/sqrt(3.)
            ix = floor(x/(sqrt(0.75) * self.pitch[0]))
            ia = floor(alpha/self.pitch[0])
-        else:
-           alpha = y - x*sqrt(3.)
-           ia = floor(-alpha/(sqrt(3.0) * self.pitch[0]))
-           iy = floor(y/(sqrt(0.75) * self.pitch[0]))
+           iy = 0
            
 
         # Check four lattice elements to see which one is closest based on local
@@ -1169,7 +1175,8 @@ class HexLattice(Lattice):
         point : Iterable of float
             Cartesian coordinates of point
         idx : Iterable of int
-            Indices of lattice element in :math:`(x,\alpha,z)` bases
+            Indices of lattice element in :math:`(x,\alpha,z)` 
+            or :math:`(\alpha,y,z)` basesis
 
         Returns
         -------
@@ -1179,11 +1186,11 @@ class HexLattice(Lattice):
 
         """
         if self._hextype:#//DR
-           x = point[0] - (self.center[0] + sqrt(0.75)*self.pitch[0]*idx[0])
-           y = point[1] - (self.center[1] + (0.5*idx[0] + idx[1])*self.pitch[0])
-        else:
            x = point[0] - (self.center[0] + self.pitch[0]*idx[0] + 0.5*self.pitch[0]*idx[1])
            y = point[1] - (self.center[1] + (sqrt(0.75)*self.pitch[0]*idx[1]))
+        else:
+           x = point[0] - (self.center[0] + sqrt(0.75)*self.pitch[0]*idx[0])
+           y = point[1] - (self.center[1] + (0.5*idx[0] + idx[1])*self.pitch[0])
 
         if self._num_axial is None:
             z = point[2]

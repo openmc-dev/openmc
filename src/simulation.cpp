@@ -20,7 +20,9 @@
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/trigger.h"
 
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 #include "xtensor/xview.hpp"
 
 #include <algorithm>
@@ -59,7 +61,7 @@ int openmc_simulation_init()
   calculate_work();
 
   // Allocate array for matching filter bins
-#pragma omp parallel
+  #pragma omp parallel
   {
     simulation::filter_matches.resize(model::tally_filters.size());
   }
@@ -76,13 +78,6 @@ int openmc_simulation_init()
   // Set up material nuclide index mapping
   for (auto& mat : model::materials) {
     mat->init_nuclide_index();
-  }
-
-  // Create cross section caches
-  #pragma omp parallel
-  {
-    simulation::micro_xs = new NuclideMicroXS[data::nuclides.size()];
-    simulation::micro_photon_xs = new ElementMicroXS[data::elements.size()];
   }
 
   // Reset global variables -- this is done before loading state point (as that
@@ -133,13 +128,6 @@ int openmc_simulation_finalize()
     mat->mat_nuclide_index_.clear();
   }
 
-  // Clear cross section caches
-  #pragma omp parallel
-  {
-    delete[] simulation::micro_xs;
-    delete[] simulation::micro_photon_xs;
-  }
-
   // Increment total number of generations
   simulation::total_gen += simulation::current_batch*settings::gen_per_batch;
 
@@ -150,7 +138,7 @@ int openmc_simulation_finalize()
   // Write tally results to tallies.out
   if (settings::output_tallies && mpi::master) write_tallies();
 
-#pragma omp parallel
+  #pragma omp parallel
   {
     simulation::filter_matches.clear();
   }
@@ -200,8 +188,8 @@ int openmc_next_batch(int* status)
     // ====================================================================
     // LOOP OVER PARTICLES
 
-#pragma omp parallel for schedule(runtime)
-    for (int64_t i_work = 1; i_work <= simulation::work; ++i_work) {
+    #pragma omp parallel for schedule(runtime)
+    for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
       simulation::current_work = i_work;
 
       // grab source particle from bank
@@ -257,17 +245,13 @@ int restart_batch;
 bool satisfy_triggers {false};
 int total_gen {0};
 double total_weight;
-int64_t work;
+int64_t work_per_rank;
 
 std::vector<double> k_generation;
 std::vector<int64_t> work_index;
 
 // Threadprivate variables
 bool trace;     //!< flag to show debug information
-#ifdef _OPENMP
-int n_threads {-1};  //!< number of OpenMP threads
-int thread_id;  //!< ID of a given thread
-#endif
 
 } // namespace simulation
 
@@ -278,7 +262,7 @@ int thread_id;  //!< ID of a given thread
 void allocate_banks()
 {
   // Allocate source bank
-  simulation::source_bank.resize(simulation::work);
+  simulation::source_bank.resize(simulation::work_per_rank);
 
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
 #ifdef _OPENMP
@@ -287,20 +271,18 @@ void allocate_banks()
     // a generation, there is also a 'master_fission_bank' that is used to
     // collect the sites from each thread.
 
-    simulation::n_threads = omp_get_max_threads();
-
-#pragma omp parallel
+    #pragma omp parallel
     {
-      simulation::thread_id = omp_get_thread_num();
-      if (simulation::thread_id == 0) {
-        simulation::fission_bank.resize(3*simulation::work);
+      if (omp_get_thread_num() == 0) {
+        simulation::fission_bank.reserve(3*simulation::work_per_rank);
       } else {
-        simulation::fission_bank.resize(3*simulation::work / simulation::n_threads);
+        int n_threads = omp_get_num_threads();
+        simulation::fission_bank.reserve(3*simulation::work_per_rank / n_threads);
       }
     }
-    simulation::master_fission_bank.resize(3*simulation::work);
+    simulation::master_fission_bank.reserve(3*simulation::work_per_rank);
 #else
-    simulation::fission_bank.resize(3*simulation::work);
+    simulation::fission_bank.reserve(3*simulation::work_per_rank);
 #endif
   }
 }
@@ -400,8 +382,8 @@ void finalize_batch()
 void initialize_generation()
 {
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-    // Reset number of fission bank sites
-    simulation::n_bank = 0;
+    // Clear out the fission bank
+    simulation::fission_bank.clear();
 
     // Count source sites if using uniform fission source weighting
     if (settings::ufs_on) ufs_count_sites();
@@ -417,9 +399,9 @@ void finalize_generation()
   auto& gt = simulation::global_tallies;
 
   // Update global tallies with the omp private accumulation variables
-#pragma omp parallel
+  #pragma omp parallel
   {
-#pragma omp critical(increment_global_tallies)
+    #pragma omp critical(increment_global_tallies)
     {
       if (settings::run_mode == RUN_MODE_EIGENVALUE) {
         gt(K_COLLISION, RESULT_VALUE) += global_tally_collision;
@@ -525,7 +507,7 @@ void calculate_work()
     int64_t work_i = i < remainder ? min_work + 1 : min_work;
 
     // Set number of particles
-    if (mpi::rank == i) simulation::work = work_i;
+    if (mpi::rank == i) simulation::work_per_rank = work_i;
 
     // Set index into source bank for rank i
     i_bank += work_i;

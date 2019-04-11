@@ -10,6 +10,8 @@
 #include "hdf5.h"
 #include "openmc/position.h"
 #include "openmc/constants.h"
+#include "openmc/cell.h"
+#include "openmc/geometry.h"
 #include "openmc/particle.h"
 #include "openmc/xml_interface.h"
 
@@ -53,6 +55,28 @@ struct RGBColor {
 
 typedef xt::xtensor<RGBColor, 2> ImageData;
 
+struct IdData {
+  // Constructor
+  IdData(size_t h_res, size_t v_res);
+
+  // Methods
+  void set_value(size_t y, size_t x, const Particle& p, int level);
+
+  // Members
+  xt::xtensor<int32_t, 3> data_; //!< 2D array of cell & material ids
+};
+
+struct PropertyData {
+  // Constructor
+  PropertyData(size_t h_res, size_t v_res);
+
+  // Methods
+  void set_value(size_t y, size_t x, const Particle& p, int level);
+
+  // Members
+  xt::xtensor<double, 3> data_; //!< 2D array of temperature & density data
+};
+
 enum class PlotType {
   slice = 1,
   voxel = 2
@@ -65,16 +89,98 @@ enum class PlotBasis {
 };
 
 enum class PlotColorBy {
-  cells = 1,
-  mats = 2
+  cells = 0,
+  mats = 1
 };
 
 //===============================================================================
 // Plot class
 //===============================================================================
+class PlotBase {
+public:
+  template<class T> T get_map() const;
 
-class Plot
-{
+  // Members
+public:
+  Position origin_; //!< Plot origin in geometry
+  Position width_; //!< Plot width in geometry
+  PlotBasis basis_; //!< Plot basis (XY/XZ/YZ)
+  std::array<size_t, 3> pixels_; //!< Plot size in pixels
+  int level_; //!< Plot universe level
+};
+
+template<class T>
+T PlotBase::get_map() const {
+
+  size_t width = pixels_[0];
+  size_t height = pixels_[1];
+
+  // get pixel size
+  double in_pixel = (width_[0])/static_cast<double>(width);
+  double out_pixel = (width_[1])/static_cast<double>(height);
+
+  // size data array
+  T data(width, height);
+
+  // setup basis indices and initial position centered on pixel
+  int in_i, out_i;
+  Position xyz = origin_;
+  switch(basis_) {
+  case PlotBasis::xy :
+    in_i = 0;
+    out_i = 1;
+    break;
+  case PlotBasis::xz :
+    in_i = 0;
+    out_i = 2;
+    break;
+  case PlotBasis::yz :
+    in_i = 1;
+    out_i = 2;
+    break;
+#ifdef __GNUC__
+  default:
+    __builtin_unreachable();
+#endif
+  }
+
+  // set initial position
+  xyz[in_i] = origin_[in_i] - width_[0] / 2. + in_pixel / 2.;
+  xyz[out_i] = origin_[out_i] + width_[1] / 2. - out_pixel / 2.;
+
+  // arbitrary direction
+  Direction dir = {0.7071, 0.7071, 0.0};
+
+  #pragma omp parallel
+  {
+    Particle p;
+    p.r() = xyz;
+    p.u() = dir;
+    p.coord_[0].universe = model::root_universe;
+    int level = level_;
+    int j{};
+
+    #pragma omp for
+    for (int y = 0; y < height; y++) {
+      p.r()[out_i] =  xyz[out_i] - out_pixel * y;
+      for (int x = 0; x < width; x++) {
+        p.r()[in_i] = xyz[in_i] + in_pixel * x;
+        p.n_coord_ = 1;
+        // local variables
+        bool found_cell = find_cell(&p, 0);
+        j = p.n_coord_ - 1;
+        if (level >=0) {j = level + 1;}
+        if (found_cell) {
+          data.set_value(y, x, p, j);
+        }
+      } // inner for
+    } // outer for
+  } // omp parallel
+
+  return data;
+}
+
+class Plot : public PlotBase {
 
 public:
   // Constructor
@@ -95,17 +201,12 @@ private:
   void set_meshlines(pugi::xml_node plot_node);
   void set_mask(pugi::xml_node plot_node);
 
-  // Members
+// Members
 public:
   int id_; //!< Plot ID
   PlotType type_; //!< Plot type (Slice/Voxel)
   PlotColorBy color_by_; //!< Plot coloring (cell/material)
-  Position origin_; //!< Plot origin in geometry
-  Position width_; //!< Plot width in geometry
-  PlotBasis basis_; //!< Plot basis (XY/XZ/YZ)
-  std::array<int, 3> pixels_; //!< Plot size in pixels
   int meshlines_width_; //!< Width of lines added to the plot
-  int level_; //!< Plot universe level
   int index_meshlines_mesh_; //!< Index of the mesh to draw on the plot
   RGBColor meshlines_color_; //!< Color of meshlines on the plot
   RGBColor not_found_; //!< Plot background color
@@ -126,13 +227,6 @@ void draw_mesh_lines(Plot pl, ImageData& data);
 //! \param[in] plot object
 //! \param[out] image data associated with the plot object
 void output_ppm(Plot pl, const ImageData& data);
-
-//! Get the rgb color for a given particle position in a plot
-//! \param[in] particle with position for current pixel
-//! \param[in] plot object
-//! \param[out] rgb color
-//! \param[out] cell or material id for particle position
-void position_rgb(Particle p, Plot pl, RGBColor& rgb, int& id);
 
 //! Initialize a voxel file
 //! \param[in] id of an open hdf5 file

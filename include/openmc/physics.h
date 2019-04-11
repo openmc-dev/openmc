@@ -7,6 +7,8 @@
 #include "openmc/position.h"
 #include "openmc/reaction.h"
 
+#include <vector>
+
 namespace openmc {
 
 //==============================================================================
@@ -47,24 +49,23 @@ int sample_nuclide(const Particle* p);
 //! Determine the average total, prompt, and delayed neutrons produced from
 //! fission and creates appropriate bank sites.
 void create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
-  Particle::Bank* bank_array, int64_t* bank_size, int64_t bank_capacity);
+  std::vector<Particle::Bank>& bank);
 
 int sample_element(Particle* p);
 
-Reaction* sample_fission(int i_nuclide, double E);
+Reaction* sample_fission(int i_nuclide, const Particle* p);
 
-void sample_photon_product(int i_nuclide, double E, int* i_rx, int* i_product);
+void sample_photon_product(int i_nuclide, const Particle* p, int* i_rx, int* i_product);
 
 void absorption(Particle* p, int i_nuclide);
 
 void scatter(Particle*, int i_nuclide);
 
 //! Treats the elastic scattering of a neutron with a target.
-void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, double& E,
-  Direction& u, double& mu_lab);
+void elastic_scatter(int i_nuclide, const Reaction& rx, double kT,
+  Particle* p);
 
-void sab_scatter(int i_nuclide, int i_sab, double& E,
-  Direction& u, double& mu);
+void sab_scatter(int i_nuclide, int i_sab, Particle* p);
 
 //! samples the target velocity. The constant cross section free gas model is
 //! the default method. Methods for correctly accounting for the energy

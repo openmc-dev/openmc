@@ -269,9 +269,9 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
 
         """
         surface_id = int(group.name.split('/')[-1].lstrip('surface '))
-        name = group['name'].value.decode() if 'name' in group else ''
-        surf_type = group['type'].value.decode()
-        bc = group['boundary_type'].value.decode()
+        name = group['name'][()].decode() if 'name' in group else ''
+        surf_type = group['type'][()].decode()
+        bc = group['boundary_type'][()].decode()
         coeffs = group['coefficients'][...]
 
         # Create the Surface based on its type

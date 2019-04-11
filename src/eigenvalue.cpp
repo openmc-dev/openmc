@@ -20,9 +20,14 @@
 #include "openmc/timer.h"
 #include "openmc/tallies/tally.h"
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #include <algorithm> // for min
 #include <array>
 #include <cmath> // for sqrt, abs, pow
+#include <iterator> // for back_inserter
 #include <string>
 
 namespace openmc {
@@ -81,21 +86,22 @@ void synchronize_bank()
 
 #ifdef OPENMC_MPI
   int64_t start = 0;
-  MPI_Exscan(&simulation::n_bank, &start, 1, MPI_INT64_T, MPI_SUM, mpi::intracomm);
+  int64_t n_bank = simulation::fission_bank.size();
+  MPI_Exscan(&n_bank, &start, 1, MPI_INT64_T, MPI_SUM, mpi::intracomm);
 
   // While we would expect the value of start on rank 0 to be 0, the MPI
   // standard says that the receive buffer on rank 0 is undefined and not
   // significant
   if (mpi::rank == 0) start = 0;
 
-  int64_t finish = start + simulation::n_bank;
+  int64_t finish = start + simulation::fission_bank.size();
   int64_t total = finish;
   MPI_Bcast(&total, 1, MPI_INT64_T, mpi::n_procs - 1, mpi::intracomm);
 
 #else
   int64_t start  = 0;
-  int64_t finish = simulation::n_bank;
-  int64_t total  = simulation::n_bank;
+  int64_t finish = simulation::fission_bank.size();
+  int64_t total  = simulation::fission_bank.size();
 #endif
 
   // If there are not that many particles per generation, it's possible that no
@@ -103,7 +109,7 @@ void synchronize_bank()
   // extra logic to treat this circumstance, we really want to ensure the user
   // runs enough particles to avoid this in the first place.
 
-  if (simulation::n_bank == 0) {
+  if (simulation::fission_bank.empty()) {
     fatal_error("No fission sites banked on MPI rank " + std::to_string(mpi::rank));
   }
 
@@ -132,23 +138,23 @@ void synchronize_bank()
 
   // Allocate temporary source bank
   int64_t index_temp = 0;
-  std::vector<Particle::Bank> temp_sites(3*simulation::work);
+  std::vector<Particle::Bank> temp_sites(3*simulation::work_per_rank);
 
-  for (int64_t i = 0; i < simulation::n_bank; ++i) {
+  for (const auto& site : simulation::fission_bank) {
     // If there are less than n_particles particles banked, automatically add
     // int(n_particles/total) sites to temp_sites. For example, if you need
     // 1000 and 300 were banked, this would add 3 source sites per banked site
     // and the remaining 100 would be randomly sampled.
     if (total < settings::n_particles) {
       for (int64_t j = 1; j <= settings::n_particles / total; ++j) {
-        temp_sites[index_temp] = simulation::fission_bank[i];
+        temp_sites[index_temp] = site;
         ++index_temp;
       }
     }
 
     // Randomly sample sites needed
     if (prn() < p_sample) {
-      temp_sites[index_temp] = simulation::fission_bank[i];
+      temp_sites[index_temp] = site;
       ++index_temp;
     }
   }
@@ -189,7 +195,7 @@ void synchronize_bank()
       // fission bank
       sites_needed = settings::n_particles - finish;
       for (int i = 0; i < sites_needed; ++i) {
-        int i_bank = simulation::n_bank - sites_needed + i;
+        int i_bank = simulation::fission_bank.size() - sites_needed + i;
         temp_sites[index_temp] = simulation::fission_bank[i_bank];
         ++index_temp;
       }
@@ -346,38 +352,32 @@ void calculate_average_keff()
 #ifdef _OPENMP
 void join_bank_from_threads()
 {
-  // Initialize the total number of fission bank sites
-  int64_t total = 0;
+  int n_threads = omp_get_max_threads();
 
-#pragma omp parallel
+  #pragma omp parallel
   {
     // Copy thread fission bank sites to one shared copy
-#pragma omp for ordered schedule(static)
-    for (int i = 0; i < simulation::n_threads; ++i) {
-#pragma omp ordered
+    #pragma omp for ordered schedule(static)
+    for (int i = 0; i < n_threads; ++i) {
+      #pragma omp ordered
       {
         std::copy(
-          &simulation::fission_bank[0],
-          &simulation::fission_bank[0] + simulation::n_bank,
-          &simulation::master_fission_bank[total]
+          simulation::fission_bank.cbegin(),
+          simulation::fission_bank.cend(),
+          std::back_inserter(simulation::master_fission_bank)
         );
-        total += simulation::n_bank;
       }
     }
 
     // Make sure all threads have made it to this point
-#pragma omp barrier
+    #pragma omp barrier
 
     // Now copy the shared fission bank sites back to the master thread's copy.
-    if (simulation::thread_id == 0) {
-      simulation::n_bank = total;
-      std::copy(
-        &simulation::master_fission_bank[0],
-        &simulation::master_fission_bank[0] + simulation::n_bank,
-        &simulation::fission_bank[0]
-      );
+    if (omp_get_thread_num() == 0) {
+      simulation::fission_bank = simulation::master_fission_bank;
+      simulation::master_fission_bank.clear();
     } else {
-      simulation::n_bank = 0;
+      simulation::fission_bank.clear();
     }
   }
 }
@@ -537,8 +537,8 @@ void shannon_entropy()
 
   // Get source weight in each mesh bin
   bool sites_outside;
-  xt::xtensor<double, 1> p = m->count_sites(simulation::n_bank,
-    simulation::fission_bank.data(), 0, nullptr, &sites_outside);
+  xt::xtensor<double, 1> p = m->count_sites(simulation::fission_bank,
+    &sites_outside);
 
   // display warning message if there were sites outside entropy box
   if (sites_outside) {
@@ -577,8 +577,8 @@ void ufs_count_sites()
   } else {
     // count number of source sites in each ufs mesh cell
     bool sites_outside;
-    simulation::source_frac = m->count_sites(simulation::work,
-      simulation::source_bank.data(), 0, nullptr, &sites_outside);
+    simulation::source_frac = m->count_sites(simulation::source_bank,
+      &sites_outside);
 
     // Check for sites outside of the mesh
     if (mpi::master && sites_outside) {
@@ -597,7 +597,7 @@ void ufs_count_sites()
 
     // Since the total starting weight is not equal to n_particles, we need to
     // renormalize the weight of the source sites
-    for (int i = 0; i < simulation::work; ++i) {
+    for (int i = 0; i < simulation::work_per_rank; ++i) {
       simulation::source_bank[i].wgt *= settings::n_particles / total;
     }
   }

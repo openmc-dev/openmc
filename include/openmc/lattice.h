@@ -152,8 +152,7 @@ public:
   int indx_;  //!< An index to a Lattice universes or offsets array.
 
   LatticeIter(Lattice &lat, int indx)
-    : lat_(lat),
-      indx_(indx)
+    : indx_(indx), lat_(lat)
   {}
 
   bool operator==(const LatticeIter &rhs) {return (indx_ == rhs.indx_);}

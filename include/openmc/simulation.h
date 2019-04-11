@@ -37,19 +37,15 @@ extern "C" int restart_batch;   //!< batch at which a restart job resumed
 extern "C" bool satisfy_triggers; //!< have tally triggers been satisfied?
 extern "C" int total_gen;        //!< total number of generations simulated
 extern double total_weight;  //!< Total source weight in a batch
-extern "C" int64_t work;         //!< number of particles per process
+extern int64_t work_per_rank;         //!< number of particles per MPI rank
 
 extern std::vector<double> k_generation;
 extern std::vector<int64_t> work_index;
 
 // Threadprivate variables
 extern "C" bool trace;     //!< flag to show debug information
-#ifdef _OPENMP
-extern "C" int n_threads;  //!< number of OpenMP threads
-extern "C" int thread_id;  //!< ID of a given thread
-#endif
 
-#pragma omp threadprivate(current_work, thread_id, trace)
+#pragma omp threadprivate(current_work, trace)
 
 } // namespace simulation
 

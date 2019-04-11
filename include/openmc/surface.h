@@ -131,6 +131,8 @@ class DAGSurface : public Surface
 public:
   moab::DagMC* dagmc_ptr_;
   DAGSurface();
+  int32_t dag_index_;
+
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -178,7 +180,6 @@ public:
 
 class SurfaceXPlane : public PeriodicSurface
 {
-  double x0_;
 public:
   explicit SurfaceXPlane(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -188,6 +189,8 @@ public:
   bool periodic_translate(const PeriodicSurface* other, Position& r,
                           Direction& u) const;
   BoundingBox bounding_box() const;
+
+  double x0_;
 };
 
 //==============================================================================
@@ -198,7 +201,6 @@ public:
 
 class SurfaceYPlane : public PeriodicSurface
 {
-  double y0_;
 public:
   explicit SurfaceYPlane(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -208,6 +210,8 @@ public:
   bool periodic_translate(const PeriodicSurface* other, Position& r,
                           Direction& u) const;
   BoundingBox bounding_box() const;
+
+  double y0_;
 };
 
 //==============================================================================
@@ -218,7 +222,6 @@ public:
 
 class SurfaceZPlane : public PeriodicSurface
 {
-  double z0_;
 public:
   explicit SurfaceZPlane(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -228,6 +231,8 @@ public:
   bool periodic_translate(const PeriodicSurface* other, Position& r,
                           Direction& u) const;
   BoundingBox bounding_box() const;
+
+  double z0_;
 };
 
 //==============================================================================
@@ -238,7 +243,6 @@ public:
 
 class SurfacePlane : public PeriodicSurface
 {
-  double A_, B_, C_, D_;
 public:
   explicit SurfacePlane(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -248,6 +252,8 @@ public:
   bool periodic_translate(const PeriodicSurface* other, Position& r,
                           Direction& u) const;
   BoundingBox bounding_box() const;
+
+  double A_, B_, C_, D_;
 };
 
 //==============================================================================
@@ -259,13 +265,14 @@ public:
 
 class SurfaceXCylinder : public CSGSurface
 {
-  double y0_, z0_, radius_;
 public:
   explicit SurfaceXCylinder(pugi::xml_node surf_node);
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
+
+  double y0_, z0_, radius_;
 };
 
 //==============================================================================
@@ -277,13 +284,14 @@ public:
 
 class SurfaceYCylinder : public CSGSurface
 {
-  double x0_, z0_, radius_;
 public:
   explicit SurfaceYCylinder(pugi::xml_node surf_node);
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
+
+  double x0_, z0_, radius_;
 };
 
 //==============================================================================
@@ -295,13 +303,14 @@ public:
 
 class SurfaceZCylinder : public CSGSurface
 {
-  double x0_, y0_, radius_;
 public:
   explicit SurfaceZCylinder(pugi::xml_node surf_node);
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
+
+  double x0_, y0_, radius_;
 };
 
 //==============================================================================
@@ -313,13 +322,14 @@ public:
 
 class SurfaceSphere : public CSGSurface
 {
-  double x0_, y0_, z0_, radius_;
 public:
   explicit SurfaceSphere(pugi::xml_node surf_node);
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
+
+  double x0_, y0_, z0_, radius_;
 };
 
 //==============================================================================
@@ -331,13 +341,14 @@ public:
 
 class SurfaceXCone : public CSGSurface
 {
-  double x0_, y0_, z0_, radius_sq_;
 public:
   explicit SurfaceXCone(pugi::xml_node surf_node);
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
+
+  double x0_, y0_, z0_, radius_sq_;
 };
 
 //==============================================================================
@@ -349,13 +360,14 @@ public:
 
 class SurfaceYCone : public CSGSurface
 {
-  double x0_, y0_, z0_, radius_sq_;
 public:
   explicit SurfaceYCone(pugi::xml_node surf_node);
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
+
+  double x0_, y0_, z0_, radius_sq_;
 };
 
 //==============================================================================
@@ -367,13 +379,14 @@ public:
 
 class SurfaceZCone : public CSGSurface
 {
-  double x0_, y0_, z0_, radius_sq_;
 public:
   explicit SurfaceZCone(pugi::xml_node surf_node);
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
+
+  double x0_, y0_, z0_, radius_sq_;
 };
 
 //==============================================================================
@@ -384,14 +397,15 @@ public:
 
 class SurfaceQuadric : public CSGSurface
 {
-  // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
-  double A_, B_, C_, D_, E_, F_, G_, H_, J_, K_;
 public:
   explicit SurfaceQuadric(pugi::xml_node surf_node);
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
+
+  // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
+  double A_, B_, C_, D_, E_, F_, G_, H_, J_, K_;
 };
 
 //==============================================================================

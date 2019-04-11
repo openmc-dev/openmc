@@ -349,8 +349,8 @@ class Tabulated1D(Function1D):
             raise ValueError("Expected an HDF5 attribute 'type' equal to '"
                              + cls.__name__ + "'")
 
-        x = dataset.value[0, :]
-        y = dataset.value[1, :]
+        x = dataset[0, :]
+        y = dataset[1, :]
         breakpoints = dataset.attrs['breakpoints']
         interpolation = dataset.attrs['interpolation']
         return cls(x, y, breakpoints, interpolation)
@@ -434,7 +434,7 @@ class Polynomial(np.polynomial.Polynomial, Function1D):
         if dataset.attrs['type'].decode() != cls.__name__:
             raise ValueError("Expected an HDF5 attribute 'type' equal to '"
                              + cls.__name__ + "'")
-        return cls(dataset.value)
+        return cls(dataset[()])
 
 
 class Combination(EqualityMixin):

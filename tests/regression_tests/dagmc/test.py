@@ -30,12 +30,12 @@ def test_dagmc():
     model.tallies = [tally]
 
     # materials
-    u235 = openmc.Material()
+    u235 = openmc.Material(name="fuel")
     u235.add_nuclide('U235', 1.0, 'ao')
     u235.set_density('g/cc', 11)
     u235.id = 40
 
-    water = openmc.Material()
+    water = openmc.Material(name="water")
     water.add_nuclide('H1', 2.0, 'ao')
     water.add_nuclide('O16', 1.0, 'ao')
     water.set_density('g/cc', 1.0)

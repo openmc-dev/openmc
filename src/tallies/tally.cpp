@@ -328,7 +328,6 @@ Tally::set_scores(std::vector<std::string> scores)
   // Iterate over the given scores.
   for (auto score_str : scores) {
     // Make sure a delayed group filter wasn't used with an incompatible score.
-    bool has_delayedgroup = delayedgroup_filter_ != C_NONE;
     if (delayedgroup_filter_ != C_NONE) {
       if (score_str != "delayed-nu-fission" && score_str != "decay-rate")
         fatal_error("Cannot tally " + score_str + "with a delayedgroup filter");
@@ -718,7 +717,7 @@ void read_tallies_xml()
       const auto& f = model::tally_filters[i_filter].get();
 
       auto pf = dynamic_cast<ParticleFilter*>(f);
-      if (pf) particle_filter_index = j;
+      if (pf) particle_filter_index = i_filter;
 
       // Change the tally estimator if a filter demands it
       std::string filt_type = f->type();

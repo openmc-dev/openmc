@@ -364,8 +364,10 @@ void finalize_batch()
     settings::statepoint_batch.insert(simulation::current_batch);
   }
 
-  // Write out state point if it's been specified for this batch
-  if (contains(settings::statepoint_batch, simulation::current_batch)) {
+  // Write out state point if it's been specified for this batch and is not
+  // a CMFD run instance
+  if (contains(settings::statepoint_batch, simulation::current_batch)
+      && !settings::cmfd_run) {
     if (contains(settings::sourcepoint_batch, simulation::current_batch)
         && settings::source_write && !settings::source_separate) {
       bool b = true;

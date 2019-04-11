@@ -753,6 +753,8 @@ class CMFDRun(object):
         # Initialize simulation
         openmc.capi.simulation_init()
 
+        openmc.capi.settings.cmfd_run = True
+
     def next_batch(self):
         # TODO add function description
         # Initialize CMFD batch
@@ -790,7 +792,6 @@ class CMFDRun(object):
 
         # Call C API statepoint_write to save source distribution with CMFD
         # feedback
-        # TODO don't call statepoint_write in openmc if settings::cmfd_run
         openmc.capi.statepoint_write(filename=filename)
 
         # Append CMFD data to statepoint file using h5py
@@ -1119,7 +1120,8 @@ class CMFDRun(object):
             self._cmfd_on = True
 
         # Check to reset tallies
-        if (self._n_resets > 0 and current_batch in self._reset) or self._reset_every:
+        if ((self._n_resets > 0 and current_batch in self._reset)
+                or self._reset_every):
             self._cmfd_tally_reset()
 
     def _execute_cmfd(self):
@@ -1417,9 +1419,11 @@ class CMFDRun(object):
                 with np.errstate(divide='ignore', invalid='ignore'):
                     self._weightfactors = (np.divide(self._cmfd_src * norm,
                                            sourcecounts, where=div_condition,
-                                           out=np.ones_like(self._cmfd_src), dtype=np.float32))
+                                           out=np.ones_like(self._cmfd_src),
+                                           dtype=np.float32))
 
-            if not self._feedback or openmc.capi.current_batch() < self._feedback_begin:
+            if (not self._feedback
+                    or openmc.capi.current_batch() < self._feedback_begin):
                 return
 
             # Broadcast weight factors to all procs
@@ -1972,9 +1976,9 @@ class CMFDRun(object):
         self._scatt_rate = np.append(self._scatt_rate, reshape_scattrr,
                                      axis=5)
 
-        # Compute scattering xs as aggregate of banked scatt_rate over tally window
-        # divided by flux. Flux dimensionality increased to account for extra
-        # dimensionality of scattering xs
+        # Compute scattering xs as aggregate of banked scatt_rate over tally
+        # window divided by flux. Flux dimensionality increased to account for
+        # extra dimensionality of scattering xs
         extended_flux = self._flux[:,:,:,:,np.newaxis]
         with np.errstate(divide='ignore', invalid='ignore'):
             self._scattxs = np.divide(np.sum(self._scatt_rate, axis=5),
@@ -1999,9 +2003,9 @@ class CMFDRun(object):
         self._nfiss_rate = np.append(self._nfiss_rate, reshape_nfissrr,
                                      axis=5)
 
-        # Compute nu-fission xs as aggregate of banked nfiss_rate over tally window
-        # divided by flux. Flux dimensionality increased to account for extra
-        # dimensionality of nu-fission xs
+        # Compute nu-fission xs as aggregate of banked nfiss_rate over tally
+        # window divided by flux. Flux dimensionality increased to account for
+        # extra dimensionality of nu-fission xs
         with np.errstate(divide='ignore', invalid='ignore'):
             self._nfissxs = np.divide(np.sum(self._nfiss_rate, axis=5),
                                       extended_flux, where=extended_flux > 0,
@@ -2062,7 +2066,7 @@ class CMFDRun(object):
         # Reshape and extract only p1 data from tally results as there is
         # no need for p0 data
         reshape_p1scattrr = np.swapaxes(p1scattrr.reshape(target_tally_shape),
-                                0, 2)[:,:,:,1,:,:]
+                                        0, 2)[:,:,:,1,:,:]
 
         # p1-scatter rr is flipped in energy axis as tally results are given in
         # reverse order of energy group

@@ -18,6 +18,7 @@ _dll.openmc_get_seed.restype = c_int64
 class _Settings(object):
     # Attributes that are accessed through a descriptor
     batches = _DLLGlobal(c_int32, 'n_batches')
+    cmfd_run = _DLLGlobal(c_bool, 'cmfd_run')
     entropy_on = _DLLGlobal(c_bool, 'entropy_on')
     generations_per_batch = _DLLGlobal(c_int32, 'gen_per_batch')
     inactive = _DLLGlobal(c_int32, 'n_inactive')

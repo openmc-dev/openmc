@@ -312,7 +312,6 @@ openmc_load_cmfd_tallies(const int* tally_ids, const int* sp_tally_ids)
 
     hid_t tallies_group = open_group(file_id, "tallies");
 
-    // TODO pass this in as argument?
     int n_tallies = 4;
     for (int i =0; i < n_tallies; i++) {
       std::string name = "tally " + std::to_string(sp_tally_ids[i]);

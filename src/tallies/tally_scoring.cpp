@@ -12,6 +12,7 @@
 #include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/string_utils.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_delayedgroup.h"
@@ -1274,8 +1275,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           if (i_nuclide >= 0) {
             // Find the element corresponding to the nuclide
             auto name = data::nuclides[i_nuclide]->name_;
-            int pos = name.find_first_of("0123456789");
-            std::string element = name.substr(0, pos);
+            std::string element = to_element(name);
             int i_element = data::element_map[element];
             auto& heating {data::elements[i_element].heating_};
             auto i_grid = p->photon_xs_[i_element].index_grid;

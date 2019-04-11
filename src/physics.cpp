@@ -17,6 +17,7 @@
 #include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/string_utils.h"
 #include "openmc/thermal.h"
 #include "openmc/tallies/tally.h"
 
@@ -68,7 +69,7 @@ void collision(Particle* p)
         data::nuclides[p->event_nuclide_]->name_ << ". Energy = " << p->E_ << " eV.";
     } else if (p->type_ == Particle::Type::photon) {
       msg << "    " << reaction_name(p->event_mt_) << " with " <<
-        data::nuclides[p->event_nuclide_]->name_ << ". Energy = " << p->E_ << " eV.";
+        to_element(data::nuclides[p->event_nuclide_]->name_) << ". Energy = " << p->E_ << " eV.";
     } else {
       msg << "    Disappeared. Energy = " << p->E_ << " eV.";
     }

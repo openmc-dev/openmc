@@ -165,6 +165,10 @@ Incident Photon Data
            - **J** (*double[][]*) -- Compton profile for each subshell in units
              of :math:`\hbar / (me^2)`
 
+**/<element>/heating/**
+
+:Datasets: - **xs** (*double[]*) -- Total heating cross section in [b-eV]
+
 **/<element>/incoherent/**
 
 :Datasets: - **xs** (*double[]*) -- Incoherent scattering cross section in [b]

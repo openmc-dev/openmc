@@ -710,7 +710,25 @@ class CMFDRun(object):
 
     @contextmanager
     def run_in_memory(self, **kwargs):
-        # TODO add function description
+        """ Context manager for running CMFD functions with OpenMC shared
+        library functions.
+
+        This function can be used with a 'with' statement to ensure the
+        CMFDRun class is properly initialized/finalized. For example::
+
+            from openmc import cmfd
+            cmfdrun = cmfd.CMFDRun()
+            with cmfd_run.run_in_memory():
+                do_stuff_before_simulation_start()
+                for _ in cmfd_run.iter_batches():
+                    do_stuff_between_batches()
+
+        Parameters
+        ----------
+        **kwargs
+            All keyword arguments passed to :func:`openmc.capi.run_in_memory`.
+
+        """
         # Store intracomm for part of CMFD routine where MPI reduce and
         # broadcast calls are made
         if 'intracomm' in kwargs and kwargs['intracomm'] is not None:
@@ -725,14 +743,25 @@ class CMFDRun(object):
             self.finalize()
 
     def iter_batches(self):
-        # TODO add function description
+        """ Iterator over batches.
+
+        This function returns a generator-iterator that allows Python code to
+        be run between batches when running an OpenMC simulation with CMFD.
+        It should be used in conjunction with
+        :func`openmc.cmfd.CMFDRun.run_in_memory` to ensure proper
+        initialization/finalization of CMFDRun instance.
+
+        """
         status = 0
         while status == 0:
             status = self.next_batch()
             yield
 
     def init(self):
-        # TODO add function description
+        """ Initialize CMFDRun instance by setting up CMFD parameters and
+        calling :func:`openmc.capi.simulation_init`
+
+        """
         # Configure CMFD parameters and tallies
         self._configure_cmfd()
 
@@ -753,10 +782,19 @@ class CMFDRun(object):
         # Initialize simulation
         openmc.capi.simulation_init()
 
+        # Set cmfd_run variable to True through C API
         openmc.capi.settings.cmfd_run = True
 
     def next_batch(self):
-        # TODO add function description
+        """ Run next batch for CMFDRun.
+
+        Returns
+        -------
+        int
+            Status after running a batch (0=normal, 1=reached maximum number of
+            batches, 2=tally triggers reached)
+
+        """
         # Initialize CMFD batch
         self._cmfd_init_batch()
 
@@ -777,7 +815,11 @@ class CMFDRun(object):
         return status
 
     def finalize(self):
-        # TODO add function description
+        """ Finalize simulation by calling
+        :func:`openmc.capi.simulation_finalize` and print out CMFD timing
+        information.
+
+        """
         # Finalize simuation
         openmc.capi.simulation_finalize()
 
@@ -857,6 +899,7 @@ class CMFDRun(object):
         temp_data = np.ones(len(loss_row))
         temp_loss = sparse.csr_matrix((temp_data, (loss_row, loss_col)),
                                       shape=(n, n))
+
 
         # Pass coremap as 1-d array of 32-bit integers
         coremap = np.swapaxes(self._coremap, 0, 2).flatten().astype(np.int32)

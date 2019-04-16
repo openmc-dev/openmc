@@ -134,27 +134,27 @@ class CMFDTestHarness(TestHarness):
     """Specialized TestHarness for running OpenMC CMFD tests."""
 
     def __init__(self, statepoint_name, cmfd_run):
-        self._sp_name = statepoint_name
+        super().__init__(statepoint_name)
         self._create_cmfd_result_str(cmfd_run)
 
     def _create_cmfd_result_str(self, cmfd_run):
         """Create CMFD result string from variables of CMFDRun instance"""
         outstr = 'cmfd indices\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run.indices])
+        outstr += '\n'.join(['{:.6E}'.format(x) for x in cmfd_run.indices])
         outstr += '\nk cmfd\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run.k_cmfd])
+        outstr += '\n'.join(['{:.6E}'.format(x) for x in cmfd_run.k_cmfd])
         outstr += '\ncmfd entropy\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run.entropy])
+        outstr += '\n'.join(['{:.6E}'.format(x) for x in cmfd_run.entropy])
         outstr += '\ncmfd balance\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run.balance])
+        outstr += '\n'.join(['{:.5E}'.format(x) for x in cmfd_run.balance])
         outstr += '\ncmfd dominance ratio\n'
-        outstr += '\n'.join(['{0:10.3E}'.format(x) for x in cmfd_run.dom])
+        outstr += '\n'.join(['{:.3E}'.format(x) for x in cmfd_run.dom])
         outstr += '\ncmfd openmc source comparison\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfd_run.src_cmp])
+        outstr += '\n'.join(['{:.6E}'.format(x) for x in cmfd_run.src_cmp])
         outstr += '\ncmfd source\n'
         cmfdsrc = np.reshape(cmfd_run.cmfd_src, np.product(cmfd_run.indices),
                              order='F')
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfdsrc])
+        outstr += '\n'.join(['{:.6E}'.format(x) for x in cmfdsrc])
         outstr += '\n'
         self._cmfdrun_results = outstr
 

@@ -5,7 +5,7 @@
   <run_mode>eigenvalue</run_mode>
   <batches>20</batches>
   <inactive>10</inactive>
-  <particles>1000</particles>
+  <particles>600</particles>
 
   <!-- Starting source -->
   <source strength="1.0">

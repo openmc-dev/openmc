@@ -543,20 +543,6 @@ class IncidentNeutron(EqualityMixin):
                     tgroup = group['total_nu']
                     rx.derived_products.append(Product.from_hdf5(tgroup))
 
-        # Build redundant reactions. Start from the highest MT number because
-        # high MTs never depend on lower MTs.
-        for mt_sum in sorted(SUM_RULES, reverse=True):
-            if mt_sum not in data:
-                rxs = [data[mt] for mt in SUM_RULES[mt_sum] if mt in data]
-                if len(rxs) > 0:
-                    data.reactions[mt_sum] = rx = Reaction(mt_sum)
-                    rx.redundant = True
-                    if rx.mt == 18 and 'total_nu' in group:
-                        tgroup = group['total_nu']
-                        rx.derived_products.append(Product.from_hdf5(tgroup))
-                    for T in data.temperatures:
-                        rx.xs[T] = Sum([rx_i.xs[T] for rx_i in rxs])
-
         # Read unresolved resonance probability tables
         if 'urr' in group:
             urr_group = group['urr']

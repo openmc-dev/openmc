@@ -356,8 +356,8 @@ void Material::finalize()
 
 void Material::normalize_density()
 {
-  bool percent_in_atom = (atom_density_(0) > 0.0);
-  bool density_in_atom = (density_ > 0.0);
+  bool percent_in_atom = (atom_density_(0) >= 0.0);
+  bool density_in_atom = (density_ >= 0.0);
 
   for (int i = 0; i < nuclide_.size(); ++i) {
     // determine atomic weight ratio

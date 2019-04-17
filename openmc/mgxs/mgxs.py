@@ -3926,7 +3926,7 @@ class ScatterMatrixXS(MatrixMGXS):
                         # to match scattering matrix shape for tally arithmetic
                         energy_filter = copy.deepcopy(energy_filter)
                         scatter_p1 = \
-                            scatter_p1.diagonalize_filter(energy_filter)
+                            scatter_p1.diagonalize_filter(energy_filter, 1)
 
                         self._rxn_rate_tally = scatter_p0 - scatter_p1
 
@@ -4022,7 +4022,7 @@ class ScatterMatrixXS(MatrixMGXS):
                     # to match scattering matrix shape for tally arithmetic
                     energy_filter = flux.find_filter(openmc.EnergyFilter)
                     energy_filter = copy.deepcopy(energy_filter)
-                    scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
+                    scatter_p1 = scatter_p1.diagonalize_filter(energy_filter, 1)
 
                     # Compute the trasnport correction term
                     correction = scatter_p1 / flux

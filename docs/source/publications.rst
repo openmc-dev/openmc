@@ -139,6 +139,18 @@ Miscellaneous
   <https://doi.org/10.1007/s41365-019-0588-0>`_," *Nucl. Sci. Tech.*, **30**: 63
   (2019).
 
+- M. Sajjad, Muhammad Rizwan Ali, M. Naveed Ashraf, Rustam Khan, Tasneem Fatima,
+  "`KANUPP Reactor Core Model and its Validation
+  <https://doi.org/10.1109/PGSRET.2018.8685948>`_," International Conference on
+  Power Generation Systems and Renewable Energy Technologies, Islamabad,
+  Pakistan, Sep. 10-12 (2018).
+
+- Muhammad Waqas Tariq, Muhammad Sohail, and Sikander Majid Mirza, "`Calculation
+  of Neutronic Parameters using OpenMC for Potential Dispersed Fuels of MNSR
+  <https://doi.org/10.1109/PGSRET.2018.8685927>`_," International Conference on
+  Power Generation Systems and Renewable Energy Technologies, Islamabad,
+  Pakistan, Sep. 10-12 (2018).
+
 - Amanda L. Lund and Paul K. Romano, "`Implementation and Validation of Photon
   Transport in OpenMC <https://doi.org/10.2172/1490825>`_", Argonne National
   Laboratory, Technical Report ANL/MCS-TM-381 (2018).

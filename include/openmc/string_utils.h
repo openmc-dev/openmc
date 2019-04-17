@@ -10,7 +10,7 @@ std::string& strtrim(std::string& s);
 
 char* strtrim(char* c_str);
 
-std::string to_element(std::string const& name);
+std::string to_element(const std::string& name);
 
 void to_lower(std::string& str);
 

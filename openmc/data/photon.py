@@ -10,8 +10,7 @@ import h5py
 import numpy as np
 import pandas as pd
 from scipy.interpolate import CubicSpline
-from scipy.integrate import quadrature
-from warnings import warn
+from scipy.integrate import quad
 
 from openmc.mixin import EqualityMixin
 import openmc.checkvalue as cv
@@ -394,6 +393,17 @@ class AtomicRelaxation(EqualityMixin):
 
     def energy_fluorescence(self, shell):
         """Compute expected energy of fluorescent photons for the shell
+
+        Parameters
+        ----------
+        shell : str
+            The subshell to compute
+
+        Returns
+        -------
+        float
+            Energy of fluorescent photons
+
         """
 
         if shell not in self.binding_energy:
@@ -402,31 +412,28 @@ class AtomicRelaxation(EqualityMixin):
         if shell in self._e_fluorescence:
             # Already computed
             return self._e_fluorescence[shell]
+        e = 0.0
+        if shell not in self.transitions or self.transitions[shell].empty:
+            e = self.binding_energy[shell]
         else:
-            e = 0.0
-            if shell not in self.transitions or self.transitions[shell].empty:
-                e = self.binding_energy[shell]
-            else:
-                df = self.transitions[shell]
-                for index, row in df.iterrows():
-                    e_row = 0.0
-                    primary = row['secondary']
-                    secondary = row['tertiary']
-                    if secondary is None:
-                        # Fluorescent photon release in radiative transition
-                        e_row += row['energy (eV)']
-                    else:
-                        # Fill pole left by auger eletron
-                        e_row += self.energy_fluorescence(secondary)
+            df = self.transitions[shell]
+            for primary, secondary, energy, prob in df.itertuples(index=False):
+                e_row = 0.0
+                if secondary is None:
+                    # Fluorescent photon release in radiative transition
+                    e_row += energy
+                else:
+                    # Fill the hole left by auger electron
+                    e_row += self.energy_fluorescence(secondary)
 
-                    # Fill photonelectron pole
-                    e_row += self.energy_fluorescence(primary)
+                # Fill the photoelectron hole
+                e_row += self.energy_fluorescence(primary)
 
-                    # Expected fluorescent photon energy
-                    e += e_row * row['probability']
+                # Expected fluorescent photon energy
+                e += e_row * prob
 
-            self._e_fluorescence[shell] = e
-            return e
+        self._e_fluorescence[shell] = e
+        return e
 
 class IncidentPhoton(EqualityMixin):
     r"""Photon interaction data.
@@ -917,31 +924,28 @@ class IncidentPhoton(EqualityMixin):
     def _compute_heating(self):
         r"""Compute heating cross sections (KERMA)
 
-           Photon energy is deposited as energy loss in three reactions:
-           incoherent scattering, pair production and photoelectric effect.
-           The point-wise heating cross section is calculated as:
+        Photon energy is deposited as energy loss in three reactions:
+        incoherent scattering, pair production and photoelectric effect.
+        The point-wise heating cross section is calculated as:
 
-           .. math::
-               \sigma_{Hx}(E) &= (E - \overline{E}_x(E)) \cdot \sigma_x(E), x \in \left\{I, PP, PE \right\}
+        .. math::
+            \sigma_{Hx}(E) &= (E - \overline{E}_x(E)) \cdot \sigma_x(E), x \in \left\{I, PP, PE \right\}
 
-               \overline{E}_I(E) &= \frac {\int E' \sigma_I (E,E',\mu) d\mu} {\int \sigma_I (E,E',\mu) d\mu}
+            \overline{E}_I(E) &= \frac {\int E' \sigma_I (E,E',\mu) d\mu} {\int \sigma_I (E,E',\mu) d\mu}
 
-               \overline{E}_{PP} &= 2 m_e c^2 = 1.022 \times 10^6 eV
+            \overline{E}_{PP} &= 2 m_e c^2 = 1.022 \times 10^6 eV
 
-               \overline{E}_{PE} &= E(\text{fluorescent photons})
+            \overline{E}_{PE} &= E(\text{fluorescent photons})
 
-           The differential cross section representation for incoherent
-           scattering can be found in the theory manual.
+        The differential cross section representation for incoherent
+        scattering can be found in the theory manual.
 
         """
 
         # Determine a union energy grid
         energy = np.array([])
         for mt in (504, 515, 517, 522):
-            if mt not in self:
-                warn('Cross sections for MT={} do not exist. The total heating '
-                     'to be calculated is probably incorrect'.format(mt))
-            else:
+            if mt in self:
                 energy = np.union1d(energy, self[mt].xs.x)
 
         heating_xs = np.zeros_like(energy)
@@ -959,16 +963,16 @@ class IncidentPhoton(EqualityMixin):
 
             def eout_dsigma_dmu(mu, E):
                 Eout = E / (1.0 + E / MASS_ELECTRON_EV * (1.0 - mu))
-                return Eout * _dsigma_dmu(mu, E)
+                return Eout * dsigma_dmu(mu, E)
 
             def eout_average(E):
-                integral_sigma = quadrature(_dsigma_dmu, -1.0, 1.0,
-                    (E,), rtol=1e-3, vec_func=False)[0]
-                integral_sigma_e = quadrature(_eout_dsigma_dmu, -1.0, 1.0,
-                    (E,), rtol=1e-3, vec_func=False)[0]
+                integral_sigma = quad(dsigma_dmu, -1.0, 1.0,
+                                      args=(E,), epsabs=0.0, epsrel=1e-3)[0]
+                integral_sigma_e = quad(eout_dsigma_dmu, -1.0, 1.0,
+                                        args=(E,), epsabs=0.0, epsrel=1e-3)[0]
                 return integral_sigma_e / integral_sigma
 
-            e_out = np.vectorize(_eout_average)(energy)
+            e_out = np.vectorize(eout_average)(energy)
             heating_xs += (energy - e_out) * rx.xs(energy)
 
         # Pair production, electron field

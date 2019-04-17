@@ -3,13 +3,14 @@ from collections.abc import Mapping, Callable
 from copy import deepcopy
 from io import StringIO
 from numbers import Integral, Real
+from math import pi, sqrt
 import os
 
 import h5py
 import numpy as np
 import pandas as pd
 from scipy.interpolate import CubicSpline
-from scipy.integrate import quad
+from scipy.integrate import quadrature
 from warnings import warn
 
 from openmc.mixin import EqualityMixin
@@ -27,7 +28,7 @@ PLANCK_C = 1.2398419739062977e4 # Planck's constant times c in eV-Angstroms
 FINE_STRUCTURE = 137.035999139 # Inverse fine structure constant
 CM_PER_ANGSTROM = 1.0e-8
 # classical electron radius in cm
-R0 = CM_PER_ANGSTROM * PLANCK_C / (2.0 * np.pi * FINE_STRUCTURE * MASS_ELECTRON_EV)
+R0 = CM_PER_ANGSTROM * PLANCK_C / (2.0 * pi * FINE_STRUCTURE * MASS_ELECTRON_EV)
 
 # Electron subshell labels
 _SUBSHELLS = [None, 'K', 'L1', 'L2', 'L3', 'M1', 'M2', 'M3', 'M4', 'M5',
@@ -948,24 +949,26 @@ class IncidentPhoton(EqualityMixin):
         # Incoherent scattering
         if 504 in self:
             rx = self[504]
-            def _dsigma_dmu(mu, E):
+
+            def dsigma_dmu(mu, E):
                 k = E / MASS_ELECTRON_EV
-                kout = k / (1.0 + k * (1.0 - mu))
-                x = E * np.sqrt(0.5 * (1.0 - mu)) / PLANCK_C
-                return np.pi * R0**2 * (kout/k)**2 * (kout/k + k/kout +
+                krat = 1.0 / (1.0 + k * (1.0 - mu))
+                x = E * sqrt(0.5 * (1.0 - mu)) / PLANCK_C
+                return pi * R0*R0 * krat*krat * (krat + 1/krat +
                        mu*mu - 1.0) * rx.scattering_factor(x)
-            def _eout_dsigma_dmu(mu, E):
-                Eout = E / (1.0 + E / MASS_ELECTRON_EV * (1 - mu))
+
+            def eout_dsigma_dmu(mu, E):
+                Eout = E / (1.0 + E / MASS_ELECTRON_EV * (1.0 - mu))
                 return Eout * _dsigma_dmu(mu, E)
-            def _eout_average(E):
-                #TODO: the integrals are currently time consuming
-                integral_sigma   = quad(_dsigma_dmu, -1.0, 1.0,
-                                        args=(E,), epsabs=0.0, epsrel=1.0e-3)[0]
-                integral_sigma_e = quad(_eout_dsigma_dmu, -1.0, 1.0,
-                                        args=(E,), epsabs=0.0, epsrel=1.0e-3)[0]
+
+            def eout_average(E):
+                integral_sigma = quadrature(_dsigma_dmu, -1.0, 1.0,
+                    (E,), rtol=1e-3, vec_func=False)[0]
+                integral_sigma_e = quadrature(_eout_dsigma_dmu, -1.0, 1.0,
+                    (E,), rtol=1e-3, vec_func=False)[0]
                 return integral_sigma_e / integral_sigma
 
-            e_out = np.vectorize(lambda x: _eout_average(x))(energy)
+            e_out = np.vectorize(_eout_average)(energy)
             heating_xs += (energy - e_out) * rx.xs(energy)
 
         # Pair production, electron field

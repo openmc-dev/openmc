@@ -82,7 +82,7 @@ class TRISOTestHarness(PyAPITestHarness):
         geom.export_to_xml()
 
         settings = openmc.Settings()
-        settings.batches = 5
+        settings.batches = 4
         settings.inactive = 0
         settings.particles = 100
         settings.source = openmc.Source(space=openmc.stats.Point())
@@ -93,5 +93,5 @@ class TRISOTestHarness(PyAPITestHarness):
 
 
 def test_triso():
-    harness = TRISOTestHarness('statepoint.5.h5')
+    harness = TRISOTestHarness('statepoint.4.h5')
     harness.main()

@@ -2,8 +2,11 @@ from numbers import Real
 import sys
 from xml.etree import ElementTree as ET
 
-from openmc.stats.univariate import Univariate
-from openmc.stats.multivariate import UnitSphere, Spatial
+from openmc.stats.univariate import (Univariate, Discrete, Uniform, Maxwell,
+                                     Watt, Normal, Muir, Tabular)
+from openmc.stats.multivariate import (UnitSphere, Spatial, PolarAzimuthal,
+                                       Isotropic, Monodirectional, Box, Point,
+                                       CartesianIndependent)
 import openmc.checkvalue as cv
 
 
@@ -137,3 +140,72 @@ class Source(object):
         if self.energy is not None:
             element.append(self.energy.to_xml_element('energy'))
         return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate source from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.Source
+            Source generated from XML element
+
+        """
+        source = cls()
+
+        strength = elem.find('strength')
+        if strength is not None:
+            source.strength = float(strength.text)
+
+        particle = elem.find('particle')
+        if particle is not None:
+            source.particle = particle.text
+
+        filename = elem.find('file')
+        if filename is not None:
+            source.file = filename.text
+
+        space = elem.find('space')
+        if space is not None:
+            space_type = space.get('type')
+            if space_type == 'cartesian':
+                source.space = CartesianIndependent.from_xml_element(space)
+            elif space_type == 'box' or space_type == 'fission':
+                source.space = Box.from_xml_element(space)
+            elif space_type == 'point':
+                source.space = Point.from_xml_element(space)
+
+        angle = elem.find('angle')
+        if angle is not None:
+            angle_type = angle.get('type')
+            if angle_type == 'mu-phi':
+                source.angle = PolarAzimuthal.from_xml_element(angle)
+            elif angle_type == 'isotropic':
+                source.angle = Isotropic.from_xml_element(angle)
+            elif angle_type == 'monodirectional':
+                source.angle = Monodirectional.from_xml_element(angle)
+
+        energy = elem.find('energy')
+        if energy is not None:
+            energy_type = energy.get('type')
+            if energy_type == 'discrete':
+                source.energy = Discrete.from_xml_element(energy)
+            elif energy_type == 'uniform':
+                source.energy = Uniform.from_xml_element(energy)
+            elif energy_type == 'maxwell':
+                source.energy = Maxwell.from_xml_element(energy)
+            elif energy_type == 'watt':
+                source.energy = Watt.from_xml_element(energy)
+            elif energy_type == 'normal':
+                source.energy = Normal.from_xml_element(energy)
+            elif energy_type == 'muir':
+                source.energy = Muir.from_xml_element(energy)
+            elif energy_type == 'tabular':
+                source.energy = Tabular.from_xml_element(energy)
+
+        return source

@@ -246,6 +246,43 @@ class Mesh(IDManagerMixin):
 
         return element
 
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate mesh from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.Mesh
+            Mesh generated from XML element
+
+        """
+        mesh_id = int(elem.get('id'))
+        mesh = cls(mesh_id)
+        mesh.type = elem.get('type')
+
+        dimension = elem.findtext('dimension')
+        if dimension is not None:
+            mesh.dimension = [int(x) for x in dimension.split()]
+
+        lower_left = elem.findtext('lower_left')
+        if lower_left is not None:
+            mesh.lower_left = [float(x) for x in lower_left.split()]
+
+        upper_right = elem.findtext('upper_right')
+        if upper_right is not None:
+            mesh.upper_right = [float(x) for x in upper_right.split()]
+
+        width = elem.findtext('width')
+        if width is not None:
+            mesh.width = [float(x) for x in width.split()]
+
+        return mesh
+
     def build_cells(self, bc=['reflective'] * 6):
         """Generates a lattice of universes with the same dimensionality
         as the mesh object.  The individual cells/universes produced

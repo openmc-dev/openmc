@@ -145,10 +145,15 @@ class CoherentElastic(EqualityMixin):
         self.factors = factors
 
     def __call__(self, E):
+        idx = np.searchsorted(self.bragg_edges, E) - 1
         if isinstance(E, Iterable):
             E = np.asarray(E)
-        idx = np.searchsorted(self.bragg_edges, E)
-        return self.factors[idx] / E
+            nonzero = idx >= 0
+            xs = np.zeros_like(E)
+            xs[nonzero] = self.factors[idx[nonzero]] / E[nonzero]
+            return xs
+        else:
+            return self.factors[idx] / E if idx >= 0 else 0.0
 
     def __len__(self):
         return len(self.bragg_edges)

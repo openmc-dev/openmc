@@ -1,6 +1,8 @@
 from collections.abc import Iterable
+from collections import namedtuple
 from difflib import get_close_matches
 from numbers import Real
+from io import StringIO
 import itertools
 import os
 import re
@@ -13,7 +15,7 @@ import h5py
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
 from openmc.stats import Discrete, Tabular
-from . import HDF5_VERSION, HDF5_VERSION_MAJOR
+from . import HDF5_VERSION, HDF5_VERSION_MAJOR, endf
 from .data import K_BOLTZMANN, ATOMIC_SYMBOL, EV_PER_MEV, NATURAL_ABUNDANCE
 from .ace import Table, get_table, Library
 from .angle_energy import AngleEnergy
@@ -654,5 +656,93 @@ class ThermalScattering(EqualityMixin):
             data = cls.from_ace(lib.tables[0])
             for table in lib.tables[1:]:
                 data.add_temperature_from_ace(table)
+
+        return data
+
+    @classmethod
+    def from_endf(cls, filename):
+        data = {}
+
+        ev = endf.Evaluation(filename)
+        if (7, 2) in ev.section:
+            file_obj = StringIO(ev.section[7, 2])
+            lhtr = endf.get_head_record(file_obj)[2]
+            if lhtr == 1:
+                # coherent elastic
+
+                # Get structure factor at first temperature
+                params, S = endf.get_tab1_record(file_obj)
+                t0 = params[0]
+                n_temps = params[2]
+                structure_factor = {t0: S}
+
+                # Get structure factor for subsequent temperatures
+                for _ in range(n_temps):
+                    params, S = endf.get_list_record(file_obj)
+                    t = params[0]
+                    structure_factor[t] = S
+                data['structure_factor'] = structure_factor
+
+            elif lhtr == 2:
+                # incoherent elastic
+                params, W = endf.get_tab1_record(file_obj)
+                characteristic_xs = params[0]
+
+                data['debye_waller'] = W
+                data['characteristic_xs'] = characteristic_xs
+
+        if (7, 4) in ev.section:
+            file_obj = StringIO(ev.section[7, 4])
+            params = endf.get_head_record(file_obj)
+            data['symmetric'] = (params[4] == 0)
+
+            # Get information about principal atom
+            params, B = endf.get_list_record(file_obj)
+            data['log'] = bool(params[2])
+            data['free_atom_xs'] = B[0]
+            data['epsilon'] = B[1]
+            data['A0'] = B[2]
+            data['e_max'] = B[3]
+            data['M0'] = B[5]
+
+            # Get information about non-principal atoms
+            n_non_principal = params[5]
+            data['non_principal'] = []
+            NonPrincipal = namedtuple('NonPrincipal', ['func', 'xs', 'A', 'M'])
+            for i in range(1, n_non_principal + 1):
+                func = {0.0: 'SCT', 1.0: 'free gas', 2.0: 'diffusive'}[B[6*i]]
+                xs = B[6*i + 1]
+                A = B[6*i + 2]
+                M = B[6*i + 5]
+                data['non_principal'].append(NonPrincipal(func, xs, A, M))
+
+            # Get S(alpha,beta,T)
+            if data['free_atom_xs'] > 0.0:
+                params, _ = endf.get_tab2_record(file_obj)
+                n_beta = params[5]
+                sab = {'beta': np.empty(n_beta)}
+                for i in range(n_beta):
+                    params, S = endf.get_tab1_record(file_obj)
+                    t0, beta, lt = params[:3]
+                    if i == 0:
+                        sab['alpha'] = alpha = S.x
+                        sab[t0] = np.empty((alpha.size, n_beta))
+                    sab['beta'][i] = beta
+                    sab[t0][:, i] = S.y
+                    for _ in range(lt):
+                        params, S = endf.get_list_record(file_obj)
+                        t = params[0]
+                        if i == 0:
+                            sab[t] = np.empty((alpha.size, n_beta))
+                        sab[t][:, i] = S
+                data['sab'] = sab
+
+            # Get effective temperature for each atom
+            _, Teff = endf.get_tab1_record(file_obj)
+            data['effective_temperature'] = [Teff]
+            for atom in data['non_principal']:
+                if atom.func == 'SCT':
+                    _, Teff = endf.get_tab1_record(file_obj)
+                    data['effective_temperature'].append(Teff)
 
         return data

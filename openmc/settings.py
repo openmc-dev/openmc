@@ -693,29 +693,29 @@ class Settings(object):
         elem = ET.SubElement(root, "run_mode")
         elem.text = self._run_mode
 
-    def _create_batches_subelement(self, run_mode_element):
+    def _create_batches_subelement(self, root):
         if self._batches is not None:
-            element = ET.SubElement(run_mode_element, "batches")
+            element = ET.SubElement(root, "batches")
             element.text = str(self._batches)
 
-    def _create_generations_per_batch_subelement(self, run_mode_element):
+    def _create_generations_per_batch_subelement(self, root):
         if self._generations_per_batch is not None:
-            element = ET.SubElement(run_mode_element, "generations_per_batch")
+            element = ET.SubElement(root, "generations_per_batch")
             element.text = str(self._generations_per_batch)
 
-    def _create_inactive_subelement(self, run_mode_element):
+    def _create_inactive_subelement(self, root):
         if self._inactive is not None:
-            element = ET.SubElement(run_mode_element, "inactive")
+            element = ET.SubElement(root, "inactive")
             element.text = str(self._inactive)
 
-    def _create_particles_subelement(self, run_mode_element):
+    def _create_particles_subelement(self, root):
         if self._particles is not None:
-            element = ET.SubElement(run_mode_element, "particles")
+            element = ET.SubElement(root, "particles")
             element.text = str(self._particles)
 
-    def _create_keff_trigger_subelement(self, run_mode_element):
+    def _create_keff_trigger_subelement(self, root):
         if self._keff_trigger is not None:
-            element = ET.SubElement(run_mode_element, "keff_trigger")
+            element = ET.SubElement(root, "keff_trigger")
 
             for key in self._keff_trigger:
                 subelement = ET.SubElement(element, key)
@@ -985,3 +985,238 @@ class Settings(object):
         # Write the XML Tree to the settings.xml file
         tree = ET.ElementTree(root_element)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
+
+    @classmethod
+    def from_xml(cls, path='settings.xml'):
+        """Generate settings from XML file
+
+        Parameters
+        ----------
+        path : str, optional
+            Path to settings XML file
+
+        Returns
+        -------
+        openmc.Settings
+            Settings object
+
+        """
+        tree = ET.parse(path)
+        root = tree.getroot()
+
+        settings = cls()
+
+        # Get the run mode
+        elem = root.find('run_mode')
+        if elem is not None:
+            settings.run_mode = elem.text
+
+        # Get number of particles
+        elem = root.find('particles')
+        if elem is not None:
+            settings.particles = int(elem.text)
+
+        # Get number of batches
+        elem = root.find('batches')
+        if elem is not None:
+            settings.batches = int(elem.text)
+
+        # Get number of inactive batches
+        elem = root.find('inactive')
+        if elem is not None:
+            settings.inactive = int(elem.text)
+
+        # Get number of generations per batch
+        elem = root.find('generations_per_batch')
+        if elem is not None:
+            settings.generations_per_batch = int(elem.text)
+
+        # Get keff trigger
+        elem = root.find('keff_trigger')
+        if elem is not None:
+            trigger = elem.findtext('type')
+            threshold = float(elem.findtext('threshold'))
+            settings.keff_trigger = {'type': trigger, 'threshold': threshold}
+
+        # Get the source
+        for elem in root.findall('source'):
+            settings.source.append(Source.from_xml_element(elem))
+
+        # Get the output
+        elem = root.find('output')
+        if elem is not None:
+            settings.output = {}
+            for entry in elem:
+                key = entry.tag
+                if key in ('summary', 'tallies'):
+                    value = entry.text == 'true'
+                else:
+                    value = entry.text
+                settings.output[key] = value
+
+        # Get the statepoint
+        elem = root.find('state_point')
+        if elem is not None:
+            batches = elem.findtext('batches')
+            if batches is not None:
+                settings.statepoint['batches'] = [int(x) for x in batches.split()]
+
+        # Get the sourcepoint
+        elem = root.find('source_point')
+        if elem is not None:
+            for entry in elem:
+                key = entry.tag
+                if key in ('separate', 'write', 'overwrite'):
+                    value = entry.text == 'true'
+                else:
+                    value = [int(x) for x in entry.text.split()]
+                settings.sourcepoint[key] = value
+
+        # Get confidence intervals
+        elem = root.find('confidence_intervals')
+        if elem is not None:
+            settings.confidence_intervals = elem.text == 'true'
+
+        # Get electron treatment
+        elem = root.find('electron_treatment')
+        if elem is not None:
+            settings.electron_treatment = elem.text
+
+        # Get energy mode
+        elem = root.find('energy_mode')
+        if elem is not None:
+            settings.energy_mode = elem.text
+
+        # Get max order
+        elem = root.find('max_order')
+        if elem is not None:
+            settings.max_order = int(elem.text)
+
+        # Get photon transport
+        elem = root.find('photon_transport')
+        if elem is not None:
+            settings.photon_transport = elem.text == 'true'
+
+        # Get probability tables
+        elem = root.find('ptables')
+        if elem is not None:
+            settings.ptables = elem.text == 'true'
+
+        # Get seed
+        elem = root.find('seed')
+        if elem is not None:
+            settings.seed = int(elem.text)
+
+        # Get survival biasing
+        elem = root.find('survival_biasing')
+        if elem is not None:
+            settings.survival_biasing = elem.text == 'true'
+
+        # Get cutoff
+        elem = root.find('cutoff')
+        if elem is not None:
+            settings.cutoff = {x.tag: float(x.text) for x in elem}
+
+        # Get entropy mesh
+        elem = root.find('entropy_mesh')
+        if elem is not None:
+            settings.entropy_mesh = Mesh.from_xml_element(elem)
+
+        # Get trigger
+        elem = root.find('trigger')
+        if elem is not None:
+            active = elem.find('active')
+            settings.trigger_active = active.text == 'true'
+            max_batches = elem.find('max_batches')
+            if max_batches is not None:
+                settings.trigger_max_batches = int(max_batches.text)
+            batch_interval = elem.find('batch_interval')
+            if batch_interval is not None:
+                settings.trigger_batch_interval = int(batch_interval.text)
+
+        # Get no reduce
+        elem = root.find('no_reduce')
+        if elem is not None:
+            settings.no_reduce = elem.text == 'true'
+
+        # Get verbosity
+        elem = root.find('verbosity')
+        if elem is not None:
+            settings.verbosity = int(elem.text)
+
+        # Get tabular legendre
+        elem = root.find('tabular_legendre')
+        if elem is not None:
+            enable = elem.findtext('eneable')
+            settings.tabular_legendre['enable'] = enable == 'true'
+            num_points = elem.findtext('num_points')
+            if num_points is not None:
+                settings.tabular_legendre['num_points'] = int(num_points)
+
+        # Get temperature
+        elem = root.findtext('temperature_default')
+        if elem is not None:
+            settings.temperature['default'] = float(elem)
+        elem = root.findtext('temperature_tolerance')
+        if elem is not None:
+            settings.temperature['tolerance'] = float(elem)
+        elem = root.findtext('temperature_method')
+        if elem is not None:
+            settings.temperature['method'] = elem
+        elem = root.findtext('temperature_range')
+        if elem is not None:
+            settings.temperature['range'] = [float(x) for x in elem.split()]
+        elem = root.findtext('temperature_multipole')
+        if elem is not None:
+            settings.temperature['multipole'] = elem == 'true'
+
+        # Get trace
+        elem = root.find('trace')
+        if elem is not None:
+            settings.trace = [int(x) for x in elem.text.split()]
+
+        # Get track
+        elem = root.find('track')
+        if elem is not None:
+            settings.track = [int(x) for x in elem.text.split()]
+
+        # Get UFS mesh
+        elem = root.find('ufs_mesh')
+        if elem is not None:
+            settings.ufs_mesh = Mesh.from_xml_element(elem)
+
+        # Get resonance scattering
+        elem = root.find('resonance_scattering')
+        if elem is not None:
+            for entry in elem:
+                key = entry.tag
+                if key == 'enable':
+                    value = entry.text == 'true'
+                elif key == 'method':
+                    value = entry.text
+                elif key == 'energy_min':
+                    value = float(entry.text)
+                elif key == 'energy_max':
+                    value = float(entry.text)
+                elif key == 'nuclides':
+                    value = entry.text.split()
+                settings.resonance_scattering[key] = value
+
+        # TODO: Get volume calculations
+
+        # Get fission neutrons
+        elem = root.find('create_fission_neutrons')
+        if elem is not None:
+            settings.create_fission_neutrons = elem.text == 'true'
+
+        # Get log grid bins
+        elem = root.find('log_grid_bins')
+        if elem is not None:
+            settings.log_grid_bins = int(elem.text)
+
+        # Get dagmc
+        elem = root.find('dagmc')
+        if elem is not None:
+            settings.dagmc = elem.text == 'true'
+
+        return settings

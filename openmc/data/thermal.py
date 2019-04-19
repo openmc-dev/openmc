@@ -19,9 +19,12 @@ from . import HDF5_VERSION, HDF5_VERSION_MAJOR, endf
 from .data import K_BOLTZMANN, ATOMIC_SYMBOL, EV_PER_MEV, NATURAL_ABUNDANCE
 from .ace import Table, get_table, Library
 from .angle_energy import AngleEnergy
-from .function import Tabulated1D, Function1D
 from .correlated import CorrelatedAngleEnergy
+from .function import Tabulated1D, Function1D
 from .njoy import make_ace_thermal
+from .thermal_angle_energy import (CoherentElasticAE, IncoherentElasticAE,
+                                   IncoherentElasticAEDiscrete,
+                                   IncoherentInelasticAEDiscrete)
 
 
 _THERMAL_NAMES = {
@@ -71,6 +74,12 @@ _THERMAL_NAMES = {
 }
 
 
+def _temperature_str(T):
+    # round() normally returns an int when called with a single argument, but
+    # numpy floats overload rounding to return another float
+    return "{}K".format(int(round(T)))
+
+
 def get_thermal_name(name):
     """Get proper S(a,b) table name, e.g. 'HH2O' -> 'c_H_in_H2O'
 
@@ -112,12 +121,12 @@ def get_thermal_name(name):
                         break
 
             warn('Thermal scattering material "{}" is not recognized. '
-                    'Assigning a name of {}.'.format(name, match))
+                 'Assigning a name of {}.'.format(name, match))
             return match
         else:
             # OK, we give up. Just use the ACE name.
             warn('Thermal scattering material "{0}" is not recognized. '
-                    'Assigning a name of c_{0}.'.format(name))
+                 'Assigning a name of c_{0}.'.format(name))
             return 'c_' + name
 
 
@@ -315,7 +324,7 @@ class ThermalScatteringReaction(EqualityMixin):
 
         """
         for T, xs in self.xs.items():
-            Tgroup = group.create_group(str(round(T)) + "K")
+            Tgroup = group.create_group(_temperature_str(T))
             xs.to_hdf5(Tgroup, 'xs')
             self.distribution[T].to_hdf5(Tgroup)
 
@@ -339,143 +348,10 @@ class ThermalScatteringReaction(EqualityMixin):
         xs = {}
         distribution = {}
         for T in temperatures:
-            Tgroup = group[str(round(T)) + "K"]
+            Tgroup = group[_temperature_str(T)]
             xs[T] = Function1D.from_hdf5(Tgroup)
             distribution[T] = AngleEnergy.from_hdf5(Tgroup)
         return cls(xs, distribution)
-
-
-class CoherentElasticAE(AngleEnergy):
-    r"""Differential cross section for coherent elastic scattering
-
-    The differential cross section for coherent elastic scattering from a
-    powdered crystalline material may be represented as:
-
-    .. math::
-        \frac{d^2\sigma}{dE'd\Omega} (E\rightarrow E',\mu,T) = \frac{1}{E} \sum
-        \limits_{i=1}^{E_i < E} s_i(T) \delta(\mu - \mu_i) \delta (E - E')
-        /(2\pi)
-
-    where :math:`E_i` are the energies of the Bragg edges in [eV], :math:`s_i(T)`
-    is the structure factor in [eV-b] at the moderator temperature :math:`T`
-    in [K], and :math:`\mu_i = 1 - 2E_i/E`.
-
-    Parameters
-    ----------
-    coherent_xs : openmc.data.CoherentElastic
-        Coherent elastic scattering cross section
-
-    Attributes
-    ----------
-    coherent_xs : openmc.data.CoherentElastic
-        Coherent elastic scattering cross section
-
-    """
-    def __init__(self, coherent_xs):
-        self.coherent_xs = coherent_xs
-
-    def to_hdf5(self, group):
-        group.attrs['type'] = np.string_('coherent_elastic')
-        group['coherent_xs'] = group.parent['xs']
-
-
-class IncoherentElasticAE(AngleEnergy):
-    r"""Differential cross section for incoherent elastic scattering
-
-    The differential cross section for incoherent elastic scattering may be
-    represented as:
-
-    .. math::
-        \frac{d^2\sigma}{dE'd\Omega} (E\rightarrow E',\mu,T) = \frac{\sigma_b}
-        {4\pi} e^{-2EW'(T)(1-\mu)} \delta(E - E')
-
-    where :math:`\sigma_b` is the characteristic cross section in [b] and
-    :math:`W'(T)` is the Debye-Waller integral divided by the atomic mass in
-    [eV\ :math:`^{-1}`].
-
-    Parameters
-    ----------
-    debye_waller : float
-        Debye-Waller integral in [eV\ :math:`^{-1}`]
-
-    Attributes
-    ----------
-    debye_waller : float
-        Debye-Waller integral in [eV\ :math:`^{-1}`]
-
-    """
-    def __init__(self, debye_waller):
-        self.debye_waller = debye_waller
-
-    def to_hdf5(self, group):
-        group.attrs['type'] = np.string_('incoherent_elastic')
-        group.create_dataset('debye_waller', data=self.debye_waller)
-
-    @classmethod
-    def from_hdf5(cls, group):
-        return cls(group['debye_waller'])
-
-
-class IncoherentElasticAEDiscrete(AngleEnergy):
-    """Discrete angle representation of incoherent elastic scattering
-
-    Parameters
-    ----------
-    mu_out : numpy.ndarray
-        Equi-probable discrete angles at each incoming energy
-
-    """
-    def __init__(self, mu_out):
-        self.mu_out = mu_out
-
-    def to_hdf5(self, group):
-        group.attrs['type'] = np.string_('incoherent_elastic_discrete')
-        group.create_dataset('mu_out', data=self.mu_out)
-
-    @classmethod
-    def from_hdf5(cls, group):
-        return cls(group['mu_out'][()])
-
-
-class IncoherentInelasticAEDiscrete(AngleEnergy):
-    """Discrete angle representation of incoherent inelastic scattering
-
-    Parameters
-    ----------
-    energy_out : numpy.ndarray
-        Outgoing energies for each incoming energy
-    mu_out : numpy.ndarray
-        Discrete angles for each incoming/outgoing energy
-    skewed : bool
-        Whether distance angles are equi-probable or have a skewed distribution
-
-    Attributes
-    ----------
-    energy_out : numpy.ndarray
-        Outgoing energies for each incoming energy
-    mu_out : numpy.ndarray
-        Discrete angles for each incoming/outgoing energy
-    skewed : bool
-        Whether distance angles are equi-probable or have a skewed distribution
-
-    """
-    def __init__(self, energy_out, mu_out, skewed=False):
-        self.energy_out = energy_out
-        self.mu_out = mu_out
-        self.skewed = skewed
-
-    def to_hdf5(self, group):
-        group.attrs['type'] = np.string_('incoherent_inelastic_discrete')
-        group.create_dataset('energy_out', data=self.energy_out)
-        group.create_dataset('mu_out', data=self.mu_out)
-        group.create_dataset('skewed', data=self.skewed)
-
-    @classmethod
-    def from_hdf5(cls, group):
-        energy_out = group['energy_out'][()]
-        mu_out = group['mu_out'][()]
-        skewed = bool(group['skewed'])
-        return cls(energy_out, mu_out, skewed)
 
 
 class ThermalScattering(EqualityMixin):
@@ -529,13 +405,9 @@ class ThermalScattering(EqualityMixin):
         else:
             return "<Thermal Scattering Data>"
 
-    @staticmethod
-    def _temperature_str(T):
-        return "{}K".format(round(T))
-
     @property
     def temperatures(self):
-        return [self._temperature_str(kT / K_BOLTZMANN) for kT in self.kTs]
+        return [_temperature_str(kT / K_BOLTZMANN) for kT in self.kTs]
 
     def export_to_hdf5(self, path, mode='a', libver='earliest'):
         """Export table to an HDF5 file.
@@ -920,10 +792,10 @@ class ThermalScattering(EqualityMixin):
             Thermal scattering data
 
         """
-        if isinstance(ev_or_filename, Evaluation):
+        if isinstance(ev_or_filename, endf.Evaluation):
             ev = ev_or_filename
         else:
-            ev = Evaluation(ev_or_filename)
+            ev = endf.Evaluation(ev_or_filename)
 
         # Read coherent/incoherent elastic data
         elastic = None
@@ -938,7 +810,7 @@ class ThermalScattering(EqualityMixin):
 
                 # Get structure factor at first temperature
                 params, S = endf.get_tab1_record(file_obj)
-                strT = self._temperature_str(params[0])
+                strT = _temperature_str(params[0])
                 n_temps = params[2]
                 bragg_edges = S.x
                 xs[strT] = CoherentElastic(bragg_edges, S.y)
@@ -947,16 +819,16 @@ class ThermalScattering(EqualityMixin):
                 # Get structure factor for subsequent temperatures
                 for _ in range(n_temps):
                     params, S = endf.get_list_record(file_obj)
-                    strT = self._temperature_str(params[0])
+                    strT = _temperature_str(params[0])
                     xs[strT] = CoherentElastic(bragg_edges, S)
-                    distribution[strT] = CoherentElasticAE(xs[T])
+                    distribution[strT] = CoherentElasticAE(xs[strT])
 
             elif lhtr == 2:
                 # incoherent elastic
                 params, W = endf.get_tab1_record(file_obj)
                 characteristic_xs = params[0]
                 for T, debye_waller in zip(W.x, W.y):
-                    strT = self._temperature_str(T)
+                    strT = _temperature_str(T)
                     xs[strT] = IncoherentElastic(characteristic_xs, debye_waller)
                     distribution[strT] = IncoherentElasticAE(debye_waller)
 

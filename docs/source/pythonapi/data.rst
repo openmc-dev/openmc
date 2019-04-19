@@ -13,18 +13,38 @@ Core Classes
     openmc.data.IncidentNeutron
     openmc.data.Reaction
     openmc.data.Product
-    openmc.data.Tabulated1D
-    openmc.data.FissionEnergyRelease
-    openmc.data.ThermalScattering
-    openmc.data.CoherentElastic
     openmc.data.FissionEnergyRelease
     openmc.data.DataLibrary
-    openmc.data.IncidentPhoton
-    openmc.data.PhotonReaction
-    openmc.data.AtomicRelaxation
     openmc.data.Decay
     openmc.data.FissionProductYields
     openmc.data.WindowedMultipole
+    openmc.data.ProbabilityTables
+
+The following classes are used for storing atomic data (incident photon cross
+sections, atomic relaxation):
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
+
+    openmc.data.IncidentPhoton
+    openmc.data.PhotonReaction
+    openmc.data.AtomicRelaxation
+
+
+The following classes are used for storing thermal neutron scattering data:
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
+
+    openmc.data.ThermalScattering
+    openmc.data.ThermalScatteringReaction
+    openmc.data.CoherentElastic
+    openmc.data.IncoherentElastic
+
 
 Core Functions
 --------------
@@ -40,6 +60,22 @@ Core Functions
     openmc.data.thin
     openmc.data.water_density
     openmc.data.zam
+
+One-dimensional Functions
+-------------------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
+
+    openmc.data.Function1D
+    openmc.data.Tabulated1D
+    openmc.data.Polynomial
+    openmc.data.Combination
+    openmc.data.Sum
+    openmc.data.Regions1D
+    openmc.data.ResonancesWithBackground
 
 Angle-Energy Distributions
 --------------------------
@@ -66,6 +102,10 @@ Angle-Energy Distributions
     openmc.data.DiscretePhoton
     openmc.data.LevelInelastic
     openmc.data.ContinuousTabular
+    openmc.data.CoherentElasticAE
+    openmc.data.IncoherentElasticAE
+    openmc.data.IncoherentElasticAEDiscrete
+    openmc.data.IncoherentInelasticAEDiscrete
 
 Resonance Data
 --------------

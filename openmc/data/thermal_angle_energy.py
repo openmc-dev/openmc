@@ -1,6 +1,7 @@
 import numpy as np
 
 from .angle_energy import AngleEnergy
+from .correlated import CorrelatedAngleEnergy
 
 
 class CoherentElasticAE(AngleEnergy):
@@ -134,3 +135,6 @@ class IncoherentInelasticAEDiscrete(AngleEnergy):
         mu_out = group['mu_out'][()]
         skewed = bool(group['skewed'])
         return cls(energy_out, mu_out, skewed)
+
+class IncoherentInelasticAEContinuous(CorrelatedAngleEnergy):
+    pass

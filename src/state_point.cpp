@@ -313,7 +313,7 @@ openmc_load_cmfd_tallies(const int* tally_ids, const int* sp_tally_ids)
     hid_t tallies_group = open_group(file_id, "tallies");
 
     int n_tallies = 4;
-    for (int i =0; i < n_tallies; i++) {
+    for (int i = 0; i < n_tallies; i++) {
       std::string name = "tally " + std::to_string(sp_tally_ids[i]);
       hid_t tally_group = open_group(tallies_group, name.c_str());
       // Get tally from tally_ids

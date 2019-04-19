@@ -16,7 +16,6 @@ from .decay import *
 from .reaction import *
 from . import ace
 from .angle_distribution import *
-from .function import *
 from . import endf
 from .energy_distribution import *
 from .product import *
@@ -33,3 +32,4 @@ from .resonance import *
 from .resonance_covariance import *
 from .multipole import *
 from .grid import *
+from .function import *

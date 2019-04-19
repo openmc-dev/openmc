@@ -19,12 +19,12 @@ from . import HDF5_VERSION, HDF5_VERSION_MAJOR, endf
 from .data import K_BOLTZMANN, ATOMIC_SYMBOL, EV_PER_MEV, NATURAL_ABUNDANCE
 from .ace import Table, get_table, Library
 from .angle_energy import AngleEnergy
-from .correlated import CorrelatedAngleEnergy
 from .function import Tabulated1D, Function1D
 from .njoy import make_ace_thermal
 from .thermal_angle_energy import (CoherentElasticAE, IncoherentElasticAE,
                                    IncoherentElasticAEDiscrete,
-                                   IncoherentInelasticAEDiscrete)
+                                   IncoherentInelasticAEDiscrete,
+                                   IncoherentInelasticAEContinuous)
 
 
 _THERMAL_NAMES = {
@@ -673,7 +673,7 @@ class ThermalScattering(EqualityMixin):
             breakpoints = [n_energy]
             interpolation = [2]
             energy = inelastic_xs.x
-            distribution = CorrelatedAngleEnergy(
+            distribution = IncoherentInelasticAEContinuous(
                 breakpoints, interpolation, energy, energy_out, mu_out)
 
         table.inelastic = ThermalScatteringReaction(

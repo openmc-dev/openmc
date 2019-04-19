@@ -717,7 +717,7 @@ class CMFDRun(object):
         CMFDRun class is properly initialized/finalized. For example::
 
             from openmc import cmfd
-            cmfdrun = cmfd.CMFDRun()
+            cmfd_run = cmfd.CMFDRun()
             with cmfd_run.run_in_memory():
                 do_stuff_before_simulation_start()
                 for _ in cmfd_run.iter_batches():

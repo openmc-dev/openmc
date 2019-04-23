@@ -26,6 +26,12 @@ char* strtrim(char* c_str)
 }
 
 
+std::string to_element(const std::string& name) {
+  int pos = name.find_first_of("0123456789");
+  return name.substr(0, pos);
+}
+
+
 void to_lower(std::string& str)
 {
   for (int i = 0; i < str.size(); i++) str[i] = std::tolower(str[i]);

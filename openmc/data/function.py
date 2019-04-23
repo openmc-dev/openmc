@@ -3,6 +3,7 @@ from collections.abc import Iterable, Callable
 from functools import reduce
 from itertools import zip_longest
 from numbers import Real, Integral
+from math import exp, log
 
 import numpy as np
 
@@ -153,13 +154,11 @@ class Tabulated1D(Function1D):
         self.y = np.asarray(y)
 
     def __call__(self, x):
-        # Check if input is array or scalar
-        if isinstance(x, Iterable):
-            iterable = True
-            x = np.array(x)
-        else:
-            iterable = False
-            x = np.array([x], dtype=float)
+        # Check if input is scalar
+        if not isinstance(x, Iterable):
+            return self._interpolate_scalar(x)
+
+        x = np.array(x)
 
         # Create output array
         y = np.zeros_like(x)
@@ -208,7 +207,46 @@ class Tabulated1D(Function1D):
         y[np.isclose(x, self.x[0], atol=1e-14)] = self.y[0]
         y[np.isclose(x, self.x[-1], atol=1e-14)] = self.y[-1]
 
-        return y if iterable else y[0]
+        return y
+
+    def _interpolate_scalar(self, x):
+        if x <= self._x[0]:
+            return self._y[0]
+        elif x >= self._x[-1]:
+            return self._y[-1]
+
+        # Get the index for interpolation
+        idx = np.searchsorted(self._x, x, side='right') - 1
+
+        # Loop over interpolation regions
+        for b, p in zip(self.breakpoints, self.interpolation):
+            if idx < b - 1:
+                break
+
+        xi = self._x[idx]       # low edge of the corresponding bin
+        xi1 = self._x[idx + 1]  # high edge of the corresponding bin
+        yi = self._y[idx]
+        yi1 = self._y[idx + 1]
+
+        if p == 1:
+            # Histogram
+            return yi
+
+        elif p == 2:
+            # Linear-linear
+            return yi + (x - xi)/(xi1 - xi)*(yi1 - yi)
+
+        elif p == 3:
+            # Linear-log
+            return yi + log(x/xi)/log(xi1/xi)*(yi1 - yi)
+
+        elif p == 4:
+            # Log-linear
+            return yi*exp((x - xi)/(xi1 - xi)*log(yi1/yi))
+
+        elif p == 5:
+            # Log-log
+            return yi*exp(log(x/xi)/log(xi1/xi)*log(yi1/yi))
 
     def __len__(self):
         return len(self.x)

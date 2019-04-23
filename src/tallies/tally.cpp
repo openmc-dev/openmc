@@ -9,6 +9,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
+#include "openmc/reaction.h"
 #include "openmc/reaction_product.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
@@ -109,6 +110,9 @@ score_str_to_int(std::string score_str)
   if (score_str == "fission-q-recoverable")
     return SCORE_FISS_Q_RECOV;
 
+  if (score_str == "heating")
+    return SCORE_HEATING;
+
   if (score_str == "current")
     return SCORE_CURRENT;
 
@@ -207,8 +211,6 @@ score_str_to_int(std::string score_str)
     return N_X3HE;
   if (score_str == "(n,Xa)" || score_str == "He4-production")
     return N_XA;
-  if (score_str == "heating")
-    return HEATING;
   if (score_str == "damage-energy")
     return DAMAGE_ENERGY;
 
@@ -771,7 +773,7 @@ void read_tallies_xml()
           case SCORE_PROMPT_NU_FISSION:
           case SCORE_DECAY_RATE:
             warning("Particle filter is not used with photon transport"
-              " on and " + std::to_string(score) + " score.");
+              " on and " + reaction_name(score) + " score.");
             break;
           }
         }

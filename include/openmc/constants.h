@@ -105,9 +105,10 @@ constexpr std::array<const char*, 39> SUBSHELLS =  {
   "Q1", "Q2", "Q3"
 };
 
-// Void material
+// Void material and nuclide
 // TODO: refactor and remove
 constexpr int MATERIAL_VOID {-1};
+constexpr int NUCLIDE_NONE  {-1};
 
 // ============================================================================
 // CROSS SECTION RELATED CONSTANTS
@@ -127,6 +128,7 @@ constexpr int TEMPERATURE_INTERPOLATION {2};
 
 // Reaction types
 // TODO: Convert to enum
+constexpr int REACTION_NONE {0};
 constexpr int TOTAL_XS {1};
 constexpr int ELASTIC {2};
 constexpr int N_NONELASTIC {3};
@@ -230,7 +232,7 @@ constexpr int N_XD    {204};
 constexpr int N_XT    {205};
 constexpr int N_X3HE  {206};
 constexpr int N_XA    {207};
-constexpr int HEATING {301};
+constexpr int NEUTRON_HEATING {301};
 constexpr int DAMAGE_ENERGY {444};
 constexpr int COHERENT {502};
 constexpr int INCOHERENT {504};
@@ -344,6 +346,7 @@ constexpr int ESTIMATOR_COLLISION   {3};
 // TODO: Convert to enum
 constexpr int EVENT_SURFACE {-2};
 constexpr int EVENT_LATTICE {-1};
+constexpr int EVENT_KILL    {0};
 constexpr int EVENT_SCATTER {1};
 constexpr int EVENT_ABSORB  {2};
 
@@ -366,6 +369,7 @@ constexpr int SCORE_INVERSE_VELOCITY   {-13}; // flux-weighted inverse velocity
 constexpr int SCORE_FISS_Q_PROMPT      {-14}; // prompt fission Q-value
 constexpr int SCORE_FISS_Q_RECOV       {-15}; // recoverable fission Q-value
 constexpr int SCORE_DECAY_RATE         {-16}; // delayed neutron precursor decay rate
+constexpr int SCORE_HEATING            {-17}; // nuclear heating (neutron or photon)
 
 // Tally map bin finding
 constexpr int NO_BIN_FOUND {-1};

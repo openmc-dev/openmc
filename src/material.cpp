@@ -227,8 +227,7 @@ Material::Material(pugi::xml_node node)
     // If the corresponding element hasn't been encountered yet and photon
     // transport will be used, we need to add its symbol to the element_dict
     if (settings::photon_transport) {
-      int pos = name.find_first_of("0123456789");
-      std::string element = name.substr(0, pos);
+      std::string element = to_element(name);
 
       // Make sure photon cross section data is available
       LibraryKey key {Library::Type::photon, element};
@@ -356,8 +355,8 @@ void Material::finalize()
 
 void Material::normalize_density()
 {
-  bool percent_in_atom = (atom_density_(0) > 0.0);
-  bool density_in_atom = (density_ > 0.0);
+  bool percent_in_atom = (atom_density_(0) >= 0.0);
+  bool density_in_atom = (density_ >= 0.0);
 
   for (int i = 0; i < nuclide_.size(); ++i) {
     // determine atomic weight ratio

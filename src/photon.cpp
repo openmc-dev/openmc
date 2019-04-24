@@ -96,6 +96,15 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
   read_dataset(rgroup, "xs", photoelectric_total_);
   close_group(rgroup);
 
+  // Read heating
+  if (object_exists(group, "heating")) {
+    rgroup = open_group(group, "heating");
+    read_dataset(rgroup, "xs", heating_);
+    close_group(rgroup);
+  } else {
+    heating_ = xt::zeros_like(energy_);
+  }
+
   // Read subshell photoionization cross section and atomic relaxation data
   rgroup = open_group(group, "subshells");
   std::vector<std::string> designators;
@@ -280,6 +289,7 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
     xt::log(photoelectric_total_), -500.0);
   pair_production_total_ = xt::where(pair_production_total_ > 0.0,
     xt::log(pair_production_total_), -500.0);
+  heating_ = xt::where(heating_ > 0.0, xt::log(heating_), -500.0);
 }
 
 void PhotonInteraction::compton_scatter(double alpha, bool doppler,

@@ -30,8 +30,50 @@ extern std::unordered_map<int32_t, int32_t> mesh_map;
 
 } // namespace model
 
-class Mesh
-{
+class Mesh {
+
+  //! Determine which bins were crossed by a particle
+  //
+  //! \param[in] p Particle to check
+  //! \param[out] bins Bins that were crossed
+  //! \param[out] lengths Fraction of tracklength in each bin
+  virtual void bins_crossed(const Particle* p, std::vector<int>& bins,
+                            std::vector<double>& lengths) const = 0;
+
+  //! Check where a line segment intersects the mesh and if it intersects at all
+  //
+  //! \param[in,out] r0 In: starting position, out: intersection point
+  //! \param[in] r1 Ending position
+  //! \param[out] ijk Indices of the mesh bin containing the intersection point
+  //! \return Whether the line segment connecting r0 and r1 intersects mesh
+  virtual bool intersects(Position& r0, Position r1, int* ijk) const = 0;
+
+  //! Write mesh data to an HDF5 group
+  //
+  //! \param[in] group HDF5 group
+  virtual void to_hdf5(hid_t group) const = 0;
+
+  //! Get bin at a given position in space
+  //
+  //! \param[in] r Position to get bin for
+  //! \return Mesh bin
+  virtual int get_bin(Position r) const = 0;
+
+  //! Count number of bank sites in each mesh bin / energy bin
+  //
+  //! \param[in] bank Array of bank sites
+  //! \param[out] Whether any bank sites are outside the mesh
+  //! \return Array indicating number of sites in each mesh/energy bin
+  virtual xt::xarray<double> count_sites(const std::vector<Particle::Bank>& bank,
+                                         bool* outside) const = 0;
+
+};
+
+//==============================================================================
+//! Tessellation of n-dimensional Euclidean space by congruent squares or cubes
+//==============================================================================
+
+class RegularMesh : Mesh {
 public:
   // Constructors and destructor
   Mesh() = default;

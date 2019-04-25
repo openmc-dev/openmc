@@ -32,6 +32,11 @@ extern std::unordered_map<int32_t, int32_t> mesh_map;
 
 class Mesh {
 
+public:
+  // Constructor
+  Mesh() {}; // empty constructor
+  Mesh(pugi::xml_node node);
+
   //! Determine which bins were crossed by a particle
   //
   //! \param[in] p Particle to check
@@ -67,13 +72,15 @@ class Mesh {
   virtual xt::xarray<double> count_sites(const std::vector<Particle::Bank>& bank,
                                          bool* outside) const = 0;
 
+  int id_ {-1};  //!< User-specified ID
+  int n_dimension_; //!< Number of dimensions
 };
 
 //==============================================================================
 //! Tessellation of n-dimensional Euclidean space by congruent squares or cubes
 //==============================================================================
 
-class RegularMesh : Mesh {
+class RegularMesh : public Mesh {
 public:
   // Constructors and destructor
   Mesh() = default;
@@ -207,7 +214,6 @@ public:
     bool* outside) const;
 
   // Data members
-
   double volume_frac_; //!< Volume fraction of each mesh element
   xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
   xt::xtensor<double, 1> width_; //!< Width of each mesh element
@@ -217,6 +223,7 @@ private:
   bool intersects_2d(Position& r0, Position r1, int* ijk) const;
   bool intersects_3d(Position& r0, Position r1, int* ijk) const;
 };
+
 
 class RectilinearMesh : public Mesh
 {
@@ -260,12 +267,53 @@ public:
   bool intersects(Position& r0, Position r1, int* ijk) const;
 
   // Data members
-
   xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
 
 private:
   std::vector<std::vector<double>> grid_;
 };
+
+#ifdef DAGMC
+
+class UnstructuredMesh : public Mesh {
+  UnstructuredMesh() { };
+  UnstructuredMesh(pugi::xml_node);
+
+  //! Determine which bins were crossed by a particle
+  //
+  //! \param[in] p Particle to check
+  //! \param[out] bins Bins that were crossed
+  //! \param[out] lengths Fraction of tracklength in each bin
+  void bins_crossed(const Particle* p, std::vector<int>& bins,
+                    std::vector<double>& lengths);
+
+  bool intersects(Position& r0, Position r1, int* ijk);
+
+  //! Write mesh data to an HDF5 group
+  //
+  //! \param[in] group HDF5 group
+  void to_hdf5(hid_t group);
+
+  //! Get bin at a given position in space
+  //
+  //! \param[in] r Position to get bin for
+  //! \return Mesh bin
+  int get_bin(Position r);
+
+  //! Count number of bank sites in each mesh bin / energy bin
+  //
+  //! \param[in] bank Array of bank sites
+  //! \param[out] Whether any bank sites are outside the mesh
+  //! \return Array indicating number of sites in each mesh/energy bin
+  xt::xarray<double> count_sites(const std::vector<Particle::Bank>& bank,
+                                         bool* outside);
+
+private:
+  std::string filename_;
+
+};
+
+#endif
 
 //==============================================================================
 // Non-member functions

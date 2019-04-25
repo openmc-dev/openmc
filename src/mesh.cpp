@@ -24,6 +24,10 @@
 #include "openmc/tallies/filter.h"
 #include "openmc/xml_interface.h"
 
+#ifdef DAGMC
+#include "TrackLengthMeshTally.hpp"
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -69,7 +73,8 @@ inline bool check_intersection_point(double x1, double x0, double y1,
 
 Mesh::Mesh(pugi::xml_node node)
 {
-  // Copy mesh id
+Mesh::Mesh(pugi::xml_node node) {
+   // Copy mesh id
   if (check_for_node(node, "id")) {
     id_ = std::stoi(get_node_value(node, "id"));
 
@@ -1501,6 +1506,24 @@ openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
 
   return 0;
 }
+
+UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
+
+  // get the filename of the unstructured mesh to load
+  if (check_for_node(node, "mesh_file")) {
+    filename_ = get_node_value(node, "mesh_file");
+  }
+  else {
+    fatal_error("No filename supplied for unstructured mesh with ID: " +
+                std::to_string(id_));
+  }
+
+  // always 3 for unstructured meshes
+  n_dimension_ = 3;
+
+
+}
+
 
 //==============================================================================
 // Non-member functions

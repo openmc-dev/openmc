@@ -35,6 +35,13 @@ constexpr std::array<int, 2> WMP_VERSION {1, 1};
 
 class WindowedMultipole {
 public:
+  // Types
+  struct WindowInfo {
+    int index_start; // Index of starting pole
+    int index_end; // Index of ending pole
+    bool broaden_poly; // Whether to broaden polynomial curvefit
+  };
+
   // Constructors, destructors
   WindowedMultipole(hid_t group);
 
@@ -60,16 +67,15 @@ public:
 
   // Data members
   std::string name_; //!< Name of nuclide
-  bool fissionable_; //!< Is the nuclide fissionable?
-  xt::xtensor<std::complex<double>, 2> data_; //!< Poles and residues
-  double sqrt_awr_; //!< Square root of atomic weight ratio
   double E_min_; //!< Minimum energy in [eV]
   double E_max_; //!< Maximum energy in [eV]
+  double sqrt_awr_; //!< Square root of atomic weight ratio
   double inv_spacing_; //!< 1 / spacing in sqrt(E) space
   int fit_order_; //!< Order of the fit
-  xt::xtensor<int, 2> windows_; //!< Indices of pole at start/end of window
-  xt::xtensor<double, 3> curvefit_; //!< Fitting function (reaction, coeff index, window index)
-  xt::xtensor<bool, 1> broaden_poly_; //!< Whether to broaden curvefit
+  bool fissionable_; //!< Is the nuclide fissionable?
+  std::vector<WindowInfo> window_info_; // Information about a window
+  xt::xtensor<double, 3> curvefit_; // Curve fit coefficients (window, poly order, reaction)
+  xt::xtensor<std::complex<double>, 2> data_; //!< Poles and residues
 
   // Constant data
   static constexpr int MAX_POLY_COEFFICIENTS =

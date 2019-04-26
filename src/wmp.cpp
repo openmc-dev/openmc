@@ -40,13 +40,15 @@ WindowedMultipole::WindowedMultipole(hid_t group)
 
   // Read the "windows" array and use its shape to figure out the number of
   // windows.
-  read_dataset(group, "windows", windows_);
-  int n_windows = windows_.shape()[0];
-  windows_ -= 1; // Adjust to 0-based indices
+  xt::xtensor<int, 2> windows;
+  read_dataset(group, "windows", windows);
+  int n_windows = windows.shape()[0];
+  windows -= 1; // Adjust to 0-based indices
 
   // Read the "broaden_poly" arrays.
-  read_dataset(group, "broaden_poly", broaden_poly_);
-  if (n_windows != broaden_poly_.shape()[0]) {
+  xt::xtensor<bool, 1> broaden_poly;
+  read_dataset(group, "broaden_poly", broaden_poly);
+  if (n_windows != broaden_poly.shape()[0]) {
     fatal_error("broaden_poly array shape is not consistent with the windows "
       "array shape in WMP library for " + name_ + ".");
   }
@@ -65,6 +67,14 @@ WindowedMultipole::WindowedMultipole(hid_t group)
       "Need to compile with WindowedMultipole::MAX_POLY_COEFFICIENTS = {}",
       fit_order_ + 1));
   }
+
+  // Move window information into a vector
+  window_info_.resize(n_windows);
+  for (int i = 0; i < n_windows; ++i) {
+    window_info_[i].index_start = windows(i, 0);
+    window_info_[i].index_end = windows(i, 1);
+    window_info_[i].broaden_poly = broaden_poly[i];
+  }
 }
 
 std::tuple<double, double, double>
@@ -80,10 +90,11 @@ WindowedMultipole::evaluate(double E, double sqrtkT)
   double invE = 1.0 / E;
 
   // Locate window containing energy
-  int i_window = std::min(windows_.shape()[0] - 1,
-    static_cast<unsigned long>((sqrtE - std::sqrt(E_min_)) * inv_spacing_));
-  int startw = windows_(i_window, 0);
-  int endw = windows_(i_window, 1);
+  int i_window = std::min(window_info_.size() - 1,
+    static_cast<size_t>((sqrtE - std::sqrt(E_min_)) * inv_spacing_));
+  const auto& window {window_info_[i_window]};
+  int startw = window.index_start;
+  int endw = window.index_end;
 
   // Initialize the ouptut cross sections
   double sig_s = 0.0;
@@ -93,7 +104,7 @@ WindowedMultipole::evaluate(double E, double sqrtkT)
   // ==========================================================================
   // Add the contribution from the curvefit polynomial.
 
-  if (sqrtkT > 0.0 && broaden_poly_(i_window)) {
+  if (sqrtkT > 0.0 && window.broaden_poly) {
     // Broaden the curvefit.
     double dopp = sqrt_awr_ / sqrtkT;
     std::array<double, MAX_POLY_COEFFICIENTS> broadened_polynomials;
@@ -135,15 +146,13 @@ WindowedMultipole::evaluate(double E, double sqrtkT)
   } else {
     // At temperature, use Faddeeva function-based form.
     double dopp = sqrt_awr_ / sqrtkT;
-    if (endw >= startw) {
-      for (int i_pole = startw; i_pole <= endw; ++i_pole) {
-        std::complex<double> z = (sqrtE - data_(i_pole, MP_EA)) * dopp;
-        std::complex<double> w_val = faddeeva(z) * dopp * invE * SQRT_PI;
-        sig_s += (data_(i_pole, MP_RS) * w_val).real();
-        sig_a += (data_(i_pole, MP_RA) * w_val).real();
-        if (fissionable_) {
-          sig_f += (data_(i_pole, MP_RF) * w_val).real();
-        }
+    for (int i_pole = startw; i_pole <= endw; ++i_pole) {
+      std::complex<double> z = (sqrtE - data_(i_pole, MP_EA)) * dopp;
+      std::complex<double> w_val = faddeeva(z) * dopp * invE * SQRT_PI;
+      sig_s += (data_(i_pole, MP_RS) * w_val).real();
+      sig_a += (data_(i_pole, MP_RA) * w_val).real();
+      if (fissionable_) {
+        sig_f += (data_(i_pole, MP_RF) * w_val).real();
       }
     }
   }
@@ -169,8 +178,9 @@ WindowedMultipole::evaluate_deriv(double E, double sqrtkT)
 
   // Locate us
   int i_window = (sqrtE - std::sqrt(E_min_)) * inv_spacing_;
-  int startw = windows_(i_window, 0);
-  int endw = windows_(i_window, 1);
+  const auto& window {window_info_[i_window]};
+  int startw = window.index_start;
+  int endw = window.index_end;
 
   // Initialize the ouptut cross sections.
   double sig_s = 0.0;
@@ -186,20 +196,19 @@ WindowedMultipole::evaluate_deriv(double E, double sqrtkT)
   // Add the contribution from the poles in this window.
 
   double dopp = sqrt_awr_ / sqrtkT;
-  if (endw >= startw) {
-    for (int i_pole = startw; i_pole <= endw; ++i_pole) {
-      std::complex<double> z = (sqrtE - data_(i_pole, MP_EA)) * dopp;
-      std::complex<double> w_val = -invE * SQRT_PI * 0.5 * w_derivative(z, 2);
-      sig_s += (data_(i_pole, MP_RS) * w_val).real();
-      sig_a += (data_(i_pole, MP_RA) * w_val).real();
-      if (fissionable_) {
-        sig_f += (data_(i_pole, MP_RF) * w_val).real();
-      }
+  for (int i_pole = startw; i_pole <= endw; ++i_pole) {
+    std::complex<double> z = (sqrtE - data_(i_pole, MP_EA)) * dopp;
+    std::complex<double> w_val = -invE * SQRT_PI * 0.5 * w_derivative(z, 2);
+    sig_s += (data_(i_pole, MP_RS) * w_val).real();
+    sig_a += (data_(i_pole, MP_RA) * w_val).real();
+    if (fissionable_) {
+      sig_f += (data_(i_pole, MP_RF) * w_val).real();
     }
-    sig_s *= -0.5*sqrt_awr_ / std::sqrt(K_BOLTZMANN) * std::pow(T, -1.5);
-    sig_a *= -0.5*sqrt_awr_ / std::sqrt(K_BOLTZMANN) * std::pow(T, -1.5);
-    sig_f *= -0.5*sqrt_awr_ / std::sqrt(K_BOLTZMANN) * std::pow(T, -1.5);
   }
+  double norm = -0.5*sqrt_awr_ / std::sqrt(K_BOLTZMANN) * std::pow(T, -1.5);
+  sig_s *= norm;
+  sig_a *= norm;
+  sig_f *= norm;
 
   return std::make_tuple(sig_s, sig_a, sig_f);
 }

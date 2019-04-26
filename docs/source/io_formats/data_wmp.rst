@@ -17,13 +17,13 @@ Windowed Multipole Library Format
         If 1, Doppler broaden curve fit for window with corresponding index.
         If 0, do not.
     - **curvefit** (*double[][][]*)
-        Curve fit coefficients. Indexed by (reaction type, coefficient index,
-        window index).
+        Curve fit coefficients. Indexed by (window index, coefficient index,
+        reaction type).
     - **data** (*complex[][]*)
         Complex poles and residues. Each pole has a corresponding set of
         residues. For example, the :math:`i`-th pole and corresponding residues
         are stored as
-        
+
         .. math::
             \text{data}[:,i] = [\text{pole},~\text{residue}_1,~\text{residue}_2,
             ~\ldots]

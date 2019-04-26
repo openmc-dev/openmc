@@ -65,7 +65,7 @@ public:
   double sqrt_awr_; //!< Square root of atomic weight ratio
   double E_min_; //!< Minimum energy in [eV]
   double E_max_; //!< Maximum energy in [eV]
-  double spacing_; //!< Spacing in sqrt(E) space
+  double inv_spacing_; //!< 1 / spacing in sqrt(E) space
   int fit_order_; //!< Order of the fit
   xt::xtensor<int, 2> windows_; //!< Indices of pole at start/end of window
   xt::xtensor<double, 3> curvefit_; //!< Fitting function (reaction, coeff index, window index)

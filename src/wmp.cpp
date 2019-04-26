@@ -24,7 +24,8 @@ WindowedMultipole::WindowedMultipole(hid_t group)
   name_ = object_name(group).substr(1);
 
   // Read scalar values.
-  read_dataset(group, "spacing", spacing_);
+  read_dataset(group, "spacing", inv_spacing_);
+  inv_spacing_ = 1.0 / inv_spacing_;
   read_dataset(group, "sqrtAWR", sqrt_awr_);
   read_dataset(group, "E_min", E_min_);
   read_dataset(group, "E_max", E_max_);
@@ -41,6 +42,7 @@ WindowedMultipole::WindowedMultipole(hid_t group)
   // windows.
   read_dataset(group, "windows", windows_);
   int n_windows = windows_.shape()[0];
+  windows_ -= 1; // Adjust to 0-based indices
 
   // Read the "broaden_poly" arrays.
   read_dataset(group, "broaden_poly", broaden_poly_);
@@ -51,7 +53,7 @@ WindowedMultipole::WindowedMultipole(hid_t group)
 
   // Read the "curvefit" array.
   read_dataset(group, "curvefit", curvefit_);
-  if (n_windows != broaden_poly_.shape()[0]) {
+  if (n_windows != curvefit_.shape()[0]) {
     fatal_error("curvefit array shape is not consistent with the windows "
       "array shape in WMP library for " + name_ + ".");
   }
@@ -79,9 +81,9 @@ WindowedMultipole::evaluate(double E, double sqrtkT)
 
   // Locate window containing energy
   int i_window = std::min(windows_.shape()[0] - 1,
-        static_cast<unsigned long>((sqrtE - std::sqrt(E_min_)) / spacing_));
-  int startw = windows_(i_window, 0) - 1;
-  int endw = windows_(i_window, 1) - 1;
+    static_cast<unsigned long>((sqrtE - std::sqrt(E_min_)) * inv_spacing_));
+  int startw = windows_(i_window, 0);
+  int endw = windows_(i_window, 1);
 
   // Initialize the ouptut cross sections
   double sig_s = 0.0;
@@ -123,7 +125,7 @@ WindowedMultipole::evaluate(double E, double sqrtkT)
     // If at 0K, use asymptotic form.
     for (int i_pole = startw; i_pole <= endw; ++i_pole) {
       std::complex<double> psi_chi = -1.0i / (data_(i_pole, MP_EA) - sqrtE);
-      std::complex<double> c_temp = psi_chi / E;
+      std::complex<double> c_temp = psi_chi * invE;
       sig_s += (data_(i_pole, MP_RS) * c_temp).real();
       sig_a += (data_(i_pole, MP_RA) * c_temp).real();
       if (fissionable_) {
@@ -166,9 +168,9 @@ WindowedMultipole::evaluate_deriv(double E, double sqrtkT)
   }
 
   // Locate us
-  int i_window = (sqrtE - std::sqrt(E_min_)) / spacing_;
-  int startw = windows_(i_window, 0) - 1;
-  int endw = windows_(i_window, 1) - 1;
+  int i_window = (sqrtE - std::sqrt(E_min_)) * inv_spacing_;
+  int startw = windows_(i_window, 0);
+  int endw = windows_(i_window, 1);
 
   // Initialize the ouptut cross sections.
   double sig_s = 0.0;

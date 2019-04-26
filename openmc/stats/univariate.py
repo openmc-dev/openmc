@@ -7,6 +7,7 @@ from xml.etree import ElementTree as ET
 import numpy as np
 
 import openmc.checkvalue as cv
+from openmc._xml import get_text
 from openmc.mixin import EqualityMixin
 
 
@@ -130,7 +131,7 @@ class Discrete(Univariate):
             Discrete distribution generated from XML element
 
         """
-        params = [float(x) for x in elem.findtext('parameters').split()]
+        params = [float(x) for x in get_text(elem, 'parameters').split()]
         x = params[:len(params)//2]
         p = params[len(params)//2:]
         return cls(x, p)
@@ -221,7 +222,7 @@ class Uniform(Univariate):
             Uniform distribution generated from XML element
 
         """
-        params = elem.findtext('parameters').split()
+        params = get_text(elem, 'parameters').split()
         a = float(params[0])
         b = float(params[1])
         return cls(a, b)
@@ -297,7 +298,7 @@ class Maxwell(Univariate):
             Maxwellian distribution generated from XML element
 
         """
-        theta = float(elem.findtext('parameters'))
+        theta = float(get_text(elem, 'parameters'))
         return cls(theta)
 
 
@@ -386,7 +387,7 @@ class Watt(Univariate):
             Watt distribution generated from XML element
 
         """
-        params = elem.findtext('parameters').split()
+        params = get_text(elem, 'parameters').split()
         a = float(params[0])
         b = float(params[1])
         return watt(a, b)
@@ -476,7 +477,7 @@ class Normal(Univariate):
             Normal distribution generated from XML element
 
         """
-        params = elem.findtext('parameters').split()
+        params = get_text(elem, 'parameters').split()
         mean_value = float(params[0])
         std_dev = float(params[1])
         return cls(mean_value, std_dev)
@@ -585,7 +586,7 @@ class Muir(Univariate):
             Muir distribution generated from XML element
 
         """
-        params = elem.findtext('parameters').split()
+        params = get_text(elem, 'parameters').split()
         e0 = float(params[0])
         m_rat = float(params[1])
         kt = float(params[2])
@@ -702,8 +703,8 @@ class Tabular(Univariate):
             Tabular distribution generated from XML element
 
         """
-        interpolation = elem.get('interpolation')
-        params = [float(x) for x in elem.findtext('parameters').split()]
+        interpolation = get_text(elem, 'interpolation')
+        params = [float(x) for x in get_text(elem, 'parameters').split()]
         x = params[:len(params)//2]
         p = paramx[len(params)//2:]
         return cls(x, p, interpolation)

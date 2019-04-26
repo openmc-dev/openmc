@@ -8,6 +8,7 @@ from xml.etree import ElementTree as ET
 import numpy as np
 
 import openmc.checkvalue as cv
+from openmc._xml import get_text
 from openmc.stats.univariate import Univariate, Uniform
 
 
@@ -142,7 +143,7 @@ class PolarAzimuthal(UnitSphere):
 
         """
         mu_phi = cls()
-        params = elem.findtext('parameters')
+        params = get_text(elem, 'parameters')
         if params is not None:
             mu_phi.reference_uvw = [float(x) for x in params.split()]
         mu_phi.mu = openmc.stats.Univariate.from_xml_element(elem.find('mu'))
@@ -239,7 +240,7 @@ class Monodirectional(UnitSphere):
 
         """
         monodirectional = cls()
-        params = elem.findtext('parameters')
+        params = get_text(elem, 'parameters')
         if params is not None:
             monodirectional.reference_uvw = [float(x) for x in params.split()]
         return monodirectional
@@ -457,10 +458,10 @@ class Box(Spatial):
             Box distribution generated from XML element
 
         """
-        only_fissionable = elem.get('type') == 'fission'
-        params = [float(x) for x in elem.findtext('parameters').split()]
+        only_fissionable = get_text(elem, 'type') == 'fission'
+        params = [float(x) for x in get_text(elem, 'parameters').split()]
         lower_left = params[:len(params)//2]
-        upper_right = paramx[len(params)//2:]
+        upper_right = params[len(params)//2:]
         return cls(lower_left, upper_right, only_fissionable)
 
 
@@ -526,5 +527,5 @@ class Point(Spatial):
             Point distribution generated from XML element
 
         """
-        xyz = [float(x) for x in elem.findtext('parameters').split()]
+        xyz = [float(x) for x in get_text(elem, 'parameters').split()]
         return cls(xyz)

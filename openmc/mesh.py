@@ -7,6 +7,7 @@ import numpy as np
 
 import openmc.checkvalue as cv
 import openmc
+from openmc._xml import get_text
 from openmc.mixin import EqualityMixin, IDManagerMixin
 
 
@@ -261,23 +262,23 @@ class Mesh(IDManagerMixin):
             Mesh generated from XML element
 
         """
-        mesh_id = int(elem.get('id'))
+        mesh_id = int(get_text(elem, 'id'))
         mesh = cls(mesh_id)
-        mesh.type = elem.get('type')
+        mesh.type = get_text(elem, 'type')
 
-        dimension = elem.findtext('dimension')
+        dimension = get_text(elem, 'dimension')
         if dimension is not None:
             mesh.dimension = [int(x) for x in dimension.split()]
 
-        lower_left = elem.findtext('lower_left')
+        lower_left = get_text(elem, 'lower_left')
         if lower_left is not None:
             mesh.lower_left = [float(x) for x in lower_left.split()]
 
-        upper_right = elem.findtext('upper_right')
+        upper_right = get_text(elem, 'upper_right')
         if upper_right is not None:
             mesh.upper_right = [float(x) for x in upper_right.split()]
 
-        width = elem.findtext('width')
+        width = get_text(elem, 'width')
         if width is not None:
             mesh.width = [float(x) for x in width.split()]
 

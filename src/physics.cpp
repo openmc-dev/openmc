@@ -972,7 +972,7 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_
 
     if (prn(seed) < alpha) {
       // With probability alpha, we sample the distribution p(y) =
-      // y*e^(-y). This can be done with sampling scheme C45 frmo the Monte
+      // y*e^(-y). This can be done with sampling scheme C45 from the Monte
       // Carlo sampler
 
       beta_vt_sq = -std::log(r1*r2);

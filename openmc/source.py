@@ -2,6 +2,7 @@ from numbers import Real
 import sys
 from xml.etree import ElementTree as ET
 
+from openmc._xml import get_text
 from openmc.stats.univariate import (Univariate, Discrete, Uniform, Maxwell,
                                      Watt, Normal, Muir, Tabular)
 from openmc.stats.multivariate import (UnitSphere, Spatial, PolarAzimuthal,
@@ -158,21 +159,21 @@ class Source(object):
         """
         source = cls()
 
-        strength = elem.find('strength')
+        strength = get_text(elem, 'strength')
         if strength is not None:
-            source.strength = float(strength.text)
+            source.strength = float(strength)
 
-        particle = elem.find('particle')
+        particle = get_text(elem, 'particle')
         if particle is not None:
-            source.particle = particle.text
+            source.particle = particle
 
-        filename = elem.find('file')
+        filename = get_text(elem, 'file')
         if filename is not None:
-            source.file = filename.text
+            source.file = filename
 
         space = elem.find('space')
         if space is not None:
-            space_type = space.get('type')
+            space_type = get_text(space, 'type')
             if space_type == 'cartesian':
                 source.space = CartesianIndependent.from_xml_element(space)
             elif space_type == 'box' or space_type == 'fission':
@@ -182,7 +183,7 @@ class Source(object):
 
         angle = elem.find('angle')
         if angle is not None:
-            angle_type = angle.get('type')
+            angle_type = get_text(angle, 'type')
             if angle_type == 'mu-phi':
                 source.angle = PolarAzimuthal.from_xml_element(angle)
             elif angle_type == 'isotropic':
@@ -192,7 +193,7 @@ class Source(object):
 
         energy = elem.find('energy')
         if energy is not None:
-            energy_type = energy.get('type')
+            energy_type = get_text(energy, 'type')
             if energy_type == 'discrete':
                 source.energy = Discrete.from_xml_element(energy)
             elif energy_type == 'uniform':

@@ -24,6 +24,10 @@ _dll.openmc_cell_get_fill.argtypes = [
     c_int32, POINTER(c_int), POINTER(POINTER(c_int32)), POINTER(c_int32)]
 _dll.openmc_cell_get_fill.restype = c_int
 _dll.openmc_cell_get_fill.errcheck = _error_handler
+_dll.openmc_cell_get_temperature.argtypes = [
+    c_int32, POINTER(c_int32), POINTER(c_double)]
+_dll.openmc_cell_get_temperature.restype = c_int
+_dll.openmc_cell_get_temperature.errcheck = _error_handler
 _dll.openmc_cell_set_fill.argtypes = [
     c_int32, c_int, c_int32, POINTER(c_int32)]
 _dll.openmc_cell_set_fill.restype = c_int
@@ -127,6 +131,23 @@ class Cell(_FortranObjectWithID):
         elif fill is None:
             indices = (c_int32*1)(-1)
             _dll.openmc_cell_set_fill(self._index, 1, 1, indices)
+
+    def get_temperature(self, instance=None):
+        """Get the temperature of a cell
+
+        Parameters
+        ----------
+        instance: int or None
+            Which instance of the cell
+
+        """
+
+        if instance is not None:
+          instance = c_int32(instance)
+
+        T = c_double()
+        _dll.openmc_cell_get_temperature(self._index, instance, T)
+        return T.value
 
     def set_temperature(self, T, instance=None):
         """Set the temperature of a cell

@@ -15,6 +15,11 @@
 #include "openmc/particle.h"
 #include "openmc/position.h"
 
+#ifdef DAGMC
+#include "TrackLengthMeshTally.hpp"
+#include "Tally.hpp"
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -285,7 +290,7 @@ class UnstructuredMesh : public Mesh {
   //! \param[out] bins Bins that were crossed
   //! \param[out] lengths Fraction of tracklength in each bin
   void bins_crossed(const Particle* p, std::vector<int>& bins,
-                    std::vector<double>& lengths);
+                    std::vector<double>& lengths) const;
 
   bool intersects(Position& r0, Position r1, int* ijk);
 
@@ -308,9 +313,14 @@ class UnstructuredMesh : public Mesh {
   xt::xarray<double> count_sites(const std::vector<Particle::Bank>& bank,
                                          bool* outside);
 
+  int get_bin_from_ent_handle(moab::EntityHandle eh) const;
+
+  moab::EntityHandle get_ent_handle_from_bin(int bin) const;
+
 private:
   std::string filename_;
-
+  moab::Range ehs_;
+  std::unique_ptr<moab::TrackLengthMeshTally> tracklen_meshtal_;
 };
 
 #endif

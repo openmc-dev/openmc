@@ -24,10 +24,6 @@
 #include "openmc/tallies/filter.h"
 #include "openmc/xml_interface.h"
 
-#ifdef DAGMC
-#include "TrackLengthMeshTally.hpp"
-#endif
-
 namespace openmc {
 
 //==============================================================================
@@ -1507,6 +1503,8 @@ openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
   return 0;
 }
 
+#ifdef DAGMC
+
 UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
 
   // get the filename of the unstructured mesh to load
@@ -1518,11 +1516,65 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
                 std::to_string(id_));
   }
 
+  // create TallyInput
+  TallyInput tally_inp = {0, 0, 0, {0}, TallyInput::TallyOptions(), 0};
+
+  tracklen_meshtal_ = std::make_unique<moab::TrackLengthMeshTally>(tally_inp);
+
   // always 3 for unstructured meshes
   n_dimension_ = 3;
 
-
 }
+
+void
+UnstructuredMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
+                               std::vector<double>& lengths) const {
+  moab::ErrorCode rval;
+
+  Position last_r{p->r_last_};
+  Position r{p->r()};
+  Position u{p->u()};
+  moab::CartVect r0(last_r.x, last_r.y, last_r.z);
+  moab::CartVect r1(r.x, r.y, r.z);
+  moab::CartVect dir(u.x, u.y, u.z);
+  dir.normalize();
+
+  double track_len = (r1 - r0).length();
+
+  r0 += TINY_BIT*dir;
+  r1 -= TINY_BIT*dir;
+
+  std::vector<moab::EntityHandle> tris;
+  std::vector<double> intersections;
+  rval = tracklen_meshtal_->get_all_intersections(r0, dir, track_len,
+                                                  tris, intersections);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed in tally on mesh: " + filename_);
+  }
+
+  bins.clear();
+  for (const auto& int_dist : intersections) {
+    moab::EntityHandle tet = tracklen_meshtal_->point_in_which_tet(r0 + dir * int_dist);
+    if (tet == 0) { continue; }
+    if (std::find(bins.begin(), bins.end(), tet) == std::end(bins)) {
+      bins.emplace_back(get_bin_from_ent_handle(tet));
+    }
+  }
+
+};
+
+int
+UnstructuredMesh::get_bin_from_ent_handle(moab::EntityHandle eh) const {
+  auto pos = ehs_.find(eh);
+  return pos - ehs_.begin();
+}
+
+moab::EntityHandle
+UnstructuredMesh::get_ent_handle_from_bin(int bin) const {
+  return ehs_[bin];
+}
+
+#endif
 
 
 //==============================================================================

@@ -174,7 +174,6 @@ class Settings(object):
         self._source = cv.CheckedList(Source, 'source distributions')
 
         self._confidence_intervals = None
-        self._cross_sections = None
         self._electron_treatment = None
         self._photon_transport = None
         self._ptables = None
@@ -993,11 +992,14 @@ class Settings(object):
     def _sourcepoint_from_xml_element(self, root):
         elem = root.find('source_point')
         if elem is not None:
-            for key in ('separate', 'write', 'overwrite', 'batches'):
+            for key in ('separate', 'write', 'overwrite_latest', 'batches'):
                 value = get_text(elem, key)
                 if value is not None:
-                    if key in ('separate', 'write', 'overwrite'):
+                    if key in ('separate', 'write'):
                         value = value == 'true'
+                    elif key == 'overwrite_latest':
+                        value = value == 'true'
+                        key = 'overwrite'
                     else:
                         value = [int(x) for x in value.split()]
                     self.sourcepoint[key] = value
@@ -1053,9 +1055,12 @@ class Settings(object):
                     self.cutoff[key] = float(value)
 
     def _entropy_mesh_from_xml_element(self, root):
-        elem = root.find('entropy_mesh')
-        if elem is not None:
-            self.entropy_mesh = Mesh.from_xml_element(elem)
+        text = get_text(root, 'entropy_mesh')
+        if text is not None:
+            path = "./mesh[@id='{}']".format(int(text))
+            elem = root.find(path)
+            if elem is not None:
+                self.entropy_mesh = Mesh.from_xml_element(elem)
 
     def _trigger_from_xml_element(self, root):
         elem = root.find('trigger')
@@ -1115,9 +1120,12 @@ class Settings(object):
             self.track = [int(x) for x in text.split()]
 
     def _ufs_mesh_from_xml_element(self, root):
-        elem = root.find('ufs_mesh')
-        if elem is not None:
-            self.ufs_mesh = Mesh.from_xml_element(elem)
+        text = get_text(root, 'ufs_mesh')
+        if text is not None:
+            path = "./mesh[@id='{}']".format(int(text))
+            elem = root.find(path)
+            if elem is not None:
+                self.ufs_mesh = Mesh.from_xml_element(elem)
 
     def _resonance_scattering_from_xml_element(self, root):
         elem = root.find('resonance_scattering')

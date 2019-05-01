@@ -551,7 +551,8 @@ class Settings(object):
     @entropy_mesh.setter
     def entropy_mesh(self, entropy):
         cv.check_type('entropy mesh', entropy, Mesh)
-        cv.check_length('entropy mesh dimension', entropy.dimension, 3)
+        if entropy.dimension:
+            cv.check_length('entropy mesh dimension', entropy.dimension, 3)
         cv.check_length('entropy mesh lower-left corner', entropy.lower_left, 3)
         cv.check_length('entropy mesh upper-right corner', entropy.upper_right, 3)
         self._entropy_mesh = entropy

@@ -231,8 +231,9 @@ class Mesh(IDManagerMixin):
         element.set("id", str(self._id))
         element.set("type", self._type)
 
-        subelement = ET.SubElement(element, "dimension")
-        subelement.text = ' '.join(map(str, self._dimension))
+        if self._dimension is not None:
+            subelement = ET.SubElement(element, "dimension")
+            subelement.text = ' '.join(map(str, self._dimension))
 
         subelement = ET.SubElement(element, "lower_left")
         subelement.text = ' '.join(map(str, self._lower_left))
@@ -264,7 +265,10 @@ class Mesh(IDManagerMixin):
         """
         mesh_id = int(get_text(elem, 'id'))
         mesh = cls(mesh_id)
-        mesh.type = get_text(elem, 'type')
+
+        mesh_type = get_text(elem, 'type')
+        if mesh_type is not None:
+            mesh.type = mesh_type
 
         dimension = get_text(elem, 'dimension')
         if dimension is not None:

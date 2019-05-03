@@ -32,6 +32,7 @@ namespace openmc {
 
 namespace model {
 
+
 std::vector<std::unique_ptr<Mesh>> meshes;
 std::unordered_map<int32_t, int32_t> mesh_map;
 
@@ -1605,6 +1606,89 @@ UnstructuredMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
 
 };
 
+
+
+int
+UnstructuredMesh::get_bin(Position r) const {
+  moab::CartVect pnt(r.x, r.y, r.z);
+  moab::AdaptiveKDTreeIter kdtree_iter;
+  moab::ErrorCode rval = kdtree_->point_search(pnt.array(), kdtree_iter);
+  if (rval != moab::MB_SUCCESS) { return -1; }
+
+  moab::EntityHandle leaf = kdtree_iter.handle();
+  moab::Range tets;
+  rval = mbi_->get_entities_by_dimension(leaf, 3, tets);
+  for (const auto& tet : tets) {
+    if (point_in_tet(r, tet)) {
+      return get_bin_from_ent_handle(tet);
+    }
+  }
+
+  return -1;
+}
+
+void
+UnstructuredMesh::compute_barycentric_data(const moab::Range& all_tets) {
+  moab::ErrorCode rval;
+  for (auto& tet : all_tets) {
+    moab::Range verts;
+    rval = mbi_->get_connectivity(&tet, 1, verts);
+    if (rval != moab::MB_SUCCESS) {
+      fatal_error("Failed to get connectivity of tet on umesh: " + filename_);
+    }
+
+    moab::CartVect p[4];
+    rval = mbi_->get_coords(verts, p[0].array());
+    if (rval != moab::MB_SUCCESS) {
+      fatal_error("Failed to get coordinates of a tet in umesh: " + filename_);
+    }
+
+    moab::Matrix3 a(p[1] - p[0], p[2] - p[0], p[3] - p[0], true);
+
+    baryc_data_.push_back(a.transpose().inverse());
+  }
+}
+
+// TODO: write this function
+void
+UnstructuredMesh::to_hdf5(hid_t group) const { }
+
+bool
+UnstructuredMesh::point_in_tet(const Position& r, moab::EntityHandle tet) const {
+
+  moab::ErrorCode rval;
+
+  // get tet vertices
+  moab::Range verts;
+  rval = mbi_->get_connectivity(&tet, 1, verts);
+  if (rval != moab::MB_SUCCESS) {
+    warning("Failed to get vertices of tet in umesh: " + filename_);
+    return false;
+  }
+
+  moab::EntityHandle v_zero = verts[0];
+  moab::CartVect p_zero;
+  rval = mbi_->get_coords(&v_zero, 1, p_zero.array());
+  if (rval != moab::MB_SUCCESS) {
+    warning("Failed to get coordinates of a vertex in umesh: " + filename_);
+    return false;
+  }
+
+  moab::CartVect pos(r.x, r.y, r.z);
+
+  // look up barycentric data
+  int idx = get_bin_from_ent_handle(tet);
+  const moab::Matrix3& a_inv = baryc_data_[idx];
+
+  moab::CartVect bary_coords = a_inv * (pos - p_zero);
+
+  bool in_tet = (bary_coords[0] >= 0 && bary_coords[1] >= 0 && bary_coords[2] >= 0 &&
+                 bary_coords[0] + bary_coords[1] + bary_coords[2] <= 1.);
+
+  return in_tet;
+
+}
+
 int
 UnstructuredMesh::get_bin_from_ent_handle(moab::EntityHandle eh) const {
   auto pos = ehs_.find(eh);
@@ -1638,6 +1722,9 @@ void read_meshes(pugi::xml_node root)
       model::meshes.push_back(std::make_unique<RegularMesh>(node));
     } else if (mesh_type == "rectilinear") {
       model::meshes.push_back(std::make_unique<RectilinearMesh>(node));
+    }
+    else if (mesh_type == "unstructured") {
+      model::meshes.push_back(std::make_unique<UnstructuredMesh>(node));
     } else {
       fatal_error("Invalid mesh type: " + mesh_type);
     }

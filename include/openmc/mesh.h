@@ -18,6 +18,7 @@
 #ifdef DAGMC
 #include "moab/Core.hpp"
 #include "moab/AdaptiveKDTree.hpp"
+#include "moab/Matrix3.hpp"
 #endif
 
 namespace openmc {
@@ -26,11 +27,13 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
+
 class Mesh;
 
 namespace model {
 
 extern std::vector<std::unique_ptr<Mesh>> meshes;
+
 extern std::unordered_map<int32_t, int32_t> mesh_map;
 
 } // namespace model
@@ -50,14 +53,6 @@ public:
   virtual void bins_crossed(const Particle* p, std::vector<int>& bins,
                             std::vector<double>& lengths) const = 0;
 
-  //! Check where a line segment intersects the mesh and if it intersects at all
-  //
-  //! \param[in,out] r0 In: starting position, out: intersection point
-  //! \param[in] r1 Ending position
-  //! \param[out] ijk Indices of the mesh bin containing the intersection point
-  //! \return Whether the line segment connecting r0 and r1 intersects mesh
-  virtual bool intersects(Position& r0, Position r1, int* ijk) const = 0;
-
   //! Write mesh data to an HDF5 group
   //
   //! \param[in] group HDF5 group
@@ -68,14 +63,6 @@ public:
   //! \param[in] r Position to get bin for
   //! \return Mesh bin
   virtual int get_bin(Position r) const = 0;
-
-  //! Count number of bank sites in each mesh bin / energy bin
-  //
-  //! \param[in] bank Array of bank sites
-  //! \param[out] Whether any bank sites are outside the mesh
-  //! \return Array indicating number of sites in each mesh/energy bin
-  virtual xt::xarray<double> count_sites(const std::vector<Particle::Bank>& bank,
-                                         bool* outside) const = 0;
 
   int id_ {-1};  //!< User-specified ID
   int n_dimension_; //!< Number of dimensions
@@ -281,6 +268,7 @@ private:
 #ifdef DAGMC
 
 class UnstructuredMesh : public Mesh {
+public:
   UnstructuredMesh() { };
   UnstructuredMesh(pugi::xml_node);
 
@@ -294,24 +282,20 @@ class UnstructuredMesh : public Mesh {
 
   bool intersects(Position& r0, Position r1, int* ijk);
 
+  bool point_in_tet(const Position& r, moab::EntityHandle tet) const;
+
   //! Write mesh data to an HDF5 group
   //
   //! \param[in] group HDF5 group
-  void to_hdf5(hid_t group);
+  void to_hdf5(hid_t group) const;
 
   //! Get bin at a given position in space
   //
   //! \param[in] r Position to get bin for
   //! \return Mesh bin
-  int get_bin(Position r);
+  int get_bin(Position r) const;
 
-  //! Count number of bank sites in each mesh bin / energy bin
-  //
-  //! \param[in] bank Array of bank sites
-  //! \param[out] Whether any bank sites are outside the mesh
-  //! \return Array indicating number of sites in each mesh/energy bin
-  xt::xarray<double> count_sites(const std::vector<Particle::Bank>& bank,
-                                         bool* outside);
+  void compute_barycentric_data(const moab::Range& all_tets);
 
   int get_bin_from_ent_handle(moab::EntityHandle eh) const;
 
@@ -325,6 +309,7 @@ private:
   moab::EntityHandle meshset_;
   std::shared_ptr<moab::Interface> mbi_;
   std::unique_ptr<moab::AdaptiveKDTree> kdtree_;
+  std::vector<moab::Matrix3> baryc_data_;
 };
 
 #endif

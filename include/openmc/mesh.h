@@ -16,8 +16,8 @@
 #include "openmc/position.h"
 
 #ifdef DAGMC
-#include "TrackLengthMeshTally.hpp"
-#include "Tally.hpp"
+#include "moab/Core.hpp"
+#include "moab/AdaptiveKDTree.hpp"
 #endif
 
 namespace openmc {
@@ -317,10 +317,14 @@ class UnstructuredMesh : public Mesh {
 
   moab::EntityHandle get_ent_handle_from_bin(int bin) const;
 
+  void build_tree(const moab::Range& all_tets);
+
 private:
   std::string filename_;
   moab::Range ehs_;
-  std::unique_ptr<moab::TrackLengthMeshTally> tracklen_meshtal_;
+  moab::EntityHandle meshset_;
+  std::shared_ptr<moab::Interface> mbi_;
+  std::unique_ptr<moab::AdaptiveKDTree> kdtree_;
 };
 
 #endif

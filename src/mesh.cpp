@@ -1516,13 +1516,60 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
                 std::to_string(id_));
   }
 
-  // create TallyInput
-  TallyInput tally_inp = {0, 0, 0, {0}, TallyInput::TallyOptions(), 0};
-
-  tracklen_meshtal_ = std::make_unique<moab::TrackLengthMeshTally>(tally_inp);
+  // create MOAB instance
+  mbi_ = std::shared_ptr<moab::Interface>(new moab::Core());
+  // load unstructured mesh file
+  moab::ErrorCode rval = mbi_->load_file(filename_.c_str(), &meshset_);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to load the unstructured mesh file: " + filename_);
+  }
 
   // always 3 for unstructured meshes
   n_dimension_ = 3;
+
+  moab::Range all_tets;
+  rval = mbi_->get_entities_by_dimension(meshset_, n_dimension_, all_tets);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to get all tetrahedral elements");
+  }
+
+  if (!all_tets.all_of_type(moab::MBTET)) {
+    warning("Non-tetrahedral elements found in unstructured mesh: " + filename_);
+  }
+
+  build_tree(all_tets);
+
+}
+
+void
+UnstructuredMesh::build_tree(const moab::Range& all_tets) {
+
+  moab::Range all_tris;
+  moab::ErrorCode rval = mbi_->get_adjacencies(all_tets,
+                                               n_dimension_ - 1,
+                                               true,
+                                               all_tris,
+                                               moab::Interface::UNION);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to get adjacent triangle for test in MOAB");
+  }
+
+  if (!all_tris.all_of_type(moab::MBTRI)) {
+    warning("Non-triangle elements found in tet adjacencies in unstructured mesh: " + filename_);
+  }
+
+  // combine into one range
+  moab::Range all_tets_and_tris;
+  all_tets_and_tris.merge(all_tets);
+  all_tets_and_tris.merge(all_tris);
+
+  // create and build KD-tree
+  kdtree_ = std::unique_ptr<moab::AdaptiveKDTree>(new moab::AdaptiveKDTree(mbi_.get()));
+
+  rval = kdtree_->build_tree(all_tets_and_tris);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to construct a KD-Tree for unstructured mesh " + filename_);
+  }
 
 }
 
@@ -1546,15 +1593,10 @@ UnstructuredMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
 
   std::vector<moab::EntityHandle> tris;
   std::vector<double> intersections;
-  rval = tracklen_meshtal_->get_all_intersections(r0, dir, track_len,
-                                                  tris, intersections);
-  if (rval != moab::MB_SUCCESS) {
-    fatal_error("Failed in tally on mesh: " + filename_);
-  }
 
   bins.clear();
   for (const auto& int_dist : intersections) {
-    moab::EntityHandle tet = tracklen_meshtal_->point_in_which_tet(r0 + dir * int_dist);
+    moab::EntityHandle tet; // = tracklen_meshtal_->point_in_which_tet(r0 + dir * int_dist);
     if (tet == 0) { continue; }
     if (std::find(bins.begin(), bins.end(), tet) == std::end(bins)) {
       bins.emplace_back(get_bin_from_ent_handle(tet));

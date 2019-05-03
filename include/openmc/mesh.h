@@ -295,6 +295,8 @@ public:
   //! \return Mesh bin
   int get_bin(Position r) const;
 
+  moab::EntityHandle get_tet(Position r) const;
+
   void compute_barycentric_data(const moab::Range& all_tets);
 
   int get_bin_from_ent_handle(moab::EntityHandle eh) const;
@@ -307,6 +309,7 @@ private:
   std::string filename_;
   moab::Range ehs_;
   moab::EntityHandle meshset_;
+  moab::EntityHandle kdtree_root_;
   std::shared_ptr<moab::Interface> mbi_;
   std::unique_ptr<moab::AdaptiveKDTree> kdtree_;
   std::vector<moab::Matrix3> baryc_data_;

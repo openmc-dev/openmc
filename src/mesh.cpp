@@ -1507,7 +1507,6 @@ openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
 #ifdef DAGMC
 
 UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
-
   // get the filename of the unstructured mesh to load
   if (check_for_node(node, "mesh_file")) {
     filename_ = get_node_value(node, "mesh_file");
@@ -1567,7 +1566,7 @@ UnstructuredMesh::build_tree(const moab::Range& all_tets) {
   // create and build KD-tree
   kdtree_ = std::unique_ptr<moab::AdaptiveKDTree>(new moab::AdaptiveKDTree(mbi_.get()));
 
-  rval = kdtree_->build_tree(all_tets_and_tris);
+  rval = kdtree_->build_tree(all_tets_and_tris, &kdtree_root_);
   if (rval != moab::MB_SUCCESS) {
     fatal_error("Failed to construct a KD-Tree for unstructured mesh " + filename_);
   }
@@ -1582,10 +1581,10 @@ UnstructuredMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   Position last_r{p->r_last_};
   Position r{p->r()};
   Position u{p->u()};
+  u /= u.norm();
   moab::CartVect r0(last_r.x, last_r.y, last_r.z);
   moab::CartVect r1(r.x, r.y, r.z);
   moab::CartVect dir(u.x, u.y, u.z);
-  dir.normalize();
 
   double track_len = (r1 - r0).length();
 
@@ -1595,9 +1594,14 @@ UnstructuredMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   std::vector<moab::EntityHandle> tris;
   std::vector<double> intersections;
 
+  rval = kdtree_->ray_intersect_triangles(kdtree_root_, 1E-03, dir.array(), r0.array(), tris, intersections, 0, track_len);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to compute tracklengths on umesh: " + filename_);
+  }
+
   bins.clear();
   for (const auto& int_dist : intersections) {
-    moab::EntityHandle tet; // = tracklen_meshtal_->point_in_which_tet(r0 + dir * int_dist);
+    moab::EntityHandle tet = get_tet(last_r + u * int_dist);
     if (tet == 0) { continue; }
     if (std::find(bins.begin(), bins.end(), tet) == std::end(bins)) {
       bins.emplace_back(get_bin_from_ent_handle(tet));
@@ -1606,26 +1610,36 @@ UnstructuredMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
 
 };
 
-
-
-int
-UnstructuredMesh::get_bin(Position r) const {
+moab::EntityHandle
+UnstructuredMesh::get_tet(Position r) const {
   moab::CartVect pnt(r.x, r.y, r.z);
   moab::AdaptiveKDTreeIter kdtree_iter;
   moab::ErrorCode rval = kdtree_->point_search(pnt.array(), kdtree_iter);
-  if (rval != moab::MB_SUCCESS) { return -1; }
+  if (rval != moab::MB_SUCCESS) { return 0; }
 
   moab::EntityHandle leaf = kdtree_iter.handle();
   moab::Range tets;
   rval = mbi_->get_entities_by_dimension(leaf, 3, tets);
+
   for (const auto& tet : tets) {
-    if (point_in_tet(r, tet)) {
-      return get_bin_from_ent_handle(tet);
+      if (point_in_tet(r, tet)) {
+        return get_bin_from_ent_handle(tet);
     }
   }
 
-  return -1;
+  return 0;
 }
+
+int
+UnstructuredMesh::get_bin(Position r) const {
+  moab::EntityHandle tet = get_tet(r);
+  if (tet == 0) {
+    return -1;
+  } else {
+    return get_bin_from_ent_handle(tet);
+  }
+}
+
 
 void
 UnstructuredMesh::compute_barycentric_data(const moab::Range& all_tets) {

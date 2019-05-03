@@ -1507,6 +1507,15 @@ openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
 #ifdef DAGMC
 
 UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
+
+  // check the mesh type
+  if (check_for_node(node, "type")) {
+    auto temp = get_node_value(node, "type", true, true);
+    if (temp != "unstructured") {
+      fatal_error("Invalid mesh type: " + temp);
+    }
+  }
+
   // get the filename of the unstructured mesh to load
   if (check_for_node(node, "mesh_file")) {
     filename_ = get_node_value(node, "mesh_file");
@@ -1518,8 +1527,13 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
 
   // create MOAB instance
   mbi_ = std::shared_ptr<moab::Interface>(new moab::Core());
+  // create meshset to load mesh into
+  moab::ErrorCode rval = mbi_->create_meshset(moab::MESHSET_SET, meshset_);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to create fileset for umesh: " + filename_);
+  }
   // load unstructured mesh file
-  moab::ErrorCode rval = mbi_->load_file(filename_.c_str(), &meshset_);
+  rval = mbi_->load_file(filename_.c_str(), &meshset_);
   if (rval != moab::MB_SUCCESS) {
     fatal_error("Failed to load the unstructured mesh file: " + filename_);
   }

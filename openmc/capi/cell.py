@@ -143,7 +143,7 @@ class Cell(_FortranObjectWithID):
         """
 
         if instance is not None:
-          instance = c_int32(instance)
+            instance = c_int32(instance)
 
         T = c_double()
         _dll.openmc_cell_get_temperature(self._index, instance, T)
@@ -160,7 +160,11 @@ class Cell(_FortranObjectWithID):
             Which instance of the cell
 
         """
-        _dll.openmc_cell_set_temperature(self._index, T, c_int32(instance))
+
+        if instance is not None:
+            instance = c_int32(instance)
+
+        _dll.openmc_cell_set_temperature(self._index, T, instance)
 
 
 class _CellMapping(Mapping):

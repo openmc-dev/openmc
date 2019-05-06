@@ -31,6 +31,7 @@ extern "C" const int BC_PERIODIC;
 //==============================================================================
 
 class Surface;
+struct BoundingBox;
 
 namespace model {
   extern std::vector<std::unique_ptr<Surface>> surfaces;
@@ -105,6 +106,8 @@ public:
   //TODO: this probably needs to include i_periodic for PeriodicSurface
   virtual void to_hdf5(hid_t group_id) const = 0;
 
+  //! Get the BoundingBox for this surface.
+  virtual BoundingBox bounding_box() const = 0;
 };
 
 class CSGSurface : public Surface
@@ -126,9 +129,7 @@ protected:
 class DAGSurface : public Surface
 {
 public:
-  moab::DagMC* dagmc_ptr_;
   DAGSurface();
-  int32_t dag_index_;
 
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
@@ -137,7 +138,8 @@ public:
   //! Get the bounding box of this surface.
   BoundingBox bounding_box() const;
 
-  void to_hdf5(hid_t group_id) const;
+  moab::DagMC* dagmc_ptr_;
+  int32_t dag_index_;
 };
 #endif
 //==============================================================================
@@ -165,9 +167,6 @@ public:
   //!   boundary condition.
   virtual bool periodic_translate(const PeriodicSurface* other, Position& r,
                                   Direction& u) const = 0;
-
-  //! Get the bounding box for this surface.
-  virtual BoundingBox bounding_box() const = 0;
 };
 
 //==============================================================================
@@ -269,7 +268,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-
+  BoundingBox bounding_box() const;
   double y0_, z0_, radius_;
 };
 
@@ -288,7 +287,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-
+  BoundingBox bounding_box() const;
   double x0_, z0_, radius_;
 };
 
@@ -307,7 +306,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-
+  BoundingBox bounding_box() const;
   double x0_, y0_, radius_;
 };
 
@@ -326,7 +325,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-
+  BoundingBox bounding_box() const;
   double x0_, y0_, z0_, radius_;
 };
 
@@ -345,7 +344,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-
+  BoundingBox bounding_box() const;
   double x0_, y0_, z0_, radius_sq_;
 };
 
@@ -364,7 +363,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-
+  BoundingBox bounding_box() const;
   double x0_, y0_, z0_, radius_sq_;
 };
 
@@ -383,7 +382,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-
+  BoundingBox bounding_box() const;
   double x0_, y0_, z0_, radius_sq_;
 };
 
@@ -401,7 +400,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-
+  BoundingBox bounding_box() const;
   // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
   double A_, B_, C_, D_, E_, F_, G_, H_, J_, K_;
 };

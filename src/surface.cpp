@@ -645,7 +645,6 @@ Direction SurfaceXCylinder::normal(Position r) const
   return axis_aligned_cylinder_normal<0, 1, 2>(r, y0_, z0_);
 }
 
-
 void SurfaceXCylinder::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-cylinder", false);
@@ -653,6 +652,9 @@ void SurfaceXCylinder::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
+BoundingBox SurfaceXCylinder::bounding_box() const {
+  return {-INFTY, INFTY, y0_ - radius_, y0_ + radius_, z0_ - radius_, z0_ + radius_};
+}
 //==============================================================================
 // SurfaceYCylinder implementation
 //==============================================================================
@@ -684,6 +686,10 @@ void SurfaceYCylinder::to_hdf5_inner(hid_t group_id) const
   write_string(group_id, "type", "y-cylinder", false);
   std::array<double, 3> coeffs {{x0_, z0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
+}
+
+BoundingBox SurfaceYCylinder::bounding_box() const {
+  return {x0_ - radius_, x0_ + radius_, -INFTY, INFTY, z0_ - radius_, z0_ + radius_};
 }
 
 //==============================================================================
@@ -718,6 +724,11 @@ void SurfaceZCylinder::to_hdf5_inner(hid_t group_id) const
   std::array<double, 3> coeffs {{x0_, y0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
+
+BoundingBox SurfaceZCylinder::bounding_box() const {
+  return {x0_ - radius_, x0_ + radius_, y0_ - radius_, y0_ + radius_, -INFTY, INFTY};
+}
+
 
 //==============================================================================
 // SurfaceSphere implementation
@@ -785,6 +796,12 @@ void SurfaceSphere::to_hdf5_inner(hid_t group_id) const
   write_string(group_id, "type", "sphere", false);
   std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
+}
+
+BoundingBox SurfaceSphere::bounding_box() const {
+  return {x0_ - radius_, x0_ + radius_,
+          y0_ - radius_, y0_ + radius_,
+          z0_ - radius_, z0_ + radius_};
 }
 
 //==============================================================================
@@ -905,6 +922,10 @@ void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
+BoundingBox SurfaceXCone::bounding_box() const {
+  return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
+}
+
 //==============================================================================
 // SurfaceYCone implementation
 //==============================================================================
@@ -938,6 +959,10 @@ void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
+BoundingBox SurfaceYCone::bounding_box() const {
+  return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
+}
+
 //==============================================================================
 // SurfaceZCone implementation
 //==============================================================================
@@ -969,6 +994,10 @@ void SurfaceZCone::to_hdf5_inner(hid_t group_id) const
   write_string(group_id, "type", "z-cone", false);
   std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
   write_dataset(group_id, "coefficients", coeffs);
+}
+
+BoundingBox SurfaceZCone::bounding_box() const {
+  return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
 }
 
 //==============================================================================
@@ -1062,6 +1091,10 @@ void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
   write_string(group_id, "type", "quadric", false);
   std::array<double, 10> coeffs {{A_, B_, C_, D_, E_, F_, G_, H_, J_, K_}};
   write_dataset(group_id, "coefficients", coeffs);
+}
+
+BoundingBox SurfaceQuadric::bounding_box() const {
+  return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
 }
 
 //==============================================================================

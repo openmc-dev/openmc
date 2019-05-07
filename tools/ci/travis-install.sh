@@ -23,7 +23,7 @@ fi
 python tools/ci/travis-install.py
 
 # Install Python API in editable mode
-pip install --no-use-pep517 -e .[test,vtk]
+pip install -e .[test,vtk]
 
 # For uploading to coveralls
 pip install coveralls

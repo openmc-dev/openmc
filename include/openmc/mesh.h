@@ -77,7 +77,7 @@ public:
   //! \param[out] Whether any bank sites are outside the mesh
   //! \return Array indicating number of sites in each mesh/energy bin
   virtual xt::xarray<double>
-  count_sites(const std::vector<Particle::Bank>& bank, bool* outside) const = 0;
+  count_sites(const std::vector<Particle::Bank>& bank, bool* outside) const;
 
   virtual double get_volume_frac(int bin = -1) const = 0;
 
@@ -216,6 +216,7 @@ public:
   //! \return Whether the line segment connecting r0 and r1 intersects mesh
   bool intersects(Position& r0, Position r1, int* ijk) const;
 
+
   //! Count number of bank sites in each mesh bin / energy bin
   //
   //! \param[in] bank Array of bank sites
@@ -225,6 +226,14 @@ public:
     bool* outside) const;
 
   // Data members
+
+
+  //! Write mesh data to an HDF5 group
+  //
+  //! \param[in] group HDF5 group
+  // void to_hdf5(hid_t group) const;
+
+  // std::string get_label_for_bin(int bin) const;
 
   //std::string get_label_for_bin(int bin) const;
 
@@ -338,9 +347,6 @@ public:
   void build_tree(const moab::Range& all_tets);
 
   std::string get_label_for_bin(int bin) const;
-
-  xt::xarray<double>
-  count_sites(const std::vector<Particle::Bank>& bank, bool* outside) const;
 
   double get_volume_frac(int bin = -1) const;
 

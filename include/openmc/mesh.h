@@ -79,7 +79,7 @@ public:
   virtual xt::xarray<double>
   count_sites(const std::vector<Particle::Bank>& bank, bool* outside) const = 0;
 
-  virtual double get_volume_frac(int bin = -1) = 0;
+  virtual double get_volume_frac(int bin = -1) const = 0;
 
   int id_ {-1};  //!< User-specified ID
   int n_dimension_; //!< Number of dimensions

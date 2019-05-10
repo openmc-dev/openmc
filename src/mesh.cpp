@@ -1408,7 +1408,7 @@ openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end)
 {
   if (index_start) *index_start = model::meshes.size();
   for (int i = 0; i < n; ++i) {
-    model::meshes.push_back(std::make_unique<RegularMesh>());
+    model::meshes.push_back(std::move(std::make_unique<RegularMesh>()));
   }
   if (index_end) *index_end = model::meshes.size() - 1;
 
@@ -1779,6 +1779,7 @@ double UnstructuredMesh::get_volume_frac(int bin = -1) const {
 void read_meshes(pugi::xml_node root)
 {
   for (auto node : root.children("mesh")) {
+
 
     std::string mesh_type;
     if (check_for_node(node, "type")) {

@@ -865,6 +865,12 @@ double RegularMesh::get_volume_frac(int bin) const {
   return volume_frac_;
 }
 
+int RegularMesh::num_bins() const {
+  int n_bins = 1;
+  for (auto v : shape_) n_bins *= v;
+  return n_bins;
+}
+
 //==============================================================================
 // RectilinearMesh implementation
 //==============================================================================
@@ -1402,6 +1408,11 @@ check_regular_mesh(int32_t index, RegularMesh** mesh)
 // C API functions
 //==============================================================================
 
+RegularMesh* get_regular_mesh(int32_t index) {
+  return dynamic_cast<RegularMesh*>(model::meshes[index].get());
+}
+
+
 //! Extend the meshes array by n elements
 extern "C" int
 openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end)
@@ -1451,6 +1462,11 @@ openmc_mesh_set_id(int32_t index, int32_t id)
 extern "C" int
 openmc_mesh_get_dimension(int32_t index, int** dims, int* n)
 {
+  if (index < 0 || index >= model::meshes.size()) {
+    set_errmsg("Index in meshes array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
   RegularMesh* mesh;
   if (int err = check_regular_mesh(index, &mesh)) return err;
   *dims = mesh->shape_.data();
@@ -1469,7 +1485,6 @@ openmc_mesh_set_dimension(int32_t index, int n, const int* dims)
   std::vector<std::size_t> shape = {static_cast<std::size_t>(n)};
   mesh->shape_ = xt::adapt(dims, n, xt::no_ownership(), shape);
   mesh->n_dimension_ = mesh->shape_.size();
-
   return 0;
 }
 

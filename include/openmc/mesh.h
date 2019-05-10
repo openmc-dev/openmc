@@ -81,6 +81,8 @@ public:
 
   virtual double get_volume_frac(int bin = -1) const = 0;
 
+  virtual int num_bins() const = 0;
+
   int id_ {-1};  //!< User-specified ID
   int n_dimension_; //!< Number of dimensions
 };
@@ -228,6 +230,8 @@ public:
 
   //double get_volume_frac(int bin = -1) const;
 
+  int num_bins() const;
+
   double volume_frac_; //!< Volume fraction of each mesh element
   xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
   xt::xtensor<double, 1> width_; //!< Width of each mesh element
@@ -365,6 +369,8 @@ void read_meshes(pugi::xml_node root);
 //
 //! \param[in] group HDF5 group
 void meshes_to_hdf5(hid_t group);
+
+RegularMesh* get_regular_mesh(int32_t index);
 
 void free_memory_mesh();
 

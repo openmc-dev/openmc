@@ -5,6 +5,7 @@
 #include <cmath>  // for ceil
 #include <memory> // for allocator
 #include <string>
+#include <sstream>
 
 #ifdef OPENMC_MPI
 #include "mpi.h"
@@ -31,7 +32,6 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-
 
 std::vector<std::unique_ptr<Mesh>> meshes;
 std::unordered_map<int32_t, int32_t> mesh_map;
@@ -848,6 +848,23 @@ RegularMesh::count_sites(const Particle::Bank* bank, int64_t length,
   return counts;
 }
 
+std::string RegularMesh::get_label_for_bin(int bin) const {
+  int ijk[n_dimension_];
+  get_indices_from_bin(bin, ijk);
+
+  std::stringstream out;
+  out << "Mesh Index (" << ijk[0];
+  if (n_dimension_ > 1) out << ", " << ijk[1];
+  if (n_dimension_ > 2) out << ", " << ijk[2];
+  out << ")";
+
+  return out.str();
+}
+
+double RegularMesh::get_volume_frac(int bin) const {
+  return volume_frac_;
+}
+
 //==============================================================================
 // RectilinearMesh implementation
 //==============================================================================
@@ -1643,6 +1660,20 @@ UnstructuredMesh::get_tet(Position r) const {
   return 0;
 }
 
+
+//! Determine which surface bins were crossed by a particle
+//
+//! \param[in] p Particle to check
+//! \param[out] bins Surface bins that were crossed
+void UnstructuredMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins) const {
+  return;
+}
+
+std::string UnstructuredMesh::get_label_for_bin(int bin) {
+  std::string s;
+  return s;
+}
+
 int
 UnstructuredMesh::get_bin(Position r) const {
   moab::EntityHandle tet = get_tet(r);
@@ -1725,6 +1756,17 @@ UnstructuredMesh::get_bin_from_ent_handle(moab::EntityHandle eh) const {
 moab::EntityHandle
 UnstructuredMesh::get_ent_handle_from_bin(int bin) const {
   return ehs_[bin];
+}
+
+xt::xarray<double>
+UnstructuredMesh::count_sites(const std::vector<Particle::Bank>& bank,
+  bool* outside) const {
+    xt::array<double> out;
+    return out;
+  }
+
+double UnstructuredMesh::get_volume_frac(int bin = -1) const {
+  return 0.0;
 }
 
 #endif

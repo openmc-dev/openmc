@@ -538,9 +538,12 @@ void ufs_count_sites()
     // distributed so that effectively the production of fission sites is not
     // biased
 
+
     std::size_t n = simulation::ufs_mesh->n_bins();
     double vol_frac = simulation::ufs_mesh->volume_frac_;
     simulation::source_frac = xt::xtensor<double, 1>({n}, vol_frac);
+    // auto s = xt::view(simulation::source_frac, xt::all());
+    // s = m->get_volume_frac();
 
   } else {
     // count number of source sites in each ufs mesh cell
@@ -583,6 +586,7 @@ double ufs_get_weight(const Particle* p)
   if (simulation::source_frac(mesh_bin) != 0.0) {
     return simulation::ufs_mesh->volume_frac_
       / simulation::source_frac(mesh_bin);
+    // return m->get_volume_frac() / simulation::source_frac(mesh_bin);
   } else {
     return 1.0;
   }

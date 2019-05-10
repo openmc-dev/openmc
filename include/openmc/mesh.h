@@ -27,13 +27,11 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-
 class Mesh;
 
 namespace model {
 
 extern std::vector<std::unique_ptr<Mesh>> meshes;
-
 extern std::unordered_map<int32_t, int32_t> mesh_map;
 
 } // namespace model
@@ -58,11 +56,30 @@ public:
   //! \param[in] group HDF5 group
   virtual void to_hdf5(hid_t group) const = 0;
 
+  //! Determine which surface bins were crossed by a particle
+  //
+  //! \param[in] p Particle to check
+  //! \param[out] bins Surface bins that were crossed
+  virtual void
+  surface_bins_crossed(const Particle* p, std::vector<int>& bins) const = 0;
+
   //! Get bin at a given position in space
   //
   //! \param[in] r Position to get bin for
   //! \return Mesh bin
   virtual int get_bin(Position r) const = 0;
+
+  virtual std::string get_label_for_bin(int bin) const = 0;
+
+  //! Count number of bank sites in each mesh bin / energy bin
+  //
+  //! \param[in] bank Array of bank sites
+  //! \param[out] Whether any bank sites are outside the mesh
+  //! \return Array indicating number of sites in each mesh/energy bin
+  virtual xt::xarray<double>
+  count_sites(const std::vector<Particle::Bank>& bank, bool* outside) const = 0;
+
+  virtual double get_volume_frac(int bin = -1) = 0;
 
   int id_ {-1};  //!< User-specified ID
   int n_dimension_; //!< Number of dimensions
@@ -206,6 +223,11 @@ public:
     bool* outside) const;
 
   // Data members
+
+  //std::string get_label_for_bin(int bin) const;
+
+  //double get_volume_frac(int bin = -1) const;
+
   double volume_frac_; //!< Volume fraction of each mesh element
   xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
   xt::xtensor<double, 1> width_; //!< Width of each mesh element
@@ -282,6 +304,12 @@ public:
 
   bool intersects(Position& r0, Position r1, int* ijk);
 
+  //! Determine which surface bins were crossed by a particle
+  //
+  //! \param[in] p Particle to check
+  //! \param[out] bins Surface bins that were crossed
+  void surface_bins_crossed(const Particle* p, std::vector<int>& bins) const;
+
   bool point_in_tet(const Position& r, moab::EntityHandle tet) const;
 
   //! Write mesh data to an HDF5 group
@@ -304,6 +332,13 @@ public:
   moab::EntityHandle get_ent_handle_from_bin(int bin) const;
 
   void build_tree(const moab::Range& all_tets);
+
+  std::string get_label_for_bin(int bin) const;
+
+  xt::xarray<double>
+  count_sites(const std::vector<Particle::Bank>& bank, bool* outside) const;
+
+  double get_volume_frac(int bin = -1) const;
 
 private:
   std::string filename_;

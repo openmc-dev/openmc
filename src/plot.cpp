@@ -696,6 +696,7 @@ void draw_mesh_lines(Plot pl, ImageData& data)
 
   Position width = ur_plot - ll_plot;
 
+
   // Find the (axis-aligned) lines of the mesh that intersect this plot.
   auto axis_lines = model::meshes[pl.index_meshlines_mesh_]
     ->plot(ll_plot, ur_plot);
@@ -713,6 +714,49 @@ void draw_mesh_lines(Plot pl, ImageData& data)
     ax2_min = 0;
     ax2_max = pl.pixels_[1];
   }
+  // auto m = get_regular_mesh(pl.index_meshlines_mesh_);
+
+  // int ijk_ll[3], ijk_ur[3];
+  // bool in_mesh;
+  // m->get_indices(ll_plot, &(ijk_ll[0]), &in_mesh);
+  // m->get_indices(ur_plot, &(ijk_ur[0]), &in_mesh);
+
+  // // Fortran/C++ index correction
+  // ijk_ur[0]++; ijk_ur[1]++; ijk_ur[2]++;
+
+  // Position r_ll, r_ur;
+  // // sweep through all meshbins on this plane and draw borders
+  // for (int i = ijk_ll[outer]; i <= ijk_ur[outer]; i++) {
+  //   for (int j = ijk_ll[inner]; j <= ijk_ur[inner]; j++) {
+  //     // check if we're in the mesh for this ijk
+  //     if (i > 0 && i <= m->shape_[outer] && j >0 && j <= m->shape_[inner] ) {
+  //       int outrange[3], inrange[3];
+  //       // get xyz's of lower left and upper right of this mesh cell
+  //       r_ll[outer] = m->lower_left_[outer] + m->width_[outer] * (i - 1);
+  //       r_ll[inner] = m->lower_left_[inner] + m->width_[inner] * (j - 1);
+  //       r_ur[outer] = m->lower_left_[outer] + m->width_[outer] * i;
+  //       r_ur[inner] = m->lower_left_[inner] + m->width_[inner] * j;
+
+  //       // map the xyz ranges to pixel ranges
+  //       double frac = (r_ll[outer] - ll_plot[outer]) / width[outer];
+  //       outrange[0] = int(frac * double(pl.pixels_[0]));
+  //       frac = (r_ur[outer] - ll_plot[outer]) / width[outer];
+  //       outrange[1] = int(frac * double(pl.pixels_[0]));
+
+  //       frac = (r_ur[inner] - ll_plot[inner]) / width[inner];
+  //       inrange[0] = int((1. - frac) * (double)pl.pixels_[1]);
+  //       frac = (r_ll[inner] - ll_plot[inner]) / width[inner];
+  //       inrange[1] = int((1. - frac) * (double)pl.pixels_[1]);
+
+  //       // draw lines
+  //       for (int out_ = outrange[0]; out_ <= outrange[1]; out_++) {
+  //         for (int plus = 0; plus <= pl.meshlines_width_; plus++) {
+  //           data(out_, inrange[0] + plus) = rgb;
+  //           data(out_, inrange[1] + plus) = rgb;
+  //           data(out_, inrange[0] - plus) = rgb;
+  //           data(out_, inrange[1] - plus) = rgb;
+  //         }
+  //       }
 
   // Iterate across the first axis and draw lines.
   for (auto ax1_val : axis_lines.first) {

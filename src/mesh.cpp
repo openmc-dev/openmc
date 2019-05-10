@@ -15,6 +15,7 @@
 #include "xtensor/xmath.hpp"
 #include "xtensor/xsort.hpp"
 #include "xtensor/xtensor.hpp"
+#include "xtensor/xarray.hpp"
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -1684,7 +1685,7 @@ void UnstructuredMesh::surface_bins_crossed(const Particle* p, std::vector<int>&
   return;
 }
 
-std::string UnstructuredMesh::get_label_for_bin(int bin) {
+std::string UnstructuredMesh::get_label_for_bin(int bin) const {
   std::string s;
   return s;
 }
@@ -1776,12 +1777,16 @@ UnstructuredMesh::get_ent_handle_from_bin(int bin) const {
 xt::xarray<double>
 UnstructuredMesh::count_sites(const std::vector<Particle::Bank>& bank,
   bool* outside) const {
-    xt::array<double> out;
+    xt::xarray<double> out;
     return out;
   }
 
-double UnstructuredMesh::get_volume_frac(int bin = -1) const {
+double UnstructuredMesh::get_volume_frac(int bin) const {
   return 0.0;
+}
+
+int UnstructuredMesh::num_bins() const {
+  return ehs_.size();
 }
 
 #endif
@@ -1794,7 +1799,6 @@ double UnstructuredMesh::get_volume_frac(int bin = -1) const {
 void read_meshes(pugi::xml_node root)
 {
   for (auto node : root.children("mesh")) {
-
 
     std::string mesh_type;
     if (check_for_node(node, "type")) {

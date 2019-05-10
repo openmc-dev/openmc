@@ -344,6 +344,8 @@ public:
 
   double get_volume_frac(int bin = -1) const;
 
+  int num_bins() const;
+
 private:
   std::string filename_;
   moab::Range ehs_;

@@ -5,6 +5,7 @@
 #include <cmath>  // for ceil
 #include <memory> // for allocator
 #include <string>
+#include <sstream>
 
 #ifdef OPENMC_MPI
 #include "mpi.h"
@@ -872,6 +873,79 @@ void RegularMesh::to_hdf5(hid_t group) const
   write_dataset(mesh_group, "width", width_);
 
   close_group(mesh_group);
+}
+
+xt::xtensor<double, 1>
+RegularMesh::count_sites(const Particle::Bank* bank,
+                         int64_t length,
+                         bool* outside) const
+{
+  // Determine shape of array for counts
+  std::size_t m = this->n_bins();
+  std::vector<std::size_t> shape = {m};
+
+  // Create array of zeros
+  xt::xarray<double> cnt {shape, 0.0};
+  bool outside_ = false;
+
+  for (int64_t i = 0; i < length; i++) {
+    const auto& site = bank[i];
+
+    // determine scoring bin for entropy mesh
+    int mesh_bin = get_bin(site.r);
+
+    // if outside mesh, skip particle
+    if (mesh_bin < 0) {
+      outside_ = true;
+      continue;
+    }
+
+    // Add to appropriate bin
+    cnt(mesh_bin) += site.wgt;
+  }
+
+  // Create copy of count data. Since ownership will be acquired by xtensor,
+  // std::allocator must be used to avoid Valgrind mismatched free() / delete
+  // warnings.
+  int total = cnt.size();
+  double* cnt_reduced = std::allocator<double>{}.allocate(total);
+
+#ifdef OPENMC_MPI
+  // collect values from all processors
+  MPI_Reduce(cnt.data(), cnt_reduced, total, MPI_DOUBLE, MPI_SUM, 0,
+    mpi::intracomm);
+
+  // Check if there were sites outside the mesh for any processor
+  if (outside) {
+    MPI_Reduce(&outside_, outside, 1, MPI_C_BOOL, MPI_LOR, 0, mpi::intracomm);
+  }
+#else
+  std::copy(cnt.data(), cnt.data() + total, cnt_reduced);
+  if (outside) *outside = outside_;
+#endif
+
+  // Adapt reduced values in array back into an xarray
+  auto arr = xt::adapt(cnt_reduced, total, xt::acquire_ownership(), shape);
+  xt::xarray<double> counts = arr;
+
+  return counts;
+}
+
+std::string RegularMesh::get_label_for_bin(int bin) const {
+  int ijk[n_dimension_];
+  get_indices_from_bin(bin, ijk);
+
+  std::stringstream out;
+  out << "Mesh Index (" << ijk[0];
+  if (n_dimension_ > 1) out << ", " << ijk[1];
+  if (n_dimension_ > 2) out << ", " << ijk[2];
+  out << ")";
+
+  return out.str();
+}
+
+double RegularMesh::get_volume_frac(int bin) const {
+  return volume_frac_;
 }
 
 //==============================================================================
@@ -1938,6 +2012,17 @@ UnstructuredMesh::write(std::string base_filename) const {
     auto msg = fmt::format("Failed to write unstructured mesh {}", id_);
     warning(msg);
   }
+
+xt::xarray<double>
+UnstructuredMesh::count_sites(const std::vector<Particle::Bank>& bank,
+  bool* outside) const {
+    xt::array<double> out;
+    return out;
+  }
+
+double UnstructuredMesh::get_volume_frac(int bin = -1) const {
+  return 0.0;
+
 }
 
 #endif

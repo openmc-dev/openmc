@@ -585,6 +585,7 @@ double ufs_get_weight(const Particle& p)
   if (simulation::source_frac(mesh_bin) != 0.0) {
     return simulation::ufs_mesh->volume_frac_
       / simulation::source_frac(mesh_bin);
+    // return m->get_volume_frac() / simulation::source_frac(mesh_bin);
   } else {
     return 1.0;
   }

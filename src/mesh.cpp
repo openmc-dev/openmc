@@ -1620,6 +1620,27 @@ UnstructuredMesh::build_tree(const moab::Range& all_tets) {
 }
 
 void
+UnstructuredMesh::intersect_track(const moab::CartVect& start,
+                                  const moab::CartVect& dir,
+                                  double track_len,
+                                  std::vector<moab::EntityHandle>& tris,
+                                  std::vector<double>& intersection_dists) const {
+
+  moab::ErrorCode rval = kdtree_->ray_intersect_triangles(kdtree_root_,
+                                                          1E-03,
+                                                          dir.array(),
+                                                          start.array(),
+                                                          tris,
+                                                          intersection_dists,
+                                                          0,
+                                                          track_len);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to compute tracklengths on umesh: " + filename_);
+  }
+
+}
+
+void
 UnstructuredMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
                                std::vector<double>& lengths) const {
   moab::ErrorCode rval;
@@ -1640,10 +1661,7 @@ UnstructuredMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   std::vector<moab::EntityHandle> tris;
   std::vector<double> intersections;
 
-  rval = kdtree_->ray_intersect_triangles(kdtree_root_, 1E-03, dir.array(), r0.array(), tris, intersections, 0, track_len);
-  if (rval != moab::MB_SUCCESS) {
-    fatal_error("Failed to compute tracklengths on umesh: " + filename_);
-  }
+  intersect_track(r0, dir, track_len, tris, intersections);
 
   bins.clear();
   for (const auto& int_dist : intersections) {

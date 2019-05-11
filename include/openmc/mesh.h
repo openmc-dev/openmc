@@ -315,8 +315,19 @@ public:
   void bins_crossed(const Particle* p, std::vector<int>& bins,
                     std::vector<double>& lengths) const;
 
+
   bool intersects(Position& r0, Position r1, int* ijk);
 
+
+private:
+  void
+  intersect_track(const moab::CartVect& start,
+                  const moab::CartVect& dir,
+                  double track_len,
+                  std::vector<moab::EntityHandle>& tris,
+                  std::vector<double>& intersection_dists) const;
+
+public:
   //! Determine which surface bins were crossed by a particle
   //
   //! \param[in] p Particle to check

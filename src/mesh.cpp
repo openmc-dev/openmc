@@ -1584,6 +1584,7 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
     warning("Non-tetrahedral elements found in unstructured mesh: " + filename_);
   }
 
+  compute_barycentric_data(all_tets);
   build_tree(all_tets);
 }
 

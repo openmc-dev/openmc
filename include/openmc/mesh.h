@@ -303,6 +303,9 @@ private:
 #ifdef DAGMC
 
 class UnstructuredMesh : public Mesh {
+
+  typedef std::vector<std::pair<double, moab::EntityHandle>> TriHits;
+
 public:
   UnstructuredMesh() { };
   UnstructuredMesh(pugi::xml_node);
@@ -320,12 +323,17 @@ public:
 
 
 private:
+  // void
+  // intersect_track(const moab::CartVect& start,
+  //                 const moab::CartVect& dir,
+  //                 double track_len,
+  //                 std::vector<moab::EntityHandle>& tris,
+  //                 std::vector<double>& intersection_dists) const;
   void
   intersect_track(const moab::CartVect& start,
                   const moab::CartVect& dir,
                   double track_len,
-                  std::vector<moab::EntityHandle>& tris,
-                  std::vector<double>& intersection_dists) const;
+                  TriHits& hits) const;
 
 public:
   //! Determine which surface bins were crossed by a particle

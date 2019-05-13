@@ -1580,6 +1580,8 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
     fatal_error("Failed to get all tetrahedral elements");
   }
 
+  ehs_ = all_tets;
+
   if (!all_tets.all_of_type(moab::MBTET)) {
     warning("Non-tetrahedral elements found in unstructured mesh: " + filename_);
   }
@@ -1624,8 +1626,10 @@ void
 UnstructuredMesh::intersect_track(const moab::CartVect& start,
                                   const moab::CartVect& dir,
                                   double track_len,
-                                  std::vector<moab::EntityHandle>& tris,
-                                  std::vector<double>& intersection_dists) const {
+                                  TriHits& hits) const {
+
+  std::vector<moab::EntityHandle> tris;
+  std::vector<double> intersection_dists;
 
   moab::ErrorCode rval = kdtree_->ray_intersect_triangles(kdtree_root_,
                                                           1E-03,
@@ -1639,6 +1643,14 @@ UnstructuredMesh::intersect_track(const moab::CartVect& start,
     fatal_error("Failed to compute tracklengths on umesh: " + filename_);
   }
 
+  // sort the tris and intersections by distance
+  hits.clear();
+  for (int i = 0; i < tris.size(); i++) {
+    hits.emplace_back(std::pair<double, moab::EntityHandle>(intersection_dists[i], tris[i]));
+  }
+
+  // sorts by first component of std::pair by default
+  std::sort(hits.begin(), hits.end());
 }
 
 void
@@ -1659,20 +1671,28 @@ UnstructuredMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   r0 += TINY_BIT*dir;
   r1 -= TINY_BIT*dir;
 
-  std::vector<moab::EntityHandle> tris;
-  std::vector<double> intersections;
-
-  intersect_track(r0, dir, track_len, tris, intersections);
+  TriHits hits;
+  intersect_track(r0, dir, track_len, hits);
 
   bins.clear();
-  for (const auto& int_dist : intersections) {
-    moab::EntityHandle tet = get_tet(last_r + u * int_dist);
+  double prev_int_dist = 0.0;
+  for (const auto& hit : hits) {
+    moab::EntityHandle tet = get_tet(last_r + u * hit.first);
     if (tet == 0) { continue; }
-    if (std::find(bins.begin(), bins.end(), tet) == std::end(bins)) {
+    //    if (std::find(bins.begin(), bins.end(), get_bin_from_ent_handle(tet)) == std::end(bins)) {
       bins.emplace_back(get_bin_from_ent_handle(tet));
-    }
+      double tally_val = hit.first - prev_int_dist;
+      if (tally_val < 0.0) {
+        fatal_error("Negative weight applied to tally");
+      }
+      lengths.emplace_back(tally_val);
+      prev_int_dist = hit.first;
+      //    }
   }
-
+  if (hits.size() != 0) {
+    std::cout << "Tris found: " << hits.size() << std::endl;
+    std::cout << "Bins crossed: " << bins.size() << std::endl;
+  }
 };
 
 moab::EntityHandle
@@ -1683,15 +1703,20 @@ UnstructuredMesh::get_tet(Position r) const {
   if (rval != moab::MB_SUCCESS) { return 0; }
 
   moab::EntityHandle leaf = kdtree_iter.handle();
+
   moab::Range tets;
   rval = mbi_->get_entities_by_dimension(leaf, 3, tets);
-
+  if (rval != moab::MB_SUCCESS) {
+    warning("MOAB error finding tets.");
+  }
   for (const auto& tet : tets) {
       if (point_in_tet(r, tet)) {
-        return get_bin_from_ent_handle(tet);
+        std::cout << "Found it." << std::endl;
+        int bin = get_bin_from_ent_handle(tet);
+        std::cout << "Found bin: " << bin << std::endl;
+        return bin;
     }
   }
-
   return 0;
 }
 
@@ -1783,8 +1808,10 @@ UnstructuredMesh::point_in_tet(const Position& r, moab::EntityHandle tet) const 
 
 int
 UnstructuredMesh::get_bin_from_ent_handle(moab::EntityHandle eh) const {
-  auto pos = ehs_.find(eh);
-  return pos - ehs_.begin();
+  std::cout << "EH: " << eh << std::endl;
+  std::cout << "EH0: " << ehs_[0] << std::endl;
+  return eh - ehs_[0];
+
 }
 
 moab::EntityHandle
@@ -1797,6 +1824,7 @@ double UnstructuredMesh::get_volume_frac(int bin) const {
 }
 
 int UnstructuredMesh::num_bins() const {
+  std::cout << "Mesh has " << ehs_.size() << " bins" << std::endl;
   return ehs_.size();
 }
 

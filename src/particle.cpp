@@ -337,9 +337,7 @@ Particle::transport()
           // If next level is rotated, apply rotation matrix
           const auto& m {model::cells[coord_[j].cell]->rotation_};
           const auto& u {coord_[j].u};
-          coord_[j + 1].u.x = m[3]*u.x + m[4]*u.y + m[5]*u.z;
-          coord_[j + 1].u.y = m[6]*u.x + m[7]*u.y + m[8]*u.z;
-          coord_[j + 1].u.z = m[9]*u.x + m[10]*u.y + m[11]*u.z;
+          coord_[j + 1].u = u.rotate(m);
         } else {
           // Otherwise, copy this level's direction
           coord_[j+1].u = coord_[j].u;

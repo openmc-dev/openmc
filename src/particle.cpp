@@ -41,6 +41,7 @@ LocalCoord::reset()
   lattice = C_NONE;
   lattice_x = 0;
   lattice_y = 0;
+  lattice_z = 0;
   rotated = false;
 }
 

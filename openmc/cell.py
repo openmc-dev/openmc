@@ -227,10 +227,6 @@ class Cell(IDManagerMixin):
 
     @rotation.setter
     def rotation(self, rotation):
-        if not isinstance(self.fill, openmc.Universe):
-            raise TypeError('Cell rotation can only be applied if the cell '
-                            'is filled with a Universe.')
-
         cv.check_type('cell rotation', rotation, Iterable, Real)
         cv.check_length('cell rotation', rotation, 3)
         self._rotation = np.asarray(rotation)

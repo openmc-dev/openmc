@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cmath> // for sqrt
+#include <iostream>
 #include <stdexcept> // for out_of_range
 #include <vector>
 
@@ -93,6 +94,8 @@ inline bool operator==(Position a, Position b)
 
 inline bool operator!=(Position a, Position b)
 {return a.x != b.x || a.y != b.y || a.z != b.z;}
+
+std::ostream& operator<<(std::ostream& os, Position a);
 
 //==============================================================================
 //! Type representing a vector direction in Cartesian coordinates

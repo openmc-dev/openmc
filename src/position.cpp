@@ -94,4 +94,11 @@ Position::rotate(const std::vector<double>& rotation) const
   };
 }
 
+std::ostream&
+operator<<(std::ostream& os, Position r)
+{
+  os << "(" << r.x << ", " << r.y << ", " << r.z << ")";
+  return os;
+}
+
 } // namespace openmc

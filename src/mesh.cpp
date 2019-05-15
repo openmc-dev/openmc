@@ -1540,7 +1540,6 @@ openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
 #ifdef DAGMC
 
 UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
-
   // check the mesh type
   if (check_for_node(node, "type")) {
     auto temp = get_node_value(node, "type", true, true);
@@ -1580,27 +1579,29 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
     fatal_error("Failed to get all tetrahedral elements");
   }
 
+  ehs_.clear();
   ehs_ = all_tets;
 
   if (!all_tets.all_of_type(moab::MBTET)) {
     warning("Non-tetrahedral elements found in unstructured mesh: " + filename_);
   }
 
-  compute_barycentric_data(all_tets);
-  build_tree(all_tets);
+  compute_barycentric_data(ehs_);
+  build_kdtree(ehs_);
 }
 
 void
-UnstructuredMesh::build_tree(const moab::Range& all_tets) {
+UnstructuredMesh::build_kdtree(const moab::Range& all_tets) {
 
   moab::Range all_tris;
+  int triangle_dim = 2;
   moab::ErrorCode rval = mbi_->get_adjacencies(all_tets,
-                                               n_dimension_ - 1,
+                                               triangle_dim,
                                                true,
                                                all_tris,
                                                moab::Interface::UNION);
   if (rval != moab::MB_SUCCESS) {
-    fatal_error("Failed to get adjacent triangle for test in MOAB");
+    fatal_error("Failed to get adjacent triangles for tets");
   }
 
   if (!all_tris.all_of_type(moab::MBTRI)) {
@@ -1615,38 +1616,41 @@ UnstructuredMesh::build_tree(const moab::Range& all_tets) {
   // create and build KD-tree
   kdtree_ = std::unique_ptr<moab::AdaptiveKDTree>(new moab::AdaptiveKDTree(mbi_.get()));
 
+  //const char settings[] = "MESHSET_FLAGS=0x1;TAG_NAME=0";
+  // moab::FileOptions fileopts(settings);
+
+  // build the tree
   rval = kdtree_->build_tree(all_tets_and_tris, &kdtree_root_);
   if (rval != moab::MB_SUCCESS) {
-    fatal_error("Failed to construct a KD-Tree for unstructured mesh " + filename_);
+    fatal_error("Failed to construct KDTree for the unstructured mesh " + filename_);
   }
-
 }
 
 void
 UnstructuredMesh::intersect_track(const moab::CartVect& start,
                                   const moab::CartVect& dir,
                                   double track_len,
-                                  TriHits& hits) const {
-
+                                  UnstructuredMeshHits& hits) const {
+  moab::ErrorCode rval;
   std::vector<moab::EntityHandle> tris;
   std::vector<double> intersection_dists;
 
-  moab::ErrorCode rval = kdtree_->ray_intersect_triangles(kdtree_root_,
-                                                          1E-03,
-                                                          dir.array(),
-                                                          start.array(),
-                                                          tris,
-                                                          intersection_dists,
-                                                          0,
-                                                          track_len);
+  rval = kdtree_->ray_intersect_triangles(kdtree_root_,
+                                          1E-06,
+                                          dir.array(),
+                                          start.array(),
+                                          tris,
+                                          intersection_dists,
+                                          0,
+                                          track_len);
   if (rval != moab::MB_SUCCESS) {
-    fatal_error("Failed to compute tracklengths on umesh: " + filename_);
+    fatal_error("Failed to compute intersections on umesh: " + filename_);
   }
 
   // sort the tris and intersections by distance
   hits.clear();
   for (int i = 0; i < tris.size(); i++) {
-    hits.emplace_back(std::pair<double, moab::EntityHandle>(intersection_dists[i], tris[i]));
+    hits.push_back(std::pair<double, moab::EntityHandle>(intersection_dists[i], tris[i]));
   }
 
   // sorts by first component of std::pair by default
@@ -1654,10 +1658,10 @@ UnstructuredMesh::intersect_track(const moab::CartVect& start,
 }
 
 void
-UnstructuredMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
+UnstructuredMesh::bins_crossed(const Particle* p,
+                               std::vector<int>& bins,
                                std::vector<double>& lengths) const {
   moab::ErrorCode rval;
-
   Position last_r{p->r_last_};
   Position r{p->r()};
   Position u{p->u()};
@@ -1671,55 +1675,162 @@ UnstructuredMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   r0 += TINY_BIT*dir;
   r1 -= TINY_BIT*dir;
 
-  TriHits hits;
+  UnstructuredMeshHits hits;
   intersect_track(r0, dir, track_len, hits);
 
   bins.clear();
-  double prev_int_dist = 0.0;
+  lengths.clear();
+
+  //// IMPLEMENTATION ONE
+  if (hits.size() == 0) {
+    moab::EntityHandle last_r_tet = get_tet(last_r + u * track_len * 0.5);
+    if (last_r_tet) {
+      bins.push_back(get_bin_from_ent_handle(last_r_tet));
+      lengths.push_back(1.0 / tet_volume(last_r_tet));
+    }
+    return;
+  }
+
+  moab::EntityHandle tet = get_tet(last_r + u * hits.front().first / 2.0);
+  double last_dist = 0.0;
+
+  // make sure first point is inside a tet
+  if (!tet) {
+    last_dist = hits.front().first;
+    hits.erase(hits.begin());
+    tet = get_tet(last_r + u * (last_dist + hits.front().first) / 2.0);
+  }
+
+  // if there are no other hits, there is only one segment to tally
+  if (hits.size() == 0 && tet) {
+    bins.push_back(get_bin_from_ent_handle(tet));
+    lengths.push_back(1.0 / tet_volume(tet));
+    return;
+  }
+
+  // score all remaining segments
   for (const auto& hit : hits) {
-    moab::EntityHandle tet = get_tet(last_r + u * hit.first);
-    if (tet == 0) { continue; }
-    //    if (std::find(bins.begin(), bins.end(), get_bin_from_ent_handle(tet)) == std::end(bins)) {
-      bins.emplace_back(get_bin_from_ent_handle(tet));
-      double tally_val = hit.first - prev_int_dist;
-      if (tally_val < 0.0) {
-        fatal_error("Negative weight applied to tally");
-      }
-      lengths.emplace_back(tally_val);
-      prev_int_dist = hit.first;
-      //    }
+    // score in this tet if one was found
+    if (tet) {
+      bins.push_back(get_bin_from_ent_handle(tet));
+      lengths.push_back((hit.first - last_dist) / (track_len * tet_volume(tet)));
+    } else {
+      // if in the loop, we should always find a tet
+      fatal_error("No tet found for location between trianle hits");
+    }
+    last_dist = hit.first;
+
+    // find next tet
+    moab::Range adj_tets;
+    rval = mbi_->get_adjacencies(&hit.second, 1, 3, false, adj_tets);
+    if (rval != moab::MB_SUCCESS) {
+      fatal_error("Failed to get triangle adjacencies from mesh " + filename_);
+    }
+
+    if (adj_tets.size() == 2) {
+      tet = tet == adj_tets[0] ? adj_tets[1] : adj_tets[0];
+    } else if (adj_tets.size() == 1) {
+      tet = adj_tets[0];
+    }
   }
-  if (hits.size() != 0) {
-    std::cout << "Tris found: " << hits.size() << std::endl;
-    std::cout << "Bins crossed: " << bins.size() << std::endl;
+
+  // tally remaining portion of track after last hit if
+  // the last segment of the track is in the mesh
+  if (hits.back().first < track_len) {
+    tet = get_tet(last_r + u * (track_len + hits.back().first) / 2.0);
+    if (tet) {
+      bins.push_back(get_bin_from_ent_handle(tet));
+      lengths.push_back((track_len - hits.back().first) / (track_len* tet_volume(tet)));
+    }
   }
+
+  return;
+
+  /// IMPLEMENTATION TWO
+  // double prev_int_dist = 0.0;
+
+  // if (hits.size() == 0) {
+  //   moab::EntityHandle last_r_tet =get_tet((r0 + r1) * 0.5);
+  //   if (last_r_tet) {
+  //     bins.push_back(get_bin_from_ent_handle(last_r_tet));
+  //     lengths.push_back(1.0 / tet_volume(last_r_tet));
+  //   }
+  //   return;
+  // }
+
+  // moab::EntityHandle tet = get_tet(last_r + u * hits.front().first / 2.0);
+
+  // if (!tet) {
+  //   last_r = last_r + u * hits.front().first;
+  //   hits.erase(hits.begin());
+  // }
+
+  // for (const auto& hit : hits) {
+  //   tet = get_tet(last_r + u * (prev_int_dist +  hit.first) / 2.0 );
+  //   if (!tet) {
+  //     prev_int_dist = hit.first;
+  //     continue;
+  //   }
+  //   int bin = get_bin_from_ent_handle(tet);
+  //   double tally_val = (hit.first - prev_int_dist) / (track_len * tet_volume(tet));
+  //   if (tally_val < 0.0) {
+  //     fatal_error("Negative score applied to tally");
+  //   }
+
+  //   bins.push_back(bin);
+  //   lengths.push_back(tally_val);
+  //   prev_int_dist = hit.first;
+  // }
+
+  // // tally remaining portion of track (if any exists)
+  // if (hits.back().first < track_len) {
+  //   tet = get_tet(last_r + u * (track_len + hits.back().first) / 2.0);
+  //   if (tet) {
+  //     bins.push_back(get_bin_from_ent_handle(tet));
+  //     double tally_val = (track_len - hits.back().first) / (track_len * tet_volume(tet));
+  //     lengths.push_back(tally_val);
+  //   }
+  // }
+
 };
 
 moab::EntityHandle
-UnstructuredMesh::get_tet(Position r) const {
-  moab::CartVect pnt(r.x, r.y, r.z);
+UnstructuredMesh::get_tet(const Position& r) const {
+  moab::CartVect pos(r.x, r.y, r.z);
   moab::AdaptiveKDTreeIter kdtree_iter;
-  moab::ErrorCode rval = kdtree_->point_search(pnt.array(), kdtree_iter);
+  moab::ErrorCode rval = kdtree_->point_search(pos.array(), kdtree_iter);
   if (rval != moab::MB_SUCCESS) { return 0; }
 
   moab::EntityHandle leaf = kdtree_iter.handle();
-
   moab::Range tets;
-  rval = mbi_->get_entities_by_dimension(leaf, 3, tets);
+  rval = mbi_->get_entities_by_dimension(leaf, 3, tets, false);
   if (rval != moab::MB_SUCCESS) {
     warning("MOAB error finding tets.");
   }
+
   for (const auto& tet : tets) {
-      if (point_in_tet(r, tet)) {
-        std::cout << "Found it." << std::endl;
-        int bin = get_bin_from_ent_handle(tet);
-        std::cout << "Found bin: " << bin << std::endl;
-        return bin;
+      if (point_in_tet(pos, tet)) {
+        return tet;
     }
   }
   return 0;
 }
 
+double UnstructuredMesh::tet_volume(moab::EntityHandle tet) const {
+ std::vector<moab::EntityHandle> conn;
+ moab::ErrorCode rval = mbi_->get_connectivity(&tet, 1, conn);
+ if (rval != moab::MB_SUCCESS) {
+   fatal_error("Failed to get tet connectivity");
+ }
+
+ moab::CartVect p[4];
+ rval = mbi_->get_coords(&(conn[0]), (int)conn.size(), p[0].array());
+ if (rval != moab::MB_SUCCESS) {
+   fatal_error("Failed to get tet coords");
+ }
+
+ return 1.0 / 6.0 * (((p[1] - p[0]) * (p[2] - p[0])) % (p[3] - p[0]));
+}
 
 //! Determine which surface bins were crossed by a particle
 //
@@ -1748,36 +1859,43 @@ UnstructuredMesh::get_bin(Position r) const {
 void
 UnstructuredMesh::compute_barycentric_data(const moab::Range& all_tets) {
   moab::ErrorCode rval;
+
+  baryc_data_.clear();
+  baryc_data_.resize(all_tets.size());
+
   for (auto& tet : all_tets) {
-    moab::Range verts;
+    std::vector<moab::EntityHandle> verts;
     rval = mbi_->get_connectivity(&tet, 1, verts);
     if (rval != moab::MB_SUCCESS) {
       fatal_error("Failed to get connectivity of tet on umesh: " + filename_);
     }
 
     moab::CartVect p[4];
-    rval = mbi_->get_coords(verts, p[0].array());
+    rval = mbi_->get_coords(&(verts[0]), (int)verts.size(), p[0].array());
     if (rval != moab::MB_SUCCESS) {
       fatal_error("Failed to get coordinates of a tet in umesh: " + filename_);
     }
 
     moab::Matrix3 a(p[1] - p[0], p[2] - p[0], p[3] - p[0], true);
-
-    baryc_data_.push_back(a.transpose().inverse());
+    a = a.transpose().inverse();
+    baryc_data_.at(get_bin_from_ent_handle(tet)) = a;
   }
+
 }
 
 // TODO: write this function
 void
-UnstructuredMesh::to_hdf5(hid_t group) const { }
+UnstructuredMesh::to_hdf5(hid_t group) const {
+
+}
 
 bool
-UnstructuredMesh::point_in_tet(const Position& r, moab::EntityHandle tet) const {
+UnstructuredMesh::point_in_tet(const moab::CartVect& r, moab::EntityHandle tet) const {
 
   moab::ErrorCode rval;
 
   // get tet vertices
-  moab::Range verts;
+  std::vector<moab::EntityHandle> verts;
   rval = mbi_->get_connectivity(&tet, 1, verts);
   if (rval != moab::MB_SUCCESS) {
     warning("Failed to get vertices of tet in umesh: " + filename_);
@@ -1792,13 +1910,11 @@ UnstructuredMesh::point_in_tet(const Position& r, moab::EntityHandle tet) const 
     return false;
   }
 
-  moab::CartVect pos(r.x, r.y, r.z);
-
   // look up barycentric data
   int idx = get_bin_from_ent_handle(tet);
   const moab::Matrix3& a_inv = baryc_data_[idx];
 
-  moab::CartVect bary_coords = a_inv * (pos - p_zero);
+  moab::CartVect bary_coords = a_inv * (r - p_zero);
 
   bool in_tet = (bary_coords[0] >= 0 && bary_coords[1] >= 0 && bary_coords[2] >= 0 &&
                  bary_coords[0] + bary_coords[1] + bary_coords[2] <= 1.);
@@ -1808,23 +1924,37 @@ UnstructuredMesh::point_in_tet(const Position& r, moab::EntityHandle tet) const 
 
 int
 UnstructuredMesh::get_bin_from_ent_handle(moab::EntityHandle eh) const {
-  std::cout << "EH: " << eh << std::endl;
-  std::cout << "EH0: " << ehs_[0] << std::endl;
-  return eh - ehs_[0];
-
+  int bin = eh - ehs_[0];
+  if (bin >= num_bins()) {
+    std::stringstream s;
+    s << "Invalid bin: " << bin;
+    fatal_error(s);
+  }
+  return bin;
 }
 
 moab::EntityHandle
 UnstructuredMesh::get_ent_handle_from_bin(int bin) const {
+  if (bin >= num_bins()) {
+    std::stringstream s;
+    s << "Invalid bin index: " << bin;
+    fatal_error(s);
+  }
   return ehs_[bin];
 }
 
 double UnstructuredMesh::get_volume_frac(int bin) const {
-  return 0.0;
+  if (bin == -1) { return 0.0; }
+  if (bin > ehs_.size() || bin < -1) {
+    std::stringstream msg;
+    msg << "Invalid bin " << bin << " for umesh with id " << id_;
+    fatal_error(msg);
+  }
+  moab::EntityHandle tet = get_ent_handle_from_bin(bin);
+  return tet_volume(tet);
 }
 
 int UnstructuredMesh::num_bins() const {
-  std::cout << "Mesh has " << ehs_.size() << " bins" << std::endl;
   return ehs_.size();
 }
 
@@ -1885,6 +2015,7 @@ void meshes_to_hdf5(hid_t group)
 
 void free_memory_mesh()
 {
+  UnstructuredMesh* m = reinterpret_cast<UnstructuredMesh*>(model::meshes[1].get());
   model::meshes.clear();
   model::mesh_map.clear();
 }

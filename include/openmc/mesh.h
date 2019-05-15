@@ -19,6 +19,7 @@
 #include "moab/Core.hpp"
 #include "moab/AdaptiveKDTree.hpp"
 #include "moab/Matrix3.hpp"
+#include "moab/GeomUtil.hpp"
 #endif
 
 namespace openmc {
@@ -304,13 +305,13 @@ private:
 
 class UnstructuredMesh : public Mesh {
 
-  typedef std::vector<std::pair<double, moab::EntityHandle>> TriHits;
+  typedef std::vector<std::pair<double, moab::EntityHandle>> UnstructuredMeshHits;
 
 public:
   UnstructuredMesh() { };
   UnstructuredMesh(pugi::xml_node);
 
-  //! Determine which bins were crossed by a particle
+  //! Determine which bins were crossed by a particle.
   //
   //! \param[in] p Particle to check
   //! \param[out] bins Bins that were crossed
@@ -323,47 +324,99 @@ public:
 
 
 private:
+
   // void
   // intersect_track(const moab::CartVect& start,
   //                 const moab::CartVect& dir,
   //                 double track_len,
   //                 std::vector<moab::EntityHandle>& tris,
   //                 std::vector<double>& intersection_dists) const;
-  void
-  intersect_track(const moab::CartVect& start,
-                  const moab::CartVect& dir,
-                  double track_len,
-                  TriHits& hits) const;
+  // void
+  // intersect_track(const moab::CartVect& start,
+  //                 const moab::CartVect& dir,
+  //                 double track_len,
+  //                 TriHits& hits) const;
+
+//! Finds all intersections with faces of the mesh.
+//
+//! \param[in] start Staring location
+//! \param[in] dir Normalized particle direction
+//! \param[in] length of particle track
+//! \param[out] Mesh intersections
+void
+intersect_track(const moab::CartVect& start,
+                const moab::CartVect& dir,
+                double track_len,
+                UnstructuredMeshHits& hits) const;
+
+  //! Calculates the volume for a given tetrahedron handle.
+  //
+  // \param[in] tet MOAB EntityHandle of the tetrahedron
+  double tet_volume(moab::EntityHandle tet) const;
+
+  //! Find the tetrahedron for the given location if
+  //! one exists
+  //
+  //! \param[in]
+  //! \return MOAB EntityHandle of tet
+  moab::EntityHandle get_tet(const Position& r) const;
+
+  //! Version of get_tet taking Position.
+  inline moab::EntityHandle get_tet(const moab::CartVect& r) const {
+      return get_tet(Position(r[0], r[1], r[2]));
+  };
+
+  //! Check for point containment within a tet, uses
+  //! pre-computed barycentric data.
+  //
+  //! \param[in] r Position to check
+  //! \param[in] MOAB terahedron to check
+  //! \return True if r is inside, False if r is outside
+  bool point_in_tet(const moab::CartVect& r, moab::EntityHandle tet) const;
+
+  //! Compute barycentric coordinate data for all tetrahedra
+  //! in the mesh.
+  //
+  //! \param[in] all_tets MOAB Range of tetrahedral elements
+  void compute_barycentric_data(const moab::Range& all_tets);
+
+  //! Translates a MOAB EntityHandle its corresponding bin.
+  //
+  //! \param[in] eh MOAB EntityHandle to translate
+  //! \return Mesh bin
+  int get_bin_from_ent_handle(moab::EntityHandle eh) const;
+
+  //! Translates a bin to its corresponding MOAB EntityHandle
+  //! for the tetrahedron representing that bin.
+  //
+  //! \param[in] bin Bin value to translate
+  //! \return MOAB EntityHandle of tet
+  moab::EntityHandle get_ent_handle_from_bin(int bin) const;
+
+  //! Builds a KDTree for all tetrahedra in the mesh. All
+  //! triangles representing 2D faces of the mesh are
+  //! added to the tree as well.
+  //
+  //! \param[in] all_tets MOAB Range of tetrahedra for the tree
+  void build_kdtree(const moab::Range& all_tets);
 
 public:
-  //! Determine which surface bins were crossed by a particle
+  //! Determine which surface bins were crossed by a particle.
   //
   //! \param[in] p Particle to check
   //! \param[out] bins Surface bins that were crossed
   void surface_bins_crossed(const Particle* p, std::vector<int>& bins) const;
 
-  bool point_in_tet(const Position& r, moab::EntityHandle tet) const;
-
-  //! Write mesh data to an HDF5 group
+  //! Write mesh data to an HDF5 group.
   //
   //! \param[in] group HDF5 group
   void to_hdf5(hid_t group) const;
 
-  //! Get bin at a given position in space
+  //! Get bin at a given position.
   //
   //! \param[in] r Position to get bin for
   //! \return Mesh bin
   int get_bin(Position r) const;
-
-  moab::EntityHandle get_tet(Position r) const;
-
-  void compute_barycentric_data(const moab::Range& all_tets);
-
-  int get_bin_from_ent_handle(moab::EntityHandle eh) const;
-
-  moab::EntityHandle get_ent_handle_from_bin(int bin) const;
-
-  void build_tree(const moab::Range& all_tets);
 
   std::string get_label_for_bin(int bin) const;
 
@@ -371,14 +424,15 @@ public:
 
   int num_bins() const;
 
+  std::string filename_; //<! Path to unstructured mesh file
+
 private:
-  std::string filename_;
-  moab::Range ehs_;
-  moab::EntityHandle meshset_;
-  moab::EntityHandle kdtree_root_;
-  std::shared_ptr<moab::Interface> mbi_;
-  std::unique_ptr<moab::AdaptiveKDTree> kdtree_;
-  std::vector<moab::Matrix3> baryc_data_;
+  moab::Range ehs_; //!< Range of tetrahedra EntityHandles in the mesh
+  moab::EntityHandle meshset_; //!< Meshset containing all Tets/Tris
+  moab::EntityHandle kdtree_root_; //!< Root of the MOAB KDTree
+  std::shared_ptr<moab::Interface> mbi_; //!< MOAB instance
+  std::unique_ptr<moab::AdaptiveKDTree> kdtree_; //!< MOAB KDTree instance
+  std::vector<moab::Matrix3> baryc_data_; //!< Barycentric data for tetrahedra
 };
 
 #endif

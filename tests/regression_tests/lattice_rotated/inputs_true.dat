@@ -1,0 +1,71 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="-1" universe="1" />
+  <cell id="2" material="3" region="1" universe="1" />
+  <cell id="3" material="2" region="-2" universe="2" />
+  <cell id="4" material="3" region="2" universe="2" />
+  <cell id="5" material="3" universe="30" />
+  <cell fill="4" id="6" region="-3" rotation="0.0 0.0 45.0" translation="-4.0 0.0 0.0" universe="5" />
+  <cell fill="3" id="7" region="-4" rotation="0.0 0.0 30.0" translation="4.0 0.0 0.0" universe="5" />
+  <cell id="8" material="3" region="-5 3 4" universe="5" />
+  <hex_lattice id="3" n_rings="3">
+    <pitch>1.25</pitch>
+    <outer>30</outer>
+    <center>0.0 0.0</center>
+    <universes>
+  2
+ 1 1
+1 2 1
+ 1 1
+1 2 1
+ 1 1
+1 1 1
+ 1 1
+  1</universes>
+  </hex_lattice>
+  <lattice id="4">
+    <pitch>1.25 1.25</pitch>
+    <outer>30</outer>
+    <dimension>4 4</dimension>
+    <lower_left>-2.5 -2.5</lower_left>
+    <universes>
+2 2 2 2 
+1 1 1 1 
+1 1 1 1 
+1 1 1 1 </universes>
+  </lattice>
+  <surface coeffs="0.0 0.0 0.25" id="1" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 0.5" id="2" type="z-cylinder" />
+  <surface coeffs="-4.0 0.0 4.0" id="3" type="z-cylinder" />
+  <surface coeffs="4.0 0.0 4.0" id="4" type="z-cylinder" />
+  <surface boundary="vacuum" coeffs="0.0 0.0 8.0" id="5" type="z-cylinder" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="1">
+    <density units="g/cm3" value="10.0" />
+    <nuclide ao="1.0" name="U235" />
+  </material>
+  <material depletable="true" id="2">
+    <density units="g/cm3" value="10.0" />
+    <nuclide ao="1.0" name="U238" />
+  </material>
+  <material id="3">
+    <density units="g/cm3" value="1.0" />
+    <nuclide ao="2.0" name="H1" />
+    <nuclide ao="1.0" name="O16" />
+    <sab name="c_H_in_H2O" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>1000</particles>
+  <batches>5</batches>
+  <inactive>0</inactive>
+  <source strength="1.0">
+    <space type="point">
+      <parameters>0.0 0.0 0.0</parameters>
+    </space>
+  </source>
+</settings>

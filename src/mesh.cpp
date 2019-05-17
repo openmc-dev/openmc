@@ -2015,7 +2015,6 @@ void meshes_to_hdf5(hid_t group)
 
 void free_memory_mesh()
 {
-  UnstructuredMesh* m = reinterpret_cast<UnstructuredMesh*>(model::meshes[1].get());
   model::meshes.clear();
   model::mesh_map.clear();
 }

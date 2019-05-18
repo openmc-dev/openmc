@@ -57,7 +57,7 @@ public:
   //! Evaluate the polynomials
   //! \param[in] x independent variable
   //! \return Polynomial evaluated at x
-  double operator()(double x) const;
+  double operator()(double x) const override;
 private:
   std::vector<double> coef_; //!< Polynomial coefficients
 };
@@ -77,7 +77,7 @@ public:
   //! Evaluate the tabulated function
   //! \param[in] x independent variable
   //! \return Function evaluated at x
-  double operator()(double x) const;
+  double operator()(double x) const override;
 
   // Accessors
   const std::vector<double>& x() const { return x_; }
@@ -96,11 +96,30 @@ private:
 //==============================================================================
 
 class CoherentElasticXS : public Function1D {
+public:
   explicit CoherentElasticXS(hid_t dset);
-  double operator()(double E) const;
+
+  double operator()(double E) const override;
+
+  const std::vector<double>& bragg_edges() const { return bragg_edges_; }
+  const std::vector<double>& factors() const { return factors_; }
 private:
   std::vector<double> bragg_edges_; //!< Bragg edges in [eV]
   std::vector<double> factors_;     //!< Partial sums of structure factors [eV-b]
+};
+
+//==============================================================================
+//! Incoherent elastic scattering cross section
+//==============================================================================
+
+class IncoherentElasticXS : public Function1D {
+public:
+  explicit IncoherentElasticXS(hid_t dset);
+
+  double operator()(double E) const override;
+private:
+  double bound_xs_; //!< Characteristic bound xs in [b]
+  double debye_waller_; //!< Debye-Waller integral divided by atomic mass in [eV^-1]
 };
 
 //! Read 1D function from HDF5 dataset

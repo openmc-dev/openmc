@@ -248,14 +248,14 @@ class IncoherentElastic(Function1D):
     Parameters
     ----------
     xs : float
-        Characteristic cross section in [b]
+        Characteristic bound cross section in [b]
     debye_waller : float
         Debye-Waller integral in [eV\ :math:`^{-1}`]
 
     Attributes
     ----------
     xs : float
-        Characteristic cross section in [b]
+        Characteristic bound cross section in [b]
     debye_waller : float
         Debye-Waller integral in [eV\ :math:`^{-1}`]
 
@@ -282,7 +282,7 @@ class IncoherentElastic(Function1D):
         dataset = group.create_dataset(name)
         dataset.attrs['type'] = np.string_('incoherent')
         dataset.attrs['debye_waller'] = self.debye_waller
-        dataset.attrs['characteristic_xs'] = self.xs
+        dataset.attrs['bound_xs'] = self.xs
 
     @classmethod
     def from_hdf5(cls, dataset):
@@ -826,10 +826,10 @@ class ThermalScattering(EqualityMixin):
             elif lhtr == 2:
                 # incoherent elastic
                 params, W = endf.get_tab1_record(file_obj)
-                characteristic_xs = params[0]
+                bound_xs = params[0]
                 for T, debye_waller in zip(W.x, W.y):
                     strT = _temperature_str(T)
-                    xs[strT] = IncoherentElastic(characteristic_xs, debye_waller)
+                    xs[strT] = IncoherentElastic(bound_xs, debye_waller)
                     distribution[strT] = IncoherentElasticAE(debye_waller)
 
             elastic = ThermalScatteringReaction(xs, distribution)

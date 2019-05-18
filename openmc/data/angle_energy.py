@@ -43,6 +43,8 @@ class AngleEnergy(EqualityMixin, metaclass=ABCMeta):
             return openmc.data.IncoherentElasticAEDiscrete.from_hdf5(group)
         elif dist_type == 'incoherent_inelastic_discrete':
             return openmc.data.IncoherentInelasticAEDiscrete.from_hdf5(group)
+        elif dist_type == 'incoherent_inelastic_continuous':
+            return openmc.data.IncoherentInelasticAEContinuous.from_hdf5(group)
 
     @staticmethod
     def from_ace(ace, location_dist, location_start, rx=None):

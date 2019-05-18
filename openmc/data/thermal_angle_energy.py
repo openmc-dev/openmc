@@ -136,5 +136,6 @@ class IncoherentInelasticAEDiscrete(AngleEnergy):
         skewed = bool(group['skewed'])
         return cls(energy_out, mu_out, skewed)
 
+
 class IncoherentInelasticAEContinuous(CorrelatedAngleEnergy):
-    pass
+    _name = 'incoherent_inelastic_continuous'

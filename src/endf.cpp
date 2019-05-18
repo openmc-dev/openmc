@@ -234,4 +234,21 @@ double CoherentElasticXS::operator()(double E) const
   }
 }
 
+//==============================================================================
+// IncoherentElasticXS implementation
+//==============================================================================
+
+IncoherentElasticXS::IncoherentElasticXS(hid_t dset)
+{
+  read_attribute(dset, "bound_xs", bound_xs_);
+  read_attribute(dset, "debye_waller", debye_waller_);
+}
+
+double IncoherentElasticXS::operator()(double E) const
+{
+  // Determine cross section using ENDF-102, Eq. (7.5)
+  double W = debye_waller_;
+  return bound_xs_ / 2.0 * ((1 - std::exp(-4.0*E*W))/(2.0*E*W));
+}
+
 } // namespace openmc

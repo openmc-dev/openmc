@@ -372,6 +372,8 @@ class ThermalScattering(EqualityMixin):
     ----------
     atomic_weight_ratio : float
         Atomic mass ratio of the target nuclide.
+    energy_max : float
+        Maximum energy for thermal scattering data in [eV]
     elastic : openmc.data.ThermalScatteringReaction or None
         Elastic scattering derived in the coherent or incoherent approximation
     inelastic : openmc.data.ThermalScatteringReaction
@@ -391,9 +393,10 @@ class ThermalScattering(EqualityMixin):
 
     """
 
-    def __init__(self, name, atomic_weight_ratio, kTs):
+    def __init__(self, name, atomic_weight_ratio, energy_max, kTs):
         self.name = name
         self.atomic_weight_ratio = atomic_weight_ratio
+        self.energy_max = energy_max
         self.kTs = kTs
         self.elastic = None
         self.inelastic = None
@@ -432,6 +435,7 @@ class ThermalScattering(EqualityMixin):
         # Write basic data
         g = f.create_group(self.name)
         g.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
+        g.attrs['energy_max'] = self.energy_max
         g.attrs['nuclides'] = np.array(self.nuclides, dtype='S')
         ktg = g.create_group('kTs')
         for i, temperature in enumerate(self.temperatures):
@@ -540,10 +544,11 @@ class ThermalScattering(EqualityMixin):
 
         name = group.name[1:]
         atomic_weight_ratio = group.attrs['atomic_weight_ratio']
+        energy_max = group.attrs['energy_max']
         kTg = group['kTs']
         kTs = [dataset[()] for dataset in kTg.values()]
 
-        table = cls(name, atomic_weight_ratio, kTs)
+        table = cls(name, atomic_weight_ratio, energy_max, kTs)
         table.nuclides = [nuc.decode() for nuc in group.attrs['nuclides']]
 
         # Read thermal elastic scattering
@@ -609,15 +614,13 @@ class ThermalScattering(EqualityMixin):
         # Assign temperature to the running list
         kTs = [ace.temperature*EV_PER_MEV]
 
-        table = cls(name, ace.atomic_weight_ratio, kTs)
-        T = table.temperatures[0]
-
         # Incoherent inelastic scattering cross section
         idx = ace.jxs[1]
         n_energy = int(ace.xss[idx])
         energy = ace.xss[idx+1 : idx+1+n_energy]*EV_PER_MEV
         xs = ace.xss[idx+1+n_energy : idx+1+2*n_energy]
         inelastic_xs = Tabulated1D(energy, xs)
+        energy_max = energy[-1]
 
         # Incoherent inelastic angle-energy distribution
         continuous = (ace.nxs[7] == 2)
@@ -676,6 +679,8 @@ class ThermalScattering(EqualityMixin):
             distribution = IncoherentInelasticAEContinuous(
                 breakpoints, interpolation, energy, energy_out, mu_out)
 
+        table = cls(name, ace.atomic_weight_ratio, energy_max, kTs)
+        T = table.temperatures[0]
         table.inelastic = ThermalScatteringReaction(
             {T: inelastic_xs}, {T: distribution}
         )
@@ -846,7 +851,7 @@ class ThermalScattering(EqualityMixin):
         data['free_atom_xs'] = B[0]
         data['epsilon'] = B[1]
         data['A0'] = awr = B[2]
-        data['e_max'] = B[3]
+        data['e_max'] = energy_max = B[3]
         data['M0'] = B[5]
 
         # Get information about non-principal atoms
@@ -893,7 +898,7 @@ class ThermalScattering(EqualityMixin):
                 data['effective_temperature'].append(Teff)
 
         name = ev.target['zsymam'].strip()
-        instance = cls(name, awr, kTs)
+        instance = cls(name, awr, energy_max, kTs)
         if elastic is not None:
             instance.elastic = elastic
 

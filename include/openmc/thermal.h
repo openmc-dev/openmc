@@ -51,7 +51,19 @@ class ThermalData {
 public:
   ThermalData(hid_t group);
 
-  // Sample an outgoing energy and angle
+  //! Calculate the cross section
+  //
+  //! \param[in] E Incident neutron energy in [eV]
+  //! \param[out] elastic Elastic scattering cross section in [b]
+  //! \param[out] inelastic Inelastic scattering cross section in [b]
+  void calculate_xs(double E, double* elastic, double* inelastic) const;
+
+  //! Sample an outgoing energy and angle
+  //
+  //! \param[in] micro_xs Microscopic cross sections
+  //! \param[in] E_in Incident neutron energy in [eV]
+  //! \param[out] E_out Outgoing neutron energy in [eV]
+  //! \param[out] mu Outgoing scattering angle cosine
   void sample(const NuclideMicroXS& micro_xs, double E_in,
               double* E_out, double* mu);
 private:
@@ -106,10 +118,9 @@ public:
   void sample(const NuclideMicroXS& micro_xs, double E_in,
               double* E_out, double* mu);
 
-  double threshold() const { return data_[0].threshold_inelastic_; }
-
   std::string name_; //!< name of table, e.g. "c_H_in_H2O"
   double awr_;       //!< weight of nucleus in neutron masses
+  double energy_max_; //!< maximum energy for thermal scattering in [eV]
   std::vector<double> kTs_;  //!< temperatures in [eV] (k*T)
   std::vector<std::string> nuclides_; //!< Valid nuclides
 

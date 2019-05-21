@@ -44,6 +44,7 @@ ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& tem
   name_ = name_.substr(1);
 
   read_attribute(group, "atomic_weight_ratio", awr_);
+  read_attribute(group, "energy_max", energy_max_);
   read_attribute(group, "nuclides", nuclides_);
 
   // Read temperatures
@@ -177,58 +178,8 @@ ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
   // Set temperature index
   *i_temp = i;
 
-  // Get pointer to S(a,b) table
-  auto& sab = data_[i];
-
-  // Get index and interpolation factor for inelastic grid
-  int i_grid = 0;
-  double f = 0.0;
-  if (E >= sab.inelastic_e_in_.front()) {
-    auto& E_in = sab.inelastic_e_in_;
-    i_grid = lower_bound_index(E_in.begin(), E_in.end(), E);
-    f = (E - E_in[i_grid]) / (E_in[i_grid+1] - E_in[i_grid]);
-  }
-
-  // Calculate S(a,b) inelastic scattering cross section
-  auto& xs = sab.inelastic_sigma_;
-  *inelastic = xs[i_grid] + f * (xs[i_grid + 1] - xs[i_grid]);
-
-  // Check for elastic data
-  if (!sab.elastic_e_in_.empty()) {
-    // Determine whether elastic scattering is given in the coherent or
-    // incoherent approximation. For coherent, the cross section is
-    // represented as P/E whereas for incoherent, it is simply P
-
-    auto& E_in = sab.elastic_e_in_;
-
-    if (sab.elastic_mode_ == SAB_ELASTIC_COHERENT) {
-      if (E < E_in.front()) {
-        // If energy is below that of the lowest Bragg peak, the elastic
-        // cross section will be zero
-        *elastic = 0.0;
-      } else {
-        i_grid = lower_bound_index(E_in.begin(), E_in.end(), E);
-        *elastic = sab.elastic_P_[i_grid] / E;
-      }
-    } else {
-      // Determine index on elastic energy grid
-      if (E < E_in.front()) {
-        i_grid = 0;
-      } else {
-        i_grid = lower_bound_index(E_in.begin(), E_in.end(), E);
-      }
-
-      // Get interpolation factor for elastic grid
-      f = (E - E_in[i_grid]) / (E_in[i_grid+1] - E_in[i_grid]);
-
-      // Calculate S(a,b) elastic scattering cross section
-      auto& xs = sab.elastic_P_;
-      *elastic = xs[i_grid] + f*(xs[i_grid + 1] - xs[i_grid]);
-    }
-  } else {
-    // No elastic data
-    *elastic = 0.0;
-  }
+  // Calculate cross sections for ith temperature
+  data_[i].calculate_xs(E, elastic, inelastic);
 }
 
 bool
@@ -306,6 +257,20 @@ ThermalData::ThermalData(hid_t group)
 
     close_group(inelastic_group);
   }
+}
+
+void
+ThermalData::calculate_xs(double E, double* elastic, double* inelastic) const
+{
+  // Calculate thermal elastic scattering cross section
+  if (elastic_.xs) {
+    *elastic = (*elastic_.xs)(E);
+  } else {
+    *elastic = 0.0;
+  }
+
+  // Calculate thermal inelastic scattering cross section
+  *inelastic = (*inelastic_.xs)(E);
 }
 
 void

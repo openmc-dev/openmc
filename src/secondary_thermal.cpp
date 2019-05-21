@@ -185,10 +185,10 @@ IncoherentInelasticAEDiscrete::sample(double E_in, double& E_out, double& mu) co
 }
 
 //==============================================================================
-// IncoherentInelasticAEContinuous implementation
+// IncoherentInelasticAE implementation
 //==============================================================================
 
-IncoherentInelasticAEContinuous::IncoherentInelasticAEContinuous(hid_t group)
+IncoherentInelasticAE::IncoherentInelasticAE(hid_t group)
 {
   // Read correlated angle-energy distribution
   CorrelatedAngleEnergy dist {group};
@@ -228,7 +228,7 @@ IncoherentInelasticAEContinuous::IncoherentInelasticAEContinuous(hid_t group)
 }
 
 void
-IncoherentInelasticAEContinuous::sample(double E_in, double& E_out, double& mu) const
+IncoherentInelasticAE::sample(double E_in, double& E_out, double& mu) const
 {
   // Get index and interpolation factor for inelastic grid
   int i;

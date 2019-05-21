@@ -84,12 +84,12 @@ private:
 };
 
 //==============================================================================
-//! Incoherent inelastic scattering angle-energy distribution (discrete)
+//! Incoherent inelastic scattering angle-energy distribution
 //==============================================================================
 
-class IncoherentInelasticAEContinuous : public AngleEnergy {
+class IncoherentInelasticAE : public AngleEnergy {
 public:
-  explicit IncoherentInelasticAEContinuous(hid_t group);
+  explicit IncoherentInelasticAE(hid_t group);
 
   void sample(double E_in, double& E_out, double& mu) const override;
 private:

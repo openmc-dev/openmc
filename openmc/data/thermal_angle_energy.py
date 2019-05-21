@@ -138,4 +138,4 @@ class IncoherentInelasticAEDiscrete(AngleEnergy):
 
 
 class IncoherentInelasticAEContinuous(CorrelatedAngleEnergy):
-    _name = 'incoherent_inelastic_continuous'
+    _name = 'incoherent_inelastic'

@@ -280,7 +280,7 @@ class IncoherentElastic(Function1D):
 
         """
         dataset = group.create_dataset(name)
-        dataset.attrs['type'] = np.string_('incoherent')
+        dataset.attrs['type'] = np.string_(type(self).__name__)
         dataset.attrs['debye_waller'] = self.debye_waller
         dataset.attrs['bound_xs'] = self.xs
 

@@ -34,6 +34,14 @@ class CoherentElasticAE(AngleEnergy):
         self.coherent_xs = coherent_xs
 
     def to_hdf5(self, group):
+        """Write coherent elastic distribution to an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+
+        """
         group.attrs['type'] = np.string_('coherent_elastic')
         group['coherent_xs'] = group.parent['xs']
 
@@ -67,11 +75,32 @@ class IncoherentElasticAE(AngleEnergy):
         self.debye_waller = debye_waller
 
     def to_hdf5(self, group):
+        """Write incoherent elastic distribution to an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+
+        """
         group.attrs['type'] = np.string_('incoherent_elastic')
         group.create_dataset('debye_waller', data=self.debye_waller)
 
     @classmethod
     def from_hdf5(cls, group):
+        """Generate incoherent elastic distribution from HDF5 data
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to read from
+
+        Returns
+        -------
+        openmc.data.IncoherentElasticAE
+            Incoherent elastic distribution
+
+        """
         return cls(group['debye_waller'])
 
 
@@ -88,11 +117,32 @@ class IncoherentElasticAEDiscrete(AngleEnergy):
         self.mu_out = mu_out
 
     def to_hdf5(self, group):
+        """Write discrete incoherent elastic distribution to an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+
+        """
         group.attrs['type'] = np.string_('incoherent_elastic_discrete')
         group.create_dataset('mu_out', data=self.mu_out)
 
     @classmethod
     def from_hdf5(cls, group):
+        """Generate discrete incoherent elastic distribution from HDF5 data
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to read from
+
+        Returns
+        -------
+        openmc.data.IncoherentElasticAEDiscrete
+            Discrete incoherent elastic distribution
+
+        """
         return cls(group['mu_out'][()])
 
 
@@ -124,6 +174,14 @@ class IncoherentInelasticAEDiscrete(AngleEnergy):
         self.skewed = skewed
 
     def to_hdf5(self, group):
+        """Write discrete incoherent inelastic distribution to an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+
+        """
         group.attrs['type'] = np.string_('incoherent_inelastic_discrete')
         group.create_dataset('energy_out', data=self.energy_out)
         group.create_dataset('mu_out', data=self.mu_out)
@@ -131,6 +189,19 @@ class IncoherentInelasticAEDiscrete(AngleEnergy):
 
     @classmethod
     def from_hdf5(cls, group):
+        """Generate discrete incoherent inelastic distribution from HDF5 data
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to read from
+
+        Returns
+        -------
+        openmc.data.IncoherentInelasticAEDiscrete
+            Discrete incoherent inelastic distribution
+
+        """
         energy_out = group['energy_out'][()]
         mu_out = group['mu_out'][()]
         skewed = bool(group['skewed'])

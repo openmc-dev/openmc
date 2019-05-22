@@ -1,6 +1,7 @@
 #include "openmc/endf.h"
 
 #include <algorithm> // for copy
+#include <array>
 #include <cmath>     // for log, exp
 #include <iterator>  // for back_inserter
 #include <stdexcept> // for runtime_error
@@ -244,8 +245,10 @@ double CoherentElasticXS::operator()(double E) const
 
 IncoherentElasticXS::IncoherentElasticXS(hid_t dset)
 {
-  read_attribute(dset, "bound_xs", bound_xs_);
-  read_attribute(dset, "debye_waller", debye_waller_);
+  std::array<double, 2> tmp;
+  read_dataset(dset, nullptr, tmp);
+  bound_xs_ = tmp[0];
+  debye_waller_ = tmp[1];
 }
 
 double IncoherentElasticXS::operator()(double E) const

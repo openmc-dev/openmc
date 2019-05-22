@@ -106,7 +106,7 @@ class IncoherentInelasticAEDiscrete(AngleEnergy):
     mu_out : numpy.ndarray
         Discrete angles for each incoming/outgoing energy
     skewed : bool
-        Whether distance angles are equi-probable or have a skewed distribution
+        Whether discrete angles are equi-probable or have a skewed distribution
 
     Attributes
     ----------
@@ -115,7 +115,7 @@ class IncoherentInelasticAEDiscrete(AngleEnergy):
     mu_out : numpy.ndarray
         Discrete angles for each incoming/outgoing energy
     skewed : bool
-        Whether distance angles are equi-probable or have a skewed distribution
+        Whether discrete angles are equi-probable or have a skewed distribution
 
     """
     def __init__(self, energy_out, mu_out, skewed=False):
@@ -137,5 +137,5 @@ class IncoherentInelasticAEDiscrete(AngleEnergy):
         return cls(energy_out, mu_out, skewed)
 
 
-class IncoherentInelasticAEContinuous(CorrelatedAngleEnergy):
+class IncoherentInelasticAE(CorrelatedAngleEnergy):
     _name = 'incoherent_inelastic'

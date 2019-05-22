@@ -24,7 +24,7 @@ from .njoy import make_ace_thermal
 from .thermal_angle_energy import (CoherentElasticAE, IncoherentElasticAE,
                                    IncoherentElasticAEDiscrete,
                                    IncoherentInelasticAEDiscrete,
-                                   IncoherentInelasticAEContinuous)
+                                   IncoherentInelasticAE)
 
 
 _THERMAL_NAMES = {
@@ -247,26 +247,26 @@ class IncoherentElastic(Function1D):
 
     Parameters
     ----------
-    xs : float
+    bound_xs : float
         Characteristic bound cross section in [b]
     debye_waller : float
         Debye-Waller integral in [eV\ :math:`^{-1}`]
 
     Attributes
     ----------
-    xs : float
+    bound_xs : float
         Characteristic bound cross section in [b]
     debye_waller : float
         Debye-Waller integral in [eV\ :math:`^{-1}`]
 
     """
-    def __init__(self, xs, debye_waller):
-        self.xs = xs
+    def __init__(self, bound_xs, debye_waller):
+        self.bound_xs = bound_xs
         self.debye_waller = debye_waller
 
     def __call__(self, E):
         W = self.debye_waller
-        return self.xs / 2.0 * (1 - np.exp(-4*E*W)) / (2*E*W)
+        return self.bound_xs / 2.0 * (1 - np.exp(-4*E*W)) / (2*E*W)
 
     def to_hdf5(self, group, name):
         """Write incoherent elastic scattering to an HDF5 group
@@ -279,14 +279,27 @@ class IncoherentElastic(Function1D):
             Name of the dataset to create
 
         """
-        dataset = group.create_dataset(name)
+        data = np.array([self.bound_xs, self.debye_waller])
+        dataset = group.create_dataset(name, data=data)
         dataset.attrs['type'] = np.string_(type(self).__name__)
-        dataset.attrs['debye_waller'] = self.debye_waller
-        dataset.attrs['bound_xs'] = self.xs
 
     @classmethod
     def from_hdf5(cls, dataset):
-        return cls(dataset.attrs['xs'], dataset.attrs['debye_waller'])
+        """Read incoherent elastic scattering from an HDF5 dataset
+
+        Parameters
+        ----------
+        dataset : h5py.Dataset
+            HDF5 dataset to read from
+
+        Returns
+        -------
+        openmc.data.IncoherentElastic
+            Incoherent elastic scattering cross section
+
+        """
+        bound_xs, debye_waller = dataset[()]
+        return cls(bound_xs, debye_waller)
 
 
 class ThermalScatteringReaction(EqualityMixin):
@@ -676,7 +689,7 @@ class ThermalScattering(EqualityMixin):
             breakpoints = [n_energy]
             interpolation = [2]
             energy = inelastic_xs.x
-            distribution = IncoherentInelasticAEContinuous(
+            distribution = IncoherentInelasticAE(
                 breakpoints, interpolation, energy, energy_out, mu_out)
 
         table = cls(name, ace.atomic_weight_ratio, energy_max, kTs)

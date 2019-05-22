@@ -38,14 +38,14 @@ def h2o_njoy():
 def test_h2o_attributes(h2o):
     assert h2o.name == 'c_H_in_H2O'
     assert h2o.nuclides == ['H1']
-    assert h2o.secondary_mode == 'skewed'
     assert h2o.temperatures == ['294K']
     assert h2o.atomic_weight_ratio == pytest.approx(0.999167)
+    assert h2o.energy_max == pytest.approx(4.46)
 
 
 def test_h2o_xs(h2o):
-    assert not h2o.elastic_xs
-    for temperature, func in h2o.inelastic_xs.items():
+    assert not h2o.elastic
+    for temperature, func in h2o.inelastic.xs.items():
         assert temperature.endswith('K')
         assert isinstance(func, Callable)
 
@@ -53,20 +53,20 @@ def test_h2o_xs(h2o):
 def test_graphite_attributes(graphite):
     assert graphite.name == 'c_Graphite'
     assert graphite.nuclides == ['C0', 'C12', 'C13']
-    assert graphite.secondary_mode == 'skewed'
     assert graphite.temperatures == ['296K']
     assert graphite.atomic_weight_ratio == pytest.approx(11.898)
+    assert graphite.energy_max == pytest.approx(4.46)
 
 
 def test_graphite_xs(graphite):
-    for temperature, func in graphite.elastic_xs.items():
+    for temperature, func in graphite.elastic.xs.items():
         assert temperature.endswith('K')
         assert isinstance(func, openmc.data.CoherentElastic)
-    for temperature, func in graphite.inelastic_xs.items():
+    for temperature, func in graphite.inelastic.xs.items():
         assert temperature.endswith('K')
         assert isinstance(func, Callable)
-    elastic = graphite.elastic_xs['296K']
-    assert elastic([1e-3, 1.0]) == pytest.approx([13.47464936, 0.62590156])
+    elastic = graphite.elastic.xs['296K']
+    assert elastic([1e-3, 1.0]) == pytest.approx([0.0, 0.62586153])
 
 
 def test_export_to_hdf5(tmpdir, h2o_njoy, graphite):
@@ -80,9 +80,9 @@ def test_export_to_hdf5(tmpdir, h2o_njoy, graphite):
 
 
 def test_continuous_dist(h2o_njoy):
-    for temperature, dist in h2o_njoy.inelastic_dist.items():
+    for temperature, dist in h2o_njoy.inelastic.distribution.items():
         assert temperature.endswith('K')
-        assert isinstance(dist, openmc.data.CorrelatedAngleEnergy)
+        assert isinstance(dist, openmc.data.IncoherentInelasticAE)
 
 
 def test_get_thermal_name():

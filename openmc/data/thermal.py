@@ -327,30 +327,36 @@ class ThermalScatteringReaction(EqualityMixin):
         self.xs = xs
         self.distribution = distribution
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, name):
         """Write thermal scattering reaction to HDF5
 
         Parameters
         ----------
         group : h5py.Group
             HDF5 group to write to
+        name : {'elastic', 'inelastic'}
+            Name of reaction to write
 
         """
         for T, xs in self.xs.items():
-            Tgroup = group.create_group(_temperature_str(T))
-            xs.to_hdf5(Tgroup, 'xs')
-            self.distribution[T].to_hdf5(Tgroup)
+            Tgroup = group.require_group(T)
+            rx_group = Tgroup.create_group(name)
+            xs.to_hdf5(rx_group, 'xs')
+            dgroup = rx_group.create_group('distribution')
+            self.distribution[T].to_hdf5(dgroup)
 
     @classmethod
-    def from_hdf5(cls, group, temperatures):
+    def from_hdf5(cls, group, name, temperatures):
         """Generate thermal scattering reaction data from HDF5
 
         Parameters
         ----------
         group : h5py.Group
             HDF5 group to read from
-        temperatures : Iterable of float
-            Temperatures in [K] to read
+        name : {'elastic', 'inelastic'}
+            Name of the reaction to read
+        temperatures : Iterable of str
+            Temperatures to read
 
         Returns
         -------
@@ -361,9 +367,12 @@ class ThermalScatteringReaction(EqualityMixin):
         xs = {}
         distribution = {}
         for T in temperatures:
-            Tgroup = group[_temperature_str(T)]
-            xs[T] = Function1D.from_hdf5(Tgroup)
-            distribution[T] = AngleEnergy.from_hdf5(Tgroup)
+            rx_group = group[T][name]
+            xs[T] = Function1D.from_hdf5(rx_group['xs'])
+            if isinstance(xs[T], CoherentElastic):
+                distribution[T] = CoherentElasticAE(xs[T])
+            else:
+                distribution[T] = AngleEnergy.from_hdf5(rx_group['distribution'])
         return cls(xs, distribution)
 
 
@@ -441,36 +450,23 @@ class ThermalScattering(EqualityMixin):
 
         """
         # Open file and write version
-        f = h5py.File(str(path), mode, libver=libver)
-        f.attrs['filetype'] = np.string_('data_thermal')
-        f.attrs['version'] = np.array(HDF5_VERSION)
+        with h5py.File(str(path), mode, libver=libver) as f:
+            f.attrs['filetype'] = np.string_('data_thermal')
+            f.attrs['version'] = np.array(HDF5_VERSION)
 
-        # Write basic data
-        g = f.create_group(self.name)
-        g.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
-        g.attrs['energy_max'] = self.energy_max
-        g.attrs['nuclides'] = np.array(self.nuclides, dtype='S')
-        ktg = g.create_group('kTs')
-        for i, temperature in enumerate(self.temperatures):
-            ktg.create_dataset(temperature, data=self.kTs[i])
+            # Write basic data
+            g = f.create_group(self.name)
+            g.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
+            g.attrs['energy_max'] = self.energy_max
+            g.attrs['nuclides'] = np.array(self.nuclides, dtype='S')
+            ktg = g.create_group('kTs')
+            for i, temperature in enumerate(self.temperatures):
+                ktg.create_dataset(temperature, data=self.kTs[i])
 
-        for T in self.temperatures:
-            Tg = g.create_group(T)
-            # Write thermal elastic scattering
+            # Write elastic/inelastic reaction data
             if self.elastic is not None:
-                elastic_group = Tg.create_group('elastic')
-                self.elastic.xs[T].to_hdf5(elastic_group, 'xs')
-                dgroup = elastic_group.create_group('distribution')
-                self.elastic.distribution[T].to_hdf5(dgroup)
-
-            # Write thermal inelastic scattering
-            if self.inelastic is not None:
-                inelastic_group = Tg.create_group('inelastic')
-                self.inelastic.xs[T].to_hdf5(inelastic_group, 'xs')
-                dgroup = inelastic_group.create_group('distribution')
-                self.inelastic.distribution[T].to_hdf5(dgroup)
-
-        f.close()
+                self.elastic.to_hdf5(g, 'elastic')
+            self.inelastic.to_hdf5(g, 'inelastic')
 
     def add_temperature_from_ace(self, ace_or_filename, name=None):
         """Add data to the ThermalScattering object from an ACE file at a
@@ -565,33 +561,15 @@ class ThermalScattering(EqualityMixin):
         table.nuclides = [nuc.decode() for nuc in group.attrs['nuclides']]
 
         # Read thermal elastic scattering
-        elastic_xs = {}
-        elastic_dist = {}
-        inelastic_xs = {}
-        inelastic_dist = {}
-        for T in table.temperatures:
-            Tgroup = group[T]
-            if 'elastic' in Tgroup:
-                elastic_group = Tgroup['elastic']
+        if 'elastic' in group[table.temperatures[0]]:
+            table.elastic = ThermalScatteringReaction.from_hdf5(
+                group, 'elastic', table.temperatures
+            )
 
-                # Cross section
-                elastic_xs[T] = Function1D.from_hdf5(elastic_group['xs'])
-                if isinstance(elastic_xs[T], CoherentElastic):
-                    elastic_dist[T] = CoherentElasticAE(elastic_xs[T])
-                else:
-                    dgroup = elastic_group['distribution']
-                    elastic_dist[T] = AngleEnergy.from_hdf5(dgroup)
-
-            # Read thermal inelastic scattering
-            if 'inelastic' in Tgroup:
-                inelastic_group = Tgroup['inelastic']
-                inelastic_xs[T] = Function1D.from_hdf5(inelastic_group['xs'])
-                inelastic_dist[T] = AngleEnergy.from_hdf5(
-                    inelastic_group['distribution'])
-
-        if elastic_xs:
-            table.elastic = ThermalScatteringReaction(elastic_xs, elastic_dist)
-        table.inelastic = ThermalScatteringReaction(inelastic_xs, inelastic_dist)
+        # Read thermal inelastic scattering
+        table.inelastic = ThermalScatteringReaction.from_hdf5(
+            group, 'inelastic', table.temperatures
+        )
 
         return table
 

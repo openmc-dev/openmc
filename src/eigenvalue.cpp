@@ -389,12 +389,12 @@ int openmc_get_keff(double* k_combined)
   k_combined[0] = 0.0;
   k_combined[1] = 0.0;
 
-  //Special case for n <=3. Notice that at the end,
-  //there is a N-3 term in a denominator.
+  // Special case for n <=3. Notice that at the end,
+  // there is a N-3 term in a denominator.
   if (simulation::n_realizations <= 3) {
     k_combined[0] = simulation::keff;
     k_combined[1] = simulation::keff_std;
-    if (simulation::n_realizations <=1){
+    if (simulation::n_realizations <=1) {
       k_combined[1] = std::numeric_limits<double>::infinity();
     }
     return 0;

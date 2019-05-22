@@ -230,18 +230,9 @@ def keff():
         Mean k-eigenvalue and standard deviation of the mean
 
     """
-    n = openmc.capi.num_realizations()
-    if n > 3:
-        # Use the combined estimator if there are enough realizations
-        k = (c_double*2)()
-        _dll.openmc_get_keff(k)
-        return tuple(k)
-    else:
-        # Otherwise, return the tracklength estimator
-        mean = c_double.in_dll(_dll, 'keff').value
-        std_dev = c_double.in_dll(_dll, 'keff_std').value \
-                  if n > 1 else np.inf
-        return (mean, std_dev)
+    k = (c_double*2)()
+    _dll.openmc_get_keff(k)
+    return tuple(k)
 
 
 def master():

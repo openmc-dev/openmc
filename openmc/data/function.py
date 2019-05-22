@@ -591,8 +591,8 @@ class Regions1D(EqualityMixin):
         Functions which are to be combined in a piecewise fashion
     breakpoints : Iterable of float
         The values of the dependent variable that define the domain of
-        each function. The `i`th and `(i+1)`th values are the limits of the
-        domain of the `i`th function. Values must be monotonically increasing.
+        each function. The `i`\ th and `(i+1)`\ th values are the limits of the
+        domain of the `i`\ th function. Values must be monotonically increasing.
 
     Attributes
     ----------

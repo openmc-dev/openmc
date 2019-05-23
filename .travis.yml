@@ -53,4 +53,5 @@ before_script:
 script:
   - ./tools/ci/travis-script.sh
 after_success:
-  - coveralls
+  - cpp-coveralls -i src -i include --exclude-pattern "/usr/*" --dump cpp_cov.json
+  - coveralls --merge=cpp_cov.json

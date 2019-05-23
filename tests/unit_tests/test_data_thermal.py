@@ -47,11 +47,16 @@ def hzrh():
 
 @pytest.fixture(scope='module')
 def hzrh_njoy():
-    """H in ZrH genertaed using NJOY."""
+    """H in ZrH generated using NJOY."""
     path_h1 = os.path.join(_ENDF_DATA, 'neutrons', 'n-001_H_001.endf')
     path_hzrh = os.path.join(_ENDF_DATA, 'thermal_scatt', 'tsl-HinZrH.endf')
-    return openmc.data.ThermalScattering.from_njoy(
-        path_h1, path_hzrh, temperatures=[296.0], iwt=0)
+    with_endf_data = openmc.data.ThermalScattering.from_njoy(
+        path_h1, path_hzrh, temperatures=[296.0], iwt=0
+    )
+    without_endf_data = openmc.data.ThermalScattering.from_njoy(
+        path_h1, path_hzrh, temperatures=[296.0], use_endf_data=False, iwt=1
+    )
+    return with_endf_data, without_endf_data
 
 
 @pytest.fixture(scope='module')
@@ -117,10 +122,12 @@ def test_export_to_hdf5(tmpdir, h2o_njoy, hzrh_njoy, graphite):
     graphite.export_to_hdf5(filename)
     assert os.path.exists(filename)
 
-    # H in ZrH covers export of incoherent elastic data, and discrete incoherent
-    # inelastic angle-energy distribution
+    # H in ZrH covers export of incoherent elastic data, and incoherent
+    # inelastic angle-energy distributions
     filename = str(tmpdir.join('hzrh.h5'))
-    hzrh_njoy.export_to_hdf5(filename)
+    hzrh_njoy[0].export_to_hdf5(filename)
+    assert os.path.exists(filename)
+    hzrh_njoy[1].export_to_hdf5(filename, 'w')
     assert os.path.exists(filename)
 
 
@@ -167,20 +174,32 @@ def test_hzrh_elastic(hzrh):
 
 
 def test_hzrh_njoy(hzrh_njoy):
-    hzrh = hzrh_njoy
-    assert hzrh.atomic_weight_ratio == pytest.approx(0.999167)
-    assert hzrh.energy_max == pytest.approx(1.855)
-    assert hzrh.temperatures == ['296K']
+    endf, ace = hzrh_njoy
 
-    # Check incoherent elastic distribution
-    d = hzrh.elastic.distribution['296K']
+    # First check version using ENDF incoherent elastic data
+    assert endf.atomic_weight_ratio == pytest.approx(0.999167)
+    assert endf.energy_max == pytest.approx(1.855)
+    assert endf.temperatures == ['296K']
+
+    # Now check version using ACE incoherent elastic data (discretized)
+    assert ace.atomic_weight_ratio == endf.atomic_weight_ratio
+    assert ace.energy_max == endf.energy_max
+
+    # Cross sections should be about the same (within 1%)
+    E = np.linspace(1e-5, endf.energy_max)
+    xs1 = endf.elastic.xs['296K'](E)
+    xs2 = ace.elastic.xs['296K'](E)
+    assert xs1 == pytest.approx(xs2, rel=0.01)
+
+    # Check discrete incoherent elastic distribution
+    d = ace.elastic.distribution['296K']
     assert np.all((-1.0 <= d.mu_out) & (d.mu_out <= 1.0))
 
-    # Check incoherent inelastic distribution
-    d = hzrh.inelastic.distribution['296K']
+    # Check discrete incoherent inelastic distribution
+    d = endf.inelastic.distribution['296K']
     assert d.skewed
-    assert np.all((-1.0 < d.mu_out) & (d.mu_out < 1.0))
-    assert np.all((0.0 <= d.energy_out) & (d.energy_out < 3*hzrh.energy_max))
+    assert np.all((-1.0 <= d.mu_out) & (d.mu_out <= 1.0))
+    assert np.all((0.0 <= d.energy_out) & (d.energy_out < 3*endf.energy_max))
 
 
 def test_sio2_attributes(sio2):

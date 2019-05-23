@@ -249,12 +249,6 @@ public:
   bool are_valid_indices(const int i_xyz[3]) const;
 
   std::pair<double, std::array<int, 3>> distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
-  //DR OX distance calculation
-  std::pair<double, std::array<int, 3>>
-    distance_ox(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
-  //DR OY distance calculation
-  std::pair<double, std::array<int, 3>>
-     distance_oy(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
 
   std::array<int, 3> get_indices(Position r, Direction u) const;
 
@@ -271,7 +265,7 @@ public:
   int32_t& offset(int map, const int i_xyz[3]);
 
   std::string index_to_string(int indx) const;
-
+  //TODO: find a desicion for compatible old hdf5 file without orientation
   void to_hdf5_inner(hid_t group_id) const;
 
 private:

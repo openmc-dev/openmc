@@ -694,217 +694,134 @@ std::pair<double, std::array<int, 3>>
 HexLattice::distance(Position r, Direction u, const std::array<int, 3>& i_xyz)
 const
 {
+	double cosa,sina,u_xy;
+	// Index + 1 of translation direction
+	int i_trans {1};
+	xt :: xarray<int> translation_matrix;
     if (hextype==0){
-        return distance_oy(r,u,i_xyz);
+    	cosa = std::sqrt(3.0) / 2.0;
+    	sina = 0.5;
+    	u_xy = u.y;
+    	//Translation matrix 4x3 {{beta},{gamma},{oy},{oz}} for OY case
+    	translation_matrix = {{1, 0, 0},
+    		                  {1, -1, 0},
+				              {0, 1, 0},
+					          {0, 0, 1}};
     } else {
-        return distance_ox(r,u,i_xyz);
+    	cosa = 0.5;
+    	sina = std::sqrt(3.0) / 2.0;
+    	u_xy = u.x;
+    	//Translation matrix 4x3 {{beta},{gamma},{ox},{oz}} for OX case
+    	 translation_matrix = {{0, 1, 0},
+    		                   {1, -1, 0},
+				               {1, 0, 0},
+    				           {0, 0, 1}};
     }
-}
+    double beta_dir = u.x * cosa  + u.y * sina;
+    double gamma_dir = u.x * cosa  - u.y * sina;
 
-//DR OX distance calculation
-std::pair<double, std::array<int, 3>>
-HexLattice::distance_ox(Position r, Direction u, const std::array<int, 3>& i_xyz)
-const
-{
-  // Compute the direction on the hexagonal basis.
-  // DR for OX angle=60 g
-  double beta_dir = u.x*0.5  + u.y * std::sqrt(3.0) / 2.0;
-  double gamma_dir = u.x*0.5  - u.y * std::sqrt(3.0) / 2.0;
+      // Note that hexagonal lattice distance calculations are performed
+      // using the particle's coordinates relative to the neighbor lattice
+      // cells, not relative to the particle's current cell.  This is done
+      // because there is significant disagreement between neighboring cells
+      // on where the lattice boundary is due to finite precision issues.
 
-  // Note that hexagonal lattice distance calculations are performed
-  // using the particle's coordinates relative to the neighbor lattice
-  // cells, not relative to the particle's current cell.  This is done
-  // because there is significant disagreement between neighboring cells
-  // on where the lattice boundary is due to finite precision issues.
-
-  // Upper-right and lower-left sides.
-  double d {INFTY};
-  std::array<int, 3> lattice_trans;
-  double edge = -copysign(0.5*pitch_[0], beta_dir);  // Oncoming edge
-  Position r_t;
-  if (beta_dir > 0) {
-    const std::array<int, 3> i_xyz_t {i_xyz[0], i_xyz[1]+1, i_xyz[2]};
-    r_t = get_local_position(r, i_xyz_t);
-  } else {
-    const std::array<int, 3> i_xyz_t {i_xyz[0], i_xyz[1]-1, i_xyz[2]};
-    r_t = get_local_position(r, i_xyz_t);
-  }
-  double beta = r_t.x / 2.0 + r_t.y * std::sqrt(3.0) / 2.0;
-  if ((std::abs(beta - edge) > FP_PRECISION) && beta_dir != 0) {
-    d = (edge - beta) / beta_dir;
-    if (beta_dir > 0) {
-      lattice_trans = {0, 1, 0};
-    } else {
-      lattice_trans = {0, -1, 0};
-    }
-  }
-
-  // Lower-right and upper-left sides.
-  edge = -copysign(0.5*pitch_[0], gamma_dir);
-  if (gamma_dir > 0) {
-    const std::array<int, 3> i_xyz_t {i_xyz[0]+1, i_xyz[1]-1, i_xyz[2]};
-    r_t = get_local_position(r, i_xyz_t);
-  } else {
-    const std::array<int, 3> i_xyz_t {i_xyz[0]-1, i_xyz[1]+1, i_xyz[2]};
-    r_t = get_local_position(r, i_xyz_t);
-  }
-  double gamma = r_t.x / 2.0 - r_t.y * std::sqrt(3.0) / 2.0;
-  if ((std::abs(gamma - edge) > FP_PRECISION) && gamma_dir != 0) {
-    double this_d = (edge - gamma) / gamma_dir;
-    if (this_d < d) {
-      if (gamma_dir > 0) {
-        lattice_trans = {1, -1, 0};
-      } else {
-        lattice_trans = {-1, 1, 0};
-      }
-      d = this_d;
-    }
-  }
-
-  // right and left sides.
-  edge = -copysign(0.5*pitch_[0], u.x);
-  if (u.x > 0) {
-    const std::array<int, 3> i_xyz_t {i_xyz[0]+1, i_xyz[1], i_xyz[2]};
-    r_t = get_local_position(r, i_xyz_t);
-  } else {
-    const std::array<int, 3> i_xyz_t {i_xyz[0]-1, i_xyz[1], i_xyz[2]};
-    r_t = get_local_position(r, i_xyz_t);
-  }
-  if ((std::abs(r_t.x - edge) > FP_PRECISION) && u.x != 0) {
-    double this_d = (edge - r_t.x) / u.x;
-    if (this_d < d) {
-      if (u.x > 0) {
-        lattice_trans = {1, 0, 0};
-      } else {
-        lattice_trans = {-1, 0, 0};
-      }
-      d = this_d;
-    }
-  }
-
-  // Top and bottom sides
-  if (is_3d_) {
-    double z = r.z;
-    double z0 {copysign(0.5 * pitch_[1], u.z)};
-    if ((std::abs(z - z0) > FP_PRECISION) && u.z != 0) {
-      double this_d = (z0 - z) / u.z;
-      if (this_d < d) {
-        d = this_d;
-        if (u.z > 0) {
-          lattice_trans = {0, 0, 1};
+      //beta direction
+      double d {INFTY};
+      std::array<int, 3> lattice_trans;
+      double edge = -copysign(0.5*pitch_[0], beta_dir);  // Oncoming edge
+        Position r_t;
+        if (beta_dir > 0) {
+          const std::array<int, 3> i_xyz_t {i_xyz[0]+translation_matrix(0,0), i_xyz[1]+translation_matrix(0,1), i_xyz[2]};
+          r_t = get_local_position(r, i_xyz_t);
         } else {
-          lattice_trans = {0, 0, -1};
+          const std::array<int, 3> i_xyz_t {i_xyz[0]-translation_matrix(0,0), i_xyz[1]-translation_matrix(0,1), i_xyz[2]};
+          r_t = get_local_position(r, i_xyz_t);
         }
-        d = this_d;
-      }
-    }
-  }
-
-  return {d, lattice_trans};
-}
-
-//==============================================================================
-
-//==============================================================================
-//DR OY distance calculation
-std::pair<double, std::array<int, 3>>
-HexLattice::distance_oy(Position r, Direction u, const std::array<int, 3>& i_xyz)
-const
-{
-  // Compute the direction on the hexagonal basis.
-  double beta_dir = u.x * std::sqrt(3.0) / 2.0 + u.y / 2.0;
-  double gamma_dir = u.x * std::sqrt(3.0) / 2.0 - u.y / 2.0;
-
-  // Note that hexagonal lattice distance calculations are performed
-  // using the particle's coordinates relative to the neighbor lattice
-  // cells, not relative to the particle's current cell.  This is done
-  // because there is significant disagreement between neighboring cells
-  // on where the lattice boundary is due to finite precision issues.
-
-  // Upper-right and lower-left sides.
-  double d {INFTY};
-  std::array<int, 3> lattice_trans;
-  double edge = -copysign(0.5*pitch_[0], beta_dir);  // Oncoming edge
-  Position r_t;
-  if (beta_dir > 0) {
-    const std::array<int, 3> i_xyz_t {i_xyz[0]+1, i_xyz[1], i_xyz[2]};
-    r_t = get_local_position(r, i_xyz_t);
-  } else {
-    const std::array<int, 3> i_xyz_t {i_xyz[0]-1, i_xyz[1], i_xyz[2]};
-    r_t = get_local_position(r, i_xyz_t);
-  }
-  double beta = r_t.x * std::sqrt(3.0) / 2.0 + r_t.y / 2.0;
-  if ((std::abs(beta - edge) > FP_PRECISION) && beta_dir != 0) {
-    d = (edge - beta) / beta_dir;
-    if (beta_dir > 0) {
-      lattice_trans = {1, 0, 0};
-    } else {
-      lattice_trans = {-1, 0, 0};
-    }
-  }
-
-  // Lower-right and upper-left sides.
-  edge = -copysign(0.5*pitch_[0], gamma_dir);
-  if (gamma_dir > 0) {
-    const std::array<int, 3> i_xyz_t {i_xyz[0]+1, i_xyz[1]-1, i_xyz[2]};
-    r_t = get_local_position(r, i_xyz_t);
-  } else {
-    const std::array<int, 3> i_xyz_t {i_xyz[0]-1, i_xyz[1]+1, i_xyz[2]};
-    r_t = get_local_position(r, i_xyz_t);
-  }
-  double gamma = r_t.x * std::sqrt(3.0) / 2.0 - r_t.y / 2.0;
-  if ((std::abs(gamma - edge) > FP_PRECISION) && gamma_dir != 0) {
-    double this_d = (edge - gamma) / gamma_dir;
-    if (this_d < d) {
-      if (gamma_dir > 0) {
-        lattice_trans = {1, -1, 0};
-      } else {
-        lattice_trans = {-1, 1, 0};
-      }
-      d = this_d;
-    }
-  }
-
-  // Upper and lower sides.
-  edge = -copysign(0.5*pitch_[0], u.y);
-  if (u.y > 0) {
-    const std::array<int, 3> i_xyz_t {i_xyz[0], i_xyz[1]+1, i_xyz[2]};
-    r_t = get_local_position(r, i_xyz_t);
-  } else {
-    const std::array<int, 3> i_xyz_t {i_xyz[0], i_xyz[1]-1, i_xyz[2]};
-    r_t = get_local_position(r, i_xyz_t);
-  }
-  if ((std::abs(r_t.y - edge) > FP_PRECISION) && u.y != 0) {
-    double this_d = (edge - r_t.y) / u.y;
-    if (this_d < d) {
-      if (u.y > 0) {
-        lattice_trans = {0, 1, 0};
-      } else {
-        lattice_trans = {0, -1, 0};
-      }
-      d = this_d;
-    }
-  }
-
-  // Top and bottom sides
-  if (is_3d_) {
-    double z = r.z;
-    double z0 {copysign(0.5 * pitch_[1], u.z)};
-    if ((std::abs(z - z0) > FP_PRECISION) && u.z != 0) {
-      double this_d = (z0 - z) / u.z;
-      if (this_d < d) {
-        d = this_d;
-        if (u.z > 0) {
-          lattice_trans = {0, 0, 1};
+        double beta = r_t.x * cosa + r_t.y * sina;
+          if ((std::abs(beta - edge) > FP_PRECISION) && beta_dir != 0) {
+            d = (edge - beta) / beta_dir;
+            if (beta_dir > 0) {
+            	i_trans = 1;
+            } else {
+            	i_trans = -1;
+            }
+          }
+       //gamma direction
+       edge = -copysign(0.5*pitch_[0], gamma_dir);
+        if (gamma_dir > 0) {
+           const std::array<int, 3> i_xyz_t {i_xyz[0]+translation_matrix(1,0), i_xyz[1]+translation_matrix(1,1), i_xyz[2]};
+           r_t = get_local_position(r, i_xyz_t);
         } else {
-          lattice_trans = {0, 0, -1};
+           const std::array<int, 3> i_xyz_t {i_xyz[0]-translation_matrix(1,0), i_xyz[1]-translation_matrix(1,1), i_xyz[2]};
+           r_t = get_local_position(r, i_xyz_t);
         }
-        d = this_d;
-      }
-    }
-  }
+        double gamma = r_t.x * cosa - r_t.y * sina;
+        if ((std::abs(gamma - edge) > FP_PRECISION) && gamma_dir != 0) {
+           double this_d = (edge - gamma) / gamma_dir;
+           if (this_d < d) {
+              if (gamma_dir > 0) {
+                 i_trans = 2;
+              } else {
+                 i_trans = -2;
+              }
+                d = this_d;
+              }
+            }
+        //y or x direction
+        edge = -copysign(0.5*pitch_[0], u_xy);
+        if (u_xy > 0) {
+          const std::array<int, 3> i_xyz_t {i_xyz[0]+translation_matrix(2,0), i_xyz[1]+translation_matrix(2,1), i_xyz[2]};
+          r_t = get_local_position(r, i_xyz_t);
+        } else {
+          const std::array<int, 3> i_xyz_t {i_xyz[0]-translation_matrix(2,0), i_xyz[1]-translation_matrix(2,1), i_xyz[2]};
+          r_t = get_local_position(r, i_xyz_t);
+        }
+        double r_txy;
+        if (hextype==0){
+        	r_txy = r_t.y;
+        }
+        else {
+        	r_txy = r_t.x;
+        }
+        if ((std::abs(r_txy - edge) > FP_PRECISION) && u_xy != 0) {
+          double this_d = (edge - r_txy) / u_xy;
+          if (this_d < d) {
+            if (u_xy > 0) {
+            	i_trans = 3;
+            } else {
+            	i_trans = -3;
+            }
+            d = this_d;
+          }
+        }
+        // Top and bottom sides
+         if (is_3d_) {
+           double z = r.z;
+           double z0 {copysign(0.5 * pitch_[1], u.z)};
+           if ((std::abs(z - z0) > FP_PRECISION) && u.z != 0) {
+             double this_d = (z0 - z) / u.z;
+             if (this_d < d) {
+               d = this_d;
+               if (u.z > 0) {
+            	   i_trans = 4;
+               } else {
+            	   i_trans = -4;
+               }
+               d = this_d;
+             }
+           }
+         }
 
-  return {d, lattice_trans};
+         for (int i=0;i<3;i++){
+        	 if (i_trans < 0){
+        		 lattice_trans[i] = -translation_matrix(-(i_trans+1),i);
+        	 }else{
+        		 lattice_trans[i] = translation_matrix((i_trans-1),i);
+        	 }
+         }
+
+         return {d, lattice_trans};
 }
 
 //==============================================================================

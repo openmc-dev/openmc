@@ -11,13 +11,19 @@ def test_source():
     assert src.space == space
     assert src.angle == angle
     assert src.energy == energy
-    assert src.strength == 1.0
 
     elem = src.to_xml_element()
     assert 'strength' in elem.attrib
     assert elem.find('space') is not None
     assert elem.find('angle') is not None
     assert elem.find('energy') is not None
+
+    src = openmc.Source.from_xml_element(elem)
+    assert isinstance(src.angle, openmc.stats.Isotropic)
+    assert src.space.xyz == [0.0, 0.0, 0.0]
+    assert src.energy.x == [1.0e6]
+    assert src.energy.p == [1.0]
+    assert src.strength == 1.0
 
 
 def test_source_file():

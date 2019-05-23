@@ -36,7 +36,25 @@ class Univariate(EqualityMixin, metaclass=ABCMeta):
     @classmethod
     @abstractmethod
     def from_xml_element(cls, elem):
-        pass
+        distribution = get_text(elem, 'type')
+        if distribution == 'discrete':
+            return Discrete.from_xml_element(elem)
+        elif distribution == 'uniform':
+            return Uniform.from_xml_element(elem)
+        elif distribution == 'maxwell':
+            return Maxwell.from_xml_element(elem)
+        elif distribution == 'watt':
+            return Watt.from_xml_element(elem)
+        elif distribution == 'normal':
+            return Normal.from_xml_element(elem)
+        elif distribution == 'muir':
+            return Muir.from_xml_element(elem)
+        elif distribution == 'tabular':
+            return Tabular.from_xml_element(elem)
+        elif distribution == 'legendre':
+            return Legendre.from_xml_element(elem)
+        elif distribution == 'mixture':
+            return Mixture.from_xml_element(elem)
 
 
 class Discrete(Univariate):
@@ -223,9 +241,7 @@ class Uniform(Univariate):
 
         """
         params = get_text(elem, 'parameters').split()
-        a = float(params[0])
-        b = float(params[1])
-        return cls(a, b)
+        return cls(*map(float, params))
 
 
 class Maxwell(Univariate):
@@ -388,9 +404,7 @@ class Watt(Univariate):
 
         """
         params = get_text(elem, 'parameters').split()
-        a = float(params[0])
-        b = float(params[1])
-        return watt(a, b)
+        return cls(*map(float, params))
 
 
 class Normal(Univariate):
@@ -478,9 +492,7 @@ class Normal(Univariate):
 
         """
         params = get_text(elem, 'parameters').split()
-        mean_value = float(params[0])
-        std_dev = float(params[1])
-        return cls(mean_value, std_dev)
+        return cls(*map(float, params))
 
 
 class Muir(Univariate):
@@ -587,10 +599,7 @@ class Muir(Univariate):
 
         """
         params = get_text(elem, 'parameters').split()
-        e0 = float(params[0])
-        m_rat = float(params[1])
-        kt = float(params[2])
-        return muir(e0, m_rat, kt)
+        return cls(*map(float, params))
 
 
 class Tabular(Univariate):
@@ -706,7 +715,7 @@ class Tabular(Univariate):
         interpolation = get_text(elem, 'interpolation')
         params = [float(x) for x in get_text(elem, 'parameters').split()]
         x = params[:len(params)//2]
-        p = paramx[len(params)//2:]
+        p = params[len(params)//2:]
         return cls(x, p, interpolation)
 
 

@@ -980,7 +980,7 @@ class Settings(object):
                 value = get_text(elem, key)
                 if value is not None:
                     if key in ('summary', 'tallies'):
-                        value = value == 'true'
+                        value = value in ('true', '1')
                 self.output[key] = value
 
     def _statepoint_from_xml_element(self, root):
@@ -997,9 +997,9 @@ class Settings(object):
                 value = get_text(elem, key)
                 if value is not None:
                     if key in ('separate', 'write'):
-                        value = value == 'true'
+                        value = value in ('true', '1')
                     elif key == 'overwrite_latest':
-                        value = value == 'true'
+                        value = value in ('true', '1')
                         key = 'overwrite'
                     else:
                         value = [int(x) for x in value.split()]
@@ -1008,7 +1008,7 @@ class Settings(object):
     def _confidence_intervals_from_xml_element(self, root):
         text = get_text(root, 'confidence_intervals')
         if text is not None:
-            self.confidence_intervals = text == 'true'
+            self.confidence_intervals = text in ('true', '1')
 
     def _electron_treatment_from_xml_element(self, root):
         text = get_text(root, 'electron_treatment')
@@ -1028,12 +1028,12 @@ class Settings(object):
     def _photon_transport_from_xml_element(self, root):
         text = get_text(root, 'photon_transport')
         if text is not None:
-            self.photon_transport = text == 'true'
+            self.photon_transport = text in ('true', '1')
 
     def _ptables_from_xml_element(self, root):
         text = get_text(root, 'ptables')
         if text is not None:
-            self.ptables = text == 'true'
+            self.ptables = text in ('true', '1')
 
     def _seed_from_xml_element(self, root):
         text = get_text(root, 'seed')
@@ -1043,7 +1043,7 @@ class Settings(object):
     def _survival_biasing_from_xml_element(self, root):
         text = get_text(root, 'survival_biasing')
         if text is not None:
-            self.survival_biasing = text == 'true'
+            self.survival_biasing = text in ('true', '1')
 
     def _cutoff_from_xml_element(self, root):
         elem = root.find('cutoff')
@@ -1066,7 +1066,7 @@ class Settings(object):
     def _trigger_from_xml_element(self, root):
         elem = root.find('trigger')
         if elem is not None:
-            self.trigger_active = get_text(elem, 'active') == 'true'
+            self.trigger_active = get_text(elem, 'active') in ('true', '1')
             text = get_text(elem, 'max_batches')
             if text is not None:
                 self.trigger_max_batches = int(text)
@@ -1077,7 +1077,7 @@ class Settings(object):
     def _no_reduce_from_xml_element(self, root):
         text = get_text(root, 'no_reduce')
         if text is not None:
-            self.no_reduce = text == 'true'
+            self.no_reduce = text in ('true', '1')
 
     def _verbosity_from_xml_element(self, root):
         text = get_text(root, 'verbosity')
@@ -1088,7 +1088,7 @@ class Settings(object):
         elem = root.find('tabular_legendre')
         if elem is not None:
             text = get_text(elem, 'enable')
-            self.tabular_legendre['enable'] = text == 'true'
+            self.tabular_legendre['enable'] = text in ('true', '1')
             text = get_text(elem, 'num_points')
             if text is not None:
                 self.tabular_legendre['num_points'] = int(text)
@@ -1108,7 +1108,7 @@ class Settings(object):
             self.temperature['range'] = [float(x) for x in text.split()]
         text = get_text(root, 'temperature_multipole')
         if text is not None:
-            self.temperature['multipole'] = text == 'true'
+            self.temperature['multipole'] = text in ('true', '1')
 
     def _trace_from_xml_element(self, root):
         text = get_text(root, 'trace')
@@ -1136,7 +1136,7 @@ class Settings(object):
                 value = get_text(elem, key)
                 if value is not None:
                     if key == 'enable':
-                        value = value == 'true'
+                        value = value in ('true', '1')
                     elif key in ('energy_min', 'energy_max'):
                         value = float(value)
                     elif key == 'nuclides':
@@ -1146,7 +1146,7 @@ class Settings(object):
     def _create_fission_neutrons_from_xml_element(self, root):
         text = get_text(root, 'create_fission_neutrons')
         if text is not None:
-            self.create_fission_neutrons = text == 'true'
+            self.create_fission_neutrons = text in ('true', '1')
 
     def _log_grid_bins_from_xml_element(self, root):
         text = get_text(root, 'log_grid_bins')
@@ -1156,7 +1156,7 @@ class Settings(object):
     def _dagmc_from_xml_element(self, root):
         text = get_text(root, 'dagmc')
         if text is not None:
-            self.dagmc = text == 'true'
+            self.dagmc = text in ('true', '1')
 
     def export_to_xml(self, path='settings.xml'):
         """Export simulation settings to an XML file.

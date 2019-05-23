@@ -39,7 +39,7 @@
     <nuclide ao="0.0049817" name="U235" />
   </material>
   <material id="14">
-    <density units="atom/b-cm" value="0.087742" />
+    <density units="atom/b-cm" value="0.017742" />
     <nuclide ao="1.0" name="C0" />
     <sab name="c_Graphite" />
   </material>
@@ -67,8 +67,8 @@
 <settings>
   <run_mode>eigenvalue</run_mode>
   <particles>1000</particles>
-  <batches>10</batches>
-  <inactive>5</inactive>
+  <batches>5</batches>
+  <inactive>2</inactive>
   <source strength="1.0">
     <space type="box">
       <parameters>-0.9899494936611666 -0.9899494936611666 0.0 0.9899494936611666 0.9899494936611666 10.0</parameters>

@@ -7,7 +7,7 @@ import sys
 
 import numpy as np
 
-from openmc._xml import clean_indentation
+from openmc._xml import clean_indentation, get_text
 import openmc.checkvalue as cv
 from openmc import VolumeCalculation, Source, Mesh
 
@@ -174,7 +174,6 @@ class Settings(object):
         self._source = cv.CheckedList(Source, 'source distributions')
 
         self._confidence_intervals = None
-        self._cross_sections = None
         self._electron_treatment = None
         self._photon_transport = None
         self._ptables = None
@@ -552,7 +551,8 @@ class Settings(object):
     @entropy_mesh.setter
     def entropy_mesh(self, entropy):
         cv.check_type('entropy mesh', entropy, Mesh)
-        cv.check_length('entropy mesh dimension', entropy.dimension, 3)
+        if entropy.dimension:
+            cv.check_length('entropy mesh dimension', entropy.dimension, 3)
         cv.check_length('entropy mesh lower-left corner', entropy.lower_left, 3)
         cv.check_length('entropy mesh upper-right corner', entropy.upper_right, 3)
         self._entropy_mesh = entropy
@@ -693,29 +693,29 @@ class Settings(object):
         elem = ET.SubElement(root, "run_mode")
         elem.text = self._run_mode
 
-    def _create_batches_subelement(self, run_mode_element):
+    def _create_batches_subelement(self, root):
         if self._batches is not None:
-            element = ET.SubElement(run_mode_element, "batches")
+            element = ET.SubElement(root, "batches")
             element.text = str(self._batches)
 
-    def _create_generations_per_batch_subelement(self, run_mode_element):
+    def _create_generations_per_batch_subelement(self, root):
         if self._generations_per_batch is not None:
-            element = ET.SubElement(run_mode_element, "generations_per_batch")
+            element = ET.SubElement(root, "generations_per_batch")
             element.text = str(self._generations_per_batch)
 
-    def _create_inactive_subelement(self, run_mode_element):
+    def _create_inactive_subelement(self, root):
         if self._inactive is not None:
-            element = ET.SubElement(run_mode_element, "inactive")
+            element = ET.SubElement(root, "inactive")
             element.text = str(self._inactive)
 
-    def _create_particles_subelement(self, run_mode_element):
+    def _create_particles_subelement(self, root):
         if self._particles is not None:
-            element = ET.SubElement(run_mode_element, "particles")
+            element = ET.SubElement(root, "particles")
             element.text = str(self._particles)
 
-    def _create_keff_trigger_subelement(self, run_mode_element):
+    def _create_keff_trigger_subelement(self, root):
         if self._keff_trigger is not None:
-            element = ET.SubElement(run_mode_element, "keff_trigger")
+            element = ET.SubElement(root, "keff_trigger")
 
             for key in self._keff_trigger:
                 subelement = ET.SubElement(element, key)
@@ -927,6 +927,237 @@ class Settings(object):
             elem = ET.SubElement(root, "dagmc")
             elem.text = str(self._dagmc).lower()
 
+    def _eigenvalue_from_xml_element(self, root):
+        elem = root.find('eigenvalue')
+        if elem is not None:
+            self._run_mode_from_xml_element(elem)
+            self._particles_from_xml_element(elem)
+            self._batches_from_xml_element(elem)
+            self._inactive_from_xml_element(elem)
+            self._generations_per_batch_from_xml_element(elem)
+
+    def _run_mode_from_xml_element(self, root):
+        text = get_text(root, 'run_mode')
+        if text is not None:
+            self.run_mode = text
+
+    def _particles_from_xml_element(self, root):
+        text = get_text(root, 'particles')
+        if text is not None:
+            self.particles = int(text)
+
+    def _batches_from_xml_element(self, root):
+        text = get_text(root, 'batches')
+        if text is not None:
+            self.batches = int(text)
+
+    def _inactive_from_xml_element(self, root):
+        text = get_text(root, 'inactive')
+        if text is not None:
+            self.inactive = int(text)
+
+    def _generations_per_batch_from_xml_element(self, root):
+        text = get_text(root, 'generations_per_batch')
+        if text is not None:
+            self.generations_per_batch = int(text)
+
+    def _keff_trigger_from_xml_element(self, root):
+        elem = root.find('keff_trigger')
+        if elem is not None:
+            trigger = get_text(elem, 'type')
+            threshold = float(get_text(elem, 'threshold'))
+            self.keff_trigger = {'type': trigger, 'threshold': threshold}
+
+    def _source_from_xml_element(self, root):
+        for elem in root.findall('source'):
+            self.source.append(Source.from_xml_element(elem))
+
+    def _output_from_xml_element(self, root):
+        elem = root.find('output')
+        if elem is not None:
+            self.output = {}
+            for key in ('summary', 'tallies', 'path'):
+                value = get_text(elem, key)
+                if value is not None:
+                    if key in ('summary', 'tallies'):
+                        value = value in ('true', '1')
+                self.output[key] = value
+
+    def _statepoint_from_xml_element(self, root):
+        elem = root.find('state_point')
+        if elem is not None:
+            text = get_text(elem, 'batches')
+            if text is not None:
+                self.statepoint['batches'] = [int(x) for x in text.split()]
+
+    def _sourcepoint_from_xml_element(self, root):
+        elem = root.find('source_point')
+        if elem is not None:
+            for key in ('separate', 'write', 'overwrite_latest', 'batches'):
+                value = get_text(elem, key)
+                if value is not None:
+                    if key in ('separate', 'write'):
+                        value = value in ('true', '1')
+                    elif key == 'overwrite_latest':
+                        value = value in ('true', '1')
+                        key = 'overwrite'
+                    else:
+                        value = [int(x) for x in value.split()]
+                    self.sourcepoint[key] = value
+
+    def _confidence_intervals_from_xml_element(self, root):
+        text = get_text(root, 'confidence_intervals')
+        if text is not None:
+            self.confidence_intervals = text in ('true', '1')
+
+    def _electron_treatment_from_xml_element(self, root):
+        text = get_text(root, 'electron_treatment')
+        if text is not None:
+            self.electron_treatment = text
+
+    def _energy_mode_from_xml_element(self, root):
+        text = get_text(root, 'energy_mode')
+        if text is not None:
+            self.energy_mode = text
+
+    def _max_order_from_xml_element(self, root):
+        text = get_text(root, 'max_order')
+        if text is not None:
+            self.max_order = int(text)
+
+    def _photon_transport_from_xml_element(self, root):
+        text = get_text(root, 'photon_transport')
+        if text is not None:
+            self.photon_transport = text in ('true', '1')
+
+    def _ptables_from_xml_element(self, root):
+        text = get_text(root, 'ptables')
+        if text is not None:
+            self.ptables = text in ('true', '1')
+
+    def _seed_from_xml_element(self, root):
+        text = get_text(root, 'seed')
+        if text is not None:
+            self.seed = int(text)
+
+    def _survival_biasing_from_xml_element(self, root):
+        text = get_text(root, 'survival_biasing')
+        if text is not None:
+            self.survival_biasing = text in ('true', '1')
+
+    def _cutoff_from_xml_element(self, root):
+        elem = root.find('cutoff')
+        if elem is not None:
+            self.cutoff = {}
+            for key in ('energy_neutron', 'energy_photon', 'energy_electron',
+                        'energy_positron', 'weight', 'weight_avg'):
+                value = get_text(elem, key)
+                if value is not None:
+                    self.cutoff[key] = float(value)
+
+    def _entropy_mesh_from_xml_element(self, root):
+        text = get_text(root, 'entropy_mesh')
+        if text is not None:
+            path = "./mesh[@id='{}']".format(int(text))
+            elem = root.find(path)
+            if elem is not None:
+                self.entropy_mesh = Mesh.from_xml_element(elem)
+
+    def _trigger_from_xml_element(self, root):
+        elem = root.find('trigger')
+        if elem is not None:
+            self.trigger_active = get_text(elem, 'active') in ('true', '1')
+            text = get_text(elem, 'max_batches')
+            if text is not None:
+                self.trigger_max_batches = int(text)
+            text = get_text(elem, 'batch_interval')
+            if text is not None:
+                self.trigger_batch_interval = int(text)
+
+    def _no_reduce_from_xml_element(self, root):
+        text = get_text(root, 'no_reduce')
+        if text is not None:
+            self.no_reduce = text in ('true', '1')
+
+    def _verbosity_from_xml_element(self, root):
+        text = get_text(root, 'verbosity')
+        if text is not None:
+            self.verbosity = int(text)
+
+    def _tabular_legendre_from_xml_element(self, root):
+        elem = root.find('tabular_legendre')
+        if elem is not None:
+            text = get_text(elem, 'enable')
+            self.tabular_legendre['enable'] = text in ('true', '1')
+            text = get_text(elem, 'num_points')
+            if text is not None:
+                self.tabular_legendre['num_points'] = int(text)
+
+    def _temperature_from_xml_element(self, root):
+        text = get_text(root, 'temperature_default')
+        if text is not None:
+            self.temperature['default'] = float(text)
+        text = get_text(root, 'temperature_tolerance')
+        if text is not None:
+            self.temperature['tolerance'] = float(text)
+        text = get_text(root, 'temperature_method')
+        if text is not None:
+            self.temperature['method'] = text
+        text = get_text(root, 'temperature_range')
+        if text is not None:
+            self.temperature['range'] = [float(x) for x in text.split()]
+        text = get_text(root, 'temperature_multipole')
+        if text is not None:
+            self.temperature['multipole'] = text in ('true', '1')
+
+    def _trace_from_xml_element(self, root):
+        text = get_text(root, 'trace')
+        if text is not None:
+            self.trace = [int(x) for x in text.split()]
+
+    def _track_from_xml_element(self, root):
+        text = get_text(root, 'track')
+        if text is not None:
+            self.track = [int(x) for x in text.split()]
+
+    def _ufs_mesh_from_xml_element(self, root):
+        text = get_text(root, 'ufs_mesh')
+        if text is not None:
+            path = "./mesh[@id='{}']".format(int(text))
+            elem = root.find(path)
+            if elem is not None:
+                self.ufs_mesh = Mesh.from_xml_element(elem)
+
+    def _resonance_scattering_from_xml_element(self, root):
+        elem = root.find('resonance_scattering')
+        if elem is not None:
+            keys = ('enable', 'method', 'energy_min', 'energy_max', 'nuclides')
+            for key in keys:
+                value = get_text(elem, key)
+                if value is not None:
+                    if key == 'enable':
+                        value = value in ('true', '1')
+                    elif key in ('energy_min', 'energy_max'):
+                        value = float(value)
+                    elif key == 'nuclides':
+                        value = value.split()
+                    self.resonance_scattering[key] = value
+
+    def _create_fission_neutrons_from_xml_element(self, root):
+        text = get_text(root, 'create_fission_neutrons')
+        if text is not None:
+            self.create_fission_neutrons = text in ('true', '1')
+
+    def _log_grid_bins_from_xml_element(self, root):
+        text = get_text(root, 'log_grid_bins')
+        if text is not None:
+            self.log_grid_bins = int(text)
+
+    def _dagmc_from_xml_element(self, root):
+        text = get_text(root, 'dagmc')
+        if text is not None:
+            self.dagmc = text in ('true', '1')
+
     def export_to_xml(self, path='settings.xml'):
         """Export simulation settings to an XML file.
 
@@ -985,3 +1216,60 @@ class Settings(object):
         # Write the XML Tree to the settings.xml file
         tree = ET.ElementTree(root_element)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
+
+    @classmethod
+    def from_xml(cls, path='settings.xml'):
+        """Generate settings from XML file
+
+        Parameters
+        ----------
+        path : str, optional
+            Path to settings XML file
+
+        Returns
+        -------
+        openmc.Settings
+            Settings object
+
+        """
+        tree = ET.parse(path)
+        root = tree.getroot()
+
+        settings = cls()
+        settings._eigenvalue_from_xml_element(root)
+        settings._run_mode_from_xml_element(root)
+        settings._particles_from_xml_element(root)
+        settings._batches_from_xml_element(root)
+        settings._inactive_from_xml_element(root)
+        settings._generations_per_batch_from_xml_element(root)
+        settings._keff_trigger_from_xml_element(root)
+        settings._source_from_xml_element(root)
+        settings._output_from_xml_element(root)
+        settings._statepoint_from_xml_element(root)
+        settings._sourcepoint_from_xml_element(root)
+        settings._confidence_intervals_from_xml_element(root)
+        settings._electron_treatment_from_xml_element(root)
+        settings._energy_mode_from_xml_element(root)
+        settings._max_order_from_xml_element(root)
+        settings._photon_transport_from_xml_element(root)
+        settings._ptables_from_xml_element(root)
+        settings._seed_from_xml_element(root)
+        settings._survival_biasing_from_xml_element(root)
+        settings._cutoff_from_xml_element(root)
+        settings._entropy_mesh_from_xml_element(root)
+        settings._trigger_from_xml_element(root)
+        settings._no_reduce_from_xml_element(root)
+        settings._verbosity_from_xml_element(root)
+        settings._tabular_legendre_from_xml_element(root)
+        settings._temperature_from_xml_element(root)
+        settings._trace_from_xml_element(root)
+        settings._track_from_xml_element(root)
+        settings._ufs_mesh_from_xml_element(root)
+        settings._resonance_scattering_from_xml_element(root)
+        settings._create_fission_neutrons_from_xml_element(root)
+        settings._log_grid_bins_from_xml_element(root)
+        settings._dagmc_from_xml_element(root)
+
+        # TODO: Get volume calculations
+
+        return settings

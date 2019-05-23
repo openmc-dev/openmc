@@ -3,11 +3,8 @@ import sys
 from xml.etree import ElementTree as ET
 
 from openmc._xml import get_text
-from openmc.stats.univariate import (Univariate, Discrete, Uniform, Maxwell,
-                                     Watt, Normal, Muir, Tabular)
-from openmc.stats.multivariate import (UnitSphere, Spatial, PolarAzimuthal,
-                                       Isotropic, Monodirectional, Box, Point,
-                                       CartesianIndependent)
+from openmc.stats.univariate import Univariate
+from openmc.stats.multivariate import UnitSphere, Spatial
 import openmc.checkvalue as cv
 
 
@@ -173,40 +170,14 @@ class Source(object):
 
         space = elem.find('space')
         if space is not None:
-            space_type = get_text(space, 'type')
-            if space_type == 'cartesian':
-                source.space = CartesianIndependent.from_xml_element(space)
-            elif space_type == 'box' or space_type == 'fission':
-                source.space = Box.from_xml_element(space)
-            elif space_type == 'point':
-                source.space = Point.from_xml_element(space)
+            source.space = Spatial.from_xml_element(space)
 
         angle = elem.find('angle')
         if angle is not None:
-            angle_type = get_text(angle, 'type')
-            if angle_type == 'mu-phi':
-                source.angle = PolarAzimuthal.from_xml_element(angle)
-            elif angle_type == 'isotropic':
-                source.angle = Isotropic.from_xml_element(angle)
-            elif angle_type == 'monodirectional':
-                source.angle = Monodirectional.from_xml_element(angle)
+            source.angle = UnitSphere.from_xml_element(angle)
 
         energy = elem.find('energy')
         if energy is not None:
-            energy_type = get_text(energy, 'type')
-            if energy_type == 'discrete':
-                source.energy = Discrete.from_xml_element(energy)
-            elif energy_type == 'uniform':
-                source.energy = Uniform.from_xml_element(energy)
-            elif energy_type == 'maxwell':
-                source.energy = Maxwell.from_xml_element(energy)
-            elif energy_type == 'watt':
-                source.energy = Watt.from_xml_element(energy)
-            elif energy_type == 'normal':
-                source.energy = Normal.from_xml_element(energy)
-            elif energy_type == 'muir':
-                source.energy = Muir.from_xml_element(energy)
-            elif energy_type == 'tabular':
-                source.energy = Tabular.from_xml_element(energy)
+            source.energy = Univariate.from_xml_element(energy)
 
         return source

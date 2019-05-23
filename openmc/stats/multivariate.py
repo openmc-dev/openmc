@@ -51,7 +51,13 @@ class UnitSphere(metaclass=ABCMeta):
     @classmethod
     @abstractmethod
     def from_xml_element(cls, elem):
-        pass
+        distribution = get_text(elem, 'type')
+        if distribution == 'mu-phi':
+            return PolarAzimuthal.from_xml_element(elem)
+        elif distribution == 'isotropic':
+            return Isotropic.from_xml_element(elem)
+        elif distribution == 'monodirectional':
+            return Monodirectional.from_xml_element(elem)
 
 
 class PolarAzimuthal(UnitSphere):
@@ -146,8 +152,8 @@ class PolarAzimuthal(UnitSphere):
         params = get_text(elem, 'parameters')
         if params is not None:
             mu_phi.reference_uvw = [float(x) for x in params.split()]
-        mu_phi.mu = openmc.stats.Univariate.from_xml_element(elem.find('mu'))
-        mu_phi.phi = openmc.stats.Univariate.from_xml_element(elem.find('phi'))
+        mu_phi.mu = Univariate.from_xml_element(elem.find('mu'))
+        mu_phi.phi = Univariate.from_xml_element(elem.find('phi'))
         return mu_phi
 
 
@@ -263,7 +269,13 @@ class Spatial(metaclass=ABCMeta):
     @classmethod
     @abstractmethod
     def from_xml_element(cls, elem):
-        pass
+        distribution = get_text(elem, 'type')
+        if distribution == 'cartesian':
+            return CartesianIndependent.from_xml_element(elem)
+        elif distribution == 'box' or distribution == 'fission':
+            return Box.from_xml_element(elem)
+        elif distribution == 'point':
+            return Point.from_xml_element(elem)
 
 
 class CartesianIndependent(Spatial):
@@ -357,9 +369,9 @@ class CartesianIndependent(Spatial):
             Spatial distribution generated from XML element
 
         """
-        x = openmc.stats.Univariate.from_xml_element(elem.find('x'))
-        y = openmc.stats.Univariate.from_xml_element(elem.find('y'))
-        z = openmc.stats.Univariate.from_xml_element(elem.find('z'))
+        x = Univariate.from_xml_element(elem.find('x'))
+        y = Univariate.from_xml_element(elem.find('y'))
+        z = Univariate.from_xml_element(elem.find('z'))
         return cls(x, y, z)
 
 

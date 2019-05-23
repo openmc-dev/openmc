@@ -726,7 +726,8 @@ class ThermalScattering(EqualityMixin):
 
     @classmethod
     def from_njoy(cls, filename, filename_thermal, temperatures=None,
-                  evaluation=None, evaluation_thermal=None, **kwargs):
+                  evaluation=None, evaluation_thermal=None,
+                  use_endf_data=True, **kwargs):
         """Generate thermal scattering data by running NJOY.
 
         Parameters
@@ -746,6 +747,9 @@ class ThermalScattering(EqualityMixin):
             If the ENDF thermal scattering sublibrary file contains multiple
             material evaluations, this argument indicates which evaluation to
             use.
+        use_endf_data : bool
+            If the material has incoherent elastic scattering, the ENDF data
+            will be used rather than the ACE data.
         **kwargs
             Keyword arguments passed to :func:`openmc.data.njoy.make_ace_thermal`
 
@@ -769,6 +773,22 @@ class ThermalScattering(EqualityMixin):
             data = cls.from_ace(lib.tables[0])
             for table in lib.tables[1:]:
                 data.add_temperature_from_ace(table)
+
+            # Load ENDF data to replace incoherent elastic
+            if use_endf_data:
+                data_endf = cls.from_endf(filename_thermal)
+                if data_endf.elastic is not None:
+                    # Get appropriate temperatures
+                    if temperatures is None:
+                        temperatures = data_endf.temperatures
+                    else:
+                        temperatures = [_temperature_str(t) for t in temperatures]
+
+                    # Replace ACE data with ENDF data
+                    rx, rx_endf = data.elastic, data_endf.elastic
+                    for t in temperatures:
+                        rx.xs[t] = rx_endf.xs[t]
+                        rx.distribution[t] = rx_endf.distribution[t]
 
         return data
 

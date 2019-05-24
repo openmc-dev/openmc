@@ -21,20 +21,48 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-class RegularMesh;
+//class RegularMesh;
+class Mesh;
 
 namespace model {
 
-extern std::vector<std::unique_ptr<RegularMesh>> meshes;
+//extern std::vector<std::unique_ptr<RegularMesh>> meshes;
+extern std::vector<std::unique_ptr<Mesh>> meshes;
 extern std::unordered_map<int32_t, int32_t> mesh_map;
 
 } // namespace model
+
+class Mesh
+{
+public:
+  // Constructors
+  Mesh() = default;
+  Mesh(pugi::xml_node node);
+
+  virtual void bins_crossed(const Particle* p, std::vector<int>& bins,
+                    std::vector<double>& lengths) const = 0;
+
+  virtual void surface_bins_crossed(const Particle* p, std::vector<int>& bins) const = 0;
+
+  virtual int get_bin(Position r) const = 0;
+
+  virtual int get_bin_from_indices(const int* ijk) const = 0;
+
+  virtual void get_indices(Position r, int* ijk, bool* in_mesh) const = 0;
+
+  virtual void get_indices_from_bin(int bin, int* ijk) const = 0;
+
+  virtual void to_hdf5(hid_t group) const = 0;
+
+  int id_ {-1};  //!< User-specified ID
+};
 
 //==============================================================================
 //! Tessellation of n-dimensional Euclidean space by congruent squares or cubes
 //==============================================================================
 
-class RegularMesh {
+class RegularMesh : public Mesh
+{
 public:
   // Constructors
   RegularMesh() = default;
@@ -47,39 +75,39 @@ public:
   //! \param[in] p Particle to check
   //! \param[out] bins Bins that were crossed
   //! \param[out] lengths Fraction of tracklength in each bin
-  void bins_crossed(const Particle* p, std::vector<int>& bins,
+  virtual void bins_crossed(const Particle* p, std::vector<int>& bins,
                     std::vector<double>& lengths) const;
 
   //! Determine which surface bins were crossed by a particle
   //
   //! \param[in] p Particle to check
   //! \param[out] bins Surface bins that were crossed
-  void surface_bins_crossed(const Particle* p, std::vector<int>& bins) const;
+  virtual void surface_bins_crossed(const Particle* p, std::vector<int>& bins) const;
 
   //! Get bin at a given position in space
   //
   //! \param[in] r Position to get bin for
   //! \return Mesh bin
-  int get_bin(Position r) const;
+  virtual int get_bin(Position r) const;
 
   //! Get bin given mesh indices
   //
   //! \param[in] Array of mesh indices
   //! \return Mesh bin
-  int get_bin_from_indices(const int* ijk) const;
+  virtual int get_bin_from_indices(const int* ijk) const;
 
   //! Get mesh indices given a position
   //
   //! \param[in] r Position to get indices for
   //! \param[out] ijk Array of mesh indices
   //! \param[out] in_mesh Whether position is in mesh
-  void get_indices(Position r, int* ijk, bool* in_mesh) const;
+  virtual void get_indices(Position r, int* ijk, bool* in_mesh) const;
 
   //! Get mesh indices corresponding to a mesh bin
   //
   //! \param[in] bin Mesh bin
   //! \param[out] ijk Mesh indices
-  void get_indices_from_bin(int bin, int* ijk) const;
+  virtual void get_indices_from_bin(int bin, int* ijk) const;
 
   //! Check where a line segment intersects the mesh and if it intersects at all
   //
@@ -92,19 +120,18 @@ public:
   //! Write mesh data to an HDF5 group
   //
   //! \param[in] group HDF5 group
-  void to_hdf5(hid_t group) const;
+  virtual void to_hdf5(hid_t group) const;
 
   //! Count number of bank sites in each mesh bin / energy bin
   //
   //! \param[in] bank Array of bank sites
   //! \param[out] Whether any bank sites are outside the mesh
   //! \return Array indicating number of sites in each mesh/energy bin
-  xt::xarray<double> count_sites(const std::vector<Particle::Bank>& bank,
-    bool* outside) const;
+  virtual xt::xarray<double>
+  count_sites(const std::vector<Particle::Bank>& bank, bool* outside) const;
 
-  int id_ {-1};  //!< User-specified ID
-  int n_dimension_; //!< Number of dimensions
   double volume_frac_; //!< Volume fraction of each mesh element
+  int n_dimension_; //!< Number of dimensions
   xt::xarray<int> shape_; //!< Number of mesh elements in each dimension
   xt::xarray<double> lower_left_; //!< Lower-left coordinates of mesh
   xt::xarray<double> upper_right_; //!< Upper-right coordinates of mesh
@@ -114,6 +141,33 @@ private:
   bool intersects_1d(Position& r0, Position r1, int* ijk) const;
   bool intersects_2d(Position& r0, Position r1, int* ijk) const;
   bool intersects_3d(Position& r0, Position r1, int* ijk) const;
+};
+
+class RectilinearMesh : public Mesh
+{
+public:
+  // Constructors
+  RectilinearMesh(pugi::xml_node node);
+
+  virtual void bins_crossed(const Particle* p, std::vector<int>& bins,
+                    std::vector<double>& lengths) const;
+
+  virtual void surface_bins_crossed(const Particle* p, std::vector<int>& bins) const;
+
+  virtual int get_bin(Position r) const;
+
+  virtual int get_bin_from_indices(const int* ijk) const;
+
+  virtual void get_indices(Position r, int* ijk, bool* in_mesh) const;
+
+  virtual void get_indices_from_bin(int bin, int* ijk) const;
+
+  virtual void to_hdf5(hid_t group) const;
+
+  bool intersects(Position& r0, Position r1, int* ijk) const;
+
+  xt::xarray<int> shape_; //!< Number of mesh elements in each dimension
+  std::vector<std::vector<double>> grid_;
 };
 
 //==============================================================================

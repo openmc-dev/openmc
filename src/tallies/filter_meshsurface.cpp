@@ -18,7 +18,7 @@ MeshSurfaceFilter::get_all_bins(const Particle* p, int estimator,
 std::string
 MeshSurfaceFilter::text_label(int bin) const
 {
-  auto& mesh = *model::meshes[mesh_];
+  auto& mesh = *dynamic_cast<RegularMesh*>(model::meshes[mesh_].get());
   int n_dim = mesh.n_dimension_;
 
   // Get flattend mesh index and surface index.
@@ -75,8 +75,9 @@ void
 MeshSurfaceFilter::set_mesh(int32_t mesh)
 {
   mesh_ = mesh;
-  n_bins_ = 4 * model::meshes[mesh_]->n_dimension_;
-  for (auto dim : model::meshes[mesh_]->shape_) n_bins_ *= dim;
+  auto &m = *dynamic_cast<RegularMesh*>(model::meshes[mesh_].get());
+  n_bins_ = 4 * m.n_dimension_;
+  for (auto dim : m.shape_) n_bins_ *= dim;
 }
 
 //==============================================================================

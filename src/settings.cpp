@@ -508,7 +508,7 @@ void read_settings_xml()
   }
 
   if (index_entropy_mesh >= 0) {
-    auto& m = *model::meshes[index_entropy_mesh];
+    auto& m = *dynamic_cast<RegularMesh*>(model::meshes[index_entropy_mesh].get());
     if (m.shape_.dimension() == 0) {
       // If the user did not specify how many mesh cells are to be used in
       // each direction, we automatically determine an appropriate number of

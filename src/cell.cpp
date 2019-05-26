@@ -620,10 +620,17 @@ DAGCell::DAGCell() : Cell{} {};
 std::pair<double, int32_t>
 DAGCell::distance(Position r, Direction u, int32_t on_surface) const
 {
-  if (u != last_dir) {
+
+  // if we've changed direction, reset the history and update last direction
+  if (u != last_dir || on_surface == 0) {
     history.reset();
     last_dir = u;
   }
+
+  // always reset the history if we're on the surface
+  // if (on_surface == 0) {
+  //   history.reset();
+  // }
 
   moab::ErrorCode rval;
   moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
@@ -638,6 +645,7 @@ DAGCell::distance(Position r, Direction u, int32_t on_surface) const
     surf_idx = dagmc_ptr_->index_by_handle(hit_surf);
   } else {  // indicate that particle is lost
     surf_idx = -1;
+    dist = INFINITY;
   }
 
   return {dist, surf_idx};

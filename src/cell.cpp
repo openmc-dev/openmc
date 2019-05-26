@@ -608,18 +608,30 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 // DAGMC Cell implementation
 //==============================================================================
 #ifdef DAGMC
+
+extern moab::DagMC::RayHistory history;
+extern Direction last_dir;
+#pragma omp threadprivate(history, last_dir)
+moab::DagMC::RayHistory history;
+Direction last_dir;
+
 DAGCell::DAGCell() : Cell{} {};
 
 std::pair<double, int32_t>
 DAGCell::distance(Position r, Direction u, int32_t on_surface) const
 {
+  if (u != last_dir) {
+    history.reset();
+    last_dir = u;
+  }
+
   moab::ErrorCode rval;
   moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
   moab::EntityHandle hit_surf;
   double dist;
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
-  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist);
+  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &history);
   MB_CHK_ERR_CONT(rval);
   int surf_idx;
   if (hit_surf != 0) {

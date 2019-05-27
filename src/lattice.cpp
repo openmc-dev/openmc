@@ -444,15 +444,15 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
   if (check_for_node(lat_node, "orient")) {
     std::string orientation = get_node_value(lat_node, "orient");
     if (orientation == "OY") {
-      hextype = 0;
+      orientation_ = HexOrientation::oy;
     } else if (orientation == "OX") {
-      hextype = 1;
+      orientation_ = HexOrientation::ox;
     } else {
       fatal_error("Unrecognized orientation '" + orientation
                   + "' for lattice " + std::to_string(id_));
     }
   } else {
-    hextype = 0;
+    orientation_ = HexOrientation::oy;
   }
 
   // Read the lattice center.
@@ -507,7 +507,7 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
 
   universes_.resize((2*n_rings_-1) * (2*n_rings_-1) * n_axial_, C_NONE);
 
-  if (hextype==0) {
+  if (orientation_ == HexOrientation::oy) {
     fill_lattice_oy(univ_words);
   } else {
     fill_lattice_ox(univ_words);
@@ -564,7 +564,7 @@ HexLattice::fill_lattice_ox(std::vector<std::string> univ_words)
       }
 
       // Return lattice index to start of current row.
-      ki_y -= 1;
+      i_y -= 1;
     }
   }
 }
@@ -708,11 +708,11 @@ const
   //   beta   = (1, 0)            = +30 degrees from basis0
   //   gamma  = (1/2, -sqrt(3)/2) = -60 degrees from beta
   //   delta  = (1/2, sqrt(3)/2)  = +60 degrees from beta
-  // OZ is considered separately
+  // The z-axis is considered separately.
   double beta_dir;
   double gamma_dir;
   double delta_dir;
-  if (hextype == 0){
+  if (orientation_ == HexOrientation::oy) {
     beta_dir = u.x * std::sqrt(3.0) / 2.0  + u.y / 2.0;
     gamma_dir = u.x * std::sqrt(3.0) / 2.0  - u.y / 2.0;
     delta_dir = u.y;
@@ -741,7 +741,7 @@ const
     r_t = get_local_position(r, i_xyz_t);
   }
   double beta;
-  if (hextype == 0) {
+  if (orientation_ == HexOrientation::oy) {
     beta = r_t.x * std::sqrt(3.0) / 2.0 + r_t.y / 2.0;
   } else {
     beta = r_t.x;
@@ -765,7 +765,7 @@ const
     r_t = get_local_position(r, i_xyz_t);
   }
   double gamma;
-  if (hextype == 0) {
+  if (orientation_ == HexOrientation::oy) {
     gamma = r_t.x * std::sqrt(3.0) / 2.0 - r_t.y / 2.0;
   } else {
     gamma = r_t.x  / 2.0 - r_t.y * std::sqrt(3.0) / 2.0;
@@ -792,7 +792,7 @@ const
     r_t = get_local_position(r, i_xyz_t);
   }
   double delta;
-  if (hextype == 0){
+  if (orientation_ == HexOrientation::oy) {
     delta =  r_t.y;
   } else {
     delta = r_t.x  / 2.0 + r_t.y * std::sqrt(3.0) / 2.0;
@@ -852,7 +852,7 @@ HexLattice::get_indices(Position r, Direction u) const
   }
 
   int i1, i2;
-  if (hextype == 0) {
+  if (orientation_ == HexOrientation::oy) {
     // Convert coordinates into skewed bases.  The (x, alpha) basis is used to
     // find the index of the global coordinates to within 4 cells.
     double alpha = r_o.y - r_o.x / std::sqrt(3.0);
@@ -930,7 +930,7 @@ Position
 HexLattice::get_local_position(Position r, const std::array<int, 3> i_xyz)
 const
 {
-  if (hextype == 0) {
+  if (orientation_ == HexOrientation::oy) {
     // x_l = x_g - (center + pitch_x*cos(30)*index_x)
     r.x -= center_.x
            + std::sqrt(3.0)/2.0 * (i_xyz[0] - n_rings_ + 1) * pitch_[0];
@@ -1010,7 +1010,7 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
   write_string(lat_group, "type", "hexagonal", false);
   write_dataset(lat_group, "n_rings", n_rings_);
   write_dataset(lat_group, "n_axial", n_axial_);
-  if (hextype == 0) {
+  if (orientation_ == HexOrientation::oy) {
     write_string(lat_group, "orientation", "oy", false);
   } else {
     write_string(lat_group, "orientation", "ox", false);

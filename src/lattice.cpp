@@ -835,12 +835,6 @@ const
 std::array<int, 3>
 HexLattice::get_indices(Position r, Direction u) const
 {
-
-  // The implementation for HexLattice currently doesn't use direction
-  // information. As a result, we move the position slightly forward to
-  // determine what lattice index the particle is most likely to be in.
-  r += TINY_BIT * u;
-
   // Offset the xyz by the lattice center.
   Position r_o {r.x - center_.x, r.y - center_.y, r.z};
   if (is_3d_) {r_o.z -= center_.z;}

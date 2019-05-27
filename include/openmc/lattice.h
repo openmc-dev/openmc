@@ -248,30 +248,32 @@ public:
 
   bool are_valid_indices(const int i_xyz[3]) const;
 
-  std::pair<double, std::array<int, 3>> distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
+  std::pair<double, std::array<int, 3>>
+  distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
 
   std::array<int, 3> get_indices(Position r, Direction u) const;
-
 
   Position
   get_local_position(Position r, const std::array<int, 3> i_xyz) const;
 
   bool is_valid_index(int indx) const;
-  //DR fill lattice with OY by default orientation
-  void fill_lattice_oy(std::vector<std::string> univ_words);
-  //DR fill lattice with OX orientation
-  void fill_lattice_ox(std::vector<std::string> univ_words);
 
   int32_t& offset(int map, const int i_xyz[3]);
 
   std::string index_to_string(int indx) const;
-  //TODO: find a desicion for compatible old hdf5 file without orientation
+
   void to_hdf5_inner(hid_t group_id) const;
 
 private:
+  //! Fill universes_ vector for OY orientation
+  void fill_lattice_oy(std::vector<std::string> univ_words);
+
+  //! Fill universes_ vector for OX orientation
+  void fill_lattice_ox(std::vector<std::string> univ_words);
+
   int n_rings_;                   //!< Number of radial tile positions
   int n_axial_;                   //!< Number of axial tile positions
-  int hextype;                    //!DR type of hexagonal lattice orientation //0 - OY by default;1-OX
+  int hextype;                    //!< Type of hexagonal lattice orientation //0 - OY by default;1-OX
   Position center_;               //!< Global center of lattice
   std::array<double, 2> pitch_;   //!< Lattice tile width and height
 };

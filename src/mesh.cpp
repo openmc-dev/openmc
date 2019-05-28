@@ -799,7 +799,7 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node)
 }
 
 void RectilinearMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
-                               std::vector<double>& lengths) const
+                                   std::vector<double>& lengths) const
 {
   // ========================================================================
   // Determine where the track intersects the mesh and if it intersects at all.
@@ -894,7 +894,7 @@ void RectilinearMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
 }
 
 void RectilinearMesh::surface_bins_crossed(const Particle* p,
-                                       std::vector<int>& bins) const
+                                           std::vector<int>& bins) const
 {
   // ========================================================================
   // Determine if the track intersects the tally mesh.
@@ -1085,6 +1085,9 @@ void RectilinearMesh::to_hdf5(hid_t group) const
   hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
 
   write_dataset(mesh_group, "type", "rectilinear");
+  write_dataset(mesh_group, "x_grid", grid_[0]);
+  write_dataset(mesh_group, "y_grid", grid_[1]);
+  write_dataset(mesh_group, "z_grid", grid_[2]);
 
   close_group(mesh_group);
 }

@@ -610,6 +610,9 @@ class MeshFilter(Filter):
         self.mesh = mesh
         self.id = filter_id
 
+    def __hash__(self):
+        return hash(repr(self))
+
     def __repr__(self):
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
@@ -641,7 +644,7 @@ class MeshFilter(Filter):
 
     @mesh.setter
     def mesh(self, mesh):
-        cv.check_type('filter mesh', mesh, openmc.Mesh)
+        cv.check_type('filter mesh', mesh, openmc.MeshBase)
         self._mesh = mesh
         self.bins = list(mesh.indices)
 

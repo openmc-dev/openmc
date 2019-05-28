@@ -294,7 +294,7 @@ class StatePoint(object):
 
             # Iterate over all Meshes
             for group in mesh_group.values():
-                mesh = openmc.Mesh.from_hdf5(group)
+                mesh = openmc.MeshBase.from_hdf5(group)
                 self._meshes[mesh.id] = mesh
 
             self._meshes_read = True

@@ -773,13 +773,12 @@ class MeshSurfaceFilter(MeshFilter):
 
     @MeshFilter.mesh.setter
     def mesh(self, mesh):
-        cv.check_type('filter mesh', mesh, openmc.Mesh)
+        cv.check_type('filter mesh', mesh, openmc.MeshBase)
         self._mesh = mesh
 
         # Take the product of mesh indices and current names
-        n_dim = len(mesh.dimension)
         self.bins = [mesh_tuple + (surf,) for mesh_tuple, surf in
-                     product(mesh.indices, _CURRENT_NAMES[:4*n_dim])]
+                     product(mesh.indices, _CURRENT_NAMES[:4*3])]
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.

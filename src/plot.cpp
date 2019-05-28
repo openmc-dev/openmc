@@ -19,6 +19,7 @@
 #include "openmc/progress_bar.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/string_utils.h"
 
 namespace openmc {
@@ -497,20 +498,38 @@ Plot::set_meshlines(pugi::xml_node plot_node)
 
       // Set mesh based on type
       if ("ufs" == meshtype) {
-        if (settings::index_ufs_mesh < 0) {
+        if (!simulation::ufs_mesh) {
           std::stringstream err_msg;
           err_msg << "No UFS mesh for meshlines on plot " << id_;
           fatal_error(err_msg);
         } else {
-          index_meshlines_mesh_ = settings::index_ufs_mesh;
+          for (int i = 0; i < model::meshes.size(); ++i) {
+            if (const auto* m
+                = dynamic_cast<const RegularMesh*>(model::meshes[i].get())) {
+              if (m == simulation::ufs_mesh) {
+                index_meshlines_mesh_ = i;
+              }
+            }
+          }
+          if (index_meshlines_mesh_ == -1)
+            fatal_error("Could not find the UFS mesh for meshlines plot");
         }
       } else if ("entropy" == meshtype) {
-        if (settings::index_entropy_mesh < 0) {
+        if (!simulation::entropy_mesh) {
           std::stringstream err_msg;
-          err_msg <<"No entropy mesh for meshlines on plot " << id_;
+          err_msg << "No entropy mesh for meshlines on plot " << id_;
           fatal_error(err_msg);
         } else {
-          index_meshlines_mesh_ = settings::index_entropy_mesh;
+          for (int i = 0; i < model::meshes.size(); ++i) {
+            if (const auto* m
+                = dynamic_cast<const RegularMesh*>(model::meshes[i].get())) {
+              if (m == simulation::entropy_mesh) {
+                index_meshlines_mesh_ = i;
+              }
+            }
+          }
+          if (index_meshlines_mesh_ == -1)
+            fatal_error("Could not find the entropy mesh for meshlines plot");
         }
       } else if ("tally" == meshtype) {
         // Ensure that there is a mesh id if the type is tally

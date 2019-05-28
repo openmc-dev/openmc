@@ -4,6 +4,7 @@
 #ifndef OPENMC_SIMULATION_H
 #define OPENMC_SIMULATION_H
 
+#include "openmc/mesh.h"
 #include "openmc/particle.h"
 
 #include <cstdint>
@@ -38,6 +39,9 @@ extern "C" bool satisfy_triggers; //!< have tally triggers been satisfied?
 extern "C" int total_gen;        //!< total number of generations simulated
 extern double total_weight;  //!< Total source weight in a batch
 extern int64_t work_per_rank;         //!< number of particles per MPI rank
+
+extern const RegularMesh* entropy_mesh;
+extern const RegularMesh* ufs_mesh;
 
 extern std::vector<double> k_generation;
 extern std::vector<int64_t> work_index;

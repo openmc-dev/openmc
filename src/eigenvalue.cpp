@@ -532,14 +532,10 @@ int openmc_get_keff(double* k_combined)
 
 void shannon_entropy()
 {
-  // Get reference to entropy mesh
-  auto& m = *dynamic_cast<const RegularMesh*>(
-    model::meshes[settings::index_entropy_mesh].get());
-
   // Get source weight in each mesh bin
   bool sites_outside;
-  xt::xtensor<double, 1> p = m.count_sites(simulation::fission_bank,
-    &sites_outside);
+  xt::xtensor<double, 1> p = simulation::entropy_mesh->count_sites(
+    simulation::fission_bank, &sites_outside);
 
   // display warning message if there were sites outside entropy box
   if (sites_outside) {
@@ -565,22 +561,19 @@ void shannon_entropy()
 
 void ufs_count_sites()
 {
-  auto& m = *dynamic_cast<const RegularMesh*>(
-    model::meshes[settings::index_entropy_mesh].get());
-
   if (simulation::current_batch == 1 && simulation::current_gen == 1) {
     // On the first generation, just assume that the source is already evenly
     // distributed so that effectively the production of fission sites is not
     // biased
 
     auto s = xt::view(simulation::source_frac, xt::all());
-    s = m.volume_frac_;
+    s = simulation::ufs_mesh->volume_frac_;
 
   } else {
     // count number of source sites in each ufs mesh cell
     bool sites_outside;
-    simulation::source_frac = m.count_sites(simulation::source_bank,
-      &sites_outside);
+    simulation::source_frac = simulation::ufs_mesh->count_sites(
+      simulation::source_bank, &sites_outside);
 
     // Check for sites outside of the mesh
     if (mpi::master && sites_outside) {
@@ -589,7 +582,7 @@ void ufs_count_sites()
 
 #ifdef OPENMC_MPI
     // Send source fraction to all processors
-    int n_bins = xt::prod(m.shape_)();
+    int n_bins = xt::prod(simulation::ufs_mesh->shape_)();
     MPI_Bcast(simulation::source_frac.data(), n_bins, MPI_DOUBLE, 0, mpi::intracomm);
 #endif
 
@@ -607,18 +600,16 @@ void ufs_count_sites()
 
 double ufs_get_weight(const Particle* p)
 {
-  auto& m = *dynamic_cast<const RegularMesh*>(
-    model::meshes[settings::index_entropy_mesh].get());
-
   // Determine indices on ufs mesh for current location
-  int mesh_bin = m.get_bin(p->r());
+  int mesh_bin = simulation::ufs_mesh->get_bin(p->r());
   if (mesh_bin < 0) {
     p->write_restart();
     fatal_error("Source site outside UFS mesh!");
   }
 
   if (simulation::source_frac(mesh_bin) != 0.0) {
-    return m.volume_frac_ / simulation::source_frac(mesh_bin);
+    return simulation::ufs_mesh->volume_frac_
+      / simulation::source_frac(mesh_bin);
   } else {
     return 1.0;
   }

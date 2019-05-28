@@ -611,7 +611,9 @@ class MeshFilter(Filter):
         self.id = filter_id
 
     def __hash__(self):
-        return hash(repr(self))
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
+        return hash(string)
 
     def __repr__(self):
         string = type(self).__name__ + '\n'

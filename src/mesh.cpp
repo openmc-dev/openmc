@@ -911,12 +911,68 @@ void RectilinearMesh::surface_bins_crossed(const Particle* p,
   bool end_in_mesh;
   get_indices(r1, ijk1, &end_in_mesh);
 
-  // Check if the track intersects any part of the mesh.
+  // If the starting coordinates do not lie in the mesh, compute the coords and
+  // mesh indices of the first intersection, and add the bin for this first
+  // intersection.  Return if the particle does not intersect the mesh at all.
   if (!start_in_mesh) {
-    Position r0_copy = r0;
-    int ijk0_copy[3];
-    for (int i = 0; i < 3; ++i) ijk0_copy[i] = ijk0[i];
-    if (!intersects(r0_copy, r1, ijk0_copy)) return;
+    // Compute the incoming intersection coordinates and indices.
+    if (!intersects(r0, r1, ijk0)) return;
+
+    // Determine which surface the particle entered.
+    double min_dist = INFTY;
+    int i_surf;
+    for (int i = 0; i < 3; ++i) {
+      if (u[i] > 0.0 && ijk0[i] == 1) {
+        double d = std::abs(r0[i] - grid_[i][0]);
+        if (d < min_dist) {
+          min_dist = d;
+          i_surf = 4*i + 2;
+        }
+      } else if (u[i] < 0.0 && ijk0[i] == shape_[i]) {
+        double d = std::abs(r0[i] - grid_[i][shape_[i]]);
+        if (d < min_dist) {
+          min_dist = d;
+          i_surf = 4*i + 4;
+        }
+      } // u[i] == 0 intentionally skipped
+    }
+
+    // Add the incoming current bin.
+    int i_mesh = get_bin_from_indices(ijk0);
+    int i_bin = 4*3*i_mesh + i_surf - 1;
+    bins.push_back(i_bin);
+  }
+
+  // If the ending coordinates do not lie in the mesh, compute the coords and
+  // mesh indices of the last intersection, and add the bin for this last
+  // intersection.
+  if (!end_in_mesh) {
+    // Compute the outgoing intersection coordinates and indices.
+    intersects(r1, r0, ijk1);
+
+    // Determine which surface the particle exited.
+    double min_dist = INFTY;
+    int i_surf;
+    for (int i = 0; i < 3; ++i) {
+      if (u[i] > 0.0 && ijk1[i] == shape_[i]) {
+        double d = std::abs(r1[i] - grid_[i][shape_[i]]);
+        if (d < min_dist) {
+          min_dist = d;
+          i_surf = 4*i + 3;
+        }
+      } else if (u[i] < 0.0 && ijk1[i] == 1) {
+        double d = std::abs(r1[i] - grid_[i][0]);
+        if (d < min_dist) {
+          min_dist = d;
+          i_surf = 4*i + 1;
+        }
+      } // u[i] == 0 intentionally skipped
+    }
+
+    // Add the outgoing current bin.
+    int i_mesh = get_bin_from_indices(ijk1);
+    int i_bin = 4*3*i_mesh + i_surf - 1;
+    bins.push_back(i_bin);
   }
 
   // ========================================================================
@@ -959,80 +1015,43 @@ void RectilinearMesh::surface_bins_crossed(const Particle* p,
       // Check whether distance is the shortest distance
       if (distance == d[i]) {
 
-        // Check whether the current indices are within the mesh bounds
-        bool in_mesh = true;
-        for (int j = 0; j < 3; ++j) {
-          if (ijk0[j] < 1 || ijk0[j] > shape_[j]) {
-            in_mesh = false;
-            break;
-          }
-        }
-
         // Check whether particle is moving in positive i direction
         if (u[i] > 0) {
 
           // Outward current on i max surface
-          if (in_mesh) {
-            int i_surf = 4*i + 3;
-            int i_mesh = get_bin_from_indices(ijk0);
-            int i_bin = 4*3*i_mesh + i_surf - 1;
-
-            bins.push_back(i_bin);
-          }
+          int i_surf = 4*i + 3;
+          int i_mesh = get_bin_from_indices(ijk0);
+          int i_bin = 4*3*i_mesh + i_surf - 1;
+          bins.push_back(i_bin);
 
           // Advance position
           ++ijk0[i];
           xyz_cross[i] = grid_[i][ijk0[i]];
-          in_mesh = true;
-          for (int j = 0; j < 3; ++j) {
-            if (ijk0[j] < 1 || ijk0[j] > shape_[j]) {
-              in_mesh = false;
-              break;
-            }
-          }
 
-          // If the particle crossed the surface, tally the inward current on
-          // i min surface
-          if (in_mesh) {
-            int i_surf = 4*i + 2;
-            int i_mesh = get_bin_from_indices(ijk0);
-            int i_bin = 4*3*i_mesh + i_surf - 1;
-
-            bins.push_back(i_bin);
-          }
+          // Inward current on i min surface
+          i_surf = 4*i + 2;
+          i_mesh = get_bin_from_indices(ijk0);
+          i_bin = 4*3*i_mesh + i_surf - 1;
+          bins.push_back(i_bin);
 
         } else {
           // The particle is moving in the negative i direction
 
           // Outward current on i min surface
-          if (in_mesh) {
-            int i_surf = 4*i + 1;
-            int i_mesh = get_bin_from_indices(ijk0);
-            int i_bin = 4*3*i_mesh + i_surf - 1;
-
-            bins.push_back(i_bin);
-          }
+          int i_surf = 4*i + 1;
+          int i_mesh = get_bin_from_indices(ijk0);
+          int i_bin = 4*3*i_mesh + i_surf - 1;
+          bins.push_back(i_bin);
 
           // Advance position
           --ijk0[i];
           xyz_cross[i] = grid_[i][ijk0[i] - 1];
-          in_mesh = true;
-          for (int j = 0; j < 3; ++j) {
-            if (ijk0[j] < 1 || ijk0[j] > shape_[j]) {
-              in_mesh = false;
-              break;
-            }
-          }
 
-          // If the particle crossed the surface, tally the inward current on
-          // i max surface
-          if (in_mesh) {
-            int i_surf = 4*i + 4;
-            int i_mesh = get_bin_from_indices(ijk0);
-            int i_bin = 4*3*i_mesh + i_surf - 1;
-
-            bins.push_back(i_bin);
-          }
+          // Inward current on i min surface
+          i_surf = 4*i + 4;
+          i_mesh = get_bin_from_indices(ijk0);
+          i_bin = 4*3*i_mesh + i_surf - 1;
+          bins.push_back(i_bin);
         }
       }
     }

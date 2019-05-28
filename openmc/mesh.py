@@ -129,6 +129,10 @@ class Mesh(MeshBase):
         return self._dimension
 
     @property
+    def n_dimension(self):
+        return len(self._dimension)
+
+    @property
     def lower_left(self):
         return self._lower_left
 
@@ -416,6 +420,10 @@ class Mesh(MeshBase):
 class RectilinearMesh(MeshBase):
     def __init__(self, mesh_id=None, name=''):
         super().__init__(mesh_id, name)
+
+    @property
+    def n_dimension(self):
+        return 3
 
     @property
     def indices(self):

@@ -777,8 +777,9 @@ class MeshSurfaceFilter(MeshFilter):
         self._mesh = mesh
 
         # Take the product of mesh indices and current names
+        n_dim = mesh.n_dimension
         self.bins = [mesh_tuple + (surf,) for mesh_tuple, surf in
-                     product(mesh.indices, _CURRENT_NAMES[:4*3])]
+                     product(mesh.indices, _CURRENT_NAMES[:4*n_dim])]
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.

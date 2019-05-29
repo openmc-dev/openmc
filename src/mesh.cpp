@@ -732,6 +732,7 @@ void RegularMesh::surface_bins_crossed(const Particle* p,
 std::pair<std::vector<double>, std::vector<double>>
 RegularMesh::plot(Position plot_ll, Position plot_ur) const
 {
+  // Figure out which axes lie in the plane of the plot.
   std::array<int, 2> axes {-1, -1};
   if (plot_ur.z == plot_ll.z) {
     axes[0] = 0;
@@ -746,6 +747,7 @@ RegularMesh::plot(Position plot_ll, Position plot_ur) const
     fatal_error("Can only plot mesh lines on an axis-aligned plot");
   }
 
+  // Get the coordinates of the mesh lines along both of the axes.
   std::array<std::vector<double>, 2> axis_lines;
   for (int i_ax = 0; i_ax < 2; ++i_ax) {
     int axis = axes[i_ax];
@@ -1162,6 +1164,31 @@ int RectilinearMesh::n_surface_bins() const
 std::pair<std::vector<double>, std::vector<double>>
 RectilinearMesh::plot(Position plot_ll, Position plot_ur) const
 {
+  // Figure out which axes lie in the plane of the plot.
+  std::array<int, 2> axes {-1, -1};
+  if (plot_ur.z == plot_ll.z) {
+    axes = {0, 1};
+  } else if (plot_ur.y == plot_ll.y) {
+    axes = {0, 2};
+  } else if (plot_ur.x == plot_ll.x) {
+    axes = {1, 2};
+  } else {
+    fatal_error("Can only plot mesh lines on an axis-aligned plot");
+  }
+
+  // Get the coordinates of the mesh lines along both of the axes.
+  std::array<std::vector<double>, 2> axis_lines;
+  for (int i_ax = 0; i_ax < 2; ++i_ax) {
+    int axis = axes[i_ax];
+    std::vector<double>& lines {axis_lines[i_ax]};
+
+    for (auto coord : grid_[axis]) {
+      if (coord >= plot_ll[axis] && coord <= plot_ur[axis])
+        lines.push_back(coord);
+    }
+  }
+
+  return {axis_lines[0], axis_lines[1]};
 }
 
 void RectilinearMesh::to_hdf5(hid_t group) const

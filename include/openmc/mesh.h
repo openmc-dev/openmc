@@ -85,6 +85,9 @@ public:
   //! Get the number of mesh cell surfaces.
   virtual int n_surface_bins() const = 0;
 
+  virtual std::pair<std::vector<double>, std::vector<double>>
+  plot(Position plot_ll, Position plot_ur) const = 0;
+
   //! Write mesh data to an HDF5 group
   //
   //! \param[in] group HDF5 group
@@ -126,6 +129,9 @@ public:
   int n_bins() const override;
 
   int n_surface_bins() const override;
+
+  std::pair<std::vector<double>, std::vector<double>>
+  plot(Position plot_ll, Position plot_ur) const override;
 
   void to_hdf5(hid_t group) const override;
 
@@ -186,6 +192,9 @@ public:
   int n_bins() const override;
 
   int n_surface_bins() const override;
+
+  std::pair<std::vector<double>, std::vector<double>>
+  plot(Position plot_ll, Position plot_ur) const override;
 
   void to_hdf5(hid_t group) const override;
 

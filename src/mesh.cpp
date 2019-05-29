@@ -729,6 +729,40 @@ void RegularMesh::surface_bins_crossed(const Particle* p,
   }
 }
 
+std::pair<std::vector<double>, std::vector<double>>
+RegularMesh::plot(Position plot_ll, Position plot_ur) const
+{
+  std::array<int, 2> axes {-1, -1};
+  if (plot_ur.z == plot_ll.z) {
+    axes[0] = 0;
+    if (n_dimension_ > 1) axes[1] = 1;
+  } else if (plot_ur.y == plot_ll.y) {
+    axes[0] = 0;
+    if (n_dimension_ > 2) axes[1] = 2;
+  } else if (plot_ur.x == plot_ll.x) {
+    if (n_dimension_ > 1) axes[0] = 1;
+    if (n_dimension_ > 2) axes[1] = 2;
+  } else {
+    fatal_error("Can only plot mesh lines on an axis-aligned plot");
+  }
+
+  std::array<std::vector<double>, 2> axis_lines;
+  for (int i_ax = 0; i_ax < 2; ++i_ax) {
+    int axis = axes[i_ax];
+    if (axis == -1) continue;
+    std::vector<double>& lines {axis_lines[i_ax]};
+
+    double coord = lower_left_[axis];
+    for (int i = 0; i < shape_[axis] + 1; ++i) {
+      if (coord >= plot_ll[axis] && coord <= plot_ur[axis])
+        lines.push_back(coord);
+      coord += width_[axis];
+    }
+  }
+
+  return {axis_lines[0], axis_lines[1]};
+}
+
 void RegularMesh::to_hdf5(hid_t group) const
 {
   hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
@@ -1123,6 +1157,11 @@ int RectilinearMesh::n_bins() const
 int RectilinearMesh::n_surface_bins() const
 {
   return 4 * n_dimension_ * n_bins();
+}
+
+std::pair<std::vector<double>, std::vector<double>>
+RectilinearMesh::plot(Position plot_ll, Position plot_ur) const
+{
 }
 
 void RectilinearMesh::to_hdf5(hid_t group) const

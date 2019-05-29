@@ -79,6 +79,12 @@ public:
   //! \param[out] ijk Mesh indices
   virtual void get_indices_from_bin(int bin, int* ijk) const = 0;
 
+  //! Get the number of mesh cells.
+  virtual int n_bins() const = 0;
+
+  //! Get the number of mesh cell surfaces.
+  virtual int n_surface_bins() const = 0;
+
   //! Write mesh data to an HDF5 group
   //
   //! \param[in] group HDF5 group
@@ -87,6 +93,7 @@ public:
   // Data members
 
   int id_ {-1};  //!< User-specified ID
+  int n_dimension_; //!< Number of dimensions
 };
 
 //==============================================================================
@@ -116,6 +123,10 @@ public:
 
   void get_indices_from_bin(int bin, int* ijk) const override;
 
+  int n_bins() const override;
+
+  int n_surface_bins() const override;
+
   void to_hdf5(hid_t group) const override;
 
   // New methods
@@ -133,13 +144,12 @@ public:
   //! \param[in] bank Array of bank sites
   //! \param[out] Whether any bank sites are outside the mesh
   //! \return Array indicating number of sites in each mesh/energy bin
-  virtual xt::xarray<double>
-  count_sites(const std::vector<Particle::Bank>& bank, bool* outside) const;
+  xt::xarray<double> count_sites(const std::vector<Particle::Bank>& bank,
+    bool* outside) const;
 
   // Data members
 
   double volume_frac_; //!< Volume fraction of each mesh element
-  int n_dimension_; //!< Number of dimensions
   xt::xarray<int> shape_; //!< Number of mesh elements in each dimension
   xt::xarray<double> lower_left_; //!< Lower-left coordinates of mesh
   xt::xarray<double> upper_right_; //!< Upper-right coordinates of mesh
@@ -172,6 +182,10 @@ public:
   void get_indices(Position r, int* ijk, bool* in_mesh) const override;
 
   void get_indices_from_bin(int bin, int* ijk) const override;
+
+  int n_bins() const override;
+
+  int n_surface_bins() const override;
 
   void to_hdf5(hid_t group) const override;
 

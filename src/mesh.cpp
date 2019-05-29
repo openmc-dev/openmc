@@ -228,6 +228,18 @@ void RegularMesh::get_indices_from_bin(int bin, int* ijk) const
   }
 }
 
+int RegularMesh::n_bins() const
+{
+  int n_bins = 1;
+  for (auto dim : shape_) n_bins *= dim;
+  return n_bins;
+}
+
+int RegularMesh::n_surface_bins() const
+{
+  return 4 * n_dimension_ * n_bins();
+}
+
 bool RegularMesh::intersects(Position& r0, Position r1, int* ijk) const
 {
   switch(n_dimension_) {
@@ -788,6 +800,8 @@ RegularMesh::count_sites(const std::vector<Particle::Bank>& bank,
 RectilinearMesh::RectilinearMesh(pugi::xml_node node)
   : Mesh {node}
 {
+  n_dimension_ = 3;
+
   grid_.resize(3);
   grid_[0] = get_node_array<double>(node, "x_grid");
   grid_[1] = get_node_array<double>(node, "y_grid");
@@ -1099,6 +1113,18 @@ void RectilinearMesh::get_indices_from_bin(int bin, int* ijk) const
   ijk[2] = bin / (shape_[0] * shape_[1]) + 1;
 }
 
+int RectilinearMesh::n_bins() const
+{
+  int n_bins = 1;
+  for (auto dim : shape_) n_bins *= dim;
+  return n_bins;
+}
+
+int RectilinearMesh::n_surface_bins() const
+{
+  return 4 * n_dimension_ * n_bins();
+}
+
 void RectilinearMesh::to_hdf5(hid_t group) const
 {
   hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
@@ -1223,6 +1249,32 @@ bool RectilinearMesh::intersects(Position& r0, Position r1, int* ijk) const
 }
 
 //==============================================================================
+// Helper functions for the C API
+//==============================================================================
+
+int
+check_mesh(int32_t index)
+{
+  if (index < 0 || index >= model::meshes.size()) {
+    set_errmsg("Index in meshes array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  return 0;
+}
+
+int
+check_regular_mesh(int32_t index, RegularMesh** mesh)
+{
+  if (int err = check_mesh(index)) return err;
+  *mesh = dynamic_cast<RegularMesh*>(model::meshes[index].get());
+  if (!*mesh) {
+    set_errmsg("This function is only valid for regular meshes.");
+    return OPENMC_E_INVALID_TYPE;
+  }
+  return 0;
+}
+
+//==============================================================================
 // C API functions
 //==============================================================================
 
@@ -1256,10 +1308,7 @@ openmc_get_mesh_index(int32_t id, int32_t* index)
 extern "C" int
 openmc_mesh_get_id(int32_t index, int32_t* id)
 {
-  if (index < 0 || index >= model::meshes.size()) {
-    set_errmsg("Index in meshes array is out of bounds.");
-    return OPENMC_E_OUT_OF_BOUNDS;
-  }
+  if (int err = check_mesh(index)) return err;
   *id = model::meshes[index]->id_;
   return 0;
 }
@@ -1268,10 +1317,7 @@ openmc_mesh_get_id(int32_t index, int32_t* id)
 extern "C" int
 openmc_mesh_set_id(int32_t index, int32_t id)
 {
-  if (index < 0 || index >= model::meshes.size()) {
-    set_errmsg("Index in meshes array is out of bounds.");
-    return OPENMC_E_OUT_OF_BOUNDS;
-  }
+  if (int err = check_mesh(index)) return err;
   model::meshes[index]->id_ = id;
   model::mesh_map[id] = index;
   return 0;
@@ -1281,12 +1327,10 @@ openmc_mesh_set_id(int32_t index, int32_t id)
 extern "C" int
 openmc_mesh_get_dimension(int32_t index, int** dims, int* n)
 {
-  if (index < 0 || index >= model::meshes.size()) {
-    set_errmsg("Index in meshes array is out of bounds.");
-    return OPENMC_E_OUT_OF_BOUNDS;
-  }
-  *dims = dynamic_cast<RegularMesh*>(model::meshes[index].get())->shape_.data();
-  *n = dynamic_cast<RegularMesh*>(model::meshes[index].get())->n_dimension_;
+  RegularMesh* mesh;
+  if (int err = check_regular_mesh(index, &mesh)) return err;
+  *dims = mesh->shape_.data();
+  *n = mesh->n_dimension_;
   return 0;
 }
 
@@ -1294,16 +1338,13 @@ openmc_mesh_get_dimension(int32_t index, int** dims, int* n)
 extern "C" int
 openmc_mesh_set_dimension(int32_t index, int n, const int* dims)
 {
-  if (index < 0 || index >= model::meshes.size()) {
-    set_errmsg("Index in meshes array is out of bounds.");
-    return OPENMC_E_OUT_OF_BOUNDS;
-  }
+  RegularMesh* mesh;
+  if (int err = check_regular_mesh(index, &mesh)) return err;
 
   // Copy dimension
   std::vector<std::size_t> shape = {static_cast<std::size_t>(n)};
-  auto& m = *dynamic_cast<RegularMesh*>(model::meshes[index].get());
-  m.shape_ = xt::adapt(dims, n, xt::no_ownership(), shape);
-  m.n_dimension_ = m.shape_.size();
+  mesh->shape_ = xt::adapt(dims, n, xt::no_ownership(), shape);
+  mesh->n_dimension_ = mesh->shape_.size();
 
   return 0;
 }
@@ -1312,22 +1353,18 @@ openmc_mesh_set_dimension(int32_t index, int n, const int* dims)
 extern "C" int
 openmc_mesh_get_params(int32_t index, double** ll, double** ur, double** width, int* n)
 {
-  if (index < 0 || index >= model::meshes.size()) {
-    set_errmsg("Index in meshes array is out of bounds.");
-    return OPENMC_E_OUT_OF_BOUNDS;
-  }
+  RegularMesh* m;
+  if (int err = check_regular_mesh(index, &m)) return err;
 
-  //auto& m = model::meshes[index];
-  auto& m = *dynamic_cast<RegularMesh*>(model::meshes[index].get());
-  if (m.lower_left_.dimension() == 0) {
+  if (m->lower_left_.dimension() == 0) {
     set_errmsg("Mesh parameters have not been set.");
     return OPENMC_E_ALLOCATE;
   }
 
-  *ll = m.lower_left_.data();
-  *ur = m.upper_right_.data();
-  *width = m.width_.data();
-  *n = m.n_dimension_;
+  *ll = m->lower_left_.data();
+  *ur = m->upper_right_.data();
+  *width = m->width_.data();
+  *n = m->n_dimension_;
   return 0;
 }
 
@@ -1336,26 +1373,22 @@ extern "C" int
 openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
                        const double* width)
 {
-  if (index < 0 || index >= model::meshes.size()) {
-    set_errmsg("Index in meshes array is out of bounds.");
-    return OPENMC_E_OUT_OF_BOUNDS;
-  }
+  RegularMesh* m;
+  if (int err = check_regular_mesh(index, &m)) return err;
 
-  //auto& m = model::meshes[index];
-  auto& m = *dynamic_cast<RegularMesh*>(model::meshes[index].get());
   std::vector<std::size_t> shape = {static_cast<std::size_t>(n)};
   if (ll && ur) {
-    m.lower_left_ = xt::adapt(ll, n, xt::no_ownership(), shape);
-    m.upper_right_ = xt::adapt(ur, n, xt::no_ownership(), shape);
-    m.width_ = (m.upper_right_ - m.lower_left_) / m.shape_;
+    m->lower_left_ = xt::adapt(ll, n, xt::no_ownership(), shape);
+    m->upper_right_ = xt::adapt(ur, n, xt::no_ownership(), shape);
+    m->width_ = (m->upper_right_ - m->lower_left_) / m->shape_;
   } else if (ll && width) {
-    m.lower_left_ = xt::adapt(ll, n, xt::no_ownership(), shape);
-    m.width_ = xt::adapt(width, n, xt::no_ownership(), shape);
-    m.upper_right_ = m.lower_left_ + m.shape_ * m.width_;
+    m->lower_left_ = xt::adapt(ll, n, xt::no_ownership(), shape);
+    m->width_ = xt::adapt(width, n, xt::no_ownership(), shape);
+    m->upper_right_ = m->lower_left_ + m->shape_ * m->width_;
   } else if (ur && width) {
-    m.upper_right_ = xt::adapt(ur, n, xt::no_ownership(), shape);
-    m.width_ = xt::adapt(width, n, xt::no_ownership(), shape);
-    m.lower_left_ = m.upper_right_ - m.shape_ * m.width_;
+    m->upper_right_ = xt::adapt(ur, n, xt::no_ownership(), shape);
+    m->width_ = xt::adapt(width, n, xt::no_ownership(), shape);
+    m->lower_left_ = m->upper_right_ - m->shape_ * m->width_;
   } else {
     set_errmsg("At least two parameters must be specified.");
     return OPENMC_E_INVALID_ARGUMENT;

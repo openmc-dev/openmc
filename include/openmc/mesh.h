@@ -85,6 +85,14 @@ public:
   //! Get the number of mesh cell surfaces.
   virtual int n_surface_bins() const = 0;
 
+  //! Find the mesh lines that intersect an axis-aligned slice plot
+  //
+  //! \param[in] plot_ll The lower-left coordinates of the slice plot.
+  //! \param[in] plot_ur The upper-right coordinates of the slice plot.
+  //! \return A pair of vectors indicating where the mesh lines lie along each
+  //!   of the plot's axes.  For example an xy-slice plot will get back a vector
+  //!   of x-coordinates and another of y-coordinates.  These vectors may be
+  //!   empty for low-dimensional meshes.
   virtual std::pair<std::vector<double>, std::vector<double>>
   plot(Position plot_ll, Position plot_ur) const = 0;
 

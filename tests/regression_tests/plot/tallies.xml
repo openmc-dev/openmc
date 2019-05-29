@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<tallies>
+
+  <mesh id="2" type="rectilinear">
+    <x_grid>-10 10</x_grid>
+    <y_grid>-10 10</y_grid>
+    <z_grid>-10 0 5 7.5 8.75 10</z_grid>
+  </mesh>
+
+  <filter id="1">
+    <type>mesh</type>
+    <bins>2</bins>
+  </filter>
+
+  <tally id="1">
+    <filters>1</filters>
+    <scores>total</scores>
+  </tally>
+
+</tallies>

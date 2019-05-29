@@ -735,11 +735,11 @@ void draw_mesh_lines(Plot pl, ImageData& data)
     // Find the bounds along the second axis (accounting for low-D meshes).
     int ax2_min, ax2_max;
     if (axis_lines.second.size() > 0) {
-      double frac = (axis_lines.second.front() - ll_plot[ax2]) / width[ax2];
-      ax2_min = frac * pl.pixels_[1];
+      double frac = (axis_lines.second.back() - ll_plot[ax2]) / width[ax2];
+      ax2_min = (1.0 - frac) * pl.pixels_[1];
       if (ax2_min < 0) ax2_min = 0;
-      frac = (axis_lines.second.back() - ll_plot[ax2]) / width[ax2];
-      ax2_max = frac * pl.pixels_[1];
+      frac = (axis_lines.second.front() - ll_plot[ax2]) / width[ax2];
+      ax2_max = (1.0 - frac) * pl.pixels_[1];
       if (ax2_max > pl.pixels_[1]) ax2_max = pl.pixels_[1];
     } else {
       ax2_min = 0;
@@ -780,7 +780,7 @@ void draw_mesh_lines(Plot pl, ImageData& data)
     // Iterate across the second axis and draw lines.
     for (auto ax2_val : axis_lines.second) {
       double frac = (ax2_val - ll_plot[ax2]) / width[ax2];
-      int ax2_ind = frac * pl.pixels_[1];
+      int ax2_ind = (1.0 - frac) * pl.pixels_[1];
       for (int ax1_ind = ax1_min; ax1_ind < ax1_max; ++ax1_ind) {
         for (int plus = 0; plus <= pl.meshlines_width_; plus++) {
           if (ax2_ind+plus >= 0 && ax2_ind+plus < pl.pixels_[1])

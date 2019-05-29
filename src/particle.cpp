@@ -34,6 +34,14 @@ namespace openmc {
 //==============================================================================
 
 void
+LocalCoord::rotate(const std::vector<double>& rotation)
+{
+  this->r = this->r.rotate(rotation);
+  this->u = this->u.rotate(rotation);
+  this->rotated = true;
+}
+
+void
 LocalCoord::reset()
 {
   cell = C_NONE;

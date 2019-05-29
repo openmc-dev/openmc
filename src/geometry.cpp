@@ -182,9 +182,7 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
       // Apply rotation.
       if (!c.rotation_.empty()) {
-        coord.r = coord.r.rotate(c.rotation_);
-        coord.u = coord.u.rotate(c.rotation_);
-        coord.rotated = true;
+        coord.rotate(c.rotation_);
       }
 
       // Update the coordinate level and recurse.
@@ -207,9 +205,7 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
       // Apply rotation.
       if (!c.rotation_.empty()) {
-        coord.r = coord.r.rotate(c.rotation_);
-        coord.u = coord.u.rotate(c.rotation_);
-        coord.rotated = true;
+        coord.rotate(c.rotation_);
       }
 
       // Determine lattice indices.

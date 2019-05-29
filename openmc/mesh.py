@@ -77,7 +77,7 @@ class MeshBase(IDManagerMixin, metaclass=ABCMeta):
 
 
 class Mesh(MeshBase):
-    """A structured Cartesian mesh in one, two, or three dimensions
+    """A regular Cartesian mesh in one, two, or three dimensions
 
     Parameters
     ----------
@@ -92,10 +92,10 @@ class Mesh(MeshBase):
         Unique identifier for the mesh
     name : str
         Name of the mesh
-    type : str
-        Type of the mesh
     dimension : Iterable of int
         The number of mesh cells in each direction.
+    n_dimension : int
+        Number of mesh dimensions.
     lower_left : Iterable of float
         The lower-left corner of the structured mesh. If only two coordinate are
         given, it is assumed that the mesh is an x-y mesh.
@@ -114,15 +114,10 @@ class Mesh(MeshBase):
         super().__init__(mesh_id, name)
 
         # Initialize Mesh class attributes
-        self._type = 'regular'
         self._dimension = None
         self._lower_left = None
         self._upper_right = None
         self._width = None
-
-    @property
-    def type(self):
-        return self._type
 
     @property
     def dimension(self):
@@ -166,14 +161,6 @@ class Mesh(MeshBase):
             nx, = self.dimension
             return ((x,) for x in range(1, nx + 1))
 
-    @type.setter
-    def type(self, meshtype):
-        cv.check_type('type for mesh ID="{0}"'.format(self._id),
-                      meshtype, str)
-        cv.check_value('type for mesh ID="{0}"'.format(self._id),
-                       meshtype, ['regular'])
-        self._type = meshtype
-
     @dimension.setter
     def dimension(self, dimension):
         cv.check_type('mesh dimension', dimension, Iterable, Integral)
@@ -215,7 +202,6 @@ class Mesh(MeshBase):
 
         # Read and assign mesh properties
         mesh = cls(mesh_id)
-        mesh.type = group['type'][()].decode()
         mesh.dimension = group['dimension'][()]
         mesh.lower_left = group['lower_left'][()]
         mesh.upper_right = group['upper_right'][()]
@@ -269,7 +255,7 @@ class Mesh(MeshBase):
 
         element = ET.Element("mesh")
         element.set("id", str(self._id))
-        element.set("type", self._type)
+        element.set("type", "regular")
 
         subelement = ET.SubElement(element, "dimension")
         subelement.text = ' '.join(map(str, self._dimension))
@@ -418,12 +404,57 @@ class Mesh(MeshBase):
 
 
 class RectilinearMesh(MeshBase):
+    """A 3D rectilinear Cartesian mesh
+
+    Parameters
+    ----------
+    mesh_id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+    n_dimension : int
+        Number of mesh dimensions (always 3 for a RectilinearMesh).
+    x_grid : Iterable of float
+        Mesh boundary points along the x-axis.
+    y_grid : Iterable of float
+        Mesh boundary points along the y-axis.
+    z_grid : Iterable of float
+        Mesh boundary points along the z-axis.
+    indices : list of tuple
+        A list of mesh indices for each mesh element, e.g. [(1, 1, 1), (2, 1,
+        1), ...]
+
+    """
+
     def __init__(self, mesh_id=None, name=''):
         super().__init__(mesh_id, name)
+
+        self._x_grid = None
+        self._y_grid = None
+        self._z_grid = None
 
     @property
     def n_dimension(self):
         return 3
+
+    @property
+    def x_grid(self):
+        return self._x_grid
+
+    @property
+    def y_grid(self):
+        return self._y_grid
+
+    @property
+    def z_grid(self):
+        return self._z_grid
 
     @property
     def indices(self):
@@ -434,6 +465,21 @@ class RectilinearMesh(MeshBase):
                 for z in range(1, nz + 1)
                 for y in range(1, ny + 1)
                 for x in range(1, nx + 1))
+
+    @x_grid.setter
+    def x_grid(self, grid):
+        cv.check_type('mesh x_grid', grid, Iterable, Real)
+        self._x_grid = grid
+
+    @y_grid.setter
+    def y_grid(self, grid):
+        cv.check_type('mesh y_grid', grid, Iterable, Real)
+        self._y_grid = grid
+
+    @z_grid.setter
+    def z_grid(self, grid):
+        cv.check_type('mesh z_grid', grid, Iterable, Real)
+        self._z_grid = grid
 
     @classmethod
     def from_hdf5(cls, group):

@@ -1,4 +1,5 @@
-import numpy as np
+from math import sqrt
+
 import openmc
 
 from tests.testing_harness import PyAPITestHarness
@@ -13,7 +14,7 @@ class HexLatticeCoincidentTestHarness(PyAPITestHarness):
         materials.append(fuel_mat)
 
         matrix = openmc.Material()
-        matrix.set_density('atom/b-cm', 8.7742E-02)
+        matrix.set_density('atom/b-cm', 1.7742E-02)
         matrix.add_element('C', 1.0, 'ao')
         matrix.add_s_alpha_beta('c_Graphite')
         materials.append(matrix)
@@ -94,7 +95,7 @@ class HexLatticeCoincidentTestHarness(PyAPITestHarness):
         coolant_univ.add_cells(coolant_channel)
 
         half_width = assembly_pitch # cm
-        edge_length = (2./np.sqrt(3.0)) * half_width
+        edge_length = (2./sqrt(3.0)) * half_width
 
         inf_mat = openmc.Cell()
         inf_mat.fill = matrix
@@ -132,19 +133,19 @@ class HexLatticeCoincidentTestHarness(PyAPITestHarness):
         settings.run_mode = 'eigenvalue'
 
         source = openmc.Source()
-        corner_dist = np.sqrt(2) * pin_rad
+        corner_dist = sqrt(2) * pin_rad
         ll = [-corner_dist, -corner_dist, 0.0]
         ur = [corner_dist, corner_dist, 10.0]
         source.space = openmc.stats.Box(ll, ur)
         source.strength = 1.0
         settings.source = source
         settings.output = {'summary' : False}
-        settings.batches = 10
-        settings.inactive = 5
+        settings.batches = 5
+        settings.inactive = 2
         settings.particles = 1000
         settings.seed = 22
         settings.export_to_xml()
 
 def test_lattice_hex_coincident_surf():
-    harness = HexLatticeCoincidentTestHarness('statepoint.10.h5')
+    harness = HexLatticeCoincidentTestHarness('statepoint.5.h5')
     harness.main()

@@ -6,7 +6,10 @@
     <width>25 25</width>
     <pixels>200 200</pixels>
     <color id="1" rgb="255 0 0" /> <!-- Red -->
+    <!--
     <meshlines meshtype="entropy" linewidth="0" />
+    -->
+    <meshlines meshtype="tally" id="2" linewidth="2" />
   </plot>
 
   <plot id="2" basis="xz">

@@ -400,7 +400,7 @@ void read_settings_xml()
     SourceDistribution source {
       UPtrSpace{new SpatialPoint({0.0, 0.0, 0.0})},
       UPtrAngle{new Isotropic()},
-      UPtrDist{new Watt(0.988, 2.249e-6)}
+      UPtrDist{new Watt(0.988e6, 2.249e-6)}
     };
     model::external_sources.push_back(std::move(source));
   }

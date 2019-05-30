@@ -125,6 +125,7 @@ Constructing Tallies
    openmc.ZernikeRadialFilter
    openmc.ParticleFilter
    openmc.Mesh
+   openmc.RectilinearMesh
    openmc.Trigger
    openmc.TallyDerivative
    openmc.Tally

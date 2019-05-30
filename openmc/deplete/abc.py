@@ -8,6 +8,8 @@ from collections import namedtuple
 import os
 from pathlib import Path
 from abc import ABCMeta, abstractmethod
+from xml.etree import ElementTree as ET
+from warnings import warn
 
 from .chain import Chain
 
@@ -43,8 +45,9 @@ class TransportOperator(metaclass=ABCMeta):
     Parameters
     ----------
     chain_file : str, optional
-        Path to the depletion chain XML file.  Defaults to the
-        :envvar:`OPENMC_DEPLETE_CHAIN` environment variable if it exists.
+        Path to the depletion chain XML file.  Defaults to the file
+        listed under ``depletion_chain`` in
+        :envvar:`OPENMC_CROSS_SECTIONS` environment variable.
 
     Attributes
     ----------
@@ -62,8 +65,23 @@ class TransportOperator(metaclass=ABCMeta):
         if chain_file is None:
             chain_file = os.environ.get("OPENMC_DEPLETE_CHAIN", None)
             if chain_file is None:
-                raise IOError("No chain specified, either manually or in "
-                              "environment variable OPENMC_DEPLETE_CHAIN.")
+                xs_file = os.environ.get("OPENMC_CROSS_SECTIONS", None)
+                if xs_file is None:
+                    raise IOError(
+                        "OPENMC_CROSS_SECTIONS environment variable "
+                        "not set.")
+                root = ET.parse(xs_file).getroot()
+                node = root.find("depletion_chain")
+                if node is None:
+                    raise IOError(
+                        "No chain specified, either manually or "
+                        "under depletion_chain in environment variable "
+                        "OPENMC_CROSS_SECTIONS.")
+                chain_file = node.get("path")
+            else:
+                warn("Use of OPENMC_DEPLETE_CHAIN is deprecated in favor "
+                     "of adding depletion_chain to OPENMC_CROSS_SECTIONS",
+                     DeprecationWarning)
         self.chain = Chain.from_xml(chain_file)
 
     @abstractmethod

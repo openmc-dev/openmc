@@ -64,8 +64,9 @@ class Operator(TransportOperator):
     settings : openmc.Settings
         OpenMC Settings object
     chain_file : str, optional
-        Path to the depletion chain XML file.  Defaults to the
-        :envvar:`OPENMC_DEPLETE_CHAIN` environment variable if it exists.
+        Path to the depletion chain XML file.  Defaults to the file
+        listed under ``depletion_chain`` in
+        :envvar:`OPENMC_CROSS_SECTIONS` environment variable.
     prev_results : ResultsList, optional
         Results from a previous depletion calculation. If this argument is
         specified, the depletion calculation will start from the latest state

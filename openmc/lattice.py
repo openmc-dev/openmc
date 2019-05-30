@@ -142,7 +142,7 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
             pitch = group['pitch'][()]
             outer = group['outer'][()]
             if ('orientation' in group.keys()):
-               orientation = group['orientation'][()]
+               orientation = group['orientation'][()].decode()
             else:
                orientation = "oy"
 

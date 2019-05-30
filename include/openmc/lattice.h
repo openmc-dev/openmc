@@ -270,14 +270,14 @@ private:
       y, x
     };
   //! Fill universes_ vector for OY orientation
-  void fill_lattice_oy(std::vector<std::string> univ_words);
+  void fill_lattice_oy(const std::vector<std::string>& univ_words);
 
   //! Fill universes_ vector for OX orientation
-  void fill_lattice_ox(std::vector<std::string> univ_words);
+  void fill_lattice_ox(const std::vector<std::string>& univ_words);
 
   int n_rings_;                   //!< Number of radial tile positions
   int n_axial_;                   //!< Number of axial tile positions
-  Orientation orientation_;    //!< Flat side up (oy) vs. sharp side up (ox)
+  Orientation orientation_;       //!< Flat side up (oy) vs. sharp side up (ox)
   Position center_;               //!< Global center of lattice
   std::array<double, 2> pitch_;   //!< Lattice tile width and height
 };

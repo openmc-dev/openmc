@@ -27,9 +27,6 @@ enum class LatticeType {
   rect, hex
 };
 
-enum class HexOrientation {
-  oy, ox
-};
 
 //==============================================================================
 // Global variables
@@ -269,6 +266,9 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
 
 private:
+ enum class Orientation {
+      y, x
+    };
   //! Fill universes_ vector for OY orientation
   void fill_lattice_oy(std::vector<std::string> univ_words);
 
@@ -277,7 +277,7 @@ private:
 
   int n_rings_;                   //!< Number of radial tile positions
   int n_axial_;                   //!< Number of axial tile positions
-  HexOrientation orientation_;    //!< Flat side up (oy) vs. sharp side up (ox)
+  Orientation orientation_;    //!< Flat side up (oy) vs. sharp side up (ox)
   Position center_;               //!< Global center of lattice
   std::array<double, 2> pitch_;   //!< Lattice tile width and height
 };

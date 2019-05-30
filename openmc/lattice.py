@@ -1146,13 +1146,13 @@ class HexLattice(Lattice):
         else:
             alpha = y - x/sqrt(3.)
             i1 = floor(x/(sqrt(0.75) * self.pitch[0]))
-            i2 = floor(alpha/self.pitch[0]
+            i2 = floor(alpha/self.pitch[0])
         # Check four lattice elements to see which one is closest based on local
         # coordinates
-        numbers=[(i1, i2, iz), (i1 + 1, i2, iz), (i1, i2 + 1, iz), \
-                    (i1 + 1, i2 + 1, iz)]
+        numbersaxy=[(i1, i2, iz), (i1 + 1, i2, iz), (i1, i2 + 1, iz),
+                 (i1 + 1, i2 + 1, iz)]
         d_min = np.inf
-        for idx in numbers: 
+        for idx in numbersaxy: 
             p = self.get_local_coordinates(point, idx)
             d = p[0]**2 + p[1]**2
             if d < d_min:

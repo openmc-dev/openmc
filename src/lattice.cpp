@@ -933,10 +933,6 @@ const
     // y_l = y_g - (center + pitch_x*index_x + pitch_y*sin(30)*index_y)
     r.y -= (center_.y + (i_xyz[1] - n_rings_ + 1) * pitch_[0]
             + (i_xyz[0] - n_rings_ + 1) * pitch_[0] / 2.0);
-    if (is_3d_) {
-      r.z -= center_.z - (0.5 * n_axial_ - i_xyz[2] - 0.5) * pitch_[1];
-    }
-
   } else {
     // x_l = x_g - (center + pitch_x*index_a + pitch_y*sin(30)*index_y)
     r.x -= (center_.x + (i_xyz[0] - n_rings_ + 1) * pitch_[0]
@@ -944,10 +940,11 @@ const
     // y_l = y_g - (center + pitch_y*cos(30)*index_y)
     r.y -= center_.y
            + std::sqrt(3.0)/2.0 * (i_xyz[1] - n_rings_ + 1) * pitch_[0];
-    if (is_3d_) {
+  }
+  
+  if (is_3d_) {
       r.z -= center_.z - (0.5 * n_axial_ - i_xyz[2] - 0.5) * pitch_[1];
     }
-  }
 
   return r;
 }

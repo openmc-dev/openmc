@@ -266,8 +266,8 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
 
 private:
- enum class Orientation {
-      y, x
+  enum class Orientation {
+      oy, ox
     };
   //! Fill universes_ vector for OY orientation
   void fill_lattice_oy(const std::vector<std::string>& univ_words);

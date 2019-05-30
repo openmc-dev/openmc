@@ -444,15 +444,15 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
   if (check_for_node(lat_node, "orient")) {
     std::string orientation = get_node_value(lat_node, "orient");
     if (orientation == "OY") {
-      orientation_ = HexOrientation::oy;
+      orientation_ = Orientation::oy;
     } else if (orientation == "OX") {
-      orientation_ = HexOrientation::ox;
+      orientation_ = Orientation::ox;
     } else {
       fatal_error("Unrecognized orientation '" + orientation
                   + "' for lattice " + std::to_string(id_));
     }
   } else {
-    orientation_ = HexOrientation::oy;
+    orientation_ = Orientation::oy;
   }
 
   // Read the lattice center.
@@ -504,22 +504,18 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
   // the following code walks a set of index values across the skewed array
   // in a manner that matches the input order.  Note that i_x = 0, i_a = 0
   // or i_a = 0, i_y = 0 corresponds to the center of the hexagonal lattice.
-
   universes_.resize((2*n_rings_-1) * (2*n_rings_-1) * n_axial_, C_NONE);
-
-  if (orientation_ == HexOrientation::oy) {
+  if (orientation_ == Orientation::oy) {
     fill_lattice_oy(univ_words);
   } else {
     fill_lattice_ox(univ_words);
   }
-
-
 }
-
+  
 //==============================================================================
-
+  
 void
-HexLattice::fill_lattice_ox(std::vector<std::string> univ_words)
+HexLattice::fill_lattice_ox(const std::vector<std::string>& univ_words)
 {
   int input_index = 0;
   for (int m = 0; m < n_axial_; m++) {
@@ -572,7 +568,7 @@ HexLattice::fill_lattice_ox(std::vector<std::string> univ_words)
 //==============================================================================
 
 void
-HexLattice::fill_lattice_oy(std::vector<std::string> univ_words)
+HexLattice::fill_lattice_oy(const std::vector<std::string>& univ_words)
 {
   int input_index = 0;
   for (int m = 0; m < n_axial_; m++) {
@@ -712,7 +708,7 @@ const
   double beta_dir;
   double gamma_dir;
   double delta_dir;
-  if (orientation_ == HexOrientation::oy) {
+  if (orientation_ == Orientation::oy) {
     beta_dir = u.x * std::sqrt(3.0) / 2.0  + u.y / 2.0;
     gamma_dir = u.x * std::sqrt(3.0) / 2.0  - u.y / 2.0;
     delta_dir = u.y;
@@ -741,7 +737,7 @@ const
     r_t = get_local_position(r, i_xyz_t);
   }
   double beta;
-  if (orientation_ == HexOrientation::oy) {
+  if (orientation_ == Orientation::oy) {
     beta = r_t.x * std::sqrt(3.0) / 2.0 + r_t.y / 2.0;
   } else {
     beta = r_t.x;
@@ -765,7 +761,7 @@ const
     r_t = get_local_position(r, i_xyz_t);
   }
   double gamma;
-  if (orientation_ == HexOrientation::oy) {
+  if (orientation_ == Orientation::oy) {
     gamma = r_t.x * std::sqrt(3.0) / 2.0 - r_t.y / 2.0;
   } else {
     gamma = r_t.x  / 2.0 - r_t.y * std::sqrt(3.0) / 2.0;
@@ -792,7 +788,7 @@ const
     r_t = get_local_position(r, i_xyz_t);
   }
   double delta;
-  if (orientation_ == HexOrientation::oy) {
+  if (orientation_ == Orientation::oy) {
     delta =  r_t.y;
   } else {
     delta = r_t.x  / 2.0 + r_t.y * std::sqrt(3.0) / 2.0;
@@ -852,7 +848,7 @@ HexLattice::get_indices(Position r, Direction u) const
   }
 
   int i1, i2;
-  if (orientation_ == HexOrientation::oy) {
+  if (orientation_ == Orientation::oy) {
     // Convert coordinates into skewed bases.  The (x, alpha) basis is used to
     // find the index of the global coordinates to within 4 cells.
     double alpha = r_o.y - r_o.x / std::sqrt(3.0);
@@ -930,7 +926,7 @@ Position
 HexLattice::get_local_position(Position r, const std::array<int, 3> i_xyz)
 const
 {
-  if (orientation_ == HexOrientation::oy) {
+  if (orientation_ == Orientation::oy) {
     // x_l = x_g - (center + pitch_x*cos(30)*index_x)
     r.x -= center_.x
            + std::sqrt(3.0)/2.0 * (i_xyz[0] - n_rings_ + 1) * pitch_[0];
@@ -1010,7 +1006,7 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
   write_string(lat_group, "type", "hexagonal", false);
   write_dataset(lat_group, "n_rings", n_rings_);
   write_dataset(lat_group, "n_axial", n_axial_);
-  if (orientation_ == HexOrientation::oy) {
+  if (orientation_ == Orientation::oy) {
     write_string(lat_group, "orientation", "oy", false);
   } else {
     write_string(lat_group, "orientation", "ox", false);

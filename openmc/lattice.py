@@ -940,7 +940,7 @@ class HexLattice(Lattice):
         string = 'HexLattice\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tOrientation', '=\t', "OX" if self._hextype else "OY" )#//DR
+        string += '{0: <16}{1}{2}\n'.format('\tOrientation', '=\t', "OX" if self._hextype else "OY" )
         string += '{0: <16}{1}{2}\n'.format('\t# Rings', '=\t', self._num_rings)
         string += '{0: <16}{1}{2}\n'.format('\t# Axial', '=\t', self._num_axial)
         string += '{0: <16}{1}{2}\n'.format('\tCenter', '=\t',
@@ -1802,7 +1802,7 @@ class HexLattice(Lattice):
         # Join the rows together and return the string.
         return '\n'.join(rows)
     @staticmethod
-    def show_indices_ox(num_rings):#//DR
+    def show_indices_ox(num_rings):
         """Return a diagram of the hexagonal lattice with OX orientation layout with indices.
 
         This method can be used to show the proper indices to be used when

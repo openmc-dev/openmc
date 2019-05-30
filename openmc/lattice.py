@@ -36,7 +36,7 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
     outer : openmc.Universe
         A universe to fill all space outside the lattice
     universes : Iterable of Iterable of openmc.Universe
-        A two- or three-dimensional list/array of universes filling each element
+        A two-or three-dimensional list/array of universes filling each element
         of the lattice
 
     """
@@ -142,10 +142,9 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
             pitch = group['pitch'][()]
             outer = group['outer'][()]
             if ('orientation' in group):
-               orientation = group['orientation'][()].decode()
+                orientation = group['orientation'][()].decode()
             else:
-               orientation = "oy"
-
+                orientation = "y"
 
             universe_ids = group['universes'][()]
 
@@ -158,120 +157,119 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
             if outer >= 0:
                 lattice.outer = universes[outer]
             if (orientation.lower() == "oy"):
-               # Build array of Universe pointers for the Lattice.  Note that
-               # we need to convert between the HDF5's square array of
-               # (x, alpha, z) to the Python API's format of a ragged nested
-               # list of (z, ring, theta).
-               uarray = []
-               for z in range(n_axial):
-                   # Add a list for this axial level.
-                   uarray.append([])
-                   x = n_rings - 1
-                   a = 2*n_rings - 2
-                   for r in range(n_rings - 1, 0, -1):
-                       # Add a list for this ring.
-                       uarray[-1].append([])
+                # Build array of Universe pointers for the Lattice.  Note that
+                # we need to convert between the HDF5's square array of
+                # (x, alpha, z) to the Python API's format of a ragged nested
+                # list of (z, ring, theta).
+                uarray = []
+                for z in range(n_axial):
+                    # Add a list for this axial level.
+                    uarray.append([])
+                    x = n_rings - 1
+                    a = 2*n_rings - 2
+                    for r in range(n_rings - 1, 0, -1):
+                        # Add a list for this ring.
+                        uarray[-1].append([])
 
-                       # Climb down the top-right.
-                       for i in range(r):
-                           uarray[-1][-1].append(universe_ids[z, a, x])
-                           x += 1
-                           a -= 1
+                        # Climb down the top-right.
+                        for i in range(r):
+                            uarray[-1][-1].append(universe_ids[z, a, x])
+                            x += 1
+                            a -= 1
 
-                       # Climb down the right.
-                       for i in range(r):
-                           uarray[-1][-1].append(universe_ids[z, a, x])
-                           a -= 1
+                        # Climb down the right.
+                        for i in range(r):
+                            uarray[-1][-1].append(universe_ids[z, a, x])
+                            a -= 1
 
-                       # Climb down the bottom-right.
-                       for i in range(r):
-                           uarray[-1][-1].append(universe_ids[z, a, x])
-                           x -= 1
+                        # Climb down the bottom-right.
+                        for i in range(r):
+                            uarray[-1][-1].append(universe_ids[z, a, x])
+                            x -= 1
 
-                       # Climb up the bottom-left.
-                       for i in range(r):
-                           uarray[-1][-1].append(universe_ids[z, a, x])
-                           x -= 1
-                           a += 1
+                        # Climb up the bottom-left.
+                        for i in range(r):
+                            uarray[-1][-1].append(universe_ids[z, a, x])
+                            x -= 1
+                            a += 1
 
-                       # Climb up the left.
-                       for i in range(r):
-                           uarray[-1][-1].append(universe_ids[z, a, x])
-                           a += 1
+                        # Climb up the left.
+                        for i in range(r):
+                            uarray[-1][-1].append(universe_ids[z, a, x])
+                            a += 1
 
-                       # Climb up the top-left.
-                       for i in range(r):
-                           uarray[-1][-1].append(universe_ids[z, a, x])
-                           x += 1
+                        # Climb up the top-left.
+                        for i in range(r):
+                            uarray[-1][-1].append(universe_ids[z, a, x])
+                            x += 1
 
-                       # Move down to the next ring.
-                       a -= 1
+                        # Move down to the next ring.
+                        a -= 1
 
-                       # Convert the ids into Universe objects.
-                       uarray[-1][-1] = [universes[u_id]
-                                         for u_id in uarray[-1][-1]]
+                        # Convert the ids into Universe objects.
+                        uarray[-1][-1] = [universes[u_id]
+                                          for u_id in uarray[-1][-1]]
 
-                   # Handle the degenerate center ring separately.
-                   u_id = universe_ids[z, a, x]
-                   uarray[-1].append([universes[u_id]])
+                    # Handle the degenerate center ring separately.
+                    u_id = universe_ids[z, a, x]
+                    uarray[-1].append([universes[u_id]])
             else:
-               # Build array of Universe pointers for the Lattice.  Note that
-               # we need to convert between the HDF5's square array of
-               # (alpha, y, z) to the Python API's format of a ragged nested
-               # list of (z, ring, theta).
-               uarray = []
-               for z in range(n_axial):
-                   # Add a list for this axial level.
-                   uarray.append([])
-                   a = 2*n_rings - 2
-                   y = n_rings - 1
-                   for r in range(n_rings - 1, 0, -1):
-                       # Add a list for this ring.
-                       uarray[-1].append([])
+                # Build array of Universe pointers for the Lattice.  Note that
+                # we need to convert between the HDF5's square array of
+                # (alpha, y, z) to the Python API's format of a ragged nested
+                # list of (z, ring, theta).
+                uarray = []
+                for z in range(n_axial):
+                    # Add a list for this axial level.
+                    uarray.append([])
+                    a = 2*n_rings - 2
+                    y = n_rings - 1
+                    for r in range(n_rings - 1, 0, -1):
+                        # Add a list for this ring.
+                        uarray[-1].append([])
 
-                       # Climb up the top-left.
-                       for i in range(r):
-                           uarray[-1][-1].append(universe_ids[z, y, a])
-                           a -= 1
-                           y += 1
-                           
+                        # Climb up the top-left.
+                        for i in range(r):
+                            uarray[-1][-1].append(universe_ids[z, y, a])
+                            a -= 1
+                            y += 1
 
-                       # Climb the left.
-                       for i in range(r):
-                           uarray[-1][-1].append(universe_ids[z, y, a])
-                           a -= 1
+                        # Climb the left.
+                        for i in range(r):
+                            uarray[-1][-1].append(universe_ids[z, y, a])
+                            a -= 1
 
-                       # Climb down the bottom-left.
-                       for i in range(r):
-                           uarray[-1][-1].append(universe_ids[z, y, a])
-                           y -= 1
+                        # Climb down the bottom-left.
+                        for i in range(r):
+                            uarray[-1][-1].append(universe_ids[z, y, a])
+                            y -= 1
 
-                       # Climb down the bottom-right.
-                       for i in range(r):
-                           uarray[-1][-1].append(universe_ids[z, y, a])
-                           a += 1
-                           y -= 1
+                        # Climb down the bottom-right.
+                        for i in range(r):
+                            uarray[-1][-1].append(universe_ids[z, y, a])
+                            a += 1
+                            y -= 1
 
-                       # Climb up the right.
-                       for i in range(r):
-                           uarray[-1][-1].append(universe_ids[z, y, a])
-                           a += 1
+                        # Climb up the right.
+                        for i in range(r):
+                            uarray[-1][-1].append(universe_ids[z, y, a])
+                            a += 1
 
-                       # Climb up the top-right.
-                       for i in range(r):
-                           uarray[-1][-1].append(universe_ids[z, y, a])
-                           y += 1
+                        # Climb up the top-right.
+                        for i in range(r):
+                            uarray[-1][-1].append(universe_ids[z, y, a])
+                            y += 1
 
-                       # Move down to the next ring.
-                       a -= 1
+                        # Move down to the next ring.
+                        a -= 1
 
-                       # Convert the ids into Universe objects.
-                       uarray[-1][-1] = [universes[u_id]
-                                         for u_id in uarray[-1][-1]]
+                        # Convert the ids into Universe objects.
+                        uarray[-1][-1] = [universes[u_id]
+                                          for u_id in uarray[-1][-1]]
 
-                   # Handle the degenerate center ring separately.
-                   u_id = universe_ids[z, y, a]
-                   uarray[-1].append([universes[u_id]])
+                    # Handle the degenerate center ring separately.
+                    u_id = universe_ids[z, y, a]
+                    uarray[-1].append([universes[u_id]])
 
             # Add the universes to the lattice.
             if len(pitch) == 2:
@@ -407,7 +405,7 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
         ----------
         idx : Iterable of int
             Lattice element indices. For a rectangular lattice, the indices are
-            given in the :math:`(x,y)` or :math:`(x,y,z)` coordinate system. For
+            given in the :math:`(x,y)` or :math:`(x,y,z)` coordinate system.For
             hexagonal lattices, they are given in the :math:`x,\alpha` or
             :math:`x,\alpha,z` coordinate systems.
 
@@ -709,7 +707,8 @@ class RectLattice(Lattice):
         return (x, y, z)
 
     def get_universe_index(self, idx):
-        """Return index in the universes array corresponding to a lattice element index
+        """Return index in the universes array corresponding 
+        to a lattice element index
 
         Parameters
         ----------
@@ -853,7 +852,8 @@ class RectLattice(Lattice):
         lat_id = int(get_text(elem, 'id'))
         name = get_text(elem, 'name')
         lat = cls(lat_id, name)
-        lat.lower_left = [float(i) for i in get_text(elem, 'lower_left').split()]
+        lat.lower_left = [float(i) 
+                          for i in get_text(elem, 'lower_left').split()]
         lat.pitch = [float(i) for i in get_text(elem, 'pitch').split()]
         outer = get_text(elem, 'outer')
         if outer is not None:
@@ -863,7 +863,7 @@ class RectLattice(Lattice):
         dimension = get_text(elem, 'dimension').split()
         shape = np.array(dimension, dtype=int)[::-1]
         uarray = np.array([get_universe(int(i)) for i in
-                            get_text(elem, 'universes').split()])
+                           get_text(elem, 'universes').split()])
         uarray.shape = shape
         lat.universes = uarray
         return lat
@@ -883,7 +883,7 @@ class HexLattice(Lattice):
     that when universes are assigned to lattice elements using the
     :attr:`HexLattice.universes` property, the array indices do not correspond
     to natural indices.
-    
+
     Parameters
     ----------
     lattice_id : int, optional
@@ -942,7 +942,9 @@ class HexLattice(Lattice):
         string = 'HexLattice\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tOrientation', '=\t', "OX" if (self._orientation== 'x') else "OY" )
+        string += '{0: <16}{1}{2}\n'.format('\tOrientation', '=\t',
+                                            "OX" if (self._orientation == 'x')
+                                             else "OY")
         string += '{0: <16}{1}{2}\n'.format('\t# Rings', '=\t', self._num_rings)
         string += '{0: <16}{1}{2}\n'.format('\t# Axial', '=\t', self._num_axial)
         string += '{0: <16}{1}{2}\n'.format('\tCenter', '=\t',
@@ -970,11 +972,11 @@ class HexLattice(Lattice):
     @property
     def num_rings(self):
         return self._num_rings
-    
+
     @property
     def orientation(self):
         return self._orientation
-    
+
     @property
     def num_axial(self):
         return self._num_axial
@@ -1031,7 +1033,7 @@ class HexLattice(Lattice):
     @orientation.setter
     def orientation(self, orientation):
         cv.check_value('orientation', orientation.lower(), ('ox', 'oy'))
-        self._orientation = orientation.lower()       
+        self._orientation = orientation.lower()
 
     @Lattice.pitch.setter
     def pitch(self, pitch):
@@ -1078,7 +1080,7 @@ class HexLattice(Lattice):
                 # Check the center ring.
                 if len(axial_slice[-1]) != 1:
                     msg = 'HexLattice ID={0:d} has the wrong number of ' \
-                          'elements in the innermost ring.  Only 1 element is ' \
+                          'elements in the innermost ring.Only 1 element is ' \
                           'allowed in the innermost ring.'.format(self._id)
                     raise ValueError(msg)
 
@@ -1086,8 +1088,8 @@ class HexLattice(Lattice):
                 for r in range(self._num_rings-1):
                     if len(axial_slice[r]) != 6*(self._num_rings - 1 - r):
                         msg = 'HexLattice ID={0:d} has the wrong number of ' \
-                              'elements in ring number {1:d} (counting from the '\
-                              'outermost ring).  This ring should have {2:d} ' \
+                              'elements in ring number{1:d}(counting from the '\
+                              'outermost ring). This ring should have {2:d} ' \
                               'elements.'.format(self._id, r,
                                                  6*(self._num_rings - 1 - r))
                         raise ValueError(msg)
@@ -1148,9 +1150,10 @@ class HexLattice(Lattice):
         # Check four lattice elements to see which one is closest based on local
         # coordinates
         indices = [(i1, i2, iz), (i1 + 1, i2, iz), (i1, i2 + 1, iz),
-            (i1 + 1, i2 + 1, iz)]
+                   (i1 + 1, i2 + 1, iz)]
         d_min = np.inf
-        for idx in indices: 
+
+        for idx in indices:
             p = self.get_local_coordinates(point, idx)
             d = p[0]**2 + p[1]**2
             if d < d_min:
@@ -1168,7 +1171,7 @@ class HexLattice(Lattice):
         point : Iterable of float
             Cartesian coordinates of point
         idx : Iterable of int
-            Indices of lattice element in :math:`(x,\alpha,z)` 
+            Indices of lattice element in :math:`(x,\alpha,z)`
             or :math:`(\alpha,y,z)` bases
 
         Returns
@@ -1179,40 +1182,42 @@ class HexLattice(Lattice):
 
         """
         if self._orientation == 'x':
-            x = point[0] - (self.center[0] + self.pitch[0]*idx[0] + 
+            x = point[0] - (self.center[0] + self.pitch[0]*idx[0] +
                             0.5*self.pitch[0]*idx[1])
-            y = point[1] - (self.center[1] + 
+            y = point[1] - (self.center[1] +
                             sqrt(0.75)*self.pitch[0]*idx[1])
         else:
-            x = point[0] - (self.center[0] 
+            x = point[0] - (self.center[0]
                             + sqrt(0.75)*self.pitch[0]*idx[0])
-            y = point[1] - (self.center[1] 
+            y = point[1] - (self.center[1]
                             + (0.5*idx[0] + idx[1])*self.pitch[0])
-            
+
         if self._num_axial is None:
             z = point[2]
         else:
             z = point[2] - (self.center[2] + (idx[2] + 0.5 - 0.5*self.num_axial)*
                             self.pitch[1])
         return (x, y, z)
-                       
+
     def get_universe_index(self, idx):
-        r"""Return index in the universes array corresponding to a lattice element index
+        r"""Return index in the universes array corresponding
+        to a lattice element index
 
         Parameters
         ----------
         idx : Iterable of int
             Lattice element indices in the :math:`(x,\alpha,z)` coordinate
-            system in 'OY' orientation case, or indices in the :math:`(\alpha,y,z)` coordinate
-            system in 'OX' one 
+            system in 'OY' orientation case, or indices in the
+            :math:`(\alpha,y,z)` coordinate system in 'OX' one
 
         Returns
         -------
             2- or 3-tuple of int
-            Indices used when setting the :attr:`HexLattice.universes` property
+            Indices used when setting the :attr:`HexLattice.universes`
+            property
 
         """
-        
+
         # First we determine which ring the index corresponds to.
         x = idx[0]
         a = idx[1]
@@ -1231,23 +1236,23 @@ class HexLattice(Lattice):
                 i_within = 3*g - x
             else:
                 i_within = 5*g - z
-                
+
         if (self._orientation == 'x') and (i_within > 0):
             i_within = 6*(self._num_rings - i_ring - 1) - i_within_
-            
+
         if self.num_axial is None:
             return (i_ring, i_within)
         else:
             return (idx[2], i_ring, i_within)
-                       
+
     def is_valid_index(self, idx):
         r"""Determine whether lattice element index is within defined range
 
         Parameters
         ----------
         idx : Iterable of int
-            Lattice element indices in the both :math:`(x,\alpha,z)` and :math:`(\alpha,y,z)` coordinate
-            system
+            Lattice element indices in the both :math:`(x,\alpha,z)`
+            and :math:`(\alpha,y,z)` coordinate system
 
         Returns
         -------
@@ -1291,7 +1296,7 @@ class HexLattice(Lattice):
 
         lattice_subelement.set("n_rings", str(self._num_rings))
         # If orientation is "OX" export it to XML
-        if self._orientation== 'x':
+        if self._orientation == 'x':
             lattice_subelement.set("orient", "OX")
 
         if self._num_axial is not None:
@@ -1377,13 +1382,13 @@ class HexLattice(Lattice):
 
         # Create empty nested lists for one axial level
         univs = [[None for _ in range(max(6*(n_rings - 1 - r), 1))]
-                    for r in range(n_rings)]
+                  for r in range(n_rings)]
         if n_axial > 1:
             univs = [deepcopy(univs) for i in range(n_axial)]
 
         # Get flat array of universes numbers
         uarray = np.array([get_universe(int(i)) for i in
-                            get_text(elem, 'universes').split()])
+                           get_text(elem, 'universes').split()])
 
         # Fill nested lists
         j = 0
@@ -1415,6 +1420,7 @@ class HexLattice(Lattice):
                 j += 1
         lat.universes = univs
         return lat
+
     def _repr_axial_slice(self, universes):
         """Return string representation for the given 2D group of universes.
 
@@ -1422,13 +1428,14 @@ class HexLattice(Lattice):
         each sub-list represents a single ring.  The first list should be the
         outer ring.
         """
-        if self._orientation== 'x':
+        if self._orientation == 'x':
             return self._repr_axial_slice_ox(universes)
         else:
             return self._repr_axial_slice_oy(universes)
 
     def _repr_axial_slice_ox(self, universes):
-        """Return string representation for the given 2D group of universes in 'OX' orientation case.
+        """Return string representation for the given 2D group of universes 
+        in 'OX' orientation case.
 
         The 'universes' argument should be a list of lists of universes where
         each sub-list represents a single ring.  The first list should be the
@@ -1523,13 +1530,14 @@ class HexLattice(Lattice):
         for y in range(self._num_rings - 1):
             rows[y] = (self._num_rings - 1 - y)*pad + rows[y]
             rows[-1 - y] = (self._num_rings - 1 - y)*pad + rows[-1 - y]
-            
+
         # Join the rows together and return the string.
         universe_ids = '\n'.join(rows)
         return universe_ids
-    
+
     def _repr_axial_slice_oy(self, universes):
-        """Return string representation for the given 2D group of universes in 'OY' orientation case..
+        """Return string representation for the given 2D group of universes in 
+        'OY' orientation case..
 
         The 'universes' argument should be a list of lists of universes where
         each sub-list represents a single ring.  The first list should be the
@@ -1635,7 +1643,7 @@ class HexLattice(Lattice):
         # Join the rows together and return the string.
         universe_ids = '\n'.join(rows)
         return universe_ids
-    
+
     def _show_indices_y(num_rings):
         """Return a diagram of the hexagonal lattice layout with indices.
 
@@ -1738,24 +1746,25 @@ class HexLattice(Lattice):
 
         # Join the rows together and return the string.
         return '\n'.join(rows)
-    
+
     def _show_indices_x(num_rings):
-        """Return a diagram of the hexagonal lattice with OX orientation layout with indices.
+        """Return a diagram of the hexagonal lattice with OX orientation 
+        layout with indices.
 
         This method can be used to show the proper indices to be used when
-        setting the :attr:`HexLattice.universes` property. For example, running
+        setting the :attr:`HexLattice.universes` property. For example,running
         this method with num_rings=3 will return the similar diagram::
 
                     (0, 4)      (0, 3)      (0, 2)
-             
+
               (0, 5)      (1, 2)      (1, 1)      (0, 1)
-        
+
          (0, 6)      (1, 3)      (2, 0)      (1, 0)      (0, 0)
 
                (0, 7)      (1, 4)      (1, 5)      (0,11)
 
                     (0, 8)      (0, 9)      (0,10)
-                    
+
         Parameters
         ----------
         num_rings : int
@@ -1798,12 +1807,12 @@ class HexLattice(Lattice):
 
             for i in range(r):
                 # Climb left the top-left.
-                rows[y].insert(0,str_form.format(r_prime, theta))
+                rows[y].insert(0, str_form.format(r_prime, theta))
                 theta += 1
 
             for i in range(r):
                 # Climb down the middle left.
-                rows[y].insert(0,str_form.format(r_prime, theta))
+                rows[y].insert(0, str_form.format(r_prime, theta))
                 y -= 1
                 theta += 1
 
@@ -1834,11 +1843,11 @@ class HexLattice(Lattice):
 
         # Join the rows together and return the string.
         return '\n\n'.join(rows)
-    
+
     @staticmethod
     def show_indices(num_rings, orientation="y"):
         """Return a diagram of the hexagonal lattice layout with indices.
-        
+
         Parameters
         ----------
         num_rings : int
@@ -1857,5 +1866,3 @@ class HexLattice(Lattice):
             return self._show_indices_x(num_rings)
         else:
             return self._show_indices_y(num_rings)
-    
-

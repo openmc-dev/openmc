@@ -136,15 +136,13 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
             lattice.universes = uarray
 
         elif lattice_type == 'hexagonal':
-
             n_rings = group['n_rings'][()]
             n_axial = group['n_axial'][()]
             center = group['center'][()]
             pitch = group['pitch'][()]
             outer = group['outer'][()]
-            #DR Temp added for compatibility with previous version
             if ('orientation' in group.keys()):
-               orientation = group['orientation'].value
+               orientation = group['orientation'][()]
             else:
                orientation = "oy"
 
@@ -155,7 +153,7 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
             lattice = openmc.HexLattice(lattice_id, name)
             lattice.center = center
             lattice.pitch = pitch
-
+            lattice.orientation = orientation
             # If the Universe specified outer the Lattice is not void
             if outer >= 0:
                 lattice.outer = universes[outer]
@@ -880,11 +878,11 @@ class HexLattice(Lattice):
 
     Most methods for this class use a natural indexing scheme wherein elements
     are assigned an index corresponding to their position relative to skewed
-    :math:`(x,\alpha,z)` - OY orientation or :math:`(\alpha,y,z)` - OX orientation //DR
-    axes as described fully in :ref:`hexagonal_indexing`. However, note that when 
-    universes are assigned to lattice elements using the :attr:`HexLattice.universes` property, 
-    the array indices do not correspond to natural indices.
-
+    :math:`(x,\alpha,z)` or :math:`(\alpha,y,z)` bases, depending on the lattice
+    orientation, as described fully in :ref:`hexagonal_indexing`. However, note
+    that when universes are assigned to lattice elements using the
+    :attr:`HexLattice.universes` property, the array indices do not correspond
+    to natural indices.
     Parameters
     ----------
     lattice_id : int, optional
@@ -921,7 +919,7 @@ class HexLattice(Lattice):
         from the outermost ring), and i is the index with a ring starting from
         the top and proceeding clockwise.
     orientation : str by default 'OY' orientation of main lattice diagonal another option
-     - 'OX'//DR
+        - 'OX'
     num_rings : int
         Number of radial ring positions in the xy-plane
     num_axial : int
@@ -970,12 +968,14 @@ class HexLattice(Lattice):
     @property
     def num_rings(self):
         return self._num_rings
+    
     @property
-    def orientation(self):#//DR
+    def orientation(self):
         if self._hextype:
            return "OX"
         else:
            return "OY"
+    
     @property
     def num_axial(self):
         return self._num_axial
@@ -1031,7 +1031,7 @@ class HexLattice(Lattice):
 
     @orientation.setter
     def orientation(self, orientation):
-        cv.check_type('orientation', orientation, str)
+        cv.check_value('orientation', orientation.lower(), ('ox', 'oy'))
         if orientation.lower() == "ox":
            self._hextype = 1       
 
@@ -1125,7 +1125,7 @@ class HexLattice(Lattice):
         -------
         3-tuple of int
             Indices of corresponding lattice element in :math:`(x,\alpha,z)`
-            or :math:`(\alpha,y,z)`basesis
+            or :math:`(\alpha,y,z)`bases
         numpy.ndarray
             Carestian coordinates of the point in the corresponding lattice
             element coordinate system
@@ -1139,27 +1139,20 @@ class HexLattice(Lattice):
         else:
             z = point[2] - self.center[2]
             iz = floor(z/self.pitch[1] + 0.5*self.num_axial)
-        if self._hextype:#//DR
-           alpha = y - x*sqrt(3.)
-           ix = 0
-           ia = floor(-alpha/(sqrt(3.0) * self.pitch[0]))
-           iy = floor(y/(sqrt(0.75) * self.pitch[0]))
+        if self._hextype:
+            alpha = y - x*sqrt(3.)
+            i1 = floor(-alpha/(sqrt(3.0) * self.pitch[0]))
+            i2 = floor(y/(sqrt(0.75) * self.pitch[0]))
         else:
-           alpha = y - x/sqrt(3.)
-           ix = floor(x/(sqrt(0.75) * self.pitch[0]))
-           ia = floor(alpha/self.pitch[0])
-           iy = 0
-           
-
+            alpha = y - x/sqrt(3.)
+            i1 = floor(x/(sqrt(0.75) * self.pitch[0]))
+            i2 = floor(alpha/self.pitch[0]
         # Check four lattice elements to see which one is closest based on local
         # coordinates
-        #//DR
-        numbersOY=[(ix, ia, iz), (ix + 1, ia, iz), (ix, ia + 1, iz), \
-                    (ix + 1, ia + 1, iz)]# in case OY default orientation
-        numbersOX=[(ia, iy, iz), (ia + 1, iy, iz), (ia, iy + 1, iz), \
-                    (ia + 1, iy + 1, iz)]# in case OX orientation
+        numbers=[(i1, i2, iz), (i1 + 1, i2, iz), (i1, i2 + 1, iz), \
+                    (i1 + 1, i2 + 1, iz)]
         d_min = np.inf
-        for idx in (numbersOX if self._hextype else numbersOY): #//DR
+        for idx in numbers: 
             p = self.get_local_coordinates(point, idx)
             d = p[0]**2 + p[1]**2
             if d < d_min:
@@ -1187,12 +1180,16 @@ class HexLattice(Lattice):
             system
 
         """
-        if self._hextype:#//DR
-           x = point[0] - (self.center[0] + self.pitch[0]*idx[0] + 0.5*self.pitch[0]*idx[1])
-           y = point[1] - (self.center[1] + (sqrt(0.75)*self.pitch[0]*idx[1]))
+        if self._hextype:
+            x = point[0] - (self.center[0] + self.pitch[0]*idx[0] + 
+                            0.5*self.pitch[0]*idx[1])
+            y = point[1] - (self.center[1] + 
+                            (sqrt(0.75)*self.pitch[0]*idx[1]))
         else:
-           x = point[0] - (self.center[0] + sqrt(0.75)*self.pitch[0]*idx[0])
-           y = point[1] - (self.center[1] + (0.5*idx[0] + idx[1])*self.pitch[0])
+            x = point[0] - (self.center[0] 
+                            + sqrt(0.75)*self.pitch[0]*idx[0])
+            y = point[1] - (self.center[1] 
+                            + (0.5*idx[0] + idx[1])*self.pitch[0])
 
         if self._num_axial is None:
             z = point[2]
@@ -1200,7 +1197,8 @@ class HexLattice(Lattice):
             z = point[2] - (self.center[2] + (idx[2] + 0.5 - 0.5*self.num_axial)*
                             self.pitch[1])
         return (x, y, z)
-    def get_universe_index(self, idx): #//DR
+                       
+    def get_universe_index(self, idx):
         r"""Return index in the universes array corresponding to a lattice element index
 
         Parameters
@@ -1217,10 +1215,11 @@ class HexLattice(Lattice):
 
         """
         if self._hextype:
-           return self.get_universe_index_ox(idx)
+           return self._get_universe_index_ox(idx)
         else:
-           return self.get_universe_index_oy(idx)
-    def get_universe_index_oy(self, idx):#//DR
+           return self._get_universe_index_oy(idx)
+                       
+    def _get_universe_index_oy(self, idx):
         r"""Return index in the universes array corresponding to a lattice element index
 
         Parameters
@@ -1261,7 +1260,7 @@ class HexLattice(Lattice):
             return (idx[2], i_ring, i_within)
 
 
-    def get_universe_index_ox(self, idx):#//DR
+    def _get_universe_index_ox(self, idx):
         r"""Return index in the universes array corresponding to a lattice element index
             numeration opposite clockwise
 

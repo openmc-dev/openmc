@@ -56,7 +56,8 @@ class HexLatticeOXTestHarness(PyAPITestHarness):
         outfcell.region = +cylfuelout
         outfcell.fill = coolant
         #Fuel universe
-        fuel_ch_univ = openmc.Universe(universe_id=1,name="Fuel channel",cells=[infcell, clfcell,outfcell])  
+        fuel_ch_univ = openmc.Universe(universe_id=1,name="Fuel channel",
+        cells=[infcell, clfcell,outfcell])  
   
         #Central tube surfaces
         cyltubein = openmc.ZCylinder(surface_id=3,r=0.45)
@@ -74,7 +75,8 @@ class HexLatticeOXTestHarness(PyAPITestHarness):
         outctcell.region = +cyltubeout
         outctcell.fill = coolant
         #Central tubel universe
-        tube_ch_univ = openmc.Universe(universe_id=2,name="Central tube channel",cells=[inctcell, clctcell,outctcell])    
+        tube_ch_univ = openmc.Universe(universe_id=2,name="Central tube channel",
+        cells=[inctcell, clctcell,outctcell])    
 
         #Absorber tube surfaces
         cylabsin = openmc.ZCylinder(surface_id=5,r=0.35)
@@ -102,11 +104,14 @@ class HexLatticeOXTestHarness(PyAPITestHarness):
         outabscell.region = +cylabsclout
         outabscell.fill = coolant
         #Absorber tube universe
-        abs_ch_univ = openmc.Universe(universe_id=3,name="Central tube channel",cells=[inabscell,clabscell,interabscell,clatcell,outabscell])
+        abs_ch_univ = openmc.Universe(universe_id=3,name="Central tube channel",\
+        cells=[inabscell,clabscell,interabscell,clatcell,outabscell])
         #Assembly surfaces
         edge_length = (1./np.sqrt(3.0)) * hexagonal_pitch 
-        fuel_bottom = openmc.ZPlane(surface_id=9,z0=0.0, boundary_type = 'reflective')
-        fuel_top = openmc.ZPlane(surface_id=10,z0=length, boundary_type = 'reflective')
+        fuel_bottom = openmc.ZPlane(surface_id=9,z0=0.0,
+        boundary_type = 'reflective')
+        fuel_top = openmc.ZPlane(surface_id=10,z0=length, 
+        boundary_type = 'reflective')
         # a hex surface for the core to go inside of
         hexprism = openmc.model.get_hexagonal_prism(edge_length=edge_length,
                                                     origin=(0.0, 0.0),

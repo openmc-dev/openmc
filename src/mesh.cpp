@@ -1686,7 +1686,7 @@ UnstructuredMesh::bins_crossed(const Particle* p,
     moab::EntityHandle last_r_tet = get_tet(last_r + u * track_len * 0.5);
     if (last_r_tet) {
       bins.push_back(get_bin_from_ent_handle(last_r_tet));
-      lengths.push_back(1.0 / tet_volume(last_r_tet));
+      lengths.push_back(1.0);
     }
     return;
   }
@@ -1704,7 +1704,7 @@ UnstructuredMesh::bins_crossed(const Particle* p,
   // if there are no other hits, there is only one segment to tally
   if (hits.size() == 0 && tet) {
     bins.push_back(get_bin_from_ent_handle(tet));
-    lengths.push_back(1.0 / tet_volume(tet));
+    lengths.push_back(1.0);
     return;
   }
 
@@ -1713,7 +1713,7 @@ UnstructuredMesh::bins_crossed(const Particle* p,
     // score in this tet if one was found
     if (tet) {
       bins.push_back(get_bin_from_ent_handle(tet));
-      lengths.push_back((hit.first - last_dist) / (track_len * tet_volume(tet)));
+      lengths.push_back((hit.first - last_dist) / track_len);
     } else {
       // if in the loop, we should always find a tet
       fatal_error("No tet found for location between trianle hits");
@@ -1740,7 +1740,7 @@ UnstructuredMesh::bins_crossed(const Particle* p,
     tet = get_tet(last_r + u * (track_len + hits.back().first) / 2.0);
     if (tet) {
       bins.push_back(get_bin_from_ent_handle(tet));
-      lengths.push_back((track_len - hits.back().first) / (track_len* tet_volume(tet)));
+      lengths.push_back((track_len - hits.back().first) / track_len);
     }
   }
 
@@ -1753,7 +1753,7 @@ UnstructuredMesh::bins_crossed(const Particle* p,
   //   moab::EntityHandle last_r_tet =get_tet((r0 + r1) * 0.5);
   //   if (last_r_tet) {
   //     bins.push_back(get_bin_from_ent_handle(last_r_tet));
-  //     lengths.push_back(1.0 / tet_volume(last_r_tet));
+  //     lengths.push_back(1.0);
   //   }
   //   return;
   // }
@@ -1772,7 +1772,7 @@ UnstructuredMesh::bins_crossed(const Particle* p,
   //     continue;
   //   }
   //   int bin = get_bin_from_ent_handle(tet);
-  //   double tally_val = (hit.first - prev_int_dist) / (track_len * tet_volume(tet));
+  //   double tally_val = (hit.first - prev_int_dist) / track_len);
   //   if (tally_val < 0.0) {
   //     fatal_error("Negative score applied to tally");
   //   }
@@ -1787,7 +1787,7 @@ UnstructuredMesh::bins_crossed(const Particle* p,
   //   tet = get_tet(last_r + u * (track_len + hits.back().first) / 2.0);
   //   if (tet) {
   //     bins.push_back(get_bin_from_ent_handle(tet));
-  //     double tally_val = (track_len - hits.back().first) / (track_len * tet_volume(tet));
+  //     double tally_val = (track_len - hits.back().first) / track_len);
   //     lengths.push_back(tally_val);
   //   }
   // }

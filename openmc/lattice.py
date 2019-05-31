@@ -707,7 +707,7 @@ class RectLattice(Lattice):
         return (x, y, z)
 
     def get_universe_index(self, idx):
-        """Return index in the universes array corresponding 
+        """Return index in the universes array corresponding
         to a lattice element index
 
         Parameters
@@ -852,7 +852,7 @@ class RectLattice(Lattice):
         lat_id = int(get_text(elem, 'id'))
         name = get_text(elem, 'name')
         lat = cls(lat_id, name)
-        lat.lower_left = [float(i) 
+        lat.lower_left = [float(i)
                           for i in get_text(elem, 'lower_left').split()]
         lat.pitch = [float(i) for i in get_text(elem, 'pitch').split()]
         outer = get_text(elem, 'outer')
@@ -943,8 +943,8 @@ class HexLattice(Lattice):
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
         string += '{0: <16}{1}{2}\n'.format('\tOrientation', '=\t',
-                                            "OX" if (self._orientation == 'x')
-                                             else "OY")
+                                            "x" if (self._orientation == 'x')
+                                            else "y")
         string += '{0: <16}{1}{2}\n'.format('\t# Rings', '=\t', self._num_rings)
         string += '{0: <16}{1}{2}\n'.format('\t# Axial', '=\t', self._num_axial)
         string += '{0: <16}{1}{2}\n'.format('\tCenter', '=\t',
@@ -1032,7 +1032,7 @@ class HexLattice(Lattice):
 
     @orientation.setter
     def orientation(self, orientation):
-        cv.check_value('orientation', orientation.lower(), ('ox', 'oy'))
+        cv.check_value('orientation', orientation.lower(), ('x', 'y'))
         self._orientation = orientation.lower()
 
     @Lattice.pitch.setter
@@ -1382,7 +1382,7 @@ class HexLattice(Lattice):
 
         # Create empty nested lists for one axial level
         univs = [[None for _ in range(max(6*(n_rings - 1 - r), 1))]
-                  for r in range(n_rings)]
+                 for r in range(n_rings)]
         if n_axial > 1:
             univs = [deepcopy(univs) for i in range(n_axial)]
 
@@ -1434,7 +1434,7 @@ class HexLattice(Lattice):
             return self._repr_axial_slice_oy(universes)
 
     def _repr_axial_slice_ox(self, universes):
-        """Return string representation for the given 2D group of universes 
+        """Return string representation for the given 2D group of universes
         in 'OX' orientation case.
 
         The 'universes' argument should be a list of lists of universes where
@@ -1536,7 +1536,7 @@ class HexLattice(Lattice):
         return universe_ids
 
     def _repr_axial_slice_oy(self, universes):
-        """Return string representation for the given 2D group of universes in 
+        """Return string representation for the given 2D group of universes in
         'OY' orientation case..
 
         The 'universes' argument should be a list of lists of universes where
@@ -1644,6 +1644,7 @@ class HexLattice(Lattice):
         universe_ids = '\n'.join(rows)
         return universe_ids
 
+    @staticmethod
     def _show_indices_y(num_rings):
         """Return a diagram of the hexagonal lattice layout with indices.
 
@@ -1747,8 +1748,9 @@ class HexLattice(Lattice):
         # Join the rows together and return the string.
         return '\n'.join(rows)
 
+    @staticmethod
     def _show_indices_x(num_rings):
-        """Return a diagram of the hexagonal lattice with OX orientation 
+        """Return a diagram of the hexagonal lattice with OX orientation
         layout with indices.
 
         This method can be used to show the proper indices to be used when
@@ -1862,7 +1864,7 @@ class HexLattice(Lattice):
 
         """
 
-        if self._orientation == 'x':
-            return self._show_indices_x(num_rings)
+        if orientation == 'x':
+            return HexLattice._show_indices_x(num_rings)
         else:
-            return self._show_indices_y(num_rings)
+            return HexLattice._show_indices_y(num_rings)

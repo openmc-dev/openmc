@@ -1885,8 +1885,18 @@ UnstructuredMesh::compute_barycentric_data(const moab::Range& all_tets) {
 
 // TODO: write this function
 void
-UnstructuredMesh::to_hdf5(hid_t group) const {
+UnstructuredMesh::to_hdf5(hid_t group) const
+{
+    hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
 
+    write_dataset(mesh_group, "type", "unstructured");
+    std::vector<double> tet_vols;
+    for (const auto& eh : ehs_) {
+      tet_vols.emplace_back(tet_volume(eh));
+    }
+    write_dataset(mesh_group, "volumes", tet_vols);
+
+    close_group(mesh_group);
 }
 
 bool

@@ -440,19 +440,19 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
     is_3d_ = false;
   }
 
-  // Read the lattice orientation.  Default to OY.
-  if (check_for_node(lat_node, "orient")) {
-    std::string orientation = get_node_value(lat_node, "orient");
-    if (orientation == "OY") {
-      orientation_ = Orientation::oy;
-    } else if (orientation == "OX") {
-      orientation_ = Orientation::ox;
+  // Read the lattice orientation.  Default to 'y'.
+  if (check_for_node(lat_node, "orientation")) {
+    std::string orientation = get_node_value(lat_node, "orientation");
+    if (orientation == "y") {
+      orientation_ = Orientation::y;
+    } else if (orientation == "x") {
+      orientation_ = Orientation::x;
     } else {
       fatal_error("Unrecognized orientation '" + orientation
                   + "' for lattice " + std::to_string(id_));
     }
   } else {
-    orientation_ = Orientation::oy;
+    orientation_ = Orientation::y;
   }
 
   // Read the lattice center.
@@ -497,25 +497,25 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
 
   // Parse the universes.
   // Universes in hexagonal lattices are stored in a manner that represents
-  // a skewed coordinate system: (x, alpha) in case of OY orientation
-  // and (alpha,y) in OX one rather than (x, y).  There is
+  // a skewed coordinate system: (x, alpha) in case of 'y' orientation
+  // and (alpha,y) in 'x' one rather than (x, y).  There is
   // no obvious, direct relationship between the order of universes in the
   // input and the order that they will be stored in the skewed array so
   // the following code walks a set of index values across the skewed array
   // in a manner that matches the input order.  Note that i_x = 0, i_a = 0
   // or i_a = 0, i_y = 0 corresponds to the center of the hexagonal lattice.
   universes_.resize((2*n_rings_-1) * (2*n_rings_-1) * n_axial_, C_NONE);
-  if (orientation_ == Orientation::oy) {
-    fill_lattice_oy(univ_words);
+  if (orientation_ == Orientation::y) {
+    fill_lattice_y(univ_words);
   } else {
-    fill_lattice_ox(univ_words);
+    fill_lattice_x(univ_words);
   }
 }
-  
+
 //==============================================================================
-  
+
 void
-HexLattice::fill_lattice_ox(const std::vector<std::string>& univ_words)
+HexLattice::fill_lattice_x(const std::vector<std::string>& univ_words)
 {
   int input_index = 0;
   for (int m = 0; m < n_axial_; m++) {
@@ -568,7 +568,7 @@ HexLattice::fill_lattice_ox(const std::vector<std::string>& univ_words)
 //==============================================================================
 
 void
-HexLattice::fill_lattice_oy(const std::vector<std::string>& univ_words)
+HexLattice::fill_lattice_y(const std::vector<std::string>& univ_words)
 {
   int input_index = 0;
   for (int m = 0; m < n_axial_; m++) {
@@ -692,13 +692,13 @@ const
 {
   // Short description of the direction vectors used here.  The beta, gamma, and
   // delta vectors point towards the flat sides of each hexagonal tile.
-  // OY - orientation:
+  // Y - orientation:
   //   basis0 = (1, 0)
   //   basis1 = (-1/sqrt(3), 1)   = +120 degrees from basis0
   //   beta   = (sqrt(3)/2, 1/2)  = +30 degrees from basis0
   //   gamma  = (sqrt(3)/2, -1/2) = -60 degrees from beta
   //   delta  = (0, 1)            = +60 degrees from beta
-  // OX - orientation:
+  // X - orientation:
   //   basis0 = (1/sqrt(3), -1)
   //   basis1 = (0, 1)            = +120 degrees from basis0
   //   beta   = (1, 0)            = +30 degrees from basis0
@@ -708,7 +708,7 @@ const
   double beta_dir;
   double gamma_dir;
   double delta_dir;
-  if (orientation_ == Orientation::oy) {
+  if (orientation_ == Orientation::y) {
     beta_dir = u.x * std::sqrt(3.0) / 2.0  + u.y / 2.0;
     gamma_dir = u.x * std::sqrt(3.0) / 2.0  - u.y / 2.0;
     delta_dir = u.y;
@@ -737,7 +737,7 @@ const
     r_t = get_local_position(r, i_xyz_t);
   }
   double beta;
-  if (orientation_ == Orientation::oy) {
+  if (orientation_ == Orientation::y) {
     beta = r_t.x * std::sqrt(3.0) / 2.0 + r_t.y / 2.0;
   } else {
     beta = r_t.x;
@@ -761,7 +761,7 @@ const
     r_t = get_local_position(r, i_xyz_t);
   }
   double gamma;
-  if (orientation_ == Orientation::oy) {
+  if (orientation_ == Orientation::y) {
     gamma = r_t.x * std::sqrt(3.0) / 2.0 - r_t.y / 2.0;
   } else {
     gamma = r_t.x  / 2.0 - r_t.y * std::sqrt(3.0) / 2.0;
@@ -788,7 +788,7 @@ const
     r_t = get_local_position(r, i_xyz_t);
   }
   double delta;
-  if (orientation_ == Orientation::oy) {
+  if (orientation_ == Orientation::y) {
     delta =  r_t.y;
   } else {
     delta = r_t.x  / 2.0 + r_t.y * std::sqrt(3.0) / 2.0;
@@ -848,7 +848,7 @@ HexLattice::get_indices(Position r, Direction u) const
   }
 
   int i1, i2;
-  if (orientation_ == Orientation::oy) {
+  if (orientation_ == Orientation::y) {
     // Convert coordinates into skewed bases.  The (x, alpha) basis is used to
     // find the index of the global coordinates to within 4 cells.
     double alpha = r_o.y - r_o.x / std::sqrt(3.0);
@@ -926,7 +926,7 @@ Position
 HexLattice::get_local_position(Position r, const std::array<int, 3> i_xyz)
 const
 {
-  if (orientation_ == Orientation::oy) {
+  if (orientation_ == Orientation::y) {
     // x_l = x_g - (center + pitch_x*cos(30)*index_x)
     r.x -= center_.x
            + std::sqrt(3.0)/2.0 * (i_xyz[0] - n_rings_ + 1) * pitch_[0];
@@ -941,7 +941,7 @@ const
     r.y -= center_.y
            + std::sqrt(3.0)/2.0 * (i_xyz[1] - n_rings_ + 1) * pitch_[0];
   }
-  
+
   if (is_3d_) {
       r.z -= center_.z - (0.5 * n_axial_ - i_xyz[2] - 0.5) * pitch_[1];
     }
@@ -1003,10 +1003,10 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
   write_string(lat_group, "type", "hexagonal", false);
   write_dataset(lat_group, "n_rings", n_rings_);
   write_dataset(lat_group, "n_axial", n_axial_);
-  if (orientation_ == Orientation::oy) {
-    write_string(lat_group, "orientation", "oy", false);
+  if (orientation_ == Orientation::y) {
+    write_string(lat_group, "orientation", "y", false);
   } else {
-    write_string(lat_group, "orientation", "ox", false);
+    write_string(lat_group, "orientation", "x", false);
   }
   if (is_3d_) {
     write_dataset(lat_group, "pitch", pitch_);

@@ -239,8 +239,7 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
       already_read.insert(name);
 
       // Check if elemental data has been read, if needed
-      int pos = name.find_first_of("0123456789");
-      std::string element = name.substr(0, pos);
+      std::string element = to_element(name);
       if (settings::photon_transport) {
         if (already_read.find(element) == already_read.end()) {
           // Read photon interaction data from HDF5 photon library

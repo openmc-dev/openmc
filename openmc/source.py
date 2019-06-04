@@ -2,6 +2,7 @@ from numbers import Real
 import sys
 from xml.etree import ElementTree as ET
 
+from openmc._xml import get_text
 from openmc.stats.univariate import Univariate
 from openmc.stats.multivariate import UnitSphere, Spatial
 import openmc.checkvalue as cv
@@ -137,3 +138,46 @@ class Source(object):
         if self.energy is not None:
             element.append(self.energy.to_xml_element('energy'))
         return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate source from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.Source
+            Source generated from XML element
+
+        """
+        source = cls()
+
+        strength = get_text(elem, 'strength')
+        if strength is not None:
+            source.strength = float(strength)
+
+        particle = get_text(elem, 'particle')
+        if particle is not None:
+            source.particle = particle
+
+        filename = get_text(elem, 'file')
+        if filename is not None:
+            source.file = filename
+
+        space = elem.find('space')
+        if space is not None:
+            source.space = Spatial.from_xml_element(space)
+
+        angle = elem.find('angle')
+        if angle is not None:
+            source.angle = UnitSphere.from_xml_element(angle)
+
+        energy = elem.find('energy')
+        if energy is not None:
+            source.energy = Univariate.from_xml_element(energy)
+
+        return source

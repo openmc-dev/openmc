@@ -39,7 +39,13 @@ kwargs = {
     'author': 'The OpenMC Development Team',
     'author_email': 'openmc-dev@googlegroups.com',
     'description': 'OpenMC',
-    'url': 'https://github.com/openmc-dev/openmc',
+    'url': 'https://openmc.org',
+    'download_url': 'https://github.com/openmc-dev/openmc/releases',
+    'project_urls': {
+        'Issue Tracker': 'https://github.com/openmc-dev/openmc/issues',
+        'Documentation': 'https://openmc.readthedocs.io',
+        'Source Code': 'https://github.com/openmc-dev/openmc',
+    },
     'classifiers': [
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
@@ -48,6 +54,7 @@ kwargs = {
         'License :: OSI Approved :: MIT License',
         'Natural Language :: English',
         'Topic :: Scientific/Engineering'
+        'Programming Language :: C++',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
@@ -55,13 +62,12 @@ kwargs = {
         'Programming Language :: Python :: 3.7',
     ],
 
-    # Required dependencies
+    # Dependencies
+    'python_requires': '>=3.4',
     'install_requires': [
         'numpy>=1.9', 'h5py', 'scipy', 'ipython', 'matplotlib',
         'pandas', 'lxml', 'uncertainties'
     ],
-
-    # Optional dependencies
     'extras_require': {
         'test': ['pytest', 'pytest-cov'],
         'vtk': ['vtk'],

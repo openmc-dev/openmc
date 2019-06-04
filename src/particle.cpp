@@ -73,7 +73,7 @@ Particle::clear()
 }
 
 void
-Particle::create_secondary(Direction u, double E, Type type) const
+Particle::create_secondary(Direction u, double E, Type type)
 {
   simulation::secondary_bank.emplace_back();
 
@@ -83,6 +83,8 @@ Particle::create_secondary(Direction u, double E, Type type) const
   bank.r = this->r();
   bank.u = u;
   bank.E = settings::run_CE ? E : g_;
+
+  n_bank_second_ += 1;
 }
 
 void
@@ -156,6 +158,11 @@ Particle::transport()
     E_last_ = E_;
     u_last_ = this->u();
     r_last_ = this->r();
+
+    // Reset event variables
+    event_ = EVENT_KILL;
+    event_nuclide_ = NUCLIDE_NONE;
+    event_mt_ = REACTION_NONE;
 
     // If the cell hasn't been determined based on the particle's location,
     // initiate a search for the current cell. This generally happens at the
@@ -309,6 +316,7 @@ Particle::transport()
 
       // Reset banked weight during collision
       n_bank_ = 0;
+      n_bank_second_ = 0;
       wgt_bank_ = 0.0;
       for (int& v : n_delayed_bank_) v = 0;
 

@@ -199,10 +199,10 @@ ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
 
   // Calculate S(a,b) inelastic scattering cross section
   auto& xs = sab.inelastic_sigma_;
-  *inelastic = (1.0 - f) * xs[i_grid] + f * xs[i_grid + 1];
+  *inelastic = xs[i_grid] + f * (xs[i_grid + 1] - xs[i_grid]);
 
   // Check for elastic data
-  if (E < sab.threshold_elastic_) {
+  if (!sab.elastic_e_in_.empty()) {
     // Determine whether elastic scattering is given in the coherent or
     // incoherent approximation. For coherent, the cross section is
     // represented as P/E whereas for incoherent, it is simply P
@@ -231,7 +231,7 @@ ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
 
       // Calculate S(a,b) elastic scattering cross section
       auto& xs = sab.elastic_P_;
-      *elastic = (1.0 - f) * xs[i_grid] + f * xs[i_grid + 1];
+      *elastic = xs[i_grid] + f*(xs[i_grid + 1] - xs[i_grid]);
     }
   } else {
     // No elastic data

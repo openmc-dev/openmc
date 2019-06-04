@@ -13,7 +13,7 @@
   <cell id="11" material="2" region="8" universe="3" />
   <cell id="12" material="2" universe="4" />
   <cell fill="9" id="13" name="container assembly cell" region="-11 12 -13 14 15 -16 9 -10" universe="5" />
-  <hex_lattice id="9" n_axial="2" n_rings="11" name="regular fuel assembly" orient="OX">
+  <hex_lattice id="9" n_axial="2" n_rings="11" name="regular fuel assembly" orientation="x">
     <pitch>1.235 5.0</pitch>
     <outer>4</outer>
     <center>0.0 0.0 5.0</center>

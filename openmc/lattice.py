@@ -884,6 +884,10 @@ class HexLattice(Lattice):
     :attr:`HexLattice.universes` property, the array indices do not correspond
     to natural indices.
 
+    .. versionchanged:: 0.11
+        The orientation of the lattice can now be changed with the
+        :attr:`orientation` attribute.
+
     Parameters
     ----------
     lattice_id : int, optional
@@ -1295,7 +1299,7 @@ class HexLattice(Lattice):
             self._outer.create_xml_subelement(xml_element)
 
         lattice_subelement.set("n_rings", str(self._num_rings))
-        # If orientation is "OX" export it to XML
+        # If orientation is "x" export it to XML
         if self._orientation == 'x':
             lattice_subelement.set("orientation", "x")
 

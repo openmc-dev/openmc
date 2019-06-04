@@ -198,8 +198,8 @@ class CMFDRun(object):
         Batch number at which CMFD tallies should begin accummulating
     feedback_begin: int
         Batch number at which CMFD feedback should be turned on
-    reference_d : bool
-        Reference diffusion coefficients to fix CMFD parameters to
+    ref_d : list of floats
+        List of reference diffusion coefficients to fix CMFD parameters to
     dhat_reset : bool
         Indicate whether :math:`\widehat{D}` nonlinear CMFD parameters should
         be reset to zero before solving CMFD eigenproblem.
@@ -262,12 +262,12 @@ class CMFDRun(object):
         Specifies type of tally window scheme to use to accumulate CMFD
         tallies. Options are:
 
-          * "expanding" - Have an expanding rolling window that doubles in size
+          * "expanding" - Have an expanding window that doubles in size
             to give more weight to more recent tallies as more generations are
             simulated
           * "rolling" - Have a fixed window size that aggregates tallies from
             the same number of previous generations tallied
-          * 'none" - Don't use a windowing scheme so that all tallies from last
+          * "none" - Don't use a windowing scheme so that all tallies from last
             time they were reset are used for the CMFD algorithm.
 
     window_size : int
@@ -827,6 +827,14 @@ class CMFDRun(object):
         self._write_cmfd_timing_stats()
 
     def statepoint_write(self, filename=None):
+        """Write all simulation parameters to statepoint
+
+        Parameters
+        ----------
+        filename : str
+            Filename of statepoint
+
+        """
         if filename is None:
             batch_str_len = len(str(openmc.capi.settings.batches))
             batch_str = str(openmc.capi.current_batch()).zfill(batch_str_len)
@@ -840,13 +848,21 @@ class CMFDRun(object):
         self._write_cmfd_statepoint(filename)
 
     def _write_cmfd_statepoint(self, filename):
+        """Append all CNFD simulation parameters to existing statepoint
+
+        Parameters
+        ----------
+        filename : str
+            Filename of statepoint
+
+        """
         if openmc.capi.master():
-            with h5py.File(filename, 'a') as h5f:
-                if 'cmfd' not in h5f:
+            with h5py.File(filename, 'a') as f:
+                if 'cmfd' not in f:
                     if openmc.capi.settings.verbosity >= 5:
                         print(' Writing CMFD data to {}...'.format(filename))
                         sys.stdout.flush()
-                    cmfd_group = h5f.create_group("cmfd")
+                    cmfd_group = f.create_group("cmfd")
                     cmfd_group.attrs['cmfd_on'] = self._cmfd_on
                     cmfd_group.attrs['feedback'] = self._feedback
                     cmfd_group.attrs['feedback_begin'] = self._feedback_begin
@@ -899,7 +915,6 @@ class CMFDRun(object):
         temp_data = np.ones(len(loss_row))
         temp_loss = sparse.csr_matrix((temp_data, (loss_row, loss_col)),
                                       shape=(n, n))
-
 
         # Pass coremap as 1-d array of 32-bit integers
         coremap = np.swapaxes(self._coremap, 0, 2).flatten().astype(np.int32)
@@ -954,12 +969,9 @@ class CMFDRun(object):
             self._set_coremap()
 
             # Extract spatial and energy indices
-            nx = self._indices[0]
-            ny = self._indices[1]
-            nz = self._indices[2]
-            ng = self._indices[3]
+            nx, ny, nz, ng = self._indices
 
-            # Allocate parameters that need to stored for rolling window
+            # Allocate parameters that need to stored for tally window
             self._openmc_src_rate = np.zeros((nx, ny, nz, ng, 0))
             self._flux_rate = np.zeros((nx, ny, nz, ng, 0))
             self._total_rate = np.zeros((nx, ny, nz, ng, 0))
@@ -1038,60 +1050,68 @@ class CMFDRun(object):
         # Create tally objects
         self._create_cmfd_tally()
 
-    def _reset_cmfd(self, sp_filepath):
-        with h5py.File(sp_filepath, 'r') as h5f:
-            if 'cmfd' not in h5f:
+    def _reset_cmfd(self, filename):
+        """Reset all CMFD  parameters from statepoint
+
+        Parameters
+        ----------
+        filename : str
+            Filename of statepoint to read from
+
+        """
+        with h5py.File(filename, 'r') as f:
+            if 'cmfd' not in f:
                 raise OpenMCError('Could not find CMFD parameters in ',
-                                  'file {}'.format(sp_filepath))
+                                  'file {}'.format(filename))
             else:
                 # Overwrite CMFD values from statepoint
                 if (openmc.capi.master() and
                         openmc.capi.settings.verbosity >= 5):
-                    print(' Loading CMFD data from {}...'.format(sp_filepath))
+                    print(' Loading CMFD data from {}...'.format(filename))
                     sys.stdout.flush()
-                self._cmfd_on = h5f['cmfd'].attrs['cmfd_on']
-                self._feedback = h5f['cmfd'].attrs['feedback']
-                self._feedback_begin = h5f['cmfd'].attrs['feedback_begin']
-                self._tally_begin = h5f['cmfd'].attrs['tally_begin']
-                self._time_cmfd = h5f['cmfd'].attrs['time_cmfd']
-                self._time_cmfdbuild = h5f['cmfd'].attrs['time_cmfdbuild']
-                self._time_cmfdsolve = h5f['cmfd'].attrs['time_cmfdsolve']
-                self._window_size = h5f['cmfd'].attrs['window_size']
-                self._window_type = h5f['cmfd'].attrs['window_type']
-                self._k_cmfd = list(h5f['cmfd']['k_cmfd'])
-                self._dom = list(h5f['cmfd']['dom'])
-                self._src_cmp = list(h5f['cmfd']['src_cmp'])
-                self._balance = list(h5f['cmfd']['balance'])
-                self._entropy = list(h5f['cmfd']['entropy'])
-                self._reset = list(h5f['cmfd']['reset'])
-                self._albedo = h5f['cmfd']['albedo'][:]
-                self._coremap = h5f['cmfd']['coremap'][:]
-                self._egrid = h5f['cmfd']['egrid'][:]
-                self._indices = h5f['cmfd']['indices'][:]
-                self._current_rate = h5f['cmfd']['current_rate'][:]
-                self._flux_rate = h5f['cmfd']['flux_rate'][:]
-                self._nfiss_rate = h5f['cmfd']['nfiss_rate'][:]
-                self._openmc_src_rate = h5f['cmfd']['openmc_src_rate'][:]
-                self._p1scatt_rate = h5f['cmfd']['p1scatt_rate'][:]
-                self._scatt_rate = h5f['cmfd']['scatt_rate'][:]
-                self._total_rate = h5f['cmfd']['total_rate'][:]
+                cmfd_group = f['cmfd']
+                self._cmfd_on = cmfd_group.attrs['cmfd_on']
+                self._feedback = cmfd_group.attrs['feedback']
+                self._feedback_begin = cmfd_group.attrs['feedback_begin']
+                self._tally_begin = cmfd_group.attrs['tally_begin']
+                self._time_cmfd = cmfd_group.attrs['time_cmfd']
+                self._time_cmfdbuild = cmfd_group.attrs['time_cmfdbuild']
+                self._time_cmfdsolve = cmfd_group.attrs['time_cmfdsolve']
+                self._window_size = cmfd_group.attrs['window_size']
+                self._window_type = cmfd_group.attrs['window_type']
+                self._k_cmfd = list(cmfd_group['k_cmfd'])
+                self._dom = list(cmfd_group['dom'])
+                self._src_cmp = list(cmfd_group['src_cmp'])
+                self._balance = list(cmfd_group['balance'])
+                self._entropy = list(cmfd_group['entropy'])
+                self._reset = list(cmfd_group['reset'])
+                self._albedo = cmfd_group['albedo'][()]
+                self._coremap = cmfd_group['coremap'][()]
+                self._egrid = cmfd_group['egrid'][()]
+                self._indices = cmfd_group['indices'][()]
+                self._current_rate = cmfd_group['current_rate'][()]
+                self._flux_rate = cmfd_group['flux_rate'][()]
+                self._nfiss_rate = cmfd_group['nfiss_rate'][()]
+                self._openmc_src_rate = cmfd_group['openmc_src_rate'][()]
+                self._p1scatt_rate = cmfd_group['p1scatt_rate'][()]
+                self._scatt_rate = cmfd_group['scatt_rate'][()]
+                self._total_rate = cmfd_group['total_rate'][()]
 
                 # Overwrite CMFD mesh properties
-                cmfd_mesh_name = 'mesh ' + str(h5f['cmfd'].attrs['mesh_id'])
-                cmfd_mesh = h5f['tallies']['meshes'][cmfd_mesh_name]
-                self._mesh.dimension = cmfd_mesh['dimension'][:]
-                self._mesh.lower_left = cmfd_mesh['lower_left'][:]
-                self._mesh.upper_right = cmfd_mesh['upper_right'][:]
-                self._mesh.width = cmfd_mesh['width'][:]
+                cmfd_mesh_name = 'mesh ' + str(cmfd_group.attrs['mesh_id'])
+                cmfd_mesh = f['tallies']['meshes'][cmfd_mesh_name]
+                self._mesh.dimension = cmfd_mesh['dimension'][()]
+                self._mesh.lower_left = cmfd_mesh['lower_left'][()]
+                self._mesh.upper_right = cmfd_mesh['upper_right'][()]
+                self._mesh.width = cmfd_mesh['width'][()]
 
                 # Store tally ids from statepoint run
-                sp_tally_ids = list(h5f['cmfd']['tally_ids'])
+                sp_tally_ids = list(cmfd_group['tally_ids'])
 
         # Set CMFD variables not in statepoint file
         default_egrid = np.array([_ENERGY_MIN_NEUTRON, _ENERGY_MAX_NEUTRON])
         self._energy_filters = not np.array_equal(self._egrid, default_egrid)
         self._n_resets = len(self._reset)
-        openmc.capi.settings.run_CE = True
         self._mat_dim = np.max(self._coremap) + 1
         self._reset_every = (self._window_type == 'expanding' or
                              self._window_type == 'rolling')
@@ -1099,22 +1119,14 @@ class CMFDRun(object):
         # Recreate CMFD tallies in memory
         self._create_cmfd_tally()
 
-        # Restore tally results and n_realizations from statepoint data
-        arg1 = (c_int*4)(*self._tally_ids)
-        arg2 = (c_int*4)(*sp_tally_ids)
-        openmc.capi._dll.openmc_load_cmfd_tallies(arg1, arg2)
-
     def _allocate_cmfd(self):
         """Allocates all numpy arrays and lists used in CMFD algorithm"""
         # Extract spatial and energy indices
-        nx = self._indices[0]
-        ny = self._indices[1]
-        nz = self._indices[2]
-        ng = self._indices[3]
+        nx, ny, nz, ng = self._indices
 
         # Allocate dimensions for each mesh cell
         self._hxyz = np.zeros((nx, ny, nz, 3))
-        self._hxyz[:,:,:,:] = openmc.capi.meshes[self._mesh_id].width
+        self._hxyz[:] = openmc.capi.meshes[self._mesh_id].width
 
         # Allocate flux, cross sections and diffusion coefficient
         self._flux = np.zeros((nx, ny, nz, ng))
@@ -1129,7 +1141,7 @@ class CMFDRun(object):
         self._dhat = np.zeros((nx, ny, nz, ng, 6))
 
         # Set reference diffusion parameters
-        if len(self._ref_d) > 0:
+        if self._ref_d:
             self._set_reference_params = True
             # Check length of reference diffusion parameters equal to number of
             # energy groups
@@ -1139,7 +1151,7 @@ class CMFDRun(object):
 
     def _set_tally_window(self):
         """Sets parameters to handle different tally window options"""
-        # Set parameters for rolling window
+        # Set parameters for expanding window
         if self._window_type == 'expanding':
             self._reset_every = True
             self._window_size = 1
@@ -1216,7 +1228,7 @@ class CMFDRun(object):
         """Configures CMFD object for a CMFD eigenvalue calculation
 
         """
-        # Calculate all cross sections based on rolling window averages
+        # Calculate all cross sections based on tally window averages
         self._compute_xs()
 
         # Compute effective downscatter cross section
@@ -1360,10 +1372,7 @@ class CMFDRun(object):
 
         """
         # Extract number of groups and number of accelerated regions
-        nx = self._indices[0]
-        ny = self._indices[1]
-        nz = self._indices[2]
-        ng = self._indices[3]
+        nx, ny, nz, ng = self._indices
         n = self._mat_dim
 
         # Compute cmfd_src in a vecotorized manner by phi to the spatial
@@ -1426,10 +1435,7 @@ class CMFDRun(object):
         if new_weights:
 
             # Get spatial dimensions and energy groups
-            nx = self._indices[0]
-            ny = self._indices[1]
-            nz = self._indices[2]
-            ng = self._indices[3]
+            nx, ny, nz, ng = self._indices
 
             # Count bank site in mesh and reverse due to egrid structured
             outside = self._count_bank_sites()
@@ -1459,11 +1465,10 @@ class CMFDRun(object):
                 # Compute weight factors
                 div_condition = np.logical_and(sourcecounts > 0,
                                                self._cmfd_src > 0)
-                with np.errstate(divide='ignore', invalid='ignore'):
-                    self._weightfactors = (np.divide(self._cmfd_src * norm,
-                                           sourcecounts, where=div_condition,
-                                           out=np.ones_like(self._cmfd_src),
-                                           dtype=np.float32))
+                self._weightfactors = (np.divide(self._cmfd_src * norm,
+                                       sourcecounts, where=div_condition,
+                                       out=np.ones_like(self._cmfd_src),
+                                       dtype=np.float32))
 
             if (not self._feedback
                     or openmc.capi.current_batch() < self._feedback_begin):
@@ -1850,9 +1855,8 @@ class CMFDRun(object):
         kerr = abs(k_o - k_n) / k_n
 
         # Calculate max error in source
-        with np.errstate(divide='ignore', invalid='ignore'):
-            serr = np.sqrt(np.sum(np.where(s_n > 0, ((s_n-s_o) / s_n)**2, 0))
-                           / len(s_n))
+        serr = np.sqrt(np.sum(np.where(s_n > 0, ((s_n-s_o) / s_n)**2, 0))
+                       / len(s_n))
 
         # Check for convergence
         iconv = kerr < self._cmfd_ktol and serr < self._stol
@@ -1888,9 +1892,7 @@ class CMFDRun(object):
 
         # Reshape coremap to three dimensional array
         # Indices of coremap in user input switched in x and z axes
-        nx = self._indices[0]
-        ny = self._indices[1]
-        nz = self._indices[2]
+        nx, ny, nz = self._indices[:3]
         self._coremap = self._coremap.reshape(nz, ny, nx)
         self._coremap = np.swapaxes(self._coremap, 0, 2)
 
@@ -1900,7 +1902,7 @@ class CMFDRun(object):
         a tally window scheme
 
         """
-        # Update window size for rolling window if necessary
+        # Update window size for expanding window if necessary
         num_cmfd_batches = openmc.capi.current_batch() - self._tally_begin + 1
         if (self._window_type == 'expanding' and
                 num_cmfd_batches == self._window_size * 2):
@@ -1909,20 +1911,17 @@ class CMFDRun(object):
         # Discard tallies from oldest batch if window limit reached
         tally_windows = self._flux_rate.shape[-1] + 1
         if tally_windows > self._window_size:
-            self._flux_rate = self._flux_rate[:,:,:,:,1:]
-            self._total_rate = self._total_rate[:,:,:,:,1:]
-            self._p1scatt_rate = self._p1scatt_rate[:,:,:,:,1:]
-            self._scatt_rate = self._scatt_rate[:,:,:,:,:,1:]
-            self._nfiss_rate = self._nfiss_rate[:,:,:,:,:,1:]
-            self._current_rate = self._current_rate[:,:,:,:,:,1:]
-            self._openmc_src_rate = self._openmc_src_rate[:,:,:,:,1:]
+            self._flux_rate = self._flux_rate[...,1:]
+            self._total_rate = self._total_rate[...,1:]
+            self._p1scatt_rate = self._p1scatt_rate[...,1:]
+            self._scatt_rate = self._scatt_rate[...,1:]
+            self._nfiss_rate = self._nfiss_rate[...,1:]
+            self._current_rate = self._current_rate[...,1:]
+            self._openmc_src_rate = self._openmc_src_rate[...,1:]
             tally_windows -= 1
 
         # Extract spatial and energy indices
-        nx = self._indices[0]
-        ny = self._indices[1]
-        nz = self._indices[2]
-        ng = self._indices[3]
+        nx, ny, nz, ng = self._indices
 
         # Get tallies in-memory
         tallies = openmc.capi.tallies
@@ -1991,10 +1990,9 @@ class CMFDRun(object):
 
         # Compute total xs as aggregate of banked total_rate over tally window
         # divided by flux
-        with np.errstate(divide='ignore', invalid='ignore'):
-            self._totalxs = np.divide(np.sum(self._total_rate, axis=4),
-                                      self._flux, where=self._flux > 0,
-                                      out=np.zeros_like(self._totalxs))
+        self._totalxs = np.divide(np.sum(self._total_rate, axis=4),
+                                  self._flux, where=self._flux > 0,
+                                  out=np.zeros_like(self._totalxs))
 
         # Get scattering rr from CMFD tally 1
         # flux is repeated to account for extra dimensionality of scattering xs
@@ -2023,10 +2021,9 @@ class CMFDRun(object):
         # window divided by flux. Flux dimensionality increased to account for
         # extra dimensionality of scattering xs
         extended_flux = self._flux[:,:,:,:,np.newaxis]
-        with np.errstate(divide='ignore', invalid='ignore'):
-            self._scattxs = np.divide(np.sum(self._scatt_rate, axis=5),
-                                      extended_flux, where=extended_flux > 0,
-                                      out=np.zeros_like(self._scattxs))
+        self._scattxs = np.divide(np.sum(self._scatt_rate, axis=5),
+                                  extended_flux, where=extended_flux > 0,
+                                  out=np.zeros_like(self._scattxs))
 
         # Get nu-fission rr from CMFD tally 1
         nfissrr = tallies[tally_id].results[:,1,1]
@@ -2049,10 +2046,9 @@ class CMFDRun(object):
         # Compute nu-fission xs as aggregate of banked nfiss_rate over tally
         # window divided by flux. Flux dimensionality increased to account for
         # extra dimensionality of nu-fission xs
-        with np.errstate(divide='ignore', invalid='ignore'):
-            self._nfissxs = np.divide(np.sum(self._nfiss_rate, axis=5),
-                                      extended_flux, where=extended_flux > 0,
-                                      out=np.zeros_like(self._nfissxs))
+        self._nfissxs = np.divide(np.sum(self._nfiss_rate, axis=5),
+                                  extended_flux, where=extended_flux > 0,
+                                  out=np.zeros_like(self._nfissxs))
 
         # Openmc source distribution is sum of nu-fission rr in incoming
         # energies
@@ -2121,10 +2117,9 @@ class CMFDRun(object):
 
         # Compute p1-scatter xs as aggregate of banked p1scatt_rate over tally
         # window divided by flux
-        with np.errstate(divide='ignore', invalid='ignore'):
-            self._p1scattxs = np.divide(np.sum(self._p1scatt_rate, axis=4),
-                                        self._flux, where=self._flux > 0,
-                                        out=np.zeros_like(self._p1scattxs))
+        self._p1scattxs = np.divide(np.sum(self._p1scatt_rate, axis=4),
+                                    self._flux, where=self._flux > 0,
+                                    out=np.zeros_like(self._p1scattxs))
 
         if self._set_reference_params:
             # Set diffusion coefficients based on reference value
@@ -2162,10 +2157,9 @@ class CMFDRun(object):
         siga2 = sigt2 - sigs22 - sigs21
 
         # Compute effective downscatter XS
-        with np.errstate(divide='ignore', invalid='ignore'):
-            sigs12_eff = sigs12 - sigs21 * np.divide(flux2, flux1,
-                                                     where=flux1 > 0,
-                                                     out=np.zeros_like(flux2))
+        sigs12_eff = sigs12 - sigs21 * np.divide(flux2, flux1,
+                                                 where=flux1 > 0,
+                                                 out=np.zeros_like(flux2))
 
         # Recompute total cross sections and record
         self._totalxs[:,:,:,0] = siga1 + sigs11 + sigs12_eff
@@ -2232,9 +2226,7 @@ class CMFDRun(object):
 
         """
         # Extract spatial indices
-        nx = self._indices[0]
-        ny = self._indices[1]
-        nz = self._indices[2]
+        nx, ny, nz = self._indices[:3]
 
         # Logical for determining whether region of interest is accelerated
         # region
@@ -2607,10 +2599,9 @@ class CMFDRun(object):
         # a cell borders a reflector region on the left
         current_in_left = self._current[:,:,:,_CURRENTS['in_left'],:]
         current_out_left = self._current[:,:,:,_CURRENTS['out_left'],:]
-        with np.errstate(divide='ignore', invalid='ignore'):
-            ref_albedo = np.divide(current_in_left, current_out_left,
-                                   where=current_out_left > 1.0e-10,
-                                   out=np.ones_like(current_out_left))
+        ref_albedo = np.divide(current_in_left, current_out_left,
+                               where=current_out_left > 1.0e-10,
+                               out=np.ones_like(current_out_left))
 
         # Diffusion coefficient of neighbor to left
         neig_dc = np.roll(self._diffcof, 1, axis=0)
@@ -2637,10 +2628,9 @@ class CMFDRun(object):
         # a cell borders a reflector region on the right
         current_in_right = self._current[:,:,:,_CURRENTS['in_right'],:]
         current_out_right = self._current[:,:,:,_CURRENTS['out_right'],:]
-        with np.errstate(divide='ignore', invalid='ignore'):
-            ref_albedo = np.divide(current_in_right, current_out_right,
-                                   where=current_out_right > 1.0e-10,
-                                   out=np.ones_like(current_out_right))
+        ref_albedo = np.divide(current_in_right, current_out_right,
+                               where=current_out_right > 1.0e-10,
+                               out=np.ones_like(current_out_right))
 
         # Diffusion coefficient of neighbor to right
         neig_dc = np.roll(self._diffcof, -1, axis=0)
@@ -2667,10 +2657,9 @@ class CMFDRun(object):
         # a cell borders a reflector region on the back
         current_in_back = self._current[:,:,:,_CURRENTS['in_back'],:]
         current_out_back = self._current[:,:,:,_CURRENTS['out_back'],:]
-        with np.errstate(divide='ignore', invalid='ignore'):
-            ref_albedo = np.divide(current_in_back, current_out_back,
-                                   where=current_out_back > 1.0e-10,
-                                   out=np.ones_like(current_out_back))
+        ref_albedo = np.divide(current_in_back, current_out_back,
+                               where=current_out_back > 1.0e-10,
+                               out=np.ones_like(current_out_back))
 
         # Diffusion coefficient of neighbor to back
         neig_dc = np.roll(self._diffcof, 1, axis=1)
@@ -2697,10 +2686,9 @@ class CMFDRun(object):
         # a cell borders a reflector region in the front
         current_in_front = self._current[:,:,:,_CURRENTS['in_front'],:]
         current_out_front = self._current[:,:,:,_CURRENTS['out_front'],:]
-        with np.errstate(divide='ignore', invalid='ignore'):
-            ref_albedo = np.divide(current_in_front, current_out_front,
-                                   where=current_out_front > 1.0e-10,
-                                   out=np.ones_like(current_out_front))
+        ref_albedo = np.divide(current_in_front, current_out_front,
+                               where=current_out_front > 1.0e-10,
+                               out=np.ones_like(current_out_front))
 
         # Diffusion coefficient of neighbor to front
         neig_dc = np.roll(self._diffcof, -1, axis=1)
@@ -2727,10 +2715,9 @@ class CMFDRun(object):
         # a cell borders a reflector region on the bottom
         current_in_bottom = self._current[:,:,:,_CURRENTS['in_bottom'],:]
         current_out_bottom = self._current[:,:,:,_CURRENTS['out_bottom'],:]
-        with np.errstate(divide='ignore', invalid='ignore'):
-            ref_albedo = np.divide(current_in_bottom, current_out_bottom,
-                                   where=current_out_bottom > 1.0e-10,
-                                   out=np.ones_like(current_out_bottom))
+        ref_albedo = np.divide(current_in_bottom, current_out_bottom,
+                               where=current_out_bottom > 1.0e-10,
+                               out=np.ones_like(current_out_bottom))
 
         # Diffusion coefficient of neighbor to bottom
         neig_dc = np.roll(self._diffcof, 1, axis=2)
@@ -2757,10 +2744,9 @@ class CMFDRun(object):
         # a cell borders a reflector region on the top
         current_in_top = self._current[:,:,:,_CURRENTS['in_top'],:]
         current_out_top = self._current[:,:,:,_CURRENTS['out_top'],:]
-        with np.errstate(divide='ignore', invalid='ignore'):
-            ref_albedo = np.divide(current_in_top, current_out_top,
-                                   where=current_out_top > 1.0e-10,
-                                   out=np.ones_like(current_out_top))
+        ref_albedo = np.divide(current_in_top, current_out_top,
+                               where=current_out_top > 1.0e-10,
+                               out=np.ones_like(current_out_top))
 
         # Diffusion coefficient of neighbor to top
         neig_dc = np.roll(self._diffcof, -1, axis=2)

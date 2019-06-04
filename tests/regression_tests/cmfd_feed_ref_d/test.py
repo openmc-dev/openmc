@@ -6,10 +6,10 @@ def test_cmfd_feed_rolling_window():
     """Test 1 group CMFD solver with CMFD feedback"""
     # Initialize and set CMFD mesh
     cmfd_mesh = cmfd.CMFDMesh()
-    cmfd_mesh.lower_left = -10.0, -1.0, -1.0
-    cmfd_mesh.upper_right = 10.0, 1.0, 1.0
-    cmfd_mesh.dimension = 10, 1, 1
-    cmfd_mesh.albedo = 0.0, 0.0, 1.0, 1.0, 1.0, 1.0
+    cmfd_mesh.lower_left = (-10.0, -1.0, -1.0)
+    cmfd_mesh.upper_right = (10.0, 1.0, 1.0)
+    cmfd_mesh.dimension = (10, 1, 1)
+    cmfd_mesh.albedo = (0.0, 0.0, 1.0, 1.0, 1.0, 1.0)
 
     # Initialize and run CMFDRun object
     cmfd_run = cmfd.CMFDRun()

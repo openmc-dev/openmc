@@ -43,10 +43,10 @@ def test_cmfd_restart():
     """Test 1 group CMFD solver with restart run"""
     # Initialize and set CMFD mesh, create a copy for second run
     cmfd_mesh = cmfd.CMFDMesh()
-    cmfd_mesh.lower_left = -10.0, -1.0, -1.0
-    cmfd_mesh.upper_right = 10.0, 1.0, 1.0
-    cmfd_mesh.dimension = 10, 1, 1
-    cmfd_mesh.albedo = 0.0, 0.0, 1.0, 1.0, 1.0, 1.0
+    cmfd_mesh.lower_left = (-10.0, -1.0, -1.0)
+    cmfd_mesh.upper_right = (10.0, 1.0, 1.0)
+    cmfd_mesh.dimension = (10, 1, 1)
+    cmfd_mesh.albedo = (0.0, 0.0, 1.0, 1.0, 1.0, 1.0)
     cmfd_mesh2 = copy.deepcopy(cmfd_mesh)
 
     # Initialize and run first CMFDRun object

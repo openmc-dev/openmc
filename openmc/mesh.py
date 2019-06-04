@@ -7,6 +7,7 @@ import numpy as np
 
 import openmc.checkvalue as cv
 import openmc
+from openmc._xml import get_text
 from openmc.mixin import EqualityMixin, IDManagerMixin
 
 
@@ -230,8 +231,9 @@ class Mesh(IDManagerMixin):
         element.set("id", str(self._id))
         element.set("type", self._type)
 
-        subelement = ET.SubElement(element, "dimension")
-        subelement.text = ' '.join(map(str, self._dimension))
+        if self._dimension is not None:
+            subelement = ET.SubElement(element, "dimension")
+            subelement.text = ' '.join(map(str, self._dimension))
 
         subelement = ET.SubElement(element, "lower_left")
         subelement.text = ' '.join(map(str, self._lower_left))
@@ -245,6 +247,46 @@ class Mesh(IDManagerMixin):
             subelement.text = ' '.join(map(str, self._width))
 
         return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate mesh from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.Mesh
+            Mesh generated from XML element
+
+        """
+        mesh_id = int(get_text(elem, 'id'))
+        mesh = cls(mesh_id)
+
+        mesh_type = get_text(elem, 'type')
+        if mesh_type is not None:
+            mesh.type = mesh_type
+
+        dimension = get_text(elem, 'dimension')
+        if dimension is not None:
+            mesh.dimension = [int(x) for x in dimension.split()]
+
+        lower_left = get_text(elem, 'lower_left')
+        if lower_left is not None:
+            mesh.lower_left = [float(x) for x in lower_left.split()]
+
+        upper_right = get_text(elem, 'upper_right')
+        if upper_right is not None:
+            mesh.upper_right = [float(x) for x in upper_right.split()]
+
+        width = get_text(elem, 'width')
+        if width is not None:
+            mesh.width = [float(x) for x in width.split()]
+
+        return mesh
 
     def build_cells(self, bc=['reflective'] * 6):
         """Generates a lattice of universes with the same dimensionality

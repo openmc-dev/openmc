@@ -256,9 +256,12 @@ The following tables show all valid scores:
     |inverse-velocity      |The flux-weighted inverse velocity where the       |
     |                      |velocity is in units of centimeters per second.    |
     +----------------------+---------------------------------------------------+
-    |heating               |Total neutron heating in units of eV per source    |
-    |                      |particle. This corresponds to MT=301 produced by   |
-    |                      |NJOY's HEATR module.                               |
+    |heating               |Total nuclear heating in units of eV per source    |
+    |                      |particle. For neutrons, this corresponds to MT=301 |
+    |                      |produced by NJOY's HEATR module while for photons, |
+    |                      |this is tallied from either direct photon energy   |
+    |                      |deposition (analog estimator) or pre-generated     |
+    |                      |photon heating number.                             |
     +----------------------+---------------------------------------------------+
     |kappa-fission         |The recoverable energy production rate due to      |
     |                      |fission. The recoverable energy is defined as the  |

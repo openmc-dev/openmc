@@ -67,6 +67,7 @@ public:
   xt::xtensor<double, 1> pair_production_total_;
   xt::xtensor<double, 1> pair_production_electron_;
   xt::xtensor<double, 1> pair_production_nuclear_;
+  xt::xtensor<double, 1> heating_;
 
   // Form factors
   Tabulated1D incoherent_form_factor_;

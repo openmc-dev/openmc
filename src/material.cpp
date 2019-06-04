@@ -227,8 +227,7 @@ Material::Material(pugi::xml_node node)
     // If the corresponding element hasn't been encountered yet and photon
     // transport will be used, we need to add its symbol to the element_dict
     if (settings::photon_transport) {
-      int pos = name.find_first_of("0123456789");
-      std::string element = name.substr(0, pos);
+      std::string element = to_element(name);
 
       // Make sure photon cross section data is available
       LibraryKey key {Library::Type::photon, element};

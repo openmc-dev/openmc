@@ -148,7 +148,7 @@ class HexLatticeOXTestHarness(PyAPITestHarness):
 
         inf_mat = openmc.Cell(cell_id=12)
         inf_mat.fill = coolant
-        inf_mat_univ = openmc.Universe(universe_id=4, cells=[inf_mat, ])
+        inf_mat_univ = openmc.Universe(universe_id=4, cells=[inf_mat])
 
         # Fill lattice by channels
 
@@ -167,7 +167,7 @@ class HexLatticeOXTestHarness(PyAPITestHarness):
         for i, j in channels:
             universes[i][j] = abs_ch_univ
         lattice = openmc.HexLattice(name="regular fuel assembly")
-        lattice.orientation = "ox"
+        lattice.orientation = "x"
         lattice.center = (0., 0., length/2.0)
         lattice.pitch = (assembly_pitch, length/2.0)
         lattice.universes = 2*[universes]
@@ -179,7 +179,7 @@ class HexLatticeOXTestHarness(PyAPITestHarness):
         assembly_cell.fill = lattice
 
         root_univ = openmc.Universe(universe_id=5, name="root universe",
-                                    cells=[assembly_cell, ])
+                                    cells=[assembly_cell])
 
         geom = openmc.Geometry(root_univ)
         geom.export_to_xml()

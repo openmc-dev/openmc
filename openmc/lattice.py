@@ -141,7 +141,7 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
             center = group['center'][()]
             pitch = group['pitch'][()]
             outer = group['outer'][()]
-            if ('orientation' in group):
+            if 'orientation' in group:
                 orientation = group['orientation'][()].decode()
             else:
                 orientation = "y"
@@ -156,7 +156,7 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
             # If the Universe specified outer the Lattice is not void
             if outer >= 0:
                 lattice.outer = universes[outer]
-            if (orientation.lower() == "oy"):
+            if orientation == "y":
                 # Build array of Universe pointers for the Lattice.  Note that
                 # we need to convert between the HDF5's square array of
                 # (x, alpha, z) to the Python API's format of a ragged nested
@@ -884,6 +884,10 @@ class HexLattice(Lattice):
     :attr:`HexLattice.universes` property, the array indices do not correspond
     to natural indices.
 
+    .. versionchanged:: 0.11
+        The orientation of the lattice can now be changed with the
+        :attr:`orientation` attribute.
+
     Parameters
     ----------
     lattice_id : int, optional
@@ -1207,8 +1211,8 @@ class HexLattice(Lattice):
         ----------
         idx : Iterable of int
             Lattice element indices in the :math:`(x,\alpha,z)` coordinate
-            system in 'OY' orientation case, or indices in the
-            :math:`(\alpha,y,z)` coordinate system in 'OX' one
+            system in 'y' orientation case, or indices in the
+            :math:`(\alpha,y,z)` coordinate system in 'x' one
 
         Returns
         -------
@@ -1295,9 +1299,9 @@ class HexLattice(Lattice):
             self._outer.create_xml_subelement(xml_element)
 
         lattice_subelement.set("n_rings", str(self._num_rings))
-        # If orientation is "OX" export it to XML
+        # If orientation is "x" export it to XML
         if self._orientation == 'x':
-            lattice_subelement.set("orient", "OX")
+            lattice_subelement.set("orientation", "x")
 
         if self._num_axial is not None:
             lattice_subelement.set("n_axial", str(self._num_axial))
@@ -1429,13 +1433,13 @@ class HexLattice(Lattice):
         outer ring.
         """
         if self._orientation == 'x':
-            return self._repr_axial_slice_ox(universes)
+            return self._repr_axial_slice_x(universes)
         else:
-            return self._repr_axial_slice_oy(universes)
+            return self._repr_axial_slice_y(universes)
 
-    def _repr_axial_slice_ox(self, universes):
+    def _repr_axial_slice_x(self, universes):
         """Return string representation for the given 2D group of universes
-        in 'OX' orientation case.
+        in 'x' orientation case.
 
         The 'universes' argument should be a list of lists of universes where
         each sub-list represents a single ring.  The first list should be the
@@ -1535,9 +1539,9 @@ class HexLattice(Lattice):
         universe_ids = '\n'.join(rows)
         return universe_ids
 
-    def _repr_axial_slice_oy(self, universes):
+    def _repr_axial_slice_y(self, universes):
         """Return string representation for the given 2D group of universes in
-        'OY' orientation case..
+        'y' orientation case..
 
         The 'universes' argument should be a list of lists of universes where
         each sub-list represents a single ring.  The first list should be the
@@ -1750,22 +1754,22 @@ class HexLattice(Lattice):
 
     @staticmethod
     def _show_indices_x(num_rings):
-        """Return a diagram of the hexagonal lattice with OX orientation
+        """Return a diagram of the hexagonal lattice with x orientation
         layout with indices.
 
         This method can be used to show the proper indices to be used when
         setting the :attr:`HexLattice.universes` property. For example,running
         this method with num_rings=3 will return the similar diagram::
 
-                    (0, 4)      (0, 3)      (0, 2)
+                      (0, 4)      (0, 3)      (0, 2)
 
-              (0, 5)      (1, 2)      (1, 1)      (0, 1)
+                (0, 5)      (1, 2)      (1, 1)      (0, 1)
 
-         (0, 6)      (1, 3)      (2, 0)      (1, 0)      (0, 0)
+          (0, 6)      (1, 3)      (2, 0)      (1, 0)      (0, 0)
 
-               (0, 7)      (1, 4)      (1, 5)      (0,11)
+                (0, 7)      (1, 4)      (1, 5)      (0,11)
 
-                    (0, 8)      (0, 9)      (0,10)
+                      (0, 8)      (0, 9)      (0,10)
 
         Parameters
         ----------
@@ -1855,7 +1859,7 @@ class HexLattice(Lattice):
         num_rings : int
             Number of rings in the hexagonal lattice
         orientation : {"x", "y"}
-            str type of hex lattice orientation
+            Orientation of the hexagonal lattice
 
         Returns
         -------

@@ -272,6 +272,12 @@ if(GIT_SHA1_SUCCESS EQUAL 0)
   target_compile_definitions(libopenmc PRIVATE -DGIT_SHA1="${GIT_SHA1}")
 endif()
 
+# To use the shared HDF5 libraries on Windows with Visual Studio,
+# the H5_BUILT_AS_DYNAMIC_LIB compile definition must be specified.
+if(MSVC)
+  target_compile_definitions(libopenmc PRIVATE -DH5_BUILT_AS_DYNAMIC_LIB)
+endif()
+
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}

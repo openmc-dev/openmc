@@ -1855,8 +1855,9 @@ class CMFDRun(object):
         kerr = abs(k_o - k_n) / k_n
 
         # Calculate max error in source
-        serr = np.sqrt(np.sum(np.where(s_n > 0, ((s_n-s_o) / s_n)**2, 0))
-                       / len(s_n))
+        with np.errstate(divide='ignore', invalid='ignore'):
+            serr = np.sqrt(np.sum(np.where(s_n > 0, ((s_n-s_o) / s_n)**2, 0))
+                           / len(s_n))
 
         # Check for convergence
         iconv = kerr < self._cmfd_ktol and serr < self._stol

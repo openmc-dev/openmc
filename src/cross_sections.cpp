@@ -402,6 +402,10 @@ void read_ce_cross_sections_xml()
     // If no directory is listed in cross_sections.xml, by default select the
     // directory in which the cross_sections.xml file resides
     auto pos = filename.rfind("/");
+    if (pos == std::string::npos) {
+      // no '/' found, probably a Windows directory
+      pos = filename.rfind("\\");
+    }
     directory = filename.substr(0, pos);
   }
 

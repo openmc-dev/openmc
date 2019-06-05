@@ -117,7 +117,7 @@ int openmc_finalize()
   data::energy_max = {INFTY, INFTY};
   data::energy_min = {0.0, 0.0};
   model::root_universe = -1;
-  openmc_set_seed(DEFAULT_SEED);
+  openmc::openmc_set_seed(DEFAULT_SEED);
 
   // Deallocate arrays
   free_memory();
@@ -159,6 +159,6 @@ int openmc_hard_reset()
   simulation::total_gen = 0;
 
   // Reset the random number generator state
-  openmc_set_seed(DEFAULT_SEED);
+  openmc::openmc_set_seed(DEFAULT_SEED);
   return 0;
 }

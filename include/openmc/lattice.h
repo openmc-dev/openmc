@@ -267,17 +267,19 @@ public:
 
 private:
   enum class Orientation {
-      oy, ox
-    };
-  //! Fill universes_ vector for OY orientation
-  void fill_lattice_oy(const std::vector<std::string>& univ_words);
+      y, //!< Flat side perpendicular to y-axis
+      x  //!< Flat side perpendicular to x-axis
+  };
 
-  //! Fill universes_ vector for OX orientation
-  void fill_lattice_ox(const std::vector<std::string>& univ_words);
+  //! Fill universes_ vector for 'y' orientation
+  void fill_lattice_y(const std::vector<std::string>& univ_words);
+
+  //! Fill universes_ vector for 'x' orientation
+  void fill_lattice_x(const std::vector<std::string>& univ_words);
 
   int n_rings_;                   //!< Number of radial tile positions
   int n_axial_;                   //!< Number of axial tile positions
-  Orientation orientation_;       //!< Flat side up (oy) vs. sharp side up (ox)
+  Orientation orientation_;       //!< Orientation of lattice
   Position center_;               //!< Global center of lattice
   std::array<double, 2> pitch_;   //!< Lattice tile width and height
 };

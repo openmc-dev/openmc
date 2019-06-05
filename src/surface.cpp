@@ -4,6 +4,7 @@
 #include <cmath>
 #include <sstream>
 #include <utility>
+#include <ciso646>
 
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"

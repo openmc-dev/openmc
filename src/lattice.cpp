@@ -388,7 +388,7 @@ RectLattice::to_hdf5_inner(hid_t lat_group) const
     hsize_t nx {static_cast<hsize_t>(n_cells_[0])};
     hsize_t ny {static_cast<hsize_t>(n_cells_[1])};
     hsize_t nz {static_cast<hsize_t>(n_cells_[2])};
-    int out[nx*ny*nz];
+    std::vector<int> out(nx*ny*nz);
 
     for (int m = 0; m < nz; m++) {
       for (int k = 0; k < ny; k++) {
@@ -401,12 +401,12 @@ RectLattice::to_hdf5_inner(hid_t lat_group) const
     }
 
     hsize_t dims[3] {nz, ny, nx};
-    write_int(lat_group, 3, dims, "universes", out, false);
+    write_int(lat_group, 3, dims, "universes", &out[0], false);
 
   } else {
     hsize_t nx {static_cast<hsize_t>(n_cells_[0])};
     hsize_t ny {static_cast<hsize_t>(n_cells_[1])};
-    int out[nx*ny];
+    std::vector<int> out(nx*ny);
 
     for (int k = 0; k < ny; k++) {
       for (int j = 0; j < nx; j++) {
@@ -417,7 +417,7 @@ RectLattice::to_hdf5_inner(hid_t lat_group) const
     }
 
     hsize_t dims[3] {1, ny, nx};
-    write_int(lat_group, 3, dims, "universes", out, false);
+    write_int(lat_group, 3, dims, "universes", &out[0], false);
   }
 }
 
@@ -877,7 +877,7 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
   hsize_t nx {static_cast<hsize_t>(2*n_rings_ - 1)};
   hsize_t ny {static_cast<hsize_t>(2*n_rings_ - 1)};
   hsize_t nz {static_cast<hsize_t>(n_axial_)};
-  int out[nx*ny*nz];
+  std::vector<int> out(nx*ny*nz);
 
   for (int m = 0; m < nz; m++) {
     for (int k = 0; k < ny; k++) {
@@ -897,7 +897,7 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
   }
 
   hsize_t dims[3] {nz, ny, nx};
-  write_int(lat_group, 3, dims, "universes", out, false);
+  write_int(lat_group, 3, dims, "universes", &out[0], false);
 }
 
 //==============================================================================

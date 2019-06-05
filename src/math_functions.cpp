@@ -110,12 +110,13 @@ void calc_pn_c(int n, double x, double pnx[])
 
 double evaluate_legendre(int n, const double data[], double x)
 {
-  double pnx[n + 1];
+  double* pnx = new double[n + 1];
   double val = 0.0;
   calc_pn_c(n, x, pnx);
   for (int l = 0; l <= n; l++) {
     val += (l + 0.5) * data[l] * pnx[l];
   }
+  delete[] pnx;
   return val;
 }
 
@@ -536,8 +537,8 @@ void calc_zn(int n, double rho, double phi, double zn[]) {
   double sin_phi = std::sin(phi);
   double cos_phi = std::cos(phi);
 
-  double sin_phi_vec[n + 1]; // Sin[n * phi]
-  double cos_phi_vec[n + 1]; // Cos[n * phi]
+  std::vector<double> sin_phi_vec(n + 1); // Sin[n * phi]
+  std::vector<double> cos_phi_vec(n + 1); // Cos[n * phi]
   sin_phi_vec[0] = 1.0;
   cos_phi_vec[0] = 1.0;
   sin_phi_vec[1] = 2.0 * cos_phi;
@@ -554,8 +555,8 @@ void calc_zn(int n, double rho, double phi, double zn[]) {
 
   // ===========================================================================
   // Calculate R_pq(rho)
-  double zn_mat[n + 1][n + 1]; // Matrix forms of the coefficients which are
-                               // easier to work with
+  // Matrix forms of the coefficients which are easier to work with
+  std::vector<std::vector<double>> zn_mat(n + 1, std::vector<double>(n + 1));
 
   // Fill the main diagonal first (Eq 3.9 in Chong)
   for (int p = 0; p <= n; p++) {
@@ -763,7 +764,7 @@ void broaden_wmp_polynomials(double E, double dopp, int n, double factors[])
 
 void spline(int n, const double x[], const double y[], double z[])
 {
-  double c_new[n-1];
+  std::vector<double> c_new(n-1);
 
   // Set natural boundary conditions
   c_new[0] = 0.0;

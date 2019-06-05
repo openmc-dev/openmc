@@ -187,11 +187,12 @@ read_attribute(hid_t obj_id, const char* name, std::string& str)
 {
   // Create buffer to read data into
   auto n = attribute_typesize(obj_id, name);
-  char buffer[n];
+  char* buffer = new char[n];
 
   // Read attribute and set string
   read_attr_string(obj_id, name, n, buffer);
   str = std::string{buffer, n};
+  delete[] buffer;
 }
 
 // overload for std::vector<std::string>
@@ -203,7 +204,10 @@ read_attribute(hid_t obj_id, const char* name, std::vector<std::string>& vec)
 
   // Allocate a C char array to get strings
   auto n = attribute_typesize(obj_id, name);
-  char buffer[m][n];
+  char** buffer = new char*[m];
+  for (int i = 0; i < m; i++) {
+    buffer[i] = new char[n];
+  }
 
   // Read char data in attribute
   read_attr_string(obj_id, name, n, buffer[0]);
@@ -216,7 +220,9 @@ read_attribute(hid_t obj_id, const char* name, std::vector<std::string>& vec)
 
     // Create string based on (char*, size_t) constructor
     vec.emplace_back(&buffer[i][0], k);
+    delete[] buffer[i];
   }
+  delete[] buffer;
 }
 
 //==============================================================================
@@ -240,7 +246,7 @@ read_dataset(hid_t obj_id, const char* name, std::string& str, bool indep=false)
 {
   // Create buffer to read data into
   auto n = dataset_typesize(obj_id, name);
-  char buffer[n];
+  char* buffer = new char[n];
 
   // Read attribute and set string
   read_string(obj_id, name, n, buffer, indep);
@@ -458,7 +464,10 @@ write_dataset(hid_t obj_id, const char* name, const std::vector<std::string>& bu
   }
 
   // Copy data into contiguous buffer
-  char temp[n][m];
+  char** temp = new char*[n];
+  for (int i = 0; i < n; i++) {
+    temp[i] = new char[m];
+  }
   std::fill(temp[0], temp[0] + n*m, '\0');
   for (int i = 0; i < n; ++i) {
     std::copy(buffer[i].begin(), buffer[i].end(), temp[i]);
@@ -466,6 +475,12 @@ write_dataset(hid_t obj_id, const char* name, const std::vector<std::string>& bu
 
   // Write 2D data
   write_string(obj_id, 1, dims, m, name, temp[0], false);
+
+  // Free temp array
+  for (int i = 0; i < n; i++) {
+    delete[] temp[i];
+  }
+  delete[] temp;
 }
 
 template<typename T> inline void

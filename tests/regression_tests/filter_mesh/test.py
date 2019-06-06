@@ -10,20 +10,17 @@ class FilterMeshTestHarness(HashedPyAPITestHarness):
         super().__init__(*args, **kwargs)
 
         # Initialize Meshes
-        mesh_1d = openmc.Mesh(mesh_id=1)
-        mesh_1d.type = 'regular'
+        mesh_1d = openmc.RegularMesh(mesh_id=1)
         mesh_1d.dimension = [17]
         mesh_1d.lower_left = [-182.07]
         mesh_1d.upper_right = [182.07]
 
-        mesh_2d = openmc.Mesh(mesh_id=2)
-        mesh_2d.type = 'regular'
+        mesh_2d = openmc.RegularMesh(mesh_id=2)
         mesh_2d.dimension = [17, 17]
         mesh_2d.lower_left = [-182.07, -182.07]
         mesh_2d.upper_right = [182.07, 182.07]
 
-        mesh_3d = openmc.Mesh(mesh_id=3)
-        mesh_3d.type = 'regular'
+        mesh_3d = openmc.RegularMesh(mesh_id=3)
         mesh_3d.dimension = [17, 17, 17]
         mesh_3d.lower_left = [-182.07, -182.07, -183.00]
         mesh_3d.upper_right = [182.07, 182.07, 183.00]

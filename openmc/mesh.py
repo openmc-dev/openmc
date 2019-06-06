@@ -3,6 +3,7 @@ from collections.abc import Iterable
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
+import warnings
 
 import numpy as np
 
@@ -69,14 +70,14 @@ class MeshBase(IDManagerMixin, metaclass=ABCMeta):
 
         mesh_type = group['type'][()].decode()
         if mesh_type == 'regular':
-            return Mesh.from_hdf5(group)
+            return RegularMesh.from_hdf5(group)
         elif mesh_type == 'rectilinear':
             return RectilinearMesh.from_hdf5(group)
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
 
 
-class Mesh(MeshBase):
+class RegularMesh(MeshBase):
     """A regular Cartesian mesh in one, two, or three dimensions
 
     Parameters
@@ -113,7 +114,6 @@ class Mesh(MeshBase):
     def __init__(self, mesh_id=None, name=''):
         super().__init__(mesh_id, name)
 
-        # Initialize Mesh class attributes
         self._dimension = None
         self._lower_left = None
         self._upper_right = None
@@ -186,7 +186,7 @@ class Mesh(MeshBase):
         self._width = width
 
     def __repr__(self):
-        string = 'Mesh\n'
+        string = 'RegularMesh\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
         string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
@@ -227,8 +227,8 @@ class Mesh(MeshBase):
 
         Returns
         -------
-        openmc.Mesh
-            Mesh instance
+        openmc.RegularMesh
+            RegularMesh instance
 
         """
         cv.check_type('rectangular lattice', lattice, openmc.RectLattice)
@@ -255,7 +255,6 @@ class Mesh(MeshBase):
 
         element = ET.Element("mesh")
         element.set("id", str(self._id))
-        element.set("type", "regular")
 
         subelement = ET.SubElement(element, "dimension")
         subelement.text = ' '.join(map(str, self._dimension))
@@ -401,6 +400,12 @@ class Mesh(MeshBase):
         root_cell.fill = lattice
 
         return root_cell, cells
+
+
+def Mesh(*args, **kwargs):
+    warnings.warn("Mesh has been renamed RegularMesh. Future versions of "
+                  "OpenMC will not accept the name Mesh.")
+    return RegularMesh(*args, **kwargs)
 
 
 class RectilinearMesh(MeshBase):

@@ -310,7 +310,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>
   <!--mesh-->
-  <mesh id="1" type="regular">
+  <mesh id="1">
     <dimension>2 2</dimension>
     <lower_left>-50.0 -50.0</lower_left>
     <upper_right>50.0 50.0</upper_right>

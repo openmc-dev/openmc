@@ -51,7 +51,7 @@ class Library(object):
         The types of cross sections in the library (e.g., ['total', 'scatter'])
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
-    domains : Iterable of openmc.Material, openmc.Cell, openmc.Universe or openmc.Mesh
+    domains : Iterable of openmc.Material, openmc.Cell, openmc.Universe or openmc.RegularMesh
         The spatial domain(s) for which MGXS in the Library are computed
     correction : {'P0', None}
         Apply the P0 correction to scattering matrices if set to 'P0'
@@ -324,7 +324,7 @@ class Library(object):
                 cv.check_type('domain', domains, Iterable, openmc.Universe)
                 all_domains = self.geometry.get_all_universes().values()
             elif self.domain_type == 'mesh':
-                cv.check_type('domain', domains, Iterable, openmc.Mesh)
+                cv.check_type('domain', domains, Iterable, openmc.RegularMesh)
 
                 # The mesh and geometry are independent, so set all_domains
                 # to the input domains
@@ -606,7 +606,7 @@ class Library(object):
 
         Parameters
         ----------
-        domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh or Integral
+        domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh or Integral
             The material, cell, or universe object of interest (or its ID)
         mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', chi', 'chi-prompt', 'inverse-velocity', 'prompt-nu-fission', 'prompt-nu-fission matrix', 'delayed-nu-fission', 'delayed-nu-fission matrix', 'chi-delayed', 'beta'}
             The type of multi-group cross section object to return
@@ -631,7 +631,7 @@ class Library(object):
         elif self.domain_type == 'universe':
             cv.check_type('domain', domain, (openmc.Universe, Integral))
         elif self.domain_type == 'mesh':
-            cv.check_type('domain', domain, (openmc.Mesh, Integral))
+            cv.check_type('domain', domain, (openmc.RegularMesh, Integral))
 
         # Check that requested domain is included in library
         if isinstance(domain, Integral):
@@ -916,7 +916,7 @@ class Library(object):
 
         Parameters
         ----------
-        domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+        domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
             The domain for spatial homogenization
         xsdata_name : str
             Name to apply to the "xsdata" entry produced by this method
@@ -930,7 +930,7 @@ class Library(object):
         subdomain : iterable of int
             This parameter is not used unless using a mesh domain. In that
             case, the subdomain is an [i,j,k] index (1-based indexing) of the
-            mesh cell of interest in the openmc.Mesh object.  Note:
+            mesh cell of interest in the openmc.RegularMesh object.  Note:
             this parameter currently only supports subdomains within a mesh,
             and not the subdomains of a distribcell.
 
@@ -952,7 +952,7 @@ class Library(object):
         """
 
         cv.check_type('domain', domain, (openmc.Material, openmc.Cell,
-                                         openmc.Universe, openmc.Mesh))
+                                         openmc.Universe, openmc.RegularMesh))
         cv.check_type('xsdata_name', xsdata_name, str)
         cv.check_type('nuclide', nuclide, str)
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])

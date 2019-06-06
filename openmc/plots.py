@@ -214,8 +214,8 @@ class Plot(IDManagerMixin):
     level : int
         Universe depth to plot at
     meshlines : dict
-        Dictionary defining type, id, linewidth and color of a regular mesh
-        to be plotted on top of a plot
+        Dictionary defining type, id, linewidth and color of a mesh to be
+        plotted on top of a plot
 
     """
 

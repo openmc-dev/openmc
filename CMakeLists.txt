@@ -159,7 +159,7 @@ target_compile_options(faddeeva PRIVATE ${cxxflags})
 # libopenmc
 #===============================================================================
 
-add_library(libopenmc SHARED
+list(APPEND libopenmc_SOURCES
   src/bank.cpp
   src/bremsstrahlung.cpp
   src/dagmc.cpp
@@ -246,6 +246,18 @@ add_library(libopenmc SHARED
   src/xml_interface.cpp
   src/xsdata.cpp)
 
+# For Visual Studio compilers
+if(MSVC)
+  # Use static library (otherwise explicit symbol portings are needed)
+  add_library(libopenmc STATIC ${libopenmc_SOURCES})
+
+  # To use the shared HDF5 libraries on Windows, the H5_BUILT_AS_DYNAMIC_LIB
+  # compile definition must be specified.
+  target_compile_definitions(libopenmc PRIVATE -DH5_BUILT_AS_DYNAMIC_LIB)
+else()
+  add_library(libopenmc SHARED ${libopenmc_SOURCES})
+endif()
+
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc)
 
@@ -270,12 +282,6 @@ execute_process(COMMAND git rev-parse HEAD
                 ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
 if(GIT_SHA1_SUCCESS EQUAL 0)
   target_compile_definitions(libopenmc PRIVATE -DGIT_SHA1="${GIT_SHA1}")
-endif()
-
-# To use the shared HDF5 libraries on Windows with Visual Studio,
-# the H5_BUILT_AS_DYNAMIC_LIB compile definition must be specified.
-if(MSVC)
-  target_compile_definitions(libopenmc PRIVATE -DH5_BUILT_AS_DYNAMIC_LIB)
 endif()
 
 # target_link_libraries treats any arguments starting with - but not -l as

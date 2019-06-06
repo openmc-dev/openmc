@@ -10,7 +10,7 @@
 
 #include "hdf5.h"
 #include "pugixml.hpp"
-#include "xtensor/xarray.hpp"
+#include "xtensor/xtensor.hpp"
 
 #include "openmc/particle.h"
 #include "openmc/position.h"
@@ -105,6 +105,8 @@ public:
 
   int id_ {-1};  //!< User-specified ID
   int n_dimension_; //!< Number of dimensions
+  xt::xtensor<double, 1> lower_left_; //!< Lower-left coordinates of mesh
+  xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
 };
 
 //==============================================================================
@@ -158,16 +160,14 @@ public:
   //! \param[in] bank Array of bank sites
   //! \param[out] Whether any bank sites are outside the mesh
   //! \return Array indicating number of sites in each mesh/energy bin
-  xt::xarray<double> count_sites(const std::vector<Particle::Bank>& bank,
+  xt::xtensor<double, 1> count_sites(const std::vector<Particle::Bank>& bank,
     bool* outside) const;
 
   // Data members
 
   double volume_frac_; //!< Volume fraction of each mesh element
-  xt::xarray<int> shape_; //!< Number of mesh elements in each dimension
-  xt::xarray<double> lower_left_; //!< Lower-left coordinates of mesh
-  xt::xarray<double> upper_right_; //!< Upper-right coordinates of mesh
-  xt::xarray<double> width_; //!< Width of each mesh element
+  xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
+  xt::xtensor<double, 1> width_; //!< Width of each mesh element
 
 private:
   bool intersects_1d(Position& r0, Position r1, int* ijk) const;
@@ -218,7 +218,7 @@ public:
 
   // Data members
 
-  xt::xarray<int> shape_; //!< Number of mesh elements in each dimension
+  xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
 
 private:
   std::vector<std::vector<double>> grid_;

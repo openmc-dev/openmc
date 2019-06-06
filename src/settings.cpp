@@ -478,7 +478,7 @@ void read_settings_xml()
   read_meshes(root);
 
   // Shannon Entropy mesh
-  int32_t i_entropy_mesh = -1;
+  int32_t index_entropy_mesh = -1;
   if (check_for_node(root, "entropy_mesh")) {
     int temp = std::stoi(get_node_value(root, "entropy_mesh"));
     if (model::mesh_map.find(temp) == model::mesh_map.end()) {
@@ -486,7 +486,7 @@ void read_settings_xml()
       msg << "Mesh " << temp << " specified for Shannon entropy does not exist.";
       fatal_error(msg);
     }
-    i_entropy_mesh = model::mesh_map.at(temp);
+    index_entropy_mesh = model::mesh_map.at(temp);
 
   } else if (check_for_node(root, "entropy")) {
     warning("Specifying a Shannon entropy mesh via the <entropy> element "
@@ -498,15 +498,16 @@ void read_settings_xml()
     model::meshes.push_back(std::make_unique<RegularMesh>(node_entropy));
 
     // Set entropy mesh index
-    i_entropy_mesh = model::meshes.size() - 1;
+    index_entropy_mesh = model::meshes.size() - 1;
 
     // Assign ID and set mapping
     model::meshes.back()->id_ = 10000;
-    model::mesh_map[10000] = i_entropy_mesh;
+    model::mesh_map[10000] = index_entropy_mesh;
   }
 
-  if (i_entropy_mesh >= 0) {
-    auto* m = dynamic_cast<RegularMesh*>(model::meshes[i_entropy_mesh].get());
+  if (index_entropy_mesh >= 0) {
+    auto* m = dynamic_cast<RegularMesh*>(
+      model::meshes[index_entropy_mesh].get());
     if (!m) fatal_error("Only regular meshes can be used as an entropy mesh");
     simulation::entropy_mesh = m;
 
@@ -552,7 +553,7 @@ void read_settings_xml()
 
     // Assign ID and set mapping
     model::meshes.back()->id_ = 10001;
-    model::mesh_map[10001] = i_entropy_mesh;
+    model::mesh_map[10001] = index_entropy_mesh;
   }
 
   if (i_ufs_mesh >= 0) {

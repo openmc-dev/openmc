@@ -72,6 +72,9 @@ endif()
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
+# Skip for Visual Stduio which has its own configurations through GUI
+if(NOT MSVC)
+
 if(openmp)
   # Requires CMake 3.1+
   find_package(OpenMP)
@@ -103,6 +106,8 @@ endif()
 # Show flags being used
 message(STATUS "OpenMC C++ flags: ${cxxflags}")
 message(STATUS "OpenMC Linker flags: ${ldflags}")
+
+endif()
 
 #===============================================================================
 # pugixml library

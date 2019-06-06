@@ -464,22 +464,16 @@ write_dataset(hid_t obj_id, const char* name, const std::vector<std::string>& bu
   }
 
   // Copy data into contiguous buffer
-  char** temp = new char*[n];
-  for (int i = 0; i < n; i++) {
-    temp[i] = new char[m];
-  }
-  std::fill(temp[0], temp[0] + n*m, '\0');
+  char* temp = new char[n*m];
+  std::fill(temp, temp + n*m, '\0');
   for (int i = 0; i < n; ++i) {
-    std::copy(buffer[i].begin(), buffer[i].end(), temp[i]);
+    std::copy(buffer[i].begin(), buffer[i].end(), temp + i*m);
   }
 
   // Write 2D data
-  write_string(obj_id, 1, dims, m, name, temp[0], false);
+  write_string(obj_id, 1, dims, m, name, temp, false);
 
   // Free temp array
-  for (int i = 0; i < n; i++) {
-    delete[] temp[i];
-  }
   delete[] temp;
 }
 

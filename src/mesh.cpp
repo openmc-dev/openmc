@@ -752,7 +752,7 @@ RegularMesh::plot(Position plot_ll, Position plot_ur) const
   for (int i_ax = 0; i_ax < 2; ++i_ax) {
     int axis = axes[i_ax];
     if (axis == -1) continue;
-    std::vector<double>& lines {axis_lines[i_ax]};
+    auto& lines {axis_lines[i_ax]};
 
     double coord = lower_left_[axis];
     for (int i = 0; i < shape_[axis] + 1; ++i) {
@@ -778,7 +778,7 @@ void RegularMesh::to_hdf5(hid_t group) const
   close_group(mesh_group);
 }
 
-xt::xarray<double>
+xt::xtensor<double, 1>
 RegularMesh::count_sites(const std::vector<Particle::Bank>& bank,
   bool* outside) const
 {
@@ -846,6 +846,18 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node)
   shape_ = {static_cast<int>(grid_[0].size()) - 1,
             static_cast<int>(grid_[1].size()) - 1,
             static_cast<int>(grid_[2].size()) - 1};
+
+  for (const auto& g : grid_) {
+    if (g.size() < 2) fatal_error("x-, y-, and z- grids for rectilinear meshes "
+      "must each have at least 2 points");
+    for (int i = 1; i < g.size(); ++i) {
+      if (g[i] <= g[i-1]) fatal_error("Values in for x-, y-, and z- grids for "
+        "rectilinear meshes must be sorted and unique.");
+    }
+  }
+
+  lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
+  upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
 }
 
 void RectilinearMesh::bins_crossed(const Particle* p, std::vector<int>& bins,

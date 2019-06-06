@@ -104,9 +104,9 @@ class Mesh(MeshBase):
         are given, it is assumed that the mesh is an x-y mesh.
     width : Iterable of float
         The width of mesh cells in each direction.
-    indices : list of tuple
-        A list of mesh indices for each mesh element, e.g. [(1, 1, 1), (2, 1,
-        1), ...]
+    indices : Iterable of tuple
+        An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
+        (2, 1, 1), ...]
 
     """
 
@@ -427,9 +427,9 @@ class RectilinearMesh(MeshBase):
         Mesh boundary points along the y-axis.
     z_grid : Iterable of float
         Mesh boundary points along the z-axis.
-    indices : list of tuple
-        A list of mesh indices for each mesh element, e.g. [(1, 1, 1), (2, 1,
-        1), ...]
+    indices : Iterable of tuple
+        An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
+        (2, 1, 1), ...]
 
     """
 

@@ -727,67 +727,61 @@ void draw_mesh_lines(Plot pl, ImageData& data)
   Position width = ur_plot - ll_plot;
 
   // Find the (axis-aligned) lines of the mesh that intersect this plot.
-  std::pair<std::vector<double>, std::vector<double>> axis_lines;
-  axis_lines = model::meshes[pl.index_meshlines_mesh_]->plot(ll_plot, ur_plot);
+  auto axis_lines = model::meshes[pl.index_meshlines_mesh_]
+    ->plot(ll_plot, ur_plot);
 
-  // Draw lines perpendicular to the first axis.
-  {
-    // Find the bounds along the second axis (accounting for low-D meshes).
-    int ax2_min, ax2_max;
-    if (axis_lines.second.size() > 0) {
-      double frac = (axis_lines.second.back() - ll_plot[ax2]) / width[ax2];
-      ax2_min = (1.0 - frac) * pl.pixels_[1];
-      if (ax2_min < 0) ax2_min = 0;
-      frac = (axis_lines.second.front() - ll_plot[ax2]) / width[ax2];
-      ax2_max = (1.0 - frac) * pl.pixels_[1];
-      if (ax2_max > pl.pixels_[1]) ax2_max = pl.pixels_[1];
-    } else {
-      ax2_min = 0;
-      ax2_max = pl.pixels_[1];
-    }
+  // Find the bounds along the second axis (accounting for low-D meshes).
+  int ax2_min, ax2_max;
+  if (axis_lines.second.size() > 0) {
+    double frac = (axis_lines.second.back() - ll_plot[ax2]) / width[ax2];
+    ax2_min = (1.0 - frac) * pl.pixels_[1];
+    if (ax2_min < 0) ax2_min = 0;
+    frac = (axis_lines.second.front() - ll_plot[ax2]) / width[ax2];
+    ax2_max = (1.0 - frac) * pl.pixels_[1];
+    if (ax2_max > pl.pixels_[1]) ax2_max = pl.pixels_[1];
+  } else {
+    ax2_min = 0;
+    ax2_max = pl.pixels_[1];
+  }
 
-    // Iterate across the first axis and draw lines.
-    for (auto ax1_val : axis_lines.first) {
-      double frac = (ax1_val - ll_plot[ax1]) / width[ax1];
-      int ax1_ind = frac * pl.pixels_[0];
-      for (int ax2_ind = ax2_min; ax2_ind < ax2_max; ++ax2_ind) {
-        for (int plus = 0; plus <= pl.meshlines_width_; plus++) {
-          if (ax1_ind+plus >= 0 && ax1_ind+plus < pl.pixels_[0])
-            data(ax1_ind+plus, ax2_ind) = rgb;
-          if (ax1_ind-plus >= 0 && ax1_ind-plus < pl.pixels_[0])
-            data(ax1_ind-plus, ax2_ind) = rgb;
-        }
+  // Iterate across the first axis and draw lines.
+  for (auto ax1_val : axis_lines.first) {
+    double frac = (ax1_val - ll_plot[ax1]) / width[ax1];
+    int ax1_ind = frac * pl.pixels_[0];
+    for (int ax2_ind = ax2_min; ax2_ind < ax2_max; ++ax2_ind) {
+      for (int plus = 0; plus <= pl.meshlines_width_; plus++) {
+        if (ax1_ind+plus >= 0 && ax1_ind+plus < pl.pixels_[0])
+          data(ax1_ind+plus, ax2_ind) = rgb;
+        if (ax1_ind-plus >= 0 && ax1_ind-plus < pl.pixels_[0])
+          data(ax1_ind-plus, ax2_ind) = rgb;
       }
     }
   }
 
-  // Draw lines perpendicular to the second axis.
-  {
-    // Find the bounds along the first axis.
-    int ax1_min, ax1_max;
-    if (axis_lines.first.size() > 0) {
-      double frac = (axis_lines.first.front() - ll_plot[ax1]) / width[ax1];
-      ax1_min = frac * pl.pixels_[0];
-      if (ax1_min < 0) ax1_min = 0;
-      frac = (axis_lines.first.back() - ll_plot[ax1]) / width[ax1];
-      ax1_max = frac * pl.pixels_[0];
-      if (ax1_max > pl.pixels_[0]) ax1_max = pl.pixels_[0];
-    } else {
-      ax1_min = 0;
-      ax1_max = pl.pixels_[0];
-    }
+  // Find the bounds along the first axis.
+  int ax1_min, ax1_max;
+  if (axis_lines.first.size() > 0) {
+    double frac = (axis_lines.first.front() - ll_plot[ax1]) / width[ax1];
+    ax1_min = frac * pl.pixels_[0];
+    if (ax1_min < 0) ax1_min = 0;
+    frac = (axis_lines.first.back() - ll_plot[ax1]) / width[ax1];
+    ax1_max = frac * pl.pixels_[0];
+    if (ax1_max > pl.pixels_[0]) ax1_max = pl.pixels_[0];
+  } else {
+    ax1_min = 0;
+    ax1_max = pl.pixels_[0];
+  }
 
-    // Iterate across the second axis and draw lines.
-    for (auto ax2_val : axis_lines.second) {
-      double frac = (ax2_val - ll_plot[ax2]) / width[ax2];
-      int ax2_ind = (1.0 - frac) * pl.pixels_[1];
-      for (int ax1_ind = ax1_min; ax1_ind < ax1_max; ++ax1_ind) {
-        for (int plus = 0; plus <= pl.meshlines_width_; plus++) {
-          if (ax2_ind+plus >= 0 && ax2_ind+plus < pl.pixels_[1])
-            data(ax1_ind, ax2_ind+plus) = rgb;
-          if (ax2_ind-plus >= 0 && ax2_ind-plus < pl.pixels_[1])
-            data(ax1_ind, ax2_ind-plus) = rgb;
-        }
+  // Iterate across the second axis and draw lines.
+  for (auto ax2_val : axis_lines.second) {
+    double frac = (ax2_val - ll_plot[ax2]) / width[ax2];
+    int ax2_ind = (1.0 - frac) * pl.pixels_[1];
+    for (int ax1_ind = ax1_min; ax1_ind < ax1_max; ++ax1_ind) {
+      for (int plus = 0; plus <= pl.meshlines_width_; plus++) {
+        if (ax2_ind+plus >= 0 && ax2_ind+plus < pl.pixels_[1])
+          data(ax1_ind, ax2_ind+plus) = rgb;
+        if (ax2_ind-plus >= 0 && ax2_ind-plus < pl.pixels_[1])
+          data(ax1_ind, ax2_ind-plus) = rgb;
       }
     }
   }

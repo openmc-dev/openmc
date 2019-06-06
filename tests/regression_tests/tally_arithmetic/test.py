@@ -10,8 +10,7 @@ class TallyArithmeticTestHarness(PyAPITestHarness):
         super().__init__(*args, **kwargs)
 
         # Initialize Mesh
-        mesh = openmc.Mesh(mesh_id=1)
-        mesh.type = 'regular'
+        mesh = openmc.RegularMesh(mesh_id=1)
         mesh.dimension = [2, 2, 2]
         mesh.lower_left = [-160.0, -160.0, -183.0]
         mesh.upper_right = [160.0, 160.0, 183.0]

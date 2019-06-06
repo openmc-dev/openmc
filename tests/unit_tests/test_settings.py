@@ -24,7 +24,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.seed = 17
     s.survival_biasing = True
     s.cutoff = {'weight': 0.25, 'weight_avg': 0.5, 'energy': 1.0e-5}
-    mesh = openmc.Mesh()
+    mesh = openmc.RegularMesh()
     mesh.lower_left = (-10., -10., -10.)
     mesh.upper_right = (10., 10., 10.)
     mesh.dimension = (5, 5, 5)

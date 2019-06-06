@@ -106,7 +106,7 @@ bounds = [-0.62992, -0.62992, -1, 0.62992, 0.62992, 1]
 uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
 settings_file.source = openmc.source.Source(space=uniform_dist)
 
-entropy_mesh = openmc.Mesh()
+entropy_mesh = openmc.RegularMesh()
 entropy_mesh.lower_left = [-0.39218, -0.39218, -1.e50]
 entropy_mesh.upper_right = [0.39218, 0.39218, 1.e50]
 entropy_mesh.dimension = [10, 10, 1]
@@ -119,8 +119,7 @@ settings_file.export_to_xml()
 ###############################################################################
 
 # Instantiate a tally mesh
-mesh = openmc.Mesh()
-mesh.type = 'regular'
+mesh = openmc.RegularMesh()
 mesh.dimension = [100, 100, 1]
 mesh.lower_left = [-0.62992, -0.62992, -1.e50]
 mesh.upper_right = [0.62992, 0.62992, 1.e50]

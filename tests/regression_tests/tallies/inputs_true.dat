@@ -309,7 +309,7 @@
 </settings>
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>
-  <mesh id="1" type="regular">
+  <mesh id="1">
     <dimension>2 2</dimension>
     <lower_left>-182.07 -182.07</lower_left>
     <upper_right>182.07 182.07</upper_right>

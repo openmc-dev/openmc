@@ -922,6 +922,36 @@ openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance)
   return 0;
 }
 
+extern "C" int
+openmc_cell_get_temperature(int32_t index, const int32_t* instance, double* T)
+{
+  if (index < 0 || index >= model::cells.size()) {
+    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  Cell& c {*model::cells[index]};
+
+  if (c.sqrtkT_.size() < 1) {
+    strcpy(openmc_err_msg, "Cell temperature has not yet been set.");
+    return OPENMC_E_UNASSIGNED;
+  }
+
+  if (instance) {
+    if (*instance >= 0 && *instance < c.n_instances_) {
+      double sqrtkT = c.sqrtkT_.size() == 1 ? c.sqrtkT_[0] : c.sqrtkT_[*instance];
+      *T = sqrtkT * sqrtkT / K_BOLTZMANN;
+    } else {
+      strcpy(openmc_err_msg, "Distribcell instance is out of bounds.");
+      return OPENMC_E_OUT_OF_BOUNDS;
+    }
+  } else {
+    *T = c.sqrtkT_[0] * c.sqrtkT_[0] / K_BOLTZMANN;
+  }
+
+  return 0;
+}
+
 //! Return the index in the cells array of a cell with a given ID
 extern "C" int
 openmc_get_cell_index(int32_t id, int32_t* index)

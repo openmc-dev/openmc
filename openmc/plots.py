@@ -439,7 +439,7 @@ class Plot(IDManagerMixin):
         string += '{: <16}=\t{}\n'.format('\tBasis', self._basis)
         string += '{: <16}=\t{}\n'.format('\tWidth', self._width)
         string += '{: <16}=\t{}\n'.format('\tOrigin', self._origin)
-        string += '{: <16}=\t{}\n'.format('\tPixels', self._origin)
+        string += '{: <16}=\t{}\n'.format('\tPixels', self._pixels)
         string += '{: <16}=\t{}\n'.format('\tColor by', self._color_by)
         string += '{: <16}=\t{}\n'.format('\tBackground', self._background)
         string += '{: <16}=\t{}\n'.format('\tMask components',

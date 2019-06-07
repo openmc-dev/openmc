@@ -9,6 +9,7 @@
 #include "openmc/material.h"
 #include "openmc/string_utils.h"
 #include "openmc/settings.h"
+#include "openmc/surface.h"
 
 #ifdef DAGMC
 
@@ -37,6 +38,8 @@ const bool dagmc_enabled = false;
 const std::string DAGMC_FILENAME = "dagmc.h5m";
 
 namespace openmc {
+moab::DagMC::RayHistory history;
+Direction last_dir;
 
 namespace model {
 

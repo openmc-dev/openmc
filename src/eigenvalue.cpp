@@ -29,6 +29,7 @@
 #include <cmath> // for sqrt, abs, pow
 #include <iterator> // for back_inserter
 #include <string>
+#include <limits> //for infinity
 
 namespace openmc {
 
@@ -388,10 +389,15 @@ int openmc_get_keff(double* k_combined)
   k_combined[0] = 0.0;
   k_combined[1] = 0.0;
 
-  // Make sure we have at least four realizations. Notice that at the end,
+  // Special case for n <=3. Notice that at the end,
   // there is a N-3 term in a denominator.
   if (simulation::n_realizations <= 3) {
-    return -1;
+    k_combined[0] = simulation::keff;
+    k_combined[1] = simulation::keff_std;
+    if (simulation::n_realizations <=1) {
+      k_combined[1] = std::numeric_limits<double>::infinity();
+    }
+    return 0;
   }
 
   // Initialize variables

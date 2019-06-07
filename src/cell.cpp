@@ -7,6 +7,7 @@
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
+#include "openmc/dagmc.h"
 #include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
@@ -609,11 +610,6 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 //==============================================================================
 #ifdef DAGMC
 
-extern moab::DagMC::RayHistory history;
-extern Direction last_dir;
-#pragma omp threadprivate(history, last_dir)
-moab::DagMC::RayHistory history;
-Direction last_dir;
 
 DAGCell::DAGCell() : Cell{} {};
 

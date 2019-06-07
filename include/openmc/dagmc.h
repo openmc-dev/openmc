@@ -9,10 +9,14 @@ extern "C" const bool dagmc_enabled;
 #ifdef DAGMC
 
 #include "DagMC.hpp"
-#include "openmc/cell.h"
-#include "openmc/surface.h"
+#include "openmc/xml_interface.h"
+#include "openmc/position.h"
 
 namespace openmc {
+
+extern moab::DagMC::RayHistory history;
+extern Direction last_dir;
+#pragma omp threadprivate(history, last_dir)
 
 namespace model {
   extern moab::DagMC* DAG;

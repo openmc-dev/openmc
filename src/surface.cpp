@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "openmc/error.h"
+#include "openmc/dagmc.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/settings.h"
 #include "openmc/string_utils.h"
@@ -262,6 +263,12 @@ Direction DAGSurface::normal(Position r) const
   rval = dagmc_ptr_->get_angle(surf, pnt, dir);
   MB_CHK_ERR_CONT(rval);
   return u;
+}
+
+Direction DAGSurface::reflect(Position r, Direction u) const
+{
+  history.rollback_last_intersection();
+  return Surface::reflect(r, u);
 }
 
 BoundingBox DAGSurface::bounding_box() const

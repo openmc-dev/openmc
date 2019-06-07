@@ -256,13 +256,12 @@ DAGSurface::distance(Position r, Direction u, bool coincident) const
 Direction DAGSurface::normal(Position r) const
 {
   moab::ErrorCode rval;
-  Direction u;
   moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
   double pnt[3] = {r.x, r.y, r.z};
-  double dir[3] = {u.x, u.y, u.z};
+  double dir[3];
   rval = dagmc_ptr_->get_angle(surf, pnt, dir);
   MB_CHK_ERR_CONT(rval);
-  return u;
+  return dir;
 }
 
 Direction DAGSurface::reflect(Position r, Direction u) const

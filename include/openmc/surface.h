@@ -82,7 +82,7 @@ public:
   //! \param[in] r The point at which the ray is incident.
   //! \param[in] u Incident direction of the ray
   //! \return Outgoing direction of the ray
-  Direction reflect(Position r, Direction u) const;
+  virtual Direction reflect(Position r, Direction u) const;
 
   //! Evaluate the equation describing the surface.
   //!

@@ -461,11 +461,13 @@ Particle::cross_surface()
     // boundary, it is necessary to redetermine the particle's coordinates in
     // the lower universes.
 
-    n_coord_ = 1;
-    if (!find_cell(this, true)) {
-      this->mark_as_lost("Couldn't find particle after reflecting from surface "
-        + std::to_string(surf->id_) + ".");
-      return;
+    if (!settings::dagmc) {
+      n_coord_ = 1;
+      if (!find_cell(this, true)) {
+        this->mark_as_lost("Couldn't find particle after reflecting from surface "
+                           + std::to_string(surf->id_) + ".");
+        return;
+      }
     }
 
     // Set previous coordinate going slightly past surface crossing

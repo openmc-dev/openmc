@@ -267,8 +267,9 @@ Direction DAGSurface::normal(Position r) const
 
 Direction DAGSurface::reflect(Position r, Direction u) const
 {
-  history.rollback_last_intersection();
-  return Surface::reflect(r, u);
+  history.reset_to_last_intersection();
+  last_dir = Surface::reflect(r, u);
+  return last_dir;
 }
 
 BoundingBox DAGSurface::bounding_box() const

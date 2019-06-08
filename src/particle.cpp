@@ -460,7 +460,7 @@ Particle::cross_surface()
     // If a reflective surface is coincident with a lattice or universe
     // boundary, it is necessary to redetermine the particle's coordinates in
     // the lower universes.
-
+    // (unless we're using a dagmc model, which has exactly one universe)
     if (!settings::dagmc) {
       n_coord_ = 1;
       if (!find_cell(this, true)) {

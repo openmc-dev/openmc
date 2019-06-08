@@ -1376,7 +1376,7 @@ class HexLattice(Lattice):
         lat = cls(lat_id, name)
         lat.center = [float(i) for i in get_text(elem, 'center').split()]
         lat.pitch = [float(i) for i in get_text(elem, 'pitch').split()]
-        lat.orientation = get_text(elem, 'orientation')
+        lat.orientation = get_text(elem, 'orientation', 'y')
         outer = get_text(elem, 'outer')
         if outer is not None:
             lat.outer = get_universe(int(outer))

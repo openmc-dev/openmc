@@ -1241,8 +1241,8 @@ class HexLattice(Lattice):
             else:
                 i_within = 5*g - z
 
-        if (self._orientation == 'x') and (i_within > 0):
-            i_within = 6*(self._num_rings - i_ring - 1) - i_within_
+        if self._orientation == 'x' and g > 0:
+            i_within = (i_within + 5*g) % (6*g)
 
         if self.num_axial is None:
             return (i_ring, i_within)
@@ -1376,6 +1376,7 @@ class HexLattice(Lattice):
         lat = cls(lat_id, name)
         lat.center = [float(i) for i in get_text(elem, 'center').split()]
         lat.pitch = [float(i) for i in get_text(elem, 'pitch').split()]
+        lat.orientation = get_text(elem, 'orientation', 'y')
         outer = get_text(elem, 'outer')
         if outer is not None:
             lat.outer = get_universe(int(outer))
@@ -1390,7 +1391,7 @@ class HexLattice(Lattice):
         if n_axial > 1:
             univs = [deepcopy(univs) for i in range(n_axial)]
 
-        # Get flat array of universes numbers
+        # Get flat array of universes
         uarray = np.array([get_universe(int(i)) for i in
                            get_text(elem, 'universes').split()])
 
@@ -1400,28 +1401,53 @@ class HexLattice(Lattice):
             # Get list for a single axial level
             axial_level = univs[z] if n_axial > 1 else univs
 
-            # Start iterating from top
-            x, alpha = 0, n_rings - 1
-            while True:
-                # Set entry in list based on (x,alpha,z) coordinates
-                _, i_ring, i_within = lat.get_universe_index((x, alpha, z))
-                axial_level[i_ring][i_within] = uarray[j]
+            if lat.orientation == 'y':
+                # Start iterating from top
+                x, alpha = 0, n_rings - 1
+                while True:
+                    # Set entry in list based on (x,alpha,z) coordinates
+                    _, i_ring, i_within = lat.get_universe_index((x, alpha, z))
+                    axial_level[i_ring][i_within] = uarray[j]
 
-                # Move to the right
-                x += 2
-                alpha -= 1
-                if not lat.is_valid_index((x, alpha, z)):
-                    # Move down in y direction
-                    alpha += x - 1
-                    x = 1 - x
+                    # Move to the right
+                    x += 2
+                    alpha -= 1
                     if not lat.is_valid_index((x, alpha, z)):
-                        # Move to the right
-                        x += 2
-                        alpha -= 1
+                        # Move down in y direction
+                        alpha += x - 1
+                        x = 1 - x
                         if not lat.is_valid_index((x, alpha, z)):
-                            # Reached the bottom
+                            # Move to the right
+                            x += 2
+                            alpha -= 1
+                            if not lat.is_valid_index((x, alpha, z)):
+                                # Reached the bottom
+                                break
+                    j += 1
+            else:
+                # Start iterating from top
+                alpha, y = 1 - n_rings, n_rings - 1
+                while True:
+                    # Set entry in list based on (alpha,y,z) coordinates
+                    _, i_ring, i_within = lat.get_universe_index((alpha, y, z))
+                    axial_level[i_ring][i_within] = uarray[j]
+
+                    # Move to the right
+                    alpha += 1
+                    if not lat.is_valid_index((alpha, y, z)):
+                        # Move down to next row
+                        alpha = 1 - n_rings
+                        y -= 1
+
+                        # Check if we've reached the bottom
+                        if y == -n_rings:
                             break
-                j += 1
+
+                        while not lat.is_valid_index((alpha, y, z)):
+                            # Move to the right
+                            alpha += 1
+                    j += 1
+
         lat.universes = univs
         return lat
 
@@ -1469,7 +1495,7 @@ class HexLattice(Lattice):
             theta = 0
             y = middle
 
-            # Climb up the top-right.
+            # Climb down the bottom-right
             for i in range(r):
                 # Add the universe.
                 universe = universes[r_prime][theta]
@@ -1479,7 +1505,7 @@ class HexLattice(Lattice):
                 y += 1
                 theta += 1
 
-            # Climb left the top-left.
+            # Climb left across the bottom
             for i in range(r):
                 # Add the universe.
                 universe = universes[r_prime][theta]
@@ -1488,17 +1514,7 @@ class HexLattice(Lattice):
                 # Translate the indices.
                 theta += 1
 
-            # Climb down the middle left.
-            for i in range(r):
-                # Add the universe.
-                universe = universes[r_prime][theta]
-                rows[y].insert(0, id_form.format(universe._id))
-
-                # Translate the indices.
-                y -= 1
-                theta += 1
-
-            # Climb down the down left.
+            # Climb up the bottom-left
             for i in range(r):
                 # Add the universe.
                 universe = universes[r_prime][theta]
@@ -1508,7 +1524,17 @@ class HexLattice(Lattice):
                 y -= 1
                 theta += 1
 
-            # Climb right the down right.
+            # Climb up the top-left
+            for i in range(r):
+                # Add the universe.
+                universe = universes[r_prime][theta]
+                rows[y].insert(0, id_form.format(universe._id))
+
+                # Translate the indices.
+                y -= 1
+                theta += 1
+
+            # Climb right across the top
             for i in range(r):
                 # Add the universe.
                 universe = universes[r_prime][theta]
@@ -1517,7 +1543,7 @@ class HexLattice(Lattice):
                 # Translate the indices.
                 theta += 1
 
-            # Climb up the middle-right.
+            # Climb down the top-right
             for i in range(r):
                 # Add the universe.
                 universe = universes[r_prime][theta]
@@ -1528,7 +1554,7 @@ class HexLattice(Lattice):
                 theta += 1
 
         # Flip the rows and join each row into a single string.
-        rows = [pad.join(x) for x in rows[::-1]]
+        rows = [pad.join(x) for x in rows]
 
         # Pad the beginning of the rows so they line up properly.
         for y in range(self._num_rings - 1):
@@ -1806,41 +1832,41 @@ class HexLattice(Lattice):
             y = middle
 
             for i in range(r):
-                # Climb up the top-right.
+                # Climb down the bottom-right
                 rows[y].append(str_form.format(r_prime, theta))
                 y += 1
                 theta += 1
 
             for i in range(r):
-                # Climb left the top-left.
+                # Climb left across the bottom
                 rows[y].insert(0, str_form.format(r_prime, theta))
                 theta += 1
 
             for i in range(r):
-                # Climb down the middle left.
-                rows[y].insert(0, str_form.format(r_prime, theta))
-                y -= 1
-                theta += 1
-
-            for i in range(r):
-                # Climb down the down left.
+                # Climb up the bottom-left
                 rows[y].insert(0, str_form.format(r_prime, theta))
                 y -= 1
                 theta += 1
 
             for i in range(r):
-                # Climb right the down right.
+                # Climb up the top-left
+                rows[y].insert(0, str_form.format(r_prime, theta))
+                y -= 1
+                theta += 1
+
+            for i in range(r):
+                # Climb right across the top
                 rows[y].append(str_form.format(r_prime, theta))
                 theta += 1
 
             for i in range(r):
-                # Climb up the middle-right.
+                # Climb down the top-right
                 rows[y].append(str_form.format(r_prime, theta))
                 y += 1
                 theta += 1
 
         # Flip the rows and join each row into a single string.
-        rows = [pad.join(x) for x in rows[::-1]]
+        rows = [pad.join(x) for x in rows]
 
         # Pad the beginning of the rows so they line up properly.
         for y in range(num_rings - 1):

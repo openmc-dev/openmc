@@ -161,9 +161,9 @@ class HexLatticeOXTestHarness(PyAPITestHarness):
                 arr.append(fuel_ch_univ)
             universes.append(arr)
         universes[-1] = [tube_ch_univ]
-        channels = [(7, 16), (7, 13), (7, 10), (7, 7), (7, 4), (7, 1), (5, 0),
-                    (4, 33), (5, 25), (4, 27), (5, 20), (4, 21), (5, 15),
-                    (4, 15), (5, 10), (4, 9), (5, 5), (4, 3)]
+        channels = [(7, 2), (7, 5), (7, 8), (7, 11), (7, 14), (7, 17), (5, 0),
+                    (4, 3), (5, 5), (4, 9), (5, 10), (4, 15), (5, 15),
+                    (4, 21), (5, 20), (4, 27), (5, 25), (4, 33)]
         for i, j in channels:
             universes[i][j] = abs_ch_univ
         lattice = openmc.HexLattice(name="regular fuel assembly")

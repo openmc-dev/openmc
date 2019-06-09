@@ -1204,6 +1204,19 @@ openmc_material_get_densities(int32_t index, int** nuclides, double** densities,
 }
 
 extern "C" int
+openmc_material_get_density(int32_t index, double* density)
+{
+  if (index >= 0 && index < model::materials.size()) {
+    auto& mat = model::materials[index];
+    *density = mat->density_gpcc_;
+    return 0;
+  } else {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+}
+
+extern "C" int
 openmc_material_get_fissionable(int32_t index, bool* fissionable)
 {
   if (index >= 0 && index < model::materials.size()) {

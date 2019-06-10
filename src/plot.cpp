@@ -29,8 +29,11 @@ namespace openmc {
 //==============================================================================
 
 const RGBColor WHITE {255, 255, 255};
+const RGBColor RED {255,   0,   0};
+
 constexpr int PLOT_LEVEL_LOWEST {-1}; //!< lower bound on plot universe level
 constexpr int32_t NOT_FOUND {-2};
+constexpr int32_t OVERLAP{-3};
 
 IdData::IdData(size_t h_res, size_t v_res)
   : data_({v_res, h_res, 2}, NOT_FOUND)
@@ -49,6 +52,10 @@ IdData::set_value(size_t y, size_t x, const Particle& p, int level) {
   }
 }
 
+void IdData::set_overlap(size_t y, size_t x) {
+  data_(y, x) = OVERLAP;
+}
+
 PropertyData::PropertyData(size_t h_res, size_t v_res)
   : data_({v_res, h_res, 2}, NOT_FOUND)
 { }
@@ -61,6 +68,10 @@ PropertyData::set_value(size_t y, size_t x, const Particle& p, int level) {
     Material* m = model::materials[p.material_].get();
     data_(y,x,1) = m->density_gpcc_;
   }
+}
+
+void PropertyData::set_overlap(size_t y, size_t x) {
+  data_(y, x) = OVERLAP;
 }
 
 //==============================================================================
@@ -143,6 +154,7 @@ void create_ppm(Plot pl)
       auto id = ids.data_(y, x, pl.color_by_);
       // no setting needed if not found
       if (id == NOT_FOUND) { continue; }
+      if (id == OVERLAP) data(x,y) = RED;
       if (PlotColorBy::cells == pl.color_by_) {
         data(x,y) = pl.colors_[model::cell_map[id]];
       } else if (PlotColorBy::mats == pl.color_by_) {

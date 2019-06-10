@@ -228,37 +228,37 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
                         # Add a list for this ring.
                         uarray[-1].append([])
 
-                        # Climb up the top-left.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, y, a])
-                            a -= 1
-                            y += 1
-
-                        # Climb the left.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, y, a])
-                            a -= 1
-
-                        # Climb down the bottom-left.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, y, a])
-                            y -= 1
-
                         # Climb down the bottom-right.
                         for i in range(r):
                             uarray[-1][-1].append(universe_ids[z, y, a])
-                            a += 1
                             y -= 1
 
-                        # Climb up the right.
+                        # Climb across the bottom.
                         for i in range(r):
                             uarray[-1][-1].append(universe_ids[z, y, a])
-                            a += 1
+                            a -= 1
 
-                        # Climb up the top-right.
+                        # Climb up the bottom-left.
+                        for i in range(r):
+                            uarray[-1][-1].append(universe_ids[z, y, a])
+                            a -= 1
+                            y +=1
+
+                        # Climb up the top-left.
                         for i in range(r):
                             uarray[-1][-1].append(universe_ids[z, y, a])
                             y += 1
+
+                        # Climb across the top.
+                        for i in range(r):
+                            uarray[-1][-1].append(universe_ids[z, y, a])
+                            a += 1
+
+                        # Climb down the top-right.
+                        for i in range(r):
+                            uarray[-1][-1].append(universe_ids[z, y, a])
+                            a += 1
+                            y -= 1
 
                         # Move down to the next ring.
                         a -= 1
@@ -405,9 +405,11 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
         ----------
         idx : Iterable of int
             Lattice element indices. For a rectangular lattice, the indices are
-            given in the :math:`(x,y)` or :math:`(x,y,z)` coordinate system.For
+            given in the :math:`(x,y)` or :math:`(x,y,z)` coordinate system. For
             hexagonal lattices, they are given in the :math:`x,\alpha` or
-            :math:`x,\alpha,z` coordinate systems.
+            :math:`x,\alpha,z` coordinate systems for "y" orientations and
+            :math:`\alpha,y` or :math:`\alpha,y,z` coordinate systems for "x"
+            orientations.
 
         Returns
         -------
@@ -947,8 +949,7 @@ class HexLattice(Lattice):
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
         string += '{0: <16}{1}{2}\n'.format('\tOrientation', '=\t',
-                                            "x" if (self._orientation == 'x')
-                                            else "y")
+                                            self._orientation)
         string += '{0: <16}{1}{2}\n'.format('\t# Rings', '=\t', self._num_rings)
         string += '{0: <16}{1}{2}\n'.format('\t# Axial', '=\t', self._num_axial)
         string += '{0: <16}{1}{2}\n'.format('\tCenter', '=\t',

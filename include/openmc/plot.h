@@ -61,6 +61,7 @@ struct IdData {
 
   // Methods
   void set_value(size_t y, size_t x, const Particle& p, int level);
+  void set_overlap(size_t y, size_t x);
 
   // Members
   xt::xtensor<int32_t, 3> data_; //!< 2D array of cell & material ids
@@ -72,6 +73,7 @@ struct PropertyData {
 
   // Methods
   void set_value(size_t y, size_t x, const Particle& p, int level);
+  void set_overlap(size_t y, size_t x);
 
   // Members
   xt::xtensor<double, 3> data_; //!< 2D array of temperature & density data
@@ -106,6 +108,7 @@ public:
   Position width_; //!< Plot width in geometry
   PlotBasis basis_; //!< Plot basis (XY/XZ/YZ)
   std::array<size_t, 3> pixels_; //!< Plot size in pixels
+  bool check_overlaps_ = false;
   int level_; //!< Plot universe level
 };
 
@@ -173,6 +176,9 @@ T PlotBase::get_map() const {
         if (found_cell) {
           data.set_value(y, x, p, j);
         }
+        if (check_overlaps_ && check_cell_overlap(&p, false)) {
+          data.set_overlap(y, x);
+        }
       } // inner for
     } // outer for
   } // omp parallel
@@ -210,6 +216,7 @@ public:
   int index_meshlines_mesh_; //!< Index of the mesh to draw on the plot
   RGBColor meshlines_color_; //!< Color of meshlines on the plot
   RGBColor not_found_; //!< Plot background color
+  RGBColor overlap_color_; //!< Plot overlap color
   std::vector<RGBColor> colors_; //!< Plot colors
   std::string path_plot_; //!< Plot output filename
 };

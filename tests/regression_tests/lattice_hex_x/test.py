@@ -6,7 +6,6 @@ import numpy as np
 class HexLatticeOXTestHarness(PyAPITestHarness):
 
     def _build_inputs(self):
-
         materials = openmc.Materials()
 
         fuel_mat = openmc.Material(material_id=1, name="UO2")
@@ -195,7 +194,6 @@ class HexLatticeOXTestHarness(PyAPITestHarness):
         source.space = openmc.stats.Box(ll, ur)
         source.strength = 1.0
         settings.source = source
-        settings.output = {'summary': False}
         settings.batches = 10
         settings.inactive = 5
         settings.particles = 1000
@@ -204,6 +202,5 @@ class HexLatticeOXTestHarness(PyAPITestHarness):
 
 
 def test_lattice_hex_ox_surf():
-
     harness = HexLatticeOXTestHarness('statepoint.10.h5')
     harness.main()

@@ -202,6 +202,13 @@ def test_get_universe(rlat2, rlat3, hlat2, hlat3):
     assert hlat2.get_universe((1, 0)) == u1
     assert hlat2.get_universe((-2, 2)) == u1
 
+    hlat2.orientation = 'x'
+    assert hlat2.get_universe((2, 0)) == u2
+    assert hlat2.get_universe((1, 0)) == u2
+    assert hlat2.get_universe((1, 1)) == u1
+    assert hlat2.get_universe((-1, 1)) == u1
+    hlat2.orientation = 'y'
+
     u1, u2, u3, outer = hlat3.univs
     assert hlat3.get_universe((0, 0, 0)) == u2
     assert hlat3.get_universe((0, 0, 1)) == u3
@@ -341,4 +348,6 @@ def test_xml_hex(hlat2, hlat3):
 def test_show_indices():
     for i in range(1, 11):
         lines = openmc.HexLattice.show_indices(i).split('\n')
+        assert len(lines) == 4*i - 3
+        lines_x = openmc.HexLattice.show_indices(i, 'x').split('\n')
         assert len(lines) == 4*i - 3

@@ -320,8 +320,8 @@ the following attributes or sub-elements:
 
   :orientation:
     The orientation of the hexagonal lattice. The string "x" indicates that two
-    sides of the lattice are perpendicular to the x-axis, whereas the string "y"
-    indicates that two sides are perpendicular to the y-axis.
+    sides of the lattice are parallel to the x-axis, whereas the string "y"
+    indicates that two sides are parallel to the y-axis.
 
     *Default*: "y"
 

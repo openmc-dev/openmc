@@ -296,11 +296,17 @@
           </choice>
           <optional>
             <choice>
-              <element name="orient">
-                <value>OX</value>
+              <element name="orientation">
+                <choice>
+                  <value>x</value>
+                  <value>y</value>
+                </choice>
               </element>
-              <attribute name="orient">
-                <value>OX</value>
+              <attribute name="orientation">
+                <choice>
+                  <value>x</value>
+                  <value>y</value>
+                </choice>
               </attribute>
             </choice>
           </optional>

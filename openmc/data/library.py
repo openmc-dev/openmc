@@ -51,6 +51,8 @@ class DataLibrary(EqualityMixin):
         ----------
         filename : str or Path
             Path to the file to be registered.
+            If an ``xml`` file, treat as the depletion chain file without
+            materials.
 
         """
         if not isinstance(filename, pathlib.Path):
@@ -58,9 +60,17 @@ class DataLibrary(EqualityMixin):
         else:
             path = filename
 
-        with h5py.File(path, 'r') as h5file:
-            filetype = h5file.attrs['filetype'].decode()[5:]
-            materials = list(h5file)
+        if path.suffix == '.xml':
+            filetype = 'depletion_chain'
+            materials = []
+        elif path.suffix == '.h5':
+            with h5py.File(path, 'r') as h5file:
+                filetype = h5file.attrs['filetype'].decode()[5:]
+                materials = list(h5file)
+        else:
+            raise ValueError(
+                "File type {} not supported by {}"
+                .format(path.name, self.__class__.__name__))
 
         library = {'path': path.name, 'type': filetype, 'materials': materials}
         self.libraries.append(library)
@@ -88,7 +98,8 @@ class DataLibrary(EqualityMixin):
 
         for library in self.libraries:
             lib_element = ET.SubElement(root, "library")
-            lib_element.set('materials', ' '.join(library['materials']))
+            if library['materials']:
+                lib_element.set('materials', ' '.join(library['materials']))
             lib_element.set('path', os.path.relpath(library['path'], common_dir))
             lib_element.set('type', library['type'])
 
@@ -108,7 +119,7 @@ class DataLibrary(EqualityMixin):
         ----------
         path : str, optional
             Path to XML file to read. If not provided, the
-            `OPENMC_CROSS_SECTIONS` environment variable will be  used.
+            :envvar:`OPENMC_CROSS_SECTIONS` environment variable will be  used.
 
         Returns
         -------
@@ -146,6 +157,15 @@ class DataLibrary(EqualityMixin):
             materials = lib_element.attrib['materials'].split()
             library = {'path': filename, 'type': filetype,
                        'materials': materials}
+            data.libraries.append(library)
+
+        # get depletion chain data
+
+        dep_node = root.find("depletion_chain")
+        if dep_node is not None:
+            filename = os.path.join(directory, dep_node.attrib['path'])
+            library = {'path': filename, 'type': 'depletion_chain',
+                       'materials': []}
             data.libraries.append(library)
 
         return data

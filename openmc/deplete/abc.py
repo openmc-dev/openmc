@@ -11,6 +11,7 @@ from abc import ABCMeta, abstractmethod
 from xml.etree import ElementTree as ET
 from warnings import warn
 
+from openmc.data import DataLibrary
 from .chain import Chain
 
 OperatorResult = namedtuple('OperatorResult', ['k', 'rates'])
@@ -65,19 +66,17 @@ class TransportOperator(metaclass=ABCMeta):
         if chain_file is None:
             chain_file = os.environ.get("OPENMC_DEPLETE_CHAIN", None)
             if chain_file is None:
-                xs_file = os.environ.get("OPENMC_CROSS_SECTIONS", None)
-                if xs_file is None:
-                    raise IOError(
-                        "OPENMC_CROSS_SECTIONS environment variable "
-                        "not set.")
-                root = ET.parse(xs_file).getroot()
-                node = root.find("depletion_chain")
-                if node is None:
+                data = DataLibrary.from_xml()
+                # search for depletion_chain path from end of list
+                for lib in data.libraries[::-1]:
+                    if lib['type'] == 'depletion_chain':
+                        break
+                else:
                     raise IOError(
                         "No chain specified, either manually or "
                         "under depletion_chain in environment variable "
                         "OPENMC_CROSS_SECTIONS.")
-                chain_file = node.get("path")
+                chain_file = lib['path']
             else:
                 warn("Use of OPENMC_DEPLETE_CHAIN is deprecated in favor "
                      "of adding depletion_chain to OPENMC_CROSS_SECTIONS",

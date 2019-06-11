@@ -80,7 +80,7 @@ class TransportOperator(metaclass=ABCMeta):
             else:
                 warn("Use of OPENMC_DEPLETE_CHAIN is deprecated in favor "
                      "of adding depletion_chain to OPENMC_CROSS_SECTIONS",
-                     DeprecationWarning)
+                     FutureWarning)
         self.chain = Chain.from_xml(chain_file)
 
     @abstractmethod

@@ -4,21 +4,20 @@ Modifies and resets environment variable OPENMC_CROSS_SECTIONS
 to a custom file with new depletion_chain node
 """
 
-from os import remove
 from os import environ
 from unittest import mock
 from pathlib import Path
-import pytest
 
+import pytest
 from openmc.deplete.abc import TransportOperator
 from openmc.deplete.chain import Chain
 
 BARE_XS_FILE = "bare_cross_sections.xml"
-CHAIN_PATH = Path().cwd() / "tests" / "chain_simple.xml"
+CHAIN_PATH = Path(__file__).parents[1] / "chain_simple.xml"
 
 
-@pytest.fixture(scope="module")
-def bare_xs():
+@pytest.fixture()
+def bare_xs(run_in_tmpdir):
     """Create a very basic cross_sections file, return simple Chain.
 
     """
@@ -33,7 +32,6 @@ def bare_xs():
         out.write(bare_xs_contents)
 
     yield
-    remove(BARE_XS_FILE)
 
 
 class BareDepleteOperator(TransportOperator):

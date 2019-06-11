@@ -667,6 +667,7 @@ void Plot::set_color_overlaps(pugi::xml_node plot_node) {
   // they're going to be plotted
   if (color_overlaps_ && settings::run_mode == RUN_MODE_PLOTTING) {
     settings::check_overlaps = true;
+    model::overlap_check_count.resize(model::cells.size(), 0);
   }
 }
 

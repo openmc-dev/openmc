@@ -210,7 +210,7 @@ private:
   void set_user_colors(pugi::xml_node plot_node);
   void set_meshlines(pugi::xml_node plot_node);
   void set_mask(pugi::xml_node plot_node);
-  void set_color_overlaps(pugi::xml_node plot_node);
+  void set_overlap_color(pugi::xml_node plot_node);
 
 // Members
 public:

@@ -1,5 +1,6 @@
 import os
 import xml.etree.ElementTree as ET
+import pathlib
 
 import h5py
 
@@ -48,19 +49,20 @@ class DataLibrary(EqualityMixin):
 
         Parameters
         ----------
-        filename : str
+        filename : str or Path
             Path to the file to be registered.
 
         """
-        # Support pathlib
-        # TODO: Remove when support is Python 3.6+ only
-        filename = str(filename)
+        if not isinstance(filename, pathlib.Path):
+            path = pathlib.Path(filename)
+        else:
+            path = filename
 
-        with h5py.File(filename, 'r') as h5file:
+        with h5py.File(path, 'r') as h5file:
             filetype = h5file.attrs['filetype'].decode()[5:]
             materials = list(h5file)
 
-        library = {'path': filename, 'type': filetype, 'materials': materials}
+        library = {'path': path.name, 'type': filetype, 'materials': materials}
         self.libraries.append(library)
 
     def export_to_xml(self, path='cross_sections.xml'):

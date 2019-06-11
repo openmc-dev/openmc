@@ -403,6 +403,10 @@ Plot::set_default_colors(pugi::xml_node plot_node)
 
   for (auto& c : colors_) {
     c = random_color();
+    // make sure we don't interfere with some default colors
+    while (c == RED || c == WHITE) {
+      c = random_color();
+    }
   }
 }
 

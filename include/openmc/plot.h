@@ -49,6 +49,10 @@ struct RGBColor {
     blue = v[2];
   }
 
+  bool operator ==(const RGBColor& other) {
+    return red == other.red && green == other.green && blue == other.blue;
+  }
+
   // Members
   uint8_t red, green, blue;
 };

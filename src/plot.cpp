@@ -657,6 +657,19 @@ Plot::set_mask(pugi::xml_node plot_node)
   }
 }
 
+void Plot::set_color_overlaps(pugi::xml_node plot_node) {
+  color_overlaps_ = false;
+  if (check_for_node(plot_node, "show_overlaps")) {
+    color_overlaps_ = get_node_value_bool(plot_node, "show_overlaps");
+  }
+
+  // make sure we allocate the vector for counting overlap checks if
+  // they're going to be plotted
+  if (color_overlaps_ && settings::run_mode == RUN_MODE_PLOTTING) {
+    settings::check_overlaps = true;
+  }
+}
+
 Plot::Plot(pugi::xml_node plot_node)
   : index_meshlines_mesh_{-1}
 {
@@ -672,6 +685,7 @@ Plot::Plot(pugi::xml_node plot_node)
   set_user_colors(plot_node);
   set_meshlines(plot_node);
   set_mask(plot_node);
+  set_color_overlaps(plot_node);
 } // End Plot constructor
 
 //==============================================================================
@@ -868,6 +882,7 @@ void create_voxel(Plot pl)
   pltbase.basis_ = PlotBasis::xy;
   pltbase.pixels_ = pl.pixels_;
   pltbase.level_ = -1; // all universes for voxel files
+  pltbase.color_overlaps_ = pl.color_overlaps_;
 
   ProgressBar pb;
   for (int z = 0; z < pl.pixels_[2]; z++) {

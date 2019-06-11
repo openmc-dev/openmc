@@ -155,7 +155,7 @@ void create_ppm(Plot pl)
       // no setting needed if not found
       if (id == NOT_FOUND) { continue; }
       if (id == OVERLAP) {
-        data(x,y) = RED;
+        data(x,y) = pl.overlap_color_;
         continue;
       }
       if (PlotColorBy::cells == pl.color_by_) {
@@ -657,10 +657,28 @@ Plot::set_mask(pugi::xml_node plot_node)
   }
 }
 
-void Plot::set_color_overlaps(pugi::xml_node plot_node) {
+void Plot::set_overlap_color(pugi::xml_node plot_node) {
   color_overlaps_ = false;
   if (check_for_node(plot_node, "show_overlaps")) {
     color_overlaps_ = get_node_value_bool(plot_node, "show_overlaps");
+    overlap_color_ = RED;
+    // check for custom overlap color
+    if (check_for_node(plot_node, "overlap_color")) {
+      if (!color_overlaps_) {
+        std::stringstream wrn_msg;
+        wrn_msg << "Overlap color specified in plot " << id_
+                << " but overlaps won't be shown.";
+        warning(wrn_msg);
+      }
+      std::vector<int> olap_clr = get_node_array<int>(plot_node, "overlap_color");
+      if (olap_clr.size() == 3) {
+        overlap_color_ = olap_clr;
+      } else {
+        std::stringstream err_msg;
+        err_msg << "Bad overlap RGB in plot " << id_;
+        fatal_error(err_msg);
+      }
+    }
   }
 
   // make sure we allocate the vector for counting overlap checks if
@@ -686,7 +704,7 @@ Plot::Plot(pugi::xml_node plot_node)
   set_user_colors(plot_node);
   set_meshlines(plot_node);
   set_mask(plot_node);
-  set_color_overlaps(plot_node);
+  set_overlap_color(plot_node);
 } // End Plot constructor
 
 //==============================================================================

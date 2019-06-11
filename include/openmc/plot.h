@@ -108,7 +108,7 @@ public:
   Position width_; //!< Plot width in geometry
   PlotBasis basis_; //!< Plot basis (XY/XZ/YZ)
   std::array<size_t, 3> pixels_; //!< Plot size in pixels
-  bool check_overlaps_ = false;
+  bool color_overlaps_ = true;
   int level_; //!< Plot universe level
 };
 
@@ -176,7 +176,7 @@ T PlotBase::get_map() const {
         if (found_cell) {
           data.set_value(y, x, p, j);
         }
-        if (check_overlaps_ && check_cell_overlap(&p, false)) {
+        if (color_overlaps_ && check_cell_overlap(&p, false)) {
           data.set_overlap(y, x);
         }
       } // inner for

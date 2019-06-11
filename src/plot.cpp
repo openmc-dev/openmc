@@ -53,7 +53,7 @@ IdData::set_value(size_t y, size_t x, const Particle& p, int level) {
 }
 
 void IdData::set_overlap(size_t y, size_t x) {
-  data_(y, x) = OVERLAP;
+  xt::view(data_, y, x, xt::all()) = OVERLAP;
 }
 
 PropertyData::PropertyData(size_t h_res, size_t v_res)
@@ -154,7 +154,10 @@ void create_ppm(Plot pl)
       auto id = ids.data_(y, x, pl.color_by_);
       // no setting needed if not found
       if (id == NOT_FOUND) { continue; }
-      if (id == OVERLAP) data(x,y) = RED;
+      if (id == OVERLAP) {
+        data(x,y) = RED;
+        continue;
+      }
       if (PlotColorBy::cells == pl.color_by_) {
         data(x,y) = pl.colors_[model::cell_map[id]];
       } else if (PlotColorBy::mats == pl.color_by_) {

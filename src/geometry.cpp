@@ -44,12 +44,15 @@ bool check_cell_overlap(Particle* p, bool error)
     for (auto index_cell : univ.cells_) {
       Cell& c = *model::cells[index_cell];
       if (c.contains(p->coord_[j].r, p->coord_[j].u, p->surface_)) {
-        if (error && index_cell != p->coord_[j].cell) {
+        if (index_cell != p->coord_[j].cell) {
+          if (error) {
           std::stringstream err_msg;
           err_msg << "Overlapping cells detected: " << c.id_ << ", "
                   << model::cells[p->coord_[j].cell]->id_ << " on universe "
                   << univ.id_;
           fatal_error(err_msg);
+          }
+          return true;
         }
         ++model::overlap_check_count[index_cell];
       }

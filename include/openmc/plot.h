@@ -112,7 +112,7 @@ public:
   Position width_; //!< Plot width in geometry
   PlotBasis basis_; //!< Plot basis (XY/XZ/YZ)
   std::array<size_t, 3> pixels_; //!< Plot size in pixels
-  bool color_overlaps_ = true;
+  bool color_overlaps_;
   int level_; //!< Plot universe level
 };
 
@@ -210,6 +210,7 @@ private:
   void set_user_colors(pugi::xml_node plot_node);
   void set_meshlines(pugi::xml_node plot_node);
   void set_mask(pugi::xml_node plot_node);
+  void set_color_overlaps(pugi::xml_node plot_node);
 
 // Members
 public:

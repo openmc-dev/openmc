@@ -678,7 +678,6 @@ class Plot(IDManagerMixin):
                 color = self._overlap_color
                 if isinstance(color, str):
                     color = _SVG_COLORS[color.lower()]
-
                 subelement = ET.SubElement(element, "overlap_color")
                 subelement.text = ' '.join(str(x) for x in color)
 

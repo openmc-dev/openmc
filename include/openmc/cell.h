@@ -11,7 +11,7 @@
 #include "hdf5.h"
 #include "pugixml.hpp"
 #ifdef DAGMC
-#include "DagMC.hpp"
+#include "dagmc.h"
 #endif
 
 #include "openmc/constants.h"

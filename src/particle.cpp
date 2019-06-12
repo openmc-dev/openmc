@@ -372,6 +372,12 @@ Particle::transport()
     }
   }
 
+  #ifdef DAGMC
+  if(settings::dagmc) {
+    history.reset();
+  }
+  #endif
+
   // Finish particle track output.
   if (write_track_) {
     write_particle_track(*this);

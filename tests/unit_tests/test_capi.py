@@ -120,6 +120,9 @@ def test_material(capi_init):
     m.set_density(rho)
     assert sum(m.densities) == pytest.approx(rho)
 
+    m.set_density(0.1, 'g/cm3')
+    assert m.density == pytest.approx(0.1)
+
 
 def test_new_material(capi_init):
     with pytest.raises(exc.AllocationError):

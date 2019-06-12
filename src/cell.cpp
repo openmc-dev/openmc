@@ -1,3 +1,4 @@
+
 #include "openmc/cell.h"
 
 #include <cmath>
@@ -616,7 +617,8 @@ DAGCell::DAGCell() : Cell{} {};
 std::pair<double, int32_t>
 DAGCell::distance(Position r, Direction u, int32_t on_surface) const
 {
-  // if we've changed direction, reset the history and update last direction
+  // if we've changed direction or we're not on a surface,
+  // reset the history and update last direction
   if (u != last_dir || on_surface == 0) {
     history.reset();
     last_dir = u;
@@ -633,7 +635,8 @@ DAGCell::distance(Position r, Direction u, int32_t on_surface) const
   int surf_idx;
   if (hit_surf != 0) {
     surf_idx = dagmc_ptr_->index_by_handle(hit_surf);
-  } else {  // indicate that particle is lost
+  } else {
+    // indicate that particle is lost
     surf_idx = -1;
     dist = INFINITY;
   }

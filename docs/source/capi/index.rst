@@ -335,6 +335,15 @@ Functions
    :return: Return status (negative if an error occurs)
    :rtype: int
 
+.. c:function:: int openmc_material_get_density(int32_t index, double* density)
+
+   Get density of a material.
+
+   :param int32_t index: Index in the materials array
+   :param double* denity: Pointer to a density
+   :return Return status (negative if an error occurs)
+   :rtype: int
+
 .. c:function:: int openmc_material_get_id(int32_t index, int32_t* id)
 
    Get the ID of a material

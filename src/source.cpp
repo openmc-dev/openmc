@@ -296,9 +296,8 @@ void initialize_source()
     
     // check for any dlsym errors
     if (dlsym_error) {
-      std::cout << dlsym_error << std::endl;
       dlclose(source_library);
-      fatal_error("Couldnt open the sample_source symbol");
+      fatal_error(dlsym_error);
     }
 
     // Generation source sites from specified distribution in the
@@ -314,7 +313,7 @@ void initialize_source()
     }
     // release the library
     dlclose(source_library);
-
+    
   } else {
     // Generation source sites from specified distribution in user input
     for (int64_t i = 0; i < simulation::work_per_rank; ++i) {

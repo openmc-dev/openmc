@@ -27,8 +27,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.domain_type = 'mesh'
 
         # Instantiate a tally mesh
-        mesh = openmc.Mesh(mesh_id=1)
-        mesh.type = 'regular'
+        mesh = openmc.RegularMesh(mesh_id=1)
         mesh.dimension = [2, 2]
         mesh.lower_left = [-100., -100.]
         mesh.width = [100., 100.]

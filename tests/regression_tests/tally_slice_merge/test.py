@@ -24,8 +24,7 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         cell_27 = openmc.CellFilter(27)
         distribcell_filter = openmc.DistribcellFilter(21)
 
-        mesh = openmc.Mesh(name='mesh')
-        mesh.type = 'regular'
+        mesh = openmc.RegularMesh(name='mesh')
         mesh.dimension = [2, 2]
         mesh.lower_left = [-50., -50.]
         mesh.upper_right = [+50., +50.]

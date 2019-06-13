@@ -2605,16 +2605,16 @@ class CMFDRun(object):
     def _create_cmfd_tally(self):
         """Creates all tallies in-memory that are used to solve CMFD problem"""
         # Create Mesh object based on CMFDMesh, stored internally
-        cmfd_mesh = openmc.capi.Mesh()
-        # Store id of Mesh object
+        cmfd_mesh = openmc.capi.RegularMesh()
+        # Store id of mesh object
         self._mesh_id = cmfd_mesh.id
-        # Set dimension and parameters of Mesh object
+        # Set dimension and parameters of mesh object
         cmfd_mesh.dimension = self._mesh.dimension
         cmfd_mesh.set_parameters(lower_left=self._mesh.lower_left,
                                  upper_right=self._mesh.upper_right,
                                  width=self._mesh.width)
 
-        # Create Mesh Filter object, stored internally
+        # Create mesh Filter object, stored internally
         mesh_filter = openmc.capi.MeshFilter()
         # Set mesh for Mesh Filter
         mesh_filter.mesh = cmfd_mesh

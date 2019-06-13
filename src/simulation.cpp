@@ -247,6 +247,9 @@ int total_gen {0};
 double total_weight;
 int64_t work_per_rank;
 
+const RegularMesh* entropy_mesh {nullptr};
+const RegularMesh* ufs_mesh {nullptr};
+
 std::vector<double> k_generation;
 std::vector<int64_t> work_index;
 

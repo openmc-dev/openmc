@@ -74,8 +74,7 @@ void
 MeshFilter::set_mesh(int32_t mesh)
 {
   mesh_ = mesh;
-  n_bins_ = 1;
-  for (auto dim : model::meshes[mesh_]->shape_) n_bins_ *= dim;
+  n_bins_ = model::meshes[mesh_]->n_bins();
 }
 
 //==============================================================================

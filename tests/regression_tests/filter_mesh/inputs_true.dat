@@ -309,45 +309,56 @@
 </settings>
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>
-  <mesh id="1" type="regular">
+  <mesh id="1">
     <dimension>17</dimension>
     <lower_left>-182.07</lower_left>
     <upper_right>182.07</upper_right>
   </mesh>
-  <mesh id="2" type="regular">
+  <mesh id="2">
     <dimension>17 17</dimension>
     <lower_left>-182.07 -182.07</lower_left>
     <upper_right>182.07 182.07</upper_right>
   </mesh>
-  <mesh id="3" type="regular">
+  <mesh id="3">
     <dimension>17 17 17</dimension>
     <lower_left>-182.07 -182.07 -183.0</lower_left>
     <upper_right>182.07 182.07 183.0</upper_right>
   </mesh>
+  <mesh id="4" type="rectilinear">
+    <x_grid>-182.07 -160.65 -139.23 -117.81 -96.39 -74.97 -53.55000000000001 -32.129999999999995 -10.710000000000008 10.70999999999998 32.129999999999995 53.54999999999998 74.96999999999997 96.38999999999999 117.81 139.22999999999996 160.64999999999998 182.07</x_grid>
+    <y_grid>-182.07 -160.65 -139.23 -117.81 -96.39 -74.97 -53.55000000000001 -32.129999999999995 -10.710000000000008 10.70999999999998 32.129999999999995 53.54999999999998 74.96999999999997 96.38999999999999 117.81 139.22999999999996 160.64999999999998 182.07</y_grid>
+    <z_grid>1.0 1.683624003879018 2.8345897864376153 4.772383405596668 8.034899257376447 13.52774925846868 22.77564337001445 38.34561988154435 64.55960607618856 108.69410247084474 182.99999999999991</z_grid>
+  </mesh>
   <filter id="1" type="mesh">
     <bins>1</bins>
   </filter>
-  <filter id="4" type="meshsurface">
+  <filter id="5" type="meshsurface">
     <bins>1</bins>
   </filter>
   <filter id="2" type="mesh">
     <bins>2</bins>
   </filter>
-  <filter id="5" type="meshsurface">
+  <filter id="6" type="meshsurface">
     <bins>2</bins>
   </filter>
   <filter id="3" type="mesh">
     <bins>3</bins>
   </filter>
-  <filter id="6" type="meshsurface">
+  <filter id="7" type="meshsurface">
     <bins>3</bins>
+  </filter>
+  <filter id="4" type="mesh">
+    <bins>4</bins>
+  </filter>
+  <filter id="8" type="meshsurface">
+    <bins>4</bins>
   </filter>
   <tally id="1" name="tally 1">
     <filters>1</filters>
     <scores>total</scores>
   </tally>
   <tally id="2" name="tally 2">
-    <filters>4</filters>
+    <filters>5</filters>
     <scores>current</scores>
   </tally>
   <tally id="3" name="tally 3">
@@ -355,7 +366,7 @@
     <scores>total</scores>
   </tally>
   <tally id="4" name="tally 4">
-    <filters>5</filters>
+    <filters>6</filters>
     <scores>current</scores>
   </tally>
   <tally id="5" name="tally 5">
@@ -363,7 +374,15 @@
     <scores>total</scores>
   </tally>
   <tally id="6" name="tally 6">
-    <filters>6</filters>
+    <filters>7</filters>
+    <scores>current</scores>
+  </tally>
+  <tally id="7" name="tally 7">
+    <filters>4</filters>
+    <scores>total</scores>
+  </tally>
+  <tally id="8" name="tally 8">
+    <filters>8</filters>
     <scores>current</scores>
   </tally>
 </tallies>

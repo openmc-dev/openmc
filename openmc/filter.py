@@ -161,8 +161,8 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
         Keyword arguments
         -----------------
         meshes : dict
-            Dictionary mapping integer IDs to openmc.Mesh objects.  Only used
-            for openmc.MeshFilter objects.
+            Dictionary mapping integer IDs to openmc.MeshBase objects.  Only
+            used for openmc.MeshFilter objects.
 
         """
 
@@ -587,15 +587,15 @@ class MeshFilter(Filter):
 
     Parameters
     ----------
-    mesh : openmc.Mesh
-        The Mesh object that events will be tallied onto
+    mesh : openmc.MeshBase
+        The mesh object that events will be tallied onto
     filter_id : int
         Unique identifier for the filter
 
     Attributes
     ----------
-    mesh : openmc.Mesh
-        The Mesh object that events will be tallied onto
+    mesh : openmc.MeshBase
+        The mesh object that events will be tallied onto
     id : int
         Unique identifier for the filter
     bins : list of tuple
@@ -609,6 +609,11 @@ class MeshFilter(Filter):
     def __init__(self, mesh, filter_id=None):
         self.mesh = mesh
         self.id = filter_id
+
+    def __hash__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
+        return hash(string)
 
     def __repr__(self):
         string = type(self).__name__ + '\n'
@@ -641,7 +646,7 @@ class MeshFilter(Filter):
 
     @mesh.setter
     def mesh(self, mesh):
-        cv.check_type('filter mesh', mesh, openmc.Mesh)
+        cv.check_type('filter mesh', mesh, openmc.MeshBase)
         self._mesh = mesh
         self.bins = list(mesh.indices)
 
@@ -683,7 +688,7 @@ class MeshFilter(Filter):
         # Initialize dictionary to build Pandas Multi-index column
         filter_dict = {}
 
-        # Append Mesh ID as outermost index of multi-index
+        # Append mesh ID as outermost index of multi-index
         mesh_key = 'mesh {}'.format(self.mesh.id)
 
         # Find mesh dimensions - use 3D indices for simplicity
@@ -745,17 +750,17 @@ class MeshSurfaceFilter(MeshFilter):
 
     Parameters
     ----------
-    mesh : openmc.Mesh
-        The Mesh object that events will be tallied onto
+    mesh : openmc.MeshBase
+        The mesh object that events will be tallied onto
     filter_id : int
         Unique identifier for the filter
 
     Attributes
     ----------
     bins : Integral
-        The Mesh ID
-    mesh : openmc.Mesh
-        The Mesh object that events will be tallied onto
+        The mesh ID
+    mesh : openmc.MeshBase
+        The mesh object that events will be tallied onto
     id : int
         Unique identifier for the filter
     bins : list of tuple
@@ -770,11 +775,11 @@ class MeshSurfaceFilter(MeshFilter):
 
     @MeshFilter.mesh.setter
     def mesh(self, mesh):
-        cv.check_type('filter mesh', mesh, openmc.Mesh)
+        cv.check_type('filter mesh', mesh, openmc.MeshBase)
         self._mesh = mesh
 
         # Take the product of mesh indices and current names
-        n_dim = len(mesh.dimension)
+        n_dim = mesh.n_dimension
         self.bins = [mesh_tuple + (surf,) for mesh_tuple, surf in
                      product(mesh.indices, _CURRENT_NAMES[:4*n_dim])]
 
@@ -812,7 +817,7 @@ class MeshSurfaceFilter(MeshFilter):
         # Initialize dictionary to build Pandas Multi-index column
         filter_dict = {}
 
-        # Append Mesh ID as outermost index of multi-index
+        # Append mesh ID as outermost index of multi-index
         mesh_key = 'mesh {}'.format(self.mesh.id)
 
         # Find mesh dimensions - use 3D indices for simplicity

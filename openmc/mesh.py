@@ -1,7 +1,9 @@
+from abc import ABCMeta
 from collections.abc import Iterable
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
+import warnings
 
 import numpy as np
 
@@ -11,8 +13,8 @@ from openmc._xml import get_text
 from openmc.mixin import EqualityMixin, IDManagerMixin
 
 
-class Mesh(IDManagerMixin):
-    """A structured Cartesian mesh in one, two, or three dimensions
+class MeshBase(IDManagerMixin, metaclass=ABCMeta):
+    """A mesh that partitions geometry for tallying purposes.
 
     Parameters
     ----------
@@ -27,21 +29,6 @@ class Mesh(IDManagerMixin):
         Unique identifier for the mesh
     name : str
         Name of the mesh
-    type : str
-        Type of the mesh
-    dimension : Iterable of int
-        The number of mesh cells in each direction.
-    lower_left : Iterable of float
-        The lower-left corner of the structured mesh. If only two coordinate are
-        given, it is assumed that the mesh is an x-y mesh.
-    upper_right : Iterable of float
-        The upper-right corner of the structrued mesh. If only two coordinate
-        are given, it is assumed that the mesh is an x-y mesh.
-    width : Iterable of float
-        The width of mesh cells in each direction.
-    indices : list of tuple
-        A list of mesh indices for each mesh element, e.g. [(1, 1, 1), (2, 1,
-        1), ...]
 
     """
 
@@ -52,23 +39,94 @@ class Mesh(IDManagerMixin):
         # Initialize Mesh class attributes
         self.id = mesh_id
         self.name = name
-        self._type = 'regular'
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        if name is not None:
+            cv.check_type('name for mesh ID="{0}"'.format(self._id),
+                          name, str)
+            self._name = name
+        else:
+            self._name = ''
+
+    @classmethod
+    def from_hdf5(cls, group):
+        """Create mesh from HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            Group in HDF5 file
+
+        Returns
+        -------
+        openmc.MeshBase
+            Instance of a MeshBase subclass
+
+        """
+
+        mesh_type = group['type'][()].decode()
+        if mesh_type == 'regular':
+            return RegularMesh.from_hdf5(group)
+        elif mesh_type == 'rectilinear':
+            return RectilinearMesh.from_hdf5(group)
+        else:
+            raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
+
+
+class RegularMesh(MeshBase):
+    """A regular Cartesian mesh in one, two, or three dimensions
+
+    Parameters
+    ----------
+    mesh_id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+    dimension : Iterable of int
+        The number of mesh cells in each direction.
+    n_dimension : int
+        Number of mesh dimensions.
+    lower_left : Iterable of float
+        The lower-left corner of the structured mesh. If only two coordinate are
+        given, it is assumed that the mesh is an x-y mesh.
+    upper_right : Iterable of float
+        The upper-right corner of the structrued mesh. If only two coordinate
+        are given, it is assumed that the mesh is an x-y mesh.
+    width : Iterable of float
+        The width of mesh cells in each direction.
+    indices : Iterable of tuple
+        An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
+        (2, 1, 1), ...]
+
+    """
+
+    def __init__(self, mesh_id=None, name=''):
+        super().__init__(mesh_id, name)
+
         self._dimension = None
         self._lower_left = None
         self._upper_right = None
         self._width = None
 
     @property
-    def name(self):
-        return self._name
-
-    @property
-    def type(self):
-        return self._type
-
-    @property
     def dimension(self):
         return self._dimension
+
+    @property
+    def n_dimension(self):
+        return len(self._dimension)
 
     @property
     def lower_left(self):
@@ -104,23 +162,6 @@ class Mesh(IDManagerMixin):
             nx, = self.dimension
             return ((x,) for x in range(1, nx + 1))
 
-    @name.setter
-    def name(self, name):
-        if name is not None:
-            cv.check_type('name for mesh ID="{0}"'.format(self._id),
-                          name, str)
-            self._name = name
-        else:
-            self._name = ''
-
-    @type.setter
-    def type(self, meshtype):
-        cv.check_type('type for mesh ID="{0}"'.format(self._id),
-                      meshtype, str)
-        cv.check_value('type for mesh ID="{0}"'.format(self._id),
-                       meshtype, ['regular'])
-        self._type = meshtype
-
     @dimension.setter
     def dimension(self, dimension):
         cv.check_type('mesh dimension', dimension, Iterable, Integral)
@@ -146,7 +187,7 @@ class Mesh(IDManagerMixin):
         self._width = width
 
     def __repr__(self):
-        string = 'Mesh\n'
+        string = 'RegularMesh\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
         string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
@@ -158,24 +199,10 @@ class Mesh(IDManagerMixin):
 
     @classmethod
     def from_hdf5(cls, group):
-        """Create mesh from HDF5 group
-
-        Parameters
-        ----------
-        group : h5py.Group
-            Group in HDF5 file
-
-        Returns
-        -------
-        openmc.Mesh
-            Mesh instance
-
-        """
         mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
 
         # Read and assign mesh properties
         mesh = cls(mesh_id)
-        mesh.type = group['type'][()].decode()
         mesh.dimension = group['dimension'][()]
         mesh.lower_left = group['lower_left'][()]
         mesh.upper_right = group['upper_right'][()]
@@ -201,8 +228,8 @@ class Mesh(IDManagerMixin):
 
         Returns
         -------
-        openmc.Mesh
-            Mesh instance
+        openmc.RegularMesh
+            RegularMesh instance
 
         """
         cv.check_type('rectangular lattice', lattice, openmc.RectLattice)
@@ -229,7 +256,6 @@ class Mesh(IDManagerMixin):
 
         element = ET.Element("mesh")
         element.set("id", str(self._id))
-        element.set("type", self._type)
 
         if self._dimension is not None:
             subelement = ET.SubElement(element, "dimension")
@@ -416,3 +442,125 @@ class Mesh(IDManagerMixin):
         root_cell.fill = lattice
 
         return root_cell, cells
+
+
+def Mesh(*args, **kwargs):
+    warnings.warn("Mesh has been renamed RegularMesh. Future versions of "
+                  "OpenMC will not accept the name Mesh.")
+    return RegularMesh(*args, **kwargs)
+
+
+class RectilinearMesh(MeshBase):
+    """A 3D rectilinear Cartesian mesh
+
+    Parameters
+    ----------
+    mesh_id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+    n_dimension : int
+        Number of mesh dimensions (always 3 for a RectilinearMesh).
+    x_grid : Iterable of float
+        Mesh boundary points along the x-axis.
+    y_grid : Iterable of float
+        Mesh boundary points along the y-axis.
+    z_grid : Iterable of float
+        Mesh boundary points along the z-axis.
+    indices : Iterable of tuple
+        An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
+        (2, 1, 1), ...]
+
+    """
+
+    def __init__(self, mesh_id=None, name=''):
+        super().__init__(mesh_id, name)
+
+        self._x_grid = None
+        self._y_grid = None
+        self._z_grid = None
+
+    @property
+    def n_dimension(self):
+        return 3
+
+    @property
+    def x_grid(self):
+        return self._x_grid
+
+    @property
+    def y_grid(self):
+        return self._y_grid
+
+    @property
+    def z_grid(self):
+        return self._z_grid
+
+    @property
+    def indices(self):
+        nx = len(self.x_grid) - 1
+        ny = len(self.y_grid) - 1
+        nz = len(self.z_grid) - 1
+        return ((x, y, z)
+                for z in range(1, nz + 1)
+                for y in range(1, ny + 1)
+                for x in range(1, nx + 1))
+
+    @x_grid.setter
+    def x_grid(self, grid):
+        cv.check_type('mesh x_grid', grid, Iterable, Real)
+        self._x_grid = grid
+
+    @y_grid.setter
+    def y_grid(self, grid):
+        cv.check_type('mesh y_grid', grid, Iterable, Real)
+        self._y_grid = grid
+
+    @z_grid.setter
+    def z_grid(self, grid):
+        cv.check_type('mesh z_grid', grid, Iterable, Real)
+        self._z_grid = grid
+
+    @classmethod
+    def from_hdf5(cls, group):
+        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
+
+        # Read and assign mesh properties
+        mesh = cls(mesh_id)
+        mesh.x_grid = group['x_grid'][()]
+        mesh.y_grid = group['y_grid'][()]
+        mesh.z_grid = group['z_grid'][()]
+
+        return mesh
+
+    def to_xml_element(self):
+        """Return XML representation of the mesh
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing mesh data
+
+        """
+
+        element = ET.Element("mesh")
+        element.set("id", str(self._id))
+        element.set("type", "rectilinear")
+
+        subelement = ET.SubElement(element, "x_grid")
+        subelement.text = ' '.join(map(str, self.x_grid))
+
+        subelement = ET.SubElement(element, "y_grid")
+        subelement.text = ' '.join(map(str, self.y_grid))
+
+        subelement = ET.SubElement(element, "z_grid")
+        subelement.text = ' '.join(map(str, self.z_grid))
+
+        return element

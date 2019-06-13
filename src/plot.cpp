@@ -19,6 +19,7 @@
 #include "openmc/progress_bar.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/string_utils.h"
 
 namespace openmc {
@@ -497,20 +498,38 @@ Plot::set_meshlines(pugi::xml_node plot_node)
 
       // Set mesh based on type
       if ("ufs" == meshtype) {
-        if (settings::index_ufs_mesh < 0) {
+        if (!simulation::ufs_mesh) {
           std::stringstream err_msg;
           err_msg << "No UFS mesh for meshlines on plot " << id_;
           fatal_error(err_msg);
         } else {
-          index_meshlines_mesh_ = settings::index_ufs_mesh;
+          for (int i = 0; i < model::meshes.size(); ++i) {
+            if (const auto* m
+                = dynamic_cast<const RegularMesh*>(model::meshes[i].get())) {
+              if (m == simulation::ufs_mesh) {
+                index_meshlines_mesh_ = i;
+              }
+            }
+          }
+          if (index_meshlines_mesh_ == -1)
+            fatal_error("Could not find the UFS mesh for meshlines plot");
         }
       } else if ("entropy" == meshtype) {
-        if (settings::index_entropy_mesh < 0) {
+        if (!simulation::entropy_mesh) {
           std::stringstream err_msg;
-          err_msg <<"No entropy mesh for meshlines on plot " << id_;
+          err_msg << "No entropy mesh for meshlines on plot " << id_;
           fatal_error(err_msg);
         } else {
-          index_meshlines_mesh_ = settings::index_entropy_mesh;
+          for (int i = 0; i < model::meshes.size(); ++i) {
+            if (const auto* m
+                = dynamic_cast<const RegularMesh*>(model::meshes[i].get())) {
+              if (m == simulation::entropy_mesh) {
+                index_meshlines_mesh_ = i;
+              }
+            }
+          }
+          if (index_meshlines_mesh_ == -1)
+            fatal_error("Could not find the entropy mesh for meshlines plot");
         }
       } else if ("tally" == meshtype) {
         // Ensure that there is a mesh id if the type is tally
@@ -679,19 +698,19 @@ void draw_mesh_lines(Plot pl, ImageData& data)
   RGBColor rgb;
   rgb = pl.meshlines_color_;
 
-  int outer, inner;
+  int ax1, ax2;
   switch(pl.basis_) {
   case PlotBasis::xy :
-    outer = 0;
-    inner = 1;
+    ax1 = 0;
+    ax2 = 1;
     break;
   case PlotBasis::xz :
-    outer = 0;
-    inner = 2;
+    ax1 = 0;
+    ax2 = 2;
     break;
   case PlotBasis::yz :
-    outer = 1;
-    inner = 2;
+    ax1 = 1;
+    ax2 = 2;
     break;
   default:
     UNREACHABLE();
@@ -700,70 +719,73 @@ void draw_mesh_lines(Plot pl, ImageData& data)
   Position ll_plot {pl.origin_};
   Position ur_plot {pl.origin_};
 
-  ll_plot[outer] -= pl.width_[0] / 2.;
-  ll_plot[inner] -= pl.width_[1] / 2.;
-  ur_plot[outer] += pl.width_[0] / 2.;
-  ur_plot[inner] += pl.width_[1] / 2.;
+  ll_plot[ax1] -= pl.width_[0] / 2.;
+  ll_plot[ax2] -= pl.width_[1] / 2.;
+  ur_plot[ax1] += pl.width_[0] / 2.;
+  ur_plot[ax2] += pl.width_[1] / 2.;
 
   Position width = ur_plot - ll_plot;
 
-  auto& m = model::meshes[pl.index_meshlines_mesh_];
+  // Find the (axis-aligned) lines of the mesh that intersect this plot.
+  auto axis_lines = model::meshes[pl.index_meshlines_mesh_]
+    ->plot(ll_plot, ur_plot);
 
-  int ijk_ll[3], ijk_ur[3];
-  bool in_mesh;
-  m->get_indices(ll_plot, &(ijk_ll[0]), &in_mesh);
-  m->get_indices(ur_plot, &(ijk_ur[0]), &in_mesh);
+  // Find the bounds along the second axis (accounting for low-D meshes).
+  int ax2_min, ax2_max;
+  if (axis_lines.second.size() > 0) {
+    double frac = (axis_lines.second.back() - ll_plot[ax2]) / width[ax2];
+    ax2_min = (1.0 - frac) * pl.pixels_[1];
+    if (ax2_min < 0) ax2_min = 0;
+    frac = (axis_lines.second.front() - ll_plot[ax2]) / width[ax2];
+    ax2_max = (1.0 - frac) * pl.pixels_[1];
+    if (ax2_max > pl.pixels_[1]) ax2_max = pl.pixels_[1];
+  } else {
+    ax2_min = 0;
+    ax2_max = pl.pixels_[1];
+  }
 
-  // Fortran/C++ index correction
-  ijk_ur[0]++; ijk_ur[1]++; ijk_ur[2]++;
-
-  Position r_ll, r_ur;
-  // sweep through all meshbins on this plane and draw borders
-  for (int i = ijk_ll[outer]; i <= ijk_ur[outer]; i++) {
-    for (int j = ijk_ll[inner]; j <= ijk_ur[inner]; j++) {
-      // check if we're in the mesh for this ijk
-      if (i > 0 && i <= m->shape_[outer] && j >0 && j <= m->shape_[inner] ) {
-        int outrange[3], inrange[3];
-        // get xyz's of lower left and upper right of this mesh cell
-        r_ll[outer] = m->lower_left_[outer] + m->width_[outer] * (i - 1);
-        r_ll[inner] = m->lower_left_[inner] + m->width_[inner] * (j - 1);
-        r_ur[outer] = m->lower_left_[outer] + m->width_[outer] * i;
-        r_ur[inner] = m->lower_left_[inner] + m->width_[inner] * j;
-
-        // map the xyz ranges to pixel ranges
-        double frac = (r_ll[outer] - ll_plot[outer]) / width[outer];
-        outrange[0] = int(frac * double(pl.pixels_[0]));
-        frac = (r_ur[outer] - ll_plot[outer]) / width[outer];
-        outrange[1] = int(frac * double(pl.pixels_[0]));
-
-        frac = (r_ur[inner] - ll_plot[inner]) / width[inner];
-        inrange[0] = int((1. - frac) * (double)pl.pixels_[1]);
-        frac = (r_ll[inner] - ll_plot[inner]) / width[inner];
-        inrange[1] = int((1. - frac) * (double)pl.pixels_[1]);
-
-        // draw lines
-        for (int out_ = outrange[0]; out_ <= outrange[1]; out_++) {
-          for (int plus = 0; plus <= pl.meshlines_width_; plus++) {
-            data(out_, inrange[0] + plus) = rgb;
-            data(out_, inrange[1] + plus) = rgb;
-            data(out_, inrange[0] - plus) = rgb;
-            data(out_, inrange[1] - plus) = rgb;
-          }
-        }
-
-        for (int in_ = inrange[0]; in_ <= inrange[1]; in_++) {
-          for (int plus = 0; plus <= pl.meshlines_width_; plus++) {
-            data(outrange[0] + plus, in_) = rgb;
-            data(outrange[1] + plus, in_) = rgb;
-            data(outrange[0] - plus, in_) = rgb;
-            data(outrange[1] - plus, in_) = rgb;
-          }
-        }
-
-      } // end if(in mesh)
+  // Iterate across the first axis and draw lines.
+  for (auto ax1_val : axis_lines.first) {
+    double frac = (ax1_val - ll_plot[ax1]) / width[ax1];
+    int ax1_ind = frac * pl.pixels_[0];
+    for (int ax2_ind = ax2_min; ax2_ind < ax2_max; ++ax2_ind) {
+      for (int plus = 0; plus <= pl.meshlines_width_; plus++) {
+        if (ax1_ind+plus >= 0 && ax1_ind+plus < pl.pixels_[0])
+          data(ax1_ind+plus, ax2_ind) = rgb;
+        if (ax1_ind-plus >= 0 && ax1_ind-plus < pl.pixels_[0])
+          data(ax1_ind-plus, ax2_ind) = rgb;
+      }
     }
-  } // end outer loops
-} // end draw_mesh_lines
+  }
+
+  // Find the bounds along the first axis.
+  int ax1_min, ax1_max;
+  if (axis_lines.first.size() > 0) {
+    double frac = (axis_lines.first.front() - ll_plot[ax1]) / width[ax1];
+    ax1_min = frac * pl.pixels_[0];
+    if (ax1_min < 0) ax1_min = 0;
+    frac = (axis_lines.first.back() - ll_plot[ax1]) / width[ax1];
+    ax1_max = frac * pl.pixels_[0];
+    if (ax1_max > pl.pixels_[0]) ax1_max = pl.pixels_[0];
+  } else {
+    ax1_min = 0;
+    ax1_max = pl.pixels_[0];
+  }
+
+  // Iterate across the second axis and draw lines.
+  for (auto ax2_val : axis_lines.second) {
+    double frac = (ax2_val - ll_plot[ax2]) / width[ax2];
+    int ax2_ind = (1.0 - frac) * pl.pixels_[1];
+    for (int ax1_ind = ax1_min; ax1_ind < ax1_max; ++ax1_ind) {
+      for (int plus = 0; plus <= pl.meshlines_width_; plus++) {
+        if (ax2_ind+plus >= 0 && ax2_ind+plus < pl.pixels_[1])
+          data(ax1_ind, ax2_ind+plus) = rgb;
+        if (ax2_ind-plus >= 0 && ax2_ind-plus < pl.pixels_[1])
+          data(ax1_ind, ax2_ind-plus) = rgb;
+      }
+    }
+  }
+}
 
 //==============================================================================
 // CREATE_VOXEL outputs a binary file that can be input into silomesh for 3D

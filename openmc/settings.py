@@ -9,7 +9,7 @@ import numpy as np
 
 from openmc._xml import clean_indentation, get_text
 import openmc.checkvalue as cv
-from openmc import VolumeCalculation, Source, Mesh
+from openmc import VolumeCalculation, Source, RegularMesh
 
 _RUN_MODES = ['eigenvalue', 'fixed source', 'plot', 'volume', 'particle restart']
 _RES_SCAT_METHODS = ['dbrc', 'rvs']
@@ -45,7 +45,7 @@ class Settings(object):
         secondary bremsstrahlung photons ('ttb').
     energy_mode : {'continuous-energy', 'multi-group'}
         Set whether the calculation should be continuous-energy or multi-group.
-    entropy_mesh : openmc.Mesh
+    entropy_mesh : openmc.RegularMesh
         Mesh to be used to calculate Shannon entropy. If the mesh dimensions are
         not specified. OpenMC assigns a mesh such that 20 source sites per mesh
         cell are to be expected on average.
@@ -145,7 +145,7 @@ class Settings(object):
         Maximum number of batches simulated. If this is set, the number of
         batches specified via ``batches`` is interpreted as the minimum number
         of batches
-    ufs_mesh : openmc.Mesh
+    ufs_mesh : openmc.RegularMesh
         Mesh to be used for redistributing source sites via the uniform fision
         site (UFS) method.
     verbosity : int
@@ -550,7 +550,7 @@ class Settings(object):
 
     @entropy_mesh.setter
     def entropy_mesh(self, entropy):
-        cv.check_type('entropy mesh', entropy, Mesh)
+        cv.check_type('entropy mesh', entropy, RegularMesh)
         if entropy.dimension:
             cv.check_length('entropy mesh dimension', entropy.dimension, 3)
         cv.check_length('entropy mesh lower-left corner', entropy.lower_left, 3)
@@ -640,7 +640,7 @@ class Settings(object):
 
     @ufs_mesh.setter
     def ufs_mesh(self, ufs_mesh):
-        cv.check_type('UFS mesh', ufs_mesh, Mesh)
+        cv.check_type('UFS mesh', ufs_mesh, RegularMesh)
         cv.check_length('UFS mesh dimension', ufs_mesh.dimension, 3)
         cv.check_length('UFS mesh lower-left corner', ufs_mesh.lower_left, 3)
         cv.check_length('UFS mesh upper-right corner', ufs_mesh.upper_right, 3)
@@ -1061,7 +1061,7 @@ class Settings(object):
             path = "./mesh[@id='{}']".format(int(text))
             elem = root.find(path)
             if elem is not None:
-                self.entropy_mesh = Mesh.from_xml_element(elem)
+                self.entropy_mesh = RegularMesh.from_xml_element(elem)
 
     def _trigger_from_xml_element(self, root):
         elem = root.find('trigger')
@@ -1126,7 +1126,7 @@ class Settings(object):
             path = "./mesh[@id='{}']".format(int(text))
             elem = root.find(path)
             if elem is not None:
-                self.ufs_mesh = Mesh.from_xml_element(elem)
+                self.ufs_mesh = RegularMesh.from_xml_element(elem)
 
     def _resonance_scattering_from_xml_element(self, root):
         elem = root.find('resonance_scattering')

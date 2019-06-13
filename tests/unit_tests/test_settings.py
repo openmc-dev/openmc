@@ -25,7 +25,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.cutoff = {'weight': 0.25, 'weight_avg': 0.5, 'energy_neutron': 1.0e-5,
                 'energy_photon': 1000.0, 'energy_electron': 1.0e-5,
                 'energy_positron': 1.0e-5}
-    mesh = openmc.Mesh()
+    mesh = openmc.RegularMesh()
     mesh.lower_left = (-10., -10., -10.)
     mesh.upper_right = (10., 10., 10.)
     mesh.dimension = (5, 5, 5)
@@ -79,7 +79,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.cutoff == {'weight': 0.25, 'weight_avg': 0.5,
                         'energy_neutron': 1.0e-5, 'energy_photon': 1000.0,
                         'energy_electron': 1.0e-5, 'energy_positron': 1.0e-5}
-    assert isinstance(s.entropy_mesh, openmc.Mesh)
+    assert isinstance(s.entropy_mesh, openmc.RegularMesh)
     assert s.entropy_mesh.lower_left == [-10., -10., -10.]
     assert s.entropy_mesh.upper_right == [10., 10., 10.]
     assert s.entropy_mesh.dimension == [5, 5, 5]
@@ -92,7 +92,7 @@ def test_export_to_xml(run_in_tmpdir):
                              'multipole': True, 'range': [200., 1000.]}
     assert s.trace == [10, 1, 20]
     assert s.track == [1, 1, 1, 2, 1, 1]
-    assert isinstance(s.ufs_mesh, openmc.Mesh)
+    assert isinstance(s.ufs_mesh, openmc.RegularMesh)
     assert s.ufs_mesh.lower_left == [-10., -10., -10.]
     assert s.ufs_mesh.upper_right == [10., 10., 10.]
     assert s.ufs_mesh.dimension == [5, 5, 5]

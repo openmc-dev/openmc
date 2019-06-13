@@ -1,6 +1,8 @@
 #include "openmc/source.h"
 
 #include <algorithm> // for move
+#include <sstream> // for stringstream
+#include <dlfcn.h> // for dlopen
 
 #include <fmt/core.h>
 #include "xtensor/xadapt.hpp"
@@ -71,7 +73,14 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
       fatal_error(fmt::format("Source file '{}' does not exist.",
         settings::path_source));
     }
-
+  } else if (check_for_node(node, "library")) {
+     settings::path_source_library = get_node_value(node, "library", false, true);
+     // check if it exists
+     if (!file_exists(settings::path_source_library)) {
+	std::stringstream msg;
+	msg << "Library file " << settings::path_source_library << "' does not exist.";
+	fatal_error(msg);
+     }
   } else {
 
     // Spatial distribution for external source
@@ -261,7 +270,50 @@ void initialize_source()
 
     // Close file
     file_close(file_id);
+  } else if ( settings::path_source_library != "" ) {
+    // Get the source from a library object 
 
+    std::stringstream msg;
+    msg << "Sampling from library source " << settings::path_source << "...";
+    write_message(msg, 6);
+
+    // Open the library
+    void* source_library = dlopen(settings::path_source_library.c_str(),RTLD_LAZY);
+    if(!source_library) {
+      std::stringstream msg("Couldnt open source library " + settings::path_source_library);
+      fatal_error(msg);
+    }
+
+    // load the symbol
+    typedef Particle::Bank (*sample_t)();
+
+    // reset errors
+    dlerror();
+
+    // get the function from the library
+    sample_t sample_source = (sample_t) dlsym(source_library, "sample_source");
+    const char *dlsym_error = dlerror();
+    
+    if (dlsym_error) {
+      dlclose(source_library);
+      fatal_error(dlsym_error);
+    }
+
+    // Generation source sites from specified distribution in the
+    // library source 
+    for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
+      // initialize random number seed
+      int64_t id = simulation::total_gen*settings::n_particles +
+        simulation::work_index[mpi::rank] + i + 1;
+      set_particle_seed(id);
+
+      // sample external source distribution
+      simulation::source_bank[i] = sample_source();
+    }
+
+    // release the library
+    dlclose(source_library);
+    
   } else {
     // Generation source sites from specified distribution in user input
     for (int64_t i = 0; i < simulation::work_per_rank; ++i) {

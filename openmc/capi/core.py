@@ -48,6 +48,7 @@ _init_linsolver_argtypes = [_array_1d_int, c_int, _array_1d_int, c_int, c_int,
                             c_double, _array_1d_int, _array_1d_int]
 _dll.openmc_initialize_linsolver.argtypes = _init_linsolver_argtypes
 _dll.openmc_initialize_linsolver.restype = None
+_dll.openmc_is_statepoint_batch.restype = c_bool
 _dll.openmc_master.restype = c_bool
 _dll.openmc_next_batch.argtypes = [POINTER(c_int)]
 _dll.openmc_next_batch.restype = c_int
@@ -185,6 +186,18 @@ def init(args=None, intracomm=None):
             intracomm = c_void_p(address)
 
     _dll.openmc_init(argc, argv, intracomm)
+
+
+def is_statepoint_batch():
+    """Return whether statepoint will be written in current batch or not.
+
+    Returns
+    -------
+    bool
+        Whether is statepoint batch or not
+
+    """
+    return _dll.openmc_is_statepoint_batch()
 
 
 def iter_batches():

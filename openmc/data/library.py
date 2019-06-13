@@ -72,7 +72,7 @@ class DataLibrary(EqualityMixin):
                 "File type {} not supported by {}"
                 .format(path.name, self.__class__.__name__))
 
-        library = {'path': path.name, 'type': filetype, 'materials': materials}
+        library = {'path': str(path), 'type': filetype, 'materials': materials}
         self.libraries.append(library)
 
     def export_to_xml(self, path='cross_sections.xml'):
@@ -97,8 +97,10 @@ class DataLibrary(EqualityMixin):
             dir_element.text = os.path.realpath(common_dir)
 
         for library in self.libraries:
-            lib_element = ET.SubElement(root, "library")
-            if library['materials']:
+            if library['type'] == "depletion_chain":
+                lib_element = ET.SubElement(root, "depletion_chain")
+            else:
+                lib_element = ET.SubElement(root, "library")
                 lib_element.set('materials', ' '.join(library['materials']))
             lib_element.set('path', os.path.relpath(library['path'], common_dir))
             lib_element.set('type', library['type'])

@@ -68,7 +68,7 @@ class TransportOperator(metaclass=ABCMeta):
             if chain_file is None:
                 data = DataLibrary.from_xml()
                 # search for depletion_chain path from end of list
-                for lib in data.libraries[::-1]:
+                for lib in reversed(data.libraries):
                     if lib['type'] == 'depletion_chain':
                         break
                 else:

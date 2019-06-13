@@ -312,10 +312,9 @@ void initialize_source()
       // sample external source distribution
       simulation::source_bank[i] = sample_source();
     }
-
     // release the library
     dlclose(source_library);
-
+    
   } else {
     // Generation source sites from specified distribution in user input
     for (int64_t i = 0; i < simulation::work_per_rank; ++i) {

@@ -40,6 +40,7 @@ namespace settings {
 // Default values for boolean flags
 bool assume_separate         {false};
 bool check_overlaps          {false};
+bool cmfd_run                {false};
 bool confidence_intervals    {false};
 bool create_fission_neutrons {true};
 bool dagmc                   {false};

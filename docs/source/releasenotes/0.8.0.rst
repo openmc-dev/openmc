@@ -1,6 +1,6 @@
-==============================
-Release Notes for OpenMC 0.8.0
-==============================
+===================
+What's New in 0.8.0
+===================
 
 This release of OpenMC includes a few new major features including the
 capability to perform neutron transport with multi-group cross section data as

@@ -1,8 +1,6 @@
-.. _notes_0.5.0:
-
-==============================
-Release Notes for OpenMC 0.5.0
-==============================
+===================
+What's New in 0.5.0
+===================
 
 -------------------
 System Requirements
@@ -49,4 +47,3 @@ Bug Fixes
 .. _c0e3ec: https://github.com/mit-crpg/openmc/commit/c0e3ec
 .. _6f8d9d: https://github.com/mit-crpg/openmc/commit/6f8d9d
 .. _6a3a5e: https://github.com/mit-crpg/openmc/commit/6a3a5e
-

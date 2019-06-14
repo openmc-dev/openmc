@@ -51,7 +51,7 @@ SpatialLegendreFilter::get_all_bins(const Particle* p, int estimator,
 
     // Compute and return the Legendre weights.
     std::vector<double> wgt(order_ + 1);
-    calc_pn_c(order_, x_norm, &wgt[0]);
+    calc_pn_c(order_, x_norm, wgt.data());
     for (int i = 0; i < order_ + 1; i++) {
       match.bins_.push_back(i);
       match.weights_.push_back(wgt[i]);

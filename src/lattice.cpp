@@ -401,7 +401,7 @@ RectLattice::to_hdf5_inner(hid_t lat_group) const
     }
 
     hsize_t dims[3] {nz, ny, nx};
-    write_int(lat_group, 3, dims, "universes", &out[0], false);
+    write_int(lat_group, 3, dims, "universes", out.data(), false);
 
   } else {
     hsize_t nx {static_cast<hsize_t>(n_cells_[0])};
@@ -417,7 +417,7 @@ RectLattice::to_hdf5_inner(hid_t lat_group) const
     }
 
     hsize_t dims[3] {1, ny, nx};
-    write_int(lat_group, 3, dims, "universes", &out[0], false);
+    write_int(lat_group, 3, dims, "universes", out.data(), false);
   }
 }
 
@@ -897,7 +897,7 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
   }
 
   hsize_t dims[3] {nz, ny, nx};
-  write_int(lat_group, 3, dims, "universes", &out[0], false);
+  write_int(lat_group, 3, dims, "universes", out.data(), false);
 }
 
 //==============================================================================

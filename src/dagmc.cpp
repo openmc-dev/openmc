@@ -38,8 +38,14 @@ const bool dagmc_enabled = false;
 const std::string DAGMC_FILENAME = "dagmc.h5m";
 
 namespace openmc {
+
+
+namespace simulation {
+
 moab::DagMC::RayHistory history;
 Direction last_dir;
+
+}
 
 namespace model {
 

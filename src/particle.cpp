@@ -373,9 +373,7 @@ Particle::transport()
   }
 
   #ifdef DAGMC
-  if(settings::dagmc) {
-    history.reset();
-  }
+  if (settings::dagmc) simulation::history.reset();
   #endif
 
   // Finish particle track output.

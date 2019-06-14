@@ -18,8 +18,6 @@ class PlotTestHarness(TestHarness):
     def _run_openmc(self):
         openmc.plot_geometry(openmc_exec=config['exe'])
 
-
-
     def _test_output_created(self):
         """Make sure *.ppm has been created."""
         for fname in self._plot_names:

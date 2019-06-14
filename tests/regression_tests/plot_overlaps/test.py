@@ -55,7 +55,7 @@ class PlotTestHarness(TestHarness):
         return outstr
 
 
-def test_plot():
+def test_plot_overlap():
     harness = PlotTestHarness(('plot_1.ppm', 'plot_2.ppm', 'plot_3.ppm',
                                'plot_4.h5'))
     harness.main()

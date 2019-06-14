@@ -28,8 +28,6 @@ namespace openmc {
 // Constants
 //==============================================================================
 
-const RGBColor WHITE {255, 255, 255};
-const RGBColor RED {255,   0,   0};
 
 constexpr int PLOT_LEVEL_LOWEST {-1}; //!< lower bound on plot universe level
 constexpr int32_t NOT_FOUND {-2};
@@ -291,9 +289,6 @@ Plot::set_bg_color(pugi::xml_node plot_node)
               << id_;
       fatal_error(err_msg);
     }
-  } else {
-    // default to a white background
-    not_found_ = WHITE;
   }
 }
 

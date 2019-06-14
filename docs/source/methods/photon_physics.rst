@@ -50,10 +50,12 @@ The differential cross section for Rayleigh scattering is given by
 .. math::
     :label: coherent-xs
 
+    \begin{aligned}
     \frac{d\sigma(E,E',\mu)}{d\mu} &= \pi r_e^2 ( 1 + \mu^2 )~\left| F(x,Z)
                                       + F' + iF'' \right|^2 \\
                                    &= \pi r_e^2 ( 1 + \mu^2 ) \left [ ( F(x,Z)
                                       + F'(E) )^2 + F''(E)^2 \right ]
+    \end{aligned}
 
 where :math:`F(x,Z)` is a form factor as a function of the momentum transfer
 :math:`x` and the atomic number :math:`Z` and the term :math:`F' + iF''`
@@ -93,7 +95,7 @@ mass, and the coefficient :math:`a` can be shown to be
 .. math::
     :label: omega
 
-    a = \frac{m_e c^2}{\sqrt{2}hc} \approx 29.14329~\unicode{x212B},
+    a = \frac{m_e c^2}{\sqrt{2}hc} \approx 2.914329\times10^{-9}~\text{m}
 
 where :math:`m_e` is the mass of the electron, :math:`c` is the speed of light
 in a vacuum, and :math:`h` is Planck's constant. Using :eq:`momentum-transfer`,
@@ -371,9 +373,11 @@ where
 .. math::
     :label: mu-pdf-factors
 
+    \begin{aligned}
     \psi(\mu_{-}) &= \frac{(1 - \beta_{-}^2)(1 - \mu_{-}^2)}{(1 -
     \beta_{-}\mu_{-})^2}, \\
     g(\mu_{-}) &= \frac{1 - \beta_{-}^2}{2 (1 - \beta_{-}\mu_{-})^2}.
+    \end{aligned}
 
 In the interval :math:`[-1, 1]`, :math:`g(\mu_{-})` is a normalized PDF and
 :math:`\psi(\mu_{-})` satisfies the condition :math:`0 < \psi(\mu_{-}) < 1`.
@@ -450,10 +454,12 @@ The Coulomb correction, given by
 .. math::
     :label: coulomb-correction
 
+    \begin{aligned}
     f_C = \alpha^{2}Z^{2} \big[&(1 + \alpha^{2}Z^{2})^{-1} + 0.202059
     - 0.03693\alpha^{2}Z^{2} + 0.00835\alpha^{4}Z^{4} \\
     &- 0.00201\alpha^{6}Z^{6} + 0.00049\alpha^{8}Z^{8}
     - 0.00012\alpha^{10}Z^{10} + 0.00003\alpha^{12}Z^{12}\big]
+    \end{aligned}
 
 is introduced to correct for the fact that the Bethe-Heitler differential cross
 section was derived using the Born approximation, which treats the Coulomb
@@ -469,9 +475,11 @@ approximations of the screening functions can be derived:
 .. math::
     :label: screening-functions
 
+    \begin{aligned}
     \Phi_1 &= 2 - 2\ln(1 + b^2) - 4b\arctan(b^{-1}) + 4\ln(Rm_{e}c/\hbar) \\
     \Phi_2 &= \frac{4}{3} - 2\ln(1 + b^2) + 2b^2 \left[ 4 - 4b\arctan(b^{-1})
     - 3\ln(1 + b^{-2}) \right] + 4\ln(Rm_{e}c/\hbar)
+    \end{aligned}
 
 where
 
@@ -492,10 +500,12 @@ upper boundary of :math:`\epsilon` will be shifted below
 .. math::
     :label: correcting-factor
 
+    \begin{aligned}
     F_0(k, Z) =~& (0.1774 + 12.10\alpha Z - 11.18\alpha^{2}Z^{2})(2/k)^{1/2} \\
     &+ (8.523 + 73.26\alpha Z - 44.41\alpha^{2}Z^{2})(2/k) \\
     &- (13.52 + 121.1\alpha Z - 96.41\alpha^{2}Z^{2})(2/k)^{3/2} \\
     &+ (8.946 + 62.05\alpha Z - 63.41\alpha^{2}Z^{2})(2/k)^{2}.
+    \end{aligned}
 
 To aid sampling, the differential cross section used to sample :math:`\epsilon`
 (minus the normalization constant) can now be expressed in the form
@@ -512,23 +522,29 @@ where
 .. math::
     :label: u
 
+    \begin{aligned}
     u_1 &= \frac{2}{3} \left(\frac{1}{2} - \frac{1}{k}\right)^2 \phi_1(1/2), \\
     u_2 &= \phi_2(1/2),
+    \end{aligned}
 
 .. math::
     :label: phi
 
+    \begin{aligned}
     \phi_1(\epsilon) &= \frac{1}{2}(3\Phi_1 - \Phi_2) - 4f_{C}(Z) + F_0(k, Z), \\
     \phi_2(\epsilon) &= \frac{1}{4}(3\Phi_1 + \Phi_2) - 4f_{C}(Z) + F_0(k, Z),
+    \end{aligned}
 
 and
 
 .. math::
     :label: pi
 
+    \begin{aligned}
     \pi_1(\epsilon) &= \frac{3}{2} \left(\frac{1}{2} - \frac{1}{k}\right)^{-3}
     \left(\frac{1}{2} - \epsilon\right)^2, \\
     \pi_2(\epsilon) &= \frac{1}{2} \left(\frac{1}{2} - \frac{1}{k}\right)^{-1}.
+    \end{aligned}
 
 The functions in :eq:`phi` are non-negative and maximum at :math:`\epsilon =
 1/2`. In the interval :math:`(\epsilon_{\text{min}}, \epsilon_{\text{max}})`,
@@ -545,10 +561,12 @@ sample the reduced electron energy :math:`\epsilon`:
 
    .. math::
 
+       \begin{aligned}
        \epsilon &= \frac{1}{2} + \left(\frac{1}{2} - \frac{1}{k}\right)
        (2\xi_1 - 1)^{1/3} ~~~~&\text{if}~~ i = 1 \\
        \epsilon &= \frac{1}{k} + \left(\frac{1}{2} -
        \frac{1}{k}\right) 2\xi_1 ~~~~&\text{if}~~ i = 2.
+       \end{aligned}
 
 3. If :math:`\xi_2 \le \phi_i(\epsilon)/\phi_i(1/2)`, accept
    :math:`\epsilon`. Otherwise, repeat the sampling from step 1.
@@ -701,10 +719,12 @@ in Salvat_,
 .. math::
     :label: positron-factor
 
+    \begin{aligned}
     F_{\text{p}}(Z,T) =
     & 1 - \text{exp}(-1.2359\times 10^{-1}t + 6.1274\times 10^{-2}t^2 - 3.1516\times 10^{-2}t^3 \\
     & + 7.7446\times 10^{-3}t^4 - 1.0595\times 10^{-3}t^5 + 7.0568\times 10^{-5}t^6 \\
     & - 1.8080\times 10^{-6}t^7),
+    \end{aligned}
 
 where
 
@@ -840,8 +860,10 @@ defined as
 .. math::
     :label: density-effect-li
 
+    \begin{aligned}
     l_i &= (\bar{\nu}_i^2 + 2/3f_i)^{1/2} ~~~~&\text{for}~~ \bar{\nu}_i > 0 \\
     l_n &= f_n^{1/2} ~~~~&\text{for}~~ \bar{\nu}_n = 0,
+    \end{aligned}
 
 where the second case applies to conduction electrons. For a conductor,
 :math:`f_n` is given by :math:`n_c/Z`, where :math:`n_c` is the effective

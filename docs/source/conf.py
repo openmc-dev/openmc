@@ -49,10 +49,10 @@ sys.path.insert(0, os.path.abspath('../..'))
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.napoleon',
-              'sphinx.ext.mathjax',
               'sphinx.ext.autosummary',
               'sphinx.ext.intersphinx',
               'sphinx.ext.viewcode',
+              'sphinxcontrib.katex',
               'sphinx_numfig',
               'notebook_sphinxext']
 if not on_rtd:

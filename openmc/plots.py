@@ -357,7 +357,7 @@ class Plot(IDManagerMixin):
 
     @background.setter
     def background(self, background):
-        self.check_color('plot background', background)
+        self._check_color('plot background', background)
         self._background = background
 
     @colors.setter
@@ -365,7 +365,7 @@ class Plot(IDManagerMixin):
         cv.check_type('plot colors', colors, Mapping)
         for key, value in colors.items():
             cv.check_type('plot color key', key, (openmc.Cell, openmc.Material))
-            self.check_color('plot color value', value)
+            self._check_color('plot color value', value)
         self._colors = colors
 
     @mask_components.setter
@@ -376,7 +376,7 @@ class Plot(IDManagerMixin):
 
     @mask_background.setter
     def mask_background(self, mask_background):
-        self.check_color('plot mask background', mask_background)
+        self._check_color('plot mask background', mask_background)
         self._mask_background = mask_background
 
     @show_overlaps.setter
@@ -387,7 +387,7 @@ class Plot(IDManagerMixin):
 
     @overlap_color.setter
     def overlap_color(self, overlap_color):
-        self.check_color('plot overlap color', overlap_color)
+        self._check_color('plot overlap color', overlap_color)
         self._overlap_color = overlap_color
 
     @level.setter
@@ -420,17 +420,12 @@ class Plot(IDManagerMixin):
                                   0, equality=True)
 
         if 'color' in meshlines:
-            cv.check_type('plot meshlines color', meshlines['color'], Iterable,
-                          Integral)
-            cv.check_length('plot meshlines color', meshlines['color'], 3)
-            for rgb in meshlines['color']:
-                cv.check_greater_than('plot meshlines color', rgb, 0, True)
-                cv.check_less_than('plot meshlines color', rgb, 256)
+            self._check_color('plot meshlines color', meshlines['color'])
 
         self._meshlines = meshlines
 
     @staticmethod
-    def check_color(err_string, color):
+    def _check_color(err_string, color):
         cv.check_type(err_string, color, Iterable)
         if isinstance(color, str):
             if color.lower() not in _SVG_COLORS:

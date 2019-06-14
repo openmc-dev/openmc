@@ -661,7 +661,6 @@ void Plot::set_overlap_color(pugi::xml_node plot_node) {
   color_overlaps_ = false;
   if (check_for_node(plot_node, "show_overlaps")) {
     color_overlaps_ = get_node_value_bool(plot_node, "show_overlaps");
-    overlap_color_ = RED;
     // check for custom overlap color
     if (check_for_node(plot_node, "overlap_color")) {
       if (!color_overlaps_) {
@@ -690,7 +689,7 @@ void Plot::set_overlap_color(pugi::xml_node plot_node) {
 }
 
 Plot::Plot(pugi::xml_node plot_node)
-  : index_meshlines_mesh_{-1}
+  : index_meshlines_mesh_{-1}, overlap_color_{RED}
 {
   set_id(plot_node);
   set_type(plot_node);

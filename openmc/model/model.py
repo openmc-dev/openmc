@@ -135,7 +135,7 @@ class Model(object):
         chain_file : str, optional
             Path to the depletion chain XML file.  Defaults to the chain
             found under the ``depletion_chain`` in the
-            :envvar:`OPENMC_CROSS_SECITON` environment variable if it exists.
+            :envvar:`OPENMC_CROSS_SECTIONS` environment variable if it exists.
         method : str
              Integration method used for depletion (e.g., 'cecm', 'predictor')
         **kwargs

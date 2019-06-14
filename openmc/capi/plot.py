@@ -196,7 +196,7 @@ class _PlotBase(Structure):
                    "Basis: {}".format(self.basis),
                    "HRes: {}".format(self.h_res),
                    "VRes: {}".format(self.v_res),
-                   "Color Ovrelaps: {}".format(self.color_overlaps),
+                   "Color Overlaps: {}".format(self.color_overlaps),
                    "Level: {}".format(self.level)]
         return '\n'.join(out_str)
 

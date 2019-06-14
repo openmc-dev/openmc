@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 import os
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -31,6 +32,30 @@ def test_data_library(tmpdir):
     assert new_lib.libraries[-1]['type'] == 'neutron'
     new_lib.register_file(os.path.join(directory, 'c_Zr_in_ZrH.h5'))
     assert new_lib.libraries[-1]['type'] == 'thermal'
+
+
+def test_depletion_chain_data_library(run_in_tmpdir):
+    dep_lib = openmc.data.DataLibrary.from_xml()
+    prev_len = len(dep_lib.libraries)
+    chain_path = Path(__file__).parents[1] / "chain_simple.xml"
+    dep_lib.register_file(chain_path)
+    assert len(dep_lib.libraries) == prev_len + 1
+    # Inspect
+    dep_dict = dep_lib.libraries[-1]
+    assert dep_dict['materials'] == []
+    assert dep_dict['type'] == 'depletion_chain'
+    assert dep_dict['path'] == str(chain_path)
+
+    out_path = "cross_section_chain.xml"
+    dep_lib.export_to_xml(out_path)
+
+    dep_import = openmc.data.DataLibrary.from_xml(out_path)
+    for lib in reversed(dep_import.libraries):
+        if lib['type'] == 'depletion_chain':
+            break
+    else:
+        raise IndexError("depletion_chain not found in exported DataLibrary")
+    assert os.path.exists(lib['path'])
 
 
 def test_linearize():

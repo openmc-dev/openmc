@@ -107,7 +107,8 @@ class Chain(object):
     yield sublibrary files. The depletion chain used during a depletion
     simulation is indicated by either an argument to
     :class:`openmc.deplete.Operator` or through the
-    :envvar:`OPENMC_DEPLETE_CHAIN` environment variable.
+    ``depletion_chain`` item in the :envvar:`OPENMC_CROSS_SECTIONS`
+    environment variable.
 
     Attributes
     ----------

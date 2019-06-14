@@ -102,7 +102,7 @@ void initialize_mpi(MPI_Comm intracomm)
   // Create bank datatype
   Particle::Bank b;
   MPI_Aint disp[6];
-  MPI_Get_address(&b.r, &disp[0]);
+  MPI_Get_address(c&b.r, &disp[0]);
   MPI_Get_address(&b.u, &disp[1]);
   MPI_Get_address(&b.E, &disp[2]);
   MPI_Get_address(&b.wgt, &disp[3]);

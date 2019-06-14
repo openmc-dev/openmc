@@ -183,11 +183,11 @@ int RegularMesh::get_bin(Position r) const
   // Determine indices
   std::vector<int> ijk(n_dimension_);
   bool in_mesh;
-  get_indices(r, &ijk[0], &in_mesh);
+  get_indices(r, ijk.data(), &in_mesh);
   if (!in_mesh) return -1;
 
   // Convert indices to bin
-  return get_bin_from_indices(&ijk[0]);
+  return get_bin_from_indices(ijk.data());
 }
 
 int RegularMesh::get_bin_from_indices(const int* ijk) const
@@ -497,9 +497,9 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   int n = n_dimension_;
   std::vector<int> ijk0(n), ijk1(n);
   bool start_in_mesh;
-  get_indices(r0, &ijk0[0], &start_in_mesh);
+  get_indices(r0, ijk0.data(), &start_in_mesh);
   bool end_in_mesh;
-  get_indices(r1, &ijk1[0], &end_in_mesh);
+  get_indices(r1, ijk1.data(), &end_in_mesh);
 
   // Reset coordinates and check for a mesh intersection if necessary.
   if (start_in_mesh) {
@@ -509,7 +509,7 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
     // The initial coords do not lie in the mesh.  Check to see if the particle
     // eventually intersects the mesh and compute the relevant coords and
     // indices.
-    if (!intersects(r0, r1, &ijk0[0])) return;
+    if (!intersects(r0, r1, ijk0.data())) return;
   }
   r1 = r;
 
@@ -521,7 +521,7 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
       // The track ends in this cell.  Use the particle end location rather
       // than the mesh surface and stop iterating.
       double distance = (r1 - r0).norm();
-      bins.push_back(get_bin_from_indices(&ijk0[0]));
+      bins.push_back(get_bin_from_indices(ijk0.data()));
       lengths.push_back(distance / total_distance);
       break;
     }
@@ -543,7 +543,7 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
     // Pick the closest mesh surface and append this traversal to the output.
     auto j = std::min_element(d.begin(), d.end()) - d.begin();
     double distance = d[j];
-    bins.push_back(get_bin_from_indices(&ijk0[0]));
+    bins.push_back(get_bin_from_indices(ijk0.data()));
     lengths.push_back(distance / total_distance);
 
     // Translate to the oncoming mesh surface.
@@ -584,15 +584,15 @@ void RegularMesh::surface_bins_crossed(const Particle* p,
   int n = n_dimension_;
   std::vector<int> ijk0(n), ijk1(n);
   bool start_in_mesh;
-  get_indices(r0, &ijk0[0], &start_in_mesh);
+  get_indices(r0, ijk0.data(), &start_in_mesh);
   bool end_in_mesh;
-  get_indices(r1, &ijk1[0], &end_in_mesh);
+  get_indices(r1, ijk1.data(), &end_in_mesh);
 
   // Check if the track intersects any part of the mesh.
   if (!start_in_mesh) {
     Position r0_copy = r0;
     std::vector<int> ijk0_copy(ijk0);
-    if (!intersects(r0_copy, r1, &ijk0_copy[0])) return;
+    if (!intersects(r0_copy, r1, ijk0_copy.data())) return;
   }
 
   // ========================================================================
@@ -650,7 +650,7 @@ void RegularMesh::surface_bins_crossed(const Particle* p,
           // Outward current on i max surface
           if (in_mesh) {
             int i_surf = 4*i + 3;
-            int i_mesh = get_bin_from_indices(&ijk0[0]);
+            int i_mesh = get_bin_from_indices(ijk0.data());
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
             bins.push_back(i_bin);
@@ -671,7 +671,7 @@ void RegularMesh::surface_bins_crossed(const Particle* p,
           // i min surface
           if (in_mesh) {
             int i_surf = 4*i + 2;
-            int i_mesh = get_bin_from_indices(&ijk0[0]);
+            int i_mesh = get_bin_from_indices(ijk0.data());
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
             bins.push_back(i_bin);
@@ -683,7 +683,7 @@ void RegularMesh::surface_bins_crossed(const Particle* p,
           // Outward current on i min surface
           if (in_mesh) {
             int i_surf = 4*i + 1;
-            int i_mesh = get_bin_from_indices(&ijk0[0]);
+            int i_mesh = get_bin_from_indices(ijk0.data());
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
             bins.push_back(i_bin);
@@ -704,7 +704,7 @@ void RegularMesh::surface_bins_crossed(const Particle* p,
           // i max surface
           if (in_mesh) {
             int i_surf = 4*i + 4;
-            int i_mesh = get_bin_from_indices(&ijk0[0]);
+            int i_mesh = get_bin_from_indices(ijk0.data());
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
             bins.push_back(i_bin);

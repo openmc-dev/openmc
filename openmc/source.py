@@ -60,7 +60,7 @@ class Source(object):
         if filename is not None:
             self.file = filename
         if library is not None:
-            self.source_library = library
+            self.library = library
         self.strength = strength
         self.particle = particle
 
@@ -143,8 +143,8 @@ class Source(object):
             element.set("particle", self.particle)
         if self.file is not None:
             element.set("file", self.file)
-        if self.source_library is not None:
-            element.set("library", self.source_library)
+        if self.library is not None:
+            element.set("library", self.library)
         if self.space is not None:
             element.append(self.space.to_xml_element())
         if self.angle is not None:
@@ -184,7 +184,7 @@ class Source(object):
 
         library = get_text(elem, 'library')
         if library is not None:
-            source.source_library = library
+            source.library = library
 
         space = elem.find('space')
         if space is not None:

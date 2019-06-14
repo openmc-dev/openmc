@@ -1,6 +1,6 @@
-==============================
-Release Notes for OpenMC 0.7.1
-==============================
+===================
+What's New in 0.7.1
+===================
 
 This release of OpenMC provides some substantial improvements over version
 0.7.0. Non-simple cell regions can now be defined through the ``|`` (union) and

@@ -33,7 +33,7 @@ const RGBColor RED {255,   0,   0};
 
 constexpr int PLOT_LEVEL_LOWEST {-1}; //!< lower bound on plot universe level
 constexpr int32_t NOT_FOUND {-2};
-constexpr int32_t OVERLAP{-3};
+constexpr int32_t OVERLAP {-3};
 
 IdData::IdData(size_t h_res, size_t v_res)
   : data_({v_res, h_res, 2}, NOT_FOUND)

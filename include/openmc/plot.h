@@ -57,6 +57,11 @@ struct RGBColor {
   uint8_t red, green, blue;
 };
 
+// some default colors
+const RGBColor WHITE {255, 255, 255};
+const RGBColor RED {255,   0,   0};
+
+
 typedef xt::xtensor<RGBColor, 2> ImageData;
 
 struct IdData {
@@ -218,10 +223,10 @@ public:
   PlotType type_; //!< Plot type (Slice/Voxel)
   PlotColorBy color_by_; //!< Plot coloring (cell/material)
   int meshlines_width_; //!< Width of lines added to the plot
-  int index_meshlines_mesh_; //!< Index of the mesh to draw on the plot
+  int index_meshlines_mesh_ {-1}; //!< Index of the mesh to draw on the plot
   RGBColor meshlines_color_; //!< Color of meshlines on the plot
-  RGBColor not_found_; //!< Plot background color
-  RGBColor overlap_color_; //!< Plot overlap color
+  RGBColor not_found_ {WHITE}; //!< Plot background color
+  RGBColor overlap_color_ {RED}; //!< Plot overlap color
   std::vector<RGBColor> colors_; //!< Plot colors
   std::string path_plot_; //!< Plot output filename
 };

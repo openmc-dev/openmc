@@ -44,8 +44,8 @@ Classes
    EnergyFilter
    MaterialFilter
    Material
-   Mesh
    MeshFilter
    MeshSurfaceFilter
    Nuclide
+   RegularMesh
    Tally

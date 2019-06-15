@@ -25,21 +25,16 @@ def epc_rk4(operator, timesteps, power=None, power_density=None, print_out=True)
     This algorithm is mathematically defined as:
 
     .. math::
-        F_1 &= h A(y_0)
-
-        y_1 &= \text{expm}(1/2 F_1) y_0
-
-        F_2 &= h A(y_1)
-
-        y_2 &= \text{expm}(1/2 F_2) y_0
-
-        F_3 &= h A(y_2)
-
-        y_3 &= \text{expm}(F_3) y_0
-
-        F_4 &= h A(y_3)
-
+        \begin{aligned}
+        F_1 &= h A(y_0) \\
+        y_1 &= \text{expm}(1/2 F_1) y_0 \\
+        F_2 &= h A(y_1) \\
+        y_2 &= \text{expm}(1/2 F_2) y_0 \\
+        F_3 &= h A(y_2) \\
+        y_3 &= \text{expm}(F_3) y_0 \\
+        F_4 &= h A(y_3) \\
         y_4 &= \text{expm}(1/6 F_1 + 1/3 F_2 + 1/3 F_3 + 1/6 F_4) y_0
+        \end{aligned}
 
     Parameters
     ----------

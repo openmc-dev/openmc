@@ -11,9 +11,11 @@ from ..results import Results
 def _cf4_f1(chain, rates):
     return 1/2 * chain.form_matrix(rates)
 
+
 def _cf4_f2(chain, rates):
     return -1/2 * chain.form_matrix(rates[0]) + \
                   chain.form_matrix(rates[1])
+
 
 def _cf4_f3(chain, rates):
     return  1/4  * chain.form_matrix(rates[0]) + \
@@ -21,11 +23,13 @@ def _cf4_f3(chain, rates):
             1/6  * chain.form_matrix(rates[2]) + \
            -1/12 * chain.form_matrix(rates[3])
 
+
 def _cf4_f4(chain, rates):
     return -1/12 * chain.form_matrix(rates[0]) + \
             1/6  * chain.form_matrix(rates[1]) + \
             1/6  * chain.form_matrix(rates[2]) + \
             1/4  * chain.form_matrix(rates[3])
+
 
 def cf4(operator, timesteps, power=None, power_density=None, print_out=True):
     r"""Deplete using the CF4 algorithm.
@@ -35,22 +39,17 @@ def cf4(operator, timesteps, power=None, power_density=None, print_out=True):
     This algorithm is mathematically defined as:
 
     .. math::
-        F_1 &= h A(y_0)
-
-        y_1 &= \text{expm}(1/2 F_1) y_0
-
-        F_2 &= h A(y_1)
-
-        y_2 &= \text{expm}(1/2 F_2) y_0
-
-        F_3 &= h A(y_2)
-
-        y_3 &= \text{expm}(-1/2 F_1 + F_3) y_1
-
-        F_4 &= h A(y_3)
-
+        \begin{aligned}
+        F_1 &= h A(y_0) \\
+        y_1 &= \text{expm}(1/2 F_1) y_0 \\
+        F_2 &= h A(y_1) \\
+        y_2 &= \text{expm}(1/2 F_2) y_0 \\
+        F_3 &= h A(y_2) \\
+        y_3 &= \text{expm}(-1/2 F_1 + F_3) y_1 \\
+        F_4 &= h A(y_3) \\
         y_4 &= \text{expm}( 1/4  F_1 + 1/6 F_2 + 1/6 F_3 - 1/12 F_4)
                \text{expm}(-1/12 F_1 + 1/6 F_2 + 1/6 F_3 + 1/4  F_4) y_0
+        \end{aligned}
 
     Parameters
     ----------

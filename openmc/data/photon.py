@@ -929,13 +929,12 @@ class IncidentPhoton(EqualityMixin):
         The point-wise heating cross section is calculated as:
 
         .. math::
-            \sigma_{Hx}(E) &= (E - \overline{E}_x(E)) \cdot \sigma_x(E), x \in \left\{I, PP, PE \right\}
-
-            \overline{E}_I(E) &= \frac {\int E' \sigma_I (E,E',\mu) d\mu} {\int \sigma_I (E,E',\mu) d\mu}
-
-            \overline{E}_{PP} &= 2 m_e c^2 = 1.022 \times 10^6 eV
-
+            \begin{aligned}
+            \sigma_{Hx}(E) &= (E - \overline{E}_x(E)) \cdot \sigma_x(E), x \in \left\{I, PP, PE \right\} \\
+            \overline{E}_I(E) &= \frac {\int E' \sigma_I (E,E',\mu) d\mu} {\int \sigma_I (E,E',\mu) d\mu} \\
+            \overline{E}_{PP} &= 2 m_e c^2 = 1.022 \times 10^6 eV \\
             \overline{E}_{PE} &= E(\text{fluorescent photons})
+            \end{aligned}
 
         The differential cross section representation for incoherent
         scattering can be found in the theory manual.

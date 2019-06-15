@@ -35,16 +35,16 @@ SphericalHarmonicsFilter::get_all_bins(const Particle* p, int estimator,
                                        FilterMatch& match) const
 {
   // Determine cosine term for scatter expansion if necessary
-  double wgt[order_ + 1];
+  std::vector<double> wgt(order_ + 1);
   if (cosine_ == SphericalHarmonicsCosine::scatter) {
-    calc_pn_c(order_, p->mu_, wgt);
+    calc_pn_c(order_, p->mu_, wgt.data());
   } else {
     for (int i = 0; i < order_ + 1; i++) wgt[i] = 1;
   }
 
   // Find the Rn,m values
-  double rn[n_bins_];
-  calc_rn(order_, p->u_last_, rn);
+  std::vector<double> rn(n_bins_);
+  calc_rn(order_, p->u_last_, rn.data());
 
   int j = 0;
   for (int n = 0; n < order_ + 1; n++) {

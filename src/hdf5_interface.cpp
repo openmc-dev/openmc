@@ -366,10 +366,11 @@ member_names(hid_t group_id, H5O_type_t type)
                                   i, nullptr, 0, H5P_DEFAULT);
 
     // Read name
-    char buffer[size];
+    char* buffer = new char[size];
     H5Lget_name_by_idx(group_id, ".", H5_INDEX_NAME, H5_ITER_INC, i,
                        buffer, size, H5P_DEFAULT);
     names.emplace_back(&buffer[0]);
+    delete[] buffer;
   }
   return names;
 }
@@ -404,11 +405,13 @@ object_name(hid_t obj_id)
 {
   // Determine size and create buffer
   size_t size = 1 + H5Iget_name(obj_id, nullptr, 0);
-  char buffer[size];
+  char* buffer = new char[size];
 
   // Read and return name
   H5Iget_name(obj_id, buffer, size);
-  return buffer;
+  std::string str = buffer;
+  delete[] buffer;
+  return str;
 }
 
 
@@ -788,6 +791,8 @@ template<>
 const hid_t H5TypeMap<int>::type_id = H5T_NATIVE_INT;
 template<>
 const hid_t H5TypeMap<unsigned long>::type_id = H5T_NATIVE_ULONG;
+template<>
+const hid_t H5TypeMap<unsigned long long>::type_id = H5T_NATIVE_ULLONG;
 template<>
 const hid_t H5TypeMap<unsigned int>::type_id = H5T_NATIVE_UINT;
 template<>

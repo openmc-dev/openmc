@@ -72,6 +72,9 @@ endif()
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
+# Skip for Visual Stduio which has its own configurations through GUI
+if(NOT MSVC)
+
 if(openmp)
   # Requires CMake 3.1+
   find_package(OpenMP)
@@ -103,6 +106,8 @@ endif()
 # Show flags being used
 message(STATUS "OpenMC C++ flags: ${cxxflags}")
 message(STATUS "OpenMC Linker flags: ${ldflags}")
+
+endif()
 
 #===============================================================================
 # pugixml library
@@ -159,7 +164,7 @@ target_compile_options(faddeeva PRIVATE ${cxxflags})
 # libopenmc
 #===============================================================================
 
-add_library(libopenmc SHARED
+list(APPEND libopenmc_SOURCES
   src/bank.cpp
   src/bremsstrahlung.cpp
   src/dagmc.cpp
@@ -245,6 +250,18 @@ add_library(libopenmc SHARED
   src/wmp.cpp
   src/xml_interface.cpp
   src/xsdata.cpp)
+
+# For Visual Studio compilers
+if(MSVC)
+  # Use static library (otherwise explicit symbol portings are needed)
+  add_library(libopenmc STATIC ${libopenmc_SOURCES})
+
+  # To use the shared HDF5 libraries on Windows, the H5_BUILT_AS_DYNAMIC_LIB
+  # compile definition must be specified.
+  target_compile_definitions(libopenmc PRIVATE -DH5_BUILT_AS_DYNAMIC_LIB)
+else()
+  add_library(libopenmc SHARED ${libopenmc_SOURCES})
+endif()
 
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc)

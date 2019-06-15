@@ -58,8 +58,8 @@ MeshFilter::text_label(int bin) const
   auto& mesh = *model::meshes[mesh_];
   int n_dim = mesh.n_dimension_;
 
-  int ijk[n_dim];
-  mesh.get_indices_from_bin(bin, ijk);
+  std::vector<int> ijk(n_dim);
+  mesh.get_indices_from_bin(bin, ijk.data());
 
   std::stringstream out;
   out << "Mesh Index (" << ijk[0];

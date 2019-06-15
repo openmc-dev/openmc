@@ -4,6 +4,7 @@
 #include <sstream>
 #include <set>
 #include <string>
+#include <cctype>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -560,7 +561,7 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 {
   // Make a stack of booleans.  We don't know how big it needs to be, but we do
   // know that rpn.size() is an upper-bound.
-  bool stack[rpn_.size()];
+  std::vector<bool> stack(rpn_.size());
   int i_stack = -1;
 
   for (int32_t token : rpn_) {

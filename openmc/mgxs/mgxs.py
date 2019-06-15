@@ -2591,6 +2591,7 @@ class TransportXS(MGXS):
 
     .. math::
 
+       \begin{aligned}
        \langle \sigma_t \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
        d\Omega \int_{E_g}^{E_{g-1}} dE \sigma_t (r, E) \psi
        (r, E, \Omega) \\
@@ -2603,6 +2604,7 @@ class TransportXS(MGXS):
        \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega) \\
        \sigma_{tr} &= \frac{\langle \sigma_t \phi \rangle - \langle \sigma_{s1}
        \phi \rangle}{\langle \phi \rangle}
+       \end{aligned}
 
     To incorporate the effect of scattering multiplication in the above
     relation, the `nu` parameter can be set to `True`.
@@ -3549,7 +3551,8 @@ class ScatterMatrixXS(MatrixMGXS):
 
     .. math::
 
-       \langle \sigma_{s,\ell,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
+       \begin{aligned}
+       \langle \sigma}_{s,\ell,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi} d\Omega
        \int_{E_g}^{E_{g-1}} dE \; P_\ell (\Omega \cdot \Omega') \sigma_s (r, E'
        \rightarrow E, \Omega' \cdot \Omega) \psi(r, E', \Omega')\\
@@ -3557,6 +3560,7 @@ class ScatterMatrixXS(MatrixMGXS):
        \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega) \\
        \sigma_{s,\ell,g'\rightarrow g} &= \frac{\langle
        \sigma_{s,\ell,g'\rightarrow g} \phi \rangle}{\langle \phi \rangle}
+       \end{aligned}
 
     If the order is zero and a :math:`P_0` transport-correction is applied
     (default), the scattering matrix elements are:
@@ -4699,6 +4703,7 @@ class MultiplicityMatrixXS(MatrixMGXS):
 
     .. math::
 
+       \begin{aligned}
        \langle \upsilon \sigma_{s,g'\rightarrow g} \phi \rangle &= \int_{r \in
        D} dr \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi}
        d\Omega \int_{E_g}^{E_{g-1}} dE \; \sum_i \upsilon_i \sigma_i (r, E' \rightarrow
@@ -4710,6 +4715,7 @@ class MultiplicityMatrixXS(MatrixMGXS):
        \upsilon_{g'\rightarrow g} &= \frac{\langle \upsilon
        \sigma_{s,g'\rightarrow g} \rangle}{\langle \sigma_{s,g'\rightarrow g}
        \rangle}
+       \end{aligned}
 
     where :math:`\upsilon_i` is the multiplicity for the :math:`i`-th reaction.
 
@@ -4866,6 +4872,7 @@ class ScatterProbabilityMatrix(MatrixMGXS):
 
     .. math::
 
+       \begin{aligned}
        \langle \sigma_{s,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi} d\Omega
        \int_{E_g}^{E_{g-1}} dE \; \sigma_{s} (r, E' \rightarrow E, \Omega'
@@ -4877,6 +4884,7 @@ class ScatterProbabilityMatrix(MatrixMGXS):
        P_{s,g'\rightarrow g} &= \frac{\langle
        \sigma_{s,g'\rightarrow g} \phi \rangle}{\langle
        \sigma_{s,g'} \phi \rangle}
+       \end{aligned}
 
     Parameters
     ----------
@@ -5032,6 +5040,7 @@ class NuFissionMatrixXS(MatrixMGXS):
 
     .. math::
 
+       \begin{aligned}
        \langle \nu\sigma_{f,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{E_g}^{E_{g-1}} dE
        \; \chi(E) \nu\sigma_f (r, E') \psi(r, E', \Omega')\\
@@ -5039,6 +5048,7 @@ class NuFissionMatrixXS(MatrixMGXS):
        \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega) \\
        \nu\sigma_{f,g'\rightarrow g} &= \frac{\langle \nu\sigma_{f,g'\rightarrow
        g} \phi \rangle}{\langle \phi \rangle}
+       \end{aligned}
 
     Parameters
     ----------
@@ -5183,6 +5193,7 @@ class Chi(MGXS):
 
     .. math::
 
+       \begin{aligned}
        \langle \nu\sigma_{f,g' \rightarrow g} \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_0^\infty dE' \int_{E_g}^{E_{g-1}} dE \; \chi(E)
        \nu\sigma_f (r, E') \psi(r, E', \Omega')\\
@@ -5191,6 +5202,7 @@ class Chi(MGXS):
        E') \psi(r, E', \Omega') \\
        \chi_g &= \frac{\langle \nu\sigma_{f,g' \rightarrow g} \phi \rangle}
        {\langle \nu\sigma_f \phi \rangle}
+       \end{aligned}
 
     This class can also be used to gather a prompt-chi (which only includes the
     outgoing energy spectrum of prompt neutrons). This is accomplished by

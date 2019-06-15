@@ -15,11 +15,11 @@ def predictor(operator, timesteps, power=None, power_density=None,
     mathematically defined as:
 
     .. math::
-        y' &= A(y, t) y(t)
-
-        A_p &= A(y_n, t_n)
-
+        \begin{aligned}
+        y' &= A(y, t) y(t) \\
+        A_p &= A(y_n, t_n) \\
         y_{n+1} &= \text{expm}(A_p h) y_n
+        \end{aligned}
 
     Parameters
     ----------

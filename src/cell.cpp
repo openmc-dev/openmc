@@ -4,6 +4,7 @@
 #include <sstream>
 #include <set>
 #include <string>
+#include <cctype>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"

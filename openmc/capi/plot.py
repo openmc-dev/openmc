@@ -90,6 +90,7 @@ class _PlotBase(Structure):
 
     def __init__(self):
         self.level_ = -1
+        self.color_overlaps_ = False
 
     @property
     def origin(self):
@@ -151,6 +152,14 @@ class _PlotBase(Structure):
     @property
     def level(self):
         return int(self.level_)
+
+    @property
+    def color_overlaps(self):
+        return self.color_overlaps_
+
+    @color_overlaps.setter
+    def color_overlaps(self, color_overlaps):
+        self.color_overlaps_ = color_overlaps
 
     @origin.setter
     def origin(self, origin):

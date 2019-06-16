@@ -969,11 +969,17 @@ extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
+  if (plt->color_overlaps_ && model::overlap_check_count.size() == 0) {
+    model::overlap_check_count.resize(model::cells.size());
+  }
+
+  std::cout << "About to get ids" << std::endl;
   auto ids = plt->get_map<IdData>();
+  std::cout << "About to copy data" << std::endl;
 
   // write id data to array
   std::copy(ids.data_.begin(), ids.data_.end(), data_out);
-
+  std::cout << "About to return" << std::endl;
   return 0;
 }
 
@@ -983,6 +989,10 @@ extern "C" int openmc_property_map(const void* plot, double* data_out) {
   if (!plt) {
     set_errmsg("Invalid slice pointer passed to openmc_id_map");
     return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (plt->color_overlaps_ && model::overlap_check_count.size() == 0) {
+    model::overlap_check_count.resize(model::cells.size());
   }
 
   auto props = plt->get_map<PropertyData>();

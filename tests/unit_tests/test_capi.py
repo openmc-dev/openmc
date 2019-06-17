@@ -124,6 +124,13 @@ def test_material(capi_init):
     assert m.density == pytest.approx(0.1)
 
 
+def test_material_add_nuclide(capi_init):
+    m = openmc.capi.materials[3]
+    m.add_nuclide('Xe135', 1e-12)
+    assert m.nuclides[-1] == 'Xe135'
+    assert m.densities[-1] == 1e-12
+
+
 def test_new_material(capi_init):
     with pytest.raises(exc.AllocationError):
         openmc.capi.Material(1)
@@ -135,7 +142,7 @@ def test_new_material(capi_init):
 def test_nuclide_mapping(capi_init):
     nucs = openmc.capi.nuclides
     assert isinstance(nucs, Mapping)
-    assert len(nucs) == 12
+    assert len(nucs) == 13
     for name, nuc in nucs.items():
         assert isinstance(nuc, openmc.capi.Nuclide)
         assert name == nuc.name

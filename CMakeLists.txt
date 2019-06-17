@@ -125,6 +125,16 @@ add_subdirectory(vendor/xtensor)
 target_link_libraries(xtensor INTERFACE xtl)
 
 #===============================================================================
+# GSL header-only library
+#===============================================================================
+
+add_library(gsl INTERFACE)
+target_include_directories(gsl INTERFACE vendor/gsl/include)
+
+# Make sure contract violations throw exceptions
+target_compile_definitions(gsl INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
+
+#===============================================================================
 # RPATH information
 #===============================================================================
 
@@ -292,7 +302,7 @@ endif()
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
-                      pugixml faddeeva xtensor)
+                      pugixml faddeeva xtensor gsl)
 
 if(dagmc)
   target_compile_definitions(libopenmc PRIVATE DAGMC)

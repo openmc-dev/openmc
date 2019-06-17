@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>100</particles>
+  <batches>5</batches>
+  <inactive>0</inactive>
+  <source strength="1.0">
+    <space type="box">
+      <parameters>-4 -4 -4 4 4 4</parameters>
+    </space>
+  </source>
+  <dagmc>true</dagmc>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <filter id="1" type="cell">
+    <bins>1</bins>
+  </filter>
+  <tally id="1">
+    <filters>1</filters>
+    <scores>total</scores>
+  </tally>
+</tallies>

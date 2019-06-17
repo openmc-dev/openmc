@@ -1085,7 +1085,7 @@ class HexLattice(Lattice):
                 # Check the center ring.
                 if len(axial_slice[-1]) != 1:
                     msg = 'HexLattice ID={0:d} has the wrong number of ' \
-                          'elements in the innermost ring.Only 1 element is ' \
+                          'elements in the innermost ring. Only 1 element is ' \
                           'allowed in the innermost ring.'.format(self._id)
                     raise ValueError(msg)
 
@@ -1093,7 +1093,7 @@ class HexLattice(Lattice):
                 for r in range(self._num_rings-1):
                     if len(axial_slice[r]) != 6*(self._num_rings - 1 - r):
                         msg = 'HexLattice ID={0:d} has the wrong number of ' \
-                              'elements in ring number{1:d}(counting from the '\
+                              'elements in ring number {1:d} (counting from the '\
                               'outermost ring). This ring should have {2:d} ' \
                               'elements.'.format(self._id, r,
                                                  6*(self._num_rings - 1 - r))
@@ -1788,15 +1788,15 @@ class HexLattice(Lattice):
         setting the :attr:`HexLattice.universes` property. For example,running
         this method with num_rings=3 will return the similar diagram::
 
-                      (0, 4)      (0, 3)      (0, 2)
-
-                (0, 5)      (1, 2)      (1, 1)      (0, 1)
-
-          (0, 6)      (1, 3)      (2, 0)      (1, 0)      (0, 0)
+                      (0, 8)      (0, 9)      (0,10)
 
                 (0, 7)      (1, 4)      (1, 5)      (0,11)
 
-                      (0, 8)      (0, 9)      (0,10)
+          (0, 6)      (1, 3)      (2, 0)      (1, 0)      (0, 0)
+
+                (0, 5)      (1, 2)      (1, 1)      (0, 1)
+
+                      (0, 4)      (0, 3)      (0, 2)
 
         Parameters
         ----------

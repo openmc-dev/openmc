@@ -906,6 +906,7 @@ class ChiDelayed(MDGXS):
 
     .. math::
 
+       \begin{aligned}
        \langle \nu^d \sigma_{f,g' \rightarrow g} \phi \rangle &= \int_{r \in V}
        dr \int_{4\pi} d\Omega' \int_0^\infty dE' \int_{E_g}^{E_{g-1}} dE \;
        \chi(E) \nu^d \sigma_f (r, E') \psi(r, E', \Omega')\\
@@ -914,6 +915,7 @@ class ChiDelayed(MDGXS):
        E') \psi(r, E', \Omega') \\
        \chi_g^d &= \frac{\langle \nu^d \sigma_{f,g' \rightarrow g} \phi \rangle}
        {\langle \nu^d \sigma_f \phi \rangle}
+       \end{aligned}
 
     Parameters
     ----------
@@ -1547,6 +1549,7 @@ class Beta(MDGXS):
 
     .. math::
 
+       \begin{aligned}
        \langle \nu^d \sigma_f \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
        d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu^d
        \sigma_f (r, E') \psi(r, E', \Omega') \\
@@ -1555,6 +1558,7 @@ class Beta(MDGXS):
        \sigma_f (r, E') \psi(r, E', \Omega') \\
        \beta_{d,g} &= \frac{\langle \nu^d \sigma_f \phi \rangle}
        {\langle \nu \sigma_f \phi \rangle}
+       \end{aligned}
 
     NOTE: The Beta MGXS is the delayed neutron fraction computed directly from
     the nuclear data. Often the delayed neutron fraction is
@@ -1735,6 +1739,7 @@ class DecayRate(MDGXS):
 
     .. math::
 
+       \begin{aligned}
        \langle \lambda_d \nu^d \sigma_f \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \lambda_d \nu^d
        \sigma_f (r, E') \psi(r, E', \Omega') \\
@@ -1743,6 +1748,7 @@ class DecayRate(MDGXS):
        \sigma_f (r, E') \psi(r, E', \Omega') \\
        \lambda_d &= \frac{\langle \lambda_d \nu^d \sigma_f \phi \rangle}
        {\langle \nu^d \sigma_f \phi \rangle}
+       \end{aligned}
 
     Parameters
     ----------
@@ -2501,6 +2507,7 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
 
     .. math::
 
+       \begin{aligned}
        \langle \nu\sigma_{f,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{E_g}^{E_{g-1}} dE
        \; \chi(E) \nu\sigma_f^d (r, E') \psi(r, E', \Omega')\\
@@ -2508,6 +2515,7 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
        \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega) \\
        \nu\sigma_{f,g'\rightarrow g} &= \frac{\langle \nu\sigma_{f,g'\rightarrow
        g}^d \phi \rangle}{\langle \phi \rangle}
+       \end{aligned}
 
 
     Parameters

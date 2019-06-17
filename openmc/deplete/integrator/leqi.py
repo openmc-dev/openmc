@@ -16,11 +16,13 @@ def _leqi_f1(chain, inputs):
     dt_l, dt = inputs[2], inputs[3]
     return -dt / (12 * dt_l) * f1 + (dt + 6 * dt_l) / (12 * dt_l) * f2
 
+
 def _leqi_f2(chain, inputs):
     f1 = chain.form_matrix(inputs[0])
     f2 = chain.form_matrix(inputs[1])
     dt_l, dt = inputs[2], inputs[3]
     return -5 * dt / (12 * dt_l) * f1 + (5 * dt + 6 * dt_l) / (12 * dt_l) * f2
+
 
 def _leqi_f3(chain, inputs):
     f1 = chain.form_matrix(inputs[0])
@@ -31,6 +33,7 @@ def _leqi_f3(chain, inputs):
            (dt**2 + 6*dt*dt_l + 5*dt_l**2) / (12 * dt_l * (dt + dt_l)) * f2 + \
            dt_l / (12 * (dt + dt_l)) * f3
 
+
 def _leqi_f4(chain, inputs):
     f1 = chain.form_matrix(inputs[0])
     f2 = chain.form_matrix(inputs[1])
@@ -39,6 +42,7 @@ def _leqi_f4(chain, inputs):
     return -dt**2 / (12 * dt_l * (dt + dt_l)) * f1 + \
            (dt**2 + 2*dt*dt_l + dt_l**2) / (12 * dt_l * (dt + dt_l)) * f2 + \
            (4 * dt * dt_l + 5 * dt_l**2) / (12 * dt_l * (dt + dt_l)) * f3
+
 
 def leqi(operator, timesteps, power=None, power_density=None, print_out=True):
     r"""Deplete using the LE/QI CFQ4 algorithm.
@@ -50,29 +54,22 @@ def leqi(operator, timesteps, power=None, power_density=None, print_out=True):
     interpolation on corrector. This algorithm is mathematically defined as:
 
     .. math::
-        y' &= A(y, t) y(t)
-
-        A_{last} &= A(y_{n-1}, t_n - h_1)
-
-        A_0 &= A(y_n, t_n)
-
-        F_1 &= \frac{-h_2^2}{12h_1} A_{last} + \frac{h_2(6h_1+h_2)}{12h_1} A_0
-
-        F_2 &= \frac{-5h_2^2}{12h_1} A_{last} + \frac{h_2(6h_1+5h_2)}{12h_1} A_0
-
-        y_p &= \text{expm}(F_2) \text{expm}(F_1) y_n
-
-        A_1 &= A(y_p, t_n + h_2)
-
+        \begin{aligned}
+        y' &= A(y, t) y(t) \\
+        A_{last} &= A(y_{n-1}, t_n - h_1) \\
+        A_0 &= A(y_n, t_n) \\
+        F_1 &= \frac{-h_2^2}{12h_1} A_{last} + \frac{h_2(6h_1+h_2)}{12h_1} A_0 \\
+        F_2 &= \frac{-5h_2^2}{12h_1} A_{last} + \frac{h_2(6h_1+5h_2)}{12h_1} A_0 \\
+        y_p &= \text{expm}(F_2) \text{expm}(F_1) y_n \\
+        A_1 &= A(y_p, t_n + h_2) \\
         F_3 &= \frac{-h_2^3}{12 h_1 (h_1 + h_2)} A_{last} +
               \frac{h_2 (5 h_1^2 + 6 h_2 h_1 + h_2^2)}{12 h_1 (h_1 + h_2)} A_0 +
-              \frac{h_2 h_1)}{12 (h_1 + h_2)} A_1
-
+              \frac{h_2 h_1)}{12 (h_1 + h_2)} A_1 \\
         F_4 &= \frac{-h_2^3}{12 h_1 (h_1 + h_2)} A_{last} +
               \frac{h_2 (h_1^2 + 2 h_2 h_1 + h_2^2)}{12 h_1 (h_1 + h_2)} A_0 +
-              \frac{h_2 (5 h_1^2 + 4 h_2 h_1)}{12 h_1 (h_1 + h_2)} A_1
-
+              \frac{h_2 (5 h_1^2 + 4 h_2 h_1)}{12 h_1 (h_1 + h_2)} A_1 \\
         y_{n+1} &= \text{expm}(F_4) \text{expm}(F_3) y_n
+        \end{aligned}
 
     It is initialized using the CE/LI algorithm.
 

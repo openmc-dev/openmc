@@ -208,6 +208,10 @@ class Plot(IDManagerMixin):
         The cells or materials to plot
     mask_background : Iterable of int or str
         Color to apply to all cells/materials not listed in mask_components
+    show_overlaps : bool
+        Inidicate whether or not overlapping regions are shown
+    overlap_color : Iterable of int or str
+        Color to apply to overlapping regions
     colors : dict
         Dictionary indicating that certain cells/materials (keys) should be
         displayed with a particular color.
@@ -236,6 +240,8 @@ class Plot(IDManagerMixin):
         self._background = None
         self._mask_components = None
         self._mask_background = None
+        self._show_overlaps = False
+        self._overlap_color = None
         self._colors = {}
         self._level = None
         self._meshlines = None
@@ -283,6 +289,14 @@ class Plot(IDManagerMixin):
     @property
     def mask_background(self):
         return self._mask_background
+
+    @property
+    def show_overlaps(self):
+        return self._show_overlaps
+
+    @property
+    def overlap_color(self):
+        return self._overlap_color
 
     @property
     def colors(self):
@@ -343,15 +357,7 @@ class Plot(IDManagerMixin):
 
     @background.setter
     def background(self, background):
-        cv.check_type('plot background', background, Iterable)
-        if isinstance(background, str):
-            if background.lower() not in _SVG_COLORS:
-                raise ValueError("'{}' is not a valid color.".format(background))
-        else:
-            cv.check_length('plot background', background, 3)
-            for rgb in background:
-                cv.check_greater_than('plot background', rgb, 0, True)
-                cv.check_less_than('plot background', rgb, 256)
+        self._check_color('plot background', background)
         self._background = background
 
     @colors.setter
@@ -359,17 +365,7 @@ class Plot(IDManagerMixin):
         cv.check_type('plot colors', colors, Mapping)
         for key, value in colors.items():
             cv.check_type('plot color key', key, (openmc.Cell, openmc.Material))
-            cv.check_type('plot color value', value, Iterable)
-            if isinstance(value, str):
-                if value.lower() not in _SVG_COLORS:
-                    raise ValueError("'{}' is not a valid color.".format(value))
-            else:
-                cv.check_length('plot color (RGB)', value, 3)
-                for component in value:
-                    cv.check_type('RGB component', component, Real)
-                    cv.check_greater_than('RGB component', component, 0, True)
-                    cv.check_less_than('RGB component', component, 255, True)
-
+            self._check_color('plot color value', value)
         self._colors = colors
 
     @mask_components.setter
@@ -380,16 +376,19 @@ class Plot(IDManagerMixin):
 
     @mask_background.setter
     def mask_background(self, mask_background):
-        cv.check_type('plot mask background', mask_background, Iterable)
-        if isinstance(mask_background, str):
-            if mask_background.lower() not in _SVG_COLORS:
-                raise ValueError("'{}' is not a valid color.".format(mask_background))
-        else:
-            cv.check_length('plot mask_background', mask_background, 3)
-            for rgb in mask_background:
-                cv.check_greater_than('plot mask background', rgb, 0, True)
-                cv.check_less_than('plot mask background', rgb, 256)
+        self._check_color('plot mask background', mask_background)
         self._mask_background = mask_background
+
+    @show_overlaps.setter
+    def show_overlaps(self, show_overlaps):
+        cv.check_type('Show overlaps flag for Plot ID="{}"'.format(self.id),
+                      show_overlaps, bool)
+        self._show_overlaps = show_overlaps
+
+    @overlap_color.setter
+    def overlap_color(self, overlap_color):
+        self._check_color('plot overlap color', overlap_color)
+        self._overlap_color = overlap_color
 
     @level.setter
     def level(self, plot_level):
@@ -421,14 +420,22 @@ class Plot(IDManagerMixin):
                                   0, equality=True)
 
         if 'color' in meshlines:
-            cv.check_type('plot meshlines color', meshlines['color'], Iterable,
-                          Integral)
-            cv.check_length('plot meshlines color', meshlines['color'], 3)
-            for rgb in meshlines['color']:
-                cv.check_greater_than('plot meshlines color', rgb, 0, True)
-                cv.check_less_than('plot meshlines color', rgb, 256)
+            self._check_color('plot meshlines color', meshlines['color'])
 
         self._meshlines = meshlines
+
+    @staticmethod
+    def _check_color(err_string, color):
+        cv.check_type(err_string, color, Iterable)
+        if isinstance(color, str):
+            if color.lower() not in _SVG_COLORS:
+                raise ValueError("'{}' is not a valid color.".format(color))
+        else:
+            cv.check_length(err_string, color, 3)
+            for rgb in color:
+                cv.check_type(err_string, rgb, Real)
+                cv.check_greater_than('RGB component', rgb, 0, True)
+                cv.check_less_than('RGB component', rgb, 256)
 
     def __repr__(self):
         string = 'Plot\n'
@@ -446,6 +453,8 @@ class Plot(IDManagerMixin):
                                             self._mask_components)
         string += '{: <16}=\t{}\n'.format('\tMask background',
                                             self._mask_background)
+        string += '{: <16}=\t{}\n'.format('\Overlap Color',
+                                            self._overlap_color)
         string += '{: <16}=\t{}\n'.format('\tColors', self._colors)
         string += '{: <16}=\t{}\n'.format('\tLevel', self._level)
         string += '{: <16}=\t{}\n'.format('\tMeshlines', self._meshlines)
@@ -634,6 +643,18 @@ class Plot(IDManagerMixin):
                     color = _SVG_COLORS[color.lower()]
                 subelement.set("background", ' '.join(
                     str(x) for x in color))
+
+        if self._show_overlaps:
+            subelement = ET.SubElement(element, "show_overlaps")
+            subelement.text = "true"
+
+            if self._overlap_color is not None:
+                color = self._overlap_color
+                if isinstance(color, str):
+                    color = _SVG_COLORS[color.lower()]
+                subelement = ET.SubElement(element, "overlap_color")
+                subelement.text = ' '.join(str(x) for x in color)
+
 
         if self._level is not None:
             subelement = ET.SubElement(element, "level")

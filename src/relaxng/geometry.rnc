@@ -48,6 +48,7 @@ element geometry {
     (element n_axial { xsd:int } | attribute n_axial { xsd:int })? &
     (element center { list { xsd:double+ } } | attribute center { list { xsd:double+ } }) &
     (element pitch { list { xsd:double+ } } | attribute pitch { list { xsd:double+ } }) &
+    (element orientation { ( "x" | "y" ) } | attribute orientation { ( "x" | "y" ) })? &
     (element universes { list { xsd:int+ } } | attribute universes { list { xsd:int+ } }) &
     (element outer { xsd:int } | attribute outer { xsd:int })?
   }*

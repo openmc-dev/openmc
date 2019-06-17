@@ -1,7 +1,6 @@
 import openmc
 import openmc.capi
 from openmc.stats import Box
-from openmc.material import Materials
 
 import pytest
 from tests.testing_harness import PyAPITestHarness

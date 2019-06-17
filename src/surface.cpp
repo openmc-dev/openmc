@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "openmc/error.h"
+#include "openmc/dagmc.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/settings.h"
 #include "openmc/string_utils.h"
@@ -255,13 +256,19 @@ DAGSurface::distance(Position r, Direction u, bool coincident) const
 Direction DAGSurface::normal(Position r) const
 {
   moab::ErrorCode rval;
-  Direction u;
   moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
   double pnt[3] = {r.x, r.y, r.z};
-  double dir[3] = {u.x, u.y, u.z};
+  double dir[3];
   rval = dagmc_ptr_->get_angle(surf, pnt, dir);
   MB_CHK_ERR_CONT(rval);
-  return u;
+  return dir;
+}
+
+Direction DAGSurface::reflect(Position r, Direction u) const
+{
+  simulation::history.reset_to_last_intersection();
+  simulation::last_dir = Surface::reflect(r, u);
+  return simulation::last_dir;
 }
 
 BoundingBox DAGSurface::bounding_box() const

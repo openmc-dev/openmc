@@ -973,13 +973,11 @@ extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
     model::overlap_check_count.resize(model::cells.size());
   }
 
-  std::cout << "About to get ids" << std::endl;
   auto ids = plt->get_map<IdData>();
-  std::cout << "About to copy data" << std::endl;
 
   // write id data to array
   std::copy(ids.data_.begin(), ids.data_.end(), data_out);
-  std::cout << "About to return" << std::endl;
+
   return 0;
 }
 

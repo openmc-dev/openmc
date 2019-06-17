@@ -35,6 +35,6 @@ class UWUWTest(PyAPITestHarness):
 
         model.tallies.export_to_xml()
 
-def test_uwuw():
+def test_refl():
     harness = UWUWTest('statepoint.5.h5')
     harness.main()

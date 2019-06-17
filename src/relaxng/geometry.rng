@@ -398,6 +398,22 @@
               </list>
             </attribute>
           </choice>
+          <optional>
+            <choice>
+              <element name="orientation">
+                <choice>
+                  <value>x</value>
+                  <value>y</value>
+                </choice>
+              </element>
+              <attribute name="orientation">
+                <choice>
+                  <value>x</value>
+                  <value>y</value>
+                </choice>
+              </attribute>
+            </choice>
+          </optional>
           <choice>
             <element name="universes">
               <list>

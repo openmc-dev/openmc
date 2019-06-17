@@ -318,6 +318,13 @@ the following attributes or sub-elements:
 
     *Default*: None
 
+  :orientation:
+    The orientation of the hexagonal lattice. The string "x" indicates that two
+    sides of the lattice are parallel to the x-axis, whereas the string "y"
+    indicates that two sides are parallel to the y-axis.
+
+    *Default*: "y"
+
   :center:
     The coordinates of the center of the lattice. If the lattice does not have
     axial sections then only the x- and y-coordinates are specified.

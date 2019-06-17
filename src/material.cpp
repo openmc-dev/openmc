@@ -1169,7 +1169,7 @@ openmc_material_add_nuclide(int32_t index, const char* name, double density)
       // Create copy of atom_density_ array with one extra entry
       xt::xtensor<double, 1> atom_density = xt::zeros<double>({n});
       xt::view(atom_density, xt::range(0, n-1)) = m->atom_density_;
-      atom_density(n) = density;
+      atom_density(n-1) = density;
       m->atom_density_ = atom_density;
 
       m->density_ += density;

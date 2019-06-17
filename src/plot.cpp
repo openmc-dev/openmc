@@ -28,9 +28,10 @@ namespace openmc {
 // Constants
 //==============================================================================
 
-const RGBColor WHITE {255, 255, 255};
+
 constexpr int PLOT_LEVEL_LOWEST {-1}; //!< lower bound on plot universe level
 constexpr int32_t NOT_FOUND {-2};
+constexpr int32_t OVERLAP {-3};
 
 IdData::IdData(size_t h_res, size_t v_res)
   : data_({v_res, h_res, 2}, NOT_FOUND)
@@ -49,6 +50,10 @@ IdData::set_value(size_t y, size_t x, const Particle& p, int level) {
   }
 }
 
+void IdData::set_overlap(size_t y, size_t x) {
+  xt::view(data_, y, x, xt::all()) = OVERLAP;
+}
+
 PropertyData::PropertyData(size_t h_res, size_t v_res)
   : data_({v_res, h_res, 2}, NOT_FOUND)
 { }
@@ -61,6 +66,10 @@ PropertyData::set_value(size_t y, size_t x, const Particle& p, int level) {
     Material* m = model::materials[p.material_].get();
     data_(y,x,1) = m->density_gpcc_;
   }
+}
+
+void PropertyData::set_overlap(size_t y, size_t x) {
+  data_(y, x) = OVERLAP;
 }
 
 //==============================================================================
@@ -143,6 +152,10 @@ void create_ppm(Plot pl)
       auto id = ids.data_(y, x, pl.color_by_);
       // no setting needed if not found
       if (id == NOT_FOUND) { continue; }
+      if (id == OVERLAP) {
+        data(x,y) = pl.overlap_color_;
+        continue;
+      }
       if (PlotColorBy::cells == pl.color_by_) {
         data(x,y) = pl.colors_[model::cell_map[id]];
       } else if (PlotColorBy::mats == pl.color_by_) {
@@ -276,9 +289,6 @@ Plot::set_bg_color(pugi::xml_node plot_node)
               << id_;
       fatal_error(err_msg);
     }
-  } else {
-    // default to a white background
-    not_found_ = WHITE;
   }
 }
 
@@ -388,6 +398,10 @@ Plot::set_default_colors(pugi::xml_node plot_node)
 
   for (auto& c : colors_) {
     c = random_color();
+    // make sure we don't interfere with some default colors
+    while (c == RED || c == WHITE) {
+      c = random_color();
+    }
   }
 }
 
@@ -638,8 +652,39 @@ Plot::set_mask(pugi::xml_node plot_node)
   }
 }
 
+void Plot::set_overlap_color(pugi::xml_node plot_node) {
+  color_overlaps_ = false;
+  if (check_for_node(plot_node, "show_overlaps")) {
+    color_overlaps_ = get_node_value_bool(plot_node, "show_overlaps");
+    // check for custom overlap color
+    if (check_for_node(plot_node, "overlap_color")) {
+      if (!color_overlaps_) {
+        std::stringstream wrn_msg;
+        wrn_msg << "Overlap color specified in plot " << id_
+                << " but overlaps won't be shown.";
+        warning(wrn_msg);
+      }
+      std::vector<int> olap_clr = get_node_array<int>(plot_node, "overlap_color");
+      if (olap_clr.size() == 3) {
+        overlap_color_ = olap_clr;
+      } else {
+        std::stringstream err_msg;
+        err_msg << "Bad overlap RGB in plot " << id_;
+        fatal_error(err_msg);
+      }
+    }
+  }
+
+  // make sure we allocate the vector for counting overlap checks if
+  // they're going to be plotted
+  if (color_overlaps_ && settings::run_mode == RUN_MODE_PLOTTING) {
+    settings::check_overlaps = true;
+    model::overlap_check_count.resize(model::cells.size(), 0);
+  }
+}
+
 Plot::Plot(pugi::xml_node plot_node)
-  : index_meshlines_mesh_{-1}
+  : index_meshlines_mesh_{-1}, overlap_color_{RED}
 {
   set_id(plot_node);
   set_type(plot_node);
@@ -653,6 +698,7 @@ Plot::Plot(pugi::xml_node plot_node)
   set_user_colors(plot_node);
   set_meshlines(plot_node);
   set_mask(plot_node);
+  set_overlap_color(plot_node);
 } // End Plot constructor
 
 //==============================================================================
@@ -849,6 +895,7 @@ void create_voxel(Plot pl)
   pltbase.basis_ = PlotBasis::xy;
   pltbase.pixels_ = pl.pixels_;
   pltbase.level_ = -1; // all universes for voxel files
+  pltbase.color_overlaps_ = pl.color_overlaps_;
 
   ProgressBar pb;
   for (int z = 0; z < pl.pixels_[2]; z++) {
@@ -922,6 +969,10 @@ extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
+  if (plt->color_overlaps_ && model::overlap_check_count.size() == 0) {
+    model::overlap_check_count.resize(model::cells.size());
+  }
+
   auto ids = plt->get_map<IdData>();
 
   // write id data to array
@@ -936,6 +987,10 @@ extern "C" int openmc_property_map(const void* plot, double* data_out) {
   if (!plt) {
     set_errmsg("Invalid slice pointer passed to openmc_id_map");
     return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (plt->color_overlaps_ && model::overlap_check_count.size() == 0) {
+    model::overlap_check_count.resize(model::cells.size());
   }
 
   auto props = plt->get_map<PropertyData>();

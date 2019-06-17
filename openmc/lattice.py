@@ -228,37 +228,37 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
                         # Add a list for this ring.
                         uarray[-1].append([])
 
-                        # Climb up the top-left.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, y, a])
-                            a -= 1
-                            y += 1
-
-                        # Climb the left.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, y, a])
-                            a -= 1
-
-                        # Climb down the bottom-left.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, y, a])
-                            y -= 1
-
                         # Climb down the bottom-right.
                         for i in range(r):
                             uarray[-1][-1].append(universe_ids[z, y, a])
-                            a += 1
                             y -= 1
 
-                        # Climb up the right.
+                        # Climb across the bottom.
                         for i in range(r):
                             uarray[-1][-1].append(universe_ids[z, y, a])
-                            a += 1
+                            a -= 1
 
-                        # Climb up the top-right.
+                        # Climb up the bottom-left.
+                        for i in range(r):
+                            uarray[-1][-1].append(universe_ids[z, y, a])
+                            a -= 1
+                            y +=1
+
+                        # Climb up the top-left.
                         for i in range(r):
                             uarray[-1][-1].append(universe_ids[z, y, a])
                             y += 1
+
+                        # Climb across the top.
+                        for i in range(r):
+                            uarray[-1][-1].append(universe_ids[z, y, a])
+                            a += 1
+
+                        # Climb down the top-right.
+                        for i in range(r):
+                            uarray[-1][-1].append(universe_ids[z, y, a])
+                            a += 1
+                            y -= 1
 
                         # Move down to the next ring.
                         a -= 1
@@ -405,9 +405,11 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
         ----------
         idx : Iterable of int
             Lattice element indices. For a rectangular lattice, the indices are
-            given in the :math:`(x,y)` or :math:`(x,y,z)` coordinate system.For
+            given in the :math:`(x,y)` or :math:`(x,y,z)` coordinate system. For
             hexagonal lattices, they are given in the :math:`x,\alpha` or
-            :math:`x,\alpha,z` coordinate systems.
+            :math:`x,\alpha,z` coordinate systems for "y" orientations and
+            :math:`\alpha,y` or :math:`\alpha,y,z` coordinate systems for "x"
+            orientations.
 
         Returns
         -------
@@ -947,8 +949,7 @@ class HexLattice(Lattice):
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
         string += '{0: <16}{1}{2}\n'.format('\tOrientation', '=\t',
-                                            "x" if (self._orientation == 'x')
-                                            else "y")
+                                            self._orientation)
         string += '{0: <16}{1}{2}\n'.format('\t# Rings', '=\t', self._num_rings)
         string += '{0: <16}{1}{2}\n'.format('\t# Axial', '=\t', self._num_axial)
         string += '{0: <16}{1}{2}\n'.format('\tCenter', '=\t',
@@ -1084,7 +1085,7 @@ class HexLattice(Lattice):
                 # Check the center ring.
                 if len(axial_slice[-1]) != 1:
                     msg = 'HexLattice ID={0:d} has the wrong number of ' \
-                          'elements in the innermost ring.Only 1 element is ' \
+                          'elements in the innermost ring. Only 1 element is ' \
                           'allowed in the innermost ring.'.format(self._id)
                     raise ValueError(msg)
 
@@ -1092,7 +1093,7 @@ class HexLattice(Lattice):
                 for r in range(self._num_rings-1):
                     if len(axial_slice[r]) != 6*(self._num_rings - 1 - r):
                         msg = 'HexLattice ID={0:d} has the wrong number of ' \
-                              'elements in ring number{1:d}(counting from the '\
+                              'elements in ring number {1:d} (counting from the '\
                               'outermost ring). This ring should have {2:d} ' \
                               'elements.'.format(self._id, r,
                                                  6*(self._num_rings - 1 - r))
@@ -1787,15 +1788,15 @@ class HexLattice(Lattice):
         setting the :attr:`HexLattice.universes` property. For example,running
         this method with num_rings=3 will return the similar diagram::
 
-                      (0, 4)      (0, 3)      (0, 2)
-
-                (0, 5)      (1, 2)      (1, 1)      (0, 1)
-
-          (0, 6)      (1, 3)      (2, 0)      (1, 0)      (0, 0)
+                      (0, 8)      (0, 9)      (0,10)
 
                 (0, 7)      (1, 4)      (1, 5)      (0,11)
 
-                      (0, 8)      (0, 9)      (0,10)
+          (0, 6)      (1, 3)      (2, 0)      (1, 0)      (0, 0)
+
+                (0, 5)      (1, 2)      (1, 1)      (0, 1)
+
+                      (0, 4)      (0, 3)      (0, 2)
 
         Parameters
         ----------

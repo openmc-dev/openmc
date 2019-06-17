@@ -267,8 +267,8 @@ public:
 
 private:
   enum class Orientation {
-      y, //!< Flat side perpendicular to y-axis
-      x  //!< Flat side perpendicular to x-axis
+      y, //!< Flat side of lattice parallel to y-axis
+      x  //!< Flat side of lattice parallel to x-axis
   };
 
   //! Fill universes_ vector for 'y' orientation

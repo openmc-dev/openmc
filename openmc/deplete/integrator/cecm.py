@@ -17,15 +17,13 @@ def cecm(operator, timesteps, power=None, power_density=None, print_out=True):
     midpoint on corrector. This algorithm is mathematically defined as:
 
     .. math::
-        y' &= A(y, t) y(t)
-
-        A_p &= A(y_n, t_n)
-
-        y_m &= \text{expm}(A_p h/2) y_n
-
-        A_c &= A(y_m, t_n + h/2)
-
+        \begin{aligned}
+        y' &= A(y, t) y(t) \\
+        A_p &= A(y_n, t_n) \\
+        y_m &= \text{expm}(A_p h/2) y_n \\
+        A_c &= A(y_m, t_n + h/2) \\
         y_{n+1} &= \text{expm}(A_c h) y_n
+        \end{aligned}
 
     Parameters
     ----------

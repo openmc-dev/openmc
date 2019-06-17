@@ -100,7 +100,7 @@ that roughly correspond to elements in the XML files. For example, the
 :class:`openmc.Geometry` for ``geometry.xml``, :class:`openmc.Materials` for
 ``materials.xml``, :class:`openmc.Settings` for ``settings.xml``, and so on. To
 create a model then, one creates instances of these classes and then uses the
-``export_to_xml()`` method, e.g. :meth:`Geometry.export_to_xml`. Most scripts
+``export_to_xml()`` method, e.g., :meth:`Geometry.export_to_xml`. Most scripts
 that generate a full model will look something like the following:
 
 .. code-block:: Python
@@ -120,7 +120,7 @@ that generate a full model will look something like the following:
    ...
    settings.export_to_xml()
 
-One a model has been created and exported to XML, a simulation can be run either
+Once a model has been created and exported to XML, a simulation can be run either
 by calling :ref:`scripts_openmc` directly from a shell or by using the
 :func:`openmc.run()` function from Python.
 

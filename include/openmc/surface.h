@@ -12,10 +12,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/position.h"
-
-#ifdef DAGMC
-#include "DagMC.hpp"
-#endif
+#include "dagmc.h"
 
 namespace openmc {
 

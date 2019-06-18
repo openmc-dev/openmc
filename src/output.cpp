@@ -75,7 +75,7 @@ void title()
     "         Copyright | 2011-2019 MIT and OpenMC contributors\n" <<
     "           License | http://openmc.readthedocs.io/en/latest/license.html\n" <<
     "           Version | " << VERSION_MAJOR << '.' << VERSION_MINOR << '.'
-    << VERSION_RELEASE << '\n';
+    << VERSION_RELEASE << (VERSION_DEV ? "-dev" : "") << '\n';
 #ifdef GIT_SHA1
   std::cout << "          Git SHA1 | " << GIT_SHA1 << '\n';
 #endif

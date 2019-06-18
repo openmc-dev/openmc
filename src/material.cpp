@@ -1169,7 +1169,7 @@ openmc_material_add_nuclide(int32_t index, const char* name, double density)
       // Create copy of atom_density_ array with one extra entry
       xt::xtensor<double, 1> atom_density = xt::zeros<double>({n});
       xt::view(atom_density, xt::range(0, n-1)) = m->atom_density_;
-      atom_density(n) = density;
+      atom_density(n-1) = density;
       m->atom_density_ = atom_density;
 
       m->density_ += density;
@@ -1197,6 +1197,19 @@ openmc_material_get_densities(int32_t index, int** nuclides, double** densities,
       set_errmsg("Material atom density array has not been allocated.");
       return OPENMC_E_ALLOCATE;
     }
+  } else {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+}
+
+extern "C" int
+openmc_material_get_density(int32_t index, double* density)
+{
+  if (index >= 0 && index < model::materials.size()) {
+    auto& mat = model::materials[index];
+    *density = mat->density_gpcc_;
+    return 0;
   } else {
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;

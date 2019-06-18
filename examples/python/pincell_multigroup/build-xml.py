@@ -155,8 +155,7 @@ settings_file.export_to_xml()
 ###############################################################################
 
 # Instantiate a tally mesh
-mesh = openmc.Mesh(mesh_id=1)
-mesh.type = 'regular'
+mesh = openmc.RegularMesh(mesh_id=1)
 mesh.dimension = [100, 100, 1]
 mesh.lower_left = [-0.63, -0.63, -1.e50]
 mesh.upper_right = [0.63, 0.63, 1.e50]

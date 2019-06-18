@@ -27,6 +27,7 @@ extern bool assume_separate;          //!< assume tallies are spatially separate
 extern bool check_overlaps;           //!< check overlaps in geometry?
 extern bool confidence_intervals;     //!< use confidence intervals for results?
 extern bool create_fission_neutrons;  //!< create fission neutrons (fixed source)?
+extern "C" bool cmfd_run;             //!< is a CMFD run?
 extern "C" bool dagmc;                //!< indicator of DAGMC geometry
 extern "C" bool entropy_on;           //!< calculate Shannon entropy?
 extern bool legendre_to_tabular;      //!< convert Legendre distributions to tabular?
@@ -36,7 +37,7 @@ extern bool particle_restart_run;     //!< particle restart run?
 extern "C" bool photon_transport;     //!< photon transport turned on?
 extern "C" bool reduce_tallies;       //!< reduce tallies at end of batch?
 extern bool res_scat_on;              //!< use resonance upscattering method?
-extern bool restart_run;              //!< restart run?
+extern "C" bool restart_run;          //!< restart run?
 extern "C" bool run_CE;               //!< run with continuous-energy data?
 extern bool source_latest;            //!< write latest source at each batch?
 extern bool source_separate;          //!< write source to separate file?
@@ -57,10 +58,7 @@ extern std::string path_output;           //!< directory where output files are 
 extern std::string path_particle_restart; //!< path to a particle restart file
 extern std::string path_source;
 extern std::string path_sourcepoint;      //!< path to a source file
-extern std::string path_statepoint;       //!< path to a statepoint file
-
-extern int32_t index_entropy_mesh;  //!< Index of entropy mesh in global mesh array
-extern int32_t index_ufs_mesh;      //!< Index of UFS mesh in global mesh array
+extern "C" std::string path_statepoint;   //!< path to a statepoint file
 
 extern "C" int32_t n_batches;      //!< number of (inactive+active) batches
 extern "C" int32_t n_inactive;     //!< number of inactive batches

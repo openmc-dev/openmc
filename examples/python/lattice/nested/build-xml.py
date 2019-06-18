@@ -150,8 +150,7 @@ plot_file.export_to_xml()
 ###############################################################################
 
 # Instantiate a tally mesh
-mesh = openmc.Mesh(mesh_id=1)
-mesh.type = 'regular'
+mesh = openmc.RegularMesh(mesh_id=1)
 mesh.dimension = [4, 4]
 mesh.lower_left = [-2, -2]
 mesh.width = [1, 1]
@@ -164,6 +163,7 @@ tally = openmc.Tally(tally_id=1)
 tally.filters = [mesh_filter]
 tally.scores = ['total']
 
-# Instantiate a Tallies collection, register Tally/Mesh, and export to XML
+# Instantiate a Tallies collection, register Tally/RegularMesh, and export to
+# XML
 tallies_file = openmc.Tallies([tally])
 tallies_file.export_to_xml()

@@ -12,10 +12,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/position.h"
-
-#ifdef DAGMC
-#include "DagMC.hpp"
-#endif
+#include "dagmc.h"
 
 namespace openmc {
 
@@ -82,7 +79,7 @@ public:
   //! \param[in] r The point at which the ray is incident.
   //! \param[in] u Incident direction of the ray
   //! \return Outgoing direction of the ray
-  Direction reflect(Position r, Direction u) const;
+  virtual Direction reflect(Position r, Direction u) const;
 
   //! Evaluate the equation describing the surface.
   //!
@@ -136,6 +133,7 @@ public:
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
+  Direction reflect(Position r, Direction u) const;
   //! Get the bounding box of this surface.
   BoundingBox bounding_box() const;
 

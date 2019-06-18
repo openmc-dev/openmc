@@ -221,6 +221,16 @@ int openmc_next_batch(int* status)
   return 0;
 }
 
+bool openmc_is_statepoint_batch() {
+  using namespace openmc;
+  using openmc::simulation::current_gen;
+
+  if (!simulation::initialized)
+    return false;
+  else
+    return contains(settings::statepoint_batch, simulation::current_batch);
+}
+
 namespace openmc {
 
 //==============================================================================
@@ -246,6 +256,9 @@ bool satisfy_triggers {false};
 int total_gen {0};
 double total_weight;
 int64_t work_per_rank;
+
+const RegularMesh* entropy_mesh {nullptr};
+const RegularMesh* ufs_mesh {nullptr};
 
 std::vector<double> k_generation;
 std::vector<int64_t> work_index;
@@ -354,8 +367,10 @@ void finalize_batch()
     settings::statepoint_batch.insert(simulation::current_batch);
   }
 
-  // Write out state point if it's been specified for this batch
-  if (contains(settings::statepoint_batch, simulation::current_batch)) {
+  // Write out state point if it's been specified for this batch and is not
+  // a CMFD run instance
+  if (contains(settings::statepoint_batch, simulation::current_batch)
+      && !settings::cmfd_run) {
     if (contains(settings::sourcepoint_batch, simulation::current_batch)
         && settings::source_write && !settings::source_separate) {
       bool b = true;

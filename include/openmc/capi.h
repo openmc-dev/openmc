@@ -43,6 +43,7 @@ extern "C" {
   int openmc_global_tallies(double** ptr);
   int openmc_hard_reset();
   int openmc_init(int argc, char* argv[], const void* intracomm);
+  bool openmc_is_statepoint_batch();
   int openmc_legendre_filter_get_order(int32_t index, int* order);
   int openmc_legendre_filter_set_order(int32_t index, int order);
   int openmc_load_nuclide(const char* name);
@@ -50,6 +51,7 @@ extern "C" {
   int openmc_material_get_densities(int32_t index, int** nuclides, double** densities, int* n);
   int openmc_material_get_id(int32_t index, int32_t* id);
   int openmc_material_get_fissionable(int32_t index, bool* fissionable);
+  int openmc_material_get_density(int32_t index, double* density);
   int openmc_material_get_volume(int32_t index, double* volume);
   int openmc_material_set_density(int32_t index, double density, const char* units);
   int openmc_material_set_densities(int32_t index, int n, const char** name, const double* density);

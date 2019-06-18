@@ -133,8 +133,9 @@ class Model(object):
             Array of timesteps in units of [s]. Note that values are not
             cumulative.
         chain_file : str, optional
-            Path to the depletion chain XML file.  Defaults to the
-            :envvar:`OPENMC_DEPLETE_CHAIN` environment variable if it exists.
+            Path to the depletion chain XML file.  Defaults to the chain
+            found under the ``depletion_chain`` in the
+            :envvar:`OPENMC_CROSS_SECTIONS` environment variable if it exists.
         method : str
              Integration method used for depletion (e.g., 'cecm', 'predictor')
         **kwargs

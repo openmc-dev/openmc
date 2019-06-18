@@ -1,17 +1,30 @@
 element tallies {
   element mesh {
     (element id { xsd:int } | attribute id { xsd:int }) &
-    (element type { ( "regular" ) } |
-      attribute type { ( "regular" ) }) &
-    (element dimension { list { xsd:positiveInteger+ } } |
-      attribute dimension { list { xsd:positiveInteger+ } }) &
-    (element lower_left { list { xsd:double+ } } |
-      attribute lower_left { list { xsd:double+ } }) &
     (
-      (element upper_right { list { xsd:double+ } } |
-        attribute upper_right { list { xsd:double+ } }) |
-      (element width { list { xsd:double+ } } |
-        attribute width { list { xsd:double+ } })
+      (
+        (element type { ( "regular" ) } |
+          attribute type { ( "regular" ) }) &
+        (element dimension { list { xsd:positiveInteger+ } } |
+          attribute dimension { list { xsd:positiveInteger+ } }) &
+        (element lower_left { list { xsd:double+ } } |
+          attribute lower_left { list { xsd:double+ } }) &
+        (
+          (element upper_right { list { xsd:double+ } } |
+            attribute upper_right { list { xsd:double+ } }) |
+          (element width { list { xsd:double+ } } |
+            attribute width { list { xsd:double+ } })
+        )
+      ) | (
+        (element type { ( "rectilinear" ) } |
+          attribute type { ( "rectilinear" ) }) &
+        (element x_grid { list { xsd:double+ } } |
+          attribute x_grid { list { xsd:double+ } }) &
+        (element y_grid { list { xsd:double+ } } |
+          attribute y_grid { list { xsd:double+ } }) &
+        (element z_grid { list { xsd:double+ } } |
+          attribute z_grid { list { xsd:double+ } })
+      )
     )
   }* &
 

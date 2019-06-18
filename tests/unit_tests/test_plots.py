@@ -24,6 +24,10 @@ def myplot():
     plot.mask_background = (255, 255, 255)
     plot.mask_background = 'white'
 
+    plot.overlap_color = (255, 211, 0)
+    plot.overlap_color = 'yellow'
+    plot.show_overlaps = True
+
     plot.level = 1
     plot.meshlines = {
         'type': 'tally',

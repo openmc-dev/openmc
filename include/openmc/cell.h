@@ -10,9 +10,7 @@
 
 #include "hdf5.h"
 #include "pugixml.hpp"
-#ifdef DAGMC
-#include "DagMC.hpp"
-#endif
+#include "dagmc.h"
 
 #include "openmc/constants.h"
 #include "openmc/neighbor_list.h"

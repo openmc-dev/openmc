@@ -47,7 +47,7 @@ inline bool coincident(double d1, double d2) {
 //! Check for overlapping cells at a particle's position.
 //==============================================================================
 
-bool check_cell_overlap(Particle* p);
+bool check_cell_overlap(Particle* p, bool error=true);
 
 //==============================================================================
 //! Locate a particle in the geometry tree and set its geometry data fields.

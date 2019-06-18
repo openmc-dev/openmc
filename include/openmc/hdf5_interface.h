@@ -187,11 +187,12 @@ read_attribute(hid_t obj_id, const char* name, std::string& str)
 {
   // Create buffer to read data into
   auto n = attribute_typesize(obj_id, name);
-  char buffer[n];
+  char* buffer = new char[n];
 
   // Read attribute and set string
   read_attr_string(obj_id, name, n, buffer);
   str = std::string{buffer, n};
+  delete[] buffer;
 }
 
 // overload for std::vector<std::string>
@@ -203,20 +204,21 @@ read_attribute(hid_t obj_id, const char* name, std::vector<std::string>& vec)
 
   // Allocate a C char array to get strings
   auto n = attribute_typesize(obj_id, name);
-  char buffer[m][n];
+  char* buffer = new char[m*n];
 
   // Read char data in attribute
-  read_attr_string(obj_id, name, n, buffer[0]);
+  read_attr_string(obj_id, name, n, buffer);
 
   for (int i = 0; i < m; ++i) {
     // Determine proper length of string -- strlen doesn't work because
     // buffer[i] might not have any null characters
     std::size_t k = 0;
-    for (; k < n; ++k) if (buffer[i][k] == '\0') break;
+    for (; k < n; ++k) if (buffer[i*n + k] == '\0') break;
 
     // Create string based on (char*, size_t) constructor
-    vec.emplace_back(&buffer[i][0], k);
+    vec.emplace_back(&buffer[i*n], k);
   }
+  delete[] buffer;
 }
 
 //==============================================================================
@@ -240,7 +242,7 @@ read_dataset(hid_t obj_id, const char* name, std::string& str, bool indep=false)
 {
   // Create buffer to read data into
   auto n = dataset_typesize(obj_id, name);
-  char buffer[n];
+  char* buffer = new char[n];
 
   // Read attribute and set string
   read_string(obj_id, name, n, buffer, indep);
@@ -458,14 +460,17 @@ write_dataset(hid_t obj_id, const char* name, const std::vector<std::string>& bu
   }
 
   // Copy data into contiguous buffer
-  char temp[n][m];
-  std::fill(temp[0], temp[0] + n*m, '\0');
+  char* temp = new char[n*m];
+  std::fill(temp, temp + n*m, '\0');
   for (int i = 0; i < n; ++i) {
-    std::copy(buffer[i].begin(), buffer[i].end(), temp[i]);
+    std::copy(buffer[i].begin(), buffer[i].end(), temp + i*m);
   }
 
   // Write 2D data
-  write_string(obj_id, 1, dims, m, name, temp[0], false);
+  write_string(obj_id, 1, dims, m, name, temp, false);
+
+  // Free temp array
+  delete[] temp;
 }
 
 template<typename T> inline void

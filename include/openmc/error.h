@@ -44,7 +44,7 @@ void fatal_error(const std::stringstream& message)
 [[noreturn]] inline
 void fatal_error(const char* message)
 {
-  fatal_error({message, std::strlen(message)});
+  fatal_error(std::string{message, std::strlen(message)});
 }
 
 void warning(const std::string& message);

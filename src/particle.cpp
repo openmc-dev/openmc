@@ -379,6 +379,10 @@ Particle::transport()
     }
   }
 
+  #ifdef DAGMC
+  if (settings::dagmc) simulation::history.reset();
+  #endif
+
   // Finish particle track output.
   if (write_track_) {
     write_particle_track(*this);
@@ -467,12 +471,14 @@ Particle::cross_surface()
     // If a reflective surface is coincident with a lattice or universe
     // boundary, it is necessary to redetermine the particle's coordinates in
     // the lower universes.
-
-    n_coord_ = 1;
-    if (!find_cell(this, true)) {
-      this->mark_as_lost("Couldn't find particle after reflecting from surface "
-        + std::to_string(surf->id_) + ".");
-      return;
+    // (unless we're using a dagmc model, which has exactly one universe)
+    if (!settings::dagmc) {
+      n_coord_ = 1;
+      if (!find_cell(this, true)) {
+        this->mark_as_lost("Couldn't find particle after reflecting from surface "
+                           + std::to_string(surf->id_) + ".");
+        return;
+      }
     }
 
     // Set previous coordinate going slightly past surface crossing

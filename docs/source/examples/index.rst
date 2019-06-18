@@ -25,6 +25,7 @@ Basic Usage
     candu
     nuclear-data
     nuclear-data-resonance-covariance
+    cad-geom
 
 ------------------------------------
 Multi-Group Cross Section Generation

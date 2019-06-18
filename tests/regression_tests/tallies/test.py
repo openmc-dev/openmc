@@ -1,6 +1,6 @@
 from openmc.filter import *
 from openmc.filter_expansion import *
-from openmc import Mesh, Tally
+from openmc import RegularMesh, Tally
 
 from tests.testing_harness import HashedPyAPITestHarness
 
@@ -28,7 +28,7 @@ def test_tallies():
     azimuthal_tally2.scores = ['flux']
     azimuthal_tally2.estimator = 'analog'
 
-    mesh_2x2 = Mesh(mesh_id=1)
+    mesh_2x2 = RegularMesh(mesh_id=1)
     mesh_2x2.lower_left = [-182.07, -182.07]
     mesh_2x2.upper_right = [182.07, 182.07]
     mesh_2x2.dimension = [2, 2]

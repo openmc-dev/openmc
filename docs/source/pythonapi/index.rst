@@ -36,9 +36,7 @@ or class.
 .. tip:: Users are strongly encouraged to use the Python API to generate input
          files and analyze results.
 
--------
-Modules
--------
+.. rubric:: Modules
 
 .. toctree::
    :maxdepth: 1

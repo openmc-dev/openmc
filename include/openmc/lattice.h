@@ -27,6 +27,7 @@ enum class LatticeType {
   rect, hex
 };
 
+
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -265,8 +266,20 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
 
 private:
+  enum class Orientation {
+      y, //!< Flat side of lattice parallel to y-axis
+      x  //!< Flat side of lattice parallel to x-axis
+  };
+
+  //! Fill universes_ vector for 'y' orientation
+  void fill_lattice_y(const std::vector<std::string>& univ_words);
+
+  //! Fill universes_ vector for 'x' orientation
+  void fill_lattice_x(const std::vector<std::string>& univ_words);
+
   int n_rings_;                   //!< Number of radial tile positions
   int n_axial_;                   //!< Number of axial tile positions
+  Orientation orientation_;       //!< Orientation of lattice
   Position center_;               //!< Global center of lattice
   std::array<double, 2> pitch_;   //!< Lattice tile width and height
 };

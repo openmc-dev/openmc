@@ -86,7 +86,7 @@ Elastic Scattering
 ------------------
 
 Note that the multi-group mode makes no distinction between elastic or
-inelastic scattering reactions. The spceific multi-group scattering
+inelastic scattering reactions. The specific multi-group scattering
 implementation is discussed in the :ref:`multi-group-scatter` section.
 
 Elastic scattering refers to the process by which a neutron scatters off a
@@ -1177,12 +1177,12 @@ parts as such:
 .. math::
     :label: divide-pdf
 
+    \begin{aligned}
     p(v_T, \mu) &= f_1(v_T, \mu) f_2(v_T) \\
-
     f_1(v_T, \mu) &= \frac{4\sigma_s}{\sqrt{\pi} C'} \frac{ \sqrt{v_n^2 +
        v_T^2 - 2v_n v_T \mu}}{v_n + v_T} \\
-
     f_2(v_T) &= (v_n + v_T) \beta^3 v_T^2 \exp \left ( -\beta^2 v_T^2 \right ).
+    \end{aligned}
 
 In general, any probability distribution function of the form :math:`p(x) =
 f_1(x) f_2(x)` with :math:`f_1(x)` bounded can be sampled by sampling

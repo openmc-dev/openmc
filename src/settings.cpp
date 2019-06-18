@@ -40,6 +40,7 @@ namespace settings {
 // Default values for boolean flags
 bool assume_separate         {false};
 bool check_overlaps          {false};
+bool cmfd_run                {false};
 bool confidence_intervals    {false};
 bool create_fission_neutrons {true};
 bool dagmc                   {false};
@@ -72,9 +73,6 @@ std::string path_particle_restart;
 std::string path_source;
 std::string path_sourcepoint;
 std::string path_statepoint;
-
-int32_t index_entropy_mesh {-1};
-int32_t index_ufs_mesh {-1};
 
 int32_t n_batches;
 int32_t n_inactive {0};
@@ -400,7 +398,7 @@ void read_settings_xml()
     SourceDistribution source {
       UPtrSpace{new SpatialPoint({0.0, 0.0, 0.0})},
       UPtrAngle{new Isotropic()},
-      UPtrDist{new Watt(0.988, 2.249e-6)}
+      UPtrDist{new Watt(0.988e6, 2.249e-6)}
     };
     model::external_sources.push_back(std::move(source));
   }
@@ -481,6 +479,7 @@ void read_settings_xml()
   read_meshes(root);
 
   // Shannon Entropy mesh
+  int32_t index_entropy_mesh = -1;
   if (check_for_node(root, "entropy_mesh")) {
     int temp = std::stoi(get_node_value(root, "entropy_mesh"));
     if (model::mesh_map.find(temp) == model::mesh_map.end()) {
@@ -508,17 +507,21 @@ void read_settings_xml()
   }
 
   if (index_entropy_mesh >= 0) {
-    auto& m = *model::meshes[index_entropy_mesh];
-    if (m.shape_.dimension() == 0) {
+    auto* m = dynamic_cast<RegularMesh*>(
+      model::meshes[index_entropy_mesh].get());
+    if (!m) fatal_error("Only regular meshes can be used as an entropy mesh");
+    simulation::entropy_mesh = m;
+
+    if (m->shape_.dimension() == 0) {
       // If the user did not specify how many mesh cells are to be used in
       // each direction, we automatically determine an appropriate number of
       // cells
       int n = std::ceil(std::pow(n_particles / 20.0, 1.0/3.0));
-      m.shape_ = {n, n, n};
-      m.n_dimension_ = 3;
+      m->shape_ = {n, n, n};
+      m->n_dimension_ = 3;
 
       // Calculate width
-      m.width_ = (m.upper_right_ - m.lower_left_) / m.shape_;
+      m->width_ = (m->upper_right_ - m->lower_left_) / m->shape_;
     }
 
     // Turn on Shannon entropy calculation
@@ -526,6 +529,7 @@ void read_settings_xml()
   }
 
   // Uniform fission source weighting mesh
+  int32_t i_ufs_mesh = -1;
   if (check_for_node(root, "ufs_mesh")) {
     auto temp = std::stoi(get_node_value(root, "ufs_mesh"));
     if (model::mesh_map.find(temp) == model::mesh_map.end()) {
@@ -534,7 +538,7 @@ void read_settings_xml()
         "does not exist.";
       fatal_error(msg);
     }
-    index_ufs_mesh = model::mesh_map.at(temp);
+    i_ufs_mesh = model::mesh_map.at(temp);
 
   } else if (check_for_node(root, "uniform_fs")) {
     warning("Specifying a UFS mesh via the <uniform_fs> element "
@@ -546,14 +550,18 @@ void read_settings_xml()
     model::meshes.push_back(std::make_unique<RegularMesh>(node_ufs));
 
     // Set entropy mesh index
-    index_ufs_mesh = model::meshes.size() - 1;
+    i_ufs_mesh = model::meshes.size() - 1;
 
     // Assign ID and set mapping
     model::meshes.back()->id_ = 10001;
     model::mesh_map[10001] = index_entropy_mesh;
   }
 
-  if (index_ufs_mesh >= 0) {
+  if (i_ufs_mesh >= 0) {
+    auto* m = dynamic_cast<RegularMesh*>(model::meshes[i_ufs_mesh].get());
+    if (!m) fatal_error("Only regular meshes can be used as a UFS mesh");
+    simulation::ufs_mesh = m;
+
     // Turn on uniform fission source weighting
     ufs_on = true;
   }

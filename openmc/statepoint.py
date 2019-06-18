@@ -72,7 +72,7 @@ class StatePoint(object):
     k_generation : numpy.ndarray
         Estimate of k-effective for each batch/generation
     meshes : dict
-        Dictionary whose keys are mesh IDs and whose values are Mesh objects
+        Dictionary whose keys are mesh IDs and whose values are MeshBase objects
     n_batches : int
         Number of batches
     n_inactive : int
@@ -292,9 +292,9 @@ class StatePoint(object):
         if not self._meshes_read:
             mesh_group = self._f['tallies/meshes']
 
-            # Iterate over all Meshes
+            # Iterate over all meshes
             for group in mesh_group.values():
-                mesh = openmc.Mesh.from_hdf5(group)
+                mesh = openmc.MeshBase.from_hdf5(group)
                 self._meshes[mesh.id] = mesh
 
             self._meshes_read = True

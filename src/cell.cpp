@@ -1,12 +1,15 @@
+
 #include "openmc/cell.h"
 
 #include <cmath>
 #include <sstream>
 #include <set>
 #include <string>
+#include <cctype>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
+#include "openmc/dagmc.h"
 #include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
@@ -560,7 +563,7 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 {
   // Make a stack of booleans.  We don't know how big it needs to be, but we do
   // know that rpn.size() is an upper-bound.
-  bool stack[rpn_.size()];
+  std::vector<bool> stack(rpn_.size());
   int i_stack = -1;
 
   for (int32_t token : rpn_) {
@@ -613,19 +616,28 @@ DAGCell::DAGCell() : Cell{} {};
 std::pair<double, int32_t>
 DAGCell::distance(Position r, Direction u, int32_t on_surface) const
 {
+  // if we've changed direction or we're not on a surface,
+  // reset the history and update last direction
+  if (u != simulation::last_dir || on_surface == 0) {
+    simulation::history.reset();
+    simulation::last_dir = u;
+  }
+
   moab::ErrorCode rval;
   moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
   moab::EntityHandle hit_surf;
   double dist;
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
-  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist);
+  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &simulation::history);
   MB_CHK_ERR_CONT(rval);
   int surf_idx;
   if (hit_surf != 0) {
     surf_idx = dagmc_ptr_->index_by_handle(hit_surf);
-  } else {  // indicate that particle is lost
+  } else {
+    // indicate that particle is lost
     surf_idx = -1;
+    dist = INFINITY;
   }
 
   return {dist, surf_idx};

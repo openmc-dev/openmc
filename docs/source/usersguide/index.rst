@@ -20,6 +20,7 @@ essential aspects of using OpenMC to perform simulations.
     settings
     tallies
     plots
+    depletion
     scripts
     processing
     parallel

@@ -1,7 +1,10 @@
 include CMakeLists.txt
 include LICENSE
+include CODE_OF_CONDUCT.md
+include CONTRIBUTING.md
 include schemas.xml
 include pyproject.toml
+include pytest.ini
 include openmc/data/reconstruct.pyx
 include docs/source/_templates/layout.html
 include docs/sphinxext/LICENSE
@@ -33,4 +36,11 @@ recursive-include tests *.dat
 recursive-include tests *.h5
 recursive-include tests *.py
 recursive-include tests *.xml
+recursive-include vendor CMakeLists.txt
+recursive-include vendor *.cmake.in
+recursive-include vendor *.cc
+recursive-include vendor *.cpp
+recursive-include vendor *.hh
+recursive-include vendor *.hpp
 prune docs/build
+prune docs/source/pythonapi/generated/

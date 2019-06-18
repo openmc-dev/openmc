@@ -143,8 +143,7 @@ plot_file.export_to_xml()
 ###############################################################################
 
 # Instantiate a tally mesh
-mesh = openmc.Mesh(mesh_id=1)
-mesh.type = 'regular'
+mesh = openmc.RegularMesh(mesh_id=1)
 mesh.dimension = [4, 4]
 mesh.lower_left = [-2, -2]
 mesh.width = [1, 1]

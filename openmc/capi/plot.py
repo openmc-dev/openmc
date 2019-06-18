@@ -1,4 +1,5 @@
-from ctypes import c_int, c_size_t, c_int32, c_double, Structure, POINTER
+from ctypes import (c_bool, c_int, c_size_t, c_int32,
+                    c_double, Structure, POINTER)
 
 from . import _dll
 from .error import _error_handler
@@ -84,10 +85,12 @@ class _PlotBase(Structure):
                 ('width_', _Position),
                 ('basis_', c_int),
                 ('pixels_', 3*c_size_t),
+                ('color_overlaps_', c_bool),
                 ('level_', c_int)]
 
     def __init__(self):
         self.level_ = -1
+        self.color_overlaps_ = False
 
     @property
     def origin(self):
@@ -111,32 +114,6 @@ class _PlotBase(Structure):
             return 'yz'
 
         raise ValueError("Plot basis {} is invalid".format(self.basis_))
-
-    @property
-    def h_res(self):
-        return self.pixels_[0]
-
-    @property
-    def v_res(self):
-        return self.pixels_[1]
-
-    @property
-    def level(self):
-        return int(self.level_)
-
-    @origin.setter
-    def origin(self, origin):
-        self.origin_.x = origin[0]
-        self.origin_.y = origin[1]
-        self.origin_.z = origin[2]
-
-    @width.setter
-    def width(self, width):
-        self.width_.x = width
-
-    @height.setter
-    def height(self, height):
-        self.width_.y = height
 
     @basis.setter
     def basis(self, basis):
@@ -164,6 +141,40 @@ class _PlotBase(Structure):
         raise ValueError("{} of type {} is an"
                          " invalid plot basis".format(basis, type(basis)))
 
+    @property
+    def h_res(self):
+        return self.pixels_[0]
+
+    @property
+    def v_res(self):
+        return self.pixels_[1]
+
+    @property
+    def level(self):
+        return int(self.level_)
+
+    @property
+    def color_overlaps(self):
+        return self.color_overlaps_
+
+    @color_overlaps.setter
+    def color_overlaps(self, color_overlaps):
+        self.color_overlaps_ = color_overlaps
+
+    @origin.setter
+    def origin(self, origin):
+        self.origin_.x = origin[0]
+        self.origin_.y = origin[1]
+        self.origin_.z = origin[2]
+
+    @width.setter
+    def width(self, width):
+        self.width_.x = width
+
+    @height.setter
+    def height(self, height):
+        self.width_.y = height
+
     @h_res.setter
     def h_res(self, h_res):
         self.pixels_[0] = h_res
@@ -176,6 +187,14 @@ class _PlotBase(Structure):
     def level(self, level):
         self.level_ = level
 
+    @property
+    def color_overlaps(self):
+        return self.color_overlaps_
+
+    @color_overlaps.setter
+    def color_overlaps(self, val):
+        self.color_overlaps_ = val
+
     def __repr__(self):
         out_str = ["-----",
                    "Plot:",
@@ -186,6 +205,7 @@ class _PlotBase(Structure):
                    "Basis: {}".format(self.basis),
                    "HRes: {}".format(self.h_res),
                    "VRes: {}".format(self.v_res),
+                   "Color Overlaps: {}".format(self.color_overlaps),
                    "Level: {}".format(self.level)]
         return '\n'.join(out_str)
 

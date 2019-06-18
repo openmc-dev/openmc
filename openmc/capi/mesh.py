@@ -11,7 +11,7 @@ from .core import _FortranObjectWithID
 from .error import _error_handler
 from .material import Material
 
-__all__ = ['Mesh', 'meshes']
+__all__ = ['RegularMesh', 'meshes']
 
 # Mesh functions
 _dll.openmc_extend_meshes.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int32)]
@@ -45,8 +45,8 @@ _dll.n_meshes.argtypes = []
 _dll.n_meshes.restype = c_int
 
 
-class Mesh(_FortranObjectWithID):
-    """Mesh stored internally.
+class RegularMesh(_FortranObjectWithID):
+    """RegularMesh stored internally.
 
     This class exposes a mesh that is stored internally in the OpenMC
     library. To obtain a view of a mesh with a given ID, use the
@@ -170,11 +170,11 @@ class _MeshMapping(Mapping):
         except (AllocationError, InvalidIDError) as e:
             # __contains__ expects a KeyError to work correctly
             raise KeyError(str(e))
-        return Mesh(index=index.value)
+        return RegularMesh(index=index.value)
 
     def __iter__(self):
         for i in range(len(self)):
-            yield Mesh(index=i).id
+            yield RegularMesh(index=i).id
 
     def __len__(self):
         return _dll.n_meshes()

@@ -12,9 +12,11 @@ def _celi_f1(chain, rates):
     return 5/12 * chain.form_matrix(rates[0]) + \
            1/12 * chain.form_matrix(rates[1])
 
+
 def _celi_f2(chain, rates):
     return 1/12 * chain.form_matrix(rates[0]) + \
            5/12 * chain.form_matrix(rates[1])
+
 
 def celi(operator, timesteps, power=None, power_density=None,
          print_out=True):
@@ -27,16 +29,14 @@ def celi(operator, timesteps, power=None, power_density=None,
     interpolation on corrector. This algorithm is mathematically defined as:
 
     .. math::
-        y' &= A(y, t) y(t)
-
-        A_0 &= A(y_n, t_n)
-
-        y_p &= \text{expm}(h A_0) y_n
-
-        A_1 &= A(y_p, t_n + h)
-
+        \begin{aligned}
+        y' &= A(y, t) y(t) \\
+        A_0 &= A(y_n, t_n) \\
+        y_p &= \text{expm}(h A_0) y_n \\
+        A_1 &= A(y_p, t_n + h) \\
         y_{n+1} &= \text{expm}(\frac{h}{12} A_0 + \frac{5h}{12} A1)
                    \text{expm}(\frac{5h}{12} A_0 + \frac{h}{12} A1) y_n
+        \end{aligned}
 
     Parameters
     ----------
@@ -89,6 +89,7 @@ def celi(operator, timesteps, power=None, power_density=None,
 
         # Create results, write to disk
         Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps))
+
 
 def celi_inner(operator, vec, p, i, i_res, t, dt, print_out):
     """ The inner loop of CE/LI CFQ4.

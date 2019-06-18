@@ -32,6 +32,9 @@ _dll.openmc_material_get_densities.argtypes = [
     POINTER(c_int)]
 _dll.openmc_material_get_densities.restype = c_int
 _dll.openmc_material_get_densities.errcheck = _error_handler
+_dll.openmc_material_get_density.argtypes = [c_int32, POINTER(c_double)]
+_dll.openmc_material_get_density.restype = c_int
+_dll.openmc_material_get_density.errcheck = _error_handler
 _dll.openmc_material_get_volume.argtypes = [c_int32, POINTER(c_double)]
 _dll.openmc_material_get_volume.restype = c_int
 _dll.openmc_material_get_volume.errcheck = _error_handler
@@ -138,6 +141,15 @@ class Material(_FortranObjectWithID):
     def nuclides(self):
         return self._get_densities()[0]
         return nuclides
+
+    @property
+    def density(self):
+      density = c_double()
+      try:
+          _dll.openmc_material_get_density(self._index, density)
+      except OpenMCError:
+          return None
+      return density.value
 
     @property
     def densities(self):

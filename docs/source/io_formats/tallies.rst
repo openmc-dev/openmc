@@ -312,21 +312,30 @@ a separate element with the tag name ``<mesh>``. This element has the following
 attributes/sub-elements:
 
   :type:
-    The type of structured mesh. The only valid option is "regular".
+    The type of structured mesh. This can be either "regular" or "rectilinear".
 
   :dimension:
-    The number of mesh cells in each direction.
+    The number of mesh cells in each direction. (For regular mesh only.)
 
   :lower_left:
     The lower-left corner of the structured mesh. If only two coordinates are
-    given, it is assumed that the mesh is an x-y mesh.
+    given, it is assumed that the mesh is an x-y mesh. (For regular mesh only.)
 
   :upper_right:
     The upper-right corner of the structured mesh. If only two coordinates are
-    given, it is assumed that the mesh is an x-y mesh.
+    given, it is assumed that the mesh is an x-y mesh. (For regular mesh only.)
 
   :width:
-    The width of mesh cells in each direction.
+    The width of mesh cells in each direction. (For regular mesh only.)
+
+  :x_grid:
+    The mesh divisions along the x-axis. (For rectilinear mesh only.)
+
+  :y_grid:
+    The mesh divisions along the y-axis. (For rectilinear mesh only.)
+
+  :z_grid:
+    The mesh divisions along the z-axis. (For rectilinear mesh only.)
 
   .. note::
       One of ``<upper_right>`` or ``<width>`` must be specified, but not both

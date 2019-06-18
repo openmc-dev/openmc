@@ -40,7 +40,7 @@ class MDGXS(MGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
@@ -68,7 +68,7 @@ class MDGXS(MGXS):
         Reaction type (e.g., 'chi-delayed', 'beta', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
         Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
@@ -238,7 +238,7 @@ class MDGXS(MGXS):
         mdgxs_type : {'delayed-nu-fission', 'chi-delayed', 'beta', 'decay-rate', 'delayed-nu-fission matrix'}
             The type of multi-delayed-group cross section object to return
         domain : openmc.Material or openmc.Cell or openmc.Universe or
-            openmc.Mesh
+            openmc.RegularMesh
             The domain for spatial homogenization
         domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
             The domain type for spatial homogenization
@@ -906,6 +906,7 @@ class ChiDelayed(MDGXS):
 
     .. math::
 
+       \begin{aligned}
        \langle \nu^d \sigma_{f,g' \rightarrow g} \phi \rangle &= \int_{r \in V}
        dr \int_{4\pi} d\Omega' \int_0^\infty dE' \int_{E_g}^{E_{g-1}} dE \;
        \chi(E) \nu^d \sigma_f (r, E') \psi(r, E', \Omega')\\
@@ -914,10 +915,11 @@ class ChiDelayed(MDGXS):
        E') \psi(r, E', \Omega') \\
        \chi_g^d &= \frac{\langle \nu^d \sigma_{f,g' \rightarrow g} \phi \rangle}
        {\langle \nu^d \sigma_f \phi \rangle}
+       \end{aligned}
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
@@ -945,7 +947,7 @@ class ChiDelayed(MDGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
         Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
@@ -1429,7 +1431,7 @@ class DelayedNuFissionXS(MDGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
@@ -1457,7 +1459,7 @@ class DelayedNuFissionXS(MDGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
         Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
@@ -1547,6 +1549,7 @@ class Beta(MDGXS):
 
     .. math::
 
+       \begin{aligned}
        \langle \nu^d \sigma_f \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
        d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu^d
        \sigma_f (r, E') \psi(r, E', \Omega') \\
@@ -1555,6 +1558,7 @@ class Beta(MDGXS):
        \sigma_f (r, E') \psi(r, E', \Omega') \\
        \beta_{d,g} &= \frac{\langle \nu^d \sigma_f \phi \rangle}
        {\langle \nu \sigma_f \phi \rangle}
+       \end{aligned}
 
     NOTE: The Beta MGXS is the delayed neutron fraction computed directly from
     the nuclear data. Often the delayed neutron fraction is
@@ -1563,7 +1567,7 @@ class Beta(MDGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
@@ -1591,7 +1595,7 @@ class Beta(MDGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
         Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
@@ -1735,6 +1739,7 @@ class DecayRate(MDGXS):
 
     .. math::
 
+       \begin{aligned}
        \langle \lambda_d \nu^d \sigma_f \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \lambda_d \nu^d
        \sigma_f (r, E') \psi(r, E', \Omega') \\
@@ -1743,10 +1748,11 @@ class DecayRate(MDGXS):
        \sigma_f (r, E') \psi(r, E', \Omega') \\
        \lambda_d &= \frac{\langle \lambda_d \nu^d \sigma_f \phi \rangle}
        {\langle \nu^d \sigma_f \phi \rangle}
+       \end{aligned}
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
@@ -1774,7 +1780,7 @@ class DecayRate(MDGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
         Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
@@ -1921,7 +1927,7 @@ class MatrixMDGXS(MDGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
@@ -1949,7 +1955,7 @@ class MatrixMDGXS(MDGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
         Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
@@ -2501,6 +2507,7 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
 
     .. math::
 
+       \begin{aligned}
        \langle \nu\sigma_{f,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{E_g}^{E_{g-1}} dE
        \; \chi(E) \nu\sigma_f^d (r, E') \psi(r, E', \Omega')\\
@@ -2508,11 +2515,12 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
        \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega) \\
        \nu\sigma_{f,g'\rightarrow g} &= \frac{\langle \nu\sigma_{f,g'\rightarrow
        g}^d \phi \rangle}{\langle \phi \rangle}
+       \end{aligned}
 
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
@@ -2540,7 +2548,7 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
         Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization

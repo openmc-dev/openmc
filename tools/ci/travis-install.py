@@ -48,6 +48,9 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False):
     if dagmc:
         cmake_cmd.append('-Ddagmc=ON')
 
+    # Build in coverage mode for coverage testing
+    cmake_cmd.append('-Dcoverage=on')
+
     # Build and install
     cmake_cmd.append('..')
     print(' '.join(cmake_cmd))

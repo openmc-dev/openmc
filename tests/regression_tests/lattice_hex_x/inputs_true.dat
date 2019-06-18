@@ -1,0 +1,123 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="-1" universe="1" />
+  <cell id="2" material="4" region="-2 1" universe="1" />
+  <cell id="3" material="2" region="2" universe="1" />
+  <cell id="4" material="2" region="-3" universe="2" />
+  <cell id="5" material="4" region="-4 3" universe="2" />
+  <cell id="6" material="2" region="4" universe="2" />
+  <cell id="7" material="3" region="-5" universe="3" />
+  <cell id="8" material="4" region="-6 5" universe="3" />
+  <cell id="9" material="2" region="-7 6" universe="3" />
+  <cell id="10" material="4" region="-8 7" universe="3" />
+  <cell id="11" material="2" region="8" universe="3" />
+  <cell id="12" material="2" universe="4" />
+  <cell fill="9" id="13" name="container assembly cell" region="-11 12 -13 14 15 -16 9 -10" universe="5" />
+  <hex_lattice id="9" n_axial="2" n_rings="11" name="regular fuel assembly" orientation="x">
+    <pitch>1.235 5.0</pitch>
+    <outer>4</outer>
+    <center>0.0 0.0 5.0</center>
+    <universes>
+          1 1 1 1 1 1 1 1 1 1 1
+         1 1 1 1 1 1 1 1 1 1 1 1
+        1 1 1 1 1 1 1 1 1 1 1 1 1
+       1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 1 3 1 1 1 1 1 1 1
+     1 1 1 1 1 3 1 1 1 1 3 1 1 1 1 1
+    1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+   1 1 1 1 3 1 1 1 1 3 1 1 1 3 1 1 1 1
+  1 1 1 1 1 1 1 3 1 1 1 1 1 1 1 1 1 1 1
+ 1 1 1 1 1 1 1 1 1 1 1 1 3 1 1 1 1 1 1 1
+1 1 1 1 1 3 1 1 1 1 2 1 1 1 1 3 1 1 1 1 1
+ 1 1 1 1 1 1 1 3 1 1 1 1 1 1 1 1 1 1 1 1
+  1 1 1 1 1 1 1 1 1 1 1 3 1 1 1 1 1 1 1
+   1 1 1 1 3 1 1 1 3 1 1 1 1 3 1 1 1 1
+    1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+     1 1 1 1 1 3 1 1 1 1 3 1 1 1 1 1
+      1 1 1 1 1 1 1 3 1 1 1 1 1 1 1
+       1 1 1 1 1 1 1 1 1 1 1 1 1 1
+        1 1 1 1 1 1 1 1 1 1 1 1 1
+         1 1 1 1 1 1 1 1 1 1 1 1
+          1 1 1 1 1 1 1 1 1 1 1
+          1 1 1 1 1 1 1 1 1 1 1
+         1 1 1 1 1 1 1 1 1 1 1 1
+        1 1 1 1 1 1 1 1 1 1 1 1 1
+       1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 1 3 1 1 1 1 1 1 1
+     1 1 1 1 1 3 1 1 1 1 3 1 1 1 1 1
+    1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+   1 1 1 1 3 1 1 1 1 3 1 1 1 3 1 1 1 1
+  1 1 1 1 1 1 1 3 1 1 1 1 1 1 1 1 1 1 1
+ 1 1 1 1 1 1 1 1 1 1 1 1 3 1 1 1 1 1 1 1
+1 1 1 1 1 3 1 1 1 1 2 1 1 1 1 3 1 1 1 1 1
+ 1 1 1 1 1 1 1 3 1 1 1 1 1 1 1 1 1 1 1 1
+  1 1 1 1 1 1 1 1 1 1 1 3 1 1 1 1 1 1 1
+   1 1 1 1 3 1 1 1 3 1 1 1 1 3 1 1 1 1
+    1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+     1 1 1 1 1 3 1 1 1 1 3 1 1 1 1 1
+      1 1 1 1 1 1 1 3 1 1 1 1 1 1 1
+       1 1 1 1 1 1 1 1 1 1 1 1 1 1
+        1 1 1 1 1 1 1 1 1 1 1 1 1
+         1 1 1 1 1 1 1 1 1 1 1 1
+          1 1 1 1 1 1 1 1 1 1 1</universes>
+  </hex_lattice>
+  <surface coeffs="0.0 0.0 0.386" id="1" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 0.4582" id="2" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 0.45" id="3" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 0.5177" id="4" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 0.35" id="5" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 0.41" id="6" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 0.545" id="7" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 0.6323" id="8" type="z-cylinder" />
+  <surface boundary="reflective" coeffs="0.0" id="9" type="z-plane" />
+  <surface boundary="reflective" coeffs="10.0" id="10" type="z-plane" />
+  <surface boundary="reflective" coeffs="11.8" id="11" type="y-plane" />
+  <surface boundary="reflective" coeffs="-11.8" id="12" type="y-plane" />
+  <surface boundary="reflective" coeffs="1.7320508075688772 1.0 0.0 23.6" id="13" type="plane" />
+  <surface boundary="reflective" coeffs="-1.7320508075688772 1.0 0.0 -23.6" id="14" type="plane" />
+  <surface boundary="reflective" coeffs="1.7320508075688772 1.0 0.0 -23.6" id="15" type="plane" />
+  <surface boundary="reflective" coeffs="-1.7320508075688772 1.0 0.0 23.6" id="16" type="plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="1" name="UO2">
+    <density units="sum" />
+    <nuclide ao="0.0008737" name="U235" />
+    <nuclide ao="0.018744" name="U238" />
+    <nuclide ao="0.039235" name="O16" />
+  </material>
+  <material id="2" name="borated H2O">
+    <density units="sum" />
+    <nuclide ao="0.06694" name="H1" />
+    <nuclide ao="0.03347" name="O16" />
+    <nuclide ao="6.6262e-06" name="B10" />
+    <nuclide ao="2.6839e-05" name="B11" />
+  </material>
+  <material id="3" name="pellet B4C">
+    <density units="sum" />
+    <nuclide ao="0.01966" name="C0" />
+    <nuclide ao="4.7344e-06" name="B11" />
+    <nuclide ao="1.9177e-05" name="B10" />
+  </material>
+  <material id="4" name="Zirc4">
+    <density units="sum" />
+    <nuclide ao="0.021763349999999997" name="Zr90" />
+    <nuclide ao="0.00474606" name="Zr91" />
+    <nuclide ao="0.00725445" name="Zr92" />
+    <nuclide ao="0.00735174" name="Zr94" />
+    <nuclide ao="0.0011844" name="Zr96" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>1000</particles>
+  <batches>10</batches>
+  <inactive>5</inactive>
+  <source strength="1.0">
+    <space type="box">
+      <parameters>-13.62546635287517 -13.62546635287517 0.0 13.62546635287517 13.62546635287517 10.0</parameters>
+    </space>
+  </source>
+  <seed>22</seed>
+</settings>

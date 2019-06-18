@@ -18,10 +18,12 @@ _dll.openmc_get_seed.restype = c_int64
 class _Settings(object):
     # Attributes that are accessed through a descriptor
     batches = _DLLGlobal(c_int32, 'n_batches')
+    cmfd_run = _DLLGlobal(c_bool, 'cmfd_run')
     entropy_on = _DLLGlobal(c_bool, 'entropy_on')
     generations_per_batch = _DLLGlobal(c_int32, 'gen_per_batch')
     inactive = _DLLGlobal(c_int32, 'n_inactive')
     particles = _DLLGlobal(c_int64, 'n_particles')
+    restart_run = _DLLGlobal(c_bool, 'restart_run')
     run_CE = _DLLGlobal(c_bool, 'run_CE')
     verbosity = _DLLGlobal(c_int, 'verbosity')
 
@@ -42,6 +44,11 @@ class _Settings(object):
                 break
         else:
             raise ValueError('Invalid run mode: {}'.format(mode))
+
+    @property
+    def path_statepoint(self):
+        path = c_char_p.in_dll(_dll, 'path_statepoint').value
+        return path.decode()
 
     @property
     def seed(self):

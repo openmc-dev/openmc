@@ -1,8 +1,6 @@
-.. _releasenotes:
-
-===============================
-Release Notes for OpenMC 0.10.0
-===============================
+====================
+What's New in 0.10.0
+====================
 
 .. currentmodule:: openmc
 

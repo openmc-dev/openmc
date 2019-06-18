@@ -62,8 +62,7 @@ def test_mg_tallies():
     model = slab_mg()
 
     # Instantiate a tally mesh
-    mesh = openmc.Mesh(mesh_id=1)
-    mesh.type = 'regular'
+    mesh = openmc.RegularMesh(mesh_id=1)
     mesh.dimension = [10, 1, 1]
     mesh.lower_left = [0.0, 0.0, 0.0]
     mesh.upper_right = [929.45, 1000, 1000]

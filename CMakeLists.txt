@@ -72,6 +72,9 @@ endif()
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
+# Skip for Visual Stduio which has its own configurations through GUI
+if(NOT MSVC)
+
 if(openmp)
   # Requires CMake 3.1+
   find_package(OpenMP)
@@ -95,10 +98,16 @@ if(optimize)
   list(REMOVE_ITEM cxxflags -O2)
   list(APPEND cxxflags -O3)
 endif()
+if(coverage)
+  list(APPEND cxxflags --coverage)
+  list(APPEND ldflags --coverage)
+endif()
 
 # Show flags being used
 message(STATUS "OpenMC C++ flags: ${cxxflags}")
 message(STATUS "OpenMC Linker flags: ${ldflags}")
+
+endif()
 
 #===============================================================================
 # pugixml library
@@ -114,6 +123,16 @@ target_include_directories(pugixml PUBLIC vendor/pugixml/)
 add_subdirectory(vendor/xtl)
 add_subdirectory(vendor/xtensor)
 target_link_libraries(xtensor INTERFACE xtl)
+
+#===============================================================================
+# GSL header-only library
+#===============================================================================
+
+add_library(gsl INTERFACE)
+target_include_directories(gsl INTERFACE vendor/gsl/include)
+
+# Make sure contract violations throw exceptions
+target_compile_definitions(gsl INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
 
 #===============================================================================
 # RPATH information
@@ -155,7 +174,7 @@ target_compile_options(faddeeva PRIVATE ${cxxflags})
 # libopenmc
 #===============================================================================
 
-add_library(libopenmc SHARED
+list(APPEND libopenmc_SOURCES
   src/bank.cpp
   src/bremsstrahlung.cpp
   src/dagmc.cpp
@@ -242,6 +261,18 @@ add_library(libopenmc SHARED
   src/xml_interface.cpp
   src/xsdata.cpp)
 
+# For Visual Studio compilers
+if(MSVC)
+  # Use static library (otherwise explicit symbol portings are needed)
+  add_library(libopenmc STATIC ${libopenmc_SOURCES})
+
+  # To use the shared HDF5 libraries on Windows, the H5_BUILT_AS_DYNAMIC_LIB
+  # compile definition must be specified.
+  target_compile_definitions(libopenmc PRIVATE -DH5_BUILT_AS_DYNAMIC_LIB)
+else()
+  add_library(libopenmc SHARED ${libopenmc_SOURCES})
+endif()
+
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc)
 
@@ -271,7 +302,7 @@ endif()
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
-                      pugixml faddeeva xtensor)
+                      pugixml faddeeva xtensor gsl)
 
 if(dagmc)
   target_compile_definitions(libopenmc PRIVATE DAGMC)

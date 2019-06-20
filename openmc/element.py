@@ -98,7 +98,7 @@ class Element(str):
             library_nuclides = set()
             tree = ET.parse(cross_sections)
             root = tree.getroot()
-            for child in root:
+            for child in root.findall('library'):
                 nuclide = child.attrib['materials']
                 if re.match(r'{}\d+'.format(self), nuclide) and \
                    '_m' not in nuclide:

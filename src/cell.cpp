@@ -567,6 +567,13 @@ CSGCell::to_hdf5(hid_t cell_group) const
   close_group(group);
 }
 
+BoundingBox CSGCell::bounding_box() const {
+  BoundingBox bbox;
+  for (int32_t token : rpn_) {
+    bbox.update(model::surfaces[abs(token)-1]->bounding_box(token > 0));
+  }
+}
+
 //==============================================================================
 
 bool

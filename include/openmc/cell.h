@@ -114,6 +114,9 @@ public:
   //! \param group_id An HDF5 group id.
   virtual void to_hdf5(hid_t group_id) const = 0;
 
+  //! Get the BoundingBox for this cell.
+  virtual BoundingBox bounding_box() const = 0;
+
   //----------------------------------------------------------------------------
   // Accessors
 
@@ -191,6 +194,8 @@ public:
   distance(Position r, Direction u, int32_t on_surface) const;
 
   void to_hdf5(hid_t group_id) const;
+
+  BoundingBox bounding_box() const;
 
 protected:
   bool contains_simple(Position r, Direction u, int32_t on_surface) const;

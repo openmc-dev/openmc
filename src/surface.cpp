@@ -271,7 +271,7 @@ Direction DAGSurface::reflect(Position r, Direction u) const
   return simulation::last_dir;
 }
 
-BoundingBox DAGSurface::bounding_box() const
+BoundingBox DAGSurface::bounding_box(bool pos_side) const
 {
   moab::ErrorCode rval;
   moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
@@ -366,9 +366,13 @@ bool SurfaceXPlane::periodic_translate(const PeriodicSurface* other,
 }
 
 BoundingBox
-SurfaceXPlane::bounding_box() const
+SurfaceXPlane::bounding_box(bool pos_side) const
 {
-  return {x0_, x0_, -INFTY, INFTY, -INFTY, INFTY};
+  if (pos_side) {
+    return {x0_, INFTY, -INFTY, INFTY, -INFTY, INFTY};
+  } else {
+    return {-INFTY, x0_, -INFTY, INFTY, -INFTY, INFTY};
+  }
 }
 
 //==============================================================================
@@ -428,9 +432,13 @@ bool SurfaceYPlane::periodic_translate(const PeriodicSurface* other,
 }
 
 BoundingBox
-SurfaceYPlane::bounding_box() const
+SurfaceYPlane::bounding_box(bool pos_side) const
 {
-  return {-INFTY, INFTY, y0_, y0_, -INFTY, INFTY};
+  if (pos_side) {
+    return {-INFTY, INFTY, y0_, INFTY, -INFTY, INFTY};
+  } else {
+    return {-INFTY, INFTY, -INFTY, y0_, -INFTY, INFTY};
+  }
 }
 
 //==============================================================================
@@ -474,9 +482,13 @@ bool SurfaceZPlane::periodic_translate(const PeriodicSurface* other,
 }
 
 BoundingBox
-SurfaceZPlane::bounding_box() const
+SurfaceZPlane::bounding_box(bool pos_side) const
 {
-  return {-INFTY, INFTY, -INFTY, INFTY, z0_, z0_};
+  if (pos_side) {
+    return {-INFTY, INFTY, -INFTY, INFTY, z0_, INFTY};
+  } else {
+    return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, z0_};
+  }
 }
 
 //==============================================================================
@@ -539,9 +551,34 @@ bool SurfacePlane::periodic_translate(const PeriodicSurface* other, Position& r,
 }
 
 BoundingBox
-SurfacePlane::bounding_box() const
+SurfacePlane::bounding_box(bool pos_side) const
 {
-  return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
+  BoundingBox bbox = {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
+  if (A_ == 0.0 && B_ == 0.0) {
+    double val = D_ / C_;
+    if (pos_side) {
+      bbox.zmin = val;
+    } else {
+      bbox.zmax = val;
+    }
+  } else if (A_ == 0.0 && C_ == 0.0) {
+    double val = D_ / B_;
+    if (pos_side) {
+    bbox.ymin = val;
+    } else {
+    bbox.ymax = val;
+    }
+  } else if (B_ == 0.0 && C_ == 0.0) {
+    double val = D_ / A_;
+    if (pos_side) {
+    bbox.xmin = val;
+    } else {
+    bbox.xmax = val;
+    }
+  }
+
+  return bbox;
+
 }
 
 //==============================================================================
@@ -652,8 +689,12 @@ void SurfaceXCylinder::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceXCylinder::bounding_box() const {
-  return {-INFTY, INFTY, y0_ - radius_, y0_ + radius_, z0_ - radius_, z0_ + radius_};
+BoundingBox SurfaceXCylinder::bounding_box(bool pos_side) const {
+  if (pos_side) {
+    return {-INFTY, INFTY, y0_ - radius_, y0_ + radius_, z0_ - radius_, z0_ + radius_};
+  } else {
+    return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
+  }
 }
 //==============================================================================
 // SurfaceYCylinder implementation
@@ -688,8 +729,12 @@ void SurfaceYCylinder::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceYCylinder::bounding_box() const {
-  return {x0_ - radius_, x0_ + radius_, -INFTY, INFTY, z0_ - radius_, z0_ + radius_};
+BoundingBox SurfaceYCylinder::bounding_box(bool pos_side) const {
+  if (pos_side) {
+    return {x0_ - radius_, x0_ + radius_, -INFTY, INFTY, z0_ - radius_, z0_ + radius_};
+  } else {
+    return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
+  }
 }
 
 //==============================================================================
@@ -725,8 +770,12 @@ void SurfaceZCylinder::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceZCylinder::bounding_box() const {
-  return {x0_ - radius_, x0_ + radius_, y0_ - radius_, y0_ + radius_, -INFTY, INFTY};
+BoundingBox SurfaceZCylinder::bounding_box(bool pos_side) const {
+  if (pos_side) {
+    return {x0_ - radius_, x0_ + radius_, y0_ - radius_, y0_ + radius_, -INFTY, INFTY};
+  } else {
+    return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
+  }
 }
 
 
@@ -798,10 +847,14 @@ void SurfaceSphere::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceSphere::bounding_box() const {
-  return {x0_ - radius_, x0_ + radius_,
-          y0_ - radius_, y0_ + radius_,
-          z0_ - radius_, z0_ + radius_};
+BoundingBox SurfaceSphere::bounding_box(bool pos_side) const {
+  if (pos_side) {
+    return {x0_ - radius_, x0_ + radius_,
+            y0_ - radius_, y0_ + radius_,
+            z0_ - radius_, z0_ + radius_};
+  } else {
+    return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
+  }
 }
 
 //==============================================================================
@@ -922,7 +975,7 @@ void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceXCone::bounding_box() const {
+BoundingBox SurfaceXCone::bounding_box(bool pos_side) const {
   return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
 }
 
@@ -959,7 +1012,7 @@ void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceYCone::bounding_box() const {
+BoundingBox SurfaceYCone::bounding_box(bool pos_side) const {
   return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
 }
 
@@ -996,7 +1049,7 @@ void SurfaceZCone::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceZCone::bounding_box() const {
+BoundingBox SurfaceZCone::bounding_box(bool pos_side) const {
   return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
 }
 
@@ -1093,7 +1146,7 @@ void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceQuadric::bounding_box() const {
+BoundingBox SurfaceQuadric::bounding_box(bool pos_side) const {
   return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
 }
 
@@ -1194,7 +1247,8 @@ void read_surfaces(pugi::xml_node node)
       }
 
       // See if this surface makes part of the global bounding box.
-      BoundingBox bb = surf->bounding_box();
+      BoundingBox bb = surf->bounding_box(true);
+      bb.intersect(surf->bounding_box(false));
       if (bb.xmin > -INFTY && bb.xmin < xmin) {
         xmin = bb.xmin;
         i_xmin = i_surf;

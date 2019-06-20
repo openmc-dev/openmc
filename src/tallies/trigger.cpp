@@ -111,7 +111,7 @@ check_tally_triggers(double& ratio, int& tally_id, int& score)
 double
 check_keff_trigger()
 {
-  if (settings::run_mode != RUN_MODE_EIGENVALUE) return 0.;
+  if (settings::run_mode != RUN_MODE_EIGENVALUE) return 0.0;
 
   double k_combined[2];
   openmc_get_keff(k_combined);
@@ -127,8 +127,10 @@ check_keff_trigger()
   case TriggerMetric::relative_error:
     uncertainty = k_combined[1] / k_combined[0];
     break;
-  case TriggerMetric::not_active:
-    break;
+  default:
+    // If it's an unrecognized TriggerMetric or no keff trigger is on,
+    // return 0 to stop division by zero where "ratio" is calculated.
+    return 0.0;
   }
 
   double ratio = uncertainty / settings::keff_trigger.threshold;

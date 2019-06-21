@@ -347,18 +347,18 @@ class Results(object):
         eigenvalues_dset = handle["/eigenvalues"]
         time_dset = handle["/time"]
         power_dset = handle["/power"]
-        proc_time_dset = handle["/depletion time"]
 
         results.data = number_dset[step, :, :, :]
         results.k = eigenvalues_dset[step, :]
         results.time = time_dset[step, :]
         results.power = power_dset[step, :]
 
-        # depletion time data has one fewer index, corresponding
-        # to one fewer calculation stage
-        if step < proc_time_dset.shape[0]:
-            results.proc_time = proc_time_dset[step, :]
-        else:
+        if "depletion time" in handle:
+            proc_time_dset = handle["/depletion time"]
+            if step < proc_time_dset.shape[0]:
+                results.proc_time = proc_time_dset[step, :]
+
+        if results.proc_time is None:
             results.proc_time = np.array([np.nan])
 
         # Reconstruct dictionaries

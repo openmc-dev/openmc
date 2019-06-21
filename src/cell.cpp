@@ -698,6 +698,16 @@ bool DAGCell::contains(Position r, Direction u, int32_t on_surface) const
 
 void DAGCell::to_hdf5(hid_t group_id) const { return; }
 
+BoundingBox DAGCell::bounding_box() const
+{
+  moab::ErrorCode rval;
+  moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
+  double min[3], max[3];
+  rval = dagmc_ptr_->getobb(vol, min, max);
+  MB_CHK_ERR_CONT(rval);
+  return {min[0], max[0], min[1], max[1], min[2], max[2]};
+}
+
 #endif
 
 //==============================================================================

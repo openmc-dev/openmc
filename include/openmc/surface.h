@@ -139,6 +139,8 @@ public:
 
   void to_hdf5(hid_t group_id) const;
 
+  virtual BoundingBox bounding_box(bool pos_side) const = 0;
+
 protected:
   virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
@@ -158,6 +160,8 @@ public:
   Direction reflect(Position r, Direction u) const;
   //! Get the bounding box of this surface.
   BoundingBox bounding_box(bool pos_side) const;
+
+  void to_hdf5(hid_t group_id) const;
 
   moab::DagMC* dagmc_ptr_;
   int32_t dag_index_;
@@ -188,6 +192,9 @@ public:
   //!   boundary condition.
   virtual bool periodic_translate(const PeriodicSurface* other, Position& r,
                                   Direction& u) const = 0;
+
+  //! Get the bounding box for this surface.
+  virtual BoundingBox bounding_box(bool pos_side) const = 0;
 };
 
 //==============================================================================

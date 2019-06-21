@@ -448,7 +448,7 @@ class Results(object):
         results.time = t
         results.power = power
         results.proc_time = proc_time
-        if step_ind and results.proc_time is not None:
+        if results.proc_time is not None:
             results.proc_time = comm.reduce(proc_time, op=mpi_sum)
 
         results.export_to_hdf5("depletion_results.h5", step_ind)

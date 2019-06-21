@@ -53,6 +53,25 @@ def deplete(chain, x, rates, dt, print_out=True, matrix_func=None):
     return x_result
 
 
+def timed_deplete(*args, **kwargs):
+    """Wrapper over :func:`deplete` that also returns process time
+
+    All arguments and keyword arguments are passed onto
+    :func:`deplete` directly.
+
+    Returns
+    -------
+    proc_time: float
+        Process time required to return from deplete
+    results: list of numpy arrays
+        Output from :func:`deplete` call
+    """
+
+    start = time.time()
+    results = deplete(*args, **kwargs)
+    return time.time() - start, results
+
+
 def _cram_wrapper(chain, n0, rates, dt, matrix_func=None):
     """Wraps depletion matrix creation / CRAM solve for multiprocess execution
 

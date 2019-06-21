@@ -10,9 +10,11 @@ try:
     from mpi4py import MPI
     comm = MPI.COMM_WORLD
     have_mpi = True
+    mpi_sum = MPI.SUM
 except ImportError:
     comm = DummyCommunicator()
     have_mpi = False
+    mpi_sum = lambda x: x
 
 from .nuclide import *
 from .chain import *

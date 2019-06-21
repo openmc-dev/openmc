@@ -10,7 +10,7 @@ from warnings import warn
 import numpy as np
 import h5py
 
-from . import comm, have_mpi
+from . import comm, have_mpi, mpi_sum
 from .reaction_rates import ReactionRates
 
 _VERSION_RESULTS = (1, 0)
@@ -55,6 +55,7 @@ class Results(object):
         self.power = None
         self.rates = None
         self.volume = None
+        self.proc_time = None
 
         self.mat_to_ind = None
         self.nuc_to_ind = None
@@ -245,6 +246,10 @@ class Results(object):
         handle.create_dataset("power", (1, n_stages), maxshape=(None, n_stages),
                               dtype='float64')
 
+        handle.create_dataset(
+            "depletion time", (1, 1), maxshape=(None, 1),
+            dtype="float64")
+
     def _to_hdf5(self, handle, index):
         """Converts results object into an hdf5 object.
 
@@ -268,6 +273,7 @@ class Results(object):
         eigenvalues_dset = handle["/eigenvalues"]
         time_dset = handle["/time"]
         power_dset = handle["/power"]
+        proc_time_dset = handle["/depletion time"]
 
         # Get number of results stored
         number_shape = list(number_dset.shape)
@@ -296,6 +302,13 @@ class Results(object):
             power_shape[0] = new_shape
             power_dset.resize(power_shape)
 
+            # keep depletion time matrix with one less index
+            # corresponding to one fewer calculation
+            if self.proc_time:
+                proc_shape = list(proc_time_dset.shape)
+                proc_shape[0] = new_shape - 1
+                proc_time_dset.resize(proc_shape)
+
         # If nothing to write, just return
         if len(self.mat_to_ind) == 0:
             return
@@ -314,6 +327,10 @@ class Results(object):
         if comm.rank == 0:
             time_dset[index, :] = self.time
             power_dset[index, :] = self.power
+            if self.proc_time is not None:
+                proc_time_dset[index - 1] = (
+                    self.proc_time / (comm.size * self.n_hdf5_mats)
+                )
 
     @classmethod
     def from_hdf5(cls, handle, step):
@@ -324,8 +341,7 @@ class Results(object):
         handle : h5py.File or h5py.Group
             An HDF5 file or group type to load from.
         step : int
-            What step is this?
-
+            Index for depletion step
         """
         results = cls()
 
@@ -334,11 +350,19 @@ class Results(object):
         eigenvalues_dset = handle["/eigenvalues"]
         time_dset = handle["/time"]
         power_dset = handle["/power"]
+        proc_time_dset = handle["/depletion time"]
 
         results.data = number_dset[step, :, :, :]
         results.k = eigenvalues_dset[step, :]
         results.time = time_dset[step, :]
         results.power = power_dset[step, :]
+
+        # depletion time data has one fewer index, corresponding
+        # to one fewer calculation stage
+        if step < proc_time_dset.shape[0]:
+            results.proc_time = proc_time_dset[step, :]
+        else:
+            results.proc_time = np.array([np.nan])
 
         # Reconstruct dictionaries
         results.volume = OrderedDict()
@@ -375,7 +399,7 @@ class Results(object):
         return results
 
     @staticmethod
-    def save(op, x, op_results, t, power, step_ind):
+    def save(op, x, op_results, t, power, step_ind, proc_time):
         """Creates and writes depletion results to disk
 
         Parameters
@@ -392,6 +416,8 @@ class Results(object):
             Power during time step
         step_ind : int
             Step index.
+        proc_time: float or None
+            time spent depleting materials.
 
         """
         # Get indexing terms
@@ -422,6 +448,9 @@ class Results(object):
         results.rates = [r.rates for r in op_results]
         results.time = t
         results.power = power
+        results.proc_time = proc_time
+        if step_ind and results.proc_time is not None:
+            results.proc_time = comm.reduce(proc_time, op=mpi_sum)
 
         results.export_to_hdf5("depletion_results.h5", step_ind)
 

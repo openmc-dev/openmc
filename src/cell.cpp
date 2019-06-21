@@ -208,6 +208,19 @@ Universe::to_hdf5(hid_t universes_group) const
   close_group(group);
 }
 
+BoundingBox Universe::bounding_box() const {
+  BoundingBox bbox;
+  if (cells_.size() == 0) {
+    bbox = {-INFTY, INFTY, -INFTY, -INFTY, INFTY};
+  } else {
+    for (const auto& cell : cells_) {
+      auto& c = model::cells[cell];
+      bbox.update(c->bounding_box());
+    }
+  }
+  return bbox;
+}
+
 //==============================================================================
 // Cell implementation
 //==============================================================================
@@ -569,9 +582,14 @@ CSGCell::to_hdf5(hid_t cell_group) const
 
 BoundingBox CSGCell::bounding_box() const {
   BoundingBox bbox;
-  for (int32_t token : rpn_) {
-    bbox.update(model::surfaces[abs(token)-1]->bounding_box(token > 0));
+  if (rpn_.size() == 0) {
+    bbox = {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
+  } else {
+    for (int32_t token : rpn_) {
+      bbox.update(model::surfaces[abs(token)-1]->bounding_box(token > 0));
+    }
   }
+  return bbox;
 }
 
 //==============================================================================

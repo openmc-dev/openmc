@@ -35,3 +35,7 @@ def test_predictor(run_in_tmpdir):
 
     assert y1[2] == approx(s2[0])
     assert y2[2] == approx(s2[1])
+
+    # Test structure of depletion time dataset
+
+    assert res.get_depletion_time().shape == (len(dt), 1)

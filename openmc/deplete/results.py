@@ -302,10 +302,8 @@ class Results(object):
             power_shape[0] = new_shape
             power_dset.resize(power_shape)
 
-            # keep depletion time matrix with one less index
-            # corresponding to one fewer calculation
             proc_shape = list(proc_time_dset.shape)
-            proc_shape[0] = new_shape - 1
+            proc_shape[0] = new_shape
             proc_time_dset.resize(proc_shape)
 
         # If nothing to write, just return
@@ -327,7 +325,7 @@ class Results(object):
             time_dset[index, :] = self.time
             power_dset[index, :] = self.power
             if self.proc_time is not None:
-                proc_time_dset[index - 1] = (
+                proc_time_dset[index] = (
                     self.proc_time / (comm.size * self.n_hdf5_mats)
                 )
 

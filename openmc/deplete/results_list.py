@@ -103,3 +103,18 @@ class ResultsList(list):
             eigenvalue[i] = result.k[0]
 
         return time, eigenvalue
+
+    def get_depletion_time(self):
+        """Return an array of time spent depleting materials
+
+        ..note::
+
+            Will have one fewer row than number of other methods,
+            like :meth:`get_eigenvalues`, because no depletion
+            is performed at the final transport stage
+
+        """
+        times = np.empty((len(self) - 1, 1))
+        for ix, res in enumerate(self[:-1]):
+            times[ix] = res.proc_time[0]
+        return times

@@ -304,10 +304,9 @@ class Results(object):
 
             # keep depletion time matrix with one less index
             # corresponding to one fewer calculation
-            if self.proc_time:
-                proc_shape = list(proc_time_dset.shape)
-                proc_shape[0] = new_shape - 1
-                proc_time_dset.resize(proc_shape)
+            proc_shape = list(proc_time_dset.shape)
+            proc_shape[0] = new_shape - 1
+            proc_time_dset.resize(proc_shape)
 
         # If nothing to write, just return
         if len(self.mat_to_ind) == 0:

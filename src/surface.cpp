@@ -282,6 +282,7 @@ BoundingBox DAGSurface::bounding_box(bool pos_side) const
 }
 
 void DAGSurface::to_hdf5(hid_t group_id) const {}
+
 #endif
 //==============================================================================
 // PeriodicSurface implementation

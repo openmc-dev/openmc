@@ -217,6 +217,8 @@ public:
   std::pair<double, int32_t>
   distance(Position r, Direction u, int32_t on_surface) const;
 
+  BoundingBox bounding_box() const;
+
   void to_hdf5(hid_t group_id) const;
 };
 #endif

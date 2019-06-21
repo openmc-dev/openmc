@@ -38,4 +38,6 @@ def test_predictor(run_in_tmpdir):
 
     # Test structure of depletion time dataset
 
-    assert res.get_depletion_time().shape == (len(dt), 1)
+    dep_time = res.get_depletion_time()
+    assert dep_time.shape == (len(dt), 1)
+    assert all(dep_time > 0)

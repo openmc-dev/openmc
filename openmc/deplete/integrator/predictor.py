@@ -103,4 +103,4 @@ def predictor(operator, timesteps, power=None, power_density=None,
         op_results = [operator(x[0], power[-1])]
 
         # Create results, write to disk
-        Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps), proc_time)
+        Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps), None)

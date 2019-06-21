@@ -65,6 +65,8 @@ public:
   //! \param group_id An HDF5 group id.
   void to_hdf5(hid_t group_id) const;
 
+  BoundingBox bounding_box() const;
+
   std::unique_ptr<UniversePartitioner> partitioner_;
 };
 

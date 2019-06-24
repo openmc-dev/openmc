@@ -32,6 +32,6 @@ from openmc.polynomial import *
 from . import examples
 
 # Import a few convencience functions that used to be here
-from openmc.model import get_rectangular_prism, get_hexagonal_prism
+from openmc.model import rectangular_prism, hexagonal_prism
 
 __version__ = '0.10.0'

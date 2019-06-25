@@ -44,12 +44,12 @@ namespace model {
 
 struct BoundingBox
 {
-  double xmin = INFTY;
-  double xmax = -INFTY;
-  double ymin = INFTY;
-  double ymax = -INFTY;
-  double zmin = INFTY;
-  double zmax = -INFTY;
+  double xmin = -INFTY;
+  double xmax = INFTY;
+  double ymin = -INFTY;
+  double ymax = INFTY;
+  double zmin = -INFTY;
+  double zmax = INFTY;
 
   // in-place update
   inline void update(const BoundingBox& other) {
@@ -71,7 +71,11 @@ struct BoundingBox
     zmax = std::min(zmax, other.zmax);
   }
 
+
 };
+
+
+
 
 //==============================================================================
 //! A geometry primitive used to define regions of 3D space.

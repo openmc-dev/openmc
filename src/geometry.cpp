@@ -9,6 +9,7 @@
 #include "openmc/lattice.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/string_utils.h"
 #include "openmc/surface.h"
 
 
@@ -472,6 +473,48 @@ openmc_find_cell(const double* xyz, int32_t* index, int32_t* instance)
 
   *index = p.coord_[p.n_coord_-1].cell;
   *instance = p.cell_instance_;
+  return 0;
+}
+
+extern "C" int
+openmc_bounding_box(const char* geom_type, const int32_t id, double* llc, double* urc) {
+
+  BoundingBox bbox;
+
+  std::string gtype(geom_type);
+  to_lower(gtype);
+
+  std::cout << gtype << std::endl;
+
+  if (gtype == "universe") {
+    // negative ids only apply to surfaces
+    if (id < 0) { return OPENMC_E_GEOMETRY; }
+    const auto& u = model::universes[model::universe_map[id]];
+    bbox = u->bounding_box();
+  } else if (gtype == "cell") {
+    // negative ids only apply to surfaces
+    if (id < 0) { return OPENMC_E_GEOMETRY; }
+    const auto& c = model::cells[model::cell_map[id]];
+    bbox = c->bounding_box();
+  } else if (gtype == "surface") {
+    const auto& s = model::surfaces[model::surface_map[abs(id)]];
+    bbox = s->bounding_box(id > 0);
+  } else {
+    std::stringstream msg;
+    msg << "Geometry type: " << gtype << " is invalid.";
+    return OPENMC_E_GEOMETRY;
+  }
+
+  // set lower left corner values
+  llc[0] = bbox.xmin;
+  llc[1] = bbox.ymin;
+  llc[2] = bbox.zmin;
+
+  // set upper right corner values
+  urc[0] = bbox.xmax;
+  urc[1] = bbox.ymax;
+  urc[2] = bbox.zmax;
+
   return 0;
 }
 

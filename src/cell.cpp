@@ -209,7 +209,7 @@ Universe::to_hdf5(hid_t universes_group) const
 }
 
 BoundingBox Universe::bounding_box() const {
-  BoundingBox bbox;
+  BoundingBox bbox = {INFTY, -INFTY, INFTY, -INFTY, INFTY, -INFTY};
   if (cells_.size() == 0) {
     bbox = {-INFTY, INFTY, -INFTY, -INFTY, INFTY};
   } else {
@@ -586,7 +586,7 @@ BoundingBox CSGCell::bounding_box() const {
     bbox = {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
   } else {
     for (int32_t token : rpn_) {
-      bbox.update(model::surfaces[abs(token)-1]->bounding_box(token > 0));
+      bbox.intersect(model::surfaces[abs(token)-1]->bounding_box(token > 0));
     }
   }
   return bbox;

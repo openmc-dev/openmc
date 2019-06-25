@@ -787,8 +787,9 @@ class ThermalScattering(EqualityMixin):
                     # Replace ACE data with ENDF data
                     rx, rx_endf = data.elastic, data_endf.elastic
                     for t in temperatures:
-                        rx.xs[t] = rx_endf.xs[t]
-                        rx.distribution[t] = rx_endf.distribution[t]
+                        if isinstance(rx_endf.xs[t], IncoherentElastic):
+                            rx.xs[t] = rx_endf.xs[t]
+                            rx.distribution[t] = rx_endf.distribution[t]
 
         return data
 

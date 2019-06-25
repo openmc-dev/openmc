@@ -74,6 +74,23 @@ _dll.openmc_statepoint_write.argtypes = [c_char_p, POINTER(c_bool)]
 _dll.openmc_statepoint_write.restype = c_int
 _dll.openmc_statepoint_write.errcheck = _error_handler
 
+_dll.openmc_bounding_box.argtypes = [c_char_p, c_int, POINTER(c_double),
+                                     POINTER(c_double)]
+_dll.openmc_bounding_box.restype = c_int
+_dll.openmc_bounding_box.errcheck = _error_handler
+
+def bounding_box(geom_type, geom_id):
+
+    geomt = c_char_p(geom_type.encode())
+    llc = np.zeros((3,), dtype=float)
+    urc = np.zeros((3,), dtype=float)
+    _dll.openmc_bounding_box(geomt,
+                             geom_id,
+                             llc.ctypes.data_as(POINTER(c_double)),
+                             urc.ctypes.data_as(POINTER(c_double)))
+
+    return llc, urc
+
 
 def calculate_volumes():
     """Run stochastic volume calculation"""

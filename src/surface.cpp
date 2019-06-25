@@ -691,7 +691,7 @@ void SurfaceXCylinder::to_hdf5_inner(hid_t group_id) const
 }
 
 BoundingBox SurfaceXCylinder::bounding_box(bool pos_side) const {
-  if (pos_side) {
+  if (!pos_side) {
     return {-INFTY, INFTY, y0_ - radius_, y0_ + radius_, z0_ - radius_, z0_ + radius_};
   } else {
     return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
@@ -731,7 +731,7 @@ void SurfaceYCylinder::to_hdf5_inner(hid_t group_id) const
 }
 
 BoundingBox SurfaceYCylinder::bounding_box(bool pos_side) const {
-  if (pos_side) {
+  if (!pos_side) {
     return {x0_ - radius_, x0_ + radius_, -INFTY, INFTY, z0_ - radius_, z0_ + radius_};
   } else {
     return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
@@ -772,7 +772,7 @@ void SurfaceZCylinder::to_hdf5_inner(hid_t group_id) const
 }
 
 BoundingBox SurfaceZCylinder::bounding_box(bool pos_side) const {
-  if (pos_side) {
+  if (!pos_side) {
     return {x0_ - radius_, x0_ + radius_, y0_ - radius_, y0_ + radius_, -INFTY, INFTY};
   } else {
     return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
@@ -849,7 +849,7 @@ void SurfaceSphere::to_hdf5_inner(hid_t group_id) const
 }
 
 BoundingBox SurfaceSphere::bounding_box(bool pos_side) const {
-  if (pos_side) {
+  if (!pos_side) {
     return {x0_ - radius_, x0_ + radius_,
             y0_ - radius_, y0_ + radius_,
             z0_ - radius_, z0_ + radius_};

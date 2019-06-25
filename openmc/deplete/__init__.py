@@ -4,6 +4,9 @@ openmc.deplete
 
 A depletion front-end tool.
 """
+from sys import exit
+
+from h5py import get_config
 
 from .dummy_comm import DummyCommunicator
 
@@ -12,17 +15,14 @@ try:
 
     comm = MPI.COMM_WORLD
     have_mpi = True
-    # check if running with MPI and if hdf5 is MPI-enabled
-    from h5py import get_config
+    # check if running with MPI and if using parallel HDF5
 
     if not get_config().mpi and comm.size > 1:
         # Raise exception only on process 0
         if comm.rank:
-            from sys import exit
-
             exit()
         raise RuntimeError(
-            "Need MPI-enabled HDF5 install to perform depletion with MPI"
+            "Need parallel HDF5 installed to perform depletion with MPI"
         )
 except ImportError:
     comm = DummyCommunicator()

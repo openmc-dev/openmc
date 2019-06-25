@@ -127,6 +127,10 @@ constexpr int ANGLE_HISTOGRAM {5};
 constexpr int TEMPERATURE_NEAREST {1};
 constexpr int TEMPERATURE_INTERPOLATION {2};
 
+// Energy deposition method
+constexpr int FISS_EDEP_LOCAL_PHOTON {0};
+constexpr int FISS_EDEP_LOCAL {1};
+
 // Reaction types
 // TODO: Convert to enum
 constexpr int REACTION_NONE {0};

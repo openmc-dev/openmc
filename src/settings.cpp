@@ -81,6 +81,7 @@ int64_t n_particles {-1};
 
 int electron_treatment {ELECTRON_TTB};
 std::array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
+int fiss_edep_mode {FISS_EDEP_LOCAL_PHOTON};
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
 int n_log_bins {8000};

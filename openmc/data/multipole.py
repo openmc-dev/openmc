@@ -143,7 +143,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
     ----------
     energy : np.ndarray
         Energy array
-    cs_xs : np.ndarray
+    ce_xs : np.ndarray
         Point-wise cross sections to be fitted
     mts : Iterable of Integral
         Reaction list
@@ -371,7 +371,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
 
 def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
                      log=False, path_out=None, mp_filename=None, **kwargs):
-    """Convert point-wise cross section to multipole data via Vector Fitting.
+    r"""Convert point-wise cross section to multipole data via Vector Fitting.
 
     Parameters
     ----------
@@ -395,7 +395,7 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
     Returns
     -------
     mp_data
-        Dictionary with multipole data of the nuclide
+        Dictionary containing necessary multipole data of the nuclide
 
     """
 
@@ -536,11 +536,53 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
 
     return mp_data
 
-def _windowing(mp_data):
-    """
+def _windowing(mp_data, max_relerr=1e-3, min_abserr=1e-5, n_w=None, n_cf=None,
+               log=False):
+    r"""Optimization of the windows from multipole data
+
+    Parameters
+    ----------
+    mp_data : dict
+        Multipole data
+    max_relerr : float, optional
+        Maximum relative error tolerance
+    min_abserr : float, optional
+        Minimum absolute error tolerance
+    n_w : integer, optional
+        Number of equal-in-mementum spaced energy windows
+    n_cf : integer, optional
+        Number of curve fitting order
+    log : bool, optional
+        Whether to display log
+
+    Returns
+    -------
+    openmc.data.WindowedMultipole
+        Resonant cross sections represented in the windowed multipole
+        format.
 
     """
-    pass
+    
+    # unpack multipole data
+    name = mp_data["name"]
+    awr = mp_data["AWR"]
+    E_min = mp_data["E_min"]
+    E_max = mp_data["E_max"]
+    mp_poles = mp_data["poles"]
+    mp_residues = mp_data["residues"]
+    mp_pieces = mp_data["piece_idxs"]
+
+    # determine window size and CF order
+    if n_w is None:
+        n_w = OPTIMIZED[name][1]
+    if n_cf is None:
+        n_cf = OPTIMIZED[name][2]
+    # make sure window size is not exceeding piece size
+    if n_w < 2*(len(mp_pieces) - 1):
+        raise ValueError('Windows number too large.')
+
+    # optimize windows one by one
+    spacing = (sqrt(E_max) - sqrt(E_min))/n_w
 
 class WindowedMultipole(EqualityMixin):
     """Resonant cross sections represented in the windowed multipole format.
@@ -843,7 +885,7 @@ class WindowedMultipole(EqualityMixin):
         path_out : str, optional
             Path to write out data files
         **kwargs
-            Keyword arguments passed to :func:`openmc.data.multipole._vectfit_xs`
+            Keyword arguments passed to :func:`openmc.data.multipole._windowing`
 
         Returns
         -------
@@ -860,7 +902,7 @@ class WindowedMultipole(EqualityMixin):
                 mp_data = pickle.load(f)
 
         # windowing
-
+        return _windowing(mp_data, **kwargs)
 
     def _evaluate(self, E, T):
         """Compute scattering, absorption, and fission cross sections.

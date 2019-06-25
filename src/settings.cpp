@@ -361,6 +361,17 @@ void read_settings_xml()
     }
   }
 
+  if (check_for_node(root, "fiss_edep_mode")) {
+    auto temp_str = get_node_value(root, "fiss_edep_mode", true, true);
+    if (temp_str == "local") {
+      fiss_edep_mode = FISS_EDEP_LOCAL;
+    } else if (temp_str == "local photon") {
+      fiss_edep_mode = FISS_EDEP_LOCAL_PHOTON;
+    } else {
+      fatal_error("Unrecognized fission energy deposition mode: " + temp_str + ".");
+    }
+  }
+
   // Check for photon transport
   if (check_for_node(root, "photon_transport")) {
     photon_transport = get_node_value_bool(root, "photon_transport");

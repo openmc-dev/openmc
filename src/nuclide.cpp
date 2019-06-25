@@ -254,7 +254,43 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
   if (object_exists(group, "fission_energy_release")) {
     hid_t fer_group = open_group(group, "fission_energy_release");
     fission_q_prompt_ = read_function(fer_group, "q_prompt");
-    fission_q_recov_ = read_function(fer_group, "q_recoverable");
+    // Set local recoverable energy from fission events
+    switch (settings::fiss_edep_mode) {
+      case FISS_EDEP_LOCAL :
+        fission_q_recov_ = read_function(fer_group, "q_recoverable");
+        break;
+      case FISS_EDEP_LOCAL_PHOTON :
+        // Create dataset containing recoverable fission energy
+        // without prompt and delayed neutrons
+
+        hsize_t vec_size;
+        get_shape_attr(fer_group, "q_recoverable", &vec_size);
+        xt::xarray<double>q_nonu = xt::empty<double>({vec_size});
+        hid_t cur_dset = open_dataset(fer_group, "q_recoverable");
+        read_dataset(cur_dset, q_nonu);
+        close_dataset(cur_dset);
+
+        xt::xarray<double>temp = xt::empty<double>({vec_size});
+
+        // Get each recoverable q value
+        // Subtract out energy from prompt and delayed neutrons
+        
+        cur_dset = open_dataset(fer_group, "prompt_neutrons");
+        read_dataset(cur_dset, temp);
+        q_nonu -= temp;
+        close_dataset(cur_dset);
+
+        cur_dset = open_dataset(fer_group, "delayed_neutrons");
+        read_dataset(cur_dset, temp);
+        q_nonu -= temp;
+        close_dataset(cur_dset);
+
+        write_dataset(fer_group, "q_recoverable_nonu", q_nonu);
+         
+        fission_q_recov_ = read_function(fer_group, "q_recoverable_nonu");
+
+        break;
+    }
     close_group(fer_group);
   }
 

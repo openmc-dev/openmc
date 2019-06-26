@@ -77,14 +77,23 @@ bool is_inelastic_scatter(int mt)
 }
 
 std::unique_ptr<Function1D>
-read_function(hid_t group, const char* name)
+read_function(hid_t group, const char* name) {
+  return read_function(group, name, nullptr);
+}
+
+std::unique_ptr<Function1D>
+read_function(hid_t group, const char* name, xt::xarray<double>* y_ptr)
 {
   hid_t dset = open_dataset(group, name);
   std::string func_type;
   read_attribute(dset, "type", func_type);
   std::unique_ptr<Function1D> func;
   if (func_type == "Tabulated1D") {
-    func = std::make_unique<Tabulated1D>(dset);
+    if (nullptr == y_ptr) {
+      func = std::make_unique<Tabulated1D>(dset);
+    } else {
+      func = std::make_unique<Tabulated1D>(dset, *y_ptr);
+    }
   } else if (func_type == "Polynomial") {
     func = std::make_unique<Polynomial>(dset);
   } else {
@@ -143,6 +152,31 @@ Tabulated1D::Tabulated1D(hid_t dset)
 
   std::copy(xs.begin(), xs.end(), std::back_inserter(x_));
   std::copy(ys.begin(), ys.end(), std::back_inserter(y_));
+  n_pairs_ = x_.size();
+}
+
+Tabulated1D::Tabulated1D(hid_t dset, xt::xarray<double> y_arr)
+{
+  read_attribute(dset, "breakpoints", nbt_);
+  n_regions_ = nbt_.size();
+
+  // Change 1-indexing to 0-indexing
+  for (auto& b : nbt_) --b;
+
+  std::vector<int> int_temp;
+  read_attribute(dset, "interpolation", int_temp);
+
+  // Convert vector of ints into Interpolation
+  for (const auto i : int_temp)
+    int_.push_back(int2interp(i));
+
+  xt::xarray<double> arr;
+  read_dataset(dset, arr);
+
+  auto xs = xt::view(arr, 0);
+  // Check size?
+  std::copy(xs.begin(), xs.end(), std::back_inserter(x_));
+  std::copy(y_arr.begin(), y_arr.end(), std::back_inserter(y_));
   n_pairs_ = x_.size();
 }
 

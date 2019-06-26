@@ -9,6 +9,8 @@
 
 #include "hdf5.h"
 
+#include "xtensor/xarray.hpp"
+
 #include "openmc/constants.h"
 
 namespace openmc {
@@ -74,6 +76,11 @@ public:
   //! \param[in] dset Dataset containing tabulated data
   explicit Tabulated1D(hid_t dset);
 
+  //! Construct function with HDF5 x-point and supplied abscissa
+  //! \param[in] dset Dataset containing tabulated data
+  //! \param[in] y_arr Arrays of y-data
+  explicit Tabulated1D(hid_t dset, xt::xarray<double> y_arr);
+
   //! Evaluate the tabulated function
   //! \param[in] x independent variable
   //! \return Function evaluated at x
@@ -109,6 +116,12 @@ private:
 //! \return Unique pointer to 1D function
 std::unique_ptr<Function1D> read_function(hid_t group, const char* name);
 
+//! Read 1D function from HDF5 dataset
+//! \param[in] group HDF5 group containing dataset
+//! \param[in] name Name of dataset
+//! \param[in] y_arr Use supplied y-data rather than dataset contents
+//! \return Unique pointer to 1D function
+std::unique_ptr<Function1D> read_function(hid_t group, const char* name, xt::xarray<double>* yptr);
 } // namespace openmc
 
 #endif // OPENMC_ENDF_H

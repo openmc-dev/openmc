@@ -103,10 +103,10 @@ class HexLatticeCoincidentTestHarness(PyAPITestHarness):
         inf_mat_univ = openmc.Universe(cells=[inf_mat,])
 
         # a hex surface for the core to go inside of
-        hexprism = openmc.model.get_hexagonal_prism(edge_length=edge_length,
-                                                    origin=(0.0, 0.0),
-                                                    boundary_type = 'reflective',
-                                                    orientation='x')
+        hexprism = openmc.model.hexagonal_prism(edge_length=edge_length,
+                                                origin=(0.0, 0.0),
+                                                boundary_type = 'reflective',
+                                                orientation='x')
 
         pincell_only_lattice = openmc.HexLattice(name="regular fuel assembly")
         pincell_only_lattice.center = (0., 0.)

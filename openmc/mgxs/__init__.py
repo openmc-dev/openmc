@@ -7,6 +7,7 @@ from openmc.mgxs.mdgxs import *
 
 GROUP_STRUCTURES = {}
 """Dictionary of commonly used energy group structures:
+
 - "CASMO-X" (where X is 2, 4, 8, 16, 25, 40 or 70) from the CASMO_ lattice
   physics code
 - "XMAS-172_" designed for LWR analysis ([SAR1990]_, [SAN2004]_)
@@ -19,7 +20,7 @@ GROUP_STRUCTURES = {}
 .. _XMAS-172: https://www-nds.iaea.org/wimsd/energy.htm
 .. _SHEM-361: https://www.polymtl.ca/merlin/libraries.htm
 .. _activation: https://fispact.ukaea.uk/wiki/Keyword:GETXS
-.. _CCFE-709: https://fispact.ukaea.uk/wiki/CCFE-709_group_structure 
+.. _CCFE-709: https://fispact.ukaea.uk/wiki/CCFE-709_group_structure
 .. _UKAEA-1102: https://fispact.ukaea.uk/wiki/UKAEA-1102_group_structure
 .. [SAR1990] Sartori, E., OECD/NEA Data Bank: Standard Energy Group Structures
    of Cross Section Libraries for Reactor Shielding, Reactor Cell and Fusion

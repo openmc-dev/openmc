@@ -8,9 +8,9 @@ The following series of `Jupyter <https://jupyter.org/>`_ Notebooks provide
 examples for how to use various features of OpenMC by leveraging the
 :ref:`pythonapi`.
 
------------
-Basic Usage
------------
+-------------
+General Usage
+-------------
 
 .. toctree::
     :maxdepth: 1
@@ -21,11 +21,20 @@ Basic Usage
     tally-arithmetic
     expansion-filters
     search
-    triso
-    candu
     nuclear-data
     nuclear-data-resonance-covariance
     cad-geom
+
+--------
+Geometry
+--------
+
+.. toctree::
+    :maxdepth: 1
+
+    hexagonal
+    triso
+    candu
 
 ------------------------------------
 Multi-Group Cross Section Generation

@@ -139,10 +139,10 @@ class HexLatticeOXTestHarness(PyAPITestHarness):
 
         # a hex surface for the core to go inside of
 
-        hexprism = openmc.model.get_hexagonal_prism(edge_length=edge_length,
-                                                    origin=(0.0,  0.0),
-                                                    boundary_type='reflective',
-                                                    orientation='x')
+        hexprism = openmc.model.hexagonal_prism(edge_length=edge_length,
+                                                origin=(0.0,  0.0),
+                                                boundary_type='reflective',
+                                                orientation='x')
         region = hexprism & +fuel_bottom & -fuel_top
 
         inf_mat = openmc.Cell(cell_id=12)

@@ -276,9 +276,9 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
         read_dataset(fer_group, "delayed_neutrons", temp);
         q_nonu -= temp;
 
-        write_dataset(fer_group, "q_recoverable_nonu", q_nonu);
-         
-        fission_q_recov_ = read_function(fer_group, "q_recoverable_nonu");
+        // Read interpolation data (abscissa, ) from q_recoverable
+        // Use modified y-values
+        fission_q_recov_ = read_function(fer_group, "q_recoverable", &q_nonu);
 
         break;
     }

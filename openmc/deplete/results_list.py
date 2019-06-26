@@ -105,7 +105,7 @@ class ResultsList(list):
         return time, eigenvalue
 
     def get_depletion_time(self):
-        """Return an array of time spent depleting materials
+        """Return an array of the average time to deplete a material
 
         ..note::
 

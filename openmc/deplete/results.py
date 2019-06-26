@@ -48,7 +48,8 @@ class Results(object):
     data : numpy.ndarray
         Atom quantity, stored by stage, mat, then by nuclide.
     proc_time: int
-        Amount of process time spent depleting materials
+        Average time spent depleting a material across all
+        materials and processes
 
     """
     def __init__(self):
@@ -416,7 +417,9 @@ class Results(object):
         step_ind : int
             Step index.
         proc_time : float or None
-            time spent depleting materials.
+            Total process time spent depleting materials. This may
+            be process-dependent and will be reduced across MPI
+            processes.
 
         """
         # Get indexing terms

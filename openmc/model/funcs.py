@@ -3,6 +3,7 @@ from collections.abc import Iterable
 from math import sqrt
 from numbers import Real
 from functools import partial
+from warnings import warn
 
 from openmc import XPlane, YPlane, Plane, ZCylinder, Quadric
 from openmc.checkvalue import check_type, check_value
@@ -101,9 +102,13 @@ def borated_water(boron_ppm, temperature=293., pressure=0.1013, temp_unit='K',
     return out
 
 
-def get_rectangular_prism(width, height, axis='z', origin=(0., 0.),
-                          boundary_type='transmission', corner_radius=0.):
+def rectangular_prism(width, height, axis='z', origin=(0., 0.),
+                      boundary_type='transmission', corner_radius=0.):
     """Get an infinite rectangular prism from four planar surfaces.
+
+    .. versionchanged:: 0.11
+        This function was renamed from `get_rectangular_prism` to
+        `rectangular_prism`.
 
     Parameters
     ----------
@@ -202,9 +207,20 @@ def get_rectangular_prism(width, height, axis='z', origin=(0., 0.),
     return prism
 
 
-def get_hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
-                        boundary_type='transmission', corner_radius=0.):
+def get_rectangular_prism(*args, **kwargs):
+    warn("get_rectangular_prism(...) has been renamed rectangular_prism(...). "
+         "Future versions of OpenMC will not accept get_rectangular_prism.",
+         FutureWarning)
+    return rectangular_prism(*args, **kwargs)
+
+
+def hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
+                    boundary_type='transmission', corner_radius=0.):
     """Create a hexagon region from six surface planes.
+
+    .. versionchanged:: 0.11
+        This function was renamed from `get_hexagonal_prism` to
+        `hexagonal_prism`.
 
     Parameters
     ----------
@@ -344,6 +360,13 @@ def get_hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
         prism = prism & ~corners
 
     return prism
+
+
+def get_hexagonal_prism(*args, **kwargs):
+    warn("get_hexagonal_prism(...) has been renamed hexagonal_prism(...). "
+         "Future versions of OpenMC will not accept get_hexagonal_prism.",
+         FutureWarning)
+    return hexagonal_prism(*args, **kwargs)
 
 
 def cylinder_from_points(p1, p2, r, **kwargs):

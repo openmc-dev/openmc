@@ -204,9 +204,9 @@ def test_get_by_name():
 
 
 def test_hex_prism():
-    hex_prism = openmc.model.get_hexagonal_prism(edge_length=5.0,
-                                                 origin=(0.0, 0.0),
-                                                 orientation='y')
+    hex_prism = openmc.model.hexagonal_prism(edge_length=5.0,
+                                             origin=(0.0, 0.0),
+                                             orientation='y')
     # clear checks
     assert (0.0, 0.0, 0.0) in hex_prism
     assert (10.0, 10.0, 10.0) not in hex_prism
@@ -214,10 +214,10 @@ def test_hex_prism():
     assert (0.0, 5.01, 0.0) not in hex_prism
     assert (0.0, 4.99, 0.0) in hex_prism
 
-    rounded_hex_prism = openmc.model.get_hexagonal_prism(edge_length=5.0,
-                                                         origin=(0.0, 0.0),
-                                                         orientation='y',
-                                                         corner_radius=1.0)
+    rounded_hex_prism = openmc.model.hexagonal_prism(edge_length=5.0,
+                                                     origin=(0.0, 0.0),
+                                                     orientation='y',
+                                                     corner_radius=1.0)
 
     # clear checks
     assert (0.0, 0.0, 0.0) in rounded_hex_prism

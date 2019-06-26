@@ -10,7 +10,7 @@ from warnings import warn
 import numpy as np
 import h5py
 
-from . import comm, have_mpi, mpi_sum
+from . import comm, have_mpi, MPI
 from .reaction_rates import ReactionRates
 
 _VERSION_RESULTS = (1, 0)
@@ -452,7 +452,7 @@ class Results(object):
         results.power = power
         results.proc_time = proc_time
         if results.proc_time is not None:
-            results.proc_time = comm.reduce(proc_time, op=mpi_sum)
+            results.proc_time = comm.reduce(proc_time, op=MPI.SUM)
 
         results.export_to_hdf5("depletion_results.h5", step_ind)
 

@@ -167,4 +167,4 @@ def leqi(operator, timesteps, power=None, power_density=None, print_out=True):
 
         # Create results, write to disk
         Results.save(
-            operator, x, op_results, [t, t], p, i_res + len(timesteps), None)
+            operator, x, op_results, [t, t], p, i_res + len(timesteps))

@@ -69,8 +69,6 @@ def cecm(operator, timesteps, power=None, power_density=None, print_out=True):
 
         chain = operator.chain
 
-        proc_time = None
-
         for i, (dt, p) in enumerate(zip(timesteps, power)):
             # Get beginning-of-timestep concentrations and reaction rates
             # Avoid doing first transport run if already done in previous
@@ -122,4 +120,4 @@ def cecm(operator, timesteps, power=None, power_density=None, print_out=True):
         op_results = [operator(x[0], power[-1])]
 
         # Create results, write to disk
-        Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps), None)
+        Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps))

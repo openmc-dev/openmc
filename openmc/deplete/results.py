@@ -47,6 +47,8 @@ class Results(object):
         Number of stages in simulation.
     data : numpy.ndarray
         Atom quantity, stored by stage, mat, then by nuclide.
+    proc_time: int
+        Amount of process time spent depleting materials
 
     """
     def __init__(self):
@@ -247,7 +249,7 @@ class Results(object):
                               dtype='float64')
 
         handle.create_dataset(
-            "depletion time", (1, 1), maxshape=(None, 1),
+            "depletion time", (1,), maxshape=(None,),
             dtype="float64")
 
     def _to_hdf5(self, handle, index):
@@ -396,7 +398,7 @@ class Results(object):
         return results
 
     @staticmethod
-    def save(op, x, op_results, t, power, step_ind, proc_time):
+    def save(op, x, op_results, t, power, step_ind, proc_time=None):
         """Creates and writes depletion results to disk
 
         Parameters
@@ -413,7 +415,7 @@ class Results(object):
             Power during time step
         step_ind : int
             Step index.
-        proc_time: float or None
+        proc_time : float or None
             time spent depleting materials.
 
         """

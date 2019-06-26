@@ -88,7 +88,7 @@ def celi(operator, timesteps, power=None, power_density=None,
         op_results = [operator(x[0], power[-1])]
 
         # Create results, write to disk
-        Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps), None)
+        Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps))
 
 
 def celi_inner(operator, vec, p, i, i_res, t, dt, print_out):

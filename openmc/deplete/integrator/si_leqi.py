@@ -154,4 +154,4 @@ def si_leqi(operator, timesteps, power=None, power_density=None,
 
         # Create results for last point, write to disk
         Results.save(
-                operator, x, op_results, [t, t], p, i_res+len(timesteps), None)
+                operator, x, op_results, [t, t], p, i_res+len(timesteps))

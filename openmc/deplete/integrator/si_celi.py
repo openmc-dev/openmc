@@ -95,7 +95,7 @@ def si_celi(operator, timesteps, power=None, power_density=None,
 
         # Create results for last point, write to disk
         Results.save(
-            operator, x, op_results, [t, t], p, i_res + len(timesteps), None)
+            operator, x, op_results, [t, t], p, i_res + len(timesteps))
 
 
 def si_celi_inner(operator, x, op_results, p, i, i_res, t, dt, print_out, m=10):

@@ -96,6 +96,8 @@ private:
   std::size_t n_pairs_; //!< number of (x,y) pairs
   std::vector<double> x_; //!< values of abscissa
   std::vector<double> y_; //!< values of ordinate
+
+  void get_params(hid_t dset, xt::xarray<double> xs, xt::xarray<double> ys);
 };
 
 //==============================================================================

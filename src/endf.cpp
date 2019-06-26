@@ -131,32 +131,27 @@ double Polynomial::operator()(double x) const
 
 Tabulated1D::Tabulated1D(hid_t dset)
 {
-  read_attribute(dset, "breakpoints", nbt_);
-  n_regions_ = nbt_.size();
-
-  // Change 1-indexing to 0-indexing
-  for (auto& b : nbt_) --b;
-
-  std::vector<int> int_temp;
-  read_attribute(dset, "interpolation", int_temp);
-
-  // Convert vector of ints into Interpolation
-  for (const auto i : int_temp)
-    int_.push_back(int2interp(i));
-
   xt::xarray<double> arr;
   read_dataset(dset, arr);
 
   auto xs = xt::view(arr, 0);
   auto ys = xt::view(arr, 1);
 
-  std::copy(xs.begin(), xs.end(), std::back_inserter(x_));
-  std::copy(ys.begin(), ys.end(), std::back_inserter(y_));
-  n_pairs_ = x_.size();
+  this->get_params(dset, xs, ys);
 }
 
-Tabulated1D::Tabulated1D(hid_t dset, xt::xarray<double> y_arr)
+Tabulated1D::Tabulated1D(hid_t dset, xt::xarray<double> ys)
 {
+  xt::xarray<double> arr;
+  read_dataset(dset, arr);
+
+  auto xs = xt::view(arr, 0);
+  // Check size?
+
+  this->get_params(dset, xs, ys);
+}
+
+void Tabulated1D::get_params(hid_t dset, xt::xarray<double> xs, xt::xarray<double>ys) {
   read_attribute(dset, "breakpoints", nbt_);
   n_regions_ = nbt_.size();
 
@@ -170,15 +165,11 @@ Tabulated1D::Tabulated1D(hid_t dset, xt::xarray<double> y_arr)
   for (const auto i : int_temp)
     int_.push_back(int2interp(i));
 
-  xt::xarray<double> arr;
-  read_dataset(dset, arr);
-
-  auto xs = xt::view(arr, 0);
-  // Check size?
   std::copy(xs.begin(), xs.end(), std::back_inserter(x_));
-  std::copy(y_arr.begin(), y_arr.end(), std::back_inserter(y_));
+  std::copy(ys.begin(), ys.end(), std::back_inserter(y_));
   n_pairs_ = x_.size();
 }
+
 
 double Tabulated1D::operator()(double x) const
 {

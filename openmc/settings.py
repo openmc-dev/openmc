@@ -49,6 +49,11 @@ class Settings(object):
         Mesh to be used to calculate Shannon entropy. If the mesh dimensions are
         not specified. OpenMC assigns a mesh such that 20 source sites per mesh
         cell are to be expected on average.
+    fiss_edep_mode: {'local photon', 'local'}
+        Treatement for fission energy deposition. If ``local photon``, default,
+        then the energy from fission neutrons will be applied through the history,
+        not just at the fission site. Otherwise, deposit all fission energy at the
+        fission site.
     generations_per_batch : int
         Number of generations per batch
     inactive : int
@@ -182,6 +187,9 @@ class Settings(object):
 
         # Shannon entropy mesh
         self._entropy_mesh = None
+
+        # Fission energy deposition
+        self._fiss_edep_mode = None
 
         # Trigger subelement
         self._trigger_active = None
@@ -359,6 +367,10 @@ class Settings(object):
     @property
     def dagmc(self):
         return self._dagmc
+
+    @property
+    def fiss_edep_mode(self):
+        return self._fiss_edep_mode
 
     @run_mode.setter
     def run_mode(self, run_mode):
@@ -556,6 +568,10 @@ class Settings(object):
         cv.check_length('entropy mesh lower-left corner', entropy.lower_left, 3)
         cv.check_length('entropy mesh upper-right corner', entropy.upper_right, 3)
         self._entropy_mesh = entropy
+
+    @fiss_edep_mode.setter
+    def fiss_edep_mode(self, mode):
+        cv.check_value("fiss_edep_mode", fiss_edep_mode, ("local photon", "local"))
 
     @trigger_active.setter
     def trigger_active(self, trigger_active):

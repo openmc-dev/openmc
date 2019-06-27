@@ -359,7 +359,7 @@ class Results(object):
         if "depletion time" in handle:
             proc_time_dset = handle["/depletion time"]
             if step < proc_time_dset.shape[0]:
-                results.proc_time = proc_time_dset[step, :]
+                results.proc_time = proc_time_dset[step]
 
         if results.proc_time is None:
             results.proc_time = np.array([np.nan])

@@ -116,5 +116,5 @@ class ResultsList(list):
         """
         times = np.empty((len(self) - 1, 1))
         for ix, res in enumerate(self[:-1]):
-            times[ix] = res.proc_time[0]
+            times[ix] = res.proc_time
         return times

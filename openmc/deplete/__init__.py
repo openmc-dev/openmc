@@ -8,7 +8,7 @@ from sys import exit
 
 from h5py import get_config
 
-from unittest import Mock
+from unittest.mock import Mock
 
 from .dummy_comm import DummyCommunicator
 

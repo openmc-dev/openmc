@@ -3,6 +3,8 @@
 
 #include <string>
 
+#include <gsl/gsl>
+
 #include "openmc/tallies/filter.h"
 
 namespace openmc {
@@ -26,6 +28,10 @@ public:
 
   void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
+
+  void set_order(int order);
+
+  void set_cosine(gsl::cstring_span cosine);
 
   void to_statepoint(hid_t filter_group) const override;
 

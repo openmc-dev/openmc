@@ -8,8 +8,25 @@ void
 ParticleFilter::from_xml(pugi::xml_node node)
 {
   auto particles = get_node_array<int>(node, "bins");
+
+  // Convert to vector of Particle::Type
+  std::vector<Particle::Type> types;
   for (auto& p : particles) {
-    particles_.push_back(static_cast<Particle::Type>(p - 1));
+    types.push_back(static_cast<Particle::Type>(p - 1));
+  }
+  this->set_particles(types);
+}
+
+void
+ParticleFilter::set_particles(gsl::span<Particle::Type> particles)
+{
+  // Clear existing particles
+  particles_.clear();
+  particles_.reserve(particles.size());
+
+  // Set particles and number of bins
+  for (auto p : particles) {
+    particles_.push_back(p);
   }
   n_bins_ = particles_.size();
 }

@@ -12,23 +12,49 @@ namespace openmc {
 void
 SpatialLegendreFilter::from_xml(pugi::xml_node node)
 {
-  order_ = std::stoi(get_node_value(node, "order"));
+  this->set_order(std::stoi(get_node_value(node, "order")));
 
   auto axis = get_node_value(node, "axis");
-  if (axis == "x") {
-    axis_ = LegendreAxis::x;
-  } else if (axis == "y") {
-    axis_ = LegendreAxis::y;
-  } else if (axis == "z") {
-    axis_ = LegendreAxis::z;
-  } else {
-    fatal_error("Unrecognized axis on SpatialLegendreFilter");
+  switch (axis[0]) {
+  case 'x':
+    this->set_axis(LegendreAxis::x);
+    break;
+  case 'y':
+    this->set_axis(LegendreAxis::y);
+    break;
+  case 'z':
+    this->set_axis(LegendreAxis::z);
+    break;
+  default:
+    throw std::runtime_error{"Axis for SpatialLegendreFilter must be 'x', 'y', or 'z'"};
   }
 
-  min_ = std::stod(get_node_value(node, "min"));
-  max_ = std::stod(get_node_value(node, "max"));
+  double min = std::stod(get_node_value(node, "min"));
+  double max = std::stod(get_node_value(node, "max"));
+  this->set_minmax(min, max);
+}
 
+void
+SpatialLegendreFilter::set_order(int order)
+{
+  order_ = order;
   n_bins_ = order_ + 1;
+}
+
+void
+SpatialLegendreFilter::set_axis(LegendreAxis axis)
+{
+  axis_ = axis;
+}
+
+void
+SpatialLegendreFilter::set_minmax(double min, double max)
+{
+  if (max < min) {
+    throw std::invalid_argument{"Maximum value must be greater than minimum value"};
+  }
+  min_ = min;
+  max_ = max;
 }
 
 void
@@ -157,8 +183,7 @@ openmc_spatial_legendre_filter_set_order(int32_t index, int order)
   if (err) return err;
 
   // Update the filter.
-  filt->order_ = order;
-  filt->n_bins_ = order + 1;
+  filt->set_order(order);
   return 0;
 }
 
@@ -173,7 +198,7 @@ openmc_spatial_legendre_filter_set_params(int32_t index, const int* axis,
   if (err) return err;
 
   // Update the filter.
-  if (axis) filt->axis_ = static_cast<LegendreAxis>(*axis);
+  if (axis) filt->set_axis(static_cast<LegendreAxis>(*axis));
   if (min) filt->min_ = *min;
   if (max) filt->max_ = *max;
   return 0;

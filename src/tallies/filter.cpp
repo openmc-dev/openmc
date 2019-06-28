@@ -7,6 +7,7 @@
 #include "openmc/capi.h"
 #include "openmc/constants.h"  // for MAX_LINE_LEN;
 #include "openmc/error.h"
+#include "openmc/xml_interface.h"
 #include "openmc/tallies/filter_azimuthal.h"
 #include "openmc/tallies/filter_cell.h"
 #include "openmc/tallies/filter_cellborn.h"
@@ -50,8 +51,41 @@ namespace model {
 // Non-member functions
 //==============================================================================
 
-Filter*
-allocate_filter(const std::string& type)
+extern "C" size_t tally_filters_size()
+{
+  return model::tally_filters.size();
+}
+
+//==============================================================================
+// Filter implementation
+//==============================================================================
+
+Filter::Filter() : index_{model::tally_filters.size()}
+{ }
+
+Filter* Filter::create(pugi::xml_node node)
+{
+  // Copy filter id
+  if (!check_for_node(node, "id")) {
+    fatal_error("Must specify id for filter in tally XML file.");
+  }
+  int filter_id = std::stoi(get_node_value(node, "id"));
+
+  // Convert filter type to lower case
+  std::string s;
+  if (check_for_node(node, "type")) {
+    s = get_node_value(node, "type", true);
+  }
+
+  // Allocate according to the filter type
+  auto f = Filter::create(s, filter_id);
+
+  // Read filter data from XML
+  f->from_xml(node);
+  return f;
+}
+
+Filter* Filter::create(const std::string& type, int32_t id)
 {
   if (type == "azimuthal") {
     model::tally_filters.push_back(std::make_unique<AzimuthalFilter>());
@@ -100,12 +134,26 @@ allocate_filter(const std::string& type)
   } else {
     throw std::runtime_error{"Unknown filter type: " + type};
   }
+
+  // Assign ID
+  model::tally_filters.back()->set_id(id);
+
   return model::tally_filters.back().get();
 }
 
-extern "C" size_t tally_filters_size()
+void Filter::set_id(int32_t id)
 {
-  return model::tally_filters.size();
+  Expects(id >= 0);
+  if (model::filter_map.find(id) != model::filter_map.end()) {
+    throw std::runtime_error{"Two filters have the same ID: " + std::to_string(id)};
+  }
+
+  // Clear entry in filter map if an ID was already assigned before
+  if (id_ != -1) model::filter_map.erase(id_);
+
+  // Update ID and entry in filter map
+  id_ = id;
+  model::filter_map[id] = index_;
 }
 
 //==============================================================================
@@ -181,7 +229,7 @@ extern "C" int
 openmc_new_filter(const char* type, int32_t* index)
 {
   *index = model::tally_filters.size();
-  allocate_filter(type);
+  Filter::create(type);
   return 0;
 }
 

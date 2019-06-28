@@ -56,6 +56,12 @@ public:
   //! \param[in] dset Dataset containing coefficients
   explicit Polynomial(hid_t dset);
 
+  //! Construct polynomial given coefficients
+  //! \param[in] coeffs Polynomial coefficients for increasing powers
+  explicit Polynomial(std::vector<double> coeffs) {
+    coef_ = coeffs;
+  }
+
   //! Evaluate the polynomials
   //! \param[in] x independent variable
   //! \return Polynomial evaluated at x

@@ -49,8 +49,8 @@ class TransportOperator(metaclass=ABCMeta):
         Path to the depletion chain XML file.  Defaults to the file
         listed under ``depletion_chain`` in
         :envvar:`OPENMC_CROSS_SECTIONS` environment variable.
-    fiss_q_values : dict, optional
-        Dictionary of nuclides and their fission q values [eV]. If not given,
+    fission_q : dict, optional
+        Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``.
 
     Attributes
@@ -61,7 +61,7 @@ class TransportOperator(metaclass=ABCMeta):
         nuclides with reaction rates. Defaults to 1.0e3.
 
     """
-    def __init__(self, chain_file=None, fiss_q_values=None):
+    def __init__(self, chain_file=None, fission_q=None):
         self.dilute_initial = 1.0e3
         self.output_dir = '.'
 
@@ -84,7 +84,7 @@ class TransportOperator(metaclass=ABCMeta):
                 warn("Use of OPENMC_DEPLETE_CHAIN is deprecated in favor "
                      "of adding depletion_chain to OPENMC_CROSS_SECTIONS",
                      FutureWarning)
-        self.chain = Chain.from_xml(chain_file, fiss_q_values)
+        self.chain = Chain.from_xml(chain_file, fission_q)
 
     @abstractmethod
     def __call__(self, vec, print_out=True):

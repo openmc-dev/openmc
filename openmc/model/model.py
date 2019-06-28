@@ -124,7 +124,7 @@ class Model(object):
                 self._plots.append(plot)
 
     def deplete(self, timesteps, chain_file=None, method='cecm',
-                fiss_q_values=None, **kwargs):
+                fission_q=None, **kwargs):
         """Deplete model using specified timesteps/power
 
         Parameters
@@ -138,8 +138,8 @@ class Model(object):
             :envvar:`OPENMC_CROSS_SECTIONS` environment variable if it exists.
         method : str
              Integration method used for depletion (e.g., 'cecm', 'predictor')
-        fiss_q_values : dict, optional
-            Dictionary of nuclides and their fission q values [eV].
+        fission_q : dict, optional
+            Dictionary of nuclides and their fission Q values [eV].
             If not given, values will be pulled from the ``chain_file``.
         **kwargs
             Keyword arguments passed to integration function (e.g.,
@@ -154,7 +154,7 @@ class Model(object):
         # Create OpenMC transport operator
         op = dep.Operator(
             self.geometry, self.settings, chain_file,
-            fiss_q_values=fiss_q_values,
+            fission_q=fission_q,
         )
 
         # Perform depletion

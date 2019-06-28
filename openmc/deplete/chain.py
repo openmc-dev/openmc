@@ -314,30 +314,30 @@ class Chain(object):
         return chain
 
     @classmethod
-    def from_xml(cls, filename, fiss_q_values=None):
+    def from_xml(cls, filename, fission_q=None):
         """Reads a depletion chain XML file.
 
         Parameters
         ----------
         filename : str
             The path to the depletion chain XML file.
-        fiss_q_values : dict, optional
-            Dictionary of nuclides and their fission q values [eV].
+        fission_q : dict, optional
+            Dictionary of nuclides and their fission Q values [eV].
             If not given, values will be pulled from ``filename``
 
         """
         chain = cls()
 
-        if fiss_q_values is not None:
-            check_type("fiss_q_values", fiss_q_values, Mapping)
+        if fission_q is not None:
+            check_type("fission_q", fission_q, Mapping)
         else:
-            fiss_q_values = {}
+            fission_q = {}
 
         # Load XML tree
         root = ET.parse(str(filename))
 
         for i, nuclide_elem in enumerate(root.findall('nuclide')):
-            this_q = fiss_q_values.get(nuclide_elem.get("name"), None)
+            this_q = fission_q.get(nuclide_elem.get("name"))
 
             nuc = Nuclide.from_xml(nuclide_elem, this_q)
             chain.nuclide_dict[nuc.name] = i

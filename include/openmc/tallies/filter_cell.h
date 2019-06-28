@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <gsl/gsl>
+
 #include "openmc/tallies/filter.h"
 
 namespace openmc {
@@ -22,10 +24,10 @@ public:
 
   void from_xml(pugi::xml_node node) override;
 
-  void initialize() override;
-
   void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
+
+  void set_cells(gsl::span<int32_t> cells);
 
   void to_statepoint(hid_t filter_group) const override;
 

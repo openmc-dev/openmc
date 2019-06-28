@@ -7,6 +7,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <gsl/gsl>
+
 #include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"
 #include "pugixml.hpp"
@@ -43,6 +45,23 @@ namespace openmc {
 class Filter
 {
 public:
+  // Default constructor
+  Filter();
+
+  //! Create a new tally filter
+  //
+  //! \param[in] type  Type of the filter
+  //! \param[in] id  Unique ID for the filter. If none is passed, an ID is
+  //!    automatically assigned
+  //! \return Pointer to the new filter object
+  static Filter* create(const std::string& type, int32_t id = -1);
+
+  //! Create a new tally filter from an XML node
+  //
+  //! \param[in] node XML node
+  //! \return Pointer to the new filter object
+  static Filter* create(pugi::xml_node node);
+
   virtual ~Filter() = default;
 
   virtual std::string type() const = 0;
@@ -56,6 +75,13 @@ public:
   //!   weights; note that there may be zero matching bins
   virtual void
   get_all_bins(const Particle* p, int estimator, FilterMatch& match) const = 0;
+
+  //! Assign a unique ID to the filter
+  //
+  //! \param[in]  Unique ID to assign
+  void set_id(int32_t id);
+
+  gsl::index index() const { return index_; }
 
   //! Writes data describing this filter to an HDF5 statepoint group.
   virtual void
@@ -71,11 +97,11 @@ public:
   //! "Incoming Energy [0.625E-6, 20.0)".
   virtual std::string text_label(int bin) const = 0;
 
-  virtual void initialize() {}
-
-  int32_t id_;
+  int32_t id_ {-1};
 
   int n_bins_;
+private:
+  gsl::index index_;
 };
 
 //==============================================================================
@@ -98,8 +124,6 @@ namespace model {
 //==============================================================================
 // Non-member functions
 //==============================================================================
-
-Filter* allocate_filter(const std::string& type);
 
 //! Make sure index corresponds to a valid filter
 int verify_filter(int32_t index);

@@ -614,36 +614,7 @@ void read_tallies_xml()
 
   // Check for user filters and allocate
   for (auto node_filt : root.children("filter")) {
-    // Copy filter id
-    if (!check_for_node(node_filt, "id")) {
-      fatal_error("Must specify id for filter in tally XML file.");
-    }
-    int filter_id = std::stoi(get_node_value(node_filt, "id"));
-
-    // Check to make sure 'id' hasn't been used
-    if (model::filter_map.find(filter_id) != model::filter_map.end()) {
-      fatal_error("Two or more filters use the same unique ID: "
-        + std::to_string(filter_id));
-    }
-
-    // Convert filter type to lower case
-    std::string s;
-    if (check_for_node(node_filt, "type")) {
-      s = get_node_value(node_filt, "type", true);
-    }
-
-    // Allocate according to the filter type
-    Filter* f = allocate_filter(s);
-
-    // Read filter data from XML
-    f->from_xml(node_filt);
-
-    // Set filter id
-    f->id_ = filter_id;
-    model::filter_map[filter_id] = model::tally_filters.size() - 1;
-
-    // Initialize filter
-    f->initialize();
+    auto f = Filter::create(node_filt);
   }
 
   // ==========================================================================

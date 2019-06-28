@@ -24,6 +24,8 @@ public:
   void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
 
+  void set_particles(gsl::span<Particle::Type> particles);
+
   void to_statepoint(hid_t filter_group) const override;
 
   std::string text_label(int bin) const override;

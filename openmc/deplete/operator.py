@@ -73,8 +73,8 @@ class Operator(TransportOperator):
         in the previous results.
     diff_burnable_mats : bool, optional
         Whether to differentiate burnable materials with multiple instances
-    fiss_q_values : dict, optional
-        Dictionary of nuclides and their fission q values [eV]. If not given,
+    fission_q : dict, optional
+        Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``.
 
     Attributes
@@ -113,8 +113,8 @@ class Operator(TransportOperator):
 
     """
     def __init__(self, geometry, settings, chain_file=None, prev_results=None,
-                 diff_burnable_mats=False, fiss_q_values=None):
-        super().__init__(chain_file, fiss_q_values)
+                 diff_burnable_mats=False, fission_q=None):
+        super().__init__(chain_file, fission_q)
         self.round_number = False
         self.settings = settings
         self.geometry = geometry

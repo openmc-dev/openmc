@@ -112,14 +112,14 @@ class Nuclide(object):
         return len(self.reactions)
 
     @classmethod
-    def from_xml(cls, element, fiss_q=None):
+    def from_xml(cls, element, fission_q=None):
         """Read nuclide from an XML element.
 
         Parameters
         ----------
         element : xml.etree.ElementTree.Element
             XML element to write nuclide data to
-        fiss_q : None or float
+        fission_q : None or float
             User-supplied fission Q value [eV].
             Will be read from the element if not given
 
@@ -156,8 +156,8 @@ class Nuclide(object):
                 target = reaction_elem.get('target')
             else:
                 target = None
-                if fiss_q is not None:
-                    Q = fiss_q
+                if fission_q is not None:
+                    Q = fission_q
 
             # Append reaction
             nuc.reactions.append(ReactionTuple(

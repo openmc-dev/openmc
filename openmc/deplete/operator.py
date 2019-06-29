@@ -73,6 +73,9 @@ class Operator(TransportOperator):
         in the previous results.
     diff_burnable_mats : bool, optional
         Whether to differentiate burnable materials with multiple instances
+    fission_q : dict, optional
+        Dictionary of nuclides and their fission Q values [eV]. If not given,
+        values will be pulled from the ``chain_file``.
 
     Attributes
     ----------
@@ -110,14 +113,14 @@ class Operator(TransportOperator):
 
     """
     def __init__(self, geometry, settings, chain_file=None, prev_results=None,
-                 diff_burnable_mats=False):
-        super().__init__(chain_file)
+                 diff_burnable_mats=False, fission_q=None):
+        super().__init__(chain_file, fission_q)
         self.round_number = False
         self.settings = settings
         self.geometry = geometry
         self.diff_burnable_mats = diff_burnable_mats
 
-        if prev_results != None:
+        if prev_results is not None:
             # Reload volumes into geometry
             prev_results[-1].transfer_volumes(geometry)
 
@@ -148,7 +151,6 @@ class Operator(TransportOperator):
         # Create reaction rates array
         self.reaction_rates = ReactionRates(
             self.local_mats, self._burnable_nucs, self.chain.reactions)
-
 
     def __call__(self, vec, power, print_out=True):
         """Runs a simulation.

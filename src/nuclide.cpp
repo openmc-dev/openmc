@@ -260,6 +260,14 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
         fission_q_recov_ = read_function(fer_group, "q_recoverable");
         break;
       case FISS_EDEP_LOCAL_PHOTON :
+        // Check interpolation scheme
+        // If polynomial, read in and operate on all coefficients
+        // Otherwise, operate on second row of data, the abscissa
+        hid_t recov_group = open_dataset(fer_group, "q_recoverable");
+        std::str func_type;
+        read_attribute(recov_group, "type", func_type);
+        close_dataset(recov_group);
+
         // Create dataset containing recoverable fission energy
         // without prompt and delayed neutrons
 
@@ -271,10 +279,18 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
         // Subtract out energy from prompt and delayed neutrons
         
         read_dataset(fer_group, "prompt_neutrons", temp);
-        q_nonu -= temp;
+        if (func_type == "Tabulated1D") {
+          q_nonu[1] -= temp[1];
+        } else {
+          q_nonu -= temp;
+        }
 
         read_dataset(fer_group, "delayed_neutrons", temp);
-        q_nonu -= temp;
+        if (func_type == "Tabulated1D") {
+          q_nonu[1] -= temp[1];
+        } else {
+          q_nonu -= temp;
+        }
 
         // Read interpolation data (abscissa, ) from q_recoverable
         // Use modified y-values

@@ -423,7 +423,8 @@ class Decay(EqualityMixin):
                         if spectrum['type'] == 'ec/beta+':
                             di['positron_intensity'] = ufloat(*values[4:6])
                         elif spectrum['type'] == 'gamma':
-                            di['internal_pair'] = ufloat(*values[4:6])
+                            if len(values) >= 6:
+                                di['internal_pair'] = ufloat(*values[4:6])
                             if len(values) >= 8:
                                 di['total_internal_conversion'] = ufloat(*values[6:8])
                             if len(values) == 12:

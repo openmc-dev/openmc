@@ -774,7 +774,7 @@ void Material::calculate_neutron_xs(Particle& p) const
 
         // If particle energy is greater than the highest energy for the
         // S(a,b) table, then don't use the S(a,b) table
-        if (p.E_ > data::thermal_scatt[i_sab]->threshold()) i_sab = C_NONE;
+        if (p.E_ > data::thermal_scatt[i_sab]->energy_max_) i_sab = C_NONE;
 
         // Increment position in thermal_tables_
         ++j;

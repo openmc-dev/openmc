@@ -1,6 +1,8 @@
 from collections.abc import Iterable
+from collections import namedtuple
 from difflib import get_close_matches
 from numbers import Real
+from io import StringIO
 import itertools
 import os
 import re
@@ -13,13 +15,16 @@ import h5py
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
 from openmc.stats import Discrete, Tabular
-from . import HDF5_VERSION, HDF5_VERSION_MAJOR
+from . import HDF5_VERSION, HDF5_VERSION_MAJOR, endf
 from .data import K_BOLTZMANN, ATOMIC_SYMBOL, EV_PER_MEV, NATURAL_ABUNDANCE
 from .ace import Table, get_table, Library
 from .angle_energy import AngleEnergy
-from .function import Tabulated1D
-from .correlated import CorrelatedAngleEnergy
+from .function import Tabulated1D, Function1D
 from .njoy import make_ace_thermal
+from .thermal_angle_energy import (CoherentElasticAE, IncoherentElasticAE,
+                                   IncoherentElasticAEDiscrete,
+                                   IncoherentInelasticAEDiscrete,
+                                   IncoherentInelasticAE)
 
 
 _THERMAL_NAMES = {
@@ -69,6 +74,12 @@ _THERMAL_NAMES = {
 }
 
 
+def _temperature_str(T):
+    # round() normally returns an int when called with a single argument, but
+    # numpy floats overload rounding to return another float
+    return "{}K".format(int(round(T)))
+
+
 def get_thermal_name(name):
     """Get proper S(a,b) table name, e.g. 'HH2O' -> 'c_H_in_H2O'
 
@@ -110,31 +121,40 @@ def get_thermal_name(name):
                         break
 
             warn('Thermal scattering material "{}" is not recognized. '
-                    'Assigning a name of {}.'.format(name, match))
+                 'Assigning a name of {}.'.format(name, match))
             return match
         else:
             # OK, we give up. Just use the ACE name.
             warn('Thermal scattering material "{0}" is not recognized. '
-                    'Assigning a name of c_{0}.'.format(name))
+                 'Assigning a name of c_{0}.'.format(name))
             return 'c_' + name
 
 
-class CoherentElastic(EqualityMixin):
+class CoherentElastic(Function1D):
     r"""Coherent elastic scattering data from a crystalline material
+
+    The integrated cross section for coherent elastic scattering from a
+    powdered crystalline material may be represented as:
+
+    .. math::
+        \sigma(E,T) = \frac{1}{E} \sum\limits_{i=1}^{E_i < E} s_i(T)
+
+    where :math:`s_i(T)` is proportional the structure factor in [eV-b] at
+    the moderator temperature :math:`T` in Kelvin.
 
     Parameters
     ----------
     bragg_edges : Iterable of float
         Bragg edge energies in eV
     factors : Iterable of float
-        Partial sum of structure factors, :math:`\sum\limits_{i=1}^{E_i<E} S_i`
+        Partial sum of structure factors, :math:`\sum\limits_{i=1}^{E_i<E} s_i`
 
     Attributes
     ----------
     bragg_edges : Iterable of float
         Bragg edge energies in eV
     factors : Iterable of float
-        Partial sum of structure factors, :math:`\sum\limits_{i=1}^{E_i<E} S_i`
+        Partial sum of structure factors, :math:`\sum\limits_{i=1}^{E_i<E} s_i`
 
     """
 
@@ -143,10 +163,15 @@ class CoherentElastic(EqualityMixin):
         self.factors = factors
 
     def __call__(self, E):
+        idx = np.searchsorted(self.bragg_edges, E) - 1
         if isinstance(E, Iterable):
             E = np.asarray(E)
-        idx = np.searchsorted(self.bragg_edges, E)
-        return self.factors[idx] / E
+            nonzero = idx >= 0
+            xs = np.zeros_like(E)
+            xs[nonzero] = self.factors[idx[nonzero]] / E[nonzero]
+            return xs
+        else:
+            return self.factors[idx] / E if idx >= 0 else 0.0
 
     def __len__(self):
         return len(self.bragg_edges)
@@ -183,7 +208,7 @@ class CoherentElastic(EqualityMixin):
         """
         dataset = group.create_dataset(name, data=np.vstack(
             [self.bragg_edges, self.factors]))
-        dataset.attrs['type'] = np.string_('bragg')
+        dataset.attrs['type'] = np.string_(type(self).__name__)
 
     @classmethod
     def from_hdf5(cls, dataset):
@@ -191,8 +216,8 @@ class CoherentElastic(EqualityMixin):
 
         Parameters
         ----------
-        group : h5py.Dataset
-            HDF5 group to write to
+        dataset : h5py.Dataset
+            HDF5 dataset to read from
 
         Returns
         -------
@@ -203,6 +228,152 @@ class CoherentElastic(EqualityMixin):
         bragg_edges = dataset[0, :]
         factors = dataset[1, :]
         return cls(bragg_edges, factors)
+
+
+class IncoherentElastic(Function1D):
+    r"""Incoherent elastic scattering cross section
+
+    Elastic scattering can be treated in the incoherent approximation for
+    partially ordered systems such as ZrHx and polyethylene. The integrated
+    cross section can be obtained as:
+
+    .. math::
+        \sigma(E,T) = \frac{\sigma_b}{2} \left ( \frac{1 - e^{-4EW'(T)}}
+        {2EW'(T)} \right )
+
+    where :math:`\sigma_b` is the characteristic bound cross section, and
+    :math:`W'(T)` is the Debye-Waller integral divided by the atomic mass
+    in [eV\ :math:`^{-1}`].
+
+    Parameters
+    ----------
+    bound_xs : float
+        Characteristic bound cross section in [b]
+    debye_waller : float
+        Debye-Waller integral in [eV\ :math:`^{-1}`]
+
+    Attributes
+    ----------
+    bound_xs : float
+        Characteristic bound cross section in [b]
+    debye_waller : float
+        Debye-Waller integral in [eV\ :math:`^{-1}`]
+
+    """
+    def __init__(self, bound_xs, debye_waller):
+        self.bound_xs = bound_xs
+        self.debye_waller = debye_waller
+
+    def __call__(self, E):
+        W = self.debye_waller
+        return self.bound_xs / 2.0 * (1 - np.exp(-4*E*W)) / (2*E*W)
+
+    def to_hdf5(self, group, name):
+        """Write incoherent elastic scattering to an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+        name : str
+            Name of the dataset to create
+
+        """
+        data = np.array([self.bound_xs, self.debye_waller])
+        dataset = group.create_dataset(name, data=data)
+        dataset.attrs['type'] = np.string_(type(self).__name__)
+
+    @classmethod
+    def from_hdf5(cls, dataset):
+        """Read incoherent elastic scattering from an HDF5 dataset
+
+        Parameters
+        ----------
+        dataset : h5py.Dataset
+            HDF5 dataset to read from
+
+        Returns
+        -------
+        openmc.data.IncoherentElastic
+            Incoherent elastic scattering cross section
+
+        """
+        bound_xs, debye_waller = dataset[()]
+        return cls(bound_xs, debye_waller)
+
+
+class ThermalScatteringReaction(EqualityMixin):
+    r"""Thermal scattering reaction
+
+    This class is used to hold the integral and differential cross sections
+    for either elastic or inelastic thermal scattering.
+
+    Parameters
+    ----------
+    xs : dict of str to Function1D
+        Integral cross section at each temperature
+    distribution : dict of str to AngleEnergy
+        Secondary angle-energy distribution at each temperature
+
+    Attributes
+    ----------
+    xs : dict of str to Function1D
+        Integral cross section at each temperature
+    distribution : dict of str to AngleEnergy
+        Secondary angle-energy distribution at each temperature
+
+    """
+    def __init__(self, xs, distribution):
+        self.xs = xs
+        self.distribution = distribution
+
+    def to_hdf5(self, group, name):
+        """Write thermal scattering reaction to HDF5
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+        name : {'elastic', 'inelastic'}
+            Name of reaction to write
+
+        """
+        for T, xs in self.xs.items():
+            Tgroup = group.require_group(T)
+            rx_group = Tgroup.create_group(name)
+            xs.to_hdf5(rx_group, 'xs')
+            dgroup = rx_group.create_group('distribution')
+            self.distribution[T].to_hdf5(dgroup)
+
+    @classmethod
+    def from_hdf5(cls, group, name, temperatures):
+        """Generate thermal scattering reaction data from HDF5
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to read from
+        name : {'elastic', 'inelastic'}
+            Name of the reaction to read
+        temperatures : Iterable of str
+            Temperatures to read
+
+        Returns
+        -------
+        openmc.data.ThermalScatteringReaction
+            Thermal scattering reaction data
+
+        """
+        xs = {}
+        distribution = {}
+        for T in temperatures:
+            rx_group = group[T][name]
+            xs[T] = Function1D.from_hdf5(rx_group['xs'])
+            if isinstance(xs[T], CoherentElastic):
+                distribution[T] = CoherentElasticAE(xs[T])
+            else:
+                distribution[T] = AngleEnergy.from_hdf5(rx_group['distribution'])
+        return cls(xs, distribution)
 
 
 class ThermalScattering(EqualityMixin):
@@ -223,10 +394,11 @@ class ThermalScattering(EqualityMixin):
     ----------
     atomic_weight_ratio : float
         Atomic mass ratio of the target nuclide.
-    elastic_xs : openmc.data.Tabulated1D or openmc.data.CoherentElastic
-        Elastic scattering cross section derived in the coherent or incoherent
-        approximation
-    inelastic_xs : openmc.data.Tabulated1D
+    energy_max : float
+        Maximum energy for thermal scattering data in [eV]
+    elastic : openmc.data.ThermalScatteringReaction or None
+        Elastic scattering derived in the coherent or incoherent approximation
+    inelastic : openmc.data.ThermalScatteringReaction
         Inelastic scattering cross section derived in the incoherent
         approximation
     name : str
@@ -243,28 +415,24 @@ class ThermalScattering(EqualityMixin):
 
     """
 
-    def __init__(self, name, atomic_weight_ratio, kTs):
+    def __init__(self, name, atomic_weight_ratio, energy_max, kTs):
         self.name = name
         self.atomic_weight_ratio = atomic_weight_ratio
+        self.energy_max = energy_max
         self.kTs = kTs
-        self.elastic_xs = {}
-        self.elastic_mu_out = {}
-        self.inelastic_xs = {}
-        self.inelastic_e_out = {}
-        self.inelastic_mu_out = {}
-        self.inelastic_dist = {}
-        self.secondary_mode = None
+        self.elastic = None
+        self.inelastic = None
         self.nuclides = []
 
     def __repr__(self):
         if hasattr(self, 'name'):
-            return "<Thermal Scattering Data: {0}>".format(self.name)
+            return "<Thermal Scattering Data: {}>".format(self.name)
         else:
             return "<Thermal Scattering Data>"
 
     @property
     def temperatures(self):
-        return ["{}K".format(int(round(kT / K_BOLTZMANN))) for kT in self.kTs]
+        return [_temperature_str(kT / K_BOLTZMANN) for kT in self.kTs]
 
     def export_to_hdf5(self, path, mode='a', libver='earliest'):
         """Export table to an HDF5 file.
@@ -282,43 +450,23 @@ class ThermalScattering(EqualityMixin):
 
         """
         # Open file and write version
-        f = h5py.File(str(path), mode, libver=libver)
-        f.attrs['filetype'] = np.string_('data_thermal')
-        f.attrs['version'] = np.array(HDF5_VERSION)
+        with h5py.File(str(path), mode, libver=libver) as f:
+            f.attrs['filetype'] = np.string_('data_thermal')
+            f.attrs['version'] = np.array(HDF5_VERSION)
 
-        # Write basic data
-        g = f.create_group(self.name)
-        g.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
-        g.attrs['nuclides'] = np.array(self.nuclides, dtype='S')
-        g.attrs['secondary_mode'] = np.string_(self.secondary_mode)
-        ktg = g.create_group('kTs')
-        for i, temperature in enumerate(self.temperatures):
-            ktg.create_dataset(temperature, data=self.kTs[i])
+            # Write basic data
+            g = f.create_group(self.name)
+            g.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
+            g.attrs['energy_max'] = self.energy_max
+            g.attrs['nuclides'] = np.array(self.nuclides, dtype='S')
+            ktg = g.create_group('kTs')
+            for i, temperature in enumerate(self.temperatures):
+                ktg.create_dataset(temperature, data=self.kTs[i])
 
-        for T in self.temperatures:
-            Tg = g.create_group(T)
-            # Write thermal elastic scattering
-            if self.elastic_xs:
-                elastic_group = Tg.create_group('elastic')
-
-                self.elastic_xs[T].to_hdf5(elastic_group, 'xs')
-                if self.elastic_mu_out:
-                    elastic_group.create_dataset('mu_out',
-                                                 data=self.elastic_mu_out[T])
-
-            # Write thermal inelastic scattering
-            if self.inelastic_xs:
-                inelastic_group = Tg.create_group('inelastic')
-                self.inelastic_xs[T].to_hdf5(inelastic_group, 'xs')
-                if self.secondary_mode in ('equal', 'skewed'):
-                    inelastic_group.create_dataset('energy_out',
-                                                   data=self.inelastic_e_out[T])
-                    inelastic_group.create_dataset('mu_out',
-                                                   data=self.inelastic_mu_out[T])
-                elif self.secondary_mode == 'continuous':
-                    self.inelastic_dist[T].to_hdf5(inelastic_group)
-
-        f.close()
+            # Write elastic/inelastic reaction data
+            if self.elastic is not None:
+                self.elastic.to_hdf5(g, 'elastic')
+            self.inelastic.to_hdf5(g, 'inelastic')
 
     def add_temperature_from_ace(self, ace_or_filename, name=None):
         """Add data to the ThermalScattering object from an ACE file at a
@@ -356,20 +504,14 @@ class ThermalScattering(EqualityMixin):
         self.kTs += data.kTs
 
         # Add inelastic cross section and distributions
-        if strT in data.inelastic_xs:
-            self.inelastic_xs[strT] = data.inelastic_xs[strT]
-        if strT in data.inelastic_e_out:
-            self.inelastic_e_out[strT] = data.inelastic_e_out[strT]
-        if strT in data.inelastic_mu_out:
-            self.inelastic_mu_out[strT] = data.inelastic_mu_out[strT]
-        if strT in data.inelastic_dist:
-            self.inelastic_dist[strT] = data.inelastic_dist[strT]
+        if data.inelastic is not None:
+            self.inelastic.xs.update(data.inelastic.xs)
+            self.inelastic.distribution.update(data.inelastic.distribution)
 
         # Add elastic cross sectoin and angular distribution
-        if strT in data.elastic_xs:
-            self.elastic_xs[strT] = data.elastic_xs[strT]
-        if strT in data.elastic_mu_out:
-            self.elastic_mu_out[strT] = data.elastic_mu_out[strT]
+        if data.elastic is not None:
+            self.elastic.xs.update(data.elastic.xs)
+            self.elastic.distribution.update(data.elastic.distribution)
 
     @classmethod
     def from_hdf5(cls, group_or_filename):
@@ -411,46 +553,23 @@ class ThermalScattering(EqualityMixin):
 
         name = group.name[1:]
         atomic_weight_ratio = group.attrs['atomic_weight_ratio']
+        energy_max = group.attrs['energy_max']
         kTg = group['kTs']
-        kTs = []
-        for temp in kTg:
-            kTs.append(kTg[temp][()])
-        temperatures = [str(int(round(kT / K_BOLTZMANN))) + "K" for kT in kTs]
+        kTs = [dataset[()] for dataset in kTg.values()]
 
-        table = cls(name, atomic_weight_ratio, kTs)
+        table = cls(name, atomic_weight_ratio, energy_max, kTs)
         table.nuclides = [nuc.decode() for nuc in group.attrs['nuclides']]
-        table.secondary_mode = group.attrs['secondary_mode'].decode()
 
         # Read thermal elastic scattering
-        for T in temperatures:
-            Tgroup = group[T]
-            if 'elastic' in Tgroup:
-                elastic_group = Tgroup['elastic']
+        if 'elastic' in group[table.temperatures[0]]:
+            table.elastic = ThermalScatteringReaction.from_hdf5(
+                group, 'elastic', table.temperatures
+            )
 
-                # Cross section
-                elastic_xs_type = elastic_group['xs'].attrs['type'].decode()
-                if elastic_xs_type == 'Tabulated1D':
-                    table.elastic_xs[T] = Tabulated1D.from_hdf5(
-                        elastic_group['xs'])
-                elif elastic_xs_type == 'bragg':
-                    table.elastic_xs[T] = CoherentElastic.from_hdf5(
-                        elastic_group['xs'])
-
-                # Angular distribution
-                if 'mu_out' in elastic_group:
-                    table.elastic_mu_out[T] = elastic_group['mu_out'][()]
-
-            # Read thermal inelastic scattering
-            if 'inelastic' in Tgroup:
-                inelastic_group = Tgroup['inelastic']
-                table.inelastic_xs[T] = Tabulated1D.from_hdf5(
-                    inelastic_group['xs'])
-                if table.secondary_mode in ('equal', 'skewed'):
-                    table.inelastic_e_out[T] = inelastic_group['energy_out'][()]
-                    table.inelastic_mu_out[T] = inelastic_group['mu_out'][()]
-                elif table.secondary_mode == 'continuous':
-                    table.inelastic_dist[T] = AngleEnergy.from_hdf5(
-                        inelastic_group)
+        # Read thermal inelastic scattering
+        table.inelastic = ThermalScatteringReaction.from_hdf5(
+            group, 'inelastic', table.temperatures
+        )
 
         return table
 
@@ -485,41 +604,30 @@ class ThermalScattering(EqualityMixin):
 
         # Assign temperature to the running list
         kTs = [ace.temperature*EV_PER_MEV]
-        temperatures = [str(int(round(ace.temperature*EV_PER_MEV
-                                      / K_BOLTZMANN))) + "K"]
-
-        table = cls(name, ace.atomic_weight_ratio, kTs)
 
         # Incoherent inelastic scattering cross section
         idx = ace.jxs[1]
         n_energy = int(ace.xss[idx])
         energy = ace.xss[idx+1 : idx+1+n_energy]*EV_PER_MEV
         xs = ace.xss[idx+1+n_energy : idx+1+2*n_energy]
-        table.inelastic_xs[temperatures[0]] = Tabulated1D(energy, xs)
+        inelastic_xs = Tabulated1D(energy, xs)
+        energy_max = energy[-1]
 
-        if ace.nxs[7] == 0:
-            table.secondary_mode = 'equal'
-        elif ace.nxs[7] == 1:
-            table.secondary_mode = 'skewed'
-        elif ace.nxs[7] == 2:
-            table.secondary_mode = 'continuous'
-
+        # Incoherent inelastic angle-energy distribution
+        continuous = (ace.nxs[7] == 2)
         n_energy_out = ace.nxs[4]
-        if table.secondary_mode in ('equal', 'skewed'):
+        if not continuous:
             n_mu = ace.nxs[3]
             idx = ace.jxs[3]
-            table.inelastic_e_out[temperatures[0]] = \
-                ace.xss[idx:idx + n_energy * n_energy_out * (n_mu + 2):
-                        n_mu + 2]*EV_PER_MEV
-            table.inelastic_e_out[temperatures[0]].shape = \
-                (n_energy, n_energy_out)
+            energy_out = ace.xss[idx:idx + n_energy * n_energy_out *
+                (n_mu + 2): n_mu + 2]*EV_PER_MEV
+            energy_out.shape = (n_energy, n_energy_out)
 
-            table.inelastic_mu_out[temperatures[0]] = \
-                ace.xss[idx:idx + n_energy * n_energy_out * (n_mu + 2)]
-            table.inelastic_mu_out[temperatures[0]].shape = \
-                (n_energy, n_energy_out, n_mu+2)
-            table.inelastic_mu_out[temperatures[0]] = \
-                table.inelastic_mu_out[temperatures[0]][:, :, 1:]
+            mu_out = ace.xss[idx:idx + n_energy * n_energy_out * (n_mu + 2)]
+            mu_out.shape = (n_energy, n_energy_out, n_mu+2)
+            mu_out = mu_out[:, :, 1:]
+            skewed = (ace.nxs[7] == 1)
+            distribution = IncoherentInelasticAEDiscrete(energy_out, mu_out, skewed)
         else:
             n_mu = ace.nxs[3] - 1
             idx = ace.jxs[3]
@@ -558,9 +666,15 @@ class ThermalScattering(EqualityMixin):
             # Create correlated angle-energy distribution
             breakpoints = [n_energy]
             interpolation = [2]
-            energy = table.inelastic_xs[temperatures[0]].x
-            table.inelastic_dist[temperatures[0]] = CorrelatedAngleEnergy(
+            energy = inelastic_xs.x
+            distribution = IncoherentInelasticAE(
                 breakpoints, interpolation, energy, energy_out, mu_out)
+
+        table = cls(name, ace.atomic_weight_ratio, energy_max, kTs)
+        T = table.temperatures[0]
+        table.inelastic = ThermalScatteringReaction(
+            {T: inelastic_xs}, {T: distribution}
+        )
 
         # Incoherent/coherent elastic scattering cross section
         idx = ace.jxs[4]
@@ -572,22 +686,23 @@ class ThermalScattering(EqualityMixin):
 
             if ace.nxs[5] == 4:
                 # Coherent elastic
-                table.elastic_xs[temperatures[0]] = CoherentElastic(
-                    energy, P*EV_PER_MEV)
+                xs = CoherentElastic(energy, P*EV_PER_MEV)
+                distribution = CoherentElasticAE(xs)
 
                 # Coherent elastic shouldn't have angular distributions listed
                 assert n_mu == 0
             else:
                 # Incoherent elastic
-                table.elastic_xs[temperatures[0]] = Tabulated1D(energy, P)
+                xs = Tabulated1D(energy, P)
 
                 # Angular distribution
                 assert n_mu > 0
                 idx = ace.jxs[6]
-                table.elastic_mu_out[temperatures[0]] = \
-                    ace.xss[idx:idx + n_energy * n_mu]
-                table.elastic_mu_out[temperatures[0]].shape = \
-                    (n_energy, n_mu)
+                mu_out = ace.xss[idx:idx + n_energy * n_mu]
+                mu_out.shape = (n_energy, n_mu)
+                distribution = IncoherentElasticAEDiscrete(mu_out)
+
+            table.elastic = ThermalScatteringReaction({T: xs}, {T: distribution})
 
         # Get relevant nuclides -- NJOY only allows one to specify three
         # nuclides that the S(a,b) table applies to. Thus, for all elements
@@ -611,8 +726,9 @@ class ThermalScattering(EqualityMixin):
 
     @classmethod
     def from_njoy(cls, filename, filename_thermal, temperatures=None,
-                  evaluation=None, evaluation_thermal=None, **kwargs):
-        """Generate incident neutron data by running NJOY.
+                  evaluation=None, evaluation_thermal=None,
+                  use_endf_data=True, **kwargs):
+        """Generate thermal scattering data by running NJOY.
 
         Parameters
         ----------
@@ -631,6 +747,9 @@ class ThermalScattering(EqualityMixin):
             If the ENDF thermal scattering sublibrary file contains multiple
             material evaluations, this argument indicates which evaluation to
             use.
+        use_endf_data : bool
+            If the material has incoherent elastic scattering, the ENDF data
+            will be used rather than the ACE data.
         **kwargs
             Keyword arguments passed to :func:`openmc.data.njoy.make_ace_thermal`
 
@@ -655,4 +774,150 @@ class ThermalScattering(EqualityMixin):
             for table in lib.tables[1:]:
                 data.add_temperature_from_ace(table)
 
+            # Load ENDF data to replace incoherent elastic
+            if use_endf_data:
+                data_endf = cls.from_endf(filename_thermal)
+                if data_endf.elastic is not None:
+                    # Get appropriate temperatures
+                    if temperatures is None:
+                        temperatures = data_endf.temperatures
+                    else:
+                        temperatures = [_temperature_str(t) for t in temperatures]
+
+                    # Replace ACE data with ENDF data
+                    rx, rx_endf = data.elastic, data_endf.elastic
+                    for t in temperatures:
+                        if isinstance(rx_endf.xs[t], IncoherentElastic):
+                            rx.xs[t] = rx_endf.xs[t]
+                            rx.distribution[t] = rx_endf.distribution[t]
+
         return data
+
+    @classmethod
+    def from_endf(cls, ev_or_filename):
+        """Generate thermal scattering data from an ENDF file
+
+        Parameters
+        ----------
+        ev_or_filename : openmc.data.endf.Evaluation or str
+            ENDF evaluation to read from. If given as a string, it is assumed to
+            be the filename for the ENDF file.
+
+        Returns
+        -------
+        openmc.data.ThermalScattering
+            Thermal scattering data
+
+        """
+        if isinstance(ev_or_filename, endf.Evaluation):
+            ev = ev_or_filename
+        else:
+            ev = endf.Evaluation(ev_or_filename)
+
+        # Read coherent/incoherent elastic data
+        elastic = None
+        if (7, 2) in ev.section:
+            xs = {}
+            distribution = {}
+
+            file_obj = StringIO(ev.section[7, 2])
+            lhtr = endf.get_head_record(file_obj)[2]
+            if lhtr == 1:
+                # coherent elastic
+
+                # Get structure factor at first temperature
+                params, S = endf.get_tab1_record(file_obj)
+                strT = _temperature_str(params[0])
+                n_temps = params[2]
+                bragg_edges = S.x
+                xs[strT] = CoherentElastic(bragg_edges, S.y)
+                distribution = {strT: CoherentElasticAE(xs[strT])}
+
+                # Get structure factor for subsequent temperatures
+                for _ in range(n_temps):
+                    params, S = endf.get_list_record(file_obj)
+                    strT = _temperature_str(params[0])
+                    xs[strT] = CoherentElastic(bragg_edges, S)
+                    distribution[strT] = CoherentElasticAE(xs[strT])
+
+            elif lhtr == 2:
+                # incoherent elastic
+                params, W = endf.get_tab1_record(file_obj)
+                bound_xs = params[0]
+                for T, debye_waller in zip(W.x, W.y):
+                    strT = _temperature_str(T)
+                    xs[strT] = IncoherentElastic(bound_xs, debye_waller)
+                    distribution[strT] = IncoherentElasticAE(debye_waller)
+
+            elastic = ThermalScatteringReaction(xs, distribution)
+
+        # Read incoherent inelastic data
+        assert (7, 4) in ev.section, 'No MF=7, MT=4 found in thermal scattering'
+        file_obj = StringIO(ev.section[7, 4])
+        params = endf.get_head_record(file_obj)
+        data = {'symmetric': params[4] == 0}
+
+        # Get information about principal atom
+        params, B = endf.get_list_record(file_obj)
+        data['log'] = bool(params[2])
+        data['free_atom_xs'] = B[0]
+        data['epsilon'] = B[1]
+        data['A0'] = awr = B[2]
+        data['e_max'] = energy_max = B[3]
+        data['M0'] = B[5]
+
+        # Get information about non-principal atoms
+        n_non_principal = params[5]
+        data['non_principal'] = []
+        NonPrincipal = namedtuple('NonPrincipal', ['func', 'xs', 'A', 'M'])
+        for i in range(1, n_non_principal + 1):
+            func = {0.0: 'SCT', 1.0: 'free gas', 2.0: 'diffusive'}[B[6*i]]
+            xs = B[6*i + 1]
+            A = B[6*i + 2]
+            M = B[6*i + 5]
+            data['non_principal'].append(NonPrincipal(func, xs, A, M))
+
+        # Get S(alpha,beta,T)
+        kTs = []
+        if data['free_atom_xs'] > 0.0:
+            params, _ = endf.get_tab2_record(file_obj)
+            n_beta = params[5]
+            sab = {'beta': np.empty(n_beta)}
+            for i in range(n_beta):
+                params, S = endf.get_tab1_record(file_obj)
+                T0, beta, lt = params[:3]
+                if i == 0:
+                    sab['alpha'] = alpha = S.x
+                    sab[T0] = np.empty((alpha.size, n_beta))
+                    kTs.append(K_BOLTZMANN * T0)
+                sab['beta'][i] = beta
+                sab[T0][:, i] = S.y
+                for _ in range(lt):
+                    params, S = endf.get_list_record(file_obj)
+                    T = params[0]
+                    if i == 0:
+                        sab[T] = np.empty((alpha.size, n_beta))
+                        kTs.append(K_BOLTZMANN * T)
+                    sab[T][:, i] = S
+            data['sab'] = sab
+
+        # Get effective temperature for each atom
+        _, Teff = endf.get_tab1_record(file_obj)
+        data['effective_temperature'] = [Teff]
+        for atom in data['non_principal']:
+            if atom.func == 'SCT':
+                _, Teff = endf.get_tab1_record(file_obj)
+                data['effective_temperature'].append(Teff)
+
+        name = ev.target['zsymam'].strip()
+        instance = cls(name, awr, energy_max, kTs)
+        if elastic is not None:
+            instance.elastic = elastic
+
+        # Currently we don't have a proper cross section or distribution for
+        # incoherent inelastic, so we just create an empty object and attach
+        # all the data as a dictionary
+        instance.inelastic = ThermalScatteringReaction(None, None)
+        instance.inelastic.data = data
+
+        return instance

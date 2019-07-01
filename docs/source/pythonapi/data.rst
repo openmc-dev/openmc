@@ -5,6 +5,9 @@
 Core Classes
 ------------
 
+The following classes are used for incident neutron data, decay data, fission
+and product yields.
+
 .. autosummary::
     :toctree: generated
     :nosignatures:

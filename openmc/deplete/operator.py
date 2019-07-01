@@ -154,7 +154,7 @@ class Operator(TransportOperator):
             self.local_mats, self._burnable_nucs, self.chain.reactions)
 
         # Get class to assist working with tallies
-        self._tally_helper = ChainFissTallyHelper(len(self.local_mats))
+        self._tally_helper = ChainFissTallyHelper()
 
 
     def __call__(self, vec, power, print_out=True):
@@ -185,7 +185,7 @@ class Operator(TransportOperator):
 
         # Update material compositions and tally nuclides
         self._update_materials()
-        self._tally_helper.reaction_tally.nuclides = self._get_tally_nuclides()
+        self._tally_helper.nuclides = self._get_tally_nuclides()
 
         # Run OpenMC
         openmc.capi.reset()
@@ -515,7 +515,7 @@ class Operator(TransportOperator):
 
         # Extract tally bins
         materials = self.burnable_mats
-        nuclides = self._tally_helper.reaction_tally.nuclides
+        nuclides = self._tally_helper.nuclides
 
         # Form fast map
         nuc_ind = [rates.index_nuc[nuc] for nuc in nuclides]
@@ -560,7 +560,8 @@ class Operator(TransportOperator):
                     j += 1
 
             # Accumulate energy from fission
-            energy += self._tally_helper.get_fiss_energy(rates_expanded[:, fission_ind], i)
+            energy += self._tally_helper.get_fission_energy(
+                rates_expanded[:, fission_ind], i)
 
             # Divide by total number and store
             for i_nuc_results in nuc_ind:

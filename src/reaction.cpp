@@ -42,8 +42,6 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
     // Get threshold index
     TemperatureXS xs;
     read_attribute(dset, "threshold_idx", xs.threshold);
-    // TODO: change HDF5 format so that threshold_idx is 0-based
-    --xs.threshold;
 
     // Read cross section values
     read_dataset(dset, xs.value);

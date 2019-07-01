@@ -3,7 +3,7 @@ set -ex
 
 # Download HDF5 data
 if [[ ! -e $HOME/nndc_hdf5/cross_sections.xml ]]; then
-    wget -q -O - https://anl.box.com/shared/static/u1g3n8iai0u1n5f6ev3pg2j3ff941bqa.xz | tar -C $HOME -xJ
+    wget -q -O - https://anl.box.com/shared/static/teaup95cqv8s9nn56hfn7ku8mmelr95p.xz | tar -C $HOME -xJ
 fi
 
 # Download ENDF/B-VII.1 distribution

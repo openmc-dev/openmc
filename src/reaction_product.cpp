@@ -3,6 +3,7 @@
 #include <memory> // for unique_ptr
 #include <string> // for string
 
+#include "openmc/endf.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/random_lcg.h"
 #include "openmc/secondary_correlated.h"
@@ -42,14 +43,7 @@ ReactionProduct::ReactionProduct(hid_t group)
     read_attribute(group, "decay_rate", decay_rate_);
 
   // Read secondary particle yield
-  hid_t yield = open_dataset(group, "yield");
-  read_attribute(yield, "type", temp);
-  if (temp == "Tabulated1D") {
-    yield_ = std::unique_ptr<Function1D>{new Tabulated1D{yield}};
-  } else if (temp == "Polynomial") {
-    yield_ = std::unique_ptr<Function1D>{new Polynomial{yield}};
-  }
-  close_dataset(yield);
+  yield_ = read_function(group, "yield");
 
   int n;
   read_attribute(group, "n_distribution", n);

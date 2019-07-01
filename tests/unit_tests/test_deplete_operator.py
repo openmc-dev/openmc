@@ -68,3 +68,16 @@ def test_operator_init(bare_xs):
                 'decay_modes', 'yield_data', 'yield_energies',
                 ]:
             assert getattr(act_nuc, prop) == getattr(ref_nuc, prop), prop
+
+
+def test_operator_fiss_q():
+    """Make sure fission q values can be set"""
+    new_q = {"U235": 2.0E8, "U238": 2.0E8, "U234": 5.0E7}
+    chain_file = Path(__file__).parents[1] / "chain_simple.xml"
+    operator = BareDepleteOperator(chain_file=chain_file, fission_q=new_q)
+    mod_chain = operator.chain
+    for name, q in new_q.items():
+        chain_nuc = mod_chain[name]
+        for rx in chain_nuc.reactions:
+            if rx.type == 'fission':
+                assert rx.Q == q

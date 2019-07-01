@@ -35,6 +35,16 @@ class AngleEnergy(EqualityMixin, metaclass=ABCMeta):
             return openmc.data.KalbachMann.from_hdf5(group)
         elif dist_type == 'nbody':
             return openmc.data.NBodyPhaseSpace.from_hdf5(group)
+        elif dist_type == 'coherent_elastic':
+            return openmc.data.CoherentElasticAE.from_hdf5(group)
+        elif dist_type == 'incoherent_elastic':
+            return openmc.data.IncoherentElasticAE.from_hdf5(group)
+        elif dist_type == 'incoherent_elastic_discrete':
+            return openmc.data.IncoherentElasticAEDiscrete.from_hdf5(group)
+        elif dist_type == 'incoherent_inelastic_discrete':
+            return openmc.data.IncoherentInelasticAEDiscrete.from_hdf5(group)
+        elif dist_type == 'incoherent_inelastic':
+            return openmc.data.IncoherentInelasticAE.from_hdf5(group)
 
     @staticmethod
     def from_ace(ace, location_dist, location_start, rx=None):

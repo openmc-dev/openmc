@@ -42,6 +42,9 @@ private:
 
 class IncoherentElasticAE : public AngleEnergy {
 public:
+  //! Construct from HDF5 file
+  //
+  //! \param[in] group  HDF5 group
   explicit IncoherentElasticAE(hid_t group);
 
   //! Sample distribution for an angle and energy
@@ -59,11 +62,19 @@ private:
 
 class IncoherentElasticAEDiscrete : public AngleEnergy {
 public:
+  //! Construct from HDF5 file
+  //
+  //! \param[in] group  HDF5 group
+  //! \param[in] energy  Energies at which cosines are tabulated
   explicit IncoherentElasticAEDiscrete(hid_t group, const std::vector<double>& energy);
 
+  //! Sample distribution for an angle and energy
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[out] mu Outgoing cosine with respect to current direction
   void sample(double E_in, double& E_out, double& mu) const override;
 private:
-  const std::vector<double>& energy_; //!< Incoherent inelastic scattering cross section
+  const std::vector<double>& energy_; //!< Energies at which cosines are tabulated
   xt::xtensor<double, 2> mu_out_; //!< Cosines for each incident energy
 };
 
@@ -73,8 +84,16 @@ private:
 
 class IncoherentInelasticAEDiscrete : public AngleEnergy {
 public:
+  //! Construct from HDF5 file
+  //
+  //! \param[in] group  HDF5 group
+  //! \param[in] energy  Incident energies at which distributions are tabulated
   explicit IncoherentInelasticAEDiscrete(hid_t group, const std::vector<double>& energy);
 
+  //! Sample distribution for an angle and energy
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[out] mu Outgoing cosine with respect to current direction
   void sample(double E_in, double& E_out, double& mu) const override;
 private:
   const std::vector<double>& energy_; //!< Incident energies
@@ -89,8 +108,15 @@ private:
 
 class IncoherentInelasticAE : public AngleEnergy {
 public:
+  //! Construct from HDF5 file
+  //
+  //! \param[in] group  HDF5 group
   explicit IncoherentInelasticAE(hid_t group);
 
+  //! Sample distribution for an angle and energy
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[out] mu Outgoing cosine with respect to current direction
   void sample(double E_in, double& E_out, double& mu) const override;
 private:
   //! Secondary energy/angle distribution

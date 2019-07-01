@@ -24,6 +24,7 @@ from . import comm
 from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
 from .reaction_rates import ReactionRates
+from .tally_helpers import ChainFissTallyHelper
 
 
 def _distribute(items):
@@ -152,6 +153,10 @@ class Operator(TransportOperator):
         self.reaction_rates = ReactionRates(
             self.local_mats, self._burnable_nucs, self.chain.reactions)
 
+        # Get class to assist working with tallies
+        self._tally_helper = ChainFissTallyHelper(len(self.local_mats))
+
+
     def __call__(self, vec, power, print_out=True):
         """Runs a simulation.
 
@@ -180,7 +185,7 @@ class Operator(TransportOperator):
 
         # Update material compositions and tally nuclides
         self._update_materials()
-        self._tally.nuclides = self._get_tally_nuclides()
+        self._tally_helper.reaction_tally.nuclides = self._get_tally_nuclides()
 
         # Run OpenMC
         openmc.capi.reset()
@@ -373,7 +378,9 @@ class Operator(TransportOperator):
         openmc.capi.init(intracomm=comm)
 
         # Generate tallies in memory
-        self._generate_tallies()
+        materials = [openmc.capi.materials[int(i)]
+                     for i in self.burnable_mats]
+        self._tally_helper.generate_tallies(materials, self.chain.reactions)
 
         # Return number density vector
         return list(self.number.get_mat_slice(np.s_[:]))
@@ -482,27 +489,6 @@ class Operator(TransportOperator):
         nuc_list = comm.bcast(nuc_list)
         return [nuc for nuc in nuc_list if nuc in self.chain]
 
-    def _generate_tallies(self):
-        """Generates depletion tallies.
-
-        Using information from the depletion chain as well as the nuclides
-        currently in the problem, this function automatically generates a
-        tally.xml for the simulation.
-
-        """
-        # Create tallies for depleting regions
-        materials = [openmc.capi.materials[int(i)]
-                     for i in self.burnable_mats]
-        mat_filter = openmc.capi.MaterialFilter(materials)
-
-        # Set up a tally that has a material filter covering each depletable
-        # material and scores corresponding to all reactions that cause
-        # transmutation. The nuclides for the tally are set later when eval() is
-        # called.
-        self._tally = openmc.capi.Tally()
-        self._tally.scores = self.chain.reactions
-        self._tally.filters = [mat_filter]
-
     def _unpack_tallies_and_normalize(self, power):
         """Unpack tallies from OpenMC and return an operator result
 
@@ -529,7 +515,7 @@ class Operator(TransportOperator):
 
         # Extract tally bins
         materials = self.burnable_mats
-        nuclides = self._tally.nuclides
+        nuclides = self._tally_helper.reaction_tally.nuclides
 
         # Form fast map
         nuc_ind = [rates.index_nuc[nuc] for nuc in nuclides]
@@ -544,19 +530,14 @@ class Operator(TransportOperator):
 
         # Create arrays to store fission Q values, reaction rates, and nuclide
         # numbers
-        fission_Q = np.zeros(rates.n_nuc)
         rates_expanded = np.zeros((rates.n_nuc, rates.n_react))
         number = np.zeros(rates.n_nuc)
 
         fission_ind = rates.index_rx["fission"]
 
-        for nuclide in self.chain.nuclides:
-            if nuclide.name in rates.index_nuc:
-                for rx in nuclide.reactions:
-                    if rx.type == 'fission':
-                        ind = rates.index_nuc[nuclide.name]
-                        fission_Q[ind] = rx.Q
-                        break
+        self._tally_helper.set_fission_q(self.chain.nuclides, rates.index_nuc)
+
+        tally_results = self._tally_helper.reaction_tally.results
 
         # Extract results
         for i, mat in enumerate(self.local_mats):
@@ -564,7 +545,7 @@ class Operator(TransportOperator):
             slab = materials.index(mat)
 
             # Get material results hyperslab
-            results = self._tally.results[slab, :, 1]
+            results = tally_results[slab, :, 1]
 
             # Zero out reaction rates and nuclide numbers
             rates_expanded[:] = 0.0
@@ -579,7 +560,7 @@ class Operator(TransportOperator):
                     j += 1
 
             # Accumulate energy from fission
-            energy += np.dot(rates_expanded[:, fission_ind], fission_Q)
+            energy += self._tally_helper.get_fiss_energy(rates_expanded[:, fission_ind], i)
 
             # Divide by total number and store
             for i_nuc_results in nuc_ind:

@@ -440,6 +440,14 @@ class Tabulated1D(Function1D):
 
 
 class Polynomial(np.polynomial.Polynomial, Function1D):
+    """A power series class.
+
+    Parameters
+    ----------
+    coef : Iterable of float
+        Polynomial coefficients in order of increasing degree
+
+    """
     def to_hdf5(self, group, name='xy'):
         """Write polynomial function to an HDF5 group
 
@@ -583,8 +591,8 @@ class Regions1D(EqualityMixin):
         Functions which are to be combined in a piecewise fashion
     breakpoints : Iterable of float
         The values of the dependent variable that define the domain of
-        each function. The *i*th and *(i+1)*th values are the limits of the
-        domain of the *i*th function. Values must be monotonically increasing.
+        each function. The `i`\ th and `(i+1)`\ th values are the limits of the
+        domain of the `i`\ th function. Values must be monotonically increasing.
 
     Attributes
     ----------

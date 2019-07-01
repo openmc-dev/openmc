@@ -29,26 +29,22 @@ def test_failure(pin_mats, good_radii):
         Pin.from_radii(good_radii, [mat.name for mat in pin_mats])
 
     # Incorrect lengths
-    with pytest.raises(ValueError) as exec_info:
+    with pytest.raises(ValueError, match="length") as exec_info:
         Pin.from_radii(good_radii[: len(pin_mats) - 2], pin_mats)
-    assert "length" in str(exec_info)
 
     # Non-positive radii
     rad = (-0.1,) + good_radii[1:]
-    with pytest.raises(ValueError) as exec_info:
+    with pytest.raises(ValueError, match="index 0") as exec_info:
         Pin.from_radii(rad, pin_mats)
-    assert "index 0" in str(exec_info)
 
     # Non-increasing radii
     rad = tuple(reversed(good_radii))
-    with pytest.raises(ValueError) as exec_info:
+    with pytest.raises(ValueError, match="index 1") as exec_info:
         Pin.from_radii(rad, pin_mats)
-    assert "index 1" in str(exec_info)
 
     # Bad orientation
-    with pytest.raises(ValueError) as exec_info:
+    with pytest.raises(ValueError, match="Orientation") as exec_info:
         Pin.from_radii(good_radii, pin_mats, orientation="fail")
-    assert "Orientation" in str(exec_info)
 
 
 def test_from_radii(pin_mats, good_radii):
@@ -57,6 +53,7 @@ def test_from_radii(pin_mats, good_radii):
     assert len(p.cells) == len(pin_mats)
     assert p.name == name
     assert p.radii == good_radii
+
 
 def test_subdivide(pin_mats, good_radii):
     surfs = [openmc.ZCylinder(r=r) for r in good_radii]
@@ -82,5 +79,5 @@ def test_subdivide(pin_mats, good_radii):
     # check volumes of new rings
     bounds = new_pin.radii[:N + 1]
     sqrs = numpy.square(bounds)
-    assert sqrs[1:] - sqrs[:-1] == pytest.approx((good_radii[1] ** 2 - good_radii[0] ** 2) / N)
-
+    assert sqrs[1:] - sqrs[:-1] == pytest.approx(
+        (good_radii[1] ** 2 - good_radii[0] ** 2) / N)

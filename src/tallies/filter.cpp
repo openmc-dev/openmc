@@ -143,13 +143,27 @@ Filter* Filter::create(const std::string& type, int32_t id)
 
 void Filter::set_id(int32_t id)
 {
-  Expects(id >= 0);
+  Expects(id >= -1);
+
+  // Clear entry in filter map if an ID was already assigned before
+  if (id_ != -1) {
+    model::filter_map.erase(id_);
+    id_ = -1;
+  }
+
+  // Make sure no other filter has same ID
   if (model::filter_map.find(id) != model::filter_map.end()) {
     throw std::runtime_error{"Two filters have the same ID: " + std::to_string(id)};
   }
 
-  // Clear entry in filter map if an ID was already assigned before
-  if (id_ != -1) model::filter_map.erase(id_);
+  // If no ID specified, auto-assign next ID in sequence
+  if (id == -1) {
+    id = 0;
+    for (const auto& f : model::tally_filters) {
+      id = std::max(id, f->id_);
+    }
+    ++id;
+  }
 
   // Update ID and entry in filter map
   id_ = id;
@@ -183,13 +197,7 @@ openmc_filter_set_id(int32_t index, int32_t id)
 {
   if (int err = verify_filter(index)) return err;
 
-  if (model::filter_map.find(id) != model::filter_map.end()) {
-    set_errmsg("Two filters have the same ID: " + std::to_string(id));
-    return OPENMC_E_INVALID_ID;
-  }
-
-  model::tally_filters[index]->id_ = id;
-  model::filter_map[id] = index;
+  model::tally_filters[index]->set_id(id);
   return 0;
 }
 

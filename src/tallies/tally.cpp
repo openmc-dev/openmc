@@ -240,9 +240,18 @@ score_str_to_int(std::string score_str)
 // Tally object implementation
 //==============================================================================
 
-Tally::Tally()
+Tally::Tally(int32_t id)
+  : index_{model::tallies.size()}
 {
-  this->set_filters(nullptr, 0);
+  this->set_id(id);
+  this->set_filters({});
+}
+
+Tally*
+Tally::create(int32_t id)
+{
+  model::tallies.push_back(std::make_unique<Tally>(id));
+  return model::tallies.back().get();
 }
 
 void
@@ -252,25 +261,55 @@ Tally::init_from_xml(pugi::xml_node node)
 }
 
 void
-Tally::set_filters(const int32_t filter_indices[], int n)
+Tally::set_id(int32_t id)
+{
+  Expects(id >= -1);
+
+  // Clear entry in tally map if an ID was already assigned before
+  if (id_ != -1) {
+    model::tally_map.erase(id_);
+    id_ = -1;
+  }
+
+  // Make sure no other tally has the same ID
+  if (model::tally_map.find(id) != model::tally_map.end()) {
+    throw std::runtime_error{"Two tallies have the same ID: " + std::to_string(id)};
+  }
+
+  // If no ID specified, auto-assign next ID in sequence
+  if (id == -1) {
+    id = 0;
+    for (const auto& t : model::tallies) {
+      id = std::max(id, t->id_);
+    }
+    ++id;
+  }
+
+  // Update ID and entry in tally map
+  id_ = id;
+  model::tally_map[id] = index_;
+}
+
+void
+Tally::set_filters(gsl::span<Filter*> filters)
 {
   // Clear old data.
   filters_.clear();
   strides_.clear();
 
   // Copy in the given filter indices.
-  filters_.assign(filter_indices, filter_indices + n);
+  auto n = filters.size();
+  filters_.reserve(n);
 
   for (int i = 0; i < n; ++i) {
-    auto i_filt = filters_[i];
-    if (i_filt < 0 || i_filt >= model::tally_filters.size())
-      throw std::out_of_range("Index in tally filter array out of bounds.");
+    // Add index to vector of filters
+    auto& f {filters[i]};
+    filters_.push_back(model::filter_map.at(f->id_));
 
     // Keep track of indices for special filters.
-    const auto* filt = model::tally_filters[i_filt].get();
-    if (dynamic_cast<const EnergyoutFilter*>(filt)) {
+    if (dynamic_cast<const EnergyoutFilter*>(f)) {
       energyout_filter_ = i;
-    } else if (dynamic_cast<const DelayedGroupFilter*>(filt)) {
+    } else if (dynamic_cast<const DelayedGroupFilter*>(f)) {
       delayedgroup_filter_ = i;
     }
   }
@@ -298,7 +337,7 @@ Tally::set_scores(pugi::xml_node node)
 }
 
 void
-Tally::set_scores(std::vector<std::string> scores)
+Tally::set_scores(const std::vector<std::string>& scores)
 {
   // Reset state and prepare for the new scores.
   scores_.clear();
@@ -450,17 +489,25 @@ Tally::set_nuclides(pugi::xml_node node)
     // The user provided specifics nuclides.  Parse it as an array with either
     // "total" or a nuclide name like "U-235" in each position.
     auto words = get_node_array<std::string>(node, "nuclides");
-    for (auto word : words) {
-      if (word == "total") {
-        nuclides_.push_back(-1);
-      } else {
-        auto search = data::nuclide_map.find(word);
-        if (search == data::nuclide_map.end())
-          fatal_error("Could not find the nuclide " + word
-            + " specified in tally " + std::to_string(id_)
-            + " in any material");
-        nuclides_.push_back(search->second);
-      }
+    this->set_nuclides(words);
+  }
+}
+
+void
+Tally::set_nuclides(const std::vector<std::string>& nuclides)
+{
+  nuclides_.clear();
+
+  for (const auto& nuc : nuclides) {
+    if (nuc == "total") {
+      nuclides_.push_back(-1);
+    } else {
+      auto search = data::nuclide_map.find(nuc);
+      if (search == data::nuclide_map.end())
+        fatal_error("Could not find the nuclide " + nuc
+          + " specified in tally " + std::to_string(id_)
+          + " in any material");
+      nuclides_.push_back(search->second);
     }
   }
 }
@@ -628,22 +675,14 @@ void read_tallies_xml()
   }
 
   for (auto node_tal : root.children("tally")) {
-    model::tallies.push_back(std::make_unique<Tally>());
-
-    auto& t {model::tallies.back()};
-    t->init_from_xml(node_tal);
-
     // Copy and set tally id
     if (!check_for_node(node_tal, "id")) {
       fatal_error("Must specify id for tally in tally XML file.");
     }
-    t->id_ = std::stoi(get_node_value(node_tal, "id"));
-    model::tally_map[t->id_] = model::tallies.size() - 1;
+    int32_t id = std::stoi(get_node_value(node_tal, "id"));
 
-    // Copy tally name
-    if (check_for_node(node_tal, "name")) {
-      t->name_ = get_node_value(node_tal, "name");
-    }
+    auto t = Tally::create(id);
+    t->init_from_xml(node_tal);
 
     // =======================================================================
     // READ DATA FOR FILTERS
@@ -665,7 +704,7 @@ void read_tallies_xml()
 
     // Allocate and store filter user ids
     if (!filters.empty()) {
-      std::vector<int> filter_indices;
+      std::vector<Filter*> filter_ptrs;
       for (int filter_id : filters) {
         // Determine if filter ID is valid
         auto it = model::filter_map.find(filter_id);
@@ -675,11 +714,11 @@ void read_tallies_xml()
         }
 
         // Store the index of the filter
-        filter_indices.push_back(it->second);
+        filter_ptrs.push_back(model::tally_filters[it->second].get());
       }
 
       // Set the filters
-      t->set_filters(filter_indices.data(), filter_indices.size());
+      t->set_filters(filter_ptrs);
     }
 
     // Check for the presence of certain filter types
@@ -1028,7 +1067,7 @@ openmc_extend_tallies(int32_t n, int32_t* index_start, int32_t* index_end)
   if (index_start) *index_start = model::tallies.size();
   if (index_end) *index_end = model::tallies.size() + n - 1;
   for (int i = 0; i < n; ++i) {
-    model::tallies.push_back(std::make_unique<Tally>());
+    model::tallies.push_back(std::make_unique<Tally>(-1));
   }
   return 0;
 }
@@ -1112,14 +1151,7 @@ openmc_tally_set_id(int32_t index, int32_t id)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  if (model::tally_map.find(id) != model::tally_map.end()) {
-    set_errmsg("Two or more tallies use the same unique ID: "
-      + std::to_string(id));
-    return OPENMC_E_INVALID_ID;
-  }
-
-  model::tallies[index]->id_ = id;
-  model::tally_map[id] = index;
+  model::tallies[index]->set_id(id);
   return 0;
 }
 
@@ -1259,7 +1291,7 @@ openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides)
 }
 
 extern "C" int
-openmc_tally_get_filters(int32_t index, const int32_t** indices, int* n)
+openmc_tally_get_filters(int32_t index, const int32_t** indices, size_t* n)
 {
   if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
@@ -1272,7 +1304,7 @@ openmc_tally_get_filters(int32_t index, const int32_t** indices, int* n)
 }
 
 extern "C" int
-openmc_tally_set_filters(int32_t index, int n, const int32_t* indices)
+openmc_tally_set_filters(int32_t index, size_t n, const int32_t* indices)
 {
   // Make sure the index fits in the array bounds.
   if (index < 0 || index >= model::tallies.size()) {
@@ -1282,9 +1314,15 @@ openmc_tally_set_filters(int32_t index, int n, const int32_t* indices)
 
   // Set the filters.
   try {
-    model::tallies[index]->set_filters(indices, n);
+    // Convert indices to filter pointers
+    std::vector<Filter*> filters;
+    for (gsl::index i = 0; i < n; ++i) {
+      int32_t i_filt = indices[i];
+      filters.push_back(model::tally_filters.at(i_filt).get());
+    }
+    model::tallies[index]->set_filters(filters);
   } catch (const std::out_of_range& ex) {
-    set_errmsg(ex.what());
+    set_errmsg("Index in tally filter array out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 

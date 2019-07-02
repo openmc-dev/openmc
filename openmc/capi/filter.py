@@ -94,6 +94,7 @@ _dll.openmc_zernike_filter_set_order.restype = c_int
 _dll.openmc_zernike_filter_set_order.errcheck = _error_handler
 _dll.tally_filters_size.restype = c_size_t
 
+
 class Filter(_FortranObjectWithID):
     __instances = WeakValueDictionary()
 

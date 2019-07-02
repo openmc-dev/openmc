@@ -95,7 +95,7 @@ extern "C" {
   int openmc_tally_get_active(int32_t index, bool* active);
   int openmc_tally_get_estimator(int32_t index, int* estimator);
   int openmc_tally_get_id(int32_t index, int32_t* id);
-  int openmc_tally_get_filters(int32_t index, const int32_t** indices, int* n);
+  int openmc_tally_get_filters(int32_t index, const int32_t** indices, size_t* n);
   int openmc_tally_get_n_realizations(int32_t index, int32_t* n);
   int openmc_tally_get_nuclides(int32_t index, int** nuclides, int* n);
   int openmc_tally_get_scores(int32_t index, int** scores, int* n);
@@ -104,7 +104,7 @@ extern "C" {
   int openmc_tally_results(int32_t index, double** ptr, size_t shape_[3]);
   int openmc_tally_set_active(int32_t index, bool active);
   int openmc_tally_set_estimator(int32_t index, const char* estimator);
-  int openmc_tally_set_filters(int32_t index, int n, const int32_t* indices);
+  int openmc_tally_set_filters(int32_t index, size_t n, const int32_t* indices);
   int openmc_tally_set_id(int32_t index, int32_t id);
   int openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides);
   int openmc_tally_set_scores(int32_t index, int n, const char** scores);

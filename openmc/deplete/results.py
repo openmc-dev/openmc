@@ -237,8 +237,8 @@ class Results(object):
                               chunks=(1, 1, n_mats, n_nuc_rxn, n_rxn),
                               dtype='float64')
 
-        handle.create_dataset("eigenvalues", (1, n_stages),
-                              maxshape=(None, n_stages), dtype='float64')
+        handle.create_dataset("eigenvalues", (1, n_stages, 2),
+                              maxshape=(None, n_stages, 2), dtype='float64')
 
         handle.create_dataset("time", (1, 2), maxshape=(None, 2), dtype='float64')
 

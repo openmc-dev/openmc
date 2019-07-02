@@ -4,16 +4,18 @@ This module contains information about a depletion chain.  A depletion chain is
 loaded from an .xml file and all the nuclides are linked together.
 """
 
-from collections import OrderedDict, defaultdict
 from io import StringIO
 from itertools import chain
 import math
 import re
-import os
+from collections import OrderedDict, defaultdict
+from collections.abc import Mapping
+
+from openmc.checkvalue import check_type
 
 # Try to use lxml if it is available. It preserves the order of attributes and
-# provides a pretty-printer by default. If not available, use OpenMC function to
-# pretty print.
+# provides a pretty-printer by default. If not available,
+# use OpenMC function to pretty print.
 try:
     import lxml.etree as ET
     _have_lxml = True
@@ -312,22 +314,32 @@ class Chain(object):
         return chain
 
     @classmethod
-    def from_xml(cls, filename):
+    def from_xml(cls, filename, fission_q=None):
         """Reads a depletion chain XML file.
 
         Parameters
         ----------
         filename : str
             The path to the depletion chain XML file.
+        fission_q : dict, optional
+            Dictionary of nuclides and their fission Q values [eV].
+            If not given, values will be pulled from ``filename``
 
         """
         chain = cls()
+
+        if fission_q is not None:
+            check_type("fission_q", fission_q, Mapping)
+        else:
+            fission_q = {}
 
         # Load XML tree
         root = ET.parse(str(filename))
 
         for i, nuclide_elem in enumerate(root.findall('nuclide')):
-            nuc = Nuclide.from_xml(nuclide_elem)
+            this_q = fission_q.get(nuclide_elem.get("name"))
+
+            nuc = Nuclide.from_xml(nuclide_elem, this_q)
             chain.nuclide_dict[nuc.name] = i
 
             # Check for reaction paths

@@ -219,6 +219,7 @@ list(APPEND libopenmc_SOURCES
   src/secondary_correlated.cpp
   src/secondary_kalbach.cpp
   src/secondary_nbody.cpp
+  src/secondary_thermal.cpp
   src/secondary_uncorrelated.cpp
   src/settings.cpp
   src/simulation.cpp

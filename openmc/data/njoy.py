@@ -120,7 +120,7 @@ acer / %%%%%%%%%%%%%%%%%%%%%%%% Write out in ACE format %%%%%%%%%%%%%%%%%%%%%%%%
 '{library}: {zsymam_thermal} processed by NJOY'/
 {mat} {temperature} '{data.name}' /
 {zaids} /
-222 64 {mt_elastic} {elastic_type} {data.nmix} {energy_max} 2/
+222 64 {mt_elastic} {elastic_type} {data.nmix} {energy_max} {iwt}/
 """
 
 
@@ -355,8 +355,8 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
 
 
 def make_ace_thermal(filename, filename_thermal, temperatures=None,
-                     ace='ace', xsdir='xsdir', error=0.001, evaluation=None,
-                     evaluation_thermal=None, **kwargs):
+                     ace='ace', xsdir='xsdir', error=0.001, iwt=2,
+                     evaluation=None, evaluation_thermal=None, **kwargs):
     """Generate thermal scattering ACE file from ENDF files
 
     Parameters
@@ -374,6 +374,8 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
         Path of xsdir file to write
     error : float, optional
         Fractional error tolerance for NJOY processing
+    iwt : int
+        `iwt` parameter used in NJOR/ACER card 9
     evaluation : openmc.data.endf.Evaluation, optional
         If the ENDF neutron sublibrary file contains multiple material
         evaluations, this argument indicates which evaluation to use.

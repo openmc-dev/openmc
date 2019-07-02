@@ -115,6 +115,14 @@ class ResultsList(list):
 
         """
         times = np.empty((len(self) - 1, 1))
-        for ix, res in enumerate(self[:-1]):
+        # Need special logic because the predictor
+        # writes EOS values for step i as BOS values
+        # for step i+1
+        # The first proc_time may be zero
+        if self[0].proc_time > 0.0:
+            items = self[:-1]
+        else:
+            items = self[1:]
+        for ix, res in enumerate(items):
             times[ix] = res.proc_time
         return times

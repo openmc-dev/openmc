@@ -1,6 +1,7 @@
 #include "openmc/endf.h"
 
 #include <algorithm> // for copy
+#include <array>
 #include <cmath>     // for log, exp
 #include <iterator>  // for back_inserter
 #include <stdexcept> // for runtime_error
@@ -87,6 +88,10 @@ read_function(hid_t group, const char* name)
     func = std::make_unique<Tabulated1D>(dset);
   } else if (func_type == "Polynomial") {
     func = std::make_unique<Polynomial>(dset);
+  } else if (func_type == "CoherentElastic") {
+    func = std::make_unique<CoherentElasticXS>(dset);
+  } else if (func_type == "IncoherentElastic") {
+    func = std::make_unique<IncoherentElasticXS>(dset);
   } else {
     throw std::runtime_error{"Unknown function type " + func_type +
       " for dataset " + object_name(dset)};
@@ -232,6 +237,25 @@ double CoherentElasticXS::operator()(double E) const
     auto i_grid = lower_bound_index(bragg_edges_.begin(), bragg_edges_.end(), E);
     return factors_[i_grid] / E;
   }
+}
+
+//==============================================================================
+// IncoherentElasticXS implementation
+//==============================================================================
+
+IncoherentElasticXS::IncoherentElasticXS(hid_t dset)
+{
+  std::array<double, 2> tmp;
+  read_dataset(dset, nullptr, tmp);
+  bound_xs_ = tmp[0];
+  debye_waller_ = tmp[1];
+}
+
+double IncoherentElasticXS::operator()(double E) const
+{
+  // Determine cross section using ENDF-102, Eq. (7.5)
+  double W = debye_waller_;
+  return bound_xs_ / 2.0 * ((1 - std::exp(-4.0*E*W))/(2.0*E*W));
 }
 
 } // namespace openmc

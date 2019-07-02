@@ -24,7 +24,7 @@ public:
   //! \param[in] E_in Incoming energy in [eV]
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
-  void sample(double E_in, double& E_out, double& mu) const;
+  void sample(double E_in, double& E_out, double& mu) const override;
 private:
   int n_bodies_; //!< Number of particles distributed
   double mass_ratio_; //!< Total mass of particles [neutron mass]

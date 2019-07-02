@@ -231,3 +231,15 @@ def test_getitem():
     assert "NucA" == chain["NucA"]
     assert "NucB" == chain["NucB"]
     assert "NucC" == chain["NucC"]
+
+
+def test_set_fiss_q():
+    """Make sure new fission q values can be set on the chain"""
+    new_q = {"U235": 2.0E8, "U238": 2.0E8, "U234": 5.0E7}
+    chain_file = Path(__file__).parents[1] / "chain_simple.xml"
+    mod_chain = Chain.from_xml(chain_file, new_q)
+    for name, q in new_q.items():
+        chain_nuc = mod_chain[name]
+        for rx in chain_nuc.reactions:
+            if rx.type == 'fission':
+                assert rx.Q == q

@@ -95,7 +95,7 @@ class ResultsList(list):
 
         """
         time = np.empty_like(self, dtype=float)
-        eigenvalue = np.empty_like(self, dtype=float)
+        eigenvalue = np.empty((len(self), 2), dtype=float)
 
         # Get time/eigenvalue at each point
         for i, result in enumerate(self):

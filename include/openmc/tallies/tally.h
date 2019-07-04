@@ -31,6 +31,8 @@ public:
 
   void set_id(int32_t id);
 
+  void set_active(bool active) { active_ = active; }
+
   void set_scores(pugi::xml_node node);
 
   void set_scores(const std::vector<std::string>& scores);

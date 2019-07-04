@@ -34,3 +34,8 @@ def test_source_file():
     elem = src.to_xml_element()
     assert 'strength' in elem.attrib
     assert 'file' in elem.attrib
+
+def test_pyne_r2s_source_file():
+    filename = 'source_1.h5m'
+    src = openmc.Source(filename=filename)
+    assert src.file == filename

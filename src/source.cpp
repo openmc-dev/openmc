@@ -252,12 +252,18 @@ void initialize_source()
     read_attribute(file_id, "filetype", filetype);
 
     // Check to make sure this is a source file
-    if (filetype != "source" && filetype != "statepoint") {
+    if (filetype != "source" && filetype != "statepoint" && filetype != "pyne_r2s_source") {
       fatal_error("Specified starting source file not a source file type.");
     }
 
     // Read in the source bank
-    read_source_bank(file_id);
+    if (filetype == "source" || filetype == "statepoint") {
+      read_source_bank(file_id);
+    } else {
+      // filetype is "pyne_r2s_source"
+      msg << "Reading PyNE R2S photon source from " << settings::path_source << "...";
+      write_message(msg, 6);
+    }
 
     // Close file
     file_close(file_id);

@@ -849,11 +849,10 @@ void Material::calculate_photon_xs(Particle& p) const
   }
 }
 
-int Material::set_density(double density, std::string units)
+void Material::set_density(double density, gsl::cstring_span units)
 {
   if (nuclide_.empty()) {
-    set_errmsg("No nuclides exist in material yet.");
-    return OPENMC_E_ALLOCATE;
+    throw std::runtime_error{"No nuclides exist in material yet."};
   }
 
   if (units == "atom/b-cm") {
@@ -884,10 +883,9 @@ int Material::set_density(double density, std::string units)
     density_ *= f;
     atom_density_ *= f;
   } else {
-    set_errmsg("Invalid units '" + units + "' specified.");
-    return OPENMC_E_INVALID_ARGUMENT;
+    throw std::invalid_argument{"Invalid units '" + std::string(units.data())
+      + "' specified."};
   }
-  return 0;
 }
 
 void Material::to_hdf5(hid_t group) const
@@ -1272,11 +1270,17 @@ extern "C" int
 openmc_material_set_density(int32_t index, double density, const char* units)
 {
   if (index >= 0 && index < model::materials.size()) {
-    return model::materials[index]->set_density(density, units);
+    try {
+      model::materials[index]->set_density(density, units);
+    } catch (const std::exception& e) {
+      set_errmsg(e.what());
+      return OPENMC_E_UNASSIGNED;
+    }
   } else {
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
+  return 0;
 }
 
 extern "C" int
@@ -1303,11 +1307,11 @@ openmc_material_set_densities(int32_t index, int n, const char** name, const dou
     }
 
     // Set total density to the sum of the vector
-    int err = mat->set_density(sum_density, "atom/b-cm");
+    mat->set_density(sum_density, "atom/b-cm");
 
     // Assign S(a,b) tables
     mat->init_thermal();
-    return err;
+    return 0;
   } else {
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;

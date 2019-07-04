@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <gsl/gsl>
 #include <hdf5.h>
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
@@ -74,7 +75,10 @@ public:
   double density_gpcc() const { return density_gpcc_; }
 
   //! Set total density of the material
-  int set_density(double density, std::string units);
+  //
+  //! \param[in] density Density value
+  //! \param[in] units Units of density
+  void set_density(double density, gsl::cstring_span units);
 
   //! Write material data to HDF5
   void to_hdf5(hid_t group) const;

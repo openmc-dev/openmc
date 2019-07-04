@@ -65,6 +65,14 @@ public:
   //! \param[in] density Density of the nuclide in [atom/b-cm]
   void add_nuclide(const std::string& nuclide, double density);
 
+  //! Get density in [atom/b-cm]
+  //! \return Density in [atom/b-cm]
+  double density() const { return density_; }
+
+  //! Get density in [g/cm^3]
+  //! \return Density in [g/cm^3]
+  double density_gpcc() const { return density_gpcc_; }
+
   //! Set total density of the material
   int set_density(double density, std::string units);
 

@@ -59,6 +59,12 @@ public:
   //! Finalize the material, assigning tables, normalize density, etc.
   void finalize();
 
+  //! Add nuclide to the material
+  //
+  //! \param[in] nuclide Name of the nuclide
+  //! \param[in] density Density of the nuclide in [atom/b-cm]
+  void add_nuclide(const std::string& nuclide, double density);
+
   //! Set total density of the material
   int set_density(double density, std::string units);
 

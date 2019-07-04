@@ -945,6 +945,44 @@ void Material::to_hdf5(hid_t group) const
   close_group(material_group);
 }
 
+void Material::add_nuclide(const std::string& name, double density)
+{
+  // Check if nuclide is already in material
+  for (int i = 0; i < nuclide_.size(); ++i) {
+    int i_nuc = nuclide_[i];
+    if (data::nuclides[i_nuc]->name_ == name) {
+      double awr = data::nuclides[i_nuc]->awr_;
+      density_ += density - atom_density_(i);
+      density_gpcc_ += (density - atom_density_(i))
+        * awr * MASS_NEUTRON / N_AVOGADRO;
+      atom_density_(i) = density;
+      return;
+    }
+  }
+
+  // If nuclide wasn't found, extend nuclide/density arrays
+  int err = openmc_load_nuclide(name.c_str());
+  if (err < 0) {
+    throw std::runtime_error{openmc_err_msg};
+  }
+
+  // Append new nuclide/density
+  int i_nuc = data::nuclide_map[name];
+  nuclide_.push_back(i_nuc);
+
+  auto n = nuclide_.size();
+
+  // Create copy of atom_density_ array with one extra entry
+  xt::xtensor<double, 1> atom_density = xt::zeros<double>({n});
+  xt::view(atom_density, xt::range(0, n-1)) = atom_density_;
+  atom_density(n-1) = density;
+  atom_density_ = atom_density;
+
+  density_ += density;
+  density_gpcc_ += density * data::nuclides[i_nuc]->awr_
+    * MASS_NEUTRON / N_AVOGADRO;
+}
+
 //==============================================================================
 // Non-method functions
 //==============================================================================
@@ -1141,40 +1179,10 @@ openmc_material_add_nuclide(int32_t index, const char* name, double density)
 {
   int err = 0;
   if (index >= 0 && index < model::materials.size()) {
-    auto& m = model::materials[index];
-
-    // Check if nuclide is already in material
-    for (int i = 0; i < m->nuclide_.size(); ++i) {
-      int i_nuc = m->nuclide_[i];
-      if (data::nuclides[i_nuc]->name_ == name) {
-        double awr = data::nuclides[i_nuc]->awr_;
-        m->density_ += density - m->atom_density_(i);
-        m->density_gpcc_ += (density - m->atom_density_(i))
-          * awr * MASS_NEUTRON / N_AVOGADRO;
-        m->atom_density_(i) = density;
-        return 0;
-      }
-    }
-
-    // If nuclide wasn't found, extend nuclide/density arrays
-    err = openmc_load_nuclide(name);
-
-    if (err == 0) {
-      // Append new nuclide/density
-      int i_nuc = data::nuclide_map[name];
-      m->nuclide_.push_back(i_nuc);
-
-      auto n = m->nuclide_.size();
-
-      // Create copy of atom_density_ array with one extra entry
-      xt::xtensor<double, 1> atom_density = xt::zeros<double>({n});
-      xt::view(atom_density, xt::range(0, n-1)) = m->atom_density_;
-      atom_density(n-1) = density;
-      m->atom_density_ = atom_density;
-
-      m->density_ += density;
-      m->density_gpcc_ += density * data::nuclides[i_nuc]->awr_
-        * MASS_NEUTRON / N_AVOGADRO;
+    try {
+      model::materials[index]->add_nuclide(name, density);
+    } catch (const std::runtime_error& e) {
+      return OPENMC_E_DATA;
     }
   } else {
     set_errmsg("Index in materials array is out of bounds.");

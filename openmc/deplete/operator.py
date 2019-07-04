@@ -525,7 +525,8 @@ class Operator(TransportOperator):
         rates = self.reaction_rates
         rates[:, :, :] = 0.0
 
-        k_combined = openmc.capi.keff()[0]
+        # Get k and uncertainty
+        k_combined = openmc.capi.keff()
 
         # Extract tally bins
         materials = self.burnable_mats

@@ -1216,7 +1216,7 @@ openmc_material_get_density(int32_t index, double* density)
 {
   if (index >= 0 && index < model::materials.size()) {
     auto& mat = model::materials[index];
-    *density = mat->density_gpcc_;
+    *density = mat->density_gpcc();
     return 0;
   } else {
     set_errmsg("Index in materials array is out of bounds.");

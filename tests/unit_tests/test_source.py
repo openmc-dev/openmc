@@ -37,4 +37,3 @@ def test_source_file():
     assert 'strength' in elem.attrib
     assert 'file' in elem.attrib
 
-

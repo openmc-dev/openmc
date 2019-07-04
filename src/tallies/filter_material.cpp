@@ -93,8 +93,8 @@ openmc_material_filter_get_bins(int32_t index, int32_t** bins, size_t* n)
   }
 
   // Output the bins.
-  *bins = filt->materials_.data();
-  *n = filt->materials_.size();
+  *bins = filt->materials().data();
+  *n = filt->materials().size();
   return 0;
 }
 

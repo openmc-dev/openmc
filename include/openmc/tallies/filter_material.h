@@ -27,12 +27,18 @@ public:
   void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
 
-  void set_materials(gsl::span<const int32_t> materials);
-
   void to_statepoint(hid_t filter_group) const override;
 
   std::string text_label(int bin) const override;
 
+  // Accessors
+  std::vector<int32_t>& materials() { return materials_; }
+
+  const std::vector<int32_t>& materials() const { return materials_; }
+
+  void set_materials(gsl::span<const int32_t> materials);
+
+private:
   //! The indices of the materials binned by this filter.
   std::vector<int32_t> materials_;
 

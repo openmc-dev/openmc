@@ -80,6 +80,10 @@ public:
   //! \param[in] units Units of density
   void set_density(double density, gsl::cstring_span units);
 
+  //! Get volume of material
+  //! \return Volume in [cm^3]
+  double volume() const;
+
   //! Write material data to HDF5
   void to_hdf5(hid_t group) const;
 

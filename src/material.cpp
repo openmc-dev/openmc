@@ -888,6 +888,15 @@ void Material::set_density(double density, gsl::cstring_span units)
   }
 }
 
+double Material::volume() const
+{
+  if (volume_ < 0.0) {
+    throw std::runtime_error{"Volume for material with ID="
+      + std::to_string(id_) + " not set."};
+  }
+  return volume_;
+}
+
 void Material::to_hdf5(hid_t group) const
 {
   hid_t material_group = create_group(group, "material " + std::to_string(id_));
@@ -1250,16 +1259,13 @@ extern "C" int
 openmc_material_get_volume(int32_t index, double* volume)
 {
   if (index >= 0 && index < model::materials.size()) {
-    auto& m = model::materials[index];
-    if (m->volume_ >= 0.0) {
-      *volume = m->volume_;
-      return 0;
-    } else {
-      std::stringstream msg;
-      msg << "Volume for material with ID=" << m->id_ << " not set.";
-      set_errmsg(msg);
+    try {
+      *volume = model::materials[index]->volume();
+    } catch (const std::exception& e) {
+      set_errmsg(e.what());
       return OPENMC_E_UNASSIGNED;
     }
+    return 0;
   } else {
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;

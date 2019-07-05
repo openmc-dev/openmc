@@ -24,7 +24,7 @@ from . import comm
 from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
 from .reaction_rates import ReactionRates
-from .tally_helpers import ChainFissTallyHelper
+from .helpers import DirectRxnRateHelper, ChainFissHelper
 
 
 def _distribute(items):
@@ -154,7 +154,8 @@ class Operator(TransportOperator):
             self.local_mats, self._burnable_nucs, self.chain.reactions)
 
         # Get class to assist working with tallies
-        self._tally_helper = ChainFissTallyHelper()
+        self._rate_helper = DirectRxnRateHelper()
+        self._energy_helper = ChainFissHelper()
 
 
     def __call__(self, vec, power, print_out=True):
@@ -185,7 +186,8 @@ class Operator(TransportOperator):
 
         # Update material compositions and tally nuclides
         self._update_materials()
-        self._tally_helper.nuclides = self._get_tally_nuclides()
+        self._rate_helper.nuclides = self._get_tally_nuclides()
+        self._energy_helper.nuclides = self._rate_helper.nuclides
 
         # Run OpenMC
         openmc.capi.reset()
@@ -380,7 +382,9 @@ class Operator(TransportOperator):
         # Generate tallies in memory
         materials = [openmc.capi.materials[int(i)]
                      for i in self.burnable_mats]
-        self._tally_helper.generate_tallies(materials, self.chain.reactions)
+        self._rate_helper.generate_tallies(materials, self.chain.reactions)
+        self._energy_helper.prepare(
+            self.chain.nuclides, self.reaction_rates.index_nuc, materials)
 
         # Return number density vector
         return list(self.number.get_mat_slice(np.s_[:]))
@@ -516,7 +520,7 @@ class Operator(TransportOperator):
 
         # Extract tally bins
         materials = self.burnable_mats
-        nuclides = self._tally_helper.nuclides
+        nuclides = self._rate_helper.nuclides
 
         # Form fast map
         nuc_ind = [rates.index_nuc[nuc] for nuc in nuclides]
@@ -530,47 +534,32 @@ class Operator(TransportOperator):
         energy = 0.0
 
         # Create arrays to store fission Q values, reaction rates, and nuclide
-        # numbers
-        rates_expanded = np.zeros((rates.n_nuc, rates.n_react))
-        number = np.zeros(rates.n_nuc)
+        # numbers, zeroed out in material iteration
+        number = np.empty(rates.n_nuc)
 
         fission_ind = rates.index_rx["fission"]
-
-        self._tally_helper.set_fission_q(self.chain.nuclides, rates.index_nuc)
-
-        tally_results = self._tally_helper.reaction_tally.results
 
         # Extract results
         for i, mat in enumerate(self.local_mats):
             # Get tally index
             slab = materials.index(mat)
 
-            # Get material results hyperslab
-            results = tally_results[slab, :, 1]
-
             # Zero out reaction rates and nuclide numbers
-            rates_expanded[:] = 0.0
             number[:] = 0.0
 
-            # Expand into our memory layout
-            j = 0
+            # Get new number densities
             for nuc, i_nuc_results in zip(nuclides, nuc_ind):
                 number[i_nuc_results] = self.number[mat, nuc]
-                for react in react_ind:
-                    rates_expanded[i_nuc_results, react] = results[j]
-                    j += 1
+
+            tally_rates = self._rate_helper.get_material_rates(
+                i, nuc_ind, react_ind)
 
             # Accumulate energy from fission
-            energy += self._tally_helper.get_fission_energy(
-                rates_expanded[:, fission_ind], i)
+            energy += self._energy_helper.get_fission_energy(
+                tally_rates[:, fission_ind], i)
 
             # Divide by total number and store
-            for i_nuc_results in nuc_ind:
-                if number[i_nuc_results] != 0.0:
-                    for react in react_ind:
-                        rates_expanded[i_nuc_results, react] /= number[i_nuc_results]
-
-            rates[i, :, :] = rates_expanded
+            rates[i, :, :] = self._rate_helper.divide_by_adens(number)
 
         # Reduce energy produced from all processes
         energy = comm.allreduce(energy)

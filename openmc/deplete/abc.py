@@ -198,7 +198,8 @@ class ReactionRateHelper(ABC):
 
     def _reset_results_cache(self, nnucs, nreact):
         """Cache for results for a given material"""
-        if self._results_cache is None or self._results_cache.shape != (nnucs, nreact):
+        if (self._results_cache is None
+                or self._results_cache.shape != (nnucs, nreact)):
             self._results_cache = zeros((nnucs, nreact))
         else:
             self._results_cache.fill(0.0)

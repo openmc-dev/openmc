@@ -7,11 +7,14 @@ to run a full depletion simulation.
 from collections import namedtuple
 import os
 from pathlib import Path
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from xml.etree import ElementTree as ET
 from warnings import warn
 
+from numpy import zeros, nonzero
+
 from openmc.data import DataLibrary
+from openmc.checkvalue import check_type
 from .chain import Chain
 
 OperatorResult = namedtuple('OperatorResult', ['k', 'rates'])
@@ -34,7 +37,7 @@ except AttributeError:
     pass
 
 
-class TransportOperator(metaclass=ABCMeta):
+class TransportOperator(ABC):
     """Abstract class defining a transport operator
 
     Each depletion integrator is written to work with a generic transport
@@ -160,3 +163,113 @@ class TransportOperator(metaclass=ABCMeta):
 
     def finalize(self):
         pass
+
+
+class ReactionRateHelper(ABC):
+    """Abstract class for generating reaction rates for operators
+
+    Responsible for generating reaction rate tallies for burnable
+    materials, given nuclides and scores from the operator.
+
+    Reaction rates are passed back to the operator for be used in
+    an :class:`openmc.deplete.OperatorResult` instance
+    """
+
+    def __init__(self):
+        self._nuclides = None
+        self._rate_tally = None
+        self._results_cache = None
+
+    @abstractmethod
+    def generate_tallies(self, materials, scores):
+        """Use the capi to build tallies needed for reaction rates"""
+        pass
+
+    @property
+    def nuclides(self):
+        """List of nuclides with requested reaction rates"""
+        return self._nuclides
+
+    @nuclides.setter
+    def nuclides(self, nuclides):
+        check_type("nuclides", nuclides, list, str)
+        self._nuclides = nuclides
+        self._rate_tally.nuclides = nuclides
+
+    def _reset_results_cache(self, nnucs, nreact):
+        """Cache for results for a given material"""
+        if self._results_cache is None or self._results_cache.shape != (nnucs, nreact):
+            self._results_cache = zeros((nnucs, nreact))
+        else:
+            self._results_cache.fill(0.0)
+        return self._results_cache
+
+    @abstractmethod
+    def get_material_rates(self, mat_id, nuc_index, react_index):
+        """Return 2D array of [nuclide, reaction] reaction rates
+
+        ``nuc_index`` and ``react_index`` are orderings of nuclides
+        and reactions such that the ordering is consistent between
+        reaction tallies and energy deposition tallies"""
+        pass
+
+    def divide_by_adens(self, number):
+        """Normalize reaction rates by number of nuclides
+
+        Acts on the current material examined by
+        :meth:`get_material_rates`
+
+        Parameters
+        ----------
+        number : iterable of float
+            Number density [#/b/cm] of each nuclide tracked in the calculation.
+            Ordered identically to :attr:`nuclides`
+
+        Returns
+        -------
+        results : :class:`numpy.ndarray`
+            2D array ``[n_nuclides, n_rxns]`` of reaction rates normalized by
+            the number of nuclides
+        """
+
+        mask = nonzero(number)
+        results = self._results_cache
+        for col in range(results.shape[1]):
+            results[mask, col] /= number[mask]
+        return results
+
+
+class FissionEnergyHelper(ABC):
+    """Abstract class for normalizing fission reactions to a given level
+    """
+
+    def __init__(self):
+        self._nuclides = None
+        self._fission_E = None
+
+    @abstractmethod
+    def prepare(self, chain_nucs, rate_index, materials):
+        """Perform work needed to obtain fission energy per material
+
+        ``chain_nucs`` is all nuclides tracked in the depletion chain,
+        while ``rate_index`` should be a mapping from nuclide name
+        to index in the reaction rate vector used in
+        :meth:`get_fission_energy`.
+        ``materials`` should be a list of all materials tracked
+        on the operator to which this object is attached"""
+        pass
+
+    @abstractmethod
+    def get_fission_energy(self, fission_rates, mat_index):
+        """Return fission energy in this material given fission rates"""
+        pass
+
+    @property
+    def nuclides(self):
+        """List of nuclides with requested reaction rates"""
+        return self._nuclides
+
+    @nuclides.setter
+    def nuclides(self, nuclides):
+        check_type("nuclides", nuclides, list, str)
+        self._nuclides = nuclides

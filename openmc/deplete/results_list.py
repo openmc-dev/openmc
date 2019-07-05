@@ -91,11 +91,13 @@ class ResultsList(list):
         time : numpy.ndarray
             Array of times in [s]
         eigenvalue : numpy.ndarray
-            k-eigenvalue at each time
+            k-eigenvalue at each time. Column 0
+            contains the eigenvalue, while column
+            1 contains the associated uncertainty
 
         """
         time = np.empty_like(self, dtype=float)
-        eigenvalue = np.empty_like(self, dtype=float)
+        eigenvalue = np.empty((len(self), 2), dtype=float)
 
         # Get time/eigenvalue at each point
         for i, result in enumerate(self):

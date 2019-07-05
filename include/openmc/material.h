@@ -80,6 +80,34 @@ public:
   //! \param[in] units Units of density
   void set_density(double density, gsl::cstring_span units);
 
+  //! Get nuclides in material
+  //! \return Indices into the global nuclides vector
+  gsl::span<const int> nuclides() const { return {nuclide_.data(), nuclide_.size()}; }
+
+  //! Get densities of each nuclide in material
+  //! \return Densities in [atom/b-cm]
+  gsl::span<const double> densities() const { return {atom_density_.data(), atom_density_.size()}; }
+
+  //! Set atom densities for the material
+  //
+  //! \param[in] name Name of each nuclide
+  //! \param[in] density Density of each nuclide in [atom/b-cm]
+  void set_densities(const std::vector<std::string>& name,
+    const std::vector<double>& density);
+
+  //! Get ID of material
+  //! \return ID of material
+  int32_t id() const { return id_; }
+
+  //! Assign a unique ID to the material
+  //! \param[in] Unique ID to assign. A value of -1 indicates that an ID
+  //!   should be automatically assigned.
+  void set_id(int32_t id);
+
+  //! Get whether material is fissionable
+  //! \return Whether material is fissionable
+  bool fissionable() const { return fissionable_; }
+
   //! Get volume of material
   //! \return Volume in [cm^3]
   double volume() const;
@@ -128,6 +156,9 @@ private:
 
   void calculate_neutron_xs(Particle& p) const;
   void calculate_photon_xs(Particle& p) const;
+
+  // Data members
+  gsl::index index_;
 };
 
 //==============================================================================

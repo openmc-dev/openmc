@@ -25,6 +25,9 @@ The current version of the depletion results file format is 1.0.
              nuclides, number of reactions).
            - **time** (*double[][2]*) -- Time in [s] at beginning/end of each
              step.
+           - **depletion time** (*double[]*) -- Average process time in [s] 
+             spent depleting a material across all burnable materials and,
+             if applicable, MPI processes.
 
 **/materials/<id>/**
 

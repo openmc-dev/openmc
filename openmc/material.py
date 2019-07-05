@@ -931,8 +931,11 @@ class Material(IDManagerMixin):
         mat_id = int(elem.get('id'))
         mat = cls(mat_id)
         mat.name = elem.get('name')
-        if 'temperature' in elem.attrib:
-            mat.temperature = float(elem.get('temperature'))
+
+        temp_node = elem.find("temperature")
+        if temp_node is not None:
+            mat.temperature = float(temp_node.text)
+
         if 'volume' in elem.attrib:
             mat.volume = float(elem.get('volume'))
         mat.depletable = bool(elem.get('depletable'))

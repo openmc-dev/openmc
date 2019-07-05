@@ -115,8 +115,15 @@ class ResultsList(list):
             like :meth:`get_eigenvalues`, because no depletion
             is performed at the final transport stage
 
+        Returns
+        -------
+
+        times : :class:`numpy.ndarray`
+            Vector of average time to deplete a single material
+            across all processes and materials.
+
         """
-        times = np.empty((len(self) - 1, 1))
+        times = np.empty(len(self) - 1)
         # Need special logic because the predictor
         # writes EOS values for step i as BOS values
         # for step i+1

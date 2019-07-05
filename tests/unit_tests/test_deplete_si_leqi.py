@@ -39,5 +39,5 @@ def test_si_leqi(run_in_tmpdir):
     # Test structure of depletion time dataset
 
     dep_time = res.get_depletion_time()
-    assert dep_time.shape == (len(dt), 1)
+    assert dep_time.shape == (len(dt), )
     assert all(dep_time > 0)

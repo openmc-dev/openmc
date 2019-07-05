@@ -154,7 +154,7 @@ def leqi(operator, timesteps, power=None, power_density=None, print_out=True):
             # Create results, write to disk
             Results.save(
                 operator, x, op_results, [t, t+dt], p, i_res+i,
-                sum((time_1, time_2, time_3, time_4)))
+                time_1 + time_2 + time_3 + time_4)
 
             # update results
             op_res_last = copy.deepcopy(op_results[0])

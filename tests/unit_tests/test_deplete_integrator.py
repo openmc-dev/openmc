@@ -64,8 +64,9 @@ def test_results_save(run_in_tmpdir):
         r1[:] = np.random.rand(2, 2, 2)
 
     # Create global terms
-    eigvl1 = np.random.rand(stages)
-    eigvl2 = np.random.rand(stages)
+    # Col 0: eig, Col 1: uncertainty
+    eigvl1 = np.random.rand(stages, 2)
+    eigvl2 = np.random.rand(stages, 2)
 
     eigvl1 = comm.bcast(eigvl1, root=0)
     eigvl2 = comm.bcast(eigvl2, root=0)

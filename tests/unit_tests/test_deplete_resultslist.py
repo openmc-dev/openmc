@@ -44,6 +44,8 @@ def test_get_eigenvalue(res):
 
     t_ref = [0.0, 1296000.0, 2592000.0, 3888000.0]
     k_ref = [1.16984322, 1.19097427, 1.03012572, 1.20045627]
+    u_ref = [0.0375587, 0.0347639, 0.07216021, 0.02839642]
 
     np.testing.assert_allclose(t, t_ref)
-    np.testing.assert_allclose(k, k_ref)
+    np.testing.assert_allclose(k[:, 0], k_ref)
+    np.testing.assert_allclose(k[:, 1], u_ref)

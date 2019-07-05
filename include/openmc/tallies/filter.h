@@ -77,8 +77,8 @@ public:
   get_all_bins(const Particle* p, int estimator, FilterMatch& match) const = 0;
 
   //! Assign a unique ID to the filter
-  //
-  //! \param[in]  Unique ID to assign
+  //! \param[in]  Unique ID to assign. A value of -1 indicates that an ID should
+  //!   be automatically assigned
   void set_id(int32_t id);
 
   gsl::index index() const { return index_; }

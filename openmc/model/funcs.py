@@ -1,12 +1,16 @@
-from collections import OrderedDict
 from collections.abc import Iterable
 from math import sqrt
 from numbers import Real
 from functools import partial
 from warnings import warn
+from operator import attrgetter
 
-from openmc import XPlane, YPlane, Plane, ZCylinder, Quadric
-from openmc.checkvalue import check_type, check_value
+from openmc import (
+    XPlane, YPlane, Plane, ZCylinder, Quadric, Cylinder, XCylinder,
+    YCylinder, Material, Universe, Cell)
+from openmc.checkvalue import (
+    check_type, check_value, check_length, check_less_than,
+    check_iterable_type)
 import openmc.data
 
 
@@ -414,7 +418,7 @@ def cylinder_from_points(p1, p2, r, **kwargs):
     kwargs['j'] = cx*dy - cy*dx
     kwargs['k'] = -(dx*dx + dy*dy + dz*dz)*r*r
 
-    return openmc.Quadric(**kwargs)
+    return Quadric(**kwargs)
 
 
 def subdivide(surfaces):
@@ -442,3 +446,121 @@ def subdivide(surfaces):
         regions.append(+s0 & -s1)
     regions.append(+surfaces[-1])
     return regions
+
+
+def pin(surfaces, materials, subdivisions=None, universe_id=None, name=""):
+    """Convenience function for building a fuel pin
+
+    Parameters
+    ----------
+    surfaces : iterable of :class:`openmc.Cylinder`
+        Cylinders used to define boundaries
+        between materials. All cylinders must be
+        concentric and of the same orientation, e.g.
+        all :class:`openmc.ZCylinder`
+    materials : iterable of :class:`openmc.Material`
+        Materials to go between ``surfaces``. There must be one
+        more material than surfaces, corresponding to the material
+        that spans all space outside the final ring.
+    subdivisions : None or dict of int to int
+        Dictionary describing which rings to subdivide and how
+        many times. Keys are indexes of the annular rings
+        to be divided. Will construct equal area rings
+    universe_id : None or int
+        Identifier for this universe
+    name : str
+        Name for this universe
+
+    Returns
+    -------
+    :class:`openmc.Universe`
+        Universe of concentric cylinders filled with the desired
+        materials
+    """
+    check_type("materials",  materials, Iterable, Material)
+    check_length("surfaces", surfaces, len(materials) - 1, len(materials) - 1)
+    # Check that all surfaces are of similar orientation
+    check_type("surface", surfaces[0], Cylinder)
+    surf_type = type(surfaces[0])
+    check_iterable_type("surfaces", surfaces[1:], surf_type)
+
+    # Check for increasing radii and equal centers
+    if surf_type is ZCylinder:
+        center_getter = attrgetter("x0", "y0")
+    elif surf_type is YCylinder:
+        center_getter = attrgetter("x0", "z0")
+    elif surf_type is XCylinder:
+        center_getter = attrgetter("z0", "y0")
+    else:
+        raise TypeError(
+            "Not configured to interpret {} surfaces".format(
+                surf_type.__name__))
+
+    centers = set()
+    prev_rad = 0
+    for ix, surf in enumerate(surfaces):
+        cur_rad = surf.r
+        if cur_rad <= prev_rad:
+            raise ValueError(
+                "Surfaces do not appear to be increasing in radius. "
+                "Surface {} at index {} has radius {:7.3E} compared to "
+                "previous radius of {:7.5E}".format(
+                    surf.id, ix, cur_rad, prev_rad))
+        prev_rad = cur_rad
+        centers.add(center_getter(surf))
+
+    if len(centers) > 1:
+        raise ValueError(
+            "Surfaces do not appear to be concentric. The following "
+            "centers were found: {}".format(centers))
+
+    if subdivisions is not None:
+        check_length("subdivisions", subdivisions, 1, len(surfaces))
+        orig_indexes = list(subdivisions.keys())
+        check_iterable_type("ring indexes", orig_indexes, int)
+        check_iterable_type(
+            "number of divisions", list(subdivisions.values()), int)
+        for ix in orig_indexes:
+            if ix < 0:
+                subdivisions[len(surfaces) + ix] = subdivisions.pop(ix)
+        # Dissallow subdivision on outer most, infinite region
+        check_less_than(
+            "outer ring", max(subdivisions), len(surfaces), equality=True)
+
+        # ensure ability to concatenate
+        if not isinstance(materials, list):
+            materials = list(materials)
+        if not isinstance(surfaces, list):
+            surfaces = list(surfaces)
+
+        # generate equal area divisions
+        # Adding N - 1 new regions
+        # N - 2 surfaces are made
+        # Original cell is not removed, but not occupies last ring
+        for ring_index in reversed(sorted(subdivisions.keys())):
+            nr = subdivisions[ring_index]
+            new_surfs = []
+
+            if ring_index == 0:
+                lower_rad = 0.0
+            else:
+                lower_rad = surfaces[ring_index - 1].r
+            upper_rad = surfaces[ring_index].r
+
+            area_term = (upper_rad ** 2 - lower_rad ** 2) / nr
+
+            for new_index in range(nr - 1):
+                lower_rad = sqrt(area_term + lower_rad ** 2)
+                new_surfs.append(surf_type(r=lower_rad))
+
+            surfaces = (
+                    surfaces[:ring_index] + new_surfs + surfaces[ring_index:])
+            materials = (
+                    materials[:ring_index]
+                    + [materials[ring_index].clone() for _i in range(nr - 1)]
+                    + materials[ring_index:])
+
+    # Build the universe
+    regions = subdivide(surfaces)
+    cells = [Cell(fill=f, region=r) for r, f in zip(regions, materials)]
+    return Universe(universe_id=universe_id, name=name, cells=cells)

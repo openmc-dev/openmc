@@ -45,8 +45,11 @@ namespace openmc {
 class Filter
 {
 public:
-  // Default constructor
+  //----------------------------------------------------------------------------
+  // Constructors, destructors, factory functions
+
   Filter();
+  virtual ~Filter();
 
   //! Create a new tally filter
   //
@@ -62,12 +65,13 @@ public:
   //! \return Pointer to the new filter object
   static Filter* create(pugi::xml_node node);
 
-  virtual ~Filter();
-
-  virtual std::string type() const = 0;
-
   //! Uses an XML input to fill the filter's data fields.
   virtual void from_xml(pugi::xml_node node) = 0;
+
+  //----------------------------------------------------------------------------
+  // Methods
+
+  virtual std::string type() const = 0;
 
   //! Matches a tally event to a set of filter bins and weights.
   //!
@@ -75,13 +79,6 @@ public:
   //!   weights; note that there may be zero matching bins
   virtual void
   get_all_bins(const Particle* p, int estimator, FilterMatch& match) const = 0;
-
-  //! Assign a unique ID to the filter
-  //! \param[in]  Unique ID to assign. A value of -1 indicates that an ID should
-  //!   be automatically assigned
-  void set_id(int32_t id);
-
-  gsl::index index() const { return index_; }
 
   //! Writes data describing this filter to an HDF5 statepoint group.
   virtual void
@@ -96,6 +93,19 @@ public:
   //! For example, an `EnergyFilter` might return the string
   //! "Incoming Energy [0.625E-6, 20.0)".
   virtual std::string text_label(int bin) const = 0;
+
+  //----------------------------------------------------------------------------
+  // Accessors
+
+  //! Assign a unique ID to the filter
+  //! \param[in]  Unique ID to assign. A value of -1 indicates that an ID should
+  //!   be automatically assigned
+  void set_id(int32_t id);
+
+  gsl::index index() const { return index_; }
+
+  //----------------------------------------------------------------------------
+  // Data members
 
   int32_t id_ {-1};
 

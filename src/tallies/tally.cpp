@@ -480,11 +480,6 @@ Tally::create(int32_t id)
 }
 
 void
-Tally::init_from_xml(pugi::xml_node node)
-{
-}
-
-void
 Tally::set_id(int32_t id)
 {
   Expects(id >= -1);

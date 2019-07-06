@@ -23,13 +23,15 @@ namespace openmc {
 
 class Tally {
 public:
+  //----------------------------------------------------------------------------
   // Constructors, destructors, factory functions
   explicit Tally(int32_t id);
   explicit Tally(pugi::xml_node node);
   ~Tally();
   static Tally* create(int32_t id = -1);
 
-  void init_from_xml(pugi::xml_node node);
+  //----------------------------------------------------------------------------
+  // Accessors
 
   void set_id(int32_t id);
 
@@ -42,9 +44,6 @@ public:
   void set_nuclides(pugi::xml_node node);
 
   void set_nuclides(const std::vector<std::string>& nuclides);
-
-  //----------------------------------------------------------------------------
-  // Methods for getting and setting filter/stride data.
 
   const std::vector<int32_t>& filters() const {return filters_;}
 

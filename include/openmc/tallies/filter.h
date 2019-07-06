@@ -62,7 +62,7 @@ public:
   //! \return Pointer to the new filter object
   static Filter* create(pugi::xml_node node);
 
-  virtual ~Filter() = default;
+  virtual ~Filter();
 
   virtual std::string type() const = 0;
 

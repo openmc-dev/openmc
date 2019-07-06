@@ -25,6 +25,8 @@ class Tally {
 public:
   explicit Tally(int32_t id);
 
+  ~Tally();
+
   static Tally* create(int32_t id = -1);
 
   void init_from_xml(pugi::xml_node node);

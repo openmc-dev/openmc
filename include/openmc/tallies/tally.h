@@ -23,10 +23,10 @@ namespace openmc {
 
 class Tally {
 public:
+  // Constructors, destructors, factory functions
   explicit Tally(int32_t id);
-
+  explicit Tally(pugi::xml_node node);
   ~Tally();
-
   static Tally* create(int32_t id = -1);
 
   void init_from_xml(pugi::xml_node node);

@@ -332,6 +332,11 @@ Material::Material(pugi::xml_node node)
   }
 }
 
+Material::~Material()
+{
+  model::material_map.erase(id_);
+}
+
 void Material::finalize()
 {
   // Set fissionable if any nuclide is fissionable

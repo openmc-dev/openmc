@@ -63,6 +63,11 @@ extern "C" size_t tally_filters_size()
 Filter::Filter() : index_{model::tally_filters.size()}
 { }
 
+Filter::~Filter()
+{
+  model::filter_map.erase(id_);
+}
+
 Filter* Filter::create(pugi::xml_node node)
 {
   // Copy filter id

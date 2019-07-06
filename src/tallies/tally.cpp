@@ -247,6 +247,11 @@ Tally::Tally(int32_t id)
   this->set_filters({});
 }
 
+Tally::~Tally()
+{
+  model::tally_map.erase(id_);
+}
+
 Tally*
 Tally::create(int32_t id)
 {

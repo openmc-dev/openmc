@@ -43,9 +43,10 @@ public:
     double fraction; //!< How often to use table
   };
 
-  // Constructors
+  // Constructors and destructors
   Material() {};
   explicit Material(pugi::xml_node material_node);
+  ~Material();
 
   // Methods
   void calculate_xs(Particle& p) const;

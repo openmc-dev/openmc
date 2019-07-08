@@ -3,7 +3,7 @@
 import copy
 from collections.abc import Iterable
 
-from .cram import deplete
+from .cram import timed_deplete
 from ..results import Results
 from ..abc import OperatorResult
 from .celi import _celi_f1, _celi_f2
@@ -94,7 +94,8 @@ def si_celi(operator, timesteps, power=None, power_density=None,
                                              i, i_res, t, dt, print_out, m)
 
         # Create results for last point, write to disk
-        Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps))
+        Results.save(
+            operator, x, op_results, [t, t], p, i_res + len(timesteps))
 
 
 def si_celi_inner(operator, x, op_results, p, i, i_res, t, dt, print_out, m=10):
@@ -136,7 +137,8 @@ def si_celi_inner(operator, x, op_results, p, i, i_res, t, dt, print_out, m=10):
     chain = operator.chain
 
     # Deplete to end
-    x_new = deplete(chain, x[0], op_results[0].rates, dt, print_out)
+    proc_time, x_new = timed_deplete(
+        chain, x[0], op_results[0].rates, dt, print_out)
     x.append(x_new)
 
     for j in range(m + 1):
@@ -150,14 +152,15 @@ def si_celi_inner(operator, x, op_results, p, i, i_res, t, dt, print_out, m=10):
             op_res_bar = OperatorResult(k, rates)
 
         rates = list(zip(op_results[0].rates, op_res_bar.rates))
-        x_new = deplete(chain, x[0], rates, dt, print_out,
-                        matrix_func=_celi_f1)
-        x_new = deplete(chain, x_new, rates, dt, print_out,
-                        matrix_func=_celi_f2)
+        time_1, x_new = timed_deplete(
+            chain, x[0], rates, dt, print_out, matrix_func=_celi_f1)
+        time_2, x_new = timed_deplete(
+            chain, x_new, rates, dt, print_out, matrix_func=_celi_f2)
+        proc_time += time_1 + time_2
 
     # Create results, write to disk
     op_results.append(op_res_bar)
-    Results.save(operator, x, op_results, [t, t+dt], p, i_res+i)
+    Results.save(operator, x, op_results, [t, t+dt], p, i_res+i, proc_time)
 
     # return updated time and vectors
     return [x_new], t + dt, [op_res_bar]

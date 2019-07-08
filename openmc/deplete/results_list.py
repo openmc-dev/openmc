@@ -105,3 +105,33 @@ class ResultsList(list):
             eigenvalue[i] = result.k[0]
 
         return time, eigenvalue
+
+    def get_depletion_time(self):
+        """Return an array of the average time to deplete a material
+
+        ..note::
+
+            Will have one fewer row than number of other methods,
+            like :meth:`get_eigenvalues`, because no depletion
+            is performed at the final transport stage
+
+        Returns
+        -------
+
+        times : :class:`numpy.ndarray`
+            Vector of average time to deplete a single material
+            across all processes and materials.
+
+        """
+        times = np.empty(len(self) - 1)
+        # Need special logic because the predictor
+        # writes EOS values for step i as BOS values
+        # for step i+1
+        # The first proc_time may be zero
+        if self[0].proc_time > 0.0:
+            items = self[:-1]
+        else:
+            items = self[1:]
+        for ix, res in enumerate(items):
+            times[ix] = res.proc_time
+        return times

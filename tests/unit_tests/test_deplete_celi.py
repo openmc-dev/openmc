@@ -35,3 +35,9 @@ def test_celi(run_in_tmpdir):
 
     assert y1[2] == approx(s2[0])
     assert y2[2] == approx(s2[1])
+
+    # Test structure of depletion time dataset
+
+    dep_time = res.get_depletion_time()
+    assert dep_time.shape == (len(dt), )
+    assert all(dep_time > 0)

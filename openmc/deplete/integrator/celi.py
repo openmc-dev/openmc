@@ -3,7 +3,7 @@
 import copy
 from collections.abc import Iterable
 
-from .cram import deplete
+from .cram import timed_deplete
 from ..results import Results
 
 
@@ -149,19 +149,19 @@ def celi_inner(operator, vec, p, i, i_res, t, dt, print_out):
         op_results[0].rates *= ratio_power[0]
 
     # Deplete to end
-    x_new = deplete(chain, x[0], op_results[0].rates, dt, print_out)
+    proc_time, x_new = timed_deplete(chain, x[0], op_results[0].rates, dt, print_out)
     x.append(x_new)
     op_results.append(operator(x[1], p))
 
     # Deplete with two matrix exponentials
     rates = list(zip(op_results[0].rates, op_results[1].rates))
-    x_end = deplete(chain, x[0], rates, dt, print_out,
+    time_1, x_end = timed_deplete(chain, x[0], rates, dt, print_out,
                     matrix_func=_celi_f1)
-    x_end = deplete(chain, x_end, rates, dt, print_out,
+    time_2, x_end = timed_deplete(chain, x_end, rates, dt, print_out,
                     matrix_func=_celi_f2)
 
     # Create results, write to disk
-    Results.save(operator, x, op_results, [t, t + dt], p, i_res + i)
+    Results.save(operator, x, op_results, [t, t + dt], p, i_res + i, proc_time + time_1 + time_2)
 
     # return updated time and vectors
     return x_end, t + dt, op_results[0]

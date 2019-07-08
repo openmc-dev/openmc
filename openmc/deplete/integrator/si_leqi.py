@@ -6,7 +6,7 @@ from itertools import repeat
 
 from .si_celi import si_celi_inner
 from .leqi import _leqi_f1, _leqi_f2, _leqi_f3, _leqi_f4
-from .cram import deplete
+from .cram import timed_deplete
 from ..results import Results
 from ..abc import OperatorResult
 
@@ -112,11 +112,13 @@ def si_leqi(operator, timesteps, power=None, power_density=None,
             # Perform remaining LE/QI
             inputs = list(zip(op_res_last.rates, op_results[0].rates,
                               repeat(dt_l), repeat(dt)))
-            x_new = deplete(chain, x[0], inputs, dt, print_out,
-                            matrix_func=_leqi_f1)
-            x_new = deplete(chain, x_new, inputs, dt, print_out,
-                            matrix_func=_leqi_f2)
+            proc_time, x_new = timed_deplete(
+                chain, x[0], inputs, dt, print_out, matrix_func=_leqi_f1)
+            time_1, x_new = timed_deplete(
+                chain, x_new, inputs, dt, print_out, matrix_func=_leqi_f2)
             x.append(x_new)
+
+            proc_time += time_1
 
             # Loop on inner
             for j in range(m + 1):
@@ -131,14 +133,17 @@ def si_leqi(operator, timesteps, power=None, power_density=None,
 
                 inputs = list(zip(op_res_last.rates, op_results[0].rates,
                                   op_res_bar.rates, repeat(dt_l), repeat(dt)))
-                x_new = deplete(chain, x[0], inputs, dt, print_out,
-                                matrix_func=_leqi_f3)
-                x_new = deplete(chain, x_new, inputs, dt, print_out,
-                                matrix_func=_leqi_f4)
+                time_1, x_new = timed_deplete(
+                    chain, x[0], inputs, dt, print_out, matrix_func=_leqi_f3)
+                time_2, x_new = timed_deplete(
+                    chain, x_new, inputs, dt, print_out, matrix_func=_leqi_f4)
+
+                proc_time += time_1 + time_2
 
             # Create results, write to disk
             op_results.append(op_res_bar)
-            Results.save(operator, x, op_results, [t, t+dt], p, i_res+i)
+            Results.save(
+                operator, x, op_results, [t, t+dt], p, i_res+i, proc_time)
 
             # update results
             x = [x_new]
@@ -148,4 +153,5 @@ def si_leqi(operator, timesteps, power=None, power_density=None,
             dt_l = dt
 
         # Create results for last point, write to disk
-        Results.save(operator, x, op_results, [t, t], p, i_res+len(timesteps))
+        Results.save(
+                operator, x, op_results, [t, t], p, i_res+len(timesteps))

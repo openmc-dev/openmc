@@ -523,7 +523,7 @@ Tally::set_filters(gsl::span<Filter*> filters)
   for (int i = 0; i < n; ++i) {
     // Add index to vector of filters
     auto& f {filters[i]};
-    filters_.push_back(model::filter_map.at(f->id_));
+    filters_.push_back(model::filter_map.at(f->id()));
 
     // Keep track of indices for special filters.
     if (dynamic_cast<const EnergyoutFilter*>(f)) {
@@ -540,7 +540,7 @@ Tally::set_filters(gsl::span<Filter*> filters)
   int stride = 1;
   for (int i = n-1; i >= 0; --i) {
     strides_[i] = stride;
-    stride *= model::tally_filters[filters_[i]]->n_bins_;
+    stride *= model::tally_filters[filters_[i]]->n_bins();
   }
   n_filter_bins_ = stride;
 }

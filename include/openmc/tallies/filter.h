@@ -97,20 +97,28 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
+  //! Get unique ID of filter
+  //! \return Unique ID
+  int32_t id() const { return id_; }
+
   //! Assign a unique ID to the filter
   //! \param[in]  Unique ID to assign. A value of -1 indicates that an ID should
   //!   be automatically assigned
   void set_id(int32_t id);
+
+  //! Get number of bins
+  //! \return Number of bins
+  int n_bins() const { return n_bins_; }
 
   gsl::index index() const { return index_; }
 
   //----------------------------------------------------------------------------
   // Data members
 
-  int32_t id_ {-1};
-
+protected:
   int n_bins_;
 private:
+  int32_t id_ {-1};
   gsl::index index_;
 };
 

@@ -16,7 +16,13 @@ namespace openmc {
 class EnergyFilter : public Filter
 {
 public:
+  //----------------------------------------------------------------------------
+  // Constructors, destructors
+
   ~EnergyFilter() = default;
+
+  //----------------------------------------------------------------------------
+  // Methods
 
   std::string type() const override {return "energy";}
 
@@ -25,11 +31,17 @@ public:
   void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
 
-  void set_bins(gsl::span<const double> bins);
-
   void to_statepoint(hid_t filter_group) const override;
 
   std::string text_label(int bin) const override;
+
+  //----------------------------------------------------------------------------
+  // Accessors
+
+  void set_bins(gsl::span<const double> bins);
+
+  //----------------------------------------------------------------------------
+  // Data members
 
   std::vector<double> bins_;
 

@@ -525,8 +525,6 @@ class Chain(object):
 
         # Check for validity before manipulation
 
-        check_type("branch_ratios", branch_ratios, dict, str)
-
         for parent, sub in branch_ratios.items():
             if parent not in self:
                 if strict:

@@ -310,3 +310,22 @@ def test_capture_branch_no_rxn():
     phrase = "U234 does not have capture reactions"
     with pytest.raises(AttributeError, match=phrase):
         chain.set_capture_branches(u4br)
+
+
+def test_capture_branch_failures(simple_chain):
+    """Test failure modes for setting capture branch ratios"""
+
+    # Parent isotope not present
+    br = {"X": {"A": 0.6, "B": 0.7}}
+    with pytest.raises(KeyError, match="X"):
+        simple_chain.set_capture_branches(br)
+
+    # Product isotope not present
+    br = {"C": {"X": 0.4, "A": 0.2, "B": 0.4}}
+    with pytest.raises(KeyError, match="X"):
+        simple_chain.set_capture_branches(br)
+
+    # Sum of ratios > 1.0
+    br = {"C": {"A": 1.0, "B": 1.0}}
+    with pytest.raises(ValueError, match="C ratios"):
+        simple_chain.set_capture_branches(br)

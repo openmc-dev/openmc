@@ -129,7 +129,7 @@ EnergyoutFilter::text_label(int bin) const
 //==============================================================================
 
 extern"C" int
-openmc_energy_filter_get_bins(int32_t index, double** energies, size_t* n)
+openmc_energy_filter_get_bins(int32_t index, const double** energies, size_t* n)
 {
   // Make sure this is a valid index to an allocated filter.
   if (int err = verify_filter(index)) return err;
@@ -145,8 +145,8 @@ openmc_energy_filter_get_bins(int32_t index, double** energies, size_t* n)
   }
 
   // Output the bins.
-  *energies = filt->bins_.data();
-  *n = filt->bins_.size();
+  *energies = filt->bins().data();
+  *n = filt->bins().size();
   return 0;
 }
 

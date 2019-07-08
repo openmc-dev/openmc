@@ -165,9 +165,9 @@ openmc_zernike_filter_get_params(int32_t index, double* x, double* y,
   if (err) return err;
 
   // Output the params.
-  *x = filt->x_;
-  *y = filt->y_;
-  *r = filt->r_;
+  *x = filt->x();
+  *y = filt->y();
+  *r = filt->r();
   return 0;
 }
 
@@ -196,9 +196,9 @@ openmc_zernike_filter_set_params(int32_t index, const double* x,
   if (err) return err;
 
   // Update the filter.
-  if (x) filt->x_ = *x;
-  if (y) filt->y_ = *y;
-  if (r) filt->r_ = *r;
+  if (x) filt->set_x(*x);
+  if (y) filt->set_y(*y);
+  if (r) filt->set_r(*r);
   return 0;
 }
 

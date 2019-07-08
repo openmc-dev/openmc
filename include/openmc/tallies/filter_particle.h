@@ -37,8 +37,11 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
+  const std::vector<Particle::Type>& particles() const { return particles_; }
+
   void set_particles(gsl::span<Particle::Type> particles);
 
+private:
   //----------------------------------------------------------------------------
   // Data members
 

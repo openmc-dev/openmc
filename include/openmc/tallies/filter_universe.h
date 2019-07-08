@@ -42,6 +42,7 @@ public:
 
   void set_universes(gsl::span<int32_t> universes);
 
+private:
   //----------------------------------------------------------------------------
   // Data members
 

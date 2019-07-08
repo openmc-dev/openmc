@@ -312,7 +312,7 @@ Tally::Tally(pugi::xml_node node)
       estimator_ = ESTIMATOR_ANALOG;
     } else if (filt_type == "sphericalharmonics") {
       auto sf = dynamic_cast<SphericalHarmonicsFilter*>(f);
-      if (sf->cosine_ == SphericalHarmonicsCosine::scatter) {
+      if (sf->cosine() == SphericalHarmonicsCosine::scatter) {
         estimator_ = ESTIMATOR_ANALOG;
       }
     } else if (filt_type == "spatiallegendre" || filt_type == "zernike"
@@ -365,7 +365,7 @@ Tally::Tally(pugi::xml_node node)
     } else {
       const auto& f = model::tally_filters[particle_filter_index].get();
       auto pf = dynamic_cast<ParticleFilter*>(f);
-      for (auto p : pf->particles_) {
+      for (auto p : pf->particles()) {
         if (p == Particle::Type::electron ||
             p == Particle::Type::positron) {
           estimator_ = ESTIMATOR_ANALOG;
@@ -376,7 +376,7 @@ Tally::Tally(pugi::xml_node node)
     if (particle_filter_index >= 0) {
       const auto& f = model::tally_filters[particle_filter_index].get();
       auto pf = dynamic_cast<ParticleFilter*>(f);
-      for (auto p : pf->particles_) {
+      for (auto p : pf->particles()) {
         if (p != Particle::Type::neutron) {
           warning("Particle filter other than NEUTRON used with photon "
             "transport turned off. All tallies for particle type " +

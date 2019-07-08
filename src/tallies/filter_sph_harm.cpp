@@ -134,7 +134,7 @@ openmc_sphharm_filter_get_order(int32_t index, int* order)
   if (err) return err;
 
   // Output the order.
-  *order = filt->order_;
+  *order = filt->order();
   return 0;
 }
 
@@ -148,7 +148,7 @@ openmc_sphharm_filter_get_cosine(int32_t index, char cosine[])
   if (err) return err;
 
   // Output the cosine.
-  if (filt->cosine_ == SphericalHarmonicsCosine::scatter) {
+  if (filt->cosine() == SphericalHarmonicsCosine::scatter) {
     strcpy(cosine, "scatter");
   } else {
     strcpy(cosine, "particle");

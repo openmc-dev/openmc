@@ -42,6 +42,7 @@ public:
 
   void set_surfaces(gsl::span<int32_t> surfaces);
 
+private:
   //----------------------------------------------------------------------------
   // Data members
 

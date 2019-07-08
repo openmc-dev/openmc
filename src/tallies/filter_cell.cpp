@@ -80,7 +80,7 @@ CellFilter::text_label(int bin) const
 //==============================================================================
 
 extern "C" int
-openmc_cell_filter_get_bins(int32_t index, int32_t** cells, int32_t* n)
+openmc_cell_filter_get_bins(int32_t index, const int32_t** cells, int32_t* n)
 {
   if (int err = verify_filter(index)) return err;
 
@@ -91,8 +91,8 @@ openmc_cell_filter_get_bins(int32_t index, int32_t** cells, int32_t* n)
   }
 
   auto cell_filt = static_cast<CellFilter*>(filt);
-  *cells = cell_filt->cells_.data();
-  *n = cell_filt->cells_.size();
+  *cells = cell_filt->cells().data();
+  *n = cell_filt->cells().size();
   return 0;
 }
 

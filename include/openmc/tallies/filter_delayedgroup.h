@@ -41,8 +41,11 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
+  const std::vector<int>& groups() const { return groups_; }
+
   void set_groups(gsl::span<int> groups);
 
+private:
   //----------------------------------------------------------------------------
   // Data members
 

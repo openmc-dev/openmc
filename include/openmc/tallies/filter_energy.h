@@ -38,8 +38,12 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
+  const std::vector<double>& bins() const { return bins_; }
   void set_bins(gsl::span<const double> bins);
 
+  bool matches_transport_groups() const { return matches_transport_groups_; }
+
+protected:
   //----------------------------------------------------------------------------
   // Data members
 
@@ -59,6 +63,9 @@ public:
 class EnergyoutFilter : public EnergyFilter
 {
 public:
+  //----------------------------------------------------------------------------
+  // Methods
+
   std::string type() const override {return "energyout";}
 
   void get_all_bins(const Particle* p, int estimator, FilterMatch& match)

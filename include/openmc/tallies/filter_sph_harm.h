@@ -42,10 +42,15 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
+  int order() const { return order_; }
+
   void set_order(int order);
+
+  SphericalHarmonicsCosine cosine() const { return cosine_; }
 
   void set_cosine(gsl::cstring_span cosine);
 
+private:
   //----------------------------------------------------------------------------
   // Data members
 

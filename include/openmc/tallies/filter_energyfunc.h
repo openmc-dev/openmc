@@ -40,6 +40,7 @@ public:
 
   std::string text_label(int bin) const override;
 
+private:
   //----------------------------------------------------------------------------
   // Data members
 

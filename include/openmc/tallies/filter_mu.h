@@ -41,6 +41,7 @@ public:
 
   void set_bins(gsl::span<double> bins);
 
+private:
   //----------------------------------------------------------------------------
   // Data members
 

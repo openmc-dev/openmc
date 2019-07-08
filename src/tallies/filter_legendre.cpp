@@ -66,7 +66,7 @@ openmc_legendre_filter_get_order(int32_t index, int* order)
   }
 
   // Output the order.
-  *order = filt->order_;
+  *order = filt->order();
   return 0;
 }
 

@@ -40,12 +40,17 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
+  int order() const { return order_; }
   void set_order(int order);
 
+  LegendreAxis axis() const { return axis_; }
   void set_axis(LegendreAxis axis);
 
+  double min() const { return min_; }
+  double max() const { return max_; }
   void set_minmax(double min, double max);
 
+private:
   //----------------------------------------------------------------------------
   // Data members
 

@@ -40,8 +40,11 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
+  const std::vector<int32_t>& cells() const { return cells_; }
+
   void set_cells(gsl::span<int32_t> cells);
 
+protected:
   //----------------------------------------------------------------------------
   // Data members
 

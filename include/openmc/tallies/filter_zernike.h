@@ -36,13 +36,22 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  int order() const {return order_;}
-
+  int order() const { return order_; }
   virtual void set_order(int order);
+
+  double x() const { return x_; }
+  void set_x(double x) { x_ = x; }
+
+  double y() const { return y_; }
+  void set_y(double y) { y_ = y; }
+
+  double r() const { return r_; }
+  void set_r(double r) { r_ = r; }
 
   //----------------------------------------------------------------------------
   // Data members
 
+protected:
   //! Cartesian x coordinate for the origin of this expansion.
   double x_;
 
@@ -52,7 +61,6 @@ public:
   //! Maximum radius from the origin covered by this expansion.
   double r_;
 
-protected:
   int order_;
 };
 

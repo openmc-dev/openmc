@@ -77,7 +77,7 @@ MaterialFilter::text_label(int bin) const
 //==============================================================================
 
 extern "C" int
-openmc_material_filter_get_bins(int32_t index, int32_t** bins, size_t* n)
+openmc_material_filter_get_bins(int32_t index, const int32_t** bins, size_t* n)
 {
   // Make sure this is a valid index to an allocated filter.
   if (int err = verify_filter(index)) return err;

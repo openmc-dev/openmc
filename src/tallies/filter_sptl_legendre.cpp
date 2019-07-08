@@ -152,7 +152,7 @@ openmc_spatial_legendre_filter_get_order(int32_t index, int* order)
   if (err) return err;
 
   // Output the order.
-  *order = filt->order_;
+  *order = filt->order();
   return 0;
 }
 
@@ -167,9 +167,9 @@ openmc_spatial_legendre_filter_get_params(int32_t index, int* axis,
   if (err) return err;
 
   // Output the params.
-  *axis = static_cast<int>(filt->axis_);
-  *min = filt->min_;
-  *max = filt->max_;
+  *axis = static_cast<int>(filt->axis());
+  *min = filt->min();
+  *max = filt->max();
   return 0;
 }
 
@@ -199,8 +199,7 @@ openmc_spatial_legendre_filter_set_params(int32_t index, const int* axis,
 
   // Update the filter.
   if (axis) filt->set_axis(static_cast<LegendreAxis>(*axis));
-  if (min) filt->min_ = *min;
-  if (max) filt->max_ = *max;
+  if (min && max) filt->set_minmax(*min, *max);
   return 0;
 }
 

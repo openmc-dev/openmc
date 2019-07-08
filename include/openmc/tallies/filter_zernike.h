@@ -14,9 +14,15 @@ namespace openmc {
 class ZernikeFilter : public Filter
 {
 public:
-  std::string type() const override {return "zernike";}
+  //----------------------------------------------------------------------------
+  // Constructors, destructors
 
   ~ZernikeFilter() = default;
+
+  //----------------------------------------------------------------------------
+  // Methods
+
+  std::string type() const override {return "zernike";}
 
   void from_xml(pugi::xml_node node) override;
 
@@ -27,9 +33,15 @@ public:
 
   std::string text_label(int bin) const override;
 
+  //----------------------------------------------------------------------------
+  // Accessors
+
   int order() const {return order_;}
 
   virtual void set_order(int order);
+
+  //----------------------------------------------------------------------------
+  // Data members
 
   //! Cartesian x coordinate for the origin of this expansion.
   double x_;
@@ -51,12 +63,18 @@ protected:
 class ZernikeRadialFilter : public ZernikeFilter
 {
 public:
+  //----------------------------------------------------------------------------
+  // Methods
+
   std::string type() const override {return "zernikeradial";}
 
   void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
 
   std::string text_label(int bin) const override;
+
+  //----------------------------------------------------------------------------
+  // Accessors
 
   void set_order(int order) override;
 };

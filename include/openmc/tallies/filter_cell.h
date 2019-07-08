@@ -18,7 +18,13 @@ namespace openmc {
 class CellFilter : public Filter
 {
 public:
+  //----------------------------------------------------------------------------
+  // Constructors, destructors
+
   ~CellFilter() = default;
+
+  //----------------------------------------------------------------------------
+  // Methods
 
   std::string type() const override {return "cell";}
 
@@ -27,11 +33,17 @@ public:
   void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
 
-  void set_cells(gsl::span<int32_t> cells);
-
   void to_statepoint(hid_t filter_group) const override;
 
   std::string text_label(int bin) const override;
+
+  //----------------------------------------------------------------------------
+  // Accessors
+
+  void set_cells(gsl::span<int32_t> cells);
+
+  //----------------------------------------------------------------------------
+  // Data members
 
   //! The indices of the cells binned by this filter.
   std::vector<int32_t> cells_;

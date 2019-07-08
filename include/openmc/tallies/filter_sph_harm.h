@@ -20,7 +20,13 @@ enum class SphericalHarmonicsCosine {
 class SphericalHarmonicsFilter : public Filter
 {
 public:
+  //----------------------------------------------------------------------------
+  // Constructors, destructors
+
   ~SphericalHarmonicsFilter() = default;
+
+  //----------------------------------------------------------------------------
+  // Methods
 
   std::string type() const override {return "sphericalharmonics";}
 
@@ -29,13 +35,19 @@ public:
   void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
 
+  void to_statepoint(hid_t filter_group) const override;
+
+  std::string text_label(int bin) const override;
+
+  //----------------------------------------------------------------------------
+  // Accessors
+
   void set_order(int order);
 
   void set_cosine(gsl::cstring_span cosine);
 
-  void to_statepoint(hid_t filter_group) const override;
-
-  std::string text_label(int bin) const override;
+  //----------------------------------------------------------------------------
+  // Data members
 
   int order_;
 

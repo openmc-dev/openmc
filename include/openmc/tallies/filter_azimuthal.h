@@ -17,7 +17,13 @@ namespace openmc {
 class AzimuthalFilter : public Filter
 {
 public:
+  //----------------------------------------------------------------------------
+  // Constructors, destructors
+
   ~AzimuthalFilter() = default;
+
+  //----------------------------------------------------------------------------
+  // Methods
 
   std::string type() const override {return "azimuthal";}
 
@@ -26,11 +32,17 @@ public:
   void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
 
-  void set_bins(gsl::span<double> bins);
-
   void to_statepoint(hid_t filter_group) const override;
 
   std::string text_label(int bin) const override;
+
+  //----------------------------------------------------------------------------
+  // Accessors
+
+  void set_bins(gsl::span<double> bins);
+
+  //----------------------------------------------------------------------------
+  // Data members
 
   std::vector<double> bins_;
 };

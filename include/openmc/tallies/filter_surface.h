@@ -18,7 +18,13 @@ namespace openmc {
 class SurfaceFilter : public Filter
 {
 public:
+  //----------------------------------------------------------------------------
+  // Constructors, destructors
+
   ~SurfaceFilter() = default;
+
+  //----------------------------------------------------------------------------
+  // Methods
 
   std::string type() const override {return "surface";}
 
@@ -27,11 +33,17 @@ public:
   void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
 
-  void set_surfaces(gsl::span<int32_t> surfaces);
-
   void to_statepoint(hid_t filter_group) const override;
 
   std::string text_label(int bin) const override;
+
+  //----------------------------------------------------------------------------
+  // Accessors
+
+  void set_surfaces(gsl::span<int32_t> surfaces);
+
+  //----------------------------------------------------------------------------
+  // Data members
 
   //! The indices of the surfaces binned by this filter.
   std::vector<int32_t> surfaces_;

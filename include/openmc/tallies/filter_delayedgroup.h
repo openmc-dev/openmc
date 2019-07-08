@@ -19,7 +19,13 @@ namespace openmc {
 class DelayedGroupFilter : public Filter
 {
 public:
+  //----------------------------------------------------------------------------
+  // Constructors, destructors
+
   ~DelayedGroupFilter() = default;
+
+  //----------------------------------------------------------------------------
+  // Methods
 
   std::string type() const override {return "delayedgroup";}
 
@@ -28,11 +34,17 @@ public:
   void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
 
-  void set_groups(gsl::span<int> groups);
-
   void to_statepoint(hid_t filter_group) const override;
 
   std::string text_label(int bin) const override;
+
+  //----------------------------------------------------------------------------
+  // Accessors
+
+  void set_groups(gsl::span<int> groups);
+
+  //----------------------------------------------------------------------------
+  // Data members
 
   std::vector<int> groups_;
 };

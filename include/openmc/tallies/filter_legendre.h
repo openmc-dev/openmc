@@ -14,7 +14,13 @@ namespace openmc {
 class LegendreFilter : public Filter
 {
 public:
+  //----------------------------------------------------------------------------
+  // Constructors, destructors
+
   ~LegendreFilter() = default;
+
+  //----------------------------------------------------------------------------
+  // Methods
 
   std::string type() const override {return "legendre";}
 
@@ -23,11 +29,17 @@ public:
   void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
 
-  void set_order(int order);
-
   void to_statepoint(hid_t filter_group) const override;
 
   std::string text_label(int bin) const override;
+
+  //----------------------------------------------------------------------------
+  // Accessors
+
+  void set_order(int order);
+
+  //----------------------------------------------------------------------------
+  // Data members
 
   int order_;
 };

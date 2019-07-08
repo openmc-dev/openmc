@@ -193,7 +193,7 @@ openmc_filter_get_id(int32_t index, int32_t* id)
 {
   if (int err = verify_filter(index)) return err;
 
-  *id = model::tally_filters[index]->id_;
+  *id = model::tally_filters[index]->id();
   return 0;
 }
 
@@ -233,7 +233,7 @@ openmc_get_filter_next_id(int32_t* id)
 {
   int32_t largest_filter_id = 0;
   for (const auto& t : model::tally_filters) {
-    largest_filter_id = std::max(largest_filter_id, t->id_);
+    largest_filter_id = std::max(largest_filter_id, t->id());
   }
   *id = largest_filter_id + 1;
 }

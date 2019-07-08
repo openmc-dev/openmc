@@ -480,7 +480,7 @@ class Chain(object):
                 capt[nuclide.name] = nuc_capt
         return capt
 
-    def set_capture_branches(self, branch_ratios):
+    def set_capture_branches(self, branch_ratios, strict=True):
         """Set the capture branching ratios
 
         ``branch_ratios`` may be modified in place, only to
@@ -500,6 +500,13 @@ class Chain(object):
             ``"Am241"``. The capture branching ratios for these
             parents will be modified. Corresponding values are
             dictionaries of ``{target: branching_ratio}``
+        strict : bool
+            If this evalutes to ``True``, then all parents and
+            products must exist in the :class:`Chain`. A
+            :class:`KeyError` will be raised at the first
+            nuclide that does not exist. Otherwise, print
+            a warning message for missing parents and/or
+            products.
 
         See Also
         --------
@@ -512,7 +519,8 @@ class Chain(object):
         capt_ix_map = {}
         grounds = {}
 
-        missing = set()
+        missing_parents = set()
+        missing_products = {}
         no_capture = set()
 
         # Check for validity before manipulation
@@ -521,8 +529,24 @@ class Chain(object):
 
         for parent, sub in branch_ratios.items():
             if parent not in self:
-                # TODO How to handle missing branching ratios
-                missing.add(parent)
+                if strict:
+                    raise KeyError(parent)
+                missing_parents.add(parent)
+                continue
+
+            # Make sure all products are present in the chain
+
+            prod_flag = False
+
+            for product in sub:
+                if product not in self.nuclide_dict:
+                    if strict:
+                        raise KeyError(product)
+                    missing_products[parent] = product
+                    prod_flag = True
+                    break
+
+            if prod_flag:
                 continue
 
             # Make sure this nuclide has capture reactions
@@ -535,24 +559,33 @@ class Chain(object):
                         grounds[parent] = rx.target
 
             if len(indexes) == 0:
+                if strict:
+                    raise AttributeError(
+                        "Nuclide {} does not have capture reactions in "
+                        "this {}".format(parent, self.__class__.__name__))
                 no_capture.add(parent)
                 continue
 
             capt_ix_map[parent] = indexes
 
-            check_type(parent, sub, dict, str)
-            check_type(parent + " ratios", list(sub.values()), list, float)
             this_sum = sum(sub.values())
             check_less_than(parent + " ratios", this_sum, 1.0, True)
             sums[parent] = this_sum
 
-        if len(missing) > 0:
+        if len(missing_parents) > 0:
             print("The following nuclides were not found in {}: {}".format(
-                self.__class__.__name__, ", ".join(sorted(missing))))
+                self.__class__.__name__, ", ".join(sorted(missing_parents))))
 
         if len(no_capture) > 0:
             print("The following nuclides did not have capture reactions: "
                   "{}".format(", ".join(sorted(no_capture))))
+
+        if len(missing_products) > 0:
+            tail = ("{} -> {}".format(k, v)
+                    for k, v in sorted(missing_products.items()))
+            print("The following products were not found in the {} and "
+                  "parents were unmodified: \n{}".format(
+                      self.__class__.__name__, ", ".join(tail)))
 
         # Insert new ReactionTuples with updated branch ratios
 

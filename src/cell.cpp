@@ -701,6 +701,13 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
   // Populate the partition lists.
   partitions_.resize(surfs_.size() + 1);
   for (auto i_cell : univ.cells_) {
+    // It is difficult to determine the bounds of a complex cell, so add complex
+    // cells to all partitions.
+    if (!model::cells[i_cell]->simple_) {
+      for (auto& p : partitions_) p.push_back(i_cell);
+      continue;
+    }
+
     // Find the tokens for bounding z-planes.
     int32_t lower_token = 0, upper_token = 0;
     double min_z, max_z;

@@ -1,5 +1,6 @@
 from collections.abc import Mapping
 import os
+import sys
 
 import numpy as np
 import pytest
@@ -472,15 +473,63 @@ def test_position(capi_init):
 
 def test_bounding_box(capi_init):
 
-    expected_llc = (-0.63, -0.63, -np.inf)
-    expected_urc = (0.63, 0.63, np.inf)
+    inf = sys.float_info.max
 
-    llc, urc = openmc.capi.bounding_box("Universe", 0)
+    expected_llc = (-inf, -0.63, -inf)
+    expected_urc = (inf, inf, inf)
 
-    assert llc[0] == expected_llc[0]
-    assert llc[1] == expected_llc[1]
-    assert llc[2] < 1.0E10
+    llc, urc = openmc.capi.bounding_box("Surface", 5)
 
-    assert urc[0] == expected_urc[0]
-    assert urc[1] == expected_urc[1]
-    assert urc[2] > 1.E10
+    print(llc)
+    print(urc)
+
+    assert tuple(llc) == expected_llc
+    assert tuple(urc) == expected_urc
+
+
+    expected_llc = (-inf, -inf, -inf)
+    expected_urc = (inf, -0.63, inf)
+
+    llc, urc = openmc.capi.bounding_box("Surface", -5)
+
+    assert tuple(llc) == expected_llc
+    assert tuple(urc) == expected_urc
+
+    expected_llc = (-0.39218, -0.39218, -inf)
+    expected_urc = (0.39218, 0.39218, inf)
+
+    llc, urc = openmc.capi.bounding_box("Cell", 1)
+
+    assert tuple(llc) == expected_llc
+    assert tuple(urc) == expected_urc
+
+    expected_llc = (-0.45720, -0.45720, -inf)
+    expected_urc = (0.45720, 0.45720, inf)
+
+    llc, urc = openmc.capi.bounding_box("Cell", 2)
+
+    assert tuple(llc) == expected_llc
+    assert tuple(urc) == expected_urc
+
+    # make sure that proper assertions are raised
+    with pytest.raises(openmc.exceptions.GeometryError):
+        openmc.capi.bounding_box("Cell", -1)
+
+    with pytest.raises(openmc.exceptions.GeometryError):
+        openmc.capi.bounding_box("Surface", 0)
+
+    with pytest.raises(openmc.exceptions.GeometryError):
+        openmc.capi.bounding_box("Region", 1)
+
+
+def test_global_bounding_box(capi_init):
+
+    inf = sys.float_info.max
+
+    expected_llc = (-0.63, -0.63, -inf)
+    expected_urc = (0.63, 0.63, inf)
+
+    llc, urc = openmc.capi.global_bounding_box()
+
+    assert tuple(llc) == expected_llc
+    assert tuple(urc) == expected_urc

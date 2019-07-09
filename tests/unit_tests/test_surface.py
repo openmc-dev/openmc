@@ -1,4 +1,5 @@
 import numpy as np
+from random import random
 import openmc
 import pytest
 
@@ -329,14 +330,28 @@ def test_quadric():
 
 
 def test_cylinder_from_points():
-    # Generate 45-degree rotated cylinder in x-y plane with radius 1
-    p1 = (0, 0, 0)
-    p2 = (1, 1, 0)
-    s = openmc.model.cylinder_from_points(p1, p2, 1)
+    for _ in range(10):
+        # Generate cylinder in random direction
+        p1 = np.array([random(), random(), random()])
+        p2 = np.array([random(), random(), random()])
+        r = random()
+        s = openmc.model.cylinder_from_points(p1, p2, r)
 
-    # Points p1 and p2 need to be inside cylinder
-    assert p1 in -s
-    assert p2 in -s
-    assert (-1, 1, 0) in +s
-    assert (1, -1, 0) in +s
-    assert (0, 0, 1.5) in +s
+        # Points p1 and p2 need to be inside cylinder
+        assert p1 in -s
+        assert p2 in -s
+
+        # Points further along the line should be inside cylinder as well
+        t = 100*random() - 200
+        p = p1 + t*(p2 - p1)
+        assert p in -s
+
+        # Check that a point outside cylinder is in positive half-space. We do
+        # this by constructing a plane that includes the cylinder's axis,
+        # finding the normal to the plane, and using it to find a point slightly
+        # more than one radius away from the axis.
+        plane = openmc.Plane.from_points(p1, p2, (0., 0., 0.))
+        n = np.array([plane.a, plane.b, plane.c])
+        n /= np.linalg.norm(n)
+        assert (p1 + 1.1*r*n) in +s
+        assert (p2 + 1.1*r*n) in +s

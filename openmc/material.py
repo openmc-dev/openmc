@@ -841,8 +841,7 @@ class Material(IDManagerMixin):
 
         # Create temperature XML subelement
         if self.temperature is not None:
-            subelement = ET.SubElement(element, "temperature")
-            subelement.text = str(self.temperature)
+            element.set("temperature", str(self.temperature))
 
         # Create density XML subelement
         if self._density is not None or self._density_units == 'sum':
@@ -932,9 +931,8 @@ class Material(IDManagerMixin):
         mat = cls(mat_id)
         mat.name = elem.get('name')
 
-        temp_node = elem.find("temperature")
-        if temp_node is not None:
-            mat.temperature = float(temp_node.text)
+        if "temperature" in elem.attrib:
+            mat.temperature = float(elem.get("temperature"))
 
         if 'volume' in elem.attrib:
             mat.volume = float(elem.get('volume'))

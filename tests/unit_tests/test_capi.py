@@ -469,3 +469,18 @@ def test_position(capi_init):
     pos[2] = 3.3
 
     assert tuple(pos) == (1.3, 2.3, 3.3)
+
+def test_bounding_box(capi_init):
+
+    expected_llc = (-0.63, -0.63, -np.inf)
+    expected_urc = (0.63, 0.63, np.inf)
+
+    llc, urc = openmc.capi.bounding_box("Universe", 0)
+
+    assert llc[0] == expected_llc[0]
+    assert llc[1] == expected_llc[1]
+    assert llc[2] < 1.0E10
+
+    assert urc[0] == expected_urc[0]
+    assert urc[1] == expected_urc[1]
+    assert urc[2] > 1.E10

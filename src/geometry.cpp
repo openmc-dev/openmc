@@ -484,19 +484,18 @@ openmc_bounding_box(const char* geom_type, const int32_t id, double* llc, double
   std::string gtype(geom_type);
   to_lower(gtype);
 
-  std::cout << gtype << std::endl;
-
   if (gtype == "universe") {
     // negative ids only apply to surfaces
-    if (id < 0) { return OPENMC_E_GEOMETRY; }
+    if (id <= 0) { return OPENMC_E_GEOMETRY; }
     const auto& u = model::universes[model::universe_map[id]];
     bbox = u->bounding_box();
   } else if (gtype == "cell") {
     // negative ids only apply to surfaces
-    if (id < 0) { return OPENMC_E_GEOMETRY; }
+    if (id <= 0) { return OPENMC_E_GEOMETRY; }
     const auto& c = model::cells[model::cell_map[id]];
     bbox = c->bounding_box();
   } else if (gtype == "surface") {
+    if (id == 0) { return OPENMC_E_GEOMETRY; }
     const auto& s = model::surfaces[model::surface_map[abs(id)]];
     bbox = s->bounding_box(id > 0);
   } else {
@@ -517,5 +516,22 @@ openmc_bounding_box(const char* geom_type, const int32_t id, double* llc, double
 
   return 0;
 }
+
+extern "C" int openmc_global_bounding_box(double* llc, double* urc) {
+  auto bbox = model::universes[model::root_universe]->bounding_box();
+
+  // set lower left corner values
+  llc[0] = bbox.xmin;
+  llc[1] = bbox.ymin;
+  llc[2] = bbox.zmin;
+
+  // set upper right corner values
+  urc[0] = bbox.xmax;
+  urc[1] = bbox.ymax;
+  urc[2] = bbox.zmax;
+
+  return 0;
+}
+
 
 } // namespace openmc

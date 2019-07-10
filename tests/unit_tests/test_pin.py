@@ -23,7 +23,9 @@ def get_pin_radii(pin_univ):
 @pytest.fixture
 def pin_mats():
     fuel = openmc.Material(name="UO2")
+    fuel.volume = 100
     clad = openmc.Material(name="zirc")
+    clad.volume = 100
     water = openmc.Material(name="water")
     return fuel, clad, water
 
@@ -73,6 +75,11 @@ def test_subdivide(pin_mats, good_radii, surf_type):
     div0 = pin(surfs, pin_mats, {0: N})
     assert len(div0.cells) == len(pin_mats) + N - 1
 
+    # Check volume of fuel material
+    for mid, mat in div0.get_all_materials().items():
+        if mat.name == "UO2":
+            assert mat.volume == pytest.approx(100 / N)
+
     # check volumes of new rings
     radii = get_pin_radii(div0)
     bounds = [0] + radii[:N]
@@ -82,6 +89,11 @@ def test_subdivide(pin_mats, good_radii, surf_type):
     # subdivide non-inner most region
     new_pin = pin(surfs, pin_mats, {1: N})
     assert len(new_pin.cells) == len(pin_mats) + N - 1
+
+    # Check volume of clad material
+    for mid, mat in div0.get_all_materials().items():
+        if mat.name == "zirc":
+            assert mat.volume == pytest.approx(100 / N)
 
     # check volumes of new rings
     radii = get_pin_radii(new_pin)

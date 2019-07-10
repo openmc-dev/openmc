@@ -1018,6 +1018,32 @@ openmc_cell_get_temperature(int32_t index, const int32_t* instance, double* T)
   return 0;
 }
 
+extern "C" int
+openmc_cell_get_name(int32_t index, const char*& name) {
+  if (index < 0 || index >= model::cells.size()) {
+    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  name = model::cells[index]->name_.c_str();
+
+  return 0;
+}
+
+extern "C" int
+openmc_cell_set_name(int32_t index, const char* name) {
+  if (index < 0 || index >= model::cells.size()) {
+    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  std::string name_str(name);
+  model::cells[index]->name_ = name_str;
+
+  return 0;
+}
+
+
 //! Return the index in the cells array of a cell with a given ID
 extern "C" int
 openmc_get_cell_index(int32_t id, int32_t* index)

@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Iterable
-from ctypes import c_int, c_int32, c_double, c_char_p, POINTER
+from ctypes import byref, c_int, c_int32, c_double, c_char_p, POINTER
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -28,6 +28,12 @@ _dll.openmc_cell_get_temperature.argtypes = [
     c_int32, POINTER(c_int32), POINTER(c_double)]
 _dll.openmc_cell_get_temperature.restype = c_int
 _dll.openmc_cell_get_temperature.errcheck = _error_handler
+_dll.openmc_cell_get_name.argtypes = [c_int32, POINTER(c_char_p)]
+_dll.openmc_cell_get_name.restype = c_int
+_dll.openmc_cell_get_name.errcheck = _error_handler
+_dll.openmc_cell_set_name.argtypes = [c_int32, c_char_p]
+_dll.openmc_cell_set_name.restype = c_int
+_dll.openmc_cell_set_name.errcheck = _error_handler
 _dll.openmc_cell_set_fill.argtypes = [
     c_int32, c_int, c_int32, POINTER(c_int32)]
 _dll.openmc_cell_set_fill.restype = c_int
@@ -101,6 +107,17 @@ class Cell(_FortranObjectWithID):
     @id.setter
     def id(self, cell_id):
         _dll.openmc_cell_set_id(self._index, cell_id)
+
+    @property
+    def name(self):
+        name = c_char_p()
+        _dll.openmc_cell_get_name(self._index, byref(name))
+        return name.value.decode()
+
+    @name.setter
+    def name(self, name):
+        name_ptr = c_char_p(name.encode())
+        _dll.openmc_cell_set_name(self._index, name_ptr)
 
     @property
     def fill(self):

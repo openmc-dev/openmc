@@ -5,6 +5,7 @@ Integrator
 The integrator subcomponents.
 """
 
+from .abc import Integrator
 from .cf4 import *
 from .cecm import *
 from .celi import *

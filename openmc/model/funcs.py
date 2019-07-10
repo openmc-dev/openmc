@@ -448,7 +448,8 @@ def subdivide(surfaces):
     return regions
 
 
-def pin(surfaces, materials, subdivisions=None, universe_id=None, name=""):
+def pin(surfaces, materials, subdivisions=None, divide_vols=True,
+        universe_id=None, name=""):
     """Convenience function for building a fuel pin
 
     Parameters
@@ -466,6 +467,11 @@ def pin(surfaces, materials, subdivisions=None, universe_id=None, name=""):
         Dictionary describing which rings to subdivide and how
         many times. Keys are indexes of the annular rings
         to be divided. Will construct equal area rings
+    divide_vols : bool
+        If this evaluates to ``True``, then volumes of subdivided
+        materials will also be divided by the number of divisions.
+        Otherwise the volume of the original material will not be
+        modified before subdivision
     universe_id : None or int
         Identifier for this universe
     name : str
@@ -555,6 +561,10 @@ def pin(surfaces, materials, subdivisions=None, universe_id=None, name=""):
 
             surfaces = (
                     surfaces[:ring_index] + new_surfs + surfaces[ring_index:])
+
+            if divide_vols and materials[ring_index].volume is not None:
+                materials[ring_index].volume /= nr
+
             materials = (
                     materials[:ring_index]
                     + [materials[ring_index].clone() for _i in range(nr - 1)]
